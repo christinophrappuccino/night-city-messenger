@@ -1,7 +1,7 @@
 /**
  * Anonymous Sender Mask
  * @file styles/components/anon-mask.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Self-contained masked avatar for the GM "Send Anonymously"
  *   feature. Rendered by the `ncm-anon-avatar` Handlebars helper as
  *   `<span class="ncm-anon-av" data-anon-style="…">`. Pure CSS — never uses the

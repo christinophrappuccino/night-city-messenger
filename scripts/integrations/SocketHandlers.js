@@ -1,7 +1,7 @@
 /**
  * Socket Handlers
  * @file scripts/integrations/SocketHandlers.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Wires up socket operations for real-time message relay between clients.
  *              Handles the GM-relayed delivery pipeline, status syncing, and inbox refresh signals.
  */

@@ -1,7 +1,7 @@
 /**
  * CyberTimePicker — Format-Aware Timestamp Picker
  * @file scripts/ui/components/CyberTimePicker.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * @description Interactive timestamp dialog with cyberpunk styling.
  *   Reads timeFormat (24h/12h) and dateFormat (YMD/DMY/MDY) from
@@ -199,7 +199,11 @@ export class CyberTimePicker {
     }, {
       width: 320,
       height: 'auto',
-      classes: ['ncm-time-config-dialog', 'ncm-ctp-wrapper'],
+      // Inherit the opener's theme: a picker launched from a GM-view /
+      // admin-themed window (composer in GM view, a config sheet) is tagged
+      // like an admin dialog so it doesn't pop up in the player palette.
+      classes: ['ncm-time-config-dialog', 'ncm-ctp-wrapper',
+        ...(document.activeElement?.closest?.('[data-ncm-admin-theme]') ? ['ncm-admin-dialog'] : [])],
     });
 
     this._dialog.render(true);

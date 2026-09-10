@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════
  * Shard Preset Themes
  * @file styles/themes/shard-presets.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description CSS custom properties per shard preset. Applied via
  *   .ncm-preset-{key} class on the viewer root element.
  *   item-inbox.css references --sp-* variables for all color values.

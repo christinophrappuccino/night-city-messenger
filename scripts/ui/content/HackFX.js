@@ -1,7 +1,7 @@
 /**
  * HackFX — tiny cosmetic "code is being generated" streamer for loading beats.
  * @file scripts/ui/content/HackFX.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Appends faux compile/forge log lines + hex dumps to a feed element,
  *   auto-scrolling, for a set duration — the "the deck is forging the payload"
  *   flourish. Pure flavor: Math.random (for hex/line variety) and Date.now (for

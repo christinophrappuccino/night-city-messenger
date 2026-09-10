@@ -1,7 +1,7 @@
 /**
  * CreateNetworkDialog
  * @file scripts/ui/NetworkManagement/CreateNetworkDialog.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Quick-create dialog for new custom networks. Provides 5 template
  *              presets (Fixer Den, Corp Office, Gang Turf, Secure Facility, Blank)
  *              with condensed 3-section form: Identity, Configuration, Appearance.
@@ -99,6 +99,9 @@ const ICON_OPTIONS = [
 ];
 
 export class CreateNetworkDialog extends BaseApplication {
+
+  /** GM tool — follows the Admin Panel theme + text size (utils/adminTheme.js). */
+  static ADMIN_THEMED = true;
 
   /** @type {string} Currently selected preset key */
   _selectedPreset = 'blank';

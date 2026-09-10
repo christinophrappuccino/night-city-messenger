@@ -1,7 +1,7 @@
 /**
  * ThemeCustomizerApp
  * @file scripts/ui/ThemeCustomizer/ThemeCustomizerApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Player-accessible theme editor. Live CSS variable preview,
  *              preset selector (8 presets from ThemeService), custom color
  *              overrides, animation level toggle, font selector.
@@ -14,6 +14,9 @@ import { log } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 
 export class ThemeCustomizerApp extends BaseApplication {
+
+  /** GM-only "GM view" header toggle (admin theme for the chrome; the preview strip keeps the player palette). */
+  static GM_VIEW_TOGGLE = true;
 
   /** @type {object} Working copy of theme preferences for live preview */
   _workingPrefs = null;
@@ -77,6 +80,8 @@ export class ThemeCustomizerApp extends BaseApplication {
 
   constructor(options = {}) {
     super(options);
+    // Open on a specific tab (e.g. the Admin "Sound Settings" tool → 'effects').
+    if (options.activeTab) this._activeTab = options.activeTab;
     // Initialize working copy from current settings
     const current = this.settingsManager?.getTheme() ?? foundry.utils.deepClone(DEFAULTS.PLAYER_THEME);
     this._workingPrefs = foundry.utils.deepClone(current);
@@ -321,6 +326,8 @@ export class ThemeCustomizerApp extends BaseApplication {
 
   _onRender(context, options) {
     super._onRender(context, options);
+    // GM view: keep the preview strip on the player palette (see method).
+    this._scopePreviewToPlayerTheme();
 
     // ── Tab switching (DOM-based, not data-action) ──
     this.element.querySelectorAll('[data-tc-tab]').forEach(tab => {
@@ -458,12 +465,34 @@ export class ThemeCustomizerApp extends BaseApplication {
    */
   _applyLive() {
     this.themeService?.applyTheme(this._workingPrefs);
-    // Refresh data attributes on all open NCM windows
-    document.querySelectorAll('.ncm-app').forEach(el => {
+    // Refresh data attributes on all open PLAYER-themed NCM windows. Windows
+    // carrying the admin theme (GM tools, GM-view windows) keep their forced
+    // scanlines/neon=false — re-stamping them here painted scanlines back onto
+    // the Admin Panel while the customizer was open.
+    document.querySelectorAll('.ncm-app:not([data-ncm-admin-theme])').forEach(el => {
       el.dataset.ncmScanlines = String(this._workingPrefs.scanlines !== false);
       el.dataset.ncmNeon = String(this._workingPrefs.neonGlow !== false);
       el.dataset.ncmAnimationLevel = this._workingPrefs.animationLevel || 'full';
     });
+    this._scopePreviewToPlayerTheme();
+  }
+
+  /**
+   * Under GM view this window's chrome carries the admin palette, and the
+   * live-preview strip would inherit it — showing the GM the admin theme
+   * instead of the player theme being edited. Re-apply the working prefs
+   * element-scoped onto the preview roots so they always show the player
+   * palette (element-scoped applyTheme writes inline --ncm-* vars, which
+   * beat the inherited admin ones).
+   */
+  _scopePreviewToPlayerTheme() {
+    const root = this.element;
+    if (!root?.dataset?.ncmAdminTheme) return;
+    for (const el of root.querySelectorAll('.ncm-tc__preview, .ncm-tc__fprev')) {
+      try { this.themeService?.applyTheme(this._workingPrefs, el); } catch { /* non-fatal */ }
+      el.dataset.ncmScanlines = String(this._workingPrefs.scanlines !== false);
+      el.dataset.ncmNeon = String(this._workingPrefs.neonGlow !== false);
+    }
   }
 
   // ─── Helpers ───

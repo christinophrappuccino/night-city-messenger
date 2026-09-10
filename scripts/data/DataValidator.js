@@ -1,7 +1,7 @@
 /**
  * Data Validator
  * @file scripts/data/DataValidator.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Validation utilities for messages, contacts, and other data structures.
  * Game-time aware — never compares game-world dates against new Date().
  */

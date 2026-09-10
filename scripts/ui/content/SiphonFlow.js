@@ -1,7 +1,7 @@
 /**
  * SiphonFlow — typed-content action flows (design doc §8c).
  * @file scripts/ui/content/SiphonFlow.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Shared by the shard viewer (ItemInboxApp) and the terminal viewer
  *   (TerminalViewerApp) — the mechanics that mutate a typed entry's contentData:
  *     · runSiphon      — banking SIPHON FUNDS (amount → security roll → drain/trace)

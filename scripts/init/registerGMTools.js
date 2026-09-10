@@ -1,7 +1,7 @@
 /**
  * Register GM Tools & Customization
  * @file scripts/init/registerGMTools.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Phase 5 initialization — wires SchedulingService, MasterContactService,
  *              MacroAPI, GM UI applications, and Phase 5 verification.
  *
@@ -17,6 +17,7 @@
 
 import { MODULE_ID, TEMPLATES } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
+import { registerAdminDialogHook } from '../utils/adminTheme.js';
 import { SchedulingService } from '../services/SchedulingService.js';
 import { MasterContactService } from '../services/MasterContactService.js';
 import { MacroAPI } from '../integrations/MacroAPI.js';
@@ -80,6 +81,12 @@ export function registerGMTools(initializer) {
   //  READY PHASE — Phase 5 UI Launch Functions
   //  Priority 112 (overrides Phase 1 stubs at 110)
   // ═══════════════════════════════════════════════════════════
+
+  // Foundry Dialogs opened by GM tools (adminDialog/adminConfirm/adminPrompt)
+  // carry the admin theme preset + text size — see utils/adminTheme.js.
+  initializer.register('ready', 111, 'Admin dialog theme hook', () => {
+    registerAdminDialogHook();
+  });
 
   initializer.register('ready', 112, 'Phase 5 UI launchers', () => {
     const ns = game.nightcity;
@@ -191,10 +198,16 @@ export function registerGMTools(initializer) {
     };
 
     // ─── Theme Customizer (all players) ───
-    ns.openThemeCustomizer = async () => {
-      return _openSingleton('theme-customizer', () =>
-        import('../ui/ThemeCustomizer/ThemeCustomizerApp.js')
-      );
+    ns.openThemeCustomizer = async (opts = {}) => {
+      const app = await _openSingleton('theme-customizer', () =>
+        import('../ui/ThemeCustomizer/ThemeCustomizerApp.js'), opts);
+      // Honor an activeTab even when the window was already open (the constructor
+      // only runs on a fresh open) — e.g. the Sound Settings entry point.
+      if (opts.activeTab && app && app._activeTab !== opts.activeTab) {
+        app._activeTab = opts.activeTab;
+        if (app.rendered) app.render(false);
+      }
+      return app;
     };
 
     // ─── Player Email Setup (utility — uses new EmailSetupFlow) ───

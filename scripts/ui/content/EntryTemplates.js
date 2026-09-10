@@ -1,7 +1,7 @@
 /**
  * EntryTemplates — per-type example entries + the GM entry-template library.
  * @file scripts/ui/content/EntryTemplates.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Two layers, both surfaced in the DataShardComposer's
  *   "Templates & Examples" fieldset:
  *

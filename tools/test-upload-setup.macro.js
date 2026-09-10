@@ -18,15 +18,12 @@
  *   · dossier: subject — a forged target file (DV 17, pinned stealth DV 18)
  *   · memo.doc         — a forged corporate memo (DV 21, no trace — a quiet lie)
  *
- * ── EXECUTE is deliberately NOT seeded ────────────────────────────────────
- * The picker classifies a `payload`/`malware` entry as the **EXECUTE** family
- * and renders it **disabled with a SOON chip** — `family === 'execute'` sets
- * `disabled: true` in `TerminalViewerApp._gatherCarriedPrograms` ("EXECUTE
- * arrives in thread #6"), and `UploadFlow.runUpload` only ever installs a
- * `plant` resident. Seeding one would only add a dead row, so this macro seeds
- * only what genuinely works today: **PLANT**. Add EXECUTE examples here when
- * thread #6 (uploadable `wipe`/`forgeAccount`/`keylog`/`deployICE`/`logicBomb`)
- * lands.
+ * ── This macro seeds PLANT only (by design) ──────────────────────────────
+ * (Historical note: EXECUTE used to render disabled with a SOON chip. Thread #6
+ * landed — EXECUTE programs upload for real now — so for EXECUTE examples use
+ * `tools/test-thread6-setup.macro.js`, which seeds keylog/backdoor/deployICE
+ * uploadables plus pre-armed residents for SYSTEM SWEEP. This macro stays the
+ * clean PLANT-only forgery kit.)
  *
  * PREREQS
  *   · A terminal to upload INTO — run `tools/test-terminal-setup.macro.js` first.

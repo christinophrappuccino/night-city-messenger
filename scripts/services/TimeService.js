@@ -1,7 +1,7 @@
 /**
  * TimeService — Game Time Provider System
  * @file scripts/services/TimeService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * @description Unified time provider for all NCM features. Supports 6 modes:
  *

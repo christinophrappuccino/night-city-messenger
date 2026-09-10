@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — admin theme carry-over probe</title>
+<!-- REAL cascade: Foundry core → CPR system → module → admin theme (the preview rule) -->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 16px; background: #333; display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .probe-frame { position: relative; }
+  .probe-frame .app, .probe-frame .application { position: relative !important; inset: auto !important; }
+  .probe-label { color: #fff; font: 12px monospace; margin-bottom: 4px; }
+  #report { width: 100%; color: #fff; font: 12px monospace; white-space: pre; }
+</style>
+</head>
+<body>
+<script>
+  const q = new URLSearchParams(location.search);
+  const T = q.get('t') || 'clean-light';
+  const Z = Number(q.get('zoom') || 100);
+  document.write(`<div class="probe-label">preset=${T} zoom=${Z}%</div>`);
+</script>
+
+<!-- 1. A tagged ADMIN_THEMED AppV2 window (the Import Actor picker markup) -->
+<div class="probe-frame">
+<div class="application ncm-app ncm-actor-import-picker" id="p1" style="position:relative;width:440px;height:360px;display:flex;flex-direction:column">
+  <header class="window-header"><h1 class="window-title">Import Actor as Contact</h1><button class="header-control fa-solid fa-xmark"></button></header>
+  <section class="window-content" id="p1c" style="flex:1;overflow:hidden">
+    <div class="ncm-aip">
+      <div class="ncm-aip__search"><i class="fas fa-search ncm-aip__search-icon"></i><input type="text" class="ncm-aip__search-input" placeholder="Search actors by name or role..." value="athan"></div>
+      <div class="ncm-aip__list">
+        <button type="button" class="ncm-aip__row"><span class="ncm-aip__avatar">A</span><span class="ncm-aip__name">Athanasia</span><span class="ncm-aip__role">FIXER</span><i class="fas fa-chevron-right ncm-aip__chevron"></i></button>
+        <button type="button" class="ncm-aip__row" hidden><span class="ncm-aip__avatar">B</span><span class="ncm-aip__name">The Babel-Mother</span><i class="fas fa-chevron-right ncm-aip__chevron"></i></button>
+        <button type="button" class="ncm-aip__row"><span class="ncm-aip__avatar">N</span><span class="ncm-aip__name">Nathaniel</span><span class="ncm-aip__role">MEDIA</span><i class="fas fa-chevron-right ncm-aip__chevron"></i></button>
+      </div>
+      <div class="ncm-aip__footer"><span class="ncm-aip__count"><b>2</b> actors</span><span class="ncm-aip__hint">player-owned &amp; already-linked hidden</span></div>
+    </div>
+  </section>
+</div>
+</div>
+
+<!-- 2. A tagged Foundry v1 Dialog (adminConfirm shape) -->
+<div class="probe-frame">
+<div class="app window-app dialog ncm-admin-dialog" id="p2" style="position:relative;width:400px;display:flex;flex-direction:column">
+  <header class="window-header flexrow"><h4 class="window-title">Burn Contact</h4><a class="header-button control close"><i class="fas fa-times"></i>Close</a></header>
+  <section class="window-content" id="p2c">
+    <div class="dialog-content"><p>Mark <b>Rogue</b> as burned (compromised)?</p><p>This will mark the contact as burned for all players.</p>
+      <div class="form-group"><label>Reason</label><input type="text" value="Compromised by Arasaka"></div></div>
+    <div class="dialog-buttons"><button class="dialog-button yes default"><i class="fas fa-check"></i> Yes</button><button class="dialog-button no"><i class="fas fa-times"></i> No</button></div>
+  </section>
+</div>
+</div>
+
+<!-- 3. Control: an UNTAGGED player-facing dialog must be untouched -->
+<div class="probe-frame">
+<div class="app window-app dialog" id="p3" style="position:relative;width:300px;display:flex;flex-direction:column">
+  <header class="window-header flexrow"><h4 class="window-title">Untagged (player)</h4></header>
+  <section class="window-content" id="p3c"><div class="dialog-content"><p>Control dialog</p></div><div class="dialog-buttons"><button class="dialog-button">OK</button></div></section>
+</div>
+</div>
+
+<div id="report"></div>
+<script>
+  for (const id of ['p1', 'p2']) {
+    const el = document.getElementById(id);
+    el.dataset.ncmAdminTheme = T; el.dataset.ncmScanlines = 'false'; el.dataset.ncmNeon = 'false';
+    if (Z !== 100) el.querySelector('.window-content').style.zoom = String(Z / 100);
+  }
+  const cs = (id, prop) => getComputedStyle(document.getElementById(id)).getPropertyValue(prop).trim();
+  const lines = [];
+  for (const id of ['p1', 'p2', 'p3']) {
+    lines.push(`${id}: --ncm-bg-base=${cs(id, '--ncm-bg-base')} --ncm-secondary=${cs(id, '--ncm-secondary')} --ncm-text-primary=${cs(id, '--ncm-text-primary')}`);
+  }
+  lines.push(`p1 row bg=${getComputedStyle(document.querySelector('#p1 .ncm-aip__row')).backgroundColor} name color=${getComputedStyle(document.querySelector('#p1 .ncm-aip__name')).color}`);
+  lines.push(`p1 hidden row display=${getComputedStyle(document.querySelector('#p1 .ncm-aip__row[hidden]')).display}`);
+  lines.push(`p2 content bg=${getComputedStyle(document.getElementById('p2c')).backgroundColor} color=${getComputedStyle(document.getElementById('p2c')).color}`);
+  lines.push(`p2 button bg=${getComputedStyle(document.querySelector('#p2 .dialog-button.yes')).backgroundColor} color=${getComputedStyle(document.querySelector('#p2 .dialog-button.yes')).color}`);
+  lines.push(`p3 content bg=${getComputedStyle(document.getElementById('p3c')).backgroundColor} color=${getComputedStyle(document.getElementById('p3c')).color}`);
+  lines.push(`p1 zoomed content width=${document.getElementById('p1c').getBoundingClientRect().width}`);
+  document.getElementById('report').textContent = lines.join('\n');
+  document.title = 'PROBE ' + lines.join(' | ');
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 /**
  * SettingsManager — FoundryVTT Settings Registration & Access
  * @file scripts/core/SettingsManager.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Singleton that registers all module settings and provides
  *              typed getter/setter access. Wraps game.settings.
  */
@@ -95,7 +95,7 @@ export class SettingsManager {
 
     game.settings.register(MODULE_ID, 'requireContactVerification', {
       name: 'Require Contact Verification',
-      hint: 'When enabled, players can only message contacts whose email matches the master contact directory or a registered actor. Disable for a more casual experience.',
+      hint: 'When enabled, players can only message contacts whose email matches the master contact directory or a registered actor. Anyone who has already messaged a character can always be answered. Disable for a more casual experience.',
       scope: 'world',       // GM-controlled, affects all players
       config: true,          // Visible in module settings
       type: Boolean,
@@ -135,6 +135,15 @@ export class SettingsManager {
       name: 'GM Alert — Player Mail to NPCs',
       hint: 'Show the GM a toast notification whenever a player sends a message to an NPC. The NPC Inbox section in Admin → Messages is always available regardless of this setting.',
       scope: 'world',        // GM-facing; world-scoped so all GMs share it
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    game.settings.register(MODULE_ID, 'autoRegisterNpcSenders', {
+      name: 'Auto-Register NPC Senders',
+      hint: 'When the GM sends a message from an NPC actor that is not in the Master Contact list, add it automatically (linked to the actor, with its portrait and role) and show a notice. Players can then add and reply to that sender. Turn off to keep the directory strictly hand-curated.',
+      scope: 'world',
       config: true,
       type: Boolean,
       default: true,
@@ -536,6 +545,18 @@ export class SettingsManager {
       default: foundry.utils.deepClone(DEFAULTS.ADMIN_THEME),
     });
 
+    // GM view: show the GM's OWN immersive windows (message viewer, composer,
+    // contacts) in the admin theme + text size for readability. Toggled from
+    // those windows' header menus; players are never affected.
+    game.settings.register(MODULE_ID, 'gmViewAdminTheme', {
+      name: 'GM View (Messenger windows in the admin theme)',
+      hint: 'When on, the GM sees the message viewer, composer, and contacts in the Admin Panel theme and text size. Toggle it from those windows\' header menu to check what players see.',
+      scope: 'client',
+      config: false,
+      type: Boolean,
+      default: true,
+    });
+
     game.settings.register(MODULE_ID, 'operatorGate', {
       name: 'Operator Capability Gate',
       hint: 'WHO can use the OPERATOR tools (upload / hacking). Default is ungated; a GM can require a role / skill rank / gear so netrunning is limited to capable characters.',
@@ -641,6 +662,24 @@ export class SettingsManager {
       config: false,
       type: Array,
       default: [],
+    });
+
+    game.settings.register(MODULE_ID, 'namespaceMigrationDone', {
+      name: 'Namespace Migration Done',
+      hint: 'Internal. True once this world has been checked for (and, if found, migrated from) data stored under the module\'s original id. See scripts/core/NamespaceMigration.js.',
+      scope: 'world',
+      config: false,
+      type: Boolean,
+      default: false,
+    });
+
+    game.settings.register(MODULE_ID, 'dataSchemaVersion', {
+      name: 'Data Schema Version',
+      hint: 'Internal. The highest MigrationRunner migration this world has applied — breaking flag-shape changes register a migration keyed above it. 0 = pre-versioning world.',
+      scope: 'world',
+      config: false,
+      type: Number,
+      default: 0,
     });
 
     this._registered = true;

@@ -1,14 +1,14 @@
 /**
  * Integration Bridge
  * @file scripts/integrations/IntegrationBridge.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Public integration surface for other modules (e.g. Cyberpunk
  *              Relationships). Two jobs:
  *                1. Mirror the private EventBus contact events as standard
- *                   Foundry hooks ("cyberpunkred-messenger.<event>") so other
+ *                   Foundry hooks ("night-city-messenger.<event>") so other
  *                   modules can listen without touching game.nightcity internals.
  *                2. Expose a stable API object at the standard Foundry discovery
- *                   point: game.modules.get('cyberpunkred-messenger').api
+ *                   point: game.modules.get('night-city-messenger').api
  *              Purely additive — nothing internal changes behavior. If this file
  *              is deleted, the messenger works exactly as before.
  */

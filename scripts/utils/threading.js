@@ -1,7 +1,7 @@
 /**
  * Thread resolution — connects messages into conversations using multiple signals.
  * @file scripts/utils/threading.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * @description
  * A single message can be linked into a conversation by several independent

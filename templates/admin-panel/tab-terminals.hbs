@@ -106,6 +106,24 @@
             {{/if}}
           </div>
 
+          <div class="ncm-term-admin-detail__sec">
+            <div class="ncm-term-admin-detail__label">Recent Logins</div>
+            {{#if recentLogins.length}}
+              <div class="ncm-term-admin-detail__footprints">
+                {{#each recentLogins}}
+                  <div class="ncm-term-admin-footprint">
+                    <i class="fas fa-right-to-bracket"></i>
+                    <span class="ncm-term-admin-footprint__acct">{{account}}</span>
+                    {{#if operator}}<span class="ncm-term-admin-footprint__op">by {{operator}}</span>{{/if}}
+                    <span class="ncm-term-admin-footprint__when">{{when}}</span>
+                  </div>
+                {{/each}}
+              </div>
+            {{else}}
+              <div class="ncm-term-admin-detail__none">No logins recorded yet.</div>
+            {{/if}}
+          </div>
+
           <div class="ncm-term-admin-detail__acts">
             <button type="button" class="ncm-term-admin-btn ncm-term-admin-btn--primary" data-action="terminalOpen" data-item-id="{{id}}"><i class="fas fa-terminal"></i> Open</button>
             <button type="button" class="ncm-term-admin-btn" data-action="terminalConfigureAdmin" data-item-id="{{id}}"><i class="fas fa-sliders"></i> Configure</button>

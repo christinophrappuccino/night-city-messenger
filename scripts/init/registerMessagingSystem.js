@@ -1,7 +1,7 @@
 /**
  * Register Messaging System
  * @file scripts/init/registerMessagingSystem.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Phase 2 — Messaging system initialization.
  *              Registers repositories, services, socket handlers,
  *              and wires UI launch functions to real Application classes.

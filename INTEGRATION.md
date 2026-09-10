@@ -11,16 +11,16 @@ This module is part of a three-module constellation, each fully standalone:
 
 `scripts/integrations/IntegrationBridge.js` (registered at postReady/95) provides:
 
-- `game.modules.get("cyberpunkred-messenger").api` — `apiVersion`, `messenger`
+- `game.modules.get("night-city-messenger").api` — `apiVersion`, `messenger`
   (macro helpers), `contacts` (per-actor address books), `masterContacts`
   (GM directory), `portraits`, `time` (TimeService — see below), `eventBus`,
   `RELATIONSHIP_TYPES`, `TRUST_LABELS`.
-- Foundry hook mirrors of the private bus: `cyberpunkred-messenger.contact:updated`,
+- Foundry hook mirrors of the private bus: `night-city-messenger.contact:updated`,
   `…contacts:masterUpdated`, `…contacts:trustChanged`, `…contacts:burned`,
   `…contacts:verified`, `…contacts:shared`, `…contacts:decrypted`,
   `…contacts:breachFailed`, `…roles:updated`, `…message:sent`,
   `…message:received`, `…shard:decrypted` —
-  plus `cyberpunkred-messenger.apiReady` (fires once with the api object).
+  plus `night-city-messenger.apiReady` (fires once with the api object).
 
 ### Mirrored tie-in signals (added 2026-08-14, for the designed moment sources)
 

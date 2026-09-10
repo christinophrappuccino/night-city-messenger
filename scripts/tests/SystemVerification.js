@@ -1,7 +1,7 @@
 /**
  * System Verification
  * @file scripts/tests/SystemVerification.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Post-init health check. Validates all services are present,
  *              settings are registered, and the module is correctly configured.
  *              Run via: game.nightcity.verify()

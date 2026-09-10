@@ -1,7 +1,7 @@
 /**
  * TerminalService
  * @file scripts/services/TerminalService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Terminal operations — a Terminal is a converted Item you "log
  *   into" (an account-scoped mailbox), the sibling of a Data Shard (a file you
  *   crack open). This service is the data + session layer; it deliberately
@@ -835,8 +835,13 @@ export class TerminalService {
       for (const account of this.getConfig(item).accounts || []) {
         this.securityService?.resetAllForTarget(this._targetId(item, account.id));
       }
+      // The footprint log survives a reset — it's the GM's audit trail, and
+      // "log everyone out" shouldn't erase who logged in before.
+      const keepLog = this.getState(item).loginLog;
+      const fresh = foundry.utils.deepClone(DEFAULTS.TERMINAL_STATE);
+      if (Array.isArray(keepLog) && keepLog.length) fresh.loginLog = keepLog;
       await item.unsetFlag(MODULE_ID, 'terminalState');
-      await item.setFlag(MODULE_ID, 'terminalState', foundry.utils.deepClone(DEFAULTS.TERMINAL_STATE));
+      await item.setFlag(MODULE_ID, 'terminalState', fresh);
       this.eventBus?.emit(EVENTS.TERMINAL_RELOCKED, { itemId: item.id });
       this.soundService?.play('shard-relock');
       this._broadcastStateChange(item.id);
@@ -858,8 +863,8 @@ export class TerminalService {
    * which fires the normal document-sync hooks, so no new delivery path. Each
    * copy is stamped `metadata.recoveredFrom = <terminal name>`.
    *
-   * GM-side write (the inbox journal is GM-owned); the player path will relay
-   * through a socket op in a later phase.
+   * GM-side write (the inbox journal is GM-owned); players reach this via the
+   * SOCKET_OPS.TERMINAL_EXFIL_REQUEST relay (SocketHandlers), never directly.
    *
    * @param {Item} item
    * @param {string} accountId
@@ -869,7 +874,7 @@ export class TerminalService {
    */
   async exfilToInbox(item, accountId, messageIds, targetActorId) {
     if (!this.getConfig(item).allowExfil) return { success: false, count: 0, error: 'Exfiltration disabled for this terminal' };
-    if (!isGM()) return { success: false, count: 0, error: 'GM only (player exfil relay → later phase)' };
+    if (!isGM()) return { success: false, count: 0, error: 'GM only — player calls relay via TERMINAL_EXFIL_REQUEST' };
     if (!targetActorId) return { success: false, count: 0, error: 'No target actor' };
 
     const repo = this.messageRepository;
@@ -979,8 +984,8 @@ export class TerminalService {
    * Exfil selected messages onto a physical Data Shard (the "go-bag"). If the
    * target item isn't already a shard, it's converted first (default config).
    * Each entry keeps its contentType/contentData, so a copied MESSAGE stays a
-   * message. GM-side; the player path relays through SHARD_CONVERT_REQUEST in a
-   * later phase.
+   * message. GM-side; players reach this via the SOCKET_OPS.TERMINAL_EXFIL_REQUEST
+   * relay (SocketHandlers), never directly.
    *
    * @param {Item} item - source terminal
    * @param {string} accountId
@@ -990,7 +995,7 @@ export class TerminalService {
    */
   async exfilToShard(item, accountId, messageIds, targetItem) {
     if (!this.getConfig(item).allowExfil) return { success: false, count: 0, error: 'Exfiltration disabled for this terminal' };
-    if (!isGM()) return { success: false, count: 0, error: 'GM only (player exfil relay → later phase)' };
+    if (!isGM()) return { success: false, count: 0, error: 'GM only — player calls relay via TERMINAL_EXFIL_REQUEST' };
     if (!targetItem) return { success: false, count: 0, error: 'No target item' };
 
     const shardSvc = this.dataShardService;
@@ -1265,6 +1270,48 @@ export class TerminalService {
     return journalId ? game.journal.get(journalId) : null;
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  Login footprints — who logged into which account, when
+  // ═══════════════════════════════════════════════════════════
+
+  /** Cap for the per-terminal login footprint log. */
+  static LOGIN_LOG_CAP = 50;
+
+  /** The machine's login footprint log, oldest → newest. @param {Item} item */
+  getLoginLog(item) {
+    const list = this.getState(item).loginLog;
+    return Array.isArray(list) ? [...list] : [];
+  }
+
+  /**
+   * The newest recorded login on one account (i.e. the PREVIOUS login when
+   * read before this session's own write lands). Null on a fresh account.
+   * @param {Item} item @param {string} accountId
+   */
+  getLastLogin(item, accountId) {
+    const list = this.getState(item).loginLog;
+    if (!Array.isArray(list)) return null;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i]?.accountId === accountId) return list[i];
+    }
+    return null;
+  }
+
+  /** @private Append one footprint entry (game-clock timestamp), capped. */
+  _appendLoginLog(existing, item, accountId, actorId) {
+    const account = this.getAccount(item, accountId);
+    const actor = actorId ? game.actors?.get(actorId) : null;
+    const entry = {
+      ts: game.nightcity?.timeService?.getCurrentTime?.() ?? new Date().toISOString(),
+      accountId,
+      username: account?.username || account?.displayName || accountId,
+      operatorId: actorId || '',
+      operatorName: actor?.name || '',
+    };
+    const list = Array.isArray(existing) ? [...existing, entry] : [entry];
+    return list.slice(-TerminalService.LOGIN_LOG_CAP);
+  }
+
   /**
    * GM-side landing point for the player session relay (login / account
    * switch / logout state writes — players can't update the world item).
@@ -1292,6 +1339,12 @@ export class TerminalService {
     const state = this.getState(item);
     if (!state.sessions) state.sessions = {};
     state.sessions[actorId] = { ...this.getSession(item, actorId), ...updates };
+    // Login footprints — every session establishment (GM login or relayed
+    // player login) lands here, so this is the ONE place the machine records
+    // who logged into which account, and when (game clock). Capped.
+    if (updates.activeAccountId) {
+      state.loginLog = this._appendLoginLog(state.loginLog, item, updates.activeAccountId, actorId);
+    }
     await item.update({ [`flags.${MODULE_ID}.terminalState`]: state });
     // onLogin resident triggers (design §3a). This GM-side branch is the ONE
     // chokepoint for ALL session establishment — the GM's own logins AND relayed

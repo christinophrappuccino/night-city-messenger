@@ -1,7 +1,7 @@
 /**
  * SpamTab — Spam generator (quick blast, template library, custom creator, auto-spam).
  * @file scripts/ui/AdminPanel/tabs/SpamTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Tab-local state covers recipient selection, category filter, template
  * picker, creator form, and the auto-spam per-network panel. Spam is
@@ -9,6 +9,7 @@
  */
 
 import { BaseTab } from '../BaseTab.js';
+import { adminConfirm } from '../../../utils/adminTheme.js';
 
 export class SpamTab extends BaseTab {
 
@@ -365,7 +366,7 @@ export class SpamTab extends BaseTab {
     const templateId = target.closest('[data-template-id]')?.dataset.templateId;
     if (!templateId) return;
 
-    const confirm = await Dialog.confirm({
+    const confirm = await adminConfirm({
       title: 'Delete Template',
       content: '<p>Permanently delete this custom spam template?</p>',
     });

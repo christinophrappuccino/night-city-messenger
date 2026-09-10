@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * Night City Messenger — Depth & Surface Layering
  * @file styles/base/depth.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Enforces the four-layer depth system across all NCM surfaces.
  *   Adds border consistency, left accent selection indicators, inset shadow
  *   on recessed containers, and top gradient bar on window chrome.

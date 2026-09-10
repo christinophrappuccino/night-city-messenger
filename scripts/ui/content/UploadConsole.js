@@ -1,7 +1,7 @@
 /**
  * UploadConsole — the "pick a program to push onto this box" FUI picker.
  * @file scripts/ui/content/UploadConsole.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description A framework-free promise modal (the OperatorSelect / SecurityConsole
  *   pattern — NOT an Application): a themed `.ncm-upcon` panel appended into
  *   `opts.host` (the viewer element, so it inherits that viewer's --ncm-* preset;

@@ -1,7 +1,7 @@
 /**
  * Register Data Shard System
  * @file scripts/init/registerDataShardSystem.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Phase 4 initialization — wires SkillService, DataShardService,
  *              ItemInboxApp launch function, and ShardSheetOverride hooks.
  *

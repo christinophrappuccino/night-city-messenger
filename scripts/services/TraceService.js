@@ -1,7 +1,7 @@
 /**
  * TraceService — the consequence spine (design doc §6).
  * @file scripts/services/TraceService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Every risky failure funnels through ONE `fireTrace`: it plays the
  *   local drama (trace splash + sound on the operator's client), records a durable
  *   LOG row, and bumps per-(object × actor) HEAT. The log + heat are GM-owned world

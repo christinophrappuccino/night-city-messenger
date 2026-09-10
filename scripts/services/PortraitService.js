@@ -1,7 +1,7 @@
 /**
  * Portrait Service — Contact Image Management
  * @file scripts/services/PortraitService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Client-side image processing for contact portraits.
  *   Handles upload, resize/crop to 128×128, base64 conversion,
  *   storage via ContactRepository, and fallback chain logic.

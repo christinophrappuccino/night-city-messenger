@@ -111,6 +111,14 @@
 .ncm-admin-panel .ncm-term-admin-login i { color: var(--ncm-secondary); margin-right: 5px; }
 .ncm-admin-panel .ncm-term-admin-detail__none { font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-muted); }
 
+/* ── Login footprints (terminalState.loginLog) — machine log rows, mono values. ── */
+.ncm-admin-panel .ncm-term-admin-detail__footprints { display: flex; flex-direction: column; gap: 3px; padding: 7px 9px; border-radius: 2px; background: var(--ncm-bg-deep); }
+.ncm-admin-panel .ncm-term-admin-footprint { display: flex; align-items: baseline; gap: 6px; font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-term-admin-footprint i { color: var(--ncm-secondary); font-size: 10px; align-self: center; }
+.ncm-admin-panel .ncm-term-admin-footprint__acct { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-term-admin-footprint__op { font-family: var(--ncm-font-body); color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-term-admin-footprint__when { margin-left: auto; color: var(--ncm-text-muted); white-space: nowrap; }
+
 .ncm-admin-panel .ncm-term-admin-detail__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--ncm-border); }
 .ncm-admin-panel .ncm-term-admin-detail__acts-sp { flex: 1; }
 

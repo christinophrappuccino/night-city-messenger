@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Night City Messenger — Neon Glow & Light Bleed
    @file styles/effects/neon-glow.css
-   @module cyberpunkred-messenger
+   @module night-city-messenger
    @description Neon glow effects for headers, active elements, buttons,
      focus rings, and stat values. Gated by [data-ncm-neon="true"] attribute
      (set by BaseApplication._applyAtmosphere()).

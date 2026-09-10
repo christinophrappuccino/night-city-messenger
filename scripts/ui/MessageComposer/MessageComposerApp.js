@@ -1,7 +1,7 @@
 /**
  * Message Composer Application — Sprint 4.5 Redesign
  * @file scripts/ui/MessageComposer/MessageComposerApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Full-featured composer with condensed header, HUD strip, network
  *   effects strip, chip-based recipients with autocomplete, encryption toggle,
  *   self-destruct timer, schedule bar, rich contenteditable editor, attachments
@@ -17,14 +17,22 @@
 
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
-import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL } from '../../utils/helpers.js';
+import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
+import { applyGmView, applyAdminZoom, toggleGmView } from '../../utils/adminTheme.js';
 
 export class MessageComposerApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
 ) {
 
   // ─── Static Configuration ─────────────────────────────────
+
+  /**
+   * GM-view toggle (admin theme for readability). The composer does NOT
+   * extend BaseApplication, so the same hooks BaseApplication provides are
+   * wired here by hand — keep them in step with BaseApplication.
+   */
+  static GM_VIEW_TOGGLE = true;
 
   static DEFAULT_OPTIONS = {
     id: 'ncm-message-composer-{id}',
@@ -405,10 +413,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     // From actor — or master contact fallback
     const fromActor = this.fromActorId ? game.actors.get(this.fromActorId) : null;
-    const fromName = fromActor?.name || this.fromContact?.name || 'Unknown';
     const fromEmail = fromActor
       ? (this.contactRepo?.getActorEmail(this.fromActorId) || '')
       : (this.fromContact?.email || '');
+    // Explicit master-contact pick → its name; else directory-by-actor → actor label.
+    const fromName = this.fromContact?.name
+      || (fromActor ? resolveDisplayName({ actorId: this.fromActorId, email: fromEmail }, fromActor.name) : 'Unknown');
     const fromAvatarColor = getAvatarColor(fromName);
 
     // Mode label + key
@@ -625,7 +635,39 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     };
   }
 
+  /** Header controls (mirrors BaseApplication): the GM-view toggle is the injected header BUTTON, not a ⋮ entry. Always a copy. */
+  _getHeaderControls() {
+    return [...(super._getHeaderControls?.() ?? [])];
+  }
+
+  /** Header-control actions without a DEFAULT_OPTIONS handler (mirrors BaseApplication). */
+  _onClickAction(event, target) {
+    if (target?.dataset?.action === 'toggleGmView') { toggleGmView(); return; }
+    return super._onClickAction?.(event, target);
+  }
+
+  /** GM-view text size: zoom the content and grow the frame once by the ratio. */
+  _applyGmZoom(pct) {
+    const el = this.element;
+    if (!el) return;
+    const clamped = Math.min(150, Math.max(100, Number(pct) || 100));
+    applyAdminZoom(el.querySelector('.window-content'), clamped);
+    const prev = this._appliedTextScale ?? 100;
+    if (clamped !== prev) {
+      const ratio = clamped / prev;
+      const { width, height } = this.position ?? {};
+      const next = {};
+      if (typeof width === 'number' && width > 0) next.width = Math.round(width * ratio);
+      if (typeof height === 'number' && height > 0) next.height = Math.round(height * ratio);
+      if (Object.keys(next).length) { try { this.setPosition(next); } catch { /* non-fatal */ } }
+      this._appliedTextScale = clamped;
+    }
+  }
+
   _onRender(context, options) {
+    // GM view (admin theme) — stamped before any DOM wiring so the first
+    // paint is already themed; player view clears it and shrinks back.
+    if (!applyGmView(this.element, { applyZoom: (pct) => this._applyGmZoom(pct) })) this._applyGmZoom(100);
     this._setupRecipientAutocomplete();
     this._setupEditorSync();
     this._setupFormSync();
@@ -722,8 +764,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     let name, email;
 
     if (actor) {
-      name = actor.name;
       email = this.contactRepo?.getActorEmail(actorId) || '';
+      // Directory name beats the actor label (the GM edits the directory).
+      name = resolveDisplayName({ actorId, email }, actor.name);
     } else {
       // Actor not visible to this client — fall back to master contact data
       const masterService = game.nightcity?.masterContactService;

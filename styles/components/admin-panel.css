@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
  * Admin Panel Component Styles — Shell + Shared
- * Module: cyberpunkred-messenger
+ * Module: night-city-messenger
  *
  * Structure:
  *   admin-panel.css          — Shell chrome, shared components, Foundry overrides
@@ -25,7 +25,7 @@
 /* ═══════════════════════════════════════════════════════════
  * Admin Panel Component Styles — Sprint 4 Rewrite
  * @file styles/components/admin-panel.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description 6-tab GM Dashboard: Overview, Messages, Contacts,
  *              Networks, Data Shards, Tools. Condensed header with
  *              inline stat counters, HUD strip, and context-aware footer.

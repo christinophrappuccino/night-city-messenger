@@ -1,7 +1,7 @@
 /**
  * DataShardService
  * @file scripts/services/DataShardService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Data shard operations and full 4-layer security stack enforcement.
  *              Security layers (checked in order):
  *                1. Network — Must be on the required network

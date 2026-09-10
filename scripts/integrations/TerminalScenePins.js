@@ -1,7 +1,7 @@
 /**
  * Terminal Scene Pins — clickable terminals on the game canvas
  * @file scripts/integrations/TerminalScenePins.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Drag a Terminal item onto a scene and it becomes a map-note
  *   "access point" (icon = the item's art, hover = the terminal name) that
  *   players DOUBLE-CLICK to open the TerminalViewer.

@@ -1,14 +1,14 @@
 {{!--
   Item Inbox / Data Shard Viewer — Sprint 4.6 Redesign
   File: templates/item-inbox/item-inbox.hbs
-  Module: cyberpunkred-messenger
+  Module: night-city-messenger
   Mockup: ncm-shard-viewer-mockup-v2.html
 
   Chip-reader aesthetic. NOT a mail client.
   Structure: Identity Header → Integrity Bar → Signal Row → Index Strip → Content/Overlay → Footer
 --}}
 
-<div class="ncm-item-inbox ncm-shard-preset-{{presetKey}}" data-item-id="{{item.id}}" style="{{#if presetAccent}}--shard-accent: {{presetAccent}};{{/if}}">
+<div class="ncm-item-inbox ncm-shard-preset-{{presetKey}}" data-item-id="{{item.id}}" style="{{#if presetAccent}}--shard-accent: {{presetAccent}};{{/if}}--ncm-shard-text-scale: {{shardTextScale}};">
 
   {{!-- ═══ BOOT SEQUENCE CONTAINER (filled by JS, hidden after boot completes) ═══ --}}
   {{#if showBoot}}
@@ -226,19 +226,19 @@
 
     {{!-- SECURITY OVERLAYS --}}
     {{else if showNetworkOverlay}}
-      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-network.hbs"}}
+      {{> "modules/night-city-messenger/templates/item-inbox/security-overlay-network.hbs"}}
 
     {{else if showKeyitemOverlay}}
-      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-keyitem.hbs"}}
+      {{> "modules/night-city-messenger/templates/item-inbox/security-overlay-keyitem.hbs"}}
 
     {{else if showLoginOverlay}}
-      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-login.hbs"}}
+      {{> "modules/night-city-messenger/templates/item-inbox/security-overlay-login.hbs"}}
 
     {{else if hackingActive}}
-      {{> "modules/cyberpunkred-messenger/templates/item-inbox/hacking-sequence.hbs"}}
+      {{> "modules/night-city-messenger/templates/item-inbox/hacking-sequence.hbs"}}
 
     {{else if showEncryptionOverlay}}
-      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-encryption.hbs"}}
+      {{> "modules/night-city-messenger/templates/item-inbox/security-overlay-encryption.hbs"}}
 
     {{!-- UNLOCKED CONTENT --}}
     {{else}}
@@ -328,7 +328,7 @@
 
               {{!-- ═══ SHARED CONTENT-TYPE RENDERER (design doc §8c) ═══ --}}
               {{else}}
-                {{> "modules/cyberpunkred-messenger/templates/content/content-body.hbs"}}
+                {{> "modules/night-city-messenger/templates/content/content-body.hbs"}}
               {{/if}}
             </div>
           {{/each}}

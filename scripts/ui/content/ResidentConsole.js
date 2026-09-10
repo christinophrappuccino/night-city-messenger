@@ -1,7 +1,7 @@
 /**
  * ResidentConsole — "a planted program just triggered; what now?"
  * @file scripts/ui/content/ResidentConsole.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description A framework-free promise modal (the SecurityConsole / OperatorSelect
  *   / BankHeist pattern — NOT an Application): a themed `.ncm-rescon` panel appended
  *   into `opts.host` (an open viewer of that terminal, so it inherits that machine's

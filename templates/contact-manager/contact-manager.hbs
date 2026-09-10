@@ -1,7 +1,7 @@
 {{!--
   Contact Manager — v5.1 Split View Rewrite
   @file templates/contact-manager/contact-manager.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Player contact directory with split-view layout:
     Left: quick-dial favorites, sort/group bar, collapsible grouped list
     Right: detail panel with profile, info cards, last interaction, relationship, notes
@@ -139,7 +139,7 @@
         <div class="ncm-gm-section-header">
           <i class="fas fa-plus"></i> NEW CONTACT
         </div>
-        {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+        {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-form.hbs"
             contact=null isCreating=true isGM=isGM }}
       </div>
     </div>
@@ -150,7 +150,7 @@
         <div class="ncm-gm-section-header">
           <i class="fas fa-pen"></i> EDIT — {{editingContact.name}}
         </div>
-        {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+        {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-form.hbs"
             contact=editingContact isCreating=false isGM=isGM }}
       </div>
     </div>
@@ -173,7 +173,7 @@
       {{else}}
         <div class="ncm-grid">
           {{#each contacts}}
-            {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-card.hbs" }}
+            {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-card.hbs" }}
           {{/each}}
         </div>
       {{/if}}
@@ -202,7 +202,7 @@
         <div class="ncm-split__list">
 
           {{!-- Quick-Dial Favorites --}}
-          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-quickdial.hbs"
+          {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-quickdial.hbs"
               quickDialContacts=quickDialContacts }}
 
           {{!-- Sort / Group Bar --}}
@@ -235,7 +235,7 @@
               {{!-- Group header (skip for ungrouped/headerless groups) --}}
               {{#if ../hasGroups}}
                 {{#unless noHeader}}
-                  {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-group-header.hbs"
+                  {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-group-header.hbs"
                       groupKey=key groupName=name groupIcon=icon groupCount=contacts.length
                       isCollapsed=isCollapsed isEncryptedGroup=isEncryptedGroup }}
                 {{else}}
@@ -290,7 +290,7 @@
         <div class="ncm-split__detail">
           {{#if selectedContact}}
             <div class="ncm-detail">
-              {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-detail.hbs"
+              {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-detail.hbs"
                   selectedContact=selectedContact isGM=isGM
                   lastInteraction=lastInteraction
                   hasRelationship=hasRelationship

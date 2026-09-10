@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════
  * CyberTimePicker — Trigger + Dialog Styles
  * @file styles/components/cyber-time-picker.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Trigger replaces raw datetime-local inputs in forms.
  * Dialog content uses inline styles (DateRangePicker pattern).
@@ -18,27 +18,27 @@
   gap: 6px;
   flex: 1;
   min-width: 0;
-  background: #12121a;
-  border: 1px solid #2a2a45;
+  background: var(--ncm-bg-base);
+  border: 1px solid var(--ncm-border);
   border-radius: 3px;
   padding: 5px 8px;
   cursor: pointer;
   transition: border-color 0.15s;
 }
 .ncm-ctp-trigger:hover {
-  border-color: #19f3f7;
+  border-color: var(--ncm-secondary);
 }
 
 .ncm-ctp-trigger__icon {
   font-size: 11px;
-  color: #19f3f7;
+  color: var(--ncm-secondary);
   flex-shrink: 0;
 }
 
 .ncm-ctp-trigger__value {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 12px;
-  color: #e0e0e8;
+  color: var(--ncm-text-primary);
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -47,14 +47,14 @@
 }
 
 .ncm-ctp-trigger__value--empty {
-  color: #555570;
+  color: var(--ncm-text-muted);
   font-style: italic;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
 }
 
 .ncm-ctp-trigger__chevron {
   font-size: 9px;
-  color: #555570;
+  color: var(--ncm-text-muted);
   flex-shrink: 0;
 }
 

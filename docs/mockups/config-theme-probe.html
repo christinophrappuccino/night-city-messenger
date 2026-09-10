@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — config window theme probe (REAL template)</title>
+<!--
+  Renders a REAL config template (shard or terminal) through Handlebars with a
+  permissive Proxy context, inside the real app root, against the real cascade
+  (Foundry core → CPR → module → admin theme). Every {{#if}} branch shows and
+  every value prints its own path, so this is a PALETTE/CHROME check, not a
+  data check. Run Chrome with --allow-file-access-from-files.
+
+    ?tpl=shard|terminal   which template (default shard)
+    ?t=clean-light|clean-dark|high-contrast   admin preset (default clean-light)
+    ?zoom=130             admin text-size zoom
+    ?tab=identity         terminal config: which tab to show
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+<style>
+  body { margin: 0; padding: 12px; background: #333; }
+  .probe-label { color: #fff; font: 12px monospace; margin-bottom: 6px; }
+  #app { position: relative !important; inset: auto !important; width: 680px; height: 720px; display: flex; flex-direction: column; }
+  #app > .window-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+</style>
+</head>
+<body>
+<div class="probe-label" id="lbl"></div>
+<div class="application ncm-app ncm-item-inbox-config" id="app">
+  <header class="window-header"><h1 class="window-title" id="ttl">Config</h1><button class="header-control fa-solid fa-xmark"></button></header>
+  <section class="window-content" id="out"></section>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const TPL = q.get('tpl') || 'shard';
+const T = q.get('t') || 'clean-light';
+const Z = Number(q.get('zoom') || 100);
+const TAB = q.get('tab') || 'identity';
+document.getElementById('lbl').textContent = `tpl=${TPL} preset=${T} zoom=${Z}%`;
+const app = document.getElementById('app');
+app.dataset.ncmAdminTheme = T; app.dataset.ncmScanlines = 'false'; app.dataset.ncmNeon = 'false';
+if (Z !== 100) document.getElementById('out').style.zoom = String(Z / 100);
+
+// Permissive context: any path resolves to a string-ish proxy that prints its
+// own name; arrays used by {{#each}} get two sample rows.
+const FALSY = new Set((q.get('f') || '').split(',').filter(Boolean));
+const SAMPLE_ARRAYS = new Set(['presetOptions','skillOptions','skillRows','networkOptions','networkTypes','typeOptions','accounts','folders','customFolders','iceOptions','keyItems','themePresets','savedThemes','presetLibrary','loginStyles','soundSets','bootAnimations','iconLibrary','interfaces','exfilRows','clearances','contentTypes','fontOptions','colorKeys','colors','fonts','bootLines','wallStrengths','methods','lines','rows','options','items','chips']);
+function mk(path) {
+  // Target must be a plain object: Handlebars INVOKES function-valued context
+  // properties, so a function proxy reads as `undefined` in every {{#if}}.
+  const target = {};
+  return new Proxy(target, {
+    get(_, k) {
+      if (k === Symbol.toPrimitive || k === 'toString' || k === 'valueOf') return () => path.split('.').pop();
+      if (k === 'length') return 0;
+      if (typeof k === 'symbol') return undefined;
+      // Duck-typing probes Handlebars/JS make on values — must read as absent.
+      if (['toHTML', 'then', 'toJSON', 'constructor', '__proto__', 'hasOwnProperty', 'call', 'apply', 'bind', 'nodeType', 'jquery'].includes(k)) return undefined;
+      if (SAMPLE_ARRAYS.has(k)) return [mk(path + '.' + k + '[0]'), mk(path + '.' + k + '[1]')];
+      if (k === 'activeTab') return TAB;
+      if (FALSY.has(k)) return false;       // ?f=key1,key2 — force these branches OFF (hide overlays etc.)
+      return mk(path + '.' + k);
+    },
+    has() { return true; },
+    ownKeys() { return []; },
+    // Handlebars ≥4.6 only reads OWN properties (prototype-access guard), so
+    // every path must report an own, configurable descriptor.
+    getOwnPropertyDescriptor(_, k) {
+      if (typeof k === 'symbol') return undefined;
+      return { configurable: true, enumerable: true, writable: true, value: this.get(_, k) };
+    },
+  });
+}
+Handlebars.registerHelper('helperMissing', () => '');
+for (const h of ['eq','neq','gt','lt','gte','lte','and','or','not']) {
+  Handlebars.registerHelper(h, function (...a) {
+    const [x, y] = a;
+    switch (h) { case 'eq': return String(x) === String(y); case 'neq': return String(x) !== String(y);
+      case 'gt': return x > y; case 'lt': return x < y; case 'gte': return x >= y; case 'lte': return x <= y;
+      case 'and': return a.slice(0, -1).every(Boolean); case 'or': return a.slice(0, -1).some(Boolean); case 'not': return !x; }
+  });
+}
+Handlebars.registerHelper('ncm-net-icon', () => new Handlebars.SafeString('<i class="fas fa-wifi"></i>'));
+Handlebars.registerHelper('letter', (i) => String.fromCharCode(65 + (i || 0)));
+for (const h of ['ncm-date','ncm-truncate','truncate','substring','lower','upper','add','sub','ncm-json','join','cap','sw','c','acctSummary','acctControls']) {
+  Handlebars.registerHelper(h, (x) => (typeof x === 'string' ? x : ''));
+}
+Handlebars.registerHelper('ncm-isGM', () => true);
+
+// ?tpl=shard|terminal, or any template path relative to templates/ (e.g.
+// ?tpl=malware-workshop/malware-workshop.hbs&cls=ncm-malware-workshop&w=960&h=640)
+const file = TPL === 'terminal' ? '../../templates/terminal/terminal-config.hbs'
+  : TPL === 'shard' ? '../../templates/item-inbox/item-inbox-config.hbs'
+  : '../../templates/' + TPL;
+document.getElementById('ttl').textContent = TPL === 'terminal' ? 'Configure Terminal' : TPL === 'shard' ? 'Configure Data Shard' : TPL;
+if (q.get('cls')) { app.classList.remove('ncm-item-inbox-config'); app.classList.add(...q.get('cls').split(/\s+/)); }
+if (q.get('w')) app.style.width = q.get('w') + 'px';
+if (q.get('h')) app.style.height = q.get('h') + 'px';
+// Foundry registers partials by their full module path ({{> modules/…/x.hbs}});
+// fetch + register every partial the template (and its partials) reference.
+async function loadWithPartials(path) {
+  const src = await (await fetch(path)).text();
+  // Names may be quoted: {{> "modules/…/config-account.hbs"}}
+  const refs = [...src.matchAll(/\{\{>\s*"?([^\s}"]+)"?/g)].map(m => m[1]).filter(n => n.includes('/'));
+  for (const name of refs) {
+    if (name in Handlebars.partials) continue;
+    Handlebars.registerPartial(name, ''); // placeholder first — partials can reference each other (cycle guard)
+    const local = '../../' + name.replace(/^modules\/night-city-messenger\//, '');
+    try { Handlebars.registerPartial(name, await loadWithPartials(local)); }
+    catch (e) { console.warn('partial failed', name, e); }
+  }
+  return src;
+}
+loadWithPartials(file).then(src => {
+  const html = Handlebars.compile(src)(mk('ctx'));
+  document.getElementById('out').innerHTML = html;
+  // Show the requested tab like the app does.
+  const root = document.querySelector('.ncm-cfg');
+  if (root) root.dataset.activeTab = TAB;
+  document.querySelectorAll('.ncm-cfg-tab').forEach(t => t.classList.toggle('ncm-cfg-tab--active', t.dataset.tab === TAB));
+  document.querySelectorAll('.ncm-cfg-panel, [data-panel]').forEach(p => {
+    const key = p.dataset.panel || p.dataset.tab;
+    if (key) p.classList.toggle('ncm-cfg-panel--active', key === TAB), p.style.display = key === TAB ? '' : 'none';
+  });
+  // Diagnostics: count elements whose text is (near-)invisible on their own background.
+  const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g); if (!m || m.length < 3) return null; const [r, g, b] = m.map(Number); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; };
+  const bgOf = (el) => { let e = el; while (e && e !== document.body) { const bg = getComputedStyle(e).backgroundColor; if (bg && !bg.startsWith('rgba(0, 0, 0, 0)') && bg !== 'transparent') return bg; e = e.parentElement; } return 'rgb(51,51,51)'; };
+  let bad = 0, checked = 0; const samples = [];
+  for (const el of document.querySelectorAll('#out *')) {
+    if (!el.textContent.trim() || el.children.length) continue;
+    const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+    const lt = lum(cs.color), lb = lum(bgOf(el)); if (lt === null || lb === null) continue;
+    checked++;
+    if (Math.abs(lt - lb) < 0.25) { bad++; if (samples.length < 8) samples.push(`${el.className || el.tagName}: ${cs.color} on ${bgOf(el)}`); }
+  }
+  const lines = [`low-contrast text nodes: ${bad}/${checked}`, ...samples];
+  document.getElementById('lbl').textContent += '\n' + lines.join('\n');
+  document.getElementById('lbl').style.whiteSpace = 'pre';
+  document.title = `PROBE ${TPL} ${T} | ` + lines.join(' | ');
+}).catch(e => { document.title = 'PROBE ERROR ' + e.message; document.getElementById('out').textContent = String(e); });
+</script>
+</body>
+</html>

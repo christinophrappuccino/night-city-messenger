@@ -1,7 +1,7 @@
 /**
  * TraceCountdownHud — the player-facing "a trace is closing in" indicator.
  * @file scripts/ui/content/TraceCountdownHud.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description A GM-started trace countdown (TraceService) used to be invisible
  *   to the player except a one-off whisper they had to opt into — "I did
  *   countdown and I don't see anything on the player side." This is a persistent

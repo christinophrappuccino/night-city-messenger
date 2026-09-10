@@ -1,7 +1,7 @@
 /**
  * Program Library — world setting `programLibrary`.
  * @file scripts/ui/content/ProgramLibrary.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description GM-authored programs from the Malware Workshop, saved with the world and
  *   reusable across shards/NPCs. Records are `{ id, name, group, icon, program }` where
  *   `program` is the workshop's own definition (see ProgramModel). Mirrors the

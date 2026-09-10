@@ -1,7 +1,7 @@
 /**
  * OperatorSelect — the immersive "who am I jacked in as" picker.
  * @file scripts/ui/content/OperatorSelect.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description A framework-free promise modal (the SecurityConsole / BankHeist
  *   pattern — NOT an Application): a themed `.ncm-opsel` panel appended into
  *   `opts.host` (the viewer element, so it inherits that viewer's --ncm-*

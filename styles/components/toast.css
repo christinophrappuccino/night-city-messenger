@@ -1,7 +1,7 @@
 /**
  * Toast Notification Styles — v2 Redesign
  * @file styles/components/toast.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Cyberpunk toast notifications with clip-path corner, scanline overlay,
  *   accent glow bleed, icon fill, separator, signal bars, hex data strip, and glitch effect.
  *   Single --toast-color CSS variable per type drives all derived colors via color-mix().

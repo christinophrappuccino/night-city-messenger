@@ -1,7 +1,7 @@
 /**
  * DataShardComposer — Add Entries to Data Shards (Sprint 4.6)
  * @file scripts/ui/ItemInbox/DataShardComposer.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description GM-only dialog for authoring typed entries on data shards AND
  *   terminals (target descriptor { kind, item, accountId? }). Content type
  *   selector swaps form fields per type; a live preview renders the shared
@@ -17,6 +17,7 @@ import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { enrichContent, openGalleryImage, CT_COLORS, RECORD_FIELD_KINDS, RECORD_DB_KINDS, SCHEM_MARKERS, schemMarkerInfo,
   FILE_DEFAULT_TYPES, suggestFilename, deriveFileSize, programEffectOptions } from '../content/ContentRenderers.js';
 import { BUILTIN_EXAMPLES, getEntryTemplates, saveEntryTemplate, deleteEntryTemplate, exportEntryTemplates, importEntryTemplates } from '../content/EntryTemplates.js';
+import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 
 /** Content type pill definitions */
 const TYPE_PILLS = [
@@ -186,6 +187,9 @@ const CAL_CATEGORY_CYCLE = ['cyan', 'gold', 'purple', 'green', 'pink', 'red', 'a
 const CAL_MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 export class DataShardComposer extends BaseApplication {
+
+  /** GM tool — follows the Admin Panel theme + text size (utils/adminTheme.js). */
+  static ADMIN_THEMED = true;
 
   shardItem = null;
   onSave = null;
@@ -586,6 +590,8 @@ export class DataShardComposer extends BaseApplication {
   _onRender(context, options) {
     const el = this.element;
     if (!el) return;
+    // No super._onRender here (deliberate) — apply the admin theme explicitly.
+    this._applyAdminTheme();
 
     // ─── Program authoring is consolidated into the Malware Workshop ───
     // Payload/Malware entries are authored there (nicer UI + program library),
@@ -2007,7 +2013,7 @@ export class DataShardComposer extends BaseApplication {
     const opts = ['<option value="">— no scene —</option>']
       .concat((game.scenes?.contents ?? []).map(s => `<option value="${s.id}"${s.id === cur ? ' selected' : ''}>${esc(s.name)}</option>`))
       .join('');
-    new Dialog({
+    adminDialog({
       title: 'Link a Scene',
       content: `<p style="font-size:12px">The GM gets a "Go to Scene" button on this event in the viewer.</p><select name="calScenePick" style="width:100%">${opts}</select>`,
       buttons: {
@@ -2694,7 +2700,7 @@ export class DataShardComposer extends BaseApplication {
     const range = (sel && sel.rangeCount && surface?.contains(sel.anchorNode)) ? sel.getRangeAt(0).cloneRange() : null;
     const url = await new Promise((resolve) => {
       let val = '';
-      new Dialog({
+      adminDialog({
         title: 'Insert Link',
         content: '<input type="text" name="rte-url" placeholder="https://…" style="width:100%" autofocus>',
         buttons: {
@@ -3165,7 +3171,7 @@ export class DataShardComposer extends BaseApplication {
     if (!entryData) return;
     const escape = (s) => Handlebars.escapeExpression(String(s ?? ''));
     let name = null;
-    new Dialog({
+    adminDialog({
       title: 'Save Entry Template',
       content: `<div class="form-group"><label>Template name</label><input type="text" name="tplName" value="${escape(entryData.subject)}" style="width:100%"/></div>`,
       buttons: {
@@ -3187,7 +3193,7 @@ export class DataShardComposer extends BaseApplication {
     const sel = this.element?.querySelector('[name="tplSelect"]');
     const tpl = getEntryTemplates().find(t => t.id === sel?.value);
     if (!tpl) { ui.notifications.warn('NCM | Pick a saved template first.'); return; }
-    const ok = await Dialog.confirm({ title: 'Delete Template', content: `<p>Delete the template <b>${Handlebars.escapeExpression(tpl.name)}</b>?</p>` });
+    const ok = await adminConfirm({ title: 'Delete Template', content: `<p>Delete the template <b>${Handlebars.escapeExpression(tpl.name)}</b>?</p>` });
     if (!ok) return;
     await deleteEntryTemplate(tpl.id);
     ui.notifications.info(`NCM | Template "${tpl.name}" deleted.`);
@@ -4860,7 +4866,7 @@ export class DataShardComposer extends BaseApplication {
     const opts = ['<option value="">— no scene —</option>']
       .concat((game.scenes?.contents ?? []).map(s => `<option value="${s.id}"${s.id === cur ? ' selected' : ''}>${esc(s.name)}</option>`))
       .join('');
-    new Dialog({
+    adminDialog({
       title: 'Link a Scene',
       content: `<p style="font-size:12px">The GM gets a "Go to Scene" button on this location in the viewer.</p><select name="locScenePick" style="width:100%">${opts}</select>`,
       buttons: {
@@ -5128,7 +5134,7 @@ export class DataShardComposer extends BaseApplication {
     const opts = ['<option value="">— no scene —</option>']
       .concat((game.scenes?.contents ?? []).map(s => `<option value="${s.id}"${s.id === cur ? ' selected' : ''}>${esc(s.name)}</option>`))
       .join('');
-    new Dialog({
+    adminDialog({
       title: 'Link a Scene',
       content: `<p style="font-size:12px">The GM gets a "Go to Scene" button on this camera in the monitor view.</p><select name="galScenePick" style="width:100%">${opts}</select>`,
       buttons: {

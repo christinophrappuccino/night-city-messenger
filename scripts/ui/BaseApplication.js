@@ -1,7 +1,7 @@
 /**
  * BaseApplication — ApplicationV2 Wrapper for NCM
  * @file scripts/ui/BaseApplication.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Base class for all NCM UI windows. Provides:
  *   - EventBus subscription management with auto-cleanup
  *   - Atmosphere data-attribute injection (scanlines, neon, animation level)
@@ -28,6 +28,7 @@
 
 import { MODULE_ID, ESSENTIAL_EFFECTS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { getAdminThemePrefs, stampAdminTheme, applyAdminZoom, applyGmView, toggleGmView } from '../utils/adminTheme.js';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -35,6 +36,24 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
  * @abstract
  */
 export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
+
+  /**
+   * GM-tool windows opt in with `static ADMIN_THEMED = true`: they then follow
+   * the Admin Panel's theme preset + text size instead of the player theme
+   * (see utils/adminTheme.js). Player-facing immersive windows stay false.
+   * @type {boolean}
+   */
+  static ADMIN_THEMED = false;
+
+  /**
+   * Immersive windows (message viewer, contacts) opt in with
+   * `static GM_VIEW_TOGGLE = true`: a GM gets a header-menu toggle between
+   * "GM view" (admin theme + text size, for readability) and "player view"
+   * (what the players see). One client setting (`gmViewAdminTheme`) drives
+   * every such window. Never affects non-GM clients.
+   * @type {boolean}
+   */
+  static GM_VIEW_TOGGLE = false;
 
   /** @type {Array<{unsubscribe: Function}>} Managed EventBus subscriptions */
   #subscriptions = [];
@@ -96,6 +115,14 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Apply atmosphere data attributes (scanlines, neon, animation level)
     this._applyAtmosphere();
+
+    // GM tools: the admin theme overrides the atmosphere just applied.
+    // Immersive windows with the GM-view toggle follow the client setting.
+    if (this.constructor.ADMIN_THEMED) this._applyAdminTheme();
+    else if (this.constructor.GM_VIEW_TOGGLE) {
+      const on = applyGmView(this.element, { applyZoom: (pct) => this._applyAdminTextScale(pct) });
+      if (!on) this._applyAdminTextScale(100); // shrink the frame back if it was scaled
+    }
 
     // First render only: one-time setup
     if (!this.#hasRenderedOnce) {
@@ -216,6 +243,72 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
       el.dataset.ncmNeon = 'true';
       el.dataset.ncmAnimationLevel = 'full';
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Admin theme (GM tools only — see static ADMIN_THEMED)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Apply the Admin Panel's theme preset + text size to this window. Runs
+   * after _applyAtmosphere so it wins. Safe to call from a subclass that
+   * overrides _onRender without calling super (DataShardComposer does).
+   * @protected
+   */
+  _applyAdminTheme() {
+    const el = this.element;
+    if (!el) return;
+    const prefs = getAdminThemePrefs();
+    stampAdminTheme(el, prefs);
+    this._applyAdminTextScale(prefs.textScale);
+  }
+
+  /**
+   * Text-size zoom on `.window-content` (frame/header stay 1:1) and a
+   * one-time frame resize by the same ratio so the layout keeps its
+   * proportions instead of squeezing into fewer layout pixels.
+   * @param {number} pct — 100–150
+   * @protected
+   */
+  _applyAdminTextScale(pct) {
+    const el = this.element;
+    if (!el) return;
+    const clamped = Math.min(150, Math.max(100, Number(pct) || 100));
+    applyAdminZoom(el.querySelector('.window-content'), clamped);
+    const prev = this._appliedTextScale ?? 100;
+    if (clamped !== prev) {
+      const ratio = clamped / prev;
+      const { width, height } = this.position ?? {};
+      const next = {};
+      if (typeof width === 'number' && width > 0) next.width = Math.round(width * ratio);
+      if (typeof height === 'number' && height > 0) next.height = Math.round(height * ratio);
+      if (Object.keys(next).length) {
+        try { this.setPosition(next); } catch { /* non-fatal */ }
+      }
+      this._appliedTextScale = clamped;
+    }
+  }
+
+  /**
+   * Header ⋮ menu: GM-view windows offer the GM a theme toggle.
+   * @override
+   */
+  _getHeaderControls() {
+    // The GM-view toggle is the visible header BUTTON injected by
+    // syncGmViewControls — it is deliberately NOT also a ⋮-menu entry (the
+    // menu duplicated the affordance; dev dropped it 2026-09-10). Always
+    // return a COPY: super hands back the shared options array.
+    return [...(super._getHeaderControls?.() ?? [])];
+  }
+
+  /**
+   * Actions without an explicit DEFAULT_OPTIONS handler land here (header
+   * controls included). Subclasses that override this should call super.
+   * @override
+   */
+  _onClickAction(event, target) {
+    if (target?.dataset?.action === 'toggleGmView') { toggleGmView(); return; }
+    return super._onClickAction?.(event, target);
   }
 
   // ═══════════════════════════════════════════════════════════

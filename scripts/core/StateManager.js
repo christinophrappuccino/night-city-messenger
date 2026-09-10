@@ -1,7 +1,7 @@
 /**
  * StateManager — Global runtime state container
  * @file scripts/core/StateManager.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Singleton for global module state (NOT per-window UI state).
  *              Tracks network status, connection state, and system-wide flags.
  *              Per-window state belongs on the Application instance.

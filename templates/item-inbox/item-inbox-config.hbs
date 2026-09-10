@@ -1,7 +1,7 @@
 {{!--
   Item Inbox Config — Sprint 4.6 Redesign (Tabbed)
   File: templates/item-inbox/item-inbox-config.hbs
-  Module: cyberpunkred-messenger
+  Module: night-city-messenger
   Tabs: Identity · Security · Network · Systems · Boot
 --}}
 
@@ -36,6 +36,17 @@
           <select name="preset" class="ncm-cfg-select ncm-cfg-flex">{{#each presetOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
           <button type="button" data-action="applyPreset" class="ncm-cfg-btn-icon" title="Apply preset"><i class="fas fa-download"></i></button>
         </div>
+        <div class="ncm-cfg-row">
+          <span class="ncm-cfg-label">Text Size</span>
+          <input type="range" name="textScale" min="80" max="150" step="5" value="{{textScale}}" class="ncm-tc__slider ncm-cfg-flex" />
+          <span class="ncm-tc__srow-val ncm-cfg-scale-val">{{textScale}}%</span>
+        </div>
+        <div class="ncm-cfg-row">
+          <span class="ncm-cfg-label">Contrast</span>
+          <input type="range" name="contrast" min="70" max="140" step="5" value="{{contrast}}" class="ncm-tc__slider ncm-cfg-flex" />
+          <span class="ncm-tc__srow-val ncm-cfg-contrast-val">{{contrast}}%</span>
+        </div>
+        <div class="ncm-cfg-hint">Both apply to everyone reading this shard, on top of each player's own Text Size and Contrast (Theme Customizer → Text). Contrast pushes darks darker and lights lighter; accents and images are untouched. Drag with the shard open to preview.</div>
       </div>
 
       <div class="ncm-cfg-section">

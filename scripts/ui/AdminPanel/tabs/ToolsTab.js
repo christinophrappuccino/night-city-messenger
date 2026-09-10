@@ -1,7 +1,7 @@
 /**
  * ToolsTab — System tools and danger-zone actions.
  * @file scripts/ui/AdminPanel/tabs/ToolsTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * No tab-local state, no DOM wire-up, no context fragment —
  * tab-tools.hbs is a grid of action buttons that call these
@@ -12,6 +12,7 @@ import { MODULE_ID } from '../../../utils/constants.js';
 import { log, formatCyberDate } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
+import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
 
 export class ToolsTab extends BaseTab {
 
@@ -24,10 +25,16 @@ export class ToolsTab extends BaseTab {
     { key: 'high-contrast', label: 'High Contrast', desc: 'Accessibility-first' },
   ];
 
+  /** Admin-panel text-size steps (percent) - see AdminPanelApp._applyAdminTextScale. */
+  static ADMIN_TEXT_SCALES = [100, 115, 130, 150];
+
   prepareContext() {
-    const current = this.settingsManager?.getAdminTheme?.()?.preset || 'clean-dark';
+    const theme = this.settingsManager?.getAdminTheme?.() || {};
+    const current = theme.preset || 'clean-dark';
+    const scale = Number(theme.textScale) || 100;
     return {
       adminThemePresets: ToolsTab.ADMIN_PRESETS.map(p => ({ ...p, active: p.key === current })),
+      adminTextScales: ToolsTab.ADMIN_TEXT_SCALES.map(v => ({ value: v, label: `${v}%`, active: v === scale })),
     };
   }
 
@@ -41,6 +48,15 @@ export class ToolsTab extends BaseTab {
     if (!preset) return;
     await this.settingsManager?.setAdminTheme?.({ preset });
     log.info(`Admin: appearance set to "${preset}"`);
+    this.render(true);
+  }
+
+  /** Set the Admin Panel's own text size (client setting) and re-render. */
+  async onSetAdminTextScale(event, target) {
+    const scale = Number(target?.dataset?.scale);
+    if (!scale) return;
+    await this.settingsManager?.setAdminTheme?.({ textScale: scale });
+    log.info(`Admin: text size set to ${scale}%`);
     this.render(true);
   }
 
@@ -97,7 +113,7 @@ export class ToolsTab extends BaseTab {
 
     const allOk = checks.every(c => c.includes('✓'));
 
-    await Dialog.prompt({
+    await adminPrompt({
       title: 'NCM Health Check',
       content: `<div style="font-family: monospace; font-size: 12px; line-height: 1.6;">
         <p>${checks.join('<br>')}</p>
@@ -261,7 +277,7 @@ export class ToolsTab extends BaseTab {
 
       </div>`;
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: 'NCM Time Configuration',
       content,
       buttons: {
@@ -446,8 +462,9 @@ export class ToolsTab extends BaseTab {
   }
 
   onOpenSoundSettings(event, target) {
-    // Open sound configuration dialog
-    ui.notifications.info('Sound settings — coming in a future update.');
+    // Sound settings live in the Theme Customizer's Effects panel (volume slider)
+    // — this is just a shortcut to that tab, not a separate surface.
+    game.nightcity?.openThemeCustomizer?.({ activeTab: 'effects' });
   }
 
   /**
@@ -455,7 +472,7 @@ export class ToolsTab extends BaseTab {
    * Simple flat list — GMs add whatever domains they want.
    */
   async onManageDomains(event, target) {
-    const MODULE_ID_LOCAL = 'cyberpunkred-messenger';
+    const MODULE_ID_LOCAL = 'night-city-messenger';
     let domainList = [];
     try {
       const raw = game.settings.get(MODULE_ID_LOCAL, 'emailDomains');
@@ -519,7 +536,7 @@ export class ToolsTab extends BaseTab {
       </div>
     `;
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: 'Email Domain Configuration',
       content: dialogContent,
       buttons: {
@@ -584,7 +601,7 @@ export class ToolsTab extends BaseTab {
    * Runs the migration tool from MessageRepository.
    */
   async onReorganizeJournals(event, target) {
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Reorganize Journals',
       content: `<p>This will:</p>
         <ul style="margin: 8px 0 8px 16px; font-size: 13px;">
@@ -620,7 +637,7 @@ export class ToolsTab extends BaseTab {
    * `managed: true`). Macros the GM authored or un-managed are never touched.
    */
   async onImportMacros(event, target) {
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Import / Reinstall NCM Macros',
       content: `<p>Import the Night City Messenger macro compendiums into your world:</p>
         <ul style="margin: 8px 0 8px 16px; font-size: 13px;">
@@ -757,7 +774,7 @@ export class ToolsTab extends BaseTab {
 
     let selected = null;
     await new Promise((resolve) => {
-      new Dialog({
+      adminDialog({
         title: '⚠ Purge Messages',
         content,
         buttons: {
@@ -780,7 +797,7 @@ export class ToolsTab extends BaseTab {
     if (selected === 'all-inboxes') { label = 'ALL inboxes'; count = inboxTotal; }
     else { const t = all.find(x => x.key === selected); label = t?.label ?? 'target'; count = t?.count ?? 0; }
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: '⚠ Confirm Purge',
       content: `<p>Permanently delete <strong>${count}</strong> message(s) from <strong>${esc(label)}</strong>?</p><p style="color:#ff0033;"><strong>This cannot be undone.</strong></p>`,
     });
@@ -842,33 +859,106 @@ export class ToolsTab extends BaseTab {
     return n;
   }
 
-  async onResetModule(event, target) {
-    const confirmed = await Dialog.confirm({
-      title: '⚠ RESET MODULE',
-      content: '<p style="color: #ff0033;"><strong>This will permanently delete ALL Night City Messenger data.</strong></p><p>All messages, contacts, shards, and settings will be lost. This cannot be undone.</p>',
-    });
-    if (!confirmed) return;
+  // ═══════════════════════════════════════════════════════════
+  //  Orphan Audit — find & clean NCM data whose owner is gone
+  // ═══════════════════════════════════════════════════════════
 
-    // Double-confirm
-    const reallyConfirmed = await Dialog.confirm({
-      title: '⚠ ARE YOU ABSOLUTELY SURE?',
-      content: '<p>Type RESET to confirm — all data will be destroyed.</p>',
-    });
-    if (!reallyConfirmed) return;
+  /**
+   * Scan for orphans: inbox journals whose actor/master-contact no longer
+   * exists, scene pins pointing at deleted terminal items, and heat entries
+   * for deleted actors. Reports findings and offers a confirmed cleanup.
+   */
+  async onOrphanAudit(event, target) {
+    const found = this._gatherOrphans();
+    const total = found.inboxes.length + found.pins.length + found.heatActors.length;
 
-    ui.notifications.warn('Module reset not yet implemented — safety measure.');
+    if (total === 0) {
+      ui.notifications.info('NCM | Orphan audit clean — nothing to remove.');
+      return;
+    }
+
+    const li = (s) => `<li>${s}</li>`;
+    const lines = [];
+    if (found.inboxes.length) {
+      lines.push(`<p><strong>${found.inboxes.length}</strong> inbox journal(s) whose owner no longer exists:</p><ul>` +
+        found.inboxes.map(o => li(`${o.journal.name} <em>(${o.isContact ? 'contact' : 'actor'} ${o.ownerId})</em>`)).join('') + '</ul>');
+    }
+    if (found.pins.length) {
+      lines.push(`<p><strong>${found.pins.length}</strong> scene pin(s) pointing at deleted terminals:</p><ul>` +
+        found.pins.map(p => li(`"${p.note.label || p.note.text || 'unnamed pin'}" on ${p.scene.name}`)).join('') + '</ul>');
+    }
+    if (found.heatActors.length) {
+      lines.push(`<p><strong>${found.heatActors.length}</strong> heat entr(ies) keyed to deleted actors.</p>`);
+    }
+
+    let doClean = false;
+    await new Promise((resolve) => {
+      adminDialog({
+        title: 'Orphan Audit',
+        content: `<div style="max-height:320px;overflow-y:auto;overflow-x:hidden">${lines.join('')}<p>Remove all of the above? Message pages inside a removed inbox are deleted with it.</p></div>`,
+        buttons: {
+          clean:  { icon: '<i class="fas fa-broom"></i>', label: 'Clean Up', callback: () => { doClean = true; } },
+          cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+        },
+        default: 'cancel',
+        close: () => resolve(),
+      }).render(true);
+    });
+    if (!doClean) return;
+
+    try {
+      let removed = 0;
+      for (const o of found.inboxes) { await o.journal.delete(); removed++; }
+      for (const p of found.pins)    { await p.note.delete();    removed++; }
+      if (found.heatActors.length) {
+        const map = foundry.utils.deepClone(game.settings.get(MODULE_ID, 'traceHeat') ?? {});
+        for (const { objectId, actorId } of found.heatActors) {
+          if (map[objectId]) {
+            delete map[objectId][actorId];
+            if (Object.keys(map[objectId]).length === 0) delete map[objectId];
+            removed++;
+          }
+        }
+        await game.settings.set(MODULE_ID, 'traceHeat', map);
+      }
+      log.info(`Orphan audit removed ${removed} orphaned record(s)`);
+      ui.notifications.info(`NCM | Orphan audit removed ${removed} orphaned record(s).`);
+      this.app?.render?.(false);
+    } catch (error) {
+      console.error(`${MODULE_ID} | Orphan cleanup failed:`, error);
+      ui.notifications.error('NCM | Orphan cleanup failed. Check console.');
+    }
   }
 
-  async onRebuildIndex(event, target) {
-    ui.notifications.info('Rebuilding journal and contact indices...');
-    try {
-      await game.nightcity?.messageRepository?.rebuildIndex?.();
-      await game.nightcity?.contactRepository?.rebuildIndex?.();
-      ui.notifications.info('Index rebuild complete.');
-      this.render(true);
-    } catch (error) {
-      console.error(`${MODULE_ID} | Rebuild failed:`, error);
-      ui.notifications.error('Rebuild failed. Check console.');
+  /** Collect every orphaned inbox journal, stale terminal scene pin, and dead-actor heat entry. */
+  _gatherOrphans() {
+    const inboxes = [];
+    for (const journal of game.journal ?? []) {
+      const info = MessageRepository.identifyInbox(journal);
+      if (!info) continue;
+      const exists = info.isContact
+        ? !!this.masterContactService?.getContact?.(info.ownerId)
+        : !!game.actors?.get(info.ownerId);
+      if (!exists) inboxes.push({ journal, ...info });
     }
+
+    const pins = [];
+    for (const scene of game.scenes ?? []) {
+      for (const note of scene.notes ?? []) {
+        const itemId = note.getFlag?.(MODULE_ID, 'terminalItemId');
+        if (itemId && !game.items?.get(itemId)) pins.push({ scene, note });
+      }
+    }
+
+    const heatActors = [];
+    let heatMap = {};
+    try { heatMap = game.settings.get(MODULE_ID, 'traceHeat') ?? {}; } catch { /* setting absent */ }
+    for (const [objectId, byActor] of Object.entries(heatMap)) {
+      for (const actorId of Object.keys(byActor ?? {})) {
+        if (!game.actors?.get(actorId)) heatActors.push({ objectId, actorId });
+      }
+    }
+
+    return { inboxes, pins, heatActors };
   }
 }

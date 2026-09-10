@@ -1,14 +1,14 @@
 /**
  * ItemInboxApp — Data Shard Viewer
  * @file scripts/ui/ItemInbox/ItemInboxApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Shard viewer with layered security overlays, message list,
  *              hacking sequence, and GM override controls.
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker, applyContrastToElement } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import { enrichContent, buildIndexChip, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEntrySender, resolveEnvelope } from '../content/ContentRenderers.js';
@@ -355,6 +355,13 @@ export class ItemInboxApp extends BaseApplication {
       presetLabel,
       presetFaIcon: bootConfig.faIcon || preset?.icon || 'fas fa-microchip',
       presetAccent: presetTheme.accent || null,
+      // Per-shard text size (config.textScale %, 80–150) as a multiplier; the
+      // template stamps it inline as --ncm-shard-text-scale on the viewer root,
+      // where item-inbox.css composes it with the player's own scale.
+      shardTextScale: Math.min(1.5, Math.max(0.8, (Number(config.textScale) || 100) / 100)),
+      // Per-shard contrast (config.contrast %, 70–140) — applied in _onRender
+      // via applyContrastToElement on the viewer root (inline --ncm-* overrides).
+      shardContrast: Math.min(140, Math.max(70, Number(config.contrast) || 100)),
       presetFooterText: presetTheme.footerText || '',
 
       // Shard display
@@ -600,6 +607,9 @@ export class ItemInboxApp extends BaseApplication {
       });
       const presetKey = context.presetKey || 'blank';
       inbox.classList.add(`ncm-preset-${presetKey}`);
+      // Per-shard readability contrast: tone-map the bg/text/border tokens on
+      // this root, composed over the player's own palette (read from :root).
+      applyContrastToElement(inbox, context.shardContrast ?? 100);
     }
 
     // Apply shard accent color as CSS variable

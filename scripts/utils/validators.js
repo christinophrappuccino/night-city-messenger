@@ -1,7 +1,7 @@
 /**
  * Data Validators
  * @file scripts/utils/validators.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Validation functions for messages, contacts, networks, and shards
  */
 

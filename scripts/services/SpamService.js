@@ -1,7 +1,7 @@
 /**
  * SpamService — Spam Template Management & Delivery
  * @file scripts/services/SpamService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Manages built-in and custom spam templates, resolves variable
  *              tokens, delivers spam messages via MessageService, and handles
  *              auto-spam network triggers.

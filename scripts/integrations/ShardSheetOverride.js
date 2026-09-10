@@ -1,7 +1,7 @@
 /**
  * Shard Sheet Override
  * @file scripts/integrations/ShardSheetOverride.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Replaces the old ItemSheetIntegration with three hooks:
  *
  *   1. **Sheet Interception** — `preRenderItemSheet` prevents the default
@@ -21,6 +21,7 @@
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { ShardConversionFlow } from '../ui/dialogs/ShardConversionFlow.js';
+import { adminConfirm } from '../utils/adminTheme.js';
 
 export class ShardSheetOverride {
 
@@ -360,7 +361,7 @@ export class ShardSheetOverride {
    * @param {Item} item
    */
   async _confirmRemoveTerminal(item) {
-    const ok = await Dialog.confirm({
+    const ok = await adminConfirm({
       title: 'Remove Terminal Data',
       content: '<p>Revert this item to a plain item? Accounts/config are lost. The message journal is kept unless you also delete it.</p>',
     });
@@ -666,7 +667,7 @@ export class ShardSheetOverride {
     const dataShardService = game.nightcity?.dataShardService;
     if (!dataShardService) return;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Remove Shard Data',
       content: `<div style="font-family: Rajdhani, sans-serif;">
         <p>Strip all shard data from <strong style="color:#19f3f7;">${item.name}</strong>?</p>

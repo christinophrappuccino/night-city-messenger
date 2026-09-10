@@ -1,7 +1,7 @@
 /**
  * Network Event Toast Variants — DEPRECATED
  * @file styles/components/network-toasts.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description All network toast variants have been consolidated into toast.css
  *   as part of the v2 toast redesign. This file is kept for import compatibility
  *   but contains no rules. Remove this import when convenient.

@@ -1,7 +1,7 @@
 {{!--
   GM Master Contact Directory — Phase 2 Redesign
   @file templates/gm-contact-manager/gm-contact-manager.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Split-view GM interface: scrollable grouped contact list (left 280px)
     + detail/edit panel (right flex). Group-by selector with collapse/expand,
     pagination (10 per page), party trust + per-player relationships in detail,
@@ -209,7 +209,7 @@
           <div class="ncm-gm-section" style="margin-top: 0;">
             <i class="fas fa-plus"></i> NEW CONTACT
           </div>
-          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+          {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-form.hbs"
               contact=createDraft isCreating=true isGM=true availableActors=availableActors
               playerActors=playerActors roleOptions=roleOptions customRoles=customRoles
               existingFolders=existingFolders }}
@@ -221,7 +221,7 @@
           <div class="ncm-gm-section" style="margin-top: 0;">
             <i class="fas fa-pen"></i> EDIT — {{selectedContact.name}}
           </div>
-          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+          {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-form.hbs"
               contact=selectedContact isCreating=false isGM=true availableActors=availableActors
               playerActors=playerActors roleOptions=roleOptions customRoles=customRoles
               perPlayerRelationships=perPlayerRelationships existingFolders=existingFolders }}

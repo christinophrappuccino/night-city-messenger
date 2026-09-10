@@ -1,7 +1,7 @@
 {{!--
   Trust Detail — Expanded trust meter for detail panels
   @file templates/contact-manager/partials/trust-detail.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Expanded trust display for the GM split-view detail panel
     (and optionally player detail expand). Shows larger 18×6px segments,
     a trust level text label, and for GMs: clickable segments to set trust.
@@ -15,7 +15,7 @@
   @param {string}  contactId     — Contact ID (for data attributes on GM controls)
 
   @example
-    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-detail.hbs"
+    {{> "modules/night-city-messenger/templates/contact-manager/partials/trust-detail.hbs"
         trustClass=trustClass trustSegments=trustSegments isUnverified=isUnverified
         trustDescription=trustData.description trustLevel=contact.trust
         isGM=isGM contactId=contact.id }}

@@ -12,7 +12,7 @@
  *   packs/ncm-macros-gm.db       (default ownership NONE — GM only)
  *
  * Each pack line is one Macro document (newline-delimited JSON, NeDB format).
- * Every shipped macro carries flags.cyberpunkred-messenger.managed=true so the
+ * Every shipped macro carries flags.night-city-messenger.managed=true so the
  * Admin Panel "Import / Reinstall NCM Macros" action can overwrite exactly
  * these and never clobber a GM's own macros.
  *
@@ -33,7 +33,7 @@ const path = require('path');
 
 const PACKS_DIR = path.join(__dirname, '..', 'packs');
 const ICON_FS_DIR = path.join(__dirname, '..', 'assets', 'icons', 'macros');
-const ICON_WEB_BASE = 'modules/cyberpunkred-messenger/assets/icons/macros/';
+const ICON_WEB_BASE = 'modules/night-city-messenger/assets/icons/macros/';
 
 // Stable 16-char [a-zA-Z0-9] document id from a slug.
 function idFor(slug) {
@@ -388,7 +388,7 @@ function doc(m, ownershipDefault, packKey, sort) {
     sort,
     ownership: { default: ownershipDefault },
     flags: {
-      'cyberpunkred-messenger': { managed: true, sourceId: _id, pack: packKey },
+      'night-city-messenger': { managed: true, sourceId: _id, pack: packKey },
     },
     _stats: { systemId: null, systemVersion: null, coreVersion: null, createdTime: null, modifiedTime: null, lastModifiedBy: null },
   };

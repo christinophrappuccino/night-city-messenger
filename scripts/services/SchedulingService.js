@@ -1,7 +1,7 @@
 /**
  * SchedulingService
  * @file scripts/services/SchedulingService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Scheduled message delivery with TimeService + SimpleCalendar integration.
  *              Queue scheduled messages, check on time-tick, deliver via MessageService
  *              when due. Stores schedule data in world settings.

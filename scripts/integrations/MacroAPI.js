@@ -1,7 +1,7 @@
 /**
  * Macro API
  * @file scripts/integrations/MacroAPI.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Consolidated public API on game.nightcity. Wraps all services into
  *              clean macro-friendly functions. Each function resolves string IDs to
  *              documents for convenience.

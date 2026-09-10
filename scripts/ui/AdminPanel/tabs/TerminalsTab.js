@@ -1,7 +1,7 @@
 /**
  * TerminalsTab — Admin Panel tab for Terminal management.
  * @file scripts/ui/AdminPanel/tabs/TerminalsTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Split-panel manager (dev-picked 2026-07-11, the NetworkManagement-Scenes
  * pattern): summary strip on top, then a searchable / sortable / filterable /
@@ -17,6 +17,7 @@
 
 import { BaseTab } from '../BaseTab.js';
 import { MODULE_ID } from '../../../utils/constants.js';
+import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 
 export class TerminalsTab extends BaseTab {
 
@@ -71,6 +72,12 @@ export class TerminalsTab extends BaseTab {
         })),
         logins,
         loginCount: logins.length,
+        // Login footprints (terminalState.loginLog) — newest first, last 6.
+        recentLogins: (svc.getLoginLog?.(item) || []).slice(-6).reverse().map(e => ({
+          when: e.ts ? this.app._relativeTime(e.ts) : '',
+          account: e.username || e.accountId,
+          operator: e.operatorName || '',
+        })),
         networkBinding: cfg.network?.required ? ((cfg.network.allowedNetworks || [])[0] || 'any network') : null,
         uplinkName,
         allowExfil: cfg.allowExfil !== false,
@@ -218,7 +225,7 @@ export class TerminalsTab extends BaseTab {
   async onRelock(event, target) {
     const item = this._resolve(target);
     if (!item) return;
-    const ok = await Dialog.confirm({
+    const ok = await adminConfirm({
       title: 'Reset Terminal',
       content: `<p>Reset <strong>${Handlebars.escapeExpression(item.name)}</strong>? Everyone is logged out; lockouts, GM bypass, and the machine's uplink return to defaults. Config, accounts, and messages are untouched.</p>`,
     });
@@ -247,7 +254,7 @@ export class TerminalsTab extends BaseTab {
   async onRemove(event, target) {
     const item = this._resolve(target);
     if (!item) return;
-    const ok = await Dialog.confirm({ title: 'Remove Terminal Data', content: `<p>Revert <strong>${Handlebars.escapeExpression(item.name)}</strong> to a plain item? Accounts/config are lost (the message journal is kept).</p>` });
+    const ok = await adminConfirm({ title: 'Remove Terminal Data', content: `<p>Revert <strong>${Handlebars.escapeExpression(item.name)}</strong> to a plain item? Accounts/config are lost (the message journal is kept).</p>` });
     if (!ok) return;
     await this.terminalService.removeTerminal(item);
     this.app.render(false);
@@ -262,7 +269,7 @@ export class TerminalsTab extends BaseTab {
     const options = candidates.map(i => `<option value="${i.id}">${Handlebars.escapeExpression(i.name)}</option>`).join('');
     let pickedId = null;
     await new Promise((resolve) => {
-      new Dialog({
+      adminDialog({
         title: 'Import Item → Terminal',
         content: `<p>Convert which world item into a Terminal?</p><select style="width:100%">${options}</select>`,
         buttons: {

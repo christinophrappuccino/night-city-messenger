@@ -1,7 +1,7 @@
 /**
  * Contact Manager Application — v5.1 Split View Rewrite
  * @file scripts/ui/ContactManager/ContactManagerApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Player contact directory with split-view layout:
  *   Left: quick-dial favorites, sort/group bar, collapsible grouped list
  *   Right: detail panel with profile, info cards, last interaction, relationship, notes
@@ -20,6 +20,7 @@
 import { MODULE_ID, TEMPLATES, EVENTS } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { MessageRepository } from '../../data/MessageRepository.js';
 import {
   getAvatarColor,
   getInitials,
@@ -27,6 +28,9 @@ import {
 } from '../../utils/designHelpers.js';
 
 export class ContactManagerApp extends BaseApplication {
+
+  /** Immersive window with a GM-only "GM view" header toggle (admin theme) — utils/adminTheme.js. */
+  static GM_VIEW_TOGGLE = true;
 
   // ═══════════════════════════════════════════════════════════
   //  Instance State
@@ -238,6 +242,19 @@ export class ContactManagerApp extends BaseApplication {
       );
     }
 
+    // ── Last-interaction index (newest message per counterparty) ──
+    // One mailbox scan per render; feeds both the 'recent' sort and the
+    // selected contact's Last Interaction card.
+    this._lastMsgIndex = null;
+    if (this.actorId) {
+      try {
+        this._lastMsgIndex = await game.nightcity?.messageRepository
+          ?.getLastMessagesByCounterparty?.(this.actorId) ?? null;
+      } catch (e) {
+        log.debug('ContactManager: last-message index unavailable', e);
+      }
+    }
+
     // ── Enrich for display ──
     const enriched = filtered.map(c =>
       enrichContactForDisplay(c, {
@@ -278,8 +295,13 @@ export class ContactManagerApp extends BaseApplication {
         || allEnriched.find(c => c.id === this.selectedContactId);
 
       if (selectedContact) {
-        // Last interaction placeholder — TODO: MessageRepository.getLastMessageWith()
-        // For now, leave null (card simply won't render)
+        const lastMsg = this._lastMessageFor(selectedContact);
+        if (lastMsg) {
+          lastInteraction = {
+            subject: lastMsg.subject || '(no subject)',
+            timeAgo: this._relativeTime(lastMsg.timestamp),
+          };
+        }
 
         // Relationship data (only if GM has revealed via revealTrust)
         if (selectedContact.relationship) {
@@ -498,14 +520,43 @@ export class ContactManagerApp extends BaseApplication {
       switch (this._sortBy) {
         case 'trust':
           return (b.trust || 0) - (a.trust || 0) || a.name.localeCompare(b.name);
-        case 'recent':
-          // TODO: Use last message timestamp when available
-          return a.name.localeCompare(b.name);
+        case 'recent': {
+          // Newest exchanged message first; contacts with no history last, A→Z.
+          const ta = new Date(this._lastMessageFor(a)?.timestamp || 0).getTime();
+          const tb = new Date(this._lastMessageFor(b)?.timestamp || 0).getTime();
+          return (tb - ta) || a.name.localeCompare(b.name);
+        }
         case 'name':
         default:
           return a.name.localeCompare(b.name);
       }
     });
+  }
+
+  /**
+   * Newest message exchanged with a contact, from the per-render counterparty
+   * index (built in _prepareContext). Null when no history or index absent.
+   */
+  _lastMessageFor(contact) {
+    if (!this._lastMsgIndex || !contact) return null;
+    return MessageRepository.pickLatestFor(this._lastMsgIndex, {
+      email: contact.email,
+      actorId: contact.actorId,
+      masterContactId: contact.masterContactId,
+    });
+  }
+
+  /** "X ago" against the module time provider (the TerminalViewerApp pattern). */
+  _relativeTime(iso) {
+    if (!iso) return '';
+    const now = game.nightcity?.timeService?.getCurrentTimeMs?.() ?? Date.now();
+    const diff = now - new Date(iso).getTime();
+    if (diff < 0) return 'scheduled';
+    const m = 60000, h = 3600000, d = 86400000;
+    if (diff < m) return 'just now';
+    if (diff < h) return `${Math.floor(diff / m)}m ago`;
+    if (diff < d) return `${Math.floor(diff / h)}h ago`;
+    return `${Math.floor(diff / d)} day${Math.floor(diff / d) === 1 ? '' : 's'} ago`;
   }
 
   // ═══════════════════════════════════════════════════════════

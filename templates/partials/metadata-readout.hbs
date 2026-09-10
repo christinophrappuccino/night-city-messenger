@@ -1,7 +1,7 @@
 {{!--
   Metadata Readout — Structured label-value pair block
   @file templates/partials/metadata-readout.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Renders a compact structured readout of label-value pairs.
     Uses monospace font for values, muted labels. Designed for message detail
     metadata (From, To, Date, Network, Route) and any technical readout display.
@@ -19,7 +19,7 @@
       variant — badge variant if badge=true (e.g. "network")
 
   @example
-    {{> "modules/cyberpunkred-messenger/templates/partials/metadata-readout.hbs"
+    {{> "modules/night-city-messenger/templates/partials/metadata-readout.hbs"
         fields=(array
           (hash label="FROM"    value="rogue@darknet.nc" icon="fas fa-user")
           (hash label="TO"      value="v@nightcity.net")

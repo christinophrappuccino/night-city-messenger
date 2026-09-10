@@ -1,7 +1,7 @@
 /**
  * NetworkAccessLogService
  * @file scripts/services/NetworkAccessLogService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Logs network connections, disconnections, authentication attempts,
  *              and security events for GM review. Persists to world settings via
  *              debounced saves. Subscribes to EventBus events automatically.

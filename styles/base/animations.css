@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════
  * Animation Catalog
  * @file styles/base/animations.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * ═══════════════════════════════════════════════════════════ */
 
 @keyframes ncm-fade-in { from { opacity: 0; } to { opacity: 1; } }

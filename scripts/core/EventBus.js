@@ -1,7 +1,7 @@
 /**
  * EventBus — Decoupled pub/sub communication
  * @file scripts/core/EventBus.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Singleton event bus for module-wide communication.
  *              Supports namespaced subscriptions for guaranteed cleanup.
  */

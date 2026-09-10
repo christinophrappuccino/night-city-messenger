@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Malware Workshop theme probe (REAL app, JS-built DOM)</title>
+<!--
+  The workshop builds its DOM in JS (MalwareWorkshopApp._mount), so a template
+  probe renders an empty shell. This page stubs just enough of Foundry to
+  import the REAL app module, construct it, and call _mount() into the real
+  cascade. ?t=clean-light|clean-dark|high-contrast  ?lib=1 opens the library.
+  Run Chrome with --allow-file-access-from-files.
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 12px; background: #333; }
+  .probe-label { color: #fff; font: 12px monospace; margin-bottom: 6px; white-space: pre; }
+  #app { position: relative !important; inset: auto !important; width: 960px; height: 640px; display: flex; flex-direction: column; }
+  #app > .window-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+</style>
+</head>
+<body>
+<div class="probe-label" id="lbl"></div>
+<div class="application ncm-app ncm-malware-workshop" id="app">
+  <header class="window-header"><h1 class="window-title">Malware Workshop</h1><button class="header-control fa-solid fa-xmark"></button></header>
+  <section class="window-content"><div class="ncm-fw" id="fw"></div></section>
+</div>
+<script>
+  // ── Foundry stubs (only what module load + _mount touch) ──
+  const q = new URLSearchParams(location.search);
+  const T = q.get('t') || 'clean-light';
+  class ApplicationV2 { constructor(o = {}) { this.options = o; } get element() { return this._el; } set element(v) { this._el = v; } get rendered() { return true; } get animationsEnabled() { return true; } setPosition() {} render() {} close() {} }
+  window.foundry = {
+    applications: { api: { ApplicationV2, HandlebarsApplicationMixin: (B) => B }, instances: new Map() },
+    utils: {
+      mergeObject: (a, b, o = {}) => Object.assign(o.inplace === false ? structuredClone(a) : a, b),
+      deepClone: (o) => structuredClone(o), randomID: () => Math.random().toString(36).slice(2, 18),
+      getRoute: (p) => p, escapeHTML: (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
+      debounce: (fn) => fn, throttle: (fn) => fn, duplicate: (o) => structuredClone(o), isEmpty: (o) => !o || (typeof o === 'object' && !Object.keys(o).length),
+      getProperty: (o, p) => p.split('.').reduce((a, k) => a?.[k], o), setProperty: (o, p, v) => { const ks = p.split('.'); const l = ks.pop(); ks.reduce((a, k) => (a[k] ??= {}), o)[l] = v; return true; },
+      expandObject: (o) => o, flattenObject: (o) => o,
+    },
+  };
+  const settings = { adminTheme: { preset: T, textScale: 100 }, malwareLibrary: [], programLibrary: [] };
+  window.game = {
+    user: { isGM: true, id: 'gm' }, userId: 'gm',
+    settings: { get: (m, k) => settings[k] ?? (k.toLowerCase().includes('librar') ? [] : undefined), set: async (m, k, v) => { settings[k] = v; }, register() {} },
+    actors: { contents: [], filter: () => [], get: () => null }, items: { contents: [], get: () => null },
+    macros: { contents: [], get: () => null }, i18n: { localize: (s) => s, format: (s) => s },
+    nightcity: { settingsManager: { getTheme: () => ({}), getAdminTheme: () => settings.adminTheme }, eventBus: { on: () => ({ unsubscribe() {} }), emit() {} } },
+  };
+  window.Hooks = { on() {}, once() {}, off() {}, call() {}, callAll() {} };
+  window.ui = { notifications: { info() {}, warn() {}, error() {} }, windows: {} };
+  window.CONFIG = {};
+  window.Dialog = class {};
+</script>
+<script type="module">
+  const lbl = document.getElementById('lbl');
+  try {
+    const { MalwareWorkshopApp } = await import('../../scripts/ui/MalwareWorkshop/MalwareWorkshopApp.js');
+    const app = new MalwareWorkshopApp({ openLibrary: q.get('lib') === '1' });
+    const root = document.getElementById('app');
+    app.element = root;
+    root.dataset.ncmAdminTheme = T; root.dataset.ncmScanlines = 'false'; root.dataset.ncmNeon = 'false';
+    app._mount();
+    // Contrast diagnostics (same heuristic as config-theme-probe).
+    const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g); if (!m || m.length < 3) return null; const [r, g, b] = m.map(Number); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; };
+    const bgOf = (el) => { let e = el; while (e && e !== document.body) { const bg = getComputedStyle(e).backgroundColor; if (bg && !bg.startsWith('rgba(0, 0, 0, 0)') && bg !== 'transparent' && !bg.startsWith('color(')) return bg; e = e.parentElement; } return 'rgb(51,51,51)'; };
+    let bad = 0, checked = 0; const samples = [];
+    for (const el of root.querySelectorAll('.ncm-fw *')) {
+      if (!el.textContent.trim() || el.children.length) continue;
+      const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden' || el.closest('.is-hidden')) continue;
+      const lt = lum(cs.color), lb = lum(bgOf(el)); if (lt === null || lb === null) continue;
+      checked++;
+      if (Math.abs(lt - lb) < 0.25) { bad++; if (samples.length < 8) samples.push(`${el.className || el.tagName}: ${cs.color} on ${bgOf(el)}`); }
+    }
+    const railBg = getComputedStyle(root.querySelector('.ncm-fw-rail')).backgroundColor;
+    const lines = [`preset=${T} lib=${q.get('lib') || 0}`, `rail bg=${railBg}`, `low-contrast text nodes: ${bad}/${checked}`, ...samples];
+    lbl.textContent = lines.join('\n');
+    document.title = 'PROBE ' + lines.join(' | ');
+  } catch (e) {
+    lbl.textContent = 'ERROR ' + (e.stack || e.message);
+    document.title = 'PROBE ERROR ' + e.message;
+  }
+</script>
+</body>
+</html>

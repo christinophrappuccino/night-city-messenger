@@ -3,7 +3,7 @@
  * Pairs with scripts/ui/content/UploadConsole.js (framework-free promise modal,
  * appended into the viewer so it inherits that viewer's --ncm-* preset). Accent
  * = --ct-c (purple) via data-ct-color, matching the upload SecurityConsole.
- * @import'ed AFTER operator-select.css in cyberpunk-messenger.css.
+ * @import'ed AFTER operator-select.css in night-city-messenger.css.
  */
 
 .ncm-upcon-backdrop {

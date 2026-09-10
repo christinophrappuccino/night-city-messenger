@@ -1,7 +1,7 @@
 /**
  * Shard Conversion Flow
  * @file scripts/ui/dialogs/ShardConversionFlow.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Tier-gated shard creation wizard. Players convert inventory
  *              items into data shards with configuration options gated by
  *              their skill level and the GM's floor setting.

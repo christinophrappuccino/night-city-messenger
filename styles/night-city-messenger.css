@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * Night City Messenger — CSS Entry Point
- * @file styles/cyberpunk-messenger.css
- * @module cyberpunkred-messenger
+ * @file styles/night-city-messenger.css
+ * @module night-city-messenger
  * @description Single file loaded by module.json. All imports ordered by
  *   dependency: tokens → reset → typography → components → atmosphere →
  *   effects → themes → feature-specific styles → chat cards.

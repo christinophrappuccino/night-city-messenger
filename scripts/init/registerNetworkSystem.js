@@ -1,7 +1,7 @@
 /**
  * Register Network System
  * @file scripts/init/registerNetworkSystem.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Phase 3 — Network system initialization.
  *              Registers NetworkService, SecurityService, NetworkAccessLogService,
  *              socket handlers for network state, and wires UI launch functions.

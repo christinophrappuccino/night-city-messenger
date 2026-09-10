@@ -1,7 +1,7 @@
 /**
  * Phase 5 Verification
  * @file scripts/tests/Phase5Verification.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Automated checks covering Phase 5 services, UI launch functions,
  *              macro API completeness, and template loading.
  *              Registered via ModuleInitializer at postReady/32.

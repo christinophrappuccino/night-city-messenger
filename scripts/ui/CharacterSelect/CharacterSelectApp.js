@@ -1,7 +1,7 @@
 /**
  * Character Select Application
  * @file scripts/ui/CharacterSelect/CharacterSelectApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Character select screen for NCM. Roster + spotlight layout.
  *   Roles resolved from actor items (CPR stores roles as item type 'role').
  *   Search bar for GM with many characters. Smooth transition animations.

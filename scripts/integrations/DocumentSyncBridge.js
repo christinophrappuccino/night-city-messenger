@@ -1,7 +1,7 @@
 /**
  * DocumentSyncBridge
  * @file scripts/integrations/DocumentSyncBridge.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Bridges Foundry's built-in document update hooks into the NCM
  *              EventBus, enabling real-time cross-client sync without extra
  *              socket traffic.
@@ -26,7 +26,7 @@
  */
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { log, resolveDisplayName } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
 
 export class DocumentSyncBridge {
@@ -322,9 +322,8 @@ export class DocumentSyncBridge {
     // Anonymous mail: the page is already scrubbed of the real sender; show the
     // alias and carry the `anonymous` block so the toast stays masked.
     const fromName = (msgFlags.anonymous?.enabled && (msgFlags.anonymous.alias || 'UNKNOWN'))
-      || (msgFlags.fromActorId && game.actors.get(msgFlags.fromActorId)?.name)
-      || (msgFlags.fromContactId && game.nightcity?.masterContactService?.getContact(msgFlags.fromContactId)?.name)
-      || msgFlags.from
+      || resolveDisplayName({ contactId: msgFlags.fromContactId, actorId: msgFlags.fromActorId, email: msgFlags.from },
+        msgFlags.from)
       || 'Unknown';
 
     log.debug(`SyncBridge: New message page in inbox for actor ${inbox.ownerId}`);

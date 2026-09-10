@@ -1,7 +1,7 @@
 /**
  * Custom Role Manager Dialog
  * @file scripts/ui/GMContactManager/RoleManagerDialog.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description GM dialog for creating, editing, and deleting custom roles.
  *   Shows built-in roles (read-only) and custom roles (editable) in a list,
  *   with a create/edit form featuring a curated icon picker, native color
@@ -16,6 +16,7 @@
 
 import { MODULE_ID } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
+import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 
 // ═══════════════════════════════════════════
 //  Constants
@@ -104,7 +105,7 @@ export class RoleManagerDialog {
     }
 
     const mgr = this;
-    this._dialog = new Dialog({
+    this._dialog = adminDialog({
       title: 'Role Manager',
       content,
       buttons: {
@@ -400,7 +401,7 @@ export class RoleManagerDialog {
       ? `<p style="color:var(--ncm-text-muted,#555570);font-size:11px;margin-top:4px;">${affected} contact${affected > 1 ? 's' : ''} use this role — their role will be cleared.</p>`
       : '';
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Delete Custom Role',
       content: `
         <div style="text-align:center; padding:8px 0;">

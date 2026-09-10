@@ -1,9 +1,9 @@
 /**
  * Email Settings Integration
  * @file scripts/integrations/EmailSettingsIntegration.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Hooks into actor sheet rendering to inject an email address field.
- *              Read/write flags.cyberpunkred-messenger.email. Shows on both
+ *              Read/write flags.night-city-messenger.email. Shows on both
  *              character and NPC sheets. GM can edit any, players can edit their own.
  */
 

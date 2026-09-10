@@ -1,7 +1,7 @@
 /**
  * BaseTab — Abstract controller for a single AdminPanel tab.
  * @file scripts/ui/AdminPanel/BaseTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * AdminPanelApp is a single ApplicationV2 window with 7 tabs. Each tab's
  * state, data gathering, DOM wire-up, and action handling lives in a

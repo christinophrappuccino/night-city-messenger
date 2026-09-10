@@ -1,7 +1,7 @@
 /**
  * NetworksTab — War Room (cards + mixer) and full activity log subview.
  * @file scripts/ui/AdminPanel/tabs/NetworksTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Tab-local state covers cards/logs subview, search/filter/group, mixer,
  * connected players, scene quick strip, expanded log rows, manual log entry
@@ -15,6 +15,7 @@
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
+import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 
 export class NetworksTab extends BaseTab {
 
@@ -899,7 +900,7 @@ export class NetworksTab extends BaseTab {
       ui.notifications.warn('NCM | Core networks cannot be deleted.');
       return;
     }
-    const confirm = await Dialog.confirm({
+    const confirm = await adminConfirm({
       title: 'Delete Network',
       content: `<p>Delete <strong>${net.name}</strong>? This cannot be undone.</p>`,
     });
@@ -1004,7 +1005,7 @@ export class NetworksTab extends BaseTab {
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: 'Edit Log Entry',
       content: `
         <form style="display:flex; flex-direction:column; gap:8px;">
@@ -1150,7 +1151,7 @@ export class NetworksTab extends BaseTab {
   }
 
   onClearLogs() {
-    Dialog.confirm({
+    adminConfirm({
       title: 'Clear Network Logs',
       content: '<p>Clear all network access log entries? This cannot be undone.</p>',
       yes: () => {

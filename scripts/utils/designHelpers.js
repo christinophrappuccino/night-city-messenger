@@ -1,7 +1,7 @@
 /**
  * Design System Helpers
  * @file scripts/utils/designHelpers.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Utility functions for computing data needed by the Sprint 0
  *   design system partials. Use these in _prepareContext() to build the
  *   objects that Handlebars templates expect.

@@ -1,7 +1,7 @@
 /**
  * Message Access Service
  * @file scripts/services/MessageAccessService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Manages network-restricted message access: checking whether an actor
  *   can read a message, processing bypass attempts (password, skill check, key item),
  *   and tracking per-actor access sessions.

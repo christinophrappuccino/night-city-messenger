@@ -12,7 +12,7 @@
 -->
 <link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
 <link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
-<link rel="stylesheet" href="../../styles/cyberpunk-messenger.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
 <link rel="stylesheet" href="../../styles/themes/admin-theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
@@ -57,6 +57,7 @@ const EMPTY = qs.get('empty') === '1';
 // helpers the admin panel registers for real
 Handlebars.registerHelper('eq', (a, b) => a === b);
 Handlebars.registerHelper('gt', (a, b) => a > b);
+Handlebars.registerHelper('letter', (i) => String.fromCharCode(65 + (((i || 0) % 26) + 26) % 26));
 
 const IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><rect width="36" height="36" fill="#456"/></svg>');
@@ -93,6 +94,7 @@ const ctx = {
         { actorName: 'Rache Bartmoss', actorId: 'a2', objectName: 'CitiNet node 4', objectId: 'o2', value: 35, tier: 'warm', canEscalate: false },
       ],
       coolingCount: EMPTY ? 0 : 6,
+      pager: { page: 1, maxPage: EMPTY ? 1 : 2, hasPrev: false, hasNext: !EMPTY, total: EMPTY ? 0 : 10, multi: !EMPTY },
     },
     plants: EMPTY ? [] : [
       { id: 'p1', itemId: 'i1', name: 'affair.chat', forge: 'forgery 74% · scan DV 15', hostName: 'ARASAKA-WS',
@@ -100,9 +102,11 @@ const ctx = {
       { id: 'p2', itemId: 'i2', name: 'backdoor.exe', forge: 'forgery 41% · scan DV 11', hostName: 'NETWATCH-UNIT',
         by: 'Rache Bartmoss', trigger: 'when someone reads mail', state: 'fired', isPlant: false },
     ],
+    plantsPager: { page: 1, maxPage: EMPTY ? 1 : 2, hasPrev: false, hasNext: !EMPTY, total: EMPTY ? 0 : 9, multi: !EMPTY },
     bin: EMPTY ? [] : [
       { id: 'b1', pageName: 'access.log', hostName: 'NETWATCH-UNIT ▸ root', wipedByName: 'V', agoStr: '1h ago' },
     ],
+    binPager: { page: 1, maxPage: EMPTY ? 1 : 2, hasPrev: false, hasNext: !EMPTY, total: EMPTY ? 0 : 14, multi: !EMPTY },
     net: { mode: 'gm', isAuto: false, isFlagged: false, isGm: true },
     gate: {
       mode: 'gated', logic: 'any', roleLogic: 'any',

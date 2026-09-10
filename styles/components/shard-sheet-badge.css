@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Data Shard — Character Sheet Badges (Option B: Corner Image Tag)
    @file styles/components/shard-sheet-badge.css
-   @module cyberpunkred-messenger
+   @module night-city-messenger
    @description Styles injected into the CPR character sheet inventory via
                 ShardSheetOverride.renderActorSheet hook. These live OUTSIDE
                 .ncm-app — they target Foundry actor sheet DOM elements.
@@ -20,17 +20,17 @@
   width: 13px;
   height: 13px;
   box-sizing: border-box;
-  background: #0a0a0f;
-  border: 1px solid rgba(0, 212, 230, 0.5);
+  background: var(--ncm-bg-deep);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 50%, transparent);
   border-radius: 2px 0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 7px;
-  color: #00D4E6;
+  color: var(--ncm-secondary);
   z-index: 1;
   pointer-events: none;
-  filter: drop-shadow(0 0 2px rgba(0, 212, 230, 0.3));
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ncm-secondary) 30%, transparent));
 }
 /* Wrap span around the image — keeps the badge anchored to the image,
    not to the row container (which can be flex/wider than the image).
@@ -48,15 +48,15 @@
 
 /* ─── Convert-to-shard button in item controls ─── */
 .ncm-convert-shard-btn {
-  color: #00D4E6 !important;
+  color: var(--ncm-secondary) !important;
   opacity: 0.6;
   transition: opacity 0.15s, color 0.15s;
   cursor: pointer;
 }
 .ncm-convert-shard-btn:hover {
   opacity: 1;
-  color: #00D4E6 !important;
-  filter: drop-shadow(0 0 4px rgba(0, 212, 230, 0.3));
+  color: var(--ncm-secondary) !important;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ncm-secondary) 30%, transparent));
 }
 
 /* ─── Custom context menu (shown on right-click in actor sheet) ─── */
@@ -106,36 +106,36 @@
 
 /* ─── Dialog window chrome override ─── */
 .ncm-pick-dialog.dialog.window-app {
-  background: #0a0a0f !important;
-  border: 1px solid #2a2a45 !important;
+  background: var(--ncm-bg-deep) !important;
+  border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
   box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
 }
 .ncm-pick-dialog .window-header {
-  background: #12121a !important;
-  border-bottom: 1px solid #2a2a45 !important;
+  background: var(--ncm-bg-base) !important;
+  border-bottom: 1px solid var(--ncm-border) !important;
   padding: 6px 10px !important;
 }
 .ncm-pick-dialog .window-header .window-title {
-  font-family: 'Rajdhani', sans-serif !important;
+  font-family: var(--ncm-font-display)!important;
   font-size: 12px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.08em !important;
-  color: #bdbdd0 !important;
+  color: var(--ncm-text-secondary) !important;
 }
 .ncm-pick-dialog .window-header .header-button,
 .ncm-pick-dialog .window-header .close {
-  color: #555570 !important;
+  color: var(--ncm-text-muted) !important;
 }
 .ncm-pick-dialog .window-content {
-  background: #0a0a0f !important;
+  background: var(--ncm-bg-deep) !important;
   padding: 10px 12px !important;
-  color: #e0e0e8 !important;
+  color: var(--ncm-text-primary) !important;
 }
 .ncm-pick-dialog .dialog-buttons {
-  background: #12121a !important;
-  border-top: 1px solid #2a2a45 !important;
+  background: var(--ncm-bg-base) !important;
+  border-top: 1px solid var(--ncm-border) !important;
   padding: 8px 12px !important;
   gap: 6px !important;
 }
@@ -144,7 +144,7 @@
   align-items: center !important;
   gap: 5px !important;
   padding: 5px 14px !important;
-  font-family: 'Rajdhani', sans-serif !important;
+  font-family: var(--ncm-font-display)!important;
   font-size: 11px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -153,8 +153,8 @@
   cursor: pointer !important;
   transition: all 0.15s !important;
   background: none !important;
-  border: 1px solid #2a2a45 !important;
-  color: #8888a0 !important;
+  border: 1px solid var(--ncm-border) !important;
+  color: var(--ncm-text-secondary) !important;
   min-height: 0 !important;
   line-height: 1.2 !important;
   box-shadow: none !important;
@@ -163,26 +163,26 @@
   -webkit-appearance: none !important;
 }
 .ncm-pick-dialog .dialog-buttons button.dialog-button:hover {
-  border-color: #3a3a5a !important;
-  color: #bdbdd0 !important;
+  border-color: var(--ncm-border-active) !important;
+  color: var(--ncm-text-secondary) !important;
 }
 .ncm-pick-dialog .dialog-buttons button.dialog-button[data-button="convert"],
 .ncm-pick-dialog .dialog-buttons button.dialog-button[data-button="create"] {
-  background: rgba(25,243,247,0.06) !important;
-  border-color: rgba(25,243,247,0.25) !important;
-  color: #19f3f7 !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 25%, transparent) !important;
+  color: var(--ncm-secondary) !important;
 }
 .ncm-pick-dialog .dialog-buttons button.dialog-button[data-button="convert"]:hover,
 .ncm-pick-dialog .dialog-buttons button.dialog-button[data-button="create"]:hover {
-  background: rgba(25,243,247,0.12) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent) !important;
 }
 .ncm-pick-dialog .dialog-buttons button.dialog-button[data-button="unconvert"] {
-  background: rgba(246,82,97,0.06) !important;
-  border-color: rgba(246,82,97,0.25) !important;
-  color: #F65261 !important;
+  background: color-mix(in srgb, var(--ncm-primary) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ncm-primary) 25%, transparent) !important;
+  color: var(--ncm-primary) !important;
 }
 .ncm-pick-dialog .dialog-buttons button.dialog-button[data-button="unconvert"]:hover {
-  background: rgba(246,82,97,0.12) !important;
+  background: color-mix(in srgb, var(--ncm-primary) 12%, transparent) !important;
 }
 
 /* ─── Picker internals ─── */
@@ -201,34 +201,34 @@
   top: 50% !important;
   transform: translateY(-50%) !important;
   font-size: 10px !important;
-  color: #555570 !important;
+  color: var(--ncm-text-muted) !important;
   pointer-events: none !important;
 }
 .ncm-pick__search {
   width: 100% !important;
   padding: 5px 8px 5px 28px !important;
-  background: #1a1a2e !important;
-  border: 1px solid #2a2a45 !important;
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
-  font-family: 'Share Tech Mono', monospace !important;
+  font-family: var(--ncm-font-mono)!important;
   font-size: 10px !important;
-  color: #e0e0e8 !important;
+  color: var(--ncm-text-primary) !important;
   outline: none !important;
   box-shadow: none !important;
   height: auto !important;
   min-height: 0 !important;
 }
 .ncm-pick__search:focus {
-  border-color: #19f3f7 !important;
+  border-color: var(--ncm-secondary) !important;
 }
 .ncm-pick__filter {
-  background: #1a1a2e !important;
-  border: 1px solid #2a2a45 !important;
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
   padding: 5px 6px !important;
-  font-family: 'Share Tech Mono', monospace !important;
+  font-family: var(--ncm-font-mono)!important;
   font-size: 10px !important;
-  color: #8888a0 !important;
+  color: var(--ncm-text-secondary) !important;
   outline: none !important;
   cursor: pointer !important;
   min-width: 90px !important;
@@ -246,7 +246,7 @@
   flex-wrap: wrap;
 }
 .ncm-pick__tab {
-  font-family: 'Rajdhani', sans-serif !important;
+  font-family: var(--ncm-font-display)!important;
   font-size: 10px !important;
   font-weight: 600 !important;
   padding: 3px 10px !important;
@@ -254,9 +254,9 @@
   cursor: pointer !important;
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
-  border: 1px solid #2a2a45 !important;
+  border: 1px solid var(--ncm-border) !important;
   background: none !important;
-  color: #8888a0 !important;
+  color: var(--ncm-text-secondary) !important;
   transition: all 0.12s !important;
   min-height: 0 !important;
   width: auto !important;
@@ -271,13 +271,13 @@
   flex: 0 0 auto !important;
 }
 .ncm-pick__tab:hover {
-  border-color: #3a3a5a !important;
-  color: #bdbdd0 !important;
+  border-color: var(--ncm-border-active) !important;
+  color: var(--ncm-text-secondary) !important;
 }
 .ncm-pick__tab--active {
-  background: rgba(25,243,247,0.06) !important;
-  border-color: rgba(25,243,247,0.25) !important;
-  color: #19f3f7 !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 25%, transparent) !important;
+  color: var(--ncm-secondary) !important;
 }
 .ncm-pick__tab-count {
   font-size: 9px;
@@ -289,12 +289,12 @@
 .ncm-pick__list {
   max-height: 260px;
   overflow-y: auto;
-  border: 1px solid #2a2a45;
+  border: 1px solid var(--ncm-border);
   border-radius: 2px;
-  background: #12121a;
+  background: var(--ncm-bg-base);
 }
 .ncm-pick__list::-webkit-scrollbar { width: 4px; }
-.ncm-pick__list::-webkit-scrollbar-thumb { background: #3a3a5a; border-radius: 2px; }
+.ncm-pick__list::-webkit-scrollbar-thumb { background: var(--ncm-border-active); border-radius: 2px; }
 
 .ncm-pick__item {
   display: flex;
@@ -302,14 +302,14 @@
   gap: 8px;
   padding: 6px 10px;
   cursor: pointer;
-  border-bottom: 1px solid rgba(42,42,69,0.4);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 40%, transparent);
   transition: background 0.1s;
 }
 .ncm-pick__item:last-child { border-bottom: none; }
-.ncm-pick__item:hover { background: rgba(25,243,247,0.03); }
+.ncm-pick__item:hover { background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent); }
 .ncm-pick__item--selected {
-  background: rgba(25,243,247,0.06) !important;
-  border-left: 2px solid #19f3f7;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
+  border-left: 2px solid var(--ncm-secondary);
   padding-left: 8px;
 }
 .ncm-pick__item[data-hidden="true"] { display: none !important; }
@@ -317,35 +317,35 @@
 .ncm-pick__item-img {
   width: 30px; height: 30px;
   border-radius: 2px;
-  border: 1px solid #2a2a45;
+  border: 1px solid var(--ncm-border);
   object-fit: cover;
   flex-shrink: 0;
-  background: #1a1a2e;
+  background: var(--ncm-bg-surface);
 }
 .ncm-pick__item-name {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 13px;
   font-weight: 700;
-  color: #ededf0;
+  color: var(--ncm-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .ncm-pick__item-meta {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 10px;
   font-weight: 500;
-  color: #8888a0;
+  color: var(--ncm-text-secondary);
 }
 .ncm-pick__item-type {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 9px;
   font-weight: 600;
   padding: 1px 7px;
   border-radius: 2px;
-  background: rgba(85,85,112,0.12);
-  border: 1px solid rgba(85,85,112,0.2);
-  color: #8888a0;
+  background: color-mix(in srgb, var(--ncm-text-muted) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-text-muted) 20%, transparent);
+  color: var(--ncm-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   flex-shrink: 0;
@@ -354,7 +354,7 @@
 
 /* ─── Shard badges (unconvert list) ─── */
 .ncm-pick__shard-badge {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 9px;
   font-weight: 600;
   padding: 1px 6px;
@@ -366,22 +366,22 @@
   border: 1px solid;
 }
 .ncm-pick__shard-badge--ice {
-  background: rgba(246,82,97,0.08);
-  border-color: rgba(246,82,97,0.2);
-  color: #F65261;
+  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ncm-primary) 20%, transparent);
+  color: var(--ncm-primary);
 }
 .ncm-pick__shard-badge--open {
-  background: rgba(0,255,65,0.06);
-  border-color: rgba(0,255,65,0.15);
-  color: #00ff41;
+  background: color-mix(in srgb, var(--ncm-success) 6%, transparent);
+  border-color: color-mix(in srgb, var(--ncm-success) 15%, transparent);
+  color: var(--ncm-success);
 }
 
 /* ─── Footer info ─── */
 .ncm-pick__count {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 10px;
   font-weight: 500;
-  color: #8888a0;
+  color: var(--ncm-text-secondary);
   margin-top: 6px;
 }
 
@@ -392,30 +392,30 @@
   gap: 6px;
   padding: 6px 10px;
   margin-top: 8px;
-  background: rgba(246,82,97,0.04);
-  border: 1px solid rgba(246,82,97,0.15);
+  background: color-mix(in srgb, var(--ncm-primary) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 15%, transparent);
   border-radius: 2px;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 10px;
   font-weight: 500;
-  color: #8888a0;
+  color: var(--ncm-text-secondary);
   line-height: 1.5;
 }
 .ncm-pick__warning i {
-  color: #F65261;
+  color: var(--ncm-primary);
   font-size: 10px;
   flex-shrink: 0;
   margin-top: 1px;
 }
 
 /* ─── Danger variant (unconvert) ─── */
-.ncm-pick--danger .ncm-pick__item:hover { background: rgba(246,82,97,0.03); }
+.ncm-pick--danger .ncm-pick__item:hover { background: color-mix(in srgb, var(--ncm-primary) 3%, transparent); }
 .ncm-pick--danger .ncm-pick__item--selected {
-  background: rgba(246,82,97,0.06) !important;
-  border-left-color: #F65261;
+  background: color-mix(in srgb, var(--ncm-primary) 6%, transparent) !important;
+  border-left-color: var(--ncm-primary);
 }
 .ncm-pick--danger .ncm-pick__tab--active {
-  background: rgba(246,82,97,0.06) !important;
-  border-color: rgba(246,82,97,0.25) !important;
-  color: #F65261 !important;
+  background: color-mix(in srgb, var(--ncm-primary) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ncm-primary) 25%, transparent) !important;
+  color: var(--ncm-primary) !important;
 }

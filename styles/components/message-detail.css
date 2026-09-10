@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * Message Detail — Sprint 2B Component Styles
  * @file styles/components/message-detail.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Additive styles for Sprint 2B features. Import alongside message-viewer.css
  * or append to a combined stylesheet. All rules scoped under .ncm-app.
@@ -160,27 +160,27 @@
   align-items: center;
   gap: 12px;
   padding: 4px 18px;
-  background: rgba(0, 255, 65, 0.03);
-  border-bottom: 1px solid rgba(0, 255, 65, 0.08);
+  background: color-mix(in srgb, var(--ncm-success) 3%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-success) 8%, transparent);
   flex-shrink: 0;
 }
 
 /* Warn variant — ICE attachment present */
 .ncm-app .ncm-security-strip--warn {
-  background: rgba(247, 201, 72, 0.04);
-  border-bottom-color: rgba(247, 201, 72, 0.1);
+  background: color-mix(in srgb, var(--ncm-accent) 4%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--ncm-accent) 10%, transparent);
 }
 
 /* Danger variant — daemon/malware detected */
 .ncm-app .ncm-security-strip--danger {
-  background: rgba(255, 0, 51, 0.04);
-  border-bottom-color: rgba(255, 0, 51, 0.1);
+  background: color-mix(in srgb, var(--ncm-danger) 4%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--ncm-danger) 10%, transparent);
 }
 
 /* Default "ok" variant uses base green — no extra class needed */
 .ncm-app .ncm-security-strip--ok {
-  background: rgba(0, 255, 65, 0.03);
-  border-bottom-color: rgba(0, 255, 65, 0.08);
+  background: color-mix(in srgb, var(--ncm-success) 3%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--ncm-success) 8%, transparent);
 }
 
 /* Individual security items */
@@ -344,8 +344,8 @@
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  background: rgba(247, 201, 72, 0.08);
-  border: 1px solid rgba(247, 201, 72, 0.2);
+  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-accent) 20%, transparent);
   border-radius: 2px;
   color: var(--ncm-accent);
   font-size: 16px;
@@ -475,11 +475,11 @@
 
 @keyframes ncm-lock-glow {
   0%, 100% {
-    box-shadow: 0 0 4px rgba(247, 201, 72, 0.15);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-accent) 15%, transparent);
     transform: scale(1.0);
   }
   50% {
-    box-shadow: 0 0 12px rgba(247, 201, 72, 0.35), 0 0 24px rgba(247, 201, 72, 0.1);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--ncm-accent) 35%, transparent), 0 0 24px color-mix(in srgb, var(--ncm-accent) 10%, transparent);
     transform: scale(1.08);
   }
 }
@@ -493,12 +493,12 @@
 /* Decrypted — green accent, calm */
 .ncm-app .ncm-encrypted-block--decrypted {
   border-color: var(--ncm-success);
-  background: rgba(0, 255, 65, 0.02);
+  background: color-mix(in srgb, var(--ncm-success) 2%, transparent);
 }
 
 .ncm-app .ncm-encrypted-block--decrypted .ncm-encrypted-block__icon {
-  background: rgba(0, 255, 65, 0.08);
-  border-color: rgba(0, 255, 65, 0.2);
+  background: color-mix(in srgb, var(--ncm-success) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ncm-success) 20%, transparent);
   color: var(--ncm-success);
   animation: none;
 }
@@ -514,13 +514,13 @@
 }
 
 .ncm-app .ncm-encrypted-block--failed .ncm-encrypted-block__icon {
-  background: rgba(255, 0, 51, 0.08);
-  border-color: rgba(255, 0, 51, 0.25);
+  background: color-mix(in srgb, var(--ncm-danger) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ncm-danger) 25%, transparent);
   color: var(--ncm-danger);
 }
 
 @keyframes ncm-access-denied-flash {
-  0% { background-color: rgba(255, 0, 51, 0.12); }
+  0% { background-color: color-mix(in srgb, var(--ncm-danger) 12%, transparent); }
   100% { background-color: var(--ncm-bg-surface); }
 }
 
@@ -530,8 +530,8 @@
 }
 
 .ncm-app .ncm-encrypted-block--breaching .ncm-encrypted-block__icon {
-  background: rgba(25, 243, 247, 0.08);
-  border-color: rgba(25, 243, 247, 0.2);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 20%, transparent);
   color: var(--ncm-secondary);
 }
 
@@ -542,7 +542,7 @@
 
 @keyframes ncm-breach-pulse {
   0%, 100% { border-color: var(--ncm-secondary); }
-  50% { border-color: rgba(25, 243, 247, 0.3); }
+  50% { border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent); }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -552,7 +552,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-message-detail .ncm-alert.ncm-alert--danger {
-  box-shadow: 0 0 12px rgba(255, 0, 51, 0.15);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ncm-danger) 15%, transparent);
   animation: ncm-threat-pulse 1.5s ease-in-out infinite;
   margin: 8px 14px;
 }
@@ -560,11 +560,11 @@
 @keyframes ncm-threat-pulse {
   0%, 100% {
     opacity: 1;
-    box-shadow: 0 0 12px rgba(255, 0, 51, 0.15);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--ncm-danger) 15%, transparent);
   }
   50% {
     opacity: 0.85;
-    box-shadow: 0 0 20px rgba(255, 0, 51, 0.25);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--ncm-danger) 25%, transparent);
   }
 }
 
@@ -637,15 +637,15 @@
 
 /* Network-locked variant — cyan/broadcast theme */
 .ncm-app .ncm-message-locked-overlay--network .ncm-locked-overlay__icon {
-  background: rgba(25, 243, 247, 0.06);
-  border: 2px solid rgba(25, 243, 247, 0.2);
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent);
+  border: 2px solid color-mix(in srgb, var(--ncm-secondary) 20%, transparent);
   color: var(--ncm-secondary);
 }
 
 /* Encrypted variant — gold/lock theme */
 .ncm-app .ncm-message-locked-overlay--encrypted .ncm-locked-overlay__icon {
-  background: rgba(247, 201, 72, 0.06);
-  border: 2px solid rgba(247, 201, 72, 0.2);
+  background: color-mix(in srgb, var(--ncm-accent) 6%, transparent);
+  border: 2px solid color-mix(in srgb, var(--ncm-accent) 20%, transparent);
   color: var(--ncm-accent);
   animation: ncm-lock-glow 2s ease-in-out infinite;
 }
@@ -676,8 +676,8 @@
   align-items: center;
   gap: 6px;
   padding: 6px 16px;
-  background: rgba(25, 243, 247, 0.04);
-  border: 1px solid rgba(25, 243, 247, 0.15);
+  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
   border-radius: 2px;
   font-family: var(--ncm-font-mono);
   font-size: 10px;
@@ -736,14 +736,14 @@
 
 .ncm-app .ncm-btn-inline:hover {
   color: var(--ncm-secondary);
-  border-color: rgba(25, 243, 247, 0.3);
-  background: rgba(25, 243, 247, 0.06);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent);
 }
 
 .ncm-app .ncm-btn-inline--add-contact:hover {
   color: var(--ncm-success, #00ff41);
-  border-color: rgba(0, 255, 65, 0.3);
-  background: rgba(0, 255, 65, 0.06);
+  border-color: color-mix(in srgb, var(--ncm-success) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-success) 6%, transparent);
 }
 
 
@@ -801,8 +801,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: rgba(246, 82, 97, 0.06);
-  border: 1px solid rgba(246, 82, 97, 0.2);
+  background: color-mix(in srgb, var(--ncm-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 20%, transparent);
   border-radius: 2px;
   font-family: var(--ncm-font-mono);
   font-size: 11px;
@@ -814,8 +814,8 @@
 }
 
 @keyframes ncm-lockout-pulse {
-  0%, 100% { border-color: rgba(246, 82, 97, 0.2); }
-  50% { border-color: rgba(246, 82, 97, 0.5); }
+  0%, 100% { border-color: color-mix(in srgb, var(--ncm-primary) 20%, transparent); }
+  50% { border-color: color-mix(in srgb, var(--ncm-primary) 50%, transparent); }
 }
 
 .ncm-app .ncm-locked-overlay__lockout-timer {
@@ -911,8 +911,8 @@
   display: inline-flex;
   padding: 1px 6px;
   margin-left: 4px;
-  background: rgba(25, 243, 247, 0.06);
-  border: 1px solid rgba(25, 243, 247, 0.15);
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
   border-radius: 2px;
   font-family: var(--ncm-font-mono);
   font-size: 8px;
@@ -1022,7 +1022,7 @@
 }
 
 .ncm-app .ncm-quick-reply-send:hover {
-  background: rgba(25, 243, 247, 0.08) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important;
   border-color: var(--ncm-secondary) !important;
 }
 
@@ -1057,13 +1057,13 @@
 
 /* ── BEM variant: --secondary (cyan) ── */
 .ncm-app .ncm-btn--secondary {
-  background: rgba(25, 243, 247, 0.1) !important;
-  border: 1px solid rgba(25, 243, 247, 0.35) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent) !important;
   color: var(--ncm-secondary, #19f3f7) !important;
 }
 
 .ncm-app .ncm-btn--secondary:hover {
-  background: rgba(25, 243, 247, 0.2) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 20%, transparent) !important;
   border-color: var(--ncm-secondary, #19f3f7) !important;
 }
 
@@ -1076,7 +1076,7 @@
 
 .ncm-app .ncm-btn--ghost:hover {
   background: rgba(255, 255, 255, 0.03) !important;
-  border-color: #3a3a5a !important;
+  border-color: var(--ncm-border-active) !important;
   color: var(--ncm-text-primary, #e0e0e8) !important;
 }
 
@@ -1092,8 +1092,8 @@
 }
 
 .ncm-app .ncm-btn--danger-text:hover {
-  border-color: rgba(246, 82, 97, 0.4) !important;
-  background: rgba(246, 82, 97, 0.06) !important;
+  border-color: color-mix(in srgb, var(--ncm-primary) 40%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-primary) 6%, transparent) !important;
 }
 
 /* ── Bypass password input ── */
@@ -1152,8 +1152,8 @@
   gap: 8px;
   padding: 8px 12px;
   margin-top: 12px;
-  background: rgba(246, 82, 97, 0.04);
-  border: 1px solid rgba(246, 82, 97, 0.12);
+  background: color-mix(in srgb, var(--ncm-primary) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 12%, transparent);
   border-radius: 2px;
 }
 
@@ -1180,8 +1180,8 @@
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: rgba(246, 82, 97, 0.08);
-  border: 1px solid rgba(246, 82, 97, 0.25);
+  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 25%, transparent);
   border-radius: 2px;
   margin-bottom: 6px;
   animation: ncm-trace-pulse 2s ease-in-out infinite;
@@ -1194,13 +1194,13 @@
 }
 
 @keyframes ncm-trace-pulse {
-  0%, 100% { border-color: rgba(246, 82, 97, 0.25); }
-  50% { border-color: rgba(246, 82, 97, 0.6); }
+  0%, 100% { border-color: color-mix(in srgb, var(--ncm-primary) 25%, transparent); }
+  50% { border-color: color-mix(in srgb, var(--ncm-primary) 60%, transparent); }
 }
 
 .ncm-app .ncm-trace-bar--complete {
   animation: none;
-  border-color: rgba(246, 82, 97, 0.15);
+  border-color: color-mix(in srgb, var(--ncm-primary) 15%, transparent);
   opacity: 0.7;
 }
 
@@ -1248,8 +1248,8 @@
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 255, 65, 0.015) 2px,
-    rgba(0, 255, 65, 0.015) 4px
+    color-mix(in srgb, var(--ncm-success) 2%, transparent) 2px,
+    color-mix(in srgb, var(--ncm-success) 2%, transparent) 4px
   );
   pointer-events: none;
   animation: ncm-scanline-drift 8s linear infinite;

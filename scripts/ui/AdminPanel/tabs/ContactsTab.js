@@ -1,7 +1,7 @@
 /**
  * ContactsTab — Master contacts directory, push/share, batch ops.
  * @file scripts/ui/AdminPanel/tabs/ContactsTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Tab-local state tracks search/sort/filter, expanded accordion row,
  * batch selection, overflow menu, and group collapse.
@@ -21,6 +21,7 @@ import { MODULE_ID } from '../../../utils/constants.js';
 import { log } from '../../../utils/helpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { BaseTab } from '../BaseTab.js';
+import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 
 export class ContactsTab extends BaseTab {
 
@@ -83,7 +84,7 @@ export class ContactsTab extends BaseTab {
     if (groupSelect) {
       groupSelect.addEventListener('change', (e) => {
         this._groupBy = e.target.value;
-        try { game.settings.set('cyberpunkred-messenger', 'contactsGroupBy', this._groupBy); } catch { /* client pref only */ }
+        try { game.settings.set('night-city-messenger', 'contactsGroupBy', this._groupBy); } catch { /* client pref only */ }
         this.render(true);
       });
     }
@@ -432,7 +433,7 @@ export class ContactsTab extends BaseTab {
       if (masterActorIds.has(pa.actorId)) continue;
       const actor = game.actors?.get(pa.actorId);
       if (!actor) continue;
-      const email = actor.getFlag?.('cyberpunkred-messenger', 'email') || '';
+      const email = actor.getFlag?.('night-city-messenger', 'email') || '';
       enriched.push({
         id: `pc-${pa.actorId}`,
         name: pa.actorName,
@@ -486,7 +487,7 @@ export class ContactsTab extends BaseTab {
         });
         if (ownInbox?.pages?.size) {
           for (const page of ownInbox.pages) {
-            const flags = page.flags?.['cyberpunkred-messenger'] || {};
+            const flags = page.flags?.['night-city-messenger'] || {};
             const msgId = flags.messageId || '';
             const isSentCopy = msgId.endsWith('-sent');
 
@@ -592,7 +593,7 @@ export class ContactsTab extends BaseTab {
     // / trust / none (flat). Player Characters stays pinned first in every
     // mode. Choice persists per client (`contactsGroupBy`).
     if (this._groupBy === null) {
-      try { this._groupBy = game.settings.get('cyberpunkred-messenger', 'contactsGroupBy') || 'role'; }
+      try { this._groupBy = game.settings.get('night-city-messenger', 'contactsGroupBy') || 'role'; }
       catch { this._groupBy = 'role'; }
     }
     const mode = this._groupBy;
@@ -757,7 +758,7 @@ export class ContactsTab extends BaseTab {
       </label>`
     ).join('');
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title,
       content: `
         <div style="display:flex; flex-direction:column; gap:8px; padding:4px 0;">
@@ -1133,7 +1134,7 @@ export class ContactsTab extends BaseTab {
     const contact = this.masterContactService?.getContact(contactId);
     if (!contact) return;
 
-    const confirm = await Dialog.confirm({
+    const confirm = await adminConfirm({
       title: 'Burn Contact',
       content: `<p>Mark <b>${contact.name}</b> as burned (compromised)?</p><p>This will mark the contact as burned for all players.</p>`,
     });
@@ -1157,7 +1158,7 @@ export class ContactsTab extends BaseTab {
     event.stopPropagation();
     this._overflowOpen = false;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Sync from Actors',
       content: `<p>Create master contacts for all world actors that have an NCM email assigned but aren't already in the directory?</p>`,
     });
@@ -1185,7 +1186,7 @@ export class ContactsTab extends BaseTab {
     const existingTags = this.masterContactService?.getAllTags() ?? [];
     const tagOptions = existingTags.map(t => `<option value="${t}">`).join('');
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: `Tag ${count} Contact${count !== 1 ? 's' : ''}`,
       content: `
         <form style="display:flex; flex-direction:column; gap:8px; padding:4px 0;">
@@ -1230,7 +1231,7 @@ export class ContactsTab extends BaseTab {
   async onBatchBurn() {
     if (!this._selectedIds.size) return;
     const count = this._selectedIds.size;
-    const confirm = await Dialog.confirm({
+    const confirm = await adminConfirm({
       title: 'Burn Contacts',
       content: `<p>Mark <b>${count}</b> selected contacts as burned?</p>`,
     });

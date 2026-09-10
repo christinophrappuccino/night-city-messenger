@@ -1,7 +1,7 @@
 /**
  * SkillService
  * @file scripts/services/SkillService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Single code path for ALL CPR skill checks.
  *              Handles: stat + skill + 1d10, critical (exploding 10),
  *              fumble (subtract on 1), Luck spending.

@@ -1,7 +1,7 @@
 {{!--
   Entity Card — portrait + name + details
   @file templates/partials/entity-card.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Renders a character/contact card with portrait (or initials fallback),
     name, subtitle, role badge, and optional stat pairs.
     Uses .ncm-entity-card from components.css.
@@ -18,7 +18,7 @@
   @param {string}  [dataId]     — data-id attribute for click handlers
 
   @example
-    {{> "modules/cyberpunkred-messenger/templates/partials/entity-card.hbs"
+    {{> "modules/night-city-messenger/templates/partials/entity-card.hbs"
         name="Rogue Amendiares" portrait="/img/rogue.webp"
         subtitle="rogue@afterlife.nc" role="fixer"
         stats=(array (hash label="MSGS" value="23") (hash label="LAST" value="2h ago")) }}

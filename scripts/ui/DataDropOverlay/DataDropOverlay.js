@@ -1,7 +1,7 @@
 /**
  * Data Drop Overlay v2 — Sprint 3.8 Redesign
  * @file scripts/ui/DataDropOverlay/DataDropOverlay.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Full-screen animated overlay that plays the Data Drop transmission
  *   sequence. Full-screen backdrop with grid + scanline, floating panel with
  *   header, route dot visualization, phase text, progress bar, and contact card

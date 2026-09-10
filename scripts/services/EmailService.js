@@ -1,7 +1,7 @@
 /**
  * EmailService — Email Identity Management
  * @file scripts/services/EmailService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Manages actor email identities: registration, validation,
  *              burn/re-register, domain suggestions, and history.
  *              One email per actor. Burned emails show as [BURNED] in messages.

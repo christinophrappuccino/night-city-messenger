@@ -1,0 +1,63 @@
+# Builds a Foundry-installable release when a version tag (v*) is pushed.
+#
+# Flow: tag v1.0.0 → this workflow stamps module.json's version/download for
+# that tag, zips the module (docs/tools/dev files excluded), and attaches
+# module.json + module.zip to a GitHub release. Foundry's "latest" manifest
+# URL (module.json's `manifest` field) then always resolves to the newest
+# release, while each release's `download` pins its own zip.
+#
+# This is release packaging only — it is NOT a build step. The repo remains
+# directly loadable by Foundry as-is.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp version and download URL into module.json
+        run: |
+          TAG="${GITHUB_REF_NAME}"            # e.g. v1.0.0
+          VERSION="${TAG#v}"                  # e.g. 1.0.0
+          jq --arg version "$VERSION" \
+             --arg download "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/module.zip" \
+             '.version = $version | .download = $download' \
+             module.json > module.json.tmp
+          mv module.json.tmp module.json
+          jq -r '"version=\(.version)  download=\(.download)"' module.json
+
+      - name: Validate macro packs
+        run: node tools/gen-macros.cjs
+
+      - name: Build module.zip
+        run: |
+          zip -r module.zip \
+            module.json \
+            LICENSE \
+            README.md \
+            docs/GETTING-STARTED.md \
+            scripts \
+            styles \
+            templates \
+            assets \
+            languages \
+            packs/ncm-macros-player.db \
+            packs/ncm-macros-gm.db
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            module.json
+            module.zip
+          generate_release_notes: true

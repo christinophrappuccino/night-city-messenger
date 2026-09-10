@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * Message Viewer — v3.2 Redesign
  * @file styles/components/message-viewer.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Complete rewrite aligned with Contact Manager v5.1 palette.
  * All classes use ncm-viewer__ BEM namespace.
@@ -51,11 +51,11 @@
   color: var(--ncm-text-primary); overflow: hidden;
   position: relative;
   /* Signal color tokens for network pill + drawer */
-  --ncm-signal-strong: #34D399;
-  --ncm-signal-good: #00D4E6;
-  --ncm-signal-weak: #FBBF24;
-  --ncm-signal-critical: #EF4444;
-  --ncm-signal-dead: #EF4444;
+  --ncm-signal-strong: var(--ncm-success);
+  --ncm-signal-good: var(--ncm-secondary);
+  --ncm-signal-weak: var(--ncm-warning);
+  --ncm-signal-critical: var(--ncm-danger);
+  --ncm-signal-dead: var(--ncm-danger);
 }
 /* Top accent removed — window chrome §1 handles this */
 
@@ -77,15 +77,15 @@
   border-radius: 6px; transition: background 0.15s;
   flex-shrink: 1; min-width: 0; max-width: 200px;
 }
-.ncm-app .ncm-viewer__identity:hover { background: rgba(0,212,230,0.06); }
+.ncm-app .ncm-viewer__identity:hover { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); }
 .ncm-app .ncm-viewer__identity:hover .ncm-viewer__avatar {
-  border-color: rgba(0,212,230,0.5); box-shadow: 0 0 12px rgba(0,212,230,0.15);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
 }
 .ncm-app .ncm-viewer__identity:hover .ncm-viewer__identity-expand { color: var(--ncm-secondary); opacity: 1; }
 
 .ncm-app .ncm-viewer__avatar {
   width: 36px; height: 36px; border-radius: 50%;
-  border: 2px solid rgba(0,212,230,0.25);
+  border: 2px solid color-mix(in srgb, var(--ncm-secondary) 25%, transparent);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(14px * var(--ncm-text-scale, 1));
   color: var(--ncm-secondary); background: var(--ncm-bg-surface);
@@ -131,15 +131,15 @@
 .ncm-app .ncm-viewer__net-bar:nth-child(4) { height: 12px; }
 
 /* Pill color states */
-.ncm-app .ncm-viewer__net-pill--strong { border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.06); color: var(--ncm-success); }
-.ncm-app .ncm-viewer__net-pill--strong .ncm-viewer__net-dot { background: var(--ncm-success); box-shadow: 0 0 6px rgba(52,211,153,0.5); }
-.ncm-app .ncm-viewer__net-pill--good { border-color: rgba(0,212,230,0.3); background: rgba(0,212,230,0.06); color: var(--ncm-secondary); }
-.ncm-app .ncm-viewer__net-pill--good .ncm-viewer__net-dot { background: var(--ncm-secondary); box-shadow: 0 0 6px rgba(0,212,230,0.5); }
-.ncm-app .ncm-viewer__net-pill--weak { border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.06); color: var(--ncm-warning); }
-.ncm-app .ncm-viewer__net-pill--weak .ncm-viewer__net-dot { background: var(--ncm-warning); box-shadow: 0 0 6px rgba(251,191,36,0.5); }
-.ncm-app .ncm-viewer__net-pill--critical { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); color: var(--ncm-danger); }
-.ncm-app .ncm-viewer__net-pill--critical .ncm-viewer__net-dot { background: var(--ncm-danger); box-shadow: 0 0 6px rgba(239,68,68,0.5); animation: ncm-pulse-dot 1s ease-in-out infinite; }
-.ncm-app .ncm-viewer__net-pill--dead { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.08); color: var(--ncm-danger); }
+.ncm-app .ncm-viewer__net-pill--strong { border-color: color-mix(in srgb, var(--ncm-success) 30%, transparent); background: color-mix(in srgb, var(--ncm-success) 6%, transparent); color: var(--ncm-success); }
+.ncm-app .ncm-viewer__net-pill--strong .ncm-viewer__net-dot { background: var(--ncm-success); box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-success) 50%, transparent); }
+.ncm-app .ncm-viewer__net-pill--good { border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); color: var(--ncm-secondary); }
+.ncm-app .ncm-viewer__net-pill--good .ncm-viewer__net-dot { background: var(--ncm-secondary); box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-secondary) 50%, transparent); }
+.ncm-app .ncm-viewer__net-pill--weak { border-color: color-mix(in srgb, var(--ncm-warning) 30%, transparent); background: color-mix(in srgb, var(--ncm-warning) 6%, transparent); color: var(--ncm-warning); }
+.ncm-app .ncm-viewer__net-pill--weak .ncm-viewer__net-dot { background: var(--ncm-warning); box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-warning) 50%, transparent); }
+.ncm-app .ncm-viewer__net-pill--critical { border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent); background: color-mix(in srgb, var(--ncm-danger) 6%, transparent); color: var(--ncm-danger); }
+.ncm-app .ncm-viewer__net-pill--critical .ncm-viewer__net-dot { background: var(--ncm-danger); box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-danger) 50%, transparent); animation: ncm-pulse-dot 1s ease-in-out infinite; }
+.ncm-app .ncm-viewer__net-pill--dead { border-color: color-mix(in srgb, var(--ncm-danger) 40%, transparent); background: color-mix(in srgb, var(--ncm-danger) 8%, transparent); color: var(--ncm-danger); }
 .ncm-app .ncm-viewer__net-pill--dead .ncm-viewer__net-dot { background: var(--ncm-danger); animation: none; opacity: 0.5; }
 .ncm-app .ncm-viewer__net-pill--dead .ncm-viewer__net-name { text-decoration: line-through; opacity: 0.7; }
 
@@ -165,7 +165,7 @@
 /* Time — the prominent readout: large mono digits in the theme accent. */
 .ncm-app .ncm-viewer__hud-seg--time {
   color: var(--ncm-secondary);
-  background: rgba(25, 243, 247, 0.07);                              /* fallback */
+  background: color-mix(in srgb, var(--ncm-secondary) 7%, transparent);                              /* fallback */
   background: color-mix(in srgb, var(--ncm-secondary) 9%, transparent);
 }
 .ncm-app .ncm-viewer__hud-time-val {
@@ -207,8 +207,8 @@
   font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   padding: 0 5px; border-radius: 3px; line-height: 1.5;
 }
-.ncm-app .ncm-viewer__primary-tab--active .ncm-viewer__primary-badge { background: rgba(0,212,230,0.12); color: var(--ncm-secondary); }
-.ncm-app .ncm-viewer__primary-tab:not(.ncm-viewer__primary-tab--active) .ncm-viewer__primary-badge { background: rgba(85,85,112,0.2); color: var(--ncm-text-muted); }
+.ncm-app .ncm-viewer__primary-tab--active .ncm-viewer__primary-badge { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); color: var(--ncm-secondary); }
+.ncm-app .ncm-viewer__primary-tab:not(.ncm-viewer__primary-tab--active) .ncm-viewer__primary-badge { background: color-mix(in srgb, var(--ncm-text-muted) 20%, transparent); color: var(--ncm-text-muted); }
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -266,8 +266,8 @@
    ═══════════════════════════════════════════════════════════ */
 .ncm-app .ncm-viewer__bulk-bar {
   display: flex; align-items: center; gap: 8px;
-  padding: 6px 16px; background: rgba(0,212,230,0.04);
-  border-bottom: 1px solid rgba(0,212,230,0.15); flex-shrink: 0;
+  padding: 6px 16px; background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-secondary) 15%, transparent); flex-shrink: 0;
 }
 .ncm-app .ncm-viewer__bulk-count { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
 
@@ -279,8 +279,8 @@
 }
 .ncm-app .ncm-viewer__filter-bar i { font-size: calc(9px * var(--ncm-text-scale, 1)); flex-shrink: 0; }
 .ncm-app .ncm-viewer__filter-bar span { flex: 1; }
-.ncm-app .ncm-viewer__filter-bar--danger { background: rgba(239,68,68,0.04); border-bottom: 1px solid rgba(239,68,68,0.12); color: rgba(239,68,68,0.7); }
-.ncm-app .ncm-viewer__filter-bar--warning { background: rgba(251,191,36,0.04); border-bottom: 1px solid rgba(251,191,36,0.12); color: rgba(251,191,36,0.7); }
+.ncm-app .ncm-viewer__filter-bar--danger { background: color-mix(in srgb, var(--ncm-danger) 4%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ncm-danger) 12%, transparent); color: color-mix(in srgb, var(--ncm-danger) 70%, transparent); }
+.ncm-app .ncm-viewer__filter-bar--warning { background: color-mix(in srgb, var(--ncm-warning) 4%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ncm-warning) 12%, transparent); color: color-mix(in srgb, var(--ncm-warning) 70%, transparent); }
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -289,7 +289,7 @@
 .ncm-app .ncm-viewer__refine-bar {
   display: flex; flex-direction: column; gap: 4px;
   padding: 5px 12px; border-bottom: 1px solid var(--ncm-border);
-  flex-shrink: 0; background: rgba(18,18,26,0.6);
+  flex-shrink: 0; background: color-mix(in srgb, var(--ncm-bg-base) 60%, transparent);
 }
 .ncm-app .ncm-viewer__refine-controls { display: flex; align-items: center; gap: 4px; }
 .ncm-app .ncm-viewer__refine-controls .ncm-viewer__density-trigger { margin-left: auto; }
@@ -314,8 +314,8 @@
    things instead of four and the dates get room to breathe. It also never
    shrinks or wraps mid-range. */
 .ncm-app .ncm-viewer__date-filter--active {
-  color: var(--ncm-accent); border-color: rgba(240,197,91,0.35);
-  background: rgba(240,197,91,0.08);
+  color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent);
   flex: 0 0 auto; gap: 6px; padding: 3px 3px 3px 8px; white-space: nowrap;
 }
 .ncm-app .ncm-viewer__date-range {
@@ -328,7 +328,7 @@
   display: grid; place-items: center; flex: 0 0 auto;
   width: 16px !important; height: 16px !important; min-height: 0 !important;
   margin: 0 !important; padding: 0 !important;
-  border: none !important; border-left: 1px solid rgba(240,197,91,0.25) !important;
+  border: none !important; border-left: 1px solid color-mix(in srgb, var(--ncm-accent) 25%, transparent) !important;
   border-radius: 0 2px 2px 0 !important; box-shadow: none !important;
   background: transparent !important; cursor: pointer;
   color: var(--ncm-text-muted) !important;
@@ -353,13 +353,13 @@
 .ncm-app .ncm-viewer__filter-trigger:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border-active); }
 .ncm-app .ncm-viewer__filter-trigger i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
 .ncm-app .ncm-viewer__filter-trigger--has-active {
-  color: var(--ncm-secondary); border-color: rgba(0,212,230,0.3);
-  border-style: solid; background: rgba(0,212,230,0.04);
+  color: var(--ncm-secondary); border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
+  border-style: solid; background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
 }
 .ncm-app .ncm-viewer__filter-count {
   font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1));
   padding: 0 4px; border-radius: 2px;
-  background: rgba(0,212,230,0.15); color: var(--ncm-secondary);
+  background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); color: var(--ncm-secondary);
   line-height: 1.4;
 }
 
@@ -381,7 +381,7 @@
   font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 600;
   color: var(--ncm-text-secondary);
 }
-.ncm-app .ncm-filter-dropdown__item:hover { background: rgba(0,212,230,0.04); }
+.ncm-app .ncm-filter-dropdown__item:hover { background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent); }
 .ncm-app .ncm-filter-dropdown__check {
   width: 16px; height: 16px; border-radius: 3px;
   border: 1px solid var(--ncm-border); flex-shrink: 0;
@@ -410,11 +410,11 @@
 }
 .ncm-app .ncm-filter-dropdown__btn i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
 .ncm-app .ncm-filter-dropdown__btn--apply {
-  color: var(--ncm-secondary); background: rgba(0,212,230,0.08);
-  border: 1px solid rgba(0,212,230,0.2);
+  color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 20%, transparent);
 }
 .ncm-app .ncm-filter-dropdown__btn--apply:hover {
-  background: rgba(0,212,230,0.15); border-color: rgba(0,212,230,0.35);
+  background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
 }
 .ncm-app .ncm-filter-dropdown__btn--clear {
   color: var(--ncm-text-muted); background: transparent;
@@ -445,20 +445,20 @@
 
 /* Tag pill color variants */
 .ncm-app .ncm-viewer__tag-pill--net {
-  color: var(--ncm-secondary); border-color: rgba(0,212,230,0.3);
-  background: rgba(0,212,230,0.06);
+  color: var(--ncm-secondary); border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent);
 }
 .ncm-app .ncm-viewer__tag-pill--priority {
-  color: var(--ncm-danger); border-color: rgba(239,68,68,0.3);
-  background: rgba(239,68,68,0.06);
+  color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-danger) 6%, transparent);
 }
 .ncm-app .ncm-viewer__tag-pill--status {
-  color: var(--ncm-success); border-color: rgba(52,211,153,0.3);
-  background: rgba(52,211,153,0.06);
+  color: var(--ncm-success); border-color: color-mix(in srgb, var(--ncm-success) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-success) 6%, transparent);
 }
 .ncm-app .ncm-viewer__tag-pill--custom {
-  color: var(--ncm-accent); border-color: rgba(240,197,91,0.3);
-  background: rgba(240,197,91,0.06);
+  color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-accent) 6%, transparent);
   border-style: dashed;
 }
 
@@ -487,8 +487,8 @@
   color: var(--ncm-text-secondary); transition: all 0.1s;
 }
 .ncm-app .ncm-density-option i { font-size: calc(9px * var(--ncm-text-scale, 1)); width: 14px; text-align: center; }
-.ncm-app .ncm-density-option:hover { background: rgba(0,212,230,0.06); color: var(--ncm-text-primary); }
-.ncm-app .ncm-density-option--active { color: var(--ncm-secondary); background: rgba(0,212,230,0.04); }
+.ncm-app .ncm-density-option:hover { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); color: var(--ncm-text-primary); }
+.ncm-app .ncm-density-option--active { color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent); }
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -510,6 +510,12 @@
    Terminals stay isolated (element-scoped applyTheme writes an explicit
    `none` when the terminal has no wallpaper of its own). */
 .ncm-app .ncm-viewer__list-panel, .ncm-app .ncm-viewer__detail-panel { position: relative; isolation: isolate; }
+/* Both panes are stacking contexts (isolation above), so a dropdown inside the
+   LIST pane (Dates / Sort / Filters, z-index 30 *within its pane*) can never
+   paint over the DETAIL pane, which comes later in the DOM — it slid underneath
+   the message on the right. Order the panes explicitly: list above detail. */
+.ncm-app .ncm-viewer__list-panel { z-index: 2; }
+.ncm-app .ncm-viewer__detail-panel { z-index: 1; }
 .ncm-app .ncm-viewer__list-panel::before, .ncm-app .ncm-viewer__detail-panel::before {
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: -1;
   background-image: var(--ncm-wallpaper, none); background-size: cover; background-position: center;
@@ -523,7 +529,7 @@
   border-left: 1px solid var(--ncm-border); border-right: 1px solid var(--ncm-border);
   transition: background 0.15s; position: relative;
 }
-.ncm-app .ncm-viewer__divider:hover { background: rgba(0,212,230,0.08); }
+.ncm-app .ncm-viewer__divider:hover { background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
 .ncm-app .ncm-viewer__divider-grip { display: flex; flex-direction: column; gap: 3px; }
 .ncm-app .ncm-viewer__divider-grip span { width: 2px; height: 2px; border-radius: 50%; background: var(--ncm-text-dim); }
 
@@ -558,7 +564,7 @@
 
 .ncm-app button.ncm-viewer__collapse-toggle:hover {
   color: var(--ncm-secondary);
-  border-color: rgba(0, 212, 230, 0.3);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
   background: var(--ncm-bg-surface);
 }
 
@@ -612,19 +618,26 @@
 
 .ncm-app .ncm-viewer__msg {
   display: flex; align-items: flex-start; gap: 10px;
-  padding: 10px 14px; border-bottom: 1px solid rgba(42,42,69,0.5);
+  padding: 10px 14px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
   cursor: pointer; position: relative;
   transition: background .18s ease, transform .18s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .ncm-app .ncm-viewer__msg:hover { background: var(--ncm-bg-surface); transform: translateX(2px); }
-.ncm-app .ncm-viewer__msg--selected { background: rgba(0,212,230,0.06); border-left: 3px solid var(--ncm-secondary); padding-left: 11px; }
+/* HITBOX GUARD — the hover shift vacates a 2px strip at the row's left edge;
+   a cursor sitting there unhovers → row snaps back → re-hovers → an infinite
+   flicker loop ("the list flashes in and out"). The invisible ::after covers
+   rest position + travel so the hitbox never shrinks mid-move. */
+.ncm-app .ncm-viewer__msg::after {
+  content: ''; position: absolute; left: -3px; top: 0; bottom: 0; width: 4px;
+}
+.ncm-app .ncm-viewer__msg--selected { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); border-left: 3px solid var(--ncm-secondary); padding-left: 11px; }
 .ncm-app .ncm-viewer__msg--unread::before {
   content: ''; position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
   width: 5px; height: 5px; border-radius: 50%;
-  background: var(--ncm-primary); box-shadow: 0 0 6px rgba(246,82,97,0.4);
+  background: var(--ncm-primary); box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-primary) 40%, transparent);
 }
 .ncm-app .ncm-viewer__msg--selected.ncm-viewer__msg--unread::before { left: 2px; }
-.ncm-app .ncm-viewer__msg--infected { background: rgba(239,68,68,0.03); }
+.ncm-app .ncm-viewer__msg--infected { background: color-mix(in srgb, var(--ncm-danger) 3%, transparent); }
 .ncm-app .ncm-viewer__msg--locked { opacity: 0.55; }
 .ncm-app .ncm-viewer__msg--locked.ncm-viewer__msg--unread::before { display: none; }
 .ncm-app .ncm-viewer__msg--locked .ncm-viewer__msg-avatar { filter: grayscale(0.6); }
@@ -662,13 +675,13 @@
   background: var(--ncm-bg-surface); position: relative;
 }
 .ncm-app .ncm-viewer__msg-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.ncm-app .ncm-viewer__msg-avatar--burned { opacity: 0.4; border-color: rgba(255,0,51,0.3); color: var(--ncm-danger, #ff0033); }
+.ncm-app .ncm-viewer__msg-avatar--burned { opacity: 0.4; border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent); color: var(--ncm-danger, #ff0033); }
 
 /* Content */
 .ncm-app .ncm-viewer__msg-content { flex: 1; min-width: 0; }
 .ncm-app .ncm-viewer__msg-top { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
 .ncm-app .ncm-viewer__msg-sender { font-weight: 700; font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-.ncm-app .ncm-viewer__msg--unread .ncm-viewer__msg-sender { color: #fff; }
+.ncm-app .ncm-viewer__msg--unread .ncm-viewer__msg-sender { color: var(--ncm-text-primary); }
 
 /* Burned sender */
 .ncm-app .ncm-viewer__msg-sender--burned { color: var(--ncm-danger, #ff0033); opacity: 0.6; }
@@ -677,16 +690,16 @@
   padding: 1px 5px; border-radius: 1px; flex-shrink: 0;
   font-family: var(--ncm-font-mono);
   font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 700; text-transform: uppercase;
-  background: rgba(255,0,51,0.1); color: var(--ncm-danger, #ff0033);
-  border: 1px solid rgba(255,0,51,0.15);
+  background: color-mix(in srgb, var(--ncm-danger) 10%, transparent); color: var(--ncm-danger, #ff0033);
+  border: 1px solid color-mix(in srgb, var(--ncm-danger) 15%, transparent);
 }
 
 /* Status icons */
 .ncm-app .ncm-viewer__msg-icons { display: flex; gap: 4px; flex-shrink: 0; }
 .ncm-app .ncm-viewer__msg-icon { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-dim); }
-.ncm-app .ncm-viewer__msg-icon--encrypted { color: rgba(0,212,230,0.4); }
-.ncm-app .ncm-viewer__msg-icon--saved { color: rgba(240,197,91,0.5); }
-.ncm-app .ncm-viewer__msg-icon--infected { color: rgba(239,68,68,0.6); }
+.ncm-app .ncm-viewer__msg-icon--encrypted { color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
+.ncm-app .ncm-viewer__msg-icon--saved { color: color-mix(in srgb, var(--ncm-accent) 50%, transparent); }
+.ncm-app .ncm-viewer__msg-icon--infected { color: color-mix(in srgb, var(--ncm-danger) 60%, transparent); }
 
 /* Network pip (inline-styled from theme) */
 .ncm-app .ncm-viewer__msg-net-pip {
@@ -701,8 +714,8 @@
 /* Stacked timestamp */
 .ncm-app .ncm-viewer__msg-time { display: flex; flex-direction: column; align-items: flex-end; gap: 0; flex-shrink: 0; white-space: nowrap; }
 .ncm-app .ncm-viewer__msg-time-date { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); line-height: 1.2; }
-.ncm-app .ncm-viewer__msg-time-rel { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); color: rgba(0,212,230,0.5); line-height: 1.2; }
-.ncm-app .ncm-viewer__msg-time-rel--recent { color: #00D4E6; opacity: 0.8; }
+.ncm-app .ncm-viewer__msg-time-rel { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent); line-height: 1.2; }
+.ncm-app .ncm-viewer__msg-time-rel--recent { color: var(--ncm-secondary); opacity: 0.8; }
 
 /* Subject row */
 .ncm-app .ncm-viewer__msg-subject { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
@@ -717,15 +730,15 @@
   text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0;
 }
 .ncm-app .ncm-viewer__msg-badge i { font-size: calc(7px * var(--ncm-text-scale, 1)); }
-.ncm-app .ncm-viewer__msg-badge--crit { color: var(--ncm-danger); background: rgba(239,68,68,0.1); }
-.ncm-app .ncm-viewer__msg-badge--urgent { color: var(--ncm-warning); background: rgba(251,191,36,0.1); }
-.ncm-app .ncm-viewer__msg-badge--danger { color: var(--ncm-danger); background: rgba(239,68,68,0.12); }
+.ncm-app .ncm-viewer__msg-badge--crit { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 10%, transparent); }
+.ncm-app .ncm-viewer__msg-badge--urgent { color: var(--ncm-warning); background: color-mix(in srgb, var(--ncm-warning) 10%, transparent); }
+.ncm-app .ncm-viewer__msg-badge--danger { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 12%, transparent); }
 /* Malware threat badge variants (from getThreatBadgeData) */
-.ncm-app .ncm-viewer__msg-badge--daemon { color: #A78BFA; background: rgba(167,139,250,0.12); }
-.ncm-app .ncm-viewer__msg-badge--worm { color: #34D399; background: rgba(52,211,153,0.12); }
-.ncm-app .ncm-viewer__msg-badge--trojan { color: #FBBF24; background: rgba(251,191,36,0.12); }
-.ncm-app .ncm-viewer__msg-badge--black-ice { color: #EF4444; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.2); }
-.ncm-app .ncm-viewer__msg-badge--threat { color: #F65261; background: rgba(246,82,97,0.12); }
+.ncm-app .ncm-viewer__msg-badge--daemon { color: var(--ncm-purple); background: color-mix(in srgb, var(--ncm-purple) 12%, transparent); }
+.ncm-app .ncm-viewer__msg-badge--worm { color: var(--ncm-success); background: color-mix(in srgb, var(--ncm-success) 12%, transparent); }
+.ncm-app .ncm-viewer__msg-badge--trojan { color: var(--ncm-warning); background: color-mix(in srgb, var(--ncm-warning) 12%, transparent); }
+.ncm-app .ncm-viewer__msg-badge--black-ice { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 15%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-danger) 20%, transparent); }
+.ncm-app .ncm-viewer__msg-badge--threat { color: var(--ncm-primary); background: color-mix(in srgb, var(--ncm-primary) 12%, transparent); }
 
 /* Preview */
 .ncm-app .ncm-viewer__msg-preview { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
@@ -749,10 +762,10 @@
   background: var(--ncm-bg-deep); font-size: calc(7px * var(--ncm-text-scale, 1));
 }
 .ncm-app .ncm-viewer__msg-av-badge--lock {
-  border: 1px solid rgba(240,197,91,0.4); color: var(--ncm-accent);
+  border: 1px solid color-mix(in srgb, var(--ncm-accent) 40%, transparent); color: var(--ncm-accent);
 }
 .ncm-app .ncm-viewer__msg-av-badge--biohazard {
-  border: 1px solid rgba(239,68,68,0.4); color: var(--ncm-danger);
+  border: 1px solid color-mix(in srgb, var(--ncm-danger) 40%, transparent); color: var(--ncm-danger);
   right: auto; left: -3px;
 }
 
@@ -762,7 +775,7 @@
 }
 .ncm-app .ncm-viewer__msg--encrypted .ncm-viewer__msg-avatar::after {
   content: ''; position: absolute; inset: -2px; border-radius: 50%;
-  background: rgba(240,197,91,0.06); border: 2px solid rgba(240,197,91,0.25);
+  background: color-mix(in srgb, var(--ncm-accent) 6%, transparent); border: 2px solid color-mix(in srgb, var(--ncm-accent) 25%, transparent);
   pointer-events: none;
 }
 .ncm-app .ncm-viewer__msg--encrypted .ncm-viewer__msg-subject-text {
@@ -770,7 +783,7 @@
 }
 .ncm-app .ncm-viewer__msg-encrypt-tag {
   display: inline-flex; align-items: center; gap: 3px;
-  font-family: var(--ncm-font-mono); font-size: calc(7px * var(--ncm-text-scale, 1)); color: rgba(240,197,91,0.45);
+  font-family: var(--ncm-font-mono); font-size: calc(7px * var(--ncm-text-scale, 1)); color: color-mix(in srgb, var(--ncm-accent) 45%, transparent);
   text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0;
 }
 .ncm-app .ncm-viewer__msg-encrypt-tag i { font-size: calc(6px * var(--ncm-text-scale, 1)); }
@@ -781,36 +794,36 @@
 }
 .ncm-app .ncm-viewer__msg--infected .ncm-viewer__msg-avatar::after {
   content: ''; position: absolute; inset: -2px; border-radius: 50%;
-  border: 2px solid rgba(239,68,68,0.2); pointer-events: none;
+  border: 2px solid color-mix(in srgb, var(--ncm-danger) 20%, transparent); pointer-events: none;
   animation: ncm-msg-infected-pulse 2s ease-in-out infinite;
 }
 @keyframes ncm-msg-infected-pulse {
-  0%,100% { border-color: rgba(239,68,68,0.2); box-shadow: none; }
-  50% { border-color: rgba(239,68,68,0.4); box-shadow: 0 0 8px rgba(239,68,68,0.15); }
+  0%,100% { border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent); box-shadow: none; }
+  50% { border-color: color-mix(in srgb, var(--ncm-danger) 40%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-danger) 15%, transparent); }
 }
 
 /* ── Darknet Origin State ── */
-.ncm-app .ncm-viewer__msg--darknet { background: rgba(168,85,247,0.02); }
+.ncm-app .ncm-viewer__msg--darknet { background: color-mix(in srgb, var(--ncm-purple) 2%, transparent); }
 .ncm-app .ncm-viewer__msg--darknet .ncm-viewer__msg-avatar {
-  border-color: rgba(168,85,247,0.3) !important;
+  border-color: color-mix(in srgb, var(--ncm-purple) 30%, transparent) !important;
 }
 .ncm-app .ncm-viewer__msg--darknet .ncm-viewer__msg-sender {
-  color: rgba(168,85,247,0.6); font-style: italic;
+  color: color-mix(in srgb, var(--ncm-purple) 60%, transparent); font-style: italic;
 }
 .ncm-app .ncm-viewer__msg--darknet.ncm-viewer__msg--unread .ncm-viewer__msg-sender {
-  color: rgba(168,85,247,0.85);
+  color: color-mix(in srgb, var(--ncm-purple) 85%, transparent);
 }
 .ncm-app .ncm-viewer__msg-anon-tag {
   font-family: var(--ncm-font-mono); font-size: calc(7px * var(--ncm-text-scale, 1));
-  color: rgba(168,85,247,0.35); letter-spacing: 0.06em; flex-shrink: 0;
+  color: color-mix(in srgb, var(--ncm-purple) 35%, transparent); letter-spacing: 0.06em; flex-shrink: 0;
 }
 
 /* ── Traced / Monitored State ── */
-.ncm-app .ncm-viewer__msg--traced { background: rgba(246,82,97,0.02); }
+.ncm-app .ncm-viewer__msg--traced { background: color-mix(in srgb, var(--ncm-primary) 2%, transparent); }
 .ncm-app .ncm-viewer__msg-traced-indicator {
   display: inline-flex; align-items: center; gap: 3px;
   font-family: var(--ncm-font-mono); font-size: calc(7px * var(--ncm-text-scale, 1));
-  color: rgba(246,82,97,0.45); flex-shrink: 0;
+  color: color-mix(in srgb, var(--ncm-primary) 45%, transparent); flex-shrink: 0;
 }
 .ncm-app .ncm-viewer__msg-traced-dot {
   width: 5px; height: 5px; border-radius: 50%; background: var(--ncm-danger);
@@ -818,7 +831,7 @@
 }
 @keyframes ncm-msg-rec-pulse {
   0%,100% { opacity: 0.4; box-shadow: none; }
-  50% { opacity: 1; box-shadow: 0 0 4px rgba(255,0,51,0.4); }
+  50% { opacity: 1; box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-danger) 40%, transparent); }
 }
 
 /* ── Self-Destruct State ── */
@@ -851,7 +864,7 @@
 .ncm-app .ncm-viewer__detail-head-top { display: flex; align-items: flex-start; gap: 10px; }
 .ncm-app .ncm-viewer__detail-avatar {
   width: 40px; height: 40px; border-radius: 50%;
-  border: 2px solid rgba(0,212,230,0.25);
+  border: 2px solid color-mix(in srgb, var(--ncm-secondary) 25%, transparent);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: calc(15px * var(--ncm-text-scale, 1)); flex-shrink: 0;
   background: var(--ncm-bg-surface); overflow: hidden;
@@ -867,15 +880,15 @@
   display: inline-flex !important; align-items: center !important; gap: 3px !important;
   padding: 1px 6px !important; border-radius: 2px !important;
   font-family: var(--ncm-font-display) !important; font-size: calc(8px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
-  color: #00D4E6 !important; background: rgba(0,212,230,0.06) !important;
-  border: 1px solid rgba(0,212,230,0.2) !important;
+  color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 20%, transparent) !important;
   cursor: pointer !important; transition: all 0.15s !important;
   text-transform: uppercase !important; letter-spacing: 0.04em !important;
   flex-shrink: 0 !important; width: auto !important; min-width: 0 !important;
   min-height: 0 !important; height: auto !important; box-shadow: none !important;
   line-height: 1.4 !important;
 }
-.ncm-app .ncm-viewer__detail-add-contact:hover { background: rgba(0,212,230,0.12) !important; border-color: rgba(0,212,230,0.4) !important; }
+.ncm-app .ncm-viewer__detail-add-contact:hover { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent) !important; }
 .ncm-app .ncm-viewer__detail-add-contact i { font-size: calc(7px * var(--ncm-text-scale, 1)) !important; }
 
 /* Grid readout — label : value pairs (collapsible) */
@@ -895,7 +908,7 @@
   font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); margin-top: 1px;
 }
 .ncm-app .ncm-viewer__detail-to-label { color: var(--ncm-text-dim); }
-.ncm-app .ncm-viewer__detail-to-val { color: #F0C55B; user-select: text; }
+.ncm-app .ncm-viewer__detail-to-val { color: var(--ncm-accent); user-select: text; }
 
 /* Expand/collapse chevron */
 .ncm-app .ncm-viewer__detail-expand {
@@ -909,7 +922,7 @@
 .ncm-app .ncm-viewer__detail-expand:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
 .ncm-app .ncm-viewer__detail-expand i { transition: transform 0.2s; }
 .ncm-app .ncm-viewer__detail-expand--open i { transform: rotate(180deg); }
-.ncm-app .ncm-viewer__detail-expand--open { color: #00D4E6 !important; border-color: rgba(0,212,230,0.3) !important; }
+.ncm-app .ncm-viewer__detail-expand--open { color: var(--ncm-secondary) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important; }
 .ncm-app .ncm-viewer__detail-grid-label {
   font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-dim);
   text-transform: uppercase; letter-spacing: 0.1em; padding-top: 2px;
@@ -919,8 +932,8 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   user-select: text;
 }
-.ncm-app .ncm-viewer__detail-grid-val--from { color: #00D4E6; }
-.ncm-app .ncm-viewer__detail-grid-val--to { color: #F0C55B; }
+.ncm-app .ncm-viewer__detail-grid-val--from { color: var(--ncm-secondary); }
+.ncm-app .ncm-viewer__detail-grid-val--to { color: var(--ncm-accent); }
 .ncm-app .ncm-viewer__detail-grid-val--time { color: #b0b0c0; }
 
 /* Subject strip — two-tier: micro label + large title + fading rule */
@@ -931,7 +944,7 @@
 .ncm-app .ncm-viewer__subject-micro {
   font-family: var(--ncm-font-title); font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 600;
   letter-spacing: 0.2em; text-transform: uppercase;
-  color: rgba(0,212,230,0.35); margin-bottom: 4px;
+  color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent); margin-bottom: 4px;
 }
 .ncm-app .ncm-viewer__subject-row {
   display: flex; align-items: center; gap: 10px;
@@ -944,22 +957,22 @@
 }
 .ncm-app .ncm-viewer__subject-rule {
   height: 1px; margin-top: 10px;
-  background: linear-gradient(90deg, rgba(0,212,230,0.25), rgba(0,212,230,0.05) 50%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ncm-secondary) 25%, transparent), color-mix(in srgb, var(--ncm-secondary) 5%, transparent) 50%, transparent);
 }
 
 /* Priority tints — micro label + rule color */
-.ncm-app .ncm-viewer__subject-strip--urgent .ncm-viewer__subject-micro { color: rgba(246,82,97,0.45); }
+.ncm-app .ncm-viewer__subject-strip--urgent .ncm-viewer__subject-micro { color: color-mix(in srgb, var(--ncm-primary) 45%, transparent); }
 .ncm-app .ncm-viewer__subject-strip--urgent .ncm-viewer__subject-rule {
-  background: linear-gradient(90deg, rgba(246,82,97,0.3), rgba(246,82,97,0.05) 50%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ncm-primary) 30%, transparent), color-mix(in srgb, var(--ncm-primary) 5%, transparent) 50%, transparent);
 }
-.ncm-app .ncm-viewer__subject-strip--critical .ncm-viewer__subject-micro { color: rgba(239,68,68,0.5); }
+.ncm-app .ncm-viewer__subject-strip--critical .ncm-viewer__subject-micro { color: color-mix(in srgb, var(--ncm-danger) 50%, transparent); }
 .ncm-app .ncm-viewer__subject-strip--critical .ncm-viewer__subject-rule {
-  background: linear-gradient(90deg, rgba(239,68,68,0.35), rgba(239,68,68,0.05) 50%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ncm-danger) 35%, transparent), color-mix(in srgb, var(--ncm-danger) 5%, transparent) 50%, transparent);
 }
 /* Default (network-colored or gold fallback) */
-.ncm-app .ncm-viewer__subject-strip--default .ncm-viewer__subject-micro { color: rgba(240,197,91,0.35); }
+.ncm-app .ncm-viewer__subject-strip--default .ncm-viewer__subject-micro { color: color-mix(in srgb, var(--ncm-accent) 35%, transparent); }
 .ncm-app .ncm-viewer__subject-strip--default .ncm-viewer__subject-rule {
-  background: linear-gradient(90deg, rgba(240,197,91,0.25), rgba(240,197,91,0.05) 50%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ncm-accent) 25%, transparent), color-mix(in srgb, var(--ncm-accent) 5%, transparent) 50%, transparent);
 }
 /* Network-color override via --ncm-strip-accent custom property (set inline) */
 .ncm-app .ncm-viewer__subject-strip[style*="--ncm-strip-accent"] .ncm-viewer__subject-micro {
@@ -979,9 +992,9 @@
   text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0;
 }
 .ncm-app .ncm-viewer__priority-pill i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
-.ncm-app .ncm-viewer__priority-pill--urgent { color: #F65261; background: rgba(246,82,97,0.1); border: 1px solid rgba(246,82,97,0.2); }
-.ncm-app .ncm-viewer__priority-pill--critical { color: #EF4444; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); }
-.ncm-app .ncm-viewer__priority-pill--threat { color: #A78BFA; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); }
+.ncm-app .ncm-viewer__priority-pill--urgent { color: var(--ncm-primary); background: color-mix(in srgb, var(--ncm-primary) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-primary) 20%, transparent); }
+.ncm-app .ncm-viewer__priority-pill--critical { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-danger) 25%, transparent); }
+.ncm-app .ncm-viewer__priority-pill--threat { color: var(--ncm-purple); background: color-mix(in srgb, var(--ncm-purple) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-purple) 20%, transparent); }
 
 /* Recovered/exfiltrated intel chip — distinct cyan "downloaded loot" badge. */
 .ncm-app .ncm-viewer__recovered-chip {
@@ -998,17 +1011,17 @@
 /* Thread pill (inside subject strip) — small, clickable, opens the conversation view */
 .ncm-app button.ncm-viewer__detail-thread {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 600; color: #00D4E6;
+  font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-secondary);
   padding: 2px 7px; border-radius: 3px;
   width: auto !important; flex: 0 0 auto !important;
-  background: rgba(0,212,230,0.08);
-  border-width: 1px; border-style: solid; border-color: rgba(0,212,230,0.15);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
+  border-width: 1px; border-style: solid; border-color: color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
   cursor: pointer; line-height: 1; height: auto; min-height: 0;
   appearance: none; box-shadow: none; margin: 0;
   transition: background 0.16s ease, border-color 0.16s ease;
 }
 .ncm-app button.ncm-viewer__detail-thread:hover {
-  background: rgba(0,212,230,0.16); border-color: rgba(0,212,230,0.4);
+  background: color-mix(in srgb, var(--ncm-secondary) 16%, transparent); border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
 }
 .ncm-app .ncm-viewer__detail-thread i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
 
@@ -1029,7 +1042,7 @@
 .ncm-app .ncm-viewer__thread-head {
   display: flex; align-items: center; gap: 10px; flex-shrink: 0;
   padding: 12px 18px; border-bottom: 1px solid var(--ncm-border);
-  background: linear-gradient(180deg, rgba(0,212,230,0.06), transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ncm-secondary) 6%, transparent), transparent);
 }
 .ncm-app button.ncm-viewer__thread-back {
   display: inline-flex; align-items: center; gap: 6px;
@@ -1050,7 +1063,7 @@
 .ncm-app .ncm-viewer__thread-title {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px;
 }
-.ncm-app .ncm-viewer__thread-title-icon { color: #00D4E6; font-size: calc(11px * var(--ncm-text-scale, 1)); flex-shrink: 0; }
+.ncm-app .ncm-viewer__thread-title-icon { color: var(--ncm-secondary); font-size: calc(11px * var(--ncm-text-scale, 1)); flex-shrink: 0; }
 .ncm-app .ncm-viewer__thread-title-text {
   font-family: var(--ncm-font-display); font-weight: 700;
   font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary);
@@ -1112,7 +1125,7 @@
 }
 .ncm-app .ncm-viewer__thread-entry--current .ncm-viewer__thread-card {
   border-color: var(--entry-accent, #00D4E6);
-  box-shadow: 0 0 0 1px var(--entry-accent, #00D4E6), 0 0 16px rgba(0,212,230,0.12);
+  box-shadow: 0 0 0 1px var(--entry-accent, #00D4E6), 0 0 16px color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
 }
 .ncm-app .ncm-viewer__thread-entry--current .ncm-viewer__thread-dot {
   box-shadow: 0 0 0 3px var(--ncm-bg-base), 0 0 12px var(--entry-accent, #00D4E6);
@@ -1139,9 +1152,9 @@
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px;
   font-family: var(--ncm-font-ui, var(--ncm-font-title));
   font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 700;
-  letter-spacing: 0.06em; text-transform: uppercase; color: #00D4E6;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ncm-secondary);
   padding: 2px 6px; border-radius: 3px;
-  background: rgba(0,212,230,0.1); border: 1px solid rgba(0,212,230,0.3);
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
 }
 .ncm-app .ncm-viewer__thread-card-viewing i { font-size: calc(7px * var(--ncm-text-scale, 1)); }
 .ncm-app .ncm-viewer__thread-card-time {
@@ -1205,9 +1218,25 @@
   transition: color .18s ease, border-color .18s ease, background .18s ease,
               transform .18s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.ncm-app .ncm-viewer__date-filter:hover,
-.ncm-app .ncm-viewer__sort-btn:hover,
-.ncm-app .ncm-viewer__filter-trigger:hover { transform: translateY(-1px); }
+/* NO HOVER-LIFT on the Dates / Sort / Filters buttons — DELIBERATE (2026-08-14).
+   These buttons ANCHOR their dropdowns as children across a 4px gap, so a
+   hover transform moves the whole assembly: crossing button→dropdown creates
+   an oscillation band where hover flips on/off and the message rows underneath
+   flash through the un-hovered slivers (CDP-measured: 11 enter/leave storms
+   per traversal — the "buttons glitch in and out / list flashes" bug, twice).
+   No hitbox guard can stabilize a moving boundary across a detached gap —
+   dropdown anchors get color/border hover feedback only, never translate. */
+/* Bridge each dropdown's 4px anchor gap — without it, traveling from the
+   button into its menu momentarily unhovers the anchor and hover-flashes the
+   message row underneath through the gap sliver. The pseudo keeps the whole
+   button→menu path one continuous hover region (the menus don't move, so a
+   static bridge fully covers it). */
+.ncm-app .ncm-sort-dropdown::before,
+.ncm-app .ncm-filter-dropdown::before,
+.ncm-app .ncm-density-dropdown::before,
+.ncm-app .ncm-network-filter-dropdown::before {
+  content: ''; position: absolute; left: 0; right: 0; top: -5px; height: 5px;
+}
 
 /* Detail Action Bar */
 .ncm-app .ncm-viewer__detail-actions {
@@ -1250,7 +1279,7 @@
 .ncm-app .ncm-viewer__eddies {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 14px; margin-top: 14px;
-  background: rgba(240,197,91,0.04); border: 1px solid rgba(240,197,91,0.15);
+  background: color-mix(in srgb, var(--ncm-accent) 4%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 15%, transparent);
   border-radius: 5px; position: relative; overflow: hidden;
 }
 .ncm-app .ncm-viewer__eddies-icon { font-size: calc(18px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); }
@@ -1259,23 +1288,23 @@
 .ncm-app .ncm-viewer__eddies-label { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
 .ncm-app .ncm-viewer__eddies-btn {
   padding: 5px 14px !important; border-radius: 4px !important;
-  background: rgba(240,197,91,0.12) !important; border: 1px solid rgba(240,197,91,0.3) !important;
+  background: color-mix(in srgb, var(--ncm-accent) 12%, transparent) !important; border: 1px solid color-mix(in srgb, var(--ncm-accent) 30%, transparent) !important;
   color: var(--ncm-accent) !important; font-family: var(--ncm-font-display) !important;
   font-weight: 700 !important; font-size: calc(11px * var(--ncm-text-scale, 1)) !important; cursor: pointer !important;
   text-transform: uppercase !important; width: auto !important; min-width: 0 !important;
   min-height: 0 !important; height: auto !important; box-shadow: none !important;
 }
-.ncm-app .ncm-viewer__eddies-btn:hover { background: rgba(240,197,91,0.2) !important; }
-.ncm-app .ncm-viewer__eddies--claimed { border-color: rgba(240,197,91,0.08); opacity: 0.6; }
+.ncm-app .ncm-viewer__eddies-btn:hover { background: color-mix(in srgb, var(--ncm-accent) 20%, transparent) !important; }
+.ncm-app .ncm-viewer__eddies--claimed { border-color: color-mix(in srgb, var(--ncm-accent) 8%, transparent); opacity: 0.6; }
 .ncm-app .ncm-viewer__eddies--claimed .ncm-viewer__eddies-btn { display: none; }
 .ncm-app .ncm-viewer__eddies-status { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); text-transform: uppercase; }
-.ncm-app .ncm-viewer__eddies-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--ncm-accent); box-shadow: 0 0 8px rgba(240,197,91,0.5); width: 0; transition: width 0.3s ease; }
+.ncm-app .ncm-viewer__eddies-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--ncm-accent); box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-accent) 50%, transparent); width: 0; transition: width 0.3s ease; }
 
 /* Attachment grid */
 /* ─── Embedded media players (audio/video) ─── */
 .ncm-app .ncm-viewer__media { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
 .ncm-app .ncm-viewer__media-item {
-  border: 1px solid rgba(25,243,247,0.18);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 18%, transparent);
   border-radius: 2px;
   background: #000;
   overflow: hidden;
@@ -1284,14 +1313,14 @@
 .ncm-app .ncm-viewer__media-item iframe {
   display: block; width: 100%; aspect-ratio: 16 / 9; border: 0;
 }
-.ncm-app .ncm-viewer__media-item--audio { background: transparent; border-color: rgba(25,243,247,0.12); }
+.ncm-app .ncm-viewer__media-item--audio { background: transparent; border-color: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); }
 .ncm-app .ncm-viewer__media-item--audio audio { display: block; width: 100%; }
 .ncm-app .ncm-viewer__media-name {
   padding: 4px 8px;
   font-family: var(--ncm-font-mono); font-size: 9px;
   color: var(--ncm-text-muted, #8888a0);
   text-transform: uppercase; letter-spacing: 0.05em;
-  border-top: 1px solid rgba(25,243,247,0.1);
+  border-top: 1px solid color-mix(in srgb, var(--ncm-secondary) 10%, transparent);
 }
 .ncm-app .ncm-viewer__media-item--audio .ncm-viewer__media-name { border-top: none; }
 
@@ -1306,7 +1335,7 @@
 .ncm-app .ncm-viewer__attach-info { flex: 1; min-width: 0; }
 .ncm-app .ncm-viewer__attach-thumb {
   width: 28px; height: 28px; border-radius: 4px;
-  background: rgba(0,212,230,0.08);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
   display: flex; align-items: center; justify-content: center;
   color: var(--ncm-secondary); font-size: calc(11px * var(--ncm-text-scale, 1));
 }
@@ -1331,12 +1360,12 @@
 .ncm-app .ncm-viewer__quick-reply-input::placeholder { color: var(--ncm-text-muted); }
 .ncm-app .ncm-viewer__quick-reply-send {
   width: 26px !important; height: 26px !important; display: flex !important; align-items: center !important; justify-content: center !important;
-  background: rgba(0,212,230,0.08) !important; border: 1px solid rgba(0,212,230,0.2) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important; border: 1px solid color-mix(in srgb, var(--ncm-secondary) 20%, transparent) !important;
   border-radius: 3px !important; color: var(--ncm-secondary) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   cursor: pointer !important; transition: all 0.15s !important;
   padding: 0 !important; min-width: 0 !important; min-height: 0 !important; box-shadow: none !important;
 }
-.ncm-app .ncm-viewer__quick-reply-send:hover { background: rgba(0,212,230,0.15) !important; }
+.ncm-app .ncm-viewer__quick-reply-send:hover { background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent) !important; }
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -1359,10 +1388,10 @@
   height: auto !important; box-shadow: none !important;
 }
 .ncm-app .ncm-viewer__footer-btn:hover { color: var(--ncm-text-primary) !important; border-color: var(--ncm-border-active) !important; }
-.ncm-app .ncm-viewer__footer-btn--primary { color: var(--ncm-secondary) !important; border-color: rgba(0,212,230,0.3) !important; }
-.ncm-app .ncm-viewer__footer-btn--primary:hover { background: rgba(0,212,230,0.06) !important; }
-.ncm-app .ncm-viewer__footer-btn--danger { color: var(--ncm-danger) !important; border-color: rgba(239,68,68,0.2) !important; }
-.ncm-app .ncm-viewer__footer-btn--danger:hover { background: rgba(239,68,68,0.06) !important; }
+.ncm-app .ncm-viewer__footer-btn--primary { color: var(--ncm-secondary) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important; }
+.ncm-app .ncm-viewer__footer-btn--primary:hover { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important; }
+.ncm-app .ncm-viewer__footer-btn--danger { color: var(--ncm-danger) !important; border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent) !important; }
+.ncm-app .ncm-viewer__footer-btn--danger:hover { background: color-mix(in srgb, var(--ncm-danger) 6%, transparent) !important; }
 .ncm-app .ncm-viewer__footer-btn i { font-size: calc(9px * var(--ncm-text-scale, 1)) !important; }
 .ncm-app .ncm-viewer__footer-spacer { flex: 1; }
 .ncm-app .ncm-viewer__footer-shortcuts { display: flex; align-items: center; gap: 8px; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-dim); }
@@ -1406,13 +1435,13 @@
   color: var(--ncm-text-muted) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; cursor: pointer !important;
   padding: 0 !important; min-width: 0 !important; min-height: 0 !important; box-shadow: none !important;
 }
-.ncm-app .ncm-viewer__drawer-close:hover { color: var(--ncm-primary) !important; border-color: rgba(246,82,97,0.3) !important; }
+.ncm-app .ncm-viewer__drawer-close:hover { color: var(--ncm-primary) !important; border-color: color-mix(in srgb, var(--ncm-primary) 30%, transparent) !important; }
 
 /* Profile */
 .ncm-app .ncm-viewer__drawer-profile { display: flex; flex-direction: column; align-items: center; padding: 24px 16px 20px; gap: 10px; background: var(--ncm-bg-deep); border-bottom: 1px solid var(--ncm-border); flex-shrink: 0; }
 .ncm-app .ncm-viewer__drawer-avatar {
   width: 72px; height: 72px; border-radius: 50%;
-  border: 3px solid rgba(0,212,230,0.25); box-shadow: 0 0 20px rgba(0,212,230,0.1);
+  border: 3px solid color-mix(in srgb, var(--ncm-secondary) 25%, transparent); box-shadow: 0 0 20px color-mix(in srgb, var(--ncm-secondary) 10%, transparent);
   overflow: hidden; background: var(--ncm-bg-surface);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(28px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary);
@@ -1429,10 +1458,10 @@
 .ncm-app .ncm-viewer__drawer-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .ncm-app .ncm-viewer__drawer-field:last-child { margin-bottom: 0; }
 .ncm-app .ncm-viewer__drawer-field-label { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }
-.ncm-app .ncm-viewer__drawer-field-label--email { color: rgba(0,212,230,0.6); }
-.ncm-app .ncm-viewer__drawer-field-label--handle { color: rgba(167,139,250,0.6); }
+.ncm-app .ncm-viewer__drawer-field-label--email { color: color-mix(in srgb, var(--ncm-secondary) 60%, transparent); }
+.ncm-app .ncm-viewer__drawer-field-label--handle { color: color-mix(in srgb, var(--ncm-purple) 60%, transparent); }
 .ncm-app .ncm-viewer__drawer-field-value { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); border-radius: 4px; transition: border-color 0.2s; width: 100%; }
-.ncm-app .ncm-viewer__drawer-field-value:focus-within { border-color: #00D4E6; }
+.ncm-app .ncm-viewer__drawer-field-value:focus-within { border-color: var(--ncm-secondary); }
 .ncm-app .ncm-viewer__drawer-field-input {
   flex: 1; min-width: 0; width: 100%;
   background: none !important; border: none !important; outline: none !important;
@@ -1440,8 +1469,8 @@
   padding: 0 !important; min-height: 0 !important; height: auto !important; box-shadow: none !important;
 }
 .ncm-app .ncm-viewer__drawer-field-icon { font-size: calc(10px * var(--ncm-text-scale, 1)); flex-shrink: 0; }
-.ncm-app .ncm-viewer__drawer-field-icon--email { color: rgba(0,212,230,0.5); }
-.ncm-app .ncm-viewer__drawer-field-icon--handle { color: rgba(167,139,250,0.5); }
+.ncm-app .ncm-viewer__drawer-field-icon--email { color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent); }
+.ncm-app .ncm-viewer__drawer-field-icon--handle { color: color-mix(in srgb, var(--ncm-purple) 50%, transparent); }
 .ncm-app .ncm-viewer__drawer-field-btn {
   background: none !important; border: none !important; color: var(--ncm-secondary) !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important;
   cursor: pointer !important; opacity: 0.4; transition: opacity 0.15s !important;
@@ -1452,11 +1481,11 @@
 
 /* Network status */
 .ncm-app .ncm-viewer__drawer-net-status { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 4px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); margin-bottom: 10px; }
-.ncm-app .ncm-viewer__drawer-net-status--strong { border-color: rgba(52,211,153,0.25); background: rgba(52,211,153,0.04); }
-.ncm-app .ncm-viewer__drawer-net-status--good { border-color: rgba(0,212,230,0.25); background: rgba(0,212,230,0.04); }
-.ncm-app .ncm-viewer__drawer-net-status--weak { border-color: rgba(251,191,36,0.25); background: rgba(251,191,36,0.04); }
-.ncm-app .ncm-viewer__drawer-net-status--critical { border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.04); }
-.ncm-app .ncm-viewer__drawer-net-status--dead { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+.ncm-app .ncm-viewer__drawer-net-status--strong { border-color: color-mix(in srgb, var(--ncm-success) 25%, transparent); background: color-mix(in srgb, var(--ncm-success) 4%, transparent); }
+.ncm-app .ncm-viewer__drawer-net-status--good { border-color: color-mix(in srgb, var(--ncm-secondary) 25%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent); }
+.ncm-app .ncm-viewer__drawer-net-status--weak { border-color: color-mix(in srgb, var(--ncm-warning) 25%, transparent); background: color-mix(in srgb, var(--ncm-warning) 4%, transparent); }
+.ncm-app .ncm-viewer__drawer-net-status--critical { border-color: color-mix(in srgb, var(--ncm-danger) 25%, transparent); background: color-mix(in srgb, var(--ncm-danger) 4%, transparent); }
+.ncm-app .ncm-viewer__drawer-net-status--dead { border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent); background: color-mix(in srgb, var(--ncm-danger) 6%, transparent); }
 .ncm-app .ncm-viewer__drawer-net-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
 .ncm-app .ncm-viewer__drawer-net-name { font-weight: 700; font-size: calc(12px * var(--ncm-text-scale, 1)); flex: 1; }
 .ncm-app .ncm-viewer__drawer-net-pct { font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); }
@@ -1464,23 +1493,23 @@
 .ncm-app .ncm-viewer__drawer-net-row i { font-size: calc(9px * var(--ncm-text-scale, 1)); width: 14px; text-align: center; }
 .ncm-app .ncm-viewer__drawer-net-row span:first-of-type { color: var(--ncm-text-muted); }
 /* Colored network rows */
-.ncm-app .ncm-viewer__drawer-net-row--status i { color: rgba(52,211,153,0.5); }
+.ncm-app .ncm-viewer__drawer-net-row--status i { color: color-mix(in srgb, var(--ncm-success) 50%, transparent); }
 .ncm-app .ncm-viewer__drawer-net-row--status span:last-child { color: var(--ncm-success); }
-.ncm-app .ncm-viewer__drawer-net-row--latency i { color: rgba(0,212,230,0.5); }
+.ncm-app .ncm-viewer__drawer-net-row--latency i { color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent); }
 .ncm-app .ncm-viewer__drawer-net-row--latency span:last-child { color: var(--ncm-secondary); opacity: 0.7; }
-.ncm-app .ncm-viewer__drawer-net-row--enc i { color: rgba(240,197,91,0.5); }
+.ncm-app .ncm-viewer__drawer-net-row--enc i { color: color-mix(in srgb, var(--ncm-accent) 50%, transparent); }
 .ncm-app .ncm-viewer__drawer-net-row--enc span:last-child { color: var(--ncm-accent); opacity: 0.7; }
-.ncm-app .ncm-viewer__drawer-net-row--queue i { color: rgba(167,139,250,0.5); }
-.ncm-app .ncm-viewer__drawer-net-row--queue span:last-child { color: #A78BFA; opacity: 0.7; }
+.ncm-app .ncm-viewer__drawer-net-row--queue i { color: color-mix(in srgb, var(--ncm-purple) 50%, transparent); }
+.ncm-app .ncm-viewer__drawer-net-row--queue span:last-child { color: var(--ncm-purple); opacity: 0.7; }
 
 /* Character switcher */
 .ncm-app .ncm-viewer__drawer-char-list { display: flex; flex-direction: column; gap: 4px; }
 .ncm-app .ncm-viewer__drawer-char { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; transition: background 0.15s; border: 1px solid transparent; }
 .ncm-app .ncm-viewer__drawer-char:hover { background: var(--ncm-bg-hover); }
-.ncm-app .ncm-viewer__drawer-char--active { background: rgba(0,212,230,0.06); border-color: rgba(0,212,230,0.2); }
+.ncm-app .ncm-viewer__drawer-char--active { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); border-color: color-mix(in srgb, var(--ncm-secondary) 20%, transparent); }
 .ncm-app .ncm-viewer__drawer-char-avatar { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--ncm-border); overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: calc(10px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-surface); flex-shrink: 0; }
 .ncm-app .ncm-viewer__drawer-char-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.ncm-app .ncm-viewer__drawer-char--active .ncm-viewer__drawer-char-avatar { border-color: rgba(0,212,230,0.4); }
+.ncm-app .ncm-viewer__drawer-char--active .ncm-viewer__drawer-char-avatar { border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
 .ncm-app .ncm-viewer__drawer-char-info { flex: 1; min-width: 0; }
 .ncm-app .ncm-viewer__drawer-char-name { font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ncm-app .ncm-viewer__drawer-char-email { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); opacity: 0.5; }
@@ -1499,7 +1528,7 @@
 /* Scheduled / Draft items */
 .ncm-app .ncm-viewer__sched-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px; border-bottom: 1px solid rgba(42,42,69,0.5);
+  padding: 10px 16px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
   transition: background 0.12s; cursor: pointer;
 }
 .ncm-app .ncm-viewer__sched-item:hover { background: var(--ncm-bg-surface); }
@@ -1514,23 +1543,23 @@
 /* Shard items */
 .ncm-app .ncm-viewer__shard-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px; border-bottom: 1px solid rgba(42,42,69,0.5);
+  padding: 10px 16px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
   transition: background 0.12s; cursor: pointer;
 }
 .ncm-app .ncm-viewer__shard-item:hover { background: var(--ncm-bg-surface); }
-.ncm-app .ncm-viewer__shard-icon { width: 32px; height: 32px; border-radius: 4px; background: rgba(0,212,230,0.08); display: flex; align-items: center; justify-content: center; color: var(--ncm-secondary); font-size: calc(14px * var(--ncm-text-scale, 1)); flex-shrink: 0; position: relative; overflow: visible; }
-.ncm-app .ncm-viewer__shard-icon--received { background: rgba(52,211,153,0.08); color: var(--ncm-success); }
+.ncm-app .ncm-viewer__shard-icon { width: 32px; height: 32px; border-radius: 4px; background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); display: flex; align-items: center; justify-content: center; color: var(--ncm-secondary); font-size: calc(14px * var(--ncm-text-scale, 1)); flex-shrink: 0; position: relative; overflow: visible; }
+.ncm-app .ncm-viewer__shard-icon--received { background: color-mix(in srgb, var(--ncm-success) 8%, transparent); color: var(--ncm-success); }
 .ncm-app .ncm-viewer__shard-img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
 .ncm-app .ncm-viewer__shard-chip-tag {
   position: absolute; bottom: -2px; right: -2px;
   width: 13px; height: 13px;
   background: var(--ncm-bg-deep, #0a0a0f);
-  border: 1px solid rgba(0, 212, 230, 0.5);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 50%, transparent);
   border-radius: 2px 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: calc(7px * var(--ncm-text-scale, 1)); color: #00D4E6;
+  font-size: calc(7px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary);
   pointer-events: none;
-  filter: drop-shadow(0 0 2px rgba(0, 212, 230, 0.3));
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ncm-secondary) 30%, transparent));
 }
 .ncm-app .ncm-viewer__shard-info { flex: 1; min-width: 0; }
 .ncm-app .ncm-viewer__shard-name { font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary); }
@@ -1542,16 +1571,16 @@
   border: 1px solid;
 }
 .ncm-app .ncm-viewer__shard-badge--received {
-  color: var(--ncm-success); background: rgba(52,211,153,0.08);
-  border-color: rgba(52,211,153,0.2);
+  color: var(--ncm-success); background: color-mix(in srgb, var(--ncm-success) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ncm-success) 20%, transparent);
 }
 .ncm-app .ncm-viewer__shard-badge--inventory {
-  color: var(--ncm-text-secondary); background: rgba(85,85,112,0.08);
-  border-color: rgba(85,85,112,0.2);
+  color: var(--ncm-text-secondary); background: color-mix(in srgb, var(--ncm-text-muted) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ncm-text-muted) 20%, transparent);
 }
 .ncm-app .ncm-viewer__shard-badge--ice {
-  color: var(--ncm-accent); background: rgba(240,197,91,0.08);
-  border-color: rgba(240,197,91,0.2);
+  color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ncm-accent) 20%, transparent);
 }
 
 
@@ -1571,16 +1600,16 @@
   appearance: none !important; box-shadow: none !important; outline: none !important;
 }
 .ncm-app .ncm-viewer .ncm-btn i { font-size: calc(10px * var(--ncm-text-scale, 1)) !important; margin: 0 !important; }
-.ncm-app .ncm-viewer .ncm-btn--primary { color: var(--ncm-primary) !important; border-color: rgba(246,82,97,0.35) !important; background: rgba(246,82,97,0.08) !important; }
-.ncm-app .ncm-viewer .ncm-btn--primary:hover { background: rgba(246,82,97,0.15) !important; border-color: rgba(246,82,97,0.5) !important; }
-.ncm-app .ncm-viewer .ncm-btn--secondary { color: var(--ncm-secondary) !important; border-color: rgba(0,212,230,0.3) !important; background: rgba(0,212,230,0.06) !important; }
-.ncm-app .ncm-viewer .ncm-btn--secondary:hover { background: rgba(0,212,230,0.12) !important; border-color: rgba(0,212,230,0.45) !important; }
+.ncm-app .ncm-viewer .ncm-btn--primary { color: var(--ncm-primary) !important; border-color: color-mix(in srgb, var(--ncm-primary) 35%, transparent) !important; background: color-mix(in srgb, var(--ncm-primary) 8%, transparent) !important; }
+.ncm-app .ncm-viewer .ncm-btn--primary:hover { background: color-mix(in srgb, var(--ncm-primary) 15%, transparent) !important; border-color: color-mix(in srgb, var(--ncm-primary) 50%, transparent) !important; }
+.ncm-app .ncm-viewer .ncm-btn--secondary { color: var(--ncm-secondary) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important; background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important; }
+.ncm-app .ncm-viewer .ncm-btn--secondary:hover { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 45%, transparent) !important; }
 .ncm-app .ncm-viewer .ncm-btn--ghost { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border) !important; background: transparent !important; }
 .ncm-app .ncm-viewer .ncm-btn--ghost:hover { color: var(--ncm-text-primary) !important; border-color: var(--ncm-border-active) !important; }
-.ncm-app .ncm-viewer .ncm-btn--gm { color: var(--ncm-accent) !important; border-color: rgba(240,197,91,0.25) !important; background: rgba(240,197,91,0.04) !important; }
-.ncm-app .ncm-viewer .ncm-btn--gm:hover { background: rgba(240,197,91,0.1) !important; border-color: rgba(240,197,91,0.4) !important; }
-.ncm-app .ncm-viewer .ncm-btn--danger { color: var(--ncm-danger) !important; border-color: rgba(239,68,68,0.3) !important; background: rgba(239,68,68,0.06) !important; }
-.ncm-app .ncm-viewer .ncm-btn--danger:hover { background: rgba(239,68,68,0.12) !important; }
+.ncm-app .ncm-viewer .ncm-btn--gm { color: var(--ncm-accent) !important; border-color: color-mix(in srgb, var(--ncm-accent) 25%, transparent) !important; background: color-mix(in srgb, var(--ncm-accent) 4%, transparent) !important; }
+.ncm-app .ncm-viewer .ncm-btn--gm:hover { background: color-mix(in srgb, var(--ncm-accent) 10%, transparent) !important; border-color: color-mix(in srgb, var(--ncm-accent) 40%, transparent) !important; }
+.ncm-app .ncm-viewer .ncm-btn--danger { color: var(--ncm-danger) !important; border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent) !important; background: color-mix(in srgb, var(--ncm-danger) 6%, transparent) !important; }
+.ncm-app .ncm-viewer .ncm-btn--danger:hover { background: color-mix(in srgb, var(--ncm-danger) 12%, transparent) !important; }
 .ncm-app .ncm-viewer .ncm-btn--sm { padding: 4px 8px !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; }
 .ncm-app .ncm-viewer .ncm-btn--sm i { font-size: calc(9px * var(--ncm-text-scale, 1)) !important; }
 .ncm-app .ncm-viewer .ncm-btn--icon-only { padding: 5px 7px !important; }
@@ -1596,11 +1625,15 @@
   transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.06em;
 }
 .ncm-app .ncm-viewer .ncm-pill:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border-active); }
-.ncm-app .ncm-viewer .ncm-pill--active { color: var(--ncm-secondary); border-color: rgba(0,212,230,0.35); background: rgba(0,212,230,0.06); }
+.ncm-app .ncm-viewer .ncm-pill--active { color: var(--ncm-secondary); border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); }
 .ncm-app .ncm-viewer .ncm-pill i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
-.ncm-app .ncm-viewer .ncm-pill__badge { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); padding: 0 4px; border-radius: 2px; background: rgba(0,212,230,0.12); color: var(--ncm-secondary); line-height: 1.4; }
-.ncm-app .ncm-viewer .ncm-pill__badge--alert { background: rgba(246,82,97,0.15); color: var(--ncm-primary); }
-.ncm-app .ncm-viewer .ncm-pill__badge--success { background: rgba(52,211,153,0.15); color: var(--ncm-success); }
+.ncm-app .ncm-viewer .ncm-pill__badge { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); padding: 0 4px; border-radius: 2px; background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); color: var(--ncm-secondary); line-height: 1.4; }
+.ncm-app .ncm-viewer .ncm-pill__badge--alert { background: color-mix(in srgb, var(--ncm-primary) 15%, transparent); color: var(--ncm-primary); }
+.ncm-app .ncm-viewer .ncm-pill__badge--success { background: color-mix(in srgb, var(--ncm-success) 15%, transparent); color: var(--ncm-success); }
+/* Action pill (Mark all read) — a command, not a filter: rides the right edge
+   of the track, dashed border so it can't be mistaken for an active filter. */
+.ncm-app .ncm-viewer .ncm-pill--action { margin-left: auto; border-style: dashed; color: var(--ncm-text-muted); }
+.ncm-app .ncm-viewer .ncm-pill--action:hover { color: var(--ncm-secondary); border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent); border-style: solid; }
 
 /* Sort dropdown */
 .ncm-app .ncm-viewer .ncm-sort-dropdown {
@@ -1614,24 +1647,24 @@
   font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 500;
   color: var(--ncm-text-secondary); transition: all 0.1s;
 }
-.ncm-app .ncm-viewer .ncm-sort-option:hover { background: rgba(0,212,230,0.06); color: var(--ncm-text-primary); }
-.ncm-app .ncm-viewer .ncm-sort-option--active { color: var(--ncm-secondary); background: rgba(0,212,230,0.04); }
+.ncm-app .ncm-viewer .ncm-sort-option:hover { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); color: var(--ncm-text-primary); }
+.ncm-app .ncm-viewer .ncm-sort-option--active { color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent); }
 
 /* Existing partials referenced — keep old encrypted block classes */
-.ncm-app .ncm-encrypted-block { position: relative; margin: 12px 0; padding: 14px 16px; background: var(--ncm-bg-surface); border: 1px solid rgba(247,201,72,0.2); border-left: 3px solid var(--ncm-accent); border-radius: 0 2px 2px 0; overflow: hidden; }
+.ncm-app .ncm-encrypted-block { position: relative; margin: 12px 0; padding: 14px 16px; background: var(--ncm-bg-surface); border: 1px solid color-mix(in srgb, var(--ncm-accent) 20%, transparent); border-left: 3px solid var(--ncm-accent); border-radius: 0 2px 2px 0; overflow: hidden; }
 .ncm-app .ncm-encrypted-block__label { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
 .ncm-app .ncm-encrypted-block--locked .ncm-encrypted-block__content { filter: blur(6px); user-select: none; pointer-events: none; }
-.ncm-app .ncm-encrypted-block__overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; z-index: 2; background: rgba(10,10,15,0.7); }
+.ncm-app .ncm-encrypted-block__overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; z-index: 2; background: color-mix(in srgb, var(--ncm-bg-deep) 70%, transparent); }
 .ncm-app .ncm-encrypted-block__overlay i { font-size: calc(16px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); }
 .ncm-app .ncm-encrypted-block__overlay-text { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); text-transform: uppercase; }
 .ncm-app .ncm-encrypted-block__decrypt-btn {
   font-family: var(--ncm-font-mono) !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important; padding: 4px 12px !important;
-  background: transparent !important; color: var(--ncm-accent) !important; border: 1px solid rgba(247,201,72,0.3) !important;
+  background: transparent !important; color: var(--ncm-accent) !important; border: 1px solid color-mix(in srgb, var(--ncm-accent) 30%, transparent) !important;
   border-radius: 2px !important; cursor: pointer !important; text-transform: uppercase;
   width: auto !important; min-width: 0 !important; min-height: 0 !important; box-shadow: none !important;
 }
-.ncm-app .ncm-encrypted-block__decrypt-btn:hover { background: rgba(247,201,72,0.08) !important; }
-.ncm-app .ncm-encrypted-block--decrypted { border-color: rgba(52,211,153,0.15); }
+.ncm-app .ncm-encrypted-block__decrypt-btn:hover { background: color-mix(in srgb, var(--ncm-accent) 8%, transparent) !important; }
+.ncm-app .ncm-encrypted-block--decrypted { border-color: color-mix(in srgb, var(--ncm-success) 15%, transparent); }
 .ncm-app .ncm-encrypted-block--decrypted .ncm-encrypted-block__label { color: var(--ncm-success); }
 .ncm-app .ncm-encrypted-block__content { font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); line-height: 1.6; }
 
@@ -1663,7 +1696,7 @@
   color: var(--ncm-text-muted) !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important; cursor: pointer !important;
   padding: 0 !important; min-width: 0 !important; min-height: 0 !important; box-shadow: none !important;
 }
-.ncm-app .ncm-viewer__page-btn:hover { color: var(--ncm-secondary) !important; border-color: rgba(0,212,230,0.3) !important; }
+.ncm-app .ncm-viewer__page-btn:hover { color: var(--ncm-secondary) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important; }
 .ncm-app .ncm-viewer__page-btn:disabled { opacity: 0.3 !important; cursor: default !important; }
 .ncm-app .ncm-viewer__page-info { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
 

@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Night City Messenger — Atmosphere Layer
    @file styles/base/atmosphere.css
-   @module cyberpunkred-messenger
+   @module night-city-messenger
    @description CRT terminal texture: scanlines, noise grain, vignette edge
      darkening, and screen flicker. Applied as pseudo-element overlays on
      .ncm-app, gated by data-ncm-scanlines attribute.

@@ -1,7 +1,7 @@
 /**
  * SecurityAuthAdapters
  * @file scripts/ui/NetworkManagement/SecurityAuthAdapters.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Source adapters for the shared security auth dialog
  *              (NetworkAuthDialog). Each adapter normalizes a secured object
  *              into the network-shaped view-model the dialog renders

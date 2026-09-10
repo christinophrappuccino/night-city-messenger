@@ -1,7 +1,7 @@
 /**
  * Program Deck — a cyberdeck cartridge reader for the programs on a data shard.
  * @file scripts/ui/ProgramDeck/ProgramDeckApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Opened from a data shard: the shard's programs (malware/payload) shown as
  *   cartridges seated in slots — click one to pull it into the inspector (the program as
  *   the workshop's synthesis artifact) and act on it (Analyze / Deploy / Execute). Ported

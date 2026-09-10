@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════
  * Data Shard Viewer — Sprint 4.6 Chip-Reader Redesign
  * @file styles/components/item-inbox.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Chip-reader aesthetic for the data shard viewer.
  *   NOT a mail client — this is a hardware device reading a physical chip.
  *   Red accent bar (not rainbow), entry cards with accent stripes,
@@ -28,11 +28,47 @@
  * ═══════════════════════════════════════════════════════════ */
 
 
+/* The shard tokens ALSO on the two other windows that render shard/entry
+ * vocabulary (.ncm-shard-btn, .ncm-cl-*, .ncm-config-*): the entry composer and
+ * the Malware Workshop. Without this their --sp-* lookups fell through to the
+ * dark-theme fallbacks under every preset (the workshop footer buttons and
+ * list labels read wrong on clean-light/dark — 2026-09-10). */
+.ncm-app.ncm-data-shard-composer,
+.ncm-app.ncm-malware-workshop {
+  --sp-bg-deep: var(--ncm-bg-deep, #0a0a0f);
+  --sp-bg-base: var(--ncm-bg-base, #12121a);
+  --sp-bg-surface: var(--ncm-bg-surface, #1a1a2e);
+  --sp-bg-elevated: var(--ncm-bg-elevated, #252540);
+  --sp-border: var(--ncm-border, #2a2a45);
+  --sp-bar: linear-gradient(90deg, var(--ncm-color-primary, #F65261), transparent 40%, transparent 60%, var(--ncm-color-secondary, #19f3f7));
+  --sp-shadow: 0 0 50px rgba(0,0,0,0.5);
+  --sp-accent: var(--ncm-color-secondary, #19f3f7);
+  --sp-accent-2: var(--ncm-text-secondary, #8888a0);
+  --sp-accent-glow: rgba(25, 243, 247, 0.08);
+  --sp-text-bright: var(--ncm-text-primary, #e0e0e8);
+  --sp-text-body: var(--ncm-text-secondary, #8888a0);
+  --sp-text-meta: var(--ncm-text-muted, #555570);
+  --sp-text-muted: var(--ncm-text-muted, #555570);
+  --sp-icon-bg: rgba(25, 243, 247, 0.06);
+  --sp-icon-border: rgba(25, 243, 247, 0.2);
+  --sp-chip-bg: var(--ncm-bg-surface, #1a1a2e);
+  --sp-chip-text: var(--ncm-text-secondary, #8888a0);
+  --sp-chip-active-bg: rgba(25, 243, 247, 0.06);
+  --sp-chip-active-text: var(--ncm-color-secondary, #19f3f7);
+}
+
 /* ═══════════════════════════════════════════
    §1  ROOT LAYOUT & WINDOW CHROME
    ═══════════════════════════════════════════ */
 
 .ncm-app .ncm-item-inbox {
+  /* Text size = the PLAYER's Theme Customizer scale (published on :root as
+     --ncm-text-scale-base by ThemeService) × this SHARD's own Text Size
+     (config.textScale, stamped inline as --ncm-shard-text-scale by the
+     template). Every font-size below reads --ncm-text-scale, so both knobs
+     apply live. Defaults to 1 × 1 when neither has run (headless probes). */
+  --ncm-shard-text-scale: 1;
+  --ncm-text-scale: calc(var(--ncm-text-scale-base, 1) * var(--ncm-shard-text-scale, 1));
   /* Default shard theme variables — overridden by .ncm-preset-* classes */
   --sp-bg-deep: var(--ncm-bg-deep, #0a0a0f);
   --sp-bg-base: var(--ncm-bg-base, #12121a);
@@ -131,7 +167,7 @@
   flex-shrink: 0;
 }
 
-.ncm-app .ncm-shard-icon-block i { font-size: 22px; color: var(--sp-accent); }
+.ncm-app .ncm-shard-icon-block i { font-size: calc(22px * var(--ncm-text-scale, 1)); color: var(--sp-accent); }
 .ncm-app .ncm-shard-icon-block .ncm-shard-icon-img { border-radius: 2px; object-fit: contain; }
 
 /* ICE-typed icon block variants */
@@ -151,7 +187,7 @@
 
 .ncm-app .ncm-shard-name {
   font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
-  font-size: 17px; font-weight: 700;
+  font-size: calc(17px * var(--ncm-text-scale, 1)); font-weight: 700;
   color: var(--sp-text-bright);
   line-height: 1.1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -159,7 +195,7 @@
 
 .ncm-app .ncm-shard-type-line {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px; color: var(--sp-accent-2);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-accent-2);
   display: flex; align-items: center; gap: 2px; letter-spacing: 0.03em;
 }
 
@@ -167,7 +203,7 @@
 
 .ncm-app .ncm-shard-provenance {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px; color: var(--sp-text-body);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-body);
   letter-spacing: 0.03em;
 }
 
@@ -178,9 +214,9 @@
   display: inline-flex; align-items: center; gap: 4px;
   padding: 2px 7px; border-radius: 2px;
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: calc(9px * var(--ncm-text-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em;
 }
-.ncm-app .ncm-shard-badge i { font-size: 8px; }
+.ncm-app .ncm-shard-badge i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
 
 .ncm-app .ncm-shard-badge--ice { background: rgba(255,0,51,0.12); color: #ff0033; border: 1px solid rgba(255,0,51,0.25); }
 .ncm-app .ncm-shard-badge--net { background: rgba(25,243,247,0.08); color: var(--sp-accent,  #19f3f7); border: 1px solid rgba(25,243,247,0.2); }
@@ -282,13 +318,13 @@
 }
 
 .ncm-app .ncm-shard-chip-drawer__header > i {
-  font-size: 13px !important;
+  font-size: calc(13px * var(--ncm-text-scale, 1)) !important;
   color: var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer__title {
   font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
-  font-size: 11px !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
   font-weight: 700 !important;
   color: var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) !important;
   letter-spacing: 1.5px !important;
@@ -302,7 +338,7 @@
   background: transparent !important; border: 1px solid var(--sp-border, #2a2a45) !important;
   border-radius: 2px !important;
   cursor: pointer !important;
-  color: var(--sp-text-muted, #555570) !important; font-size: 10px !important;
+  color: var(--sp-text-muted, #555570) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   padding: 0 !important; min-width: 0 !important; min-height: 0 !important;
   appearance: none !important; -webkit-appearance: none !important;
   box-shadow: none !important; line-height: 1 !important;
@@ -331,7 +367,7 @@
 }
 
 .ncm-app .ncm-shard-chip-spec__icon {
-  font-size: 11px !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
   color: var(--sp-text-muted, #7a7a95) !important;
   width: 14px !important;
   text-align: center !important;
@@ -340,7 +376,7 @@
 
 .ncm-app .ncm-shard-chip-spec__label {
   font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
-  font-size: 9px !important;
+  font-size: calc(9px * var(--ncm-text-scale, 1)) !important;
   color: var(--sp-text-muted, #8888a0) !important;
   letter-spacing: 1px !important;
   text-transform: uppercase !important;
@@ -348,7 +384,7 @@
 
 .ncm-app .ncm-shard-chip-spec__value {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
-  font-size: 13px !important;
+  font-size: calc(13px * var(--ncm-text-scale, 1)) !important;
   color: var(--sp-text-bright, #e8e8f0) !important;
   margin-left: auto !important;
 }
@@ -360,7 +396,7 @@
 
 .ncm-app .ncm-shard-chip-spec__tag {
   font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
-  font-size: 8px !important;
+  font-size: calc(8px * var(--ncm-text-scale, 1)) !important;
   font-weight: 600 !important;
   padding: 3px 8px !important;
   border-radius: 2px !important;
@@ -399,7 +435,7 @@
 
 .ncm-app .ncm-shard-chip-spec__desc-text {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
-  font-size: 12px !important;
+  font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
   color: var(--sp-text-secondary, #c8c8dd) !important;
   line-height: 1.6 !important;
 }
@@ -419,7 +455,7 @@
 
 .ncm-app .ncm-shard-integrity-label {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px; color: var(--sp-text-muted,  #555570);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted,  #555570);
   text-transform: uppercase; letter-spacing: 0.08em;
   flex-shrink: 0; min-width: 60px;
 }
@@ -445,7 +481,7 @@
 
 .ncm-app .ncm-shard-integrity-value {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px; color: var(--sp-text-body,  #8888a0);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-body,  #8888a0);
   flex-shrink: 0; min-width: 30px; text-align: right;
 }
 
@@ -463,7 +499,7 @@
 }
 
 .ncm-app .ncm-shard-signal-label {
-  font-family: var(--ncm-font-mono); font-size: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--sp-text-muted); text-transform: uppercase;
   letter-spacing: 0.08em; flex-shrink: 0; min-width: 60px;
 }
@@ -487,15 +523,15 @@
 .ncm-app .ncm-signal-text-low { color: var(--ncm-color-primary); }
 
 .ncm-app .ncm-shard-signal-value {
-  font-family: var(--ncm-font-mono); font-size: 10px;
+  font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1));
 }
 
 .ncm-app .ncm-shard-signal-network {
-  font-family: var(--ncm-font-mono); font-size: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--sp-accent,  #19f3f7);
   margin-left: auto; text-transform: uppercase; letter-spacing: 0.05em;
 }
-.ncm-app .ncm-shard-signal-network i { margin-right: 4px; font-size: 8px; }
+.ncm-app .ncm-shard-signal-network i { margin-right: 4px; font-size: calc(8px * var(--ncm-text-scale, 1)); }
 
 
 /* ═══════════════════════════════════════════
@@ -516,14 +552,14 @@
 .ncm-app .ncm-shard-index-strip--locked { opacity: 0.35; pointer-events: none; }
 
 .ncm-app .ncm-shard-index-toggle {
-  font-family: var(--ncm-font-title); font-size: 8px;
+  font-family: var(--ncm-font-title); font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--sp-text-muted); text-transform: uppercase;
   letter-spacing: 0.08em; display: flex; align-items: center; gap: 4px;
   flex-shrink: 0; padding-right: 8px;
   border-right: 1px solid var(--sp-border); margin-right: 2px;
   cursor: pointer;
 }
-.ncm-app .ncm-shard-index-toggle i { font-size: 7px; color: var(--sp-accent); }
+.ncm-app .ncm-shard-index-toggle i { font-size: calc(7px * var(--ncm-text-scale, 1)); color: var(--sp-accent); }
 
 .ncm-app .ncm-shard-index-chip {
   display: flex; align-items: center; gap: 4px;
@@ -542,10 +578,10 @@
 
 .ncm-app .ncm-shard-index-chip--hidden { border-style: dashed; opacity: 0.35; cursor: not-allowed; }
 
-.ncm-app .ncm-shard-index-chip-icon { font-size: 8px; flex-shrink: 0; }
+.ncm-app .ncm-shard-index-chip-icon { font-size: calc(8px * var(--ncm-text-scale, 1)); flex-shrink: 0; }
 
 .ncm-app .ncm-shard-index-chip-title {
-  font-family: var(--ncm-font-display); font-size: 8px;
+  font-family: var(--ncm-font-display); font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--sp-chip-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   letter-spacing: 0.02em;
@@ -642,7 +678,7 @@
 .ncm-app .ncm-entry-custom-icon {
   width: 32px; height: 32px; border-radius: 3px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; flex-shrink: 0;
+  font-size: calc(13px * var(--ncm-text-scale, 1)); flex-shrink: 0;
 }
 
 .ncm-app .ncm-ci-red { background: rgba(246,82,97,0.1); color: var(--ncm-color-primary); border: 1px solid rgba(246,82,97,0.15); }
@@ -656,32 +692,32 @@
 .ncm-app .ncm-entry-title-area { flex: 1; min-width: 0; }
 
 .ncm-app .ncm-entry-type-label {
-  font-family: var(--ncm-font-title); font-size: 8px;
+  font-family: var(--ncm-font-title); font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--sp-text-meta); text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
 .ncm-app .ncm-entry-title {
-  font-family: var(--ncm-font-body); font-size: 14px;
+  font-family: var(--ncm-font-body); font-size: calc(14px * var(--ncm-text-scale, 1));
   font-weight: 600; color: var(--sp-text-bright);
   line-height: 1.2;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .ncm-app .ncm-entry-timestamp {
-  font-family: var(--ncm-font-mono); font-size: 10px;
+  font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1));
   color: var(--sp-text-body); flex-shrink: 0;
   letter-spacing: 0.03em;
 }
 
 /* Entry body */
 .ncm-app .ncm-entry-body { padding: 12px; }
-.ncm-app .ncm-entry-body p { font-family: var(--ncm-font-body); font-size: 13px; color: var(--sp-text-body); line-height: 1.6; }
+.ncm-app .ncm-entry-body p { font-family: var(--ncm-font-body); font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--sp-text-body); line-height: 1.6; }
 
-.ncm-app .ncm-entry-from { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-body); margin-bottom: 6px; }
+.ncm-app .ncm-entry-from { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-body); margin-bottom: 6px; }
 .ncm-app .ncm-entry-from span { color: var(--sp-accent); }
 
-.ncm-app .ncm-entry-text { font-family: var(--ncm-font-body); font-size: 13px; color: var(--sp-text-body); line-height: 1.6; }
+.ncm-app .ncm-entry-text { font-family: var(--ncm-font-body); font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--sp-text-body); line-height: 1.6; }
 
 
 /* ═══════════════════════════════════════════
@@ -702,13 +738,13 @@
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; position: relative; overflow: hidden;
 }
-.ncm-app .ncm-dossier-portrait i { font-size: 28px; color: var(--sp-text-muted); opacity: 0.5; }
+.ncm-app .ncm-dossier-portrait i { font-size: calc(28px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted); opacity: 0.5; }
 .ncm-app .ncm-dossier-portrait img { width: 100%; height: 100%; object-fit: cover; }
 
 .ncm-app .ncm-dossier-classification {
   position: absolute; bottom: -1px; left: -1px; right: -1px;
   background: rgba(246,82,97,0.9);
-  font-family: var(--ncm-font-mono); font-size: 7px;
+  font-family: var(--ncm-font-mono); font-size: calc(7px * var(--ncm-text-scale, 1));
   color: white; text-align: center; padding: 2px;
   text-transform: uppercase; letter-spacing: 0.1em;
 }
@@ -721,11 +757,11 @@
 }
 
 .ncm-app .ncm-dossier-stat-label {
-  font-family: var(--ncm-font-mono); font-size: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--sp-text-muted); text-transform: uppercase;
   letter-spacing: 0.05em; padding: 2px 0;
 }
-.ncm-app .ncm-dossier-stat-value { font-family: var(--ncm-font-body); font-size: 12px; color: var(--sp-text-bright); padding: 2px 0; }
+.ncm-app .ncm-dossier-stat-value { font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--sp-text-bright); padding: 2px 0; }
 .ncm-app .ncm-threat-high { color: #ff0033 !important; font-weight: 700; }
 
 .ncm-app .ncm-dossier-sections-body { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
@@ -737,23 +773,23 @@
   border-radius: 2px;
 }
 .ncm-app .ncm-dossier-section-heading {
-  font-family: var(--ncm-font-title); font-size: 9px;
+  font-family: var(--ncm-font-title); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--sp-accent); text-transform: uppercase;
   letter-spacing: 0.08em; margin-bottom: 4px;
 }
-.ncm-app .ncm-dossier-section p { font-size: 12px; }
+.ncm-app .ncm-dossier-section p { font-size: calc(12px * var(--ncm-text-scale, 1)); }
 
 .ncm-app .ncm-dossier-section--redacted { background: rgba(246,82,97,0.04); border-color: rgba(246,82,97,0.15); }
 .ncm-app .ncm-dossier-redacted-text { color: var(--ncm-color-primary) !important; font-family: var(--ncm-font-mono) !important; letter-spacing: 0.1em; }
 
 /* ─── PAYLOAD ─── */
 .ncm-app .ncm-payload-name {
-  font-family: var(--ncm-font-mono); font-size: 14px;
+  font-family: var(--ncm-font-mono); font-size: calc(14px * var(--ncm-text-scale, 1));
   font-weight: 700; color: #a855f7; margin-bottom: 8px;
 }
 .ncm-app .ncm-payload-name i { margin-right: 6px; }
 
-.ncm-app .ncm-payload-status { font-family: var(--ncm-font-mono); font-size: 11px; margin-top: 10px; }
+.ncm-app .ncm-payload-status { font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); margin-top: 10px; }
 .ncm-app .ncm-payload-status--executed { color: #00ff41; }
 
 /* ─── AV LOG ─── */
@@ -761,7 +797,7 @@
 
 .ncm-app .ncm-avlog-meta {
   display: flex; gap: 12px; margin-bottom: 10px;
-  font-family: var(--ncm-font-mono); font-size: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--sp-text-muted); text-transform: uppercase; letter-spacing: 0.05em;
 }
 .ncm-app .ncm-avlog-meta i { margin-right: 3px; }
@@ -807,11 +843,11 @@
 .ncm-app .ncm-avlog-line:last-child { border-bottom: none; }
 
 .ncm-app .ncm-avlog-speaker {
-  font-family: var(--ncm-font-mono); font-size: 10px;
+  font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1));
   color: var(--sp-accent); font-weight: 700;
   flex-shrink: 0; min-width: 80px; text-transform: uppercase;
 }
-.ncm-app .ncm-avlog-text { font-family: var(--ncm-font-body); font-size: 12px; color: var(--sp-text-body); line-height: 1.5; }
+.ncm-app .ncm-avlog-text { font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--sp-text-body); line-height: 1.5; }
 
 /* ─── LOCATION ─── */
 .ncm-app .ncm-entry-location { padding: 12px; }
@@ -828,11 +864,11 @@
 }
 
 .ncm-app .ncm-location-coords {
-  font-family: var(--ncm-font-mono); font-size: 12px;
+  font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1));
   color: var(--sp-accent); letter-spacing: 0.08em; margin-bottom: 4px;
 }
-.ncm-app .ncm-location-name { font-family: var(--ncm-font-body); font-size: 16px; font-weight: 700; color: var(--sp-text-bright); margin-bottom: 4px; }
-.ncm-app .ncm-location-district { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-muted); margin-bottom: 8px; }
+.ncm-app .ncm-location-name { font-family: var(--ncm-font-body); font-size: calc(16px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--sp-text-bright); margin-bottom: 4px; }
+.ncm-app .ncm-location-district { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted); margin-bottom: 8px; }
 .ncm-app .ncm-location-district i { margin-right: 4px; }
 
 /* ─── ENCRYPTED ENTRY / CORRUPTED ─── */
@@ -842,7 +878,7 @@
   color: var(--sp-text-muted);
 }
 .ncm-app .ncm-entry-encrypted-msg i,
-.ncm-app .ncm-entry-corrupted i { font-size: 20px; margin-bottom: 8px; display: block; }
+.ncm-app .ncm-entry-corrupted i { font-size: calc(20px * var(--ncm-text-scale, 1)); margin-bottom: 8px; display: block; }
 .ncm-app .ncm-entry-corrupted { color: var(--ncm-color-primary); }
 
 
@@ -857,9 +893,9 @@
   border: 1px dashed var(--ncm-border-active, #3a3a5a);
   border-radius: 3px; padding: 16px; text-align: center;
 }
-.ncm-app .ncm-shard-hidden-block i { font-size: 16px; color: var(--sp-text-muted); margin-bottom: 6px; display: block; }
-.ncm-app .ncm-shard-hidden-count { font-family: var(--ncm-font-body); font-size: 13px; font-weight: 600; color: var(--sp-text-body); }
-.ncm-app .ncm-shard-hidden-hint { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--sp-text-muted); margin-top: 4px; letter-spacing: 0.03em; }
+.ncm-app .ncm-shard-hidden-block i { font-size: calc(16px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted); margin-bottom: 6px; display: block; }
+.ncm-app .ncm-shard-hidden-count { font-family: var(--ncm-font-body); font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--sp-text-body); }
+.ncm-app .ncm-shard-hidden-hint { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted); margin-top: 4px; letter-spacing: 0.03em; }
 
 
 /* ═══════════════════════════════════════════
@@ -897,19 +933,19 @@
 .ncm-app .ncm-shard-disconnect-panel { text-align: center; padding: 30px; }
 
 .ncm-app .ncm-shard-disconnect-icon {
-  font-size: 40px; color: #ff0033; margin-bottom: 16px; display: block;
+  font-size: calc(40px * var(--ncm-text-scale, 1)); color: #ff0033; margin-bottom: 16px; display: block;
   animation: ncm-flicker 3s ease-in-out infinite;
 }
 @keyframes ncm-flicker { 0%,100% { opacity:1; } 10% { opacity:0.8; } 50% { opacity:0.9; } 80% { opacity:0.7; } }
 
 .ncm-app .ncm-shard-disconnect-title {
   font-family: var(--ncm-font-title);
-  font-size: 18px; font-weight: 700; color: #ff0033;
+  font-size: calc(18px * var(--ncm-text-scale, 1)); font-weight: 700; color: #ff0033;
   text-transform: uppercase; letter-spacing: 0.25em;
   margin-bottom: 14px; text-shadow: 0 0 15px rgba(255,0,51,0.3);
 }
 
-.ncm-app .ncm-shard-disconnect-info { font-size: 13px; color: var(--sp-text-body); margin-bottom: 20px; line-height: 1.6; }
+.ncm-app .ncm-shard-disconnect-info { font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--sp-text-body); margin-bottom: 20px; line-height: 1.6; }
 
 .ncm-app .ncm-shard-disconnect-detail {
   display: grid; grid-template-columns: auto 1fr;
@@ -918,8 +954,8 @@
   border: 1px solid var(--sp-border); border-radius: 2px;
   max-width: 300px; margin: 0 auto;
 }
-.ncm-app .ncm-shard-detail-label { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--sp-text-muted); text-transform: uppercase; padding: 2px 0; }
-.ncm-app .ncm-shard-detail-value { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-body); padding: 2px 0; }
+.ncm-app .ncm-shard-detail-label { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted); text-transform: uppercase; padding: 2px 0; }
+.ncm-app .ncm-shard-detail-value { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-body); padding: 2px 0; }
 
 
 /* ═══════════════════════════════════════════
@@ -931,9 +967,9 @@
   align-items: center; justify-content: center;
   flex: 1; padding: 40px 20px; text-align: center;
 }
-.ncm-app .ncm-shard-destroyed i { font-size: 48px; color: #ff0033; margin-bottom: 16px; opacity: 0.6; }
-.ncm-app .ncm-shard-destroyed-title { font-family: var(--ncm-font-title); font-size: 16px; font-weight: 700; color: #ff0033; text-transform: uppercase; letter-spacing: 0.2em; }
-.ncm-app .ncm-shard-destroyed-sub { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-muted); margin-top: 8px; }
+.ncm-app .ncm-shard-destroyed i { font-size: calc(48px * var(--ncm-text-scale, 1)); color: #ff0033; margin-bottom: 16px; opacity: 0.6; }
+.ncm-app .ncm-shard-destroyed-title { font-family: var(--ncm-font-title); font-size: calc(16px * var(--ncm-text-scale, 1)); font-weight: 700; color: #ff0033; text-transform: uppercase; letter-spacing: 0.2em; }
+.ncm-app .ncm-shard-destroyed-sub { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted); margin-top: 8px; }
 
 
 /* ═══════════════════════════════════════════
@@ -945,9 +981,9 @@
   align-items: center; justify-content: center;
   flex: 1; padding: 40px 20px; text-align: center;
 }
-.ncm-app .ncm-shard-empty i { font-size: 36px; color: var(--sp-text-muted); margin-bottom: 12px; opacity: 0.4; }
-.ncm-app .ncm-shard-empty p { font-family: var(--ncm-font-display); font-size: 14px; font-weight: 600; color: var(--sp-text-body); }
-.ncm-app .ncm-shard-empty-sub { font-family: var(--ncm-font-mono) !important; font-size: 10px !important; color: var(--sp-text-muted) !important; margin-top: 4px; }
+.ncm-app .ncm-shard-empty i { font-size: calc(36px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted); margin-bottom: 12px; opacity: 0.4; }
+.ncm-app .ncm-shard-empty p { font-family: var(--ncm-font-display); font-size: calc(14px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--sp-text-body); }
+.ncm-app .ncm-shard-empty-sub { font-family: var(--ncm-font-mono) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; color: var(--sp-text-muted) !important; margin-top: 4px; }
 
 
 /* ═══════════════════════════════════════════
@@ -963,7 +999,7 @@
 }
 
 .ncm-app .ncm-shard-footer-text {
-  font-family: var(--ncm-font-mono); font-size: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--sp-text-muted); letter-spacing: 0.05em;
 }
 
@@ -971,14 +1007,14 @@
 .ncm-app .ncm-shard-footer-spacer { flex: 1; }
 
 .ncm-app .ncm-shard-footer-brand {
-  font-family: var(--ncm-font-title); font-size: 8px;
+  font-family: var(--ncm-font-title); font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--sp-text-muted); opacity: 0.5;
   text-transform: uppercase; letter-spacing: 0.08em;
 }
 
 /* Trace warning */
 .ncm-app .ncm-shard-trace-warning {
-  font-family: var(--ncm-font-mono); font-size: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: #ffab00; letter-spacing: 0.03em;
   animation: ncm-pulse-bar 2s ease-in-out infinite;
 }
@@ -1013,7 +1049,7 @@
 .ncm-app .ncm-shard-hdr-btn {
   width: 24px !important; height: 24px !important;
   display: flex !important; align-items: center !important; justify-content: center !important;
-  font-size: 10px !important; color: var(--sp-text-muted) !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; color: var(--sp-text-muted) !important;
   background: var(--sp-bg-surface) !important;
   border: 1px solid var(--sp-border) !important;
   border-radius: 2px !important; cursor: pointer !important;
@@ -1054,7 +1090,7 @@
 .ncm-app .ncm-shard-btn {
   display: inline-flex !important; align-items: center !important; gap: 6px !important;
   padding: 6px 16px !important; border-radius: 2px !important;
-  font-family: var(--ncm-font-body) !important; font-size: 12px !important;
+  font-family: var(--ncm-font-body) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
   font-weight: 600 !important; text-transform: uppercase !important;
   letter-spacing: 0.08em !important;
   cursor: pointer !important; transition: all 0.15s !important;
@@ -1073,12 +1109,12 @@
 .ncm-app .ncm-shard-btn:hover { border-color: var(--sp-text-body, #8888a0) !important; color: var(--sp-text-bright, #e0e0e8) !important; }
 
 .ncm-app .ncm-shard-btn--primary {
-  background: rgba(25,243,247,0.1) !important;
-  border: 1px solid rgba(25,243,247,0.3) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
   color: var(--sp-accent) !important;
 }
 .ncm-app .ncm-shard-btn--primary:hover {
-  background: rgba(25,243,247,0.18) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 18%, transparent) !important;
   border-color: var(--sp-accent) !important;
 }
 
@@ -1093,13 +1129,13 @@
 }
 
 .ncm-app .ncm-shard-btn--danger {
-  background: rgba(255,0,51,0.1) !important;
-  border: 1px solid rgba(255,0,51,0.3) !important;
-  color: #ff0033 !important;
+  background: color-mix(in srgb, var(--ncm-danger) 10%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-danger) 30%, transparent) !important;
+  color: var(--ncm-danger) !important;
 }
 .ncm-app .ncm-shard-btn--danger:hover {
-  background: rgba(255,0,51,0.2) !important;
-  border-color: #ff0033 !important;
+  background: color-mix(in srgb, var(--ncm-danger) 20%, transparent) !important;
+  border-color: var(--ncm-danger) !important;
 }
 
 /* Eddies claim button — replaced by the cred-transfer redesign
@@ -1113,7 +1149,7 @@
   background: var(--sp-bg-surface,  #1a1a2e) !important;
   border: 1px solid var(--sp-border,  #2a2a45) !important;
   border-radius: 2px !important; cursor: pointer !important;
-  font-family: var(--ncm-font-body) !important; font-size: 11px !important;
+  font-family: var(--ncm-font-body) !important; font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
   color: var(--sp-text-body,  #8888a0) !important;
   text-transform: uppercase !important; letter-spacing: 0.04em !important;
   transition: all 0.15s !important;
@@ -1122,13 +1158,13 @@
   min-width: 0 !important; min-height: 0 !important;
   line-height: 1.4 !important; margin: 0 !important;
 }
-.ncm-app .ncm-composer-type-pill i { font-size: 10px !important; }
+.ncm-app .ncm-composer-type-pill i { font-size: calc(10px * var(--ncm-text-scale, 1)) !important; }
 .ncm-app .ncm-composer-type-pill:hover {
   border-color: var(--ncm-border-active, #3a3a5a) !important;
   color: var(--sp-text-bright) !important;
 }
 .ncm-app .ncm-composer-type-pill--active {
-  background: rgba(25, 243, 247, 0.08) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important;
   border-color: var(--sp-accent,  #19f3f7) !important;
   color: var(--sp-accent,  #19f3f7) !important;
 }
@@ -1166,7 +1202,7 @@
 /* ─── Boot element base styles ─── */
 
 .ncm-app .ncm-boot-icon {
-  font-size: 56px; margin-bottom: 18px; opacity: 0;
+  font-size: calc(56px * var(--ncm-text-scale, 1)); margin-bottom: 18px; opacity: 0;
 }
 
 .ncm-app .ncm-boot-icon img {
@@ -1175,14 +1211,14 @@
 
 .ncm-app .ncm-boot-title {
   font-family: var(--ncm-font-title);
-  font-size: 22px; font-weight: 700;
+  font-size: calc(22px * var(--ncm-text-scale, 1)); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.3em;
   opacity: 0;
 }
 
 .ncm-app .ncm-boot-subtitle {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 12px; text-transform: uppercase;
+  font-size: calc(12px * var(--ncm-text-scale, 1)); text-transform: uppercase;
   letter-spacing: 0.15em; margin-top: 8px;
   font-weight: 500;
   opacity: 0;
@@ -1194,7 +1230,7 @@
 
 .ncm-app .ncm-boot-progress-label {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px; text-transform: uppercase;
+  font-size: calc(10px * var(--ncm-text-scale, 1)); text-transform: uppercase;
   letter-spacing: 0.1em; margin-bottom: 5px;
   font-weight: 500;
 }
@@ -1212,7 +1248,7 @@
 .ncm-app .ncm-boot-log {
   margin-top: 24px; width: 340px;
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 11px; line-height: 1.7; text-align: left;
+  font-size: calc(11px * var(--ncm-text-scale, 1)); line-height: 1.7; text-align: left;
   font-weight: 500;
 }
 
@@ -1396,15 +1432,15 @@
 
 .ncm-app .ncm-config-legend {
   font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
-  font-size: 11px; font-weight: 700;
+  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--sp-text-body,  #8888a0);
   display: flex; align-items: center; gap: 6px;
   padding: 0; margin-bottom: 8px;
   width: 100%;
 }
-.ncm-app .ncm-config-legend i { font-size: 10px; width: 16px; text-align: center; }
-.ncm-app .ncm-config-legend-note { font-weight: 400; text-transform: none; letter-spacing: 0; opacity: .7; font-size: 10px; }
+.ncm-app .ncm-config-legend i { font-size: calc(10px * var(--ncm-text-scale, 1)); width: 16px; text-align: center; }
+.ncm-app .ncm-config-legend-note { font-weight: 400; text-transform: none; letter-spacing: 0; opacity: .7; font-size: calc(10px * var(--ncm-text-scale, 1)); }
 
 /* Form rows */
 .ncm-app .ncm-config-row {
@@ -1417,7 +1453,7 @@
 /* Labels */
 .ncm-app .ncm-config-label {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px; color: var(--sp-text-muted,  #555570);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted,  #555570);
   text-transform: uppercase; letter-spacing: 0.06em;
   min-width: 90px; flex-shrink: 0;
 }
@@ -1429,7 +1465,7 @@
   border-radius: 2px !important;
   padding: 4px 8px !important;
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
-  font-size: 10px !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   color: var(--sp-text-bright,  #e0e0e8) !important;
   outline: none !important;
   transition: border-color 0.15s;
@@ -1454,7 +1490,7 @@
   border-radius: 2px !important;
   padding: 4px 6px !important;
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
-  font-size: 10px !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   color: var(--sp-text-bright,  #e0e0e8) !important;
   outline: none !important; cursor: pointer;
   appearance: auto !important;
@@ -1467,14 +1503,14 @@
 .ncm-app .ncm-config-check {
   display: flex; align-items: center; gap: 6px;
   cursor: pointer;
-  font-family: var(--ncm-font-body); font-size: 11px;
+  font-family: var(--ncm-font-body); font-size: calc(11px * var(--ncm-text-scale, 1));
   color: var(--sp-text-body,  #8888a0);
 }
 .ncm-app .ncm-config-check input { accent-color: var(--sp-accent,  #19f3f7); cursor: pointer; }
 
 /* Hints */
 .ncm-app .ncm-config-hint {
-  font-family: var(--ncm-font-mono); font-size: 8px;
+  font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--sp-text-muted,  #555570);
   margin: 2px 0 6px; line-height: 1.5;
   opacity: 0.7;
@@ -1497,7 +1533,7 @@
   border: 1px solid var(--sp-border);
   border-radius: 2px;
 }
-.ncm-app .ncm-skill-name { font-family: var(--ncm-font-body); font-size: 11px; color: var(--sp-text-bright); flex: 1; }
+.ncm-app .ncm-skill-name { font-family: var(--ncm-font-body); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--sp-text-bright); flex: 1; }
 .ncm-app .ncm-skill-name small { color: var(--sp-text-muted); }
 .ncm-app .ncm-skill-dc { max-width: 50px !important; text-align: center; }
 
@@ -1542,16 +1578,16 @@
   background: var(--sp-bg-surface,  #1a1a2e);
   border: 1px solid var(--sp-border,  #2a2a45);
   border-radius: 2px; cursor: pointer;
-  font-family: var(--ncm-font-body); font-size: 11px;
+  font-family: var(--ncm-font-body); font-size: calc(11px * var(--ncm-text-scale, 1));
   color: var(--sp-text-body,  #8888a0);
   text-transform: uppercase; letter-spacing: 0.04em;
   transition: all 0.15s;
 }
-.ncm-app .ncm-composer-type-pill i { font-size: 10px; }
+.ncm-app .ncm-composer-type-pill i { font-size: calc(10px * var(--ncm-text-scale, 1)); }
 .ncm-app .ncm-composer-type-pill:hover { border-color: var(--ncm-border-active, #3a3a5a); color: var(--sp-text-bright); }
 
 .ncm-app .ncm-composer-type-pill--active {
-  background: rgba(25, 243, 247, 0.08);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
   border-color: var(--sp-accent,  #19f3f7);
   color: var(--sp-accent,  #19f3f7);
 }
@@ -1594,7 +1630,7 @@
 .ncm-app .ncm-icon-grid__item {
   width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--ncm-text-scale, 1));
   background: var(--sp-bg-surface,  #1a1a2e);
   border: 1px solid var(--sp-border,  #2a2a45);
   border-radius: 2px; cursor: pointer;
@@ -1628,22 +1664,22 @@
 }
 .ncm-app .ncm-cmp-typebar__ico {
   width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; flex: 0 0 auto;
-  font-size: 15px; color: var(--ncm-secondary, #19f3f7);
+  font-size: calc(15px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary, #19f3f7);
   background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 40%, transparent);
 }
 .ncm-app .ncm-cmp-typebar__info { flex: 1; min-width: 0; }
-.ncm-app .ncm-cmp-typebar__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: 14px; color: var(--ncm-text-primary, #ededf2); }
-.ncm-app .ncm-cmp-typebar__desc { font-family: var(--ncm-font-body); font-size: 10.5px; color: var(--ncm-text-muted, #7a7a92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-app .ncm-cmp-typebar__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(14px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary, #ededf2); }
+.ncm-app .ncm-cmp-typebar__desc { font-family: var(--ncm-font-body); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted, #7a7a92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ncm-app .ncm-cmp-how { text-decoration: underline; cursor: pointer; color: var(--ncm-secondary, #19f3f7); }
 .ncm-app button.ncm-cmp-tbbtn {
   width: auto !important; flex: 0 0 auto !important;
-  font-family: var(--ncm-font-mono) !important; font-size: 9.5px !important; letter-spacing: .5px;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(9.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px;
   padding: 5px 9px !important; border-radius: 6px !important;
 }
 .ncm-app button.ncm-cmp-tbbtn--swap { color: var(--ncm-secondary, #19f3f7) !important; border-color: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 40%, transparent) !important; }
 .ncm-app .ncm-cmp-howbox {
-  padding: 8px 14px; font-family: var(--ncm-font-body); font-size: 11.5px; color: var(--ncm-text-secondary, #b9b9cc);
+  padding: 8px 14px; font-family: var(--ncm-font-body); font-size: calc(11.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary, #b9b9cc);
   background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 5%, transparent);
   border-bottom: 1px solid var(--ncm-border, #2a2a45);
 }
@@ -1656,7 +1692,7 @@
   box-shadow: 0 10px 26px rgba(0, 0, 0, .45);
 }
 .ncm-app .ncm-cmp-picker__group {
-  font-family: var(--ncm-font-mono); font-size: 8.5px; letter-spacing: 1.5px;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 1.5px;
   color: var(--ncm-text-muted, #7a7a92); margin: 8px 0 5px;
 }
 .ncm-app .ncm-cmp-picker__group:first-child { margin-top: 0; }
@@ -1670,10 +1706,10 @@
   background: var(--sp-bg-surface, #1a1a2e);
 }
 .ncm-app .ncm-cmp-sec__hd:hover { background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 6%, var(--sp-bg-surface, #1a1a2e)); }
-.ncm-app .ncm-cmp-sec__num { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-secondary, #19f3f7); }
-.ncm-app .ncm-cmp-sec__title { font-family: var(--ncm-font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ncm-text-primary, #ededf2); }
+.ncm-app .ncm-cmp-sec__num { font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary, #19f3f7); }
+.ncm-app .ncm-cmp-sec__title { font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ncm-text-primary, #ededf2); }
 .ncm-app .ncm-cmp-sec__sum { margin-left: auto; display: flex; align-items: center; gap: 6px; min-width: 0; }
-.ncm-app .ncm-cmp-sec__caret { font-size: 9px; color: var(--ncm-text-muted, #7a7a92); transition: transform .15s; }
+.ncm-app .ncm-cmp-sec__caret { font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted, #7a7a92); transition: transform .15s; }
 .ncm-app .ncm-cmp-sec--closed .ncm-cmp-sec__caret { transform: rotate(-90deg); }
 .ncm-app .ncm-cmp-sec__bd { padding: 10px 12px; border-top: 1px solid var(--ncm-border, #2a2a45); }
 .ncm-app .ncm-cmp-sec--closed .ncm-cmp-sec__bd { display: none; }
@@ -1681,17 +1717,17 @@
 /* ── Uploadable fieldset (design §4) — the offensive "push it out" option ── */
 .ncm-app .ncm-cmp-upl {
   margin-top: 10px; padding: 9px 10px; border-radius: 7px;
-  border: 1px solid color-mix(in srgb, #a855f7 30%, var(--ncm-border, #2a2a45));
-  background: color-mix(in srgb, #a855f7 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-purple) 30%, var(--ncm-border, #2a2a45));
+  background: color-mix(in srgb, var(--ncm-purple) 6%, transparent);
 }
-.ncm-app .ncm-cmp-upl .ncm-config-check i { color: #a855f7; margin: 0 3px; }
+.ncm-app .ncm-cmp-upl .ncm-config-check i { color: var(--ncm-purple); margin: 0 3px; }
 /* [hidden] loses to the .ncm-fg display rule — hide via the wrapper class instead */
 .ncm-app .ncm-cmp-upl:not(.is-on) [data-cmp-upl-fields] { display: none !important; }
 .ncm-app .ncm-cmp-upl .ncm-fg { margin-top: 8px; }
 /* Fieldsets inside a section shed their own border chrome — one frame is enough. */
 .ncm-app .ncm-cmp-sec__bd > .ncm-config-section { border: none; padding: 0 0 6px; margin: 0 0 6px; }
 .ncm-app .ncm-cmp-chip {
-  font-family: var(--ncm-font-mono); font-size: 8.5px; letter-spacing: 1px; white-space: nowrap;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; white-space: nowrap;
   padding: 2px 7px; border-radius: 4px; color: var(--ncm-text-secondary, #b9b9cc);
   border: 1px solid var(--ncm-border, #2a2a45); overflow: hidden; text-overflow: ellipsis; max-width: 170px;
 }
@@ -1732,7 +1768,7 @@
   color: var(--ncm-text-secondary, #9aa) !important; cursor: pointer; box-shadow: none !important;
   transition: border-color .12s, color .12s, box-shadow .12s;
 }
-.ncm-app .ncm-schem-tool i { font-size: 12px; }
+.ncm-app .ncm-schem-tool i { font-size: calc(12px * var(--ncm-text-scale, 1)); }
 .ncm-app .ncm-schem-tool[data-ct-color] { color: var(--ct-c, var(--ncm-secondary)) !important; }
 .ncm-app .ncm-schem-tool:hover { border-color: var(--ncm-secondary, #19f3f7) !important; }
 .ncm-app .ncm-schem-tool.is-active {
@@ -1766,11 +1802,11 @@
   box-shadow: 0 0 8px color-mix(in srgb, var(--ct-c, var(--ncm-secondary, #19f3f7)) 60%, transparent), 0 1px 3px rgba(0,0,0,.5);
   transition: transform .1s, box-shadow .1s;
 }
-.ncm-app .ncm-schem-pin i { font-size: 11px; pointer-events: none; }
+.ncm-app .ncm-schem-pin i { font-size: calc(11px * var(--ncm-text-scale, 1)); pointer-events: none; }
 .ncm-app .ncm-schem-pin__n {
   position: absolute; top: -6px; right: -6px; min-width: 13px; height: 13px; padding: 0 2px;
   border-radius: 7px; background: var(--ncm-bg-deep, #05050c); color: var(--ct-c, var(--ncm-secondary, #19f3f7));
-  border: 1px solid currentColor; font-family: var(--ncm-font-mono); font-size: 8px; font-weight: 700;
+  border: 1px solid currentColor; font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700;
   display: grid; place-items: center; pointer-events: none;
 }
 .ncm-app .ncm-schem-pin:hover { transform: translate(-50%, -50%) scale(1.12); }
@@ -1786,22 +1822,22 @@
   box-shadow: 0 6px 22px rgba(0,0,0,.6), 0 0 0 1px color-mix(in srgb, var(--ncm-secondary, #19f3f7) 30%, transparent);
   display: flex; flex-direction: column; gap: 5px; backdrop-filter: blur(3px);
 }
-.ncm-app .ncm-schem-pop__hd { font-family: var(--ncm-font-ui); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ncm-secondary, #19f3f7); display: flex; align-items: center; gap: 5px; }
+.ncm-app .ncm-schem-pop__hd { font-family: var(--ncm-font-ui); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ncm-secondary, #19f3f7); display: flex; align-items: center; gap: 5px; }
 .ncm-app .ncm-schem-pop__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .ncm-app .ncm-schem-pop__f { display: flex; flex-direction: column; gap: 2px; }
-.ncm-app .ncm-schem-pop__f > span { font-family: var(--ncm-font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: .05em; color: var(--ncm-text-muted, #778); }
+.ncm-app .ncm-schem-pop__f > span { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); text-transform: uppercase; letter-spacing: .05em; color: var(--ncm-text-muted, #778); }
 .ncm-app .ncm-schem-pop__f input,
 .ncm-app .ncm-schem-pop__f select {
-  height: 22px !important; min-height: 0 !important; padding: 0 5px !important; font-size: 11px !important;
+  height: 22px !important; min-height: 0 !important; padding: 0 5px !important; font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
   background: var(--ncm-bg-panel, #141428) !important; color: var(--ncm-text-primary, #e8e8f0) !important;
   border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 4px !important; box-shadow: none !important;
 }
-.ncm-app .ncm-schem-pop__chk { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--ncm-text-secondary, #9aa); cursor: pointer; }
+.ncm-app .ncm-schem-pop__chk { display: flex; align-items: center; gap: 5px; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary, #9aa); cursor: pointer; }
 .ncm-app .ncm-schem-pop__lock { display: grid; grid-template-columns: 1fr 64px; gap: 5px; }
 .ncm-app .ncm-schem-pop__lock[hidden] { display: none; }
 .ncm-app .ncm-schem-pop__ft { display: flex; justify-content: space-between; gap: 6px; margin-top: 2px; }
 .ncm-app .ncm-schem-pop__ft button {
-  height: 24px !important; padding: 0 10px !important; font-size: 10px !important; text-transform: uppercase; letter-spacing: .04em;
+  height: 24px !important; padding: 0 10px !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; text-transform: uppercase; letter-spacing: .04em;
   border-radius: 4px !important; cursor: pointer; box-shadow: none !important; flex: 0 0 auto !important; width: auto !important;
 }
 .ncm-app .ncm-schem-pop__del { background: color-mix(in srgb, var(--ncm-danger, #ff3b5c) 18%, transparent) !important; color: var(--ncm-danger, #ff3b5c) !important; border: 1px solid var(--ncm-danger, #ff3b5c) !important; }
@@ -1878,7 +1914,7 @@
 .ncm-app .ncm-slog .ncm-cl-num { padding-top: 0; opacity: .5; }
 .ncm-app .ncm-slog__line.is-mark { background: rgba(247, 201, 72, .08); box-shadow: inset 2px 0 0 #f7c948; }
 .ncm-app button.ncm-slog__sev {
-  flex: 0 0 52px; font-family: var(--ncm-font-mono) !important; font-size: 8px !important; font-weight: 700;
+  flex: 0 0 52px; font-family: var(--ncm-font-mono) !important; font-size: calc(8px * var(--ncm-text-scale, 1)) !important; font-weight: 700;
   letter-spacing: 1px; padding: 2px 0 !important; border-radius: 3px !important; cursor: pointer;
   background: transparent !important; border: 1px solid currentColor !important; text-align: center;
 }
@@ -1889,7 +1925,7 @@
 .ncm-app .sev-debug .ncm-slog__sev { color: #555570 !important; }
 .ncm-app .ncm-slog__in {
   background: transparent !important; border: none !important; outline: none !important; box-shadow: none !important;
-  font-family: var(--ncm-font-mono) !important; font-size: 10.5px !important; padding: 2px 4px !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(10.5px * var(--ncm-text-scale, 1)) !important; padding: 2px 4px !important;
   color: var(--sp-text-bright, #e0e0e8) !important; min-height: auto !important;
 }
 .ncm-app .ncm-slog__in::placeholder { color: #3d3d52; }
@@ -1912,22 +1948,22 @@
 .ncm-app .ncm-credcard__host {
   background: transparent !important; border: none !important; border-bottom: 1px solid var(--sp-border, #2a2a45) !important;
   border-radius: 0 !important; box-shadow: none !important; outline: none !important; padding: 2px !important;
-  font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: 12.5px !important;
+  font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: calc(12.5px * var(--ncm-text-scale, 1)) !important;
   color: var(--sp-text-bright, #e0e0e8) !important; min-height: auto !important;
 }
 .ncm-app .ncm-credcard__line { display: flex; gap: 6px; align-items: center; }
-.ncm-app .ncm-credcard__user { flex: 1; font-family: var(--ncm-font-mono) !important; font-size: 10.5px !important; color: #19f3f7 !important; background: transparent !important; border: none !important; box-shadow: none !important; padding: 2px !important; min-height: auto !important; }
+.ncm-app .ncm-credcard__user { flex: 1; font-family: var(--ncm-font-mono) !important; font-size: calc(10.5px * var(--ncm-text-scale, 1)) !important; color: #19f3f7 !important; background: transparent !important; border: none !important; box-shadow: none !important; padding: 2px !important; min-height: auto !important; }
 .ncm-app .ncm-credcard__secretwrap { flex: 1; display: flex; align-items: center; gap: 3px; min-width: 0; }
-.ncm-app .ncm-credcard__secret { flex: 1; min-width: 0; font-family: var(--ncm-font-mono) !important; font-size: 10.5px !important; color: #f7c948 !important; background: transparent !important; border: none !important; box-shadow: none !important; padding: 2px !important; min-height: auto !important; }
+.ncm-app .ncm-credcard__secret { flex: 1; min-width: 0; font-family: var(--ncm-font-mono) !important; font-size: calc(10.5px * var(--ncm-text-scale, 1)) !important; color: #f7c948 !important; background: transparent !important; border: none !important; box-shadow: none !important; padding: 2px !important; min-height: auto !important; }
 .ncm-app button.ncm-credcard__eye { flex: 0 0 auto; width: 20px !important; height: 20px !important; padding: 0 !important; display: grid !important; place-items: center; background: transparent !important; border: none !important; color: var(--sp-text-muted, #555570) !important; cursor: pointer; box-shadow: none !important; min-height: auto !important; }
 .ncm-app button.ncm-credcard__eye:hover { color: var(--sp-accent, #19f3f7) !important; }
-.ncm-app .ncm-credcard__note { font-size: 10px !important; color: var(--sp-text-muted, #8888a0) !important; background: transparent !important; border: none !important; box-shadow: none !important; padding: 2px !important; min-height: auto !important; }
+.ncm-app .ncm-credcard__note { font-size: calc(10px * var(--ncm-text-scale, 1)) !important; color: var(--sp-text-muted, #8888a0) !important; background: transparent !important; border: none !important; box-shadow: none !important; padding: 2px !important; min-height: auto !important; }
 .ncm-app .ncm-credcard__foot { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
 .ncm-app .ncm-credcard__pips { display: inline-flex; gap: 3px; }
 .ncm-app button.ncm-credcard__pip { width: 14px !important; height: 6px !important; padding: 0 !important; border-radius: 2px !important; background: rgba(136, 136, 160, .2) !important; border: none !important; cursor: pointer; box-shadow: none !important; min-height: auto !important; }
 .ncm-app button.ncm-credcard__pip.on { background: #00ff41 !important; }
 .ncm-app button.ncm-credcard__lock {
-  margin-left: auto; font-family: var(--ncm-font-mono) !important; font-size: 8px !important; letter-spacing: 1px;
+  margin-left: auto; font-family: var(--ncm-font-mono) !important; font-size: calc(8px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1px;
   padding: 2px 7px !important; border-radius: 4px !important; cursor: pointer; box-shadow: none !important; min-height: auto !important;
   background: transparent !important; border: 1px solid var(--sp-border, #2a2a45) !important; color: var(--sp-text-muted, #555570) !important;
   width: auto !important; flex: 0 0 auto !important;
@@ -1950,27 +1986,27 @@
 .ncm-app .ncm-galcard.is-locked .ncm-galcard__thumb { filter: blur(7px) brightness(.5); }
 .ncm-app .ncm-galcard__empty {
   position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
-  font-family: var(--ncm-font-mono); font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 1.5px;
   color: var(--sp-text-muted, #6a6a85);
 }
 /* ⋮⋮ — the only draggable element (a draggable CARD would break text selection). */
 .ncm-app .ncm-galcard__drag {
   position: absolute; top: 3px; left: 3px; z-index: 2;
   display: grid; place-items: center; width: 17px; height: 17px;
-  font-size: 9px; color: rgba(255, 255, 255, .6);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: rgba(255, 255, 255, .6);
   background: rgba(5, 5, 10, .65); border-radius: 3px; cursor: grab;
 }
 .ncm-app .ncm-galcard__drag:active { cursor: grabbing; }
 .ncm-app .ncm-galcard__num.ncm-cl-num {
   position: absolute; bottom: 3px; left: 3px; z-index: 2; pointer-events: none;
   width: auto; height: auto; min-width: 0; margin: 0; padding: 0 5px; flex: 0 0 auto;
-  font-family: var(--ncm-font-mono); font-size: 8px; font-weight: 700; line-height: 1.7;
+  font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700; line-height: 1.7;
   color: var(--sp-text-muted, #8a8aa5); background: rgba(5, 5, 10, .65); border-radius: 3px;
 }
 .ncm-app .ncm-galcard__badges { position: absolute; top: 3px; right: 3px; z-index: 2; display: flex; gap: 3px; }
 .ncm-app button.ncm-galcard__badge {
   width: 20px !important; height: 20px !important; padding: 0 !important; display: grid !important; place-items: center;
-  border-radius: 4px !important; font-size: 9px !important; cursor: pointer; box-shadow: none !important; min-height: auto !important;
+  border-radius: 4px !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important; cursor: pointer; box-shadow: none !important; min-height: auto !important;
   background: rgba(0, 0, 0, .65) !important; border: 1px solid rgba(255, 255, 255, .15) !important; color: #666 !important;
 }
 .ncm-app .ncm-galcard.is-flagged .ncm-galcard__badge--flag { color: #f7c948 !important; border-color: #f7c948 !important; }
@@ -2000,7 +2036,7 @@
   height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 3px 6px !important;
   background: transparent !important; border: 1px dashed var(--sp-border, #2a2a45) !important; border-radius: 4px !important;
   box-shadow: none !important; cursor: pointer; line-height: 1.3;
-  font-family: var(--ncm-font-mono); font-size: 8px; letter-spacing: .5px;
+  font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); letter-spacing: .5px;
   color: var(--sp-text-muted, #8a8aa5) !important;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -2012,14 +2048,14 @@
 /* Gallery toolbar row (Add image · Import folder) + the segmented control. */
 .ncm-app .ncm-galgrid-actions { display: flex; gap: 6px; margin-top: 6px; }
 .ncm-app .ncm-galgrid-actions .ncm-cl-add { margin-top: 0; }
-.ncm-app button.ncm-cl-add--amber { color: #f7c948 !important; border-color: rgba(247, 201, 72, .45) !important; }
+.ncm-app button.ncm-cl-add--amber { color: var(--ncm-accent) !important; border-color: color-mix(in srgb, var(--ncm-accent) 45%, transparent) !important; }
 .ncm-app .ncm-gal-seg { display: inline-flex; border: 1px solid var(--sp-border, #2a2a45); border-radius: 4px; overflow: hidden; height: 22px; width: fit-content; }
 .ncm-app .ncm-gal-seg button {
   appearance: none !important; width: auto !important; flex: 0 0 auto !important;
   height: 100% !important; min-height: 0 !important; margin: 0 !important; padding: 0 10px !important;
   background: transparent !important; border: none !important; border-radius: 0 !important;
   box-shadow: none !important; cursor: pointer; line-height: 1;
-  font-family: var(--ncm-font-mono); font-size: 8.5px; font-weight: 700; letter-spacing: 1px;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 1px;
   color: var(--sp-text-muted, #8a8aa5) !important;
 }
 .ncm-app .ncm-gal-seg button.is-on { background: var(--sp-primary, #a855f7) !important; color: #0a0a12 !important; }
@@ -2035,13 +2071,13 @@
 .ncm-app .ncm-docpara:hover { border-color: var(--sp-border, #2a2a45); }
 .ncm-app .ncm-docpara__h {
   background: transparent !important; border: none !important; box-shadow: none !important; outline: none !important; padding: 1px 2px !important; min-height: auto !important;
-  font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: 13px !important; letter-spacing: .5px;
+  font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px;
   color: var(--sp-text-bright, #e0e0e8) !important; text-transform: uppercase;
 }
 .ncm-app .ncm-docpara__h::placeholder { text-transform: none; font-weight: 400; color: #44445c; }
 .ncm-app .ncm-docpara__t {
   background: transparent !important; border: none !important; box-shadow: none !important; outline: none !important; padding: 1px 2px !important;
-  font-family: var(--ncm-font-body) !important; font-size: 12px !important; line-height: 1.55; resize: vertical;
+  font-family: var(--ncm-font-body) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; line-height: 1.55; resize: vertical;
   color: var(--sp-text-body, #b9b9cc) !important; min-height: 34px;
 }
 .ncm-app .ncm-docpara.is-quote .ncm-docpara__t { border-left: 3px solid var(--sp-accent, #19f3f7) !important; padding-left: 9px !important; font-style: italic; }
@@ -2067,7 +2103,7 @@
 .ncm-app .ncm-reckinds { display: inline-flex; gap: 5px; flex-wrap: wrap; }
 .ncm-app button.ncm-reckind {
   width: auto !important; min-height: auto !important; box-shadow: none !important; background-image: none !important;
-  font-family: var(--ncm-font-mono) !important; font-size: 9.5px !important; letter-spacing: .5px; padding: 3px 10px !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(9.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px; padding: 3px 10px !important;
   border-radius: 20px !important; cursor: pointer;
   color: var(--sp-text-body, #b9b9cc) !important; background: var(--sp-bg-deep, #0a0a12) !important; border: 1px solid var(--sp-border, #2a2a45) !important;
 }
@@ -2084,32 +2120,32 @@
   background: rgba(25, 243, 247, .08) !important; border: 1px solid rgba(25, 243, 247, .4) !important;
 }
 .ncm-app .ncm-reccard__portrait-tile img { width: 100%; height: 100%; object-fit: cover; }
-.ncm-app .ncm-reccard__init { font-family: var(--ncm-font-display); font-weight: 700; font-size: 15px; color: #19f3f7; }
-.ncm-app .ncm-reccard__cam { position: absolute; bottom: 1px; right: 1px; font-size: 7px; color: #b9b9cc; background: rgba(0,0,0,.65); border-radius: 3px; padding: 1px 3px; }
+.ncm-app .ncm-reccard__init { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(15px * var(--ncm-text-scale, 1)); color: #19f3f7; }
+.ncm-app .ncm-reccard__cam { position: absolute; bottom: 1px; right: 1px; font-size: calc(7px * var(--ncm-text-scale, 1)); color: #b9b9cc; background: rgba(0,0,0,.65); border-radius: 3px; padding: 1px 3px; }
 .ncm-app .ncm-reccard__idcol { flex: 1; min-width: 0; }
 .ncm-app .ncm-reccard__namerow { display: flex; gap: 6px; align-items: center; }
 .ncm-app button.ncm-reccard__chev, .ncm-app button.ncm-reccard__dupe {
-  width: auto !important; flex: 0 0 auto; padding: 3px 6px !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer; font-size: 10px !important;
+  width: auto !important; flex: 0 0 auto; padding: 3px 6px !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer; font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   background: transparent !important; border: 1px solid var(--sp-border, #2a2a45) !important; border-radius: 5px !important; color: var(--sp-text-muted, #7a7a92) !important;
 }
 .ncm-app button.ncm-reccard__chev:hover, .ncm-app button.ncm-reccard__dupe:hover { color: #19f3f7 !important; border-color: #19f3f7 !important; }
 /* collapsed: header only (chevron + name + status stay; fields/palette/summary-count) */
-.ncm-app .ncm-reccard__collapsed { display: none; font-family: var(--ncm-font-mono); font-size: 9px; color: var(--sp-text-muted, #7a7a92); letter-spacing: 1px; padding: 4px 2px 0; }
+.ncm-app .ncm-reccard__collapsed { display: none; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted, #7a7a92); letter-spacing: 1px; padding: 4px 2px 0; }
 .ncm-app .ncm-reccard.is-collapsed .ncm-reccard__fields,
 .ncm-app .ncm-reccard.is-collapsed .ncm-recpalette { display: none; }
 .ncm-app .ncm-reccard.is-collapsed .ncm-reccard__collapsed { display: block; }
 .ncm-app .ncm-reccard__name {
   flex: 1; min-width: 0; background: transparent !important; border: none !important; border-bottom: 1px solid var(--sp-border, #2a2a45) !important; box-shadow: none !important; padding: 2px 2px !important; min-height: auto !important;
-  font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: 14px !important; color: var(--sp-text-bright, #e0e0e8) !important;
+  font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: calc(14px * var(--ncm-text-scale, 1)) !important; color: var(--sp-text-bright, #e0e0e8) !important;
 }
 .ncm-app button.ncm-reccard__status {
-  width: auto !important; flex: 0 0 auto; font-family: var(--ncm-font-mono) !important; font-size: 8.5px !important; letter-spacing: 1px; text-transform: uppercase;
+  width: auto !important; flex: 0 0 auto; font-family: var(--ncm-font-mono) !important; font-size: calc(8.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1px; text-transform: uppercase;
   padding: 3px 8px !important; border-radius: 5px !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer;
   background: rgba(136,136,160,.1) !important; border: 1px solid var(--sp-border, #2a2a45) !important; color: var(--sp-text-body, #b9b9cc) !important;
 }
-.ncm-app button.ncm-reccard__status i { font-size: 8px; opacity: .7; margin-left: 3px; }
+.ncm-app button.ncm-reccard__status i { font-size: calc(8px * var(--ncm-text-scale, 1)); opacity: .7; margin-left: 3px; }
 .ncm-app button.ncm-reccard__flagbtn, .ncm-app button.ncm-reccard__rm {
-  width: auto !important; flex: 0 0 auto; padding: 3px 6px !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer; font-size: 10px !important;
+  width: auto !important; flex: 0 0 auto; padding: 3px 6px !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer; font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   background: transparent !important; border: 1px solid var(--sp-border, #2a2a45) !important; border-radius: 5px !important; color: var(--sp-text-muted, #7a7a92) !important;
 }
 .ncm-app button.ncm-reccard__flagbtn.on { color: #ff3355 !important; border-color: #ff3355 !important; }
@@ -2118,15 +2154,15 @@
 .ncm-app .ncm-reccard__fields { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 0; }
 .ncm-app .ncm-recfield { display: flex; align-items: center; gap: 7px; background: var(--sp-bg-panel, #12121a); border: 1px solid var(--sp-border, #2a2a45); border-radius: 6px; padding: 4px 8px; }
 .ncm-app .ncm-recfield--full { flex-wrap: wrap; }
-.ncm-app .ncm-recfield__ic { flex: 0 0 15px; text-align: center; color: #19f3f7; font-size: 11px; }
-.ncm-app .ncm-recfield__lbl { flex: 0 0 74px; font-family: var(--ncm-font-mono); font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--sp-text-muted, #7a7a92); }
+.ncm-app .ncm-recfield__ic { flex: 0 0 15px; text-align: center; color: var(--ncm-secondary); font-size: calc(11px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-recfield__lbl { flex: 0 0 74px; font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; text-transform: uppercase; color: var(--sp-text-muted, #7a7a92); }
 .ncm-app .ncm-recfield__val, .ncm-app .ncm-recfield__key {
   flex: 1; min-width: 0; background: transparent !important; border: none !important; box-shadow: none !important; min-height: auto !important; padding: 2px !important;
-  font-family: var(--ncm-font-body) !important; font-size: 12px !important; color: var(--sp-text-body, #b9b9cc) !important; text-align: left !important;
+  font-family: var(--ncm-font-body) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; color: var(--sp-text-body, #b9b9cc) !important; text-align: left !important;
 }
 .ncm-app textarea.ncm-recfield__val { flex-basis: 100%; }
-.ncm-app .ncm-recfield__date { flex: 1; display: flex; align-items: center; gap: 6px; color: #f7c948; font-family: var(--ncm-font-mono); font-size: 11px; cursor: pointer; }
-.ncm-app button.ncm-recfield__rm { width: auto !important; flex: 0 0 auto; padding: 2px 5px !important; min-height: auto !important; box-shadow: none !important; background: transparent !important; border: none !important; color: var(--sp-text-muted, #7a7a92) !important; cursor: pointer; opacity: .5; font-size: 10px !important; }
+.ncm-app .ncm-recfield__date { flex: 1; display: flex; align-items: center; gap: 6px; color: var(--ncm-accent); font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); cursor: pointer; }
+.ncm-app button.ncm-recfield__rm { width: auto !important; flex: 0 0 auto; padding: 2px 5px !important; min-height: auto !important; box-shadow: none !important; background: transparent !important; border: none !important; color: var(--sp-text-muted, #7a7a92) !important; cursor: pointer; opacity: .5; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; }
 .ncm-app .ncm-recfield:hover button.ncm-recfield__rm { opacity: 1; }
 .ncm-app button.ncm-recfield__rm:hover { color: #ff3355 !important; }
 /* threat/rating pips */
@@ -2134,15 +2170,15 @@
 .ncm-app button.ncm-recfield__pip { width: auto !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; padding: 0 !important; cursor: pointer; border-radius: 2px !important; background: var(--sp-border, #2a2a45) !important; border: none !important; }
 .ncm-app button.ncm-recfield__pip--sq { width: 9px !important; height: 13px !important; }
 .ncm-app button.ncm-recfield__pip--star { width: 12px !important; height: 12px !important; border-radius: 50% !important; }
-.ncm-app button.ncm-recfield__pip.on { background: #f7c948 !important; }
+.ncm-app button.ncm-recfield__pip.on { background: var(--ncm-accent) !important; }
 /* flag toggle */
-.ncm-app button.ncm-recfield__toggle { width: auto !important; flex: 0 0 auto; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer; padding: 2px 10px !important; border-radius: 5px !important; font-family: var(--ncm-font-mono) !important; font-size: 9px !important; letter-spacing: 1px; background: transparent !important; border: 1px solid var(--sp-border, #2a2a45) !important; color: var(--sp-text-muted, #7a7a92) !important; }
+.ncm-app button.ncm-recfield__toggle { width: auto !important; flex: 0 0 auto; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer; padding: 2px 10px !important; border-radius: 5px !important; font-family: var(--ncm-font-mono) !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1px; background: transparent !important; border: 1px solid var(--sp-border, #2a2a45) !important; color: var(--sp-text-muted, #7a7a92) !important; }
 .ncm-app button.ncm-recfield__toggle.on { color: #ff3355 !important; border-color: #ff3355 !important; font-weight: 700 !important; }
 /* +field palette */
 .ncm-app .ncm-recpalette { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .ncm-app button.ncm-recaddf {
   width: auto !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer;
-  font-family: var(--ncm-font-mono) !important; font-size: 9px !important; padding: 2px 7px !important; border-radius: 5px !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important; padding: 2px 7px !important; border-radius: 5px !important;
   color: var(--sp-text-body, #b9b9cc) !important; background: transparent !important; border: 1px dashed var(--sp-border, #2a2a45) !important;
 }
 .ncm-app button.ncm-recaddf:hover { border-style: solid !important; border-color: #19f3f7 !important; color: #19f3f7 !important; }
@@ -2152,7 +2188,7 @@
 .ncm-app .ncm-rec-actions__spacer { flex: 1; }
 .ncm-app button.ncm-rec-csvbtn {
   width: auto !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer;
-  font-family: var(--ncm-font-mono) !important; font-size: 9px !important; letter-spacing: .5px; padding: 4px 9px !important; border-radius: 5px !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px; padding: 4px 9px !important; border-radius: 5px !important;
   color: var(--sp-text-body, #b9b9cc) !important; background: transparent !important; border: 1px solid var(--sp-border, #2a2a45) !important;
 }
 .ncm-app button.ncm-rec-csvbtn:hover { border-color: #19f3f7 !important; color: #19f3f7 !important; }
@@ -2166,13 +2202,13 @@
   width: auto !important; flex: 0 0 auto !important; height: 22px !important; min-height: 0 !important;
   margin: 0 !important; padding: 0 10px !important; background: var(--sp-bg-dark, #0a0a12) !important;
   border: 0 !important; border-radius: 0 !important; box-shadow: none !important; cursor: pointer;
-  font-size: 10px; color: var(--sp-text-dim, #7a7a92) !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-dim, #7a7a92) !important;
 }
 .ncm-app button.ncm-calseg__btn.is-on { background: color-mix(in srgb, var(--sp-accent, #19f3f7) 80%, transparent) !important; color: var(--sp-bg-dark, #0a0a12) !important; }
 .ncm-app .ncm-calcats-lbl { display: block; margin: 8px 0 4px; }
 .ncm-app .ncm-calcats { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 10px; }
 .ncm-app .ncm-calcat {
-  display: inline-flex; align-items: center; gap: 6px; font-family: var(--ncm-font-mono); font-size: 10px;
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1));
   color: var(--sp-text-bright, #e0e0e8); background: var(--sp-bg-dark, #0a0a12);
   border: 1px solid var(--sp-border, #2a2a45); border-radius: 12px; padding: 3px 8px 3px 4px;
 }
@@ -2185,15 +2221,15 @@
 .ncm-app button.ncm-calcat__rm {
   width: auto !important; flex: 0 0 auto !important; height: auto !important; min-height: 0 !important;
   margin: 0 !important; padding: 0 2px !important; background: none !important; border: 0 !important;
-  box-shadow: none !important; cursor: pointer; font-size: 8px; color: var(--sp-text-dim, #7a7a92) !important;
+  box-shadow: none !important; cursor: pointer; font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--sp-text-dim, #7a7a92) !important;
 }
-.ncm-app button.ncm-calcat__rm:hover { color: #F65261 !important; }
+.ncm-app button.ncm-calcat__rm:hover { color: var(--ncm-primary) !important; }
 .ncm-app button.ncm-calcat-new {
   width: auto !important; flex: 0 0 auto !important; height: auto !important; min-height: 0 !important;
   margin: 0 !important; padding: 3px 10px !important; background: transparent !important;
   border: 1px dashed var(--sp-border, #2a2a45) !important; border-radius: 12px !important;
   box-shadow: none !important; cursor: pointer;
-  font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-dim, #7a7a92) !important;
+  font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-dim, #7a7a92) !important;
 }
 .ncm-app button.ncm-calcat-new:hover { border-color: var(--sp-accent, #19f3f7) !important; color: var(--sp-accent, #19f3f7) !important; }
 .ncm-app .ncm-calcat-inp { width: 130px !important; height: 22px !important; }
@@ -2206,8 +2242,8 @@
 }
 .ncm-app .ncm-calev.is-past { opacity: .55; }
 .ncm-app .ncm-calev__datecol { flex: 0 0 44px; text-align: center; border-right: 1px solid var(--sp-border, #2a2a45); padding: 2px 8px 0 0; }
-.ncm-app .ncm-calev__day { display: block; font-family: var(--ncm-font-title); font-weight: 700; font-size: 18px; line-height: 1; color: var(--ct-c, #19f3f7); }
-.ncm-app .ncm-calev__mon { display: block; font-family: var(--ncm-font-mono); font-size: 8px; letter-spacing: 2px; color: var(--sp-text-dim, #7a7a92); margin-top: 2px; }
+.ncm-app .ncm-calev__day { display: block; font-family: var(--ncm-font-title); font-weight: 700; font-size: calc(18px * var(--ncm-text-scale, 1)); line-height: 1; color: var(--ct-c, #19f3f7); }
+.ncm-app .ncm-calev__mon { display: block; font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); letter-spacing: 2px; color: var(--sp-text-dim, #7a7a92); margin-top: 2px; }
 .ncm-app .ncm-calev__body { flex: 1; min-width: 0; }
 .ncm-app .ncm-calev__row { display: flex; gap: 6px; margin-bottom: 6px; }
 .ncm-app .ncm-calev__row input { flex: 1; min-width: 0; }
@@ -2215,18 +2251,18 @@
 .ncm-app .ncm-calev__title {
   flex: 1; min-width: 0; background: transparent !important; border: none !important; box-shadow: none !important;
   padding: 1px 2px !important; min-height: auto !important; height: auto !important;
-  font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: 12.5px !important; color: var(--sp-text-bright, #e0e0e8) !important;
+  font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: calc(12.5px * var(--ncm-text-scale, 1)) !important; color: var(--sp-text-bright, #e0e0e8) !important;
 }
 .ncm-app .ncm-calev__cats { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 6px; }
-.ncm-app .ncm-calev__catlbl { font-family: var(--ncm-font-mono); font-size: 8px; letter-spacing: 1px; color: var(--sp-text-dim, #7a7a92); margin-right: 2px; }
-.ncm-app .ncm-calev__nocat { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--sp-text-dim, #7a7a92); font-style: italic; }
+.ncm-app .ncm-calev__catlbl { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--sp-text-dim, #7a7a92); margin-right: 2px; }
+.ncm-app .ncm-calev__nocat { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--sp-text-dim, #7a7a92); font-style: italic; }
 .ncm-app button.ncm-calev__pk {
   width: auto !important; flex: 0 0 auto !important; height: auto !important; min-height: 0 !important;
   display: inline-flex; align-items: center; gap: 4px;
   margin: 0 !important; padding: 2px 8px !important; background: var(--sp-bg-dark, #0a0a12) !important;
   border: 1px solid var(--sp-border, #2a2a45) !important; border-radius: 10px !important;
   box-shadow: none !important; cursor: pointer;
-  font-family: var(--ncm-font-mono); font-size: 9px; line-height: 1.4; color: var(--sp-text-mid, #b9b9cc) !important;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); line-height: 1.4; color: var(--sp-text-mid, #b9b9cc) !important;
 }
 .ncm-app button.ncm-calev__pk .ncm-calev__pkdot { width: 6px; height: 6px; border-radius: 50%; background: var(--ct-c, #19f3f7); }
 .ncm-app button.ncm-calev__pk.is-on {
@@ -2238,7 +2274,7 @@
   border: 1px dashed color-mix(in srgb, #f7c948 40%, transparent); border-radius: 5px; background: rgba(247, 201, 72, .04);
 }
 .ncm-app .ncm-calev__lockrow[hidden] { display: none !important; } /* the [hidden]-vs-display gotcha */
-.ncm-app .ncm-calev__lockrow label { font-family: var(--ncm-font-mono); font-size: 8px; letter-spacing: 1px; color: #f7c948; }
+.ncm-app .ncm-calev__lockrow label { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: #f7c948; }
 .ncm-app .ncm-calev__lockrow .ncm-calev__trace { display: inline-flex; align-items: center; gap: 4px; color: var(--sp-text-dim, #7a7a92); white-space: nowrap; }
 .ncm-app .ncm-calev__skill { flex: 0 0 150px; }
 .ncm-app .ncm-calev__dv { flex: 0 0 56px; }
@@ -2250,13 +2286,13 @@
   margin: 0 !important; padding: 0 7px !important; background: var(--sp-bg-dark, #0a0a12) !important;
   border: 1px solid var(--sp-border, #2a2a45) !important; border-radius: 4px !important;
   box-shadow: none !important; cursor: pointer;
-  font-family: var(--ncm-font-mono); font-size: 9px; line-height: 1; color: var(--sp-text-dim, #7a7a92) !important;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); line-height: 1; color: var(--sp-text-dim, #7a7a92) !important;
 }
 .ncm-app button.ncm-calev__tool:hover { border-color: var(--sp-accent, #19f3f7) !important; color: var(--sp-accent, #19f3f7) !important; }
 .ncm-app button.ncm-calev__tool.is-on { border-color: color-mix(in srgb, #f7c948 60%, transparent) !important; color: #f7c948 !important; background: rgba(247, 201, 72, .07) !important; }
 .ncm-app button.ncm-calev__tool--danger:hover { border-color: #F65261 !important; color: #F65261 !important; }
 /* Collapsed card: one summary line + the footer stays reachable. */
-.ncm-app .ncm-calev__sum { display: none; font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-mid, #b9b9cc); padding: 2px 0 4px; }
+.ncm-app .ncm-calev__sum { display: none; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-mid, #b9b9cc); padding: 2px 0 4px; }
 .ncm-app .ncm-calev.is-collapsed .ncm-calev__sum { display: block; }
 .ncm-app .ncm-calev.is-collapsed .ncm-calev__main { display: none; }
 .ncm-app .ncm-calbar { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
@@ -2270,7 +2306,7 @@
 .ncm-app .ncm-bankrow__desc { flex: 1; min-width: 0; }
 .ncm-app .ncm-bankrow__cat { flex: 0 0 92px; }
 .ncm-app button.ncm-bankrow__type {
-  flex: 0 0 68px; font-family: var(--ncm-font-mono) !important; font-size: 8.5px !important; letter-spacing: .5px;
+  flex: 0 0 68px; font-family: var(--ncm-font-mono) !important; font-size: calc(8.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px;
   padding: 3px 0 !important; border-radius: 4px !important; cursor: pointer; text-align: center; box-shadow: none !important; min-height: auto !important;
   background: rgba(255, 51, 85, .08) !important; border: 1px solid rgba(255, 51, 85, .4) !important; color: #ff8899 !important;
 }
@@ -2284,7 +2320,7 @@
 .ncm-app .ncm-notepaper__tape { position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(1.5deg); width: 84px; height: 18px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .1); }
 .ncm-app .ncm-notepaper textarea {
   width: 100%; background: transparent !important; border: none !important; box-shadow: none !important; outline: none !important;
-  font-family: var(--ncm-font-body) !important; font-size: 13.5px !important; line-height: 1.6; color: #1a1408 !important; resize: vertical; min-height: 110px;
+  font-family: var(--ncm-font-body) !important; font-size: calc(13.5px * var(--ncm-text-scale, 1)) !important; line-height: 1.6; color: #1a1408 !important; resize: vertical; min-height: 110px;
 }
 .ncm-app .ncm-notepaper textarea::placeholder { color: rgba(0, 0, 0, .35); }
 .ncm-app .ncm-notepaper[data-paper="gold"] { background: #e8c96a; }
@@ -2304,38 +2340,38 @@
 .ncm-app .ncm-rte__toolbar { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; padding: 5px 6px; background: var(--sp-bg-surface, #1a1a2e); border-bottom: 1px solid var(--sp-border, #2a2a45); }
 .ncm-app button.ncm-rte__tool {
   width: auto !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer;
-  font-size: 11px !important; padding: 4px 7px !important; border-radius: 5px !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important; padding: 4px 7px !important; border-radius: 5px !important;
   color: var(--sp-text-body, #b9b9cc) !important; background: transparent !important; border: 1px solid transparent !important;
 }
-.ncm-app button.ncm-rte__tool:hover { color: #19f3f7 !important; background: var(--sp-bg-deep, #0a0a12) !important; border-color: var(--sp-border, #2a2a45) !important; }
-.ncm-app button.ncm-rte__tool.is-active { color: #19f3f7 !important; background: color-mix(in srgb, #19f3f7 12%, transparent) !important; border-color: color-mix(in srgb, #19f3f7 45%, transparent) !important; }
+.ncm-app button.ncm-rte__tool:hover { color: var(--ncm-secondary) !important; background: var(--sp-bg-deep, #0a0a12) !important; border-color: var(--sp-border, #2a2a45) !important; }
+.ncm-app button.ncm-rte__tool.is-active { color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 45%, transparent) !important; }
 .ncm-app .ncm-rte__sep { width: 1px; height: 16px; background: var(--sp-border, #2a2a45); margin: 0 3px; }
 .ncm-app .ncm-rte__surface {
   min-height: 120px; max-height: 320px; overflow-y: auto; overflow-x: hidden; padding: 10px 12px; outline: none;
-  font-family: var(--ncm-font-body); font-size: 13px; font-weight: 400; line-height: 1.5; color: var(--sp-text-body, #b9b9cc);
+  font-family: var(--ncm-font-body); font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 400; line-height: 1.5; color: var(--sp-text-body, #b9b9cc);
 }
 .ncm-app .ncm-rte__surface:empty::before { content: attr(data-placeholder); color: var(--sp-text-muted, #555570); font-style: italic; }
-.ncm-app .ncm-rte__surface:focus { box-shadow: inset 0 0 0 1px color-mix(in srgb, #19f3f7 30%, transparent); }
+.ncm-app .ncm-rte__surface:focus { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ncm-secondary) 30%, transparent); }
 /* Bold stands out clearly (base text is a touch dimmer so weight reads). */
 .ncm-app .ncm-rte__surface b, .ncm-app .ncm-rte__surface strong { font-weight: 800; color: var(--sp-text-bright, #ffffff); }
-.ncm-app .ncm-rte__surface h3 { font-family: var(--ncm-font-display); font-size: 15px; font-weight: 700; margin: 8px 0 4px; color: var(--sp-text-bright, #e0e0e8); }
-.ncm-app .ncm-rte__surface blockquote { margin: 6px 0; padding: 2px 10px; border-left: 3px solid color-mix(in srgb, #19f3f7 45%, transparent); color: var(--sp-text-body, #b9b9cc); font-style: italic; }
+.ncm-app .ncm-rte__surface h3 { font-family: var(--ncm-font-display); font-size: calc(15px * var(--ncm-text-scale, 1)); font-weight: 700; margin: 8px 0 4px; color: var(--sp-text-bright, #e0e0e8); }
+.ncm-app .ncm-rte__surface blockquote { margin: 6px 0; padding: 2px 10px; border-left: 3px solid color-mix(in srgb, var(--ncm-secondary) 45%, transparent); color: var(--sp-text-body, #b9b9cc); font-style: italic; }
 .ncm-app .ncm-rte__surface ul, .ncm-app .ncm-rte__surface ol { margin: 4px 0; padding-left: 22px; }
-.ncm-app .ncm-rte__surface a { color: #19f3f7; text-decoration: underline; }
+.ncm-app .ncm-rte__surface a { color: var(--ncm-secondary); text-decoration: underline; }
 .ncm-app .ncm-rte__pop { padding: 8px; background: var(--sp-bg-surface, #1a1a2e); border-top: 1px solid var(--sp-border, #2a2a45); }
 .ncm-app .ncm-rte__swatches { display: flex; flex-wrap: wrap; gap: 5px; }
 .ncm-app button.ncm-rte__swatch { width: 22px !important; height: 22px !important; min-height: auto !important; padding: 0 !important; box-shadow: none !important; background-image: none !important; border-radius: 5px !important; border: 1px solid rgba(255,255,255,.15) !important; cursor: pointer; }
 .ncm-app button.ncm-rte__swatch:hover { transform: scale(1.12); }
-.ncm-app button.ncm-rte__swatch--clear { background: var(--sp-bg-deep, #0a0a12) !important; color: var(--sp-text-muted, #7a7a92) !important; font-size: 10px !important; }
+.ncm-app button.ncm-rte__swatch--clear { background: var(--sp-bg-deep, #0a0a12) !important; color: var(--sp-text-muted, #7a7a92) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; }
 /* raw-HTML source mode */
 .ncm-app textarea.ncm-rte__sync {
   display: block; width: 100%; min-height: 140px; max-height: 320px; resize: vertical; border: none !important; box-shadow: none !important;
   background: var(--sp-bg-deep, #0a0a12) !important; color: #8fe3a0 !important; padding: 10px 12px !important;
-  font-family: var(--ncm-font-mono) !important; font-size: 12px !important; line-height: 1.5 !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; line-height: 1.5 !important;
 }
 .ncm-app .ncm-rte.is-raw .ncm-rte__tool[data-cmd], .ncm-app .ncm-rte.is-raw .ncm-rte__tool[data-action="rteLink"],
 .ncm-app .ncm-rte.is-raw .ncm-rte__tool[data-action="rteColor"], .ncm-app .ncm-rte.is-raw .ncm-rte__tool[data-action="rteEmoji"] { opacity: .35; pointer-events: none; }
-.ncm-app button.ncm-rte__tool--raw.is-active { color: #8fe3a0 !important; border-color: color-mix(in srgb, #00ff41 40%, transparent) !important; background: color-mix(in srgb, #00ff41 10%, transparent) !important; }
+.ncm-app button.ncm-rte__tool--raw.is-active { color: #8fe3a0 !important; border-color: color-mix(in srgb, var(--ncm-success) 40%, transparent) !important; background: color-mix(in srgb, var(--ncm-success) 10%, transparent) !important; }
 
 /* ── Chat Log WYSIWYG editor — write the conversation like a texting app.
    Bubbles mimic the player render; the owner's messages sit right. ── */
@@ -2347,7 +2383,7 @@
 }
 .ncm-app .ncm-chatedit__feed:empty::after {
   content: "No messages yet — type below and hit Enter, like you're texting.";
-  font-family: var(--ncm-font-body); font-size: 11px; color: var(--sp-text-muted, #555570);
+  font-family: var(--ncm-font-body); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted, #555570);
   font-style: italic; margin: auto;
 }
 .ncm-app .ncm-chatedit__msg {
@@ -2365,12 +2401,12 @@
   background: color-mix(in srgb, var(--sp-accent, #19f3f7) 9%, var(--sp-bg-surface, #1a1a2e));
   border-color: color-mix(in srgb, var(--sp-accent, #19f3f7) 35%, transparent);
 }
-.ncm-app .ncm-chatedit__msg.is-editing .ncm-chatedit__bubble { border-color: var(--sp-accent, #19f3f7); box-shadow: 0 0 8px rgba(25, 243, 247, .25); }
+.ncm-app .ncm-chatedit__msg.is-editing .ncm-chatedit__bubble { border-color: var(--sp-accent, #19f3f7); box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-secondary) 25%, transparent); }
 .ncm-app .ncm-chatedit__msg.is-del .ncm-chatedit__bubble { border-style: dashed; opacity: .55; }
 .ncm-app .ncm-chatedit__bubble:hover { border-color: var(--ncm-border-active, #3a3a5a); }
-.ncm-app .ncm-chatedit__from { font-family: var(--ncm-font-mono); font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--sp-accent, #19f3f7); }
-.ncm-app .ncm-chatedit__text { font-family: var(--ncm-font-body); font-size: 12px; color: var(--sp-text-bright, #e0e0e8); overflow-wrap: anywhere; }
-.ncm-app .ncm-chatedit__time { font-family: var(--ncm-font-mono); font-size: 8px; color: var(--sp-text-muted, #555570); align-self: flex-end; }
+.ncm-app .ncm-chatedit__from { font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; text-transform: uppercase; color: var(--sp-accent, #19f3f7); }
+.ncm-app .ncm-chatedit__text { font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--sp-text-bright, #e0e0e8); overflow-wrap: anywhere; }
+.ncm-app .ncm-chatedit__time { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted, #555570); align-self: flex-end; }
 .ncm-app .ncm-chatedit__tools { display: none; gap: 3px; flex: 0 0 auto; }
 .ncm-app .ncm-chatedit__msg:hover .ncm-chatedit__tools { display: inline-flex; }
 /* ── compose zone (cleaned up 2026-07-12): toolbar · sender · input ── */
@@ -2387,7 +2423,7 @@
 .ncm-app .ncm-chat-seg { display: inline-flex; background: var(--sp-bg-deep, #0a0a12); border: 1px solid var(--sp-border, #2a2a45); border-radius: 8px; overflow: hidden; }
 .ncm-app button.ncm-chat-seg-btn, .ncm-app .ncm-chat-seg button {
   width: auto !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer;
-  font-family: var(--ncm-font-mono) !important; font-size: 9.5px !important; padding: 5px 11px !important; border-radius: 0 !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(9.5px * var(--ncm-text-scale, 1)) !important; padding: 5px 11px !important; border-radius: 0 !important;
   color: var(--sp-text-muted, #7a7a92) !important; background: transparent !important; border: none !important; border-right: 1px solid var(--sp-border, #2a2a45) !important;
 }
 .ncm-app .ncm-chat-seg button:last-child { border-right: none !important; }
@@ -2398,7 +2434,7 @@
 /* photo attach chip */
 .ncm-app button.ncm-chat-attach {
   width: auto !important; flex: 0 0 auto; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer;
-  font-family: var(--ncm-font-mono) !important; font-size: 10px !important; padding: 6px 10px !important; border-radius: 8px !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; padding: 6px 10px !important; border-radius: 8px !important;
   color: var(--sp-text-body, #b9b9cc) !important; background: var(--sp-bg-deep, #0a0a12) !important; border: 1px solid var(--sp-border, #2a2a45) !important;
 }
 .ncm-app button.ncm-chat-attach.is-set { color: #19f3f7 !important; border-color: color-mix(in srgb, #19f3f7 40%, transparent) !important; }
@@ -2408,43 +2444,43 @@
 /* system + photo bubble variants in the editor */
 .ncm-app .ncm-chatedit__msg--system { justify-content: center; flex-direction: row !important; }
 .ncm-app .ncm-chatedit__msg--system .ncm-chatedit__bubble { background: var(--sp-bg-deep, #0a0a12); border-style: dashed; max-width: 100%; }
-.ncm-app .ncm-chatedit__sys { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-muted, #7a7a92); }
+.ncm-app .ncm-chatedit__sys { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted, #7a7a92); }
 .ncm-app .ncm-chatedit__sys i { margin-right: 5px; }
 .ncm-app .ncm-chatedit__msg--photo .ncm-chatedit__text i { margin-right: 4px; opacity: .8; }
 /* bubble reactions (editor) */
-.ncm-app .ncm-chatedit__reacts { font-size: 11px; align-self: center; }
+.ncm-app .ncm-chatedit__reacts { font-size: calc(11px * var(--ncm-text-scale, 1)); align-self: center; }
 .ncm-app .ncm-chatedit__msg.is-me .ncm-chatedit__reacts { order: -1; }
 /* sender row */
 .ncm-app .ncm-chatedit__srow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .ncm-app .ncm-chatedit__srow[hidden] { display: none; }
 .ncm-app button.ncm-chat-chip {
   width: auto !important; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 5px; font-family: var(--ncm-font-mono) !important; font-size: 10px !important; padding: 3px 9px !important; border-radius: 20px !important;
+  display: inline-flex; align-items: center; gap: 5px; font-family: var(--ncm-font-mono) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; padding: 3px 9px !important; border-radius: 20px !important;
   color: var(--sp-text-body, #b9b9cc) !important; background: var(--sp-bg-deep, #0a0a12) !important; border: 1px solid var(--sp-border, #2a2a45) !important;
 }
 .ncm-app button.ncm-chat-chip.is-on { color: #19f3f7 !important; border-color: #19f3f7 !important; background: rgba(25,243,247,.08) !important; }
 .ncm-app .ncm-chat-chip__dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .7; }
-.ncm-app .ncm-chat-chip__star { font-size: 8px; color: var(--sp-text-muted, #7a7a92); opacity: .5; }
+.ncm-app .ncm-chat-chip__star { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted, #7a7a92); opacity: .5; }
 .ncm-app button.ncm-chat-chip.is-owner .ncm-chat-chip__star { color: #f7c948; opacity: 1; }
 .ncm-app button.ncm-chat-chip--new { border-style: dashed !important; color: var(--sp-text-muted, #7a7a92) !important; }
 .ncm-app .ncm-chat-chips { display: inline-flex; gap: 5px; flex-wrap: wrap; }
 /* emoji button + palette */
-.ncm-app button.ncm-chat-emojibtn { width: auto !important; flex: 0 0 auto; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer; font-size: 14px !important; padding: 4px 8px !important; border-radius: 7px !important; background: var(--sp-bg-deep, #0a0a12) !important; border: 1px solid var(--sp-border, #2a2a45) !important; color: var(--sp-text-body, #b9b9cc) !important; }
+.ncm-app button.ncm-chat-emojibtn { width: auto !important; flex: 0 0 auto; min-height: auto !important; box-shadow: none !important; background-image: none !important; cursor: pointer; font-size: calc(14px * var(--ncm-text-scale, 1)) !important; padding: 4px 8px !important; border-radius: 7px !important; background: var(--sp-bg-deep, #0a0a12) !important; border: 1px solid var(--sp-border, #2a2a45) !important; color: var(--sp-text-body, #b9b9cc) !important; }
 .ncm-app button.ncm-chat-emojibtn:hover { border-color: #19f3f7 !important; }
 .ncm-app .ncm-chat-emojipop { margin: 8px 10px; padding: 8px; background: var(--sp-bg-deep, #0a0a12); border: 1px solid var(--sp-border, #2a2a45); border-radius: 8px; }
-.ncm-app .ncm-chat-emcat { font-family: var(--ncm-font-mono); font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--sp-text-muted, #7a7a92); margin: 4px 0 3px; }
+.ncm-app .ncm-chat-emcat { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); letter-spacing: 1px; text-transform: uppercase; color: var(--sp-text-muted, #7a7a92); margin: 4px 0 3px; }
 .ncm-app .ncm-chat-emgrid { display: flex; flex-wrap: wrap; gap: 2px; }
-.ncm-app button.ncm-chat-em { width: auto !important; min-height: auto !important; box-shadow: none !important; background: transparent !important; border: none !important; cursor: pointer; font-size: 16px !important; padding: 2px 4px !important; border-radius: 5px !important; }
+.ncm-app button.ncm-chat-em { width: auto !important; min-height: auto !important; box-shadow: none !important; background: transparent !important; border: none !important; cursor: pointer; font-size: calc(16px * var(--ncm-text-scale, 1)) !important; padding: 2px 4px !important; border-radius: 5px !important; }
 .ncm-app button.ncm-chat-em:hover { background: var(--sp-bg-surface, #1a1a2e) !important; }
 
 /* Labeled list cells + row numbers + thumbnails */
 .ncm-app .ncm-cl-cell { display: inline-flex; flex-direction: column; gap: 1px; min-width: 0; }
 .ncm-app .ncm-cl-cell--check { justify-content: flex-end; padding-bottom: 5px; flex: 0 0 auto; }
 .ncm-app .ncm-cl-lbl {
-  font-family: var(--ncm-font-mono); font-size: 7.5px; letter-spacing: .8px; text-transform: uppercase;
+  font-family: var(--ncm-font-mono); font-size: calc(7.5px * var(--ncm-text-scale, 1)); letter-spacing: .8px; text-transform: uppercase;
   color: var(--sp-text-muted, #555570); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.ncm-app .ncm-cl-num { align-self: flex-start; padding-top: 14px; width: 14px; text-align: center; font-family: var(--ncm-font-mono); font-size: 8.5px; color: var(--sp-text-muted, #555570); flex: 0 0 auto; }
+.ncm-app .ncm-cl-num { align-self: flex-start; padding-top: 14px; width: 14px; text-align: center; font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted, #555570); flex: 0 0 auto; }
 .ncm-app .ncm-cl-rm { align-self: flex-start; margin-top: 12px; opacity: .35; }
 .ncm-app .ncm-cl-row:hover .ncm-cl-rm { opacity: 1; }
 .ncm-app .ncm-cl-imgrow { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -2458,11 +2494,11 @@
   background: var(--ncm-bg-deep); padding: 12px; overflow-y: auto; overflow-x: hidden;
 }
 .ncm-app .ncm-composer-preview-label {
-  font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: 1.5px; text-transform: uppercase;
   color: var(--ncm-text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
 }
 .ncm-app .ncm-composer-preview-label i { color: var(--ncm-secondary); }
-.ncm-app .ncm-composer-preview-body { font-size: 12px; }
+.ncm-app .ncm-composer-preview-body { font-size: calc(12px * var(--ncm-text-scale, 1)); }
 .ncm-app .ncm-cl-list { display: flex; flex-direction: column; gap: 6px; }
 /* Rows are separated cards now (labels sit above inputs → bottom-align cells). */
 .ncm-app .ncm-cl-row {
@@ -2475,13 +2511,13 @@
 .ncm-app .ncm-cl-brk { flex-basis: 100%; height: 0; }
 .ncm-app .ncm-cl-check {
   display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; white-space: nowrap;
-  font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted);
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
 }
 /* Real <button> — needs the full Foundry/CPR override treatment (!important
    visuals like .ncm-shard-btn) or it renders as the native full-width button. */
 .ncm-app .ncm-cl-add {
   margin: 7px 0 0 !important; padding: 5px 10px !important;
-  font-family: var(--ncm-font-mono) !important; font-size: 9.5px !important; letter-spacing: .5px !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(9.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px !important;
   color: var(--ncm-secondary) !important;
   background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
   border: 1px dashed color-mix(in srgb, var(--ncm-secondary) 45%, transparent) !important;
@@ -2502,12 +2538,12 @@
   border-left: 3px solid var(--ncm-secondary);
   background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
 }
-.ncm-app .ncm-composer-intro__icon { color: var(--ncm-secondary); font-size: 13px; margin-top: 1px; flex: 0 0 auto; }
+.ncm-app .ncm-composer-intro__icon { color: var(--ncm-secondary); font-size: calc(13px * var(--ncm-text-scale, 1)); margin-top: 1px; flex: 0 0 auto; }
 .ncm-app .ncm-composer-intro__what {
-  font-family: var(--ncm-font-display); font-size: 12.5px; font-weight: 600; color: var(--ncm-text-primary); line-height: 1.35;
+  font-family: var(--ncm-font-display); font-size: calc(12.5px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary); line-height: 1.35;
 }
 .ncm-app .ncm-composer-intro__how {
-  font-family: var(--ncm-font-body); font-size: 11px; color: var(--ncm-text-secondary); margin-top: 3px; line-height: 1.4;
+  font-family: var(--ncm-font-body); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); margin-top: 3px; line-height: 1.4;
 }
 .ncm-app .ncm-composer-intro__how b { color: var(--ncm-secondary); font-weight: 600; }
 
@@ -2526,44 +2562,44 @@
   line-height: 1 !important; cursor: pointer !important;
 }
 .ncm-app button.ncm-ss-tb {
-  width: 24px !important; height: 22px !important; border-radius: 4px !important; font-size: 10px !important;
+  width: 24px !important; height: 22px !important; border-radius: 4px !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   display: inline-grid !important; place-items: center !important;
   background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important;
   color: var(--ncm-text-secondary) !important;
 }
 .ncm-app button.ncm-ss-tb:hover { color: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; }
-.ncm-app .ncm-ss-tlbl { font-family: var(--ncm-font-mono); font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--ncm-text-muted); }
+.ncm-app .ncm-ss-tlbl { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); letter-spacing: 1px; text-transform: uppercase; color: var(--ncm-text-muted); }
 .ncm-app .ncm-ss-tsep { width: 1px; height: 16px; background: var(--ncm-border); margin: 0 2px; }
 .ncm-app .ncm-ss-dots { display: inline-flex; gap: 3px; }
 /* The fill-swatch background comes from ncm-ct-bg--x (content-types.css) —
    equal specificity + !important, but that file imports LATER so it wins the
    tie over this default. Don't reorder the @imports. */
 .ncm-app button.ncm-ss-dot {
-  width: 16px !important; height: 16px !important; border-radius: 3px !important; font-size: 8px !important;
+  width: 16px !important; height: 16px !important; border-radius: 3px !important; font-size: calc(8px * var(--ncm-text-scale, 1)) !important;
   display: inline-grid !important; place-items: center !important;
   background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important;
 }
 .ncm-app button.ncm-ss-dot:hover { border-color: var(--ncm-text-secondary) !important; }
-.ncm-app .ncm-ss-reason { flex: 1; min-width: 90px; font-size: 10px !important; padding: 3px 6px !important; }
+.ncm-app .ncm-ss-reason { flex: 1; min-width: 90px; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; padding: 3px 6px !important; }
 
 .ncm-app .ncm-ss-gridwrap { max-height: 300px; overflow-y: auto; overflow-x: auto; border: 1px solid var(--ncm-border); border-radius: 6px; }
-.ncm-app .ncm-ss-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.ncm-app .ncm-ss-table { width: 100%; border-collapse: collapse; font-size: calc(11px * var(--ncm-text-scale, 1)); }
 .ncm-app .ncm-ss-table th, .ncm-app .ncm-ss-table td { border: 1px solid var(--ncm-border); padding: 0; }
 .ncm-app .ncm-ss-colh { background: var(--ncm-bg-elevated); padding: 4px !important; min-width: 76px; vertical-align: top; }
 .ncm-app .ncm-ss-collbl {
   width: 100%; border: none !important; background: transparent !important; box-shadow: none !important;
-  font-family: var(--ncm-font-mono); font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .5px;
   color: var(--ncm-text-primary); padding: 2px 3px; min-height: 0; height: auto;
 }
 .ncm-app .ncm-ss-colops { display: flex; align-items: center; gap: 3px; margin-top: 3px; }
 .ncm-app .ncm-ss-coltype {
-  flex: 1; min-width: 0; font-family: var(--ncm-font-mono); font-size: 9px !important;
+  flex: 1; min-width: 0; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)) !important;
   padding: 1px 2px !important; min-height: 0 !important; height: auto !important;
   background-color: var(--ncm-bg-deep) !important; color: var(--ncm-text-muted) !important;
   border: 1px solid var(--ncm-border) !important;
 }
 .ncm-app button.ncm-ss-mini {
-  width: 16px !important; height: 16px !important; border-radius: 3px !important; font-size: 8px !important;
+  width: 16px !important; height: 16px !important; border-radius: 3px !important; font-size: calc(8px * var(--ncm-text-scale, 1)) !important;
   display: inline-grid !important; place-items: center !important;
   background: transparent !important; border: 1px solid var(--ncm-border) !important;
   color: var(--ncm-text-muted) !important;
@@ -2572,14 +2608,14 @@
 .ncm-app th.ncm-ss-addc, .ncm-app td.ncm-ss-addc { border: none !important; background: transparent; padding: 2px !important; width: 22px; }
 .ncm-app th.ncm-ss-addc button.ncm-ss-mini:hover { color: var(--ncm-success); border-color: var(--ncm-success); }
 .ncm-app .ncm-ss-gut {
-  width: 34px; text-align: center; font-family: var(--ncm-font-mono); font-size: 9px;
+  width: 34px; text-align: center; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted); background: var(--ncm-bg-elevated); position: relative; padding: 4px 2px !important;
 }
 .ncm-app td.ncm-ss-gut .ncm-ss-rowdel { position: absolute; right: 1px; top: 50%; transform: translateY(-50%); opacity: 0; }
 .ncm-app .ncm-ss-table tbody tr:hover .ncm-ss-rowdel { opacity: 1; }
 .ncm-app .ncm-ss-cell input {
   width: 100%; border: none !important; background: transparent !important; box-shadow: none !important;
-  color: inherit; font-family: var(--ncm-font-mono); font-size: 11px;
+  color: inherit; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1));
   padding: 4px 6px; min-height: 0; height: auto;
 }
 .ncm-app .ncm-ss-cell.is-active { outline: 2px solid var(--ncm-secondary); outline-offset: -2px; }
@@ -2596,7 +2632,7 @@
 .ncm-app .ncm-composer-tpl-sp { flex: 1; }
 .ncm-app button.ncm-composer-tpl-btn {
   width: auto !important; flex: 0 0 auto !important; height: auto !important;
-  padding: 4px 10px !important; font-size: 10.5px !important;
+  padding: 4px 10px !important; font-size: calc(10.5px * var(--ncm-text-scale, 1)) !important;
   background: rgba(136,136,160,0.08) !important;
   border: 1px solid rgba(136,136,160,0.25) !important;
   color: var(--ncm-text-secondary, #bdbdd0) !important;
@@ -2604,11 +2640,11 @@
 .ncm-app button.ncm-composer-tpl-btn:hover {
   color: var(--ncm-secondary, #19f3f7) !important;
   border-color: var(--ncm-secondary, #19f3f7) !important;
-  background: rgba(25,243,247,0.08) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important;
 }
 .ncm-app button.ncm-composer-tpl-btn--icon { padding: 4px 8px !important; }
-.ncm-app button.ncm-composer-tpl-btn.ncm-shard-btn--danger { color: #ff0033 !important; border-color: rgba(255,0,51,0.3) !important; background: rgba(255,0,51,0.08) !important; }
-.ncm-app button.ncm-composer-tpl-btn.ncm-shard-btn--danger:hover { border-color: #ff0033 !important; background: rgba(255,0,51,0.16) !important; }
+.ncm-app button.ncm-composer-tpl-btn.ncm-shard-btn--danger { color: var(--ncm-danger) !important; border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent) !important; background: color-mix(in srgb, var(--ncm-danger) 8%, transparent) !important; }
+.ncm-app button.ncm-composer-tpl-btn.ncm-shard-btn--danger:hover { border-color: var(--ncm-danger) !important; background: color-mix(in srgb, var(--ncm-danger) 16%, transparent) !important; }
 .ncm-app select.ncm-composer-tpl-select { flex: 1 1 180px !important; min-width: 140px !important; max-width: none !important; }
 
 /* ─── Entry-header sender (From resolved against the GM Master List) ─── */
@@ -2617,7 +2653,7 @@
 .ncm-app .ncm-entry-title--file { font-family: var(--ncm-font-mono); letter-spacing: .3px; }
 .ncm-app .ncm-entry-file {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 3px;
-  font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--ncm-text-muted);
+  font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
 }
 .ncm-app .ncm-entry-file__path { color: var(--ncm-text-secondary); }
 .ncm-app .ncm-entry-file__f b {
@@ -2636,7 +2672,7 @@
 .ncm-app .ncm-exf-ovr__hd {
   display: flex; align-items: center; gap: 8px; padding: 6px 9px;
   background: var(--sp-bg-surface, #1a1a2e);
-  font-family: var(--ncm-font-mono); font-size: 8.5px; font-weight: 700; letter-spacing: 1px;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 1px;
   color: var(--sp-text-bright, #e0e0e8);
 }
 .ncm-app .ncm-exf-ovr__sp { flex: 1; }
@@ -2645,7 +2681,7 @@
    overrides felt broken: in "follow terminal", INH still means allowed). */
 .ncm-app .ncm-exf-ovr__mode {
   padding: 5px 9px; border-top: 1px solid var(--sp-border, #2a2a45);
-  font-size: 10px; line-height: 1.45; color: var(--sp-text-muted, #8a8aa5);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); line-height: 1.45; color: var(--sp-text-muted, #8a8aa5);
   background: color-mix(in srgb, var(--sp-bg-surface, #1a1a2e) 50%, transparent);
 }
 .ncm-app [data-exf-ovr][data-exf-mode="custom"] .ncm-exf-ovr__mode { color: #f7c948; }
@@ -2657,9 +2693,9 @@
   display: flex; align-items: center; gap: 8px; padding: 5px 9px;
   border-top: 1px solid var(--sp-border, #2a2a45);
 }
-.ncm-app .ncm-exf-ovr__r > i { width: 13px; text-align: center; font-size: 10px; color: var(--sp-text-muted, #8a8aa5); }
+.ncm-app .ncm-exf-ovr__r > i { width: 13px; text-align: center; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted, #8a8aa5); }
 .ncm-app .ncm-exf-ovr__r.is-frame > i { color: #00ff41; }
-.ncm-app .ncm-exf-ovr__nm { flex: 1; font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--sp-text-bright, #c9c9d8); }
+.ncm-app .ncm-exf-ovr__nm { flex: 1; font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--sp-text-bright, #c9c9d8); }
 .ncm-app .ncm-exf-ovr__nm em { font-style: normal; color: var(--sp-text-muted, #6a6a85); }
 .ncm-app .ncm-exf-ovr__dv { flex: 0 0 42px; max-width: 42px; }
 .ncm-app .ncm-tri { display: inline-flex; border: 1px solid var(--sp-border, #2a2a45); border-radius: 3px; overflow: hidden; }
@@ -2668,7 +2704,7 @@
   height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 3px 7px !important;
   background: transparent !important; border: none !important; border-radius: 0 !important;
   box-shadow: none !important; cursor: pointer; line-height: 1.3;
-  font-family: var(--ncm-font-mono); font-size: 7.5px; font-weight: 700; letter-spacing: .5px;
+  font-family: var(--ncm-font-mono); font-size: calc(7.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .5px;
   color: var(--sp-text-muted, #8a8aa5) !important;
 }
 .ncm-app .ncm-tri button.is-on { background: var(--sp-bg-elevated, #222236) !important; color: var(--sp-text-bright, #e0e0e8) !important; }
@@ -2686,19 +2722,19 @@
   display: inline-flex; align-items: center; justify-content: center;
   background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 40%, transparent);
-  font-family: var(--ncm-font-mono, monospace); font-size: 7.5px; font-weight: 700;
+  font-family: var(--ncm-font-mono, monospace); font-size: calc(7.5px * var(--ncm-text-scale, 1)); font-weight: 700;
   color: var(--ncm-secondary, #19f3f7); letter-spacing: 0;
 }
 .ncm-app .ncm-entry-sender__ava img { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
-.ncm-app .ncm-entry-sender__nm { font-family: var(--ncm-font-display); font-size: 11.5px; color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ncm-app .ncm-entry-sender__em { font-family: var(--ncm-font-mono, monospace); font-size: 9.5px; color: var(--ncm-secondary, #19f3f7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-entry-sender__nm { font-family: var(--ncm-font-display); font-size: calc(11.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-entry-sender__em { font-family: var(--ncm-font-mono, monospace); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary, #19f3f7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ncm-app button.ncm-entry-sender__act {
   appearance: none !important; -webkit-appearance: none !important;
   width: 20px !important; height: 20px !important; min-height: 0 !important; flex: 0 0 20px !important;
   display: inline-flex; align-items: center; justify-content: center;
   margin: 0 !important; padding: 0 !important;
   background: transparent !important; border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 4px !important;
-  box-shadow: none !important; cursor: pointer; font-size: 9px; line-height: 1;
+  box-shadow: none !important; cursor: pointer; font-size: calc(9px * var(--ncm-text-scale, 1)); line-height: 1;
   color: var(--ncm-text-muted, #7a7a90) !important;
 }
 .ncm-app button.ncm-entry-sender__act:hover { color: var(--ncm-secondary, #19f3f7) !important; border-color: var(--ncm-secondary, #19f3f7) !important; }
@@ -2706,7 +2742,7 @@
 /* ─── Composer: From ↔ Master List live status chip ─── */
 .ncm-app .ncm-composer-from-status {
   display: flex; align-items: center; gap: 7px; margin: 2px 0 4px;
-  padding: 5px 9px; border-radius: 4px; font-size: 11.5px; line-height: 1.4;
+  padding: 5px 9px; border-radius: 4px; font-size: calc(11.5px * var(--ncm-text-scale, 1)); line-height: 1.4;
   font-family: var(--ncm-font-body);
 }
 .ncm-app .ncm-composer-from-status.is-linked {
@@ -2729,7 +2765,7 @@
   flex: 0 0 20px; width: 20px; height: 20px; border-radius: 50%; overflow: hidden;
   display: inline-flex; align-items: center; justify-content: center;
   background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 14%, transparent);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
 }
 .ncm-app .ncm-composer-from-status__ava img { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
 
@@ -2746,7 +2782,7 @@
   min-height: 0 !important; height: 100px !important; padding: 0 !important; cursor: pointer; overflow: hidden;
   border: 1px solid var(--ncm-border) !important; border-radius: 6px;
   background: var(--ncm-bg-deep) !important; color: #33334d !important;
-  display: grid; place-items: center; font-size: 34px; box-shadow: none !important;
+  display: grid; place-items: center; font-size: calc(34px * var(--ncm-text-scale, 1)); box-shadow: none !important;
 }
 .ncm-data-shard-composer button.ncm-dosscard__port:hover { border-color: var(--ncm-secondary) !important; }
 .ncm-data-shard-composer .ncm-dosscard__img {
@@ -2755,20 +2791,20 @@
 .ncm-data-shard-composer .ncm-dosscard__port.has-img > i.fa-user { display: none; }
 .ncm-data-shard-composer .ncm-dosscard__stamp {
   position: absolute; top: 10px; left: -24px; transform: rotate(-24deg); pointer-events: none;
-  font-family: var(--ncm-font-mono); font-size: 8px; font-weight: 700; letter-spacing: 2px;
+  font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 2px;
   color: var(--ncm-danger); border: 2px solid var(--ncm-danger); padding: 1px 24px;
   background: color-mix(in srgb, var(--ncm-bg-deep) 70%, transparent);
 }
 .ncm-data-shard-composer .ncm-dosscard__cam {
   position: absolute; bottom: 4px; right: 4px; width: 18px; height: 18px; border-radius: 4px;
-  display: grid; place-items: center; font-size: 9px;
+  display: grid; place-items: center; font-size: calc(9px * var(--ncm-text-scale, 1));
   background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
   border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
   color: var(--ncm-secondary);
 }
 .ncm-data-shard-composer .ncm-dosscard__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .ncm-data-shard-composer input.ncm-dosscard__name {
-  font-family: var(--ncm-font-display); font-size: 16px !important; font-weight: 700; letter-spacing: .5px;
+  font-family: var(--ncm-font-display); font-size: calc(16px * var(--ncm-text-scale, 1)) !important; font-weight: 700; letter-spacing: .5px;
   background: transparent !important; border: none !important; border-bottom: 1px dashed var(--ncm-border) !important;
   border-radius: 0; color: var(--ncm-text-primary); padding: 2px 0 !important; height: auto !important;
   text-align: left !important; width: 100%;
@@ -2793,7 +2829,7 @@
 }
 .ncm-data-shard-composer .ncm-dossthreat em,
 .ncm-data-shard-composer .ncm-locsec em {
-  font-style: normal; font-family: var(--ncm-font-mono); font-size: 9px; font-weight: 700;
+  font-style: normal; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 700;
   letter-spacing: 1px; color: var(--ncm-danger); margin-left: 4px; min-width: 52px;
 }
 /* Section paper blocks */
@@ -2804,7 +2840,7 @@
 }
 .ncm-data-shard-composer .ncm-dossec__bar { display: flex; align-items: center; gap: 6px; }
 .ncm-data-shard-composer input.ncm-dossec__h {
-  flex: 1; font-family: var(--ncm-font-mono); font-size: 10.5px !important; font-weight: 700;
+  flex: 1; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)) !important; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase; color: var(--ncm-secondary);
   background: transparent !important; border: none !important; border-bottom: 1px dashed transparent !important;
   border-radius: 0; padding: 2px 0 !important; height: auto !important; text-align: left !important;
@@ -2812,7 +2848,7 @@
 .ncm-data-shard-composer input.ncm-dossec__h:focus { border-bottom-color: var(--ncm-border) !important; box-shadow: none !important; outline: none; }
 .ncm-data-shard-composer button.ncm-dossec__redact {
   width: auto !important; flex: 0 0 auto !important; height: auto !important; min-height: 0 !important;
-  font-family: var(--ncm-font-mono); font-size: 8.5px !important; letter-spacing: 1px; font-weight: 700;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1px; font-weight: 700;
   color: var(--ncm-text-muted) !important; cursor: pointer; padding: 2px 8px !important; border-radius: 3px;
   background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important; box-shadow: none !important;
 }
@@ -2822,13 +2858,13 @@
 }
 .ncm-data-shard-composer button.ncm-dossec__x {
   width: 20px !important; height: 20px !important; min-height: 0 !important; flex: 0 0 auto !important;
-  padding: 0 !important; font-size: 10px !important; color: var(--ncm-text-muted) !important; cursor: pointer;
+  padding: 0 !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; color: var(--ncm-text-muted) !important; cursor: pointer;
   background: transparent !important; border: none !important; box-shadow: none !important;
 }
 .ncm-data-shard-composer button.ncm-dossec__x:hover { color: var(--ncm-danger) !important; }
 .ncm-data-shard-composer textarea.ncm-dossec__b {
   width: 100%; margin-top: 4px; background: var(--ncm-bg-deep); border: 1px solid var(--ncm-border);
-  border-radius: 4px; color: var(--ncm-text-secondary); font-size: 11.5px; line-height: 1.5;
+  border-radius: 4px; color: var(--ncm-text-secondary); font-size: calc(11.5px * var(--ncm-text-scale, 1)); line-height: 1.5;
   padding: 6px 8px; resize: vertical; min-height: 48px; text-align: left !important;
 }
 .ncm-data-shard-composer .ncm-dossec.is-redacted { border-left-color: var(--ncm-danger); }
@@ -2839,14 +2875,14 @@
 .ncm-data-shard-composer .ncm-dossec.is-redacted textarea.ncm-dossec__b:focus { color: var(--ncm-text-secondary); background-image: none; }
 .ncm-data-shard-composer .ncm-dossec.is-redacted::after {
   content: '████ players see bars until DECLASSIFY ████';
-  display: block; margin-top: 2px; font-family: var(--ncm-font-mono); font-size: 8px;
+  display: block; margin-top: 2px; font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1));
   letter-spacing: 1px; color: var(--ncm-danger); opacity: .8;
 }
 /* Combat-profile pickers */
 .ncm-data-shard-composer .ncm-dossstats { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
 .ncm-data-shard-composer button.ncm-dossstat {
   width: auto !important; flex: 0 0 auto !important; height: auto !important; min-height: 0 !important;
-  font-family: var(--ncm-font-mono); font-size: 9px !important; font-weight: 700; letter-spacing: 1px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)) !important; font-weight: 700; letter-spacing: 1px;
   color: var(--ncm-text-muted) !important; cursor: pointer; padding: 3px 8px !important; border-radius: 4px;
   background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important; box-shadow: none !important;
 }
@@ -2860,7 +2896,7 @@
 .ncm-data-shard-composer .ncm-dossskills__chips { display: contents; }
 .ncm-data-shard-composer .ncm-dossskill {
   display: inline-flex; align-items: center; gap: 5px;
-  font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--ncm-secondary);
+  font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary);
   padding: 2px 4px 2px 9px; border-radius: 20px;
   background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
@@ -2868,7 +2904,7 @@
 .ncm-data-shard-composer .ncm-dossskill em { font-style: normal; font-weight: 700; }
 .ncm-data-shard-composer .ncm-dossskill button {
   width: 16px !important; height: 16px !important; min-height: 0 !important; flex: 0 0 auto !important;
-  padding: 0 !important; font-size: 8px !important; border-radius: 50%; cursor: pointer;
+  padding: 0 !important; font-size: calc(8px * var(--ncm-text-scale, 1)) !important; border-radius: 50%; cursor: pointer;
   color: var(--ncm-text-muted) !important; background: transparent !important; border: none !important; box-shadow: none !important;
 }
 .ncm-data-shard-composer .ncm-dossskill button:hover { color: var(--ncm-danger) !important; }
@@ -2889,7 +2925,7 @@
   background: var(--ncm-bg-deep); padding: 8px 10px;
 }
 .ncm-data-shard-composer .ncm-avdeck__pill {
-  display: inline-block; font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 1px;
+  display: inline-block; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: 1px;
   color: var(--ncm-success); padding: 2px 9px; border-radius: 20px;
   background: color-mix(in srgb, var(--ncm-success) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--ncm-success) 30%, transparent);
@@ -2906,7 +2942,7 @@
   border: 1px solid var(--ncm-border); border-radius: 6px; background: var(--ncm-bg-deep); padding: 6px;
 }
 .ncm-data-shard-composer .ncm-avfeed:empty::before {
-  content: 'No lines yet — type below, Enter adds.'; font-size: 10.5px; color: var(--ncm-text-muted); padding: 4px 6px;
+  content: 'No lines yet — type below, Enter adds.'; font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); padding: 4px 6px;
 }
 .ncm-data-shard-composer .ncm-avline {
   position: relative; display: flex; gap: 8px; padding: 4px 22px 4px 6px;
@@ -2918,18 +2954,18 @@
   border-left-color: var(--ncm-secondary);
 }
 .ncm-data-shard-composer .ncm-avline__spk {
-  font-family: var(--ncm-font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 1px;
+  font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 1px;
   min-width: 74px; text-align: right; flex: 0 0 auto; text-transform: uppercase; align-self: baseline;
 }
 .ncm-data-shard-composer .ncm-avline__spk.c1 { color: var(--ncm-secondary); }
 .ncm-data-shard-composer .ncm-avline__spk.c2 { color: var(--ncm-warning, #f7c948); }
-.ncm-data-shard-composer .ncm-avline__spk.c3 { color: #a855f7; }
+.ncm-data-shard-composer .ncm-avline__spk.c3 { color: var(--ncm-purple); }
 .ncm-data-shard-composer .ncm-avline__spk.c4 { color: #ff6ac1; }
-.ncm-data-shard-composer .ncm-avline__txt { flex: 1; font-size: 11px; color: var(--ncm-text-secondary); line-height: 1.45; }
+.ncm-data-shard-composer .ncm-avline__txt { flex: 1; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); line-height: 1.45; }
 .ncm-data-shard-composer button.ncm-avline__x {
   position: absolute; right: 3px; top: 3px; opacity: 0;
   width: 16px !important; height: 16px !important; min-height: 0 !important; flex: 0 0 auto !important;
-  padding: 0 !important; font-size: 9px !important; cursor: pointer;
+  padding: 0 !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important; cursor: pointer;
   color: var(--ncm-text-muted) !important; background: transparent !important; border: none !important; box-shadow: none !important;
 }
 .ncm-data-shard-composer .ncm-avline:hover .ncm-avline__x { opacity: 1; }
@@ -2940,7 +2976,7 @@
 .ncm-data-shard-composer .ncm-avcompose__chips:empty { display: none; }
 .ncm-data-shard-composer button.ncm-avchip {
   width: auto !important; flex: 0 0 auto !important; height: auto !important; min-height: 0 !important;
-  font-family: var(--ncm-font-mono); font-size: 9.5px !important; letter-spacing: .5px;
+  font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px;
   color: var(--ncm-text-secondary) !important; cursor: pointer; padding: 2px 9px !important; border-radius: 20px;
   background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important; box-shadow: none !important;
 }
@@ -2953,7 +2989,7 @@
 .ncm-data-shard-composer input.ncm-avcompose__txt { flex: 1; }
 .ncm-data-shard-composer button.ncm-avcompose__send {
   width: auto !important; flex: 0 0 auto !important; height: 22px !important; min-height: 0 !important;
-  font-family: var(--ncm-font-mono); font-size: 9.5px !important; font-weight: 700; letter-spacing: 1px;
+  font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)) !important; font-weight: 700; letter-spacing: 1px;
   color: var(--ncm-secondary) !important; cursor: pointer; padding: 0 12px !important; border-radius: 4px;
   background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
   border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent) !important; box-shadow: none !important;
@@ -2985,7 +3021,7 @@
 .ncm-data-shard-composer button.ncm-locstage__browse {
   position: absolute; top: 8px; right: 8px; z-index: 2;
   width: auto !important; flex: 0 0 auto !important; height: auto !important; min-height: 0 !important;
-  font-family: var(--ncm-font-mono); font-size: 8.5px !important; letter-spacing: 1px; font-weight: 700;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1px; font-weight: 700;
   color: var(--ncm-text-secondary) !important; cursor: pointer; padding: 3px 9px !important; border-radius: 4px;
   background: color-mix(in srgb, var(--ncm-bg-deep) 80%, transparent) !important;
   border: 1px solid var(--ncm-border) !important; box-shadow: none !important;
@@ -2993,7 +3029,7 @@
 .ncm-data-shard-composer button.ncm-locstage__browse:hover { color: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; }
 .ncm-data-shard-composer .ncm-locstage__coords { position: absolute; top: 8px; left: 10px; z-index: 2; display: flex; gap: 4px; align-items: center; }
 .ncm-data-shard-composer .ncm-locstage__coords input {
-  font-family: var(--ncm-font-mono); font-size: 10px !important; letter-spacing: 1px;
+  font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1px;
   color: var(--ncm-secondary); width: 190px; height: 20px !important; padding: 1px 6px !important;
   background: color-mix(in srgb, var(--ncm-bg-deep) 65%, transparent) !important;
   border: 1px solid transparent !important; border-radius: 3px; text-align: left !important;
@@ -3002,14 +3038,14 @@
 .ncm-data-shard-composer .ncm-locstage__coords input:focus { border-color: var(--ncm-border) !important; box-shadow: none !important; }
 .ncm-data-shard-composer button.ncm-locstage__dice {
   width: 20px !important; height: 20px !important; min-height: 0 !important; flex: 0 0 auto !important;
-  padding: 0 !important; font-size: 9px !important; cursor: pointer; border-radius: 4px;
+  padding: 0 !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important; cursor: pointer; border-radius: 4px;
   color: var(--ncm-warning, #f7c948) !important;
   background: color-mix(in srgb, var(--ncm-bg-deep) 80%, transparent) !important;
   border: 1px solid var(--ncm-border) !important; box-shadow: none !important;
 }
 .ncm-data-shard-composer input.ncm-locstage__heat {
   position: absolute; top: 34px; right: 8px; z-index: 2; width: 190px;
-  font-family: var(--ncm-font-mono); font-size: 8.5px !important; letter-spacing: 1px; font-weight: 700;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1px; font-weight: 700;
   color: var(--ncm-warning, #f7c948); height: 20px !important; padding: 1px 8px !important;
   background: color-mix(in srgb, var(--ncm-bg-deep) 70%, transparent) !important;
   border: 1px solid color-mix(in srgb, var(--ncm-warning, #f7c948) 35%, transparent) !important;
@@ -3017,14 +3053,14 @@
 }
 .ncm-data-shard-composer .ncm-locstage__foot { position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 2; }
 .ncm-data-shard-composer input.ncm-locstage__name {
-  width: 75%; font-family: var(--ncm-font-display); font-size: 18px !important; font-weight: 700;
+  width: 75%; font-family: var(--ncm-font-display); font-size: calc(18px * var(--ncm-text-scale, 1)) !important; font-weight: 700;
   color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.8); height: auto !important; padding: 2px 0 !important;
   background: transparent !important; border: none !important;
   border-bottom: 1px dashed rgba(255,255,255,.3) !important; border-radius: 0; text-align: left !important;
 }
 .ncm-data-shard-composer input.ncm-locstage__name:focus { border-bottom-color: var(--ncm-secondary) !important; box-shadow: none !important; outline: none; }
 .ncm-data-shard-composer input.ncm-locstage__dist {
-  margin-top: 6px; width: 140px; font-family: var(--ncm-font-mono); font-size: 10px !important;
+  margin-top: 6px; width: 140px; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   letter-spacing: 1px; color: var(--ncm-warning, #f7c948); height: 20px !important; padding: 1px 10px !important;
   background: color-mix(in srgb, var(--ncm-bg-deep) 75%, transparent) !important;
   border: 1px solid color-mix(in srgb, var(--ncm-warning, #f7c948) 40%, transparent) !important;
@@ -3034,7 +3070,7 @@
 .ncm-data-shard-composer .ncm-locscene { display: inline-flex; height: 22px; align-items: center; }
 .ncm-data-shard-composer button.ncm-locscene__pick {
   width: auto !important; flex: 0 0 auto !important; height: 22px !important; min-height: 0 !important;
-  font-family: var(--ncm-font-mono); font-size: 9.5px !important; letter-spacing: .5px;
+  font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px;
   color: var(--ncm-text-muted) !important; cursor: pointer; padding: 0 10px !important; border-radius: 20px;
   background: var(--ncm-bg-deep) !important; border: 1px dashed var(--ncm-border) !important; box-shadow: none !important;
 }

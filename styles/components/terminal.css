@@ -360,13 +360,25 @@
               background var(--ncm-term-fast) ease;
 }
 .ncm-term__row:hover { transform: translateX(2px); }
+/* HITBOX GUARD — a hover-mover vacates the strip the cursor sat on → unhover
+   → snap back → re-hover: an infinite flicker loop at the trailing edge (the
+   MessageViewer had the same bug). The invisible ::after covers rest position
+   + travel so the hitbox never shrinks mid-move. */
+.ncm-term__row { position: relative; }
+.ncm-term__row::after {
+  content: ''; position: absolute; left: -3px; top: 0; bottom: 0; width: 4px;
+}
 .ncm-term__btn, .ncm-term__chip {
+  position: relative;
   transition: transform var(--ncm-term-fast) var(--ncm-term-ease),
               background var(--ncm-term-fast) ease,
               box-shadow var(--ncm-term-fast) ease,
               color var(--ncm-term-fast) ease;
 }
 .ncm-term__btn:hover, .ncm-term__chip:hover { transform: translateY(-1px); }
+.ncm-term__btn::after, .ncm-term__chip::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -3px; height: 4px;
+}
 .ncm-term__exfil-btn:hover { box-shadow: 0 3px 10px color-mix(in srgb, var(--ncm-primary) 18%, transparent); }
 /* A dead deny-chip must NOT lift — it isn't going to do anything. */
 .ncm-term__exfil-btn.is-denied:hover { transform: none; box-shadow: none; }
@@ -987,28 +999,51 @@
 @keyframes ncm-term-gfade { from { opacity: 0; } to { opacity: 1; } }
 
 .ncm-term__badge {
-  position: relative; z-index: 2; width: min(380px, 84%); border-radius: 14px; overflow: hidden;
-  background: linear-gradient(135deg, var(--ncm-bg-elevated), var(--ncm-bg-surface));
+  position: relative; z-index: 2; width: min(380px, 84%); border-radius: 12px; overflow: hidden;
+  background: linear-gradient(160deg, var(--ncm-bg-elevated), var(--ncm-bg-surface));
   border: 1px solid color-mix(in srgb, var(--ncm-primary) 40%, transparent);
   box-shadow: 0 26px 60px rgba(0,0,0,.55), 0 0 40px color-mix(in srgb, var(--ncm-primary) 12%, transparent);
-  transform-origin: 50% 0;
-  /* drop in, then (after the scan pass completes) settle to a green "validated"
-     edge-glow — two animations, forwards. */
-  animation: ncm-term-badgedrop .55s cubic-bezier(.2,.85,.3,1.2) forwards,
-             ncm-term-badgevalid .5s ease 1.9s forwards;
+  /* MATERIALISE in (assembles from a top scanline sliver — no `forwards`, so the
+     entrance clip-path reverts to `none` at rest and the box-shadow glow isn't
+     clipped), then settle to a green "validated" edge-glow once the read lands. */
+  animation: ncm-term-badgemat .7s cubic-bezier(.22,1,.36,1),
+             ncm-term-badgevalid .5s ease 1.55s forwards;
 }
-@keyframes ncm-term-badgedrop {
-  0%   { opacity: 0; transform: translateY(-40px) scale(.94) rotate(-2deg); }
-  70%  { opacity: 1; transform: translateY(4px) scale(1.01) rotate(0deg); }
-  100% { transform: none; }
+/* holographic sheen sweeps once */
+.ncm-term__badge::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5; z-index: 4;
+  background: linear-gradient(115deg, transparent 30%, color-mix(in srgb, var(--ncm-primary) 12%, transparent) 45%, transparent 60%);
+  background-size: 250% 100%; background-position: 120% 0;
+  animation: ncm-term-badgesheen 2.4s ease-in-out .3s;
+}
+@keyframes ncm-term-badgesheen { 40% { background-position: 120% 0; } 70%, 100% { background-position: -40% 0; } }
+@keyframes ncm-term-badgemat {
+  0%   { opacity: 0; clip-path: inset(0 0 calc(100% - 2px) 0); }
+  100% { opacity: 1; clip-path: inset(0 0 0 0); }
 }
 @keyframes ncm-term-badgevalid {
-  to { border-color: color-mix(in srgb, var(--ncm-success, #00ff41) 55%, transparent);
-       box-shadow: 0 26px 60px rgba(0,0,0,.55), 0 0 34px color-mix(in srgb, var(--ncm-success, #00ff41) 30%, transparent); }
+  0%   { border-color: color-mix(in srgb, var(--ncm-primary) 40%, transparent);
+         box-shadow: 0 26px 60px rgba(0,0,0,.55), 0 0 40px color-mix(in srgb, var(--ncm-primary) 12%, transparent); }
+  45%  { border-color: color-mix(in srgb, var(--ncm-success, #00ff41) 70%, transparent);
+         box-shadow: 0 26px 60px rgba(0,0,0,.55), 0 0 30px color-mix(in srgb, var(--ncm-success, #00ff41) 45%, transparent); }
+  100% { border-color: color-mix(in srgb, var(--ncm-success, #00ff41) 55%, transparent);
+         box-shadow: 0 26px 60px rgba(0,0,0,.55), 0 0 34px color-mix(in srgb, var(--ncm-success, #00ff41) 30%, transparent); }
 }
 
+/* corner brackets draw in (ride --ncm-primary so they belong to the machine) */
+.ncm-term__badge-brk {
+  position: absolute; width: 18px; height: 18px; z-index: 5; opacity: 0;
+  border: 2px solid var(--ncm-primary);
+  animation: ncm-term-badgebrk .5s ease-out .35s forwards;
+}
+.ncm-term__badge-brk--tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+.ncm-term__badge-brk--tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; }
+.ncm-term__badge-brk--bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; }
+.ncm-term__badge-brk--br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+@keyframes ncm-term-badgebrk { from { opacity: 0; transform: scale(1.35); } to { opacity: .85; transform: scale(1); } }
+
 .ncm-term__badge-top {
-  display: flex; align-items: center; justify-content: space-between; padding: 9px 14px;
+  display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;
   background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 22%, transparent);
 }
@@ -1021,135 +1056,113 @@
 .ncm-term__badge-cls {
   flex: 0 0 auto; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-accent);
   border: 1px solid color-mix(in srgb, var(--ncm-accent) 45%, transparent); padding: 2px 6px; border-radius: 3px;
+  background: color-mix(in srgb, var(--ncm-accent) 10%, transparent);
 }
 
-.ncm-term__badge-body { display: flex; gap: 14px; padding: 16px 14px; }
+.ncm-term__badge-body { display: flex; gap: 15px; padding: 16px 15px 6px; }
 .ncm-term__badge-photo {
-  width: 78px; height: 96px; border-radius: 8px; flex: 0 0 auto; overflow: hidden;
+  width: 78px; height: 88px; border-radius: 8px; flex: 0 0 auto; overflow: visible; position: relative;
   display: grid; place-items: center;
   font-family: var(--ncm-font-title); font-weight: 700; font-size: calc(26px * var(--ncm-text-scale, 1)); color: var(--ncm-primary);
   background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--ncm-primary) 40%, transparent);
 }
-.ncm-term__badge-photo img { width: 100%; height: 100%; object-fit: cover; }
-.ncm-term__badge-fields { flex: 1; min-width: 0; }
-.ncm-term__badge-nm { font-family: var(--ncm-font-body); font-weight: 700; font-size: calc(20px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); line-height: 1.1; }
-.ncm-term__badge-role { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); letter-spacing: .5px; color: var(--ncm-accent); text-transform: uppercase; margin: 2px 0 10px; }
-/* Data rows — each "writes in" then self-verifies (checkmark + green tint),
-   staggered by its inline --r index. */
-.ncm-term__badge-row {
-  display: flex; align-items: center; gap: 8px; padding: 3px 8px; border-radius: 5px;
-  font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); letter-spacing: .5px; color: var(--ncm-text-muted);
-  border: 1px solid transparent;
-  animation: ncm-term-rowok .3s ease forwards; animation-delay: calc(.82s + var(--r, 0) * .3s);
-}
-@keyframes ncm-term-rowok {
-  to { background: color-mix(in srgb, var(--ncm-success, #00ff41) 8%, transparent);
-       border-color: color-mix(in srgb, var(--ncm-success, #00ff41) 22%, transparent); }
-}
-.ncm-term__badge-lbl { flex: 0 0 auto; }
-.ncm-term__badge-val {
-  flex: 1; text-align: right; color: var(--ncm-text-secondary); font-weight: 400;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  clip-path: inset(0 100% 0 0);   /* revealed left→right like it's being typed in */
-  animation: ncm-term-write .34s steps(14, end) forwards; animation-delay: calc(.55s + var(--r, 0) * .3s);
-}
-@keyframes ncm-term-write { to { clip-path: inset(0 0 0 0); } }
+.ncm-term__badge-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+/* verified badge — sits ON TOP of the portrait's lower-right corner (photo is
+   overflow:visible so it isn't clipped; the img self-clips via its own radius) */
 .ncm-term__badge-chk {
-  flex: 0 0 auto; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-success, #00ff41);
-  opacity: 0; transform: scale(.3);
-  animation: ncm-term-chk .3s cubic-bezier(.3, 1.5, .5, 1) forwards; animation-delay: calc(.82s + var(--r, 0) * .3s);
+  position: absolute; bottom: -7px; right: -7px; z-index: 8; width: 22px; height: 22px;
+  font-size: calc(22px * var(--ncm-text-scale, 1)); line-height: 22px; text-align: center;
+  color: var(--ncm-success, #00ff41); opacity: 0; border-radius: 50%;
+  background: radial-gradient(circle, var(--ncm-bg-elevated) 55%, transparent 60%);
+  box-shadow: 0 0 0 2px var(--ncm-bg-elevated), 0 0 12px color-mix(in srgb, var(--ncm-success, #00ff41) 60%, transparent);
+  animation: ncm-term-badgechk .42s cubic-bezier(.22,1,.36,1) 1.58s both;
 }
-@keyframes ncm-term-chk { to { opacity: 1; transform: scale(1); } }
+@keyframes ncm-term-badgechk { 0% { opacity: 0; transform: scale(.4); } 60% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
+
+.ncm-term__badge-fields { flex: 1; min-width: 0; }
+/* the name types in as the reader reaches the top of the fields */
+.ncm-term__badge-nm {
+  font-family: var(--ncm-font-body); font-weight: 700; font-size: calc(20px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); line-height: 1.1;
+  clip-path: inset(0 100% 0 0); animation: ncm-term-badgewrite .34s cubic-bezier(.5,0,.3,1) .5s forwards;
+}
+.ncm-term__badge-role { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); letter-spacing: .5px; color: var(--ncm-accent); text-transform: uppercase; margin: 2px 0 10px; }
+/* Data rows — the VALUE types in left→right (with a blinking cursor riding the
+   reveal edge) as the reader sweeps past it; staggered by its inline --r index. */
+.ncm-term__badge-row {
+  display: flex; align-items: baseline; gap: 8px; margin-top: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); letter-spacing: .5px; color: var(--ncm-text-muted);
+}
+.ncm-term__badge-lbl {
+  flex: 0 0 62px; font-size: calc(8px * var(--ncm-text-scale, 1)); letter-spacing: 1px;
+  color: var(--ncm-text-muted); text-transform: uppercase;
+}
+.ncm-term__badge-val {
+  position: relative; flex: 1; color: var(--ncm-text-secondary); font-weight: 400;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  clip-path: inset(0 100% 0 0);
+  animation: ncm-term-badgewrite .3s cubic-bezier(.5,0,.3,1) calc(.82s + var(--r, 0) * .12s) forwards;
+}
+@keyframes ncm-term-badgewrite { to { clip-path: inset(0 0 0 0); } }
+.ncm-term__badge-val::after {
+  content: ""; position: absolute; top: 1px; bottom: 1px; right: -1px; width: 1px; opacity: 0;
+  background: var(--ncm-primary); box-shadow: 0 0 6px var(--ncm-primary);
+  animation: ncm-term-badgecur .3s steps(1) calc(.82s + var(--r, 0) * .12s);
+}
+@keyframes ncm-term-badgecur { 0%, 100% { opacity: 0; } 30%, 70% { opacity: 1; } }
 
 .ncm-term__badge-last {
-  display: flex; align-items: center; gap: 6px; padding: 8px 14px 4px;
-  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-text-muted);
+  display: flex; align-items: center; gap: 6px; padding: 12px 15px 8px;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-text-muted);
 }
 .ncm-term__badge-last i { color: color-mix(in srgb, var(--ncm-primary) 70%, var(--ncm-text-muted)); font-size: calc(9px * var(--ncm-text-scale, 1)); }
 
-/* Progress bar (replaces the old magstripe) — fills as the card verifies. */
-.ncm-term__badge-bar {
-  position: relative; height: 18px; margin: 0 14px 4px; border-radius: 5px; overflow: hidden;
-  display: flex; align-items: center;
-  background: color-mix(in srgb, var(--ncm-text-primary) 7%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-success, #00ff41) 20%, transparent);
-}
-.ncm-term__badge-bar-fill {
-  position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 5px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--ncm-primary) 70%, var(--ncm-success, #00ff41)), var(--ncm-success, #00ff41));
-  box-shadow: 0 0 14px color-mix(in srgb, var(--ncm-success, #00ff41) 45%, transparent);
-  animation: ncm-term-barfill 1.35s cubic-bezier(.5, .1, .3, 1) .55s forwards;
-}
-@keyframes ncm-term-barfill { to { width: 100%; } }
-/* moving scan sheen while filling */
-.ncm-term__badge-bar-fill::after {
-  content: ""; position: absolute; inset: 0; border-radius: 5px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
-  animation: ncm-term-barsheen 1s linear .55s 2;
-}
-@keyframes ncm-term-barsheen { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
-/* caption crosses AUTHENTICATING → VERIFIED at ~1.9s (two stacked labels) */
-.ncm-term__badge-bar-lbl {
-  position: relative; z-index: 1; margin: 0 auto; display: grid; place-items: center;
-  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 2px; font-weight: 700;
-  text-shadow: 0 1px 3px rgba(0,0,0,.9);
-}
-.ncm-term__badge-bar-v1, .ncm-term__badge-bar-v2 { grid-area: 1 / 1; white-space: nowrap; }
-.ncm-term__badge-bar-v1 { color: var(--ncm-text-primary); animation: ncm-term-lblout .25s ease 1.85s forwards; }
-.ncm-term__badge-bar-v2 { color: #fff; opacity: 0; animation: ncm-term-lblin .25s ease 1.9s forwards; }
-@keyframes ncm-term-lblout { to { opacity: 0; } }
-@keyframes ncm-term-lblin { to { opacity: 1; } }
-
-/* Security scan pass — a light-bar sweeps down the whole card while it verifies.
-   It rides --ncm-PRIMARY (the terminal's identity colour), not --ncm-secondary:
-   the secondary slot stays brand cyan in most presets, so on Arasaka (red
-   primary) the scan swept BLUE across a RED card and read as a foreign element.
-   Primary means the scan always belongs to the machine it's scanning. */
-.ncm-term__badge-scan {
-  position: absolute; left: 0; right: 0; top: 0; height: 3px; z-index: 5; pointer-events: none; opacity: 0;
+/* the READER LINE — a single primary-coloured sweep down the whole card. Rides
+   --ncm-PRIMARY (the machine's identity colour), never --ncm-secondary, so on a
+   red-primary preset it doesn't sweep foreign blue across a red card. */
+.ncm-term__badge-reader {
+  position: absolute; left: 0; right: 0; top: 0; height: 2px; z-index: 6; opacity: 0; pointer-events: none;
   background: linear-gradient(90deg, transparent, var(--ncm-primary), transparent);
-  box-shadow: 0 0 16px var(--ncm-primary), 0 0 44px color-mix(in srgb, var(--ncm-primary) 45%, transparent);
-  animation: ncm-term-scan 1.35s ease-in-out .55s forwards;
+  box-shadow: 0 0 14px 3px color-mix(in srgb, var(--ncm-primary) 55%, transparent);
+  animation: ncm-term-badgeread 1.15s cubic-bezier(.55,0,.45,1) .45s;
 }
-@keyframes ncm-term-scan {
-  0%   { opacity: 0; top: 0; }
-  12%  { opacity: 1; }
-  88%  { opacity: 1; }
-  100% { opacity: 0; top: 100%; }
-}
+@keyframes ncm-term-badgeread { 0% { opacity: 0; top: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; top: 100%; } }
 
-/* VALIDATED chip that pops in once the scan finishes (top-right, by the name). */
-.ncm-term__badge-chip {
-  position: absolute; top: 46px; right: 14px; z-index: 6;
-  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 5px;
-  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: 1.5px; font-weight: 700;
-  color: var(--ncm-success, #00ff41); background: color-mix(in srgb, var(--ncm-success, #00ff41) 12%, transparent);
-  border: 1px solid var(--ncm-success, #00ff41);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--ncm-success, #00ff41) 45%, transparent);
-  opacity: 0; transform: scale(.8) translateY(-2px);
-  animation: ncm-term-chip .32s cubic-bezier(.3,1.4,.5,1) 1.92s forwards;
+/* the sync hairline along the very bottom edge — fills cyan→green in step with
+   the reader (replaces the old magstripe/progress bar + AUTHENTICATING label). */
+.ncm-term__badge-prog {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px; z-index: 6;
+  background: color-mix(in srgb, var(--ncm-text-primary) 10%, transparent);
 }
-.ncm-term__badge-chip i { font-size: calc(10px * var(--ncm-text-scale, 1)); }
-@keyframes ncm-term-chip { to { opacity: 1; transform: none; } }
+.ncm-term__badge-prog-fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+  background: var(--ncm-primary); box-shadow: 0 0 8px var(--ncm-primary);
+  animation: ncm-term-badgeprog 1.15s cubic-bezier(.55,0,.45,1) .45s forwards;
+}
+@keyframes ncm-term-badgeprog {
+  0% { width: 0; background: var(--ncm-primary); }
+  85% { background: var(--ncm-primary); }
+  100% { width: 100%; background: var(--ncm-success, #00ff41); box-shadow: 0 0 10px var(--ncm-success, #00ff41); }
+}
 
 .ncm-term__badge-granted {
-  text-align: center; padding: 2px 14px 16px;
-  font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); letter-spacing: 4px; color: var(--ncm-success, #00ff41);
-  opacity: 0; animation: ncm-term-grise .4s ease 2.35s forwards;
+  text-align: center; padding: 6px 14px 16px;
+  font-family: var(--ncm-font-mono); font-size: calc(13px * var(--ncm-text-scale, 1)); letter-spacing: 5px; font-weight: 700; text-transform: uppercase;
+  color: var(--ncm-success, #00ff41); text-shadow: 0 0 20px color-mix(in srgb, var(--ncm-success, #00ff41) 45%, transparent);
+  opacity: 0; animation: ncm-term-grise .45s cubic-bezier(.22,1,.36,1) 1.85s forwards;
 }
-/* With a welcome line under it, ACCESS GRANTED's 16px bottom padding stacked
-   with the welcome's 8px top margin and left a dead 24px band between the two
-   lines. When a welcome follows, the card's own bottom padding does the work. */
+/* With a welcome line under it, ACCESS GRANTED's bottom padding stacked with the
+   welcome's top margin into a dead band; when a welcome follows, the card's own
+   bottom padding does the work. */
 .ncm-term__badge-granted:has(+ .ncm-term__badge-welcome) { padding-bottom: 0; }
-@keyframes ncm-term-grise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes ncm-term-grise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   .ncm-term__granted, .ncm-term__granted * { animation-duration: .01ms !important; animation-delay: 0s !important; }
-  .ncm-term__badge-val { clip-path: inset(0 0 0 0); }
-  .ncm-term__badge-chk, .ncm-term__badge-bar-v2, .ncm-term__badge-chip { opacity: 1; }
-  .ncm-term__badge-bar-v1, .ncm-term__badge-scan { opacity: 0; }
-  .ncm-term__badge-bar-fill { width: 100%; }
+  .ncm-term__badge-val, .ncm-term__badge-nm { clip-path: inset(0 0 0 0); }
+  .ncm-term__badge-chk, .ncm-term__badge-brk { opacity: 1; }
+  .ncm-term__badge-reader { opacity: 0; }
+  .ncm-term__badge-prog-fill { width: 100%; background: var(--ncm-success, #00ff41); }
 
   /* MOTION PASS (#38) — every entrance/transition collapses to its END state.
      The rows/detail must still be VISIBLE (animation-fill both would otherwise
@@ -1202,37 +1215,37 @@
       player-facing terminal theme). ── */
 
 /* A · identity search (flex pattern — icon beside a borderless input) */
-.ncm-app .ncm-acct-idwrap { flex: 1; display: flex; align-items: center; gap: 8px; background: #0a0a12; border: 1px solid #2a2a45; border-radius: 3px; padding: 0 9px; }
-.ncm-app .ncm-acct-idwrap i { color: #55557a; font-size: calc(11px * var(--ncm-text-scale, 1)); flex: 0 0 auto; }
-.ncm-app .ncm-acct-idwrap .ncm-acct-idsearch { flex: 1; background: transparent !important; border: none !important; box-shadow: none !important; outline: none; color: #d0d0d8; font-size: calc(12px * var(--ncm-text-scale, 1)); font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace); padding: 6px 0; min-height: 0; height: auto; }
-.ncm-app .ncm-acct-dd { margin: 4px 0 8px 102px; border: 1px solid #2a2a45; border-radius: 4px; background: #0c0c15; max-height: 240px; overflow-y: auto; overflow-x: hidden; }
-.ncm-app .ncm-acct-dd-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid #16161f; cursor: pointer; }
+.ncm-app .ncm-acct-idwrap { flex: 1; display: flex; align-items: center; gap: 8px; background: var(--ncm-bg-deep); border: 1px solid var(--ncm-border); border-radius: 3px; padding: 0 9px; }
+.ncm-app .ncm-acct-idwrap i { color: var(--ncm-text-muted); font-size: calc(11px * var(--ncm-text-scale, 1)); flex: 0 0 auto; }
+.ncm-app .ncm-acct-idwrap .ncm-acct-idsearch { flex: 1; background: transparent !important; border: none !important; box-shadow: none !important; outline: none; color: var(--ncm-text-primary); font-size: calc(12px * var(--ncm-text-scale, 1)); font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace); padding: 6px 0; min-height: 0; height: auto; }
+.ncm-app .ncm-acct-dd { margin: 4px 0 8px 102px; border: 1px solid var(--ncm-border); border-radius: 4px; background: var(--ncm-bg-deep); max-height: 240px; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-acct-dd-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--ncm-bg-base); cursor: pointer; }
 .ncm-app .ncm-acct-dd-row:last-child { border-bottom: none; }
-.ncm-app .ncm-acct-dd-row:hover { background: rgba(25, 243, 247, .07); }
-.ncm-app .ncm-acct-dd-pic { width: 30px; height: 30px; border-radius: 4px; background: #1a1a2e; display: inline-flex; align-items: center; justify-content: center; font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 700; color: #8a8aa8; flex: 0 0 auto; overflow: hidden; }
+.ncm-app .ncm-acct-dd-row:hover { background: color-mix(in srgb, var(--ncm-secondary) 7%, transparent); }
+.ncm-app .ncm-acct-dd-pic { width: 30px; height: 30px; border-radius: 4px; background: var(--ncm-bg-surface); display: inline-flex; align-items: center; justify-content: center; font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-muted); flex: 0 0 auto; overflow: hidden; }
 .ncm-app .ncm-acct-dd-pic img { width: 100%; height: 100%; object-fit: cover; display: block; border: none; }
 .ncm-app .ncm-acct-dd-id { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.ncm-app .ncm-acct-dd-nm { font-size: calc(12.5px * var(--ncm-text-scale, 1)); font-weight: 700; color: #dde; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ncm-app .ncm-acct-dd-em { font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: #6fa8ab; font-family: var(--ncm-font-mono, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-acct-dd-nm { font-size: calc(12.5px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-acct-dd-em { font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); font-family: var(--ncm-font-mono, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ncm-app .ncm-acct-dd-src { font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: .1em; padding: 2px 6px; border-radius: 3px; flex: 0 0 auto; font-family: var(--ncm-font-mono, monospace); }
-.ncm-app .ncm-acct-dd-src--contact { background: rgba(25, 243, 247, .13); color: #19f3f7; }
-.ncm-app .ncm-acct-dd-src--actor { background: rgba(247, 201, 72, .13); color: #f7c948; }
-.ncm-app .ncm-acct-dd-empty { padding: 9px 12px; font-size: calc(11px * var(--ncm-text-scale, 1)); color: #6a6a8a; }
-.ncm-app .ncm-acct-idcard { display: flex; gap: 12px; align-items: center; padding: 9px 10px; border: 1px solid rgba(25, 243, 247, .35); background: rgba(25, 243, 247, .05); border-radius: 4px; margin: 6px 0 4px; }
+.ncm-app .ncm-acct-dd-src--contact { background: color-mix(in srgb, var(--ncm-secondary) 13%, transparent); color: var(--ncm-secondary); }
+.ncm-app .ncm-acct-dd-src--actor { background: color-mix(in srgb, var(--ncm-accent) 13%, transparent); color: var(--ncm-accent); }
+.ncm-app .ncm-acct-dd-empty { padding: 9px 12px; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+.ncm-app .ncm-acct-idcard { display: flex; gap: 12px; align-items: center; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); border-radius: 4px; margin: 6px 0 4px; }
 .ncm-app .ncm-acct-idcard--none { display: none; }
-.ncm-app .ncm-acct-idcard-pic { width: 44px; height: 44px; border-radius: 5px; background: #1a1a2e; display: inline-flex; align-items: center; justify-content: center; font-size: calc(19px * var(--ncm-text-scale, 1)); font-weight: 800; color: #8fd; flex: 0 0 auto; overflow: hidden; }
+.ncm-app .ncm-acct-idcard-pic { width: 44px; height: 44px; border-radius: 5px; background: var(--ncm-bg-surface); display: inline-flex; align-items: center; justify-content: center; font-size: calc(19px * var(--ncm-text-scale, 1)); font-weight: 800; color: var(--ncm-secondary); flex: 0 0 auto; overflow: hidden; }
 .ncm-app .ncm-acct-idcard-pic img { width: 100%; height: 100%; object-fit: cover; display: block; border: none; }
 .ncm-app .ncm-acct-idcard-id { flex: 1; min-width: 0; }
-.ncm-app .ncm-acct-idcard-nm { font-weight: 800; font-size: calc(13.5px * var(--ncm-text-scale, 1)); color: #eef; }
-.ncm-app .ncm-acct-idcard-em { font-family: var(--ncm-font-mono, monospace); font-size: calc(11px * var(--ncm-text-scale, 1)); color: #19f3f7; }
-.ncm-app .ncm-acct-idcard-tag { font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: .08em; padding: 2px 7px; border-radius: 3px; background: rgba(25, 243, 247, .14); color: #19f3f7; margin-left: 6px; font-family: var(--ncm-font-mono, monospace); vertical-align: middle; }
-.ncm-app .ncm-acct-unlink { color: #8a8aa8; font-size: calc(11px * var(--ncm-text-scale, 1)); border: 1px solid #2a2a45; border-radius: 3px; padding: 4px 8px; cursor: pointer; flex: 0 0 auto; }
-.ncm-app .ncm-acct-unlink:hover { color: #ff5261; border-color: rgba(255, 0, 51, .4); }
+.ncm-app .ncm-acct-idcard-nm { font-weight: 800; font-size: calc(13.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+.ncm-app .ncm-acct-idcard-em { font-family: var(--ncm-font-mono, monospace); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
+.ncm-app .ncm-acct-idcard-tag { font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: .08em; padding: 2px 7px; border-radius: 3px; background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent); color: var(--ncm-secondary); margin-left: 6px; font-family: var(--ncm-font-mono, monospace); vertical-align: middle; }
+.ncm-app .ncm-acct-unlink { color: var(--ncm-text-muted); font-size: calc(11px * var(--ncm-text-scale, 1)); border: 1px solid var(--ncm-border); border-radius: 3px; padding: 4px 8px; cursor: pointer; flex: 0 0 auto; }
+.ncm-app .ncm-acct-unlink:hover { color: var(--ncm-primary); border-color: color-mix(in srgb, var(--ncm-danger) 40%, transparent); }
 
 /* B · portrait tile (the tile IS the FilePicker button) */
 .ncm-app .ncm-acct-por-row { align-items: flex-start; }
-.ncm-app .ncm-acct-portile { width: 64px; height: 64px; border-radius: 6px; border: 1px dashed #3a3a55; background: #0a0a12; display: inline-flex; align-items: center; justify-content: center; color: #55557a; font-size: calc(22px * var(--ncm-text-scale, 1)); cursor: pointer; flex: 0 0 auto; overflow: hidden; transition: border-color .15s; }
-.ncm-app .ncm-acct-portile:hover { border-color: #19f3f7; color: #19f3f7; }
+.ncm-app .ncm-acct-portile { width: 64px; height: 64px; border-radius: 6px; border: 1px dashed var(--ncm-border-active); background: var(--ncm-bg-deep); display: inline-flex; align-items: center; justify-content: center; color: var(--ncm-text-muted); font-size: calc(22px * var(--ncm-text-scale, 1)); cursor: pointer; flex: 0 0 auto; overflow: hidden; transition: border-color .15s; }
+.ncm-app .ncm-acct-portile:hover { border-color: var(--ncm-secondary); color: var(--ncm-secondary); }
 .ncm-app .ncm-acct-portile img { width: 100%; height: 100%; object-fit: cover; display: block; border: none; }
 .ncm-app .ncm-acct-por-side { flex: 1; min-width: 0; }
 .ncm-app .ncm-acct-por-side .ncm-cfg-input { width: 100%; }
@@ -1244,45 +1257,45 @@
 /* C · chips + classification pills */
 .ncm-app .ncm-acct-chip-row { align-items: flex-start; }
 .ncm-app .ncm-acct-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-items: center; }
-.ncm-app .ncm-acct-chip { font-size: calc(10.5px * var(--ncm-text-scale, 1)); letter-spacing: .05em; padding: 4px 11px; border-radius: 999px; border: 1px solid #2a2a45; color: #8a8aa8; cursor: pointer; background: #0a0a12; user-select: none; white-space: nowrap; }
+.ncm-app .ncm-acct-chip { font-size: calc(10.5px * var(--ncm-text-scale, 1)); letter-spacing: .05em; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--ncm-border); color: var(--ncm-text-muted); cursor: pointer; background: var(--ncm-bg-deep); user-select: none; white-space: nowrap; }
 .ncm-app .ncm-acct-chip i { font-size: calc(9px * var(--ncm-text-scale, 1)); margin-right: 3px; }
-.ncm-app .ncm-acct-chip:hover { color: #b9b9cc; border-color: #3a3a55; }
-.ncm-app .ncm-acct-chip--on { border-color: rgba(25, 243, 247, .6); color: #19f3f7; background: rgba(25, 243, 247, .08); box-shadow: 0 0 6px rgba(25, 243, 247, .25); }
+.ncm-app .ncm-acct-chip:hover { color: var(--ncm-text-secondary); border-color: var(--ncm-border-active); }
+.ncm-app .ncm-acct-chip--on { border-color: color-mix(in srgb, var(--ncm-secondary) 60%, transparent); color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-secondary) 25%, transparent); }
 .ncm-app .ncm-acct-chip--custom { border-style: dashed; }
-.ncm-app .ncm-acct-chip--ice { color: #ff5261; border-color: rgba(255, 0, 51, .45); }
-.ncm-app .ncm-acct-chip--ice.ncm-acct-chip--on { color: #ff0033; border-color: rgba(255, 0, 51, .7); background: rgba(255, 0, 51, .09); box-shadow: 0 0 7px rgba(255, 0, 51, .35); }
-.ncm-app .ncm-acct-pill { font-size: calc(9.5px * var(--ncm-text-scale, 1)); font-weight: 800; letter-spacing: .09em; padding: 4px 10px; border-radius: 3px; border: 1px solid #2a2a45; cursor: pointer; opacity: .55; font-family: var(--ncm-font-mono, monospace); user-select: none; white-space: nowrap; }
+.ncm-app .ncm-acct-chip--ice { color: var(--ncm-primary); border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent); }
+.ncm-app .ncm-acct-chip--ice.ncm-acct-chip--on { color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 70%, transparent); background: color-mix(in srgb, var(--ncm-danger) 9%, transparent); box-shadow: 0 0 7px color-mix(in srgb, var(--ncm-danger) 35%, transparent); }
+.ncm-app .ncm-acct-pill { font-size: calc(9.5px * var(--ncm-text-scale, 1)); font-weight: 800; letter-spacing: .09em; padding: 4px 10px; border-radius: 3px; border: 1px solid var(--ncm-border); cursor: pointer; opacity: .55; font-family: var(--ncm-font-mono, monospace); user-select: none; white-space: nowrap; }
 .ncm-app .ncm-acct-pill--on { opacity: 1; box-shadow: 0 0 7px currentColor; }
-.ncm-app .ncm-acct-pill--none { color: #8a8aa8; }
-.ncm-app .ncm-acct-pill--rest { color: #f7c948; border-color: rgba(247, 201, 72, .5); background: rgba(247, 201, 72, .07); }
+.ncm-app .ncm-acct-pill--none { color: var(--ncm-text-muted); }
+.ncm-app .ncm-acct-pill--rest { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 50%, transparent); background: color-mix(in srgb, var(--ncm-accent) 7%, transparent); }
 .ncm-app .ncm-acct-pill--conf { color: #ff9f43; border-color: rgba(255, 159, 67, .5); background: rgba(255, 159, 67, .07); }
-.ncm-app .ncm-acct-pill--sec { color: #ff5261; border-color: rgba(246, 82, 97, .5); background: rgba(246, 82, 97, .07); }
-.ncm-app .ncm-acct-pill--top { color: #ff0033; border-color: rgba(255, 0, 51, .6); background: rgba(255, 0, 51, .09); }
+.ncm-app .ncm-acct-pill--sec { color: var(--ncm-primary); border-color: color-mix(in srgb, var(--ncm-primary) 50%, transparent); background: color-mix(in srgb, var(--ncm-primary) 7%, transparent); }
+.ncm-app .ncm-acct-pill--top { color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 60%, transparent); background: color-mix(in srgb, var(--ncm-danger) 9%, transparent); }
 
 /* E · security method cards + toggle switches */
-.ncm-app .ncm-acct-mcard { border: 1px solid #22223a; border-radius: 4px; margin-bottom: 8px; background: #0b0b14; overflow: hidden; }
-.ncm-app .ncm-acct-mcard--on { border-color: rgba(25, 243, 247, .4); }
+.ncm-app .ncm-acct-mcard { border: 1px solid var(--ncm-border); border-radius: 4px; margin-bottom: 8px; background: var(--ncm-bg-deep); overflow: hidden; }
+.ncm-app .ncm-acct-mcard--on { border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
 .ncm-app .ncm-acct-mcard-h { display: flex; align-items: center; gap: 10px; padding: 8px 11px; }
-.ncm-app .ncm-acct-mcard-ic { width: 26px; height: 26px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: calc(12px * var(--ncm-text-scale, 1)); background: rgba(25, 243, 247, .08); color: #19f3f7; flex: 0 0 auto; }
+.ncm-app .ncm-acct-mcard-ic { width: 26px; height: 26px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: calc(12px * var(--ncm-text-scale, 1)); background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); color: var(--ncm-secondary); flex: 0 0 auto; }
 .ncm-app .ncm-acct-mcard-t { flex: 1; min-width: 0; }
-.ncm-app .ncm-acct-mcard-nm { font-size: calc(12.5px * var(--ncm-text-scale, 1)); font-weight: 800; color: #e8e8f0; }
-.ncm-app .ncm-acct-mcard-d { font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: #6a6a8a; }
+.ncm-app .ncm-acct-mcard-nm { font-size: calc(12.5px * var(--ncm-text-scale, 1)); font-weight: 800; color: var(--ncm-text-primary); }
+.ncm-app .ncm-acct-mcard-d { font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
 .ncm-app .ncm-acct-mcard-b { padding: 0 11px 10px 47px; }
 .ncm-app .ncm-acct-mcard:not(.ncm-acct-mcard--on) .ncm-acct-mcard-b { opacity: .45; }
 .ncm-app .ncm-acct-tgl { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; flex: 0 0 auto; margin-left: auto; }
 .ncm-app .ncm-acct-tgl input { display: none; }
-.ncm-app .ncm-acct-tgl-knob { width: 34px; height: 18px; border-radius: 999px; background: #22223a; position: relative; transition: background .15s; flex: 0 0 auto; }
-.ncm-app .ncm-acct-tgl-knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #55557a; transition: left .15s, background .15s; }
-.ncm-app .ncm-acct-tgl input:checked + .ncm-acct-tgl-knob { background: rgba(25, 243, 247, .35); }
-.ncm-app .ncm-acct-tgl input:checked + .ncm-acct-tgl-knob::after { left: 18px; background: #19f3f7; }
-.ncm-app .ncm-acct-tgl-lbl { font-size: calc(10px * var(--ncm-text-scale, 1)); text-transform: uppercase; letter-spacing: .05em; color: #8a8aa8; }
+.ncm-app .ncm-acct-tgl-knob { width: 34px; height: 18px; border-radius: 999px; background: var(--ncm-border); position: relative; transition: background .15s; flex: 0 0 auto; }
+.ncm-app .ncm-acct-tgl-knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--ncm-text-muted); transition: left .15s, background .15s; }
+.ncm-app .ncm-acct-tgl input:checked + .ncm-acct-tgl-knob { background: color-mix(in srgb, var(--ncm-secondary) 35%, transparent); }
+.ncm-app .ncm-acct-tgl input:checked + .ncm-acct-tgl-knob::after { left: 18px; background: var(--ncm-secondary); }
+.ncm-app .ncm-acct-tgl-lbl { font-size: calc(10px * var(--ncm-text-scale, 1)); text-transform: uppercase; letter-spacing: .05em; color: var(--ncm-text-muted); }
 
 /* F · sticky footer + dirty dot (sticks to the .ncm-cfg-content scrollport) */
-.ncm-app .ncm-acct-foot { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 8px; align-items: center; margin: 12px -14px -12px; padding: 10px 14px 12px; background: #0e0e16; border-top: 1px solid #1e1e30; box-shadow: 0 -10px 14px -10px rgba(0, 0, 0, .7); }
-.ncm-app .ncm-acct-dirty { display: none; margin-left: auto; font-size: calc(10px * var(--ncm-text-scale, 1)); color: #f7c948; letter-spacing: .04em; align-items: center; }
+.ncm-app .ncm-acct-foot { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 8px; align-items: center; margin: 12px -14px -12px; padding: 10px 14px 12px; background: var(--ncm-bg-deep); border-top: 1px solid var(--ncm-bg-surface); box-shadow: 0 -10px 14px -10px rgba(0, 0, 0, .7); }
+.ncm-app .ncm-acct-dirty { display: none; margin-left: auto; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); letter-spacing: .04em; align-items: center; }
 .ncm-app .ncm-acct-dirty i { font-size: calc(6px * var(--ncm-text-scale, 1)); margin-right: 4px; }
 .ncm-app .ncm-acct-editor--dirty .ncm-acct-dirty { display: inline-flex; }
-.ncm-app .ncm-acct-editor--dirty .ncm-acct-foot-save { border-color: rgba(0, 255, 65, .55) !important; color: #00ff41 !important; box-shadow: 0 0 8px rgba(0, 255, 65, .25) !important; }
+.ncm-app .ncm-acct-editor--dirty .ncm-acct-foot-save { border-color: color-mix(in srgb, var(--ncm-success) 55%, transparent) !important; color: var(--ncm-success) !important; box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-success) 25%, transparent) !important; }
 
 /* Items-directory terminal badge — recolor the shared shard badge red. */
 .ncm-terminal-img-tag { background: #ff0033 !important; box-shadow: 0 0 8px rgba(255,0,51,.6) !important; }
@@ -1291,18 +1304,18 @@
 .ncm-burn-dialog .ncm-burn-hint { font-size: calc(12px * var(--ncm-text-scale, 1)); opacity: .8; margin: 0 0 8px; }
 .ncm-burn-dialog .ncm-burn-search {
   width: 100%; margin-bottom: 8px; padding: 6px 8px;
-  background: #0a0a0f; color: #ededf0; border: 1px solid #2a2a45; border-radius: 4px;
+  background: var(--ncm-bg-deep); color: var(--ncm-text-primary); border: 1px solid var(--ncm-border); border-radius: 4px;
 }
 .ncm-burn-dialog .ncm-burn-list {
   max-height: 300px; overflow-y: auto; overflow-x: hidden;
-  border: 1px solid #2a2a45; border-radius: 4px; background: #0d0d14;
+  border: 1px solid var(--ncm-border); border-radius: 4px; background: var(--ncm-bg-deep);
 }
 .ncm-burn-dialog .ncm-burn-row {
   display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer;
   border-bottom: 1px solid rgba(255,255,255,.05);
 }
-.ncm-burn-dialog .ncm-burn-row:hover { background: rgba(25,243,247,.06); }
-.ncm-burn-dialog .ncm-burn-row.is-selected { background: rgba(25,243,247,.12); box-shadow: inset 2px 0 0 #19f3f7; }
+.ncm-burn-dialog .ncm-burn-row:hover { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); }
+.ncm-burn-dialog .ncm-burn-row.is-selected { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); box-shadow: inset 2px 0 0 var(--ncm-secondary); }
 /* .is-taken — the choice is already used (e.g. an item already chipped into the
    Security tab's operator gate). Shown-but-inert beats hidden: it answers "why
    isn't X in the list?". Its click is refused by the picker, not just by CSS. */
@@ -1315,7 +1328,7 @@
   font-family: monospace; font-size: calc(8px * var(--ncm-text-scale, 1)); letter-spacing: .5px; padding: 1px 5px;
   border: 1px solid rgba(136,136,160,.4); border-radius: 3px; opacity: .8; flex: 0 0 auto;
 }
-.ncm-burn-dialog .ncm-burn-tag--shard { color: #19f3f7; border-color: rgba(25,243,247,.5); opacity: 1; }
+.ncm-burn-dialog .ncm-burn-tag--shard { color: var(--ncm-secondary); border-color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent); opacity: 1; }
 
 /* ── Boot icon config (source select + live preview) ── */
 .ncm-cfg-row--hidden { display: none !important; }
@@ -1347,19 +1360,19 @@
 
 /* ── Burn dialog: explicit dark palette — Foundry's parchment dialog gives
       dark text, which vanished on our dark rows ("can't see any text"). ── */
-.ncm-burn-dialog .window-content { background: #0d0d14 !important; color: #c9c9da !important; }
+.ncm-burn-dialog .window-content { background: var(--ncm-bg-deep) !important; color: var(--ncm-text-secondary) !important; }
 .ncm-burn-dialog .ncm-burn-hint { color: #9d9db4; opacity: 1; }
-.ncm-burn-dialog .ncm-burn-search { background: #0a0a0f !important; color: #ededf0 !important; border: 1px solid #2a2a45 !important; }
+.ncm-burn-dialog .ncm-burn-search { background: var(--ncm-bg-deep) !important; color: var(--ncm-text-primary) !important; border: 1px solid var(--ncm-border) !important; }
 .ncm-burn-dialog .ncm-burn-search::placeholder { color: #66667e; }
 .ncm-burn-dialog .ncm-burn-name { color: #ededf2; }
-.ncm-burn-dialog .ncm-burn-type { color: #8888a0; opacity: 1; }
+.ncm-burn-dialog .ncm-burn-type { color: var(--ncm-text-secondary); opacity: 1; }
 .ncm-burn-dialog .ncm-burn-tag { color: #a8a8c0; }
-.ncm-burn-dialog .ncm-burn-tag--shard { color: #19f3f7; }
+.ncm-burn-dialog .ncm-burn-tag--shard { color: var(--ncm-secondary); }
 .ncm-burn-dialog .dialog-buttons button {
-  background: #16161f !important; color: #d9d9e6 !important;
-  border: 1px solid #2a2a45 !important; box-shadow: none !important;
+  background: var(--ncm-bg-base) !important; color: var(--ncm-text-primary) !important;
+  border: 1px solid var(--ncm-border) !important; box-shadow: none !important;
 }
-.ncm-burn-dialog .dialog-buttons button:hover { border-color: #19f3f7 !important; color: #19f3f7 !important; }
+.ncm-burn-dialog .dialog-buttons button:hover { border-color: var(--ncm-secondary) !important; color: var(--ncm-secondary) !important; }
 
 /* ── Exfil FX overlays: download-to-agent stream / burn-to-shard laser ── */
 .ncm-term__fx {
@@ -1744,6 +1757,16 @@
   font-size: calc(10.5px * var(--ncm-text-scale, 1)); letter-spacing: 1.5px; color: var(--ncm-text-secondary);
   opacity: 0; animation: ncm-term-fadein .5s ease 2.5s forwards;
 }
+/* "N new since last login" — footprint-driven diegetic line under the card. */
+.ncm-term__badge-newsince {
+  text-align: center; margin-top: 2px; padding: 0 14px 14px; font-family: var(--ncm-font-mono);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); letter-spacing: 1.2px;
+  color: var(--ncm-secondary, #19f3f7);
+  opacity: 0; animation: ncm-term-fadein .5s ease 2.65s forwards;
+}
+.ncm-term__badge-newsince i { margin-right: 4px; }
+/* Welcome keeps its own bottom pad when the newsince line follows it. */
+.ncm-term__badge-welcome:has(+ .ncm-term__badge-newsince) { padding-bottom: 6px; }
 @keyframes ncm-term-fadein { to { opacity: 1; } }
 
 /* ═══ Wallpaper (theme.wallpaper → --ncm-wallpaper).
@@ -1906,7 +1929,7 @@
 @media (prefers-reduced-motion: reduce) {
   .ncm-terminal-viewer[data-term-flicker="true"] { animation: none; }
   .ncm-term__saver--on .ncm-term__saver-inner { animation: none; }
-  .ncm-term__badge-welcome { animation: none; opacity: 1; }
+  .ncm-term__badge-welcome, .ncm-term__badge-newsince { animation: none; opacity: 1; }
 }
 
 /* ═══ Screensaver motion variants (data-ss-motion on .ncm-term__saver) ═══ */
@@ -1943,7 +1966,7 @@
 .ncm-cfg-lprev-card {
   display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 12px;
   border: 1px solid color-mix(in srgb, var(--ncm-primary, #F65261) 35%, transparent); border-radius: 7px;
-  background: color-mix(in srgb, var(--ncm-primary, #F65261) 5%, #0a0a0f);
+  background: color-mix(in srgb, var(--ncm-primary, #F65261) 5%, var(--ncm-bg-deep));
 }
 .ncm-cfg-lprev-card b { font-size: 9px; color: var(--ncm-text-primary, #ededf0); font-family: var(--ncm-font-display); }
 .ncm-cfg-lprev-card i { font-style: normal; font-size: 7px; color: var(--ncm-accent, #f7c948); }

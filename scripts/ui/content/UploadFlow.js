@@ -13,7 +13,7 @@
  * ANALYZE to catch; a botched one leaves tells.
  *
  * @file scripts/ui/content/UploadFlow.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  */
 
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';

@@ -1,7 +1,7 @@
 {{!--
   HUD Status Strip — Reusable thin monospace status bar
   @file templates/partials/hud-strip.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Thin 24-28px bar showing system-status data in monospace.
     Data is real where available (network, signal, queued), decorative where not
     (latency, encryption cipher). Used at the top of inbox and other NCM windows.
@@ -17,7 +17,7 @@
     connectionStatus — "CONNECTED" | "DEGRADED" | "NO_SIGNAL"
 
   @example
-    {{> "modules/cyberpunkred-messenger/templates/partials/hud-strip.hbs"
+    {{> "modules/night-city-messenger/templates/partials/hud-strip.hbs"
         networkName="CITINET" signalPercent=78 queuedCount=0
         encryptionCipher="AES-256" latencyMs=42 connectionStatus="CONNECTED" }}
 --}}

@@ -1,7 +1,7 @@
 /**
  * Register Integrations
  * @file scripts/init/registerIntegrations.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Chat integration, item sheet hooks, email field hooks.
  */
 

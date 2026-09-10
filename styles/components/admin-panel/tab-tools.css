@@ -116,7 +116,7 @@
 
 /* ─── Window frame ─── */
 .dialog.window-app.ncm-time-config-dialog {
-  background: #0d0d1a !important;
+  background: var(--ncm-bg-deep) !important;
   border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
   box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 2px color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important;
@@ -220,7 +220,7 @@
 .ncm-time-config-dialog .dialog-content,
 .ncm-time-config-dialog .window-content,
 .ncm-time-config-dialog section.window-content {
-  background: #0d0d1a !important;
+  background: var(--ncm-bg-deep) !important;
   padding: 12px !important;
   margin: 0 !important;
   border: none !important;
@@ -415,7 +415,7 @@
 /* ─── Dialog footer buttons (Apply / Close) ─── */
 .ncm-time-config-dialog .dialog-buttons,
 .ncm-time-config-dialog footer.dialog-buttons {
-  background: #0d0d1a !important;
+  background: var(--ncm-bg-deep) !important;
   border-top: 1px solid var(--ncm-border) !important;
   padding: 6px 12px !important;
   display: flex !important;

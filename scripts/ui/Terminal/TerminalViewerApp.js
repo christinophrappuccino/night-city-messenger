@@ -1,7 +1,7 @@
 /**
  * TerminalViewerApp
  * @file scripts/ui/Terminal/TerminalViewerApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description The player-facing Terminal window — a converted item you "log
  *   into". Drives a state machine (boot → network gate → login → manual auth →
  *   mailbox), sources its message feed from the active account via
@@ -471,11 +471,30 @@ export class TerminalViewerApp extends BaseApplication {
         idLabel: acct.idNumber || acct.email || acct.username || '—',
         clearance: (acct.clearance || (acct.isAdmin ? 'ADMIN' : 'STANDARD')).toUpperCase(),
         location: acct.location || meta.location || '',
-        lastLogin: acct.lastLogin || 'FIRST LOGIN',
+        // Authored flavor wins; else the machine's own footprint log supplies
+        // the real previous login; else it's genuinely the first.
+        lastLogin: acct.lastLogin
+          || (this._prevLogin?.ts ? formatCyberDate(this._prevLogin.ts) : 'FIRST LOGIN'),
       },
       // Custom ACCESS GRANTED line (config.login.welcomeText; empty = default).
       welcomeText: (cfg.login?.welcomeText || '').trim(),
+      // "N new since last login" — mail that arrived after the previous
+      // footprint on this account. Absent on a first login.
+      newSince: this._newSinceLastLogin(),
     };
+  }
+
+  /** Count unseen-since-previous-login mailbox messages (0 = show nothing). */
+  _newSinceLastLogin() {
+    const prevTs = this._prevLogin?.ts;
+    if (!prevTs) return 0;
+    const cutoff = new Date(prevTs).getTime();
+    if (!Number.isFinite(cutoff)) return 0;
+    const msgs = this.terminalService?.getAccountMessages(this.item, this._accountId) || [];
+    return msgs.filter(m =>
+      !m.status?.sent && !m.status?.deleted && !m.status?.spam &&
+      m.timestamp && new Date(m.timestamp).getTime() > cutoff
+    ).length;
   }
 
   _gateContext(cfg) {
@@ -986,9 +1005,10 @@ export class TerminalViewerApp extends BaseApplication {
     if (this._state === 'granted' && !this._grantedPlayed) {
       this._grantedPlayed = true;
       this._playTermSound('login-success');
-      // Hold for the full sequence: fields write-in + verify → bar fills →
-      // VALIDATED stamp (~2.0s) → ACCESS GRANTED (~2.35s) → brief beat.
-      this._timer(() => { this._grantedPlayed = false; this._enterState('mailbox'); }, 3000);
+      // Hold for the full sequence (keep in sync with the badge CSS delays):
+      // materialise → reader sweep + fields type in + hairline fill (~1.6s) →
+      // verify pulse + portrait badge (~2.0s) → ACCESS GRANTED (~2.3s) → beat.
+      this._timer(() => { this._grantedPlayed = false; this._enterState('mailbox'); }, 2700);
     }
     // Enter-to-submit in the auth console.
     if (this._state === 'manual') {
@@ -1327,6 +1347,9 @@ export class TerminalViewerApp extends BaseApplication {
     // the debounced re-render then rebuilt the badge DOM ~150ms into its
     // animation, restarting it (the "card slides in twice" bug).
     this._state = 'granted';
+    // Capture the PREVIOUS footprint before this login's own write lands (the
+    // relayed player write lags anyway; reading first makes both sides agree).
+    this._prevLogin = this.terminalService.getLastLogin?.(this.item, accountId) || null;
     await this.terminalService.recordLoginSuccess(this.item, accountId, this.actorId);
     this._accountId = accountId;
     this._authAccountId = null;

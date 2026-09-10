@@ -258,6 +258,46 @@
    rather than being reached into from this tab. */
 .ncm-admin-panel .ncm-sec-admin-gate__or { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; color: var(--ncm-secondary); letter-spacing: .06em; }
 
+/* ── List scroll caps + per-section pagers (2026-08-14) — every growable list
+ *    (log / heat / plants / bin) caps its height and scrolls internally, so the
+ *    tab never becomes a mile-long page as data accrues. ── */
+.ncm-admin-panel .ncm-sec-admin-scroll { max-height: 300px; overflow-y: auto; overflow-x: hidden; }
+.ncm-admin-panel .ncm-sec-admin-card__bd.nopad .ncm-sec-admin-scroll { max-height: 330px; }
+.ncm-admin-panel .ncm-sec-admin-pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 2px 0; margin-top: 8px; border-top: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-muted); }
+
+/* ── Operator Access — visual redesign (2026-08-14). Mode radio-cards, boxed
+ *    requirement blocks that dim when ungated, OR-groups with headers + remove. ── */
+.ncm-admin-panel .ncm-sec-admin-gate__modes { display: flex; gap: 9px; margin-bottom: 12px; }
+.ncm-admin-panel .ncm-sec-admin-gate__mode { flex: 1; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 9px; align-items: center; padding: 9px 11px; cursor: pointer; border-radius: 2px; background: var(--ncm-bg-base); border: 1px solid var(--ncm-border); transition: border-color .12s, background .12s; }
+.ncm-admin-panel .ncm-sec-admin-gate__mode input { display: none; }
+.ncm-admin-panel .ncm-sec-admin-gate__mode i { grid-row: 1 / 3; font-size: 17px; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-gate__mode .t { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 700; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-sec-admin-gate__mode .d { font-family: var(--ncm-font-body); font-size: 10.5px; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-gate__mode.on { border-color: color-mix(in srgb, var(--ncm-secondary) 55%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-gate__mode.on i, .ncm-admin-panel .ncm-sec-admin-gate__mode.on .t { color: var(--ncm-secondary); }
+
+.ncm-admin-panel .ncm-sec-admin-gate__reqs { transition: opacity .15s; }
+.ncm-admin-panel .ncm-sec-admin-gate__reqs.is-ungated { opacity: .4; pointer-events: none; }
+.ncm-admin-panel .ncm-sec-admin-gate__req { padding: 9px 11px; margin-bottom: 9px; background: var(--ncm-bg-base); border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-admin-panel .ncm-sec-admin-gate__reqhd { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ncm-admin-panel .ncm-sec-admin-gate__reqhd > i { color: var(--ncm-secondary); font-size: 12px; width: 16px; text-align: center; }
+.ncm-admin-panel .ncm-sec-admin-gate__reqhd .t { font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-sec-admin-gate__reqhd .grow { flex: 1; }
+.ncm-admin-panel .ncm-sec-admin-gate__andhint { font-family: var(--ncm-font-body); font-size: 10px; font-style: italic; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-gate__none { font-family: var(--ncm-font-body); font-size: 11px; font-style: italic; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-gate__mini { width: auto !important; min-width: 0; font-size: 11px; }
+.ncm-admin-panel .ncm-sec-admin-gate__skrow { display: flex; align-items: center; gap: 8px; }
+.ncm-admin-panel .ncm-sec-admin-gate__skill { flex: 0 1 200px; }
+/* OR-group cards (nested under Gear) */
+.ncm-admin-panel .ncm-sec-admin-gate__grp { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 8px 9px; background: var(--ncm-bg-deep); border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-admin-panel .ncm-sec-admin-gate__grp + .ncm-sec-admin-gate__grp::before { content: 'OR'; position: absolute; top: -9px; left: 11px; font-family: var(--ncm-font-display); font-size: 8px; font-weight: 700; letter-spacing: .1em; color: var(--ncm-secondary); background: var(--ncm-bg-mid); padding: 0 5px; }
+.ncm-admin-panel .ncm-sec-admin-gate__grphd { display: flex; align-items: center; gap: 8px; width: 100%; }
+.ncm-admin-panel .ncm-sec-admin-gate__opt { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-sec-admin-gate__grphd .grow { flex: 1; }
+.ncm-admin-panel button.ncm-sec-admin-gate__rm { appearance: none !important; -webkit-appearance: none !important; width: 20px !important; height: 20px !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; display: grid; place-items: center; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; background: transparent !important; color: var(--ncm-text-muted) !important; box-shadow: none !important; cursor: pointer; }
+.ncm-admin-panel button.ncm-sec-admin-gate__rm:hover { color: var(--ncm-danger) !important; border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent) !important; }
+.ncm-admin-panel button.ncm-sec-admin-gate__rm i { margin: 0 !important; font-size: 11px !important; }
+
 
 /* ═══════════════════════════════════════════════════════════
  *  Escalate dialog (.ncm-esc-dialog) — a Foundry Dialog, so it's

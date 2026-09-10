@@ -1,7 +1,7 @@
 /**
  * TerminalConfigApp
  * @file scripts/ui/Terminal/TerminalConfigApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description GM authoring sheet for a Terminal (parallel to ItemInboxConfig).
  *   Tabs: Identity · Accounts · Theme · Boot · Network · Exfil. Reuses the
  *   shard config's `ncm-cfg-*` styling for a consistent GM-facing look. All
@@ -13,6 +13,7 @@
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
 import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound } from '../../utils/helpers.js';
+import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
 const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
@@ -20,6 +21,9 @@ const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
 const PASS_WORDS = ['chrome', 'samurai', 'arasaka', 'daemon', 'netwatch', 'flatline', 'preem', 'kiroshi', 'militech', 'nomad', 'glitch', 'neon', 'zeroday', 'blackwall', 'edge', 'static'];
 
 export class TerminalConfigApp extends BaseApplication {
+
+  /** GM tool — follows the Admin Panel theme + text size (utils/adminTheme.js). */
+  static ADMIN_THEMED = true;
 
   item = null;
   _activeTab = 'identity';
@@ -846,7 +850,7 @@ export class TerminalConfigApp extends BaseApplication {
 
   static async _onSaveFullPreset() {
     const name = await new Promise(resolve => {
-      new Dialog({
+      adminDialog({
         title: 'Save Terminal Preset',
         content: '<div style="padding:8px 0;"><label style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#8888a0;text-transform:uppercase;">Preset Name</label><input type="text" id="ncm-fpreset-name" value="My Terminal" style="width:100%;margin-top:4px;padding:6px 8px;background:#0a0a0f;border:1px solid #2a2a45;color:#e0e0e8;font-family:\'Rajdhani\',sans-serif;font-size:13px;border-radius:2px;" /></div>',
         buttons: {
@@ -870,7 +874,7 @@ export class TerminalConfigApp extends BaseApplication {
     if (!entry?.config) return;
     const cfg = this.terminalService.getConfig(this.item);
     const seedCount = (entry.config.accounts || []).length;
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: `Apply Terminal Preset: ${entry.name}`,
       content: `<p>Overwrites this terminal's <strong>theme, boot, login style, MOTD/welcome, screensaver, and folder names</strong>${(cfg.accounts || []).length ? '' : (seedCount ? ` and seeds <strong>${seedCount} account${seedCount === 1 ? '' : 's'}</strong>` : '')}. Messages and existing accounts are untouched.</p>`,
     });
@@ -901,7 +905,7 @@ export class TerminalConfigApp extends BaseApplication {
     const presets = this._getFullPresets();
     if (!presets[index]) return;
     const name = presets[index].name;
-    const confirmed = await Dialog.confirm({ title: 'Delete Terminal Preset', content: `<p>Delete "${name}" from the library?</p>` });
+    const confirmed = await adminConfirm({ title: 'Delete Terminal Preset', content: `<p>Delete "${name}" from the library?</p>` });
     if (!confirmed) return;
     presets.splice(index, 1);
     await this._setFullPresets(presets);
@@ -1489,7 +1493,7 @@ export class TerminalConfigApp extends BaseApplication {
 
   static async _onSaveTermTheme() {
     const name = await new Promise(resolve => {
-      new Dialog({
+      adminDialog({
         title: 'Save Terminal Theme',
         content: '<div style="padding:8px 0;"><label style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#8888a0;text-transform:uppercase;">Theme Name</label><input type="text" id="ncm-tterm-name" value="My Terminal Theme" style="width:100%;margin-top:4px;padding:6px 8px;background:#0a0a0f;border:1px solid #2a2a45;color:#e0e0e8;font-family:\'Rajdhani\',sans-serif;font-size:13px;border-radius:2px;" /></div>',
         buttons: {
@@ -1533,7 +1537,7 @@ export class TerminalConfigApp extends BaseApplication {
     const themes = this._getTermThemes();
     if (!themes[index]) return;
     const name = themes[index].name;
-    const confirmed = await Dialog.confirm({ title: 'Delete Theme', content: `<p>Delete saved terminal theme "${name}"?</p>` });
+    const confirmed = await adminConfirm({ title: 'Delete Theme', content: `<p>Delete saved terminal theme "${name}"?</p>` });
     if (!confirmed) return;
     themes.splice(index, 1);
     await this._setTermThemes(themes);
@@ -1652,7 +1656,7 @@ export class TerminalConfigApp extends BaseApplication {
         <span class="ncm-burn-name">${esc(i.name)}</span>
         <span class="ncm-burn-type">${esc(i.type)}</span>
       </div>`).join('');
-    const dlg = new Dialog({
+    const dlg = adminDialog({
       title: 'Key Item',
       content: `
         <div class="ncm-burn-hint">Pick the item a character must carry to open this account (matched by name).</div>
@@ -1779,7 +1783,7 @@ export class TerminalConfigApp extends BaseApplication {
 
   static async _onRemoveAccount(event, target) {
     const id = target.dataset.accountId;
-    const ok = await Dialog.confirm({ title: 'Remove Account', content: '<p>Remove this account? Its messages are left orphaned in the journal.</p>' });
+    const ok = await adminConfirm({ title: 'Remove Account', content: '<p>Remove this account? Its messages are left orphaned in the journal.</p>' });
     if (!ok) return;
     await this.terminalService.removeAccount(this.item, id);
     if (this._editingAccountId === id) this._editingAccountId = null;
@@ -1798,7 +1802,7 @@ export class TerminalConfigApp extends BaseApplication {
 
   static async _onForceUnlock() { await this.terminalService.forceUnlock(this.item); ui.notifications.info('Terminal force-unlocked (GM bypass).'); this.render(false); }
   static async _onRelock() {
-    const ok = await Dialog.confirm({ title: 'Relock Terminal', content: '<p>Wipe all sessions and reset lockouts?</p>' });
+    const ok = await adminConfirm({ title: 'Relock Terminal', content: '<p>Wipe all sessions and reset lockouts?</p>' });
     if (!ok) return;
     await this.terminalService.relock(this.item);
     ui.notifications.info('Terminal relocked.');

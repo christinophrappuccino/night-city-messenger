@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * Night City Messenger — Design System Components
  * @file styles/base/components.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Reusable UI component classes used across all NCM interfaces.
  *   Based on the Style Checker design language: bracket headers, stat grids,
  *   tag badges, entity cards, signal bars, alert panels, and dark surface cards.
@@ -29,7 +29,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    §1  SECTION HEADER — [ TITLE ]
    Bracket-framed, uppercase, centered, cyan accent. Rajdhani 700.
-   Usage: {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
+   Usage: {{> "modules/night-city-messenger/templates/partials/section-header.hbs"
             title="INBOX" count=12 }}
    ═══════════════════════════════════════════════════════════════════════════ */
 

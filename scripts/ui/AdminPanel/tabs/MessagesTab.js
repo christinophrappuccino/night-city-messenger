@@ -1,7 +1,7 @@
 /**
  * MessagesTab — Activity feed, scheduled, NPC quick-send, queue, broadcast.
  * @file scripts/ui/AdminPanel/tabs/MessagesTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Owns the heaviest tab: scans every NCM-Inbox-* journal for the
  * activity feed, paginated NPC send-as grid, scheduled message
@@ -20,6 +20,7 @@ import { log, formatCyberDate } from '../../../utils/helpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { DateRangePicker } from '../../components/DateRangePicker.js';
 import { BaseTab } from '../BaseTab.js';
+import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 
 export class MessagesTab extends BaseTab {
 
@@ -438,7 +439,7 @@ export class MessagesTab extends BaseTab {
         if (contact?.actorId && game.actors?.get(contact.actorId)?.hasPlayerOwner) continue;
 
         for (const page of journal.pages ?? []) {
-          const flags = page.flags?.['cyberpunkred-messenger'];
+          const flags = page.flags?.['night-city-messenger'];
           if (!flags) continue;
 
           const msgId = flags.messageId || page.id;
@@ -711,7 +712,7 @@ export class MessagesTab extends BaseTab {
         const ownerId = inbox.ownerId;
 
         for (const page of journal.pages ?? []) {
-          const flags = page.flags?.['cyberpunkred-messenger'];
+          const flags = page.flags?.['night-city-messenger'];
           if (!flags) continue;
 
           const msgId = flags.messageId || page.id;
@@ -1185,7 +1186,7 @@ export class MessagesTab extends BaseTab {
       let total = 0;
       let unread = 0;
       for (const page of journal.pages ?? []) {
-        const flags = page.flags?.['cyberpunkred-messenger'];
+        const flags = page.flags?.['night-city-messenger'];
         if (!flags) continue;
         total++;
         const isSent = (flags.messageId || '').endsWith('-sent');
@@ -1201,25 +1202,25 @@ export class MessagesTab extends BaseTab {
     });
 
     const S = {
-      panel: 'background:#1a1a2e; border:1px solid #2a2a45; border-radius:2px; padding:0; overflow:hidden;',
-      search: 'display:flex; align-items:center; gap:6px; padding:7px 12px; border-bottom:1px solid #2a2a45; background:#0a0a0f;',
+      panel: 'background:var(--ncm-bg-surface); border:1px solid var(--ncm-border); border-radius:2px; padding:0; overflow:hidden;',
+      search: 'display:flex; align-items:center; gap:6px; padding:7px 12px; border-bottom:1px solid var(--ncm-border); background:var(--ncm-bg-deep);',
       scroll: 'max-height:340px; overflow-y:auto;',
       row: 'display:flex; align-items:center; gap:10px; padding:6px 12px; cursor:pointer; transition:background 0.1s; border-bottom:1px solid rgba(42,42,69,0.3);',
-      pip: 'width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Rajdhani,sans-serif; font-size:10px; font-weight:700; flex-shrink:0;',
+      pip: 'width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--ncm-font-display); font-size:10px; font-weight:700; flex-shrink:0;',
       info: 'display:flex; flex-direction:column; flex:1; min-width:0;',
-      name: 'font-family:Rajdhani,sans-serif; font-size:12px; font-weight:700; color:#e0e0e8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;',
-      meta: 'font-family:Share Tech Mono,monospace; font-size:9px; color:#8888a0;',
-      badge: 'font-family:Share Tech Mono,monospace; font-size:10px; flex-shrink:0; padding:2px 6px; border-radius:2px; line-height:1;',
-      empty: 'padding:20px; text-align:center; font-family:Rajdhani,sans-serif; font-size:12px; color:#8888a0;',
+      name: 'font-family:var(--ncm-font-display); font-size:12px; font-weight:700; color:var(--ncm-text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;',
+      meta: 'font-family:var(--ncm-font-mono); font-size:9px; color:var(--ncm-text-secondary);',
+      badge: 'font-family:var(--ncm-font-mono); font-size:10px; flex-shrink:0; padding:2px 6px; border-radius:2px; line-height:1;',
+      empty: 'padding:20px; text-align:center; font-family:var(--ncm-font-display); font-size:12px; color:var(--ncm-text-secondary);',
     };
 
     const buildRows = (list) => {
       if (!list.length) return `<div style="${S.empty}"><i class="fas fa-inbox" style="margin-right:6px;"></i> No inboxes found</div>`;
       return list.map(e => {
         const unreadBadge = e.unreadMessages > 0
-          ? `<span style="${S.badge} background:rgba(246,82,97,0.12); color:#F65261;">${e.unreadMessages} new</span>`
+          ? `<span style="${S.badge} background:color-mix(in srgb, var(--ncm-primary) 12%, transparent); color:var(--ncm-primary);">${e.unreadMessages} new</span>`
           : '';
-        const totalBadge = `<span style="${S.badge} background:rgba(136,136,160,0.08); color:#8888a0;">${e.totalMessages}</span>`;
+        const totalBadge = `<span style="${S.badge} background:color-mix(in srgb, var(--ncm-text-secondary) 8%, transparent); color:var(--ncm-text-secondary);">${e.totalMessages}</span>`;
         return `<div class="ncm-vi-row" data-inbox-id="${e.inboxId}" style="${S.row}">
           <div style="${S.pip} color:${e.color}; border:1px solid ${e.color}33; background:${e.color}0a;">${e.initial}</div>
           <div style="${S.info}">
@@ -1233,22 +1234,22 @@ export class MessagesTab extends BaseTab {
     };
 
     const content = `
-      <div style="font-family:Rajdhani,sans-serif; color:#eeeef4; min-width:380px;">
+      <div style="font-family:var(--ncm-font-display); color:var(--ncm-text-primary); min-width:380px;">
         <div style="${S.panel}">
           <div style="${S.search}">
-            <i class="fas fa-magnifying-glass" style="font-size:9px; color:#8888a0;"></i>
-            <input type="text" id="ncm-vi-search" placeholder="Search by name, email, or role…" style="flex:1; background:none; border:none; outline:none; font-family:Rajdhani,sans-serif; font-size:12px; font-weight:600; color:#e0e0e8;">
+            <i class="fas fa-magnifying-glass" style="font-size:9px; color:var(--ncm-text-secondary);"></i>
+            <input type="text" id="ncm-vi-search" placeholder="Search by name, email, or role…" style="flex:1; background:none; border:none; outline:none; font-family:var(--ncm-font-display); font-size:12px; font-weight:600; color:var(--ncm-text-primary);">
           </div>
           <div id="ncm-vi-list" style="${S.scroll}">
             ${buildRows(rows)}
           </div>
         </div>
-        <div style="font-family:Share Tech Mono,monospace; font-size:9px; color:#555570; padding:6px 4px 0; text-align:center;">
+        <div style="font-family:var(--ncm-font-mono); font-size:9px; color:var(--ncm-text-muted); padding:6px 4px 0; text-align:center;">
           ${rows.length} inboxes · Click to open
         </div>
       </div>`;
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: 'View Inbox',
       content,
       buttons: {
@@ -1305,7 +1306,7 @@ export class MessagesTab extends BaseTab {
     const scheduleId = target.closest('[data-schedule-id]')?.dataset.scheduleId;
     if (!scheduleId) return;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Cancel Scheduled Message',
       content: '<p>Cancel this scheduled message? It will not be delivered.</p>',
     });
@@ -1355,7 +1356,7 @@ export class MessagesTab extends BaseTab {
         </div>
       </div>`;
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: 'Edit Scheduled Message',
       content,
       buttons: {
@@ -1497,7 +1498,7 @@ export class MessagesTab extends BaseTab {
     for (const journal of game.journal ?? []) {
       if (!MessageRepository.identifyInbox(journal)) continue;
       for (const page of journal.pages ?? []) {
-        const flags = page.flags?.['cyberpunkred-messenger'];
+        const flags = page.flags?.['night-city-messenger'];
         if (flags?.messageId === messageId) {
           foundPage = { page, flags };
           break;
@@ -1572,7 +1573,7 @@ export class MessagesTab extends BaseTab {
       return;
     }
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Force Deliver All',
       content: `<p>Force-deliver <strong>${queue.length}</strong> queued message${queue.length > 1 ? 's' : ''}? This bypasses network requirements.</p>`,
     });
@@ -1621,7 +1622,7 @@ export class MessagesTab extends BaseTab {
     const actor = game.actors?.get(actorId);
     if (!actor) return;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Purge Old Messages',
       content: `<p>Delete all read messages older than 7 days from <strong>${actor.name}</strong>'s inbox?</p>`,
     });
@@ -1664,7 +1665,7 @@ export class MessagesTab extends BaseTab {
       return;
     }
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: 'Mass Broadcast — All Player Inboxes',
       content: `
         <form style="display:flex; flex-direction:column; gap:8px; padding:4px 0;">
@@ -1720,7 +1721,7 @@ export class MessagesTab extends BaseTab {
     // Save scroll before async operation
     this.app._saveScroll();
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Hard Delete Message',
       content: '<p>Permanently delete this message? This cannot be undone.</p>',
     });
@@ -1734,7 +1735,7 @@ export class MessagesTab extends BaseTab {
         for (const journal of game.journal ?? []) {
           if (!MessageRepository.identifyInbox(journal)) continue;
           const page = journal.pages?.find(p => {
-            const flags = p.flags?.['cyberpunkred-messenger'];
+            const flags = p.flags?.['night-city-messenger'];
             return flags?.messageId === messageId;
           });
           if (page) {

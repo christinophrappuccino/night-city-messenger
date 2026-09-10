@@ -1,7 +1,7 @@
 /**
  * ContactBreachService
  * @file scripts/services/ContactBreachService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Handles encrypted contact breach attempts. Simplified version
  *   of DataShardService's hack flow, tailored for contacts:
  *     - Skill check via SkillService.performCheck()

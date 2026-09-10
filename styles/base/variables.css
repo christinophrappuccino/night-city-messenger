@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Night City Messenger — Design Tokens
    @file styles/base/variables.css
-   @module cyberpunkred-messenger
+   @module night-city-messenger
    @description All colors, spacing, typography, shadows, borders, and z-index
      tokens. Overridable by ThemeService at runtime via CSS custom properties.
      Sprint 0 audit: added radius, shadow, font-size, z-index, and warning scales.
@@ -23,6 +23,7 @@
   /* ─── Surfaces (darkest → lightest) ─────────────────────── */
   --ncm-bg-deep: #0a0a0f;
   --ncm-bg-base: #12121a;
+  --ncm-bg-mid: #161622;        /* between base and surface (rails, side panels) */
   --ncm-bg-surface: #1a1a2e;
   --ncm-bg-elevated: #252540;
   --ncm-bg-overlay: rgba(0, 0, 0, 0.85);

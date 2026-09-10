@@ -1,7 +1,7 @@
 /**
  * SecurityTab — Admin ▸ Security (design doc §7).
  * @file scripts/ui/AdminPanel/tabs/SecurityTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description The GM's one-stop security surface, backed by TraceService + the
  *   resident/recycle-bin/operator-gate backends:
  *     · Activity Log  — every hack/forge/auth event (success + failure), plain
@@ -19,6 +19,7 @@ import { BaseTab } from '../BaseTab.js';
 import { log, whisperCardHtml } from '../../../utils/helpers.js';
 import { SKILL_MAP } from '../../../utils/constants.js';
 import { TraceService } from '../../../services/TraceService.js';
+import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 
 /** slug → plain-language phrase (someone who forgot the jargon still gets it). */
 const ACTION_LABELS = {
@@ -52,8 +53,19 @@ export class SecurityTab extends BaseTab {
   _filter = 'all';   // all | serious | breakins | fumbles
   _search = '';
   _page = 1;
+  _heatPage = 1;
+  _plantPage = 1;
+  _binPage = 1;
   _opFilter = null;  // click-to-filter: an actorId
   _objFilter = null; // or an objectId
+
+  /** Slice an array into a page view-model { rows, page, maxPage, hasPrev, hasNext, total }. */
+  _paginate(arr, page, size) {
+    const total = arr.length;
+    const maxPage = Math.max(1, Math.ceil(total / size));
+    const p = Math.min(Math.max(1, page), maxPage);
+    return { rows: arr.slice((p - 1) * size, p * size), page: p, maxPage, hasPrev: p > 1, hasNext: p < maxPage, total, multi: maxPage > 1 };
+  }
 
   // ─── context ───
   prepareContext() {
@@ -81,11 +93,18 @@ export class SecurityTab extends BaseTab {
     if (this._page > maxPage) this._page = maxPage;
     const pageRows = filtered.slice((this._page - 1) * PAGE, this._page * PAGE).map(r => this._enrichRow(r, nowSeen));
 
-    // heat
+    // heat (paginate the hot list — it grows one row per operator×object)
     const heat = this._gatherHeat(ts);
-    // plants + recycle + gate
-    const plants = this._gatherPlants();
-    const bin = (ts.getRecycleBin?.() || []).slice().reverse();
+    const heatPage = this._paginate(heat.hot, this._heatPage, 8);
+    this._heatPage = heatPage.page;
+    // plants + recycle + gate (all paginated + height-capped in CSS)
+    const plantsAll = this._gatherPlants();
+    const plantsPage = this._paginate(plantsAll, this._plantPage, 8);
+    this._plantPage = plantsPage.page;
+    const binAll = (ts.getRecycleBin?.() || []).slice().reverse();
+    const binPage = this._paginate(binAll, this._binPage, 10);
+    this._binPage = binPage.page;
+    const bin = binPage.rows;
     const gate = this._gateContext();
 
     return {
@@ -93,8 +112,8 @@ export class SecurityTab extends BaseTab {
         stats: {
           traces24h: rows.filter(r => Date.now() - Date.parse(r.ts) < 86400000).length,
           hot: heat.hot.filter(h => h.value >= 50).length,
-          plants: plants.filter(p => p.state === 'armed').length,
-          recycle: bin.length,
+          plants: plantsAll.filter(p => p.state === 'armed').length,
+          recycle: binAll.length,
         },
         log: {
           rows: pageRows, newCount,
@@ -104,7 +123,10 @@ export class SecurityTab extends BaseTab {
           hasPrev: this._page > 1, hasNext: this._page < maxPage,
           alertLevel: this._alertLevel(),
         },
-        heat, plants, bin: bin.map(b => ({ ...b, agoStr: this._ago(Date.parse(b.ts)) })), gate,
+        heat: { ...heat, hot: heatPage.rows, pager: heatPage },
+        plants: plantsPage.rows, plantsPager: plantsPage,
+        bin: bin.map(b => ({ ...b, agoStr: this._ago(Date.parse(b.ts)) })), binPager: binPage,
+        gate,
         countdowns: this._gatherCountdowns(ts),
         net: this._netContext(),
       },
@@ -114,7 +136,7 @@ export class SecurityTab extends BaseTab {
   /** Netrunning Resolution (design §5) — HOW gated hacks resolve, table-wide. */
   _netContext() {
     let mode = 'auto';
-    try { mode = game.settings.get('cyberpunkred-messenger', 'hackResolution') || 'auto'; } catch { /* not registered */ }
+    try { mode = game.settings.get('night-city-messenger', 'hackResolution') || 'auto'; } catch { /* not registered */ }
     return { mode, isAuto: mode === 'auto', isFlagged: mode === 'flagged', isGm: mode === 'gm' };
   }
 
@@ -141,6 +163,33 @@ export class SecurityTab extends BaseTab {
     };
   }
 
+  /**
+   * Human name for a heat object id. Heat is keyed by bare object id, which
+   * may be a WORLD item, an ACTOR-OWNED item (a terminal/shard in someone's
+   * inventory), a network id, or a `label:` pseudo-object. Before this, only
+   * world items resolved and everything else printed as a raw id ("Brandino
+   * has heat on some item ID number" — 2026-09-10). A deleted object is named
+   * as such rather than leaking its id.
+   * @param {string} objId
+   * @returns {string}
+   */
+  _heatObjectName(objId) {
+    const id = String(objId || '');
+    if (id.startsWith('label:')) return id.slice(6);
+    const world = game.items?.get(id);
+    if (world) return world.name;
+    for (const actor of game.actors?.contents ?? []) {
+      const owned = actor.items?.get?.(id);
+      if (owned) return `${owned.name} (${actor.name})`;
+    }
+    const net = game.nightcity?.networkService?.getNetwork?.(id);
+    if (net?.name) return net.name;
+    if (id.includes('.')) {
+      try { const doc = fromUuidSync(id); if (doc?.name) return doc.name; } catch { /* not a uuid */ }
+    }
+    return `(deleted object · ${id.slice(0, 8)}…)`;
+  }
+
   _gatherHeat(ts) {
     const map = ts.getHeatMap?.() || {};
     const rows = [];
@@ -151,7 +200,7 @@ export class SecurityTab extends BaseTab {
         const actor = game.actors?.get(actorId);
         rows.push({
           objectId: objId, actorId,
-          objectName: (objId.startsWith('label:') ? objId.slice(6) : (game.items?.get(objId)?.name || objId)),
+          objectName: this._heatObjectName(objId),
           actorName: actor?.name || (actorId === 'unknown' ? 'Unknown' : actorId),
           // Escalate is offered from WARM up (design §6b: warm → lockout, hot →
           // ICE, burned → countdown — one GM-gated dialog covers all three).
@@ -211,7 +260,7 @@ export class SecurityTab extends BaseTab {
 
   _gateContext() {
     let gate = {};
-    try { gate = game.settings.get('cyberpunkred-messenger', 'operatorGate') || {}; } catch { /* not registered */ }
+    try { gate = game.settings.get('night-city-messenger', 'operatorGate') || {}; } catch { /* not registered */ }
     const groups = (Array.isArray(gate.itemGroups) ? gate.itemGroups : []).map(grp =>
       (Array.isArray(grp) ? grp.map(x => {
         const name = typeof x === 'string' ? x : x?.name;
@@ -271,7 +320,7 @@ export class SecurityTab extends BaseTab {
     const el = this.app.element;
     if (!el) return;
     // mark the log seen (this tab is active when onRender runs)
-    try { game.settings.set('cyberpunkred-messenger', 'securityLogSeen', Date.now()); } catch { /* no */ }
+    try { game.settings.set('night-city-messenger', 'securityLogSeen', Date.now()); } catch { /* no */ }
 
     const search = el.querySelector('[data-sec-search]');
     if (search && !search.dataset.wired) {
@@ -281,7 +330,7 @@ export class SecurityTab extends BaseTab {
     const alertSel = el.querySelector('[data-sec-alert]');
     if (alertSel && !alertSel.dataset.wired) {
       alertSel.dataset.wired = '1';
-      alertSel.addEventListener('change', (e) => { try { game.settings.set('cyberpunkred-messenger', 'securityAlertLevel', e.target.value); } catch { /* no */ } });
+      alertSel.addEventListener('change', (e) => { try { game.settings.set('night-city-messenger', 'securityAlertLevel', e.target.value); } catch { /* no */ } });
     }
     // Live repaint — heat decays and countdowns tick continuously, but nothing
     // writes a setting while they do, so the setting-change refresh never fires.
@@ -293,6 +342,23 @@ export class SecurityTab extends BaseTab {
       }, 30000);
     }
 
+    // Operator Access — dim the requirement block when set to "Anyone" so the
+    // gate reads at a glance (the requirements are moot until it's gated). Purely
+    // visual; onSaveGate still reads whatever's in the DOM.
+    const gateReqs = el.querySelector('[data-gate-reqs]');
+    const gateModeVal = () => el.querySelector('[name="gateMode"]:checked')?.value || 'anyone';
+    const syncGate = () => {
+      const ungated = gateModeVal() === 'anyone';
+      gateReqs?.classList.toggle('is-ungated', ungated);
+      el.querySelectorAll('.ncm-sec-admin-gate__mode').forEach(m => m.classList.toggle('on', m.querySelector('input')?.checked));
+    };
+    el.querySelectorAll('[name="gateMode"]').forEach(r => {
+      if (r.dataset.wiredDim) return;
+      r.dataset.wiredDim = '1';
+      r.addEventListener('change', syncGate);
+    });
+    syncGate();
+
     // Netrunning Resolution — saves on change (selects need a manual listener,
     // the standing data-action-on-select gotcha).
     const hackSel = el.querySelector('[data-sec-hackres]');
@@ -300,7 +366,7 @@ export class SecurityTab extends BaseTab {
       hackSel.dataset.wired = '1';
       hackSel.addEventListener('change', async (e) => {
         try {
-          await game.settings.set('cyberpunkred-messenger', 'hackResolution', e.target.value);
+          await game.settings.set('night-city-messenger', 'hackResolution', e.target.value);
           ui.notifications.info('NCM | Netrunning resolution saved.');
           this.app.render(false);
         } catch (err) { ui.notifications.error(`NCM | Could not save: ${err.message}`); }
@@ -327,7 +393,7 @@ export class SecurityTab extends BaseTab {
    */
   _lockoutScope(objectId) {
     if (!objectId || String(objectId).startsWith('label:')) return { targets: [], kind: 'none' };
-    const MOD = 'cyberpunkred-messenger';
+    const MOD = 'night-city-messenger';
     const item = game.items?.get(objectId);
     if (item?.getFlag?.(MOD, 'isTerminal')) {
       const svc = this.terminalService;
@@ -344,7 +410,7 @@ export class SecurityTab extends BaseTab {
   /** Escalate — GM picks a consequence: lock them out, a "corp found you" countdown, or Black ICE now. */
   onEscalate(event, target) {
     const { objectId, actorId, objectName, actorName } = target?.dataset || {};
-    const MOD = 'cyberpunkred-messenger';
+    const MOD = 'night-city-messenger';
     const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
     const iceActors = (game.actors ?? []).filter(a => a.type === 'blackIce' || a.type === 'black-ice' || a.getFlag?.(MOD, 'isBlackICE') || /black\s*ice/i.test(a.name || ''));
     const iceOpts = iceActors.length ? iceActors.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('') : '<option value="">— no Black ICE actors in world —</option>';
@@ -352,7 +418,7 @@ export class SecurityTab extends BaseTab {
     const lockRow = scope.targets.length
       ? `<div class="ncm-esc__row"><label>Minutes</label><input type="number" name="lk" value="60" min="1" class="ncm-esc__num"><span class="ncm-esc__hint">locks ${scope.kind === 'terminal' ? `all ${scope.targets.length} account(s)` : `this ${scope.kind}`}${scope.note ? ` — ${esc(scope.note)}` : ''}</span></div>`
       : `<div class="ncm-esc__hint ncm-esc__hint--block">Nothing lockable — this heat is on an unresolved label, not a terminal/shard/network.</div>`;
-    new Dialog({
+    adminDialog({
       title: 'Escalate — trace consequence', content: `
         <div class="ncm-esc">
           <div class="ncm-esc__lede">Consequences for <b>${esc(actorName)}</b> — heat on <b>${esc(objectName)}</b>.</div>
@@ -465,7 +531,7 @@ export class SecurityTab extends BaseTab {
         <span class="ncm-burn-name">${esc(e.name)}</span>
         ${taken?.has(e.name) ? '<span class="ncm-burn-type">added</span>' : ''}
       </div>`).join('');
-    const dlg = new Dialog({
+    const dlg = adminDialog({
       title,
       content: `
         <div class="ncm-burn-hint">${esc(hint)}</div>
@@ -532,8 +598,15 @@ export class SecurityTab extends BaseTab {
   // ─── log actions ───
   onFilter(event, target) { this._filter = target?.dataset?.filter || 'all'; this._page = 1; this.app.render(false); }
   onPage(event, target) { const d = target?.dataset?.dir; this._page += (d === 'next' ? 1 : -1); this.app.render(false); }
+  onHeatPage(event, target) { this._heatPage += (target?.dataset?.dir === 'next' ? 1 : -1); this.app.render(false); }
+  onPlantPage(event, target) { this._plantPage += (target?.dataset?.dir === 'next' ? 1 : -1); this.app.render(false); }
+  onBinPage(event, target) { this._binPage += (target?.dataset?.dir === 'next' ? 1 : -1); this.app.render(false); }
+
+  // ─── program authoring shortcuts (the workshop owns create + library) ───
+  onNewProgram() { game.nightcity?.openMalwareWorkshop?.(); }
+  onProgramLibrary() { game.nightcity?.openMalwareWorkshop?.({ openLibrary: true }); }
   onClearLog() {
-    Dialog.confirm({ title: 'Clear activity log', content: '<p>Delete the whole activity log? Heat is unaffected.</p>', yes: async () => { await this.traceService?.clearLog?.(); this.app.render(false); } });
+    adminConfirm({ title: 'Clear activity log', content: '<p>Delete the whole activity log? Heat is unaffected.</p>', yes: async () => { await this.traceService?.clearLog?.(); this.app.render(false); } });
   }
   onFilterActor(event, target) { this._opFilter = target?.dataset?.actorId || null; this._opFilterName = target?.textContent?.trim(); this._objFilter = null; this._page = 1; this.app.render(false); }
   onFilterObject(event, target) { this._objFilter = target?.dataset?.objectId || null; this._objFilterName = target?.dataset?.objectName; this._opFilter = null; this._page = 1; this.app.render(false); }
@@ -554,7 +627,7 @@ export class SecurityTab extends BaseTab {
   /** Open the journal page that stores a message (deep-link by messageId). */
   _openMessage(messageId) {
     for (const j of (game.journal ?? [])) {
-      const p = j.pages.find(pg => pg.flags?.['cyberpunkred-messenger']?.messageId === messageId);
+      const p = j.pages.find(pg => pg.flags?.['night-city-messenger']?.messageId === messageId);
       if (p) { try { j.sheet.render(true, { pageId: p.id }); } catch { j.sheet.render(true); } return; }
     }
     ui.notifications.info('NCM | That message is no longer stored.');
@@ -570,12 +643,12 @@ export class SecurityTab extends BaseTab {
     if (objectId && actorId) { await this.traceService?.setHeat?.(objectId, actorId, 0, {}); this.app.render(false); }
   }
   async onHeatClearAll() {
-    Dialog.confirm({ title: 'Clear all heat', content: '<p>Reset every operator’s heat to zero?</p>', yes: async () => { try { await game.settings.set('cyberpunkred-messenger', 'traceHeat', {}); } catch {} this.app.render(false); } });
+    adminConfirm({ title: 'Clear all heat', content: '<p>Reset every operator’s heat to zero?</p>', yes: async () => { try { await game.settings.set('night-city-messenger', 'traceHeat', {}); } catch {} this.app.render(false); } });
   }
   onHeatAdjust(event, target) {
     const { objectId, actorId, objectName, actorName, value } = target?.dataset || {};
     const cur = Number(value) || 0;
-    new Dialog({
+    adminDialog({
       title: 'Set heat', content: `
         <div style="font:13px var(--ncm-font-body,sans-serif);line-height:1.6;">
           <p><b>${actorName}</b> on <b>${objectName}</b></p>
@@ -627,10 +700,10 @@ export class SecurityTab extends BaseTab {
   }
   async onPurge(event, target) {
     const id = target?.dataset?.recId;
-    Dialog.confirm({ title: 'Purge', content: '<p>Permanently delete this wiped entry? This cannot be undone.</p>', yes: async () => { const flow = await import('../../content/SiphonFlow.js'); await flow.emptyRecycleBin?.([id]); this.app.render(false); } });
+    adminConfirm({ title: 'Purge', content: '<p>Permanently delete this wiped entry? This cannot be undone.</p>', yes: async () => { const flow = await import('../../content/SiphonFlow.js'); await flow.emptyRecycleBin?.([id]); this.app.render(false); } });
   }
   onEmptyBin() {
-    Dialog.confirm({ title: 'Empty recycle bin', content: '<p>Permanently delete <b>all</b> wiped entries?</p>', yes: async () => { const flow = await import('../../content/SiphonFlow.js'); await flow.emptyRecycleBin?.(); this.app.render(false); } });
+    adminConfirm({ title: 'Empty recycle bin', content: '<p>Permanently delete <b>all</b> wiped entries?</p>', yes: async () => { const flow = await import('../../content/SiphonFlow.js'); await flow.emptyRecycleBin?.(); this.app.render(false); } });
   }
 
   // ─── gate save (reads the form) ───
@@ -642,31 +715,57 @@ export class SecurityTab extends BaseTab {
       .filter(g => g.length);
     const roles = Array.from(el.querySelectorAll('[data-role-chips] .ncm-sec-admin-chip')).map(c => c.dataset.itemName).filter(Boolean);
     const gate = {
-      mode: val('gateMode') || 'anyone', logic: val('gateLogic') || 'any',
+      // gateMode is a radio group — read the CHECKED one, not the first match.
+      mode: el.querySelector('[name="gateMode"]:checked')?.value || 'anyone', logic: val('gateLogic') || 'any',
       roles, roleLogic: val('gateRoleLogic') || 'any',
       skill: { name: val('gateSkill').trim(), min: parseInt(val('gateSkillMin')) || 0 },
       itemGroups: groups,
       actors: [], allowGM: el.querySelector('[name="gateAllowGM"]')?.checked !== false,
     };
-    try { await game.settings.set('cyberpunkred-messenger', 'operatorGate', gate); ui.notifications.info('NCM | Operator access saved.'); }
+    try { await game.settings.set('night-city-messenger', 'operatorGate', gate); ui.notifications.info('NCM | Operator access saved.'); }
     catch (err) { log.error(`Gate save failed: ${err.message}`); }
     this.app.render(false);
   }
   onGateAddGroup() {
     const wrap = this.app.element?.querySelector('[data-gate-groups]');
     if (!wrap) return;
+    const n = wrap.querySelectorAll('[data-gate-group]').length;   // existing option count
     const row = document.createElement('div'); row.className = 'ncm-sec-admin-gate__grp'; row.dataset.gateGroup = '1';
-    row.innerHTML = '<span class="ncm-sec-admin-gate__or">— OR —</span>'
-      + '<span class="ncm-sec-admin-gate__chips" data-gate-group-chips></span>'
-      + '<button type="button" class="ncm-sec-admin-btn sm" data-action="securityGateAddItem"><i class="fas fa-plus"></i> item</button>';
+    row.innerHTML = this._gateGroupInner(n);
     const btnRow = wrap.querySelector('button[data-action="securityGateAddGroup"]')?.closest('div');
     if (btnRow) wrap.insertBefore(row, btnRow); else wrap.appendChild(row);
+    this._renumberGateGroups();
+  }
+  /** Inner markup of one OR-group (index n) — a header with a remove ✕, the AND
+   *  chip strip, and the "+ item" button. Shared by add + kept in sync with the hbs. */
+  _gateGroupInner(n) {
+    return `<div class="ncm-sec-admin-gate__grphd"><span class="ncm-sec-admin-gate__opt">Option ${String.fromCharCode(65 + n)}</span>`
+      + `<span class="ncm-sec-admin-gate__andhint">carry ALL of these</span><span class="grow"></span>`
+      + `<button type="button" class="ncm-sec-admin-gate__rm" data-action="securityGateRemoveGroup" data-tooltip="Remove this option"><i class="fas fa-xmark"></i></button></div>`
+      + `<span class="ncm-sec-admin-gate__chips" data-gate-group-chips></span>`
+      + `<button type="button" class="ncm-sec-admin-btn sm" data-action="securityGateAddItem"><i class="fas fa-plus"></i> item</button>`;
+  }
+  /** Re-letter the Option A/B/C headers after add/remove (DOM order is the truth). */
+  _renumberGateGroups() {
+    const wrap = this.app.element?.querySelector('[data-gate-groups]');
+    wrap?.querySelectorAll('[data-gate-group]').forEach((g, i) => {
+      const lbl = g.querySelector('.ncm-sec-admin-gate__opt');
+      if (lbl) lbl.textContent = `Option ${String.fromCharCode(65 + i)}`;
+    });
+  }
+  onGateRemoveGroup(event, target) {
+    const wrap = this.app.element?.querySelector('[data-gate-groups]');
+    const groups = wrap?.querySelectorAll('[data-gate-group]');
+    // Never remove the last group — an empty gate should keep one placeholder row.
+    if (groups && groups.length <= 1) { target?.closest('[data-gate-group]')?.querySelector('[data-gate-group-chips]')?.replaceChildren(); return; }
+    target?.closest('[data-gate-group]')?.remove();
+    this._renumberGateGroups();
   }
   onGateRemoveItem(event, target) { target?.closest('.ncm-sec-admin-chip')?.remove(); }
 
   // ─── helpers ───
-  _seen() { try { return Number(game.settings.get('cyberpunkred-messenger', 'securityLogSeen')) || 0; } catch { return 0; } }
-  _alertLevel() { try { return game.settings.get('cyberpunkred-messenger', 'securityAlertLevel') || 'serious'; } catch { return 'serious'; } }
+  _seen() { try { return Number(game.settings.get('night-city-messenger', 'securityLogSeen')) || 0; } catch { return 0; } }
+  _alertLevel() { try { return game.settings.get('night-city-messenger', 'securityAlertLevel') || 'serious'; } catch { return 'serious'; } }
   _ago(ms) {
     if (!ms) return '';
     const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));

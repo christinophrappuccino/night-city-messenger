@@ -1,7 +1,7 @@
 /**
  * Register Terminal System
  * @file scripts/init/registerTerminalSystem.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Terminal Expansion initialization — constructs TerminalService and
  *   registers its macro API. A Terminal is the sibling of a Data Shard (an item
  *   you log into vs. a file you crack open); the service delegates security/ICE/
@@ -15,9 +15,10 @@
  */
 
 import { log, isGM } from '../utils/helpers.js';
-import { EVENTS } from '../utils/constants.js';
+import { EVENTS, MODULE_ID } from '../utils/constants.js';
 import { TerminalService } from '../services/TerminalService.js';
 import { TerminalScenePins } from '../integrations/TerminalScenePins.js';
+import { Phase6Verification } from '../tests/Phase6Verification.js';
 
 /**
  * @param {import('../core/ModuleInitializer.js').ModuleInitializer} initializer
@@ -228,6 +229,25 @@ export function registerTerminalSystem(initializer) {
       log.info('Terminal macro API extensions registered');
     } catch (err) {
       log.error(`Terminal macro API registration failed: ${err.message}`);
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  //  POST-READY PHASE — Phase 6 Verification
+  //  Priority 33 (after Phase 5 verification at 32)
+  // ═══════════════════════════════════════════════════════════
+
+  initializer.register('postReady', 33, 'Phase 6 Verification', async () => {
+    // Register on namespace for manual runs
+    game.nightcity.verifyPhase6 = () => new Phase6Verification().run();
+
+    // Auto-run in debug mode
+    try {
+      if (game.settings.get(MODULE_ID, 'debugMode')) {
+        await new Phase6Verification().run();
+      }
+    } catch (err) {
+      log.error(`Phase 6 verification failed: ${err.message}`);
     }
   });
 }

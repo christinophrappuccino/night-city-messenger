@@ -1,19 +1,23 @@
 /**
  * Notification Styles — Scene Control Unread Badge
  * @file styles/components/notifications.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Unread count badge on scene control buttons.
  *   Toast notification styles live in toast.css (Sprint 3.9 redesign).
  */
 
 /* ─── Scene Control Unread Badge ──────────────────────── */
 
+/* The badge sits FULLY INSIDE the control button. It used to hang outside
+   (top/right -4px), and Foundry's controls toolbar clips overflow — the circle
+   and count rendered cut off. Keep it inset; overlapping the icon's corner is
+   the correct trade. */
 .ncm-unread-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 16px;
-  height: 16px;
+  top: 1px;
+  right: 1px;
+  min-width: 15px;
+  height: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -27,6 +31,7 @@
   line-height: 1;
   pointer-events: none;
   box-shadow: 0 1px 4px rgba(246, 82, 97, 0.5);
+  z-index: 2;
 }
 
 .ncm-badge-pulse {

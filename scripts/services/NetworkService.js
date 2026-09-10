@@ -1,7 +1,7 @@
 /**
  * NetworkService
  * @file scripts/services/NetworkService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Network state management — scene-based availability, authentication
  *              (password + skill check), dead zone detection, network switching with
  *              signal strength, and message queuing integration.

@@ -1,7 +1,7 @@
 /**
  * Phase 2 System Verification
  * @file scripts/tests/Phase2Verification.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Verifies all Phase 2 messaging components are properly initialized.
  *              Run via: game.nightcity.verifyPhase2()
  */
@@ -91,7 +91,7 @@ export class Phase2Verification {
     }));
     results.push(await this._checkAsync('message-card chat template loadable', async () => {
       try {
-        const html = await renderTemplate(TEMPLATES.MESSAGE_CARD, {});
+        const html = await renderTemplate(TEMPLATES.CHAT_MESSAGE_CARD, {});
         return html.length > 0;
       } catch { return false; }
     }));

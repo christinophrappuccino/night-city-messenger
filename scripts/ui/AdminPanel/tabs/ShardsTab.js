@@ -1,7 +1,7 @@
 /**
  * ShardsTab — Data Shards tab controller.
  * @file scripts/ui/AdminPanel/tabs/ShardsTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Encapsulates shard listing, grouping, filters, bulk-select UI, and
  * the in-memory session activity log. Shard actions mutate item flags
@@ -16,6 +16,7 @@
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
+import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 
 export class ShardsTab extends BaseTab {
 
@@ -550,7 +551,7 @@ export class ShardsTab extends BaseTab {
     const item = this.app.constructor._findItem(itemId);
     if (!item) return;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Force Decrypt',
       content: `<p>Force-decrypt <strong>${item.name}</strong>? This bypasses all security.</p>`,
     });
@@ -571,7 +572,7 @@ export class ShardsTab extends BaseTab {
     const item = this.app.constructor._findItem(itemId);
     if (!item) return;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Relock Shard',
       content: `<p>Relock <strong>${item.name}</strong>? All security state will be fully reset (encryption, login, key item, hack attempts, lockout, boot, expiration).</p>`,
     });
@@ -631,7 +632,7 @@ export class ShardsTab extends BaseTab {
     ].join('');
 
     const uuid = await new Promise(resolve => {
-      new Dialog({
+      adminDialog({
         title: 'Convert Item to Data Shard',
         content: `
           <div class="ncm-pick__controls">
@@ -730,6 +731,12 @@ export class ShardsTab extends BaseTab {
     const presetKey = target.closest('[data-preset]')?.dataset.preset;
     if (!presetKey) return;
 
+    // "New Blank Shard" CREATES a fresh world item, converts it, and opens
+    // Configure — it used to open the same pick-an-item dialog as the preset
+    // buttons, which made it indistinguishable from "Convert Item" (dev,
+    // 2026-09-10). The preset buttons still convert an existing item.
+    if (presetKey === 'blank') return this._createBlankShard();
+
     // Prompt GM to select an item
     const items = game.items?.filter(i => !i.getFlag(MODULE_ID, 'isDataShard')) ?? [];
     if (!items.length) {
@@ -739,7 +746,7 @@ export class ShardsTab extends BaseTab {
 
     const options = items.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
     const itemId = await new Promise(resolve => {
-      new Dialog({
+      adminDialog({
         title: 'Quick Create Shard',
         content: `<p>Select an item to convert with the <strong>${presetKey}</strong> preset:</p>
           <div class="form-group"><select id="ncm-qc-item">${options}</select></div>`,
@@ -764,6 +771,37 @@ export class ShardsTab extends BaseTab {
     }
   }
 
+  /**
+   * Create a brand-new world Item, convert it to an (empty, default-config)
+   * data shard, and open its Configure sheet. Item type: CPR `gear` when the
+   * system offers it, else the first non-base type (the test-macro rule).
+   * @private
+   */
+  async _createBlankShard() {
+    const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter(t => t !== 'base');
+    const type = types.includes('gear') ? 'gear' : (types[0] || 'gear');
+    const existing = (game.items?.contents ?? []).filter(i => /^New Data Shard/.test(i.name)).length;
+    const name = existing ? `New Data Shard ${existing + 1}` : 'New Data Shard';
+
+    let item = null;
+    try {
+      item = await Item.create({ name, type, img: 'icons/svg/item-bag.svg' });
+    } catch (err) {
+      log.warn(`Blank shard: Item.create failed — ${err?.message || err}`);
+    }
+    if (!item) { ui.notifications.error('NCM | Could not create the item.'); return; }
+
+    const result = await this.dataShardService?.convertToDataShard(item, {}, 'blank');
+    if (!result?.success) {
+      ui.notifications.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
+      return;
+    }
+    ui.notifications.info(`NCM | Created "${item.name}" — configure it now.`);
+    this.render();
+    const { ItemInboxConfig } = await import('../../ItemInbox/ItemInboxConfig.js');
+    new ItemInboxConfig({ item }).render(true);
+  }
+
   async onBulkRelockAll(event, target) {
     const shards = this._getAllDataShards().filter(i => {
       const state = i.getFlag(MODULE_ID, 'state') ?? {};
@@ -775,7 +813,7 @@ export class ShardsTab extends BaseTab {
       return;
     }
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Bulk Relock All Shards',
       content: `<p>Relock <strong>${shards.length}</strong> breached shard${shards.length > 1 ? 's' : ''}? All session data will be reset.</p>`,
     });
@@ -806,7 +844,7 @@ export class ShardsTab extends BaseTab {
       return;
     }
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Purge Destroyed Shards',
       content: `<p>Remove shard flags from <strong>${destroyed.length}</strong> destroyed shard${destroyed.length > 1 ? 's' : ''}? The items will remain but lose their shard data.</p>`,
     });
@@ -902,7 +940,7 @@ export class ShardsTab extends BaseTab {
     const ids = [...this._selectedIds];
     if (!ids.length) return;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Relock Selected Shards',
       content: `<p>Relock <strong>${ids.length}</strong> selected shard${ids.length > 1 ? 's' : ''}? All session data will be reset.</p>`,
     });
@@ -955,7 +993,7 @@ export class ShardsTab extends BaseTab {
       }
 
       const pickedId = await new Promise(resolve => {
-        new Dialog({
+        adminDialog({
           title: 'Unconvert Data Shard',
           content: `
             <div class="ncm-pick--danger">
@@ -1032,7 +1070,7 @@ export class ShardsTab extends BaseTab {
 
     if (!item) return;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Unconvert Data Shard',
       content: `<p>Remove all data shard flags from <strong>${item.name}</strong>? The item will revert to a normal item. Shard entries and journal data will be preserved but detached.</p>`,
     });
@@ -1121,7 +1159,7 @@ export class ShardsTab extends BaseTab {
         break;
     }
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: `${isCleared ? 'Relock' : 'Unlock'} Security Layer`,
       content: `<p>${isCleared ? 'Relock' : 'Force-clear'} the <strong>${layer}</strong> layer on <strong>${item.name}</strong>?${isCleared ? ' All layers from this point forward will also be relocked.' : ''}</p>`,
     });

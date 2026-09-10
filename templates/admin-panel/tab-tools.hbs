@@ -14,6 +14,16 @@
         </button>
       {{/each}}
     </div>
+    <div class="ncm-admin-textsize">
+      <span class="ncm-admin-textsize__label"><i class="fas fa-text-height"></i> Text size</span>
+      <span class="ncm-admin-textsize__opts">
+        {{#each adminTextScales}}
+          <button type="button" class="ncm-admin-textsize__opt{{#if this.active}} ncm-admin-textsize__opt--active{{/if}}"
+                  data-action="setAdminTextScale" data-scale="{{this.value}}">{{this.label}}</button>
+        {{/each}}
+      </span>
+      <span class="ncm-admin-textsize__hint">Scales the Admin Panel and every GM tool window (Contact Manager, Network Manager, configs, composer, Workshop, dialogs). Messenger windows have their own Text Size slider under Themes &rarr; Text.</span>
+    </div>
 
     <div class="ncm-section-title"><i class="fas fa-cog"></i> System Tools</div>
     <div class="ncm-tools-grid">
@@ -45,7 +55,7 @@
       <div class="ncm-tool-card" data-action="openSoundSettings">
         <i class="fas fa-volume-high ncm-tool-card__icon"></i>
         <span class="ncm-tool-card__name">Sound Settings</span>
-        <span class="ncm-tool-card__desc">Notification audio</span>
+        <span class="ncm-tool-card__desc">Opens Theme &rarr; Effects (volume)</span>
       </div>
       <div class="ncm-tool-card" data-action="manageDomains">
         <i class="fas fa-at ncm-tool-card__icon ncm-tool-card__icon--cyan"></i>
@@ -72,15 +82,10 @@
           <span class="ncm-tool-card__name">Purge Messages</span>
           <span class="ncm-tool-card__desc">Pick a character, shard, or all</span>
         </div>
-        <div class="ncm-tool-card" data-action="resetModule">
-          <i class="fas fa-rotate-left ncm-tool-card__icon"></i>
-          <span class="ncm-tool-card__name">Reset Module</span>
-          <span class="ncm-tool-card__desc">Clear all data (irreversible)</span>
-        </div>
-        <div class="ncm-tool-card" data-action="rebuildIndex">
-          <i class="fas fa-hammer ncm-tool-card__icon"></i>
-          <span class="ncm-tool-card__name">Rebuild Index</span>
-          <span class="ncm-tool-card__desc">Reindex journals &amp; contacts</span>
+        <div class="ncm-tool-card" data-action="orphanAudit">
+          <i class="fas fa-broom ncm-tool-card__icon"></i>
+          <span class="ncm-tool-card__name">Orphan Audit</span>
+          <span class="ncm-tool-card__desc">Find &amp; clean data whose owner is gone</span>
         </div>
       </div>
     </div>

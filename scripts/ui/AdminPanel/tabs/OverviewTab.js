@@ -1,7 +1,7 @@
 /**
  * OverviewTab — Dashboard: connections, alerts, activity log, quick actions.
  * @file scripts/ui/AdminPanel/tabs/OverviewTab.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Owns the cross-cutting activity log fed from EventBus subscriptions
  * registered on the parent app. Alerts depend on data already gathered

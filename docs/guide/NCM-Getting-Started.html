@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Night City Messenger — Getting Started</title>
+<style>
+  /* ── Fonts (bundled with the module) ─────────────────────────── */
+  @font-face { font-family:'Orbitron'; src:url('../../assets/fonts/Orbitron/Orbitron-var-latin.woff2') format('woff2'); font-weight:400 900; }
+  @font-face { font-family:'Rajdhani'; src:url('../../assets/fonts/Rajdhani/Rajdhani-500-latin.woff2') format('woff2'); font-weight:500; }
+  @font-face { font-family:'Rajdhani'; src:url('../../assets/fonts/Rajdhani/Rajdhani-600-latin.woff2') format('woff2'); font-weight:600; }
+  @font-face { font-family:'Rajdhani'; src:url('../../assets/fonts/Rajdhani/Rajdhani-700-latin.woff2') format('woff2'); font-weight:700; }
+  @font-face { font-family:'Share Tech Mono'; src:url('../../assets/fonts/ShareTechMono/ShareTechMono-400-latin.woff2') format('woff2'); font-weight:400; }
+
+  /* ── Page setup ──────────────────────────────────────────────── */
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root{
+    --ink:#1c2130; --ink-soft:#4a5268; --paper:#ffffff; --paper-tint:#f4f6fa;
+    --cyan:#0e7d90; --cyan-bright:#00e5ff; --red:#c8323f; --gold:#a97b1f;
+    --line:#d8dde8; --dark:#0b0e14; --dark2:#121722;
+  }
+  body { font-family:'Rajdhani',-apple-system,'Segoe UI',sans-serif; font-weight:500; color:var(--ink); background:var(--paper); font-size:12.5pt; line-height:1.5; }
+  .page { width:210mm; height:297mm; overflow:hidden; padding:16mm 17mm 18mm; position:relative; page-break-after:always; background:var(--paper); }
+  .page:last-child { page-break-after:auto; }
+
+  /* ── Cover ───────────────────────────────────────────────────── */
+  .cover { background:var(--dark); color:#e8f4f8; display:flex; flex-direction:column; padding:22mm 18mm; }
+  .cover-kicker { font-family:'Share Tech Mono',monospace; font-size:10pt; letter-spacing:.35em; color:var(--cyan-bright); text-transform:uppercase; }
+  .cover h1 { font-family:'Orbitron',sans-serif; font-weight:800; font-size:34pt; line-height:1.15; margin:6mm 0 3mm; letter-spacing:.04em;
+              color:#fff; text-shadow:0 0 18px rgba(0,229,255,.45); }
+  .cover h1 .accent { color:var(--cyan-bright); }
+  .cover-sub { font-size:15pt; font-weight:600; color:#9fb2c5; margin-bottom:10mm; }
+  .cover-shot { border:1px solid rgba(0,229,255,.35); border-radius:4px; overflow:hidden; box-shadow:0 0 30px rgba(0,229,255,.15); }
+  .cover-shot img { width:100%; display:block; }
+  .cover-foot { margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end; font-family:'Share Tech Mono',monospace; font-size:9pt; color:#5f7387; }
+  .cover-foot .r { text-align:right; }
+
+  /* ── Headings ────────────────────────────────────────────────── */
+  h2 { font-family:'Orbitron',sans-serif; font-weight:700; font-size:16pt; letter-spacing:.03em; color:var(--ink); margin:0 0 2mm; }
+  h2 .num { color:var(--cyan); font-size:11pt; letter-spacing:.2em; display:block; font-family:'Share Tech Mono',monospace; margin-bottom:1.5mm; }
+  .h2rule { height:2px; background:linear-gradient(90deg,var(--cyan) 0 28mm,var(--line) 28mm); margin:0 0 6mm; }
+  h3 { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:13.5pt; text-transform:uppercase; letter-spacing:.05em; color:var(--ink); margin:6mm 0 2mm; }
+  h3::before { content:'▸ '; color:var(--cyan); }
+  p { margin:0 0 3mm; }
+  strong { font-weight:700; }
+  em { font-style:italic; }
+  code, .mono { font-family:'Share Tech Mono',monospace; font-size:.92em; background:var(--paper-tint); border:1px solid var(--line); border-radius:2px; padding:0 .25em; white-space:nowrap; }
+  ul, ol { margin:0 0 3mm 6mm; }
+  li { margin-bottom:1.2mm; }
+
+  /* ── Tables ──────────────────────────────────────────────────── */
+  table { width:100%; border-collapse:collapse; margin:2mm 0 4mm; font-size:11.5pt; }
+  th { font-family:'Rajdhani',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.06em; font-size:9.5pt; color:var(--cyan);
+       text-align:left; padding:1.5mm 3mm; border-bottom:2px solid var(--cyan); }
+  td { padding:1.6mm 3mm; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:nth-child(even) td { background:var(--paper-tint); }
+
+  /* ── Figures ─────────────────────────────────────────────────── */
+  figure { margin:4mm 0 5mm; }
+  .shot { background:var(--dark2); border:1px solid #2a3242; border-radius:4px; padding:2.5mm; }
+  .shot img { width:100%; display:block; border-radius:2px; }
+  figcaption { font-family:'Share Tech Mono',monospace; font-size:8.5pt; color:var(--ink-soft); margin-top:1.6mm; padding-left:1mm; }
+  figcaption::before { content:'▪ '; color:var(--cyan); }
+  .fig-row { display:flex; gap:5mm; align-items:flex-start; }
+  .fig-row figure { flex:1; margin:4mm 0 5mm; }
+  .fig-85 { width:85%; margin-left:auto; margin-right:auto; }
+  .fig-80 { width:80%; margin-left:auto; margin-right:auto; }
+  .fig-63 { width:63%; margin-left:auto; margin-right:auto; }
+  .fig-70 { width:70%; margin-left:auto; margin-right:auto; }
+
+  /* Placeholder slots for real Foundry screenshots */
+  .slot { border:2px dashed #b6c0d2; border-radius:4px; background:var(--paper-tint); padding:8mm 6mm; text-align:center; margin:4mm 0 5mm; }
+  .slot .t { font-family:'Rajdhani',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.08em; font-size:10pt; color:#8894aa; }
+  .slot .d { font-size:10.5pt; color:#8894aa; margin-top:1mm; }
+
+  /* ── Callouts ────────────────────────────────────────────────── */
+  .tip { border-left:3px solid var(--cyan); background:var(--paper-tint); padding:2.5mm 4mm; margin:3mm 0 4mm; }
+  .tip .k { font-family:'Rajdhani',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.08em; font-size:9.5pt; color:var(--cyan); margin-right:1.5mm; }
+  .warn { border-left:3px solid var(--red); background:#fbf1f2; padding:2.5mm 4mm; margin:3mm 0 4mm; }
+  .warn .k { font-family:'Rajdhani',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.08em; font-size:9.5pt; color:var(--red); margin-right:1.5mm; }
+
+  .rule-card { border:1px solid var(--line); border-top:3px solid var(--red); border-radius:3px; padding:3.5mm 4.5mm; margin-bottom:4mm; background:var(--paper); }
+  .rule-card .n { font-family:'Orbitron',sans-serif; font-weight:800; font-size:15pt; color:var(--red); float:left; margin:0 4mm 0 0; }
+  .rule-card h4 { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:12.5pt; text-transform:uppercase; letter-spacing:.04em; }
+
+  /* ── TOC ─────────────────────────────────────────────────────── */
+  .toc { columns:2; column-gap:10mm; margin-top:4mm; }
+  .toc-item { break-inside:avoid; display:flex; align-items:baseline; gap:3mm; padding:2mm 0; border-bottom:1px solid var(--line); }
+  .toc-item .no { font-family:'Share Tech Mono',monospace; color:var(--cyan); font-size:10pt; min-width:8mm; }
+  .toc-item .lbl { font-weight:600; font-size:12pt; }
+  .toc-item .who { margin-left:auto; font-family:'Share Tech Mono',monospace; font-size:8pt; color:var(--ink-soft); text-transform:uppercase; }
+
+  .pgfoot { position:absolute; bottom:8mm; left:17mm; right:17mm; display:flex; justify-content:space-between;
+            font-family:'Share Tech Mono',monospace; font-size:8pt; color:#9aa5b8; border-top:1px solid var(--line); padding-top:1.6mm; }
+
+  .lead { font-size:13.5pt; font-weight:600; color:var(--ink-soft); margin-bottom:5mm; }
+  .divider { height:1px; background:var(--line); margin:5mm 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ COVER ═══════════════ -->
+<section class="page cover">
+  <div class="cover-kicker">// A module for Foundry VTT + Cyberpunk RED</div>
+  <h1>NIGHT CITY<br><span class="accent">MESSENGER</span></h1>
+  <div class="cover-sub">Getting Started Guide — for GMs and players</div>
+  <div class="cover-shot"><img src="img/access-granted.png" alt="Terminal login — access granted"></div>
+  <div class="cover-foot">
+    <div>v1.0.0</div>
+    <div class="r">github.com/christinophrappuccino/night-city-messenger</div>
+  </div>
+</section>
+
+<!-- ═══════════════ INTRO + TOC ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// START HERE</span>What is this module?</h2>
+  <div class="h2rule"></div>
+  <p class="lead">Night City Messenger adds phones, computers, and hacking to your Cyberpunk RED game. Everything looks like the real thing, not like a menu.</p>
+  <ul>
+    <li>Every player character gets an <strong>Agent</strong> — an in-game phone with messages, contacts, and money transfers. Players can customize how theirs looks.</li>
+    <li>Scenes have <strong>networks</strong>. Your phone only picks up networks that exist where you are. Some need a password or a skill check to join. Some areas have no signal at all.</li>
+    <li>The GM can turn any Item into a <strong>data shard</strong> (an encrypted file players crack open) or a <strong>terminal</strong> (a computer players log into). Both can hold all kinds of content: spreadsheets, camera feeds, bank accounts, chat logs, and more.</li>
+    <li>Players can steal data from machines, or plant fake data and malware on them. Risky actions use real Cyberpunk RED skill rolls. Failed rolls build up <strong>heat</strong> that the GM can punish.</li>
+    <li>The GM controls everything from one <strong>Admin Panel</strong>.</li>
+  </ul>
+  <div class="tip"><span class="k">Pacing</span>Most tables add features in this order: <strong>messages → contacts → networks → shards → terminals → hacking</strong>. Each step works fine without the ones after it. You don't need to learn all of it at once.</div>
+  <div class="tip"><span class="k">Who reads what</span><strong>GMs:</strong> read Part 1 to set up (about 15 minutes), come back to the rest when you want it. <strong>Players:</strong> Part 2 is all you need.</div>
+
+  <h3>Contents</h3>
+  <div class="toc">
+    <div class="toc-item"><span class="no">01</span><span class="lbl">GM setup</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">02</span><span class="lbl">Players: your Agent</span><span class="who">Players</span></div>
+    <div class="toc-item"><span class="no">03</span><span class="lbl">Sending mail</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">04</span><span class="lbl">Data shards</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">05</span><span class="lbl">Terminals</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">06</span><span class="lbl">Hacking &amp; consequences</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">07</span><span class="lbl">Three rules to remember</span><span class="who">Everyone</span></div>
+    <div class="toc-item"><span class="no">08</span><span class="lbl">Settings that matter</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">09</span><span class="lbl">Your first sessions</span><span class="who">GM</span></div>
+  </div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>01</span></div>
+</section>
+
+<!-- ═══════════════ PART 1 (a) ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 01 · GM</span>GM setup</h2>
+  <div class="h2rule"></div>
+  <p><strong>You need:</strong> Foundry VTT v12 and the Cyberpunk RED Core system. NCM uses the real CPR rules for skill checks, money, roles, and Black ICE.</p>
+
+  <h3>1 — Find the buttons</h3>
+  <p>After you enable the module, look for the <strong>satellite dish</strong> icon in the left toolbar. It has these buttons:</p>
+  <table>
+    <tr><th>Button</th><th>Who sees it</th><th>What it does</th></tr>
+    <tr><td><strong>Open Inbox</strong></td><td>everyone</td><td>opens your phone</td></tr>
+    <tr><td><strong>Compose Message</strong></td><td>everyone</td><td>write a message</td></tr>
+    <tr><td><strong>Contacts</strong></td><td>everyone</td><td>your contact book</td></tr>
+    <tr><td><strong>Network Management</strong></td><td>GM only</td><td>set up networks</td></tr>
+    <tr><td><strong>Admin Panel</strong></td><td>GM only</td><td>the GM control center</td></tr>
+  </table>
+
+  <h3>2 — Open the Admin Panel</h3>
+  <p>This is your control center. It has 9 tabs: <strong>Overview, Messages, Contacts, Networks, Shards, Spam, Terminals, Security, Tools</strong>. The Overview tab shows your players' characters and recent messages.</p>
+  <figure class="fig-70" style="width:54%"><div class="shot"><img src="img/AdminPanel.png" alt="The Admin Panel Overview Tab"></div>
+  <figcaption>The Admin Panel — Overview tab, with a few registered characters</figcaption></figure>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>02</span></div>
+</section>
+
+<!-- ═══════════════ PART 1 (b) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">3 — Set up networks (5 minutes)</h3>
+  <p>Open <strong>Network Management</strong>. The module comes with some networks already. Add your own for districts, corporations, or locations. Each network gets a name, a color, and (if you want) security: a password, a skill check, a key item, or a mix.</p>
+  <p>Then go to the <strong>Scenes tab</strong> and pick which networks work on which scenes. You can also mark a scene as a <strong>dead zone</strong> — no signal at all. Changes save automatically.</p>
+  <div class="tip"><span class="k">Tip</span>Skip the security stuff at first. Open networks are fine to start with.</div>
+  <figure class="fig-70"><div class="shot"><img src="img/NetworkManagement.png" alt="Network Management"></div>
+  <figcaption>Network Management — networks on the left, the selected network's setup on the right</figcaption></figure>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>03</span></div>
+</section>
+
+<!-- ═══════════════ PART 1 (c) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">4 — Add some contacts (5 minutes)</h3>
+  <p>Go to Admin Panel → <strong>Contacts</strong>. This is your master list of every NPC that players can message. From here you can:</p>
+  <ul>
+    <li><strong>Import Actor</strong> — turn an existing actor into a contact in two clicks. The portrait and email come with it.</li>
+    <li><strong>Push contacts to players</strong> — give an NPC's contact card to one player or the whole party.</li>
+    <li>Mark an address as <strong>send-only</strong> — good for system addresses like <code>alerts@arasaka.com</code>. Players get mail from it but can't reply.</li>
+  </ul>
+  <div class="tip"><span class="k">Tip</span>Don't build the whole city. Two or three NPCs your party actually talks to is plenty for the first night.</div>
+  <figure class="fig-70"><div class="shot"><img src="img/ContactsTab.png" alt="The contacts tab in the Admin panel"></div>
+  <figcaption>Admin Panel → Contacts tab, with a few NPC contacts and the Import Actor button visible</figcaption></figure>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>04</span></div>
+</section>
+
+<!-- ═══════════════ PART 1 (d) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">5 — Install the macros</h3>
+  <p>Admin Panel → <strong>Tools</strong> → <strong>Import / Reinstall Macros</strong>. This adds two macro folders with handy shortcuts for you and your players. Optional, but nice to have.</p>
+
+  <h3>6 — Pick a clock</h3>
+  <p>In Module Settings, find <strong>Time Provider</strong>. This controls what clock the module uses for timestamps and countdowns. Your options: real time, world time (works with Simple Calendar), manual (you move it forward yourself), or a fake in-game date. Real time is fine to start. You can change it later.</p>
+
+  <h3>7 — Bring in the players</h3>
+  <p>That's it. Tell your players to click <strong>Open Inbox</strong>. The module walks them through the rest.</p>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>05</span></div>
+</section>
+
+<!-- ═══════════════ PART 2 (a) ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 02 · PLAYERS</span>Players: your Agent</h2>
+  <div class="h2rule"></div>
+
+  <h3>First time</h3>
+  <p>Click <strong>Open Inbox</strong> (the envelope icon under the satellite dish). The module will ask you to:</p>
+  <ol>
+    <li><strong>Pick your character</strong>, if you own more than one.</li>
+    <li><strong>Pick your email address</strong> — a name plus a domain, like <code>v.wraith@nightcity.net</code>. It suggests names based on your character. The GM decides which domains exist.</li>
+  </ol>
+  <p>Done. NPCs and other players can now message you at that address.</p>
+  <figure class="fig-80"><div class="shot"><img src="img/Inbox.png" alt="A player's inbox"></div>
+  <figcaption>A player's inbox (Message Viewer) with a few messages and the network pill visible</figcaption></figure>
+
+  <h3>Using your inbox</h3>
+  <ul>
+    <li><strong>Folders</strong> — Inbox, Sent, Saved, Trash, and Spam. There's a "Mark all read" button at the end of the filter row.</li>
+    <li><strong>Networks</strong> — at the top of the window. You only see networks that reach the scene you're on. A padlock means the network needs a password or a skill check. Some messages only open on certain networks.</li>
+    <li><strong>Threads</strong> — click the <strong>Thread</strong> button on a message to see the whole conversation in one view.</li>
+    <li><strong>Money</strong> — a message can have eddies attached. Click <strong>Claim</strong> and the money goes straight to your character sheet. It can only be claimed once.</li>
+    <li><strong>Self-destructing messages</strong> exist. If you get one, read it carefully. It won't be there later.</li>
+  </ul>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>06</span></div>
+</section>
+
+<!-- ═══════════════ PART 2 (b) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">Contacts</h3>
+  <p>The <strong>Contacts</strong> button opens your personal contact book. You can set trust levels, write notes, and mark favorites. When a stranger messages you, use <strong>Add to Contacts</strong> right from the message. Some contacts are protected by ICE and need a skill check to unlock.</p>
+  <figure class="fig-70"><div class="shot"><img src="img/AddContacts.png" alt="The player contact book"></div>
+  <figcaption>Your contact book — trust levels, notes, and favorites</figcaption></figure>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>07</span></div>
+</section>
+
+<!-- ═══════════════ PART 2 (c) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">Make it yours</h3>
+  <p>Open the <strong>Theme Customizer</strong> from your inbox. You can change colors, fonts, text size, wallpaper, and effects, and give your Agent a custom name. Only you see your theme.</p>
+  <figure class="fig-80"><div class="shot"><img src="img/ThemeCustomizer.png" alt="The theme customizer"></div>
+  <figcaption>The Theme Customizer — colors, fonts, wallpaper, effects, and your Agent's name</figcaption></figure>
+
+  <h3>If you own more than one character</h3>
+  <div class="warn"><span class="k">Important</span>Terminals and shards act as your <strong>operator</strong> — the character who rolls the dice, pays, and gets paid. If you own several characters, an <strong>OPERATOR chip</strong> shows up on terminal screens. <strong>Check it before you roll.</strong> If the wrong character is picked, the wrong character gets the money.</div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>08</span></div>
+</section>
+
+<!-- ═══════════════ PART 3 ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 03 · GM</span>Sending mail</h2>
+  <div class="h2rule"></div>
+  <p class="lead">Once messaging works, here's what you can do with it:</p>
+  <ul>
+    <li><strong>Send as anyone.</strong> Put any contact in the From field. When players message an NPC, you get a popup, and the mail collects in the <strong>NPC Inbox</strong> panel (Admin → Messages) where you can reply.</li>
+    <li><strong>Anonymous send.</strong> Turn this on in settings, and the composer gets a checkbox that hides who you are. Players see a glitchy masked avatar instead. They can reply without knowing who they're talking to, and if you allow it, they can roll to trace you. Great for mystery employers.</li>
+    <li><strong>Self-destruct.</strong> Set a message to delete after it's read, or after 1, 6, or 24 hours.</li>
+    <li><strong>Scheduled messages.</strong> Write now, send later. You can also send to the whole party at once.</li>
+    <li><strong>Spam.</strong> The Spam tab has ready-made junk mail you can send to players, and can even send it automatically when they join certain networks. It sounds silly, but a "spam" message can carry anything a real message can. Use that.</li>
+  </ul>
+  <figure class="fig-80"><div class="shot"><img src="img/MessageComposer.png" alt="The message composer"></div>
+  <figcaption>The composer — attach eddies, set self-destruct, schedule, or send anonymously.</figcaption></figure>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>09</span></div>
+</section>
+
+<!-- ═══════════════ PART 4 (a) ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 04 · GM</span>Data shards</h2>
+  <div class="h2rule"></div>
+  <p class="lead">A data shard is an Item that has been turned into an encrypted file. It's loot that players crack open.</p>
+
+  <h3>Make one</h3>
+  <p>Right-click any Item and pick <strong>Convert to Data Shard</strong>. As GM, it converts right away. Right-click again and pick <strong>Configure Shard</strong> to set the difficulty, the skill needed, lockouts, and Black ICE that attacks players who fail.</p>
+  <p>Players can convert items too, but they have to pass a skill check first.</p>
+
+  <h3>Put stuff inside</h3>
+  <p>Open the shard and add entries. There are <strong>18 kinds of content</strong>, and each one looks like the real thing:</p>
+  <table>
+    <tr><th>Group</th><th>Types</th></tr>
+    <tr><td>Messages &amp; records</td><td>message, chat log, records database, calendar, note</td></tr>
+    <tr><td>Data &amp; money</td><td>spreadsheet, bank account, password vault, eddies drop</td></tr>
+    <tr><td>Media &amp; intel</td><td>photo gallery, live camera feed, document, dossier, audio/video log, building plan, location pin</td></tr>
+    <tr><td>Dangerous</td><td>program, malware, system log</td></tr>
+  </table>
+  <div class="tip"><span class="k">Fastest way to learn</span>Every type has a <strong>Load example</strong> button. Load the example, look at it, change it.</div>
+  <p>Almost anything can be locked. Encrypted photos, blacked-out paragraphs, hidden identities — each one takes a skill roll to open, and you can set failed rolls to trigger a trace.</p>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>10</span></div>
+</section>
+
+<!-- ═══════════════ PART 4 (b) ═══════════════ -->
+<section class="page">
+  <figure style="margin-top:0"><div class="shot"><img src="img/banking.png" alt="Bank account content"></div>
+  <figcaption>A bank account entry — and the siphon minigame players use to drain it.</figcaption></figure>
+  <figure class="fig-63"><div class="shot"><img src="img/gallery-feed.png" alt="Photo gallery content"></div>
+  <figcaption>A photo gallery: flagged evidence, timestamps, and an encrypted frame that takes a roll to decrypt.</figcaption></figure>
+
+  <h3>Give it to the players</h3>
+  <p>The shard is a normal Item. Hand it over however you like: drop it as loot, put it on a body, trade it. The player cracks it open with a skill check. There's a whole animated hacking sequence, and lockouts if they keep failing.</p>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>11</span></div>
+</section>
+
+<!-- ═══════════════ PART 5 (a) ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 05 · GM</span>Terminals</h2>
+  <div class="h2rule"></div>
+  <p class="lead">A terminal is an Item turned into a computer that players log into. A corp workstation, a ripperdoc's records, a street bulletin board.</p>
+
+  <h3>Make one</h3>
+  <p>Right-click an Item and pick <strong>Convert to Terminal</strong>. The setup screen has six tabs:</p>
+  <ul>
+    <li><strong>Identity</strong> — name, organization, folder names.</li>
+    <li><strong>Accounts</strong> — the important one. Each account is a login with its own mailbox. Set a username, portrait, admin rights, and security (password, skill check, or key item). Accounts can be <strong>hidden</strong> — players only find them if they learn the username somewhere else.</li>
+    <li><strong>Theme</strong> — colors, fonts, and wallpaper for this machine. There's a <strong>preset library</strong> with 12 ready-made looks (Arasaka workstation, NCPD precinct, Trauma Team, street BBS, and more) that set everything up in one click.</li>
+    <li><strong>Boot &amp; Login</strong> — the startup screen, six different login screen styles, a message of the day, and a screensaver. Each terminal can have its own sound effects too.</li>
+    <li><strong>Network</strong> — which network the machine itself is connected to.</li>
+    <li><strong>Exfil</strong> — what players are allowed to do with what they find (see below).</li>
+  </ul>
+
+  <h3>Put it in the world</h3>
+  <p><strong>Drag the terminal Item onto the map.</strong> It becomes a pin that players double-click to log in. You can require their token to be standing near it. Or skip the pin and let players open the Item directly.</p>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>12</span></div>
+</section>
+
+<!-- ═══════════════ PART 5 (b) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">What players see</h3>
+  <p>Boot screen, then login, then the machine's mailbox — all in that machine's own look. Machines hold both mail and files (camera feeds, spreadsheets, logs). If an account belongs to an NPC, mail sent to that NPC also shows up on the machine. The paper trail is really there.</p>
+  <figure class="fig-85"><div class="shot"><img src="img/terminal-login.png" alt="Terminal login — access granted"></div>
+  <figcaption>Logging into an Arasaka workstation — the credential badge fills in, then the machine opens its mailbox.</figcaption></figure>
+
+  <h3>Taking data</h3>
+  <p>The Exfil tab controls what players can do with files they find. Each action can be off, allowed, or allowed-with-a-roll:</p>
+  <p><strong>Download · Burn to shard · Forward · Leak</strong> (posts it to public chat) <strong>· Sell</strong> (instant eddies) <strong>· Wipe</strong> (delete it — you can restore it from a recycle bin)</p>
+  <p>Failing a gated roll triggers a trace. One fun detail: live camera feeds can't be downloaded, but players can save a single frame, loop a camera, or cut it. A looped camera shows a frozen timestamp — which someone might notice.</p>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>13</span></div>
+</section>
+
+<!-- ═══════════════ PART 6 (a) ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 06 · GM</span>Hacking and consequences</h2>
+  <div class="h2rule"></div>
+  <p class="lead">This is the deep end. Skip it until your table wants it.</p>
+
+  <h3>Trace &amp; heat</h3>
+  <p>Every risky roll reports to Admin → <strong>Security</strong>:</p>
+  <ul>
+    <li><strong>Activity Log</strong> — a full record of who did what and whether it worked.</li>
+    <li><strong>Heat</strong> — failed rolls build heat on whoever failed them. Heat fades over time. When it gets high, you can hit back: lock them out, attack with Black ICE, or start a <strong>countdown</strong> the player watches tick down on their screen ("Arasaka is closing in").</li>
+  </ul>
+  <figure class="fig-80"><div class="shot"><img src="img/security-tab.png" alt="The Security tab"></div>
+  <figcaption>Admin → Security: the activity log, per-operator heat bars, planted files, and the recycle bin — your whole consequence dashboard.</figcaption></figure>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>14</span></div>
+</section>
+
+<!-- ═══════════════ PART 6 (b) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">Planting fake data</h3>
+  <p>Players can also put things ON a machine. They carry a forged file (a fake chat log, a doctored photo) to a terminal and upload it. A forge roll decides how it goes: <strong>clean</strong>, <strong>sloppy</strong> (it works, but an inspection will reveal it's fake), or <strong>rejected</strong>. Planted files go off the next time someone logs in. You choose in settings whether they fire on their own or wait for your go-ahead.</p>
+  <div class="fig-row">
+    <figure><div class="shot"><img src="img/upload-console.png" alt="The upload console"></div>
+    <figcaption>Uploading a forged file from a carried shard onto a terminal.</figcaption></figure>
+    <figure><div class="shot"><img src="img/system-sweep.png" alt="System sweep"></div>
+    <figcaption>SYSTEM SWEEP — scan a machine for planted programs. It never says what it missed.</figcaption></figure>
+  </div>
+
+  <h3>Fighting back</h3>
+  <p>Players have tools too. <strong>ANALYZE</strong> checks whether a file is really what it says it is. <strong>SYSTEM SWEEP</strong> scans a whole terminal for planted programs — it reveals what the roll is good enough to find, and never says whether it missed anything.</p>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>15</span></div>
+</section>
+
+<!-- ═══════════════ PART 6 (c) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">The Malware Workshop</h3>
+  <p>Admin → Security → <strong>Programs</strong> opens the <strong>Malware Workshop</strong>. Build programs with real effects: keyloggers, secret backdoor accounts, ICE traps, logic bombs, file wipers. You can disguise them as harmless files. Give them to players as Items; they carry and use them through the <strong>Program Deck</strong>.</p>
+  <figure class="fig-85"><div class="shot"><img src="img/MalwareWorkshop.png" alt="The Malware Workshop"></div>
+  <figcaption>The Malware Workshop — the cover story on top, what the program really does underneath.</figcaption></figure>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>16</span></div>
+</section>
+
+<!-- ═══════════════ PART 6 (d) ═══════════════ -->
+<section class="page">
+  <figure class="fig-85" style="margin-top:0"><div class="shot"><img src="img/program-deck.png" alt="The Program Deck"></div>
+  <figcaption>The Program Deck — how players carry and inspect the programs you hand them.</figcaption></figure>
+
+  <h3>Who can hack at all</h3>
+  <p>Admin → Security → <strong>Operator Access</strong> lets you limit who can use terminals: by role, by skill level, by gear they need to own, or by naming specific characters.</p>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>17</span></div>
+</section>
+
+<!-- ═══════════════ PART 6 (e) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">How hack rolls get resolved</h3>
+  <p>There's a setting called <strong>Netrunning Resolution</strong> with three modes. Pick what fits your table:</p>
+  <ol>
+    <li><strong>Auto</strong> — the module rolls and resolves everything. Fast. This is the default.</li>
+    <li><strong>Flagged</strong> — same as auto, but you get a card telling you what happened so you can work it into the story.</li>
+    <li><strong>GM decides</strong> — no auto-roll. The player's screen waits while you get a prompt. Run the netrun at the table however you like, then click the result. Both screens can minimize while you play it out.</li>
+  </ol>
+  <figure class="fig-80"><div class="shot"><img src="img/net-adjudicator.png" alt="The GM adjudicator prompt"></div>
+  <figcaption>"GM decides" mode: the prompt you get when a player attempts a hack — run the NET at the table, then call it.</figcaption></figure>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>18</span></div>
+</section>
+
+<!-- ═══════════════ THREE RULES ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 07 · EVERYONE</span>Three rules to remember</h2>
+  <div class="h2rule"></div>
+  <p class="lead">These three things cause almost every "it's broken" report. Tell your players up front:</p>
+
+  <div class="rule-card"><span class="n">1</span>
+    <h4>A GM has to be online for player actions to count</h4>
+    <p>When a player claims money, decrypts a file, or uploads something, the change goes through the GM's computer. If no GM is connected, nothing happens. That's on purpose.</p>
+  </div>
+  <div class="rule-card"><span class="n">2</span>
+    <h4>Check the OPERATOR chip</h4>
+    <p>It picks which character rolls and gets paid. Wrong chip, wrong wallet.</p>
+  </div>
+  <div class="rule-card"><span class="n">3</span>
+    <h4>"The button does nothing" is usually a setting</h4>
+    <p>Exfil rules, operator access, network range, resolution mode — check the setting before assuming it's a bug. Turning on <strong>Debug Mode</strong> makes the module explain every decision in the console.</p>
+  </div>
+
+  <div class="tip"><span class="k">Also good to know</span>Self-destructing messages never destroy when a GM reads them (so you can check inboxes safely), and GMs skip most login checks — so if you want to see what players see, log in from a player account.</div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>19</span></div>
+</section>
+
+<!-- ═══════════════ SETTINGS ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 08 · GM</span>Settings that matter</h2>
+  <div class="h2rule"></div>
+  <p>All in Module Settings. The important ones:</p>
+  <table>
+    <tr><th>Setting</th><th>What it does</th></tr>
+    <tr><td><strong>Time Provider</strong></td><td>which clock the module uses</td></tr>
+    <tr><td><strong>Require Contact Verification</strong></td><td>players can only message addresses they know</td></tr>
+    <tr><td><strong>Smart Conversation Grouping</strong></td><td>groups same-subject mail into threads</td></tr>
+    <tr><td><strong>Anonymous Send</strong></td><td>the masked-sender feature</td></tr>
+    <tr><td><strong>Spam: Unknown Sender</strong></td><td>chance for mail from strangers to land in Spam</td></tr>
+    <tr><td><strong>Netrunning Resolution</strong></td><td>auto / flagged / GM decides</td></tr>
+    <tr><td><strong>Planted Program Firing</strong></td><td>fire on their own, or ask you first</td></tr>
+    <tr><td><strong>Exfil Folder Name</strong></td><td>what the players' stolen-files folder is called</td></tr>
+    <tr><td><strong>Notify GM of NPC Mail</strong></td><td>popup when players message NPCs</td></tr>
+    <tr><td><strong>Terminal Pins Auto-Show</strong></td><td>map pins visible without extra clicks</td></tr>
+    <tr><td><strong>Debug Mode</strong></td><td>the module explains its decisions in the console</td></tr>
+  </table>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>20</span></div>
+</section>
+
+<!-- ═══════════════ FIRST SESSIONS ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 09 · GM</span>How to run your first sessions</h2>
+  <div class="h2rule"></div>
+  <p class="lead">A pacing that works:</p>
+  <ol>
+    <li><strong>Before session 1:</strong> set up two networks and a dead zone, add three contacts, and send each player one message from someone their character knows. It'll be waiting when they first open their phone.</li>
+    <li><strong>Session 1:</strong> players make their addresses, style their phones, and message each other and an NPC. You answer in character. That's enough. Let it breathe.</li>
+    <li><strong>Session 2:</strong> a job offer arrives by mail — maybe anonymously. Payment attached as eddies. The job involves a data shard with three entries: a plain message, a locked photo, a bank account.</li>
+    <li><strong>Session 3:</strong> the job leads to a terminal pinned on the map. Two accounts, one hidden. A camera feed, an incriminating spreadsheet, and a download action that needs a roll. Let someone fail and watch the heat show up on your Security tab.</li>
+    <li><strong>Later:</strong> forged evidence, malware, countdowns. Add them when the table asks, not before.</li>
+  </ol>
+
+  <div class="divider"></div>
+  <p style="text-align:center; font-family:'Share Tech Mono',monospace; font-size:9pt; color:var(--ink-soft);">
+    NIGHT CITY MESSENGER · for Foundry VTT v12 + Cyberpunk RED Core<br>
+    github.com/christinophrappuccino/night-city-messenger<br><br>
+    <span style="color:var(--cyan)">Wake up, samurai. You've got mail.</span>
+  </p>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>21</span></div>
+</section>
+
+</body>
+</html>

@@ -1,9 +1,9 @@
 /**
  * Contact Repository — Sprint 3 Update
  * @file scripts/data/ContactRepository.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Actor flag-based contact storage. Contacts are stored in
- * actor.flags['cyberpunkred-messenger'].contacts as an array.
+ * actor.flags['night-city-messenger'].contacts as an array.
  *
  * Sprint 3 additions:
  *   - trust (0-5), burned, encrypted, encryptionDV, encryptionSkill

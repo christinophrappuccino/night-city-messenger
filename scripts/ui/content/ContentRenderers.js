@@ -1,7 +1,7 @@
 /**
  * ContentRenderers — shared content-type registry
  * @file scripts/ui/content/ContentRenderers.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Single source of truth for rendering a typed content entry
  *              ({ contentType, contentData, ... }) — consumed by BOTH the Data
  *              Shard viewer (ItemInboxApp) and the Terminal viewer

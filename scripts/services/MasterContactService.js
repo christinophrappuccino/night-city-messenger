@@ -1,7 +1,7 @@
 /**
  * MasterContactService
  * @file scripts/services/MasterContactService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description GM-only master contact directory. CRUD for NPC contacts with email,
  *              alias, organization, portrait, and tags. Source of truth for NPC
  *              identities across all player contact lists. Stores in world settings.

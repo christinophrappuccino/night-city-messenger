@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * NCM Admin Panel — Dedicated Theme Scope
  * @file styles/themes/admin-theme.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description The GM Admin Panel gets its OWN palette, independent of the
  *   player theme. The player theme writes --ncm-* to :root; here we re-define
  *   the same --ncm-* variables ON the panel root (.ncm-app.ncm-admin-panel),
@@ -16,10 +16,18 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ─── CLEAN DARK (default) ─────────────────────────────────────────────── */
-.ncm-app.ncm-admin-panel {
+.ncm-app.ncm-admin-panel,
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme] {
+  /* Text size on a GM tool is the admin Text-size ZOOM (adminTheme.js), so the
+     player's --ncm-text-scale (set on :root by the Theme Customizer) must not
+     stack on top of it — every calc(Npx * var(--ncm-text-scale)) surface that
+     renders inside a tagged window (GM-view viewer/composer, the entry
+     composer's live preview) reads 1 here. */
+  --ncm-text-scale: 1;
   /* Surfaces — neutral slate, darkest → lightest */
   --ncm-bg-deep:      #0e1117;
   --ncm-bg-base:      #151a23;
+  --ncm-bg-mid:       #181f2a;
   --ncm-bg-surface:   #1b2230;
   --ncm-bg-elevated:  #222b3c;
   --ncm-bg-overlay:   rgba(6, 9, 14, 0.88);
@@ -61,9 +69,10 @@
 }
 
 /* ─── CLEAN LIGHT ──────────────────────────────────────────────────────── */
-.ncm-app.ncm-admin-panel[data-ncm-admin-theme="clean-light"] {
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme="clean-light"] {
   --ncm-bg-deep:      #e7ecf2;
   --ncm-bg-base:      #f3f6f9;
+  --ncm-bg-mid:       #eaeff5;
   --ncm-bg-surface:   #ffffff;
   --ncm-bg-elevated:  #ffffff;
   --ncm-bg-overlay:   rgba(20, 26, 35, 0.45);
@@ -91,9 +100,10 @@
 }
 
 /* ─── HIGH CONTRAST (dark, accessibility-first) ────────────────────────── */
-.ncm-app.ncm-admin-panel[data-ncm-admin-theme="high-contrast"] {
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme="high-contrast"] {
   --ncm-bg-deep:      #000000;
   --ncm-bg-base:      #080b10;
+  --ncm-bg-mid:       #0d1118;
   --ncm-bg-surface:   #11161e;
   --ncm-bg-elevated:  #1a212b;
   --ncm-bg-overlay:   rgba(0, 0, 0, 0.9);
@@ -117,7 +127,7 @@
 }
 
 /* High-contrast: strong, always-visible focus rings on interactive controls. */
-.ncm-app.ncm-admin-panel[data-ncm-admin-theme="high-contrast"]
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme="high-contrast"]
   :is(button, a, input, select, textarea, [data-action], [tabindex]):focus-visible {
   outline: 2px solid var(--ncm-border-focus);
   outline-offset: 1px;
@@ -129,16 +139,16 @@
  * controls). The window-chrome `.header-control { color }` rule doesn't reach
  * the inner <i>, so force both the button and its icon to the themed colors.
  * Scoped to the admin panel so the player theme is untouched. */
-.ncm-app.ncm-admin-panel > .window-header .header-control,
-.ncm-app.ncm-admin-panel > .window-header .header-control > i {
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme] > .window-header .header-control,
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme] > .window-header .header-control > i {
   color: var(--ncm-text-secondary);
 }
-.ncm-app.ncm-admin-panel > .window-header .header-control:hover,
-.ncm-app.ncm-admin-panel > .window-header .header-control:hover > i {
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme] > .window-header .header-control:hover,
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme] > .window-header .header-control:hover > i {
   color: var(--ncm-text-primary);
 }
-.ncm-app.ncm-admin-panel > .window-header .header-control.close:hover,
-.ncm-app.ncm-admin-panel > .window-header .header-control.close:hover > i {
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme] > .window-header .header-control.close:hover,
+:is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme] > .window-header .header-control.close:hover > i {
   color: var(--ncm-danger);
 }
 
@@ -172,3 +182,122 @@
 .ncm-app .ncm-admin-theme-opt__name { font-size: 12.5px; font-weight: 600; color: var(--ncm-text-primary); }
 .ncm-app .ncm-admin-theme-opt__desc { font-size: 10.5px; color: var(--ncm-text-muted); }
 .ncm-app .ncm-admin-theme-opt__check { color: var(--ncm-secondary); font-size: 12px; flex-shrink: 0; }
+
+/* Text size row - the panel's accessibility zoom (AdminPanelApp._applyAdminTextScale). */
+.ncm-app .ncm-admin-textsize {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px;
+  margin: -6px 0 16px; padding: 8px 12px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+}
+.ncm-app .ncm-admin-textsize__label {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary);
+}
+.ncm-app .ncm-admin-textsize__opts { display: inline-flex; gap: 4px; flex: none; }
+.ncm-app button.ncm-admin-textsize__opt {
+  appearance: none; -webkit-appearance: none;
+  width: auto; height: auto; min-height: 0; margin: 0; padding: 4px 10px;
+  font-family: var(--ncm-font-mono); font-size: 11px; font-weight: 700;
+  color: var(--ncm-text-secondary); background: var(--ncm-bg-base);
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  box-shadow: none; cursor: pointer; line-height: 1.2;
+  transition: border-color var(--ncm-transition-fast, 0.12s), color var(--ncm-transition-fast, 0.12s);
+}
+.ncm-app button.ncm-admin-textsize__opt:hover { border-color: var(--ncm-border-active); color: var(--ncm-text-primary); }
+.ncm-app button.ncm-admin-textsize__opt--active {
+  border-color: var(--ncm-secondary); color: var(--ncm-secondary);
+  background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
+}
+.ncm-app .ncm-admin-textsize__hint {
+  flex: 1 1 220px; min-width: 0;
+  font-family: var(--ncm-font-display); font-size: 10.5px; font-style: italic; color: var(--ncm-text-muted);
+}
+
+/* ─── Foundry v1 Dialogs opened by GM tools (.ncm-admin-dialog) ─────────────
+ * A Dialog is body-mounted, so it never inherits a window's variables; the
+ * palette block above matches it directly via [data-ncm-admin-theme]. Foundry
+ * core + the CPR system paint dialog chrome with their own colours, so the
+ * frame/content/buttons are forced onto the themed tokens here. */
+.ncm-admin-dialog[data-ncm-admin-theme] {
+  background: var(--ncm-bg-base) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  box-shadow: var(--ncm-shadow-card) !important;
+  color: var(--ncm-text-primary) !important;
+  font-family: var(--ncm-font-body) !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .window-header {
+  background: var(--ncm-bg-deep) !important;
+  border-bottom: 1px solid var(--ncm-border) !important;
+  color: var(--ncm-text-primary) !important;
+  font-family: var(--ncm-font-display) !important;
+  text-shadow: none !important; /* core/CPR emboss the title — blurry on a light header */
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .window-header .window-title {
+  color: var(--ncm-text-primary) !important;
+  text-shadow: none !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .window-header .header-button,
+.ncm-admin-dialog[data-ncm-admin-theme] .window-header .header-button > i {
+  color: var(--ncm-text-secondary) !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .window-header .header-button:hover,
+.ncm-admin-dialog[data-ncm-admin-theme] .window-header .header-button:hover > i {
+  color: var(--ncm-text-primary) !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .window-content {
+  background: var(--ncm-bg-base) !important;
+  color: var(--ncm-text-primary) !important;
+  font-family: var(--ncm-font-body) !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .window-content :is(p, li, label, span, div) {
+  color: inherit;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .window-content :is(input, select, textarea) {
+  background: var(--ncm-bg-deep) !important;
+  border: 1px solid var(--ncm-border) !important;
+  color: var(--ncm-text-primary) !important;
+  border-radius: 2px !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .window-content :is(input, select, textarea):focus {
+  border-color: var(--ncm-border-focus) !important;
+  box-shadow: none !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .dialog-buttons button {
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  color: var(--ncm-text-primary) !important;
+  font-family: var(--ncm-font-display) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] .dialog-buttons button:hover,
+.ncm-admin-dialog[data-ncm-admin-theme] .dialog-buttons button.default {
+  border-color: var(--ncm-secondary) !important;
+  color: var(--ncm-secondary) !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme] hr {
+  border-color: var(--ncm-border) !important;
+  background: none !important;
+  border-image: none !important;
+}
+
+/* ─── GM-view header button (utils/adminTheme.js → syncGmViewControls) ──────
+ * A visible toggle beside the close control on the message viewer, composer,
+ * contacts and Theme Customizer — the ⋮-menu entry alone was easy to miss.
+ * Lit in the admin accent while GM view is on; dim when in player view. */
+.ncm-app .window-header .ncm-gmview-btn {
+  opacity: 0.55;
+  transition: opacity 0.12s, color 0.12s;
+}
+.ncm-app .window-header .ncm-gmview-btn:hover { opacity: 1; }
+.ncm-app[data-ncm-admin-theme] .window-header .ncm-gmview-btn,
+.ncm-app[data-ncm-admin-theme] .window-header .ncm-gmview-btn > i {
+  opacity: 1;
+  color: var(--ncm-secondary) !important;
+}

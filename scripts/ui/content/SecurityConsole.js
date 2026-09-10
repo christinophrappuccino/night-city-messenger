@@ -1,7 +1,7 @@
 /**
  * SecurityConsole — immersive action modal (design: content-action foundation)
  * @file scripts/ui/content/SecurityConsole.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description The shared "security-roll → styled dialog → outcome animation"
  *   engine that replaces vanilla `Dialog` for content actions (siphon / claim /
  *   crack / deploy / exfil). One promise-based, framework-free modal:

@@ -1,13 +1,13 @@
 /**
  * Phase 4 Verification — Data Shard System
  * @file scripts/tests/Phase4Verification.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Automated verification suite for Phase 4 data shard features.
  *              Validates service availability, shard conversion, security stack,
  *              hacking pipeline, per-actor sessions, GM operations, and UI readiness.
  *
  * Usage (console macro):
- *   const { Phase4Verification } = await import('./modules/cyberpunkred-messenger/scripts/tests/Phase4Verification.js');
+ *   const { Phase4Verification } = await import('./modules/night-city-messenger/scripts/tests/Phase4Verification.js');
  *   await Phase4Verification.run();
  *
  * Or via game.nightcity:

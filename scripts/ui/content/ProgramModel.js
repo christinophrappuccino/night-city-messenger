@@ -2,7 +2,7 @@
  * Program Model — the Malware Workshop's authoring format and its mapping to real
  * content entries.
  * @file scripts/ui/content/ProgramModel.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description The workshop authors a self-contained `program` definition (below).
  *   `programToEntry(program)` turns it into the `{ contentType, contentData, subject,
  *   from }` an item entry expects — as a **payload** (utility program: instant effect

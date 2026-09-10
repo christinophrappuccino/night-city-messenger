@@ -1,7 +1,7 @@
 /**
  * Activity Log — Shared Styles
  * @file styles/components/activity-log.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Unified log toolbar, entries, and add-form styles used by both
  *              the Admin Panel (tab-networks logs sub-view) and the Network Manager
  *              (Logs tab). Uses ncm-actlog__ prefix to avoid Foundry conflicts.
@@ -73,8 +73,8 @@
 }
 .ncm-actlog__filter-btn--active {
   color: var(--ncm-secondary, #19f3f7) !important;
-  border-color: rgba(25, 243, 247, 0.25) !important;
-  background: rgba(25, 243, 247, 0.06) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 25%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
 }
 
 .ncm-actlog__net-filter {
@@ -144,17 +144,17 @@
 }
 .ncm-actlog__btn--accent {
   color: var(--ncm-secondary, #19f3f7) !important;
-  border-color: rgba(25, 243, 247, 0.3) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
 }
 .ncm-actlog__btn--accent:hover {
-  background: rgba(25, 243, 247, 0.06) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
 }
 .ncm-actlog__btn--danger {
   color: var(--ncm-danger, #ff0033) !important;
-  border-color: rgba(255, 0, 51, 0.2) !important;
+  border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent) !important;
 }
 .ncm-actlog__btn--danger:hover {
-  background: rgba(255, 0, 51, 0.06) !important;
+  background: color-mix(in srgb, var(--ncm-danger) 6%, transparent) !important;
 }
 
 
@@ -188,7 +188,7 @@
   background: rgba(30, 30, 60, 0.45) !important;
 }
 .ncm-actlog__entry:hover {
-  background: rgba(25, 243, 247, 0.03) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent) !important;
 }
 .ncm-actlog__entry--manual {
   border-left: 3px solid var(--ncm-accent, #f7c948) !important;
@@ -211,20 +211,20 @@
   position: relative !important;
   overflow: visible !important;
 }
-.ncm-actlog__badge--connect     { background: rgba(0,255,65,0.1) !important; color: var(--ncm-success, #00ff41) !important; }
-.ncm-actlog__badge--disconnect  { background: rgba(246,82,97,0.1) !important; color: var(--ncm-danger, #ff0033) !important; }
+.ncm-actlog__badge--connect     { background: color-mix(in srgb, var(--ncm-success) 10%, transparent) !important; color: var(--ncm-success, #00ff41) !important; }
+.ncm-actlog__badge--disconnect  { background: color-mix(in srgb, var(--ncm-primary) 10%, transparent) !important; color: var(--ncm-danger, #ff0033) !important; }
 .ncm-actlog__badge--auth_success,
-.ncm-actlog__badge--auth-ok     { background: rgba(247,201,72,0.1) !important; color: var(--ncm-accent, #f7c948) !important; }
+.ncm-actlog__badge--auth-ok     { background: color-mix(in srgb, var(--ncm-accent) 10%, transparent) !important; color: var(--ncm-accent, #f7c948) !important; }
 .ncm-actlog__badge--auth_failure,
-.ncm-actlog__badge--auth-fail   { background: rgba(255,0,51,0.1) !important; color: var(--ncm-danger, #ff0033) !important; }
-.ncm-actlog__badge--lockout     { background: rgba(255,0,51,0.1) !important; color: var(--ncm-danger, #ff0033) !important; }
-.ncm-actlog__badge--hack        { background: rgba(168,85,247,0.1) !important; color: #a855f7 !important; }
-.ncm-actlog__badge--manual      { background: rgba(247,201,72,0.1) !important; color: var(--ncm-accent, #f7c948) !important; }
+.ncm-actlog__badge--auth-fail   { background: color-mix(in srgb, var(--ncm-danger) 10%, transparent) !important; color: var(--ncm-danger, #ff0033) !important; }
+.ncm-actlog__badge--lockout     { background: color-mix(in srgb, var(--ncm-danger) 10%, transparent) !important; color: var(--ncm-danger, #ff0033) !important; }
+.ncm-actlog__badge--hack        { background: color-mix(in srgb, var(--ncm-purple) 10%, transparent) !important; color: var(--ncm-purple) !important; }
+.ncm-actlog__badge--manual      { background: color-mix(in srgb, var(--ncm-accent) 10%, transparent) !important; color: var(--ncm-accent, #f7c948) !important; }
 .ncm-actlog__badge--system      { background: rgba(142,142,168,0.1) !important; color: var(--ncm-text-muted, #8e8ea8) !important; }
 .ncm-actlog__badge--trace,
 .ncm-actlog__badge--shard_trace,
-.ncm-actlog__badge--message_trace { background: rgba(255,0,51,0.12) !important; color: var(--ncm-danger, #ff0033) !important; }
-.ncm-actlog__badge--network_switch { background: rgba(25,243,247,0.1) !important; color: var(--ncm-secondary, #19f3f7) !important; }
+.ncm-actlog__badge--message_trace { background: color-mix(in srgb, var(--ncm-danger) 12%, transparent) !important; color: var(--ncm-danger, #ff0033) !important; }
+.ncm-actlog__badge--network_switch { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important; color: var(--ncm-secondary, #19f3f7) !important; }
 
 /* Portrait overlay */
 .ncm-actlog__badge-img {
@@ -242,14 +242,14 @@
   margin: 0 !important; padding: 0 !important; line-height: 1 !important;
   font-size: 7px !important; width: auto !important; height: auto !important;
 }
-.ncm-actlog__badge-overlay--connect     { background: rgba(0,255,65,0.9) !important; color: #000 !important; }
+.ncm-actlog__badge-overlay--connect     { background: color-mix(in srgb, var(--ncm-success) 90%, transparent) !important; color: #000 !important; }
 .ncm-actlog__badge-overlay--disconnect  { background: var(--ncm-danger) !important; color: #fff !important; }
 .ncm-actlog__badge-overlay--auth_success,
 .ncm-actlog__badge-overlay--auth-ok     { background: var(--ncm-accent) !important; color: #000 !important; }
 .ncm-actlog__badge-overlay--auth_failure,
 .ncm-actlog__badge-overlay--auth-fail   { background: var(--ncm-danger) !important; color: #fff !important; }
 .ncm-actlog__badge-overlay--lockout     { background: var(--ncm-danger) !important; color: #fff !important; }
-.ncm-actlog__badge-overlay--hack        { background: #a855f7 !important; color: #fff !important; }
+.ncm-actlog__badge-overlay--hack        { background: var(--ncm-purple) !important; color: #fff !important; }
 .ncm-actlog__badge-overlay--manual      { background: var(--ncm-accent) !important; color: #000 !important; }
 .ncm-actlog__badge-overlay--system      { background: var(--ncm-text-muted) !important; color: #000 !important; }
 .ncm-actlog__badge-overlay--trace,
@@ -272,7 +272,7 @@
 .ncm-actlog__network { font-weight: 700 !important; }
 .ncm-actlog__network--cyan   { color: var(--ncm-secondary) !important; }
 .ncm-actlog__network--gold   { color: var(--ncm-accent) !important; }
-.ncm-actlog__network--purple { color: #a855f7 !important; }
+.ncm-actlog__network--purple { color: var(--ncm-purple) !important; }
 .ncm-actlog__network--red    { color: var(--ncm-danger) !important; }
 .ncm-actlog__network--green  { color: var(--ncm-success, #00ff41) !important; }
 
@@ -289,19 +289,19 @@
   text-transform: uppercase !important; letter-spacing: 0.06em !important;
   padding: 2px 6px !important; border-radius: 2px !important; flex-shrink: 0 !important;
 }
-.ncm-actlog__tag--connect     { background: rgba(0,255,65,0.08) !important; color: var(--ncm-success) !important; }
-.ncm-actlog__tag--disconnect  { background: rgba(246,82,97,0.08) !important; color: var(--ncm-danger) !important; }
+.ncm-actlog__tag--connect     { background: color-mix(in srgb, var(--ncm-success) 8%, transparent) !important; color: var(--ncm-success) !important; }
+.ncm-actlog__tag--disconnect  { background: color-mix(in srgb, var(--ncm-primary) 8%, transparent) !important; color: var(--ncm-danger) !important; }
 .ncm-actlog__tag--auth_success,
-.ncm-actlog__tag--auth-ok     { background: rgba(247,201,72,0.08) !important; color: var(--ncm-accent) !important; }
+.ncm-actlog__tag--auth-ok     { background: color-mix(in srgb, var(--ncm-accent) 8%, transparent) !important; color: var(--ncm-accent) !important; }
 .ncm-actlog__tag--auth_failure,
-.ncm-actlog__tag--auth-fail   { background: rgba(255,0,51,0.08) !important; color: var(--ncm-danger) !important; }
-.ncm-actlog__tag--hack        { background: rgba(168,85,247,0.08) !important; color: #a855f7 !important; }
-.ncm-actlog__tag--lockout     { background: rgba(255,0,51,0.08) !important; color: var(--ncm-danger) !important; }
-.ncm-actlog__tag--manual      { background: rgba(247,201,72,0.08) !important; color: var(--ncm-accent) !important; }
+.ncm-actlog__tag--auth-fail   { background: color-mix(in srgb, var(--ncm-danger) 8%, transparent) !important; color: var(--ncm-danger) !important; }
+.ncm-actlog__tag--hack        { background: color-mix(in srgb, var(--ncm-purple) 8%, transparent) !important; color: var(--ncm-purple) !important; }
+.ncm-actlog__tag--lockout     { background: color-mix(in srgb, var(--ncm-danger) 8%, transparent) !important; color: var(--ncm-danger) !important; }
+.ncm-actlog__tag--manual      { background: color-mix(in srgb, var(--ncm-accent) 8%, transparent) !important; color: var(--ncm-accent) !important; }
 .ncm-actlog__tag--trace,
 .ncm-actlog__tag--shard_trace,
-.ncm-actlog__tag--message_trace { background: rgba(255,0,51,0.1) !important; color: var(--ncm-danger) !important; }
-.ncm-actlog__tag--network_switch { background: rgba(25,243,247,0.08) !important; color: var(--ncm-secondary) !important; }
+.ncm-actlog__tag--message_trace { background: color-mix(in srgb, var(--ncm-danger) 10%, transparent) !important; color: var(--ncm-danger) !important; }
+.ncm-actlog__tag--network_switch { background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important; color: var(--ncm-secondary) !important; }
 .ncm-actlog__tag--system      { background: rgba(142,142,168,0.08) !important; color: var(--ncm-text-muted) !important; }
 
 /* Message */
@@ -317,13 +317,13 @@
   font-family: var(--ncm-font-mono) !important; font-size: 9px !important; font-weight: 700 !important;
   color: var(--ncm-secondary) !important; cursor: pointer !important; transition: all 0.15s !important;
   padding: 1px 6px !important;
-  background: rgba(25,243,247,0.06) !important; border: 1px solid rgba(25,243,247,0.2) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important; border: 1px solid color-mix(in srgb, var(--ncm-secondary) 20%, transparent) !important;
   border-radius: 2px !important; flex-shrink: 0 !important;
 }
-.ncm-actlog__link:hover { background: rgba(25,243,247,0.12) !important; border-color: rgba(25,243,247,0.4) !important; }
+.ncm-actlog__link:hover { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent) !important; }
 .ncm-actlog__link i { font-size: 8px !important; margin: 0 !important; padding: 0 !important; }
-.ncm-actlog__link--shard { color: var(--ncm-accent) !important; background: rgba(247,201,72,0.06) !important; border-color: rgba(247,201,72,0.2) !important; }
-.ncm-actlog__link--shard:hover { background: rgba(247,201,72,0.12) !important; border-color: rgba(247,201,72,0.4) !important; }
+.ncm-actlog__link--shard { color: var(--ncm-accent) !important; background: color-mix(in srgb, var(--ncm-accent) 6%, transparent) !important; border-color: color-mix(in srgb, var(--ncm-accent) 20%, transparent) !important; }
+.ncm-actlog__link--shard:hover { background: color-mix(in srgb, var(--ncm-accent) 12%, transparent) !important; border-color: color-mix(in srgb, var(--ncm-accent) 40%, transparent) !important; }
 
 /* Timestamp */
 .ncm-actlog__time {
@@ -355,7 +355,7 @@
   appearance: none !important; box-shadow: none !important; outline: none !important;
 }
 .ncm-actlog__act:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
-.ncm-actlog__act--danger:hover { color: var(--ncm-danger) !important; border-color: rgba(255,0,51,0.3) !important; }
+.ncm-actlog__act--danger:hover { color: var(--ncm-danger) !important; border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent) !important; }
 .ncm-actlog__act i { margin: 0 !important; padding: 0 !important; line-height: 1 !important; }
 
 /* Empty state */
@@ -420,7 +420,7 @@
 }
 .ncm-actlog__add-field input:focus,
 .ncm-actlog__add-field select:focus {
-  border-color: rgba(25, 243, 247, 0.4) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent) !important;
 }
 .ncm-actlog__add-field input::placeholder {
   color: var(--ncm-text-muted) !important;
@@ -448,7 +448,7 @@
   color: var(--ncm-secondary, #19f3f7) !important;
   background: transparent !important;
   background-image: none !important;
-  border: 1px solid rgba(25, 243, 247, 0.3) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
   border-radius: 2px !important;
   cursor: pointer !important;
   transition: all 0.15s !important;
@@ -466,7 +466,7 @@
   white-space: nowrap !important;
 }
 .ncm-actlog__add-btn:hover {
-  background: rgba(25, 243, 247, 0.06) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
 }
 .ncm-actlog__add-btn i {
   font-size: 9px !important;

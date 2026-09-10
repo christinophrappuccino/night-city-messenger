@@ -1,7 +1,7 @@
 {{!--
   Contact Detail Panel — Right side of split view
   @file templates/contact-manager/partials/contact-detail.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Full detail view for the selected contact: profile header with avatar,
     chips (role/org/location/tags), action buttons, info card, last interaction card,
     relationship card (if GM-revealed), and personal notes textarea.
@@ -19,7 +19,7 @@
 
   {{!-- ═══ ICE OVERLAY — covers entire detail panel if encrypted ═══ --}}
   {{#if isEncrypted}}
-    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-overlay.hbs"
+    {{> "modules/night-city-messenger/templates/contact-manager/partials/encrypted-overlay.hbs"
         encryptionDV=encryptionDV encryptionSkill=encryptionSkill
         blackIce=blackIce blackIceDamage=blackIceDamage icePortrait=icePortrait
         maxBreachAttempts=maxBreachAttempts attemptDots=attemptDots isLockedOut=isLockedOut

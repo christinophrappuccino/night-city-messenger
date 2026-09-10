@@ -19,7 +19,7 @@
  *   · No trace / no heat — sweeping is recon, not an attack.
  *
  * @file scripts/ui/content/SystemSweep.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  */
 
 import { SOCKET_OPS } from '../../utils/constants.js';

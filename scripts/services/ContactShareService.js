@@ -1,7 +1,7 @@
 /**
  * Contact Share Service — Sprint 3.4
  * @file scripts/services/ContactShareService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Business logic for sharing contacts between players.
  *   Handles the full pipeline: data preparation → socket relay (sender → GM → recipients)
  *   → contact storage → Data Drop overlay → toast notification.

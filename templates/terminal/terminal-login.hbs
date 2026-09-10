@@ -13,9 +13,9 @@
       <div class="ncm-term__crt-top">
         <span class="ncm-term__crt-host">{{shellHost}} · tty0</span>
         {{#if isGM}}<span class="ncm-term__login-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
-        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/operator-chip.hbs" operator}}
+        {{> "modules/night-city-messenger/templates/terminal/partials/operator-chip.hbs" operator}}
         {{#if uplink.show}}
-          {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink align="right"}}
+          {{> "modules/night-city-messenger/templates/terminal/partials/uplink.hbs" uplink align="right"}}
         {{/if}}
       </div>
       <div class="ncm-term__crt-hd">{{terminalName}}</div>
@@ -53,11 +53,11 @@
         {{#if onlineCount}}<span><b>{{onlineCount}}</b> online</span>{{/if}}
         {{#if isGM}}<span class="ncm-term__login-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
         {{!-- Operator — WHO logs in (the login skill check rolls against them). --}}
-        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/operator-chip.hbs" operator}}
+        {{> "modules/night-city-messenger/templates/terminal/partials/operator-chip.hbs" operator}}
         {{!-- Machine uplink — switchable BEFORE login, since network-gated
               accounts only materialize on the right network. --}}
         {{#if uplink.show}}
-          {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink align="right"}}
+          {{> "modules/night-city-messenger/templates/terminal/partials/uplink.hbs" uplink align="right"}}
         {{/if}}
       </div>
     </div>
@@ -206,7 +206,7 @@
         <div class="ncm-term__prompt">&gt; select an account to log in<span class="ncm-term__cursor"></span></div>
         <div class="ncm-term__cards">
           {{#each accounts}}
-            {{> "modules/cyberpunkred-messenger/templates/terminal/partials/account-card.hbs"}}
+            {{> "modules/night-city-messenger/templates/terminal/partials/account-card.hbs"}}
           {{/each}}
           <div class="ncm-term__otherbar" data-action="terminalManualLogin">
             <div class="ncm-term__otherbar-ic"><i class="fas fa-user-lock"></i></div>

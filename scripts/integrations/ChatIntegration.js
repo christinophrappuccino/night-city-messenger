@@ -1,7 +1,7 @@
 /**
  * Chat Integration
  * @file scripts/integrations/ChatIntegration.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Handles chat card rendering, delegated event binding on #chat-log,
  * and message sharing to Foundry chat.
  */

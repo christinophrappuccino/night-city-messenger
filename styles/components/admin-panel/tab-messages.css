@@ -1003,8 +1003,8 @@
 
 .ncm-app .ncm-msg-feed-status--deleted {
   color: var(--ncm-text-muted, var(--ncm-text-muted));
-  background: rgba(85, 85, 112, 0.06);
-  border: 1px solid rgba(85, 85, 112, 0.1);
+  background: color-mix(in srgb, var(--ncm-text-muted) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-text-muted) 10%, transparent);
   text-decoration: line-through;
 }
 
@@ -1151,7 +1151,7 @@
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  background: rgba(26, 26, 46, 0.6);
+  background: color-mix(in srgb, var(--ncm-bg-surface) 60%, transparent);
   border: 1px solid var(--ncm-border, var(--ncm-border));
   border-radius: 2px;
 }
@@ -2258,7 +2258,7 @@
 }
 
 .ncm-app .ncm-npcinbox-msg--unread .ncm-npcinbox-msg__subject {
-  color: #fff;
+  color: var(--ncm-text-primary);
 }
 
 .ncm-app .ncm-npcinbox-msg__preview {

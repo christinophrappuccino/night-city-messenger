@@ -1,7 +1,7 @@
 /**
  * Network Selector — Player Dropdown Popup
  * @file styles/components/network-selector.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Compact network selector dropdown triggered from inbox header.
  *              Mockup reference: ncm-network-dialogs-mockup.html — Section 2.
  *
@@ -38,7 +38,7 @@
 
 /* Dead zone variant — red border + accent */
 .ncm-app .ncm-net-selector--deadzone {
-  border-color: rgba(255, 0, 51, 0.2);
+  border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent);
 }
 .ncm-app .ncm-net-selector--deadzone::before {
   background: var(--ncm-danger, #ff0033);
@@ -64,7 +64,7 @@
 }
 
 .ncm-app .ncm-net-selector__header--deadzone {
-  background: rgba(255, 0, 51, 0.03);
+  background: color-mix(in srgb, var(--ncm-danger) 3%, transparent);
 }
 
 .ncm-app .ncm-net-selector__header-label {
@@ -132,7 +132,7 @@
   gap: 11px;
   padding: 11px 13px;
   cursor: pointer;
-  border-bottom: 1px solid rgba(42, 42, 69, 0.4);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 40%, transparent);
   transition: background 0.12s;
   position: relative;
 }
@@ -339,7 +339,7 @@
 }
 
 .ncm-app .ncm-net-selector__footer--deadzone {
-  border-color: rgba(255, 0, 51, 0.1);
+  border-color: color-mix(in srgb, var(--ncm-danger) 10%, transparent);
 }
 
 .ncm-app .ncm-net-selector__footer-icon--danger {

@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * Message Viewer — Sprint 1.5.4: HUD Readout Elements
  * @file styles/components/message-viewer-hud.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Additive styles for Sprint 1.5.4 HUD elements. Designed to be appended to
  * message-viewer.css or imported separately. All rules scoped under .ncm-app.
@@ -30,7 +30,7 @@
   height: 26px;
   min-height: 26px;
   background: var(--ncm-bg-deep);
-  border-bottom: 1px solid rgba(42, 42, 69, 0.5);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
   font-family: var(--ncm-font-mono);
   font-size: var(--ncm-text-2xs);
   color: var(--ncm-text-muted);
@@ -94,7 +94,7 @@
 
 .ncm-app .ncm-hud-strip__status--CONNECTED .ncm-hud-strip__status-dot {
   background: var(--ncm-success);
-  box-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-success) 50%, transparent);
 }
 
 .ncm-app .ncm-hud-strip__status--CONNECTED .ncm-hud-strip__status-text {
@@ -103,7 +103,7 @@
 
 .ncm-app .ncm-hud-strip__status--DEGRADED .ncm-hud-strip__status-dot {
   background: var(--ncm-warning);
-  box-shadow: 0 0 4px rgba(255, 171, 0, 0.5);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-warning) 50%, transparent);
 }
 
 .ncm-app .ncm-hud-strip__status--DEGRADED .ncm-hud-strip__status-text {
@@ -112,7 +112,7 @@
 
 .ncm-app .ncm-hud-strip__status--NO_SIGNAL .ncm-hud-strip__status-dot {
   background: var(--ncm-danger);
-  box-shadow: 0 0 4px rgba(255, 0, 51, 0.5);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-danger) 50%, transparent);
 }
 
 .ncm-app .ncm-hud-strip__status--NO_SIGNAL .ncm-hud-strip__status-text {
@@ -165,18 +165,18 @@
 
 .ncm-app .ncm-inbox-network__indicator--CONNECTED {
   background: var(--ncm-success);
-  box-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-success) 50%, transparent);
 }
 
 .ncm-app .ncm-inbox-network__indicator--DEGRADED {
   background: var(--ncm-warning);
-  box-shadow: 0 0 6px rgba(255, 171, 0, 0.5);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-warning) 50%, transparent);
   animation: ncm-indicator-blink 2s ease-in-out infinite;
 }
 
 .ncm-app .ncm-inbox-network__indicator--NO_SIGNAL {
   background: var(--ncm-danger);
-  box-shadow: 0 0 6px rgba(255, 0, 51, 0.6);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-danger) 60%, transparent);
   animation: ncm-indicator-blink 1s ease-in-out infinite;
 }
 
@@ -282,12 +282,12 @@
 /* Glow on priority borders when neon is on */
 [data-ncm-neon="true"].ncm-app .ncm-message-item[data-priority="urgent"],
 [data-ncm-neon="true"] .ncm-app .ncm-message-item[data-priority="urgent"] {
-  box-shadow: inset 3px 0 8px -2px rgba(255, 171, 0, 0.15);
+  box-shadow: inset 3px 0 8px -2px color-mix(in srgb, var(--ncm-warning) 15%, transparent);
 }
 
 [data-ncm-neon="true"].ncm-app .ncm-message-item[data-priority="critical"],
 [data-ncm-neon="true"] .ncm-app .ncm-message-item[data-priority="critical"] {
-  box-shadow: inset 3px 0 8px -2px rgba(255, 0, 51, 0.2);
+  box-shadow: inset 3px 0 8px -2px color-mix(in srgb, var(--ncm-danger) 20%, transparent);
 }
 
 /* Priority badge within message list item subject row */
@@ -308,15 +308,15 @@
 }
 
 .ncm-app .ncm-message-item__priority-badge--urgent {
-  background: rgba(255, 171, 0, 0.15);
+  background: color-mix(in srgb, var(--ncm-warning) 15%, transparent);
   color: var(--ncm-warning);
-  border: 1px solid rgba(255, 171, 0, 0.3);
+  border: 1px solid color-mix(in srgb, var(--ncm-warning) 30%, transparent);
 }
 
 .ncm-app .ncm-message-item__priority-badge--critical {
-  background: rgba(255, 0, 51, 0.15);
+  background: color-mix(in srgb, var(--ncm-danger) 15%, transparent);
   color: var(--ncm-danger);
-  border: 1px solid rgba(255, 0, 51, 0.3);
+  border: 1px solid color-mix(in srgb, var(--ncm-danger) 30%, transparent);
 }
 
 
@@ -339,17 +339,17 @@
 [data-ncm-neon="true"][data-ncm-animation-level="full"] .ncm-app .ncm-message-item__unread-dot,
 [data-ncm-neon="true"] [data-ncm-animation-level="full"] .ncm-app .ncm-message-item__unread-dot {
   animation: ncm-unread-pulse 2s ease-in-out infinite;
-  box-shadow: 0 0 4px rgba(25, 243, 247, 0.5);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-secondary) 50%, transparent);
 }
 
 @keyframes ncm-unread-pulse {
   0%, 100% {
     opacity: 1;
-    box-shadow: 0 0 4px rgba(25, 243, 247, 0.5);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-secondary) 50%, transparent);
   }
   50% {
     opacity: 0.6;
-    box-shadow: 0 0 8px rgba(25, 243, 247, 0.3);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
   }
 }
 

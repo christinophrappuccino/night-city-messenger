@@ -1,7 +1,7 @@
 /**
  * PlayerEmailSetup
  * @file scripts/ui/dialogs/PlayerEmailSetup.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Dialog for players to set their character's email address.
  *              Called on first message attempt if no email set. Validates format,
  *              suggests based on character name.

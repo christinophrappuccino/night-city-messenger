@@ -1,7 +1,7 @@
 /**
  * SecurityService
  * @file scripts/services/SecurityService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Lockout tracking and attempt management for network authentication
  *              and data shard security. Maintains per-actor security state including
  *              attempt counts, lockout timers, and cooldown management.

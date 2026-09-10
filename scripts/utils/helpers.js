@@ -1,11 +1,11 @@
 /**
  * Utility Helpers
  * @file scripts/utils/helpers.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Shared utility functions used across the module
  */
 
-import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS } from './constants.js';
+import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS, CONTRAST_SPREAD } from './constants.js';
 
 /** Month names for the written-out date styles (dateMonthStyle setting). */
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -253,6 +253,60 @@ export function adjustLightness(hex, factor, pivot = 0.5) {
 }
 
 /**
+ * Normalise a computed CSS colour string to 6-digit hex. Accepts #rgb / #rrggbb
+ * / #rrggbbaa (alpha dropped) and rgb()/rgba() (as getComputedStyle hands back
+ * a resolved custom property). Anything else (color-mix, gradients, empty) →
+ * null, so callers can skip rather than corrupt a token.
+ * @param {string} str
+ * @returns {string|null}
+ */
+export function cssColorToHex(str) {
+  if (typeof str !== 'string') return null;
+  const s = str.trim();
+  let m = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+  if (m) {
+    let h = m[1];
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    return '#' + h.slice(0, 6).toLowerCase();
+  }
+  m = s.match(/^rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})/i);
+  if (m) {
+    return '#' + [m[1], m[2], m[3]].map(v => Math.max(0, Math.min(255, parseInt(v, 10))).toString(16).padStart(2, '0')).join('');
+  }
+  return null;
+}
+
+/**
+ * Element-scoped readability contrast — the Theme Customizer's OKLCH tone-map
+ * (see ThemeService.applyTheme + CONTRAST_SPREAD) applied to ONE surface on top
+ * of whatever the player already has. For each bg/text/border token the base
+ * colour is read from `baseFrom` (default :root — i.e. the player's own,
+ * already-contrast-adjusted palette), pushed away from the pivot by the factor,
+ * and written inline on `el`, where descendant var() lookups (and the shard
+ * viewer's `--sp-*` aliases, which read `--ncm-*` on the same element) pick it
+ * up. Accents are excluded, images untouched — same rules as the player slider.
+ *
+ * ALWAYS reads the base from `baseFrom`, never from `el` itself, so repeated
+ * calls (a slider drag, a re-render) can't compound. 100% clears the inline
+ * overrides instead of writing them, so an untouched surface keeps following
+ * the player theme live.
+ * @param {HTMLElement} el - the surface root (e.g. `.ncm-item-inbox`)
+ * @param {number} contrastPct - 70–140 (%)
+ * @param {{ baseFrom?: Element }} [opts]
+ */
+export function applyContrastToElement(el, contrastPct, { baseFrom } = {}) {
+  if (!el?.style) return;
+  const factor = (Number(contrastPct) || 100) / 100;
+  const src = baseFrom || (typeof document !== 'undefined' ? document.documentElement : null);
+  const computed = (src && typeof getComputedStyle === 'function') ? getComputedStyle(src) : null;
+  for (const { cssVar, base } of CONTRAST_SPREAD.vars) {
+    if (factor === 1) { el.style.removeProperty(cssVar); continue; }
+    const live = computed ? cssColorToHex(computed.getPropertyValue(cssVar)) : null;
+    el.style.setProperty(cssVar, adjustLightness(live || base, factor, CONTRAST_SPREAD.pivot));
+  }
+}
+
+/**
  * Build the ThemeService.applyTheme prefs object for a TERMINAL theme —
  * shared by the viewer (renders the saved theme) and the config sheet (live
  * preview of the draft). Effective value per key = the GM's saved/draft
@@ -357,6 +411,65 @@ export function resolveMediaEmbed(rawUrl, mediaType = 'video') {
 // sender is stripped from the recipient-facing copy (truly hidden); these
 // helpers drive the masked display for non-GM readers.
 
+// ═══════════════════════════════════════════════════════════
+//  Display-name resolution (sender / recipient of a message)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Resolve the DISPLAY name for one side of a message (sender or recipient).
+ *
+ * The GM's Master Contact Directory is the curated identity, so it beats the
+ * raw actor name: an actor may be labeled "Rogue-Fixer" for GM bookkeeping
+ * while the directory entry the players know is just "Rogue". Order:
+ *   1. master contact by `contactId`
+ *   2. master contact linked to `actorId`
+ *   3. master contact by `email`
+ *   4. the name stored on the message (`storedName`)
+ *   5. the actor's name
+ *   6. the email's local part, else `fallback`
+ * Callers that also know the viewing player's OWN contact list should check
+ * that first — a player's private label wins over the directory.
+ *
+ * @param {object} ids
+ * @param {string} [ids.contactId]  — master contact id
+ * @param {string} [ids.actorId]    — linked actor id
+ * @param {string} [ids.email]      — address
+ * @param {string} [ids.storedName] — name persisted on the message, if any
+ * @param {string} [fallback='Unknown']
+ * @returns {string}
+ */
+export function resolveDisplayName({ contactId, actorId, email, storedName } = {}, fallback = 'Unknown') {
+  const master = globalThis.game?.nightcity?.masterContactService;
+  const mc = (contactId && master?.getContact?.(contactId))
+    || (actorId && master?.getByActorId?.(actorId))
+    || (email && master?.getByEmail?.(email))
+    || null;
+  if (mc?.name) return mc.name;
+  if (storedName) return storedName;
+  const actor = actorId ? globalThis.game?.actors?.get?.(actorId) : null;
+  if (actor?.name) return actor.name;
+  const handle = typeof email === 'string' ? email.split('@')[0] : '';
+  return handle || fallback;
+}
+
+/**
+ * Portrait counterpart of {@link resolveDisplayName}: the master contact's
+ * portrait, else the linked actor's art (never the mystery-man placeholder).
+ * @param {{contactId?: string, actorId?: string, email?: string}} ids
+ * @returns {string} image path or ''
+ */
+export function resolveDisplayPortrait({ contactId, actorId, email } = {}) {
+  const master = globalThis.game?.nightcity?.masterContactService;
+  const mc = (contactId && master?.getContact?.(contactId))
+    || (actorId && master?.getByActorId?.(actorId))
+    || (email && master?.getByEmail?.(email))
+    || null;
+  if (mc?.portrait) return mc.portrait;
+  const actor = (actorId || mc?.actorId) ? globalThis.game?.actors?.get?.(actorId || mc.actorId) : null;
+  const img = actor?.img || '';
+  return img && !img.includes('mystery-man') ? img : '';
+}
+
 /** Valid avatar mask styles. */
 export const ANON_STYLES = Object.freeze(['filtered', 'scrambled', 'ghost', 'monolith']);
 
@@ -432,20 +545,23 @@ export function resolveAnonRecipient(message) {
 // ═══════════════════════════════════════════════════════════
 
 /**
- * Every actor this user may act as: the ones they OWN (a GM sees none by this
- * rule, so they fall back to their assigned character — GM content actions
- * already force/adjudicate when there's no actor).
+ * Every actor this user may act as. A player: the actors they OWN. A GM "owns"
+ * everything, so listing that would be the whole world — instead we scope the GM
+ * to the meaningful set: the PLAYER CHARACTERS (so the GM can test/operate as any
+ * PC), plus their own assigned character if it isn't already a PC. That keeps the
+ * operator picker useful for the GM (the "stuck on my one character" bug) without
+ * dumping every NPC into it.
  * @returns {Actor[]}
  */
 export function getOperatorActors() {
-  const actors = (game.actors?.contents ?? []).filter(a => a.isOwner && a.type !== 'blackIce');
+  const all = (game.actors?.contents ?? []).filter(a => a.type !== 'blackIce');
   if (game.user?.isGM) {
-    // A GM "owns" everything — offer only their assigned character (if any),
-    // so the picker doesn't list the whole world.
-    const c = game.user.character;
-    return c ? [c] : [];
+    const pcs = all.filter(a => a.hasPlayerOwner);
+    const assigned = game.user.character;
+    if (assigned && !pcs.includes(assigned)) pcs.unshift(assigned);
+    return pcs;
   }
-  return actors;
+  return all.filter(a => a.isOwner);
 }
 
 /**

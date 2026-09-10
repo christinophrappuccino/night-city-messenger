@@ -1,7 +1,7 @@
 /**
  * ThemeService — Player Theme Management
  * @file scripts/services/ThemeService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Manages theme presets, CSS variable injection, and animation levels.
  *              Loaded during ready phase, applies stored preferences immediately.
  */
@@ -111,6 +111,12 @@ export class ThemeService {
     // Text scale (80–120, stored as percentage, applied as multiplier)
     const textScale = (prefs.textScale ?? preset.textScale ?? 100) / 100;
     root.style.setProperty('--ncm-text-scale', String(textScale));
+    // The shard viewer multiplies the player's scale by a per-shard scale
+    // (item-inbox.css root block). A custom property can't reference its own
+    // inherited value, so the player scale is ALSO published under a second
+    // name that scoped surfaces compose from. Root only — a terminal's
+    // element-scoped applyTheme owns its own --ncm-text-scale outright.
+    if (isRoot) root.style.setProperty('--ncm-text-scale-base', String(textScale));
 
     // Readability contrast (70–140, stored as percentage, applied as multiplier).
     // Tone-map the bg/text/border palette in OKLCH lightness space rather than

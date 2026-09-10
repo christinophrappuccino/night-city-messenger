@@ -1,7 +1,7 @@
 /**
  * DateRangePicker — Reusable date range selection dialog
  * @file scripts/ui/components/DateRangePicker.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * @description Visual calendar with click-to-select range, quick presets,
  *   and TimeService integration. Styled for NCM cyberpunk aesthetic.
@@ -18,6 +18,7 @@
  */
 
 import { MODULE_ID } from '../../utils/constants.js';
+import { adminDialog } from '../../utils/adminTheme.js';
 
 export class DateRangePicker {
 
@@ -65,14 +66,14 @@ export class DateRangePicker {
   // ═══════════════════════════════════════════════
 
   _render() {
-    const content = `<div class="ncm-drp" style="font-family:Rajdhani,sans-serif; color:#eeeef4; min-width:340px; user-select:none;">
+    const content = `<div class="ncm-drp" style="font-family:var(--ncm-font-display); color:var(--ncm-text-primary); min-width:340px; user-select:none;">
       ${this._buildPresets()}
       ${this._buildHeader()}
       ${this._buildCalendar()}
       ${this._buildFooter()}
     </div>`;
 
-    this._dialog = new Dialog({
+    this._dialog = adminDialog({
       title: this.title,
       content,
       buttons: {
@@ -124,7 +125,7 @@ export class DateRangePicker {
   _buildPresets() {
     const S = {
       row: 'display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px;',
-      btn: 'padding:3px 10px; background:transparent; border:1px solid #2a2a45; border-radius:2px; color:#8888a0; font-family:Rajdhani,sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; cursor:pointer; transition:all 0.15s;',
+      btn: 'padding:3px 10px; background:transparent; border:1px solid var(--ncm-border); border-radius:2px; color:var(--ncm-text-secondary); font-family:var(--ncm-font-display); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; cursor:pointer; transition:all 0.15s;',
     };
 
     return `<div style="${S.row}">
@@ -141,11 +142,11 @@ export class DateRangePicker {
     const label = `${monthNames[this._viewMonth]} ${this._viewYear}`;
 
     return `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-      <div class="ncm-drp-nav" data-dir="prev" style="width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1px solid #2a2a45; border-radius:2px; color:#8888a0; font-size:10px; transition:all 0.15s;">
+      <div class="ncm-drp-nav" data-dir="prev" style="width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1px solid var(--ncm-border); border-radius:2px; color:var(--ncm-text-secondary); font-size:10px; transition:all 0.15s;">
         <i class="fas fa-chevron-left"></i>
       </div>
-      <span style="font-size:14px; font-weight:700; letter-spacing:0.04em; color:#eeeef4;">${label}</span>
-      <div class="ncm-drp-nav" data-dir="next" style="width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1px solid #2a2a45; border-radius:2px; color:#8888a0; font-size:10px; transition:all 0.15s;">
+      <span style="font-size:14px; font-weight:700; letter-spacing:0.04em; color:var(--ncm-text-primary);">${label}</span>
+      <div class="ncm-drp-nav" data-dir="next" style="width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1px solid var(--ncm-border); border-radius:2px; color:var(--ncm-text-secondary); font-size:10px; transition:all 0.15s;">
         <i class="fas fa-chevron-right"></i>
       </div>
     </div>`;
@@ -153,12 +154,12 @@ export class DateRangePicker {
 
   _buildCalendar() {
     const days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-    let html = '<div style="background:#1a1a2e; border:1px solid #2a2a45; border-radius:2px; overflow:hidden;">';
+    let html = '<div style="background:var(--ncm-bg-surface); border:1px solid var(--ncm-border); border-radius:2px; overflow:hidden;">';
 
     // Day headers
-    html += '<div style="display:grid; grid-template-columns:repeat(7,1fr); border-bottom:1px solid #2a2a45;">';
+    html += '<div style="display:grid; grid-template-columns:repeat(7,1fr); border-bottom:1px solid var(--ncm-border);">';
     for (const d of days) {
-      html += `<div style="text-align:center; padding:4px 0; font-family:Share Tech Mono,monospace; font-size:9px; color:#8888a0; text-transform:uppercase;">${d}</div>`;
+      html += `<div style="text-align:center; padding:4px 0; font-family:var(--ncm-font-mono); font-size:9px; color:var(--ncm-text-secondary); text-transform:uppercase;">${d}</div>`;
     }
     html += '</div>';
 
@@ -185,24 +186,24 @@ export class DateRangePicker {
       const inRange = this._isInRange(dateStr);
 
       let bg = 'transparent';
-      let color = '#e0e0e8';
+      let color = 'var(--ncm-text-primary)';
       let border = 'transparent';
       let fontWeight = '600';
 
       if (isFrom || isTo) {
-        bg = 'rgba(25,243,247,0.15)';
-        color = '#19f3f7';
-        border = 'rgba(25,243,247,0.4)';
+        bg = 'color-mix(in srgb, var(--ncm-secondary) 15%, transparent)';
+        color = 'var(--ncm-secondary)';
+        border = 'color-mix(in srgb, var(--ncm-secondary) 40%, transparent)';
         fontWeight = '800';
       } else if (inRange) {
-        bg = 'rgba(25,243,247,0.05)';
-        color = '#c0c0d0';
+        bg = 'color-mix(in srgb, var(--ncm-secondary) 5%, transparent)';
+        color = 'var(--ncm-text-secondary)';
       }
 
-      const todayDot = isToday ? '<div style="width:3px; height:3px; background:#F65261; border-radius:50%; margin:1px auto 0;"></div>' : '';
+      const todayDot = isToday ? '<div style="width:3px; height:3px; background:var(--ncm-primary); border-radius:50%; margin:1px auto 0;"></div>' : '';
 
       html += `<div class="ncm-drp-day" data-date="${dateStr}" style="padding:4px 2px; text-align:center; cursor:pointer; transition:all 0.1s; background:${bg}; border:1px solid ${border}; border-radius:1px;">
-        <div style="font-family:Share Tech Mono,monospace; font-size:11px; color:${color}; font-weight:${fontWeight}; line-height:1.4;">${d}</div>
+        <div style="font-family:var(--ncm-font-mono); font-size:11px; color:${color}; font-weight:${fontWeight}; line-height:1.4;">${d}</div>
         ${todayDot}
       </div>`;
     }
@@ -218,13 +219,13 @@ export class DateRangePicker {
       : this._selectState === 'from' ? 'Click another date to set end'
       : 'Range selected';
 
-    return `<div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px; padding:6px 10px; background:#1a1a2e; border:1px solid #2a2a45; border-radius:2px;">
+    return `<div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px; padding:6px 10px; background:var(--ncm-bg-surface); border:1px solid var(--ncm-border); border-radius:2px;">
       <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-family:Share Tech Mono,monospace; font-size:11px; color:#19f3f7;">${fromDisplay}</span>
-        <span style="font-size:10px; color:#555570;">→</span>
-        <span style="font-family:Share Tech Mono,monospace; font-size:11px; color:#19f3f7;">${toDisplay}</span>
+        <span style="font-family:var(--ncm-font-mono); font-size:11px; color:var(--ncm-secondary);">${fromDisplay}</span>
+        <span style="font-size:10px; color:var(--ncm-text-muted);">→</span>
+        <span style="font-family:var(--ncm-font-mono); font-size:11px; color:var(--ncm-secondary);">${toDisplay}</span>
       </div>
-      <span style="font-family:Rajdhani,sans-serif; font-size:9px; color:#555570; font-weight:600;">${hint}</span>
+      <span style="font-family:var(--ncm-font-display); font-size:9px; color:var(--ncm-text-muted); font-weight:600;">${hint}</span>
     </div>`;
   }
 
@@ -256,17 +257,17 @@ export class DateRangePicker {
         const inRange = d >= from && d <= to;
 
         if (isEndpoint) {
-          el.style.background = 'rgba(25,243,247,0.15)';
-          el.style.borderColor = 'rgba(25,243,247,0.4)';
-          el.querySelector('div').style.color = '#19f3f7';
+          el.style.background = 'color-mix(in srgb, var(--ncm-secondary) 15%, transparent)';
+          el.style.borderColor = 'color-mix(in srgb, var(--ncm-secondary) 40%, transparent)';
+          el.querySelector('div').style.color = 'var(--ncm-secondary)';
         } else if (inRange) {
-          el.style.background = 'rgba(25,243,247,0.05)';
+          el.style.background = 'color-mix(in srgb, var(--ncm-secondary) 5%, transparent)';
           el.style.borderColor = 'transparent';
-          el.querySelector('div').style.color = '#c0c0d0';
+          el.querySelector('div').style.color = 'var(--ncm-text-secondary)';
         } else {
           el.style.background = 'transparent';
           el.style.borderColor = 'transparent';
-          el.querySelector('div').style.color = '#e0e0e8';
+          el.querySelector('div').style.color = 'var(--ncm-text-primary)';
         }
       });
     });
@@ -297,11 +298,11 @@ export class DateRangePicker {
 
     // Hover styles on nav/preset
     html.find('.ncm-drp-nav, .ncm-drp-preset').on('mouseenter', function() {
-      this.style.borderColor = 'rgba(25,243,247,0.3)';
-      this.style.color = '#19f3f7';
+      this.style.borderColor = 'color-mix(in srgb, var(--ncm-secondary) 30%, transparent)';
+      this.style.color = 'var(--ncm-secondary)';
     }).on('mouseleave', function() {
-      this.style.borderColor = '#2a2a45';
-      this.style.color = '#8888a0';
+      this.style.borderColor = 'var(--ncm-border)';
+      this.style.color = 'var(--ncm-text-secondary)';
     });
   }
 

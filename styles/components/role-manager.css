@@ -1,7 +1,7 @@
 /**
  * Custom Role Manager Dialog — Styles
  * @file styles/components/role-manager.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Styles for the GM custom role CRUD dialog.
  *   Header bar, built-in roles list (locked), custom roles list (editable),
  *   create/edit form with icon grid, color picker, and live chip preview.
@@ -29,8 +29,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background: linear-gradient(135deg, rgba(25, 243, 247, 0.08) 0%, rgba(25, 243, 247, 0.02) 100%);
-  border: 1px solid rgba(25, 243, 247, 0.15);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--ncm-secondary) 8%, transparent) 0%, color-mix(in srgb, var(--ncm-secondary) 2%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
   border-radius: 4px;
   margin-bottom: 4px;
 }
@@ -267,8 +267,8 @@
 
 .ncm-role-form__icon-option--selected {
   color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.4);
-  background: rgba(25, 243, 247, 0.08);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
 }
 
 /* ═══════════════════════════════════════════
@@ -374,7 +374,7 @@
 }
 
 .ncm-app.ncm-role-manager-dialog .ncm-btn--accent:hover {
-  background: rgba(247, 201, 72, 0.08) !important;
+  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent) !important;
 }
 
 .ncm-app.ncm-role-manager-dialog .ncm-btn--ghost {
@@ -449,8 +449,8 @@
 }
 .ncm-app.ncm-role-manager-dialog .ncm-role-form__icon-option--selected {
   color: var(--ncm-secondary) !important;
-  border-color: rgba(25, 243, 247, 0.4) !important;
-  background: rgba(25, 243, 247, 0.08) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important;
 }
 
 /* Role list action buttons */

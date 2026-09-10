@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * Actor Import Picker — Quick Import Actor as NPC contact
  * @file styles/components/actor-import-picker.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Searchable actor list window launched from the Admin Panel
  *   Contacts tab. Picking a row opens the GM Contact Manager pre-filled.
  *
@@ -51,7 +51,7 @@
 .ncm-app input.ncm-aip__search-input:focus {
   outline: none !important;
   border-color: var(--ncm-border-focus, var(--ncm-secondary, #19f3f7)) !important;
-  box-shadow: 0 0 0 2px rgba(25, 243, 247, 0.12) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ncm-secondary) 12%, transparent) !important;
 }
 
 /* ── List ── */
@@ -84,10 +84,12 @@
   box-shadow: none !important;
   transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease !important;
 }
+/* Filtered-out rows: `hidden` must beat the row's own `display:flex !important`. */
+.ncm-app button.ncm-aip__row[hidden] { display: none !important; }
 .ncm-app button.ncm-aip__row:hover {
-  background: rgba(25, 243, 247, 0.08) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important;
   border-color: var(--ncm-secondary, #19f3f7) !important;
-  box-shadow: 0 0 8px rgba(25, 243, 247, 0.18) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-secondary) 18%, transparent) !important;
 }
 
 .ncm-app .ncm-aip__avatar {
@@ -126,8 +128,8 @@
   padding: 2px 6px !important;
   border-radius: var(--ncm-radius-pill, 999px) !important;
   color: var(--ncm-accent, #f7c948) !important;
-  border: 1px solid rgba(247, 201, 72, 0.35) !important;
-  background: rgba(247, 201, 72, 0.08) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-accent) 35%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent) !important;
 }
 
 .ncm-app .ncm-aip__chevron { flex: 0 0 auto !important; font-size: 10px !important; color: var(--ncm-text-muted, #6a6a85) !important; }

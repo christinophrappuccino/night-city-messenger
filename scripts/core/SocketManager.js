@@ -1,7 +1,7 @@
 /**
  * SocketManager — Module Socket Communication
  * @file scripts/core/SocketManager.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Singleton wrapper around Foundry's module socket.
  *              Routes incoming operations to registered handlers.
  */

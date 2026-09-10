@@ -1,7 +1,7 @@
 /**
  * Contact Verification CSS
  * @file styles/components/contact-verification.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  *
  * Add this file to your CSS imports, or append these rules
  * to the existing contact-manager.css
@@ -44,7 +44,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--ncm-danger, #ff0033);
-  box-shadow: 0 0 4px rgba(255, 0, 51, 0.5);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-danger) 50%, transparent);
   position: absolute;
   top: 8px;
   right: 8px;
@@ -84,20 +84,20 @@
 }
 
 .ncm-verify-badge--verified {
-  background: rgba(0, 255, 65, 0.1);
-  border: 1px solid rgba(0, 255, 65, 0.25);
+  background: color-mix(in srgb, var(--ncm-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-success) 25%, transparent);
   color: var(--ncm-success, #00ff41);
 }
 
 .ncm-verify-badge--unverified {
-  background: rgba(255, 0, 51, 0.1);
-  border: 1px solid rgba(255, 0, 51, 0.25);
+  background: color-mix(in srgb, var(--ncm-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-danger) 25%, transparent);
   color: var(--ncm-danger, #ff0033);
 }
 
 .ncm-verify-badge--gm-verified {
-  background: rgba(247, 201, 72, 0.1);
-  border: 1px solid rgba(247, 201, 72, 0.25);
+  background: color-mix(in srgb, var(--ncm-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-accent) 25%, transparent);
   color: var(--ncm-accent, #f7c948);
 }
 
@@ -111,8 +111,8 @@
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: rgba(247, 201, 72, 0.08);
-  border: 1px solid rgba(247, 201, 72, 0.2);
+  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-accent) 20%, transparent);
   border-radius: 2px;
   margin-bottom: 8px;
   font-family: var(--ncm-font-mono, 'Courier New', monospace);
@@ -137,14 +137,14 @@
   color: var(--ncm-success, #00ff41) !important;
 }
 .ncm-card__action--gm-verify:hover {
-  background: rgba(0, 255, 65, 0.15);
+  background: color-mix(in srgb, var(--ncm-success) 15%, transparent);
 }
 
 .ncm-card__action--gm-unverify {
   color: var(--ncm-danger, #ff0033) !important;
 }
 .ncm-card__action--gm-unverify:hover {
-  background: rgba(255, 0, 51, 0.15);
+  background: color-mix(in srgb, var(--ncm-danger) 15%, transparent);
 }
 
 

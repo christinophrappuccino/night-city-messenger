@@ -1,12 +1,14 @@
 /**
  * Register Ready-Phase Services
  * @file scripts/init/registerReadyServices.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Services that require game.ready — TimeService, ThemeService, SoundService,
  *              SocketManager initialization, and the postReady health check.
  */
 
 import { log } from '../utils/helpers.js';
+import { MODULE_ID } from '../utils/constants.js';
+import { runMigrations } from '../core/MigrationRunner.js';
 import { TimeService } from '../services/TimeService.js';
 import { ThemeService } from '../services/ThemeService.js';
 import { SoundService } from '../services/SoundService.js';
@@ -128,6 +130,17 @@ export function registerReadyServices(initializer) {
     if (game.nightcity.messenger) game.nightcity.messenger.openProgramDeck = game.nightcity.openProgramDeck;
   });
 
+  // ─── Schema migrations — version-keyed world-data upgrades (GM only).
+  //     Runs BEFORE anything reads evolving flag shapes in earnest; no-ops
+  //     when the world is already current. See core/MigrationRunner.js. ───
+  initializer.register('postReady', 5, 'Schema migrations', async () => {
+    try {
+      await runMigrations();
+    } catch (err) {
+      log.error(`Schema migration pass failed: ${err.message}`);
+    }
+  });
+
   // ─── Integration Bridge (public API + hook mirroring for other modules) ───
   initializer.register('postReady', 95, 'IntegrationBridge', async () => {
     const { initializeIntegrationBridge } = await import('../integrations/IntegrationBridge.js');
@@ -137,8 +150,9 @@ export function registerReadyServices(initializer) {
   // ─── postReady: Final flag ───
   initializer.register('postReady', 100, 'Ready flag', () => {
     game.nightcity.ready = true;
+    const v = game.modules.get(MODULE_ID)?.version || '?';
     log.info('╔══════════════════════════════════════════╗');
-    log.info('║   Night City Messenger v4.1 — ONLINE    ║');
+    log.info(`║   Night City Messenger v${v} — ONLINE`.padEnd(43) + '║');
     log.info('╚══════════════════════════════════════════╝');
   });
 }

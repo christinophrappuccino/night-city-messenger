@@ -1,7 +1,7 @@
 /**
  * Message Repository — v2 (Organized Journals)
  * @file scripts/data/MessageRepository.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Journal-based CRUD operations for messages.
  *
  * v2 changes:
@@ -14,6 +14,7 @@
  */
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
+import { resolveDisplayName } from '../utils/helpers.js';
 
 // ── Folder names (plain, functional, GM-friendly) ──
 const ROOT_FOLDER   = 'Night City Messenger';
@@ -261,7 +262,7 @@ export class MessageRepository {
    * @param {Folder} targetFolder
    */
   async _repairPermissions(journal, actor, targetFolder) {
-    if (!game.user.isGM || !journal || !actor) return;
+    if (!game.user.isGM || !journal || !actor) return false;
 
     const expected = this._computeOwnership(actor);
     const current = journal.ownership || {};
@@ -293,7 +294,9 @@ export class MessageRepository {
     if (Object.keys(updates).length > 0) {
       await journal.update(updates);
       console.log(`${MODULE_ID} | Repaired inbox journal for ${actor.name}`);
+      return true;
     }
+    return false;
   }
 
   /**
@@ -329,11 +332,10 @@ export class MessageRepository {
       const actor = game.actors?.get(actorId);
       if (!actor) continue;
 
-      await this._repairPermissions(journal, actor, inboxFolder);
-      repaired++;
+      if (await this._repairPermissions(journal, actor, inboxFolder)) repaired++;
     }
 
-    ui.notifications.info(`NCM | Repaired ${repaired} inbox journal(s).`);
+    if (repaired > 0) ui.notifications.info(`NCM | Repaired ${repaired} inbox journal(s).`);
     return repaired;
   }
 
@@ -571,18 +573,13 @@ export class MessageRepository {
     if (messageData.anonymous?.enabled) {
       return messageData.anonymous.alias || 'UNKNOWN';
     }
-    // Try actor name first
-    if (messageData.fromActorId) {
-      const actor = game.actors?.get(messageData.fromActorId);
-      if (actor) return actor.name;
-    }
-    // Try master contact name
-    if (messageData.fromContactId) {
-      const contact = game.nightcity?.masterContactService?.getContact(messageData.fromContactId);
-      if (contact) return contact.name;
-    }
-    // Fall back to email
-    return messageData.from || 'Unknown';
+    // Master directory (by contact id / linked actor / email) → actor name.
+    // The directory wins so the page title matches what players see.
+    return resolveDisplayName({
+      contactId: messageData.fromContactId,
+      actorId: messageData.fromActorId,
+      email: messageData.from,
+    }, messageData.from || 'Unknown');
   }
 
   /**
@@ -663,6 +660,59 @@ export class MessageRepository {
     }
   }
 
+  /**
+   * Newest message per counterparty in an actor's mailbox, indexed three ways
+   * (counterparty email, linked actor id, master-contact id) so a player
+   * contact can be matched by whichever identity it carries. Sent copies count
+   * too — "last interaction" means either direction, and the counterparty is
+   * always the OTHER side (sender on received mail, recipient on a sent copy).
+   *
+   * @param {string} actorId
+   * @returns {Promise<{byEmail: Map<string, object>, byActorId: Map<string, object>, byContactId: Map<string, object>}>}
+   */
+  async getLastMessagesByCounterparty(actorId) {
+    const index = { byEmail: new Map(), byActorId: new Map(), byContactId: new Map() };
+    const messages = await this.getMessages(actorId, { filter: 'all' });
+    const consider = (map, key, msg) => {
+      if (!key) return;
+      const prev = map.get(key);
+      if (!prev || new Date(msg.timestamp) > new Date(prev.timestamp)) map.set(key, msg);
+    };
+    for (const msg of messages) {
+      const sent = !!msg.status?.sent;
+      consider(index.byEmail, String((sent ? msg.to : msg.from) || '').trim().toLowerCase(), msg);
+      consider(index.byActorId, sent ? msg.toActorId : msg.fromActorId, msg);
+      consider(index.byContactId, sent ? msg.toContactId : msg.fromContactId, msg);
+    }
+    return index;
+  }
+
+  /**
+   * The most recent message exchanged with one contact, matched by email /
+   * linked actorId / masterContactId (any hit counts; newest wins).
+   *
+   * @param {string} actorId - whose mailbox to scan
+   * @param {object} contact - { email?, actorId?, masterContactId? }
+   * @returns {Promise<object|null>}
+   */
+  async getLastMessageWith(actorId, contact) {
+    if (!actorId || !contact) return null;
+    const index = await this.getLastMessagesByCounterparty(actorId);
+    return MessageRepository.pickLatestFor(index, contact);
+  }
+
+  /** Resolve a contact against a counterparty index — newest match across the three keys. */
+  static pickLatestFor(index, contact) {
+    if (!index || !contact) return null;
+    const candidates = [
+      contact.email ? index.byEmail.get(String(contact.email).trim().toLowerCase()) : null,
+      contact.actorId ? index.byActorId.get(contact.actorId) : null,
+      contact.masterContactId ? index.byContactId.get(contact.masterContactId) : null,
+    ].filter(Boolean);
+    if (candidates.length === 0) return null;
+    return candidates.reduce((a, b) => (new Date(b.timestamp) > new Date(a.timestamp) ? b : a));
+  }
+
   async updateMessage(actorId, messageId, updates) {
     try {
       const journal = await this.getInboxJournal(actorId);
@@ -706,6 +756,40 @@ export class MessageRepository {
       'status.read': true,
       readAt: new Date().toISOString(),
     });
+  }
+
+  /**
+   * Mark every unread mailbox message read in ONE batched journal write (a
+   * per-message loop is a server round-trip each). Covers exactly the set
+   * getUnreadCount counts — non-sent, non-deleted, unread (spam included, so
+   * the badge really goes to zero).
+   * @param {string} actorId
+   * @returns {Promise<{success: boolean, count: number, error?: string}>}
+   */
+  async markAllAsRead(actorId) {
+    try {
+      const journal = await this.getInboxJournal(actorId);
+      if (!journal) return { success: false, count: 0, error: 'Inbox not found' };
+
+      const readAt = new Date().toISOString();
+      const updates = journal.pages.contents
+        .filter(p => {
+          const f = p.flags?.[MODULE_ID];
+          return f?.messageId && !f.status?.read && !f.status?.sent && !f.status?.deleted;
+        })
+        .map(p => ({
+          _id: p.id,
+          [`flags.${MODULE_ID}.status.read`]: true,
+          [`flags.${MODULE_ID}.readAt`]: readAt,
+        }));
+
+      if (updates.length === 0) return { success: true, count: 0 };
+      await journal.updateEmbeddedDocuments('JournalEntryPage', updates);
+      return { success: true, count: updates.length };
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessageRepository.markAllAsRead:`, error);
+      return { success: false, count: 0, error: error.message };
+    }
   }
 
   async softDeleteMessage(actorId, messageId) {

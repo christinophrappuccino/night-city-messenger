@@ -1,7 +1,7 @@
 /**
  * ModuleInitializer — Orchestrates module startup
  * @file scripts/core/ModuleInitializer.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Manages priority-based initialization across Foundry hooks.
  *              Each registration file adds tasks that execute in priority order.
  */

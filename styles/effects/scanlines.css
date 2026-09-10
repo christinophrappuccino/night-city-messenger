@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Night City Messenger — Scanlines (Legacy Compat)
    @file styles/effects/scanlines.css
-   @module cyberpunkred-messenger
+   @module night-city-messenger
    @description Original scanline overlay, now supplementary to atmosphere.css.
      Primary CRT textures (scanlines, vignette, noise, flicker) live in
      styles/base/atmosphere.css and are gated via data-ncm-scanlines attribute.

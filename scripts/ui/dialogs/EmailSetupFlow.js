@@ -1,7 +1,7 @@
 /**
  * EmailSetupFlow — Multi-Step Email Registration Dialog
  * @file scripts/ui/dialogs/EmailSetupFlow.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description ApplicationV2 dialog for email identity registration.
  *              Typewriter boot sequence, scramble-decode transitions,
  *              single adaptive footer button.

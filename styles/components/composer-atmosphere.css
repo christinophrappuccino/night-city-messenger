@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * Night City Messenger — Composer & Dialog Atmosphere
  * @file styles/components/composer-atmosphere.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Atmosphere layer for the message composer and all NCM dialogs
  *   (network auth, player email setup, confirmation dialogs). Applies bracket
  *   headers, terminal-styled inputs, depth layering, and neon glow to every
@@ -56,7 +56,7 @@
 
 .ncm-app .ncm-terminal-input-wrap:focus-within {
   border-color: var(--ncm-secondary);
-  box-shadow: 0 0 8px rgba(25, 243, 247, 0.2);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-secondary) 20%, transparent);
 }
 
 .ncm-app .ncm-terminal-input-prompt {
@@ -297,7 +297,7 @@
 /* Destructive confirmation — red left accent */
 .ncm-app .ncm-confirm-dialog--danger .ncm-confirm-dialog__message {
   border-left: 3px solid var(--ncm-danger);
-  background: rgba(255, 0, 51, 0.05);
+  background: color-mix(in srgb, var(--ncm-danger) 5%, transparent);
 }
 
 .ncm-app .ncm-confirm-dialog__actions {

@@ -1,7 +1,7 @@
 /**
  * NetworkManagementApp
  * @file scripts/ui/NetworkManagement/NetworkManagementApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description GM-only tool for managing custom networks: create, edit, delete,
  *              configure scene availability, set authentication requirements,
  *              toggle dead zones, and review access logs.
@@ -14,8 +14,12 @@ import { log, isGM } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { CreateNetworkDialog } from './CreateNetworkDialog.js';
 import { showWorldItemPicker } from '../../utils/itemPicker.js';
+import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 
 export class NetworkManagementApp extends BaseApplication {
+
+  /** GM tool — follows the Admin Panel theme + text size (utils/adminTheme.js). */
+  static ADMIN_THEMED = true;
 
   /** @type {string|null} Currently selected network ID for editing */
   _selectedNetworkId = null;
@@ -810,7 +814,7 @@ export class NetworkManagementApp extends BaseApplication {
     const network = this.networkService.getNetwork(networkId);
     if (!network) return;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Delete Network',
       content: `<p>Delete network <strong>${network.name}</strong>? This cannot be undone.</p>`,
     });
@@ -874,7 +878,7 @@ export class NetworkManagementApp extends BaseApplication {
     `;
 
     let selectedItem = null;
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: 'Select Key Item',
       content,
       buttons: { cancel: { label: 'Cancel', callback: () => {} } },
@@ -1189,7 +1193,7 @@ export class NetworkManagementApp extends BaseApplication {
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: 'Edit Log Entry',
       content: `
         <form style="display:flex; flex-direction:column; gap:8px;">

@@ -528,7 +528,7 @@ Clone the shard launch path:
 - **Security config is shared** — if you "improve" the security block shape, you touch networks
   and shards too. Treat it as a stable contract.
 - **No build step** — new files load via `module.json` esmodules; new templates must be added to
-  `TEMPLATES` + preloaded; new CSS `@import`ed into `cyberpunk-messenger.css`.
+  `TEMPLATES` + preloaded; new CSS `@import`ed into `night-city-messenger.css`.
 
 ---
 

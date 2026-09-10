@@ -1,7 +1,7 @@
 /**
  * NetworkAuthDialog
  * @file scripts/ui/NetworkManagement/NetworkAuthDialog.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Player-facing authentication dialog for secured networks.
  *              Supports password entry and skill check prompts.
  *              Shown when a player attempts to connect to a network that

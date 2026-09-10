@@ -1,7 +1,7 @@
 {{!--
   Message Detail Panel — v4 Network States Redesign
   @file templates/message-viewer/partials/message-detail.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Displays selected message with redesigned network state screens:
     - Network Restricted: network identity card + "Connect to [Network]" CTA
     - Lockout: red takeover with static, glitch, vignette, countdown
@@ -492,7 +492,7 @@
               through the shared registry partial, identical to shard/terminal --}}
         <div class="ncm-viewer__typed-content">
           {{#with message.content}}
-            {{> "modules/cyberpunkred-messenger/templates/content/content-body.hbs"}}
+            {{> "modules/night-city-messenger/templates/content/content-body.hbs"}}
           {{/with}}
         </div>
       {{else if message.bodyRendered}}
@@ -569,7 +569,7 @@
 
       {{!-- Encrypted Attachments --}}
       {{#each message.encryptedAttachments}}
-        {{> "modules/cyberpunkred-messenger/templates/partials/encrypted-attachment.hbs"
+        {{> "modules/night-city-messenger/templates/partials/encrypted-attachment.hbs"
             attachment=this messageId=../message.messageId isGM=../isGM }}
       {{/each}}
 

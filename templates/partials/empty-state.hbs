@@ -1,7 +1,7 @@
 {{!--
   Empty State — placeholder with icon + message
   @file templates/partials/empty-state.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Renders a centered empty-state placeholder with icon and text.
     Terminal cursor variant available for cyberdeck aesthetic.
     Uses .ncm-empty-state from components.css.
@@ -12,9 +12,9 @@
   @param {string} [prompt]   — Custom prompt text with blinking cursor (overrides text)
 
   @example
-    {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+    {{> "modules/night-city-messenger/templates/partials/empty-state.hbs"
         icon="fas fa-inbox" text="No messages found." }}
-    {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+    {{> "modules/night-city-messenger/templates/partials/empty-state.hbs"
         prompt="> SELECT MESSAGE TO READ" }}
 --}}
 <div class="ncm-empty-state">

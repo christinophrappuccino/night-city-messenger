@@ -1,7 +1,7 @@
 /**
  * SoundService — Audio Management
  * @file scripts/services/SoundService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Manages all module audio with volume control, enable/disable,
  *              and preloading. All sounds go through this service — never
  *              call AudioHelper.play() directly.

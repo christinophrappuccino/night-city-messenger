@@ -1,7 +1,7 @@
 /**
  * GM Master Contact Directory — Phase 2 Redesign Styles
  * @file styles/components/gm-contact-manager.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Dedicated styles for the GM contact management interface.
  *   Split-view layout, GM control bar, grouped contact list with pagination,
  *   detail panel with party trust + per-player relationships, inline-styled chips,
@@ -214,7 +214,7 @@
 
 .ncm-gm-group-bar__btn--active {
   color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.35);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
 }
 
 /* ═══════════════════════════════════════════
@@ -226,7 +226,7 @@
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  background: rgba(25, 243, 247, 0.03);
+  background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent);
   border-bottom: 1px solid rgba(42, 42, 69, 0.5);
   cursor: pointer;
   user-select: none;
@@ -234,7 +234,7 @@
 }
 
 .ncm-gm-group-header:hover {
-  background: rgba(25, 243, 247, 0.06);
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent);
 }
 
 .ncm-gm-group-header__chevron {
@@ -313,11 +313,11 @@
 }
 
 .ncm-gm-list-item:hover {
-  background: rgba(25, 243, 247, 0.04);
+  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
 }
 
 .ncm-gm-list-item--selected {
-  background: rgba(25, 243, 247, 0.08) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important;
   border-left: 2px solid var(--ncm-secondary, #19f3f7);
   padding-left: 8px;
 }
@@ -372,7 +372,7 @@
 
 .ncm-gm-list-item__name--burned {
   text-decoration: line-through;
-  text-decoration-color: rgba(255, 0, 51, 0.5);
+  text-decoration-color: color-mix(in srgb, var(--ncm-danger) 50%, transparent);
 }
 
 .ncm-gm-list-item__detail {
@@ -672,7 +672,7 @@
   cursor: pointer;
 }
 
-.ncm-trust-seg--active.ncm-trust-seg--1 { background: #ff0033; }
+.ncm-trust-seg--active.ncm-trust-seg--1 { background: var(--ncm-danger); }
 .ncm-trust-seg--active.ncm-trust-seg--2 { background: #ff6600; }
 .ncm-trust-seg--active.ncm-trust-seg--3 { background: var(--ncm-accent, #f7c948); }
 .ncm-trust-seg--active.ncm-trust-seg--4 { background: #66cc44; }
@@ -736,9 +736,9 @@
   text-transform: uppercase;
   padding: 1px 5px;
   border-radius: 3px;
-  border: 1px solid rgba(25, 243, 247, 0.3);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
   color: var(--ncm-secondary, #19f3f7);
-  background: rgba(25, 243, 247, 0.08);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
   margin-right: 2px;
 }
 
@@ -771,7 +771,7 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 1.5px solid rgba(25, 243, 247, 0.3);
+  border: 1.5px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -832,7 +832,7 @@
   border-radius: 1px;
 }
 
-.ncm-rel-trust-mini__seg--active.s1 { background: #ff0033; }
+.ncm-rel-trust-mini__seg--active.s1 { background: var(--ncm-danger); }
 .ncm-rel-trust-mini__seg--active.s2 { background: #ff6600; }
 .ncm-rel-trust-mini__seg--active.s3 { background: var(--ncm-accent, #f7c948); }
 .ncm-rel-trust-mini__seg--active.s4 { background: #66cc44; }
@@ -868,7 +868,7 @@
 
 .ncm-rel-row__note-btn--has-note {
   color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.3);
+  border-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent);
 }
 
 /* Expanded note below rel row */
@@ -944,7 +944,7 @@
 }
 
 .ncm-push-select:focus {
-  border-color: rgba(25, 243, 247, 0.3);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
   outline: none;
 }
 
@@ -968,8 +968,8 @@
 
 .ncm-push-portrait-toggle:has(input:checked) {
   color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.3);
-  background: rgba(247, 201, 72, 0.06);
+  border-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-accent) 6%, transparent);
 }
 
 /* ═══════════════════════════════════════════
@@ -1268,8 +1268,8 @@
 
 .ncm-form-browse-btn:hover {
   color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.3);
-  background: rgba(25, 243, 247, 0.06);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent);
 }
 
 /* Form dividers — flat line, not the CPR system's gradient hr */
@@ -1360,7 +1360,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1.5px solid rgba(25, 243, 247, 0.3);
+  border: 1.5px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1433,11 +1433,11 @@
   border: 1px solid rgba(42, 42, 69, 0.5);
 }
 
-.ncm-rel-form-trust__pip--active.s1 { background: #ff0033; border-color: rgba(255, 0, 51, 0.4); }
+.ncm-rel-form-trust__pip--active.s1 { background: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 40%, transparent); }
 .ncm-rel-form-trust__pip--active.s2 { background: #ff6600; border-color: rgba(255, 102, 0, 0.4); }
-.ncm-rel-form-trust__pip--active.s3 { background: var(--ncm-accent, #f7c948); border-color: rgba(247, 201, 72, 0.4); }
+.ncm-rel-form-trust__pip--active.s3 { background: var(--ncm-accent, #f7c948); border-color: color-mix(in srgb, var(--ncm-accent) 40%, transparent); }
 .ncm-rel-form-trust__pip--active.s4 { background: #66cc44; border-color: rgba(102, 204, 68, 0.4); }
-.ncm-rel-form-trust__pip--active.s5 { background: var(--ncm-success, #00ff41); border-color: rgba(0, 255, 65, 0.4); }
+.ncm-rel-form-trust__pip--active.s5 { background: var(--ncm-success, #00ff41); border-color: color-mix(in srgb, var(--ncm-success) 40%, transparent); }
 
 /* ═══════════════════════════════════════════
    BUTTON STYLES
@@ -1466,7 +1466,7 @@
   border-color: var(--ncm-primary, #F65261);
 }
 .ncm-gm-contacts .ncm-btn--primary:hover {
-  background: rgba(246, 82, 97, 0.1);
+  background: color-mix(in srgb, var(--ncm-primary) 10%, transparent);
 }
 
 .ncm-gm-contacts .ncm-btn--secondary {
@@ -1474,7 +1474,7 @@
   border-color: var(--ncm-secondary, #19f3f7);
 }
 .ncm-gm-contacts .ncm-btn--secondary:hover {
-  background: rgba(25, 243, 247, 0.08);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
 }
 
 .ncm-gm-contacts .ncm-btn--ghost {
@@ -1488,18 +1488,18 @@
 
 .ncm-gm-contacts .ncm-btn--accent {
   color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.4);
+  border-color: color-mix(in srgb, var(--ncm-accent) 40%, transparent);
 }
 .ncm-gm-contacts .ncm-btn--accent:hover {
-  background: rgba(247, 201, 72, 0.08);
+  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent);
 }
 
 .ncm-gm-contacts .ncm-btn--success {
   color: var(--ncm-success, #00ff41);
-  border-color: rgba(0, 255, 65, 0.3);
+  border-color: color-mix(in srgb, var(--ncm-success) 30%, transparent);
 }
 .ncm-gm-contacts .ncm-btn--success:hover {
-  background: rgba(0, 255, 65, 0.06);
+  background: color-mix(in srgb, var(--ncm-success) 6%, transparent);
 }
 
 .ncm-gm-contacts .ncm-btn--sm {
@@ -1543,20 +1543,20 @@
 
 .ncm-gm-contacts .ncm-pill--active {
   color: var(--ncm-secondary) !important;
-  border-color: rgba(25, 243, 247, 0.4) !important;
-  background: rgba(25, 243, 247, 0.06) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
 }
 
 .ncm-gm-contacts .ncm-pill--custom {
   border-style: dashed !important;
   color: var(--ncm-accent) !important;
-  border-color: rgba(247, 201, 72, 0.3) !important;
+  border-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent) !important;
 }
 
 .ncm-gm-contacts .ncm-pill--custom.ncm-pill--active {
   color: var(--ncm-accent) !important;
-  border-color: rgba(247, 201, 72, 0.5) !important;
-  background: rgba(247, 201, 72, 0.06) !important;
+  border-color: color-mix(in srgb, var(--ncm-accent) 50%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-accent) 6%, transparent) !important;
   border-style: solid !important;
 }
 
@@ -1569,7 +1569,7 @@
 .ncm-gm-contacts .ncm-pill--add:hover {
   opacity: 1;
   color: var(--ncm-secondary, #19f3f7) !important;
-  border-color: rgba(25, 243, 247, 0.3) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
 }
 
 /* ═══════════════════════════════════════════
@@ -1708,7 +1708,7 @@
   border: 1px solid var(--ncm-accent) !important;
 }
 .ncm-app .ncm-gm-contacts .ncm-form-actions .ncm-btn--accent:hover {
-  background: rgba(247, 201, 72, 0.08) !important;
+  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent) !important;
 }
 
 .ncm-app .ncm-gm-contacts .ncm-form-actions .ncm-btn--ghost {
@@ -1790,7 +1790,7 @@
 }
 .ncm-app .ncm-gm-group-bar .ncm-gm-group-bar__btn--active {
   color: var(--ncm-secondary) !important;
-  border-color: rgba(25, 243, 247, 0.35) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent) !important;
 }
 
 /* Note buttons (per-player relationship detail) */
@@ -1825,7 +1825,7 @@
 }
 .ncm-app .ncm-rel-row__note-btn--has-note {
   color: var(--ncm-accent) !important;
-  border-color: rgba(247, 201, 72, 0.3) !important;
+  border-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent) !important;
 }
 
 /* Filter pills */
@@ -1957,8 +1957,8 @@
 }
 .ncm-app .ncm-gm-contacts .ncm-form-browse-btn:hover {
   color: var(--ncm-secondary) !important;
-  border-color: rgba(25, 243, 247, 0.3) !important;
-  background: rgba(25, 243, 247, 0.06) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
 }
 
 /* Portrait upload overlay */
@@ -2008,3 +2008,41 @@
 .ncm-app .ncm-gm-contacts [data-action="burnContact"],
 .ncm-app .ncm-gm-contacts [data-action="restoreContact"],
 .ncm-app .ncm-gm-contacts .ncm-chip--burned { display: none !important; }
+
+/* ─── Link Actor dialog (GM Master Contacts → Link Actor) ───
+   A raw Foundry Dialog whose content is hand-built dark widgets; without this
+   block it sits on Foundry's parchment ground with default white buttons
+   (the burn-dialog precedent in terminal.css). Palette matches the inline
+   content hexes (var(--ncm-bg-surface) / var(--ncm-border) / var(--ncm-text-secondary)). */
+.ncm-link-actor-dialog .window-content { background: var(--ncm-bg-deep) !important; color: var(--ncm-text-secondary) !important; }
+.ncm-link-actor-dialog .dialog-buttons {
+  background: var(--ncm-bg-deep) !important;
+  border-top: 1px solid var(--ncm-border) !important;
+  padding: 8px 0 0 !important;
+  gap: 8px !important;
+}
+.ncm-link-actor-dialog .dialog-buttons button {
+  appearance: none !important;
+  background: var(--ncm-bg-base) !important;
+  color: var(--ncm-text-primary) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+  padding: 5px 12px !important;
+  font-family: var(--ncm-font-display, sans-serif) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  line-height: 1.2 !important;
+  cursor: pointer !important;
+}
+.ncm-link-actor-dialog .dialog-buttons button:hover {
+  border-color: var(--ncm-secondary, #00d4e6) !important;
+  color: var(--ncm-secondary, #00d4e6) !important;
+}
+.ncm-link-actor-dialog .dialog-buttons button[data-button="unlink"]:hover {
+  border-color: var(--ncm-danger, #ef4444) !important;
+  color: var(--ncm-danger, #ef4444) !important;
+}

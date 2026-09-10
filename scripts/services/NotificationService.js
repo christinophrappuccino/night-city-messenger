@@ -1,7 +1,7 @@
 /**
  * Notification Service — v2
  * @file scripts/services/NotificationService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Manages toast notifications, unread badge counts on scene controls,
  *   and notification stacking/dismissal logic. v2 adds shard, message, and network
  *   toast families with hex strips, signal bars, and glitch effects.

@@ -1,7 +1,7 @@
 /**
  * ICEService — Shared BLACK ICE Resolution & Damage
  * @file scripts/services/ICEService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Unified service for resolving ICE configurations and applying
  *              BLACK ICE damage. Used by DataShardService, MessageService,
  *              and NetworkAuthDialog.
@@ -254,7 +254,7 @@ export class ICEService {
     for (const actor of game.actors) {
       const isICE = actor.type === 'blackIce'
         || actor.type === 'black-ice'
-        || actor.getFlag?.('cyberpunkred-messenger', 'isBlackICE')
+        || actor.getFlag?.('night-city-messenger', 'isBlackICE')
         || actor.name?.toLowerCase().includes('black ice');
       if (isICE) {
         actors.push({

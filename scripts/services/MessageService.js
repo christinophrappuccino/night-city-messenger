@@ -1,7 +1,7 @@
 /**
  * Message Service
  * @file scripts/services/MessageService.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Core messaging business logic. Handles send/receive/reply/forward/delete
  * with GM-relayed delivery pipeline. All message delivery flows through the GM's client
  * for permission safety.
@@ -9,7 +9,7 @@
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
-import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS } from '../utils/helpers.js';
+import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName } from '../utils/helpers.js';
 
 export class MessageService {
   constructor() {
@@ -144,8 +144,18 @@ export class MessageService {
           // Verified if the recipient is in the master directory OR is a registered
           // actor (verifyContact checks both — matches the setting hint). The actorId
           // branch additionally covers master contacts linked by actor without an email.
+          // Correspondent rule: anyone who has ALREADY written to this character
+          // is a known return address. Without it, a GM sending from an NPC actor
+          // that isn't in the directory (and has no registered email) produced a
+          // message the player could read but never answer ("Contact Not Found"
+          // on Reply — the 2026-09 tester report).
           const verified = this._contactRepo.verifyContact(recipientEmail).verified
-            || !!masterService?.getAll?.()?.find(mc => mc.actorId === data.toActorId);
+            || !!masterService?.getAll?.()?.find(mc => mc.actorId === data.toActorId)
+            || await this._isKnownCorrespondent(data.fromActorId, {
+              actorId: data.toActorId,
+              contactId: data.toContactId,
+              email: recipientEmail || data.to,
+            });
 
           if (!verified) {
             return {
@@ -179,13 +189,23 @@ export class MessageService {
         }
       }
 
+      // ── Auto-register an unregistered NPC sender in the master directory ──
+      // Runs BEFORE the display-name resolution so the new entry names the mail.
+      await this._autoRegisterNpcSender(data, fromActor);
+
       // ── Preserve proper-cased display names ──
       // Stored alongside the lowercased email so names survive actor deletion
+      // Master directory beats the actor name (the GM-edited directory name is
+      // what players should see; the actor label is GM bookkeeping).
       if (!data.fromName) {
-        data.fromName = fromActor?.name || fromContact?.name || null;
+        data.fromName = fromContact?.name
+          || resolveDisplayName({ contactId: data.fromContactId, actorId: data.fromActorId, email: data.from }, '')
+          || null;
       }
       if (!data.toName) {
-        data.toName = toActor?.name || toContact?.name || null;
+        data.toName = toContact?.name
+          || resolveDisplayName({ contactId: data.toContactId, actorId: data.toActorId, email: data.to }, '')
+          || null;
       }
 
       // Generate IDs
@@ -691,6 +711,88 @@ export class MessageService {
    * @returns {Promise<boolean>}
    * @private
    */
+  /**
+   * GM sends FROM an NPC actor that has no master-directory entry → create one
+   * (linked to the actor, with its portrait + CPR role) and tell the GM. This
+   * keeps the directory the source of truth: the player can Add the sender
+   * as a VERIFIED contact, reply, and a later GM rename propagates. Skips
+   * player-owned senders, players, and anything already in the directory by
+   * actor or by email. Gated by the world setting `autoRegisterNpcSenders`.
+   * Mutates `data.fromContactId` on success. Never blocks the send.
+   * @param {object} data — the outgoing message data (after `from` is resolved)
+   * @param {Actor|null} fromActor
+   * @returns {Promise<object|null>} the created contact, or null
+   */
+  async _autoRegisterNpcSender(data, fromActor) {
+    try {
+      if (!game.user?.isGM || !fromActor || fromActor.hasPlayerOwner) return null;
+      if (game.settings.get(MODULE_ID, 'autoRegisterNpcSenders') === false) return null;
+      const mcs = game.nightcity?.masterContactService;
+      if (!mcs?.addContact) return null;
+
+      const byActor = mcs.getByActorId?.(fromActor.id);
+      if (byActor) {
+        if (!data.fromContactId) data.fromContactId = byActor.id;
+        return null;
+      }
+      if (data.from && mcs.getByEmail?.(data.from)) return null;
+
+      // CPR roles are actor items (type 'role'), not actor.system.role.
+      const roleItem = fromActor.items?.find?.(i => i.type === 'role');
+      const img = fromActor.img || '';
+      const created = await mcs.addContact({
+        name: fromActor.name,
+        email: data.from || '',
+        actorId: fromActor.id,
+        portrait: img && !img.includes('mystery-man') ? img : null,
+        role: (roleItem?.name || '').toLowerCase().trim() || 'npc',
+        notes: `Auto-registered when the GM sent "${data.subject || '(no subject)'}" from this actor.`,
+      });
+      if (!created?.success) {
+        log.warn(`MessageService: auto-register of "${fromActor.name}" failed — ${created?.error || 'unknown'}`);
+        return null;
+      }
+      data.fromContactId = created.contact.id;
+      ui.notifications?.info(
+        `NCM | "${fromActor.name}" wasn't in the Master Contact list — added it (${created.contact.email}). Edit the name/details in Admin → Contacts.`
+      );
+      log.info(`MessageService: auto-registered NPC sender "${fromActor.name}" as master contact ${created.contact.id}`);
+      return created.contact;
+    } catch (err) {
+      log.warn(`MessageService: auto-register skipped — ${err?.message || err}`);
+      return null;
+    }
+  }
+
+  /**
+   * Has `target` ever sent mail to `inboxActorId`'s mailbox? Used by the
+   * player send gate so a reply (or a fresh message back) to someone who
+   * wrote first is never bounced as CONTACT NOT FOUND. Spam-routed mail and
+   * still-masked anonymous mail don't count — those senders are deliberately
+   * unknown to the player.
+   * @param {string} inboxActorId — the sending player's actor
+   * @param {{actorId?: string, contactId?: string, email?: string}} target
+   * @returns {Promise<boolean>}
+   */
+  async _isKnownCorrespondent(inboxActorId, { actorId, contactId, email } = {}) {
+    if (!inboxActorId || (!actorId && !contactId && !email)) return false;
+    try {
+      const msgs = await this._messageRepo.getMessages(inboxActorId, { filter: 'all' });
+      const norm = (email || '').toLowerCase().trim();
+      return msgs.some(m => {
+        if (m.status?.sent || m.status?.spam) return false;
+        if (String(m.messageId || '').endsWith('-sent')) return false;
+        if (m.anonymous?.enabled && !m.anonymous?.traced) return false;
+        if (actorId && m.fromActorId === actorId) return true;
+        if (contactId && m.fromContactId === contactId) return true;
+        return !!norm && (m.from || '').toLowerCase().trim() === norm;
+      });
+    } catch (err) {
+      log.warn(`MessageService: correspondent check failed — ${err?.message || err}`);
+      return false;
+    }
+  }
+
   async _isSenderInRecipientContacts(recipientActorId, data) {
     try {
       const contacts = await this._contactRepo.getContacts(recipientActorId);
@@ -865,6 +967,24 @@ export class MessageService {
       // Sync status to other clients
       this.socketManager.emit(SOCKET_OPS.MESSAGE_STATUS_UPDATE, {
         actorId, messageId, update: 'read',
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Mark every unread message in an actor's mailbox as read — one batched
+   * journal write via the repository, then ONE event/socket sync (listeners
+   * only read `actorId`, so the missing per-message id is fine).
+   * @param {string} actorId
+   * @returns {Promise<{success: boolean, count: number, error?: string}>}
+   */
+  async markAllAsRead(actorId) {
+    const result = await this._messageRepo.markAllAsRead(actorId);
+    if (result.success && result.count > 0) {
+      this.eventBus.emit(EVENTS.MESSAGE_READ, { messageId: null, actorId, all: true, readAt: new Date().toISOString() });
+      this.socketManager.emit(SOCKET_OPS.MESSAGE_STATUS_UPDATE, {
+        actorId, messageId: null, update: 'read', all: true,
       });
     }
     return result;

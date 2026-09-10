@@ -2,7 +2,7 @@
  * operator-select.css — the BIOMETRIC HANDOFF operator picker.
  * Pairs with scripts/ui/content/OperatorSelect.js (framework-free promise
  * modal, appended into the viewer so it inherits that viewer's --ncm-* preset).
- * @import'ed AFTER security-console.css in cyberpunk-messenger.css.
+ * @import'ed AFTER security-console.css in night-city-messenger.css.
  */
 
 .ncm-opsel-backdrop {

@@ -1,7 +1,7 @@
 /**
  * Network Authentication Dialog — Method-Card Redesign
  * @file styles/components/network-auth-dialog.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Styles for NetworkAuthDialog. Stacked "method cards"
  *   (Password / Skill Check / Key Item) shown simultaneously so AND-mode
  *   exposes every requirement at once. Covers: OR/AND policy banners,

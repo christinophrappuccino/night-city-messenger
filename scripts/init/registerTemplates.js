@@ -1,7 +1,7 @@
 /**
  * Register Templates & Handlebars Helpers
  * @file scripts/init/registerTemplates.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Preloads Handlebars templates and registers custom helpers.
  *              All comparison/logic helpers work as BOTH:
  *                - Block helpers:    {{#eq a b}}yes{{else}}no{{/eq}}
@@ -122,6 +122,8 @@ export function registerTemplates(initializer) {
     Handlebars.registerHelper('upper', (str) => (str || '').toUpperCase());
     Handlebars.registerHelper('add', (a, b) => (a || 0) + (b || 0));
     Handlebars.registerHelper('sub', (a, b) => (a || 0) - (b || 0));
+    // 0→A, 1→B … (option labels); wraps past Z back to A.
+    Handlebars.registerHelper('letter', (i) => String.fromCharCode(65 + (((i || 0) % 26) + 26) % 26));
     Handlebars.registerHelper('ncm-json', (context) => JSON.stringify(context, null, 2));
     Handlebars.registerHelper('ncm-isGM', () => game.user?.isGM);
     Handlebars.registerHelper('join', (arr, separator) => {

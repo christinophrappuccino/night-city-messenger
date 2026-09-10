@@ -1,7 +1,7 @@
 /**
  * Phase 3 System Verification
  * @file scripts/tests/Phase3Verification.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Verifies all Phase 3 network system components are properly
  *              initialized and functional.
  *              Run via: game.nightcity.verifyPhase3()

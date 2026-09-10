@@ -1,7 +1,7 @@
 /**
  * GM Master Contact Directory — Phase 2 Redesign
  * @file scripts/ui/GMContactManager/GMContactManagerApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description GM-only interface for the master NPC contact directory.
  *   Split-view layout: grouped contact list (left) + detail panel (right).
  *   Full CRUD, party trust, per-player relationships with trust overrides,
@@ -23,6 +23,7 @@ import {
   getRoleIcon,
 } from '../../utils/designHelpers.js';
 import { RoleManagerDialog } from './RoleManagerDialog.js';
+import { adminDialog, adminConfirm, adminPrompt } from '../../utils/adminTheme.js';
 
 // ═══════════════════════════════════════════
 //  Constants — Role & Relationship Maps
@@ -85,6 +86,9 @@ function _badgeStyle(color) {
 }
 
 export class GMContactManagerApp extends BaseApplication {
+
+  /** GM tool — follows the Admin Panel theme + text size (utils/adminTheme.js). */
+  static ADMIN_THEMED = true;
 
   // ═══════════════════════════════════════════════════════════
   //  Instance State
@@ -1108,7 +1112,7 @@ export class GMContactManagerApp extends BaseApplication {
     if (!contactId) return;
 
     const contact = this.masterContactService?.getContact(contactId);
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Delete Contact',
       content: `
         <div style="text-align: center; padding: 8px 0;">
@@ -1170,7 +1174,7 @@ export class GMContactManagerApp extends BaseApplication {
     const contact = this.masterContactService?.getContact(contactId);
     if (!contact) return;
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Burn Contact',
       content: `
         <div style="text-align: center; padding: 8px 0;">
@@ -1245,7 +1249,7 @@ export class GMContactManagerApp extends BaseApplication {
   }
 
   static async _onCreateFolder(event, target) {
-    const result = await Dialog.prompt({
+    const result = await adminPrompt({
       title: 'Create Folder',
       content: `
         <form class="ncm-dialog-form">
@@ -1268,7 +1272,7 @@ export class GMContactManagerApp extends BaseApplication {
     const oldName = target.closest('[data-folder]')?.dataset.folder;
     if (!oldName) return;
 
-    const newName = await Dialog.prompt({
+    const newName = await adminPrompt({
       title: 'Rename Folder',
       content: `
         <form class="ncm-dialog-form">
@@ -1358,7 +1362,7 @@ export class GMContactManagerApp extends BaseApplication {
     }
 
     const actor = game.actors.get(actorId);
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Push All Contacts',
       content: `<p>Push all currently visible contacts to <strong>${actor?.name}</strong>?</p>`,
     });
@@ -1487,7 +1491,7 @@ export class GMContactManagerApp extends BaseApplication {
       <p style="font-size:9px;color:#8888a0;margin-top:6px;">Currently linked: <strong>${currentLinked}</strong></p>`;
 
     const app = this;
-    const d = new Dialog({
+    const d = adminDialog({
       title: `Link Actor — ${contact.name}`,
       content,
       buttons: {
@@ -1530,7 +1534,7 @@ export class GMContactManagerApp extends BaseApplication {
           });
         }
       },
-    }, { classes: ['ncm-app'], width: 400 });
+    }, { classes: ['ncm-app', 'ncm-link-actor-dialog'], width: 400 });
 
     d.render(true);
   }
@@ -1600,7 +1604,7 @@ export class GMContactManagerApp extends BaseApplication {
    */
   static async _onCreateFolderInline(event, target) {
     event.stopPropagation();
-    const result = await Dialog.prompt({
+    const result = await adminPrompt({
       title: 'Create Folder',
       content: `
         <form class="ncm-dialog-form">
@@ -1645,7 +1649,7 @@ export class GMContactManagerApp extends BaseApplication {
   }
 
   static async _onStartAddTag(event, target) {
-    const result = await Dialog.prompt({
+    const result = await adminPrompt({
       title: 'Create Tag',
       content: `
         <form class="ncm-dialog-form">
@@ -1761,7 +1765,7 @@ export class GMContactManagerApp extends BaseApplication {
       ui.notifications.warn('No contacts selected for bulk operation.');
       return;
     }
-    const confirmed = await Dialog.confirm({
+    const confirmed = await adminConfirm({
       title: 'Bulk Delete',
       content: `<p>Delete <strong>${this._bulkSelected.size}</strong> selected contacts?</p>`,
     });

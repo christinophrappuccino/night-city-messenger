@@ -1,7 +1,7 @@
 /**
  * Built-in Spam Template Library
  * @file scripts/data/spam-templates.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Pre-written Night City spam messages for the Time of the Red (2045).
  *              Set after the 4th Corporate War, Arasaka Tower nuke, DataKrash,
  *              and the collapse of the Old NET.

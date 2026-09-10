@@ -1,11 +1,17 @@
 /**
  * Module Constants
  * @file scripts/utils/constants.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Single source of truth for all module constants
  */
 
-export const MODULE_ID = 'cyberpunkred-messenger';
+export const MODULE_ID = 'night-city-messenger';
+/**
+ * The module's ORIGINAL id (v1.0 shipped as `cyberpunkred-messenger`). Exists
+ * solely so NamespaceMigration can find and move a world's old flags/settings.
+ * Never write new data under it, and never use it anywhere else.
+ */
+export const LEGACY_MODULE_ID = 'cyberpunkred-messenger';
 export const MODULE_TITLE = 'Night City Messenger';
 export const MODULE_SHORT = 'NCM';
 
@@ -1090,10 +1096,12 @@ export const DEFAULTS = Object.freeze({
     messageDensity: 'normal', sidebarWidth: 300, defaultSort: 'newest', showAvatars: true, wallpaper: null, wallpaperStrength: 25,
     soundEnabled: true, soundVolume: 0.5, ambientEnabled: false,
   },
-  // GM Admin Panel theme — separate from PLAYER_THEME. Clean/utilitarian by
-  // default; presets are pure CSS keyed by [data-ncm-admin-theme].
+  // GM-tool theme — separate from PLAYER_THEME. Clean/utilitarian by default;
+  // presets are pure CSS keyed by [data-ncm-admin-theme], stamped on the Admin
+  // Panel AND every ADMIN_THEMED GM window + its dialogs (utils/adminTheme.js).
   ADMIN_THEME: {
     preset: 'clean-dark',   // 'clean-dark' | 'clean-light' | 'high-contrast'
+    textScale: 100,         // 100-150 (%) - CSS zoom on the panel content + frame grows to match
   },
   SHARD_CONFIG: {
     // ─── Identity ───
@@ -1229,6 +1237,8 @@ export const DEFAULTS = Object.freeze({
 
     // ─── Display ───
     theme: 'classic',
+    textScale: 100,                  // 80–150 (%) — per-shard text size, multiplied by the player's own Text Size
+    contrast: 100,                   // 70–140 (%) — per-shard readability contrast (OKLCH tone-map), on top of the player's own
     singleMessage: false,
   },
   SHARD_STATE: {

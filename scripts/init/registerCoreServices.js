@@ -1,7 +1,7 @@
 /**
  * Register Core Services
  * @file scripts/init/registerCoreServices.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Initializes core singletons and registers settings.
  */
 
@@ -12,8 +12,16 @@ import { StateManager } from '../core/StateManager.js';
 import { SettingsManager } from '../core/SettingsManager.js';
 import { SocketManager } from '../core/SocketManager.js';
 import { DocumentSyncBridge } from '../integrations/DocumentSyncBridge.js';
+import { migrateClientSettings, runNamespaceMigration } from '../core/NamespaceMigration.js';
 
 export function registerCoreServices(initializer) {
+  // ─── preInit: Carry client settings over from the module's original id ───
+  // Runs on EVERY client before any setting is registered or read (localStorage
+  // copy, never clobbers). The GM-side world migration is at ready/1 below.
+  initializer.register('preInit', 1, 'Legacy client-settings carry-over', () => {
+    migrateClientSettings();
+  });
+
   // ─── preInit: Create singletons ───
   initializer.register('preInit', 10, 'Core singletons', () => {
     const eventBus = EventBus.getInstance();
@@ -32,6 +40,14 @@ export function registerCoreServices(initializer) {
   // ─── preInit: Register settings ───
   initializer.register('preInit', 30, 'Settings registration', () => {
     initializer._core.settingsManager.registerAll();
+  });
+
+  // ─── ready: Migrate world data from the module's original id (GM, once) ───
+  // MUST be the first ready task: every later service loads flags/settings
+  // into memory, so the move has to land before they look. Prompts the GM,
+  // then requests a world reload so all clients rebuild from the moved data.
+  initializer.register('ready', 1, 'Legacy namespace migration', async () => {
+    await runNamespaceMigration();
   });
 
   // ─── init: Set up game.nightcity namespace ───

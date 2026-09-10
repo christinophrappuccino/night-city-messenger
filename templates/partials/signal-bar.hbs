@@ -1,7 +1,7 @@
 {{!--
   Signal Bar — segmented signal strength indicator
   @file templates/partials/signal-bar.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Renders a 5-segment signal strength bar. Pre-compute segment
     state in _prepareContext() before passing to this partial.
     Uses .ncm-signal-bar from components.css.
@@ -20,7 +20,7 @@
     const segments = [1,2,3,4,5].map(i => i <= active);
 
   @example — in template:
-    {{> "modules/cyberpunkred-messenger/templates/partials/signal-bar.hbs"
+    {{> "modules/night-city-messenger/templates/partials/signal-bar.hbs"
         strength=signalStrength quality=signalQuality segments=signalSegments }}
 --}}
 <div class="ncm-signal-bar ncm-signal-bar--{{quality}}"

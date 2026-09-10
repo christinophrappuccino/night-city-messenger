@@ -1,7 +1,7 @@
 /**
  * Message Viewer Application
  * @file scripts/ui/MessageViewer/MessageViewerApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Inbox window: message list (filterable, sortable, paginated),
  *   message detail panel, and quick-reply bar.
  *
@@ -39,11 +39,11 @@ import {
 } from '../../utils/designHelpers.js';
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { getThreadMessages } from '../../utils/threading.js';
-import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient } from '../../utils/helpers.js';
+import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait } from '../../utils/helpers.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
 
-const MODULE_ID = 'cyberpunkred-messenger';
+const MODULE_ID = 'night-city-messenger';
 const MESSAGES_PER_PAGE = 25;
 const DEBOUNCE_SEARCH_MS = 250;
 const MIN_SIDEBAR_WIDTH = 200;
@@ -131,6 +131,9 @@ function getNetPipLabel(name) {
 }
 
 export class MessageViewerApp extends BaseApplication {
+
+  /** Immersive window with a GM-only "GM view" header toggle (admin theme) — utils/adminTheme.js. */
+  static GM_VIEW_TOGGLE = true;
 
   /** @override */
   static DEFAULT_OPTIONS = {
@@ -542,7 +545,7 @@ export class MessageViewerApp extends BaseApplication {
       viewingAsPortrait = viewingActor.img || null;
       viewingAsInitial = getInitials(viewingActor.name || 'Unknown');
       viewingAsEmail = this.contactRepository?.getActorEmail?.(this.actorId) || '';
-      viewingAsHandle = viewingActor.getFlag?.('cyberpunkred-messenger', 'emailHandle') || viewingAsName;
+      viewingAsHandle = viewingActor.getFlag?.('night-city-messenger', 'emailHandle') || viewingAsName;
     } else {
       // Virtual inbox — resolve from master contact
       const masterContact = game.nightcity?.masterContactService?.getContact(this.actorId);
@@ -1650,6 +1653,20 @@ export class MessageViewerApp extends BaseApplication {
       case 'open-admin':
         game.nightcity?.openAdmin?.();
         break;
+      case 'mark-all-read': {
+        if (!this.actorId) break;
+        const res = await this.messageService?.markAllAsRead?.(this.actorId);
+        if (res?.success) {
+          if (res.count > 0) {
+            ui.notifications.info(`NCM | Marked ${res.count} message${res.count === 1 ? '' : 's'} as read.`);
+          }
+          game.nightcity?.notificationService?.refreshBadge?.();
+          this.render(false);
+        } else if (res?.error) {
+          ui.notifications.warn(`NCM | Mark all as read failed: ${res.error}`);
+        }
+        break;
+      }
       case 'toggle-list-panel':
         this._toggleListPanel();
         break;
@@ -1886,49 +1903,9 @@ export class MessageViewerApp extends BaseApplication {
         break;
 
       // ── v3.2: Add Contact from detail ──
-      case 'add-sender-contact': {
-        const email = target.dataset.email;
-        const name = target.dataset.name;
-        if (!email || !this.actorId) break;
-        try {
-          const repo = this.contactRepository;
-          if (repo?.addContact) {
-            const msg = this._getSelectedMessage();
-            // Link the sender's actor / master contact so the portrait resolves
-            // automatically (PortraitService.resolvePortrait: custom → linked actor img).
-            const senderActor = msg?.fromActorId ? game.actors?.get(msg.fromActorId) : null;
-            const masterContact = msg?.fromContactId
-              ? game.nightcity?.masterContactService?.getContact(msg.fromContactId)
-              : null;
-            const portrait = masterContact?.portrait
-              || (senderActor?.img && senderActor.img !== 'icons/svg/mystery-man.svg' ? senderActor.img : '')
-              || '';
-
-            const result = await repo.addContact(this.actorId, {
-              name: name || email.split('@')[0],
-              email,
-              network: msg?.network || 'CITINET',
-              actorId: senderActor?.id || masterContact?.actorId || null,
-              portrait,
-              trust: 'neutral',
-              notes: 'Added from message viewer',
-            });
-            if (result?.success) {
-              ui.notifications.info(`NCM | Added ${name || email} to contacts.`);
-              await this._refreshContactCache();
-              this.render(true);
-            } else {
-              ui.notifications.warn(`NCM | ${result?.error || 'Could not add contact.'}`);
-            }
-          } else {
-            ui.notifications.warn('NCM | Contact system unavailable.');
-          }
-        } catch (err) {
-          console.error('NCM | Failed to add contact:', err);
-          ui.notifications.error('NCM | Failed to add contact.');
-        }
+      case 'add-sender-contact':
+        await this._addContactFromMessage(target.dataset.name);
         break;
-      }
 
       // ── v3.2: Collapsible detail grid ──
       case 'toggle-detail-grid': {
@@ -3029,7 +3006,7 @@ export class MessageViewerApp extends BaseApplication {
     const actor = game.actors.get(actorId);
     if (!actor) return;
 
-    const draft = actor.getFlag('cyberpunkred-messenger', 'composerDraft');
+    const draft = actor.getFlag('night-city-messenger', 'composerDraft');
     if (!draft) {
       ui.notifications.warn('Draft not found or expired.');
       return;
@@ -3044,7 +3021,7 @@ export class MessageViewerApp extends BaseApplication {
     const actor = game.actors.get(actorId);
     if (!actor) return;
 
-    await actor.unsetFlag('cyberpunkred-messenger', 'composerDraft').catch(() => {});
+    await actor.unsetFlag('night-city-messenger', 'composerDraft').catch(() => {});
     ui.notifications.info('Draft deleted.');
     this.render();
   }
@@ -3059,49 +3036,54 @@ export class MessageViewerApp extends BaseApplication {
    * Quick-add the sender of the selected message as a contact.
    * Creates a new contact entry using the sender's email and display name.
    */
-  async _addContactFromMessage() {
+  async _addContactFromMessage(displayNameOverride = '') {
     const msg = this._getSelectedMessage();
-    if (!msg?.from) return;
+    if (!msg?.from || !this.actorId) return;
 
-    const contact = this._findContact(msg.from);
-    if (contact) {
-      ui.notifications.info(`${msg.from} is already in your contacts.`);
+    const existing = this._findContact(msg.from);
+    if (existing) {
+      ui.notifications.info(`NCM | ${msg.from} is already in your contacts.`);
       return;
     }
 
-    const displayName = (msg.fromActorId ? game.actors?.get(msg.fromActorId)?.name : null)
-      || msg.fromName || msg.from.split('@')[0] || 'Unknown';
+    // Name + portrait follow the same precedence as the viewer's sender line
+    // (master directory → stored name → actor), so what the player sees on the
+    // message is what lands in their contact list.
+    const ids = { contactId: msg.fromContactId, actorId: msg.fromActorId, email: msg.from, storedName: msg.fromName };
+    const displayName = displayNameOverride || resolveDisplayName(ids);
+    const masterContact = (msg.fromContactId && game.nightcity?.masterContactService?.getContact(msg.fromContactId))
+      || (msg.fromActorId && game.nightcity?.masterContactService?.getByActorId?.(msg.fromActorId))
+      || null;
 
     try {
-      // Try the contact repository's add method
       const repo = this.contactRepository;
-      if (repo?.addContact) {
-        await repo.addContact({
-          actorId: this.actorId,
-          name: displayName,
-          email: msg.from,
-          network: msg.network || 'CITINET',
-          trust: 'neutral',
-          notes: `Added from message: "${msg.subject || '(no subject)'}"`,
-        });
-      } else if (repo?.createContact) {
-        await repo.createContact({
-          actorId: this.actorId,
-          name: displayName,
-          email: msg.from,
-          network: msg.network || 'CITINET',
-        });
-      } else {
-        ui.notifications.warn('Contact system unavailable.');
+      if (!repo?.addContact) {
+        ui.notifications.warn('NCM | Contact system unavailable.');
         return;
       }
-
-      ui.notifications.info(`Added "${displayName}" (${msg.from}) to contacts.`);
-      this.soundService?.play?.('receive');
-      this.render();
+      // Signature is (ownerActorId, contactData) — the contact's OWN linked
+      // actor rides in contactData.actorId so PortraitService can resolve it.
+      const result = await repo.addContact(this.actorId, {
+        name: displayName,
+        email: msg.from,
+        network: msg.network || 'CITINET',
+        actorId: msg.fromActorId || masterContact?.actorId || null,
+        masterContactId: masterContact?.id || null,
+        portrait: resolveDisplayPortrait(ids),
+        trust: 'neutral',
+        notes: `Added from message: "${msg.subject || '(no subject)'}"`,
+      });
+      if (result?.success) {
+        ui.notifications.info(`NCM | Added "${displayName}" (${msg.from}) to contacts.`);
+        this.soundService?.play?.('receive');
+        await this._refreshContactCache();
+        this.render(true);
+      } else {
+        ui.notifications.warn(`NCM | ${result?.error || 'Could not add contact.'}`);
+      }
     } catch (error) {
       console.error('NCM | Failed to add contact:', error);
-      ui.notifications.error('Failed to add contact.');
+      ui.notifications.error('NCM | Failed to add contact.');
     }
   }
 
@@ -4610,11 +4592,16 @@ export class MessageViewerApp extends BaseApplication {
    */
   _enrichMessageDisplay(msg, currentNetworkName) {
     // ── Sender display name ──
-    // Priority: contact name → actor name → stored name → email handle fallback
+    // Priority: the player's OWN contact label → master directory (by contact
+    // id / linked actor / email) → stored name → actor name → email handle.
+    // The directory beats the raw actor name on purpose: the GM edits the
+    // directory entry ("Rogue"), the actor keeps its bookkeeping label
+    // ("Rogue-Fixer"), and players must see the edited name.
     const contact = this._findContact(msg.from);
     const fromActor = msg.fromActorId ? game.actors?.get(msg.fromActorId) : null;
-    let fromDisplay = contact?.name || fromActor?.name || msg.fromName || msg.from?.split('@')[0] || 'Unknown';
-    let fromPortrait = contact?.portrait || fromActor?.img || null;
+    const fromIds = { contactId: msg.fromContactId, actorId: msg.fromActorId, email: msg.from, storedName: msg.fromName };
+    let fromDisplay = contact?.name || resolveDisplayName(fromIds);
+    let fromPortrait = contact?.portrait || resolveDisplayPortrait(fromIds) || fromActor?.img || null;
 
     // ── Anonymous sender ──
     // Non-GM (and GM viewing the scrubbed recipient copy) see the masked alias +
@@ -4643,7 +4630,7 @@ export class MessageViewerApp extends BaseApplication {
     const burnCheck = game.nightcity?.emailService?.isBurnedEmail?.(msg.from) ?? { burned: false };
     const isBurnedSender = burnCheck.burned;
     if (isBurnedSender && !contact?.name) {
-      fromDisplay = fromActor?.name || msg.fromName || msg.from?.split('@')[0] || 'Unknown';
+      fromDisplay = resolveDisplayName(fromIds);
     }
 
     const fromInitial = isSenderEncrypted ? '?' : (fromDisplay[0] || '?').toUpperCase();
@@ -4652,7 +4639,8 @@ export class MessageViewerApp extends BaseApplication {
     // Priority: contact name → actor name → stored name → email handle fallback
     const toContact = this._findContact(msg.to);
     const toActor = msg.toActorId ? game.actors?.get(msg.toActorId) : null;
-    let toDisplay = toContact?.name || toActor?.name || msg.toName || msg.to?.split('@')[0] || 'Unknown';
+    let toDisplay = toContact?.name
+      || resolveDisplayName({ contactId: msg.toContactId, actorId: msg.toActorId, email: msg.to, storedName: msg.toName });
 
     // Recovered/exfiltrated intel — keep the ORIGINAL recipient (e.g. v_arasaka),
     // never the downloader, in the "to" line.
@@ -5036,7 +5024,7 @@ export class MessageViewerApp extends BaseApplication {
    * Build draft items from actors with saved composerDraft flags.
    */
   _buildDraftItems() {
-    const MODULE_ID_LOCAL = 'cyberpunkred-messenger';
+    const MODULE_ID_LOCAL = 'night-city-messenger';
     const items = [];
 
     // Check current viewing actor
@@ -5086,7 +5074,7 @@ export class MessageViewerApp extends BaseApplication {
    * Includes actor inventory shards + shards received as message attachments.
    */
   _buildShardItems(allMessages) {
-    const MODULE_ID_LOCAL = 'cyberpunkred-messenger';
+    const MODULE_ID_LOCAL = 'night-city-messenger';
     const items = [];
     const seenIds = new Set();
 

@@ -39,7 +39,7 @@
 .ncm-app .ncm-tc__preview-from { font-family: var(--ncm-font-display); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary); width: 55px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ncm-app .ncm-tc__preview-subj { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ncm-app .ncm-tc__preview-time { font-family: var(--ncm-font-mono); font-size: calc(7px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); flex-shrink: 0; }
-.ncm-app .ncm-tc__preview-badge { font-family: var(--ncm-font-title); font-size: calc(6px * var(--ncm-text-scale, 1)); font-weight: 700; padding: 1px 5px; border-radius: 1px; background: rgba(247,201,72,0.1); color: var(--ncm-accent); border: 1px solid rgba(247,201,72,0.25); flex-shrink: 0; }
+.ncm-app .ncm-tc__preview-badge { font-family: var(--ncm-font-title); font-size: calc(6px * var(--ncm-text-scale, 1)); font-weight: 700; padding: 1px 5px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-accent) 10%, transparent); color: var(--ncm-accent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 25%, transparent); flex-shrink: 0; }
 
 /* ═══ TAB BAR ═══ */
 .ncm-app .ncm-tc__tabs { display: flex; background: var(--ncm-bg-deep); border-bottom: 1px solid var(--ncm-border); padding: 4px 8px 0; flex-shrink: 0; gap: 2px; }
@@ -78,12 +78,12 @@
 .ncm-app .ncm-tc__citem-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .ncm-tc .ncm-tc__citem-actions button, .ncm-term-config .ncm-tc__citem-actions button { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid transparent; border-radius: 2px; color: var(--ncm-text-muted); cursor: pointer; font-size: calc(9px * var(--ncm-text-scale, 1)); transition: all 0.15s; padding: 0; margin: 0; }
 .ncm-tc .ncm-tc__citem-actions button:hover, .ncm-term-config .ncm-tc__citem-actions button:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border); }
-.ncm-tc button.ncm-tc__citem-del:hover, .ncm-term-config button.ncm-tc__citem-del:hover { color: var(--ncm-primary); border-color: rgba(246,82,97,0.3); }
+.ncm-tc button.ncm-tc__citem-del:hover, .ncm-term-config button.ncm-tc__citem-del:hover { color: var(--ncm-primary); border-color: color-mix(in srgb, var(--ncm-primary) 30%, transparent); }
 .ncm-app .ncm-tc__cempty { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); text-align: center; padding: 10px; opacity: 0.6; }
 
 .ncm-app .ncm-tc__pactions { display: flex; gap: 6px; padding: 8px 16px 12px; }
 .ncm-tc button.ncm-tc__paction, .ncm-term-config button.ncm-tc__paction { display: flex; align-items: center; gap: 5px; padding: 5px 10px; background: var(--ncm-bg-surface); border: 1px dashed var(--ncm-border); border-radius: 3px; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); cursor: pointer; transition: all 0.15s; flex: 1; justify-content: center; }
-.ncm-app .ncm-tc__paction:hover { color: var(--ncm-secondary); border-color: var(--ncm-secondary); background: rgba(25,243,247,0.03); }
+.ncm-app .ncm-tc__paction:hover { color: var(--ncm-secondary); border-color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent); }
 .ncm-app .ncm-tc__paction i { font-size: calc(10px * var(--ncm-text-scale, 1)); }
 
 /* ═══ COLORS ═══ */
@@ -101,12 +101,12 @@
 /* ═══ FONTS ═══ */
 .ncm-app .ncm-tc__font-section { padding: 8px 16px; }
 .ncm-app .ncm-tc__font-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-.ncm-app .ncm-tc__font-row + .ncm-tc__font-row { border-top: 1px solid rgba(42,42,69,0.3); }
+.ncm-app .ncm-tc__font-row + .ncm-tc__font-row { border-top: 1px solid color-mix(in srgb, var(--ncm-border) 30%, transparent); }
 .ncm-app .ncm-tc__font-label { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); text-transform: uppercase; letter-spacing: 0.06em; min-width: 90px; flex-shrink: 0; }
 .ncm-tc select.ncm-tc__font-select, .ncm-term-config select.ncm-tc__font-select { flex: 1; min-width: 0; background-color: var(--ncm-bg-deep); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238888a0'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-size: 8px 5px; border: 1px solid var(--ncm-border); border-radius: 2px; padding: 5px 24px 5px 8px; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary); appearance: none; -webkit-appearance: none; cursor: pointer; outline: none; }
-.ncm-tc select.ncm-tc__font-select:focus, .ncm-term-config select.ncm-tc__font-select:focus { border-color: var(--ncm-secondary); box-shadow: 0 0 4px rgba(25,243,247,0.15); }
+.ncm-tc select.ncm-tc__font-select:focus, .ncm-term-config select.ncm-tc__font-select:focus { border-color: var(--ncm-secondary); box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-secondary) 15%, transparent); }
 .ncm-tc input.ncm-tc__name-input, .ncm-term-config input.ncm-tc__name-input { flex: 1; min-width: 0; background-color: var(--ncm-bg-deep); border: 1px solid var(--ncm-border); border-radius: 2px; padding: 5px 8px; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary); outline: none; }
-.ncm-tc input.ncm-tc__name-input:focus, .ncm-term-config input.ncm-tc__name-input:focus { border-color: var(--ncm-secondary); box-shadow: 0 0 4px rgba(25,243,247,0.15); }
+.ncm-tc input.ncm-tc__name-input:focus, .ncm-term-config input.ncm-tc__name-input:focus { border-color: var(--ncm-secondary); box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-secondary) 15%, transparent); }
 .ncm-app .ncm-tc__name-hint { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); opacity: 0.8; padding: 2px 16px 8px; line-height: 1.4; }
 .ncm-app .ncm-tc__font-preview { margin: 8px 0; padding: 10px 12px; background: var(--ncm-bg-deep); border: 1px solid var(--ncm-border); border-radius: 3px; }
 .ncm-app .ncm-tc__fprev-title { font-family: var(--ncm-font-title); font-size: calc(14px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-primary); letter-spacing: 0.08em; margin-bottom: 2px; }
@@ -115,38 +115,38 @@
 
 /* Slider rows */
 .ncm-app .ncm-tc__srow { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-.ncm-app .ncm-tc__srow + .ncm-tc__srow, .ncm-app .ncm-tc__trow + .ncm-tc__srow, .ncm-app .ncm-tc__srow + .ncm-tc__trow { border-top: 1px solid rgba(42,42,69,0.3); }
+.ncm-app .ncm-tc__srow + .ncm-tc__srow, .ncm-app .ncm-tc__trow + .ncm-tc__srow, .ncm-app .ncm-tc__srow + .ncm-tc__trow { border-top: 1px solid color-mix(in srgb, var(--ncm-border) 30%, transparent); }
 .ncm-app .ncm-tc__srow-label { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); text-transform: uppercase; letter-spacing: 0.06em; min-width: 90px; flex-shrink: 0; }
 .ncm-app .ncm-tc__slider { flex: 1; -webkit-appearance: none; height: 4px; border-radius: 2px; background: var(--ncm-bg-elevated); outline: none; }
-.ncm-app .ncm-tc__slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--ncm-secondary); cursor: pointer; box-shadow: 0 0 6px rgba(25,243,247,0.3); }
+.ncm-app .ncm-tc__slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--ncm-secondary); cursor: pointer; box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-secondary) 30%, transparent); }
 .ncm-app .ncm-tc__srow-val { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); min-width: 32px; text-align: right; }
 
 /* ═══ EFFECTS ═══ */
 .ncm-app .ncm-tc__fx { padding: 4px 16px; }
 .ncm-app .ncm-tc__trow { display: flex; align-items: center; padding: 6px 0; }
-.ncm-app .ncm-tc__trow + .ncm-tc__trow { border-top: 1px solid rgba(42,42,69,0.3); }
+.ncm-app .ncm-tc__trow + .ncm-tc__trow { border-top: 1px solid color-mix(in srgb, var(--ncm-border) 30%, transparent); }
 .ncm-app .ncm-tc__trow-label { font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary); flex: 1; }
 .ncm-app .ncm-tc__trow-desc { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); margin-top: 1px; }
 
 /* Toggle switch */
 .ncm-tc .ncm-tc__switch, .ncm-term-config .ncm-tc__switch { width: 36px; height: 18px; border-radius: 9px; background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); position: relative; cursor: pointer; transition: all 0.2s; flex-shrink: 0; padding: 0; margin: 0; }
 .ncm-tc .ncm-tc__switch::after, .ncm-term-config .ncm-tc__switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-muted); transition: all 0.2s; }
-.ncm-tc .ncm-tc__switch--on, .ncm-term-config .ncm-tc__switch--on { background: rgba(25,243,247,0.15); border-color: var(--ncm-secondary); }
-.ncm-tc .ncm-tc__switch--on::after, .ncm-term-config .ncm-tc__switch--on::after { left: 20px; background: var(--ncm-secondary); box-shadow: 0 0 6px rgba(25,243,247,0.4); }
+.ncm-tc .ncm-tc__switch--on, .ncm-term-config .ncm-tc__switch--on { background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); border-color: var(--ncm-secondary); }
+.ncm-tc .ncm-tc__switch--on::after, .ncm-term-config .ncm-tc__switch--on::after { left: 20px; background: var(--ncm-secondary); box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
 
 /* Button group */
 .ncm-app .ncm-tc__bgroup { display: flex; gap: 4px; flex: 1; }
 .ncm-tc button.ncm-tc__bopt { flex: 1; padding: 5px 8px; font-family: var(--ncm-font-display); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-muted); cursor: pointer; transition: all 0.15s; text-align: center; }
 .ncm-app .ncm-tc__bopt:hover { color: var(--ncm-text-secondary); border-color: var(--ncm-text-muted); }
-.ncm-app .ncm-tc__bopt--active { background: var(--ncm-primary); color: #fff; border-color: var(--ncm-primary); }
+.ncm-app .ncm-tc__bopt--active { background: var(--ncm-primary); color: var(--ncm-text-primary); border-color: var(--ncm-primary); }
 
 /* ═══ FOOTER ═══ */
 .ncm-app .ncm-tc__footer { display: flex; align-items: center; padding: 8px 16px; background: var(--ncm-bg-deep); border-top: 1px solid var(--ncm-primary); flex-shrink: 0; gap: 6px; }
 .ncm-tc button.ncm-tc__fbtn { display: flex; align-items: center; gap: 5px; padding: 5px 12px; font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-radius: 3px; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; background: none; }
 .ncm-tc button.ncm-tc__fbtn--ghost { color: var(--ncm-text-muted); border-color: var(--ncm-border); }
 .ncm-app .ncm-tc__fbtn--ghost:hover { color: var(--ncm-text-secondary); border-color: var(--ncm-text-muted); }
-.ncm-tc button.ncm-tc__fbtn--primary { background: var(--ncm-primary); color: #fff; border-color: var(--ncm-primary); }
-.ncm-app .ncm-tc__fbtn--primary:hover { filter: brightness(1.15); box-shadow: 0 0 8px rgba(246,82,97,0.3); }
+.ncm-tc button.ncm-tc__fbtn--primary { background: var(--ncm-primary); color: var(--ncm-text-primary); border-color: var(--ncm-primary); }
+.ncm-app .ncm-tc__fbtn--primary:hover { filter: brightness(1.15); box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-primary) 30%, transparent); }
 .ncm-app .ncm-tc__fbtn--disabled { opacity: 0.5; cursor: not-allowed; }
 .ncm-app .ncm-tc__fspace { flex: 1; }
 .ncm-app .ncm-tc__fbtn i { font-size: calc(10px * var(--ncm-text-scale, 1)); }

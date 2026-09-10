@@ -1,0 +1,251 @@
+/**
+ * Admin theme carry-over — ONE place that stamps the GM Admin Panel's theme
+ * (preset + text size) onto any GM-tool surface.
+ * @file scripts/utils/adminTheme.js
+ * @module night-city-messenger
+ *
+ * The player theme writes --ncm-* to :root. styles/themes/admin-theme.css
+ * re-defines the same variables on any element carrying
+ * `data-ncm-admin-theme`, so a tagged window is themed in isolation. Two kinds
+ * of surface get tagged:
+ *   - BaseApplication subclasses with `static ADMIN_THEMED = true`
+ *     (BaseApplication._applyAdminTheme calls stampAdminTheme on its root).
+ *   - Foundry v1 `Dialog`s opened through adminDialog/adminConfirm/adminPrompt
+ *     below: the wrapper adds ADMIN_DIALOG_CLASS, and the `renderDialog` hook
+ *     (registerAdminDialogHook) stamps the theme + zoom when they render.
+ *
+ * Text size is a CSS `zoom` on `.window-content` — the GM stylesheets are
+ * hundreds of fixed-px font sizes with no --ncm-text-scale plumbing, so zoom
+ * is the only honest lever; the window frame grows by the same ratio so the
+ * layout keeps its proportions (see applyAdminZoom).
+ *
+ * Player-facing immersive windows (message viewer, composer, shard viewer,
+ * terminal, Theme Customizer) deliberately never get tagged, even on a GM
+ * client — the GM sees those as the players do.
+ */
+
+import { MODULE_ID } from './constants.js';
+import { log } from './helpers.js';
+
+/** Class the Dialog wrappers add so the render hook can find admin dialogs. */
+export const ADMIN_DIALOG_CLASS = 'ncm-admin-dialog';
+
+export const ADMIN_TEXT_SCALE_MIN = 100;
+export const ADMIN_TEXT_SCALE_MAX = 150;
+
+/**
+ * Read the client-scoped admin theme prefs.
+ * @returns {{preset: string, textScale: number}}
+ */
+export function getAdminThemePrefs() {
+  let theme = {};
+  try { theme = game.settings.get(MODULE_ID, 'adminTheme') || {}; } catch { /* pre-init */ }
+  const pct = Number(theme.textScale) || 100;
+  return {
+    preset: theme.preset || 'clean-dark',
+    textScale: Math.min(ADMIN_TEXT_SCALE_MAX, Math.max(ADMIN_TEXT_SCALE_MIN, pct)),
+  };
+}
+
+/**
+ * Stamp the admin preset on an element and force the diegetic atmosphere off
+ * (scanlines/neon are player-theme flavour, never wanted on a GM tool).
+ * @param {HTMLElement} el
+ * @param {{preset?: string}} [prefs]
+ */
+export function stampAdminTheme(el, prefs = getAdminThemePrefs()) {
+  if (!el) return;
+  el.dataset.ncmAdminTheme = prefs.preset || 'clean-dark';
+  el.dataset.ncmScanlines = 'false';
+  el.dataset.ncmNeon = 'false';
+}
+
+/**
+ * Undo stampAdminTheme on an element (the atmosphere pass re-applies the
+ * player prefs on the next render). Clears the zoom too.
+ * @param {HTMLElement} el
+ */
+export function clearAdminTheme(el) {
+  if (!el) return;
+  delete el.dataset.ncmAdminTheme;
+  const content = el.querySelector?.('.window-content');
+  if (content) content.style.zoom = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GM view — an immersive window (message viewer, composer, contacts)
+//  optionally shown to the GM in the admin theme for readability. One
+//  client setting, toggled from any of those windows' header menus; every
+//  open GM-view window re-renders so they agree.
+// ═══════════════════════════════════════════════════════════
+
+/** @returns {boolean} whether the GM wants immersive windows in the admin theme */
+export function gmViewEnabled() {
+  if (!globalThis.game?.user?.isGM) return false;
+  try { return game.settings.get(MODULE_ID, 'gmViewAdminTheme') !== false; } catch { return false; }
+}
+
+/**
+ * The header-menu control for a GM-view window. Label reflects the current
+ * state; only visible to the GM.
+ * @returns {object} an ApplicationV2 header-control entry
+ */
+export function gmViewHeaderControl() {
+  const on = gmViewEnabled();
+  return {
+    icon: on ? 'fa-solid fa-eye' : 'fa-solid fa-user-shield',
+    label: on ? 'Switch to player view' : 'Switch to GM view',
+    action: 'toggleGmView',
+    visible: !!globalThis.game?.user?.isGM,
+  };
+}
+
+/** Flip the setting and re-render every open window that offers the toggle. */
+export async function toggleGmView() {
+  if (!globalThis.game?.user?.isGM) return;
+  const next = !gmViewEnabled();
+  await game.settings.set(MODULE_ID, 'gmViewAdminTheme', next);
+  const apps = [
+    ...Object.values(foundry.applications?.instances ? Object.fromEntries(foundry.applications.instances) : {}),
+    ...Object.values(ui.windows || {}),
+  ];
+  for (const app of apps) {
+    if (app?.constructor?.GM_VIEW_TOGGLE && app.rendered) {
+      try { app.render(); } catch { /* non-fatal */ }
+    }
+  }
+  ui.notifications?.info(`NCM | ${next ? 'GM view — Messenger windows use the admin theme.' : 'Player view — Messenger windows use the player theme.'}`);
+}
+
+/**
+ * Per-render hook for a GM_VIEW_TOGGLE window: stamp or clear the admin
+ * theme on `el` according to the setting. Returns true when stamped.
+ * @param {HTMLElement} el
+ * @param {{applyZoom?: (pct:number)=>void}} [opts]
+ */
+export function applyGmView(el, opts = {}) {
+  if (!el) return false;
+  const on = gmViewEnabled();
+  if (on) {
+    const prefs = getAdminThemePrefs();
+    stampAdminTheme(el, prefs);
+    if (opts.applyZoom) opts.applyZoom(prefs.textScale);
+    else applyAdminZoom(el.querySelector('.window-content'), prefs.textScale);
+  } else {
+    clearAdminTheme(el);
+  }
+  syncGmViewControls(el, on);
+  return on;
+}
+
+/**
+ * Keep the toggle affordances honest. AppV2 builds the window frame ONCE, so
+ * the ⋮-menu entry's label never re-renders on its own; and a menu entry is
+ * easy to miss, so a visible header button is injected too. Both are patched
+ * here on every render/toggle.
+ * @param {HTMLElement} el — the app root
+ * @param {boolean} on — GM view active
+ */
+export function syncGmViewControls(el, on) {
+  if (!el || !globalThis.game?.user?.isGM) return;
+  const ctl = gmViewHeaderControl();
+  // ⋮ menu entry (frame-built, label frozen at first render otherwise)
+  for (const btn of el.querySelectorAll('.controls-dropdown [data-action="toggleGmView"], .header-control[data-action="toggleGmView"]')) {
+    const i = btn.querySelector('i');
+    if (i) i.className = ctl.icon;
+    else if (btn.classList.contains('header-control')) btn.className = `header-control ${ctl.icon} ncm-gmview-btn`;
+    const span = btn.querySelector('span');
+    if (span) span.textContent = ctl.label;
+    btn.dataset.tooltip = ctl.label;
+  }
+  // Visible header button (before the close control)
+  const header = el.querySelector(':scope > .window-header');
+  if (!header) return;
+  let btn = header.querySelector('.ncm-gmview-btn');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.action = 'toggleGmView';
+    const close = header.querySelector('[data-action="close"]');
+    header.insertBefore(btn, close || null);
+  }
+  btn.className = `header-control ${ctl.icon} ncm-gmview-btn`;
+  btn.dataset.tooltip = ctl.label;
+  btn.dataset.gmview = on ? 'on' : 'off';
+  btn.setAttribute('aria-label', ctl.label);
+}
+
+/**
+ * Apply the text-size zoom to a window's content element.
+ * @param {HTMLElement|null} contentEl — the `.window-content` node
+ * @param {number} pct — 100–150
+ */
+export function applyAdminZoom(contentEl, pct) {
+  if (!contentEl) return;
+  const clamped = Math.min(ADMIN_TEXT_SCALE_MAX, Math.max(ADMIN_TEXT_SCALE_MIN, Number(pct) || 100));
+  contentEl.style.zoom = clamped === 100 ? '' : String(clamped / 100);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Foundry v1 Dialog wrappers
+//  GM-tool code calls these instead of `new Dialog` / `Dialog.confirm` /
+//  `Dialog.prompt` so the dialog is tagged for the admin theme.
+// ═══════════════════════════════════════════════════════════
+
+function _withAdminClass(options = {}) {
+  const base = Array.isArray(options.classes) && options.classes.length ? options.classes : ['dialog'];
+  const classes = base.includes(ADMIN_DIALOG_CLASS) ? base : [...base, ADMIN_DIALOG_CLASS];
+  return { ...options, classes };
+}
+
+/** `new Dialog(data, options)` tagged for the admin theme. */
+export function adminDialog(data, options = {}) {
+  return new Dialog(data, _withAdminClass(options));
+}
+
+/** `Dialog.confirm(config)` tagged for the admin theme (config.options merged). */
+export function adminConfirm(config = {}) {
+  return Dialog.confirm({ ...config, options: _withAdminClass(config.options) });
+}
+
+/** `Dialog.prompt(config)` tagged for the admin theme (config.options merged). */
+export function adminPrompt(config = {}) {
+  return Dialog.prompt({ ...config, options: _withAdminClass(config.options) });
+}
+
+/** `Dialog.wait(data, options)` tagged for the admin theme. */
+export function adminWait(data, options = {}) {
+  return Dialog.wait(data, _withAdminClass(options));
+}
+
+/**
+ * Stamp theme + zoom on a rendered admin Dialog. Width grows with the zoom
+ * once per dialog (height is auto).
+ * @param {Dialog} app
+ */
+export function themeAdminDialog(app) {
+  const el = app?.element?.[0] ?? app?.element;
+  if (!(el instanceof HTMLElement)) return;
+  const prefs = getAdminThemePrefs();
+  stampAdminTheme(el, prefs);
+  applyAdminZoom(el.querySelector('.window-content'), prefs.textScale);
+  if (prefs.textScale !== 100 && !app._ncmAdminScaled) {
+    app._ncmAdminScaled = true;
+    const width = app.position?.width || el.offsetWidth;
+    if (width) {
+      try { app.setPosition({ width: Math.round(width * prefs.textScale / 100) }); } catch { /* non-fatal */ }
+    }
+  }
+}
+
+/** Register the `renderDialog` hook that themes tagged dialogs. Call once at ready. */
+export function registerAdminDialogHook() {
+  Hooks.on('renderDialog', (app) => {
+    try {
+      if (!app?.options?.classes?.includes?.(ADMIN_DIALOG_CLASS)) return;
+      themeAdminDialog(app);
+    } catch (err) {
+      log.debug(`adminTheme: renderDialog stamp skipped — ${err?.message || err}`);
+    }
+  });
+}

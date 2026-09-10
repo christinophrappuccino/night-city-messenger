@@ -1,7 +1,7 @@
 /**
  * Contact Share Dialog — Sprint 3.4
  * @file scripts/ui/ContactManager/ContactShareDialog.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Player-facing dialog for sharing a contact with other players.
  *   Shows the contact being shared, a recipient selector (multi-select),
  *   option toggles (portrait/notes/tags), and a "Data Drop" send button.
@@ -22,6 +22,9 @@ import {
 } from '../../utils/designHelpers.js';
 
 export class ContactShareDialog extends BaseApplication {
+
+  /** GM tool — follows the Admin Panel theme + text size (utils/adminTheme.js). */
+  static ADMIN_THEMED = true;
 
   // ═══════════════════════════════════════════════════════════
   //  Instance State

@@ -1,7 +1,7 @@
 /**
  * Register UI Components
  * @file scripts/init/registerUIComponents.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Registers scene controls, token HUD buttons, and UI launch functions.
  */
 

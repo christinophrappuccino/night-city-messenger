@@ -1,7 +1,7 @@
 {{!--
   Contact Card — Grid view card for a single contact
   @file templates/contact-manager/partials/contact-card.hbs
-  @module cyberpunkred-messenger
+  @module night-city-messenger
   @description Renders a single contact as a card in grid view.
     Includes verification status, encrypted (ICE) compact overlay,
     and selected states.
@@ -16,7 +16,7 @@
 
   {{!-- Compact ICE overlay for card view --}}
   {{#if isEncrypted}}
-    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-card-overlay.hbs"
+    {{> "modules/night-city-messenger/templates/contact-manager/partials/encrypted-card-overlay.hbs"
         blackIce=blackIce encryptionDV=encryptionDV icePortrait=icePortrait contactId=id }}
   {{/if}}
 
@@ -143,7 +143,7 @@
     {{/if}}
 
     {{!-- Trust meter --}}
-    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-meter.hbs"
+    {{> "modules/night-city-messenger/templates/contact-manager/partials/trust-meter.hbs"
         trust=trust trustLevel=trustLevel }}
 
   {{/if}}

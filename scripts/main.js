@@ -1,7 +1,7 @@
 /**
  * Night City Messenger — Entry Point
  * @file scripts/main.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Clean entry point. Delegates all initialization to
  *              ModuleInitializer and the init/ registration files.
  */

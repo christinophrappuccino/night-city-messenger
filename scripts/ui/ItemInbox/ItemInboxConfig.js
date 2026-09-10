@@ -1,15 +1,16 @@
 /**
  * ItemInboxConfig — GM Shard Configuration (Sprint 4.6 Tabbed Redesign)
  * @file scripts/ui/ItemInbox/ItemInboxConfig.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description GM-only tabbed configuration for data shard settings.
  *   5 tabs: Identity, Security, Network, Systems, Boot.
  */
 
 import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES, FAILURE_MODES, ENCRYPTION_TYPES } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, applyContrastToElement } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
+import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 
 const BOOT_ICON_OPTIONS = [
   { value: 'fas fa-shield-halved', label: 'Shield' },
@@ -58,6 +59,9 @@ const LAYER_FAILURE_MODES = [
 ];
 
 export class ItemInboxConfig extends BaseApplication {
+
+  /** GM tool — follows the Admin Panel theme + text size (utils/adminTheme.js). */
+  static ADMIN_THEMED = true;
 
   item = null;
   _activeTab = 'identity';
@@ -139,6 +143,20 @@ export class ItemInboxConfig extends BaseApplication {
     // ─── Network access mode → show/hide conditional sections ───
     this._updateNetworkConditionals();
 
+    // ─── Text size / contrast sliders: readout + live preview on any open viewer ───
+    const wireDisplaySlider = (name, valClass, clamp, preview) => {
+      el.querySelector(`[name="${name}"]`)?.addEventListener('input', (e) => {
+        const pct = clamp(e.target.value);
+        const label = el.querySelector(`.${valClass}`);
+        if (label) label.textContent = `${pct}%`;
+        this._displayPreviewed = true;
+        this._displaySaved = false;
+        preview(pct);
+      });
+    };
+    wireDisplaySlider('textScale', 'ncm-cfg-scale-val', ItemInboxConfig._clampTextScale, (p) => this._previewShardTextScale(p));
+    wireDisplaySlider('contrast', 'ncm-cfg-contrast-val', ItemInboxConfig._clampContrast, (p) => this._previewShardContrast(p));
+
     // ─── Icon mode instant switching ───
     const iconModeSel = el.querySelector('[name="bootIconMode"]');
     if (iconModeSel) {
@@ -149,6 +167,57 @@ export class ItemInboxConfig extends BaseApplication {
         });
       });
     }
+  }
+
+  /** Clamp a per-shard text size to the slider's 80–150% range (NaN/blank → 100). */
+  static _clampTextScale(v) {
+    const n = parseInt(v, 10);
+    if (!Number.isFinite(n)) return 100;
+    return Math.min(150, Math.max(80, n));
+  }
+
+  /** Clamp a per-shard contrast to the slider's 70–140% range (NaN/blank → 100). */
+  static _clampContrast(v) {
+    const n = parseInt(v, 10);
+    if (!Number.isFinite(n)) return 100;
+    return Math.min(140, Math.max(70, n));
+  }
+
+  /** Every open viewer root (.ncm-item-inbox) of THIS shard — the live-preview targets. */
+  _openViewerRoots() {
+    const roots = [];
+    for (const app of foundry.applications.instances.values()) {
+      if (app === this || app.item?.id !== this.item?.id) continue;
+      const root = app.element?.querySelector?.('.ncm-item-inbox');
+      if (root) roots.push(root);
+    }
+    return roots;
+  }
+
+  /**
+   * Push a text-size preview onto every open viewer of this shard by setting
+   * --ncm-shard-text-scale on its .ncm-item-inbox root (the same var the
+   * template stamps from config.textScale). DOM-only — no render, so it's
+   * cheap enough to ride the slider drag.
+   */
+  _previewShardTextScale(pct) {
+    const mult = String(ItemInboxConfig._clampTextScale(pct) / 100);
+    for (const root of this._openViewerRoots()) root.style.setProperty('--ncm-shard-text-scale', mult);
+  }
+
+  /** Same for contrast — the viewer's own _onRender path (applyContrastToElement), run on the live root. */
+  _previewShardContrast(pct) {
+    for (const root of this._openViewerRoots()) applyContrastToElement(root, ItemInboxConfig._clampContrast(pct));
+  }
+
+  /** Closing without saving reverts dragged text-size / contrast previews to the stored values. */
+  async close(options) {
+    if (this._displayPreviewed && !this._displaySaved && this.item) {
+      const cfg = this.dataShardService?.getConfig(this.item) ?? {};
+      this._previewShardTextScale(cfg.textScale);
+      this._previewShardContrast(cfg.contrast);
+    }
+    return super.close(options);
   }
 
   /** Update pipeline node states from current checkbox values */
@@ -345,6 +414,8 @@ export class ItemInboxConfig extends BaseApplication {
 
       // Preset
       presetOptions,
+      textScale: ItemInboxConfig._clampTextScale(config.textScale),
+      contrast: ItemInboxConfig._clampContrast(config.contrast),
 
       // Identity
       shardName: config.shardName || '',
@@ -663,8 +734,11 @@ export class ItemInboxConfig extends BaseApplication {
       notifyContact: checked('notifyContact'),
       notifyContactId: null,
       theme: val('preset', 'blank'),
+      textScale: ItemInboxConfig._clampTextScale(val('textScale')),
+      contrast: ItemInboxConfig._clampContrast(val('contrast')),
       singleMessage: checked('singleMessage'),
     };
+    this._displaySaved = true;
 
     const result = await this.dataShardService.updateConfig(this.item, config);
     if (result.success) {
@@ -826,7 +900,7 @@ export class ItemInboxConfig extends BaseApplication {
 
     let selectedItem = null;
 
-    const dialog = new Dialog({
+    const dialog = adminDialog({
       title: 'Select Key Item',
       content,
       buttons: { cancel: { label: 'Cancel', callback: () => {} } },
@@ -1105,7 +1179,7 @@ export class ItemInboxConfig extends BaseApplication {
     if (!isGM() || !this.item) return;
     const presetKey = this.element.querySelector('[name="preset"]')?.value;
     if (!presetKey || !SHARD_PRESETS[presetKey]) return;
-    const confirm = await Dialog.confirm({
+    const confirm = await adminConfirm({
       title: 'Apply Preset',
       content: `<p>Apply <strong>${SHARD_PRESETS[presetKey].label}</strong>? Overwrites security, boot, and theme.</p>`,
     });
@@ -1171,7 +1245,7 @@ export class ItemInboxConfig extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   static async _onResetDefaults(event, target) {
-    const confirm = await Dialog.confirm({ title: 'Reset', content: '<p>Reset all to defaults? Cannot be undone.</p>' });
+    const confirm = await adminConfirm({ title: 'Reset', content: '<p>Reset all to defaults? Cannot be undone.</p>' });
     if (!confirm) return;
     await this.dataShardService.updateConfig(this.item, foundry.utils.deepClone(DEFAULTS.SHARD_CONFIG));
     this.render();
@@ -1179,7 +1253,7 @@ export class ItemInboxConfig extends BaseApplication {
 
   static async _onRelockShard(event, target) {
     if (!this.item) return;
-    const confirm = await Dialog.confirm({
+    const confirm = await adminConfirm({
       title: 'Relock All Security',
       content: `<p>Resets ALL security for all players. Cannot be undone.</p>`,
     });

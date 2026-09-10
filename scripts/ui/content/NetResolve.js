@@ -2,7 +2,7 @@
  * NetResolve — netrunning Tier C adjudication + the Tier B NET-action card
  * (design doc §5, `hackResolution`).
  * @file scripts/ui/content/NetResolve.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description NCM must never pretend to BE netrunning. When a table sets
  *   `hackResolution: 'gm'` (globally or per-terminal), a gated hack/upload
  *   action does NOT auto-roll — the player's SecurityConsole enters an

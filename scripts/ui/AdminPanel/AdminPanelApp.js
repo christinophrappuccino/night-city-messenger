@@ -1,7 +1,7 @@
 /**
  * AdminPanelApp — Sprint 4: 6-Tab GM Dashboard
  * @file scripts/ui/AdminPanel/AdminPanelApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description GM command center with 7 tabs: Overview, Messages, Contacts,
  *              Networks, Data Shards, Spam, Tools. Condensed header with inline stat
  *              counters, HUD strip, and context-aware footer.
@@ -23,6 +23,9 @@ import { MessagesTab } from './tabs/MessagesTab.js';
 import { OverviewTab } from './tabs/OverviewTab.js';
 
 export class AdminPanelApp extends BaseApplication {
+
+  /** GM tool — follows the Admin Panel theme + text size (utils/adminTheme.js). */
+  static ADMIN_THEMED = true;
 
   // ═══════════════════════════════════════════════════════════
   //  Instance State
@@ -277,6 +280,12 @@ export class AdminPanelApp extends BaseApplication {
       // ── Security tab ──
       securityFilter: AdminPanelApp._onSecurityFilter,
       securityPage: AdminPanelApp._onSecurityPage,
+      securityHeatPage: AdminPanelApp._onSecurityHeatPage,
+      securityPlantPage: AdminPanelApp._onSecurityPlantPage,
+      securityBinPage: AdminPanelApp._onSecurityBinPage,
+      securityNewProgram: AdminPanelApp._onSecurityNewProgram,
+      securityProgramLibrary: AdminPanelApp._onSecurityProgramLibrary,
+      securityGateRemoveGroup: AdminPanelApp._onSecurityGateRemoveGroup,
       securityClearLog: AdminPanelApp._onSecurityClearLog,
       securityFilterActor: AdminPanelApp._onSecurityFilterActor,
       securityFilterObject: AdminPanelApp._onSecurityFilterObject,
@@ -331,6 +340,7 @@ export class AdminPanelApp extends BaseApplication {
 
       // Tools actions
       setAdminTheme: AdminPanelApp._onSetAdminTheme,
+      setAdminTextScale: AdminPanelApp._onSetAdminTextScale,
       openThemeCustomizer: AdminPanelApp._onOpenThemeCustomizer,
       forceRefreshAll: AdminPanelApp._onForceRefreshAll,
       refreshStats: AdminPanelApp._onRefreshStats,
@@ -344,8 +354,7 @@ export class AdminPanelApp extends BaseApplication {
 
       // Danger zone
       purgeMessages: AdminPanelApp._onPurgeMessages,
-      resetModule: AdminPanelApp._onResetModule,
-      rebuildIndex: AdminPanelApp._onRebuildIndex,
+      orphanAudit: AdminPanelApp._onOrphanAudit,
 
       // Legacy
       toggleCompactMode: AdminPanelApp._onToggleCompactMode,
@@ -633,21 +642,13 @@ export class AdminPanelApp extends BaseApplication {
    * (scanlines/neon) regardless of the player's prefs. This is a GM tool.
    * @private
    */
-  _applyAdminTheme() {
-    const el = this.element;
-    if (!el) return;
-    const preset = this.settingsManager?.getAdminTheme?.()?.preset || 'clean-dark';
-    el.dataset.ncmAdminTheme = preset;
-    el.dataset.ncmScanlines = 'false';
-    el.dataset.ncmNeon = 'false';
-  }
+  // (Implementation lives in BaseApplication._applyAdminTheme — this panel is
+  //  just one of the ADMIN_THEMED windows; see utils/adminTheme.js.)
 
   _onRender(context, options) {
+    // BaseApplication applies the admin theme (preset + text size) after the
+    // atmosphere pass because ADMIN_THEMED is true on this class.
     super._onRender(context, options);
-
-    // Apply the admin-only theme AFTER super (which runs _applyAtmosphere with
-    // the player prefs) so our overrides win.
-    this._applyAdminTheme();
 
     // Restore scroll position after render
     requestAnimationFrame(() => {
@@ -1140,6 +1141,12 @@ export class AdminPanelApp extends BaseApplication {
   static _onSecurityGateAddItem(event, target) { this.tabs.security.onGateAddItem(event, target); }
   static _onSecurityGateAddRole(event, target) { this.tabs.security.onGateAddRole(event, target); }
   static _onSecurityGateRemoveItem(event, target) { this.tabs.security.onGateRemoveItem(event, target); }
+  static _onSecurityHeatPage(event, target) { this.tabs.security.onHeatPage(event, target); }
+  static _onSecurityPlantPage(event, target) { this.tabs.security.onPlantPage(event, target); }
+  static _onSecurityBinPage(event, target) { this.tabs.security.onBinPage(event, target); }
+  static _onSecurityNewProgram(event, target) { this.tabs.security.onNewProgram(event, target); }
+  static _onSecurityProgramLibrary(event, target) { this.tabs.security.onProgramLibrary(event, target); }
+  static _onSecurityGateRemoveGroup(event, target) { this.tabs.security.onGateRemoveGroup(event, target); }
 
   static _onOpenShardItem(event, target) { this.tabs.shards.onOpenShardItem(event, target); }
   static async _onForceDecrypt(event, target) { return this.tabs.shards.onForceDecrypt(event, target); }
@@ -1196,6 +1203,7 @@ export class AdminPanelApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   static async _onSetAdminTheme(event, target) { return this.tabs.tools.onSetAdminTheme(event, target); }
+  static async _onSetAdminTextScale(event, target) { return this.tabs.tools.onSetAdminTextScale(event, target); }
   static _onOpenThemeCustomizer(event, target) { this.tabs.tools.onOpenThemeCustomizer(event, target); }
   static async _onForceRefreshAll(event, target) { return this.tabs.tools.onForceRefreshAll(event, target); }
   static _onRefreshStats(event, target) { this.tabs.tools.onRefreshStats(event, target); }
@@ -1207,8 +1215,7 @@ export class AdminPanelApp extends BaseApplication {
   static async _onReorganizeJournals(event, target) { return this.tabs.tools.onReorganizeJournals(event, target); }
   static async _onImportNCMMacros(event, target) { return this.tabs.tools.onImportMacros(event, target); }
   static async _onPurgeMessages(event, target) { return this.tabs.tools.onPurgeMessages(event, target); }
-  static async _onResetModule(event, target) { return this.tabs.tools.onResetModule(event, target); }
-  static async _onRebuildIndex(event, target) { return this.tabs.tools.onRebuildIndex(event, target); }
+  static async _onOrphanAudit(event, target) { return this.tabs.tools.onOrphanAudit(event, target); }
 
   // ─── Legacy Handlers ───
 

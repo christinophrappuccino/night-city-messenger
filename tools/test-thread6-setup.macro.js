@@ -50,7 +50,7 @@
 
   // ── 2) A Black ICE actor for deployICE (reuse one if the world has it) ──
   let _ice = game.actors.find(a =>
-    a.type === 'blackIce' || a.getFlag?.('cyberpunkred-messenger', 'isBlackICE')
+    a.type === 'blackIce' || a.getFlag?.('night-city-messenger', 'isBlackICE')
     || /black ice|hellhound/i.test(a.name || ''));
   if (!_ice) {
     const _atype = (game.documentTypes.Actor || []).includes('blackIce')
@@ -60,7 +60,7 @@
       const made = await Actor.create({
         name: 'Hellhound (TEST ICE)', type: _atype,
         img: 'icons/creatures/mammals/dog-wolf-attacking-red.webp',
-        flags: { 'cyberpunkred-messenger': { isBlackICE: true } },
+        flags: { 'night-city-messenger': { isBlackICE: true } },
       });
       // atk drives the bite (formula "<atk> + 1d10"); absent → 0 + 1d10, still fine.
       try { await made?.update({ 'system.stats.atk': 12 }); } catch (e) { /* schema differs — 0+1d10 is fine */ }

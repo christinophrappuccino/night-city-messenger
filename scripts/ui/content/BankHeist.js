@@ -1,7 +1,7 @@
 /**
  * BankHeist — the bespoke siphon FUI (design: "a hacker pulling funds from a bank")
  * @file scripts/ui/content/BankHeist.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Replaces the generic SecurityConsole for the banking SIPHON: one
  *   cohesive cyberpunk heist sequence — pick the transfer amount, JACK IN (rolls
  *   the security check via SkillService.performCheck, posts the chat card), then

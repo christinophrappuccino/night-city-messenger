@@ -9,43 +9,49 @@
      data-terminal-state="{{state}}">
 
   {{#if (eq state "boot")}}
-    {{> "modules/cyberpunkred-messenger/templates/terminal/terminal-boot.hbs"}}
+    {{> "modules/night-city-messenger/templates/terminal/terminal-boot.hbs"}}
 
   {{else if (eq state "gate")}}
-    {{> "modules/cyberpunkred-messenger/templates/terminal/terminal-network-gate.hbs"}}
+    {{> "modules/night-city-messenger/templates/terminal/terminal-network-gate.hbs"}}
 
   {{else if (eq state "login")}}
-    {{> "modules/cyberpunkred-messenger/templates/terminal/terminal-login.hbs"}}
+    {{> "modules/night-city-messenger/templates/terminal/terminal-login.hbs"}}
 
   {{else if (eq state "manual")}}
-    {{> "modules/cyberpunkred-messenger/templates/terminal/terminal-manual-login.hbs"}}
+    {{> "modules/night-city-messenger/templates/terminal/terminal-manual-login.hbs"}}
 
   {{else if (eq state "granted")}}
-    {{!-- ACCESS GRANTED — the operator's access credential drops in and gets
-          stamped VALIDATED (an official keycard being authorized). --}}
+    {{!-- ACCESS GRANTED — the operator's keycard MATERIALISES, a reader line
+          sweeps it once (fields type in, a hairline fills cyan→green), then it
+          verifies (green pulse + badge on the portrait) and ACCESS GRANTED
+          resolves. Slicker 3-beat sequence (~2.3s). --}}
     <div class="ncm-term__granted">
       <div class="ncm-term__badge">
+        <span class="ncm-term__badge-brk ncm-term__badge-brk--tl"></span>
+        <span class="ncm-term__badge-brk ncm-term__badge-brk--tr"></span>
+        <span class="ncm-term__badge-brk ncm-term__badge-brk--bl"></span>
+        <span class="ncm-term__badge-brk ncm-term__badge-brk--br"></span>
         <div class="ncm-term__badge-top">
           <span class="ncm-term__badge-org"><i class="fas fa-id-card"></i> {{badge.org}}</span>
           <span class="ncm-term__badge-cls">{{badge.classification}}</span>
         </div>
         <div class="ncm-term__badge-body">
-          <div class="ncm-term__badge-photo">{{#if account.portrait}}<img src="{{account.portrait}}" alt="">{{else}}{{account.initials}}{{/if}}</div>
+          <div class="ncm-term__badge-photo">{{#if account.portrait}}<img src="{{account.portrait}}" alt="">{{else}}{{account.initials}}{{/if}}<i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
           <div class="ncm-term__badge-fields">
             <div class="ncm-term__badge-nm">{{account.displayName}}</div>
             <div class="ncm-term__badge-role">{{account.role}}</div>
-            <div class="ncm-term__badge-row" style="--r:0"><span class="ncm-term__badge-lbl">ID</span><b class="ncm-term__badge-val">{{badge.idLabel}}</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
-            <div class="ncm-term__badge-row" style="--r:1"><span class="ncm-term__badge-lbl">CLEARANCE</span><b class="ncm-term__badge-val">{{badge.clearance}}</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
-            {{#if badge.location}}<div class="ncm-term__badge-row" style="--r:2"><span class="ncm-term__badge-lbl">LOCATION</span><b class="ncm-term__badge-val">{{badge.location}}</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>{{/if}}
-            <div class="ncm-term__badge-row" style="--r:{{#if badge.location}}3{{else}}2{{/if}}"><span class="ncm-term__badge-lbl">SESSION</span><b class="ncm-term__badge-val">ENCRYPTED</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
+            <div class="ncm-term__badge-row" style="--r:0"><span class="ncm-term__badge-lbl">ID</span><b class="ncm-term__badge-val">{{badge.idLabel}}</b></div>
+            <div class="ncm-term__badge-row" style="--r:1"><span class="ncm-term__badge-lbl">CLEARANCE</span><b class="ncm-term__badge-val">{{badge.clearance}}</b></div>
+            {{#if badge.location}}<div class="ncm-term__badge-row" style="--r:2"><span class="ncm-term__badge-lbl">LOCATION</span><b class="ncm-term__badge-val">{{badge.location}}</b></div>{{/if}}
+            <div class="ncm-term__badge-row" style="--r:{{#if badge.location}}3{{else}}2{{/if}}"><span class="ncm-term__badge-lbl">SESSION</span><b class="ncm-term__badge-val">ENCRYPTED</b></div>
           </div>
         </div>
         <div class="ncm-term__badge-last"><i class="fas fa-clock-rotate-left"></i> LAST ACCESS · {{badge.lastLogin}}</div>
-        <div class="ncm-term__badge-bar"><span class="ncm-term__badge-bar-fill"></span><span class="ncm-term__badge-bar-lbl"><b class="ncm-term__badge-bar-v1">AUTHENTICATING</b><b class="ncm-term__badge-bar-v2">VERIFIED</b></span></div>
-        <div class="ncm-term__badge-scan"></div>
-        <div class="ncm-term__badge-chip"><i class="fas fa-shield-halved"></i> VALIDATED</div>
+        <div class="ncm-term__badge-reader"></div>
+        <div class="ncm-term__badge-prog"><span class="ncm-term__badge-prog-fill"></span></div>
         <div class="ncm-term__badge-granted">ACCESS GRANTED</div>
         {{#if welcomeText}}<div class="ncm-term__badge-welcome">{{welcomeText}}</div>{{/if}}
+        {{#if newSince}}<div class="ncm-term__badge-newsince"><i class="fas fa-envelope"></i> {{newSince}} new message{{#if (neq newSince 1)}}s{{/if}} since last login</div>{{/if}}
       </div>
     </div>
 
@@ -55,7 +61,7 @@
       <span class="ncm-term__hud-seg"><i class="fas fa-plug-circle-check ncm-term__hud-on"></i> <span class="ncm-term__hud-on">logged in</span></span>
       <span class="ncm-term__hud-sep">·</span>
       {{#if uplink.show}}
-        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink}}
+        {{> "modules/night-city-messenger/templates/terminal/partials/uplink.hbs" uplink}}
       {{else}}
         <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> {{uplink.name}}</span>
       {{/if}}
@@ -290,7 +296,7 @@
           {{#if selectedMessage.isTypedContent}}
             <div class="ncm-term__body ncm-term__body--typed">
               {{#with selectedMessage.content}}
-                {{> "modules/cyberpunkred-messenger/templates/content/content-body.hbs"}}
+                {{> "modules/night-city-messenger/templates/content/content-body.hbs"}}
               {{/with}}
             </div>
           {{else}}

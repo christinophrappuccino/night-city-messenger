@@ -1,7 +1,7 @@
 /**
  * DeadZoneWarningApp
  * @file scripts/ui/NetworkManagement/DeadZoneWarningApp.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Full-screen alert overlay displayed when a player's scene
  *              changes to a dead zone. Shows animated icon, effect tags,
  *              and queue notice. Auto-dismisses after 5 seconds or on click.

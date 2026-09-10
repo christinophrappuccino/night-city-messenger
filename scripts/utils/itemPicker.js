@@ -1,10 +1,12 @@
 /**
  * Item Picker Utility
  * @file scripts/utils/itemPicker.js
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description Shared dialog for selecting items from inventory, world items,
  *   and compendiums. Features search, type filtering, and source tabs.
  */
+
+import { adminDialog } from './adminTheme.js';
 
 /**
  * Show an item picker for a player's actor inventory.
@@ -69,6 +71,7 @@ export async function showWorldItemPicker(options = {}) {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return _showPicker(allItems, {
+    admin: true, // GM tool → admin theme (see utils/adminTheme.js)
     title: options.title || 'Select Key Item',
     hint: null,
     emptyMessage: 'No items found.',
@@ -168,7 +171,7 @@ function _showPicker(items, config) {
       <div class="ncm-itempick__count">${items.length} items</div>
     `;
 
-    const dialog = new Dialog({
+    const dialog = (config.admin ? adminDialog : (d, o) => new Dialog(d, o))({
       title: config.title,
       content,
       buttons: {

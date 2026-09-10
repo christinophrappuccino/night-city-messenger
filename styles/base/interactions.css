@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
  * Night City Messenger — Micro-Interactions (Non-Motion)
  * @file styles/base/interactions.css
- * @module cyberpunkred-messenger
+ * @module night-city-messenger
  * @description State changes on hover/focus/click that make the UI feel
  *   responsive and alive. No temporal animations (those are Sprint 4).
  *   All transitions use CSS transition properties gated by animation level.
