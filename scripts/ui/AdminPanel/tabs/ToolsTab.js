@@ -13,6 +13,7 @@ import { log, formatCyberDate } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
+import { gatherResetPlan, runFactoryReset } from '../../../core/FactoryReset.js';
 
 export class ToolsTab extends BaseTab {
 
@@ -927,6 +928,88 @@ export class ToolsTab extends BaseTab {
     } catch (error) {
       console.error(`${MODULE_ID} | Orphan cleanup failed:`, error);
       ui.notifications.error('NCM | Orphan cleanup failed. Check console.');
+    }
+  }
+
+  /**
+   * Factory Reset — Danger Zone. Shows a census of everything the reset will
+   * touch, requires the GM to type RESET, then runs {@link runFactoryReset}
+   * (which reloads every client). The "reset world settings" checkbox lets a
+   * GM wipe the DATA but keep networks / the master directory / templates.
+   */
+  async onFactoryReset(event, target) {
+    if (!game.user?.isGM) return;
+    const plan = gatherResetPlan();
+    const li = (s) => `<li>${s}</li>`;
+    const rows = [
+      li(`<b>${plan.journals}</b> NCM journal(s) — inboxes, NPC mail, shard &amp; terminal journals — and the <b>${plan.folders}</b>-folder "Night City Messenger" tree`),
+      li(`<b>${plan.pins}</b> terminal scene pin(s)`),
+      li(`<b>${plan.managedMacros}</b> module-installed macro(s) (your own macros are kept)`),
+      ...plan.flagged.map(f => li(`<b>${f.count}</b> NCM flag block(s) on <code>${f.label}</code> — contacts, emails, shard/terminal conversions, scene networks…`)),
+    ];
+    const content = `
+      <div style="max-height:360px; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; gap:8px;">
+        <p style="margin:0; color:var(--ncm-danger); font-weight:700;">
+          <i class="fas fa-triangle-exclamation"></i> This returns the world to "NCM was never installed". It cannot be undone — back up the world first.
+        </p>
+        <ul style="margin:0 0 0 16px; padding:0;">${rows.join('')}</ul>
+        <label class="ncm-fr-opt" style="display:flex; align-items:center; gap:8px; text-transform:none; font-weight:400; cursor:pointer;">
+          <input type="checkbox" name="resetSettings" checked>
+          <span>Also reset <b>${plan.settings}</b> world setting(s) to defaults — networks, master contact directory, spam / entry / theme templates, security log &amp; heat, module preferences. Untick to wipe the data but keep your configuration.</span>
+        </label>
+        <p style="margin:0; font-size:11px; color:var(--ncm-text-secondary);">Compendium packs and each player's own client preferences (theme, sound) are never touched. Every client reloads when it finishes.</p>
+        <label style="display:flex; flex-direction:column; gap:4px; text-transform:none; font-weight:400;">
+          <span>Type <b>RESET</b> to enable the button:</span>
+          <input type="text" name="confirmWord" autocomplete="off" spellcheck="false" style="font-family:var(--ncm-font-mono); letter-spacing:.1em;">
+        </label>
+      </div>`;
+
+    let go = false;
+    let resetSettings = true;
+    await new Promise((resolve) => {
+      const dlg = adminDialog({
+        title: 'Factory Reset — Night City Messenger',
+        content,
+        buttons: {
+          reset: {
+            icon: '<i class="fas fa-bomb"></i>',
+            label: 'Factory Reset',
+            callback: (html) => {
+              const word = (html.find('[name="confirmWord"]').val() || '').trim().toUpperCase();
+              if (word !== 'RESET') { ui.notifications.warn('NCM | Type RESET to confirm.'); return; }
+              resetSettings = html.find('[name="resetSettings"]').is(':checked');
+              go = true;
+            },
+          },
+          cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+        },
+        default: 'cancel',
+        render: (html) => {
+          // The button starts disabled and only arms once the word is typed —
+          // a click-through on a reset dialog must be impossible.
+          const btn = html.find('button[data-button="reset"]');
+          btn.prop('disabled', true);
+          html.find('[name="confirmWord"]').on('input', (e) => {
+            btn.prop('disabled', (e.currentTarget.value || '').trim().toUpperCase() !== 'RESET');
+          });
+        },
+        close: () => resolve(),
+      }, { width: 520, classes: ['ncm-time-config-dialog'] });
+      dlg.render(true);
+    });
+    if (!go) return;
+
+    try {
+      ui.notifications.info('NCM | Factory reset running…');
+      const r = await runFactoryReset({ resetSettings, reload: true });
+      ui.notifications.info(
+        `NCM | Factory reset done — ${r.journals} journal(s), ${r.pins} pin(s), ${r.macros} macro(s), `
+        + `${r.stripped} flag block(s), ${r.settings} setting(s). Reloading.`,
+        { permanent: true }
+      );
+    } catch (error) {
+      console.error(`${MODULE_ID} | Factory reset failed:`, error);
+      ui.notifications.error(`NCM | Factory reset failed: ${error?.message || error}. Check the console; the world may be partly reset.`, { permanent: true });
     }
   }
 

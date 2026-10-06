@@ -108,8 +108,25 @@ const HEX = {
   '#aaaacc': '--ncm-text-secondary',
   '#d0d0dc': '--ncm-text-primary',
 };
-/** `color: #fff` in a themed sheet means "the primary text colour". Only `color:` — white backgrounds/borders stay. */
-const WHITE_TEXT = /(\bcolor\s*:\s*)(#fff\b|#ffffff\b|white\b)/gi;
+/**
+ * `color: #fff` in a themed sheet means "the primary text colour". Only `color:` —
+ * white backgrounds/borders stay.
+ *
+ * NEAR-white counts too. The first pass matched only pure white, so literals like
+ * `#f0f0f5` sailed through — and a near-white that never flips is just as unreadable
+ * on the light preset as a pure white one. That is how the message SUBJECT came out
+ * white-on-white under GM view (measured 1.05:1). Anything whose channels are all
+ * >= 0xE0 is text-white for our purposes.
+ */
+const WHITE_TEXT = /(\bcolor\s*:\s*)(#[0-9a-f]{3}\b|#[0-9a-f]{6}\b|white\b)/gi;
+/** Is this literal near enough to white that, as TEXT, it must follow the theme? */
+function isTextWhite(lit) {
+  if (/^white$/i.test(lit)) return true;
+  let h = lit.slice(1);
+  if (h.length === 3) h = [...h].map((c) => c + c).join('');
+  if (h.length !== 6) return false;
+  return [0, 2, 4].every((k) => parseInt(h.slice(k, k + 2), 16) >= 0xe0);
+}
 /** Colours that mean "border" when they appear in a border declaration. */
 const BORDER_OVERRIDES = { '#5a5a7a': '--ncm-border-active', '#7a7a98': '--ncm-border-active' };
 const RGB = {
@@ -193,7 +210,11 @@ function sweepDecls(text, stats) {
     return pct >= 100 ? `var(${v})` : `color-mix(in srgb, var(${v}) ${pct}%, transparent)`;
   });
   for (const [re, to] of FONTS) t = t.replace(re, () => { stats.fonts++; return to; });
-  t = t.replace(WHITE_TEXT, (m, head) => { stats.hex++; return `${head}var(--ncm-text-primary)`; });
+  t = t.replace(WHITE_TEXT, (m, head, lit) => {
+    if (!isTextWhite(lit)) return m;
+    stats.hex++;
+    return `${head}var(--ncm-text-primary)`;
+  });
   return t.replace(/@@G(\d+)@@/g, (_, i) => guards[+i]);
 }
 
@@ -238,7 +259,8 @@ function remaining(src) {
   const t = src.replace(KEEP_DECL, '').replace(VAR_FALLBACK, '');
   const hex = [...t.matchAll(hexRe)].filter(m => HEX[m[0].toLowerCase()]).map(m => m[0].toLowerCase());
   const rgb = [...t.matchAll(rgbaRe)].filter(m => RGB[`${m[1]},${m[2]},${m[3]}`]).map(m => m[0]);
-  return { hex, rgb };
+  const white = [...t.matchAll(WHITE_TEXT)].filter(m => isTextWhite(m[2])).map(m => m[2].toLowerCase());
+  return { hex, rgb, white };
 }
 
 let exit = 0;
@@ -246,8 +268,8 @@ for (const f of files) {
   const src = fs.readFileSync(f, 'utf8');
   if (check) {
     const r = remaining(src);
-    const n = r.hex.length + r.rgb.length;
-    console.log(`${n ? 'REMAINING' : 'clean    '} ${f}: ${r.hex.length} hex, ${r.rgb.length} rgba${n ? '  e.g. ' + [...r.hex, ...r.rgb].slice(0, 4).join(' ') : ''}`);
+    const n = r.hex.length + r.rgb.length + r.white.length;
+    console.log(`${n ? 'REMAINING' : 'clean    '} ${f}: ${r.hex.length} hex, ${r.rgb.length} rgba, ${r.white.length} text-white${n ? '  e.g. ' + [...r.hex, ...r.rgb, ...r.white].slice(0, 4).join(' ') : ''}`);
     if (n) exit = 1;
     continue;
   }

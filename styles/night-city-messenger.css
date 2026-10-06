@@ -29,7 +29,6 @@
 
 /* Themes — preset color overrides */
 @import 'themes/presets.css';
-@import 'themes/shard-presets.css';
 @import 'themes/admin-theme.css';
 
 /* Components — feature-specific UI styles */
@@ -57,10 +56,13 @@
 @import 'components/net-adjudicator.css';
 @import 'components/terminal.css';
 @import 'components/malware-workshop.css';
+/* The Shard Encoder borrows the Workshop's chrome, so it MUST come after it. */
+@import 'components/shard-encoder.css';
+/* The icon builder is a modal INSIDE the Encoder, so it comes after it. */
+@import 'components/shard-icon-builder.css';
 @import 'components/program-deck.css';
 @import 'components/shard-sheet-badge.css';
 @import 'components/shard-config.css';
-@import 'components/shard-conversion.css';
 @import 'components/cyber-time-picker.css';
 @import 'components/security-overlays.css';
 @import 'components/activity-log.css';

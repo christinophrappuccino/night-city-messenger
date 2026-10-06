@@ -16,7 +16,7 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
-import { log, formatCyberDate } from '../../../utils/helpers.js';
+import { log, formatCyberDate, getPlayerCharacters } from '../../../utils/helpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { DateRangePicker } from '../../components/DateRangePicker.js';
 import { BaseTab } from '../BaseTab.js';
@@ -545,10 +545,9 @@ export class MessagesTab extends BaseTab {
     const entries = [];
     const seenIds = new Set();
 
-    // ── Players ──
-    for (const user of game.users ?? []) {
-      if (user.isGM || !user.character) continue;
-      const actor = user.character;
+    // ── Players (assigned characters first, then other player-owned actors) ──
+    for (const pa of getPlayerCharacters()) {
+      const actor = pa.actor;
       if (seenIds.has(actor.id)) continue;
       seenIds.add(actor.id);
 
@@ -1284,6 +1283,7 @@ export class MessagesTab extends BaseTab {
           html.find('.ncm-vi-row').on('click', (e) => {
             const id = e.currentTarget.dataset.inboxId;
             if (!id) return;
+            if (!this._warnIfOrphanInbox(id)) return;
             game.nightcity?.openInbox?.(id);
             dialog.close();
           });
@@ -1468,7 +1468,26 @@ export class MessagesTab extends BaseTab {
     const messageId = target.closest('[data-message-id]')?.dataset.messageId
                     || target.dataset.messageId;
     if (!inboxOwnerId) return;
+    if (!this._warnIfOrphanInbox(inboxOwnerId)) return;
     game.nightcity?.openInbox?.(inboxOwnerId, messageId || undefined);
+  }
+
+  /**
+   * An inbox journal whose owner (actor or master contact) no longer exists
+   * can't be opened — `openInbox` needs the owner to resolve the viewer, and
+   * the only feedback used to be a generic "Actor or contact not found". Say
+   * what happened and where the cleanup lives.
+   * @param {string} ownerId
+   * @returns {boolean} true when the owner exists
+   */
+  _warnIfOrphanInbox(ownerId) {
+    if (game.actors?.get(ownerId)) return true;
+    if (this.masterContactService?.getContact(ownerId)) return true;
+    ui.notifications.warn(
+      'NCM | This inbox belongs to an actor or contact that no longer exists. '
+      + 'Tools → Orphan Audit lists it and can remove it.'
+    );
+    return false;
   }
 
   onReplyAs(event, target) {
@@ -1654,11 +1673,8 @@ export class MessagesTab extends BaseTab {
 
   async onBroadcast(event, target) {
     // Open a dialog to compose a broadcast message to all player inboxes
-    const playerActors = [];
-    for (const user of game.users) {
-      if (user.isGM || !user.character) continue;
-      playerActors.push({ id: user.character.id, name: user.character.name });
-    }
+    // (assigned characters first, then other player-owned actors).
+    const playerActors = getPlayerCharacters().map(pa => ({ id: pa.actorId, name: pa.actorName }));
 
     if (!playerActors.length) {
       ui.notifications.warn('NCM | No player-owned characters found.');
@@ -1688,20 +1704,30 @@ export class MessagesTab extends BaseTab {
             if (!body) return;
 
             let sent = 0;
+            let firstError = null;
             for (const pa of playerActors) {
               try {
-                await this.messageService?.sendMessage({
+                // `to` is left for the service to resolve (the actor's NET
+                // address) — a bare character name isn't an address.
+                const result = await this.messageService?.sendMessage({
                   from,
-                  to: pa.name,
                   toActorId: pa.id,
                   subject,
                   body,
                   isBroadcast: true,
                 });
-                sent++;
-              } catch { /* continue */ }
+                if (result?.success) sent++;
+                else firstError = firstError || result?.error || 'unknown error';
+              } catch (err) {
+                firstError = firstError || err?.message || 'unknown error';
+              }
             }
-            ui.notifications.info(`NCM | Broadcast sent to ${sent} player inbox${sent !== 1 ? 'es' : ''}.`);
+            if (sent > 0) {
+              ui.notifications.info(`NCM | Broadcast sent to ${sent} of ${playerActors.length} player inbox${playerActors.length !== 1 ? 'es' : ''}.`);
+            }
+            if (firstError) {
+              ui.notifications.warn(`NCM | Broadcast failed for ${playerActors.length - sent} recipient${playerActors.length - sent !== 1 ? 's' : ''}: ${firstError}`);
+            }
             this.render(true);
           },
         },
@@ -1728,28 +1754,43 @@ export class MessagesTab extends BaseTab {
     if (!confirmed) return;
 
     try {
+      // The repository path resolves the inbox by OWNER (actor / master
+      // contact). It returns {success:false} — without throwing — when that
+      // owner no longer exists (orphaned inbox) or the page isn't found, and
+      // the old code toasted "permanently deleted" regardless (2026-09 tester:
+      // "click Yes, but message not deleted"). Check the result and fall back
+      // to a direct journal scan keyed on the page flag.
+      let deleted = false;
+      let reason = null;
       if (inboxOwnerId) {
-        await this.messageRepository?.hardDeleteMessage(inboxOwnerId, messageId);
-      } else {
-        // Fallback: scan all inboxes for this message
+        const result = await this.messageRepository?.hardDeleteMessage(inboxOwnerId, messageId);
+        deleted = !!result?.success;
+        reason = result?.error || null;
+        if (!deleted) log.warn(`Hard delete via owner ${inboxOwnerId} failed (${reason}) — scanning journals`);
+      }
+      if (!deleted) {
         for (const journal of game.journal ?? []) {
           if (!MessageRepository.identifyInbox(journal)) continue;
-          const page = journal.pages?.find(p => {
-            const flags = p.flags?.['night-city-messenger'];
-            return flags?.messageId === messageId;
-          });
+          const page = journal.pages?.find(p => p.flags?.[MODULE_ID]?.messageId === messageId);
           if (page) {
-            await page.delete();
+            await journal.deleteEmbeddedDocuments('JournalEntryPage', [page.id]);
+            deleted = true;
             break;
           }
         }
       }
+      if (!deleted) {
+        ui.notifications.error(`NCM | Message not deleted — ${reason || 'no inbox page carries that message id'}.`);
+        this.render(true);
+        return;
+      }
+      this.messageRepository?.clearCache?.();
       ui.notifications.info('NCM | Message permanently deleted.');
       this.app._saveScroll();
       this.render(true);
     } catch (err) {
       console.error(`${MODULE_ID} | Hard delete failed:`, err);
-      ui.notifications.error('NCM | Failed to delete message.');
+      ui.notifications.error(`NCM | Failed to delete message: ${err?.message || err}`);
     }
   }
 }

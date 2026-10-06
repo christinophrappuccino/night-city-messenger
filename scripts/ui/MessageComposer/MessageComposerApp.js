@@ -762,6 +762,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     const actor = game.actors.get(actorId);
     let name, email;
+    let contactId = null;
 
     if (actor) {
       email = this.contactRepo?.getActorEmail(actorId) || '';
@@ -774,6 +775,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       if (mc) {
         name = mc.name;
         email = mc.email || '';
+        contactId = mc.id;
       } else {
         // Last resort — check if we have info from the original message
         return; // Truly unknown, skip
@@ -809,6 +811,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     this.recipients.push({
       actorId,
+      contactId,
       name,
       email,
       avatarColor,
@@ -825,10 +828,43 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
   }
 
-  _removeRecipient(actorId) {
-    this.recipients = this.recipients.filter(r =>
-      r.isRaw ? r.email !== actorId : r.actorId !== actorId
-    );
+  /**
+   * Add a contact-only recipient — one of the player's contacts (or a master
+   * directory entry) that has NO linked actor. Addressed by email, carrying the
+   * master id when known. Before this, the To search only surfaced contacts
+   * with an actor link, so a shared NPC contact without an actor could only be
+   * reached by typing its address as a "raw" recipient.
+   * @param {{contactId?: string|null, name: string, email: string}} r
+   */
+  _addContactRecipient(r) {
+    const email = (r?.email || '').trim();
+    if (!email) return;
+    if (this.recipients.find(x => x.email === email)) return;
+    const name = r.name || email;
+    this.recipients.push({
+      actorId: null,
+      contactId: r.contactId || null,
+      name,
+      email,
+      avatarColor: getAvatarColor(name),
+      initials: getInitials(name),
+      mismatch: false,
+      mismatchTooltip: '',
+      unreachable: false,
+      locked: false,
+      isRaw: false,
+    });
+    if (this._errors.to) delete this._errors.to;
+  }
+
+  /** The identity a recipient chip is removed by: actor id → master id → email. */
+  static recipientKey(r) {
+    return r?.actorId || r?.contactId || r?.email || '';
+  }
+
+  _removeRecipient(key) {
+    if (!key) return;
+    this.recipients = this.recipients.filter(r => MessageComposerApp.recipientKey(r) !== key);
   }
 
   _addRawRecipient(rawAddress) {
@@ -882,7 +918,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         // Remove last chip
         const last = this.recipients[this.recipients.length - 1];
         if (!last.locked) {
-          this._removeRecipient(last.actorId);
+          this._removeRecipient(MessageComposerApp.recipientKey(last));
           this.render(true);
         }
       }
@@ -906,7 +942,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     const directory = this.contactRepo?.getGlobalActorDirectory() || [];
     const q = query.toLowerCase();
-    const existingIds = new Set(this.recipients.map(r => r.actorId));
+    const existingIds = new Set(this.recipients.map(r => r.actorId).filter(Boolean));
+    const existingEmails = new Set(this.recipients.map(r => (r.email || '').toLowerCase()).filter(Boolean));
     const reachableIds = this.networkService?.getReachableNetworkIds() || [];
 
     let results = directory.filter(a =>
@@ -941,11 +978,24 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           if (!existingIds.has(contact.actorId) && !results.find(r => r.actorId === contact.actorId)) {
             results.push({
               actorId: contact.actorId,
+              contactId: contact.masterContactId || null,
               name: contact.name,
               email: contact.email,
               img: contact.customImg || null,
             });
           }
+        } else if (contact.email) {
+          // Contact-only entry (no linked actor) — addressable by email.
+          const emailLc = contact.email.toLowerCase();
+          if (existingEmails.has(emailLc)) continue;
+          if (results.find(r => (r.email || '').toLowerCase() === emailLc)) continue;
+          results.push({
+            actorId: null,
+            contactId: contact.masterContactId || null,
+            name: contact.name,
+            email: contact.email,
+            img: contact.customImg || null,
+          });
         }
       }
     }
@@ -996,7 +1046,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     const items = this._searchResults.map((r, i) => `
       <div class="ncm-autocomplete-item ${i === this._selectedResultIndex ? 'ncm-autocomplete-item--selected' : ''} ${r.greyed ? 'ncm-autocomplete-item--greyed' : ''}"
-           data-index="${i}" data-actor-id="${r.actorId}">
+           data-index="${i}" data-actor-id="${r.actorId || ''}">
         <div class="ncm-autocomplete__avatar" style="color: ${r.avatarColor}; border-color: ${r.avatarColor}30;">${r.initials}</div>
         <div class="ncm-autocomplete__info">
           <div class="ncm-autocomplete__name">${r.name}</div>
@@ -1046,7 +1096,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const result = this._searchResults[index];
     if (!result || result.greyed) return;
 
-    this._addRecipient(result.actorId);
+    if (result.actorId) this._addRecipient(result.actorId);
+    else this._addContactRecipient(result);
     this._closeAutocomplete();
     this.render(true);
   }
@@ -1415,16 +1466,25 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Build recipient — handle actor, contact, and raw address recipients
       const actorRecipients = this.recipients.filter(r => r.actorId);
       const contactRecipients = this.recipients.filter(r => !r.actorId && r.contactId);
-      const rawRecipients = this.recipients.filter(r => r.isRaw);
+      // Raw addresses AND contact-only recipients with no master id — both are
+      // reached purely by email.
+      const rawRecipients = this.recipients.filter(r => !r.actorId && !r.contactId && r.email && !r.isAnonTarget);
       const toActorId = actorRecipients.length === 1
         ? actorRecipients[0].actorId
         : actorRecipients.length > 1 ? actorRecipients.map(r => r.actorId) : null;
+
+      // A sole actor-linked recipient also carries its address: when the
+      // player can't see that actor, the service resolves the recipient
+      // through the master directory / this address instead of failing.
+      const soleActorEmail = (this.recipients.length === 1 && actorRecipients.length === 1)
+        ? (actorRecipients[0].email || undefined)
+        : undefined;
 
       const messageData = {
         toActorId: toActorId || null,
         toContactId: contactRecipients.length > 0 ? contactRecipients[0].contactId : undefined,
         to: rawRecipients.length > 0 ? rawRecipients[0].email
-          : (contactRecipients.length > 0 ? contactRecipients[0].email : undefined),
+          : (contactRecipients.length > 0 ? contactRecipients[0].email : soleActorEmail),
         fromActorId: this.fromActorId || null,
         fromContactId: this.fromContact?.id || null,
         from: this.fromContact?.email || undefined,

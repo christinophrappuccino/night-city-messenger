@@ -107,7 +107,27 @@ export class MessageService {
             }
           }
 
-          if (!toActor && !toContact) {
+          // Actor-linked recipient whose actor THIS client can't see. Players
+          // only receive actors they have permission on, so a shared contact
+          // that links a GM-owned NPC actor (Admin → Contacts → Import Actor →
+          // Share) resolves to nothing here and the send died with "Recipient
+          // not found" (2026-09 tester). The master directory is a world
+          // setting every client reads — resolve through it, and otherwise
+          // trust the player's own actor link (the inbox is keyed by that
+          // actor id; the verification gate below still applies).
+          let actorLinkOnly = false;
+          if (!toActor && !toContact && data.toActorId && !Array.isArray(data.toActorId)) {
+            toContact = game.nightcity?.masterContactService?.getByActorId?.(data.toActorId) || null;
+            if (toContact) {
+              data.toContactId = toContact.id;
+              recipientInboxId = data.toActorId;
+            } else if (data.to) {
+              actorLinkOnly = true;
+              recipientInboxId = data.toActorId;
+            }
+          }
+
+          if (!toActor && !toContact && !actorLinkOnly) {
             return { success: false, error: 'Recipient not found — no matching actor or contact.' };
           }
         }

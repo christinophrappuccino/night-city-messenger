@@ -1189,8 +1189,13 @@ export class NetworksTab extends BaseTab {
       ? 'ALL NETWORKS'
       : (this.networkService?.getNetwork(networkValue)?.name ?? networkValue);
 
-    // Create styled chat card whispered to all active non-GM users
-    const whisperTargets = game.users.filter(u => u.active && !u.isGM).map(u => u.id);
+    // Everyone online sees it, GMs INCLUDED — the GM sending it had no record of
+    // their own broadcast, and a table cannot refer back to something only the
+    // players can read. Including the sender also means the list is never empty:
+    // Foundry treats `whisper: []` as a PUBLIC message, so a broadcast sent with
+    // no players online used to go out to the whole world.
+    const whisperTargets = game.users.filter(u => u.active).map(u => u.id);
+    if (!whisperTargets.includes(game.user.id)) whisperTargets.push(game.user.id);
 
     const content = await renderTemplate(
       `modules/${MODULE_ID}/templates/chat/network-broadcast.hbs`,

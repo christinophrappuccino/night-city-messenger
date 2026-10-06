@@ -57,6 +57,11 @@
         <i class="fas fa-pen"></i>
       </button>
 
+      <button class="ncm-card__action ncm-card__action--danger"
+              title="Remove from contacts" data-action="deleteContact" data-contact-id="{{id}}">
+        <i class="fas fa-trash"></i>
+      </button>
+
       {{!-- GM Inspect Mode: Verify/Unverify controls --}}
       {{#if ../gmInspectMode}}
         {{#if verified}}

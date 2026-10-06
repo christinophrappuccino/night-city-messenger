@@ -109,3 +109,11 @@
   .ncm-pd-tag--hidden{background:color-mix(in srgb,var(--ncm-warning,#ffab00) 16%,transparent);color:var(--ncm-warning,#ffab00);border:1px solid color-mix(in srgb,var(--ncm-warning,#ffab00) 45%,transparent);}
   .ncm-pd-tag--known{background:color-mix(in srgb,var(--ncm-success,#00d97e) 15%,transparent);color:var(--ncm-success,#00d97e);border:1px solid color-mix(in srgb,var(--ncm-success,#00d97e) 45%,transparent);}
   @media(prefers-reduced-motion:reduce){.ncm-pd-core,.ncm-pd-ring,.ncm-pd-cart__led{animation:none!important;}}
+
+/* The first empty slot doubles as the Shard Encoder's door (ProgramDeckApp gates it on
+   the GM's player-authoring setting) — it must read as live, not as a dead slot. */
+.ncm-pd-cart--new { opacity: 1; cursor: pointer; }
+.ncm-pd-cart--new .ncm-pd-cart__body { border-color: var(--ncm-secondary, #19f3f7); border-style: dashed; }
+.ncm-pd-cart--new .ncm-pd-cart__chip { color: var(--ncm-secondary, #19f3f7); background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 14%, transparent); }
+.ncm-pd-cart--new .ncm-pd-cart__n { color: var(--ncm-secondary, #19f3f7); }
+.ncm-pd-cart--new:hover .ncm-pd-cart__body { background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 8%, transparent); }

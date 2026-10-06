@@ -1,0 +1,157 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SHARD ICON BUILDER — design the chip, bake it into the item's picture.
+
+   A framework-free promise modal in the SecurityConsole / OperatorSelect family:
+   it is appended into the window that opened it, so it inherits that window's
+   `--ncm-*` palette and needs no theme of its own. Sizes ride the same
+   `--ncm-text-scale` composition the Encoder sets, so the legibility panel
+   reaches it too.
+
+   Layer order: 140 — above the Encoder's own overlays (the DISPLAY popover is
+   40) because it is the thing being interacted with, and below nothing.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-iconb-backdrop {
+  position: absolute; inset: 0; z-index: 140; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--ncm-bg-deep, #0a0f14) 82%, transparent);
+  backdrop-filter: blur(2px);
+}
+.ncm-iconb {
+  width: min(600px, calc(100% - 40px)); max-height: calc(100% - 40px); display: flex; flex-direction: column;
+  border: 1px solid color-mix(in srgb, var(--fam, var(--ncm-secondary, #19f3f7)) 50%, var(--ncm-border, #2a3a47));
+  border-radius: 3px; background: var(--ncm-bg-mid, #141c24);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .6);
+}
+.ncm-iconb__hd {
+  display: flex; align-items: center; gap: 8px; padding: 9px 12px; flex: 0 0 auto;
+  background: var(--ncm-bg-deep, #0a0f14); border-bottom: 1px solid var(--ncm-border, #2a3a47);
+  color: var(--ncm-text-muted, #7a8b99);
+  font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.ncm-iconb__hd b { color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-iconb__hd i { color: var(--fam, var(--ncm-secondary, #19f3f7)); }
+.ncm-iconb__hint {
+  margin-left: auto; text-transform: none; letter-spacing: normal; color: var(--ncm-text-muted, #7a8b99);
+  font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif);
+}
+
+.ncm-iconb__body { display: flex; gap: 14px; padding: 14px; min-height: 0; overflow: hidden; }
+
+/* ── the stage: the real canvas, plus two honest small sizes ─────────────── */
+.ncm-iconb__stage { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.ncm-iconb__cv {
+  width: 128px; height: 128px; border-radius: 3px;
+  border: 1px solid var(--ncm-border, #2a3a47); background: var(--ncm-bg-deep, #0a0f14);
+  image-rendering: auto;
+}
+.ncm-iconb__sizes { display: flex; align-items: center; gap: 8px; }
+.ncm-iconb__mini { border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14); border: 1px solid var(--ncm-border, #2a3a47); }
+.ncm-iconb__mini[data-mini="48"] { width: 48px; height: 48px; }
+.ncm-iconb__mini[data-mini="28"] { width: 28px; height: 28px; }
+.ncm-iconb__sizelbl {
+  max-width: 90px; line-height: 1.35; color: var(--ncm-text-muted, #7a8b99);
+  font: calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif);
+}
+
+/* ── the controls ───────────────────────────────────────────────────────── */
+.ncm-iconb__ctl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; overflow: hidden; }
+.ncm-iconb__lbl {
+  margin-top: 4px; color: var(--ncm-text-muted, #7a8b99);
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.ncm-iconb__row { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-iconb__chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; cursor: pointer;
+  border: 1px solid var(--ncm-border, #2a3a47); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+  color: var(--ncm-text-secondary, #9fb3c0);
+  font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .04em;
+}
+.ncm-iconb__chip i { font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-iconb__chip:hover { border-color: color-mix(in srgb, var(--fam, var(--ncm-secondary, #19f3f7)) 55%, transparent); color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-iconb__chip.on {
+  border-color: var(--fam, var(--ncm-secondary, #19f3f7)); color: var(--ncm-text-primary, #e8f4f8);
+  background: color-mix(in srgb, var(--fam, var(--ncm-secondary, #19f3f7)) 14%, transparent);
+}
+.ncm-iconb__sw {
+  width: 20px; height: 20px; border-radius: 2px; cursor: pointer;
+  background: var(--sw, #19f3f7); border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .45);
+}
+.ncm-iconb__sw.on { border-color: var(--ncm-text-primary, #e8f4f8); }
+
+/* ── the symbol picker ──────────────────────────────────────────────────── */
+.ncm-iconb__picker { display: flex; flex-direction: column; gap: 6px; min-height: 0; flex: 1; margin-top: 4px; }
+.ncm-iconb__search {
+  display: flex; align-items: center; gap: 6px; padding: 0 7px; flex: 0 0 auto;
+  border: 1px solid var(--ncm-border, #2a3a47); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-iconb__search i { color: var(--ncm-text-muted, #7a8b99); font-size: calc(9.5px * var(--ncm-text-scale, 1)); }
+.ncm-iconb-backdrop .ncm-iconb__search input {
+  flex: 1; min-width: 0; height: 24px !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important;
+  border: 0 !important; background: none !important; box-shadow: none !important; outline: none !important;
+  color: var(--ncm-text-primary, #e8f4f8) !important; text-align: left !important;
+  font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important;
+}
+.ncm-iconb__grid {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); gap: 4px; align-content: start;
+  padding: 2px; border: 1px solid var(--ncm-border, #2a3a47); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-iconb__ic {
+  aspect-ratio: 1; display: grid; place-items: center; cursor: pointer; border-radius: 2px;
+  border: 1px solid transparent; color: var(--ncm-text-secondary, #9fb3c0);
+  font-size: calc(13px * var(--ncm-text-scale, 1));
+}
+.ncm-iconb__ic:hover { border-color: color-mix(in srgb, var(--fam, var(--ncm-secondary, #19f3f7)) 55%, transparent); color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-iconb__ic.on {
+  border-color: var(--fam, var(--ncm-secondary, #19f3f7)); color: var(--fam, var(--ncm-secondary, #19f3f7));
+  background: color-mix(in srgb, var(--fam, var(--ncm-secondary, #19f3f7)) 14%, transparent);
+}
+.ncm-iconb__none { grid-column: 1 / -1; padding: 10px; text-align: center; color: var(--ncm-text-muted, #7a8b99);
+  font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+
+/* ── footer ─────────────────────────────────────────────────────────────── */
+.ncm-iconb__foot {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; flex: 0 0 auto;
+  border-top: 1px solid var(--ncm-border, #2a3a47); background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-iconb__note { color: var(--ncm-text-muted, #7a8b99); font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+.ncm-iconb-backdrop .ncm-iconb__btn {
+  width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+  padding: 6px 13px !important; cursor: pointer; box-shadow: none !important;
+  border: 1px solid var(--ncm-border, #2a3a47) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-mid, #141c24) !important; color: var(--ncm-text-secondary, #9fb3c0) !important;
+  font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important;
+  letter-spacing: .05em; text-transform: uppercase; display: inline-flex !important; align-items: center; gap: 6px;
+}
+.ncm-iconb-backdrop .ncm-iconb__btn i { margin: 0 !important; }
+.ncm-iconb-backdrop .ncm-iconb__btn:hover { border-color: var(--fam, var(--ncm-secondary, #19f3f7)) !important; color: var(--ncm-text-primary, #e8f4f8) !important; }
+.ncm-iconb-backdrop .ncm-iconb__btn--go {
+  border-color: var(--fam, var(--ncm-secondary, #19f3f7)) !important; color: var(--ncm-text-primary, #e8f4f8) !important;
+  background: color-mix(in srgb, var(--fam, var(--ncm-secondary, #19f3f7)) 20%, transparent) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ncm-iconb-backdrop { backdrop-filter: none; }
+}
+
+/* The colour picker sits with the swatches and reads as one of them. A native
+   <input type=color> cannot be styled, so it is sized to the swatch and hidden
+   behind a label that wears the eyedropper. */
+.ncm-iconb__custom {
+  position: relative; width: 20px; height: 20px; border-radius: 2px; cursor: pointer; overflow: hidden;
+  display: grid; place-items: center; border: 2px solid transparent;
+  background: conic-gradient(#ff0033, #f7c948, #00ff41, #19f3f7, #3b82f6, #a855f7, #ec4899, #ff0033);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .45);
+}
+.ncm-iconb__custom.on { border-color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-iconb__custom i {
+  position: relative; z-index: 1; pointer-events: none; color: #0a0f14;
+  font-size: 9px; text-shadow: 0 0 2px rgba(255, 255, 255, .9);
+}
+.ncm-iconb-backdrop .ncm-iconb__custom input[type="color"] {
+  position: absolute; inset: 0; width: 100% !important; height: 100% !important;
+  min-height: 0 !important; margin: 0 !important; padding: 0 !important;
+  opacity: 0; cursor: pointer; border: 0 !important; background: none !important;
+}

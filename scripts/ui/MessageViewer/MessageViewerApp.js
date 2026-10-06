@@ -39,7 +39,7 @@ import {
 } from '../../utils/designHelpers.js';
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { getThreadMessages } from '../../utils/threading.js';
-import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait } from '../../utils/helpers.js';
+import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, canEncode as canEncodeShard } from '../../utils/helpers.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
 
@@ -790,6 +790,12 @@ export class MessageViewerApp extends BaseApplication {
       scheduledMessages,
       shardItems,
       shardCounts,
+      // The Shard Encoder's primary door. Hidden entirely when the GM has not
+      // switched player authoring on OR when this character does not qualify
+      // under the authoring gate, so there is no dead pill to click. Judged for
+      // the character whose Agent is OPEN — not the remembered operator — since
+      // that is who the Encoder will act as when it opens from here.
+      canEncode: canEncodeShard(game.actors?.get(this.actorId) || null).ok,
       draftItems,
 
       // Layout
@@ -1650,6 +1656,12 @@ export class MessageViewerApp extends BaseApplication {
         game.nightcity?.openContacts?.(contactActorId);
         break;
       }
+      case 'open-encoder':
+        // The Agent can be switched between characters, and the Encoder writes to
+        // whoever it is handed — so it must be the character this Agent is open
+        // as, never the remembered operator (which would encode as the last one).
+        game.nightcity?.openEncoder?.({ actor: game.actors?.get(this.actorId) || null });
+        break;
       case 'open-admin':
         game.nightcity?.openAdmin?.();
         break;

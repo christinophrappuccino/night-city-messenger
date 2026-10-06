@@ -369,78 +369,20 @@ export function registerMessagingSystem(initializer) {
     let _hasBootedThisSession = false;
 
     /**
-     * Play the NCM boot splash — a frameless overlay injected into document.body.
-     * Resolves after the animation completes (~2s).
+     * Play the NCM boot splash — the Monogram Etch (scripts/ui/BootSplash.js).
+     * Resolves once it has faded, so the caller can simply await it.
+     *
+     * The animation itself lives in its own module; this wrapper only answers the
+     * two questions that need Foundry to answer them: may we move, and what
+     * version are we. Motion can be vetoed by the player's animation preference
+     * or by the OS, and never raised by either.
      */
-    function _playBootSplash() {
-      return new Promise(resolve => {
-        const overlay = document.createElement('div');
-        overlay.className = 'ncm-boot-splash';
-        overlay.innerHTML = `
-          <div class="ncm-boot-splash__bg"></div>
-          <div class="ncm-boot-splash__content">
-            <div class="ncm-boot-splash__icon" data-el="icon">
-              <i class="fas fa-satellite-dish"></i>
-            </div>
-            <div class="ncm-boot-splash__title">Night City Messenger</div>
-            <div class="ncm-boot-splash__subtitle" data-el="subtitle">v4.1 // Initializing</div>
-            <div class="ncm-boot-splash__bar-wrap">
-              <div class="ncm-boot-splash__bar-track">
-                <div class="ncm-boot-splash__bar-fill" data-el="bar"></div>
-              </div>
-              <div class="ncm-boot-splash__bar-status">
-                <span class="ncm-boot-splash__bar-label" data-el="label">Loading services...</span>
-                <span class="ncm-boot-splash__bar-pct" data-el="pct">0%</span>
-              </div>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(overlay);
-
-        // Force reflow so the initial state renders before animations start
-        overlay.offsetHeight;
-
-        const bar = overlay.querySelector('[data-el="bar"]');
-        const label = overlay.querySelector('[data-el="label"]');
-        const pct = overlay.querySelector('[data-el="pct"]');
-        const icon = overlay.querySelector('[data-el="icon"]');
-        const subtitle = overlay.querySelector('[data-el="subtitle"]');
-
-        const steps = [
-          { pct: 22, label: 'Loading services...', t: 0 },
-          { pct: 45, label: 'Scanning network...', t: 200 },
-          { pct: 68, label: 'Resolving identities...', t: 400 },
-          { pct: 88, label: 'Validating inboxes...', t: 600 },
-          { pct: 100, label: 'Ready', t: 850, done: true },
-        ];
-
-        steps.forEach(step => {
-          setTimeout(() => {
-            if (!overlay.parentNode) return;
-            bar.style.width = `${step.pct}%`;
-            label.textContent = step.label;
-            pct.textContent = `${step.pct}%`;
-
-            if (step.done) {
-              bar.classList.add('done');
-              label.classList.add('done');
-              pct.classList.add('done');
-              icon.classList.add('done');
-              icon.querySelector('i').className = 'fas fa-check';
-              subtitle.textContent = 'v4.1 // Systems online';
-              subtitle.classList.add('done');
-            }
-          }, step.t);
-        });
-
-        // Fade out and resolve
-        setTimeout(() => {
-          overlay.classList.add('fade-out');
-          setTimeout(() => {
-            overlay.remove();
-            resolve();
-          }, 200);
-        }, 1100);
+    async function _playBootSplash() {
+      const { playBootSplash, splashReduced } = await import('../ui/BootSplash.js');
+      const animationsEnabled = game.nightcity?.themeService?.getAnimationLevel?.() !== 'off';
+      return playBootSplash({
+        reduced: splashReduced({ animationsEnabled }),
+        version: game.modules?.get(MODULE_ID)?.version || '',
       });
     }
 

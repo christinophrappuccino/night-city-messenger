@@ -15,8 +15,8 @@
  *   re-reads + re-mounts).
  */
 
-import { TEMPLATES, CONTENT_TYPES } from '../../utils/constants.js';
-import { log, isGM, resolveOperator } from '../../utils/helpers.js';
+import { MODULE_ID, TEMPLATES, CONTENT_TYPES } from '../../utils/constants.js';
+import { log, isGM, resolveOperator, canEncode } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { runAnalyze, runMalwareDeploy, runPayloadExecute } from '../content/SiphonFlow.js';
 import { FAMILY, COVER_TYPES, THREAT_WORD, abilityInfo, programGroup, entryToProgram } from '../content/ProgramModel.js';
@@ -131,8 +131,14 @@ export class ProgramDeckApp extends BaseApplication {
         </div></div>`;
     };
     const empty = `<div class="ncm-pd-cart ncm-pd-cart--empty" style="--lf:var(--ncm-border)"><div class="ncm-pd-cart__body"><div class="ncm-pd-cart__chip"><i class="fas fa-plus"></i></div><div class="ncm-pd-cart__n" style="color:var(--ncm-text-muted)">empty</div><div class="ncm-pd-cart__t">slot</div></div></div>`;
+    // The FIRST empty slot is a door into the Encoder's Program branch — the
+    // netrunner's way to make their own cartridge. Only when the GM allows it
+    // AND this operator qualifies under the authoring gate; otherwise the slot
+    // stays a plain "empty" rather than a button that opens and refuses.
+    const mayEncode = canEncode(resolveOperator()).ok;
+    const newSlot = `<div class="ncm-pd-cart ncm-pd-cart--empty ncm-pd-cart--new" style="--lf:var(--ncm-secondary,#19f3f7)" data-act="encode" data-tooltip="Build a program of your own" data-tooltip-direction="UP"><div class="ncm-pd-cart__body"><div class="ncm-pd-cart__chip"><i class="fas fa-plus"></i></div><div class="ncm-pd-cart__n">New</div><div class="ncm-pd-cart__t">program</div></div></div>`;
     let html = progs.map(cart).join('');
-    for (let i = progs.length; i < CAP; i++) html += empty;
+    for (let i = progs.length; i < CAP; i++) html += (mayEncode && i === progs.length) ? newSlot : empty;
     return html;
   }
 
@@ -171,6 +177,7 @@ export class ProgramDeckApp extends BaseApplication {
       else if (act === 'analyze') this._analyze(v);
       else if (act === 'deploy') this._deploy(v);
       else if (act === 'execute') this._execute(v);
+      else if (act === 'encode') game.nightcity?.openEncoder?.({ stage: 'program', actor: resolveOperator() });
     });
     this._wired = true;
   }

@@ -58,8 +58,16 @@ export class DataShardService {
     }
 
     try {
-      // Get the Data Shards subfolder
-      const shardFolder = await game.nightcity?.messageRepository?.getShardFolder?.();
+      // Where the journal is filed. A shard a PLAYER forged goes under
+      // "Data Shards / Player-Made / <character>", so the GM can see at a glance
+      // what their table has been making and whose it is. Everything else lands
+      // in the flat Data Shards folder as before.
+      const repo = game.nightcity?.messageRepository;
+      const maker = configOverrides?.playerMade?.actorName;
+      const shardFolder = maker
+        ? (await repo?.getSubfolderPath?.(['Data Shards', 'Player-Made', maker])
+           ?? await repo?.getShardFolder?.())
+        : await repo?.getShardFolder?.();
 
       // Create linked journal for shard messages
       const journal = await JournalEntry.create({
@@ -112,6 +120,11 @@ export class DataShardService {
 
     try {
       const journalId = item.getFlag(MODULE_ID, 'journalId');
+      // An ARCHIVE copy (see archiveShardsToItems) shares the SOURCE shard's
+      // journal — it is a window onto the player's shard, not a second copy of
+      // it. Deleting that journal here would gut the player's real shard, so an
+      // archive can only ever remove itself.
+      const isArchive = !!item.getFlag(MODULE_ID, 'shardArchive');
 
       // Remove all NCM flags
       await item.update({
@@ -119,7 +132,7 @@ export class DataShardService {
       });
 
       // Optionally delete linked journal
-      if (deleteJournal && journalId) {
+      if (deleteJournal && journalId && !isArchive) {
         const journal = game.journal.get(journalId);
         if (journal) await journal.delete();
       }
@@ -743,6 +756,18 @@ export class DataShardService {
       const messageId = generateId();
       const config = this._getConfig(shardItem);
       const contentType = messageData.contentType || CONTENT_TYPES.MESSAGE;
+
+      // A chip only holds so much. `config.capacity` is stamped from the blank's
+      // tier when a player encodes it (0 = no limit, which is also every shard
+      // authored before tiers could be sized, so nothing existing changes).
+      const limit = Math.max(0, Math.round(Number(config.capacity) || 0));
+      if (limit > 0) {
+        const used = this.getShardMessages(shardItem)?.length ?? 0;
+        if (used >= limit) {
+          log.warn(`Shard "${shardItem.name}" is full (${used}/${limit})`);
+          return { success: false, error: `That chip is full — it holds ${limit} entr${limit === 1 ? 'y' : 'ies'}.`, full: true };
+        }
+      }
 
       await journal.createEmbeddedDocuments('JournalEntryPage', [{
         name: messageData.subject || 'Data Fragment',
@@ -1649,6 +1674,129 @@ export class DataShardService {
   }
 
   /** @private */
+  /**
+   * Item folders for the archive, created level by level. Items CAN be foldered
+   * (unlike an actor's embedded items, which is the whole reason this exists).
+   * @param {string[]} path
+   * @returns {Promise<Folder|null>}
+   */
+  async _getOrCreateItemFolder(path = []) {
+    const names = path.filter(Boolean).map(String);
+    let parent = null;
+    for (const name of names) {
+      let next = game.folders.find(f =>
+        f.type === 'Item' && f.name === name && (f.folder?.id ?? null) === (parent?.id ?? null)
+      ) ?? null;
+      if (!next) {
+        if (!isGM()) return parent;
+        next = await Folder.create({ name, type: 'Item', folder: parent?.id ?? null, sorting: 'a' });
+      }
+      if (!next) return parent;
+      parent = next;
+    }
+    return parent;
+  }
+
+  /**
+   * What a GM would archive, without doing it. A read-only census so the dialog
+   * can say exactly what will happen before anything is written.
+   * @param {object} [o]
+   * @param {boolean} [o.playerMadeOnly] only shards a player forged
+   * @returns {{ pending: object[], already: number, orphans: Item[] }}
+   */
+  surveyShardArchive({ playerMadeOnly = true } = {}) {
+    const archives = (game.items?.contents ?? []).filter(i => i.getFlag(MODULE_ID, 'shardArchive'));
+    const archivedIds = new Set(archives.map(i => i.getFlag(MODULE_ID, 'shardArchive')?.sourceId).filter(Boolean));
+
+    const pending = [];
+    for (const actor of (game.actors?.contents ?? [])) {
+      for (const item of (actor.items ?? [])) {
+        if (!item.getFlag(MODULE_ID, 'isDataShard')) continue;
+        if (item.getFlag(MODULE_ID, 'shardArchive')) continue;            // never archive an archive
+        const cfg = item.getFlag(MODULE_ID, 'shardConfig') || item.getFlag(MODULE_ID, 'config') || {};
+        if (playerMadeOnly && !cfg.playerMade?.actorName) continue;
+        if (archivedIds.has(item.id)) continue;
+        pending.push({ item, actor, maker: cfg.playerMade?.actorName || actor.name, name: cfg.shardName || item.name });
+      }
+    }
+
+    // An archive whose source is gone is a window onto nothing.
+    const orphans = archives.filter((a) => {
+      const src = a.getFlag(MODULE_ID, 'shardArchive') || {};
+      const owner = game.actors?.get(src.sourceActorId);
+      return !owner?.items?.get(src.sourceId);
+    });
+
+    return { pending, already: archives.length - orphans.length, orphans };
+  }
+
+  /**
+   * Copy actor-held shards into the WORLD item directory, in folders, so a GM can
+   * see and open them like any other item.
+   *
+   * These are REFERENCE copies, and deliberately so: an item embedded in an actor
+   * cannot live in a folder, and moving it would take the player's shard away.
+   * The copy carries the SAME `journalId`, so it is a live window on the real
+   * contents rather than a snapshot that drifts — and `removeDataShard` refuses
+   * to delete that shared journal for an archive.
+   * @param {object} [o]
+   * @param {boolean} [o.playerMadeOnly]
+   * @returns {Promise<{created:number, folders:number, orphansRemoved:number, error?:string}>}
+   */
+  async archiveShardsToItems({ playerMadeOnly = true, pruneOrphans = false } = {}) {
+    if (!isGM()) return { created: 0, folders: 0, orphansRemoved: 0, error: 'GM only' };
+    const survey = this.surveyShardArchive({ playerMadeOnly });
+    const root = 'Player-Made Shards';
+    let created = 0;
+    const folderNames = new Set();
+
+    try {
+      // Group by maker so one folder is made per character, not per shard.
+      const byMaker = new Map();
+      for (const row of survey.pending) {
+        if (!byMaker.has(row.maker)) byMaker.set(row.maker, []);
+        byMaker.get(row.maker).push(row);
+      }
+
+      for (const [maker, rows] of byMaker) {
+        const folder = await this._getOrCreateItemFolder([root, maker]);
+        if (folder) folderNames.add(folder.id);
+        const payloads = rows.map(({ item, actor }) => {
+          const data = item.toObject();
+          delete data._id;
+          data.folder = folder?.id ?? null;
+          data.flags = data.flags || {};
+          data.flags[MODULE_ID] = {
+            ...(data.flags[MODULE_ID] || {}),
+            shardArchive: {
+              sourceId: item.id,
+              sourceActorId: actor.id,
+              sourceActorName: actor.name,
+              at: new Date().toISOString(),
+            },
+          };
+          return data;
+        });
+        if (payloads.length) {
+          const made = await Item.createDocuments(payloads);
+          created += made?.length ?? 0;
+        }
+      }
+
+      let orphansRemoved = 0;
+      if (pruneOrphans && survey.orphans.length) {
+        await Item.deleteDocuments(survey.orphans.map(i => i.id));
+        orphansRemoved = survey.orphans.length;
+      }
+
+      log.info(`Shard archive: ${created} copied, ${orphansRemoved} orphan(s) removed`);
+      return { created, folders: folderNames.size, orphansRemoved };
+    } catch (err) {
+      log.error(`Shard archive failed: ${err.message}`);
+      return { created, folders: folderNames.size, orphansRemoved: 0, error: err.message };
+    }
+  }
+
   _getLinkedJournal(item) {
     const journalId = item?.getFlag(MODULE_ID, 'journalId');
     return journalId ? game.journal.get(journalId) : null;

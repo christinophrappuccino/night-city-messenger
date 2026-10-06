@@ -5,7 +5,7 @@
  * @description Shared utility functions used across the module
  */
 
-import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS, CONTRAST_SPREAD } from './constants.js';
+import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, SHARD_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS, CONTRAST_SPREAD } from './constants.js';
 
 /** Month names for the written-out date styles (dateMonthStyle setting). */
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -78,6 +78,41 @@ export function isGM() {
  */
 export function getPlayerActor() {
   return game.user?.character ?? null;
+}
+
+/**
+ * Every player character the GM can address — the ONE enumeration for the
+ * admin share dialog, "Known by" pips, mass broadcast and the View Inbox list.
+ *
+ * Each non-GM user's ASSIGNED character comes first, then any other actor a
+ * player OWNS (`hasPlayerOwner`) that nobody has assigned. The old per-surface
+ * loops only walked `user.character`, so a player whose character was owned but
+ * never assigned on the user sheet was invisible to every one of those tools
+ * (2026-09 tester: "share with every player but Known by doesn't change",
+ * "broadcast doesn't work", "can't open the player's inbox from the panel").
+ * Non-person actor types (Black ICE, demons, containers) are skipped.
+ *
+ * @returns {Array<{actorId: string, actorName: string, playerName: string, actor: Actor, assigned: boolean}>}
+ */
+export function getPlayerCharacters() {
+  const out = [];
+  const seen = new Set();
+  const NON_PERSON = new Set(['blackIce', 'black-ice', 'demon', 'container']);
+  for (const user of game.users ?? []) {
+    if (user.isGM || !user.character) continue;
+    const actor = user.character;
+    if (seen.has(actor.id)) continue;
+    seen.add(actor.id);
+    out.push({ actorId: actor.id, actorName: actor.name, playerName: user.name, actor, assigned: true });
+  }
+  for (const actor of game.actors ?? []) {
+    if (seen.has(actor.id) || !actor.hasPlayerOwner) continue;
+    if (NON_PERSON.has(actor.type)) continue;
+    const owner = (game.users ?? []).find(u => !u.isGM && actor.testUserPermission?.(u, 'OWNER'));
+    seen.add(actor.id);
+    out.push({ actorId: actor.id, actorName: actor.name, playerName: owner?.name || 'Player', actor, assigned: false });
+  }
+  return out;
 }
 
 /**
@@ -341,6 +376,61 @@ export function buildTerminalThemePrefs(theme = {}, presetKey = '') {
     // Terminal glitch stored as 0–100 (slider); applyTheme wants 0–1 and only
     // writes the var when defined (element-scoped calls skip the 0.5 default).
     glitchIntensity: theme.glitch !== undefined ? (theme.glitch / 100) : undefined,
+  };
+}
+
+/**
+ * Build the `ThemeService.applyTheme` prefs for a DATA SHARD — the twin of
+ * `buildTerminalThemePrefs`, shared by the viewer (renders the saved theme) and
+ * the config sheet (live preview of the draft).
+ *
+ * Effective value per key = the GM's saved/draft override, else the preset's
+ * `palette`, else nothing — the key is omitted so the player's own `:root` shows
+ * through. That is what makes the `blank` preset (which deliberately has NO
+ * palette) follow the player's Agent theme, the way it always should have.
+ *
+ * Until 2026-09-22 these palettes lived in `styles/themes/shard-presets.css` as
+ * twenty hardcoded `--sp-*` values per preset. That is why the per-shard
+ * CONTRAST slider did nothing on eight of the nine presets: contrast writes
+ * `--ncm-*`, and a preset's `--sp-*` literals never read them. The palette is
+ * now data, the `--sp-*` tokens derive from `--ncm-*` in one place, and every
+ * knob composes.
+ *
+ * `preset: null` stops `applyTheme` from merging the *player* THEME_PRESETS in.
+ *
+ * @param {object|string} theme - `config.theme`. Tolerates the two legacy shapes:
+ *   the dead `'classic'` string, and the preset CHROME block the Encoder writes
+ *   (`accent`/`headerBg`/`watermarkIcon`/…) — the palette lives under `colors`,
+ *   which neither of those has, so they coexist with no migration.
+ * @param {string} presetKey - active SHARD_PRESETS key
+ * @param {object} [opts]
+ * @param {number} [opts.textScale] percent to publish (the caller composes the
+ *   player's scale with the shard's; see ItemInboxApp._applyShardTheme)
+ * @param {number} [opts.contrast] percent — pass 100 when a separate
+ *   `applyContrastToElement` owns the tone-map (the viewer does, so it can read
+ *   its base from the themed ancestor rather than from brand constants)
+ * @returns {object} prefs for ThemeService.applyTheme
+ */
+export function buildShardThemePrefs(theme, presetKey = '', { textScale, contrast } = {}) {
+  const t = (theme && typeof theme === 'object') ? theme : {};
+  const pal = SHARD_PRESETS[presetKey]?.palette || {};
+  const colors = {};
+  for (const key of Object.keys(COLOR_VAR_MAP)) {
+    const value = t.colors?.[key] || pal[key];
+    if (value) colors[key] = value;
+  }
+  return {
+    preset: null,
+    colors,
+    fonts: {
+      display: t.fonts?.display || t.fontDisplay || 'rajdhani',
+      mono: t.fonts?.mono || t.fontMono || 'sharetechmono',
+      title: t.fonts?.title || t.fontTitle || 'orbitron',
+    },
+    textScale: textScale ?? 100,
+    contrast: contrast ?? 100,
+    wallpaper: t.wallpaper || null,
+    wallpaperStrength: t.wallpaperStrength,
   };
 }
 
@@ -658,10 +748,18 @@ export function whisperCardHtml({ tone = 'info', icon = 'fa-shield-halved', titl
  * @param {object} [override] per-target gate override merged over the world policy
  * @returns {{ ok: boolean, reason?: string }}
  */
-export function canOperate(actor, override = null) {
+export function canOperate(actor, override = null, { standalone = false, label = 'Operator tools require' } = {}) {
   let gate;
-  try { gate = game.settings?.get(MODULE_ID, 'operatorGate') ?? {}; } catch { gate = {}; }
-  gate = { ...DEFAULTS.OPERATOR_GATE, ...gate, ...(override || {}) };
+  if (standalone) {
+    // The caller owns the WHOLE gate (e.g. the Shard Encoder's `encoderConfig.gate`).
+    // Merging the operatorGate world setting in here would silently import the
+    // terminal rule for every field the caller's gate happens to omit — two gates
+    // that look independent in the UI but are not.
+    gate = { ...DEFAULTS.OPERATOR_GATE, ...(override || {}) };
+  } else {
+    try { gate = game.settings?.get(MODULE_ID, 'operatorGate') ?? {}; } catch { gate = {}; }
+    gate = { ...DEFAULTS.OPERATOR_GATE, ...gate, ...(override || {}) };
+  }
 
   if (gate.mode !== 'gated') return { ok: true };                 // ungated
   if (gate.allowGM && game.user?.isGM) return { ok: true };       // GM escape
@@ -700,7 +798,38 @@ export function canOperate(actor, override = null) {
   const ok = gate.logic === 'all' ? checks.every(c => c.ok) : checks.some(c => c.ok);
   if (ok) return { ok: true };
   const need = checks.map(c => c.label).join(gate.logic === 'all' ? ' + ' : ' or ');
-  return { ok: false, reason: `Operator tools require ${need}.` };
+  return { ok: false, reason: `${label} ${need}.` };
+}
+
+/**
+ * May this character encode a data shard? The ONE answer every authoring door reads
+ * — the Agent's Encode pill, the item right-click, the Program Deck's blank cartridge,
+ * the Encoder window itself and the unconvert affordance — so a character can never
+ * be offered a door that the window behind it then refuses.
+ *
+ * Two independent conditions, reported separately because the fixes differ: the GM
+ * has not switched player authoring on at all (a world setting), versus this
+ * particular character not qualifying (a gate the GM wrote).
+ *
+ * @param {Actor|null} actor the operating character
+ * @param {object} [opts]
+ * @param {boolean} [opts.requireActor] false → judge only the world-level switch,
+ *   for a door that has not resolved an operator yet
+ * @returns {{ ok: boolean, reason?: string, off?: boolean }} `off` = authoring is
+ *   switched off world-wide, as opposed to this character not qualifying.
+ */
+export function canEncode(actor, { requireActor = true } = {}) {
+  if (game.user?.isGM) return { ok: true };   // the GM authors through the config sheet regardless
+
+  let cfg;
+  try { cfg = game.settings?.get(MODULE_ID, 'encoderConfig') ?? {}; } catch { cfg = {}; }
+  if (!cfg?.enabled) return { ok: false, off: true, reason: 'Your GM has not switched on player shard authoring.' };
+
+  const gate = cfg.gate;
+  if (!gate || gate.mode !== 'gated') return { ok: true };
+  if (!requireActor && !actor) return { ok: true };  // the door shows; the window asks for an operator
+
+  return canOperate(actor, gate, { standalone: true, label: 'Encoding a shard requires' });
 }
 
 /** Remember the acting character for this client. */

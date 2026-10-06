@@ -60,6 +60,8 @@ export class SkillService {
     const showChat = options.showChat !== false;
     const flavor = options.flavor ?? '';
     const context = options.context ?? '';
+    // Flat situational bonus/penalty (e.g. a premium blank's "+1 craft roll" perk).
+    const modifier = Number(options.modifier) || 0;
 
     // ─── Read Skill from Actor ───
     const { skillLevel, statName, statValue } = this._readSkillData(actor, skillName);
@@ -72,7 +74,7 @@ export class SkillService {
     const rollResult = await this._rollD10WithCritFumble();
 
     // ─── Calculate Total ───
-    const total = statValue + skillLevel + rollResult.processedRoll + actualLuckSpend;
+    const total = statValue + skillLevel + rollResult.processedRoll + actualLuckSpend + modifier;
     const success = total >= dc;
     const margin = total - dc;
 
@@ -90,6 +92,7 @@ export class SkillService {
       statName,
       skillLevel,
       luckSpent: actualLuckSpend,
+      modifier,
       isCritical: rollResult.isCritical,
       isFumble: rollResult.isFumble,
       dc,

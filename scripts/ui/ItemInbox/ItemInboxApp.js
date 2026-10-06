@@ -8,7 +8,7 @@
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker, applyContrastToElement } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker, applyContrastToElement, buildShardThemePrefs } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import { enrichContent, buildIndexChip, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEntrySender, resolveEnvelope } from '../content/ContentRenderers.js';
@@ -155,9 +155,14 @@ export class ItemInboxApp extends BaseApplication {
     return this.item?.id ? `ncm-item-inbox-${this.item.id}` : 'ncm-item-inbox';
   }
 
-  /** Override window title */
+  /**
+   * Override window title. The shard's OWN name, with no "DATA SHARD:" prefix —
+   * the window is obviously a shard from everything inside it, and the prefix
+   * only ate room the name needed (dev, 2026-09-22).
+   */
   get title() {
-    return this.item ? `DATA SHARD: ${this.item.name}` : 'DATA SHARD';
+    const cfg = this.item ? (this.dataShardService?.getConfig(this.item) ?? {}) : {};
+    return cfg.shardName || this.item?.name || 'Data Shard';
   }
 
   // ─── Data Preparation ───
@@ -362,6 +367,11 @@ export class ItemInboxApp extends BaseApplication {
       // Per-shard contrast (config.contrast %, 70–140) — applied in _onRender
       // via applyContrastToElement on the viewer root (inline --ncm-* overrides).
       shardContrast: Math.min(140, Math.max(70, Number(config.contrast) || 100)),
+      // The shard's own theme block (palette overrides / fonts / wallpaper),
+      // layered over the preset's palette by buildShardThemePrefs in _onRender.
+      // May legitimately be a legacy string or the preset CHROME block — the
+      // builder tolerates both, so nothing needs migrating.
+      shardTheme: config.theme,
       presetFooterText: presetTheme.footerText || '',
 
       // Shard display
@@ -594,12 +604,62 @@ export class ItemInboxApp extends BaseApplication {
     return super.render(force);
   }
 
+  // ─── Theme ───
+
+  /**
+   * Paint this shard's palette. The twin of `TerminalViewerApp._applyCustomTheme`.
+   *
+   * The palette is written to the **app root**, not to `.ncm-item-inbox`, for two
+   * reasons: the window FRAME (title bar, header controls) sits outside the inbox
+   * element and must follow the shard too, and `.ncm-item-inbox` owns
+   * `--ncm-text-scale` as a calc of two knobs — writing the palette there would let
+   * `applyTheme` stomp that product with a single number. Custom properties inherit,
+   * so everything inside, including the shared typed-content CSS, picks it up.
+   *
+   * Contrast is applied SEPARATELY, onto the inbox element, with `baseFrom` pointing
+   * at the freshly-themed root: that way the tone-map spreads THIS shard's colours
+   * (or the player's, when the shard has none) rather than the brand constants
+   * `applyTheme`'s own contrast pass would fall back to.
+   *
+   * @param {object} context the prepared render context
+   * @param {HTMLElement} inbox the `.ncm-item-inbox` element
+   */
+  _applyShardTheme(context, inbox) {
+    const root = this.element;
+    if (!root) return;
+    try {
+      // Compose the player's text scale with this shard's, so the window header
+      // reads at the same size as the body (item-inbox.css recomputes the same
+      // product for everything inside).
+      let base = 1;
+      if (typeof getComputedStyle === 'function') {
+        const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ncm-text-scale-base'));
+        if (Number.isFinite(v) && v > 0) base = v;
+      }
+      const composed = Math.round(base * (context.shardTextScale ?? 1) * 100);
+
+      this.themeService?.applyTheme(
+        buildShardThemePrefs(context.shardTheme, context.presetKey || 'blank', { textScale: composed, contrast: 100 }),
+        root,
+      );
+      // `baseFrom` must be a DIFFERENT element than the one being written, or the
+      // tone-map reads back its own output and compounds on every render. The
+      // template root is a child of the app root, so normally it is; the guard
+      // covers `_onRender`'s `|| this.element` fallback, where they collapse into
+      // one and reading from :root is the correct base.
+      applyContrastToElement(inbox, context.shardContrast ?? 100, inbox === root ? {} : { baseFrom: root });
+    } catch (err) {
+      log.warn(`ItemInboxApp: theme apply failed — ${err.message}`);
+    }
+  }
+
   // ─── Lifecycle ───
 
   _onRender(context, options) {
     super._onRender(context, options);
 
-    // Apply preset theme class to the .ncm-item-inbox element (not app root)
+    // Apply preset theme class to the .ncm-item-inbox element (not app root).
+    // The class is a data hook now — the palette itself comes from JS below.
     if (this.element) {
       const inbox = this.element.querySelector('.ncm-item-inbox') || this.element;
       inbox.classList.forEach(cls => {
@@ -607,9 +667,7 @@ export class ItemInboxApp extends BaseApplication {
       });
       const presetKey = context.presetKey || 'blank';
       inbox.classList.add(`ncm-preset-${presetKey}`);
-      // Per-shard readability contrast: tone-map the bg/text/border tokens on
-      // this root, composed over the player's own palette (read from :root).
-      applyContrastToElement(inbox, context.shardContrast ?? 100);
+      this._applyShardTheme(context, inbox);
     }
 
     // Apply shard accent color as CSS variable

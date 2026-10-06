@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Player Authoring probe (REAL app, JS-built DOM)</title>
+<!--
+  EncoderConfigApp builds its DOM in JS (_mount), so a template probe renders an
+  empty shell. This stubs enough Foundry to import the REAL app, construct it and
+  mount it into the REAL cascade (core → CPR → module → admin theme).
+
+    ?tab=basics|who|tiers|types|programs|depth   which tab (default who)
+    ?t=clean-light|clean-dark|high-contrast      admin preset
+    ?zoom=100|115|130|150                        admin text size (a CSS zoom)
+    ?gated=1                                     pre-fill a gated rule set
+    ?hover=1                                     force :hover styling checks
+    ?h=<px>                                      frame height
+
+  Reports, in <title>: low-contrast text, any element overflowing its scroll
+  container to the RIGHT, and any row whose fields do not share a baseline.
+
+  Serve it (node tools/serve-mockups.cjs) — a file:// page cannot ES-import.
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body { margin: 0; padding: 12px; background: #333; }
+  .probe-label { color: #fff; font: 11px/1.45 monospace; margin-bottom: 6px; white-space: pre; }
+  #app { position: relative !important; inset: auto !important; width: 880px; height: 700px; display: flex; flex-direction: column; }
+  #app > .window-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0; }
+</style>
+</head>
+<body>
+<div class="probe-label" id="lbl">loading…</div>
+<div class="application ncm-app ncm-encoder-config" id="app">
+  <header class="window-header"><h1 class="window-title">Player Authoring — the Shard Encoder</h1><button class="header-control fa-solid fa-xmark"></button></header>
+  <section class="window-content"><div class="ncm-ecfg" id="ecRoot"></div></section>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const T = q.get('t') || 'clean-dark';
+  if (q.get('h')) document.getElementById('app').style.height = q.get('h') + 'px';
+
+  class ApplicationV2 { constructor(o = {}) { this.options = o; } get element() { return this._el; } set element(v) { this._el = v; } get rendered() { return true; } get animationsEnabled() { return true; } setPosition() {} render() {} close() {} }
+  window.foundry = {
+    applications: { api: { ApplicationV2, HandlebarsApplicationMixin: (B) => B }, instances: new Map() },
+    utils: {
+      mergeObject: (a, b, o = {}) => Object.assign(o.inplace === false ? structuredClone(a) : a, b),
+      deepClone: (o) => structuredClone(o), randomID: () => Math.random().toString(36).slice(2, 18),
+      getRoute: (p) => p, escapeHTML: (s) => String(s),
+      debounce: (fn) => fn, throttle: (fn) => fn, duplicate: (o) => structuredClone(o),
+      getProperty: (o, p) => p.split('.').reduce((a, k) => a?.[k], o),
+      setProperty: (o, p, v) => { const ks = p.split('.'); const l = ks.pop(); ks.reduce((a, k) => (a[k] ??= {}), o)[l] = v; return true; },
+    },
+  };
+  const gate = q.get('gated') ? {
+    mode: 'gated', logic: 'any', roles: ['Netrunner', 'Tech'], roleLogic: 'any',
+    skill: { name: 'Interface', min: 4 },
+    itemGroups: [[{ name: 'Cyberdeck' }, { name: 'Interface Plug' }], [{ name: 'Militech Falcon' }]],
+    actors: [], allowGM: true,
+  } : undefined;
+  const ZOOM = Number(q.get('zoom')) || 100;
+  // ?depth=1 — optional-depth rules switched on, with a gear list.
+  const optDepth = q.get('depth') ? { gear: { on: true, items: [{ name: 'Cyberdeck', bonus: 2 }, { name: 'Forgery Kit', bonus: 1 }] }, time: { on: true }, assist: { on: true } } : undefined;
+  const settings = { adminTheme: { preset: T, textScale: ZOOM }, encoderConfig: { enabled: true, ...(gate ? { gate } : {}), ...(optDepth ? { optional: optDepth } : {}) }, shardThemePresets: [] };
+  window.game = {
+    user: { isGM: true, id: 'gm' }, userId: 'gm',
+    settings: { get: (m, k) => settings[k], set: async (m, k, v) => { settings[k] = v; }, register() {} },
+    // helpers/namePicker iterate game.actors and game.items directly, so these
+    // must be ITERABLE, not just collection-shaped.
+    actors: Object.assign([], { contents: [], filter: () => [], get: () => null }),
+    items: Object.assign([], { contents: [], get: () => null }),
+    i18n: { localize: (s) => s, format: (s) => s },
+    nightcity: { settingsManager: { getEncoderConfigRaw: () => settings.encoderConfig, getAdminTheme: () => settings.adminTheme }, eventBus: { on: () => ({ unsubscribe() {} }), emit() {} } },
+  };
+  window.Hooks = { on() {}, once() {}, off() {}, call() {}, callAll() {} };
+  window.ui = { notifications: { info() {}, warn() {}, error() {} }, windows: {} };
+  window.CONFIG = {};
+  window.Dialog = class {};
+</script>
+<script type="module">
+  const lbl = document.getElementById('lbl');
+  try {
+    const { EncoderConfigApp } = await import('../../scripts/ui/ShardEncoder/EncoderConfigApp.js');
+    const app = new EncoderConfigApp({});
+    const root = document.getElementById('app');
+    app.element = root;
+    root.dataset.ncmAdminTheme = T; root.dataset.ncmScanlines = 'false'; root.dataset.ncmNeon = 'false';
+    // The admin text-size knob is a CSS zoom on .window-content (see _applyAdminTextScale).
+    if (ZOOM !== 100) root.querySelector('.window-content').style.zoom = String(ZOOM / 100);
+    app.tab = q.get('tab') || 'who';
+    app._mount();
+
+    const body = root.querySelector('.ncm-ecfg__body');
+    const lines = [`preset=${T} tab=${app.tab} gated=${q.get('gated') || 0}`];
+
+    // ── 1 · anything spilling past the scroll container's right edge ──
+    const bodyRight = body.getBoundingClientRect().right;
+    const spills = [];
+    for (const el of body.querySelectorAll('*')) {
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (r.right > bodyRight + 1) spills.push(`${el.className || el.tagName} +${Math.round(r.right - bodyRight)}px`);
+    }
+    lines.push(`overflow right: ${spills.length}${spills.length ? ' — ' + [...new Set(spills)].slice(0, 6).join(', ') : ''}`);
+
+    // ── 2 · fields in one row that do not share a top edge ──
+    // `.ncm-ecfg__f` is a label-over-input column; if a sibling carries a hint and
+    // another does not, a flex-end row bottom-aligns them and the inputs step.
+    const ragged = [];
+    for (const row of body.querySelectorAll('.ncm-ecfg__row')) {
+      const controls = [...row.querySelectorAll('.ncm-ecfg__f > :is(select, input)')];
+      if (controls.length < 2) continue;
+      const tops = controls.map((c) => Math.round(c.getBoundingClientRect().top));
+      if (Math.max(...tops) - Math.min(...tops) > 1) {
+        ragged.push(controls.map((c, i) => `${c.previousElementSibling?.textContent || c.name || i}@${tops[i]}`).join(' '));
+      }
+    }
+    lines.push(`ragged rows: ${ragged.length}${ragged.length ? ' — ' + ragged.slice(0, 4).join(' | ') : ''}`);
+
+    // ── 3 · buttons whose background did not take the theme ──
+    // A near-white button on a dark preset means a Foundry default won.
+    const lum = (c) => { const m = c.match(/[\d.]+/g); if (!m || m.length < 3) return null; const [r, g, b] = m.map(Number); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; };
+    const pale = [];
+    for (const b of body.querySelectorAll('button')) {
+      const cs = getComputedStyle(b);
+      const l = lum(cs.backgroundColor);
+      const bi = cs.backgroundImage;
+      if ((l !== null && l > 0.75) || (bi && bi !== 'none')) pale.push(`${b.className || 'button'} bg=${cs.backgroundColor}${bi !== 'none' ? ' +image' : ''}`);
+    }
+    lines.push(`unthemed buttons: ${pale.length}${pale.length ? ' — ' + [...new Set(pale)].slice(0, 6).join(', ') : ''}`);
+
+    // ── 4 · low-contrast text, incl. a hover pass on every button ──
+    const bgOf = (el) => { let e = el; while (e && e !== document.body) { const bg = getComputedStyle(e).backgroundColor; if (bg && !bg.startsWith('rgba(0, 0, 0, 0)') && bg !== 'transparent' && !/\/\s*0?\.\d/.test(bg)) return bg; e = e.parentElement; } return 'rgb(51,51,51)'; };
+    let bad = 0, checked = 0; const samples = [];
+    for (const el of body.querySelectorAll('*')) {
+      if (!el.textContent.trim() || el.children.length) continue;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      const lt = lum(cs.color), lb = lum(bgOf(el));
+      if (lt === null || lb === null) continue;
+      checked++;
+      if (Math.abs(lt - lb) < 0.25) { bad++; if (samples.length < 6) samples.push(`${el.className || el.tagName}: ${cs.color} on ${bgOf(el)}`); }
+    }
+    lines.push(`low-contrast text: ${bad}/${checked}`, ...samples);
+
+    lbl.textContent = lines.join('\n');
+    document.title = 'PROBE ' + lines.join(' | ');
+  } catch (e) {
+    lbl.textContent = 'ERROR ' + (e.stack || e.message);
+    document.title = 'PROBE ERROR ' + e.message;
+  }
+</script>
+</body>
+</html>

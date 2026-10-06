@@ -18,6 +18,8 @@ import { resolveDisplayName } from '../utils/helpers.js';
 
 // ── Folder names (plain, functional, GM-friendly) ──
 const ROOT_FOLDER   = 'Night City Messenger';
+/** Exported for FactoryReset (the journal tree it deletes). */
+export const NCM_JOURNAL_ROOT_FOLDER = ROOT_FOLDER;
 const INBOX_FOLDER  = 'Inboxes';
 const NPC_FOLDER    = 'NPC Mail';
 const SHARD_FOLDER  = 'Data Shards';
@@ -104,6 +106,44 @@ export class MessageRepository {
     return folder;
   }
 
+  /**
+   * Get or create a nested folder PATH under the root, creating each level.
+   * Used to file player-made shards as "Data Shards / Player-Made / <Character>"
+   * so a GM can find what their table forged without hunting a flat list.
+   * GM-only: Folder.create is a world write. A player gets the deepest folder
+   * that already exists, or null, and the caller simply leaves the journal put.
+   * @param {string[]} path — e.g. ['Data Shards', 'Player-Made', 'V']
+   * @returns {Promise<Folder|null>}
+   */
+  async getSubfolderPath(path = []) {
+    const names = path.filter(Boolean).map(String);
+    if (!names.length) return null;
+    const cacheKey = names.join('/');
+    if (this._folderCache.has(cacheKey)) {
+      const cached = this._folderCache.get(cacheKey);
+      if (game.folders.get(cached.id)) return cached;
+      this._folderCache.delete(cacheKey);
+    }
+
+    let parent = await this._getOrCreateSubfolder(names[0]);
+    if (!parent) return null;
+
+    for (const name of names.slice(1)) {
+      let next = game.folders.find(f =>
+        f.type === 'JournalEntry' && f.name === name && f.folder?.id === parent.id
+      ) ?? null;
+      if (!next) {
+        if (!game.user.isGM) return parent;   // as deep as a player can be taken
+        next = await Folder.create({ name, type: 'JournalEntry', folder: parent.id, sorting: 'a' });
+      }
+      if (!next) return parent;
+      parent = next;
+    }
+
+    this._folderCache.set(cacheKey, parent);
+    return parent;
+  }
+
   /** Get or create the Inboxes subfolder. */
   async getInboxFolder() { return this._getOrCreateSubfolder(INBOX_FOLDER); }
 
@@ -187,6 +227,9 @@ export class MessageRepository {
    * @param {JournalEntry} journal
    * @returns {{ isContact: boolean, ownerId: string }|null}
    */
+  /** The top-level journal folder every NCM subfolder lives under. */
+  static get ROOT_FOLDER_NAME() { return ROOT_FOLDER; }
+
   static identifyInbox(journal) {
     if (!journal) return null;
 

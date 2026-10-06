@@ -364,11 +364,78 @@ export class MasterContactService {
         }
       }
 
-      await contactRepo.addContact(actorId, playerContact);
+      // Re-sharing is safe: a player who already holds this entry (linked by
+      // master id, by email, or by the linked actor) isn't given a duplicate.
+      const existing = await contactRepo.getContacts(actorId);
+      const emailLc = (contact.email || '').toLowerCase().trim();
+      const dupe = existing.find(pc =>
+        pc.masterContactId === contact.id ||
+        (emailLc && (pc.email || '').toLowerCase().trim() === emailLc) ||
+        (contact.actorId && (pc.actorId === contact.actorId || pc.linkedActorId === contact.actorId))
+      );
+      if (dupe) {
+        log.debug(`pushToPlayer: actor ${actorId} already has ${contact.name} — skipped`);
+        return { success: true, existing: true, contact: dupe };
+      }
+
+      const result = await contactRepo.addContact(actorId, playerContact);
+      if (!result?.success) return { success: false, error: result?.error || 'addContact failed' };
       log.info(`Pushed contact ${contact.name} to actor ${actorId}`);
       return { success: true };
     } catch (error) {
       console.error(`${MODULE_ID} | MasterContactService.pushToPlayer:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Share a PLAYER CHARACTER as a contact — the Admin → Contacts "Player
+   * Characters" rows aren't master contacts, so `pushToPlayer` can't serve
+   * them. Builds the entry from the actor itself (name, NCM email flag,
+   * portrait, CPR role item, actor link) and adds it to the target's list.
+   * Duplicate-safe (matched by actor link or email).
+   *
+   * @param {string} actorId       — The player character being shared
+   * @param {string} targetActorId — The actor receiving the contact
+   * @returns {Promise<{success: boolean, existing?: boolean, error?: string}>}
+   */
+  async pushActorToPlayer(actorId, targetActorId) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    if (actorId === targetActorId) return { success: true, existing: true };
+
+    const actor = game.actors?.get(actorId);
+    if (!actor) return { success: false, error: 'Actor not found' };
+
+    const contactRepo = game.nightcity?.contactRepository;
+    if (!contactRepo) return { success: false, error: 'ContactRepository not available' };
+
+    try {
+      const email = actor.getFlag(MODULE_ID, 'email') || '';
+      const emailLc = email.toLowerCase().trim();
+      const existing = await contactRepo.getContacts(targetActorId);
+      const dupe = existing.find(pc =>
+        pc.actorId === actorId || pc.linkedActorId === actorId ||
+        (emailLc && (pc.email || '').toLowerCase().trim() === emailLc)
+      );
+      if (dupe) return { success: true, existing: true, contact: dupe };
+
+      const roleItem = actor.items?.find?.(i => i.type === 'role');
+      const img = actor.img && actor.img !== 'icons/svg/mystery-man.svg' ? actor.img : '';
+      const result = await contactRepo.addContact(targetActorId, {
+        name: actor.name,
+        email,
+        customImg: img,
+        actorId,
+        type: 'player',
+        role: roleItem?.name || '',
+        notes: '',
+        tags: [],
+      });
+      if (!result?.success) return { success: false, error: result?.error || 'addContact failed' };
+      log.info(`Pushed player character ${actor.name} to actor ${targetActorId}`);
+      return { success: true };
+    } catch (error) {
+      console.error(`${MODULE_ID} | MasterContactService.pushActorToPlayer:`, error);
       return { success: false, error: error.message };
     }
   }

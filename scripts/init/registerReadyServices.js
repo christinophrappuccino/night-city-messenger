@@ -115,6 +115,34 @@ export function registerReadyServices(initializer) {
     if (game.nightcity.messenger) game.nightcity.messenger.openMalwareWorkshop = game.nightcity.openMalwareWorkshop;
   });
 
+  // ─── Shard Encoder launcher (the PLAYER-facing authoring window) ───
+  initializer.register('ready', 115, 'openEncoder launch', async () => {
+    /**
+     * Open the Shard Encoder.
+     * @param {object} [opts] { item?, stage?:'blank'|'program', family?:'utility'|'execute', actor? }
+     * @returns {ShardEncoderApp|null}
+     */
+    game.nightcity.openEncoder = async (opts = {}) => {
+      // The funnel every door passes through. It judges the same `canEncode` the
+      // doors use to decide whether to render at all, so a door and the window
+      // behind it can never disagree — and a character who reaches this by macro
+      // gets the same answer, with the reason.
+      const { canEncode, resolveOperator } = await import('../utils/helpers.js');
+      const verdict = canEncode(opts.actor || resolveOperator());
+      if (!verdict.ok) {
+        ui.notifications?.warn(`NCM | ${verdict.reason}`);
+        return null;
+      }
+      const { ShardEncoderApp } = await import('../ui/ShardEncoder/ShardEncoderApp.js');
+      const existing = Object.values(ui.windows).find((w) => w.id === 'ncm-shard-encoder');
+      if (existing) existing.close({ animate: false });
+      const app = new ShardEncoderApp(opts);
+      app.render(true);
+      return app;
+    };
+    if (game.nightcity.messenger) game.nightcity.messenger.openEncoder = game.nightcity.openEncoder;
+  });
+
   // ─── Program Deck launcher (view a shard's programs — cartridge reader) ───
   initializer.register('ready', 114, 'openProgramDeck launch', async () => {
     const { ProgramDeckApp } = await import('../ui/ProgramDeck/ProgramDeckApp.js');

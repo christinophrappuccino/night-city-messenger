@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NCM boot splash — live</title>
+<!--
+  THE SHIPPED BOOT SPLASH, NOT A COPY OF IT.
+  ==========================================
+  This imports the REAL scripts/ui/BootSplash.js and mounts it against the real
+  cascade (Foundry core → CPR → the module stylesheet). A preview that re-types
+  the markup renders clean while the app is broken, which is the whole reason
+  the animation was moved out of registerMessagingSystem in the first place.
+
+  Params
+    (none)      play it, on a loop, exactly as a player sees it
+    ?t=0..1     freeze at that point in the etch — scrub it frame by frame
+    ?strip=1    three frozen frames side by side: drawing, filling, landed
+    ?reduced=1  the reduced-motion path: the finished mark, no movement
+    ?speed=ms   override the pace (the shipped value is DURATION_MS)
+    ?once=1     play once instead of looping
+
+  The splash is a fixed overlay holding a ~520px panel, so the strip mounts each
+  frame into its own transformed host (a transform makes a containing block, which
+  traps the fixed overlay inside the cell) and needs ~600px per cell to show the
+  panel uncropped.
+-->
+<script>
+  /* The two stylesheets that live OUTSIDE the repo. Opened from disk they are
+     file:/// paths; served over http they come from the server's /_vendor mirror,
+     because an http page may not load a file:// stylesheet. Either way the
+     preview renders against the REAL cascade, which is the whole point of it. */
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         'file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet'; l.href = href;
+      document.head.appendChild(l);
+    }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #07070b;
+    font-family: 'Share Tech Mono', ui-monospace, monospace; color: #8fa0b2; }
+  /* Something under the splash, so the scrim has a job to do. */
+  .under { position: fixed; inset: 0; display: grid; place-items: center;
+    color: #1d2530; font-size: 64px; letter-spacing: .3em; }
+  .bar { position: fixed; z-index: 100000; top: 0; left: 0; right: 0;
+    display: flex; gap: 6px; align-items: center; padding: 9px 12px;
+    background: #0b0b12; border-bottom: 1px solid #1b1b28; font-size: 11px; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; margin-right: 8px; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a;
+    padding: 4px 9px; text-decoration: none; letter-spacing: .08em;
+    text-transform: uppercase; }
+  .bar a:hover { color: #e6edf5; border-color: #3a3a5a; }
+  .bar a.on { color: #0a0a0f; background: var(--ncm-primary, #F65261); border-color: transparent; }
+  .bar .note { margin-left: auto; color: #4c5866; }
+
+  /* Strip mode: three independent stages, each holding its own overlay. */
+  .strip { position: fixed; inset: 44px 0 0; display: flex; gap: 10px; padding: 10px; }
+  .frame { flex: 1; position: relative; overflow: hidden; border: 1px solid #1b1b28; }
+  .frame > .host { position: absolute; inset: 0; }
+  .frame .lbl { position: absolute; z-index: 5; left: 8px; top: 6px; font-size: 10px;
+    letter-spacing: .14em; text-transform: uppercase; color: #6f7c8c; }
+  /* The overlay is position:fixed, so it needs a containing block to be trapped
+     inside a frame — a transform on the host creates one. */
+  .frame > .host { transform: translateZ(0); }
+
+  /* Shown only when the module import is refused — see the guard in the script. */
+  .cantload { max-width: 620px; margin: 12vh auto; padding: 26px 30px;
+    border: 1px solid #2a2a45; background: #0f0f18; color: #cfd8e3; line-height: 1.7; }
+  .cantload h1 { margin: 0 0 14px; font-size: 15px; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--ncm-primary, #F65261); }
+  .cantload p { margin: 0 0 12px; }
+  .cantload pre { margin: 0 0 14px; padding: 10px 12px; background: #07070b;
+    border: 1px solid #23233a; color: #19f3f7; overflow-x: auto; }
+  .cantload a { color: #19f3f7; }
+  .cantload .small { font-size: 11px; color: #5b6676; }
+</style>
+</head>
+<body>
+<div class="under">AGENT</div>
+<div class="bar" id="bar"></div>
+<script type="module">
+/* The import is DYNAMIC and guarded on purpose. A file:// page cannot import an
+   ES module — Chrome gives every file URL its own opaque origin and blocks it —
+   and a static import would fail before a single line here ran, leaving a blank
+   page with the answer only in the console. */
+let M = null;
+try {
+  M = await import('../../scripts/ui/BootSplash.js');
+} catch (err) {
+  document.body.innerHTML = `
+    <div class="cantload">
+      <h1>The preview needs a server</h1>
+      <p>This page loads the REAL <code>scripts/ui/BootSplash.js</code>, and a page
+         opened straight off disk is not allowed to import a module. Nothing is
+         broken — the browser refused the import.</p>
+      <p>From the module folder, run:</p>
+      <pre>node tools/serve-mockups.cjs</pre>
+      <p>then open <a href="http://127.0.0.1:8123/docs/mockups/boot-splash-preview.html">http://127.0.0.1:8123/docs/mockups/boot-splash-preview.html</a></p>
+      <p class="small">${String(err && err.message || err)}</p>
+    </div>`;
+  throw err;
+}
+const { playBootSplash, splashPainter, splashMarkup, DURATION_MS } = M;
+
+const P = new URLSearchParams(location.search);
+const T = P.has('t') ? Math.max(0, Math.min(1, Number(P.get('t')))) : null;
+const STRIP = P.get('strip') === '1';
+const REDUCED = P.get('reduced') === '1';
+const ONCE = P.get('once') === '1';
+const SPEED = Number(P.get('speed') || DURATION_MS);
+
+const links = [
+  ['', 'Play'],
+  ['?strip=1', 'Frames'],
+  ['?t=0.25', 'Scrub .25'],
+  ['?t=0.6', 'Scrub .6'],
+  ['?t=1', 'Scrub 1'],
+  ['?reduced=1', 'Reduced motion'],
+  ['?speed=4000', 'Slow'],
+];
+document.getElementById('bar').innerHTML =
+  '<b>NCM BOOT SPLASH</b>' +
+  links.map(([q, l]) =>
+    `<a href="${q || location.pathname}" class="${location.search === q || (!location.search && !q) ? 'on' : ''}">${l}</a>`).join('') +
+  `<span class="note">shipped pace ${DURATION_MS}ms</span>`;
+
+/** Mount the real markup into a host and paint one frozen frame. */
+function freeze(host, p) {
+  const root = document.createElement('div');
+  root.className = 'ncm-boot-splash';
+  root.innerHTML = splashMarkup({ version: '1.1.0' });
+  host.appendChild(root);
+  root.offsetHeight;
+  splashPainter(root)(p);
+}
+
+if (STRIP) {
+  document.querySelector('.under').remove();
+  const strip = document.createElement('div');
+  strip.className = 'strip';
+  strip.innerHTML = [[0.28, 'drawing'], [0.62, 'filling'], [1, 'landed']]
+    .map(([, l]) => `<div class="frame"><span class="lbl">${l}</span><div class="host"></div></div>`).join('');
+  document.body.appendChild(strip);
+  [...strip.querySelectorAll('.host')].forEach((h, i) => freeze(h, [0.28, 0.62, 1][i]));
+} else if (T !== null) {
+  freeze(document.body, T);
+} else {
+  const run = async () => {
+    await playBootSplash({ reduced: REDUCED, version: '1.1.0', duration: SPEED });
+    if (!ONCE) { await new Promise((r) => setTimeout(r, 700)); run(); }
+  };
+  run();
+}
+</script>
+</body>
+</html>

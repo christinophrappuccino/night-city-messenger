@@ -77,6 +77,16 @@
                   title="{{#if isFavorite}}Remove from favorites{{else}}Add to favorites{{/if}}">
             <i class="fas fa-star" {{#if isFavorite}}style="color:var(--ncm-accent, #F0C55B);"{{/if}}></i>
           </button>
+          {{!-- Players remove their own contacts here; the GM has the Delete
+               button in the GM Controls card below (2026-09 tester: "I can
+               Edit, but not remove them"). --}}
+          {{#unless ../isGM}}
+          <button class="ncm-action-btn ncm-action-btn--ghost ncm-action-btn--danger"
+                  data-action="deleteContact" data-contact-id="{{id}}"
+                  title="Remove from contacts">
+            <i class="fas fa-trash"></i>
+          </button>
+          {{/unless}}
         </div>
       </div>
     </div>

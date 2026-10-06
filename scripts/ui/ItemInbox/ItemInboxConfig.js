@@ -6,8 +6,8 @@
  *   5 tabs: Identity, Security, Network, Systems, Boot.
  */
 
-import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES, FAILURE_MODES, ENCRYPTION_TYPES } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, applyContrastToElement } from '../../utils/helpers.js';
+import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES, FAILURE_MODES, ENCRYPTION_TYPES, COLOR_VAR_MAP, FONT_OPTIONS } from '../../utils/constants.js';
+import { log, isGM, formatCyberDate, applyContrastToElement, buildShardThemePrefs } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
@@ -49,6 +49,36 @@ const KEY_ITEM_ICON_OPTIONS = [
   { value: 'fas fa-qrcode', label: 'QR Code' },
   { value: 'fas fa-file-signature', label: 'Signature' },
 ];
+
+/**
+ * What "the security block" means when a full shard preset opts into carrying one.
+ * Kept as an explicit list rather than "everything that isn't look": a field added
+ * to the config later should NOT silently start travelling inside a preset.
+ */
+const SHARD_SECURITY_KEYS = [
+  'encrypted', 'encryptionType', 'encryptionDC', 'encryptionMode',
+  'allowedSkills', 'skillDCs', 'failureMode', 'maxHackAttempts', 'lockoutDuration',
+  'requiresLogin', 'loginUsername', 'loginPassword', 'loginDisplayName', 'maxLoginAttempts',
+  'requiresKeyItem', 'keyItemName', 'keyItemId', 'keyItemImg', 'keyItemTag',
+  'keyItemDisplayName', 'keyItemIcon', 'keyItemBypassLogin', 'keyItemBypassEncryption',
+  'keyItemConsumeOnUse', 'maxKeyItemAttempts',
+  'layerSecurity', 'ice',
+];
+
+/** Human labels for the themeable palette keys (COLOR_VAR_MAP order). */
+const THEME_COLOR_LABELS = {
+  primary: 'Primary', secondary: 'Accent (main)', accent: 'Accent (foil)',
+  bgDeep: 'Background (deep)', bgBase: 'Background (base)', bgSurface: 'Surface',
+  bgElevated: 'Elevated', textPrimary: 'Text (bright)', textSecondary: 'Text (body)',
+  textMuted: 'Text (muted)', border: 'Border',
+};
+
+/** What a swatch shows when neither an override nor a preset supplies the key. */
+const THEME_COLOR_FALLBACK = {
+  primary: '#F65261', secondary: '#19f3f7', accent: '#f7c948',
+  bgDeep: '#0a0a0f', bgBase: '#12121a', bgSurface: '#1a1a2e', bgElevated: '#252540',
+  textPrimary: '#e0e0e8', textSecondary: '#8888a0', textMuted: '#555570', border: '#2a2a45',
+};
 
 const LAYER_FAILURE_MODES = [
   { value: 'nothing', label: 'No consequence' },
@@ -157,6 +187,8 @@ export class ItemInboxConfig extends BaseApplication {
     wireDisplaySlider('textScale', 'ncm-cfg-scale-val', ItemInboxConfig._clampTextScale, (p) => this._previewShardTextScale(p));
     wireDisplaySlider('contrast', 'ncm-cfg-contrast-val', ItemInboxConfig._clampContrast, (p) => this._previewShardContrast(p));
 
+    this._wireThemeTab();
+
     // ─── Icon mode instant switching ───
     const iconModeSel = el.querySelector('[name="bootIconMode"]');
     if (iconModeSel) {
@@ -167,6 +199,522 @@ export class ItemInboxConfig extends BaseApplication {
         });
       });
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  THEME — the draft contract
+  // ═══════════════════════════════════════════════════════════
+  //
+  //  Theme controls are UNNAMED and data-keyed (`data-stc`), so they never reach
+  //  the form reader. They mutate `this._themeDraft` through manual listeners with
+  //  NO re-render, which is what lets an edit survive a tab switch — the bug that
+  //  made the terminal's theme tab discard work before it was rebuilt this way.
+  //  `_onSaveConfig` persists the draft; `close()` reverts any preview it pushed.
+  //
+  //  A cleared override is stored as '' rather than deleted: `updateConfig` merges
+  //  through `mergeObject`, which would keep a removed key's old value, and an
+  //  empty string is falsy so `buildShardThemePrefs` falls through to the preset
+  //  exactly as an absent key would.
+
+  /** `config.theme` → the theme object, tolerating both legacy shapes. */
+  static _readTheme(config) {
+    const t = config?.theme;
+    if (!t || typeof t !== 'object') return { colors: {}, fonts: {} };   // the legacy preset-key string
+    return { colors: {}, fonts: {}, ...foundry.utils.deepClone(t) };
+  }
+
+  /** The working copy, created on first edit. */
+  _draft() {
+    if (!this._themeDraft) {
+      const config = this.dataShardService?.getConfig(this.item) ?? {};
+      this._themeDraft = ItemInboxConfig._readTheme(config);
+      this._themeDraft.colors ??= {};
+      this._themeDraft.fonts ??= {};
+    }
+    return this._themeDraft;
+  }
+
+  /** Saved shard themes (world setting) — always an array. */
+  static _savedThemes() {
+    try {
+      const v = game.settings.get(MODULE_ID, 'shardThemePresets');
+      return Array.isArray(v) ? v : [];
+    } catch { return []; }
+  }
+
+  /**
+   * Wire the Theme tab. Every listener is manual and mutates the draft without a
+   * render (see `_repaintThemeTab` for why a render is not an option here).
+   */
+  _wireThemeTab() {
+    const el = this.element;
+    if (!el) return;
+    const panel = el.querySelector('[data-panel="theme"]');
+    if (!panel || panel.dataset.wired) return;
+    panel.dataset.wired = '1';
+
+    const touch = () => { this._displayPreviewed = true; this._displaySaved = false; };
+
+    // Colour pickers fire `input` continuously while dragging — preview live,
+    // which is the whole point of a colour picker.
+    panel.addEventListener('input', (ev) => {
+      const t = ev.target.closest('[data-stc]');
+      if (!t) return;
+      const kind = t.dataset.stc;
+      const d = this._draft();
+      if (kind === 'color') { d.colors[t.dataset.key] = t.value; t.closest('[data-stc-row]')?.classList.add('is-override'); }
+      else if (kind === 'wallpaper') d.wallpaper = t.value.trim();
+      else if (kind === 'wallpaperStrength') {
+        d.wallpaperStrength = ItemInboxConfig._clampStrength(t.value);
+        const lbl = panel.querySelector('.ncm-stc-wp-val');
+        if (lbl) lbl.textContent = `${d.wallpaperStrength}%`;
+      } else return;
+      touch();
+      this._previewTheme();
+    });
+
+    panel.addEventListener('change', (ev) => {
+      const t = ev.target.closest('[data-stc]');
+      if (!t || t.dataset.stc !== 'font') return;
+      this._draft().fonts[t.dataset.slot] = t.value;
+      touch();
+      this._previewTheme();
+    });
+
+    panel.addEventListener('click', (ev) => {
+      const t = ev.target.closest('[data-stc]');
+      if (!t) return;
+      const kind = t.dataset.stc;
+      if (kind === 'color' || kind === 'wallpaper' || kind === 'wallpaperStrength' || kind === 'font') return;
+      ev.preventDefault();
+      this._onThemeAction(kind, t);
+    });
+  }
+
+  /** Theme-tab buttons. Kept off the ApplicationV2 actions map because none of
+   *  them may trigger a render (the unsaved-edits rule). */
+  async _onThemeAction(kind, target) {
+    const d = this._draft();
+    const touch = () => { this._displayPreviewed = true; this._displaySaved = false; };
+
+    switch (kind) {
+      case 'preset': {
+        // A preset card stages that preset's LOOK. Prior colour overrides are
+        // cleared, or the card you just clicked would visibly do nothing.
+        this._themePresetKey = target.dataset.key || 'blank';
+        d.colors = {};
+        touch(); this._repaintThemeTab(); this._previewTheme();
+        return;
+      }
+      case 'colorReset': {
+        const key = target.dataset.key;
+        d.colors[key] = '';                 // '' not delete — see the draft contract
+        touch(); this._repaintThemeTab(); this._previewTheme();
+        return;
+      }
+      case 'colorResetAll': {
+        d.colors = {};
+        touch(); this._repaintThemeTab(); this._previewTheme();
+        return;
+      }
+      case 'wallpaperBrowse': {
+        const fp = new FilePicker({
+          type: 'image',
+          current: d.wallpaper || '',
+          callback: (path) => {
+            d.wallpaper = path;
+            const input = this.element?.querySelector('[data-stc="wallpaper"]');
+            if (input) input.value = path;
+            touch(); this._previewTheme();
+          },
+        });
+        fp.render(true);
+        return;
+      }
+      case 'wallpaperClear': {
+        d.wallpaper = '';
+        const input = this.element?.querySelector('[data-stc="wallpaper"]');
+        if (input) input.value = '';
+        touch(); this._previewTheme();
+        return;
+      }
+      default:
+        return kind.startsWith('full')
+          ? this._onFullPresetAction(kind, target)
+          : this._onSavedThemeAction(kind, target);
+    }
+  }
+
+  /**
+   * The saved-theme library (world setting `shardThemePresets`).
+   *
+   * A saved theme is the LOOK only — palette, fonts, wallpaper. It deliberately
+   * carries no security block: several shipped presets ship Black ICE at DV 20,
+   * and a GM applying something labelled "a theme" must not silently arm a shard.
+   * (Same reason the Encoder never hands `convertToDataShard` a preset KEY.)
+   */
+  async _onSavedThemeAction(kind, target) {
+    if (!isGM()) return;
+    const list = ItemInboxConfig._savedThemes();
+    const i = Number(target?.dataset?.index);
+    const write = async (next) => {
+      await game.settings.set(MODULE_ID, 'shardThemePresets', next);
+      this._rebuildSavedThemeList();
+    };
+    // What a save captures: the draft, plus the preset it was built on, so
+    // applying it elsewhere reproduces what you were looking at.
+    const snapshot = () => {
+      const d = foundry.utils.deepClone(this._draft());
+      d.basePreset = this._themePresetKey ?? this.dataShardService?.getConfig(this.item)?.preset ?? 'blank';
+      return d;
+    };
+
+    switch (kind) {
+      case 'themeSave': {
+        const name = await ItemInboxConfig._promptName('Save this look', this.item?.name || 'Shard theme');
+        if (!name) return;
+        await write([...list, { name, theme: snapshot() }]);
+        ui.notifications.info(`NCM | Saved the look as "${name}".`);
+        return;
+      }
+      case 'themeApply': {
+        const entry = list[i];
+        if (!entry) return;
+        const t = foundry.utils.deepClone(entry.theme || {});
+        if (t.basePreset) { this._themePresetKey = t.basePreset; delete t.basePreset; }
+        t.colors ??= {}; t.fonts ??= {};
+        this._themeDraft = t;
+        this._displayPreviewed = true; this._displaySaved = false;
+        this._repaintThemeTab();
+        this._syncThemeInputs();
+        this._previewTheme();
+        ui.notifications.info(`NCM | Applied "${entry.name}". Save the shard to keep it.`);
+        return;
+      }
+      case 'themeOverwrite': {
+        if (!list[i]) return;
+        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${list[i].name}</b> with this shard's current look?</p>` });
+        if (!ok) return;
+        list[i] = { name: list[i].name, theme: snapshot() };
+        await write(list);
+        return;
+      }
+      case 'themeDelete': {
+        if (!list[i]) return;
+        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the saved look <b>${list[i].name}</b>?</p>` });
+        if (!ok) return;
+        list.splice(i, 1);
+        await write(list);
+        return;
+      }
+      case 'themeExport': {
+        const entry = list[i];
+        if (!entry) return;
+        ItemInboxConfig._download(`ncm-shard-theme-${entry.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`,
+          JSON.stringify({ ncmShardTheme: 1, name: entry.name, theme: entry.theme }, null, 2));
+        return;
+      }
+      case 'themeImport': {
+        const picked = await ItemInboxConfig._readJsonFile();
+        if (!picked) return;
+        // Accept the envelope OR a bare theme object — the spam/terminal precedent.
+        const entries = Array.isArray(picked) ? picked : [picked];
+        const added = [];
+        for (const raw of entries) {
+          const theme = raw?.ncmShardTheme ? raw.theme : (raw?.theme || raw);
+          if (!theme || typeof theme !== 'object') continue;
+          added.push({ name: String(raw?.name || 'Imported look'), theme });
+        }
+        if (!added.length) return void ui.notifications.warn('NCM | That file had no shard theme in it.');
+        await write([...list, ...added]);
+        ui.notifications.info(`NCM | Imported ${added.length} look${added.length === 1 ? '' : 's'}.`);
+        return;
+      }
+      default:
+        log.debug(`ItemInboxConfig: unhandled theme action ${kind}`);
+    }
+  }
+
+  /**
+   * The FULL preset library (world setting `shardPresetLibrary`) — a whole shard
+   * setup you can stamp out again, not just its colours.
+   *
+   * What it captures: look (theme + preset), startup (boot), and identity
+   * (metadata, readability). **Security is opt-in per save**, unticked by default,
+   * and an entry that carries one says so on its row and again when you apply it.
+   * The reason is the standing rule about presets: several shipped ones ship Black
+   * ICE at DV 20, and a GM reaching for "make another one like this" must never
+   * arm a shard without being told.
+   */
+  async _onFullPresetAction(kind, target) {
+    if (!isGM() || !this.item) return;
+    const list = ItemInboxConfig._fullPresets();
+    const i = Number(target?.dataset?.index);
+    const write = async (next) => {
+      await game.settings.set(MODULE_ID, 'shardPresetLibrary', next);
+      this._rebuildFullPresetList();
+    };
+
+    switch (kind) {
+      case 'fullSave': {
+        const picked = await ItemInboxConfig._promptFullSave(this.item?.name || 'Shard setup');
+        if (!picked?.name) return;
+        await write([...list, { name: picked.name, config: this._snapshotShard(picked.withSecurity) }]);
+        ui.notifications.info(`NCM | Saved "${picked.name}"${picked.withSecurity ? ' with its security' : ' (look and startup only)'}.`);
+        return;
+      }
+      case 'fullApply': {
+        const entry = list[i];
+        if (!entry) return;
+        const hasSec = !!entry.config?.security;
+        const ok = await adminConfirm({
+          title: 'Apply shard preset',
+          content: `<p>Apply <b>${entry.name}</b> to this shard?</p>
+            <p>It overwrites the look, startup and identity${hasSec
+              ? ' <b>and its security block</b> — encryption, login and key item.'
+              : '. Its security is untouched.'}</p>
+            <p><b>This saves immediately</b>, and any unsaved edits on the other tabs are lost.</p>`,
+        });
+        if (!ok) return;
+        const c = entry.config || {};
+        const updates = {
+          preset: c.preset || 'blank',
+          theme: foundry.utils.deepClone(c.theme || {}),
+          boot: foundry.utils.deepClone(c.boot || {}),
+          metadata: foundry.utils.deepClone(c.metadata || {}),
+          textScale: ItemInboxConfig._clampTextScale(c.textScale),
+          contrast: ItemInboxConfig._clampContrast(c.contrast),
+          ...(hasSec ? foundry.utils.deepClone(c.security) : {}),
+        };
+        const res = await this.dataShardService.updateConfig(this.item, updates);
+        if (!res?.success) return void ui.notifications.error(`NCM | Failed: ${res?.error || 'unknown'}`);
+        this._themeDraft = null;
+        this._themePresetKey = null;
+        this._displaySaved = true;
+        ui.notifications.info(`NCM | Applied "${entry.name}".`);
+        for (const { app } of this._openViewers()) app.render(false);
+        this.render();
+        return;
+      }
+      case 'fullOverwrite': {
+        const entry = list[i];
+        if (!entry) return;
+        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${entry.name}</b> with this shard's current setup?</p>` });
+        if (!ok) return;
+        // Replace IN PLACE, keeping the name and whatever security choice it was
+        // saved with — an overwrite should not quietly re-order the library or
+        // change whether the entry is armed.
+        list[i] = { name: entry.name, config: this._snapshotShard(!!entry.config?.security) };
+        await write(list);
+        ui.notifications.info(`NCM | Overwrote "${entry.name}".`);
+        return;
+      }
+      case 'fullDelete': {
+        if (!list[i]) return;
+        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the shard preset <b>${list[i].name}</b>?</p>` });
+        if (!ok) return;
+        list.splice(i, 1);
+        await write(list);
+        return;
+      }
+      case 'fullExport': {
+        const entry = list[i];
+        if (!entry) return;
+        ItemInboxConfig._download(`ncm-shard-preset-${entry.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`,
+          JSON.stringify({ ncmShardPreset: 1, name: entry.name, config: entry.config }, null, 2));
+        return;
+      }
+      case 'fullImport': {
+        const raw = await ItemInboxConfig._readJsonFile();
+        if (!raw) return;
+        const entries = (Array.isArray(raw) ? raw : [raw])
+          .map((r) => ({ name: String(r?.name || 'Imported shard'), config: r?.ncmShardPreset ? r.config : (r?.config || r) }))
+          .filter((e) => e.config && typeof e.config === 'object');
+        if (!entries.length) return void ui.notifications.warn('NCM | That file had no shard preset in it.');
+        // Import NEVER auto-applies — the terminal-library precedent.
+        await write([...list, ...entries]);
+        const armed = entries.filter((e) => e.config.security).length;
+        ui.notifications.info(`NCM | Imported ${entries.length} preset${entries.length === 1 ? '' : 's'}`
+          + (armed ? `, ${armed} carrying a security block.` : '.'));
+        return;
+      }
+      default:
+        log.debug(`ItemInboxConfig: unhandled full-preset action ${kind}`);
+    }
+  }
+
+  /**
+   * This shard's current setup, as a library entry's `config`. Reads the DRAFT for
+   * the theme (so saving captures what you are looking at, not what is on disk)
+   * and the stored config for everything else.
+   * @param {boolean} withSecurity copy the security block too
+   */
+  _snapshotShard(withSecurity) {
+    const cfg = this.dataShardService?.getConfig(this.item) ?? {};
+    const snap = {
+      preset: this._themePresetKey ?? cfg.preset ?? 'blank',
+      theme: this._themeDraft ? foundry.utils.deepClone(this._themeDraft) : ItemInboxConfig._readTheme(cfg),
+      boot: foundry.utils.deepClone(cfg.boot ?? {}),
+      metadata: foundry.utils.deepClone(cfg.metadata ?? {}),
+      textScale: ItemInboxConfig._clampTextScale(cfg.textScale),
+      contrast: ItemInboxConfig._clampContrast(cfg.contrast),
+    };
+    if (withSecurity) {
+      snap.security = {};
+      for (const k of SHARD_SECURITY_KEYS) if (k in cfg) snap.security[k] = foundry.utils.deepClone(cfg[k]);
+    }
+    return snap;
+  }
+
+  /** The full-preset library — always an array. */
+  static _fullPresets() {
+    try {
+      const v = game.settings.get(MODULE_ID, 'shardPresetLibrary');
+      return Array.isArray(v) ? v : [];
+    } catch { return []; }
+  }
+
+  /** Name + "include security" in one dialog, because they are one decision. */
+  static _promptFullSave(placeholder = '') {
+    return new Promise((resolve) => {
+      let out = null;
+      const dlg = adminDialog({
+        title: 'Save this shard as a preset',
+        content: `
+          <p><input type="text" class="ncm-stc-nameinput" value="${String(placeholder).replace(/"/g, '&quot;')}" style="width:100%"></p>
+          <p style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:400">
+            <input type="checkbox" class="ncm-stc-withsec">
+            <span>Include this shard's security (encryption, login, key item)</span></label></p>
+          <p class="ncm-cfg-hint" style="margin:6px 0 0">Leave it unticked and the preset is look, startup and identity only — applying it can never arm a shard by surprise.</p>`,
+        buttons: {
+          ok: {
+            label: 'Save',
+            callback: (html) => {
+              const r = html[0] ?? html;
+              const name = r.querySelector('.ncm-stc-nameinput')?.value?.trim();
+              if (name) out = { name, withSecurity: !!r.querySelector('.ncm-stc-withsec')?.checked };
+            },
+          },
+          cancel: { label: 'Cancel' },
+        },
+        default: 'ok',
+        render: (html) => setTimeout(() => (html[0] ?? html).querySelector('.ncm-stc-nameinput')?.select(), 30),
+        close: () => resolve(out),
+      });
+      dlg.render(true);
+    });
+  }
+
+  /** Repaint the full-preset rows in place (no render — the unsaved-edits rule). */
+  _rebuildFullPresetList() {
+    const host = this.element?.querySelector('[data-stc-full]');
+    if (!host) return;
+    const list = ItemInboxConfig._fullPresets();
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    host.innerHTML = list.length ? list.map((t, i) => `
+      <div class="ncm-tc__citem">
+        <i class="fas fa-microchip" style="color:var(--ncm-text-muted);font-size:10px"></i>
+        <span class="ncm-tc__citem-name">${esc(t.name)}</span>
+        ${t.config?.security ? '<span class="ncm-stc-secchip" data-tooltip="Applying this also overwrites security">SECURITY</span>' : ''}
+        <div class="ncm-tc__citem-actions">
+          <button type="button" data-stc="fullApply" data-index="${i}" data-tooltip="Apply to this shard"><i class="fas fa-check"></i></button>
+          <button type="button" data-stc="fullOverwrite" data-index="${i}" data-name="${esc(t.name)}" data-tooltip="Overwrite with this shard"><i class="fas fa-save"></i></button>
+          <button type="button" data-stc="fullExport" data-index="${i}" data-tooltip="Export JSON"><i class="fas fa-file-export"></i></button>
+          <button type="button" class="ncm-tc__citem-del" data-stc="fullDelete" data-index="${i}" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`).join('')
+      : '<div class="ncm-tc__cempty">No shard presets yet — build one shard fully, then Save it here to stamp out more.</div>';
+  }
+
+  /** Repaint the saved-theme rows in place (no render — the unsaved-edits rule). */
+  _rebuildSavedThemeList() {
+    const host = this.element?.querySelector('[data-stc-saved]');
+    if (!host) return;
+    const list = ItemInboxConfig._savedThemes();
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    host.innerHTML = list.length ? list.map((t, i) => `
+      <div class="ncm-tc__citem">
+        <div class="ncm-tc__citem-swatch">
+          <span style="background:${esc(t.theme?.colors?.secondary || '#19f3f7')}"></span>
+          <span style="background:${esc(t.theme?.colors?.accent || '#f7c948')}"></span>
+          <span style="background:${esc(t.theme?.colors?.bgSurface || '#1a1a2e')}"></span>
+        </div>
+        <span class="ncm-tc__citem-name">${esc(t.name)}</span>
+        <div class="ncm-tc__citem-actions">
+          <button type="button" data-stc="themeApply" data-index="${i}" data-tooltip="Apply to this shard"><i class="fas fa-check"></i></button>
+          <button type="button" data-stc="themeOverwrite" data-index="${i}" data-tooltip="Overwrite with this shard's look"><i class="fas fa-save"></i></button>
+          <button type="button" data-stc="themeExport" data-index="${i}" data-tooltip="Export JSON"><i class="fas fa-file-export"></i></button>
+          <button type="button" class="ncm-tc__citem-del" data-stc="themeDelete" data-index="${i}" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`).join('')
+      : '<div class="ncm-tc__cempty">No saved looks yet — dress a shard, then Save this look to reuse it.</div>';
+  }
+
+  /** Push the draft back into the tab's inputs (after applying a saved look). */
+  _syncThemeInputs() {
+    const el = this.element;
+    const d = this._draft();
+    if (!el) return;
+    for (const sel of el.querySelectorAll('[data-stc="font"]')) sel.value = d.fonts?.[sel.dataset.slot] || sel.value;
+    const wp = el.querySelector('[data-stc="wallpaper"]');
+    if (wp) wp.value = d.wallpaper || '';
+    const st = el.querySelector('[data-stc="wallpaperStrength"]');
+    if (st) {
+      st.value = ItemInboxConfig._clampStrength(d.wallpaperStrength);
+      const lbl = el.querySelector('.ncm-stc-wp-val');
+      if (lbl) lbl.textContent = `${st.value}%`;
+    }
+  }
+
+  /** A one-field name prompt, in the admin palette. */
+  static _promptName(title, placeholder = '') {
+    return new Promise((resolve) => {
+      let out = null;
+      const dlg = adminDialog({
+        title,
+        content: `<p><input type="text" class="ncm-stc-nameinput" value="${String(placeholder).replace(/"/g, '&quot;')}" style="width:100%"></p>`,
+        buttons: {
+          ok: { label: 'Save', callback: (html) => { out = (html[0] ?? html).querySelector('.ncm-stc-nameinput')?.value?.trim() || null; } },
+          cancel: { label: 'Cancel' },
+        },
+        default: 'ok',
+        render: (html) => setTimeout(() => (html[0] ?? html).querySelector('.ncm-stc-nameinput')?.select(), 30),
+        close: () => resolve(out),
+      });
+      dlg.render(true);
+    });
+  }
+
+  /** Blob download (the ContactsTab / spam-template pattern). */
+  static _download(filename, text) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  /** Hidden file input → parsed JSON, or null. */
+  static _readJsonFile() {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json,.json';
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) return resolve(null);
+        try { resolve(JSON.parse(await file.text())); }
+        catch (err) { ui.notifications.error(`NCM | Could not read that file: ${err.message}`); resolve(null); }
+      });
+      input.click();
+    });
+  }
+
+  /** Clamp the wallpaper strength slider (5–100, blank → 25). */
+  static _clampStrength(v) {
+    const n = parseInt(v, 10);
+    if (!Number.isFinite(n)) return 25;
+    return Math.min(100, Math.max(5, n));
   }
 
   /** Clamp a per-shard text size to the slider's 80–150% range (NaN/blank → 100). */
@@ -183,15 +731,91 @@ export class ItemInboxConfig extends BaseApplication {
     return Math.min(140, Math.max(70, n));
   }
 
-  /** Every open viewer root (.ncm-item-inbox) of THIS shard — the live-preview targets. */
-  _openViewerRoots() {
-    const roots = [];
+  /**
+   * Every open viewer of THIS shard — the live-preview targets.
+   * Returns BOTH elements because they carry different things: the palette is
+   * written to the app root (so the window frame follows too) while the contrast
+   * tone-map and the text scale live on the inner `.ncm-item-inbox`, exactly as
+   * `ItemInboxApp._applyShardTheme` arranges them.
+   * @returns {Array<{app: object, appRoot: HTMLElement, inbox: HTMLElement}>}
+   */
+  _openViewers() {
+    const out = [];
     for (const app of foundry.applications.instances.values()) {
       if (app === this || app.item?.id !== this.item?.id) continue;
-      const root = app.element?.querySelector?.('.ncm-item-inbox');
-      if (root) roots.push(root);
+      const appRoot = app.element;
+      const inbox = appRoot?.querySelector?.('.ncm-item-inbox');
+      if (appRoot && inbox) out.push({ app, appRoot, inbox });
     }
-    return roots;
+    return out;
+  }
+
+  /** Back-compat shim for the two display sliders. */
+  _openViewerRoots() { return this._openViewers().map((v) => v.inbox); }
+
+  /**
+   * Push the draft palette onto every open viewer of this shard, and onto the
+   * config's own preview strip so the sliders visibly do something even with no
+   * viewer open. DOM-only (no render) so it can ride a slider drag.
+   */
+  _previewTheme() {
+    const theme = this._draft();
+    const presetKey = this._themePresetKey ?? this.dataShardService?.getConfig(this.item)?.preset ?? 'blank';
+    const ts = this.themeService;
+    if (!ts) return;
+
+    for (const { appRoot, inbox } of this._openViewers()) {
+      const scale = ItemInboxConfig._clampTextScale(this.element?.querySelector('[name="textScale"]')?.value);
+      const contrast = ItemInboxConfig._clampContrast(this.element?.querySelector('[name="contrast"]')?.value);
+      ts.applyTheme(buildShardThemePrefs(theme, presetKey, { textScale: scale, contrast: 100 }), appRoot);
+      applyContrastToElement(inbox, contrast, { baseFrom: appRoot });
+    }
+
+    // The strip inside this sheet. It is NOT admin-themed on purpose: it has to
+    // show the PLAYER's view of the shard, while the sheet around it stays in the
+    // admin palette (the Theme Customizer's _scopePreviewToPlayerTheme precedent).
+    const strip = this.element?.querySelector('.ncm-stc-live');
+    if (strip) {
+      ts.applyTheme(buildShardThemePrefs(theme, presetKey, { textScale: 100, contrast: 100 }), strip);
+      applyContrastToElement(strip, ItemInboxConfig._clampContrast(this.element?.querySelector('[name="contrast"]')?.value), { baseFrom: strip });
+    }
+  }
+
+  /** Re-render an open viewer from its SAVED state — used to drop an unsaved preview. */
+  _revertThemePreview() {
+    for (const { app } of this._openViewers()) app.render(false);
+  }
+
+  /**
+   * Repaint the Theme tab from the draft — DOM-only.
+   *
+   * This sheet CANNOT re-render to refresh itself: `_prepareContext` reads the
+   * STORED config, so a `render()` would throw away every unsaved edit in Identity,
+   * Security, Network, Systems and Boot. So each control updates its own siblings
+   * by hand, the way the terminal's theme tab does.
+   */
+  _repaintThemeTab() {
+    const el = this.element;
+    if (!el) return;
+    const theme = this._draft();
+    const presetKey = this._themePresetKey ?? this.dataShardService?.getConfig(this.item)?.preset ?? 'blank';
+    const pal = SHARD_PRESETS[presetKey]?.palette || {};
+
+    el.querySelectorAll('[data-stc="preset"]').forEach((card) => {
+      card.classList.toggle('ncm-tc__pcard--active', card.dataset.key === presetKey);
+    });
+    // The hidden input is what `_onSaveConfig` reads for `config.preset` — the
+    // cards are the UI, this is the save contract.
+    const hidden = el.querySelector('[name="preset"]');
+    if (hidden) hidden.value = presetKey;
+
+    for (const row of el.querySelectorAll('[data-stc-row]')) {
+      const key = row.dataset.stcRow;
+      const override = theme.colors?.[key];
+      const swatch = row.querySelector('[data-stc="color"]');
+      if (swatch) swatch.value = override || pal[key] || THEME_COLOR_FALLBACK[key] || '#19f3f7';
+      row.classList.toggle('is-override', !!override);
+    }
   }
 
   /**
@@ -210,12 +834,18 @@ export class ItemInboxConfig extends BaseApplication {
     for (const root of this._openViewerRoots()) applyContrastToElement(root, ItemInboxConfig._clampContrast(pct));
   }
 
-  /** Closing without saving reverts dragged text-size / contrast previews to the stored values. */
+  /**
+   * Closing without saving drops every preview this sheet pushed — the dragged
+   * text-size / contrast, and any staged palette. A full re-render of the open
+   * viewer is the honest revert for the palette: it repaints from the SAVED
+   * config, so there is no inline leftover to hunt down key by key.
+   */
   async close(options) {
     if (this._displayPreviewed && !this._displaySaved && this.item) {
       const cfg = this.dataShardService?.getConfig(this.item) ?? {};
       this._previewShardTextScale(cfg.textScale);
       this._previewShardContrast(cfg.contrast);
+      if (this._themeDraft || this._themePresetKey) this._revertThemePreview();
     }
     return super.close(options);
   }
@@ -287,6 +917,57 @@ export class ItemInboxConfig extends BaseApplication {
     // ─── Presets ───
     const presetOptions = Object.entries(SHARD_PRESETS).map(([key, p]) => ({
       value: key, label: p.label, selected: config.preset === key,
+    }));
+
+    // ─── Theme tab ───
+    // The DRAFT is the source of truth while this sheet is open (see _themeDraft):
+    // theme controls are unnamed and data-keyed, so they mutate the draft without a
+    // re-render, and a tab switch cannot silently discard them.
+    const theme = this._themeDraft ?? ItemInboxConfig._readTheme(config);
+    const presetKey = this._themePresetKey ?? config.preset ?? 'blank';
+    const pal = SHARD_PRESETS[presetKey]?.palette || {};
+
+    const themePresetCards = Object.entries(SHARD_PRESETS).map(([key, p]) => {
+      const q = p.palette || {};
+      return {
+        key,
+        label: p.label,
+        active: key === presetKey,
+        // The blank preset has no palette on purpose — it follows the player's
+        // own Agent theme, so its swatch shows the brand defaults.
+        sw1: q.secondary || '#19f3f7',
+        sw2: q.accent || '#f7c948',
+        sw3: q.bgSurface || '#1a1a2e',
+      };
+    });
+
+    const themeColors = Object.keys(COLOR_VAR_MAP).map((key) => ({
+      key,
+      label: THEME_COLOR_LABELS[key] || key,
+      // What the swatch shows: the override, else the preset's, else the brand
+      // default — so the picker always opens on the colour you can actually see.
+      value: theme.colors?.[key] || pal[key] || THEME_COLOR_FALLBACK[key] || '#19f3f7',
+      hasOverride: !!theme.colors?.[key],
+    }));
+
+    const fontSel = (slot, current) => FONT_OPTIONS.map((f) => ({
+      value: f.key, label: f.label, selected: f.key === current,
+    }));
+    const themeFonts = [
+      { slot: 'display', label: 'Body / Display', options: fontSel('display', theme.fonts?.display || 'rajdhani') },
+      { slot: 'mono', label: 'Monospace', options: fontSel('mono', theme.fonts?.mono || 'sharetechmono') },
+      { slot: 'title', label: 'Titles', options: fontSel('title', theme.fonts?.title || 'orbitron') },
+    ];
+
+    const savedThemes = ItemInboxConfig._savedThemes().map((t, i) => ({
+      index: i, name: t.name,
+      sw1: t.theme?.colors?.secondary || '#19f3f7',
+      sw2: t.theme?.colors?.accent || '#f7c948',
+      sw3: t.theme?.colors?.bgSurface || '#1a1a2e',
+    }));
+
+    const fullPresets = ItemInboxConfig._fullPresets().map((t, i) => ({
+      index: i, name: t.name, hasSecurity: !!t.config?.security,
     }));
 
     // ─── Encryption types ───
@@ -416,6 +1097,17 @@ export class ItemInboxConfig extends BaseApplication {
       presetOptions,
       textScale: ItemInboxConfig._clampTextScale(config.textScale),
       contrast: ItemInboxConfig._clampContrast(config.contrast),
+
+      // Theme tab
+      themePresetCards,
+      themeColors,
+      themeFonts,
+      savedThemes,
+      fullPresets,
+      themeDirty: !!this._themeDraft,
+      themeWallpaper: theme.wallpaper || '',
+      themeWallpaperStrength: ItemInboxConfig._clampStrength(theme.wallpaperStrength),
+      previewName: config.shardName || this.item.name,
 
       // Identity
       shardName: config.shardName || '',
@@ -733,7 +1425,13 @@ export class ItemInboxConfig extends BaseApplication {
       notifyGM: checked('notifyGM'),
       notifyContact: checked('notifyContact'),
       notifyContactId: null,
-      theme: val('preset', 'blank'),
+      // The theme OBJECT (palette overrides / fonts / wallpaper). This used to be
+      // `val('preset')` — a bare preset-key string that nothing ever read, which is
+      // why `config.theme` has two legacy shapes in the wild; buildShardThemePrefs
+      // tolerates both, so no migration is needed.
+      theme: this._themeDraft
+        ? foundry.utils.deepClone(this._themeDraft)
+        : ItemInboxConfig._readTheme(this.dataShardService?.getConfig(this.item) ?? {}),
       textScale: ItemInboxConfig._clampTextScale(val('textScale')),
       contrast: ItemInboxConfig._clampContrast(val('contrast')),
       singleMessage: checked('singleMessage'),

@@ -25,7 +25,9 @@
     {{#if hasExample}}
       <button type="button" class="ncm-shard-btn ncm-cmp-tbbtn" data-action="loadExample" data-tooltip="Prefill the form with a worked example of this type — every field editable"><i class="fas fa-wand-magic-sparkles"></i> Example</button>
     {{/if}}
-    <button type="button" class="ncm-shard-btn ncm-cmp-tbbtn" data-action="cmpToggleTpl" data-tooltip="Save / load reusable templates"><i class="fas fa-box-archive"></i> Templates <i class="fas fa-caret-down"></i></button>
+    {{#unless playerMode}}
+      <button type="button" class="ncm-shard-btn ncm-cmp-tbbtn" data-action="cmpToggleTpl" data-tooltip="Save / load reusable templates"><i class="fas fa-box-archive"></i> Templates <i class="fas fa-caret-down"></i></button>
+    {{/unless}}
   </div>
   {{#if typeIntro.how}}
     <div class="ncm-cmp-howbox" data-cmp-howbox hidden><i class="fas fa-circle-info"></i> {{typeIntro.how}}</div>
@@ -1011,6 +1013,7 @@
   {{!-- ═══ ③ SECURITY & ACCESS — per-entry encryption + network gating.
        (Per-type player-unlock rolls stay with their content above — their
        semantics differ per type.) ═══ --}}
+  {{#unless playerMode}}
   <section class="ncm-cmp-sec{{#unless secOpen.security}} ncm-cmp-sec--closed{{/unless}}" data-cmp-sec="security">
     <div class="ncm-cmp-sec__hd" data-action="cmpToggleSec">
       <span class="ncm-cmp-sec__num">③</span><span class="ncm-cmp-sec__title">Security &amp; Access</span>
@@ -1123,6 +1126,7 @@
       {{/if}}
     </div>
   </section>
+  {{/unless}}
 </form>
 
   {{!-- ═══ PINNED FOOTER — never scroll to find Save again ═══ --}}

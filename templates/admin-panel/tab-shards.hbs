@@ -33,6 +33,24 @@
       </div>
     </div>
 
+    {{!-- PLAYER AUTHORING (the Shard Encoder) --}}
+    <div class="ncm-shard-authoring">
+      <span class="ncm-shard-authoring__ic"><i class="fas fa-user-pen"></i></span>
+      <div style="flex:1;min-width:0;">
+        <div class="ncm-shard-authoring__t">Player Authoring</div>
+        <div class="ncm-shard-authoring__d">What your players may encode onto a shard, with which skill, on which blanks.</div>
+        {{#if encoderOn}}
+        <div class="ncm-shard-authoring__where"><i class="fas fa-folder-tree"></i>
+          A shard a player makes lives in <b>their character's gear</b> — an item cannot sit in a world folder.
+          Its journal is filed under <b>Data Shards → Player-Made → the character</b>, and the rows below carry a
+          <b>Made by</b> badge. Set <b>Group</b> to <b>maker</b> to gather them.</div>
+        {{/if}}
+      </div>
+      <span class="ncm-shard-authoring__state {{#if encoderOn}}on{{else}}off{{/if}}">{{#if encoderOn}}On{{else}}Off{{/if}}</span>
+      <button class="ncm-shard-qa-btn" data-action="archiveShards" data-tooltip="Copy player shards into the Items directory, foldered by maker"><i class="fas fa-folder-plus"></i> Copy to Items</button>
+      <button class="ncm-shard-qa-btn" data-action="openEncoderConfig"><i class="fas fa-sliders"></i> Configure</button>
+    </div>
+
     {{!-- CREATE PANEL --}}
     <div class="ncm-shard-create-panel">
       <div class="ncm-shard-create-card">

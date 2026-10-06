@@ -31,7 +31,7 @@
   border-radius: 2px !important; margin-bottom: 12px !important; overflow: hidden !important;
 }
 .ncm-app .ncm-shard-activity-strip__label { font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; color: var(--sp-text-muted) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; flex-shrink: 0 !important; }
-.ncm-app .ncm-shard-activity-strip__label i { font-size: 8px !important; color: var(--ncm-color-secondary) !important; margin-right: 4px !important; }
+.ncm-app .ncm-shard-activity-strip__label i { font-size: 8px !important; color: var(--ncm-color-secondary, var(--ncm-secondary)) !important; margin-right: 4px !important; }
 .ncm-app .ncm-shard-activity-strip__events { display: flex !important; gap: 14px !important; flex: 1 !important; overflow: hidden !important; }
 .ncm-app .ncm-shard-activity-strip__event { font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 600 !important; color: var(--sp-text-muted) !important; white-space: nowrap !important; flex-shrink: 0 !important; }
 
@@ -386,7 +386,7 @@
   background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent) !important;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
 }
-.ncm-app .ncm-shard-owner-header--drop-target .ncm-shard-owner-header__name { color: var(--ncm-color-secondary) !important; }
+.ncm-app .ncm-shard-owner-header--drop-target .ncm-shard-owner-header__name { color: var(--ncm-color-secondary, var(--ncm-secondary)) !important; }
 
 /* ─── Row Hover Overlay Enhancement ─── */
 .ncm-app .ncm-shard-owner-header:hover { background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent) !important; }

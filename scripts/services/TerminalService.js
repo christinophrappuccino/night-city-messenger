@@ -1012,6 +1012,7 @@ export class TerminalService {
     const messages = this.getAccountMessages(item, accountId);
     const ids = new Set(messageIds || []);
     let count = 0;
+    let lastError = null;
 
     for (const msg of messages.filter(m => ids.has(m.messageId))) {
       // Typed content (spreadsheet/syslog/banking/…) burns as-is so the copy
@@ -1028,11 +1029,14 @@ export class TerminalService {
         contentData: this._exfilContentData(msg, { recoveredFrom: source, recoveredOrigTs: msg.timestamp }),
       });
       if (res?.success) count++;
+      // Keep the first refusal: a shard can now be FULL (a tier's capacity), and
+      // "0 copied" with no reason reads as a broken button.
+      else if (!lastError && res?.error) lastError = res.error;
     }
 
     this.eventBus?.emit(EVENTS.TERMINAL_EXFIL, { itemId: item.id, accountId, dest: 'shard', count });
     log.info(`Exfil → shard: ${count} message(s) from terminal "${terminalName}" to item "${targetItem.name}"`);
-    return { success: count > 0, count };
+    return { success: count > 0, count, ...(count === 0 && lastError ? { error: lastError } : {}) };
   }
 
   /**

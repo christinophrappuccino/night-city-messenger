@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>gmview contrast</title>
+<!--
+  GM-VIEW CONTRAST PROBE
+  ----------------------
+  The player-facing viewer/composer are NOT admin-themed, but a GM can flip them
+  to the admin palette (GM view). Any text colour written as a literal instead of
+  a --ncm-* token stays put when the palette flips — which is how the message
+  SUBJECT ended up near-white on the near-white clean-light background.
+
+  Renders the real markup against the real cascade and reports the computed
+  text-vs-background contrast of the readable bits, per preset.
+    ?t=clean-light | clean-dark | high-contrast | player
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; background: #1b1f21; font: 12px/1.5 monospace; color: #cfd8e3; }
+  #report { padding: 10px 14px; white-space: pre; }
+  .host { width: 720px; margin: 12px; }
+  .bad { color: #ff5a5a; } .ok { color: #57d98a; }
+</style>
+</head>
+<body>
+<div id="report">measuring…</div>
+
+<div class="ncm-app ncm-message-viewer-window host" id="host">
+  <div class="ncm-viewer">
+    <div class="ncm-viewer__detail-panel">
+      <div class="ncm-viewer__subject-strip ncm-viewer__subject-strip--default">
+        <span class="ncm-viewer__subject-micro">Subject</span>
+        <div class="ncm-viewer__subject-row">
+          <span class="ncm-viewer__subject-text" id="t-subject">Delivery is tonight, no excuses</span>
+        </div>
+        <div class="ncm-viewer__subject-rule"></div>
+      </div>
+      <div class="ncm-viewer__detail-body" id="t-body">
+        Body copy for contrast reference.
+        <div class="ncm-composer__editor"><b id="t-bold">bold text in the composer editor</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const P = new URLSearchParams(location.search);
+const preset = P.get('t') || 'clean-light';
+const host = document.getElementById('host');
+if (preset !== 'player') host.setAttribute('data-ncm-admin-theme', preset);
+
+// Walk up for the first non-transparent background — a text node usually sits on
+// a translucent tint, and judging it against that tint reports a false pass.
+function bgOf(el) {
+  for (let n = el; n; n = n.parentElement) {
+    const c = getComputedStyle(n).backgroundColor;
+    const m = c.match(/[\d.]+/g);
+    if (m && (m.length < 4 || Number(m[3]) > 0.5)) return [ +m[0], +m[1], +m[2] ];
+  }
+  return [27, 31, 33];
+}
+const lum = ([r, g, b]) => {
+  const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+};
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+
+const rows = [];
+let worst = 99;
+for (const id of ['t-subject', 't-body', 't-bold']) {
+  const el = document.getElementById(id);
+  const fg = getComputedStyle(el).color.match(/[\d.]+/g).slice(0, 3).map(Number);
+  const bg = bgOf(el);
+  const r = ratio(fg, bg);
+  worst = Math.min(worst, r);
+  rows.push(`${id.padEnd(12)} ${r.toFixed(2).padStart(6)}:1  ${r >= 4.5 ? 'ok' : 'UNREADABLE'}   fg=rgb(${fg}) bg=rgb(${bg})`);
+}
+document.getElementById('report').innerHTML =
+  `preset=${preset}\nworst=${worst.toFixed(2)}:1 ${worst >= 4.5 ? '<span class="ok">PASS</span>' : '<span class="bad">FAIL</span>'}\n` + rows.join('\n');
+document.title = `${preset} worst=${worst.toFixed(2)} ${worst >= 4.5 ? 'PASS' : 'FAIL'}`;
+</script>
+</body></html>

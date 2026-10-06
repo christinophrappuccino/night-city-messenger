@@ -76,11 +76,15 @@ export class ShardsTab extends BaseTab {
     const shardPresetButtons = (game.nightcity?.dataShardService?.getAllPresets() ?? [])
       .filter(p => p.key !== 'blank');
 
+    // Player Authoring card — the Shard Encoder's one GM entry point.
+    const encoderOn = !!(this.settingsManager?.get?.('encoderConfig') || {}).enabled;
+
     return {
       shards,
       shardGroups,
       shardSummary,
       shardPresetButtons,
+      encoderOn,
       shardActivityLog: this._activityLog.slice(0, 10),
       shardSelectMode: this._selectMode,
       shardSelectedCount: this._selectedIds.size,
@@ -218,6 +222,20 @@ export class ShardsTab extends BaseTab {
           badges.push({ type: 'muted', icon: 'fa-lock-open', label: 'Open' });
         } else if (config.encrypted) {
           badges.push({ type: 'red', icon: 'fa-lock', label: 'Locked' });
+        }
+
+        // A shard a PLAYER forged is flagged at encode time (ShardEncoderApp's
+        // _shardConfig). The GM needs to know a dossier is a fake BEFORE the NPC
+        // it accuses does — so it is badged here and filed under its maker's
+        // folder in the journal tree.
+        const made = config.playerMade;
+        const makerName = made?.actorName || '';
+        if (made?.actorName) {
+          badges.push({
+            type: made.outcome === 'sloppy' ? 'gold' : 'cyan',
+            icon: 'fa-user-pen',
+            label: `Made by ${made.actorName}`,
+          });
         }
 
         const netConfig = config.network ?? {};
@@ -359,6 +377,7 @@ export class ShardsTab extends BaseTab {
           ownerImg,
           status,
           iceStripe,
+          makerName,
           presetKey,
           presetLabel,
           presetIcon,
@@ -459,6 +478,16 @@ export class ShardsTab extends BaseTab {
           groupKey = shard.presetKey || 'blank';
           groupName = shard.presetLabel || 'Custom';
           groupIcon = shard.presetIcon || 'fas fa-microchip';
+          groupImg = null;
+          isWorld = false;
+          break;
+
+        case 'maker':
+          // Everything a player forged, grouped by who forged it; the GM's own
+          // shards collect under one heading rather than one heading each.
+          groupKey = shard.makerName ? 'maker:' + shard.makerName : 'gm';
+          groupName = shard.makerName || 'Made by you';
+          groupIcon = shard.makerName ? 'fas fa-user-pen' : 'fas fa-user-shield';
           groupImg = null;
           isWorld = false;
           break;
@@ -777,6 +806,91 @@ export class ShardsTab extends BaseTab {
    * system offers it, else the first non-base type (the test-macro rule).
    * @private
    */
+  /**
+   * Copy actor-held shards into the Items directory, in folders.
+   *
+   * The honest framing matters here: an item embedded in an actor CANNOT be
+   * foldered, and moving it would take the player's shard off their sheet. So
+   * these are reference copies that share the original's journal — open one and
+   * you are reading the player's real shard, live.
+   */
+  async onArchiveShards() {
+    const svc = this.dataShardService;
+    if (!svc?.surveyShardArchive) { ui.notifications.error('NCM | Data shard service unavailable.'); return; }
+
+    const esc = Handlebars.escapeExpression;
+    let playerOnly = true;
+    let prune = false;
+
+    const paint = (root) => {
+      const survey = svc.surveyShardArchive({ playerMadeOnly: playerOnly });
+      const list = survey.pending.slice(0, 8).map(r =>
+        `<div class="ncm-arch-row"><b>${esc(r.name)}</b><span>${esc(r.maker)}</span></div>`).join('');
+      const more = survey.pending.length > 8 ? `<div class="ncm-arch-more">+ ${survey.pending.length - 8} more</div>` : '';
+      root.querySelector('[data-arch-body]').innerHTML = survey.pending.length
+        ? `<div class="ncm-arch-list">${list}${more}</div>`
+        : '<div class="ncm-arch-empty">Nothing new to copy — every shard that qualifies already has a copy here.</div>';
+      root.querySelector('[data-arch-count]').textContent = String(survey.pending.length);
+      const orph = root.querySelector('[data-arch-orphans]');
+      orph.hidden = !survey.orphans.length;
+      orph.querySelector('b').textContent = String(survey.orphans.length);
+    };
+
+    const survey0 = svc.surveyShardArchive({ playerMadeOnly: true });
+    let ran = null;
+    const dlg = adminDialog({
+      title: 'Copy shards into the Items directory',
+      content: `
+        <div class="ncm-arch">
+          <p class="ncm-arch-lede">A shard lives in a character's gear, and an item inside an actor cannot go in a folder.
+             These are <b>reference copies</b> in the world Items list, filed under <b>Player-Made Shards → the character</b>.
+             Each one shares the original's journal, so opening a copy shows the real contents — and deleting a copy never
+             touches the player's shard.</p>
+          <label class="ncm-arch-opt"><input type="checkbox" data-arch-players checked> Player-made shards only
+            <small>Untick to copy every shard any character is carrying.</small></label>
+          <div class="ncm-arch-head">To copy: <b data-arch-count>${survey0.pending.length}</b></div>
+          <div data-arch-body></div>
+          <label class="ncm-arch-opt" data-arch-orphans ${survey0.orphans.length ? '' : 'hidden'}>
+            <input type="checkbox" data-arch-prune> Also delete <b>${survey0.orphans.length}</b> copies whose shard is gone
+          </label>
+        </div>`,
+      buttons: {
+        go: {
+          icon: '<i class="fas fa-folder-plus"></i>', label: 'Copy them',
+          callback: () => { ran = { playerMadeOnly: playerOnly, pruneOrphans: prune }; },
+        },
+        cancel: { label: 'Cancel' },
+      },
+      default: 'go',
+      render: (html) => {
+        const root = html[0] ?? html;
+        paint(root);
+        root.querySelector('[data-arch-players]')?.addEventListener('change', (ev) => {
+          playerOnly = ev.target.checked; paint(root);
+        });
+        root.querySelector('[data-arch-prune]')?.addEventListener('change', (ev) => { prune = ev.target.checked; });
+      },
+      close: async () => {
+        if (!ran) return;
+        const res = await svc.archiveShardsToItems(ran);
+        if (res.error) { ui.notifications.error(`NCM | ${res.error}`); return; }
+        if (!res.created && !res.orphansRemoved) { ui.notifications.info('NCM | Nothing to copy.'); return; }
+        ui.notifications.info(`NCM | Copied ${res.created} shard${res.created === 1 ? '' : 's'} into the Items directory${res.orphansRemoved ? `, removed ${res.orphansRemoved} stale cop${res.orphansRemoved === 1 ? 'y' : 'ies'}` : ''}.`);
+        ui.items?.render(true);
+        this.app.render();
+      },
+    }, { width: 520 });
+    dlg.render(true);
+  }
+
+  /** Admin → Shards → Player Authoring — open the Encoder's GM config window. */
+  async onOpenEncoderConfig() {
+    const { EncoderConfigApp } = await import('../../ShardEncoder/EncoderConfigApp.js');
+    const existing = Object.values(ui.windows).find(w => w.id === 'ncm-encoder-config');
+    if (existing) { existing.bringToTop?.(); return; }
+    new EncoderConfigApp().render(true);
+  }
+
   async _createBlankShard() {
     const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter(t => t !== 'base');
     const type = types.includes('gear') ? 'gear' : (types[0] || 'gear');
@@ -1121,7 +1235,7 @@ export class ShardsTab extends BaseTab {
   }
 
   onCycleGroupMode(event, target) {
-    const order = ['owner', 'preset', 'status', 'none'];
+    const order = ['owner', 'maker', 'preset', 'status', 'none'];
     const idx = order.indexOf(this._groupMode);
     this._groupMode = order[(idx + 1) % order.length];
     this.render();

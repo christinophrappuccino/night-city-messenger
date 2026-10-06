@@ -18,7 +18,7 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
-import { log } from '../../../utils/helpers.js';
+import { log, getPlayerCharacters } from '../../../utils/helpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
@@ -143,29 +143,32 @@ export class ContactsTab extends BaseTab {
     const trustLabels = { 5: 'Implicitly Trusted', 4: 'Trusted', 3: 'Neutral', 2: 'Cautious', 1: 'Suspicious', 0: 'Unknown' };
 
     // ── Gather player-owned actors for "Known by" + Player Characters group ──
-    const playerActors = [];
-    for (const user of game.users) {
-      if (user.isGM || !user.character) continue;
-      playerActors.push({
-        actorId: user.character.id,
-        actorName: user.character.name,
-        playerName: user.name,
-        initial: (user.character.name || '?').charAt(0).toUpperCase(),
-      });
-    }
+    // Assigned characters first, then other player-owned actors (the shared
+    // enumeration — a player whose PC isn't assigned on the user sheet used to
+    // be missing from every admin tool).
+    const playerActors = getPlayerCharacters().map(pa => ({
+      ...pa,
+      initial: (pa.actorName || '?').charAt(0).toUpperCase(),
+    }));
 
     // ── Build "Known by" for a contact: check which player actors have it ──
-    const contactRepo = game.nightcity?.contactRepository;
-    const _buildKnownBy = (masterContactId, contactEmail) => {
+    // Reads the contacts flag synchronously — ContactRepository.getContacts is
+    // async, and the old `contactRepo.getAll(...)` call here named a method
+    // that never existed, so the pips ALWAYS read "does not have this contact"
+    // (2026-09 tester: "Known by does not function"). A player contact counts
+    // when it links the master entry by id, by email, or by the linked actor.
+    const _buildKnownBy = (masterContactId, contactEmail, masterActorId) => {
       const pips = [];
       const expanded = [];
+      const emailLc = (contactEmail || '').toLowerCase().trim();
       for (const pa of playerActors) {
         let has = false;
         try {
-          const playerContacts = contactRepo?.getAll(pa.actorId) ?? [];
+          const playerContacts = game.actors?.get(pa.actorId)?.getFlag(MODULE_ID, 'contacts') ?? [];
           has = playerContacts.some(pc =>
-            pc.masterContactId === masterContactId ||
-            (contactEmail && pc.email?.toLowerCase() === contactEmail.toLowerCase())
+            (masterContactId && pc.masterContactId === masterContactId) ||
+            (emailLc && (pc.email || '').toLowerCase().trim() === emailLc) ||
+            (masterActorId && (pc.actorId === masterActorId || pc.linkedActorId === masterActorId))
           );
         } catch { /* actor may not have contacts */ }
         pips.push({
@@ -318,7 +321,7 @@ export class ContactsTab extends BaseTab {
       }
 
       // Known-by
-      const knownBy = _buildKnownBy(c.id, c.email);
+      const knownBy = _buildKnownBy(c.id, c.email, c.actorId);
 
       // Activity label
       let activeLabel = 'Never contacted';
@@ -721,29 +724,30 @@ export class ContactsTab extends BaseTab {
   async _showShareDialog(contactIds) {
     if (!contactIds.length) return;
 
-    // Gather player-owned actors
-    const playerActors = [];
-    for (const user of game.users) {
-      if (user.isGM || !user.character) continue;
-      playerActors.push({
-        actorId: user.character.id,
-        actorName: user.character.name,
-        playerName: user.name,
-      });
-    }
+    // Gather player-owned actors (assigned characters first, then other
+    // player-owned actors — the shared enumeration).
+    const playerActors = getPlayerCharacters();
 
     if (!playerActors.length) {
       ui.notifications.warn('NCM | No player-owned characters found.');
       return;
     }
 
-    // Build contact names for display
+    // Build contact names for display. A `pc-<actorId>` id is a player
+    // character row (they aren't master contacts) — it shares as an
+    // actor-linked contact built from the actor itself. The old code skipped
+    // them silently and toasted "Shared 0 contacts" (2026-09 tester: "sharing a
+    // Player contact to other player, they don't seem to be sent").
     const contactNames = contactIds
       .map(id => {
-        if (id.startsWith('pc-')) return null;
+        if (id.startsWith('pc-')) return game.actors?.get(id.slice(3))?.name;
         return this.masterContactService?.getContact(id)?.name;
       })
       .filter(Boolean);
+    if (!contactNames.length) {
+      ui.notifications.warn('NCM | Nothing to share — the selected contacts no longer exist.');
+      return;
+    }
 
     const isSingle = contactNames.length === 1;
     const title = isSingle ? `Share ${contactNames[0]}` : `Share ${contactNames.length} Contacts`;
@@ -777,18 +781,30 @@ export class ContactsTab extends BaseTab {
             if (!selectedActorIds.length) return;
 
             let shared = 0;
+            let firstError = null;
             for (const contactId of contactIds) {
-              if (contactId.startsWith('pc-')) continue;
+              const isPc = contactId.startsWith('pc-');
+              const pcActorId = isPc ? contactId.slice(3) : null;
               for (const actorId of selectedActorIds) {
-                const result = await this.masterContactService?.pushToPlayer(contactId, actorId);
+                // A character never receives itself as a contact.
+                if (isPc && actorId === pcActorId) continue;
+                const result = isPc
+                  ? await this.masterContactService?.pushActorToPlayer(pcActorId, actorId)
+                  : await this.masterContactService?.pushToPlayer(contactId, actorId);
                 if (result?.success) shared++;
+                else firstError = firstError || result?.error || 'unknown error';
               }
             }
 
             const actorCount = selectedActorIds.length;
-            ui.notifications.info(
-              `NCM | Shared ${contactNames.length} contact${contactNames.length !== 1 ? 's' : ''} with ${actorCount} player${actorCount !== 1 ? 's' : ''}.`
-            );
+            if (shared > 0) {
+              ui.notifications.info(
+                `NCM | Shared ${contactNames.length} contact${contactNames.length !== 1 ? 's' : ''} with ${actorCount} player${actorCount !== 1 ? 's' : ''}.`
+              );
+            }
+            if (firstError) {
+              ui.notifications.warn(`NCM | Some shares failed: ${firstError}`);
+            }
             this._selectedIds.clear();
             this.render(true);
           },

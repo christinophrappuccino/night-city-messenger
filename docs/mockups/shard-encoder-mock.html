@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Shard ENCODER: player-facing shard authoring workflow (2026-09-11)</title>
+<!--
+  Views:  ?view=flow (default) | blank | content | program | encode | admin
+  Encode result: ?view=encode&result=await|clean|sloppy|rejected
+  Program calculator: the operator's stats/ranks are editable in the strip at
+  the top of ?view=program — odds + efficiency recompute live. Render:
+    chrome --headless --screenshot=x.png --window-size=1280,960 "file:///…/shard-encoder-mock.html?view=program"
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap">
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7; --warn: #ffb020; --red: #ff3355;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45; --brA: #3a3a5c;
+    --mono: 'Share Tech Mono', Consolas, monospace; --ui: 'Rajdhani', 'Segoe UI', sans-serif; --title: 'Orbitron', var(--ui);
+    --ease: cubic-bezier(.22,1,.36,1);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 16px 22px 60px; font-size: 13px; }
+  h1 { font: 700 14px var(--title); letter-spacing: 2px; color: var(--s); margin: 0 0 4px; }
+  h2 { font: 700 11px var(--mono); letter-spacing: 1.5px; color: var(--a); margin: 22px 0 8px; text-transform: uppercase; }
+  .sub { font-size: 12px; color: var(--t2); margin-bottom: 14px; max-width: 1100px; line-height: 1.55; }
+  .sub b, .why b { color: var(--t1); } code { color: var(--s); font: 10.5px var(--mono); }
+  nav.views { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 18px; }
+  nav.views a { font: 700 9.5px var(--mono); letter-spacing: 1.2px; color: var(--t1); text-decoration: none; padding: 5px 10px; border: 1px solid var(--br); border-radius: 2px; background: var(--bg1); }
+  nav.views a.on { color: var(--s); border-color: var(--s); background: rgba(25,243,247,.07); }
+  .row { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+  .why { font-size: 11.5px; color: var(--t2); line-height: 1.6; max-width: 340px; }
+  .why h3 { font: 700 9.5px var(--mono); letter-spacing: 1.5px; color: var(--pp); margin: 0 0 6px; text-transform: uppercase; }
+  .why p { margin: 0 0 8px; }
+  .why .k { color: var(--pp); } .why .x { color: var(--p); } .why .g { color: var(--ok); }
+
+  /* ═══ the window ═══ */
+  .win { width: 880px; border: 1px solid var(--br); border-radius: 4px; background: var(--bg1); overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.55); }
+  .win-hd { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg0); border-bottom: 1px solid var(--br); font: 700 10px var(--mono); letter-spacing: 1.5px; color: var(--s); }
+  .win-hd .grow { flex: 1; } .win-hd .x { color: var(--t2); }
+  .op { display: inline-flex; align-items: center; gap: 7px; padding: 3px 8px; border: 1px solid var(--br); border-radius: 2px; background: var(--bg2); color: var(--t1); font: 700 9px var(--mono); letter-spacing: 1px; }
+  .op .av { width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(135deg,#2a2a45,#3a3a5c); display: grid; place-items: center; font-size: 8px; color: var(--s); }
+
+  /* stage rail */
+  .rail { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--br); background: var(--bg0); }
+  .stage { padding: 9px 12px; display: flex; gap: 9px; align-items: center; border-right: 1px solid var(--br); position: relative; }
+  .stage:last-child { border-right: 0; }
+  .stage .n { width: 20px; height: 20px; border-radius: 2px; border: 1px solid var(--br); display: grid; place-items: center; font: 700 10px var(--mono); color: var(--t2); }
+  .stage .t { font: 700 11px var(--ui); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; }
+  .stage .d { font: 10px var(--mono); color: var(--t2); opacity: .8; }
+  .stage.done .n { border-color: var(--ok); color: var(--ok); } .stage.done .t { color: var(--t1); }
+  .stage.on { background: rgba(25,243,247,.05); } .stage.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--s); }
+  .stage.on .n { border-color: var(--s); color: var(--s); } .stage.on .t { color: var(--t0); }
+  .stage.opt .n { border-style: dashed; }
+  .stage .sk { margin-left: auto; font: 9px var(--mono); color: var(--pp); letter-spacing: .5px; white-space: nowrap; }
+
+  .body { display: flex; min-height: 470px; }
+  .main { flex: 1; padding: 14px 16px; min-width: 0; }
+  .aside { width: 268px; border-left: 1px solid var(--br); background: var(--bg0); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .foot { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--br); background: var(--bg0); }
+  .foot .grow { flex: 1; font: 10px var(--mono); color: var(--t2); }
+  .btn { font: 700 11px var(--ui); letter-spacing: 1.2px; text-transform: uppercase; padding: 7px 14px; border: 1px solid var(--br); border-radius: 2px; background: var(--bg2); color: var(--t1); cursor: pointer; }
+  .btn.pri { border-color: var(--s); color: var(--s); background: rgba(25,243,247,.08); }
+  .btn.go { border-color: var(--ok); color: var(--ok); background: rgba(0,255,65,.08); }
+  .btn.dis { opacity: .4; cursor: default; }
+
+  .sec { margin-bottom: 14px; }
+  .sec-t { font: 700 10px var(--mono); letter-spacing: 1.5px; color: var(--t2); text-transform: uppercase; margin-bottom: 7px; display: flex; align-items: center; gap: 8px; }
+  .sec-t .hint { font: 10px var(--ui); letter-spacing: 0; text-transform: none; color: var(--t2); opacity: .8; font-style: italic; }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label { font: 700 9px var(--mono); letter-spacing: 1px; color: var(--t2); text-transform: uppercase; }
+  .inp { height: 26px; border: 1px solid var(--br); border-radius: 2px; background: var(--bg0); color: var(--t0); padding: 0 8px; font: 12px var(--ui); display: flex; align-items: center; }
+  .inp.mono { font: 11px var(--mono); }
+  .fg { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* skill chip — the recurring element */
+  .skc { display: inline-flex; align-items: center; gap: 7px; padding: 4px 8px; border: 1px solid var(--br); border-radius: 2px; background: var(--bg2); font: 10px var(--mono); color: var(--t1); }
+  .skc .nm { font: 700 10.5px var(--ui); letter-spacing: 1px; text-transform: uppercase; color: var(--t0); }
+  .skc .calc { color: var(--t2); } .skc .tot { color: var(--s); font-weight: 700; }
+  .skc .vs { color: var(--t2); } .skc .dv { color: var(--a); font-weight: 700; }
+  .skc .odds { margin-left: 4px; padding: 1px 6px; border-radius: 2px; font-weight: 700; }
+  .odds.hi { color: var(--ok); background: rgba(0,255,65,.1); } .odds.mid { color: var(--a); background: rgba(247,201,72,.12); } .odds.lo { color: var(--p); background: rgba(246,82,97,.12); }
+  .skc.pick { cursor: pointer; } .skc.pick.on { border-color: var(--s); box-shadow: inset 0 0 0 1px rgba(25,243,247,.35); }
+  .skc.pick .pen { color: var(--warn); }
+  .skc.rec::before { content: '★'; color: var(--a); font-size: 10px; }
+  .skc.na { opacity: .45; }
+
+  /* type grid */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { border: 1px solid var(--br); border-radius: 2px; background: var(--bg2); padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; cursor: pointer; position: relative; }
+  .tile:hover { border-color: var(--brA); }
+  .tile.on { border-color: var(--s); background: rgba(25,243,247,.06); }
+  .tile.lock { opacity: .55; cursor: default; }
+  .tile .hd { display: flex; align-items: center; gap: 8px; font: 700 12px var(--ui); letter-spacing: .8px; color: var(--t0); }
+  .tile .hd i { width: 20px; text-align: center; font-size: 12px; }
+  .tile .meta { font: 9.5px var(--mono); color: var(--t2); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .tile .meta .sk { color: var(--pp); } .tile .meta .dv { color: var(--a); }
+  .tile .meta .o { margin-left: auto; font-weight: 700; padding: 0 5px; border-radius: 2px; }
+  .tile .lk { position: absolute; top: 6px; right: 8px; font: 9px var(--mono); color: var(--t2); letter-spacing: .5px; }
+  .tile .lk i { color: var(--p); margin-right: 3px; }
+  .tile.prog { border-color: rgba(168,85,247,.45); }
+  .tile.prog .hd { color: #d8b4fe; }
+  .tile .route { font: 9px var(--mono); color: var(--pp); letter-spacing: .5px; }
+  .c-cyan i { color: var(--s); } .c-gold i { color: var(--a); } .c-red i { color: var(--p); } .c-green i { color: var(--ok); } .c-purple i { color: var(--pp); }
+
+  /* ladder */
+  .ladder { border: 1px solid var(--br); border-radius: 2px; overflow: hidden; }
+  .lr { display: grid; grid-template-columns: 96px 1fr 120px; gap: 10px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--br); background: var(--bg2); font: 11px var(--ui); }
+  .lr:last-child { border-bottom: 0; }
+  .lr .tag { font: 700 9.5px var(--mono); letter-spacing: 1.2px; padding: 3px 6px; border-radius: 2px; text-align: center; }
+  .lr.clean .tag { color: var(--ok); background: rgba(0,255,65,.1); } .lr.sloppy .tag { color: var(--warn); background: rgba(255,176,32,.12); } .lr.rej .tag { color: var(--red); background: rgba(255,51,85,.12); }
+  .lr .ex { color: var(--t1); } .lr .ex small { display: block; color: var(--t2); font: 9.5px var(--mono); margin-top: 2px; }
+  .lr .pct { font: 700 12px var(--mono); text-align: right; }
+  .lr.clean .pct { color: var(--ok); } .lr.sloppy .pct { color: var(--warn); } .lr.rej .pct { color: var(--red); }
+  .bar { height: 5px; background: var(--bg0); border-radius: 2px; overflow: hidden; display: flex; margin-top: 8px; }
+  .bar i { display: block; height: 100%; } .bar .c { background: var(--ok); } .bar .s { background: var(--warn); } .bar .r { background: var(--red); }
+
+  /* efficiency readout */
+  .eff { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .eff .cell { border: 1px solid var(--br); border-radius: 2px; background: var(--bg0); padding: 7px 9px; }
+  .eff .k { font: 700 8.5px var(--mono); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; }
+  .eff .v { font: 700 15px var(--mono); color: var(--s); margin-top: 2px; }
+  .eff .v small { font-size: 9px; color: var(--t2); margin-left: 3px; }
+  .eff .cell.ok .v { color: var(--ok); } .eff .cell.warn .v { color: var(--warn); } .eff .cell.bad .v { color: var(--red); }
+
+  /* aside cards */
+  .card { border: 1px solid var(--br); border-radius: 2px; background: var(--bg1); padding: 9px 10px; }
+  .card .t { font: 700 9px var(--mono); letter-spacing: 1.5px; color: var(--t2); text-transform: uppercase; margin-bottom: 6px; }
+  .kv { display: flex; justify-content: space-between; font: 10.5px var(--mono); color: var(--t1); padding: 2px 0; }
+  .kv b { color: var(--t0); }
+  .kv .ok { color: var(--ok); } .kv .warn { color: var(--warn); } .kv .pp { color: var(--pp); }
+
+  /* program family + abilities */
+  .fam { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .fam .f { border: 1px solid var(--br); border-radius: 2px; padding: 8px 10px; background: var(--bg2); cursor: pointer; }
+  .fam .f .t { font: 700 11px var(--ui); letter-spacing: 1.2px; text-transform: uppercase; display: flex; gap: 7px; align-items: center; }
+  .fam .f .d { font: 10px var(--mono); color: var(--t2); margin-top: 3px; line-height: 1.4; }
+  .fam .f.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 8%, transparent); }
+  .fam .f.on .t { color: var(--c); }
+  .abil { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ab { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--br); border-radius: 2px; background: var(--bg2); font: 700 10.5px var(--ui); letter-spacing: .8px; color: var(--t1); cursor: pointer; }
+  .ab i { font-size: 10px; } .ab .dv { font: 9px var(--mono); color: var(--a); }
+  .ab.on { border-color: var(--pp); color: #d8b4fe; background: rgba(168,85,247,.1); }
+  .ab.lock { opacity: .45; cursor: default; } .ab.lock .need { font: 8.5px var(--mono); color: var(--p); }
+
+  /* operator strip (simulator) */
+  .sim { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border: 1px dashed var(--brA); border-radius: 2px; background: rgba(168,85,247,.04); margin-bottom: 12px; font: 10px var(--mono); color: var(--t2); }
+  .sim b { color: var(--pp); letter-spacing: 1px; }
+  .sim label { display: inline-flex; gap: 4px; align-items: center; color: var(--t1); }
+  .sim input { width: 34px; height: 20px; background: var(--bg0); border: 1px solid var(--br); color: var(--s); font: 11px var(--mono); text-align: center; border-radius: 2px; }
+
+  /* encode console (SecurityConsole family) */
+  .con { width: 520px; border: 1px solid rgba(168,85,247,.5); border-radius: 4px; background: radial-gradient(circle at 85% -10%, rgba(168,85,247,.12), transparent 55%), var(--bg1); position: relative; overflow: hidden; }
+  .con.cyan { border-color: rgba(25,243,247,.5); }
+  .con .ck { position: absolute; width: 14px; height: 14px; border: 1.5px solid var(--pp); opacity: .7; }
+  .con .ck.tl { top: 6px; left: 6px; border-right: 0; border-bottom: 0; } .con .ck.tr { top: 6px; right: 6px; border-left: 0; border-bottom: 0; }
+  .con .ck.bl { bottom: 6px; left: 6px; border-right: 0; border-top: 0; } .con .ck.br { bottom: 6px; right: 6px; border-left: 0; border-top: 0; }
+  .con-hd { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--br); font: 700 10px var(--mono); letter-spacing: 2px; color: var(--pp); }
+  .con-hd .grow { flex: 1; } .con-hd .st { color: var(--t2); }
+  .con-b { padding: 14px 16px; }
+  .con .ttl { font: 700 15px var(--ui); letter-spacing: 1.5px; color: var(--t0); text-transform: uppercase; }
+  .con .intro { font: 11.5px var(--ui); color: var(--t1); line-height: 1.55; margin: 6px 0 12px; }
+  .con .track { height: 6px; background: var(--bg0); border-radius: 2px; overflow: hidden; margin: 12px 0; }
+  .con .track i { display: block; height: 100%; width: 0; background: var(--pp); }
+  .con.await .track i { width: 100%; background: repeating-linear-gradient(90deg, var(--pp) 0 10px, transparent 10px 16px); opacity: .5; }
+  .con .verdict { font: 700 18px var(--ui); letter-spacing: 2px; text-transform: uppercase; text-align: center; padding: 12px; border: 1px solid var(--br); border-radius: 2px; margin-top: 10px; }
+  .con .verdict small { display: block; font: 10.5px var(--mono); letter-spacing: 1px; margin-top: 4px; }
+  .con.clean .verdict { color: var(--ok); border-color: rgba(0,255,65,.4); background: rgba(0,255,65,.06); }
+  .con.sloppy .verdict { color: var(--warn); border-color: rgba(255,176,32,.4); background: rgba(255,176,32,.06); }
+  .con.rejected .verdict { color: var(--red); border-color: rgba(255,51,85,.4); background: rgba(255,51,85,.06); }
+  .con .acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  .con .rolled { font: 10.5px var(--mono); color: var(--t2); margin-top: 8px; }
+  .con .rolled b { color: var(--s); }
+
+  /* admin card */
+  .adm { width: 820px; border: 1px solid #2c2c3c; border-radius: 2px; background: #14141c; color: #e6e6ee; font-family: var(--ui); }
+  .adm-t { font: 700 12px var(--ui); letter-spacing: 1.5px; text-transform: uppercase; padding: 10px 14px; border-bottom: 1px solid #2c2c3c; display: flex; align-items: center; gap: 8px; }
+  .adm-t i { color: var(--s); }
+  .adm-b { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .adm .frow { display: flex; gap: 14px; flex-wrap: wrap; }
+  .adm .f { display: flex; flex-direction: column; gap: 3px; }
+  .adm .f label { font: 700 9px var(--mono); letter-spacing: 1px; color: #9a9ab0; text-transform: uppercase; }
+  .adm .sel { height: 24px; border: 1px solid #2c2c3c; background: #0f0f16; color: #e6e6ee; font: 12px var(--ui); padding: 0 8px; display: flex; align-items: center; gap: 8px; border-radius: 2px; min-width: 150px; }
+  .adm .sel i { margin-left: auto; color: #9a9ab0; font-size: 9px; }
+  .adm table { width: 100%; border-collapse: collapse; margin: 0; font-size: 11.5px; }
+  .adm th { text-align: left; font: 700 9px var(--mono); letter-spacing: 1px; color: #9a9ab0; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid #2c2c3c; }
+  .adm td { padding: 4px 6px; border-bottom: 1px solid #1f1f2a; vertical-align: middle; }
+  .adm td.n { font-family: var(--mono); color: var(--a); }
+  .adm .chk { width: 13px; height: 13px; border: 1px solid #3a3a52; border-radius: 2px; display: inline-grid; place-items: center; font-size: 9px; color: var(--s); background: #0f0f16; }
+  .adm .chk.on { background: rgba(25,243,247,.12); border-color: var(--s); }
+  .adm .chk.on::after { content: '✓'; }
+  .adm .badge { font: 700 9px var(--ui); letter-spacing: .5px; text-transform: uppercase; padding: 1px 6px; border-radius: 1px; border: 1px solid; }
+  .adm .badge.pm { color: var(--a); border-color: rgba(247,201,72,.5); }
+  .adm .hint { font: italic 500 9.5px var(--ui); color: #8a8aa0; }
+  .adm .tiers { display: flex; flex-direction: column; gap: 8px; }
+  .adm .tier { border: 1px solid #2c2c3c; border-left: 3px solid var(--tc); border-radius: 2px; background: #0f0f16; padding: 9px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .adm .tier-h { display: flex; align-items: center; gap: 10px; }
+  .adm .tier-n { font: 700 12px var(--ui); letter-spacing: 1.5px; text-transform: uppercase; color: var(--tc); }
+  .adm .tier-p { font: 700 12px var(--mono); color: #e6e6ee; }
+  .adm .tier-h .hint { margin-left: 2px; }
+  .adm .tier-h .x { margin-left: auto; color: #6a6a80; font-size: 10px; cursor: pointer; }
+  .adm .tier .frow { gap: 10px; }
+  .adm .tier .sel { min-width: 120px; }
+  .adm .tier-items { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .adm .tier-items .lbl { font: 700 9px var(--mono); letter-spacing: 1px; color: #9a9ab0; text-transform: uppercase; margin-right: 4px; }
+  .adm .ichip { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px 0 4px; border: 1px solid #2c2c3c; border-radius: 2px; background: #14141c; font: 11px var(--ui); color: #e6e6ee; }
+  .adm .ichip .im { width: 16px; height: 16px; border-radius: 1px; background: #1e1e2c; display: grid; place-items: center; font-size: 9px; color: var(--tc); }
+  .adm .ichip .rm { color: #6a6a80; font-size: 9px; margin-left: 2px; }
+  .adm .ichip.add { border-style: dashed; color: var(--tc); border-color: var(--tc); padding: 0 8px; cursor: pointer; }
+  .adm .ichip.any { border-style: dashed; color: #9a9ab0; }
+  .adm .addtier { align-self: flex-start; font: 700 10px var(--ui); letter-spacing: 1px; text-transform: uppercase; color: var(--s); border: 1px dashed var(--s); border-radius: 2px; padding: 5px 10px; background: none; cursor: pointer; }
+  .adm .sub-t { font: 700 11px var(--ui); letter-spacing: 1.5px; text-transform: uppercase; color: #cfcfe0; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .adm .sub-t .hint { white-space: normal; }
+  .adm .sub-t .hint { margin-left: 4px; }
+
+  /* flow overview */
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 1100px; }
+  .fc { border: 1px solid var(--br); border-radius: 2px; background: var(--bg1); padding: 12px 13px; position: relative; }
+  .fc .n { font: 700 22px var(--mono); color: var(--s); opacity: .5; }
+  .fc .t { font: 700 13px var(--ui); letter-spacing: 1.5px; text-transform: uppercase; color: var(--t0); margin: 2px 0 6px; }
+  .fc .d { font-size: 11.5px; color: var(--t1); line-height: 1.5; }
+  .fc .d b { color: var(--t0); }
+  .fc .sk { margin-top: 8px; font: 10px var(--mono); color: var(--pp); line-height: 1.6; }
+  .fc .gm { margin-top: 8px; font: 10px var(--mono); color: var(--a); line-height: 1.6; }
+  .fc .gm::before, .fc .sk::before { font: 700 8px var(--mono); letter-spacing: 1.2px; display: block; color: var(--t2); }
+  .fc .sk::before { content: 'SKILL'; } .fc .gm::before { content: 'GM KNOBS'; }
+  .fc.opt { border-style: dashed; }
+  .fc::after { content: '›'; position: absolute; right: -11px; top: 44%; font: 700 22px var(--mono); color: var(--brA); }
+  .fc:last-child::after { content: ''; }
+  .cmp { width: 1100px; border: 1px solid var(--br); border-radius: 2px; background: var(--bg1); padding: 12px 14px; margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .cmp h4 { margin: 0 0 6px; font: 700 10px var(--mono); letter-spacing: 1.5px; text-transform: uppercase; }
+  .cmp .old h4 { color: var(--p); } .cmp .new h4 { color: var(--ok); }
+  .cmp ul { margin: 0; padding-left: 16px; font-size: 11.5px; color: var(--t1); line-height: 1.55; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<h1>SHARD ENCODER — player-facing data-shard authoring</h1>
+<div class="sub">The player-side replacement for the one-page <code>ShardConversionFlow</code> wizard. Four stages, each with its own skill and its own GM knobs, ending in the same three-rung ladder the upload console already uses. Program (payload / malware) authoring is a branch of stage ②, gated by rank and resolved by a <b>craft-skill choice</b> whose margin sets how good the program is, not just whether it exists.</div>
+<nav class="views" id="nav"></nav>
+
+<!-- ═══════════════════════ FLOW ═══════════════════════ -->
+<section data-view="flow">
+  <div class="flow">
+    <div class="fc"><div class="n">①</div><div class="t">Blank</div>
+      <div class="d">Pick an <b>owned item</b> to convert, or buy a <b>blank</b> off the shelf. Name, icon, colour. No roll.</div>
+      <div class="sk">none — it's a cred-stick and a label</div>
+      <div class="gm">blank cost (eb) · which items qualify</div></div>
+    <div class="fc"><div class="n">②</div><div class="t">Content</div>
+      <div class="d">Pick a file type from the GM's allow-list and <b>write it in the real editor</b> for that type (the GM composer's WYSIWYG, in player mode). Payload / Malware tiles route to the <b>Program branch</b>.</div>
+      <div class="sk">per type: Forgery · Library Search · Accounting · Interface …<br>program branch: rank gates abilities, player picks the craft skill</div>
+      <div class="gm">type allow-list · per-type skill + DV · alt-skill penalty · rank thresholds for program abilities</div></div>
+    <div class="fc opt"><div class="n">③</div><div class="t">Lock <span style="font-size:9px;color:var(--t2)">(optional)</span></div>
+      <div class="d">Secure the container: password, encryption DV, ICE, failure mode, key item. The <b>existing ceiling table</b> survives here, and only here.</div>
+      <div class="sk">Cryptography → encryption DV ceiling<br>Electronics/Security Tech → key item · lockout · failure mode</div>
+      <div class="gm">security floor · Black/Red ICE allowed · ceiling mode (roll vs fixed caps)</div></div>
+    <div class="fc"><div class="n">④</div><div class="t">Encode</div>
+      <div class="d">One roll on the console: <b>clean / sloppy / rejected</b>. The margin stamps <code>forgeQuality</code> + <code>stealthDV</code> so ANALYZE can catch a bad forgery later. For programs it ALSO sets charges and run DV.</div>
+      <div class="sk">the skill chosen in ②</div>
+      <div class="gm">botch consequence: nothing · burn the blank · keep the eddies</div></div>
+  </div>
+  <div class="cmp">
+    <div class="old"><h4><i class="fas fa-xmark"></i> Today (ShardConversionFlow)</h4><ul>
+      <li>One roll on ONE skill (Interface) caps <i>everything</i>: encryption DV, ICE type, key item and which content types you may write.</li>
+      <li>Six of the eighteen types, on the old flat forms — none of the WYSIWYG editors, templates or examples.</li>
+      <li>Pass/fail with a ceiling; a player-made dossier carries no quality, so nothing can ever reveal it as a fake.</li>
+      <li>GM controls: a floor, a skill name, a Black-ICE toggle. No allow-list, no cost, no audit.</li>
+      <li>Payloads are a flat form with no relation to the Workshop's ability catalog; players can't author malware at all.</li></ul></div>
+    <div class="new"><h4><i class="fas fa-check"></i> Encoder</h4><ul>
+      <li><b>Container vs content are different questions</b> — a netrunner locks a shard well, a forger fakes a document well. Two skills, two stages.</li>
+      <li>All 18 types, reusing the editors that already exist; the GM curates which ones players see.</li>
+      <li>The <b>upload ladder</b> (clean / sloppy / rejected) replaces pass/fail, so player-made content has a quality and a tell — the blackmail forgery can be caught.</li>
+      <li><b>Programs come from the Program branch</b>: rank unlocks abilities (scanner at 0, keylog at 4, backdoor at 7), the player picks the craft skill, and the roll margin sets charges, stealth DV and run DV. Same <code>programToEntry</code> shape the Workshop writes, so the Program Deck and upload just work.</li>
+      <li>GM: one Player Authoring card, a PLAYER-MADE badge on the Shards list, and a botch consequence.</li></ul></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ ① BLANK ═══════════════════════ -->
+<section data-view="blank" class="hidden">
+  <div class="row">
+    <div class="win">
+      <div class="win-hd"><i class="fas fa-microchip"></i> SHARD ENCODER <span class="grow"></span><span class="op"><span class="av">V</span> OPERATOR · V</span><span class="x"><i class="fas fa-xmark"></i></span></div>
+      <div class="rail">
+        <div class="stage on"><span class="n">1</span><div><div class="t">Blank</div><div class="d">what it's on</div></div></div>
+        <div class="stage"><span class="n">2</span><div><div class="t">Content</div><div class="d">what's on it</div></div></div>
+        <div class="stage opt"><span class="n">3</span><div><div class="t">Lock</div><div class="d">optional</div></div></div>
+        <div class="stage"><span class="n">4</span><div><div class="t">Encode</div><div class="d">the roll</div></div></div>
+      </div>
+      <div class="body">
+        <div class="main">
+          <div class="sec"><div class="sec-t">Source <span class="hint">a shard is a physical thing — it has to come from somewhere</span></div>
+            <div class="grid" style="grid-template-columns:1fr 1fr;">
+              <div class="tile on"><div class="hd"><i class="fas fa-box-open" style="color:var(--s)"></i> Convert an owned item</div><div class="meta">from V's inventory · <span class="sk">3 eligible</span></div>
+                <div class="inp mono" style="margin-top:4px;"><i class="fas fa-microchip" style="margin-right:6px;color:var(--t2)"></i> Blank Data Shard (×2) <i class="fas fa-chevron-down" style="margin-left:auto;color:var(--t2)"></i></div></div>
+              <div class="tile"><div class="hd"><i class="fas fa-cart-shopping" style="color:var(--a)"></i> Buy a blank</div><div class="meta">creates the item · <span class="dv">50 eb</span> <span style="color:var(--t2)">· wealth 1,240 eb</span></div>
+                <div class="meta" style="margin-top:4px;color:var(--t2)">GM-set price; 0 = free. Buying is the on-ramp for characters with nothing to convert.</div></div>
+            </div></div>
+          <div class="sec"><div class="sec-t">Label</div>
+            <div class="fg">
+              <div class="field" style="flex:1"><label>Shard name</label><div class="inp">Kang Tao payroll — Q3</div></div>
+              <div class="field"><label>Icon</label><div class="inp mono"><i class="fas fa-table-cells" style="color:var(--ok);margin-right:8px"></i> auto from type</div></div>
+              <div class="field"><label>Colour</label><div class="inp" style="gap:6px;"><span style="width:12px;height:12px;background:#00ff41;border-radius:2px"></span><span style="width:12px;height:12px;background:#19f3f7;border-radius:2px;opacity:.4"></span><span style="width:12px;height:12px;background:#f7c948;border-radius:2px;opacity:.4"></span><span style="width:12px;height:12px;background:#F65261;border-radius:2px;opacity:.4"></span></div></div>
+            </div></div>
+        </div>
+        <div class="aside">
+          <div class="card"><div class="t">This shard</div><div class="kv"><span>Source</span><b>Blank Data Shard</b></div><div class="kv"><span>Content</span><b style="color:var(--t2)">—</b></div><div class="kv"><span>Lock</span><b style="color:var(--t2)">none</b></div><div class="kv"><span>Encode DV</span><b style="color:var(--t2)">—</b></div></div>
+          <div class="card"><div class="t">Operator</div><div class="kv"><span>Forgery</span><b>TECH 7 + 4 = 11</b></div><div class="kv"><span>Interface</span><b>TECH 7 + 5 = 12</b></div><div class="kv"><span>Cryptography</span><b>INT 6 + 2 = 8</b></div><div class="kv"><span>Elec/Sec Tech</span><b>TECH 7 + 3 = 10</b></div><div class="kv" style="color:var(--t2);font-size:9.5px;margin-top:4px">values read live from the actor — the same reads the dossier combat profile uses</div></div>
+        </div>
+      </div>
+      <div class="foot"><span class="grow">STAGE 1 OF 4 · no roll on this stage</span><span class="btn">Cancel</span><span class="btn pri">Next · Content <i class="fas fa-arrow-right"></i></span></div>
+    </div>
+    <div class="why"><h3>Why a separate Blank stage</h3>
+      <p>Today the item picker, the name and the roll sit on one screen, so a player can't tell which part of the shard the roll is about. Splitting the <span class="k">physical thing</span> off makes the later stages honest: the roll is about the <b>content</b>, the lock is about the <b>container</b>.</p>
+      <p><b>Buy a blank</b> is the on-ramp the current wizard lacks: right now a player with no convertible item simply can't make a shard. The price is a GM knob and defaults low; it also gives the botch consequence something to burn.</p>
+      <p>The <b>Operator card</b> is the same live-read pattern as the dossier combat profile — the skills shown are the ones the later stages will use, so the player knows before they start which stage they're good at.</p></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ ② CONTENT ═══════════════════════ -->
+<section data-view="content" class="hidden">
+  <div class="row">
+    <div class="win">
+      <div class="win-hd"><i class="fas fa-microchip"></i> SHARD ENCODER <span class="grow"></span><span class="op"><span class="av">V</span> OPERATOR · V</span><span class="x"><i class="fas fa-xmark"></i></span></div>
+      <div class="rail">
+        <div class="stage done"><span class="n"><i class="fas fa-check"></i></span><div><div class="t">Blank</div><div class="d">Blank Data Shard</div></div></div>
+        <div class="stage on"><span class="n">2</span><div><div class="t">Content</div><div class="d">what's on it</div></div><span class="sk">FORGERY 11</span></div>
+        <div class="stage opt"><span class="n">3</span><div><div class="t">Lock</div><div class="d">optional</div></div></div>
+        <div class="stage"><span class="n">4</span><div><div class="t">Encode</div><div class="d">the roll</div></div></div>
+      </div>
+      <div class="body">
+        <div class="main">
+          <div class="sec"><div class="sec-t">File type <span class="hint">each type names the skill it's made with — the GM's table, the operator's numbers</span></div>
+            <div class="grid" id="typegrid"></div></div>
+        </div>
+        <div class="aside">
+          <div class="card"><div class="t">Selected · Document</div>
+            <div class="kv"><span>Craft skill</span><b class="pp">Forgery</b></div><div class="kv"><span>Base DV</span><b>15</b></div><div class="kv"><span>Operator</span><b>TECH 7 + 4 = 11</b></div>
+            <div class="kv"><span>Clean / sloppy / rejected</span><b><span class="ok">70</span>/<span class="warn">30</span>/<span style="color:var(--red)">0</span>%</b></div>
+            <div class="kv" style="color:var(--t2);font-size:9.5px;margin-top:4px">the odds are the ladder before you commit — the console says the same thing again at ④</div></div>
+          <div class="card"><div class="t">Alt skill</div><div class="kv"><span>Library Search <span style="color:var(--warn)">+3 DV</span></span><b>INT 6 + 3 = 9</b></div><div class="kv" style="color:var(--t2);font-size:9.5px">a researched fake instead of a forged one — the GM sets whether an alt exists and its penalty</div></div>
+          <div class="card"><div class="t">Next</div><div class="kv" style="color:var(--t1);font-size:10.5px;line-height:1.5">Opens the <b>Document editor</b> — the same WYSIWYG page the GM writes on, minus the GM-only rows (network visibility, declassify DV).</div></div>
+        </div>
+      </div>
+      <div class="foot"><span class="grow">STAGE 2 OF 4 · 11 of 18 types enabled by the GM · greyed tiles say why</span><span class="btn"><i class="fas fa-arrow-left"></i> Back</span><span class="btn pri">Write it <i class="fas fa-pen"></i></span></div>
+    </div>
+    <div class="why"><h3>Why the skill lives on the tile</h3>
+      <p>The tile is the whole pitch of the stage: <b>what</b> you can make, <b>with which skill</b>, at <b>what odds</b> — before you pick. A player whose Forgery is 1 sees at a glance that a fake dossier is a coin-flip and a spreadsheet isn't.</p>
+      <p>The skill table is <span class="k">data, not code</span>: a default map ships (Forgery for documents / records / dossiers / credentials / chat logs, Library Search for research, Accounting for banking and spreadsheets, Perception for galleries and AV, Interface for programs), and the GM overrides any row in the Admin card. Alt skills with a penalty let non-specialists try.</p>
+      <p><b>Locked tiles stay visible.</b> "GM disabled" and "Interface 4+" are different messages, and both teach the table what to change — the same rule as the terminal's dead exfil chips.</p>
+      <p>Payload and Malware tiles don't open an editor. They route to the <span class="x">Program branch</span> (next view), because a program isn't written, it's built.</p></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ ② PROGRAM BRANCH ═══════════════════════ -->
+<section data-view="program" class="hidden">
+  <div class="sim"><b>SIMULATE OPERATOR</b>
+    <label>TECH <input id="s-tech" value="7"></label>
+    <label>INT <input id="s-int" value="6"></label>
+    <label>Interface <input id="s-int-rank" value="5"></label>
+    <label>Elec/Sec Tech <input id="s-est-rank" value="3"></label>
+    <label>Cryptography <input id="s-cry-rank" value="2"></label>
+    <span style="color:var(--t2)">· edit and watch the odds + efficiency recompute (d10, no crit rule in the sim)</span></div>
+  <div class="row">
+    <div class="win">
+      <div class="win-hd"><i class="fas fa-microchip"></i> SHARD ENCODER <span class="grow"></span><span class="op"><span class="av">V</span> OPERATOR · V</span><span class="x"><i class="fas fa-xmark"></i></span></div>
+      <div class="rail">
+        <div class="stage done"><span class="n"><i class="fas fa-check"></i></span><div><div class="t">Blank</div><div class="d">Blank Data Shard</div></div></div>
+        <div class="stage on"><span class="n">2</span><div><div class="t">Program</div><div class="d">build, don't write</div></div><span class="sk" id="rail-sk">INTERFACE 12</span></div>
+        <div class="stage opt"><span class="n">3</span><div><div class="t">Lock</div><div class="d">optional</div></div></div>
+        <div class="stage"><span class="n">4</span><div><div class="t">Encode</div><div class="d">the roll</div></div></div>
+      </div>
+      <div class="body">
+        <div class="main">
+          <div class="sec"><div class="sec-t">Family <span class="hint">what kind of harm — this also colours the page, like the Workshop</span></div>
+            <div class="fam" id="fam"></div></div>
+          <div class="sec"><div class="sec-t">Ability <span class="hint">unlocked by rank in the craft skill — the GM sets the thresholds</span></div>
+            <div class="abil" id="abil"></div></div>
+          <div class="sec"><div class="sec-t">Craft skill <span class="hint">pick the tool you build it with — the recommended one has no penalty</span></div>
+            <div class="abil" id="skills"></div></div>
+          <div class="sec"><div class="sec-t">Forecast <span class="hint">what the roll will produce at each rung</span></div>
+            <div class="ladder" id="ladder"></div>
+            <div class="bar" id="bar"></div></div>
+        </div>
+        <div class="aside">
+          <div class="card"><div class="t">Efficiency · on a clean roll</div><div class="eff" id="eff-clean"></div><div class="kv" style="color:var(--t2);font-size:9.5px;margin-top:6px">charges = 1 + rank÷3 · stealth DV rises with the margin · run DV is the ability's DV −2 when clean</div></div>
+          <div class="card"><div class="t">Efficiency · on a sloppy roll</div><div class="eff" id="eff-sloppy"></div><div class="kv" style="color:var(--t2);font-size:9.5px;margin-top:6px">it works once, ANALYZE / SYSTEM SWEEP see it easily, and it wears a GLITCHY tell</div></div>
+          <div class="card"><div class="t">Identity</div><div class="kv"><span>Name</span><b>Ghostkey.exe</b></div><div class="kv"><span>Disguise</span><b style="color:var(--t2)">none (rank 7+)</b></div><div class="kv"><span>Writes as</span><b class="pp">malware · uploadEffect</b></div></div>
+        </div>
+      </div>
+      <div class="foot"><span class="grow" id="foot-note">STAGE 2 OF 4 · PROGRAM</span><span class="btn"><i class="fas fa-arrow-left"></i> Back</span><span class="btn pri">Next · Lock <i class="fas fa-arrow-right"></i></span></div>
+    </div>
+    <div class="why"><h3>Why the skill CHOICE, and what it buys</h3>
+      <p>The current wizard rolls Interface and caps a DV. That answers "may I?", not "how good is it?". A program has real numbers a roll should own: <b>charges</b>, <b>stealth DV</b> (what ANALYZE / SYSTEM SWEEP must beat), and <b>run DV</b> (what the operator rolls later to execute it). The Encoder makes the margin set all three.</p>
+      <p><span class="k">Rank gates, roll grades.</span> Rank in the craft skill decides <i>which abilities exist</i> for you at all (scanner at 0, keylog at 4, backdoor / deployICE / logic bomb at 7 — the GM's thresholds) and adds base charges. The roll decides how well the one you picked came out.</p>
+      <p><span class="k">Choosing the skill is a real trade.</span> Interface is the netrunner's tool: no penalty. Electronics/Security Tech builds the same thing at +3 DV — a tech can jury-rig a keylogger. Cryptography at +5 only makes sense for keylog / backdoor. The chips show every option with its odds, so a non-netrunner sees exactly what the penalty costs before rolling. GM can remove or re-price any alt.</p>
+      <p><span class="g">Nothing new downstream.</span> The result is the same <code>programToEntry</code> shape the Workshop writes (<code>uploadable</code>, <code>uploadEffect</code>, <code>charges</code>, <code>stealthDV</code>), so the Program Deck shows it, the upload go-bag carries it, and SYSTEM SWEEP catches a sloppy one. The upload roll stays a separate intrusion roll — craft quality is decided here, once.</p></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ ④ ENCODE ═══════════════════════ -->
+<section data-view="encode" class="hidden">
+  <div class="row">
+    <div class="con" id="con">
+      <span class="ck tl"></span><span class="ck tr"></span><span class="ck bl"></span><span class="ck br"></span>
+      <div class="con-hd"><i class="fas fa-microchip"></i> ENCODER <span class="grow"></span><span class="st" id="con-st">ARMED</span></div>
+      <div class="con-b">
+        <div class="ttl">Encode · Ghostkey.exe</div>
+        <div class="intro">Compile the program onto <b>Blank Data Shard</b>. Roll <b>Interface</b> (TECH 7 + 5) vs <b>DV 18</b>. The margin decides what you get — there is no partial credit for a bad miss:</div>
+        <div class="ladder">
+          <div class="lr clean"><span class="tag">CLEAN</span><span class="ex">Beat the DV. Full charges, high stealth, no tells.<small>margin ≥ 0 · quality 50–100</small></span><span class="pct">50%</span></div>
+          <div class="lr sloppy"><span class="tag">SLOPPY</span><span class="ex">Miss by 1–4. It compiles, but it's glitchy: one charge, easy to sweep, wears a tell.<small>margin −1 … −4</small></span><span class="pct">40%</span></div>
+          <div class="lr rej"><span class="tag">REJECTED</span><span class="ex">Miss by 5+. The compile fails. <b id="botch-line">The blank is kept</b> (GM: botch consequence).<small>margin ≤ −5</small></span><span class="pct">10%</span></div>
+        </div>
+        <div class="track"><i id="track"></i></div>
+        <div class="verdict hidden" id="verdict"></div>
+        <div class="rolled hidden" id="rolled"></div>
+        <div class="acts"><span class="btn">Cancel</span><span class="btn go" id="go"><i class="fas fa-dice-d10"></i> ATTEMPT</span></div>
+      </div>
+    </div>
+    <div class="why"><h3>Why the console, why the ladder</h3>
+      <p>This is the existing <code>runSecurityConsole</code> with the <code>verdictFor</code> hook the upload flow added — three rungs, an amber <code>is-warn</code> tone for sloppy. <span class="g">No new modal.</span> It inherits the viewer's preset, docks under Tier C, posts the same chat card.</p>
+      <p>The ladder is stated <b>before</b> the player commits, every time, because the thing that went wrong on the first upload play-test was that nobody knew a bad miss was still "success". Here a bad miss is rejected, and the GM decides whether that burns the blank.</p>
+      <p>Switch the result with <code>?result=clean|sloppy|rejected|await</code>. <b>await</b> is Tier C: the GM adjudicates and the console docks, exactly like a siphon.</p>
+      <p>For non-program content the same console runs with the content skill (Forgery for the payroll document) and the same three rungs; sloppy stamps a low <code>forgeQuality</code> so ANALYZE flags it FORGED when it's later handed over or planted.</p></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ ADMIN ═══════════════════════ -->
+<section data-view="admin" class="hidden">
+  <div class="row">
+    <div class="adm">
+      <div class="adm-t"><i class="fas fa-user-pen"></i> Player Authoring <span class="hint" style="margin-left:6px">what players may put on a shard, and with which skill</span></div>
+      <div class="adm-b">
+        <div class="frow">
+          <div class="f"><label>Players may create shards</label><div class="sel">Yes — via the Encoder <i class="fas fa-chevron-down"></i></div></div>
+          <div class="f"><label>Blank price</label><div class="sel" style="min-width:90px">by tier ↓</div></div>
+          <div class="f"><label>Rejected encode</label><div class="sel" style="min-width:90px">by tier ↓</div></div>
+          <div class="f"><label>Player pricing</label><div class="sel">Propose · GM approves <i class="fas fa-chevron-down"></i></div></div>
+          <div class="f"><label>Lock stage</label><div class="sel">Allowed · roll-based ceiling <i class="fas fa-chevron-down"></i></div></div>
+          <div class="f"><label>Black / Red ICE</label><div class="sel" style="min-width:70px"><span class="chk on"></span> allowed</div></div>
+          <div class="f"><label>Re-encode a sloppy shard</label><div class="sel">Allowed · +2 DV <i class="fas fa-chevron-down"></i></div></div>
+          <div class="f"><label>Copy a clean shard</label><div class="sel">Allowed · +3 DV <i class="fas fa-chevron-down"></i></div></div>
+        </div>
+        <div class="sub-t">Blank tiers <span class="hint">what a blank costs, what a botched encode does to it, any perk — and which items count. Premium is whatever you say it is.</span></div>
+        <div class="tiers">
+          <div class="tier" style="--tc:#8a8aa0"><div class="tier-h"><span class="tier-n">Scrap</span><span class="tier-p">0 eb</span><span class="hint">any gear you convert that isn't listed below — wiped on the way in</span></div>
+            <div class="frow"><div class="f"><label>On rejected</label><div class="sel">Bricked <i class="fas fa-chevron-down"></i></div></div><div class="f"><label>On a natural 1</label><div class="sel">Bricked + trace <i class="fas fa-chevron-down"></i></div></div><div class="f"><label>Perk</label><div class="sel">— <i class="fas fa-chevron-down"></i></div></div></div>
+            <div class="tier-items"><span class="lbl">Items</span><span class="ichip any">anything not listed in another tier</span></div></div>
+          <div class="tier" style="--tc:var(--s)"><div class="tier-h"><span class="tier-n">Standard</span><span class="tier-p">50 eb</span><span class="hint">the blank you buy</span><i class="fas fa-xmark x"></i></div>
+            <div class="frow"><div class="f"><label>Buy price</label><div class="sel" style="min-width:80px">50 eb</div></div><div class="f"><label>On rejected</label><div class="sel">Bricked <i class="fas fa-chevron-down"></i></div></div><div class="f"><label>On a natural 1</label><div class="sel">Bricked + trace <i class="fas fa-chevron-down"></i></div></div><div class="f"><label>Perk</label><div class="sel">— <i class="fas fa-chevron-down"></i></div></div></div>
+            <div class="tier-items"><span class="lbl">Items</span><span class="ichip"><span class="im"><i class="fas fa-microchip"></i></span>Blank Data Shard<i class="fas fa-xmark rm"></i></span><span class="ichip"><span class="im"><i class="fas fa-sd-card"></i></span>Memory Shard (CPR gear)<i class="fas fa-xmark rm"></i></span><span class="ichip add"><i class="fas fa-plus"></i> item</span></div></div>
+          <div class="tier" style="--tc:var(--a)"><div class="tier-h"><span class="tier-n">Premium</span><span class="tier-p">200 eb</span><span class="hint">hardened media — survives a botch</span><i class="fas fa-xmark x"></i></div>
+            <div class="frow"><div class="f"><label>Buy price</label><div class="sel" style="min-width:80px">200 eb</div></div><div class="f"><label>On rejected</label><div class="sel">Survives · wiped <i class="fas fa-chevron-down"></i></div></div><div class="f"><label>On a natural 1</label><div class="sel">Bricked <i class="fas fa-chevron-down"></i></div></div><div class="f"><label>Perk</label><div class="sel">+1 craft roll <i class="fas fa-chevron-down"></i></div></div></div>
+            <div class="tier-items"><span class="lbl">Items</span><span class="ichip"><span class="im"><i class="fas fa-shield-halved"></i></span>Militech Hardened Shard<i class="fas fa-xmark rm"></i></span><span class="ichip"><span class="im"><i class="fas fa-vault"></i></span>Arasaka Vault Chip<i class="fas fa-xmark rm"></i></span><span class="ichip add"><i class="fas fa-plus"></i> item</span></div></div>
+          <button class="addtier"><i class="fas fa-plus"></i> Add tier</button>
+        </div>
+        <div class="sub-t">Optional depth <span class="hint">all off by default — each is one toggle, none changes the core flow</span></div>
+        <div class="frow" style="gap:18px;">
+          <div class="f" style="flex-direction:row;align-items:center;gap:8px;"><span class="chk"></span><span>Gear modifiers <span class="hint">a flagged item (cyberdeck, forgery kit, workshop) adds +1…+3 to the craft roll</span></span></div>
+          <div class="f" style="flex-direction:row;align-items:center;gap:8px;"><span class="chk"></span><span>Time cost <span class="hint">encoding takes rank-scaled hours on the world clock</span></span></div>
+          <div class="f" style="flex-direction:row;align-items:center;gap:8px;"><span class="chk"></span><span>Assist <span class="hint">a second PC lends a skill for +1</span></span></div>
+          <div class="f" style="flex-direction:row;align-items:center;gap:8px;"><span class="chk"></span><span>Signature effects <span class="hint">signed = traceable to the maker · spoofed = +2 DV and heats the impersonated corp</span></span></div>
+        </div>
+        <div class="sub-t">Content types <span class="hint">tick = players can author it · skill + DV per type · optional alt skill with a penalty</span></div>
+        <table><thead><tr><th></th><th>Type</th><th>Craft skill</th><th>DV</th><th>Alt skill</th><th>Alt +DV</th></tr></thead><tbody id="admrows"></tbody></table>
+        <div class="sub-t">Programs <span class="hint">the Program branch — rank in the craft skill unlocks abilities</span></div>
+        <div class="frow">
+          <div class="f"><label>Players may build programs</label><div class="sel">Utility + Plant + Execute <i class="fas fa-chevron-down"></i></div></div>
+          <div class="f"><label>Craft skill</label><div class="sel">Interface <i class="fas fa-chevron-down"></i></div></div>
+          <div class="f"><label>Alt skills</label><div class="sel">Elec/Sec Tech +3 · Cryptography +5 <i class="fas fa-chevron-down"></i></div></div>
+          <div class="f"><label>Rank thresholds</label><div class="sel" style="min-width:210px">scanner 0 · keylog 4 · backdoor 7 · bomb 7 <i class="fas fa-chevron-down"></i></div></div>
+          <div class="f"><label>Charges</label><div class="sel" style="min-width:120px">1 + rank ÷ 3</div></div>
+        </div>
+        <div class="frow" style="align-items:center;gap:8px;">
+          <span class="chk on"></span><span>Tag player-made shards <span class="badge pm">Player-made</span> in Admin → Shards and log encodes in the Security Activity Log (who made what, quality)</span>
+        </div>
+      </div>
+    </div>
+    <div class="why"><h3>Why one card</h3>
+      <p>Everything the Encoder reads is a <span class="k">world setting</span> shown here — nothing is hard-coded in the wizard the way the tier thresholds are today. The shipped table is the default; a GM who wants "no player malware, ever" unticks one select.</p>
+      <p><b>Decisions locked 2026-09-12:</b> blank price <b>50 eb</b> (a knob) · all 18 types available, <b>11 on</b> by default · pricing <b>Propose</b> (player names it, the GM approves / counters / denies, only then does it land on the item) · a rejected encode does what the blank\'s <b>tier</b> says — Scrap and Standard <b>brick</b>, Premium <b>survives wiped</b> (+1 craft roll perk); a natural 1 is one step harsher · tiers are GM-defined with an item picker (the burn-picker pattern), anything unlisted is Scrap · re-encoding a sloppy shard and copying a clean one are <b>allowed</b> at a DV penalty · gear modifiers, time cost, assist and signature effects are <b>optional toggles</b>, off by default.</p>
+      <p><b>Audit is not optional.</b> Player-made forgeries need the same "what's been planted where" trail the upload arc required, so an encode writes a Security-tab row with the quality, and the shard carries a PLAYER-MADE badge in Admin → Shards. This is how the GM knows the blackmail dossier is fake before the NPC does.</p>
+      <p>It follows the admin-panel vocabulary: display font chrome, mono for values, 2px radius, the <code>.ncm-ct-row__check</code> checkbox — the reference implementations from the Security-tab cohesion pass.</p></div>
+  </div>
+</section>
+
+<script>
+// ─── view switching ───
+const q = new URLSearchParams(location.search);
+const view = q.get('view') || 'flow';
+const VIEWS = [['flow','OVERVIEW'],['blank','① BLANK'],['content','② CONTENT'],['program','② PROGRAM BRANCH'],['encode','④ ENCODE'],['admin','GM CARD']];
+document.getElementById('nav').innerHTML = VIEWS.map(([v,l]) => `<a href="?view=${v}" class="${v===view?'on':''}">${l}</a>`).join('');
+document.querySelectorAll('section[data-view]').forEach(s => s.classList.toggle('hidden', s.dataset.view !== view));
+
+// ─── shared model (the default skill table; the GM overrides it in the card) ───
+const OP = { TECH: 7, INT: 6, ranks: { Forgery: 4, 'Library Search': 3, Accounting: 1, Perception: 2, Interface: 5, 'Electronics/Security Tech': 3, Cryptography: 2, Bureaucracy: 1 } };
+const STAT = { Forgery: 'TECH', 'Library Search': 'INT', Accounting: 'INT', Perception: 'INT', Interface: 'TECH', 'Electronics/Security Tech': 'TECH', Cryptography: 'INT', Bureaucracy: 'INT' };
+const base = (sk) => (OP[STAT[sk]] || 0) + (OP.ranks[sk] || 0);
+function odds(sk, dv) { // d10 1–10, no crit rule
+  const b = base(sk); let c = 0, s = 0, r = 0;
+  for (let d = 1; d <= 10; d++) { const m = b + d - dv; if (m >= 0) c++; else if (m >= -4) s++; else r++; }
+  return { c: c * 10, s: s * 10, r: r * 10, b };
+}
+const cls = (c) => c >= 60 ? 'hi' : c >= 30 ? 'mid' : 'lo';
+
+const TYPES = [
+  ['message','Message','fas fa-envelope','cyan', null, 0, 'any', 'no roll — it is mail'],
+  ['note','Note','fas fa-note-sticky','gold', null, 0, 'any', 'no roll'],
+  ['document','Document','fas fa-file-lines','gold','Forgery',15,'Library Search +3'],
+  ['record','Records / DB','fas fa-database','cyan','Forgery',15,'Bureaucracy +3'],
+  ['dossier','Dossier','fas fa-id-badge','red','Forgery',18,'Library Search +3'],
+  ['credentials','Credentials','fas fa-key','red','Forgery',18,'Cryptography +2'],
+  ['chatlog','Chat Log','fas fa-comments','cyan','Forgery',13,null],
+  ['spreadsheet','Spreadsheet','fas fa-table-cells','green','Accounting',13,'Forgery +2'],
+  ['banking','Banking','fas fa-building-columns','green','Accounting',18,null],
+  ['gallery','Image Gallery','fas fa-images','purple','Perception',13,null],
+  ['avlog','Audio/Video Log','fas fa-headphones','green','Perception',15,null],
+  ['location','Location','fas fa-map-marker-alt','green','Library Search',12,null],
+  ['schematic','Schematic','fas fa-compass-drafting','purple','Basic Tech',15,null,'GM disabled'],
+  ['calendar','Calendar','fas fa-calendar-days','gold','Bureaucracy',12,null,'GM disabled'],
+  ['syslog','System Log','fas fa-terminal','cyan','Interface',15,null,'GM disabled'],
+  ['eddies','Eddies Dead Drop','fas fa-sack-dollar','gold', null, 0, 'any', 'your own eb, no roll'],
+  ['payload','Payload','fas fa-virus','purple','Interface',0,'→ Program branch','prog'],
+  ['malware','Malware','fas fa-biohazard','red','Interface',0,'→ Program branch','prog'],
+];
+const tg = document.getElementById('typegrid');
+if (tg) tg.innerHTML = TYPES.map(([id,label,icon,col,sk,dv,alt,flag]) => {
+  const prog = flag === 'prog'; const lock = flag && !prog && flag !== 'no roll' && !String(flag).startsWith('no roll') && !String(flag).startsWith('your');
+  const noroll = !sk;
+  let meta = '';
+  if (prog) meta = `<span class="route"><i class="fas fa-arrow-turn-down"></i> ${alt}</span>`;
+  else if (noroll) meta = `<span style="color:var(--t2)">${flag}</span>`;
+  else { const o = odds(sk, dv); meta = `<span class="sk">${sk.toUpperCase()}</span><span class="dv">DV ${dv}</span>${lock ? '' : `<span class="o odds ${cls(o.c)}">${o.c}%</span>`}`; }
+  return `<div class="tile c-${col} ${id==='document'?'on':''} ${lock?'lock':''} ${prog?'prog':''}">
+    ${lock ? `<span class="lk"><i class="fas fa-lock"></i>${flag}</span>` : ''}
+    <div class="hd"><i class="${icon}"></i> ${label}</div><div class="meta">${meta}</div></div>`;
+}).join('');
+
+// ─── program branch ───
+const FAMS = [
+  { id:'utility', t:'Utility', i:'fas fa-screwdriver-wrench', c:'#19f3f7', d:'runs against a host you are logged into — scanner, skeleton key, jammer' },
+  { id:'plant',   t:'Plant',   i:'fas fa-file-shield',        c:'#a855f7', d:'leaves a forged file on the next login — crafted with the CONTENT skill (Forgery), not here' },
+  { id:'execute', t:'Execute', i:'fas fa-skull-crossbones',   c:'#F65261', d:'installs a resident that fires on a trigger — keylog, backdoor, deploy ICE, logic bomb' },
+];
+const ABIL = {
+  utility: [['scanner','Scanner','fas fa-magnifying-glass',12,0],['skeletonKey','Skeleton key','fas fa-key',15,4],['jammer','Jammer','fas fa-satellite-dish',15,4],['icebreaker','Icebreaker','fas fa-snowflake',18,7]],
+  execute: [['keylog','Keylog','fas fa-keyboard',15,4],['backdoor','Backdoor','fas fa-door-open',18,7],['deployICE','Deploy ICE','fas fa-shield-virus',18,7],['logicBomb','Logic bomb','fas fa-bomb',20,7]],
+  plant: [['plant','Forged file','fas fa-file-shield',0,0]],
+};
+const CRAFT = [['Interface',0,true],['Electronics/Security Tech',3,false],['Cryptography',5,false]];
+let fam = 'execute', ab = 'backdoor', craft = 'Interface';
+const $ = (id) => document.getElementById(id);
+function readSim() {
+  if (!$('s-tech')) return;
+  OP.TECH = +$('s-tech').value || 0; OP.INT = +$('s-int').value || 0;
+  OP.ranks.Interface = +$('s-int-rank').value || 0; OP.ranks['Electronics/Security Tech'] = +$('s-est-rank').value || 0; OP.ranks.Cryptography = +$('s-cry-rank').value || 0;
+}
+function renderProgram() {
+  if (!$('fam')) return;
+  readSim();
+  const rank = OP.ranks[craft] || 0;
+  $('fam').innerHTML = FAMS.map(f => `<div class="f ${f.id===fam?'on':''}" style="--c:${f.c}" data-fam="${f.id}"><div class="t"><i class="${f.i}"></i> ${f.t}</div><div class="d">${f.d}</div></div>`).join('');
+  const list = ABIL[fam];
+  if (!list.find(a => a[0] === ab)) ab = list[0][0];
+  const gateRank = OP.ranks.Interface; // abilities gate on the PRIMARY craft skill's rank
+  $('abil').innerHTML = list.map(([id,l,i,dv,need]) => { const lock = gateRank < need; return `<span class="ab ${id===ab?'on':''} ${lock?'lock':''}" data-ab="${id}"><i class="${i}"></i> ${l} <span class="dv">DV ${dv||'—'}</span>${lock?`<span class="need">Interface ${need}+</span>`:''}</span>`; }).join('');
+  const cur = list.find(a => a[0] === ab);
+  const isPlant = fam === 'plant';
+  $('skills').innerHTML = isPlant
+    ? `<span class="skc na"><span class="nm">Forgery</span><span class="calc">decided at ② CONTENT — a plant is a forged file first</span></span>`
+    : CRAFT.map(([sk,pen,rec]) => { const dv = cur[3] + pen; const o = odds(sk, dv); const na = sk === 'Cryptography' && !['keylog','backdoor'].includes(ab);
+        return `<span class="skc pick ${sk===craft?'on':''} ${rec?'rec':''} ${na?'na':''}" data-sk="${sk}"><span class="nm">${sk}</span><span class="calc">${STAT[sk]} ${OP[STAT[sk]]} + ${OP.ranks[sk]||0} =</span><span class="tot">${o.b}</span><span class="vs">vs</span><span class="dv">DV ${dv}</span>${pen?`<span class="pen">+${pen}</span>`:''}${na?'<span class="calc">n/a for this ability</span>':`<span class="odds ${cls(o.c)}">${o.c}%</span>`}</span>`; }).join('');
+  const pen = CRAFT.find(c => c[0] === craft)?.[1] || 0;
+  const dv = isPlant ? 0 : cur[3] + pen;
+  const o = isPlant ? { c: 0, s: 0, r: 0, b: base('Forgery') } : odds(craft, dv);
+  const charges = 1 + Math.floor(rank / 3);
+  const marginMax = Math.max(0, o.b + 10 - dv);
+  const stealthMin = 12, stealthMax = Math.min(20, 12 + marginMax);
+  $('ladder').innerHTML = isPlant ? `<div class="lr clean"><span class="tag">CONTENT</span><span class="ex">The forged file's quality was set by the Forgery roll in ② CONTENT. The upload FORGE roll later is the intrusion — craft quality is never rolled twice.</span><span class="pct"></span></div>` : `
+    <div class="lr clean"><span class="tag">CLEAN</span><span class="ex">${charges} charge${charges>1?'s':''} · stealth DV ${stealthMin}–${stealthMax} · run DV ${cur[3]-2} · no tells<small>margin ≥ 0 — a bigger margin = harder to sweep</small></span><span class="pct">${o.c}%</span></div>
+    <div class="lr sloppy"><span class="tag">SLOPPY</span><span class="ex">1 charge · stealth DV 8 · run DV ${cur[3]+2} · GLITCHY tell<small>margin −1 … −4 — it compiles, badly</small></span><span class="pct">${o.s}%</span></div>
+    <div class="lr rej"><span class="tag">REJECTED</span><span class="ex">nothing compiles — GM's botch rule decides the blank<small>margin ≤ −5</small></span><span class="pct">${o.r}%</span></div>`;
+  $('bar').innerHTML = `<i class="c" style="width:${o.c}%"></i><i class="s" style="width:${o.s}%"></i><i class="r" style="width:${o.r}%"></i>`;
+  const cell = (k, v, s, t) => `<div class="cell ${t||''}"><div class="k">${k}</div><div class="v">${v}${s?`<small>${s}</small>`:''}</div></div>`;
+  $('eff-clean').innerHTML = cell('Charges', isPlant ? '1' : charges, '', 'ok') + cell('Stealth DV', isPlant ? '—' : `${stealthMin}–${stealthMax}`, '', 'ok') + cell('Run DV', isPlant ? '—' : cur[3]-2, '', 'ok');
+  $('eff-sloppy').innerHTML = cell('Charges', '1', '', 'warn') + cell('Stealth DV', '8', '', 'bad') + cell('Run DV', isPlant ? '—' : cur[3]+2, '', 'warn');
+  $('rail-sk').textContent = isPlant ? 'FORGERY ' + base('Forgery') : `${craft.toUpperCase().replace('ELECTRONICS/SECURITY TECH','ELEC/SEC TECH')} ${o.b}`;
+  $('foot-note').textContent = `STAGE 2 OF 4 · PROGRAM · ${fam.toUpperCase()} › ${cur[1].toUpperCase()}${isPlant?'':` · ${craft} rank ${rank} → ${charges} base charge${charges>1?'s':''}`}`;
+  document.querySelectorAll('[data-fam]').forEach(el => el.onclick = () => { fam = el.dataset.fam; renderProgram(); });
+  document.querySelectorAll('[data-ab]').forEach(el => el.onclick = () => { if (el.classList.contains('lock')) return; ab = el.dataset.ab; renderProgram(); });
+  document.querySelectorAll('[data-sk]').forEach(el => el.onclick = () => { if (el.classList.contains('na')) return; craft = el.dataset.sk; renderProgram(); });
+}
+if ($('fam')) { ['s-tech','s-int','s-int-rank','s-est-rank','s-cry-rank'].forEach(id => $(id).addEventListener('input', renderProgram)); renderProgram(); }
+
+// ─── encode result states ───
+const res = q.get('result') || 'armed';
+const con = $('con');
+if (con && res !== 'armed') {
+  con.classList.add(res);
+  $('go').classList.add('hidden');
+  const st = $('con-st'), v = $('verdict'), r = $('rolled');
+  if (res === 'await') { st.textContent = 'AWAITING GM · RUN THE NET'; $('track').style.width = '100%'; }
+  else {
+    v.classList.remove('hidden'); r.classList.remove('hidden'); $('track').style.width = '100%';
+    if (res === 'clean') { st.textContent = 'COMPILED'; v.innerHTML = 'CLEAN COMPILE<small>Ghostkey.exe · 2 charges · stealth DV 15 · run DV 16</small>'; r.innerHTML = 'Rolled <b>TECH 7 + Interface 5 + d10 6 = 18</b> vs DV 18 · margin 0'; }
+    if (res === 'sloppy') { st.textContent = 'COMPILED · GLITCHY'; v.innerHTML = 'SLOPPY COMPILE<small>it runs — once. stealth DV 8 · run DV 20 · tell: GLITCHY</small>'; r.innerHTML = 'Rolled <b>TECH 7 + Interface 5 + d10 3 = 15</b> vs DV 18 · margin −3'; }
+    if (res === 'rejected') { st.textContent = 'COMPILE FAILED'; v.innerHTML = 'REJECTED<small>the blank is kept · nothing was written</small>'; r.innerHTML = 'Rolled <b>TECH 7 + Interface 5 + d10 1 = 13</b> vs DV 18 · margin −5'; }
+  }
+}
+
+// ─── admin rows ───
+const ar = $('admrows');
+if (ar) ar.innerHTML = TYPES.filter(t => t[7] !== 'prog').map(([id,label,icon,col,sk,dv,alt,flag]) => {
+  const on = !(flag && String(flag).startsWith('GM disabled'));
+  const noroll = !sk;
+  return `<tr><td><span class="chk ${on?'on':''}"></span></td><td><i class="${icon} c-${col}" style="width:16px"></i> ${label}</td>
+    <td>${noroll ? '<span class="hint">no roll</span>' : `<div class="sel" style="min-width:150px;height:22px">${sk} <i class="fas fa-chevron-down"></i></div>`}</td>
+    <td class="n">${noroll ? '—' : dv}</td>
+    <td>${noroll || !alt ? '<span class="hint">—</span>' : `<div class="sel" style="min-width:140px;height:22px">${alt.replace(/ \+\d+$/,'')} <i class="fas fa-chevron-down"></i></div>`}</td>
+    <td class="n">${alt && /\+(\d+)$/.test(alt) ? '+' + alt.match(/\+(\d+)$/)[1] : '—'}</td></tr>`;
+}).join('');
+</script>
+</body>
+</html>

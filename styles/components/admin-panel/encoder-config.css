@@ -1,0 +1,310 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLAYER AUTHORING — the Shard Encoder's GM config window (EncoderConfigApp).
+
+   A GM tool, so it wears the admin-panel vocabulary exactly: display-font
+   chrome, mono for values, 2px radius (1px on badges), the `.ncm-ct-row__check`
+   checkbox, and ONLY `--ncm-*` tokens so it follows all three admin presets.
+   Prefix is `ncm-ecfg-*` / `ncm-ecfg__*` — `ncm-enc-*` belongs to the player
+   Encoder window (the class-collision rule).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app.ncm-encoder-config .window-content { padding: 0; overflow: hidden; }
+.ncm-ecfg { display: flex; flex-direction: column; height: 100%; background: var(--ncm-bg-deep, #0a0f14); }
+
+/* ── tabs ───────────────────────────────────────────────────────────────── */
+.ncm-ecfg__tabs { display: flex; gap: 2px; padding: 8px 10px 0; border-bottom: 1px solid var(--ncm-border, #2a3a47); background: var(--ncm-bg-mid, #141c24); flex-wrap: wrap; }
+.ncm-app.ncm-encoder-config .ncm-ecfg__tab {
+  width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+  padding: 6px 11px !important; cursor: pointer; border: 1px solid var(--ncm-border, #2a3a47) !important;
+  border-bottom: 0 !important; border-radius: 2px 2px 0 0 !important; box-shadow: none !important;
+  background: var(--ncm-bg-deep, #0a0f14) !important; color: var(--ncm-text-secondary, #9fb3c0) !important;
+  font: 700 11px var(--ncm-font-display, sans-serif) !important; letter-spacing: .04em; text-transform: uppercase;
+}
+.ncm-app.ncm-encoder-config .ncm-ecfg__tab i { margin-right: 5px; font-size: 10px; }
+.ncm-app.ncm-encoder-config .ncm-ecfg__tab.is-on {
+  color: var(--ncm-text-primary, #e8f4f8) !important; border-color: var(--ncm-primary, #19f3f7) !important;
+  background: color-mix(in srgb, var(--ncm-primary, #19f3f7) 10%, var(--ncm-bg-deep, #0a0f14)) !important;
+}
+
+/* ── body + sections ────────────────────────────────────────────────────── */
+.ncm-ecfg__body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 14px 18px; }
+.ncm-ecfg__sec { margin-bottom: 14px; border: 1px solid var(--ncm-border, #2a3a47); border-radius: 2px; background: var(--ncm-bg-mid, #141c24); }
+.ncm-ecfg__sec-t {
+  display: flex; align-items: baseline; gap: 10px; padding: 8px 11px;
+  border-bottom: 1px solid var(--ncm-border, #2a3a47); background: var(--ncm-bg-deep, #0a0f14);
+  color: var(--ncm-text-primary, #e8f4f8);
+  font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase;
+}
+.ncm-ecfg__sec-t span { text-transform: none; letter-spacing: normal; font: italic 500 9.5px var(--ncm-font-display, sans-serif); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-ecfg__sec > :not(.ncm-ecfg__sec-t) { padding: 10px 11px; }
+/* TOP-aligned, not bottom-aligned. Every `.ncm-ecfg__f` is a caption-over-control
+   column, and captions are all one line — so aligning tops lines the CONTROLS up.
+   With `flex-end`, a field carrying a hint grew taller and shoved its hint-less
+   neighbour down to sit beside the hint instead of beside the control ("Combine
+   with" and "at rank" both landed ~30px low). */
+.ncm-ecfg__row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; }
+.ncm-ecfg__col { display: flex; flex-direction: column; gap: 9px; }
+.ncm-ecfg__note {
+  margin: -6px 2px 14px; padding: 8px 10px; border-left: 2px solid var(--ncm-primary, #19f3f7);
+  background: color-mix(in srgb, var(--ncm-primary, #19f3f7) 6%, transparent);
+  font: 11px/1.6 var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary, #9fb3c0);
+}
+
+/* ── fields ─────────────────────────────────────────────────────────────── */
+.ncm-ecfg__f { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+/* The control line of a field — an input and whatever sits beside it (a unit, a
+   second input). Its own row, so multi-part fields read horizontally. */
+.ncm-ecfg__fc { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.ncm-ecfg__f > label {
+  font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ncm-text-muted, #7a8b99);
+}
+.ncm-ecfg__f > small { font: 9.5px/1.5 var(--ncm-font-body, sans-serif); color: var(--ncm-text-muted, #7a8b99); max-width: 320px; }
+.ncm-ecfg__unit { font: 10px var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-ecfg__dim { font: 10px var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #7a8b99); }
+
+.ncm-app.ncm-encoder-config :is(.ncm-ecfg__sel, .ncm-ecfg__num, .ncm-ecfg__txt) {
+  height: 24px !important; min-height: 0 !important; margin: 0 !important; padding: 0 6px !important;
+  border: 1px solid var(--ncm-border, #2a3a47) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-deep, #0a0f14) !important; color: var(--ncm-text-primary, #e8f4f8) !important;
+  box-shadow: none !important; text-align: left !important;
+  font: 11px var(--ncm-font-mono, monospace) !important;
+}
+.ncm-app.ncm-encoder-config .ncm-ecfg__num { text-align: right !important; }
+.ncm-app.ncm-encoder-config .ncm-ecfg__txt { font-family: var(--ncm-font-body, sans-serif) !important; font-size: 12px !important; }
+.ncm-app.ncm-encoder-config :is(.ncm-ecfg__sel, .ncm-ecfg__num, .ncm-ecfg__txt):focus {
+  border-color: var(--ncm-primary, #19f3f7) !important; outline: none !important;
+}
+
+/* checkbox rows — the shipped .ncm-ct-row__check look, never the module-global box */
+.ncm-ecfg__check { display: flex; align-items: flex-start; gap: 7px; cursor: pointer; text-transform: none; }
+.ncm-ecfg__check > span {
+  font: 12px/1.35 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary, #e8f4f8); text-transform: none;
+}
+.ncm-ecfg__check > span small { display: block; margin-top: 2px; font: 10px/1.5 var(--ncm-font-body, sans-serif); color: var(--ncm-text-muted, #7a8b99); max-width: 360px; }
+.ncm-app.ncm-encoder-config input.ncm-ct-row__check {
+  appearance: none !important; -webkit-appearance: none !important;
+  width: 13px !important; height: 13px !important; min-height: 0 !important; flex: 0 0 auto; margin: 2px 0 0 !important;
+  border: 1px solid var(--ncm-text-muted, #7a8b99) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-deep, #0a0f14) !important; box-shadow: none !important; cursor: pointer; position: relative;
+}
+.ncm-app.ncm-encoder-config input.ncm-ct-row__check::before,
+.ncm-app.ncm-encoder-config input.ncm-ct-row__check::after { content: none !important; }
+.ncm-app.ncm-encoder-config input.ncm-ct-row__check:checked {
+  border-color: var(--ncm-secondary, #19f3f7) !important;
+  background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 18%, var(--ncm-bg-deep, #0a0f14)) !important;
+}
+.ncm-app.ncm-encoder-config input.ncm-ct-row__check:checked::after {
+  content: '' !important; position: absolute; left: 3.5px; top: 0.5px; width: 4px; height: 8px;
+  border: solid var(--ncm-secondary, #19f3f7); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+
+/* ── tier cards ─────────────────────────────────────────────────────────── */
+.ncm-ecfg__tiers { display: flex; flex-direction: column; gap: 10px; }
+.ncm-ecfg__tier { border: 1px solid var(--ncm-border, #2a3a47); border-left: 3px solid var(--tc, var(--ncm-secondary, #19f3f7)); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14); }
+.ncm-ecfg__tier > * { padding: 8px 10px; }
+.ncm-ecfg__tier-h { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--ncm-border, #2a3a47); }
+.ncm-ecfg__badge {
+  padding: 2px 6px; border: 1px solid var(--tc, var(--ncm-secondary, #19f3f7)); border-radius: 1px; color: var(--tc, var(--ncm-secondary, #19f3f7));
+  font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .04em; text-transform: uppercase;
+}
+.ncm-app.ncm-encoder-config .ncm-ecfg__mini {
+  width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 3px 7px !important;
+  border: 1px solid var(--ncm-border, #2a3a47) !important; border-radius: 2px !important; box-shadow: none !important;
+  background: none !important; color: var(--ncm-text-secondary, #9fb3c0) !important; cursor: pointer;
+  font: 700 9px var(--ncm-font-display, sans-serif) !important; letter-spacing: .04em; text-transform: uppercase;
+}
+.ncm-app.ncm-encoder-config .ncm-ecfg__mini:hover { border-color: var(--ncm-primary, #19f3f7) !important; color: var(--ncm-text-primary, #e8f4f8) !important; }
+.ncm-app.ncm-encoder-config .ncm-ecfg__mini--danger:hover { border-color: var(--ncm-danger, #ff0033) !important; color: var(--ncm-danger, #ff0033) !important; }
+.ncm-ecfg__items { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; border-top: 1px solid var(--ncm-border, #2a3a47); }
+.ncm-ecfg__items-l { font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-muted, #7a8b99); }
+.ncm-ecfg__chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 7px;
+  border: 1px solid var(--ncm-border, #2a3a47); border-radius: 2px; background: var(--ncm-bg-mid, #141c24);
+  font: 11px var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary, #e8f4f8);
+}
+.ncm-ecfg__chip img { width: 16px; height: 16px; border: 0; border-radius: 1px; object-fit: cover; }
+.ncm-ecfg__chip i.fa-xmark { cursor: pointer; color: var(--ncm-text-muted, #7a8b99); font-size: 10px; }
+.ncm-ecfg__chip i.fa-xmark:hover { color: var(--ncm-danger, #ff0033); }
+.ncm-ecfg__chip.is-any { color: var(--ncm-text-muted, #7a8b99); font-style: italic; }
+/* The "+ role / + item / + character" chips. They inherit their fill from
+   `.ncm-ecfg__chip` — a bare class, which ANY module shipping a global `button`
+   rule outranks, and the result is a white button sitting in a dark panel. So
+   state background, image and colour here, with `!important`, in both the rest
+   and hover states. Every other button in this window already does; this one was
+   the omission. */
+.ncm-app.ncm-encoder-config .ncm-ecfg__chip--add {
+  width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; cursor: pointer;
+  border: 1px dashed var(--ncm-border, #2a3a47) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-mid, #141c24) !important; background-image: none !important;
+  box-shadow: none !important; color: var(--ncm-text-secondary, #9fb3c0) !important;
+  font: 11px var(--ncm-font-body, sans-serif) !important; text-transform: none !important;
+}
+.ncm-app.ncm-encoder-config .ncm-ecfg__chip--add:hover {
+  background: var(--ncm-bg-elevated, #1b2630) !important; background-image: none !important;
+  border-color: var(--ncm-primary, #19f3f7) !important;
+  color: var(--ncm-text-primary, #e8f4f8) !important;
+}
+
+/* ── tables ─────────────────────────────────────────────────────────────── */
+/* `table-layout: fixed` + fluid controls, because the admin TEXT SIZE knob is a
+   CSS `zoom` on .window-content: at 150% the cells' `min-width` selects could no
+   longer fit and the whole table hung ~48px off the right edge. With fixed
+   layout the columns divide whatever width there is, and the controls below
+   shrink with them. `margin: 0` also fights core's `table { margin: 1rem }`,
+   which otherwise pushes the last column under the card's overflow:hidden. */
+.ncm-ecfg__table { width: 100%; max-width: 100%; margin: 0; border-collapse: collapse; table-layout: fixed; }
+.ncm-app.ncm-encoder-config .ncm-ecfg__table :is(select, input[type="number"], input[type="text"]) {
+  width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+}
+.ncm-ecfg__table td { overflow: hidden; }
+/* The checkbox cell must not be squeezed by the fluid rule above. */
+.ncm-app.ncm-encoder-config .ncm-ecfg__table input.ncm-ct-row__check { width: 13px !important; }
+.ncm-ecfg__table th {
+  text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--ncm-border, #2a3a47);
+  font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-muted, #7a8b99);
+}
+.ncm-ecfg__table td { padding: 5px 6px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border, #2a3a47) 55%, transparent); vertical-align: middle; }
+.ncm-ecfg__table tr.is-off td { opacity: .5; }
+.ncm-ecfg__tname { font: 12px var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-ecfg__tname i { width: 14px; text-align: center; color: var(--ncm-text-secondary, #9fb3c0); margin-right: 4px; }
+.ncm-ecfg__tname small { display: block; font: 10px/1.4 var(--ncm-font-body, sans-serif); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-ecfg__grouprow td {
+  background: var(--ncm-bg-deep, #0a0f14); color: var(--ncm-primary, #19f3f7);
+  font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase;
+}
+.ncm-ecfg__altrow { padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border, #2a3a47) 55%, transparent); }
+
+/* ── footer ─────────────────────────────────────────────────────────────── */
+.ncm-ecfg__foot {
+  display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+  border-top: 1px solid var(--ncm-border, #2a3a47); background: var(--ncm-bg-mid, #141c24);
+}
+.ncm-ecfg__foothint { font: 11px/1.4 var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary, #9fb3c0); }
+.ncm-ecfg__foothint b { color: var(--ncm-accent, #f7c948); }
+.ncm-app.ncm-encoder-config .ncm-ecfg__btn {
+  width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 6px 12px !important;
+  border: 1px solid var(--ncm-border, #2a3a47) !important; border-radius: 2px !important; box-shadow: none !important;
+  background: var(--ncm-bg-deep, #0a0f14) !important; color: var(--ncm-text-secondary, #9fb3c0) !important; cursor: pointer;
+  font: 700 11px var(--ncm-font-display, sans-serif) !important; letter-spacing: .04em; text-transform: uppercase;
+}
+.ncm-app.ncm-encoder-config .ncm-ecfg__btn i { margin-right: 5px; }
+.ncm-app.ncm-encoder-config .ncm-ecfg__btn:hover { border-color: var(--ncm-primary, #19f3f7) !important; color: var(--ncm-text-primary, #e8f4f8) !important; }
+.ncm-app.ncm-encoder-config .ncm-ecfg__btn--primary {
+  border-color: var(--ncm-primary, #19f3f7) !important; color: var(--ncm-text-primary, #e8f4f8) !important;
+  background: color-mix(in srgb, var(--ncm-primary, #19f3f7) 14%, var(--ncm-bg-deep, #0a0f14)) !important;
+}
+.ncm-app.ncm-encoder-config .ncm-ecfg__btn[disabled] { opacity: .45; cursor: default; }
+
+/* ── the Admin → Shards card that opens this window ─────────────────────── */
+.ncm-shard-authoring {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 10px 12px;
+  border: 1px solid var(--ncm-border, #2a3a47); border-radius: 2px; background: var(--ncm-bg-mid, #141c24);
+}
+.ncm-shard-authoring__ic {
+  width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 2px;
+  border: 1px solid var(--ncm-primary, #19f3f7); color: var(--ncm-primary, #19f3f7);
+  background: color-mix(in srgb, var(--ncm-primary, #19f3f7) 10%, transparent);
+}
+.ncm-shard-authoring__t { font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-shard-authoring__d { margin-top: 2px; font: 11px/1.5 var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary, #9fb3c0); }
+.ncm-shard-authoring__state {
+  padding: 2px 7px; border: 1px solid; border-radius: 1px;
+  font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase;
+}
+.ncm-shard-authoring__state.on  { color: var(--ncm-success, #00ff41); border-color: var(--ncm-success, #00ff41); }
+.ncm-shard-authoring__state.off { color: var(--ncm-text-muted, #7a8b99); border-color: var(--ncm-border, #2a3a47); }
+
+/* Where a player-made shard actually lives — asked often enough to answer in place. */
+.ncm-shard-authoring__where {
+  margin-top: 5px; padding: 6px 8px; border-left: 2px solid var(--ncm-primary, #19f3f7);
+  background: color-mix(in srgb, var(--ncm-primary, #19f3f7) 6%, transparent);
+  font: 10.5px/1.55 var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary, #9fb3c0);
+}
+.ncm-shard-authoring__where b { color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-shard-authoring__where i { color: var(--ncm-primary, #19f3f7); margin-right: 5px; }
+
+/* ── "Copy Shards to Items": the census dialog ───────────────────────────── */
+.ncm-arch { font: 12px/1.6 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-arch-lede { margin: 0 0 10px; color: var(--ncm-text-secondary, #9fb3c0); }
+.ncm-arch-lede b { color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-arch-opt { display: block; margin: 8px 0; text-transform: none; font-weight: 400; cursor: pointer; }
+.ncm-arch-opt input { margin-right: 7px; }
+.ncm-arch-opt small { display: block; margin-left: 22px; font: 10.5px/1.5 var(--ncm-font-body, sans-serif); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-arch-head {
+  margin-top: 10px; padding-bottom: 4px; border-bottom: 1px solid var(--ncm-border, #2a3a47);
+  font: 700 9.5px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ncm-text-muted, #7a8b99);
+}
+.ncm-arch-head b { color: var(--ncm-primary, #19f3f7); font-size: 12px; }
+.ncm-arch-list { max-height: 190px; overflow-y: auto; overflow-x: hidden; margin-top: 4px; }
+.ncm-arch-row {
+  display: flex; align-items: baseline; gap: 10px; padding: 4px 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border, #2a3a47) 55%, transparent);
+}
+.ncm-arch-row b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.ncm-arch-row span { flex: 0 0 auto; font: 10px var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-arch-more, .ncm-arch-empty { padding: 6px 2px; font: 11px var(--ncm-font-body, sans-serif); color: var(--ncm-text-muted, #7a8b99); }
+
+/* ── who may encode (the authoring gate) ────────────────────────────────── */
+/* Note: `.ncm-ecfg__sec > :not(.ncm-ecfg__sec-t)` already pads every direct
+   section child, so nothing below sets its own outer padding. */
+
+/* The live answer to "who can make shards right now", so the GM never has to
+   assemble the rule in their head from the controls above it. */
+.ncm-ecfg__verdict {
+  border-top: 1px solid color-mix(in srgb, var(--ncm-border, #2a3a47) 55%, transparent);
+  font: 11px/1.6 var(--ncm-font-body, sans-serif);
+  color: var(--ncm-text-secondary, #9fb3c0);
+}
+.ncm-ecfg__verdict b { color: var(--ncm-text-primary, #e8f4f8); font-weight: 700; }
+.ncm-ecfg__verdict.is-warn {
+  border-left: 2px solid var(--ncm-warning, #f7c948);
+  background: color-mix(in srgb, var(--ncm-warning, #f7c948) 7%, transparent);
+}
+.ncm-ecfg__verdict.is-warn b { color: var(--ncm-warning, #f7c948); }
+
+/* A chip strip that is NOT inside a tier card (roles, gear, named characters). */
+.ncm-ecfg__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+/* One OR-option of required gear. Everything inside it is an AND. */
+.ncm-ecfg__grp {
+  margin-bottom: 8px; border: 1px solid var(--ncm-border, #2a3a47); border-radius: 2px;
+  background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-ecfg__grp-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ncm-ecfg__grp-t {
+  font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ncm-primary, #19f3f7);
+}
+
+/* ── "not built yet" ────────────────────────────────────────────────────── */
+/* A toggle whose rule does not exist yet is labelled as such, on the row. The
+   setting is still stored, so the GM's choice is already in place when it ships —
+   but an unlabelled live-looking switch that changes nothing is the worst of both. */
+.ncm-ecfg__soonrow { display: flex; align-items: flex-start; gap: 8px; }
+.ncm-ecfg__soonrow > .ncm-ecfg__check { flex: 1; min-width: 0; }
+.ncm-ecfg__soon {
+  flex: 0 0 auto; margin-top: 1px; padding: 1px 5px; border-radius: 1px;
+  border: 1px solid color-mix(in srgb, var(--ncm-text-muted, #7a8b99) 45%, transparent);
+  background: color-mix(in srgb, var(--ncm-text-muted, #7a8b99) 10%, transparent);
+  color: var(--ncm-text-muted, #7a8b99);
+  font: 700 8.5px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* ── optional depth: the gear list ──────────────────────────────────────── */
+.ncm-ecfg__gearlist { display: flex; flex-direction: column; gap: 4px; }
+.ncm-ecfg__gearrow {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px;
+  border: 1px solid var(--ncm-border, #2a3a47); border-radius: 2px;
+  background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-ecfg__gearrow img { width: 20px; height: 20px; flex: 0 0 auto; border: 0; border-radius: 1px; object-fit: cover; }
+.ncm-ecfg__gearname {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 12px var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary, #e8f4f8);
+}
+.ncm-ecfg__empty {
+  padding: 8px 2px; font: italic 11px var(--ncm-font-body, sans-serif);
+  color: var(--ncm-text-muted, #7a8b99);
+}

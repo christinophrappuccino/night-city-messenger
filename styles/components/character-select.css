@@ -8,150 +8,167 @@
 
 
 /* ═══════════════════════════════════════════════════════
-   BOOT SPLASH — full-screen overlay on document.body
-   Injected by registerMessagingSystem._playBootSplash()
+   BOOT SPLASH — the Monogram Etch
+   A PANEL on document.body, injected by
+   scripts/ui/BootSplash.js (playBootSplash).
+
+   Body-mounted, so every colour carries a hard fallback: there is no .ncm-app
+   ancestor to inherit from if the player theme has not written :root yet.
+   Motion is JS-driven (one paint(p) loop) — the only CSS transitions here are
+   the fade-out and the header's own glow, so a frozen frame is a true frame.
    ═══════════════════════════════════════════════════════ */
 .ncm-boot-splash {
+  /* The splash leans on the SECONDARY slot (brand cyan), not primary. Primary is
+     the machine-identity red, and a boot flourish in alert red reads as a warning
+     the moment you glance at it. */
+  --sp-c: var(--ncm-secondary, #19f3f7);
+  /* The scan has to stay visible ON the accent, so it is the same hue pushed
+     toward white rather than a second colour competing with it. The literal is
+     the fallback if color-mix is ever unavailable; the line after wins when it is. */
+  --sp-c2: #b8f4ff;
+  --sp-c2: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 35%, #ffffff);
+  --sp-ok: var(--ncm-success, #00ff41);
+  --sp-ink: var(--ncm-text-primary, #ededf0);
+  --sp-dim: var(--ncm-text-muted, #8e8ea8);
+  --sp-line: var(--ncm-border, #2a2a45);
   position: fixed;
   inset: 0;
   z-index: 99999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
+  display: grid;
+  place-items: center;
+  /* Clicks pass through: the splash is a flourish, not a modal, and a stuck
+     overlay must never be able to trap the table. */
   pointer-events: none;
   opacity: 1;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.22s ease;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', ui-monospace, monospace);
 }
-.ncm-boot-splash.fade-out {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
+.ncm-boot-splash.fade-out { opacity: 0; }
 
-.ncm-boot-splash__bg {
-  display: none;
-}
+/* NO scrim. The panel carries its own ground and its own glow, so the table
+   keeps looking at Foundry while it plays — dimming the whole screen for a
+   two-second flourish reads as an error state, and the splash does not block
+   clicks anyway, so darkening what is still usable would be a lie. */
 
-.ncm-boot-splash__content {
+/* ── the window ── */
+.ncm-boot-splash__panel {
   position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px 60px;
-  background: rgba(10, 10, 15, 0.85);
-  border: 1px solid rgba(25, 243, 247, 0.08);
-  border-radius: 6px;
-  backdrop-filter: blur(4px);
-}
-
-.ncm-boot-splash__icon {
-  width: 52px;
-  height: 52px;
-  border: 1px solid rgba(25, 243, 247, 0.15);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(25, 243, 247, 0.02);
-  margin-bottom: 14px;
-  transition: border-color 0.3s, background 0.3s;
-}
-.ncm-boot-splash__icon i {
-  font-size: calc(20px * var(--ncm-text-scale, 1));
-  color: var(--ncm-secondary);
-  opacity: 0.8;
-  transition: color 0.3s, opacity 0.3s;
-}
-.ncm-boot-splash__icon.done {
-  border-color: rgba(0, 255, 65, 0.2);
-  background: rgba(0, 255, 65, 0.02);
-}
-.ncm-boot-splash__icon.done i {
-  color: var(--ncm-success);
-  opacity: 1;
-}
-
-.ncm-boot-splash__title {
-  font-family: var(--ncm-font-title);
-  font-size: calc(16px * var(--ncm-text-scale, 1));
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  color: var(--ncm-text-primary);
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.ncm-boot-splash__subtitle {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1));
-  color: var(--ncm-text-muted);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 28px;
-  transition: color 0.3s;
-}
-.ncm-boot-splash__subtitle.done {
-  color: var(--ncm-success);
-}
-
-.ncm-boot-splash__bar-wrap {
-  width: 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.ncm-boot-splash__bar-track {
-  width: 100%;
-  height: 4px;
-  background: var(--ncm-bg-surface);
-  border-radius: 2px;
+  width: 520px; max-width: calc(100vw - 48px);
+  background: linear-gradient(180deg, rgba(18, 18, 26, .96), rgba(10, 10, 15, .97));
+  border: 1px solid var(--sp-line);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, .5),
+    0 24px 60px rgba(0, 0, 0, .6),
+    0 0 40px -18px var(--sp-c);
   overflow: hidden;
-  position: relative;
 }
-.ncm-boot-splash__bar-fill {
-  height: 100%;
-  width: 0%;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--ncm-secondary), rgba(25, 243, 247, 0.6));
-  box-shadow: 0 0 10px rgba(25, 243, 247, 0.3);
-  transition: width 0.15s linear;
+/* Scanline film on the PANEL, not the screen — a film over the whole desktop
+   with a small window floating in it reads as a broken monitor. */
+.ncm-boot-splash__panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; z-index: 2;
+  background: linear-gradient(90deg, transparent, var(--sp-c) 22%, var(--sp-c) 78%, transparent);
+  opacity: .85;
 }
-.ncm-boot-splash__bar-fill.done {
-  background: var(--ncm-success);
-  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
-}
-/* Shimmer sweep */
-.ncm-boot-splash__bar-track::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 60px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-  animation: ncm-cs-barShimmer 1.5s ease-in-out infinite;
+.ncm-boot-splash__panel::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .26) 0 1px, transparent 1px 3px);
+  opacity: .45;
 }
 
-.ncm-boot-splash__bar-status {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.ncm-boot-splash__brk {
+  position: absolute; width: 11px; height: 11px; z-index: 3;
+  border: 1px solid var(--sp-c); opacity: .7;
 }
-.ncm-boot-splash__bar-label {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1));
-  color: var(--ncm-text-muted);
-  letter-spacing: 0.04em;
-  transition: color 0.2s;
+.ncm-boot-splash__brk--tl { top: 5px; left: 5px; border-right: 0; border-bottom: 0; }
+.ncm-boot-splash__brk--tr { top: 5px; right: 5px; border-left: 0; border-bottom: 0; }
+.ncm-boot-splash__brk--bl { bottom: 5px; left: 5px; border-right: 0; border-top: 0; }
+.ncm-boot-splash__brk--br { bottom: 5px; right: 5px; border-left: 0; border-top: 0; }
+
+/* ── the header ── */
+.ncm-boot-splash__head {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  /* 22px, not 14: the corner brackets live in the first 16px and text running
+     under them reads as a mistake rather than a frame. */
+  padding: 0 22px; height: 34px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .04), transparent);
+  border-bottom: 1px solid var(--sp-line);
 }
-.ncm-boot-splash__bar-label.done { color: var(--ncm-success); }
-.ncm-boot-splash__bar-pct {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1));
-  color: var(--ncm-secondary);
-  letter-spacing: 0.06em;
-  transition: color 0.2s;
+.ncm-boot-splash__head-ic { color: var(--sp-c); font-size: 12px; line-height: 1; }
+.ncm-boot-splash__head-label {
+  font-size: 10px; letter-spacing: .26em; text-transform: uppercase;
+  color: var(--sp-ink);
 }
-.ncm-boot-splash__bar-pct.done { color: var(--ncm-success); }
+/* A segmented meter, lit left to right. It is the only place the progress is a
+   number, and it reads at a glance without a percentage. */
+.ncm-boot-splash__meter { display: flex; gap: 3px; margin-left: auto; }
+.ncm-boot-splash__meter b {
+  width: 6px; height: 4px; background: var(--sp-line); display: block;
+}
+.ncm-boot-splash__meter b.on { background: var(--sp-c); }
+.ncm-boot-splash__state {
+  font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--sp-c); min-width: 52px; text-align: right;
+}
+.ncm-boot-splash.is-set .ncm-boot-splash__state { color: var(--sp-ok); }
+/* The header's bottom edge IS the progress bar — one line doing two jobs. */
+.ncm-boot-splash__head i.ncm-boot-splash__hair {
+  position: absolute; left: 0; bottom: -1px; height: 1px; width: 0;
+  background: linear-gradient(90deg, transparent, var(--sp-c));
+  box-shadow: 0 0 8px var(--sp-c);
+}
+
+/* ── the mark ── */
+.ncm-boot-splash__body { position: relative; padding: 30px 28px 26px; }
+.ncm-boot-splash__mark { position: relative; text-align: center; }
+.ncm-boot-splash__svg { display: block; margin: 0 auto; width: 300px; height: 116px; overflow: visible; }
+.ncm-boot-splash__etch path {
+  fill: none; stroke: var(--sp-c); stroke-width: 2.5;
+  stroke-linecap: square; stroke-linejoin: miter;
+}
+.ncm-boot-splash__solid path {
+  fill: none; stroke: var(--sp-ink); stroke-width: 11;
+  stroke-linecap: butt; stroke-linejoin: miter;
+}
+.ncm-boot-splash__scan {
+  position: absolute; left: -18px; right: -18px; height: 2px; top: 0;
+  background: linear-gradient(90deg, transparent, var(--sp-c2), transparent);
+  box-shadow: 0 0 16px 2px var(--sp-c2);
+  opacity: 0;
+}
+.ncm-boot-splash__rule {
+  height: 1px; width: 260px; margin: 16px auto 0;
+  background: var(--sp-c); opacity: .6;
+  transform: scaleX(0);   /* drawn outward from the centre by the painter */
+}
+.ncm-boot-splash__name {
+  margin-top: 11px;
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+  font-size: 11px; letter-spacing: .44em; text-indent: .44em;
+  text-transform: uppercase; color: var(--sp-dim);
+  white-space: nowrap; opacity: 0;
+}
+.ncm-boot-splash.is-set .ncm-boot-splash__name { color: var(--sp-ink); }
+
+/* ── the footer ── */
+.ncm-boot-splash__foot {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 22px; height: 26px;
+  border-top: 1px solid var(--sp-line);
+  font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--sp-dim);
+}
+.ncm-boot-splash__ready { color: var(--sp-ok); }
+
+@media (max-width: 560px) {
+  .ncm-boot-splash__panel { width: 100%; }
+  .ncm-boot-splash__body { padding: 22px 16px 20px; }
+  .ncm-boot-splash__svg { width: 232px; height: 90px; }
+  .ncm-boot-splash__rule { width: 200px; }
+  .ncm-boot-splash__name { font-size: 10px; letter-spacing: .3em; text-indent: .3em; }
+  .ncm-boot-splash__head-label { letter-spacing: .16em; }
+  .ncm-boot-splash__meter { display: none; }
+}
 
 
 /* ─── Window sizing ─────────────────────────────────────── */

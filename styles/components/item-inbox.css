@@ -28,33 +28,67 @@
  * ═══════════════════════════════════════════════════════════ */
 
 
-/* The shard tokens ALSO on the two other windows that render shard/entry
- * vocabulary (.ncm-shard-btn, .ncm-cl-*, .ncm-config-*): the entry composer and
- * the Malware Workshop. Without this their --sp-* lookups fell through to the
- * dark-theme fallbacks under every preset (the workshop footer buttons and
- * list labels read wrong on clean-light/dark — 2026-09-10). */
+/* ═══════════════════════════════════════════════════════════
+   THE SHARD PALETTE — twenty --sp-* tokens DERIVED from eleven --ncm-* ones.
+   ═══════════════════════════════════════════════════════════
+
+   This is the ONLY place --sp-* is defined. A shard's identity arrives as
+   --ncm-* written INLINE on the viewer's app root by ThemeService.applyTheme
+   (ItemInboxApp._applyShardTheme → buildShardThemePrefs), from the preset's
+   `palette` or the GM's per-shard overrides; with neither, the player's own
+   :root palette shows through.
+
+   It replaced styles/themes/shard-presets.css, which hardcoded all twenty
+   tokens per preset. Three things were wrong with that:
+     · the per-shard CONTRAST slider writes --ncm-*, so it did nothing on the
+       eight themed presets — their --sp-* never read --ncm-*;
+     · typed content (the 18 content types) renders on --ncm-* by design, so a
+       shard's theme could never reach a spreadsheet or dossier inside it;
+     · --sp-accent read `var(--ncm-color-secondary)`, a variable that does not
+       exist, so even the "blank" preset ignored the player's accent colour and
+       fell through to literal brand cyan. (Same for --sp-bar / --sp-chip-active-text.)
+
+   Derived rather than authored, so one formula covers every preset and any
+   custom palette. Small colour drift from the old hand-tuned per-preset values
+   is accepted (agreed 2026-09-22) in exchange for that.
+
+   Applied to the shard viewer AND the two other windows that render shard/entry
+   vocabulary (.ncm-shard-btn, .ncm-cl-*, .ncm-config-*): the entry composer and
+   the Malware Workshop. Without them their --sp-* lookups fell through to the
+   dark-theme fallbacks under every admin preset (2026-09-10). */
+.ncm-app .ncm-item-inbox,
 .ncm-app.ncm-data-shard-composer,
-.ncm-app.ncm-malware-workshop {
+.ncm-app.ncm-malware-workshop,
+.ncm-app.ncm-item-inbox-config {
+  /* — surfaces — */
   --sp-bg-deep: var(--ncm-bg-deep, #0a0a0f);
   --sp-bg-base: var(--ncm-bg-base, #12121a);
   --sp-bg-surface: var(--ncm-bg-surface, #1a1a2e);
   --sp-bg-elevated: var(--ncm-bg-elevated, #252540);
   --sp-border: var(--ncm-border, #2a2a45);
-  --sp-bar: linear-gradient(90deg, var(--ncm-color-primary, #F65261), transparent 40%, transparent 60%, var(--ncm-color-secondary, #19f3f7));
   --sp-shadow: 0 0 50px rgba(0,0,0,0.5);
-  --sp-accent: var(--ncm-color-secondary, #19f3f7);
-  --sp-accent-2: var(--ncm-text-secondary, #8888a0);
-  --sp-accent-glow: rgba(25, 243, 247, 0.08);
+
+  /* — accents — secondary is the shard's dominant colour, accent its foil — */
+  --sp-accent: var(--ncm-secondary, #19f3f7);
+  --sp-accent-2: var(--ncm-accent, #f7c948);
+  --sp-accent-glow: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 10%, transparent);
+  --sp-bar: linear-gradient(90deg, transparent, var(--ncm-primary, #F65261) 12%,
+            var(--ncm-secondary, #19f3f7) 50%, var(--ncm-primary, #F65261) 88%, transparent);
+
+  /* — text — the footer is tinted toward the accent, which is what gave each
+       preset its character (Arasaka's rust footer, NetWatch's violet) — */
   --sp-text-bright: var(--ncm-text-primary, #e0e0e8);
   --sp-text-body: var(--ncm-text-secondary, #8888a0);
   --sp-text-meta: var(--ncm-text-muted, #555570);
-  --sp-text-muted: var(--ncm-text-muted, #555570);
-  --sp-icon-bg: rgba(25, 243, 247, 0.06);
-  --sp-icon-border: rgba(25, 243, 247, 0.2);
+  --sp-text-muted: color-mix(in srgb, var(--ncm-text-muted, #555570) 65%, var(--ncm-secondary, #19f3f7) 35%);
+
+  /* — components — */
+  --sp-icon-bg: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 8%, transparent);
+  --sp-icon-border: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 28%, transparent);
   --sp-chip-bg: var(--ncm-bg-surface, #1a1a2e);
   --sp-chip-text: var(--ncm-text-secondary, #8888a0);
-  --sp-chip-active-bg: rgba(25, 243, 247, 0.06);
-  --sp-chip-active-text: var(--ncm-color-secondary, #19f3f7);
+  --sp-chip-active-bg: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 8%, transparent);
+  --sp-chip-active-text: var(--ncm-secondary, #19f3f7);
 }
 
 /* ═══════════════════════════════════════════
@@ -69,27 +103,7 @@
      apply live. Defaults to 1 × 1 when neither has run (headless probes). */
   --ncm-shard-text-scale: 1;
   --ncm-text-scale: calc(var(--ncm-text-scale-base, 1) * var(--ncm-shard-text-scale, 1));
-  /* Default shard theme variables — overridden by .ncm-preset-* classes */
-  --sp-bg-deep: var(--ncm-bg-deep, #0a0a0f);
-  --sp-bg-base: var(--ncm-bg-base, #12121a);
-  --sp-bg-surface: var(--ncm-bg-surface, #1a1a2e);
-  --sp-bg-elevated: var(--ncm-bg-elevated, #252540);
-  --sp-border: var(--ncm-border, #2a2a45);
-  --sp-bar: linear-gradient(90deg, var(--ncm-color-primary, #F65261), transparent 40%, transparent 60%, var(--ncm-color-secondary, #19f3f7));
-  --sp-shadow: 0 0 50px rgba(0,0,0,0.5);
-  --sp-accent: var(--ncm-color-secondary, #19f3f7);
-  --sp-accent-2: var(--ncm-text-secondary, #8888a0);
-  --sp-accent-glow: rgba(25, 243, 247, 0.08);
-  --sp-text-bright: var(--ncm-text-primary, #e0e0e8);
-  --sp-text-body: var(--ncm-text-secondary, #8888a0);
-  --sp-text-meta: var(--ncm-text-muted, #555570);
-  --sp-text-muted: var(--ncm-text-muted, #555570);
-  --sp-icon-bg: rgba(25, 243, 247, 0.06);
-  --sp-icon-border: rgba(25, 243, 247, 0.2);
-  --sp-chip-bg: var(--ncm-bg-surface, #1a1a2e);
-  --sp-chip-text: var(--ncm-text-secondary, #8888a0);
-  --sp-chip-active-bg: rgba(25, 243, 247, 0.06);
-  --sp-chip-active-text: var(--ncm-color-secondary, #19f3f7);
+  /* The --sp-* palette is derived once, at the top of this file. */
 
   display: flex;
   flex-direction: column;
@@ -1102,11 +1116,19 @@
   /* BASE visuals — a modifier-less .ncm-shard-btn fell through to Foundry's
      white default ("buttons up top are all white"). The --primary/--secondary/
      --danger modifiers below still win (equal specificity, later in file). */
-  background: rgba(136, 136, 160, 0.08) !important;
-  border: 1px solid rgba(136, 136, 160, 0.25) !important;
+  background: color-mix(in srgb, var(--sp-text-body, #8888a0) 8%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--sp-text-body, #8888a0) 30%, transparent) !important;
   color: var(--sp-text-body, #8888a0) !important;
 }
-.ncm-app .ncm-shard-btn:hover { border-color: var(--sp-text-body, #8888a0) !important; color: var(--sp-text-bright, #e0e0e8) !important; }
+/* Hover re-states the BACKGROUND too. Foundry core ships a
+   "button:hover { background: var(--button-hover-background-color) }", so a hover
+   rule that only changes colour lets core repaint the fill — which on a pale admin
+   preset is near-white under near-white text. */
+.ncm-app .ncm-shard-btn:hover {
+  background: color-mix(in srgb, var(--sp-text-body, #8888a0) 16%, transparent) !important;
+  border-color: var(--sp-text-body, #8888a0) !important;
+  color: var(--sp-text-bright, #e0e0e8) !important;
+}
 
 .ncm-app .ncm-shard-btn--primary {
   background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
@@ -1119,12 +1141,12 @@
 }
 
 .ncm-app .ncm-shard-btn--secondary {
-  background: rgba(136,136,160,0.08) !important;
-  border: 1px solid rgba(136,136,160,0.2) !important;
+  background: color-mix(in srgb, var(--sp-text-body, #8888a0) 8%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--sp-text-body, #8888a0) 25%, transparent) !important;
   color: var(--sp-text-body) !important;
 }
 .ncm-app .ncm-shard-btn--secondary:hover {
-  background: rgba(136,136,160,0.15) !important;
+  background: color-mix(in srgb, var(--sp-text-body, #8888a0) 16%, transparent) !important;
   border-color: var(--sp-text-body) !important;
 }
 
@@ -3099,3 +3121,61 @@
 /* The dossier portrait tile: the silhouette shares the tile with the stamp/cam
    overlays, so :only-child misses it — center it explicitly. */
 .ncm-app .ncm-dosscard__port > i { margin: 0 !important; line-height: 1 !important; }
+
+/* ═══════════════════════════════════════════
+   WALLPAPER (theme.wallpaper → --ncm-wallpaper)
+   ═══════════════════════════════════════════
+   The terminal's pattern, on the shard. `isolation: isolate` makes the host its
+   own stacking context so a `z-index:-1` pseudo sits ABOVE the host's own
+   (opaque) background but BELOW all of its content — no `> *` z-index overrides,
+   which is what flattened deliberate stacking elsewhere. `position` goes through
+   `:where()` (zero specificity) so it can never out-order a real scheme.
+   Strength is the GM's 5–100 slider ÷ 100; the shard is one small screen, so it
+   reads at a middling tier rather than the terminal's full-screen 2.6×. */
+.ncm-app .ncm-item-inbox { isolation: isolate; }
+:where(.ncm-app .ncm-item-inbox) { position: relative; }
+.ncm-app .ncm-item-inbox::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: -1;
+  background-image: var(--ncm-wallpaper, none);
+  background-size: cover; background-position: center;
+  opacity: min(1, calc(var(--ncm-wallpaper-strength, .25) * 2.2));
+}
+
+/* ═══════════════════════════════════════════
+   WINDOW FRAME — the shard themes its own chrome
+   ═══════════════════════════════════════════
+   The terminal precedent (.ncm-terminal-app .window-header): the frame sits
+   OUTSIDE the viewer element, so without this it resolves --ncm-* from :root —
+   the PLAYER's theme — and an Arasaka shard wore a brand-cyan title bar.
+   ItemInboxApp._applyShardTheme writes the palette on the app ROOT, which the
+   header is a descendant of, so these just read it.
+
+   Selector note: this window's app root carries BOTH `ncm-app` and
+   `ncm-item-inbox` (DEFAULT_OPTIONS.classes), while the TEMPLATE root repeats
+   `ncm-item-inbox` inside it. So `.ncm-app .ncm-item-inbox` (descendant, used
+   for the palette above) is the inner element, and the app root needs the
+   COMPOUND `.ncm-app.ncm-item-inbox` — the same-element trap. */
+.ncm-app.ncm-item-inbox > .window-header {
+  background: var(--ncm-bg-deep, #0a0a0f) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 35%, transparent) !important;
+  color: var(--ncm-text-secondary, #8888a0) !important;
+}
+.ncm-app.ncm-item-inbox > .window-header .window-title {
+  color: var(--ncm-text-primary, #e0e0e8) !important;
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+}
+/* Foundry colours the inner <i> of a header control directly, and the
+   .header-control { color } rule does not reach it — invisible on a dark
+   preset, white-on-white on a pale one. Force both. */
+.ncm-app.ncm-item-inbox > .window-header .header-control,
+.ncm-app.ncm-item-inbox > .window-header .header-control > i {
+  color: var(--ncm-text-secondary, #8888a0) !important;
+}
+.ncm-app.ncm-item-inbox > .window-header .header-control:hover,
+.ncm-app.ncm-item-inbox > .window-header .header-control:hover > i {
+  color: var(--ncm-text-primary, #e0e0e8) !important;
+}
+.ncm-app.ncm-item-inbox > .window-header .header-control[data-action="close"]:hover,
+.ncm-app.ncm-item-inbox > .window-header .header-control[data-action="close"]:hover > i {
+  color: var(--ncm-danger, #F65261) !important;
+}

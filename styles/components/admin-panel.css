@@ -9,6 +9,7 @@
  *   admin-panel/tab-contacts.css   — Tab 3: Contacts
  *   admin-panel/tab-networks.css   — Tab 4: Networks (War Room + Log Panel)
  *   admin-panel/tab-shards.css     — Tab 5: Data Shards
+ *   admin-panel/encoder-config.css — Player Authoring (Shard Encoder config)
  *   admin-panel/tab-tools.css      — Tab 6: Tools
  * ═══════════════════════════════════════════════════════════ */
 
@@ -19,6 +20,8 @@
 @import url('./admin-panel/tab-shards.css');
 @import url('./admin-panel/tab-terminals.css');
 @import url('./admin-panel/tab-security.css');
+/* Player Authoring — the Shard Encoder's GM config window + its Shards-tab card. */
+@import url('./admin-panel/encoder-config.css');
 @import url('./admin-panel/tab-spam.css');
 @import url('./admin-panel/tab-tools.css');
 

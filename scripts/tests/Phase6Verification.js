@@ -88,7 +88,9 @@ export class Phase6Verification {
     await this._check('6.06', 'Terminal/trace socket handlers registered', () => {
       const handlers = game.nightcity?.socketManager?._handlers;
       if (!handlers?.has) return { passed: false, detail: 'SocketManager handlers unavailable' };
-      const ops = ['TERMINAL_EXFIL_REQUEST', 'TERMINAL_SESSION_REQUEST', 'TERMINAL_NET_REQUEST',
+      const ops = [
+        'SHARD_PRICE_REQUEST',
+        'TERMINAL_EXFIL_REQUEST', 'TERMINAL_SESSION_REQUEST', 'TERMINAL_NET_REQUEST',
         'TERMINAL_RESIDENT_REQUEST', 'TRACE_REQUEST', 'CONTENT_UPDATE_REQUEST',
         'NET_RESOLVE_REQUEST', 'SECURITY_LOCKOUT', 'SECURITY_NOTIFY'];
       const missing = ops.filter(k => !SOCKET_OPS[k] || !handlers.has(SOCKET_OPS[k]));
@@ -99,10 +101,10 @@ export class Phase6Verification {
     // ─── 6.07: Launch functions ───
     await this._check('6.07', 'Terminal-era launchers registered', () => {
       const ns = game.nightcity;
-      const fns = ['openTerminal', 'openMalwareWorkshop', 'openProgramDeck'];
+      const fns = ['openTerminal', 'openMalwareWorkshop', 'openProgramDeck', 'openEncoder'];
       const missing = fns.filter(f => typeof ns?.[f] !== 'function');
       if (missing.length > 0) return { passed: false, detail: `Missing: ${missing.join(', ')}` };
-      return { passed: true, detail: 'openTerminal / openMalwareWorkshop / openProgramDeck available' };
+      return { passed: true, detail: `${fns.length} launchers available` };
     });
 
     // ─── 6.08: Macro API terminal extensions ───
@@ -161,6 +163,8 @@ export class Phase6Verification {
         TEMPLATES.ADMIN_TAB_SECURITY,
         TEMPLATES.MALWARE_WORKSHOP,
         TEMPLATES.PROGRAM_DECK,
+        TEMPLATES.SHARD_ENCODER,
+        TEMPLATES.ENCODER_CONFIG,
         TEMPLATES.CONTENT_BODY,
       ];
       const results = [];
@@ -175,6 +179,57 @@ export class Phase6Verification {
       const failed = results.filter(r => !r.ok);
       if (failed.length > 0) return { passed: false, detail: `Missing templates: ${failed.map(f => f.path).join(', ')}` };
       return { passed: true, detail: `${results.length} templates accessible` };
+    });
+
+    // ─── 6.14: Shard Encoder (player authoring) ───
+    await this._check('6.14', 'Shard Encoder model + settings', async () => {
+      const problems = [];
+      for (const key of ['encoderConfig', 'legibilityPrefs']) {
+        try { game.settings.get(MODULE_ID, key); } catch { problems.push(`setting ${key} unregistered`); }
+      }
+      const M = await import('../ui/content/EncoderModel.js');
+      const cfg = M.resolveEncoderConfig(game.settings.get(MODULE_ID, 'encoderConfig') || {});
+      if (!cfg.tiers?.length) problems.push('no blank tiers resolved');
+      if (cfg.tiers.filter(t => t.fallback).length !== 1) problems.push('there must be exactly one fallback tier');
+      if (Object.keys(cfg.types || {}).length !== 18) problems.push(`expected 18 content types, got ${Object.keys(cfg.types || {}).length}`);
+      // The lock ceiling must never leave a player with nothing lockable.
+      for (const total of [0, 12, 17, 25]) {
+        if (!(M.lockOptions(cfg, { cryptoTotal: total }).maxDV > 0)) problems.push(`lock ceiling empty at ${total}`);
+      }
+      // A forged file's scan DV must stay on the same scale ANALYZE reads.
+      const q = M.contentEfficiency({ total: 20, dv: 15 });
+      if (!(q.scanDV >= 8 && q.scanDV <= 20)) problems.push(`content scan DV out of range: ${q.scanDV}`);
+      if (!M.PRICING_MODES[cfg.pricing]) problems.push(`unknown pricing mode ${cfg.pricing}`);
+      // The ladder must agree with the upload arc's — one ladder for the module.
+      const { FORGE_SLOPPY_BAND } = await import('../ui/content/UploadFlow.js');
+      if (FORGE_SLOPPY_BAND !== M.SLOPPY_BAND) problems.push(`ladder band mismatch: upload ${FORGE_SLOPPY_BAND} vs encoder ${M.SLOPPY_BAND}`);
+      if (M.encodeOutcome(18, 18) !== 'clean' || M.encodeOutcome(14, 18) !== 'sloppy' || M.encodeOutcome(13, 18) !== 'rejected') {
+        problems.push('encodeOutcome rungs are wrong');
+      }
+      // Every offered program verb must have a real applier behind it.
+      const { PROGRAM_EFFECTS } = await import('../ui/content/ContentRenderers.js');
+      for (const key of Object.values(M.FAMILY_ABILITIES).flat()) {
+        if (!PROGRAM_EFFECTS[key]) problems.push(`offered verb "${key}" is not in PROGRAM_EFFECTS`);
+      }
+      if (problems.length) return { passed: false, detail: problems.join('; ') };
+      return { passed: true, detail: `${cfg.tiers.length} blank tiers, 18 types, ladder band ${M.SLOPPY_BAND}, pricing ${cfg.pricing}` };
+    });
+
+    // ─── 6.15: Legibility (the Encoder's accessibility options) ───
+    await this._check('6.15', 'Legibility options apply and clamp', async () => {
+      const L = await import('../utils/legibility.js');
+      const problems = [];
+      const p = L.normalizeLegibility({ textScale: 9999, contrast: 1, motion: 'disco' });
+      if (p.textScale !== L.LEGIBILITY_RANGES.textScale.max) problems.push('text size does not clamp');
+      if (p.contrast !== L.LEGIBILITY_RANGES.contrast.min) problems.push('contrast does not clamp');
+      if (p.motion !== 'full') problems.push('an unknown motion value is not rejected');
+      if (L.effectiveMotion({ motion: 'full' }, { animationsEnabled: false }) !== 'off') problems.push('motion can be raised above the module pref');
+      const el = document.createElement('div');
+      L.applyLegibility(el, { ...L.LEGIBILITY_DEFAULTS, textScale: 120, density: 'roomy' });
+      if (el.style.getPropertyValue('--ncm-lg-text') !== '1.2') problems.push('--ncm-lg-text not stamped');
+      if (el.dataset.lgDensity !== 'roomy') problems.push('density not stamped');
+      if (problems.length) return { passed: false, detail: problems.join('; ') };
+      return { passed: true, detail: `${Object.keys(L.LEGIBILITY_PRESETS).length} presets, prefs clamp, motion only lowers` };
     });
 
     // ─── 6.13: Prior phases intact ───

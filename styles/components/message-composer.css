@@ -1262,7 +1262,7 @@
 }
 
 /* Rich text styling inside the editor */
-.ncm-composer__editor b, .ncm-composer__editor strong { font-weight: 700 !important; color: #f0f0f8 !important; }
+.ncm-composer__editor b, .ncm-composer__editor strong { font-weight: 700 !important; color: var(--ncm-text-primary) !important; }
 .ncm-composer__editor i, .ncm-composer__editor em { font-style: italic; }
 .ncm-composer__editor u { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
 .ncm-composer__editor s, .ncm-composer__editor strike { text-decoration: line-through; color: var(--ncm-text-muted); }

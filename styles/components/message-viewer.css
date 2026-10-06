@@ -951,7 +951,7 @@
 }
 .ncm-app .ncm-viewer__subject-text {
   font-family: var(--ncm-font-display); font-size: calc(18px * var(--ncm-text-scale, 1)); font-weight: 700;
-  letter-spacing: 0.01em; color: #f0f0f5; line-height: 1.1; flex: 1;
+  letter-spacing: 0.01em; color: var(--ncm-text-primary); line-height: 1.1; flex: 1;
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   user-select: text;
 }

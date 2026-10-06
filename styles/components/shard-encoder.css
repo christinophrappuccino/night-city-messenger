@@ -1,0 +1,712 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SHARD ENCODER — the player-facing shard / program authoring window.
+
+   Hosted in the Malware Workshop frame: the app root carries BOTH
+   `ncm-malware-workshop` and `ncm-shard-encoder`, so every `.ncm-fw-*` rule in
+   malware-workshop.css is the real chrome and only `.ncm-enc-*` lives here.
+   The Workshop's type tiers are the model (label 8.5 · hint 9.5 · chip 10.5 ·
+   value 11.5 · name 15) — nothing here overrides a `.ncm-fw-*` size.
+
+   TEXT SCALE: the Encoder redefines `--ncm-text-scale` as the player's Agent
+   scale (`--ncm-text-scale-base`, published on :root by ThemeService) times the
+   window's own legibility multiplier (`--ncm-lg-text`). Because the Workshop's
+   sizes are all `calc(Npx * var(--ncm-text-scale,1))`, that one line scales the
+   BORROWED chrome too — the same composition trick the shard viewer uses.
+
+   ACCESSIBILITY: utils/legibility.js stamps `--ncm-lg-text` plus
+   `data-lg-motion|density|outlines|font` on the chamber root, and writes the
+   contrast palette inline. Every rule below reads those attributes; nothing
+   here needs JS to re-render.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* [hidden]'s UA rule is a plain display:none, so an author display:grid/flex beats it —
+   the standing module gotcha. The Encoder hides the write panel, the manifest and the
+   die by attribute, so this must win. */
+.ncm-app.ncm-shard-encoder [hidden] { display: none !important; }
+
+.ncm-app.ncm-shard-encoder .ncm-enc {
+  /* the player's Agent text size × this window's legibility multiplier */
+  --ncm-text-scale: calc(var(--ncm-text-scale-base, 1) * var(--ncm-lg-text, 1));
+  --fam: var(--ncm-secondary, #19f3f7);
+  --enc-panel: var(--ncm-bg-mid, #141c24);
+  --enc-line: var(--ncm-border, #2a3a47);
+  --enc-line-hi: color-mix(in srgb, var(--fam) 50%, var(--ncm-border, #2a3a47));
+  --enc-pad: 8px;
+  --enc-gap: 5px;
+}
+.ncm-enc[data-fam="execute"] { --fam: var(--ncm-danger, #ff0033); }
+.ncm-enc[data-fam="utility"] { --fam: var(--ncm-secondary, #19f3f7); }
+.ncm-enc[data-fam="blank"]   { --fam: var(--ncm-text-muted, #7a8b99); }
+.ncm-enc.res-clean    { --fam: var(--ncm-success, #00ff41); }
+.ncm-enc.res-sloppy   { --fam: var(--ncm-warning, #f7c948); }
+.ncm-enc.res-rejected { --fam: var(--ncm-danger, #ff0033); }
+
+/* ── the spine (stage list) ─────────────────────────────────────────────── */
+.ncm-enc-stages { display: flex; flex-direction: column; gap: 4px; padding: 10px 13px 4px; }
+.ncm-enc-stage {
+  display: flex; align-items: center; gap: 9px; padding: var(--enc-pad) 10px; cursor: pointer;
+  border: 1px solid var(--enc-line); border-radius: 2px; background: var(--enc-panel);
+}
+.ncm-enc-stage__n {
+  width: 18px; height: 18px; flex: 0 0 auto; border-radius: 2px; border: 1px solid var(--enc-line);
+  display: grid; place-items: center; color: var(--ncm-text-muted, #7a8b99);
+  font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace);
+}
+.ncm-enc-stage__t {
+  font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-secondary, #9fb3c0);
+}
+.ncm-enc-stage__d { font: calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-enc-stage__sk { margin-left: auto; white-space: nowrap; color: var(--fam);
+  font: calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-stage.is-done .ncm-enc-stage__n { border-color: var(--ncm-success, #00ff41); color: var(--ncm-success, #00ff41); }
+.ncm-enc-stage.is-opt .ncm-enc-stage__n { border-style: dashed; }
+.ncm-enc-stage.is-on { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 10%, var(--enc-panel)); }
+.ncm-enc-stage.is-on .ncm-enc-stage__n { border-color: var(--fam); color: var(--fam); }
+.ncm-enc-stage.is-on .ncm-enc-stage__t { color: var(--ncm-text-primary, #e8f4f8); }
+
+/* ── decision rows: ask ONE question, fold the answered ones ────────────── */
+.ncm-enc-dec { margin: 0 13px 6px; border: 1px solid var(--enc-line); border-radius: 2px; background: var(--enc-panel); }
+.ncm-enc-dec__hd { display: flex; align-items: center; gap: 8px; padding: 7px 10px; cursor: pointer; user-select: none; }
+.ncm-enc-dec__hd .ic { width: 12px; text-align: center; color: var(--fam); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-enc-dec__hd .ed { margin-left: 2px; color: var(--ncm-text-muted, #7a8b99); font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-enc-dec__k {
+  white-space: nowrap; color: var(--ncm-text-secondary, #9fb3c0);
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.ncm-enc-dec__v {
+  margin-left: auto; min-width: 0; text-align: right; color: var(--ncm-text-primary, #e8f4f8);
+  font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+}
+.ncm-enc-dec__v small { margin-left: 6px; font: calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary, #9fb3c0); font-weight: 400; }
+.ncm-enc-dec__b { display: none; padding: 8px 10px 10px; border-top: 1px solid var(--enc-line); }
+.ncm-enc-dec.is-open { border-color: var(--fam); box-shadow: 0 0 0 1px color-mix(in srgb, var(--fam) 22%, transparent); }
+.ncm-enc-dec.is-open .ncm-enc-dec__b { display: block; }
+.ncm-enc-dec.is-open .ncm-enc-dec__k { color: var(--fam); }
+.ncm-enc-dec.is-done .ncm-enc-dec__hd .ic { color: var(--ncm-success, #00ff41); }
+
+/* ── blank stage: source cards, tier chips, label ───────────────────────── */
+.ncm-enc-src { display: flex; flex-direction: column; gap: var(--enc-gap); }
+.ncm-enc-tier {
+  margin-left: 6px; vertical-align: middle; padding: 2px 5px; border: 1px solid; border-radius: 1px;
+  font: 700 calc(8px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .1em; text-transform: uppercase;
+}
+.ncm-enc-tier[data-tier="muted"]  { color: var(--ncm-text-muted, #7a8b99); border-color: var(--ncm-text-muted, #7a8b99); }
+.ncm-enc-tier[data-tier="cyan"]   { color: var(--ncm-secondary, #19f3f7); border-color: var(--ncm-secondary, #19f3f7); }
+.ncm-enc-tier[data-tier="gold"]   { color: var(--ncm-accent, #f7c948);    border-color: var(--ncm-accent, #f7c948); }
+.ncm-enc-tier[data-tier="green"]  { color: var(--ncm-success, #00ff41);   border-color: var(--ncm-success, #00ff41); }
+.ncm-enc-tier[data-tier="red"]    { color: var(--ncm-danger, #ff0033);    border-color: var(--ncm-danger, #ff0033); }
+.ncm-enc-src .ncm-fw-icecard__ic { color: var(--ncm-text-secondary, #9fb3c0); }
+.ncm-enc-src .ncm-fw-icecard.on .ncm-fw-icecard__ic { color: var(--fam); border-color: var(--fam); }
+.ncm-enc-src .ncm-fw-icecard__n { font-family: var(--ncm-font-body, sans-serif); }
+.ncm-enc-src .ncm-fw-icecard__d .botch { display: block; margin-top: 2px; }
+.ncm-enc-src .ncm-fw-icecard__d .botch.ok  { color: var(--ncm-success, #00ff41); }
+.ncm-enc-src .ncm-fw-icecard__d .botch.bad { color: var(--ncm-warning, #f7c948); }
+.ncm-enc-buy { display: flex; gap: var(--enc-gap); flex-wrap: wrap; }
+.ncm-enc-buy .ncm-fw-chip { flex: 1 0 auto; justify-content: center; }
+.ncm-enc-lbl { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
+.ncm-enc-lbl label {
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-muted, #7a8b99);
+}
+.ncm-app.ncm-shard-encoder input.ncm-enc-inp {
+  height: 26px !important; min-height: 0 !important; width: 100% !important; margin: 0 !important;
+  border: 1px solid var(--enc-line) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-deep, #0a0f14) !important; color: var(--ncm-text-primary, #e8f4f8) !important;
+  font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important;
+  padding: 0 8px !important; text-align: left !important; box-shadow: none !important;
+}
+
+/* ── content stage: the file-type tiles ─────────────────────────────────── */
+.ncm-enc-types { display: grid; grid-template-columns: 1fr 1fr; gap: var(--enc-gap); }
+.ncm-enc-type {
+  padding: 7px 8px; cursor: pointer; border: 1px solid var(--enc-line); border-radius: 2px; background: var(--enc-panel);
+}
+.ncm-enc-type:hover { border-color: color-mix(in srgb, var(--fam) 55%, transparent); }
+.ncm-enc-type .t {
+  display: flex; align-items: center; gap: 6px; color: var(--ncm-text-primary, #e8f4f8);
+  font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .04em;
+}
+.ncm-enc-type .t i { flex: 0 0 auto; width: 13px; text-align: center; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary, #9fb3c0); }
+.ncm-enc-type .m {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 4px;
+  font: calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #7a8b99);
+}
+.ncm-enc-type .m .sk { color: var(--fam); }
+.ncm-enc-type .m .o { font-weight: 700; }
+.ncm-enc-type.on { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 10%, var(--enc-panel)); }
+.ncm-enc-type.on .t, .ncm-enc-type.on .t i { color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-enc-type.prog { border-style: dashed; border-color: color-mix(in srgb, var(--ncm-danger, #ff0033) 50%, var(--enc-line)); }
+.ncm-enc-type.prog .t i { color: var(--ncm-danger, #ff0033); }
+.ncm-enc-type.prog .m .sk { color: var(--ncm-danger, #ff0033); }
+
+/* ── craft-skill chips + odds ───────────────────────────────────────────── */
+.ncm-enc-sk { display: flex; flex-direction: column; gap: 4px; }
+.ncm-enc-sk .ncm-fw-chip { width: 100%; justify-content: flex-start; gap: 7px; }
+.ncm-enc-sk__tot { font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-enc-sk__dv  { font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-accent, #f7c948); }
+.ncm-enc-sk__pen { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-warning, #f7c948); }
+.ncm-enc-odds { margin-left: auto; padding: 1px 6px; border-radius: 2px;
+  font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-odds.hi  { color: var(--ncm-success, #00ff41); background: color-mix(in srgb, var(--ncm-success, #00ff41) 12%, transparent); }
+.ncm-enc-odds.mid { color: var(--ncm-accent, #f7c948);  background: color-mix(in srgb, var(--ncm-accent, #f7c948) 12%, transparent); }
+.ncm-enc-odds.lo  { color: var(--ncm-danger, #ff0033);  background: color-mix(in srgb, var(--ncm-danger, #ff0033) 12%, transparent); }
+.ncm-enc .ncm-fw-chip.is-rec::before { content: '★'; color: var(--ncm-accent, #f7c948); font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-enc .ncm-fw-chip.is-lock { opacity: .45; cursor: default; }
+.ncm-enc .ncm-fw-chip .need { margin-left: auto; color: var(--ncm-danger, #ff0033);
+  font: calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc .ncm-fw-chip .dv { margin-left: 4px; color: var(--ncm-accent, #f7c948);
+  font: calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+
+/* ── centre stage: die, core label, sector map ──────────────────────────── */
+.ncm-enc .ncm-fw-core-wrap { margin-top: auto; min-height: 150px; }
+.ncm-enc .ncm-enc-write, .ncm-enc .ncm-enc-man { margin-bottom: auto; }
+.ncm-enc .ncm-fw-synth { margin-top: 0; }
+.ncm-enc-die {
+  position: relative; z-index: 4; margin: 0 auto 14px; padding: 5px 9px; display: none; align-items: center; gap: 9px;
+  border: 1px solid var(--enc-line); border-radius: 2px;
+  background: color-mix(in srgb, var(--ncm-bg-deep, #0a0f14) 90%, transparent);
+  font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace);
+  color: var(--ncm-text-secondary, #9fb3c0); opacity: 0; transition: opacity .25s;
+}
+.ncm-enc-die.show { display: flex; opacity: 1; }
+.ncm-enc-die__cube {
+  width: 38px; height: 38px; display: grid; place-items: center; border-radius: 2px;
+  font: 700 calc(20px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace);
+  color: var(--ncm-text-primary, #e8f4f8); background: var(--ncm-bg-deep, #0a0f14);
+  border: 1px solid color-mix(in srgb, var(--fam) 55%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--fam) 25%, transparent);
+}
+.ncm-enc-die.rolling .ncm-enc-die__cube { animation: encTumble .12s steps(2) infinite; }
+@keyframes encTumble { 0% { transform: rotate(-6deg) translateY(-2px); } 100% { transform: rotate(6deg) translateY(2px); } }
+.ncm-enc-die__sum b { color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-enc-die__sum .m { color: var(--fam); font-weight: 700; }
+.ncm-enc-core-lbl {
+  position: absolute; z-index: 4; left: 50%; bottom: 6px; transform: translateX(-50%); white-space: nowrap;
+  font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .16em; text-transform: uppercase; color: color-mix(in srgb, var(--fam) 80%, white);
+}
+.ncm-enc-write { position: relative; z-index: 3; padding: 0 22px; display: grid; grid-template-columns: 1fr 250px; gap: 12px; align-items: stretch; }
+.ncm-enc-sectors {
+  position: relative; overflow: hidden; padding: 8px 9px 7px; border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--fam) 28%, var(--enc-line));
+  background: color-mix(in srgb, var(--ncm-bg-deep, #0a0f14) 85%, transparent);
+}
+.ncm-enc-sectors__hd {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--ncm-text-muted, #7a8b99);
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.ncm-enc-sectors__hd b { color: var(--fam); }
+.ncm-enc-sectors__hd .addr { margin-left: auto; letter-spacing: .05em; color: var(--ncm-text-secondary, #9fb3c0);
+  font: calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; }
+.ncm-enc-cell { aspect-ratio: 1.6; border-radius: 1px; background: color-mix(in srgb, var(--enc-line) 55%, transparent); transition: background .12s, box-shadow .12s; }
+.ncm-enc-cell.w    { background: color-mix(in srgb, var(--fam) 75%, transparent); box-shadow: 0 0 6px color-mix(in srgb, var(--fam) 45%, transparent); }
+.ncm-enc-cell.head { background: #fff; box-shadow: 0 0 10px #fff; }
+.ncm-enc-cell.bad  { background: var(--ncm-warning, #f7c948); animation: encFlick .5s steps(2) infinite; }
+.ncm-enc-cell.dead { background: var(--ncm-danger, #ff0033); opacity: .85; }
+.ncm-enc-cell.ok   { background: color-mix(in srgb, var(--ncm-success, #00ff41) 70%, transparent); box-shadow: none; }
+@keyframes encFlick { 50% { opacity: .35; } }
+.ncm-enc-scan {
+  position: absolute; left: 0; right: 0; top: 24px; height: 2px; opacity: 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--ncm-success, #00ff41), transparent);
+  box-shadow: 0 0 10px var(--ncm-success, #00ff41);
+}
+.ncm-enc-scan.run { animation: encScan 1s cubic-bezier(.22, 1, .36, 1) forwards; }
+@keyframes encScan { 0% { top: 24px; opacity: 1; } 100% { top: 100%; opacity: 0; } }
+.ncm-enc-sectors.is-tear { animation: encTear .28s steps(3) 2; }
+@keyframes encTear { 25% { transform: translateX(-3px) skewX(-2deg); } 50% { transform: translateX(3px); } 75% { transform: translateX(-1px) skewX(1deg); } }
+.ncm-enc-hash { margin-top: 6px; letter-spacing: .05em; white-space: nowrap; overflow: hidden;
+  font: calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary, #9fb3c0); }
+.ncm-enc .ncm-hackfx { position: relative; height: 100%; min-height: 92px; --hx: var(--fam); }
+.ncm-enc .ncm-fw-synth__fill { background: var(--fam); }
+.ncm-enc .ncm-fw-seal { top: 4px; }
+.ncm-fw-seal.tone-clean    { color: var(--ncm-success, #00ff41) !important; border-color: var(--ncm-success, #00ff41) !important; }
+.ncm-fw-seal.tone-sloppy   { color: var(--ncm-warning, #f7c948) !important; border-color: var(--ncm-warning, #f7c948) !important; }
+.ncm-fw-seal.tone-rejected { color: var(--ncm-danger, #ff0033) !important; border-color: var(--ncm-danger, #ff0033) !important; }
+.ncm-enc .ncm-fw-core.is-glitch .ncm-fw-chipwrap { animation: encGlitch .6s steps(4) 2; }
+@keyframes encGlitch { 0% { transform: none; } 25% { transform: translate(2px, -1px); } 50% { transform: translate(-2px, 1px); } 75% { transform: translate(1px, 2px); } }
+.ncm-enc .ncm-fw-core.is-dead { opacity: .35; filter: grayscale(.8); }
+
+/* ── readout: ladder, bar, efficiency, artifact ─────────────────────────── */
+.ncm-enc-ladder { display: flex; flex-direction: column; gap: 4px; }
+.ncm-enc-rung {
+  /* auto columns, not fixed: at a large text size a 70px tag column and a 40px
+     percentage column force the middle cell into a three-line stack. */
+  display: grid; grid-template-columns: minmax(58px, auto) 1fr auto; gap: 7px; align-items: center; padding: 7px 8px;
+  border: 1px solid var(--enc-line); border-radius: 2px; background: var(--enc-panel); line-height: 1.35;
+  font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary, #9fb3c0);
+}
+.ncm-enc-rung__tag { text-align: center; padding: 2px 4px; border-radius: 2px;
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; }
+.ncm-enc-rung.c .ncm-enc-rung__tag { color: var(--ncm-success, #00ff41); background: color-mix(in srgb, var(--ncm-success, #00ff41) 12%, transparent); }
+.ncm-enc-rung.s .ncm-enc-rung__tag { color: var(--ncm-warning, #f7c948); background: color-mix(in srgb, var(--ncm-warning, #f7c948) 12%, transparent); }
+.ncm-enc-rung.r .ncm-enc-rung__tag { color: var(--ncm-danger, #ff0033);  background: color-mix(in srgb, var(--ncm-danger, #ff0033) 12%, transparent); }
+.ncm-enc-rung__pct { text-align: right; color: var(--ncm-text-primary, #e8f4f8);
+  font: 700 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-rung small { display: block; color: var(--ncm-text-muted, #7a8b99);
+  font: calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-rung.is-hit { border-color: var(--fam); box-shadow: 0 0 0 1px color-mix(in srgb, var(--fam) 30%, transparent); }
+.ncm-enc-bar { height: 4px; display: flex; overflow: hidden; border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14); margin-top: 6px; }
+.ncm-enc-bar i { display: block; height: 100%; }
+.ncm-enc-bar .c { background: var(--ncm-success, #00ff41); }
+.ncm-enc-bar .s { background: var(--ncm-warning, #f7c948); }
+.ncm-enc-bar .r { background: var(--ncm-danger, #ff0033); }
+.ncm-enc-eff { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--enc-gap); }
+.ncm-enc-eff div { border: 1px solid var(--enc-line); border-radius: 2px; background: var(--enc-panel); padding: 5px 7px; }
+.ncm-enc-eff b { display: block; color: var(--ncm-text-muted, #7a8b99);
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase; }
+.ncm-enc-eff span { color: var(--fam); font: 700 calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-art {
+  position: relative; display: flex; gap: 10px; align-items: center; overflow: hidden; padding: 9px 10px;
+  border: 1px solid var(--enc-line); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-enc-art__chip {
+  width: 44px; height: 30px; flex: 0 0 auto; position: relative; border-radius: 2px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--fam) 35%, #111), #0a0f14);
+  border: 1px solid color-mix(in srgb, var(--fam) 60%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--fam) 25%, transparent);
+}
+.ncm-enc-art__chip::before {
+  content: ''; position: absolute; left: 6px; top: 8px; width: 14px; height: 14px; border-radius: 1px;
+  border: 1px solid color-mix(in srgb, var(--fam) 70%, transparent);
+  background: repeating-linear-gradient(90deg, transparent 0 3px, color-mix(in srgb, var(--fam) 60%, transparent) 3px 4px);
+}
+.ncm-enc-art__n { font: 700 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-enc-art__d { margin-top: 2px; font: calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-enc-art.eject { animation: encEject .6s cubic-bezier(.22, 1, .36, 1); }
+@keyframes encEject { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+.ncm-enc-art .tag {
+  position: absolute; right: 8px; top: 8px; padding: 2px 5px; border: 1px solid; border-radius: 1px;
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase;
+}
+.ncm-enc-art .tag.clean    { color: var(--ncm-success, #00ff41); border-color: var(--ncm-success, #00ff41); }
+.ncm-enc-art .tag.sloppy   { color: var(--ncm-warning, #f7c948); border-color: var(--ncm-warning, #f7c948); }
+.ncm-enc-art .tag.rejected { color: var(--ncm-danger, #ff0033);  border-color: var(--ncm-danger, #ff0033); }
+.ncm-enc-kv { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0;
+  font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary, #9fb3c0); }
+.ncm-enc-kv b { color: var(--ncm-text-primary, #e8f4f8); text-align: right; }
+.ncm-enc-lockin { display: flex; flex-direction: column; }
+
+/* ── operator rows ──────────────────────────────────────────────────────── */
+.ncm-enc-op {
+  position: relative; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center;
+  padding: 5px 7px 6px; margin: 0 0 4px; overflow: hidden;
+  border: 1px solid var(--enc-line); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-enc-op:last-child { margin-bottom: 0; }
+.ncm-enc-op__k { font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary, #9fb3c0); }
+.ncm-enc-op__v { text-align: right; color: var(--ncm-text-primary, #e8f4f8);
+  font: 700 calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-op__v small { margin-right: 4px; color: var(--ncm-text-muted, #7a8b99);
+  font: calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-op__pips { grid-column: 1 / -1; display: flex; gap: 2px; height: 4px; }
+.ncm-enc-op__pips i { flex: 1; border-radius: 1px; background: color-mix(in srgb, var(--enc-line) 70%, transparent); }
+.ncm-enc-op__pips i.on { background: var(--fam); }
+.ncm-enc-op.is-craft { background: color-mix(in srgb, var(--fam) 8%, var(--ncm-bg-deep, #0a0f14)); }
+.ncm-enc-op.is-craft .ncm-enc-op__k { color: var(--fam); }
+.ncm-enc-op.is-craft::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--fam); }
+
+/* ── manifest ───────────────────────────────────────────────────────────── */
+.ncm-enc-man {
+  position: relative; z-index: 3; margin: 0 22px 8px; display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto;
+  overflow: hidden; border: 1px solid var(--enc-line-hi); border-radius: 2px; background: var(--enc-panel);
+}
+.ncm-enc-man__hd {
+  display: flex; align-items: center; gap: 8px; padding: 7px 11px; cursor: pointer; user-select: none;
+  background: var(--ncm-bg-deep, #0a0f14); border-bottom: 1px solid var(--enc-line); color: var(--ncm-text-muted, #7a8b99);
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase;
+}
+.ncm-enc-man__hd b { color: var(--fam); }
+.ncm-enc-man__hd .r { margin-left: auto; letter-spacing: .05em; color: var(--ncm-text-secondary, #9fb3c0);
+  font: calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); text-transform: none; }
+.ncm-enc-man__hd .tog { margin-left: 8px; color: var(--ncm-text-secondary, #9fb3c0); transition: transform .18s;
+  font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-enc-man.is-collapsed .ncm-enc-man__hd .tog { transform: rotate(-90deg); }
+.ncm-enc-man__body { padding: 9px 11px 11px; overflow-y: auto; overflow-x: hidden; min-height: 0; }
+.ncm-enc-man.is-collapsed .ncm-enc-man__body { display: none; }
+.ncm-enc-man__sum { display: none; gap: 6px; flex-wrap: wrap; padding: 7px 11px;
+  font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary, #9fb3c0); }
+.ncm-enc-man.is-collapsed .ncm-enc-man__sum { display: flex; }
+.ncm-enc-man__sum b { color: var(--ncm-text-primary, #e8f4f8); font-weight: 400; }
+.ncm-enc-man__sum i { opacity: .5; font-style: normal; }
+.ncm-enc-man__params { margin-top: 9px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--fam) 35%, transparent); }
+.ncm-enc-man__params .ncm-enc-man__hd { background: none; border: 0; padding: 0 0 6px; cursor: default; }
+.ncm-enc-fg { display: flex; flex-wrap: wrap; gap: 7px 9px; }
+.ncm-enc-f { display: flex; flex-direction: column; gap: 2px; flex: var(--flex, 0 0 auto); width: var(--fw, auto); min-width: 0; }
+.ncm-enc-f label { font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-muted, #7a8b99); }
+.ncm-enc-f .sub  { font: calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-enc-f .need { color: var(--ncm-danger, #ff0033); }
+.ncm-enc-f.is-lock { opacity: .45; }
+.ncm-app.ncm-shard-encoder .ncm-enc-f input,
+.ncm-app.ncm-shard-encoder .ncm-enc-f select,
+.ncm-app.ncm-shard-encoder .ncm-enc-f textarea {
+  height: 24px !important; min-height: 0 !important; width: 100% !important; margin: 0 !important;
+  border: 1px solid var(--enc-line) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-deep, #0a0f14) !important; color: var(--ncm-text-primary, #e8f4f8) !important;
+  font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important;
+  padding: 0 6px !important; text-align: left !important; box-shadow: none !important;
+}
+.ncm-app.ncm-shard-encoder .ncm-enc-f textarea { height: 38px !important; padding: 4px 6px !important; resize: none; line-height: 1.35 !important; }
+.ncm-app.ncm-shard-encoder .ncm-enc-f input[type="checkbox"] { width: 14px !important; height: 14px !important; --checkbox-size: 14px; }
+.ncm-app.ncm-shard-encoder .ncm-enc-f input.mono { font-family: var(--ncm-font-mono, monospace) !important; }
+.ncm-app.ncm-shard-encoder .ncm-enc-f input:focus,
+.ncm-app.ncm-shard-encoder .ncm-enc-f select:focus,
+.ncm-app.ncm-shard-encoder .ncm-enc-f textarea:focus,
+.ncm-app.ncm-shard-encoder input.ncm-enc-inp:focus {
+  border-color: var(--fam) !important; outline: none !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--fam) 35%, transparent) !important;
+}
+
+.ncm-app.ncm-shard-encoder .ncm-fw-save[disabled] {
+  opacity: .4; cursor: default; box-shadow: none !important;
+  background: none !important; border-color: var(--enc-line) !important;
+}
+
+/* ── the small disclosure button (Details / Options / All skills) ───────── */
+.ncm-app.ncm-shard-encoder .ncm-enc-more {
+  display: inline-flex !important; align-items: center; gap: 5px; width: auto !important; height: auto !important;
+  min-height: 0 !important; margin: 8px 0 0 !important; padding: 3px 8px !important; cursor: pointer;
+  background: none !important; border: 1px solid var(--enc-line) !important; border-radius: 2px !important;
+  box-shadow: none !important; line-height: 1.2 !important; color: var(--ncm-text-secondary, #9fb3c0) !important;
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important;
+  letter-spacing: .1em; text-transform: uppercase;
+}
+.ncm-app.ncm-shard-encoder .ncm-enc-more:hover { border-color: var(--fam) !important; color: var(--ncm-text-primary, #e8f4f8) !important; }
+.ncm-app.ncm-shard-encoder .ncm-enc-more i { margin: 0 !important; font-size: calc(8px * var(--ncm-text-scale, 1)); }
+.ncm-enc-details { margin-top: 9px; padding-top: 9px; border-top: 1px dashed color-mix(in srgb, var(--enc-line) 90%, transparent); }
+.ncm-enc .ncm-fw-says { font-size: calc(12.5px * var(--ncm-text-scale, 1)); }
+.ncm-enc .ncm-fw-says b.v { color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-enc-optbody { margin-top: 8px; }
+
+/* ── stage transition (out-fold → handoff sweep → core morph → cascade in) ─ */
+.ncm-enc-sweep {
+  position: absolute; z-index: 5; left: 0; right: 0; top: 0; height: 2px; opacity: 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--fam), transparent); box-shadow: 0 0 12px var(--fam);
+}
+.ncm-enc-sweep.run { animation: encSweepDown .5s cubic-bezier(.22, 1, .36, 1) forwards; }
+@keyframes encSweepDown { 0% { top: 0; opacity: 1; } 100% { top: 100%; opacity: 0; } }
+.ncm-enc-in { animation: encIn .3s cubic-bezier(.22, 1, .36, 1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+@keyframes encIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes encOut { to { opacity: 0; transform: translateY(-8px); } }
+@keyframes encOutBack { to { opacity: 0; transform: translateY(8px); } }
+@keyframes encInBack { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.ncm-enc .is-leaving { animation: encOut .18s cubic-bezier(.22, 1, .36, 1) forwards; pointer-events: none; }
+.ncm-enc[data-dir="back"] .is-leaving { animation-name: encOutBack; }
+.ncm-enc[data-dir="back"] .ncm-enc-in { animation-name: encInBack; }
+.ncm-enc .is-arriving { animation: encIn .3s cubic-bezier(.22, 1, .36, 1) both; }
+.ncm-enc .fx-skip .ncm-enc-in { animation: none; }
+.ncm-enc .ncm-fw-core.is-dip { transform: scale(.94); opacity: .55; transition: transform .18s cubic-bezier(.22, 1, .36, 1), opacity .18s; }
+.ncm-enc .ncm-fw-core.is-morph { animation: encMorph .46s cubic-bezier(.22, 1, .36, 1); }
+@keyframes encMorph { 0% { transform: scale(.88); opacity: .6; filter: brightness(1.9) saturate(1.6); } 45% { transform: scale(1.05); opacity: 1; } 100% { transform: none; filter: none; } }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DISPLAY — the per-player accessibility popover (utils/legibility.js)
+   ═══════════════════════════════════════════════════════════════════════ */
+.ncm-enc-lg {
+  position: absolute; z-index: 40; right: 14px; bottom: 52px; width: min(360px, calc(100% - 28px));
+  border: 1px solid var(--enc-line-hi); border-radius: 3px; background: var(--ncm-bg-mid, #141c24);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .55);
+}
+.ncm-enc-lg__hd {
+  display: flex; align-items: center; gap: 8px; padding: 8px 11px;
+  background: var(--ncm-bg-deep, #0a0f14); border-bottom: 1px solid var(--enc-line); color: var(--ncm-text-muted, #7a8b99);
+  font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase;
+}
+.ncm-enc-lg__hd b { color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-app.ncm-shard-encoder .ncm-enc-lg__x {
+  margin-left: auto; width: auto !important; height: auto !important; min-height: 0 !important; padding: 2px 5px !important;
+  background: none !important; border: 1px solid var(--enc-line) !important; border-radius: 2px !important;
+  box-shadow: none !important; color: var(--ncm-text-secondary, #9fb3c0) !important; cursor: pointer;
+}
+.ncm-enc-lg__body { padding: 10px 11px 11px; display: flex; flex-direction: column; gap: 9px; }
+.ncm-enc-lg__presets { display: flex; flex-wrap: wrap; gap: 5px; }
+/* The Workshop styles .ncm-fw-chip as a SPAN, so a <button> wearing the class still
+   gets Foundry's white default. These are buttons because they act like buttons. */
+.ncm-app.ncm-shard-encoder .ncm-enc-lg__presets .ncm-fw-chip {
+  width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+  padding: 4px 9px !important; cursor: pointer; box-shadow: none !important;
+  border: 1px solid var(--enc-line) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-deep, #0a0f14) !important; color: var(--ncm-text-secondary, #9fb3c0) !important;
+  font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important;
+  letter-spacing: .06em; text-transform: uppercase; display: inline-flex !important; align-items: center; gap: 5px;
+}
+.ncm-app.ncm-shard-encoder .ncm-enc-lg__presets .ncm-fw-chip:hover {
+  border-color: var(--fam) !important; color: var(--ncm-text-primary, #e8f4f8) !important;
+}
+.ncm-app.ncm-shard-encoder .ncm-enc-lg__presets .ncm-fw-chip i { margin: 0 !important; color: var(--fam); }
+.ncm-enc-lg__row { display: flex; align-items: center; gap: 10px; }
+.ncm-enc-lg__k {
+  flex: 0 0 104px; color: var(--ncm-text-secondary, #9fb3c0);
+  font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase;
+}
+.ncm-enc-lg__k span { display: block; text-transform: none; letter-spacing: normal; font-weight: 400;
+  font: calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-enc-lg__sl { flex: 1; display: flex; align-items: center; gap: 8px; }
+.ncm-app.ncm-shard-encoder .ncm-enc-lg__sl input[type="range"] { flex: 1; height: 18px !important; margin: 0 !important; accent-color: var(--fam); }
+.ncm-enc-lg__sl b { flex: 0 0 46px; text-align: right; color: var(--ncm-text-primary, #e8f4f8);
+  font: 700 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-lg__togs { display: flex; flex-direction: column; gap: 5px; }
+.ncm-app.ncm-shard-encoder .ncm-enc-lg__tog {
+  display: flex !important; align-items: center; gap: 7px; width: 100% !important; height: auto !important;
+  min-height: 0 !important; margin: 0 !important; padding: 5px 8px !important; cursor: pointer; text-align: left;
+  border: 1px solid var(--enc-line) !important; border-radius: 2px !important; background: var(--ncm-bg-deep, #0a0f14) !important;
+  box-shadow: none !important; color: var(--ncm-text-secondary, #9fb3c0) !important;
+  font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important;
+}
+.ncm-app.ncm-shard-encoder .ncm-enc-lg__tog.on { border-color: var(--fam) !important; color: var(--ncm-text-primary, #e8f4f8) !important; }
+.ncm-app.ncm-shard-encoder .ncm-enc-lg__tog i { margin: 0 !important; color: var(--fam); }
+
+/* ── DENSITY: roomier rows for anyone who wants the air ─────────────────── */
+.ncm-enc[data-lg-density="roomy"] { --enc-pad: 11px; --enc-gap: 8px; }
+.ncm-enc[data-lg-density="roomy"] .ncm-enc-dec__hd { padding: 10px 12px; }
+.ncm-enc[data-lg-density="roomy"] .ncm-enc-dec__b  { padding: 11px 12px 13px; }
+.ncm-enc[data-lg-density="roomy"] .ncm-enc-rung    { padding: 10px; line-height: 1.5; }
+.ncm-enc[data-lg-density="roomy"] .ncm-enc-op      { padding: 8px 9px 9px; }
+.ncm-enc[data-lg-density="roomy"] .ncm-enc-stages  { gap: 6px; }
+.ncm-enc[data-lg-density="roomy"] .ncm-enc-man__body { padding: 12px 13px 14px; }
+
+/* ── OUTLINES: stronger separation + a visible focus ring ───────────────── */
+.ncm-enc[data-lg-outlines="true"] {
+  --enc-line: color-mix(in srgb, var(--ncm-text-secondary, #9fb3c0) 55%, transparent);
+  --enc-line-hi: var(--fam);
+}
+.ncm-enc[data-lg-outlines="true"] .ncm-enc-dec,
+.ncm-enc[data-lg-outlines="true"] .ncm-enc-stage,
+.ncm-enc[data-lg-outlines="true"] .ncm-enc-rung,
+.ncm-enc[data-lg-outlines="true"] .ncm-enc-op,
+.ncm-enc[data-lg-outlines="true"] .ncm-enc-art,
+.ncm-enc[data-lg-outlines="true"] .ncm-fw-card,
+.ncm-enc[data-lg-outlines="true"] .ncm-fw-chip,
+.ncm-enc[data-lg-outlines="true"] .ncm-fw-icecard { border-width: 2px; }
+.ncm-enc[data-lg-outlines="true"] :is(button, input, select, textarea, [data-enc], [data-enc-lg]):focus-visible {
+  outline: 2px solid var(--fam) !important; outline-offset: 1px;
+}
+
+/* ── PLAIN FONT: no display caps, no mono, no tracking ──────────────────── */
+.ncm-enc[data-lg-font="plain"] {
+  --ncm-font-display: var(--ncm-font-body, sans-serif);
+  --ncm-font-title: var(--ncm-font-body, sans-serif);
+  --ncm-font-mono: var(--ncm-font-body, sans-serif);
+  --ncm-font-ui: var(--ncm-font-body, sans-serif);
+}
+.ncm-enc[data-lg-font="plain"] * { text-transform: none !important; letter-spacing: .01em !important; }
+
+/* ── MOTION: calm drops the looping decoration, off stops everything ────── */
+.ncm-enc[data-lg-motion="calm"] :is(.ncm-fw-ring, .ncm-enc-cell.bad, .ncm-enc-die.rolling .ncm-enc-die__cube, .ncm-fw-core.is-glitch .ncm-fw-chipwrap) { animation: none !important; }
+.ncm-enc[data-lg-motion="off"] *,
+.ncm-enc[data-lg-motion="off"] *::before,
+.ncm-enc[data-lg-motion="off"] *::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .ncm-enc *, .ncm-enc *::before, .ncm-enc *::after { animation: none !important; transition: none !important; }
+}
+
+/* ── selectable text (core + CPR both reset it away) ────────────────────── */
+.ncm-app.ncm-shard-encoder .ncm-enc, .ncm-app.ncm-shard-encoder .ncm-enc * { user-select: text; }
+.ncm-app.ncm-shard-encoder :is(button, [data-enc], [data-enc-lg], .ncm-fw-chip, .ncm-enc-stage) { user-select: none; }
+
+/* The Workshop's segmented control is sized for its own fixed text; at a raised
+   legibility text size two labels overflow the rail and clip. Let the buttons
+   share the width and wrap their label rather than disappear. */
+.ncm-enc .ncm-fw-seg { max-width: 100%; flex-wrap: wrap; }
+.ncm-app.ncm-shard-encoder .ncm-fw-seg button {
+  flex: 1 1 auto; min-width: 0; white-space: normal; padding-left: 8px !important; padding-right: 8px !important;
+}
+
+/* ── the forged file's own preview (Content stage) ───────────────────────── */
+.ncm-enc-doc {
+  position: relative; z-index: 3; margin: 0 22px 8px; display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto;
+  overflow: hidden; border: 1px solid var(--enc-line-hi); border-radius: 2px; background: var(--enc-panel);
+}
+.ncm-enc-doc__hd {
+  display: flex; align-items: center; gap: 8px; padding: 7px 11px; flex: 0 0 auto;
+  background: var(--ncm-bg-deep, #0a0f14); border-bottom: 1px solid var(--enc-line); color: var(--ncm-text-muted, #7a8b99);
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase;
+}
+.ncm-enc-doc__hd b { color: var(--fam); }
+.ncm-enc-doc__hd .r {
+  margin-left: auto; text-transform: none; letter-spacing: .02em; color: var(--ncm-text-secondary, #9fb3c0);
+  font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%;
+}
+.ncm-enc-doc__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 12px; }
+/* The shared content renderers read --sp-* on the shard viewer root; map them here
+   so a typed file previews with the same palette it will have on the chip. */
+.ncm-app.ncm-shard-encoder .ncm-enc-doc {
+  --sp-bg-deep: var(--ncm-bg-deep, #0a0f14); --sp-bg-mid: var(--ncm-bg-mid, #141c24);
+  --sp-border: var(--ncm-border, #2a3a47); --sp-text: var(--ncm-text-primary, #e8f4f8);
+  --sp-text-dim: var(--ncm-text-secondary, #9fb3c0); --sp-accent: var(--fam);
+}
+
+/* ── market (the seal only — nothing to price before the thing exists) ───── */
+.ncm-enc-mkt__row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.ncm-app.ncm-shard-encoder .ncm-enc-mkt input {
+  width: 74px !important; height: 24px !important; min-height: 0 !important; margin: 0 !important;
+  border: 1px solid var(--enc-line) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-deep, #0a0f14) !important; color: var(--ncm-text-primary, #e8f4f8) !important;
+  font: 700 calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important;
+  padding: 0 6px !important; text-align: right !important; box-shadow: none !important;
+}
+.ncm-app.ncm-shard-encoder .ncm-enc-mkt input:disabled { opacity: .6; }
+.ncm-enc-mkt__eb { color: var(--ncm-accent, #f7c948); font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-app.ncm-shard-encoder .ncm-enc-mkt .ncm-fw-chip { cursor: pointer; padding: 4px 8px; font-size: calc(9.5px * var(--ncm-text-scale, 1)); }
+.ncm-enc-chip {
+  margin-left: auto; white-space: nowrap; padding: 2px 6px; border: 1px solid; border-radius: 1px;
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.ncm-enc-chip.mute { color: var(--ncm-text-muted, #7a8b99); border-color: var(--enc-line); }
+.ncm-enc-chip.wait { color: var(--ncm-warning, #f7c948); border-color: var(--ncm-warning, #f7c948); }
+.ncm-enc-chip.ok   { color: var(--ncm-success, #00ff41); border-color: var(--ncm-success, #00ff41); }
+.ncm-enc-chip.no   { color: var(--ncm-danger, #ff0033);  border-color: var(--ncm-danger, #ff0033); }
+.ncm-enc-chip.ctr  { color: var(--ncm-secondary, #19f3f7); border-color: var(--ncm-secondary, #19f3f7); }
+.ncm-enc-mkt__sug { margin-top: 5px; line-height: 1.5; color: var(--ncm-text-muted, #7a8b99);
+  font: calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-enc-mkt__sug b { color: var(--ncm-text-secondary, #9fb3c0); font-weight: 400; }
+.ncm-enc-mkt__note { margin-top: 5px; line-height: 1.45; color: var(--ncm-text-secondary, #9fb3c0);
+  font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+
+/* The result tag is absolutely placed top-right; a long artifact name wraps UNDER it
+   and collides. Reserve the corner whenever a tag is present. */
+.ncm-enc-art:has(.tag) .ncm-enc-art__n { padding-right: 64px; }
+.ncm-enc-art:has(.tag) .ncm-enc-art__d { padding-right: 8px; }
+
+/* ── the blank list's search + filter ────────────────────────────────────── */
+.ncm-enc-srctools { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.ncm-enc-search {
+  flex: 1 1 130px; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 7px;
+  border: 1px solid var(--enc-line); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-enc-search i { flex: 0 0 auto; color: var(--ncm-text-muted, #7a8b99); font-size: calc(9.5px * var(--ncm-text-scale, 1)); }
+.ncm-app.ncm-shard-encoder .ncm-enc-search input {
+  flex: 1; min-width: 0; height: 24px !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important;
+  border: 0 !important; background: none !important; box-shadow: none !important; text-align: left !important;
+  color: var(--ncm-text-primary, #e8f4f8) !important;
+  font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important;
+}
+.ncm-app.ncm-shard-encoder .ncm-enc-search input:focus { outline: none !important; }
+.ncm-enc-search:focus-within { border-color: var(--fam); }
+.ncm-app.ncm-shard-encoder .ncm-enc-srctools .ncm-fw-chip { cursor: pointer; padding: 4px 8px; font-size: calc(9.5px * var(--ncm-text-scale, 1)); }
+.ncm-enc-count {
+  margin-left: 5px; padding: 0 4px; border-radius: 1px; color: var(--ncm-bg-deep, #0a0f14); background: var(--ncm-text-muted, #7a8b99);
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace);
+}
+.ncm-fw-chip.on .ncm-enc-count { background: var(--fam); }
+
+/* The type chips wrap onto their own row under the search — a character can carry
+   half a dozen item types and they must all be reachable without scrolling sideways. */
+.ncm-enc-srcchips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.ncm-app.ncm-shard-encoder .ncm-enc-srcchips .ncm-fw-chip {
+  cursor: pointer; padding: 3px 7px; font-size: calc(9.5px * var(--ncm-text-scale, 1));
+}
+.ncm-app.ncm-shard-encoder .ncm-enc-srcchips .ncm-fw-chip i { font-size: calc(8.5px * var(--ncm-text-scale, 1)); }
+
+/* ── the LOOK row: chip art + a cosmetic preset ──────────────────────────── */
+.ncm-enc-artrow { display: flex; align-items: flex-start; gap: 10px; }
+.ncm-enc-artpick {
+  flex: 0 0 auto; width: 54px; height: 54px; display: grid; place-items: center; cursor: pointer; overflow: hidden;
+  border: 1px solid var(--enc-line); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-enc-artpick:hover { border-color: var(--fam); }
+.ncm-enc-artpick img { width: 40px; height: 40px; object-fit: contain; border: 0; }
+.ncm-enc-artopts { display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; }
+.ncm-enc-artopt {
+  width: 25px; height: 25px; display: grid; place-items: center; cursor: pointer; overflow: hidden;
+  border: 1px solid var(--enc-line); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-enc-artopt img { width: 18px; height: 18px; object-fit: contain; border: 0; opacity: .75; }
+.ncm-enc-artopt:hover img { opacity: 1; }
+.ncm-enc-artopt.on { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 14%, transparent); }
+.ncm-enc-artopt.on img { opacity: 1; }
+/* The "design your own" tile, which opens the icon builder (its own stylesheet
+   styles the MODAL; the tile belongs to this window, so it lives here — the
+   one-prefix-per-stylesheet rule). */
+.ncm-enc-artopt--make { border-style: dashed; color: var(--fam); }
+.ncm-enc-artopt--make i { font-size: calc(11px * var(--ncm-text-scale, 1)); }
+.ncm-enc-artopt--make:hover { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 12%, transparent); }
+
+.ncm-enc-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-enc-preset {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; cursor: pointer;
+  border: 1px solid var(--enc-line); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+  color: var(--ncm-text-secondary, #9fb3c0);
+  font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  letter-spacing: .04em;
+}
+.ncm-enc-preset i { font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted, #7a8b99); }
+.ncm-enc-preset:hover { border-color: color-mix(in srgb, var(--fam) 55%, transparent); color: var(--ncm-text-primary, #e8f4f8); }
+.ncm-enc-preset.on { border-color: var(--fam); color: var(--ncm-text-primary, #e8f4f8); background: color-mix(in srgb, var(--fam) 12%, transparent); }
+.ncm-enc-preset.on i { color: var(--fam); }
+
+/* A look the GM saved. It shows its own accent as a dot instead of an icon —
+   a saved look has no glyph, and its colour is the only thing that identifies
+   it before you pick it. */
+.ncm-enc-lookdot {
+  width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%;
+  border: 1px solid color-mix(in srgb, #000 35%, transparent);
+}
+
+/* The startup fields sit under the preset cards in the Look row. */
+.ncm-enc-boot { display: flex; flex-direction: column; gap: 2px; }
+.ncm-enc-boot .ncm-enc-presets { margin-top: 2px; }
+.ncm-enc-boot .ncm-enc-preset { padding: 3px 7px; font-size: calc(9px * var(--ncm-text-scale, 1)); }
+
+/* ── the files already on the chip ───────────────────────────────────────── */
+.ncm-enc-files { display: flex; flex-direction: column; gap: 3px; margin: 0 0 8px; }
+.ncm-enc-file {
+  display: flex; align-items: center; gap: 7px; padding: 5px 7px;
+  border: 1px solid var(--enc-line); border-radius: 2px; background: var(--ncm-bg-deep, #0a0f14);
+}
+.ncm-enc-file > i:first-child { flex: 0 0 auto; width: 13px; text-align: center; color: var(--fam); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-enc-file .n {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--ncm-text-primary, #e8f4f8); font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif);
+}
+.ncm-enc-file .t {
+  flex: 0 0 auto; color: var(--ncm-text-muted, #7a8b99);
+  font: calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace);
+}
+.ncm-enc-file .ed, .ncm-enc-file .rm {
+  flex: 0 0 auto; cursor: pointer; color: var(--ncm-text-muted, #7a8b99);
+  font-size: calc(9.5px * var(--ncm-text-scale, 1));
+}
+.ncm-enc-file .ed:hover { color: var(--fam); }
+.ncm-enc-file .rm:hover { color: var(--ncm-danger, #ff0033); }
+.ncm-app.ncm-shard-encoder .ncm-fw-save2[disabled] { opacity: .45; cursor: default; }
+
+/* ── mix your own look ──────────────────────────────────────────────────── */
+/* Two decisions, not eleven: an accent and a ground. The GM's grid lives in the
+   config sheet; this is dressing a chip while the encode roll waits. */
+.ncm-enc-mix {
+  display: flex; flex-direction: column; gap: 7px; margin-top: 7px; padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--fam) 28%, transparent); border-radius: 3px;
+  background: color-mix(in srgb, var(--fam) 5%, transparent);
+}
+.ncm-enc-mixrow { display: flex; align-items: center; gap: 9px; }
+.ncm-enc-mixrow > label {
+  flex: 0 0 52px;
+  font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ncm-text-muted, #7a8b99);
+}
+.ncm-enc-mixsw { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.ncm-enc-mixdot {
+  width: 17px; height: 17px; border-radius: 50%; cursor: pointer;
+  border: 1px solid color-mix(in srgb, #000 40%, transparent);
+  box-shadow: 0 0 0 1px transparent;
+}
+.ncm-enc-mixdot:hover { box-shadow: 0 0 0 1px var(--ncm-text-muted, #7a8b99); }
+.ncm-enc-mixdot.on { box-shadow: 0 0 0 2px var(--fam); }
+/* A native colour input renders as a full-width Foundry button unless every
+   structural default is killed — the standing rule for controls in this window. */
+.ncm-app.ncm-shard-encoder input.ncm-enc-mixpick {
+  appearance: none !important; -webkit-appearance: none !important;
+  width: 22px !important; height: 17px !important; min-height: 0 !important; flex: 0 0 auto;
+  padding: 0 !important; margin: 0 0 0 3px !important; cursor: pointer;
+  border: 1px dashed var(--ncm-text-muted, #7a8b99) !important; border-radius: 2px !important;
+  background: none !important; background-image: none !important; box-shadow: none !important;
+}

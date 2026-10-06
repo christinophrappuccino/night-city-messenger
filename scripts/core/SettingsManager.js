@@ -405,40 +405,19 @@ export class SettingsManager {
     });
 
     // ─── Data Shard Conversion Settings ───
-
-    game.settings.register(MODULE_ID, 'playerShardFloor', {
-      name: 'Player Shard Creation Floor',
-      hint: 'Minimum tier all players can access. Character skills can unlock higher tiers beyond this floor.',
-      scope: 'world',
-      config: true,
-      type: String,
-      default: 'disabled',
-      choices: {
-        disabled: 'Disabled — GM only',
-        basic: 'Basic — message-only shards',
-        mid: 'Mid — password + standard ICE',
-        full: 'Full — simplified GM config',
-      },
-    });
-
-    game.settings.register(MODULE_ID, 'playerShardSkill', {
-      name: 'Shard Encoding Skill',
-      hint: 'CPR skill that determines tier upgrades beyond the floor. Skill rank thresholds: 0-3 Basic, 4-6 Mid, 7+ Full.',
-      scope: 'world',
-      config: true,
-      type: String,
-      default: 'Interface',
-      choices: skillChoices,
-    });
-
-    game.settings.register(MODULE_ID, 'playerBlackICE', {
-      name: 'Allow Player BLACK/RED ICE',
-      hint: 'Whether Full tier players can use BLACK ICE and RED ICE on their shards. Disable to restrict players to standard ICE only.',
-      scope: 'world',
-      config: true,
-      type: Boolean,
-      default: true,
-    });
+    //
+    // RETIRED 2026-09-22 — `playerShardFloor`, `playerShardSkill` and
+    // `playerBlackICE` were read ONLY by the tier-gated ShardConversionFlow
+    // wizard, which the Shard Encoder replaced. They are deliberately NOT
+    // re-registered: a `config: true` setting that nothing reads is a knob in
+    // the GM's Module Settings that silently does nothing, which is worse than
+    // no knob at all. (`playerBlackICE` had already been orphaned — the Encoder
+    // asks `encoderConfig.lock.blackIce`.)
+    //
+    // Their stored Setting documents stay on disk, inert and rollback-safe, the
+    // same way the namespace migration leaves the legacy ones. Everything they
+    // used to answer now lives in `encoderConfig`: who may author (`gate`),
+    // what they may make (`types`), and how hard they may lock it (`lock`).
 
     game.settings.register(MODULE_ID, 'debugMode', {
       name: 'Debug Mode',
@@ -527,6 +506,24 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'shardThemePresets', {
+      name: 'Saved Shard Looks',
+      hint: 'GM-saved data-shard themes ([{ name, theme }]) — palette, fonts and wallpaper only. Deliberately carries NO security block: several shipped presets ship Black ICE, and applying something labelled "a look" must never arm a shard.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
+    game.settings.register(MODULE_ID, 'shardPresetLibrary', {
+      name: 'Shard Preset Library',
+      hint: 'Full GM-authored shard setups ([{ name, config }]) — look, startup and identity, and ONLY if the GM ticked the box when saving, the security block too. Stamp out more shards like one you already built.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     game.settings.register(MODULE_ID, 'programLibrary', {
       name: 'Program Library',
       hint: 'GM-authored programs from the Malware Workshop ([{ id, name, group, icon, program }]) — reusable malware/payload definitions, buildable onto any shard or NPC.',
@@ -555,6 +552,30 @@ export class SettingsManager {
       config: false,
       type: Boolean,
       default: true,
+    });
+
+    // ── Shard Encoder (player-facing shard / program authoring) ──
+    // Stores ONLY what the GM changed; EncoderModel.resolveEncoderConfig layers it over
+    // ENCODER_DEFAULTS so new defaults reach existing worlds without a migration.
+    // Edited in Admin → Shards → Player Authoring (EncoderConfigApp).
+    game.settings.register(MODULE_ID, 'encoderConfig', {
+      name: 'Shard Encoder — Player Authoring',
+      hint: 'What players may encode onto a shard, with which skill, on which blanks.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
+    // Per-player accessibility options for the FUI windows (utils/legibility.js):
+    // text size, contrast, motion, density, outlines, plain font, details-open.
+    game.settings.register(MODULE_ID, 'legibilityPrefs', {
+      name: 'Legibility Options',
+      hint: 'Your own text size, contrast and motion preferences for the Encoder and other FUI windows.',
+      scope: 'client',
+      config: false,
+      type: Object,
+      default: {},
     });
 
     game.settings.register(MODULE_ID, 'operatorGate', {
@@ -748,5 +769,15 @@ export class SettingsManager {
     const current = this.getAdminTheme();
     const merged = foundry.utils.mergeObject(current, updates, { inplace: false });
     return this.set('adminTheme', merged);
+  }
+
+  /** The GM's stored Shard Encoder overrides (raw — resolve with EncoderModel.resolveEncoderConfig). */
+  getEncoderConfigRaw() {
+    try { return this.get('encoderConfig') || {}; } catch { return {}; }
+  }
+
+  /** Replace the stored Shard Encoder overrides (GM only — world scope). */
+  async setEncoderConfig(config) {
+    return this.set('encoderConfig', config || {});
   }
 }

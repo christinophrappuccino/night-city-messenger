@@ -252,6 +252,8 @@ export class AdminPanelApp extends BaseApplication {
       relockShard: AdminPanelApp._onRelockShard,
       convertItemToShard: AdminPanelApp._onConvertItem,
       quickCreateShard: AdminPanelApp._onQuickCreateShard,
+      openEncoderConfig: AdminPanelApp._onOpenEncoderConfig,
+      archiveShards: AdminPanelApp._onArchiveShards,
       bulkRelockAll: AdminPanelApp._onBulkRelockAll,
       purgeDestroyed: AdminPanelApp._onPurgeDestroyed,
       configureShardItem: AdminPanelApp._onConfigureShardItem,
@@ -355,6 +357,7 @@ export class AdminPanelApp extends BaseApplication {
       // Danger zone
       purgeMessages: AdminPanelApp._onPurgeMessages,
       orphanAudit: AdminPanelApp._onOrphanAudit,
+      factoryReset: AdminPanelApp._onFactoryReset,
 
       // Legacy
       toggleCompactMode: AdminPanelApp._onToggleCompactMode,
@@ -1153,6 +1156,10 @@ export class AdminPanelApp extends BaseApplication {
   static async _onRelockShard(event, target) { return this.tabs.shards.onRelockShard(event, target); }
   static async _onConvertItem(event, target) { return this.tabs.shards.onConvertItem(event, target); }
   static async _onQuickCreateShard(event, target) { return this.tabs.shards.onQuickCreateShard(event, target); }
+
+  static async _onOpenEncoderConfig(event, target) { return this.tabs.shards.onOpenEncoderConfig(event, target); }
+
+  static async _onArchiveShards(event, target) { return this.tabs.shards.onArchiveShards(event, target); }
   static async _onBulkRelockAll(event, target) { return this.tabs.shards.onBulkRelockAll(event, target); }
   static async _onPurgeDestroyed(event, target) { return this.tabs.shards.onPurgeDestroyed(event, target); }
   static _onConfigureShardItem(event, target) { this.tabs.shards.onConfigureShardItem(event, target); }
@@ -1216,6 +1223,7 @@ export class AdminPanelApp extends BaseApplication {
   static async _onImportNCMMacros(event, target) { return this.tabs.tools.onImportMacros(event, target); }
   static async _onPurgeMessages(event, target) { return this.tabs.tools.onPurgeMessages(event, target); }
   static async _onOrphanAudit(event, target) { return this.tabs.tools.onOrphanAudit(event, target); }
+  static async _onFactoryReset(event, target) { return this.tabs.tools.onFactoryReset(event, target); }
 
   // ─── Legacy Handlers ───
 

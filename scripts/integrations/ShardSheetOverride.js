@@ -19,11 +19,26 @@
  */
 
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM } from '../utils/helpers.js';
-import { ShardConversionFlow } from '../ui/dialogs/ShardConversionFlow.js';
+import { log, isGM, canEncode } from '../utils/helpers.js';
 import { adminConfirm } from '../utils/adminTheme.js';
 
 export class ShardSheetOverride {
+
+  /**
+   * May this character author shards? The item-sheet doors' copy of the ONE
+   * answer — `canEncode` in helpers.js — which the Agent pill, the Program Deck,
+   * the Encoder window and its funnel all read too.
+   *
+   * It replaced a pair of statics (`encoderEnabled` / `playerAuthoringOn`) that
+   * existed only because there used to be TWO authoring routes with separate
+   * switches. With the tier-gated wizard retired there is one route, so there is
+   * one question.
+   *
+   * @param {Actor|null} actor the character whose sheet the row belongs to
+   */
+  static canAuthor(actor = null) {
+    return canEncode(actor).ok;
+  }
 
   /** @type {boolean} Whether hooks are currently active */
   #active = false;
@@ -405,10 +420,10 @@ export class ShardSheetOverride {
         if (!row) continue;
 
         if (isShard) {
-          this._applyShardBadge(row, item);
+          this._applyShardBadge(row, item, actor);
         } else {
-          // Always apply convert button + context menu;
-          // internal checks handle the playerShardFloor setting
+          // Always attach; `_applyConvertButton` asks `canAuthor(actor)` for
+          // whether this character actually gets a button.
           this._applyConvertButton(row, item, actor);
         }
       }
@@ -428,7 +443,7 @@ export class ShardSheetOverride {
    * @param {HTMLElement} row
    * @param {Item} item
    */
-  _applyShardBadge(row, item) {
+  _applyShardBadge(row, item, actor = null) {
     // Don't double-badge on re-render
     if (row.querySelector('.ncm-shard-img-tag')) return;
 
@@ -491,8 +506,8 @@ export class ShardSheetOverride {
           { sep: true },
           { label: 'Remove Shard Data', icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
         );
-      } else if (game.settings.get(MODULE_ID, 'playerShardFloor') !== 'disabled') {
-        // Players can unconvert their own shards if conversion is enabled
+      } else if (ShardSheetOverride.canAuthor(actor)) {
+        // A player may strip their OWN shard only if they could have made one.
         entries.push(
           { sep: true },
           { label: 'Remove Shard Data', icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
@@ -510,7 +525,7 @@ export class ShardSheetOverride {
    * @param {Actor} actor
    */
   _applyConvertButton(row, item, actor) {
-    const canConvert = isGM() || game.settings.get(MODULE_ID, 'playerShardFloor') !== 'disabled';
+    const canConvert = isGM() || ShardSheetOverride.canAuthor(actor);
 
     // ─── Inline convert button (best-effort — CPR may not have .item-controls) ───
     if (canConvert && !row.querySelector('.ncm-convert-shard-btn')) {
@@ -518,7 +533,7 @@ export class ShardSheetOverride {
       if (controls) {
         const btn = document.createElement('a');
         btn.className = 'item-control ncm-convert-shard-btn';
-        btn.title = 'Convert to Data Shard';
+        btn.title = isGM() ? 'Convert to Data Shard' : 'Encode to Data Shard';
         btn.innerHTML = '<i class="fas fa-microchip"></i>';
         btn.addEventListener('click', (ev) => {
           ev.stopPropagation();
@@ -533,9 +548,9 @@ export class ShardSheetOverride {
     if (!row._ncmConvertCtx) {
       row._ncmConvertCtx = true;
       row.addEventListener('contextmenu', (ev) => {
-        if (!isGM() && game.settings.get(MODULE_ID, 'playerShardFloor') === 'disabled') return;
+        if (!isGM() && !ShardSheetOverride.canAuthor(actor)) return;
         const entries = [
-          { label: 'Convert to Data Shard', icon: 'fas fa-microchip', color: '#00D4E6', fn: () => this._launchConversionFlow(item, actor) },
+          { label: isGM() ? 'Convert to Data Shard' : 'Encode to Data Shard', icon: 'fas fa-microchip', color: '#00D4E6', fn: () => this._launchConversionFlow(item, actor) },
         ];
         this._showContextMenu(ev, entries);
       });
@@ -611,8 +626,8 @@ export class ShardSheetOverride {
    *
    * GMs convert instantly with the default config (mirroring the
    * Admin → Shards tab "Convert" button) and configure afterward via
-   * the "Configure Shard" context option. Players get the tier-gated
-   * ShardConversionFlow wizard (skill checks, form collection, etc.).
+   * the "Configure Shard" context option. Players get the Shard Encoder,
+   * gated by `canEncode`.
    *
    * @param {Item} item
    * @param {Actor} actor
@@ -647,14 +662,17 @@ export class ShardSheetOverride {
       return;
     }
 
-    // ─── Players: tier-gated wizard ───
-    const floor = game.settings.get(MODULE_ID, 'playerShardFloor') || 'disabled';
-    if (floor === 'disabled') {
-      ui.notifications.warn('Shard creation is disabled for players.');
+    // ─── Players: the Shard Encoder ───
+    // It opens on the BLANK stage with this item seeded — deliberately NOT
+    // `stage: 'program'`, which forced every item right-click into the Program
+    // branch, so a player who wanted to forge a dossier landed on a page asking
+    // which program to build. The Payload / Malware tiles switch branch.
+    const verdict = canEncode(actor);
+    if (!verdict.ok) {
+      ui.notifications.warn(`NCM | ${verdict.reason}`);
       return;
     }
-
-    new ShardConversionFlow(item, actor).render(true);
+    game.nightcity?.openEncoder?.({ item, actor });
   }
 
   /**

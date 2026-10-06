@@ -154,9 +154,12 @@ export class SocketHandlers {
           log.warn('Shard conversion failed:', result.error);
         } else if (entryData) {
           // Player can't write to the GM-owned shard journal — create the
-          // initial entry here on the GM client (non-fatal if it fails).
-          const entryResult = await service.addMessage(item, entryData);
-          if (!entryResult?.success) log.warn('Initial shard entry failed (non-fatal):', entryResult?.error);
+          // entries here on the GM client (non-fatal if one fails). The Shard
+          // Encoder can send SEVERAL: one chip, several forged files.
+          for (const entry of (Array.isArray(entryData) ? entryData : [entryData])) {
+            const entryResult = await service.addMessage(item, entry);
+            if (!entryResult?.success) log.warn('Shard entry failed (non-fatal):', entryResult?.error);
+          }
         }
       } catch (err) {
         log.error('Shard conversion relay failed:', err);
@@ -164,6 +167,20 @@ export class SocketHandlers {
 
       // Send result back
       socketManager.emit(SOCKET_OPS.SHARD_CONVERT_RESULT, { requestId, success });
+    });
+
+    // ─── Player Shard PRICE Relay (Shard Encoder, pricing 'propose') ───
+    // system.price.market is on an item the player may not own, and the GM's
+    // pricing mode is the authority — so the ask relays and the GM's own client
+    // decides and writes. See scripts/ui/ShardEncoder/ShardMarket.js.
+    socketManager.register(SOCKET_OPS.SHARD_PRICE_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        const { handleShardPriceRequest } = await import('../ui/ShardEncoder/ShardMarket.js');
+        await handleShardPriceRequest(data);
+      } catch (err) {
+        log.error('Shard price relay failed:', err);
+      }
     });
 
     // ─── Player Terminal Exfil Relay ─────────────────────

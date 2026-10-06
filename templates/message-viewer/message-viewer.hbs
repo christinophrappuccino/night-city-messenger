@@ -215,6 +215,12 @@
           <span class="ncm-pill__badge ncm-pill__badge--alert">{{shardCounts.encrypted}}</span>
         </span>
       {{/if}}
+      {{#if canEncode}}
+        <span class="ncm-pill ncm-pill--action" data-action="open-encoder"
+              data-tooltip="Make a shard of your own" data-tooltip-direction="UP">
+          <i class="fas fa-microchip"></i> Encode new
+        </span>
+      {{/if}}
     {{/if}}
     </div>
   </div>

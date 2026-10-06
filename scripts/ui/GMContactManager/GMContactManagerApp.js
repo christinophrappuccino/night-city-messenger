@@ -13,7 +13,7 @@
  */
 
 import { MODULE_ID, TEMPLATES, EVENTS } from '../../utils/constants.js';
-import { log, isGM } from '../../utils/helpers.js';
+import { log, isGM, getPlayerCharacters } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import {
   getAvatarColor,
@@ -339,20 +339,19 @@ export class GMContactManagerApp extends BaseApplication {
     const groups = this._buildGroups(paged, allRoles, enriched);
 
     // ── Player actors ──
-    const playerActors = [];
-    for (const user of game.users ?? []) {
-      if (user.isGM || !user.character) continue;
-      playerActors.push({
-        id: user.character.id,
-        name: user.character.name,
-        img: user.character.img,
-        isPlayer: true,
-        ownerName: user.name,
-        initials: getInitials(user.character.name),
-        avatarColor: getAvatarColor(user.character.name),
-        initial: (user.character.name || '?').charAt(0).toUpperCase(),
-      });
-    }
+    // THE one enumeration of "the players' characters" — a PC a player owns but
+    // never assigned on their user sheet is invisible to a `user.character` loop,
+    // which is what emptied this list (and four other GM tools before it).
+    const playerActors = getPlayerCharacters().map((pc) => ({
+      id: pc.actorId,
+      name: pc.actorName,
+      img: pc.actor?.img,
+      isPlayer: true,
+      ownerName: pc.playerName,
+      initials: getInitials(pc.actorName),
+      avatarColor: getAvatarColor(pc.actorName),
+      initial: (pc.actorName || '?').charAt(0).toUpperCase(),
+    }));
 
     // ── Available actors for linking ──
     const availableActors = game.actors

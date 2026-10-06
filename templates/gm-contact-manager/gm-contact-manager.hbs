@@ -390,13 +390,13 @@
             <select name="pushTargetActor" class="ncm-push-select">
               <option value="">Select character...</option>
               <optgroup label="Players">
-                {{#each ../shareTargetPlayers}}
+                {{#each @root.shareTargetPlayers}}
                   <option value="{{id}}">{{name}} (Player)</option>
                 {{/each}}
               </optgroup>
-              {{#if ../hasShareNPCs}}
+              {{#if @root.hasShareNPCs}}
               <optgroup label="NPCs">
-                {{#each ../shareTargetNPCs}}
+                {{#each @root.shareTargetNPCs}}
                   <option value="{{id}}">{{name}}</option>
                 {{/each}}
               </optgroup>

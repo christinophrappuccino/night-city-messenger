@@ -357,6 +357,14 @@ export class DataShardComposer extends BaseApplication {
       this.shardItem = options.shardItem;
     }
     if (options.onSave) this.onSave = options.onSave;
+    // PLAYER MODE (the Shard Encoder's Content stage): the same editor, but it
+    // COLLECTS instead of persisting — the Encoder owns the roll and the write —
+    // and the GM-only apparatus (security, network visibility, templates) is not
+    // rendered. Entered only through PlayerEntryComposer, never by a GM flow.
+    this._playerMode = !!options.playerMode;
+    this.onCollect = options.onCollect ?? null;
+    this._allowedTypes = Array.isArray(options.allowedTypes) && options.allowedTypes.length
+      ? new Set(options.allowedTypes) : null;
     if (options.editData) {
       this.editData = options.editData;
       this._selectedType = options.editData.contentType || CONTENT_TYPES.MESSAGE;
@@ -375,14 +383,18 @@ export class DataShardComposer extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   async _prepareContext(options) {
-    if (!this._item || !isGM()) return { hasItem: false };
-    const config = (!this._isTerminal && this.dataShardService?.getConfig(this._item)) || DEFAULTS.SHARD_CONFIG;
+    // Player mode authors an entry that has no home yet — the Encoder holds it
+    // and decides, on the encode roll, whether it is ever written. So an item is
+    // required for the GM's flow only.
+    if (!isGM() && !this._playerMode) return { hasItem: false };
+    if (!this._item && !this._playerMode) return { hasItem: false };
+    const config = (this._item && !this._isTerminal && this.dataShardService?.getConfig(this._item)) || DEFAULTS.SHARD_CONFIG;
     const type = this._selectedType;
 
-    // Content type pills
-    const typePills = TYPE_PILLS.map(p => ({
-      ...p, isActive: p.key === type,
-    }));
+    // Content type pills — in player mode only the types the GM allows.
+    const typePills = TYPE_PILLS
+      .filter(p => !this._allowedTypes || this._allowedTypes.has(p.key))
+      .map(p => ({ ...p, isActive: p.key === type }));
 
     // Editing an entry that USES security features → auto-open ③ once (the
     // guard keeps re-renders from fighting a user who re-collapsed it).
@@ -400,8 +412,10 @@ export class DataShardComposer extends BaseApplication {
 
     return {
       hasItem: true,
-      shardName: this._item.name,
+      shardName: this._item?.name ?? 'a new shard',
       isTerminalTarget: this._isTerminal,
+      // Drives {{#unless playerMode}} around the GM-only apparatus.
+      playerMode: this._playerMode,
       // Pinned type bar + grouped picker + section collapse state.
       currentType: TYPE_PILLS.find(p => p.key === type) || TYPE_PILLS[0],
       typeGroups: TYPE_GROUPS.map(g => ({
@@ -3237,9 +3251,18 @@ export class DataShardComposer extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   static async _onSaveEntry(event, target) {
-    if (!isGM() || !this._item) return;
+    if (!this._item && !this._playerMode) return;
+    if (!isGM() && !this._playerMode) return;
     const entryData = this._collectEntryData({ validate: true });
     if (!entryData) return; // validation failed (warned inside)
+    // PLAYER MODE — nothing is written here. The Encoder holds the entry until
+    // the encode roll decides whether it is ever written at all.
+    if (this._playerMode) {
+      const done = this.onCollect;
+      this.close();
+      done?.(entryData);
+      return;
+    }
     const res = await this._persistEntry(entryData);
     if (res?.success) {
       // ENVELOPE (#37) — never auto-create a master contact for a FILE. Its

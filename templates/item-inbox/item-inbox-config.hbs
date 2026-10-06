@@ -11,6 +11,7 @@
   {{!-- TAB BAR --}}
   <div class="ncm-cfg-tabs">
     <button type="button" class="ncm-cfg-tab ncm-cfg-tab--active" data-action="switchTab" data-tab="identity"><i class="fas fa-id-badge"></i> Identity</button>
+    <button type="button" class="ncm-cfg-tab" data-action="switchTab" data-tab="theme"><i class="fas fa-palette"></i> Theme</button>
     <button type="button" class="ncm-cfg-tab" data-action="switchTab" data-tab="security"><i class="fas fa-shield-halved"></i> Security <span class="ncm-cfg-badge {{#if securityLayerCount}}ncm-cfg-badge--on{{/if}}">{{securityLayerCount}}</span></button>
     <button type="button" class="ncm-cfg-tab" data-action="switchTab" data-tab="network"><i class="fas fa-network-wired"></i> Network {{#if networkRequired}}<span class="ncm-cfg-badge ncm-cfg-badge--on">ON</span>{{/if}}</button>
     <button type="button" class="ncm-cfg-tab" data-action="switchTab" data-tab="systems"><i class="fas fa-gears"></i> Systems</button>
@@ -26,27 +27,6 @@
       <div class="ncm-cfg-item-box">
         <div class="ncm-cfg-item-img">{{#if itemImg}}<img src="{{itemImg}}" alt="">{{else}}<i class="fas fa-microchip"></i>{{/if}}</div>
         <div class="ncm-cfg-item-meta"><div class="ncm-cfg-item-name">{{itemName}}</div><div class="ncm-cfg-item-type">{{itemType}}</div></div>
-      </div>
-
-      <div class="ncm-cfg-section">
-        <div class="ncm-cfg-section-header"><i class="fas fa-palette ncm-cfg-section-icon" style="color:#a855f7"></i><div class="ncm-cfg-section-title">Preset & Theme</div></div>
-        <div class="ncm-cfg-desc">Choose a visual theme. Applying loads default colors, boot, and icon. Customize after.</div>
-        <div class="ncm-cfg-row">
-          <span class="ncm-cfg-label">Preset</span>
-          <select name="preset" class="ncm-cfg-select ncm-cfg-flex">{{#each presetOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
-          <button type="button" data-action="applyPreset" class="ncm-cfg-btn-icon" title="Apply preset"><i class="fas fa-download"></i></button>
-        </div>
-        <div class="ncm-cfg-row">
-          <span class="ncm-cfg-label">Text Size</span>
-          <input type="range" name="textScale" min="80" max="150" step="5" value="{{textScale}}" class="ncm-tc__slider ncm-cfg-flex" />
-          <span class="ncm-tc__srow-val ncm-cfg-scale-val">{{textScale}}%</span>
-        </div>
-        <div class="ncm-cfg-row">
-          <span class="ncm-cfg-label">Contrast</span>
-          <input type="range" name="contrast" min="70" max="140" step="5" value="{{contrast}}" class="ncm-tc__slider ncm-cfg-flex" />
-          <span class="ncm-tc__srow-val ncm-cfg-contrast-val">{{contrast}}%</span>
-        </div>
-        <div class="ncm-cfg-hint">Both apply to everyone reading this shard, on top of each player's own Text Size and Contrast (Theme Customizer → Text). Contrast pushes darks darker and lights lighter; accents and images are untouched. Drag with the shard open to preview.</div>
       </div>
 
       <div class="ncm-cfg-section">
@@ -68,6 +48,160 @@
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Type Line</span><select name="typeLineMode" class="ncm-cfg-select ncm-cfg-flex"><option value="preset-status" {{#if typeLineModePresetStatus}}selected{{/if}}>Preset + Status</option><option value="status-only" {{#if typeLineModeStatusOnly}}selected{{/if}}>Status Only</option><option value="custom" {{#if typeLineModeCustom}}selected{{/if}}>Custom Text</option></select></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Custom Text</span><input type="text" name="typeLineCustom" class="ncm-cfg-input ncm-cfg-flex" value="{{typeLineCustom}}" placeholder="Custom subtitle" /></div>
       </div>
+    </div>
+
+    {{!-- ═══ TAB: THEME ═══
+          Every control here is UNNAMED and data-keyed (data-stc), except the
+          hidden `preset` input the cards drive — theme edits ride `_themeDraft`
+          and are applied with no re-render, because a render would discard
+          unsaved edits in every other tab. See the draft contract in
+          ItemInboxConfig. --}}
+    <div class="ncm-cfg-panel" data-panel="theme">
+
+      <div class="ncm-tc__preview ncm-stc-live">
+        <div class="ncm-tc__preview-label"><i class="fas fa-eye"></i> Live preview — this shard only{{#if themeDirty}} · <span style="color:var(--ncm-accent)">unsaved</span>{{/if}}</div>
+        <div class="ncm-tc__preview-inbox">
+          <div class="ncm-tc__preview-hdr">
+            <div class="ncm-tc__preview-av"><i class="fas fa-microchip" style="font-size:8px"></i></div>
+            <div class="ncm-tc__preview-nm">{{previewName}}</div>
+            <div class="ncm-tc__preview-nt">DATA SHARD</div>
+          </div>
+          <div class="ncm-tc__preview-row">
+            <div class="ncm-tc__preview-dot"></div>
+            <div class="ncm-tc__preview-from">dossier</div>
+            <div class="ncm-tc__preview-subj">Subject file — Arasaka internal</div>
+            <div class="ncm-tc__preview-time">04:12</div>
+          </div>
+          <div class="ncm-tc__preview-row">
+            <div class="ncm-tc__preview-dot ncm-tc__preview-dot--read"></div>
+            <div class="ncm-tc__preview-from">ledger</div>
+            <div class="ncm-tc__preview-subj">Transfers, Q3</div>
+            <div class="ncm-tc__preview-badge">FLAGGED</div>
+            <div class="ncm-tc__preview-time">02:48</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ncm-tc__slabel">Built-in looks</div>
+      <div class="ncm-tc__preset-grid">
+        {{#each themePresetCards}}
+        <div class="ncm-tc__pcard {{#if active}}ncm-tc__pcard--active{{/if}}" data-stc="preset" data-key="{{key}}">
+          <div class="ncm-tc__pcard-swatch"><span style="background:{{sw1}};"></span><span style="background:{{sw2}};"></span><span style="background:{{sw3}};"></span></div>
+          <div class="ncm-tc__pcard-name">{{label}}</div>
+        </div>
+        {{/each}}
+      </div>
+      <input type="hidden" name="preset" value="{{config.preset}}" />
+      <div class="ncm-cfg-hint">A card changes the <strong>look only</strong> — colours, and the palette the boot screen reads. It never touches security. To pull in a preset's ICE, boot text and skill DVs as well, use the button below.</div>
+      <div class="ncm-cfg-row">
+        <button type="button" data-action="applyPreset" class="ncm-shard-btn"><i class="fas fa-download"></i> Load this preset's security &amp; boot too</button>
+      </div>
+      <div class="ncm-cfg-hint"><strong>Careful:</strong> that overwrites security, boot and theme with the preset's own, and saves immediately — several presets ship BLACK or RED ICE.</div>
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Colours <span style="opacity:.6">— a dot means this shard overrides the look above</span></div>
+      <div class="ncm-stc-colors">
+        {{#each themeColors}}
+        <div class="ncm-stc-crow {{#if hasOverride}}is-override{{/if}}" data-stc-row="{{key}}">
+          <input type="color" data-stc="color" data-key="{{key}}" value="{{value}}" />
+          <span class="ncm-stc-clabel">{{label}}</span>
+          <button type="button" class="ncm-stc-creset" data-stc="colorReset" data-key="{{key}}" data-tooltip="Back to the preset's colour"><i class="fas fa-rotate-left"></i></button>
+        </div>
+        {{/each}}
+      </div>
+      <div class="ncm-cfg-row">
+        <button type="button" class="ncm-shard-btn" data-stc="colorResetAll"><i class="fas fa-rotate-left"></i> Clear every override</button>
+      </div>
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Fonts</div>
+      {{#each themeFonts}}
+      <div class="ncm-cfg-row">
+        <span class="ncm-cfg-label">{{label}}</span>
+        <select class="ncm-cfg-select ncm-cfg-flex" data-stc="font" data-slot="{{slot}}">
+          {{#each options}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+        </select>
+      </div>
+      {{/each}}
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Readability</div>
+      <div class="ncm-cfg-row">
+        <span class="ncm-cfg-label">Text Size</span>
+        <input type="range" name="textScale" min="80" max="150" step="5" value="{{textScale}}" class="ncm-tc__slider ncm-cfg-flex" />
+        <span class="ncm-tc__srow-val ncm-cfg-scale-val">{{textScale}}%</span>
+      </div>
+      <div class="ncm-cfg-row">
+        <span class="ncm-cfg-label">Contrast</span>
+        <input type="range" name="contrast" min="70" max="140" step="5" value="{{contrast}}" class="ncm-tc__slider ncm-cfg-flex" />
+        <span class="ncm-tc__srow-val ncm-cfg-contrast-val">{{contrast}}%</span>
+      </div>
+      <div class="ncm-cfg-hint">Both apply to everyone reading this shard, on top of each player's own Text Size and Contrast (Theme Customizer → Text). Contrast pushes darks darker and lights lighter; accents and images are untouched. Drag with the shard open to preview.</div>
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Wallpaper</div>
+      <div class="ncm-cfg-row">
+        <span class="ncm-cfg-label">Image</span>
+        <input type="text" class="ncm-cfg-input ncm-cfg-flex" data-stc="wallpaper" value="{{themeWallpaper}}" placeholder="path/to/image.webp" />
+        <button type="button" class="ncm-cfg-btn-icon" data-stc="wallpaperBrowse" data-tooltip="Browse"><i class="fas fa-folder-open"></i></button>
+        <button type="button" class="ncm-cfg-btn-icon" data-stc="wallpaperClear" data-tooltip="Remove"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="ncm-cfg-row">
+        <span class="ncm-cfg-label">Strength</span>
+        <input type="range" data-stc="wallpaperStrength" min="5" max="100" step="5" value="{{themeWallpaperStrength}}" class="ncm-tc__slider ncm-cfg-flex" />
+        <span class="ncm-tc__srow-val ncm-stc-wp-val">{{themeWallpaperStrength}}%</span>
+      </div>
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Saved looks <span style="opacity:.6">— palette, fonts and wallpaper; never security</span></div>
+      <div class="ncm-tc__clist" data-stc-saved>
+        {{#each savedThemes}}
+        <div class="ncm-tc__citem">
+          <div class="ncm-tc__citem-swatch"><span style="background:{{sw1}};"></span><span style="background:{{sw2}};"></span><span style="background:{{sw3}};"></span></div>
+          <span class="ncm-tc__citem-name">{{name}}</span>
+          <div class="ncm-tc__citem-actions">
+            <button type="button" data-stc="themeApply" data-index="{{index}}" data-tooltip="Apply to this shard"><i class="fas fa-check"></i></button>
+            <button type="button" data-stc="themeOverwrite" data-index="{{index}}" data-tooltip="Overwrite with this shard's look"><i class="fas fa-save"></i></button>
+            <button type="button" data-stc="themeExport" data-index="{{index}}" data-tooltip="Export JSON"><i class="fas fa-file-export"></i></button>
+            <button type="button" class="ncm-tc__citem-del" data-stc="themeDelete" data-index="{{index}}" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+        {{/each}}
+        {{#unless savedThemes.length}}
+        <div class="ncm-tc__cempty">No saved looks yet — dress a shard, then Save this look to reuse it.</div>
+        {{/unless}}
+      </div>
+      <div class="ncm-cfg-row">
+        <button type="button" class="ncm-shard-btn ncm-shard-btn--primary" data-stc="themeSave"><i class="fas fa-floppy-disk"></i> Save this look</button>
+        <button type="button" class="ncm-shard-btn" data-stc="themeImport"><i class="fas fa-file-import"></i> Import</button>
+      </div>
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Shard presets <span style="opacity:.6">— the whole setup, to stamp out more like this one</span></div>
+      <div class="ncm-tc__clist" data-stc-full>
+        {{#each fullPresets}}
+        <div class="ncm-tc__citem">
+          <i class="fas fa-microchip" style="color:var(--ncm-text-muted);font-size:10px"></i>
+          <span class="ncm-tc__citem-name">{{name}}</span>
+          {{#if hasSecurity}}<span class="ncm-stc-secchip" data-tooltip="Applying this also overwrites security">SECURITY</span>{{/if}}
+          <div class="ncm-tc__citem-actions">
+            <button type="button" data-stc="fullApply" data-index="{{index}}" data-tooltip="Apply to this shard"><i class="fas fa-check"></i></button>
+            <button type="button" data-stc="fullOverwrite" data-index="{{index}}" data-name="{{name}}" data-tooltip="Overwrite with this shard"><i class="fas fa-save"></i></button>
+            <button type="button" data-stc="fullExport" data-index="{{index}}" data-tooltip="Export JSON"><i class="fas fa-file-export"></i></button>
+            <button type="button" class="ncm-tc__citem-del" data-stc="fullDelete" data-index="{{index}}" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+        {{/each}}
+        {{#unless fullPresets.length}}
+        <div class="ncm-tc__cempty">No shard presets yet — build one shard fully, then Save it here to stamp out more.</div>
+        {{/unless}}
+      </div>
+      <div class="ncm-cfg-row">
+        <button type="button" class="ncm-shard-btn ncm-shard-btn--primary" data-stc="fullSave"><i class="fas fa-box-archive"></i> Save this shard as a preset</button>
+        <button type="button" class="ncm-shard-btn" data-stc="fullImport"><i class="fas fa-file-import"></i> Import</button>
+      </div>
+      <div class="ncm-cfg-hint" style="margin-bottom:12px">A shard preset carries the look, the startup and the identity. It only carries <strong>security</strong> if you tick that box when saving — so applying one can never arm a shard without telling you.</div>
+
     </div>
 
     {{!-- ═══ TAB 2: SECURITY ═══ --}}

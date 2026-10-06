@@ -137,6 +137,11 @@ export const SOCKET_OPS = Object.freeze({
   // Player→GM relay for a trace event — the log + heat are GM-owned world
   // settings, so a player who trips a trace relays the record to the GM.
   TRACE_REQUEST: 'trace:request',
+  // Player→GM: a price a player wants on a shard THEY made (Shard Encoder,
+  // pricing mode 'propose'). The GM approves / counters / denies; only then is
+  // system.price.market written, and only by the GM who owns that call.
+  SHARD_PRICE_REQUEST: 'shard:priceRequest',
+  SHARD_PRICE_RESULT:  'shard:priceResult',
   // Netrunning Tier C (design §5, `hackResolution: 'gm'`) — the action does NOT
   // auto-roll; the player asks the GM to adjudicate pass/fail at the table.
   // REQUEST { requestId, userId, payload } → the GM's NetAdjudicator prompt →
@@ -343,6 +348,7 @@ export const THEME_PRESETS = Object.freeze({
 export const SHARD_PRESETS = Object.freeze({
   'corporate-dossier': {
     label: 'Corporate Dossier',
+    palette: { primary: '#aa1010', secondary: '#ee3030', accent: '#e0b040', bgDeep: '#0a0606', bgBase: '#0e0808', bgSurface: '#120a0a', bgElevated: '#1a0e0e', textPrimary: '#f5eee8', textSecondary: '#c0a090', textMuted: '#887060', border: '#3a1515' },
     icon: 'fas fa-building',
     theme: {
       accent: '#ff0033', accentSecondary: '#ffcc00', headerBg: '#1a0000',
@@ -362,6 +368,7 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'black-market': {
     label: 'Black Market Data Dump',
+    palette: { primary: '#606878', secondary: '#c0c8d8', accent: '#00e5ff', bgDeep: '#0c0d0e', bgBase: '#10111a', bgSurface: '#14161e', bgElevated: '#1c1e28', textPrimary: '#eef0f5', textSecondary: '#a0a8bb', textMuted: '#606878', border: '#353840' },
     icon: 'fas fa-skull-crossbones',
     theme: {
       accent: '#c0c0c0', accentSecondary: '#19f3f7', headerBg: '#0a0a0a',
@@ -381,6 +388,7 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'personal-memory': {
     label: 'Personal Memory Chip',
+    palette: { primary: '#d09040', secondary: '#f0b860', accent: '#e0a0a0', bgDeep: '#0f0c08', bgBase: '#120e08', bgSurface: '#15120a', bgElevated: '#1e1a10', textPrimary: '#f8f0e0', textSecondary: '#c8a878', textMuted: '#808090', border: '#3a2a18' },
     icon: 'fas fa-brain',
     theme: {
       accent: '#e8a0ff', accentSecondary: '#ffddaa', headerBg: '#1a0a20',
@@ -400,6 +408,7 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'military-intel': {
     label: 'Military Intelligence',
+    palette: { primary: '#4a7a2a', secondary: '#80cc50', accent: '#e0b040', bgDeep: '#080a08', bgBase: '#0a0d08', bgSurface: '#0d100a', bgElevated: '#141a0e', textPrimary: '#e0f0d0', textSecondary: '#90bb60', textMuted: '#608090', border: '#2a3a20' },
     icon: 'fas fa-crosshairs',
     theme: {
       accent: '#44aa44', accentSecondary: '#88cc88', headerBg: '#0a1a0a',
@@ -419,6 +428,7 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'media-leak': {
     label: 'Media Leak',
+    palette: { primary: '#2a6acc', secondary: '#60b0ff', accent: '#ff5050', bgDeep: '#08090f', bgBase: '#0a0c14', bgSurface: '#0e1018', bgElevated: '#141820', textPrimary: '#e8f0f8', textSecondary: '#90b0dd', textMuted: '#607898', border: '#1a2a4a' },
     icon: 'fas fa-tower-broadcast',
     theme: {
       accent: '#4488ff', accentSecondary: '#ffffff', headerBg: '#0a0a1a',
@@ -438,6 +448,7 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'fixer-dead-drop': {
     label: 'Fixer Dead Drop',
+    palette: { primary: '#d040e0', secondary: '#e070ff', accent: '#ff60b0', bgDeep: '#0c080f', bgBase: '#0e0a12', bgSurface: '#120e18', bgElevated: '#1a1422', textPrimary: '#f0e0f8', textSecondary: '#bb90cc', textMuted: '#7050a0', border: '#3a2050' },
     icon: 'fas fa-handshake-angle',
     theme: {
       accent: '#ff6600', accentSecondary: '#19f3f7', headerBg: '#1a0a00',
@@ -457,6 +468,7 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'street-shard': {
     label: 'Street Shard',
+    palette: { primary: '#777777', secondary: '#b0a090', accent: '#d0a050', bgDeep: '#0c0c0c', bgBase: '#101010', bgSurface: '#141414', bgElevated: '#1c1c1c', textPrimary: '#e8e0d8', textSecondary: '#aaa8a0', textMuted: '#606060', border: '#2a2a2a' },
     icon: 'fas fa-microchip',
     theme: {
       accent: '#888888', accentSecondary: '#cccccc', headerBg: '#0f0f0f',
@@ -476,6 +488,7 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'netwatch-evidence': {
     label: 'NetWatch Evidence',
+    palette: { primary: '#dd3030', secondary: '#aa88ee', accent: '#e0b040', bgDeep: '#0a080c', bgBase: '#0c0a10', bgSurface: '#10101a', bgElevated: '#181420', textPrimary: '#e8e0f0', textSecondary: '#a098cc', textMuted: '#607090', border: '#2a2040' },
     icon: 'fas fa-eye',
     theme: {
       accent: '#ff8800', accentSecondary: '#4488ff', headerBg: '#0a0a1a',
@@ -1066,7 +1079,6 @@ export const TEMPLATES = Object.freeze({
   CONTENT_BODY: `${T}/content/content-body.hbs`,
   PARTIAL_ENCRYPTED_ATTACHMENT: `${T}/partials/encrypted-attachment.hbs`,
   PARTIAL_ATTACHMENT_CHIP:      `${T}/partials/attachment-chip.hbs`,
-  SHARD_CONVERSION: `${T}/dialogs/shard-conversion.hbs`,
   // ─── Terminal Expansion ───
   TERMINAL_VIEWER: `${T}/terminal/terminal-viewer.hbs`,
   TERMINAL_BOOT: `${T}/terminal/terminal-boot.hbs`,
@@ -1079,6 +1091,8 @@ export const TEMPLATES = Object.freeze({
   TERMINAL_CONFIG: `${T}/terminal/terminal-config.hbs`,
   TERMINAL_CONFIG_ACCOUNT: `${T}/terminal/partials/config-account.hbs`,
   MALWARE_WORKSHOP: `${T}/malware-workshop/malware-workshop.hbs`,
+  SHARD_ENCODER: `${T}/shard-encoder/shard-encoder.hbs`,
+  ENCODER_CONFIG: `${T}/shard-encoder/encoder-config.hbs`,
   PROGRAM_DECK: `${T}/program-deck/program-deck.hbs`,
 });
 
@@ -1470,10 +1484,27 @@ export const DEFAULTS = Object.freeze({
   ],
 });
 
+/**
+ * The themeable palette: a key → the CSS variable it writes. Everything that
+ * themes a surface iterates THIS — `ThemeService.applyTheme`, the player Theme
+ * Customizer's swatch grid, the terminal Theme tab's override grid and
+ * `buildTerminalThemePrefs` / `buildShardThemePrefs` — so a key added here
+ * reaches all of them at once.
+ *
+ * `border` and `textMuted` joined in 2026-09-22 with the shard palettes: shard
+ * presets carry a tinted border and a tinted footer as part of their identity
+ * (Arasaka's rust-red rule, NetWatch's purple), and without these two keys those
+ * could not survive the move out of CSS. They were already half-present —
+ * `CONTRAST_SPREAD` has tone-mapped both under these exact names since the
+ * contrast slider shipped — so this closes a gap rather than opening one.
+ * No THEME_PRESET defines them, so the player theme is unchanged until someone
+ * sets an override; `variables.css` keeps the :root defaults they fall back to.
+ */
 export const COLOR_VAR_MAP = Object.freeze({
   primary: '--ncm-primary', secondary: '--ncm-secondary', accent: '--ncm-accent',
   bgDeep: '--ncm-bg-deep', bgBase: '--ncm-bg-base', bgSurface: '--ncm-bg-surface',
   bgElevated: '--ncm-bg-elevated', textPrimary: '--ncm-text-primary', textSecondary: '--ncm-text-secondary',
+  textMuted: '--ncm-text-muted', border: '--ncm-border',
 });
 
 /**

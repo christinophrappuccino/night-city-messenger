@@ -17,6 +17,7 @@
 .ncm-term-config button.ncm-tc__color-reset,
 .ncm-tc .ncm-tc__citem-actions button,
 .ncm-term-config .ncm-tc__citem-actions button,
+.ncm-item-inbox-config .ncm-tc__citem-actions button,
 .ncm-tc .ncm-tc__switch, .ncm-term-config .ncm-tc__switch {
   appearance: none; -webkit-appearance: none;
   background-image: none; box-shadow: none;
@@ -76,9 +77,12 @@
 .ncm-app .ncm-tc__citem-swatch span { width: 8px; height: 16px; border-radius: 1px; }
 .ncm-app .ncm-tc__citem-name { font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ncm-app .ncm-tc__citem-actions { display: flex; gap: 4px; flex-shrink: 0; }
-.ncm-tc .ncm-tc__citem-actions button, .ncm-term-config .ncm-tc__citem-actions button { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid transparent; border-radius: 2px; color: var(--ncm-text-muted); cursor: pointer; font-size: calc(9px * var(--ncm-text-scale, 1)); transition: all 0.15s; padding: 0; margin: 0; }
-.ncm-tc .ncm-tc__citem-actions button:hover, .ncm-term-config .ncm-tc__citem-actions button:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border); }
-.ncm-tc button.ncm-tc__citem-del:hover, .ncm-term-config button.ncm-tc__citem-del:hover { color: var(--ncm-primary); border-color: color-mix(in srgb, var(--ncm-primary) 30%, transparent); }
+.ncm-tc .ncm-tc__citem-actions button, .ncm-term-config .ncm-tc__citem-actions button,
+.ncm-item-inbox-config .ncm-tc__citem-actions button { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid transparent; border-radius: 2px; color: var(--ncm-text-muted); cursor: pointer; font-size: calc(9px * var(--ncm-text-scale, 1)); transition: all 0.15s; padding: 0; margin: 0; }
+.ncm-tc .ncm-tc__citem-actions button:hover, .ncm-term-config .ncm-tc__citem-actions button:hover,
+.ncm-item-inbox-config .ncm-tc__citem-actions button:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border); }
+.ncm-tc button.ncm-tc__citem-del:hover, .ncm-term-config button.ncm-tc__citem-del:hover,
+.ncm-item-inbox-config button.ncm-tc__citem-del:hover { color: var(--ncm-primary); border-color: color-mix(in srgb, var(--ncm-primary) 30%, transparent); }
 .ncm-app .ncm-tc__cempty { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); text-align: center; padding: 10px; opacity: 0.6; }
 
 .ncm-app .ncm-tc__pactions { display: flex; gap: 6px; padding: 8px 16px 12px; }

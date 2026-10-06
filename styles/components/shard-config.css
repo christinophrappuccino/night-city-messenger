@@ -244,7 +244,9 @@
 .ncm-app .ncm-cfg-preview-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
 .ncm-app .ncm-cfg-preview-label { font-family:var(--ncm-font-display); font-size:11px; font-weight:600; color:var(--ncm-text-muted); text-transform:uppercase; letter-spacing:.08em; flex:1; display:flex; align-items:center; gap:5px; }
 .ncm-app .ncm-cfg-preview-btn { all:unset!important; padding:6px 14px!important; cursor:pointer!important; font-family:var(--ncm-font-display)!important; font-size:11px!important; font-weight:700!important; text-transform:uppercase!important; letter-spacing:.06em!important; border-radius:3px!important; background:color-mix(in srgb, var(--ncm-success) 6%, transparent)!important; border:1px solid color-mix(in srgb, var(--ncm-success) 25%, transparent)!important; color:var(--ncm-success)!important; display:flex!important; align-items:center!important; gap:5px!important; box-sizing:border-box!important; }
-.ncm-app .ncm-cfg-preview-btn:hover { background:color-mix(in srgb, var(--ncm-success) 12%, transparent)!important; border-color:var(--ncm-success)!important; }
+/* Hover darkens the TEXT as well as the fill. At 12% tint under the success green
+   this measured 2.98:1 on the clean-light preset — right under the 3:1 floor. */
+.ncm-app .ncm-cfg-preview-btn:hover { background:color-mix(in srgb, var(--ncm-success) 12%, transparent)!important; border-color:var(--ncm-success)!important; color:color-mix(in srgb, var(--ncm-success) 78%, var(--ncm-text-primary))!important; }
 .ncm-app .ncm-cfg-preview-frame { width:100%; height:220px; background:var(--ncm-bg-deep); border:1px solid var(--ncm-border); border-radius:3px; position:relative; overflow:hidden; }
 .ncm-app .ncm-cfg-pf-idle { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--ncm-font-mono); font-size:11px; color:var(--ncm-border-active); }
 
@@ -294,3 +296,89 @@
 .ncm-ip-item-type { font-family:var(--ncm-font-mono); font-size:9px; color:var(--ncm-text-muted); }
 .ncm-ip-item-id { font-family:var(--ncm-font-mono); font-size:8px; color:var(--ncm-border-active); }
 .ncm-ip-empty { padding:20px; text-align:center; font-family:var(--ncm-font-display); font-size:12px; color:var(--ncm-text-muted); }
+
+/* ═══════════════════════════════════════════
+   THEME TAB
+   ═══════════════════════════════════════════
+   Most of this tab borrows the Theme Customizer's `.ncm-tc__*` widgets, which are
+   `.ncm-app`-scoped and so cross-apply here (the terminal config does the same).
+   Its BUTTON/SELECT resets are root-scoped per host, though — `.ncm-item-inbox-config`
+   had to be added to those selector lists in theme-customizer.css. Keep them in step.
+
+   New here: the colour grid, because the shard shows eleven keys in two columns
+   rather than the Customizer's single stacked column. */
+
+.ncm-app .ncm-stc-colors {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 4px 10px; padding: 6px 16px 10px;
+}
+.ncm-app .ncm-stc-crow {
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 5px; border: 1px solid transparent; border-radius: 2px;
+}
+/* An override is a real, reversible edit — mark it so "why is this one different
+   from the preset?" is answerable at a glance, and pair it with the reset button. */
+.ncm-app .ncm-stc-crow.is-override {
+  border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent);
+}
+.ncm-app .ncm-stc-crow input[type="color"] {
+  width: 26px; height: 20px; flex: 0 0 auto; padding: 0; margin: 0;
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  background: none; cursor: pointer;
+}
+.ncm-app .ncm-stc-clabel {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1));
+  font-weight: 600; color: var(--ncm-text-secondary);
+}
+/* The reset only appears once there is something to reset — a permanently-visible
+   button that usually does nothing reads as broken. */
+.ncm-app button.ncm-stc-creset {
+  appearance: none; -webkit-appearance: none;
+  width: 18px; height: 18px; flex: 0 0 auto; padding: 0; margin: 0;
+  min-height: 0; line-height: 1;
+  display: none; align-items: center; justify-content: center;
+  background: none; background-image: none; box-shadow: none;
+  border: 1px solid transparent; border-radius: 2px;
+  color: var(--ncm-text-muted); cursor: pointer;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
+}
+.ncm-app .ncm-stc-crow.is-override button.ncm-stc-creset { display: flex; }
+.ncm-app button.ncm-stc-creset:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border); }
+
+/* The preview strip shows the PLAYER's view of the shard while the sheet around
+   it stays in the admin palette, so it gets its own ground rather than inheriting
+   the tab's (the Theme Customizer's _scopePreviewToPlayerTheme precedent). */
+.ncm-app .ncm-item-inbox-config .ncm-tc__preview.ncm-stc-live,
+.ncm-app.ncm-item-inbox-config .ncm-tc__preview.ncm-stc-live {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: var(--ncm-bg-deep);
+}
+.ncm-app .ncm-tc__preview.ncm-stc-live::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: -1;
+  background-image: var(--ncm-wallpaper, none);
+  background-size: cover; background-position: center;
+  opacity: min(1, calc(var(--ncm-wallpaper-strength, .25) * 2.2));
+}
+
+/* A full shard preset that carries a security block says so on its row — the
+   warning cannot wait for the confirm dialog, because the row is where the GM
+   decides which one to click. */
+.ncm-app .ncm-stc-secchip {
+  flex: 0 0 auto; padding: 1px 5px; border-radius: 1px;
+  font-family: var(--ncm-font-display); font-size: calc(9px * var(--ncm-text-scale, 1));
+  font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ncm-warning, #f7c948);
+  border: 1px solid color-mix(in srgb, var(--ncm-warning, #f7c948) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-warning, #f7c948) 10%, transparent);
+}
+
+/* The Theme panel mixes two indent systems: the borrowed `.ncm-tc__*` widgets
+   carry their own 16px inset, while `.ncm-cfg-row` / `.ncm-cfg-hint` expect a
+   padded `.ncm-cfg-section` wrapper that this panel does not use. Without this
+   the rows sat ~16px left of everything else ("the button is off to the left").
+   One rule, so new rows in this panel line up by default. */
+.ncm-app [data-panel="theme"] > .ncm-cfg-row,
+.ncm-app [data-panel="theme"] > .ncm-cfg-hint { padding-left: 16px; padding-right: 16px; margin-left: 0; margin-right: 0; }
+.ncm-app [data-panel="theme"] > .ncm-cfg-row { flex-wrap: wrap; }
