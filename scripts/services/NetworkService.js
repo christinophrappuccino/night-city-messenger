@@ -133,10 +133,12 @@ export class NetworkService {
   /**
    * Get the access control block to stamp on a message being sent.
    * Returns null if the network has no restrictions.
+   * @param {string|null} [networkId] - Stamp for this network instead of the
+   *   current connection (the GM composer's per-message "send via" override).
    * @returns {object|null}
    */
-  getMessageAccessControl() {
-    const network = this.currentNetwork;
+  getMessageAccessControl(networkId = null) {
+    const network = networkId ? this.getNetwork(networkId) : this.currentNetwork;
     if (!network) return null;
     if (!network.effects?.restrictedAccess) return null;
 

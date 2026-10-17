@@ -240,15 +240,22 @@ export class MessageService {
           || messageId;
       }
 
-      // ── Network access control stamping ──
+      // ── GM per-message overrides (composer "send via" network + backdate) ──
       const networkService = game.nightcity.networkService;
-      const accessControl = networkService?.getMessageAccessControl() ?? null;
+      const { viaNetwork, backdate } = this._resolveSendOverrides(data, networkService);
+
+      // ── Network access control stamping ──
+      const accessControl = networkService?.getMessageAccessControl(viaNetwork?.id ?? null) ?? null;
       if (accessControl) {
         data.accessControl = accessControl;
       }
 
       // ── Signal degradation stamping (low signal = garbled body) ──
-      const signalStrength = networkService?.signalStrength ?? 100;
+      // A "send via" override reads that network's configured signal; otherwise
+      // the sender's live connection.
+      const signalStrength = viaNetwork
+        ? (viaNetwork.signalStrength ?? 100)
+        : (networkService?.signalStrength ?? 100);
       if (signalStrength < 50) {
         data.signalDegradation = {
           originalSignal: signalStrength,
@@ -259,8 +266,10 @@ export class MessageService {
         };
       }
 
-      data.network = networkService?.currentNetworkId || data.network || 'CITINET';
-      data.timestamp = this._getTimestamp();
+      data.network = viaNetwork?.id || networkService?.currentNetworkId || data.network || 'CITINET';
+      data.timestamp = backdate || this._getTimestamp();
+      delete data.networkOverride;
+      delete data.backdated;
 
       if (game.user.isGM) {
         return this._deliverMessage(data);
@@ -1463,6 +1472,28 @@ export class MessageService {
   }
 
   // ─── Helpers ──────────────────────────────────────────────
+
+  /**
+   * Resolve the GM composer's per-message overrides. Both are GM-ONLY and
+   * opt-in by flag, so every other caller (players, the dead-zone queue flush,
+   * relayed sends) keeps the old rule: the sender's live connection + now.
+   *  - `networkOverride` + `network`  → send via that network (must exist).
+   *  - `backdated` + `timestamp`      → stamp that date; only a PAST date
+   *    counts (a future one is the scheduler's job, not a stamp).
+   * @returns {{ viaNetwork: object|null, backdate: string|null }}
+   */
+  _resolveSendOverrides(data, networkService) {
+    if (!game.user?.isGM) return { viaNetwork: null, backdate: null };
+    const viaNetwork = (data.networkOverride && data.network)
+      ? (networkService?.getNetwork?.(data.network) ?? null)
+      : null;
+    let backdate = null;
+    if (data.backdated && data.timestamp) {
+      const ms = new Date(data.timestamp).getTime();
+      if (Number.isFinite(ms) && ms <= this._nowMs()) backdate = new Date(ms).toISOString();
+    }
+    return { viaNetwork, backdate };
+  }
 
   _getTimestamp() {
     try {

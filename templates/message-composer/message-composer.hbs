@@ -50,8 +50,12 @@
 
     <div class="ncm-composer__header-divider"></div>
 
-    {{!-- Network pill --}}
-    <div class="ncm-composer__net-pill ncm-composer__net-pill--{{netPillState}}">
+    {{!-- Network pill — a button. Player: switches the real connection.
+         GM: picks the network for THIS message only (VIA = override). --}}
+    <button type="button" class="ncm-composer__net-pill ncm-composer__net-pill--{{netPillState}} {{#if netViaOverride}}ncm-composer__net-pill--override{{/if}}"
+            data-action="toggleNetPicker"
+            data-tooltip="{{#if isGM}}Choose the network this message is sent from{{else}}Switch network{{/if}}">
+      {{#if netViaOverride}}<span class="ncm-composer__net-via">Via</span>{{/if}}
       <span class="ncm-composer__net-dot ncm-composer__net-dot--{{netPillState}}"
             {{#if networkThemeColor}}style="background:{{networkThemeColor}};box-shadow:0 0 4px {{networkThemeColor}}80;"{{/if}}>
       </span>
@@ -70,18 +74,88 @@
       {{#each fxTags}}
         <span class="ncm-composer__fx-tag ncm-composer__fx-tag--{{variant}}">{{label}}</span>
       {{/each}}
-    </div>
+      <i class="fas fa-caret-down ncm-composer__net-caret"></i>
+    </button>
 
-    {{!-- Date/Time chip --}}
+    {{!-- Date/Time chip — GM: pick the message date (past = backdate,
+         future = schedule). Player: display only. --}}
+    {{#if isGM}}
+    <button type="button" class="ncm-composer__time-chip ncm-composer__time-chip--gm {{#if sendBackdated}}ncm-composer__time-chip--dated{{/if}}"
+            data-action="pickSendDate"
+            data-tooltip="Change the message date — a past date backdates it, a future date schedules it">
+      <span class="ncm-composer__time-label">{{#if sendBackdated}}<span class="ncm-composer__time-tag">Dated</span>{{else}}Date / Time{{/if}}</span>
+      <span class="ncm-composer__time-val">{{#if sendBackdated}}{{sendTimestampFormatted}}{{else}}{{currentGameTime}}{{/if}}</span>
+    </button>
+    {{else}}
     <div class="ncm-composer__time-chip">
       <span class="ncm-composer__time-label">Date / Time</span>
       <span class="ncm-composer__time-val">{{currentGameTime}}</span>
     </div>
+    {{/if}}
 
     {{!-- Mode badge --}}
     <span class="ncm-composer__mode ncm-composer__mode--{{modeKey}}">
       <i class="fas {{modeLabelIcon}}"></i> {{modeLabelText}}
     </span>
+
+    {{!-- Network picker dropdown — reuses the inbox selector's row vocabulary
+         (network-selector.css). Toggled + filtered in JS, never re-rendered. --}}
+    <div class="ncm-net-selector ncm-composer__net-picker {{#if netPicker.isDeadZone}}ncm-net-selector--deadzone{{/if}} ncm-hidden" data-id="net-picker">
+      <div class="ncm-net-selector__header">
+        <span class="ncm-net-selector__header-label">{{#if netPicker.isDeadZone}}No Signal{{else}}{{netPicker.header}}{{/if}}</span>
+      </div>
+      {{#if netPicker.showFilters}}
+      <div class="ncm-composer__net-filters">
+        <div class="ncm-composer__net-search">
+          <i class="fas fa-magnifying-glass"></i>
+          <input type="text" placeholder="Search networks…" data-id="net-search" autocomplete="off" />
+        </div>
+        <div class="ncm-composer__net-fchips">
+          {{#each netPicker.filters}}
+          <button type="button" class="ncm-composer__net-fchip {{#if active}}ncm-composer__net-fchip--on{{/if}}" data-net-filter="{{key}}">{{label}}<span>{{count}}</span></button>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+      {{#if netPicker.hasRows}}
+      <div class="ncm-net-selector__list ncm-composer__net-list">
+        {{#each netPicker.rows}}
+        <div class="ncm-net-option ncm-net-option--{{state}} {{#if oor}}ncm-composer__net-row--oor{{/if}} {{#if pinned}}ncm-composer__net-row--pinned{{/if}}"
+             data-net-pick="{{id}}" data-kind="{{kind}}" data-range="{{#if inRange}}1{{else}}0{{/if}}"
+             data-search="{{search}}" {{#if pinned}}data-pinned="1"{{/if}}
+             style="--net-c: {{color}};">
+          <div class="ncm-net-option__icon" style="background: {{color}}14; color: {{color}}; border: 1px solid {{color}}26;">
+            {{{ncm-net-icon theme}}}
+          </div>
+          <div class="ncm-net-option__info">
+            <div class="ncm-net-option__name">{{name}}</div>
+            <div class="ncm-net-option__type">{{meta}}</div>
+          </div>
+          <div class="ncm-net-option__right">
+            <span class="ncm-net-option__chip ncm-net-option__chip--{{chipClass}}">{{#if (eq chipClass 'locked')}}<i class="fas fa-lock"></i> {{/if}}{{chip}}</span>
+            <div class="ncm-net-option__sig">
+              <span class="ncm-net-option__sig-bar {{#if (gt signalStrength 0)}}ncm-net-option__sig-bar--on{{/if}}" style="height:4px"></span>
+              <span class="ncm-net-option__sig-bar {{#if (gte signalStrength 25)}}ncm-net-option__sig-bar--on{{/if}}" style="height:6px"></span>
+              <span class="ncm-net-option__sig-bar {{#if (gte signalStrength 50)}}ncm-net-option__sig-bar--on{{/if}}" style="height:8px"></span>
+              <span class="ncm-net-option__sig-bar {{#if (gte signalStrength 80)}}ncm-net-option__sig-bar--on{{/if}}" style="height:11px"></span>
+            </div>
+          </div>
+        </div>
+        {{/each}}
+        <div class="ncm-composer__net-empty ncm-hidden" data-id="net-empty">No networks match</div>
+      </div>
+      {{else}}
+      <div class="ncm-net-selector__deadzone-body">
+        <div class="ncm-net-selector__deadzone-icon"><i class="fas {{#if netPicker.isDeadZone}}fa-ban{{else}}fa-wifi{{/if}}"></i></div>
+        <div class="ncm-net-selector__deadzone-title">{{#if netPicker.isDeadZone}}Dead Zone{{else}}No Networks in Range{{/if}}</div>
+      </div>
+      {{/if}}
+      {{#if netPicker.footer}}
+      <div class="ncm-net-selector__footer {{#if netPicker.isGM}}ncm-composer__net-foot--gm{{/if}}">
+        <i class="fas {{#if netPicker.isGM}}fa-envelope{{else}}fa-arrows-rotate{{/if}}"></i> {{netPicker.footer}}
+      </div>
+      {{/if}}
+    </div>
   </header>
 
   {{!-- ═══ §2 GM SEND-AS DROPDOWN (GM only, toggled by JS) ═══ --}}

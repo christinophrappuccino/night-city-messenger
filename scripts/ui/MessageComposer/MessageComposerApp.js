@@ -70,6 +70,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       toggleQuote: MessageComposerApp._onToggleQuote,
       toggleOverflow: MessageComposerApp._onToggleOverflow,
       openSchedulePicker: MessageComposerApp._onOpenSchedulePicker,
+      toggleNetPicker: MessageComposerApp._onToggleNetPicker,
+      pickSendDate: MessageComposerApp._onPickSendDate,
       retrySend: MessageComposerApp._onRetrySend,
       removeRecipient: MessageComposerApp._onRemoveRecipient,
       removeAttachment: MessageComposerApp._onRemoveAttachment,
@@ -153,6 +155,15 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   scheduledTime = '';
   /** @type {boolean} */
   scheduleGameTime = false;
+
+  // GM per-message overrides (header pills). Players never set these — their
+  // network pill is a real connection switch, their date chip is display-only.
+  /** @type {string|null} Network id this message goes out via (null = my connection) */
+  sendNetworkId = null;
+  /** @type {string} Backdated ISO stamp ('' = now) — always in the past */
+  sendTimestamp = '';
+  /** @type {{unsubscribe: Function}|null} */
+  _netChangedHandle = null;
 
   // Attachments
   /** @type {Array<{name: string, size: string, icon: string, itemId?: string, encrypted: boolean, isEddies: boolean, eddiesAmount?: number, eddiesFormatted?: string}>} */
@@ -399,15 +410,27 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     // Restore draft if opening fresh compose with no pre-filled data
     this._restoreDraft();
+
+    // Keep the network pill honest when the connection changes elsewhere (the
+    // inbox selector, a scene change). Only THIS client's switches — socket
+    // echoes of other users' switches carry source:'socket' and don't move us.
+    this._netChangedHandle = this.eventBus?.on?.(EVENTS.NETWORK_CHANGED, (data) => {
+      if (data?.source === 'socket' || !this.rendered || this._sending) return;
+      this.render();
+    }) ?? null;
   }
 
   // ─── Lifecycle ────────────────────────────────────────────
 
   async _prepareContext(options) {
     const ns = this.networkService;
-    const network = ns?.currentNetwork;
-    const isDeadZone = ns?.isDeadZone ?? false;
-    const signalStrength = ns?.signalStrength ?? 100;
+    // GM "send via" override: the pill (and everything keyed off the network)
+    // describes the network THIS MESSAGE goes out on, not the GM's connection.
+    const viaNetwork = (game.user.isGM && this.sendNetworkId) ? (ns?.getNetwork?.(this.sendNetworkId) ?? null) : null;
+    if (game.user.isGM && this.sendNetworkId && !viaNetwork) this.sendNetworkId = null; // network deleted
+    const network = viaNetwork || ns?.currentNetwork;
+    const isDeadZone = viaNetwork ? false : (ns?.isDeadZone ?? false);
+    const signalStrength = viaNetwork ? (viaNetwork.signalStrength ?? 100) : (ns?.signalStrength ?? 100);
     const networkName = isDeadZone ? 'DEAD ZONE' : (network?.name?.toUpperCase() || 'OFFLINE');
     const networkThemeColor = isDeadZone ? null : (network?.theme?.color || null);
 
@@ -577,6 +600,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       netPillState,
       netPillBars,
       fxTags,
+      netViaOverride: !!viaNetwork,
+      netPicker: this._buildNetPicker(),
+
+      // GM date chip (backdate)
+      sendBackdated: isGM && !!this.sendTimestamp,
+      sendTimestampFormatted: this.sendTimestamp ? formatCyberDate(this.sendTimestamp) : '',
       modeLabelText,
       modeLabelIcon,
       modeKey,
@@ -674,6 +703,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this._setupKeyboardShortcuts();
     this._startAutoSave();
     this._setupSendAsList();
+    this._setupNetPicker();
     this._setupToolbarFocusGuard();
     this._setupEditorStateTracking();
 
@@ -689,11 +719,242 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   async close(options = {}) {
     this._stopAutoSave();
+    this._closeNetPicker();
+    this._netChangedHandle?.unsubscribe?.();
+    this._netChangedHandle = null;
     if (this._editorStateHandler) {
       document.removeEventListener('selectionchange', this._editorStateHandler);
       this._editorStateHandler = null;
     }
     return super.close(options);
+  }
+
+  // ─── Network Picker (header pill dropdown) ────────────────
+
+  /**
+   * Rows for the header network pill's dropdown. Two behaviours:
+   *  - PLAYER: the inbox selector's list (only reachable networks; locked ones
+   *    go through the auth dialog). Picking one is a real connection switch.
+   *  - GM: every network, for THIS MESSAGE only. Their own connection is
+   *    pinned first as the default; search + type chips narrow a long list.
+   */
+  _buildNetPicker() {
+    const ns = this.networkService;
+    const isGM = game.user.isGM;
+    const empty = { isGM, rows: [], filters: [], hasRows: false, isDeadZone: false, footer: '' };
+    if (!ns) return empty;
+
+    const TYPE_LABELS = {
+      public: 'Public Subnet', hidden: 'Hidden Subnet', corporate: 'Corporate Subnet',
+      government: 'Government Subnet', custom: 'Custom Subnet',
+    };
+    const CHIP_LABELS = { public: 'Public', hidden: 'Hidden', corporate: 'Corp', government: 'Gov', custom: 'Custom' };
+    const currentId = ns.currentNetworkId;
+    const availableIds = new Set((ns.getAvailableNetworks?.() ?? []).map(n => n.id));
+    const base = (net) => {
+      const kind = TYPE_LABELS[net.type] ? net.type : 'custom';
+      return {
+        id: net.id,
+        name: net.name,
+        kind,
+        typeLabel: TYPE_LABELS[kind],
+        theme: net.theme || {},
+        color: net.theme?.color ?? '#19f3f7',
+        signalStrength: net.signalStrength ?? 75,
+        inRange: availableIds.has(net.id) && (net.signalStrength ?? 75) > 0,
+      };
+    };
+    const all = ns.getAllNetworks?.() ?? [];
+
+    if (!isGM) {
+      // Same reachability rules as MessageViewerApp._buildSelectorNetworks.
+      if (ns.isDeadZone) return { ...empty, isDeadZone: true, footer: 'Dead zone — all signals jammed' };
+      const order = { active: 0, available: 1, locked: 2 };
+      const rows = all.map(base).filter(r => r.inRange).map(r => {
+        const net = ns.getNetwork(r.id);
+        const locked = (net?.security?.requiresAuth ?? false) && !(ns.isAuthenticated?.(r.id) ?? false);
+        const state = r.id === currentId ? 'active' : locked ? 'locked' : 'available';
+        return {
+          ...r, state,
+          chip: state === 'active' ? 'Connected' : state === 'locked' ? 'Locked' : 'Connect',
+          chipClass: state === 'active' ? 'on' : state === 'locked' ? 'locked' : 'go',
+          meta: `${r.typeLabel} · ${r.signalStrength}%`,
+        };
+      }).sort((a, b) => order[a.state] - order[b.state]);
+      return {
+        ...empty, rows, hasRows: rows.length > 0,
+        header: 'Available Networks',
+        footer: 'Switches your connection — your inbox follows',
+      };
+    }
+
+    // GM — the whole world's list; own connection pinned, then in-range, then A→Z.
+    const mine = ns.getNetwork?.(currentId);
+    const rows = all.map(base).map(r => {
+      const isMine = r.id === currentId;
+      const chosen = this.sendNetworkId ? this.sendNetworkId === r.id : isMine;
+      return {
+        ...r, pinned: isMine,
+        state: chosen ? 'active' : 'available',
+        chip: chosen ? (isMine ? 'Default' : 'Sending via') : (isMine ? 'Use default' : 'Send via'),
+        chipClass: chosen ? (isMine ? 'on' : 'via') : 'go',
+        meta: isMine
+          ? `Your connection · ${r.signalStrength}%`
+          : `${r.typeLabel} · ${r.signalStrength}%${r.inRange ? '' : ' · out of range'}`,
+        oor: !r.inRange,
+        search: `${r.name} ${r.typeLabel}`.toLowerCase(),
+      };
+    }).sort((a, b) => (b.pinned - a.pinned) || (b.inRange - a.inRange) || a.name.localeCompare(b.name));
+
+    const others = rows.filter(r => !r.pinned);
+    const filters = [
+      { key: 'all', label: 'All', count: others.length, active: true },
+      { key: 'range', label: 'In range', count: others.filter(r => r.inRange).length },
+      ...Object.keys(CHIP_LABELS)
+        .map(k => ({ key: k, label: CHIP_LABELS[k], count: others.filter(r => r.kind === k).length }))
+        .filter(f => f.count > 0),
+    ];
+    return {
+      ...empty, rows, hasRows: rows.length > 0,
+      header: 'Send this message via',
+      filters,
+      showFilters: others.length > 0,
+      footer: `This message only — you stay on ${mine?.name || 'your connection'}`,
+    };
+  }
+
+  /** Wire the network dropdown: picks, search, filter chips, outside-click close. */
+  _setupNetPicker() {
+    const el = this.element;
+    const menu = el?.querySelector('[data-id="net-picker"]');
+    if (!menu || menu._ncmBound) return;
+    menu._ncmBound = true;
+
+    let filter = 'all';
+    const search = menu.querySelector('[data-id="net-search"]');
+    const apply = () => {
+      const q = (search?.value || '').trim().toLowerCase();
+      let shown = 0;
+      menu.querySelectorAll('[data-net-pick]').forEach(row => {
+        if (row.dataset.pinned) return;
+        const okF = filter === 'all' || (filter === 'range' ? row.dataset.range === '1' : row.dataset.kind === filter);
+        const ok = okF && (!q || (row.dataset.search || '').includes(q));
+        row.classList.toggle('ncm-hidden', !ok);
+        if (ok) shown++;
+      });
+      menu.querySelector('[data-id="net-empty"]')?.classList.toggle('ncm-hidden', shown > 0);
+    };
+    search?.addEventListener('input', apply);
+
+    menu.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-net-filter]');
+      if (chip) {
+        e.preventDefault();
+        filter = chip.dataset.netFilter;
+        menu.querySelectorAll('[data-net-filter]').forEach(c =>
+          c.classList.toggle('ncm-composer__net-fchip--on', c === chip));
+        apply();
+        return;
+      }
+      const row = e.target.closest('[data-net-pick]');
+      if (row) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this._onPickNetwork(row.dataset.netPick);
+      }
+    }, true);
+  }
+
+  _closeNetPicker() {
+    const menu = this.element?.querySelector('[data-id="net-picker"]');
+    menu?.classList.add('ncm-hidden');
+    this.element?.querySelector('[data-action="toggleNetPicker"]')?.classList.remove('ncm-composer__net-pill--open');
+    if (this._netOutsideHandler) {
+      document.removeEventListener('click', this._netOutsideHandler, true);
+      this._netOutsideHandler = null;
+    }
+  }
+
+  static _onToggleNetPicker(event, target) {
+    const menu = this.element?.querySelector('[data-id="net-picker"]');
+    if (!menu) return;
+    if (!menu.classList.contains('ncm-hidden')) { this._closeNetPicker(); return; }
+
+    menu.classList.remove('ncm-hidden');
+    target.classList.add('ncm-composer__net-pill--open');
+    // Anchor under the pill (the header is the positioning context).
+    menu.style.left = `${target.offsetLeft}px`;
+    menu.querySelector('[data-id="net-search"]')?.focus();
+
+    this._netOutsideHandler = (e) => {
+      if (menu.contains(e.target) || target.contains(e.target)) return;
+      this._closeNetPicker();
+    };
+    requestAnimationFrame(() => document.addEventListener('click', this._netOutsideHandler, true));
+  }
+
+  /**
+   * GM: set (or clear) this message's network. Player: switch the real
+   * connection — same auth gate as the inbox selector — and let the
+   * NETWORK_CHANGED listener re-render.
+   */
+  async _onPickNetwork(networkId) {
+    this._closeNetPicker();
+    if (!networkId) return;
+    const ns = this.networkService;
+
+    if (game.user.isGM) {
+      this.sendNetworkId = networkId === ns?.currentNetworkId ? null : networkId;
+      this.render();
+      return;
+    }
+
+    const network = ns?.getNetwork?.(networkId);
+    if (!network || networkId === ns.currentNetworkId) return;
+    const requiresAuth = network.security?.requiresAuth ?? false;
+    if (requiresAuth && !(ns.isAuthenticated?.(networkId) ?? false)) {
+      const { NetworkAuthDialog } = await import('../NetworkManagement/NetworkAuthDialog.js');
+      const result = await NetworkAuthDialog.show(networkId);
+      if (!result?.success) return;
+    }
+    const res = await ns.switchNetwork?.(networkId);
+    if (res?.success === false) {
+      ui.notifications.warn(`NCM | Could not switch to ${network.name}: ${res.reason || 'unknown error'}`);
+    }
+  }
+
+  // ─── GM Date Chip (backdate) ──────────────────────────────
+
+  /**
+   * GM: pick this message's date. Past → delivered now but stamped then.
+   * Future → that's a schedule, so it switches on the existing Schedule
+   * instead of inventing a second one. Clear → now.
+   */
+  static _onPickSendDate(event, target) {
+    if (!game.user.isGM) return;
+    const nowMs = this.timeService?.getCurrentTimeMs?.() ?? Date.now();
+    CyberTimePicker.open({
+      value: this.sendTimestamp || this.timeService?.getCurrentTime?.() || new Date().toISOString(),
+      title: 'Message Date',
+      onSet: (iso) => {
+        const ms = new Date(iso).getTime();
+        if (!Number.isFinite(ms)) return;
+        if (ms > nowMs) {
+          this.sendTimestamp = '';
+          this.scheduleEnabled = true;
+          this.scheduledTime = iso;
+          this.scheduleGameTime = true;
+          ui.notifications.info('NCM | That date is in the future — the message will be scheduled for it.');
+        } else {
+          this.sendTimestamp = new Date(ms).toISOString();
+        }
+        this.render();
+      },
+      onClear: () => {
+        this.sendTimestamp = '';
+        this.render();
+      },
+    });
   }
 
   // ─── Effects Tags Builder ─────────────────────────────────
@@ -1498,6 +1759,16 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         eddies: this.eddiesAmount || 0,
       };
 
+      // GM per-message overrides — the service honors them only for a GM sender.
+      if (game.user.isGM && this.sendNetworkId) {
+        messageData.network = this.sendNetworkId;
+        messageData.networkOverride = true;
+      }
+      if (game.user.isGM && this.sendTimestamp && !this.scheduleEnabled) {
+        messageData.timestamp = this.sendTimestamp;
+        messageData.backdated = true;
+      }
+
       // Anonymous reply — carry the hidden-target descriptor; the GM resolves the
       // real recipient at delivery (no toActorId/to is set client-side).
       if (this.anonReplyTo) {
@@ -1747,6 +2018,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   static _onToggleSchedule(event, target) {
     this.scheduleEnabled = !this.scheduleEnabled;
+    // A scheduled message is stamped when it's delivered — drop any backdate.
+    if (this.scheduleEnabled) this.sendTimestamp = '';
     // Pre-fill with current time when enabling
     if (this.scheduleEnabled && !this.scheduledTime) {
       this.scheduledTime = this.timeService?.getCurrentTime?.() || new Date().toISOString();
@@ -2562,7 +2835,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const failureEl = el.querySelector('[data-id="send-failure"]');
     if (!overlay) return;
 
-    const netName = this.networkService?.currentNetwork?.name?.toUpperCase() || 'CITINET';
+    const viaNet = (game.user.isGM && this.sendNetworkId) ? this.networkService?.getNetwork?.(this.sendNetworkId) : null;
+    const netName = (viaNet || this.networkService?.currentNetwork)?.name?.toUpperCase() || 'CITINET';
     const recipientName = this.recipients.length > 0 ? this.recipients[0].name : '—';
 
     if (state === 'transmit') {
@@ -2577,7 +2851,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       const stream = el.querySelector('[data-id="send-stream"]');
       if (stream) {
         const encLabel = this.encryptionEnabled ? `ICE DV${this.encryptionDV}` : 'NONE';
-        const sig = this.networkService?.signalStrength ?? 100;
+        const sig = viaNet ? (viaNet.signalStrength ?? 100) : (this.networkService?.signalStrength ?? 100);
         stream.innerHTML = `PKT 0x${Math.random().toString(16).slice(2, 6).toUpperCase()} → NODE_${String(Math.floor(Math.random() * 20)).padStart(2, '0')} → RELAY<br>ENC: ${encLabel} · SIG: ${sig}% · PRI: ${this.priority.toUpperCase()}<br>ROUTE: LOCAL → ${netName}_CORE → DEST`;
       }
 

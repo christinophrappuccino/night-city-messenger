@@ -246,6 +246,162 @@
 .ncm-composer__net-bar:nth-child(3) { height: 7px; }
 .ncm-composer__net-bar:nth-child(4) { height: 9px; }
 
+/* Pill is a button now (network picker). Reset Foundry's button defaults. */
+.ncm-composer button.ncm-composer__net-pill,
+.ncm-composer button.ncm-composer__time-chip {
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  appearance: none !important;
+  box-shadow: none !important;
+  background: transparent;
+  background-image: none !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+  font-family: inherit;
+  text-transform: none !important;
+}
+/* Foundry's button rule (0,2,1) outranks the base .ncm-composer__net-pill /
+   __time-chip visuals, so they are restated at button specificity. */
+.ncm-composer button.ncm-composer__net-pill {
+  display: flex !important; align-items: center; gap: 4px;
+  padding: 2px 7px !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
+  border-radius: 10px !important;
+  font-size: inherit;
+}
+.ncm-composer button.ncm-composer__net-pill--dead { border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent); }
+.ncm-composer button.ncm-composer__net-pill--darknet { border-color: color-mix(in srgb, var(--ncm-purple) 20%, transparent); }
+.ncm-composer button.ncm-composer__time-chip {
+  display: flex !important; flex-direction: column; align-items: center;
+  padding: 1px 6px !important;
+  color: inherit;
+  font-size: inherit;
+}
+.ncm-composer button.ncm-composer__net-pill:hover,
+.ncm-composer button.ncm-composer__net-pill--open {
+  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent);
+}
+.ncm-composer__net-caret {
+  font-size: calc(8px * var(--ncm-text-scale, 1)) !important;
+  color: var(--ncm-text-muted);
+  margin: 0 0 0 1px !important;
+}
+/* GM override — this message goes out on a network that isn't the GM's own. */
+.ncm-composer button.ncm-composer__net-pill--override {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ncm-accent) 55%, transparent);
+}
+.ncm-composer__net-via,
+.ncm-composer__time-tag {
+  font-family: var(--ncm-font-display);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ncm-accent);
+}
+.ncm-composer__net-via {
+  border: 1px solid color-mix(in srgb, var(--ncm-accent) 35%, transparent);
+  border-radius: 1px; padding: 0 3px;
+}
+
+/* GM date chip — clickable; a backdated message wears the same amber as VIA. */
+.ncm-composer button.ncm-composer__time-chip--gm {
+  border: 1px solid transparent;
+  border-radius: 2px;
+  gap: 1px;
+}
+.ncm-composer button.ncm-composer__time-chip--gm:hover {
+  border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
+}
+.ncm-composer button.ncm-composer__time-chip--dated {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ncm-accent) 55%, transparent);
+}
+.ncm-composer__time-chip--dated .ncm-composer__time-val { color: var(--ncm-accent); }
+
+/* Network picker dropdown — the inbox selector (network-selector.css),
+   anchored under the pill. `left` is set in JS from the pill's offset. */
+.ncm-composer__header { position: relative; }
+.ncm-app .ncm-composer .ncm-net-selector.ncm-composer__net-picker {
+  top: calc(100% - 2px);
+  width: 300px;
+  z-index: 60;
+}
+.ncm-app .ncm-composer .ncm-net-selector.ncm-composer__net-picker:has(.ncm-composer__net-filters) { width: 330px; }
+.ncm-app .ncm-composer .ncm-composer__net-list {
+  max-height: 260px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.ncm-app .ncm-composer .ncm-net-option { cursor: pointer; }
+.ncm-app .ncm-composer .ncm-composer__net-row--pinned { border-bottom: 1px solid var(--ncm-border); }
+.ncm-app .ncm-composer .ncm-composer__net-row--oor .ncm-net-option__name { opacity: 0.7; }
+.ncm-app .ncm-net-option__chip--via {
+  color: var(--ncm-accent);
+  border: 1px solid color-mix(in srgb, var(--ncm-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent);
+}
+.ncm-app .ncm-composer .ncm-composer__net-foot--gm { color: var(--ncm-accent); }
+.ncm-composer__net-empty {
+  padding: 14px;
+  text-align: center;
+  font-size: calc(12px * var(--ncm-text-scale, 1));
+  color: var(--ncm-text-muted);
+}
+
+/* GM search + filter chips (pinned above the scrolling list) */
+.ncm-composer__net-filters {
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid var(--ncm-border);
+  background: var(--ncm-bg-base);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ncm-composer__net-search {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 8px; height: 26px;
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  background: var(--ncm-bg-deep);
+}
+.ncm-composer__net-search:focus-within { border-color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent); }
+.ncm-composer__net-search i { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+.ncm-app .ncm-composer .ncm-composer__net-search input {
+  flex: 1; min-width: 0;
+  height: 24px !important; min-height: 0 !important;
+  border: 0 !important; padding: 0 !important; margin: 0 !important;
+  background: transparent !important; box-shadow: none !important; outline: none;
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-body);
+  font-size: calc(12px * var(--ncm-text-scale, 1));
+  text-align: left;
+}
+.ncm-composer__net-fchips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-composer button.ncm-composer__net-fchip {
+  display: inline-flex !important; align-items: center; gap: 4px;
+  width: auto !important; height: auto !important; min-height: 0 !important;
+  flex: 0 0 auto !important; margin: 0 !important;
+  appearance: none !important; box-shadow: none !important; background-image: none !important;
+  padding: 3px 6px; line-height: 1;
+  font-family: var(--ncm-font-display);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ncm-text-secondary);
+  background: transparent;
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  cursor: pointer;
+}
+.ncm-composer button.ncm-composer__net-fchip span {
+  font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-muted);
+}
+.ncm-composer button.ncm-composer__net-fchip:hover { border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
+.ncm-composer button.ncm-composer__net-fchip--on {
+  color: var(--ncm-secondary);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 55%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
+}
+
 .ncm-composer__fx-tag {
   font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.04em;
