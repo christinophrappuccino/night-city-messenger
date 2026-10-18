@@ -28,12 +28,15 @@
 <style>
   body { margin: 0; padding: 12px; background: #333; }
   .probe-label { color: #fff; font: 11px/1.45 monospace; margin-bottom: 6px; white-space: pre; }
+  /* ?bare=1 hides the report so the window can be captured on its own */
+  body.bare .probe-label { display: none; }
   #app { position: relative !important; inset: auto !important; width: 880px; height: 700px; display: flex; flex-direction: column; }
   #app > .window-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0; }
 </style>
 </head>
 <body>
 <div class="probe-label" id="lbl">loading…</div>
+<script>if (new URLSearchParams(location.search).get('bare') === '1') document.body.classList.add('bare');</script>
 <div class="application ncm-app ncm-encoder-config" id="app">
   <header class="window-header"><h1 class="window-title">Player Authoring — the Shard Encoder</h1><button class="header-control fa-solid fa-xmark"></button></header>
   <section class="window-content"><div class="ncm-ecfg" id="ecRoot"></div></section>

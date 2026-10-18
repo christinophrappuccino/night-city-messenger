@@ -106,7 +106,7 @@
   <div class="cover-sub">Getting Started Guide — for GMs and players</div>
   <div class="cover-shot"><img src="img/access-granted.png" alt="Terminal login — access granted"></div>
   <div class="cover-foot">
-    <div>v1.0.0</div>
+    <div>v1.2.0</div>
     <div class="r">github.com/christinophrappuccino/night-city-messenger</div>
   </div>
 </section>
@@ -120,11 +120,12 @@
     <li>Every player character gets an <strong>Agent</strong> — an in-game phone with messages, contacts, and money transfers. Players can customize how theirs looks.</li>
     <li>Scenes have <strong>networks</strong>. Your phone only picks up networks that exist where you are. Some need a password or a skill check to join. Some areas have no signal at all.</li>
     <li>The GM can turn any Item into a <strong>data shard</strong> (an encrypted file players crack open) or a <strong>terminal</strong> (a computer players log into). Both can hold all kinds of content: spreadsheets, camera feeds, bank accounts, chat logs, and more.</li>
+    <li>Players can make their own shards and programs with the <strong>Shard Encoder</strong>: forged documents, fake chat logs, keyloggers, and more.</li>
     <li>Players can steal data from machines, or plant fake data and malware on them. Risky actions use real Cyberpunk RED skill rolls. Failed rolls build up <strong>heat</strong> that the GM can punish.</li>
     <li>The GM controls everything from one <strong>Admin Panel</strong>.</li>
   </ul>
   <div class="tip"><span class="k">Pacing</span>Most tables add features in this order: <strong>messages → contacts → networks → shards → terminals → hacking</strong>. Each step works fine without the ones after it. You don't need to learn all of it at once.</div>
-  <div class="tip"><span class="k">Who reads what</span><strong>GMs:</strong> read Part 1 to set up (about 15 minutes), come back to the rest when you want it. <strong>Players:</strong> Part 2 is all you need.</div>
+  <div class="tip"><span class="k">Who reads what</span><strong>GMs:</strong> read Part 1 to set up (about 15 minutes), come back to the rest when you want it. <strong>Players:</strong> Part 2 is all you need, plus Part 5 if your GM lets you make shards.</div>
 
   <h3>Contents</h3>
   <div class="toc">
@@ -132,11 +133,12 @@
     <div class="toc-item"><span class="no">02</span><span class="lbl">Players: your Agent</span><span class="who">Players</span></div>
     <div class="toc-item"><span class="no">03</span><span class="lbl">Sending mail</span><span class="who">GM</span></div>
     <div class="toc-item"><span class="no">04</span><span class="lbl">Data shards</span><span class="who">GM</span></div>
-    <div class="toc-item"><span class="no">05</span><span class="lbl">Terminals</span><span class="who">GM</span></div>
-    <div class="toc-item"><span class="no">06</span><span class="lbl">Hacking &amp; consequences</span><span class="who">GM</span></div>
-    <div class="toc-item"><span class="no">07</span><span class="lbl">Three rules to remember</span><span class="who">Everyone</span></div>
-    <div class="toc-item"><span class="no">08</span><span class="lbl">Settings that matter</span><span class="who">GM</span></div>
-    <div class="toc-item"><span class="no">09</span><span class="lbl">Your first sessions</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">05</span><span class="lbl">Players make shards</span><span class="who">Everyone</span></div>
+    <div class="toc-item"><span class="no">06</span><span class="lbl">Terminals</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">07</span><span class="lbl">Hacking &amp; consequences</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">08</span><span class="lbl">Three rules to remember</span><span class="who">Everyone</span></div>
+    <div class="toc-item"><span class="no">09</span><span class="lbl">Settings that matter</span><span class="who">GM</span></div>
+    <div class="toc-item"><span class="no">10</span><span class="lbl">Your first sessions</span><span class="who">GM</span></div>
   </div>
   <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>01</span></div>
 </section>
@@ -201,6 +203,13 @@
 
   <h3>7 — Bring in the players</h3>
   <p>That's it. Tell your players to click <strong>Open Inbox</strong>. The module walks them through the rest.</p>
+
+  <h3>Make the GM tools comfortable</h3>
+  <p>Admin Panel → Tools → <strong>Admin Appearance</strong> sets the look and text size for every GM window (dark, light, or high contrast). The inbox, composer, and contacts windows have an <strong>eye button</strong> in their title bar that switches between your admin look and exactly what players see.</p>
+
+  <div class="warn"><span class="k">Upgrading from v1.0</span>The module's id changed from <code>cyberpunkred-messenger</code> to <code>night-city-messenger</code>, so Foundry treats it as a new module. Back up your world, disable and uninstall the old one, install the new one, then load the world as GM and click <strong>Yes</strong> on the migration prompt. Players just log in once. Don't run both versions at the same time.</div>
+
+  <div class="tip"><span class="k">Starting over</span>Admin Panel → Tools → Danger Zone → <strong>Factory Reset</strong> wipes every message, shard, and terminal in the world, and (unless you untick it) resets the module settings. You have to type RESET to confirm. Back up first.</div>
   <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>05</span></div>
 </section>
 
@@ -276,7 +285,7 @@
 
   <h3>Make one</h3>
   <p>Right-click any Item and pick <strong>Convert to Data Shard</strong>. As GM, it converts right away. Right-click again and pick <strong>Configure Shard</strong> to set the difficulty, the skill needed, lockouts, and Black ICE that attacks players who fail.</p>
-  <p>Players can convert items too, but they have to pass a skill check first.</p>
+  <p>Players can make shards too, with the Shard Encoder (see Part 05).</p>
 
   <h3>Put stuff inside</h3>
   <p>Open the shard and add entries. There are <strong>18 kinds of content</strong>, and each one looks like the real thing:</p>
@@ -294,19 +303,79 @@
 
 <!-- ═══════════════ PART 4 (b) ═══════════════ -->
 <section class="page">
-  <figure style="margin-top:0"><div class="shot"><img src="img/banking.png" alt="Bank account content"></div>
+  <figure class="fig-85" style="margin-top:0"><div class="shot"><img src="img/banking.png" alt="Bank account content"></div>
   <figcaption>A bank account entry — and the siphon minigame players use to drain it.</figcaption></figure>
-  <figure class="fig-63"><div class="shot"><img src="img/gallery-feed.png" alt="Photo gallery content"></div>
+  <figure class="fig-63" style="width:56%"><div class="shot"><img src="img/gallery-feed.png" alt="Photo gallery content"></div>
   <figcaption>A photo gallery: flagged evidence, timestamps, and an encrypted frame that takes a roll to decrypt.</figcaption></figure>
 
   <h3>Give it to the players</h3>
   <p>The shard is a normal Item. Hand it over however you like: drop it as loot, put it on a body, trade it. The player cracks it open with a skill check. There's a whole animated hacking sequence, and lockouts if they keep failing.</p>
+
+  <h3>Make it look right</h3>
+  <p>Configure Shard → <strong>Theme</strong> sets the shard's colors, fonts, wallpaper, text size, and contrast, starting from a preset (corporate dossier, black market, medical record, and more). Save a look you like and reuse it on other shards. You can also save a <strong>full shard setup</strong> to the library; its security settings only come along if you tick the box when saving.</p>
   <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>11</span></div>
+</section>
+
+<!-- ═══════════════ PART 5 (a) — SHARD ENCODER ═══════════════ -->
+<section class="page">
+  <h2><span class="num">// PART 05 · EVERYONE</span>Players make shards</h2>
+  <div class="h2rule"></div>
+  <p class="lead">The Shard Encoder lets players make their own data shards and programs: a forged dossier, a fake chat log, a keylogger to plant on a corp terminal.</p>
+
+  <h3>Open it</h3>
+  <p>Three ways in: <strong>Encode new</strong> on the Shards tab of your Agent, <strong>right-click an item</strong> on your character sheet, or the empty slot in the <strong>Program Deck</strong>. If you don't see any of them, your GM hasn't allowed your character to make shards yet.</p>
+
+  <h3>Four steps</h3>
+  <table>
+    <tr><th>Step</th><th>What you do</th></tr>
+    <tr><td><strong>1 · Blank</strong></td><td>Pick a chip you own, or buy a blank. Give it a name, a look, and the screen it shows when it starts up.</td></tr>
+    <tr><td><strong>2 · Content or Program</strong></td><td>Write files on it (documents, chat logs, photos, cred drops…) or build a program (scanner, keylogger, backdoor, Black ICE).</td></tr>
+    <tr><td><strong>3 · Lock</strong> (optional)</td><td>Add a password, encryption, or a bite-back. How strong you can make it depends on your roll.</td></tr>
+    <tr><td><strong>4 · Encode</strong></td><td>One skill roll decides how it comes out.</td></tr>
+  </table>
+  <figure class="fig-80"><div class="shot"><img src="img/encoder-sealed.png" alt="The Shard Encoder after a clean encode"></div>
+  <figcaption>A forged document encoded clean. The readout says what the roll got you, and how hard the fake is to spot.</figcaption></figure>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>12</span></div>
+</section>
+
+<!-- ═══════════════ PART 5 (b) — SHARD ENCODER ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">How the roll works</h3>
+  <ul>
+    <li><strong>Clean</strong> — meet the DV. It works, and it's hard to tell it's fake.</li>
+    <li><strong>Sloppy</strong> — miss by a little. It still works, but someone who runs <strong>ANALYZE</strong> on it can catch the fake.</li>
+    <li><strong>Rejected</strong> — miss by a lot. Nothing is written. A cheap blank is ruined (bricked); a premium one only gets wiped.</li>
+  </ul>
+  <p>Plain messages, notes, and cred drops aren't fakes, so they don't need a roll at all. Putting eddies on a shard moves them out of your wallet; it doesn't create money. More files on one chip make the roll harder.</p>
+  <figure class="fig-80"><div class="shot"><img src="img/encoder-program.png" alt="Building a program in the Encoder"></div>
+  <figcaption>Building a keylogger. Your Interface rank decides which programs you can build; the roll decides how many charges it gets and how well it hides.</figcaption></figure>
+
+  <h3>Selling it</h3>
+  <p>When the shard is done, you can name a price. Your GM approves, counters, or turns it down, and the price only goes on the item once it's approved.</p>
+  <div class="tip"><span class="k">Hard to read?</span>The <strong>Display</strong> button at the bottom of the Encoder changes text size, contrast, animation, and spacing for you alone, with presets like Large text and Calm.</div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>13</span></div>
+</section>
+
+<!-- ═══════════════ PART 5 (c) — PLAYER AUTHORING (GM) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">For the GM: Player Authoring</h3>
+  <p>Admin Panel → Shards → <strong>Player Authoring</strong> controls all of it. Turn it on first; it's off until you do.</p>
+  <ul>
+    <li><strong>Who can make them</strong> — anyone, or only characters with a certain role, skill rank, gear, or by name. Characters who don't qualify never see the buttons.</li>
+    <li><strong>Blanks</strong> — price tiers (Scrap, Standard, Premium by default): what each costs, how many files it holds, and what a failed roll does to it.</li>
+    <li><strong>What they can make</strong> — which of the 18 content types are allowed, and the skill and DV for each.</li>
+    <li><strong>Programs</strong> — which programs can be built and what rank they need.</li>
+    <li><strong>Optional depth</strong> — off by default: bonuses for carrying gear like a cyberdeck, game time spent encoding, and a friend helping with the roll.</li>
+  </ul>
+  <figure class="fig-80"><div class="shot"><img src="img/player-authoring.png" alt="The Player Authoring window"></div>
+  <figcaption>Player Authoring: here, only a Netrunner or Tech, someone with Interface 4+, or someone carrying the right gear can make shards.</figcaption></figure>
+  <div class="tip"><span class="k">Finding player shards</span>A shard a player made lives on their character, so it isn't in your Items directory. Admin → Shards → <strong>Copy Shards to Items</strong> puts a live copy of each in a "Player-Made Shards" folder, sorted by character. Player-made shards also show a "Made by" badge in the Shards tab.</div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>14</span></div>
 </section>
 
 <!-- ═══════════════ PART 5 (a) ═══════════════ -->
 <section class="page">
-  <h2><span class="num">// PART 05 · GM</span>Terminals</h2>
+  <h2><span class="num">// PART 06 · GM</span>Terminals</h2>
   <div class="h2rule"></div>
   <p class="lead">A terminal is an Item turned into a computer that players log into. A corp workstation, a ripperdoc's records, a street bulletin board.</p>
 
@@ -323,7 +392,7 @@
 
   <h3>Put it in the world</h3>
   <p><strong>Drag the terminal Item onto the map.</strong> It becomes a pin that players double-click to log in. You can require their token to be standing near it. Or skip the pin and let players open the Item directly.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>12</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>15</span></div>
 </section>
 
 <!-- ═══════════════ PART 5 (b) ═══════════════ -->
@@ -337,12 +406,12 @@
   <p>The Exfil tab controls what players can do with files they find. Each action can be off, allowed, or allowed-with-a-roll:</p>
   <p><strong>Download · Burn to shard · Forward · Leak</strong> (posts it to public chat) <strong>· Sell</strong> (instant eddies) <strong>· Wipe</strong> (delete it — you can restore it from a recycle bin)</p>
   <p>Failing a gated roll triggers a trace. One fun detail: live camera feeds can't be downloaded, but players can save a single frame, loop a camera, or cut it. A looped camera shows a frozen timestamp — which someone might notice.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>13</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>16</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (a) ═══════════════ -->
 <section class="page">
-  <h2><span class="num">// PART 06 · GM</span>Hacking and consequences</h2>
+  <h2><span class="num">// PART 07 · GM</span>Hacking and consequences</h2>
   <div class="h2rule"></div>
   <p class="lead">This is the deep end. Skip it until your table wants it.</p>
 
@@ -354,7 +423,7 @@
   </ul>
   <figure class="fig-80"><div class="shot"><img src="img/security-tab.png" alt="The Security tab"></div>
   <figcaption>Admin → Security: the activity log, per-operator heat bars, planted files, and the recycle bin — your whole consequence dashboard.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>14</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>17</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (b) ═══════════════ -->
@@ -370,7 +439,7 @@
 
   <h3>Fighting back</h3>
   <p>Players have tools too. <strong>ANALYZE</strong> checks whether a file is really what it says it is. <strong>SYSTEM SWEEP</strong> scans a whole terminal for planted programs — it reveals what the roll is good enough to find, and never says whether it missed anything.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>15</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>18</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (c) ═══════════════ -->
@@ -379,7 +448,7 @@
   <p>Admin → Security → <strong>Programs</strong> opens the <strong>Malware Workshop</strong>. Build programs with real effects: keyloggers, secret backdoor accounts, ICE traps, logic bombs, file wipers. You can disguise them as harmless files. Give them to players as Items; they carry and use them through the <strong>Program Deck</strong>.</p>
   <figure class="fig-85"><div class="shot"><img src="img/MalwareWorkshop.png" alt="The Malware Workshop"></div>
   <figcaption>The Malware Workshop — the cover story on top, what the program really does underneath.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>16</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>19</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (d) ═══════════════ -->
@@ -389,7 +458,7 @@
 
   <h3>Who can hack at all</h3>
   <p>Admin → Security → <strong>Operator Access</strong> lets you limit who can use terminals: by role, by skill level, by gear they need to own, or by naming specific characters.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>17</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>20</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (e) ═══════════════ -->
@@ -403,12 +472,12 @@
   </ol>
   <figure class="fig-80"><div class="shot"><img src="img/net-adjudicator.png" alt="The GM adjudicator prompt"></div>
   <figcaption>"GM decides" mode: the prompt you get when a player attempts a hack — run the NET at the table, then call it.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>18</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>21</span></div>
 </section>
 
 <!-- ═══════════════ THREE RULES ═══════════════ -->
 <section class="page">
-  <h2><span class="num">// PART 07 · EVERYONE</span>Three rules to remember</h2>
+  <h2><span class="num">// PART 08 · EVERYONE</span>Three rules to remember</h2>
   <div class="h2rule"></div>
   <p class="lead">These three things cause almost every "it's broken" report. Tell your players up front:</p>
 
@@ -426,12 +495,12 @@
   </div>
 
   <div class="tip"><span class="k">Also good to know</span>Self-destructing messages never destroy when a GM reads them (so you can check inboxes safely), and GMs skip most login checks — so if you want to see what players see, log in from a player account.</div>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>19</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>22</span></div>
 </section>
 
 <!-- ═══════════════ SETTINGS ═══════════════ -->
 <section class="page">
-  <h2><span class="num">// PART 08 · GM</span>Settings that matter</h2>
+  <h2><span class="num">// PART 09 · GM</span>Settings that matter</h2>
   <div class="h2rule"></div>
   <p>All in Module Settings. The important ones:</p>
   <table>
@@ -445,15 +514,16 @@
     <tr><td><strong>Planted Program Firing</strong></td><td>fire on their own, or ask you first</td></tr>
     <tr><td><strong>Exfil Folder Name</strong></td><td>what the players' stolen-files folder is called</td></tr>
     <tr><td><strong>Notify GM of NPC Mail</strong></td><td>popup when players message NPCs</td></tr>
+    <tr><td><strong>Auto-register NPC Senders</strong></td><td>sending from an NPC actor adds it to your contact directory</td></tr>
     <tr><td><strong>Terminal Pins Auto-Show</strong></td><td>map pins visible without extra clicks</td></tr>
     <tr><td><strong>Debug Mode</strong></td><td>the module explains its decisions in the console</td></tr>
   </table>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>20</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>23</span></div>
 </section>
 
 <!-- ═══════════════ FIRST SESSIONS ═══════════════ -->
 <section class="page">
-  <h2><span class="num">// PART 09 · GM</span>How to run your first sessions</h2>
+  <h2><span class="num">// PART 10 · GM</span>How to run your first sessions</h2>
   <div class="h2rule"></div>
   <p class="lead">A pacing that works:</p>
   <ol>
@@ -461,7 +531,7 @@
     <li><strong>Session 1:</strong> players make their addresses, style their phones, and message each other and an NPC. You answer in character. That's enough. Let it breathe.</li>
     <li><strong>Session 2:</strong> a job offer arrives by mail — maybe anonymously. Payment attached as eddies. The job involves a data shard with three entries: a plain message, a locked photo, a bank account.</li>
     <li><strong>Session 3:</strong> the job leads to a terminal pinned on the map. Two accounts, one hidden. A camera feed, an incriminating spreadsheet, and a download action that needs a roll. Let someone fail and watch the heat show up on your Security tab.</li>
-    <li><strong>Later:</strong> forged evidence, malware, countdowns. Add them when the table asks, not before.</li>
+    <li><strong>Later:</strong> forged evidence, malware, countdowns, and letting players make their own shards. Add them when the table asks, not before.</li>
   </ol>
 
   <div class="divider"></div>
@@ -470,7 +540,7 @@
     github.com/christinophrappuccino/night-city-messenger<br><br>
     <span style="color:var(--cyan)">Wake up, samurai. You've got mail.</span>
   </p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>21</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>24</span></div>
 </section>
 
 </body>

@@ -29,6 +29,8 @@
 <style>
   body { margin: 0; padding: 12px; background: #1c1c22; }
   .probe-label { color: #cfe; font: 11px/1.5 monospace; margin-bottom: 8px; white-space: pre; }
+  /* ?bare=1 hides the report so the window can be captured on its own */
+  body.bare .probe-label { display: none; }
   #app { position: relative !important; inset: auto !important; width: 1060px; height: 690px; display: flex; flex-direction: column;
          border-radius: 4px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.55); }
   #app > .window-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0; background: none; }
@@ -36,6 +38,7 @@
 </head>
 <body>
 <div class="probe-label" id="lbl">loading…</div>
+<script>if (new URLSearchParams(location.search).get('bare') === '1') document.body.classList.add('bare');</script>
 <div class="application ncm-app ncm-malware-workshop ncm-shard-encoder" id="app">
   <header class="window-header"><h1 class="window-title">Shard Encoder</h1><button class="header-control fa-solid fa-xmark"></button></header>
   <section class="window-content"><div class="ncm-fw ncm-enc" id="encRoot" data-enc-stage="blank"></div></section>
