@@ -1,6 +1,6 @@
-# NCM — v1.2.0 Release Checklist
+# NCM — v1.2.2 Release Checklist
 
-The live-test pass that has to happen before v1.2.0 goes public. **Nothing below has been run in a real Foundry world yet.** All of it has been checked only by sims and headless-browser renders. Sections run from "release blocker / newest code" down to "older code that was also never live-tested". Tick boxes as you go. Report anything that doesn't match "**Expect:**".
+The live-test pass that has to happen before v1.2.2 goes public. **Nothing below has been run in a real Foundry world yet.** All of it has been checked only by sims and headless-browser renders. Sections run from "release blocker / newest code" down to "older code that was also never live-tested". Tick boxes as you go. Report anything that doesn't match "**Expect:**".
 
 Built through commit `02a6d5b` (2026-10-06).
 
@@ -229,10 +229,10 @@ Report format: what you did, what you expected, what happened, and — for anyth
 ## Part 9 — Ship it (after the parts above pass)
 
 - [ ] Fix whatever Parts 0–5 turned up, re-run `node tools/check-syntax.mjs` and the sims, then commit.
-- [ ] Finalize the v1.2.0 Discord post (drafted 2026-10-06) and drop anything cut during testing. Keep the **upgrade steps** prominent: back up → disable/uninstall the old module → install the new one → GM accepts the migration prompt → players log in once.
+- [ ] Finalize the v1.2.2 Discord post (drafted 2026-10-06) and drop anything cut during testing. Keep the **upgrade steps** prominent: back up → disable/uninstall the old module → install the new one → GM accepts the migration prompt → players log in once.
 - [ ] Refresh the PDF guide (`docs/guide/`); it predates the Encoder.
 - [ ] Push the branch, fast-forward `main` to it.
-- [ ] Tag `v1.2.0` and push the tag. The GitHub workflow builds the release.
-- [ ] **Fresh-world install from the manifest URL** in `module.json`. This proves the manifest/download links resolve; they 404 today.
+- [ ] **Do NOT push a `v*` tag.** Distribution is Discord-only for now: `module.json` deliberately has no `manifest`/`download`, and a tag push runs `.github/workflows/release.yml`, which stamps a `download` URL back in and publishes a public GitHub release.
 - [ ] Decide what to do with the stale `v1.0.0` tag (it points at a commit with no assets).
-- [ ] Post to Discord. Optional: list the module in the Foundry package registry.
+- [ ] Post to Discord.
+- [ ] Later, when going public: restore `manifest` + `download` in `module.json` and the manifest-URL install steps in the README, tag, then do a fresh-world install from the manifest URL.
