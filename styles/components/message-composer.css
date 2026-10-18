@@ -230,7 +230,7 @@
 
 .ncm-composer__net-name {
   font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--net-c, var(--ncm-secondary));
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 
@@ -240,7 +240,16 @@
 .ncm-composer__net-bar {
   width: 2px; background: var(--ncm-bg-surface); border-radius: 1px;
 }
-.ncm-composer__net-bar--active { background: var(--ncm-secondary); }
+.ncm-composer__net-bar--active { background: var(--net-c, var(--ncm-secondary)); }
+/* A network colour is picked for a dark screen (CitiNet is #19f3f7). On the
+   light admin preset it is pulled toward the text colour so it stays the
+   network hue but reads on white. */
+[data-ncm-admin-theme="clean-light"] .ncm-composer__net-name,
+[data-ncm-admin-theme="clean-light"] .ncm-composer__net-bar--active {
+  --net-ink: color-mix(in oklab, var(--net-c, var(--ncm-secondary)) 45%, var(--ncm-text-primary));
+}
+[data-ncm-admin-theme="clean-light"] .ncm-composer__net-name { color: var(--net-ink); font-weight: 700; }
+[data-ncm-admin-theme="clean-light"] .ncm-composer__net-bar--active { background: var(--net-ink); }
 .ncm-composer__net-bar:nth-child(1) { height: 3px; }
 .ncm-composer__net-bar:nth-child(2) { height: 5px; }
 .ncm-composer__net-bar:nth-child(3) { height: 7px; }

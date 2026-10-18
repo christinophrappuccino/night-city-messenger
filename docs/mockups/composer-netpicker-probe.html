@@ -11,6 +11,7 @@
   check, not a data check.
     ?as=gm|player   ?open=1 (picker open)   ?via=1 (GM override)   ?dated=1
     ?q=ara&f=corporate (GM filter state)
+    ?t=clean-dark|clean-light|high-contrast (GM view admin preset)
   It fetch()es the .hbs, so open it through tools/serve-mockups.cjs (or a
   headless render with --allow-file-access-from-files).
 -->
@@ -43,6 +44,8 @@
 (async () => {
   const sp = new URLSearchParams(location.search);
   const isGM = sp.get('as') !== 'player';
+  // ?t=clean-dark|clean-light|high-contrast = the composer in GM view.
+  if (sp.get('t')) document.querySelector('.frame').dataset.ncmAdminTheme = sp.get('t');
   const H = Handlebars;
   H.registerHelper('eq', (a, b) => a === b);
   H.registerHelper('gt', (a, b) => a > b);

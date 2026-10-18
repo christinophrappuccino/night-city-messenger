@@ -54,20 +54,18 @@
          GM: picks the network for THIS message only (VIA = override). --}}
     <button type="button" class="ncm-composer__net-pill ncm-composer__net-pill--{{netPillState}} {{#if netViaOverride}}ncm-composer__net-pill--override{{/if}}"
             data-action="toggleNetPicker"
+            {{#if networkThemeColor}}style="--net-c:{{networkThemeColor}};"{{/if}}
             data-tooltip="{{#if isGM}}Choose the network this message is sent from{{else}}Switch network{{/if}}">
       {{#if netViaOverride}}<span class="ncm-composer__net-via">Via</span>{{/if}}
       <span class="ncm-composer__net-dot ncm-composer__net-dot--{{netPillState}}"
             {{#if networkThemeColor}}style="background:{{networkThemeColor}};box-shadow:0 0 4px {{networkThemeColor}}80;"{{/if}}>
       </span>
-      <span class="ncm-composer__net-name"
-            {{#if networkThemeColor}}style="color:{{networkThemeColor}};"{{/if}}>
+      <span class="ncm-composer__net-name">
         {{networkName}}
       </span>
       <span class="ncm-composer__net-bars">
         {{#each netPillBars}}
-          <span class="ncm-composer__net-bar {{#if this.active}}ncm-composer__net-bar--active{{/if}}"
-                {{#if ../networkThemeColor}}{{#if this.active}}style="background:{{../networkThemeColor}};"{{/if}}{{/if}}>
-          </span>
+          <span class="ncm-composer__net-bar {{#if this.active}}ncm-composer__net-bar--active{{/if}}"></span>
         {{/each}}
       </span>
       {{!-- Inline FX tags --}}
