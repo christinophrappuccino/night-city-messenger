@@ -23,6 +23,7 @@ switch to PNG/WebP instead, change `ICON_WEB_BASE`/extension in
 | `gm-convert-shard.svg` | Convert Selected Item To Shard | GM |
 | `gm-force-decrypt.svg` | Force-Decrypt Selected Shard | GM |
 | `gm-relock-shard.svg` | Relock Selected Shard | GM |
+| `gm-damage-shard.svg` | Damage Selected Shard | GM |
 | `gm-add-shard-message.svg` | Add Message To Selected Shard | GM |
 | `gm-push-contact.svg` | Push Contact To Player | GM |
 | `gm-add-master-contact.svg` | Add Master Contact | GM |

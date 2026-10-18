@@ -13,6 +13,9 @@ import { BaseApplication } from '../BaseApplication.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import { enrichContent, buildIndexChip, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEntrySender, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
+import { runSecurityConsole } from '../content/SecurityConsole.js';
+import { entryLevel, applyLoss, damageSummary, garbleString, reconDV, afterRecon, traceGeometry, tierOf, rng, TIER_WORD, TIER_ORDER } from '../content/IntegrityModel.js';
+import { paintIntegrity, startShimmer, playHit, playBurnOut } from '../content/IntegrityFX.js';
 
 export class ItemInboxApp extends BaseApplication {
 
@@ -109,6 +112,11 @@ export class ItemInboxApp extends BaseApplication {
       galleryView: ItemInboxApp._onGalleryView,
       goToScene: ItemInboxApp._onGoToScene,
       editEntry: ItemInboxApp._onEditEntry,
+      igReconstruct: ItemInboxApp._onIgReconstruct,
+      igRepair: ItemInboxApp._onIgRepair,
+      igSalvage: ItemInboxApp._onIgSalvage,
+      igRestore: ItemInboxApp._onIgRestore,
+      igPeek: ItemInboxApp._onIgPeek,
       switchNetwork: ItemInboxApp._onSwitchNetwork,
       // Legacy aliases
       addMessage: ItemInboxApp._onAddEntry,
@@ -144,9 +152,29 @@ export class ItemInboxApp extends BaseApplication {
       if (item.id === this.item?.id && changes?.flags) {
         // Don't re-render during active hacking sequence or transition splash
         if (this._hackingActive || this._transitionActive) return;
+        // Integrity just hit zero: every entry burns out in turn, THEN the dead
+        // screen renders (its crack + trace draw in, keyed on _igDeadFresh).
+        const hitZero = changes.flags?.[MODULE_ID]?.config?.integrity?.currentIntegrity === 0;
+        if (hitZero && this.element?.querySelector('.ncm-entry-card')) {
+          this._transitionActive = true;
+          playBurnOut(this.element.querySelector('.ncm-item-inbox')).then(() => {
+            this._transitionActive = false;
+            this._igDeadFresh = true;
+            this.render(true);
+          });
+          return;
+        }
         log.debug(`ItemInboxApp: updateItem hook fired for ${item.name}, re-rendering`);
         this.render(true);
       }
+    });
+    // Entry damage lives on the shard's journal pages — a reconstruct or a GM's
+    // per-entry repair from another client re-renders this viewer.
+    this._pageHookId = Hooks.on('updateJournalEntryPage', (page) => {
+      const jid = this.item?.getFlag?.(MODULE_ID, 'journalId');
+      if (!jid || page.parent?.id !== jid) return;
+      if (this._hackingActive || this._transitionActive) return;
+      this._debouncedRender();
     });
   }
 
@@ -228,10 +256,22 @@ export class ItemInboxApp extends BaseApplication {
       } catch (err) { log.debug(`Contact cache skipped: ${err.message}`); }
     }
 
-    const enrichedEntries = visibleEntries.map(entry => this._enrichEntry(entry));
+    // Integrity (docs/SHARD-INTEGRITY.md): each entry's damage is applied BEFORE
+    // enrichment, so lost data never reaches a player's DOM. A fully lost entry
+    // can drop out of the list entirely (hideLost) — the GM still sees it.
+    const enrichedEntries = [];
+    const keptEntries = [];
+    for (const entry of visibleEntries) {
+      const e = this._enrichWithIntegrity(entry, integrity);
+      if (!e) continue;
+      enrichedEntries.push(e);
+      keptEntries.push(entry);
+    }
+    visibleEntries = keptEntries;
 
     // Index strip chips
     const indexChips = this._buildIndexChips(visibleEntries, hiddenCount, this.selectedMessageId);
+    if (integrity.enabled) this._applyIntegrityToChips(indexChips, enrichedEntries);
 
     // Eddies totals
     let totalEddies = 0;
@@ -441,6 +481,7 @@ export class ItemInboxApp extends BaseApplication {
       integrityEnabled: integrity.enabled,
       integrityPercent: integrity.percentage,
       integrityTier: integrity.tier,
+      ...this._integrityContext(integrity, actor),
 
       // Metadata
       hasMetadata,
@@ -465,7 +506,9 @@ export class ItemInboxApp extends BaseApplication {
       singleHidden: hiddenCount === 1,
 
       // Index strip
-      showIndexStrip: totalEntryCount > 1,
+      // A dead chip has no index — the dead screen is the only view of what was on
+      // it (and scrambles the names for players; the strip would print them).
+      showIndexStrip: totalEntryCount > 1 && !(state.destroyed === true || integrity.isBricked),
       indexChips,
 
       // Eddies totals
@@ -560,6 +603,136 @@ export class ItemInboxApp extends BaseApplication {
       enriched.sender = sender;
     }
     return enriched;
+  }
+
+  /**
+   * Enrich one entry with its integrity damage applied. Returns null when the
+   * entry is fully lost and the GM chose to hide lost entries from players.
+   * @private
+   */
+  _enrichWithIntegrity(entry, integrity) {
+    const cfg = integrity.cfg;
+    const gm = isGM();
+    const mech = integrity.enabled && cfg?.mode === 'mechanical';
+    const level = mech ? entryLevel(entry) : 0;
+    const peek = gm && !!this._igPeek?.has(entry.id);
+
+    let work = entry;
+    let dmg = null;
+    if (level > 0 && !peek) {
+      work = foundry.utils.deepClone(entry);
+      dmg = applyLoss(work, level, cfg);
+      // A heavily damaged entry loses its title too (players only).
+      if (level >= 0.75 && !gm) work.subject = garbleString(entry.subject, 0.35, `${entry.id}:s`);
+    }
+    const gone = !!dmg?.gone;
+    const hiddenFromPlayers = gone && cfg.hideLost;
+    if (hiddenFromPlayers && !gm) return null;
+
+    const enriched = this._enrichEntry(work);
+    // The legacy DATA CORRUPTED overlay is replaced by `ig.gone` below.
+    enriched.corrupted = false;
+    if (!integrity.enabled) return enriched;
+
+    const pct = Math.round(level * 100);
+    const onCount = Math.round(level * 4);
+    enriched.ig = {
+      level, pct, gone, peek, hiddenFromPlayers,
+      // Each card flickers on its own clock, so a shard doesn't blink in unison.
+      delay: (rng(String(entry.id))() * 4).toFixed(2),
+      damaged: level > 0,
+      meter: [1, 2, 3, 4].map(n => n <= onCount),
+      special: dmg?.special || null,
+      isSafe: dmg?.special === 'safe',
+      isGlitchy: dmg?.special === 'glitchy',
+      summary: damageSummary(dmg),
+      glitchDV: cfg.glitchDV,
+      misfire: cfg.misfire,
+      canPeek: gm && level > 0,
+      // Recovery: a reconstruct roll, for a damaged entry that isn't protected money.
+      recon: cfg.recon.enabled && level > 0 && !peek && dmg?.special !== 'safe' ? { dv: reconDV(level, cfg) } : null,
+      showBar: level > 0 && !gone && (peek || !!dmg),
+    };
+    return enriched;
+  }
+
+  /**
+   * Shard-level integrity context: the root's effect switches, the state word on
+   * the bar, the cosmetic REPAIR, and the dead screen.
+   * @private
+   */
+  _integrityContext(integrity, actor) {
+    if (!integrity.enabled) return { igOn: false };
+    const cfg = integrity.cfg;
+    const gm = isGM();
+    const tier = integrity.tier;
+    const pct = integrity.percentage;
+    const ctx = {
+      igOn: true,
+      igLegibility: cfg.legibility,
+      igScan: cfg.effects.scan ? 1 : 0,
+      igTear: cfg.effects.tear ? 1 : 0,
+      igSteady: cfg.effects.steady ? 1 : 0,
+      igGarble: cfg.effects.garble ? 1 : 0,
+      igStateWord: TIER_WORD[tier] || '',
+      igRepair: cfg.mode === 'cosmetic' && cfg.recon.enabled && pct > 0 && pct < 100
+        ? { dv: cfg.recon.dv, pts: cfg.repairPts } : null,
+      igDead: null,
+    };
+    if (!integrity.isBricked) return ctx;
+
+    const all = this.dataShardService?.getShardMessages(this.item) ?? [];
+    const hist = cfg.history?.length ? cfg.history : [100, 0];
+    const trace = traceGeometry(hist);
+    const last = cfg.lastHit || {};
+    ctx.igDead = {
+      max: cfg.maxIntegrity,
+      lost: all.length,
+      breaches: Math.max(1, hist.length - 1),
+      lastBy: last.by || '—',
+      lastAt: last.at ? formatCyberDate(last.at, { timeOnly: true }) : '',
+      trace,
+      traceLabel: trace.labels.join(' → '),
+      rows: all.map((e) => {
+        const info = enrichContent(e, { isGM: gm });
+        return { icon: info.entryIcon, label: info.contentTypeLabel, name: gm ? e.subject : garbleString(e.subject || 'entry', 0.7, `${e.id}:dead`) };
+      }),
+      showList: gm || cfg.dead.list === 'list',
+      listGmOnly: gm && cfg.dead.list !== 'list',
+      showCount: gm || cfg.dead.list !== 'none',
+      isGM: gm,
+      salvage: !gm && cfg.dead.salvage
+        ? { dv: cfg.dead.salvageDV, pct: cfg.dead.salvagePct, spent: !!actor && cfg.salvaged.includes(actor.id), noActor: !actor }
+        : null,
+      fresh: this._igDeadFresh === true,
+    };
+    return ctx;
+  }
+
+  /**
+   * The index strip must never say more than the cards do. Each chip takes its
+   * title from the ENRICHED entry (so a 75%+ damaged entry's title is garbled for
+   * players here too — the strip used to print the real one), and carries the
+   * damage: a 4-segment bar, a lost/unstable state, and the exact % for the GM.
+   * @private
+   */
+  _applyIntegrityToChips(chips, enriched) {
+    const gm = isGM();
+    const byId = new Map(enriched.map(e => [e.id, e]));
+    for (const chip of chips) {
+      const e = byId.get(chip.id);
+      if (!e?.ig) continue;
+      const ig = e.ig;
+      chip.title = ig.gone && !gm ? 'Sector lost' : (e.subject || chip.title);
+      chip.ig = {
+        damaged: ig.damaged && !ig.isSafe,
+        gone: ig.gone,
+        glitchy: ig.isGlitchy,
+        meter: ig.meter,
+        tooltip: gm && ig.damaged ? `${ig.pct}% damaged${ig.gone ? ' · lost' : ''}${ig.hiddenFromPlayers ? ' · hidden from players' : ''}` : '',
+      };
+      if (ig.gone) { chip.iconClass = 'fas fa-file-circle-xmark'; chip.iconColor = '#ff3355'; }
+    }
   }
 
   /** @private */
@@ -670,6 +843,8 @@ export class ItemInboxApp extends BaseApplication {
       this._applyShardTheme(context, inbox);
     }
 
+    this._renderIntegrity(context);
+
     // Apply shard accent color as CSS variable
     if (context.presetAccent) {
       this.element?.style?.setProperty('--shard-accent', context.presetAccent);
@@ -715,6 +890,143 @@ export class ItemInboxApp extends BaseApplication {
     if (context.showBoot && !this._bootComplete) {
       this._playBootSequence(context);
     }
+  }
+
+  // ─── Integrity ───
+
+  /**
+   * Paint the integrity layer after a render: the cosmetic garble + static, the
+   * shimmer, the jolt + toast when integrity dropped since the last render, and
+   * the green sweep on an entry that was just reconstructed.
+   * @private
+   */
+  _renderIntegrity(context) {
+    this._stopShimmer?.();
+    this._stopShimmer = null;
+    const inbox = this.element?.querySelector('.ncm-item-inbox');
+    if (!inbox || !context.igOn) { this._igLastPct = null; return; }
+
+    const pct = context.integrityPercent;
+    const tier = context.integrityTier;
+    paintIntegrity(inbox, {
+      tier, legibility: context.igLegibility,
+      garble: !!context.igGarble, drops: !!context.igTear,
+      skip: this._igPeek,
+    });
+    this._stopShimmer = startShimmer(inbox);
+
+    const last = this._igLastPct;
+    if (last != null && pct < last && pct > 0) {
+      playHit(inbox);
+      if (TIER_ORDER.indexOf(tier) > TIER_ORDER.indexOf(tierOf(last))) {
+        game.nightcity?.notificationService?.showToastV2?.({
+          type: tier === 'severe' ? 'danger' : 'warning',
+          title: `Shard ${TIER_WORD[tier] || 'damaged'}`,
+          detail: `${context.shardDisplayName || this.item?.name || 'Data shard'} — integrity ${pct}%`,
+          duration: 5000,
+        });
+      }
+    }
+    this._igLastPct = pct;
+    this._igDeadFresh = false;
+
+    if (this._igRestored) {
+      inbox.querySelector(`.ncm-entry-card[data-entry-id="${this._igRestored}"]`)?.classList.add('ncm-ig-restored');
+      this._igRestored = null;
+    }
+  }
+
+  /** @private The entry, its stored damage, and the shard's integrity rules. */
+  _igEntry(target) {
+    const entryId = target?.closest('[data-entry-id]')?.dataset.entryId;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    const cfg = this.dataShardService?.getIntegrityConfig(this.item);
+    return { entryId, entry, cfg, level: entry ? entryLevel(entry) : 0 };
+  }
+
+  /** @private A player's integrity write relays — a GM must be online for it to land. */
+  _igCanWrite() {
+    if (isGM() || game.users?.activeGM) return true;
+    ui.notifications.warn('NCM | No GM connected — the GM must be online for this to take effect.');
+    return false;
+  }
+
+  /** RECONSTRUCT — roll to rebuild a damaged entry from what survived. */
+  static async _onIgReconstruct(event, target) {
+    const { entryId, entry, cfg, level } = this._igEntry(target);
+    if (!entry || !cfg || !(level > 0) || !this._igCanWrite()) return;
+    const actor = resolveOperator();
+    const force = isGM() && !actor;
+    if (!actor && !force) { ui.notifications.warn('NCM | Pick an operator first.'); return; }
+    const dv = reconDV(level, cfg);
+    const res = await runSecurityConsole({
+      title: 'Reconstruct entry', icon: 'fas fa-screwdriver-wrench', accent: 'cyan', host: this.element,
+      intro: `Rebuild the lost sectors from what survived. ${Math.round(level * 100)}% of this entry is damaged.${cfg.recon.worsen && !force ? ' A botched attempt makes it worse.' : ''}`,
+      gate: force ? null : { require: true, skill: cfg.recon.skill, dv, actor, context: 'Data reconstruction', flavor: `Reconstruct // DV ${dv}` },
+      confirmLabel: 'Reconstruct', successLabel: 'DATA RESTORED', failLabel: 'RECOVERY FAILED',
+    });
+    if (!res || res.cancelled) return;
+    const ok = force || !!res.ok;
+    const next = afterRecon(level, ok, cfg);
+    if (next !== level) await this.dataShardService.setEntryCorruption(this.item, entryId, next);
+    if (ok) {
+      this._igRestored = entryId;
+      game.nightcity?.traceService?.logSuccess({ actor, action: 'reconstruct', source: entry.subject, hostItem: this.item, targetKind: 'shard', severity: 'minor' });
+    }
+    if (isGM()) this.render();
+  }
+
+  /** REPAIR (cosmetic mode) — roll to restore integrity points. */
+  static async _onIgRepair(event, target) {
+    const cfg = this.dataShardService?.getIntegrityConfig(this.item);
+    if (!cfg || !this._igCanWrite()) return;
+    const actor = resolveOperator();
+    const force = isGM() && !actor;
+    if (!actor && !force) { ui.notifications.warn('NCM | Pick an operator first.'); return; }
+    const res = await runSecurityConsole({
+      title: 'Repair shard', icon: 'fas fa-screwdriver-wrench', accent: 'cyan', host: this.element,
+      intro: `Patch the damaged sectors. Success restores ${cfg.repairPts} integrity.`,
+      gate: force ? null : { require: true, skill: cfg.recon.skill, dv: cfg.recon.dv, actor, context: 'Shard repair', flavor: `Repair // DV ${cfg.recon.dv}` },
+      confirmLabel: 'Repair', successLabel: 'SECTORS PATCHED', failLabel: 'REPAIR FAILED',
+    });
+    if (!res || res.cancelled || !(force || res.ok)) return;
+    await this.dataShardService.repairIntegrity(this.item, cfg.repairPts);
+    game.nightcity?.traceService?.logSuccess({ actor, action: 'repair', source: this.item.name, hostItem: this.item, targetKind: 'shard', severity: 'minor' });
+  }
+
+  /** SALVAGE — each character's one try at pulling a dead shard back. */
+  static async _onIgSalvage(event, target) {
+    const cfg = this.dataShardService?.getIntegrityConfig(this.item);
+    if (!cfg || !this._igCanWrite()) return;
+    const actor = resolveOperator();
+    if (!actor) { ui.notifications.warn('NCM | Pick an operator first.'); return; }
+    if (cfg.salvaged.includes(actor.id)) { ui.notifications.warn(`NCM | ${actor.name} has already tried to salvage this shard.`); return; }
+    const res = await runSecurityConsole({
+      title: 'Salvage shard', icon: 'fas fa-microchip', accent: 'red', host: this.element,
+      intro: `Pull whatever survived off the burned cells. One attempt — if it fails, this chip is gone for good for ${actor.name}. On a success it comes back at ${cfg.dead.salvagePct}%, badly damaged.`,
+      gate: { require: true, skill: cfg.recon.skill, dv: cfg.dead.salvageDV, actor, context: 'Shard salvage', flavor: `Salvage // DV ${cfg.dead.salvageDV}` },
+      confirmLabel: 'Salvage', successLabel: 'CELLS RECOVERED', failLabel: 'NOTHING LEFT',
+    });
+    if (!res || res.cancelled) return;
+    await this.dataShardService.salvageShard(this.item, actor.id, !!res.ok);
+    if (res.ok) game.nightcity?.traceService?.logSuccess({ actor, action: 'salvage', source: this.item.name, hostItem: this.item, targetKind: 'shard', severity: 'minor' });
+    if (isGM()) this.render();
+  }
+
+  /** GM — bring a dead shard back to full and repair every entry. */
+  static async _onIgRestore() {
+    if (!isGM()) return;
+    await this.dataShardService.setIntegrity(this.item, 100);
+  }
+
+  /** GM — toggle an entry between the damaged view and the original. */
+  static _onIgPeek(event, target) {
+    if (!isGM()) return;
+    const id = target?.closest('[data-entry-id]')?.dataset.entryId;
+    if (!id) return;
+    this._igPeek ??= new Set();
+    if (this._igPeek.has(id)) this._igPeek.delete(id); else this._igPeek.add(id);
+    this.render();
   }
 
   _setupEventSubscriptions() {
@@ -1975,7 +2287,7 @@ export class ItemInboxApp extends BaseApplication {
     const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
     if (!entry || entry.contentType !== 'malware') return;
     const actor = resolveOperator();
-    const res = await runMalwareDeploy({ actor, raw: entry.contentData, messageId: entryId, sourceLabel: this.item.name, host: this.element });
+    const res = await runMalwareDeploy({ actor, raw: entry.contentData, messageId: entryId, sourceLabel: this.item.name, host: this.element, unstable: this.dataShardService?.programInstability(this.item, entry) });
     if (res) this.render(true);
   }
 
@@ -2080,7 +2392,7 @@ export class ItemInboxApp extends BaseApplication {
     const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
     if (!entry || entry.contentType !== 'payload') return;
     const actor = resolveOperator();
-    const res = await runPayloadExecute({ actor, raw: entry.contentData, messageId: entryId, sourceLabel: this.item.name, host: this.element, force: isGM() && !actor });
+    const res = await runPayloadExecute({ actor, raw: entry.contentData, messageId: entryId, sourceLabel: this.item.name, host: this.element, force: isGM() && !actor, unstable: this.dataShardService?.programInstability(this.item, entry) });
     if (res) this.render(true);
   }
 
@@ -2858,6 +3170,8 @@ export class ItemInboxApp extends BaseApplication {
   async close(options) {
     if (this._lockoutInterval) clearInterval(this._lockoutInterval);
     if (this._hookId) Hooks.off('updateItem', this._hookId);
+    if (this._pageHookId) Hooks.off('updateJournalEntryPage', this._pageHookId);
+    this._stopShimmer?.();
     // Clean up boot sequence timers
     this._bootTimers.forEach(t => clearTimeout(t));
     this._bootTimers = [];

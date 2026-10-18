@@ -192,6 +192,7 @@
                   <div class="ncm-shard-integrity-controls__header">
                     <i class="fas fa-shield-halved"></i>
                     <span class="ncm-shard-integrity-controls__label">Integrity</span>
+                    {{#if this.hardening}}<span class="ncm-sdmg-hard" data-tooltip="Loses {{this.hardening}}% less per failed breach"><i class="fas fa-shield-halved"></i>Hardened −{{this.hardening}}%</span>{{/if}}
                     <span class="ncm-shard-integrity-controls__value ncm-shard-integrity-controls__value--{{this.integrityTier}}">{{this.integrityPercent}}%</span>
                   </div>
                   <div class="ncm-shard-integrity-controls__track">
@@ -204,6 +205,11 @@
                     <div class="ncm-shard-integrity-chip {{#if (eq this.integrityPercent 25)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="25" title="Severe damage">25</div>
                     <div class="ncm-shard-integrity-chip ncm-shard-integrity-chip--danger {{#if (eq this.integrityPercent 0)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="0" title="Bricked">0</div>
                     <div class="ncm-shard-integrity-chip ncm-shard-integrity-chip--restore" data-action="restoreShardIntegrity" data-item-id="{{this.itemId}}" title="Restore to full + un-corrupt entries"><i class="fas fa-heart-pulse"></i></div>
+                  </div>
+                  <div class="ncm-sdmg-hit">
+                    <button type="button" class="ncm-sdmg-btn ncm-sdmg-btn--danger" data-action="damageShard" data-item-id="{{this.itemId}}" data-tooltip="Knock integrity down — EMP, fire, a stray round"><i class="fas fa-bolt"></i> Damage</button>
+                    <input type="number" class="ncm-sdmg-amt" data-ig-amount value="{{this.integrityDegrade}}" min="1" max="1000"><small>pts</small>
+                    {{#if this.igMechanical}}<span class="ncm-sdmg-roll" data-action="toggleShardDamageRoll" data-tooltip="Also roll data loss on each entry, exactly like a failed breach"><span class="ncm-ct-row__check ncm-ct-row__check--on" data-ig-roll></span>roll data loss</span>{{/if}}
                   </div>
                 </div>
                 {{/if}}
@@ -222,6 +228,30 @@
                 <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="unconvertShard" data-item-id="{{this.itemId}}"><i class="fas fa-rotate-left"></i> Unconvert</button>
               </div>
             </div>
+              {{#if this.igEntries}}
+              <div class="ncm-sdmg-list" data-item-id="{{this.itemId}}">
+                <div class="ncm-sdmg-list__h">
+                  <span class="ncm-sdmg-list__title"><i class="fas fa-file-circle-exclamation"></i>Entry damage</span>
+                  <span class="ncm-sdmg-list__sum">{{this.igEntries.damaged}} of {{this.igEntries.total}} damaged</span>
+                  <span class="ncm-sdmg-list__sp"></span>
+                  {{#if this.igEntries.damaged}}<button type="button" class="ncm-sdmg-btn ncm-sdmg-btn--ok" data-action="repairAllShardEntries"><i class="fas fa-wrench"></i> Repair all</button>{{/if}}
+                </div>
+                {{#each this.igEntries.rows}}
+                <div class="ncm-sdmg-row" data-entry-id="{{this.entryId}}">
+                  <i class="{{this.icon}}"></i>
+                  <div class="ncm-sdmg-row__nm"><b>{{this.name}}</b><span>{{this.type}}</span></div>
+                  <span class="ncm-sdmg-pips">{{#each this.pips}}<span role="button" class="{{#if this.on}}on{{/if}}" data-action="setShardEntryDamage" data-lv="{{this.n}}" data-tooltip="Set damage to {{this.n}}/4"></span>{{/each}}</span>
+                  <span class="ncm-sdmg-row__pct {{this.pctClass}}">{{#if this.pct}}{{this.pct}}%{{else}}clean{{/if}}</span>
+                  <span class="ncm-sdmg-row__lost">{{#if this.tag}}<span class="ncm-sdmg-tag ncm-sdmg-tag--{{this.tag.cls}}">{{this.tag.label}}</span>{{else}}{{this.lostLabel}}{{/if}}{{#if this.hiddenTag}} <span class="ncm-sdmg-tag ncm-sdmg-tag--hidden">Hidden</span>{{/if}}</span>
+                  <span class="ncm-sdmg-row__act">
+                    {{#if this.pct}}<button type="button" class="ncm-sdmg-btn ncm-sdmg-btn--ok ncm-sdmg-btn--icon" data-action="setShardEntryDamage" data-lv="0" data-tooltip="Repair this entry"><i class="fas fa-wrench"></i></button>{{/if}}
+                    <button type="button" class="ncm-sdmg-btn ncm-sdmg-btn--icon" data-action="openShardEntry" data-tooltip="Open the shard at this entry"><i class="fas fa-eye"></i></button>
+                  </span>
+                </div>
+                {{/each}}
+                <div class="ncm-sdmg-foot">Click a pip to set an entry's damage. Repairing an entry doesn't change the shard's integrity.</div>
+              </div>
+              {{/if}}
           </div>
           {{/if}}
           {{/each}}

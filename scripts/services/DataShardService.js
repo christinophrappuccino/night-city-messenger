@@ -14,6 +14,9 @@
 
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../utils/constants.js';
 import { log, isGM, generateId } from '../utils/helpers.js';
+import {
+  resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor,
+} from '../ui/content/IntegrityModel.js';
 
 export class DataShardService {
 
@@ -788,6 +791,7 @@ export class DataShardService {
             encryptionDC: messageData.encryptionDC ?? config.encryptionDC,
             decrypted: false,
             corrupted: false,
+            corruption: 0,
             // Network visibility (per-entry)
             networkVisibility: messageData.networkVisibility ?? {
               restricted: false,
@@ -935,154 +939,317 @@ export class DataShardService {
   //  PUBLIC API — Integrity System (Sprint 4.6)
   // ═══════════════════════════════════════════════════════════
 
+  /** The shard's integrity block, resolved over every default (IntegrityModel). */
+  getIntegrityConfig(shardItem) {
+    return resolveIntegrity(this._getConfig(shardItem).integrity);
+  }
+
   /**
    * Get the current integrity status of a shard.
    * @param {Item} shardItem
-   * @returns {{ enabled: boolean, current: number, max: number, percentage: number, tier: string, isBricked: boolean }}
+   * @returns {{ enabled: boolean, current: number, max: number, percentage: number, tier: string, isBricked: boolean, mode: string, cfg: object }}
    */
   checkIntegrity(shardItem) {
-    const config = this._getConfig(shardItem);
-    const integrity = config.integrity ?? {};
-
-    if (!integrity.enabled) {
-      return { enabled: false, current: 100, max: 100, percentage: 100, tier: 'clean', isBricked: false };
+    const cfg = this.getIntegrityConfig(shardItem);
+    if (!cfg.enabled) {
+      return { enabled: false, current: 100, max: 100, percentage: 100, tier: 'clean', isBricked: false, mode: cfg.mode, cfg };
     }
-
-    const current = integrity.currentIntegrity ?? 100;
-    const max = integrity.maxIntegrity ?? 100;
-    const pct = max > 0 ? Math.round((current / max) * 100) : 0;
-
-    let tier = 'clean';
-    if (pct <= 0) tier = 'bricked';
-    else if (pct <= 24) tier = 'severe';
-    else if (pct <= 49) tier = 'heavy';
-    else if (pct <= 74) tier = 'light';
-
+    const pct = percentOf(cfg);
     return {
       enabled: true,
-      current,
-      max,
+      current: cfg.currentIntegrity,
+      max: cfg.maxIntegrity,
       percentage: pct,
-      tier,
+      tier: tierOf(pct),
       isBricked: pct <= 0,
-      mode: integrity.mode ?? 'cosmetic',
-      belowCorruptionThreshold: current < (integrity.corruptionThreshold ?? 40),
+      mode: cfg.mode,
+      // The threshold is a PERCENT (it used to be compared to raw points, which
+      // was only right when Max was 100).
+      belowCorruptionThreshold: pct < cfg.corruptionThreshold,
+      cfg,
     };
   }
 
   /**
-   * Degrade a shard's integrity after a failed hack attempt.
-   * If mechanical mode + below corruption threshold, may corrupt individual entries.
-   * GM only (called internally after hack failure, or directly by GM).
+   * One hit to a shard's integrity — a failed breach, or a GM's Damage button.
+   * Below the data-loss threshold (mechanical mode) each entry independently
+   * rolls the per-entry chance to take one more step of damage.
+   *
+   * GM-owned writes: the integrity number is on the item and entry damage on the
+   * GM-owned journal, so a PLAYER relays (SHARD_INTEGRITY_REQUEST). Before this
+   * the page write simply threw for players and was swallowed, which is why a
+   * player's failed breaches never corrupted anything.
    *
    * @param {Item} shardItem
-   * @returns {Promise<{ newIntegrity: number, corruptedEntries: string[] }>}
+   * @param {object} [opts]
+   * @param {number}  [opts.amount]    points to take before hardening (default: degradePerFailure)
+   * @param {boolean} [opts.rollLoss=true] roll per-entry data loss (mechanical mode)
+   * @param {string}  [opts.by]        who did it — shown on the dead screen
+   * @returns {Promise<{ newIntegrity:number, damaged:string[], relayed?:boolean }>}
    */
-  async degradeIntegrity(shardItem) {
-    const config = this._getConfig(shardItem);
-    const integrity = config.integrity ?? {};
+  async degradeIntegrity(shardItem, opts = {}) {
+    const cfg = this.getIntegrityConfig(shardItem);
+    if (!cfg.enabled) return { newIntegrity: 100, damaged: [] };
 
-    if (!integrity.enabled) return { newIntegrity: 100, corruptedEntries: [] };
-
-    const degradeAmount = integrity.degradePerFailure ?? 15;
-    const newValue = Math.max(0, (integrity.currentIntegrity ?? 100) - degradeAmount);
-    const corruptedEntries = [];
-
-    // Update integrity value
-    await shardItem.update({
-      [`flags.${MODULE_ID}.config.integrity.currentIntegrity`]: newValue,
-    });
-
-    // Mechanical corruption check
-    if (integrity.mode === 'mechanical' && newValue < (integrity.corruptionThreshold ?? 40)) {
-      const journal = this._getLinkedJournal(shardItem);
-      if (journal) {
-        const chance = integrity.corruptionChance ?? 0.3;
-        for (const page of journal.pages) {
-          const flags = page.flags?.[MODULE_ID];
-          if (flags?.type === 'shard-message' && !flags.corrupted && !flags.decrypted) {
-            if (Math.random() < chance) {
-              await page.update({ [`flags.${MODULE_ID}.corrupted`]: true });
-              corruptedEntries.push(flags.messageId);
-              this.eventBus?.emit(EVENTS.SHARD_ENTRY_CORRUPTED, {
-                itemId: shardItem.id, entryId: flags.messageId,
-              });
-            }
-          }
-        }
-      }
+    if (!isGM()) {
+      this._relayIntegrity('degrade', shardItem, { amount: opts.amount ?? null, rollLoss: opts.rollLoss !== false, by: opts.by || '' });
+      return { newIntegrity: cfg.currentIntegrity, damaged: [], relayed: true };
     }
 
-    this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_CHANGED, {
-      itemId: shardItem.id, newIntegrity: newValue,
+    const hit = effectiveHit(opts.amount ?? cfg.degradePerFailure, cfg.hardening);
+    const before = cfg.currentIntegrity;
+    const newValue = Math.max(0, before - hit);
+    const pct = cfg.maxIntegrity > 0 ? Math.round((newValue / cfg.maxIntegrity) * 100) : 0;
+    const damaged = [];
+
+    // Entry damage FIRST, then the item write — the viewer re-renders off the
+    // item update, so the pages must already carry the new damage by then.
+    if (cfg.mode === 'mechanical' && opts.rollLoss !== false && pct < cfg.corruptionThreshold) {
+      const journal = this._getLinkedJournal(shardItem);
+      const updates = [];
+      for (const page of journal?.pages ?? []) {
+        const f = page.flags?.[MODULE_ID];
+        if (f?.type !== 'shard-message') continue;
+        const level = entryLevel(f);
+        if (level >= 1) continue;
+        if (Math.random() >= cfg.corruptionChance) continue;
+        const next = cfg.loss === 'whole' ? 1 : quantize(level + 0.25);
+        updates.push({ _id: page.id, [`flags.${MODULE_ID}.corruption`]: next, [`flags.${MODULE_ID}.corrupted`]: next >= 1 });
+        damaged.push(f.messageId);
+        this.eventBus?.emit(EVENTS.SHARD_ENTRY_CORRUPTED, { itemId: shardItem.id, entryId: f.messageId, level: next });
+      }
+      if (updates.length) await journal.updateEmbeddedDocuments('JournalEntryPage', updates);
+    }
+
+    const history = [...cfg.history];
+    if (!history.length) history.push(Math.round((before / cfg.maxIntegrity) * 100));
+    history.push(pct);
+    await shardItem.update({
+      [`flags.${MODULE_ID}.config.integrity.currentIntegrity`]: newValue,
+      [`flags.${MODULE_ID}.config.integrity.history`]: history.slice(-40),
+      [`flags.${MODULE_ID}.config.integrity.lastHit`]: { by: opts.by || '', at: this._nowIso() },
     });
 
-    if (newValue <= 0) {
+    this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_CHANGED, { itemId: shardItem.id, newIntegrity: newValue });
+    if (newValue <= 0 && before > 0) {
       this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_BRICKED, { itemId: shardItem.id });
       this.soundService?.play('shard-brick');
     }
 
-    log.debug(`Shard "${shardItem.name}" integrity: ${newValue}${corruptedEntries.length ? ` (${corruptedEntries.length} entries corrupted)` : ''}`);
-    return { newIntegrity: newValue, corruptedEntries };
+    log.debug(`Shard "${shardItem.name}" integrity: ${before} → ${newValue} (−${hit})${damaged.length ? ` · ${damaged.length} entr${damaged.length === 1 ? 'y' : 'ies'} damaged` : ''}`);
+    return { newIntegrity: newValue, damaged };
   }
 
   /**
-   * GM set shard integrity to a specific percentage.
-   * Optionally un-corrupt entries when restoring above corruption threshold.
+   * GM: set shard integrity to a percentage. Restoring ABOVE the data-loss
+   * threshold repairs every entry (unless `uncorrupt:false`); a full restore
+   * (100%) always does, and clears the hit history and salvage attempts.
    * @param {Item} shardItem
-   * @param {number} percent — 0–100 percentage target
+   * @param {number} percent — 0–100
    * @param {object} [opts]
-   * @param {boolean} [opts.uncorrupt=true] — If restoring, also clear corrupted flags on entries
-   * @returns {Promise<{ success: boolean, newIntegrity: number, percent: number }>}
+   * @param {boolean} [opts.uncorrupt=true]
+   * @returns {Promise<{ success: boolean, newIntegrity: number, percent: number, uncorruptedCount?: number }>}
    */
   async setIntegrity(shardItem, percent, opts = {}) {
     if (!isGM()) return { success: false, error: 'GM only' };
+    const cfg = this.getIntegrityConfig(shardItem);
+    if (!cfg.enabled) return { success: false, error: 'Integrity not enabled' };
 
-    const config = this._getConfig(shardItem);
-    const integrity = config.integrity ?? {};
-
-    if (!integrity.enabled) return { success: false, error: 'Integrity not enabled' };
-
-    const max = integrity.maxIntegrity ?? 100;
+    const max = cfg.maxIntegrity;
     const newValue = Math.max(0, Math.min(Math.round(max * percent / 100), max));
-    const oldValue = integrity.currentIntegrity ?? 100;
+    const oldPct = percentOf(cfg);
+    const full = percent >= 100;
 
+    let uncorruptedCount = 0;
+    const uncorrupt = opts.uncorrupt !== false && (full || (percent >= cfg.corruptionThreshold && oldPct < cfg.corruptionThreshold));
+    if (uncorrupt) uncorruptedCount = await this._setAllEntryLevels(shardItem, 0);
+
+    const upd = { [`flags.${MODULE_ID}.config.integrity.currentIntegrity`]: newValue };
+    if (full) {
+      upd[`flags.${MODULE_ID}.config.integrity.history`] = [];
+      upd[`flags.${MODULE_ID}.config.integrity.salvaged`] = [];
+    } else {
+      upd[`flags.${MODULE_ID}.config.integrity.history`] = [...cfg.history, Math.round(percent)].slice(-40);
+    }
+    await shardItem.update(upd);
+    await this._unbrick(shardItem, newValue);
+
+    this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_CHANGED, { itemId: shardItem.id, newIntegrity: newValue });
+    log.info(`GM set shard "${shardItem.name}" integrity → ${newValue} (${percent}%)${uncorruptedCount ? ` · ${uncorruptedCount} entries repaired` : ''}`);
+    return { success: true, newIntegrity: newValue, percent, uncorruptedCount };
+  }
+
+  /**
+   * Set ONE entry's damage level (0..1, quarter steps). Reconstruct, the GM's
+   * per-entry pips, and salvage all land here. Players relay.
+   * @returns {Promise<{ success: boolean, level?: number, relayed?: boolean }>}
+   */
+  async setEntryCorruption(shardItem, entryId, level) {
+    const lv = quantize(level);
+    if (!isGM()) {
+      this._relayIntegrity('entry', shardItem, { entryId, level: lv });
+      return { success: true, level: lv, relayed: true };
+    }
+    const page = this._getLinkedJournal(shardItem)?.pages?.find(p => p.flags?.[MODULE_ID]?.messageId === entryId);
+    if (!page) return { success: false, error: 'Entry not found' };
+    await page.update({ [`flags.${MODULE_ID}.corruption`]: lv, [`flags.${MODULE_ID}.corrupted`]: lv >= 1 });
+    this._broadcastStateChange(shardItem.id);
+    return { success: true, level: lv };
+  }
+
+  /** GM: repair every entry on the shard (integrity untouched). */
+  async repairAllEntries(shardItem) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const count = await this._setAllEntryLevels(shardItem, 0);
+    this._broadcastStateChange(shardItem.id);
+    return { success: true, count };
+  }
+
+  /**
+   * Restore integrity points (the cosmetic-mode REPAIR roll). Players relay.
+   * @returns {Promise<{ success: boolean, newIntegrity?: number, relayed?: boolean }>}
+   */
+  async repairIntegrity(shardItem, points) {
+    const cfg = this.getIntegrityConfig(shardItem);
+    if (!cfg.enabled) return { success: false, error: 'Integrity not enabled' };
+    if (!isGM()) {
+      this._relayIntegrity('repair', shardItem, { points });
+      return { success: true, relayed: true };
+    }
+    const newValue = Math.min(cfg.maxIntegrity, cfg.currentIntegrity + Math.max(0, Math.round(Number(points) || 0)));
+    const pct = Math.round((newValue / cfg.maxIntegrity) * 100);
     await shardItem.update({
       [`flags.${MODULE_ID}.config.integrity.currentIntegrity`]: newValue,
+      [`flags.${MODULE_ID}.config.integrity.history`]: [...cfg.history, pct].slice(-40),
     });
+    this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_CHANGED, { itemId: shardItem.id, newIntegrity: newValue });
+    return { success: true, newIntegrity: newValue };
+  }
 
-    // Un-corrupt entries if restoring above threshold
-    const uncorrupt = opts.uncorrupt !== false;
-    const threshold = integrity.corruptionThreshold ?? 40;
-    let uncorruptedCount = 0;
-
-    if (uncorrupt && newValue >= threshold && oldValue < threshold) {
+  /**
+   * Record that a character has used their one salvage attempt on a dead shard,
+   * and — on a success — bring it back at `salvagePct`, every entry heavily
+   * damaged (mechanical mode). Players relay.
+   * @param {Item} shardItem
+   * @param {string} actorId
+   * @param {boolean} ok
+   */
+  async salvageShard(shardItem, actorId, ok) {
+    const cfg = this.getIntegrityConfig(shardItem);
+    if (!cfg.enabled) return { success: false, error: 'Integrity not enabled' };
+    if (!isGM()) {
+      this._relayIntegrity('salvage', shardItem, { actorId, ok: !!ok });
+      return { success: true, relayed: true };
+    }
+    const salvaged = [...new Set([...cfg.salvaged, String(actorId || 'unknown')])];
+    if (!ok) {
+      await shardItem.update({ [`flags.${MODULE_ID}.config.integrity.salvaged`]: salvaged });
+      return { success: true, recovered: false };
+    }
+    const newValue = Math.max(1, Math.round(cfg.maxIntegrity * cfg.dead.salvagePct / 100));
+    if (cfg.mode === 'mechanical') {
       const journal = this._getLinkedJournal(shardItem);
-      if (journal) {
-        for (const page of journal.pages) {
-          if (page.flags?.[MODULE_ID]?.corrupted) {
-            await page.update({ [`flags.${MODULE_ID}.corrupted`]: false });
-            uncorruptedCount++;
-          }
-        }
+      const updates = [];
+      for (const page of journal?.pages ?? []) {
+        const f = page.flags?.[MODULE_ID];
+        if (f?.type !== 'shard-message') continue;
+        const next = Math.max(entryLevel(f), 0.75);
+        updates.push({ _id: page.id, [`flags.${MODULE_ID}.corruption`]: next, [`flags.${MODULE_ID}.corrupted`]: next >= 1 });
       }
+      if (updates.length) await journal.updateEmbeddedDocuments('JournalEntryPage', updates);
     }
-
-    // Also un-brick if we're restoring from 0
-    if (newValue > 0) {
-      const state = this._getState(shardItem);
-      if (state.destroyed) {
-        await shardItem.unsetFlag(MODULE_ID, 'state');
-        await shardItem.setFlag(MODULE_ID, 'state', { ...state, destroyed: false });
-      }
-    }
-
-    this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_CHANGED, {
-      itemId: shardItem.id, newIntegrity: newValue,
+    await shardItem.update({
+      [`flags.${MODULE_ID}.config.integrity.currentIntegrity`]: newValue,
+      [`flags.${MODULE_ID}.config.integrity.salvaged`]: salvaged,
+      [`flags.${MODULE_ID}.config.integrity.history`]: [...cfg.history, cfg.dead.salvagePct].slice(-40),
     });
+    await this._unbrick(shardItem, newValue);
+    this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_CHANGED, { itemId: shardItem.id, newIntegrity: newValue });
+    return { success: true, recovered: true, newIntegrity: newValue };
+  }
 
-    log.info(`GM set shard "${shardItem.name}" integrity: ${oldValue} → ${newValue} (${percent}%)${uncorruptedCount ? ` (${uncorruptedCount} entries un-corrupted)` : ''}`);
-    return { success: true, newIntegrity: newValue, percent, uncorruptedCount };
+  /**
+   * A shard entry ready to leave the chip (an UPLOAD copies it onto a terminal):
+   * the damage is baked into the copy, so carrying a corrupted file somewhere
+   * else is never a free repair. Returns null for an entry that is fully lost.
+   * @param {Item} shardItem
+   * @param {object} entry  a getShardMessages() entry
+   */
+  exportEntry(shardItem, entry) {
+    const cfg = this.getIntegrityConfig(shardItem);
+    const level = cfg.enabled && cfg.mode === 'mechanical' ? entryLevel(entry) : 0;
+    if (!level) return entry;
+    const copy = foundry.utils.deepClone(entry);
+    const dmg = applyLoss(copy, level, cfg);
+    if (dmg.gone) return null;
+    delete copy.corruption;
+    copy.corrupted = false;
+    return copy;
+  }
+
+  /**
+   * The penalty a damaged PROGRAM entry runs with (`{dvPenalty, misfire}`), or
+   * null when it runs clean. Read by every place a shard's program is run.
+   */
+  programInstability(shardItem, entry) {
+    const cfg = this.getIntegrityConfig(shardItem);
+    if (!cfg.enabled || cfg.mode !== 'mechanical') return null;
+    return unstableFor(entryLevel(entry), cfg);
+  }
+
+  /** GM-side handler for SHARD_INTEGRITY_REQUEST. */
+  async handleIntegrityRequest(data = {}) {
+    if (!isGM()) return;
+    const item = data.itemUuid ? fromUuidSync(data.itemUuid) : null;
+    if (!item || !this.isDataShard(item)) { log.warn(`Integrity relay: shard ${data.itemUuid} not found`); return; }
+    switch (data.op) {
+      case 'degrade': return this.degradeIntegrity(item, { amount: data.amount ?? undefined, rollLoss: data.rollLoss !== false, by: data.by || '' });
+      case 'entry':   return this.setEntryCorruption(item, data.entryId, data.level);
+      case 'repair':  return this.repairIntegrity(item, data.points);
+      case 'salvage': return this.salvageShard(item, data.actorId, !!data.ok);
+      default: log.warn(`Integrity relay: unknown op "${data.op}"`);
+    }
+  }
+
+  /** @private Player → GM relay. Warns when there is no GM to land the write. */
+  _relayIntegrity(op, shardItem, payload = {}) {
+    if (!game.users?.activeGM) {
+      ui.notifications?.warn('NCM | No GM connected — the shard change could not be saved.');
+      return false;
+    }
+    this.socketManager?.emit(SOCKET_OPS.SHARD_INTEGRITY_REQUEST, { op, itemUuid: shardItem.uuid, userId: game.user?.id, ...payload });
+    return true;
+  }
+
+  /** @private Set every entry's damage level; returns how many changed. */
+  async _setAllEntryLevels(shardItem, level) {
+    const journal = this._getLinkedJournal(shardItem);
+    if (!journal) return 0;
+    const lv = quantize(level);
+    const updates = [];
+    for (const page of journal.pages) {
+      const f = page.flags?.[MODULE_ID];
+      if (f?.type !== 'shard-message') continue;
+      if (entryLevel(f) === lv && !!f.corrupted === (lv >= 1)) continue;
+      updates.push({ _id: page.id, [`flags.${MODULE_ID}.corruption`]: lv, [`flags.${MODULE_ID}.corrupted`]: lv >= 1 });
+    }
+    if (updates.length) await journal.updateEmbeddedDocuments('JournalEntryPage', updates);
+    return updates.length;
+  }
+
+  /** @private A shard brought back above 0 is no longer destroyed. */
+  async _unbrick(shardItem, newValue) {
+    if (newValue <= 0) return;
+    const state = this._getState(shardItem);
+    if (state.destroyed) {
+      await shardItem.unsetFlag(MODULE_ID, 'state');
+      await shardItem.setFlag(MODULE_ID, 'state', { ...state, destroyed: false });
+    }
+  }
+
+  /** @private ISO "now" through the time provider. */
+  _nowIso() {
+    try { return new Date(this._nowMs()).toISOString(); } catch { return new Date().toISOString(); }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1278,7 +1445,7 @@ export class DataShardService {
 
     // Degrade integrity if enabled (fire-and-forget, non-blocking)
     if (config.integrity?.enabled) {
-      this.degradeIntegrity(shardItem).catch(err => log.warn(`Integrity degrade failed: ${err.message}`));
+      this.degradeIntegrity(shardItem, { by: actor?.name || '' }).catch(err => log.warn(`Integrity degrade failed: ${err.message}`));
     }
 
     const result = {
@@ -1423,7 +1590,7 @@ export class DataShardService {
 
     // Degrade integrity on any failed layer hack if enabled
     if (config.integrity?.enabled && layerSec.degradeOnFail) {
-      this.degradeIntegrity(item).catch(err => log.warn(`Integrity degrade failed: ${err.message}`));
+      this.degradeIntegrity(item, { by: game.actors?.get(actorId)?.name || '' }).catch(err => log.warn(`Integrity degrade failed: ${err.message}`));
     }
 
     if (newCount >= max) {
@@ -1819,6 +1986,8 @@ export class DataShardService {
       encryptionDC: flags.encryptionDC,
       decrypted: flags.decrypted ?? false,
       corrupted: flags.corrupted ?? false,
+      // Integrity damage, 0..1 (IntegrityModel.entryLevel reads legacy `corrupted` as 1).
+      corruption: typeof flags.corruption === 'number' ? flags.corruption : (flags.corrupted ? 1 : 0),
       contentData: flags.contentData ?? {},
       networkVisibility: flags.networkVisibility ?? { restricted: false, allowedNetworks: [], allowedTypes: [] },
       // ENVELOPE (#37) — 'mail' default keeps every legacy shard entry identical.

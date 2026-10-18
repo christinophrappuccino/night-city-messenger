@@ -208,6 +208,24 @@ export class MacroAPI {
     };
 
     /**
+     * Damage a data shard's integrity — an EMP, a fire, a stray round. GM only.
+     * Rolls per-entry data loss exactly like a failed breach (mechanical mode)
+     * unless `rollLoss: false`. Hardening applies.
+     * @param {string|Item} itemOrId
+     * @param {number} [amount]   points before hardening (default: the shard's per-breach loss)
+     * @param {object} [options]  { rollLoss = true }
+     * @returns {Promise<{success: boolean, newIntegrity?: number, damaged?: string[]}>}
+     */
+    ns.messenger.damageShard = async (itemOrId, amount, options = {}) => {
+      if (!isGM()) return { success: false, error: 'GM only' };
+      const item = MacroAPI._resolveItem(itemOrId);
+      if (!item) return { success: false, error: 'Item not found' };
+      if (!ns.dataShardService?.checkIntegrity(item)?.enabled) return { success: false, error: 'Integrity is not enabled on this shard' };
+      const res = await ns.dataShardService.degradeIntegrity(item, { amount, rollLoss: options.rollLoss !== false, by: 'GM' });
+      return { success: true, ...res };
+    };
+
+    /**
      * Force decrypt a data shard. GM only.
      * @param {string|Item} itemOrId
      * @returns {Promise<{success: boolean}>}

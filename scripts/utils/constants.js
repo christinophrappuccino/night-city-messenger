@@ -167,6 +167,11 @@ export const SOCKET_OPS = Object.freeze({
   // for events applied on another client. { userIds[], kind, data } — the
   // receiving client renders via NotificationService.
   SECURITY_NOTIFY: 'security:notify',
+  // Player→GM: a shard-integrity write. The integrity number lives on the item
+  // and entry damage on the GM-owned shard journal, so a player's failed breach,
+  // reconstruct, repair or salvage relays here. { op, itemUuid, ... } — ops:
+  // 'degrade' | 'entry' | 'repair' | 'salvage' | 'salvageSpent'.
+  SHARD_INTEGRITY_REQUEST: 'shard:integrityRequest',
 });
 
 // ─── Netrunning binding (design §5) ───
@@ -1133,14 +1138,17 @@ export const DEFAULTS = Object.freeze({
     },
 
     // ─── Integrity ───
+    // The full shape (legibility, effects, loss rules, recovery, the dead screen)
+    // lives in IntegrityModel.INTEGRITY_DEFAULTS; resolveIntegrity() layers any
+    // stored block over it, so these few keys are all a fresh shard needs.
     integrity: {
       enabled: false,
-      mode: 'cosmetic',                // 'cosmetic' | 'mechanical'
+      mode: 'cosmetic',                // 'cosmetic' (visual only) | 'mechanical' (data loss)
       maxIntegrity: 100,
       currentIntegrity: 100,
       degradePerFailure: 15,
-      corruptionThreshold: 40,
-      corruptionChance: 0.3,
+      corruptionThreshold: 50,         // PERCENT — data loss starts below this
+      corruptionChance: 0.4,           // per entry, per failed breach
     },
 
     // ─── Expiration ───

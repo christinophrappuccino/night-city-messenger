@@ -1,0 +1,315 @@
+/**
+ * Shard Integrity — the damage layer on the shard viewer.
+ * @file styles/components/shard-integrity.css
+ * @module night-city-messenger
+ *
+ * Design: docs/SHARD-INTEGRITY.md · mock: docs/mockups/shard-integrity-mock.html
+ *
+ * Everything keys on attributes ItemInboxApp stamps on `.ncm-item-inbox`:
+ *   data-integrity-tier       clean | light | heavy | severe | bricked
+ *   data-integrity-legibility readable | rough | hard   (the JS garble rate)
+ *   data-ig-scan / data-ig-tear / data-ig-steady         the GM's effect switches
+ * and lands on the SHARED entry card, so every content type gets it at once.
+ *
+ *   §1  Bar state word + buttons
+ *   §2  Scanlines + flicker (light+)
+ *   §3  Tearing, colour fringe, static blocks (heavy+)
+ *   §4  Garbled text (paint-over — the real text stays in the DOM)
+ *   §5  Mechanical loss — damage bar, lost units, lost entries
+ *   §6  Hit, restore, burn-out
+ *   §7  The bricked screen
+ *   §8  Motion vetoes
+ */
+
+/* ═══ §1  BAR STATE WORD + BUTTONS ═══ */
+
+.ncm-app .ncm-ig-state {
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
+  letter-spacing: .1em; text-transform: uppercase; padding: 1px 5px; border-radius: 1px;
+  border: 1px solid currentColor; flex: 0 0 auto;
+}
+.ncm-app .ncm-ig-state--light  { color: #ffab00; }
+.ncm-app .ncm-ig-state--heavy  { color: var(--ncm-primary, #F65261); }
+.ncm-app .ncm-ig-state--severe { color: #ff0033; animation: ncm-ig-blink 1.1s steps(2) infinite; }
+.ncm-app .ncm-ig-state--bricked { color: #ff1744; }
+@keyframes ncm-ig-blink { 50% { opacity: .35; } }
+
+.ncm-app button.ncm-ig-btn {
+  appearance: none !important; width: auto !important; flex: 0 0 auto !important; height: auto !important;
+  min-height: 0 !important; margin: 0 !important; line-height: 1.2 !important; box-shadow: none !important;
+  display: inline-flex !important; align-items: center !important; gap: 4px !important;
+  font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display) !important;
+  letter-spacing: .06em !important; text-transform: uppercase !important;
+  padding: 4px 9px !important; border-radius: 2px !important; cursor: pointer; white-space: nowrap;
+  color: var(--ncm-secondary, #19f3f7) !important;
+  background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 10%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 55%, transparent) !important;
+  user-select: none;
+}
+.ncm-app button.ncm-ig-btn:hover { background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 22%, transparent) !important; }
+.ncm-app button.ncm-ig-btn i { margin: 0 !important; }
+.ncm-app button.ncm-ig-btn--gm { color: #ffab00 !important; border-color: #ffab0088 !important; background: #ffab0012 !important; }
+.ncm-app button.ncm-ig-btn--dead {
+  color: #ff1744 !important; border-color: #ff174499 !important; background: #ff17441a !important;
+}
+.ncm-app .ncm-shard-integrity-row .ncm-ig-btn { margin-left: 4px !important; padding: 2px 7px !important; }
+
+/* the card hosts the overlays */
+.ncm-app [data-integrity-tier] .ncm-entry-card { position: relative; isolation: isolate; }
+
+/* ═══ §2  SCANLINES + FLICKER (light and up) ═══ */
+
+.ncm-app [data-ig-scan="1"]:is([data-integrity-tier="light"], [data-integrity-tier="heavy"], [data-integrity-tier="severe"]) .ncm-entry-card::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(255, 0, 60, var(--ig-scan-a, .05)) 2px 3px);
+  animation: ncm-ig-flicker var(--ig-flick, 7s) steps(1) infinite; animation-delay: var(--ig-delay, 0s);
+}
+.ncm-app [data-integrity-tier="heavy"]  { --ig-scan-a: .08; --ig-flick: 4.5s; --ig-tear: 5.5s; }
+.ncm-app [data-integrity-tier="severe"] { --ig-scan-a: .12; --ig-flick: 2.6s; --ig-tear: 3.1s; }
+@keyframes ncm-ig-flicker {
+  0%, 91%, 100% { opacity: 1; background-color: transparent; }
+  92% { opacity: 1; background-color: rgba(255, 255, 255, .06); }
+  93% { opacity: .2; }
+  94% { opacity: 1; background-color: rgba(255, 0, 60, .07); }
+}
+
+/* ═══ §3  TEARING + COLOUR FRINGE + STATIC (heavy and up) — bursts, not constant ═══ */
+
+.ncm-app [data-ig-tear="1"]:is([data-integrity-tier="heavy"], [data-integrity-tier="severe"]) .ncm-entry-card > .ncm-ig-body {
+  animation: ncm-ig-tear var(--ig-tear, 5.5s) steps(1) infinite; animation-delay: var(--ig-delay, 0s);
+}
+@keyframes ncm-ig-tear {
+  0%, 86%, 100% { transform: none; filter: none; clip-path: none; }
+  87% { transform: translateX(5px) skewX(-3deg); filter: drop-shadow(2px 0 rgba(255,0,60,.8)) drop-shadow(-2px 0 rgba(0,240,255,.8));
+        clip-path: polygon(0 0,100% 0,100% 38%,0 38%,0 44%,100% 44%,100% 100%,0 100%); }
+  88% { transform: translateX(-7px); filter: drop-shadow(-3px 0 rgba(255,0,60,.8)) drop-shadow(3px 0 rgba(0,240,255,.8));
+        clip-path: polygon(0 0,100% 0,100% 61%,0 61%,0 67%,100% 67%,100% 100%,0 100%); }
+  89% { transform: translateX(2px); filter: drop-shadow(1px 0 rgba(255,0,60,.6)); clip-path: none; }
+}
+.ncm-app [data-ig-tear="1"][data-integrity-tier="severe"] .ncm-entry-card { animation: ncm-ig-jitter .18s steps(2) infinite; }
+@keyframes ncm-ig-jitter { 50% { transform: translate(.6px, -.4px); } }
+
+.ncm-app .ncm-ig-drop {
+  position: absolute; z-index: 4; pointer-events: none; mix-blend-mode: screen; opacity: 0;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 1px, transparent 1px 3px),
+              repeating-linear-gradient(0deg, rgba(255,0,60,.25) 0 1px, rgba(0,0,0,.6) 1px 2px);
+  animation: ncm-ig-drop var(--d, 3s) steps(1) infinite; animation-delay: var(--dd, 0s);
+}
+@keyframes ncm-ig-drop { 0%, 70% { opacity: 0; } 71%, 78% { opacity: 1; } 79%, 100% { opacity: 0; } }
+.ncm-app [data-integrity-tier="severe"] .ncm-ig-drop { --d: 1.7s; }
+
+/* ═══ §4  GARBLED TEXT — paint-over ═══
+   The real character stays in the DOM (copy/paste + screen readers get the truth);
+   IntegrityFX paints a glyph over it. */
+
+.ncm-app .ncm-ig-ch { position: relative; -webkit-text-fill-color: transparent; }
+.ncm-app .ncm-ig-ch::before {
+  content: attr(data-g); position: absolute; left: 0; top: 0;
+  -webkit-text-fill-color: currentColor; color: var(--ig-gc, currentColor); pointer-events: none;
+}
+.ncm-app [data-integrity-tier="severe"] .ncm-ig-ch::before { --ig-gc: color-mix(in srgb, currentColor 55%, #ff0033); }
+
+/* Steady on hover — the signal holds while you look straight at it. No roll. */
+.ncm-app [data-ig-steady="1"] .ncm-entry-card:hover .ncm-ig-ch { -webkit-text-fill-color: currentColor; }
+.ncm-app [data-ig-steady="1"] .ncm-entry-card:hover .ncm-ig-ch::before { content: none; }
+.ncm-app [data-ig-steady="1"] .ncm-entry-card:hover,
+.ncm-app [data-ig-steady="1"] .ncm-entry-card:hover > .ncm-ig-body { animation: none !important; }
+.ncm-app [data-ig-steady="1"] .ncm-entry-card:hover::after { opacity: .35 !important; animation: none !important; }
+.ncm-app [data-ig-steady="1"] .ncm-entry-card:hover .ncm-ig-drop { display: none; }
+
+/* ═══ §5  MECHANICAL LOSS ═══ */
+
+/* text that carries data which is really gone */
+.ncm-app .ncm-ig-lost {
+  color: #ff3355 !important; opacity: .8; font-family: var(--ncm-font-mono) !important;
+  letter-spacing: .04em; text-shadow: 0 0 6px rgba(255, 0, 51, .35);
+}
+
+.ncm-app .ncm-ig-dmgbar {
+  display: flex; align-items: center; gap: 8px; margin: 0 12px 8px; padding: 6px 10px; position: relative; z-index: 5;
+  border: 1px solid color-mix(in srgb, #ff0033 45%, transparent); border-left-width: 3px; border-radius: 2px;
+  background: repeating-linear-gradient(-45deg, rgba(255,0,51,.07) 0 6px, transparent 6px 12px), rgba(255,0,51,.04);
+  font-family: var(--ncm-font-display); font-size: calc(11.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary);
+}
+.ncm-app .ncm-ig-dmgbar > i { color: #ff3355; flex: 0 0 auto; }
+.ncm-app .ncm-ig-dmgbar__txt { flex: 1; min-width: 0; }
+.ncm-app .ncm-ig-dmgbar__txt small { display: block; color: var(--ncm-text-muted); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-ig-meter { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+.ncm-app .ncm-ig-meter b { width: 7px; height: 9px; background: rgba(255, 255, 255, .1); border-radius: 1px; }
+.ncm-app .ncm-ig-meter b.on { background: #ff3355; box-shadow: 0 0 4px #ff3355; }
+.ncm-app .ncm-ig-dmgbar--glitchy { border-color: color-mix(in srgb, #ffab00 50%, transparent); background: rgba(255, 171, 0, .05); }
+.ncm-app .ncm-ig-dmgbar--glitchy > i { color: #ffab00; }
+.ncm-app .ncm-ig-dmgbar--safe { border-color: color-mix(in srgb, #00ff41 40%, transparent); background: rgba(0, 255, 65, .04); }
+.ncm-app .ncm-ig-dmgbar--safe > i { color: #00ff41; }
+
+.ncm-app .ncm-ig-gone {
+  margin: 4px 12px 12px; padding: 22px 14px; text-align: center; position: relative; z-index: 5;
+  border: 1px dashed #ff335588; border-radius: 2px; color: #ff3355; font-family: var(--ncm-font-mono);
+  background: repeating-linear-gradient(0deg, rgba(255, 0, 51, .05) 0 2px, transparent 2px 4px);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.ncm-app .ncm-ig-gone > i { font-size: calc(22px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-ig-gone p { margin: 0; letter-spacing: .1em; text-transform: uppercase; font-size: calc(11px * var(--ncm-text-scale, 1)); }
+
+.ncm-app .ncm-ig-ghost { opacity: .55; outline: 1px dashed #ffab0099; outline-offset: -1px; }
+.ncm-app .ncm-ig-ghost-tag {
+  position: absolute; right: 10px; top: 8px; z-index: 6; font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display);
+  letter-spacing: .08em; text-transform: uppercase; color: #ffab00; border: 1px solid #ffab00; padding: 1px 5px; border-radius: 1px;
+}
+
+/* ═══ §6  HIT · RESTORE · BURN-OUT ═══ */
+
+.ncm-app .ncm-item-inbox.ncm-ig-hit { animation: ncm-ig-hit .55s steps(1) 1; }
+@keyframes ncm-ig-hit {
+  0% { filter: none; transform: none; }
+  10% { filter: invert(.15) hue-rotate(-30deg) saturate(2); transform: translateX(-6px); }
+  25% { filter: drop-shadow(4px 0 #ff003c) drop-shadow(-4px 0 #00f0ff); transform: translateX(5px) skewX(2deg); }
+  45% { filter: brightness(1.6); transform: translateY(2px); }
+  65% { filter: drop-shadow(-2px 0 #ff003c); transform: none; }
+  100% { filter: none; transform: none; }
+}
+.ncm-app .ncm-shard-integrity-row.ncm-ig-hit .ncm-shard-integrity-fill { animation: ncm-ig-blink .12s steps(2) 4; }
+
+.ncm-app .ncm-entry-card.ncm-ig-restored::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 30%; z-index: 7; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(0, 255, 65, .22), transparent);
+  animation: ncm-ig-sweep 1.1s ease-out 1 forwards;
+}
+@keyframes ncm-ig-sweep { from { transform: translateY(-40%); opacity: 1; } to { transform: translateY(330%); opacity: 0; } }
+
+.ncm-app .ncm-entry-card.ncm-ig-dying { animation: ncm-ig-burn .5s steps(4) both; animation-delay: calc(var(--i, 0) * 90ms); }
+@keyframes ncm-ig-burn {
+  0% { filter: none; }
+  30% { filter: brightness(2.2) saturate(0); transform: translateX(-3px); }
+  60% { filter: invert(1) saturate(0) contrast(3); opacity: .6; }
+  100% { opacity: 0; filter: saturate(0) brightness(.2); max-height: 0; margin: 0; padding: 0; overflow: hidden; }
+}
+
+/* ═══ §7  THE BRICKED SCREEN ═══ */
+
+.ncm-app .ncm-ig-dead {
+  --dc: #ff1744;
+  position: relative; margin: 14px; padding: 0 0 16px; isolation: isolate; overflow: hidden; border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--dc) 35%, transparent);
+  background: radial-gradient(ellipse at 50% 18%, rgba(255, 23, 68, .10), transparent 60%), var(--ncm-bg-deep, #08080c);
+}
+.ncm-app .ncm-ig-dead::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(255, 23, 68, .035) 2px 3px);
+}
+.ncm-app .ncm-ig-dead__brk { position: absolute; width: 14px; height: 14px; border: 2px solid var(--dc); opacity: .8; }
+.ncm-app .ncm-ig-dead__brk--tl { left: 6px; top: 6px; border-right: 0; border-bottom: 0; }
+.ncm-app .ncm-ig-dead__brk--tr { right: 6px; top: 6px; border-left: 0; border-bottom: 0; }
+.ncm-app .ncm-ig-dead__brk--bl { left: 6px; bottom: 6px; border-right: 0; border-top: 0; }
+.ncm-app .ncm-ig-dead__brk--br { right: 6px; bottom: 6px; border-left: 0; border-top: 0; }
+
+.ncm-app .ncm-ig-dead__top {
+  display: flex; align-items: center; gap: 8px; padding: 9px 26px;
+  border-bottom: 1px solid color-mix(in srgb, var(--dc) 25%, transparent);
+  font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); letter-spacing: .14em; color: var(--dc); text-transform: uppercase;
+}
+.ncm-app .ncm-ig-dead__top span:first-of-type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-app .ncm-ig-dead__top span:last-child { margin-left: auto; color: var(--ncm-text-muted); letter-spacing: .08em; flex: 0 0 auto; }
+.ncm-app .ncm-ig-dead__top i { font-size: 8px; animation: ncm-ig-blink 1.4s steps(2) infinite; }
+
+.ncm-app .ncm-ig-dead__hero { display: flex; gap: 22px; align-items: center; padding: 22px 26px 8px; }
+.ncm-app .ncm-ig-dead__main { flex: 1; min-width: 0; }
+.ncm-app .ncm-ig-dead__chip { flex: 0 0 132px; height: 150px; }
+.ncm-app .ncm-ig-dead__chip svg { width: 100%; height: 100%; overflow: visible; }
+.ncm-app .ncm-ig-dead__body { fill: #0d0d12; stroke: var(--dc); stroke-opacity: .55; stroke-width: 2; }
+.ncm-app .ncm-ig-dead__die { fill: none; stroke: var(--dc); stroke-opacity: .22; }
+.ncm-app .ncm-ig-dead__pins rect { fill: #5a2a30; }
+.ncm-app .ncm-ig-dead__pins rect.dead { fill: #2a1015; }
+.ncm-app .ncm-ig-dead__traces path { fill: none; stroke: var(--dc); stroke-opacity: .5; stroke-width: 1.5; }
+.ncm-app .ncm-ig-dead__crack { fill: none; stroke: var(--dc); stroke-width: 2.4; stroke-linejoin: bevel; stroke-dasharray: 260; stroke-dashoffset: 0; }
+.ncm-app .ncm-ig-dead__crack--b { stroke-width: 1.6; }
+.ncm-app .ncm-ig-dead.is-fresh .ncm-ig-dead__crack { animation: ncm-ig-crack .7s .35s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes ncm-ig-crack { from { stroke-dashoffset: 260; } to { stroke-dashoffset: 0; } }
+.ncm-app .ncm-ig-dead__spark { fill: #fff; opacity: 0; animation: ncm-ig-spark 2.8s steps(1) infinite; }
+@keyframes ncm-ig-spark { 0%, 88%, 100% { opacity: 0; } 89%, 91% { opacity: 1; } 90% { opacity: .2; } }
+
+.ncm-app .ncm-ig-dead__title {
+  font: 700 calc(19px * var(--ncm-text-scale, 1)) var(--ncm-font-title); letter-spacing: .14em; color: var(--dc);
+  text-transform: uppercase; text-shadow: 0 0 14px rgba(255, 23, 68, .45); margin: 0 0 6px; line-height: 1.15;
+}
+.ncm-app .ncm-ig-dead.is-fresh .ncm-ig-dead__title { animation: ncm-ig-deadtitle .9s steps(1) both; }
+@keyframes ncm-ig-deadtitle {
+  0% { opacity: 0; } 20% { opacity: 1; transform: translateX(-4px); filter: drop-shadow(3px 0 #00f0ff); }
+  30% { opacity: .3; } 45% { opacity: 1; transform: none; filter: none; }
+}
+.ncm-app .ncm-ig-dead__sub { font: calc(13px * var(--ncm-text-scale, 1))/1.45 var(--ncm-font-body); color: var(--ncm-text-secondary); margin: 0 0 12px; }
+.ncm-app .ncm-ig-dead__stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+.ncm-app .ncm-ig-dead__stat { display: flex; flex-direction: column; min-width: 0; }
+.ncm-app .ncm-ig-dead__stat b {
+  font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .1em; color: var(--ncm-text-muted); text-transform: uppercase;
+}
+.ncm-app .ncm-ig-dead__stat span {
+  font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--ncm-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ncm-app .ncm-ig-dead__stat span.is-bad { color: var(--dc); }
+
+.ncm-app .ncm-ig-dead__trace { margin: 10px 26px 0; padding: 8px 10px 4px; border: 1px solid var(--ncm-border); border-radius: 2px; background: rgba(0, 0, 0, .25); }
+.ncm-app .ncm-ig-dead__trace-h {
+  display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px;
+  font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .1em; color: var(--ncm-text-muted); text-transform: uppercase;
+}
+.ncm-app .ncm-ig-dead__trace-h span:last-child { font-family: var(--ncm-font-mono); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-app .ncm-ig-dead__trace svg { width: 100%; height: 54px; display: block; }
+.ncm-app .ncm-ig-dead__base { stroke: rgba(255, 255, 255, .08); }
+.ncm-app .ncm-ig-dead__line { fill: none; stroke: #ffab00; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.ncm-app .ncm-ig-dead__flat { stroke: var(--dc); stroke-width: 2; vector-effect: non-scaling-stroke; animation: ncm-ig-flat 1.6s ease-in-out infinite; }
+@keyframes ncm-ig-flat { 50% { opacity: .35; } }
+.ncm-app .ncm-ig-dead.is-fresh .ncm-ig-dead__line { stroke-dasharray: 900; animation: ncm-ig-trace 1.2s .2s ease-out both; }
+@keyframes ncm-ig-trace { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
+
+.ncm-app .ncm-ig-dead__lost { margin: 12px 26px 0; }
+.ncm-app .ncm-ig-dead__lost-h {
+  font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .1em; color: var(--ncm-text-muted);
+  text-transform: uppercase; margin-bottom: 4px;
+}
+.ncm-app .ncm-ig-dead__row {
+  display: flex; align-items: center; gap: 9px; padding: 5px 8px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent);
+  font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--ncm-text-muted);
+}
+.ncm-app .ncm-ig-dead__row i { width: 14px; text-align: center; opacity: .7; }
+.ncm-app .ncm-ig-dead__row .nm {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--dc) 60%, transparent);
+}
+.ncm-app .ncm-ig-dead__row .tg {
+  font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .08em; color: var(--dc); text-transform: uppercase; flex: 0 0 auto;
+}
+.ncm-app .ncm-ig-dead.is-fresh .ncm-ig-dead__row { animation: ncm-ig-rowin .3s cubic-bezier(.22, 1, .36, 1) both; animation-delay: calc(1s + var(--i, 0) * 70ms); }
+@keyframes ncm-ig-rowin { from { opacity: 0; transform: translateY(4px); } }
+
+.ncm-app .ncm-ig-dead__act { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 14px 26px 0; }
+.ncm-app .ncm-ig-dead__act small { color: var(--ncm-text-muted); font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body); }
+.ncm-app .ncm-ig-dead.is-fresh > :is(.ncm-ig-dead__hero, .ncm-ig-dead__trace, .ncm-ig-dead__act) { animation: ncm-ig-rowin .35s cubic-bezier(.22, 1, .36, 1) both; }
+.ncm-app .ncm-ig-dead.is-fresh > .ncm-ig-dead__trace { animation-delay: .25s; }
+.ncm-app .ncm-ig-dead.is-fresh > .ncm-ig-dead__act { animation-delay: 1.4s; }
+
+/* ═══ §8  MOTION VETOES — the garble stays, the motion goes ═══ */
+
+@media (prefers-reduced-motion: reduce) {
+  .ncm-app [data-integrity-tier] *,
+  .ncm-app [data-integrity-tier] *::before,
+  .ncm-app [data-integrity-tier] *::after,
+  .ncm-app .ncm-ig-dead * { animation: none !important; }
+}
+.ncm-app[data-ncm-animation-level="off"] [data-integrity-tier] *,
+.ncm-app[data-ncm-animation-level="off"] [data-integrity-tier] *::before,
+.ncm-app[data-ncm-animation-level="off"] [data-integrity-tier] *::after { animation: none !important; }
+
+/* ═══ §9  INDEX STRIP — the chips carry the same damage as the cards ═══ */
+
+.ncm-app .ncm-shard-index-chip.ncm-ig-chip { position: relative; padding-bottom: 5px; }
+.ncm-app .ncm-ig-chipbar { position: absolute; left: 3px; right: 3px; bottom: 1px; display: flex; gap: 1px; height: 2px; pointer-events: none; }
+.ncm-app .ncm-ig-chipbar b { flex: 1; background: rgba(255, 255, 255, .12); border-radius: 1px; }
+.ncm-app .ncm-ig-chipbar b.on { background: #ff3355; }
+.ncm-app .ncm-ig-chip--glitchy .ncm-ig-chipbar b.on { background: #ffab00; }
+.ncm-app .ncm-ig-chip--lost { border-color: color-mix(in srgb, #ff3355 45%, transparent); }
+.ncm-app .ncm-ig-chip--lost .ncm-shard-index-chip-title {
+  color: #ff3355; text-decoration: line-through; text-decoration-color: color-mix(in srgb, #ff3355 60%, transparent);
+}

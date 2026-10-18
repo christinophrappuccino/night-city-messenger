@@ -382,3 +382,19 @@
 .ncm-app [data-panel="theme"] > .ncm-cfg-row,
 .ncm-app [data-panel="theme"] > .ncm-cfg-hint { padding-left: 16px; padding-right: 16px; margin-left: 0; margin-right: 0; }
 .ncm-app [data-panel="theme"] > .ncm-cfg-row { flex-wrap: wrap; }
+
+/* ─── Integrity section (docs/SHARD-INTEGRITY.md) ─── */
+.ncm-app .ncm-ig-cfg [hidden] { display: none !important; }
+.ncm-app .ncm-ig-sub { margin: 10px 0 0; padding: 10px 10px 4px; border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-app .ncm-ig-sub__title {
+  display: flex; gap: 6px; align-items: center; margin-bottom: 6px;
+  font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary);
+}
+.ncm-app .ncm-ig-sub__title i { color: var(--ncm-secondary); }
+.ncm-app .ncm-ig-sub .ncm-cfg-access-modes { margin-bottom: 8px; }
+.ncm-app .ncm-ig-cfg .ncm-cfg-check { white-space: normal; text-transform: none; letter-spacing: 0; }
+.ncm-app .ncm-ig-ex {
+  font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); padding: 4px 6px; margin: 0 0 8px;
+  background: var(--ncm-bg-deep); border-radius: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ncm-app .ncm-ig-indent { margin-left: 22px; }

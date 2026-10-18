@@ -1274,7 +1274,7 @@ export class ShardEncoderApp extends BaseApplication {
         <span class="ncm-fw-icecard__ic" ${on ? 'style="color:var(--fam)"' : ''}><i class="fas fa-microchip"></i></span>
         <span class="ncm-fw-icecard__b">
           <span class="ncm-fw-icecard__n">${esc(name)}<span class="ncm-enc-tier" data-tier="${esc(t?.color || 'cyan')}">${esc(t?.name || '—')}</span></span>
-          <span class="ncm-fw-icecard__d">${esc(sub)} · ${esc(capacityOf(t).label)}<span class="botch ${b.bricks ? 'bad' : 'ok'}">on a botch: ${esc(b.short)}${t?.perk ? ' · ' + esc(TIER_PERKS[t.perk].label) : ''}</span></span>
+          <span class="ncm-fw-icecard__d">${esc(sub)} · ${esc(capacityOf(t).label)}${t?.hardening ? ` · hardened −${t.hardening}%` : ""}<span class="botch ${b.bricks ? 'bad' : 'ok'}">on a botch: ${esc(b.short)}${t?.perk ? ' · ' + esc(TIER_PERKS[t.perk].label) : ''}</span></span>
         </span>
         ${on ? '<span class="ncm-fw-icecard__dmg" style="color:var(--ncm-success)">READY</span>' : ''}
       </div>`;
@@ -2771,6 +2771,12 @@ export class ShardEncoderApp extends BaseApplication {
       // What the chip can hold, taken from the blank's tier. 0 = no limit, which
       // is also what every pre-capacity shard resolves to.
       capacity: capacityOf(this._blank().tier).limit,
+      // Integrity from the blank's tier: whether it's tracked at all, and how
+      // hardened the chip is. Hardening rides along even when tracking is off,
+      // so a GM who switches integrity on later still gets the tougher chip.
+      integrity: this._blank().tier?.integrity
+        ? { enabled: true, mode: 'cosmetic', maxIntegrity: 100, currentIntegrity: 100, hardening: this._blank().tier?.hardening || 0 }
+        : { hardening: this._blank().tier?.hardening || 0 },
       playerMade: {
         actorId: this.actor?.id || '', actorName: this.actor?.name || '',
         at: new Date().toISOString(), outcome, quality: eff.quality,

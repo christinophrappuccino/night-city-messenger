@@ -237,6 +237,26 @@ const GM = [
       REPORT,
   },
   {
+    slug: 'GmDmgShard',
+    name: 'Damage Selected Shard',
+    icon: 'gm-damage-shard',
+    label: 'DMG',
+    command:
+      GUARD +
+      ALL_ITEMS +
+      'const pool = _all.filter(i => _ds && _ds.isDataShard && _ds.isDataShard(i) && _ds.checkIntegrity(i).enabled);\n' +
+      'if (!pool.length) return ui.notifications.warn("No shards with integrity switched on. Select the carrier token, or enable Integrity in Configure Shard.");\n' +
+      PICK('pool', 'Damage Shard') +
+      'const _per = _ds.getIntegrityConfig(_chosen).degradePerFailure;\n' +
+      'new Dialog({ title: "Damage Shard",\n' +
+      '  content: "<div style=\\"display:grid;gap:6px\\"><label>Points <input name=\\"amt\\" type=\\"number\\" min=\\"1\\" value=\\"" + _per + "\\"/></label><label><input name=\\"roll\\" type=\\"checkbox\\" checked/> Roll data loss (like a failed breach)</label></div>",\n' +
+      '  buttons: { hit: { label: "Damage", callback: async h => {\n' +
+      '    const r = (h[0] || h); const amt = parseInt(r.querySelector("[name=\\"amt\\"]").value) || _per;\n' +
+      '    const res = await M.damageShard(_chosen, amt, { rollLoss: r.querySelector("[name=\\"roll\\"]").checked });\n' +
+      '    ui.notifications[res && res.success ? "info" : "error"](res && res.success ? ("\\"" + _chosen.name + "\\" integrity now " + res.newIntegrity + ".") : ((res && res.error) || "Failed."));\n' +
+      '  } }, cancel: { label: "Cancel" } }, default: "hit" }).render(true);\n',
+  },
+  {
     slug: 'GmShardMsg',
     name: 'Add Message To Selected Shard',
     icon: 'gm-add-shard-message',

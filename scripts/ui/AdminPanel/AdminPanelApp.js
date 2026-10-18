@@ -320,6 +320,11 @@ export class AdminPanelApp extends BaseApplication {
       toggleShardLayer: AdminPanelApp._onToggleShardLayer,
       setShardIntegrity: AdminPanelApp._onSetShardIntegrity,
       restoreShardIntegrity: AdminPanelApp._onRestoreShardIntegrity,
+      damageShard: AdminPanelApp._onDamageShard,
+      toggleShardDamageRoll: AdminPanelApp._onToggleShardDamageRoll,
+      setShardEntryDamage: AdminPanelApp._onSetShardEntryDamage,
+      repairAllShardEntries: AdminPanelApp._onRepairAllShardEntries,
+      openShardEntry: AdminPanelApp._onOpenShardEntry,
 
       // Spam actions
       spamToggleAll: AdminPanelApp._onSpamToggleAll,
@@ -1182,6 +1187,11 @@ export class AdminPanelApp extends BaseApplication {
   static async _onForceDecryptShardItem(event, target) { return this.tabs.shards.onForceDecryptShardItem(event, target); }
   static async _onSetShardIntegrity(event, target) { return this.tabs.shards.onSetIntegrity(event, target); }
   static async _onRestoreShardIntegrity(event, target) { return this.tabs.shards.onRestoreIntegrity(event, target); }
+  static async _onDamageShard(event, target) { return this.tabs.shards.onDamageShard(event, target); }
+  static _onToggleShardDamageRoll(event, target) { this.tabs.shards.onToggleDamageRoll(event, target); }
+  static async _onSetShardEntryDamage(event, target) { return this.tabs.shards.onSetEntryDamage(event, target); }
+  static async _onRepairAllShardEntries(event, target) { return this.tabs.shards.onRepairAllEntries(event, target); }
+  static _onOpenShardEntry(event, target) { this.tabs.shards.onOpenShardEntry(event, target); }
 
   // ═══════════════════════════════════════════════════════════
   //  Action Handlers — Spam (delegated to SpamTab)

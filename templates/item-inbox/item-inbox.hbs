@@ -8,7 +8,7 @@
   Structure: Identity Header → Integrity Bar → Signal Row → Index Strip → Content/Overlay → Footer
 --}}
 
-<div class="ncm-item-inbox ncm-shard-preset-{{presetKey}}" data-item-id="{{item.id}}" style="{{#if presetAccent}}--shard-accent: {{presetAccent}};{{/if}}--ncm-shard-text-scale: {{shardTextScale}};">
+<div class="ncm-item-inbox ncm-shard-preset-{{presetKey}}" data-item-id="{{item.id}}"{{#if igOn}} data-integrity-tier="{{integrityTier}}" data-integrity-legibility="{{igLegibility}}" data-ig-scan="{{igScan}}" data-ig-tear="{{igTear}}" data-ig-steady="{{igSteady}}"{{/if}} style="{{#if presetAccent}}--shard-accent: {{presetAccent}};{{/if}}--ncm-shard-text-scale: {{shardTextScale}};">
 
   {{!-- ═══ BOOT SEQUENCE CONTAINER (filled by JS, hidden after boot completes) ═══ --}}
   {{#if showBoot}}
@@ -151,6 +151,10 @@
         <div class="ncm-shard-integrity-fill ncm-integrity-{{integrityTier}}" style="width: {{integrityPercent}}%;"></div>
       </div>
       <span class="ncm-shard-integrity-value">{{integrityPercent}}%</span>
+      {{#if igStateWord}}<span class="ncm-ig-state ncm-ig-state--{{integrityTier}}">{{igStateWord}}</span>{{/if}}
+      {{#if igRepair}}
+        <button type="button" class="ncm-ig-btn" data-action="igRepair" data-tooltip="Roll to patch the damaged sectors (+{{igRepair.pts}} integrity)"><i class="fas fa-screwdriver-wrench"></i>Repair · DV {{igRepair.dv}}</button>
+      {{/if}}
     </div>
   {{/if}}
 
@@ -183,10 +187,11 @@
         {{/each}}
       {{else}}
         {{#each indexChips}}
-          <div class="ncm-shard-index-chip {{accentClass}} {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}" style="--ncm-chip-i:{{@index}};"
-               data-action="scrollToEntry" data-entry-id="{{id}}">
+          <div class="ncm-shard-index-chip {{accentClass}} {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}{{#if ig.damaged}} ncm-ig-chip{{/if}}{{#if ig.gone}} ncm-ig-chip--lost{{/if}}{{#if ig.glitchy}} ncm-ig-chip--glitchy{{/if}}" style="--ncm-chip-i:{{@index}};"
+               data-action="scrollToEntry" data-entry-id="{{id}}"{{#if ig.tooltip}} data-tooltip="{{ig.tooltip}}"{{/if}}>
             <i class="{{iconClass}} ncm-shard-index-chip-icon" style="color:{{iconColor}};"></i>
             <span class="ncm-shard-index-chip-title">{{#if isHidden}}Hidden{{else}}{{title}}{{/if}}</span>
+            {{#if ig.damaged}}<span class="ncm-ig-chipbar" aria-hidden="true">{{#each ig.meter}}<b class="{{#if this}}on{{/if}}"></b>{{/each}}</span>{{/if}}
           </div>
         {{/each}}
       {{/if}}
@@ -197,7 +202,69 @@
   <div class="ncm-shard-content">
 
     {{!-- DESTROYED STATE --}}
-    {{#if isDestroyed}}
+    {{#if igDead}}
+      {{!-- BRICKED by integrity — a dead chip, how it died, and what was on it.
+            (Self-destruct / expiry keep the plain destroyed panel below.) --}}
+      <div class="ncm-ig-dead{{#if igDead.fresh}} is-fresh{{/if}}">
+        <i class="ncm-ig-dead__brk ncm-ig-dead__brk--tl"></i><i class="ncm-ig-dead__brk ncm-ig-dead__brk--tr"></i><i class="ncm-ig-dead__brk ncm-ig-dead__brk--bl"></i><i class="ncm-ig-dead__brk ncm-ig-dead__brk--br"></i>
+        <div class="ncm-ig-dead__top"><i class="fas fa-circle"></i><span>Shard bricked // {{shardDisplayName}}</span><span>no carrier</span></div>
+        <div class="ncm-ig-dead__hero">
+          <div class="ncm-ig-dead__chip">
+            <svg viewBox="0 0 132 150" aria-hidden="true">
+              <path d="M18 4 H128 V128 L114 146 H4 V22 Z" class="ncm-ig-dead__body"/>
+              <path d="M28 18 H116 V60 H28 Z" class="ncm-ig-dead__die"/>
+              <g class="ncm-ig-dead__pins"><rect x="22" y="128" width="6" height="16"/><rect x="35" y="128" width="6" height="16"/><rect x="48" y="128" width="6" height="16" class="dead"/><rect x="61" y="128" width="6" height="16"/><rect x="74" y="128" width="6" height="16"/><rect x="87" y="128" width="6" height="16" class="dead"/><rect x="100" y="128" width="6" height="16"/></g>
+              <g class="ncm-ig-dead__traces"><path d="M40 78 h30 v18 h22"/><path d="M40 100 h14 v12 h44"/></g>
+              <path class="ncm-ig-dead__crack" d="M70 4 L62 34 L78 52 L58 80 L74 98 L52 146"/>
+              <path class="ncm-ig-dead__crack ncm-ig-dead__crack--b" d="M78 52 L104 64 L118 58"/>
+              <circle class="ncm-ig-dead__spark" cx="62" cy="34" r="5"/>
+            </svg>
+          </div>
+          <div class="ncm-ig-dead__main">
+            <p class="ncm-ig-dead__title">Data unrecoverable</p>
+            <p class="ncm-ig-dead__sub">Integrity hit zero and the storage cells burned out. The chip still reads as a shard, but nothing on it will open.</p>
+            <div class="ncm-ig-dead__stats">
+              <div class="ncm-ig-dead__stat"><b>Integrity</b><span class="is-bad">0 / {{igDead.max}}</span></div>
+              {{#if igDead.showCount}}<div class="ncm-ig-dead__stat"><b>Entries lost</b><span class="is-bad">{{igDead.lost}}</span></div>{{/if}}
+              <div class="ncm-ig-dead__stat"><b>Failed breaches</b><span>{{igDead.breaches}}</span></div>
+              <div class="ncm-ig-dead__stat"><b>Last breach</b><span>{{igDead.lastBy}}{{#if igDead.lastAt}} · {{igDead.lastAt}}{{/if}}</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="ncm-ig-dead__trace">
+          <div class="ncm-ig-dead__trace-h"><span>Integrity trace</span><span>{{igDead.traceLabel}}</span></div>
+          <svg viewBox="0 0 {{igDead.trace.W}} {{igDead.trace.H}}" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="0" y1="{{igDead.trace.baseY}}" x2="{{igDead.trace.W}}" y2="{{igDead.trace.baseY}}" class="ncm-ig-dead__base"/>
+            <path class="ncm-ig-dead__line" d="{{igDead.trace.d}}"/>
+            <line class="ncm-ig-dead__flat" x1="{{igDead.trace.flatX}}" y1="{{igDead.trace.baseY}}" x2="{{igDead.trace.W}}" y2="{{igDead.trace.baseY}}"/>
+          </svg>
+        </div>
+        {{#if igDead.showList}}
+          <div class="ncm-ig-dead__lost">
+            <div class="ncm-ig-dead__lost-h">What was on it{{#if igDead.listGmOnly}} · GM only{{/if}}</div>
+            {{#each igDead.rows}}
+              <div class="ncm-ig-dead__row" style="--i:{{@index}}"><i class="{{icon}}"></i><span class="nm">{{name}}</span><span class="tg">{{label}} · lost</span></div>
+            {{/each}}
+          </div>
+        {{/if}}
+        <div class="ncm-ig-dead__act">
+          {{#if igDead.isGM}}
+            <button type="button" class="ncm-ig-btn ncm-ig-btn--gm" data-action="igRestore"><i class="fas fa-heart-pulse"></i>Restore shard</button>
+            <small>Brings it back to full and repairs every entry.</small>
+          {{else if igDead.salvage}}
+            {{#if igDead.salvage.spent}}
+              <small><i class="fas fa-ban"></i> Your salvage attempt failed — there is nothing left on this chip you can recover.</small>
+            {{else if igDead.salvage.noActor}}
+              <small>Pick an operator to attempt a salvage.</small>
+            {{else}}
+              <button type="button" class="ncm-ig-btn ncm-ig-btn--dead" data-action="igSalvage"><i class="fas fa-microchip"></i>Attempt salvage · DV {{igDead.salvage.dv}}</button>
+              <small>One try. Pulls what's left off the cells — it comes back at {{igDead.salvage.pct}}%, badly damaged.</small>
+            {{/if}}
+          {{/if}}
+        </div>
+      </div>
+
+    {{else if isDestroyed}}
       <div class="ncm-shard-destroyed">
         <i class="fas fa-skull-crossbones"></i>
         <p class="ncm-shard-destroyed-title">DATA UNRECOVERABLE</p>
@@ -249,8 +316,9 @@
       <div class="ncm-shard-entries">
         {{#if hasEntries}}
           {{#each visibleEntries}}
-            <div class="ncm-entry-card ncm-entry-accent-{{accentColor}} {{#if corrupted}}ncm-entry--corrupted{{/if}}"
-                 data-entry-id="{{id}}" id="shard-entry-{{id}}">
+            <div class="ncm-entry-card ncm-entry-accent-{{accentColor}}{{#if ig.damaged}} ncm-entry--corrupted{{/if}}{{#if ig.hiddenFromPlayers}} ncm-ig-ghost{{/if}}"
+                 data-entry-id="{{id}}" id="shard-entry-{{id}}"{{#if ig}} style="--ig-delay:{{ig.delay}}s"{{/if}}>
+              {{#if ig.hiddenFromPlayers}}<span class="ncm-ig-ghost-tag">Hidden from players</span>{{/if}}
 
               {{!-- Entry Header (shared across all types) --}}
               <div class="ncm-entry-header">
@@ -308,11 +376,13 @@
                 {{/if}}
               </div>
 
-              {{!-- Corrupted overlay --}}
-              {{#if corrupted}}
-                <div class="ncm-entry-body ncm-entry-corrupted">
-                  <i class="fas fa-triangle-exclamation"></i>
-                  <p>DATA CORRUPTED — Entry unrecoverable</p>
+              {{!-- Integrity: the whole entry is lost (docs/SHARD-INTEGRITY.md) --}}
+              {{#if ig.gone}}
+                <div class="ncm-ig-gone">
+                  <i class="fas fa-file-circle-xmark"></i>
+                  <p>Sector lost · entry unreadable</p>
+                  {{#if ig.recon}}<button type="button" class="ncm-ig-btn" data-action="igReconstruct" data-entry-id="{{id}}"><i class="fas fa-screwdriver-wrench"></i>Reconstruct · DV {{ig.recon.dv}}</button>{{/if}}
+                  {{#if ig.canPeek}}<button type="button" class="ncm-ig-btn ncm-ig-btn--gm" data-action="igPeek" data-entry-id="{{id}}"><i class="fas fa-eye"></i>Show original</button>{{/if}}
                 </div>
 
               {{!-- Per-message encrypted --}}
@@ -328,7 +398,24 @@
 
               {{!-- ═══ SHARED CONTENT-TYPE RENDERER (design doc §8c) ═══ --}}
               {{else}}
-                {{> "modules/night-city-messenger/templates/content/content-body.hbs"}}
+                {{#if ig.showBar}}
+                  {{#if ig.peek}}
+                    <div class="ncm-ig-dmgbar ncm-ig-dmgbar--glitchy"><i class="fas fa-eye"></i><div class="ncm-ig-dmgbar__txt">GM — original data<small>Players see this entry {{ig.pct}}% damaged</small></div>
+                      <button type="button" class="ncm-ig-btn ncm-ig-btn--gm" data-action="igPeek" data-entry-id="{{id}}"><i class="fas fa-eye-slash"></i>Show damage</button></div>
+                  {{else if ig.isSafe}}
+                    <div class="ncm-ig-dmgbar ncm-ig-dmgbar--safe"><i class="fas fa-shield-halved"></i><div class="ncm-ig-dmgbar__txt">Funds intact<small>{{ig.summary}}</small></div>
+                      {{#if ig.canPeek}}<button type="button" class="ncm-ig-btn ncm-ig-btn--gm" data-action="igPeek" data-entry-id="{{id}}"><i class="fas fa-eye"></i>Show original</button>{{/if}}</div>
+                  {{else}}
+                    <div class="ncm-ig-dmgbar{{#if ig.isGlitchy}} ncm-ig-dmgbar--glitchy{{/if}}">
+                      <i class="fas {{#if ig.isGlitchy}}fa-bug{{else}}fa-file-circle-exclamation{{/if}}"></i>
+                      <div class="ncm-ig-dmgbar__txt">{{#if ig.isGlitchy}}Unstable program<small>Run DV +{{ig.glitchDV}} · {{ig.misfire}}% chance it misfires</small>{{else}}Data damage{{#if @root.isGM}} · {{ig.pct}}%{{/if}}<small>{{ig.summary}}</small>{{/if}}</div>
+                      <span class="ncm-ig-meter">{{#each ig.meter}}<b class="{{#if this}}on{{/if}}"></b>{{/each}}</span>
+                      {{#if ig.recon}}<button type="button" class="ncm-ig-btn" data-action="igReconstruct" data-entry-id="{{id}}"><i class="fas fa-screwdriver-wrench"></i>Reconstruct · DV {{ig.recon.dv}}</button>{{/if}}
+                      {{#if ig.canPeek}}<button type="button" class="ncm-ig-btn ncm-ig-btn--gm" data-action="igPeek" data-entry-id="{{id}}"><i class="fas fa-eye"></i>Show original</button>{{/if}}
+                    </div>
+                  {{/if}}
+                {{/if}}
+                <div class="ncm-ig-body">{{> "modules/night-city-messenger/templates/content/content-body.hbs"}}</div>
               {{/if}}
             </div>
           {{/each}}

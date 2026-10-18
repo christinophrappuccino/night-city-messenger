@@ -1,0 +1,244 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Admin Shards: damage controls mock</title>
+<!--
+  Admin → Shards, expanded shard row — proposed integrity additions (2026-10-18).
+  Companion to shard-integrity-mock.html.
+
+  Renders the REAL templates/admin-panel/tab-shards.hbs against the real cascade,
+  then splices in the PROPOSED blocks (everything .ncm-sdmg-*):
+    #6  a "Hardened" tag on shards encoded onto a hardened blank
+    #7  a Damage control beside the integrity presets
+    #8  a per-entry damage list with pip meters + Repair / Max
+
+  Open through the server:  node tools/serve-mockups.cjs
+    http://127.0.0.1:8123/docs/mockups/admin-shard-damage-mock.html
+    ?t=clean-light|high-contrast   admin preset      ?h=<px>  frame height
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         'file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+<style>
+  body { margin: 0; background: #0b0b10; padding: 20px; font: 12px system-ui; color: #ccc; }
+  .sw { margin-bottom: 10px; display: flex; gap: 6px; align-items: center; }
+  .sw button { background: #222; color: #ccc; border: 1px solid #555; padding: 4px 10px; cursor: pointer; width: auto; }
+  .sw .tag { font: 600 10px system-ui; color: #f7c948; border: 1px dashed #f7c948; padding: 3px 6px; }
+  .window-content { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: none; padding: 0; }
+  .app-frame { width: 820px; height: 900px; overflow: hidden; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+  .ncm-admin-content { overflow-y: scroll !important; }
+
+  /* ════════ PROPOSED (would ship in tab-shards.css) — admin vocabulary:
+     display chrome, mono for values, 2px radius, 1px badges ════════ */
+
+  /* #6 hardened tag in the integrity header */
+  .ncm-app .ncm-sdmg-hard { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 5px; border-radius: 1px;
+    font: 700 9px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase;
+    color: var(--ncm-accent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 35%, transparent); background: color-mix(in srgb, var(--ncm-accent) 8%, transparent); }
+
+  /* #7 damage control row */
+  .ncm-app .ncm-sdmg-hit { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .ncm-app .ncm-sdmg-hit input[type=number] { width: 46px !important; height: 22px !important; min-height: 0 !important; padding: 0 4px !important; text-align: center;
+    font: 12px var(--ncm-font-mono) !important; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important; color: var(--ncm-text-primary) !important; border-radius: 2px !important; }
+  .ncm-app .ncm-sdmg-hit label { display: inline-flex; align-items: center; gap: 4px; text-transform: none; font: 400 11px var(--ncm-font-body); color: var(--ncm-text-secondary); letter-spacing: 0; }
+  .ncm-app .ncm-sdmg-hit label input { width: 13px !important; height: 13px !important; --checkbox-size: 13px; margin: 0 !important; flex: none; }
+  .ncm-app .ncm-sdmg-hit small { color: var(--ncm-text-muted); font: 10px var(--ncm-font-mono); }
+
+  /* the button — copies .ncm-spam-send-btn */
+  .ncm-app button.ncm-sdmg-btn { display: inline-flex !important; align-items: center !important; gap: 5px !important; width: auto !important; flex: 0 0 auto !important;
+    height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4px 9px !important; appearance: none !important; box-shadow: none !important;
+    font: 700 10.5px var(--ncm-font-display) !important; letter-spacing: .04em !important; text-transform: uppercase !important; line-height: 1.2 !important;
+    border-radius: 2px !important; cursor: pointer; color: var(--ncm-text-secondary) !important; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important; }
+  .ncm-app button.ncm-sdmg-btn:hover { color: var(--ncm-text-primary) !important; border-color: var(--ncm-border-active, var(--ncm-secondary)) !important; }
+  .ncm-app button.ncm-sdmg-btn i { margin: 0 !important; font-size: 10px; }
+  .ncm-app button.ncm-sdmg-btn--danger { color: var(--ncm-danger) !important; border-color: color-mix(in srgb, var(--ncm-danger) 40%, transparent) !important;
+    background: color-mix(in srgb, var(--ncm-danger) 7%, transparent) !important; }
+  .ncm-app button.ncm-sdmg-btn--ok { color: var(--ncm-success) !important; border-color: color-mix(in srgb, var(--ncm-success) 40%, transparent) !important; }
+  .ncm-app button.ncm-sdmg-btn--icon { padding: 4px 6px !important; }
+
+  /* #8 per-entry damage list */
+  .ncm-app .ncm-sdmg-list { margin-top: 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-elevated); }
+  .ncm-app .ncm-sdmg-list__h { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-sdmg-list__title { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-app .ncm-sdmg-list__title i { color: var(--ncm-text-muted); margin-right: 4px; }
+  .ncm-app .ncm-sdmg-list__sum { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-app .ncm-sdmg-list__h .sp { flex: 1; }
+  .ncm-app .ncm-sdmg-row { display: grid; grid-template-columns: 18px minmax(0,1fr) 92px 64px 150px auto; align-items: center; gap: 10px;
+    padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .ncm-app .ncm-sdmg-row:last-child { border-bottom: 0; }
+  .ncm-app .ncm-sdmg-row > i { color: var(--ncm-text-muted); text-align: center; font-size: 11px; }
+  .ncm-app .ncm-sdmg-row__nm { min-width: 0; }
+  .ncm-app .ncm-sdmg-row__nm b { display: block; font: 600 12px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-sdmg-row__nm span { font: 9px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-muted); }
+  .ncm-app .ncm-sdmg-pips { display: inline-flex; gap: 3px; }
+  .ncm-app .ncm-sdmg-pips span { display: block; width: 18px; height: 10px; border-radius: 1px; cursor: pointer; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); box-sizing: border-box; }
+  .ncm-app .ncm-sdmg-pips span:hover { border-color: var(--ncm-danger); }
+  .ncm-app .ncm-sdmg-pips span.on { background: var(--ncm-danger); border-color: var(--ncm-danger); }
+  .ncm-app .ncm-sdmg-row__pct { font: 12px var(--ncm-font-mono); color: var(--ncm-text-secondary); text-align: right; }
+  .ncm-app .ncm-sdmg-row__pct.is-bad { color: var(--ncm-danger); }
+  .ncm-app .ncm-sdmg-row__pct.is-ok { color: var(--ncm-success); }
+  .ncm-app .ncm-sdmg-row__lost { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-app .ncm-sdmg-row__act { display: flex; gap: 4px; justify-content: flex-end; }
+  .ncm-app .ncm-sdmg-tag { padding: 1px 5px; border-radius: 1px; font: 700 9px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; }
+  .ncm-app .ncm-sdmg-tag--safe { color: var(--ncm-success); border: 1px solid color-mix(in srgb, var(--ncm-success) 35%, transparent); }
+  .ncm-app .ncm-sdmg-tag--glitch { color: var(--ncm-warning); border: 1px solid color-mix(in srgb, var(--ncm-warning) 35%, transparent); }
+  .ncm-app .ncm-sdmg-tag--lost { color: var(--ncm-danger); border: 1px solid color-mix(in srgb, var(--ncm-danger) 35%, transparent); }
+  .ncm-app .ncm-sdmg-tag--hidden { color: var(--ncm-text-muted); border: 1px dashed var(--ncm-border); }
+  .ncm-app .ncm-sdmg-foot { padding: 6px 10px; font: italic 500 9.5px var(--ncm-font-display); color: var(--ncm-text-muted); border-top: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+</style>
+</head>
+<body>
+<div class="sw">
+  <span class="tag">MOCK</span>
+  <button onclick="location.search=''">clean-dark</button>
+  <button onclick="location.search='?t=clean-light'">clean-light</button>
+  <button onclick="location.search='?t=high-contrast'">high-contrast</button>
+  <span id="status">loading…</span>
+</div>
+
+<div class="ncm-app ncm-admin-panel app-frame" id="p">
+ <section class="window-content">
+  <div class="ncm-admin-panel">
+   <nav class="ncm-admin-header ncm-admin-tabs"><button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-microchip"></i> Shards</button></nav>
+   <div class="ncm-admin-content" id="out"></div>
+  </div>
+ </section>
+</div>
+
+<script>
+const qs = new URLSearchParams(location.search);
+const REAL = qs.get('real') === '1';
+if (qs.get('t')) document.getElementById('p').setAttribute('data-ncm-admin-theme', qs.get('t'));
+if (qs.get('h')) document.getElementById('p').style.height = qs.get('h') + 'px';
+
+Handlebars.registerHelper('eq', (a, b) => a === b);
+Handlebars.registerHelper('gt', (a, b) => a > b);
+Handlebars.registerHelper('helperMissing', () => '');
+
+/* the pretend shard */
+let integrity = 40; const MAX = 100; const HARDEN = 40; // Premium blank: loses 40% less
+const tierOf = (p) => (p <= 0 ? 'bricked' : p <= 24 ? 'severe' : p <= 49 ? 'heavy' : p <= 74 ? 'light' : 'clean');
+const entries = [
+  { icon: 'fas fa-table', type: 'Spreadsheet', name: 'Q3 Off-Book Disbursements', level: .5, units: 24, unit: 'cells' },
+  { icon: 'fas fa-comments', type: 'Chat Log', name: 'Recovered chat — #dock-crew', level: .25, units: 6, unit: 'messages' },
+  { icon: 'fas fa-images', type: 'Image Gallery', name: 'cam-04 export — loading dock', level: 0, units: 4, unit: 'frames' },
+  { icon: 'fas fa-file-lines', type: 'Document', name: 'MEMO — Warehouse 7 shortfall', level: 1, units: 5, unit: 'paragraphs' },
+  { icon: 'fas fa-terminal', type: 'System Log', name: 'auth.log — access history', level: .75, units: 5, unit: 'lines' },
+  { icon: 'fas fa-coins', type: 'Eddies Dead Drop', name: 'Payment — half up front', level: .5, special: 'safe' },
+  { icon: 'fas fa-microchip', type: 'Payload', name: 'BREACH.EXE', level: .5, special: 'glitch' },
+];
+const lostOf = (e) => Math.round(e.units * e.level * 0.9);
+
+function ctx() {
+  const tier = tierOf(integrity);
+  return {
+    activeTab: 'shards',
+    shardSummary: { total: 1, totalEntries: entries.length },
+    shardGroups: [{
+      key: 'v', name: 'V', icon: 'fas fa-user', shardCount: 1, pips: [{ class: 'unlocked' }],
+      statusText: '<span>1 open</span>',
+      shards: [{
+        itemId: 'kt1', name: 'Kang Tao courier shard', presetIcon: 'fas fa-microchip', iceStripe: 'none',
+        metaLine: 'Premium blank · made by <b>V</b>', isExpanded: true, isSelected: true,
+        badges: [{ type: 'gold', icon: 'fa-shield-halved', label: 'Hardened' }],
+        lastAccessedLabel: '2h ago', integrityEnabled: true, integrityTier: tier, integrityPercent: integrity,
+        entryCount: entries.length, firstEntrySnippet: 'Q3 Off-Book Disbursements — disbursements.csv',
+        // ?real=1 — the shape ShardsTab._entryDamage builds; the shipped template renders it.
+        ...(REAL ? { hardening: HARDEN, integrityDegrade: 15, igMechanical: true, igEntries: {
+          damaged: entries.filter((e) => e.level > 0).length, total: entries.length,
+          rows: entries.map((e, k) => ({ entryId: 'e' + k, icon: e.icon, type: e.type, name: e.name, pct: Math.round(e.level * 100),
+            pctClass: e.level >= .75 ? 'is-bad' : e.level === 0 ? 'is-ok' : '', pips: [1, 2, 3, 4].map((n) => ({ n, on: n <= Math.round(e.level * 4) })),
+            lostLabel: e.units ? (lostOf(e) + ' / ' + e.units + ' ' + e.unit) : '',
+            tag: e.special === 'safe' ? { cls: 'safe', label: 'Funds protected' } : e.special === 'glitch' && e.level ? { cls: 'glitch', label: 'Unstable · DV +2' } : e.level >= 1 ? { cls: 'lost', label: 'Entry lost' } : null,
+            hiddenTag: e.level >= 1 && !e.special })) } } : {}),
+      }],
+    }],
+  };
+}
+
+const pips = (e, k) => `<span class="ncm-sdmg-pips">${[1, 2, 3, 4].map((n) =>
+  `<span role="button" class="${n <= Math.round(e.level * 4) ? "on" : ""}" data-set="${k}" data-lv="${n}" title="Set damage to ${n * 25}%"></span>`).join('')}</span>`;
+function rowHtml(e, k) {
+  const pct = Math.round(e.level * 100);
+  let lost;
+  if (e.special === 'safe') lost = `<span class="ncm-sdmg-tag ncm-sdmg-tag--safe">Funds protected</span>`;
+  else if (e.special === 'glitch') lost = e.level ? `<span class="ncm-sdmg-tag ncm-sdmg-tag--glitch">Unstable · DV +2</span>` : '';
+  else if (e.level >= 1) lost = `<span class="ncm-sdmg-tag ncm-sdmg-tag--lost">Entry lost</span> <span class="ncm-sdmg-tag ncm-sdmg-tag--hidden" title="Hide fully lost entries is on">Hidden</span>`;
+  else lost = `${lostOf(e)} / ${e.units} ${e.unit}`;
+  return `<div class="ncm-sdmg-row">
+    <i class="${e.icon}"></i>
+    <div class="ncm-sdmg-row__nm"><b>${e.name}</b><span>${e.type}</span></div>
+    ${pips(e, k)}
+    <span class="ncm-sdmg-row__pct ${pct >= 75 ? 'is-bad' : pct === 0 ? 'is-ok' : ''}">${pct ? pct + '%' : 'clean'}</span>
+    <span class="ncm-sdmg-row__lost">${lost}</span>
+    <span class="ncm-sdmg-row__act">
+      <button type="button" class="ncm-sdmg-btn ncm-sdmg-btn--ok ncm-sdmg-btn--icon" data-set="${k}" data-lv="0" title="Repair this entry"><i class="fas fa-wrench"></i></button>
+      <button type="button" class="ncm-sdmg-btn ncm-sdmg-btn--icon" data-peek="${k}" title="Open it as the player sees it"><i class="fas fa-eye"></i></button>
+    </span>
+  </div>`;
+}
+
+let TPL;
+function render() {
+  const cont = document.querySelector('.ncm-admin-content'); const st = cont.scrollTop;
+  document.getElementById('out').innerHTML = TPL(ctx());
+  if (REAL) { cont.scrollTop = st; document.getElementById('status').textContent = 'REAL template · integrity ' + integrity + '%'; return; }
+
+  // #6 + #7 — into the existing integrity controls
+  const ctl = document.querySelector('.ncm-shard-integrity-controls');
+  ctl.querySelector('.ncm-shard-integrity-controls__label').insertAdjacentHTML('afterend',
+    `<span class="ncm-sdmg-hard" title="Encoded on a Premium blank — loses ${HARDEN}% less per failed breach"><i class="fas fa-shield-halved"></i>Hardened −${HARDEN}%</span>`);
+  ctl.insertAdjacentHTML('beforeend', `<div class="ncm-sdmg-hit">
+      <button type="button" class="ncm-sdmg-btn ncm-sdmg-btn--danger" id="hitBtn"><i class="fas fa-bolt"></i> Damage</button>
+      <input type="number" id="hitAmt" value="15" min="1" max="100"><small>pts</small>
+      <label title="Also rolls data loss on each entry, exactly like a failed breach"><input type="checkbox" id="hitRoll" checked> roll data loss</label>
+    </div>`);
+
+  // #8 — the entry list, full width under the expanded row
+  const damaged = entries.filter((e) => e.level > 0).length;
+  document.querySelector('.ncm-shard-row-expand__inner').insertAdjacentHTML('afterend', `<div class="ncm-sdmg-list">
+    <div class="ncm-sdmg-list__h">
+      <span class="ncm-sdmg-list__title"><i class="fas fa-file-circle-exclamation"></i>Entry damage</span>
+      <span class="ncm-sdmg-list__sum">${damaged} of ${entries.length} damaged</span><span class="sp"></span>
+      <button type="button" class="ncm-sdmg-btn ncm-sdmg-btn--ok" id="repairAll"><i class="fas fa-wrench"></i> Repair all</button>
+    </div>
+    ${entries.map(rowHtml).join('')}
+    <div class="ncm-sdmg-foot">Click a pip to set an entry's damage. Repairing an entry doesn't change the shard's integrity.</div>
+  </div>`);
+  cont.scrollTop = st;
+  document.getElementById('status').textContent = `integrity ${integrity}% · ${tierOf(integrity)}`;
+  document.title = `admin damage mock — ${integrity}%`;
+}
+
+document.getElementById('out').addEventListener('click', (ev) => {
+  const set = ev.target.closest('[data-set]');
+  if (set) { entries[+set.dataset.set].level = +set.dataset.lv / 4; return render(); }
+  if (ev.target.closest('#repairAll')) { entries.forEach((e) => { e.level = 0; }); return render(); }
+  if (ev.target.closest('#hitBtn')) {
+    const amt = Math.round((+document.getElementById('hitAmt').value || 0) * (1 - HARDEN / 100));
+    integrity = Math.max(0, integrity - amt);
+    if (document.getElementById('hitRoll').checked && integrity < 50) entries.forEach((e) => { if (Math.random() < .4) e.level = Math.min(1, e.level + .25); });
+    return render();
+  }
+  // the real preset chips stay live too
+  const chip = ev.target.closest('[data-action="setShardIntegrity"]');
+  if (chip) { integrity = +chip.dataset.value; return render(); }
+  if (ev.target.closest('[data-action="restoreShardIntegrity"]')) { integrity = MAX; entries.forEach((e) => { e.level = 0; }); return render(); }
+});
+
+fetch('../../templates/admin-panel/tab-shards.hbs').then((r) => r.text()).then((src) => { TPL = Handlebars.compile(src); render(); })
+  .catch((e) => { document.getElementById('status').textContent = 'FETCH FAILED — open through node tools/serve-mockups.cjs (' + e.message + ')'; });
+</script>
+</body>
+</html>

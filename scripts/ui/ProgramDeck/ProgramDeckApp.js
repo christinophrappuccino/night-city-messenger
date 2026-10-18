@@ -194,7 +194,7 @@ export class ProgramDeckApp extends BaseApplication {
     const e = this._programs().find((x) => x.id === id); if (!e || e.contentType !== CONTENT_TYPES.MALWARE) return;
     try {
       const actor = resolveOperator();
-      await runMalwareDeploy({ actor, raw: e.contentData, messageId: id, sourceLabel: this.item.name, host: this.element });
+      await runMalwareDeploy({ actor, raw: e.contentData, messageId: id, sourceLabel: this.item.name, host: this.element, unstable: game.nightcity?.dataShardService?.programInstability(this.item, e) });
       this.selId = id; this._mount();
     } catch (err) { log.error('Deck deploy failed', err); }
   }
@@ -202,7 +202,7 @@ export class ProgramDeckApp extends BaseApplication {
     const e = this._programs().find((x) => x.id === id); if (!e || e.contentType !== CONTENT_TYPES.PAYLOAD) return;
     try {
       const actor = resolveOperator();
-      await runPayloadExecute({ actor, raw: e.contentData, messageId: id, sourceLabel: this.item.name, host: this.element, force: isGM() && !actor });
+      await runPayloadExecute({ actor, raw: e.contentData, messageId: id, sourceLabel: this.item.name, host: this.element, force: isGM() && !actor, unstable: game.nightcity?.dataShardService?.programInstability(this.item, e) });
       this.selId = id; this._mount();
     } catch (err) { log.error('Deck execute failed', err); }
   }

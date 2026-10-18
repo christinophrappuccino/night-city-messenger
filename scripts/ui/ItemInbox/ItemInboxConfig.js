@@ -6,6 +6,7 @@
  *   5 tabs: Identity, Security, Network, Systems, Boot.
  */
 
+import { resolveIntegrity, garbleString, garbleRate } from '../content/IntegrityModel.js';
 import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES, FAILURE_MODES, ENCRYPTION_TYPES, COLOR_VAR_MAP, FONT_OPTIONS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, applyContrastToElement, buildShardThemePrefs } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -172,6 +173,9 @@ export class ItemInboxConfig extends BaseApplication {
 
     // ─── Network access mode → show/hide conditional sections ───
     this._updateNetworkConditionals();
+
+    // ─── Integrity: card pickers, per-mode rows, legibility sample ───
+    this._wireIntegrity();
 
     // ─── Text size / contrast sliders: readout + live preview on any open viewer ───
     const wireDisplaySlider = (name, valClass, clamp, preview) => {
@@ -1020,8 +1024,9 @@ export class ItemInboxConfig extends BaseApplication {
     // ─── Tracing ───
     const tracing = netConfig.tracing ?? {};
 
-    // ─── Integrity ───
+    // ─── Integrity ─── (resolved over every default — docs/SHARD-INTEGRITY.md)
     const integrity = config.integrity ?? {};
+    const ig = resolveIntegrity(integrity);
 
     // ─── Expiration ───
     const expiration = config.expiration ?? {};
@@ -1199,13 +1204,10 @@ export class ItemInboxConfig extends BaseApplication {
       tracingRevealLocation: tracing.revealLocation ?? false,
 
       // Integrity
-      integrityEnabled: integrity.enabled ?? false,
-      integrityModeCosmetic: (integrity.mode ?? 'cosmetic') === 'cosmetic',
-      integrityModeMechanical: (integrity.mode ?? 'cosmetic') === 'mechanical',
-      integrityMax: integrity.maxIntegrity ?? 100,
-      integrityDegradePerFailure: integrity.degradePerFailure ?? 15,
-      integrityCorruptionThreshold: integrity.corruptionThreshold ?? 40,
-      integrityCorruptionChance: Math.round((integrity.corruptionChance ?? 0.3) * 100),
+      integrityEnabled: ig.enabled,
+      ig,
+      igChancePct: Math.round(ig.corruptionChance * 100),
+      igSkillOptions: [...new Set([ig.recon.skill, ...Object.keys(SKILL_MAP)])].map(v => ({ value: v, selected: v === ig.recon.skill })),
 
       // Expiration
       expirationEnabled: expiration.enabled ?? false,
@@ -1385,15 +1387,7 @@ export class ItemInboxConfig extends BaseApplication {
       requiresNetwork: checked('networkRequired'),
       requiredNetwork: allowedNetworks[0] || null,
 
-      integrity: {
-        enabled: checked('integrityEnabled'),
-        mode: val('integrityMode', 'cosmetic'),
-        maxIntegrity: parseInt(val('integrityMax')) || 100,
-        currentIntegrity: parseInt(val('integrityMax')) || 100,
-        degradePerFailure: parseInt(val('integrityDegradePerFailure')) || 15,
-        corruptionThreshold: parseInt(val('integrityCorruptionThreshold')) || 40,
-        corruptionChance: (parseInt(val('integrityCorruptionChance')) || 30) / 100,
-      },
+      integrity: this._collectIntegrity(val, checked),
 
       expiration: {
         enabled: checked('expirationEnabled'),
@@ -1464,6 +1458,100 @@ export class ItemInboxConfig extends BaseApplication {
   }
 
   // ═══════════════════════════════════════════════════════════
+  //  INTEGRITY
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Read the Integrity section. The shard's LIVE state — current integrity, the
+   * hit history, who has spent a salvage — is carried over from what is stored:
+   * this used to reset current integrity to Max on every save, so editing any
+   * other setting quietly healed a damaged shard. Zero is a real value for every
+   * number here (`parseInt(x) || 40` used to turn 0 back into the default).
+   * @private
+   */
+  _collectIntegrity(val, checked) {
+    const stored = resolveIntegrity(this.dataShardService?.getConfig(this.item)?.integrity ?? {});
+    const n = (name, d) => { const v = String(val(name, '')).trim(); return v === '' || !Number.isFinite(+v) ? d : +v; };
+    const enabled = checked('integrityEnabled');
+    const max = Math.max(1, Math.round(n('integrityMax', stored.maxIntegrity)));
+    // Switching integrity ON starts the shard healthy; otherwise keep its damage.
+    const current = (!stored.enabled && enabled) ? max : Math.min(stored.currentIntegrity, max);
+    return {
+      enabled,
+      mode: val('integrityMode', stored.mode) === 'mechanical' ? 'mechanical' : 'cosmetic',
+      maxIntegrity: max,
+      currentIntegrity: current,
+      degradePerFailure: n('integrityDegradePerFailure', stored.degradePerFailure),
+      hardening: n('integrityHardening', stored.hardening),
+      corruptionThreshold: n('integrityCorruptionThreshold', stored.corruptionThreshold),
+      corruptionChance: n('integrityCorruptionChance', Math.round(stored.corruptionChance * 100)) / 100,
+      legibility: val('integrityLegibility', stored.legibility),
+      effects: { scan: checked('igFxScan'), tear: checked('igFxTear'), garble: checked('igFxGarble'), steady: checked('igFxSteady') },
+      loss: val('igLoss', stored.loss),
+      hideLost: checked('igHideLost'),
+      protectMoney: checked('igProtectMoney'),
+      programsGlitchy: checked('igProgramsGlitchy'),
+      glitchDV: n('igGlitchDV', stored.glitchDV),
+      misfire: n('igMisfire', stored.misfire),
+      recon: {
+        enabled: checked('igReconEnabled'),
+        skill: val('igReconSkill', stored.recon.skill),
+        dv: n('igReconDV', stored.recon.dv),
+        perStep: n('igReconPerStep', stored.recon.perStep),
+        step: val('igReconStep', stored.recon.step),
+        worsen: checked('igReconWorsen'),
+      },
+      repairPts: n('igRepairPts', stored.repairPts),
+      dead: {
+        list: val('igDeadList', stored.dead.list),
+        salvage: checked('igDeadSalvage'),
+        salvageDV: n('igSalvageDV', stored.dead.salvageDV),
+        salvagePct: n('igSalvagePct', stored.dead.salvagePct),
+      },
+      history: stored.history,
+      lastHit: stored.lastHit,
+      salvaged: stored.salvaged,
+    };
+  }
+
+  /**
+   * Integrity section live behaviour: the two card pickers (mode, how it looks),
+   * show/hide of the rows that only apply to one mode, and the legibility sample.
+   * DOM-only — nothing here re-renders, so unsaved edits elsewhere survive.
+   * @private
+   */
+  _wireIntegrity() {
+    const box = this.element?.querySelector('[data-ig-cfg]');
+    if (!box) return;
+    const SAMPLE = 'Convoy manifest attached — ETA 0400.';
+    const sync = () => {
+      const mode = box.querySelector('[name="integrityMode"]')?.value || 'cosmetic';
+      box.dataset.igMode = mode;
+      box.querySelectorAll('[data-ig-show]').forEach(el => { el.hidden = el.dataset.igShow !== mode; });
+      const on = (name) => !!box.querySelector(`[name="${name}"]`)?.checked;
+      const tog = (sel, show) => box.querySelectorAll(sel).forEach(el => { el.hidden = !show; });
+      tog('[data-ig-show-glitchy]', on('igProgramsGlitchy'));
+      tog('[data-ig-show-recon]', on('igReconEnabled'));
+      tog('[data-ig-show-salvage]', on('igDeadSalvage'));
+      const leg = box.querySelector('[name="integrityLegibility"]')?.value || 'rough';
+      const sample = box.querySelector('[data-ig-sample]');
+      if (sample) sample.textContent = `At Critical → ${garbleString(SAMPLE, garbleRate(leg, 'severe'), `sample:${leg}`)}`;
+    };
+    box.querySelectorAll('[data-ig-pick]').forEach(group => {
+      group.addEventListener('click', (ev) => {
+        const card = ev.target.closest('.ncm-cfg-am-card');
+        if (!card) return;
+        group.querySelectorAll('.ncm-cfg-am-card').forEach(c => c.classList.toggle('ncm-cfg-am-card--sel', c === card));
+        const input = box.querySelector(group.dataset.igPick === 'mode' ? '[name="integrityMode"]' : '[name="integrityLegibility"]');
+        if (input) input.value = card.dataset.v;
+        sync();
+      });
+    });
+    box.addEventListener('change', sync);
+    sync();
+  }
+
+  // ═══════════════════════════════════════════════════════════
   //  TAB SWITCHING
   // ═══════════════════════════════════════════════════════════
 
@@ -1492,7 +1580,9 @@ export class ItemInboxConfig extends BaseApplication {
   static _onSelectAccessMode(event, target) {
     const mode = target.dataset.mode || target.closest('[data-mode]')?.dataset.mode;
     if (!mode) return;
-    this.element.querySelectorAll('.ncm-cfg-am-card').forEach(c => c.classList.remove('ncm-cfg-am-card--sel'));
+    // Scoped to THIS picker — the Integrity section reuses the card style.
+    const group = target.closest('.ncm-cfg-access-modes') || this.element;
+    group.querySelectorAll('.ncm-cfg-am-card').forEach(c => c.classList.remove('ncm-cfg-am-card--sel'));
     (target.closest('.ncm-cfg-am-card') || target).classList.add('ncm-cfg-am-card--sel');
     const input = this.element.querySelector('[name="accessMode"]');
     if (input) input.value = mode;

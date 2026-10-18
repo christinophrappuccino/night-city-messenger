@@ -599,7 +599,7 @@ export class NotificationService {
     return this.showToastV2({
       type: 'shard-bricked',
       title: 'Shard Bricked',
-      detail: `Integrity 0% — "${data.itemName || 'Unknown'}" permanently corrupted`,
+      detail: `Integrity 0% — "${data.itemName || 'Unknown'}" burned out`,
       duration: 8000,
       priority: 'urgent',
     });

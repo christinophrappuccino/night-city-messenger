@@ -169,6 +169,19 @@ export class SocketHandlers {
       socketManager.emit(SOCKET_OPS.SHARD_CONVERT_RESULT, { requestId, success });
     });
 
+    // ─── Player Shard INTEGRITY Relay ─────────────────────
+    // A player's failed breach / reconstruct / repair / salvage writes the item's
+    // integrity and the GM-owned shard journal — the GM lands it.
+    socketManager.register(SOCKET_OPS.SHARD_INTEGRITY_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;   // one GM lands it
+      try {
+        await game.nightcity?.dataShardService?.handleIntegrityRequest(data);
+      } catch (err) {
+        log.error('Shard integrity relay failed:', err);
+      }
+    });
+
     // ─── Player Shard PRICE Relay (Shard Encoder, pricing 'propose') ───
     // system.price.market is on an item the player may not own, and the GM's
     // pricing mode is the authority — so the ask relays and the GM's own client

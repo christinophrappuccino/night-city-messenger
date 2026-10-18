@@ -16,6 +16,8 @@
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
+import { entryLevel, applyLoss } from '../../content/IntegrityModel.js';
+import { getContentTypeInfo } from '../../content/ContentRenderers.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 
 export class ShardsTab extends BaseTab {
@@ -252,6 +254,9 @@ export class ShardsTab extends BaseTab {
         if (integrity.enabled && integrity.percentage < 75) {
           badges.push({ type: 'danger', icon: 'fa-triangle-exclamation', label: `${integrity.percentage}%` });
         }
+        // Hardened blank (Shard Encoder tier, or set by hand) — loses less per hit.
+        const hardening = integrity.cfg?.hardening || 0;
+        if (hardening > 0) badges.push({ type: 'gold', icon: 'fa-shield-halved', label: 'Hardened' });
 
         // Owner info — for grouping
         let ownerKey = 'world';
@@ -392,6 +397,11 @@ export class ShardsTab extends BaseTab {
           integrityEnabled: integrity.enabled,
           integrityPercent: integrity.percentage,
           integrityTier: integrity.tier,
+          hardening,
+          integrityDegrade: integrity.cfg?.degradePerFailure ?? 15,
+          igMechanical: integrity.enabled && integrity.mode === 'mechanical',
+          igEntries: (this._expandedId === item.id && integrity.enabled && integrity.mode === 'mechanical')
+            ? this._entryDamage(item, integrity.cfg) : null,
           // Eddies
           totalEddies,
           claimedEddies,
@@ -1429,6 +1439,100 @@ export class ShardsTab extends BaseTab {
       ui.notifications.error(`NCM | Set integrity failed: ${err.message}`);
     }
     this.render();
+  }
+
+  /**
+   * Per-entry damage rows for the expanded shard (mechanical mode). Each row's
+   * counts come from the same IntegrityModel.applyLoss the viewer renders with,
+   * so the GM reads exactly what the player is looking at.
+   * @private
+   */
+  _entryDamage(item, cfg) {
+    const entries = game.nightcity?.dataShardService?.getShardMessages(item) ?? [];
+    const rows = entries.map((e) => {
+      const level = entryLevel(e);
+      const dmg = level > 0 ? applyLoss(foundry.utils.deepClone(e), level, cfg) : null;
+      const info = getContentTypeInfo(e.contentType || 'message');
+      const on = Math.round(level * 4);
+      let lostLabel = '';
+      let tag = null;
+      if (dmg?.special === 'safe') tag = { cls: 'safe', label: 'Funds protected' };
+      else if (dmg?.special === 'glitchy') tag = { cls: 'glitch', label: `Unstable · DV +${cfg.glitchDV}` };
+      else if (dmg?.gone) tag = { cls: 'lost', label: 'Entry lost' };
+      else if (dmg && (dmg.special === 'text' || dmg.special === 'eb')) lostLabel = `~${dmg.lost}${dmg.unit}`;
+      else if (dmg?.total) lostLabel = `${dmg.lost} / ${dmg.total} ${dmg.unit}`;
+      return {
+        entryId: e.id,
+        icon: info?.icon || 'fas fa-file',
+        type: info?.label || e.contentType,
+        name: e.subject || 'Entry',
+        pct: Math.round(level * 100),
+        pctClass: level >= 0.75 ? 'is-bad' : level === 0 ? 'is-ok' : '',
+        pips: [1, 2, 3, 4].map(n => ({ n, on: n <= on })),
+        lostLabel,
+        tag,
+        hiddenTag: !!dmg?.gone && cfg.hideLost,
+      };
+    });
+    return { rows, damaged: rows.filter(r => r.pct > 0).length, total: rows.length };
+  }
+
+  /** Damage button — a hit of N points, optionally rolling data loss like a failed breach. */
+  async onDamageShard(event, target) {
+    event.stopPropagation();
+    // The controls box carries the amount field + the roll toggle (the button itself also has data-item-id).
+    const box = target.closest('.ncm-shard-integrity-controls') || target.parentElement;
+    const item = this.app.constructor._findItem(target.dataset.itemId || box?.dataset.itemId);
+    if (!item) return;
+    const amount = Math.max(1, parseInt(box.querySelector('[data-ig-amount]')?.value) || 0);
+    const rollLoss = !!box.querySelector('[data-ig-roll]')?.classList.contains('ncm-ct-row__check--on');
+    this.app._animationActive = true;
+    try {
+      const res = await game.nightcity?.dataShardService?.degradeIntegrity(item, { amount, rollLoss, by: 'GM' });
+      const n = res?.damaged?.length || 0;
+      ui.notifications.info(`NCM | ${item.name}: integrity ${res?.newIntegrity ?? '?'}${n ? ` · ${n} entr${n === 1 ? 'y' : 'ies'} damaged` : ''}`);
+    } catch (err) {
+      ui.notifications.error(`NCM | Damage failed: ${err.message}`);
+    } finally {
+      this.app._animationActive = false;
+    }
+    this.render();
+  }
+
+  /** The "roll data loss" toggle beside the Damage button — DOM-only. */
+  onToggleDamageRoll(event, target) {
+    event.stopPropagation();
+    target.classList.toggle('ncm-ct-row__check--on');
+  }
+
+  /** A pip (or the wrench) on an entry row — set that entry's damage directly. */
+  async onSetEntryDamage(event, target) {
+    event.stopPropagation();
+    const item = this.app.constructor._findItem(target.closest('[data-item-id]')?.dataset.itemId);
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!item || !entryId) return;
+    const lv = (parseInt(target.dataset.lv) || 0) / 4;
+    await game.nightcity?.dataShardService?.setEntryCorruption(item, entryId, lv);
+    this.render();
+  }
+
+  async onRepairAllEntries(event, target) {
+    event.stopPropagation();
+    const item = this.app.constructor._findItem(target.closest('[data-item-id]')?.dataset.itemId);
+    if (!item) return;
+    const res = await game.nightcity?.dataShardService?.repairAllEntries(item);
+    ui.notifications.info(`NCM | ${item.name}: ${res?.count || 0} entr${res?.count === 1 ? 'y' : 'ies'} repaired.`);
+    this.render();
+  }
+
+  /** Open the shard at one entry — the player's view of it. */
+  onOpenShardEntry(event, target) {
+    event.stopPropagation();
+    const item = this.app.constructor._findItem(target.closest('[data-item-id]')?.dataset.itemId);
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!item || !game.nightcity?.openDataShard) return;
+    game.nightcity.openDataShard(item);
+    if (entryId) setTimeout(() => document.getElementById(`shard-entry-${entryId}`)?.scrollIntoView({ block: 'start' }), 600);
   }
 
   async onRestoreIntegrity(event, target) {

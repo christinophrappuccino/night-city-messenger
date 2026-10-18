@@ -140,9 +140,11 @@ export const ENCODER_DEFAULTS = Object.freeze({
     // `capacity` = how many entries the chip holds. 0 means no limit; a better
     // blank simply fits more on it, which is a reason to buy one beyond surviving
     // a botch.
-    { id: 'scrap',    name: 'Scrap',    color: 'muted', price: 0,   buyable: false, fallback: true,  onRejected: 'bricked',  onNat1: 'bricked-trace', perk: '',        capacity: 1, items: [] },
-    { id: 'standard', name: 'Standard', color: 'cyan',  price: 50,  buyable: true,  fallback: false, onRejected: 'bricked',  onNat1: 'bricked-trace', perk: '',        capacity: 3, items: [] },
-    { id: 'premium',  name: 'Premium',  color: 'gold',  price: 200, buyable: true,  fallback: false, onRejected: 'survives', onNat1: 'bricked',       perk: 'craft+1', capacity: 8, items: [] },
+    // `integrity` = shards made on this blank track integrity (they glitch and can
+    // be bricked by failed breaches); `hardening` = % less integrity lost per hit.
+    { id: 'scrap',    name: 'Scrap',    color: 'muted', price: 0,   buyable: false, fallback: true,  onRejected: 'bricked',  onNat1: 'bricked-trace', perk: '',        capacity: 1, integrity: false, hardening: 0,  items: [] },
+    { id: 'standard', name: 'Standard', color: 'cyan',  price: 50,  buyable: true,  fallback: false, onRejected: 'bricked',  onNat1: 'bricked-trace', perk: '',        capacity: 3, integrity: false, hardening: 0,  items: [] },
+    { id: 'premium',  name: 'Premium',  color: 'gold',  price: 200, buyable: true,  fallback: false, onRejected: 'survives', onNat1: 'bricked',       perk: 'craft+1', capacity: 8, integrity: false, hardening: 40, items: [] },
   ],
   // Content types — all 18 exist; `on` is the GM's allow-list. skill:'' = no roll.
   types: {
@@ -216,6 +218,10 @@ export function resolveEncoderConfig(stored) {
     onNat1: BOTCH_RULES[t.onNat1] ? t.onNat1 : 'bricked-trace',
     perk: TIER_PERKS[t.perk] ? t.perk : '',
     capacity: Math.max(0, Math.round(num(t.capacity))),        // 0 = no limit
+    integrity: !!t.integrity,
+    // An older world's stored tiers have no hardening — they take the default for
+    // a tier of the same id, so a Premium blank is hardened without a migration.
+    hardening: Math.min(90, Math.max(0, Math.round(num(t.hardening ?? (ENCODER_DEFAULTS.tiers.find((d) => d.id === t.id)?.hardening ?? 0))))),
     items: Array.isArray(t.items) ? t.items.filter((x) => x && x.name).map((x) => ({ name: String(x.name), img: x.img || '' })) : [],
   }));
   const fb = cfg.tiers.findIndex((t) => t.fallback);

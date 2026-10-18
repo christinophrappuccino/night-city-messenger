@@ -322,6 +322,8 @@ export class EncoderConfigApp extends BaseApplication {
           ${this._field('On a natural 1', this._select(`tiers.${i}.onNat1`, t.onNat1, botchOpts, { width: '150px' }))}
           ${this._field('Holds', this._num(`tiers.${i}.capacity`, t.capacity, { max: 99, width: '62px' }) + ' <span class="ncm-ecfg__unit">entries</span>', '0 = no limit')}
           ${this._field('Perk', this._select(`tiers.${i}.perk`, t.perk, perkOpts, { width: '130px' }))}
+          ${this._check(`tiers.${i}.integrity`, t.integrity, 'Tracks integrity', 'Shards made on this blank glitch as failed breaches wear them down, and are bricked at 0. Tune it per shard in Configure Shard → Systems.')}
+          ${this._field('Hardened', this._num(`tiers.${i}.hardening`, t.hardening, { max: 90, width: '62px' }) + ' <span class="ncm-ecfg__unit">% less per hit</span>', '0 = not hardened')}
         </div>
         <div class="ncm-ecfg__items">
           <span class="ncm-ecfg__items-l">Items</span>

@@ -50,10 +50,18 @@
     : ((game.documentTypes.Item || []).filter(t => t !== 'base')[0] || 'gear');
 
   const _blanks = [
-    { name: 'Blank Data Shard', tier: 'standard', img: 'icons/commodities/tech/blade-tool-green.webp' },
-    { name: 'Militech Hardened Shard', tier: 'premium', img: 'icons/commodities/tech/tube-chip-gold.webp' },
-    { name: 'Braindance wafer', tier: 'scrap', img: 'icons/commodities/tech/cog-steel.webp' },
+    { name: 'Blank Data Shard', tier: 'standard', img: 'systems/cyberpunk-red-core/icons/compendium/gear/memory_chip.svg' },
+    { name: 'Militech Hardened Shard', tier: 'premium', img: 'systems/cyberpunk-red-core/icons/compendium/gear/memory_chip.svg' },
+    { name: 'Braindance wafer', tier: 'scrap', img: 'systems/cyberpunk-red-core/icons/compendium/gear/braindance_viewer.svg' },
   ];
+
+  // Blanks from an earlier run of this macro pointed at icons that don't ship
+  // with Foundry (a broken image) — repoint any that are still unconverted.
+  const _stale = _who.items.filter(i => /icons\/commodities\/tech\/(blade-tool-green|tube-chip-gold|cog-steel)\.webp$/.test(i.img || '')
+    && _blanks.some(b => b.name === i.name) && !i.getFlag(MODULE_ID, 'isDataShard'));
+  if (_stale.length) {
+    await _who.updateEmbeddedDocuments('Item', _stale.map(i => ({ _id: i.id, img: _blanks.find(b => b.name === i.name).img })));
+  }
 
   const _toMake = _blanks.filter(b => !_who.items.find(i => i.name === b.name));
   if (_toMake.length) {

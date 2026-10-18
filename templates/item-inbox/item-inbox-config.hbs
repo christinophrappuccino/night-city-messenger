@@ -413,12 +413,93 @@
     <div class="ncm-cfg-panel" data-panel="systems">
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-heart-crack ncm-cfg-section-icon" style="color:#ff4444"></i><div class="ncm-cfg-section-title">Integrity</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="integrityEnabled" {{#if integrityEnabled}}checked{{/if}} /></label></div>
-        <div class="ncm-cfg-desc">Tracks how damaged the shard data is. Failed hack attempts degrade integrity. When integrity drops below the <strong>Corrupt Below</strong> threshold, individual entries have a chance to become corrupted. <strong>Cosmetic</strong> mode shows visual glitches (scanlines, garbled text) but data remains readable. <strong>Mechanical</strong> mode can make entries actually unreadable or hide them entirely.</div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Mode</span><select name="integrityMode" class="ncm-cfg-select ncm-cfg-flex"><option value="cosmetic" {{#if integrityModeCosmetic}}selected{{/if}}>Cosmetic</option><option value="mechanical" {{#if integrityModeMechanical}}selected{{/if}}>Mechanical</option></select></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Max</span><input type="number" name="integrityMax" class="ncm-cfg-input ncm-cfg-input--short" value="{{integrityMax}}" min="10" max="100" /></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Degrade/Fail</span><input type="number" name="integrityDegradePerFailure" class="ncm-cfg-input ncm-cfg-input--short" value="{{integrityDegradePerFailure}}" min="1" max="50" /><span class="ncm-cfg-hint" style="margin:0">pts</span></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Corrupt Below</span><input type="number" name="integrityCorruptionThreshold" class="ncm-cfg-input ncm-cfg-input--short" value="{{integrityCorruptionThreshold}}" min="0" max="100" /><span class="ncm-cfg-hint" style="margin:0">%</span></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Corrupt %</span><input type="number" name="integrityCorruptionChance" class="ncm-cfg-input ncm-cfg-input--short" value="{{integrityCorruptionChance}}" min="0" max="100" step="5" /></div>
+        <div class="ncm-cfg-desc">How damaged the shard is. Each failed breach costs integrity; the shard glitches harder as it drops and is destroyed at 0. <strong>Visual only</strong> just glitches — nothing is lost. <strong>Data loss</strong> also makes parts of entries unreadable (rows, frames, chat messages…), which players can roll to reconstruct.</div>
+        <div class="ncm-ig-cfg" data-ig-cfg data-ig-mode="{{ig.mode}}">
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">Max integrity</span><input type="number" name="integrityMax" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.maxIntegrity}}" min="1" max="1000" /><span class="ncm-cfg-hint" style="margin:0">pts · now {{ig.currentIntegrity}}</span></div>
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">Lost per failed breach</span><input type="number" name="integrityDegradePerFailure" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.degradePerFailure}}" min="0" max="1000" /><span class="ncm-cfg-hint" style="margin:0">pts</span></div>
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">Hardened</span><input type="number" name="integrityHardening" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.hardening}}" min="0" max="90" step="5" /><span class="ncm-cfg-hint" style="margin:0">% less lost per hit (a hit always costs at least 1)</span></div>
+
+          <div class="ncm-ig-sub">
+            <div class="ncm-ig-sub__title"><i class="fas fa-sliders"></i> What damage does</div>
+            <div class="ncm-cfg-access-modes" data-ig-pick="mode">
+              <div class="ncm-cfg-am-card {{#if (eq ig.mode 'cosmetic')}}ncm-cfg-am-card--sel{{/if}}" data-v="cosmetic"><div class="ncm-cfg-am-icon"><i class="fas fa-tv"></i></div><div class="ncm-cfg-am-title">Visual only</div><div class="ncm-cfg-am-desc">Glitches; nothing is lost</div></div>
+              <div class="ncm-cfg-am-card {{#if (eq ig.mode 'mechanical')}}ncm-cfg-am-card--sel{{/if}}" data-v="mechanical"><div class="ncm-cfg-am-icon"><i class="fas fa-file-circle-xmark"></i></div><div class="ncm-cfg-am-title">Data loss</div><div class="ncm-cfg-am-desc">Parts of entries are lost</div></div>
+            </div>
+            <input type="hidden" name="integrityMode" value="{{ig.mode}}" />
+          </div>
+
+          <div class="ncm-ig-sub">
+            <div class="ncm-ig-sub__title"><i class="fas fa-eye"></i> How it looks</div>
+            <div class="ncm-cfg-access-modes" data-ig-pick="legibility">
+              <div class="ncm-cfg-am-card {{#if (eq ig.legibility 'readable')}}ncm-cfg-am-card--sel{{/if}}" data-v="readable"><div class="ncm-cfg-am-icon"><i class="fas fa-glasses"></i></div><div class="ncm-cfg-am-title">Readable</div><div class="ncm-cfg-am-desc">A few characters</div></div>
+              <div class="ncm-cfg-am-card {{#if (eq ig.legibility 'rough')}}ncm-cfg-am-card--sel{{/if}}" data-v="rough"><div class="ncm-cfg-am-icon"><i class="fas fa-wave-square"></i></div><div class="ncm-cfg-am-title">Rough</div><div class="ncm-cfg-am-desc">Noticeably garbled</div></div>
+              <div class="ncm-cfg-am-card {{#if (eq ig.legibility 'hard')}}ncm-cfg-am-card--sel{{/if}}" data-v="hard"><div class="ncm-cfg-am-icon"><i class="fas fa-skull"></i></div><div class="ncm-cfg-am-title">Hard to read</div><div class="ncm-cfg-am-desc">Critical = barely legible</div></div>
+            </div>
+            <input type="hidden" name="integrityLegibility" value="{{ig.legibility}}" />
+            <div class="ncm-ig-ex" data-ig-sample></div>
+            <div class="ncm-cfg-row ncm-cfg-row--col" style="gap:6px">
+              <label class="ncm-cfg-check"><input type="checkbox" name="igFxScan" {{#if ig.effects.scan}}checked{{/if}} /> Scanlines and flicker</label>
+              <label class="ncm-cfg-check"><input type="checkbox" name="igFxTear" {{#if ig.effects.tear}}checked{{/if}} /> Tearing, colour fringe and static blocks</label>
+              <label class="ncm-cfg-check"><input type="checkbox" name="igFxGarble" {{#if ig.effects.garble}}checked{{/if}} /> Garbled text</label>
+              <label class="ncm-cfg-check"><input type="checkbox" name="igFxSteady" {{#if ig.effects.steady}}checked{{/if}} /> Hovering an entry steadies it (lets players read through the noise)</label>
+            </div>
+            <div class="ncm-cfg-hint">The garble only paints over the screen — copy/paste and screen readers still get the real text. Players with reduced motion get the garble without the movement.</div>
+          </div>
+
+          <div class="ncm-ig-sub" data-ig-show="mechanical">
+            <div class="ncm-ig-sub__title"><i class="fas fa-file-circle-xmark"></i> Data loss</div>
+            <div class="ncm-cfg-row"><span class="ncm-cfg-label">Loss starts below</span><input type="number" name="integrityCorruptionThreshold" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.corruptionThreshold}}" min="0" max="100" /><span class="ncm-cfg-hint" style="margin:0">% integrity</span></div>
+            <div class="ncm-cfg-row"><span class="ncm-cfg-label">Chance per entry</span><input type="number" name="integrityCorruptionChance" class="ncm-cfg-input ncm-cfg-input--short" value="{{igChancePct}}" min="0" max="100" step="5" /><span class="ncm-cfg-hint" style="margin:0">% per failed breach</span></div>
+            <div class="ncm-cfg-row"><span class="ncm-cfg-label">What's lost</span><select name="igLoss" class="ncm-cfg-select ncm-cfg-flex">
+              <option value="parts" {{#if (eq ig.loss 'parts')}}selected{{/if}}>Parts of entries (rows, frames, lines…)</option>
+              <option value="whole" {{#if (eq ig.loss 'whole')}}selected{{/if}}>Whole entries</option></select></div>
+            <div class="ncm-cfg-row ncm-cfg-row--col" style="gap:6px">
+              <label class="ncm-cfg-check"><input type="checkbox" name="igHideLost" {{#if ig.hideLost}}checked{{/if}} /> Hide fully lost entries from players (the GM still sees them)</label>
+              <label class="ncm-cfg-check"><input type="checkbox" name="igProtectMoney" {{#if ig.protectMoney}}checked{{/if}} /> Protect money — cred drops and bank balances never lose eb</label>
+              <label class="ncm-cfg-check"><input type="checkbox" name="igProgramsGlitchy" {{#if ig.programsGlitchy}}checked{{/if}} /> Programs become unreliable instead of being destroyed</label>
+            </div>
+            <div class="ncm-ig-indent" data-ig-show-glitchy>
+              <div class="ncm-cfg-row"><span class="ncm-cfg-label">Run DV penalty</span><input type="number" name="igGlitchDV" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.glitchDV}}" min="0" max="20" /><span class="ncm-cfg-hint" style="margin:0">+DV</span></div>
+              <div class="ncm-cfg-row"><span class="ncm-cfg-label">Misfire chance</span><input type="number" name="igMisfire" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.misfire}}" min="0" max="100" step="5" /><span class="ncm-cfg-hint" style="margin:0">%</span></div>
+            </div>
+          </div>
+
+          <div class="ncm-ig-sub">
+            <div class="ncm-ig-sub__title"><i class="fas fa-screwdriver-wrench"></i> Recovery</div>
+            <div class="ncm-cfg-row ncm-cfg-row--col" style="gap:6px">
+              <label class="ncm-cfg-check"><input type="checkbox" name="igReconEnabled" {{#if ig.recon.enabled}}checked{{/if}} /> <span data-ig-show="mechanical">Players can roll to reconstruct damaged entries</span><span data-ig-show="cosmetic">Players can roll to repair the shard</span></label>
+            </div>
+            <div data-ig-show-recon>
+              <div class="ncm-cfg-row"><span class="ncm-cfg-label">Skill</span><select name="igReconSkill" class="ncm-cfg-select ncm-cfg-flex">{{#each igSkillOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select></div>
+              <div class="ncm-cfg-row"><span class="ncm-cfg-label">Base DV</span><input type="number" name="igReconDV" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.recon.dv}}" min="1" max="40" /></div>
+              <div data-ig-show="mechanical">
+                <div class="ncm-cfg-row"><span class="ncm-cfg-label">Harder per 25% damage</span><input type="number" name="igReconPerStep" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.recon.perStep}}" min="0" max="10" /><span class="ncm-cfg-hint" style="margin:0">+DV</span></div>
+                <div class="ncm-cfg-row"><span class="ncm-cfg-label">Each success restores</span><select name="igReconStep" class="ncm-cfg-select ncm-cfg-flex">
+                  <option value="25" {{#if (eq ig.recon.step '25')}}selected{{/if}}>A quarter of the damage</option>
+                  <option value="50" {{#if (eq ig.recon.step '50')}}selected{{/if}}>Half of the damage</option>
+                  <option value="all" {{#if (eq ig.recon.step 'all')}}selected{{/if}}>All of it</option></select></div>
+                <div class="ncm-cfg-row ncm-cfg-row--col" style="gap:6px"><label class="ncm-cfg-check"><input type="checkbox" name="igReconWorsen" {{#if ig.recon.worsen}}checked{{/if}} /> A failed roll makes the damage worse</label></div>
+              </div>
+              <div data-ig-show="cosmetic">
+                <div class="ncm-cfg-row"><span class="ncm-cfg-label">Each success restores</span><input type="number" name="igRepairPts" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.repairPts}}" min="1" max="1000" /><span class="ncm-cfg-hint" style="margin:0">pts</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ncm-ig-sub">
+            <div class="ncm-ig-sub__title"><i class="fas fa-skull-crossbones"></i> When it hits zero</div>
+            <div class="ncm-cfg-row"><span class="ncm-cfg-label">Players see</span><select name="igDeadList" class="ncm-cfg-select ncm-cfg-flex">
+              <option value="list" {{#if (eq ig.dead.list 'list')}}selected{{/if}}>What was on it (types, names scrambled)</option>
+              <option value="count" {{#if (eq ig.dead.list 'count')}}selected{{/if}}>Only how many entries were lost</option>
+              <option value="none" {{#if (eq ig.dead.list 'none')}}selected{{/if}}>Nothing — just that it's dead</option></select></div>
+            <div class="ncm-cfg-row ncm-cfg-row--col" style="gap:6px"><label class="ncm-cfg-check"><input type="checkbox" name="igDeadSalvage" {{#if ig.dead.salvage}}checked{{/if}} /> Each character gets one salvage attempt</label></div>
+            <div class="ncm-ig-indent" data-ig-show-salvage>
+              <div class="ncm-cfg-row"><span class="ncm-cfg-label">Salvage DV</span><input type="number" name="igSalvageDV" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.dead.salvageDV}}" min="1" max="40" /></div>
+              <div class="ncm-cfg-row"><span class="ncm-cfg-label">Comes back at</span><input type="number" name="igSalvagePct" class="ncm-cfg-input ncm-cfg-input--short" value="{{ig.dead.salvagePct}}" min="1" max="100" /><span class="ncm-cfg-hint" style="margin:0">%</span></div>
+            </div>
+            <div class="ncm-cfg-hint">A salvaged shard comes back badly damaged. You can always restore it from Admin → Shards.</div>
+          </div>
+        </div>
       </div>
 
       <div class="ncm-cfg-section">

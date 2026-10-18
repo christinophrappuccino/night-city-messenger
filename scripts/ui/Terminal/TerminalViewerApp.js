@@ -1650,6 +1650,10 @@ export class TerminalViewerApp extends BaseApplication {
     for (const shard of shards) {
       let entries = [];
       try { entries = shardSvc.getShardMessages(shard) || []; } catch { entries = []; }
+      // A damaged entry leaves the chip DAMAGED (its loss baked into the copy), and
+      // a fully lost one can't be uploaded at all — carrying a file somewhere else
+      // is never a free repair.
+      entries = entries.map(e => shardSvc.exportEntry(shard, e)).filter(Boolean);
       log.debug(`Upload: shard "${shard.name}" — ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}, ${entries.filter(e => e.contentData?.uploadable).length} uploadable: [${entries.map(e => `${e.contentType}:${e.contentData?.name || e.subject}=${e.contentData?.uploadable ? 'Y' : 'n'}`).join(', ')}]`);
       for (const e of entries) {
         const cd = e.contentData || {};

@@ -232,6 +232,25 @@ export class Phase6Verification {
       return { passed: true, detail: `${Object.keys(L.LEGIBILITY_PRESETS).length} presets, prefs clamp, motion only lowers` };
     });
 
+    // ─── 6.16: Shard integrity (docs/SHARD-INTEGRITY.md) ───
+    await this._check('6.16', 'Shard integrity — rules, service, relay', async () => {
+      const M = await import('../ui/content/IntegrityModel.js');
+      const ds = game.nightcity?.dataShardService;
+      const problems = [];
+      for (const fn of ['getIntegrityConfig', 'checkIntegrity', 'degradeIntegrity', 'setIntegrity', 'setEntryCorruption',
+        'repairAllEntries', 'repairIntegrity', 'salvageShard', 'exportEntry', 'programInstability', 'handleIntegrityRequest']) {
+        if (typeof ds?.[fn] !== 'function') problems.push(`dataShardService.${fn} missing`);
+      }
+      if (!SOCKET_OPS.SHARD_INTEGRITY_REQUEST) problems.push('SHARD_INTEGRITY_REQUEST op missing');
+      if (typeof game.nightcity?.messenger?.damageShard !== 'function') problems.push('macro API damageShard missing');
+      const c = M.resolveIntegrity({ corruptionThreshold: 0, corruptionChance: 0 });
+      if (c.corruptionThreshold !== 0 || c.corruptionChance !== 0) problems.push('zero is not a legal threshold/chance');
+      if (M.effectiveHit(15, 40) !== 9 || M.effectiveHit(1, 90) !== 1) problems.push('hardening maths wrong');
+      for (let k = 0; k < 20; k++) if (M.isUnitLost('p6', k, 0.25) && !M.isUnitLost('p6', k, 0.5)) problems.push('loss is not monotonic');
+      if (problems.length) return { passed: false, detail: problems.join('; ') };
+      return { passed: true, detail: 'model + 11 service methods + relay op + macro API' };
+    });
+
     // ─── 6.13: Prior phases intact ───
     await this._check('6.13', 'Core services intact (Phase 1-5 regression)', () => {
       const ns = game.nightcity;

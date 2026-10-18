@@ -640,7 +640,7 @@ function _fireUnlockTrace(actor, label, messageId = null) {
  * @param {object} args { actor, raw: malware contentData, messageId, sourceLabel }
  * @returns {{success:boolean, honeypot?:boolean}|null} null = no-op (not deployable / cancelled)
  */
-export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 'this system', host = null }) {
+export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 'this system', host = null, unstable = null }) {
   const cd = raw || {};
   if (!canPersistContent()) return null;
   const name = cd.name || 'UNKNOWN.exe';
@@ -650,17 +650,22 @@ export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 't
   // Optional gate: deploying can require a roll (`deploySkill`/`deployDV`) —
   // e.g. a Basic Tech / Interface check to run it cleanly; default off.
   const gated = !!cd.deployRequire && !!actor;
+  // A program on a damaged shard runs UNSTABLE (IntegrityModel.unstableFor):
+  // a gated run is harder, and any run may misfire.
+  const deployDV = (Number(cd.deployDV) || 15) + (unstable?.dvPenalty || 0);
+  const unstableNote = unstable ? ` The file is damaged — ${unstable.misfire}% chance it misfires.` : '';
   const res = await runSecurityConsole({
     title: 'Deploy Malware', icon: 'fas fa-biohazard', accent: 'red', host,
-    intro: `Run ${name} on ${sourceLabel}? Whatever it does, it does now.`,
+    intro: `Run ${name} on ${sourceLabel}? Whatever it does, it does now.${unstableNote}`,
     confirmLabel: 'Deploy',
-    gate: gated ? { require: true, skill: cd.deploySkill || 'Interface', dv: Number(cd.deployDV) || 15, actor, context: `Deploy: ${name}`, flavor: `Malware Deploy // DV ${Number(cd.deployDV) || 15}`, net: { verb: 'Virus', action: 'malware', hostName: sourceLabel } } : null,
+    gate: gated ? { require: true, skill: cd.deploySkill || 'Interface', dv: deployDV, actor, context: `Deploy: ${name}`, flavor: `Malware Deploy // DV ${deployDV}`, net: { verb: 'Virus', action: 'malware', hostName: sourceLabel } } : null,
     successLabel: 'PAYLOAD LIVE', failLabel: 'EXECUTION FAULT',
   });
   if (res.cancelled) return null;
   // A failed gated deploy still "runs" — it just misfires loudly (trace), the
   // same consequence surface as a honeypot. Only an outright cancel aborts.
-  const misfired = gated && !res.ok;
+  const glitched = !!unstable && res.ok !== false && Math.random() * 100 < (unstable.misfire || 0);
+  const misfired = (gated && !res.ok) || glitched;
 
   const iso = (() => { try { return new Date(game.nightcity?.timeService?.getCurrentTime?.() ?? Date.now()).toISOString(); } catch { return new Date().toISOString(); } })();
 
@@ -738,22 +743,24 @@ const DEFAULT_EXEC_DV = 15;
  * @param {object} a { actor, raw: payload contentData, messageId, sourceLabel, host, force }
  * @returns {Promise<{success:boolean}|null>} null = no-op / cancelled
  */
-export async function runPayloadExecute({ actor, raw, messageId, sourceLabel = 'this system', host = null, force = false }) {
+export async function runPayloadExecute({ actor, raw, messageId, sourceLabel = 'this system', host = null, force = false, unstable = null }) {
   const cd = raw || {};
   const name = cd.name || 'PROGRAM.EXE';
   if (cd.executed && !(cd.charges > 1)) { ui.notifications.warn('NCM | This program has already been run.'); return null; }
 
   const gated = !!cd.executeRequire;
   const skill = cd.executeSkill || DEFAULT_EXEC_SKILL;
-  const dv = Number(cd.executeDV) || DEFAULT_EXEC_DV;
+  // A program on a damaged shard runs UNSTABLE: harder to run, and it may misfire.
+  const dv = (Number(cd.executeDV) || DEFAULT_EXEC_DV) + (unstable?.dvPenalty || 0);
   const fxLabel = _payloadEffectName(cd.effect?.type);
+  const unstableNote = unstable && !force ? ` The file is damaged — ${unstable.misfire}% chance it misfires.` : '';
 
   let outcome = 'success';
   if (force || (!gated)) {
     // GM force-run OR an ungated program → styled confirm (immersion only).
     const res = await runSecurityConsole({
       title: `Run ${name}`, icon: 'fas fa-play', accent: 'purple', host,
-      intro: `Execute ${name} on ${sourceLabel}? ${fxLabel} routine engages.`,
+      intro: `Execute ${name} on ${sourceLabel}? ${fxLabel} routine engages.${unstableNote}`,
       confirmLabel: 'RUN',
     });
     if (res.cancelled || !res.ok) return null;
@@ -762,12 +769,16 @@ export async function runPayloadExecute({ actor, raw, messageId, sourceLabel = '
     if (!game.nightcity?.skillService) { ui.notifications.error('NCM | Skill service unavailable.'); return null; }
     const res = await runSecurityConsole({
       title: `Run ${name}`, icon: 'fas fa-play', accent: 'purple', host,
-      intro: `Execute ${name} on ${sourceLabel}. ${fxLabel} routine — a clean run needs the check.`,
+      intro: `Execute ${name} on ${sourceLabel}. ${fxLabel} routine — a clean run needs the check.${unstableNote}`,
       gate: { require: true, skill, dv, actor, context: `Execute: ${name}`, flavor: `Program Execute // DV ${dv}`, net: { verb: netVerbFor(cd.effect?.type) || 'Control', action: 'execute', hostName: sourceLabel } },
       successLabel: 'EXECUTION CLEAN', failLabel: 'EXECUTION FAULT',
     });
     if (res.cancelled) return null;
     outcome = res.ok ? 'success' : 'fail';
+  }
+  if (outcome === 'success' && unstable && !force && Math.random() * 100 < (unstable.misfire || 0)) {
+    outcome = 'fail';
+    ui.notifications.warn(`NCM | ${name} is damaged — it misfired.`);
   }
 
   // GM applies directly; a player relays the outcome (GM owns the host + journal).
