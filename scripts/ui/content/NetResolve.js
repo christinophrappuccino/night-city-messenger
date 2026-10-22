@@ -27,7 +27,7 @@
  */
 
 import { SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM } from '../../utils/helpers.js';
+import { log, isGM, chatCardTime } from '../../utils/helpers.js';
 
 const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
 
@@ -303,12 +303,16 @@ export function postNetActionCard(o = {}) {
     const outcome = o.ok ? 'PASS' : 'FAIL';
     const roll = o.total != null ? `${esc(o.skill || 'Interface')} <b>${o.total}</b> vs DV <b>${o.dv ?? '?'}</b>` : `vs DV <b>${o.dv ?? '?'}</b>`;
     const content =
-      `<div class="ncm-netcard ncm-netcard--${tone}">`
-      + `<div class="ncm-netcard__hd"><i class="fas fa-diagram-project"></i> NET ACTION${o.verb ? ` // ${esc(o.verb)}` : ''}</div>`
-      + `<div class="ncm-netcard__what"><b>${esc(o.actorName || 'An operator')}</b> — ${esc(o.title || 'a hack')}${o.hostName ? ` on <b>${esc(o.hostName)}</b>` : ''}</div>`
-      + `<div class="ncm-netcard__roll">${roll} — <b class="ncm-netcard__oc">${outcome}</b></div>`
-      + `<div class="ncm-netcard__note">Flagged so you can fold it into the run (hackResolution: flagged).</div>`
+      `<div class="ncm-cc ${o.ok ? 'ncm-cc--ok' : 'ncm-cc--fail'}">`
+      + `<div class="ncm-cc__rec"><span class="ncm-cc__kind">NET action</span><span class="ncm-cc__time">${chatCardTime()}</span>`
+      + `<span class="ncm-cc__sub">${o.verb ? `<span>${esc(o.verb)}</span>` : ''}<span>${esc(o.actorName || 'An operator')}</span>${o.hostName ? `<span>${esc(o.hostName)}</span>` : ''}</span></div>`
+      + `<div class="ncm-cc__whisper">GM only</div>`
+      + `<div class="ncm-cc__hero"><i class="ncm-cc__tr"></i><i class="ncm-cc__bl"></i><div class="ncm-cc__numrow">`
+      + (o.total != null ? `<div class="ncm-cc__num">${o.total}<small>/ ${o.dv ?? '?'}</small></div>` : `<div class="ncm-cc__num"><small>DV ${o.dv ?? '?'}</small></div>`)
+      + `<div class="ncm-cc__verdict">${outcome === 'PASS' ? 'Passed' : 'Failed'}<span>${esc(o.title || 'a hack')}${o.skill ? `, ${esc(o.skill)}` : ''}</span></div></div></div>`
+      + `<div class="ncm-cc__note">Flagged so you can fold it into the run (hackResolution: flagged).</div>`
       + `</div>`;
+    void tone; void roll;
     ChatMessage.create({ content, whisper: gmIds });
   } catch (err) { log.warn(`NET-action card failed: ${err.message}`); }
 }

@@ -21,6 +21,7 @@ Every PC gets a diegetic **Agent** — a themed in-fiction phone/inbox — and t
 ### Contacts
 - Player contact books (trust, tags, notes, favorites, ICE-protected entries that must be breached) + a GM **master directory** that pushes contacts to players.
 - Send-only system addresses, contact verification gates, actor-linked portraits.
+- **Contact groups**: named lists on the player's Agent or in the GM directory, pushed GM→player, one chip in the composer that fans out to everyone (per-recipient copies, Reply All, broadcast-to-group).
 
 ### Networks
 - Scene-based network availability, dead zones, signal strength — the Agent only sees what's reachable.

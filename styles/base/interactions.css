@@ -559,3 +559,23 @@
 [data-ncm-animation-level="off"] .ncm-app .ncm-btn:active {
   transform: none;
 }
+
+/* Autofill guard (helpers.guardSecretInputs): a secret field is readonly until the
+   player touches it, so no browser autofills it. Foundry greys readonly inputs —
+   a guarded field must look exactly like a live one. */
+input.ncm-autofill-guard[readonly] {
+  opacity: 1 !important; cursor: text !important; pointer-events: auto !important;
+  color: inherit !important; background: inherit !important; border-color: inherit !important;
+}
+
+/* Shadowed secret field (helpers.shadowSecretInput): a plain text input whose displayed
+   value is bullets painted by the module. Deliberately NO -webkit-text-security — Chromium's
+   form parser treats a text field carrying it as a password field and summons the manager. */
+.ncm-secret-ce { font-family: var(--ncm-font-mono, monospace) !important; letter-spacing: .12em; }
+
+/* The login NAME field (helpers.shadowLoginInput): an editable element dressed as the
+   input it replaced, mirroring into a hidden input. Not an <input>, so no password
+   manager attaches to it. Core + CPR ship user-select:none — it must opt in. */
+.ncm-login-ce { outline: none !important; white-space: nowrap; overflow: hidden; cursor: text; min-height: 1.2em; user-select: text !important; -webkit-user-select: text !important; }
+.ncm-login-ce:empty::before { content: attr(data-placeholder); opacity: .5; pointer-events: none; }
+.ncm-login-ce br { display: none; }

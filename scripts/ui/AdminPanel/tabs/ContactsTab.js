@@ -22,6 +22,10 @@ import { log, getPlayerCharacters } from '../../../utils/helpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
+import { editGroupDialog } from '../../ContactGroups/GroupEditorDialog.js';
+import { memberFromMasterContact, memberFromActor } from '../../../services/ContactGroupService.js';
+import { memberKey } from '../../../utils/participants.js';
+import { showNamePicker } from '../../../utils/namePicker.js';
 
 export class ContactsTab extends BaseTab {
 
@@ -48,6 +52,7 @@ export class ContactsTab extends BaseTab {
   prepareContext() {
     const contactSummary = this._gatherSummary();
     return {
+      masterGroups: this._masterGroupsContext(),
       contactSummary,
       pushLog: this._gatherPushLog(),
     };
@@ -933,12 +938,108 @@ export class ContactsTab extends BaseTab {
     });
   }
 
+  // ─── Contact groups (GM) ───
+
+  _masterGroupsContext() {
+    const svc = game.nightcity?.contactGroupService;
+    if (!svc) return [];
+    return svc.getMasterGroups().map(g => {
+      const shared = svc.sharedWith(g.id);
+      return {
+        id: g.id, name: g.name, color: g.color, note: g.note, count: g.members.length,
+        names: svc.memberNames(g).join(', '),
+        sharedCount: shared.length, sharedNames: shared.map(s => s.name).join(', '),
+      };
+    });
+  }
+
+  /** Pickable people for a GM group: the directory + player characters. */
+  async _groupMemberSource() {
+    const master = game.nightcity?.masterContactService?.getAll?.() || [];
+    const entries = master.map(c => {
+      const member = memberFromMasterContact(c);
+      return { id: memberKey(member), name: c.name, member, img: c.portrait || '', sub: c.email || '', group: c.folder || c.organization || 'Directory', note: c.role || c.type || '' };
+    });
+    const linked = new Set(master.map(c => c.actorId).filter(Boolean));
+    for (const pc of getPlayerCharacters()) {
+      const actor = pc.actor || game.actors.get(pc.actorId);
+      if (!actor || linked.has(actor.id)) continue;
+      const member = memberFromActor(actor);
+      entries.push({ id: memberKey(member), name: actor.name, member, img: actor.img || '', sub: member.email || 'no address yet', group: 'Player Characters', note: 'player' });
+    }
+    return entries.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async onGroupNew(event, target) {
+    const group = await editGroupDialog({}, { memberSource: () => this._groupMemberSource() });
+    if (!group) return;
+    const r = await game.nightcity?.contactGroupService?.saveMasterGroup(group);
+    if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
+    ui.notifications.info(`NCM | Group "${group.name}" saved. Push it to players from the Groups card.`);
+    this.render(true);
+  }
+
+  async onGroupEdit(event, target) {
+    const id = target.closest('[data-group-id]')?.dataset.groupId;
+    const svc = game.nightcity?.contactGroupService;
+    const existing = svc?.getMasterGroup(id);
+    if (!existing) return;
+    const group = await editGroupDialog(existing, { memberSource: () => this._groupMemberSource() });
+    if (!group) return;
+    const r = await svc.saveMasterGroup(group);
+    if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
+    this.render(true);
+  }
+
+  async onGroupDelete(event, target) {
+    const id = target.closest('[data-group-id]')?.dataset.groupId;
+    const svc = game.nightcity?.contactGroupService;
+    const existing = svc?.getMasterGroup(id);
+    if (!existing) return;
+    const shared = svc.sharedWith(id);
+    const yes = await adminConfirm({
+      title: 'Delete group',
+      content: `<p>Delete <b>${existing.name}</b> from the GM list?${shared.length ? ` Copies already pushed to ${shared.map(s => s.name).join(', ')} stay with them.` : ''}</p>`,
+    });
+    if (!yes) return;
+    await svc.deleteMasterGroup(id);
+    this.render(true);
+  }
+
+  async onGroupPush(event, target) {
+    const id = target.closest('[data-group-id]')?.dataset.groupId;
+    const svc = game.nightcity?.contactGroupService;
+    const group = svc?.getMasterGroup(id);
+    if (!group) return;
+    const pcs = getPlayerCharacters();
+    if (!pcs.length) return ui.notifications.warn('NCM | No player characters to push to.');
+    const already = new Set(svc.sharedWith(id).map(s => s.actorId));
+    const picks = await showNamePicker({
+      title: `Push "${group.name}" to…`,
+      hint: 'Members the player lacks are shared first, then the group. Re-pushing refreshes their copy.',
+      entries: pcs.map(pc => ({ id: pc.actorId, name: pc.actorName, img: pc.actor?.img || '', sub: already.has(pc.actorId) ? 'has this group' : (pc.playerName || ''), note: 'player' })),
+      multi: true,
+      placeholder: 'search characters…',
+    });
+    if (!Array.isArray(picks) || !picks.length) return;
+    const lines = [];
+    for (const p of picks) {
+      const r = await svc.pushGroupToPlayer(id, p.id);
+      lines.push(r?.success ? `${p.name}: shared (${r.shared} contacts)${r.failed?.length ? `, failed: ${r.failed.join(', ')}` : ''}` : `${p.name}: ${r?.error || 'failed'}`);
+    }
+    ui.notifications.info(`NCM | Pushed "${group.name}" — ${lines.join(' · ')}`);
+    this.render(true);
+  }
+
   onExportContacts(event, target) {
     const svc = game.nightcity?.masterContactService;
     if (!svc) return;
 
     const contacts = svc.getAll?.() || [];
-    const data = JSON.stringify(contacts, null, 2);
+    // Envelope: contacts + the GM's groups (members keyed by address, so they
+    // re-resolve in another world). Import accepts this OR the old bare array.
+    const groups = game.nightcity?.contactGroupService?.exportMaster?.() || [];
+    const data = JSON.stringify({ ncmMasterContacts: 1, exportedAt: new Date().toISOString(), contacts, groups }, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
 
@@ -971,7 +1072,9 @@ export class ContactsTab extends BaseTab {
 
       try {
         const text = await file.text();
-        const contacts = JSON.parse(text);
+        const parsed = JSON.parse(text);
+        const contacts = Array.isArray(parsed) ? parsed : parsed?.contacts;
+        const groups = Array.isArray(parsed?.groups) ? parsed.groups : [];
 
         if (!Array.isArray(contacts)) {
           ui.notifications.error('Invalid format — expected a JSON array of contacts.');
@@ -1007,7 +1110,15 @@ export class ContactsTab extends BaseTab {
           }
         }
 
-        ui.notifications.info(`Imported ${imported} contacts. ${skipped ? `${skipped} skipped (duplicates or invalid).` : ''}`);
+        let groupNote = '';
+        if (groups.length) {
+          const gr = await game.nightcity?.contactGroupService?.importMaster?.(groups);
+          if (gr) {
+            groupNote = ` Groups: ${gr.imported} imported${gr.skipped ? `, ${gr.skipped} skipped` : ''}.`;
+            if (gr.unresolved.length) ui.notifications.warn(`NCM | Group members not found in this world: ${gr.unresolved.join('; ')}`, { permanent: true });
+          }
+        }
+        ui.notifications.info(`Imported ${imported} contacts. ${skipped ? `${skipped} skipped (duplicates or invalid).` : ''}${groupNote}`);
         this.render(true);
       } catch (err) {
         console.error('NCM | Import contacts failed:', err);

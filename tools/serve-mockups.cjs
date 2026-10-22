@@ -59,7 +59,21 @@ const TYPES = {
   '.webp': 'image/webp',
   '.ogg': 'audio/ogg',
   '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
 };
+
+VENDOR['/_vendor/cpr-main.css'] = VENDOR['/_vendor/cpr.css']; // name-picker-probe.html asks by this name
+
+/** Font Awesome ships inside the Foundry install (fonts/fontawesome/). A page
+ *  links /_vendor/fa/css/all.min.css and that stylesheet's own relative
+ *  ../webfonts/*.woff2 then resolve under the same prefix — so icons render
+ *  over http, not only off disk. Read-only, confined to that one directory. */
+const FA_DIRS = [
+  'C:/Program Files/Foundry Virtual Tabletop/resources/app/public/fonts/fontawesome',
+  'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/public/fonts/fontawesome',
+];
+const FA_PREFIX = '/_vendor/fa/';
 
 const firstThatExists = (list) => list.find((p) => fs.existsSync(p)) || null;
 
@@ -82,6 +96,14 @@ const server = http.createServer((req, res) => {
     const hit = firstThatExists(VENDOR[url]);
     if (!hit) return send(res, 404, `${url}: not installed on this machine`);
     return serveFile(res, hit);
+  }
+
+  if (url.startsWith(FA_PREFIX)) {
+    const dir = firstThatExists(FA_DIRS);
+    if (!dir) return send(res, 404, 'Font Awesome: Foundry install not found on this machine');
+    const file = path.normalize(path.join(dir, url.slice(FA_PREFIX.length)));
+    if (!file.startsWith(path.normalize(dir))) return send(res, 403, 'outside the font directory');
+    return serveFile(res, file);
   }
 
   if (url === '/') {

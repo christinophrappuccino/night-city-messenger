@@ -20,7 +20,8 @@ export class DataValidator {
 
     // Anonymous replies carry no recipient at send time — the GM resolves the
     // real (hidden) target at delivery. Don't require one here.
-    if (!data.anonReply && !data.toActorId && !data.toContactId && !data.to) {
+    const hasList = Array.isArray(data.recipients) && data.recipients.length > 0;
+    if (!data.anonReply && !hasList && !data.toActorId && !data.toContactId && !data.to) {
       errors.push('Recipient is required');
     }
     if (!data.fromActorId && !data.fromContactId && !data.from) {

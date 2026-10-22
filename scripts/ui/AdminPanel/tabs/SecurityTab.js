@@ -20,6 +20,7 @@ import { log, whisperCardHtml } from '../../../utils/helpers.js';
 import { SKILL_MAP } from '../../../utils/constants.js';
 import { TraceService } from '../../../services/TraceService.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
+import { showNamePicker, worldItemEntries, worldRoleEntries, itemImgFor, roleImgFor } from '../../../utils/namePicker.js';
 
 /** slug → plain-language phrase (someone who forgot the jargon still gets it). */
 const ACTION_LABELS = {
@@ -264,9 +265,9 @@ export class SecurityTab extends BaseTab {
     const groups = (Array.isArray(gate.itemGroups) ? gate.itemGroups : []).map(grp =>
       (Array.isArray(grp) ? grp.map(x => {
         const name = typeof x === 'string' ? x : x?.name;
-        return name ? { name, img: (typeof x === 'object' && x?.img) || this._itemImg(name) } : null;
+        return name ? { name, img: (typeof x === 'object' && x?.img) || itemImgFor(name) } : null;
       }).filter(Boolean) : []));
-    const roleChips = (gate.roles || []).map(name => ({ name, img: this._roleImg(name) }));
+    const roleChips = (gate.roles || []).map(name => ({ name, img: roleImgFor(name) }));
     return {
       mode: gate.mode || 'anyone', logic: gate.logic || 'any',
       roleChips, roleLogic: gate.roleLogic || 'any',
@@ -279,40 +280,6 @@ export class SecurityTab extends BaseTab {
       // items on EVERY render of the tab. The pickers now read them on demand
       // (onGateAddItem / onGateAddRole) — i.e. only when the GM opens one.
     };
-  }
-  /** Distinct CPR role names across world actors, with a representative image. */
-  _availableRoles() {
-    const seen = new Map();
-    for (const a of (game.actors ?? [])) for (const i of (a.items ?? [])) {
-      if (i.type !== 'role' || !i.name) continue;
-      const k = i.name.toLowerCase(); if (!seen.has(k)) seen.set(k, { name: i.name, img: i.img || 'icons/svg/upgrade.svg' });
-    }
-    // Seed the common CPR roles so a fresh world still has options.
-    for (const r of ['Netrunner', 'Tech', 'Fixer', 'Solo', 'Media', 'Rockerboy', 'Nomad', 'Lawman', 'Exec', 'Medtech']) {
-      const k = r.toLowerCase(); if (!seen.has(k)) seen.set(k, { name: r, img: 'icons/svg/upgrade.svg' });
-    }
-    return [...seen.values()].sort((x, y) => x.name.localeCompare(y.name));
-  }
-  _roleImg(name) {
-    const w = String(name || '').toLowerCase();
-    const it = [...(game.actors ?? [])].flatMap(a => [...(a.items ?? [])]).find(i => i.type === 'role' && String(i.name).toLowerCase().includes(w));
-    return it?.img || 'icons/svg/upgrade.svg';
-  }
-  /** Distinct carryable item names across the world, with a representative image. */
-  _availableItems() {
-    const seen = new Map();
-    const skip = new Set(['skill', 'role', 'criticalInjury', 'netarch']); // CPR sheet-abstractions
-    const add = (i) => { if (!i?.name || skip.has(i.type)) return; const k = i.name.toLowerCase(); if (!seen.has(k)) seen.set(k, { name: i.name, img: i.img || 'icons/svg/item-bag.svg' }); };
-    for (const i of (game.items ?? [])) add(i);
-    for (const a of (game.actors ?? [])) for (const i of (a.items ?? [])) add(i);
-    return [...seen.values()].sort((x, y) => x.name.localeCompare(y.name)).slice(0, 150);
-  }
-  _itemImg(name) {
-    if (!name) return 'icons/svg/item-bag.svg';
-    const w = String(name).toLowerCase();
-    const it = (game.items ?? []).find(i => String(i.name).toLowerCase().includes(w))
-      || [...(game.actors ?? [])].flatMap(a => [...(a.items ?? [])]).find(i => String(i.name).toLowerCase().includes(w));
-    return it?.img || 'icons/svg/item-bag.svg';
   }
 
   // ─── render / listeners ───
@@ -465,7 +432,7 @@ export class SecurityTab extends BaseTab {
           if (gmIds.length) ChatMessage.create({
             content: whisperCardHtml({
               tone: 'danger', icon: 'fa-lock', title: 'Lockout',
-              lines: [`<b>${esc(actorName)}</b> locked out of <b>${esc(objectName)}</b> for <b>${minutes} min</b>.`, reason ? `<span class="ncm-wcard__line--sub"><i>${esc(reason)}</i></span>` : ''],
+              lines: [`<b>${esc(actorName)}</b> locked out of <b>${esc(objectName)}</b> for <b>${minutes} min</b>.`, reason ? `<span class="ncm-cc__sub"><i>${esc(reason)}</i></span>` : ''],
             }), whisper: gmIds,
           });
           if (html.find('[name="tp"]').is(':checked')) {
@@ -500,7 +467,7 @@ export class SecurityTab extends BaseTab {
             if (gmIds.length) ChatMessage.create({
               content: whisperCardHtml({
                 tone: 'danger', icon: 'fa-skull', title: 'Black ICE',
-                lines: [`Black ICE struck <b>${esc(op.name)}</b> off the trace on <b>${esc(objectName)}</b>.`, reason ? `<span class="ncm-wcard__line--sub"><i>${esc(reason)}</i></span>` : ''],
+                lines: [`Black ICE struck <b>${esc(op.name)}</b> off the trace on <b>${esc(objectName)}</b>.`, reason ? `<span class="ncm-cc__sub"><i>${esc(reason)}</i></span>` : ''],
               }), whisper: gmIds,
             });
           } catch (err) { log.warn(`Escalate ICE failed: ${err.message}`); }
@@ -509,55 +476,6 @@ export class SecurityTab extends BaseTab {
         cancel: { label: 'Cancel' },
       }, default: 'countdown',
     }, { classes: ['ncm-esc-dialog'], width: 440 }).render(true);
-  }
-
-  /**
-   * Searchable name picker — the `.ncm-burn-*` dialog pattern already used by the
-   * terminal key-item picker (TerminalConfigApp._onPickKeyItem) and the burn-to-shard
-   * target picker. A bare <select> was unusable once a world has a real item list:
-   * no search, no images, and it hides everything behind a native dropdown.
-   * @param {object} o
-   * @param {string} o.title    dialog title
-   * @param {string} o.hint     one-line explanation above the search box
-   * @param {Array<{name:string,img:string}>} o.entries  choices, pre-sorted
-   * @param {Set<string>} o.taken  names already chipped in this group (shown greyed)
-   * @param {(pick:{name:string,img:string}) => void} o.onPick
-   */
-  _openNamePicker({ title, hint, entries, taken, onPick }) {
-    const esc = Handlebars.escapeExpression;
-    const rows = entries.map(e => `
-      <div class="ncm-burn-row${taken?.has(e.name) ? ' is-taken' : ''}" data-name="${esc(e.name)}" data-img="${esc(e.img || '')}">
-        <img src="${esc(e.img || 'icons/svg/item-bag.svg')}" alt="">
-        <span class="ncm-burn-name">${esc(e.name)}</span>
-        ${taken?.has(e.name) ? '<span class="ncm-burn-type">added</span>' : ''}
-      </div>`).join('');
-    const dlg = adminDialog({
-      title,
-      content: `
-        <div class="ncm-burn-hint">${esc(hint)}</div>
-        <input type="text" class="ncm-burn-search" placeholder="search…">
-        <div class="ncm-burn-list">${rows || '<div class="ncm-burn-hint" style="padding:8px">nothing found in this world</div>'}</div>`,
-      buttons: { cancel: { label: 'Cancel' } },
-      render: (html) => {
-        const root = html[0] ?? html;
-        const list = root.querySelector('.ncm-burn-list');
-        const search = root.querySelector('.ncm-burn-search');
-        search?.addEventListener('input', (ev) => {
-          const q = ev.target.value.trim().toLowerCase();
-          list?.querySelectorAll('.ncm-burn-row').forEach(r => {
-            r.style.display = r.dataset.name.toLowerCase().includes(q) ? '' : 'none';
-          });
-        });
-        setTimeout(() => search?.focus(), 30);
-        list?.addEventListener('click', (ev) => {
-          const row = ev.target.closest('.ncm-burn-row');
-          if (!row || row.classList.contains('is-taken')) return;
-          onPick({ name: row.dataset.name, img: row.dataset.img });
-          dlg.close();
-        });
-      },
-    }, { classes: ['ncm-burn-dialog'] });
-    dlg.render(true);
   }
 
   /** Append a gate chip (DOM-only — onSaveGate reads the chips back out). */
@@ -576,10 +494,10 @@ export class SecurityTab extends BaseTab {
   /** "+ item…" — pick a carryable world item for THIS OR-group. */
   onGateAddItem(event, target) {
     const chips = target?.closest('.ncm-sec-admin-gate__grp')?.querySelector('[data-gate-group-chips]');
-    this._openNamePicker({
+    showNamePicker({
       title: 'Add required gear',
       hint: 'Everything in one group is required together (AND). Matched by item name.',
-      entries: this._availableItems(), taken: this._chipNames(chips),
+      entries: worldItemEntries(), taken: this._chipNames(chips), placeholder: 'search gear…',
       onPick: (pick) => this._appendChip(chips, pick, 'icons/svg/item-bag.svg'),
     });
   }
@@ -587,10 +505,10 @@ export class SecurityTab extends BaseTab {
   /** "+ role…" — pick a CPR role. */
   onGateAddRole(event, target) {
     const chips = target?.closest('.ncm-sec-admin-gate__grp')?.querySelector('[data-role-chips]');
-    this._openNamePicker({
+    showNamePicker({
       title: 'Add allowed role',
       hint: 'A character qualifies by carrying this CPR role item.',
-      entries: this._availableRoles(), taken: this._chipNames(chips),
+      entries: worldRoleEntries(), taken: this._chipNames(chips), placeholder: 'search roles…',
       onPick: (pick) => this._appendChip(chips, pick, 'icons/svg/upgrade.svg'),
     });
   }

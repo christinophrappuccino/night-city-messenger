@@ -3525,3 +3525,7 @@
   0% { opacity: 1; }
   100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
 }
+
+/* Linked Actor picker row (player + GM contact forms): the read-only label IS the opener. */
+.ncm-app .ncm-form-input-row input[data-picker-label-for] { cursor: pointer; }
+.ncm-app .ncm-form-input-row input[data-picker-label-for]::placeholder { font-style: italic; }

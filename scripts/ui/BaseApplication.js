@@ -80,6 +80,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   get settingsManager() { return game.nightcity?.settingsManager; }
   get themeService() { return game.nightcity?.themeService; }
   get soundService() { return game.nightcity?.soundService; }
+  get contactGroupService() { return game.nightcity?.contactGroupService; }
 
   // ═══════════════════════════════════════════════════════════
   //  Static Configuration

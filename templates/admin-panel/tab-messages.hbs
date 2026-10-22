@@ -38,6 +38,7 @@
     <div class="ncm-npcinbox-toolbar">
       <div class="ncm-pill {{#if npcInboxUnreadOnly}}ncm-pill--active{{/if}}" data-action="npcInboxFilter" data-mode="unread"><i class="fas fa-envelope"></i> Unread</div>
       <div class="ncm-pill {{#unless npcInboxUnreadOnly}}ncm-pill--active{{/unless}}" data-action="npcInboxFilter" data-mode="all"><i class="fas fa-layer-group"></i> All</div>
+      <div class="ncm-pill {{#if npcInboxIncludeGm}}ncm-pill--active{{/if}}" data-action="npcInboxFilter" data-mode="gm" data-tooltip="Also list mail you sent to NPCs as GM (off = only what players sent them)"><i class="fas fa-shield-halved"></i> Include GM-sent</div>
       <div class="ncm-npcinbox-toolbar__spacer"></div>
       <div class="ncm-npcinbox-sortwrap">
         <i class="fas fa-arrow-down-wide-short"></i>
@@ -276,7 +277,7 @@
           <div class="ncm-msg-feed-row__names">
             <span class="ncm-msg-feed-row__from">{{this.fromName}}</span>
             <i class="fas fa-arrow-right ncm-msg-feed-row__arrow"></i>
-            <span class="ncm-msg-feed-row__to">{{this.toName}}</span>
+            {{#if this.isGroupRow}}<span class="ncm-msg-feed-row__to ncm-msg-feed-row__to--group" data-tooltip="One send to several recipients — expand for each"><i class="fas fa-users"></i> {{this.recipientCount}} recipients</span>{{else}}<span class="ncm-msg-feed-row__to">{{this.toName}}</span>{{/if}}
           </div>
           <span class="ncm-msg-feed-row__network" style="color: {{this.networkColor}};"><i class="fas {{this.networkIcon}}" style="font-size:7px; margin-right:2px;"></i>{{this.networkLabel}}</span>
         </div>
@@ -289,8 +290,10 @@
           <span class="ncm-msg-feed-row__time-rel">{{this.relativeTime}}</span>
         </div>
         <div class="ncm-msg-feed-row__actions">
+          {{#unless this.isGroupRow}}
           <button class="ncm-admin-action-btn" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Open in Inbox"><i class="fas fa-external-link"></i></button>
           <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="hardDeleteMessage" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Delete"><i class="fas fa-trash"></i></button>
+          {{/unless}}
         </div>
       </div>
 
@@ -299,6 +302,18 @@
       <div class="ncm-msg-feed-expand">
         <div class="ncm-msg-feed-expand__inner">
           <div class="ncm-msg-feed-expand__body">
+            {{#if this.isGroupRow}}
+            <div class="ncm-msg-feed-expand__recips">
+              {{#each this.recipients}}
+              <div class="ncm-msg-feed-recip {{#if this.unread}}ncm-msg-feed-recip--unread{{/if}}">
+                <span class="ncm-msg-feed-recip__name">{{this.toName}}</span>
+                <span class="ncm-msg-feed-status ncm-msg-feed-status--{{this.statusClass}}"><i class="fas fa-{{this.statusIcon}}"></i> {{this.statusLabel}}</span>
+                <button class="ncm-admin-action-btn" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Open in Inbox"><i class="fas fa-external-link"></i></button>
+                <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="hardDeleteMessage" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Delete this copy"><i class="fas fa-trash"></i></button>
+              </div>
+              {{/each}}
+            </div>
+            {{/if}}
             <div class="ncm-msg-feed-expand__subject">{{this.subject}}</div>
             <div class="ncm-msg-feed-expand__text">{{this.bodyPreview}}</div>
             <div class="ncm-msg-feed-expand__meta">
@@ -315,11 +330,13 @@
             </div>
             {{/if}}
           </div>
+          {{#unless this.isGroupRow}}
           <div class="ncm-msg-feed-expand__actions">
             <button class="ncm-btn ncm-btn--cyan ncm-btn--sm" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}"><i class="fas fa-external-link"></i> Open</button>
             <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="replyAsMsg" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}"><i class="fas fa-reply"></i> Reply As</button>
             <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="shareMsgToChat" data-message-id="{{this.messageId}}"><i class="fas fa-share-nodes"></i> Share</button>
           </div>
+          {{/unless}}
         </div>
       </div>
       {{/if}}

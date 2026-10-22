@@ -11,6 +11,7 @@
 
 import { MODULE_ID, TEMPLATES, THEME_PRESETS, COLOR_VAR_MAP, FONT_OPTIONS, DEFAULTS } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
+import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { BaseApplication } from '../BaseApplication.js';
 
 export class ThemeCustomizerApp extends BaseApplication {
@@ -271,7 +272,7 @@ export class ThemeCustomizerApp extends BaseApplication {
   }
 
   static async _onResetDefaults(event, target) {
-    const confirmed = await Dialog.confirm({
+    const confirmed = await playerConfirm({
       title: 'Reset Theme',
       content: '<p>Reset all theme settings to defaults?</p>',
     });
@@ -532,7 +533,7 @@ export class ThemeCustomizerApp extends BaseApplication {
 
   static async _onSaveAsCustomPreset(event, target) {
     const name = await new Promise(resolve => {
-      new Dialog({
+      playerDialog({
         title: 'Save Custom Preset',
         content: `<div style="padding:8px 0;"><label style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#8888a0;text-transform:uppercase;">Preset Name</label><input type="text" id="ncm-preset-name" value="My Custom Theme" style="width:100%;margin-top:4px;padding:6px 8px;background:#0a0a0f;border:1px solid #2a2a45;color:#e0e0e8;font-family:'Rajdhani',sans-serif;font-size:13px;border-radius:2px;" /></div>`,
         buttons: {
@@ -581,7 +582,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     if (isNaN(index) || !presets[index]) return;
 
     const name = presets[index].name;
-    const confirmed = await Dialog.confirm({ title: 'Delete Preset', content: `<p>Delete custom preset "${name}"?</p>` });
+    const confirmed = await playerConfirm({ title: 'Delete Preset', content: `<p>Delete custom preset "${name}"?</p>` });
     if (!confirmed) return;
 
     presets.splice(index, 1);

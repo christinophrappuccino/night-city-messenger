@@ -1,0 +1,156 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   NAME PICKER — the shared searchable world picker (scripts/utils/namePicker.js)
+   ═══════════════════════════════════════════════════════════════════════════
+   One component, one file, one prefix: `ncm-pkr-*`. It used to wear
+   `.ncm-burn-dialog`, which the Email Setup burn-confirm ALSO uses as its content
+   wrapper — its `* { margin:0 !important }` and literal greys bled into every
+   picker (the class-collision gotcha). Nothing else may use this prefix.
+
+   Every colour is a --ncm-* token: an adminDialog resolves them from the admin
+   preset; a plain Dialog (`admin:false`, the immersive windows) from :root — the
+   player's theme. Mock: docs/mockups/name-picker-redesign-mock.html.
+
+   Layout rule (the modal scroller): the LIST is the only thing that scrolls —
+   hint, search bar, chips and the status strip stay put. */
+
+/* ── dialog chrome (Foundry's parchment dialog would give dark text on our dark rows) ── */
+.ncm-pkr-dialog .window-content { background: var(--ncm-bg-deep) !important; color: var(--ncm-text-primary) !important; padding: 0 !important; }
+.ncm-pkr-dialog .dialog-content { padding: 0 !important; margin: 0 !important; }
+.ncm-pkr-dialog .dialog-buttons { margin: 0 !important; padding: 8px 12px 10px !important; }
+.ncm-pkr-dialog .dialog-buttons button {
+  background: var(--ncm-bg-base) !important; color: var(--ncm-text-primary) !important;
+  border: 1px solid var(--ncm-border) !important; box-shadow: none !important; border-radius: 2px !important;
+}
+.ncm-pkr-dialog .dialog-buttons button:hover { border-color: var(--ncm-secondary) !important; color: var(--ncm-secondary) !important; }
+
+.ncm-pkr {
+  display: flex; flex-direction: column; max-height: min(62vh, 520px);
+  font-family: var(--ncm-font-display, sans-serif); color: var(--ncm-text-primary);
+}
+/* only the list may shrink — everything else is pinned furniture */
+.ncm-pkr > :not(.ncm-pkr__list) { flex: 0 0 auto; }
+
+/* hint — the dialog's one-line lede */
+.ncm-pkr__hint { padding: 10px 12px 0; font-size: calc(11.5px * var(--ncm-text-scale, 1)); line-height: 1.35; color: var(--ncm-text-primary); opacity: .78; }
+.ncm-pkr__hint--empty { padding: 10px 12px; opacity: .6; font-style: italic; }
+
+/* search bar = a toolbar: magnifier · input · live count · clear */
+.ncm-pkr__bar {
+  display: flex; align-items: center; gap: 8px; margin: 8px 12px 0; padding: 0 8px 0 10px; height: 32px;
+  background: var(--ncm-bg-deep); border: 1px solid var(--ncm-border); border-radius: 2px;
+}
+.ncm-pkr__bar:focus-within { border-color: var(--ncm-secondary); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ncm-secondary) 35%, transparent); }
+.ncm-pkr__bar > i { font-size: 11px; color: var(--ncm-text-muted); flex: 0 0 auto; }
+/* `all: unset` beats Foundry + CPR input chrome; the bar carries the border instead */
+.ncm-pkr__q, .ncm-pkr-dialog input.ncm-pkr__q {
+  all: unset; flex: 1 1 auto; min-width: 0; height: 100%; box-sizing: border-box;
+  font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif);
+  color: var(--ncm-text-primary); caret-color: var(--ncm-secondary); cursor: text;
+}
+.ncm-pkr__q::placeholder { color: var(--ncm-text-muted); font-weight: 500; }
+.ncm-pkr__count { flex: 0 0 auto; font: 400 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted); letter-spacing: .04em; }
+.ncm-pkr__count b { color: var(--ncm-text-secondary); font-weight: 400; }
+.ncm-pkr__clear {
+  display: none; flex: 0 0 auto; width: 18px; height: 18px; border-radius: 2px; cursor: pointer;
+  color: var(--ncm-text-muted); text-align: center; line-height: 18px; font-size: 11px;
+}
+.ncm-pkr__clear:hover { color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-text-primary) 10%, transparent); }
+.ncm-pkr__bar.has-query .ncm-pkr__clear { display: block; }
+
+/* chips: ONE scrolling row — twenty folders must not become a four-row wall.
+   They are SPANS, not <button>s: every button in an admin dialog is restyled by
+   admin-theme.css with !important, and the search box owns the keyboard anyway. */
+/* Chips WRAP. They used to sit in one horizontal scroller with its scrollbar
+   hidden, so past the dialog's width the last chip was simply cut off with no
+   way to know there was more (dev, 2026-10-21: "current scene… gets cut off").
+   Three rows at most, then a visible vertical scrollbar. */
+.ncm-pkr__chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 12px 0; padding-bottom: 4px; max-height: calc(3 * 22px + 2 * 4px + 4px); overflow-y: auto; overflow-x: hidden; }
+.ncm-pkr__chip {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; cursor: pointer; user-select: none;
+  font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+  color: var(--ncm-text-secondary); border: 1px solid var(--ncm-border); border-radius: 2px; background: transparent;
+}
+.ncm-pkr__chip b { font: 400 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted); }
+.ncm-pkr__chip:hover { border-color: var(--ncm-border-active, var(--ncm-secondary)); color: var(--ncm-text-primary); }
+.ncm-pkr__chip.is-on { color: var(--ncm-bg-deep); background: var(--ncm-secondary); border-color: var(--ncm-secondary); }
+.ncm-pkr__chip.is-on b { color: color-mix(in srgb, var(--ncm-bg-deep) 70%, transparent); }
+
+/* the list is THE scroller */
+.ncm-pkr__list {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 8px 12px 0;
+  border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-deep);
+}
+/* folder headers — the "default directory" while All is active; gone the moment a chip or query narrows the list */
+.ncm-pkr__group {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; padding: 5px 10px;
+  font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-text-muted);
+  background: color-mix(in srgb, var(--ncm-bg-surface) 92%, var(--ncm-bg-deep)); border-bottom: 1px solid var(--ncm-border);
+}
+.ncm-pkr__group i { font-size: 8px; }
+.ncm-pkr__group b { margin-left: auto; font: 400 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-pkr.is-filtered .ncm-pkr__group { display: none; }
+
+.ncm-pkr__row {
+  position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 4px 10px; cursor: pointer; flex: 0 0 auto;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent);
+}
+.ncm-pkr__row:last-child { border-bottom: 0; }
+.ncm-pkr__row:hover { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); }
+.ncm-pkr__row.is-cursor { outline: 1px solid var(--ncm-secondary); outline-offset: -1px; }
+.ncm-pkr__row.is-selected { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); box-shadow: inset 2px 0 0 var(--ncm-secondary); }
+/* .is-taken — already chosen elsewhere. Shown-but-inert beats hidden: it answers
+   "why isn't X in the list?". The click is refused by the picker's JS, not only here. */
+.ncm-pkr__row.is-taken { opacity: .38; cursor: default; }
+.ncm-pkr__row.is-taken:hover { background: none; }
+.ncm-pkr__art, .ncm-pkr-dialog img.ncm-pkr__art {
+  width: 28px; height: 28px; flex: 0 0 auto; border-radius: 2px; object-fit: cover;
+  border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface);
+}
+.ncm-pkr__none { width: 28px; height: 28px; flex: 0 0 auto; display: grid; place-items: center; color: var(--ncm-text-muted); border: 1px dashed var(--ncm-border); border-radius: 2px; font-size: 10px; }
+.ncm-pkr__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ncm-pkr__name { font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-pkr__name mark { background: none; color: var(--ncm-secondary); }
+.ncm-pkr__row--none .ncm-pkr__name { font-weight: 500; font-style: italic; color: var(--ncm-text-secondary); }
+.ncm-pkr__sub { display: flex; align-items: center; gap: 4px; font: 400 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-pkr__sub i { font-size: 8px; opacity: .7; }
+.ncm-pkr__note {
+  flex: 0 0 auto; padding: 2px 6px; border-radius: 1px;
+  font: 400 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-muted);
+  border: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent);
+}
+.ncm-pkr__tag {
+  flex: 0 0 auto; padding: 2px 6px; border-radius: 1px;
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-secondary);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 50%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent);
+}
+.ncm-pkr__taken { flex: 0 0 auto; font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-muted); }
+.ncm-pkr__sel-ic { display: none; flex: 0 0 auto; color: var(--ncm-secondary); font-size: 10px; }
+.ncm-pkr__row.is-selected .ncm-pkr__sel-ic { display: block; }
+
+/* multi mode: outlined check squares (the admin `.ncm-ct-row__check` vocabulary) */
+.ncm-pkr__check { flex: 0 0 auto; width: 15px; height: 15px; display: grid; place-items: center; font-size: 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-deep); }
+.ncm-pkr__check > i { opacity: 0; color: var(--ncm-secondary) !important; transition: opacity .12s; }
+.ncm-pkr__row:hover .ncm-pkr__check { border-color: var(--ncm-secondary); }
+.ncm-pkr__row.is-picked { background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
+.ncm-pkr__row.is-picked .ncm-pkr__check { border-color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); }
+.ncm-pkr__row.is-picked .ncm-pkr__check > i { opacity: 1; }
+
+/* empty state says what to do, not just that nothing matched */
+.ncm-pkr__empty { display: none; padding: 22px 12px; text-align: center; color: var(--ncm-text-muted); font-size: calc(11.5px * var(--ncm-text-scale, 1)); }
+.ncm-pkr__empty b { color: var(--ncm-text-secondary); }
+.ncm-pkr__btn {
+  display: inline-block; margin: 8px 4px 0; padding: 4px 10px; cursor: pointer; border-radius: 2px;
+  font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ncm-secondary); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 50%, transparent);
+}
+.ncm-pkr__btn:hover { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); }
+.ncm-pkr.is-empty .ncm-pkr__empty { display: block; }
+
+/* status strip: what the keyboard does, how many are picked — the Dialog's own buttons sit under it */
+.ncm-pkr__foot { display: flex; align-items: center; gap: 10px; padding: 6px 12px 2px; font: 400 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted); letter-spacing: .04em; }
+.ncm-pkr__status { display: flex; align-items: center; gap: 10px; }
+.ncm-pkr__sel { color: var(--ncm-secondary); }
+.ncm-pkr__keys { margin-left: auto; display: flex; gap: 8px; white-space: nowrap; }
+.ncm-pkr__foot kbd { font: 400 9px var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); border: 1px solid var(--ncm-border); border-radius: 2px; padding: 0 4px; background: var(--ncm-bg-deep); }
+.ncm-pkr__link { cursor: pointer; color: var(--ncm-text-secondary); text-decoration: underline dotted; }
+.ncm-pkr__link:hover { color: var(--ncm-secondary); }

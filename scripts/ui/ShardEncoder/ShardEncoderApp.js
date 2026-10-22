@@ -26,10 +26,11 @@
  */
 
 import { MODULE_ID, TEMPLATES, SOCKET_OPS, ENCRYPTION_TYPES, FAILURE_MODES, SHARD_PRESETS } from '../../utils/constants.js';
-import { log, isGM, resolveOperator, getOperatorActors, openOperatorPicker, canEncode, whisperCardHtml, getPlayerCharacters } from '../../utils/helpers.js';
+import { log, isGM, resolveOperator, getOperatorActors, openOperatorPicker, canEncode, canEditShard, whisperCardHtml, getPlayerCharacters } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { COVER_TYPES, abilityInfo, programToEntry } from '../content/ProgramModel.js';
 import { CONTENT_TYPE_INFO, enrichContent } from '../content/ContentRenderers.js';
+import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
 import {
   PROGRAM_FAMILIES, PROGRAM_TYPES, TIER_PERKS, SLOPPY_BAND, resolveEncoderConfig, tierForItem, botchFor, capacityOf,
   ladderOdds, likelyRung, oddsClass, programAbilities, craftChoices, programDV, programEfficiency,
@@ -134,24 +135,30 @@ export class ShardEncoderApp extends BaseApplication {
     this.cfg = resolveEncoderConfig(game.nightcity?.settingsManager?.getEncoderConfigRaw?.() ?? {});
     const fams = Object.keys(PROGRAM_FAMILIES).filter((f) => this.cfg.programs?.families?.[f] !== false);
     const family = fams.includes(options.family) ? options.family : (fams[0] || 'utility');
-    const seed = (options.item && !options.item.getFlag?.(MODULE_ID, 'isDataShard')) ? options.item : null;
+    const isShard = !!options.item?.getFlag?.(MODULE_ID, 'isDataShard');
+    const seed = (options.item && !isShard) ? options.item : null;
+    // A shard that already exists opens the RE-ENCODE door: the chip is the
+    // source, the lock stays what it was, and the roll adds to it. Whether this
+    // character may is `canEditShard` — the launcher and every door checked it,
+    // but a macro can hand anything in, so the window judges again.
+    const editing = isShard && canEditShard(options.item, this.actor).ok ? options.item : null;
 
     // The Program Deck's door asks for the program branch by name; everything else
     // starts on CONTENT, and the Payload / Malware tiles switch over.
     const mode = (options.family || options.stage === 'program') ? 'program' : 'content';
     this.S = {
-      stage: (seed && options.stage !== 'blank') ? 'build' : 'blank',
+      stage: ((seed || editing) && options.stage !== 'blank') ? 'build' : 'blank',
       mode,
       type: '',                              // the type of the NEXT file to write
       entries: [],                           // the files already written (content mode)
       editIndex: -1,                         // which one the composer is reopening
       adding: false,                         // the next type pick is for a NEW file
-      dec: seed ? (mode === 'program' ? 'fam' : 'type') : 'src',   // which decision row is open
-      srcMode: 'own',                        // 'own' | 'buy'
+      dec: (seed || editing) ? (mode === 'program' ? 'fam' : 'type') : 'src',   // which decision row is open
+      srcMode: editing ? 'edit' : 'own',     // 'own' | 'buy' | 'edit' (re-encode an existing shard)
       srcSearch: '', srcType: '', srcOnlyKnown: false,  // the blank list's search + filters
-      itemId: seed?.id || '',
+      itemId: (editing || seed)?.id || '',
       buyTierId: '',
-      label: seed?.name || '',
+      label: editing ? (editing.getFlag(MODULE_ID, 'config')?.shardName || editing.name) : (seed?.name || ''),
       img: '',                               // '' = the default chip art
       preset: '',                            // '' = plain; else a SHARD_PRESETS key
       savedLook: '',                         // '' = none; else an index into the GM's saved looks
@@ -243,6 +250,39 @@ export class ShardEncoderApp extends BaseApplication {
     return { item, tier, perk: TIER_PERKS[tier?.perk || '']?.craft || 0 };
   }
 
+  /** Re-encoding an existing shard rather than writing a blank? */
+  _isEdit() { return this.S.srcMode === 'edit'; }
+
+  /**
+   * The shards in this character's gear that THEY may rewrite — the shard's
+   * own rule (`playerEditing`) plus the GM's world switches, via canEditShard.
+   * Carried only: a world shard is not in anyone's gear to re-encode.
+   */
+  _editable() {
+    const items = this.actor?.items?.contents ?? [];
+    return items.filter((i) => i.getFlag?.(MODULE_ID, 'isDataShard') && canEditShard(i, this.actor).ok)
+      .map((i) => ({ item: i, files: (game.nightcity?.dataShardService?.getShardMessages?.(i) || []).length }))
+      .sort((a, b) => a.item.name.localeCompare(b.item.name));
+  }
+
+  /** How many files are already on the shard being re-encoded (0 otherwise). */
+  _onChip() {
+    if (!this._isEdit()) return 0;
+    const { item } = this._blank();
+    return item ? (game.nightcity?.dataShardService?.getShardMessages?.(item) || []).length : 0;
+  }
+
+  /**
+   * What a rejection costs. A blank can be bricked; a shard that already exists
+   * is never destroyed by a bad re-encode — nothing is written and it stays as
+   * it was (a trace can still fire, if the tier says so).
+   */
+  _botch(opts = {}) {
+    const b = botchFor(this._blank().tier, opts);
+    if (!this._isEdit()) return b;
+    return { ...b, bricks: false, short: 'the shard is unchanged' };
+  }
+
   /**
    * A readable name for a system item type. CPR's are lowercase or camelCase
    * ('gear', 'cyberware', 'itemUpgrade'), and the picker should say what the
@@ -289,6 +329,12 @@ export class ShardEncoderApp extends BaseApplication {
 
   /** How many more fit, given the blank's tier. Infinity when there is no limit. */
   _room() {
+    // Re-encoding: the chip's OWN stamped capacity, less what is already on it.
+    if (this._isEdit()) {
+      const limit = Number(this._blank().item?.getFlag?.(MODULE_ID, 'config')?.capacity) || 0;
+      if (!limit) return Infinity;
+      return Math.max(0, limit - this._onChip() - this._entries().length);
+    }
     const { limit } = capacityOf(this._blank().tier);
     if (!limit) return Infinity;
     return Math.max(0, limit - this._entries().length);
@@ -323,8 +369,11 @@ export class ShardEncoderApp extends BaseApplication {
   }
 
   _dv() {
-    if (this._isProgram()) return programDV(this.cfg, { ability: this.S.ability, craft: this.S.craft, disguised: !!this.S.disguise });
-    return this._stack().dv;
+    // The GM's "re-encode at DV +N": writing onto a chip that already carries
+    // files means agreeing with what is there.
+    const extra = this._isEdit() ? Math.max(0, Number(this.cfg.reencode?.dv) || 0) : 0;
+    if (this._isProgram()) return programDV(this.cfg, { ability: this.S.ability, craft: this.S.craft, disguised: !!this.S.disguise }) + extra;
+    return this._stack().dv + extra;
   }
 
   /** The whole chip's difficulty: the hardest file, plus a penalty for crowding. */
@@ -636,7 +685,10 @@ export class ShardEncoderApp extends BaseApplication {
   }
 
   /** The stages actually in play — LOCK disappears when the GM disallows it. */
-  _stages() { return STAGES.filter((row) => row.key !== 'lock' || this.cfg.lock?.allowed !== false); }
+  _stages() {
+    // The LOCK stage was rolled when the shard was made; a re-encode keeps it.
+    return STAGES.filter((row) => row.key !== 'lock' || (this.cfg.lock?.allowed !== false && !this._isEdit()));
+  }
   _stageIndex(key = this.S.stage) { return Math.max(0, this._stages().findIndex((s) => s.key === key)); }
 
   /** What this operator may lock, given whichever lock rolls they have made. */
@@ -671,6 +723,14 @@ export class ShardEncoderApp extends BaseApplication {
     // does not qualify has to fail HERE, and it has to fail before the roll.
     const gate = canEncode(this.actor);
     if (!gate.ok) return gate.reason;
+    // Re-encoding: the shard's own rule, judged again here because the operator
+    // is switchable and a GM can change the rule while the window is open.
+    if (this._isEdit()) {
+      const { item } = this._blank();
+      if (!item) return 'That shard is gone — pick another.';
+      const edit = canEditShard(item, this.actor);
+      if (!edit.ok) return edit.reason;
+    }
     return null;
   }
 
@@ -934,7 +994,10 @@ export class ShardEncoderApp extends BaseApplication {
       case 'details':  S.detailsOpen = !S.detailsOpen; this._patchDetails(); return;
       case 'opall':    S.opAll = true; this._renderOperator(); return;
       case 'dec':      S.dec = S.dec === arg ? null : arg; this._renderRail({ enter: false }); return;
-      case 'srcmode':  S.srcMode = arg; if (arg === 'buy') S.itemId = ''; this._renderRail({ enter: false }); this._patch(); return;
+      case 'srcmode':  if (S.srcMode !== arg) S.itemId = ''; S.srcMode = arg; this._renderRail({ enter: false }); this._patch(); return;
+      case 'edit':     S.srcMode = 'edit'; S.itemId = arg; S.dec = 'lbl';
+                       S.label = this._blank().item?.getFlag(MODULE_ID, 'config')?.shardName || this._blank().item?.name || '';
+                       this._renderRail({ enter: false }); this._patch(); return;
       case 'srcfilter': S.srcOnlyKnown = !S.srcOnlyKnown; if (S.srcOnlyKnown) S.srcType = '';
                         this._renderRail({ enter: false }); return;
       case 'srctype':   S.srcType = arg || ''; if (arg) S.srcOnlyKnown = false;
@@ -1331,21 +1394,47 @@ export class ShardEncoderApp extends BaseApplication {
           <i class="fas fa-cart-shopping"></i>${esc(t.name)} · ${t.price} eb<span class="dv">${esc(capacityOf(t).label)}</span>${wealth < t.price ? '<span class="need">short</span>' : ''}</span>`).join('')
       : '<div class="ncm-fw-hint">Your GM sells no blanks — convert something you own.</div>';
 
+    // Shards this character may re-encode — shown only when the GM allows it
+    // and there is at least one, so the segment is never a dead option.
+    const editable = this.cfg.reencode?.allowed === false ? [] : this._editable();
+    const reDV = Math.max(0, Number(this.cfg.reencode?.dv) || 0);
+    const editList = editable.length
+      ? editable.map(({ item: it, files }) => {
+        const on = this._isEdit() && it.id === this.S.itemId;
+        const cfg = it.getFlag(MODULE_ID, 'config') || {};
+        const cap = Number(cfg.capacity) || 0;
+        return `<div class="ncm-fw-icecard ${on ? 'on' : ''}" data-enc="edit:${it.id}">
+          <span class="ncm-fw-icecard__ic" ${on ? 'style="color:var(--fam)"' : ''}><i class="fas fa-pen-nib"></i></span>
+          <span class="ncm-fw-icecard__b">
+            <span class="ncm-fw-icecard__n">${esc(cfg.shardName || it.name)}</span>
+            <span class="ncm-fw-icecard__d">${files} file${files === 1 ? '' : 's'} on it${cap ? ` · holds ${cap}` : ''}${cfg.playerMade?.quality != null ? ` · quality ${cfg.playerMade.quality}%` : ''}<span class="botch ok">on a botch: the shard is unchanged</span></span>
+          </span>
+          ${on ? '<span class="ncm-fw-icecard__dmg" style="color:var(--ncm-success)">READY</span>' : ''}
+        </div>`;
+      }).join('')
+      : '<div class="ncm-fw-hint">Nothing in your gear can be re-encoded — a shard you made, or one your GM opened up.</div>';
+
     const srcValue = this.S.srcMode === 'buy'
       ? `Buy ${esc(tier?.name || '—')}<small>${tier?.price ?? 0} eb</small>`
-      : (item ? `${esc(item.name)}<small>${esc(tier?.name || '')}</small>` : 'Not chosen');
+      : this._isEdit()
+        ? (item ? `${esc(this._shardName())}<small>re-encode · ${this._onChip()} on it</small>` : 'Not chosen')
+        : (item ? `${esc(item.name)}<small>${esc(tier?.name || '')}</small>` : 'Not chosen');
 
     return this._decRow('src', 'fa-box-open', 'Source', srcValue, `
       <div class="ncm-fw-seg" style="width:100%">
         <button type="button" data-enc="srcmode:own" class="${this.S.srcMode === 'own' ? 'on' : ''}">Convert an item</button>
         <button type="button" data-enc="srcmode:buy" class="${this.S.srcMode === 'buy' ? 'on' : ''}">Buy a blank</button>
+        ${editable.length ? `<button type="button" data-enc="srcmode:edit" class="${this._isEdit() ? 'on' : ''}">Re-encode a shard</button>` : ''}
       </div>
       ${this.S.srcMode === 'own'
         ? `${srcTools}<div class="ncm-enc-src" style="margin-top:8px">${ownList}</div>`
-        : `<div class="ncm-enc-buy" style="margin-top:8px">${buyList}</div>
+        : this._isEdit()
+          ? `<div class="ncm-enc-src" style="margin-top:8px">${editList}</div>
+             <div class="ncm-fw-hint" style="margin-top:6px">Add files to a shard that already exists, or re-roll how convincing its files are. One roll covers the chip${reDV ? `, at <b>DV +${reDV}</b> for agreeing with what is already on it` : ''}. The lock and the look stay as they are.</div>`
+          : `<div class="ncm-enc-buy" style="margin-top:8px">${buyList}</div>
            <div class="ncm-fw-hint" style="margin-top:6px">You have <b>${wealth} eb</b>. The cost comes off when the encode starts, and comes back if the write never happens.</div>`}
       <div class="ncm-fw-hint">A shard is a physical thing — it has to come from somewhere. The tier decides what it costs and what a botched encode does to it.</div>`, 0)
-    + this._decRow('look', 'fa-palette', 'Look',
+    + (this._isEdit() ? '' : this._decRow('look', 'fa-palette', 'Look',
       `${esc(this._presetLabel())}<small>${this.S.boot.enabled
         ? esc(BOOT_STYLES.find(([k]) => k === this.S.boot.animationStyle)?.[1] || 'Fade in')
         : 'no startup'}</small>`, `
@@ -1397,7 +1486,7 @@ export class ShardEncoderApp extends BaseApplication {
         <button type="button" class="ncm-enc-more" data-enc="bootoff">
           <i class="fas fa-${this.S.boot.enabled ? 'eye-slash' : 'eye'}"></i> ${this.S.boot.enabled ? 'Skip the startup entirely' : 'Bring the startup back'}</button>
       </div>
-      <div class="ncm-fw-hint">The look is cosmetic — the artwork, the startup and the colours, not how hard it is to open. That is the Lock stage.</div>`, 2)
+      <div class="ncm-fw-hint">The look is cosmetic — the artwork, the startup and the colours, not how hard it is to open. That is the Lock stage.</div>`, 2))
     + this._decRow('lbl', 'fa-tag', 'Label', esc(this._shardName()), `
       <div class="ncm-enc-lbl" style="margin-top:0">
         <label for="encLabel">Shard name</label>
@@ -1475,9 +1564,12 @@ export class ShardEncoderApp extends BaseApplication {
     const wrote = files.length > 0;
     const room = this._room();
     const stack = this._stack();
+    const onChip = this._onChip();
     const contentsValue = wrote
-      ? `${files.length} file${files.length === 1 ? '' : 's'}<small>${stack.extra ? `DV +${stack.extra}` : 'DV unchanged'}</small>`
-      : '<small style="color:var(--ncm-warning)">nothing written yet</small>';
+      ? `${files.length} new file${files.length === 1 ? '' : 's'}<small>${onChip ? `+ ${onChip} already on it · ` : ''}${stack.extra ? `DV +${stack.extra}` : 'DV unchanged'}</small>`
+      : onChip
+        ? `<small>${onChip} file${onChip === 1 ? '' : 's'} already on it</small><small style="color:var(--ncm-warning)">nothing new yet</small>`
+        : '<small style="color:var(--ncm-warning)">nothing written yet</small>';
 
     return this._decRow('type', 'fa-file', 'File type',
       row ? `${esc(CONTENT_TYPE_INFO[row.key]?.label || row.key)}${row.skill ? `<small>DV ${row.dv}</small>` : '<small>no roll</small>'}` : 'Not chosen', `
@@ -1499,7 +1591,7 @@ export class ShardEncoderApp extends BaseApplication {
       <div class="ncm-fw-hint">${!row
         ? 'Pick a file type first.'
         : room <= 0
-          ? `This chip is full — it holds ${capacityOf(this._blank().tier).limit}. Take one off, or start on a bigger blank.`
+          ? `This chip is full — it holds ${this._isEdit() ? (Number(this._blank().item?.getFlag?.(MODULE_ID, 'config')?.capacity) || 0) : capacityOf(this._blank().tier).limit}. Take one off, or start on a bigger blank.`
           : wrote
             ? `Room for ${room === Infinity ? 'more' : room} more. Each file past the first adds <b>+${Math.max(0, Number(this.cfg.content?.extraEntryDV ?? 2))}</b> to the encode — they have to agree with each other.`
             : 'The real editor for this type opens in its own window. Nothing is written to the chip until the encode.'}</div>`, 1)
@@ -1686,9 +1778,11 @@ export class ShardEncoderApp extends BaseApplication {
 
   _railEncode() {
     const { item, tier, perk } = this._blank();
-    const dv = this._dv(), o = this._odds(), b = botchFor(tier);
+    const dv = this._dv(), o = this._odds(), b = this._botch();
     const needs = this._needsRoll();
-    const where = this.S.srcMode === 'buy' ? `a bought ${tier?.name || 'blank'} (${tier?.price ?? 0} eb)` : (item?.name || '—');
+    const where = this.S.srcMode === 'buy'
+      ? `a bought ${tier?.name || 'blank'} (${tier?.price ?? 0} eb)`
+      : this._isEdit() ? `${item?.name || '—'} (re-encode · ${this._onChip()} already on it)` : (item?.name || '—');
     const what = this._isProgram()
       ? abilityInfo(this.S.ability)?.label || ''
       : (CONTENT_TYPE_INFO[this.S.type]?.label || this.S.type || '');
@@ -1914,41 +2008,29 @@ export class ShardEncoderApp extends BaseApplication {
     }
   }
 
-  /** Hang the lock on something the operator carries — the burn-picker pattern. */
+  /**
+   * Hang the lock on something the operator carries — the shared picker on the
+   * PLAYER theme (`admin: false`), chips per gear type. Its own copy filtered
+   * rows with the `hidden` attribute, which the burn-row `display:flex` rule
+   * beats, so the search box here never filtered anything.
+   */
   async _pickKeyItem() {
-    const carried = (this.actor?.items?.contents ?? []).filter((i) => !NON_CARRIER.includes(i.type));
+    const carried = (this.actor?.items?.contents ?? []).filter(isCarrier);
     if (!carried.length) { ui.notifications?.warn('NCM | You are carrying nothing that could work as a key.'); return; }
-    const rows = carried.map((i) => `
-      <div class="ncm-burn-row" data-id="${i.id}" data-name="${esc(i.name)}">
-        <img src="${esc(i.img || 'icons/svg/item-bag.svg')}" alt="">
-        <span class="ncm-burn-name">${esc(i.name)}</span>
-      </div>`).join('');
-    const dlg = new Dialog({
+    const pick = await showNamePicker({
+      admin: false,
       title: 'Fit a key item',
-      content: `<div class="ncm-burn-hint">Whoever holds this opens the chip without a roll. Pick something you can afford to hand over.</div>
-        <input type="text" class="ncm-burn-search" placeholder="search…">
-        <div class="ncm-burn-list">${rows}</div>`,
-      buttons: { cancel: { label: 'Cancel' } },
-      render: (html) => {
-        const root = html[0] ?? html;
-        const list = root.querySelector('.ncm-burn-list');
-        root.querySelector('.ncm-burn-search')?.addEventListener('input', (ev) => {
-          const q = ev.target.value.trim().toLowerCase();
-          list?.querySelectorAll('.ncm-burn-row').forEach((r) => { r.hidden = !!q && !r.dataset.name.toLowerCase().includes(q); });
-        });
-        list?.addEventListener('click', (ev) => {
-          const row = ev.target.closest('.ncm-burn-row');
-          if (!row) return;
-          const it = carried.find((i) => i.id === row.dataset.id);
-          this.S.lock.keyItem = { id: it.id, name: it.name, img: it.img || '' };
-          this.S.lock.failure = 'lockout';
-          this._renderRail({ enter: false });
-          this._patch();
-          dlg.close();
-        });
-      },
-    }, { classes: ['ncm-burn-dialog'], width: 420 });
-    dlg.render(true);
+      hint: 'Whoever holds this opens the chip without a roll. Pick something you can afford to hand over.',
+      entries: documentEntries(carried, { group: (i) => this._typeLabel(i.type), note: (i) => this._typeLabel(i.type) }),
+      selected: this.S.lock.keyItem?.id || '',
+      placeholder: 'search your gear…',
+    });
+    const it = pick?.id ? carried.find((i) => i.id === pick.id) : null;
+    if (!it) return;
+    this.S.lock.keyItem = { id: it.id, name: it.name, img: it.img || '' };
+    this.S.lock.failure = 'lockout';
+    this._renderRail({ enter: false });
+    this._patch();
   }
 
   /**
@@ -2038,8 +2120,32 @@ export class ShardEncoderApp extends BaseApplication {
 
   _patchBlank() {
     const { item, tier } = this._blank();
-    const b = tier ? botchFor(tier) : null;
+    const b = tier ? this._botch() : null;
     const name = this._shardName();
+    if (this._isEdit() && item) {
+      // Re-encode: the chip is not empty, and that is the whole point.
+      const on = this._onChip();
+      const cap = Number(item.getFlag(MODULE_ID, 'config')?.capacity) || 0;
+      this._head(name, `RE-ENCODE · ${on} file${on === 1 ? '' : 's'} on it${cap ? ` · holds ${cap}` : ''}`, 'RE-ENCODE');
+      this.g('encCoreIc').className = 'fas fa-pen-nib';
+      this.g('encCoreLbl').textContent = 'IN USE';
+      this._says('No roll here. This chip already carries files — the roll is about what you <b>add</b>, and it re-stamps how convincing the whole chip is.',
+        '<i class="fas fa-arrow-right"></i> next: what goes on it');
+      this.g('encBar').innerHTML = ''; this.g('encLadder').innerHTML = '';
+      this.g('encEff').innerHTML = `
+        <div><b>On it</b><span>${on}</span></div>
+        <div><b>Room</b><span>${cap ? Math.max(0, cap - on) : '∞'}</span></div>
+        <div><b>On a botch</b><span style="font-size:calc(10px * var(--ncm-text-scale,1) * var(--ncm-lg-text,1))">unchanged</span></div>`;
+      this._art(name, `${on} file${on === 1 ? '' : 's'} · re-encoding`, [
+        ['Source', 'your shard'],
+        ['On it', `${on} file${on === 1 ? '' : 's'}`],
+        ['Holds', cap ? `${cap} entries` : 'no limit'],
+        ['On a botch', 'unchanged'],
+      ]);
+      this._status('Shard ready · name it, then pick what to add');
+      this._hint('STAGE 1 · RE-ENCODE · no roll');
+      return;
+    }
     this._head(name, tier ? `BLANK · ${tier.name} · nothing on it yet` : 'BLANK · pick something to write on', 'BLANK');
     this.g('encCoreIc').className = 'fas fa-microchip';
     this.g('encCoreLbl').textContent = 'EMPTY';
@@ -2067,7 +2173,7 @@ export class ShardEncoderApp extends BaseApplication {
     const eff = programForecast(this.cfg, { base: o.base, dv, rank: this._rank(this.cfg.programs?.skill) });
     const [rung, pct] = likelyRung(o);
     const info = abilityInfo(this.S.ability);
-    const b = botchFor(this._blank().tier);
+    const b = this._botch();
 
     this._head(this._name(),
       `${String(this.S.family).toUpperCase()} · ${String(info?.label || '').toLowerCase()}${this.S.disguise ? ' · disguised as ' + this.S.disguise : ''}`,
@@ -2097,7 +2203,7 @@ export class ShardEncoderApp extends BaseApplication {
     const row = this._typeRow();
     const info = row ? (CONTENT_TYPE_INFO[row.key] || {}) : {};
     const dv = this._dv();
-    const b = botchFor(this._blank().tier);
+    const b = this._botch();
     const files = this._entries();
     const wrote = files.length > 0;
     const stack = this._stack();
@@ -2200,7 +2306,7 @@ export class ShardEncoderApp extends BaseApplication {
       if (needs) {
         this._says(`One roll: ${esc(shortSk(this.S.craft))} <b class="v">${o.base}</b> vs DV <b class="v">${dv}</b>. Commit when you're ready.`,
           `<i class="fas fa-dice"></i> clean ${o.clean}% · sloppy ${o.sloppy}% · rejected ${o.rejected}%`);
-        const botch = botchFor(this._blank().tier);
+        const botch = this._botch();
         if (this._isProgram()) this._ladder(o, dv, programForecast(this.cfg, { base: o.base, dv, rank: this._rank(this.cfg.programs?.skill) }), botch);
         else this._contentLadder(o, dv, contentForecast(this.cfg, { base: o.base, dv }), botch);
       } else {
@@ -2336,8 +2442,11 @@ export class ShardEncoderApp extends BaseApplication {
         : `NCM | That blank costs ${price} eb and you have ${wealth} eb.`);
       return;
     }
-    if (S.srcMode === 'own' && !item) { ui.notifications?.warn('NCM | That blank is gone — pick another.'); return; }
-    if (!this._isProgram() && !this._entries().length) { ui.notifications?.warn('NCM | There is nothing written to encode.'); return; }
+    if ((S.srcMode === 'own' || this._isEdit()) && !item) { ui.notifications?.warn('NCM | That blank is gone — pick another.'); return; }
+    if (!this._isProgram() && !this._entries().length) {
+      ui.notifications?.warn(this._isEdit() ? 'NCM | Write something new onto it first — a re-encode with nothing added changes nothing.' : 'NCM | There is nothing written to encode.');
+      return;
+    }
     // Last line of defence: the DV about to be rolled must cover everything
     // actually on the chip, whatever the rail happens to have selected.
     if (!this._isProgram()) { this._syncCraft(); this._patch(); }
@@ -2376,7 +2485,7 @@ export class ShardEncoderApp extends BaseApplication {
       const eff = this._isProgram()
         ? programEfficiency(this.cfg, { total: res.total, dv, rank: this._rank(this.cfg.programs?.skill) })
         : contentEfficiency({ total: res.total, dv: needsRoll ? dv : 0 });
-      const botch = botchFor(tier, { nat1: needsRoll && res.rollValue === 1 });
+      const botch = this._botch({ nat1: needsRoll && res.rollValue === 1 });
 
       this.g('encDie').classList.remove('rolling');
       if (needsRoll) {
@@ -2598,7 +2707,7 @@ export class ShardEncoderApp extends BaseApplication {
   }
   /** Start another run: a bricked blank means a fresh one, otherwise keep the same. */
   _restart() {
-    const keep = this.S.result?.botch && !this.S.result.botch.bricks && this.S.srcMode === 'own';
+    const keep = this.S.result?.botch && !this.S.result.botch.bricks && (this.S.srcMode === 'own' || this._isEdit());
     this.S.result = null;
     this.S.busy = false;
     this.S.price = null; this.S.priceState = ''; this._madeItemId = null;
@@ -2697,8 +2806,10 @@ export class ShardEncoderApp extends BaseApplication {
         await this._debitWealth(load, `Loaded onto ${S.label || item.name}`);
         debited += load;
       }
-      const ok = await this._writeShard(item, this._shardConfig(eff, res, outcome), this._buildEntry(eff, res));
-      if (!ok) throw new Error(isGM() ? 'The conversion failed.' : 'The GM client did not confirm the write.');
+      const ok = this._isEdit()
+        ? await this._writeReencode(item, this._reencodePatch(eff, res, outcome), this._buildEntry(eff, res))
+        : await this._writeShard(item, this._shardConfig(eff, res, outcome), this._buildEntry(eff, res));
+      if (!ok) throw new Error(isGM() ? (this._isEdit() ? 'The re-encode failed.' : 'The conversion failed.') : 'The GM client did not confirm the write.');
       // Name + art land on the item itself. Both are cosmetic, so a failure here
       // must never cost the player the shard they just rolled for.
       if (item.isOwner) {
@@ -2847,6 +2958,42 @@ export class ShardEncoderApp extends BaseApplication {
       sourceLabel: 'encoded by hand',
     };
     return entry;
+  }
+
+  /** What a re-encode stamps onto the shard's provenance (see DataShardService.reencodeShard). */
+  _reencodePatch(eff, res, outcome) {
+    return {
+      actorId: this.actor?.id || '', actorName: this.actor?.name || '',
+      outcome, quality: eff.quality, scanDV: eff.scanDV || 0,
+      kind: this._isProgram() ? 'program' : (this.S.type || 'file'),
+      skill: this._needsRoll() ? this.S.craft : '', total: res?.total ?? 0, dv: this._dv(),
+    };
+  }
+
+  /**
+   * Re-encode: no conversion, no new config — the roll's quality lands on the
+   * shard's player-made files and the new files are added. GM direct; a player
+   * rides the same conversion relay with a `reencode` block.
+   */
+  async _writeReencode(item, patch, entries) {
+    const list = Array.isArray(entries) ? entries : [entries];
+    const svc = game.nightcity?.dataShardService;
+    if (isGM()) {
+      const r = await svc?.reencodeShard(item, { ...patch, entries: list });
+      if (!r?.success) { log.warn('Encoder: re-encode failed', r?.error); return false; }
+      for (const why of (r.failed || [])) ui.notifications?.warn(`NCM | ${why}`);
+      return true;
+    }
+    const sm = game.nightcity?.socketManager;
+    if (!sm) return false;
+    return new Promise((resolve) => {
+      const requestId = foundry.utils.randomID(8);
+      let done = false;
+      const handler = (data) => { if (data?.requestId !== requestId || done) return; done = true; resolve(!!data.success); };
+      sm.register(SOCKET_OPS.SHARD_CONVERT_RESULT, handler);
+      sm.emit(SOCKET_OPS.SHARD_CONVERT_REQUEST, { requestId, itemId: item.id, actorId: this.actor?.id, reencode: patch, entryData: list });
+      setTimeout(() => { if (!done) { done = true; resolve(false); } }, 15000);
+    });
   }
 
   /** GM writes directly; a player relays through the existing shard-conversion socket. */

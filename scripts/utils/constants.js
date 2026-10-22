@@ -81,6 +81,11 @@ export const EVENTS = Object.freeze({
   TERMINAL_EXFIL: 'terminal:exfil',
 
   CONTACT_UPDATED: 'contact:updated',
+  // Contact groups — mirrored to Foundry hooks by IntegrationBridge.
+  GROUP_CREATED: 'groups:created',   // { scope:'actor'|'master', actorId?, group }
+  GROUP_UPDATED: 'groups:updated',   // { scope, actorId?, group }
+  GROUP_DELETED: 'groups:deleted',   // { scope, actorId?, groupId }
+  GROUP_PUSHED:  'groups:pushed',    // { groupId, targetActorId, shared, failed }
   SCHEDULE_UPDATED: 'schedule:updated',
 
   UI_VIEWER_OPENED: 'ui:viewerOpened',
@@ -172,6 +177,13 @@ export const SOCKET_OPS = Object.freeze({
   // reconstruct, repair or salvage relays here. { op, itemUuid, ... } — ops:
   // 'degrade' | 'entry' | 'repair' | 'salvage' | 'salvageSpent'.
   SHARD_INTEGRITY_REQUEST: 'shard:integrityRequest',
+  // Player→GM: a shard STATE write — the decrypted flag, an actor's session
+  // (attempts / lockouts / login / key item), a per-entry decrypt, or the
+  // self-destruct. All of it lives on the ITEM (or the GM-owned journal), so a
+  // player hacking a WORLD shard they do not own — a shard that arrived as a
+  // message attachment — relays here instead of throwing on item.update.
+  // { op, itemUuid, userId, ... } — ops: 'decrypt' | 'session' | 'decryptPage' | 'destroy'.
+  SHARD_STATE_REQUEST: 'shard:stateRequest',
 });
 
 // ─── Netrunning binding (design §5) ───
@@ -1048,10 +1060,7 @@ export const TEMPLATES = Object.freeze({
   EMAIL_SETUP_FLOW: `${T}/dialogs/email-setup.hbs`,
   CHAT_MESSAGE_CARD: `${T}/chat/message-card.hbs`,
   CHAT_HACK_RESULT: `${T}/chat/hack-result.hbs`,
-  CHAT_NETWORK_EVENT: `${T}/chat/network-event.hbs`,
   CHAT_ICE_RETALIATION: `${T}/chat/ice-retaliation.hbs`,
-  CHAT_PAYLOAD_EXECUTED: `${T}/chat/payload-executed.hbs`,
-  CHAT_INTERCEPTED_MSG: `${T}/chat/intercepted-message.hbs`,
   CHAT_NETWORK_BROADCAST: `${T}/chat/network-broadcast.hbs`,
   CHAT_MALWARE_ANALYSIS: `${T}/chat/malware-analysis.hbs`,
   CONTACT_CARD:           `${T}/contact-manager/partials/contact-card.hbs`,
@@ -1061,6 +1070,7 @@ export const TEMPLATES = Object.freeze({
   CONTACT_ENCRYPTED:      `${T}/contact-manager/partials/encrypted-overlay.hbs`,
   CONTACT_ENCRYPTED_CARD: `${T}/contact-manager/partials/encrypted-card-overlay.hbs`,
   CONTACT_FORM:          `${T}/contact-manager/partials/contact-form.hbs`,
+  CONTACT_GROUPS_PANEL:  `${T}/contact-manager/partials/contact-groups-panel.hbs`,
   CONTACT_DETAIL:        `${T}/contact-manager/partials/contact-detail.hbs`,
   CONTACT_QUICKDIAL:     `${T}/contact-manager/partials/contact-quickdial.hbs`,
   CONTACT_GROUP_HEADER:  `${T}/contact-manager/partials/contact-group-header.hbs`,

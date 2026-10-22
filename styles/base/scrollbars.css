@@ -31,10 +31,9 @@
 .ncm-app,
 .ncm-app *,
 /* Standalone dialogs whose root is NOT .ncm-app */
-.ncm-burn-dialog, .ncm-burn-dialog *,
+.ncm-pkr-dialog, .ncm-pkr-dialog *,
 .ncm-hack-dialog, .ncm-hack-dialog *,
 .ncm-pick-dialog, .ncm-pick-dialog *,
-.ncm-item-picker-dialog, .ncm-item-picker-dialog *,
 .ncm-token-picker-dialog, .ncm-token-picker-dialog *,
 .ncm-time-config-dialog, .ncm-time-config-dialog *,
 /* Framework-free modals that can mount on document.body (no host viewer) */

@@ -19,7 +19,7 @@
  */
 
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, canEncode } from '../utils/helpers.js';
+import { log, isGM, canEncode, canEditShard, resolveOperator } from '../utils/helpers.js';
 import { adminConfirm } from '../utils/adminTheme.js';
 
 export class ShardSheetOverride {
@@ -329,6 +329,8 @@ export class ShardSheetOverride {
           if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
         });
         addOption('Remove Shard Data', 'fas fa-rotate-left', '#F65261', () => this._confirmUnconvert(item));
+      } else if (canEditShard(item, resolveOperator()).ok) {
+        addOption('Encode More Onto It', 'fas fa-pen-nib', '#19f3f7', () => game.nightcity?.openEncoder?.({ item, actor: resolveOperator() }));
       }
     } else if (isGM()) {
       addOption('Convert to Data Shard', 'fas fa-microchip', '#00D4E6', () => this._launchConversionFlow(item));
@@ -507,7 +509,11 @@ export class ShardSheetOverride {
           { label: 'Remove Shard Data', icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
         );
       } else if (ShardSheetOverride.canAuthor(actor)) {
-        // A player may strip their OWN shard only if they could have made one.
+        // A player may add to a shard the shard's own rule lets them rewrite
+        // (canEditShard) — and strip their OWN shard only if they could have made one.
+        if (canEditShard(item, actor).ok) {
+          entries.push({ label: 'Encode More Onto It', icon: 'fas fa-pen-nib', color: '#19f3f7', fn: () => game.nightcity?.openEncoder?.({ item, actor }) });
+        }
         entries.push(
           { sep: true },
           { label: 'Remove Shard Data', icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
@@ -639,8 +645,15 @@ export class ShardSheetOverride {
       return;
     }
 
-    // Check if already a shard
+    // Already a shard: a player who may rewrite it goes to the Encoder's
+    // re-encode door; everyone else is told it is already one.
     if (item.getFlag(MODULE_ID, 'isDataShard')) {
+      if (!isGM()) {
+        const who = actor || resolveOperator();
+        const verdict = canEditShard(item, who);
+        if (verdict.ok) { game.nightcity?.openEncoder?.({ item, actor: who }); return; }
+        if (verdict.locked) { ui.notifications.warn(`NCM | ${verdict.reason}`); return; }
+      }
       ui.notifications.warn('This item is already a data shard.');
       return;
     }

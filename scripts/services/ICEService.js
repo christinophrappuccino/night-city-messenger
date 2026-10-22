@@ -20,7 +20,7 @@
  */
 
 import { MODULE_ID, EVENTS, ENCRYPTION_TYPES, SOCKET_OPS } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { log, chatCardTime } from '../utils/helpers.js';
 
 export class ICEService {
 
@@ -182,6 +182,10 @@ export class ICEService {
           ? `ATK ${ice.atk} + 1d10 → ${ice.formula}`
           : `${ice.formula}`,
         hpDisplay: `HP: ${currentHP} → ${newHP}`,
+        hpBefore: currentHP,
+        hpAfter: newHP,
+        rollLine: ice.atk != null ? `ATK ${ice.atk} + 1d10 (${diceResults.join('+') || damage})` : `${ice.formula} (${diceResults.join('+') || damage})`,
+        when: chatCardTime(),
         diceIcons: diceIcons.length ? diceIcons : null,
         contextLabel,
         contextIcon: contextIcons[context] || 'fa-hard-drive',

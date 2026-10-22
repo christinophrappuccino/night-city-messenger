@@ -1844,6 +1844,7 @@ export class TerminalService {
       threadId: data.threadId || messageId,
       inReplyTo: data.inReplyTo || null,
       references: Array.isArray(data.references) ? data.references : [],
+      participants: Array.isArray(data.participants) ? data.participants : [],
       from: data.from || 'UNKNOWN',
       fromActorId: data.fromActorId || '',
       fromContactId: data.fromContactId || '',

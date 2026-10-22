@@ -262,6 +262,17 @@
   color: var(--ncm-text-primary) !important;
   border-radius: 2px !important;
 }
+/* The select above is themed, but Foundry core leaves its <option>s on
+   `--color-select-option-bg: transparent`, so Chromium painted the popup WHITE
+   while the options inherited the select's (near-white on the dark presets)
+   text colour — "white on white unless you hover" in the Shards tab's Quick
+   Create / Convert Item dialogs (tester, 2026-10-20). AppV2 windows are covered
+   by `.ncm-app select option`; body-mounted dialogs are not, hence this rule. */
+.ncm-admin-dialog[data-ncm-admin-theme] .window-content select option,
+.ncm-admin-dialog[data-ncm-admin-theme] .window-content select optgroup {
+  background: var(--ncm-bg-deep) !important;
+  color: var(--ncm-text-primary) !important;
+}
 .ncm-admin-dialog[data-ncm-admin-theme] .window-content :is(input, select, textarea):focus {
   border-color: var(--ncm-border-focus) !important;
   box-shadow: none !important;

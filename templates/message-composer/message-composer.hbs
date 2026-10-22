@@ -274,15 +274,15 @@
     <span class="ncm-composer__field-label {{#if errors.to}}ncm-composer__field-label--error{{/if}}">TO:</span>
     <div class="ncm-composer__chips" data-id="recipient-chips">
       {{#each recipients}}
-      <div class="ncm-composer__chip {{#if mismatch}}ncm-composer__chip--mismatch{{/if}} {{#if unreachable}}ncm-composer__chip--unreachable{{/if}} {{#if locked}}ncm-composer__chip--locked{{/if}}"
-           data-actor-id="{{actorId}}">
-        <div class="ncm-composer__chip-avatar" {{#if avatarColor}}style="color:{{avatarColor}};"{{/if}}>{{initials}}</div>
-        {{name}}
+      <div class="ncm-composer__chip {{#if isGroup}}ncm-composer__chip--group{{/if}} {{#if mismatch}}ncm-composer__chip--mismatch{{/if}} {{#if unreachable}}ncm-composer__chip--unreachable{{/if}} {{#if locked}}ncm-composer__chip--locked{{/if}}"
+           data-actor-id="{{actorId}}" {{#if isGroup}}style="--g:{{avatarColor}}" data-tooltip="{{memberNames}}"{{/if}}>
+        <div class="ncm-composer__chip-avatar" {{#if avatarColor}}style="color:{{avatarColor}};"{{/if}}>{{#if isGroup}}<i class="fas fa-users"></i>{{else}}{{initials}}{{/if}}</div>
+        {{name}}{{#if isGroup}}<span class="ncm-composer__chip-count">×{{memberCount}}</span>{{/if}}
         {{#if mismatch}}
         <i class="fas fa-triangle-exclamation ncm-composer__chip-warn" title="{{mismatchTooltip}}"></i>
         {{/if}}
         {{#unless locked}}
-        <i class="fas fa-xmark ncm-composer__chip-remove" data-action="removeRecipient" data-actor-id="{{#if actorId}}{{actorId}}{{else if contactId}}{{contactId}}{{else}}{{email}}{{/if}}"></i>
+        <i class="fas fa-xmark ncm-composer__chip-remove" data-action="removeRecipient" data-actor-id="{{#if groupId}}{{groupId}}{{else if actorId}}{{actorId}}{{else if contactId}}{{contactId}}{{else}}{{email}}{{/if}}"></i>
         {{/unless}}
       </div>
       {{/each}}
@@ -314,12 +314,20 @@
 
   {{!-- Subject: hidden in reply (inherited), visible in compose/forward --}}
   {{#unless isReply}}
-  <div class="ncm-composer__field ncm-composer__field--subj">
-    <span class="ncm-composer__field-label">SUBJ:</span>
+  <div class="ncm-composer__field ncm-composer__field--subj {{#if errors.general}}ncm-composer__field--error{{/if}}">
+    <span class="ncm-composer__field-label {{#if errors.general}}ncm-composer__field-label--error{{/if}}">SUBJ:</span>
     <input class="ncm-composer__field-input ncm-composer__field-input--full" data-id="subject-input" name="subject"
            value="{{subject}}" placeholder="Subject line..." />
   </div>
   {{/unless}}
+  {{!-- General validation error (e.g. "needs a subject or body"). _onSend set
+       errors.general for years but nothing rendered it, so a Send with an empty
+       message looked like a dead button (tester round, 2026-10-20). --}}
+  {{#if errors.general}}
+  <div class="ncm-composer__field-error ncm-composer__field-error--general" data-id="general-error" role="alert">
+    <i class="fas fa-exclamation-circle"></i> {{errors.general}}
+  </div>
+  {{/if}}
 
   {{!-- ═══ §6 OPTIONS BAR — Priority + Encryption + Schedule + Self-Destruct ═══ --}}
   <div class="ncm-composer__options">

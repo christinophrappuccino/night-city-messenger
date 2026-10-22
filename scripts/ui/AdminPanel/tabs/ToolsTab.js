@@ -12,7 +12,9 @@ import { MODULE_ID } from '../../../utils/constants.js';
 import { log, formatCyberDate } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
+import { resolveMember, worldAdapter } from '../../../utils/participants.js';
 import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
+import { showNamePicker } from '../../../utils/namePicker.js';
 import { gatherResetPlan, runFactoryReset } from '../../../core/FactoryReset.js';
 
 export class ToolsTab extends BaseTab {
@@ -722,12 +724,14 @@ export class ToolsTab extends BaseTab {
       if (!info) continue;
       const count = journal.pages.filter(p => p.flags?.[MODULE_ID]?.messageId).length;
       if (count === 0) continue;
-      const name = info.isContact
-        ? (this.masterContactService?.getContact?.(info.ownerId)?.name || journal.name || 'Contact')
-        : (game.actors?.get(info.ownerId)?.name || journal.name || 'Actor');
+      const contact = info.isContact ? this.masterContactService?.getContact?.(info.ownerId) : null;
+      const actor = info.isContact ? null : game.actors?.get(info.ownerId);
+      const name = (info.isContact ? contact?.name : actor?.name) || journal.name || (info.isContact ? 'Contact' : 'Actor');
       inboxTargets.push({
         key: `inbox:${journal.id}`,
         group: info.isContact ? 'Contact Inboxes' : 'Character Inboxes',
+        name,
+        img: (info.isContact ? contact?.portrait : actor?.img) || 'icons/svg/mystery-man.svg',
         label: `${name} (${count})`,
         journalId: journal.id,
         count,
@@ -741,6 +745,8 @@ export class ToolsTab extends BaseTab {
       shardTargets.push({
         key: `shard:${shard.uuid}`,
         group: 'Data Shards',
+        name: shard.name,
+        img: shard.img || 'icons/svg/item-bag.svg',
         label: `${shard.name} (${count})`,
         shardUuid: shard.uuid,
         count,
@@ -753,44 +759,23 @@ export class ToolsTab extends BaseTab {
       return;
     }
 
-    // ── Build the grouped picker ──
+    // ── Pick the target in the shared searchable picker (one chip per group) ──
+    // A grouped <select> listed every inbox and every shard in the world with no
+    // search; the picker gives search, chips and portraits, and keeps the one
+    // deliberate "everything" row at the top.
     const inboxTotal = inboxTargets.reduce((s, t) => s + t.count, 0);
-    const groups = {};
-    for (const t of all) (groups[t.group] ||= []).push(t);
-    let optionsHtml = '<option value="">— Select a target —</option>';
-    if (inboxTargets.length > 0) {
-      optionsHtml += `<option value="all-inboxes">⚠ ALL inboxes — character + contact (${inboxTotal})</option>`;
-    }
-    for (const [group, items] of Object.entries(groups)) {
-      optionsHtml += `<optgroup label="${esc(group)}">`;
-      for (const t of items) optionsHtml += `<option value="${esc(t.key)}">${esc(t.label)}</option>`;
-      optionsHtml += '</optgroup>';
-    }
-
-    const content = `
-      <div class="ncm-purge-dialog">
-        <p>Choose what to purge. The number in parentheses is the message count. This permanently deletes those messages and <strong>cannot be undone</strong>.</p>
-        <select id="ncm-purge-target" name="target" style="width:100%; margin-top:6px;">${optionsHtml}</select>
-      </div>`;
-
-    let selected = null;
-    await new Promise((resolve) => {
-      adminDialog({
-        title: '⚠ Purge Messages',
-        content,
-        buttons: {
-          purge: {
-            icon: '<i class="fas fa-trash"></i>',
-            label: 'Purge…',
-            callback: (html) => { selected = html.find('#ncm-purge-target').val() || null; },
-          },
-          cancel: { icon: '<i class="fas fa-xmark"></i>', label: 'Cancel' },
-        },
-        default: 'cancel',
-        close: () => resolve(),
-      }).render(true);
+    const entries = [
+      ...(inboxTargets.length ? [{ id: 'all-inboxes', name: 'ALL inboxes — character + contact', group: 'Everything', img: 'icons/svg/hazard.svg', note: `${inboxTotal} msgs` }] : []),
+      ...all.map((t) => ({ id: t.key, name: t.name, group: t.group, img: t.img, note: `${t.count} msg${t.count === 1 ? '' : 's'}` })),
+    ];
+    const pick = await showNamePicker({
+      title: '⚠ Purge Messages',
+      hint: 'Pick what to purge. The count is messages. This permanently deletes them — a confirm follows.',
+      entries,
+      placeholder: 'search inboxes or shards…',
+      closeLabel: 'Cancel',
     });
-
+    const selected = pick?.id || null;
     if (!selected) return;
 
     // Resolve the confirm label + count.
@@ -871,7 +856,7 @@ export class ToolsTab extends BaseTab {
    */
   async onOrphanAudit(event, target) {
     const found = this._gatherOrphans();
-    const total = found.inboxes.length + found.pins.length + found.heatActors.length;
+    const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length;
 
     if (total === 0) {
       ui.notifications.info('NCM | Orphan audit clean — nothing to remove.');
@@ -890,6 +875,10 @@ export class ToolsTab extends BaseTab {
     }
     if (found.heatActors.length) {
       lines.push(`<p><strong>${found.heatActors.length}</strong> heat entr(ies) keyed to deleted actors.</p>`);
+    }
+    if (found.groupMembers.length) {
+      lines.push(`<p><strong>${found.groupMembers.length}</strong> contact-group member(s) that resolve to nothing (no address, no living actor or directory entry):</p><ul>` +
+        found.groupMembers.map(g => li(`${g.memberName || '(unnamed)'} in <em>${g.groupName}</em> (${g.scope === 'master' ? 'GM group' : `${g.actorName}'s group`})`)).join('') + '</ul>');
     }
 
     let doClean = false;
@@ -921,6 +910,9 @@ export class ToolsTab extends BaseTab {
           }
         }
         await game.settings.set(MODULE_ID, 'traceHeat', map);
+      }
+      if (found.groupMembers.length) {
+        removed += await this._pruneGroupMembers(found.groupMembers);
       }
       log.info(`Orphan audit removed ${removed} orphaned record(s)`);
       ui.notifications.info(`NCM | Orphan audit removed ${removed} orphaned record(s).`);
@@ -1042,6 +1034,60 @@ export class ToolsTab extends BaseTab {
       }
     }
 
-    return { inboxes, pins, heatActors };
+    // Contact-group members that resolve to nothing in this world — no
+    // address to send to, and the id hints point at deleted documents. A
+    // member with an address is NOT an orphan (a raw address is still sendable).
+    const groupMembers = [];
+    const groupSvc = game.nightcity?.contactGroupService;
+    if (groupSvc) {
+      const world = worldAdapter();
+      const scan = (groups, scope, actorId, actorName) => {
+        for (const g of groups) {
+          for (const m of g.members || []) {
+            const r = resolveMember(m, world);
+            if (!r.resolvedBy && !m.email) groupMembers.push({ scope, actorId, actorName, groupId: g.id, groupName: g.name, memberKey: JSON.stringify(m), memberName: m.name });
+          }
+        }
+      };
+      scan(groupSvc.getMasterGroups(), 'master', null, 'GM');
+      for (const actor of game.actors ?? []) {
+        const list = groupSvc.getActorGroups(actor.id);
+        if (list.length) scan(list, 'actor', actor.id, actor.name);
+      }
+    }
+
+    return { inboxes, pins, heatActors, groupMembers };
+  }
+
+  /**
+   * Drop dead members from their groups; a group left empty is deleted.
+   * @param {Array<{scope: string, actorId: string|null, groupId: string, memberKey: string}>} dead
+   * @returns {Promise<number>} records removed
+   */
+  async _pruneGroupMembers(dead) {
+    const groupSvc = game.nightcity?.contactGroupService;
+    if (!groupSvc) return 0;
+    let removed = 0;
+    const byGroup = new Map();
+    for (const d of dead) {
+      const k = `${d.scope}:${d.actorId || ''}:${d.groupId}`;
+      if (!byGroup.has(k)) byGroup.set(k, { ...d, keys: new Set() });
+      byGroup.get(k).keys.add(d.memberKey);
+    }
+    for (const g of byGroup.values()) {
+      const group = g.scope === 'master' ? groupSvc.getMasterGroup(g.groupId) : groupSvc.getActorGroup(g.actorId, g.groupId);
+      if (!group) continue;
+      const members = group.members.filter(m => !g.keys.has(JSON.stringify(m)));
+      removed += group.members.length - members.length;
+      if (members.length) {
+        if (g.scope === 'master') await groupSvc.saveMasterGroup({ ...group, members });
+        else await groupSvc.saveActorGroup(g.actorId, { ...group, members });
+      } else if (g.scope === 'master') {
+        await groupSvc.deleteMasterGroup(g.groupId);
+      } else {
+        await groupSvc.deleteActorGroup(g.actorId, g.groupId);
+      }
+    }
+    return removed;
   }
 }

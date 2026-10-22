@@ -88,6 +88,7 @@
     {{else}}
       <div class="ncm-shard-gm-header-actions">
         <button type="button" data-action="toggleChipInfo" title="Chip Specs" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--chip {{#if chipDrawerOpen}}ncm-shard-hdr-btn--active{{/if}}"><i class="fas fa-microchip"></i></button>
+        {{#if canPlayerEdit}}<button type="button" data-action="addEntry" title="Encode more onto this shard" class="ncm-shard-hdr-btn"><i class="fas fa-plus"></i></button>{{/if}}
         <button type="button" data-action="openDeck" title="Program Deck" class="ncm-shard-hdr-btn"><i class="fas fa-layer-group"></i></button>
       </div>
     {{/if}}
@@ -103,6 +104,14 @@
         <button type="button" data-action="toggleChipInfo" class="ncm-shard-chip-drawer__close"><i class="fas fa-times"></i></button>
       </div>
       <div class="ncm-shard-chip-drawer__grid">
+        {{!-- Description FIRST (tester, 2026-10-21): below the spec grid it sat
+              under the fold of the drawer and was easy to never scroll to. --}}
+        {{#if chipInfo.description}}
+        <div class="ncm-shard-chip-spec ncm-shard-chip-spec--full ncm-shard-chip-spec--desc">
+          <span class="ncm-shard-chip-spec__label">Description</span>
+          <span class="ncm-shard-chip-spec__desc-text">{{{chipInfo.description}}}</span>
+        </div>
+        {{/if}}
         <div class="ncm-shard-chip-spec">
           <i class="fas fa-tag ncm-shard-chip-spec__icon"></i>
           <span class="ncm-shard-chip-spec__label">Price</span>
@@ -133,12 +142,6 @@
           <span class="ncm-shard-chip-spec__label">Conceal</span>
           <span class="ncm-shard-chip-spec__tag {{#if chipInfo.concealable}}ncm-shard-chip-spec__tag--green{{else}}ncm-shard-chip-spec__tag--muted{{/if}}">{{#if chipInfo.concealable}}YES{{else}}NO{{/if}}</span>
         </div>
-        {{#if chipInfo.description}}
-        <div class="ncm-shard-chip-spec ncm-shard-chip-spec--full ncm-shard-chip-spec--desc">
-          <span class="ncm-shard-chip-spec__label">Description</span>
-          <span class="ncm-shard-chip-spec__desc-text">{{{chipInfo.description}}}</span>
-        </div>
-        {{/if}}
       </div>
     </div>
   </div>
@@ -441,6 +444,10 @@
             {{#if isGM}}
               <button type="button" data-action="addEntry" class="ncm-shard-btn ncm-shard-btn--primary">
                 <i class="fas fa-plus"></i> Add Data Fragment
+              </button>
+            {{else if canPlayerEdit}}
+              <button type="button" data-action="addEntry" class="ncm-shard-btn ncm-shard-btn--primary">
+                <i class="fas fa-plus"></i> Encode something onto it
               </button>
             {{/if}}
           </div>

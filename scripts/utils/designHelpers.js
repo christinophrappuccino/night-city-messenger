@@ -537,25 +537,31 @@ export function getThreatBadgeData(message) {
  * Role icon mapping — Cyberpunk RED roles to FontAwesome icons.
  * @type {Record<string, string>}
  */
+// Role → Font Awesome icon NAME (no prefix). The built-ins mirror the GM's
+// role table (RoleManagerDialog BUILT_IN_ROLES / ContactsTab roleChipMap) so a
+// Solo wears the same glyph on the player's card as in the admin panel; the
+// extras cover slugs older contacts may still carry. GM-defined custom roles
+// (MasterContactService.getCustomRoles) are consulted at read time.
 const ROLE_ICONS = {
-  fixer:      'fa-crosshairs',
-  netrunner:  'fa-terminal',
-  runner:     'fa-terminal',
-  solo:       'fa-gun',
-  tech:       'fa-screwdriver-wrench',
-  medtech:    'fa-kit-medical',
-  ripperdoc:  'fa-syringe',
-  media:      'fa-camera',
-  exec:       'fa-building-columns',
-  lawman:     'fa-shield-halved',
-  nomad:      'fa-van-shuttle',
-  rockerboy:  'fa-guitar',
-  rocker:     'fa-guitar',
-  corp:       'fa-building',
-  gang:       'fa-users-line',
-  civilian:   'fa-user',
-  government: 'fa-landmark',
-  ai:         'fa-microchip',
+  fixer:      'crosshairs',
+  solo:       'crosshairs',
+  netrunner:  'terminal',
+  runner:     'terminal',
+  tech:       'gear',
+  medtech:    'staff-snake',
+  ripperdoc:  'syringe',
+  media:      'podcast',
+  exec:       'building-columns',
+  corp:       'briefcase',
+  lawman:     'shield-halved',
+  nomad:      'truck-monster',
+  rockerboy:  'guitar',
+  rocker:     'guitar',
+  gang:       'users-line',
+  civilian:   'person',
+  government: 'landmark',
+  ai:         'microchip',
+  npc:        'user',
 };
 
 /**
@@ -604,9 +610,20 @@ export function getTrustData(trust) {
  * @param {string} role — Role name (case-insensitive)
  * @returns {string} FontAwesome icon class
  */
-export function getRoleIcon(role) {
-  if (!role) return 'fa-user';
-  return ROLE_ICONS[role.toLowerCase().trim()] || 'fa-user';
+export function getRoleIcon(role, customRoles) {
+  const key = String(role || '').toLowerCase().trim();
+  if (!key) return 'fas fa-user';
+  // Font Awesome 6 needs the FAMILY class too: a bare `fa-gun` has a glyph rule
+  // but no font-family, so it rendered as nothing (tester, 2026-10-21: "solo and
+  // netrunner icons don't appear in the chips").
+  if (ROLE_ICONS[key]) return `fas fa-${ROLE_ICONS[key]}`;
+  let custom = customRoles;
+  if (!custom) {
+    try { custom = globalThis.game?.nightcity?.masterContactService?.getCustomRoles?.() || []; } catch { custom = []; }
+  }
+  const hit = (custom || []).find(r => String(r?.id || '').toLowerCase() === key || String(r?.label || '').toLowerCase() === key);
+  const icon = String(hit?.icon || '').trim().replace(/^fa[srlb]?\s+/, '').replace(/^fa-/, '');
+  return icon ? `fas fa-${icon}` : 'fas fa-user';
 }
 
 /**

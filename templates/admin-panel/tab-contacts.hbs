@@ -89,6 +89,34 @@
     {{!-- ═══════════════════════════════════════
          SEARCH + SORT
          ═══════════════════════════════════════ --}}
+    {{!-- ═══ Contact groups (GM) — named lists players can message at once ═══ --}}
+    <div class="ncm-cg">
+      <div class="ncm-cg__head">
+        <span class="ncm-cg__title"><i class="fas fa-users"></i> Contact Groups <b>{{masterGroups.length}}</b></span>
+        <span class="ncm-cg__hint">Named lists — push one to a player and they can message the whole crew with one send</span>
+        <button type="button" class="ncm-cg__btn ncm-cg__btn--accent" data-action="cgAdminNew" data-tooltip="Make a new group from the directory"><i class="fas fa-plus"></i> New group</button>
+      </div>
+      {{#if masterGroups.length}}
+      <div class="ncm-cg__list">
+        {{#each masterGroups}}
+        <div class="ncm-cg__row" data-group-id="{{id}}" style="--g:{{color}}">
+          <span class="ncm-cg__dot"></span>
+          <span class="ncm-cg__name" data-tooltip="{{names}}">{{name}}{{#if note}}<small>{{note}}</small>{{/if}}</span>
+          <span class="ncm-cg__meta">{{count}} members</span>
+          <span class="ncm-cg__shared {{#if sharedCount}}is-some{{/if}}" data-tooltip="{{#if sharedCount}}{{sharedNames}}{{else}}Not pushed to anyone yet{{/if}}">{{#if sharedCount}}shared · {{sharedCount}}{{else}}not shared{{/if}}</span>
+          <span class="ncm-cg__actions">
+            <button type="button" class="ncm-cg__act ncm-cg__act--push" data-action="cgAdminPush" data-tooltip="Push to players"><i class="fas fa-share-nodes"></i></button>
+            <button type="button" class="ncm-cg__act" data-action="cgAdminEdit" data-tooltip="Edit"><i class="fas fa-pen"></i></button>
+            <button type="button" class="ncm-cg__act ncm-cg__act--danger" data-action="cgAdminDelete" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+          </span>
+        </div>
+        {{/each}}
+      </div>
+      {{else}}
+      <div class="ncm-cg__empty">No groups yet. Players can also make their own from their Contacts window.</div>
+      {{/if}}
+    </div>
+
     <div class="ncm-ct-search">
       <i class="fas fa-search ncm-ct-search__icon"></i>
       <input type="text" class="ncm-ct-search__input"

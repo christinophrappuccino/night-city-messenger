@@ -24,6 +24,7 @@ import {
 } from '../../utils/designHelpers.js';
 import { RoleManagerDialog } from './RoleManagerDialog.js';
 import { adminDialog, adminConfirm, adminPrompt } from '../../utils/adminTheme.js';
+import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
 
 // ═══════════════════════════════════════════
 //  Constants — Role & Relationship Maps
@@ -229,6 +230,7 @@ export class GMContactManagerApp extends BaseApplication {
       uploadPortrait:   GMContactManagerApp._onUploadPortrait,
       removePortrait:   GMContactManagerApp._onRemovePortrait,
       browsePortrait:   GMContactManagerApp._onBrowsePortrait,
+      pickLinkedActor:  GMContactManagerApp._onPickLinkedActor,
       createFolderInline: GMContactManagerApp._onCreateFolderInline,
       // ─── Tag filters ───
       toggleTagFilter:  GMContactManagerApp._onToggleTagFilter,
@@ -353,20 +355,6 @@ export class GMContactManagerApp extends BaseApplication {
       initial: (pc.actorName || '?').charAt(0).toUpperCase(),
     }));
 
-    // ── Available actors for linking ──
-    const availableActors = game.actors
-      .map(a => ({
-        id: a.id,
-        name: a.name,
-        img: a.img,
-        hasPlayerOwner: a.hasPlayerOwner,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    // ── Share targets — all actors, grouped for the push select ──
-    const shareTargetPlayers = availableActors.filter(a => a.hasPlayerOwner);
-    const shareTargetNPCs = availableActors.filter(a => !a.hasPlayerOwner);
-    const hasShareNPCs = shareTargetNPCs.length > 0;
 
     // ── Selected contact enrichment ──
     let selectedEnriched = null;
@@ -465,12 +453,10 @@ export class GMContactManagerApp extends BaseApplication {
       tagPills,
       orgFilter: this._orgFilter,
 
-      // Actors
-      availableActors,
+      // Linked Actor picker labels — one per form the template can show
+      selectedActorName: selectedEnriched?.actorId ? (game.actors.get(selectedEnriched.actorId)?.name || '(missing actor)') : '',
+      draftActorName: (this._isCreating && this._createDraft?.actorId) ? (game.actors.get(this._createDraft.actorId)?.name || '') : '',
       playerActors,
-      shareTargetPlayers,
-      shareTargetNPCs,
-      hasShareNPCs,
 
       // Roles
       customRoles,
@@ -561,9 +547,13 @@ export class GMContactManagerApp extends BaseApplication {
       .map(key => ({
         key,
         label: key,
+        // A role group wears ITS role's glyph (the role table stores bare names),
+        // so Solos and Netrunners are told apart at a glance like on player cards.
         icon: this._groupBy === 'folders'
           ? (catchAll.has(key) ? 'fa-folder-open' : 'fa-folder')
-          : groupIcon,
+          : this._groupBy === 'role'
+            ? ('fa-' + (Object.values(allRoles).find(r => r?.label === key)?.icon || 'user-tag'))
+            : groupIcon,
         showHeader: true,
         collapsed: this._collapsedGroups.has(key),
         isFolder: this._groupBy === 'folders' && !catchAll.has(key),
@@ -1332,13 +1322,35 @@ export class GMContactManagerApp extends BaseApplication {
   //  Action Handlers — Push / Share
   // ═══════════════════════════════════════════════════════════
 
+  /**
+   * The share target comes from the shared searchable picker — Players lead
+   * the chip row, then one chip per top-level actor folder. This replaced two
+   * <select>s that listed EVERY actor in the world (the "hundreds of actors"
+   * dropdown the tester flagged; it slipped the first sweep because it was a
+   * template {{#each}}, not a JS .map).
+   * @returns {Promise<Actor|null>}
+   */
+  async _pickShareTarget({ title, hint }) {
+    const actors = game.actors?.contents ?? [];
+    const entries = documentEntries(actors, { note: (a) => (a.hasPlayerOwner ? 'player' : a.type) })
+      .map((e) => (game.actors.get(e.id)?.hasPlayerOwner ? { ...e, group: 'Players' } : e));
+    entries.sort((x, y) => ((x.group === 'Players' ? 0 : 1) - (y.group === 'Players' ? 0 : 1)) || x.name.localeCompare(y.name));
+    const pick = await showNamePicker({ title, hint, entries, placeholder: 'search characters or folders…' });
+    return pick?.id ? (game.actors.get(pick.id) ?? null) : null;
+  }
+
   static async _onPushToPlayer(event, target) {
-    const actorId = this.element?.querySelector('[name="pushTargetActor"]')?.value;
     const contactId = this._selectedContactId;
-    if (!actorId || !contactId) {
-      ui.notifications.warn('Select a character to share with.');
+    if (!contactId) {
+      ui.notifications.warn('Select a contact first.');
       return;
     }
+    const picked = await this._pickShareTarget({
+      title: `Share ${this.masterContactService.getContact(contactId)?.name || 'contact'} with…`,
+      hint: "The contact lands in that character's own contact list.",
+    });
+    if (!picked) return;
+    const actorId = picked.id;
 
     const includePortrait = this.element?.querySelector('[name="pushIncludePortrait"]')?.checked ?? true;
     const result = await this.masterContactService.pushToPlayer(contactId, actorId, { includePortrait });
@@ -1354,13 +1366,12 @@ export class GMContactManagerApp extends BaseApplication {
   }
 
   static async _onPushAllToPlayer(event, target) {
-    const actorId = this.element?.querySelector('[name="pushAllTargetActor"]')?.value;
-    if (!actorId) {
-      ui.notifications.warn('Select a player to push contacts to.');
-      return;
-    }
-
-    const actor = game.actors.get(actorId);
+    const actor = await this._pickShareTarget({
+      title: 'Share all filtered contacts with…',
+      hint: 'Every contact in the current filter is pushed to that character (duplicates are skipped).',
+    });
+    if (!actor) return;
+    const actorId = actor.id;
     const confirmed = await adminConfirm({
       title: 'Push All Contacts',
       content: `<p>Push all currently visible contacts to <strong>${actor?.name}</strong>?</p>`,
@@ -1395,7 +1406,9 @@ export class GMContactManagerApp extends BaseApplication {
 
       try {
         const text = await file.text();
-        const contacts = JSON.parse(text);
+        const parsed = JSON.parse(text);
+        // Accept the {ncmMasterContacts, contacts, groups} envelope as well as a bare array.
+        const contacts = Array.isArray(parsed) ? parsed : parsed?.contacts;
 
         if (!Array.isArray(contacts)) {
           ui.notifications.error('Invalid format — expected a JSON array of contacts.');
@@ -1578,6 +1591,32 @@ export class GMContactManagerApp extends BaseApplication {
     if (!contactId) return;
     await this.masterContactService.updateContact(contactId, { portrait: '' });
     this.render();
+  }
+
+  /**
+   * Form → Linked Actor: searchable world-actor picker writing the hidden
+   * `actorId` input (DOM-only — a render would discard the unsaved form).
+   */
+  static async _onPickLinkedActor(event, target) {
+    event.stopPropagation();
+    const row = target.closest('[data-picker-row]');
+    const hidden = row?.querySelector('input[name="actorId"]');
+    const label = row?.querySelector('[data-picker-label-for="actorId"]');
+    if (!hidden) return;
+    const pick = await showNamePicker({
+      title: 'Link an Actor',
+      hint: "The contact takes this actor's portrait and messages route to its inbox.",
+      entries: documentEntries(game.actors?.contents ?? [], {
+        note: (a) => a.hasPlayerOwner ? 'player' : a.type,
+      }),
+      allowNone: '— None —',
+      selected: hidden.value || '',
+      placeholder: 'search actors or folders…',
+    });
+    if (!pick) return;
+    hidden.value = pick.none ? '' : pick.id;
+    if (label) label.value = pick.none ? '' : pick.name;
+    hidden.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   /**

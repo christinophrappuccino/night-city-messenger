@@ -62,6 +62,8 @@ export class MessagesTab extends BaseTab {
   // ── NPC Inbox triage section ──
   /** @type {boolean} Show only unread player→NPC mail (vs all) */
   _npcInboxUnreadOnly = true;
+  /** NPC Inbox: also list mail the GM sent to NPCs (off = the player→NPC triage view). */
+  _npcInboxIncludeGm = false;
   /** @type {string} NPC inbox group sort: 'recent' | 'name' */
   _npcInboxSort = 'recent';
   /** @type {Set<string>} Expanded NPC inbox group ids */
@@ -404,6 +406,7 @@ export class MessagesTab extends BaseTab {
       npcInboxTotalUnread: 0,
       npcInboxHasAny: false,
       npcInboxUnreadOnly: this._npcInboxUnreadOnly,
+      npcInboxIncludeGm: this._npcInboxIncludeGm,
       npcInboxSort: this._npcInboxSort,
     };
 
@@ -446,10 +449,13 @@ export class MessagesTab extends BaseTab {
           if (msgId.endsWith('-sent')) continue;        // skip outbox copies
           if (flags.status?.deleted) continue;           // skip trashed
 
-          // ── Sender must be a player-owned character ──
+          // ── Sender must be a player-owned character (the triage view) — unless
+          //    the "Include GM-sent" chip is on, which also lists mail the GM
+          //    sent to NPCs (e.g. a group send) so it reads as unread per NPC.
           const fromActorId = flags.fromActorId || '';
           const fromActor = fromActorId ? game.actors?.get(fromActorId) : null;
-          if (!fromActor?.hasPlayerOwner) continue;
+          const fromPlayer = !!fromActor?.hasPlayerOwner;
+          if (!fromPlayer && !this._npcInboxIncludeGm) continue;
 
           anyFound = true;
 
@@ -537,6 +543,7 @@ export class MessagesTab extends BaseTab {
       npcInboxTotalUnread: totalUnread,
       npcInboxHasAny: anyFound,
       npcInboxUnreadOnly: this._npcInboxUnreadOnly,
+      npcInboxIncludeGm: this._npcInboxIncludeGm,
       npcInboxSort: this._npcInboxSort,
     };
   }
@@ -887,9 +894,62 @@ export class MessagesTab extends BaseTab {
       if (!isNaN(toMs)) filtered = filtered.filter(e => e.rawTimestamp <= toMs);
     }
 
+    // A fan-out (one send, N recipients) is N inbox pages sharing a base
+    // messageId — collapse them into one row per send, expandable to the
+    // per-recipient read state, so a group message doesn't eat the feed.
+    filtered = this._collapseFanout(filtered);
+
     // Track total before limiting (for "Load More" button)
     const totalFiltered = filtered.length;
     return { entries: filtered.slice(0, this._limit), totalFiltered };
+  }
+
+  /**
+   * Merge received copies that share a base messageId (a multi-recipient send)
+   * into one synthetic group row. Sent copies and lone messages pass through
+   * untouched; order (newest first) is kept by the newest member's position.
+   * @param {Array<Object>} entries  sorted newest → oldest
+   * @returns {Array<Object>}
+   */
+  _collapseFanout(entries) {
+    const byBase = new Map();
+    for (const e of entries) {
+      if (e.isSent || e.isGroupRow) continue;
+      const base = String(e.messageId || '').replace(/-sent$/, '');
+      if (!base) continue;
+      if (!byBase.has(base)) byBase.set(base, []);
+      byBase.get(base).push(e);
+    }
+    const out = [];
+    const done = new Set();
+    for (const e of entries) {
+      const base = String(e.messageId || '').replace(/-sent$/, '');
+      const members = (!e.isSent && byBase.get(base)) || null;
+      if (!members || members.length < 2) { out.push(e); continue; }
+      if (done.has(base)) continue;
+      done.add(base);
+      const key = `fanout:${base}`;
+      const unreadCount = members.filter(m => m.unread).length;
+      out.push({
+        ...members[0],
+        isGroupRow: true,
+        messageId: key,
+        inboxOwnerId: '',
+        toName: `${members.length} recipients`,
+        recipientCount: members.length,
+        unreadCount,
+        unread: unreadCount > 0,
+        statusClass: unreadCount > 0 ? 'unread' : 'read',
+        statusIcon: unreadCount > 0 ? 'envelope' : 'check-double',
+        statusLabel: unreadCount > 0 ? `${unreadCount} / ${members.length} unread` : `${members.length} read`,
+        isExpanded: this._expandedId === key,
+        recipients: members.map(m => ({
+          messageId: m.messageId, inboxOwnerId: m.inboxOwnerId, toName: m.toName,
+          unread: m.unread, isDeleted: m.isDeleted, statusLabel: m.statusLabel, statusClass: m.statusClass, statusIcon: m.statusIcon,
+        })),
+      });
+    }
+    return out;
   }
 
   _gatherQueue() {
@@ -1115,6 +1175,12 @@ export class MessagesTab extends BaseTab {
 
   onNpcInboxFilter(event, target) {
     const mode = target.dataset.mode || target.closest('[data-mode]')?.dataset.mode || 'unread';
+    if (mode === 'gm') {
+      this._npcInboxIncludeGm = !this._npcInboxIncludeGm;
+      this.app._saveScroll();
+      this.render(true);
+      return;
+    }
     this._npcInboxUnreadOnly = (mode === 'unread');
     this.app._saveScroll();
     this.render(true);
@@ -1531,23 +1597,11 @@ export class MessagesTab extends BaseTab {
       return;
     }
 
-    const { flags } = foundPage;
-    const bodyText = flags.body || '';
-    const content = await renderTemplate(
-      `modules/${MODULE_ID}/templates/chat/intercepted-message.hbs`,
-      {
-        from: flags.senderName || flags.from || 'Unknown',
-        to: flags.recipientName || flags.to || 'Unknown',
-        subject: flags.subject || '(no subject)',
-        bodyPreview: bodyText.length > 200 ? bodyText.slice(0, 200) + '...' : bodyText,
-        networkDisplay: flags.network || 'UNKNOWN',
-      }
-    );
-
-    await ChatMessage.create({
-      content,
-      speaker: { alias: 'NCM // GM' },
-    });
+    // The same card the player's inbox posts, labelled "via GM" — it used to post
+    // a private-looking "GM Intercept" card to a PUBLIC chat message, truncated at
+    // 200 characters with the HTML escaped into visible tags.
+    const message = this.messageRepository?._pageToMessage?.(foundPage.page) || { ...foundPage.flags };
+    await this.messageService?.shareToChat?.(message, null, { sharedBy: 'GM' });
 
     ui.notifications.info('NCM | Message shared to chat.');
   }
@@ -1681,18 +1735,42 @@ export class MessagesTab extends BaseTab {
       return;
     }
 
+    // Targets: every player character, or one of the GM's contact groups. Both
+    // go through the service's fan-out (one call, per-recipient results), not a
+    // hand-rolled loop — so a refused recipient is NAMED, not just counted.
+    const groupSvc = game.nightcity?.contactGroupService;
+    const groups = groupSvc?.getMasterGroups?.() || [];
+    const targetOptions = [
+      `<option value="__all__">All player characters (${playerActors.length})</option>`,
+      ...groups.map(g => `<option value="${g.id}">${Handlebars.escapeExpression(g.name)} — ${g.members.length} member${g.members.length !== 1 ? 's' : ''}</option>`),
+    ].join('');
+
     const dialog = adminDialog({
-      title: 'Mass Broadcast — All Player Inboxes',
+      title: 'Mass Broadcast',
       content: `
         <form style="display:flex; flex-direction:column; gap:8px; padding:4px 0;">
+          <label style="font-size:11px; font-weight:600;">Send to</label>
+          <select name="target" style="padding:6px 8px; font-size:12px;">${targetOptions}</select>
           <label style="font-size:11px; font-weight:600;">From (NPC / Sender name)</label>
           <input type="text" name="from" placeholder="e.g. NCPD, System, Rogue…" style="padding:6px 8px; font-size:12px;">
           <label style="font-size:11px; font-weight:600;">Subject</label>
           <input type="text" name="subject" placeholder="Message subject…" style="padding:6px 8px; font-size:12px;">
           <label style="font-size:11px; font-weight:600;">Message Body</label>
           <textarea name="body" rows="4" placeholder="Message content…" style="padding:6px 8px; font-size:12px; resize:vertical;"></textarea>
-          <p style="font-size:10px; color:#888; margin:0;">Will be delivered to ${playerActors.length} player inbox${playerActors.length !== 1 ? 'es' : ''}: ${playerActors.map(a => a.name).join(', ')}</p>
+          <p style="font-size:10px; color:var(--ncm-text-muted); margin:0;" data-bc-note>Will be delivered to ${playerActors.length} player inbox${playerActors.length !== 1 ? 'es' : ''}: ${playerActors.map(a => a.name).join(', ')}</p>
         </form>`,
+      render: (html) => {
+        const root = html[0] ?? html;
+        const sel = root.querySelector('[name="target"]');
+        const note = root.querySelector('[data-bc-note]');
+        sel?.addEventListener('change', () => {
+          const g = groups.find(x => x.id === sel.value);
+          if (!note) return;
+          note.textContent = g
+            ? `Will be delivered to ${g.members.length} member${g.members.length !== 1 ? 's' : ''} of "${g.name}": ${groupSvc.memberNames(g).join(', ')}`
+            : `Will be delivered to ${playerActors.length} player inbox${playerActors.length !== 1 ? 'es' : ''}: ${playerActors.map(a => a.name).join(', ')}`;
+        });
+      },
       buttons: {
         send: {
           icon: '<i class="fas fa-tower-broadcast"></i>',
@@ -1703,30 +1781,24 @@ export class MessagesTab extends BaseTab {
             const body = html.find('[name="body"]').val()?.trim();
             if (!body) return;
 
-            let sent = 0;
-            let firstError = null;
-            for (const pa of playerActors) {
-              try {
-                // `to` is left for the service to resolve (the actor's NET
-                // address) — a bare character name isn't an address.
-                const result = await this.messageService?.sendMessage({
-                  from,
-                  toActorId: pa.id,
-                  subject,
-                  body,
-                  isBroadcast: true,
-                });
-                if (result?.success) sent++;
-                else firstError = firstError || result?.error || 'unknown error';
-              } catch (err) {
-                firstError = firstError || err?.message || 'unknown error';
-              }
-            }
-            if (sent > 0) {
-              ui.notifications.info(`NCM | Broadcast sent to ${sent} of ${playerActors.length} player inbox${playerActors.length !== 1 ? 'es' : ''}.`);
-            }
-            if (firstError) {
-              ui.notifications.warn(`NCM | Broadcast failed for ${playerActors.length - sent} recipient${playerActors.length - sent !== 1 ? 's' : ''}: ${firstError}`);
+            const targetId = html.find('[name="target"]').val() || '__all__';
+            const group = groups.find(g => g.id === targetId) || null;
+            // `to` is left for the service to resolve (an actor's NET address) —
+            // a bare character name isn't an address.
+            const recipients = group
+              ? groupSvc.recipientsFor(group).recipients
+              : playerActors.map(pa => ({ actorId: pa.id, name: pa.name }));
+            const label = group ? `"${group.name}"` : 'all player characters';
+            if (!recipients.length) { ui.notifications.warn(`NCM | Nobody reachable in ${label}.`); return; }
+            try {
+              const result = await this.messageService?.sendMessage({ from, subject, body, isBroadcast: true, recipients });
+              const delivered = result?.delivered ?? (result?.success ? recipients.length : 0);
+              const failed = result?.failed || [];
+              if (delivered > 0) ui.notifications.info(`NCM | Broadcast to ${label}: delivered to ${delivered} of ${recipients.length}.`);
+              if (failed.length) ui.notifications.warn(`NCM | Not delivered to ${failed.length}: ${failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ')}`, { permanent: true });
+              else if (!result?.success) ui.notifications.warn(`NCM | Broadcast failed: ${result?.error || 'unknown error'}`);
+            } catch (err) {
+              ui.notifications.warn(`NCM | Broadcast failed: ${err?.message || 'unknown error'}`);
             }
             this.render(true);
           },

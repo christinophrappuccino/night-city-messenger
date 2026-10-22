@@ -1403,9 +1403,7 @@ export class DataShardService {
       await this._decryptMessage(shardItem, messageId);
     } else {
       // Decrypt entire shard
-      const state = this._getState(shardItem);
-      state.decrypted = true;
-      await shardItem.update({ [`flags.${MODULE_ID}.state`]: state });
+      await this._writeDecrypted(shardItem);
     }
 
     // Reset hack attempts on success
@@ -1753,6 +1751,8 @@ export class DataShardService {
 
   /** @private */
   async _destroyShard(shardItem) {
+    // The journal is GM-owned and the item may be too — a player relays.
+    if (!isGM()) return this._relayState('destroy', shardItem);
     try {
       const journal = this._getLinkedJournal(shardItem);
       if (journal) {
@@ -1785,6 +1785,8 @@ export class DataShardService {
 
   /** @private */
   async _decryptMessage(shardItem, messageId) {
+    // Shard journals are GM-owned (players are OBSERVER) — a player relays.
+    if (!isGM()) return this._relayState('decryptPage', shardItem, { messageId });
     const journal = this._getLinkedJournal(shardItem);
     if (!journal) return;
 
@@ -1828,8 +1830,119 @@ export class DataShardService {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  PRIVATE — State writes (the item is not always the player's)
+  // ═══════════════════════════════════════════════════════════
+  //
+  // A shard in a character's gear is the player's to write (they own the
+  // actor). A shard that arrived as a message ATTACHMENT is a WORLD item the
+  // player usually has no permission on at all — and that is deliberate, since
+  // any permission above None puts the item in the Items sidebar before the
+  // reveal. So every state write a player's hack / login / key item can cause
+  // goes through here: the owner writes, anyone else relays to the GM
+  // (SHARD_STATE_REQUEST). Before this, the roll succeeded and item.update
+  // threw, so the shard looked like it never unlocked unless the GM handed the
+  // player Owner rights.
+
+  /** @private Can THIS client write the item directly? */
+  _canWriteItem(item) {
+    return isGM() || !!item?.isOwner;
+  }
+
+  /** @private Player → GM relay for a state write. Warns when there is no GM to land it. */
+  _relayState(op, item, payload = {}) {
+    if (!game.users?.activeGM) {
+      ui.notifications?.warn('NCM | No GM connected — the shard could not record that. Try again when your GM is online.');
+      return false;
+    }
+    this.socketManager?.emit(SOCKET_OPS.SHARD_STATE_REQUEST, { op, itemUuid: item.uuid, userId: game.user?.id, ...payload });
+    return true;
+  }
+
+  /** @private Flip the whole-shard decrypted flag (owner direct, else relayed). */
+  async _writeDecrypted(item) {
+    if (!this._canWriteItem(item)) return this._relayState('decrypt', item);
+    const state = this._getState(item);
+    state.decrypted = true;
+    await item.update({ [`flags.${MODULE_ID}.state`]: state });
+    return true;
+  }
+
+  /** GM-side handler for SHARD_STATE_REQUEST. */
+  async handleStateRequest(data = {}) {
+    if (!isGM()) return;
+    const item = data.itemUuid ? fromUuidSync(data.itemUuid) : null;
+    if (!item || !this.isDataShard(item)) { log.warn(`State relay: shard ${data.itemUuid} not found`); return; }
+    switch (data.op) {
+      case 'decrypt':     return this._writeDecrypted(item);
+      case 'session':     return this._updateActorSession(item, data.actorId, data.updates || {});
+      case 'decryptPage': return this._decryptMessage(item, data.messageId);
+      case 'destroy':     return this._destroyShard(item);
+      default: log.warn(`State relay: unknown op "${data.op}"`);
+    }
+  }
+
+  /**
+   * Re-encode a shard that already exists (the Encoder's "rewrite a sloppy
+   * shard" door). GM-side — a player relays through SHARD_CONVERT_REQUEST with
+   * `reencode`. The new roll's quality lands on every PLAYER-MADE file already on
+   * the chip (a GM-authored entry on a shard the GM opened up is never
+   * re-stamped), then the new files are added through the normal writer, so
+   * capacity is enforced exactly as it is for everyone else.
+   * @param {Item} item
+   * @param {object} o { actorId, actorName, outcome, quality, scanDV, skill, total, dv, kind, entries[] }
+   * @returns {Promise<{success:boolean, restamped?:number, added?:number, failed?:string[], error?:string}>}
+   */
+  async reencodeShard(item, o = {}) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    if (!this.isDataShard(item)) return { success: false, error: 'Not a data shard' };
+    try {
+      const prev = this.getConfig(item).playerMade || {};
+      const now = new Date().toISOString();
+      const playerMade = {
+        ...prev,
+        actorId: prev.actorId || o.actorId || '', actorName: prev.actorName || o.actorName || '',
+        at: prev.at || now, kind: prev.kind || o.kind || 'file',
+        outcome: o.outcome, quality: o.quality, skill: o.skill || '', total: o.total ?? 0, dv: o.dv ?? 0,
+        reencodedAt: now, reencodedBy: o.actorId || '', reencodedByName: o.actorName || '',
+        reencodes: (prev.reencodes || 0) + 1,
+      };
+      const cfgRes = await this.updateConfig(item, { playerMade });
+      if (!cfgRes.success) return cfgRes;
+
+      let restamped = 0;
+      const journal = this._getLinkedJournal(item);
+      if (journal) {
+        const updates = [];
+        for (const page of journal.pages) {
+          const f = page.flags?.[MODULE_ID];
+          if (f?.type !== 'shard-message') continue;
+          const cd = f.contentData || {};
+          if (!cd.provenance?.playerMade) continue;
+          const next = { ...cd, provenance: { ...cd.provenance, forgeQuality: o.quality, outcome: o.outcome, reencodedAt: now } };
+          if (o.scanDV) next.sniffDV = o.scanDV;
+          updates.push({ _id: page.id, [`flags.${MODULE_ID}.contentData`]: next });
+        }
+        if (updates.length) { await journal.updateEmbeddedDocuments('JournalEntryPage', updates); restamped = updates.length; }
+      }
+
+      let added = 0; const failed = [];
+      for (const entry of (Array.isArray(o.entries) ? o.entries : [])) {
+        const r = await this.addMessage(item, entry);
+        if (r?.success) added++; else failed.push(r?.error || 'One file could not be written.');
+      }
+      this._broadcastStateChange(item.id);
+      log.info(`Shard "${item.name}" re-encoded: ${restamped} re-stamped, ${added} added${failed.length ? `, ${failed.length} refused` : ''}`);
+      return { success: true, restamped, added, failed };
+    } catch (err) {
+      log.error(`Re-encode failed: ${err.message}`);
+      return { success: false, error: err.message };
+    }
+  }
+
   /** @private */
   async _updateActorSession(item, actorId, updates) {
+    if (!this._canWriteItem(item)) return this._relayState('session', item, { actorId, updates });
     const state = this._getState(item);
     if (!state.sessions) state.sessions = {};
     state.sessions[actorId] = foundry.utils.mergeObject(

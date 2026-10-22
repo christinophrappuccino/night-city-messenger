@@ -8,7 +8,8 @@
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker, applyContrastToElement, buildShardThemePrefs } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker, applyContrastToElement, buildShardThemePrefs, guardSecretInputs, canEditShard } from '../../utils/helpers.js';
+import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import { enrichContent, buildIndexChip, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEntrySender, resolveEnvelope } from '../content/ContentRenderers.js';
@@ -392,6 +393,9 @@ export class ItemInboxApp extends BaseApplication {
       session,
       security,
       isGM: isGM(),
+      // A player who may REWRITE this shard gets the same + button the GM has;
+      // theirs opens the Encoder on it (see _onAddEntry). Decided by canEditShard.
+      canPlayerEdit: !isGM() && canEditShard(this.item, actor).ok,
       hasActor: !!actor,
       actorName: actor?.name ?? 'No Character',
 
@@ -830,6 +834,7 @@ export class ItemInboxApp extends BaseApplication {
 
   _onRender(context, options) {
     super._onRender(context, options);
+    guardSecretInputs(this.element); // read-only until touched — no browser autofill
 
     // Apply preset theme class to the .ncm-item-inbox element (not app root).
     // The class is a data hook now — the palette itself comes from JS below.
@@ -1415,7 +1420,7 @@ export class ItemInboxApp extends BaseApplication {
     `;
 
     await new Promise(resolve => {
-      const d = new Dialog({
+      const d = playerDialog({
         title: `Search Inventory — ${keyItemDisplayName}`,
         content: dialogContent,
         buttons: { cancel: { label: 'Cancel', callback: () => {} } },
@@ -1489,7 +1494,7 @@ export class ItemInboxApp extends BaseApplication {
 
     // Consume confirmation (only shown if config says consume on use)
     if (config?.keyItemConsumeOnUse) {
-      const confirm = await Dialog.confirm({
+      const confirm = await playerConfirm({
         title: 'Consume Access Token',
         content: `<p>Using <strong>${selectedItem.name}</strong> will <strong>remove it from your inventory</strong> if correct. Continue?</p>`,
       });
@@ -1600,8 +1605,8 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
-    const usernameInput = this.element.querySelector('[name="login-username"]');
-    const passwordInput = this.element.querySelector('[name="login-password"]');
+    const usernameInput = this.element.querySelector('[name="ncm-shard-op"]');
+    const passwordInput = this.element.querySelector('[name="ncm-shard-key"]');
     const username = usernameInput?.value ?? '';
     const password = passwordInput?.value ?? '';
 
@@ -1648,7 +1653,7 @@ export class ItemInboxApp extends BaseApplication {
 
   static async _onRelockShard(event, target) {
     if (!isGM() || !this.item) return;
-    const confirm = await Dialog.confirm({
+    const confirm = await playerConfirm({
       title: 'Relock Data Shard',
       content: '<p>This will reset ALL security state (login sessions, hack attempts, encryption). Continue?</p>',
     });
@@ -1675,7 +1680,16 @@ export class ItemInboxApp extends BaseApplication {
   }
 
   static _onAddEntry(event, target) {
-    if (!isGM() || !this.item) return;
+    if (!this.item) return;
+    if (!isGM()) {
+      // The player's door onto an existing shard is the Encoder, not the GM
+      // composer: the addition is rolled for, and the shard's own rule decides.
+      const actor = resolveOperator();
+      const verdict = canEditShard(this.item, actor);
+      if (!verdict.ok) { ui.notifications?.warn(`NCM | ${verdict.reason}`); return; }
+      game.nightcity?.openEncoder?.({ item: this.item, actor });
+      return;
+    }
     import('./DataShardComposer.js').then(({ DataShardComposer }) => {
       new DataShardComposer({ shardItem: this.item, onSave: () => this.render() }).render(true);
     });
@@ -1687,7 +1701,7 @@ export class ItemInboxApp extends BaseApplication {
       ?? target.closest('[data-message-id]')?.dataset.messageId;
     if (!messageId) return;
 
-    const confirm = await Dialog.confirm({
+    const confirm = await playerConfirm({
       title: 'Delete Entry',
       content: '<p>Remove this entry from the data shard?</p>',
     });
@@ -2109,7 +2123,7 @@ export class ItemInboxApp extends BaseApplication {
     const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
     if (!entryId) return;
 
-    const confirm = await Dialog.confirm({
+    const confirm = await playerConfirm({
       title: 'Claim Eddies',
       content: '<p>Transfer these eddies to your account? This cannot be undone.</p>',
     });
@@ -2863,7 +2877,7 @@ export class ItemInboxApp extends BaseApplication {
     const execIcon = isBlackICE ? 'fas fa-skull-crossbones' : 'fas fa-bolt';
 
     await new Promise(resolve => {
-      const d = new Dialog({
+      const d = playerDialog({
         title: opts.title || 'Breach Attempt',
         content,
         buttons: {

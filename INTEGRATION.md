@@ -13,13 +13,15 @@ This module is part of a three-module constellation, each fully standalone:
 
 - `game.modules.get("night-city-messenger").api` — `apiVersion`, `messenger`
   (macro helpers), `contacts` (per-actor address books), `masterContacts`
-  (GM directory), `portraits`, `time` (TimeService — see below), `eventBus`,
+  (GM directory), `groups` (contact groups — see the group hooks below), `portraits`,
+  `time` (TimeService — see below), `eventBus`,
   `RELATIONSHIP_TYPES`, `TRUST_LABELS`.
 - Foundry hook mirrors of the private bus: `night-city-messenger.contact:updated`,
   `…contacts:masterUpdated`, `…contacts:trustChanged`, `…contacts:burned`,
   `…contacts:verified`, `…contacts:shared`, `…contacts:decrypted`,
   `…contacts:breachFailed`, `…roles:updated`, `…message:sent`,
-  `…message:received`, `…shard:decrypted` —
+  `…message:received`, `…shard:decrypted`, `…groups:created`, `…groups:updated`,
+  `…groups:deleted`, `…groups:pushed` —
   plus `night-city-messenger.apiReady` (fires once with the api object).
 
 ### Mirrored tie-in signals (added 2026-08-14, for the designed moment sources)
@@ -38,6 +40,13 @@ This module is part of a three-module constellation, each fully standalone:
   (`…contacts:decrypted` is the success twin.)
 - **`…shard:decrypted`** — the shard-reveals-dossier-knowledge tie-in. Payload:
   `{ itemId, actorId }` (`actorId` is `'gm-override'` on a GM force-decrypt).
+- **`…groups:created` / `…groups:updated` / `…groups:deleted` / `…groups:pushed`**
+  (added 2026-10-20) — contact groups, the "a crew is forming" signal. Payloads:
+  created/updated `{ scope: 'actor'|'master', actorId?, group }`, deleted
+  `{ scope, actorId?, groupId }`, pushed `{ groupId, targetActorId, shared, failed }`.
+  A group is `{ id, name, color, members[], note, sharedFrom }`; members are
+  address-keyed `{ email, name, kind, hint: { actorId, contactId } }` — resolve
+  them through `api.groups.recipientsFor(group)` rather than trusting the ids.
 - Anything else on the private bus is reachable via `api.eventBus.on(event, cb,
   ownerId)` without a mirror — mirrors are only added for contracted tie-ins.
 

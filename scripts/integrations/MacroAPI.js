@@ -311,6 +311,24 @@ export class MacroAPI {
       return ns.masterContactService?.pushToPlayer(contactId, actorId) ?? { success: false };
     };
 
+    // ── Contact groups ──
+    /** Groups a character can send to (its own + the GM's when called by the GM). */
+    ns.messenger.getContactGroups = (actorIdOrName = null) => {
+      const actorId = actorIdOrName ? MacroAPI._resolveActorId(actorIdOrName) : null;
+      return ns.contactGroupService?.groupsFor({ actorId, isGM: isGM() }) ?? [];
+    };
+    /** Create/update a GM group: { id?, name, color?, members: [{email, name, hint?}] }. */
+    ns.messenger.addContactGroup = async (group) => {
+      if (!isGM()) return { success: false, error: 'GM only' };
+      return ns.contactGroupService?.saveMasterGroup(group) ?? { success: false };
+    };
+    ns.messenger.pushGroupToPlayer = async (groupId, actorIdOrName) => {
+      if (!isGM()) return { success: false, error: 'GM only' };
+      const actorId = MacroAPI._resolveActorId(actorIdOrName);
+      if (!actorId) return { success: false, error: 'Actor not found' };
+      return ns.contactGroupService?.pushGroupToPlayer(groupId, actorId) ?? { success: false };
+    };
+
     // ═══════════════════════════════════════════════════════════
     //  UI FUNCTIONS (augment existing stubs)
     // ═══════════════════════════════════════════════════════════

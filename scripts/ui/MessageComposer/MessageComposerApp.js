@@ -19,7 +19,7 @@ import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
 import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
-import { applyGmView, applyAdminZoom, toggleGmView } from '../../utils/adminTheme.js';
+import { applyGmView, applyAdminZoom, toggleGmView, playerDialog } from '../../utils/adminTheme.js';
 
 export class MessageComposerApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
@@ -222,6 +222,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   get messageService() { return game.nightcity?.messageService; }
   get contactRepo() { return game.nightcity?.contactRepository; }
+  // The composer does NOT extend BaseApplication, so its service getters live here.
+  get contactGroupService() { return game.nightcity?.contactGroupService; }
   get networkService() { return game.nightcity?.networkService; }
   get soundService() { return game.nightcity?.soundService; }
   get eventBus() { return game.nightcity?.eventBus; }
@@ -259,7 +261,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.originalMessage = options.originalMessage || null;
 
     if (this.mode === 'reply' && this.originalMessage) {
-      const reply = this.messageService?.buildReply(this.originalMessage, this.fromActorId, '');
+      const reply = this.messageService?.buildReply(this.originalMessage, this.fromActorId, '', { all: !!options.replyAll });
       if (reply) {
         if (reply.anonReply) {
           // Replying to an anonymous message — the real target is hidden. Show a
@@ -280,6 +282,16 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
             isRaw: false,
             isAnonTarget: true,
           });
+          this.subject = reply.subject;
+          this.threadId = reply.threadId;
+          this.inReplyTo = reply.inReplyTo;
+        } else if (reply.recipients?.length) {
+          // Reply All — every participant but me. Chips stay removable so the
+          // player can drop someone from the answer.
+          for (const r of reply.recipients) {
+            if (r.actorId) this._addRecipient(r.actorId, false);
+            else if (r.contactId || r.email) this._addContactRecipient({ contactId: r.contactId || null, email: r.email || '', name: r.name || r.email });
+          }
           this.subject = reply.subject;
           this.threadId = reply.threadId;
           this.inReplyTo = reply.inReplyTo;
@@ -352,6 +364,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       }
     } else {
       // New compose
+      if (options.groupId) this._addGroupById(options.groupId);
       if (options.toActorId) this._addRecipient(options.toActorId, false);
       // Fallback: if actor-based add failed or no actorId, try raw email
       if (this.recipients.length === 0 && options.to) {
@@ -1120,7 +1133,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   /** The identity a recipient chip is removed by: actor id → master id → email. */
   static recipientKey(r) {
-    return r?.actorId || r?.contactId || r?.email || '';
+    return r?.groupId || r?.actorId || r?.contactId || r?.email || '';
   }
 
   _removeRecipient(key) {
@@ -1207,6 +1220,14 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const existingEmails = new Set(this.recipients.map(r => (r.email || '').toLowerCase()).filter(Boolean));
     const reachableIds = this.networkService?.getReachableNetworkIds() || [];
 
+    // Contact groups first — one chip, N people (the character's own groups,
+    // plus the GM's when the GM is composing).
+    const existingGroups = new Set(this.recipients.map(r => r.groupId).filter(Boolean));
+    const groupHits = (this.contactGroupService?.searchGroups?.(query, { actorId: this.fromActorId, isGM: game.user.isGM }) || [])
+      .filter(g => !existingGroups.has(g.id))
+      .slice(0, 4)
+      .map(g => MessageComposerApp._groupResult(g));
+
     let results = directory.filter(a =>
       !existingIds.has(a.actorId) && (
         a.name?.toLowerCase().includes(q) ||
@@ -1289,8 +1310,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       results = results.filter(r => !r.email || !mcs?.isSendOnly?.(r.email));
     }
 
-    this._searchResults = results;
-    this._selectedResultIndex = results.length > 0 ? 0 : -1;
+    this._searchResults = [...groupHits, ...results];
+    this._selectedResultIndex = this._searchResults.length > 0 ? 0 : -1;
     this._renderAutocomplete(query);
   }
 
@@ -1305,7 +1326,16 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     dropdown.classList.remove('ncm-hidden');
 
-    const items = this._searchResults.map((r, i) => `
+    const items = this._searchResults.map((r, i) => r.isGroup ? `
+      <div class="ncm-autocomplete-item ncm-autocomplete-item--group ${i === this._selectedResultIndex ? 'ncm-autocomplete-item--selected' : ''}"
+           data-index="${i}" data-group-id="${r.groupId}">
+        <div class="ncm-autocomplete__avatar" style="color: ${r.avatarColor}; border-color: ${r.avatarColor}30;"><i class="fas fa-users" style="font-size:9px;"></i></div>
+        <div class="ncm-autocomplete__info">
+          <div class="ncm-autocomplete__name">${r.name}</div>
+          <div class="ncm-autocomplete__email">${r.memberCount} ${r.memberCount === 1 ? 'member' : 'members'} · ${r.memberNames}</div>
+        </div>
+      </div>
+    ` : `
       <div class="ncm-autocomplete-item ${i === this._selectedResultIndex ? 'ncm-autocomplete-item--selected' : ''} ${r.greyed ? 'ncm-autocomplete-item--greyed' : ''}"
            data-index="${i}" data-actor-id="${r.actorId || ''}">
         <div class="ncm-autocomplete__avatar" style="color: ${r.avatarColor}; border-color: ${r.avatarColor}30;">${r.initials}</div>
@@ -1357,10 +1387,54 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const result = this._searchResults[index];
     if (!result || result.greyed) return;
 
-    if (result.actorId) this._addRecipient(result.actorId);
+    if (result.isGroup) this._addGroupRecipient(result);
+    else if (result.actorId) this._addRecipient(result.actorId);
     else this._addContactRecipient(result);
     this._closeAutocomplete();
     this.render(true);
+  }
+
+  /** The autocomplete/chip view of a contact group. */
+  static _groupResult(g) {
+    const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    return {
+      isGroup: true, groupId: g.id, scope: g.scope || 'actor',
+      name: esc(g.name), email: '', actorId: null, contactId: null,
+      initials: '', avatarColor: g.color || '#19f3f7',
+      memberCount: (g.members || []).length,
+      memberNames: esc((g.members || []).map(m => m.name || m.email).filter(Boolean).join(', ')),
+    };
+  }
+
+  /**
+   * One chip for a whole group. Members are resolved NOW (address → live actor /
+   * directory entry) so the send list is concrete; anyone unresolvable is named
+   * once, up front, instead of failing at send.
+   */
+  _addGroupRecipient(result) {
+    if (!result?.groupId || this.recipients.some(r => r.groupId === result.groupId)) return;
+    const svc = this.contactGroupService;
+    const group = svc?.findGroup?.(result.groupId, { actorId: this.fromActorId, isGM: game.user.isGM });
+    if (!group) return;
+    const { recipients, unresolved } = svc.recipientsFor(group);
+    if (!recipients.length) {
+      ui.notifications.warn(`NCM | "${group.name}" has no one reachable in it.`);
+      return;
+    }
+    if (unresolved.length) ui.notifications.warn(`NCM | "${group.name}": ${unresolved.join(', ')} could not be found and will be skipped.`);
+    this.recipients.push({
+      isGroup: true, groupId: group.id, name: group.name, email: '', actorId: null, contactId: null,
+      initials: '', avatarColor: group.color || '#19f3f7',
+      members: recipients, memberCount: recipients.length,
+      memberNames: recipients.map(r => r.name || r.email).join(', '),
+      locked: false, mismatch: false, unreachable: false, isRaw: false,
+    });
+  }
+
+  /** Re-add a group chip by id (draft restore, launcher option). */
+  _addGroupById(groupId) {
+    const g = this.contactGroupService?.findGroup?.(groupId, { actorId: this.fromActorId, isGM: game.user.isGM });
+    if (g) this._addGroupRecipient(MessageComposerApp._groupResult(g));
   }
 
   _closeAutocomplete() {
@@ -1556,7 +1630,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (actor?.isOwner || game.user.isGM) {
       const draftData = {
         mode: this.mode,
-        recipients: this.recipients.map(r => ({ actorId: r.actorId, email: r.email, isRaw: r.isRaw || false })),
+        recipients: this.recipients.map(r => ({ actorId: r.actorId, email: r.email, isRaw: r.isRaw || false, groupId: r.groupId || null })),
         subject: this.subject,
         body: this.body,
         priority: this.priority,
@@ -1597,6 +1671,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     // Restore fields
     if (draft.recipients?.length) {
       for (const r of draft.recipients) {
+        if (r.groupId) { this._addGroupById(r.groupId); continue; }
         if (r.isRaw) {
           this._addRawRecipient(r.email);
         } else if (r.actorId) {
@@ -1741,7 +1816,28 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         ? (actorRecipients[0].email || undefined)
         : undefined;
 
+      // Every chip, as a plain recipient entry. Two or more → the service fans
+      // out (one copy each, one sent copy, shared thread, participants list).
+      const sendList = [];
+      let hasGroup = false;
+      const seenKeys = new Set();
+      const pushRecipient = (r) => {
+        const key = r.actorId ? `a:${r.actorId}` : r.contactId ? `c:${r.contactId}` : `e:${(r.email || '').toLowerCase()}`;
+        if (!r.actorId && !r.contactId && !r.email) return;
+        if (seenKeys.has(key)) return;
+        seenKeys.add(key);
+        sendList.push({ actorId: r.actorId || null, contactId: r.contactId || null, email: r.email || '', name: r.name || '' });
+      };
+      for (const r of this.recipients) {
+        if (r.isAnonTarget) continue;
+        if (r.isGroup) { hasGroup = true; for (const m of (r.members || [])) pushRecipient(m); }
+        else pushRecipient(r);
+      }
+      // Attached eddies ride on EVERY copy, so the sender pays once per recipient.
+      const eddiesTotal = this.eddiesAmount * Math.max(1, sendList.length);
+
       const messageData = {
+        recipients: (sendList.length > 1 || hasGroup) ? sendList : undefined,
         toActorId: toActorId || null,
         toContactId: contactRecipients.length > 0 ? contactRecipients[0].contactId : undefined,
         to: rawRecipients.length > 0 ? rawRecipients[0].email
@@ -1833,7 +1929,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
       // Deduct eddies from sender BEFORE sending (skip for contact-only senders)
       if (this.eddiesAmount > 0 && this.fromActorId) {
-        const deducted = await this._deductEddies(this.fromActorId, this.eddiesAmount);
+        if (sendList.length > 1) {
+          ui.notifications.info(`NCM | ${this.eddiesAmount.toLocaleString()} eb × ${sendList.length} recipients = ${eddiesTotal.toLocaleString()} eb.`);
+        }
+        const deducted = await this._deductEddies(this.fromActorId, eddiesTotal);
         if (!deducted) {
           this._sending = false;
           if (sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('ncm-composer__btn--disabled'); }
@@ -1863,9 +1962,27 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       }
 
       if (result?.success) {
-        // Play success state
-        this.soundService?.play?.('send');
-        await this._playSendAnimation('success');
+        // Play success state. A QUEUED result (GM offline / dead zone) is a
+        // success for the composer — the message is safe in the queue — but it
+        // must not read "Delivered", which is the lie that sent testers hunting
+        // for a message that had not left yet.
+        this.soundService?.play?.(result.queued ? 'click' : 'send');
+        await this._playSendAnimation('success', { queued: !!result.queued, reason: result.reason, count: sendList.length });
+        // Recency for the Contact Manager's group rail: every one of MY groups this
+        // went to is stamped as just used (silent, never blocks).
+        for (const r of this.recipients) {
+          if (r.isGroup && r.groupId && (r.scope || 'actor') === 'actor') this.contactGroupService?.touchActorGroup?.(this.fromActorId, r.groupId);
+        }
+
+        // Partial fan-out: some recipients were refused (not in the directory,
+        // send-only, inbox gone). Say who and why, and give their share back.
+        if (result.failed?.length) {
+          const why = result.failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ');
+          ui.notifications.warn(`NCM | Not delivered to ${result.failed.length} of ${sendList.length} — ${why}`, { permanent: true });
+          if (this.eddiesAmount > 0 && this.fromActorId) {
+            await this._creditEddies(this.fromActorId, this.eddiesAmount * result.failed.length).catch(() => {});
+          }
+        }
 
         // NOTE: Do NOT credit the recipient here. The eddies travel with the
         // message (eddies flag) and are credited once when the recipient claims
@@ -1879,7 +1996,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       } else {
         // Send failed — show failure animation with retry options
         if (this.eddiesAmount > 0) {
-          await this._creditEddies(this.fromActorId, this.eddiesAmount);
+          await this._creditEddies(this.fromActorId, eddiesTotal);
         }
         await this._playSendAnimation('failure', { error: result?.error || 'Unknown transmission error' });
         // Don't close — user can retry/queue/draft from the overlay
@@ -1888,7 +2005,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       console.error(`${MODULE_ID} | Send failed:`, error);
       // Refund eddies on exception too
       if (this.eddiesAmount > 0) {
-        await this._creditEddies(this.fromActorId, this.eddiesAmount).catch(() => {});
+        await this._creditEddies(this.fromActorId, eddiesTotal).catch(() => {});
       }
       await this._playSendAnimation('failure', { error: error.message || 'Unexpected transmission error' });
     } finally {
@@ -2257,7 +2374,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       </div>`;
 
     let result = null;
-    const dialog = new Dialog({
+    const dialog = playerDialog({
       title: 'Embed Media',
       content,
       buttons: {
@@ -2376,7 +2493,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       `).join('')}
     </div>`;
 
-    new Dialog({
+    playerDialog({
       title: 'Attach Data Shard',
       content,
       buttons: { cancel: { label: 'Cancel' } },
@@ -2427,7 +2544,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       <input type="number" name="amount" value="100" min="1" style="width:100%;" />
     </div>`;
 
-    new Dialog({
+    playerDialog({
       title: 'Attach Eddies',
       content,
       buttons: {
@@ -2566,7 +2683,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   _showLinkDialog() {
     const selectedText = window.getSelection()?.toString() || '';
 
-    new Dialog({
+    playerDialog({
       title: 'Insert Link',
       content: `
         <div class="form-group" style="margin-bottom:8px;">
@@ -2641,7 +2758,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     // Get current scene name as location context
     const sceneName = game.scenes?.viewed?.name || 'Unknown Location';
 
-    new Dialog({
+    playerDialog({
       title: 'Insert Location Tag',
       content: `
         <div class="form-group" style="margin-bottom:8px;">
@@ -2837,7 +2954,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     const viaNet = (game.user.isGM && this.sendNetworkId) ? this.networkService?.getNetwork?.(this.sendNetworkId) : null;
     const netName = (viaNet || this.networkService?.currentNetwork)?.name?.toUpperCase() || 'CITINET';
-    const recipientName = this.recipients.length > 0 ? this.recipients[0].name : '—';
+    const recipientName = this.recipients.length > 1
+      ? `${this.recipients[0].name} +${this.recipients.length - 1}`
+      : (this.recipients.length > 0 ? this.recipients[0].name : '—');
 
     if (state === 'transmit') {
       // ─── Show transmitting overlay ───
@@ -2898,14 +3017,28 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       if (transmit) transmit.classList.add('ncm-hidden');
       if (successEl) {
         successEl.classList.remove('ncm-hidden');
+        const title = successEl.querySelector('.ncm-composer__send-success-text');
         const detail = el.querySelector('[data-id="send-success-detail"]');
-        if (detail) {
-          const time = formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString());
-          detail.textContent = `Delivered to ${recipientName} via ${netName} · ${time}`;
+        successEl.classList.toggle('ncm-composer__send-success--queued', !!details.queued);
+        if (details.queued) {
+          if (title) title.textContent = 'Message Queued';
+          if (detail) {
+            detail.textContent = details.reason === 'dead_zone'
+              ? `No signal here — ${recipientName} will receive it once you are back in network range.`
+              : `Your GM is offline — it will be sent to ${recipientName} when they connect.`;
+          }
+        } else {
+          if (title) title.textContent = 'Message Transmitted';
+          if (detail) {
+            const time = formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString());
+            const who = details.count > 1 ? `${details.count} recipients` : recipientName;
+            detail.textContent = `Delivered to ${who} via ${netName} · ${time}`;
+          }
         }
       }
-      // Hold for user to see success
-      await new Promise(r => setTimeout(r, 1500));
+      // Hold for user to see success (a little longer for the queued copy — it
+      // is a sentence the player should actually read)
+      await new Promise(r => setTimeout(r, details.queued ? 2600 : 1500));
 
     } else if (state === 'failure') {
       // ─── Swap to failure state ───

@@ -1,4 +1,5 @@
-// Sim: admin theme carry-over (utils/adminTheme.js + BaseApplication hooks).
+// Sim: admin theme carry-over (utils/adminTheme.js + BaseApplication hooks)
+// + the player-window Dialog wrappers (zoomed by the player's Text Size).
 // Drives the REAL wrappers/stamp/zoom/hook with mocked Foundry globals.
 import { pathToFileURL } from 'url';
 
@@ -26,6 +27,8 @@ class El {
   querySelector(sel) { return sel === '.window-content' ? this.content : null; }
 }
 globalThis.HTMLElement = El;
+const rootStyle = { vars: { '--ncm-text-scale-base': '1.2' }, getPropertyValue(k) { return this.vars[k] ?? ''; } };
+globalThis.document = { documentElement: { style: rootStyle }, activeElement: null };
 
 const M = await import(pathToFileURL(`${ROOT}/scripts/utils/adminTheme.js`).href);
 
@@ -81,6 +84,60 @@ fire(plain);
 ok(plain.element[0].dataset.ncmAdminTheme === undefined, 'untagged (player) dialog untouched');
 fire({ options: null });
 ok(true, 'malformed app is a no-op');
+
+// ═══ Player-window Dialog wrappers (2026-10-21: "pop-up windows still not resizing for text") ═══
+ok(M.getPlayerTextScale() === 120, 'player text scale read from :root --ncm-text-scale-base (1.2 → 120)');
+rootStyle.vars['--ncm-text-scale-base'] = '3';
+ok(M.getPlayerTextScale() === 150, 'player scale clamps to the slider max');
+rootStyle.vars['--ncm-text-scale-base'] = '';
+settings.playerTheme = { textScale: 90 };
+ok(M.getPlayerTextScale() === 90, 'falls back to the saved playerTheme.textScale when :root has nothing');
+delete settings.playerTheme;
+ok(M.getPlayerTextScale() === 100, 'defaults to 100');
+rootStyle.vars['--ncm-text-scale-base'] = '1.2';
+const p1 = M.playerDialog({ title: 'x' });
+ok(p1.options.classes.join(' ') === 'dialog ncm-player-dialog', 'playerDialog: default classes + player tag');
+const p2 = M.playerConfirm({ title: 'c', options: { classes: ['ncm-time-config-dialog'], width: 320 } });
+ok(p2.options.classes.includes('ncm-player-dialog') && p2.options.classes.includes('ncm-time-config-dialog') && p2.options.width === 320, 'playerConfirm merges cfg.options');
+const p3 = M.playerPrompt({ title: 'p' });
+ok(p3.options.classes.includes('ncm-player-dialog'), 'playerPrompt tags');
+const p4 = M.playerWait({}, { classes: ['dialog', 'ncm-admin-dialog'] });
+ok(p4.options.classes.includes('ncm-admin-dialog') && !p4.options.classes.includes('ncm-player-dialog'), 'an explicit admin class wins over the player tag');
+globalThis.document.activeElement = { closest: (sel) => sel === '[data-ncm-admin-theme]' ? {} : null };
+const p5 = M.playerDialog({ title: 'from a GM-view window' });
+ok(p5.options.classes.includes('ncm-admin-dialog') && !p5.options.classes.includes('ncm-player-dialog'), 'opened from an admin-tagged window → admin dialog (follows its opener)');
+globalThis.document.activeElement = null;
+const pl = { options: { classes: ['dialog', 'ncm-player-dialog'] }, element: [new El()], position: { width: 400 }, setPosition(p) { this.position = { ...this.position, ...p }; } };
+fire(pl);
+ok(pl.element[0].content.style.zoom === '1.2', 'player dialog zoomed by the player scale');
+ok(pl.element[0].dataset.ncmAdminTheme === undefined, 'player dialog gets NO admin palette');
+ok(pl.position.width === 480, 'player dialog width grows once by the ratio (400 → 480)');
+fire(pl);
+ok(pl.position.width === 480, 're-render does not grow it again');
+rootStyle.vars['--ncm-text-scale-base'] = '1';
+const pl100 = { options: { classes: ['dialog', 'ncm-player-dialog'] }, element: [new El()], position: { width: 400 }, setPosition() { throw new Error('should not resize at 100%'); } };
+fire(pl100);
+ok(pl100.element[0].content.style.zoom === '', 'at 100% the player dialog is left exactly as Foundry built it');
+rootStyle.vars['--ncm-text-scale-base'] = '1.2';
+
+// Source guard: every Dialog the module opens goes through a wrapper — a raw
+// one scales with nothing. Exempt: the wrappers themselves and the namespace
+// migration prompt (it runs before the hook exists).
+{
+  const fsx = await import('fs');
+  const pathx = await import('path');
+  const walk = (d) => fsx.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(pathx.join(d, e.name)) : (e.name.endsWith('.js') ? [pathx.join(d, e.name)] : []));
+  const raw = [];
+  for (const f of walk(`${ROOT}/scripts`)) {
+    const rel = f.split(pathx.sep).join('/').split('/scripts/')[1];
+    if (rel === 'utils/adminTheme.js' || rel === 'core/NamespaceMigration.js') continue;
+    const src = fsx.readFileSync(f, 'utf8');
+    if (/\bnew Dialog\(|\bDialog\.(confirm|prompt|wait)\(/.test(src)) raw.push(rel);
+  }
+  ok(raw.length === 0, `no raw Dialog call outside the wrappers (found: ${raw.join(', ') || 'none'})`);
+  const hookReg = fsx.readFileSync(`${ROOT}/scripts/init/registerGMTools.js`, 'utf8');
+  ok(hookReg.includes('registerAdminDialogHook();'), 'hook registered at ready');
+}
 
 // ═══ BaseApplication contract (static reads only — no Foundry ApplicationV2 here) ═══
 import fs from 'fs';

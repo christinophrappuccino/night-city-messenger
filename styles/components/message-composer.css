@@ -378,7 +378,7 @@
 .ncm-composer__net-search i { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
 .ncm-app .ncm-composer .ncm-composer__net-search input {
   flex: 1; min-width: 0;
-  height: 24px !important; min-height: 0 !important;
+  height: calc(24px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important;
   border: 0 !important; padding: 0 !important; margin: 0 !important;
   background: transparent !important; box-shadow: none !important; outline: none;
   color: var(--ncm-text-primary);
@@ -798,6 +798,15 @@
   font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-danger); margin-left: 8px; flex-shrink: 0;
 }
 .ncm-composer__field-error i { margin-right: 2px; }
+/* Block-level variant under the SUBJ row — the inline span above lives inside
+   the TO row's flex line and has nowhere to sit for a message-wide error. */
+.ncm-composer__field-error--general {
+  display: block; margin: 0 0 6px 0; padding: 4px 8px;
+  font-family: var(--ncm-font-body);
+  font-size: calc(10px * var(--ncm-text-scale, 1));
+  border-left: 2px solid var(--ncm-danger);
+  background: color-mix(in srgb, var(--ncm-danger) 10%, transparent);
+}
 
 /* Autocomplete */
 .ncm-composer__autocomplete {
@@ -1055,9 +1064,9 @@
 }
 .ncm-composer .ncm-composer__enc-dv-input {
   width: 36px !important;
-  height: 20px !important;
+  height: calc(20px * var(--ncm-text-scale, 1)) !important;
   min-height: 0 !important;
-  max-height: 20px !important;
+  max-height: calc(20px * var(--ncm-text-scale, 1)) !important;
   line-height: 1 !important;
   background: var(--ncm-bg-deep) !important;
   border: 1px solid color-mix(in srgb, var(--ncm-success) 15%, transparent) !important;
@@ -1762,6 +1771,10 @@
   transform: scale(0);
 }
 .ncm-composer__send-success-icon i { font-size: calc(22px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
+/* A QUEUED send (GM offline / dead zone) reuses the success panel but is held,
+   not delivered — amber so it never reads as "done". */
+.ncm-composer__send-success--queued .ncm-composer__send-success-icon i,
+.ncm-composer__send-success--queued .ncm-composer__send-success-text { color: var(--ncm-warning, #fbbf24); }
 .ncm-composer__send-success-text {
   font-family: var(--ncm-font-title);
   font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 600;

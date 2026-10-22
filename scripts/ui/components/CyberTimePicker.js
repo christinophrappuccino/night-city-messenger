@@ -19,6 +19,7 @@
 
 import { MODULE_ID } from '../../utils/constants.js';
 import { formatCyberDate } from '../../utils/helpers.js';
+import { playerDialog } from '../../utils/adminTheme.js';
 
 /** Month names for the written month styles (mirrors formatCyberDate's tables). */
 const CTP_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -186,7 +187,7 @@ export class CyberTimePicker {
       ${this._buildPreview()}
     </div>`;
 
-    this._dialog = new Dialog({
+    this._dialog = playerDialog({
       title: this.title,
       content,
       buttons: {
@@ -212,11 +213,11 @@ export class CyberTimePicker {
     }, {
       width: 320,
       height: 'auto',
-      // Inherit the opener's theme: a picker launched from a GM-view /
-      // admin-themed window (composer in GM view, a config sheet) is tagged
-      // like an admin dialog so it doesn't pop up in the player palette.
-      classes: ['ncm-time-config-dialog', 'ncm-ctp-wrapper',
-        ...(document.activeElement?.closest?.('[data-ncm-admin-theme]') ? ['ncm-admin-dialog'] : [])],
+      // playerDialog inherits the opener's theme: a picker launched from a
+      // GM-view / admin-themed window (composer in GM view, a config sheet) is
+      // tagged like an admin dialog so it doesn't pop up in the player palette;
+      // otherwise it is a player dialog zoomed by the player's Text Size.
+      classes: ['ncm-time-config-dialog', 'ncm-ctp-wrapper'],
     });
 
     this._dialog.render(true);

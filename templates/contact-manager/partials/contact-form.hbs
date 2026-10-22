@@ -18,7 +18,7 @@
   @param {object|null} contact       — Contact data (null for create mode)
   @param {boolean}     isCreating    — True when creating a new contact
   @param {boolean}     isGM          — Whether current user is GM
-  @param {Array}       [availableActors] — All actors for linking (GM only)
+  @param {string}      [linkedActorName] — Name of contact.actorId, for the Linked Actor picker label (GM only)
   @param {Array}       [playerActors] — Player-owned actors (for relationship rows)
   @param {Array}       [roleOptions] — Built-in + custom role options
   @param {Array}       [customRoles] — Custom roles from GM settings
@@ -170,14 +170,17 @@
       </div>
       <div class="ncm-form-group">
         <label class="ncm-form-label">Linked Actor</label>
-        <select name="actorId" class="ncm-form-select">
-          <option value="">— None —</option>
-          {{#each availableActors}}
-            <option value="{{id}}" {{#if (eq id ../contact.actorId)}}selected{{/if}}>
-              {{name}} {{#if hasPlayerOwner}}(Player){{/if}}
-            </option>
-          {{/each}}
-        </select>
+        {{!-- Searchable picker (folder chips) — a native select of every world
+             actor scrolled for hundreds of rows. The hidden input keeps the
+             form contract: the save handlers read formData.get('actorId'). --}}
+        <div class="ncm-form-input-row" data-picker-row>
+          <input type="hidden" name="actorId" value="{{contact.actorId}}" />
+          <input type="text" class="ncm-form-input" data-picker-label-for="actorId" value="{{linkedActorName}}"
+                 placeholder="— None —" readonly data-action="pickLinkedActor" />
+          <button type="button" class="ncm-form-browse-btn" data-action="pickLinkedActor" title="Search actors">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
       </div>
     </div>
 

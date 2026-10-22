@@ -252,6 +252,27 @@ export class Phase6Verification {
     });
 
     // ─── 6.13: Prior phases intact ───
+    // ─── 6.17: Shard editing rule + the state relay + the re-encode door ───
+    await this._check('6.17', 'Shard editing — rule, state relay, re-encode', async () => {
+      const M = await import('../ui/content/EncoderModel.js');
+      const H = await import('../utils/helpers.js');
+      const ds = game.nightcity?.dataShardService;
+      const problems = [];
+      if (M.resolveShardEditing({}) !== 'locked') problems.push('a GM-made shard must default to locked');
+      if (M.resolveShardEditing({ playerMade: { actorId: 'x' } }) !== 'maker') problems.push('a player-made shard must default to maker');
+      if (M.resolveShardEditing({ playerEditing: 'qualified' }) !== 'qualified') problems.push('an explicit rule must win');
+      if (typeof H.canEditShard !== 'function') problems.push('canEditShard missing');
+      for (const fn of ['handleStateRequest', 'reencodeShard', '_writeDecrypted', '_relayState', '_canWriteItem']) {
+        if (typeof ds?.[fn] !== 'function') problems.push(`dataShardService.${fn} missing`);
+      }
+      if (!SOCKET_OPS.SHARD_STATE_REQUEST) problems.push('SHARD_STATE_REQUEST op missing');
+      if (typeof game.nightcity?.openEncoder !== 'function') problems.push('openEncoder launcher missing');
+      const cfg = M.resolveEncoderConfig(game.nightcity?.settingsManager?.getEncoderConfigRaw?.() ?? {});
+      if (typeof cfg.reencode?.allowed !== 'boolean') problems.push('reencode.allowed is not resolved');
+      if (problems.length) return { passed: false, detail: problems.join('; ') };
+      return { passed: true, detail: `3 edit modes, state relay ops decrypt/session/decryptPage/destroy, re-encode ${cfg.reencode.allowed ? 'on' : 'off'} at DV +${cfg.reencode.dv}` };
+    });
+
     await this._check('6.13', 'Core services intact (Phase 1-5 regression)', () => {
       const ns = game.nightcity;
       const required = [

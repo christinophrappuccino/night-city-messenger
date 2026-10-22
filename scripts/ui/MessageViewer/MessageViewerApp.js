@@ -39,7 +39,9 @@ import {
 } from '../../utils/designHelpers.js';
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { getThreadMessages } from '../../utils/threading.js';
-import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, canEncode as canEncodeShard } from '../../utils/helpers.js';
+import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, canEncode as canEncodeShard, chatCardTime } from '../../utils/helpers.js';
+import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
+import { selfKeys } from '../../utils/participants.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
 
@@ -1366,6 +1368,9 @@ export class MessageViewerApp extends BaseApplication {
       case 'reply-message':
         this._replyToMessage(messageId);
         break;
+      case 'reply-all-message':
+        this._replyToMessage(messageId, { all: true });
+        break;
       case 'forward-message':
         this._forwardMessage(messageId);
         break;
@@ -1707,7 +1712,7 @@ export class MessageViewerApp extends BaseApplication {
         if (emailService.hasEmail(actor)) {
           const currentEmail = emailService.getEmail(actor);
           const confirmed = await new Promise(resolve => {
-            new Dialog({
+            playerDialog({
               title: 'Edit NET Identity',
               content: `<div class="ncm-burn-dialog">
                 <div class="ncm-burn-dialog__heading">Change Your Identity</div>
@@ -2506,7 +2511,7 @@ export class MessageViewerApp extends BaseApplication {
   //  Message Actions
   // ═══════════════════════════════════════════════════════════
 
-  _replyToMessage(messageId) {
+  _replyToMessage(messageId, { all = false } = {}) {
     const msg = this._getSelectedMessage();
     if (!msg) return;
 
@@ -2522,6 +2527,7 @@ export class MessageViewerApp extends BaseApplication {
       mode: 'reply',
       fromActorId: this.actorId,
       originalMessage: msg,
+      replyAll: all,
     });
   }
 
@@ -2556,7 +2562,7 @@ export class MessageViewerApp extends BaseApplication {
     const netColor = network?.theme?.color || '#ff6600';
     const recipient = msg?.from || 'unknown';
 
-    new Dialog({
+    playerDialog({
       title: 'Cannot Route Reply',
       content: `
         <div class="ncm-hd-body" style="padding:16px;">
@@ -2646,7 +2652,7 @@ export class MessageViewerApp extends BaseApplication {
 
   async _permanentDelete(messageId) {
     if (!messageId) return;
-    const confirm = await Dialog.confirm({
+    const confirm = await playerConfirm({
       title: 'Permanently Delete',
       content: '<p>This message will be <strong>permanently deleted</strong>. This cannot be undone.</p>',
     });
@@ -2663,7 +2669,7 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   async _emptyTrash() {
-    const confirm = await Dialog.confirm({
+    const confirm = await playerConfirm({
       title: 'Empty Trash',
       content: '<p>Permanently delete <strong>all messages in Trash</strong>? This cannot be undone.</p>',
     });
@@ -2677,7 +2683,7 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   async _emptySpam() {
-    const confirm = await Dialog.confirm({
+    const confirm = await playerConfirm({
       title: 'Empty Spam',
       content: '<p>Permanently delete <strong>all spam messages</strong>? This cannot be undone.</p>',
     });
@@ -2924,7 +2930,7 @@ export class MessageViewerApp extends BaseApplication {
 
   async _cancelScheduled(scheduleId) {
     if (!scheduleId) return;
-    const confirm = await Dialog.confirm({
+    const confirm = await playerConfirm({
       title: 'Cancel Scheduled Message',
       content: '<p>Cancel this scheduled message? It will not be delivered.</p>',
     });
@@ -2948,7 +2954,7 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     // Warn user — cancelling is permanent, they need to re-schedule after editing
-    const confirm = await Dialog.confirm({
+    const confirm = await playerConfirm({
       title: 'Edit Scheduled Message',
       content: `<p>This will <strong>cancel the scheduled delivery</strong> and open the message in the composer for editing.</p>
         <p>You'll need to re-send or re-schedule after making changes.</p>`,
@@ -3949,7 +3955,8 @@ export class MessageViewerApp extends BaseApplication {
         actorName: actor?.name || 'Unknown',
         source: msg.fromDisplay || msg.from || 'Unknown',
         subject: msg.subject || 'No subject',
-        malwareType: msg.malware?.type?.toUpperCase() || null,
+        malwareType: msg.malware?.type ? String(msg.malware.type).charAt(0).toUpperCase() + String(msg.malware.type).slice(1).toLowerCase() : null,
+        when: chatCardTime(),
         networkDisplay: game.nightcity?.networkService?.getCurrentNetworkName?.() || 'CITINET',
       }
     );
@@ -4791,6 +4798,13 @@ export class MessageViewerApp extends BaseApplication {
       anonStyle,
       isAnonToMasked,
       anonRepliesBlocked,
+      // Multi-recipient mail: everyone on it (address-keyed members), and
+      // whether Reply All makes sense — 2+ others, not masked, not a system address.
+      participantCount: Array.isArray(msg.participants) ? msg.participants.length : 0,
+      participantNames: Array.isArray(msg.participants)
+        ? msg.participants.map(p => p?.name || p?.email).filter(Boolean).join(', ') : '',
+      canReplyAll: !anonRepliesBlocked && !isAnonMasked
+        && (this.messageService?.replyAllRecipients?.(msg, this.actorId)?.length ?? 0) >= 2,
       senderSendOnly,
       // ENVELOPE (#37) — the LIST row must agree with the detail pane: a
       // recovered file reads as a file in both (type icon + filename + type ·
@@ -4964,7 +4978,14 @@ export class MessageViewerApp extends BaseApplication {
   _threadOpts() {
     let subjectThreading = true;
     try { subjectThreading = game.settings.get(MODULE_ID, 'subjectThreading') ?? true; } catch { /* setting may not be registered yet */ }
-    return { viewingActorId: this.actorId, subjectThreading };
+    // The viewer's own address + directory id too, so a group thread's
+    // participants list never counts ME as a shared counterparty.
+    const viewingKeys = selfKeys({
+      actorId: this.actorId,
+      email: this.contactRepository?.getActorEmail?.(this.actorId) || '',
+      contactId: game.nightcity?.masterContactService?.getByActorId?.(this.actorId)?.id || '',
+    });
+    return { viewingActorId: this.actorId, subjectThreading, viewingKeys };
   }
 
   _getThreadInfo(msg, allMessages) {
@@ -5117,12 +5138,18 @@ export class MessageViewerApp extends BaseApplication {
         if (!att.itemId || seenIds.has(att.itemId)) continue;
         seenIds.add(att.itemId);
         const item = game.items?.get(att.itemId) || actor?.items?.get(att.itemId);
+        // The attachment carries the lock state AS SENT; the shard may have been
+        // breached since (a player's hack on a world shard now lands via the GM),
+        // so read the live item when it is still around.
+        const liveCfg = item?.getFlag?.(MODULE_ID_LOCAL, 'config');
+        const liveState = item?.getFlag?.(MODULE_ID_LOCAL, 'state');
+        const isEncrypted = liveCfg ? (!!liveCfg.encrypted && !liveState?.decrypted) : (att.encrypted || false);
         items.push({
           id: att.itemId,
           name: att.name || item?.name || 'Unknown Shard',
           img: item?.img || null,
           isReceived: true,
-          isEncrypted: att.encrypted || false,
+          isEncrypted,
           fragmentCount: null,
           fromName: msg.from || msg.fromActorId ? (game.actors.get(msg.fromActorId)?.name || msg.from) : null,
         });
@@ -5623,7 +5650,7 @@ export class MessageViewerApp extends BaseApplication {
       : 'ncm-hd-theme-cyan';
 
     await new Promise(resolve => {
-      const d = new Dialog({
+      const d = playerDialog({
         title: opts.title || 'Skill Check',
         content,
         buttons: {

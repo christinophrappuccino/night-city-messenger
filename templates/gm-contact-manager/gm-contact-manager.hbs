@@ -31,24 +31,9 @@
         <i class="fas fa-file-export"></i> Export
       </button>
 
-      {{!-- Share All — with target selector --}}
-      <select name="pushAllTargetActor" class="ncm-gm-bar__push-select">
-        <option value="">Share all to...</option>
-        <optgroup label="Players">
-          {{#each shareTargetPlayers}}
-            <option value="{{id}}">{{name}} (Player)</option>
-          {{/each}}
-        </optgroup>
-        {{#if hasShareNPCs}}
-        <optgroup label="NPCs">
-          {{#each shareTargetNPCs}}
-            <option value="{{id}}">{{name}}</option>
-          {{/each}}
-        </optgroup>
-        {{/if}}
-      </select>
+      {{!-- Share All — the target is chosen in the searchable character picker --}}
       <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
-              data-action="pushAllToPlayer" title="Share all filtered contacts to selected player">
+              data-action="pushAllToPlayer" title="Share every contact in the current filter to a character — opens the character picker">
         <i class="fas fa-arrow-up-from-bracket"></i> Share All
       </button>
 
@@ -210,7 +195,7 @@
             <i class="fas fa-plus"></i> NEW CONTACT
           </div>
           {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-form.hbs"
-              contact=createDraft isCreating=true isGM=true availableActors=availableActors
+              contact=createDraft isCreating=true isGM=true linkedActorName=draftActorName
               playerActors=playerActors roleOptions=roleOptions customRoles=customRoles
               existingFolders=existingFolders }}
         </div>
@@ -222,7 +207,7 @@
             <i class="fas fa-pen"></i> EDIT — {{selectedContact.name}}
           </div>
           {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-form.hbs"
-              contact=selectedContact isCreating=false isGM=true availableActors=availableActors
+              contact=selectedContact isCreating=false isGM=true linkedActorName=selectedActorName
               playerActors=playerActors roleOptions=roleOptions customRoles=customRoles
               perPlayerRelationships=perPlayerRelationships existingFolders=existingFolders }}
         </div>
@@ -387,24 +372,9 @@
           {{!-- ── Share to Character ── --}}
           <div class="ncm-gm-section"><i class="fas fa-arrow-up-from-bracket"></i> Share</div>
           <div class="ncm-push-row">
-            <select name="pushTargetActor" class="ncm-push-select">
-              <option value="">Select character...</option>
-              <optgroup label="Players">
-                {{#each @root.shareTargetPlayers}}
-                  <option value="{{id}}">{{name}} (Player)</option>
-                {{/each}}
-              </optgroup>
-              {{#if @root.hasShareNPCs}}
-              <optgroup label="NPCs">
-                {{#each @root.shareTargetNPCs}}
-                  <option value="{{id}}">{{name}}</option>
-                {{/each}}
-              </optgroup>
-              {{/if}}
-            </select>
             <button class="ncm-btn ncm-btn--accent ncm-btn--sm"
-                    data-action="pushToPlayer">
-              <i class="fas fa-arrow-up-from-bracket"></i> Share
+                    data-action="pushToPlayer" title="Opens the character picker — players first, then by folder">
+              <i class="fas fa-arrow-up-from-bracket"></i> Share to character…
             </button>
             <label class="ncm-push-portrait-toggle" title="Include portrait">
               <input type="checkbox" name="pushIncludePortrait" checked>

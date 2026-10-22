@@ -9,7 +9,8 @@
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
-import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName } from '../utils/helpers.js';
+import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, chatCardTime } from '../utils/helpers.js';
+import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
 
 export class MessageService {
   constructor() {
@@ -64,10 +65,94 @@ export class MessageService {
         return { success: false, error: 'Sender actor not found' };
       }
 
-      // ── Resolve recipient identity ──
-      // Try actorId first, then contactId, then email lookup
-      let toActor = null;
-      let toContact = null;
+      // ── Recipients ──
+      // One or many. A list of 2+ fans out — one copy per recipient, one sent
+      // copy, shared messageId/threadId, every copy carrying `participants`
+      // (address-keyed, see participants.js). Before this, several chips in the
+      // composer packed an ARRAY into toActorId and the send died with
+      // "Recipient not found" — the module had never delivered to two people.
+      const list = this._normalizeRecipients(data);
+      delete data.recipients;
+      if (list.length > 1) return this._sendToMany(data, list, { fromActor, fromContact });
+      if (list.length === 1) this._applyRecipient(data, list[0]);
+
+      const rr = await this._resolveRecipient(data);
+      if (!rr.ok) return { success: false, error: rr.error, errorCode: rr.errorCode };
+      const toActor = rr.toActor;
+      const toContact = rr.toContact;
+
+      await this._stampOutgoing(data, { fromActor, fromContact, toActor, toContact });
+
+      if (game.user.isGM) {
+        return this._deliverMessage(data);
+      }
+
+      return this._relayMessage(data);
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessageService.sendMessage:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ─── Recipients: one or many ───────────────────────────────
+
+  /**
+   * Every recipient the caller named, as plain {actorId, contactId, email, name}
+   * entries. `data.recipients` (an array) wins; else the legacy single fields
+   * (toActorId may itself be an array — the composer's old multi-chip shape).
+   * @param {Object} data
+   * @returns {Array<{actorId: string|null, contactId: string|null, email: string, name: string}>}
+   */
+  _normalizeRecipients(data) {
+    // A group id (composer chip, macro API) expands to its resolved members
+    // first; an explicit recipients list beside it is merged in.
+    if (data.groupId) {
+      const svc = game.nightcity?.contactGroupService;
+      const g = svc?.findGroup?.(data.groupId, { actorId: data.fromActorId, isGM: !!game.user?.isGM });
+      const fromGroup = g ? svc.recipientsFor(g).recipients : [];
+      data.recipients = [...(Array.isArray(data.recipients) ? data.recipients : []), ...fromGroup];
+      delete data.groupId;
+    }
+    const out = [];
+    const push = (r) => {
+      if (!r) return;
+      const actorId = r.actorId || null, contactId = r.contactId || null, email = normalizeEmail(r.email || '');
+      if (!actorId && !contactId && !email) return;
+      if (out.some(o => (actorId && o.actorId === actorId) || (contactId && o.contactId === contactId) || (email && o.email === email))) return;
+      out.push({ actorId, contactId, email, name: String(r.name || '').trim() });
+    };
+    if (Array.isArray(data.recipients) && data.recipients.length) {
+      for (const r of data.recipients) push(r);
+      return out;
+    }
+    if (data.anonReply) return out; // the GM resolves the hidden target at delivery
+    if (Array.isArray(data.toActorId)) {
+      for (const id of data.toActorId) push({ actorId: id });
+      if (data.toContactId) push({ contactId: data.toContactId, email: data.to });
+      return out;
+    }
+    if (data.toActorId || data.toContactId || data.to) push({ actorId: data.toActorId, contactId: data.toContactId, email: data.to, name: data.toName });
+    return out;
+  }
+
+  /** Write one recipient entry onto the legacy single fields. */
+  _applyRecipient(data, r) {
+    data.toActorId = r.actorId || null;
+    data.toContactId = r.contactId || undefined;
+    data.to = r.email || data.to || undefined;
+    if (r.name && !data.toName) data.toName = r.name;
+  }
+
+  /**
+   * Resolve ONE recipient onto `data` (toActorId / toContactId / to /
+   * _recipientInboxId) and run the player gates (send-only, verification).
+   * Mutates `data`; returns the resolved documents or the gate's refusal.
+   * @param {Object} data
+   * @returns {Promise<{ok: boolean, toActor?: Actor|null, toContact?: Object|null, error?: string, errorCode?: string}>}
+   */
+  async _resolveRecipient(data) {
+    let toActor = null;
+    let toContact = null;
 
       // Anonymous reply: the replier doesn't know (and must never learn) the real
       // recipient — the original sender was masked. Skip recipient resolution AND
@@ -128,7 +213,7 @@ export class MessageService {
           }
 
           if (!toActor && !toContact && !actorLinkOnly) {
-            return { success: false, error: 'Recipient not found — no matching actor or contact.' };
+            return { ok: false, error: 'Recipient not found — no matching actor or contact.', errorCode: 'NOT_FOUND' };
           }
         }
 
@@ -146,7 +231,7 @@ export class MessageService {
             || (data.toActorId ? masterService?.getByActorId?.(data.toActorId) : null);
           if (mc?.sendOnly) {
             return {
-              success: false,
+              ok: false,
               error: 'TRANSMISSION REFUSED — this address does not accept incoming messages.',
               errorCode: 'SEND_ONLY',
             };
@@ -179,7 +264,7 @@ export class MessageService {
 
           if (!verified) {
             return {
-              success: false,
+              ok: false,
               error: 'CONTACT NOT FOUND — Recipient not registered in the network directory.',
               errorCode: 'NO_CONTACT',
             };
@@ -187,6 +272,34 @@ export class MessageService {
         }
       }
 
+    return { ok: true, toActor, toContact };
+  }
+
+  /**
+   * The address a resolved recipient will be stored under — the registered
+   * flag, the directory entry's address, or the synthesized name@nightcity.net.
+   */
+  _recipientEmailFor(data, toActor, toContact) {
+    if (data.to) return data.to;
+    // Registered actor address → the directory entry's address → synthesized.
+    // The directory beats a synthesized name@nightcity.net: a contact whose
+    // linked actor never ran Email Setup used to get the made-up address even
+    // though the GM had typed a real one into the directory.
+    const flagged = toActor ? this._contactRepo.getActorEmail(data.toActorId) : '';
+    if (flagged) return flagged;
+    if (toContact?.email) return toContact.email;
+    const name = toActor?.name || toContact?.name || '';
+    return name ? `${name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net` : '';
+  }
+
+  /**
+   * Everything sendMessage stamps on an outgoing message once the recipient is
+   * known: from/to addresses, NPC auto-registration, display names, ids,
+   * thread, the GM overrides, network + signal + timestamp.
+   * @param {Object} data
+   * @param {{fromActor: Actor|null, fromContact: Object|null, toActor: Actor|null, toContact: Object|null}} ctx
+   */
+  async _stampOutgoing(data, { fromActor, fromContact, toActor, toContact }) {
       // ── Resolve email addresses ──
       if (!data.from) {
         if (fromActor) {
@@ -200,14 +313,7 @@ export class MessageService {
             : 'unknown@nightcity.net';
         }
       }
-      if (!data.to) {
-        if (toActor) {
-          data.to = this._contactRepo.getActorEmail(data.toActorId)
-            || `${toActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
-        } else if (toContact) {
-          data.to = toContact.email || `${toContact.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
-        }
-      }
+      if (!data.to) data.to = this._recipientEmailFor(data, toActor, toContact) || undefined;
 
       // ── Auto-register an unregistered NPC sender in the master directory ──
       // Runs BEFORE the display-name resolution so the new entry names the mail.
@@ -270,16 +376,128 @@ export class MessageService {
       data.timestamp = backdate || this._getTimestamp();
       delete data.networkOverride;
       delete data.backdated;
+  }
 
-      if (game.user.isGM) {
-        return this._deliverMessage(data);
+  /**
+   * Fan out to 2+ recipients. Each recipient is resolved + gated on its own;
+   * the ones that pass get a copy, the ones that fail are REPORTED (never a
+   * silent drop, never an all-or-nothing refusal unless everyone fails). One
+   * messageId, one threadId, one sent copy listing everyone, and a
+   * `participants` list on every copy so threading and Reply All know the
+   * whole party.
+   * @param {Object} data  the message after sender resolution
+   * @param {Array} list   from _normalizeRecipients
+   * @param {{fromActor: Actor|null, fromContact: Object|null}} senderCtx
+   */
+  async _sendToMany(data, list, { fromActor, fromContact }) {
+    const results = [];
+    const okList = [];
+    for (const r of list) {
+      const per = { ...data, toActorId: r.actorId || null, toContactId: r.contactId || undefined, to: r.email || undefined, toName: undefined };
+      delete per.recipients;
+      const rr = await this._resolveRecipient(per);
+      const label = r.name || r.email || r.actorId || r.contactId || '?';
+      if (!rr.ok) {
+        results.push({ name: label, email: r.email || '', actorId: r.actorId || null, contactId: r.contactId || null, success: false, error: rr.error, errorCode: rr.errorCode });
+        continue;
       }
-
-      return this._relayMessage(data);
-    } catch (error) {
-      console.error(`${MODULE_ID} | MessageService.sendMessage:`, error);
-      return { success: false, error: error.message };
+      per.to = this._recipientEmailFor(per, rr.toActor, rr.toContact);
+      per.toName = rr.toContact?.name
+        || resolveDisplayName({ contactId: per.toContactId, actorId: per.toActorId, email: per.to }, '')
+        || r.name || per.to;
+      okList.push({ per, rr, member: makeMember({ email: per.to, name: per.toName, hint: { actorId: per.toActorId || '', contactId: per.toContactId || '' }, role: 'to' }) });
     }
+
+    if (!okList.length) {
+      const why = results.map(x => `${x.name}: ${x.error}`).join(' · ');
+      return { success: false, error: `No recipient could be reached — ${why}`, errorCode: 'ALL_RECIPIENTS_FAILED', results, delivered: 0, failed: results };
+    }
+
+    // Stamp the BASE once (ids, thread, network, timestamp…). Its "to" is the
+    // whole party, which is what the sender's sent copy shows.
+    data.toActorId = null;
+    data.toContactId = undefined;
+    delete data._recipientInboxId;
+    data.to = okList.map(x => x.per.to).join(', ');
+    data.toName = okList.map(x => x.per.toName).join(', ');
+    await this._stampOutgoing(data, { fromActor, fromContact, toActor: null, toContact: null });
+    const sender = makeMember({
+      email: data.from, name: data.fromName || fromActor?.name || fromContact?.name || '',
+      hint: { actorId: data.fromActorId || '', contactId: data.fromContactId || '' }, role: 'from',
+    });
+    data.participants = dedupeMembers([sender, ...okList.map(x => x.member)]);
+
+    const copies = okList.map(({ per }) => ({
+      ...data,
+      toActorId: per.toActorId || null,
+      toContactId: per.toContactId || undefined,
+      to: per.to,
+      toName: per.toName,
+      _recipientInboxId: per._recipientInboxId,
+    }));
+
+    if (game.user.isGM) {
+      const res = await this._deliverMany(data, copies);
+      res.results = [...results, ...(res.results || [])];
+      res.failed = res.results.filter(x => !x.success);
+      return res;
+    }
+    // Player: ONE relay carrying the copies; the GM fans out and acks once.
+    const relayed = await this._relayMessage({ ...data, _fanout: copies });
+    relayed.results = [...results, ...(relayed.results || [])];
+    relayed.failed = relayed.results.filter(x => !x.success);
+    relayed.delivered = relayed.delivered ?? (relayed.success ? copies.length : 0);
+    return relayed;
+  }
+
+  /**
+   * GM-side fan-out: one inbox copy per recipient (each through the normal
+   * _deliverMessage, so spam filter / anon mask / terminal mirror / NPC toast
+   * all apply per copy), then ONE sent copy for the author.
+   * @param {Object} base   the stamped base message (to/toName = the whole party)
+   * @param {Array<Object>} copies
+   * @returns {Promise<{success: boolean, messageId: string, delivered: number, failed: Array, results: Array, error?: string}>}
+   */
+  async _deliverMany(base, copies) {
+    const results = [];
+    for (const copy of copies) {
+      delete copy._fanout;
+      const r = await this._deliverMessage(copy, { sentCopy: false });
+      results.push({ name: copy.toName || copy.to, email: copy.to || '', actorId: copy.toActorId || null, contactId: copy.toContactId || null, success: !!r.success, error: r.error, errorCode: r.errorCode });
+    }
+    const delivered = results.filter(x => x.success).length;
+    if (delivered > 0) {
+      const sentBase = { ...base };
+      delete sentBase._fanout;
+      try { await this._createSentCopy(sentBase); } catch (err) { console.warn(`${MODULE_ID} | fan-out sent copy failed:`, err); }
+    }
+    const failed = results.filter(x => !x.success);
+    return {
+      success: delivered > 0,
+      messageId: base.messageId,
+      delivered,
+      failed,
+      results,
+      error: delivered > 0 ? undefined : `No recipient could be reached — ${failed.map(x => `${x.name}: ${x.error}`).join(' · ')}`,
+      errorCode: delivered > 0 ? undefined : 'ALL_RECIPIENTS_FAILED',
+    };
+  }
+
+  /** The author's own copy of an outgoing message (`<id>-sent`, status.sent). */
+  async _createSentCopy(data) {
+    const senderInboxId = data.fromActorId || data.fromContactId;
+    if (!senderInboxId) return null;
+    let sentCopy = {
+      ...data,
+      messageId: `${data.messageId}-sent`,
+      status: { sent: true, read: true, eddiesClaimed: true },
+    };
+    delete sentCopy._recipientInboxId; // Don't persist internal field
+    delete sentCopy._fanout;
+    // Anonymous reply — mask the recipient on the replier's own sent copy so
+    // their outbox can't reveal the anonymous party they answered.
+    if (data.anonReply) sentCopy = this._maskAnonReplyForSender(sentCopy);
+    return this._messageRepo.createMessage(senderInboxId, sentCopy);
   }
 
   /**
@@ -289,7 +507,7 @@ export class MessageService {
    * @param {Object} data
    * @returns {Promise<{success: boolean, messageId?: string}>}
    */
-  async _deliverMessage(data) {
+  async _deliverMessage(data, { sentCopy = true } = {}) {
     try {
       // Anonymous reply — the player couldn't know the real recipient. Resolve it
       // GM-side from the original message's GM-owned sent copy (which retains the
@@ -332,21 +550,9 @@ export class MessageService {
       const result = await this._messageRepo.createMessage(recipientInboxId, recipientData);
       if (!result.success) return result;
 
-      // Create sent copy in sender's outbox
-      // Resolve sender inbox: actor or contact
-      const senderInboxId = data.fromActorId || data.fromContactId;
-      if (senderInboxId) {
-        let sentCopy = {
-          ...data,
-          messageId: `${data.messageId}-sent`,
-          status: { sent: true, read: true, eddiesClaimed: true },
-        };
-        delete sentCopy._recipientInboxId; // Don't persist internal field
-        // Anonymous reply — mask the recipient on the replier's own sent copy so
-        // their outbox can't reveal the anonymous party they answered.
-        if (data.anonReply) sentCopy = this._maskAnonReplyForSender(sentCopy);
-        await this._messageRepo.createMessage(senderInboxId, sentCopy);
-      }
+      // Create sent copy in sender's outbox (a fan-out writes ONE for the
+      // whole party from _deliverMany instead).
+      if (sentCopy) await this._createSentCopy(data);
 
       // Terminal mirror — an account linked to this recipient (by contact,
       // actor, or email) is that character's inbox on the machine, so the
@@ -425,6 +631,9 @@ export class MessageService {
       fromActorId: '',
       fromContactId: '',
       anonymous: { ...a, maskedEmail },
+      // Truly hidden: the participants list on the recipient's copy names only
+      // the recipients — the sender's address/ids would unmask them.
+      participants: Array.isArray(data.participants) ? data.participants.filter(p => p?.role !== 'from') : [],
     };
   }
 
@@ -610,22 +819,104 @@ export class MessageService {
       if (!gmUser) {
         // Queue for later delivery
         this._queueMessage(data);
-        ui.notifications.warn('GM is offline. Message queued for delivery.');
-        return { success: true, messageId: data.messageId, queued: true };
+        return { success: true, messageId: data.messageId, queued: true, reason: 'gm_offline' };
       }
 
-      // Emit relay request via socket
+      // Dead zone — the composer's Send button already reads "Queue" here, but
+      // nothing enforced it: the message relayed at once and arrived heavily
+      // garbled (signal 0). Honour the label: hold it in the queue, which the
+      // NETWORK_CONNECTED listener flushes when the scene gets signal back.
+      if (game.nightcity?.networkService?.isDeadZone) {
+        this._queueMessage(data);
+        return { success: true, messageId: data.messageId, queued: true, reason: 'dead_zone' };
+      }
+
+      // Relay to the GM and WAIT for the delivery confirmation. The old path
+      // returned success the instant the socket emit went out, so a GM-side
+      // failure (orphaned inbox, unresolvable anonymous reply…) arrived as a
+      // stray toast AFTER the composer had already shown "Delivered" and
+      // closed — the tester's "my player failed to send and we don't know why".
+      const ack = this._awaitDeliveryAck(data.messageId);
       this.socketManager.emit(SOCKET_OPS.MESSAGE_RELAY, data);
+      const result = await ack;
 
-      // Optimistic: play send sound
+      if (result.timeout) {
+        return {
+          success: false,
+          errorCode: 'RELAY_TIMEOUT',
+          error: "No confirmation from the GM's client. The message may not have been delivered — ask the GM to check their console, then Retry.",
+        };
+      }
+      const failed = Array.isArray(result.failed)
+        ? result.failed.map(x => ({ ...x, error: MessageService.playerFacingError(x.error) }))
+        : undefined;
+      if (!result.success) {
+        return {
+          success: false,
+          errorCode: result.errorCode || 'DELIVERY_FAILED',
+          error: MessageService.playerFacingError(result.error),
+          rawError: result.error,
+          results: result.results,
+          failed,
+          delivered: result.delivered ?? 0,
+        };
+      }
+
       this.soundService?.play('send');
-
-      return { success: true, messageId: data.messageId };
+      return { success: true, messageId: data.messageId, results: result.results, failed, delivered: result.delivered };
     } catch (error) {
       console.error(`${MODULE_ID} | MessageService._relayMessage:`, error);
-      this._queueMessage(data);
       return { success: false, error: error.message };
     }
+  }
+
+  /** How long a relayed send waits for the GM's delivery confirmation. */
+  static RELAY_ACK_TIMEOUT_MS = 8000;
+
+  /**
+   * Register a pending relay and return a promise that resolves with the GM's
+   * MESSAGE_DELIVERED payload for that messageId, or `{ timeout: true }`.
+   * @param {string} messageId
+   * @param {number} [timeoutMs]
+   * @returns {Promise<{success?: boolean, error?: string, errorCode?: string, timeout?: boolean}>}
+   * @private
+   */
+  _awaitDeliveryAck(messageId, timeoutMs = MessageService.RELAY_ACK_TIMEOUT_MS) {
+    this._pendingRelays ??= new Map();
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this._pendingRelays.delete(messageId);
+        resolve({ timeout: true });
+      }, timeoutMs);
+      this._pendingRelays.set(messageId, (payload) => {
+        clearTimeout(timer);
+        this._pendingRelays.delete(messageId);
+        resolve(payload);
+      });
+    });
+  }
+
+  /**
+   * Translate a GM-side delivery error into a sentence the PLAYER can act on.
+   * The raw repository text ("Could not access inbox journal") is kept on the
+   * result as `rawError` and in the console for the GM.
+   * @param {string} raw
+   * @returns {string}
+   */
+  static playerFacingError(raw) {
+    const r = String(raw || '').trim();
+    const map = [
+      [/could not access inbox journal/i,
+        "The recipient's inbox could not be opened on the GM's side. Ask your GM to check Admin → Tools → Orphan Audit."],
+      [/no recipient inbox target/i,
+        'No inbox exists for that address. Check the recipient and try again.'],
+      [/anonymous reply target/i,
+        "The anonymous sender could not be traced back for delivery. Tell your GM — the original message's sent copy may be missing."],
+      [/lacks permission|does not have permission/i,
+        "The GM's client could not write the message (a permission error). Ask the GM to check their console."],
+    ];
+    for (const [re, text] of map) if (re.test(r)) return text;
+    return r ? `Delivery failed on the GM's side: ${r}` : "Delivery failed on the GM's side for an unknown reason.";
   }
 
   /**
@@ -886,7 +1177,7 @@ export class MessageService {
    * @param {string} replyBody
    * @returns {Object} Message data ready for sendMessage()
    */
-  buildReply(originalMessage, fromActorId, replyBody) {
+  buildReply(originalMessage, fromActorId, replyBody, { all = false } = {}) {
     const reply = {
       fromActorId,
       subject: originalMessage.subject?.startsWith('RE: ')
@@ -924,7 +1215,43 @@ export class MessageService {
       reply.to = originalMessage.from;
     }
 
+    // Reply All — everyone on the message except the replier. Participants are
+    // address-keyed members (participants.js); self is excluded by actor id,
+    // address AND directory id so the replier never mails themselves.
+    if (all) {
+      const others = this.replyAllRecipients(originalMessage, fromActorId);
+      if (others.length) reply.recipients = others;
+    }
+
     return reply;
+  }
+
+  /**
+   * Who a Reply All from `fromActorId` goes to: the original sender plus every
+   * other participant, minus the replier. Empty when the message has no
+   * participants list (pre-fan-out mail) or is anonymous (the mask would leak).
+   * @param {Object} originalMessage
+   * @param {string} fromActorId
+   * @returns {Array<{actorId: string|null, contactId: string|null, email: string, name: string}>}
+   */
+  replyAllRecipients(originalMessage, fromActorId) {
+    const anon = originalMessage?.anonymous;
+    if (anon?.enabled && !anon.traced) return [];
+    const parts = Array.isArray(originalMessage?.participants) ? originalMessage.participants : [];
+    if (!parts.length) return [];
+    const actor = fromActorId ? game.actors?.get(fromActorId) : null;
+    const me = selfKeys({
+      actorId: fromActorId,
+      email: fromActorId ? this._contactRepo?.getActorEmail?.(fromActorId) : '',
+      contactId: game.nightcity?.masterContactService?.getByActorId?.(fromActorId)?.id || '',
+    });
+    if (actor?.name) me.add(String(actor.name).toLowerCase());
+    return othersFor(parts, me).map(p => ({
+      actorId: p.hint?.actorId || null,
+      contactId: p.hint?.contactId || null,
+      email: p.email || '',
+      name: p.name || '',
+    }));
   }
 
   /**
@@ -1188,17 +1515,17 @@ export class MessageService {
     const actor = game.actors?.get(actorId);
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned.');
-      return { success: false };
+      return { success: false, error: 'No character assigned' };
     }
 
     // Find the message in inbox
     const inbox = await this._messageRepo.getInboxJournal(actorId);
-    if (!inbox) return { success: false };
+    if (!inbox) return { success: false, error: 'Inbox not found' };
 
     const page = inbox.pages.find(p =>
       p.flags?.[MODULE_ID]?.messageId === messageId
     );
-    if (!page) return { success: false };
+    if (!page) return { success: false, error: 'Message not found' };
 
     const flags = page.flags?.[MODULE_ID];
     if (!flags?.status?.encrypted) {
@@ -1215,7 +1542,7 @@ export class MessageService {
     const skillSvc = game.nightcity?.skillService;
     if (!skillSvc) {
       ui.notifications.warn('NCM | Skill system not available.');
-      return { success: false };
+      return { success: false, error: 'Skill system not available' };
     }
 
     const result = await skillSvc.performCheck(actor, skillName, {
@@ -1320,17 +1647,43 @@ export class MessageService {
    * Handle incoming message relay from a player (GM side).
    * @param {Object} data - Message data from player's sendMessage
    */
-  async handleMessageRelay(data) {
+  async handleMessageRelay(data, senderUserId = null) {
     if (!game.user.isGM) return;
 
     console.log(`${MODULE_ID} | GM handling message relay: ${data.messageId}`);
-    const result = await this._deliverMessage(data);
+    let result;
+    if (Array.isArray(data._fanout) && data._fanout.length) {
+      const base = { ...data };
+      delete base._fanout;
+      result = await this._deliverMany(base, data._fanout);
+    } else {
+      result = await this._deliverMessage(data);
+    }
 
-    // Send delivery confirmation back to sender
+    // The GM is the one who can FIX a failed delivery (orphaned inbox, bad
+    // directory entry), so they hear about it too — previously only the sender
+    // got a (missable) toast and the GM saw nothing.
+    if (!result.success || result.failed?.length) {
+      const who = data.fromName || data.from || game.users.get(senderUserId)?.name || 'A player';
+      const to = data.toName || data.to || data.toActorId || data.toContactId || 'unknown recipient';
+      const why = result.failed?.length
+        ? result.failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ')
+        : (result.error || 'unknown error');
+      console.warn(`${MODULE_ID} | Relayed message ${data.messageId} from ${who} to ${to} failed: ${why}`);
+      ui.notifications.warn(`NCM | Could not deliver ${who} → ${to}: ${why}`, { permanent: true });
+    }
+
+    // Send delivery confirmation back to the sender. `forUserId` lets every
+    // other client ignore it — the socket is a broadcast.
     this.socketManager.emit(SOCKET_OPS.MESSAGE_DELIVERED, {
       messageId: data.messageId,
       success: result.success,
       error: result.error,
+      errorCode: result.errorCode,
+      delivered: result.delivered,
+      failed: result.failed,
+      results: result.results,
+      forUserId: senderUserId,
     });
   }
 
@@ -1421,36 +1774,121 @@ export class MessageService {
    * @param {Object} data
    */
   handleDeliveryConfirmation(data) {
+    // Not ours — the socket broadcasts to every client, and this used to toast
+    // "Message delivery failed" at players who never sent anything.
+    if (data.forUserId && data.forUserId !== game.user.id) return;
+
+    const pending = this._pendingRelays?.get(data.messageId);
+    if (pending) {
+      // The sending composer is waiting on this — it shows the outcome itself.
+      pending(data);
+      return;
+    }
+
+    // No one waiting (ack after the timeout, or a legacy client): fall back to
+    // the toast so the result isn't lost.
     if (data.success) {
       console.log(`${MODULE_ID} | Message ${data.messageId} delivered successfully`);
     } else {
       console.warn(`${MODULE_ID} | Message ${data.messageId} delivery failed: ${data.error}`);
-      ui.notifications.warn(`Message delivery failed: ${data.error}`);
+      ui.notifications.warn(`Message delivery failed: ${MessageService.playerFacingError(data.error)}`);
     }
   }
 
   // ─── Share to Chat ────────────────────────────────────────
 
   /**
-   * Share a message to the Foundry chat as a styled card.
-   * @param {Object} message
-   * @param {string} [actorId] - The actor sharing the message
+   * The body as chat HTML. Composer bodies are already HTML (sanitised at compose),
+   * so they pass through; a plain-text body (macro API, legacy mail) keeps its line
+   * breaks and gets its angle brackets escaped — never rendered raw, never shown as
+   * literal tags.
+   * @param {string} body
+   * @returns {string}
    */
-  async shareToChat(message, actorId) {
+  static chatBodyHtml(body) {
+    const s = String(body ?? '');
+    if (/<\/?[a-z][^>]*>/i.test(s)) return s;
+    return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/\r?\n/g, '<br>');
+  }
+
+  /**
+   * Split a long body for the card's fold: the first paragraph stays open, the
+   * rest sits in a <details> that opens EXPANDED (the whole message is what was
+   * asked for) and folds on click. Short bodies are not split at all.
+   * @param {string} html  the card-ready body (chatBodyHtml)
+   * @returns {{ head: string, tail: string, isLong: boolean, moreLines: number }}
+   */
+  static splitChatBody(html) {
+    const s = String(html ?? '');
+    const text = (x) => x.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const blocks = (x) => (x.match(/<(p|li|br|h\d|blockquote)\b/gi) || []).length;
+    const long = text(s).length > 700 || blocks(s) > 8;
+    if (!long) return { head: s, tail: '', isLong: false, moreLines: 0 };
+    // cut after the first paragraph (or first line break), never mid-tag
+    let cut = -1;
+    const p = s.indexOf('</p>');
+    if (p >= 0) cut = p + 4;
+    else { const br = s.indexOf('<br'); if (br >= 0) cut = s.indexOf('>', br) + 1; }
+    if (cut <= 0 || cut >= s.length - 1) return { head: s, tail: '', isLong: false, moreLines: 0 };
+    const head = s.slice(0, cut), tail = s.slice(cut);
+    const moreLines = Math.max(1, Math.ceil(text(tail).length / 48) + blocks(tail));
+    return { head, tail, isLong: true, moreLines };
+  }
+
+  /**
+   * Share a message to chat as the ONE shared-message card. The player's inbox
+   * (Share) and Admin → Messages (Share to Chat) both land here — the admin path
+   * used to post its own "GM Intercept — Not visible to players" card to a PUBLIC
+   * chat message, cut the body at 200 characters, and escaped the body's HTML into
+   * visible tags (tester, 2026-10-20). The WHOLE body ships; From/To resolve to
+   * names the directory-first way with the address beneath; a masked anonymous
+   * sender shows its alias, never the real name.
+   * @param {Object} message
+   * @param {string} [actorId]            the character sharing it (speaker + "via")
+   * @param {object} [o]
+   * @param {string} [o.sharedBy]         "via" label override (the admin path passes 'GM')
+   */
+  async shareToChat(message, actorId, { sharedBy } = {}) {
     try {
+      const anon = message.anonymous;
+      const masked = !!(anon?.enabled && !anon.traced && anon.role !== 'recipient');
+      const fromName = masked
+        ? (anon.alias || ANON_DEFAULT_ALIAS)
+        : resolveDisplayName({ contactId: message.fromContactId, actorId: message.fromActorId, email: message.from, storedName: message.fromName }, message.from || 'Unknown');
+      const toName = resolveDisplayName({ contactId: message.toContactId, actorId: message.toActorId, email: message.to, storedName: message.toName }, message.to || 'Unknown');
+      const bodyHtml = MessageService.chatBodyHtml(message.body);
+      const fold = MessageService.splitChatBody(bodyHtml);
+      // People rows carry the ids the per-client add-contact hook needs — NEVER
+      // for a masked anonymous sender (the card would leak the real identity).
+      // The directory id is backfilled from the actor / address so a player whose
+      // contact entry is keyed on the master id still reads as "in contacts".
+      const master = game.nightcity?.masterContactService;
+      const dirId = (contactId, actorId, email) => contactId
+        || (actorId && master?.getByActorId?.(actorId)?.id)
+        || (email && master?.getByEmail?.(email)?.id)
+        || '';
+      const from = masked
+        ? { name: fromName, addr: '', portrait: '' }
+        : { name: fromName, addr: (message.from && message.from !== fromName) ? message.from : '', email: message.from || '', actorId: message.fromActorId || '',
+            contactId: dirId(message.fromContactId, message.fromActorId, message.from),
+            portrait: resolveDisplayPortrait({ contactId: message.fromContactId, actorId: message.fromActorId, email: message.from }) || '' };
+      const to = { name: toName, addr: (message.to && message.to !== toName) ? message.to : '', email: message.to || '', actorId: message.toActorId || '',
+        contactId: dirId(message.toContactId, message.toActorId, message.to),
+        portrait: resolveDisplayPortrait({ contactId: message.toContactId, actorId: message.toActorId, email: message.to }) || '' };
+      const via = sharedBy || (actorId ? game.actors.get(actorId)?.name : game.user.name);
       const content = await renderTemplate(
         `modules/${MODULE_ID}/templates/chat/message-card.hbs`,
         {
-          message: {
-            ...message,
-            messageIdShort: (message.messageId || '').slice(0, 8),
-          },
-          sharedBy: actorId ? game.actors.get(actorId)?.name : game.user.name,
-          showPriority: message.priority && message.priority !== 'normal',
+          message: { ...message, messageIdShort: (message.messageId || '').slice(0, 8), bodyHtml, fromName, toName },
+          from, to,
+          bodyHead: fold.head, bodyTail: fold.tail, isLong: fold.isLong, moreLines: fold.moreLines,
+          when: chatCardTime(message.timestamp),
+          sharedBy: via,
+          viaGM: !actorId,
+          showPriority: !!(message.priority && message.priority !== 'normal'),
           MODULE_ID,
         }
       );
-
       const speaker = actorId
         ? ChatMessage.getSpeaker({ actor: game.actors.get(actorId) })
         : ChatMessage.getSpeaker();

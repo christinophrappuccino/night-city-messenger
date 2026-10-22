@@ -276,6 +276,41 @@ export class EmailService {
    * @param {string} domain
    * @returns {Promise<string>} The full email address
    */
+  /**
+   * Every OTHER actor already carrying this address. Addresses are the portable
+   * key for contact-group members and the directory, so a shared one makes the
+   * resolver guess — this is the hole the address-keyed design depends on closing.
+   * @param {string} email
+   * @param {{excludeId?: string}} [o]
+   * @returns {Array<Actor>}
+   */
+  findActorsByEmail(email, { excludeId = null } = {}) {
+    const n = String(email || '').trim().toLowerCase();
+    if (!n) return [];
+    const out = [];
+    for (const a of game.actors ?? []) {
+      if (excludeId && a.id === excludeId) continue;
+      if (String(a.getFlag?.(MODULE_ID, 'email') || '').trim().toLowerCase() === n) out.push(a);
+    }
+    return out;
+  }
+
+  /**
+   * Warn (never block) when an address is being given to a second character.
+   * @param {string} email
+   * @param {Actor} actor  the one receiving it
+   * @returns {Array<Actor>} the other holders, for callers that want to show them
+   */
+  warnIfAddressTaken(email, actor) {
+    const others = this.findActorsByEmail(email, { excludeId: actor?.id });
+    if (others.length) {
+      const names = others.map(a => a.name).join(', ');
+      log.warn(`address ${email} is already held by ${names}; now also on ${actor?.name}`);
+      ui.notifications?.warn?.(`NCM | ${email} is already used by ${names}. Two characters sharing an address makes group members and the directory ambiguous — consider a different handle.`, { permanent: true });
+    }
+    return others;
+  }
+
   async registerEmail(actor, handle, domain) {
     if (!actor) throw new Error('Actor required');
 
@@ -286,6 +321,7 @@ export class EmailService {
     if (!dResult.valid) throw new Error(dResult.error);
 
     const email = `${handle}@${domain}`;
+    this.warnIfAddressTaken(email, actor);
 
     await actor.setFlag(MODULE_ID, 'email', email);
     await actor.setFlag(MODULE_ID, 'emailHandle', handle);
@@ -404,6 +440,7 @@ export class EmailService {
 
     const [handle, domain] = email.split('@');
     if (!handle || !domain) throw new Error('Invalid email format');
+    this.warnIfAddressTaken(email, actor);
 
     await actor.setFlag(MODULE_ID, 'email', email);
     await actor.setFlag(MODULE_ID, 'emailHandle', handle);

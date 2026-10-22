@@ -45,7 +45,6 @@ jobs:
             module.json \
             LICENSE \
             README.md \
-            docs/GETTING-STARTED.md \
             scripts \
             styles \
             templates \

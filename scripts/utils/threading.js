@@ -21,6 +21,8 @@
  * Foundry globals — so this stays trivially testable and reusable.
  */
 
+import { memberKeys } from './participants.js';
+
 /** Strip a trailing "-sent" so a sent copy and its received twin share one identity. */
 export function baseId(id) {
   return typeof id === 'string' ? id.replace(/-sent$/, '') : id;
@@ -49,16 +51,31 @@ export function normalizeSubject(subject) {
  * keys on *who else* is involved, not on the actor (who is in every message).
  * @returns {Set<string>} lowercased emails / actor ids / contact ids
  */
-export function counterparties(msg, viewingActorId) {
+export function counterparties(msg, viewingActorId, viewingKeys = null) {
   const set = new Set();
   const add = (v) => { if (v) set.add(String(v).toLowerCase()); };
+  const mine = new Set(viewingKeys instanceof Set ? viewingKeys : (viewingKeys || []));
+  if (viewingActorId) mine.add(String(viewingActorId).toLowerCase());
+
+  // Multi-recipient mail carries the whole party (address-keyed members). Every
+  // member except the viewer is a counterparty — so two group threads with the
+  // same subject merge only when they really share someone OTHER than me.
+  if (Array.isArray(msg.participants) && msg.participants.length) {
+    for (const p of msg.participants) {
+      for (const k of memberKeys(p)) if (!mine.has(k)) set.add(k);
+    }
+    // Legacy single fields still contribute (a group copy's own to/from).
+  }
   const sentByActor = !!msg.status?.sent
     || (viewingActorId && String(msg.fromActorId) === String(viewingActorId));
   if (sentByActor) {
-    add(msg.to); add(msg.toActorId); add(msg.toContactId);
+    for (const v of String(msg.to || '').split(',')) add(v.trim());
+    if (!Array.isArray(msg.toActorId)) add(msg.toActorId);
+    add(msg.toContactId);
   } else {
     add(msg.from); add(msg.fromActorId); add(msg.fromContactId);
   }
+  for (const k of mine) set.delete(k);
   return set;
 }
 
@@ -67,11 +84,12 @@ export function counterparties(msg, viewingActorId) {
  * @param {Array<Object>} messages
  * @param {Object} [opts]
  * @param {string|null} [opts.viewingActorId]
+ * @param {Set<string>} [opts.viewingKeys] the viewer's address/directory id too (see participants.selfKeys)
  * @param {boolean} [opts.subjectThreading=true] enable the fuzzy subject+party fallback
  * @returns {{ groupOf: Map<string, number> }} maps each messageId → its group root index
  */
 export function resolveThreads(messages, opts = {}) {
-  const { viewingActorId = null, subjectThreading = true } = opts;
+  const { viewingActorId = null, subjectThreading = true, viewingKeys = null } = opts;
   const n = messages.length;
 
   // ── Union-find ──
@@ -129,7 +147,7 @@ export function resolveThreads(messages, opts = {}) {
     }
     for (const group of bySubject.values()) {
       if (group.length < 2) continue;
-      const parties = group.map(i => counterparties(messages[i], viewingActorId));
+      const parties = group.map(i => counterparties(messages[i], viewingActorId, viewingKeys));
       for (let a = 0; a < group.length; a++) {
         for (let b = a + 1; b < group.length; b++) {
           if (find(group[a]) === find(group[b])) continue;

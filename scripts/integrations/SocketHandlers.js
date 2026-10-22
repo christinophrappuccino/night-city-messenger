@@ -30,11 +30,13 @@ export class SocketHandlers {
     }
 
     // ─── Message Relay (Player → GM) ──────────────────────
-    socketManager.register(SOCKET_OPS.MESSAGE_RELAY, async (data) => {
+    socketManager.register(SOCKET_OPS.MESSAGE_RELAY, async (data, sender) => {
       // Only GM processes relay requests
       if (!game.user.isGM) return;
       log.debug('Socket: message:relay received for', data.messageId);
-      await messageService.handleMessageRelay(data);
+      // `sender` = the relaying user's id (SocketManager passes it) — the
+      // delivery confirmation is addressed back to exactly that client.
+      await messageService.handleMessageRelay(data, sender);
     });
 
     // ─── Anonymous Trace (Player → GM) ────────────────────
@@ -148,6 +150,16 @@ export class SocketHandlers {
         const service = game.nightcity?.dataShardService;
         if (!service) throw new Error('DataShardService not available');
 
+        // A RE-ENCODE writes onto a shard that already exists: no conversion,
+        // just the new quality on its player-made files plus any new ones.
+        if (data.reencode) {
+          const r = await service.reencodeShard(item, { ...(data.reencode || {}), entries: entryData || [] });
+          success = !!r?.success;
+          if (!success) log.warn('Shard re-encode failed:', r?.error);
+          socketManager.emit(SOCKET_OPS.SHARD_CONVERT_RESULT, { requestId, success });
+          return;
+        }
+
         const result = await service.convertToDataShard(item, config || {});
         success = result.success;
         if (!result.success) {
@@ -167,6 +179,20 @@ export class SocketHandlers {
 
       // Send result back
       socketManager.emit(SOCKET_OPS.SHARD_CONVERT_RESULT, { requestId, success });
+    });
+
+    // ─── Player Shard STATE Relay ─────────────────────────
+    // A player who does not OWN a shard item (one that arrived as a message
+    // attachment and lives in the world) cannot write its decrypted flag, their
+    // session, or a per-entry decrypt — the GM lands it. One GM only.
+    socketManager.register(SOCKET_OPS.SHARD_STATE_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
+      try {
+        await game.nightcity?.dataShardService?.handleStateRequest(data);
+      } catch (err) {
+        log.error('Shard state relay failed:', err);
+      }
     });
 
     // ─── Player Shard INTEGRITY Relay ─────────────────────

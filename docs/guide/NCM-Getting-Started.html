@@ -106,7 +106,7 @@
   <div class="cover-sub">Getting Started Guide — for GMs and players</div>
   <div class="cover-shot"><img src="img/access-granted.png" alt="Terminal login — access granted"></div>
   <div class="cover-foot">
-    <div>v1.2.0</div>
+    <div>v1.3.1</div>
     <div class="r">github.com/christinophrappuccino/night-city-messenger</div>
   </div>
 </section>
@@ -185,6 +185,7 @@
   <ul>
     <li><strong>Import Actor</strong> — turn an existing actor into a contact in two clicks. The portrait and email come with it.</li>
     <li><strong>Push contacts to players</strong> — give an NPC's contact card to one player or the whole party.</li>
+    <li><strong>Groups</strong> — the Groups card at the top of the tab. Make a named list of contacts ("The Crew", "Arasaka Leads"), then <strong>Push</strong> it to a player and it lands in their contact book, contacts included. Re-pushing updates their copy.</li>
     <li>Mark an address as <strong>send-only</strong> — good for system addresses like <code>alerts@arasaka.com</code>. Players get mail from it but can't reply.</li>
   </ul>
   <div class="tip"><span class="k">Tip</span>Don't build the whole city. Two or three NPCs your party actually talks to is plenty for the first night.</div>
@@ -243,8 +244,14 @@
 <section class="page">
   <h3 style="margin-top:0">Contacts</h3>
   <p>The <strong>Contacts</strong> button opens your personal contact book. You can set trust levels, write notes, and mark favorites. When a stranger messages you, use <strong>Add to Contacts</strong> right from the message. Some contacts are protected by ICE and need a skill check to unlock.</p>
-  <figure class="fig-70"><div class="shot"><img src="img/AddContacts.png" alt="The player contact book"></div>
+  <figure class="fig-70" style="width:46%"><div class="shot"><img src="img/AddContacts.png" alt="The player contact book"></div>
   <figcaption>Your contact book — trust levels, notes, and favorites</figcaption></figure>
+
+  <h3>Groups</h3>
+  <p><strong>Groups</strong> sit in a row of chips under the search bar. A group is a named list of your contacts — make one with <strong>New</strong>, or the GM can hand you one (it shows a shield). Each chip shows a few member faces; click it to see everyone in it, message them all at once, or edit the list. Clicking a face opens that contact. The groups you message most stay at the front, and past six the rest fold behind <strong>+N more</strong>.</p>
+  <p>A message sent to several people shows a party chip next to the To line, and a <strong>Reply All</strong> button beside Reply.</p>
+  <figure class="fig-80" style="width:62%"><div class="shot"><img src="img/contact-groups.png" alt="The groups rail in the contact book"></div>
+  <figcaption>Groups as chips; the open one shows its members in a tray below.</figcaption></figure>
   <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>07</span></div>
 </section>
 
@@ -269,10 +276,12 @@
     <li><strong>Send as anyone.</strong> Put any contact in the From field. When players message an NPC, you get a popup, and the mail collects in the <strong>NPC Inbox</strong> panel (Admin → Messages) where you can reply.</li>
     <li><strong>Anonymous send.</strong> Turn this on in settings, and the composer gets a checkbox that hides who you are. Players see a glitchy masked avatar instead. They can reply without knowing who they're talking to, and if you allow it, they can roll to trace you. Great for mystery employers.</li>
     <li><strong>Self-destruct.</strong> Set a message to delete after it's read, or after 1, 6, or 24 hours.</li>
-    <li><strong>Scheduled messages.</strong> Write now, send later. You can also send to the whole party at once.</li>
+    <li><strong>Scheduled messages.</strong> Write now, send later.</li>
+    <li><strong>One message, many people.</strong> Type a group's name in To and it goes to everyone in it; each recipient gets their own copy and can Reply All. <strong>Mass Broadcast</strong> (Admin → Messages) has a <strong>Send to</strong> picker for the whole party or one of your groups, and tells you by name if anyone couldn't receive it.</li>
+    <li><strong>Share to chat.</strong> Posts a message as a chat card. Anyone reading it who doesn't have the sender in their contacts gets an <strong>Add contact</strong> button right on the card.</li>
     <li><strong>Spam.</strong> The Spam tab has ready-made junk mail you can send to players, and can even send it automatically when they join certain networks. It sounds silly, but a "spam" message can carry anything a real message can. Use that.</li>
   </ul>
-  <figure class="fig-80"><div class="shot"><img src="img/MessageComposer.png" alt="The message composer"></div>
+  <figure class="fig-80" style="width:54%"><div class="shot"><img src="img/MessageComposer.png" alt="The message composer"></div>
   <figcaption>The composer — attach eddies, set self-destruct, schedule, or send anonymously.</figcaption></figure>
   <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>09</span></div>
 </section>
@@ -305,15 +314,35 @@
 <section class="page">
   <figure class="fig-85" style="margin-top:0"><div class="shot"><img src="img/banking.png" alt="Bank account content"></div>
   <figcaption>A bank account entry — and the siphon minigame players use to drain it.</figcaption></figure>
-  <figure class="fig-63" style="width:56%"><div class="shot"><img src="img/gallery-feed.png" alt="Photo gallery content"></div>
+  <figure class="fig-63" style="width:50%"><div class="shot"><img src="img/gallery-feed.png" alt="Photo gallery content"></div>
   <figcaption>A photo gallery: flagged evidence, timestamps, and an encrypted frame that takes a roll to decrypt.</figcaption></figure>
 
   <h3>Give it to the players</h3>
-  <p>The shard is a normal Item. Hand it over however you like: drop it as loot, put it on a body, trade it. The player cracks it open with a skill check. There's a whole animated hacking sequence, and lockouts if they keep failing.</p>
+  <p>The shard is a normal Item. Hand it over however you like: drop it as loot, put it on a body, trade it, or attach it to a message. The player cracks it open with a skill check. There's a whole animated hacking sequence, and lockouts if they keep failing. You never need to touch the shard's permissions — see the next page.</p>
 
   <h3>Make it look right</h3>
   <p>Configure Shard → <strong>Theme</strong> sets the shard's colors, fonts, wallpaper, text size, and contrast, starting from a preset (corporate dossier, black market, medical record, and more). Save a look you like and reuse it on other shards. You can also save a <strong>full shard setup</strong> to the library; its security settings only come along if you tick the box when saving.</p>
   <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>11</span></div>
+</section>
+
+<!-- ═══════════════ PART 4 (c) — PERMISSIONS + PLAYER EDITING ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">No permissions needed</h3>
+  <p>A shard you attach to a message stays a <strong>world item that players have no permission on</strong>, and that is how it should be: any permission at all would put the shard in their Items sidebar before you meant them to see it. When a player breaks into it, the module asks the GM's client to record the unlock, so nothing about the shard has to change hands first.</p>
+  <div class="tip"><span class="k">GM online</span>This works the same way as every other player action on a shard or terminal: a GM needs to be connected. If no GM is online, the player is told and nothing is lost.</div>
+  <p>If you really do want to hand a shard over outright — give the player the Item, not just access to it — the <strong>Permissions</strong> button on the shard's row in Admin → Shards opens Foundry's ownership dialog. It only shows for world items; a shard on a character's sheet already follows that character.</p>
+
+  <h3>Letting players write on them</h3>
+  <p>Players can encode their own shards once <strong>Player Authoring</strong> is switched on (Admin → Shards). Shards that already exist follow a simple rule:</p>
+  <table>
+    <tr><th>Shard</th><th>Players may…</th></tr>
+    <tr><td>One <strong>you</strong> made</td><td>read it, hack it, claim what's inside. Never add to it or rewrite it.</td></tr>
+    <tr><td>One a <strong>player</strong> encoded</td><td>only the character who encoded it can re-open it in the Encoder.</td></tr>
+  </table>
+  <p>To change that for one shard, open Configure Shard → Security → <strong>Player Editing</strong>: <strong>Locked</strong>, <strong>Maker only</strong>, or <strong>Anyone who qualifies</strong> (anyone who passes your encoder gate). The Admin → Shards row shows an <strong>Editable</strong> badge on any shard you've opened up.</p>
+  <p>A re-encode adds files to the chip and re-rolls how convincing the whole thing is, at a small extra DV for having to agree with what's already on it. The lock stays exactly as it was, and a bad roll leaves the shard unchanged rather than wrecking it. The <strong>Rewrite a sloppy shard</strong> switch in Player Authoring turns re-encoding off for everyone.</p>
+  <div class="tip"><span class="k">Reading is not writing</span>The Player Editing rule only governs adding and rewriting. Hacking, cracking a password, decrypting a photo and claiming eddies are the shard being <em>used</em>, and are never blocked by it.</div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>12</span></div>
 </section>
 
 <!-- ═══════════════ PART 5 (a) — SHARD ENCODER ═══════════════ -->
@@ -333,9 +362,9 @@
     <tr><td><strong>3 · Lock</strong> (optional)</td><td>Add a password, encryption, or a bite-back. How strong you can make it depends on your roll.</td></tr>
     <tr><td><strong>4 · Encode</strong></td><td>One skill roll decides how it comes out.</td></tr>
   </table>
-  <figure class="fig-80"><div class="shot"><img src="img/encoder-sealed.png" alt="The Shard Encoder after a clean encode"></div>
+  <figure class="fig-80" style="width:74%"><div class="shot"><img src="img/encoder-sealed.png" alt="The Shard Encoder after a clean encode"></div>
   <figcaption>A forged document encoded clean. The readout says what the roll got you, and how hard the fake is to spot.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>12</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>13</span></div>
 </section>
 
 <!-- ═══════════════ PART 5 (b) — SHARD ENCODER ═══════════════ -->
@@ -353,7 +382,7 @@
   <h3>Selling it</h3>
   <p>When the shard is done, you can name a price. Your GM approves, counters, or turns it down, and the price only goes on the item once it's approved.</p>
   <div class="tip"><span class="k">Hard to read?</span>The <strong>Display</strong> button at the bottom of the Encoder changes text size, contrast, animation, and spacing for you alone, with presets like Large text and Calm.</div>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>13</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>14</span></div>
 </section>
 
 <!-- ═══════════════ PART 5 (c) — PLAYER AUTHORING (GM) ═══════════════ -->
@@ -370,7 +399,7 @@
   <figure class="fig-80"><div class="shot"><img src="img/player-authoring.png" alt="The Player Authoring window"></div>
   <figcaption>Player Authoring: here, only a Netrunner or Tech, someone with Interface 4+, or someone carrying the right gear can make shards.</figcaption></figure>
   <div class="tip"><span class="k">Finding player shards</span>A shard a player made lives on their character, so it isn't in your Items directory. Admin → Shards → <strong>Copy Shards to Items</strong> puts a live copy of each in a "Player-Made Shards" folder, sorted by character. Player-made shards also show a "Made by" badge in the Shards tab.</div>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>14</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>15</span></div>
 </section>
 
 <!-- ═══════════════ PART 5 (a) ═══════════════ -->
@@ -392,7 +421,7 @@
 
   <h3>Put it in the world</h3>
   <p><strong>Drag the terminal Item onto the map.</strong> It becomes a pin that players double-click to log in. You can require their token to be standing near it. Or skip the pin and let players open the Item directly.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>15</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>16</span></div>
 </section>
 
 <!-- ═══════════════ PART 5 (b) ═══════════════ -->
@@ -406,7 +435,7 @@
   <p>The Exfil tab controls what players can do with files they find. Each action can be off, allowed, or allowed-with-a-roll:</p>
   <p><strong>Download · Burn to shard · Forward · Leak</strong> (posts it to public chat) <strong>· Sell</strong> (instant eddies) <strong>· Wipe</strong> (delete it — you can restore it from a recycle bin)</p>
   <p>Failing a gated roll triggers a trace. One fun detail: live camera feeds can't be downloaded, but players can save a single frame, loop a camera, or cut it. A looped camera shows a frozen timestamp — which someone might notice.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>16</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>17</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (a) ═══════════════ -->
@@ -423,7 +452,7 @@
   </ul>
   <figure class="fig-80"><div class="shot"><img src="img/security-tab.png" alt="The Security tab"></div>
   <figcaption>Admin → Security: the activity log, per-operator heat bars, planted files, and the recycle bin — your whole consequence dashboard.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>17</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>18</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (b) ═══════════════ -->
@@ -438,8 +467,8 @@
   </div>
 
   <h3>Fighting back</h3>
-  <p>Players have tools too. <strong>ANALYZE</strong> checks whether a file is really what it says it is. <strong>SYSTEM SWEEP</strong> scans a whole terminal for planted programs — it reveals what the roll is good enough to find, and never says whether it missed anything.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>18</span></div>
+  <p>Players have tools too. <strong>ANALYZE</strong> checks whether a file is really what it says it is. It is the magnifier button on a file's header, in a terminal and on a shard alike — but only on <em>typed</em> files (a spreadsheet, a photo gallery, a program…); a plain message has nothing to analyze, so it shows no button. <strong>SYSTEM SWEEP</strong> scans a whole terminal for planted programs — it lives in the mailbox's OPS menu next to Upload, reveals what the roll is good enough to find, and never says whether it missed anything.</p>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>19</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (c) ═══════════════ -->
@@ -448,7 +477,7 @@
   <p>Admin → Security → <strong>Programs</strong> opens the <strong>Malware Workshop</strong>. Build programs with real effects: keyloggers, secret backdoor accounts, ICE traps, logic bombs, file wipers. You can disguise them as harmless files. Give them to players as Items; they carry and use them through the <strong>Program Deck</strong>.</p>
   <figure class="fig-85"><div class="shot"><img src="img/MalwareWorkshop.png" alt="The Malware Workshop"></div>
   <figcaption>The Malware Workshop — the cover story on top, what the program really does underneath.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>19</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>20</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (d) ═══════════════ -->
@@ -458,7 +487,7 @@
 
   <h3>Who can hack at all</h3>
   <p>Admin → Security → <strong>Operator Access</strong> lets you limit who can use terminals: by role, by skill level, by gear they need to own, or by naming specific characters.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>20</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>21</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (e) ═══════════════ -->
@@ -472,7 +501,7 @@
   </ol>
   <figure class="fig-80"><div class="shot"><img src="img/net-adjudicator.png" alt="The GM adjudicator prompt"></div>
   <figcaption>"GM decides" mode: the prompt you get when a player attempts a hack — run the NET at the table, then call it.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>21</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>22</span></div>
 </section>
 
 <!-- ═══════════════ THREE RULES ═══════════════ -->
@@ -495,7 +524,7 @@
   </div>
 
   <div class="tip"><span class="k">Also good to know</span>Self-destructing messages never destroy when a GM reads them (so you can check inboxes safely), and GMs skip most login checks — so if you want to see what players see, log in from a player account.</div>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>22</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>23</span></div>
 </section>
 
 <!-- ═══════════════ SETTINGS ═══════════════ -->
@@ -518,7 +547,7 @@
     <tr><td><strong>Terminal Pins Auto-Show</strong></td><td>map pins visible without extra clicks</td></tr>
     <tr><td><strong>Debug Mode</strong></td><td>the module explains its decisions in the console</td></tr>
   </table>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>23</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>24</span></div>
 </section>
 
 <!-- ═══════════════ FIRST SESSIONS ═══════════════ -->
@@ -540,7 +569,7 @@
     github.com/christinophrappuccino/night-city-messenger<br><br>
     <span style="color:var(--cyan)">Wake up, samurai. You've got mail.</span>
   </p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>24</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>25</span></div>
 </section>
 
 </body>

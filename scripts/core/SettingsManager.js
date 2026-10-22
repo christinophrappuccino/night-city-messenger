@@ -497,6 +497,15 @@ export class SettingsManager {
       default: 'role',
     });
 
+    game.settings.register(MODULE_ID, 'masterContactGroups', {
+      name: 'Contact Groups (GM)',
+      hint: 'GM-made contact groups ([{ id, name, color, members[] }], members keyed by address) — pushed to players from Admin → Contacts.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     game.settings.register(MODULE_ID, 'entryTemplates', {
       name: 'Entry Templates',
       hint: 'GM-saved content-entry templates ([{ id, name, type, entry }]) — reusable typed files for shards/terminals, loadable in the composer.',

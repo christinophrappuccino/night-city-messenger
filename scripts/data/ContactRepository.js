@@ -511,6 +511,7 @@ export class ContactRepository {
       if (!actor.isOwner && !game.user.isGM) {
         return { success: false, error: 'No permission' };
       }
+      game.nightcity?.emailService?.warnIfAddressTaken?.(email, actor);
       await actor.setFlag(MODULE_ID, 'email', email);
       return { success: true };
     } catch (error) {

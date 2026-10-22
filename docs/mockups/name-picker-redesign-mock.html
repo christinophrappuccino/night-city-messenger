@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Name picker — current vs proposed</title>
+<!--
+  Mock: the shared searchable world picker (scripts/utils/namePicker.js), redesigned.
+  LEFT  = what ships today, real markup from showNamePicker() against the REAL cascade
+          (foundry2.css → CPR main.css → night-city-messenger.css → admin-theme.css).
+  RIGHT = the proposal, its CSS inline below under the new `ncm-pkr-*` prefix.
+          BUILT 2026-10-20 (dev: "proposed looked great lets do it") — styles/components/name-picker.css
+          is the shipped copy of that CSS; this page stays as the before/after record. The REAL
+          showNamePicker renders in name-picker-probe.html.
+  ?t=clean-dark|clean-light|high-contrast|player   (player = admin:false, :root theme)
+  ?mode=single|multi
+  Open off disk — nothing here imports a module.
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #0b0b10; color: #ccc; font-family: var(--ncm-font-display, sans-serif); }
+  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 22px 26px; align-items: start; }
+  .col > h2 { margin: 0 0 8px; font: 700 11px/1 var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; color: #8888a0; }
+  .col > h2 b { color: #19f3f7; }
+  .notes { grid-column: 1 / -1; font: 500 12px/1.5 var(--ncm-font-display); color: #9d9db4; max-width: 980px; }
+  .notes b { color: #e0e0e8; }
+  .notes code { display: inline !important; font-family: var(--ncm-font-mono) !important; font-size: 11px !important; color: #19f3f7 !important; background: none !important; border: 0 !important; padding: 0 !important; margin: 0 !important; }
+  .ncm-pkr__hint { color: var(--ncm-text-primary); opacity: .78; }
+  /* Fake Foundry dialog frame: Foundry positions .app absolutely; pin it in place here. */
+  .frame { position: relative !important; width: 440px; display: block; }
+  .frame .window-header { cursor: default; }
+
+  /* ═══════════════════════════ PROPOSED: ncm-pkr-* ═══════════════════════════
+     One component, one file (styles/components/name-picker.css), one prefix that
+     collides with nothing (`.ncm-burn-dialog` is ALSO the Email Setup burn-confirm's
+     content wrapper, whose `* { margin:0 !important }` + literal #8888a0 bleed into
+     today's picker). Every colour is a --ncm-* token so the admin presets AND the
+     player theme (admin:false) both drive it. */
+  .ncm-pkr-dialog .window-content { padding: 0 !important; }
+  .ncm-pkr-dialog .dialog-content { padding: 0 !important; }
+  .ncm-pkr { display: flex; flex-direction: column; max-height: min(62vh, 520px); font-family: var(--ncm-font-display); color: var(--ncm-text-primary); }
+  /* only the list may shrink — everything else is pinned furniture (the modal-scroller rule) */
+  .ncm-pkr > :not(.ncm-pkr__list) { flex: 0 0 auto; }
+
+  /* hint — one line, muted, reads as the dialog's lede */
+  .ncm-pkr__hint { padding: 10px 12px 0; font-size: calc(11.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); line-height: 1.35; }
+
+  /* search bar = a toolbar: magnifier · input · live count · clear */
+  .ncm-pkr__bar { display: flex; align-items: center; gap: 8px; margin: 8px 12px 0; padding: 0 8px 0 10px; height: 32px;
+    background: var(--ncm-bg-deep); border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .ncm-pkr__bar:focus-within { border-color: var(--ncm-secondary); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ncm-secondary) 35%, transparent); }
+  .ncm-pkr__bar i { font-size: 11px; color: var(--ncm-text-muted); flex: 0 0 auto; }
+  .ncm-pkr__bar input { all: unset; flex: 1; min-width: 0; height: 100%; font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display); color: var(--ncm-text-primary); caret-color: var(--ncm-secondary); }
+  .ncm-pkr__bar input::placeholder { color: var(--ncm-text-muted); font-weight: 500; }
+  .ncm-pkr__count { font: 400 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: .04em; flex: 0 0 auto; }
+  .ncm-pkr__count b { color: var(--ncm-text-secondary); font-weight: 400; }
+  .ncm-pkr__clear { all: unset; display: none; width: 18px; height: 18px; border-radius: 2px; color: var(--ncm-text-muted); text-align: center; line-height: 18px; cursor: pointer; }
+  .ncm-pkr__clear:hover { color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-text-primary) 10%, transparent); }
+  .ncm-pkr__bar.has-query .ncm-pkr__clear { display: block; }
+
+  /* chips: a single scrolling row — twenty folders must not become a four-row wall */
+  .ncm-pkr__chips { display: flex; gap: 4px; margin: 6px 12px 0; padding-bottom: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .ncm-pkr__chips::-webkit-scrollbar { display: none; }
+  /* chips are SPANS, not <button>s — every button in an admin dialog is restyled by
+     admin-theme.css with !important, and the picker's search box owns the keyboard anyway */
+  .ncm-pkr__chip { flex: 0 0 auto; display: inline-flex; user-select: none; align-items: center; gap: 5px; height: 22px; padding: 0 8px; cursor: pointer;
+    font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase;
+    color: var(--ncm-text-secondary); border: 1px solid var(--ncm-border); border-radius: 2px; background: transparent; white-space: nowrap; }
+  .ncm-pkr__chip b { font: 400 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-pkr__chip:hover { border-color: var(--ncm-border-active, var(--ncm-secondary)); color: var(--ncm-text-primary); }
+  .ncm-pkr__chip.is-on { color: var(--ncm-bg-deep); background: var(--ncm-secondary); border-color: var(--ncm-secondary); }
+  .ncm-pkr__chip.is-on b { color: color-mix(in srgb, var(--ncm-bg-deep) 70%, transparent); }
+
+  /* the list is THE scroller — bar + chips above stay put, footer below stays put */
+  .ncm-pkr__list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 8px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-deep); }
+  .ncm-pkr__group { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; padding: 5px 10px;
+    font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-text-muted);
+    background: color-mix(in srgb, var(--ncm-bg-surface) 92%, var(--ncm-bg-deep)); border-bottom: 1px solid var(--ncm-border); }
+  .ncm-pkr__group i { font-size: 8px; }
+  .ncm-pkr__group b { font: 400 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); margin-left: auto; }
+  .ncm-pkr.is-filtered .ncm-pkr__group { display: none; }
+
+  .ncm-pkr__row { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 4px 10px; cursor: pointer; flex: 0 0 auto;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); position: relative; }
+  .ncm-pkr__row:last-child { border-bottom: 0; }
+  .ncm-pkr__row:hover { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); }
+  .ncm-pkr__row.is-cursor { outline: 1px solid var(--ncm-secondary); outline-offset: -1px; }
+  .ncm-pkr__row.is-selected { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); box-shadow: inset 2px 0 0 var(--ncm-secondary); }
+  .ncm-pkr__row.is-taken { opacity: .38; cursor: default; }
+  .ncm-pkr__row.is-taken:hover { background: none; }
+  .ncm-pkr__art { width: 28px; height: 28px; flex: 0 0 auto; border-radius: 2px; object-fit: cover; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); }
+  .ncm-pkr__none { width: 28px; height: 28px; flex: 0 0 auto; display: grid; place-items: center; color: var(--ncm-text-muted); border: 1px dashed var(--ncm-border); border-radius: 2px; font-size: 10px; }
+  .ncm-pkr__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .ncm-pkr__name { font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-pkr__row--none .ncm-pkr__name { font-weight: 500; font-style: italic; color: var(--ncm-text-secondary); }
+  .ncm-pkr__name mark { background: none; color: var(--ncm-secondary); }
+  .ncm-pkr__sub { display: flex; align-items: center; gap: 4px; font: 400 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--ncm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-pkr__sub i { font-size: 8px; opacity: .7; }
+  .ncm-pkr__note { flex: 0 0 auto; font: 400 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-muted);
+    padding: 2px 6px; border: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); border-radius: 1px; }
+  .ncm-pkr__tag { flex: 0 0 auto; font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-secondary);
+    padding: 2px 6px; border: 1px solid color-mix(in srgb, var(--ncm-secondary) 50%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border-radius: 1px; }
+  .ncm-pkr__taken { flex: 0 0 auto; font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-muted); }
+  .ncm-pkr__check { flex: 0 0 auto; width: 15px; height: 15px; display: grid; place-items: center; font-size: 10px; color: transparent; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-deep); }
+  .ncm-pkr__check:hover { border-color: var(--ncm-secondary); }
+  .ncm-pkr__row.is-picked .ncm-pkr__check { color: var(--ncm-secondary); border-color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); }
+  .ncm-pkr__row.is-picked { background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
+  .ncm-pkr__sel-ic { display: none; flex: 0 0 auto; color: var(--ncm-secondary); font-size: 10px; }
+  .ncm-pkr__row.is-selected .ncm-pkr__sel-ic { display: block; }
+
+  /* empty state says what to do, not just that nothing matched */
+  .ncm-pkr__empty { display: none; padding: 22px 12px; text-align: center; color: var(--ncm-text-muted); font-size: calc(11.5px * var(--ncm-text-scale, 1)); }
+  .ncm-pkr__empty b { color: var(--ncm-text-secondary); }
+  .ncm-pkr__empty button { all: unset; display: inline-block; margin: 8px 4px 0; padding: 4px 10px; cursor: pointer; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ncm-secondary); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 50%, transparent); border-radius: 2px; }
+  .ncm-pkr.is-empty .ncm-pkr__empty { display: block; }
+
+  /* status strip: what the keyboard does, how many are picked — the Dialog's own buttons sit under it */
+  .ncm-pkr__foot { display: flex; align-items: center; gap: 10px; padding: 6px 12px 8px; font: 400 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: .04em; }
+  .ncm-pkr__foot .sel { color: var(--ncm-secondary); }
+  .ncm-pkr__foot .keys { margin-left: auto; display: flex; gap: 8px; }
+  .ncm-pkr__foot kbd { font: 400 9px var(--ncm-font-mono); color: var(--ncm-text-secondary); border: 1px solid var(--ncm-border); border-radius: 2px; padding: 0 4px; background: var(--ncm-bg-deep); }
+  .ncm-pkr__foot a { all: unset; cursor: pointer; color: var(--ncm-text-secondary); text-decoration: underline dotted; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="col">
+    <h2>Current · <b id="cur-title">ships today</b></h2>
+    <div id="cur" class="app window-app dialog frame ncm-burn-dialog">
+      <header class="window-header flexrow"><h4 class="window-title">Link an Actor</h4><a class="header-button control close"><i class="fas fa-times"></i></a></header>
+      <section class="window-content">
+        <div class="dialog-content">
+          <div class="ncm-burn-hint">The contact takes this actor's portrait and messages route to its inbox.</div>
+          <input type="text" class="ncm-burn-search" placeholder="search actors or folders…" autocomplete="off">
+          <div class="ncm-burn-chips" role="tablist" id="cur-chips"></div>
+          <div class="ncm-burn-list" id="cur-list"></div>
+        </div>
+        <div class="dialog-buttons"><button type="button">Cancel</button></div>
+      </section>
+    </div>
+  </div>
+  <div class="col">
+    <h2>Proposed · <b>ncm-pkr-*</b></h2>
+    <div id="new" class="app window-app dialog frame ncm-pkr-dialog">
+      <header class="window-header flexrow"><h4 class="window-title">Link an Actor</h4><a class="header-button control close"><i class="fas fa-times"></i></a></header>
+      <section class="window-content">
+        <div class="dialog-content">
+          <div class="ncm-pkr" id="pkr">
+            <div class="ncm-pkr__hint">The contact takes this actor's portrait and messages route to its inbox.</div>
+            <div class="ncm-pkr__bar"><i class="fas fa-magnifying-glass"></i><input type="text" id="pkr-q" placeholder="search actors or folders…" autocomplete="off"><span class="ncm-pkr__count" id="pkr-count"></span><button class="ncm-pkr__clear" id="pkr-clear" title="clear"><i class="fas fa-xmark"></i></button></div>
+            <div class="ncm-pkr__chips" id="pkr-chips"></div>
+            <div class="ncm-pkr__list" id="pkr-list"></div>
+            <div class="ncm-pkr__empty" id="pkr-empty"></div>
+            <div class="ncm-pkr__foot" id="pkr-foot"></div>
+          </div>
+        </div>
+        <div class="dialog-buttons" id="pkr-buttons"><button type="button">Cancel</button></div>
+      </section>
+    </div>
+  </div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const THEME = Q.get('t') || 'clean-dark';
+const MODE = Q.get('mode') || 'single';
+const MULTI = MODE === 'multi';
+for (const id of ['cur', 'new']) {
+  const el = document.getElementById(id);
+  if (THEME !== 'player') { el.classList.add('ncm-admin-dialog'); el.setAttribute('data-ncm-admin-theme', THEME); }
+}
+document.getElementById('cur-title').textContent = THEME === 'player' ? 'admin:false' : THEME;
+
+// ── world: actors in folders, one Players chip, one Unfiled ──
+const IMG = (seed) => `https://picsum.photos/seed/${seed}/56/56`;
+const DATA = [
+  ['Players', 'V', '', 'player', 'p1', true],
+  ['Players', 'Judy Alvarez', '', 'player', 'p2'],
+  ['Players', 'Panam Palmer', '', 'player', 'p3'],
+  ['NPCs', 'Rogue Amendiares', 'NPCs / Fixers', 'npc', 'n1'],
+  ['NPCs', 'Wakako Okada', 'NPCs / Fixers', 'npc', 'n2'],
+  ['NPCs', 'Dexter DeShawn', 'NPCs / Fixers', 'npc', 'n3'],
+  ['NPCs', 'Yorinobu Arasaka', 'NPCs / Arasaka / Execs', 'npc', 'n4'],
+  ['NPCs', 'Hanako Arasaka', 'NPCs / Arasaka / Execs', 'npc', 'n5'],
+  ['NPCs', 'Adam Smasher', 'NPCs / Arasaka', 'npc', 'n6', false, true],
+  ['NPCs', 'Takemura Goro', 'NPCs / Arasaka', 'npc', 'n7'],
+  ['NPCs', 'Viktor Vektor', 'NPCs / Ripperdocs', 'npc', 'n8'],
+  ['NPCs', 'Misty Olszewski', 'NPCs / Watson', 'npc', 'n9'],
+  ['Gangs', 'Royce', 'Gangs / Maelstrom', 'npc', 'g1'],
+  ['Gangs', 'Dum Dum', 'Gangs / Maelstrom', 'npc', 'g2'],
+  ['Gangs', 'Brick', 'Gangs / Maelstrom', 'npc', 'g3'],
+  ['Unfiled', 'Delamain', '', 'npc', 'u1'],
+  ['Unfiled', 'Johnny Silverhand', '', 'npc', 'u2'],
+].map(([group, name, sub, note, id, selected, taken]) => ({ group, name, sub, note, id, img: IMG(id), selected: !!selected, taken: !!taken }));
+const GROUPS = [...new Set(DATA.map(d => d.group))];
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ═══ CURRENT — today's real markup ═══
+{
+  const chips = document.getElementById('cur-chips');
+  chips.innerHTML = `<button type="button" class="ncm-burn-chip is-on" data-group="">All <b>${DATA.length}</b></button>` +
+    GROUPS.map(g => `<button type="button" class="ncm-burn-chip" data-group="${g}">${g} <b>${DATA.filter(d => d.group === g).length}</b></button>`).join('');
+  const list = document.getElementById('cur-list');
+  list.innerHTML = `<div class="ncm-burn-row ncm-burn-row--none"><span class="ncm-burn-none-ic"><i class="fas fa-ban"></i></span><span class="ncm-burn-main"><span class="ncm-burn-name">— None —</span></span></div>` +
+    DATA.map(e => `<div class="ncm-burn-row${e.taken ? ' is-taken' : ''}${e.selected ? ' is-selected' : ''}" data-group="${e.group}">
+      ${MULTI ? '<span class="ncm-burn-pick"><i class="fas fa-check"></i></span>' : ''}<img src="${e.img}" alt="">
+      <span class="ncm-burn-main"><span class="ncm-burn-name">${esc(e.name)}</span>${e.sub ? `<span class="ncm-burn-sub">${esc(e.sub)}</span>` : ''}</span>
+      <span class="ncm-burn-type">${e.note}</span>${e.taken ? '<span class="ncm-burn-type">added</span>' : ''}
+    </div>`).join('');
+  if (MULTI) list.insertAdjacentHTML('afterend', '<div class="ncm-burn-footer">0 selected</div>');
+  chips.addEventListener('click', (ev) => {
+    const c = ev.target.closest('.ncm-burn-chip'); if (!c) return;
+    chips.querySelectorAll('.ncm-burn-chip').forEach(x => x.classList.toggle('is-on', x === c));
+    list.querySelectorAll('.ncm-burn-row').forEach(r => { r.style.display = (!c.dataset.group || r.dataset.group === c.dataset.group || r.classList.contains('ncm-burn-row--none')) ? '' : 'none'; });
+  });
+}
+
+// ═══ PROPOSED — interactive enough to feel: search, chips, group headers, ↑↓ ⏎, multi ═══
+{
+  const root = document.getElementById('pkr');
+  const q = document.getElementById('pkr-q');
+  const count = document.getElementById('pkr-count');
+  const clear = document.getElementById('pkr-clear');
+  const chips = document.getElementById('pkr-chips');
+  const list = document.getElementById('pkr-list');
+  const empty = document.getElementById('pkr-empty');
+  const foot = document.getElementById('pkr-foot');
+  let group = '', cursor = -1;
+  const picked = new Set();
+
+  chips.innerHTML = `<span class="ncm-pkr__chip is-on" role="tab" data-group="">All <b>${DATA.length}</b></span>` +
+    GROUPS.map(g => `<span class="ncm-pkr__chip" role="tab" data-group="${g}">${g} <b>${DATA.filter(d => d.group === g).length}</b></span>`).join('');
+
+  const hl = (name, qq) => { if (!qq) return esc(name); const i = name.toLowerCase().indexOf(qq); return i < 0 ? esc(name) : esc(name.slice(0, i)) + '<mark>' + esc(name.slice(i, i + qq.length)) + '</mark>' + esc(name.slice(i + qq.length)); };
+  const row = (e, qq) => `<div class="ncm-pkr__row${e.taken ? ' is-taken' : ''}${e.selected && !MULTI ? ' is-selected' : ''}${picked.has(e.id) ? ' is-picked' : ''}" data-id="${e.id}" data-group="${e.group}">
+      ${MULTI ? '<span class="ncm-pkr__check"><i class="fas fa-check"></i></span>' : ''}<img class="ncm-pkr__art" src="${e.img}" alt="">
+      <span class="ncm-pkr__main"><span class="ncm-pkr__name">${hl(e.name, qq)}</span>${e.sub ? `<span class="ncm-pkr__sub"><i class="fas fa-folder"></i>${esc(e.sub)}</span>` : ''}</span>
+      ${e.taken ? '<span class="ncm-pkr__taken">added</span>' : `<span class="ncm-pkr__note">${e.note}</span>`}${e.id === 'n1' ? '<span class="ncm-pkr__tag">shard</span>' : ''}
+      <i class="fas fa-check ncm-pkr__sel-ic"></i>
+    </div>`;
+
+  const render = () => {
+    const qq = q.value.trim().toLowerCase();
+    const shown = DATA.filter(e => (!group || e.group === group) && (!qq || e.name.toLowerCase().includes(qq) || e.sub.toLowerCase().includes(qq)));
+    root.classList.toggle('is-filtered', !!group || !!qq);
+    root.classList.toggle('is-empty', shown.length === 0);
+    document.querySelector('.ncm-pkr__bar').classList.toggle('has-query', !!qq);
+    let html = (!qq && !MULTI) ? `<div class="ncm-pkr__row ncm-pkr__row--none" data-none="1"><span class="ncm-pkr__none"><i class="fas fa-ban"></i></span><span class="ncm-pkr__main"><span class="ncm-pkr__name">— None —</span></span></div>` : '';
+    if (!group && !qq) {
+      for (const g of GROUPS) {
+        const inG = shown.filter(e => e.group === g);
+        if (!inG.length) continue;
+        html += `<div class="ncm-pkr__group"><i class="fas fa-folder"></i>${esc(g)}<b>${inG.length}</b></div>` + inG.map(e => row(e, qq)).join('');
+      }
+    } else html += shown.map(e => row(e, qq)).join('');
+    list.innerHTML = html;
+    list.style.display = shown.length ? '' : 'none';
+    count.innerHTML = (qq || group) ? `<b>${shown.length}</b> / ${DATA.length}` : `${DATA.length}`;
+    empty.innerHTML = `Nothing matches <b>“${esc(q.value.trim())}”</b>${group ? ` in <b>${esc(group)}</b>` : ''}.<br><button data-act="clear">Clear search</button>${group ? '<button data-act="all">Search all folders</button>' : ''}`;
+    foot.innerHTML = (MULTI ? `<span class="sel">${picked.size} selected</span><a data-act="all-shown">select all shown</a>` : `<span>${shown.length} shown</span>`) +
+      `<span class="keys"><kbd>↑↓</kbd> move <kbd>⏎</kbd> ${MULTI ? 'toggle' : 'pick'} <kbd>esc</kbd> close</span>`;
+    cursor = -1;
+  };
+  const rows = () => [...list.querySelectorAll('.ncm-pkr__row:not(.is-taken)')];
+  const moveCursor = (d) => { const r = rows(); if (!r.length) return; r.forEach(x => x.classList.remove('is-cursor')); cursor = Math.max(0, Math.min(r.length - 1, cursor + d)); r[cursor].classList.add('is-cursor'); r[cursor].scrollIntoView({ block: 'nearest' }); };
+  const choose = (r) => {
+    if (!r || r.classList.contains('is-taken')) return;
+    if (MULTI) { if (r.dataset.none) return; const id = r.dataset.id; picked.has(id) ? picked.delete(id) : picked.add(id); r.classList.toggle('is-picked'); foot.querySelector('.sel').textContent = `${picked.size} selected`; return; }
+    list.querySelectorAll('.is-selected').forEach(x => x.classList.remove('is-selected')); r.classList.add('is-selected');
+  };
+  q.addEventListener('input', render);
+  q.addEventListener('keydown', (ev) => {
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); moveCursor(1); }
+    else if (ev.key === 'ArrowUp') { ev.preventDefault(); moveCursor(-1); }
+    else if (ev.key === 'Enter') { ev.preventDefault(); const r = rows(); choose(r[cursor >= 0 ? cursor : 0]); }
+  });
+  clear.addEventListener('click', () => { q.value = ''; render(); q.focus(); });
+  chips.addEventListener('click', (ev) => { const c = ev.target.closest('.ncm-pkr__chip'); if (!c) return; group = c.dataset.group; chips.querySelectorAll('.ncm-pkr__chip').forEach(x => x.classList.toggle('is-on', x === c)); render(); q.focus(); });
+  list.addEventListener('click', (ev) => choose(ev.target.closest('.ncm-pkr__row')));
+  empty.addEventListener('click', (ev) => { const a = ev.target.dataset.act; if (a === 'clear') { q.value = ''; } if (a === 'all') { group = ''; chips.querySelectorAll('.ncm-pkr__chip').forEach(x => x.classList.toggle('is-on', !x.dataset.group)); } if (a) { render(); q.focus(); } });
+  foot.addEventListener('click', (ev) => { if (ev.target.dataset.act === 'all-shown') { rows().forEach(r => { if (!picked.has(r.dataset.id)) choose(r); }); } });
+  if (MULTI) document.getElementById('pkr-buttons').innerHTML = '<button type="button"><i class="fas fa-check"></i> Add selected</button><button type="button">Cancel</button>';
+  render();
+  if (Q.get('q')) { q.value = Q.get('q'); render(); }
+  if (Q.get('cursor')) moveCursor(Number(Q.get('cursor')));
+}
+
+document.getElementById('notes').innerHTML = `
+  <b>What changes.</b> One file + one prefix (<code>styles/components/name-picker.css</code>, <code>ncm-pkr-*</code>) — today the rules live in terminal.css and
+  contact-groups.css under <code>.ncm-burn-dialog</code>, a class the Email Setup burn-confirm ALSO uses as its content wrapper, whose
+  <code>* { margin:0 !important }</code> and literal <code>#8888a0</code> bleed into every picker. The search box becomes a toolbar with a live
+  <b>shown / total</b> count and a clear button; chips scroll in one row instead of wrapping; <b>folder headers</b> appear in the list while “All” is active (the “default directory”
+  without clicking a chip) and vanish when a chip or query narrows it; rows get a bordered art tile, the match highlighted, a mono type chip and a filled accent tag;
+  <b>↑↓ moves a cursor, ⏎ picks it</b> (today Enter picks the first row); the empty state offers “Clear search” / “Search all folders”; a status strip states the keys and, in multi mode,
+  the picked count + “select all shown”. Same JS contract (<code>entries</code> / <code>chips</code> / <code>allowNone</code> / <code>selected</code> / <code>taken</code> / <code>multi</code> / <code>admin</code>) — callers don’t change.
+  Try <code>?t=clean-light</code>, <code>?t=player</code>, <code>?mode=multi</code>, <code>?q=ara</code>.`;
+</script>
+</body>
+</html>

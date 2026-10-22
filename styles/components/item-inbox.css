@@ -1850,7 +1850,7 @@
 .ncm-app .ncm-schem-pop__f > span { font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); text-transform: uppercase; letter-spacing: .05em; color: var(--ncm-text-muted, #778); }
 .ncm-app .ncm-schem-pop__f input,
 .ncm-app .ncm-schem-pop__f select {
-  height: 22px !important; min-height: 0 !important; padding: 0 5px !important; font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
+  height: calc(22px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; padding: 0 5px !important; font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
   background: var(--ncm-bg-panel, #141428) !important; color: var(--ncm-text-primary, #e8e8f0) !important;
   border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 4px !important; box-shadow: none !important;
 }
@@ -1859,7 +1859,7 @@
 .ncm-app .ncm-schem-pop__lock[hidden] { display: none; }
 .ncm-app .ncm-schem-pop__ft { display: flex; justify-content: space-between; gap: 6px; margin-top: 2px; }
 .ncm-app .ncm-schem-pop__ft button {
-  height: 24px !important; padding: 0 10px !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; text-transform: uppercase; letter-spacing: .04em;
+  height: calc(24px * var(--ncm-text-scale, 1)) !important; padding: 0 10px !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; text-transform: uppercase; letter-spacing: .04em;
   border-radius: 4px !important; cursor: pointer; box-shadow: none !important; flex: 0 0 auto !important; width: auto !important;
 }
 .ncm-app .ncm-schem-pop__del { background: color-mix(in srgb, var(--ncm-danger, #ff3b5c) 18%, transparent) !important; color: var(--ncm-danger, #ff3b5c) !important; border: 1px solid var(--ncm-danger, #ff3b5c) !important; }
@@ -1880,13 +1880,24 @@
 /* !important beats the Cyberpunk RED system's aggressive input height/min-width
    (it was winning over the plain `height: 22px`, which is why number/DV boxes
    rendered taller AND wider than their neighbours). */
-.ncm-app.ncm-data-shard-composer .ncm-config-input { height: 22px !important; min-height: 0 !important; }
-.ncm-app.ncm-data-shard-composer textarea.ncm-config-input { height: auto !important; min-height: 44px !important; }
+.ncm-app.ncm-data-shard-composer .ncm-config-input { height: calc(22px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; }
+/* Picker row: a read-only label that opens the searchable world picker + its
+   button. Replaces the native <select>s over every actor / macro. */
+.ncm-app.ncm-data-shard-composer .ncm-picker-row { display: flex; gap: 4px; align-items: stretch; min-width: 0; }
+.ncm-app.ncm-data-shard-composer .ncm-picker-row__lbl { flex: 1 1 auto; min-width: 0; cursor: pointer !important; text-overflow: ellipsis; }
+.ncm-app.ncm-data-shard-composer .ncm-picker-row__lbl::placeholder { font-style: italic; }
+.ncm-app.ncm-data-shard-composer .ncm-picker-row.is-set .ncm-picker-row__lbl { color: var(--sp-text-bright, var(--ncm-text-primary)) !important; }
+.ncm-app.ncm-data-shard-composer .ncm-picker-row__btn {
+  flex: 0 0 auto !important; width: 26px !important; min-width: 0 !important; padding: 0 !important;
+  height: calc(22px * var(--ncm-text-scale, 1)) !important; display: inline-grid !important; place-items: center;
+}
+.ncm-app.ncm-data-shard-composer .ncm-picker-row__btn i:only-child { margin: 0 !important; }
+.ncm-app.ncm-data-shard-composer textarea.ncm-config-input { height: auto !important; min-height: calc(44px * var(--ncm-text-scale, 1)) !important; }
 /* Number boxes (DVs, amounts): no spinner chrome, small fixed size, and can't be
    stretched by the system min-width — so a DV cell (--fw:60px) stays 60px. */
 .ncm-app.ncm-data-shard-composer input[type="number"] {
   width: 100% !important; min-width: 0 !important; max-width: 84px !important;
-  height: 22px !important; min-height: 0 !important; padding: 3px 6px !important;
+  height: calc(22px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; padding: 3px 6px !important;
   -moz-appearance: textfield;
 }
 .ncm-app.ncm-data-shard-composer input[type="number"]::-webkit-outer-spin-button,

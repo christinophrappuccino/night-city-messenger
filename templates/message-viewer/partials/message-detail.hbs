@@ -389,7 +389,7 @@
           </div>
           <div class="ncm-viewer__detail-to-summary">
             <span class="ncm-viewer__detail-to-label">to</span>
-            <span class="ncm-viewer__detail-to-val">{{message.toDisplay}}</span>
+            <span class="ncm-viewer__detail-to-val">{{message.toDisplay}}</span>{{#if message.participantCount}}<span class="ncm-viewer__detail-party" data-tooltip="{{message.participantNames}}"><i class="fas fa-users"></i> {{message.participantCount}}</span>{{/if}}
             <button class="ncm-viewer__detail-expand" data-action="toggle-detail-grid">
               <i class="fas fa-chevron-down"></i>
             </button>
@@ -627,6 +627,7 @@
       {{else if (eq currentFilter 'spam')}}
         {{#unless message.anonRepliesBlocked}}
         <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="reply-message"><i class="fas fa-reply"></i> Reply</button>
+        {{#if message.canReplyAll}}<button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="reply-all-message" data-tooltip="{{message.participantNames}}"><i class="fas fa-reply-all"></i> Reply All</button>{{/if}}
         {{/unless}}
         {{#if message.canTraceAnon}}
         <button class="ncm-btn ncm-btn--ghost ncm-btn--sm ncm-btn--trace" data-action="trace-anon" data-message-id="{{message.messageId}}"><i class="fas fa-satellite-dish"></i> Trace</button>
@@ -642,6 +643,7 @@
         <span class="ncm-viewer__detail-anon-noreply" data-tooltip="{{#if message.senderSendOnly}}Automated system address — it does not accept replies.{{else}}This anonymous sender can't be replied to.{{/if}}"><i class="fas fa-reply-slash"></i> No Reply</span>
         {{else}}
         <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="reply-message"><i class="fas fa-reply"></i> Reply</button>
+        {{#if message.canReplyAll}}<button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="reply-all-message" data-tooltip="{{message.participantNames}}"><i class="fas fa-reply-all"></i> Reply All</button>{{/if}}
         {{/if}}
         {{#if message.canTraceAnon}}
         <button class="ncm-btn ncm-btn--ghost ncm-btn--sm ncm-btn--trace" data-action="trace-anon" data-message-id="{{message.messageId}}"><i class="fas fa-satellite-dish"></i> Trace</button>

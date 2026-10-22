@@ -6,6 +6,7 @@
  */
 
 import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, SHARD_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS, CONTRAST_SPREAD } from './constants.js';
+import { resolveShardEditing } from '../ui/content/EncoderModel.js';
 
 /** Month names for the written-out date styles (dateMonthStyle setting). */
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -726,11 +727,28 @@ export function netVerbFor(action) {
  * @returns {string} HTML
  */
 export function whisperCardHtml({ tone = 'info', icon = 'fa-shield-halved', title = 'NCM', lines = [] } = {}) {
-  const body = lines.filter(Boolean).map(l => `<div class="ncm-wcard__line">${l}</div>`).join('');
-  return `<div class="ncm-wcard ncm-wcard--${tone}">`
-    + `<div class="ncm-wcard__hd"><i class="fas ${icon}"></i><span>${title}</span></div>`
+  // The Esper-readout family (styles/chat/chat-cards.css): a record line, a
+  // "// GM only" strip, then the lines. Tones map onto the family's colours.
+  const mod = { warn: 'ncm-cc--gm', danger: 'ncm-cc--fail', ok: 'ncm-cc--ok', purple: 'ncm-cc--mal' }[tone] || '';
+  const body = lines.filter(Boolean).map(l => `<div class="ncm-cc__line">${l}</div>`).join('');
+  return `<div class="ncm-cc ${mod}">`
+    + `<div class="ncm-cc__rec"><span class="ncm-cc__kind"><i class="fas ${icon}"></i> ${title}</span><span class="ncm-cc__time">${chatCardTime()}</span></div>`
+    + `<div class="ncm-cc__whisper">GM only</div>`
     + body
     + `</div>`;
+}
+
+/**
+ * The game-time stamp every chat card prints in its record line, in the GM's
+ * configured date/time format (never raw Date.now()).
+ * @param {string|number|Date} [iso]  a specific moment; defaults to the time provider's now
+ * @returns {string}
+ */
+export function chatCardTime(iso) {
+  try {
+    const t = iso ?? globalThis.game?.nightcity?.timeService?.getCurrentTime?.() ?? new Date().toISOString();
+    return formatCyberDate(t) || '';
+  } catch { return ''; }
 }
 
 /**
@@ -832,6 +850,37 @@ export function canEncode(actor, { requireActor = true } = {}) {
   return canOperate(actor, gate, { standalone: true, label: 'Encoding a shard requires' });
 }
 
+/**
+ * May this character REWRITE an existing shard — add a file to it, or re-encode
+ * it? The one answer every edit door reads (the viewer's Add Entry, the item
+ * right-click, the Encoder's "re-encode" source list and the Encoder itself).
+ * Three gates, reported with the reason that applies:
+ *   · the shard's own `playerEditing` rule (see resolveShardEditing — a GM-made
+ *     shard is locked unless the GM opened it; a player-made one is its maker's)
+ *   · the world-wide encoder switch + gate (`canEncode`)
+ *   · the GM's "rewrite a sloppy shard" setting (`encoderConfig.reencode.allowed`)
+ * The GM always may — they author through the config sheet and the composer.
+ * @param {Item|null} item the shard
+ * @param {Actor|null} actor the operating character
+ * @returns {{ ok: boolean, reason?: string, locked?: boolean, mode?: string }}
+ */
+export function canEditShard(item, actor) {
+  if (!item?.getFlag?.(MODULE_ID, 'isDataShard')) return { ok: false, reason: 'That is not a data shard.' };
+  if (game.user?.isGM) return { ok: true, mode: 'gm' };
+  const config = item.getFlag(MODULE_ID, 'config') || {};
+  const mode = resolveShardEditing(config);
+  if (mode === 'locked') return { ok: false, locked: true, mode, reason: 'This shard is read-only — its contents are locked.' };
+  if (mode === 'maker' && (!actor || config.playerMade?.actorId !== actor.id)) {
+    return { ok: false, locked: true, mode, reason: `Only ${config.playerMade?.actorName || 'the character who encoded it'} can rewrite this shard.` };
+  }
+  const enc = canEncode(actor);
+  if (!enc.ok) return { ...enc, mode };
+  let cfg;
+  try { cfg = game.settings?.get(MODULE_ID, 'encoderConfig') ?? {}; } catch { cfg = {}; }
+  if (cfg?.reencode?.allowed === false) return { ok: false, mode, reason: 'Your GM does not allow rewriting a shard once it is encoded.' };
+  return { ok: true, mode };
+}
+
 /** Remember the acting character for this client. */
 export async function setOperatorActor(actorId) {
   try {
@@ -863,4 +912,162 @@ export async function openOperatorPicker(host = null) {
   await setOperatorActor(picked);
   ui.notifications.info(`NCM | Now operating as ${game.actors.get(picked)?.name}.`);
   return true;
+}
+
+/**
+ * Second layer against the browser password manager (the first is
+ * autocomplete="new-password" + the extension opt-outs on the field): every
+ * secret field and login handle under `root` is READ-ONLY until the player
+ * touches it. No browser autofills a readonly field, and the guard lifts on the
+ * first pointerdown / keydown — before the key's default action, so the typed
+ * character still lands. Focus alone does NOT lift it (an autofocused field
+ * would lift it at render and defeat the point). Idempotent per element.
+ * @param {HTMLElement|null} root
+ * @returns {number} how many fields were guarded
+ */
+export function guardSecretInputs(root) {
+  const fields = root?.querySelectorAll?.('input[data-ncm-secret], input[type="password"], input[autocomplete="new-password"], input[data-ncm-login]');
+  // Third layer, the one managers cannot see (dev, 2026-10-21: Chrome's manager AND
+  // NordPass still offered the Forge login after the attributes, the readonly guard
+  // AND a CSS-masked text field — Chromium's form parser treats a text field with
+  // -webkit-text-security as a password field, and NordPass keys on the label).
+  // So a secret field is a PLAIN text input whose DISPLAYED value is bullets painted
+  // here; the real text lives in script and is served through the element's own
+  // `value` property, so every reader (`input.value`) and writer (the keypad's
+  // `input.value = …`) works unchanged. Nothing on the element says "password".
+  let n = 0;
+  for (const el of fields ?? []) {
+    if (el.dataset.ncmGuarded) continue;
+    el.dataset.ncmGuarded = '1';
+    // The templates emit a TEXT field from the start (data-ncm-secret) — a browser
+    // classifies a field the moment it enters the page, so a type="password" that
+    // script later flips to text has already summoned the manager.
+    if (el.dataset.ncmSecret || el.type === 'password') shadowSecretInput(el);
+    // The NAME field stops being an <input> entirely (dev, 2026-10-21: NordPass still
+    // attached to a plain text field however it was labelled or named).
+    if (el.dataset.ncmLogin) { shadowLoginInput(el); continue; }
+    el.readOnly = true;
+    el.classList.add('ncm-autofill-guard');
+    const lift = () => { el.readOnly = false; el.classList.remove('ncm-autofill-guard'); };
+    el.addEventListener('pointerdown', lift, { once: true });
+    el.addEventListener('keydown', lift, { once: true });
+    n++;
+  }
+  return n;
+}
+
+/**
+ * Replace a secret <input> with an editable element that shows BULLETS while the
+ * real text lives in script and is served through the (now hidden) input's own
+ * `value` property — every reader (`input.value`) and writer (the keypad's
+ * `input.value = …`) works unchanged, and `keydown` Enter is forwarded to the
+ * input so the login screens' own Enter listeners still fire. Managers attach to
+ * inputs; they do not attach to editable text (dev, 2026-10-21: NordPass went
+ * for the shadowed text input as soon as the name field stopped being one).
+ * `el.ncmSetMasked(false)` reveals (the auth dialog's eye); `el.ncmFocus()`
+ * focuses the editable. Idempotent.
+ * @param {HTMLInputElement} el
+ */
+export function shadowSecretInput(el) {
+  if (!el || el.dataset.ncmShadow) return;
+  const doc = el.ownerDocument;
+  const Proto = globalThis.HTMLInputElement?.prototype;
+  const desc = Proto && Object.getOwnPropertyDescriptor(Proto, 'value');
+  if (!doc?.createElement || !el.insertAdjacentElement || !desc?.set || !desc?.get || !(el instanceof globalThis.HTMLInputElement)) return;
+  el.dataset.ncmShadow = '1';
+  let real = String(desc.get.call(el) || '');
+  let masked = true;
+  const ce = doc.createElement('div');
+  ce.className = `${el.className || ''} ncm-login-ce ncm-secret-ce`.trim();
+  ce.setAttribute('contenteditable', 'true');
+  ce.setAttribute('role', 'textbox');
+  ce.setAttribute('spellcheck', 'false');
+  ce.setAttribute('tabindex', el.tabIndex < 0 ? '-1' : '0');
+  ce.setAttribute('data-placeholder', el.getAttribute?.('placeholder') || '');
+  try {
+    const cs = globalThis.getComputedStyle?.(el);
+    if (cs) for (const p of ['font', 'color', 'backgroundColor', 'border', 'borderRadius', 'padding', 'width', 'height', 'lineHeight', 'letterSpacing', 'flex', 'boxSizing', 'textAlign']) ce.style[p] = cs[p];
+  } catch { /* no layout (sim) */ }
+  el.insertAdjacentElement('beforebegin', ce);
+  el.type = 'hidden';
+  const paint = () => {
+    ce.textContent = masked ? '\u2022'.repeat(real.length) : real;
+    desc.set.call(el, real);
+    // keep the caret at the end of the repainted text while the editable has focus
+    try {
+      const sel = doc.getSelection?.();
+      if (sel && doc.activeElement === ce && doc.createRange) { const r = doc.createRange(); r.selectNodeContents(ce); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+    } catch { /* unfocused */ }
+  };
+  Object.defineProperty(el, 'value', { configurable: true, get: () => real, set: (v) => { real = String(v ?? ''); paint(); } });
+  el.ncmSetMasked = (on) => { masked = !!on; paint(); };
+  el.ncmFocus = () => ce.focus?.();
+  ce.addEventListener('beforeinput', (ev) => {
+    const t = ev.inputType || '';
+    ev.preventDefault();
+    if (t === 'insertText' || t === 'insertCompositionText') real += ev.data ?? '';
+    else if (t === 'insertFromPaste' || t === 'insertFromDrop') real += (ev.dataTransfer?.getData?.('text') ?? ev.data ?? '').replace(/[\r\n]+/g, '');
+    else if (t === 'deleteWordBackward') real = real.replace(/\S*\s*$/, '');
+    else if (t === 'deleteContentBackward' || t === 'deleteContentForward' || t === 'deleteByCut') real = real.slice(0, -1);
+    else if (t.startsWith('delete')) real = '';
+    // anything exotic (history, formatting, line breaks) is dropped rather than corrupting the secret
+    paint();
+  });
+  ce.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    const KE = globalThis.KeyboardEvent;
+    if (KE) el.dispatchEvent(new KE('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+  });
+  if (el.autofocus) ce.focus?.();
+  paint();
+}
+
+/**
+ * Replace a login-name <input> with an editable text element that LOOKS like it
+ * and mirrors into the original, now hidden, input — so every reader that queries
+ * `[name="…"]` still gets the value. Password managers attach to inputs; they do
+ * not attach to contenteditable text. Enter moves focus to the secret field.
+ * @param {HTMLInputElement} el
+ * @returns {HTMLElement|null} the editable element
+ */
+export function shadowLoginInput(el) {
+  if (!el || el.dataset.ncmCe) return null;
+  const doc = el.ownerDocument;
+  if (!doc?.createElement || !el.insertAdjacentElement) return null;
+  el.dataset.ncmCe = '1';
+  const ce = doc.createElement('div');
+  ce.className = `${el.className || ''} ncm-login-ce`.trim();
+  ce.setAttribute('contenteditable', 'true');
+  ce.setAttribute('role', 'textbox');
+  ce.setAttribute('spellcheck', 'false');
+  ce.setAttribute('tabindex', '0');
+  ce.setAttribute('data-placeholder', el.getAttribute?.('placeholder') || '');
+  ce.textContent = el.value || '';
+  // dress it exactly like the input it replaces, whatever the host styled that input as
+  try {
+    const cs = globalThis.getComputedStyle?.(el);
+    if (cs) for (const p of ['font', 'color', 'backgroundColor', 'border', 'borderRadius', 'padding', 'width', 'height', 'lineHeight', 'letterSpacing', 'flex', 'boxSizing', 'textAlign', 'textTransform']) ce.style[p] = cs[p];
+  } catch { /* no layout (sim) */ }
+  el.insertAdjacentElement('beforebegin', ce);
+  el.type = 'hidden';
+  const sync = () => { el.value = String(ce.textContent || '').replace(/[\r\n]+/g, '').trim(); };
+  ce.addEventListener('input', sync);
+  ce.addEventListener('blur', sync);
+  ce.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    sync();
+    const scope = el.closest?.('form, .ncm-sec-login-form, .ncm-term__manual, .ncm-term__login, .window-content') || doc;
+    const nxt = scope.querySelector?.('input[data-ncm-secret]');
+    if (nxt?.ncmFocus) nxt.ncmFocus(); else nxt?.focus?.();
+  });
+  ce.addEventListener('paste', (ev) => {
+    ev.preventDefault();
+    const text = (ev.clipboardData?.getData?.('text') || '').replace(/[\r\n]+/g, '');
+    try { doc.execCommand('insertText', false, text); } catch { ce.textContent += text; }
+    sync();
+  });
+  if (el.autofocus) ce.focus?.();
+  return ce;
 }

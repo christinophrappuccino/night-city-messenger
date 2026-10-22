@@ -250,7 +250,7 @@ console.log('\n── 6 · the shared picker replaced the copies ──');
 ok('namePicker exists and filters with inline display, not the hidden attribute', () => {
   const s = read('scripts/utils/namePicker.js');
   assert.ok(s.includes('r.style.display'), 'must set display inline to beat the author rule');
-  assert.ok(!/\.hidden = /.test(s), 'the hidden attribute loses to .ncm-burn-row{display:flex}');
+  assert.ok(!/\.hidden = /.test(s), 'the hidden attribute loses to the picker row\'s own display:flex');
 });
 ok('the Encoder config picks through the shared picker', () => {
   const s = read('scripts/ui/ShardEncoder/EncoderConfigApp.js');

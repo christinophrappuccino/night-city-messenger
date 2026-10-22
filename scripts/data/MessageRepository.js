@@ -502,6 +502,9 @@ export class MessageRepository {
           threadId: messageData.threadId || messageId,
           inReplyTo: messageData.inReplyTo || null,
           references: Array.isArray(messageData.references) ? messageData.references : [],
+          // Address-keyed members of a multi-recipient message (participants.js);
+          // [] for one-to-one mail. Threading + Reply All read it.
+          participants: Array.isArray(messageData.participants) ? messageData.participants : [],
 
           from: messageData.from || '',
           fromActorId: messageData.fromActorId || '',
@@ -721,8 +724,28 @@ export class MessageRepository {
       const prev = map.get(key);
       if (!prev || new Date(msg.timestamp) > new Date(prev.timestamp)) map.set(key, msg);
     };
+    // The viewer's own keys — a group copy lists everyone, and "me" is never a
+    // counterparty of my own mail.
+    const me = new Set([String(actorId || '').toLowerCase()]);
+    const myEmail = String(game.actors?.get(actorId)?.getFlag?.(MODULE_ID, 'email') || '').trim().toLowerCase();
+    if (myEmail) me.add(myEmail);
     for (const msg of messages) {
       const sent = !!msg.status?.sent;
+      // Multi-recipient mail: every OTHER participant is a counterparty (a sent
+      // group copy's joined "a, b, c" address would otherwise index under that
+      // literal string and never match any contact).
+      if (Array.isArray(msg.participants) && msg.participants.length) {
+        for (const p of msg.participants) {
+          const email = String(p?.email || '').trim().toLowerCase();
+          const aId = p?.hint?.actorId || '';
+          const cId = p?.hint?.contactId || '';
+          if (me.has(email) || me.has(String(aId).toLowerCase())) continue;
+          consider(index.byEmail, email, msg);
+          consider(index.byActorId, aId, msg);
+          consider(index.byContactId, cId, msg);
+        }
+        continue;
+      }
       consider(index.byEmail, String((sent ? msg.to : msg.from) || '').trim().toLowerCase(), msg);
       consider(index.byActorId, sent ? msg.toActorId : msg.fromActorId, msg);
       consider(index.byContactId, sent ? msg.toContactId : msg.fromContactId, msg);
@@ -861,7 +884,7 @@ export class MessageRepository {
 
   async toggleSaved(actorId, messageId) {
     const msg = await this.getMessage(actorId, messageId);
-    if (!msg) return { success: false };
+    if (!msg) return { success: false, error: 'Message not found' };
     const newSaved = !msg.status.saved;
     const result = await this.updateMessage(actorId, messageId, { 'status.saved': newSaved });
     return { ...result, saved: newSaved };
@@ -1116,6 +1139,7 @@ export class MessageRepository {
       threadId: flags.threadId,
       inReplyTo: flags.inReplyTo,
       references: Array.isArray(flags.references) ? flags.references : [],
+      participants: Array.isArray(flags.participants) ? flags.participants : [],
       from: flags.from,
       fromActorId: flags.fromActorId,
       fromContactId: flags.fromContactId || '',

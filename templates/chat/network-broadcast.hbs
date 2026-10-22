@@ -1,15 +1,11 @@
-{{!-- Chat Card: Network Broadcast --}}
-<div class="ncm-cc ncm-cc--broadcast">
-  <div class="ncm-cc__scanline"></div>
-  <div class="ncm-cc__header">
-    <i class="fas fa-tower-broadcast"></i>
-    <span class="ncm-cc__badge">Network Broadcast</span>
-    <span class="ncm-cc__header-meta">{{networkName}}</span>
+{{!-- Chat Card: Network Notice (GM broadcast — the Esper readout) --}}
+<div class="ncm-cc">
+  <div class="ncm-cc__rec">
+    <span class="ncm-cc__kind">Network notice</span>
+    <span class="ncm-cc__time">{{when}}</span>
+    <span class="ncm-cc__sub"><span>{{networkName}}</span></span>
   </div>
-  <div class="ncm-cc__body">
-    <div class="ncm-cc__broadcast-body"><i class="fas fa-triangle-exclamation"></i> <span>{{message}}</span></div>
-  </div>
-  <div class="ncm-cc__footer">
-    <span class="ncm-cc__network"><i class="fas fa-tower-broadcast"></i> {{networkName}} // SYSTEM BROADCAST</span>
+  <div class="ncm-cc__hero"><i class="ncm-cc__tr"></i><i class="ncm-cc__bl"></i>
+    <div class="ncm-cc__text" style="margin:0;font-size:14px">{{message}}</div>
   </div>
 </div>

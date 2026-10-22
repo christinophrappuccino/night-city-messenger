@@ -18,6 +18,7 @@
 import { BaseTab } from '../BaseTab.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
+import { showNamePicker, documentEntries } from '../../../utils/namePicker.js';
 
 export class TerminalsTab extends BaseTab {
 
@@ -266,21 +267,15 @@ export class TerminalsTab extends BaseTab {
     const candidates = game.items.filter(i =>
       !i.getFlag(MODULE_ID, 'isTerminal') && !i.getFlag(MODULE_ID, 'isDataShard'));
     if (!candidates.length) return ui.notifications.warn('No eligible world items to convert.');
-    const options = candidates.map(i => `<option value="${i.id}">${Handlebars.escapeExpression(i.name)}</option>`).join('');
-    let pickedId = null;
-    await new Promise((resolve) => {
-      adminDialog({
-        title: 'Import Item → Terminal',
-        content: `<p>Convert which world item into a Terminal?</p><select style="width:100%">${options}</select>`,
-        buttons: {
-          convert: { label: 'Convert', callback: (html) => { pickedId = html.find('select').val(); } },
-          cancel: { label: 'Cancel' },
-        },
-        default: 'convert', close: () => resolve(),
-      }).render(true);
+    const pick = await showNamePicker({
+      title: 'Import Item → Terminal',
+      hint: 'Convert which world item into a Terminal?',
+      entries: documentEntries(candidates, { note: (i) => i.type }),
+      placeholder: 'search items or folders…',
     });
-    if (!pickedId) return;
-    const item = game.items.get(pickedId);
+    if (!pick?.id) return;
+    const item = game.items.get(pick.id);
+    if (!item) return;
     const res = await svc.convertToTerminal(item);
     if (!res?.success) return ui.notifications.error(res?.error || 'Conversion failed.');
     ui.notifications.info(`"${item.name}" is now a Terminal.`);

@@ -169,6 +169,7 @@
             <div class="ncm-shard-row__actions">
               <div class="ncm-action-btn" data-action="openShardItem" data-item-id="{{this.itemId}}" title="Open Shard"><i class="fas fa-folder-open"></i></div>
               <div class="ncm-action-btn ncm-action-btn--gold" data-action="configureShardItem" data-item-id="{{this.itemId}}" title="Configure"><i class="fas fa-cog"></i></div>
+              {{#if this.isWorldItem}}<div class="ncm-action-btn" data-action="shardOwnership" data-item-id="{{this.itemId}}" title="Permissions — who can see this world item"><i class="fas fa-user-lock"></i></div>{{/if}}
               <div class="ncm-action-btn" data-action="forceDecryptShardItem" data-item-id="{{this.itemId}}" title="{{#if this.isDecrypted}}Relock{{else}}Force Decrypt{{/if}}"><i class="fas {{#if this.isDecrypted}}fa-lock{{else}}fa-unlock{{/if}}"></i></div>
             </div>
           </div>
@@ -225,6 +226,7 @@
               <div class="ncm-shard-expand-actions">
                 <button class="ncm-shard-expand-btn ncm-shard-expand-btn--cyan" data-action="openShardItem" data-item-id="{{this.itemId}}"><i class="fas fa-folder-open"></i> Open</button>
                 <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="configureShardItem" data-item-id="{{this.itemId}}"><i class="fas fa-cog"></i> Config</button>
+                {{#if this.isWorldItem}}<button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="shardOwnership" data-item-id="{{this.itemId}}"><i class="fas fa-user-lock"></i> Permissions</button>{{/if}}
                 <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="unconvertShard" data-item-id="{{this.itemId}}"><i class="fas fa-rotate-left"></i> Unconvert</button>
               </div>
             </div>

@@ -72,6 +72,7 @@ Go to Admin Panel → **Contacts**. This is your master list of every NPC that p
 - **Import Actor** — turn an existing actor into a contact in two clicks. The portrait and email come with it.
 - **Push contacts to players** — give an NPC's contact card to one player or the whole party.
 - Mark an address as **send-only** — good for system addresses like `alerts@arasaka.com`. Players get mail from it but can't reply.
+- **Groups** — the Groups card at the top of the tab. Make a named list of contacts ("The Crew", "Arasaka Leads"), then **Push** it to a player and it lands in their contact book, contacts included. Re-pushing updates their copy.
 
 Don't build the whole city. Two or three NPCs your party actually talks to is plenty for the first night.
 
@@ -105,12 +106,16 @@ Done. NPCs and other players can now message you at that address.
 - **Folders** — Inbox, Sent, Saved, Trash, and Spam. There's a "Mark all read" button at the end of the filter row.
 - **Networks** — at the top of the window. You only see networks that reach the scene you're on. A padlock means the network needs a password or a skill check. Some messages only open on certain networks.
 - **Threads** — click the **Thread** button on a message to see the whole conversation in one view.
+- **Reply All** — a message sent to several people shows a party chip next to the To line and a **Reply All** button beside Reply.
+- **Share to chat** — posts a message as a chat card. Anyone reading the card who doesn't have the sender in their contacts gets an **Add contact** button right on it.
 - **Money** — a message can have eddies attached. Click **Claim** and the money goes straight to your character sheet. It can only be claimed once.
 - **Self-destructing messages** exist. If you get one, read it carefully. It won't be there later.
 
 ### Contacts
 
 The **Contacts** button opens your personal contact book. You can set trust levels, write notes, and mark favorites. When a stranger messages you, use **Add to Contacts** right from the message. Some contacts are protected by ICE and need a skill check to unlock.
+
+**Groups** sit in a row of chips under the search bar. A group is a named list of your contacts — make one with **New**, or the GM can hand you one (it shows a shield). Each chip shows a few member faces; click it to see everyone in it, message them all at once, or edit the list. Clicking a face opens that contact. The groups you message most stay at the front, and past six the rest fold behind **+N more**. In the composer, typing a group's name offers it as one chip that sends to everybody in it.
 
 ### Make it yours
 
@@ -129,7 +134,8 @@ Once messaging works, here's what you can do with it:
 - **Send as anyone.** Put any contact in the From field. When players message an NPC, you get a popup, and the mail collects in the **NPC Inbox** panel (Admin → Messages) where you can reply.
 - **Anonymous send.** Turn this on in settings, and the composer gets a checkbox that hides who you are. Players see a glitchy masked avatar instead. They can reply without knowing who they're talking to, and if you allow it, they can roll to trace you. Great for mystery employers.
 - **Self-destruct.** Set a message to delete after it's read, or after 1, 6, or 24 hours.
-- **Scheduled messages.** Write now, send later. You can also send to the whole party at once.
+- **Scheduled messages.** Write now, send later.
+- **One message, many people.** Type a group's name in To and it goes to everyone in it; each recipient gets their own copy and can Reply All. **Mass Broadcast** (Admin → Messages) has a **Send to** picker for the whole party or one of your groups, and tells you by name if anyone couldn't receive it. In the Messages activity feed a group send folds into one row you can expand.
 - **Spam.** The Spam tab has ready-made junk mail you can send to players, and can even send it automatically when they join certain networks. It sounds silly, but a "spam" message can carry anything a real message can. Use that.
 
 ---
@@ -161,7 +167,13 @@ Almost anything can be locked. Encrypted photos, blacked-out paragraphs, hidden 
 
 ### Give it to the players
 
-The shard is a normal Item. Hand it over however you like: drop it as loot, put it on a body, trade it. The player cracks it open with a skill check. There's a whole animated hacking sequence, and lockouts if they keep failing.
+The shard is a normal Item. Hand it over however you like: drop it as loot, put it on a body, trade it, or attach it to a message. The player cracks it open with a skill check. There's a whole animated hacking sequence, and lockouts if they keep failing.
+
+You do **not** need to give players permission on the shard. A shard attached to a message stays a world item nobody can see in the Items sidebar; when a player breaks into it, the module asks the GM's client to record that, so the reveal is never spoiled by a permissions change. If you really do want to hand a shard over outright, the **Permissions** button on the shard's row in Admin → Shards opens Foundry's ownership dialog.
+
+### Letting players write on them
+
+Players can encode their own shards (Admin → Shards → **Player Authoring** switches it on). By default a shard **you** made is read-only for players, and a shard a **player** made can only be reopened by the character who encoded it. To change that for one shard, open Configure Shard → Security → **Player Editing**: locked, maker only, or anyone who passes the encoder gate. A player re-encoding a shard adds files to it and re-rolls how convincing the whole chip is; the lock stays as it was.
 
 ---
 
@@ -219,7 +231,7 @@ Admin → Security → **Programs** opens the **Malware Workshop**. Build progra
 
 ### Fighting back
 
-Players have tools too. **ANALYZE** checks whether a file is really what it says it is. **SYSTEM SWEEP** scans a whole terminal for planted programs — it reveals what the roll is good enough to find, and never says whether it missed anything.
+Players have tools too. **ANALYZE** checks whether a file is really what it says it is. It is the magnifier button on a file's header, in a terminal and on a shard alike — but only on *typed* files (a spreadsheet, a photo gallery, a program…); a plain message has nothing to analyze, so it shows no button. **SYSTEM SWEEP** scans a whole terminal for planted programs — it reveals what the roll is good enough to find, and never says whether it missed anything. It lives in the terminal mailbox's **OPS** menu (top bar, next to the operator chip), beside UPLOAD; both are locked with a tooltip for an operator who doesn't meet the Operator Access rule in Admin → Security.
 
 ### How hack rolls get resolved
 

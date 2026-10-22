@@ -18,6 +18,7 @@ import { enrichContent, openGalleryImage, CT_COLORS, RECORD_FIELD_KINDS, RECORD_
   FILE_DEFAULT_TYPES, suggestFilename, deriveFileSize, programEffectOptions } from '../content/ContentRenderers.js';
 import { BUILTIN_EXAMPLES, getEntryTemplates, saveEntryTemplate, deleteEntryTemplate, exportEntryTemplates, importEntryTemplates } from '../content/EntryTemplates.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
+import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
 
 /** Content type pill definitions */
 const TYPE_PILLS = [
@@ -244,6 +245,8 @@ export class DataShardComposer extends BaseApplication {
       ssRemoveCol: DataShardComposer._onSsRemoveCol,
       browseImage: DataShardComposer._onBrowseImage,
       browseMedia: DataShardComposer._onBrowseMedia,
+      dossPickActor: DataShardComposer._onDossPickActor,
+      plPickMacro: DataShardComposer._onPlPickMacro,
       browseListImage: DataShardComposer._onBrowseListImage,
       addEntryNetworkTag: DataShardComposer._onAddEntryNetworkTag,
       removeEntryNetworkTag: DataShardComposer._onRemoveEntryNetworkTag,
@@ -405,13 +408,15 @@ export class DataShardComposer extends BaseApplication {
       }
     }
 
-    // Actors list for dossier linking
-    const actorOptions = (game.actors ?? [])
-      .filter(a => a.type === 'character' || a.type === 'npc' || a.type === 'mook')
-      .map(a => ({ id: a.id, name: a.name }));
+    // Dossier linked actor — the picker reads the world on demand; the
+    // template only needs the current pick's name for its label.
+    const dossLinkedId = this.editData?.contentData?.linkedActorId || '';
+    const dossLinkedName = dossLinkedId ? (game.actors?.get(dossLinkedId)?.name || '') : '';
 
     return {
       hasItem: true,
+      dossLinkedId,
+      dossLinkedName,
       shardName: this._item?.name ?? 'a new shard',
       isTerminalTarget: this._isTerminal,
       // Drives {{#unless playerMode}} around the GM-only apparatus.
@@ -563,8 +568,6 @@ export class DataShardComposer extends BaseApplication {
       isPerMessageEncryption: config.encryptionMode === 'message',
       defaultDC: config.encryptionDC ?? 15,
 
-      // Dossier helpers
-      actorOptions,
 
       // Shared — default timestamp is game time
       defaultTimestamp: (() => {
@@ -890,6 +893,7 @@ export class DataShardComposer extends BaseApplication {
       const select = el.querySelector(`[data-edit-select="${key}"]`);
       if (select) select.value = val;
     }
+    DataShardComposer._paintPickerLabels(el);
 
     // ─── Pre-populate network visibility tags ───
     const nv = this.editData.networkVisibility;
@@ -1094,7 +1098,7 @@ export class DataShardComposer extends BaseApplication {
       `<input type="text" name="credEntries__host-${idx}" value="${esc(c.host)}" placeholder="host / system" class="ncm-credcard__host">` +
       `<div class="ncm-credcard__line">` +
         `<input type="text" name="credEntries__user-${idx}" value="${esc(c.user)}" placeholder="username" class="ncm-credcard__user">` +
-        `<span class="ncm-credcard__secretwrap"><input type="password" name="credEntries__secret-${idx}" value="${esc(c.secret)}" placeholder="password / key" class="ncm-credcard__secret">` +
+        `<span class="ncm-credcard__secretwrap"><input type="password" name="credEntries__secret-${idx}" value="${esc(c.secret)}" placeholder="password / key" class="ncm-credcard__secret" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other">` +
         `<button type="button" data-action="wzReveal" class="ncm-credcard__eye" data-tooltip="Show / hide"><i class="fas fa-eye"></i></button></span>` +
       `</div>` +
       `<input type="text" name="credEntries__note-${idx}" value="${esc(c.note)}" placeholder="note (optional)" class="ncm-credcard__note">` +
@@ -2019,33 +2023,95 @@ export class DataShardComposer extends BaseApplication {
   }
 
   /** Link a world scene to this event (GM Go-to-Scene in the viewer). */
-  static _onCalScene(event, target) {
+  static async _onCalScene(event, target) {
     const card = target.closest('.ncm-calev');
     if (!card) return;
-    const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
-    const cur = card.dataset.sceneId || '';
-    const opts = ['<option value="">— no scene —</option>']
-      .concat((game.scenes?.contents ?? []).map(s => `<option value="${s.id}"${s.id === cur ? ' selected' : ''}>${esc(s.name)}</option>`))
-      .join('');
-    adminDialog({
+    const pick = await DataShardComposer._pickScene(card.dataset.sceneId || '',
+      'The GM gets a "Go to Scene" button on this event in the viewer.');
+    if (!pick) return; // dismissed
+    const id = pick.none ? '' : pick.id;
+    card.dataset.sceneId = id;
+    const lbl = card.querySelector('[data-cal-scene-lbl]');
+    if (lbl) lbl.textContent = id ? (game.scenes?.get(id)?.name || 'scene ✓') : 'scene';
+    card.querySelector('[data-action="calScene"]')?.classList.toggle('is-on', !!id);
+    this._renderPreview();
+  }
+
+  /**
+   * The ONE scene picker for every "Link a Scene" chip (calendar event, location,
+   * camera). Searchable, with folder chips — there were three copies of a native
+   * <select> over every scene in the world.
+   * @param {string} current  currently linked scene id ('' = none)
+   * @param {string} hint
+   * @returns {Promise<{id: string, name: string, none?: boolean}|null>} null = dismissed
+   */
+  static _pickScene(current, hint) {
+    return showNamePicker({
       title: 'Link a Scene',
-      content: `<p style="font-size:12px">The GM gets a "Go to Scene" button on this event in the viewer.</p><select name="calScenePick" style="width:100%">${opts}</select>`,
-      buttons: {
-        ok: {
-          label: 'Link',
-          callback: (html) => {
-            const id = html.find('select[name="calScenePick"]').val() || '';
-            card.dataset.sceneId = id;
-            const lbl = card.querySelector('[data-cal-scene-lbl]');
-            if (lbl) lbl.textContent = id ? (game.scenes?.get(id)?.name || 'scene ✓') : 'scene';
-            card.querySelector('[data-action="calScene"]')?.classList.toggle('is-on', !!id);
-            this._renderPreview();
-          },
-        },
-        cancel: { label: 'Cancel' },
-      },
-      default: 'ok',
-    }).render(true);
+      hint,
+      entries: documentEntries(game.scenes?.contents ?? [], { fallbackImg: 'icons/svg/map.svg' }),
+      allowNone: '— no scene —',
+      selected: current || '',
+      placeholder: 'search scenes or folders…',
+    });
+  }
+
+  /**
+   * Repaint every picker row's label from its hidden input (edit prefill sets
+   * the VALUE through the data-edit-select map; the name has to follow).
+   * Rows: `<input type=hidden name=X data-picker=actor|macro>` + `[data-picker-label-for=X]`.
+   * @param {HTMLElement} el
+   */
+  static _paintPickerLabels(el) {
+    el?.querySelectorAll('input[data-picker]').forEach((inp) => {
+      const lbl = el.querySelector(`[data-picker-label-for="${inp.name}"]`);
+      if (!lbl) return;
+      const id = inp.value || '';
+      const doc = !id ? null : inp.dataset.picker === 'macro' ? game.macros?.get(id) : game.actors?.get(id);
+      lbl.value = doc?.name || (id ? '(missing)' : '');
+      lbl.closest('[data-picker-row]')?.classList.toggle('is-set', !!id);
+    });
+  }
+
+  /** Dossier → "Linked actor": searchable actor picker writing the hidden input. */
+  static async _onDossPickActor(event, target) {
+    const el = this.element;
+    const input = el?.querySelector('[name="dossierLinkedActor"]');
+    if (!input) return;
+    const actors = (game.actors ?? []).filter(a => a.type === 'character' || a.type === 'npc' || a.type === 'mook');
+    const pick = await showNamePicker({
+      title: 'Link an Actor',
+      hint: 'Powers the dossier portrait and the live combat profile.',
+      entries: documentEntries(actors, { note: (a) => a.type }),
+      allowNone: '— none (manual data) —',
+      selected: input.value || '',
+      placeholder: 'search actors or folders…',
+    });
+    if (!pick) return;
+    input.value = pick.none ? '' : pick.id;
+    DataShardComposer._paintPickerLabels(el);
+    // The existing change listener repaints portrait / stats / skills.
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  /** Payload → "Also run macro": searchable world-macro picker. */
+  static async _onPlPickMacro(event, target) {
+    const el = this.element;
+    const input = el?.querySelector('[name="payloadMacroId"]');
+    if (!input) return;
+    const pick = await showNamePicker({
+      title: 'Link a Macro',
+      hint: 'Runs on the GM client when the payload executes.',
+      entries: documentEntries(game.macros?.contents ?? [], { note: (m) => m.type, fallbackImg: 'icons/svg/dice-target.svg' }),
+      allowNone: '— none —',
+      selected: input.value || '',
+      placeholder: 'search macros or folders…',
+    });
+    if (!pick) return;
+    input.value = pick.none ? '' : pick.id;
+    DataShardComposer._paintPickerLabels(el);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   /** Collapse / expand a card (DOM-only) — the summary line fills at collapse. */
@@ -4456,8 +4522,8 @@ export class DataShardComposer extends BaseApplication {
         .map(e => ({ value: e.key, label: `${e.label} — ${e.blurb}`, selected: e.key === effType })),
       durationHrs: dur > 0 ? Math.round(dur / 3600000) : 0,
       // Linked world macros (GM authoring).
-      macroOptions: (game.macros?.contents || []).map(m => ({ id: m.id, name: m.name, selected: fx.macroId === m.id }))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+      macroId: fx.macroId || '',
+      macroName: fx.macroId ? (game.macros?.get(fx.macroId)?.name || '') : '',
       hasMacros: (game.macros?.size || 0) > 0,
       executeRequire: !!cd.executeRequire,
       executeSkills: this._skillOptions(cd.executeSkill || 'Interface'),
@@ -4880,31 +4946,16 @@ export class DataShardComposer extends BaseApplication {
   }
 
   /** Scene-picker Dialog (the calendar precedent) — no more raw Scene-ID entry. */
-  static _onLocScene(event, target) {
+  static async _onLocScene(event, target) {
     const el = this.element;
     const input = el?.querySelector('[name="locationSceneId"]');
     if (!input) return;
-    const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
-    const cur = input.value || '';
-    const opts = ['<option value="">— no scene —</option>']
-      .concat((game.scenes?.contents ?? []).map(s => `<option value="${s.id}"${s.id === cur ? ' selected' : ''}>${esc(s.name)}</option>`))
-      .join('');
-    adminDialog({
-      title: 'Link a Scene',
-      content: `<p style="font-size:12px">The GM gets a "Go to Scene" button on this location in the viewer.</p><select name="locScenePick" style="width:100%">${opts}</select>`,
-      buttons: {
-        ok: {
-          label: 'Link',
-          callback: (html) => {
-            input.value = html.find('select[name="locScenePick"]').val() || '';
-            this._locPaintScene();
-            this._renderPreview();
-          },
-        },
-        cancel: { label: 'Cancel' },
-      },
-      default: 'ok',
-    }).render(true);
+    const pick = await DataShardComposer._pickScene(input.value || '',
+      'The GM gets a "Go to Scene" button on this location in the viewer.');
+    if (!pick) return;
+    input.value = pick.none ? '' : pick.id;
+    this._locPaintScene();
+    this._renderPreview();
   }
 
   static _onLocSec(event, target) {
@@ -5148,34 +5199,19 @@ export class DataShardComposer extends BaseApplication {
   }
 
   /** Per-cam scene link (feed mode) — the calendar scene-picker Dialog. */
-  static _onGalScene(event, target) {
+  static async _onGalScene(event, target) {
     const row = target.closest('.ncm-cl-row');
     const input = row?.querySelector('[name^="galImages__sceneId-"]');
     if (!input) return;
-    const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
-    const cur = input.value || '';
-    const opts = ['<option value="">— no scene —</option>']
-      .concat((game.scenes?.contents ?? []).map(s => `<option value="${s.id}"${s.id === cur ? ' selected' : ''}>${esc(s.name)}</option>`))
-      .join('');
-    adminDialog({
-      title: 'Link a Scene',
-      content: `<p style="font-size:12px">The GM gets a "Go to Scene" button on this camera in the monitor view.</p><select name="galScenePick" style="width:100%">${opts}</select>`,
-      buttons: {
-        ok: {
-          label: 'Link',
-          callback: (html) => {
-            const id = html.find('select[name="galScenePick"]').val() || '';
-            input.value = id;
-            const lbl = row.querySelector('[data-gal-scene-lbl]');
-            if (lbl) lbl.textContent = id ? (game.scenes?.get(id)?.name || 'scene ✓') : 'scene';
-            row.querySelector('[data-action="galScene"]')?.classList.toggle('is-on', !!id);
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-          },
-        },
-        cancel: { label: 'Cancel' },
-      },
-      default: 'ok',
-    }).render(true);
+    const pick = await DataShardComposer._pickScene(input.value || '',
+      'The GM gets a "Go to Scene" button on this camera in the monitor view.');
+    if (!pick) return;
+    const id = pick.none ? '' : pick.id;
+    input.value = id;
+    const lbl = row.querySelector('[data-gal-scene-lbl]');
+    if (lbl) lbl.textContent = id ? (game.scenes?.get(id)?.name || 'scene ✓') : 'scene';
+    row.querySelector('[data-action="galScene"]')?.classList.toggle('is-on', !!id);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   /**

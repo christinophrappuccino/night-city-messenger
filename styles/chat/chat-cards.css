@@ -1,935 +1,151 @@
-/**
- * Chat Card Styles — Unified NCM Chat Card System
- * @file styles/chat/chat-cards.css
- * @module night-city-messenger
- *
- * Optimized for Foundry chat sidebar (~300px width).
- *
- * Card types:
- *   .ncm-cc              Base card (cyan accent)
- *   .ncm-cc--success      Skill check success (green)
- *   .ncm-cc--fail         Skill check failure (red)
- *   .ncm-cc--shared       Shared message (cyan)
- *   .ncm-cc--intercepted  GM intercepted message (gold)
- *   .ncm-cc--broadcast    Network broadcast (red)
- *   .ncm-cc--malware      Malware analysis (red)
- *   .ncm-cc--event        Network event (gold / red)
- *   .ncm-ice-card         BLACK ICE retaliation (full red border)
- *   .ncm-payload-card     Payload execution (full purple border)
- */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAT CARDS — the Esper readout (rebuilt 2026-10-20, dev-approved from
+   docs/mockups/chat-cards-esper-mock.html)
+   ═══════════════════════════════════════════════════════════════════════════
+   ONE family, `ncm-cc`, for every NCM chat card: shared message, skill check,
+   Black ICE, malware analysis, network notice, and the JS-built GM whispers
+   (helpers.whisperCardHtml) and NET-action card (NetResolve). Built like the
+   enhance screen, not a boxed panel: a tracked RECORD LINE says what/who/where/
+   when, the one thing that matters sits inside the ZOOM BRACKETS, data is a
+   strip of READOUTS (name over value). No card border, no accent bar, no
+   scanline film — the chat message's own frame is the only frame.
 
+   The chat log is body-mounted (no .ncm-app ancestor, no admin preset), but the
+   PLAYER ThemeService writes --ncm-* on :root, so every value is a token with a
+   hard fallback: a player's own palette and fonts reach their chat cards.
 
-/* ═══════════════════════════════════════════════════════════
-   §0  SCROLLBAR — Dark cyberpunk scrollbar for all cards
-   ═══════════════════════════════════════════════════════════ */
+   TONE = MEANING. One phosphor colour per card and nothing else is coloured:
+   cyan message · green pass · red fail / ICE · amber GM · violet malware.
 
-.ncm-cc__msg-body::-webkit-scrollbar,
-.ncm-cc__event-detail-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.ncm-cc__msg-body::-webkit-scrollbar-track,
-.ncm-cc__event-detail-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ncm-cc__msg-body::-webkit-scrollbar-thumb,
-.ncm-cc__event-detail-scroll::-webkit-scrollbar-thumb {
-  background: #2a2a45;
-  border-radius: 2px;
-}
-
-.ncm-cc__msg-body::-webkit-scrollbar-thumb:hover,
-.ncm-cc__event-detail-scroll::-webkit-scrollbar-thumb:hover {
-  background: #3a3a55;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   §1  BASE CARD
-   ═══════════════════════════════════════════════════════════ */
+   Element names: __rec (record line: __kind __time __sub) · __whisper · __who /
+   __p (__k __img __pn __n __a __slot → __act | __in) · __hero (__tr __bl) ·
+   __subject · __numrow (__num __verdict) · __ro (readout strip: __k __v) ·
+   __flag · __text · __fold · __ice · __line / __sub (whisper lines). */
 
 .ncm-cc {
-  background: #13131f;
-  border: 1px solid #2a2a45;
-  border-left: 3px solid #00D4E6;
-  overflow: hidden;
-  font-family: 'Rajdhani', sans-serif;
-  position: relative;
+  --c: var(--ncm-secondary, #19f3f7);
+  --t: var(--ncm-text-primary, #e8e8f0);
+  --t2: var(--ncm-text-secondary, #a4a4bc);
+  --m: var(--ncm-text-muted, #6b6b86);
+  --rule: color-mix(in srgb, var(--c) 28%, transparent);
+  --fd: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  --fb: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  --fm: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  position: relative; padding: 8px 10px 8px; color: var(--t); font-family: var(--fd);
+  /* The card carries its OWN dark plate (dev, 2026-10-21): the Cyberpunk RED system
+     ships a light chat theme, and a card that borrowed the message's frame went
+     light-on-light there. The plate is the only "box" — still no border, no bar. */
+  background: var(--ncm-bg-deep, #0a0a12); border: 0; border-radius: 2px; box-shadow: none;
+}
+.ncm-cc--ok   { --c: var(--ncm-success, #34d399); }
+.ncm-cc--fail { --c: var(--ncm-danger, #ff3b5c); }
+.ncm-cc--ice  { --c: var(--ncm-danger, #ff3b5c); }
+.ncm-cc--gm   { --c: var(--ncm-accent, #f0c55b); }
+.ncm-cc--mal  { --c: var(--ncm-warning, #a78bfa); }
+
+/* ── record line: two deliberate lines, never a wrap ── */
+.ncm-cc__rec {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding-bottom: 5px; border-bottom: 1px solid var(--rule);
+  font-family: var(--fm); font-size: 10px; line-height: 1.3; letter-spacing: .16em; text-transform: uppercase;
+}
+.ncm-cc__kind { color: var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-cc__time { color: var(--t2); text-align: right; white-space: nowrap; }
+.ncm-cc__sub { grid-column: 1 / -1; display: flex; gap: 14px; color: var(--m); letter-spacing: .12em; min-width: 0; }
+.ncm-cc__sub > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-cc__whisper { padding: 4px 0 0; font-family: var(--fm); font-size: 10px; line-height: 1.3; letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-accent, #f0c55b); }
+.ncm-cc__whisper::before { content: '// '; }
+
+/* ── the hero: the one thing that matters, inside the zoom brackets ── */
+.ncm-cc__hero { position: relative; margin: 10px 4px 8px; padding: 8px 10px; }
+.ncm-cc__hero::before, .ncm-cc__hero::after, .ncm-cc__tr, .ncm-cc__bl { content: ''; position: absolute; width: 12px; height: 12px; border: 1px solid var(--c); display: block; }
+.ncm-cc__hero::before { left: 0; top: 0; border-right: 0; border-bottom: 0; }
+.ncm-cc__hero::after { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+.ncm-cc__tr { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+.ncm-cc__bl { left: 0; bottom: 0; border-right: 0; border-top: 0; }
+.ncm-cc__subject { font-family: var(--fd); font-size: 19px; font-weight: 500; line-height: 1.2; color: var(--t); letter-spacing: .01em; word-break: break-word; }
+.ncm-cc__subject small { display: block; font-size: 12px; font-weight: 500; line-height: 1.3; color: var(--t2); margin-top: 2px; }
+.ncm-cc__numrow { display: flex; align-items: baseline; gap: 10px; }
+.ncm-cc__num { flex: 0 0 auto; white-space: nowrap; font-family: var(--fm); font-size: 44px; font-weight: 300; line-height: 1; color: var(--c); letter-spacing: -.02em; }
+.ncm-cc__num small { font-size: 16px; color: var(--m); margin-left: 4px; letter-spacing: 0; }
+.ncm-cc__verdict { min-width: 0; font-family: var(--fd); font-size: 15px; font-weight: 700; line-height: 1.15; color: var(--t); }
+.ncm-cc__verdict span { display: block; font-weight: 500; font-size: 12px; color: var(--t2); margin-top: 2px; }
+
+/* ── readouts: name OVER value, in a strip ── */
+.ncm-cc__ro { display: flex; margin: 0 4px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.ncm-cc__ro > div { flex: 1 1 0; min-width: 0; padding: 5px 6px 6px; border-right: 1px solid var(--rule); }
+.ncm-cc__ro > div:last-child { border-right: 0; }
+.ncm-cc__ro .ncm-cc__k { font-family: var(--fm); font-size: 9.5px; line-height: 1; letter-spacing: .12em; text-transform: uppercase; color: var(--m); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-cc__ro .ncm-cc__v { font-family: var(--fm); font-size: 17px; line-height: 1.1; color: var(--t); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-cc__ro .ncm-cc__v small { font-size: 11px; color: var(--m); }
+.ncm-cc__ro .ncm-cc__v--c { color: var(--c); }
+.ncm-cc__ro .ncm-cc__v--text { font-family: var(--fd); font-size: 13px; font-weight: 600; margin-top: 4px; }
+.ncm-cc__flag { margin: 6px 4px 0; font-family: var(--fm); font-size: 10px; line-height: 1.3; letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
+.ncm-cc__flag::before { content: '>> '; }
+
+/* ── people: two readout lines, From over To ── */
+.ncm-cc__who { margin: 8px 4px 0; display: flex; flex-direction: column; gap: 6px; }
+.ncm-cc__p { display: grid; grid-template-columns: 34px 30px 1fr auto; gap: 8px; align-items: center; min-width: 0; }
+.ncm-cc__p .ncm-cc__k { font-family: var(--fm); font-size: 9.5px; line-height: 1; letter-spacing: .12em; text-transform: uppercase; color: var(--m); }
+.ncm-cc__p .ncm-cc__img, .ncm-cc__p img.ncm-cc__img { width: 30px; height: 30px; object-fit: cover; border: 1px solid var(--rule); background: #000; border-radius: 0; }
+.ncm-cc__pn { min-width: 0; }
+.ncm-cc__n { font-family: var(--fd); font-size: 13px; font-weight: 700; line-height: 1.15; color: var(--t); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-cc__a { font-family: var(--fm); font-size: 10px; line-height: 1.2; color: var(--m); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-cc__slot { display: flex; justify-content: flex-end; min-width: 0; }
+.ncm-cc__in { font-family: var(--fm); font-size: 10px; line-height: 1; letter-spacing: .08em; color: var(--m); white-space: nowrap; }
+/* the add-contact BUTTON — reset against Foundry's and CPR's button chrome */
+/* Foundry defaults every <button> to width:100% with its own chrome, and the CPR
+   system restyles buttons again on top (the chat log is outside .ncm-app, so none
+   of the module's usual resets apply). Explicit properties, every one !important,
+   at element+class specificity — a bare `all: unset` loses here. */
+.ncm-cc button.ncm-cc__act, #chat .ncm-cc button.ncm-cc__act {
+  appearance: none !important; -webkit-appearance: none !important;
+  box-sizing: border-box !important; display: inline-flex !important; align-items: center !important; gap: 5px !important;
+  width: auto !important; min-width: 0 !important; height: 22px !important; min-height: 0 !important; line-height: 1 !important;
+  margin: 0 !important; padding: 0 8px !important; flex: 0 0 auto !important; cursor: pointer !important; white-space: nowrap !important;
+  font-family: var(--fd) !important; font-size: 10.5px !important; font-weight: 700 !important; letter-spacing: .04em !important; text-transform: none !important;
+  color: var(--c) !important; background: color-mix(in srgb, var(--c) 10%, transparent) !important; background-image: none !important;
+  border: 1px solid color-mix(in srgb, var(--c) 60%, transparent) !important; border-radius: 2px !important;
+  box-shadow: none !important; text-shadow: none !important; outline: none;
+}
+.ncm-cc button.ncm-cc__act i, #chat .ncm-cc button.ncm-cc__act i { font-size: 9px !important; margin: 0 !important; color: inherit !important; }
+.ncm-cc button.ncm-cc__act:hover, #chat .ncm-cc button.ncm-cc__act:hover { background: color-mix(in srgb, var(--c) 22%, transparent) !important; border-color: var(--c) !important; color: var(--c) !important; }
+.ncm-cc button.ncm-cc__act:focus-visible { outline: 1px solid var(--c) !important; outline-offset: 1px; }
+.ncm-cc button.ncm-cc__act[disabled] { opacity: .5 !important; cursor: default !important; }
+
+/* ── the body: the reader's font at a reading size, no clamp, no inner scrollbar ── */
+.ncm-cc__text { margin: 0 4px; font-family: var(--fb); font-size: 13px; font-weight: 500; line-height: 1.5; color: var(--t); word-break: break-word; }
+.ncm-cc__text p { margin: 0 0 7px; } .ncm-cc__text p:last-child { margin: 0; }
+.ncm-cc__text b, .ncm-cc__text strong { color: var(--t); }
+.ncm-cc__text ul, .ncm-cc__text ol { margin: 0 0 7px; padding-left: 16px; }
+.ncm-cc__text blockquote { margin: 0 0 7px; padding: 2px 0 2px 10px; border-left: 1px solid var(--c); color: var(--t2); }
+.ncm-cc__text a { color: var(--c); }
+.ncm-cc__text img { max-width: 100%; height: auto; }
+.ncm-cc__fold { margin: 0 4px; }
+.ncm-cc__fold > summary { list-style: none; cursor: pointer; margin-top: 8px; font-family: var(--fm); font-size: 10px; line-height: 1.3; letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
+.ncm-cc__fold > summary::-webkit-details-marker { display: none; }
+.ncm-cc__fold > summary::before { content: '>> '; }
+.ncm-cc__fold > summary .ncm-cc__fold-open, .ncm-cc__fold[open] > summary .ncm-cc__fold-closed { display: none; }
+.ncm-cc__fold[open] > summary .ncm-cc__fold-open { display: inline; }
+.ncm-cc__fold > .ncm-cc__text { margin: 7px 0 0; }
+
+/* ── ICE: the program ── */
+.ncm-cc__ice { display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: center; margin: 8px 4px 0; }
+.ncm-cc__ice img, .ncm-cc__ice .ncm-cc__iceimg { width: 54px; height: 54px; object-fit: cover; border: 1px solid var(--rule); border-radius: 0; display: grid; place-items: center; color: var(--c); font-size: 22px; background: #000; }
+.ncm-cc__ice .ncm-cc__n { font-size: 15px; white-space: normal; }
+.ncm-cc__cls { font-family: var(--fm); font-size: 10px; line-height: 1.3; letter-spacing: .12em; text-transform: uppercase; color: var(--m); margin-top: 2px; }
+
+/* ── GM whispers (whisperCardHtml) and the NET-action card: lines of prose ── */
+.ncm-cc__line { margin: 7px 4px 0; font-family: var(--fd); font-size: 13.5px; font-weight: 500; line-height: 1.5; color: var(--t); }
+.ncm-cc__line + .ncm-cc__line { margin-top: 3px; }
+.ncm-cc__line b, .ncm-cc__line strong { color: var(--t); font-weight: 700; }
+.ncm-cc__line i { color: var(--t2); }
+.ncm-cc__sub-line, .ncm-cc__line .ncm-cc__sub { font-size: 12px; color: var(--t2); display: block; }
+.ncm-cc__note { margin: 6px 4px 0; font-family: var(--fm); font-size: 9.5px; line-height: 1.4; letter-spacing: .08em; color: var(--m); }
+
+/* text is selectable on a card (Foundry + CPR ship user-select:none) */
+.ncm-cc, .ncm-cc * { user-select: text; }
+.ncm-cc button, .ncm-cc summary { user-select: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ncm-cc button.ncm-cc__act { transition: background-color .15s ease, border-color .15s ease; }
 }
-
-/* §1.1 Header */
-.ncm-cc__header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: #0c0c16;
-  border-bottom: 1px solid #1e1e32;
-}
-
-.ncm-cc__header i {
-  font-size: 11px;
-  color: #00D4E6;
-  width: 14px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.ncm-cc__badge {
-  font-family: 'Orbitron', monospace;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: #00D4E6;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-cc__header-meta {
-  margin-left: auto;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
-  color: #7a7a95;
-  letter-spacing: 0.2px;
-  white-space: nowrap;
-}
-
-.ncm-cc__header-avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1.5px solid #3a3a55;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-/* §1.2 Body */
-.ncm-cc__body {
-  padding: 10px 10px 12px;
-}
-
-/* §1.3 Footer */
-.ncm-cc__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 10px;
-  background: #0c0c16;
-  border-top: 1px solid #1e1e32;
-}
-
-.ncm-cc__network {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 9px;
-  color: #606078;
-  letter-spacing: 0.3px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ncm-cc__network i {
-  font-size: 8px;
-  opacity: 0.6;
-}
-
-/* §1.4 Whisper bar */
-.ncm-cc__whisper {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  background: rgba(240, 197, 91, 0.06);
-  border-bottom: 1px solid rgba(240, 197, 91, 0.1);
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  color: #F0C55B;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-}
-
-.ncm-cc__whisper i { font-size: 8px; }
-
-/* §1.5 Shared elements */
-.ncm-cc__flavor {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
-  color: #7a7a95;
-  letter-spacing: 0.2px;
-  margin-top: 8px;
-  font-style: italic;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.ncm-cc__flavor i {
-  font-size: 9px;
-  opacity: 0.5;
-  font-style: normal;
-}
-
-.ncm-cc__context {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
-  color: #7a7a95;
-  letter-spacing: 0.2px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.ncm-cc__context i {
-  font-size: 9px;
-  opacity: 0.5;
-}
-
-/* §1.6 Scanline */
-.ncm-cc__scanline {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 212, 230, 0.2), transparent);
-  opacity: 0;
-  animation: ncm-cc-scanpulse 5s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes ncm-cc-scanpulse {
-  0%, 100% { opacity: 0; top: 0; }
-  50%      { opacity: 1; top: 100%; }
-}
-
-/* §1.7 Signal meter */
-.ncm-cc__signal {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  margin-left: 4px;
-}
-
-.ncm-cc__signal-bar {
-  width: 2px;
-  background: #606078;
-  border-radius: 1px;
-}
-
-.ncm-cc__signal-bar--active  { background: #34D399; }
-.ncm-cc__signal-bar--warn    { background: #F0C55B; }
-.ncm-cc__signal-bar--danger  { background: #F65261; }
-
-
-/* ═══════════════════════════════════════════════════════════
-   §2  SKILL CHECK CARD
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-cc--success                  { border-left-color: #34D399; }
-.ncm-cc--success .ncm-cc__badge   { color: #34D399; }
-.ncm-cc--success .ncm-cc__header i { color: #34D399; }
-
-.ncm-cc--fail                     { border-left-color: #F65261; }
-.ncm-cc--fail .ncm-cc__badge      { color: #F65261; }
-.ncm-cc--fail .ncm-cc__header i   { color: #F65261; }
-
-/* Result badge — the SUCCESS/FAILED verdict is the one thing every reader
-   scans for, so it reads at body size, not 8px. */
-.ncm-cc__result-badge {
-  margin-left: auto;
-  font-family: 'Orbitron', monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  padding: 3px 10px;
-  border-radius: 2px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.ncm-cc__result-badge i { font-size: 10px; }
-.ncm-cc__result-badge--success { background: rgba(52, 211, 153, 0.12); color: #34D399; border: 1px solid rgba(52, 211, 153, 0.25); }
-.ncm-cc__result-badge--fail    { background: rgba(246, 82, 97, 0.12); color: #F65261; border: 1px solid rgba(246, 82, 97, 0.25); }
-
-/* Skill name */
-.ncm-cc__skill-name {
-  font-family: 'Orbitron', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  color: #e8e8f0;
-  letter-spacing: 0.6px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ncm-cc__skill-name i { font-size: 10px; color: #7a7a95; }
-
-/* Roll grid */
-.ncm-cc__roll-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 3px;
-  margin-bottom: 6px;
-}
-
-.ncm-cc__roll-cell {
-  background: #0a0a14;
-  padding: 6px 4px 5px;
-  border-radius: 2px;
-  text-align: center;
-  border: 1px solid #1a1a2e;
-}
-
-.ncm-cc__roll-label {
-  font-family: 'Orbitron', monospace;
-  font-size: 9px;
-  color: #9a9ab2;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  margin-bottom: 3px;
-}
-
-.ncm-cc__roll-label i { font-size: 8px; opacity: 0.6; }
-
-.ncm-cc__roll-value {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 16px;
-  color: #f0f0f5;
-  line-height: 1;
-}
-
-/* Die cell */
-.ncm-cc__roll-cell--die {
-  border-color: rgba(0, 212, 230, 0.2);
-  position: relative;
-  overflow: hidden;
-}
-
-.ncm-cc__roll-cell--die .ncm-cc__roll-value { color: #00D4E6; }
-.ncm-cc__roll-cell--die .ncm-cc__roll-label { color: #00D4E6; opacity: 0.7; }
-
-.ncm-cc__die-watermark {
-  position: absolute;
-  bottom: -2px; right: -2px;
-  font-size: 28px;
-  color: #00D4E6;
-  opacity: 0.07;
-  line-height: 1;
-  pointer-events: none;
-}
-
-/* Critical */
-.ncm-cc__roll-cell--crit { border-color: rgba(240, 197, 91, 0.25); }
-.ncm-cc__roll-cell--crit .ncm-cc__roll-value { color: #F0C55B; text-shadow: 0 0 10px rgba(240, 197, 91, 0.35); }
-.ncm-cc__roll-cell--crit .ncm-cc__roll-label { color: #F0C55B; opacity: 0.7; }
-.ncm-cc__roll-cell--crit .ncm-cc__die-watermark { color: #F0C55B; opacity: 0.1; }
-
-/* Fumble */
-.ncm-cc__roll-cell--fumble { border-color: rgba(246, 82, 97, 0.25); }
-.ncm-cc__roll-cell--fumble .ncm-cc__roll-value { color: #F65261; text-shadow: 0 0 10px rgba(246, 82, 97, 0.35); }
-.ncm-cc__roll-cell--fumble .ncm-cc__roll-label { color: #F65261; opacity: 0.7; }
-.ncm-cc__roll-cell--fumble .ncm-cc__die-watermark { color: #F65261; opacity: 0.1; }
-
-/* Luck */
-.ncm-cc__roll-cell--luck { border: 1px solid rgba(240, 197, 91, 0.25); }
-.ncm-cc__roll-cell--luck .ncm-cc__roll-value { color: #F0C55B; }
-.ncm-cc__roll-cell--luck .ncm-cc__roll-label { color: #F0C55B; opacity: 0.7; }
-
-/* Total bar */
-.ncm-cc__total-bar {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: #0a0a14;
-  border-radius: 2px;
-  border: 1px solid #1a1a2e;
-}
-
-.ncm-cc__total-num { font-family: 'Orbitron', monospace; font-size: 20px; font-weight: 700; color: #f0f0f5; letter-spacing: 0.5px; }
-.ncm-cc__total-vs  { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #7a7a95; }
-.ncm-cc__total-dv  { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 600; color: #a0a0b8; }
-.ncm-cc__total-margin { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: #34D399; }
-
-/* Special callouts */
-.ncm-cc__special {
-  text-align: center;
-  padding: 5px 0 0;
-  font-family: 'Orbitron', monospace;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-}
-
-.ncm-cc__special i { font-size: 9px; }
-.ncm-cc__special--crit   { color: #F0C55B; }
-.ncm-cc__special--fumble { color: #F65261; }
-
-
-/* ═══════════════════════════════════════════════════════════
-   §3  SHARED MESSAGE
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-cc--shared { border-left-color: #00D4E6; }
-
-.ncm-cc__fields {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 8px;
-}
-
-.ncm-cc__field { display: flex; gap: 8px; align-items: baseline; }
-
-.ncm-cc__field-label {
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  color: #7a7a95;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  width: 32px;
-  flex-shrink: 0;
-}
-
-.ncm-cc__field-value {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 11px;
-  color: #b8b8d0;
-  letter-spacing: 0.2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ncm-cc__subject {
-  font-size: 14px;
-  font-weight: 600;
-  color: #f0f0f5;
-  padding-top: 6px;
-  border-top: 1px solid #1e1e32;
-  margin-bottom: 6px;
-  line-height: 1.3;
-}
-
-.ncm-cc__msg-body {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 11px;
-  line-height: 1.6;
-  color: #c8c8dd;
-  letter-spacing: 0.2px;
-  padding: 8px 10px;
-  background: #09090f;
-  border-radius: 2px;
-  border: 1px solid #1a1a2e;
-  max-height: 120px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.ncm-cc__priority {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 6px;
-  padding: 2px 8px;
-  border-radius: 2px;
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-.ncm-cc__priority i { font-size: 8px; }
-.ncm-cc__priority--urgent  { background: rgba(240, 197, 91, 0.1); color: #F0C55B; border: 1px solid rgba(240, 197, 91, 0.2); }
-.ncm-cc__priority--critical { background: rgba(246, 82, 97, 0.1); color: #F65261; border: 1px solid rgba(246, 82, 97, 0.2); }
-
-
-/* ═══════════════════════════════════════════════════════════
-   §4  INTERCEPTED MESSAGE (GM)
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-cc--intercepted                  { border-left-color: #F0C55B; }
-.ncm-cc--intercepted .ncm-cc__header i { color: #F0C55B; }
-.ncm-cc--intercepted .ncm-cc__badge    { color: #F0C55B; }
-
-
-/* ═══════════════════════════════════════════════════════════
-   §5  NETWORK BROADCAST
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-cc--broadcast                  { border-left-color: #F65261; }
-.ncm-cc--broadcast .ncm-cc__header i { color: #F65261; }
-.ncm-cc--broadcast .ncm-cc__badge    { color: #F65261; }
-
-.ncm-cc__broadcast-body {
-  font-size: 13px;
-  font-weight: 600;
-  color: #f0f0f5;
-  line-height: 1.45;
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.ncm-cc__broadcast-body i {
-  color: #F65261;
-  font-size: 14px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   §6  MALWARE ANALYSIS
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-cc--malware                  { border-left-color: #F65261; }
-.ncm-cc--malware .ncm-cc__header i { color: #F65261; }
-.ncm-cc--malware .ncm-cc__badge    { color: #F65261; }
-
-.ncm-cc__malware-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 5px 10px;
-  align-items: center;
-}
-
-.ncm-cc__malware-label {
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  color: #7a7a95;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.ncm-cc__malware-label i { font-size: 8px; opacity: 0.5; }
-
-.ncm-cc__malware-value {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 11px;
-  color: #d8d8e8;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ncm-cc__malware-type-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 2px;
-  background: rgba(246, 82, 97, 0.12);
-  color: #F65261;
-  border: 1px solid rgba(246, 82, 97, 0.2);
-  letter-spacing: 1.2px;
-}
-
-.ncm-cc__malware-type-badge i { font-size: 8px; }
-
-
-/* ═══════════════════════════════════════════════════════════
-   §7  NETWORK EVENT
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-cc--event                  { border-left-color: #F0C55B; }
-.ncm-cc--event .ncm-cc__header i { color: #F0C55B; }
-.ncm-cc--event .ncm-cc__badge    { color: #F0C55B; }
-
-.ncm-cc--event-danger                  { border-left-color: #F65261; }
-.ncm-cc--event-danger .ncm-cc__header i { color: #F65261; }
-.ncm-cc--event-danger .ncm-cc__badge    { color: #F65261; }
-
-.ncm-cc__event-type {
-  font-family: 'Orbitron', monospace;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.2px;
-  margin-bottom: 5px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ncm-cc__event-type i { font-size: 10px; }
-.ncm-cc__event-type--warn   { color: #F0C55B; }
-.ncm-cc__event-type--danger { color: #F65261; }
-.ncm-cc__event-type--info   { color: #00D4E6; }
-
-.ncm-cc__event-detail {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 11px;
-  color: #c8c8dd;
-  line-height: 1.6;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   §8  BLACK ICE RETALIATION — Encounter Card
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-ice-card {
-  background: #13131f;
-  border: 1px solid #F65261;
-  overflow: hidden;
-  font-family: 'Rajdhani', sans-serif;
-  position: relative;
-}
-
-.ncm-ice-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent 5%, #F65261 30%, #ff2040 50%, #F65261 70%, transparent 95%);
-  z-index: 1;
-}
-
-.ncm-ice-card::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent 10%, rgba(246, 82, 97, 0.4) 50%, transparent 90%);
-  z-index: 1;
-}
-
-.ncm-ice-card__header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: #0c0c16;
-  border-bottom: 1px solid #2a0a0f;
-}
-
-.ncm-ice-card__header i { font-size: 12px; color: #F65261; width: 15px; text-align: center; }
-.ncm-ice-card__badge { font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #F65261; text-transform: uppercase; }
-.ncm-ice-card__header-meta { margin-left: auto; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: #9a9ab2; display: flex; align-items: center; gap: 4px; }
-.ncm-ice-card__header-meta i { font-size: 10px; opacity: 0.6; }
-
-/* Encounter zone */
-.ncm-ice-card__encounter {
-  padding: 12px 10px;
-  background: linear-gradient(180deg, #1a0808 0%, #13131f 100%);
-  position: relative;
-}
-
-.ncm-ice-card__encounter::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(246, 82, 97, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(246, 82, 97, 0.03) 1px, transparent 1px);
-  background-size: 20px 20px;
-  pointer-events: none;
-}
-
-.ncm-ice-card__profile { display: flex; gap: 10px; align-items: flex-start; position: relative; }
-
-/* Portrait */
-.ncm-ice-card__portrait {
-  width: 68px;
-  height: 68px;
-  border-radius: 4px;
-  border: 2px solid #F65261;
-  background: #0a0a14;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-.ncm-ice-card__portrait i { font-size: 32px; color: #F65261; position: relative; z-index: 1; }
-.ncm-ice-card__portrait img { width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 1; }
-.ncm-ice-card__portrait::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(246, 82, 97, 0.15) 0%, transparent 70%); }
-/* scan sweep over the portrait — the "pulling the image in" flourish */
-.ncm-ice-card__portrait::before {
-  content: ''; position: absolute; left: 0; right: 0; height: 30%; z-index: 2;
-  background: linear-gradient(180deg, transparent, rgba(246, 82, 97, 0.22), transparent);
-  animation: ncm-ice-portrait-scan 2.6s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes ncm-ice-portrait-scan { 0% { top: -30%; } 55% { top: 100%; } 100% { top: 100%; } }
-
-/* Identity */
-.ncm-ice-card__identity { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
-.ncm-ice-card__name { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 800; color: #F65261; letter-spacing: 1.2px; line-height: 1.15; display: flex; align-items: center; gap: 6px; text-shadow: 0 0 10px rgba(246, 82, 97, 0.45); }
-.ncm-ice-card__name i { font-size: 10px; opacity: 0.6; }
-.ncm-ice-card__class { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: #9a9ab2; text-transform: uppercase; letter-spacing: 0.5px; }
-.ncm-ice-card__target { font-size: 13px; color: #d6d6e6; margin-top: 4px; display: flex; align-items: center; gap: 5px; }
-.ncm-ice-card__target strong { color: #f0f0f5; }
-.ncm-ice-card__target i { font-size: 10px; color: #F65261; opacity: 0.7; }
-
-/* Damage block */
-.ncm-ice-card__damage-block {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: #0a0a14;
-  border: 1px solid #2a0a0f;
-  border-radius: 3px;
-  position: relative;
-  overflow: hidden;
-}
-
-.ncm-ice-card__damage-block::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #F65261; }
-.ncm-ice-card__dmg-col { display: flex; flex-direction: column; align-items: center; }
-.ncm-ice-card__dmg-number {
-  font-family: 'Orbitron', monospace; font-size: 36px; font-weight: 900; color: #F65261; line-height: 1; letter-spacing: 1px;
-  text-shadow: 0 0 14px rgba(246, 82, 97, 0.55);
-  animation: ncm-ice-dmg-pulse 1.4s ease-in-out infinite;
-}
-@keyframes ncm-ice-dmg-pulse { 0%, 100% { text-shadow: 0 0 14px rgba(246, 82, 97, 0.55); } 50% { text-shadow: 0 0 24px rgba(246, 82, 97, 0.9); } }
-.ncm-ice-card__dmg-tag { font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 700; color: #F65261; letter-spacing: 2px; opacity: 0.75; }
-.ncm-ice-card__dmg-detail { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.ncm-ice-card__formula { font-family: 'Share Tech Mono', monospace; font-size: 12.5px; color: #cfcfe2; }
-.ncm-ice-card__hp-change { font-family: 'Share Tech Mono', monospace; font-size: 11.5px; color: #b0b0c8; display: flex; align-items: center; gap: 5px; }
-.ncm-ice-card__hp-change i { font-size: 10px; color: #F65261; opacity: 0.6; }
-
-/* Dice tray */
-.ncm-ice-card__dice-tray { margin-top: 8px; display: flex; align-items: center; gap: 4px; }
-.ncm-ice-card__dice-tray-label { font-family: 'Orbitron', monospace; font-size: 9px; color: #9a9ab2; letter-spacing: 1.2px; margin-right: 3px; }
-.ncm-ice-card__die { width: 28px; height: 28px; background: #0a0a14; border: 1px solid rgba(246, 82, 97, 0.35); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
-.ncm-ice-card__die i { font-size: 18px; color: #f07880; }
-
-/* ICE footer */
-.ncm-ice-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 10px;
-  background: #0c0c16;
-  border-top: 1px solid #2a0a0f;
-}
-
-.ncm-ice-card__footer-net { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #8a8aa2; display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ncm-ice-card__footer-net i { font-size: 9px; opacity: 0.6; }
-.ncm-ice-card__threat { font-family: 'Orbitron', monospace; font-size: 7px; font-weight: 700; letter-spacing: 1.2px; color: #F65261; padding: 2px 6px; border: 1px solid rgba(246, 82, 97, 0.3); border-radius: 2px; background: rgba(246, 82, 97, 0.08); flex-shrink: 0; }
-
-/* Scanline variants */
-.ncm-scanline { position: absolute; top: 0; left: 0; right: 0; height: 1px; opacity: 0; animation: ncm-cc-scanpulse 5s ease-in-out infinite; pointer-events: none; }
-.ncm-scanline--red { background: linear-gradient(90deg, transparent, rgba(246, 82, 97, 0.3), transparent); }
-.ncm-scanline--purple { background: linear-gradient(90deg, transparent, rgba(180, 77, 255, 0.3), transparent); }
-
-
-/* ═══════════════════════════════════════════════════════════
-   §9  PAYLOAD EXECUTION — Terminal Card
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-payload-card {
-  background: #13131f;
-  border: 1px solid #b44dff;
-  overflow: hidden;
-  font-family: 'Rajdhani', sans-serif;
-  position: relative;
-}
-
-.ncm-payload-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent 5%, #b44dff 30%, #d070ff 50%, #b44dff 70%, transparent 95%); z-index: 1; }
-.ncm-payload-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent 10%, rgba(180, 77, 255, 0.4) 50%, transparent 90%); z-index: 1; }
-
-.ncm-payload-card__header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: #0c0c16; border-bottom: 1px solid #1a0a2a; }
-.ncm-payload-card__header i { font-size: 11px; color: #b44dff; width: 14px; text-align: center; }
-.ncm-payload-card__badge { font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 600; letter-spacing: 1px; color: #b44dff; text-transform: uppercase; }
-.ncm-payload-card__header-meta { margin-left: auto; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #7a7a95; }
-
-/* Terminal zone */
-.ncm-payload-card__terminal {
-  padding: 12px 10px;
-  background: linear-gradient(180deg, #0f0818 0%, #13131f 100%);
-  position: relative;
-}
-
-.ncm-payload-card__terminal::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(180, 77, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(180, 77, 255, 0.02) 1px, transparent 1px);
-  background-size: 16px 16px;
-  pointer-events: none;
-}
-
-.ncm-payload-card__program { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; position: relative; }
-
-/* Program icon */
-.ncm-payload-card__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 4px;
-  border: 2px solid #b44dff;
-  background: #0a0a14;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-.ncm-payload-card__icon i { font-size: 20px; color: #b44dff; position: relative; z-index: 1; }
-.ncm-payload-card__icon::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(180, 77, 255, 0.15) 0%, transparent 70%); }
-
-.ncm-payload-card__info { flex: 1; min-width: 0; }
-
-.ncm-payload-card__name {
-  font-family: 'Orbitron', monospace;
-  font-size: 12px;
-  font-weight: 800;
-  color: #c880ff;
-  letter-spacing: 0.8px;
-  line-height: 1.1;
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ncm-payload-card__status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  color: #34D399;
-  padding: 2px 8px;
-  border: 1px solid rgba(52, 211, 153, 0.3);
-  border-radius: 2px;
-  background: rgba(52, 211, 153, 0.08);
-}
-
-.ncm-payload-card__status-badge i { font-size: 8px; }
-
-/* Exec detail block */
-.ncm-payload-card__exec-block {
-  padding: 8px 10px;
-  background: #0a0a14;
-  border: 1px solid #1a0a2a;
-  border-radius: 3px;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.ncm-payload-card__exec-block::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #b44dff; }
-.ncm-payload-card__exec-row { display: flex; align-items: center; gap: 6px; }
-
-.ncm-payload-card__exec-label {
-  font-family: 'Orbitron', monospace;
-  font-size: 7px;
-  color: #7a7a95;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  width: 44px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.ncm-payload-card__exec-label i { font-size: 7px; opacity: 0.5; }
-.ncm-payload-card__exec-value { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: #d8d8e8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ncm-payload-card__exec-value strong { color: #f0f0f5; }
-.ncm-payload-card__exec-value--purple { color: #c880ff; }
-
-/* Payload footer */
-.ncm-payload-card__footer { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: #0c0c16; border-top: 1px solid #1a0a2a; }
-.ncm-payload-card__footer-net { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: #606078; display: flex; align-items: center; gap: 5px; }
-.ncm-payload-card__footer-net i { font-size: 8px; opacity: 0.6; }
-.ncm-payload-card__exe-badge { font-family: 'Orbitron', monospace; font-size: 7px; font-weight: 700; letter-spacing: 1.2px; color: #b44dff; padding: 2px 6px; border: 1px solid rgba(180, 77, 255, 0.3); border-radius: 2px; background: rgba(180, 77, 255, 0.08); flex-shrink: 0; }
-
-
-/* ═══════════════════════════════════════════════════════════
-   §9  WHISPER CARD (.ncm-wcard) — shared wrapper for NCM security
-       whispers (heat / trace countdowns / lockouts / escalations).
-       Built by whisperCardHtml() in helpers.js. Replaced the bare
-       "<b>NCM trace:</b> …" whispers, which rendered at Foundry's
-       default chat size and were flagged illegible. Chat log has no
-       --ncm-* ancestor → hard fallbacks only.
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-wcard {
-  background: #13131f;
-  border: 1px solid #2a2a45;
-  border-left: 3px solid #19f3f7;
-  border-radius: 2px;
-  padding: 0 0 8px;
-  overflow: hidden;
-  font-family: 'Rajdhani', sans-serif;
-}
-
-.ncm-wcard__hd {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 10px;
-  margin-bottom: 7px;
-  background: #0c0c16;
-  border-bottom: 1px solid #1e1e32;
-  font-family: 'Orbitron', monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: #19f3f7;
-}
-
-.ncm-wcard__hd i { font-size: 12px; width: 15px; text-align: center; }
-
-.ncm-wcard__line {
-  padding: 1px 10px;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: #d6d6e6;
-}
-
-.ncm-wcard__line b, .ncm-wcard__line strong { color: #f0f0f5; }
-.ncm-wcard__line i { color: #b0b0c8; }
-
-/* muted secondary line (details, reasons) */
-.ncm-wcard__line--sub { font-size: 12px; color: #9a9ab2; }
-
-/* tones */
-.ncm-wcard--warn   { border-left-color: #f7c948; }
-.ncm-wcard--warn   .ncm-wcard__hd { color: #f7c948; }
-.ncm-wcard--danger { border-left-color: #ff4a5c; }
-.ncm-wcard--danger .ncm-wcard__hd { color: #ff4a5c; }
-.ncm-wcard--ok     { border-left-color: #34D399; }
-.ncm-wcard--ok     .ncm-wcard__hd { color: #34D399; }
-.ncm-wcard--purple { border-left-color: #b14aff; }
-.ncm-wcard--purple .ncm-wcard__hd { color: #b14aff; }

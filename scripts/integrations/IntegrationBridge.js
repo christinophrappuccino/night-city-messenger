@@ -38,6 +38,14 @@ const MIRRORED_EVENTS = [
   'message:received',
   // ── Shards (the "shard reveals dossier knowledge" tie-in) ──
   'shard:decrypted',
+  // ── Contact groups (a crew forming / changing is a relationship signal) ──
+  // Payloads: created/updated { scope:'actor'|'master', actorId?, group },
+  // deleted { scope, actorId?, groupId }, pushed { groupId, targetActorId, shared, failed }.
+  // Members are address-keyed records (see scripts/utils/participants.js).
+  'groups:created',
+  'groups:updated',
+  'groups:deleted',
+  'groups:pushed',
 ];
 
 export async function initializeIntegrationBridge() {
@@ -78,6 +86,8 @@ export async function initializeIntegrationBridge() {
       contacts: nc.contactRepository ?? null,
       /** GM master directory (world setting): getAll, getByActorId, getByEmail, pushToPlayer… */
       masterContacts: nc.masterContactService ?? null,
+      /** Contact groups (read for all, writes GM-only; members are address-keyed — resolve via groups.recipientsFor). */
+      groups: nc.contactGroupService ?? null,
       /** Portrait resolution identical to the messenger UI's fallback chain. */
       portraits: nc.portraitService ?? null,
       /** Direct bus access when hooks aren't enough: on(event, cb, ownerId) → { unsubscribe }. */

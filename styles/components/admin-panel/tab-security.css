@@ -251,7 +251,7 @@
 .ncm-admin-panel .ncm-sec-admin-chip img { width: 18px; height: 18px; border-radius: 3px; object-fit: cover; border: 1px solid var(--ncm-border); }
 .ncm-admin-panel .ncm-sec-admin-chip i { color: var(--ncm-text-muted); cursor: pointer; font-size: 10px; }
 .ncm-admin-panel .ncm-sec-admin-chip i:hover { color: var(--ncm-danger); }
-/* The gear/role choosers are searchable `.ncm-burn-*` dialogs (SecurityTab._openNamePicker),
+/* The gear/role choosers are the shared searchable picker (utils/namePicker.js showNamePicker),
    not <select>s — a native dropdown has no search and no item art, which is unusable
    once a world has a real item list. That dialog is a shared component owned by
    terminal.css, so its `.is-taken` modifier lives there too (one component, one file)

@@ -610,6 +610,27 @@ export function suggestedPrice({ blankPrice = 0, dv = 0 }) {
   return { clean: num(blankPrice) + work, sloppy: num(blankPrice) + Math.round(work * 0.4) };
 }
 
+/**
+ * Who may REWRITE a shard that already exists — add a file to it, or re-roll it
+ * through the Encoder. Stored per shard as `config.playerEditing`:
+ *   locked     → read-only for players (hack, claim and read as ever; never write)
+ *   maker      → only the character stamped in `config.playerMade` may re-open it
+ *   qualified  → any character who passes the encoder gate
+ * A missing / unknown value resolves by provenance: a player-made shard is the
+ * maker's, everything else (every GM-made shard, every pre-existing one) is
+ * locked. So a GM never has to remember to lock a shard, and no migration runs.
+ */
+export const SHARD_EDIT_MODES = Object.freeze({
+  locked:    { label: 'Locked',    short: 'read-only', blurb: 'Players can read, hack and claim it, but never add to or rewrite it.' },
+  maker:     { label: 'Maker only', short: 'its maker', blurb: 'Only the character who encoded it can re-open it in the Encoder.' },
+  qualified: { label: 'Anyone who qualifies', short: 'qualified', blurb: 'Any character who passes the encoder gate can add to it.' },
+});
+export function resolveShardEditing(config) {
+  const v = config?.playerEditing;
+  if (v && Object.prototype.hasOwnProperty.call(SHARD_EDIT_MODES, v)) return v;
+  return config?.playerMade?.actorId ? 'maker' : 'locked';
+}
+
 /** Content-type rows for a tile grid / the GM table, in the catalog's order. */
 export function typeRows(cfg) {
   return Object.entries(cfg?.types || {}).map(([key, t]) => ({

@@ -21,6 +21,7 @@ import { SpamService } from '../services/SpamService.js';
 
 // Integrations
 import { SocketHandlers } from '../integrations/SocketHandlers.js';
+import { registerChatCardHooks } from '../integrations/ChatCards.js';
 
 // UI Applications
 import { MessageViewerApp } from '../ui/MessageViewer/MessageViewerApp.js';
@@ -292,6 +293,8 @@ export function registerMessagingSystem(initializer) {
         body: options.body ?? '',
         priority: options.priority ?? 'normal',
         originalMessage: options.originalMessage ?? null,
+        replyAll: options.replyAll ?? false,
+        groupId: options.groupId ?? null,
         threadId: options.threadId ?? null,
         inReplyTo: options.inReplyTo ?? null,
       });
@@ -472,6 +475,9 @@ export function registerMessagingSystem(initializer) {
 
   initializer.register('ready', 114, 'Messaging event wiring', () => {
     const { eventBus, notificationService, soundService } = game.nightcity;
+
+    // Shared-message chat cards: the per-client add-contact button + its click.
+    registerChatCardHooks();
 
     // When a message is received, show notification and update badge.
     // The toast + receive sound (with per-message dedup) live in

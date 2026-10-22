@@ -221,6 +221,18 @@
         <div class="ncm-cfg-pipe-node"><div class="ncm-cfg-pipe-icon"><i class="fas fa-unlock"></i></div><div class="ncm-cfg-pipe-label">Data</div></div>
       </div>
 
+      {{!-- Who may rewrite it --}}
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-pen-to-square ncm-cfg-section-icon" style="color:#f7c948"></i><div class="ncm-cfg-section-title">Player Editing</div></div>
+        <div class="ncm-cfg-desc">Whether a player can <strong>add to or rewrite</strong> this shard through the Shard Encoder. Reading, hacking and claiming are never affected — this only governs writing. The default rule needs no attention: a shard you made is locked, a shard a player encoded belongs to its maker.</div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Players may</span>
+          <select name="playerEditing" class="ncm-cfg-select ncm-cfg-flex">
+            <option value="" {{#unless playerEditing}}selected{{/unless}}>Default — {{playerEditingDefault}}</option>
+            {{#each playerEditingModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}} — {{blurb}}</option>{{/each}}
+          </select></div>
+        <div class="ncm-cfg-hint">Right now: <strong>{{playerEditingResolved}}</strong>. "Anyone who qualifies" still requires the character to pass the encoder gate (Admin → Shards → Player Authoring), and the GM's "rewrite a sloppy shard" switch there must be on.</div>
+      </div>
+
       {{!-- Skills --}}
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-dice-d20 ncm-cfg-section-icon" style="color:#a855f7"></i><div class="ncm-cfg-section-title">Hacking Skills</div></div>

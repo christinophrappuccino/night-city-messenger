@@ -2287,3 +2287,14 @@
   display: flex;
   gap: 4px;
 }
+
+/* ── Fan-out rows: one send, N recipients (expand lists each copy) ── */
+.ncm-app .ncm-admin-panel .ncm-msg-feed-row__to--group { color: var(--ncm-secondary); display: inline-flex; align-items: center; gap: 4px; }
+.ncm-app .ncm-admin-panel .ncm-msg-feed-row__to--group i { font-size: 9px; }
+.ncm-app .ncm-admin-panel .ncm-msg-feed-expand__recips { display: flex; flex-direction: column; gap: 2px; margin: 0 0 8px; }
+.ncm-app .ncm-admin-panel .ncm-msg-feed-recip {
+  display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 8px; padding: 4px 8px;
+  background: var(--ncm-bg-deep); border: 1px solid var(--ncm-border); border-radius: 2px;
+}
+.ncm-app .ncm-admin-panel .ncm-msg-feed-recip--unread { border-left: 2px solid var(--ncm-secondary); }
+.ncm-app .ncm-admin-panel .ncm-msg-feed-recip__name { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 600; color: var(--ncm-text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

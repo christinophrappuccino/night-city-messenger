@@ -13,6 +13,16 @@
  *   - Foundry v1 `Dialog`s opened through adminDialog/adminConfirm/adminPrompt
  *     below: the wrapper adds ADMIN_DIALOG_CLASS, and the `renderDialog` hook
  *     (registerAdminDialogHook) stamps the theme + zoom when they render.
+ *   - Foundry v1 `Dialog`s opened by PLAYER-facing windows (viewer, composer,
+ *     contacts, shard viewer, terminal, Theme Customizer) go through
+ *     playerDialog/playerConfirm/playerPrompt/playerWait: no palette change —
+ *     they keep Foundry's own look — but the same hook zooms them by the
+ *     player's Theme Customizer Text Size (2026-10-21, tester: "pop-up windows
+ *     still not resizing for text"). A dialog follows ITS OPENER: when the
+ *     opener is an admin-tagged window (a GM-view viewer, a config sheet) the
+ *     player wrapper tags it as an admin dialog instead, the CyberTimePicker
+ *     precedent. A raw `new Dialog(` anywhere in module code is therefore a
+ *     dialog that scales with nothing — the sim greps for it.
  *
  * Text size is a CSS `zoom` on `.window-content` — the GM stylesheets are
  * hundreds of fixed-px font sizes with no --ncm-text-scale plumbing, so zoom
@@ -29,6 +39,11 @@ import { log } from './helpers.js';
 
 /** Class the Dialog wrappers add so the render hook can find admin dialogs. */
 export const ADMIN_DIALOG_CLASS = 'ncm-admin-dialog';
+/** Class the player wrappers add: Foundry look, zoomed by the player's Text Size. */
+export const PLAYER_DIALOG_CLASS = 'ncm-player-dialog';
+/** The Theme Customizer slider's range (theme-customizer.hbs min/max). */
+export const PLAYER_TEXT_SCALE_MIN = 80;
+export const PLAYER_TEXT_SCALE_MAX = 150;
 
 export const ADMIN_TEXT_SCALE_MIN = 100;
 export const ADMIN_TEXT_SCALE_MAX = 150;
@@ -218,6 +233,105 @@ export function adminWait(data, options = {}) {
   return Dialog.wait(data, _withAdminClass(options));
 }
 
+// ═══════════════════════════════════════════════════════════
+//  Player-window Dialog wrappers
+//  A dialog opened by an immersive window keeps Foundry's own chrome (the
+//  player palette is written to :root and a body-mounted Dialog does not read
+//  it — by design, see the header) but MUST follow the player's Text Size, or
+//  a 150% player reads a 100% confirm. Same zoom lever as the admin path.
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * The player's Theme Customizer Text Size as a percentage (80–150).
+ * ThemeService.applyTheme publishes it on :root as --ncm-text-scale-base
+ * (inline), which is the live value even mid-drag; the saved setting is the
+ * fallback when nothing has been applied yet.
+ * @returns {number}
+ */
+export function getPlayerTextScale() {
+  let mult = NaN;
+  try {
+    mult = parseFloat(globalThis.document?.documentElement?.style?.getPropertyValue?.('--ncm-text-scale-base'));
+  } catch { /* no DOM */ }
+  if (!Number.isFinite(mult) || mult <= 0) {
+    try {
+      const prefs = game.settings.get(MODULE_ID, 'playerTheme') || {};
+      mult = (Number(prefs.textScale) || 100) / 100;
+    } catch { mult = 1; }
+  }
+  const pct = Math.round(mult * 100);
+  return Math.min(PLAYER_TEXT_SCALE_MAX, Math.max(PLAYER_TEXT_SCALE_MIN, Number.isFinite(pct) ? pct : 100));
+}
+
+/**
+ * Whether the element that currently has focus sits inside an admin-tagged
+ * window — i.e. the dialog about to open was launched from a GM-view viewer
+ * or a config sheet and should wear the admin theme rather than the player's.
+ * @returns {boolean}
+ */
+export function openerIsAdminThemed() {
+  try { return !!globalThis.document?.activeElement?.closest?.('[data-ncm-admin-theme]'); } catch { return false; }
+}
+
+function _withPlayerClass(options = {}) {
+  const base = Array.isArray(options.classes) && options.classes.length ? options.classes : ['dialog'];
+  if (base.includes(ADMIN_DIALOG_CLASS)) return { ...options, classes: base }; // caller already chose admin
+  const tag = openerIsAdminThemed() ? ADMIN_DIALOG_CLASS : PLAYER_DIALOG_CLASS;
+  const classes = base.includes(tag) ? base : [...base, tag];
+  return { ...options, classes };
+}
+
+/** `new Dialog(data, options)` from a player-facing window — zoomed by the player's Text Size. */
+export function playerDialog(data, options = {}) {
+  return new Dialog(data, _withPlayerClass(options));
+}
+
+/** `Dialog.confirm(config)` from a player-facing window (config.options merged). */
+export function playerConfirm(config = {}) {
+  return Dialog.confirm({ ...config, options: _withPlayerClass(config.options) });
+}
+
+/** `Dialog.prompt(config)` from a player-facing window (config.options merged). */
+export function playerPrompt(config = {}) {
+  return Dialog.prompt({ ...config, options: _withPlayerClass(config.options) });
+}
+
+/** `Dialog.wait(data, options)` from a player-facing window. */
+export function playerWait(data, options = {}) {
+  return Dialog.wait(data, _withPlayerClass(options));
+}
+
+/**
+ * Apply the player's text-size zoom to a dialog's content element.
+ * @param {HTMLElement|null} contentEl — the `.window-content` node
+ * @param {number} pct — 80–150
+ */
+export function applyPlayerZoom(contentEl, pct) {
+  if (!contentEl) return;
+  const clamped = Math.min(PLAYER_TEXT_SCALE_MAX, Math.max(PLAYER_TEXT_SCALE_MIN, Number(pct) || 100));
+  contentEl.style.zoom = clamped === 100 ? '' : String(clamped / 100);
+}
+
+/**
+ * Zoom a rendered player Dialog by the player's Text Size; the width grows by
+ * the same ratio once per dialog (height is auto, so Foundry re-measures it
+ * from the zoomed content on the setPosition call).
+ * @param {Dialog} app
+ */
+export function scalePlayerDialog(app) {
+  const el = app?.element?.[0] ?? app?.element;
+  if (!(el instanceof HTMLElement)) return;
+  const pct = getPlayerTextScale();
+  applyPlayerZoom(el.querySelector('.window-content'), pct);
+  if (pct !== 100 && !app._ncmPlayerScaled) {
+    app._ncmPlayerScaled = true;
+    const width = app.position?.width || el.offsetWidth;
+    if (width) {
+      try { app.setPosition({ width: Math.round(width * pct / 100) }); } catch { /* non-fatal */ }
+    }
+  }
+}
+
 /**
  * Stamp theme + zoom on a rendered admin Dialog. Width grows with the zoom
  * once per dialog (height is auto).
@@ -238,12 +352,17 @@ export function themeAdminDialog(app) {
   }
 }
 
-/** Register the `renderDialog` hook that themes tagged dialogs. Call once at ready. */
+/**
+ * Register the `renderDialog` hook that themes admin-tagged dialogs and zooms
+ * player-tagged ones. Call once at ready (every client — players open their
+ * own dialogs).
+ */
 export function registerAdminDialogHook() {
   Hooks.on('renderDialog', (app) => {
     try {
-      if (!app?.options?.classes?.includes?.(ADMIN_DIALOG_CLASS)) return;
-      themeAdminDialog(app);
+      const classes = app?.options?.classes;
+      if (classes?.includes?.(ADMIN_DIALOG_CLASS)) themeAdminDialog(app);
+      else if (classes?.includes?.(PLAYER_DIALOG_CLASS)) scalePlayerDialog(app);
     } catch (err) {
       log.debug(`adminTheme: renderDialog stamp skipped — ${err?.message || err}`);
     }

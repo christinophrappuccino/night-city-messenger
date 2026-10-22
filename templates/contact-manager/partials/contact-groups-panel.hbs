@@ -1,0 +1,91 @@
+{{!--
+  Contact groups panel — a RAIL of group chips and ONE member tray (rebuilt
+  2026-10-21 from the dev-approved mock docs/mockups/contact-groups-rail-mock.html;
+  dev: "click it and it'll show who is in it other than just hovering, and if
+  you make a ton of groups too").
+
+  A group is a chip: colour bar · name · a stack of up to three member avatars
+  · count · a shield when the GM shared it. Clicking a chip opens the tray
+  under the rail with every member as a card (click a person → the detail
+  pane). The three group actions live in the tray header, once. Recently
+  messaged groups sort first; past GROUP_RAIL_LIMIT the rest fold behind
+  "+N more".
+
+  Context: contactGroups = {
+    total, expanded, hiddenCount,
+    list:  [{ id, name, color, count, shared, isOpen, stack:[{img, initials}], more }],
+    open:  null | { id, name, color, count, shared, members:[{ contactId, name, detail, img, initials, isRaw }] }
+  }
+  One root element (ApplicationV2 partial rule).
+--}}
+<div class="ncm-cgr">
+  <div class="ncm-cgr__rail">
+    <span class="ncm-cgr__label"><i class="fas fa-users"></i> Groups <b>{{contactGroups.total}}</b></span>
+    {{#each contactGroups.list}}
+    <button type="button" class="ncm-cgr__chip{{#if isOpen}} is-open{{/if}}" style="--g:{{color}}"
+            data-action="cgOpen" data-group-id="{{id}}" data-tooltip="{{#if isOpen}}Close{{else}}Show who is in it{{/if}}">
+      <span class="ncm-cgr__chip-bar"></span>
+      <span class="ncm-cgr__chip-name">{{name}}</span>
+      <span class="ncm-cgr__stack">{{#each stack}}<span>{{#if img}}<img src="{{img}}" alt="">{{else}}{{initials}}{{/if}}</span>{{/each}}{{#if more}}<span class="is-more">+{{more}}</span>{{/if}}</span>
+      <span class="ncm-cgr__chip-n">{{count}}</span>
+      {{#if shared}}<i class="fas fa-shield-halved ncm-cgr__chip-shared" data-tooltip="Shared by the GM"></i>{{/if}}
+    </button>
+    {{/each}}
+    {{#if contactGroups.hiddenCount}}
+    <button type="button" class="ncm-cgr__chip ncm-cgr__chip--more" data-action="cgMore" data-tooltip="Show every group">
+      <i class="fas fa-plus"></i> {{contactGroups.hiddenCount}} more
+    </button>
+    {{else if contactGroups.expanded}}
+    <button type="button" class="ncm-cgr__chip ncm-cgr__chip--more" data-action="cgMore" data-tooltip="Show only the groups you use most">
+      <i class="fas fa-minus"></i> less
+    </button>
+    {{/if}}
+    <button type="button" class="ncm-cgr__chip ncm-cgr__chip--new" data-action="cgNew" data-tooltip="Make a new group from your contacts">
+      <i class="fas fa-plus"></i> New
+    </button>
+  </div>
+
+  {{#with contactGroups.open}}
+  <div class="ncm-cgr__tray" style="--g:{{color}}" data-group-id="{{id}}">
+    <div class="ncm-cgr__tray-head">
+      <span class="ncm-cgr__tray-name">{{name}}</span>
+      <span class="ncm-cgr__tray-meta">{{count}} {{#if (eq count 1)}}person{{else}}people{{/if}}{{#if shared}} · <i class="fas fa-shield-halved"></i>shared by the GM{{/if}}</span>
+      <span class="ncm-cgr__tray-actions">
+        <button type="button" class="ncm-cgr__btn ncm-cgr__btn--send" data-action="cgMessage" data-group-id="{{id}}" data-tooltip="One message to everyone in it">
+          <i class="fas fa-paper-plane"></i> Message all
+        </button>
+        <button type="button" class="ncm-cgr__btn" data-action="cgEdit" data-group-id="{{id}}" data-tooltip="Name, colour, members">
+          <i class="fas fa-pen"></i> Edit
+        </button>
+        <button type="button" class="ncm-cgr__btn ncm-cgr__btn--icon ncm-cgr__btn--danger" data-action="cgDelete" data-group-id="{{id}}" data-tooltip="Delete group">
+          <i class="fas fa-trash"></i>
+        </button>
+        <button type="button" class="ncm-cgr__btn ncm-cgr__btn--icon" data-action="cgClose" data-tooltip="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </span>
+    </div>
+    <div class="ncm-cgr__members">
+      {{#each members}}
+        {{#if isRaw}}
+        <span class="ncm-cgr__member is-raw" data-tooltip="Not in your contacts — goes out as a plain address">
+          <span class="ncm-cgr__avatar"><i class="fas fa-at"></i></span>
+          <span class="ncm-cgr__m-name">{{name}}</span>
+          <span class="ncm-cgr__m-sub">{{detail}}</span>
+        </span>
+        {{else}}
+        <button type="button" class="ncm-cgr__member" data-action="cgMember" data-contact-id="{{contactId}}" data-tooltip="Open {{name}}">
+          <span class="ncm-cgr__avatar">{{#if img}}<img src="{{img}}" alt="">{{else}}{{initials}}{{/if}}</span>
+          <span class="ncm-cgr__m-name">{{name}}</span>
+          <span class="ncm-cgr__m-sub">{{detail}}</span>
+        </button>
+        {{/if}}
+      {{/each}}
+    </div>
+  </div>
+  {{/with}}
+
+  {{#unless contactGroups.total}}
+  <div class="ncm-cgr__empty">No groups yet. Make one to send to the whole crew with one message.</div>
+  {{/unless}}
+</div>

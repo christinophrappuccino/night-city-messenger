@@ -197,6 +197,10 @@ export class AdminPanelApp extends BaseApplication {
       editContactInEditor: AdminPanelApp._onEditContactInEditor,
       createNewContact:    AdminPanelApp._onCreateNewContact,
       importActorAsNpc:    AdminPanelApp._onImportActorAsNpc,
+      cgAdminNew:          AdminPanelApp._onCgAdminNew,
+      cgAdminEdit:         AdminPanelApp._onCgAdminEdit,
+      cgAdminDelete:       AdminPanelApp._onCgAdminDelete,
+      cgAdminPush:         AdminPanelApp._onCgAdminPush,
       pushAllContacts:     AdminPanelApp._onPushAllContacts,
       contactFilter:       AdminPanelApp._onContactFilter,
       contactClearSearch:  AdminPanelApp._onContactClearSearch,
@@ -257,6 +261,7 @@ export class AdminPanelApp extends BaseApplication {
       bulkRelockAll: AdminPanelApp._onBulkRelockAll,
       purgeDestroyed: AdminPanelApp._onPurgeDestroyed,
       configureShardItem: AdminPanelApp._onConfigureShardItem,
+      shardOwnership: AdminPanelApp._onShardOwnership,
       relockShardItem: AdminPanelApp._onRelockShardItem,
       // v4 shard actions
       toggleShardGroup: AdminPanelApp._onToggleShardGroup,
@@ -1047,6 +1052,10 @@ export class AdminPanelApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   static _onOpenGMContacts(event, target) { this.tabs.contacts.onOpenGMContacts(event, target); }
+  static async _onCgAdminNew(event, target) { return this.tabs.contacts.onGroupNew(event, target); }
+  static async _onCgAdminEdit(event, target) { return this.tabs.contacts.onGroupEdit(event, target); }
+  static async _onCgAdminDelete(event, target) { return this.tabs.contacts.onGroupDelete(event, target); }
+  static async _onCgAdminPush(event, target) { return this.tabs.contacts.onGroupPush(event, target); }
   static async _onPushContact(event, target) { return this.tabs.contacts.onPushContact(event, target); }
   static _onViewPlayerContacts(event, target) { this.tabs.contacts.onViewPlayerContacts(event, target); }
   static async _onGMVerifyContact(event, target) { return this.tabs.contacts.onGMVerifyContact(event, target); }
@@ -1168,6 +1177,7 @@ export class AdminPanelApp extends BaseApplication {
   static async _onBulkRelockAll(event, target) { return this.tabs.shards.onBulkRelockAll(event, target); }
   static async _onPurgeDestroyed(event, target) { return this.tabs.shards.onPurgeDestroyed(event, target); }
   static _onConfigureShardItem(event, target) { this.tabs.shards.onConfigureShardItem(event, target); }
+  static _onShardOwnership(event, target) { this.tabs.shards.onShardOwnership(event, target); }
   static async _onRelockShardItem(event, target) { return this.tabs.shards.onRelockShardItem(event, target); }
   static _onToggleShardGroup(event, target) { this.tabs.shards.onToggleGroup(event, target); }
   static _onToggleShardSelectMode(event, target) { this.tabs.shards.onToggleSelectMode(event, target); }

@@ -13,7 +13,7 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
-import { log } from '../../../utils/helpers.js';
+import { log, chatCardTime } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 
@@ -1202,6 +1202,7 @@ export class NetworksTab extends BaseTab {
       {
         networkName,
         message: foundry.utils.encodeHTML ? foundry.utils.encodeHTML(message) : message,
+        when: chatCardTime(),
       }
     );
 

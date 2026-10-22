@@ -130,6 +130,11 @@
     </div>
   </div>
 
+  {{!-- ═══ Contact groups — send to the whole crew ═══ --}}
+  {{#unless isAdding}}{{#unless editingContact}}
+  {{> "modules/night-city-messenger/templates/contact-manager/partials/contact-groups-panel.hbs" contactGroups=contactGroups}}
+  {{/unless}}{{/unless}}
+
   {{!-- ═══ Content: Form OR Split View OR Grid ═══ --}}
 
   {{!-- Add/Edit Form (full width, replaces split) --}}

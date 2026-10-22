@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>name picker probe</title>
+<!--
+  Probe: mounts the REAL showNamePicker (scripts/utils/namePicker.js) against the real
+  cascade with a stub Dialog, so the shipped markup + name-picker.css are what you see.
+  ?t=clean-dark|clean-light|high-contrast|player   (player = admin:false)
+  ?mode=multi   ?q=<query>   ?chip=<group>   ?cursor=<n>   ?none=0   ?taken=1
+  It imports a module, so it must be SERVED (node tools/serve-mockups.cjs → http://127.0.0.1:8123/docs/mockups/name-picker-probe.html)
+  or rendered headless with --allow-file-access-from-files. <title> reports the result.
+-->
+<link rel="stylesheet" id="css-foundry">
+<link rel="stylesheet" id="css-cpr">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 24px; background: #0b0b10; min-height: 100vh; }
+  .app.window-app.dialog { position: relative !important; display: block; }
+  #msg { font: 12px monospace; color: #f65261; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="msg"></div>
+<script type="module">
+const isFile = location.protocol === 'file:';
+document.getElementById('css-foundry').href = isFile ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css' : '/_vendor/foundry2.css';
+document.getElementById('css-cpr').href = isFile ? 'file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+
+const Q = new URLSearchParams(location.search);
+const THEME = Q.get('t') || 'clean-dark';
+const ADMIN = THEME !== 'player';
+const MULTI = Q.get('mode') === 'multi';
+
+// ── just enough Foundry ──
+globalThis.foundry = { utils: { mergeObject: (a, b) => ({ ...a, ...b }), randomID: () => Math.random().toString(36).slice(2, 10) } };
+globalThis.game = { items: [], actors: [], user: { isGM: true }, settings: { get: () => ({ preset: THEME, textScale: 100 }) } };
+globalThis.ui = { notifications: { warn: (m) => console.warn(m), info: () => {}, error: (m) => console.error(m) } };
+globalThis.Hooks = { on: () => {}, once: () => {}, call: () => {}, callAll: () => {} };
+globalThis.Dialog = class {
+  constructor(data, options = {}) { this.data = data; this.options = options; }
+  render() {
+    const el = document.createElement('div');
+    el.className = `app window-app dialog ${(this.options.classes || []).join(' ')}`;
+    el.style.width = `${this.options.width || 400}px`;
+    if (ADMIN) { el.classList.add('ncm-admin-dialog'); el.setAttribute('data-ncm-admin-theme', THEME); }
+    const btns = Object.entries(this.data.buttons || {}).map(([k, b]) => `<button type="button" data-button="${k}">${b.label}</button>`).join('');
+    el.innerHTML = `<header class="window-header flexrow"><h4 class="window-title">${this.data.title}</h4><a class="header-button control close"><i class="fas fa-times"></i></a></header>
+      <section class="window-content"><div class="dialog-content">${this.data.content}</div><div class="dialog-buttons">${btns}</div></section>`;
+    document.getElementById('stage').appendChild(el);
+    this.element = el;
+    this.data.render?.(el.querySelector('.window-content'));
+    return this;
+  }
+  close() { this.data.close?.(); this.element?.remove(); }
+};
+
+const IMG = (seed) => `https://picsum.photos/seed/${seed}/56/56`;
+const fNpcs = { name: 'NPCs', folder: null }, fArasaka = { name: 'Arasaka', folder: fNpcs }, fExecs = { name: 'Execs', folder: fArasaka }, fFix = { name: 'Fixers', folder: fNpcs }, fGangs = { name: 'Gangs', folder: null }, fMael = { name: 'Maelstrom', folder: fGangs };
+const actors = [
+  { id: 'p1', name: 'V', type: 'character', hasPlayerOwner: true, img: IMG('p1') },
+  { id: 'p2', name: 'Judy Alvarez', type: 'character', hasPlayerOwner: true, img: IMG('p2') },
+  { id: 'p3', name: 'Panam Palmer', type: 'character', hasPlayerOwner: true, img: IMG('p3') },
+  { id: 'n1', name: 'Rogue Amendiares', type: 'npc', folder: fFix, img: IMG('n1') },
+  { id: 'n2', name: 'Wakako Okada', type: 'npc', folder: fFix, img: IMG('n2') },
+  { id: 'n4', name: 'Yorinobu Arasaka', type: 'npc', folder: fExecs, img: IMG('n4') },
+  { id: 'n5', name: 'Hanako Arasaka', type: 'npc', folder: fExecs, img: IMG('n5') },
+  { id: 'n6', name: 'Adam Smasher', type: 'npc', folder: fArasaka, img: IMG('n6') },
+  { id: 'n7', name: 'Takemura Goro', type: 'npc', folder: fArasaka, img: IMG('n7') },
+  { id: 'g1', name: 'Royce', type: 'npc', folder: fMael, img: IMG('g1') },
+  { id: 'g2', name: 'Dum Dum', type: 'npc', folder: fMael, img: IMG('g2') },
+  { id: 'u1', name: 'Delamain', type: 'npc', img: IMG('u1') },
+  { id: 'u2', name: 'Johnny Silverhand', type: 'npc', img: IMG('u2') },
+];
+game.actors = Object.assign(actors, { get: (id) => actors.find((a) => a.id === id), contents: actors });
+
+const msg = document.getElementById('msg');
+try {
+  const { showNamePicker, documentEntries } = await import('../../scripts/utils/namePicker.js');
+  const entries = documentEntries(actors, { note: (a) => (a.hasPlayerOwner ? 'player' : a.type) })
+    .map((e) => (game.actors.get(e.id)?.hasPlayerOwner ? { ...e, group: 'Players' } : e));
+  entries.sort((x, y) => ((x.group === 'Players' ? 0 : 1) - (y.group === 'Players' ? 0 : 1)) || x.name.localeCompare(y.name));
+  if (entries.find((e) => e.id === 'n1')) entries.find((e) => e.id === 'n1').tag = 'SHARD';
+  const p = showNamePicker({
+    admin: ADMIN, multi: MULTI,
+    title: 'Link an Actor',
+    hint: "The contact takes this actor's portrait and messages route to its inbox.",
+    entries,
+    allowNone: Q.get('none') === '0' ? false : '— None —',
+    selected: MULTI ? '' : 'p1',
+    taken: Q.get('taken') ? ['n6'] : [],
+    placeholder: 'search actors or folders…',
+  });
+  p.then((pick) => { msg.textContent = `resolved: ${JSON.stringify(pick)}`; });
+
+  // scripted interactions
+  const root = document.querySelector('.ncm-pkr');
+  const search = root.querySelector('.ncm-pkr__q');
+  if (Q.get('chip')) root.querySelector(`.ncm-pkr__chip[data-group="${Q.get('chip')}"]`)?.click();
+  if (Q.get('q')) { search.value = Q.get('q'); search.dispatchEvent(new Event('input')); }
+  const n = Number(Q.get('cursor') || 0);
+  for (let i = 0; i < n; i++) search.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+  if (MULTI && Q.get('pick')) root.querySelector(`.ncm-pkr__row[data-id="${Q.get('pick')}"]`)?.click();
+
+  const rows = [...root.querySelectorAll('.ncm-pkr__row')];
+  const shown = rows.filter((r) => r.style.display !== 'none').length;
+  const headers = [...root.querySelectorAll('.ncm-pkr__group')].filter((h) => getComputedStyle(h).display !== 'none').length;
+  const chip = getComputedStyle(root.querySelector('.ncm-pkr__chip.is-on'));
+  const name = getComputedStyle(root.querySelector('.ncm-pkr__row:not(.ncm-pkr__row--none) .ncm-pkr__name'));
+  document.title = `pkr ok · rows ${shown}/${rows.length} · headers ${headers} · cursor ${root.querySelector('.is-cursor')?.dataset.name || '-'} · chip-bg ${chip.backgroundColor} · name ${name.color}/${name.fontFamily.split(',')[0]} · count "${root.querySelector('.ncm-pkr__count').textContent}"`;
+} catch (err) {
+  document.title = `pkr FAIL ${err.message}`;
+  msg.textContent = `${err.stack}\n\nA file:// page cannot import a module — serve it: node tools/serve-mockups.cjs`;
+}
+</script>
+</body>
+</html>

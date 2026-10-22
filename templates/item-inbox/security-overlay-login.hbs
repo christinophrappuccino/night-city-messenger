@@ -25,12 +25,12 @@
     {{else}}
       <div class="ncm-sec-login-form">
         <div class="ncm-sec-login-group">
-          <div class="ncm-sec-login-label"><i class="fas fa-user"></i> Username</div>
-          <input class="ncm-sec-login-input" type="text" name="login-username" placeholder="admin" autocomplete="off" />
+          <div class="ncm-sec-login-label"><i class="fas fa-user-astronaut"></i> Operator</div>
+          <input class="ncm-sec-login-input" type="text" name="ncm-shard-op" data-ncm-login="1" placeholder="operator" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" spellcheck="false" />
         </div>
         <div class="ncm-sec-login-group">
-          <div class="ncm-sec-login-label"><i class="fas fa-key"></i> Password</div>
-          <input class="ncm-sec-login-input" type="password" name="login-password" placeholder="••••••••" autocomplete="off" />
+          <div class="ncm-sec-login-label"><i class="fas fa-key"></i> Passcode</div>
+          <input class="ncm-sec-login-input" type="text" data-ncm-secret="1" name="ncm-shard-key" placeholder="••••••••" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" />
         </div>
       </div>
 

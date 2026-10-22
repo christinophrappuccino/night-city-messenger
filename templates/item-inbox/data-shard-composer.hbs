@@ -171,10 +171,11 @@
             </div>
             <div class="ncm-fg" style="margin:0">
               <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Linked actor — powers the portrait + combat profile</label>
-                <select name="dossierLinkedActor" class="ncm-config-input ncm-config-select" data-edit-select="dossierLinkedActor">
-                  <option value="">— none (manual data) —</option>
-                  {{#each actorOptions}}<option value="{{id}}">{{name}}</option>{{/each}}
-                </select></span>
+                <span class="ncm-picker-row {{#if dossLinkedId}}is-set{{/if}}" data-picker-row>
+                  <input type="hidden" name="dossierLinkedActor" data-edit-select="dossierLinkedActor" data-picker="actor" value="{{dossLinkedId}}" />
+                  <input type="text" class="ncm-config-input ncm-picker-row__lbl" data-picker-label-for="dossierLinkedActor" value="{{dossLinkedName}}" placeholder="— none (manual data) —" readonly data-action="dossPickActor" />
+                  <button type="button" class="ncm-shard-btn ncm-picker-row__btn" data-action="dossPickActor" title="Search actors"><i class="fas fa-search"></i></button>
+                </span></span>
             </div>
           </div>
         </div>
@@ -291,10 +292,11 @@
       <div class="ncm-config-row">
         <label class="ncm-config-label">Also run macro</label>
         {{#if pl.hasMacros}}
-        <select name="payloadMacroId" class="ncm-config-input ncm-config-select ncm-config-flex">
-          <option value="">— none —</option>
-          {{#each pl.macroOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
-        </select>
+        <span class="ncm-picker-row ncm-config-flex {{#if pl.macroId}}is-set{{/if}}" data-picker-row>
+          <input type="hidden" name="payloadMacroId" data-picker="macro" value="{{pl.macroId}}" />
+          <input type="text" class="ncm-config-input ncm-picker-row__lbl" data-picker-label-for="payloadMacroId" value="{{pl.macroName}}" placeholder="— none —" readonly data-action="plPickMacro" />
+          <button type="button" class="ncm-shard-btn ncm-picker-row__btn" data-action="plPickMacro" title="Search macros"><i class="fas fa-search"></i></button>
+        </span>
         {{else}}<span class="ncm-config-hint" style="margin:0;">No world macros to link.</span>{{/if}}
       </div>
       <div class="ncm-config-hint">Module-native effects run for real: <b>Icebreaker</b> unseals encrypted files on the host, <b>Skeleton Key</b> clears its lockouts, <b>Scanner</b> reveals hidden accounts/off-net files, <b>Jammer</b> drops the uplink. <b>Program</b> = you adjudicate (you get an alert). A runtime &gt; 0 makes it an active effect that auto-expires on the game clock (Jammer re-connects on expiry). A linked macro runs on a clean execute.</div>

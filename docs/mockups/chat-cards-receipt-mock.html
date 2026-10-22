@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chat cards — receipt direction</title>
+<!--
+  Mock: a second direction for NCM's chat cards (dev: "keep cyberpunk / Blade Runner
+  and legibility in mind, but not the AI sidebar-card look").
+  THE IDEA: every card is a PRINTOUT from the Agent — a thermal slip torn top and
+  bottom, one ink, a rubber stamp where a verdict matters, a barcode for the id.
+  Real cascade (foundry2.css → CPR main.css → night-city-messenger.css) so the fonts and
+  the chat-message wrapper are the real ones.  ?w=300|360   ?fold=closed
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  html, body { height: auto; min-height: 100%; }
+  body { margin: 0; padding: 22px 26px 60px; background: #0b0b10; color: #ccc; font-family: 'Rajdhani', sans-serif; }
+  .stage { display: grid; grid-template-columns: var(--w, 300px) 1fr; gap: 32px; align-items: start; }
+  .col > h2 { margin: 0 0 8px; font: 700 11px/1 'Rajdhani', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #8888a0; }
+  .log { background: rgba(0,0,0,.5); border: 1px solid #1e1e32; padding: 6px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-message { background: #0f0f18; border: 1px solid #1e1e32; padding: 6px; }
+  .chat-message .message-header { font: 600 11px 'Rajdhani', sans-serif; color: #8888a0; display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .notes { font: 500 13px/1.55 'Rajdhani', sans-serif; color: #9d9db4; max-width: 460px; }
+  .notes b { color: #e0e0e8; }
+  .notes h3 { margin: 18px 0 6px; font: 700 11px 'Rajdhani', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #8888a0; }
+  .notes code { display: inline !important; font-family: 'Share Tech Mono', monospace !important; font-size: 11px !important; color: #19f3f7 !important; background: none !important; border: 0 !important; padding: 0 !important; }
+  .swatches { display: flex; gap: 6px; margin: 6px 0 10px; }
+  .sw { width: 40px; height: 28px; border: 1px solid #333; display: grid; place-items: end; font: 9px 'Share Tech Mono'; color: #999; padding: 2px; box-sizing: border-box; }
+
+  /* ═══════════════════════════ THE RECEIPT ═══════════════════════════ */
+  .rc {
+    --paper: #e3e1d8; --paper-2: #d9d6cc; --ink: #1c1b1a; --ink-2: #5b5953; --rule: #b9b6ab;
+    --stamp-red: #c8301f; --stamp-blue: #1f4fb3;
+    position: relative; margin: 8px 0 10px; color: var(--ink); background: var(--paper);
+    font: 400 12.5px/1.45 'Share Tech Mono', monospace;
+    padding: 12px 14px 12px;
+    /* thermal paper: a faint feed-stripe so it is paper, not a panel */
+    background-image: repeating-linear-gradient(0deg, transparent 0 11px, rgba(0,0,0,.025) 11px 12px);
+    box-shadow: 0 10px 18px -10px rgba(0,0,0,.9);
+  }
+  /* torn edges — the only decoration the slip gets */
+  .rc::before, .rc::after { content: ''; position: absolute; left: 0; right: 0; height: 7px;
+    background: linear-gradient(-45deg, transparent 5px, var(--paper) 0) 0 0 / 10px 7px repeat-x, linear-gradient(45deg, transparent 5px, var(--paper) 0) 0 0 / 10px 7px repeat-x; }
+  .rc::before { top: -7px; }
+  .rc::after { bottom: -7px; transform: scaleY(-1); }
+
+  /* printer header: whose Agent printed this, and the line it came in on */
+  .rc__hd { display: flex; justify-content: space-between; gap: 8px; padding-bottom: 7px; margin-bottom: 8px; border-bottom: 1px dashed var(--rule); color: var(--ink-2); font-size: 11px; letter-spacing: .02em; }
+  .rc__hd b { color: var(--ink); font-weight: 400; }
+  .rc__kind { font: 700 11px/1 'Rajdhani', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
+
+  /* a printed line: key, dotted leader, value — the receipt's native grammar */
+  .rc__ln { display: flex; align-items: baseline; gap: 6px; }
+  .rc__ln .k { flex: 0 0 auto; color: var(--ink-2); }
+  .rc__ln .d { flex: 1 1 auto; border-bottom: 1px dotted var(--rule); transform: translateY(-4px); min-width: 12px; }
+  .rc__ln .v { flex: 0 1 auto; text-align: right; color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+  .rc__ln .v b { font-weight: 400; color: var(--ink); }
+  .rc__ln.big .v { font-size: 15px; }
+  .rc__lines { display: flex; flex-direction: column; gap: 3px; }
+
+  /* people */
+  .rc__who { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .rc__p { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; }
+  .rc__p img { width: 34px; height: 34px; object-fit: cover; border: 0; filter: grayscale(1) contrast(1.15); mix-blend-mode: multiply; }
+  .rc__p .n { font: 700 13.5px/1.1 'Rajdhani', sans-serif; color: var(--ink); }
+  .rc__p .a { font-size: 10.5px; color: var(--ink-2); }
+  .rc__p .r { font-size: 10px; color: var(--ink-2); letter-spacing: .04em; }
+  .rc__add { font: 700 10.5px/1 'Rajdhani', sans-serif; letter-spacing: .04em; color: var(--ink); border: 1.5px solid var(--ink); padding: 4px 7px; cursor: pointer; white-space: nowrap; }
+  .rc__add:hover { background: var(--ink); color: var(--paper); }
+
+  .rc__row .rc__subject, .rc__row .rc__verdict { margin: 0; }
+  .rc__subject { font: 700 16px/1.2 'Rajdhani', sans-serif; color: var(--ink); margin: 2px 0 6px; }
+  .rc__text { color: var(--ink); }
+  .rc__text p { margin: 0 0 7px; } .rc__text p:last-child { margin: 0; }
+  .rc__text b { font-weight: 400; text-decoration: underline; text-underline-offset: 2px; }  /* a thermal printer has no bold — it underlines */
+  .rc__text ul { margin: 0 0 7px; padding-left: 0; list-style: none; }
+  .rc__text li::before { content: '- '; color: var(--ink-2); }
+
+  /* long message: native fold, printed as a cut line */
+  .rc__fold { margin: 0; }
+  .rc__fold summary { list-style: none; cursor: pointer; margin: 8px 0 0; padding-top: 6px; border-top: 1px dashed var(--rule); font-size: 11px; color: var(--ink-2); display: flex; gap: 6px; }
+  .rc__fold summary::-webkit-details-marker { display: none; }
+  .rc__fold summary::before { content: '✂'; }
+  .rc__fold summary .o, .rc__fold[open] summary .c { display: none; }
+  .rc__fold[open] summary .o { display: inline; }
+
+  /* THE STAMP — ink pressed on the slip, slightly off square */
+  .rc__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .rc__stamp { flex: 0 0 auto; transform: rotate(-7deg); margin-right: 6px; padding: 3px 8px; border: 2.5px solid var(--stamp-red); color: var(--stamp-red);
+    font: 800 15px/1 'Rajdhani', sans-serif; letter-spacing: .12em; text-transform: uppercase; opacity: .82; mix-blend-mode: multiply; border-radius: 2px;
+    -webkit-mask: radial-gradient(circle at 30% 40%, #000 60%, transparent 100%), radial-gradient(circle at 70% 70%, #000 60%, transparent 100%); }
+  .rc__stamp--blue { border-color: var(--stamp-blue); color: var(--stamp-blue); }
+  .rc__stamp--low { transform: rotate(5deg); }
+  .rc__stamp--wide { font-size: 13px; }
+
+  /* the roll as an itemised bill */
+  .rc__sum { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--ink); }
+  .rc__sum .rc__ln .k { color: var(--ink); }
+  .rc__verdict { margin-top: 8px; font: 700 13px/1.2 'Rajdhani', sans-serif; color: var(--ink); }
+  .rc__verdict small { font: 400 11px 'Share Tech Mono', monospace; color: var(--ink-2); display: block; }
+
+  /* ICE: a citation — same slip, the ink turns red */
+  .rc--red { --ink: #7a1d12; --ink-2: #9a5a52; --rule: #c9a39c; --paper: #e6ddd6; }
+  .rc--red .rc__hd { border-bottom-style: solid; border-bottom-width: 2px; border-color: var(--ink); }
+  .rc__dmg { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 2px; }
+  .rc__dmg b { font: 800 34px/1 'Rajdhani', sans-serif; color: var(--ink); }
+  .rc__dmg span { font-size: 11px; color: var(--ink-2); }
+
+  /* GM-only: the slip is overprinted */
+  .rc__over { position: absolute; inset: 0; pointer-events: none; display: grid; place-items: center; overflow: hidden; }
+  .rc__over span { font: 800 22px/1 'Rajdhani', sans-serif; letter-spacing: .3em; text-transform: uppercase; color: var(--stamp-red); opacity: .12; transform: rotate(-18deg); white-space: nowrap; }
+
+  /* footer: barcode = the message id, then the printed time */
+  .rc__ft { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--rule); display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+  .rc__bar { height: 22px; width: 118px; background:
+    repeating-linear-gradient(90deg, var(--ink) 0 1px, transparent 1px 3px, var(--ink) 3px 5px, transparent 5px 6px, var(--ink) 6px 7px, transparent 7px 10px, var(--ink) 10px 13px, transparent 13px 14px, var(--ink) 14px 15px, transparent 15px 18px);
+    opacity: .9; }
+  .rc__id { font-size: 9.5px; color: var(--ink-2); margin-top: 3px; letter-spacing: .12em; }
+  .rc__when { text-align: right; font-size: 11px; color: var(--ink-2); line-height: 1.3; }
+  .rc__when b { color: var(--ink); font-weight: 400; display: block; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="col">
+    <h2>Direction B · Agent printouts</h2>
+    <div class="log" id="log"></div>
+  </div>
+  <div class="notes">
+    <h3>The idea</h3>
+    These cards are artifacts, not panels: a message someone forwarded to the table, a roll's arithmetic, a security hit. In Blade Runner those are <b>printouts</b> — the Esper photo, the police ticket, the Voight-Kampff strip — and in Cyberpunk RED they're screamsheets and Data Term slips. The chat log already spools like paper. So every card is a <b>thermal slip from your Agent's printer</b>: torn top and bottom, one ink, a rubber stamp where a verdict matters, a barcode for the id.
+    <h3>Why it reads better</h3>
+    <b>Dark ink on pale paper</b> is the most legible thing you can put in a 300px column, and nothing else in Foundry or in NCM looks like it. Everything printed is one size, one mono face (Share Tech Mono at 12.5px — a printer has one font); only the subject and the stamps use Rajdhani. There are no labels in caps, no accent bar, no scanlines: a receipt's grammar is <b>key … dotted leader … value</b>, and a roll is an itemised bill that sums to the total.
+    <h3>Tokens</h3>
+    <div class="swatches"><div class="sw" style="background:#e3e1d8">paper</div><div class="sw" style="background:#1c1b1a;color:#999">ink</div><div class="sw" style="background:#5b5953">faded</div><div class="sw" style="background:#c8301f">red</div><div class="sw" style="background:#1f4fb3">blue</div></div>
+    Cool thermal grey-white, not cream. Ink and faded ink. Two stamp inks: red for warnings and failures, blue for passes. Nothing else. The slip never changes colour except the citation, where the whole print turns red ink.
+    <h3>What each card does</h3>
+    <b>Shared message</b> — printer header says whose Agent printed it and the line; From/To with portraits printed in halftone grey; subject; body (a thermal printer has no bold, so emphasis is <u>underlined</u>); an <b>Add contact</b> button for people not in your list; URGENT is a stamp. <b>Long messages</b> fold at a cut line (✂ "cut here · 9 more lines").<br>
+    <b>Skill check</b> — the bill: TECH 7, Interface 4, d10 8, total 19, DV 15, then the verdict in words and a PASSED / FAILED stamp. A critical prints a "10 → 17 (explodes)" line; a fumble "1 → −6".<br>
+    <b>Black ICE</b> — a citation: the whole slip prints in red ink, damage as the big number.<br>
+    <b>Malware analysis</b> — the slip is overprinted GM EYES ONLY, since it is a whisper.<br>
+    <b>Broadcast</b> — a public notice from the network operator, stamped PUBLIC.<br>
+    <b>Trace warning</b> — a GM whisper, same overprint.
+    <h3>Themeable?</h3>
+    Deliberately not. Paper is paper. The player theme reaches the ink only (a dark player theme could invert the slip to a phosphor-green readout — that's the one knob I'd offer: <code>chatCardStyle: paper | phosphor</code>).
+    <h3>If this isn't it</h3>
+    The other direction I'd try is the <b>Esper readout</b>: dark, but built like the enhance screen — a wide tracked record line across the top, the verdict as one enormous numeral, data in a strip of blocky seven-segment digits, no borders at all. Say which, or neither.
+  </div>
+</div>
+
+<script>
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const IMG = (seed) => `https://picsum.photos/seed/${seed}/68/68`;
+const Q = new URLSearchParams(location.search);
+if (Q.get('w')) document.getElementById('stage').style.setProperty('--w', Q.get('w') + 'px');
+const BODY = `<p>Job's on for tonight. Meet at the Afterlife, back booth, <b>23:00 sharp</b>. Bring the deck. Nix says the Arasaka node is the one from the dossier.</p><p>Don't be late. Rogue doesn't do second chances.</p>`;
+const MORE = `<p>Second thing: the dossier Nix pulled has a hole in it. The Execs floor has two guard rotations, not one, and the second only shows on the Thursday log. If we go in on the Thursday we are walking into both. Kerry thinks the camera loop buys four minutes, Nix says two. Plan for two.</p><p>Third: money up front this time. Half on the table at the Afterlife, half when the shard is in my hand. No eddies, no job.</p><ul><li>Deck, two spare blanks</li><li>The Arasaka badge from the last run</li><li>Someone who can drive</li></ul>`;
+const wrap = (who, html) => `<div class="chat-message"><div class="message-header"><span>${who}</span><span>Just now</span></div>${html}</div>`;
+const ln = (k, v, cls = '') => `<div class="rc__ln ${cls}"><span class="k">${k}</span><span class="d"></span><span class="v">${v}</span></div>`;
+const ft = (id, when) => `<div class="rc__ft"><div><div class="rc__bar"></div><div class="rc__id">${id}</div></div><div class="rc__when">printed<b>${when}</b></div></div>`;
+const person = (role, name, addr, img, add) => `<div class="rc__p"><img src="${img}" alt=""><div><div class="r">${role}</div><div class="n">${esc(name)}</div><div class="a">${esc(addr)}</div></div>${add === 'add' ? '<span class="rc__add" title="Add to your contacts">+ Add contact</span>' : add === 'in' ? '<span class="r">in contacts</span>' : ''}</div>`;
+const closed = Q.get('fold') === 'closed';
+
+document.getElementById('log').innerHTML = [
+  wrap('GM', `<div class="rc">
+    <div class="rc__hd"><span class="rc__kind">Shared message</span><span>via <b>GM</b></span></div>
+    <div class="rc__who">${person('from', 'Rogue', 'rogue@afterlife.nc', IMG('n1'), 'add')}${person('to', 'V', 'v@nightcity.net', IMG('p1'))}</div>
+    <div class="rc__row" style="margin:2px 0 6px"><div class="rc__subject">Afterlife tonight</div><div class="rc__stamp">Urgent</div></div>
+    <div class="rc__text">${BODY}</div>
+    ${ft('4F9A 2C1E 77B0', '20 Oct 2077, 22:14')}</div>`),
+  wrap('V', `<div class="rc">
+    <div class="rc__hd"><span class="rc__kind">Shared message</span><span>via <b>V</b></span></div>
+    <div class="rc__who">${person('from', 'Rogue', 'rogue@afterlife.nc', IMG('n1'), 'in')}${person('to', 'V', 'v@nightcity.net', IMG('p1'))}</div>
+    <div class="rc__subject">Afterlife tonight, the long version</div>
+    <div class="rc__text">${BODY}</div>
+    <details class="rc__fold" ${closed ? '' : 'open'}><summary><span class="c">cut here · 9 more lines</span><span class="o">fold the rest</span></summary><div class="rc__text" style="margin-top:7px">${MORE}</div></details>
+    ${ft('4F9A 2C1E 77B1', '20 Oct 2077, 22:31')}</div>`),
+  wrap('V', `<div class="rc">
+    <div class="rc__hd"><span class="rc__kind">Skill check</span><span><b>V</b></span></div>
+    <div class="rc__subject">Interface</div>
+    <div style="font-size:11px;color:var(--ink-2);margin:-4px 0 8px">Network bypass, Arasaka Subnet</div>
+    <div class="rc__lines">${ln('TECH', '7')}${ln('Interface', '4')}${ln('1d10', '8')}</div>
+    <div class="rc__sum">${ln('Total', '<b>19</b>', 'big')}${ln('Difficulty', '15')}</div>
+    <div class="rc__row" style="margin-top:8px"><div class="rc__verdict">Passed by 4<small>the node lets V through</small></div><div class="rc__stamp rc__stamp--blue rc__stamp--low">Passed</div></div>
+    ${ft('ROLL 8812 0A41', '20 Oct 2077, 22:40')}</div>`),
+  wrap('V', `<div class="rc">
+    <div class="rc__hd"><span class="rc__kind">Skill check</span><span><b>V</b></span></div>
+    <div class="rc__subject">Electronics / Security Tech</div>
+    <div style="font-size:11px;color:var(--ink-2);margin:-4px 0 8px">Camera loop, NCPD precinct</div>
+    <div class="rc__lines">${ln('TECH', '6')}${ln('Electronics / Security Tech', '2')}${ln('1d10', '1')}${ln('fumble, subtractive', '−7')}${ln('Luck spent', '+2')}</div>
+    <div class="rc__sum">${ln('Total', '<b>4</b>', 'big')}${ln('Difficulty', '16')}</div>
+    <div class="rc__row" style="margin-top:8px"><div class="rc__verdict">Failed by 12<small>the loop never took; the camera saw it</small></div><div class="rc__stamp rc__stamp--low">Failed</div></div>
+    ${ft('ROLL 8812 0A42', '20 Oct 2077, 22:41')}</div>`),
+  wrap('Hellhound', `<div class="rc rc--red">
+    <div class="rc__hd"><span class="rc__kind">Black ICE</span><span>on a <b>shard</b></span></div>
+    <div class="rc__who">${person('program', 'Hellhound', 'Black ICE, attacker', IMG('ice'))}</div>
+    <div class="rc__dmg"><b>11</b><span>damage to V<br>ATK 6 + 1d10 (5)</span></div>
+    <div class="rc__lines">${ln('HP before', '35')}${ln('HP after', '<b>24</b>')}</div>
+    ${ft('ICE 0C77 19FE', '20 Oct 2077, 22:42')}</div>`),
+  wrap('V', `<div class="rc">
+    <div class="rc__over"><span>GM eyes only</span></div>
+    <div class="rc__hd"><span class="rc__kind">Malware analysis</span><span><b>V</b></span></div>
+    <div class="rc__lines">${ln('Source', 'promo@bangme.nc')}${ln('Subject', 'FREE braindance, claim now')}${ln('Found', '<b>worm</b>')}</div>
+    <div class="rc__verdict" style="margin-top:10px">Do not open<small>the attachment rewrites the Agent's contact list</small></div>
+    ${ft('SCAN 5510 B2C0', '20 Oct 2077, 22:45')}</div>`),
+  wrap('GM', `<div class="rc">
+    <div class="rc__hd"><span class="rc__kind">Network notice</span><span><b>CitiNet</b></span></div>
+    <div class="rc__row" style="margin:6px 0 6px"><div class="rc__subject">Curfew in Watson</div><div class="rc__stamp rc__stamp--blue rc__stamp--wide">Public</div></div>
+    <div class="rc__text"><p>NCPD curfew in effect for Watson from 22:00. All CitiNet traffic in the district is logged.</p></div>
+    ${ft('NOTICE 0020 1177', '20 Oct 2077, 22:00')}</div>`),
+  wrap('GM', `<div class="rc">
+    <div class="rc__over"><span>GM eyes only</span></div>
+    <div class="rc__hd"><span class="rc__kind">Trace</span><span><b>V</b> on Arasaka Subnet</span></div>
+    <div class="rc__text"><p>A trace is closing in on V at Arasaka Subnet.</p></div>
+    <div class="rc__lines" style="margin-top:6px">${ln('Heat', '35 → <b>55</b>')}${ln('Tier', 'hot')}</div>
+    ${ft('TRACE 9A01 44D2', '20 Oct 2077, 22:46')}</div>`),
+].join('');
+</script>
+</body>
+</html>

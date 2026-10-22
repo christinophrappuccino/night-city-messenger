@@ -5,7 +5,7 @@
  * still resolve from --ncm-* if a viewer hosts it. Depends on
  * [data-ct-color]{--ct-c} from content-types.css → @imported after it.
  *
- * Also holds the Tier B NET-action CHAT CARD (.ncm-netcard) — chat log rows have
+ * The Tier B NET-action chat card moved to the shared chat-card family (styles/chat/chat-cards.css) — chat log rows have
  * no --ncm-* ancestor, so every colour there ships a hard fallback.
  * ========================================================================== */
 
@@ -224,20 +224,7 @@
 @keyframes ncm-netadj-run-sweep { 0% { left: -40%; } 100% { left: 100%; } }
 @keyframes ncm-netadj-run-blink { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 
-/* ── Tier B chat card (whispered to GMs — chat log, hard fallbacks) ── */
-.ncm-netcard {
-  border: 1px solid #2a2a45; border-left: 3px solid var(--ncm-secondary, #19f3f7);
-  background: rgba(18, 18, 26, .55); padding: 7px 10px; border-radius: 2px;
-}
-.ncm-netcard--fail { border-left-color: var(--ncm-danger, #ff0033); }
-.ncm-netcard__hd { font-family: var(--ncm-font-display, sans-serif); font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--ncm-secondary, #19f3f7); margin-bottom: 5px; }
-.ncm-netcard--fail .ncm-netcard__hd { color: var(--ncm-danger, #ff0033); }
-.ncm-netcard__hd i { margin-right: 4px; }
-.ncm-netcard__what { font-size: 13.5px; line-height: 1.5; }
-.ncm-netcard__roll { font-family: var(--ncm-font-mono, monospace); font-size: 12px; margin-top: 4px; }
-.ncm-netcard--ok .ncm-netcard__oc { color: var(--ncm-success, #00b32c); }
-.ncm-netcard--fail .ncm-netcard__oc { color: var(--ncm-danger, #ff0033); }
-.ncm-netcard__note { font-size: 11px; font-style: italic; opacity: .7; margin-top: 4px; }
+/* (The Tier B NET-action chat card is the shared chat-card family now — styles/chat/chat-cards.css.) */
 
 @media (prefers-reduced-motion: reduce) {
   .ncm-netadj-backdrop, .ncm-netadj { transition: none !important; }

@@ -14,6 +14,7 @@ import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
 import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound } from '../../utils/helpers.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
+import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
 const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
@@ -1642,46 +1643,19 @@ export class TerminalConfigApp extends BaseApplication {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
-  /** Searchable world-item picker for the key item (burn-picker pattern —
-   *  reuses the .ncm-burn-* dialog styling; sheet-abstraction types filtered). */
-  static _onPickKeyItem() {
-    const esc = Handlebars.escapeExpression;
-    const NON_CARRIER = ['skill', 'role', 'criticalInjury', 'netarch'];
-    const items = (game.items?.contents || [])
-      .filter(i => !NON_CARRIER.includes(i.type))
-      .sort((x, y) => x.name.localeCompare(y.name));
-    const rows = items.map(i => `
-      <div class="ncm-burn-row" data-name="${esc(i.name)}">
-        <img src="${esc(i.img)}" alt="">
-        <span class="ncm-burn-name">${esc(i.name)}</span>
-        <span class="ncm-burn-type">${esc(i.type)}</span>
-      </div>`).join('');
-    const dlg = adminDialog({
+  /** Key item for the account — the shared world picker (folder chips; matched by name). */
+  static async _onPickKeyItem() {
+    const input = this.element?.querySelector('[name="secKeyItemName"]');
+    const pick = await showNamePicker({
       title: 'Key Item',
-      content: `
-        <div class="ncm-burn-hint">Pick the item a character must carry to open this account (matched by name).</div>
-        <input type="text" class="ncm-burn-search" placeholder="search items…">
-        <div class="ncm-burn-list">${rows || '<div class="ncm-burn-hint" style="padding:8px">no world items — type the name manually</div>'}</div>`,
-      buttons: { cancel: { label: 'Cancel' } },
-      render: (html) => {
-        const root = html[0] ?? html;
-        const list = root.querySelector('.ncm-burn-list');
-        root.querySelector('.ncm-burn-search')?.addEventListener('input', (ev) => {
-          const q = ev.target.value.trim().toLowerCase();
-          list?.querySelectorAll('.ncm-burn-row').forEach(r => {
-            r.style.display = r.dataset.name.toLowerCase().includes(q) ? '' : 'none';
-          });
-        });
-        list?.addEventListener('click', (ev) => {
-          const row = ev.target.closest('.ncm-burn-row');
-          if (!row) return;
-          const input = this.element?.querySelector('[name="secKeyItemName"]');
-          if (input) { input.value = row.dataset.name; input.dispatchEvent(new Event('input', { bubbles: true })); }
-          dlg.close();
-        });
-      },
-    }, { classes: ['ncm-burn-dialog'] });
-    dlg.render(true);
+      hint: 'Pick the item a character must carry to open this account (matched by name).',
+      entries: documentEntries((game.items?.contents || []).filter(isCarrier), { note: (i) => i.type }),
+      emptyText: 'no world items — type the name manually',
+      placeholder: 'search items or folders…',
+    });
+    if (!pick || !input) return;
+    input.value = pick.name;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   static async _onSaveAccount() {

@@ -12,13 +12,13 @@
       <div class="ncm-term__console-pline">{{shellHost}}:~$ {{#if account}}login {{account.username}}{{else}}identify{{/if}}<span class="ncm-term__cursor"></span></div>
       {{#unless account}}
       <div class="ncm-term__tfield">
-        <span class="ncm-term__tfield-pf">&gt;</span><span class="ncm-term__tfield-l">USER</span>
-        <input type="text" name="manualUsername" value="{{prefillUsername}}" spellcheck="false" autocomplete="off" placeholder="username">
+        <span class="ncm-term__tfield-pf">&gt;</span><span class="ncm-term__tfield-l">OPERATOR</span>
+        <input type="text" name="ncm-term-op" data-ncm-login="1" value="{{prefillUsername}}" spellcheck="false" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" placeholder="username">
       </div>
       {{/unless}}
       <div class="ncm-term__tfield">
         <span class="ncm-term__tfield-pf">&gt;</span><span class="ncm-term__tfield-l">PASSKEY</span>
-        <input type="password" name="manualPassword" autocomplete="off" placeholder="••••••••">
+        <input type="text" data-ncm-secret="1" name="ncm-term-key" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" placeholder="••••••••">
       </div>
       {{#if error}}<div class="ncm-term__danger" style="border-radius:8px;margin:4px 0 10px;border:1px solid color-mix(in srgb,var(--ncm-danger) 45%,transparent)"><i class="fas fa-triangle-exclamation"></i> {{error}}</div>{{/if}}
       {{#unless lockout}}

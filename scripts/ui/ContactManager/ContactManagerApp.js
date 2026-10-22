@@ -19,11 +19,17 @@
 
 import { MODULE_ID, TEMPLATES, EVENTS } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
+import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
+import { editGroupDialog } from '../ContactGroups/GroupEditorDialog.js';
+import { memberFromPlayerContact } from '../../services/ContactGroupService.js';
+import { memberKey } from '../../utils/participants.js';
+import { adminConfirm, playerConfirm, playerDialog, playerPrompt } from '../../utils/adminTheme.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { MessageRepository } from '../../data/MessageRepository.js';
 import {
   getAvatarColor,
   getInitials,
+  getRoleIcon,
   enrichContactForDisplay,
 } from '../../utils/designHelpers.js';
 
@@ -50,6 +56,11 @@ export class ContactManagerApp extends BaseApplication {
 
   /** @type {string|null} Currently selected contact ID (split view) */
   selectedContactId = null;
+  /** Group rail state: the open tray's group id, and whether the rail shows every group. */
+  _openGroupId = null;
+  _groupsExpanded = false;
+  /** Chips the rail shows before folding the rest behind "+N more" (≈ one row at 960px). */
+  static GROUP_RAIL_LIMIT = 6;
 
   /** @type {boolean} Whether user is adding a new contact */
   isAdding = false;
@@ -116,6 +127,16 @@ export class ContactManagerApp extends BaseApplication {
       clearTagFilter:   ContactManagerApp._onClearTagFilter,
       startAddTag:      ContactManagerApp._onStartAddTag,
 
+      // ─── Contact groups ───
+      cgNew:          ContactManagerApp._onGroupNew,
+      cgEdit:         ContactManagerApp._onGroupEdit,
+      cgDelete:       ContactManagerApp._onGroupDelete,
+      cgMessage:      ContactManagerApp._onGroupMessage,
+      cgOpen:         ContactManagerApp._onGroupOpen,
+      cgClose:        ContactManagerApp._onGroupClose,
+      cgMore:         ContactManagerApp._onGroupMore,
+      cgMember:       ContactManagerApp._onGroupMember,
+
       // ─── Contact CRUD ───
       addContact:     ContactManagerApp._onAddContact,
       editContact:    ContactManagerApp._onEditContact,
@@ -148,6 +169,7 @@ export class ContactManagerApp extends BaseApplication {
       createFolderInline: ContactManagerApp._onCreateFolderInline,
       selectIceMode:      ContactManagerApp._onSelectIceMode,
       selectIceActor:     ContactManagerApp._onSelectIceActor,
+      pickLinkedActor:    ContactManagerApp._onPickLinkedActor,
       browseIcePortrait:  ContactManagerApp._onBrowseIcePortrait,
 
       // ─── Other ───
@@ -337,13 +359,11 @@ export class ContactManagerApp extends BaseApplication {
       ? [...new Set(masterSvc.getAll().map(c => c.folder).filter(Boolean))].sort()
       : [];
 
-    // ── Available actors (for linked actor select in GM form) ──
-    const availableActors = game.user.isGM
-      ? game.actors.contents.map(a => ({
-          id: a.id, name: a.name,
-          hasPlayerOwner: a.hasPlayerOwner,
-        }))
-      : [];
+    // ── Linked actor label (GM form) — the picker reads the world on demand ──
+    // The form binds to editingContact (the one being edited); a new contact has none.
+    const linkedActorName = (game.user.isGM && editingContact?.actorId)
+      ? (game.actors.get(editingContact.actorId)?.name || '(missing actor)')
+      : '';
 
     // ── Custom roles from GM settings ──
     const customRoles = masterSvc?.getCustomRoles?.() || [];
@@ -387,6 +407,7 @@ export class ContactManagerApp extends BaseApplication {
       groupBy: this._groupBy,
       sortBy: this._sortBy,
       groups, hasGroups,
+      contactGroups: this._contactGroupsContext(),
       quickDialContacts,
 
       // Selected contact detail
@@ -407,7 +428,7 @@ export class ContactManagerApp extends BaseApplication {
 
       // Folders + Actors + Roles (for form)
       existingFolders,
-      availableActors,
+      linkedActorName,
       customRoles,
       blackIceActors,
 
@@ -459,13 +480,6 @@ export class ContactManagerApp extends BaseApplication {
     }
 
     // ── Grouped mode ──
-    const roleIcons = {
-      fixer: 'fas fa-crosshairs', solo: 'fas fa-gun', netrunner: 'fas fa-terminal',
-      tech: 'fas fa-wrench', medtech: 'fas fa-kit-medical', media: 'fas fa-camera',
-      exec: 'fas fa-briefcase', lawman: 'fas fa-gavel', nomad: 'fas fa-truck-monster',
-      rockerboy: 'fas fa-guitar',
-    };
-
     const field = this._groupBy; // 'role' | 'organization' | 'location'
     const groupMap = new Map();
 
@@ -477,7 +491,7 @@ export class ContactManagerApp extends BaseApplication {
         groupMap.set(key, {
           key,
           name: val || '',
-          icon: field === 'role' ? (roleIcons[key] || 'fas fa-user') :
+          icon: field === 'role' ? getRoleIcon(key) :
                 field === 'organization' ? 'fas fa-building' :
                 field === 'location' ? 'fas fa-location-dot' : 'fas fa-folder',
           contacts: [],
@@ -1038,7 +1052,7 @@ export class ContactManagerApp extends BaseApplication {
   }
 
   static async _onStartAddTag(event, target) {
-    const result = await Dialog.prompt({
+    const result = await playerPrompt({
       title: 'Create Tag',
       content: `
         <form class="ncm-dialog-form">
@@ -1064,6 +1078,167 @@ export class ContactManagerApp extends BaseApplication {
   //  Action Handlers — Contact CRUD
   // ═══════════════════════════════════════════════════════════
 
+  // ─── Contact groups ("send to the whole crew") ───
+
+  /** The panel's rows: this character's groups, newest edit first. */
+  /**
+   * The group rail + tray view-model (partial contact-groups-panel.hbs).
+   * Recently MESSAGED groups first (lastUsedAt, stamped by touchActorGroup),
+   * never-used ones A→Z; past GROUP_RAIL_LIMIT the rest fold behind "+N more"
+   * unless expanded — the open group is always shown. Members resolve against
+   * THIS character's own contacts (portrait, role, click-to-open); a member
+   * that matches none is a bare address card.
+   */
+  _contactGroupsContext() {
+    const empty = { total: 0, expanded: false, hiddenCount: 0, list: [], open: null };
+    const svc = this.contactGroupService;
+    if (!svc || !this.actorId) return empty;
+    const all = svc.getActorGroups(this.actorId).sort((a, b) =>
+      String(b.lastUsedAt || '').localeCompare(String(a.lastUsedAt || ''))
+      || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    if (!all.length) return empty;
+
+    const limit = ContactManagerApp.GROUP_RAIL_LIMIT;
+    const folded = !this._groupsExpanded && all.length > limit;
+    let shown = folded ? all.slice(0, limit) : all;
+    const openGroup = all.find(g => g.id === this._openGroupId) || null;
+    if (!openGroup) this._openGroupId = null;
+    else if (!shown.includes(openGroup)) shown = [...shown.slice(0, Math.max(0, limit - 1)), openGroup];
+
+    const contacts = this._contacts || [];
+    const person = (m) => {
+      const c = this._findGroupMemberContact(m, contacts);
+      if (c) {
+        const e = enrichContactForDisplay(c, { isGM: game.user.isGM });
+        return { contactId: c.id, name: c.name, img: e.portraitSrc || '', initials: e.initials, detail: [c.role, c.email].filter(Boolean).join(' · '), isRaw: false };
+      }
+      const name = m.name || m.email || '?';
+      return { contactId: '', name, img: '', initials: m.name ? getInitials(m.name) : '@', detail: m.email && m.name ? m.email : 'address only', isRaw: true };
+    };
+    const chip = (g) => {
+      const people = g.members.map(person);
+      return {
+        id: g.id, name: g.name, color: g.color, count: g.members.length, shared: !!g.sharedFrom,
+        isOpen: g.id === this._openGroupId,
+        stack: people.slice(0, 3).map(p => ({ img: p.img, initials: p.initials })),
+        more: Math.max(0, people.length - 3),
+        _people: people,
+      };
+    };
+    const list = shown.map(chip);
+    const openChip = list.find(c => c.isOpen) || null;
+    const open = openChip ? { id: openChip.id, name: openChip.name, color: openChip.color, count: openChip.count, shared: openChip.shared, members: openChip._people } : null;
+    for (const c of list) delete c._people;
+    return { total: all.length, expanded: !folded && all.length > limit, hiddenCount: folded ? all.length - shown.length : 0, list, open };
+  }
+
+  /**
+   * The character's own contact a group member stands for, if any: by master
+   * directory id → address → linked actor → name (space/punctuation-insensitive).
+   * @param {object} m — a participants.js member
+   * @param {object[]} contacts — this character's contacts
+   */
+  _findGroupMemberContact(m, contacts) {
+    const email = String(m?.email || '').toLowerCase();
+    const norm = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cid = m?.hint?.contactId || '';
+    const aid = m?.hint?.actorId || '';
+    return (cid && contacts.find(c => c.masterContactId === cid))
+      || (email && contacts.find(c => String(c.email || '').toLowerCase() === email))
+      || (aid && contacts.find(c => c.actorId === aid))
+      || (m?.name && contacts.find(c => norm(c.name) === norm(m.name)))
+      || null;
+  }
+
+  /** Pickable people for the editor: this character's own contacts. */
+  async _groupMemberSource() {
+    const repo = this.contactRepository;
+    const contacts = (await repo?.getContacts?.(this.actorId)) || this._contacts || [];
+    return contacts.map(c => {
+      const member = memberFromPlayerContact(c);
+      return {
+        id: memberKey(member), name: c.name, member,
+        img: c.customImg || c.portrait || '',
+        sub: c.email || '', group: c.folder || (c.tags?.[0] ? `#${c.tags[0]}` : ''),
+        note: c.role || c.type || '',
+      };
+    });
+  }
+
+  static async _onGroupNew(event, target) {
+    event.stopPropagation();
+    const group = await editGroupDialog({}, { memberSource: () => this._groupMemberSource() });
+    if (!group) return;
+    const r = await this.contactGroupService?.saveActorGroup(this.actorId, group);
+    if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
+    ui.notifications.info(`NCM | Group "${group.name}" saved (${group.members.length} members).`);
+    this.render();
+  }
+
+  static async _onGroupEdit(event, target) {
+    event.stopPropagation();
+    const id = target.closest('[data-group-id]')?.dataset.groupId;
+    const existing = this.contactGroupService?.getActorGroup(this.actorId, id);
+    if (!existing) return;
+    const group = await editGroupDialog(existing, { memberSource: () => this._groupMemberSource() });
+    if (!group) return;
+    const r = await this.contactGroupService.saveActorGroup(this.actorId, group);
+    if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
+    this.render();
+  }
+
+  static async _onGroupDelete(event, target) {
+    event.stopPropagation();
+    const id = target.closest('[data-group-id]')?.dataset.groupId;
+    const existing = this.contactGroupService?.getActorGroup(this.actorId, id);
+    if (!existing) return;
+    const yes = await adminConfirm({
+      title: 'Delete group',
+      content: `<p>Delete the group <b>${existing.name}</b>? The contacts in it stay in your list.</p>`,
+    });
+    if (!yes) return;
+    await this.contactGroupService.deleteActorGroup(this.actorId, id);
+    this.render();
+  }
+
+  static _onGroupMessage(event, target) {
+    event.stopPropagation();
+    const id = target.closest('[data-group-id]')?.dataset.groupId;
+    if (!id) return;
+    game.nightcity?.composeMessage?.({ fromActorId: this.actorId, groupId: id });
+  }
+
+  /** Chip click: open that group's tray (click the open one again to close). */
+  static _onGroupOpen(event, target) {
+    event.stopPropagation();
+    const id = target.closest('[data-group-id]')?.dataset.groupId;
+    if (!id) return;
+    this._openGroupId = this._openGroupId === id ? null : id;
+    this.render();
+  }
+
+  static _onGroupClose(event) {
+    event.stopPropagation();
+    this._openGroupId = null;
+    this.render();
+  }
+
+  /** "+N more" / "less": show every group, or fold back to the most-used row. */
+  static _onGroupMore(event) {
+    event.stopPropagation();
+    this._groupsExpanded = !this._groupsExpanded;
+    this.render();
+  }
+
+  /** A member card: open that contact in the detail pane (the tray stays open). */
+  static _onGroupMember(event, target) {
+    event.stopPropagation();
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+    this.selectedContactId = contactId;
+    this.render();
+  }
+
   static _onAddContact(event, target) {
     this.isAdding = true;
     this.editingContactId = null;
@@ -1085,7 +1260,7 @@ export class ContactManagerApp extends BaseApplication {
     if (!contactId) return;
 
     const contact = this._contacts.find(c => c.id === contactId);
-    const confirmed = await Dialog.confirm({
+    const confirmed = await playerConfirm({
       title: 'Delete Contact',
       content: `<p>Remove <strong>${contact?.name || 'this contact'}</strong> from your contacts?</p>`,
     });
@@ -1257,7 +1432,7 @@ export class ContactManagerApp extends BaseApplication {
     if (!contactId) return;
 
     const contact = this._contacts.find(c => c.id === contactId);
-    const confirmed = await Dialog.confirm({
+    const confirmed = await playerConfirm({
       title: 'Revoke Verification',
       content: `<p>Revoke verification for <strong>${contact?.name || 'this contact'}</strong>?`
         + `<br>The player will no longer be able to message them.</p>`,
@@ -1547,7 +1722,7 @@ export class ContactManagerApp extends BaseApplication {
    */
   static async _onCreateFolderInline(event, target) {
     event.stopPropagation();
-    const result = await Dialog.prompt({
+    const result = await playerPrompt({
       title: 'Create Folder',
       content: `
         <form class="ncm-dialog-form">
@@ -1585,6 +1760,32 @@ export class ContactManagerApp extends BaseApplication {
     // Update hidden input
     const hidden = this.element?.querySelector('[name="iceSource"]');
     if (hidden) hidden.value = mode;
+  }
+
+  /**
+   * Form → Linked Actor: searchable world-actor picker writing the hidden
+   * `actorId` input (DOM-only — a render would discard the unsaved form).
+   */
+  static async _onPickLinkedActor(event, target) {
+    event.stopPropagation();
+    const row = target.closest('[data-picker-row]');
+    const hidden = row?.querySelector('input[name="actorId"]');
+    const label = row?.querySelector('[data-picker-label-for="actorId"]');
+    if (!hidden) return;
+    const pick = await showNamePicker({
+      title: 'Link an Actor',
+      hint: "The contact takes this actor's portrait and messages route to its inbox.",
+      entries: documentEntries(game.actors?.contents ?? [], {
+        note: (a) => a.hasPlayerOwner ? 'player' : a.type,
+      }),
+      allowNone: '— None —',
+      selected: hidden.value || '',
+      placeholder: 'search actors or folders…',
+    });
+    if (!pick) return;
+    hidden.value = pick.none ? '' : pick.id;
+    if (label) label.value = pick.none ? '' : pick.name;
+    hidden.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   /**
@@ -1732,7 +1933,7 @@ export class ContactManagerApp extends BaseApplication {
     const themeClass = opts.isBlackICE ? 'ncm-bd-theme--black' : 'ncm-bd-theme--cyan';
 
     await new Promise(resolve => {
-      const d = new Dialog({
+      const d = playerDialog({
         title: opts.isBlackICE ? 'BLACK ICE Breach' : 'ICE Breach',
         content,
         buttons: {

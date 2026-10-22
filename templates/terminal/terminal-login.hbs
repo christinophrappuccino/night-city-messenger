@@ -103,7 +103,7 @@
               <div class="ncm-term__lock-enter" data-action="terminalSelectAccount" data-account-id="{{focus.id}}"><i class="fas fa-right-to-bracket"></i> ENTER</div>
             {{else if focus.hasPassword}}
               <div class="ncm-term__lockpass">
-                <input type="password" name="manualPassword" data-account-id="{{focus.id}}" autocomplete="off" placeholder="enter passcode…">
+                <input type="text" data-ncm-secret="1" name="ncm-term-key" data-account-id="{{focus.id}}" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" placeholder="enter passcode…">
                 <span class="ncm-term__lockpass-go" data-action="terminalInlineAuth" data-account-id="{{focus.id}}"><i class="fas fa-arrow-right"></i></span>
               </div>
               <div class="ncm-term__lock-alt" data-action="terminalSelectAccount" data-account-id="{{focus.id}}">other access methods…</div>
@@ -137,7 +137,7 @@
           {{!-- data-account-id on the wrapper: the pad's ⏎ resolves its target
                account via closest('[data-account-id]') in _onInlineAuth. --}}
           <div class="ncm-term__keypad" data-account-id="{{focus.id}}">
-            <input type="password" name="manualPassword" autocomplete="off" class="ncm-term__keypad-hidden" tabindex="-1">
+            <input type="text" data-ncm-secret="1" name="ncm-term-key" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" class="ncm-term__keypad-hidden" tabindex="-1">
             <div class="ncm-term__lcd">
               <div class="ncm-term__lcd-hd">{{terminalName}}</div>
               <div class="ncm-term__lcd-user">{{focus.displayName}}</div>

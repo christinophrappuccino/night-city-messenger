@@ -13,8 +13,8 @@ import { MODULE_ID, EVENTS, TEMPLATES, NETWORK_TYPES, SECURITY_LEVELS, canonical
 import { log, isGM } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { CreateNetworkDialog } from './CreateNetworkDialog.js';
-import { showWorldItemPicker } from '../../utils/itemPicker.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
+import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
 
 export class NetworkManagementApp extends BaseApplication {
 
@@ -840,82 +840,25 @@ export class NetworkManagementApp extends BaseApplication {
     this.render();
   }
 
-  /**
-   * Browse world items — legacy fallback.
-   */
+  /** Browse world items — legacy action name, same picker. */
   static async _onBrowseKeyItem(event, target) {
     return NetworkManagementApp._onSearchKeyItem.call(this, event, target);
   }
 
-  /**
-   * Card-based key item picker (matches shard config pattern).
-   */
+  /** Key item — the shared world picker (folder chips, carryable items only). */
   static async _onSearchKeyItem(event, target) {
-    const items = game.items?.contents ?? [];
+    const items = (game.items?.contents ?? []).filter(isCarrier);
     if (items.length === 0) {
       ui.notifications.warn('NCM | No items found in the world.');
       return;
     }
-
-    const itemCards = items.map(item => {
-      const img = item.img && !item.img.includes('mystery-man') ? `<img src="${item.img}" alt="">` : `<i class="fas fa-cube"></i>`;
-      const escapedName = item.name.replace(/"/g, '&quot;').replace(/</g, '&lt;');
-      return `<div class="ncm-ip-item" data-item-id="${item.id}" data-item-name="${item.name.toLowerCase()}">
-        <div class="ncm-ip-item-img">${img}</div>
-        <div style="flex:1;min-width:0">
-          <div class="ncm-ip-item-name">${escapedName}</div>
-          <div class="ncm-ip-item-type">${item.type || 'Item'}</div>
-        </div>
-      </div>`;
-    }).join('');
-
-    const content = `
-      <div class="ncm-ip-search-wrap">
-        <i class="fas fa-magnifying-glass"></i>
-        <input type="text" class="ncm-ip-search" placeholder="Search items..." autofocus />
-      </div>
-      <div class="ncm-ip-list">${itemCards || '<div class="ncm-ip-empty">No items found</div>'}</div>
-    `;
-
-    let selectedItem = null;
-    const dialog = adminDialog({
+    const pick = await showNamePicker({
       title: 'Select Key Item',
-      content,
-      buttons: { cancel: { label: 'Cancel', callback: () => {} } },
-      default: 'cancel',
-      render: (html) => {
-        const jq = html instanceof jQuery ? html : $(html);
-        const listEl = jq.find('.ncm-ip-list')[0] || jq[0]?.querySelector('.ncm-ip-list');
-        const searchEl = jq.find('.ncm-ip-search')[0] || jq[0]?.querySelector('.ncm-ip-search');
-        if (searchEl) {
-          searchEl.addEventListener('input', () => {
-            const query = searchEl.value.toLowerCase().trim();
-            (listEl || jq[0]).querySelectorAll('.ncm-ip-item').forEach(card => {
-              card.style.display = !query || (card.dataset.itemName || '').includes(query) ? '' : 'none';
-            });
-          });
-        }
-        if (listEl) {
-          listEl.addEventListener('click', (e) => {
-            const card = e.target.closest('.ncm-ip-item');
-            if (!card) return;
-            selectedItem = game.items.get(card.dataset.itemId);
-            if (selectedItem) dialog.close();
-          });
-        }
-      },
-    }, {
-      classes: ['dialog', 'ncm-item-picker-dialog'],
-      width: 420, height: 480, resizable: true,
+      hint: 'The item a character must carry to get in. Matched by name (and tag, when the item has one).',
+      entries: documentEntries(items, { note: (i) => i.type }),
+      placeholder: 'search items or folders…',
     });
-
-    await new Promise(resolve => {
-      dialog.close = new Proxy(dialog.close, {
-        apply(t, thisArg, args) { const r = Reflect.apply(t, thisArg, args); resolve(); return r; }
-      });
-      dialog.render(true);
-    });
-
+    const selectedItem = pick?.id ? game.items.get(pick.id) : null;
     if (!selectedItem) return;
 
     const el = this.element;

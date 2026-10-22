@@ -2,10 +2,16 @@
  * Sim — the GM Contact Manager's Share targets + the network broadcast audience.
  * @file tools/sims/test-gm-share-targets.mjs
  * @description Compiles the REAL gm-contact-manager.hbs through Handlebars with a
- *   realistic context and asserts the Share selects actually list the player-owned
- *   characters. The bug this guards: the detail panel's select used `../shareTargetPlayers`
- *   while sitting inside `{{#if}}` blocks with no parent context, so the optgroup
- *   rendered its "Players" label with nothing under it.
+ *   realistic context and asserts the Share affordances are what ships.
+ *
+ *   History: the Share targets used to be two <select>s. The first bug (2026-09)
+ *   was the detail panel reading `../shareTargetPlayers` from inside an {{#if}}
+ *   chain, which resolved to nothing — a "Players" heading with no one under it.
+ *   The second (2026-10-20, picker sweep 2) was the design itself: both selects
+ *   listed EVERY actor in the world with no search. They are now Share BUTTONS
+ *   that open the shared searchable picker (`GMContactManagerApp._pickShareTarget`,
+ *   Players chip first, then top-level folders). This sim guards that neither
+ *   select — and neither bug — comes back.
  *
  *   Run: node tools/sims/test-gm-share-targets.mjs
  */
@@ -36,16 +42,38 @@ for (const p of CANDIDATES) {
 
 const TPL = path.join(ROOT, 'templates/gm-contact-manager/gm-contact-manager.hbs');
 const src = fs.readFileSync(TPL, 'utf8');
+const APP = fs.readFileSync(path.join(ROOT, 'scripts/ui/GMContactManager/GMContactManagerApp.js'), 'utf8');
 
 // ═══════════════════════════════════════════════════════════════════════════
-section('the Share selects name the player characters');
+section('the Share targets go through the searchable picker');
 
-check('no Share list reaches out of its block for the data', () => {
-  // `../` walks out of the enclosing {{#if}}, and at this depth there is no parent
-  // context — the list silently resolves to nothing. `@root` is depth-proof.
-  assert.ok(!/\.\.\/shareTarget/.test(src), '../shareTarget* resolves to nothing here');
-  assert.ok(!/\.\.\/hasShareNPCs/.test(src), '../hasShareNPCs resolves to nothing here');
-  assert.ok(src.includes('@root.shareTargetPlayers'), 'the detail panel must read the root context');
+check('no Share <select> survives in the template', () => {
+  assert.ok(!/name="pushAllTargetActor"|name="pushTargetActor"/.test(src), 'a whole-world share select is back');
+  assert.ok(!/shareTargetPlayers|shareTargetNPCs|hasShareNPCs/.test(src), 'the template still expects the old share lists');
+  assert.ok(!/\.\.\/shareTarget|\.\.\/hasShareNPCs/.test(src), '../shareTarget* resolves to nothing at that depth');
+});
+
+check('the context no longer enumerates every actor for the template', () => {
+  assert.ok(!/shareTargetPlayers|shareTargetNPCs|hasShareNPCs|availableActors/.test(APP), 'the old share/actor lists are still built on every render');
+});
+
+check('both Share handlers pick the target through the picker', () => {
+  const pick = APP.indexOf('async _pickShareTarget(');
+  assert.ok(pick > 0, '_pickShareTarget is missing');
+  const one = APP.slice(APP.indexOf('static async _onPushToPlayer('), APP.indexOf('static async _onPushAllToPlayer('));
+  const all = APP.slice(APP.indexOf('static async _onPushAllToPlayer('), APP.indexOf('static async _onPushAllToPlayer(') + 1200);
+  assert.ok(one.includes('this._pickShareTarget('), 'Share (one contact) does not open the picker');
+  assert.ok(all.includes('this._pickShareTarget('), 'Share All does not open the picker');
+  assert.ok(!one.includes('querySelector(\'[name="pushTargetActor"]\')') && !all.includes('pushAllTargetActor'), 'a handler still reads the dead select');
+  const body = APP.slice(pick, pick + 900);
+  assert.ok(body.includes('showNamePicker(') && body.includes('documentEntries('), 'the picker is the shared one');
+  assert.ok(body.includes("'Players'"), 'player characters get their own chip');
+});
+
+check('_pickShareTarget is an INSTANCE method (static handlers call it through `this`)', () => {
+  // The static-method trap: `this.foo()` from a bound static handler silently
+  // returns undefined when `foo` is also static.
+  assert.ok(/\n  async _pickShareTarget\(/.test(APP) && !/static async _pickShareTarget\(/.test(APP));
 });
 
 if (!Handlebars) {
@@ -54,17 +82,10 @@ if (!Handlebars) {
 } else {
   const ctx = {
     hasService: true,
-    // The detail panel is the third arm of an {{#if}}/{{else if}} chain, which is
-    // exactly why it sat a frame deeper than the top bar.
     hasSelection: true, isCreating: false, showForm: false,
     contacts: [], groups: [], roleOptions: [], customRoles: [], playerActors: [],
-    shareTargetPlayers: [{ id: 'a1', name: 'V' }, { id: 'a2', name: 'Judy' }],
-    shareTargetNPCs: [{ id: 'n1', name: 'Wakako' }],
-    hasShareNPCs: true,
     selectedContact: { id: 'c1', name: 'Rogue', notes: '', playerRelationships: [], chips: [], tags: [] },
-    availableActors: [],
   };
-  // Foundry's own helpers, stubbed just enough to let the template compile.
   const H = {
     not: (v) => !v, eq: (a, b) => a === b, ne: (a, b) => a !== b,
     gt: (a, b) => a > b, lt: (a, b) => a < b, gte: (a, b) => a >= b, lte: (a, b) => a <= b,
@@ -73,8 +94,6 @@ if (!Handlebars) {
     selectOptions: () => '', letter: (i) => String.fromCharCode(65 + Number(i || 0)),
   };
   for (const [k, fn] of Object.entries(H)) Handlebars.registerHelper(k, fn);
-  // Anything else the template reaches for is chrome, not data — render it empty
-  // rather than letting one unknown helper hide the thing under test.
   Handlebars.registerHelper('helperMissing', function (...args) {
     const opts = args[args.length - 1];
     return opts && typeof opts.fn === 'function' ? opts.fn(this) : '';
@@ -84,30 +103,14 @@ if (!Handlebars) {
     '<!-- contact form -->');
   const html = Handlebars.compile(src)(ctx);
 
-  // Each select is judged on its own — the top bar one was always fine, and a
-  // whole-document search would let it cover for the broken one.
-  const selects = [...html.matchAll(/<select[^>]*name="(pushAllTargetActor|pushTargetActor)"[\s\S]*?<\/select>/g)];
-
-  check('both Share selects are rendered', () => {
-    assert.equal(selects.length, 2, `expected 2 share selects, found ${selects.length}`);
+  check('the real template renders both Share buttons', () => {
+    assert.ok(/data-action="pushAllToPlayer"/.test(html), 'Share All button missing from the top bar');
+    assert.ok(/data-action="pushToPlayer"/.test(html), 'Share button missing from the detail panel');
+    assert.ok(/name="pushIncludePortrait"/.test(html), 'the include-portrait toggle must survive beside the Share button');
   });
-
-  for (const [block, which] of selects.map((m) => [m[0], m[1]])) {
-    const where = which === 'pushTargetActor' ? 'the contact detail panel' : 'the top bar';
-    check(`${where}: every player character is listed`, () => {
-      assert.ok(block.includes('>V (Player)<'), 'V is missing');
-      assert.ok(block.includes('>Judy (Player)<'), 'Judy is missing');
-    });
-    check(`${where}: the NPC group is not dropped`, () => {
-      assert.ok(block.includes('label="NPCs"'), 'the NPC group is missing');
-      assert.ok(block.includes('>Wakako<'), 'Wakako is missing');
-    });
-    check(`${where}: no group is labelled with nothing under it`, () => {
-      const players = block.match(/label="Players"([\s\S]*?)<\/optgroup>/);
-      assert.ok(players, 'the Players group is missing');
-      assert.ok(/<option/.test(players[1]), 'a "Players" heading with no players under it is the reported bug');
-    });
-  }
+  check('…and no share select', () => {
+    assert.ok(!/<select[^>]*name="push/.test(html));
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

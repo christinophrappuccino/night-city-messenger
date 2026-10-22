@@ -1,33 +1,33 @@
-{{!-- Chat Card: Shared Message --}}
-<div class="ncm-cc ncm-cc--shared">
-  <div class="ncm-cc__scanline"></div>
-  <div class="ncm-cc__header">
-    <i class="fas fa-envelope"></i>
-    <span class="ncm-cc__badge">Shared Message</span>
-    <span class="ncm-cc__header-meta">via {{sharedBy}}</span>
+{{!-- Chat Card: Shared Message (the Esper readout — see styles/chat/chat-cards.css) --}}
+<div class="ncm-cc {{#if viaGM}}ncm-cc--gm{{/if}}">
+  <div class="ncm-cc__rec">
+    <span class="ncm-cc__kind">Shared message</span>
+    <span class="ncm-cc__time">{{when}}</span>
+    <span class="ncm-cc__sub">{{#if sharedBy}}<span>via {{sharedBy}}</span>{{/if}}{{#if message.network}}<span>{{message.network}}</span>{{/if}}</span>
   </div>
-  <div class="ncm-cc__body">
-    <div class="ncm-cc__fields">
-      <div class="ncm-cc__field">
-        <span class="ncm-cc__field-label">From</span>
-        <span class="ncm-cc__field-value">{{message.from}}</span>
-      </div>
-      <div class="ncm-cc__field">
-        <span class="ncm-cc__field-label">To</span>
-        <span class="ncm-cc__field-value">{{message.to}}</span>
-      </div>
+  <div class="ncm-cc__who">
+    <div class="ncm-cc__p"{{#if from.email}} data-ncm-email="{{from.email}}"{{/if}}{{#if from.actorId}} data-ncm-actor="{{from.actorId}}"{{/if}}{{#if from.contactId}} data-ncm-contact="{{from.contactId}}"{{/if}} data-ncm-name="{{from.name}}"{{#if from.portrait}} data-ncm-portrait="{{from.portrait}}"{{/if}}>
+      <span class="ncm-cc__k">from</span>
+      {{#if from.portrait}}<img class="ncm-cc__img" src="{{from.portrait}}" alt="">{{else}}<span class="ncm-cc__img"></span>{{/if}}
+      <div class="ncm-cc__pn"><div class="ncm-cc__n">{{from.name}}</div>{{#if from.addr}}<div class="ncm-cc__a">{{from.addr}}</div>{{/if}}</div>
+      <span class="ncm-cc__slot"></span>
     </div>
+    <div class="ncm-cc__p"{{#if to.email}} data-ncm-email="{{to.email}}"{{/if}}{{#if to.actorId}} data-ncm-actor="{{to.actorId}}"{{/if}}{{#if to.contactId}} data-ncm-contact="{{to.contactId}}"{{/if}} data-ncm-name="{{to.name}}"{{#if to.portrait}} data-ncm-portrait="{{to.portrait}}"{{/if}}>
+      <span class="ncm-cc__k">to</span>
+      {{#if to.portrait}}<img class="ncm-cc__img" src="{{to.portrait}}" alt="">{{else}}<span class="ncm-cc__img"></span>{{/if}}
+      <div class="ncm-cc__pn"><div class="ncm-cc__n">{{to.name}}</div>{{#if to.addr}}<div class="ncm-cc__a">{{to.addr}}</div>{{/if}}</div>
+      <span class="ncm-cc__slot"></span>
+    </div>
+  </div>
+  <div class="ncm-cc__hero"><i class="ncm-cc__tr"></i><i class="ncm-cc__bl"></i>
     <div class="ncm-cc__subject">{{message.subject}}</div>
-    <div class="ncm-cc__msg-body">{{{message.body}}}</div>
-    {{#if message.priority}}
-    {{#if showPriority}}
-    <div class="ncm-cc__priority ncm-cc__priority--{{message.priority}}">
-      <i class="fas fa-exclamation-triangle"></i> {{message.priority}}
-    </div>
-    {{/if}}
-    {{/if}}
   </div>
-  <div class="ncm-cc__footer">
-    <span class="ncm-cc__network"><i class="fas fa-network-wired"></i> {{message.network}} // {{message.messageIdShort}}</span>
-  </div>
+  <div class="ncm-cc__text">{{{bodyHead}}}</div>
+  {{#if isLong}}
+  <details class="ncm-cc__fold" open>
+    <summary><span class="ncm-cc__fold-closed">{{moreLines}} more lines</span><span class="ncm-cc__fold-open">collapse</span></summary>
+    <div class="ncm-cc__text">{{{bodyTail}}}</div>
+  </details>
+  {{/if}}
+  {{#if showPriority}}<div class="ncm-cc__flag">{{message.priority}}</div>{{/if}}
 </div>

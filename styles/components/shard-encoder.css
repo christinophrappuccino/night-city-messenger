@@ -112,7 +112,7 @@
   letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-muted, #7a8b99);
 }
 .ncm-app.ncm-shard-encoder input.ncm-enc-inp {
-  height: 26px !important; min-height: 0 !important; width: 100% !important; margin: 0 !important;
+  height: calc(26px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; width: 100% !important; margin: 0 !important;
   border: 1px solid var(--enc-line) !important; border-radius: 2px !important;
   background: var(--ncm-bg-deep, #0a0f14) !important; color: var(--ncm-text-primary, #e8f4f8) !important;
   font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important;
@@ -346,13 +346,13 @@
 .ncm-app.ncm-shard-encoder .ncm-enc-f input,
 .ncm-app.ncm-shard-encoder .ncm-enc-f select,
 .ncm-app.ncm-shard-encoder .ncm-enc-f textarea {
-  height: 24px !important; min-height: 0 !important; width: 100% !important; margin: 0 !important;
+  height: calc(24px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; width: 100% !important; margin: 0 !important;
   border: 1px solid var(--enc-line) !important; border-radius: 2px !important;
   background: var(--ncm-bg-deep, #0a0f14) !important; color: var(--ncm-text-primary, #e8f4f8) !important;
   font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important;
   padding: 0 6px !important; text-align: left !important; box-shadow: none !important;
 }
-.ncm-app.ncm-shard-encoder .ncm-enc-f textarea { height: 38px !important; padding: 4px 6px !important; resize: none; line-height: 1.35 !important; }
+.ncm-app.ncm-shard-encoder .ncm-enc-f textarea { height: calc(38px * var(--ncm-text-scale, 1)) !important; padding: 4px 6px !important; resize: none; line-height: 1.35 !important; }
 .ncm-app.ncm-shard-encoder .ncm-enc-f input[type="checkbox"] { width: 14px !important; height: 14px !important; --checkbox-size: 14px; }
 .ncm-app.ncm-shard-encoder .ncm-enc-f input.mono { font-family: var(--ncm-font-mono, monospace) !important; }
 .ncm-app.ncm-shard-encoder .ncm-enc-f input:focus,

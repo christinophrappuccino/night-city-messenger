@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chat cards — Esper readout</title>
+<!--
+  Mock: direction C for NCM's chat cards — the ESPER READOUT. Dark and on the module's
+  own palette (so it belongs next to the inbox and the terminals), but built like the
+  enhance screen in Blade Runner rather than a boxed panel: a tracked RECORD LINE across
+  the top, the one number that matters set huge inside the zoom brackets, data as
+  inline readouts, no card border, no accent bar, no scanline film.
+  Real cascade (foundry2.css → CPR main.css → night-city-messenger.css).  ?w=300|360  ?fold=closed
+  BUILT 2026-10-20 (dev: "Oh I like this, just clean up the header and make the add contact an actual
+  button") — styles/chat/chat-cards.css + the five templates are the shipped copy; chat-cards-probe.html
+  renders the REAL templates. This page stays as the design record.
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  html, body { height: auto; min-height: 100%; }
+  body { margin: 0; padding: 22px 26px 60px; background: #0b0b10; color: #ccc; font-family: 'Rajdhani', sans-serif; }
+  .stage { display: grid; grid-template-columns: var(--w, 300px) 1fr; gap: 32px; align-items: start; }
+  .col > h2 { margin: 0 0 8px; font: 700 11px/1 'Rajdhani', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #8888a0; }
+  .log { background: rgba(0,0,0,.5); border: 1px solid #1e1e32; padding: 6px; display: flex; flex-direction: column; gap: 8px; }
+  .chat-message { background: #0f0f18; border: 1px solid #1e1e32; padding: 6px; }
+  .chat-message .message-header { font: 600 11px 'Rajdhani', sans-serif; color: #8888a0; display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .notes { font: 500 13px/1.55 'Rajdhani', sans-serif; color: #9d9db4; max-width: 460px; }
+  .notes b { color: #e0e0e8; }
+  .notes h3 { margin: 18px 0 6px; font: 700 11px 'Rajdhani', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #8888a0; }
+  .notes code { display: inline !important; font-family: 'Share Tech Mono', monospace !important; font-size: 11px !important; color: #19f3f7 !important; background: none !important; border: 0 !important; padding: 0 !important; }
+
+  /* ═══════════════════════════ THE READOUT ═══════════════════════════ */
+  .es {
+    --c: var(--ncm-secondary, #19f3f7);          /* the readout's phosphor: the card's tone */
+    --t: var(--ncm-text-primary, #e8e8f0); --t2: var(--ncm-text-secondary, #a4a4bc); --m: var(--ncm-text-muted, #6b6b86);
+    --rule: color-mix(in srgb, var(--c) 28%, transparent);
+    position: relative; padding: 6px 2px 4px; color: var(--t); font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  }
+  .es--ok   { --c: var(--ncm-success, #34d399); }
+  .es--fail { --c: var(--ncm-danger, #ff3b5c); }
+  .es--ice  { --c: var(--ncm-danger, #ff3b5c); }
+  .es--gm   { --c: var(--ncm-accent, #f0c55b); }
+  .es--mal  { --c: var(--ncm-warning, #a78bfa); }
+
+  /* the RECORD LINE: one tracked mono line that says what, who, where, when — the
+     Esper's "ZM 0000 NS 0000 EW 0000" readout. Fields are spaced, not dotted. */
+  .es__rec { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding-bottom: 5px; border-bottom: 1px solid var(--rule);
+    font: 400 10px/1.3 var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
+  .es__rec span { white-space: nowrap; }
+  .es__rec .kind { color: var(--c); }
+  .es__rec .time { text-align: right; color: var(--t2); }
+  .es__rec .sub { grid-column: 1 / -1; color: var(--m); letter-spacing: .12em; display: flex; gap: 14px; }
+  .es__rec .sub span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .es__whisper { font: 400 10px/1.3 var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-accent, #f0c55b); padding: 4px 0 0; }
+  .es__whisper::before { content: '// '; }
+
+  /* the HERO: the one thing that matters, inside the zoom brackets */
+  .es__hero { position: relative; margin: 10px 4px 8px; padding: 8px 10px; }
+  .es__hero::before, .es__hero::after { content: ''; position: absolute; width: 12px; height: 12px; border: 1px solid var(--c); }
+  .es__hero::before { left: 0; top: 0; border-right: 0; border-bottom: 0; }
+  .es__hero::after { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+  .es__hero .bl, .es__hero .tr { position: absolute; width: 12px; height: 12px; border: 1px solid var(--c); }
+  .es__hero .bl { left: 0; bottom: 0; border-right: 0; border-top: 0; }
+  .es__hero .tr { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+  .es__subject { font: 500 19px/1.2 var(--ncm-font-display, 'Rajdhani'); color: var(--t); letter-spacing: .01em; }
+  .es__numrow { display: flex; align-items: baseline; gap: 10px; }
+  .es__num { flex: 0 0 auto; white-space: nowrap; font: 300 44px/1 var(--ncm-font-mono, 'Share Tech Mono', monospace); color: var(--c); letter-spacing: -.02em; }
+  .es__verdict { min-width: 0; }
+  .es__num small { font-size: 16px; color: var(--m); margin-left: 4px; letter-spacing: 0; }
+  .es__verdict { font: 700 15px/1.15 var(--ncm-font-display, 'Rajdhani'); color: var(--t); }
+  .es__verdict span { display: block; font-weight: 500; font-size: 12px; color: var(--t2); margin-top: 2px; }
+
+  /* readouts: name over value, in a row — the enhance screen's coordinate strip */
+  .es__ro { display: flex; gap: 0; margin: 0 4px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .es__ro > div { flex: 1 1 0; padding: 5px 6px 6px; border-right: 1px solid var(--rule); min-width: 0; }
+  .es__ro > div:last-child { border-right: 0; }
+  .es__ro .k { font: 400 9.5px/1 var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--m); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .es__ro .v { font: 400 17px/1.1 var(--ncm-font-mono, 'Share Tech Mono', monospace); color: var(--t); margin-top: 3px; }
+  .es__ro .v small { font-size: 11px; color: var(--m); }
+  .es__ro .v.c { color: var(--c); }
+  .es__flag { margin: 6px 4px 0; font: 400 10px/1.3 var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
+  .es__flag::before { content: '>> '; }
+
+  /* people: two readout lines */
+  .es__who { margin: 8px 4px 0; display: flex; flex-direction: column; gap: 6px; }
+  .es__p { display: grid; grid-template-columns: 34px 30px 1fr auto; gap: 8px; align-items: center; }
+  .es__p .k { font: 400 9.5px/1 var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--m); }
+  .es__p img { width: 30px; height: 30px; object-fit: cover; border: 1px solid var(--rule); background: #000; }
+  .es__p .n { font: 700 13px/1.15 var(--ncm-font-display, 'Rajdhani'); color: var(--t); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .es__p .a { font: 400 10px/1.2 var(--ncm-font-mono, 'Share Tech Mono', monospace); color: var(--m); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  button.es__act { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; cursor: pointer; white-space: nowrap;
+    font: 700 10.5px/1 var(--ncm-font-display, 'Rajdhani', sans-serif); letter-spacing: .04em; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); background: color-mix(in srgb, var(--c) 10%, transparent); border-radius: 2px; }
+  button.es__act i { font-size: 9px; }
+  button.es__act:hover { background: color-mix(in srgb, var(--c) 22%, transparent); border-color: var(--c); }
+  button.es__act:focus-visible { outline: 1px solid var(--c); outline-offset: 1px; }
+  .es__in { font: 400 10px/1 var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .08em; color: var(--m); white-space: nowrap; }
+
+  /* the body: the reader's font at a reading size */
+  .es__text { margin: 0 4px; font: 500 13px/1.5 var(--ncm-font-body, 'Rajdhani', sans-serif); color: var(--t); word-break: break-word; }
+  .es__text p { margin: 0 0 7px; } .es__text p:last-child { margin: 0; }
+  .es__text ul { margin: 0 0 7px; padding-left: 16px; }
+  .es__fold { margin: 0 4px; }
+  .es__fold summary { list-style: none; cursor: pointer; margin-top: 8px; font: 400 10px/1.3 var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
+  .es__fold summary::-webkit-details-marker { display: none; }
+  .es__fold summary::before { content: '>> '; }
+  .es__fold summary .o, .es__fold[open] summary .c { display: none; }
+  .es__fold[open] summary .o { display: inline; }
+
+  /* ICE */
+  .es__ice { display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: center; margin: 8px 4px 0; }
+  .es__ice img { width: 54px; height: 54px; object-fit: cover; border: 1px solid var(--rule); }
+  .es__ice .n { font: 700 15px/1.1 var(--ncm-font-display, 'Rajdhani'); color: var(--t); }
+  .es__ice .cls { font: 400 10px/1.3 var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--m); margin-top: 2px; }
+
+  .es__ft { margin: 6px 4px 0; display: flex; justify-content: space-between; font: 400 9.5px/1.3 var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--m); }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="col">
+    <h2>Direction C · Esper readout</h2>
+    <div class="log" id="log"></div>
+  </div>
+  <div class="notes">
+    <h3>The idea</h3>
+    Dark, and on the module's own tokens, so it sits next to the inbox and the terminals without a seam. But it is built like the <b>Esper enhance screen</b>, not like a panel: a tracked <b>record line</b> across the top says what, who, where and when; the one thing that matters sits huge inside the <b>zoom brackets</b>; the data is a strip of readouts; and there is <b>no card border, no accent bar, no scanline film</b>. The chat message's own box is the only frame.
+    <h3>Why it reads better</h3>
+    The hero is one number or one subject at 44px / 19px, so a glance from across the table tells you the outcome. Readouts put the name OVER the value (the coordinate strip), so nothing fights for the same line. Prose is 13px in the body font. Mono is kept for machine values and the record line, where tracking is the point.
+    <h3>Tone</h3>
+    One phosphor colour per card and it IS the meaning: cyan for a message, green for a pass, red for a fail or ICE, amber for the GM, violet for malware. Nothing else is coloured. Everything else is text-primary / secondary / muted from the player's theme, so the cards follow a player's palette.
+    <h3>What each card does</h3>
+    <b>Shared message</b> — record line (shared message, via GM, CitiNet, time); From / To as two readout lines with portraits and an <b>[ add contact ]</b> action for people not in your list; the subject in the brackets; the body below. URGENT is a flag line under the hero. Long messages fold at a <code>&gt;&gt; 9 more lines</code> line.<br>
+    <b>Skill check</b> — the total in the brackets at 44px with the DV beside it; the verdict in words; TECH / skill / d10 (and Luck) as readouts; critical or fumble as a flag line.<br>
+    <b>Black ICE</b> — damage in the brackets; the program's portrait and class; HP before / after as readouts.<br>
+    <b>Malware</b>, <b>trace</b> — GM whispers carry a <code>// GM only</code> line under the record line.<br>
+    <b>Broadcast</b> — the notice itself in the brackets.
+    <h3>Against the earlier panel proposal</h3>
+    Same legibility gains (body 13px, bigger labels, resolved names, fold, add-contact), but no left bar, no boxed cells, no scanline — the vocabulary is <b>brackets, record line, readout strip</b>, which is the module's FUI vocabulary (the consoles already use corner brackets), not the generic card.
+  </div>
+</div>
+
+<script>
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const IMG = (seed) => `https://picsum.photos/seed/${seed}/68/68`;
+const Q = new URLSearchParams(location.search);
+if (Q.get('w')) document.getElementById('stage').style.setProperty('--w', Q.get('w') + 'px');
+const closed = Q.get('fold') === 'closed';
+const BODY = `<p>Job's on for tonight. Meet at the Afterlife, back booth, <b>23:00 sharp</b>. Bring the deck. Nix says the Arasaka node is the one from the dossier.</p><p>Don't be late. Rogue doesn't do second chances.</p>`;
+const MORE = `<p>Second thing: the dossier Nix pulled has a hole in it. The Execs floor has two guard rotations, not one, and the second only shows on the Thursday log. If we go in on the Thursday we are walking into both. Kerry thinks the camera loop buys four minutes, Nix says two. Plan for two.</p><p>Third: money up front this time. Half on the table at the Afterlife, half when the shard is in my hand. No eddies, no job.</p><ul><li>Deck, two spare blanks</li><li>The Arasaka badge from the last run</li><li>Someone who can drive</li></ul>`;
+const wrap = (who, html) => `<div class="chat-message"><div class="message-header"><span>${who}</span><span>Just now</span></div>${html}</div>`;
+const rec = (kind, ...f) => { const time = f.pop(); return `<div class="es__rec"><span class="kind">${kind}</span><span class="time">${time}</span>${f.length ? `<span class="sub">${f.map((x) => `<span>${x}</span>`).join('')}</span>` : ''}</div>`; };
+const hero = (inner) => `<div class="es__hero"><i class="tr"></i><i class="bl"></i>${inner}</div>`;
+const ro = (...cells) => `<div class="es__ro">${cells.map(([k, v, c]) => `<div><div class="k">${k}</div><div class="v${c ? ' c' : ''}">${v}</div></div>`).join('')}</div>`;
+const person = (k, name, addr, img, act) => `<div class="es__p"><span class="k">${k}</span><img src="${img}" alt=""><div style="min-width:0"><div class="n">${esc(name)}</div><div class="a">${esc(addr)}</div></div>${act === 'add' ? '<button type="button" class="es__act" title="Add to your contacts"><i class="fas fa-user-plus"></i>Add contact</button>' : act === 'in' ? '<span class="es__in">in contacts</span>' : '<span></span>'}</div>`;
+
+document.getElementById('log').innerHTML = [
+  wrap('GM', `<div class="es es--gm">
+    ${rec('Shared message', 'via GM', 'CitiNet', '20 Oct 2077 22:14')}
+    <div class="es__who">${person('from', 'Rogue', 'rogue@afterlife.nc', IMG('n1'), 'add')}${person('to', 'V', 'v@nightcity.net', IMG('p1'))}</div>
+    ${hero(`<div class="es__subject">Afterlife tonight</div>`)}
+    <div class="es__text">${BODY}</div>
+    <div class="es__flag">urgent</div>
+  </div>`),
+  wrap('V', `<div class="es">
+    ${rec('Shared message', 'via V', 'CitiNet', '20 Oct 2077 22:31')}
+    <div class="es__who">${person('from', 'Rogue', 'rogue@afterlife.nc', IMG('n1'), 'in')}${person('to', 'V', 'v@nightcity.net', IMG('p1'))}</div>
+    ${hero(`<div class="es__subject">Afterlife tonight, the long version</div>`)}
+    <div class="es__text">${BODY}</div>
+    <details class="es__fold" ${closed ? '' : 'open'}><summary><span class="c">9 more lines</span><span class="o">collapse</span></summary><div class="es__text" style="margin:7px 0 0">${MORE}</div></details>
+  </div>`),
+  wrap('V', `<div class="es es--ok">
+    ${rec('Skill check', 'V', 'Arasaka Subnet', '22:40')}
+    ${hero(`<div class="es__numrow"><div class="es__num">19<small>/ 15</small></div><div class="es__verdict">Passed by 4<span>Interface, network bypass</span></div></div>`)}
+    ${ro(['TECH', 7], ['Interface', 4], ['1d10', 8, true])}
+  </div>`),
+  wrap('V', `<div class="es es--fail">
+    ${rec('Skill check', 'V', 'NCPD Subnet', '22:41')}
+    ${hero(`<div class="es__numrow"><div class="es__num">4<small>/ 16</small></div><div class="es__verdict">Failed by 12<span>Electronics / Security Tech, camera loop</span></div></div>`)}
+    ${ro(['TECH', 6], ['Skill', 2], ['1d10', '1 <small>→ −6</small>', true], ['Luck', '+2'])}
+    <div class="es__flag">fumble, subtractive 1</div>
+  </div>`),
+  wrap('V', `<div class="es es--ok">
+    ${rec('Skill check', 'V', 'Arasaka Subnet', '22:43')}
+    ${hero(`<div class="es__numrow"><div class="es__num">28<small>/ 19</small></div><div class="es__verdict">Passed by 9<span>Interface, siphon</span></div></div>`)}
+    ${ro(['TECH', 7], ['Interface', 4], ['1d10', '10 <small>→ 17</small>', true])}
+    <div class="es__flag">critical, exploding 10</div>
+  </div>`),
+  wrap('Hellhound', `<div class="es es--ice">
+    ${rec('Black ICE', 'shard', 'Arasaka Subnet', '22:42')}
+    <div class="es__ice"><img src="${IMG('ice')}" alt=""><div><div class="n">Hellhound</div><div class="cls">Black ICE, attacker</div></div></div>
+    ${hero(`<div class="es__numrow"><div class="es__num">11</div><div class="es__verdict">damage to V<span>ATK 6 + 1d10 (5)</span></div></div>`)}
+    ${ro(['HP before', 35], ['HP after', 24, true])}
+  </div>`),
+  wrap('V', `<div class="es es--mal">
+    ${rec('Malware analysis', 'V', 'CitiNet', '22:45')}
+    <div class="es__whisper">GM only</div>
+    ${hero(`<div class="es__subject">Worm<span style="display:block;font:500 12px/1.3 var(--ncm-font-display);color:var(--t2);margin-top:2px">in “FREE braindance, claim now”</span></div>`)}
+    ${ro(['Source', '<small>promo@bangme.nc</small>'], ['Analyst', 'V'])}
+  </div>`),
+  wrap('GM', `<div class="es">
+    ${rec('Network notice', 'CitiNet', '22:00')}
+    ${hero(`<div class="es__text" style="margin:0;font-size:14px">NCPD curfew in effect for Watson from 22:00. All CitiNet traffic in the district is logged.</div>`)}
+  </div>`),
+  wrap('GM', `<div class="es es--gm">
+    ${rec('Trace', 'V', 'Arasaka Subnet', '22:46')}
+    <div class="es__whisper">GM only</div>
+    ${hero(`<div class="es__numrow"><div class="es__num">55<small>heat</small></div><div class="es__verdict">Hot<span>a trace is closing in on V</span></div></div>`)}
+    ${ro(['Before', 35], ['After', 55, true], ['Tier', 'hot'])}
+  </div>`),
+].join('');
+</script>
+</body>
+</html>

@@ -21,9 +21,9 @@
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES, SKILL_MAP } from '../../utils/constants.js';
-import { log } from '../../utils/helpers.js';
+import { log, resolveOperator, guardSecretInputs } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
-import { showItemPicker } from '../../utils/itemPicker.js';
+import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
 import { NetworkAuthAdapter, TerminalAuthAdapter } from './SecurityAuthAdapters.js';
 
 export class NetworkAuthDialog extends BaseApplication {
@@ -192,7 +192,7 @@ export class NetworkAuthDialog extends BaseApplication {
     const maxAttempts = network.security.maxAttempts ?? 3;
 
     // Get lockout status for current actor
-    const actorId = game.user?.character?.id;
+    const actorId = resolveOperator()?.id;
     const isLockedOut = actorId
       ? this.securityService?.isLockedOut(actorId, this.networkId)
       : false;
@@ -404,6 +404,7 @@ export class NetworkAuthDialog extends BaseApplication {
    * After render — set auth state attribute, wire Enter key, start lockout timer.
    */
   _onRender(context, options) {
+    guardSecretInputs(this.element); // read-only until touched — no browser autofill
     super._onRender?.(context, options);
 
     // Set auth state attribute for CSS accent bar color
@@ -470,7 +471,7 @@ export class NetworkAuthDialog extends BaseApplication {
    * Tracks attempts via SecurityService; shows dynamic remaining count.
    */
   static async _onSubmitPassword(event, target) {
-    const passwordInput = this.element.querySelector('[name="password"]');
+    const passwordInput = this.element.querySelector('[name="ncm-net-key"]');
     const password = passwordInput?.value ?? '';
 
     if (!password.trim()) {
@@ -480,7 +481,7 @@ export class NetworkAuthDialog extends BaseApplication {
     }
 
     // Init security tracking
-    const actorId = game.user?.character?.id;
+    const actorId = resolveOperator()?.id;
     if (actorId) {
       this.securityService?.initTracking(actorId, this.networkId, {
         maxAttempts: this.network.security.maxAttempts ?? 3,
@@ -535,7 +536,7 @@ export class NetworkAuthDialog extends BaseApplication {
     const skillName = target.dataset.skill;
     if (!skillName) return;
 
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned. Set your character in User Configuration.');
       return;
@@ -635,8 +636,17 @@ export class NetworkAuthDialog extends BaseApplication {
     const input = this.element.querySelector('.ncm-auth__password-input');
     if (!input) return;
 
-    const isPassword = input.type === 'password';
-    input.type = isPassword ? 'text' : 'password';
+    // The field is a shadowed text input (helpers.shadowSecretInput): the DOM shows
+    // bullets and the real text lives in script, so "show" flips the shadow's mask.
+    let isPassword;
+    if (input.ncmSetMasked) {
+      isPassword = input.dataset.ncmUnmasked !== '1';
+      input.ncmSetMasked(!isPassword);
+      input.dataset.ncmUnmasked = isPassword ? '1' : '';
+    } else {
+      isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+    }
 
     // Swap icon
     const icon = target.querySelector('i');
@@ -685,25 +695,31 @@ export class NetworkAuthDialog extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   /**
-   * Browse actor inventory to select a key item.
-   * Uses the shared item picker utility.
+   * Browse the operator's inventory for the credential — the shared picker on
+   * the PLAYER theme, chips per item type. (Replaced itemPicker.js, which painted
+   * literal brand hex from an inline <style> and rebuilt the list per keystroke.)
    */
   static async _onBrowseKeyItem(event, target) {
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned.');
       return;
     }
-
     const keyItemName = this.network?.security?.keyItemName || 'access credential';
-    const item = await showItemPicker(actor, {
+    const items = (actor.items?.contents ?? []).filter(isCarrier);
+    if (!items.length) {
+      ui.notifications.warn('NCM | No items in inventory.');
+      return;
+    }
+    const pick = await showNamePicker({
+      admin: false,
       title: 'Present Access Credential',
       hint: `Select an item to present as "${keyItemName}".`,
+      entries: documentEntries(items, { group: 'type', note: (i) => i.type }),
+      placeholder: 'search your inventory…',
     });
-
-    if (item) {
-      this._processKeyItem(item);
-    }
+    const item = pick?.id ? actor.items.get(pick.id) : null;
+    if (item) this._processKeyItem(item);
   }
 
   /**
@@ -851,7 +867,7 @@ export class NetworkAuthDialog extends BaseApplication {
    * @returns {object|null} { statName, statValue, skillName, skillValue, total, needed }
    */
   _breakdownForSkill(network, skillName) {
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor || !skillName) return null;
     const dc = network.security.bypassDC ?? 15;
 
@@ -961,7 +977,7 @@ export class NetworkAuthDialog extends BaseApplication {
   _startLockoutCountdown() {
     this._clearLockoutTimer();
 
-    const actorId = game.user?.character?.id;
+    const actorId = resolveOperator()?.id;
     if (!actorId) return;
 
     this._lockoutTimerId = setInterval(() => {

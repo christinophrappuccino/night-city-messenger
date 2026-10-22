@@ -20,6 +20,7 @@ import { log, isGM } from '../utils/helpers.js';
 import { registerAdminDialogHook } from '../utils/adminTheme.js';
 import { SchedulingService } from '../services/SchedulingService.js';
 import { MasterContactService } from '../services/MasterContactService.js';
+import { ContactGroupService } from '../services/ContactGroupService.js';
 import { MacroAPI } from '../integrations/MacroAPI.js';
 import { Phase5Verification } from '../tests/Phase5Verification.js';
 import { ContactManagerApp } from '../ui/ContactManager/ContactManagerApp.js';
@@ -58,6 +59,10 @@ export function registerGMTools(initializer) {
       masterContactService.initialize();
       game.nightcity.masterContactService = masterContactService;
       log.info('MasterContactService registered on game.nightcity');
+      // Contact groups ride on the directory (members resolve through it).
+      const contactGroupService = new ContactGroupService();
+      contactGroupService.initialize();
+      game.nightcity.contactGroupService = contactGroupService;
     } catch (err) {
       log.error(`MasterContactService initialization failed: ${err.message}`);
     }

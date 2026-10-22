@@ -18,7 +18,9 @@ import { log } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { entryLevel, applyLoss } from '../../content/IntegrityModel.js';
 import { getContentTypeInfo } from '../../content/ContentRenderers.js';
+import { SHARD_EDIT_MODES, resolveShardEditing } from '../../content/EncoderModel.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
+import { showNamePicker, documentEntries } from '../../../utils/namePicker.js';
 
 export class ShardsTab extends BaseTab {
 
@@ -257,6 +259,9 @@ export class ShardsTab extends BaseTab {
         // Hardened blank (Shard Encoder tier, or set by hand) — loses less per hit.
         const hardening = integrity.cfg?.hardening || 0;
         if (hardening > 0) badges.push({ type: 'gold', icon: 'fa-shield-halved', label: 'Hardened' });
+        // Players may rewrite it — worth seeing at a glance, since the default is locked.
+        const editMode = resolveShardEditing(config);
+        if (editMode !== 'locked') badges.push({ type: 'cyan', icon: 'fa-pen-nib', label: `Editable · ${SHARD_EDIT_MODES[editMode]?.short || editMode}` });
 
         // Owner info — for grouping
         let ownerKey = 'world';
@@ -414,6 +419,10 @@ export class ShardsTab extends BaseTab {
           isSelected: this._selectedIds.has(item.id),
           isExpanded: this._expandedId === item.id,
           isDecrypted: state.decrypted ?? false,
+          // Only a WORLD item has ownership of its own; an item on an actor
+          // follows the actor, so the Permissions button renders for world shards only.
+          isWorldItem: ownerKey === 'world',
+          editMode,
           layers,
           firstEntrySnippet,
           hasLayers: layers.length > 0,
@@ -783,22 +792,16 @@ export class ShardsTab extends BaseTab {
       return;
     }
 
-    const options = items.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
-    const itemId = await new Promise(resolve => {
-      adminDialog({
-        title: 'Quick Create Shard',
-        content: `<p>Select an item to convert with the <strong>${presetKey}</strong> preset:</p>
-          <div class="form-group"><select id="ncm-qc-item">${options}</select></div>`,
-        buttons: {
-          create: { label: 'Create', callback: html => resolve(html.find('#ncm-qc-item').val()) },
-          cancel: { label: 'Cancel', callback: () => resolve(null) },
-        },
-        default: 'create',
-      }).render(true);
+    // Searchable picker (folder chips + type note) — a native <select> of
+    // every world item scrolled for hundreds of rows and, inside an admin
+    // dialog, painted its options white-on-white on the dark presets.
+    const pick = await showNamePicker({
+      title: 'Quick Create Shard',
+      hint: `Pick the item to convert with the ${presetKey} preset.`,
+      entries: documentEntries(items, { note: (i) => i.type }),
+      placeholder: 'search items or folders…',
     });
-
-    if (!itemId) return;
-    const item = game.items.get(itemId);
+    const item = pick?.id ? game.items.get(pick.id) : null;
     if (!item) return;
 
     const result = await this.dataShardService?.convertToDataShard(item, {}, presetKey);
@@ -979,6 +982,24 @@ export class ShardsTab extends BaseTab {
     }
     ui.notifications.info(`NCM | ${destroyed.length} destroyed shard${destroyed.length > 1 ? 's' : ''} purged.`);
     this.render();
+  }
+
+  /**
+   * Open Foundry's own ownership dialog for a WORLD shard — the one step a GM
+   * handing a shard over outright used to have to find in the item sheet.
+   * (A player hacking a shard does NOT need this any more: state writes relay.)
+   */
+  onShardOwnership(event, target) {
+    event.stopPropagation();
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    const item = itemId ? this.app.constructor._findItem(itemId) : null;
+    if (!item) return;
+    if (item.parent) { ui.notifications?.info(`NCM | "${item.name}" is on ${item.parent.name}'s sheet — it follows that character's permissions.`); return; }
+    // v12: a global lexical class (bare reference); v13 moves it under the namespace.
+    const Cls = (typeof DocumentOwnershipConfig !== 'undefined') ? DocumentOwnershipConfig : foundry.applications?.apps?.DocumentOwnershipConfig;
+    if (!Cls) { ui.notifications?.warn('NCM | The ownership dialog is not available in this Foundry version.'); return; }
+    try { new Cls(item).render(true); }
+    catch (err) { log.warn('ShardsTab: ownership dialog failed', err); ui.notifications?.warn('NCM | Could not open the ownership dialog.'); }
   }
 
   onConfigureShardItem(event, target) {

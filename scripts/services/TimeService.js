@@ -140,13 +140,35 @@ export class TimeService {
 
     try {
       const dt = SimpleCalendar.api.currentDateTime();
-      // Use Date.UTC — SC values are game-world time, not local timezone
-      const ms = Date.UTC(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.seconds || 0);
-      return new Date(ms).toISOString();
+      // SC's `month` AND `day` are zero-based INDICES (its bundle returns
+      // `getMonthAndDayIndex()`). Date.UTC's month is zero-based too, but its
+      // day-of-month is 1-based — passing the index straight through landed on
+      // "day 0" = the last day of the previous month, so every NCM clock read
+      // one day behind the calendar (tester report 2026-10-20).
+      return new Date(TimeService.scDateTimeToMs(dt)).toISOString();
     } catch (err) {
       log.warn('TimeService: SimpleCalendar read failed, falling back to real time', err);
       return new Date().toISOString();
     }
+  }
+
+  /**
+   * Convert a SimpleCalendar `DateTime` ({year, month, day, hour, minute, seconds},
+   * month/day zero-based indices) into epoch milliseconds in UTC — SC values are
+   * game-world time, not local timezone. Pure (no Foundry globals) so it can be
+   * unit-tested; see tools/sims/test-simple-calendar-date.mjs.
+   * @param {{year:number, month:number, day:number, hour?:number, minute?:number, seconds?:number}} dt
+   * @returns {number}
+   */
+  static scDateTimeToMs(dt) {
+    return Date.UTC(
+      dt.year,
+      dt.month || 0,
+      (dt.day || 0) + 1,
+      dt.hour || 0,
+      dt.minute || 0,
+      dt.seconds || 0,
+    );
   }
 
   /**

@@ -9,7 +9,7 @@
  */
 
 import { MODULE_ID, SKILL_MAP } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { log, chatCardTime } from '../utils/helpers.js';
 
 export class SkillService {
 
@@ -374,8 +374,12 @@ export class SkillService {
         isCritical: result.isCritical,
         isFumble: result.isFumble,
         margin: result.margin,
+        marginAbs: Math.abs(Number(result.margin) || 0),
+        rollChanged: result.processedRoll != null && result.processedRoll !== result.rollValue,
         context: meta.context || '',
         flavor: meta.flavor || '',
+        contextLine: [meta.context, meta.flavor].filter(Boolean).join(', '),
+        when: chatCardTime(),
         networkDisplay: game.nightcity?.networkService?.getCurrentNetworkName?.() || 'CITINET',
       };
 

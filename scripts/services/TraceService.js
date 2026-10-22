@@ -243,7 +243,7 @@ export class TraceService {
           tone: 'warn', icon: 'fa-fire', title: 'Heat Adjusted',
           lines: [
             `<b>${esc(who)}</b> on <b>${esc(objectName)}</b> → <b>${value}</b> <span style="opacity:.75">(${tier.toUpperCase()})</span>`,
-            reason ? `<span class="ncm-wcard__line--sub"><i>${esc(reason)}</i></span>` : '',
+            reason ? `<span class="ncm-cc__sub"><i>${esc(reason)}</i></span>` : '',
           ],
         }), whisper: gmIds,
       });
@@ -293,7 +293,7 @@ export class TraceService {
         lines: [
           `<b>${esc(src)}</b> is closing in on <b>${esc(a?.name || 'operator')}</b>`,
           `On <b>${esc(objectName)}</b> · <b>${minutes} min</b> on the game clock`,
-          reason ? `<span class="ncm-wcard__line--sub"><i>${esc(reason)}</i></span>` : '',
+          reason ? `<span class="ncm-cc__sub"><i>${esc(reason)}</i></span>` : '',
         ],
       }), whisper: gmIds,
     });
@@ -303,7 +303,7 @@ export class TraceService {
       if (owners.length) ChatMessage.create({
         content: whisperCardHtml({
           tone: 'danger', icon: 'fa-triangle-exclamation', title: 'Incoming Trace',
-          lines: [`<b>${esc(warn)}</b>`, reason ? `<span class="ncm-wcard__line--sub"><i>${esc(reason)}</i></span>` : ''],
+          lines: [`<b>${esc(warn)}</b>`, reason ? `<span class="ncm-cc__sub"><i>${esc(reason)}</i></span>` : ''],
         }), whisper: owners,
       });
     }
@@ -327,7 +327,7 @@ export class TraceService {
           lines: [
             `<b>${esc(src)}</b> found <b>${esc(c.actorName)}</b>`,
             `The trace on <b>${esc(c.objectName)}</b> ran out.`,
-            c.reason ? `<span class="ncm-wcard__line--sub"><i>${esc(c.reason)}</i></span>` : '',
+            c.reason ? `<span class="ncm-cc__sub"><i>${esc(c.reason)}</i></span>` : '',
           ],
         }), whisper: gmIds,
       });

@@ -131,11 +131,11 @@
           <div class="ncm-auth__mbody">
             <div class="ncm-auth__pw {{#if hasError}}ncm-auth__pw--error{{/if}}">
               <span class="ncm-auth__pw-prefix {{#if hasError}}ncm-auth__pw-prefix--error{{/if}}">pass&gt;</span>
-              <input type="password"
-                     name="password"
+              <input type="text" data-ncm-secret="1"
+                     name="ncm-net-key"
                      class="ncm-auth__password-input {{#if hasError}}ncm-auth__password-input--error{{/if}}"
                      placeholder="{{#if hasError}}try again...{{else}}enter password...{{/if}}"
-                     autocomplete="off" spellcheck="false" autofocus />
+                     autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" spellcheck="false" autofocus />
               <button type="button" class="ncm-auth__password-toggle" data-action="togglePasswordVisibility" title="Show password">
                 <i class="fas fa-eye"></i>
               </button>

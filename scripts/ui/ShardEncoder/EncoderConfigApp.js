@@ -627,7 +627,7 @@ export class EncoderConfigApp extends BaseApplication {
   /**
    * Which world items count as a blank of this tier. Goes through the shared
    * picker — its own copy filtered rows with the `hidden` ATTRIBUTE, which loses
-   * to `.ncm-burn-dialog .ncm-burn-row { display:flex }`, so the search box here
+   * to the row's own `display:flex` rule, so the search box here
    * silently did nothing.
    */
   async _pickItem(tierIndex) {

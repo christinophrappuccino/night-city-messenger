@@ -457,8 +457,8 @@ check('the Encoder writes the lock in the shard config\'s own field names', () =
 
 check('the GM can remove the lock stage entirely', () => {
   const src = fs.readFileSync(path.join(ROOT, 'scripts/ui/ShardEncoder/ShardEncoderApp.js'), 'utf8');
-  assert.ok(src.includes("row.key !== 'lock' || this.cfg.lock?.allowed !== false"),
-    'lock.allowed:false must drop the stage from the spine and the navigation');
+  assert.ok(src.includes("row.key !== 'lock' || (this.cfg.lock?.allowed !== false && !this._isEdit())"),
+    'lock.allowed:false must drop the stage from the spine and the navigation (and a re-encode keeps the lock it has)');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -534,7 +534,8 @@ check('the price relay is registered on the GM client', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 section('live-test fixes (2026-09-21, first run in Foundry)');
 
-const ENC = fs.readFileSync(path.join(ROOT, 'scripts/ui/ShardEncoder/ShardEncoderApp.js'), 'utf8');
+// Normalised to LF: the working copy may be CRLF, and several checks match across lines.
+const ENC = fs.readFileSync(path.join(ROOT, 'scripts/ui/ShardEncoder/ShardEncoderApp.js'), 'utf8').replace(/\r\n/g, '\n');
 const CMP = fs.readFileSync(path.join(ROOT, 'scripts/ui/ItemInbox/DataShardComposer.js'), 'utf8');
 
 check('the blank list can be searched and filtered', () => {
@@ -1164,8 +1165,9 @@ check('one forged file makes the whole chip a forgery', () => {
 check('capacity is what stops you adding more', () => {
   assert.ok(ENC.includes('_room()'), 'there must be a room check');
   const i = ENC.indexOf('_room() {');
-  const fn = ENC.slice(i, i + 260);
+  const fn = ENC.slice(i, i + 700);
   assert.ok(fn.includes('capacityOf(this._blank().tier)'), 'room comes from the blank tier');
+  assert.ok(fn.includes("'config')?.capacity"), 'and on a re-encode from the chip\'s own stamped capacity');
   assert.ok(fn.includes('return Infinity'), 'and 0 means no limit');
   assert.ok(ENC.includes("if (this._room() <= 0) { ui.notifications?.warn('NCM | That chip is full.'); return; }"),
     'adding past the limit must be refused with a reason');

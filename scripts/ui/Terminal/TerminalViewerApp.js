@@ -25,8 +25,10 @@
 
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, canOperate } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, canOperate, guardSecretInputs } from '../../utils/helpers.js';
+import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { getInitials } from '../../utils/designHelpers.js';
+import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType, programEffectInfo } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
 import { runSecurityConsole } from '../content/SecurityConsole.js';
@@ -951,6 +953,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** @override */
   _onRender(context, options) {
     super._onRender(context, options);
+    guardSecretInputs(this.element); // read-only until touched — no browser autofill
     // Theme the window: preset attribute (CSS palette fallback) + the saved
     // custom theme applied live as inline variables on the viewer root.
     const viewerEl = this.element?.querySelector('.ncm-terminal-viewer');
@@ -1012,18 +1015,18 @@ export class TerminalViewerApp extends BaseApplication {
     }
     // Enter-to-submit in the auth console.
     if (this._state === 'manual') {
-      const pass = this.element?.querySelector('input[name="manualPassword"]');
+      const pass = this.element?.querySelector('input[name="ncm-term-key"]');
       pass?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this._onManualAuth(); } });
     }
     // Enter-to-submit in the uplink join-challenge console.
     if (this._netAuthTarget) {
-      const pass = this.element?.querySelector('input[name="netAuthPassword"]');
+      const pass = this.element?.querySelector('input[name="ncm-term-netkey"]');
       pass?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this._onNetAuth(); } });
     }
     // Inline password on the lockscreen login style: Enter submits for the
     // focused account (the input carries data-account-id).
     if (this._state === 'login') {
-      const inlinePass = this.element?.querySelector('.ncm-term__lockpass input[name="manualPassword"]');
+      const inlinePass = this.element?.querySelector('.ncm-term__lockpass input[name="ncm-term-key"]');
       inlinePass?.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter') return;
         e.preventDefault();
@@ -1035,7 +1038,7 @@ export class TerminalViewerApp extends BaseApplication {
       // must not re-render per keypress.
       const pad = this.element?.querySelector('.ncm-term__pad');
       if (pad) {
-        const input = this.element.querySelector('.ncm-term__keypad input[name="manualPassword"]');
+        const input = this.element.querySelector('.ncm-term__keypad input[name="ncm-term-key"]');
         const lcd = this.element.querySelector('.ncm-term__lcd-code');
         const echo = () => { if (lcd) lcd.textContent = input?.value ? '▪ '.repeat(input.value.length).trim() : '_'; };
         pad.querySelectorAll('[data-key]').forEach(btn => {
@@ -1244,7 +1247,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Resolve the account being authed: bound (card) or typed username (secret). */
   _resolveAuthAccount() {
     if (this._authAccountId) return this.terminalService.getAccount(this.item, this._authAccountId);
-    const uname = this.element?.querySelector('input[name="manualUsername"]')?.value?.trim().toLowerCase();
+    const uname = this.element?.querySelector('input[name="ncm-term-op"]')?.value?.trim().toLowerCase();
     if (!uname) return null;
     return (this.terminalService.getAccounts(this.item, { includeHidden: true }) || [])
       .find(a => (a.username || '').toLowerCase() === uname) || null;
@@ -1283,7 +1286,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (this.terminalService.isAccountLockedOut(this.item, account.id, this.actorId)) {
       this._manualError = 'Account locked out. Try again later.'; return this.render(false);
     }
-    const password = this.element?.querySelector('input[name="manualPassword"]')?.value ?? '';
+    const password = this.element?.querySelector('input[name="ncm-term-key"]')?.value ?? '';
     const expected = account.security?.password ?? '';
     if (account.security?.allowPassword && expected && password === expected) {
       return this._loginSuccess(account.id);
@@ -1455,7 +1458,7 @@ export class TerminalViewerApp extends BaseApplication {
       this._netAuthError = 'Interface locked out. Try again later.';
       return this.render(false);
     }
-    const password = this.element?.querySelector('input[name="netAuthPassword"]')?.value ?? '';
+    const password = this.element?.querySelector('input[name="ncm-term-netkey"]')?.value ?? '';
     const expected = network.security?.password ?? '';
     if (expected && password === expected) return this._netJoinSuccess(networkId);
     this._failNetAuth(network);
@@ -1862,7 +1865,7 @@ export class TerminalViewerApp extends BaseApplication {
   async _onDeleteMessage(event, target) {
     if (!isGM()) return;
     const id = target?.dataset?.messageId || this._selectedMessageId;
-    const ok = await Dialog.confirm({ title: 'Delete Message', content: '<p>Permanently delete this message from the terminal?</p>' });
+    const ok = await playerConfirm({ title: 'Delete Message', content: '<p>Permanently delete this message from the terminal?</p>' });
     if (!ok) return;
     await this.terminalService.removeAccountMessage(this.item, id);
     if (this._selectedMessageId === id) this._selectedMessageId = null;
@@ -1889,7 +1892,7 @@ export class TerminalViewerApp extends BaseApplication {
       </div>`;
     let result = null;
     await new Promise((resolve) => {
-      new Dialog({
+      playerDialog({
         title: msg ? 'Edit Message' : 'New Message',
         content,
         buttons: {
@@ -2121,20 +2124,13 @@ export class TerminalViewerApp extends BaseApplication {
       a.type === 'character' && (a.isOwner || a.hasPlayerOwner));
     if (!owned.length) { ui.notifications.warn('No owned character to download into.'); return null; }
     if (owned.length === 1) return owned[0].id;
-    const options = owned.map(a => `<option value="${a.id}">${Handlebars.escapeExpression(a.name)}</option>`).join('');
-    let picked = null;
-    await new Promise((resolve) => {
-      new Dialog({
-        title: 'Download to Agent',
-        content: `<p>Send to which character's inbox?</p><select style="width:100%">${options}</select>`,
-        buttons: {
-          ok: { label: 'Download', callback: (html) => { picked = html.find('select').val(); } },
-          cancel: { label: 'Cancel' },
-        },
-        default: 'ok', close: () => resolve(),
-      }).render(true);
+    const pick = await showNamePicker({
+      title: 'Download to Agent',
+      hint: "Send to which character's inbox?",
+      entries: documentEntries(owned),
+      placeholder: 'search characters…',
     });
-    return picked;
+    return pick?.id || null;
   }
 
   /** CPR item types that can't physically carry a shard (sheet abstractions,
@@ -2177,73 +2173,26 @@ export class TerminalViewerApp extends BaseApplication {
   }
 
   /**
-   * Burn-target picker: searchable, sorted item list (existing shards first,
-   * then A→Z; GM world items tagged WORLD after the inventory). Resolves the
-   * picked item id or null.
+   * Burn-target picker — the shared picker on the PLAYER theme: the operator's
+   * gear under a Carried chip (a GM also gets World), existing shards first and
+   * tagged SHARD. Resolves the picked item id or null.
    */
-  _pickBurnTarget(owned, world) {
-    const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
-    const sort = (a, b) => {
-      const as = !!a.flags?.[MODULE_ID]?.isDataShard, bs = !!b.flags?.[MODULE_ID]?.isDataShard;
-      if (as !== bs) return as ? -1 : 1;
-      return a.name.localeCompare(b.name);
+  async _pickBurnTarget(owned, world) {
+    const isShard = (i) => !!i?.flags?.[MODULE_ID]?.isDataShard;
+    const build = (items, group) => {
+      const byId = new Map(items.map((i) => [i.id, i]));
+      return documentEntries(items, { group: () => group, note: (i) => i.type })
+        .map((e) => (isShard(byId.get(e.id)) ? { ...e, tag: 'SHARD' } : e))
+        .sort((a, b) => ((b.tag === 'SHARD') - (a.tag === 'SHARD')) || a.name.localeCompare(b.name));
     };
-    const rowHtml = (i, source) => {
-      const isShard = !!i.flags?.[MODULE_ID]?.isDataShard;
-      return `<div class="ncm-burn-row${isShard ? ' is-shard' : ''}" data-item-id="${i.id}" data-search="${esc(i.name.toLowerCase())} ${esc(i.type)}">
-        <img src="${esc(i.img || 'icons/svg/item-bag.svg')}" alt="">
-        <span class="ncm-burn-name">${esc(i.name)}</span>
-        ${isShard ? '<span class="ncm-burn-tag ncm-burn-tag--shard"><i class="fas fa-microchip"></i> SHARD</span>' : ''}
-        ${source === 'world' ? '<span class="ncm-burn-tag">WORLD</span>' : ''}
-        <span class="ncm-burn-type">${esc(i.type)}</span>
-      </div>`;
-    };
-    const rows = [
-      ...[...owned].sort(sort).map(i => rowHtml(i, 'own')),
-      ...[...world].sort(sort).map(i => rowHtml(i, 'world')),
-    ].join('');
-    const content = `
-      <div class="ncm-burn-pick">
-        <p class="ncm-burn-hint">Pick the item to burn this file onto. Burning onto an item that isn't a shard converts it.</p>
-        <input type="text" class="ncm-burn-search" placeholder="Search items..." autocomplete="off">
-        <div class="ncm-burn-list">${rows}</div>
-      </div>`;
-
-    let pickedId = null;
-    return new Promise((resolve) => {
-      new Dialog({
-        title: 'Burn to Data Shard',
-        content,
-        render: (html) => {
-          const root = html[0] ?? html;
-          const search = root.querySelector('.ncm-burn-search');
-          const list = root.querySelector('.ncm-burn-list');
-          search?.addEventListener('input', () => {
-            const q = search.value.trim().toLowerCase();
-            list.querySelectorAll('.ncm-burn-row').forEach(r => {
-              r.style.display = !q || r.dataset.search.includes(q) ? '' : 'none';
-            });
-          });
-          list?.addEventListener('click', (e) => {
-            const row = e.target.closest('.ncm-burn-row');
-            if (!row) return;
-            list.querySelectorAll('.ncm-burn-row.is-selected').forEach(r => r.classList.remove('is-selected'));
-            row.classList.add('is-selected');
-            pickedId = row.dataset.itemId;
-          });
-          search?.focus();
-        },
-        buttons: {
-          burn: {
-            icon: '<i class="fas fa-fire"></i>', label: 'Burn',
-            callback: () => { if (!pickedId) ui.notifications.warn('Pick an item first.'); },
-          },
-          cancel: { label: 'Cancel', callback: () => { pickedId = null; } },
-        },
-        default: 'burn',
-        close: () => resolve(pickedId),
-      }, { classes: ['dialog', 'ncm-burn-dialog'], width: 420 }).render(true);
+    const pick = await showNamePicker({
+      admin: false,
+      title: 'Burn to Data Shard',
+      hint: "Pick the item to burn this file onto. Burning onto an item that isn't a shard converts it.",
+      entries: [...build(owned, 'Carried'), ...build(world, 'World')],
+      placeholder: 'search items…',
     });
+    return pick?.id || null;
   }
 
   /** Send an exfil request to the GM client (player relay). */
@@ -2339,20 +2288,13 @@ export class TerminalViewerApp extends BaseApplication {
     const actors = (game.actors?.contents ?? []).filter(a =>
       a.type === 'character' && (a.hasPlayerOwner || a.getFlag?.(MODULE_ID, 'email')));
     if (!actors.length) { ui.notifications.warn('No contacts to send to.'); return null; }
-    const options = actors.map(a => `<option value="${a.id}">${Handlebars.escapeExpression(a.name)}</option>`).join('');
-    let picked = null;
-    await new Promise((resolve) => {
-      new Dialog({
-        title,
-        content: `<p>Forward to which contact?</p><select style="width:100%">${options}</select>`,
-        buttons: {
-          ok: { label: 'Forward', callback: (html) => { picked = html.find('select').val(); } },
-          cancel: { label: 'Cancel' },
-        },
-        default: 'ok', close: () => resolve(),
-      }).render(true);
+    const pick = await showNamePicker({
+      title,
+      hint: 'Forward to which contact?',
+      entries: documentEntries(actors),
+      placeholder: 'search contacts…',
     });
-    return picked;
+    return pick?.id || null;
   }
 
   /** Banking content — siphon funds (shared flow; see SiphonFlow.js). */

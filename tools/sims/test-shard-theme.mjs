@@ -17,7 +17,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const load = (rel) => import(pathToFileURL(path.join(ROOT, rel)).href);
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n');
 
 let pass = 0, fail = 0;
 const section = (s) => console.log(`\n── ${s} ──`);
