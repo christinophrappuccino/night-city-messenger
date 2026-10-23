@@ -29,12 +29,22 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"            # e.g. v1.0.0
           VERSION="${TAG#v}"                  # e.g. 1.0.0
+          # `manifest` is the STABLE latest-release URL (what Foundry polls for updates);
+          # `download` pins this tag's zip. Both are stamped so the committed module.json
+          # can never drift from what a release actually serves.
           jq --arg version "$VERSION" \
+             --arg manifest "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/module.json" \
              --arg download "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/module.zip" \
-             '.version = $version | .download = $download' \
+             '.version = $version | .manifest = $manifest | .download = $download' \
              module.json > module.json.tmp
           mv module.json.tmp module.json
-          jq -r '"version=\(.version)  download=\(.download)"' module.json
+          jq -r '"version=\(.version)  manifest=\(.manifest)  download=\(.download)"' module.json
+
+      - name: Tag must match module.json's version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          FILE="$(jq -r .version module.json)"
+          if [ "$TAG" != "$FILE" ]; then echo "tag v$TAG but module.json says $FILE"; exit 1; fi
 
       - name: Validate macro packs
         run: node dev/tools/gen-macros.cjs

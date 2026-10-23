@@ -56,9 +56,17 @@ Every PC gets a diegetic **Agent** — a themed in-fiction phone/inbox — and t
 
 ## Installation
 
-NCM is currently distributed through its Discord only — there is no public manifest URL or GitHub release download yet.
+**In Foundry:** Setup → Add-on Modules → **Install Module**, paste the manifest URL into the field at the bottom, and click Install:
 
-Place the module folder in your Foundry data folder as `Data/modules/night-city-messenger` (the folder name must match the module ID exactly), then enable **Night City Messenger** in your world's module settings.
+```
+https://github.com/christinophrappuccino/night-city-messenger/releases/latest/download/module.json
+```
+
+Foundry then offers every new release as an update. Enable **Night City Messenger** in your world's module settings.
+
+**By hand:** download `module.zip` from the [latest release](https://github.com/christinophrappuccino/night-city-messenger/releases/latest) and unpack it to `Data/modules/night-city-messenger` (the folder name must match the module ID exactly).
+
+Release notes live in [CHANGELOG.md](CHANGELOG.md).
 
 > **Known console warning:** Foundry v12 prints a deprecation warning about NeDB compendium packs (`.db` files) — this is harmless and expected; the macro packs will migrate to LevelDB in a future release.
 
