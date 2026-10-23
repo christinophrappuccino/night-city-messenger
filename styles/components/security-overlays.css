@@ -1124,7 +1124,10 @@
   color: #f7c948 !important;
 }
 
-/* ─── Dialog content area ─── */
+/* ─── Dialog content area ───
+   The content list is the scroller, never the panel (see the hack dialog
+   below for why — Text Size zooms the body, and an unscrollable body clips
+   the buttons off the bottom of the screen). */
 .ncm-token-picker-dialog .dialog-content,
 .ncm-token-picker-dialog .window-content,
 .ncm-token-picker-dialog section.window-content {
@@ -1132,8 +1135,12 @@
   padding: 0 !important;
   margin: 0 !important;
   border: none !important;
-  overflow: visible !important;
 }
+.ncm-token-picker-dialog .window-content,
+.ncm-token-picker-dialog section.window-content { overflow: hidden !important; min-height: 0; }
+.ncm-token-picker-dialog .dialog-content { flex: 1 1 auto; min-height: 0; overflow-y: auto !important; overflow-x: hidden !important; }
+.ncm-token-picker-dialog .dialog-buttons,
+.ncm-token-picker-dialog footer.dialog-buttons { flex: 0 0 auto; }
 
 /* ─── Dialog action buttons ─── */
 .ncm-token-picker-dialog .dialog-buttons,
@@ -1413,7 +1420,15 @@
   color: #ff0033 !important;
 }
 
-/* ─── Dialog content area ─── */
+/* ─── Dialog content area ───
+   SCROLL CONTRACT (tester 2026-10-22, "at 120% Text Size the Execute/Abort
+   buttons are gone and there is no scroll"): the player-dialog hook zooms
+   `.window-content`, Foundry caps the frame at the viewport, and this block
+   used to force `overflow: visible` on the content — which also turns its
+   flex min-height from 0 into "all of it", so nothing shrank, nothing
+   scrolled, and the frame's overflow:hidden ate the footer. Now the frame
+   and the content clip, `.dialog-content` is the ONE scroller, and the
+   buttons stay pinned below it. Keep it that way. */
 .ncm-hack-dialog .dialog-content,
 .ncm-hack-dialog .window-content,
 .ncm-hack-dialog section.window-content {
@@ -1421,8 +1436,12 @@
   padding: 0 !important;
   margin: 0 !important;
   border: none !important;
-  overflow: visible !important;
 }
+.ncm-hack-dialog .window-content,
+.ncm-hack-dialog section.window-content { overflow: hidden !important; min-height: 0; }
+.ncm-hack-dialog .dialog-content { flex: 1 1 auto; min-height: 0; overflow-y: auto !important; overflow-x: hidden !important; }
+.ncm-hack-dialog .dialog-buttons,
+.ncm-hack-dialog footer.dialog-buttons { flex: 0 0 auto; }
 
 /* ─── Dialog action buttons ─── */
 .ncm-hack-dialog .dialog-buttons,
@@ -1506,9 +1525,7 @@
 .ncm-hack-dialog section.window-content {
   background: #0a0a12 !important;
   padding: 0 !important; margin: 0 !important;
-  overflow: visible !important;
 }
-.ncm-hack-dialog ::-webkit-scrollbar { width: 0 !important; }
 /* Kill any Foundry resize handle */
 .ncm-hack-dialog .window-resizable-handle { display: none !important; }
 /* Ensure no weird Foundry borders leak in */

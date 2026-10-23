@@ -1167,7 +1167,7 @@ export class ContactManagerApp extends BaseApplication {
 
   static async _onGroupNew(event, target) {
     event.stopPropagation();
-    const group = await editGroupDialog({}, { memberSource: () => this._groupMemberSource() });
+    const group = await editGroupDialog({}, { memberSource: () => this._groupMemberSource(), admin: false });
     if (!group) return;
     const r = await this.contactGroupService?.saveActorGroup(this.actorId, group);
     if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
@@ -1180,7 +1180,7 @@ export class ContactManagerApp extends BaseApplication {
     const id = target.closest('[data-group-id]')?.dataset.groupId;
     const existing = this.contactGroupService?.getActorGroup(this.actorId, id);
     if (!existing) return;
-    const group = await editGroupDialog(existing, { memberSource: () => this._groupMemberSource() });
+    const group = await editGroupDialog(existing, { memberSource: () => this._groupMemberSource(), admin: false });
     if (!group) return;
     const r = await this.contactGroupService.saveActorGroup(this.actorId, group);
     if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);

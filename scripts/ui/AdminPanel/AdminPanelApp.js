@@ -410,7 +410,6 @@ export class AdminPanelApp extends BaseApplication {
     // ─── Contacts (Contacts tab) ───
     const contactContext = this.tabs.contacts.prepareContext();
     const contactSummary = contactContext.contactSummary;
-    const pushLog = contactContext.pushLog;
 
     // ─── Networks (Networks tab) ───
     const networkContext = this.tabs.networks.prepareContext();
@@ -457,9 +456,11 @@ export class AdminPanelApp extends BaseApplication {
       ...messagesContext,
       scheduledEntries,
 
-      // Contacts tab
-      contactSummary,
-      pushLog,
+      // Contacts tab — spread the WHOLE tab context. Lifting named keys out
+      // of it dropped `masterGroups` on the floor (tester 2026-10-22: "groups
+      // save but never appear in the admin UI"), so the Groups card always
+      // rendered its empty state and Push was unreachable.
+      ...contactContext,
 
       // Networks tab
       ...networkContext,

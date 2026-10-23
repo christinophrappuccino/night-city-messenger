@@ -202,6 +202,15 @@ game.nightcity.contactGroupService = svc;
   ok(/ncmMasterContacts: 1/.test(ct) && /parsed\?\.contacts/.test(ct) && /importMaster/.test(ct), 'admin export writes the envelope; import accepts envelope or bare array and imports groups');
   ok(/parsed\?\.contacts/.test(r('scripts/ui/GMContactManager/GMContactManagerApp.js')), 'GM Contact Manager import accepts the envelope too');
   ok(/ncm-cg__list/.test(r('templates/admin-panel/tab-contacts.hbs')), 'admin tab renders the Groups card');
+  // The panel merges each tab's context into ONE template context. Lifting named
+  // keys out of the Contacts tab context dropped `masterGroups` (tester 2026-10-22:
+  // "groups save but never appear in the admin UI") — the tab context must be
+  // SPREAD, and every key the tab returns must reach the template.
+  ok(/\.\.\.contactContext,/.test(ap), 'AdminPanelApp spreads the whole Contacts tab context');
+  const ctReturn = ct.match(/prepareContext\(\) \{[\s\S]*?return \{([\s\S]*?)\};/)?.[1] || '';
+  const ctKeys = [...ctReturn.matchAll(/^\s*([A-Za-z]+):/gm)].map(m => m[1]);
+  ok(ctKeys.includes('masterGroups'), 'ContactsTab.prepareContext returns masterGroups');
+  for (const k of ctKeys) ok(new RegExp(`\\{\\{[^}]*\\b${k}\\b`).test(r('templates/admin-panel/tab-contacts.hbs')), `tab-contacts.hbs reads ${k}`);
   const comp = r('scripts/ui/MessageComposer/MessageComposerApp.js');
   ok(/_addGroupRecipient\(/.test(comp) && /groupHits/.test(comp) && /r\.isGroup\) \{ hasGroup = true/.test(comp), 'composer searches groups, adds a group chip, and flattens it at send');
   ok(/groupId: options\.groupId \?\? null/.test(r('scripts/init/registerMessagingSystem.js')), 'the compose launcher forwards groupId');

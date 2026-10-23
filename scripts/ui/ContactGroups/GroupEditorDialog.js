@@ -3,15 +3,18 @@
  * Manager and the Admin Contacts tab; only the member SOURCE differs.
  * @file scripts/ui/ContactGroups/GroupEditorDialog.js
  * @module night-city-messenger
- * @description An adminDialog (admin-preset themed, like the shared picker it
- *   opens) holding the group's name, a colour swatch row, and the member list.
+ * @description A dialog holding the group's name, a colour swatch row, and the
+ *   member list. The GM's Admin tab opens it as an adminDialog (admin preset +
+ *   admin text size); the player Contact Manager passes `admin: false` and gets
+ *   a playerDialog (Foundry look, zoomed by the player's own Text Size — the
+ *   standing player-window rule), and the picker it opens follows suit.
  *   "Add members" opens showNamePicker in MULTI mode over the caller's source
  *   (the player's own contacts, or the GM's directory + player characters);
  *   members already in the group are greyed there, never offered twice.
  *   Resolves the edited group, or null when cancelled. Nothing is saved here —
  *   the caller owns the write (actor flag vs world setting).
  */
-import { adminDialog } from '../../utils/adminTheme.js';
+import { adminDialog, playerDialog } from '../../utils/adminTheme.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { GROUP_COLORS, sanitizeGroup } from '../../services/ContactGroupService.js';
 import { memberKey } from '../../utils/participants.js';
@@ -24,9 +27,11 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
  * @param {() => Promise<Array<{id: string, name: string, img?: string, sub?: string, group?: string, note?: string, member: Object}>>} o.memberSource
  *        the pickable people; each entry carries the member record it stands for
  * @param {string} [o.title]
+ * @param {boolean} [o.admin=true]  false = a player-facing dialog (player Text Size, Foundry look)
  * @returns {Promise<Object|null>} the edited group (unsaved), or null
  */
-export async function editGroupDialog(group = {}, { memberSource, title } = {}) {
+export async function editGroupDialog(group = {}, { memberSource, title, admin = true } = {}) {
+  const openDialog = admin ? adminDialog : playerDialog;
   const draft = sanitizeGroup({ ...group, id: group.id });
   if (!group.name) draft.name = '';
   const isNew = !group.id;
@@ -41,7 +46,7 @@ export async function editGroupDialog(group = {}, { memberSource, title } = {}) 
 
   return new Promise((resolve) => {
     let result = null;
-    const dlg = adminDialog({
+    const dlg = openDialog({
       title: title || (isNew ? 'New Contact Group' : `Edit Group — ${draft.name}`),
       content: `
         <div class="ncm-cge">
@@ -101,6 +106,7 @@ export async function editGroupDialog(group = {}, { memberSource, title } = {}) 
             taken: new Set(entries.filter(e => taken.has(memberKey(e.member))).map(e => e.id || memberKey(e.member))),
             takenLabel: 'in group',
             multi: true,
+            admin,
             placeholder: 'search people or folders…',
             emptyText: 'no one to add',
           });
