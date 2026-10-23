@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — document paste probe</title>
+<!--
+  Renders the Document block EDITOR (the real `_docBlockHtml` markup, lifted out of
+  DataShardComposer.js at runtime — never hand-copied) beside the VIEWER (the real
+  content-body.hbs partial) against the real cascade (Foundry core → CPR → module →
+  admin theme), fed by a journal-shaped clipboard fixture run through the REAL
+  richText.js cleaner / splitter. Reports the worst text contrast in <title>.
+
+    ?t=clean-dark|clean-light|high-contrast   admin preset on the editor (default clean-dark)
+    ?raw=1       show the UNCLEANED paste in the first block (the tester's "before")
+    ?strip=1     show the after-paste strip (Undo / Split)
+    ?pdf=1       use the PDF plain-text fixture instead of the journal HTML one
+
+  Serve it (node tools/serve-mockups.cjs → http://127.0.0.1:8123/docs/mockups/doc-paste-probe.html)
+  or run Chrome with --allow-file-access-from-files.
+-->
+<link rel="stylesheet" id="css-foundry">
+<link rel="stylesheet" id="css-cpr">
+<link rel="stylesheet" id="css-fa">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 14px; background: #2a2a2a; color: #ddd; font: 12px monospace; }
+  .cols { display: flex; gap: 16px; align-items: flex-start; }
+  .lbl { color: #fff; margin: 0 0 6px; }
+  #editor { position: relative !important; inset: auto !important; width: 520px; }
+  #editor > .window-content { padding: 12px; display: block; }
+  #viewer { position: relative !important; inset: auto !important; width: 440px; }
+  #viewer .ncm-item-inbox { padding: 14px; }
+  #report { margin-top: 12px; white-space: pre-wrap; color: #f65261; }
+  #report.ok { color: #7ee787; }
+</style>
+</head>
+<body>
+<div class="cols">
+  <div>
+    <div class="lbl" id="lblE">EDITOR</div>
+    <div class="application ncm-app ncm-data-shard-composer" id="editor" data-ncm-scanlines="false" data-ncm-neon="false">
+      <section class="window-content"><div class="ncm-composer-shell"><form class="ncm-shard-composer" autocomplete="off">
+        <fieldset class="ncm-config-section">
+          <legend class="ncm-config-legend"><i class="fas fa-paragraph"></i> Body</legend>
+          <div class="ncm-docpage" id="page"><div class="ncm-cl-list" data-doc-list id="list"></div></div>
+        </fieldset>
+      </form></div></section>
+    </div>
+  </div>
+  <div>
+    <div class="lbl">VIEWER (player theme)</div>
+    <div class="application ncm-app ncm-item-inbox-app" id="viewer"><div class="ncm-item-inbox" id="inbox"></div></div>
+  </div>
+</div>
+<div id="report">running…</div>
+<script type="module">
+const isFile = location.protocol === 'file:';
+document.getElementById('css-foundry').href = isFile ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css' : '/_vendor/foundry2.css';
+document.getElementById('css-cpr').href = isFile ? 'file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css' : '/_vendor/cpr-main.css';
+document.getElementById('css-fa').href = isFile ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css' : '/_vendor/fa/css/all.min.css';
+const Q = new URLSearchParams(location.search);
+const T = Q.get('t') || 'clean-dark';
+document.getElementById('editor').dataset.ncmAdminTheme = T;
+document.getElementById('lblE').textContent = `EDITOR (admin preset: ${T}${Q.get('raw') ? ' · RAW paste, before cleaning' : ''})`;
+const report = document.getElementById('report');
+
+await new Promise((res, rej) => {
+  const s = document.createElement('script');
+  s.src = isFile ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/node_modules/handlebars/dist/handlebars.js' : '/_vendor/handlebars.js';
+  s.onload = res; s.onerror = () => rej(new Error('Handlebars did not load'));
+  document.head.appendChild(s);
+});
+
+// A Foundry journal copy as Chrome puts it on the clipboard: computed styles inline.
+const JOURNAL = `<meta charset='utf-8'><h2 style="color: rgb(25, 24, 19); font-family: Modesto Condensed;">Summary</h2><p style="color: rgb(25, 24, 19); font-family: Signika, sans-serif; font-size: 14px;"><span style="color: rgb(25, 24, 19); background-color: rgb(255, 255, 255);">Q2 reconciliation shows a <strong style="color: rgb(25,24,19)">512,000 eddie variance</strong> in Warehouse 7 outbound manifests. Internal audit is <em>not</em> to be looped in until legal reviews exposure.</span></p><p style="color: rgb(25, 24, 19);">Badge W7-0441 was active during every camera gap. Treat as the pivot.</p><h2 style="color: rgb(25,24,19)">Findings</h2><ol><li style="color:#191813">Manifests W7-0388 through W7-0441 falsified</li><li style="color:#191813">Cold-storage counts off by 14 crates</li></ol><blockquote style="border-left: 3px solid rgb(120,120,120); color: rgb(60,60,60);"><p>If this surfaces before the board review, we handle it internally. — T.M.</p></blockquote><p style="color: rgb(25,24,19)">Destroy after reading. Do not forward outside DL-7.</p>`;
+const PDF = `Q2 reconciliation shows a 512,000 eddie variance in Ware-\nhouse 7 outbound manifests. Internal audit is not to be looped\nin until legal reviews exposure. The ﬁnal count is pending.\n\n7\n\n• Manifests W7-0388 through W7-0441 falsified\n• Cold-storage counts off by 14 crates\n\nDestroy after reading.\nDo not forward outside DL-7.`;
+
+try {
+  const RT = await import('../../scripts/utils/richText.js');
+  // Lift the REAL block builder out of the composer source.
+  const src = await (await fetch('../../scripts/ui/ItemInbox/DataShardComposer.js')).text();
+  const m = /_docBlockHtml\(p = \{\}\) \{([\s\S]*?)\r?\n  \}\r?\n/.exec(src); // CRLF-safe: the repo is checked out on Windows
+  if (!m) throw new Error('could not find _docBlockHtml in DataShardComposer.js');
+  const docBlockHtml = new Function('p', 'Handlebars', m[1]).bind(null);
+
+  const blocks = Q.get('pdf') ? RT.pasteToBlocks({ text: PDF }) : RT.pasteToBlocks({ html: JOURNAL });
+  const list = document.getElementById('list');
+  list.innerHTML = blocks.map(b => docBlockHtml(b, Handlebars)).join('');
+  if (Q.get('raw')) list.querySelector('[data-doc-text]').innerHTML = JOURNAL; // the "before"
+  list.querySelectorAll('.ncm-docpara').forEach(r => { const t = r.querySelector('[data-doc-text]'); if (t && (t.innerHTML.match(/<(p|div)[\s>]/g) || []).length > 1) r.classList.add('has-paras'); });
+  if (Q.get('strip')) document.getElementById('page').insertAdjacentHTML('afterbegin',
+    `<div class="ncm-docpaste"><i class="fas fa-paste ncm-docpaste__ic"></i><span class="ncm-docpaste__what">Pasted as ${blocks.length} blocks</span><button type="button" class="ncm-shard-hdr-btn ncm-docpaste__btn" data-action="docPasteSplit"><i class="fas fa-grip-lines"></i> Split into 2 blocks</button><button type="button" class="ncm-shard-hdr-btn ncm-docpaste__btn" data-action="docPasteUndo"><i class="fas fa-rotate-left"></i> Undo</button><button type="button" class="ncm-shard-hdr-btn ncm-docpaste__x" data-action="docPasteDismiss"><i class="fas fa-times"></i></button></div>`);
+
+  // The viewer: the real partial, context in the enricher's shape.
+  const tplSrc = await (await fetch('../../templates/content/content-body.hbs')).text();
+  Handlebars.registerHelper('eq', (a, b) => a === b);
+  Handlebars.registerHelper('and', (a, b) => a && b);
+  Handlebars.registerHelper('or', (a, b) => a || b);
+  Handlebars.registerHelper('not', (a) => !a);
+  Handlebars.registerHelper('gt', (a, b) => a > b);
+  Handlebars.registerHelper('lt', (a, b) => a < b);
+  Handlebars.registerHelper('add', (a, b) => a + b);
+  Handlebars.registerHelper('sub', (a, b) => a - b);
+  Handlebars.registerHelper('join', (a, s) => (a || []).join(s));
+  const tpl = Handlebars.compile(tplSrc);
+  const paragraphs = blocks.map(b => b.kind === 'list' ? { isList: true, ordered: !!b.ordered, items: b.items.map(i => RT.cleanHtml(i, { mode: 'inline' })), heading: b.heading || '', hasItems: b.items.length > 0 }
+    : b.kind === 'figure' ? { isFigure: true, image: b.image, caption: b.caption, heading: b.heading || '', hasImage: !!b.image }
+    : { isText: true, heading: b.heading || '', text: RT.cleanHtml(b.text, { mode: 'block' }), quote: !!b.quote, redacted: !!b.redacted });
+  document.getElementById('inbox').innerHTML = tpl({ isDocument: true, isGM: true, interactive: false, contentData: { docType: 'MEMO', classification: 'SECRET', classColor: 'red', title: 'Re: Warehouse 7 shortfall', hasMeta: true, author: 'K. Okada', org: 'Arasaka Logistics', paragraphs } });
+
+  // ── Measure: worst text contrast under the editor blocks and the viewer body ──
+  const lum = (r, g, b) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  const parse = (s) => { const m2 = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/.exec(s); return m2 ? [+m2[1], +m2[2], +m2[3], m2[4] === undefined ? 1 : +m2[4]] : null; };
+  const bgOf = (el) => { let e = el; while (e && e !== document.body) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c[3] > 0.9) return c; e = e.parentElement; } return [42, 42, 42, 1]; };
+  const ratio = (a, b) => { const l1 = lum(...a) + 0.05, l2 = lum(...b) + 0.05; return l1 > l2 ? l1 / l2 : l2 / l1; };
+  const rows = [];
+  for (const root of ['#list', '#inbox .ncm-ct-doc__body']) {
+    const walker = document.createTreeWalker(document.querySelector(root), NodeFilter.SHOW_TEXT);
+    let n; while ((n = walker.nextNode())) {
+      if (!n.textContent.trim()) continue;
+      const el = n.parentElement; if (!el || el.closest('button')) continue;
+      const fg = parse(getComputedStyle(el).color); if (!fg) continue;
+      rows.push({ root, el, r: ratio(fg, bgOf(el)), text: n.textContent.trim().slice(0, 28), color: getComputedStyle(el).color });
+    }
+  }
+  rows.sort((a, b) => a.r - b.r);
+  const worst = rows[0];
+  const lines = rows.slice(0, 6).map(r => `${r.r.toFixed(2)}  ${r.root.padEnd(22)} ${r.color.padEnd(18)} "${r.text}"`);
+  const okAll = worst && worst.r >= 4.5;
+  report.className = okAll ? 'ok' : '';
+  report.textContent = `preset=${T} blocks=${blocks.length} worst contrast=${worst ? worst.r.toFixed(2) : '?'} (${okAll ? 'PASS ≥4.5' : 'FAIL <4.5'})\n` + lines.join('\n');
+  document.title = `doc-paste ${T}${Q.get('raw') ? ' RAW' : ''} worst=${worst ? worst.r.toFixed(2) : '?'} blocks=${blocks.length} ${okAll ? 'PASS' : 'FAIL'}`;
+} catch (err) {
+  report.textContent = `probe failed: ${err.message}\n(serve with node tools/serve-mockups.cjs, or run Chrome with --allow-file-access-from-files)`;
+  document.title = `doc-paste ERROR ${err.message}`;
+}
+</script>
+</body>
+</html>

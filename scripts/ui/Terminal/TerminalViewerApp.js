@@ -29,6 +29,7 @@ import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSou
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { getInitials } from '../../utils/designHelpers.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
+import { cleanHtml } from '../../utils/richText.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType, programEffectInfo } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
 import { runSecurityConsole } from '../content/SecurityConsole.js';
@@ -2603,9 +2604,14 @@ export class TerminalViewerApp extends BaseApplication {
   }
 
   /** Minimal body sanitizer — strip tags, preserve text. Terminal MVP = plain. */
+  /**
+   * A plain message body on the machine. Used to strip EVERY tag (so a bold line or a
+   * list authored in the composer rendered as flat text here while the Agent and the
+   * shard kept the formatting); now the shared whitelist cleaner — same output as the
+   * other two viewers, pasted inline colours dropped, a tagless body keeps its breaks.
+   */
   _sanitizeBody(body) {
-    const text = String(body).replace(/<[^>]*>/g, '');
-    return Handlebars.escapeExpression(text).replace(/\n/g, '<br>');
+    return cleanHtml(String(body ?? ''), { mode: 'rich' });
   }
 
   _timer(fn, ms) { const t = setTimeout(fn, ms); this._timers.push(t); return t; }

@@ -915,7 +915,11 @@
 .ncm-app .ncm-ct-doc__meta i { margin-right: 4px; opacity: .8; }
 .ncm-app .ncm-ct-doc__rev { color: var(--ncm-secondary); }
 .ncm-app .ncm-ct-doc__body { max-height: var(--ncm-ct-maxh-body, 380px); overflow-y: auto; overflow-x: hidden; }
-.ncm-app .ncm-ct-doc__body p { font-family: var(--ncm-font-display); font-size: calc(13px * var(--ncm-text-scale, 1)); line-height: 1.55; color: var(--ncm-text-secondary); margin: 0 0 10px; }
+.ncm-app .ncm-ct-doc__body p,
+.ncm-app .ncm-ct-doc__body .ncm-ct-doc__p { font-family: var(--ncm-font-display); font-size: calc(13px * var(--ncm-text-scale, 1)); line-height: 1.55; color: var(--ncm-text-secondary); margin: 0 0 10px; }
+/* A text block is a section: paragraphs inside it space out, the last one carries no extra margin. */
+.ncm-app .ncm-ct-doc__p p:last-child, .ncm-app .ncm-ct-doc__quote p:last-child { margin-bottom: 0; }
+.ncm-app .ncm-ct-doc__p ul, .ncm-app .ncm-ct-doc__p ol { margin: 4px 0 8px; padding-left: 22px; }
 .ncm-app .ncm-ct-doc__h { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--ncm-accent); margin: 12px 0 6px; }
 .ncm-app .ncm-ct-doc__quote { border-left: 3px solid var(--ncm-secondary); margin: 0 0 10px; padding: 4px 0 4px 12px; font-family: var(--ncm-font-display); font-size: calc(12.5px * var(--ncm-text-scale, 1)); font-style: italic; color: var(--ncm-text-secondary); }
 .ncm-app .ncm-ct-doc__redact { display: flex; flex-direction: column; gap: 4px; margin: 0 0 10px; }
@@ -1668,16 +1672,19 @@ button.ncm-ptz__patrol.is-on {
 
 /* Declassified content — a quiet "this used to be sealed" green tint. */
 .ncm-app .ncm-ct-doc__body p.is-declassified,
+.ncm-app .ncm-ct-doc__body .ncm-ct-doc__p.is-declassified,
 .ncm-app .ncm-ct-doc__body blockquote.is-declassified,
 .ncm-app .ncm-dossier-section.is-declassified p {
   color: color-mix(in srgb, var(--ncm-success, #00ff41) 40%, var(--ncm-text-primary));
 }
 .ncm-app .ncm-ct-doc__body p.is-declassified::before,
+.ncm-app .ncm-ct-doc__body .ncm-ct-doc__p.is-declassified::before,
 .ncm-app .ncm-dossier-section.is-declassified .ncm-dossier-section-heading::after {
   content: ' [DECLASSIFIED]'; font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1)); letter-spacing: 1px;
   color: var(--ncm-success, #00ff41); vertical-align: middle;
 }
-.ncm-app .ncm-ct-doc__body p.is-declassified::before { content: '[DECLASSIFIED] '; }
+.ncm-app .ncm-ct-doc__body p.is-declassified::before,
+.ncm-app .ncm-ct-doc__body .ncm-ct-doc__p.is-declassified::before { content: '[DECLASSIFIED] '; }
 
 /* Sealed AV recording (avlog `locked`) — media + transcript hidden until decrypted. */
 .ncm-app .ncm-avlog-locked {

@@ -688,8 +688,10 @@
         <button type="button" data-action="docAddPara" class="ncm-cl-add"><i class="fas fa-plus"></i> Paragraph</button>
         <button type="button" data-action="docAddList" class="ncm-cl-add"><i class="fas fa-list-ul"></i> List</button>
         <button type="button" data-action="docAddFigure" class="ncm-cl-add"><i class="fas fa-image"></i> Figure</button>
+        <span class="ncm-rec-actions__gap"></span>
+        <button type="button" data-action="docImportJournal" class="ncm-cl-add ncm-cl-add--import" data-tooltip="Pull a whole journal page in as blocks"><i class="fas fa-book-open"></i> Import from Journal</button>
       </div>
-      <div class="ncm-config-hint">You're writing ON the page. Each block is a <b>Paragraph</b> (select text → <i class="fas fa-bold"></i>/<i class="fas fa-italic"></i>; ❝ quote; <i class="fas fa-eye-slash"></i> REDACTS it live), a <b>List</b> (one item per line, ⇄ toggles bulleted/numbered), or a <b>Figure</b> (an image + caption → opens in the lightbox). A heading line starts a section. ✕ removes a block.</div>
+      <div class="ncm-config-hint">You're writing ON the page. Each block is a <b>Paragraph</b> section (Enter starts a new paragraph inside it; select text → <i class="fas fa-bold"></i>/<i class="fas fa-italic"></i>; ❝ quote; <i class="fas fa-eye-slash"></i> REDACTS it live; <i class="fas fa-grip-lines"></i> splits a multi-paragraph block apart), a <b>List</b> (one item per line, ⇄ toggles bulleted/numbered), or a <b>Figure</b> (an image + caption → opens in the lightbox). A heading line starts a section. ✕ removes a block. <b>Paste</b> from a journal, Word or a PDF straight into a paragraph: the source's colours and fonts are stripped, headings become new blocks, hard-wrapped PDF lines are rejoined — and an Undo strip appears so a wrong split costs one click. <b>Import from Journal</b> brings a whole page in.</div>
       <div class="ncm-fg">
         <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="docDeclassify" {{#if doc.declassify}}checked{{/if}} /> Players can DECLASSIFY</label></span>
         <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Roll skill</label><select name="docDeclassifySkill" class="ncm-config-input ncm-config-select">

@@ -2098,21 +2098,50 @@
 .ncm-app [data-gal-cfg][data-gal-mode="feed"] [data-gal-layoutrow] { display: none; }
 
 /* ── Document WYSIWYG — write ON the page ── */
-.ncm-app .ncm-docpage { background: #14141c; border: 1px solid var(--sp-border, #2a2a45); border-radius: 4px; padding: 16px 18px; margin-bottom: 6px; box-shadow: inset 0 0 40px rgba(0, 0, 0, .35); }
+/* The page is a SURFACE token, not a literal: `#14141c` stayed near-black under the
+   clean-light admin preset while the text var flipped dark ("light theme isn't any
+   better", tester 2026-10-23). The inset shadow is black-on-anything, theme-agnostic. */
+.ncm-app .ncm-docpage { position: relative; background: var(--sp-bg-deep, #14141c); border: 1px solid var(--sp-border, #2a2a45); border-radius: 4px; padding: 16px 18px; margin-bottom: 6px; box-shadow: inset 0 0 40px rgba(0, 0, 0, .35); }
 .ncm-app .ncm-docpage .ncm-cl-list { gap: 2px; }
 .ncm-app .ncm-docpara { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 4px 6px; background: none; border: 1px solid transparent; border-radius: 4px; }
 .ncm-app .ncm-docpara:hover { border-color: var(--sp-border, #2a2a45); }
+/* The heading input wears what the VIEWER renders a section heading as (mono, tracked,
+   accent) — it used to be bright display text, so "white while typing, orange displayed"
+   read as a bug. The editor IS the preview. */
 .ncm-app .ncm-docpara__h {
   background: transparent !important; border: none !important; box-shadow: none !important; outline: none !important; padding: 1px 2px !important; min-height: auto !important;
-  font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px;
-  color: var(--sp-text-bright, #e0e0e8) !important; text-transform: uppercase;
+  font-family: var(--ncm-font-mono) !important; font-weight: 700 !important; font-size: calc(11px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1.5px;
+  color: var(--ncm-accent, #f7c948) !important; text-transform: uppercase;
 }
-.ncm-app .ncm-docpara__h::placeholder { text-transform: none; font-weight: 400; color: #44445c; }
+.ncm-app .ncm-docpara__h::placeholder { text-transform: none; font-weight: 400; letter-spacing: 0; font-family: var(--ncm-font-body); color: var(--sp-text-muted, #44445c); }
 .ncm-app .ncm-docpara__t {
   background: transparent !important; border: none !important; box-shadow: none !important; outline: none !important; padding: 1px 2px !important;
   font-family: var(--ncm-font-body) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; line-height: 1.55; resize: vertical;
   color: var(--sp-text-body, #b9b9cc) !important; min-height: 34px;
 }
+/* A block holds several paragraphs (Enter, or a paste): space them like the viewer does.
+   Pasted children inherit the block colour — the paste cleaner drops their own. */
+.ncm-app .ncm-docpara__t p, .ncm-app .ncm-docpara__t div { margin: 0 0 6px; }
+.ncm-app .ncm-docpara__t p:last-child, .ncm-app .ncm-docpara__t div:last-child { margin-bottom: 0; }
+.ncm-app .ncm-docpara__t ul, .ncm-app .ncm-docpara__t ol { margin: 2px 0 6px; padding-left: 20px; }
+.ncm-app .ncm-docpara__t a { color: var(--ncm-secondary); text-decoration: underline; }
+.ncm-app .ncm-docpara__t * { color: inherit; background: none; font-family: inherit; }
+.ncm-app .ncm-docpara__t b, .ncm-app .ncm-docpara__t strong { color: var(--sp-text-bright, #e0e0e8); }
+/* The split-paragraphs tool shows only on a block that has something to split. */
+.ncm-app .ncm-docpara:not(.has-paras) .ncm-docpara__split { display: none !important; }
+/* After-paste strip: what landed · Split into N · Undo · dismiss. */
+.ncm-app .ncm-docpaste {
+  display: flex; align-items: center; gap: 8px; margin: -8px -10px 10px; padding: 5px 10px;
+  background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 9%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 35%, transparent); border-radius: 3px;
+  font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--sp-text-bright, #e0e0e8);
+}
+.ncm-app .ncm-docpaste__ic { color: var(--ncm-secondary, #19f3f7); }
+.ncm-app .ncm-docpaste__what { flex: 1; min-width: 0; }
+.ncm-app .ncm-docpaste .ncm-docpaste__btn { width: auto !important; padding: 0 8px !important; font-family: var(--ncm-font-display) !important; font-weight: 700 !important; letter-spacing: .04em; text-transform: uppercase; font-size: calc(9.5px * var(--ncm-text-scale, 1)) !important; color: var(--sp-text-bright, #e0e0e8) !important; white-space: nowrap; }
+.ncm-app .ncm-docpaste .ncm-docpaste__btn i { margin-right: 4px; }
+.ncm-app .ncm-docpaste .ncm-docpaste__btn:hover { border-color: var(--ncm-secondary, #19f3f7) !important; color: var(--ncm-secondary, #19f3f7) !important; }
+.ncm-app .ncm-rec-actions__gap { flex: 1; }
+.ncm-app .ncm-cl-add--import { border-style: dashed !important; }
 .ncm-app .ncm-docpara.is-quote .ncm-docpara__t { border-left: 3px solid var(--sp-accent, #19f3f7) !important; padding-left: 9px !important; font-style: italic; }
 .ncm-app .ncm-docpara.is-redacted .ncm-docpara__t {
   background: repeating-linear-gradient(0deg, #000, #000 12px, #0a0a0a 12px, #0a0a0a 14px) !important;
@@ -2122,7 +2151,7 @@
 .ncm-app .ncm-docpara:hover .ncm-docpara__tools { display: inline-flex; }
 .ncm-app .ncm-docpara__tools .ncm-shard-hdr-btn.is-active { color: var(--sp-accent, #19f3f7) !important; border-color: var(--sp-accent, #19f3f7) !important; }
 /* contenteditable paragraph placeholder + inline formatting */
-.ncm-app .ncm-docpara__t[contenteditable]:empty::before { content: attr(data-placeholder); color: #44445c; font-style: italic; }
+.ncm-app .ncm-docpara__t[contenteditable]:empty::before { content: attr(data-placeholder); color: var(--sp-text-muted, #44445c); font-style: italic; }
 .ncm-app .ncm-docpara__t b, .ncm-app .ncm-docpara__t strong { font-weight: 800; color: var(--sp-text-bright, #e0e0e8); }
 /* list block */
 .ncm-app .ncm-docpara--list .ncm-docpara__items { min-height: 48px; }

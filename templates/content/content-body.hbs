@@ -826,7 +826,9 @@
         {{else if quote}}
           <blockquote class="ncm-ct-doc__quote{{#if declassified}} is-declassified{{/if}}">{{{text}}}</blockquote>
         {{else if text}}
-          <p{{#if declassified}} class="is-declassified"{{/if}}>{{{text}}}</p>
+          {{!-- A div, not a <p>: a text block is a SECTION and may hold several <p>
+                paragraphs (Enter in the editor, a multi-paragraph paste). --}}
+          <div class="ncm-ct-doc__p{{#if declassified}} is-declassified{{/if}}">{{{text}}}</div>
         {{/if}}
       {{else}}
         <div class="ncm-ct-empty"><i class="fas fa-file-lines"></i> Empty document</div>

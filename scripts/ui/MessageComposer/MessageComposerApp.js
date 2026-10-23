@@ -20,6 +20,7 @@ import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
 import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { applyGmView, applyAdminZoom, toggleGmView, playerDialog } from '../../utils/adminTheme.js';
+import { pasteToHtml } from '../../utils/richText.js';
 
 export class MessageComposerApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
@@ -1460,6 +1461,24 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         counter.textContent = `${this._getEditorText().length} chars`;
       }
     });
+
+    // Paste hygiene (2026-10-23): the browser's default paste carries the source's
+    // computed styles inline (a journal page = near-black text on parchment, so it
+    // lands as black text and white blocks on a dark theme). Clean it to structure +
+    // inline formatting with every colour dropped; plain text (a PDF) is reflowed
+    // from hard-wrapped lines back into paragraphs.
+    editor.addEventListener('paste', (ev) => {
+      const cd = ev.clipboardData;
+      if (!cd) return;
+      const html = cd.getData('text/html') || '';
+      const text = cd.getData('text/plain') || '';
+      if (!html && !text) return;
+      ev.preventDefault();
+      const out = pasteToHtml({ html, text }, { mode: 'mail' });
+      if (!out) return;
+      try { document.execCommand('insertHTML', false, out); } catch { editor.insertAdjacentHTML('beforeend', out); }
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    });
   }
 
   _getEditorText() {
@@ -2623,9 +2642,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         } else {
           // Wrap selection in <code>
           const selectedText = sel.toString();
-          document.execCommand('insertHTML', false,
-            `<code style="font-family:'Share Tech Mono',monospace;background:rgba(25,243,247,0.06);padding:1px 4px;border-radius:2px;color:#19f3f7;">${selectedText}</code>`
-          );
+          // A bare <code>: the editor and the viewer both style it from --ncm-* tokens.
+          // (The old inline literal hex/font ignored the theme and would be stripped by
+          // the render-time cleaner anyway.)
+          const safe = selectedText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          document.execCommand('insertHTML', false, `<code>${safe}</code>`);
         }
         break;
       }

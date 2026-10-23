@@ -16,3 +16,6 @@ docs/*.pdf
 
 # Local build output (tools/build-zip.cjs)
 dist/
+
+# Personal, machine-local notes (e.g. WORKFLOW.local.md) — never committed
+*.local.md

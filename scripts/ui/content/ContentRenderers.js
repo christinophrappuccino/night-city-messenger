@@ -21,6 +21,7 @@
 
 import { CONTENT_TYPES } from '../../utils/constants.js';
 import { log, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
+import { cleanHtml } from '../../utils/richText.js';
 
 /**
  * Display info per content type. `accent` is a palette key consumed by CSS
@@ -1235,17 +1236,22 @@ const ENRICHERS = {
     // Body blocks: text/quote (heading + inline-HTML text), list (ordered? +
     // items[]), figure (image + caption → lightbox). Legacy paragraphs (no kind)
     // read as text. `text` is inline HTML (b/i/u) → rendered raw in the partial.
+    // Text + list items are rendered RAW in the partial, so they are cleaned HERE
+    // (render-time guard): pasted inline colours/backgrounds from a journal or a
+    // Word doc are dropped, a stray `<3` in a list item is escaped, and a shard
+    // saved before the paste cleaner shipped heals the next time it is opened.
     const paragraphs = (cd.paragraphs || []).map(p => {
       const kind = (p.kind === 'list' || p.kind === 'figure') ? p.kind : 'text';
       if (kind === 'list') {
-        const items = (Array.isArray(p.items) ? p.items : String(p.items || '').split('\n')).map(s => String(s).trim()).filter(Boolean);
+        const items = (Array.isArray(p.items) ? p.items : String(p.items || '').split('\n'))
+          .map(s => cleanHtml(String(s).trim(), { mode: 'inline' })).filter(Boolean);
         return { isList: true, ordered: !!p.ordered, items, heading: p.heading || '', hasItems: items.length > 0 };
       }
       if (kind === 'figure') {
         return { isFigure: true, image: p.image || '', caption: p.caption || '', heading: p.heading || '', hasImage: !!p.image };
       }
       return {
-        isText: true, heading: p.heading || '', text: p.text || '',
+        isText: true, heading: p.heading || '', text: cleanHtml(p.text || '', { mode: 'block' }),
         redacted: !!p.redacted, quote: !!p.quote,
         declassified: !!p.declassified, // revealed by a DECLASSIFY roll — green tint
       };
@@ -1560,6 +1566,11 @@ export function enrichContent(entry, ctx = {}) {
     enriched[_flagName(value)] = type === value;
   }
   if (!entry.contentType) enriched.isMessage = true;
+
+  // A plain message body renders raw ({{{body}}}) — clean it at render so pasted
+  // inline colours/backgrounds can't paint black-on-dark, and a tagless body keeps
+  // its line breaks. Module tokens (`var(--ncm-*)`) and palette colours survive.
+  if (enriched.isMessage && enriched.body) enriched.body = cleanHtml(enriched.body, { mode: 'rich' });
 
   // Per-type contentData processing.
   const enrich = ENRICHERS[type];

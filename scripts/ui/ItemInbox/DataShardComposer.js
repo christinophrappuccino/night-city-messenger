@@ -18,7 +18,8 @@ import { enrichContent, openGalleryImage, CT_COLORS, RECORD_FIELD_KINDS, RECORD_
   FILE_DEFAULT_TYPES, suggestFilename, deriveFileSize, programEffectOptions } from '../content/ContentRenderers.js';
 import { BUILTIN_EXAMPLES, getEntryTemplates, saveEntryTemplate, deleteEntryTemplate, exportEntryTemplates, importEntryTemplates } from '../content/EntryTemplates.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
-import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
+import { showNamePicker, documentEntries, folderPathOf } from '../../utils/namePicker.js';
+import { RICH_TEXT_PALETTE, cleanHtml, htmlToBlocks, pasteToBlocks, pasteToHtml, isSimplePaste, splitBlockParagraphs } from '../../utils/richText.js';
 
 /** Content type pill definitions */
 const TYPE_PILLS = [
@@ -164,7 +165,9 @@ const CHAT_EMOJI = {
 };
 
 /** Text colors for the rich-text body editor (message). */
-const RTE_COLORS = ['#F65261', '#f7c948', '#00ff41', '#19f3f7', '#a855f7', '#ff6ac1', '#5b9bff', '#ededf2', '#7a7a92'];
+// The text-colour swatches are the ONE palette the save/render cleaner lets through
+// (richText.js) — a colour outside it is treated as pasted junk and dropped.
+const RTE_COLORS = RICH_TEXT_PALETTE;
 
 /** System-message quick presets (fill an editable notice + its icon). */
 const CHAT_SYS_PRESETS = [
@@ -273,6 +276,11 @@ export class DataShardComposer extends BaseApplication {
       docBrowseFigure: DataShardComposer._onDocBrowseFigure,
       bankSyncBalance: DataShardComposer._onBankSyncBalance,
       docFmt: DataShardComposer._onDocFmt,
+      docImportJournal: DataShardComposer._onDocImportJournal,
+      docPasteUndo: DataShardComposer._onDocPasteUndo,
+      docPasteSplit: DataShardComposer._onDocPasteSplit,
+      docPasteDismiss: DataShardComposer._onDocPasteDismiss,
+      docSplitBlock: DataShardComposer._onDocSplitBlock,
       docToggleQuote: DataShardComposer._onDocToggleQuote,
       docToggleRedact: DataShardComposer._onDocToggleRedact,
       docToggleOrdered: DataShardComposer._onDocToggleOrdered,
@@ -744,6 +752,8 @@ export class DataShardComposer extends BaseApplication {
       // Typing syncs the hidden textarea (the form's debounced input → preview);
       // caret movement lights the active-format toolbar buttons.
       surface?.addEventListener('input', () => { if (sync) sync.value = surface.innerHTML; this._rteRefreshState(); });
+      // Paste hygiene — see _onRtePaste (pasted inline colours/backgrounds dropped, PDF text reflowed).
+      surface?.addEventListener('paste', (e) => this._onRtePaste(e, surface));
       surface?.addEventListener('keyup', () => this._rteRefreshState());
       surface?.addEventListener('mouseup', () => this._rteRefreshState());
       // Raw-mode textarea edits refresh the preview directly (form input catches it too).
@@ -762,7 +772,15 @@ export class DataShardComposer extends BaseApplication {
       }
       // Keep the paragraph selection alive while clicking a block's toolbar (so
       // bold/italic apply to the selected text).
-      el.querySelector('.ncm-docpage')?.addEventListener('mousedown', (e) => { if (e.target.closest('.ncm-docpara__tools button')) e.preventDefault(); });
+      const page = el.querySelector('.ncm-docpage');
+      page?.addEventListener('mousedown', (e) => { if (e.target.closest('.ncm-docpara__tools button')) e.preventDefault(); });
+      // Paste into a text block → cleaned + split into blocks (see _onDocPaste). One
+      // delegated listener: blocks are injected/removed DOM-only all session long.
+      page?.addEventListener('paste', (e) => { const t = e.target?.closest?.('[data-doc-text]'); if (t) this._onDocPaste(e, t); });
+      // Track which blocks hold several paragraphs (Enter / a paste) → the per-block
+      // "split paragraphs" tool only shows where it can do something.
+      page?.addEventListener('input', (e) => { const r = e.target?.closest?.('.ncm-docpara'); if (r && e.target.matches?.('[data-doc-text]')) this._docMarkParas(r); });
+      el.querySelectorAll('.ncm-docpara').forEach(r => this._docMarkParas(r));
     }
 
     // ─── Record: inject subject cards (edit pre-fill, else one blank seeded
@@ -1186,8 +1204,9 @@ export class DataShardComposer extends BaseApplication {
     }
     // text / quote
     return `<div class="ncm-cl-row ncm-docpara${p.quote ? ' is-quote' : ''}${p.redacted ? ' is-redacted' : ''}" data-kind="text">${heading}` +
-      `<div class="ncm-docpara__t" contenteditable="true" data-doc-text data-placeholder="Paragraph text — select to bold/italic; redaction hides it, DECLASSIFY reveals">${p.text || ''}</div>` +
+      `<div class="ncm-docpara__t" contenteditable="true" data-doc-text data-placeholder="Paragraph text — Enter starts a new paragraph in this block; paste from a journal, Word or a PDF and it is cleaned for you">${p.text || ''}</div>` +
       `<span class="ncm-wz-tools ncm-docpara__tools">` +
+        `<button type="button" data-action="docSplitBlock" class="ncm-shard-hdr-btn ncm-docpara__split" data-tooltip="Split this block's paragraphs into separate blocks"><i class="fas fa-grip-lines"></i></button>` +
         `<button type="button" data-action="docFmt" data-cmd="bold" class="ncm-shard-hdr-btn" data-tooltip="Bold"><i class="fas fa-bold"></i></button>` +
         `<button type="button" data-action="docFmt" data-cmd="italic" class="ncm-shard-hdr-btn" data-tooltip="Italic"><i class="fas fa-italic"></i></button>` +
         `<button type="button" data-action="docToggleQuote" class="ncm-shard-hdr-btn${p.quote ? ' is-active' : ''}" data-tooltip="Pulled quote"><i class="fas fa-quote-right"></i></button>` +
@@ -1252,27 +1271,257 @@ export class DataShardComposer extends BaseApplication {
     const list = this.element?.querySelector('[data-doc-list]');
     if (!list) return out;
     for (const row of list.querySelectorAll('.ncm-docpara')) {
-      const kind = row.dataset.kind || 'text';
-      const heading = row.querySelector('.ncm-docpara__h')?.value?.trim() || '';
-      if (kind === 'figure') {
-        const image = row.querySelector('.ncm-docpara__img')?.value?.trim() || '';
-        const caption = row.querySelector('.ncm-docpara__cap')?.value?.trim() || '';
-        if (!image && !heading) continue;
-        out.push({ kind: 'figure', image, caption, ...(heading ? { heading } : {}) });
-      } else if (kind === 'list') {
-        const items = (row.querySelector('.ncm-docpara__items')?.value || '').split('\n').map(s => s.trim()).filter(Boolean);
-        const ordered = row.classList.contains('is-ordered');
-        if (!items.length && !heading) continue;
-        out.push({ kind: 'list', ordered, items, ...(heading ? { heading } : {}) });
-      } else {
-        const text = (row.querySelector('[data-doc-text]')?.innerHTML || '').trim();
-        const quote = row.classList.contains('is-quote');
-        const redacted = row.classList.contains('is-redacted');
-        if (!text && !heading && !redacted) continue;
-        out.push({ ...(heading ? { heading } : {}), text, ...(quote ? { quote: true } : {}), ...(redacted ? { redacted: true } : {}) });
-      }
+      const b = this._collectDocRow(row);
+      if (b) out.push(b);
     }
     return out;
+  }
+
+  /** One block row → its authored shape (null when empty). Text is CLEANED on the way out:
+   *  the contenteditable holds whatever the browser produced (Enter → <div>s, a paste's
+   *  inline colours), and the stored shape is `<p>`-structured inline HTML with every
+   *  literal colour/font dropped (palette colours and `var(--ncm-*)` survive). */
+  _collectDocRow(row) {
+    const kind = row.dataset.kind || 'text';
+    const heading = row.querySelector('.ncm-docpara__h')?.value?.trim() || '';
+    if (kind === 'figure') {
+      const image = row.querySelector('.ncm-docpara__img')?.value?.trim() || '';
+      const caption = row.querySelector('.ncm-docpara__cap')?.value?.trim() || '';
+      if (!image && !heading) return null;
+      return { kind: 'figure', image, caption, ...(heading ? { heading } : {}) };
+    }
+    if (kind === 'list') {
+      const items = (row.querySelector('.ncm-docpara__items')?.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+      const ordered = row.classList.contains('is-ordered');
+      if (!items.length && !heading) return null;
+      return { kind: 'list', ordered, items, ...(heading ? { heading } : {}) };
+    }
+    const text = cleanHtml((row.querySelector('[data-doc-text]')?.innerHTML || '').trim(), { mode: 'block' });
+    const quote = row.classList.contains('is-quote');
+    const redacted = row.classList.contains('is-redacted');
+    if (!text && !heading && !redacted) return null;
+    return { ...(heading ? { heading } : {}), text, ...(quote ? { quote: true } : {}), ...(redacted ? { redacted: true } : {}) };
+  }
+
+  // ── DOCUMENT paste / import (2026-10-23) ──────────────────────────────────
+  // Tester: "copy/paste from Journals carries all sorts of formatting… black text
+  // on dark, white blocks… one paragraph per box will take a lot to bring in."
+  // The browser's default paste writes the SOURCE's computed styles inline, and a
+  // text block's own `color !important` can't beat a child's inline declaration.
+  // So a paste is intercepted: HTML is whitelist-cleaned with every colour dropped
+  // and split into blocks (headings → sections, lists/figures/quotes → their own
+  // blocks; consecutive paragraphs stay together — a block is a section); plain
+  // text (a PDF viewer puts only text on the clipboard, hard-wrapped at every visual
+  // line) is reflowed back into paragraphs. A strip under the page offers Undo and,
+  // when one block took several paragraphs, "Split into N blocks" — the splitter
+  // guesses, so the guess is reversible in one click.
+
+  /** Paste into a text block. */
+  _onDocPaste(ev, blockEl) {
+    const cd = ev.clipboardData;
+    if (!cd) return;
+    const html = cd.getData('text/html') || '';
+    const text = cd.getData('text/plain') || '';
+    if (!html && !text) return;
+    ev.preventDefault();
+    const blocks = pasteToBlocks({ html, text });
+    if (!blocks.length) return;
+    const row = blockEl.closest('.ncm-docpara');
+    const snap = this._collectDocBlocks();
+    if (isSimplePaste(blocks)) {
+      // One text block, no heading: lands at the caret, the GM's other text survives.
+      this._docInsertAtCaret(blockEl, blocks[0].text || '');
+      this._docMarkParas(row);
+      const paras = this._docParaCount(blockEl.innerHTML);
+      if (paras > 1) this._docPasteStrip({ snap, count: 1, paras, row });
+      else this._docPasteClear();
+      this._renderPreview();
+      return;
+    }
+    // Structured paste: the first text block lands in THIS block (its heading fills an
+    // empty heading field), every other block is injected after it in order.
+    const [first, ...rest] = blocks;
+    let after = row;
+    if (first && !first.kind && !first.quote) {
+      this._docInsertAtCaret(blockEl, first.text || '');
+      const h = row?.querySelector('.ncm-docpara__h');
+      if (first.heading && h && !h.value.trim()) h.value = first.heading;
+      this._docMarkParas(row);
+    } else if (first) {
+      rest.unshift(first);
+    }
+    for (const b of rest) {
+      after.insertAdjacentHTML('afterend', this._docBlockHtml(b));
+      after = after.nextElementSibling;
+      this._docMarkParas(after);
+    }
+    this._docPasteStrip({ snap, count: blocks.length, row });
+    this._renderPreview();
+  }
+
+  /** Put HTML into a text block — at the caret when the caret is inside it, else appended; an empty block just takes it. */
+  _docInsertAtCaret(blockEl, html) {
+    if (!html) return;
+    const empty = !blockEl.textContent.trim() && !blockEl.querySelector('img');
+    if (empty) { blockEl.innerHTML = html; return; }
+    blockEl.focus();
+    const sel = window.getSelection?.();
+    const inside = !!(sel && sel.rangeCount && blockEl.contains(sel.anchorNode));
+    if (inside) { try { document.execCommand('insertHTML', false, html); return; } catch { /* fall through */ } }
+    blockEl.insertAdjacentHTML('beforeend', html);
+  }
+
+  /** Paragraph count as the EDITOR sees it (Chrome's Enter writes <div>s, a paste writes <p>s). */
+  _docParaCount(html) {
+    return Math.max(1, (String(html || '').match(/<(p|div)[\s>]/gi) || []).length);
+  }
+
+  /** Flag a block that holds several paragraphs (the split tool shows only there). */
+  _docMarkParas(row) {
+    if (!row) return;
+    const t = row.querySelector('[data-doc-text]');
+    row.classList.toggle('has-paras', !!t && this._docParaCount(t.innerHTML) > 1);
+  }
+
+  /** The after-paste strip: what happened · Split into N blocks (when apt) · Undo · dismiss. */
+  _docPasteStrip({ snap, count, paras = 1, row }) {
+    const page = this.element?.querySelector('.ncm-docpage');
+    if (!page) return;
+    page.querySelector('.ncm-docpaste')?.remove();
+    this._docPasteSnap = snap;
+    this._docPasteRow = row || null;
+    const what = count > 1 ? `Pasted as ${count} blocks` : `Pasted ${paras} paragraphs into this block`;
+    const split = (count === 1 && paras > 1 && row)
+      ? `<button type="button" class="ncm-shard-hdr-btn ncm-docpaste__btn" data-action="docPasteSplit"><i class="fas fa-grip-lines"></i> Split into ${paras} blocks</button>` : '';
+    page.insertAdjacentHTML('afterbegin',
+      `<div class="ncm-docpaste"><i class="fas fa-paste ncm-docpaste__ic"></i><span class="ncm-docpaste__what">${what}</span>${split}` +
+      `<button type="button" class="ncm-shard-hdr-btn ncm-docpaste__btn" data-action="docPasteUndo"><i class="fas fa-rotate-left"></i> Undo</button>` +
+      `<button type="button" class="ncm-shard-hdr-btn ncm-docpaste__x" data-action="docPasteDismiss" data-tooltip="Dismiss"><i class="fas fa-times"></i></button></div>`);
+  }
+
+  _docPasteClear() {
+    this.element?.querySelector('.ncm-docpaste')?.remove();
+    this._docPasteSnap = null;
+    this._docPasteRow = null;
+  }
+
+  /** Rebuild the block list from an authored paragraphs[] (the undo path + the journal import). */
+  _docRebuild(blocks) {
+    const list = this.element?.querySelector('[data-doc-list]');
+    if (!list) return;
+    list.innerHTML = (blocks?.length ? blocks : [{}]).map(b => this._docBlockHtml(b)).join('');
+    list.querySelectorAll('.ncm-docpara').forEach(r => this._docMarkParas(r));
+  }
+
+  /** Explode one block's paragraphs into one block each (the first keeps the heading). */
+  _docSplitRow(row) {
+    const block = this._collectDocRow(row);
+    if (!block || block.kind) return false;
+    const parts = splitBlockParagraphs(block);
+    if (parts.length < 2) { ui.notifications.info('NCM | This block holds a single paragraph — nothing to split.'); return false; }
+    row.insertAdjacentHTML('afterend', parts.map(b => this._docBlockHtml(b)).join(''));
+    let n = row.nextElementSibling;
+    for (let i = 0; i < parts.length && n; i++, n = n.nextElementSibling) this._docMarkParas(n);
+    row.remove();
+    return true;
+  }
+
+  static _onDocPasteUndo() {
+    if (!this._docPasteSnap) { this._docPasteClear(); return; }
+    this._docRebuild(this._docPasteSnap);
+    this._docPasteClear();
+    this._renderPreview();
+  }
+
+  static _onDocPasteSplit() {
+    const row = this._docPasteRow;
+    if (row?.isConnected) this._docSplitRow(row);
+    this._docPasteClear();
+    this._renderPreview();
+  }
+
+  static _onDocPasteDismiss() { this._docPasteClear(); }
+
+  static _onDocSplitBlock(event, target) {
+    const row = target.closest('.ncm-docpara');
+    if (row && this._docSplitRow(row)) { this._docPasteClear(); this._renderPreview(); }
+  }
+
+  /**
+   * Import from Journal: pick a journal TEXT page (the shared picker — folder path as the
+   * sub-line, top folder as the chip) and turn its HTML into blocks. Foundry enrichers
+   * (`@UUID[…]{Label}`) collapse to their label. Replace or Append when blocks already exist;
+   * an empty Title takes the page name.
+   */
+  static async _onDocImportJournal() {
+    const topOf = (j) => { let f = j?.folder ?? null; let g = 0; while (f?.folder && g++ < 12) f = f.folder; return f?.name || 'Unfiled'; };
+    const entries = [];
+    for (const j of game.journal?.contents || []) {
+      const pages = j.pages?.contents || [];
+      for (const pg of pages) {
+        if (pg.type !== 'text') continue;
+        const path = folderPathOf(j);
+        entries.push({
+          id: pg.uuid, name: pg.name, img: 'icons/svg/book.svg', group: topOf(j),
+          sub: path ? `${j.name} · ${path}` : j.name,
+          note: pages.length > 1 ? `${pages.length} pages` : '',
+        });
+      }
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    if (!entries.length) { ui.notifications.warn('NCM | No journal text pages in this world to import.'); return; }
+    const pick = await showNamePicker({
+      title: 'Import from Journal',
+      hint: 'Pick a journal page. Headings start sections; lists, images and quotes become their own blocks; paragraphs between headings stay together.',
+      entries, placeholder: 'search pages or journals…',
+    });
+    if (!pick?.id) return;
+    let page = null;
+    try { page = await fromUuid(pick.id); } catch { page = null; }
+    const html = page?.text?.content || '';
+    const blocks = htmlToBlocks(html, { enrichers: true });
+    if (!blocks.length) { ui.notifications.warn(`NCM | "${pick.name}" has no text to import.`); return; }
+    const existing = this._collectDocBlocks();
+    let mode = 'replace';
+    if (existing.length) {
+      mode = await new Promise((resolve) => {
+        let v = null;
+        adminDialog({
+          title: 'Import from Journal',
+          content: `<p>This document already has <b>${existing.length}</b> block${existing.length === 1 ? '' : 's'}. Replace them with the <b>${blocks.length}</b> imported block${blocks.length === 1 ? '' : 's'}, or add the import after them?</p>`,
+          buttons: {
+            replace: { icon: '<i class="fas fa-rotate"></i>', label: 'Replace', callback: () => { v = 'replace'; } },
+            append: { icon: '<i class="fas fa-plus"></i>', label: 'Append', callback: () => { v = 'append'; } },
+            cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+          },
+          default: 'append',
+          close: () => resolve(v),
+        }).render(true);
+      });
+      if (!mode) return;
+    }
+    this._docPasteClear();
+    this._docRebuild(mode === 'append' ? [...existing, ...blocks] : blocks);
+    const title = this.element?.querySelector('[name="docTitle"]');
+    if (title && !title.value.trim() && page?.name) title.value = page.name;
+    ui.notifications.info(`NCM | Imported ${blocks.length} block${blocks.length === 1 ? '' : 's'} from "${pick.name}".`);
+    this._renderPreview();
+    this._syncCmpChips();
+  }
+
+  /** Paste into the message rich-text body: cleaned HTML (colours dropped) or reflowed plain text. */
+  _onRtePaste(ev, surface) {
+    const cd = ev.clipboardData;
+    if (!cd) return;
+    const html = cd.getData('text/html') || '';
+    const text = cd.getData('text/plain') || '';
+    if (!html && !text) return;
+    ev.preventDefault();
+    const out = pasteToHtml({ html, text }, { mode: 'rich' });
+    if (!out) return;
+    surface.focus();
+    try { document.execCommand('insertHTML', false, out); } catch { surface.insertAdjacentHTML('beforeend', out); }
+    surface.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   /** Records — a database card: live initials avatar · fields · cycling status pill. */
@@ -3426,6 +3675,10 @@ export class DataShardComposer extends BaseApplication {
       const surf = rteBox.querySelector('[data-rte-surface]');
       if (surf) data.body = surf.innerHTML;
     }
+    // Save-time hygiene for the message body: structure + inline formatting stay, every
+    // literal colour/font/background goes (palette colours and var(--ncm-*) survive).
+    // Raw-HTML mode is cleaned too — scripts and pasted journal styling never persist.
+    if (rteBox && typeof data.body === 'string') data.body = cleanHtml(data.body, { mode: 'rich' });
 
     let timestamp = data.timestamp || '';
     if (timestamp && !timestamp.includes('Z') && !timestamp.match(/[+-]\d{2}:\d{2}$/)) {

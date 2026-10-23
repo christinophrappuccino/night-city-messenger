@@ -39,6 +39,7 @@ import {
 } from '../../utils/designHelpers.js';
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { getThreadMessages } from '../../utils/threading.js';
+import { cleanHtml } from '../../utils/richText.js';
 import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, canEncode as canEncodeShard, chatCardTime } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { selfKeys } from '../../utils/participants.js';
@@ -4845,6 +4846,14 @@ export class MessageViewerApp extends BaseApplication {
 
   _renderMessageBody(body, messageId) {
     if (!body) return '';
+
+    // Render-time hygiene (2026-10-23): a body pasted from a journal / Word / a web
+    // page carries the SOURCE's inline colours and backgrounds, which paint black text
+    // and white blocks on a dark theme (and the recipient sees them too). Drop every
+    // literal colour/font/background; keep structure, the module's own `var(--ncm-*)`
+    // styles (timestamp/location/signature tags), `ncm-*` classes and `data-label`
+    // (the ICE-encrypted block below depends on both). Mail already saved heals here.
+    body = cleanHtml(body, { mode: 'mail' });
 
     // Feature 2 — Transform ncm-encrypted-text-block into interactive locked/decrypted blocks
     const decryptedBlocks = this._decryptedBlocks || new Set();

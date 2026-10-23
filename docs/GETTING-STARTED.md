@@ -163,6 +163,8 @@ Open the shard and add entries. There are **18 kinds of content**, and each one 
 
 Every type has a **Load example** button. That's the fastest way to learn: load the example, look at it, change it.
 
+**Bringing text in from elsewhere.** Paste straight into a Document paragraph (or a message body) from a journal, Word, a web page or a PDF. The module strips the source's colours and fonts so nothing lands black-on-dark, turns headings into new sections, keeps lists and images as their own blocks, and rejoins the hard-wrapped lines a PDF copy produces. A strip appears after the paste with **Undo** and, when several paragraphs landed in one block, **Split into N blocks**. For a whole page at once, use **Import from Journal** under the Document body.
+
 Almost anything can be locked. Encrypted photos, blacked-out paragraphs, hidden identities — each one takes a skill roll to open, and you can set failed rolls to trigger a trace.
 
 ### Give it to the players
