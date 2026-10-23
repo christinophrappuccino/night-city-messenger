@@ -3,7 +3,7 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
-## [Unreleased]
+## [1.4.0] — 2026-10-23
 
 ### Added
 - **Paste hygiene for Documents and message bodies.** Pasting from a Foundry journal, Word, a web page or a PDF into a shard Document paragraph or a message body no longer brings the source's colours and fonts with it (the "black text on a dark shard / white blocks" report). Headings become new sections, lists and images become their own blocks, and hard-wrapped PDF lines are rejoined into paragraphs. An Undo strip appears after every paste, with **Split into N blocks** when several paragraphs landed in one.
@@ -70,4 +70,4 @@ patch = fixes, minor = new features, major = breaking changes.
 
 - Initial public release.
 
-[Unreleased]: https://github.com/christinophrappuccino/night-city-messenger/compare/v1.0.0...dev
+[1.4.0]: https://github.com/christinophrappuccino/night-city-messenger/releases/tag/v1.4.0
