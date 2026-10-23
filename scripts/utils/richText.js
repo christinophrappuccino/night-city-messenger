@@ -1,7 +1,7 @@
 /**
  * Rich-text hygiene for everything a person can PASTE into (2026-10-23).
  *
- * Pure — no Foundry globals, no DOM — so `tools/sims/test-rich-paste.mjs`
+ * Pure — no Foundry globals, no DOM — so `dev/tools/sims/test-rich-paste.mjs`
  * drives the real functions. Three jobs:
  *
  *   cleanHtml(html, {mode, colors})   whitelist-clean a fragment. A browser's

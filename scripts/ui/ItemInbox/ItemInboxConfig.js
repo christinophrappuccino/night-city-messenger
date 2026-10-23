@@ -1026,7 +1026,7 @@ export class ItemInboxConfig extends BaseApplication {
     // ─── Tracing ───
     const tracing = netConfig.tracing ?? {};
 
-    // ─── Integrity ─── (resolved over every default — docs/SHARD-INTEGRITY.md)
+    // ─── Integrity ─── (resolved over every default — dev/design/SHARD-INTEGRITY.md)
     const integrity = config.integrity ?? {};
     const ig = resolveIntegrity(integrity);
 

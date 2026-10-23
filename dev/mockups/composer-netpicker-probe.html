@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Composer Netpicker Probe</title>
+<!--
+  Renders the REAL templates/message-composer/message-composer.hbs through
+  Handlebars against the real Foundry core + CPR + module cascade, with the
+  header network picker / GM date chip in a chosen state. A palette/layout
+  check, not a data check.
+    ?as=gm|player   ?open=1 (picker open)   ?via=1 (GM override)   ?dated=1
+    ?q=ara&f=corporate (GM filter state)
+    ?t=clean-dark|clean-light|high-contrast (GM view admin preset)
+  It fetch()es the .hbs, so open it through dev/tools/serve-mockups.cjs (or a
+  headless render with --allow-file-access-from-files).
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet'; l.href = href;
+      document.head.appendChild(l);
+    }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js"></script>
+<style>
+  html, body { margin: 0; background: #07070b; }
+  .frame { position: absolute; left: 20px; top: 20px; width: 640px; height: 560px; }
+  .frame > .window-content { height: 100%; padding: 0; }
+</style>
+</head>
+<body>
+<div class="frame application ncm-app ncm-message-composer"><section class="window-content" id="host"></section></div>
+<script>
+(async () => {
+  const sp = new URLSearchParams(location.search);
+  const isGM = sp.get('as') !== 'player';
+  // ?t=clean-dark|clean-light|high-contrast = the composer in GM view.
+  if (sp.get('t')) document.querySelector('.frame').dataset.ncmAdminTheme = sp.get('t');
+  const H = Handlebars;
+  H.registerHelper('eq', (a, b) => a === b);
+  H.registerHelper('gt', (a, b) => a > b);
+  H.registerHelper('gte', (a, b) => a >= b);
+  H.registerHelper('ncm-net-icon', (t) => new H.SafeString(`<i class="fas ${t?.icon || 'fa-wifi'}"></i>`));
+  H.registerHelper('ncm-anon-avatar', () => '');
+
+  const nets = [
+    ['CITINET', 'CitiNet', 'public', 'fa-wifi', '#19f3f7', 90, true],
+    ['AFTER', 'Afterlife Back Room', 'hidden', 'fa-martini-glass', '#f472b6', 30, true],
+    ['ARASAKA', 'Arasaka CorpNet', 'corporate', 'fa-building', '#F65261', 70, true],
+    ['BIO', 'Biotechnica Lab', 'corporate', 'fa-flask', '#22c55e', 40, true],
+    ['DARKNET', 'DarkNet', 'hidden', 'fa-user-secret', '#a855f7', 55, true],
+    ['MILI', 'Militech TacNet', 'corporate', 'fa-crosshairs', '#84cc16', 0, false],
+    ['NCPD', 'NCPD GovNet', 'government', 'fa-shield-halved', '#3b82f6', 0, false],
+  ];
+  const TL = { public: 'Public Subnet', hidden: 'Hidden Subnet', corporate: 'Corporate Subnet', government: 'Government Subnet' };
+  const via = isGM && sp.get('via') === '1' ? 'ARASAKA' : null;
+  let rows;
+  if (isGM) {
+    rows = nets.map(([id, name, kind, icon, color, sig, inRange]) => {
+      const mine = id === 'CITINET', chosen = via ? via === id : mine;
+      return { id, name, kind, color, theme: { icon }, signalStrength: sig, inRange, oor: !inRange, pinned: mine,
+        state: chosen ? 'active' : 'available',
+        chip: chosen ? (mine ? 'Default' : 'Sending via') : (mine ? 'Use default' : 'Send via'),
+        chipClass: chosen ? (mine ? 'on' : 'via') : 'go',
+        meta: mine ? `Your connection · ${sig}%` : `${TL[kind]} · ${sig}%${inRange ? '' : ' · out of range'}`,
+        search: `${name} ${TL[kind]}`.toLowerCase() };
+    });
+  } else {
+    rows = [
+      { id: 'CITINET', name: 'CitiNet', color: '#19f3f7', theme: { icon: 'fa-wifi' }, signalStrength: 90, state: 'active', chip: 'Connected', chipClass: 'on', meta: 'Public Subnet · 90%' },
+      { id: 'DARKNET', name: 'DarkNet', color: '#a855f7', theme: { icon: 'fa-user-secret' }, signalStrength: 55, state: 'available', chip: 'Connect', chipClass: 'go', meta: 'Hidden Subnet · 55%' },
+      { id: 'ARASAKA', name: 'Arasaka CorpNet', color: '#F65261', theme: { icon: 'fa-building' }, signalStrength: 70, state: 'locked', chip: 'Locked', chipClass: 'locked', meta: 'Corporate Subnet · 70%' },
+    ];
+  }
+  const others = rows.filter(r => !r.pinned);
+  const filters = isGM ? [
+    { key: 'all', label: 'All', count: others.length, active: true },
+    { key: 'range', label: 'In range', count: others.filter(r => r.inRange).length },
+    ...['hidden', 'corporate', 'government'].map(k => ({ key: k, label: { hidden: 'Hidden', corporate: 'Corp', government: 'Gov' }[k], count: others.filter(r => r.kind === k).length })),
+  ] : [];
+  const viaNet = via ? nets.find(n => n[0] === via) : null;
+  const ctx = {
+    isGM, isGMSendAs: isGM, fromName: isGM ? 'Rogue' : 'V', fromEmail: isGM ? 'rogue@afterlife.nc' : 'v@citinet.nc',
+    fromInitials: isGM ? 'RO' : 'V',
+    networkName: viaNet ? viaNet[1].toUpperCase() : 'CITINET', networkThemeColor: viaNet ? viaNet[4] : '#19f3f7',
+    netPillState: 'connected', netPillBars: [1, 1, 1, viaNet ? 0 : 1].map(a => ({ active: !!a })), fxTags: viaNet ? [{ label: 'RESTRICTED', variant: 'warn' }] : [],
+    netViaOverride: !!viaNet,
+    netPicker: { isGM, rows, hasRows: true, filters, showFilters: isGM,
+      header: isGM ? 'Send this message via' : 'Available Networks',
+      footer: isGM ? 'This message only — you stay on CitiNet' : 'Switches your connection — your inbox follows' },
+    sendBackdated: isGM && sp.get('dated') === '1', sendTimestampFormatted: '2045.10.12 03:40',
+    currentGameTime: '2045.10.17 22:14',
+    modeLabelText: isGM ? 'Send-As' : 'New', modeLabelIcon: isGM ? 'fa-masks-theater' : 'fa-pen', modeKey: isGM ? 'sendas' : 'compose',
+    recipients: [], priorities: [{ id: 'normal', label: 'Normal', active: true }], selfDestructOptions: [], anonStyleList: [],
+    attachments: [], errors: {}, charCount: 0, subject: 'Package is ready', body: '',
+  };
+  try {
+    const src = await (await fetch('../../templates/message-composer/message-composer.hbs')).text();
+    document.getElementById('host').innerHTML = H.compile(src)(ctx);
+  } catch (e) { document.title = 'ERR ' + e.message; return; }
+
+  if (sp.get('open') === '1') {
+    const pill = document.querySelector('[data-action="toggleNetPicker"]');
+    const menu = document.querySelector('[data-id="net-picker"]');
+    menu.classList.remove('ncm-hidden');
+    pill.classList.add('ncm-composer__net-pill--open');
+    menu.style.left = pill.offsetLeft + 'px';
+    menu.style.animation = 'none';
+    const q = sp.get('q') || '', f = sp.get('f') || 'all';
+    menu.querySelectorAll('[data-net-filter]').forEach(c => c.classList.toggle('ncm-composer__net-fchip--on', c.dataset.netFilter === f));
+    const s = menu.querySelector('[data-id="net-search"]'); if (s) s.value = q;
+    let shown = 0;
+    menu.querySelectorAll('[data-net-pick]').forEach(r => {
+      if (r.dataset.pinned) return;
+      const okF = f === 'all' || (f === 'range' ? r.dataset.range === '1' : r.dataset.kind === f);
+      const okk = okF && (!q || (r.dataset.search || '').includes(q));
+      r.classList.toggle('ncm-hidden', !okk); if (okk) shown++;
+    });
+  }
+  // Report: pill + chip computed boxes (button reset sanity).
+  const pill = document.querySelector('.ncm-composer__net-pill').getBoundingClientRect();
+  const chip = document.querySelector('.ncm-composer__time-chip').getBoundingClientRect();
+  document.title = `pill ${Math.round(pill.width)}x${Math.round(pill.height)} | chip ${Math.round(chip.width)}x${Math.round(chip.height)}`;
+})();
+</script>
+</body>
+</html>

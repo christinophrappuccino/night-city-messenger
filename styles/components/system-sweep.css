@@ -3,7 +3,7 @@
  * Pairs with scripts/ui/content/SystemSweep.js (framework-free promise modal,
  * appended into the viewer so it inherits that machine's --ncm-* preset). Accent
  * = --ct-c (cyan) via data-ct-color — DEFENSIVE recon, distinct from upload's
- * offensive purple. Lifted from docs/mockups/system-sweep-mock.html.
+ * offensive purple. Lifted from dev/mockups/system-sweep-mock.html.
  * @import'ed AFTER resident-console.css in night-city-messenger.css.
  */
 

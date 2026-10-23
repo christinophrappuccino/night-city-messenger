@@ -3,7 +3,7 @@
  * @file scripts/ui/content/EncoderModel.js
  * @module night-city-messenger
  * @description Everything the player-facing Shard Encoder decides with a number lives
- *   here, with NO Foundry globals, so it is sim-testable (tools/sims/test-encoder-model.mjs)
+ *   here, with NO Foundry globals, so it is sim-testable (dev/tools/sims/test-encoder-model.mjs)
  *   and so the GM card, the Encoder window and the tests can never disagree.
  *
  *   The shape of the GM's knobs is `ENCODER_DEFAULTS` — the world setting `encoderConfig`

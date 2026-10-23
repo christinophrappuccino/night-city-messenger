@@ -3,8 +3,8 @@
  * @file scripts/ui/content/IntegrityModel.js
  * @module night-city-messenger
  *
- * No Foundry globals, so `tools/sims/test-integrity.mjs` drives the real thing.
- * Design: docs/SHARD-INTEGRITY.md.
+ * No Foundry globals, so `dev/tools/sims/test-integrity.mjs` drives the real thing.
+ * Design: dev/design/SHARD-INTEGRITY.md.
  *
  * Two layers:
  *   - the SHARD's integrity (one number, the bar) — drives the visual glitching

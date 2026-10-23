@@ -156,7 +156,7 @@ export class TimeService {
    * Convert a SimpleCalendar `DateTime` ({year, month, day, hour, minute, seconds},
    * month/day zero-based indices) into epoch milliseconds in UTC — SC values are
    * game-world time, not local timezone. Pure (no Foundry globals) so it can be
-   * unit-tested; see tools/sims/test-simple-calendar-date.mjs.
+   * unit-tested; see dev/tools/sims/test-simple-calendar-date.mjs.
    * @param {{year:number, month:number, day:number, hour?:number, minute?:number, seconds?:number}} dt
    * @returns {number}
    */

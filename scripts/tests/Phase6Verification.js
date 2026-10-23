@@ -232,7 +232,7 @@ export class Phase6Verification {
       return { passed: true, detail: `${Object.keys(L.LEGIBILITY_PRESETS).length} presets, prefs clamp, motion only lowers` };
     });
 
-    // ─── 6.16: Shard integrity (docs/SHARD-INTEGRITY.md) ───
+    // ─── 6.16: Shard integrity (dev/design/SHARD-INTEGRITY.md) ───
     await this._check('6.16', 'Shard integrity — rules, service, relay', async () => {
       const M = await import('../ui/content/IntegrityModel.js');
       const ds = game.nightcity?.dataShardService;

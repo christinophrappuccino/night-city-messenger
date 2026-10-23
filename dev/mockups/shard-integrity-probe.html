@@ -1,0 +1,174 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Shard Integrity probe (REAL viewer code)</title>
+<!--
+  Shard Integrity probe — the BUILT feature, not the design mock.
+
+  Imports the REAL ItemInboxApp + DataShardService + IntegrityModel/FX, builds a
+  pretend shard (an item + a journal of the built-in examples), runs the real
+  `_enrichWithIntegrity` / `_integrityContext` / `_renderIntegrity`, and renders
+  the REAL item-inbox.hbs + content-body.hbs against the real cascade.
+  (The design mock is shard-integrity-mock.html.)
+
+  Serve it:  node dev/tools/serve-mockups.cjs
+    http://127.0.0.1:8123/dev/mockups/shard-integrity-probe.html
+
+    ?int=0-100                   integrity %                  (default 38)
+    ?mode=cosmetic|mechanical                                 (default mechanical)
+    ?leg=readable|rough|hard                                  (default rough)
+    ?view=player|gm
+    ?types=spreadsheet,chatlog,… which entries
+    ?lv=0.5                      every entry's damage level  (or ?lv=spreadsheet:0.75,chatlog:1)
+    ?hide=1 ?money=0 ?glitchy=0 ?recon=0 ?deadlist=list|count|none
+    ?still=1                     no motion (headless)        ?h=<px> frame height
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+<style>
+  html, body { margin: 0; background: #0b0b10; }
+  body { padding: 16px; font: 12px monospace; color: #9ab; }
+  #lbl { margin-bottom: 8px; white-space: pre; }
+  #app { position: relative !important; inset: auto !important; width: 680px; height: 900px; display: flex; flex-direction: column; border-radius: 4px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+  #app > .window-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0; }
+  #app .ncm-item-inbox { height: 100%; display: flex; flex-direction: column; }
+  #app .ncm-shard-content { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  body.still .ncm-app *, body.still .ncm-app *::before, body.still .ncm-app *::after { animation: none !important; }
+  body.still .ncm-app .ncm-ig-drop { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="lbl">loading…</div>
+<div class="application ncm-app ncm-item-inbox" id="app" data-ncm-animation-level="full">
+  <header class="window-header"><h1 class="window-title">Kang Tao courier shard</h1><button class="header-control fa-solid fa-xmark"></button></header>
+  <section class="window-content" id="host"></section>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  if (q.get('still') === '1') document.body.classList.add('still');
+  if (q.get('h')) document.getElementById('app').style.height = q.get('h') + 'px';
+  const isGM = q.get('view') === 'gm';
+  class ApplicationV2 { constructor(o = {}) { this.options = o; } render() {} close() {} _onRender() {} setPosition() {} }
+  const dc = (o) => (o && typeof o === 'object') ? (Array.isArray(o) ? o.map(dc) : Object.fromEntries(Object.entries(o).map(([k, v]) => [k, dc(v)]))) : o;
+  window.foundry = {
+    applications: { api: { ApplicationV2, HandlebarsApplicationMixin: (B) => B }, instances: new Map() },
+    utils: {
+      mergeObject: (a, b) => { const m = (x, y) => { const out = dc(x); for (const [k, v] of Object.entries(y || {})) out[k] = v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' ? m(out[k], v) : dc(v); return out; }; return m(a, b); },
+      deepClone: dc, randomID: () => Math.random().toString(36).slice(2, 10), getRoute: (p) => p, debounce: (f) => f,
+      getProperty: (o, p) => p.split('.').reduce((a, k) => a?.[k], o),
+    },
+  };
+  window.Hooks = { on() {}, once() {}, off() {}, call() {}, callAll() {} };
+  window.ui = { notifications: { info() {}, warn() {}, error() {} }, windows: {} };
+  window.CONFIG = {};
+  window.Dialog = class {};
+  window.game = {
+    user: { isGM, id: 'u1', character: null }, users: { activeGM: { id: 'gm' }, contents: [] },
+    settings: { get: () => undefined, set: async () => {}, register() {} },
+    actors: { get: () => null, contents: [], filter: () => [] }, items: { get: () => null, contents: [] },
+    journal: { get: () => null, contents: [] },
+    i18n: { localize: (s) => s, format: (s) => s },
+    nightcity: {
+      timeService: { getCurrentTime: () => new Date().toISOString(), getCurrentTimeMs: () => Date.now() },
+      soundService: { play() {} }, eventBus: { emit() {}, on: () => ({ unsubscribe() {} }) },
+      notificationService: { showToastV2() {} },
+      masterContactService: { getByEmail: () => null, getContact: () => null, isSendOnly: () => false },
+    },
+  };
+</script>
+<script type="module">
+const lbl = document.getElementById('lbl');
+try {
+  const M = await import('../../scripts/ui/content/IntegrityModel.js');
+  const { MODULE_ID } = await import('../../scripts/utils/constants.js');
+  const { BUILTIN_EXAMPLES } = await import('../../scripts/ui/content/EntryTemplates.js');
+  const { DataShardService } = await import('../../scripts/services/DataShardService.js');
+  const { ItemInboxApp } = await import('../../scripts/ui/ItemInbox/ItemInboxApp.js');
+
+  // ── a pretend shard ──
+  const svg = (a, b, t) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><defs><linearGradient id="g" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="320" height="200" fill="url(#g)"/><text x="12" y="22" font-family="monospace" font-size="13" fill="#fff" opacity=".7">${t}</text></svg>`);
+  const types = (q.get('types') || 'spreadsheet,chatlog,gallery,document,syslog,eddies,payload').split(',');
+  const lvParam = q.get('lv') ?? 'auto';
+  const lvFor = (t, i) => {
+    if (lvParam === 'auto') return [0.5, 0.25, 0.75, 1, 0.5, 0.5, 0.5][i % 7];
+    if (lvParam.includes(':')) { const m = Object.fromEntries(lvParam.split(',').map((p) => p.split(':'))); return Number(m[t] ?? 0); }
+    return Number(lvParam);
+  };
+  const pages = types.map((t, i) => {
+    const e = structuredClone(BUILTIN_EXAMPLES[t]);
+    const cd = e.contentData || {};
+    if (t === 'gallery') cd.images.forEach((im, k) => { im.locked = false; if (!im.corrupted) im.url = svg(['#334', '#432', '#244', '#423'][k], ['#a6f', '#f86', '#5fd', '#fd5'][k], im.label); });
+    if (t === 'chatlog') cd.messages.forEach((m) => { if (m.image) m.image = svg('#233', '#5af', 'B2'); });
+    if (t === 'document') cd.declassify = false;
+    if (t === 'schematic') cd.imageUrl = svg('#0b1d2a', '#123b55', 'BP');
+    if (t === 'dossier') { cd.faceLocked = false; cd.profile.enabled = false; cd.declassify = false; }
+    if (t === 'location') cd.locked = false;
+    return { id: `p${i}`, text: { content: e.body || '' }, flags: { [MODULE_ID]: {
+      type: 'shard-message', messageId: `m-${t}`, contentType: t, from: e.from, subject: e.subject, contentData: cd,
+      timestamp: new Date(Date.now() - (i + 1) * 3.6e6).toISOString(), corruption: lvFor(t, i), corrupted: false,
+    } } };
+  });
+  const pct = Number(q.get('int') ?? 38);
+  const integrity = {
+    enabled: true, mode: q.get('mode') || 'mechanical', maxIntegrity: 100, currentIntegrity: pct,
+    legibility: q.get('leg') || 'rough', hideLost: q.get('hide') === '1', protectMoney: q.get('money') !== '0',
+    programsGlitchy: q.get('glitchy') !== '0', recon: { enabled: q.get('recon') !== '0' },
+    dead: { list: q.get('deadlist') || 'list' }, history: pct ? [100, 85, 70, 55, 40, pct].filter((v, i, a) => v >= pct || i === a.length - 1) : [100, 85, 70, 55, 40, 25, 10, 0],
+    lastHit: { by: 'V', at: new Date().toISOString() },
+  };
+  const flags = { isDataShard: true, journalId: 'J', config: { integrity, preset: 'blank' }, state: {} };
+  const item = { id: 'I', uuid: 'Item.I', name: 'Kang Tao courier shard', getFlag: (_m, k) => flags[k] };
+  game.journal.get = () => ({ pages });
+  const svc = new DataShardService();
+  game.nightcity.dataShardService = svc;
+
+  // ── the REAL view-model methods ──
+  const app = Object.create(ItemInboxApp.prototype);
+  app.item = item; app._playerContactEmails = new Set(); app._igPeek = new Set((q.get('peek') || '').split(',').filter(Boolean));
+  Object.defineProperty(app, 'element', { value: document.getElementById('app') });
+  const ig = svc.checkIntegrity(item);
+  const raw = svc.getShardMessages(item);
+  const entries = raw.map((e) => app._enrichWithIntegrity(e, ig)).filter(Boolean);
+  const indexChips = app._buildIndexChips(raw.filter((e) => entries.some((x) => x.id === e.id)), 0, entries[0]?.id);
+  app._applyIntegrityToChips(indexChips, entries);
+  const igCtx = app._integrityContext(ig, null);
+
+  // ── the REAL templates ──
+  const H = Handlebars;
+  const cmp = (fn) => function (a, b, o) { const r = fn(a, b); return o?.fn ? (r ? o.fn(this) : o.inverse(this)) : r; };
+  H.registerHelper('eq', cmp((a, b) => a === b)); H.registerHelper('neq', cmp((a, b) => a !== b));
+  H.registerHelper('gt', cmp((a, b) => a > b)); H.registerHelper('lt', cmp((a, b) => a < b));
+  H.registerHelper('gte', cmp((a, b) => a >= b)); H.registerHelper('lte', cmp((a, b) => a <= b));
+  H.registerHelper('and', (...a) => a.slice(0, -1).every(Boolean)); H.registerHelper('or', (...a) => a.slice(0, -1).some(Boolean));
+  H.registerHelper('not', (v) => !v); H.registerHelper('add', (a, b) => (a || 0) + (b || 0));
+  H.registerHelper('ncm-isGM', () => isGM); H.registerHelper('helperMissing', () => '');
+  H.registerPartial('modules/night-city-messenger/templates/content/content-body.hbs', await (await fetch('../../templates/content/content-body.hbs')).text());
+  const tpl = H.compile(await (await fetch('../../templates/item-inbox/item-inbox.hbs')).text());
+  const ctx = {
+    hasItem: true, isGM, presetKey: 'blank', shardDisplayName: item.name, presetLabel: 'BLANK',
+    integrityEnabled: true, integrityPercent: ig.percentage, integrityTier: ig.tier, ...igCtx,
+    visibleEntries: entries, hasEntries: entries.length > 0, showIndexStrip: !ig.isBricked, indexChips, totalEntryCount: entries.length, isDestroyed: ig.isBricked, shardTextScale: 1,
+  };
+  document.getElementById('host').innerHTML = tpl(ctx);
+  app._renderIntegrity({ ...ctx });
+  document.title = `integrity probe — ${ig.percentage}% ${ig.tier} · ${ig.mode} · ${entries.length} entries`;
+  lbl.textContent = `${ig.percentage}% ${ig.tier} · ${ig.mode} · ${igCtx.igLegibility} · ${isGM ? 'GM' : 'player'} · entries ${entries.map((e) => `${e.contentType}:${e.ig?.pct ?? 0}${e.ig?.gone ? '✕' : ''}`).join(' ')}`;
+} catch (e) {
+  lbl.textContent = `FAILED: ${e.message}\n${e.stack}\n\nServe it: node dev/tools/serve-mockups.cjs`;
+  console.error(e);
+}
+</script>
+</body>
+</html>

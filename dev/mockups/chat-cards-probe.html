@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>chat cards probe</title>
+<!--
+  Probe: renders the REAL chat templates (templates/chat/*.hbs) through Handlebars
+  (loaded from the Foundry install) against the real cascade, plus the two JS-built
+  cards from the real modules, and runs the REAL per-client add-contact decoration
+  (ChatCards.decorateChatCards) with a stubbed viewer.
+  It fetches .hbs files and imports modules, so it must be SERVED
+  (node dev/tools/serve-mockups.cjs) or rendered headless with --allow-file-access-from-files.
+  ?w=300|360   ?viewer=v|none   <title> reports the result.
+-->
+<link rel="stylesheet" id="css-foundry">
+<link rel="stylesheet" id="css-cpr">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<script id="hbs-lib"></script>
+<style>
+  body { margin: 0; padding: 22px 26px 60px; background: #0b0b10; color: #ccc; font-family: 'Rajdhani', sans-serif; }
+  .log { width: var(--w, 300px); background: rgba(0,0,0,.5); border: 1px solid #1e1e32; padding: 6px; display: flex; flex-direction: column; gap: 8px; }
+  .chat-message { background: #0f0f18; border: 1px solid #1e1e32; padding: 6px; }
+  .chat-message .message-header { font: 600 11px 'Rajdhani', sans-serif; color: #8888a0; display: flex; justify-content: space-between; margin-bottom: 4px; }
+  /* ?light=1 — the Cyberpunk RED system's light chat theme: parchment messages, dark text */
+  body.light { background: #d9d6cc; } body.light .log { background: #ece9e0; border-color: #bbb; }
+  body.light .chat-message { background: #f4f1ea; border-color: #c8c4b8; color: #222; } body.light .message-header { color: #555; }
+  #msg { font: 12px monospace; color: #f65261; white-space: pre-wrap; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="log" id="log"></div>
+<div id="msg"></div>
+<script type="module">
+const isFile = location.protocol === 'file:';
+document.getElementById('css-foundry').href = isFile ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css' : '/_vendor/foundry2.css';
+document.getElementById('css-cpr').href = isFile ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr-main.css';
+const Q = new URLSearchParams(location.search);
+if (Q.get('w')) document.documentElement.style.setProperty('--w', Q.get('w') + 'px');
+if (Q.get('light')) document.body.classList.add('light');
+const msg = document.getElementById('msg');
+const log = document.getElementById('log');
+const wrap = (who, html) => `<div class="chat-message"><div class="message-header"><span>${who}</span><span>Just now</span></div>${html}</div>`;
+
+// Handlebars: Foundry's own copy (browser build)
+await new Promise((res, rej) => {
+  const s = document.createElement('script');
+  s.src = isFile ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/node_modules/handlebars/dist/handlebars.js' : '/_vendor/handlebars.js';
+  s.onload = res; s.onerror = () => rej(new Error('Handlebars did not load'));
+  document.head.appendChild(s);
+});
+
+// just enough Foundry for helpers.js / ChatCards.js
+const settings = { dateFormat: 'DMY', dateMonthStyle: 'short', timeFormat: '24h', operatorActorId: '' };
+const contacts = [{ email: 'judy@mox.nc' }];
+const V = { id: 'v', name: 'V', isOwner: true, getFlag: (m, k) => (k === 'contacts' ? contacts : null) };
+globalThis.game = {
+  user: { id: 'u', isGM: false, name: 'Alice', character: Q.get('viewer') === 'none' ? null : V },
+  users: [{ id: 'u', isGM: false }, { id: 'g', isGM: true }],
+  actors: { get: (id) => (id === 'v' ? V : null), contents: [V], filter: (fn) => [V].filter(fn) },
+  settings: { get: (m, k) => settings[k] },
+  nightcity: {
+    masterContactService: { getContact: () => null, getByActorId: () => null, getByEmail: () => null, isSendOnly: (e) => e === 'system@localhost' },
+    timeService: { getCurrentTime: () => '2077-10-20T22:14:00.000Z' },
+    contactRepository: { addContact: async (owner, d) => { contacts.push({ email: d.email }); return { success: true }; } },
+    soundService: { play: () => {} },
+  },
+};
+globalThis.ui = { notifications: { info: (m) => console.log(m), warn: (m) => console.warn(m), error: (m) => console.error(m) } };
+globalThis.Hooks = { on: () => {}, once: () => {}, off: () => {}, call: () => {}, callAll: () => {} };
+globalThis.ChatMessage = { create: async (d) => { log.insertAdjacentHTML('beforeend', wrap('GM (whisper)', d.content)); }, getSpeaker: () => ({}) };
+globalThis.foundry = { utils: { mergeObject: (a, b) => ({ ...a, ...b }), randomID: () => 'id' } };
+
+try {
+  const { whisperCardHtml, chatCardTime } = await import('../../scripts/utils/helpers.js');
+  const { decorateChatCards, addContactFromCard } = await import('../../scripts/integrations/ChatCards.js');
+  const { postNetActionCard } = await import('../../scripts/ui/content/NetResolve.js');
+  // fetch() refuses file:// even with --allow-file-access-from-files; XHR does not
+  const loadText = (url) => new Promise((res, rej) => { const x = new XMLHttpRequest(); x.open('GET', url); x.onload = () => (x.status === 0 || x.status === 200) ? res(x.responseText) : rej(new Error(`${url}: ${x.status}`)); x.onerror = () => rej(new Error(`${url}: load failed`)); x.send(); });
+  const tpl = async (name) => Handlebars.compile(await loadText(`../../templates/chat/${name}.hbs`));
+  const [card, hack, ice, mal, bc] = await Promise.all(['message-card', 'hack-result', 'ice-retaliation', 'malware-analysis', 'network-broadcast'].map(tpl));
+  const IMG = (seed) => `https://picsum.photos/seed/${seed}/68/68`;
+  const BODY = `<p>Job's on for tonight. Meet at the Afterlife, back booth, <b>23:00 sharp</b>. Bring the deck. Nix says the Arasaka node is the one from the dossier.</p><p>Don't be late. Rogue doesn't do second chances.</p>`;
+  const TAIL = `<p>Second thing: the dossier Nix pulled has a hole in it. The Execs floor has two guard rotations, not one, and the second only shows on the Thursday log. Plan for two.</p><p>Third: money up front this time. Half on the table at the Afterlife, half when the shard is in my hand.</p><ul><li>Deck, two spare blanks</li><li>The Arasaka badge from the last run</li></ul>`;
+  const when = chatCardTime('2077-10-20T21:00:00.000Z');
+  const people = { from: { name: 'Rogue', addr: 'rogue@afterlife.nc', email: 'rogue@afterlife.nc', actorId: 'rogue', contactId: 'mc-rogue', portrait: IMG('n1') }, to: { name: 'V', addr: 'v@nightcity.net', email: 'v@nightcity.net', actorId: 'v', contactId: '', portrait: IMG('p1') } };
+  log.innerHTML = [
+    wrap('GM', card({ message: { subject: 'Afterlife tonight', priority: 'urgent', network: 'CitiNet' }, ...people, bodyHead: BODY, isLong: false, when, sharedBy: 'GM', viaGM: true, showPriority: true })),
+    wrap('V', card({ message: { subject: 'Afterlife tonight, the long version', network: 'CitiNet' }, from: { name: 'Judy Alvarez', addr: 'judy@mox.nc', email: 'judy@mox.nc', actorId: 'judy', portrait: IMG('p2') }, to: people.to, bodyHead: BODY, bodyTail: TAIL, isLong: true, moreLines: 9, when, sharedBy: 'V', viaGM: false, showPriority: false })),
+    wrap('V', hack({ actorName: 'V', skillName: 'Interface', statName: 'TECH', statValue: 7, skillLevel: 4, rollValue: 8, total: 19, dc: 15, success: true, marginAbs: 4, contextLine: 'Network bypass, Arasaka Subnet', when: chatCardTime(), networkDisplay: 'Arasaka Subnet' })),
+    wrap('V', hack({ actorName: 'V', skillName: 'Electronics/Security Tech', statName: 'TECH', statValue: 6, skillLevel: 2, rollValue: 1, processedRoll: -6, rollChanged: true, luckSpent: 2, total: 4, dc: 16, success: false, isFumble: true, marginAbs: 12, contextLine: 'Camera loop, NCPD precinct', when: chatCardTime(), networkDisplay: 'NCPD Subnet' })),
+    wrap('Hellhound', ice({ iceName: 'Hellhound', iceImg: IMG('ice'), iceClassDisplay: 'BLACK ICE · ATK 6 · attacker', actorName: 'V', damage: 11, rollLine: 'ATK 6 + 1d10 (5)', hpBefore: 35, hpAfter: 24, contextLabel: 'Data Shard', networkDisplay: 'Arasaka Subnet', when: chatCardTime() })),
+    wrap('V', mal({ actorName: 'V', source: 'promo@bangme.nc', subject: 'FREE braindance, claim now', malwareType: 'Worm', when: chatCardTime(), networkDisplay: 'CitiNet' })),
+    wrap('GM', bc({ networkName: 'CitiNet', message: 'NCPD curfew in effect for Watson from 22:00. All CitiNet traffic in the district is logged.', when: chatCardTime() })),
+    wrap('GM (whisper)', whisperCardHtml({ tone: 'warn', icon: 'fa-fire', title: 'NCM trace', lines: ['A trace is closing in on <b>V</b> at <b>Arasaka Subnet</b>.', '<span class="ncm-cc__sub">Heat 35 → 55 (hot)</span>'] })),
+  ].join('');
+  postNetActionCard({ verb: 'Backdoor', title: 'a breach', actorName: 'V', hostName: 'Arasaka node', skill: 'Interface', dv: 15, total: 19, ok: true });
+  // the per-client half, exactly as the renderChatMessage hook runs it
+  decorateChatCards(log);
+  if (Q.get('click')) { const b = log.querySelector('button[data-action="ncm-add-contact"]'); if (b) await addContactFromCard(b); }
+  const btns = log.querySelectorAll('button.ncm-cc__act').length;
+  const ins = log.querySelectorAll('.ncm-cc__in').length;
+  const num = getComputedStyle(log.querySelector('.ncm-cc__num'));
+  const text = getComputedStyle(log.querySelector('.ncm-cc__text'));
+  document.title = `cards ok · ${log.querySelectorAll('.ncm-cc').length} cards · add-buttons ${btns} · in-contacts ${ins} · num ${num.fontSize}/${num.color} · text ${text.fontSize}/${text.fontFamily.split(',')[0]} · when "${when}"`;
+} catch (err) {
+  document.title = `cards FAIL ${err.message}`;
+  msg.textContent = `${err.stack}\n\nServe it: node dev/tools/serve-mockups.cjs`;
+}
+</script>
+</body>
+</html>

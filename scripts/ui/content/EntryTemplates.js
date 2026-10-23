@@ -6,7 +6,7 @@
  *   "Templates & Examples" fieldset:
  *
  *   · BUILT-IN EXAMPLES — one option-rich seed per content type (ported from
- *     tools/test-terminal-setup.macro.js) so a GM can load a worked example of
+ *     dev/tools/test-terminal-setup.macro.js) so a GM can load a worked example of
  *     any type, see how the fields drive the renderer, and edit from there.
  *     Timestamps are deliberately omitted — the composer's game-time default
  *     applies on load.

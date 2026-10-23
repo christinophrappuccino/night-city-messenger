@@ -30,7 +30,7 @@
  *   blank-item search silently did not filter. Inline wins; keep it inline. (Same
  *   trap as the ActorImportPicker rows.)
  *
- *   **Redesign (same day; mock docs/mockups/name-picker-redesign-mock.html).** One
+ *   **Redesign (same day; mock dev/mockups/name-picker-redesign-mock.html).** One
  *   file + one prefix — `styles/components/name-picker.css`, `ncm-pkr-*`, dialog
  *   class `ncm-pkr-dialog`. The old `.ncm-burn-dialog` was a CLASS COLLISION: the
  *   Email Setup burn-confirm uses it as its content wrapper, and its

@@ -8,7 +8,7 @@
  * viewer element, so it inherits that machine's --ncm-* preset; falls back to
  * document.body = brand defaults).
  *
- * Model (approved mock `docs/mockups/system-sweep-mock.html`):
+ * Model (approved mock `dev/mockups/system-sweep-mock.html`):
  *   · ONE sweep roll (the operator's skill) → reveal every ARMED resident whose
  *     `stealthDV <= roll total`. A well-hidden plant survives a mediocre sweep;
  *     the verdict never says how many you MISSED (honest ambiguity).

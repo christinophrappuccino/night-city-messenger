@@ -2,7 +2,7 @@
  * Shard Encoder — the player-facing shard / program authoring window.
  * @file scripts/ui/ShardEncoder/ShardEncoderApp.js
  * @module night-city-messenger
- * @description Ported from the dev-approved mock (docs/mockups/shard-encoder-fui-mock.html).
+ * @description Ported from the dev-approved mock (dev/mockups/shard-encoder-fui-mock.html).
  *   Hosted in the Malware Workshop frame (the app root carries `ncm-malware-workshop`, so the
  *   Workshop's rails / stage / core / chips ARE the real rules); only `.ncm-enc-*` is new CSS.
  *

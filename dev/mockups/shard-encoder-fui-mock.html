@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Shard ENCODER — FUI mock on the real cascade (2026-09-11)</title>
+<!--
+  REAL CASCADE: foundry2.css → CPR main.css → night-city-messenger.css. The window
+  is hosted as the Malware Workshop host (.ncm-app.ncm-malware-workshop) so the
+  workshop's rails / stage / core / chips / synth bar are the REAL rules; the only
+  new CSS is the .ncm-enc-* block below (sector map, die, stage list, artifact).
+  The compile beat imports the REAL HackFX.streamHackCode. Render with
+  --allow-file-access-from-files (module import over file://).
+
+  ?view=launch                 the three player entry points
+  ?view=studio&stage=program   (default) the Program branch in the Encoder
+  ?view=studio&stage=content   the 18-type grid stage
+  ?view=studio&stage=encode&result=clean|sloppy|rejected[&beat=arm|roll|compile|write|verify|seal][&play=1]
+      beat= freezes the sequence at that beat's end-state (deterministic screenshots)
+      play=1 runs the whole ~7s sequence with timers (open it in a browser)
+  ?fx=0                        disables the FUI text motion (decode / count-up / cascade); ?reduced=1 also skips it
+  ?pricing=propose|free|formula|off   the GM's player-pricing mode (default propose = GM approves)
+  ?priced=await|ok|counter|no  freeze the MARKET chip in a state (the seal beat shows it)
+  ?tier=scrap|standard|premium the BLANK's tier (GM-defined: price, what a botch does to it, perk) — premium survives a rejected encode
+  ?h=<px>                      grows the window frame so both rails render without scrolling (screenshots)
+  ?auto=<stage>                fires NEXT-style transition to that stage 700ms after load (screenshots mid/after)
+  NEXT / BACK / the stage rows transition IN-PAGE now (no reload): out-fold → handoff sweep → core morph → cascade in (~0.5s, reduced-motion = instant)
+  ?ts=1.25                     previews the player's Theme Customizer Text Size on this window (every size — the Workshop's classes included,
+                               malware-workshop.css is swept — is calc'd off --ncm-text-scale; the Workshop's type tiers are the model, unchanged)
+  ?man=closed                  Program stage with the MANIFEST collapsed (the core gets its full stage back)
+  ?dec=fam|ab|sk|none          which DECISION row is open in the Program rail (default sk; none = all three collapsed to their one-line answers)
+                               Blank: src|lbl (default src) · Lock: pw|ice|key (default ice)
+  ?details=1                   the "What you'll get" card expanded to the full ladder + numbers (collapsed by default)
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body{margin:0;background:#1c1c22;padding:14px 16px 40px;font-family:sans-serif;}
+  [hidden]{display:none!important;} /* the standing [hidden]-loses-to-display gotcha */
+  .sw{margin:0 auto 9px;max-width:1060px;font:11px monospace;color:#9aa;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .sw a{color:#19f3f7;text-decoration:none;border:1px solid #2a3a47;padding:3px 8px;border-radius:2px;background:#0a0f14;}
+  .sw a.on{border-color:#19f3f7;}
+  .sw b{color:#f7c948;}
+  .app-frame{width:1060px;height:680px;margin:0 auto;overflow:hidden;border-radius:4px;box-shadow:0 10px 40px rgba(0,0,0,.55);}
+  .window-content{display:flex;flex-direction:column;height:100%;overflow:hidden;background:none;padding:0;}
+  .cap{max-width:1060px;margin:10px auto 0;font:11.5px/1.55 'Rajdhani',sans-serif;color:#9fb3c0;}
+  .cap b{color:#e8f4f8;} .cap code{color:#19f3f7;font-size:10.5px;}
+
+  /* ═══ NEW component CSS — would ship as styles/components/shard-encoder.css ═══ */
+  .ncm-fw.ncm-enc{--fam:var(--ncm-danger,#ff0033);}
+  .ncm-fw.ncm-enc[data-fam="utility"]{--fam:var(--ncm-secondary,#19f3f7);}
+  .ncm-fw.ncm-enc[data-fam="plant"]{--fam:#a855f7;}
+  .ncm-fw.ncm-enc[data-fam="content"]{--fam:var(--ncm-accent,#f7c948);}
+  /* stage list — the left rail's spine */
+  .ncm-enc-stages{display:flex;flex-direction:column;gap:4px;padding:10px 13px 4px;}
+  .ncm-enc-stage{display:flex;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--ncm-border,#2a3a47);border-radius:2px;background:var(--ncm-bg-deep,#0a0f14);cursor:pointer;}
+  .ncm-enc-stage__n{width:18px;height:18px;border-radius:2px;border:1px solid var(--ncm-border,#2a3a47);display:grid;place-items:center;font:700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-enc-stage__t{font:700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.16em;text-transform:uppercase;color:var(--ncm-text-secondary,#9fb3c0);}
+  .ncm-enc-stage__d{font:calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-enc-stage__sk{margin-left:auto;font:calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--fam);white-space:nowrap;}
+  .ncm-enc-stage.is-done .ncm-enc-stage__n{border-color:var(--ncm-success,#00ff41);color:var(--ncm-success,#00ff41);}
+  .ncm-enc-stage.is-on{border-color:var(--fam);background:color-mix(in srgb,var(--fam) 10%,transparent);}
+  .ncm-enc-stage.is-on .ncm-enc-stage__n{border-color:var(--fam);color:var(--fam);}
+  .ncm-enc-stage.is-on .ncm-enc-stage__t{color:var(--ncm-text-primary,#e8f4f8);}
+  .ncm-enc-stage.is-opt .ncm-enc-stage__n{border-style:dashed;}
+  /* skill chips with odds (extends .ncm-fw-chip) */
+  .ncm-enc-sk{display:flex;flex-direction:column;gap:4px;}
+  .ncm-enc-sk .ncm-fw-chip{width:100%;justify-content:flex-start;gap:7px;}
+  .ncm-enc-sk__calc{font:calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-enc-sk__tot{font:700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-primary,#e8f4f8);}
+  .ncm-enc-sk__dv{font:700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-accent,#f7c948);}
+  .ncm-enc-sk__pen{font:700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-warning,#f7c948);}
+  .ncm-enc-odds{margin-left:auto;font:700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);padding:1px 6px;border-radius:2px;}
+  .ncm-enc-odds.hi{color:var(--ncm-success,#00ff41);background:color-mix(in srgb,var(--ncm-success,#00ff41) 12%,transparent);}
+  .ncm-enc-odds.mid{color:var(--ncm-accent,#f7c948);background:color-mix(in srgb,var(--ncm-accent,#f7c948) 12%,transparent);}
+  .ncm-enc-odds.lo{color:var(--ncm-danger,#ff0033);background:color-mix(in srgb,var(--ncm-danger,#ff0033) 12%,transparent);}
+  .ncm-fw-chip.is-rec::before{content:'★';color:var(--ncm-accent,#f7c948);font-size:calc(9px * var(--ncm-text-scale, 1));}
+  .ncm-fw-chip.is-lock{opacity:.45;cursor:default;}
+  .ncm-fw-chip .need{font:calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-danger,#ff0033);margin-left:auto;}
+  .ncm-fw-chip .dv{font:calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-accent,#f7c948);margin-left:4px;}
+  /* stage: die + sector map + code stream */
+  .ncm-enc-die{position:relative;z-index:4;margin:0 auto 14px;padding:5px 9px;border:1px solid var(--ncm-border,#2a3a47);border-radius:2px;background:color-mix(in srgb,var(--ncm-bg-deep,#0a0f14) 90%,transparent);display:none;align-items:center;gap:9px;font:calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-secondary,#9fb3c0);opacity:0;transition:opacity .25s;}
+  .ncm-fw.ncm-enc[data-enc-stage="encode"] .ncm-enc-die{display:flex;}
+  .ncm-enc-die.show{opacity:1;}
+  /* CENTRED: the core wrap + whatever works under it (write map / manifest) sit as ONE group in the middle of the stage, not at the top */
+  .ncm-fw.ncm-enc .ncm-fw-core-wrap{margin-top:auto;}
+  .ncm-fw.ncm-enc .ncm-enc-write,.ncm-fw.ncm-enc .ncm-enc-man{margin-bottom:auto;}
+  .ncm-fw.ncm-enc .ncm-fw-synth{margin-top:0;}
+  /* blank tiers */
+  .ncm-enc-tier{font:700 calc(8px * var(--ncm-text-scale,1)) var(--ncm-font-display,sans-serif);letter-spacing:.1em;text-transform:uppercase;padding:2px 5px;border:1px solid;border-radius:1px;margin-left:6px;vertical-align:middle;}
+  .ncm-enc-tier.scrap{color:var(--ncm-text-muted,#7a8b99);border-color:var(--ncm-text-muted,#7a8b99);} .ncm-enc-tier.standard{color:var(--ncm-secondary,#19f3f7);border-color:var(--ncm-secondary,#19f3f7);} .ncm-enc-tier.premium{color:var(--ncm-accent,#f7c948);border-color:var(--ncm-accent,#f7c948);}
+  .ncm-enc-src .ncm-fw-icecard__d .botch{display:block;margin-top:2px;} .ncm-enc-src .ncm-fw-icecard__d .botch.ok{color:var(--ncm-success,#00ff41);} .ncm-enc-src .ncm-fw-icecard__d .botch.bad{color:var(--ncm-warning,#f7c948);}
+  .ncm-enc-buy{display:flex;gap:5px;margin-top:8px;} .ncm-enc-buy .ncm-fw-chip{flex:1;justify-content:center;}
+  .ncm-enc-die__cube{width:38px;height:38px;border-radius:2px;display:grid;place-items:center;font:700 calc(20px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-primary,#e8f4f8);
+    background:var(--ncm-bg-deep,#0a0f14);border:1px solid color-mix(in srgb,var(--fam) 55%,transparent);box-shadow:0 0 14px color-mix(in srgb,var(--fam) 25%,transparent);}
+  .ncm-enc-die.rolling .ncm-enc-die__cube{animation:encTumble .12s steps(2) infinite;}
+  @keyframes encTumble{0%{transform:rotate(-6deg) translateY(-2px)}100%{transform:rotate(6deg) translateY(2px)}}
+  .ncm-enc-die__sum b{color:var(--ncm-text-primary,#e8f4f8);} .ncm-enc-die__sum .m{color:var(--fam);font-weight:700;}
+  .ncm-enc-core-lbl{position:absolute;z-index:4;left:50%;bottom:6px;transform:translateX(-50%);font:700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--fam) 80%,white);white-space:nowrap;}
+  .ncm-enc-write{position:relative;z-index:3;padding:0 22px;display:grid;grid-template-columns:1fr 250px;gap:12px;align-items:stretch;}
+  .ncm-enc-sectors{position:relative;border:1px solid color-mix(in srgb,var(--fam) 28%,var(--ncm-border,#2a3a47));border-radius:2px;background:color-mix(in srgb,var(--ncm-bg-deep,#0a0f14) 85%,transparent);padding:8px 9px 7px;overflow:hidden;}
+  .ncm-enc-sectors__hd{display:flex;align-items:center;gap:8px;font:700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--ncm-text-muted,#7a8b99);margin-bottom:6px;}
+  .ncm-enc-sectors__hd b{color:var(--fam);} .ncm-enc-sectors__hd .addr{margin-left:auto;font:calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-secondary,#9fb3c0);letter-spacing:.05em;}
+  .ncm-enc-grid{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;}
+  .ncm-enc-cell{aspect-ratio:1.6;border-radius:1px;background:color-mix(in srgb,var(--ncm-border,#2a3a47) 55%,transparent);transition:background .12s,box-shadow .12s;}
+  .ncm-enc-cell.w{background:color-mix(in srgb,var(--fam) 75%,transparent);box-shadow:0 0 6px color-mix(in srgb,var(--fam) 45%,transparent);}
+  .ncm-enc-cell.head{background:#fff;box-shadow:0 0 10px #fff;}
+  .ncm-enc-cell.bad{background:var(--ncm-warning,#f7c948);animation:encFlick .5s steps(2) infinite;}
+  .ncm-enc-cell.dead{background:var(--ncm-danger,#ff0033);opacity:.85;}
+  .ncm-enc-cell.ok{background:color-mix(in srgb,var(--ncm-success,#00ff41) 70%,transparent);box-shadow:none;}
+  @keyframes encFlick{50%{opacity:.35}}
+  .ncm-enc-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--ncm-success,#00ff41),transparent);box-shadow:0 0 10px var(--ncm-success,#00ff41);top:24px;opacity:0;pointer-events:none;}
+  .ncm-enc-scan.run{animation:encScan 1s cubic-bezier(.22,1,.36,1) forwards;}
+  @keyframes encScan{0%{top:24px;opacity:1}100%{top:100%;opacity:0}}
+  .ncm-enc-sectors.is-tear{animation:encTear .28s steps(3) 2;}
+  @keyframes encTear{25%{transform:translateX(-3px) skewX(-2deg)}50%{transform:translateX(3px)}75%{transform:translateX(-1px) skewX(1deg)}}
+  .ncm-enc-hash{font:calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-secondary,#9fb3c0);margin-top:6px;letter-spacing:.05em;white-space:nowrap;overflow:hidden;}
+  .ncm-enc-hash b{color:var(--ncm-success,#00ff41);}
+  .ncm-fw.ncm-enc .ncm-hackfx{position:relative;height:100%;min-height:92px;--hx:var(--fam);}
+  .ncm-fw.ncm-enc .ncm-fw-synth__fill{background:var(--fam);}
+  .ncm-fw.ncm-enc .ncm-fw-synth__status .snd{color:var(--ncm-text-muted,#7a8b99);margin-left:8px;font-style:italic;}
+  .ncm-fw.ncm-enc .ncm-fw-synth__status .snd::before{content:'♪ ';}
+  /* result tones on the seal + core */
+  .ncm-fw.ncm-enc .ncm-fw-seal{top:4px;}
+  .ncm-fw.ncm-enc .ncm-fw-seal.show{opacity:1;transform:translateX(-50%);animation:fwseal .5s ease-out .3s both;}
+  .ncm-fw-seal.tone-clean{color:var(--ncm-success,#00ff41)!important;border-color:var(--ncm-success,#00ff41)!important;}
+  .ncm-fw-seal.tone-sloppy{color:var(--ncm-warning,#f7c948)!important;border-color:var(--ncm-warning,#f7c948)!important;}
+  .ncm-fw-seal.tone-rejected{color:var(--ncm-danger,#ff0033)!important;border-color:var(--ncm-danger,#ff0033)!important;}
+  .ncm-fw.ncm-enc.res-clean{--fam:var(--ncm-success,#00ff41);} .ncm-fw.ncm-enc.res-sloppy{--fam:var(--ncm-warning,#f7c948);} .ncm-fw.ncm-enc.res-rejected{--fam:var(--ncm-danger,#ff0033);}
+  .ncm-fw-core.is-glitch .ncm-fw-chipwrap{animation:encGlitch .6s steps(4) 2;}
+  @keyframes encGlitch{0%{transform:none;filter:none}25%{transform:translate(2px,-1px);filter:hue-rotate(40deg)}50%{transform:translate(-2px,1px)}75%{transform:translate(1px,2px);filter:hue-rotate(-40deg)}}
+  .ncm-fw-core.is-dead{opacity:.35;filter:grayscale(.8);}
+  /* ladder (right rail) */
+  .ncm-enc-ladder{display:flex;flex-direction:column;gap:4px;}
+  .ncm-enc-rung{display:grid;grid-template-columns:64px 1fr 34px;gap:7px;align-items:center;padding:6px 7px;border:1px solid var(--ncm-border,#2a3a47);border-radius:2px;background:var(--ncm-bg-deep,#0a0f14);font:calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-body,sans-serif);color:var(--ncm-text-secondary,#9fb3c0);}
+  .ncm-enc-rung__tag{font:700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.12em;text-align:center;padding:2px 4px;border-radius:2px;}
+  .ncm-enc-rung.c .ncm-enc-rung__tag{color:var(--ncm-success,#00ff41);background:color-mix(in srgb,var(--ncm-success,#00ff41) 12%,transparent);}
+  .ncm-enc-rung.s .ncm-enc-rung__tag{color:var(--ncm-warning,#f7c948);background:color-mix(in srgb,var(--ncm-warning,#f7c948) 12%,transparent);}
+  .ncm-enc-rung.r .ncm-enc-rung__tag{color:var(--ncm-danger,#ff0033);background:color-mix(in srgb,var(--ncm-danger,#ff0033) 12%,transparent);}
+  .ncm-enc-rung__pct{font:700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);text-align:right;color:var(--ncm-text-primary,#e8f4f8);}
+  .ncm-enc-rung small{display:block;font:calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-enc-rung.is-hit{border-color:var(--fam);box-shadow:0 0 0 1px color-mix(in srgb,var(--fam) 30%,transparent);}
+  .ncm-enc-bar{height:4px;display:flex;overflow:hidden;border-radius:2px;background:var(--ncm-bg-deep,#0a0f14);margin-top:6px;}
+  .ncm-enc-bar i{display:block;height:100%;} .ncm-enc-bar .c{background:var(--ncm-success,#00ff41)} .ncm-enc-bar .s{background:var(--ncm-warning,#f7c948)} .ncm-enc-bar .r{background:var(--ncm-danger,#ff0033)}
+  .ncm-enc-eff{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+  .ncm-enc-eff div{border:1px solid var(--ncm-border,#2a3a47);border-radius:2px;background:var(--ncm-bg-deep,#0a0f14);padding:5px 7px;}
+  .ncm-enc-eff b{display:block;font:700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-enc-eff span{font:700 calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--fam);}
+  /* artifact — the cred-stick that ejects */
+  .ncm-enc-art{position:relative;border:1px solid var(--ncm-border,#2a3a47);border-radius:2px;background:var(--ncm-bg-deep,#0a0f14);padding:9px 10px;display:flex;gap:10px;align-items:center;overflow:hidden;}
+  .ncm-enc-art__chip{width:44px;height:30px;border-radius:2px;position:relative;background:linear-gradient(135deg,color-mix(in srgb,var(--fam) 35%,#111),#0a0f14);border:1px solid color-mix(in srgb,var(--fam) 60%,transparent);box-shadow:0 0 10px color-mix(in srgb,var(--fam) 25%,transparent);}
+  .ncm-enc-art__chip::before{content:'';position:absolute;left:6px;top:8px;width:14px;height:14px;border:1px solid color-mix(in srgb,var(--fam) 70%,transparent);border-radius:1px;background:repeating-linear-gradient(90deg,transparent 0 3px,color-mix(in srgb,var(--fam) 60%,transparent) 3px 4px);}
+  .ncm-enc-art__chip::after{content:'';position:absolute;right:-1px;top:6px;bottom:6px;width:6px;background:repeating-linear-gradient(180deg,var(--ncm-accent,#f7c948) 0 3px,transparent 3px 5px);}
+  .ncm-enc-art__n{font:700 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-primary,#e8f4f8);}
+  .ncm-enc-art__d{font:calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);margin-top:2px;}
+  .ncm-enc-art.eject{animation:encEject .6s cubic-bezier(.22,1,.36,1);}
+  @keyframes encEject{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
+  .ncm-enc-art .tag{position:absolute;right:8px;top:8px;font:700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.12em;text-transform:uppercase;padding:2px 5px;border:1px solid;border-radius:1px;}
+  .ncm-enc-art .tag.clean{color:var(--ncm-success,#00ff41);border-color:var(--ncm-success,#00ff41);} .ncm-enc-art .tag.sloppy{color:var(--ncm-warning,#f7c948);border-color:var(--ncm-warning,#f7c948);} .ncm-enc-art .tag.rejected{color:var(--ncm-danger,#ff0033);border-color:var(--ncm-danger,#ff0033);}
+  .ncm-enc-kv{display:flex;justify-content:space-between;font:calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-secondary,#9fb3c0);padding:2px 0;}
+  .ncm-enc-kv b{color:var(--ncm-text-primary,#e8f4f8);}
+  /* content-stage type grid (in the LEFT rail) */
+  .ncm-enc-types{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+  .ncm-enc-type{border:1px solid var(--ncm-border,#2a3a47);border-radius:2px;background:var(--ncm-bg-deep,#0a0f14);padding:6px 7px;cursor:pointer;}
+  .ncm-enc-type .t{display:flex;align-items:center;gap:6px;font:700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.05em;color:var(--ncm-text-primary,#e8f4f8);}
+  .ncm-enc-type .t i{font-size:calc(10px * var(--ncm-text-scale, 1));} .ncm-enc-type .m{font:calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);margin-top:3px;display:flex;gap:4px;align-items:center;}
+  .ncm-enc-type .m .sk{color:#a855f7;} .ncm-enc-type .m .o{margin-left:auto;font-weight:700;}
+  .ncm-enc-type.on{border-color:var(--fam);background:color-mix(in srgb,var(--fam) 10%,transparent);}
+  .ncm-enc-type.lock{opacity:.45;} .ncm-enc-type.prog{border-color:color-mix(in srgb,#a855f7 55%,transparent);}
+  .ncm-enc-type.prog .t{color:#d8b4fe;}
+  /* the "editor is the artifact" center preview for content stage */
+  .ncm-enc-doc{position:relative;z-index:3;margin:0 22px;flex:1;border:1px solid var(--ncm-border,#2a3a47);border-radius:2px;background:var(--ncm-bg-mid,#141c24);padding:14px 16px;font:calc(12px * var(--ncm-text-scale, 1))/1.55 var(--ncm-font-body,sans-serif);color:var(--ncm-text-secondary,#9fb3c0);overflow:hidden;}
+  .ncm-enc-doc h4{margin:0 0 4px;font:700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.06em;color:var(--ncm-text-primary,#e8f4f8);}
+  .ncm-enc-doc .lh{font:calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);margin-bottom:10px;}
+  .ncm-enc-doc .stamp{position:absolute;right:16px;top:14px;font:700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.2em;color:var(--ncm-danger,#ff0033);border:2px solid var(--ncm-danger,#ff0033);padding:3px 8px;transform:rotate(-6deg);opacity:.8;}
+  .ncm-enc-doc .red{display:inline-block;background:#111;color:transparent;border-radius:1px;}
+
+  /* blank stage — source rows + label */
+  .ncm-enc-src{display:flex;flex-direction:column;gap:5px;}
+  .ncm-enc-lbl{display:flex;flex-direction:column;gap:3px;margin-top:8px;}
+  .ncm-enc-lbl label{font:700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-enc-inp{height:24px;border:1px solid var(--ncm-border,#2a3a47);border-radius:2px;background:var(--ncm-bg-deep,#0a0f14);color:var(--ncm-text-primary,#e8f4f8);padding:0 8px;font:calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body,sans-serif);display:flex;align-items:center;gap:8px;}
+  .ncm-enc-sw{display:flex;gap:6px;} .ncm-enc-sw span{width:16px;height:16px;border-radius:2px;border:1px solid transparent;opacity:.45;cursor:pointer;} .ncm-enc-sw span.on{opacity:1;border-color:#fff;box-shadow:0 0 6px currentColor;}
+  .ncm-enc-blankcore .ncm-fw-chip-core i{color:var(--ncm-text-muted,#7a8b99)!important;filter:none!important;}
+  /* lock stage — ceiling meter + ICE cards */
+  .ncm-enc-ceil{display:flex;gap:3px;align-items:flex-end;height:26px;margin:4px 0 6px;}
+  .ncm-enc-ceil i{flex:1;border-radius:1px;background:color-mix(in srgb,var(--ncm-border,#2a3a47) 70%,transparent);}
+  .ncm-enc-ceil i.ok{background:var(--fam);} .ncm-enc-ceil i.cap{background:color-mix(in srgb,var(--ncm-danger,#ff0033) 60%,transparent);}
+  .ncm-enc-ceil i:nth-child(1){height:30%} .ncm-enc-ceil i:nth-child(2){height:45%} .ncm-enc-ceil i:nth-child(3){height:60%} .ncm-enc-ceil i:nth-child(4){height:80%} .ncm-enc-ceil i:nth-child(5){height:100%}
+  .ncm-enc-lockring{position:absolute;inset:-14px;border-radius:50%;border:1px dashed color-mix(in srgb,var(--fam) 55%,transparent);animation:fwspin 12s linear infinite;pointer-events:none;}
+  .ncm-enc-lockbadge{position:absolute;right:-6px;bottom:-4px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--ncm-bg-deep,#0a0f14);border:1px solid var(--fam);color:var(--fam);font-size:calc(12px * var(--ncm-text-scale, 1));box-shadow:0 0 12px color-mix(in srgb,var(--fam) 35%,transparent);}
+
+  /* ═══ FUI text motion — scramble-decode, count-up, cascade (?fx=0 / ?reduced=1 off) ═══ */
+  .ncm-enc-in{opacity:0;transform:translateY(6px);}
+  .fx-on .ncm-enc-in{animation:encIn .3s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--i,0)*60ms);}
+  .fx-off .ncm-enc-in,.fx-on .fx-skip .ncm-enc-in{animation:none;opacity:1;transform:none;}
+  @keyframes encIn{to{opacity:1;transform:none}}
+  [data-fx="decode"].is-decoding{color:var(--fam);}
+  .ncm-enc-cur::after{content:'▌';color:var(--fam);animation:encBlink .7s steps(1) infinite;margin-left:1px;font-weight:400;}
+  @keyframes encBlink{50%{opacity:0}}
+  /* operator card — skill rows materialise under a scan, rank pips draw, the craft row is edged + pings on change */
+  .ncm-enc-opcard{position:relative;overflow:hidden;}
+  .fx-on .ncm-enc-opcard::after{content:'';position:absolute;left:0;right:0;height:16px;top:-16px;pointer-events:none;background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--fam) 45%,transparent));animation:encSweep .9s cubic-bezier(.22,1,.36,1) .15s forwards;}
+  @keyframes encSweep{to{top:100%}}
+  .ncm-enc-op{position:relative;display:grid;grid-template-columns:1fr auto;gap:2px 6px;align-items:center;padding:4px 4px 5px;margin:0 -4px;border-bottom:1px solid color-mix(in srgb,var(--ncm-border,#2a3a47) 60%,transparent);overflow:hidden;}
+  .ncm-enc-op__k{font:700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.06em;text-transform:uppercase;color:var(--ncm-text-secondary,#9fb3c0);}
+  .ncm-enc-op__v{font:700 calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-primary,#e8f4f8);text-align:right;}
+  .ncm-enc-op__v small{font:calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);margin-right:4px;}
+  .ncm-enc-op__pips{grid-column:1/-1;display:flex;gap:2px;height:3px;}
+  .ncm-enc-op__pips i{flex:1;border-radius:1px;background:color-mix(in srgb,var(--ncm-border,#2a3a47) 70%,transparent);transform-origin:left;}
+  .ncm-enc-op__pips i.on{background:var(--fam);}
+  .fx-on .ncm-enc-op__pips i.on{transform:scaleX(0);animation:encPip .25s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--i,0)*60ms + var(--j,0)*35ms + 260ms);}
+  @keyframes encPip{to{transform:scaleX(1)}}
+  .ncm-enc-op.is-craft{background:color-mix(in srgb,var(--fam) 8%,transparent);}
+  .ncm-enc-op.is-craft .ncm-enc-op__k{color:var(--fam);}
+  .ncm-enc-op.is-craft::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--fam);}
+  .ncm-enc-op.ping::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--fam) 35%,transparent),transparent);animation:encPing .5s ease-out;}
+  @keyframes encPing{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+  /* manifest — the Program branch's data entry (centre, under the core) */
+  .ncm-enc-man{position:relative;z-index:3;margin:0 22px 8px;border:1px solid color-mix(in srgb,var(--fam) 28%,var(--ncm-border,#2a3a47));border-radius:2px;background:color-mix(in srgb,var(--ncm-bg-deep,#0a0f14) 88%,transparent);padding:9px 11px 10px;}
+  .ncm-enc-man__hd{display:flex;align-items:center;gap:8px;font:700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--ncm-text-muted,#7a8b99);margin-bottom:7px;}
+  .ncm-enc-man__hd b{color:var(--fam);} .ncm-enc-man__hd .r{margin-left:auto;font:calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-secondary,#9fb3c0);letter-spacing:.05em;}
+  .ncm-enc-fg{display:flex;flex-wrap:wrap;gap:6px 8px;}
+  .ncm-enc-f{display:flex;flex-direction:column;gap:2px;flex:var(--flex,0 0 auto);width:var(--fw,auto);min-width:0;}
+  .ncm-enc-f label{font:700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-enc-f .sub{font:calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-enc-f.is-lock{opacity:.45;} .ncm-enc-f .need{font:calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-danger,#ff0033);}
+  .ncm-app.ncm-shard-encoder .ncm-enc-f input,.ncm-app.ncm-shard-encoder .ncm-enc-f select,.ncm-app.ncm-shard-encoder .ncm-enc-f textarea{height:22px!important;min-height:0!important;width:100%!important;border:1px solid var(--ncm-border,#2a3a47)!important;border-radius:2px!important;background:var(--ncm-bg-deep,#0a0f14)!important;color:var(--ncm-text-primary,#e8f4f8)!important;font:calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body,sans-serif)!important;padding:0 6px!important;text-align:left!important;box-shadow:none!important;margin:0!important;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-f textarea{height:36px!important;padding:4px 6px!important;resize:none;line-height:1.35!important;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-f input.mono{font-family:var(--ncm-font-mono,monospace)!important;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-f input:focus,.ncm-app.ncm-shard-encoder .ncm-enc-f select:focus,.ncm-app.ncm-shard-encoder .ncm-enc-f textarea:focus{border-color:var(--fam)!important;outline:none!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--fam) 35%,transparent)!important;}
+  .ncm-enc-man__params{margin-top:7px;padding-top:7px;border-top:1px dashed color-mix(in srgb,var(--fam) 35%,transparent);}
+  .ncm-enc-man__params .ncm-enc-man__hd{margin-bottom:5px;}
+  /* market — the artifact's price tag + GM approval state */
+  .ncm-enc-mkt{margin-top:8px;padding-top:7px;border-top:1px dashed color-mix(in srgb,var(--ncm-border,#2a3a47) 90%,transparent);}
+  .ncm-enc-mkt__row{display:flex;align-items:center;gap:6px;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-mkt input{width:62px!important;height:20px!important;min-height:0!important;border:1px solid var(--ncm-border,#2a3a47)!important;border-radius:2px!important;background:var(--ncm-bg-deep,#0a0f14)!important;color:var(--ncm-text-primary,#e8f4f8)!important;font:700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace)!important;padding:0 6px!important;text-align:right!important;box-shadow:none!important;margin:0!important;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-mkt input:disabled{opacity:.6;}
+  .ncm-enc-mkt__eb{font:700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-accent,#f7c948);}
+  .ncm-enc-mkt .ncm-fw-chip{padding:3px 7px;font-size:calc(9px * var(--ncm-text-scale, 1));}
+  .ncm-enc-chip{margin-left:auto;font:700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display,sans-serif);letter-spacing:.12em;text-transform:uppercase;padding:2px 6px;border:1px solid;border-radius:1px;white-space:nowrap;}
+  .ncm-enc-chip.mute{color:var(--ncm-text-muted,#7a8b99);border-color:var(--ncm-border,#2a3a47);}
+  .ncm-enc-chip.wait{color:var(--ncm-warning,#f7c948);border-color:var(--ncm-warning,#f7c948);animation:encFlick 1.4s steps(2) infinite;}
+  .ncm-enc-chip.ok{color:var(--ncm-success,#00ff41);border-color:var(--ncm-success,#00ff41);}
+  .ncm-enc-chip.no{color:var(--ncm-danger,#ff0033);border-color:var(--ncm-danger,#ff0033);}
+  .ncm-enc-chip.ctr{color:var(--ncm-secondary,#19f3f7);border-color:var(--ncm-secondary,#19f3f7);}
+  .ncm-enc-mkt__sug{font:calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-muted,#7a8b99);margin-top:4px;line-height:1.5;}
+  .ncm-enc-mkt__sug b{color:var(--ncm-text-secondary,#9fb3c0);font-weight:400;}
+  .ncm-enc-mkt__note{font:calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body,sans-serif);color:var(--ncm-text-secondary,#9fb3c0);margin-top:4px;line-height:1.4;}
+
+  /* ═══  /* ═══ SEPARATION pass (2026-09-12b/c) — dev: "the Malware Workshop's legibility is the model for the Encoder; text scaling for both."
+     So: the Workshop's own type tiers (label 8.5 · hint 9.5 · chip 10.5 · value 11.5 · name 15) are NOT overridden here — the Encoder
+     wears them as-is. What this block adds is BOX SEPARATION in the Workshop's own grammar: every panel is a bg-mid card with the
+     Workshop's --ncm-border edge (like .ncm-fw-icecard / .ncm-fw-card--does), fields are bg-deep inside it, the manifest wears a
+     .ncm-fw-railhd-style header band and collapses. Text scaling for BOTH: malware-workshop.css is swept to calc(Npx * --ncm-text-scale)
+     (a no-op inside the admin-zoomed GM Workshop, where admin-theme forces the scale to 1; live in the player-themed Encoder). ?ts=1.25 previews. */
+  .ncm-fw.ncm-enc{--enc-panel:var(--ncm-bg-mid,#141c24);--enc-line:var(--ncm-border,#2a3a47);--enc-line-hi:color-mix(in srgb,var(--fam) 50%,var(--ncm-border,#2a3a47));--enc-band:var(--ncm-bg-deep,#0a0f14);}
+  /* panels: cards, stage rows, ladder rungs, type tiles, manifest — the icecard look (bg-mid + border) */
+  .ncm-fw.ncm-enc .ncm-fw-card{border:1px solid var(--enc-line);background:var(--enc-panel);}
+  .ncm-enc-stage{padding:8px 10px;border-color:var(--enc-line);background:var(--enc-panel);}
+  .ncm-enc-rung{grid-template-columns:70px 1fr 40px;padding:7px 8px;line-height:1.35;border-color:var(--enc-line);background:var(--enc-panel);}
+  .ncm-enc-rung__pct{font-size:calc(12.5px * var(--ncm-text-scale,1));}
+  .ncm-enc-eff div{border-color:var(--enc-line);background:var(--enc-panel);}
+  .ncm-enc-type{padding:7px 8px;border-color:var(--enc-line);background:var(--enc-panel);}
+  .ncm-enc-types{gap:5px;}
+  .ncm-enc-art{border-color:var(--enc-line);background:var(--ncm-bg-deep,#0a0f14);}
+  /* operator rows: each a small card (the icecard model), pips a hair thicker */
+  .ncm-enc-op{padding:5px 7px 6px;margin:0 0 4px;border:1px solid var(--enc-line);border-radius:2px;background:var(--ncm-bg-deep,#0a0f14);gap:2px 8px;}
+  .ncm-enc-op:last-child{margin-bottom:0;}
+  .ncm-enc-op__pips{height:4px;}
+  /* manifest: a railhd-style header band + collapsible; fields are the deeper surface */
+  .ncm-enc-man{padding:0;overflow:hidden;background:var(--enc-panel);border-color:var(--enc-line-hi);flex:0 1 auto;min-height:0;display:flex;flex-direction:column;}
+  .ncm-enc-man__hd{margin:0;padding:7px 11px;background:var(--enc-band);border-bottom:1px solid var(--enc-line);cursor:pointer;user-select:none;}
+  .ncm-enc-man__hd .tog{margin-left:8px;font-size:calc(10px * var(--ncm-text-scale,1));color:var(--ncm-text-secondary,#9fb3c0);transition:transform .18s;}
+  .ncm-enc-man.is-collapsed .ncm-enc-man__hd .tog{transform:rotate(-90deg);}
+  .ncm-enc-man__body{padding:9px 11px 11px;overflow-y:auto;overflow-x:hidden;min-height:0;}
+  .ncm-enc-man.is-collapsed .ncm-enc-man__body{display:none;}
+  .ncm-enc-man__sum{display:none;gap:6px;flex-wrap:wrap;padding:7px 11px;font:calc(10.5px * var(--ncm-text-scale,1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-secondary,#9fb3c0);}
+  .ncm-enc-man.is-collapsed .ncm-enc-man__sum{display:flex;}
+  .ncm-enc-man__sum b{color:var(--ncm-text-primary,#e8f4f8);font-weight:400;}
+  .ncm-enc-man__sum i{opacity:.5;font-style:normal;}
+  .ncm-enc-man__params{margin-top:9px;padding-top:8px;}
+  .ncm-enc-man__params .ncm-enc-man__hd{background:none;border:0;padding:0 0 6px;cursor:default;}
+  .ncm-enc-fg{gap:7px 9px;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-f input,.ncm-app.ncm-shard-encoder .ncm-enc-f select{height:24px!important;font-size:calc(11.5px * var(--ncm-text-scale,1))!important;border-color:var(--enc-line)!important;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-f textarea{height:38px!important;font-size:calc(11.5px * var(--ncm-text-scale,1))!important;border-color:var(--enc-line)!important;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-inp,.ncm-app.ncm-shard-encoder .ncm-enc-mkt input{border-color:var(--enc-line)!important;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-mkt input{width:66px!important;height:22px!important;font-size:calc(11.5px * var(--ncm-text-scale,1))!important;}
+  .ncm-enc-mkt{margin:0;padding:0;border:0;}
+  .ncm-enc-mkt__row{gap:7px;}
+  /* the core keeps a real stage even with the manifest open */
+  .ncm-fw.ncm-enc .ncm-fw-core-wrap{min-height:150px;}
+
+  /* ═══ DIGESTIBILITY pass (2026-09-12d) — dev: "a lot of information; the Workshop is organized and clean; feed it in a more digestible way."
+     The Workshop's two habits, applied: (1) the rail asks ONE question at a time — decisions you've made fold to a one-line answer with a
+     pen; (2) the readout leads with ONE plain sentence (.ncm-fw-says, the Workshop's "What it does" voice) and hides the numbers behind
+     Details. Manifest leads with name + description; signature/disguise live under Options. Market only appears once there is something to sell. */
+  .ncm-enc-dec{margin:0 13px 6px;border:1px solid var(--ncm-border,#2a3a47);border-radius:2px;background:var(--ncm-bg-mid,#141c24);}
+  .ncm-enc-dec__hd{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;user-select:none;}
+  .ncm-enc-dec__hd .ic{color:var(--fam);font-size:calc(10px * var(--ncm-text-scale,1));width:12px;text-align:center;}
+  .ncm-enc-dec__hd .ed{margin-left:2px;color:var(--ncm-text-muted,#7a8b99);font-size:calc(9px * var(--ncm-text-scale,1));}
+  .ncm-enc-dec__k{font:700 calc(8.5px * var(--ncm-text-scale,1)) var(--ncm-font-display,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--ncm-text-secondary,#9fb3c0);white-space:nowrap;}
+  .ncm-enc-dec__v{margin-left:auto;font:700 calc(10.5px * var(--ncm-text-scale,1)) var(--ncm-font-display,sans-serif);color:var(--ncm-text-primary,#e8f4f8);text-align:right;min-width:0;}
+  .ncm-enc-dec__v small{font:calc(9.5px * var(--ncm-text-scale,1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-secondary,#9fb3c0);font-weight:400;margin-left:6px;}
+  .ncm-enc-dec__b{display:none;padding:8px 10px 10px;border-top:1px solid var(--ncm-border,#2a3a47);}
+  .ncm-enc-dec.is-open{border-color:var(--fam);box-shadow:0 0 0 1px color-mix(in srgb,var(--fam) 22%,transparent);}
+  .ncm-enc-dec.is-open .ncm-enc-dec__b{display:block;} .ncm-enc-dec.is-open .ncm-enc-dec__k{color:var(--fam);}
+  .ncm-enc-dec.is-done .ncm-enc-dec__hd .ic{color:var(--ncm-success,#00ff41);}
+  .ncm-enc-dec .ncm-fw-hint{margin-top:7px;}
+  .ncm-enc-dec .ncm-enc-sk .ncm-fw-chip{gap:6px;}
+  /* the small disclosure button used by Details / Options / All skills */
+  .ncm-app.ncm-shard-encoder .ncm-enc-more{display:inline-flex!important;align-items:center;gap:5px;width:auto!important;height:auto!important;min-height:0!important;margin:8px 0 0!important;padding:3px 8px!important;
+    background:none!important;border:1px solid var(--ncm-border,#2a3a47)!important;border-radius:2px!important;box-shadow:none!important;cursor:pointer;
+    font:700 calc(8.5px * var(--ncm-text-scale,1)) var(--ncm-font-display,sans-serif)!important;letter-spacing:.1em;text-transform:uppercase;color:var(--ncm-text-secondary,#9fb3c0)!important;line-height:1.2!important;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-more:hover{border-color:var(--fam)!important;color:var(--ncm-text-primary,#e8f4f8)!important;}
+  .ncm-app.ncm-shard-encoder .ncm-enc-more i{font-size:calc(8px * var(--ncm-text-scale,1));margin:0!important;}
+  .ncm-enc-details{margin-top:9px;padding-top:9px;border-top:1px dashed color-mix(in srgb,var(--ncm-border,#2a3a47) 90%,transparent);}
+  .ncm-fw.ncm-enc .ncm-fw-says{font-size:calc(12.5px * var(--ncm-text-scale,1));}
+  .ncm-fw.ncm-enc .ncm-fw-says b.v{color:var(--ncm-text-primary,#e8f4f8);}
+  .ncm-fw.ncm-enc .ncm-fw-timing{margin-top:7px;}
+  .ncm-enc-optbody{margin-top:8px;}
+  .ncm-enc-type .m .sk{display:block;margin-top:2px;}
+
+  /* ═══ STAGE TRANSITION (2026-09-12e, dev: "when we click next how do we transition smoothly?")
+     Same vocabulary as everything else here — translate+fade, expo-out, 0.18s out / 0.3s in, reduced-motion = instant.
+     Four things happen, in order, ~0.5s total:
+       1 OUT   the outgoing rail rows, work panel and readout cards fold away (up on Next, down on Back) — 180ms
+       2 SWEEP a single handoff line runs down the stage in the family colour (the terminal's reader-line, once)
+       3 MORPH the core is the constant: it never leaves — it dips, its icon swaps, and it snaps back with a brightness flare;
+               its label decodes to the new stage word (READY → SECURING); the spine's finished number pops to a check,
+               the new row lights
+       4 IN    the new rail rows / work panel / readout cascade in (the existing .ncm-enc-in stagger; reversed direction on Back)
+     Build note: these are KEYFRAMES on freshly-mounted nodes, not transitions on surviving ones, so they survive an AppV2 render.
+     The out-phase runs on the LIVE DOM before render(); the core should be its own template PART so render({parts}) leaves it in place. */
+  @keyframes encOut{to{opacity:0;transform:translateY(-8px)}}
+  @keyframes encOutBack{to{opacity:0;transform:translateY(8px)}}
+  @keyframes encInBack{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .fx-on .is-leaving{animation:encOut .18s cubic-bezier(.22,1,.36,1) forwards;pointer-events:none;}
+  .fx-on [data-dir="back"] .is-leaving{animation-name:encOutBack;}
+  .fx-on [data-dir="back"] .ncm-enc-in{animation-name:encInBack;}
+  .fx-on .is-arriving{animation:encIn .3s cubic-bezier(.22,1,.36,1) both;}
+  .fx-on .ncm-fw-core.is-dip{transform:scale(.94);opacity:.55;transition:transform .18s cubic-bezier(.22,1,.36,1),opacity .18s;}
+  .fx-on .ncm-fw-core.is-morph{animation:encMorph .46s cubic-bezier(.22,1,.36,1);}
+  @keyframes encMorph{0%{transform:scale(.88);opacity:.6;filter:brightness(1.9) saturate(1.6)}45%{transform:scale(1.05);opacity:1}100%{transform:none;filter:none}}
+  .ncm-enc-sweep{position:absolute;z-index:5;left:0;right:0;top:0;height:2px;opacity:0;pointer-events:none;background:linear-gradient(90deg,transparent,var(--fam),transparent);box-shadow:0 0 12px var(--fam);}
+  .fx-on .ncm-enc-sweep.run{animation:encSweepDown .5s cubic-bezier(.22,1,.36,1) forwards;}
+  @keyframes encSweepDown{0%{top:0;opacity:1}100%{top:100%;opacity:0}}
+  .ncm-enc-stage{cursor:pointer;}
+  .fx-on .ncm-enc-stage.is-lit{animation:encLit .55s ease-out;}
+  @keyframes encLit{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--fam) 65%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
+  .fx-on .ncm-enc-stage__n.is-pop{animation:encPop .38s cubic-bezier(.22,1,.36,1);}
+  @keyframes encPop{0%{transform:scale(.5)}60%{transform:scale(1.3)}100%{transform:none}}
+
+  /* ═══ LAUNCH view (real viewer classes under a real .ncm-app .ncm-viewer host) ═══ */
+  .lv{display:grid;grid-template-columns:420px 300px 300px;gap:16px;max-width:1060px;margin:0 auto;align-items:start;}
+  .lv .pane{border:1px solid #2a2a45;border-radius:4px;background:#0a0a12;overflow:hidden;}
+  .lv .pane-t{font:700 9px 'Share Tech Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#7a7a92;padding:7px 10px;border-bottom:1px solid #2a2a45;background:#12121a;}
+  .lv .pane-t b{color:#19f3f7;}
+  .lv .ncm-viewer{padding:8px;}
+  .lv .pillrow{display:flex;gap:6px;flex-wrap:wrap;padding:6px 4px 10px;}
+  .ncm-pill--action.is-new{border-color:#19f3f7;color:#19f3f7;}
+  .ctx{padding:6px;font:12px 'Rajdhani',sans-serif;}
+  .ctx .it{display:flex;align-items:center;gap:9px;padding:6px 8px;color:#bdbdd0;border-bottom:1px solid #1a1a2e;}
+  .ctx .it i{width:14px;text-align:center;font-size:11px;} .ctx .it.hi{color:#19f3f7;background:rgba(25,243,247,.06);}
+  .ctx .it.dim{opacity:.5;}
+  .deck{padding:10px;display:flex;gap:8px;align-items:flex-end;background:radial-gradient(60% 80% at 50% 100%,rgba(25,243,247,.08),transparent);}
+  .cart{width:56px;height:84px;border-radius:3px;border:1px solid #2a3a47;background:linear-gradient(180deg,#1a1a2e,#0a0f14);position:relative;}
+  .cart::before{content:'';position:absolute;left:8px;right:8px;top:10px;height:22px;border:1px solid rgba(25,243,247,.35);border-radius:1px;}
+  .cart .led{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#00ff41;box-shadow:0 0 6px #00ff41;}
+  .cart.exe{border-color:rgba(255,0,51,.5);} .cart.exe::before{border-color:rgba(255,0,51,.5);}
+  .cart.empty{border-style:dashed;border-color:#19f3f7;background:none;display:grid;place-items:center;color:#19f3f7;font-size:18px;}
+  .cart.empty span{position:absolute;bottom:6px;left:0;right:0;text-align:center;font:700 7px 'Share Tech Mono',monospace;letter-spacing:.1em;}
+</style>
+</head>
+<body>
+<div class="sw" id="sw"></div>
+
+<!-- ═══════════════ STUDIO ═══════════════ -->
+<div id="studio" class="app-frame ncm-app ncm-malware-workshop ncm-shard-encoder">
+  <div class="window-content">
+    <div class="ncm-fw ncm-enc" id="fw" data-fam="execute">
+      <!-- LEFT RAIL -->
+      <div class="ncm-fw-rail ncm-fw-rail--l">
+        <div class="ncm-fw-railhd"><b><i class="fas fa-microchip"></i>Encoder</b></div>
+        <div class="ncm-enc-stages" id="stages"></div>
+        <div id="railBody"></div>
+      </div>
+      <!-- CENTER STAGE -->
+      <div class="ncm-fw-stage" id="stage">
+        <canvas class="ncm-fw-canvas" id="fwc"></canvas>
+        <div class="ncm-fw-grid"></div>
+        <div class="ncm-enc-sweep" id="sweep"></div>
+        <div class="ncm-fw-stagehd">
+          <div style="flex:1;min-width:0;">
+            <div class="ncm-fw-stagehd__n" id="hdN" data-fx="decode">Ghostkey.exe</div>
+            <div class="ncm-fw-stagehd__s" id="hdS">EXECUTE · backdoor · onto Blank Data Shard</div>
+          </div>
+          <span class="ncm-fw-fam" id="hdFam">EXECUTE</span>
+        </div>
+        <div class="ncm-fw-core-wrap" id="coreWrap">
+          <div class="ncm-enc-die" id="die"><span class="ncm-enc-die__cube" id="dieCube">?</span><span class="ncm-enc-die__sum" id="dieSum">TECH 7 + Interface 5 + <b>d10</b></span></div>
+          <div class="ncm-enc-core-lbl" id="coreLbl">READY</div>
+          <div class="ncm-fw-seal" id="seal"><i class="fas fa-check"></i> <span id="sealN"></span></div>
+          <div class="ncm-fw-core" id="core">
+            <span class="ncm-fw-ring ncm-fw-ring--1"></span><span class="ncm-fw-ring ncm-fw-ring--2"></span><span class="ncm-fw-ring ncm-fw-ring--3"></span>
+            <span class="ncm-fw-chipwrap"><span class="ncm-fw-chip-core"><i class="fas fa-door-open" id="coreIc"></i></span></span>
+          </div>
+        </div>
+        <div class="ncm-enc-doc" id="doc" hidden></div>
+        <div class="ncm-enc-man ncm-enc-in" id="man" style="--i:2" hidden></div>
+        <div class="ncm-enc-write" id="write" hidden>
+          <div class="ncm-enc-sectors" id="sectors">
+            <div class="ncm-enc-sectors__hd"><i class="fas fa-hard-drive"></i> <b>WRITE</b> · sector map <span class="addr" id="addr">0x0000</span></div>
+            <div class="ncm-enc-grid" id="grid"></div>
+            <div class="ncm-enc-scan" id="scan"></div>
+            <div class="ncm-enc-hash" id="hash">CRC —</div>
+          </div>
+          <div class="ncm-hackfx" id="hackfx"></div>
+        </div>
+        <div class="ncm-fw-synth">
+          <div class="ncm-fw-synth__row"><span class="ncm-fw-synth__lbl" id="synthLbl">Encode</span><span class="ncm-fw-synth__bar"><span class="ncm-fw-synth__fill" id="fill" style="width:0%"></span></span><span class="ncm-fw-synth__pct" id="pct">0%</span></div>
+          <div class="ncm-fw-synth__status" id="status">Pick a craft skill · the rung you land on decides what you get</div>
+        </div>
+      </div>
+      <!-- RIGHT RAIL -->
+      <div class="ncm-fw-rail ncm-fw-rail--r">
+        <div class="ncm-fw-railhd"><b><i class="fas fa-wave-square"></i>Readout</b></div>
+        <div class="ncm-fw-card ncm-fw-card--does"><div class="ncm-fw-card__t"><i class="fas fa-chart-simple"></i><span data-fx="decode">What you'll get</span></div>
+          <div class="ncm-fw-says" id="says"></div><div class="ncm-enc-bar" id="bar"></div><div class="ncm-fw-timing" id="timing"></div>
+          <button type="button" class="ncm-enc-more" id="moreBtn"><i class="fas fa-chevron-down"></i> Details</button>
+          <div class="ncm-enc-details" id="details" hidden><div class="ncm-enc-ladder" id="ladder"></div><div class="ncm-enc-eff" id="effC" style="margin-top:6px"></div></div></div>
+        <div class="ncm-fw-card ncm-fw-card--req"><div class="ncm-fw-card__t"><i class="fas fa-microchip"></i><span data-fx="decode">Artifact</span></div><div class="ncm-enc-art" id="art"><span class="ncm-enc-art__chip"></span><div><div class="ncm-enc-art__n" id="artN" data-fx="decode">Ghostkey.exe</div><div class="ncm-enc-art__d" id="artD">not yet encoded</div></div></div>
+          <div style="margin-top:7px" id="artKv"></div></div>
+        <div class="ncm-fw-card" id="mktCard" hidden><div class="ncm-fw-card__t"><i class="fas fa-tag"></i><span data-fx="decode">Market</span><span class="r" id="mktMode" style="margin-left:auto;font:calc(9.5px * var(--ncm-text-scale,1)) var(--ncm-font-mono,monospace);color:var(--ncm-text-secondary,#9fb3c0);text-transform:none;letter-spacing:.04em"></span></div><div class="ncm-enc-mkt" id="mkt"></div></div>
+        <div class="ncm-fw-card ncm-enc-opcard" id="opCard"><div class="ncm-fw-card__t"><i class="fas fa-user"></i><span data-fx="decode">Operator · V</span></div><div id="opRows"></div><button type="button" class="ncm-enc-more" id="opAll"><i class="fas fa-chevron-down"></i> All skills</button></div>
+      </div>
+      <!-- FOOT -->
+      <div class="ncm-fw-foot">
+        <span class="ncm-fw-foot__hint" id="hint">STAGE 2 OF 4 · PROGRAM</span>
+        <span class="ncm-fw-sp"></span>
+        <button class="ncm-shard-btn" style="width:auto!important;">Cancel</button>
+        <button class="ncm-shard-btn" style="width:auto!important;" id="back"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="ncm-fw-save" id="go"><i class="fas fa-arrow-right"></i> Next · Lock</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="cap" id="cap"></div>
+
+<!-- ═══════════════ LAUNCH ═══════════════ -->
+<div id="launch" class="lv" hidden>
+  <div class="pane">
+    <div class="pane-t">① The Agent · <b>SHARDS</b> tab — the primary entry point</div>
+    <div class="ncm-app ncm-viewer" style="background:var(--ncm-bg-base,#12121a);">
+      <div class="pillrow">
+        <span class="ncm-pill ncm-pill--active"><i class="fas fa-layer-group"></i> All <span class="ncm-pill__badge">3</span></span>
+        <span class="ncm-pill"><i class="fas fa-download"></i> Received <span class="ncm-pill__badge ncm-pill__badge--success">1</span></span>
+        <span class="ncm-pill"><i class="fas fa-box"></i> Inventory <span class="ncm-pill__badge">2</span></span>
+        <a class="ncm-pill ncm-pill--action is-new" style="margin-left:auto;text-decoration:none" href="?view=studio&stage=blank"><i class="fas fa-microchip"></i> Encode new</a>
+      </div>
+      <div class="ncm-viewer__tab-list">
+        <div class="ncm-viewer__shard-item" data-shard-type="received"><div class="ncm-viewer__shard-icon ncm-viewer__shard-icon--received"><i class="fas fa-microchip"></i><div class="ncm-viewer__shard-chip-tag"><i class="fas fa-microchip"></i></div></div><div class="ncm-viewer__shard-info"><div class="ncm-viewer__shard-name">Ghost's Go-Bag</div><div class="ncm-viewer__shard-meta"><span>4 fragment(s)</span><span>From: Ghost</span></div></div><span class="ncm-viewer__shard-badge ncm-viewer__shard-badge--received">Received</span></div>
+        <div class="ncm-viewer__shard-item" data-shard-type="inventory"><div class="ncm-viewer__shard-icon"><i class="fas fa-microchip"></i><div class="ncm-viewer__shard-chip-tag"><i class="fas fa-microchip"></i></div></div><div class="ncm-viewer__shard-info"><div class="ncm-viewer__shard-name">Kang Tao payroll — Q3</div><div class="ncm-viewer__shard-meta"><span>1 fragment(s)</span><span style="color:var(--ncm-accent)">PLAYER-MADE · Forgery clean</span></div></div><span class="ncm-viewer__shard-badge ncm-viewer__shard-badge--inventory">Inventory</span></div>
+        <div class="ncm-viewer__shard-item" data-shard-type="inventory"><div class="ncm-viewer__shard-icon"><i class="fas fa-microchip"></i><div class="ncm-viewer__shard-chip-tag"><i class="fas fa-microchip"></i></div></div><div class="ncm-viewer__shard-info"><div class="ncm-viewer__shard-name">Blank Data Shard ×2</div><div class="ncm-viewer__shard-meta"><span style="color:var(--ncm-text-muted)">empty · ready to encode</span></div></div><span class="ncm-viewer__shard-badge ncm-viewer__shard-badge--inventory">Blank</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="pane-t">② Right-click an item — <b>the existing hook</b></div>
+    <div class="ctx">
+      <div class="it dim"><i class="fas fa-eye"></i> View Item</div>
+      <a class="it hi" style="text-decoration:none" href="?view=studio&stage=content"><i class="fas fa-microchip"></i> Encode to Data Shard</a>
+      <div class="it dim"><i class="fas fa-layer-group"></i> Program Deck</div>
+      <div class="it dim"><i class="fas fa-share"></i> Give to…</div>
+    </div>
+    <div class="pane-t" style="border-top:1px solid #2a2a45">On an <b>owned shard</b> — add an entry</div>
+    <div class="ctx">
+      <a class="it hi" style="text-decoration:none" href="?view=studio&stage=content"><i class="fas fa-plus"></i> Add entry (Encoder)</a>
+      <div class="it dim"><i class="fas fa-box-open"></i> Open shard</div>
+      <div class="it dim"><i class="fas fa-lock"></i> Lock…</div>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="pane-t">③ Program Deck — <b>an empty cartridge slot</b></div>
+    <div class="deck">
+      <div class="cart"><span class="led"></span></div>
+      <div class="cart exe"><span class="led" style="background:#ff0033;box-shadow:0 0 6px #ff0033"></span></div>
+      <a class="cart empty" style="text-decoration:none" href="?view=studio&stage=program"><i class="fas fa-plus"></i><span>NEW PROGRAM</span></a>
+    </div>
+    <div class="pane-t" style="border-top:1px solid #2a2a45">All three open the <b>same Encoder</b> with a stage pre-set</div>
+    <div class="ctx" style="font-size:11px;color:#9fb3c0;line-height:1.5;padding:8px 10px;">Agent → stage ① (buy / pick a blank).<br>Item → stage ② with that blank chosen.<br>Deck slot → stage ② <b>Program branch</b>, family pre-picked.<br>Owned shard → stage ② as "add entry", no new blank.</div>
+  </div>
+</div>
+
+<script type="module">
+// The real HackFX stream is used when the page is served over http or Chrome
+// runs with --allow-file-access-from-files; opened straight from disk the
+// import is blocked by CORS, so it is OPTIONAL — the compile beat then plays
+// a static version of the same lines. Nothing else depends on it.
+let streamHackCode = null;
+try { ({ streamHackCode } = await import('../../scripts/ui/content/HackFX.js')); }
+catch (e) { console.warn('[encoder mock] HackFX import unavailable over file:// — static compile stream', e?.message); }
+const q = new URLSearchParams(location.search);
+const view = q.get('view') || 'studio';
+let stage = q.get('stage') || 'program';
+let contentMode = stage === 'content'; // is stage ② the Content grid or the Program branch?
+const result = q.get('result') || 'clean';
+const beat = q.get('beat') || '';
+const play = q.get('play') === '1';
+if (q.get('h')) document.querySelectorAll('.app-frame').forEach(f => f.style.height = q.get('h') + 'px');
+if (q.get('ts')) document.querySelectorAll('.app-frame').forEach(f => f.style.setProperty('--ncm-text-scale', q.get('ts'))); // the player's Text Size slider, previewed // ?h=<px> grows the frame (preview convention) so the rails show without scrolling
+const $ = (id) => document.getElementById(id);
+
+// ── switch strip ──
+const links = [['?view=launch','LAUNCH'],['?view=studio&stage=blank','① BLANK'],['?view=studio&stage=content','② CONTENT'],['?view=studio&stage=program','② PROGRAM'],['?view=studio&stage=lock','③ LOCK'],['?view=studio&stage=encode&result=clean&play=1','④ ENCODE ▶ play'],['?view=studio&stage=encode&result=clean&beat=seal','clean'],['?view=studio&stage=encode&result=sloppy&beat=seal','sloppy'],['?view=studio&stage=encode&result=rejected&beat=seal','rejected']];
+$('sw').innerHTML = `<b>SHARD ENCODER · FUI mock (real cascade)</b> <span style="color:#7a7a92">— walk it with the window's NEXT / BACK or the stage rows; the strip jumps anywhere</span> ` + links.map(([h,l]) => `<a href="${h}" class="${location.search===h?'on':''}">${l}</a>`).join('');
+$('launch').hidden = view !== 'launch'; $('studio').hidden = view !== 'studio';
+
+// ── operator + model ──
+const OP = { TECH: 7, INT: 6, ranks: { Interface: 5, 'Electronics/Security Tech': 3, Cryptography: 2, Forgery: 4, 'Library Search': 3, Accounting: 1, Perception: 2 } };
+const STAT = { Interface: 'TECH', 'Electronics/Security Tech': 'TECH', Cryptography: 'INT', Forgery: 'TECH', 'Library Search': 'INT', Accounting: 'INT', Perception: 'INT' };
+const base = (sk) => OP[STAT[sk]] + (OP.ranks[sk] || 0);
+const odds = (sk, dv) => { const b = base(sk); let c = 0, s = 0, r = 0; for (let d = 1; d <= 10; d++) { const m = b + d - dv; if (m >= 0) c++; else if (m >= -4) s++; else r++; } return { c: c * 10, s: s * 10, r: r * 10, b }; };
+const cls = (c) => c >= 60 ? 'hi' : c >= 30 ? 'mid' : 'lo';
+
+// ── FUI text motion ─────────────────────────────────────────────────────
+// decode  : glyph-scramble that resolves left→right (headers, names, labels)
+// countUp : numeric readout tween; on a RE-render it tweens from the PREVIOUS value
+//           (keyed by data-k), so switching a craft skill makes the ladder "re-read"
+// typeIn  : typewriter with a block cursor (the stage sub-line)
+// Entrance cascade = .ncm-enc-in + --i (translate+fade, the module's expo-out).
+// Rule kept from the terminal/viewer: motion on ARRIVAL and on STATE CHANGE, never on idle —
+// a chip click re-renders the rail with fx-skip (no cascade), only the numbers move.
+const still = q.get('reduced') === '1';
+const fxOn = q.get('fx') !== '0' && !still;
+document.body.classList.add(fxOn ? 'fx-on' : 'fx-off');
+const GL = '01ABCDEF◈×#$%&/<>[]{}';
+const NUMS = {};
+function decode(el, text, { dur = 480, delay = 0 } = {}) {
+  if (!el) return; text = text ?? el.dataset.txt ?? el.textContent; el.dataset.txt = text;
+  if (!fxOn) { el.textContent = text; return; }
+  el.classList.add('is-decoding'); const t0 = performance.now() + delay;
+  (function f() { const k = (performance.now() - t0) / dur; const n = Math.floor(text.length * Math.max(0, Math.min(1, k))); let out = text.slice(0, n);
+    for (let i = n; i < text.length; i++) out += text[i] === ' ' ? ' ' : GL[(Math.random() * GL.length) | 0];
+    el.textContent = out; if (k < 1) requestAnimationFrame(f); else el.classList.remove('is-decoding'); })();
+}
+function countUp(el, n, { dur = 550, delay = 0, suffix = '', k } = {}) {
+  if (!el) return; const from = k && k in NUMS ? NUMS[k] : 0; if (k) NUMS[k] = n;
+  if (!fxOn || from === n) { el.textContent = n + suffix; return; }
+  const t0 = performance.now() + delay;
+  (function f() { const t = (performance.now() - t0) / dur; if (t < 0) { el.textContent = from + suffix; requestAnimationFrame(f); return; }
+    const e = 1 - Math.pow(1 - Math.min(1, t), 3); el.textContent = Math.round(from + (n - from) * e) + suffix; if (t < 1) requestAnimationFrame(f); })();
+}
+function typeIn(el, text, { cps = 60, delay = 120 } = {}) {
+  if (!el) return; if (!fxOn) { el.textContent = text; el.classList.remove('ncm-enc-cur'); return; }
+  el.textContent = ''; el.classList.add('ncm-enc-cur'); const t0 = performance.now() + delay;
+  (function f() { const n = Math.max(0, Math.floor((performance.now() - t0) / 1000 * cps)); el.textContent = text.slice(0, n); if (n < text.length) requestAnimationFrame(f); else setTimeout(() => el.classList.remove('ncm-enc-cur'), 900); })();
+}
+// sweep a subtree: decode every [data-fx=decode], tween every [data-fx=count]
+function fxSweep(root, { enter = true } = {}) {
+  if (!root) return;
+  root.querySelectorAll('[data-fx="decode"]').forEach((el, i) => { if (enter || el.dataset.txt !== el.textContent) decode(el, null, { delay: 60 * (+el.dataset.fxi || i) }); });
+  root.querySelectorAll('[data-fx="count"]').forEach((el, i) => countUp(el, +el.dataset.n, { delay: enter ? 180 + 50 * i : 0, suffix: el.dataset.suffix || '', k: el.dataset.k }));
+}
+function fxAfter({ enter = true } = {}) {
+  $('fw').classList.toggle('fx-skip', !enter); $('fw').dataset.encStage = stage;
+  ['railBody', 'ladder', 'effC', 'artKv', 'man', 'mkt', 'stages'].forEach(id => fxSweep($(id), { enter }));
+  if (enter) fxSweep(document.querySelector('.ncm-fw-rail--r'), { enter });
+}
+// stage header: name decodes, sub-line types in, family tag decodes
+function setHead(n, s, f, { enter = true } = {}) {
+  if (enter) { decode($('hdN'), n); typeIn($('hdS'), s); decode($('hdFam'), f, { dur: 300 }); }
+  else { $('hdN').dataset.txt = n; $('hdN').textContent = n; $('hdS').textContent = s; $('hdFam').textContent = f; }
+}
+
+// ── the one-sentence readout (the Workshop's "What it does" voice) ──
+let detailsOpen = q.get('details') === '1';
+function setSays(html, timing) { $('says').innerHTML = html; $('timing').innerHTML = timing || ''; $('details').hidden = !detailsOpen; $('moreBtn').innerHTML = `<i class="fas fa-chevron-${detailsOpen?'up':'down'}"></i> ${detailsOpen?'Less':'Details'}`; }
+const likely = (o) => o.c >= o.s && o.c >= o.r ? ['clean', o.c] : o.s >= o.r ? ['sloppy', o.s] : ['rejected', o.r];
+
+// ── OPERATOR card — only the skills THIS stage asks for; "All skills" unfolds the rest ──
+const OPSK = ['Interface', 'Electronics/Security Tech', 'Cryptography', 'Forgery', 'Library Search', 'Accounting', 'Perception'];
+let opList = OPSK, opAll = false;
+function renderOperator(list) {
+  if (list) { opList = list; opAll = false; }
+  const show = opAll ? OPSK : opList; $('opCard').hidden = !show.length; $('opAll').hidden = opAll || show.length >= OPSK.length; $('opAll').innerHTML = '<i class="fas fa-chevron-down"></i> All skills';
+  $('opRows').innerHTML = show.map((sk, i) => { const r = OP.ranks[sk] || 0; return `<div class="ncm-enc-op ncm-enc-in" data-op="${sk}" style="--i:${i}"><span class="ncm-enc-op__k" data-fx="decode" data-fxi="${i}">${sk.replace('Electronics/Security Tech','Elec/Sec Tech')}</span><span class="ncm-enc-op__v"><small>${STAT[sk]} ${OP[STAT[sk]]} + ${r} =</small><span data-fx="count" data-n="${base(sk)}" data-k="op:${sk}">0</span></span><span class="ncm-enc-op__pips">${Array.from({length:10},(_,j)=>`<i class="${j<r?'on':''}" style="--i:${i};--j:${j}"></i>`).join('')}</span></div>`; }).join('');
+  fxSweep($('opRows'));
+}
+$('opAll').onclick = () => { opAll = true; renderOperator(); fxSweep($('opRows')); markCraft(document.querySelector('.ncm-enc-op.is-craft')?.dataset.op || craft); };
+$('moreBtn').onclick = () => { detailsOpen = !detailsOpen; $('details').hidden = !detailsOpen; $('moreBtn').innerHTML = `<i class="fas fa-chevron-${detailsOpen?'up':'down'}"></i> ${detailsOpen?'Less':'Details'}`; if (detailsOpen) fxSweep($('details')); };
+function markCraft(sk) {
+  document.querySelectorAll('.ncm-enc-op').forEach(row => { const on = row.dataset.op === sk; const was = row.classList.contains('is-craft'); row.classList.toggle('is-craft', on); if (on && !was && fxOn) { row.classList.remove('ping'); void row.offsetWidth; row.classList.add('ping'); } });
+}
+
+// ── MANIFEST — the Program branch's data entry. Per-ability params come from the
+// PROGRAM_EFFECTS registry's `params` (that's what the registry's params field is FOR).
+const PARAMS = {
+  backdoor:   [['Username','svc_maint','mono','the hidden account it forges',{fw:'120px'}],['Password','auto · ⚄','mono','generated on seal · whispered to you',{fw:'110px'}],['Lifetime','sel:24 h (default)|72 h|permanent','','GM caps at 72 h',{fw:'120px'}]],
+  keylog:     [['Target account','sel:any login|admin only|a named user','','which login it captures',{fw:'150px'}],['Reports to','sel:my Agent|a contact…','','where the creds land',{fw:'130px'}]],
+  deployICE:  [['ICE','sel:Hellhound (owned)|Kraken (Ghost\'s go-bag)|Wisp (owned)','','an ICE you carry — the Workshop\'s list',{fw:'170px'}],['Bites on','sel:next login|any action|heat ≥ 50','','the trigger',{fw:'120px'}]],
+  logicBomb:  [['Trigger','sel:next login|a date…|heat ≥ 50|on exfil','','when it goes off',{fw:'130px'}],['Then','sel:wipe a file|corrupt a file|deploy ICE|jam uplink','','the inner effect',{fw:'130px'}],['Target file','(chosen on upload)','','picked when you push it',{fw:'140px',lock:true}]],
+  scanner:    [['Depth','sel:accounts|files + off-net|residents (needs 7+)','','what it reports',{fw:'170px'}]],
+  skeletonKey:[['Scope','sel:this account|every account','','which lockouts it clears',{fw:'140px'}]],
+  jammer:     [['Duration','sel:10 min|1 hour|until killed','','uplink stays down for',{fw:'130px'}]],
+  icebreaker: [['Unseals','sel:everything sealed|galleries + AV only|credentials only','','which sibling entries',{fw:'170px'}]],
+};
+let progName = 'Ghostkey.exe', disg = 'none', manCollapsed = q.get('man') === 'closed', optOpen = false;
+// ── BLANK TIERS — GM-defined (Admin → Shards → Player Authoring): price · what a botch does · perk · which items count.
+// Anything not listed is Scrap. "Premium" is whatever the GM says it is — an item flag, not a hardcoded name.
+const TIERS = {
+  scrap:    { n: 'Scrap',    price: 0,   rej: 'bricked',          nat1: 'bricked + trace', perk: '' },
+  standard: { n: 'Standard', price: 50,  rej: 'bricked',          nat1: 'bricked + trace', perk: '' },
+  premium:  { n: 'Premium',  price: 200, rej: 'survives · wiped', nat1: 'bricked',         perk: '+1 craft roll' },
+};
+const TIER = TIERS[q.get('tier')] ? q.get('tier') : 'standard', tier = TIERS[TIER];
+const bricks = tier.rej === 'bricked';
+const BOTCH = bricks ? 'the blank is bricked' : 'the blank survives — wiped, reusable';
+const blankName = TIER === 'premium' ? 'Militech Hardened Shard' : TIER === 'scrap' ? 'Memory chip (wiped)' : 'Blank Data Shard';
+function fieldHtml([lbl, val, kind, sub, o = {}]) {
+  const st = `style="${o.fw?'--fw:'+o.fw+';':''}${o.flex?'--flex:'+o.flex+';':''}"`;
+  const inp = String(val).startsWith('sel:') ? `<select>${val.slice(4).split('|').map(v => `<option>${v}</option>`).join('')}</select>` : `<input class="${kind}" value="${val}"${o.lock?' disabled':''}>`;
+  return `<div class="ncm-enc-f ${o.lock?'is-lock':''}" ${st}><label>${lbl}</label>${inp}${sub?`<span class="sub">${sub}</span>`:''}</div>`;
+}
+function renderManifest(cur, { enter = true } = {}) {
+  const rank = OP.ranks.Interface, canDisg = rank >= 4;
+  $('coreWrap').style.flex = '0 0 170px'; $('man').hidden = false; $('man').classList.toggle('is-collapsed', manCollapsed);
+  $('man').innerHTML = `<div class="ncm-enc-man__hd" id="manHd"><i class="fas fa-file-code"></i> <b data-fx="decode">MANIFEST</b> · what you're building <span class="r" id="manR">${fam === 'utility' ? 'payload' : 'malware'} · ${cur[0]}</span><i class="fas fa-chevron-down tog"></i></div>
+    <div class="ncm-enc-man__sum"><b>${progName}</b> <i>·</i> v1.2 <i>·</i> unsigned <i>·</i> ${disg==='none'?'no disguise':'disguised as '+disg} <i>·</i> ${(PARAMS[cur[0]]||[]).length} parameter${(PARAMS[cur[0]]||[]).length===1?'':'s'} <i>·</i> <span style="color:var(--fam)">click to expand</span></div>
+    <div class="ncm-enc-man__body"><div class="ncm-enc-fg">
+      ${fieldHtml(['Program name', progName, 'mono', 'what the file is called', {flex:'1 1 150px'}])}
+      ${fieldHtml(['Version', '1.2', 'mono', '', {fw:'56px'}])}
+      <div class="ncm-enc-f" style="--flex:1 1 100%"><label>Description · what the cover says</label><textarea>Encrypted payroll archive — Q3. Open with the attached viewer.</textarea></div>
+    </div>
+    <button type="button" class="ncm-enc-more" id="optBtn"><i class="fas fa-chevron-${optOpen?'up':'down'}"></i> Options · signature, disguise</button>
+    <div class="ncm-enc-fg ncm-enc-optbody" id="optBody" ${optOpen?'':'hidden'}>
+      ${fieldHtml(['Signature', 'sel:unsigned · anonymous|signed · V (rep, but traceable)|spoofed · "Arasaka IT"', '', 'who it claims to be from · a trace reads this', {fw:'190px'}])}
+      <div class="ncm-enc-f ${canDisg?'':'is-lock'}" style="--fw:150px"><label>Disguise as <span style="color:var(--ncm-accent)">DV +2</span></label><select id="disg" ${canDisg?'':'disabled'}><option value="none" ${disg==='none'?'selected':''}>none · reads as ${fam==='utility'?'a payload':'malware'}</option><option value="note" ${disg==='note'?'selected':''}>Note</option><option value="document" ${disg==='document'?'selected':''}>Document</option><option value="eddies" ${disg==='eddies'?'selected':''}>Eddies drop</option><option value="dossier" ${disg==='dossier'?'selected':''}>Dossier</option></select><span class="sub">${canDisg ? 'trojan cover · ANALYZE vs stealth DV sees through it' : '<span class="need">Interface 4+</span> to trojan it (GM threshold)'}</span></div>
+    </div>
+    <div class="ncm-enc-man__params"><div class="ncm-enc-man__hd"><i class="fas fa-sliders"></i> <b data-fx="decode">${cur[1].toUpperCase()}</b> · parameters <span class="r">from PROGRAM_EFFECTS[${cur[0]}].params</span></div><div class="ncm-enc-fg">${(PARAMS[cur[0]] || []).map(fieldHtml).join('') || '<span class="sub">no parameters — it just runs</span>'}</div></div></div>`;
+  $('manHd').onclick = () => { manCollapsed = !manCollapsed; $('man').classList.toggle('is-collapsed', manCollapsed); $('coreWrap').style.flex = manCollapsed ? '' : '0 0 170px'; };
+  $('optBtn').onclick = () => { optOpen = !optOpen; $('optBody').hidden = !optOpen; $('optBtn').innerHTML = `<i class="fas fa-chevron-${optOpen?'up':'down'}"></i> Options · signature, disguise`; };
+  const nameInp = $('man').querySelector('input.mono');
+  nameInp.oninput = () => { progName = nameInp.value || 'untitled.exe'; $('hdN').textContent = progName; $('hdN').dataset.txt = progName; $('artN').textContent = progName; $('artN').dataset.txt = progName; };
+  const d = $('disg'); if (d && canDisg) d.onchange = () => { disg = d.value; optOpen = true; renderProgramRail({ enter: false }); };
+}
+
+// ── MARKET — the player prices the artifact; the GM's pricing mode decides what happens.
+//   off      the section isn't rendered (no player pricing)
+//   propose  player names a price → GM whisper card Approve / Counter / Deny → the item's price
+//   free     player sets it outright (trusted table)
+//   formula  read-only: blank cost + type DV × quality (auto, shown on the card)
+const PRICING = q.get('pricing') || 'propose';
+let priced = q.get('priced') || '';
+function sugPrice(dv, blank = 50) { return { clean: blank + dv * 20, sloppy: blank + Math.round(dv * 20 * .4) }; }
+function renderMarket(dv, { enter = true } = {}) {
+  const m = $('mkt'); if (PRICING === 'off') { $('mktCard').hidden = true; return; } $('mktCard').hidden = false; $('mktMode').textContent = {propose:'GM approves',free:'you set it',formula:'auto'}[PRICING];
+  const sg = sugPrice(dv), val = PRICING === 'formula' ? sg.clean : 450;
+  const chip = { '': ['mute', PRICING === 'formula' ? 'auto-priced' : 'not listed'], await: ['wait', 'awaiting GM'], ok: ['ok', 'approved'], counter: ['ctr', 'GM counter · 380'], no: ['no', 'denied'] }[priced];
+  m.innerHTML = `<div class="ncm-enc-mkt__row"><input id="price" value="${priced==='counter'?380:val}" ${PRICING==='formula'||priced?'disabled':''}><span class="ncm-enc-mkt__eb">eb</span>${PRICING==='formula'?'':`<span class="ncm-fw-chip" id="propose" style="--gfam:var(--fam)"><i class="fas ${PRICING==='free'?'fa-tag':'fa-paper-plane'}"></i>${priced==='counter'?'Accept':PRICING==='free'?'List':'Propose'}</span>`}<span class="ncm-enc-chip ${chip[0]}">${chip[1]}</span></div>
+    <div class="ncm-enc-mkt__sug">suggested <b>clean ≈ ${sg.clean} eb</b> · sloppy ≈ ${sg.sloppy} eb<br>blank 50 + DV ${dv} × 20 × quality</div>
+    ${PRICING==='propose'?`<div class="ncm-enc-mkt__note">${priced==='await'?'The GM got a whisper card — Approve / Counter / Deny. Until then the shard carries no price.':priced==='ok'?'Written to the item\'s price field — a fixer or an Item Piles merchant reads it.':priced==='counter'?'The GM countered. Accept, or re-propose.':priced==='no'?'The GM said no. Re-propose, or sell it by hand.':'Name a price. It lands on the item only once the GM approves.'}</div>`:''}`;
+  const btn = $('propose'); if (btn) btn.onclick = () => { priced = PRICING === 'free' ? 'ok' : priced === 'counter' ? 'ok' : 'await'; renderMarket(dv, { enter: false }); fxSweep(m, { enter: false }); };
+}
+const ABIL = { utility: [['scanner','Scanner','fa-magnifying-glass',12,0],['skeletonKey','Skeleton key','fa-key',15,4],['jammer','Jammer','fa-satellite-dish',15,4],['icebreaker','Icebreaker','fa-snowflake',18,7]],
+               execute: [['keylog','Keylog','fa-keyboard',15,4],['backdoor','Backdoor','fa-door-open',18,7],['deployICE','Deploy ICE','fa-shield-virus',18,7],['logicBomb','Logic bomb','fa-bomb',20,7]] };
+const CRAFT = [['Interface',0,true],['Electronics/Security Tech',3,false],['Cryptography',5,false]];
+let fam = 'execute', ab = 'backdoor', craft = 'Interface';
+const stagesDef = [['blank','Blank','what it\'s on'],['program','Program','build, don\'t write'],['lock','Lock','optional'],['encode','Encode','the roll']];
+let prevStageIdx = -1;
+function renderStages(cur) {
+  const first = !$('stages').children.length;
+  const idx = stagesDef.findIndex(s => s[0] === cur) === -1 ? (cur === 'content' ? 1 : 0) : stagesDef.findIndex(s => s[0] === cur);
+  $('stages').innerHTML = stagesDef.map(([k,t,d],i) => `<div class="ncm-enc-stage ${first?'ncm-enc-in':''} ${i<idx?'is-done':''} ${k===cur?'is-on':''} ${k===cur&&!first?'is-lit':''} ${k==='lock'?'is-opt':''}" style="--i:${i}"><span class="ncm-enc-stage__n ${i<idx&&i>=prevStageIdx&&!first?'is-pop':''}">${i<idx?'<i class="fas fa-check"></i>':i+1}</span><div><div class="ncm-enc-stage__t" ${first?'data-fx="decode"':''} data-fxi="${i}">${k==='program'&&contentMode?'Content':t}</div><div class="ncm-enc-stage__d">${d}</div></div>${k===cur||k==='encode'&&cur==='encode'?`<span class="ncm-enc-stage__sk">${cur==='encode'||k==='program'?craft.replace('Electronics/Security Tech','ELEC/SEC').toUpperCase()+' '+base(craft):''}</span>`:''}</div>`).join('');
+  prevStageIdx = idx;
+}
+function fillRung(o, dv, cur) {
+  const charges = 1 + Math.floor((OP.ranks[craft]||0) / 3);
+  const mmax = Math.max(0, o.b + 10 - dv);
+  $('ladder').innerHTML = `
+    <div class="ncm-enc-rung c ncm-enc-in" data-r="clean" style="--i:0"><span class="ncm-enc-rung__tag" data-fx="decode">CLEAN</span><span>${charges} charge${charges>1?'s':''} · stealth DV 12–${Math.min(20,12+mmax)} · run DV ${dv-2}<small>margin ≥ 0</small></span><span class="ncm-enc-rung__pct" data-fx="count" data-n="${o.c}" data-k="pc" data-suffix="%">${o.c}%</span></div>
+    <div class="ncm-enc-rung s ncm-enc-in" data-r="sloppy" style="--i:1"><span class="ncm-enc-rung__tag" data-fx="decode">SLOPPY</span><span>1 charge · stealth DV 8 · run DV ${dv+2} · GLITCHY tell<small>margin −1…−4</small></span><span class="ncm-enc-rung__pct" data-fx="count" data-n="${o.s}" data-k="ps" data-suffix="%">${o.s}%</span></div>
+    <div class="ncm-enc-rung r ncm-enc-in" data-r="rejected" style="--i:2"><span class="ncm-enc-rung__tag" data-fx="decode">REJECTED</span><span>nothing compiles · ${bricks?'the blank is BRICKED':'blank survives (wiped)'}<small>margin ≤ −5</small></span><span class="ncm-enc-rung__pct" data-fx="count" data-n="${o.r}" data-k="pr" data-suffix="%">${o.r}%</span></div>`;
+  $('bar').innerHTML = `<i class="c" style="width:${o.c}%"></i><i class="s" style="width:${o.s}%"></i><i class="r" style="width:${o.r}%"></i>`;
+  $('effC').innerHTML = `<div class="ncm-enc-in" style="--i:3"><b>Charges</b><span data-fx="count" data-n="${charges}" data-k="ec">${charges}</span></div><div class="ncm-enc-in" style="--i:4"><b>Stealth</b><span><span data-fx="count" data-n="12" data-k="es0">12</span>–<span data-fx="count" data-n="${Math.min(20,12+mmax)}" data-k="es1">${Math.min(20,12+mmax)}</span></span></div><div class="ncm-enc-in" style="--i:5"><b>Run DV</b><span data-fx="count" data-n="${dv-2}" data-k="er">${dv-2}</span></div>`;
+}
+let openDec = q.get('dec') === 'none' ? null : (q.get('dec') || 'sk');
+const FAM_LBL = { utility: 'Utility', plant: 'Plant', execute: 'Execute' };
+const shortSk = (sk) => sk.replace('Electronics/Security Tech', 'Elec/Sec Tech');
+function decRow(key, icon, label, val, body, i) {
+  const open = openDec === key;
+  return `<div class="ncm-enc-dec ncm-enc-in ${open?'is-open':'is-done'}" data-dec="${key}" style="--i:${i}"><div class="ncm-enc-dec__hd"><i class="fas ${open?icon:'fa-check'} ic"></i><span class="ncm-enc-dec__k" data-fx="decode">${label}</span><span class="ncm-enc-dec__v">${val}</span><i class="fas ${open?'fa-chevron-up':'fa-pen'} ed"></i></div><div class="ncm-enc-dec__b">${body}</div></div>`;
+}
+function renderProgramRail({ enter = true } = {}) {
+  const rank = OP.ranks.Interface, dDV = disg !== 'none' ? 2 : 0;
+  const list = ABIL[fam]; const cur = list.find(a => a[0] === ab) || list[0]; ab = cur[0];
+  const pen = CRAFT.find(c => c[0] === craft)[1]; const dv = cur[3] + pen + dDV; const o = odds(craft, dv);
+  // ONE question at a time: each decision is a row; the open one shows its choices, the others fold to their answer + a pen
+  $('railBody').innerHTML =
+    decRow('fam', 'fa-layer-group', 'Family', FAM_LBL[fam],
+      `<div class="ncm-fw-seg" style="width:100%"><button data-fam="utility" class="${fam==='utility'?'on':''}">Utility</button><button data-fam="plant" class="${fam==='plant'?'on':''}">Plant</button><button data-fam="execute" class="${fam==='execute'?'on':''}">Execute</button></div>
+       <div class="ncm-fw-hint">${fam==='execute'?'installs a resident that fires on a trigger':fam==='utility'?'runs against a host you are logged into':'a forged file — its quality is the CONTENT roll'}</div>`, 4) +
+    decRow('ab', 'fa-bolt', 'Ability', `${cur[1]}<small>DV ${cur[3]}</small>`,
+      `<div class="ncm-fw-chips">${list.map(([id,l,i,dv,need]) => `<span class="ncm-fw-chip ${id===ab?'on':''} ${rank<need?'is-lock':''}" data-ab="${id}" style="--gfam:var(--fam)"><i class="fas ${i}"></i>${l}<span class="dv">DV ${dv}</span>${rank<need?`<span class="need">Interface ${need}+</span>`:''}</span>`).join('')}</div>
+       <div class="ncm-fw-hint">greyed abilities need a higher Interface rank — the GM sets the thresholds</div>`, 5) +
+    decRow('sk', 'fa-hand-fist', 'Craft skill', `${shortSk(craft)}<small>${o.b} vs ${dv} · ${o.c}%</small>`,
+      `<div class="ncm-enc-sk">${CRAFT.map(([sk,pen,rec]) => { const dv = cur[3]+pen+dDV; const o = odds(sk,dv); const na = sk==='Cryptography' && !['keylog','backdoor'].includes(ab);
+        return `<span class="ncm-fw-chip ${sk===craft?'on':''} ${rec?'is-rec':''} ${na?'is-lock':''}" data-sk="${sk}" style="--gfam:var(--fam)"><span>${shortSk(sk)}</span><span class="ncm-enc-sk__tot" data-fx="count" data-n="${o.b}" data-k="sk:${sk}">${o.b}</span><span class="ncm-enc-sk__dv">vs ${dv}</span>${pen?`<span class="ncm-enc-sk__pen">+${pen}</span>`:''}${na?'<span class="need">not for this</span>':`<span class="ncm-enc-odds ${cls(o.c)}" data-fx="count" data-n="${o.c}" data-k="od:${sk}" data-suffix="%">${o.c}%</span>`}</span>`; }).join('')}</div>
+       <div class="ncm-fw-hint">★ the recommended tool has no penalty — a tech can jury-rig it at +3${dDV?' · the trojan cover adds +2':''}</div>`, 6);
+  fillRung(o, dv, cur);
+  const [lk, lp] = likely(o); const charges = 1 + Math.floor((OP.ranks[craft]||0) / 3);
+  setSays(`${shortSk(craft)} <b class="v">${o.b}</b> vs DV <b class="v">${dv}</b>. Most likely a <b>${lk}</b> build (${lp}%)${lk==='clean'?` — ${charges} charge${charges>1?'s':''}, stealth DV 12–${Math.min(20, 12 + Math.max(0, o.b + 10 - dv))}.`:lk==='sloppy'?' — 1 charge and a GLITCHY tell a SWEEP will see.':` — nothing compiles and ${BOTCH}.`}`,
+    `<i class="fas fa-dice"></i> clean ${o.c}% · sloppy ${o.s}% · rejected ${o.r}%`);
+  renderOperator(CRAFT.map(c => c[0]));
+  setHead(progName, `${fam.toUpperCase()} · ${cur[1].toLowerCase()}${disg!=='none'?' · disguised as '+disg:''} · onto Blank Data Shard`, fam.toUpperCase(), { enter });
+  $('coreIc').className = `fas ${cur[2]}`;
+  if (stage === 'program') renderManifest(cur, { enter });
+  markCraft(craft);
+  $('status').innerHTML = `${craft} <b>${o.b}</b> vs DV <b>${dv}</b> · clean ${o.c}% / sloppy ${o.s}% / rejected ${o.r}%`;
+  $('hint').textContent = `STAGE 2 OF 4 · PROGRAM · ${fam.toUpperCase()} › ${cur[1].toUpperCase()} · Interface rank ${rank} → ${1+Math.floor(rank/3)} base charge(s)`;
+  $('artKv').innerHTML = `<div class="ncm-enc-kv"><span>Writes as</span><b>${fam==='utility'?'payload':'malware'} · ${fam==='utility'?'effect':'uploadEffect'}</b></div><div class="ncm-enc-kv"><span>Deck cartridge</span><b>${fam.toUpperCase()}</b></div>${disg!=='none'?`<div class="ncm-enc-kv"><span>Reads as</span><b style="color:var(--ncm-accent)">${disg} (trojan)</b></div>`:''}`;
+  fxAfter({ enter });
+  // a pick answers the question and moves to the next one; the header of a folded row re-opens it
+  document.querySelectorAll('.ncm-enc-dec__hd').forEach(h => h.onclick = () => { const k = h.parentElement.dataset.dec; openDec = openDec === k ? null : k; renderProgramRail({ enter: false }); });
+  document.querySelectorAll('[data-fam]').forEach(b => b.onclick = () => { fam = b.dataset.fam; $('fw').dataset.fam = fam; openDec = 'ab'; renderProgramRail({ enter: false }); });
+  document.querySelectorAll('[data-ab]').forEach(b => b.onclick = () => { if (b.classList.contains('is-lock')) return; ab = b.dataset.ab; openDec = 'sk'; renderProgramRail({ enter: false }); });
+  document.querySelectorAll('[data-sk]').forEach(b => b.onclick = () => { if (b.classList.contains('is-lock')) return; craft = b.dataset.sk; openDec = null; renderProgramRail({ enter: false }); renderStages('program'); });
+}
+const TYPES = [['document','Document','fa-file-lines','Forgery',15],['record','Records','fa-database','Forgery',15],['dossier','Dossier','fa-id-badge','Forgery',18],['credentials','Credentials','fa-key','Forgery',18],['chatlog','Chat Log','fa-comments','Forgery',13],['spreadsheet','Spreadsheet','fa-table-cells','Accounting',13],['banking','Banking','fa-building-columns','Accounting',18],['gallery','Gallery','fa-images','Perception',13],['avlog','AV Log','fa-headphones','Perception',15],['location','Location','fa-map-marker-alt','Library Search',12],['message','Message','fa-envelope',null,0],['note','Note','fa-note-sticky',null,0],['schematic','Schematic','fa-compass-drafting','Basic Tech',15,'lock'],['calendar','Calendar','fa-calendar-days','Bureaucracy',12,'lock'],['syslog','Syslog','fa-terminal','Interface',15,'lock'],['eddies','Eddies','fa-sack-dollar',null,0],['payload','Payload','fa-virus','Interface',0,'prog'],['malware','Malware','fa-biohazard','Interface',0,'prog']];
+function renderContentRail() {
+  $('fw').dataset.fam = 'content';
+  $('railBody').innerHTML = `<div class="ncm-fw-sec"><div class="ncm-fw-sec__t"><i class="fas fa-file"></i><span>File type</span></div><div class="ncm-enc-types">${TYPES.map(([id,l,i,sk,dv,f]) => { const o = sk && dv ? odds(sk in STAT ? sk : 'Forgery', dv) : null; return `<div class="ncm-enc-type ncm-enc-in ${id==='document'?'on':''} ${f==='lock'?'lock':''} ${f==='prog'?'prog':''}" style="--i:${4+Math.floor(TYPES.findIndex(t=>t[0]===id)/2)}"><div class="t"><i class="fas ${i}"></i>${l}</div><div class="m">${f==='prog'?'<span class="sk">→ Program</span>':f==='lock'?'<i class="fas fa-lock"></i> GM disabled':!sk?'no roll':`<span class="o ncm-enc-odds ${cls(o.c)}" data-fx="count" data-n="${o.c}" data-k="t:${id}" data-suffix="%">${o.c}%</span>${id==='document'?`<span class="sk">${sk.toUpperCase()} · DV ${dv}</span>`:''}`}</div></div>`; }).join('')}</div><div class="ncm-fw-hint">pick a file type — the % is your chance of a clean forgery with it</div></div>`;
+  $('coreWrap').hidden = true; $('doc').hidden = false;
+  $('doc').innerHTML = `<div class="stamp">INTERNAL</div><h4>Kang Tao — Q3 payroll adjustment</h4><div class="lh">MEMO · KT-FIN-2045-0917 · From: <span class="red">████████</span> · Dated 2045.09.17</div><p>Per the Q3 review, the following personnel receive retroactive adjustments effective immediately. Disbursement via the Night City branch, authorised by <b>M. Sato</b>.</p><p>— <i>Hayashi, K.</i> · +1,200 eb/mo<br>— <i>Delgado, R.</i> · <span class="red">██████</span><br>— <i>Ward, J.</i> · terminated, final settlement pending.</p><p style="color:var(--ncm-text-muted);font-style:italic;margin-top:10px;">This is the real Document editor (the GM composer's WYSIWYG, player mode): the editor IS the artifact. The GM-only rows — network visibility, declassify DV — are simply not rendered.</p>`;
+  setHead('Kang Tao payroll — Q3', 'DOCUMENT · Forgery vs DV 15 · onto Blank Data Shard', 'DOCUMENT');
+  const o = odds('Forgery', 15);
+  $('ladder').innerHTML = `<div class="ncm-enc-rung c ncm-enc-in" style="--i:0"><span class="ncm-enc-rung__tag" data-fx="decode">CLEAN</span><span>forgeQuality high · ANALYZE needs DV 18+<small>margin ≥ 0</small></span><span class="ncm-enc-rung__pct" data-fx="count" data-n="${o.c}" data-k="pc" data-suffix="%">${o.c}%</span></div><div class="ncm-enc-rung s ncm-enc-in" style="--i:1"><span class="ncm-enc-rung__tag" data-fx="decode">SLOPPY</span><span>lands with a FORGED tell · ANALYZE DV 10<small>margin −1…−4</small></span><span class="ncm-enc-rung__pct" data-fx="count" data-n="${o.s}" data-k="ps" data-suffix="%">${o.s}%</span></div><div class="ncm-enc-rung r ncm-enc-in" style="--i:2"><span class="ncm-enc-rung__tag" data-fx="decode">REJECTED</span><span>the fake falls apart · ${bricks?'blank bricked':'blank survives'}<small>margin ≤ −5</small></span><span class="ncm-enc-rung__pct" data-fx="count" data-n="${o.r}" data-k="pr" data-suffix="%">${o.r}%</span></div>`;
+  $('bar').innerHTML = `<i class="c" style="width:${o.c}%"></i><i class="s" style="width:${o.s}%"></i><i class="r" style="width:${o.r}%"></i>`;
+  $('effC').innerHTML = `<div class="ncm-enc-in" style="--i:3"><b>Quality</b><span><span data-fx="count" data-n="50">50</span>–<span data-fx="count" data-n="100">100</span></span></div><div class="ncm-enc-in" style="--i:4"><b>Scan DV</b><span><span data-fx="count" data-n="15">15</span>–<span data-fx="count" data-n="20">20</span></span></div><div class="ncm-enc-in" style="--i:5"><b>Tell</b><span>none</span></div>`;
+  $('artN').textContent = 'Kang Tao payroll — Q3'; $('artKv').innerHTML = `<div class="ncm-enc-kv"><span>Writes as</span><b>document · file</b></div><div class="ncm-enc-kv"><span>Alt skill</span><b>Library Search +3</b></div>`;
+  setSays(`Forgery <b class="v">${o.b}</b> vs DV <b class="v">15</b>. Most likely a <b>${likely(o)[0]}</b> forgery (${likely(o)[1]}%) — an ANALYZE needs DV 18+ to call it fake.`, `<i class="fas fa-dice"></i> clean ${o.c}% · sloppy ${o.s}% · rejected ${o.r}%`);
+  renderOperator(['Forgery', 'Accounting', 'Perception', 'Library Search']); markCraft('Forgery'); fxAfter();
+  $('status').innerHTML = `Forgery <b>${o.b}</b> vs DV <b>15</b> · clean ${o.c}% / sloppy ${o.s}% / rejected ${o.r}%`;
+  $('hint').textContent = 'STAGE 2 OF 4 · CONTENT · DOCUMENT · Forgery rank 4';
+  $('go').innerHTML = '<i class="fas fa-arrow-right"></i> Next · Lock';
+}
+
+function renderBlankRail({ enter = true } = {}) {
+  $('fw').dataset.fam = 'utility';
+  if (openDec !== null && !['src', 'lbl'].includes(openDec)) openDec = 'src';
+  const card = (t, icon, name, d, on) => { const tr = TIERS[t]; return `<div class="ncm-fw-icecard ${on?'on':''}"><span class="ncm-fw-icecard__ic" ${on?'style="color:var(--fam)"':''}><i class="fas ${icon}"></i></span><span class="ncm-fw-icecard__b"><span class="ncm-fw-icecard__n">${name}<span class="ncm-enc-tier ${t}">${tr.n}</span></span><span class="ncm-fw-icecard__d">${d}<span class="botch ${tr.rej==='bricked'?'bad':'ok'}">on a botch: ${tr.rej}${tr.perk?' · '+tr.perk:''}</span></span></span>${on?'<span class="ncm-fw-icecard__dmg" style="color:var(--ncm-success)">READY</span>':''}</div>`; };
+  $('railBody').innerHTML =
+    decRow('src', 'fa-box-open', 'Source', `${blankName}<small>${tier.n.toLowerCase()}</small>`, `
+      <div class="ncm-fw-seg" style="width:100%"><button class="on">Convert an item</button><button>Buy a blank</button></div>
+      <div class="ncm-enc-src" style="margin-top:8px">
+        ${card('standard', 'fa-microchip', 'Blank Data Shard', '×2 in V\'s inventory · empty', TIER === 'standard')}
+        ${card('premium', 'fa-shield-halved', 'Militech Hardened Shard', '×1 · empty', TIER === 'premium')}
+        ${card('scrap', 'fa-sd-card', 'Memory chip (used)', 'gear · will be wiped', TIER === 'scrap')}
+        ${card('scrap', 'fa-compact-disc', 'Braindance wafer', 'gear · will be wiped', false)}
+      </div>
+      <div class="ncm-enc-buy"><span class="ncm-fw-chip" style="--gfam:var(--ncm-secondary)"><i class="fas fa-cart-shopping"></i>Standard · 50 eb</span><span class="ncm-fw-chip" style="--gfam:var(--ncm-accent)"><i class="fas fa-cart-shopping"></i>Premium · 200 eb</span></div>
+      <div class="ncm-fw-hint">a shard is a physical thing — it has to come from somewhere. The tier is the GM's: what it costs, what a botched encode does to it, and any perk. Buy is the on-ramp when you have nothing to convert.</div>`, 4) +
+    decRow('lbl', 'fa-tag', 'Label', 'Kang Tao payroll — Q3', `
+      <div class="ncm-enc-lbl" style="margin-top:0"><label>Shard name</label><div class="ncm-enc-inp">Kang Tao payroll — Q3</div></div>
+      <div class="ncm-enc-lbl"><label>Icon</label><div class="ncm-enc-inp"><i class="fas fa-microchip" style="color:var(--ncm-text-muted)"></i> auto from the content type</div></div>
+      <div class="ncm-enc-lbl"><label>Colour</label><div class="ncm-enc-sw"><span class="on" style="background:#19f3f7;color:#19f3f7"></span><span style="background:#00ff41"></span><span style="background:#f7c948"></span><span style="background:#ff0033"></span><span style="background:#a855f7"></span><span style="background:#aaa"></span></div></div>`, 5);
+  setHead('Kang Tao payroll — Q3', `BLANK · ${blankName} · ${tier.n} · nothing on it yet`, 'BLANK', { enter });
+  $('coreIc').className = 'fas fa-microchip'; $('core').classList.add('ncm-enc-blankcore'); $('coreLbl').textContent = 'EMPTY';
+  setBuild(0);
+  $('ladder').innerHTML = ''; $('bar').innerHTML = '';
+  setSays('No roll here. A blank is a cred-stick and a label — the rolls are about what goes <b>on</b> it and how it\'s <b>locked</b>.', '<i class="fas fa-arrow-right"></i> next: what goes on it');
+  renderOperator([]);
+  $('effC').innerHTML = '<div><b>Content</b><span style="color:var(--ncm-text-muted)">—</span></div><div><b>Lock</b><span style="color:var(--ncm-text-muted)">none</span></div><div><b>Encode DV</b><span style="color:var(--ncm-text-muted)">—</span></div>';
+  $('artN').textContent = 'Kang Tao payroll — Q3'; $('artD').textContent = `${blankName} · empty`; $('artKv').innerHTML = `<div class="ncm-enc-kv"><span>Source</span><b>inventory item</b></div><div class="ncm-enc-kv"><span>Tier</span><b>${tier.n}${tier.perk?' · '+tier.perk:''}</b></div><div class="ncm-enc-kv"><span>On a botch</span><b>${tier.rej}</b></div><div class="ncm-enc-kv"><span>Cost</span><b>0 eb (owned)</b></div>`;
+  $('status').innerHTML = 'Pick what it\'s on · name it · next is what goes on it'; fxAfter({ enter });
+  $('hint').textContent = 'STAGE 1 OF 4 · BLANK · no roll'; $('go').innerHTML = '<i class="fas fa-arrow-right"></i> Next · Content';
+  document.querySelectorAll('.ncm-enc-dec__hd').forEach(h => h.onclick = () => { const k = h.parentElement.dataset.dec; openDec = openDec === k ? null : k; renderBlankRail({ enter: false }); });
+  document.querySelectorAll('.ncm-enc-src .ncm-fw-icecard').forEach(c => c.onclick = () => { openDec = 'lbl'; renderBlankRail({ enter: false }); });
+}
+function renderLockRail({ enter = true } = {}) {
+  $('fw').dataset.fam = 'utility';
+  const cry = base('Cryptography'), est = base('Electronics/Security Tech');
+  if (openDec !== null && !['pw', 'ice', 'key'].includes(openDec)) openDec = 'ice';
+  $('railBody').innerHTML =
+    decRow('pw', 'fa-key', 'Password', 'On<small>••••••••</small>', `
+      <div class="ncm-fw-switch" style="margin-bottom:8px"><span>Off</span><span class="on">On</span></div>
+      <div class="ncm-enc-inp" style="font-family:var(--ncm-font-mono)">•••••••• <i class="fas fa-dice" style="margin-left:auto;color:var(--ncm-text-muted)"></i></div>
+      <div class="ncm-fw-hint">no skill — a password is just a secret you set</div>`, 4) +
+    decRow('ice', 'fa-snowflake', 'Encryption', 'Standard ICE<small>DV ≤ 15</small>', `
+      <div class="ncm-fw-icecards">
+        <div class="ncm-fw-icecard on"><span class="ncm-fw-icecard__ic" style="color:var(--fam)"><i class="fas fa-shield-halved"></i></span><span class="ncm-fw-icecard__b"><span class="ncm-fw-icecard__n">Standard ICE</span><span class="ncm-fw-icecard__d">lockout on failure</span></span></div>
+        <div class="ncm-fw-icecard is-lock" style="opacity:.45"><span class="ncm-fw-icecard__ic"><i class="fas fa-skull"></i></span><span class="ncm-fw-icecard__b"><span class="ncm-fw-icecard__n">Black ICE</span><span class="ncm-fw-icecard__d">needs Cryptography roll 15+</span></span><span class="ncm-fw-icecard__dmg">3d6</span></div>
+      </div>
+      <div class="ncm-fw-grouplab" style="--gfam:var(--fam);margin-top:8px">Encryption DV · ceiling from Cryptography</div>
+      <div class="ncm-enc-ceil"><i class="ok"></i><i class="ok"></i><i class="cap"></i><i></i><i></i></div>
+      <div class="ncm-fw-hint">your Cryptography roll caps the DV — 8 · 12 · <b style="color:var(--ncm-text-primary)">15</b> · 18 · 22 — it is a ceiling, not pass/fail</div>`, 5) +
+    decRow('key', 'fa-lock', 'On failure', 'Lockout<small>no key item</small>', `
+      <div class="ncm-fw-chips"><span class="ncm-fw-chip is-lock" style="--gfam:var(--fam)"><i class="fas fa-id-card"></i>Key item<span class="need">Elec/Sec Tech roll 25+</span></span><span class="ncm-fw-chip on" style="--gfam:var(--fam)"><i class="fas fa-ban"></i>Lockout</span><span class="ncm-fw-chip is-lock" style="--gfam:var(--fam)"><i class="fas fa-bolt"></i>Damage<span class="need">roll 10+</span></span></div>
+      <div class="ncm-fw-hint">Elec/Sec Tech gates key items and the damage mode — greyed chips say the roll they need</div>`, 6);
+  setHead('Ghostkey.exe', 'LOCK · Standard ICE · DV ≤ 15 · password on', 'LOCK', { enter });
+  $('coreIc').className = 'fas fa-door-open'; $('coreLbl').textContent = 'SECURING'; setBuild(.35);
+  $('core').insertAdjacentHTML('beforeend', '<span class="ncm-enc-lockring"></span><span class="ncm-enc-lockbadge"><i class="fas fa-lock"></i></span>');
+  const o = odds('Cryptography', 12);
+  setSays(`Cryptography <b class="v">${cry}</b> sets the encryption ceiling — most likely <b>DV 12</b>. Elec/Sec Tech <b class="v">${est}</b> gates key items and damage.`, '<i class="fas fa-lock"></i> optional — skip it and the shard is open');
+  renderOperator(['Cryptography', 'Electronics/Security Tech']);
+  $('ladder').innerHTML = `<div class="ncm-enc-rung c"><span class="ncm-enc-rung__tag">ROLL</span><span>Cryptography ${cry} sets the DV ceiling — not pass/fail, a cap<small>0–9 → DV 8 · 10–14 → 12 · 15–19 → 15 · 20+ → 18</small></span><span class="ncm-enc-rung__pct">${o.c}%</span></div><div class="ncm-enc-rung" style="grid-template-columns:1fr"><span>Container security and content quality are different questions, so they are different rolls on different skills.</span></div>`;
+  $('bar').innerHTML = '';
+  $('effC').innerHTML = '<div><b>Password</b><span>on</span></div><div><b>ICE</b><span>Std</span></div><div><b>DV cap</b><span>15</span></div>';
+  $('artD').textContent = 'malware · backdoor · locked'; $('artKv').innerHTML = '<div class="ncm-enc-kv"><span>Opens with</span><b>password OR Interface vs 15</b></div><div class="ncm-enc-kv"><span>On failure</span><b>lockout 3 tries</b></div>';
+  $('status').innerHTML = `Lock is optional · Cryptography <b>${cry}</b> caps the DV · Elec/Sec Tech <b>${est}</b> gates key item + damage`;
+  $('hint').textContent = 'STAGE 3 OF 4 · LOCK · optional'; $('go').innerHTML = '<i class="fas fa-arrow-right"></i> Next · Encode'; markCraft('Cryptography'); fxAfter({ enter });
+  document.querySelectorAll('.ncm-enc-dec__hd').forEach(h => h.onclick = () => { const k = h.parentElement.dataset.dec; openDec = openDec === k ? null : k; $('core').querySelectorAll('.ncm-enc-lockring,.ncm-enc-lockbadge').forEach(e => e.remove()); renderLockRail({ enter: false }); });
+}
+
+// ── canvas (the workshop loop, trimmed) ──
+const HEXC = '0123456789ABCDEF·×◈{}[]<>/;:';
+let cv, ctx, W, H, cx, cy, parts = [], code = [], motes = [], rgb = '255,0,51', compiling = false, build = 0, flareStart = 0, raf = 0;
+function famRGB() { const s = document.createElement('span'); s.style.color = getComputedStyle($('fw')).getPropertyValue('--fam').trim() || '#ff0033'; document.body.appendChild(s); const c = getComputedStyle(s).color; s.remove(); const m = c.match(/\d+/g); return m ? m.slice(0,3).join(',') : '255,0,51'; }
+const mkP = () => { const a = Math.random()*Math.PI*2, rad = 90 + Math.random()*Math.max(130, W*0.42); return { a, rad, sp: .001+Math.random()*.004, pull: .05+Math.random()*.12, sz: .6+Math.random()*1.8, tw: Math.random()*Math.PI*2 }; };
+const mkM = () => ({ a: Math.random()*Math.PI*2, rad: Math.max(150, W*0.5)+Math.random()*80, ch: HEXC[(Math.random()*HEXC.length)|0], v: 2.4+Math.random()*3.2 });
+function sizeCanvas() { cv = $('fwc'); ctx = cv.getContext('2d'); const r = cv.getBoundingClientRect(); if (!r.width) { requestAnimationFrame(sizeCanvas); return; } W = r.width; H = r.height; cv.width = W*2; cv.height = H*2; ctx.setTransform(2,0,0,2,0,0); cx = W/2; cy = H*0.40; parts = []; for (let i=0;i<80;i++) parts.push(mkP()); code = []; for (let i=0;i<Math.floor(W/24);i++) code.push({ x:i*24+8, y:Math.random()*H, sp:.4+Math.random()*1.1 }); rgb = famRGB(); if (!raf) loop(); }
+function loop() {
+  raf = requestAnimationFrame(loop); if (!ctx) return; ctx.clearRect(0,0,W,H);
+  const intensity = .28 + .72*build, inflow = compiling ? 3.4 : 1;
+  ctx.font = '11px "Share Tech Mono", monospace';
+  for (const c of code) { if (!still) c.y += c.sp*(1+intensity); if (c.y > H+30) c.y = -16; for (let j=0;j<6;j++) { const yy = c.y-j*15; if (yy<0||yy>H) continue; ctx.fillStyle = `rgba(${rgb},${(0.05+0.10*intensity)*(1-j/6)})`; ctx.fillText(HEXC[((c.x+yy+j)|0)%HEXC.length], c.x, yy); } }
+  for (const p of parts) { if (!still) { p.a += p.sp; p.rad -= p.pull*inflow*(.4+intensity); p.tw += .06; if (p.rad < 44) Object.assign(p, mkP()); } const x = cx+Math.cos(p.a)*p.rad, y = cy+Math.sin(p.a)*p.rad*.78, near = 1-Math.min(1,(p.rad-44)/220), al = (.15+.55*near)*intensity*(.6+.4*Math.sin(p.tw)); ctx.beginPath(); ctx.arc(x,y,p.sz*(.7+near),0,Math.PI*2); ctx.fillStyle = `rgba(${rgb},${al})`; ctx.fill(); if (near>.62 && !still) { ctx.strokeStyle = `rgba(${rgb},${al*.5})`; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(cx+Math.cos(p.a)*44, cy+Math.sin(p.a)*44*.78); ctx.stroke(); } }
+  if (compiling && !still) { while (motes.length < 64) motes.push(mkM()); ctx.font = '13px "Share Tech Mono", monospace'; for (const m of motes) { m.rad -= m.v*(1.1+(1-Math.min(1,m.rad/300))*2.2); const x = cx+Math.cos(m.a)*m.rad, y = cy+Math.sin(m.a)*m.rad*.8, near = 1-Math.min(1,m.rad/300); ctx.fillStyle = `rgba(${rgb},${.25+.7*near})`; ctx.fillText(m.ch,x,y); if (Math.random()<.4) m.ch = HEXC[(Math.random()*HEXC.length)|0]; if (m.rad<46) Object.assign(m, mkM()); } } else motes.length = 0;
+  if (flareStart && !still) { const fe = performance.now()-flareStart; if (fe < 720) { const kk = fe/720, ease = 1-Math.pow(1-kk,3); const g = ctx.createRadialGradient(cx,cy,0,cx,cy,78); g.addColorStop(0,`rgba(${rgb},${.55*(1-kk)})`); g.addColorStop(1,`rgba(${rgb},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx,cy,78,0,Math.PI*2); ctx.fill(); for (const [mul,w,a] of [[.6,3,.85],[.34,2,.55]]) { ctx.beginPath(); ctx.arc(cx,cy,26+ease*Math.max(190,W*.5)*mul,0,Math.PI*2); ctx.strokeStyle = `rgba(${rgb},${a*(1-kk)})`; ctx.lineWidth = w*(1-kk)+.4; ctx.stroke(); } } else flareStart = 0; }
+}
+function setBuild(v) { build = v; $('fw').style.setProperty('--build', v); }
+
+// ── ENCODE sequence ──
+const R = { clean: { die: 6, total: 18, margin: 0 }, sloppy: { die: 3, total: 15, margin: -3 }, rejected: { die: 1, total: 13, margin: -5 } }[result];
+const CELLS = 100; let cells = [];
+function buildGrid() { $('grid').innerHTML = Array.from({length:CELLS}, () => '<span class="ncm-enc-cell"></span>').join(''); cells = [...$('grid').children]; }
+function setStatus(txt, snd) { $('status').innerHTML = txt + (snd ? `<span class="snd">${snd}</span>` : ''); }
+function pctTo(p) { $('fill').style.width = p+'%'; $('pct').textContent = p+'%'; }
+function beatArm() { $('hdFam').style.visibility = 'hidden'; /* the die readout takes the top-right corner */ $('coreLbl').textContent = 'ARMING'; setBuild(.55); $('core').classList.add('saving'); setStatus(`Encoder armed · <b>${craft} ${base(craft)}</b> vs DV 18 · commit?`, 'shard-compile'); pctTo(8); $('die').classList.add('show'); }
+function beatRoll() { beatArm(); $('coreLbl').textContent = 'ROLLING'; $('die').classList.remove('rolling'); $('dieCube').textContent = R.die; $('dieSum').innerHTML = `TECH 7 + Interface 5 + <b>${R.die}</b> = <b>${R.total}</b> · margin <span class="m">${R.margin>=0?'+':''}${R.margin}</span>`; document.querySelectorAll('.ncm-enc-rung').forEach(r => r.classList.toggle('is-hit', r.dataset.r === result)); setStatus(`Rolled <b>${R.total}</b> vs DV 18 → <b>${result.toUpperCase()}</b> rung`, ''); pctTo(22); }
+function beatCompile(live) { beatRoll(); $('coreLbl').textContent = 'COMPILING'; compiling = true; setBuild(1); $('coreWrap').style.flex = '0 0 190px'; $('write').hidden = false; buildGrid(); setStatus('Compiling <b>Ghostkey.exe</b> · linking · obfuscating · signing', 'hack-progress'); pctTo(45); const el = $('hackfx'); el.innerHTML = ''; if (live && streamHackCode) streamHackCode(el, { durationMs: 1300, subject: 'Ghostkey.exe', family: 'execute', reduced: still }); else { el.innerHTML = ['<div class="ncm-hackfx__ln is-hex">0x1A40  assembling shellcode</div>','<div class="ncm-hackfx__ln is-step">patching syscall table</div>','<div class="ncm-hackfx__ln is-hex">0x1A88  hooking IAT 0x3F2C</div>','<div class="ncm-hackfx__ln is-warn">⚠ heuristic flag suppressed</div>','<div class="ncm-hackfx__ln is-step">planting persistence key</div>','<div class="ncm-hackfx__ln is-ok">✓ binary armed — writing…</div>'].join(''); } }
+function paintWrite(frac) { const n = Math.round(CELLS*frac); cells.forEach((c,i) => { c.className = 'ncm-enc-cell' + (i < n ? ' w' : ''); }); if (n < CELLS && n > 0) cells[n-1].classList.add('head'); $('addr').textContent = '0x' + (0x1A40 + n*0x20).toString(16).toUpperCase().padStart(4,'0'); }
+function beatWrite() { beatCompile(false); compiling = false; $('coreLbl').textContent = 'WRITING'; $('hackfx').querySelector('.is-ok') && ($('hackfx').querySelector('.is-ok').textContent = '✓ binary armed — writing…'); if (result === 'rejected') { paintWrite(.38); cells.forEach((c,i) => { if (i >= 38) c.classList.add('dead'); }); cells[37].classList.remove('head'); $('sectors').classList.add('is-tear'); $('hash').innerHTML = 'CRC <span style="color:var(--ncm-danger)">FAIL</span> @ 0x1F00 — WRITE ABORT'; setStatus('<span style="color:var(--ncm-danger)">Write aborted</span> · sector CRC failure · the shard refuses the image', 'hack-fail'); pctTo(38); } else { paintWrite(1); cells[CELLS-1].classList.remove('head'); if (result === 'sloppy') { [17, 41, 63, 88].forEach(i => cells[i].classList.add('bad')); $('sectors').classList.add('is-tear'); } $('hash').textContent = 'CRC 9F3C-11A0-…'; setStatus(`Writing <b>Ghostkey.exe</b> · 100 sectors${result==='sloppy'?' · <span style="color:var(--ncm-warning)">4 unstable</span>':''}`, 'shard-compile'); pctTo(78); } }
+function beatVerify() { beatWrite(); if (result === 'rejected') return; $('coreLbl').textContent = 'VERIFYING'; $('scan').classList.add('run'); cells.forEach(c => { if (c.classList.contains('w') && !c.classList.contains('bad')) c.classList.add('ok'); }); $('hash').innerHTML = `CRC <b>9F3C-11A0-77E2-0D4B</b>${result==='sloppy'?' · <span style="color:var(--ncm-warning)">4 sectors unstable</span>':' · verified'}`; setStatus(result==='sloppy' ? 'Verify: <span style="color:var(--ncm-warning)">unstable sectors</span> · it will run, badly' : 'Verify: <b>image intact</b> · sealing', ''); pctTo(92); }
+function beatSeal() { beatVerify(); $('die').classList.remove('show'); setSays(`Rolled <b class="v">${R.total}</b> vs DV <b class="v">18</b> — a <b>${result}</b> build.${result==='clean'?' 2 charges, stealth DV 15, run DV 16.':result==='sloppy'?' 1 charge, stealth DV 8 — a SWEEP will see it.':` Nothing compiled — ${BOTCH}. ${bricks?'A natural 1 would also have fired a trace.':'A natural 1 would have bricked it.'}`}`, `<i class="fas fa-dice"></i> margin ${R.margin>=0?'+':''}${R.margin} · ${result==='rejected'?'try again':'in your inventory'}`); $('coreLbl').textContent = ''; $('core').classList.remove('saving'); $('fw').classList.add('res-'+result); rgb = famRGB(); const seal = $('seal'); seal.classList.add('show','tone-'+result); const art = $('art'); art.classList.add('eject');
+  if (result === 'clean') { decode($('sealN'), 'SEALED · ' + progName.toUpperCase()); flareStart = performance.now(); $('core').classList.add('is-flare'); decode($('artD'), 'malware · backdoor · 2 charges · stealth DV 15 · run DV 16', { dur: 700 }); art.insertAdjacentHTML('beforeend','<span class="tag clean">clean</span>'); setStatus('<b style="color:var(--ncm-success)">CLEAN COMPILE</b> · Ghostkey.exe written to Blank Data Shard · added to inventory', 'shard-insert'); pctTo(100); $('hint').textContent = 'ENCODED · the shard is in V\'s inventory · Program Deck shows the cartridge'; }
+  if (result === 'sloppy') { seal.innerHTML = '<i class="fas fa-triangle-exclamation"></i> GLITCHY BUILD'; $('core').classList.add('is-glitch'); decode($('artD'), 'malware · backdoor · 1 charge · stealth DV 8 · run DV 20 · tell: GLITCHY', { dur: 700 }); art.insertAdjacentHTML('beforeend','<span class="tag sloppy">sloppy</span>'); setStatus('<b style="color:var(--ncm-warning)">SLOPPY COMPILE</b> · it runs once · a SYSTEM SWEEP will see it', 'hack-success'); pctTo(100); $('hint').textContent = 'ENCODED · glitchy · you can still upload it — you\'ll know it\'s fragile'; }
+  if (result === 'rejected') { seal.innerHTML = '<i class="fas fa-xmark"></i> REJECTED'; $('core').classList.add('is-dead'); decode($('artD'), `nothing written · ${blankName} ${bricks?'BRICKED':'wiped · reusable'}`, { dur: 700 }); art.insertAdjacentHTML('beforeend','<span class="tag rejected">rejected</span>'); setStatus(`<b style="color:var(--ncm-danger)">REJECTED</b> · compile failed by 5 · ${BOTCH} (${tier.n} tier: rejected = ${tier.rej} · natural 1 = ${tier.nat1})`, 'hack-fail'); $('hint').textContent = bricks ? 'REJECTED · the blank is gone — convert or buy another and try again' : 'REJECTED · the premium blank held — try again on the same shard'; }
+  if (result !== 'rejected' && PRICING !== 'off') { priced = priced || (PRICING === 'free' ? 'ok' : 'await'); renderMarket(18, { enter: false }); fxSweep($('mkt'), { enter: true }); }
+  $('go').innerHTML = result === 'rejected' ? (bricks ? '<i class="fas fa-rotate-right"></i> Start over · new blank' : '<i class="fas fa-rotate-right"></i> Try again · same blank') : '<i class="fas fa-box"></i> Done';
+  $('go').onclick = () => { if (result === 'rejected') { if (bricks) transitionTo('blank'); else transitionTo('program'); } else location.search = '?view=launch'; }; }
+const BEATS = { arm: beatArm, roll: beatRoll, compile: () => beatCompile(false), write: beatWrite, verify: beatVerify, seal: beatSeal };
+function playAll() {
+  const t = (ms, fn) => setTimeout(fn, ms);
+  beatArm(); $('die').classList.add('rolling'); let n = 0; const tum = setInterval(() => { $('dieCube').textContent = 1 + (n++ % 10); }, 70);
+  t(1100, () => { clearInterval(tum); beatRoll(); });
+  t(2000, () => beatCompile(true));
+  t(3600, () => { compiling = false; $('coreLbl').textContent = 'WRITING'; buildGrid(); const end = result === 'rejected' ? .38 : 1; const start = performance.now(); const dur = 1900*end; (function w() { const k = Math.min(1, (performance.now()-start)/dur); paintWrite(end*k); $('addr').textContent = '0x' + (0x1A40 + Math.round(CELLS*end*k)*0x20).toString(16).toUpperCase(); pctTo(Math.round(45 + 33*k)); if (k < 1) requestAnimationFrame(w); else beatWrite(); })(); });
+  t(5900, () => { if (result !== 'rejected') { $('sectors').classList.remove('is-tear'); beatVerify(); } });
+  t(7000, () => beatSeal());
+}
+
+// ── in-window navigation: NEXT / BACK / stage rows TRANSITION (no reload) ──
+const ORDER = ['blank', 'content', 'program', 'lock', 'encode'];
+const stage2 = () => contentMode ? 'content' : 'program';
+function resetStage() {
+  $('coreWrap').hidden = false; $('coreWrap').style.flex = ''; $('doc').hidden = true; $('man').hidden = true; $('write').hidden = true;
+  $('core').className = 'ncm-fw-core'; $('core').querySelectorAll('.ncm-enc-lockring,.ncm-enc-lockbadge').forEach(e => e.remove());
+  $('fw').classList.remove('res-clean', 'res-sloppy', 'res-rejected'); $('seal').className = 'ncm-fw-seal'; $('seal').innerHTML = '<i class="fas fa-check"></i> <span id="sealN"></span>';
+  $('die').classList.remove('show', 'rolling'); $('art').classList.remove('eject'); $('art').querySelectorAll('.tag').forEach(e => e.remove());
+  $('sectors').classList.remove('is-tear'); $('scan').classList.remove('run'); $('hash').textContent = 'CRC —';
+  $('mktCard').hidden = true; priced = ''; compiling = false; flareStart = 0; pctTo(0); delete $('go').dataset.ran; $('go').onclick = null;
+  $('hdFam').style.visibility = ''; setBuild(0);
+}
+function mountStage(st, { initial = false } = {}) {
+  stage = st; if (st === 'content') contentMode = true; if (st === 'program') contentMode = false;
+  resetStage();
+  if (st === 'blank') { renderStages('blank'); renderBlankRail(); $('cap').innerHTML = '<b>① BLANK</b> — two decision rows: Source (convert an owned item, or buy a blank at the GM\'s price — 50 eb by default) then Label (name, icon, colour); picking a source opens Label. <b>No roll</b>: a shard is a cred-stick and a label, and splitting the physical thing off is what lets the later stages be honest about what the roll is for. The core sits empty and grey until something is on it.'; }
+  else if (st === 'lock') { renderStages('lock'); renderLockRail(); $('cap').innerHTML = '<b>③ LOCK (optional)</b> — three decision rows (Password · Encryption · On failure), one open at a time like the Program rail. The existing ceiling table survives here, and only here. Cryptography caps the encryption DV (a roll sets a cap, not pass/fail); Electronics/Security Tech gates key items and the damage failure mode; Black ICE needs a high Cryptography roll and the GM\'s toggle. Skip the stage and the shard is open. The core wears a lock ring so the state is visible at a glance.'; }
+  else if (st === 'content') { renderStages('program'); renderContentRail(); $('cap').innerHTML = '<b>② CONTENT</b> — the left rail is the GM-curated type grid with the operator\'s skill + odds on every tile; the centre is <b>the real editor for that type</b> (Document here — the same WYSIWYG page the GM uses, player mode). The forecast on the right is the ladder before you commit. Payload / Malware tiles route to the Program branch.'; }
+  else if (st === 'encode') { renderStages('encode'); renderProgramRail(); $('man').hidden = true; $('coreWrap').style.flex = ''; renderOperator([craft]); markCraft(craft); $('railBody').innerHTML = `<div class="ncm-fw-sec"><div class="ncm-fw-sec__t"><i class="fas fa-lock"></i><span>Locked in</span></div><div class="ncm-fw-hint" style="font-size:10.5px;line-height:1.6">EXECUTE › Backdoor<br>Craft: <b style="color:var(--ncm-text-primary)">Interface 12</b> vs DV 18<br>Lock: none (skipped)<br>Blank: ${blankName} · ${tier.n}${tier.perk?' ('+tier.perk+')':''}</div></div><div class="ncm-fw-sec"><div class="ncm-fw-sec__t"><i class="fas fa-volume-high"></i><span>Sound</span></div><div class="ncm-fw-hint" style="font-size:10px;line-height:1.7">arm → <i>shard-compile</i><br>compile → <i>hack-progress</i><br>write → <i>shard-compile</i> (loop)<br>seal → <i>shard-insert</i> / <i>hack-success</i> / <i>hack-fail</i><br>through the terminal sound-set resolver</div></div>`; $('hint').textContent = 'STAGE 4 OF 4 · ENCODE'; $('go').innerHTML = '<i class="fas fa-fingerprint"></i> ENCODE'; $('coreLbl').textContent = 'READY'; fxSweep($('railBody'));
+    if (initial && play) playAll(); else if (initial && beat && BEATS[beat]) BEATS[beat]();
+    $('go').onclick = () => { if (!$('go').dataset.ran) { $('go').dataset.ran = 1; playAll(); } };
+    $('cap').innerHTML = `<b>④ ENCODE</b> — the whole sequence is <b>centred in the stage</b> (the die readout sits above the core, the write map + code stream under it, the group floats mid-stage rather than hugging the header). One roll, six beats, ~7s: <b>ARM</b> (core spins up, --build ramps) → <b>ROLL</b> (the d10 tumbles top-right and lands; the rung it hit lights in the forecast) → <b>COMPILE</b> (the real <code>HackFX.streamHackCode</code> stream, hex motes collapse into the core exactly as the Workshop's save does) → <b>WRITE</b> (a 100-sector map fills under a white write-head; sloppy leaves amber unstable sectors and the panel tears; rejected aborts at 38% and the rest turns red) → <b>VERIFY</b> (a green scan sweeps the map, the CRC types in) → <b>SEAL</b> (the Workshop's seal + shockwave; the artifact card ejects the cred-stick with its tag). Result: <b>${result}</b>${beat?` · frozen at <b>${beat}</b>`:''}. Reduced motion: <code>?reduced=1</code> jumps to the seal. At seal the MARKET chip flips to the pricing mode\'s state (<code>?priced=await|ok|counter|no</code>) — under <i>propose</i> the GM gets a whisper card with Approve / Counter / Deny and the price only lands on the item once approved.`; }
+  else { renderStages('program'); renderProgramRail(); $('cap').innerHTML = '<b>② PROGRAM branch — digestibility pass.</b> <b>NEXT / BACK now transition in-page</b> (~0.5s): rail + readout fold out, a handoff line sweeps the stage, the core dips and morphs its icon, the new rail cascades in — the core never leaves the screen.  The rail asks <b>one question at a time</b> (Family → Ability → Craft skill): a pick answers it and opens the next; answered rows fold to a one-line answer with a pen (<code>?dec=none</code> shows all three folded). The readout leads with <b>one sentence</b> in the Workshop\'s "What it does" voice and hides the ladder + numbers behind <b>Details</b> (<code>?details=1</code>). The MANIFEST leads with name + description; signature and disguise sit under <b>Options</b>. The Operator card shows only the skills this stage asks about (<b>All skills</b> unfolds). MARKET appears only at the seal — there is nothing to price before then. Hosted in the Malware Workshop\'s real frame (rails, stage, core, chips, synth bar are the shipped rules; only the <code>.ncm-enc-*</code> block is new). Left rail: family segmented control → ability chips gated by Interface rank → <b>craft-skill chips with the operator\'s numbers and odds</b>. <b>Centre: the core + the MANIFEST</b> — the data entry for a program: name / version / signature / trojan disguise (+2 DV, Interface-gated) / cover description, then the <b>per-ability parameters</b> (backdoor username + lifetime, keylog target, which ICE to deploy, the logic bomb\'s trigger + inner effect…) read from <code>PROGRAM_EFFECTS[x].params</code>. Right rail: the forecast ladder, efficiency on a clean roll, the artifact + its <b>MARKET</b> price tag (<code>?pricing=propose|free|formula|off</code>), the operator\'s live skills. <b>FUI text motion</b> (<code>?fx=0</code> to compare): headers scramble-decode, the sub-line types in, rails cascade in, the operator\'s skill rows materialise under a scan with their rank pips drawing — and when you switch craft skill the whole readout <i>re-reads</i>: ladder %s and DVs tween from their previous values, the operator row edges + pings. No cascade on a chip click — motion on arrival and on change, never on idle.'; }
+  wireNav(st);
+}
+// the transition: OUT (180ms) → mount the new stage → SWEEP + core MORPH + cascade IN
+let transitioning = false;
+async function transitionTo(st) {
+  if (st === stage || transitioning) return; transitioning = true;
+  $('fw').dataset.dir = ORDER.indexOf(st) < ORDER.indexOf(stage) ? 'back' : 'fwd';
+  const rightCards = [...document.querySelectorAll('.ncm-fw-rail--r .ncm-fw-card')];
+  if (fxOn) {
+    ['railBody', 'man', 'doc', 'write'].forEach(id => $(id).classList.add('is-leaving'));
+    rightCards.forEach(c => c.classList.add('is-leaving'));
+    $('core').classList.add('is-dip');
+    await new Promise(r => setTimeout(r, 190));
+  }
+  document.querySelectorAll('.is-leaving').forEach(e => e.classList.remove('is-leaving'));
+  mountStage(st);
+  if (fxOn) {
+    $('sweep').classList.remove('run'); void $('sweep').offsetWidth; $('sweep').classList.add('run');
+    $('core').classList.add('is-morph'); setTimeout(() => $('core').classList.remove('is-morph'), 500);
+    decode($('coreLbl'), $('coreLbl').textContent, { dur: 380 });
+    rightCards.forEach(c => { if (!c.hidden) { c.classList.add('is-arriving'); setTimeout(() => c.classList.remove('is-arriving'), 400); } });
+  }
+  history.replaceState(null, '', `?view=studio&stage=${st}${TIER !== 'standard' ? '&tier=' + TIER : ''}${q.get('fx') === '0' ? '&fx=0' : ''}`);
+  transitioning = false;
+}
+function wireNav(cur) {
+  $('back').onclick = () => { if (cur === 'blank') location.search = '?view=launch'; else transitionTo(cur === 'lock' ? stage2() : cur === 'encode' ? 'lock' : 'blank'); };
+  if (cur !== 'encode') $('go').onclick = () => transitionTo(cur === 'blank' ? stage2() : cur === 'lock' ? 'encode' : 'lock');
+  document.querySelectorAll('.ncm-enc-stage').forEach((row, k) => { row.onclick = () => transitionTo(['blank', stage2(), 'lock', 'encode'][k]); });
+  // content stage: the Payload / Malware tiles route to the Program branch
+  document.querySelectorAll('.ncm-enc-type.prog').forEach(t => t.onclick = () => { contentMode = false; transitionTo('program'); });
+}
+
+// ── boot ──
+if (view === 'studio') { sizeCanvas(); renderOperator(); mountStage(stage, { initial: true }); }
+if (view === 'studio' && q.get('auto')) setTimeout(() => transitionTo(q.get('auto')), 700); // ?auto=<stage> fires a transition after 700ms (headless capture of the in-page transition)
+if (view === 'launch') { $('cap').innerHTML = '<b>How the player starts it.</b> Three doors, one Encoder. ① The Agent\'s existing SHARDS tab gets an <b>Encode new</b> action pill at the right edge of the filter track (the same pill the inbox uses for Mark all read) — the Agent is the player\'s hub, and blanks + player-made shards already list there. ② The existing right-click hook on an item (today "Convert to Data Shard") becomes <b>Encode to Data Shard</b>; on a shard the player owns it\'s <b>Add entry</b>. ③ The Program Deck rack shows an <b>empty cartridge slot</b> — the netrunner\'s door straight into the Program branch. All three call <code>game.nightcity.openEncoder({ item?, stage?, family? })</code>; the GM\'s floor setting hides all three when player authoring is off.'; }
+</script>
+</body></html>

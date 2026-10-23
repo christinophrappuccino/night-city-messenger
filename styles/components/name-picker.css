@@ -8,7 +8,7 @@
 
    Every colour is a --ncm-* token: an adminDialog resolves them from the admin
    preset; a plain Dialog (`admin:false`, the immersive windows) from :root — the
-   player's theme. Mock: docs/mockups/name-picker-redesign-mock.html.
+   player's theme. Mock: dev/mockups/name-picker-redesign-mock.html.
 
    Layout rule (the modal scroller): the LIST is the only thing that scrolls —
    hint, search bar, chips and the status strip stay put. */

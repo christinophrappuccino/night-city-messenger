@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Contact groups — rail + tray</title>
+<!--
+  Mock: the player Contact Manager's Groups panel, redesigned (2026-10-21).
+  BUILT the same day (dev: "Love the direction lets build it") — the shipped copy is
+  templates/contact-manager/partials/contact-groups-panel.hbs + the ncm-cgr block in
+  styles/components/contact-groups.css, plus a "+N more" fold and recently-messaged-first
+  ordering the dev asked for on approval. This page stays as the before/after record.
+  Dev: "functionality is great, I just want it to look a bit different —
+  click it and it'll show who is in it other than just hovering, and if you
+  make a ton of groups too."
+
+  TOP    = what ships today (templates/contact-manager/partials/contact-groups-panel.hbs,
+           the real .ncm-cgp CSS from the real cascade). Names are a hover tooltip,
+           every row carries its own three buttons, N groups = N rows of height.
+  MIDDLE = the proposal, state 1: four groups, "The Crew" open. Groups are CHIPS on
+           one wrapping rail (name · a stack of member avatars · count); clicking a
+           chip opens ONE member tray under the rail (avatars + names + role, click a
+           person to open them in the detail pane). The three actions live in the
+           tray's header, once, not on every row.
+  BOTTOM = state 2: eighteen groups, nothing open — the rail wraps to three rows and
+           then scrolls, so the contact list underneath keeps its height.
+
+  Every colour is a --ncm-* token (player theme). Real cascade: foundry2.css → CPR
+  main.css → night-city-messenger.css. Serve it (node dev/tools/serve-mockups.cjs) or
+  open off disk — nothing here imports a module.
+  ?open=0..3   which group the middle state opens   ?t=player (default)
+-->
+<link id="css-foundry" rel="stylesheet" href="">
+<link id="css-fa" rel="stylesheet" href="">
+<link id="css-cpr" rel="stylesheet" href="">
+<script>
+  const isFile = location.protocol === 'file:';
+  const FVTT = 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public';
+  document.getElementById('css-foundry').href = isFile ? `${FVTT}/css/foundry2.css` : '/_vendor/foundry2.css';
+  document.getElementById('css-fa').href = isFile ? `${FVTT}/fonts/fontawesome/css/all.min.css` : '/_vendor/fa/css/all.min.css';
+  document.getElementById('css-cpr').href = isFile ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  html, body { height: auto; min-height: 100%; }
+  body { margin: 0; background: #0b0b10; color: #ccc; font-family: var(--ncm-font-display, sans-serif); }
+  .stage { display: flex; flex-direction: column; gap: 26px; padding: 22px 26px; align-items: flex-start; }
+  .stage > h2 { margin: 0 0 -14px; font: 700 11px/1 var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; color: #8888a0; }
+  .stage > h2 b { color: #19f3f7; }
+  .notes { font: 500 12px/1.55 var(--ncm-font-display); color: #9d9db4; max-width: 940px; }
+  .notes b { color: #e0e0e8; }
+  .stage code { display: inline !important; font-family: var(--ncm-font-mono) !important; font-size: 11px !important; color: #19f3f7 !important; background: none !important; border: 0 !important; padding: 0 !important; margin: 0 !important; }
+  /* A fake window frame at the Contact Manager's real width. Foundry positions
+     .app absolutely; pin it here and give it the real height band. */
+  .frame { position: relative !important; width: 960px; height: 420px; display: flex; flex-direction: column; overflow: hidden; }
+  .frame.tall { height: 470px; }
+  .frame .window-header { cursor: default; flex: 0 0 auto; }
+  .frame .window-content { flex: 1; min-height: 0; padding: 0 !important; }
+  /* stub list rows under the panel — context only */
+  .mk-list { padding: 0 12px; display: flex; flex-direction: column; gap: 4px; }
+  .mk-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); border-radius: 2px; background: var(--ncm-bg-surface); opacity: .55; }
+  .mk-row .a { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--ncm-secondary); display: grid; place-items: center; font: 700 11px var(--ncm-font-display); color: var(--ncm-secondary); }
+  .mk-row .n { font: 600 12px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .mk-row .e { font: 400 10px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .mk-fade { height: 26px; margin-top: -26px; background: linear-gradient(to bottom, transparent, var(--ncm-bg-base)); position: relative; }
+
+  /* ═══════════════════════ PROPOSED: ncm-cgr-* (contact group RAIL) ═══════════════════════
+     Replaces .ncm-cgp wholesale (new prefix so the two never fight in this mock; the
+     build renames the partial's classes). The panel is two parts: a RAIL of chips
+     that wraps, and ONE TRAY for the open group. Tokens only; text sizes scale. */
+  .ncm-app .ncm-cgr { margin: 0 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+
+  /* rail: label + wrapping chips + the New chip; past three rows it scrolls */
+  .ncm-app .ncm-cgr__rail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; max-height: calc(3 * 30px + 2 * 5px); overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
+  .ncm-app .ncm-cgr__label { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding-right: 4px; font-family: var(--ncm-font-display); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-muted); }
+  .ncm-app .ncm-cgr__label b { font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-secondary); }
+
+  .ncm-app button.ncm-cgr__chip {
+    appearance: none; -webkit-appearance: none; width: auto !important; flex: 0 0 auto !important; margin: 0 !important; min-height: 0 !important;
+    height: 30px; padding: 0 9px 0 0 !important; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; line-height: 1 !important;
+    background: color-mix(in srgb, var(--g, var(--ncm-secondary)) 6%, var(--ncm-bg-surface)) !important;
+    border: 1px solid color-mix(in srgb, var(--g, var(--ncm-secondary)) 35%, var(--ncm-border)) !important; border-radius: 2px !important; box-shadow: none !important;
+    color: var(--ncm-text-primary) !important; overflow: hidden; max-width: 260px;
+    transition: border-color .18s cubic-bezier(.22,1,.36,1), background-color .18s cubic-bezier(.22,1,.36,1);
+  }
+  .ncm-app button.ncm-cgr__chip:hover { border-color: var(--g, var(--ncm-secondary)) !important; background: color-mix(in srgb, var(--g, var(--ncm-secondary)) 12%, var(--ncm-bg-surface)) !important; }
+  .ncm-app button.ncm-cgr__chip.is-open { border-color: var(--g, var(--ncm-secondary)) !important; background: color-mix(in srgb, var(--g, var(--ncm-secondary)) 16%, var(--ncm-bg-surface)) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--g, var(--ncm-secondary)) 40%, transparent), 0 0 10px color-mix(in srgb, var(--g, var(--ncm-secondary)) 25%, transparent) !important; }
+  .ncm-app .ncm-cgr__chip-bar { width: 3px; align-self: stretch; background: var(--g, var(--ncm-secondary)); flex: 0 0 auto; }
+  .ncm-app .ncm-cgr__chip-name { font-family: var(--ncm-font-display); font-size: calc(12.5px * var(--ncm-text-scale, 1)); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  /* the avatar stack: who is in it, before you click */
+  .ncm-app .ncm-cgr__stack { display: inline-flex; align-items: center; flex: 0 0 auto; }
+  .ncm-app .ncm-cgr__stack > * { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ncm-bg-surface); margin-left: -6px; background: var(--ncm-bg-elevated); display: grid; place-items: center; font: 700 calc(8px * var(--ncm-text-scale, 1)) var(--ncm-font-display); color: var(--g, var(--ncm-secondary)); overflow: hidden; box-sizing: border-box; }
+  .ncm-app .ncm-cgr__stack > :first-child { margin-left: 0; }
+  .ncm-app .ncm-cgr__stack img { width: 100%; height: 100%; object-fit: cover; }
+  .ncm-app .ncm-cgr__stack .is-more { color: var(--ncm-text-secondary); font-family: var(--ncm-font-mono); font-weight: 400; }
+  .ncm-app .ncm-cgr__chip-n { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); flex: 0 0 auto; }
+  .ncm-app .ncm-cgr__chip-shared { font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); flex: 0 0 auto; }
+  .ncm-app button.ncm-cgr__chip--new { padding: 0 10px !important; border-style: dashed !important; color: var(--ncm-text-secondary) !important; background: transparent !important; gap: 6px; }
+  .ncm-app button.ncm-cgr__chip--new:hover { color: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important; }
+  .ncm-app button.ncm-cgr__chip--new i { margin: 0 !important; font-size: calc(10px * var(--ncm-text-scale, 1)); }
+
+  /* tray: the open group. Slides in from the rail (translate + fade, expo-out). */
+  .ncm-app .ncm-cgr__tray {
+    border: 1px solid color-mix(in srgb, var(--g, var(--ncm-secondary)) 35%, var(--ncm-border)); border-left: 3px solid var(--g, var(--ncm-secondary)); border-radius: 2px;
+    background: color-mix(in srgb, var(--g, var(--ncm-secondary)) 4%, var(--ncm-bg-surface));
+    animation: ncm-cgr-in .3s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes ncm-cgr-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .ncm-app .ncm-cgr__tray { animation: none; } }
+  .ncm-app .ncm-cgr__tray-head { display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--g, var(--ncm-secondary)) 22%, var(--ncm-border)); }
+  .ncm-app .ncm-cgr__tray-name { font-family: var(--ncm-font-display); font-size: calc(14px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .ncm-app .ncm-cgr__tray-meta { flex: 1; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-cgr__tray-meta i { color: var(--ncm-accent); margin-right: 3px; }
+  .ncm-app .ncm-cgr__tray-actions { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+  .ncm-app button.ncm-cgr__btn {
+    appearance: none; -webkit-appearance: none; width: auto !important; flex: 0 0 auto !important; margin: 0 !important; min-height: 0 !important; height: 24px !important;
+    padding: 0 9px !important; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; line-height: 1 !important;
+    font-family: var(--ncm-font-display) !important; font-size: calc(10.5px * var(--ncm-text-scale, 1)) !important; font-weight: 700 !important; letter-spacing: .04em; text-transform: uppercase;
+    background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; box-shadow: none !important; color: var(--ncm-text-secondary) !important;
+  }
+  .ncm-app button.ncm-cgr__btn i { margin: 0 !important; font-size: calc(10px * var(--ncm-text-scale, 1)); }
+  .ncm-app button.ncm-cgr__btn:hover { border-color: var(--ncm-border-active, var(--ncm-secondary)) !important; color: var(--ncm-text-primary) !important; }
+  .ncm-app button.ncm-cgr__btn--send { color: var(--ncm-bg-deep) !important; background: var(--g, var(--ncm-secondary)) !important; border-color: var(--g, var(--ncm-secondary)) !important; }
+  .ncm-app button.ncm-cgr__btn--send:hover { filter: brightness(1.12); color: var(--ncm-bg-deep) !important; }
+  .ncm-app button.ncm-cgr__btn--icon { width: 26px !important; padding: 0 !important; justify-content: center; }
+  .ncm-app button.ncm-cgr__btn--danger:hover { color: var(--ncm-danger) !important; border-color: var(--ncm-danger) !important; }
+
+  /* members: a wrapping grid of people; click = open that contact in the detail pane */
+  .ncm-app .ncm-cgr__members { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 4px; padding: 6px; max-height: 164px; overflow-y: auto; overflow-x: hidden; }
+  .ncm-app button.ncm-cgr__member {
+    appearance: none; -webkit-appearance: none; width: auto !important; margin: 0 !important; min-height: 0 !important; height: auto !important;
+  display: grid !important; grid-template-columns: 28px minmax(0, 1fr) !important; grid-template-rows: auto auto !important; align-content: center !important; row-gap: 1px !important;
+    display: grid; grid-template-columns: 28px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left;
+    padding: 4px 6px !important; cursor: pointer; line-height: 1.15 !important;
+    background: var(--ncm-bg-deep) !important; border: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent) !important; border-radius: 2px !important; box-shadow: none !important; color: var(--ncm-text-primary) !important;
+    transition: border-color .18s cubic-bezier(.22,1,.36,1);
+  }
+  .ncm-app button.ncm-cgr__member:hover { border-color: var(--g, var(--ncm-secondary)) !important; }
+  .ncm-app .ncm-cgr__avatar { grid-row: 1 / 3; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--g, var(--ncm-secondary)); background: var(--ncm-bg-surface); display: grid; place-items: center; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display); color: var(--g, var(--ncm-secondary)); overflow: hidden; box-sizing: border-box; }
+  .ncm-app .ncm-cgr__avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .ncm-app .ncm-cgr__m-name { font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-cgr__m-sub { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* a bare address (not in your contacts): envelope avatar, muted, not clickable */
+  .ncm-app button.ncm-cgr__member.is-raw { cursor: default; }
+  .ncm-app button.ncm-cgr__member.is-raw:hover { border-color: color-mix(in srgb, var(--ncm-border) 60%, transparent) !important; }
+  .ncm-app .ncm-cgr__member.is-raw .ncm-cgr__avatar { border-style: dashed; border-color: var(--ncm-text-muted); color: var(--ncm-text-muted); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+  .ncm-app .ncm-cgr__member.is-raw .ncm-cgr__m-name { color: var(--ncm-text-secondary); font-family: var(--ncm-font-mono); font-weight: 400; font-size: calc(11px * var(--ncm-text-scale, 1)); }
+  .ncm-app .ncm-cgr__empty { padding: 2px 0 0 2px; font-family: var(--ncm-font-body); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <h2>Today <b>·</b> shipped <code>.ncm-cgp</code> — rows, names on hover</h2>
+  <div class="app window-app ncm-app ncm-contact-manager frame" data-ncm-scanlines="false" data-ncm-neon="false">
+    <header class="window-header"><h4 class="window-title">V // Contacts</h4></header>
+    <section class="window-content">
+      <div class="ncm-contacts-v5" id="ctx-a"></div>
+    </section>
+  </div>
+
+  <h2>Proposed <b>·</b> a rail of chips + one member tray — "The Crew" open</h2>
+  <div class="app window-app ncm-app ncm-contact-manager frame tall" data-ncm-scanlines="false" data-ncm-neon="false">
+    <header class="window-header"><h4 class="window-title">V // Contacts</h4></header>
+    <section class="window-content">
+      <div class="ncm-contacts-v5" id="ctx-b"></div>
+    </section>
+  </div>
+
+  <h2>Proposed <b>·</b> eighteen groups, nothing open — the rail wraps, then scrolls</h2>
+  <div class="app window-app ncm-app ncm-contact-manager frame" data-ncm-scanlines="false" data-ncm-neon="false">
+    <header class="window-header"><h4 class="window-title">V // Contacts</h4></header>
+    <section class="window-content">
+      <div class="ncm-contacts-v5" id="ctx-c"></div>
+    </section>
+  </div>
+
+  <div class="notes">
+    <b>What changes.</b> A group is a <b>chip</b>, not a row: colour bar · name · a stack of up to three member avatars · count (a shield when the GM shared it).
+    The stack already tells you roughly who is in it; <b>clicking the chip opens one tray</b> under the rail with every member as a small card — avatar, name,
+    role and address — and <b>clicking a member opens that contact</b> in the detail pane. Message all / Edit / Delete sit in the tray header, once, with
+    Message all as the one filled button (that is the thing a group exists for). A bare address that is not in your contacts shows as a dashed envelope card.
+    <br><br>
+    <b>Many groups.</b> Chips wrap. The rail caps at three rows and scrolls past that, so the contact list under it never loses more than ~100px however
+    many groups exist; with nothing open the panel is one line. Clicking another chip swaps the tray; clicking the open chip (or ✕) closes it.
+    <br><br>
+    <b>What stays.</b> Same data, same four actions, same editor dialog; the composer's group chip and the admin Groups card are untouched.
+    If you would rather keep the toolbar even lighter, the fallback is a <code>Groups ▾</code> button beside the tag filter that drops the same chips in a
+    panel — but it hides the stacks until a click, which is the thing you asked to stop doing.
+  </div>
+</div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const openIdx = Number(q.get('open') ?? 0);
+  const C = ['#19f3f7', '#f7c948', '#34d399', '#f65261', '#ffab00', '#a78bfa', '#60a5fa', '#f472b6', '#9aa0b4'];
+  const people = [
+    ['Rogue', 'Fixer', 'rogue@afterlife.nc'], ['Jackie Welles', 'Solo', 'jackie@valentinos.nc'], ['Judy Alvarez', 'Techie', 'judy@moxes.nc'],
+    ['Viktor Vektor', 'Medtech', 'vik@ripperdoc.nc'], ['Panam Palmer', 'Nomad', 'panam@aldecaldos.nc'], ['Kerry Eurodyne', 'Rockerboy', 'kerry@samurai.nc'],
+    ['Takemura', 'Solo', 'takemura@arasaka.corp'], ['Misty', 'Media', 'misty@esoterica.nc'], ['River Ward', 'Lawman', 'river@ncpd.gov'],
+  ];
+  const ini = (n) => n.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const base = [
+    { name: 'The Crew', color: C[0], shared: true, m: [0, 1, 2, 3, 4], raw: ['dex@nightcity.net'] },
+    { name: 'Afterlife Regulars', color: C[1], m: [0, 5, 7] },
+    { name: 'Aldecaldos', color: C[2], m: [4], raw: ['saul@aldecaldos.nc', 'mitch@aldecaldos.nc'] },
+    { name: 'Arasaka Leads', color: C[3], m: [6, 8] },
+  ];
+  const extra = ['Moxes', 'Ripperdocs', 'NCPD Contacts', 'Valentinos', 'Media Leads', 'Netrunners', 'Maelstrom', 'Tyger Claws', 'Corpo Rats', 'Mercs for Hire', 'Watson Crew', 'Pacifica', 'Clients', 'Blackmail Targets'];
+
+  // ── header + toolbar chrome (real markup, trimmed) ──
+  const chrome = (count) => `
+    <div class="ncm-header">
+      <div class="ncm-header__identity">
+        <div class="ncm-header__avatar" style="color: var(--ncm-secondary);">V</div>
+        <div class="ncm-header__info"><span class="ncm-header__name">V</span><span class="ncm-header__email">v@nightcity.net</span></div>
+      </div>
+      <div class="ncm-header__divider"></div>
+      <div class="ncm-header__stats">
+        <div class="ncm-stat"><span class="ncm-stat__value">${count}</span><span class="ncm-stat__label">Contacts</span></div>
+        <div class="ncm-stat"><span class="ncm-stat__value ncm-stat__value--success">3</span><span class="ncm-stat__label">Online</span></div>
+        <div class="ncm-stat"><span class="ncm-stat__value ncm-stat__value--accent">2</span><span class="ncm-stat__label">Favs</span></div>
+      </div>
+      <div class="ncm-header__actions">
+        <button class="ncm-btn ncm-btn--secondary"><i class="fas fa-user-plus"></i> Add</button>
+        <button class="ncm-btn ncm-btn--ghost"><i class="fas fa-gear"></i></button>
+      </div>
+    </div>
+    <div class="ncm-toolbar">
+      <div class="ncm-search-row"><i class="fas fa-search"></i><input class="ncm-search-input" type="text" placeholder="Search contacts..."><span class="ncm-search-count">${count} contacts</span></div>
+      <div class="ncm-filter-row">
+        <div class="ncm-tag-dropdown"><span class="ncm-pill ncm-pill--all ncm-pill--active">ALL</span><button class="ncm-tag-dropdown__toggle"><i class="fas fa-chevron-down"></i></button></div>
+        <div class="ncm-view-toggle"><button class="ncm-view-btn"><i class="fas fa-grip"></i></button><button class="ncm-view-btn ncm-view-btn--active"><i class="fas fa-list"></i></button></div>
+      </div>
+    </div>`;
+  const list = () => `<div class="mk-list">${people.slice(0, 5).map(([n, r, e]) => `<div class="mk-row"><span class="a">${ini(n)}</span><span class="n">${n}</span><span class="e">${r} · ${e}</span></div>`).join('')}</div><div class="mk-fade"></div>`;
+
+  // ── TODAY: the shipped partial, verbatim shape ──
+  const today = (groups) => `
+    <div class="ncm-cgp">
+      <div class="ncm-cgp__head">
+        <span class="ncm-cgp__title"><i class="fas fa-users"></i> Groups <b>${groups.length}</b></span>
+        <span class="ncm-cgp__hint">Message everyone in a group at once</span>
+        <button type="button" class="ncm-btn ncm-btn--ghost ncm-btn--sm ncm-cgp__new"><i class="fas fa-plus"></i> New group</button>
+      </div>
+      <div class="ncm-cgp__list">
+        ${groups.map(g => `
+        <div class="ncm-cgp__row" style="--g:${g.color}">
+          <span class="ncm-cgp__dot"></span>
+          <span class="ncm-cgp__name" data-tooltip="${g.m.map(i => people[i][0]).join(', ')}">${g.name}</span>
+          <span class="ncm-cgp__count">${g.m.length + (g.raw?.length || 0)}</span>
+          ${g.shared ? '<span class="ncm-cgp__shared"><i class="fas fa-shield-halved"></i></span>' : ''}
+          <span class="ncm-cgp__actions">
+            <button type="button" class="ncm-cgp__act ncm-cgp__act--send"><i class="fas fa-paper-plane"></i></button>
+            <button type="button" class="ncm-cgp__act"><i class="fas fa-pen"></i></button>
+            <button type="button" class="ncm-cgp__act ncm-cgp__act--danger"><i class="fas fa-trash"></i></button>
+          </span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  // ── PROPOSED: rail + tray ──
+  const stack = (g) => {
+    const all = [...g.m.map(i => ({ ini: ini(people[i][0]) })), ...(g.raw || []).map(() => ({ ini: '@' }))];
+    const shown = all.slice(0, 3).map(p => `<span>${p.ini}</span>`).join('');
+    const more = all.length > 3 ? `<span class="is-more">+${all.length - 3}</span>` : '';
+    return `<span class="ncm-cgr__stack">${shown}${more}</span>`;
+  };
+  const chip = (g, open) => `
+    <button type="button" class="ncm-cgr__chip${open ? ' is-open' : ''}" style="--g:${g.color}" data-tooltip="${open ? 'Close' : 'Show who is in it'}">
+      <span class="ncm-cgr__chip-bar"></span>
+      <span class="ncm-cgr__chip-name">${g.name}</span>
+      ${stack(g)}
+      <span class="ncm-cgr__chip-n">${g.m.length + (g.raw?.length || 0)}</span>
+      ${g.shared ? '<i class="fas fa-shield-halved ncm-cgr__chip-shared" data-tooltip="Shared by the GM"></i>' : ''}
+    </button>`;
+  const tray = (g) => `
+    <div class="ncm-cgr__tray" style="--g:${g.color}">
+      <div class="ncm-cgr__tray-head">
+        <span class="ncm-cgr__tray-name">${g.name}</span>
+        <span class="ncm-cgr__tray-meta">${g.m.length + (g.raw?.length || 0)} people${g.shared ? ' · <i class="fas fa-shield-halved"></i>shared by the GM' : ''}</span>
+        <span class="ncm-cgr__tray-actions">
+          <button type="button" class="ncm-cgr__btn ncm-cgr__btn--send"><i class="fas fa-paper-plane"></i> Message all</button>
+          <button type="button" class="ncm-cgr__btn"><i class="fas fa-pen"></i> Edit</button>
+          <button type="button" class="ncm-cgr__btn ncm-cgr__btn--icon ncm-cgr__btn--danger" data-tooltip="Delete group"><i class="fas fa-trash"></i></button>
+          <button type="button" class="ncm-cgr__btn ncm-cgr__btn--icon" data-tooltip="Close"><i class="fas fa-times"></i></button>
+        </span>
+      </div>
+      <div class="ncm-cgr__members">
+        ${g.m.map(i => `<button type="button" class="ncm-cgr__member" data-tooltip="Open ${people[i][0]}"><span class="ncm-cgr__avatar">${ini(people[i][0])}</span><span class="ncm-cgr__m-name">${people[i][0]}</span><span class="ncm-cgr__m-sub">${people[i][1]} · ${people[i][2]}</span></button>`).join('')}
+        ${(g.raw || []).map(a => `<button type="button" class="ncm-cgr__member is-raw" data-tooltip="Not in your contacts — goes out as a plain address"><span class="ncm-cgr__avatar"><i class="fas fa-at"></i></span><span class="ncm-cgr__m-name">${a}</span><span class="ncm-cgr__m-sub">address only</span></button>`).join('')}
+      </div>
+    </div>`;
+  const proposed = (groups, openI) => `
+    <div class="ncm-cgr">
+      <div class="ncm-cgr__rail">
+        <span class="ncm-cgr__label"><i class="fas fa-users"></i> Groups <b>${groups.length}</b></span>
+        ${groups.map((g, i) => chip(g, i === openI)).join('')}
+        <button type="button" class="ncm-cgr__chip ncm-cgr__chip--new" data-tooltip="Make a new group from your contacts"><i class="fas fa-plus"></i> New</button>
+      </div>
+      ${openI >= 0 && groups[openI] ? tray(groups[openI]) : ''}
+    </div>`;
+
+  const many = [...base, ...extra.map((name, i) => ({ name, color: C[(i + 4) % C.length], m: [i % people.length, (i + 3) % people.length].slice(0, 1 + (i % 3)) }))];
+
+  document.getElementById('ctx-a').innerHTML = chrome(14) + today(base) + list();
+  document.getElementById('ctx-b').innerHTML = chrome(14) + proposed(base, openIdx) + list();
+  document.getElementById('ctx-c').innerHTML = chrome(14) + proposed(many, -1) + list();
+</script>
+</body>
+</html>

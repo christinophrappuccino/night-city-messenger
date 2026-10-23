@@ -257,7 +257,7 @@ export class ItemInboxApp extends BaseApplication {
       } catch (err) { log.debug(`Contact cache skipped: ${err.message}`); }
     }
 
-    // Integrity (docs/SHARD-INTEGRITY.md): each entry's damage is applied BEFORE
+    // Integrity (dev/design/SHARD-INTEGRITY.md): each entry's damage is applied BEFORE
     // enrichment, so lost data never reaches a player's DOM. A fully lost entry
     // can drop out of the list entirely (hideLost) — the GM still sees it.
     const enrichedEntries = [];

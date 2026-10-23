@@ -12,7 +12,7 @@
  *   progress so the mark itself never has to.
  *
  *   It lives in its own module, rather than inside `registerMessagingSystem`, so a
- *   preview can import the REAL thing (`docs/mockups/boot-splash-preview.html`)
+ *   preview can import the REAL thing (`dev/mockups/boot-splash-preview.html`)
  *   instead of a hand-copied lookalike that drifts.
  *
  *   The whole animation is ONE deterministic `paint(p)` with p = 0..1 fed by rAF.

@@ -22,7 +22,7 @@
  *   Phase 1 (MVP): convert, accounts, per-account message read, login plumbing,
  *   GM force-unlock/relock, exfil (to inbox / to shard). Content type = MESSAGE
  *   only. Player conversion wizard, content-type catalog, send-as, trace, and
- *   the apps/desktop metaphor are later phases (see docs/TERMINAL-EXPANSION.md).
+ *   the apps/desktop metaphor are later phases (see dev/design/TERMINAL-EXPANSION.md).
  */
 
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils/constants.js';

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>NCM — NetAdjudicator / Tier C (real modules, real CSS)</title>
+<!--
+  Thread 7 (hackResolution) preview — renders the REAL modules so it can't drift:
+    (default)     the GM's NetAdjudicator prompt, default PASS/FAIL verdict
+    ?ladder=1     the same prompt carrying the upload FORGE ladder (3 rungs)
+    ?view=await   the player's SecurityConsole stuck in the Tier C AWAITING-GM stage
+    ?view=card    the Tier B NET-action chat card (whispered to GMs), pass + fail
+
+  FAITHFUL STACK - core -> CPR system -> module (the standing preview rule).
+  Run chrome with --allow-file-access-from-files.
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin:0; background:#0a0a12; min-height:100vh; }
+  #host { position:relative; width:100%; height:100vh; }
+  #out { position:fixed; left:8px; bottom:8px; color:#9f9; font:11px monospace; z-index:9999; }
+  #cards { max-width:420px; padding:30px; display:flex; flex-direction:column; gap:14px; }
+</style></head>
+<body>
+<div id="host" class="ncm-app ncm-terminal-viewer" data-terminal-preset="arasaka-workstation"></div>
+<pre id="out"></pre>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const view = q.get('view') || 'adjudicator';
+const ladder = q.get('ladder') === '1';
+const host = document.getElementById('host');
+const out = document.getElementById('out');
+
+// ?snap=1 — headless-screenshot aid: the entrance class is added via rAF + a
+// 0.18s opacity transition, which a headless capture misses (the element sits at
+// opacity 0 = a blank shot). Force the exact class the rAF would add, no
+// transition — layout/style fidelity is unchanged.
+const snap = q.get('snap') === '1';
+const forceOpen = () => {
+  if (!snap) return;
+  const s = document.createElement('style');
+  s.textContent = '.ncm-netadj-backdrop, .ncm-netadj, .ncm-seccon-backdrop, .ncm-seccon { transition: none !important; }';
+  document.head.appendChild(s);
+  const tick = () => document.querySelectorAll('.ncm-netadj-backdrop, .ncm-seccon-backdrop').forEach(el => el.classList.add('is-open'));
+  tick(); setTimeout(tick, 100); setTimeout(tick, 500);
+};
+
+const captured = [];
+// Foundry always has Handlebars global — a missing mock here made the modal's
+// Promise executor throw on esc() and REJECT silently (no mount, no error).
+globalThis.Handlebars = { escapeExpression: (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) };
+globalThis.foundry = { utils: { randomID: () => 'previewid' } };
+globalThis.ChatMessage = { create: (o) => captured.push(o) };
+globalThis.ui = { notifications: { info: () => {}, warn: () => {}, error: () => {} } };
+globalThis.game = {
+  user: { id: 'u-player', isGM: false, name: 'Player One' },
+  users: { activeGM: { id: 'u-gm' }, filter: () => [{ id: 'u-gm' }].filter ? [] : [] },
+  settings: { get: (m, k) => { if (k === 'hackResolution') return 'gm'; throw new Error('n/a'); } },
+  nightcity: { socketManager: { emit: () => {} }, soundService: { play: () => {} }, skillService: null },
+  actors: { get: () => null },
+};
+
+if (view === 'adjudicator') {
+  const { runNetAdjudicator } = await import('../../scripts/ui/content/NetResolve.js');
+  const payload = {
+    requestId: 'nr-preview', actorName: 'V', verb: ladder ? 'Control' : 'Backdoor',
+    title: ladder ? 'Upload: affair.chat' : 'Crack Credentials', skill: 'Interface', dv: 15,
+    hostName: 'ARASAKA-WS',
+    choices: ladder ? [
+      { id: 'clean', label: 'CLEAN FORGE', tone: 'ok' },
+      { id: 'sloppy', label: 'SLOPPY — IT LANDS', tone: 'warn' },
+      { id: 'reject', label: 'REJECTED', tone: 'fail' },
+    ] : undefined,
+  };
+  runNetAdjudicator(payload, host).then(id => { out.textContent = 'verdict: ' + id; });
+  forceOpen();
+  out.textContent = 'adjudicator open (' + (ladder ? 'forge ladder' : 'pass/fail') + ')';
+  setTimeout(() => {
+    const bd = document.querySelector('.ncm-netadj-backdrop');
+    const p = document.querySelector('.ncm-netadj');
+    if (!bd) { out.textContent = 'DIAG: backdrop NOT in DOM'; return; }
+    const cs = getComputedStyle(bd); const cp = p ? getComputedStyle(p) : null;
+    const r = bd.getBoundingClientRect(); const rp = p?.getBoundingClientRect();
+    out.textContent = `DIAG bd cls=${bd.className} disp=${cs.display} op=${cs.opacity} z=${cs.zIndex} rect=${Math.round(r.width)}x${Math.round(r.height)} | panel=${p ? `${Math.round(rp.width)}x${Math.round(rp.height)} bg=${cp.backgroundColor} vis=${cp.visibility}` : 'MISSING'} btns=${document.querySelectorAll('.ncm-netadj__btn').length}`;
+  }, 900);
+} else if (view === 'await') {
+  const { runSecurityConsole } = await import('../../scripts/ui/content/SecurityConsole.js');
+  runSecurityConsole({
+    title: 'Crack Credentials', icon: 'fas fa-unlock-keyhole', accent: 'red', host,
+    intro: 'Break the encryption protecting the mainframe login.',
+    gate: { require: true, skill: 'Interface', dv: 15, actor: { name: 'V' }, net: { verb: 'Backdoor', action: 'crack' } },
+  }).then(r => { out.textContent = 'resolved: ' + JSON.stringify(r); });
+  // Click ATTEMPT once the console mounts — with hackResolution 'gm' and a no-op
+  // socket the console parks in the AWAITING GM stage, which is what we screenshot.
+  forceOpen();
+  // The console attaches its listeners synchronously on call, and headless-new
+  // never fires timers before the screenshot — click ATTEMPT right away.
+  document.querySelector('[data-sc="go"]')?.click();
+  out.textContent = 'awaiting stage (Tier C, socket parked)';
+} else if (view === 'card') {
+  const { postNetActionCard } = await import('../../scripts/ui/content/NetResolve.js');
+  game.users.filter = (fn) => [{ id: 'u-gm', isGM: true }].filter(fn);
+  postNetActionCard({ verb: 'Backdoor', title: 'Crack Credentials', actorName: 'V', hostName: 'ARASAKA-WS', skill: 'Interface', dv: 15, total: 19, ok: true });
+  postNetActionCard({ verb: 'Control', title: 'Siphon: EBM Payroll', actorName: 'Panam', hostName: 'EBM-MAINFRAME', skill: 'Interface', dv: 17, total: 12, ok: false });
+  const wrap = document.createElement('div'); wrap.id = 'cards';
+  for (const c of captured) { const d = document.createElement('div'); d.innerHTML = c.content; wrap.appendChild(d.firstChild); }
+  host.replaceWith(wrap);
+  out.textContent = 'netcards: ' + captured.length;
+}
+</script>
+</body></html>

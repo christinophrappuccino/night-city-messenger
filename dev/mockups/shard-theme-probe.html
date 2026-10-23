@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — shard palette probe</title>
+<!--
+  Shard theming: does the palette that used to be twenty hardcoded --sp-* values
+  per preset (styles/themes/shard-presets.css, deleted 2026-09-22) still land when
+  it is DERIVED from eleven --ncm-* keys written by the real ThemeService?
+
+  It imports the REAL buildShardThemePrefs + SHARD_PRESETS + ThemeService and paints
+  into the REAL cascade (core → CPR → module), then reads every --sp-* back with
+  getComputedStyle and diffs it against the old stylesheet's values (inlined below
+  as OLD, extracted from git before the delete). DRIFT IS EXPECTED and fine — the
+  point is to see WHERE and HOW MUCH, not to demand zero.
+
+    ?preset=<key>     one preset, big swatches (default: all nine, compact)
+    ?contrast=<70-140>  also run the per-shard contrast tone-map
+    ?scale=<80-150>   per-shard text size (checks the header/body composition)
+    ?wallpaper=<url>  check the wallpaper layer
+    ?h=<px>           frame height
+
+  Serve it (node dev/tools/serve-mockups.cjs) or run Chrome with
+  --allow-file-access-from-files — a file:// page cannot ES-import a module.
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body { margin: 0; padding: 14px; background: #15151a; font: 12px/1.5 monospace; color: #cfe; }
+  h2 { font: 700 13px monospace; color: #fff; margin: 18px 0 6px; }
+  #err { color: #ff8080; white-space: pre-wrap; }
+  .card { display: inline-block; vertical-align: top; margin: 0 10px 14px 0; }
+  .swatches { display: grid; grid-template-columns: repeat(2, 200px); gap: 2px; }
+  .sw { padding: 3px 6px; font: 10px/1.4 monospace; border: 1px solid rgba(255,255,255,.08); }
+  .sw b { display: inline-block; width: 108px; opacity: .8; }
+  .sw.drift { outline: 1px solid #f7c948; }
+  .stage { width: 300px; height: 190px; border: 1px solid #333; overflow: hidden; }
+  table { border-collapse: collapse; margin-top: 6px; }
+  td, th { padding: 2px 8px; border: 1px solid #2a2a35; font: 10px monospace; text-align: left; }
+</style>
+</head>
+<body>
+<div id="err"></div>
+<div id="out">loading…</div>
+<!-- machine-readable drift report, for a headless run to read without scraping -->
+<pre id="json" style="display:none"></pre>
+
+<script type="module">
+const q = new URLSearchParams(location.search);
+const err = document.getElementById('err');
+const out = document.getElementById('out');
+
+/** The twenty tokens the shard CSS reads. */
+const SP = ['bg-deep','bg-base','bg-surface','bg-elevated','border','bar','shadow','accent','accent-2',
+  'accent-glow','text-bright','text-body','text-meta','text-muted','icon-bg','icon-border',
+  'chip-bg','chip-text','chip-active-bg','chip-active-text'];
+
+/** What styles/themes/shard-presets.css used to produce (the BEFORE picture). */
+const OLD = {
+  'corporate-dossier': {'bg-deep':'#0a0606','bg-base':'#0e0808','bg-surface':'#120a0a','bg-elevated':'#1a0e0e','border':'#3a1515','accent':'#ee3030','accent-2':'#e0b040','text-bright':'#f5eee8','text-body':'#c0a090','text-meta':'#887060','text-muted':'#883030'},
+  'military-intel': {'bg-deep':'#080a08','bg-base':'#0a0d08','bg-surface':'#0d100a','bg-elevated':'#141a0e','border':'#2a3a20','accent':'#80cc50','accent-2':'#e0b040','text-bright':'#e0f0d0','text-body':'#90bb60','text-meta':'#608090','text-muted':'#5a9a38'},
+  'street-shard': {'bg-deep':'#0c0c0c','bg-base':'#101010','bg-surface':'#141414','bg-elevated':'#1c1c1c','border':'#2a2a2a','accent':'#b0a090','accent-2':'#d0a050','text-bright':'#e8e0d8','text-body':'#aaa8a0','text-meta':'#606060','text-muted':'#666666'},
+  'fixer-dead-drop': {'bg-deep':'#0c080f','bg-base':'#0e0a12','bg-surface':'#120e18','bg-elevated':'#1a1422','border':'#3a2050','accent':'#e070ff','accent-2':'#ff60b0','text-bright':'#f0e0f8','text-body':'#bb90cc','text-meta':'#7050a0','text-muted':'#8a50aa'},
+  'black-market': {'bg-deep':'#0c0d0e','bg-base':'#10111a','bg-surface':'#14161e','bg-elevated':'#1c1e28','border':'#353840','accent':'#c0c8d8','accent-2':'#00e5ff','text-bright':'#eef0f5','text-body':'#a0a8bb','text-meta':'#606878','text-muted':'#606878'},
+  'personal-memory': {'bg-deep':'#0f0c08','bg-base':'#120e08','bg-surface':'#15120a','bg-elevated':'#1e1a10','border':'#3a2a18','accent':'#f0b860','accent-2':'#e0a0a0','text-bright':'#f8f0e0','text-body':'#c8a878','text-meta':'#808090','text-muted':'#8a7040'},
+  'media-leak': {'bg-deep':'#08090f','bg-base':'#0a0c14','bg-surface':'#0e1018','bg-elevated':'#141820','border':'#1a2a4a','accent':'#60b0ff','accent-2':'#ff5050','text-bright':'#e8f0f8','text-body':'#90b0dd','text-meta':'#607898','text-muted':'#4070aa'},
+  'netwatch-evidence': {'bg-deep':'#0a080c','bg-base':'#0c0a10','bg-surface':'#10101a','bg-elevated':'#181420','border':'#2a2040','accent':'#aa88ee','accent-2':'#e0b040','text-bright':'#e8e0f0','text-body':'#a098cc','text-meta':'#607090','text-muted':'#6a50aa'},
+  'blank': {},
+};
+
+// ── minimal Foundry so the real modules import ──────────────────────────────
+globalThis.game = { settings: { get: () => ({}) }, nightcity: {}, user: { isGM: true }, actors: [], items: [], i18n: { localize: (s) => s } };
+globalThis.ui = { notifications: { warn(){}, info(){}, error(){} } };
+globalThis.Hooks = { on(){}, off(){}, once(){}, call(){}, callAll(){} };
+globalThis.CONFIG = {};
+globalThis.foundry = { utils: { debounce: (f) => f, randomID: () => 'x', deepClone: (o) => JSON.parse(JSON.stringify(o)), mergeObject: (a, b) => ({ ...a, ...b }), getRoute: (p) => p } };
+
+/**
+ * Normalise whatever Chrome hands back to #rrggbb. `color-mix()` computes to
+ * `color(srgb r g b / a)` with 0–1 channels, NOT rgb() — miss that and every
+ * derived token silently reads as "not comparable".
+ */
+function hex(v) {
+  const s = String(v || '').trim();
+  let m = /^rgba?\(([^)]+)\)/.exec(s);
+  if (m) {
+    const [r, g, b] = m[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+    return '#' + [r, g, b].map((n) => Math.round(n).toString(16).padStart(2, '0')).join('');
+  }
+  m = /^color\(srgb\s+([^)]+)\)/.exec(s);
+  if (m) {
+    const [r, g, b] = m[1].split(/[\s/]+/).filter(Boolean).map(Number);
+    return '#' + [r, g, b].map((n) => Math.round(n * 255).toString(16).padStart(2, '0')).join('');
+  }
+  return s;
+}
+/** crude perceptual distance so "drift" is reported, not just "different" */
+function dist(a, b) {
+  const p = (h) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h).replace('#', '#')); if (!m) return null;
+    const n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const x = p(a), y = p(b);
+  if (!x || !y) return null;
+  return Math.round(Math.sqrt(x.reduce((s, v, i) => s + (v - y[i]) ** 2, 0)));
+}
+
+try {
+  const H = await import('../../scripts/utils/helpers.js');
+  const C = await import('../../scripts/utils/constants.js');
+  const { ThemeService } = await import('../../scripts/services/ThemeService.js');
+  const ts = new ThemeService(null, null);
+
+  const only = q.get('preset');
+  const keys = only ? [only] : Object.keys(C.SHARD_PRESETS);
+  const contrast = Number(q.get('contrast')) || 100;
+  const scale = Number(q.get('scale')) || 100;
+  const wallpaper = q.get('wallpaper') || null;
+
+  out.innerHTML = '';
+  let worst = 0, worstWhere = '';
+  const report = {};
+
+  for (const key of keys) {
+    const host = document.createElement('div');
+    host.className = 'application ncm-app ncm-item-inbox-app';
+    const inbox = document.createElement('div');
+    inbox.className = `ncm-item-inbox ncm-preset-${key}`;
+    inbox.style.cssText = 'width:300px;height:190px';
+    inbox.innerHTML = `
+      <div style="padding:8px;background:var(--sp-bg-base);border-bottom:1px solid var(--sp-border)">
+        <div style="color:var(--sp-text-bright);font:700 13px var(--ncm-font-display,sans-serif)">${key}</div>
+        <div style="color:var(--sp-accent);font:10px var(--ncm-font-mono,monospace)">DATA SHARD // ACCENT</div>
+      </div>
+      <div style="height:3px;background:var(--sp-bar)"></div>
+      <div style="padding:8px;background:var(--sp-bg-deep)">
+        <div style="background:var(--sp-bg-surface);border:1px solid var(--sp-border);padding:6px;margin-bottom:5px">
+          <div style="color:var(--sp-text-bright);font:12px var(--ncm-font-display,sans-serif)">Entry title</div>
+          <div style="color:var(--sp-text-body);font:11px var(--ncm-font-body,sans-serif)">body copy reads here</div>
+          <div style="color:var(--sp-text-meta);font:9px var(--ncm-font-mono,monospace)">2026-09-22 04:12</div>
+        </div>
+        <span style="background:var(--sp-chip-active-bg);color:var(--sp-chip-active-text);border:1px solid var(--sp-icon-border);padding:2px 6px;font:9px var(--ncm-font-mono,monospace)">CHIP</span>
+        <div style="color:var(--sp-text-muted);font:9px var(--ncm-font-mono,monospace);margin-top:6px">FOOTER // TINTED</div>
+      </div>`;
+    host.appendChild(inbox);
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    const stage = document.createElement('div');
+    stage.className = 'stage';
+    stage.appendChild(host);
+    card.appendChild(stage);
+    out.appendChild(card);
+
+    // paint exactly the way ItemInboxApp._applyShardTheme does
+    const theme = wallpaper ? { wallpaper } : undefined;
+    ts.applyTheme(H.buildShardThemePrefs(theme, key, { textScale: scale, contrast: 100 }), host);
+    H.applyContrastToElement(inbox, contrast, { baseFrom: host });
+
+    // Read the PAINTED colour, not the custom property: getComputedStyle on a
+    // custom property hands back the unresolved `var(...)` token, so probe
+    // elements that actually CONSUME each token are the only honest measure.
+    const probes = document.createElement('div');
+    probes.style.cssText = 'position:absolute;visibility:hidden;height:0';
+    probes.innerHTML = SP.map((t) => `<i data-tok="${t}" style="color:var(--sp-${t})"></i>`).join('');
+    inbox.appendChild(probes);
+    const painted = {};
+    for (const el of probes.querySelectorAll('[data-tok]')) painted[el.dataset.tok] = getComputedStyle(el).color;
+
+    const rows = [];
+    report[key] = {};
+    for (const t of SP) {
+      const now = hex(painted[t]);
+      const before = OLD[key]?.[t];
+      const d = before ? dist(before, now) : null;
+      report[key][t] = { now, before: before || null, delta: d };
+      if (d != null && d > worst) { worst = d; worstWhere = `${key}/${t}`; }
+      rows.push(`<div class="sw ${d != null && d > 40 ? 'drift' : ''}" style="background:${/^#|^rgb/.test(now) ? now : 'transparent'}22">
+        <b>${t}</b> ${now.slice(0, 22)}${before ? ` <span style="opacity:.55">was ${before}${d != null ? ` Δ${d}` : ''}</span>` : ''}</div>`);
+    }
+    const sw = document.createElement('div');
+    sw.className = 'swatches';
+    sw.innerHTML = rows.join('');
+    card.appendChild(sw);
+  }
+
+  const note = document.createElement('div');
+  note.style.cssText = 'margin-top:10px;color:#9f9';
+  note.textContent = `contrast=${contrast} scale=${scale} — worst colour drift Δ${worst} at ${worstWhere || 'n/a'} (Δ is RGB distance, 0-441)`;
+  out.appendChild(note);
+  document.getElementById('json').textContent = 'NCMJSON' + JSON.stringify(report) + 'NCMJSON';
+  document.title = `shard palette — worst drift Δ${worst} @ ${worstWhere || 'n/a'}`;
+} catch (e) {
+  err.textContent = `IMPORT FAILED: ${e.message}\n\nA file:// page cannot ES-import a module.\nRun: node dev/tools/serve-mockups.cjs  →  http://127.0.0.1:8123/dev/mockups/shard-theme-probe.html\n(or launch Chrome with --allow-file-access-from-files)`;
+  document.title = 'shard palette — IMPORT FAILED';
+}
+</script>
+</body>
+</html>

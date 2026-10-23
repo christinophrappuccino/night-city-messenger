@@ -55,7 +55,7 @@ export function deepMerge(target, source) {
  * JS/templates. `languages/en.json` holds only the handful of keys Foundry
  * resolves for us (scene controls, the Contacts window title). Kept as the entry
  * point if real i18n is ever wanted; a key absent from en.json comes back as the
- * key text itself, so run `node tools/audit-i18n.cjs` if you start using it.
+ * key text itself, so run `node dev/tools/audit-i18n.cjs` if you start using it.
  *
  * @param {string} key - Dot-notation i18n key (e.g., 'NCM.SceneControls.OpenInbox')
  * @param {object} [data] - Interpolation data

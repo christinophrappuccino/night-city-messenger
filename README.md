@@ -79,9 +79,9 @@ Place the module folder in your Foundry data folder as `Data/modules/night-city-
 
 - **[Getting Started guide](docs/GETTING-STARTED.md)** — first-time setup for GMs and players, the feature tour, and a first-session recipe. **Start here.**
 - `CLAUDE.md` — full architecture reference (systems, data layout, conventions, gotchas).
-- `docs/TERMINAL-EXPANSION.md`, `docs/UPLOAD-FORGE-TRACE.md`, `docs/THREAD6-MALWARE-MODEL.md` — design docs for the terminal / upload / malware arcs.
-- `docs/TEST-SCRIPT.md` — the manual playtest script.
-- `tools/` — dev-only Node scripts (macro pack generator, i18n audit, logic sims, world-seeding test macros). Never loaded by Foundry.
+- `dev/design/TERMINAL-EXPANSION.md`, `dev/design/UPLOAD-FORGE-TRACE.md`, `dev/design/THREAD6-MALWARE-MODEL.md` — design docs for the terminal / upload / malware arcs.
+- `dev/design/TEST-SCRIPT.md` — the manual playtest script.
+- `dev/` — development material, never loaded by Foundry and never in the release zip: `dev/tools/` (macro pack generator, i18n audit, logic sims, world-seeding test macros), `dev/mockups/` (design mocks and render probes), `dev/design/` (design documents), `dev/guide-export/` (the guide as HTML/PDF).
 
 ## License & credits
 

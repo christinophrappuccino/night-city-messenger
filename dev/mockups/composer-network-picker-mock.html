@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Composer Network Picker</title>
+<!--
+  Composer network picker — two behaviours behind one pill.
+    PLAYER : the pill is a real network switch. Same list as the inbox selector
+             (only reachable networks, locked ones go through the auth dialog).
+             Picking one changes the player's connection, so the Agent inbox
+             (and every other NCM window) follows.
+    GM     : the pill picks the network for THIS MESSAGE only. Every configured
+             network is offered (no range / auth gate), plus "my connection".
+             The GM's own connection never moves.
+  ?view=player | player-switched | gm | gm-override   (tabs at the top too)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet'; l.href = href;
+      document.head.appendChild(l);
+    }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  html, body { margin: 0; min-height: 100%; background: #07070b; color: #8fa0b2;
+    font-family: 'Rajdhani', system-ui, sans-serif; }
+  .mock-tabs { display: flex; gap: 6px; padding: 14px 16px 0; flex-wrap: wrap; }
+  .mock-tabs a { font: 12px 'Share Tech Mono', monospace; color: #8fa0b2; text-decoration: none;
+    border: 1px solid #2a2a45; padding: 4px 10px; border-radius: 2px; }
+  .mock-tabs a.on { color: #19f3f7; border-color: #19f3f7; }
+  .mock-note { max-width: 640px; padding: 10px 16px 0; font-size: 14px; line-height: 1.45; }
+  .mock-note b { color: #e0e0e8; }
+  .mock-stage { display: flex; gap: 28px; padding: 16px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* A composer-sized frame. Only the header matters for this mock. */
+  .mock-win { width: 620px; max-width: 100%; height: 420px; position: relative;
+    border: 1px solid #2a2a45; background: var(--ncm-bg-base, #12121a); }
+  .mock-win .ncm-composer { height: 100%; }
+  .mock-body { padding: 14px; font-size: 13px; color: var(--ncm-text-muted, #555570); }
+  .mock-body .line { height: 9px; background: var(--ncm-bg-surface, #1a1a2e); margin: 8px 0; border-radius: 1px; }
+
+  /* ── NEW: the pill becomes a button ─────────────────────── */
+  .ncm-app button.ncm-composer__net-pill {
+    appearance: none; background: transparent; height: auto; min-height: 0; margin: 0;
+    width: auto !important; flex: 0 0 auto !important; box-shadow: none; cursor: pointer;
+    font: inherit; line-height: 1; position: relative;
+  }
+  .ncm-app button.ncm-composer__net-pill:hover,
+  .ncm-app button.ncm-composer__net-pill.is-open {
+    border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
+    background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent);
+  }
+  .ncm-composer__net-caret { font-size: 8px; color: var(--ncm-text-muted); margin-left: 1px; }
+  /* GM override: this message goes out on a network that isn't the GM's own. */
+  .ncm-app button.ncm-composer__net-pill--override {
+    border-style: dashed; border-color: color-mix(in srgb, var(--ncm-accent) 55%, transparent);
+  }
+  .ncm-composer__net-via {
+    font-family: var(--ncm-font-display); font-size: 8px; font-weight: 700; letter-spacing: .06em;
+    color: var(--ncm-accent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 35%, transparent);
+    border-radius: 1px; padding: 0 3px; text-transform: uppercase;
+  }
+  .ncm-composer__header { position: relative; }
+  /* GM date chip: clickable; a backdated message wears the same amber as VIA. */
+  .ncm-app button.ncm-composer__time-chip {
+    appearance: none; width: auto !important; flex: 0 0 auto !important; height: auto; min-height: 0;
+    margin: 0; box-shadow: none; background: transparent; cursor: pointer; line-height: 1;
+    border: 1px solid transparent; border-radius: 2px; gap: 1px;
+  }
+  .ncm-app button.ncm-composer__time-chip:hover {
+    border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
+  }
+  .ncm-app button.ncm-composer__time-chip--dated {
+    border-style: dashed; border-color: color-mix(in srgb, var(--ncm-accent) 55%, transparent);
+  }
+  .ncm-composer__time-chip--dated .ncm-composer__time-val { color: var(--ncm-accent); }
+  .ncm-composer__time-tag {
+    font-family: var(--ncm-font-display); font-size: 8px; font-weight: 700; letter-spacing: .06em;
+    color: var(--ncm-accent); text-transform: uppercase;
+  }
+  .ncm-app .ncm-net-selector.mock-anchor { left: var(--anchor-x, 150px); top: 44px; animation: none; }
+
+  /* GM-only rows in the selector */
+  .ncm-app .ncm-net-option--default .ncm-net-option__icon { border-style: dashed !important; }
+  .ncm-app .ncm-net-option__chip--via {
+    color: var(--ncm-accent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 40%, transparent);
+    background: color-mix(in srgb, var(--ncm-accent) 8%, transparent);
+  }
+  .ncm-app .ncm-net-option--oor .ncm-net-option__name { opacity: .7; }
+  .ncm-app .ncm-net-selector__footer.mock-foot--gm { color: var(--ncm-accent); }
+
+  /* GM search + filter chips (pinned above the scrolling list) */
+  .ncm-app .ncm-net-selector:has(.mock-filters) { width: 320px; }
+  .ncm-app .mock-filters { padding: 8px 10px 6px; border-bottom: 1px solid var(--ncm-border);
+    background: var(--ncm-bg-base); display: flex; flex-direction: column; gap: 6px; }
+  /* Flex-wrapper search (icon as a sibling, never absolutely positioned). */
+  .ncm-app .mock-search { display: flex; align-items: center; gap: 6px; padding: 0 8px; height: 26px;
+    border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-deep); }
+  .ncm-app .mock-search:focus-within { border-color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent); }
+  .ncm-app .mock-search i { font-size: 10px; color: var(--ncm-text-muted); }
+  .ncm-app .mock-search input { flex: 1; min-width: 0; height: 24px !important; border: 0 !important;
+    background: transparent !important; box-shadow: none !important; padding: 0 !important;
+    color: var(--ncm-text-primary); font-family: var(--ncm-font-body); font-size: 12px; outline: none; }
+  .ncm-app .mock-fchips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ncm-app button.mock-fchip { appearance: none; width: auto !important; flex: 0 0 auto !important;
+    height: auto; min-height: 0; margin: 0; box-shadow: none; line-height: 1; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px;
+    font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--ncm-text-secondary, #a0a0b8);
+    background: transparent; border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .ncm-app button.mock-fchip span { font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-muted); }
+  .ncm-app button.mock-fchip:hover { border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
+  .ncm-app button.mock-fchip.is-on { color: var(--ncm-secondary);
+    border-color: color-mix(in srgb, var(--ncm-secondary) 55%, transparent);
+    background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
+  .ncm-app .mock-list--gm { max-height: 236px; overflow-y: auto; overflow-x: hidden; }
+  .ncm-app .mock-list--gm [hidden] { display: none !important; }
+  .ncm-app .mock-list--gm [data-pinned] { border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .mock-empty { padding: 14px; text-align: center; font-size: 12px; color: var(--ncm-text-muted); }
+
+  /* Little inbox header strip — shows the player switch reaching the Agent. */
+  .mock-slot, .mock-inbox { flex: 0 0 auto; position: relative; }
+  .mock-slot { width: 620px; height: 420px; }
+  .mock-slot > .mock-win { position: absolute !important; inset: 0 !important; }
+  .mock-inbox { width: 300px; border: 1px solid #2a2a45; background: var(--ncm-bg-base, #12121a);
+    font-size: 12px; }
+  .mock-inbox__bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    border-bottom: 1px solid #2a2a45; font-family: 'Share Tech Mono', monospace; }
+  .mock-inbox__dot { width: 7px; height: 7px; border-radius: 50%; }
+  .mock-inbox__cap { padding: 8px 10px; line-height: 1.4; color: #8fa0b2; }
+  .mock-inbox__flash { animation: mockflash 1.4s ease 2; }
+  @keyframes mockflash { 50% { background: color-mix(in srgb, #a855f7 18%, transparent); } }
+</style>
+</head>
+<body>
+<nav class="mock-tabs" id="tabs"></nav>
+<p class="mock-note" id="note"></p>
+<div class="mock-stage" id="stage"></div>
+
+<script>
+const NETS = [
+  { id: 'CITINET',  name: 'CitiNet',          type: 'Public Subnet',     icon: 'fa-wifi',        color: '#19f3f7', sig: 90 },
+  { id: 'DARKNET',  name: 'DarkNet',          type: 'Hidden Subnet',     icon: 'fa-user-secret', color: '#a855f7', sig: 55 },
+  { id: 'ARASAKA',  name: 'Arasaka CorpNet',  type: 'Corporate Subnet',  icon: 'fa-building',    color: '#F65261', sig: 70, auth: true },
+  { id: 'NCPD',     name: 'NCPD GovNet',      type: 'Government Subnet', icon: 'fa-shield-halved', color: '#3b82f6', sig: 0 },
+];
+// The GM sees the whole world's network list — enough to need a search.
+const GM_EXTRA = [
+  { id: 'MILITECH', name: 'Militech TacNet',    type: 'Corporate Subnet',  icon: 'fa-crosshairs',   color: '#84cc16', sig: 0 },
+  { id: 'BIOTECH',  name: 'Biotechnica Lab',    type: 'Corporate Subnet',  icon: 'fa-flask',        color: '#22c55e', sig: 40, auth: true },
+  { id: 'TRAUMA',   name: 'Trauma Team Relay',  type: 'Corporate Subnet',  icon: 'fa-truck-medical', color: '#e2e8f0', sig: 0 },
+  { id: 'NETWATCH', name: 'NetWatch Backbone',  type: 'Government Subnet', icon: 'fa-eye',          color: '#38bdf8', sig: 0 },
+  { id: 'AFTERLIFE',name: 'Afterlife Back Room',type: 'Hidden Subnet',     icon: 'fa-martini-glass', color: '#f472b6', sig: 30 },
+  { id: 'MAELSTROM',name: 'Maelstrom Mesh',     type: 'Hidden Subnet',     icon: 'fa-skull',        color: '#ef4444', sig: 0 },
+  { id: 'NOMAD',    name: 'Aldecaldo Convoy',   type: 'Custom Subnet',     icon: 'fa-caravan',      color: '#f59e0b', sig: 0 },
+  { id: 'MALL',     name: 'Kabuki Market Wi-Fi',type: 'Public Subnet',     icon: 'fa-store',        color: '#facc15', sig: 65 },
+];
+const KIND = t => t.split(' ')[0].toLowerCase();   // 'Public Subnet' → 'public'
+const VIEWS = {
+  'player':          'Player — open picker',
+  'player-switched': 'Player — after switching to DarkNet',
+  'gm':              'GM — open picker',
+  'gm-override':     'GM — sending via Arasaka',
+  'gm-dated':        'GM — backdated',
+};
+const NOTES = {
+  'player': '<b>Player:</b> the pill opens the same list the inbox uses — only networks in range, locked ones go through the normal auth dialog. Picking one <b>switches your connection</b>, so the Agent inbox follows.',
+  'player-switched': '<b>Player:</b> after picking DarkNet in the composer, the composer pill and the inbox header both read DarkNet. No extra wiring — the inbox already re-renders on a network change.',
+  'gm': '<b>GM:</b> the pill picks the network for <b>this message only</b>. Every network is offered (no range or password gate), with your own connection pinned on top as Default (today\'s behaviour). <b>Search + filter chips</b> narrow a long list — try typing or clicking a chip. Your own connection never moves.',
+  'gm-override': '<b>GM:</b> an override is shown with a dashed amber pill and a VIA tag, so it\'s obvious this message isn\'t going out on your own connection. The send-route label at the bottom of the composer would match.',
+  'gm-dated': '<b>GM:</b> click the Date / Time chip to pick a date. A <b>past</b> date delivers now but stamps the message then — it lands in the inbox looking like it arrived days ago (still unread, still toasts). A <b>future</b> date switches on the existing Schedule instead. The picker\'s Clear resets to Now.',
+};
+const view = VIEWS[new URLSearchParams(location.search).get('view')] ? new URLSearchParams(location.search).get('view') : 'player';
+
+document.getElementById('tabs').innerHTML = Object.entries(VIEWS)
+  .map(([k, v]) => `<a href="?view=${k}" class="${k === view ? 'on' : ''}">${v}</a>`).join('');
+document.getElementById('note').innerHTML = NOTES[view];
+
+const isGM = view.startsWith('gm');
+const current = view === 'player-switched' ? 'DARKNET' : 'CITINET';
+const sendVia = view === 'gm-override' ? 'ARASAKA' : null;
+const pillNet = NETS.find(n => n.id === (sendVia || current));
+const open = view === 'player' || view === 'gm';
+
+function bars(sig, color) {
+  const on = [sig > 0, sig >= 25, sig >= 50, sig >= 80];
+  return on.map(a => `<span class="ncm-composer__net-bar ${a ? 'ncm-composer__net-bar--active' : ''}" ${a ? `style="background:${color}"` : ''}></span>`).join('');
+}
+function sigBars(sig) {
+  return [[0,4],[25,6],[50,8],[80,11]].map(([t,h], i) =>
+    `<span class="ncm-net-option__sig-bar ${(i === 0 ? sig > 0 : sig >= t) ? 'ncm-net-option__sig-bar--on' : ''}" style="height:${h}px"></span>`).join('');
+}
+function row(n, state, chip) {
+  return `<div class="ncm-net-option ncm-net-option--${state}" style="--net-c:${n.color};">
+    <div class="ncm-net-option__icon" style="background:${n.color}14;color:${n.color};border:1px solid ${n.color}26;"><i class="fas ${n.icon}"></i></div>
+    <div class="ncm-net-option__info">
+      <div class="ncm-net-option__name">${n.name}</div>
+      <div class="ncm-net-option__type">${n.type} · ${n.sig}%${n.oor ? ' · out of range' : ''}</div>
+    </div>
+    <div class="ncm-net-option__right">${chip}<div class="ncm-net-option__sig">${sigBars(n.sig)}</div></div>
+  </div>`;
+}
+
+function playerList() {
+  const reach = NETS.filter(n => n.sig > 0);
+  reach.sort((a, b) => (a.id === current ? -1 : b.id === current ? 1 : (a.auth ? 1 : 0) - (b.auth ? 1 : 0)));
+  return reach.map(n => n.id === current
+    ? row(n, 'active', '<span class="ncm-net-option__chip ncm-net-option__chip--on">Connected</span>')
+    : n.auth ? row(n, 'locked', '<span class="ncm-net-option__chip ncm-net-option__chip--locked"><i class="fas fa-lock"></i> Locked</span>')
+    : row(n, 'available', '<span class="ncm-net-option__chip ncm-net-option__chip--go">Connect</span>')).join('');
+}
+function gmList() {
+  // Every network, no range/auth gate. The GM's own connection is the default:
+  // picking it clears the override (today's behaviour).
+  // Your own connection is pinned on top and ignores the filter, so "back to
+  // default" is always one click away. The rest sort in-range first, then A→Z.
+  const order = [...NETS, ...GM_EXTRA].sort((a, b) =>
+    (a.id === current ? -1 : b.id === current ? 1 : 0)
+    || ((b.sig > 0) - (a.sig > 0)) || a.name.localeCompare(b.name));
+  return order.map(n => {
+    const isMine = n.id === current;
+    const m = { ...n, oor: n.sig === 0, type: isMine ? 'Your connection' : n.type };
+    const chosen = sendVia ? sendVia === n.id : isMine;
+    const chip = chosen
+      ? (isMine ? '<span class="ncm-net-option__chip ncm-net-option__chip--on">Default</span>'
+                : '<span class="ncm-net-option__chip ncm-net-option__chip--via">Sending via</span>')
+      : '<span class="ncm-net-option__chip ncm-net-option__chip--go">' + (isMine ? 'Use default' : 'Send via') + '</span>';
+    return row(m, chosen ? 'active' : 'available', chip)
+      .replace('ncm-net-option--', m.oor ? 'ncm-net-option--oor ncm-net-option--' : 'ncm-net-option--')
+      .replace('<div class="ncm-net-option ', `<div data-name="${n.name.toLowerCase()} ${n.type.toLowerCase()}" data-kind="${KIND(n.type)}" data-range="${n.sig > 0 ? 1 : 0}" ${isMine ? 'data-pinned="1"' : ''} class="ncm-net-option `);
+  }).join('') + '<div class="mock-empty" hidden>No networks match</div>';
+}
+function gmFilters() {
+  const all = [...NETS, ...GM_EXTRA];
+  const kinds = ['public', 'hidden', 'corporate', 'government', 'custom'];
+  const label = { public: 'Public', hidden: 'Hidden', corporate: 'Corp', government: 'Gov', custom: 'Custom' };
+  const chip = (k, txt, n, on) => `<button type="button" class="mock-fchip ${on ? 'is-on' : ''}" data-f="${k}">${txt}<span>${n}</span></button>`;
+  return `<div class="mock-search"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search networks…" data-net-search></div>
+    <div class="mock-fchips">${chip('all', 'All', all.length, true)}${chip('range', 'In range', all.filter(n => n.sig > 0).length)}${
+      kinds.map(k => [k, all.filter(n => KIND(n.type) === k).length]).filter(([, c]) => c)
+        .map(([k, c]) => chip(k, label[k], c)).join('')}</div>`;
+}
+
+const selector = !open ? '' : `
+  <div class="ncm-net-selector mock-anchor">
+    <div class="ncm-net-selector__header">
+      <span class="ncm-net-selector__header-label">${isGM ? 'Send this message via' : 'Available Networks'}</span>
+    </div>
+    ${isGM ? `<div class="mock-filters">${gmFilters()}</div>` : ''}
+    <div class="ncm-net-selector__list ${isGM ? 'mock-list--gm' : ''}">${isGM ? gmList() : playerList()}</div>
+    <div class="ncm-net-selector__footer ${isGM ? 'mock-foot--gm' : ''}">
+      <i class="fas ${isGM ? 'fa-envelope' : 'fa-arrows-rotate'}"></i>
+      ${isGM ? 'This message only — you stay on CitiNet' : 'Switches your connection — your inbox follows'}
+    </div>
+  </div>`;
+
+const pill = `
+  <button type="button" class="ncm-composer__net-pill ncm-composer__net-pill--connected ${sendVia ? 'ncm-composer__net-pill--override' : ''} ${open ? 'is-open' : ''}">
+    ${sendVia ? '<span class="ncm-composer__net-via">via</span>' : ''}
+    <span class="ncm-composer__net-dot" style="background:${pillNet.color};box-shadow:0 0 4px ${pillNet.color}80;"></span>
+    <span class="ncm-composer__net-name" style="color:${pillNet.color};">${pillNet.name.toUpperCase()}</span>
+    <span class="ncm-composer__net-bars">${bars(pillNet.sig, pillNet.color)}</span>
+    <i class="fas fa-caret-down ncm-composer__net-caret"></i>
+  </button>`;
+
+const composer = `<div class="mock-slot">
+  <div class="mock-win ncm-app ncm-message-composer">
+    <div class="ncm-composer">
+      <header class="ncm-composer__header">
+        <div class="ncm-composer__identity ${isGM ? 'ncm-composer__identity--clickable' : ''}">
+          <div class="ncm-composer__avatar ${isGM ? 'ncm-composer__avatar--gm' : ''}"><span class="ncm-composer__avatar-initials">${isGM ? 'RF' : 'V'}</span></div>
+          <div class="ncm-composer__id-info">
+            <span class="ncm-composer__id-name">${isGM ? 'Rogue <span class="ncm-composer__gm-tag">GM</span>' : 'V'}</span>
+            <span class="ncm-composer__id-email">${isGM ? 'rogue@afterlife.nc' : 'v@citinet.nc'}</span>
+          </div>
+          ${isGM ? '<i class="fas fa-caret-down ncm-composer__id-caret"></i>' : ''}
+        </div>
+        <div class="ncm-composer__header-divider"></div>
+        ${pill}
+        ${isGM
+          ? `<button type="button" class="ncm-composer__time-chip ${view === 'gm-dated' ? 'ncm-composer__time-chip--dated' : ''}" title="Change the message date">
+              <span class="ncm-composer__time-label">${view === 'gm-dated' ? '<span class="ncm-composer__time-tag">Dated</span>' : 'Date / Time'}</span>
+              <span class="ncm-composer__time-val">${view === 'gm-dated' ? '2045.10.12 03:40' : '2045.10.17 22:14'}</span></button>`
+          : '<div class="ncm-composer__time-chip"><span class="ncm-composer__time-label">Date / Time</span><span class="ncm-composer__time-val">2045.10.17 22:14</span></div>'}
+        <span class="ncm-composer__mode ncm-composer__mode--new"><i class="fas fa-pen"></i> New</span>
+        ${selector}
+      </header>
+      <div class="mock-body"><div class="line" style="width:40%"></div><div class="line" style="width:70%"></div><div class="line"></div><div class="line" style="width:85%"></div></div>
+    </div>
+  </div></div>`;
+
+const inboxNet = NETS.find(n => n.id === current);
+const inbox = isGM ? '' : `
+  <div class="mock-inbox">
+    <div class="mock-inbox__bar ${view === 'player-switched' ? 'mock-inbox__flash' : ''}">
+      <span class="mock-inbox__dot" style="background:${inboxNet.color};box-shadow:0 0 5px ${inboxNet.color}"></span>
+      <span style="color:${inboxNet.color}">${inboxNet.name.toUpperCase()}</span>
+      <span style="margin-left:auto;color:#555570">AGENT INBOX</span>
+    </div>
+    <div class="mock-inbox__cap">The inbox header pill (sketch). ${view === 'player-switched'
+      ? 'Switched from the composer — the inbox moved with it.' : 'Same connection the composer shows.'}</div>
+  </div>`;
+
+document.getElementById('stage').innerHTML = composer + inbox;
+// Anchor the dropdown under the pill.
+const p = document.querySelector('.ncm-composer__net-pill'), s = document.querySelector('.mock-anchor');
+if (p && s) s.style.setProperty('--anchor-x', (p.offsetLeft) + 'px');
+
+// Live filter: search text AND one chip. The pinned row (your connection) always shows.
+(function () {
+  const box = document.querySelector('.mock-filters');
+  if (!box) return;
+  const input = box.querySelector('[data-net-search]');
+  let f = 'all';
+  const apply = () => {
+    const q = input.value.trim().toLowerCase();
+    let shown = 0;
+    document.querySelectorAll('.mock-list--gm [data-name]').forEach(r => {
+      if (r.dataset.pinned) { r.hidden = false; return; }
+      const okF = f === 'all' || (f === 'range' ? r.dataset.range === '1' : r.dataset.kind === f);
+      const ok = okF && (!q || r.dataset.name.includes(q));
+      r.hidden = !ok; if (ok) shown++;
+    });
+    document.querySelector('.mock-empty').hidden = shown > 0;
+  };
+  input.addEventListener('input', apply);
+  box.addEventListener('click', e => {
+    const c = e.target.closest('[data-f]'); if (!c) return;
+    f = c.dataset.f;
+    box.querySelectorAll('[data-f]').forEach(b => b.classList.toggle('is-on', b === c));
+    apply();
+  });
+  // ?q= / ?f= let a headless render show a filtered state.
+  const sp = new URLSearchParams(location.search);
+  if (sp.get('q')) input.value = sp.get('q');
+  if (sp.get('f')) box.querySelector(`[data-f="${sp.get('f')}"]`)?.click(); else apply();
+})();
+</script>
+</body>
+</html>

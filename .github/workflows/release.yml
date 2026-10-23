@@ -1,7 +1,7 @@
 # Builds a Foundry-installable release when a version tag (v*) is pushed.
 #
 # Flow: tag v1.0.0 → this workflow stamps module.json's version/download for
-# that tag, zips the module (docs/tools/dev files excluded), and attaches
+# that tag, zips the module (dev/ and repo-only files excluded; docs/ ships the guide), and attaches
 # module.json + module.zip to a GitHub release. Foundry's "latest" manifest
 # URL (module.json's `manifest` field) then always resolves to the newest
 # release, while each release's `download` pins its own zip.
@@ -37,7 +37,7 @@ jobs:
           jq -r '"version=\(.version)  download=\(.download)"' module.json
 
       - name: Validate macro packs
-        run: node tools/gen-macros.cjs
+        run: node dev/tools/gen-macros.cjs
 
       - name: Build module.zip
         run: |
@@ -45,6 +45,7 @@ jobs:
             module.json \
             LICENSE \
             README.md \
+            docs \
             scripts \
             styles \
             templates \

@@ -12,7 +12,7 @@ Thumbs.db
 *~
 
 # Reference PDFs (copyrighted rulebooks — kept locally for research, NEVER redistributed)
-docs/*.pdf
+dev/design/*.pdf
 
 # Local build output (tools/build-zip.cjs)
 dist/

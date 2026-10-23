@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NCM boot splash — concepts</title>
+<!--
+  NCM BOOT SPLASH — FIVE CONCEPTS
+  ===============================
+  Replaces the current icon + title + progress-bar card that `_playBootSplash()`
+  (registerMessagingSystem.js) injects on the first inbox open of a page load.
+
+  Each concept is a DIFFERENT IDEA, not a restyle of one: the brief is to make the
+  name land, and a splash earns that by being about something. In order they are
+  about the signal, the handshake, the mark, the city, and the delivery.
+
+  Every concept is driven by one deterministic `paint(p)` with p = 0..1, so:
+    · live mode just feeds it rAF,
+    · reduced motion paints p = 1 once and stops,
+    · and any single frame can be captured for review.
+
+  Params
+    ?v=1..5        one concept on its own (no params at all = all five)
+    ?t=0..1        freeze at that progress instead of playing
+    ?all=1         contact sheet: all five side by side (add ?t to freeze them)
+    ?speed=ms      run length, default 2100
+    ?theme=red|cyan|gold   accent the brand leans on (default red = --ncm-primary)
+    ?bare=1        hide the caption strip (clean capture)
+    ?strip=1       one concept as three frozen frames: opening, middle, landing
+-->
+<script>
+  /* The two stylesheets that live OUTSIDE the repo. Opened from disk they are
+     file:/// paths; served over http they come from the server's /_vendor mirror,
+     because an http page may not load a file:// stylesheet. Either way the
+     preview renders against the REAL cascade, which is the whole point of it. */
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet'; l.href = href;
+      document.head.appendChild(l);
+    }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+/* ── harness chrome (not part of the concept) ───────────────────────────── */
+html, body { margin: 0; background: #07070b; color: #cfd8e3;
+  font-family: 'Share Tech Mono', ui-monospace, monospace; }
+.sheet { display: flex; flex-wrap: wrap; gap: 14px; padding: 14px; }
+.cell { width: 486px; }
+.cap { font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: #6f7c8c; padding: 6px 2px 8px; display: flex; gap: 8px; align-items: baseline; }
+.cap b { color: #e6edf5; font-size: 12px; letter-spacing: .1em; }
+.cap i { font-style: normal; color: #4c5866; }
+
+/* The real thing is a fixed overlay on document.body; the stage stands in for
+   the screen so several can be compared at once. */
+.stage { position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 40%, #0d0d16 0%, #06060a 70%);
+  border: 1px solid #1b1b28; }
+.sheet .stage { aspect-ratio: 16 / 11; }
+body.solo .cell { width: min(96vw, 1000px); }
+
+.nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 10px 14px; border-bottom: 1px solid #1b1b28; background: #0b0b12;
+  position: sticky; top: 0; z-index: 5; }
+.nav b { color: #e6edf5; font-size: 11px; letter-spacing: .16em; margin-right: 10px; }
+.nav .sep { flex: 1; }
+.nav button { appearance: none; background: #12121a; color: #9fb0c2;
+  border: 1px solid #23233a; border-radius: 2px; padding: 5px 10px; cursor: pointer;
+  font-family: inherit; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  height: auto; min-height: 0; width: auto; box-shadow: none; }
+.nav button:hover { color: #e6edf5; border-color: #3a3a5a; }
+.nav button.on { color: #0a0a0f; background: var(--ncm-primary, #F65261); border-color: transparent; }
+body.solo { display: block; }
+body.solo .sheet { display: grid; place-items: center; min-height: calc(100vh - 54px); }
+
+/* ── shared splash vocabulary ───────────────────────────────────────────── */
+.sp {
+  --c: var(--ncm-primary, #F65261);
+  --c2: var(--ncm-secondary, #19f3f7);
+  --gold: var(--ncm-accent, #f7c948);
+  --ok: var(--ncm-success, #00ff41);
+  --ink: var(--ncm-text-primary, #ededf0);
+  --dim: var(--ncm-text-muted, #8e8ea8);
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+}
+.sp[data-theme="cyan"] { --c: var(--ncm-secondary, #19f3f7); --c2: var(--ncm-primary, #F65261); }
+.sp[data-theme="gold"] { --c: var(--ncm-accent, #f7c948); --c2: var(--ncm-secondary, #19f3f7); }
+
+/* A film of scanlines + a vignette ties every concept to the FUI family. */
+.sp::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.28) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(0,0,0,.6) 100%);
+  opacity: .5;
+}
+
+/* Corner brackets — the SecurityConsole / BankHeist / OperatorSelect signature. */
+.brk { position: absolute; width: 26px; height: 26px; border: 1px solid var(--c); opacity: .55; }
+.brk.tl { top: 14px; left: 14px; border-right: 0; border-bottom: 0; }
+.brk.tr { top: 14px; right: 14px; border-left: 0; border-bottom: 0; }
+.brk.bl { bottom: 14px; left: 14px; border-right: 0; border-top: 0; }
+.brk.br { bottom: 14px; right: 14px; border-left: 0; border-top: 0; }
+
+.topbar, .botbar {
+  position: absolute; left: 22px; right: 22px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--dim);
+}
+.topbar { top: 20px; } .botbar { bottom: 20px; }
+.topbar .lit { color: var(--c); }
+
+/* The hairline that reports progress — one pixel, no chrome, no percentage card. */
+.hair { position: absolute; left: 22px; right: 22px; bottom: 38px; height: 1px;
+  background: rgba(255,255,255,.07); }
+.hair i { position: absolute; inset: 0 auto 0 0; display: block; width: 0%;
+  background: linear-gradient(90deg, transparent, var(--c)); }
+
+/* The name, shared by every concept so the brand reads the same each time. */
+.name { font-family: 'Orbitron', 'Rajdhani', sans-serif; color: var(--ink); }
+.mono { font-family: 'Share Tech Mono', ui-monospace, monospace; }
+
+.core { position: relative; display: grid; place-items: center; width: 100%; height: 100%; }
+
+/* ═══ 1 · SIGNAL ACQUIRE ═══════════════════════════════════════════════════
+   An Agent with no carrier is a brick. So the splash is the moment it finds one:
+   a spectrum full of noise, a sweep that walks across it, and the band going
+   quiet and locking as the sweep passes. The name arrives WITH the lock. */
+.v1 .spec { position: absolute; left: 0; right: 0; bottom: 0; top: 0;
+  display: flex; align-items: flex-end; gap: 2px; padding: 0 22px 62px; }
+.v1 .bar { flex: 1; background: linear-gradient(180deg, var(--c2), transparent);
+  opacity: .32; min-height: 1px; }
+.v1 .bar.lock { background: linear-gradient(180deg, var(--c), transparent); opacity: .5; }
+.v1 .sweep { position: absolute; top: 12%; bottom: 62px; width: 2px; left: 0;
+  background: linear-gradient(180deg, transparent, var(--c), transparent);
+  box-shadow: 0 0 16px 3px var(--c); }
+.v1 .mark { position: relative; text-align: center; z-index: 2; }
+.v1 .ncm { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 74px;
+  letter-spacing: .3em; text-indent: .3em; color: var(--ink);
+  text-shadow: 0 0 26px color-mix(in srgb, var(--c) 55%, transparent); }
+.v1 .full { margin-top: 10px; font-size: 12px; letter-spacing: .48em; text-indent: .48em;
+  color: var(--dim); text-transform: uppercase; }
+.v1 .lockchip { margin-top: 16px; display: inline-flex; gap: 8px; align-items: center;
+  font-size: 10px; letter-spacing: .2em; padding: 4px 12px;
+  border: 1px solid var(--ok); color: var(--ok); }
+
+/* ═══ 2 · HANDSHAKE ════════════════════════════════════════════════════════
+   A messenger is two machines agreeing to trust each other. TX streams out on
+   the left, RX answers on the right, and the fingerprint they settle on IS the
+   monogram. Reads as a real protocol trace rather than decoration. */
+.v2 .cols { position: absolute; inset: 52px 22px 56px; display: grid;
+  grid-template-columns: 1fr 210px 1fr; gap: 18px; align-items: center; }
+.v2 .stream { font-size: 10.5px; line-height: 1.5; color: var(--dim); overflow: hidden; height: 100%;
+  display: flex; flex-direction: column; justify-content: center; }
+.v2 .stream.rx { text-align: right; }
+.v2 .stream div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2 .stream .k { color: var(--c2); }
+.v2 .stream .g { color: var(--ok); }
+.v2 .fp { border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  background: rgba(0,0,0,.4); padding: 16px 10px; text-align: center; position: relative; }
+.v2 .fp::before, .v2 .fp::after { content: ''; position: absolute; left: -1px; right: -1px; height: 1px;
+  background: var(--c); opacity: .7; }
+.v2 .fp::before { top: -1px; } .v2 .fp::after { bottom: -1px; }
+.v2 .ncm { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 48px;
+  letter-spacing: .18em; text-indent: .18em; color: var(--ink); }
+.v2 .hex { font-size: 9.5px; letter-spacing: .12em; color: var(--dim); margin-top: 8px;
+  word-break: break-all; line-height: 1.4; }
+.v2 .auth { margin-top: 10px; font-size: 9.5px; letter-spacing: .2em; color: var(--ok); }
+.v2 .full { position: absolute; left: 22px; right: 22px; bottom: 56px; text-align: center;
+  font-family: 'Orbitron', sans-serif; font-size: 13px; letter-spacing: .42em;
+  text-indent: .42em; color: var(--ink); text-transform: uppercase; }
+
+/* ═══ 3 · MONOGRAM ETCH ════════════════════════════════════════════════════
+   The quietest and the most logo-forward: the three letters are ETCHED as
+   strokes, then a scan sweeps down and leaves them solid, then the full name
+   unfolds on a rule that draws outward from the centre. */
+.v3 .wrap { position: relative; text-align: center; }
+.v3 svg { width: 340px; height: 132px; overflow: visible; }
+.v3 .stroke { fill: none; stroke: var(--c); stroke-width: 2.5;
+  stroke-linecap: square; stroke-linejoin: miter; }
+.v3 .filled { fill: none; stroke: var(--ink); stroke-width: 11; stroke-linecap: butt;
+  stroke-linejoin: miter; }
+.v3 .scan { position: absolute; left: -24px; right: -24px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--c2), transparent);
+  box-shadow: 0 0 18px 2px var(--c2); }
+.v3 .rule { height: 1px; background: var(--c); margin: 18px auto 0; width: 0;
+  opacity: .6; }
+.v3 .full { margin-top: 12px; font-family: 'Orbitron', sans-serif; font-size: 12.5px;
+  letter-spacing: .5em; text-indent: .5em; color: var(--dim); text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; }
+
+/* ═══ 4 · NIGHT CITY ═══════════════════════════════════════════════════════
+   The other half of the name. A wireframe horizon, towers rising, and the
+   beacon on the tallest one pinging — the ping ripples out and the title rides
+   the ripple. The only concept with a sense of place. */
+.v4 .grid { position: absolute; left: 0; right: 0; bottom: 0; height: 34%;
+  background:
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--c2) 22%, transparent) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--c2) 16%, transparent) 0 1px, transparent 1px 26px);
+  transform: perspective(360px) rotateX(64deg); transform-origin: bottom center; opacity: .75; }
+.v4 .sky { position: absolute; left: 0; right: 0; bottom: 31%; height: 38%;
+  display: flex; align-items: flex-end; justify-content: center; gap: 6px; }
+.v4 .tw { width: 26px; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, transparent), rgba(0,0,0,.85));
+  border: 1px solid color-mix(in srgb, var(--c2) 26%, transparent); border-bottom: 0; height: 0; }
+.v4 .beacon { position: absolute; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--c); box-shadow: 0 0 16px 4px var(--c); }
+.v4 .ring { position: absolute; border: 1px solid var(--c); border-radius: 50%;
+  width: 0; height: 0; opacity: 0; }
+.v4 .title { position: absolute; left: 0; right: 0; top: 16%; text-align: center; }
+.v4 .ncm { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 58px;
+  letter-spacing: .28em; text-indent: .28em; color: var(--ink);
+  text-shadow: 0 0 30px color-mix(in srgb, var(--c) 45%, transparent); }
+.v4 .full { margin-top: 8px; font-size: 11.5px; letter-spacing: .46em; text-indent: .46em;
+  color: var(--dim); text-transform: uppercase; }
+
+/* ═══ 5 · COURIER ══════════════════════════════════════════════════════════
+   Literally the job: a message leaves, hops relays, and arrives. The packets
+   that fly the route are the same squares that stack into the mark, so the
+   payoff is built out of the journey instead of replacing it. */
+.v5 .route { position: absolute; left: 12%; right: 12%; top: 50%; height: 1px;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--c2) 45%, transparent) 0 6px, transparent 6px 12px); }
+.v5 .node { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4px 0 0 -4px;
+  border: 1px solid var(--c2); transform: rotate(45deg); background: #08080e; }
+.v5 .node.hot { border-color: var(--c); box-shadow: 0 0 12px 2px color-mix(in srgb, var(--c) 70%, transparent); }
+.v5 .nlbl { position: absolute; top: calc(50% + 14px); font-size: 8.5px; letter-spacing: .16em;
+  color: var(--dim); transform: translateX(-50%); text-transform: uppercase; }
+.v5 .pk { position: absolute; width: 7px; height: 7px; background: var(--c);
+  top: 50%; margin: -3.5px 0 0 -3.5px; box-shadow: 0 0 10px color-mix(in srgb, var(--c) 80%, transparent); }
+.v5 .mark { position: absolute; left: 0; right: 0; top: 18%; text-align: center; }
+.v5 .ncm { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 60px;
+  letter-spacing: .26em; text-indent: .26em; color: var(--ink); }
+.v5 .full { margin-top: 8px; font-size: 11.5px; letter-spacing: .44em; text-indent: .44em;
+  color: var(--dim); text-transform: uppercase; }
+.v5 .env { position: absolute; left: 12%; top: 50%; transform: translate(-50%, -50%);
+  font-size: 20px; color: var(--c2); }
+.v5 .inbox { position: absolute; right: 12%; top: 50%; transform: translate(50%, -50%);
+  font-size: 20px; color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="sheet" id="sheet"></div>
+
+<script>
+const P = new URLSearchParams(location.search);
+const SPEED = Number(P.get('speed') || 2100);
+const THEME = P.get('theme') || 'red';
+const BARE = P.get('bare') === '1';
+const ALL = P.get('all') === '1';
+const FREEZE = P.has('t') ? Math.max(0, Math.min(1, Number(P.get('t')))) : null;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const CONCEPTS = [
+  { n: 1, key: 'v1', name: 'Signal Acquire', about: 'the Agent finding a carrier' },
+  { n: 2, key: 'v2', name: 'Handshake',      about: 'two machines agreeing to trust' },
+  { n: 3, key: 'v3', name: 'Monogram Etch',  about: 'the mark, drawn then filled' },
+  { n: 4, key: 'v4', name: 'Night City',     about: 'the place the name comes from' },
+  { n: 5, key: 'v5', name: 'Courier',        about: 'the message making the trip' },
+];
+
+// Easing — expo-out, the module's standing entrance curve.
+const eo = (p) => 1 - Math.pow(2, -10 * Math.min(1, Math.max(0, p)));
+// Stage helper: how far through a [a,b] window is p, clamped 0..1.
+const win = (p, a, b) => Math.min(1, Math.max(0, (p - a) / (b - a)));
+const HEXCH = '0123456789ABCDEF';
+const rnd = (seed) => { let s = seed; return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; };
+
+/** Shared furniture every concept sits inside. */
+function shell(cls, inner) {
+  return `<div class="sp ${cls}" data-theme="${THEME}">
+    <span class="brk tl"></span><span class="brk tr"></span>
+    <span class="brk bl"></span><span class="brk br"></span>
+    <div class="topbar"><span data-el="tl">NCM // AGENT</span><span class="lit" data-el="tr">BOOT</span></div>
+    <div class="core">${inner}</div>
+    <div class="hair"><i data-el="hair"></i></div>
+    <div class="botbar"><span data-el="bl">&nbsp;</span><span data-el="br">&nbsp;</span></div>
+  </div>`;
+}
+
+// ═══ 1 · SIGNAL ACQUIRE ═══════════════════════════════════════════════════
+const V1 = {
+  html: () => shell('v1', `
+    <div class="spec" data-el="spec"></div>
+    <div class="sweep" data-el="sweep"></div>
+    <div class="mark">
+      <div class="ncm" data-el="ncm">NCM</div>
+      <div class="full" data-el="full">Night City Messenger</div>
+      <div><span class="lockchip" data-el="chip"><i class="fas fa-lock"></i> CARRIER LOCKED</span></div>
+    </div>`),
+  init(r) {
+    const spec = r.q('spec');
+    spec.innerHTML = Array.from({ length: 72 }, () => '<span class="bar"></span>').join('');
+    r.bars = [...spec.children];
+    r.rand = rnd(7);
+    r.noise = r.bars.map(() => r.rand());
+  },
+  paint(r, p) {
+    // The sweep crosses the band at a STEADY pace — an expo-out head is already
+    // at the far edge by 30%, which skips the noise the whole idea rests on.
+    const head = win(p, .05, .66);
+    r.q('sweep').style.left = `calc(22px + ${head} * (100% - 44px))`;
+    r.q('sweep').style.opacity = p > .7 ? 0 : 1;
+    r.bars.forEach((b, i) => {
+      const at = i / r.bars.length;
+      const passed = at < head;
+      // Live noise ahead of the sweep, a settled carrier comb behind it. The
+      // jitter is derived from p so a frozen frame is still reproducible.
+      const jitter = 0.5 + 0.5 * Math.sin(i * 12.9 + p * 70);
+      const h = passed
+        ? (i % 9 === 0 ? 30 : 5)
+        : 10 + jitter * 78 * (0.45 + 0.55 * r.noise[i]);
+      b.style.height = h + 'px';
+      b.classList.toggle('lock', passed);
+    });
+    const reveal = win(p, .5, .86);
+    const ncm = r.q('ncm');
+    ncm.style.opacity = reveal;
+    ncm.style.letterSpacing = (0.3 + (1 - reveal) * 0.35) + 'em';
+    ncm.style.textIndent = ncm.style.letterSpacing;
+    ncm.style.filter = `blur(${(1 - reveal) * 7}px)`;
+    r.q('full').style.opacity = win(p, .66, .92);
+    r.q('chip').style.opacity = win(p, .84, 1);
+    r.q('tl').textContent = 'NCM // SPECTRUM';
+    r.q('tr').textContent = p < .62 ? 'ACQUIRING' : 'LOCKED';
+    r.q('bl').textContent = `${(94.7 + p * 3.3).toFixed(2)} MHz`;
+    r.q('br').textContent = p < .62 ? 'SNR ' + (4 + p * 26).toFixed(0) + ' dB' : 'SNR 31 dB';
+  },
+};
+
+// ═══ 2 · HANDSHAKE ════════════════════════════════════════════════════════
+const V2 = {
+  html: () => shell('v2', `
+    <div class="cols">
+      <div class="stream tx" data-el="tx"></div>
+      <div class="fp">
+        <div class="ncm" data-el="ncm">&nbsp;</div>
+        <div class="hex" data-el="hex"></div>
+        <div class="auth" data-el="auth">&nbsp;</div>
+      </div>
+      <div class="stream rx" data-el="rx"></div>
+    </div>
+    <div class="full" data-el="full">Night City Messenger</div>`),
+  init(r) { r.rand = rnd(21); },
+  paint(r, p) {
+    const TX = ['SYN agent.local', 'KEY xchg ph.1', 'OFFER cipher', 'PUSH identity', 'SEAL channel', 'READY'];
+    const RX = ['ACK ncm.relay', 'KEY xchg ph.2', 'ACCEPT aes-256', 'VERIFY subject', 'SEAL ok', 'READY'];
+    const n = Math.min(TX.length, Math.floor(win(p, .04, .78) * TX.length) + 1);
+    const line = (t, i) => {
+      const done = i < n - 1 || p > .8;
+      return `<div><span class="${done ? 'g' : 'k'}">${done ? '✓' : '›'}</span> ${t}</div>`;
+    };
+    r.q('tx').innerHTML = TX.slice(0, n).map(line).join('');
+    r.q('rx').innerHTML = RX.slice(0, n).map(line).join('');
+
+    // The fingerprint settles character by character — the last thing to resolve
+    // is the monogram it spells.
+    const hres = win(p, .12, .8);
+    const fixed = Math.floor(hres * 40);
+    let hex = '';
+    for (let i = 0; i < 40; i++) {
+      hex += i < fixed ? HEXCH[(i * 7 + 3) % 16] : HEXCH[Math.floor(r.rand() * 16)];
+      if (i % 8 === 7) hex += ' ';
+    }
+    r.q('hex').textContent = hex;
+
+    const solved = win(p, .58, .9);
+    r.q('ncm').textContent = solved < 1
+      ? 'NCM'.split('').map((ch, i) => (solved > (i + 1) / 3.4 ? ch : HEXCH[Math.floor(r.rand() * 16)])).join('')
+      : 'NCM';
+    r.q('ncm').style.color = solved < 1 ? 'var(--dim)' : 'var(--ink)';
+    r.q('auth').textContent = p > .88 ? '✓ CHANNEL AUTHENTICATED' : '\u00a0';
+    r.q('full').style.opacity = win(p, .8, 1);
+    r.q('tl').textContent = 'NCM // HANDSHAKE';
+    r.q('tr').textContent = p > .88 ? 'TRUSTED' : 'NEGOTIATING';
+    r.q('bl').textContent = 'aes-256-gcm';
+    r.q('br').textContent = `${Math.round(win(p, 0, .9) * 6)}/6 steps`;
+  },
+};
+
+// ═══ 3 · MONOGRAM ETCH ════════════════════════════════════════════════════
+const V3 = {
+  // Letterforms as open paths so they can be drawn before they are filled.
+  html: () => shell('v3', `
+    <div class="wrap">
+      <svg viewBox="0 0 340 132" data-el="svg">
+        <defs><clipPath id="fillclip"><rect x="0" y="0" width="340" height="0" data-el="clip"/></clipPath></defs>
+        <g class="stroke" data-el="strokes">
+          <path d="M18 112 L18 20 L86 112 L86 20"/>
+          <path d="M178 34 C158 14 120 18 120 66 C120 114 158 118 178 98"/>
+          <path d="M214 112 L214 20 L258 76 L302 20 L302 112"/>
+        </g>
+        <g clip-path="url(#fillclip)" class="filled">
+          <path d="M18 112 L18 20 L86 112 L86 20"/>
+          <path d="M178 34 C158 14 120 18 120 66 C120 114 158 118 178 98"/>
+          <path d="M214 112 L214 20 L258 76 L302 20 L302 112"/>
+        </g>
+      </svg>
+      <div class="scan" data-el="scan"></div>
+      <div class="rule" data-el="rule"></div>
+      <div class="full" data-el="full">Night City Messenger</div>
+    </div>`),
+  init(r) {
+    r.paths = [...r.q('strokes').children];
+    r.lens = r.paths.map((p) => p.getTotalLength());
+    r.paths.forEach((p, i) => { p.style.strokeDasharray = r.lens[i]; });
+  },
+  paint(r, p) {
+    // 1 · draw each letter in turn, 2 · a scan fills them, 3 · the name unfolds.
+    r.paths.forEach((path, i) => {
+      const d = eo(win(p, i * .12, i * .12 + .34));
+      path.style.strokeDashoffset = r.lens[i] * (1 - d);
+    });
+    const fill = win(p, .5, .82);
+    r.q('clip').setAttribute('height', 132 * fill);
+    const scan = r.q('scan');
+    scan.style.opacity = fill > 0 && fill < 1 ? 1 : 0;
+    scan.style.top = (fill * 132) + 'px';
+    r.q('strokes').style.opacity = 1 - fill * .75;
+    r.q('rule').style.width = win(p, .74, .95) * 300 + 'px';
+    const nm = r.q('full');
+    nm.style.opacity = win(p, .8, 1);
+    nm.style.letterSpacing = (0.5 - (1 - win(p, .8, 1)) * 0.16) + 'em';
+    r.q('tl').textContent = 'NCM // MARK';
+    r.q('tr').textContent = p > .82 ? 'SET' : 'ETCHING';
+    r.q('bl').textContent = 'agent build 4.1';
+    r.q('br').textContent = p > .82 ? 'READY' : `${Math.round(fill * 100)}%`;
+  },
+};
+
+// ═══ 4 · NIGHT CITY ═══════════════════════════════════════════════════════
+const V4 = {
+  html: () => shell('v4', `
+    <div class="grid"></div>
+    <div class="sky" data-el="sky"></div>
+    <div class="beacon" data-el="beacon"></div>
+    <div data-el="rings"></div>
+    <div class="title">
+      <div class="ncm" data-el="ncm">NCM</div>
+      <div class="full" data-el="full">Night City Messenger</div>
+    </div>`),
+  init(r) {
+    r.heights = [.22, .38, .29, .60, .78, .51, .97, .62, .40, .71, .31, .47, .25];
+    r.q('sky').innerHTML = r.heights.map(() => '<span class="tw"></span>').join('');
+    r.towers = [...r.q('sky').children];
+    r.q('rings').innerHTML = '<span class="ring"></span><span class="ring"></span><span class="ring"></span>';
+    r.rings = [...r.q('rings').children];
+  },
+  paint(r, p) {
+    // Towers rise left to right, then the tallest one pings.
+    r.towers.forEach((t, i) => {
+      const d = eo(win(p, i * .035, i * .035 + .3));
+      t.style.height = (r.heights[i] * d * 100) + '%';
+    });
+    // The beacon sits on the tallest tower — measured, not guessed, so it stays
+    // put if the skyline is ever re-authored.
+    const tallest = r.towers[r.heights.indexOf(Math.max(...r.heights))];
+    const sky = r.q('sky').getBoundingClientRect();
+    const host = r.el.getBoundingClientRect();
+    const tb = tallest.getBoundingClientRect();
+    const bx = tb.left - host.left + tb.width / 2;
+    const by = tb.top - host.top;
+    const b = r.q('beacon');
+    b.style.left = bx + 'px'; b.style.top = by + 'px';
+    b.style.opacity = win(p, .5, .58);
+    b.style.transform = `translate(-50%,-50%) scale(${1 + Math.sin(p * 40) * .25})`;
+    r.rings.forEach((ring, i) => {
+      const d = win(p, .55 + i * .1, .95 + i * .1);
+      const size = d * Math.max(sky.width, 520);
+      ring.style.width = ring.style.height = size + 'px';
+      ring.style.left = (bx - size / 2) + 'px';
+      ring.style.top = (by - size / 2) + 'px';
+      ring.style.opacity = d > 0 && d < 1 ? (1 - d) * .5 : 0;
+    });
+    const t = win(p, .62, .92);
+    r.q('ncm').style.opacity = t;
+    r.q('ncm').style.transform = `translateY(${(1 - t) * 14}px)`;
+    r.q('full').style.opacity = win(p, .78, 1);
+    r.q('tl').textContent = 'NCM // NIGHT CITY';
+    r.q('tr').textContent = p > .62 ? 'ON AIR' : 'LINKING';
+    r.q('bl').textContent = 'grid 7 · watson';
+    r.q('br').textContent = p > .62 ? 'BEACON UP' : 'SCANNING';
+  },
+};
+
+// ═══ 5 · COURIER ══════════════════════════════════════════════════════════
+const V5 = {
+  html: () => shell('v5', `
+    <div class="route"></div>
+    <div class="env"><i class="fas fa-envelope"></i></div>
+    <div class="inbox" data-el="inbox"><i class="fas fa-inbox"></i></div>
+    <div data-el="nodes"></div>
+    <div data-el="pkts"></div>
+    <div class="mark">
+      <div class="ncm" data-el="ncm">NCM</div>
+      <div class="full" data-el="full">Night City Messenger</div>
+    </div>`),
+  init(r) {
+    r.hops = [{ x: 30, l: 'relay-7' }, { x: 50, l: 'blackwall edge' }, { x: 70, l: 'citinet' }];
+    r.q('nodes').innerHTML = r.hops.map((h) =>
+      `<span class="node" style="left:${h.x}%"></span><span class="nlbl" style="left:${h.x}%">${h.l}</span>`).join('');
+    r.nodes = [...r.q('nodes').querySelectorAll('.node')];
+    r.q('pkts').innerHTML = Array.from({ length: 12 }, () => '<span class="pk"></span>').join('');
+    r.pkts = [...r.q('pkts').children];
+  },
+  paint(r, p) {
+    // Packets leave staggered, cross the route, then rise into the mark.
+    r.pkts.forEach((pk, i) => {
+      const t = win(p, i * .028, i * .028 + .5);
+      const x = 12 + t * 76;
+      pk.style.left = x + '%';
+      pk.style.opacity = t > 0 && t < 1 ? 1 : (t >= 1 ? 0 : 0);
+      // On arrival each packet flicks up toward the monogram it becomes part of.
+      pk.style.top = `calc(50% - ${t > .9 ? (t - .9) * 300 : 0}px)`;
+    });
+    r.nodes.forEach((n, i) => {
+      const reach = 12 + eo(win(p, 0, .5)) * 76;
+      n.classList.toggle('hot', reach >= r.hops[i].x);
+    });
+    r.q('inbox').style.color = p > .82 ? 'var(--ok)' : 'var(--dim)';
+    const t = win(p, .55, .88);
+    const ncm = r.q('ncm');
+    ncm.style.opacity = t;
+    ncm.style.letterSpacing = (0.26 + (1 - t) * 0.22) + 'em';
+    ncm.style.textIndent = ncm.style.letterSpacing;
+    r.q('full').style.opacity = win(p, .76, 1);
+    r.q('tl').textContent = 'NCM // ROUTE';
+    r.q('tr').textContent = p > .82 ? 'DELIVERED' : 'IN TRANSIT';
+    r.q('bl').textContent = `${Math.min(3, Math.floor(win(p, 0, .5) * 3.4))}/3 hops`;
+    r.q('br').textContent = p > .82 ? 'INBOX READY' : 'ROUTING';
+  },
+};
+
+const IMPL = { v1: V1, v2: V2, v3: V3, v4: V4, v5: V5 };
+
+/** Mount one concept into a cell and either freeze it or run it. */
+function mount(host, c, at) {
+  const impl = IMPL[c.key];
+  host.innerHTML = impl.html();
+  const el = host.querySelector('.sp');
+  const r = {
+    el,
+    q: (k) => el.querySelector(`[data-el="${k}"]`),
+  };
+  impl.init(r);
+  const draw = (p) => {
+    impl.paint(r, p);
+    const h = r.q('hair');
+    if (h) h.style.width = (eo(win(p, 0, .95)) * 100) + '%';
+  };
+  // Reduced motion gets the finished frame and nothing else — the same contract
+  // every other animated surface in the module honours.
+  const fixed = at !== null && at !== undefined ? at : FREEZE;
+  if (fixed !== null || REDUCED) { draw(fixed !== null ? fixed : 1); return; }
+  // The real splash plays once; the mockup loops with a hold so it can be watched.
+  const HOLD = 900;
+  let t0 = performance.now();
+  const step = (now) => {
+    const dt = now - t0;
+    if (dt <= SPEED) draw(Math.min(1, dt / SPEED));
+    else if (dt > SPEED + HOLD) t0 = now;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+const sheet = document.getElementById('sheet');
+const pick = CONCEPTS[Math.max(0, Math.min(4, Number(P.get('v') || 1) - 1))];
+const STRIP = P.get('strip') === '1';
+const STRIP_AT = [[.30, 'opening'], [.65, 'middle'], [1, 'landing']];
+// No params at all means "show me everything" — the contact sheet is the default.
+const SHOW_ALL = ALL || (!P.has('v') && !STRIP);
+const chosen = SHOW_ALL ? CONCEPTS : (STRIP ? STRIP_AT.map(() => pick) : [pick]);
+if (!SHOW_ALL && !STRIP) document.body.classList.add('solo');
+
+// A visible picker, because nobody should have to read the source to find the
+// other four.
+if (!BARE) {
+  const go = (q) => { location.search = q; };
+  const nav = document.createElement('div');
+  nav.className = 'nav';
+  const on = (cond) => cond ? ' class="on"' : '';
+  nav.innerHTML =
+    `<b>NCM BOOT SPLASH</b>` +
+    `<button${on(SHOW_ALL)} data-q="">All five</button>` +
+    CONCEPTS.map((c) => `<button${on(!SHOW_ALL && !STRIP && pick.n === c.n)} data-q="?v=${c.n}">${c.n} · ${c.name}</button>`).join('') +
+    `<span class="sep"></span>` +
+    `<button${on(STRIP)} data-q="?v=${pick.n}&strip=1">Frames of ${pick.n}</button>` +
+    `<button data-q="?${SHOW_ALL ? 'all=1&' : `v=${pick.n}&`}theme=${THEME === 'red' ? 'cyan' : THEME === 'cyan' ? 'gold' : 'red'}">Accent: ${THEME}</button>` +
+    `<button data-q="${location.search}">Replay</button>`;
+  nav.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (b) go(b.dataset.q || '?');
+  });
+  document.body.prepend(nav);
+}
+
+chosen.forEach((c, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  const label = STRIP
+    ? `<b>${c.n} · ${c.name.toUpperCase()}</b><i>${STRIP_AT[i][1]}</i>`
+    : `<b>${c.n} · ${c.name.toUpperCase()}</b><i>${c.about}</i>`;
+  cell.innerHTML = BARE ? '' : `<div class="cap">${label}</div>`;
+  const stage = document.createElement('div');
+  stage.className = 'stage';
+  cell.appendChild(stage);
+  sheet.appendChild(cell);
+  mount(stage, c, STRIP ? STRIP_AT[i][0] : null);
+});
+document.title = SHOW_ALL ? 'NCM boot splash — 5 concepts' : `NCM boot splash — ${chosen[0].name}`;
+</script>
+</body>
+</html>

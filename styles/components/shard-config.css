@@ -350,7 +350,7 @@
 .ncm-app [data-panel="theme"] > .ncm-cfg-hint { padding-left: 16px; padding-right: 16px; margin-left: 0; margin-right: 0; }
 .ncm-app [data-panel="theme"] > .ncm-cfg-row { flex-wrap: wrap; }
 
-/* ─── Integrity section (docs/SHARD-INTEGRITY.md) ─── */
+/* ─── Integrity section (dev/design/SHARD-INTEGRITY.md) ─── */
 .ncm-app .ncm-ig-cfg [hidden] { display: none !important; }
 .ncm-app .ncm-ig-sub { margin: 10px 0 0; padding: 10px 10px 4px; border: 1px solid var(--ncm-border); border-radius: 2px; }
 .ncm-app .ncm-ig-sub__title {

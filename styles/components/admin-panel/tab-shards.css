@@ -503,7 +503,7 @@
 
 .ncm-app .ncm-shard-integrity-chip--restore i { font-size: 11px !important; }
 
-/* ─── Integrity: hardened tag · Damage control · per-entry damage (docs/SHARD-INTEGRITY.md) ─── */
+/* ─── Integrity: hardened tag · Damage control · per-entry damage (dev/design/SHARD-INTEGRITY.md) ─── */
 .ncm-app .ncm-sdmg-hard {
   display: inline-flex !important; align-items: center !important; gap: 3px !important; padding: 1px 5px !important; border-radius: 1px !important;
   font: 700 9px var(--ncm-font-display) !important; letter-spacing: .04em !important; text-transform: uppercase !important;

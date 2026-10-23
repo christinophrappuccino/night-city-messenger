@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Terminal login animation — proposed (mock)</title>
+<!--
+  PROPOSED slicker terminal LOGIN animation (the ACCESS-GRANTED credential sequence).
+  Dev: "clean it up and make it more slick."
+
+  The current version fires a lot at once — four field rows write in with clip-path,
+  each pops its own green checkmark, a progress bar crosses AUTHENTICATING->VERIFIED, a
+  cyan bar scans down, a VALIDATED chip pops, then ACCESS GRANTED — over ~3s. That reads
+  as busy. This redesign is a confident 3-beat sequence with restraint:
+
+    1) the keycard MATERIALISES (slide + fade + one brightness flicker, corner brackets draw)
+    2) a single READER LINE sweeps the card once; fields illuminate as it passes; a hairline
+       fills in sync — no per-row checkmarks, no competing bar
+    3) one clean VERIFIED pulse (border flashes green) -> ACCESS GRANTED resolves
+
+  ~2.2s total (was ~3s). Real --ncm-* tokens so it follows the terminal preset. Uses the
+  real badge class vocabulary where sensible so it ports.
+
+    ?v=materialize  an alternate entrance (the card assembles from scanlines)
+    ?reduced=1      reduced-motion (jumps to the granted end-state)
+    ?loop=1         auto-replay
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root{
+    --c-bg:#070b0f; --c-card:#0f171f; --c-card2:#0b1219; --c-line:#1e2c38;
+    --c-ink:#e8f4f8; --c-mut:#8296a6; --c-dim:#5d6f7d;
+    --c-acc:var(--ncm-secondary,#19f3f7); --c-ok:var(--ncm-success,#00e28a);
+  }
+  body{margin:0;background:#1c1c1c;font-family:sans-serif;}
+  .sw{padding:10px 14px;font:11px monospace;color:#bbb;}
+  .sw a{color:#8fd;margin-right:10px;text-decoration:none;}
+  .sw button{font:11px monospace;background:#0a3;color:#fff;border:0;padding:4px 12px;border-radius:3px;cursor:pointer;margin-right:10px;}
+  .stage{width:920px;height:600px;margin:6px auto;border-radius:8px;overflow:hidden;position:relative;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 12px 44px rgba(0,0,0,.6);
+    background:
+      radial-gradient(120% 90% at 50% 30%, color-mix(in srgb,var(--c-acc) 7%,transparent), transparent 60%),
+      var(--c-bg);}
+  /* faint moving grid + vignette so the card doesn't float in a void */
+  .stage::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:linear-gradient(color-mix(in srgb,var(--c-acc) 8%,transparent) 1px,transparent 1px),
+      linear-gradient(90deg,color-mix(in srgb,var(--c-acc) 8%,transparent) 1px,transparent 1px);
+    background-size:40px 40px;
+    -webkit-mask-image:radial-gradient(70% 55% at 50% 45%,#000,transparent 80%);mask-image:radial-gradient(70% 55% at 50% 45%,#000,transparent 80%);}
+
+  /* ── the credential keycard ─────────────────────────────────────────────── */
+  .card{position:relative;width:360px;border-radius:10px;padding:0;overflow:hidden;
+    background:linear-gradient(160deg,var(--c-card),var(--c-card2));
+    border:1px solid var(--c-line);
+    clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px);
+    box-shadow:0 20px 60px rgba(0,0,0,.55);}
+  /* holographic sheen */
+  .card::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background:linear-gradient(115deg,transparent 30%,color-mix(in srgb,var(--c-acc) 10%,transparent) 45%,transparent 60%);
+    background-size:250% 100%;background-position:120% 0;}
+  .card.play::after{animation:sheen 2.4s ease-in-out .3s;}
+  @keyframes sheen{40%{background-position:120% 0}70%{background-position:-40% 0}100%{background-position:-40% 0}}
+
+  /* corner brackets that draw in */
+  .brk{position:absolute;width:20px;height:20px;border:2px solid var(--c-acc);opacity:0;z-index:4;}
+  .brk.tl{top:9px;left:9px;border-right:0;border-bottom:0;}
+  .brk.tr{top:9px;right:9px;border-left:0;border-bottom:0;}
+  .brk.bl{bottom:9px;left:9px;border-right:0;border-top:0;}
+  .brk.br{bottom:9px;right:9px;border-left:0;border-top:0;}
+  .card.play .brk{animation:brk .5s ease-out .35s forwards;}
+  @keyframes brk{from{opacity:0;transform:scale(1.35)}to{opacity:.85;transform:scale(1)}}
+
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;
+    border-bottom:1px solid var(--c-line);background:color-mix(in srgb,var(--c-acc) 5%,transparent);}
+  .hd__org{font-family:var(--ncm-font-display,sans-serif);font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--c-ink);}
+  .hd__org i{color:var(--c-acc);margin-right:6px;}
+  .hd__cls{font-family:var(--ncm-font-mono,monospace);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--c-acc);padding:3px 8px;border:1px solid color-mix(in srgb,var(--c-acc) 45%,transparent);border-radius:2px;
+    background:color-mix(in srgb,var(--c-acc) 10%,transparent);}
+
+  .body{display:flex;gap:15px;padding:16px 15px 6px;}
+  .photo{flex:0 0 auto;width:76px;height:76px;border-radius:6px;overflow:visible;position:relative;
+    display:flex;align-items:center;justify-content:center;font-family:var(--ncm-font-display,sans-serif);font-size:26px;font-weight:700;
+    color:var(--c-acc);background:color-mix(in srgb,var(--c-acc) 14%,var(--c-card2));border:1px solid color-mix(in srgb,var(--c-acc) 30%,transparent);}
+  .photo img{width:100%;height:100%;object-fit:cover;border-radius:6px;}
+  .fields{flex:1;min-width:0;}
+  .nm{font-family:var(--ncm-font-display,sans-serif);font-size:17px;font-weight:700;color:var(--c-ink);line-height:1.1;letter-spacing:.01em;}
+  .role{font-family:var(--ncm-font-body,sans-serif);font-size:10.5px;color:var(--c-mut);margin-top:2px;text-transform:uppercase;letter-spacing:.06em;}
+  .row{display:flex;align-items:baseline;gap:8px;margin-top:9px;}
+  .row .k{font-family:var(--ncm-font-display,sans-serif);font-size:7.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--c-dim);flex:0 0 62px;}
+  .row .v{font-family:var(--ncm-font-mono,monospace);font-size:11px;color:var(--c-ink);}
+  .foot{display:flex;align-items:center;gap:6px;padding:8px 15px 13px;font-family:var(--ncm-font-mono,monospace);font-size:8.5px;color:var(--c-dim);letter-spacing:.05em;}
+  .foot i{color:var(--c-dim);}
+
+  /* fields illuminate as the reader passes; a field lights briefly then settles */
+  .card.play .nm,.card.play .role,.card.play .row,.card.play .photo{animation:lite .5s ease-out both;}
+  .card.play .nm{animation-delay:.55s;} .card.play .role{animation-delay:.62s;} .card.play .photo{animation-delay:.5s;}
+  .card.play .r0{animation-delay:.78s;} .card.play .r1{animation-delay:.9s;} .card.play .r2{animation-delay:1.02s;} .card.play .r3{animation-delay:1.14s;}
+  @keyframes lite{0%{opacity:.28;filter:brightness(.7)}40%{opacity:1;filter:brightness(1.5) drop-shadow(0 0 5px color-mix(in srgb,var(--c-acc) 60%,transparent))}100%{opacity:1;filter:none}}
+
+  /* the READER LINE — a single cyan sweep down the card */
+  .reader{position:absolute;left:0;right:0;top:0;height:2px;z-index:3;opacity:0;
+    background:linear-gradient(90deg,transparent,var(--c-acc),transparent);
+    box-shadow:0 0 14px 3px color-mix(in srgb,var(--c-acc) 55%,transparent);}
+  .card.play .reader{animation:reader 1.15s cubic-bezier(.55,0,.45,1) .45s;}
+  @keyframes reader{0%{opacity:0;top:0}8%{opacity:1}92%{opacity:1}100%{opacity:0;top:100%}}
+
+  /* the sync hairline at the very bottom */
+  .prog{position:absolute;left:0;right:0;bottom:0;height:2px;background:color-mix(in srgb,var(--c-line) 80%,transparent);z-index:3;}
+  .prog__f{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--c-acc);box-shadow:0 0 8px var(--c-acc);}
+  .card.play .prog__f{animation:prog 1.15s cubic-bezier(.55,0,.45,1) .45s forwards;}
+  @keyframes prog{0%{width:0;background:var(--c-acc)}85%{background:var(--c-acc)}100%{width:100%;background:var(--c-ok);box-shadow:0 0 10px var(--c-ok)}}
+
+  /* the VERIFIED pulse — one clean green border flash + a single chip */
+  .card.play{animation:cardin .55s cubic-bezier(.22,1,.36,1),okpulse .5s ease-out 1.55s;}
+  @keyframes cardin{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
+  @keyframes okpulse{0%{box-shadow:0 20px 60px rgba(0,0,0,.55)}45%{box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 0 1px var(--c-ok),0 0 26px color-mix(in srgb,var(--c-ok) 45%,transparent)}100%{box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 0 1px color-mix(in srgb,var(--c-ok) 40%,transparent)}}
+
+  /* verified badge — sits ON TOP of the portrait's lower-right corner (overflow:visible on .photo) */
+  .vchk{position:absolute;bottom:-7px;right:-7px;z-index:8;width:22px;height:22px;font-size:22px;line-height:22px;text-align:center;
+    color:var(--c-ok);opacity:0;border-radius:50%;
+    background:radial-gradient(circle,var(--c-card) 55%,transparent 60%);
+    box-shadow:0 0 0 2px var(--c-card),0 0 12px color-mix(in srgb,var(--c-ok) 60%,transparent);}
+  .card.play .vchk{animation:pop .42s cubic-bezier(.22,1,.36,1) 1.58s both;}
+  @keyframes pop{from{opacity:0;transform:scale(.4)}60%{transform:scale(1.12)}to{opacity:1;transform:scale(1)}}
+
+  /* field VALUES write in (typing reveal) as the reader passes each row */
+  .nm,.row .v{clip-path:inset(0 100% 0 0);}
+  .card.play .nm{animation:vwrite .34s cubic-bezier(.5,0,.3,1) .5s forwards;}
+  .card.play .r0 .v{animation:vwrite .3s cubic-bezier(.5,0,.3,1) .82s forwards;}
+  .card.play .r1 .v{animation:vwrite .3s cubic-bezier(.5,0,.3,1) .94s forwards;}
+  .card.play .r2 .v{animation:vwrite .3s cubic-bezier(.5,0,.3,1) 1.06s forwards;}
+  .card.play .r3 .v{animation:vwrite .3s cubic-bezier(.5,0,.3,1) 1.18s forwards;}
+  @keyframes vwrite{to{clip-path:inset(0 0 0 0)}}
+  /* a blinking write-cursor rides the reveal edge of each value */
+  .row .v{position:relative;}
+  .row .v::after{content:'';position:absolute;top:1px;bottom:1px;right:-1px;width:1px;background:var(--c-acc);opacity:0;
+    box-shadow:0 0 6px var(--c-acc);}
+  .card.play .r0 .v::after{animation:cur .3s steps(1) .82s;}
+  .card.play .r1 .v::after{animation:cur .3s steps(1) .94s;}
+  .card.play .r2 .v::after{animation:cur .3s steps(1) 1.06s;}
+  .card.play .r3 .v::after{animation:cur .3s steps(1) 1.18s;}
+  @keyframes cur{0%,100%{opacity:0}30%,70%{opacity:1}}
+
+  /* ACCESS GRANTED — resolves under the card */
+  .grant{margin-top:20px;text-align:center;opacity:0;}
+  .grant__t{font-family:var(--ncm-font-display,sans-serif);font-size:22px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--c-ok);
+    text-shadow:0 0 22px color-mix(in srgb,var(--c-ok) 45%,transparent);}
+  .grant__s{font-family:var(--ncm-font-body,sans-serif);font-size:11px;color:var(--c-mut);margin-top:6px;letter-spacing:.04em;}
+  .play ~ .grant, .wrap.play .grant{}
+  .wrap.play .grant{animation:grantin .55s cubic-bezier(.22,1,.36,1) 1.85s both;}
+  @keyframes grantin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .wrap{display:flex;flex-direction:column;align-items:center;}
+
+  /* ── ?v=materialize entrance ── */
+  .stage[data-v="materialize"] .card.play{animation:mat .7s cubic-bezier(.22,1,.36,1),okpulse .5s ease-out 1.7s;}
+  @keyframes mat{0%{opacity:0;transform:translateY(0) scale(.985);clip-path:polygon(18px 0,100% 0,100% 2px,calc(100% - 18px) 2px,0 2px,0 18px)}
+    100%{opacity:1;transform:none;clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px)}}
+
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;}}
+  .stage[data-reduced] .card,.stage[data-reduced] .wrap .grant{opacity:1!important;}
+  .stage[data-reduced] .prog__f{width:100%;background:var(--c-ok);}
+</style></head>
+<body>
+<div class="sw" id="sw"></div>
+<div class="ncm-app">
+  <div class="stage" id="stage">
+    <div class="wrap" id="wrap">
+      <div class="card" id="card">
+        <span class="brk tl"></span><span class="brk tr"></span><span class="brk bl"></span><span class="brk br"></span>
+        <div class="hd"><span class="hd__org"><i class="fas fa-id-card"></i> ARASAKA</span><span class="hd__cls">TOP SECRET</span></div>
+        <div class="body">
+          <div class="photo">V<i class="fas fa-circle-check vchk"></i></div>
+          <div class="fields">
+            <div class="nm">V — Merc</div>
+            <div class="role">Solo · Edgerunner</div>
+            <div class="row r0"><span class="k">ID</span><span class="v">v@militech.net</span></div>
+            <div class="row r1"><span class="k">Clearance</span><span class="v">LEVEL 4 · ADMIN</span></div>
+            <div class="row r2"><span class="k">Location</span><span class="v">Watson · Kabuki</span></div>
+            <div class="row r3"><span class="k">Session</span><span class="v">ENCRYPTED</span></div>
+          </div>
+        </div>
+        <div class="foot"><i class="fas fa-clock-rotate-left"></i> LAST ACCESS · 2 DAYS AGO</div>
+        <div class="reader"></div>
+        <div class="prog"><span class="prog__f"></span></div>
+      </div>
+      <div class="grant"><div class="grant__t">Access Granted</div><div class="grant__s">Welcome back, V. Establishing secure session…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const stage = document.getElementById('stage');
+  stage.dataset.v = q.get('v') === 'slide' ? 'slide' : 'materialize';  // materialize is the default now
+  if (q.get('reduced') === '1') stage.dataset.reduced = '1';
+  const card = document.getElementById('card'), wrap = document.getElementById('wrap');
+  function play(){
+    card.classList.remove('play'); wrap.classList.remove('play');
+    void card.offsetWidth;              // restart the animations
+    card.classList.add('play'); wrap.classList.add('play');
+  }
+  document.getElementById('sw').innerHTML =
+    `<button onclick="__play()">▶ Replay</button> <b style="color:#8fd">terminal login</b> — the ACCESS-GRANTED sequence. `+
+    `<a href="?">materialize (default)</a><a href="?v=slide">slide entrance</a><a href="?reduced=1">reduced-motion</a><a href="?loop=1">loop</a>`;
+  window.__play = play;
+  play();
+  if (q.get('loop') === '1') setInterval(play, 3200);
+</script>
+</body></html>

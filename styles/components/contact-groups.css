@@ -7,7 +7,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Player Contact Manager panel: a RAIL of chips + ONE member tray (ncm-cgr) ──
-   Rebuilt 2026-10-21 from docs/mockups/contact-groups-rail-mock.html. Two parts:
+   Rebuilt 2026-10-21 from dev/mockups/contact-groups-rail-mock.html. Two parts:
    a rail of group chips that wraps (and scrolls past three rows), and one tray
    for the open group. Group colour rides as --g on the chip / tray. */
 .ncm-app .ncm-cgr { margin: 0 12px 8px; display: flex; flex-direction: column; gap: 6px; }

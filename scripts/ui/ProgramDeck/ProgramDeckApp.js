@@ -5,7 +5,7 @@
  * @description Opened from a data shard: the shard's programs (malware/payload) shown as
  *   cartridges seated in slots — click one to pull it into the inspector (the program as
  *   the workshop's synthesis artifact) and act on it (Analyze / Deploy / Execute). Ported
- *   from the dev-approved mock (docs/mockups/shard-program-deck-mock.html). Player-facing:
+ *   from the dev-approved mock (dev/mockups/shard-program-deck-mock.html). Player-facing:
  *   a disguised, un-analysed program shows as its innocuous COVER cartridge until ANALYZE
  *   reveals it; the GM always sees the real identity. Actions delegate to the same
  *   SiphonFlow flows the shard viewer uses.

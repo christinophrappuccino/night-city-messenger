@@ -3,7 +3,7 @@
  * @file styles/components/shard-integrity.css
  * @module night-city-messenger
  *
- * Design: docs/SHARD-INTEGRITY.md · mock: docs/mockups/shard-integrity-mock.html
+ * Design: dev/design/SHARD-INTEGRITY.md · mock: dev/mockups/shard-integrity-mock.html
  *
  * Everything keys on attributes ItemInboxApp stamps on `.ncm-item-inbox`:
  *   data-integrity-tier       clean | light | heavy | severe | bricked

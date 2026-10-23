@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — SYSTEM SWEEP (design mock)</title>
+<!-- FAITHFUL STACK: core -> CPR system -> module -> this mock's proposed styles.
+     Loading the real resets (table{margin}, .ncm-app label{uppercase},
+     button{width:100%}, 20px checkboxes) so the mock can't pass while the app breaks.
+     The inline .ncm-sweep-* CSS below is the PROPOSAL to lift into
+     styles/components/system-sweep.css when the real SystemSweep.js is built. -->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --ncm-primary: #F65261; --ncm-secondary: #19f3f7; --ncm-accent: #f7c948;
+    --ncm-danger: #F65261; --ncm-warning: #f7c948; --ncm-success: #00ff41;
+    --ncm-bg-deep: #0a0a12; --ncm-bg-medium: #12121a; --ncm-bg-light: #1a1a2e;
+    --ncm-text-primary: #ededf2; --ncm-text-secondary: #b9b9cc; --ncm-text-muted: #7a7a92;
+    --ncm-border: #2a2a45;
+    --ncm-font-ui: 'Orbitron', 'Segoe UI', sans-serif; --ncm-font-mono: 'Share Tech Mono', 'Consolas', monospace;
+    --ncm-font-body: 'Rajdhani', 'Segoe UI', sans-serif; --ncm-font-display: 'Rajdhani', 'Segoe UI', sans-serif;
+    --ncm-font-title: 'Orbitron', sans-serif;
+  }
+  /* SWEEP is a DEFENSIVE / detection scan → cyan (Eye-Dee), distinct from
+     upload's offensive purple. Host-scoped via data-ct-color in the real build. */
+  [data-ct-color="cyan"] { --ct-c: #19f3f7; }
+  body { margin: 0; }
+  .stage {
+    position: relative; width: 100%; min-height: 100vh; overflow: auto;
+    display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start;
+    padding: 46px 20px 40px; box-sizing: border-box;
+    background: radial-gradient(circle at 30% 15%, #0e1a2400, #05050a),
+      repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.012) 3px 4px), #05050a;
+  }
+  .stage__label { position: absolute; top: 12px; left: 18px; font: 700 11px var(--ncm-font-mono); letter-spacing: 2px; color: #6f6f88; }
+  .stage__ctl { position: absolute; top: 9px; right: 16px; display: flex; gap: 8px; }
+  .stage__btn { font: 700 9px var(--ncm-font-mono); letter-spacing: 1px; color: #19f3f7;
+    background: rgba(25,243,247,.08); border: 1px solid rgba(25,243,247,.4); border-radius: 4px; padding: 6px 11px; cursor: pointer; }
+  .stage__cap { width: 100%; text-align: center; font: 600 12px var(--ncm-font-mono); color: #6f6f88; letter-spacing: 1px; margin: -8px 0 4px; }
+
+  /* ── SWEEP panel — FUI family (corner brackets · topbar · scanline film) ── */
+  .ncm-sweep {
+    position: relative; width: 430px; max-width: 92vw;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--ct-c) 6%, var(--ncm-bg-medium)) 0%, var(--ncm-bg-deep) 62%);
+    border: 1px solid color-mix(in srgb, var(--ct-c) 45%, transparent);
+    border-radius: 4px; padding: 0 0 14px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 22px 60px -18px #000,
+      0 0 40px -6px color-mix(in srgb, var(--ct-c) 30%, transparent);
+    color: var(--ncm-text-primary);
+    font-family: var(--ncm-font-body);
+    isolation: isolate; overflow: hidden;
+  }
+  /* scanline film */
+  .ncm-sweep::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+    background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.13) 2px 3px);
+    mix-blend-mode: multiply; opacity: .5;
+  }
+  .ncm-sweep__bar { height: 3px; background: linear-gradient(90deg, transparent, var(--ct-c), transparent); opacity: .9; }
+  .ncm-sweep__ck { position: absolute; width: 13px; height: 13px; z-index: 6; border: 2px solid var(--ct-c); opacity: .8; }
+  .ncm-sweep__ck--tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+  .ncm-sweep__ck--tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; }
+  .ncm-sweep__ck--bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; }
+  .ncm-sweep__ck--br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+
+  .ncm-sweep__hd { display: flex; align-items: baseline; gap: 10px; padding: 13px 16px 9px; }
+  .ncm-sweep__tag { font: 700 12px var(--ncm-font-title); letter-spacing: 2.5px; color: var(--ct-c);
+    text-transform: uppercase; display: inline-flex; align-items: center; gap: 7px; }
+  .ncm-sweep__sub { font: 500 11px var(--ncm-font-body); color: var(--ncm-text-muted); letter-spacing: .3px; }
+
+  /* operator/context strip */
+  .ncm-sweep__ctx { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 12px; }
+  .ncm-sweep__chip { font: 700 9.5px var(--ncm-font-mono); letter-spacing: .5px; text-transform: uppercase;
+    color: var(--ncm-text-secondary); background: color-mix(in srgb, var(--ct-c) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ct-c) 28%, transparent); border-radius: 3px; padding: 4px 8px;
+    display: inline-flex; align-items: center; gap: 5px; }
+  .ncm-sweep__chip i { color: var(--ct-c); }
+  .ncm-sweep__chip b { color: var(--ncm-text-primary); font-weight: 700; }
+
+  /* ── RADAR stage ── */
+  .ncm-sweep__radar {
+    position: relative; margin: 2px 16px 12px; height: 168px; border-radius: 4px;
+    background:
+      radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--ct-c) 9%, transparent), transparent 62%),
+      var(--ncm-bg-deep);
+    border: 1px solid color-mix(in srgb, var(--ct-c) 22%, transparent);
+    overflow: hidden; display: grid; place-items: center;
+  }
+  .ncm-sweep__grid { position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle, transparent 0, transparent calc(25% - 1px), color-mix(in srgb, var(--ct-c) 16%, transparent) 25%, transparent calc(25% + 1px)),
+      radial-gradient(circle, transparent 0, transparent calc(50% - 1px), color-mix(in srgb, var(--ct-c) 12%, transparent) 50%, transparent calc(50% + 1px)),
+      radial-gradient(circle, transparent 0, transparent calc(75% - 1px), color-mix(in srgb, var(--ct-c) 8%, transparent) 75%, transparent calc(75% + 1px)),
+      linear-gradient(0deg, transparent calc(50% - 1px), color-mix(in srgb, var(--ct-c) 10%, transparent) 50%, transparent calc(50% + 1px)),
+      linear-gradient(90deg, transparent calc(50% - 1px), color-mix(in srgb, var(--ct-c) 10%, transparent) 50%, transparent calc(50% + 1px));
+    background-position: center; background-repeat: no-repeat; opacity: .8;
+  }
+  /* the sweeping wedge */
+  .ncm-sweep__wedge { position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from 0deg, color-mix(in srgb, var(--ct-c) 42%, transparent), transparent 42deg);
+    opacity: 0; }
+  .ncm-sweep.is-scanning .ncm-sweep__wedge { opacity: .85; animation: sweepspin 1.15s linear infinite; }
+  @keyframes sweepspin { to { transform: rotate(360deg); } }
+
+  .ncm-sweep__radartx { position: relative; z-index: 2; text-align: center; }
+  .ncm-sweep__radartx .big { font: 700 15px var(--ncm-font-title); letter-spacing: 2px; color: var(--ct-c); }
+  .ncm-sweep__radartx .sm { font: 600 10px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 1px; margin-top: 3px; }
+  .ncm-sweep.is-scanning .ncm-sweep__radartx .big { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+
+  /* streaming sector log during scan */
+  .ncm-sweep__log { position: absolute; left: 8px; bottom: 6px; z-index: 3; font: 600 8.5px var(--ncm-font-mono);
+    color: color-mix(in srgb, var(--ct-c) 75%, #fff); letter-spacing: .5px; opacity: .8; white-space: pre; text-align: left; }
+
+  /* verdict pip that replaces radar text on result */
+  .ncm-sweep__verdict { display: none; }
+  .ncm-sweep.is-clean .ncm-sweep__radartx, .ncm-sweep.is-hits .ncm-sweep__radartx { display: none; }
+  .ncm-sweep.is-clean .ncm-sweep__verdict, .ncm-sweep.is-hits .ncm-sweep__verdict {
+    display: block; position: relative; z-index: 3; text-align: center; }
+  .ncm-sweep.is-clean .ncm-sweep__verdict .v { color: var(--ncm-success); }
+  .ncm-sweep.is-hits .ncm-sweep__verdict .v { color: var(--ncm-warning); }
+  .ncm-sweep__verdict .v { font: 700 16px var(--ncm-font-title); letter-spacing: 2px; }
+  .ncm-sweep__verdict .vs { font: 600 10px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 1px; margin-top: 4px; }
+  .ncm-sweep.is-clean .ncm-sweep__radar { border-color: color-mix(in srgb, var(--ncm-success) 40%, transparent); }
+  .ncm-sweep.is-hits  .ncm-sweep__radar { border-color: color-mix(in srgb, var(--ncm-warning) 45%, transparent); }
+
+  /* ── DETECTED list ── */
+  .ncm-sweep__hits { display: none; flex-direction: column; gap: 8px; padding: 0 16px; max-height: 260px; overflow-y: auto; }
+  .ncm-sweep.is-hits .ncm-sweep__hits { display: flex; }
+
+  .ncm-sweep__hit { position: relative; display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center;
+    padding: 9px 11px; border-radius: 4px;
+    background: color-mix(in srgb, var(--ncm-warning) 5%, var(--ncm-bg-medium));
+    border: 1px solid color-mix(in srgb, var(--ncm-warning) 30%, transparent);
+    border-left: 3px solid var(--ncm-warning); }
+  .ncm-sweep__hit.is-defused { background: color-mix(in srgb, var(--ncm-success) 5%, var(--ncm-bg-medium));
+    border-color: color-mix(in srgb, var(--ncm-success) 28%, transparent); border-left-color: var(--ncm-success); opacity: .78; }
+  .ncm-sweep__hit-ico { width: 34px; height: 34px; border-radius: 4px; display: grid; place-items: center; font-size: 15px;
+    color: var(--ncm-warning); background: color-mix(in srgb, var(--ncm-warning) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ncm-warning) 32%, transparent); }
+  .ncm-sweep__hit.is-defused .ncm-sweep__hit-ico { color: var(--ncm-success); background: color-mix(in srgb, var(--ncm-success) 12%, transparent); border-color: color-mix(in srgb, var(--ncm-success) 32%, transparent); }
+  .ncm-sweep__hit-nm { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ncm-sweep__hit-t { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); letter-spacing: .3px;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ncm-sweep__hit-d { font: 500 10.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-sweep__hit-meta { font: 600 9px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: .4px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* forgery-tell + type chips (GM view) */
+  .ncm-sweep__pill { font: 700 8.5px var(--ncm-font-mono); letter-spacing: .5px; text-transform: uppercase;
+    border-radius: 2px; padding: 2px 5px; line-height: 1.1; }
+  .ncm-sweep__pill--type { color: var(--ct-c); background: color-mix(in srgb, var(--ct-c) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ct-c) 30%, transparent); }
+  .ncm-sweep__pill--clean  { color: var(--ncm-success); background: color-mix(in srgb, var(--ncm-success) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-success) 30%, transparent); }
+  .ncm-sweep__pill--sloppy { color: var(--ncm-warning); background: color-mix(in srgb, var(--ncm-warning) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-warning) 30%, transparent); }
+  .ncm-sweep__pill--gm { color: var(--ncm-primary); background: color-mix(in srgb, var(--ncm-primary) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-primary) 30%, transparent); }
+
+  .ncm-sweep__defuse { font: 700 9.5px var(--ncm-font-mono); letter-spacing: .6px; text-transform: uppercase;
+    color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ncm-danger) 42%, transparent); border-radius: 3px;
+    padding: 6px 10px; cursor: pointer; white-space: nowrap; align-self: center; appearance: none; min-height: 0; width: auto; }
+  .ncm-sweep__defuse:hover { background: color-mix(in srgb, var(--ncm-danger) 20%, transparent); }
+  .ncm-sweep__hit.is-defused .ncm-sweep__defuse { color: var(--ncm-success); border-color: color-mix(in srgb, var(--ncm-success) 40%, transparent);
+    background: color-mix(in srgb, var(--ncm-success) 8%, transparent); pointer-events: none; }
+
+  /* ── footer ── */
+  .ncm-sweep__ft { display: flex; gap: 9px; padding: 12px 16px 2px; }
+  .ncm-sweep__ft button { flex: 1; font: 700 11px var(--ncm-font-mono); letter-spacing: 1px; text-transform: uppercase;
+    border-radius: 3px; padding: 10px 12px; cursor: pointer; appearance: none; min-height: 0; }
+  .ncm-sweep__cancel { color: var(--ncm-text-secondary); background: transparent; border: 1px solid var(--ncm-border); flex: 0 0 32%; }
+  .ncm-sweep__go { color: #05050a; background: var(--ct-c); border: 1px solid var(--ct-c);
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+  .ncm-sweep__go:disabled { opacity: .5; cursor: not-allowed; }
+  .ncm-sweep.is-scanning .ncm-sweep__go, .ncm-sweep.is-done .ncm-sweep__go { display: none; }
+  .ncm-sweep__done { display: none; color: #05050a; background: var(--ct-c); border: 1px solid var(--ct-c); }
+  .ncm-sweep.is-done .ncm-sweep__done { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+</style>
+</head>
+<body class="ncm-app">
+<div class="stage" id="stage">
+  <div class="stage__label">SYSTEM SWEEP // design mock · real core+CPR+module CSS</div>
+  <div class="stage__ctl">
+    <button class="stage__btn" onclick="setView('player')" id="btnP">PLAYER VIEW</button>
+    <button class="stage__btn" onclick="setView('gm')" id="btnG">GM VIEW</button>
+    <button class="stage__btn" onclick="build()">▶ REPLAY</button>
+  </div>
+
+  <div>
+    <div class="stage__cap">① SCAN → ② RESULT (hits)</div>
+    <div id="host1"></div>
+  </div>
+  <div>
+    <div class="stage__cap">CLEAN RESULT (nothing beat the roll)</div>
+    <div id="host2"></div>
+  </div>
+</div>
+
+<script>
+  // The armed residents on a fake box. stealthDV = what the sweep roll must beat.
+  const RESIDENTS = [
+    { id: 'r1', effectType: 'plant',       stealthDV: 9,  forgeQuality: 30, plantedByName: 'Ghost',   sourceLabel: 'affair.chat',
+      gmType: 'PLANTED FILE', gmName: 'affair.chat → j.silverhand', pType: 'FALSIFIED DATA', pName: 'foreign file in a mailbox' },
+    { id: 'r2', effectType: 'keylog',      stealthDV: 12, forgeQuality: 78, plantedByName: 'Ghost',   sourceLabel: 'sniffer',
+      gmType: 'KEYLOGGER', gmName: 'captures the next login', pType: 'WATCHER PROCESS', pName: 'something is listening' },
+    { id: 'r3', effectType: 'deployICE',   stealthDV: 15, forgeQuality: 90, plantedByName: 'NetWatch', sourceLabel: 'Hellhound',
+      gmType: 'BLACK ICE', gmName: 'Hellhound — bites the next intruder', pType: 'HOSTILE COUNTERMEASURE', pName: 'a trap is primed' },
+    { id: 'r4', effectType: 'forgeAccount', stealthDV: 22, forgeQuality: 95, plantedByName: 'Ghost',   sourceLabel: 'bd_9fa2',
+      gmType: 'BACKDOOR ACCOUNT', gmName: 'hidden login bd_9fa2', pType: 'GHOST ACCOUNT', pName: 'an account that should not exist' },
+  ];
+  const ICON = { plant: 'fa-file-circle-exclamation', keylog: 'fa-keyboard', deployICE: 'fa-skull-crossbones', forgeAccount: 'fa-user-secret', logicBomb: 'fa-bomb' };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  let VIEW = 'gm';
+  function setView(v) { VIEW = v; document.getElementById('btnP').style.opacity = v === 'player' ? 1 : .5; document.getElementById('btnG').style.opacity = v === 'gm' ? 1 : .5; build(); }
+
+  function panelHtml() {
+    return `
+    <div class="ncm-sweep" data-ct-color="cyan" role="dialog">
+      <div class="ncm-sweep__bar"></div>
+      <span class="ncm-sweep__ck ncm-sweep__ck--tl"></span><span class="ncm-sweep__ck ncm-sweep__ck--tr"></span>
+      <span class="ncm-sweep__ck ncm-sweep__ck--bl"></span><span class="ncm-sweep__ck ncm-sweep__ck--br"></span>
+      <div class="ncm-sweep__hd">
+        <span class="ncm-sweep__tag"><i class="fas fa-radar"></i> SYSTEM SWEEP</span>
+        <span class="ncm-sweep__sub">deep-scan this host for installed programs</span>
+      </div>
+      <div class="ncm-sweep__ctx">
+        <span class="ncm-sweep__chip"><i class="fas fa-user"></i> OP <b>V</b></span>
+        <span class="ncm-sweep__chip"><i class="fas fa-microchip"></i> INTERFACE</span>
+        <span class="ncm-sweep__chip"><i class="fas fa-dice-d10"></i> ROLL <b>vs</b> each hidden process</span>
+      </div>
+      <div class="ncm-sweep__radar">
+        <div class="ncm-sweep__grid"></div>
+        <div class="ncm-sweep__wedge"></div>
+        <div class="ncm-sweep__radartx"><div class="big">READY</div><div class="sm">TECH + Interface + 1d10</div></div>
+        <div class="ncm-sweep__verdict"><div class="v"></div><div class="vs"></div></div>
+        <div class="ncm-sweep__log"></div>
+      </div>
+      <div class="ncm-sweep__hits"></div>
+      <div class="ncm-sweep__ft">
+        <button type="button" class="ncm-sweep__cancel">CLOSE</button>
+        <button type="button" class="ncm-sweep__go"><i class="fas fa-satellite-dish"></i> RUN SWEEP</button>
+        <button type="button" class="ncm-sweep__done"><i class="fas fa-check"></i> DONE</button>
+      </div>
+    </div>`;
+  }
+
+  function hitHtml(r) {
+    const tell = r.forgeQuality < 45
+      ? '<span class="ncm-sweep__pill ncm-sweep__pill--sloppy">FORGED — SLOPPY</span>'
+      : '<span class="ncm-sweep__pill ncm-sweep__pill--clean">WELL-MADE</span>';
+    if (VIEW === 'gm') {
+      return `<div class="ncm-sweep__hit" data-id="${r.id}">
+        <span class="ncm-sweep__hit-ico"><i class="fas ${ICON[r.effectType] || 'fa-bug'}"></i></span>
+        <span class="ncm-sweep__hit-nm">
+          <span class="ncm-sweep__hit-t">${esc(r.gmName)}
+            <span class="ncm-sweep__pill ncm-sweep__pill--type">${esc(r.gmType)}</span>${tell}</span>
+          <span class="ncm-sweep__hit-meta"><span>PLANTED BY ${esc(r.plantedByName)}</span><span>STEALTH DV ${r.stealthDV}</span></span>
+        </span>
+        <button type="button" class="ncm-sweep__defuse" data-act="defuse"><i class="fas fa-eraser"></i> DEFUSE</button>
+      </div>`;
+    }
+    // Player: no type, no provenance, no DV — just "something's installed."
+    return `<div class="ncm-sweep__hit" data-id="${r.id}">
+      <span class="ncm-sweep__hit-ico"><i class="fas fa-triangle-exclamation"></i></span>
+      <span class="ncm-sweep__hit-nm">
+        <span class="ncm-sweep__hit-t">UNKNOWN PROCESS</span>
+        <span class="ncm-sweep__hit-d">${esc(r.pName)}</span>
+      </span>
+      <button type="button" class="ncm-sweep__defuse" data-act="defuse"><i class="fas fa-eraser"></i> DEFUSE</button>
+    </div>`;
+  }
+
+  const SECTORS = ['0x1A · boot', '0x2C · mail', '0x3F · net', '0x44 · svc', '0x5E · sess', '0x6B · logs', '0x7D · shadow'];
+
+  function drive(host, { roll, autoScan }) {
+    host.innerHTML = panelHtml();
+    const panel = host.querySelector('.ncm-sweep');
+    const radarBig = panel.querySelector('.big');
+    const logEl = panel.querySelector('.ncm-sweep__log');
+
+    const reveal = () => {
+      const found = RESIDENTS.filter(r => r.stealthDV <= roll);
+      if (!found.length) {
+        panel.classList.add('is-clean', 'is-done');
+        panel.querySelector('.ncm-sweep__verdict .v').textContent = 'SWEEP CLEAN';
+        panel.querySelector('.ncm-sweep__verdict .vs').textContent = 'no anomalies beat the scan';
+        return;
+      }
+      panel.classList.add('is-hits', 'is-done');
+      panel.querySelector('.ncm-sweep__verdict .v').textContent = `${found.length} FOUND`;
+      panel.querySelector('.ncm-sweep__verdict .vs').textContent = VIEW === 'gm' ? 'installed programs detected' : 'anomalies detected — defuse them';
+      panel.querySelector('.ncm-sweep__hits').innerHTML = found.map(hitHtml).join('');
+    };
+
+    const runScan = () => {
+      panel.classList.add('is-scanning');
+      radarBig.textContent = 'SWEEPING';
+      panel.querySelector('.sm').textContent = `rolled ${roll}`;
+      let i = 0;
+      const iv = setInterval(() => {
+        logEl.textContent = SECTORS.slice(Math.max(0, i - 3), i + 1).join('\n');
+        if (++i > SECTORS.length) { clearInterval(iv); panel.classList.remove('is-scanning'); logEl.textContent = ''; reveal(); }
+      }, 150);
+    };
+
+    panel.querySelector('.ncm-sweep__go').addEventListener('click', runScan);
+    panel.querySelector('.ncm-sweep__cancel').addEventListener('click', () => build());
+    panel.querySelector('.ncm-sweep__done').addEventListener('click', () => build());
+    panel.querySelector('.ncm-sweep__hits').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-act="defuse"]'); if (!btn) return;
+      const hit = btn.closest('.ncm-sweep__hit');
+      hit.classList.add('is-defused');
+      hit.querySelector('.ncm-sweep__hit-ico i').className = 'fas fa-shield-halved';
+      btn.innerHTML = '<i class="fas fa-check"></i> NEUTRALIZED';
+    });
+
+    if (autoScan) setTimeout(runScan, 250);
+  }
+
+  // ?view=player|gm · ?freeze=scan holds the radar mid-sweep for a capture.
+  const Q = new URLSearchParams(location.search);
+  const FREEZE = Q.get('freeze');
+
+  function build() {
+    drive(document.getElementById('host1'), { roll: 15, autoScan: !FREEZE }); // finds r1,r2,r3 · misses backdoor (DV22)
+    drive(document.getElementById('host2'), { roll: 8, autoScan: !FREEZE });  // beats nothing (lowest DV is 9) → CLEAN
+    if (FREEZE === 'scan') document.querySelectorAll('.ncm-sweep').forEach(p => {
+      p.classList.add('is-scanning'); p.querySelector('.big').textContent = 'SWEEPING';
+      p.querySelector('.ncm-sweep__log').textContent = SECTORS.slice(2, 5).join('\n');
+    });
+  }
+  setView(Q.get('view') === 'player' ? 'player' : 'gm');
+</script>
+</body>
+</html>

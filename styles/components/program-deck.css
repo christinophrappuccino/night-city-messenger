@@ -1,6 +1,6 @@
 /*
  * Program Deck — a cyberdeck cartridge reader for viewing the programs on a data shard.
- * Ported from docs/mockups/shard-program-deck-mock.html (dev-approved concept).
+ * Ported from dev/mockups/shard-program-deck-mock.html (dev-approved concept).
  * .ncm-pd-* component classes stay bare (collision-checked); host/frame scoped to the app root.
  */
 .ncm-app.ncm-program-deck .window-content{padding:0;overflow:hidden;}
