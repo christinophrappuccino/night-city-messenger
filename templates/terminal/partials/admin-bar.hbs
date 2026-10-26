@@ -1,0 +1,17 @@
+{{!-- ADMIN ACCESS banner (2026-10-26, dev-approved mock dev/mockups/terminal-root-access-mock.html).
+      Shown under the HUD while an admin account is VIEWING another account
+      (TerminalViewerApp._viewAs). One element for every mailbox layout; the
+      TTY gets a session line instead of a strip. The label ("ADMIN OVERRIDE",
+      "SYSOP"…) is the theme's — utils/terminalAdmin.js adminLabelFor. --}}
+<div class="ncm-term__adminbar{{#if msTty}} ncm-term__adminbar--tty{{/if}}" role="status">
+  <span class="ncm-term__adminbar-tag"><i class="fas fa-user-shield"></i> {{adminView.label}}</span>
+  {{#if msTty}}
+    <span class="ncm-term__adminbar-line">viewing <b>{{adminView.username}}</b> · {{#if adminView.readOnly}}read-only{{else}}full rights{{/if}} · <b>exit</b> to return · <b>su &lt;name&gt;</b> to view another account</span>
+  {{else}}
+    <span class="ncm-term__adminbar-who">viewing <span class="ncm-term__avatar">{{#if adminView.portrait}}<img src="{{adminView.portrait}}" alt="">{{else}}{{adminView.initials}}{{/if}}</span><b>{{adminView.username}}</b>'s mailbox &amp; files</span>
+    <span class="ncm-term__adminbar-rights{{#if adminView.readOnly}} is-ro{{/if}}">{{#if adminView.readOnly}}READ-ONLY{{else}}FULL RIGHTS{{/if}}</span>
+    <span class="ncm-term__adminbar-sp"></span>
+    <button type="button" class="ncm-term__adminbar-btn" data-action="terminalAdminPick"><i class="fas fa-users-viewfinder"></i> View another…</button>
+    <button type="button" class="ncm-term__adminbar-btn ncm-term__adminbar-btn--back" data-action="terminalAdminBack"><i class="fas fa-arrow-left"></i> Back to my account</button>
+  {{/if}}
+</div>

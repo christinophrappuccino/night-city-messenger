@@ -8,6 +8,7 @@
 
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
 
 export class SocketHandlers {
 
@@ -305,7 +306,7 @@ export class SocketHandlers {
       // the label rather than hardcoding it, or the toast and the tab disagree.
       const folder = game.nightcity?.settingsManager?.getExfilFolderName?.() || 'Exfil';
       const verb = {
-        shard: `Burned ${data.count} file(s) to a shard.`,
+        shard: `Burned ${data.count} file(s) to ${withArticle(T('short', 'lower'))}.`,
         forward: `Forwarded ${data.count} file(s).`,
         wipe: `Wiped ${data.count} file(s) from the terminal.`,
         saveFrame: `Frame captured — check your ${folder} folder.`,

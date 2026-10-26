@@ -19,6 +19,7 @@ import { entryLevel, applyLoss, damageSummary, garbleString, reconDV, afterRecon
 import { paintIntegrity, startShimmer, playHit, playBurnOut } from '../content/IntegrityFX.js';
 import { playBootVideo } from '../content/BootVideo.js';
 import { applyCrt, resolveCrt, capCrt, playerCrtCap } from '../../utils/crt.js';
+import { shardTerm as T } from '../../utils/shardTerm.js';
 
 export class ItemInboxApp extends BaseApplication {
 
@@ -193,7 +194,7 @@ export class ItemInboxApp extends BaseApplication {
    */
   get title() {
     const cfg = this.item ? (this.dataShardService?.getConfig(this.item) ?? {}) : {};
-    return cfg.shardName || this.item?.name || 'Data Shard';
+    return cfg.shardName || this.item?.name || T('one');
   }
 
   // ─── Data Preparation ───
@@ -347,7 +348,7 @@ export class ItemInboxApp extends BaseApplication {
     // Metadata
     const meta = config.metadata ?? {};
     const hasMetadata = !!(meta.timestamp || meta.location || meta.network);
-    const presetLabel = preset?.label ?? 'Data Shard';
+    const presetLabel = preset?.label ?? T('one');
 
     // Boot config
     const bootConfig = config.boot ?? {};
@@ -899,9 +900,9 @@ export class ItemInboxApp extends BaseApplication {
         icon: 'fas fa-lock-open',
         iconStyle: 'accent',
         preTitle: 'ALL SECURITY LAYERS CLEARED',
-        title: 'Shard Unlocked',
+        title: `${T('short')} Unlocked`,
         titleColor: 'var(--sp-accent)',
-        subtitle: `${context.shardDisplayName || 'Data Shard'} contents are now accessible.`,
+        subtitle: `${context.shardDisplayName || T('one')} contents are now accessible.`,
         progressColor: 'accent',
         footerText: 'Loading data...',
         duration: 2500,
@@ -946,8 +947,8 @@ export class ItemInboxApp extends BaseApplication {
       if (TIER_ORDER.indexOf(tier) > TIER_ORDER.indexOf(tierOf(last))) {
         game.nightcity?.notificationService?.showToastV2?.({
           type: tier === 'severe' ? 'danger' : 'warning',
-          title: `Shard ${TIER_WORD[tier] || 'damaged'}`,
-          detail: `${context.shardDisplayName || this.item?.name || 'Data shard'} — integrity ${pct}%`,
+          title: `${T('short')} ${TIER_WORD[tier] || 'damaged'}`,
+          detail: `${context.shardDisplayName || this.item?.name || T('one')} — integrity ${pct}%`,
           duration: 5000,
         });
       }
@@ -1009,9 +1010,9 @@ export class ItemInboxApp extends BaseApplication {
     const force = isGM() && !actor;
     if (!actor && !force) { ui.notifications.warn('NCM | Pick an operator first.'); return; }
     const res = await runSecurityConsole({
-      title: 'Repair shard', icon: 'fas fa-screwdriver-wrench', accent: 'cyan', host: this.element,
+      title: `Repair ${T('short', 'lower')}`, icon: 'fas fa-screwdriver-wrench', accent: 'cyan', host: this.element,
       intro: `Patch the damaged sectors. Success restores ${cfg.repairPts} integrity.`,
-      gate: force ? null : { require: true, skill: cfg.recon.skill, dv: cfg.recon.dv, actor, context: 'Shard repair', flavor: `Repair // DV ${cfg.recon.dv}` },
+      gate: force ? null : { require: true, skill: cfg.recon.skill, dv: cfg.recon.dv, actor, context: `${T('short')} repair`, flavor: `Repair // DV ${cfg.recon.dv}` },
       confirmLabel: 'Repair', successLabel: 'SECTORS PATCHED', failLabel: 'REPAIR FAILED',
     });
     if (!res || res.cancelled || !(force || res.ok)) return;
@@ -1025,11 +1026,11 @@ export class ItemInboxApp extends BaseApplication {
     if (!cfg || !this._igCanWrite()) return;
     const actor = resolveOperator();
     if (!actor) { ui.notifications.warn('NCM | Pick an operator first.'); return; }
-    if (cfg.salvaged.includes(actor.id)) { ui.notifications.warn(`NCM | ${actor.name} has already tried to salvage this shard.`); return; }
+    if (cfg.salvaged.includes(actor.id)) { ui.notifications.warn(`NCM | ${actor.name} has already tried to salvage this ${T('short', 'lower')}.`); return; }
     const res = await runSecurityConsole({
-      title: 'Salvage shard', icon: 'fas fa-microchip', accent: 'red', host: this.element,
+      title: `Salvage ${T('short', 'lower')}`, icon: 'fas fa-microchip', accent: 'red', host: this.element,
       intro: `Pull whatever survived off the burned cells. One attempt — if it fails, this chip is gone for good for ${actor.name}. On a success it comes back at ${cfg.dead.salvagePct}%, badly damaged.`,
-      gate: { require: true, skill: cfg.recon.skill, dv: cfg.dead.salvageDV, actor, context: 'Shard salvage', flavor: `Salvage // DV ${cfg.dead.salvageDV}` },
+      gate: { require: true, skill: cfg.recon.skill, dv: cfg.dead.salvageDV, actor, context: `${T('short')} salvage`, flavor: `Salvage // DV ${cfg.dead.salvageDV}` },
       confirmLabel: 'Salvage', successLabel: 'CELLS RECOVERED', failLabel: 'NOTHING LEFT',
     });
     if (!res || res.cancelled) return;
@@ -1133,7 +1134,7 @@ export class ItemInboxApp extends BaseApplication {
     // Get available skills — dialog handles selection
     const availableSkills = this.skillService?.getAvailableSkills(actor, config.allowedSkills) ?? [];
     if (availableSkills.length === 0) {
-      ui.notifications.warn('NCM | No skills configured for this shard.');
+      ui.notifications.warn(`NCM | No skills configured for this ${T('short', 'lower')}.`);
       return;
     }
 
@@ -1245,7 +1246,7 @@ export class ItemInboxApp extends BaseApplication {
     // Get available skills
     const availableSkills = this.skillService?.getAvailableSkills(actor, config.allowedSkills) ?? [];
     if (availableSkills.length === 0) {
-      ui.notifications.warn('NCM | No skills configured for this shard.');
+      ui.notifications.warn(`NCM | No skills configured for this ${T('short', 'lower')}.`);
       return;
     }
 
@@ -1667,14 +1668,14 @@ export class ItemInboxApp extends BaseApplication {
   static async _onForceDecrypt(event, target) {
     if (!isGM() || !this.item) return;
     await this.dataShardService.forceDecrypt(this.item);
-    ui.notifications.info('NCM | Shard force-decrypted.');
+    ui.notifications.info(`NCM | ${T('short')} force-decrypted.`);
     this.render();
   }
 
   static async _onRelockShard(event, target) {
     if (!isGM() || !this.item) return;
     const confirm = await playerConfirm({
-      title: 'Relock Data Shard',
+      title: `Relock ${T('one')}`,
       content: '<p>This will reset ALL security state (login sessions, hack attempts, encryption). Continue?</p>',
     });
     if (!confirm) return;
@@ -1682,7 +1683,7 @@ export class ItemInboxApp extends BaseApplication {
     await this.dataShardService.relockShard(this.item);
     this.selectedMessageId = null;
     if (this._lockoutInterval) { clearInterval(this._lockoutInterval); this._lockoutInterval = null; }
-    ui.notifications.info('NCM | Shard relocked.');
+    ui.notifications.info(`NCM | ${T('short')} relocked.`);
     this.render(true);
   }
 
@@ -1723,7 +1724,7 @@ export class ItemInboxApp extends BaseApplication {
 
     const confirm = await playerConfirm({
       title: 'Delete Entry',
-      content: '<p>Remove this entry from the data shard?</p>',
+      content: `<p>Remove this entry from the ${T('one', 'lower')}?</p>`,
     });
     if (!confirm) return;
 
@@ -1882,7 +1883,7 @@ export class ItemInboxApp extends BaseApplication {
       <div class="ncm-boot-screen-fx"></div>
       <div class="ncm-boot-scan-fx"></div>
       <div class="ncm-boot-icon">${iconHTML}</div>
-      <div class="ncm-boot-title" style="color:${titleColor};">${config.title || 'DATA SHARD'}</div>
+      <div class="ncm-boot-title" style="color:${titleColor};">${config.title || T('one', 'upper')}</div>
       <div class="ncm-boot-subtitle" style="color:${subtitleColor};">${config.subtitle || ''}</div>
       <div class="ncm-boot-progress">
         <div class="ncm-boot-progress-label" style="color:${logColor};">${config.progressLabel || 'Loading...'}</div>
@@ -2570,7 +2571,7 @@ export class ItemInboxApp extends BaseApplication {
 
     // Phase 1: Init
     addLine('system', `░░ BREACHER PROTOCOL v4.6 ░░`);
-    await delay(() => addLine('system', `Target: DATA SHARD // Encryption: ${iceName}`), 200);
+    await delay(() => addLine('system', `Target: ${T('one', 'upper')} // Encryption: ${iceName}`), 200);
     await delay(() => { addLine('blank', ''); setProgress(10, 'Mapping ICE architecture...'); }, 300);
 
     // Phase 2: Scan

@@ -12,12 +12,13 @@
 
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_MAILBOX_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound } from '../../utils/helpers.js';
+import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveDisplayName } from '../../utils/helpers.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
 import { buildContentContext } from './TerminalContentPanel.js';
 import { SHARED_SCOPE, normalizeFolderPath, parentPath, folderName } from '../../utils/terminalFiles.js';
 import { applyCrt, resolveCrt, crtPanelContext, wireCrtPanel } from '../../utils/crt.js';
+import { adminLabelFor, resolveAdminAccess } from '../../utils/terminalAdmin.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
 const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
@@ -132,6 +133,7 @@ export class TerminalConfigApp extends BaseApplication {
       ctFolderRemove: TerminalConfigApp._onCtFolderRemove,
       ctGateAccounts: TerminalConfigApp._onCtGateAccounts,
       ctAdd: TerminalConfigApp._onCtAdd,
+      ctImportMail: TerminalConfigApp._onCtImportMail,
       ctEntryEdit: TerminalConfigApp._onCtEntryEdit,
       ctEntryDelete: TerminalConfigApp._onCtEntryDelete,
       ctOpenTerminal: TerminalConfigApp._onCtOpenTerminal,
@@ -233,6 +235,7 @@ export class TerminalConfigApp extends BaseApplication {
         initials: name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(),
         isAdmin: !!a.isAdmin,
         hidden: !!a.hidden,
+        privateFromAdmin: !!a.privateFromAdmin,
         isDefault: a.id === cfg.defaultAccountId,
         isOpen: !requiresAuth,
         gated: !!a.network?.restricted,
@@ -330,6 +333,12 @@ export class TerminalConfigApp extends BaseApplication {
       // The ONE CRT film — resolved from the draft/saved theme, else the preset's.
       themeCrt: crtPanelContext(resolveCrt(theme, TERMINAL_PRESETS[theme.preset]?.theme?.crt || null)),
       themeGlitch: theme.glitch ?? 0,
+      // ADMIN ACCESS label — part of the theme (draft-aware).
+      themeAdminLabel: adminLabelFor({ theme }, TERMINAL_PRESETS),
+      themeAdminLabelSuggested: adminLabelFor({ theme: { preset: theme.preset } }, TERMINAL_PRESETS),
+      themeAdminLabelCustom: !!theme.adminLabel,
+      adminAccess: this._adminAccessContext(cfg, theme),
+      accountMail: { compose: cfg.accountMail?.compose === true, log: cfg.accountMail?.log !== false },
 
       // Login screen + screensaver + folder names (Boot & Login / Identity tabs)
       loginStyles: TERMINAL_LOGIN_STYLES.map(s => ({ ...s, active: loginStyleKey === s.key })),
@@ -532,6 +541,8 @@ export class TerminalConfigApp extends BaseApplication {
       isNew, id: a.id,
       displayName: a.displayName || '', username: a.username || '', email: a.email || '',
       isAdmin: !!a.isAdmin, hidden: !!a.hidden,
+      privateFromAdmin: !!a.privateFromAdmin,
+      mirrorAgentMail: a.mirrorAgentMail !== false,
       portrait: a.portrait || '',
       isLinked: !!linkedName,
       linkedName, linkedEmail, linkedPortrait, linkedSource,
@@ -1293,6 +1304,25 @@ export class TerminalConfigApp extends BaseApplication {
     const el = this.element;
     el.querySelectorAll('.ncm-cfg-tab').forEach(t => t.classList.toggle('ncm-cfg-tab--active', t.dataset.tab === this._activeTab));
     el.querySelectorAll('.ncm-cfg-panel').forEach(p => p.classList.toggle('ncm-cfg-panel--active', p.dataset.panel === this._activeTab));
+    // A link can land on one field (Admin access → "change it in the Theme tab").
+    const focus = target.dataset.focus && el.querySelector(target.dataset.focus);
+    if (focus) { focus.scrollIntoView({ block: 'center' }); focus.focus(); focus.select?.(); }
+  }
+
+  /** Admin access section view-model (Accounts tab). The label comes from the (draft) theme. */
+  _adminAccessContext(cfg, theme) {
+    const a = resolveAdminAccess(cfg);
+    const label = adminLabelFor({ theme }, TERMINAL_PRESETS);
+    const accounts = cfg.accounts || [];
+    const admins = accounts.filter(x => x.isAdmin);
+    const viewable = accounts.filter(x => !x.isAdmin && !x.privateFromAdmin && (a.seeHidden || !x.hidden));
+    const priv = accounts.filter(x => x.privateFromAdmin);
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    let verdict;
+    if (!admins.length) verdict = 'Right now: <strong>no account is an Admin</strong> — tick Admin on one in its editor.';
+    else if (!a.browse) verdict = `Right now: admins pass every folder lock but <strong>cannot view other accounts</strong>.`;
+    else verdict = `Right now: <strong>${esc(admins.map(x => x.username || x.displayName).join(', '))}</strong> can view <strong>${viewable.length}</strong> account${viewable.length === 1 ? '' : 's'} with ${a.rights === 'read' ? 'read-only' : 'full'} rights, shown to players as <strong>${esc(label)}</strong>.${priv.length ? ` <strong>${esc(priv.map(x => x.username || x.displayName).join(', '))}</strong> ${priv.length === 1 ? 'is' : 'are'} private from admin.` : ''}`;
+    return { ...a, readOnly: a.rights === 'read', label, labelColor: TERMINAL_PRESETS[theme?.preset]?.theme?.accent || '#f7c948', verdict };
   }
 
   static async _onSaveConfig() {
@@ -1364,6 +1394,8 @@ export class TerminalConfigApp extends BaseApplication {
       },
       scenePin: { range: Math.max(0, parseInt(val('scenePinRange', '0'), 10) || 0) },
       hackResolution: ['inherit', 'auto', 'flagged', 'gm'].includes(val('hackResolution')) ? val('hackResolution') : 'inherit',
+      ...(v('acctMailCompose') ? { accountMail: { compose: chk('acctMailCompose'), log: chk('acctMailLog') } } : {}),
+      ...(v('adminRights') ? { adminAccess: { browse: chk('adminBrowse'), seeHidden: chk('adminSeeHidden'), rights: val('adminRights') === 'read' ? 'read' : 'full' } } : {}),
       connection: {
         interfaces: [...el.querySelectorAll('[name="uplinkIface"]:checked')].map(i => ({
           networkId: i.value,
@@ -1589,6 +1621,25 @@ export class TerminalConfigApp extends BaseApplication {
     wireSlider('ttcGlitch', 'glitch', 'ncm-ttc-glitch-val', 0);
     wireSlider('ttcWallStrength', 'wallpaperStrength', 'ncm-ttc-wall-val', 25);
 
+    // ADMIN ACCESS label — draft key `adminLabel`; blank or equal to the theme's
+    // suggestion = no override (the preset's label applies). No re-render.
+    const alIn = panel.querySelector('[data-ttc-adminlabel]');
+    const alFrom = panel.querySelector('[data-ttc-adminlabel-from]');
+    const alSync = () => {
+      const draft = this._ensureThemeDraft();
+      const suggested = adminLabelFor({ theme: { preset: draft.preset } }, TERMINAL_PRESETS);
+      const v = (alIn?.value || '').trim().toUpperCase();
+      if (!v || v === suggested) delete draft.adminLabel; else draft.adminLabel = v;
+      if (alFrom) alFrom.textContent = draft.adminLabel ? `Your own label — the theme suggests ${suggested}.` : 'Suggested by the theme. Type your own to override it (e.g. SYSOP, COMMAND ACCESS, NIGHT SHIFT KEY).';
+      this._applyThemeLive();
+    };
+    alIn?.addEventListener('input', alSync);
+    panel.querySelector('[data-ttc-adminlabel-reset]')?.addEventListener('click', () => {
+      const draft = this._ensureThemeDraft();
+      if (alIn) alIn.value = adminLabelFor({ theme: { preset: draft.preset } }, TERMINAL_PRESETS);
+      alSync();
+    });
+
     // Wallpaper path (typed or via the browseWallpaper FilePicker action).
     panel.querySelector('[data-ttc-wallpaper]')?.addEventListener('input', (e) => {
       this._ensureThemeDraft().wallpaper = e.target.value.trim();
@@ -1628,7 +1679,7 @@ export class TerminalConfigApp extends BaseApplication {
   static _onSelectTermPreset(event, target) {
     const key = target.dataset.preset;
     const draft = { ...this._ensureThemeDraft() };
-    for (const k of [...Object.keys(COLOR_VAR_MAP), 'fontDisplay', 'fontMono', 'fontTitle']) delete draft[k];
+    for (const k of [...Object.keys(COLOR_VAR_MAP), 'fontDisplay', 'fontMono', 'fontTitle', 'adminLabel']) delete draft[k];
     this._themeDraft = { ...draft, ...foundry.utils.deepClone(TERMINAL_PRESETS[key]?.theme || {}), preset: key };
     this._presetKit = TERMINAL_PRESETS[key] ? key : null;
     this._stagedMailboxStyle = null;   // the preset's own layout rides the kit
@@ -1952,6 +2003,8 @@ export class TerminalConfigApp extends BaseApplication {
       email: val('acctEmail'),
       isAdmin: chk('acctIsAdmin'),
       hidden: chk('acctHidden'),
+      privateFromAdmin: chk('acctPrivateAdmin'),
+      mirrorAgentMail: chk('acctMirrorMail'),
       role: val('acctRole'),
       clearance: val('acctClearance'),
       idNumber: val('acctIdNumber'),
@@ -2153,6 +2206,50 @@ export class TerminalConfigApp extends BaseApplication {
     await this._pickGateAccounts(target.dataset.scope, target.dataset.path);
   }
   /** + Message / + File — the SAME composer the mailbox button opens, pre-filed. */
+  /**
+   * "Import from inbox…" — copy chosen messages from the linked identity's
+   * Agent mailbox (received + sent) onto this account. Messages already on the
+   * account are greyed out; sent mail lands in a "Sent" folder.
+   */
+  static async _onCtImportMail(event, target) {
+    const accountId = target.dataset.scope;
+    const svc = this.terminalService;
+    const acct = svc.getAccount(this.item, accountId);
+    if (!acct) return;
+    const { messages, copied, identity } = svc.gatherIdentityMail(this.item, accountId);
+    if (!acct.actorId && !acct.masterContactId) {
+      return ui.notifications.warn('Link this account to a character or contact first (edit login & security → Link Identity).');
+    }
+    if (!messages.length) return ui.notifications.info(`${identity || 'This identity'} has no Agent mail to import.`);
+    const byId = new Map(messages.map(m => [m.messageId, m]));
+    const when = (ts) => { try { return formatCyberDate(ts, { dateOnly: true }); } catch { return ''; } };
+    const entries = messages.map(m => {
+      const sent = !!m.status?.sent;
+      return {
+        id: m.messageId,
+        name: m.subject || '(no subject)',
+        img: 'icons/svg/book.svg',
+        sub: `${sent
+          ? `to ${resolveDisplayName({ contactId: m.toContactId, actorId: m.toActorId, email: m.to }, m.to || '?')}`
+          : `from ${resolveDisplayName({ contactId: m.fromContactId, actorId: m.fromActorId, email: m.from }, m.from || '?')}`} · ${when(m.timestamp)}`,
+        group: sent ? 'Sent' : 'Received',
+      };
+    });
+    const taken = messages.filter(m => copied.has(svc.constructor.copyIdFor(m.messageId, accountId))).map(m => m.messageId);
+    const picks = await showNamePicker({
+      title: `Import ${identity ? `${identity}'s` : 'Agent'} mail`,
+      hint: 'Pick the messages to copy onto this account. The originals stay in the Agent inbox; money on a message is not copied.',
+      entries, multi: true, taken, takenLabel: 'already here',
+      placeholder: 'search subjects…', width: 520,
+    });
+    const chosen = (Array.isArray(picks) ? picks : []).map(p => byId.get(p.id)).filter(Boolean);
+    if (!chosen.length) return;
+    const res = await svc.copyMessagesToAccount(this.item, accountId, chosen);
+    if (!res.success) return ui.notifications.error(res.error || 'Import failed.');
+    ui.notifications.info(`Imported ${res.copied} message${res.copied === 1 ? '' : 's'}${res.skipped ? ` (${res.skipped} skipped)` : ''}.`);
+    this.render(false);
+  }
+
   static async _onCtAdd(event, target) {
     const { scope, env, path, folder } = target.dataset;
     const { DataShardComposer } = await import('../ItemInbox/DataShardComposer.js');

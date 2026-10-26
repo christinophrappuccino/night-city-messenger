@@ -116,6 +116,10 @@ export function registerNetworkSystem(initializer) {
       switch (type) {
         case 'switch':
           log.debug(`Socket: network state changed — switch to ${networkId}`, actorName ? `by ${actorName}` : '');
+          // Admin → Overview "At the table": remember which network each PLAYER is on.
+          if (isGM() && !isGMAction && sender) {
+            (game.nightcity.playerNetworks ??= new Map()).set(sender, { networkId, at: Date.now() });
+          }
           eventBus.emit(EVENTS.NETWORK_CHANGED, {
             currentNetworkId: networkId,
             sceneId,
@@ -124,6 +128,21 @@ export function registerNetworkSystem(initializer) {
             actorName: actorName ?? null,
             isGMAction: isGMAction ?? false,
           });
+          break;
+
+        case 'hello':
+          // A player's client says which network it is on at login (Admin →
+          // Overview "At the table"). Record only — never a NETWORK_CHANGED, which
+          // would fire the auto-spam listener on every login.
+          if (isGM() && sender && networkId) (game.nightcity.playerNetworks ??= new Map()).set(sender, { networkId, at: Date.now() });
+          break;
+
+        case 'helloRequest':
+          // The GM (re)loaded and asks every player which network it is on.
+          if (!isGM()) {
+            const nid = game.nightcity?.networkService?.currentNetworkId;
+            if (nid) game.nightcity?.socketManager?.emit?.(SOCKET_OPS.NETWORK_STATE_CHANGED, { type: 'hello', networkId: nid, isGMAction: false });
+          }
           break;
 
         case 'deadZone':
@@ -154,6 +173,16 @@ export function registerNetworkSystem(initializer) {
   // ═══════════════════════════════════════════════════════════
   //  READY PHASE — Priority 108: Wire MessageService dead zone integration
   // ═══════════════════════════════════════════════════════════
+
+  // A player announces its network once at login, so the GM's Overview can show it
+  // before the player ever switches (the 'hello' case above).
+  initializer.register('postReady', 40, 'Network hello (player → GM)', () => {
+    const ns = game.nightcity;
+    // The GM asks; players answer with a 'hello' (covers a GM reload mid-session).
+    if (isGM()) { ns?.socketManager?.emit?.(SOCKET_OPS.NETWORK_STATE_CHANGED, { type: 'helloRequest', isGMAction: true }); return; }
+    const networkId = ns?.networkService?.currentNetworkId;
+    if (networkId) ns?.socketManager?.emit?.(SOCKET_OPS.NETWORK_STATE_CHANGED, { type: 'hello', networkId, isGMAction: false });
+  });
 
   initializer.register('ready', 108, 'Network ↔ MessageService integration', () => {
     const eventBus = game.nightcity.eventBus;

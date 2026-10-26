@@ -505,6 +505,10 @@ export class MessageRepository {
           // Address-keyed members of a multi-recipient message (participants.js);
           // [] for one-to-one mail. Threading + Reply All read it.
           participants: Array.isArray(messageData.participants) ? messageData.participants : [],
+          // SEND AS A TERMINAL ACCOUNT — which machine, who was typing. Kept on the
+          // SENDER's sent copy only: the recipient's page must never reveal the
+          // real typist of an impersonated message.
+          sentVia: (messageData.status?.sent && messageData.sentVia) ? messageData.sentVia : null,
 
           from: messageData.from || '',
           fromActorId: messageData.fromActorId || '',
@@ -1140,6 +1144,7 @@ export class MessageRepository {
       inReplyTo: flags.inReplyTo,
       references: Array.isArray(flags.references) ? flags.references : [],
       participants: Array.isArray(flags.participants) ? flags.participants : [],
+      sentVia: flags.sentVia || null,
       from: flags.from,
       fromActorId: flags.fromActorId,
       fromContactId: flags.fromContactId || '',

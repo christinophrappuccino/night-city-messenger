@@ -19,7 +19,7 @@
     </div>
   {{/if}}
   {{#if tabMail}}
-    <div class="ncm-acctl-ent-hd"><i class="fas fa-envelope"></i> MAIL <span class="ncm-acctl-ent-root">the mailbox folders from Identity · {{mail.total}} message{{#unless (eq mail.total 1)}}s{{/unless}}</span><span class="sp"></span><button type="button" class="ncm-cfg-btn-sm" data-action="ctAdd" data-scope="{{scope}}" data-env="mail"><i class="fas fa-plus"></i> Message</button></div>
+    <div class="ncm-acctl-ent-hd"><i class="fas fa-envelope"></i> MAIL <span class="ncm-acctl-ent-root">the mailbox folders from Identity · {{mail.total}} message{{#unless (eq mail.total 1)}}s{{/unless}}</span><span class="sp"></span>{{#if linked}}<button type="button" class="ncm-cfg-btn-sm" data-action="ctImportMail" data-scope="{{scope}}" data-tooltip="Copy messages from the linked identity's Agent inbox onto this account"><i class="fas fa-file-import"></i> Import from inbox</button>{{/if}}<button type="button" class="ncm-cfg-btn-sm" data-action="ctAdd" data-scope="{{scope}}" data-env="mail"><i class="fas fa-plus"></i> Message</button></div>
     {{#each mail.folders}}
       <div class="ncm-acctl-dir is-mail{{#if open}} is-open{{/if}}">
         <button type="button" class="ncm-acctl-dir-cv" data-action="ctMailToggle" data-account="{{../accountId}}" data-folder="{{id}}" aria-label="{{#if open}}Collapse{{else}}Expand{{/if}} {{name}}" aria-expanded="{{#if open}}true{{else}}false{{/if}}"><i class="fas fa-chevron-{{#if open}}down{{else}}right{{/if}}"></i></button>

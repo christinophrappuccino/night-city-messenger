@@ -83,12 +83,12 @@
         <button type="button" data-action="openDeck" title="Program Deck" class="ncm-shard-hdr-btn"><i class="fas fa-layer-group"></i></button>
         <button type="button" data-action="openConfig" title="Configure" class="ncm-shard-hdr-btn"><i class="fas fa-cog"></i></button>
         <button type="button" data-action="addEntry" title="Add Entry" class="ncm-shard-hdr-btn"><i class="fas fa-plus"></i></button>
-        <button type="button" data-action="viewOriginalItem" title="View Original Item Sheet" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--original"><i class="fas fa-file-alt"></i></button>
+        <button type="button" data-action="viewOriginalItem" title="Edit Item Sheet (name, image, description)" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--original"><i class="fas fa-file-alt"></i></button>
       </div>
     {{else}}
       <div class="ncm-shard-gm-header-actions">
         <button type="button" data-action="toggleChipInfo" title="Chip Specs" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--chip {{#if chipDrawerOpen}}ncm-shard-hdr-btn--active{{/if}}"><i class="fas fa-microchip"></i></button>
-        {{#if canPlayerEdit}}<button type="button" data-action="addEntry" title="Encode more onto this shard" class="ncm-shard-hdr-btn"><i class="fas fa-plus"></i></button>{{/if}}
+        {{#if canPlayerEdit}}<button type="button" data-action="addEntry" title="{{ncm-term "short" "lower" pre="Encode more onto this "}}" class="ncm-shard-hdr-btn"><i class="fas fa-plus"></i></button>{{/if}}
         <button type="button" data-action="openDeck" title="Program Deck" class="ncm-shard-hdr-btn"><i class="fas fa-layer-group"></i></button>
       </div>
     {{/if}}
@@ -210,7 +210,7 @@
             (Self-destruct / expiry keep the plain destroyed panel below.) --}}
       <div class="ncm-ig-dead{{#if igDead.fresh}} is-fresh{{/if}}">
         <i class="ncm-ig-dead__brk ncm-ig-dead__brk--tl"></i><i class="ncm-ig-dead__brk ncm-ig-dead__brk--tr"></i><i class="ncm-ig-dead__brk ncm-ig-dead__brk--bl"></i><i class="ncm-ig-dead__brk ncm-ig-dead__brk--br"></i>
-        <div class="ncm-ig-dead__top"><i class="fas fa-circle"></i><span>Shard bricked // {{shardDisplayName}}</span><span>no carrier</span></div>
+        <div class="ncm-ig-dead__top"><i class="fas fa-circle"></i><span>{{ncm-term "short"}} bricked // {{shardDisplayName}}</span><span>no carrier</span></div>
         <div class="ncm-ig-dead__hero">
           <div class="ncm-ig-dead__chip">
             <svg viewBox="0 0 132 150" aria-hidden="true">
@@ -225,7 +225,7 @@
           </div>
           <div class="ncm-ig-dead__main">
             <p class="ncm-ig-dead__title">Data unrecoverable</p>
-            <p class="ncm-ig-dead__sub">Integrity hit zero and the storage cells burned out. The chip still reads as a shard, but nothing on it will open.</p>
+            <p class="ncm-ig-dead__sub">Integrity hit zero and the storage cells burned out. It still reads as {{ncm-term "short" "lower" a=true}}, but nothing on it will open.</p>
             <div class="ncm-ig-dead__stats">
               <div class="ncm-ig-dead__stat"><b>Integrity</b><span class="is-bad">0 / {{igDead.max}}</span></div>
               {{#if igDead.showCount}}<div class="ncm-ig-dead__stat"><b>Entries lost</b><span class="is-bad">{{igDead.lost}}</span></div>{{/if}}
@@ -252,7 +252,7 @@
         {{/if}}
         <div class="ncm-ig-dead__act">
           {{#if igDead.isGM}}
-            <button type="button" class="ncm-ig-btn ncm-ig-btn--gm" data-action="igRestore"><i class="fas fa-heart-pulse"></i>Restore shard</button>
+            <button type="button" class="ncm-ig-btn ncm-ig-btn--gm" data-action="igRestore"><i class="fas fa-heart-pulse"></i>Restore {{ncm-term "short" "lower"}}</button>
             <small>Brings it back to full and repairs every entry.</small>
           {{else if igDead.salvage}}
             {{#if igDead.salvage.spent}}
@@ -271,7 +271,7 @@
       <div class="ncm-shard-destroyed">
         <i class="fas fa-skull-crossbones"></i>
         <p class="ncm-shard-destroyed-title">DATA UNRECOVERABLE</p>
-        <p class="ncm-shard-destroyed-sub">Shard integrity has reached zero. All data is lost.</p>
+        <p class="ncm-shard-destroyed-sub">{{ncm-term "short"}} integrity has reached zero. All data is lost.</p>
       </div>
 
     {{!-- DISCONNECTED STATE (tethered + no connection) --}}
@@ -281,7 +281,7 @@
           <i class="fas fa-plug-circle-xmark ncm-shard-disconnect-icon"></i>
           <div class="ncm-shard-disconnect-title">Connection Lost</div>
           <p class="ncm-shard-disconnect-info">
-            This shard requires an active network connection. Tethered data stream interrupted.
+            This {{ncm-term "short" "lower"}} requires an active network connection. Tethered data stream interrupted.
           </p>
           <div class="ncm-shard-disconnect-detail">
             <span class="ncm-shard-detail-label">Required</span>
@@ -439,7 +439,7 @@
           {{!-- Empty shard --}}
           <div class="ncm-shard-empty">
             <i class="fas fa-database"></i>
-            <p>SHARD EMPTY</p>
+            <p>{{ncm-term "short" "upper"}} EMPTY</p>
             <p class="ncm-shard-empty-sub">No data fragments stored.</p>
             {{#if isGM}}
               <button type="button" data-action="addEntry" class="ncm-shard-btn ncm-shard-btn--primary">
@@ -459,7 +459,7 @@
   {{!-- ═══ FOOTER BAR ═══ --}}
   <div class="ncm-shard-footer">
     <span class="ncm-shard-footer-text">
-      ░░ SHARD READER v2.1
+      ░░ {{ncm-term "short" "upper"}} READER v2.1
       <span class="ncm-shard-footer-sep">░░</span>
       {{totalEntryCount}} {{#if singleEntry}}ENTRY{{else}}ENTRIES{{/if}}
       <span class="ncm-shard-footer-sep">░░</span>

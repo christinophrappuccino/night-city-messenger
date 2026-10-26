@@ -2298,3 +2298,10 @@
 }
 .ncm-app .ncm-admin-panel .ncm-msg-feed-recip--unread { border-left: 2px solid var(--ncm-secondary); }
 .ncm-app .ncm-admin-panel .ncm-msg-feed-recip__name { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 600; color: var(--ncm-text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* SEND AS A TERMINAL ACCOUNT — the machine + the real typist on a sent copy. */
+.ncm-app .ncm-msg-via { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; padding: 0 5px; border-radius: 1px; border: 1px solid var(--ncm-border); color: var(--ncm-text-secondary); font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; white-space: nowrap; vertical-align: middle; }
+.ncm-app .ncm-msg-via.is-imp { color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent); }
+
+/* IDENTITIES — the alias a message went out from / came in on (utils/identities.js). */
+.ncm-app .ncm-msg-alias { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; padding: 0 5px; border-radius: 1px; border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent); color: var(--ncm-secondary); font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; vertical-align: middle; }

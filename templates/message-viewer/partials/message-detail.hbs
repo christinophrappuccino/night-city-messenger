@@ -637,6 +637,7 @@
       {{else if message.isSent}}
         <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="forward-message"><i class="fas fa-share"></i> Forward</button>
         <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="share-to-chat"><i class="fas fa-share-from-square"></i> Chat</button>
+        {{#if @root.isGM}}<button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="copy-to-terminal" data-tooltip="Copy this message onto a terminal account"><i class="fas fa-terminal"></i> Terminal</button>{{/if}}
         <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="delete-message"><i class="fas fa-trash"></i> Delete</button>
       {{else}}
         {{#if message.anonRepliesBlocked}}
@@ -651,6 +652,7 @@
         <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="forward-message"><i class="fas fa-share"></i> Forward</button>
         <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="save-message"><i class="fas fa-bookmark"></i> Save</button>
         <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="share-to-chat"><i class="fas fa-share-from-square"></i> Chat</button>
+        {{#if @root.isGM}}<button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="copy-to-terminal" data-tooltip="Copy this message onto a terminal account"><i class="fas fa-terminal"></i> Terminal</button>{{/if}}
         <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="mark-spam"><i class="fas fa-ban"></i> Spam</button>
         <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="delete-message"><i class="fas fa-trash"></i> Delete</button>
       {{/if}}

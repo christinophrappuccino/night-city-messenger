@@ -322,6 +322,29 @@
             {{/if}}
           </div>
 
+          {{!-- ── Identities — every contact linked to the same character (utils/identities.js) ── --}}
+          {{#if selectedContact.identities}}
+            <div class="ncm-gm-section">
+              <i class="fas fa-masks-theater"></i> Identities
+              <span class="ncm-gm-section__hint">({{selectedContact.identities.actorName}} — mail to any of these lands in one inbox)</span>
+            </div>
+            <div class="ncm-gm-ident">
+              {{#each selectedContact.identities.rows}}
+                <div class="ncm-gm-ident__row{{#if isSelected}} is-selected{{/if}}" data-contact-id="{{id}}">
+                  <span class="ncm-gm-ident__star{{#if isPrimary}} is-on{{/if}}" {{#unless isPrimary}}data-action="identSetPrimary" data-tooltip="Make this the main identity"{{else}}data-tooltip="Main identity"{{/unless}}><i class="fa{{#if isPrimary}}s{{else}}r{{/if}} fa-star"></i></span>
+                  <span class="ncm-gm-ident__av" style="color:{{avatarColor}};">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
+                  <span class="ncm-gm-ident__nm" {{#unless isSelected}}data-action="identOpen" data-tooltip="Open this identity"{{/unless}}>{{name}}<small>{{email}}</small></span>
+                  <span class="ncm-gm-ident__kind">{{#if isPrimary}}main{{else}}alias{{/if}}</span>
+                  <span class="ncm-gm-ident__use">{{count}} msg{{#unless (eq count 1)}}s{{/unless}}{{#if last}} · last {{last}}{{/if}}</span>
+                </div>
+              {{/each}}
+              {{#if selectedContact.identities.registered}}
+                <div class="ncm-gm-ident__note"><i class="fas fa-at"></i> The character's registered address <b>{{selectedContact.identities.registered}}</b> also reaches them.</div>
+              {{/if}}
+              <button type="button" class="ncm-gm-ident__add" data-action="identAdd" data-actor-id="{{selectedContact.identities.actorId}}" data-contact-id="{{selectedContact.identities.contactId}}"><i class="fas fa-plus"></i> Add alias</button>
+            </div>
+          {{/if}}
+
           {{!-- ── Per-Player Relationships ── --}}
           {{#if selectedContact.playerRelationships.length}}
             <div class="ncm-gm-section">

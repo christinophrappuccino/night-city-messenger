@@ -153,6 +153,8 @@ export function buildContentContext({ svc, item, accounts = [], folderDefs = [],
   for (const a of accounts) {
     byAccount[a.id] = {
       scope: a.id, isShared: false, accountId: a.id,
+      // Linked to a character/contact → the Mail tab offers "Import from inbox".
+      linked: !!(a.actorId || a.masterContactId),
       open: ui.open.has(a.id),
       files: filesBlock(a.id, `/home/${a.username || a.id}`),
       mail: mailBlock(a),

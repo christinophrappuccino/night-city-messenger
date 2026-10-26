@@ -135,6 +135,11 @@ export const ENCODER_DEFAULTS = Object.freeze({
     // A second character lends a hand.
     assist: { on: false, bonus: 1, requireSkill: true },
   },
+  // WHAT a player may write on. Any carried item used to qualify, so a player
+  // could encode over their pistol or their cyberarm (tester, 2026-10-26).
+  // 'gear' (default) = Gear-type items + anything the GM listed in a tier;
+  // 'registered' = only listed items (and blanks bought here); 'any' = the old rule.
+  blanks: { source: 'gear' },
   // Blank tiers — GM-defined. Exactly one tier is the FALLBACK (anything unlisted).
   tiers: [
     // `capacity` = how many entries the chip holds. 0 means no limit; a better
@@ -189,6 +194,13 @@ export const ENCODER_DEFAULTS = Object.freeze({
   },
 });
 
+/** The `blanks.source` choices, in the order the GM card lists them. */
+export const BLANK_SOURCES = Object.freeze({
+  gear:       'Gear only — plus anything listed in a tier (recommended)',
+  registered: 'Only items listed in a tier, or blanks bought here',
+  any:        'Any carried item (weapons, cyberware and armor included)',
+});
+
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
 const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
@@ -227,6 +239,7 @@ export function resolveEncoderConfig(stored) {
   const fb = cfg.tiers.findIndex((t) => t.fallback);
   cfg.tiers.forEach((t, i) => { t.fallback = i === (fb === -1 ? 0 : fb); });
   if (!PRICING_MODES[cfg.pricing]) cfg.pricing = 'propose';
+  if (!BLANK_SOURCES[cfg.blanks?.source]) cfg.blanks = { ...(cfg.blanks || {}), source: 'gear' };
   cfg.gate = sanitizeGate(cfg.gate);
   cfg.optional = sanitizeOptional(cfg.optional);
   return cfg;
@@ -379,6 +392,32 @@ export function tierForItem(cfg, item) {
   if (item.tierId) { const t = tiers.find((x) => x.id === item.tierId); if (t) return t; }
   const n = normName(item.name);
   return tiers.find((t) => !t.fallback && t.items.some((i) => normName(i.name) === n)) || fallback;
+}
+
+/**
+ * Which carried items a player may write on — the GM's `blanks.source` rule.
+ * Items the GM listed in a tier (or a blank bought here, `tierId`) always
+ * qualify; 'gear' adds every Gear-type item; 'any' is everything carryable
+ * (the caller already filters sheet-only types like skills and roles).
+ * @param {object} cfg resolved config
+ * @param {{name: string, type?: string, tierId?: string}} item a plain descriptor
+ */
+export function isEligibleBlank(cfg, item) {
+  if (!item) return false;
+  const source = cfg?.blanks?.source || 'gear';
+  if (source === 'any') return true;
+  if (item.tierId) return true;
+  const n = normName(item.name);
+  const listed = (cfg?.tiers || []).some((t) => (t.items || []).some((i) => normName(i.name) === n));
+  if (listed) return true;
+  return source === 'gear' && item.type === 'gear';
+}
+
+/** What a player is told when they try to write on something the rule excludes. */
+export function blankRuleRefusal(cfg) {
+  return (cfg?.blanks?.source || 'gear') === 'registered'
+    ? 'Only the blanks your GM has listed can be written on. Buy one, or ask your GM.'
+    : 'Only gear can be written on — not weapons, armor or cyberware. Use a blank chip or another piece of gear.';
 }
 
 /**

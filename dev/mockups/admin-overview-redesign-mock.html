@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin Overview — redesign mock</title>
+<!--
+  Design mock (2026-10-26). Dev: "mockup and update the overview to make it make
+  more sense, more user friendly and add in any of the new stuff we added in."
+
+  The tab is rebuilt around two questions a GM asks mid-session:
+    1. NEEDS YOU — what is waiting on me? One ranked, actionable queue: player
+       mail waiting on NPCs, security (heat, trace countdowns, armed plants,
+       impersonations), price approvals, shards, scheduled sends, setup problems.
+    2. THE TABLE — who is here, on which network, and what state everything is in.
+  Plus a DURABLE recent-activity feed (today's is in-memory and empties on reload)
+  and character cards that put the players first and NPCs-with-mail second.
+
+  Real cascade: Foundry core → CPR → night-city-messenger.css → admin-theme.css,
+  inside a real 820px admin frame. New pieces use the mock-only prefix `ncm-ov2-*`
+  styled with --ncm-* tokens only (follows every admin preset). Serve it:
+  node dev/tools/serve-mockups.cjs
+    ?t=clean-light | high-contrast   admin preset
+    ?empty=1                         quiet table (empty states)
+    ?h=600                           the panel's real height
+-->
+<link id="css-foundry" rel="stylesheet" href="">
+<link id="css-fa" rel="stylesheet" href="">
+<link id="css-cpr" rel="stylesheet" href="">
+<script>
+  const isFile = location.protocol === 'file:';
+  const FVTT = 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public';
+  document.getElementById('css-foundry').href = isFile ? `${FVTT}/css/foundry2.css` : '/_vendor/foundry2.css';
+  document.getElementById('css-fa').href = isFile ? `${FVTT}/fonts/fontawesome/css/all.min.css` : '/_vendor/fa/css/all.min.css';
+  document.getElementById('css-cpr').href = isFile ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  html, body { height: auto; min-height: 100%; }
+  body { margin: 0; background: #1c1c22; padding: 18px 0 60px; font-family: sans-serif; }
+  .sw { width: 820px; margin: 0 auto 10px; font: 12px monospace; color: #bbb; }
+  .sw a { color: #8ecfff; margin-right: 10px; }
+  .app-frame { width: 820px; height: 2050px; margin: 0 auto; overflow: hidden; border-radius: 8px; position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .window-content { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: none; padding: 0; }
+  .ncm-admin-content { overflow-y: scroll !important; }
+
+  /* ═══════════════ ncm-ov2 — the redesigned Overview (mock-only prefix) ═══════════════
+     Admin vocabulary: display-font chrome, mono for values, 2px radius, badges 1px. */
+  .ov2 { display: flex; flex-direction: column; gap: 14px; padding: 12px 14px 20px; color: var(--ncm-text-primary); }
+  .ov2 * { box-sizing: border-box; }
+  .ov2-h { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-family: var(--ncm-font-display); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ov2-h i { color: var(--ncm-secondary); }
+  .ov2-h .sp { flex: 1; }
+  .ov2-h small { font-weight: 500; text-transform: none; letter-spacing: 0; font-style: italic; color: var(--ncm-text-muted); }
+  .ov2-btn { appearance: none !important; display: inline-flex !important; align-items: center; gap: 6px; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4px 9px !important; border-radius: 2px !important; border: 1px solid var(--ncm-border) !important; background: transparent !important; box-shadow: none !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; line-height: 1.3 !important; cursor: pointer; white-space: nowrap; }
+  .ov2-btn:hover { border-color: var(--ncm-secondary) !important; }
+  .ov2-btn--pri { background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 55%, transparent) !important; color: var(--ncm-secondary) !important; }
+  .ov2-btn--danger { color: var(--ncm-danger) !important; border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent) !important; }
+  .ov2-btn--ghost { border-color: transparent !important; color: var(--ncm-text-secondary) !important; }
+  .ov2-btn i { margin: 0 !important; }
+  .ov2-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 1px; border: 1px solid var(--ncm-border); font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); cursor: pointer; white-space: nowrap; }
+  .ov2-chip b { font-family: var(--ncm-font-mono); font-weight: 400; }
+  .ov2-chip.on { border-color: var(--ncm-secondary); color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
+  .ov2-card { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-surface); }
+
+  /* §0 header: quick actions + the clock */
+  .ov2-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ov2-top .sp { flex: 1; }
+  .ov2-clock { font-family: var(--ncm-font-mono); font-size: 12px; color: var(--ncm-text-secondary); display: inline-flex; gap: 8px; align-items: center; }
+  .ov2-clock b { color: var(--ncm-text-primary); font-weight: 400; }
+
+  /* §1 at the table — who is here */
+  .ov2-table { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px; }
+  .ov2-who { display: flex; align-items: center; gap: 9px; padding: 6px 10px 6px 6px; border: 1px solid var(--ncm-border); border-radius: 2px; min-width: 228px; flex: 1 1 228px; }
+  .ov2-who.is-off { opacity: .55; }
+  .ov2-av { position: relative; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--ncm-border); display: inline-flex; align-items: center; justify-content: center; font-family: var(--ncm-font-display); font-weight: 700; font-size: 12px; overflow: visible; background: var(--ncm-bg-elevated); }
+  .ov2-av .dot { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ncm-bg-surface); background: var(--ncm-text-muted); }
+  .ov2-av .dot.on { background: var(--ncm-success); }
+  .ov2-who__t { flex: 1; min-width: 0; }
+  .ov2-who__n { font-family: var(--ncm-font-display); font-weight: 700; font-size: 13px; }
+  .ov2-who__s { font-family: var(--ncm-font-body); font-size: 11.5px; color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ov2-who__s .net { font-family: var(--ncm-font-mono); }
+  .ov2-who__s .dz { color: var(--ncm-danger); }
+  .ov2-badge { flex: 0 0 auto; min-width: 20px; padding: 1px 6px; border-radius: 10px; text-align: center; font-family: var(--ncm-font-mono); font-size: 11px; background: var(--ncm-danger); color: #fff; }
+  .ov2-badge.zero { background: transparent; color: var(--ncm-text-muted); border: 1px solid var(--ncm-border); }
+
+  /* §2 needs you */
+  .ov2-needs { padding: 0; }
+  .ov2-needs__bar { display: flex; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--ncm-border); flex-wrap: wrap; }
+  .ov2-need { display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); border-left: 3px solid var(--k, var(--ncm-border)); }
+  .ov2-need:last-child { border-bottom: 0; }
+  .ov2-need__ic { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; color: var(--k); background: color-mix(in srgb, var(--k) 12%, transparent); }
+  .ov2-need__b { flex: 1; min-width: 0; }
+  .ov2-need__t { font-family: var(--ncm-font-body); font-size: 13px; line-height: 1.35; }
+  .ov2-need__t b { font-weight: 700; }
+  .ov2-need__s { font-family: var(--ncm-font-body); font-size: 11.5px; color: var(--ncm-text-secondary); margin-top: 1px; }
+  .ov2-need__s .mono { font-family: var(--ncm-font-mono); }
+  .ov2-need__a { display: flex; gap: 5px; flex: 0 0 auto; }
+  .ov2-need__x { flex: 0 0 auto; color: var(--ncm-text-muted); cursor: pointer; padding: 2px 4px; }
+  .k-mail { --k: var(--ncm-secondary); } .k-sec { --k: var(--ncm-danger); } .k-imp { --k: var(--ncm-danger); }
+  .k-money { --k: var(--ncm-accent); } .k-shard { --k: var(--ncm-accent); } .k-sched { --k: var(--ncm-text-secondary); } .k-setup { --k: var(--ncm-warning, var(--ncm-accent)); }
+  .ov2-tick { display: inline-block; min-width: 54px; text-align: center; padding: 1px 6px; border-radius: 1px; font-family: var(--ncm-font-mono); font-size: 12px; color: var(--ncm-danger); border: 1px solid color-mix(in srgb, var(--ncm-danger) 45%, transparent); }
+  .ov2-heat { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ncm-font-mono); font-size: 11px; }
+  .ov2-heat span { display: inline-block; width: 70px; height: 5px; border-radius: 3px; background: var(--ncm-bg-elevated); overflow: hidden; }
+  .ov2-heat span i { display: block; height: 100%; background: var(--ncm-danger); }
+  .ov2-empty { padding: 18px; text-align: center; font-family: var(--ncm-font-body); font-size: 13px; color: var(--ncm-text-secondary); }
+  .ov2-empty i { color: var(--ncm-success); margin-right: 6px; }
+
+  /* §3 tiles */
+  .ov2-tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .ov2-tile { padding: 9px 10px 8px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .ov2-tile:hover { border-color: var(--ncm-secondary); }
+  .ov2-tile__h { display: flex; align-items: center; gap: 6px; font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ov2-tile__h i { color: var(--c, var(--ncm-secondary)); }
+  .ov2-tile__n { font-family: var(--ncm-font-mono); font-size: 22px; line-height: 1.1; }
+  .ov2-tile__f { font-family: var(--ncm-font-body); font-size: 11px; color: var(--ncm-text-secondary); line-height: 1.35; }
+  .ov2-tile__f b { font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-primary); }
+  .ov2-tile__f .bad { color: var(--ncm-danger); }
+
+  /* §4 two columns */
+  .ov2-cols { display: grid; grid-template-columns: 1.55fr 1fr; gap: 12px; align-items: start; }
+  .ov2-feed__bar { display: flex; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--ncm-border); flex-wrap: wrap; }
+  .ov2-ev { display: flex; gap: 9px; padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); align-items: flex-start; }
+  .ov2-ev:last-child { border-bottom: 0; }
+  .ov2-ev__ic { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--k); background: color-mix(in srgb, var(--k) 12%, transparent); margin-top: 1px; }
+  .ov2-ev__t { flex: 1; min-width: 0; font-family: var(--ncm-font-body); font-size: 12.5px; line-height: 1.35; }
+  .ov2-ev__t b { font-weight: 700; }
+  .ov2-ev__t .sub { display: block; color: var(--ncm-text-secondary); font-size: 11.5px; }
+  .ov2-ev__time { flex: 0 0 auto; font-family: var(--ncm-font-mono); font-size: 10.5px; color: var(--ncm-text-muted); margin-top: 2px; }
+  .ov2-tag { display: inline-block; padding: 0 4px; margin-left: 4px; border-radius: 1px; border: 1px solid color-mix(in srgb, var(--k, var(--ncm-border)) 55%, transparent); color: var(--k, var(--ncm-text-secondary)); font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; vertical-align: 1px; }
+  .ov2-more { display: block; padding: 7px 10px; text-align: center; font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ncm-secondary); cursor: pointer; border-top: 1px solid var(--ncm-border); }
+  .ov2-soon { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .ov2-soon:last-child { border-bottom: 0; }
+  .ov2-soon__when { flex: 0 0 64px; font-family: var(--ncm-font-mono); font-size: 12px; text-align: right; color: var(--ncm-text-primary); }
+  .ov2-soon__when.hot { color: var(--ncm-danger); }
+  .ov2-soon__b { flex: 1; min-width: 0; font-family: var(--ncm-font-body); font-size: 12px; line-height: 1.3; }
+  .ov2-soon__b .sub { display: block; color: var(--ncm-text-secondary); font-size: 11px; }
+
+  /* §5 characters */
+  .ov2-pcs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .ov2-pc { display: flex; gap: 10px; padding: 10px; align-items: flex-start; }
+  .ov2-pc .ov2-av { width: 42px; height: 42px; font-size: 14px; }
+  .ov2-pc__b { flex: 1; min-width: 0; }
+  .ov2-pc__n { font-family: var(--ncm-font-display); font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .ov2-pc__p { font-family: var(--ncm-font-body); font-size: 11.5px; color: var(--ncm-text-secondary); }
+  .ov2-pc__last { margin-top: 5px; font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ov2-pc__last b { color: var(--ncm-text-primary); font-weight: 600; }
+  .ov2-pc__a { display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap; }
+  .ov2-npcs { padding: 0; }
+  .ov2-npc { display: grid; grid-template-columns: 26px 1fr 112px 84px auto; gap: 10px; align-items: center; padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .ov2-npc:last-child { border-bottom: 0; }
+  .ov2-npc .ov2-av { width: 26px; height: 26px; font-size: 10px; }
+  .ov2-npc__n { font-family: var(--ncm-font-display); font-weight: 700; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ov2-npc__n small { font-family: var(--ncm-font-mono); font-weight: 400; font-size: 11px; color: var(--ncm-text-secondary); margin-left: 6px; }
+  .ov2-npc__w { font-family: var(--ncm-font-mono); font-size: 11.5px; color: var(--ncm-text-secondary); white-space: nowrap; }
+  .ov2-npc__w.bad { color: var(--ncm-danger); }
+  .ov2-npc__l { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-muted); }
+  .ov2-npc__a { display: flex; gap: 4px; }
+  .ov2-note { font-family: var(--ncm-font-body); font-size: 11.5px; color: var(--ncm-text-muted); font-style: italic; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="sw">
+  <a href="?">clean-dark</a><a href="?t=clean-light">clean-light</a><a href="?t=high-contrast">high-contrast</a><a href="?empty=1">quiet table</a><a href="?h=600">real height</a>
+</div>
+<div class="ncm-app ncm-admin-panel app-frame" id="p" data-ncm-admin-theme="clean-dark" data-ncm-scanlines="false" data-ncm-neon="false">
+ <section class="window-content">
+  <div class="ncm-admin-panel">
+   <nav class="ncm-admin-header ncm-admin-tabs">
+     <button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-gauge"></i> Overview</button>
+     <button class="ncm-admin-tab"><i class="fas fa-envelope"></i> Messages</button>
+     <button class="ncm-admin-tab"><i class="fas fa-address-book"></i> Contacts</button>
+     <button class="ncm-admin-tab"><i class="fas fa-network-wired"></i> Networks</button>
+     <button class="ncm-admin-tab"><i class="fas fa-microchip"></i> Shards</button>
+     <button class="ncm-admin-tab"><i class="fas fa-terminal"></i> Terminals</button>
+     <button class="ncm-admin-tab"><i class="fas fa-shield-halved"></i> Security</button>
+   </nav>
+   <div class="ncm-admin-content" id="out"></div>
+  </div>
+ </section>
+</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const p = document.getElementById('p');
+if (q.get('t')) p.setAttribute('data-ncm-admin-theme', q.get('t'));
+if (q.get('h')) p.style.height = q.get('h') + 'px';
+const EMPTY = q.get('empty') === '1';
+
+const av = (init, color, on) => `<span class="ov2-av" style="color:${color}">${init}${on === undefined ? '' : `<span class="dot${on ? ' on' : ''}"></span>`}</span>`;
+
+// ── §0 quick actions ──
+const topBar = `
+<div class="ov2-top">
+  <button class="ov2-btn ov2-btn--pri"><i class="fas fa-pen-to-square"></i> Compose</button>
+  <button class="ov2-btn"><i class="fas fa-tower-broadcast"></i> Broadcast</button>
+  <button class="ov2-btn"><i class="fas fa-address-book"></i> Contacts</button>
+  <button class="ov2-btn"><i class="fas fa-network-wired"></i> Networks</button>
+  <button class="ov2-btn"><i class="fas fa-microchip"></i> New shard</button>
+  <span class="sp"></span>
+  <span class="ov2-clock"><i class="fa-regular fa-clock"></i><b>2046-03-13 · 02:14</b> · Scene: <b>Arasaka Tower 7F</b></span>
+</div>`;
+
+// ── §1 at the table ──
+const players = [
+  { init: 'RA', color: '#5fd3ff', n: 'Rache', p: 'Sam', net: 'ARASAKA-NET', on: true, unread: 2 },
+  { init: 'V', color: '#ff7aa8', n: 'V', p: 'Jo', net: 'CITINET', on: true, unread: 0 },
+  { init: 'JK', color: '#9cff7a', n: 'Jackie', p: 'Lee', net: '— dead zone', dz: true, on: true, unread: 1 },
+  { init: 'MX', color: '#d6a5ff', n: 'Maxx', p: 'Ana', net: 'CITINET', on: false, unread: 4 },
+];
+const table = `
+<section>
+  <div class="ov2-h"><i class="fas fa-users"></i> At the table <small>who is here, as whom, on which network</small><span class="sp"></span></div>
+  <div class="ov2-card ov2-table">
+    ${players.map((x) => `
+      <div class="ov2-who${x.on ? '' : ' is-off'}">
+        ${av(x.init, x.color, x.on)}
+        <div class="ov2-who__t"><div class="ov2-who__n">${x.n}</div>
+          <div class="ov2-who__s">${x.p} · <span class="net${x.dz ? ' dz' : ''}">${x.net}</span>${x.on ? '' : ' · offline'}</div></div>
+        <span class="ov2-badge${x.unread ? '' : ' zero'}" title="Unread in their Agent">${x.unread}</span>
+      </div>`).join('')}
+  </div>
+</section>`;
+
+// ── §2 needs you ──
+const needs = EMPTY ? [] : [
+  { k: 'mail', ic: 'fa-reply', t: '<b>Rache</b> wrote to <b>Rogue</b> — 2 unanswered', s: 'latest 12m ago · "Need a door into Arasaka 7F"', a: ['Reply as Rogue', 'Open'] },
+  { k: 'sec', ic: 'fa-fire', t: 'Heat <b>BURNED</b> — Rache on <b>WS-7F-12</b>', s: '<span class="ov2-heat"><span><i style="width:86%"></i></span>86</span> · last: botched forge 4m ago', a: ['Escalate', 'Security'] },
+  { k: 'sec', ic: 'fa-stopwatch', t: '<b>Arasaka</b> closes in on <b>Rache</b> <span class="ov2-tick">14:32</span>', s: 'trace countdown started by you · runs on game time', a: ['Call off'] },
+  { k: 'imp', ic: 'fa-user-secret', t: '<b>Rache</b> sent mail <b>as Marisol Reyes</b> from WS-7F-12', s: 'to Takeda, M. · "Re: the Watson account"', a: ['View'] },
+  { k: 'mail', ic: 'fa-masks-theater', t: '<b>V</b> wrote to <b>The Queen</b> (alias of Rogue)', s: '1 unanswered · 40m ago', a: ['Reply as The Queen'] },
+  { k: 'money', ic: 'fa-tag', t: '<b>V</b> wants to list <b>Ghost Ledger</b> at <b>400 eb</b>', s: 'player-made shard · sloppy forgery', a: ['Approve', 'Counter'] },
+  { k: 'sec', ic: 'fa-bomb', t: 'Armed plant on <b>WS-7F-12</b> fires on the next login', s: 'planted by Rache · keylogger · stealth DV 15', a: ['Fire now', 'Defuse'] },
+  { k: 'shard', ic: 'fa-heart-crack', t: 'Shard <b>Militech Payroll</b> is bricked (integrity 0%)', s: 'in Jackie\'s gear', a: ['Restore'] },
+  { k: 'sched', ic: 'fa-clock', t: 'Scheduled mail fires in <b>6m</b>', s: 'Fixer → Party · "Meet at the Afterlife"', a: ['Cancel'] },
+  { k: 'setup', ic: 'fa-at', t: '<b>Maxx</b> has no email address yet', s: 'they can\'t send or receive until they pick one', a: ['Set one'] },
+];
+const counts = { all: needs.length, mail: needs.filter((n) => n.k === 'mail').length, sec: needs.filter((n) => n.k === 'sec' || n.k === 'imp').length, money: needs.filter((n) => n.k === 'money' || n.k === 'shard').length, setup: needs.filter((n) => n.k === 'setup' || n.k === 'sched').length };
+const needsHtml = `
+<section>
+  <div class="ov2-h"><i class="fas fa-bell"></i> Needs you <small>ranked — the top one is the most urgent</small><span class="sp"></span>${needs.length ? '<button class="ov2-btn ov2-btn--ghost">Dismiss all</button>' : ''}</div>
+  <div class="ov2-card ov2-needs">
+    ${needs.length ? `<div class="ov2-needs__bar">
+      <span class="ov2-chip on">All <b>${counts.all}</b></span>
+      <span class="ov2-chip"><i class="fas fa-envelope"></i> Mail <b>${counts.mail}</b></span>
+      <span class="ov2-chip"><i class="fas fa-shield-halved"></i> Security <b>${counts.sec}</b></span>
+      <span class="ov2-chip"><i class="fas fa-coins"></i> Shards &amp; money <b>${counts.money}</b></span>
+      <span class="ov2-chip"><i class="fas fa-screwdriver-wrench"></i> Setup &amp; timers <b>${counts.setup}</b></span>
+    </div>` : ''}
+    ${needs.length ? needs.map((n, i) => `
+      <div class="ov2-need k-${n.k}">
+        <span class="ov2-need__ic"><i class="fas ${n.ic}"></i></span>
+        <div class="ov2-need__b"><div class="ov2-need__t">${n.t}</div><div class="ov2-need__s">${n.s}</div></div>
+        <div class="ov2-need__a">${n.a.map((a, j) => `<button class="ov2-btn${j === 0 ? ' ov2-btn--pri' : ''}${/Escalate|Call off|Defuse/.test(a) && j === 0 ? ' ov2-btn--danger' : ''}">${a}</button>`).join('')}</div>
+        <span class="ov2-need__x" title="Dismiss until it changes"><i class="fas fa-xmark"></i></span>
+      </div>`).join('') : '<div class="ov2-empty"><i class="fas fa-circle-check"></i>Nothing needs you right now.</div>'}
+  </div>
+</section>`;
+
+// ── §3 tiles ──
+const tile = (ic, c, h, n, f, bad = '') => `<div class="ov2-card ov2-tile" style="--c:${c}"><div class="ov2-tile__h"><i class="fas ${ic}"></i>${h}</div><div class="ov2-tile__n">${n}</div><div class="ov2-tile__f">${f}${bad ? `<br><span class="bad">${bad}</span>` : ''}</div></div>`;
+const tiles = `
+<section>
+  <div class="ov2-h"><i class="fas fa-gauge"></i> The state of things <small>click a tile to open its tab</small></div>
+  <div class="ov2-tiles">
+    ${tile('fa-envelope', 'var(--ncm-secondary)', 'Messages', EMPTY ? 0 : 214, `<b>${EMPTY ? 0 : 9}</b> unread · <b>${EMPTY ? 0 : 23}</b> today`)}
+    ${tile('fa-address-book', 'var(--ncm-success)', 'Contacts', EMPTY ? 12 : 58, `<b>${EMPTY ? 0 : 6}</b> aliases · <b>${EMPTY ? 0 : 4}</b> groups`)}
+    ${tile('fa-network-wired', 'var(--ncm-accent)', 'Networks', 7, `<b>5</b> live`, EMPTY ? '' : '1 dead zone here')}
+    ${tile('fa-microchip', 'var(--ncm-accent)', 'Shards', EMPTY ? 2 : 19, `<b>${EMPTY ? 0 : 7}</b> locked · <b>${EMPTY ? 0 : 5}</b> player-made`, EMPTY ? '' : '1 bricked')}
+    ${tile('fa-terminal', 'var(--ncm-primary)', 'Terminals', EMPTY ? 1 : 6, `<b>${EMPTY ? 0 : 2}</b> logged in · <b>${EMPTY ? 2 : 17}</b> accounts`)}
+    ${tile('fa-shield-halved', 'var(--ncm-danger)', 'Security', EMPTY ? 0 : 37, `events in 24h`, EMPTY ? '' : '2 running hot')}
+  </div>
+</section>`;
+
+// ── §4 activity + coming up ──
+const ev = (k, ic, t, sub, time, tag) => `<div class="ov2-ev k-${k}"><span class="ov2-ev__ic"><i class="fas ${ic}"></i></span><div class="ov2-ev__t">${t}${tag ? `<span class="ov2-tag">${tag}</span>` : ''}${sub ? `<span class="sub">${sub}</span>` : ''}</div><span class="ov2-ev__time">${time}</span></div>`;
+const feed = EMPTY ? '<div class="ov2-empty">Nothing yet — mail, hacks and terminal logins show here as they happen.</div>' : [
+  ev('mail', 'fa-envelope', '<b>Rache</b> → <b>Rogue</b>', '"Need a door into Arasaka 7F"', '12m', ''),
+  ev('sec', 'fa-terminal', '<b>Rache</b> logged into <b>mreyes</b> on WS-7F-12', 'password · 3rd login today', '15m', 'terminal'),
+  ev('imp', 'fa-user-secret', '<b>Rache</b> sent mail <b>as Marisol Reyes</b>', 'to Takeda, M. · via WS-7F-12', '16m', 'impersonation'),
+  ev('sec', 'fa-skull', '<b>Rache</b> botched a forge on WS-7F-12', 'Forgery 11 vs DV 18 · +35 heat', '4m', 'trace'),
+  ev('shard', 'fa-unlock', '<b>V</b> cracked <b>Militech Payroll</b>', 'Interface 19 vs DV 15', '31m', 'shard'),
+  ev('mail', 'fa-masks-theater', '<b>V</b> → <b>The Queen</b> (alias of Rogue)', '"Got the chip."', '40m', ''),
+  ev('mail', 'fa-coins', '<b>Fixer</b> → <b>Party</b> · 500 eb attached', 'claimed by Rache', '1h', ''),
+].join('');
+const soon = EMPTY ? '<div class="ov2-empty">No timers running.</div>' : [
+  `<div class="ov2-soon"><span class="ov2-soon__when">6m</span><div class="ov2-soon__b">Scheduled mail <span class="sub">Fixer → Party · "Meet at the Afterlife"</span></div><button class="ov2-btn ov2-btn--ghost"><i class="fas fa-xmark"></i></button></div>`,
+  `<div class="ov2-soon"><span class="ov2-soon__when hot">14:32</span><div class="ov2-soon__b">Trace — Arasaka on Rache <span class="sub">on game time</span></div><button class="ov2-btn ov2-btn--ghost"><i class="fas fa-xmark"></i></button></div>`,
+  `<div class="ov2-soon"><span class="ov2-soon__when">1h</span><div class="ov2-soon__b">Jammer on WS-7F-12 wears off <span class="sub">uplink back to ARASAKA-NET</span></div></div>`,
+  `<div class="ov2-soon"><span class="ov2-soon__when">22h</span><div class="ov2-soon__b">Backdoor account closes <span class="sub">ghost_admin on WS-7F-12</span></div></div>`,
+  `<div class="ov2-soon"><span class="ov2-soon__when">2d</span><div class="ov2-soon__b">Self-destructing mail expires <span class="sub">in V's inbox · "Burn after reading"</span></div></div>`,
+].join('');
+const cols = `
+<section class="ov2-cols">
+  <div>
+    <div class="ov2-h"><i class="fas fa-stream"></i> Recent activity <small>survives a reload</small></div>
+    <div class="ov2-card">
+      ${EMPTY ? '' : `<div class="ov2-feed__bar"><span class="ov2-chip on">All</span><span class="ov2-chip">Mail</span><span class="ov2-chip">Terminals &amp; hacks</span><span class="ov2-chip">Shards</span></div>`}
+      ${feed}
+      ${EMPTY ? '' : '<span class="ov2-more">Everything → Messages · Security</span>'}
+    </div>
+  </div>
+  <div>
+    <div class="ov2-h"><i class="fas fa-hourglass-half"></i> Coming up <small>every timer in one place</small></div>
+    <div class="ov2-card">${soon}</div>
+  </div>
+</section>`;
+
+// ── §5 characters ──
+const pcs = [
+  { init: 'RA', color: '#5fd3ff', n: 'Rache', p: 'Sam', on: true, unread: 2, last: '<b>Rogue</b> · "Door is open at 02:00" · 1h' },
+  { init: 'V', color: '#ff7aa8', n: 'V', p: 'Jo', on: true, unread: 0, last: '<b>The Queen</b> · "Got the chip." · 40m' },
+  { init: 'JK', color: '#9cff7a', n: 'Jackie', p: 'Lee', on: true, unread: 1, last: '<b>Mama Welles</b> · "Dinner Sunday" · 3h' },
+  { init: 'MX', color: '#d6a5ff', n: 'Maxx', p: 'Ana', on: false, unread: 4, last: 'no email address yet' },
+];
+const npcs = EMPTY ? [] : [
+  { init: 'RG', color: '#f7c948', n: 'Rogue', aka: '+2 aliases', wait: '3 waiting', bad: true, last: '12m' },
+  { init: 'MR', color: '#ff6b6b', n: 'Marisol Reyes', aka: 'terminal: WS-7F-12', wait: '1 waiting', bad: true, last: '16m' },
+  { init: 'TK', color: '#8ecfff', n: 'Takeda, M.', aka: '', wait: 'nothing waiting', last: '16m' },
+  { init: 'FX', color: '#9cff7a', n: 'Fixer', aka: '', wait: 'nothing waiting', last: '1h' },
+];
+const chars = `
+<section>
+  <div class="ov2-h"><i class="fas fa-user-group"></i> Players' characters<span class="sp"></span><button class="ov2-btn ov2-btn--ghost">Open all inboxes</button></div>
+  <div class="ov2-pcs">
+    ${pcs.map((x) => `
+      <div class="ov2-card ov2-pc">
+        ${av(x.init, x.color, x.on)}
+        <div class="ov2-pc__b">
+          <div class="ov2-pc__n">${x.n} <span class="ov2-badge${x.unread ? '' : ' zero'}">${x.unread}</span></div>
+          <div class="ov2-pc__p">played by ${x.p}${x.on ? '' : ' · offline'}</div>
+          <div class="ov2-pc__last">Last: ${x.last}</div>
+          <div class="ov2-pc__a">
+            <button class="ov2-btn"><i class="fas fa-envelope-open"></i> Inbox</button>
+            <button class="ov2-btn"><i class="fas fa-paper-plane"></i> Write to</button>
+            <button class="ov2-btn"><i class="fas fa-address-book"></i> Contacts</button>
+          </div>
+        </div>
+      </div>`).join('')}
+  </div>
+</section>
+<section>
+  <div class="ov2-h"><i class="fas fa-user-tie"></i> NPCs players are talking to <small>sorted by mail waiting on you</small></div>
+  <div class="ov2-card ov2-npcs">
+    ${npcs.length ? npcs.map((x) => `
+      <div class="ov2-npc">
+        ${av(x.init, x.color)}
+        <div class="ov2-npc__n">${x.n}${x.aka ? `<small>${x.aka}</small>` : ''}</div>
+        <div class="ov2-npc__w${x.bad ? ' bad' : ''}">${x.wait}</div>
+        <div class="ov2-npc__l">last ${x.last}</div>
+        <div class="ov2-npc__a"><button class="ov2-btn${x.bad ? ' ov2-btn--pri' : ''}"><i class="fas fa-reply"></i> Reply as</button><button class="ov2-btn"><i class="fas fa-inbox"></i></button></div>
+      </div>`).join('') : '<div class="ov2-empty">No player has written to an NPC yet.</div>'}
+  </div>
+  <div class="ov2-note">Every other NPC lives in Admin → Contacts.</div>
+</section>`;
+
+document.getElementById('out').innerHTML = `<div class="ov2">${topBar}${needsHtml}${table}${tiles}${cols}${chars}</div>`;
+document.title = 'OK — overview mock';
+</script>
+</body>
+</html>

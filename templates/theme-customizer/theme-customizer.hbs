@@ -161,7 +161,7 @@
           {{> "modules/night-city-messenger/templates/partials/crt-panel.hbs" crt=crt}}
         </div>
         <div class="ncm-tc__trow">
-          <div><div class="ncm-tc__trow-label">Film on terminals &amp; shards</div><div class="ncm-tc__trow-desc">A GM designs each machine's and shard's film. This is your ceiling — dim it or switch it off for yourself without changing it for anyone else.</div></div>
+          <div><div class="ncm-tc__trow-label">Film on terminals &amp; {{ncm-term "shortMany" "lower"}}</div><div class="ncm-tc__trow-desc">A GM designs the film on each machine and {{ncm-term "short" "lower"}}. This is your ceiling — dim it or switch it off for yourself without changing it for anyone else.</div></div>
           <select name="crtCap" class="ncm-tc__font-select ncm-tc__cap-select">{{#each crtCaps}}<option value="{{key}}" {{#if active}}selected{{/if}} title="{{hint}}">{{label}}</option>{{/each}}</select>
         </div>
         <div class="ncm-tc__trow">

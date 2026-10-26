@@ -117,7 +117,7 @@ check('SAVED THEMES carry the layout: save + overwrite write it, apply + import 
   && cfgJs.includes("if (TERMINAL_MAILBOX_STYLES.some(s => s.key === entry.mailboxStyle)) this._stagedMailboxStyle = entry.mailboxStyle;")
   && cfgJs.includes("if (TERMINAL_MAILBOX_STYLES.some(s => s.key === parsed.mailboxStyle)) this._stagedMailboxStyle = parsed.mailboxStyle;")
   && cfgJs.includes("JSON.stringify({ ncmTerminalTheme: 1, theme, mailboxStyle: this._currentMailboxStyle() }"));
-check('saved-theme rows show the layout they carry + the copy says a theme carries it', () => cfgHbs.includes('ncm-tc__citem-layout') && cfgHbs.includes('Saved Themes — palette, fonts, CRT film &amp; mailbox layout') && cfgHbs.includes('The layout travels with the theme') && cfgHbs.includes('login style, mailbox layout, MOTD'));
+check('saved-theme rows show the layout they carry + the copy says a theme carries it', () => cfgHbs.includes('ncm-tc__citem-layout') && cfgHbs.includes('Saved Themes — palette, fonts, CRT film, mailbox layout &amp; admin label') && cfgHbs.includes('The layout travels with the theme') && cfgHbs.includes('login style, mailbox layout, MOTD'));
 check('every built-in preset states its mailboxStyle explicitly', () => Object.values(TERMINAL_PRESETS).every(p => keys.has(p.mailboxStyle)));
 check('a Mailbox Layout section with one card per style + the hidden input', () => cfgHbs.includes('Mailbox Layout') && cfgHbs.includes('<input type="hidden" name="mailboxStyle" value="{{mailboxStyleKey}}">') && cfgHbs.includes('{{#each mailboxStyles}}') && cfgHbs.includes('data-mailbox-style="{{key}}"'));
 check('the section sits in the Boot & Login tab BEFORE the Login Screen section', () => cfgHbs.indexOf('Mailbox Layout') < cfgHbs.indexOf('>Login Screen<'));

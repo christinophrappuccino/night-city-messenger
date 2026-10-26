@@ -36,8 +36,11 @@ import {
   ladderOdds, likelyRung, oddsClass, programAbilities, craftChoices, programDV, programEfficiency,
   gearBonusFor, assistBonusFor, timeCostFor, formatMinutes,
   programForecast, contentChoices, contentDV, contentStackDV, contentEfficiency, contentForecast, typeRows, encodeOutcome,
-  lockOptions, lockIsSet, LOCK_FAILURES,
+  lockOptions, lockIsSet, LOCK_FAILURES, isEligibleBlank, blankRuleRefusal,
 } from '../content/EncoderModel.js';
+import { withShardPrefix } from '../../utils/shardNaming.js';
+import { playerConfirm } from '../../utils/adminTheme.js';
+import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
 import {
   LEGIBILITY_RANGES, LEGIBILITY_PRESETS, getLegibility, setLegibility, applyLegibility, effectiveMotion,
 } from '../../utils/legibility.js';
@@ -116,7 +119,7 @@ export class ShardEncoderApp extends BaseApplication {
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
     id: 'ncm-shard-encoder',
     classes: ['ncm-app', 'ncm-malware-workshop', 'ncm-shard-encoder'],
-    window: { title: 'Shard Encoder', icon: 'fas fa-microchip', resizable: true, minimizable: true },
+    window: { title: 'Encoder', icon: 'fas fa-microchip', resizable: true, minimizable: true },
     position: { width: 1060, height: 690 },
   }, { inplace: false });
 
@@ -136,7 +139,12 @@ export class ShardEncoderApp extends BaseApplication {
     const fams = Object.keys(PROGRAM_FAMILIES).filter((f) => this.cfg.programs?.families?.[f] !== false);
     const family = fams.includes(options.family) ? options.family : (fams[0] || 'utility');
     const isShard = !!options.item?.getFlag?.(MODULE_ID, 'isDataShard');
-    const seed = (options.item && !isShard) ? options.item : null;
+    // A right-click on something the GM's blank rule excludes (a weapon, a
+    // cyberarm) does NOT seed it — the player picks a real blank instead.
+    const seedOk = options.item && !isShard && isEligibleBlank(this.cfg, {
+      name: options.item.name, type: options.item.type, tierId: options.item.getFlag?.(MODULE_ID, 'blankTier') || '',
+    });
+    const seed = seedOk ? options.item : null;
     // A shard that already exists opens the RE-ENCODE door: the chip is the
     // source, the lock stays what it was, and the roll adds to it. Whether this
     // character may is `canEditShard` — the launcher and every door checked it,
@@ -192,7 +200,7 @@ export class ShardEncoderApp extends BaseApplication {
     this._lg = getLegibility();
   }
 
-  get title() { return this.actor ? `Shard Encoder — ${this.actor.name}` : 'Shard Encoder'; }
+  get title() { return this.actor ? `${T('short')} Encoder — ${this.actor.name}` : `${T('short')} Encoder`; }
 
   async _prepareContext() { return {}; }
 
@@ -236,7 +244,7 @@ export class ShardEncoderApp extends BaseApplication {
    */
   _desc(item) {
     if (!item) return null;
-    return { name: item.name, tierId: item.getFlag?.(MODULE_ID, 'blankTier') || '' };
+    return { name: item.name, type: item.type, tierId: item.getFlag?.(MODULE_ID, 'blankTier') || '' };
   }
 
   /** The blank the player is writing on, plus its GM tier and craft perk. */
@@ -280,7 +288,7 @@ export class ShardEncoderApp extends BaseApplication {
   _botch(opts = {}) {
     const b = botchFor(this._blank().tier, opts);
     if (!this._isEdit()) return b;
-    return { ...b, bricks: false, short: 'the shard is unchanged' };
+    return { ...b, bricks: false, short: `the ${T('short', 'lower')} is unchanged` };
   }
 
   /**
@@ -304,7 +312,8 @@ export class ShardEncoderApp extends BaseApplication {
     const items = this.actor?.items?.contents ?? [];
     return items.filter((i) => !NON_CARRIER.includes(i.type)
         && !i.getFlag?.(MODULE_ID, 'isDataShard') && !i.getFlag?.(MODULE_ID, 'isTerminal')
-        && !i.getFlag?.(MODULE_ID, 'blankBricked'))
+        && !i.getFlag?.(MODULE_ID, 'blankBricked')
+        && isEligibleBlank(this.cfg, this._desc(i)))
       .map((i) => ({ item: i, tier: tierForItem(this.cfg, this._desc(i)) }))
       .sort((a, b) => (b.tier?.price ?? 0) - (a.tier?.price ?? 0) || a.item.name.localeCompare(b.item.name));
   }
@@ -472,7 +481,7 @@ export class ShardEncoderApp extends BaseApplication {
             moved ? 'The world clock has moved.' : 'The clock has NOT been moved — advance it if you want that.'],
         }),
         whisper: moved ? [] : ChatMessage.getWhisperRecipients('GM').map((u) => u.id),
-        speaker: { alias: 'Shard Encoder' },
+        speaker: { alias: `${T('short')} Encoder` },
       });
     } catch (err) {
       log.warn(`Encoder: could not report the time cost — ${err.message}`);
@@ -489,7 +498,7 @@ export class ShardEncoderApp extends BaseApplication {
   }
   _name() { return this.S.progName || this._defaultName(); }
   /** What the chip is called — the label, else the item it came from. */
-  _shardName() { return this.S.label || this._blank().item?.name || 'Untitled shard'; }
+  _shardName() { return this.S.label || this._blank().item?.name || `Untitled ${T('short', 'lower')}`; }
 
   /** The chip art: the player's pick, else the blank's own art, else the system chip. */
   _img() { return this.S.img || this._blank().item?.img || DEFAULT_SHARD_IMG; }
@@ -502,7 +511,7 @@ export class ShardEncoderApp extends BaseApplication {
   _bootDefaults() {
     const p = this.S.preset ? SHARD_PRESETS?.[this.S.preset]?.boot : null;
     return {
-      title: p?.title || 'DATA SHARD',
+      title: p?.title || T('one', 'upper'),
       subtitle: p?.subtitle || 'Reading chip contents...',
       animationStyle: p?.animationStyle || 'standard-fade',
       speed: p?.speed || 'normal',
@@ -727,7 +736,7 @@ export class ShardEncoderApp extends BaseApplication {
     // is switchable and a GM can change the rule while the window is open.
     if (this._isEdit()) {
       const { item } = this._blank();
-      if (!item) return 'That shard is gone — pick another.';
+      if (!item) return `That ${T('short', 'lower')} is gone — pick another.`;
       const edit = canEditShard(item, this.actor);
       if (!edit.ok) return edit.reason;
     }
@@ -1368,7 +1377,7 @@ export class ShardEncoderApp extends BaseApplication {
         ? '<div class="ncm-fw-hint">You are carrying nothing your GM counts as a blank. Pick <b>All</b>, or buy one.</div>'
         : this.S.srcType
           ? `<div class="ncm-fw-hint">No ${esc(this._typeLabel(this.S.srcType).toLowerCase())} in your gear. Pick <b>All</b> to see everything.</div>`
-          : '<div class="ncm-fw-hint">Nothing in your gear can take an image. Buy a blank instead.</div>');
+          : `<div class="ncm-fw-hint">Nothing you carry can be written on. ${esc(blankRuleRefusal(this.cfg))}</div>`);
 
     const chip = (key, label, n, on, icon) => `
       <span class="ncm-fw-chip ${on ? 'on' : ''}" data-enc="srctype:${key}">
@@ -1412,7 +1421,7 @@ export class ShardEncoderApp extends BaseApplication {
           ${on ? '<span class="ncm-fw-icecard__dmg" style="color:var(--ncm-success)">READY</span>' : ''}
         </div>`;
       }).join('')
-      : '<div class="ncm-fw-hint">Nothing in your gear can be re-encoded — a shard you made, or one your GM opened up.</div>';
+      : `<div class="ncm-fw-hint">Nothing in your gear can be re-encoded — ${withArticle(T('short', 'lower'))} you made, or one your GM opened up.</div>`;
 
     const srcValue = this.S.srcMode === 'buy'
       ? `Buy ${esc(tier?.name || '—')}<small>${tier?.price ?? 0} eb</small>`
@@ -1424,16 +1433,16 @@ export class ShardEncoderApp extends BaseApplication {
       <div class="ncm-fw-seg" style="width:100%">
         <button type="button" data-enc="srcmode:own" class="${this.S.srcMode === 'own' ? 'on' : ''}">Convert an item</button>
         <button type="button" data-enc="srcmode:buy" class="${this.S.srcMode === 'buy' ? 'on' : ''}">Buy a blank</button>
-        ${editable.length ? `<button type="button" data-enc="srcmode:edit" class="${this._isEdit() ? 'on' : ''}">Re-encode a shard</button>` : ''}
+        ${editable.length ? `<button type="button" data-enc="srcmode:edit" class="${this._isEdit() ? 'on' : ''}">Re-encode ${withArticle(T('short', 'lower'))}</button>` : ''}
       </div>
       ${this.S.srcMode === 'own'
         ? `${srcTools}<div class="ncm-enc-src" style="margin-top:8px">${ownList}</div>`
         : this._isEdit()
           ? `<div class="ncm-enc-src" style="margin-top:8px">${editList}</div>
-             <div class="ncm-fw-hint" style="margin-top:6px">Add files to a shard that already exists, or re-roll how convincing its files are. One roll covers the chip${reDV ? `, at <b>DV +${reDV}</b> for agreeing with what is already on it` : ''}. The lock and the look stay as they are.</div>`
+             <div class="ncm-fw-hint" style="margin-top:6px">Add files to ${withArticle(T('short', 'lower'))} that already exists, or re-roll how convincing its files are. One roll covers the chip${reDV ? `, at <b>DV +${reDV}</b> for agreeing with what is already on it` : ''}. The lock and the look stay as they are.</div>`
           : `<div class="ncm-enc-buy" style="margin-top:8px">${buyList}</div>
            <div class="ncm-fw-hint" style="margin-top:6px">You have <b>${wealth} eb</b>. The cost comes off when the encode starts, and comes back if the write never happens.</div>`}
-      <div class="ncm-fw-hint">A shard is a physical thing — it has to come from somewhere. The tier decides what it costs and what a botched encode does to it.</div>`, 0)
+      <div class="ncm-fw-hint">${withArticle(T('one'))} is a physical thing — it has to come from somewhere. The tier decides what it costs and what a botched encode does to it.</div>`, 0)
     + (this._isEdit() ? '' : this._decRow('look', 'fa-palette', 'Look',
       `${esc(this._presetLabel())}<small>${this.S.boot.enabled
         ? esc(BOOT_STYLES.find(([k]) => k === this.S.boot.animationStyle)?.[1] || 'Fade in')
@@ -1490,7 +1499,7 @@ export class ShardEncoderApp extends BaseApplication {
     + this._decRow('lbl', 'fa-tag', 'Label', esc(this._shardName()), `
       <div class="ncm-enc-lbl" style="margin-top:0">
         <label for="encLabel">Shard name</label>
-        <input id="encLabel" class="ncm-enc-inp" type="text" data-enc-in="label" value="${esc(this.S.label)}" placeholder="${esc(item?.name || 'Untitled shard')}">
+        <input id="encLabel" class="ncm-enc-inp" type="text" data-enc-in="label" value="${esc(this.S.label)}" placeholder="${esc(item?.name || `Untitled ${T('short', 'lower')}`)}">
       </div>
       <div class="ncm-fw-hint">What it says on the chip. The icon comes from what you put on it.</div>`, 1);
   }
@@ -1986,7 +1995,7 @@ export class ShardEncoderApp extends BaseApplication {
     this.S.busy = true; this._patchFooter();
     try {
       const res = await game.nightcity?.skillService?.performCheck(this.actor, skill, {
-        dc: 0, showChat: true, context: 'Shard Encoder',
+        dc: 0, showChat: true, context: `${T('short')} Encoder`,
         flavor: which === 'gate' ? 'Fitting the lock hardware' : 'Setting the encryption',
       });
       if (!res) throw new Error('The roll could not be made.');
@@ -2045,7 +2054,7 @@ export class ShardEncoderApp extends BaseApplication {
     const allowed = this._types().some((t) => t.key === next);
     if (!allowed) {
       const label = CONTENT_TYPE_INFO[next]?.label || next;
-      ui.notifications?.warn(`NCM | Your GM does not allow ${label} on a player-made shard — it stays a ${CONTENT_TYPE_INFO[this.S.type]?.label || this.S.type}.`);
+      ui.notifications?.warn(`NCM | Your GM does not allow ${label} on a player-made ${T('short', 'lower')} — it stays a ${CONTENT_TYPE_INFO[this.S.type]?.label || this.S.type}.`);
       entry.contentType = this.S.type;
       return false;
     }
@@ -2137,12 +2146,12 @@ export class ShardEncoderApp extends BaseApplication {
         <div><b>Room</b><span>${cap ? Math.max(0, cap - on) : '∞'}</span></div>
         <div><b>On a botch</b><span style="font-size:calc(10px * var(--ncm-text-scale,1) * var(--ncm-lg-text,1))">unchanged</span></div>`;
       this._art(name, `${on} file${on === 1 ? '' : 's'} · re-encoding`, [
-        ['Source', 'your shard'],
+        ['Source', `your ${T('short', 'lower')}`],
         ['On it', `${on} file${on === 1 ? '' : 's'}`],
         ['Holds', cap ? `${cap} entries` : 'no limit'],
         ['On a botch', 'unchanged'],
       ]);
-      this._status('Shard ready · name it, then pick what to add');
+      this._status(`${T('short')} ready · name it, then pick what to add`);
       this._hint('STAGE 1 · RE-ENCODE · no roll');
       return;
     }
@@ -2447,6 +2456,23 @@ export class ShardEncoderApp extends BaseApplication {
       ui.notifications?.warn(this._isEdit() ? 'NCM | Write something new onto it first — a re-encode with nothing added changes nothing.' : 'NCM | There is nothing written to encode.');
       return;
     }
+    // Writing on something you already own renames it and can replace its
+    // picture. Say so before the roll — removing the shard data later gives
+    // both back, but the player should never find out by surprise.
+    if (S.srcMode === 'own' && !this._isEdit() && item) {
+      const newName = S.label && S.label !== item.name ? S.label : '';
+      const newImg = this._img() !== item.img;
+      if (newName || newImg) {
+        const what = [newName ? `renamed to <b>${esc(newName)}</b>` : '', newImg ? 'its picture replaced' : ''].filter(Boolean).join(' and ');
+        const ok = await playerConfirm({
+          title: 'Write on this item?',
+          content: `<p><b>${esc(item.name)}</b> becomes the shard: it will be ${what}.</p>
+            <p style="opacity:.8;font-size:12px;">If the ${T('short', 'lower')} data is ever removed, the item gets its old name and picture back.</p>`,
+        });
+        if (!ok) return;
+      }
+    }
+
     // Last line of defence: the DV about to be rolled must cover everything
     // actually on the chip, whatever the rail happens to have selected.
     if (!this._isProgram()) { this._syncCraft(); this._patch(); }
@@ -2477,7 +2503,7 @@ export class ShardEncoderApp extends BaseApplication {
       if (needsRoll) {
         res = await game.nightcity?.skillService?.performCheck(this.actor, S.craft, {
           dc: dv, modifier: bonuses.total, showChat: true,
-          context: 'Shard Encoder', flavor: `Encoding ${this._artName()}`,
+          context: `${T('short')} Encoder`, flavor: `Encoding ${this._artName()}`,
         });
         if (!res) throw new Error('The skill check could not be rolled.');
       }
@@ -2586,7 +2612,7 @@ export class ShardEncoderApp extends BaseApplication {
       this._playTone('hack-fail');
     }
     if (failedWrite) {
-      this._status(`<span style="color:var(--ncm-danger)">The roll landed but the shard could not be written.</span> ${esc(R.saved.error || '')}`);
+      this._status(`<span style="color:var(--ncm-danger)">The roll landed but the ${T('short', 'lower')} could not be written.</span> ${esc(R.saved.error || '')}`);
     }
     this._pct(100);
 
@@ -2606,7 +2632,7 @@ export class ShardEncoderApp extends BaseApplication {
     ]);
     this._hint(R.outcome === 'rejected'
       ? (R.botch.bricks ? 'REJECTED · that blank is spent — start over with another' : 'REJECTED · the blank held — try again')
-      : `ENCODED · it is in ${esc(this.actor?.name || 'your')}'s gear — Agent → SHARDS, or the inventory`);
+      : `ENCODED · it is in ${esc(this.actor?.name || 'your')}'s gear — Agent → ${T('shortMany', 'upper')}, or the inventory`);
     if (R.outcome !== 'rejected' && R.saved?.ok) this._renderMarket(R);
     this._patchFooter();
   }
@@ -2641,14 +2667,14 @@ export class ShardEncoderApp extends BaseApplication {
 
     const priced = Math.round(this.S.price);
     const note = {
-      '': mode === 'propose' ? 'Name a figure. It lands on the shard only once your GM approves it.'
-        : mode === 'free' ? 'Set it and it goes straight onto the shard.'
+      '': mode === 'propose' ? `Name a figure. It lands on the ${T('short', 'lower')} only once your GM approves it.`
+        : mode === 'free' ? `Set it and it goes straight onto the ${T('short', 'lower')}.`
         : 'Your GM prices player work automatically.',
-      await: 'Your GM has the ask. Nothing is on the shard yet.',
-      approved: 'Written to the shard — ' + priced + ' eb. A fixer or a shop reads that.',
+      await: `Your GM has the ask. Nothing is on the ${T('short', 'lower')} yet.`,
+      approved: `Written to the ${T('short', 'lower')} — ` + priced + ' eb. A fixer or a shop reads that.',
       countered: 'Your GM countered at ' + priced + ' eb, and that is what it carries.',
       denied: 'Your GM said no. Sell it by hand, or ask again later.',
-      nogm: 'Nobody is on to approve it. The shard is still yours — try again when your GM is around.',
+      nogm: `Nobody is on to approve it. The ${T('short', 'lower')} is still yours — try again when your GM is around.`,
       pending: 'No answer came back. Ask again when your GM is free.',
     }[state] || '';
 
@@ -2779,7 +2805,7 @@ export class ShardEncoderApp extends BaseApplication {
 
       // A bought blank only becomes a real item if there is something to keep.
       if (S.srcMode === 'buy') {
-        if (price > 0) { await this._debitWealth(price, `Blank shard · ${tier.name}`); debited = price; }
+        if (price > 0) { await this._debitWealth(price, `Blank ${T('short', 'lower')} · ${tier.name}`); debited = price; }
         if (outcome !== 'rejected' || !botch.bricks) {
           item = await this._createBlank(tier);
           if (!item) throw new Error('Could not create the blank in your gear.');
@@ -2814,7 +2840,8 @@ export class ShardEncoderApp extends BaseApplication {
       // must never cost the player the shard they just rolled for.
       if (item.isOwner) {
         const patch = {};
-        if (S.label && item.name !== S.label) patch.name = S.label;
+        const label = S.label ? withShardPrefix(S.label, game.nightcity?.settingsManager?.getShardNamePrefix?.() || '') : '';
+        if (label && item.name !== label) patch.name = label;
         const img = this._img();
         if (img && item.img !== img) patch.img = img;
         if (Object.keys(patch).length) { try { await item.update(patch); } catch (e) { log.warn('Encoder: could not restyle the item', e); } }
@@ -3054,7 +3081,7 @@ export class ShardEncoderApp extends BaseApplication {
     const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter((t) => t !== 'base');
     const type = types.includes('gear') ? 'gear' : (types[0] || 'gear');
     const data = {
-      name: this.S.label || `${tier.name} Data Shard`,
+      name: this.S.label || `${tier.name} ${T('one')}`,
       type,
       img: this._img(),
       flags: { [MODULE_ID]: { blankTier: tier.id } },
@@ -3083,7 +3110,7 @@ export class ShardEncoderApp extends BaseApplication {
   _fireTrace(res) {
     try {
       game.nightcity?.traceService?.fireTrace?.({
-        actor: this.actor, action: 'upload', source: 'Shard Encoder', severity: 'minor',
+        actor: this.actor, action: 'upload', source: `${T('short')} Encoder`, severity: 'minor',
         targetKind: 'shard', objectName: this.S.label || this._artName(),
         dv: this._dv(), margin: res?.margin ?? null, outcome: 'failed',
       });

@@ -253,7 +253,7 @@ const base = () => ({ fromActorId: 'v', subject: 'Heist tonight', body: 'Be ther
   const composer = readFileSync(`${ROOT}/scripts/ui/MessageComposer/MessageComposerApp.js`, 'utf8');
   ok(/recipients: \(sendList\.length > 1 \|\| hasGroup\) \? sendList : undefined/.test(composer), 'composer sends a recipients list for 2+ chips or any group chip');
   ok(/eddiesTotal/.test(composer) && /this\.eddiesAmount \* result\.failed\.length/.test(composer), 'composer debits eddies × recipients and refunds the failed share');
-  ok(/\{ all: !!options\.replyAll \}/.test(composer), 'composer asks buildReply for Reply All');
+  ok(/\{ all: !!options\.replyAll(, fromContactId: [^}]+)? \}/.test(composer), 'composer asks buildReply for Reply All');
   ok(/replyAll: options\.replyAll \?\? false/.test(readFileSync(`${ROOT}/scripts/init/registerMessagingSystem.js`, 'utf8')), 'the compose launcher forwards replyAll');
   const viewer = readFileSync(`${ROOT}/scripts/ui/MessageViewer/MessageViewerApp.js`, 'utf8');
   ok(/case 'reply-all-message'/.test(viewer) && /viewingKeys/.test(viewer), 'viewer routes Reply All and passes its own keys to threading');

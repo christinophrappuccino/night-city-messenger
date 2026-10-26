@@ -2008,3 +2008,23 @@
   border-color: var(--ncm-danger, #ef4444) !important;
   color: var(--ncm-danger, #ef4444) !important;
 }
+
+/* IDENTITIES card (2026-10-26, utils/identities.js) — every contact linked to one
+   character. Admin-themed window: tokens only, 2px radius, display chrome / mono values. */
+.ncm-app .ncm-gm-ident { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
+.ncm-app .ncm-gm-ident__row { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-app .ncm-gm-ident__row.is-selected { border-color: color-mix(in srgb, var(--ncm-secondary) 55%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); }
+.ncm-app .ncm-gm-ident__star { flex: 0 0 auto; width: 16px; text-align: center; color: var(--ncm-text-muted); cursor: pointer; }
+.ncm-app .ncm-gm-ident__star.is-on { color: var(--ncm-accent); cursor: default; }
+.ncm-app .ncm-gm-ident__star:not(.is-on):hover { color: var(--ncm-accent); }
+.ncm-app .ncm-gm-ident__av { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--ncm-border); font-family: var(--ncm-font-display); font-weight: 700; font-size: 11px; }
+.ncm-app .ncm-gm-ident__av img { width: 100%; height: 100%; object-fit: cover; }
+.ncm-app .ncm-gm-ident__nm { flex: 1; min-width: 0; font-family: var(--ncm-font-display); font-weight: 700; font-size: 13px; color: var(--ncm-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-app .ncm-gm-ident__nm[data-action] { cursor: pointer; }
+.ncm-app .ncm-gm-ident__nm[data-action]:hover { color: var(--ncm-secondary); }
+.ncm-app .ncm-gm-ident__nm small { display: block; font-family: var(--ncm-font-mono); font-weight: 400; font-size: 11px; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-gm-ident__kind { flex: 0 0 auto; font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 5px; border-radius: 1px; border: 1px solid var(--ncm-border); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-gm-ident__use { flex: 0 0 auto; font-family: var(--ncm-font-mono); font-size: 10.5px; color: var(--ncm-text-secondary); white-space: nowrap; }
+.ncm-app .ncm-gm-ident__note { font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-secondary); padding: 2px 2px; }
+.ncm-app button.ncm-gm-ident__add { appearance: none !important; align-self: flex-start; width: auto !important; height: auto !important; min-height: 0 !important; margin: 2px 0 0 !important; padding: 4px 10px !important; border-radius: 2px !important; border: 1px dashed var(--ncm-border-active, var(--ncm-border)) !important; background: transparent !important; color: var(--ncm-secondary) !important; box-shadow: none !important; font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
+.ncm-app button.ncm-gm-ident__add:hover { border-style: solid !important; }

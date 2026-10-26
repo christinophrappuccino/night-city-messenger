@@ -7,7 +7,7 @@
  *   1. **Sheet Interception** — `preRenderItemSheet` prevents the default
  *      Foundry item sheet from opening when an item is a data shard.
  *      Instead, launches the NCM shard viewer (ItemInboxApp).
- *      GM can bypass via "View Original Item" button in the shard viewer header.
+ *      GM can bypass via the "Edit Item Sheet" button in the shard viewer header.
  *
  *   2. **Inventory Badges** — `renderActorSheet` injects a cyan microchip
  *      icon and left border on items flagged as data shards.
@@ -20,7 +20,10 @@
 
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, canEncode, canEditShard, resolveOperator } from '../utils/helpers.js';
-import { adminConfirm } from '../utils/adminTheme.js';
+import { adminConfirm, adminPrompt, playerPrompt } from '../utils/adminTheme.js';
+import { withShardPrefix, stripShardPrefix } from '../utils/shardNaming.js';
+import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
+import { resolveEncoderConfig, isEligibleBlank, blankRuleRefusal } from '../ui/content/EncoderModel.js';
 
 export class ShardSheetOverride {
 
@@ -38,6 +41,70 @@ export class ShardSheetOverride {
    */
   static canAuthor(actor = null) {
     return canEncode(actor).ok;
+  }
+
+  /** The GM's Encoder config, resolved. */
+  static _encoderConfig() {
+    return resolveEncoderConfig(game.nightcity?.settingsManager?.getEncoderConfigRaw?.() ?? {});
+  }
+
+  /** May this item become a player-made shard? (`blanks.source` in the Encoder config.) */
+  static isBlankFor(item) {
+    return isEligibleBlank(this._encoderConfig(), {
+      name: item?.name, type: item?.type, tierId: item?.getFlag?.(MODULE_ID, 'blankTier') || '',
+    });
+  }
+
+  /** The sentence a player gets for an item that cannot be a blank. */
+  static blankRefusal() {
+    return blankRuleRefusal(this._encoderConfig());
+  }
+
+  /**
+   * Who may rename a shard: the GM always; a player when they own the item and
+   * the shard's own editing rule would let them rewrite it (`canEditShard`).
+   */
+  static canRename(item, actor) {
+    if (isGM()) return true;
+    return !!item?.isOwner && canEditShard(item, actor).ok;
+  }
+
+  /**
+   * Rename a shard. The display name (`config.shardName`) and the item name are
+   * written TOGETHER — the viewer title prefers the display name, so renaming
+   * only the item looked like it had not stuck. The name prefix is kept.
+   */
+  async _renameShard(item) {
+    if (!ShardSheetOverride.canRename(item, resolveOperator())) return;
+    const prefix = game.nightcity?.settingsManager?.getShardNamePrefix?.() || '';
+    const current = item.getFlag(MODULE_ID, 'config')?.shardName || stripShardPrefix(item.name, prefix);
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const prompt = isGM() ? adminPrompt : playerPrompt;
+    let label = null;
+    try {
+      label = await prompt({
+        title: `Rename ${T('short')}`,
+        content: `<div class="form-group" style="margin:6px 0 10px;">
+          <label style="text-transform:none;">Name</label>
+          <input type="text" name="ncmShardRename" value="${esc(current)}" autofocus>
+        </div>${prefix ? `<p style="font-size:12px;opacity:.75;margin:0 0 8px;">The item will be listed as "${esc(prefix)}…".</p>` : ''}`,
+        label: 'Rename',
+        callback: (html) => (html[0] ?? html).querySelector('[name="ncmShardRename"]')?.value?.trim() || '',
+        rejectClose: false,
+      });
+    } catch { return; }
+    if (!label || label === current) return;
+    try {
+      await item.update({
+        name: withShardPrefix(label, prefix),
+        [`flags.${MODULE_ID}.config.shardName`]: label,
+      });
+      ui.notifications.info(`Renamed to "${label}".`);
+      this._refreshItemViews(item);
+    } catch (err) {
+      log.warn('ShardSheetOverride: rename failed', err);
+      ui.notifications.warn(`NCM | Could not rename "${item.name}" — you may not have permission to edit it.`);
+    }
   }
 
   /** @type {boolean} Whether hooks are currently active */
@@ -115,8 +182,8 @@ export class ShardSheetOverride {
    * because preRender's `return false` doesn't reliably prevent rendering
    * across all Foundry versions and system sheet classes.
    *
-   * The `_ncmBypass` flag on the sheet allows the GM's "View Original
-   * Item" button to open the native Foundry sheet without looping.
+   * The `_ncmBypass` flag on the sheet allows the GM's "Edit Item Sheet"
+   * button to open the native Foundry sheet without looping.
    *
    * @param {ItemSheet} sheet - The item sheet application
    * @param {jQuery|HTMLElement} html - The rendered HTML
@@ -208,7 +275,7 @@ export class ShardSheetOverride {
             const tag = document.createElement('div');
             tag.className = 'ncm-shard-img-tag';
             tag.innerHTML = '<i class="fas fa-microchip"></i>';
-            tag.title = 'Data Shard';
+            tag.title = T('one');
             wrap.appendChild(tag);
           }
 
@@ -309,31 +376,33 @@ export class ShardSheetOverride {
         addOption('Place on Current Scene', 'fas fa-map-pin', '#f7c948', () => {
           game.nightcity?.terminalScenePins?.placeAtViewCenter(item);
         });
-        addOption('View Original Item', 'fas fa-file-alt', '#f7c948', () => {
+        addOption('Edit Item Sheet', 'fas fa-file-alt', '#f7c948', () => {
           const sheet = item.sheet;
           if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
         });
         addOption('Remove Terminal Data', 'fas fa-rotate-left', '#F65261', () => this._confirmRemoveTerminal(item));
       }
     } else if (isShard) {
-      addOption('Open Data Shard', 'fas fa-hard-drive', '#00D4E6', () => game.nightcity?.openDataShard(item));
+      addOption(`Open ${T('one')}`, 'fas fa-hard-drive', '#00D4E6', () => game.nightcity?.openDataShard(item));
       addOption('Program Deck', 'fas fa-microchip', '#19f3f7', () => game.nightcity?.openProgramDeck?.(item));
       if (isGM()) {
-        addOption('Configure Shard', 'fas fa-sliders', '#00D4E6', async () => {
+        addOption(`Configure ${T('short')}`, 'fas fa-sliders', '#00D4E6', async () => {
           const { ItemInboxConfig } = await import('../ui/ItemInbox/ItemInboxConfig.js');
           new ItemInboxConfig({ item }).render(true);
         });
         addOption('Build a Program', 'fas fa-biohazard', '#ff3355', () => game.nightcity?.openMalwareWorkshop?.({ target: { kind: 'shard', item } }));
-        addOption('View Original Item', 'fas fa-file-alt', '#f7c948', () => {
+        addOption('Rename…', 'fas fa-i-cursor', '#f7c948', () => this._renameShard(item));
+        addOption('Edit Item Sheet', 'fas fa-file-alt', '#f7c948', () => {
           const sheet = item.sheet;
           if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
         });
-        addOption('Remove Shard Data', 'fas fa-rotate-left', '#F65261', () => this._confirmUnconvert(item));
+        addOption(`Remove ${T('short')} Data`, 'fas fa-rotate-left', '#F65261', () => this._confirmUnconvert(item));
       } else if (canEditShard(item, resolveOperator()).ok) {
         addOption('Encode More Onto It', 'fas fa-pen-nib', '#19f3f7', () => game.nightcity?.openEncoder?.({ item, actor: resolveOperator() }));
+        if (ShardSheetOverride.canRename(item, resolveOperator())) addOption('Rename…', 'fas fa-i-cursor', '#f7c948', () => this._renameShard(item));
       }
     } else if (isGM()) {
-      addOption('Convert to Data Shard', 'fas fa-microchip', '#00D4E6', () => this._launchConversionFlow(item));
+      addOption(`Convert to ${T('one')}`, 'fas fa-microchip', '#00D4E6', () => this._launchConversionFlow(item));
       addOption('Convert to Terminal', 'fas fa-terminal', '#ff3355', () => this._convertToTerminal(item));
       addOption('Malware Workshop', 'fas fa-biohazard', '#ff3355', () => game.nightcity?.openMalwareWorkshop?.());
     }
@@ -464,7 +533,7 @@ export class ShardSheetOverride {
       const tag = document.createElement('div');
       tag.className = 'ncm-shard-img-tag';
       tag.innerHTML = '<i class="fas fa-microchip"></i>';
-      tag.title = 'Data Shard';
+      tag.title = T('one');
       wrap.appendChild(tag);
     }
 
@@ -493,20 +562,21 @@ export class ShardSheetOverride {
     // ─── Right-click context menu ───
     row.addEventListener('contextmenu', (ev) => {
       const entries = [
-        { label: 'Open Data Shard', icon: 'fas fa-hard-drive', color: '#00D4E6', fn: () => game.nightcity?.openDataShard(item) },
+        { label: `Open ${T('one')}`, icon: 'fas fa-hard-drive', color: '#00D4E6', fn: () => game.nightcity?.openDataShard(item) },
       ];
       if (isGM()) {
         entries.push(
-          { label: 'Configure Shard', icon: 'fas fa-sliders', color: '#00D4E6', fn: async () => {
+          { label: `Configure ${T('short')}`, icon: 'fas fa-sliders', color: '#00D4E6', fn: async () => {
             const { ItemInboxConfig } = await import('../ui/ItemInbox/ItemInboxConfig.js');
             new ItemInboxConfig({ item }).render(true);
           }},
-          { label: 'View Original Item', icon: 'fas fa-file-alt', color: '#f7c948', fn: () => {
+          { label: 'Rename…', icon: 'fas fa-i-cursor', color: '#f7c948', fn: () => this._renameShard(item) },
+          { label: 'Edit Item Sheet', icon: 'fas fa-file-alt', color: '#f7c948', fn: () => {
             const sheet = item.sheet;
             if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
           }},
           { sep: true },
-          { label: 'Remove Shard Data', icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
+          { label: `Remove ${T('short')} Data`, icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
         );
       } else if (ShardSheetOverride.canAuthor(actor)) {
         // A player may add to a shard the shard's own rule lets them rewrite
@@ -514,9 +584,12 @@ export class ShardSheetOverride {
         if (canEditShard(item, actor).ok) {
           entries.push({ label: 'Encode More Onto It', icon: 'fas fa-pen-nib', color: '#19f3f7', fn: () => game.nightcity?.openEncoder?.({ item, actor }) });
         }
+        if (ShardSheetOverride.canRename(item, actor)) {
+          entries.push({ label: 'Rename…', icon: 'fas fa-i-cursor', color: '#f7c948', fn: () => this._renameShard(item) });
+        }
         entries.push(
           { sep: true },
-          { label: 'Remove Shard Data', icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
+          { label: `Remove ${T('short')} Data`, icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
         );
       }
       this._showContextMenu(ev, entries);
@@ -531,7 +604,9 @@ export class ShardSheetOverride {
    * @param {Actor} actor
    */
   _applyConvertButton(row, item, actor) {
-    const canConvert = isGM() || ShardSheetOverride.canAuthor(actor);
+    // A player only gets the button on things that can be a blank (the
+    // Encoder's `blanks.source` rule) — never on their pistol or their arm.
+    const canConvert = isGM() || (ShardSheetOverride.canAuthor(actor) && ShardSheetOverride.isBlankFor(item));
 
     // ─── Inline convert button (best-effort — CPR may not have .item-controls) ───
     if (canConvert && !row.querySelector('.ncm-convert-shard-btn')) {
@@ -539,7 +614,7 @@ export class ShardSheetOverride {
       if (controls) {
         const btn = document.createElement('a');
         btn.className = 'item-control ncm-convert-shard-btn';
-        btn.title = isGM() ? 'Convert to Data Shard' : 'Encode to Data Shard';
+        btn.title = isGM() ? `Convert to ${T('one')}` : `Encode to ${T('one')}`;
         btn.innerHTML = '<i class="fas fa-microchip"></i>';
         btn.addEventListener('click', (ev) => {
           ev.stopPropagation();
@@ -554,9 +629,9 @@ export class ShardSheetOverride {
     if (!row._ncmConvertCtx) {
       row._ncmConvertCtx = true;
       row.addEventListener('contextmenu', (ev) => {
-        if (!isGM() && !ShardSheetOverride.canAuthor(actor)) return;
+        if (!isGM() && !(ShardSheetOverride.canAuthor(actor) && ShardSheetOverride.isBlankFor(item))) return;
         const entries = [
-          { label: isGM() ? 'Convert to Data Shard' : 'Encode to Data Shard', icon: 'fas fa-microchip', color: '#00D4E6', fn: () => this._launchConversionFlow(item, actor) },
+          { label: isGM() ? `Convert to ${T('one')}` : `Encode to ${T('one')}`, icon: 'fas fa-microchip', color: '#00D4E6', fn: () => this._launchConversionFlow(item, actor) },
         ];
         this._showContextMenu(ev, entries);
       });
@@ -654,7 +729,7 @@ export class ShardSheetOverride {
         if (verdict.ok) { game.nightcity?.openEncoder?.({ item, actor: who }); return; }
         if (verdict.locked) { ui.notifications.warn(`NCM | ${verdict.reason}`); return; }
       }
-      ui.notifications.warn('This item is already a data shard.');
+      ui.notifications.warn(`This item is already ${withArticle(T('one', 'lower'))}.`);
       return;
     }
 
@@ -662,7 +737,7 @@ export class ShardSheetOverride {
     if (isGM()) {
       const result = await dataShardService.convertToDataShard(item);
       if (result?.success) {
-        ui.notifications.info(`"${item.name}" converted to data shard.`);
+        ui.notifications.info(`"${item.name}" converted to ${T('one', 'lower')}.`);
         setTimeout(() => {
           ui.items?.render();
           for (const sheet of Object.values(ui.windows)) {
@@ -670,7 +745,7 @@ export class ShardSheetOverride {
           }
         }, 150);
       } else {
-        ui.notifications.error(`Failed to convert shard: ${result?.error || 'Unknown error'}`);
+        ui.notifications.error(`Failed to convert to ${T('one', 'lower')}: ${result?.error || 'Unknown error'}`);
       }
       return;
     }
@@ -683,6 +758,10 @@ export class ShardSheetOverride {
     const verdict = canEncode(actor);
     if (!verdict.ok) {
       ui.notifications.warn(`NCM | ${verdict.reason}`);
+      return;
+    }
+    if (!ShardSheetOverride.isBlankFor(item)) {
+      ui.notifications.warn(`NCM | ${ShardSheetOverride.blankRefusal()}`);
       return;
     }
     game.nightcity?.openEncoder?.({ item, actor });
@@ -699,18 +778,18 @@ export class ShardSheetOverride {
     if (!dataShardService) return;
 
     const confirmed = await adminConfirm({
-      title: 'Remove Shard Data',
+      title: `Remove ${T('short')} Data`,
       content: `<div style="font-family: Rajdhani, sans-serif;">
-        <p>Strip all shard data from <strong style="color:#19f3f7;">${item.name}</strong>?</p>
+        <p>Strip all ${T('short', 'lower')} data from <strong style="color:#19f3f7;">${item.name}</strong>?</p>
         <div style="font-size: 11px; color: #8888a0; padding: 8px 10px; background: rgba(255,0,51,0.04); border: 1px solid rgba(255,0,51,0.15); border-radius: 2px; margin-top: 8px; line-height: 1.7;">
           <i class="fas fa-exclamation-circle" style="color: #ff0033; margin-right: 4px;"></i>
           This will permanently remove:<br>
-          &nbsp;&nbsp;• Shard content and configuration<br>
+          &nbsp;&nbsp;• ${T('short')} content and configuration<br>
           &nbsp;&nbsp;• ICE protection settings<br>
           &nbsp;&nbsp;• Linked journal entry<br>
           &nbsp;&nbsp;• Boot sequence and preset<br>
           <br>
-          The original item will be preserved.
+          The item itself is kept, and gets back the name and image it had before it became ${withArticle(T('short', 'lower'))}.
         </div>
       </div>`,
     });
@@ -729,7 +808,7 @@ export class ShardSheetOverride {
           if (!success) throw new Error('Request denied or timed out');
         }
 
-        ui.notifications.info(`Shard data removed from "${item.name}"`);
+        ui.notifications.info(`${T('short')} data removed from "${item.name}"`);
         setTimeout(() => {
           ui.items?.render();
           for (const sheet of Object.values(ui.windows)) {
@@ -737,7 +816,7 @@ export class ShardSheetOverride {
           }
         }, 150);
       } catch (err) {
-        ui.notifications.error(`Failed to remove shard data: ${err.message}`);
+        ui.notifications.error(`Failed to remove ${T('short', 'lower')} data: ${err.message}`);
       }
     }
   }

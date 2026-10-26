@@ -7,6 +7,7 @@
 
 import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, SHARD_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS, CONTRAST_SPREAD } from './constants.js';
 import { resolveShardEditing } from '../ui/content/EncoderModel.js';
+import { identityRole } from './identities.js';
 
 /** Month names for the written-out date styles (dateMonthStyle setting). */
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -556,6 +557,9 @@ export function resolveDisplayPortrait({ contactId, actorId, email } = {}) {
     || (email && master?.getByEmail?.(email))
     || null;
   if (mc?.portrait) return mc.portrait;
+  // An ALIAS never borrows its character's face — a burner identity that showed
+  // Lucky Lin's portrait would give the game away (utils/identities.js).
+  if (mc && identityRole(master?.getAll?.() || [], mc)?.isAlias) return '';
   const actor = (actorId || mc?.actorId) ? globalThis.game?.actors?.get?.(actorId || mc.actorId) : null;
   const img = actor?.img || '';
   return img && !img.includes('mystery-man') ? img : '';

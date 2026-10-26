@@ -27,7 +27,7 @@ import { BaseApplication } from '../BaseApplication.js';
 import { adminConfirm } from '../../utils/adminTheme.js';
 import { abilityInfo } from '../content/ProgramModel.js';
 import {
-  BOTCH_RULES, TIER_PERKS, PRICING_MODES, PROGRAM_FAMILIES, FAMILY_ABILITIES,
+  BOTCH_RULES, TIER_PERKS, PRICING_MODES, PROGRAM_FAMILIES, FAMILY_ABILITIES, BLANK_SOURCES,
   resolveEncoderConfig, typeRows, gateSummary, timeCostFor, formatMinutes,
 } from '../content/EncoderModel.js';
 import {
@@ -328,7 +328,7 @@ export class EncoderConfigApp extends BaseApplication {
         <div class="ncm-ecfg__items">
           <span class="ncm-ecfg__items-l">Items</span>
           ${t.fallback
-            ? '<span class="ncm-ecfg__chip is-any">anything not listed in another tier</span>'
+            ? '<span class="ncm-ecfg__chip is-any">anything else they may write on</span>'
             : t.items.map((it, j) => `<span class="ncm-ecfg__chip">
                 <img src="${esc(it.img || 'icons/svg/item-bag.svg')}" alt="">${esc(it.name)}
                 <i class="fas fa-xmark" data-ec="itemdel" data-v="${i}:${j}"></i></span>`).join('')
@@ -336,7 +336,12 @@ export class EncoderConfigApp extends BaseApplication {
         </div>
       </div>`).join('');
 
-    return this._sec('Blank tiers', 'the kinds of blank chip a player can write on', `
+    return this._sec('What can be written on', "which of a character's items can become a shard", `
+      <div class="ncm-ecfg__row">
+        ${this._field('Players may write on', this._select('blanks.source', d.blanks?.source || 'gear', Object.entries(BLANK_SOURCES), { width: '380px' }),
+          'Writing on an item renames it and can replace its picture. "Gear only" keeps weapons, armor and cyberware out of it. Removing the shard data later gives the item its old name and picture back. Items listed in a tier below always count.')}
+      </div>`)
+    + this._sec('Blank tiers', 'the kinds of blank chip a player can write on', `
       <div class="ncm-ecfg__tiers">${cards}
         <button type="button" class="ncm-ecfg__btn" data-ec="tieradd"><i class="fas fa-plus"></i> Add a tier</button>
       </div>

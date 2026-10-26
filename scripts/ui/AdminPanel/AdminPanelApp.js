@@ -151,6 +151,12 @@ export class AdminPanelApp extends BaseApplication {
       ovBroadcast: AdminPanelApp._onOvBroadcast,
       ovClearAlerts: AdminPanelApp._onOvClearAlerts,
       ovDismissAlert: AdminPanelApp._onOvDismissAlert,
+      ovReplyAs: AdminPanelApp._onOvReplyAs,
+      ovOpenInboxOf: AdminPanelApp._onOvOpenInboxOf,
+      ovWriteTo: AdminPanelApp._onOvWriteTo,
+      ovSetEmail: AdminPanelApp._onOvSetEmail,
+      ovNeedFilter: AdminPanelApp._onOvNeedFilter,
+      ovFeedFilter: AdminPanelApp._onOvFeedFilter,
 
       // Messages actions
       quickSend: AdminPanelApp._onQuickSend,
@@ -1017,6 +1023,12 @@ export class AdminPanelApp extends BaseApplication {
   static _onOvBroadcast(event, target) { this.tabs.overview.onBroadcast(event, target); }
   static _onOvClearAlerts(event, target) { this.tabs.overview.onClearAlerts(event, target); }
   static _onOvDismissAlert(event, target) { this.tabs.overview.onDismissAlert(event, target); }
+  static _onOvReplyAs(event, target) { this.tabs.overview.onReplyAs(event, target); }
+  static _onOvOpenInboxOf(event, target) { this.tabs.overview.onOpenInboxOf(event, target); }
+  static _onOvWriteTo(event, target) { this.tabs.overview.onWriteTo(event, target); }
+  static _onOvSetEmail(event, target) { this.tabs.overview.onSetEmail(event, target); }
+  static _onOvNeedFilter(event, target) { this.tabs.overview.onNeedFilter(event, target); }
+  static _onOvFeedFilter(event, target) { this.tabs.overview.onFeedFilter(event, target); }
   // ═══════════════════════════════════════════════════════════
   //  Action Handlers — Messages (delegated to MessagesTab)
   // ═══════════════════════════════════════════════════════════

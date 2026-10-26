@@ -326,6 +326,31 @@ export class Phase6Verification {
       return { passed: true, detail: '4 styles, 6 partials load, tty prompt, 5 shared actions, CRT film helpers' };
     });
 
+    // ─── 6.20: Admin access — an admin account views another account ───
+    await this._check('6.20', 'Admin access — rules, label, service + viewer, partials', async () => {
+      const C = await import('../utils/constants.js');
+      const A = await import('../utils/terminalAdmin.js');
+      const problems = [];
+      if (JSON.stringify(DEFAULTS.TERMINAL_CONFIG.adminAccess) !== JSON.stringify(A.ADMIN_ACCESS_DEFAULTS)) problems.push('DEFAULTS.TERMINAL_CONFIG.adminAccess drifted from terminalAdmin defaults');
+      if (DEFAULTS.TERMINAL_ACCOUNT.privateFromAdmin !== false) problems.push('account default privateFromAdmin is not false');
+      for (const [k, p] of Object.entries(C.TERMINAL_PRESETS || {})) if (!p.adminLabel) problems.push(`preset ${k} has no adminLabel`);
+      const cfg = { accounts: [{ id: 'a', isAdmin: true }, { id: 'b' }, { id: 'c', privateFromAdmin: true }] };
+      if (!A.adminViewVerdict(cfg, cfg.accounts[0], cfg.accounts[1]).ok) problems.push('admin cannot view a normal account');
+      if (A.adminViewVerdict(cfg, cfg.accounts[0], cfg.accounts[2]).ok) problems.push('a private account was viewable');
+      if (A.adminViewVerdict(cfg, cfg.accounts[1], cfg.accounts[0]).ok) problems.push('a non-admin could view');
+      const svc = game.nightcity?.terminalService;
+      for (const m of ['adminViewVerdict', 'adminViewTargets']) if (typeof svc?.[m] !== 'function') problems.push(`TerminalService.${m} missing`);
+      const { TerminalViewerApp } = await import('../ui/Terminal/TerminalViewerApp.js');
+      for (const a of ['terminalAdminView', 'terminalAdminBack', 'terminalAdminPick']) if (!TerminalViewerApp.DEFAULT_OPTIONS?.actions?.[a]) problems.push(`viewer action ${a} missing`);
+      for (const m of ['_boxId', '_boxMessages', '_startAdminView', '_adminReadOnly']) if (typeof TerminalViewerApp.prototype[m] !== 'function') problems.push(`viewer ${m} missing`);
+      for (const k of ['TERMINAL_ADMIN_BAR', 'TERMINAL_ADMIN_LIST']) {
+        if (!TEMPLATES[k]) { problems.push(`TEMPLATES.${k} missing`); continue; }
+        try { await getTemplate(TEMPLATES[k]); } catch { problems.push(`${k} fails to load`); }
+      }
+      if (problems.length) return { passed: false, detail: problems.join('; ') };
+      return { passed: true, detail: 'defaults, 12 theme labels, verdict matrix, service + viewer methods, 3 actions, 2 partials' };
+    });
+
     await this._check('6.13', 'Core services intact (Phase 1-5 regression)', () => {
       const ns = game.nightcity;
       const required = [

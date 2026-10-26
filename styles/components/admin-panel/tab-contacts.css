@@ -1215,3 +1215,21 @@
 }
 
 
+
+/* IDENTITIES (2026-10-26, utils/identities.js) — contacts linked to one character.
+   An alias row sits indented under its main identity; tokens only. */
+.ncm-app .ncm-ct-row.ncm-ct-row--alias {
+  margin-left: 22px !important;
+  border-left: 2px solid color-mix(in srgb, var(--ncm-secondary) 45%, transparent) !important;
+}
+.ncm-app .ncm-ct-badge--alias {
+  color: var(--ncm-secondary) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 7%, transparent) !important;
+  text-transform: none !important;
+}
+.ncm-app .ncm-ct-badge--main {
+  color: var(--ncm-text-secondary) !important;
+  border-color: var(--ncm-border) !important;
+  background: transparent !important;
+}

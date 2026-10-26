@@ -79,7 +79,7 @@
           <div class="ncm-npcinbox-msg {{#if this.unread}}ncm-npcinbox-msg--unread{{/if}}" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}">
             <div class="ncm-npcinbox-msg__main" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}">
               <div class="ncm-npcinbox-msg__topline">
-                <span class="ncm-npcinbox-msg__sender">{{this.senderName}}</span>
+                <span class="ncm-npcinbox-msg__sender">{{this.senderName}}{{#if this.senderAlias}} <span class="ncm-msg-alias"><i class="fas fa-masks-theater"></i> as {{this.senderAlias.name}}</span>{{/if}}{{#if this.sentVia}} <span class="ncm-msg-via{{#if this.sentVia.impersonated}} is-imp{{/if}}" data-tooltip="{{#if this.sentVia.impersonated}}Sent AS {{this.senderName}} from {{this.sentVia.machine}} — really typed by {{this.sentVia.typist}}{{else}}Sent from {{this.sentVia.machine}} by its owner{{/if}}"><i class="fas {{#if this.sentVia.impersonated}}fa-user-secret{{else}}fa-desktop{{/if}}"></i> via {{this.sentVia.machine}}{{#if this.sentVia.impersonated}} · typed by {{this.sentVia.typist}}{{/if}}</span>{{/if}}{{#if this.toAlias}} <span class="ncm-msg-alias"><i class="fas fa-masks-theater"></i> to {{this.toAlias.name}} · alias of {{this.toAlias.of}}</span>{{/if}}</span>
                 <span class="ncm-npcinbox-msg__subject">{{this.subject}}</span>
               </div>
               <div class="ncm-npcinbox-msg__preview">{{this.bodyPreview}}</div>
@@ -275,9 +275,9 @@
         <div class="ncm-msg-feed-row__dir ncm-msg-feed-row__dir--{{this.dirClass}}"><i class="fas fa-{{this.dirIcon}}"></i></div>
         <div class="ncm-msg-feed-row__route">
           <div class="ncm-msg-feed-row__names">
-            <span class="ncm-msg-feed-row__from">{{this.fromName}}</span>
+            <span class="ncm-msg-feed-row__from">{{this.fromName}}{{#if this.sentVia}} <span class="ncm-msg-via{{#if this.sentVia.impersonated}} is-imp{{/if}}" data-tooltip="{{#if this.sentVia.impersonated}}Sent AS this person from {{this.sentVia.machine}} — really typed by {{this.sentVia.typist}}{{else}}Sent from {{this.sentVia.machine}} by its owner{{/if}}"><i class="fas {{#if this.sentVia.impersonated}}fa-user-secret{{else}}fa-desktop{{/if}}"></i> via {{this.sentVia.machine}}{{#if this.sentVia.impersonated}} · typed by {{this.sentVia.typist}}{{/if}}</span>{{/if}}{{#if this.fromAlias}} <span class="ncm-msg-alias" data-tooltip="Sent as {{this.fromAlias.name}} — an alias of {{this.fromAlias.of}}"><i class="fas fa-masks-theater"></i> {{this.fromAlias.name}} · alias of {{this.fromAlias.of}}</span>{{/if}}</span>
             <i class="fas fa-arrow-right ncm-msg-feed-row__arrow"></i>
-            {{#if this.isGroupRow}}<span class="ncm-msg-feed-row__to ncm-msg-feed-row__to--group" data-tooltip="One send to several recipients — expand for each"><i class="fas fa-users"></i> {{this.recipientCount}} recipients</span>{{else}}<span class="ncm-msg-feed-row__to">{{this.toName}}</span>{{/if}}
+            {{#if this.isGroupRow}}<span class="ncm-msg-feed-row__to ncm-msg-feed-row__to--group" data-tooltip="One send to several recipients — expand for each"><i class="fas fa-users"></i> {{this.recipientCount}} recipients</span>{{else}}<span class="ncm-msg-feed-row__to">{{this.toName}}{{#if this.toAlias}} <span class="ncm-msg-alias" data-tooltip="Sent to {{this.toAlias.name}} — an alias of {{this.toAlias.of}}"><i class="fas fa-masks-theater"></i> {{this.toAlias.name}} · alias of {{this.toAlias.of}}</span>{{/if}}</span>{{/if}}
           </div>
           <span class="ncm-msg-feed-row__network" style="color: {{this.networkColor}};"><i class="fas {{this.networkIcon}}" style="font-size:7px; margin-right:2px;"></i>{{this.networkLabel}}</span>
         </div>

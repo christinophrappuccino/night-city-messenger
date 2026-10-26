@@ -414,7 +414,7 @@ await ok('viewer, sheet rows, directory menu, launch flow, admin badge, config s
   assert.ok(hbs.includes('{{#if canPlayerEdit}}'));
   assert.ok(hbs.includes('{{else if canPlayerEdit}}'));
   const so = read('scripts/integrations/ShardSheetOverride.js');
-  assert.equal((so.match(/canEditShard\(/g) || []).length, 3, 'directory menu, inventory row, launch flow');
+  assert.equal((so.match(/canEditShard\(/g) || []).length, 4, 'directory menu, inventory row, launch flow, canRename');
   const tab = read('scripts/ui/AdminPanel/tabs/ShardsTab.js');
   assert.ok(tab.includes('resolveShardEditing(config)'));
   assert.ok(tab.includes("isWorldItem: ownerKey === 'world'"));

@@ -563,6 +563,7 @@ export const SHARD_PRESETS = Object.freeze({
 // TERMINAL_ACCOUNT seeds (merged over DEFAULTS.TERMINAL_ACCOUNT on apply).
 export const TERMINAL_PRESETS = Object.freeze({
   'arasaka-workstation': {
+    adminLabel: 'ADMIN OVERRIDE',
     label: 'Arasaka Workstation', icon: 'fas fa-building', loginStyle: 'cards', mailboxStyle: 'tabs', soundSet: 'corp-chime',
     login: {motd: 'ARASAKA NETWORK — ALL ACTIVITY IS MONITORED',welcomeText: 'Welcome back, employee. Productivity is loyalty.'},
     screensaver: {enabled: true,idleSeconds: 180,text: 'ARASAKA',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
@@ -576,6 +577,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'netwatch-unit': {
+    adminLabel: 'NETWATCH AUTHORITY',
     label: 'NetWatch Field Unit', icon: 'fas fa-satellite-dish', loginStyle: 'cards', mailboxStyle: 'tabs', soundSet: 'mil-hardline',
     login: {motd: 'CLASSIFIED SYSTEM — NETWATCH EYES ONLY',welcomeText: 'Clearance verified. Watch the Wall.'},
     screensaver: {enabled: true,idleSeconds: 120,text: 'NETWATCH',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
@@ -586,6 +588,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'root', displayName: 'field-agent', isAdmin: true, security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, authLogic: 'all', bypassSkills: ['Cryptography'], bypassDC: 20 } }],
   },
   'streetkid-bbs': {
+    adminLabel: 'SYSOP',
     label: 'Streetkid BBS', icon: 'fas fa-skull', loginStyle: 'crt', mailboxStyle: 'tty', soundSet: 'street-bbs',
     login: {motd: 'no narcs. no corpos. no exceptions.',welcomeText: 'yo. the board remembers you.'},
     screensaver: {enabled: true,idleSeconds: 150,text: 'AFTERLIFE BBS',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
@@ -599,6 +602,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'retro-dos': {
+    adminLabel: 'SYSOP',
     label: 'Retro-DOS', icon: 'fas fa-terminal', loginStyle: 'crt', mailboxStyle: 'tty', soundSet: 'street-bbs',
     login: {motd: 'C:\\\\> AUTHORIZED USERS ONLY',welcomeText: 'SESSION OK. HAVE A PRODUCTIVE DAY.'},
     screensaver: {enabled: true,idleSeconds: 90,text: 'INSERT CREDCHIP',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
@@ -609,6 +613,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'user', displayName: 'user', isAdmin: false, security: { requiresAuth: true, allowPassword: true } }],
   },
   'ripperdoc': {
+    adminLabel: 'CLINIC ADMIN',
     label: 'Ripperdoc PC', icon: 'fas fa-staff-snake', loginStyle: 'cards', mailboxStyle: 'classic', soundSet: 'med-soft',
     login: {motd: 'PATIENT CONFIDENTIALITY IN EFFECT',welcomeText: 'Scrub in. Charts are current.'},
     screensaver: {enabled: true,idleSeconds: 200,text: 'CLINIC — RING BELL',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
@@ -619,6 +624,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'frontdesk', displayName: 'Front Desk', isAdmin: false, security: { requiresAuth: true, allowKeyItem: true, keyItemName: 'Clinic Keycard' } }],
   },
   'trauma-team': {
+    adminLabel: 'MEDICAL OVERRIDE',
     label: 'Trauma Team Platinum', icon: 'fas fa-truck-medical', loginStyle: 'roster', mailboxStyle: 'classic', soundSet: 'med-soft',
     login: {motd: 'SUBSCRIBER DATA — PLATINUM TIER PROTECTED',welcomeText: 'Dispatch link secure. Fly safe.'},
     screensaver: {enabled: true,idleSeconds: 120,text: 'TRAUMA TEAM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
@@ -632,6 +638,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'militech-checkpoint': {
+    adminLabel: 'COMMAND ACCESS',
     label: 'Militech Checkpoint', icon: 'fas fa-shield-halved', loginStyle: 'keypad', mailboxStyle: 'tabs', soundSet: 'mil-hardline',
     login: {motd: 'LETHAL FORCE AUTHORIZED BEYOND THIS POINT',welcomeText: 'Checkpoint online. Stay frosty.'},
     screensaver: {enabled: true,idleSeconds: 90,text: 'MILITECH',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
@@ -642,6 +649,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'gate07', displayName: 'Gate Console', role: 'CHECKPOINT CONSOLE', security: { requiresAuth: true, allowPassword: true, password: '0451' } }],
   },
   'ncpd-precinct': {
+    adminLabel: 'PRECINCT OVERRIDE',
     label: 'NCPD Precinct', icon: 'fas fa-handcuffs', loginStyle: 'roster', mailboxStyle: 'tabs', soundSet: 'mil-hardline',
     login: {motd: 'ALL ACCESS LOGGED — IAD AUDITS WEEKLY',welcomeText: 'Shift logged. Watch your six out there.'},
     screensaver: {enabled: true,idleSeconds: 150,text: 'NCPD',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
@@ -655,6 +663,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'nomad-rig': {
+    adminLabel: 'RIG BOSS',
     label: 'Nomad Rig-OS', icon: 'fas fa-mountain', loginStyle: 'portraits', mailboxStyle: 'desktop', soundSet: 'street-bbs',
     login: {motd: 'family only. you know the rules.',welcomeText: 'Welcome home. Road is long.'},
     screensaver: {enabled: true,idleSeconds: 240,text: 'ON THE ROAD',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
@@ -668,6 +677,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'bd-lounge': {
+    adminLabel: 'HOUSE ACCESS',
     label: 'Braindance Lounge', icon: 'fas fa-martini-glass', loginStyle: 'lockscreen', mailboxStyle: 'desktop', soundSet: 'ghost-wall',
     login: {motd: 'what happens in the booth stays in the booth',welcomeText: 'Enjoy the ride. Tip your editor.'},
     screensaver: {enabled: true,idleSeconds: 120,text: 'VELVET ROOM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
@@ -678,6 +688,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'boothhost', displayName: 'Booth Host', role: 'LOUNGE HOST', security: { requiresAuth: true, allowPassword: true } }],
   },
   'maelstrom-chopshop': {
+    adminLabel: 'BOSS ACCESS',
     label: 'Maelstrom Chopshop', icon: 'fas fa-skull-crossbones', loginStyle: 'crt', mailboxStyle: 'tty', soundSet: 'street-bbs',
     login: {motd: 'FLESH IS A COSTUME',welcomeText: 'meat verified. get to work.'},
     screensaver: {enabled: true,idleSeconds: 100,text: 'MAELSTROM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
@@ -688,6 +699,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'wrench', displayName: 'Wrench', role: 'CHOP LEAD', security: { requiresAuth: true, allowPassword: true } }],
   },
   'blackwall-relay': {
+    adminLabel: 'ROOT',
     label: 'Blackwall Relay', icon: 'fas fa-infinity', loginStyle: 'crt', mailboxStyle: 'tty', soundSet: 'ghost-wall',
     login: {motd: 'DO NOT ANSWER. DO NOT ANSWER. DO NOT ANSWER.',welcomeText: 'it sees you now.'},
     screensaver: {enabled: true,idleSeconds: 60,text: '██████',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
@@ -1122,6 +1134,8 @@ export const TEMPLATES = Object.freeze({
   TERMINAL_ACCOUNT_CARD: `${T}/terminal/partials/account-card.hbs`,
   TERMINAL_UPLINK: `${T}/terminal/partials/uplink.hbs`,
   TERMINAL_OPERATOR_CHIP: `${T}/terminal/partials/operator-chip.hbs`,
+  TERMINAL_ADMIN_BAR: `${T}/terminal/partials/admin-bar.hbs`,
+  TERMINAL_ADMIN_LIST: `${T}/terminal/partials/admin-view-list.hbs`,
   TERMINAL_CONFIG: `${T}/terminal/terminal-config.hbs`,
   TERMINAL_CONFIG_ACCOUNT: `${T}/terminal/partials/config-account.hbs`,
   TERMINAL_CONFIG_CONTENT: `${T}/terminal/partials/config-content.hbs`,
@@ -1346,7 +1360,8 @@ export const DEFAULTS = Object.freeze({
     masterContactId: '',          // linked MasterContactService contact id (optional)
     actorId: '',                  // linked actor id (optional) — drives portrait + identity
     portrait: '',                 // explicit portrait override (else resolved from contact/actor)
-    isAdmin: false,               // admin sees all accounts (privilege tiers → P2)
+    isAdmin: false,               // admin: passes every folder gate and (config.adminAccess) may VIEW other accounts
+    privateFromAdmin: false,      // an admin can never view this account (it is listed greyed out)
     hidden: false,                // NOT shown on the login card list — reachable only by typing
                                   // its username via "Log in with another account" (secret login)
     // Network visibility — checked against the TERMINAL's own uplink (see
@@ -1417,6 +1432,18 @@ export const DEFAULTS = Object.freeze({
     // follows the world `hackResolution` setting; 'auto' | 'flagged' | 'gm'
     // override it for the odd box (a Blackwall relay the table always runs live).
     hackResolution: 'inherit',
+
+    // ADMIN ACCESS (2026-10-26, tester: "Admin should be able to browse the
+    // accounts… like View As User"). An isAdmin account may open another
+    // account's mail + home files with no credentials. The label players see
+    // ("ADMIN OVERRIDE", "SYSOP"…) is part of the THEME (theme.adminLabel, else
+    // the preset's), so it travels with saved themes. Rules: utils/terminalAdmin.js.
+    adminAccess: { browse: true, seeHidden: true, rights: 'full' },   // rights: 'full' | 'read'
+
+    // SEND AS THE ACCOUNT (2026-10-26, dev: "if I hack into a computer I can log
+    // into so-and-so's account and email people on their contacts"). Off by
+    // default — the GM opts a machine in. `log` = an Activity Log row per send.
+    accountMail: { compose: false, log: true },
 
     // Machine uplink — the TERMINAL's own connection (Layer 1), independent of the
     // player's Agent network. Interfaces = what the machine's hardware can reach

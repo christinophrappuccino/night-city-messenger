@@ -23,8 +23,8 @@
   <header class="ncm-composer__header">
 
     {{!-- Identity cluster — GM: clickable with caret; Player: static --}}
-    <div class="ncm-composer__identity {{#if isGM}}ncm-composer__identity--clickable{{/if}} {{#if anonActive}}ncm-composer__identity--anon{{/if}}"
-         {{#if isGM}}data-action="toggleSendAs"{{/if}}>
+    <div class="ncm-composer__identity {{#if canSwitchFrom}}ncm-composer__identity--clickable{{/if}} {{#if anonActive}}ncm-composer__identity--anon{{/if}}"
+         {{#if canSwitchFrom}}data-action="toggleSendAs"{{/if}}>
       <div class="ncm-composer__avatar {{#if isGMSendAs}}ncm-composer__avatar--gm{{/if}} {{#if anonActive}}ncm-composer__avatar--anon{{/if}}">
         {{#if anonActive}}
           {{{ncm-anon-avatar anonStyle}}}
@@ -40,12 +40,12 @@
             {{anonAliasDisplay}}<span class="ncm-composer__anon-tag">ANON</span>
           {{else}}
             {{fromName}}
-            {{#if isGMSendAs}}<span class="ncm-composer__gm-tag">GM</span>{{/if}}
+            {{#if terminalSend}}<span class="ncm-composer__gm-tag ncm-composer__term-tag" data-tooltip="Sent from {{terminalSend.machine}} as this account">VIA {{terminalSend.machine}}</span>{{else if isGMSendAs}}<span class="ncm-composer__gm-tag">GM</span>{{/if}}
           {{/if}}
         </span>
         <span class="ncm-composer__id-email">{{#if anonActive}}{{anonMaskedEmail}}{{else}}{{fromEmail}}{{/if}}</span>
       </div>
-      {{#if isGM}}<i class="fas fa-caret-down ncm-composer__id-caret"></i>{{/if}}
+      {{#if canSwitchFrom}}<i class="fas fa-caret-down ncm-composer__id-caret"></i>{{/if}}
     </div>
 
     <div class="ncm-composer__header-divider"></div>
@@ -488,10 +488,10 @@
       <button class="ncm-composer__tool" data-action="editorCommand" data-command="link" title="Insert Link"><i class="fas fa-link"></i></button>
       <button class="ncm-composer__tool" data-action="editorCommand" data-command="bulletList" title="List"><i class="fas fa-list-ul"></i></button>
       <div class="ncm-composer__tool-sep"></div>
-      <button class="ncm-composer__tool" data-action="attachShard" title="Attach Data Shard"><i class="fas fa-microchip"></i></button>
+      <button class="ncm-composer__tool" data-action="attachShard" title="Attach {{ncm-term "one"}}"><i class="fas fa-microchip"></i></button>
       <button class="ncm-composer__tool" data-action="attachFile" title="Attach File"><i class="fas fa-paperclip"></i></button>
       <button class="ncm-composer__tool" data-action="attachMedia" title="Embed Audio/Video"><i class="fas fa-photo-film"></i></button>
-      <button class="ncm-composer__tool ncm-composer__tool--eddies" data-action="attachEddies" title="Attach Eddies"><i class="fas fa-coins"></i></button>
+      {{#unless terminalSend.impersonating}}<button class="ncm-composer__tool ncm-composer__tool--eddies" data-action="attachEddies" title="Attach Eddies"><i class="fas fa-coins"></i></button>{{/unless}}
       <div class="ncm-composer__tool-sep"></div>
       <button class="ncm-composer__tool" data-action="insertTimestamp" title="Insert Timestamp"><i class="fas fa-clock"></i></button>
       <button class="ncm-composer__tool ncm-composer__tool--more" data-action="toggleOverflow" title="More tools">⋯</button>

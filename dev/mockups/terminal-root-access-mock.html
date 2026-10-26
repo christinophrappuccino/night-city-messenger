@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Terminal — admin access (view another account)</title>
+<!--
+  Design mock (2026-10-26). Tester (Aegaeon): "Admin user would also have the
+  rights to see the files … almost like an option to View As User — where you
+  see all their stuff, then can back out and choose another account to browse.
+  That's what I would think you'd get as Root access."
+
+  Proposal:
+    · An ADMIN account can BROWSE AS any other account — open its mailbox and its
+      home files without that account's credentials.
+    · A ROOT banner under the HUD while browsing: who you are, whose stuff you
+      are in, Full rights / Read-only, "Browse as…" and "Back to root".
+    · FILES for root lists EVERY account's home next to SHARED.
+    · Acting as root, not as the user: the login record and the activity trail
+      say root; the target's "last login" and unread state do not change.
+    · Per terminal (Configure Terminal → Accounts → Root access): browse on/off
+      (default on), root sees hidden accounts (default on), Full rights / Read-only
+      (default Full). Per account: "Private from admin".
+
+  The viewer frames render the REAL templates/terminal/terminal-viewer.hbs (all
+  four mailbox layouts) through Handlebars against the real cascade; the NEW
+  pieces are injected by this page and carry mock-only classes `mk-root*` styled
+  with --ncm-* tokens only. Serve it: node dev/tools/serve-mockups.cjs
+  ?f=1..9 shows one frame · ?custom=TEXT types a label into frame 9 · ?t=<terminal preset> puts every frame on one theme (each frame has its own by default)
+-->
+<link id="css-foundry" rel="stylesheet" href="">
+<link id="css-fa" rel="stylesheet" href="">
+<link id="css-cpr" rel="stylesheet" href="">
+<script>
+  const isFile = location.protocol === 'file:';
+  const FVTT = 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public';
+  document.getElementById('css-foundry').href = isFile ? `${FVTT}/css/foundry2.css` : '/_vendor/foundry2.css';
+  document.getElementById('css-fa').href = isFile ? `${FVTT}/fonts/fontawesome/css/all.min.css` : '/_vendor/fa/css/all.min.css';
+  document.getElementById('css-cpr').href = isFile ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+<style>
+  html, body { height: auto; min-height: 100%; }
+  body { margin: 0; background: #0b0b10; padding: 24px 0 60px; }
+  .mk-wrap { width: 920px; margin: 0 auto; }
+  .mk-cap { font: 600 14px/1.5 var(--ncm-font-display, sans-serif); color: #c8c8d6; margin: 0 0 4px; }
+  .mk-cap small { display: block; font-weight: 400; font-size: 12.5px; color: #8a8aa0; margin-top: 2px; }
+  .mk-num { display: inline-block; min-width: 22px; padding: 0 6px; margin-right: 6px; border: 1px solid #555; border-radius: 2px; text-align: center; color: #fff; }
+  section[data-f] { margin-bottom: 44px; }
+  /* Frames: pinned into flow (the .ncm-app fixed-position trap). */
+  .application.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+  /* The inner viewer root is .ncm-app too (window-chrome.css: position fixed) — pin it into flow. */
+  .application .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-term.application { width: 900px; height: 600px; }
+  .application > .window-content { flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
+  .mk-term .ncm-terminal-viewer { width: 898px !important; height: 570px !important; min-width: 0; min-height: 0; flex: 0 0 570px !important; }
+  .mk-cfg.application { width: 700px; }
+  #err { color: #f65261; font: 12px monospace; white-space: pre-wrap; }
+
+  /* ═══════════════ NEW · the ROOT banner (one element, every layout) ═══════════════ */
+  .mk-rootbar {
+    flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+    padding: 6px 12px 6px 14px; position: relative;
+    background: color-mix(in srgb, var(--ncm-accent) 10%, var(--ncm-bg-deep));
+    border-left: 4px solid var(--ncm-accent);
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-accent) 45%, transparent);
+    font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary);
+  }
+  .mk-rootbar__tag { white-space: nowrap; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 7px; border-radius: 2px; background: var(--ncm-accent); color: var(--ncm-bg-deep); font-weight: 700; letter-spacing: 1.5px; }
+  .mk-rootbar__who { display: inline-flex; align-items: center; gap: 0; white-space: nowrap; color: var(--ncm-text-primary); }
+  .mk-rootbar__who .ncm-term__avatar { margin: 0 6px; }
+  .mk-rootbar__who .ncm-term__avatar { width: 20px; height: 20px; font-size: calc(9px * var(--ncm-text-scale, 1)); }
+  .mk-rootbar__who b { font-weight: 700; }
+  .mk-rootbar__rights { white-space: nowrap; padding: 1px 6px; border-radius: 2px; border: 1px solid color-mix(in srgb, var(--ncm-accent) 50%, transparent); color: var(--ncm-accent); letter-spacing: 1px; font-size: calc(10px * var(--ncm-text-scale, 1)); }
+  .mk-rootbar__rights.is-ro { border-color: color-mix(in srgb, var(--ncm-text-secondary) 50%, transparent); color: var(--ncm-text-secondary); }
+  .mk-rootbar__sp { flex: 1; }
+  .mk-rootbar .mk-rootbar__btn { appearance: none !important; flex: 0 0 auto !important; display: inline-flex; align-items: center; gap: 6px; height: auto; min-height: 0; margin: 0; width: auto; padding: 3px 9px; border-radius: 2px; cursor: pointer;
+    font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); letter-spacing: .5px; text-transform: uppercase; line-height: 1.4;
+    background: transparent !important; color: var(--ncm-text-primary) !important; border: 1px solid color-mix(in srgb, var(--ncm-text-primary) 25%, transparent) !important; box-shadow: none !important; }
+  .mk-rootbar .mk-rootbar__btn--back { background: var(--ncm-accent) !important; color: var(--ncm-bg-deep) !important; border-color: var(--ncm-accent) !important; font-weight: 700; }
+  .mk-rootbar .mk-rootbar__btn i { margin: 0 !important; }
+  /* TTY: the banner is a line of the session, not a strip */
+  .mk-rootbar--tty { background: none; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-accent) 40%, transparent); }
+
+  /* ═══════════════ NEW · Browse-as section in the account dropdown ═══════════════ */
+  .mk-root-hd { color: var(--ncm-accent) !important; display: flex; align-items: center; gap: 6px; white-space: nowrap; border-top: 1px solid rgba(255,255,255,.06); }
+  .mk-root-it .ncm-term__acdrop-nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .mk-root-it .ncm-term__acdrop-lk { white-space: nowrap; flex: 0 0 auto; }
+  .mk-root-it .ncm-term__acdrop-lk { color: var(--ncm-accent); }
+  .mk-root-it.is-private { opacity: .55; cursor: not-allowed; }
+  .mk-root-it.is-private .ncm-term__acdrop-lk { color: var(--ncm-text-muted); }
+  .mk-root-sub { display: block; margin-top: 2px; font-weight: 400; font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .mk-root-sub .mk-root-chip { margin: 0 4px 0 0; }
+  .mk-root-chip { margin-left: 6px; padding: 0 4px; border-radius: 1px; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: 1px; border: 1px solid color-mix(in srgb, var(--ncm-warning, #f7c948) 55%, transparent); color: var(--ncm-warning, #f7c948); vertical-align: middle; }
+
+  /* NEW · a read-only action rail: the changing actions show dead with the reason */
+  .mk-ro-dead { opacity: .45; cursor: not-allowed; }
+
+  /* ═══════════════ NEW · config section (uses the real ncm-cfg-* vocabulary) ═══════════════ */
+  .mk-cfg .window-content { overflow: visible; }
+  .mk-cfg-pad { padding: 12px 14px; }
+  .mk-cfg-sel { height: 26px; }
+  .mk-cfg .ncm-cfg-row { justify-content: flex-start; }
+  .mk-cfg .ncm-cfg-toggle-label { margin-left: 0 !important; text-transform: none; font-family: var(--ncm-font-body); font-size: 13px; color: var(--ncm-text-primary); display: inline-flex; align-items: center; gap: 7px; }
+  .mk-cfg .ncm-cfg-sub { margin: -2px 0 10px 24px; font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-secondary); }
+  .mk-cfg-acct { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; margin-top: 6px; }
+  .mk-cfg-acct__nm { flex: 1; font-family: var(--ncm-font-display); font-weight: 700; color: var(--ncm-text-primary); }
+  .mk-cfg-acct__nm small { display: block; font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-secondary); font-size: 11px; }
+  .mk-cfg-badge { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 5px; border-radius: 1px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); color: var(--ncm-text-secondary); }
+  .mk-cfg-badge--priv { border-color: color-mix(in srgb, var(--ncm-danger) 55%, transparent); color: var(--ncm-danger); }
+  .mk-cfg-badge--admin { border-color: color-mix(in srgb, var(--ncm-secondary) 55%, transparent); color: var(--ncm-secondary); }
+  .mk-cfg-verdict { margin-top: 10px; padding: 8px 10px; border-left: 2px solid var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); font-family: var(--ncm-font-body); font-size: 12.5px; color: var(--ncm-text-secondary); }
+  .mk-cfg-verdict b { color: var(--ncm-text-primary); }
+</style>
+<style>
+  /* round 2: per-theme label + gallery */
+  .mk-gal { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
+  .mk-gal .ncm-terminal-viewer { position: relative !important; inset: auto !important; width: 100% !important; height: auto !important; min-height: 0 !important; flex: none !important; border-radius: 4px; overflow: hidden; background: var(--ncm-bg-deep); }
+  .mk-gal__nm { font: 600 11px/1 var(--ncm-font-display, sans-serif); color: #8a8aa0; margin: 0 0 3px 2px; letter-spacing: .5px; }
+  .mk-cfg-lbl { width: 220px; height: 26px; }
+  .mk-cfg-named { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .mk-cfg-named__k { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ncm-text-secondary); }
+  .mk-cfg-named__tag { display: inline-flex; font-family: var(--ncm-font-mono); font-size: 11px; }
+  .mk-cfg-named__link { margin-left: auto; font-family: var(--ncm-font-display); font-size: 12px; color: var(--ncm-secondary); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .mk-cfg-named__link:hover { text-decoration: underline; }
+  /* frame 9: the Theme-tab field */
+  .mk-tt .mk-tt-prev.ncm-terminal-viewer { position: relative !important; width: auto !important; height: auto !important; min-height: 0 !important; flex: none !important; margin: 8px 16px 0; border-radius: 3px; overflow: hidden; }
+  .mk-tt .ncm-tc__srow .ncm-tc__name-input { flex: 1; }
+  .mk-tt-from { font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-secondary); margin: 2px 0 0; }
+  .mk-cfg .ncm-cfg-row .mk-cfg-note { font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-secondary); }
+</style>
+</head>
+<body>
+<div class="mk-wrap">
+  <div id="err"></div>
+
+  <section data-f="1">
+    <p class="mk-cap"><span class="mk-num">1</span>Classic layout · Arasaka · <b>ADMIN OVERRIDE</b> (the default label)
+      <small>Logged in as <b>sysadmin</b> (an Admin account), viewing <b>mreyes</b>. The banner says who is being viewed, the rights, and the two ways out. The HUD above is unchanged.</small></p>
+    <div class="application ncm-app ncm-terminal-app mk-term" data-out="1" data-preset="arasaka-workstation"><header class="window-header"><h1 class="window-title">sysadmin @ ARASAKA NET</h1></header><section class="window-content"></section></div>
+  </section>
+
+  <section data-f="2">
+    <p class="mk-cap"><span class="mk-num">2</span>The account dropdown, as an Admin account
+      <small>"Switch account" still logs in properly (password, skill, lockout). The new <b>VIEW AS ADMIN</b> list opens an account with no credentials. A hidden account shows (configurable) with a HIDDEN tag; a <b>private from admin</b> account is listed greyed out — you can see it exists, not get in.</small></p>
+    <div class="application ncm-app ncm-terminal-app mk-term" data-out="2" data-preset="arasaka-workstation"><header class="window-header"><h1 class="window-title">sysadmin @ ARASAKA NET</h1></header><section class="window-content"></section></div>
+  </section>
+
+  <section data-f="3">
+    <p class="mk-cap"><span class="mk-num">3</span>FILES · NetWatch · <b>NETWATCH AUTHORITY</b>
+      <small>Every account's home sits next to SHARED (real <code>tree.hbs</code>), tagged YOU / ADMIN VIEW / HIDDEN. The private account's home is a locked row with its reason. Folder gates never stop an admin.</small></p>
+    <div class="application ncm-app ncm-terminal-app mk-term" data-out="3" data-preset="netwatch-unit"><header class="window-header"><h1 class="window-title">sysadmin @ NETWATCH</h1></header><section class="window-content"></section></div>
+  </section>
+
+  <section data-f="4">
+    <p class="mk-cap"><span class="mk-num">4</span>Tabs layout · Militech · <b>COMMAND ACCESS</b> · Read-only
+      <small>Read-only reuses the action rail's existing blocked state: Wipe is greyed out with "ADMIN: READ-ONLY"; reading, downloading, burning and forwarding still work.</small></p>
+    <div class="application ncm-app ncm-terminal-app mk-term" data-out="4" data-preset="militech-checkpoint"><header class="window-header"><h1 class="window-title">sysadmin @ MILITECH</h1></header><section class="window-content"></section></div>
+  </section>
+
+  <section data-f="5">
+    <p class="mk-cap"><span class="mk-num">5</span>TTY layout · Retro-DOS · <b>SYSOP</b> — <code>su mreyes</code> / <code>exit</code>
+      <small>The command line keeps the old-school commands; <b>?</b> explains them in plain words. The banner is a line of the session instead of a strip.</small></p>
+    <div class="application ncm-app ncm-terminal-app mk-term" data-out="5" data-preset="retro-dos"><header class="window-header"><h1 class="window-title">sysop @ DOS-BOX</h1></header><section class="window-content"></section></div>
+  </section>
+
+  <section data-f="6">
+    <p class="mk-cap"><span class="mk-num">6</span>Desktop layout · Braindance Lounge · <b>HOUSE ACCESS</b>
+      <small>Same banner under the HUD; the window and the taskbar say whose account is open.</small></p>
+    <div class="application ncm-app ncm-terminal-app mk-term" data-out="6" data-preset="bd-lounge"><header class="window-header"><h1 class="window-title">house @ LOUNGE</h1></header><section class="window-content"></section></div>
+  </section>
+
+  <section data-f="7">
+    <p class="mk-cap"><span class="mk-num">7</span>Every theme's label, on its own colours
+      <small>What each built-in theme suggests. The GM can change it per terminal (frame 8).</small></p>
+    <div class="mk-gal" id="gal"></div>
+  </section>
+
+  <section data-f="9">
+    <p class="mk-cap"><span class="mk-num">9</span>Configure Terminal → <b>Theme</b> tab — where the label is edited
+      <small>Under the preset cards, with the theme's other identity pieces. Click a theme card: it fills the label. Type your own: it overrides. <b>Use the theme's</b> puts the suggestion back. Saving the theme saves it, so it travels with saved themes, the preset library and theme export. The strip previews the banner on this terminal's colours. (This frame is clickable.)</small></p>
+    <div class="application ncm-app ncm-item-inbox-config ncm-term-config mk-cfg mk-tt" data-ncm-admin-theme="clean-dark" data-ncm-scanlines="false" data-ncm-neon="false">
+      <header class="window-header"><h1 class="window-title">Configure Terminal: WS-7F-12 — Theme</h1></header>
+      <section class="window-content"><div class="ncm-cfg"><div class="ncm-cfg-content" style="padding:12px 0"><div class="ncm-cfg-panel ncm-cfg-panel--active">
+        <div class="ncm-tc__slabel">Built-in Presets</div>
+        <div class="ncm-tc__preset-grid" id="mkPcards"></div>
+        <div class="ncm-tc__divider"></div>
+        <div class="ncm-tc__slabel">Admin access label — what players see when an admin views another account</div>
+        <div class="ncm-tc__font-section">
+          <div class="ncm-tc__srow">
+            <span class="ncm-tc__srow-label">Label</span>
+            <input type="text" class="ncm-tc__name-input" id="mkLabelIn" value="ADMIN OVERRIDE" maxlength="24">
+            <button type="button" class="ncm-tc__paction" style="flex:0 0 auto" id="mkLabelReset"><i class="fas fa-rotate-left"></i> Use the theme's</button>
+          </div>
+          <div class="mk-tt-from" id="mkLabelFrom"></div>
+        </div>
+        <div class="ncm-app ncm-terminal-viewer mk-tt-prev" id="mkLabelPrev" data-terminal-preset="arasaka-workstation"></div>
+        <div class="ncm-tc__divider"></div>
+        <div class="ncm-tc__slabel">Saved Themes — palette, fonts, CRT film, mailbox layout &amp; admin label</div>
+        <div class="ncm-tc__cempty">(the existing saved-themes list — its heading gains "&amp; admin label")</div>
+      </div></div></div></section>
+    </div>
+  </section>
+
+  <section data-f="8">
+    <p class="mk-cap"><span class="mk-num">8</span>Configure Terminal → Accounts → <b>Admin access</b> (GM)
+      <small>The label is <b>named</b> here — read-only, with a link to the Theme tab where it is edited (frame 9). Below it: the three settings with their defaults, a "right now" line, and the per-account <b>Private from admin</b> checkbox.</small></p>
+    <div class="application ncm-app ncm-item-inbox-config ncm-term-config mk-cfg" data-ncm-admin-theme="clean-dark" data-ncm-scanlines="false" data-ncm-neon="false">
+      <header class="window-header"><h1 class="window-title">Configure Terminal: WS-7F-12</h1></header>
+      <section class="window-content"><div class="ncm-cfg"><div class="ncm-cfg-content mk-cfg-pad"><div class="ncm-cfg-panel ncm-cfg-panel--active">
+        <div class="ncm-cfg-section">
+          <div class="ncm-cfg-section-header"><i class="fas fa-user-shield ncm-cfg-section-icon"></i><div class="ncm-cfg-section-title">Admin access</div></div>
+          <div class="ncm-cfg-hint">What an <b>Admin</b> account can do with the other accounts on this machine.</div>
+          <div class="mk-cfg-named">
+            <span class="mk-cfg-named__k">Players see admin access as</span>
+            <span class="mk-cfg-named__tag" data-mk-paint="arasaka-workstation"><span class="mk-rootbar__tag"><i class="fas fa-user-shield"></i> ADMIN OVERRIDE</span></span>
+            <a class="mk-cfg-named__link" href="?f=9"><i class="fas fa-palette"></i> change it in the Theme tab <i class="fas fa-arrow-right"></i></a>
+          </div>
+          <div class="ncm-cfg-row"><label class="ncm-cfg-toggle-label"><input type="checkbox" checked> Admin accounts can view other accounts</label></div>
+          <div class="ncm-cfg-sub">They open another account's mail and home files without its password. Off = Admin only passes folder locks.</div>
+          <div class="ncm-cfg-row"><label class="ncm-cfg-toggle-label"><input type="checkbox" checked> Admin sees hidden accounts</label></div>
+          <div class="ncm-cfg-sub">Hidden accounts appear in the View-as list — getting into an admin account becomes a way to find the secret logins.</div>
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">While viewing</span>
+            <select class="ncm-cfg-input mk-cfg-sel"><option selected>Full rights — read, copy out, wipe, move</option><option>Read-only — read and copy out only</option></select></div>
+          <div class="mk-cfg-verdict">Right now: <b>sysadmin</b> can view <b>2</b> accounts with full rights, shown to players as <b>ADMIN OVERRIDE</b>. <b>ceo_private</b> is private from admin.</div>
+        </div>
+        <div class="ncm-cfg-section" style="margin-top:14px">
+          <div class="ncm-cfg-section-header"><i class="fas fa-users ncm-cfg-section-icon"></i><div class="ncm-cfg-section-title">Accounts</div></div>
+          <div class="mk-cfg-acct"><span class="ncm-term__avatar" style="width:28px;height:28px">SA</span><span class="mk-cfg-acct__nm">Sysadmin<small>sysadmin</small></span><span class="mk-cfg-badge mk-cfg-badge--admin">admin</span></div>
+          <div class="mk-cfg-acct"><span class="ncm-term__avatar" style="width:28px;height:28px">MR</span><span class="mk-cfg-acct__nm">Marisol Reyes<small>mreyes</small></span></div>
+          <div class="mk-cfg-acct"><span class="ncm-term__avatar" style="width:28px;height:28px">JC</span><span class="mk-cfg-acct__nm">Jae Chen<small>jchen</small></span><span class="mk-cfg-badge">hidden</span></div>
+          <div class="mk-cfg-acct"><span class="ncm-term__avatar" style="width:28px;height:28px">HS</span><span class="mk-cfg-acct__nm">H. Saburo<small>ceo_private</small></span><span class="mk-cfg-badge mk-cfg-badge--priv">private from admin</span></div>
+          <div class="ncm-cfg-hint" style="margin-top:12px">In the account editor, next to Admin / Hidden / Network-gated:</div>
+          <div class="ncm-cfg-row">
+            <label class="ncm-cfg-toggle-label"><input type="checkbox"> Admin</label>
+            <label class="ncm-cfg-toggle-label" style="margin-left:16px"><input type="checkbox"> Hidden (secret login only)</label>
+            <label class="ncm-cfg-toggle-label" style="margin-left:16px"><input type="checkbox" checked> Private from admin</label>
+          </div>
+        </div>
+      </div></div></div></section>
+    </div>
+  </section>
+</div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const only = q.get('f');
+if (only) document.querySelectorAll('section[data-f]').forEach(s => { if (s.dataset.f !== only) s.remove(); });
+const FORCE = q.get('t');                       // ?t= puts every frame on one theme
+const H = Handlebars;
+for (const h of ['eq','neq','gt','lt','gte','lte','and','or','not']) H.registerHelper(h, function (...a) { const [x, y] = a; switch (h) { case 'eq': return String(x) === String(y); case 'neq': return String(x) !== String(y); case 'gt': return x > y; case 'lt': return x < y; case 'gte': return x >= y; case 'lte': return x <= y; case 'and': return a.slice(0, -1).every(Boolean); case 'or': return a.slice(0, -1).some(Boolean); case 'not': return !x; } });
+H.registerHelper('add', (a, b) => Number(a) + Number(b));
+H.registerHelper('ncm-net-icon', () => new H.SafeString('<i class="fas fa-network-wired"></i>'));
+H.registerHelper('ncm-term', (f) => ({ short: 'Shard', shortMany: 'Shards', one: 'Data Shard' }[typeof f === 'string' ? f : 'one']));
+H.registerHelper('helperMissing', () => '');
+async function loadWithPartials(path) {
+  const src = await (await fetch(path)).text();
+  const refs = [...src.matchAll(/\{\{>\s*"?([^\s}"]+)"?/g)].map(m => m[1]).filter(n => n.includes('/'));
+  for (const name of refs) {
+    if (name in H.partials) continue;
+    H.registerPartial(name, '');
+    const local = '../../' + name.replace(/^modules\/night-city-messenger\//, '');
+    try { H.registerPartial(name, await loadWithPartials(local)); } catch (e) { console.warn('partial failed', name, e); }
+  }
+  return src;
+}
+
+// ── the per-theme label (proposal: TERMINAL_PRESETS[k].adminLabel, editable per terminal) ──
+const ADMIN_LABEL = {
+  'arasaka-workstation': 'ADMIN OVERRIDE', 'netwatch-unit': 'NETWATCH AUTHORITY', 'streetkid-bbs': 'SYSOP', 'retro-dos': 'SYSOP',
+  'ripperdoc': 'CLINIC ADMIN', 'trauma-team': 'MEDICAL OVERRIDE', 'militech-checkpoint': 'COMMAND ACCESS', 'ncpd-precinct': 'PRECINCT OVERRIDE',
+  'nomad-rig': 'RIG BOSS', 'bd-lounge': 'HOUSE ACCESS', 'maelstrom-chopshop': 'BOSS ACCESS', 'blackwall-relay': 'ROOT',
+};
+
+// ── apply a preset's REAL palette + fonts (constants.js has no imports, so it loads in a browser) ──
+const C = await import('../../scripts/utils/constants.js');
+const fontsLoaded = new Set();
+function presetVars(key) {
+  const th = C.TERMINAL_PRESETS[key]?.theme || {};
+  const out = {};
+  for (const [k, css] of Object.entries(C.COLOR_VAR_MAP)) if (th[k]) out[css] = th[k];
+  const font = (fk) => (C.FONT_OPTIONS || []).find((f) => f.key === fk);
+  for (const [slot, css] of [['fontDisplay', '--ncm-font-display'], ['fontMono', '--ncm-font-mono'], ['fontTitle', '--ncm-font-title']]) {
+    const f = font(th[slot]);
+    if (!f) continue;
+    out[css] = f.family;
+    if (slot === 'fontDisplay') out['--ncm-font-body'] = f.family;
+    if (f.google && !fontsLoaded.has(f.google)) {
+      fontsLoaded.add(f.google);
+      const l = document.createElement('link'); l.rel = 'stylesheet';
+      l.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f.google).replace(/%20/g, '+')}&display=swap`;
+      document.head.appendChild(l);
+    }
+  }
+  return out;
+}
+function paint(el, key) { for (const [k, v] of Object.entries(presetVars(key))) el.style.setProperty(k, v); }
+
+// ── sample data: sysadmin (Admin) is viewing mreyes ──
+const SH = '__shared__';
+const row = (id, filename, typeLabel, typeIcon, accent, fileSize, modified, fileOwner, extra = {}) => ({ messageId: id, isFile: true, filename, typeLabel, typeIcon, accent, fileSize, modified, fileOwner, isStream: false, isNew: false, encrypted: false, isSelected: false, subject: filename, from: fileOwner, priority: 'normal', time: modified.slice(0, 10), preview: '', ...extra });
+const dir = (scope, path, name, depth, count, size, locked = false, lockLabel = '', active = false) => ({ scope, path, name, depth, count, size, locked, gated: locked, lockLabel, active });
+const messages = [
+  { messageId: 'm1', isFile: false, from: 'h.saburo@arasaka.nc', subject: 'Re: the Watson account — eyes only', priority: 'critical', encrypted: false, isSelected: true, time: '2046-03-12', preview: 'Move it before the audit. Nobody on 7F needs to know where the money went.', isNew: false, accent: '' },
+  { messageId: 'm2', isFile: false, from: 'security@arasaka.nc', subject: 'Badge 7F-0412 flagged', priority: 'normal', encrypted: false, isSelected: false, time: '2046-03-10', preview: 'After-hours access logged twice this week…', isNew: true, accent: '' },
+  { messageId: 'm3', isFile: false, from: 'jchen', subject: 'lunch? (delete this)', priority: 'normal', encrypted: false, isSelected: false, time: '2046-03-09', preview: 'same place. bring the thing.', isNew: false, accent: '' },
+];
+const homes = (activeScope) => [
+  { scope: 'sa', label: 'home', subLabel: 'sysadmin', icon: 'fas fa-house', tag: 'YOU', isActiveRoot: false, count: 2, dirs: [], files: [] },
+  { scope: 'mreyes', label: 'home', subLabel: 'mreyes', icon: 'fas fa-house-user', tag: 'ADMIN VIEW', isActiveRoot: activeScope === 'mreyes', count: 4,
+    dirs: [dir('mreyes', 'drafts', 'drafts', 1, 2, '11 KB', false, '', true)],
+    files: [row('f6', 'watson_transfer.xls', 'SPREADSHEET', 'fas fa-table', 'green', '31 KB', '2046-03-08 10:00', 'mreyes', { isNew: true }), row('f9', 'resignation_DRAFT.doc', 'DOCUMENT', 'fas fa-file-lines', 'cyan', '6 KB', '2046-03-11 09:00', 'mreyes')] },
+  { scope: 'jchen', label: 'home', subLabel: 'jchen', icon: 'fas fa-house-user', tag: 'HIDDEN', isActiveRoot: false, count: 3, dirs: [dir('jchen', 'stash', 'stash', 1, 3, '40 KB')], files: [] },
+  { scope: 'ceo', label: 'home', subLabel: 'ceo_private', icon: 'fas fa-house-lock', tag: null, isActiveRoot: false, count: 0, dirs: [dir('ceo', '', '(private)', 1, 0, '', true, 'private from admin')], files: [] },
+  { scope: SH, label: 'shared', subLabel: 'WS-7F-12', icon: 'fas fa-hard-drive', tag: 'SHARED', isActiveRoot: false, count: 7, dirs: [dir(SH, 'records', 'records', 1, 4, '71 KB'), dir(SH, 'secure', 'secure', 1, 1, '2 KB')], files: [] },
+];
+const listingFiles = [
+  row('f6', 'watson_transfer.xls', 'SPREADSHEET', 'fas fa-table', 'green', '31 KB', '2046-03-08 10:00', 'mreyes', { isNew: true }),
+  row('f9', 'resignation_DRAFT.doc', 'DOCUMENT', 'fas fa-file-lines', 'cyan', '6 KB', '2046-03-11 09:00', 'mreyes'),
+  row('f7', 'badge_log_export.log', 'SYSLOG', 'fas fa-terminal', 'amber', '3 KB', '2046-03-10 23:48', 'mreyes'),
+];
+const listing = { scope: 'mreyes', path: '', isRoot: true, isShared: false, machine: 'WS-7F-12', icon: 'fas fa-house-user',
+  crumb: [{ scope: 'mreyes', path: '', name: 'home/mreyes', last: true }], locked: false, lockLabel: '', gated: false, gateLabel: '', parent: null,
+  stats: { files: 3, dirs: 1, size: '40 KB', modified: '2046-03-11' }, subdirs: [dir('mreyes', 'drafts', 'drafts', 1, 2, '11 KB')], files: listingFiles, empty: false };
+const selected = { messageId: 'm1', isFile: false, subject: 'Re: the Watson account — eyes only', classification: 'CONFIDENTIAL',
+  sender: { name: 'H. Saburo', email: 'h.saburo@arasaka.nc', initials: 'HS', portrait: null }, isContact: false, canAddContact: true, canReply: false, isTypedContent: false,
+  bodyHtml: '<p>Move it before the audit. Nobody on 7F needs to know where the money went.</p><p>If Chen asks, it was a vendor refund. — S.</p>', moveOptions: [] };
+const EXFIL = [{ action: 'agent', label: 'To my Agent', icon: 'fas fa-download' }, { action: 'shard', label: 'Burn to Shard', icon: 'fas fa-sd-card' }, { action: 'forward', label: 'Forward', icon: 'fas fa-share' }, { action: 'wipe', label: 'Wipe Original', icon: 'fas fa-eraser' }];
+
+const base = (preset, over = {}) => ({
+  state: 'mailbox', preset, formFactor: 'desktop', isGM: false,
+  hud: { isAdmin: true, trace: null, operator: 'Rache', canSwitchOperator: true, tools: { open: false, canOperate: true, items: [], active: [], activeCount: 0, activeMine: false } },
+  uplink: { name: 'CORP-NET', signal: 75, sigLabel: 'good', offline: false, wired: false, open: false, interfaces: [], theme: {} },
+  account: { displayName: 'Marisol Reyes', username: 'mreyes', initials: 'MR', portrait: null },
+  switchAccounts: [
+    { id: 'sa', displayName: 'Sysadmin (you)', initials: 'SA', portrait: null, isCurrent: true, isOpen: true, statusLabel: 'logged in' },
+    { id: 'mreyes', displayName: 'Marisol Reyes', initials: 'MR', portrait: null, isCurrent: false, isOpen: false, statusLabel: '<i class="fas fa-lock"></i> locked' },
+  ],
+  switcherOpen: false, listLabel: 'MREYES · INBOX · 3 MESSAGES', emptyLabel: 'empty', syncHint: null, screensaver: null, terminalName: 'WS-7F-12', presetIcon: 'fas fa-building',
+  folders: [{ key: 'inbox', label: 'Inbox', icon: 'fas fa-inbox', count: 3, unread: 1, active: true }, { key: 'sent', label: 'Sent', icon: 'fas fa-paper-plane', count: 5, unread: 0, active: false }, { key: 'trash', label: 'Trash', icon: 'fas fa-trash-can', count: 1, unread: 0, active: false }],
+  mailboxStyle: 'classic', msTabs: false, msTty: false, msDesktop: false,
+  ttyPrompt: 'sysop@DOS-BOX:/home/mreyes#', deskClock: '2046-03-13 · 02:14', deskWindow: { title: 'mreyes — Inbox', icon: 'fas fa-inbox' },
+  sideCollapsed: false, pagination: null, messages, isFilesView: false, view: { mail: 9, files: 14 },
+  fs: { roots: homes(''), listing, listFiles: listingFiles, showListing: false, usage: { label: 'WS-7F-12 · 21 files · 260 KB', pct: 26 } },
+  fsBack: false, selectedMessage: selected, exfilActions: EXFIL, ...over,
+});
+
+const bannerHtml = (label, { ro = false, tty = false } = {}) => tty
+  ? `<div class="mk-rootbar mk-rootbar--tty"><span class="mk-rootbar__tag"><i class="fas fa-user-shield"></i> ${label}</span>
+      <span>viewing <b style="color:var(--ncm-text-primary)">mreyes</b> · ${ro ? 'read-only' : 'full rights'} · <b>exit</b> to return · <b>su &lt;name&gt;</b> to view another account</span></div>`
+  : `<div class="mk-rootbar"><span class="mk-rootbar__tag"><i class="fas fa-user-shield"></i> ${label}</span>
+      <span class="mk-rootbar__who">viewing <span class="ncm-term__avatar">MR</span><b>mreyes</b>'s mailbox &amp; files</span>
+      <span class="mk-rootbar__rights${ro ? ' is-ro' : ''}">${ro ? 'READ-ONLY' : 'FULL RIGHTS'}</span>
+      <span class="mk-rootbar__sp"></span>
+      <button type="button" class="mk-rootbar__btn"><i class="fas fa-users-viewfinder"></i> View another…</button>
+      <button type="button" class="mk-rootbar__btn mk-rootbar__btn--back"><i class="fas fa-arrow-left"></i> Back to my account</button></div>`;
+
+const viewAsHtml = `
+  <div class="ncm-term__acdrop-hd mk-root-hd"><i class="fas fa-user-shield"></i> VIEW AS ADMIN</div>
+  <div class="ncm-term__acdrop-it mk-root-it"><span class="ncm-term__avatar">MR</span><span class="ncm-term__acdrop-nm">Marisol Reyes</span><span class="ncm-term__acdrop-lk"><i class="fas fa-eye"></i> view</span></div>
+  <div class="ncm-term__acdrop-it mk-root-it"><span class="ncm-term__avatar">JC</span><span class="ncm-term__acdrop-nm">Jae Chen<small class="mk-root-sub"><span class="mk-root-chip">HIDDEN</span></small></span><span class="ncm-term__acdrop-lk"><i class="fas fa-eye"></i> view</span></div>
+  <div class="ncm-term__acdrop-it mk-root-it is-private" data-tooltip="Private from admin"><span class="ncm-term__avatar">HS</span><span class="ncm-term__acdrop-nm">ceo_private</span><span class="ncm-term__acdrop-lk"><i class="fas fa-lock"></i> private</span></div>`;
+
+try {
+  const src = await loadWithPartials('../../templates/terminal/terminal-viewer.hbs');
+  const tpl = H.compile(src);
+  const render = (n, over, after, opts = {}) => {
+    const win = document.querySelector(`[data-out="${n}"]`);
+    if (!win) return;
+    const preset = FORCE || win.dataset.preset;
+    const label = ADMIN_LABEL[preset] || 'ADMIN OVERRIDE';
+    win.querySelector('.window-content').innerHTML = tpl(base(preset, over));
+    paint(win, preset);
+    const viewer = win.querySelector('.ncm-terminal-viewer'); if (viewer) paint(viewer, preset);
+    win.querySelector('.ncm-term__hud')?.insertAdjacentHTML('afterend', bannerHtml(label, opts));
+    after?.(win, label);
+  };
+  render(1, {});
+  render(2, { account: { displayName: 'Sysadmin', username: 'sysadmin', initials: 'SA', portrait: null }, switcherOpen: true, listLabel: 'SYSADMIN · INBOX · 2 MESSAGES', selectedMessage: null,
+    messages: [{ messageId: 'r1', isFile: false, from: 'SEC-DAEMON', subject: 'Nightly integrity check passed', priority: 'low', time: '2046-03-13', preview: '', isSelected: false, isNew: false }, { messageId: 'r2', isFile: false, from: 'facilities', subject: 'Firmware window 02:00', priority: 'normal', time: '2046-03-12', preview: '', isSelected: false, isNew: false }] },
+    (w) => { w.querySelector('.mk-rootbar')?.remove(); w.querySelector('.ncm-term__acdrop-ft')?.insertAdjacentHTML('beforebegin', viewAsHtml); });
+  render(3, { isFilesView: true, selectedMessage: null, fs: { roots: homes('mreyes'), listing, listFiles: listingFiles, showListing: true, usage: { label: 'WS-7F-12 · 21 files · 260 KB', pct: 26 } } });
+  render(4, { mailboxStyle: 'tabs', msTabs: true, exfilActions: EXFIL.map((e) => (e.action === 'wipe' ? { ...e, denied: true, denyReason: 'ADMIN: READ-ONLY' } : e)) }, null, { ro: true });
+  render(5, { mailboxStyle: 'tty', msTty: true }, (w) => {
+    w.querySelector('.ncm-tmtty__scroll')?.insertAdjacentHTML('afterbegin', `<div class="ncm-tmtty__ln"><span class="ncm-tmtty__p">sysop@DOS-BOX:~#</span> <span class="ncm-tmtty__cmd">su mreyes</span></div><div class="ncm-tmtty__ln ncm-tmtty__dim">viewing mreyes's account as sysop — no password needed · type <b>exit</b> to return</div>`);
+  }, { tty: true });
+  render(6, { mailboxStyle: 'desktop', msDesktop: true, account: { displayName: 'mreyes', username: 'mreyes (viewing)', initials: 'MR', portrait: null } });
+
+  // gallery: the banner alone, on every theme's own colours
+  const gal = document.getElementById('gal');
+  if (gal) {
+    for (const key of Object.keys(C.TERMINAL_PRESETS)) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `<div class="mk-gal__nm">${C.TERMINAL_PRESETS[key].label || key}</div><div class="ncm-app ncm-terminal-viewer" data-terminal-preset="${key}">${bannerHtml(ADMIN_LABEL[key])}</div>`;
+      paint(wrap.querySelector('.ncm-terminal-viewer'), key);
+      gal.appendChild(wrap);
+    }
+  }
+  document.querySelectorAll('[data-mk-paint]').forEach((el) => paint(el, el.dataset.mkPaint));
+  // frame 9: preset cards fill the label; typing overrides it; the strip previews it
+  const pc = document.getElementById('mkPcards');
+  if (pc) {
+    let cur = 'arasaka-workstation', custom = false;
+    const inp = document.getElementById('mkLabelIn'), prev = document.getElementById('mkLabelPrev'), from = document.getElementById('mkLabelFrom');
+    const paintPrev = () => {
+      prev.dataset.terminalPreset = cur; prev.removeAttribute('style'); paint(prev, cur);
+      const label = (inp.value.trim() || ADMIN_LABEL[cur] || 'ADMIN OVERRIDE').toUpperCase();
+      prev.innerHTML = bannerHtml(label);
+      const theme = C.TERMINAL_PRESETS[cur]?.label || cur;
+      from.textContent = custom ? 'Your own label — the ' + theme + ' theme suggests ' + ADMIN_LABEL[cur] : 'Suggested by the ' + theme + ' theme · type your own to override it (e.g. NIGHT SHIFT KEY)';
+    };
+    for (const [key, p] of Object.entries(C.TERMINAL_PRESETS)) {
+      const th = p.theme || {};
+      const card = document.createElement('div');
+      card.className = 'ncm-tc__pcard' + (key === cur ? ' ncm-tc__pcard--active' : '');
+      card.innerHTML = '<div class="ncm-tc__pcard-swatch"><span style="background:' + th.primary + ';"></span><span style="background:' + th.secondary + ';"></span><span style="background:' + th.accent + ';"></span></div><div class="ncm-tc__pcard-name">' + (p.label || key) + '</div>';
+      card.addEventListener('click', () => {
+        cur = key; custom = false; inp.value = ADMIN_LABEL[key] || 'ADMIN OVERRIDE';
+        pc.querySelectorAll('.ncm-tc__pcard').forEach((c) => c.classList.toggle('ncm-tc__pcard--active', c === card));
+        paintPrev();
+      });
+      pc.appendChild(card);
+    }
+    inp.addEventListener('input', () => { const v = inp.value.trim().toUpperCase(); custom = !!v && v !== ADMIN_LABEL[cur]; paintPrev(); });
+    document.getElementById('mkLabelReset').addEventListener('click', () => { inp.value = ADMIN_LABEL[cur]; custom = false; paintPrev(); });
+    if (q.get('custom')) { inp.value = q.get('custom'); custom = true; }
+    paintPrev();
+  }
+  document.title = 'OK — admin access mock';
+} catch (e) { document.getElementById('err').textContent = String(e.stack || e); document.title = 'ERR ' + e.message; }
+</script>
+</body>
+</html>

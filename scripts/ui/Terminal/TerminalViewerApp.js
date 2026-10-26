@@ -34,6 +34,9 @@ import { SHARED_SCOPE, listingFor, formatSize, gateLabel, parentPath } from '../
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType, programEffectInfo } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
 import { runSecurityConsole } from '../content/SecurityConsole.js';
+import { resolveEncoderConfig, isEligibleBlank, blankRuleRefusal } from '../content/EncoderModel.js';
+import { adminLabelFor, resolveAdminAccess, adminReadOnlyBlocks } from '../../utils/terminalAdmin.js';
+import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import { playBootVideo } from '../content/BootVideo.js';
 import { applyCrt, resolveCrt, CRT_OFF, capCrt, playerCrtCap } from '../../utils/crt.js';
@@ -47,7 +50,8 @@ const PRIORITY_ICONS = { critical: 'fa-triangle-exclamation', urgent: 'fa-circle
  */
 const EXFIL_META = {
   agent:   { order: 1, label: 'To my Agent',    icon: 'fas fa-download',    accent: 'cyan',   title: 'Download to Agent', confirm: 'Download', intro: 'AltLink this file across to your Agent.', ok: 'DOWNLOAD COMPLETE', fail: 'DOWNLOAD TRACED' },
-  shard:   { order: 2, label: 'Burn to Shard',   icon: 'fas fa-sd-card',     accent: 'gold',   title: 'Burn to Data Shard', confirm: 'Burn', intro: 'Etch this file onto a physical data shard — your go-bag copy.', ok: 'BURN COMPLETE', fail: 'BURN TRACED' },
+  // label/title/intro follow the world's word for a shard (utils/shardTerm.js), read when shown.
+  shard:   { order: 2, get label() { return `Burn to ${T('short')}`; }, icon: 'fas fa-sd-card', accent: 'gold', get title() { return `Burn to ${T('one')}`; }, confirm: 'Burn', get intro() { return `Etch this file onto ${withArticle(T('one', 'lower'))} — your go-bag copy.`; }, ok: 'BURN COMPLETE', fail: 'BURN TRACED' },
   forward: { order: 3, label: 'Forward',         icon: 'fas fa-share',       accent: 'cyan',   title: 'Forward to Contact', confirm: 'Forward', intro: 'Send this file on to one of your contacts as a message.', ok: 'FORWARD SENT', fail: 'FORWARD TRACED' },
   leak:    { order: 4, label: 'Leak to the Net', icon: 'fas fa-tower-broadcast', accent: 'red', title: 'Leak to the Net', confirm: 'Leak', intro: 'Dump this file to the open Net. Once it’s out, it’s out — and loud.', ok: 'LEAKED', fail: 'LEAK TRACED' },
   sell:    { order: 5, label: 'Sell to a Fixer', icon: 'fas fa-hand-holding-dollar', accent: 'gold', title: 'Sell to a Fixer', confirm: 'Sell', intro: 'Move this file to a fixer for eddies. They pay for what’s useful.', ok: 'DEAL CLOSED', fail: 'DEAL TRACED' },
@@ -95,6 +99,11 @@ export class TerminalViewerApp extends BaseApplication {
       terminalProgramInfo: action('_onProgramInfo'),
       analyzeFile: action('_onAnalyzeFile'),
       terminalSwitchAccount: action('_onSwitchAccount'),
+      terminalAdminView: action('_onAdminView'),
+      terminalAdminBack: action('_onAdminBack'),
+      terminalAdminPick: action('_onAdminPick'),
+      terminalComposeAs: action('_onComposeAs'),
+      terminalReplyAs: action('_onReplyAs'),
       terminalLogout: action('_onLogout'),
       terminalFolder: action('_onFolder'),
       terminalSelectMessage: action('_onSelectMessage'),
@@ -143,6 +152,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** @type {string} boot | gate | login | manual | mailbox */
   _state = 'login';
   _accountId = null;          // active (logged-in) account
+  _viewAs = null;             // ADMIN ACCESS: the account an admin is viewing (null = its own) — see _boxId()
   _authAccountId = null;      // account currently being authenticated (manual state)
   _selectedMessageId = null;
   _currentFolder = 'inbox';
@@ -308,10 +318,16 @@ export class TerminalViewerApp extends BaseApplication {
     // drop untestable from a GM client, and losing the session is machine
     // behavior, not a content gate (GM bypass stays explicit). The GM lands on
     // a login list that still shows the account, OFF-NET chipped.
+    if (this._state === 'mailbox' && this._accountId && this._viewAs
+        && !this.terminalService?.adminViewVerdict(this.item, this._accountId, this._viewAs)?.ok) {
+      this._viewAs = null; this._selectedMessageId = null; this._fsSel = null;
+      ui.notifications?.warn(`${this._terminalName()}: that account can no longer be viewed.`);
+    }
     if (this._state === 'mailbox' && this._accountId) {
       const acct = this.terminalService?.getAccount(this.item, this._accountId);
       if (acct && !this.terminalService.uplinkReaches(this.item, acct.network)) {
         this._accountId = null;
+        this._viewAs = null;
         this._selectedMessageId = null;
         this._state = 'login';
         ui.notifications?.warn('UPLINK LOST — session dropped.');
@@ -663,8 +679,11 @@ export class TerminalViewerApp extends BaseApplication {
   }
 
   async _mailboxContext(cfg) {
-    const account = this.terminalService?.getAccount(this.item, this._accountId);
-    const raw = this.terminalService?.getAccountMessages(this.item, this._accountId) || [];
+    // The BOX is whose mailbox is on screen: the viewed account while an admin
+    // views another one (_viewAs), else the logged-in account. Rights (folder
+    // gates, read-only) stay the logged-in admin's.
+    const account = this.terminalService?.getAccount(this.item, this._boxId());
+    const raw = this._boxMessages();
 
     // Per-message network gating vs the MACHINE's uplink. Players only see what
     // the current connection reaches (isContentVisible GM-bypasses, so the GM
@@ -703,6 +722,7 @@ export class TerminalViewerApp extends BaseApplication {
     let fsCtx = null;
     if (isFilesView || style === 'desktop') {
       fsCtx = this._filesContext(account, all, liveFiles);
+      fsCtx.otherHomes = this._otherHomesContext();
       if (isFilesView) list = fsCtx.listFiles;   // the open folder's files are what the detail can show
       else fsCtx.showListing = false;
     }
@@ -741,7 +761,8 @@ export class TerminalViewerApp extends BaseApplication {
     // HUD shows the MACHINE's uplink (the pill), never the player's network.
     return {
       hud: {
-        isAdmin: !!account?.isAdmin,
+        // The logged-in account's rank — not the box's (an admin viewing another account is still an admin).
+        isAdmin: !!this.terminalService?.getAccount(this.item, this._accountId)?.isAdmin,
         trace: null,
         // WHO the rolls/eddies/skill reads run as (see the HUD chip comment).
         // Same view-model the login screen's chip uses, so the two can't drift.
@@ -759,13 +780,18 @@ export class TerminalViewerApp extends BaseApplication {
       },
       switchAccounts: this._switcherOpen ? this._switcherAccounts() : [],
       switcherOpen: this._switcherOpen,
+      // ADMIN ACCESS: the banner while viewing, and the View-as list in the switcher.
+      adminView: this._adminViewContext(cfg),
+      adminTargets: this._switcherOpen ? this._adminTargetsContext() : [],
+      // SEND AS THE ACCOUNT (config.accountMail.compose) — WRITE in the HUD, Reply as on mail.
+      composeAs: this._composeAsContext(),
       folders: folderDefs.map(fd => ({
         key: fd.id, label: fd.name, icon: fd.icon, count: counts[fd.id] ?? 0, unread: unread[fd.id] ?? 0, active: folder === fd.id,
       })),
       // Mailbox style flags + the bits only a style needs (tty prompt, desktop window/clock).
       mailboxStyle: style,
       msTabs: style === 'tabs', msTty: style === 'tty', msDesktop: style === 'desktop',
-      ttyPrompt: `${account?.username || 'guest'}@${this._terminalName().replace(/\s+/g, '-').toUpperCase()}:${isFilesView ? '/' + (this._fsSel?.path || '') : '~/' + (folderDef?.name || 'inbox').toLowerCase().replace(/\s+/g, '_')}$`,
+      ttyPrompt: `${this._viewAs ? (this.terminalService?.getAccount(this.item, this._accountId)?.username || 'admin') : (account?.username || 'guest')}@${this._terminalName().replace(/\s+/g, '-').toUpperCase()}:${isFilesView ? '/' + (this._fsSel?.path || '') : '~/' + (folderDef?.name || 'inbox').toLowerCase().replace(/\s+/g, '_')}$`,
       deskWindow: isFilesView
         ? { title: '/' + (fsCtx?.listing?.path || '') + (fsCtx?.listing?.isShared ? '  (shared)' : ''), icon: 'fas fa-folder-open' }
         : { title: folderDef?.name || 'Inbox', icon: folderDef?.icon || 'fas fa-inbox' },
@@ -823,9 +849,157 @@ export class TerminalViewerApp extends BaseApplication {
         action: k, label: EXFIL_META[k].label, icon: EXFIL_META[k].icon,
         gated: !!policy[k].require && policy[k].allow,
         dv: policy[k].dv,
-        denied: !policy[k].allow,
-        denyReason: policy[k].denyReason,
+        denied: !policy[k].allow || this._adminReadOnly(k),
+        denyReason: this._adminReadOnly(k) && policy[k].allow ? 'ADMIN: READ-ONLY' : policy[k].denyReason,
       }));
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ADMIN ACCESS — view another account (utils/terminalAdmin.js)
+  // ═══════════════════════════════════════════════════════════
+
+  /** Whose mailbox is on screen: the viewed account, else the logged-in one. */
+  _boxId() { return this._viewAs || this._accountId; }
+
+  /** The box's entries, folder gates judged with the LOGGED-IN account's rights. */
+  _boxMessages() {
+    return this.terminalService?.getAccountMessages(this.item, this._boxId(), this._viewAs ? { gateAccountId: this._accountId } : {}) || [];
+  }
+
+  /** What players see the admin view called (theme.adminLabel → preset → default). */
+  _adminLabel() { return adminLabelFor(this._effectiveConfig?.() || {}, TERMINAL_PRESETS); }
+
+  /** Read-only viewing blocks the actions that change the machine (Wipe). */
+  _adminReadOnly(action) {
+    if (!this._viewAs) return false;
+    return resolveAdminAccess(this._effectiveConfig?.() || {}).rights === 'read' && adminReadOnlyBlocks(action);
+  }
+
+  /** The banner view-model, or null when not viewing. */
+  _adminViewContext(cfg) {
+    if (!this._viewAs) return null;
+    const t = this.terminalService?.getAccount(this.item, this._viewAs);
+    if (!t) return null;
+    const name = t.displayName || t.username || 'account';
+    return {
+      label: adminLabelFor(cfg, TERMINAL_PRESETS),
+      name, username: t.username || name,
+      initials: getInitials(name), portrait: this._accountPortrait(t),
+      readOnly: resolveAdminAccess(cfg).rights === 'read',
+    };
+  }
+
+  /** The View-as list for the switcher (only for an admin account). */
+  _adminTargetsContext() {
+    const svc = this.terminalService;
+    if (!svc?.getAccount(this.item, this._accountId)?.isAdmin) return [];
+    return (svc.adminViewTargets(this.item, this._accountId) || []).map(({ account: a, verdict }) => ({
+      id: a.id, displayName: a.displayName || a.username,
+      initials: getInitials(a.displayName || a.username || '?'), portrait: this._accountPortrait(a),
+      hidden: !!a.hidden, ok: verdict.ok, reason: verdict.reason, isViewing: a.id === this._viewAs,
+    }));
+  }
+
+  /** Other accounts' homes for the FILES tree (an admin only): click = view that account. */
+  _otherHomesContext() {
+    const svc = this.terminalService;
+    const me = svc?.getAccount(this.item, this._accountId);
+    if (!me?.isAdmin) return [];
+    const out = [];
+    if (this._viewAs) out.push({ id: me.id, username: me.username || me.displayName, tag: 'YOU', ok: true, isBack: true });
+    for (const { account: a, verdict } of (svc.adminViewTargets(this.item, this._accountId) || [])) {
+      if (a.id === this._viewAs) continue;
+      out.push({ id: a.id, username: a.username || a.displayName, tag: a.hidden ? 'HIDDEN' : '', ok: verdict.ok, reason: verdict.reason });
+    }
+    return out;
+  }
+
+  /** The WRITE / Reply-as view-model: who the mail goes out as, or null when off. */
+  _composeAsContext() {
+    const svc = this.terminalService;
+    const box = this._boxId();
+    if (!box || !svc?.canAccountCompose?.(this.item, box) || this._adminReadOnly('send')) return null;
+    const id = svc.accountSendIdentity(this.item, box);
+    return { username: id.username, name: id.name, email: id.email };
+  }
+
+  /** Open the composer AS the account on screen (its identity, its address book). */
+  _openComposeAs(extra = {}) {
+    const svc = this.terminalService;
+    const box = this._boxId();
+    if (!this._composeAsContext()) return ui.notifications.warn(`${this._terminalName()}: this account can't send mail.`);
+    const id = svc.accountSendIdentity(this.item, box);
+    // The player's OWN account (they own its character) — their own mail, not an
+    // impersonation: eddies allowed, no intrusion row in the Activity Log.
+    const ownerActor = id.fromActorId ? game.actors?.get(id.fromActorId) : null;
+    const own = !isGM() && !!ownerActor?.isOwner;
+    const op = resolveOperator();
+    game.nightcity?.composeMessage?.({
+      fromActorId: id.fromActorId, fromContactId: id.fromContactId,
+      terminalSend: {
+        itemUuid: this.item.uuid, accountId: box, username: id.username, machine: this._terminalName(), own,
+        operatorId: op?.id || '', operatorName: op?.name || game.user.name,
+      },
+      addressBook: svc.accountAddressBook(this.item, box),
+      ...extra,
+    });
+  }
+
+  _onComposeAs() { this._openComposeAs(); }
+
+  /** Reply AS the account to the open message (back to its sender, threaded). */
+  _onReplyAs() {
+    const msg = this._currentSelectedRaw();
+    if (!msg) return;
+    this._openComposeAs({ mode: 'reply', originalMessage: msg });
+  }
+
+  /** Start viewing another account (no credentials). Logged to the Activity Log. */
+  _startAdminView(targetId, { files = false } = {}) {
+    const svc = this.terminalService;
+    const v = svc?.adminViewVerdict(this.item, this._accountId, targetId);
+    if (!v?.ok) { ui.notifications?.warn(`${this._terminalName()}: ${v?.reason || 'that account cannot be viewed'}.`); return; }
+    this._viewAs = targetId;
+    this._switcherOpen = false;
+    this._selectedMessageId = null;
+    this._currentFolder = 'inbox';
+    this._currentPage = 1;
+    this._fsSel = null;
+    if (files) this._view = 'files';
+    const t = svc.getAccount(this.item, targetId);
+    const me = svc.getAccount(this.item, this._accountId);
+    try {
+      game.nightcity?.traceService?.logSuccess({
+        actor: this.actor, action: 'admin-view', hostItem: this.item, severity: 'minor',
+        source: `${me?.username || 'admin'} viewed ${t?.username || targetId}`,
+      });
+    } catch (e) { log.debug('admin-view log failed', e); }
+    this._playTermSound('login-success');
+    this.render(false);
+  }
+
+  _onAdminView(event, target) {
+    const id = target?.dataset?.accountId;
+    if (!id) return;
+    if (id === this._accountId) return this._onAdminBack();
+    this._startAdminView(id, { files: target?.dataset?.files === '1' });
+  }
+
+  _onAdminBack() {
+    if (!this._viewAs) return;
+    this._viewAs = null;
+    this._switcherOpen = false;
+    this._selectedMessageId = null;
+    this._currentFolder = 'inbox';
+    this._currentPage = 1;
+    this._fsSel = null;
+    this.render(false);
+  }
+
+  /** "View another…" on the banner opens the account switcher (where the View-as list is). */
+  _onAdminPick() {
+    this._switcherOpen = true;
+    this.render(false);
   }
 
   static PAGE_SIZE = 12;
@@ -1421,6 +1595,7 @@ export class TerminalViewerApp extends BaseApplication {
     this._prevLogin = this.terminalService.getLastLogin?.(this.item, accountId) || null;
     await this.terminalService.recordLoginSuccess(this.item, accountId, this.actorId);
     this._accountId = accountId;
+    this._viewAs = null;
     this._authAccountId = null;
     this._manualError = '';
     this._selectedMessageId = null;
@@ -1741,7 +1916,7 @@ export class TerminalViewerApp extends BaseApplication {
         const info = CONTENT_TYPE_INFO[e.contentType];
         const base = {
           name: e.subject || cd.name || 'file',
-          sourceLabel: `shard: "${shard.name}"`,
+          sourceLabel: `${T('short', 'lower')}: "${shard.name}"`,
           uploadDV: Number(cd.uploadDV) || 15,
           uploadSkill: cd.uploadSkill || 'Interface',
           stealthDV: cd.uploadStealthDV || undefined,
@@ -1784,6 +1959,7 @@ export class TerminalViewerApp extends BaseApplication {
   async _onLogout() {
     await this.terminalService.logout(this.item, this.actorId);
     this._accountId = null;
+    this._viewAs = null;
     this._switcherOpen = false;
     this._enterState('login');
   }
@@ -1800,6 +1976,7 @@ export class TerminalViewerApp extends BaseApplication {
     const lockedAcct = this._accountId;
     try { this.terminalService.logout(this.item, this.actorId); } catch { /* session write is best-effort */ }
     this._accountId = null;
+    this._viewAs = null;
     this._authAccountId = null;
     this._playTermSound('hack-fail');
     this._manualError = message;
@@ -1897,9 +2074,24 @@ export class TerminalViewerApp extends BaseApplication {
     if (lower === 'ls' || lower === 'clear' || lower === 'back' || lower === 'q') { this._selectedMessageId = null; this.render(false); return; }
     // The way OUT of a tty box: logout / exit / su / switch all go back to the login screen,
     // where another account can be picked (there is no dropdown in this style).
+    // ADMIN ACCESS: `su <name>` views another account, `exit` comes back from one.
+    const su = /^su\s+(\S+)$/i.exec(c);
+    if (su) {
+      const want = su[1].toLowerCase();
+      const hit = (this.terminalService.getConfig(this.item).accounts || []).find(a => (a.username || '').toLowerCase() === want || (a.displayName || '').toLowerCase() === want);
+      if (hit && hit.id === this._accountId) { this._onAdminBack(); return; }
+      const v = hit ? this.terminalService.adminViewVerdict(this.item, this._accountId, hit.id) : null;
+      if (!v?.ok) { say(`su: ${hit && v?.listed ? `${su[1]}: ${v.reason}` : (v?.reason === 'not an admin account' ? 'permission denied' : `${su[1]}: no such account`)}`); this._playTermSound('login-fail'); return; }
+      this._startAdminView(hit.id);
+      return;
+    }
+    if (lower === 'exit' && this._viewAs) { this._onAdminBack(); return; }
+    // SEND AS THE ACCOUNT: `write` / `mail`-style compose, `reply` to the open message.
+    if (lower === 'write' || lower === 'compose' || lower === 'w') { if (this._composeAsContext()) this._onComposeAs(); else say('write: this account cannot send mail'); return; }
+    if (lower === 'reply' || lower === 'r') { if (!this._selectedMessageId) say('reply: open a message first (its number)'); else if (this._composeAsContext()) this._onReplyAs(); else say('reply: this account cannot send mail'); return; }
     if (['logout', 'exit', 'su', 'switch', 'users'].includes(lower)) { this._onLogout(); return; }
     if (lower === 'n' || lower === 'p') { this._currentPage += lower === 'n' ? 1 : -1; this.render(false); return; }
-    if (lower === '?' || lower === 'help') { say('a number opens that row · m = mail · f = files · cd <folder> (cd .. = up) · n / p = next / previous page · ls = relist · logout / su = back to the login screen'); return; }
+    if (lower === '?' || lower === 'help') { say(`a number opens that row · m = mail · f = files · cd <folder> (cd .. = up) · n / p = next / previous page · ls = relist · logout = back to the login screen${this._composeAsContext() ? ' · write = new mail as this account · reply = answer the open message' : ''}${this.terminalService.getAccount(this.item, this._accountId)?.isAdmin ? ' · su <name> = view another account as admin · exit = back to your own' : ''}`); return; }
     const cd = /^cd\s+(.+)$/i.exec(c);
     if (cd) {
       const name = cd[1].trim().replace(/\/+$/, '');
@@ -1913,7 +2105,7 @@ export class TerminalViewerApp extends BaseApplication {
           if (hit.locked) { say(`ACCESS DENIED — ${hit.path}: ${hit.effectiveGate?.mode === 'admin' ? 'admins only' : 'restricted'}`); this._playTermSound('login-fail'); return; }
           this._fsSel = { scope: this._fsSel.scope, path: hit.path }; this._selectedMessageId = null; this.render(false); return;
         }
-        if (norm(name) === 'home' || norm(name) === 'shared') { this._fsSel = { scope: norm(name) === 'shared' ? SHARED_SCOPE : this._accountId, path: '' }; this._selectedMessageId = null; this.render(false); return; }
+        if (norm(name) === 'home' || norm(name) === 'shared') { this._fsSel = { scope: norm(name) === 'shared' ? SHARED_SCOPE : this._boxId(), path: '' }; this._selectedMessageId = null; this.render(false); return; }
       }
       const fd = (this.terminalService.getFolders(this.item) || []).find(f => norm(f.name) === norm(name) || norm(f.id) === norm(name));
       if (fd) { this._currentFolder = fd.id; this._view = 'mail'; this._currentPage = 1; this._selectedMessageId = null; this.render(false); return; }
@@ -2003,7 +2195,7 @@ export class TerminalViewerApp extends BaseApplication {
     const folders = svc.getFileFolders(this.item);
     // NB: the key is subLabel, not `sub` — `sub` is a registered Handlebars helper and a context field by that name renders NaN.
     const mk = (scope, label, subLabel, icon, tag) => ({ scope, label, subLabel, icon, tag, tree: svc.buildFileTree(this.item, scope, this._accountId, all) });
-    const roots = [mk(this._accountId, 'home', account?.username || '', 'fas fa-house', null)];
+    const roots = [mk(this._boxId(), 'home', account?.username || '', this._viewAs ? 'fas fa-house-user' : 'fas fa-house', this._viewAs ? (this._adminLabel() + ' VIEW').slice(0, 24) : null)];
     const shared = mk(SHARED_SCOPE, 'shared', this._terminalName(), 'fas fa-hard-drive', 'SHARED');
     if (gm || shared.tree.dirs.length || shared.tree.files.length) roots.push(shared);
 
@@ -2030,7 +2222,7 @@ export class TerminalViewerApp extends BaseApplication {
       files: (r.tree.byPath.get('') || []).map(e => this._rowVm(e, gm)),
     }));
 
-    const listing = listingFor(root.tree, sel.path, { account, isGM: gm, folders });
+    const listing = listingFor(root.tree, sel.path, { account: svc.getAccount(this.item, this._accountId) || account, isGM: gm, folders });
     const dir = listing.dir;
     const newest = listing.files.reduce((t, e) => (e.timestamp && (!t || e.timestamp > t)) ? e.timestamp : t, '');
     const crumb = [{ scope: sel.scope, path: '', name: root.label }, ...listing.crumb.slice(1).map(c => ({ scope: sel.scope, path: c.path, name: c.name }))];
@@ -2094,10 +2286,10 @@ export class TerminalViewerApp extends BaseApplication {
     // volume (shared → the shared volume). `homeAccountId` is what "this
     // account" means in the composer's Store-on control.
     const inFiles = this._view === 'files' && this._fsSel;
-    const scope = inFiles ? this._fsSel.scope : this._accountId;
+    const scope = inFiles ? this._fsSel.scope : this._boxId();
     import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
       new DataShardComposer({
-        target: { kind: 'terminal', item: this.item, accountId: scope, homeAccountId: this._accountId, folderPath: inFiles ? this._fsSel.path : '' },
+        target: { kind: 'terminal', item: this.item, accountId: scope, homeAccountId: this._boxId(), folderPath: inFiles ? this._fsSel.path : '' },
         editData: inFiles ? { envelope: 'file', file: { path: this._fsSel.path } } : undefined,
         onSave: () => this.render(false),
       }).render(true);
@@ -2108,7 +2300,7 @@ export class TerminalViewerApp extends BaseApplication {
   _onEditMessage(event, target) {
     if (!isGM()) return;
     const id = target?.dataset?.messageId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw) return;
     const editData = {
       entryId: id, contentType: raw.contentType || 'message',
@@ -2122,7 +2314,7 @@ export class TerminalViewerApp extends BaseApplication {
     import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
       new DataShardComposer({
         // The entry's OWN scope (a shared file stays shared when edited).
-        target: { kind: 'terminal', item: this.item, accountId: raw.accountId || this._accountId, homeAccountId: this._accountId, folderPath: raw.file?.path || '' },
+        target: { kind: 'terminal', item: this.item, accountId: raw.accountId || this._boxId(), homeAccountId: this._boxId(), folderPath: raw.file?.path || '' },
         editData, onSave: () => this.render(false),
       }).render(true);
     });
@@ -2253,6 +2445,7 @@ export class TerminalViewerApp extends BaseApplication {
     // Per-entry policy (#37): the terminal's policy layered with this entry's
     // override. A denied action renders as a dead chip — clicking it just
     // restates the reason rather than doing nothing.
+    if (this._adminReadOnly(action)) { ui.notifications?.warn(`${this._adminLabel()}: read-only — this account can be read, not changed.`); return; }
     const policy = this.terminalService?.resolveEntryExfil?.(this.item, msg);
     const p = policy?.[action];
     if (!p?.allow) {
@@ -2315,7 +2508,7 @@ export class TerminalViewerApp extends BaseApplication {
     closeGalleryLightbox(this.element);
     const fxDone = this._playExfilFx('download', 'frame capture');
     if (isGM()) {
-      const res = await this.terminalService.exfilSaveFrame(this.item, this._accountId, msg.messageId, index, targetId, aim);
+      const res = await this.terminalService.exfilSaveFrame(this.item, this._boxId(), msg.messageId, index, targetId, aim);
       await fxDone;
       if (res.success) ui.notifications.info(`NCM | ${res.label} frame saved to ${this._exfilFolder()}.`);
       else ui.notifications.warn(res.error || 'Capture failed.');
@@ -2331,7 +2524,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (!targetId) return;
     const fxDone = this._playExfilFx('download', msg.subject || 'file');
     if (isGM()) {
-      const res = await this.terminalService.exfilToInbox(this.item, this._accountId, [msg.messageId], targetId);
+      const res = await this.terminalService.exfilToInbox(this.item, this._boxId(), [msg.messageId], targetId);
       const who = game.actors?.get(targetId)?.name || 'inbox';
       await fxDone;
       if (res.success) ui.notifications.info(`Copied to ${who}'s Agent (${this._exfilFolder()}).`);
@@ -2426,10 +2619,15 @@ export class TerminalViewerApp extends BaseApplication {
   async _doExfilShard(msg) {
     // Players pick from their OWN inventory; GMs can also target world items.
     const carrier = (i) => i && !TerminalViewerApp.NON_CARRIER_TYPES.includes(i.type);
-    const owned = [...(this.actor?.items ?? [])].filter(carrier);
+    // A player burns onto an existing shard or something the GM's blank rule
+    // allows — never onto a weapon or a cyberarm (it would be converted).
+    const encCfg = resolveEncoderConfig(game.nightcity?.settingsManager?.getEncoderConfigRaw?.() ?? {});
+    const writable = (i) => isGM() || !!i.flags?.[MODULE_ID]?.isDataShard
+      || isEligibleBlank(encCfg, { name: i.name, type: i.type, tierId: i.flags?.[MODULE_ID]?.blankTier || '' });
+    const owned = [...(this.actor?.items ?? [])].filter((i) => carrier(i) && writable(i));
     const world = isGM() ? game.items.contents.filter(carrier) : [];
     const candidates = [...owned, ...world];
-    if (!candidates.length) return ui.notifications.warn('No item to burn onto.');
+    if (!candidates.length) return ui.notifications.warn(isGM() ? 'No item to burn onto.' : `Nothing you carry can take the file. ${blankRuleRefusal(encCfg)}`);
     const pickedId = await this._pickBurnTarget(owned, world);
     if (!pickedId) return;
     const target = candidates.find(i => i.id === pickedId);
@@ -2440,7 +2638,7 @@ export class TerminalViewerApp extends BaseApplication {
       await fxDone;
       return ui.notifications.info(`Burn requested for "${target.name}".`);
     }
-    const res = await this.terminalService.exfilToShard(this.item, this._accountId, [msg.messageId], target);
+    const res = await this.terminalService.exfilToShard(this.item, this._boxId(), [msg.messageId], target);
     await fxDone;
     if (res.success) {
       ui.notifications.info(`Burned to "${target.name}".`);
@@ -2466,13 +2664,13 @@ export class TerminalViewerApp extends BaseApplication {
     const build = (items, group) => {
       const byId = new Map(items.map((i) => [i.id, i]));
       return documentEntries(items, { group: () => group, note: (i) => i.type })
-        .map((e) => (isShard(byId.get(e.id)) ? { ...e, tag: 'SHARD' } : e))
-        .sort((a, b) => ((b.tag === 'SHARD') - (a.tag === 'SHARD')) || a.name.localeCompare(b.name));
+        .map((e) => (isShard(byId.get(e.id)) ? { ...e, tag: T('short', 'upper') } : e))
+        .sort((a, b) => ((!!b.tag) - (!!a.tag)) || a.name.localeCompare(b.name));
     };
     const pick = await showNamePicker({
       admin: false,
-      title: 'Burn to Data Shard',
-      hint: "Pick the item to burn this file onto. Burning onto an item that isn't a shard converts it.",
+      title: `Burn to ${T('one')}`,
+      hint: `Pick the item to burn this file onto. Burning onto an item that isn't ${withArticle(T('short', 'lower'))} converts it.`,
       entries: [...build(owned, 'Carried'), ...build(world, 'World')],
       placeholder: 'search items…',
     });
@@ -2485,7 +2683,7 @@ export class TerminalViewerApp extends BaseApplication {
       requestId: foundry.utils.randomID(),
       userId: game.user.id,
       itemUuid: this.item?.uuid,
-      accountId: this._accountId,
+      accountId: this._boxId(),
       messageIds, dest, targetActorId, targetItemId, forwarder, frameIndex, aim,
     });
   }
@@ -2497,7 +2695,7 @@ export class TerminalViewerApp extends BaseApplication {
     const who = game.actors?.get(targetId)?.name || 'contact';
     const forwarder = { email: this.actor?.getFlag?.(MODULE_ID, 'email') || '', actorId: this.actorId || '' };
     if (isGM()) {
-      const res = await this.terminalService.exfilForward(this.item, this._accountId, [msg.messageId], targetId, forwarder);
+      const res = await this.terminalService.exfilForward(this.item, this._boxId(), [msg.messageId], targetId, forwarder);
       if (res.success) ui.notifications.info(`Forwarded to ${who}.`);
       else ui.notifications.warn(res.error || 'Forward failed.');
     } else {
@@ -2542,7 +2740,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Wipe a file off the terminal (GM direct / relay). */
   async _doExfilWipe(msg) {
     if (isGM()) {
-      const res = await this.terminalService.exfilWipe(this.item, this._accountId, [msg.messageId]);
+      const res = await this.terminalService.exfilWipe(this.item, this._boxId(), [msg.messageId]);
       if (res.success) {
         if (this._selectedMessageId === msg.messageId) this._selectedMessageId = null;
         this.render(false);
@@ -2586,7 +2784,7 @@ export class TerminalViewerApp extends BaseApplication {
     const actor = resolveOperator();
     if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw || raw.contentType !== 'banking') return;
     await runSiphon({ actor, raw: raw.contentData, itemUuid: this.item?.uuid, messageId: id, host: this.element });
     this.render(false);
@@ -2595,7 +2793,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Eddies content — claim into a character's wealth (shared flow). */
   async _onClaimEddies(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw || raw.contentType !== 'eddies') return;
     let actor = resolveOperator();
     if (!actor) {
@@ -2615,7 +2813,7 @@ export class TerminalViewerApp extends BaseApplication {
   async _onCrackCred(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
     const idx = Number(target?.dataset?.credIndex);
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw || raw.contentType !== 'credentials' || Number.isNaN(idx)) return;
     const actor = resolveOperator();
     const ok = await runCrack({ actor, raw: raw.contentData, entryIndex: idx, messageId: id, force: isGM() && !actor, host: this.element });
@@ -2626,7 +2824,7 @@ export class TerminalViewerApp extends BaseApplication {
   async _onContentUnlock(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
     const kind = target?.dataset?.unlockKind;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw || !kind) return;
     const actor = resolveOperator();
     const ok = await runContentUnlock({
@@ -2655,7 +2853,7 @@ export class TerminalViewerApp extends BaseApplication {
    */
   async _onAnalyzeFile(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw) { log.warn(`Terminal analyze: entry lookup failed (id=${id}).`); return; }
     const ok = await runAnalyze({
       actor: this.actor, raw: raw.contentData, contentType: raw.contentType,
@@ -2667,7 +2865,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Schematic — GM per-point lock toggle from the legend (no roll). */
   async _onSchemLockToggle(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw) return;
     const ok = await toggleSchematicLock({ raw: raw.contentData, index: Number(target?.dataset?.index ?? -1), messageId: id });
     if (ok) this.render(false);
@@ -2677,7 +2875,7 @@ export class TerminalViewerApp extends BaseApplication {
   async _onCamAction(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
     const act = target?.dataset?.camAct;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw || !act) return;
     const ok = await runCamAction({
       actor: resolveOperator(), raw: raw.contentData, act,
@@ -2700,7 +2898,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Malware — DEPLOY (normal = mark deployed + GM adjudicates; honeypot = trace). */
   async _onDeployMalware(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     // A silent return here reads as "DEPLOY does nothing" — say why.
     if (!raw || raw.contentType !== 'malware') {
       log.warn(`Terminal deploy: entry lookup failed (id=${id}, found=${!!raw}, type=${raw?.contentType}).`);
@@ -2714,7 +2912,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Payload — RUN (utility program: gate roll → module-native effect + macro). */
   async _onExecutePayload(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw || raw.contentType !== 'payload') return;
     const actor = resolveOperator();
     const res = await runPayloadExecute({ actor, raw: raw.contentData, messageId: id, sourceLabel: this._terminalName(), host: this.element, force: isGM() && !actor });
@@ -2724,7 +2922,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Payload — KILL a running timed effect early. */
   async _onPayloadKill(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw) return;
     const res = await runPayloadKill({ actor: resolveOperator(), raw: raw.contentData, messageId: id, host: this.element });
     if (res) this.render(false);
@@ -2733,7 +2931,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Payload — SNIFF a suspected disguised file (roll to unmask). */
   async _onPayloadSniff(event, target) {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw) return;
     const actor = resolveOperator();
     const ok = await runPayloadSniff({ actor, raw: raw.contentData, messageId: id, force: isGM(), host: this.element });
@@ -2756,7 +2954,7 @@ export class TerminalViewerApp extends BaseApplication {
 
     // Signature of WHAT'S IN the list — deliberately excludes the selection.
     const sig = [
-      this._accountId, this._currentFolder, this._view, this._fsSel ? `${this._fsSel.scope}:${this._fsSel.path}` : '', this._currentPage,
+      this._accountId, this._viewAs || "", this._currentFolder, this._view, this._fsSel ? `${this._fsSel.scope}:${this._fsSel.path}` : '', this._currentPage,
       (context?.messages || []).map(m => m.messageId).join(','),
     ].join('|');
     const listEl = el.querySelector('.ncm-term__list');
@@ -2834,7 +3032,7 @@ export class TerminalViewerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _currentSelectedRaw() {
-    return (this.terminalService?.getAccountMessages(this.item, this._accountId) || [])
+    return this._boxMessages()
       .find(m => m.messageId === this._selectedMessageId) || null;
   }
 

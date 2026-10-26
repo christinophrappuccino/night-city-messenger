@@ -20,6 +20,7 @@ import { log, isGM, resolveOperator, canEncode } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { runAnalyze, runMalwareDeploy, runPayloadExecute } from '../content/SiphonFlow.js';
 import { FAMILY, COVER_TYPES, THREAT_WORD, abilityInfo, programGroup, entryToProgram } from '../content/ProgramModel.js';
+import { shardTerm as T } from '../../utils/shardTerm.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const CAP = 6;
@@ -87,7 +88,7 @@ export class ProgramDeckApp extends BaseApplication {
 
     if (!progs.length) {
       root.style.setProperty('--fam', 'var(--ncm-secondary,#19f3f7)');
-      root.innerHTML = `${this._headHTML(0)}<div class="ncm-pd-empty" style="flex:1;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center;font-family:var(--ncm-font-body,sans-serif);font-size:12.5px;color:var(--ncm-text-muted,#7a8b99);">No programs on this shard.<br>A GM builds them in the Malware Workshop.</div>`;
+      root.innerHTML = `${this._headHTML(0)}<div class="ncm-pd-empty" style="flex:1;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center;font-family:var(--ncm-font-body,sans-serif);font-size:12.5px;color:var(--ncm-text-muted,#7a8b99);">No programs on this ${T('short', 'lower')}.<br>A GM builds them in the Malware Workshop.</div>`;
       this._wire(root);
       return;
     }
@@ -113,7 +114,7 @@ export class ProgramDeckApp extends BaseApplication {
   _headHTML(used) {
     return `<div class="ncm-pd-hd">
       <div class="ncm-pd-hd__ic"><i class="fas fa-hard-drive"></i></div>
-      <div><div class="ncm-pd-hd__n">${esc(this.item?.name || 'Data Shard')}</div><div class="ncm-pd-hd__s">Program deck${isGM() ? ' · GM lens' : ''}</div></div>
+      <div><div class="ncm-pd-hd__n">${esc(this.item?.name || T('one'))}</div><div class="ncm-pd-hd__s">Program deck${isGM() ? ' · GM lens' : ''}</div></div>
       <div class="ncm-pd-hd__cap"><div class="ncm-pd-hd__caplbl">${used} / ${CAP} slots</div>
         <div class="ncm-pd-hd__slots">${Array.from({ length: CAP }, (_, i) => `<b class="${i < used ? 'on' : ''}"></b>`).join('')}</div></div>
     </div>`;

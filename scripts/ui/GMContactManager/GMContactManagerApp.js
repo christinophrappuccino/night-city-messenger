@@ -13,7 +13,9 @@
  */
 
 import { MODULE_ID, TEMPLATES, EVENTS } from '../../utils/constants.js';
-import { log, isGM, getPlayerCharacters } from '../../utils/helpers.js';
+import { log, isGM, getPlayerCharacters, formatCyberDate } from '../../utils/helpers.js';
+import { MessageRepository } from '../../data/MessageRepository.js';
+import { identityUsage } from '../../utils/identities.js';
 import { BaseApplication } from '../BaseApplication.js';
 import {
   getAvatarColor,
@@ -254,6 +256,10 @@ export class GMContactManagerApp extends BaseApplication {
       nextPage:         GMContactManagerApp._onNextPage,
       // ─── Relationship notes (detail) ───
       toggleRelNote:    GMContactManagerApp._onToggleRelNote,
+      // ─── Identities (one character, several contacts) ───
+      identOpen:        GMContactManagerApp._onIdentOpen,
+      identSetPrimary:  GMContactManagerApp._onIdentSetPrimary,
+      identAdd:         GMContactManagerApp._onIdentAdd,
     },
   }, { inplace: false });
 
@@ -394,6 +400,9 @@ export class GMContactManagerApp extends BaseApplication {
         selectedEnriched.playerRelationships = this._buildPlayerRelationships(
           selectedContact, playerActors
         );
+
+        // Identities — every contact linked to the same character.
+        selectedEnriched.identities = this._identitiesContext(selectedContact);
 
         // Per-player relationships for edit form
         perPlayerRelationships = this._buildPerPlayerFormData(selectedContact, playerActors);
@@ -976,6 +985,118 @@ export class GMContactManagerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
   //  Action Handlers — Navigation
   // ═══════════════════════════════════════════════════════════
+
+  // ═══ IDENTITIES (utils/identities.js) ═══
+
+  /**
+   * The Identities card: every directory contact linked to this contact's
+   * character, the main one first, with how often each is used (from the
+   * character's own mailbox). Null for a contact with no linked character.
+   */
+  _identitiesContext(contact) {
+    if (!contact) return null;
+    const svc = game.nightcity?.masterContactService;
+    // A character's identities (linked contacts) or a contact-only NPC's group.
+    const list = svc?.identitiesForContact?.(contact) || [contact];
+    const charId = contact.actorId || list.find(c => c.actorId)?.actorId || null;
+    const actor = charId ? game.actors?.get(charId) : null;
+    // The mailbox that holds the group's mail: the character's, else the NPC contact inbox.
+    const ownerId = charId || (list.find(c => !c.identityOf) || list[0])?.id;
+    const repo = game.nightcity?.messageRepository;
+    let messages = [];
+    for (const j of game.journal || []) {
+      const who = MessageRepository.identifyInbox(j);
+      if (who && who.ownerId === ownerId) {
+        messages = j.pages.contents.map(p => repo?._pageToMessage?.(p)).filter(Boolean);
+        break;
+      }
+    }
+    const usage = identityUsage(messages, list);
+    const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+    const registered = actor?.getFlag?.(MODULE_ID, 'email') || '';
+    const rows = list.map((c, i) => {
+      const u = usage.get(c.id) || { count: 0, last: '' };
+      return {
+        id: c.id, name: c.name, email: c.email || '—',
+        isPrimary: i === 0, isSelected: c.id === contact.id,
+        count: u.count, last: u.last ? formatCyberDate(u.last, { dateOnly: true }) : '',
+        initials: getInitials(c.name), avatarColor: getAvatarColor(c.name), portrait: c.portrait || null,
+      };
+    });
+    return {
+      actorId: charId || '',
+      contactId: charId ? '' : contact.id,
+      actorName: actor?.name || list[0]?.name || contact.name,
+      rows,
+      many: rows.length > 1,
+      // The character's own registered address, when no identity carries it.
+      registered: registered && !list.some(c => eq(c.email, registered)) ? registered : '',
+    };
+  }
+
+  /** Open another identity (select without the click-again-to-deselect toggle). */
+  static _onIdentOpen(event, target) {
+    const id = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!id || id === this._selectedContactId) return;
+    this._selectedContactId = id;
+    this._isCreating = false; this._isEditing = false; this._createDraft = null;
+    this.render();
+  }
+
+  static async _onIdentSetPrimary(event, target) {
+    const id = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!id) return;
+    const res = await game.nightcity?.masterContactService?.setPrimaryIdentity?.(id);
+    if (!res?.success) return ui.notifications.warn(res?.error || 'Could not change the main identity.');
+    this.render();
+  }
+
+  /** + Add alias: a new contact linked to the same character. */
+  static async _onIdentAdd(event, target) {
+    const actorId = target.dataset.actorId;
+    const contactId = target.dataset.contactId;
+    const svc = game.nightcity?.masterContactService;
+    // A character — or an NPC that is only a contact (no actor).
+    const actor = actorId ? game.actors?.get(actorId) : null;
+    const base = !actor && contactId ? svc?.getContact?.(contactId) : null;
+    const who = actor || (base ? { name: base.name } : null);
+    if (!svc || !who) return;
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    let picked = null;
+    try {
+      picked = await adminPrompt({
+        title: `Add an alias — ${who.name}`,
+        content: `<p style="margin:4px 0 10px;">Another name and address for <b>${esc(who.name)}</b>. Mail sent to it lands in their inbox; they can reply from it.</p>
+          <div class="form-group"><label style="text-transform:none;">Name</label><input type="text" name="ncmIdName" placeholder="e.g. Burner, Mr. Blue" autofocus></div>
+          <div class="form-group"><label style="text-transform:none;">Address</label><input type="text" name="ncmIdEmail" placeholder="e.g. ghost99@darknet.nc"></div>
+          <div class="form-group"><label style="text-transform:none;">Picture</label><div style="display:flex;gap:6px;flex:1;"><input type="text" name="ncmIdPortrait" placeholder="optional — blank shows initials, never ${esc(who.name)}'s face" style="flex:1;"><button type="button" data-ncm-id-browse style="flex:0 0 auto;width:auto;"><i class="fas fa-folder-open"></i></button></div></div>`,
+        render: (html) => {
+          const root = html[0] ?? html;
+          root.querySelector('[data-ncm-id-browse]')?.addEventListener('click', () => {
+            const input = root.querySelector('[name="ncmIdPortrait"]');
+            const FP = (typeof FilePicker !== 'undefined') ? FilePicker : foundry.applications?.apps?.FilePicker;
+            if (!FP) return;
+            new FP({ type: 'image', current: input?.value || '', callback: (path) => { if (input) input.value = path; } }).render(true);
+          });
+        },
+        label: 'Add alias',
+        callback: (html) => {
+          const root = html[0] ?? html;
+          return { name: root.querySelector('[name="ncmIdName"]')?.value?.trim() || '', email: root.querySelector('[name="ncmIdEmail"]')?.value?.trim() || '', portrait: root.querySelector('[name="ncmIdPortrait"]')?.value?.trim() || null };
+        },
+        rejectClose: false,
+      });
+    } catch { return; }
+    if (!picked?.name) return;
+    if (picked.email && !/^[^\s@]+@[^\s@]+$/.test(picked.email)) return ui.notifications.warn(`"${picked.email}" is not an address.`);
+    const taken = picked.email ? svc.getByEmail?.(picked.email) : null;
+    if (taken) return ui.notifications.warn(`${picked.email} already belongs to ${taken.name} in the directory.`);
+    const res = actor ? await svc.addIdentity(actorId, picked) : await svc.addContactIdentity(contactId, picked);
+    if (!res?.success) return ui.notifications.error(res?.error || 'Could not add the alias.');
+    ui.notifications.info(`${res.contact.name} (${res.contact.email}) is now an alias of ${who.name}.`);
+    this._selectedContactId = res.contact.id;
+    this.render();
+  }
 
   static _onSelectContact(event, target) {
     const contactId = target.closest('[data-contact-id]')?.dataset.contactId;

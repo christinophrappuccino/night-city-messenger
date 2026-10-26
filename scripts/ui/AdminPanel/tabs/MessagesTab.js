@@ -21,6 +21,7 @@ import { MessageRepository } from '../../../data/MessageRepository.js';
 import { DateRangePicker } from '../../components/DateRangePicker.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
+import { identityRole, identitiesOfContact, identitiesOf } from '../../../utils/identities.js';
 
 export class MessagesTab extends BaseTab {
 
@@ -399,6 +400,36 @@ export class MessagesTab extends BaseTab {
    * sent by a player-owned character, excluding sent copies and deleted mail.
    * @returns {object} Context keys for the NPC Inbox section.
    */
+  /**
+   * SEND AS A TERMINAL ACCOUNT — base message id → { machine, typist, impersonated }
+   * from every sent copy that carries `sentVia` (stored on the sender's copy only).
+   */
+  _sentViaIndex() {
+    const out = new Map();
+    for (const journal of game.journal ?? []) {
+      if (!MessageRepository.identifyInbox(journal)) continue;
+      for (const page of journal.pages ?? []) {
+        const f = page.flags?.['night-city-messenger'];
+        const id = f?.messageId || '';
+        if (!f?.sentVia || !id.endsWith('-sent')) continue;
+        out.set(id.slice(0, -5), { machine: f.sentVia.machine || 'a terminal', typist: f.sentVia.operatorName || 'someone', impersonated: f.sentVia.impersonated !== false });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * IDENTITIES: { name, of } when this contact is an ALIAS of a character
+   * (another contact linked to the same character is its main identity), else null.
+   */
+  _aliasNote(contactId) {
+    if (!contactId) return null;
+    const all = this.masterContactService?.getAll?.() ?? [];
+    const c = all.find(x => x.id === contactId);
+    const role = identityRole(all, c);
+    return role?.isAlias ? { name: c.name, of: role.primary.name } : null;
+  }
+
   _gatherNpcInbox() {
     const empty = {
       npcInboxGroups: [],
@@ -423,6 +454,9 @@ export class MessagesTab extends BaseTab {
 
     const groups = new Map(); // ownerId → group
     let anyFound = false;
+    // SEND AS A TERMINAL ACCOUNT: the machine + real typist live on the SENDER's
+    // sent copy; index them by base message id so a received copy can show them.
+    const viaByBase = this._sentViaIndex();
 
     try {
       for (const journal of game.journal ?? []) {
@@ -454,7 +488,10 @@ export class MessagesTab extends BaseTab {
           //    sent to NPCs (e.g. a group send) so it reads as unread per NPC.
           const fromActorId = flags.fromActorId || '';
           const fromActor = fromActorId ? game.actors?.get(fromActorId) : null;
-          const fromPlayer = !!fromActor?.hasPlayerOwner;
+          // A player writing AS someone from a terminal is player mail too — it
+          // looks like it came from the NPC, but a player typed it.
+          const via = viaByBase.get(msgId) || null;
+          const fromPlayer = !!fromActor?.hasPlayerOwner || !!via?.impersonated;
           if (!fromPlayer && !this._npcInboxIncludeGm) continue;
 
           anyFound = true;
@@ -498,8 +535,11 @@ export class MessagesTab extends BaseTab {
           group.messages.push({
             messageId: msgId,
             inboxOwnerId: ownerId,
-            senderName: fromActor.name || flags.senderName || flags.from || 'Unknown',
+            senderName: fromActor?.name || flags.senderName || flags.from || 'Unknown',
             senderActorId: fromActorId,
+            sentVia: via,
+            senderAlias: this._aliasNote(flags.fromContactId),
+            toAlias: this._aliasNote(flags.toContactId),
             subject: flags.subject || page.name || '(no subject)',
             bodyPreview,
             unread: !isRead,
@@ -802,6 +842,15 @@ export class MessagesTab extends BaseTab {
             inboxOwnerId: ownerId,
             fromName: from,
             toName: to,
+            // IDENTITIES — the alias a message went out from / came in on.
+            fromAlias: this._aliasNote(fromContactId),
+            // SEND AS A TERMINAL ACCOUNT — the machine and who was really typing (sent copies only).
+            sentVia: flags.sentVia ? {
+              machine: flags.sentVia.machine || 'a terminal',
+              typist: flags.sentVia.operatorName || 'someone',
+              impersonated: flags.sentVia.impersonated !== false,
+            } : null,
+            toAlias: this._aliasNote(toContactId),
             fromActorId,
             toActorId,
             fromContactId,
@@ -837,6 +886,14 @@ export class MessagesTab extends BaseTab {
     }
 
     // Sort by timestamp descending (newest first)
+    // SEND AS A TERMINAL ACCOUNT: `sentVia` (machine + real typist) is stored on
+    // the SENDER's sent copy only, so the recipient's page never reveals it. The
+    // GM's feed lends it to the matching RECEIVED row (same base message id) —
+    // display only, in the admin panel.
+    const viaByBase = new Map();
+    for (const e of entries) if (e.sentVia && e.messageId.endsWith('-sent')) viaByBase.set(e.messageId.slice(0, -5), e.sentVia);
+    for (const e of entries) if (!e.sentVia && viaByBase.has(e.messageId)) e.sentVia = viaByBase.get(e.messageId);
+
     entries.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
 
     // Apply filters
@@ -858,13 +915,12 @@ export class MessagesTab extends BaseTab {
       // Build a set of all IDs that belong to this entity
       const matchIds = new Set([actId]);
 
-      // If actId is an actor, find any master contact linked to it
-      const linkedContact = (this.masterContactService?.getAll() ?? [])
-        .find(c => c.actorId === actId || c.id === actId);
-      if (linkedContact) {
-        if (linkedContact.id) matchIds.add(linkedContact.id);
-        if (linkedContact.actorId) matchIds.add(linkedContact.actorId);
-      }
+      // The character behind the filter, and EVERY contact linked to it (its
+      // identities — utils/identities.js), so an alias's mail shows too.
+      const all = this.masterContactService?.getAll() ?? [];
+      const self = all.find(c => c.id === actId);
+      const group = self ? identitiesOfContact(all, self) : identitiesOf(all, actId);
+      for (const c of group) { matchIds.add(c.id); if (c.actorId) matchIds.add(c.actorId); }
 
       filtered = filtered.filter(e =>
         matchIds.has(e.fromActorId) || matchIds.has(e.toActorId) ||
@@ -877,6 +933,7 @@ export class MessagesTab extends BaseTab {
     if (this._search) {
       const q = this._search.toLowerCase();
       filtered = filtered.filter(e =>
+        (e.fromAlias?.name || '').toLowerCase().includes(q) || (e.toAlias?.name || '').toLowerCase().includes(q) ||
         e.fromName.toLowerCase().includes(q) ||
         e.toName.toLowerCase().includes(q) ||
         e.subject.toLowerCase().includes(q) ||

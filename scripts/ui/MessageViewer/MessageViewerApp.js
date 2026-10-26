@@ -43,6 +43,8 @@ import { cleanHtml } from '../../utils/richText.js';
 import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, canEncode as canEncodeShard, chatCardTime } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { selfKeys } from '../../utils/participants.js';
+import { showNamePicker } from '../../utils/namePicker.js';
+import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
 
@@ -1411,6 +1413,9 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'mark-spam':
         this._markSpam(messageId);
+        break;
+      case 'copy-to-terminal':
+        this._copyToTerminal();
         break;
       case 'share-to-chat':
         this._shareToChat(messageId);
@@ -3022,7 +3027,7 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   /** The one message for a shard attachment whose item no longer exists anywhere. */
-  static SHARD_GONE_MSG = 'That data shard no longer exists where it was sent from — ask your GM.';
+  static get SHARD_GONE_MSG() { return `That ${T('one', 'lower')} no longer exists where it was sent from — ask your GM.`; }
 
   /**
    * Resolve a shard attachment to the live Item, wherever it lives.
@@ -3109,6 +3114,44 @@ export class MessageViewerApp extends BaseApplication {
     await actor.unsetFlag('night-city-messenger', 'composerDraft').catch(() => {});
     ui.notifications.info('Draft deleted.');
     this.render();
+  }
+
+  /**
+   * GM: copy the open message onto a terminal account (the reverse door of the
+   * terminal config's "Import from inbox"). One picker over every account on
+   * every terminal, grouped by terminal; the copy follows the mirror rules.
+   */
+  async _copyToTerminal() {
+    if (!game.user?.isGM) return;
+    const msg = this._getSelectedMessage();
+    const svc = game.nightcity?.terminalService;
+    if (!msg || !svc) return;
+    const targets = new Map();
+    const entries = [];
+    for (const item of svc.collectTerminals?.() || []) {
+      const term = svc.getConfig(item).terminalName || item.name;
+      for (const acct of svc.getConfig(item).accounts || []) {
+        const id = `${item.uuid}|${acct.id}`;
+        targets.set(id, { item, acct });
+        entries.push({
+          id, name: acct.displayName || acct.username || acct.id,
+          img: acct.portrait || item.img || 'icons/svg/terminal.svg',
+          sub: `${term}${acct.username ? ` · ${acct.username}` : ''}`, group: term,
+        });
+      }
+    }
+    if (!entries.length) return ui.notifications.warn('There are no terminal accounts to copy to.');
+    const pick = await showNamePicker({
+      title: 'Copy to Terminal',
+      hint: `Copy "${msg.subject || '(no subject)'}" onto which account? Sent mail lands in the account's Sent folder; money is not copied.`,
+      entries, placeholder: 'search accounts or terminals…',
+    });
+    const t = pick?.id ? targets.get(pick.id) : null;
+    if (!t) return;
+    const res = await svc.copyMessagesToAccount(t.item, t.acct.id, [msg]);
+    if (!res.success) return ui.notifications.error(res.error || 'Copy failed.');
+    const who = t.acct.displayName || t.acct.username;
+    ui.notifications.info(res.copied ? `Copied to ${who}.` : `${who} already has this message.`);
   }
 
   async _shareToChat(messageId) {
@@ -5040,7 +5083,7 @@ export class MessageViewerApp extends BaseApplication {
         itemId: att.itemId || '',
         itemUuid: att.itemUuid || '',
         name: att.name || 'Unknown',
-        meta: isShard ? `DATA SHARD${att.size ? ` • ${att.size}` : ''}` : `${ext.toUpperCase() || 'FILE'}${att.size ? ` • ${att.size}` : ''}`,
+        meta: isShard ? `${T('one', 'upper')}${att.size ? ` • ${att.size}` : ''}` : `${ext.toUpperCase() || 'FILE'}${att.size ? ` • ${att.size}` : ''}`,
         metaClass: isShard ? 'ncm-attach-card__meta--shard' : '',
         thumbClass: isShard ? 'ncm-attach-card__thumb--shard' : isImage ? 'ncm-attach-card__thumb--image' : '',
         thumbIcon: isShard ? 'fas fa-microchip' : isImage ? 'fas fa-image' : (att.icon || 'fas fa-file'),
@@ -5245,7 +5288,7 @@ export class MessageViewerApp extends BaseApplication {
         items.push({
           id: att.itemId || item?.id || '',
           uuid: att.itemUuid || item?.uuid || '',
-          name: att.name || item?.name || 'Unknown Shard',
+          name: att.name || item?.name || `Unknown ${T('short')}`,
           img: item?.img || null,
           isReceived: true,
           isEncrypted,

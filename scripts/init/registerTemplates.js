@@ -10,6 +10,7 @@
 
 import { TEMPLATES, MODULE_ID } from '../utils/constants.js';
 import { log, formatCyberDate, truncate } from '../utils/helpers.js';
+import { registerShardTermHelper } from '../utils/shardTerm.js';
 
 /**
  * Check if the last argument is a Handlebars options object (block mode)
@@ -126,6 +127,8 @@ export function registerTemplates(initializer) {
     Handlebars.registerHelper('letter', (i) => String.fromCharCode(65 + (((i || 0) % 26) + 26) % 26));
     Handlebars.registerHelper('ncm-json', (context) => JSON.stringify(context, null, 2));
     Handlebars.registerHelper('ncm-isGM', () => game.user?.isGM);
+    // What players call a shard (the `shardTerm` setting) — see utils/shardTerm.js.
+    registerShardTermHelper(Handlebars);
     Handlebars.registerHelper('join', (arr, separator) => {
       if (!Array.isArray(arr)) return '';
       return arr.join(typeof separator === 'string' ? separator : ', ');

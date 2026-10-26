@@ -11,6 +11,7 @@ import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
 import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, chatCardTime } from '../utils/helpers.js';
 import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
+import { replyIdentity, groupKeyOf } from '../utils/identities.js';
 
 export class MessageService {
   constructor() {
@@ -217,6 +218,21 @@ export class MessageService {
           }
         }
 
+        // IDENTITIES: an alias with no actor of its own delivers into its
+        // group's inbox — the character it points at, or the NPC contact it is
+        // an alias of. `toContactId` stays the alias, so the mail records it.
+        if (toContact && !toContact.actorId) {
+          const key = groupKeyOf(game.nightcity?.masterContactService?.getAll?.() || [], toContact);
+          if (key?.startsWith('a:')) {
+            const aid = key.slice(2);
+            toActor = game.actors.get(aid) || toActor;
+            data.toActorId = aid;
+            recipientInboxId = aid;
+          } else if (key?.startsWith('c:')) {
+            recipientInboxId = key.slice(2);
+          }
+        }
+
         // Store the resolved inbox target for delivery
         data._recipientInboxId = recipientInboxId;
 
@@ -307,6 +323,10 @@ export class MessageService {
    * @returns {string}
    */
   _senderEmailFor(data, fromActor) {
+    // An identity picked explicitly (Send-as, or a reply from the alias the
+    // mail came to) wins over the character's registered address.
+    const chosen = data.fromContactId && game.nightcity?.masterContactService?.getContact?.(data.fromContactId);
+    if (chosen?.email && chosen.actorId && chosen.actorId === (fromActor?.id || data.fromActorId)) return chosen.email;
     const flagged = this._contactRepo.getActorEmail(data.fromActorId);
     if (flagged) return flagged;
     const mcs = game.nightcity?.masterContactService;
@@ -508,7 +528,12 @@ export class MessageService {
 
   /** The author's own copy of an outgoing message (`<id>-sent`, status.sent). */
   async _createSentCopy(data) {
-    const senderInboxId = data.fromActorId || data.fromContactId;
+    let senderInboxId = data.fromActorId || data.fromContactId;
+    if (!data.fromActorId && data.fromContactId) {
+      const mcs = game.nightcity?.masterContactService;
+      const key = groupKeyOf(mcs?.getAll?.() || [], mcs?.getContact?.(data.fromContactId));
+      if (key) senderInboxId = key.slice(2);
+    }
     if (!senderInboxId) return null;
     let sentCopy = {
       ...data,
@@ -520,7 +545,12 @@ export class MessageService {
     // Anonymous reply — mask the recipient on the replier's own sent copy so
     // their outbox can't reveal the anonymous party they answered.
     if (data.anonReply) sentCopy = this._maskAnonReplyForSender(sentCopy);
-    return this._messageRepo.createMessage(senderInboxId, sentCopy);
+    const created = await this._messageRepo.createMessage(senderInboxId, sentCopy);
+    // A terminal account linked to the sender shows its outgoing mail too
+    // (the account's Sent folder). Non-fatal, like the delivery mirror.
+    try { await game.nightcity.terminalService?.mirrorSentToAccounts?.(sentCopy); }
+    catch (err) { console.warn(`${MODULE_ID} | terminal sent-mirror failed:`, err); }
+    return created;
   }
 
   /**
@@ -1200,7 +1230,7 @@ export class MessageService {
    * @param {string} replyBody
    * @returns {Object} Message data ready for sendMessage()
    */
-  buildReply(originalMessage, fromActorId, replyBody, { all = false } = {}) {
+  buildReply(originalMessage, fromActorId, replyBody, { all = false, fromContactId = null } = {}) {
     const reply = {
       fromActorId,
       subject: originalMessage.subject?.startsWith('RE: ')
@@ -1230,6 +1260,11 @@ export class MessageService {
     // Resolve reply target — actor or contact
     if (originalMessage.fromActorId) {
       reply.toActorId = originalMessage.fromActorId;
+      // Sent from one of that character's identities → answer THAT identity.
+      if (originalMessage.fromContactId) {
+        reply.toContactId = originalMessage.fromContactId;
+        if (originalMessage.from) reply.to = originalMessage.from;
+      }
     } else if (originalMessage.fromContactId) {
       reply.toContactId = originalMessage.fromContactId;
       reply.to = originalMessage.from; // Use the email directly
@@ -1237,6 +1272,10 @@ export class MessageService {
       // Last resort: try to find by email
       reply.to = originalMessage.from;
     }
+
+    // Mail that reached one of the replier's identities goes back out FROM it.
+    const mine = replyIdentity(game.nightcity?.masterContactService?.getAll?.() || [], originalMessage, { actorId: fromActorId, contactId: fromContactId });
+    if (mine) { reply.fromContactId = mine.id; reply.from = mine.email || undefined; }
 
     // Reply All — everyone on the message except the replier. Participants are
     // address-keyed members (participants.js); self is excluded by actor id,
@@ -1675,7 +1714,13 @@ export class MessageService {
 
     console.log(`${MODULE_ID} | GM handling message relay: ${data.messageId}`);
     let result;
-    if (Array.isArray(data._fanout) && data._fanout.length) {
+    // "Send as the account" from a terminal: the GM verifies the machine allows
+    // it and that the sender really is that account (TerminalService.verifyAccountSend).
+    if (data.terminalSend) {
+      const v = game.nightcity?.terminalService?.verifyAccountSend?.(data) || { ok: false, reason: 'terminals unavailable' };
+      if (!v.ok) result = { success: false, error: `Refused: ${v.reason}.` };
+    }
+    if (result) { /* refused above */ } else if (Array.isArray(data._fanout) && data._fanout.length) {
       const base = { ...data };
       delete base._fanout;
       result = await this._deliverMany(base, data._fanout);

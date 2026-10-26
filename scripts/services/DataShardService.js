@@ -14,6 +14,8 @@
 
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../utils/constants.js';
 import { log, isGM, generateId } from '../utils/helpers.js';
+import { withShardPrefix, restorePatch } from '../utils/shardNaming.js';
+import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
 import {
   resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor,
 } from '../ui/content/IntegrityModel.js';
@@ -57,7 +59,7 @@ export class DataShardService {
 
     // Check if already a shard
     if (item.getFlag(MODULE_ID, 'isDataShard')) {
-      return { success: false, error: 'Item is already a data shard' };
+      return { success: false, error: `Item is already ${withArticle(T('one', 'lower'))}` };
     }
 
     try {
@@ -91,12 +93,19 @@ export class DataShardService {
       // Apply manual overrides last (highest priority)
       config = foundry.utils.mergeObject(config, configOverrides, { inplace: false });
 
-      // Single atomic flag write
+      // Single atomic write. `original` remembers what the item was so removing
+      // the shard data gives it back (name + art) — any carried item can become
+      // a shard, and the Encoder renames/re-arts it. The optional name prefix
+      // (`shardNamePrefix`) lands here, the one door every conversion uses.
+      const prefix = game.nightcity?.settingsManager?.getShardNamePrefix?.() || '';
+      const prefixed = withShardPrefix(item.name, prefix);
       await item.update({
+        ...(prefixed !== item.name ? { name: prefixed } : {}),
         [`flags.${MODULE_ID}.isDataShard`]: true,
         [`flags.${MODULE_ID}.config`]: config,
         [`flags.${MODULE_ID}.state`]: foundry.utils.deepClone(DEFAULTS.SHARD_STATE),
         [`flags.${MODULE_ID}.journalId`]: journal.id,
+        [`flags.${MODULE_ID}.original`]: { name: item.name, img: item.img || '' },
       });
 
       this.eventBus?.emit(EVENTS.SHARD_CREATED, { itemId: item.id, preset: presetKey });
@@ -129,8 +138,13 @@ export class DataShardService {
       // archive can only ever remove itself.
       const isArchive = !!item.getFlag(MODULE_ID, 'shardArchive');
 
-      // Remove all NCM flags
+      // Remove all NCM flags, and give the item back the name + art it had
+      // before it was a shard (or at least drop the name prefix). An archive
+      // copy is a window on someone else's shard, so it keeps its own name.
+      const restore = isArchive ? {} : restorePatch(item, item.getFlag(MODULE_ID, 'original'),
+        game.nightcity?.settingsManager?.getShardNamePrefix?.() || '');
       await item.update({
+        ...restore,
         [`flags.-=${MODULE_ID}`]: null,
       });
 
@@ -1214,7 +1228,7 @@ export class DataShardService {
   /** @private Player → GM relay. Warns when there is no GM to land the write. */
   _relayIntegrity(op, shardItem, payload = {}) {
     if (!game.users?.activeGM) {
-      ui.notifications?.warn('NCM | No GM connected — the shard change could not be saved.');
+      ui.notifications?.warn(`NCM | No GM connected — the ${T('short', 'lower')} change could not be saved.`);
       return false;
     }
     this.socketManager?.emit(SOCKET_OPS.SHARD_INTEGRITY_REQUEST, { op, itemUuid: shardItem.uuid, userId: game.user?.id, ...payload });
@@ -1292,7 +1306,7 @@ export class DataShardService {
       const wealth = foundry.utils.deepClone(actor.system.wealth);
       wealth.value += amount;
       const transaction = `Increased by ${amount} to ${wealth.value}`;
-      const reason = `NCM: Claimed ${amount.toLocaleString()} eb from data shard`;
+      const reason = `NCM: Claimed ${amount.toLocaleString()} eb from ${withArticle(T('one', 'lower'))}`;
       wealth.transactions.push([transaction, reason]);
       await actor.update({ 'system.wealth': wealth });
 
@@ -1665,7 +1679,7 @@ export class DataShardService {
 
     const result = await iceService.applyDamage(actor, config, {
       context: 'shard',
-      targetName: this._currentShardName || 'Data Shard',
+      targetName: this._currentShardName || T('one'),
       silent,
     });
 
@@ -1852,7 +1866,7 @@ export class DataShardService {
   /** @private Player → GM relay for a state write. Warns when there is no GM to land it. */
   _relayState(op, item, payload = {}) {
     if (!game.users?.activeGM) {
-      ui.notifications?.warn('NCM | No GM connected — the shard could not record that. Try again when your GM is online.');
+      ui.notifications?.warn(`NCM | No GM connected — the ${T('short', 'lower')} could not record that. Try again when your GM is online.`);
       return false;
     }
     this.socketManager?.emit(SOCKET_OPS.SHARD_STATE_REQUEST, { op, itemUuid: item.uuid, userId: game.user?.id, ...payload });

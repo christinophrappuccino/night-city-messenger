@@ -106,7 +106,7 @@
   <div class="cover-sub">Getting Started Guide — for GMs and players</div>
   <div class="cover-shot"><img src="img/access-granted.png" alt="Terminal login — access granted"></div>
   <div class="cover-foot">
-    <div>v1.3.1</div>
+    <div>v1.5.0</div>
     <div class="r">github.com/christinophrappuccino/night-city-messenger</div>
   </div>
 </section>
@@ -161,8 +161,8 @@
   </table>
 
   <h3>2 — Open the Admin Panel</h3>
-  <p>This is your control center. It has 9 tabs: <strong>Overview, Messages, Contacts, Networks, Shards, Spam, Terminals, Security, Tools</strong>. The Overview tab shows your players' characters and recent messages.</p>
-  <figure class="fig-70" style="width:54%"><div class="shot"><img src="img/AdminPanel.png" alt="The Admin Panel Overview Tab"></div>
+  <p>This is your control center. It has 9 tabs: <strong>Overview, Messages, Contacts, Networks, Shards, Spam, Terminals, Security, Tools</strong>. The <strong>Overview</strong> opens on <strong>Needs you</strong>: one list of everything waiting on you, most urgent first — unanswered player mail (with <strong>Reply as</strong>), characters running hot, trace countdowns, armed plants, impersonated mail, bricked shards, scheduled mail, setup gaps. Below it: who is at the table and on which network, a tile per tab, recent activity, every running timer, and the NPCs players are talking to.</p>
+  <figure class="fig-70" style="width:37%"><div class="shot"><img src="img/AdminPanel.png" alt="The Admin Panel Overview Tab"></div>
   <figcaption>The Admin Panel — Overview tab, with a few registered characters</figcaption></figure>
   <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>02</span></div>
 </section>
@@ -185,11 +185,12 @@
   <ul>
     <li><strong>Import Actor</strong> — turn an existing actor into a contact in two clicks. The portrait and email come with it.</li>
     <li><strong>Push contacts to players</strong> — give an NPC's contact card to one player or the whole party.</li>
+    <li><strong>Aliases</strong> — one character can have several identities (a main address, burners, cover names). In the GM Contact Manager use <strong>+ Add alias</strong>; NPCs with no actor can have them too. Mail to any alias reaches the same inbox, replies go out as the alias that was written to, and an alias never shows the real portrait unless you give it one.</li>
     <li><strong>Groups</strong> — the Groups card at the top of the tab. Make a named list of contacts ("The Crew", "Arasaka Leads"), then <strong>Push</strong> it to a player and it lands in their contact book, contacts included. Re-pushing updates their copy.</li>
     <li>Mark an address as <strong>send-only</strong> — good for system addresses like <code>alerts@arasaka.com</code>. Players get mail from it but can't reply.</li>
   </ul>
   <div class="tip"><span class="k">Tip</span>Don't build the whole city. Two or three NPCs your party actually talks to is plenty for the first night.</div>
-  <figure class="fig-70"><div class="shot"><img src="img/ContactsTab.png" alt="The contacts tab in the Admin panel"></div>
+  <figure class="fig-70" style="width:62%"><div class="shot"><img src="img/ContactsTab.png" alt="The contacts tab in the Admin panel"></div>
   <figcaption>Admin Panel → Contacts tab, with a few NPC contacts and the Import Actor button visible</figcaption></figure>
   <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>04</span></div>
 </section>
@@ -227,7 +228,7 @@
     <li><strong>Pick your email address</strong> — a name plus a domain, like <code>v.wraith@nightcity.net</code>. It suggests names based on your character. The GM decides which domains exist.</li>
   </ol>
   <p>Done. NPCs and other players can now message you at that address.</p>
-  <figure class="fig-80"><div class="shot"><img src="img/Inbox.png" alt="A player's inbox"></div>
+  <figure class="fig-80" style="width:78%"><div class="shot"><img src="img/Inbox.png" alt="A player's inbox"></div>
   <figcaption>A player's inbox (Message Viewer) with a few messages and the network pill visible</figcaption></figure>
 
   <h3>Using your inbox</h3>
@@ -260,6 +261,7 @@
 <section class="page">
   <h3 style="margin-top:0">Make it yours</h3>
   <p>Open the <strong>Theme Customizer</strong> from your inbox. You can change colors, fonts, text size, wallpaper, and effects, and give your Agent a custom name. Only you see your theme.</p>
+  <p>Under <strong>Effects</strong>, <strong>CRT Film</strong> puts a screen film over your windows: Off, Glass, Tube or Arcade, with an intensity slider and an <strong>Advanced</strong> panel. Terminals and shards have their own film set by the GM; <strong>Film on terminals &amp; shards</strong> lets you dim it or turn it off on your screen only.</p>
   <figure class="fig-80"><div class="shot"><img src="img/ThemeCustomizer.png" alt="The theme customizer"></div>
   <figcaption>The Theme Customizer — colors, fonts, wallpaper, effects, and your Agent's name</figcaption></figure>
 
@@ -274,7 +276,7 @@
   <div class="h2rule"></div>
   <p class="lead">Once messaging works, here's what you can do with it:</p>
   <ul>
-    <li><strong>Send as anyone.</strong> Put any contact in the From field. When players message an NPC, you get a popup, and the mail collects in the <strong>NPC Inbox</strong> panel (Admin → Messages) where you can reply.</li>
+    <li><strong>Send as anyone.</strong> Put any contact in the From field, including a character's alias. When players message an NPC, you get a popup, and the mail collects in the <strong>NPC Inbox</strong> panel (Admin → Messages) and the Overview's <strong>Needs you</strong> list, where you can reply as whoever they wrote to.</li>
     <li><strong>Anonymous send.</strong> Turn this on in settings, and the composer gets a checkbox that hides who you are. Players see a glitchy masked avatar instead. They can reply without knowing who they're talking to, and if you allow it, they can roll to trace you. Great for mystery employers.</li>
     <li><strong>Self-destruct.</strong> Set a message to delete after it's read, or after 1, 6, or 24 hours.</li>
     <li><strong>Scheduled messages.</strong> Write now, send later.</li>
@@ -294,8 +296,9 @@
   <p class="lead">A data shard is an Item that has been turned into an encrypted file. It's loot that players crack open.</p>
 
   <h3>Make one</h3>
-  <p>Right-click any Item and pick <strong>Convert to Data Shard</strong>. As GM, it converts right away. Right-click again and pick <strong>Configure Shard</strong> to set the difficulty, the skill needed, lockouts, and Black ICE that attacks players who fail.</p>
-  <p>Players can make shards too, with the Shard Encoder (see Part 05).</p>
+  <p>Right-click any Item and pick <strong>Convert to Data Shard</strong>. As GM, it converts right away. Right-click again and pick <strong>Configure Shard</strong> to set the difficulty, the skill needed, lockouts, and Black ICE that attacks players who fail. Its <strong>Theme</strong> tab sets the shard's look, including its own CRT film, and the startup can be a video.</p>
+  <p>Players can make shards too, with the Shard Encoder (see Part 05). By default they can only write on <strong>Gear</strong> items (and the blanks you list in Player Authoring), so nobody turns their pistol into a shard.</p>
+  <p><strong>Rename…</strong> on the right-click menu renames the shard and its item together, and turning a shard back into a normal item restores its original name and picture. Module Settings can add a name prefix and change what players call shards (Memory Chip, Data Chip…) — see Part 09.</p>
 
   <h3>Put stuff inside</h3>
   <p>Open the shard and add entries. There are <strong>18 kinds of content</strong>, and each one looks like the real thing:</p>
@@ -415,8 +418,8 @@
   <ul>
     <li><strong>Identity</strong> — name, organization, folder names.</li>
     <li><strong>Accounts</strong> — the important one. Each account is a login with its own mailbox <strong>and its own files</strong>. Set a username, portrait, admin rights, and security (password, skill check, or key item). Accounts can be <strong>hidden</strong> — players only find them if they learn the username somewhere else.</li>
-    <li><strong>Theme</strong> — colors, fonts, and wallpaper for this machine. There's a <strong>preset library</strong> with 12 ready-made looks (Arasaka workstation, NCPD precinct, Trauma Team, street BBS, and more) that set everything up in one click.</li>
-    <li><strong>Boot &amp; Login</strong> — the startup screen (or a video that plays instead), six different login screen styles, four <strong>mailbox layouts</strong> for after login (Classic, Tabs, TTY, Desktop), a message of the day, and a screensaver. Each terminal can have its own sound effects too.</li>
+    <li><strong>Theme</strong> — colors, fonts, wallpaper, and the CRT film for this machine. There's a <strong>preset library</strong> with 12 ready-made looks (Arasaka workstation, NCPD precinct, Trauma Team, street BBS, and more) that set everything up in one click.</li>
+    <li><strong>Boot &amp; Login</strong> — the startup screen (or a video that plays instead) and how long it runs, six different login screen styles, four <strong>mailbox layouts</strong> for after login (Classic, Tabs, TTY, Desktop), a message of the day, and a screensaver. Each terminal can have its own sound effects too.</li>
     <li><strong>Network</strong> — which network the machine itself is connected to.</li>
     <li><strong>Exfil</strong> — what players are allowed to do with what they find (see below).</li>
   </ul>
@@ -432,7 +435,7 @@
 <!-- ═══════════════ PART 5 (b) ═══════════════ -->
 <section class="page">
   <h3 style="margin-top:0">What players see</h3>
-  <p>Boot screen, then login, then the machine — all in that machine's own look. Under the account name a switch picks <strong>MAIL</strong> (the account's folders) or <strong>FILES</strong> (a directory tree of the account's home and the shared volume). Machines hold both mail and files (camera feeds, spreadsheets, logs). If an account belongs to an NPC, mail sent to that NPC also shows up on the machine. The paper trail is really there.</p>
+  <p>Boot screen, then login, then the machine — all in that machine's own look. Under the account name a switch picks <strong>MAIL</strong> (the account's folders) or <strong>FILES</strong> (a directory tree of the account's home and the shared volume). Machines hold both mail and files (camera feeds, spreadsheets, logs). If an account belongs to an NPC, mail sent to that NPC also shows up on the machine. The paper trail is really there. In the <strong>TTY</strong> layout players type at a prompt: a number opens that row, <code>cd</code> opens a folder, <code>?</code> lists the commands, and <code>logout</code> switches account.</p>
   <figure class="fig-85"><div class="shot"><img src="img/terminal-login.png" alt="Terminal login — access granted"></div>
   <figcaption>Logging into an Arasaka workstation — the credential badge fills in, then the machine opens its mailbox.</figcaption></figure>
 
@@ -441,6 +444,21 @@
   <p><strong>Download · Burn to shard · Forward · Leak</strong> (posts it to public chat) <strong>· Sell</strong> (instant eddies) <strong>· Wipe</strong> (delete it — you can restore it from a recycle bin)</p>
   <p>Failing a gated roll triggers a trace. One fun detail: live camera feeds can't be downloaded, but players can save a single frame, loop a camera, or cut it. A looped camera shows a frozen timestamp — which someone might notice.</p>
   <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>17</span></div>
+</section>
+
+<!-- ═══════════════ PART 5 (c) ═══════════════ -->
+<section class="page">
+  <h3 style="margin-top:0">Someone's old mail</h3>
+  <p>If an account is linked to an NPC or a character, its <strong>Mail</strong> tab has <strong>Import from inbox</strong>: pick messages from that person's Agent inbox and copy them onto the machine (mail they sent goes in a Sent folder). From any message in your GM inbox, the <strong>Terminal</strong> button copies it to an account. After that, new mail to and from that person appears on the machine by itself. Untick <strong>Show this identity's Agent mail here</strong> on an account that should keep its own mail, like a work machine.</p>
+
+  <h3>Admin accounts</h3>
+  <p>Logged in as an account with admin rights, a player can open <strong>View as admin</strong> in the account switcher and browse another account's mail and files. Configure Terminal → Accounts → <strong>Admin access</strong> turns it off, makes it read-only, or keeps hidden accounts out of it, and one account can be marked <strong>Private from admin</strong>. What players see it called — ADMIN OVERRIDE, SYSOP, NETWATCH AUTHORITY — comes with the theme, and you can rename it on the Theme tab.</p>
+
+  <h3>Sending mail as an account</h3>
+  <p>Turn on <strong>Sending as an account</strong> in Configure Terminal → Accounts and a logged-in player gets a <strong>Write</strong> button and <strong>Reply as</strong> on open mail. The message goes out from that account's owner, and the people the account has mailed are the address book. A player on their own character's machine is just sending their own mail.</p>
+  <p>Someone sending as an account that isn't theirs is flagged for you: Admin → Messages shows <em>via WS-7F-12 · typed by Rache</em> on the message, the NPC Inbox counts it as player mail, and it appears in the Overview's <strong>Needs you</strong> list. The recipient only ever sees the account's owner.</p>
+  <div class="tip"><span class="k">Tip</span>A hacked inbox is a lead machine: the address book tells players who this person talks to, and every reply they send can start trouble.</div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>18</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (a) ═══════════════ -->
@@ -457,7 +475,7 @@
   </ul>
   <figure class="fig-80"><div class="shot"><img src="img/security-tab.png" alt="The Security tab"></div>
   <figcaption>Admin → Security: the activity log, per-operator heat bars, planted files, and the recycle bin — your whole consequence dashboard.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>18</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>19</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (b) ═══════════════ -->
@@ -473,7 +491,7 @@
 
   <h3>Fighting back</h3>
   <p>Players have tools too. <strong>ANALYZE</strong> checks whether a file is really what it says it is. It is the magnifier button on a file's header, in a terminal and on a shard alike — but only on <em>typed</em> files (a spreadsheet, a photo gallery, a program…); a plain message has nothing to analyze, so it shows no button. <strong>SYSTEM SWEEP</strong> scans a whole terminal for planted programs — it lives in the mailbox's OPS menu next to Upload, reveals what the roll is good enough to find, and never says whether it missed anything.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>19</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>20</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (c) ═══════════════ -->
@@ -482,7 +500,7 @@
   <p>Admin → Security → <strong>Programs</strong> opens the <strong>Malware Workshop</strong>. Build programs with real effects: keyloggers, secret backdoor accounts, ICE traps, logic bombs, file wipers. You can disguise them as harmless files. Give them to players as Items; they carry and use them through the <strong>Program Deck</strong>.</p>
   <figure class="fig-85"><div class="shot"><img src="img/MalwareWorkshop.png" alt="The Malware Workshop"></div>
   <figcaption>The Malware Workshop — the cover story on top, what the program really does underneath.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>20</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>21</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (d) ═══════════════ -->
@@ -492,7 +510,7 @@
 
   <h3>Who can hack at all</h3>
   <p>Admin → Security → <strong>Operator Access</strong> lets you limit who can use terminals: by role, by skill level, by gear they need to own, or by naming specific characters.</p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>21</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>22</span></div>
 </section>
 
 <!-- ═══════════════ PART 6 (e) ═══════════════ -->
@@ -506,7 +524,7 @@
   </ol>
   <figure class="fig-80"><div class="shot"><img src="img/net-adjudicator.png" alt="The GM adjudicator prompt"></div>
   <figcaption>"GM decides" mode: the prompt you get when a player attempts a hack — run the NET at the table, then call it.</figcaption></figure>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>22</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>23</span></div>
 </section>
 
 <!-- ═══════════════ THREE RULES ═══════════════ -->
@@ -529,7 +547,7 @@
   </div>
 
   <div class="tip"><span class="k">Also good to know</span>Self-destructing messages never destroy when a GM reads them (so you can check inboxes safely), and GMs skip most login checks — so if you want to see what players see, log in from a player account.</div>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>23</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>24</span></div>
 </section>
 
 <!-- ═══════════════ SETTINGS ═══════════════ -->
@@ -547,12 +565,14 @@
     <tr><td><strong>Netrunning Resolution</strong></td><td>auto / flagged / GM decides</td></tr>
     <tr><td><strong>Planted Program Firing</strong></td><td>fire on their own, or ask you first</td></tr>
     <tr><td><strong>Exfil Folder Name</strong></td><td>what the players' stolen-files folder is called</td></tr>
+    <tr><td><strong>What Players Call a Shard</strong></td><td>Data Shard, Memory Chip, Data Chip, or your own word</td></tr>
+    <tr><td><strong>Shard Name Prefix</strong></td><td>a tag added to the front of every shard's item name</td></tr>
     <tr><td><strong>Notify GM of NPC Mail</strong></td><td>popup when players message NPCs</td></tr>
     <tr><td><strong>Auto-register NPC Senders</strong></td><td>sending from an NPC actor adds it to your contact directory</td></tr>
     <tr><td><strong>Terminal Pins Auto-Show</strong></td><td>map pins visible without extra clicks</td></tr>
     <tr><td><strong>Debug Mode</strong></td><td>the module explains its decisions in the console</td></tr>
   </table>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>24</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>25</span></div>
 </section>
 
 <!-- ═══════════════ FIRST SESSIONS ═══════════════ -->
@@ -574,7 +594,7 @@
     github.com/christinophrappuccino/night-city-messenger<br><br>
     <span style="color:var(--cyan)">Wake up, samurai. You've got mail.</span>
   </p>
-  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>25</span></div>
+  <div class="pgfoot"><span>NIGHT CITY MESSENGER — GETTING STARTED</span><span>26</span></div>
 </section>
 
 </body>

@@ -77,6 +77,37 @@
       {{#if editing}}
         {{> "modules/night-city-messenger/templates/terminal/partials/config-account.hbs" editing}}
       {{else}}
+        {{!-- ADMIN ACCESS (2026-10-26) — what an Admin account may do with the other
+              accounts. The label is NAMED here and edited on the Theme tab. Rules:
+              utils/terminalAdmin.js. Read by _onSaveConfig (adminBrowse / adminSeeHidden / adminRights). --}}
+        <div class="ncm-cfg-section">
+          <div class="ncm-cfg-section-header"><i class="fas fa-user-shield ncm-cfg-section-icon" style="color:#f7c948"></i><div class="ncm-cfg-section-title">Admin access</div></div>
+          <div class="ncm-cfg-desc">What an <strong>Admin</strong> account can do with the other accounts on this machine.</div>
+          <div class="ncm-cfg-adminlabel">
+            <span class="ncm-cfg-adminlabel__k">Players see admin access as</span>
+            <span class="ncm-cfg-adminlabel__tag" style="--al:{{adminAccess.labelColor}}"><i class="fas fa-user-shield"></i> {{adminAccess.label}}</span>
+            <span class="ncm-cfg-adminlabel__link" data-action="switchTab" data-tab="theme" data-focus="[data-ttc-adminlabel]"><i class="fas fa-palette"></i> change it in the Theme tab <i class="fas fa-arrow-right"></i></span>
+          </div>
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">View other accounts</span><label class="ncm-cfg-toggle-label"><input type="checkbox" name="adminBrowse" {{#if adminAccess.browse}}checked{{/if}}></label></div>
+          <div class="ncm-cfg-hint">An admin opens another account's mail and home files without its password. Off = Admin only passes folder locks.</div>
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">See hidden accounts</span><label class="ncm-cfg-toggle-label"><input type="checkbox" name="adminSeeHidden" {{#if adminAccess.seeHidden}}checked{{/if}}></label></div>
+          <div class="ncm-cfg-hint">Hidden accounts appear in the admin's View-as list — getting into an admin account becomes a way to find the secret logins.</div>
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">While viewing</span>
+            <select name="adminRights" class="ncm-cfg-input">
+              <option value="full" {{#unless adminAccess.readOnly}}selected{{/unless}}>Full rights — read, copy out, wipe</option>
+              <option value="read" {{#if adminAccess.readOnly}}selected{{/if}}>Read-only — read and copy out only</option>
+            </select></div>
+          <div class="ncm-cfg-adminverdict">{{{adminAccess.verdict}}}</div>
+        </div>
+        {{!-- SEND AS THE ACCOUNT (2026-10-26) — read by _onSaveConfig (acctMailCompose / acctMailLog). --}}
+        <div class="ncm-cfg-section">
+          <div class="ncm-cfg-section-header"><i class="fas fa-user-secret ncm-cfg-section-icon" style="color:#f7c948"></i><div class="ncm-cfg-section-title">Sending as an account</div></div>
+          <div class="ncm-cfg-desc">Whoever is logged into an account can write mail <strong>as its owner</strong> — to anyone in that account's address book (everyone it has mail from or sent mail to), from the owner's address.</div>
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">Allow sending as accounts</span><label class="ncm-cfg-toggle-label"><input type="checkbox" name="acctMailCompose" {{#if accountMail.compose}}checked{{/if}}></label></div>
+          <div class="ncm-cfg-hint">Adds <strong>WRITE</strong> to the terminal's top bar and <strong>Reply as …</strong> on open mail (TTY: <code>write</code> / <code>reply</code>). An account needs a linked identity (Link Identity in its editor) to send. Read-only admin viewing can't send.</div>
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">Log each send</span><label class="ncm-cfg-toggle-label"><input type="checkbox" name="acctMailLog" {{#if accountMail.log}}checked{{/if}}></label></div>
+          <div class="ncm-cfg-hint">Writes "Rache sent mail as mreyes" to Admin → Security → Activity (no heat).</div>
+        </div>
         <div class="ncm-cfg-section">
           <div class="ncm-cfg-section-header"><i class="fas fa-users ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Accounts</div></div>
 
@@ -121,6 +152,7 @@
                 <span class="ncm-acctl-nm">{{displayName}}
                   {{#if isDefault}}<b class="ncm-term-cfg-tag ncm-term-cfg-tag--default">★ default</b>{{/if}}
                   {{#if hidden}}<b class="ncm-term-cfg-tag"><i class="fas fa-eye-slash"></i> hidden</b>{{/if}}
+                  {{#if privateFromAdmin}}<b class="ncm-term-cfg-tag ncm-term-cfg-tag--private"><i class="fas fa-user-lock"></i> private from admin</b>{{/if}}
                   {{#if gated}}<b class="ncm-term-cfg-tag ncm-term-cfg-tag--net"><i class="fas fa-wifi"></i> net-gated</b>{{/if}}
                 </span>
                 <span class="ncm-acctl-sub">{{username}}{{#if email}} · <i class="ncm-acctl-mail">{{email}}</i>{{/if}}{{#if linkedContact}} · ◉ {{linkedContact}}{{/if}}</span>
@@ -214,6 +246,20 @@
         <div class="ncm-cfg-hint" style="margin:0 16px;">A preset card stages the <strong>whole machine</strong> — palette, fonts, boot screen, login style, and (when the terminal has no accounts) seed accounts. Check the Boot &amp; Login tab to see it, then <strong>Save</strong> to commit.</div>
       {{/if}}
 
+      {{!-- ADMIN ACCESS label (2026-10-26) — what players see when an admin account
+            views another account. Part of the THEME: a preset card fills it, typing
+            overrides it, saving the theme saves it. Accounts → Admin access names it. --}}
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel" data-ttc-adminlabel-sec>Admin access label — what players see when an admin views another account</div>
+      <div class="ncm-tc__font-section">
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Label</span>
+          <input type="text" class="ncm-tc__name-input" data-ttc-adminlabel value="{{themeAdminLabel}}" maxlength="24" placeholder="{{themeAdminLabelSuggested}}">
+          <button type="button" class="ncm-tc__paction" style="flex:0 0 auto" data-ttc-adminlabel-reset data-tooltip="Back to the theme's suggestion"><i class="fas fa-rotate-left"></i> Use the theme's</button>
+        </div>
+        <div class="ncm-cfg-hint" data-ttc-adminlabel-from>{{#if themeAdminLabelCustom}}Your own label — the theme suggests {{themeAdminLabelSuggested}}.{{else}}Suggested by the theme. Type your own to override it (e.g. SYSOP, COMMAND ACCESS, NIGHT SHIFT KEY).{{/if}}</div>
+      </div>
+
       <div class="ncm-tc__divider"></div>
       <div class="ncm-tc__slabel">Terminal Preset Library — full setups (theme · boot · login style · screensaver · folders · account seeds)</div>
       <div class="ncm-tc__clist">
@@ -241,7 +287,7 @@
       </div>
 
       <div class="ncm-tc__divider"></div>
-      <div class="ncm-tc__slabel">Saved Themes — palette, fonts, CRT film &amp; mailbox layout</div>
+      <div class="ncm-tc__slabel">Saved Themes — palette, fonts, CRT film, mailbox layout &amp; admin label</div>
       <div class="ncm-tc__name-hint">A saved theme remembers the mailbox layout it was saved with (set under Boot &amp; Login) and brings it back when applied. Boot screen, login style and accounts live in the Full Terminal Preset Library above.</div>
       <div class="ncm-tc__clist">
         {{#each savedThemes}}

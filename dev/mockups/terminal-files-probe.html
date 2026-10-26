@@ -15,6 +15,7 @@
   data-shard-composer.hbs) with a terminal-target context: the message-or-file
   chooser + Store on / Folder.
   ?file=1 (a file selected instead of the listing)
+  ?av=1 an admin VIEWING another account (banner + View-as list + other homes); ?av=ro read-only; add ?sw=1 to open the switcher
   Serve it (node dev/tools/serve-mockups.cjs) or open off disk with
   --allow-file-access-from-files: it fetches the .hbs files.
 -->
@@ -149,6 +150,18 @@ const cfgBlockAcct = { scope: 'v', isShared: false, accountId: 'v', open: true, 
     { isDir: true, scope: 'v', path: 'drafts', name: 'drafts', depth: 0, open: false, registered: true, count: 1, size: '9 KB', gate: { mode: 'everyone', min: 0, isEveryone: true, isGated: false, accountCount: 0, accountsLabel: '', inherited: false, inheritedFrom: '', label: 'everyone' }, files: [] },
     { isRootFiles: true, scope: 'v', files: [(() => { const r = row('f6', 'q3_payroll.xls', 'SPREADSHEET', 'fas fa-table', 'green', '31 KB', '2046-03-08 00:00', 'v_arasaka'); return { ...r, depth: 0, size: r.fileSize, date: r.modified.slice(0, 10), unread: false, moveOptions: [{ value: SH + '|', label: 'shared: /' }, { value: SH + '|records', label: 'shared: /records', selected: false }, { value: 'v|', label: 'v_arasaka: /', selected: true }, { value: '__new__', label: '＋ New folder…' }] }; })()] },
   ] } };
+// SEND AS (2026-10-26): ?write=1 shows WRITE in the HUD + Reply as on the open message.
+if (q.get('write')) ctxTerm.composeAs = { username: 'mreyes', name: 'Marisol Reyes', email: 'm.reyes@arasaka.corp' };
+// ADMIN ACCESS (2026-10-26): the real partials with a viewing context.
+if (q.get('av')) {
+  ctxTerm.adminView = { label: 'ADMIN OVERRIDE', name: 'Marisol Reyes', username: 'mreyes', initials: 'MR', portrait: null, readOnly: q.get('av') === 'ro' };
+  ctxTerm.adminTargets = [
+    { id: 'v', displayName: 'Veronica A.', initials: 'VA', portrait: null, hidden: false, ok: true, isViewing: true },
+    { id: 'jc', displayName: 'Jae Chen', initials: 'JC', portrait: null, hidden: true, ok: true },
+    { id: 'ceo', displayName: 'ceo_private', initials: 'C', portrait: null, ok: false, reason: 'private from admin' },
+  ];
+  ctxTerm.fs.otherHomes = [{ id: 'r', username: 'root', tag: 'YOU', ok: true, isBack: true }, { id: 'jc', username: 'jchen', tag: 'HIDDEN', ok: true }, { id: 'ceo', username: 'ceo_private', tag: '', ok: false, reason: 'private from admin' }];
+}
 (async () => {
   try {
     if (document.getElementById('termOut')) {

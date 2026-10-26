@@ -255,7 +255,13 @@ export function registerMessagingSystem(initializer) {
       let fromActorId = null;
       let fromContactId = options.fromContactId || null;
 
-      if (options.fromActorId || options.actorId) {
+      if (options.terminalSend) {
+        // Sending AS a terminal account: the identity is the account's, not one
+        // this user owns (TerminalService.accountSendIdentity) — no resolution,
+        // no Email Setup intercept.
+        fromActorId = options.fromActorId || null;
+        fromContactId = options.fromContactId || null;
+      } else if (options.fromActorId || options.actorId) {
         fromActorId = _resolveActorId(options.fromActorId || options.actorId);
         if (!fromActorId && !isGM()) return;
       } else if (options.fromContact) {
@@ -267,7 +273,7 @@ export function registerMessagingSystem(initializer) {
       }
 
       // ── Email setup intercept ──
-      if (!game.user.isGM && fromActorId) {
+      if (!game.user.isGM && fromActorId && !options.terminalSend) {
         const emailService = game.nightcity?.emailService;
         if (emailService?.isSetupRequired()) {
           const actor = game.actors.get(fromActorId);
@@ -297,6 +303,8 @@ export function registerMessagingSystem(initializer) {
         groupId: options.groupId ?? null,
         threadId: options.threadId ?? null,
         inReplyTo: options.inReplyTo ?? null,
+        terminalSend: options.terminalSend ?? null,
+        addressBook: options.addressBook ?? null,
       });
 
       // Track and clean up

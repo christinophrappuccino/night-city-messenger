@@ -997,7 +997,7 @@ check('an archive can never delete the journal it borrows', () => {
   // The admin Unconvert passes deleteJournal:true. Without this guard, removing
   // a COPY would gut the player's real shard.
   const i = SVC.indexOf('async removeDataShard(');
-  const fn = SVC.slice(i, i + 1200);
+  const fn = SVC.slice(i, i + 2000);   // grew 2026-10-26: the name/art restore
   assert.ok(fn.includes("const isArchive = !!item.getFlag(MODULE_ID, 'shardArchive')"), 'no archive check');
   assert.ok(fn.includes('if (deleteJournal && journalId && !isArchive)'), 'the guard is not on the delete');
 });

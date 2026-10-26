@@ -55,7 +55,7 @@ After you enable the module, look for the **satellite dish** icon in the left to
 
 ### 2. Open the Admin Panel
 
-This is your control center. It has 9 tabs: **Overview, Messages, Contacts, Networks, Shards, Spam, Terminals, Security, Tools**. The Overview tab shows your players' characters and recent messages.
+This is your control center. It has 9 tabs: **Overview, Messages, Contacts, Networks, Shards, Spam, Terminals, Security, Tools**. The **Overview** answers two questions. **Needs you** is one list of everything waiting on you, most urgent first: player mail an NPC hasn't answered (with a **Reply as** button), characters running hot, trace countdowns, armed plants, someone sending mail while pretending to be someone else, bricked shards, scheduled mail about to go out, and setup gaps like a player with no email address. Each item has its own buttons, and dismissing one hides it until it changes. Below that: who is at the table and which network they're on, a tile per tab, recent activity (it survives a reload), every running timer in one place, the players' characters, and the NPCs they're talking to.
 
 ### 3. Set up networks (5 minutes)
 
@@ -72,6 +72,7 @@ Go to Admin Panel → **Contacts**. This is your master list of every NPC that p
 - **Import Actor** — turn an existing actor into a contact in two clicks. The portrait and email come with it.
 - **Push contacts to players** — give an NPC's contact card to one player or the whole party.
 - Mark an address as **send-only** — good for system addresses like `alerts@arasaka.com`. Players get mail from it but can't reply.
+- **Aliases** — one character can have several identities: a main address and burners, cover names, a work account. Open a contact in the GM Contact Manager and use **+ Add alias** (an NPC with no actor can have them too). Mail to any alias lands in the same inbox, replies go out as the alias the mail reached, and an alias never shows the character's real portrait unless you give it one. The Contacts tab nests aliases under their main and has an **Aliases** filter, and the Messages tab labels mail with "alias of …" so you can keep track of who is who.
 - **Groups** — the Groups card at the top of the tab. Make a named list of contacts ("The Crew", "Arasaka Leads"), then **Push** it to a player and it lands in their contact book, contacts included. Re-pushing updates their copy.
 
 Don't build the whole city. Two or three NPCs your party actually talks to is plenty for the first night.
@@ -123,6 +124,8 @@ The **Contacts** button opens your personal contact book. You can set trust leve
 
 Open the **Theme Customizer** from your inbox. You can change colors, fonts, text size, wallpaper, and effects, and give your Agent a custom name. Only you see your theme.
 
+Under **Effects**, **CRT Film** puts a screen film over your windows: Off, Glass, Tube or Arcade, with an intensity slider and an **Advanced** panel for the details. Terminals and shards have their own film set by the GM; **Film on terminals & shards** lets you dim it or turn it off on your screen without changing it for anyone else.
+
 ### If you own more than one character
 
 Terminals and shards act as your **operator** — the character who rolls the dice, pays, and gets paid. If you own several characters, an **OPERATOR chip** shows up on terminal screens. **Check it before you roll.** If the wrong character is picked, the wrong character gets the money.
@@ -133,7 +136,7 @@ Terminals and shards act as your **operator** — the character who rolls the di
 
 Once messaging works, here's what you can do with it:
 
-- **Send as anyone.** Put any contact in the From field. When players message an NPC, you get a popup, and the mail collects in the **NPC Inbox** panel (Admin → Messages) where you can reply.
+- **Send as anyone.** Put any contact in the From field, including one of a character's aliases. When players message an NPC, you get a popup, and the mail collects in the **NPC Inbox** panel (Admin → Messages) and on the Overview's **Needs you** list, where you can reply as whoever they wrote to.
 - **Anonymous send.** Turn this on in settings, and the composer gets a checkbox that hides who you are. Players see a glitchy masked avatar instead. They can reply without knowing who they're talking to, and if you allow it, they can roll to trace you. Great for mystery employers.
 - **Self-destruct.** Set a message to delete after it's read, or after 1, 6, or 24 hours.
 - **Scheduled messages.** Write now, send later.
@@ -148,9 +151,13 @@ A data shard is an Item that has been turned into an encrypted file. It's loot t
 
 ### Make one
 
-Right-click any Item and pick **Convert to Data Shard**. As GM, it converts right away. Right-click again and pick **Configure Shard** to set the difficulty, the skill needed, lockouts, and Black ICE that attacks players who fail.
+Right-click any Item and pick **Convert to Data Shard**. As GM, it converts right away. Right-click again and pick **Configure Shard** to set the difficulty, the skill needed, lockouts, and Black ICE that attacks players who fail. Its **Theme** tab sets the shard's look, including its own CRT film, and the startup can be a video.
 
-Players can convert items too, but they have to pass a skill check first.
+**Renaming.** Right-click a shard and pick **Rename…** — the name changes on the shard and the item together. Turning a shard back into a normal item restores its original name and picture. **Shard Name Prefix** in Module Settings can put a tag like `[SHARD]` in front of every shard's name so they're easy to spot in the sidebar.
+
+**What players call them.** Setting **What Players Call a Shard**: Data Shard (default), Memory Chip, Data Chip, or your own word. It changes what players read everywhere (the Agent, the shard viewer, the right-click menus); your GM windows keep saying "shard".
+
+Players can convert items too, but they have to pass a skill check first. By default they can only write on **Gear** items (and the blanks you list in Player Authoring → Blanks), so nobody turns their pistol into a shard; change that under **What can be written on**.
 
 ### Put stuff inside
 
@@ -193,8 +200,8 @@ Right-click an Item and pick **Convert to Terminal**. The setup screen has six t
 
 - **Identity** — name, organization, folder names.
 - **Accounts** — the important one. Each account is a login with its own mailbox **and its own files**. Set a username, portrait, admin rights, and security (password, skill check, or key item). Accounts can be **hidden** — players only find them if they learn the username somewhere else. This tab is also where the machine's content lives (next section).
-- **Theme** — colors, fonts, and wallpaper for this machine. There's a **preset library** with 12 ready-made looks (Arasaka workstation, NCPD precinct, Trauma Team, street BBS, and more) that set everything up in one click.
-- **Boot & Login** — the startup screen (or a video that plays instead), six different login screen styles, four **mailbox layouts** for after login (Classic, Tabs, TTY, Desktop), a message of the day, and a screensaver. Each terminal can have its own sound effects too.
+- **Theme** — colors, fonts, wallpaper, and the CRT film for this machine. There's a **preset library** with 12 ready-made looks (Arasaka workstation, NCPD precinct, Trauma Team, street BBS, and more) that set everything up in one click.
+- **Boot & Login** — the startup screen (or a video that plays instead) and how long it runs, six different login screen styles, four **mailbox layouts** for after login (Classic, Tabs, TTY, Desktop), a message of the day, and a screensaver. Each terminal can have its own sound effects too.
 - **Network** — which network the machine itself is connected to.
 - **Exfil** — what players are allowed to do with what they find (see below).
 
@@ -202,13 +209,19 @@ Right-click an Item and pick **Convert to Terminal**. The setup screen has six t
 
 Everything a machine holds is in **Accounts**. Each account row folds open into its **mail** (the folders from the Identity tab) and its **files** (its home folder). Above the accounts sits the **Shared volume** — files on the machine itself, which every login sees. **+ Message** and **+ File** open the same editor the shards use, with all 18 kinds of content; **+ Folder** adds a folder, and every folder has a **who can open it** control: everyone, admins only, a minimum clearance level, or named accounts. A player who can't open a folder sees it locked with the reason, never an empty space. You can also add content from inside the machine: log in and use **Add message or file** at the bottom of the sidebar.
 
+**An account's existing mail.** If an account is linked to an NPC or a character, its **Mail** tab has **Import from inbox**: pick messages from that person's Agent inbox and copy them onto the machine (mail they sent goes in a Sent folder). You can also open any message in your GM inbox and use the **Terminal** button to copy it to an account. From then on, new mail to and from that person appears on the machine by itself; untick **Show this identity's Agent mail here** on an account that should stay separate (a work machine with its own mail).
+
+**Admin accounts can look into other accounts.** Logged in as an account with admin rights, a player can open **View as admin** in the account switcher and browse another account's mail and files. Configure Terminal → Accounts → **Admin access** turns it off, makes it read-only, or hides hidden accounts from it; a single account can be marked **Private from admin**. What the players see this called (ADMIN OVERRIDE, SYSOP, …) comes from the terminal's theme and can be renamed on the Theme tab.
+
+**Sending mail as an account.** Turn on **Sending as an account** in Configure Terminal → Accounts and a logged-in player gets a **Write** button and **Reply as** on open mail: the message goes out from that account's owner, and the account's own correspondents are the address book. A player on their own character's machine is just sending their own mail. Someone sending as an account that isn't theirs is flagged for you: Admin → Messages shows "via <machine> · typed by <character>" on the message, it counts as player mail in the NPC Inbox, and it shows up in the Overview's **Needs you** list.
+
 ### Put it in the world
 
 **Drag the terminal Item onto the map.** It becomes a pin that players double-click to log in. You can require their token to be standing near it. Or skip the pin and let players open the Item directly.
 
 ### What players see
 
-Boot screen, then login, then the machine — all in that machine's own look. Under the account name a switch picks **MAIL** (the account's folders) or **FILES** (a directory tree: the account's home and the shared volume, with a folder listing on the right). Machines hold both mail and files (camera feeds, spreadsheets, logs). If an account belongs to an NPC, mail sent to that NPC also shows up on the machine. The paper trail is really there.
+Boot screen, then login, then the machine — all in that machine's own look. Under the account name a switch picks **MAIL** (the account's folders) or **FILES** (a directory tree: the account's home and the shared volume, with a folder listing on the right). Machines hold both mail and files (camera feeds, spreadsheets, logs). If an account belongs to an NPC, mail sent to that NPC also shows up on the machine. The paper trail is really there. In the **TTY** layout players type at a prompt: a number opens that row, `cd` opens a folder, `?` lists the commands, and `logout` goes back to the login screen to switch account.
 
 ### Taking data
 
@@ -283,6 +296,8 @@ All in Module Settings. The important ones:
 | **Netrunning Resolution** | auto / flagged / GM decides |
 | **Planted Program Firing** | fire on their own, or ask you first |
 | **Exfil Folder Name** | what the players' stolen-files folder is called |
+| **What Players Call a Shard** | what players call shards (Data Shard, Memory Chip, Data Chip, your own) |
+| **Shard Name Prefix** | a tag added to the front of every shard's item name |
 | **Notify GM of NPC Mail** | popup when players message NPCs |
 | **Terminal Pins Auto-Show** | map pins visible without extra clicks |
 | **Debug Mode** | the module explains its decisions in the console |

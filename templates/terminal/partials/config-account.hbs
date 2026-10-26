@@ -46,7 +46,15 @@
     <label class="ncm-cfg-toggle-label"><input type="checkbox" name="acctIsAdmin" {{#if isAdmin}}checked{{/if}}> Admin</label>
     <label class="ncm-cfg-toggle-label" style="margin-left:16px"><input type="checkbox" name="acctHidden" {{#if hidden}}checked{{/if}}> Hidden (secret login only)</label>
     <label class="ncm-cfg-toggle-label" style="margin-left:16px"><input type="checkbox" name="acctNetRestricted" {{#if netRestricted}}checked{{/if}}> Network-gated</label>
+    <label class="ncm-cfg-toggle-label" style="margin-left:16px" data-tooltip="An admin account can never view this one (it is listed greyed out)"><input type="checkbox" name="acctPrivateAdmin" {{#if privateFromAdmin}}checked{{/if}}> Private from admin</label>
   </div>
+  {{!-- Delivery mirror switch (2026-10-26). On = mail the linked identity
+        receives in their Agent also lands here. Off = a "work machine": the
+        account holds only what you write or import. --}}
+  <div class="ncm-cfg-row">
+    <label class="ncm-cfg-toggle-label"><input type="checkbox" name="acctMirrorMail" {{#if mirrorAgentMail}}checked{{/if}}> Show this identity's Agent mail here</label>
+  </div>
+  <div class="ncm-cfg-hint" style="margin:-4px 0 8px;">When on, new mail the linked character or contact receives appears in this account's Inbox, and mail they send appears in its Sent folder. Turn it off for a work machine, and use <b>Import from inbox</b> in the account's Mail tab to bring over only the messages you want.</div>
   <div class="ncm-cfg-row ncm-cfg-row--col" data-acct-net-row {{#unless netRestricted}}hidden{{/unless}}>
     <span class="ncm-cfg-label" style="margin-bottom:4px">Visible on uplinks</span>
     <div>

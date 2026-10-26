@@ -20,6 +20,7 @@
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, whisperCardHtml } from '../../utils/helpers.js';
 import { suggestedPrice } from '../content/EncoderModel.js';
+import { shardTerm as T } from '../../utils/shardTerm.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -144,7 +145,7 @@ export function announceShardPrice({ actorName, itemName, price, decision }) {
     ChatMessage.create({
       whisper: ChatMessage.getWhisperRecipients('GM').map((u) => u.id),
       content: whisperCardHtml({
-        tone, icon: 'fa-tag', title: 'Shard priced',
+        tone, icon: 'fa-tag', title: `${T('short')} priced`,
         lines: [
           `<b>${esc(actorName)}</b> listed <b>${esc(itemName)}</b>.`,
           decision === 'denied' ? 'You denied the price; nothing was written.'

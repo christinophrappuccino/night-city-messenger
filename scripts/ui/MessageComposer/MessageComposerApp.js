@@ -17,10 +17,11 @@
 
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
-import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName } from '../../utils/helpers.js';
+import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveOperator } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { applyGmView, applyAdminZoom, toggleGmView, playerDialog } from '../../utils/adminTheme.js';
 import { pasteToHtml } from '../../utils/richText.js';
+import { shardTerm as T } from '../../utils/shardTerm.js';
 
 export class MessageComposerApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
@@ -240,6 +241,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }));
 
     this.mode = options.mode || 'compose';
+    // SEND AS A TERMINAL ACCOUNT — {itemUuid, accountId, username, machine}.
+    // The sender is the account's identity (locked), the To search is its
+    // address book, and eddies can't be attached (it isn't your money).
+    this.terminalSend = options.terminalSend || null;
+    this.addressBook = Array.isArray(options.addressBook) ? options.addressBook : [];
 
     // Resolve sender identity — actor or contact
     if (options.fromContact) {
@@ -262,7 +268,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.originalMessage = options.originalMessage || null;
 
     if (this.mode === 'reply' && this.originalMessage) {
-      const reply = this.messageService?.buildReply(this.originalMessage, this.fromActorId, '', { all: !!options.replyAll });
+      const reply = this.messageService?.buildReply(this.originalMessage, this.fromActorId, '', { all: !!options.replyAll, fromContactId: this.fromContact?.id || null });
       if (reply) {
         if (reply.anonReply) {
           // Replying to an anonymous message — the real target is hidden. Show a
@@ -297,7 +303,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           this.threadId = reply.threadId;
           this.inReplyTo = reply.inReplyTo;
         } else if (reply.toActorId) {
-          this._addRecipient(reply.toActorId, true);
+          this._addRecipient(reply.toActorId, true, reply.toContactId ? { contactId: reply.toContactId, email: reply.to } : null);
         } else if (reply.toContactId || reply.to) {
           // Contact-only or raw email reply — add as a locked raw recipient
           const orig = this.originalMessage;
@@ -316,6 +322,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
             locked: true,
             isRaw: !reply.toContactId,
           });
+        }
+        // Mail that reached one of my identities is answered FROM that identity.
+        if (reply.fromContactId && this.fromContact?.id !== reply.fromContactId) {
+          const mc = game.nightcity?.masterContactService?.getContact?.(reply.fromContactId);
+          if (mc) this.fromContact = { id: mc.id, name: mc.name, email: mc.email, portrait: mc.portrait };
         }
         this.subject = reply.subject;
         this.threadId = reply.threadId;
@@ -586,6 +597,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       isForward: this.mode === 'forward',
       isGM,
       isGMSendAs,
+      // The From switcher is GM Send-as — never while sending as a terminal account.
+      canSwitchFrom: isGM && !this.terminalSend,
+      terminalSend: this.terminalSend ? { ...this.terminalSend, impersonating: !this.terminalSend.own } : null,
 
       // Header
       fromName,
@@ -1030,7 +1044,15 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   // ─── Recipient Management ─────────────────────────────────
 
-  _addRecipient(actorId, locked = false) {
+  /**
+   * @param {string} actorId
+   * @param {boolean} [locked]
+   * @param {{contactId: string, email?: string, name?: string}|null} [ident] the exact
+   *   identity picked (a directory contact linked to this character — utils/identities.js).
+   *   Without it the chip collapsed to the character's main address, so mail
+   *   sent to an alias was stored as sent to the main one.
+   */
+  _addRecipient(actorId, locked = false, ident = null) {
     if (!actorId || this.recipients.find(r => r.actorId === actorId)) return;
 
     const actor = game.actors.get(actorId);
@@ -1053,6 +1075,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         // Last resort — check if we have info from the original message
         return; // Truly unknown, skip
       }
+    }
+
+    if (ident?.contactId) {
+      contactId = ident.contactId;
+      if (ident.email) email = ident.email;
+      if (ident.name) name = ident.name;
     }
 
     const avatarColor = getAvatarColor(name);
@@ -1213,8 +1241,19 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       return;
     }
 
-    const directory = this.contactRepo?.getGlobalActorDirectory() || [];
     const q = query.toLowerCase();
+    if (this.terminalSend) {
+      // The account's own address book — who it has written to / heard from.
+      const have = new Set(this.recipients.map(r => (r.email || '').toLowerCase()));
+      this._searchResults = this.addressBook
+        .filter(e => !have.has((e.email || '').toLowerCase()) && (e.name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q)))
+        .slice(0, 8)
+        .map(e => ({ actorId: e.actorId || null, contactId: e.contactId || null, name: e.name, email: e.email, img: null, initials: getInitials(e.name), avatarColor: getAvatarColor(e.name) }));
+      this._selectedResultIndex = this._searchResults.length ? 0 : -1;
+      this._renderAutocomplete(query);
+      return;
+    }
+    const directory = this.contactRepo?.getGlobalActorDirectory() || [];
     const existingIds = new Set(this.recipients.map(r => r.actorId).filter(Boolean));
     const existingEmails = new Set(this.recipients.map(r => (r.email || '').toLowerCase()).filter(Boolean));
     const reachableIds = this.networkService?.getReachableNetworkIds() || [];
@@ -1238,13 +1277,25 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (game.user.isGM) {
       const masterContacts = game.nightcity?.masterContactService?.search?.(query) || [];
       for (const mc of masterContacts) {
-        if (mc.actorId && !existingIds.has(mc.actorId) && !results.find(r => r.actorId === mc.actorId)) {
-          results.push({
-            actorId: mc.actorId,
-            name: mc.name,
-            email: mc.email,
-            img: mc.portrait || null,
-          });
+        if (mc.actorId) {
+          const mcEmail = (mc.email || '').toLowerCase();
+          if (!existingIds.has(mc.actorId) && !results.find(r => r.contactId === mc.id || (mcEmail && (r.email || '').toLowerCase() === mcEmail))) {
+            results.push({
+              actorId: mc.actorId,
+              contactId: mc.id || null,
+              name: mc.name,
+              email: mc.email,
+              img: mc.portrait || null,
+            });
+          }
+        } else if (mc.email) {
+          // A directory contact with no linked actor (an NPC that exists only
+          // in the Master List) is a real, two-way address — it used to be
+          // skipped here, so the GM was offered only "send as raw address".
+          const emailLc = mc.email.toLowerCase();
+          if (existingEmails.has(emailLc)) continue;
+          if (results.find(r => (r.email || '').toLowerCase() === emailLc)) continue;
+          results.push({ actorId: null, contactId: mc.id || null, name: mc.name, email: mc.email, img: mc.portrait || null });
         }
       }
     }
@@ -1256,7 +1307,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       for (const contact of contacts) {
         if (contact.actorId) {
           contactsByActor.set(contact.actorId, contact);
-          if (!existingIds.has(contact.actorId) && !results.find(r => r.actorId === contact.actorId)) {
+          const cEmail = (contact.email || '').toLowerCase();
+          if (!existingIds.has(contact.actorId) && !results.find(r => (contact.masterContactId && r.contactId === contact.masterContactId) || (cEmail && (r.email || '').toLowerCase() === cEmail))) {
             results.push({
               actorId: contact.actorId,
               contactId: contact.masterContactId || null,
@@ -1387,7 +1439,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (!result || result.greyed) return;
 
     if (result.isGroup) this._addGroupRecipient(result);
-    else if (result.actorId) this._addRecipient(result.actorId);
+    else if (result.actorId) this._addRecipient(result.actorId, false, result.contactId ? { contactId: result.contactId, email: result.email, name: result.name } : null);
     else this._addContactRecipient(result);
     this._closeAutocomplete();
     this.render(true);
@@ -1748,6 +1800,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         type: c.type || 'npc',
         org: c.organization || '',
         isMaster: true,
+        isAlias: !!masterService?.identityRoleOf?.(c)?.isAlias,
       })),
       ...extraActors.map(a => ({
         actorId: a.id,
@@ -1777,7 +1830,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
             <div class="ncm-sendas-item__name">${c.name}${c.org ? ` <span style="color:var(--ncm-text-muted);font-size:0.85em;">— ${c.org}</span>` : ''}</div>
             <div class="ncm-sendas-item__email">${c.email}</div>
           </div>
-          <span class="ncm-sendas-item__type">${c.isMaster ? 'MASTER' : c.type || 'NPC'}</span>
+          <span class="ncm-sendas-item__type">${c.isAlias ? 'ALIAS' : (c.isMaster ? 'MASTER' : c.type || 'NPC')}</span>
         </div>
       `;
     }).join('');
@@ -1856,7 +1909,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       const messageData = {
         recipients: (sendList.length > 1 || hasGroup) ? sendList : undefined,
         toActorId: toActorId || null,
-        toContactId: contactRecipients.length > 0 ? contactRecipients[0].contactId : undefined,
+        toContactId: contactRecipients.length > 0 ? contactRecipients[0].contactId
+          : ((this.recipients.length === 1 && actorRecipients.length === 1) ? (actorRecipients[0].contactId || undefined) : undefined),
         to: rawRecipients.length > 0 ? rawRecipients[0].email
           : (contactRecipients.length > 0 ? contactRecipients[0].email : soleActorEmail),
         fromActorId: this.fromActorId || null,
@@ -1869,8 +1923,19 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         threadId: this.threadId,
         inReplyTo: this.inReplyTo,
         attachments: this.attachments.filter(a => !a.isEddies),
-        eddies: this.eddiesAmount || 0,
+        eddies: (this.terminalSend && !this.terminalSend.own) ? 0 : (this.eddiesAmount || 0),
       };
+      // The GM verifies a terminal send before delivering it (handleMessageRelay).
+      if (this.terminalSend) {
+        messageData.terminalSend = { itemUuid: this.terminalSend.itemUuid, accountId: this.terminalSend.accountId };
+        // Recorded on the sender's sent copy only (MessageRepository.createMessage):
+        // the GM's Messages feed shows the machine and who was really typing.
+        messageData.sentVia = {
+          machine: this.terminalSend.machine || '', account: this.terminalSend.username || '',
+          operatorId: this.terminalSend.operatorId || '', operatorName: this.terminalSend.operatorName || '',
+          impersonated: !this.terminalSend.own,
+        };
+      }
 
       // GM per-message overrides — the service honors them only for a GM sender.
       if (game.user.isGM && this.sendNetworkId) {
@@ -1984,6 +2049,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         // must not read "Delivered", which is the lie that sent testers hunting
         // for a message that had not left yet.
         this.soundService?.play?.(result.queued ? 'click' : 'send');
+        if (this.terminalSend && !this.terminalSend.own) this._logTerminalSend();
         await this._playSendAnimation('success', { queued: !!result.queued, reason: result.reason, count: sendList.length });
         // Recency for the Contact Manager's group rail: every one of MY groups this
         // went to is stamped as just used (silent, never blocks).
@@ -2233,9 +2299,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       const contactId = item.dataset.ncmContactId || '';
 
       if (actorId) {
-        // Actor-backed contact
+        // Actor-backed contact. When the row is a directory contact (an identity
+        // of that character), keep it too: the mail goes out from ITS address.
         this.fromActorId = actorId;
-        this.fromContact = null;
+        const mc = contactId ? game.nightcity?.masterContactService?.getContact?.(contactId) : null;
+        this.fromContact = mc ? { id: mc.id, name: mc.name, email: mc.email, portrait: mc.portrait } : null;
       } else if (contactId) {
         // Master contact without actor — use contact identity
         const mc = game.nightcity?.masterContactService?.getContact?.(contactId);
@@ -2497,8 +2565,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     if (allShards.length === 0) {
       ui.notifications.info(isGM
-        ? 'No data shards found in any inventory or world items.'
-        : 'No data shards in your inventory.');
+        ? `No ${T('many', 'lower')} found in any inventory or world items.`
+        : `No ${T('many', 'lower')} in your inventory.`);
       return;
     }
 
@@ -2515,7 +2583,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     </div>`;
 
     playerDialog({
-      title: 'Attach Data Shard',
+      title: `Attach ${T('one')}`,
       content,
       buttons: { cancel: { label: 'Cancel' } },
       render: (html) => {
@@ -2526,7 +2594,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
           // Prevent duplicate
           if (this.attachments.find(a => a.itemId === itemId)) {
-            ui.notifications.warn('Shard already attached.');
+            ui.notifications.warn(`${T('short')} already attached.`);
             return;
           }
 
@@ -2542,7 +2610,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           this.render(true);
 
           // Close dialog
-          const app = Object.values(ui.windows).find(w => w.title === 'Attach Data Shard');
+          const app = Object.values(ui.windows).find(w => w.title === `Attach ${T('one')}`);
           app?.close();
         });
       },
@@ -2550,6 +2618,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   }
 
   static _onAttachEddies(event, target) {
+    if (this.terminalSend && !this.terminalSend.own) return ui.notifications.warn(`You're writing as ${this.terminalSend.username} — their money isn't yours to send.`);
     const actor = game.actors.get(this.fromActorId);
     const isGM = game.user.isGM;
 
@@ -2879,8 +2948,25 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
    * even when the directory had a real address for it.
    * @returns {string}
    */
+  /** Activity Log row for a send-as from a terminal (the machine's `accountMail.log`). */
+  _logTerminalSend() {
+    try {
+      let item = null;
+      try { item = fromUuidSync(this.terminalSend.itemUuid); } catch { item = null; }
+      const cfg = item ? game.nightcity?.terminalService?.getConfig?.(item) : null;
+      if (cfg && cfg.accountMail?.log === false) return;
+      const op = resolveOperator();
+      game.nightcity?.traceService?.logSuccess?.({
+        actor: op, action: 'send-as', hostItem: item, severity: 'minor',
+        source: `${op?.name || game.user.name} sent mail as ${this.terminalSend.username}`,
+      });
+    } catch (e) { console.warn('NCM | send-as log failed', e); }
+  }
+
   _fromEmail() {
     if (!this.fromActorId) return this.fromContact?.email || '';
+    // An identity picked in Send-as (or a reply sent as the alias it came to) wins.
+    if (this.fromContact?.email) return this.fromContact.email;
     const flagged = this.contactRepo?.getActorEmail(this.fromActorId) || '';
     if (flagged) return flagged;
     const mcs = game.nightcity?.masterContactService;

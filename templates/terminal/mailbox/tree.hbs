@@ -16,6 +16,13 @@
               </div>
             {{/each}}
           {{/each}}
+        {{!-- ADMIN ACCESS: other accounts' homes. Clicking one VIEWS that account
+              (banner + its files); "YOU" goes back. A private account is a dead row. --}}
+        {{#each fs.otherHomes}}
+          <div class="ncm-term__fs-root ncm-term__fs-home{{#unless ok}} is-locked{{/unless}}" {{#if ok}}data-action="{{#if isBack}}terminalAdminBack{{else}}terminalAdminView{{/if}}" data-account-id="{{id}}" data-files="1"{{/if}} data-tooltip="{{#if ok}}{{#if isBack}}Back to your own account{{else}}View {{username}}'s files as admin{{/if}}{{else}}{{reason}}{{/if}}">
+            <i class="fas {{#if ok}}fa-house-user{{else}}fa-house-lock{{/if}}"></i><span class="ncm-term__fs-root-nm">home</span><span class="ncm-term__fs-root-sub">{{username}}</span>{{#if tag}}<span class="ncm-term__fs-tag">{{tag}}</span>{{/if}}{{#unless ok}}<span class="ncm-term__fs-tag ncm-term__fs-tag--lock">{{reason}}</span>{{/unless}}
+          </div>
+        {{/each}}
         </div>
         <div class="ncm-term__lsep"></div>
         <div class="ncm-term__fs-usage">{{fs.usage.label}}<div class="ncm-term__fs-usage-bar" style="--p:{{fs.usage.pct}}%"><b></b></div></div>

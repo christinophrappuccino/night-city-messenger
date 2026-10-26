@@ -166,6 +166,13 @@
               data-tooltip="Contacts owned by a player">
         <i class="fas fa-user"></i> Player <span class="ncm-ct-pill__ct">{{contactSummary.playerCount}}</span>
       </button>
+      {{#if contactSummary.aliasCount}}
+      <button class="ncm-ct-pill {{#if (eq contactSummary.contactFilter 'aliases')}}ncm-ct-pill--active{{/if}}"
+              data-action="contactFilter" data-filter="aliases"
+              data-tooltip="Characters known by more than one contact — their main identity and its aliases">
+        <i class="fas fa-masks-theater"></i> Aliases <span class="ncm-ct-pill__ct">{{contactSummary.aliasCount}}</span>
+      </button>
+      {{/if}}
       <button class="ncm-ct-pill ncm-ct-pill--burned {{#if (eq contactSummary.contactFilter 'burned')}}ncm-ct-pill--active{{/if}}"
               data-action="contactFilter" data-filter="burned"
               data-tooltip="Compromised contacts — cover blown, no longer usable">
@@ -228,7 +235,7 @@
           {{#each this.contacts}}
 
           {{!-- ═══ Contact Row ═══ --}}
-          <div class="ncm-ct-row {{#if this.burned}}ncm-ct-row--burned{{/if}} {{#if this.encrypted}}ncm-ct-row--ice{{/if}} ncm-ct-row--{{this.networkSlug}} {{#if this.isExpanded}}ncm-ct-row--expanded{{/if}} {{#if this.noInbox}}ncm-ct-row--no-inbox{{/if}}"
+          <div class="ncm-ct-row {{#if this.burned}}ncm-ct-row--burned{{/if}} {{#if this.encrypted}}ncm-ct-row--ice{{/if}} ncm-ct-row--{{this.networkSlug}} {{#if this.isExpanded}}ncm-ct-row--expanded{{/if}} {{#if this.noInbox}}ncm-ct-row--no-inbox{{/if}} {{#if this.isAliasRow}}ncm-ct-row--alias{{/if}}"
                data-contact-id="{{this.id}}" data-action="toggleContactExpand">
 
             <div class="ncm-ct-row__check {{#if this.isSelected}}ncm-ct-row__check--on{{/if}}"
@@ -253,6 +260,11 @@
                   <span class="ncm-ct-badge ncm-ct-badge--ice"><i class="fas fa-lock"></i> ICE DV{{this.encryptionDV}}</span>
                 {{else if this.noInbox}}
                   <span class="ncm-ct-badge ncm-ct-badge--unverified"><i class="fas fa-inbox"></i> No Inbox</span>
+                {{/if}}
+                {{#if this.isAliasRow}}
+                  <span class="ncm-ct-badge ncm-ct-badge--alias" data-tooltip="Another identity of the same character — mail to it lands in their inbox"><i class="fas fa-masks-theater"></i> alias of {{this.aliasOf}}</span>
+                {{else if this.isMainIdentity}}
+                  <span class="ncm-ct-badge ncm-ct-badge--main" data-tooltip="Main identity — this character is also known by {{add this.identityCount -1}} other contact(s)"><i class="fas fa-star"></i> main · {{this.identityCount}} identities</span>
                 {{/if}}
                 {{#if this.sendOnly}}
                   <span class="ncm-ct-badge ncm-ct-badge--sendonly" data-tooltip="System address — players can't message, reply to, or add it"><i class="fas fa-tower-broadcast"></i> Send-only</span>

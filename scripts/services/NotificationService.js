@@ -9,6 +9,7 @@
 
 import { MODULE_ID, EVENTS, TEMPLATES } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { shardTerm as T } from '../utils/shardTerm.js';
 
 // ═══════════════════════════════════════════════════════════
 //  Toast Type Definitions
@@ -493,7 +494,7 @@ export class NotificationService {
   showShardDecrypted(data) {
     return this.showToastV2({
       type: 'shard-decrypt',
-      title: 'Shard Decrypted',
+      title: `${T('short')} Decrypted`,
       detail: `ICE bypassed — "${data.itemName || 'Unknown'}" unlocked`,
       duration: 4000,
     });
@@ -505,7 +506,7 @@ export class NotificationService {
   showShardBlackICE(data) {
     // Title follows the CONTEXT the ICE struck from — it was hardcoded
     // "— Shard", which read wrong on trace-escalation / network / message hits.
-    const ctxLabels = { shard: ' — Shard', network: ' — Network', message: ' — Message', terminal: ' — Terminal' };
+    const ctxLabels = { shard: ` — ${T('short')}`, network: ' — Network', message: ' — Message', terminal: ' — Terminal' };
     const ctx = ctxLabels[data.context] ?? '';
     return this.showToastV2({
       type: 'shard-ice',
@@ -561,7 +562,7 @@ export class NotificationService {
     return this.showToastV2({
       type: 'shard-key-fail',
       title: 'Key Item Rejected',
-      detail: `"${data.keyItemName || 'Unknown'}" — incompatible with shard security`,
+      detail: `"${data.keyItemName || 'Unknown'}" — incompatible with ${T('short', 'lower')} security`,
       duration: 5000,
     });
   }
@@ -598,7 +599,7 @@ export class NotificationService {
   showShardBricked(data) {
     return this.showToastV2({
       type: 'shard-bricked',
-      title: 'Shard Bricked',
+      title: `${T('short')} Bricked`,
       detail: `Integrity 0% — "${data.itemName || 'Unknown'}" burned out`,
       duration: 8000,
       priority: 'urgent',
@@ -611,7 +612,7 @@ export class NotificationService {
   showShardExpired(data) {
     return this.showToastV2({
       type: 'shard-expired',
-      title: 'Shard Expired',
+      title: `${T('short')} Expired`,
       detail: `"${data.itemName || 'Unknown'}" — time limit reached, data wiped`,
       duration: 5000,
     });

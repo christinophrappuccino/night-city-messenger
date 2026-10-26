@@ -192,6 +192,7 @@
   font-family: var(--ncm-font-mono);
   font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); line-height: 1.1;
 }
+.ncm-composer__gm-tag.ncm-composer__term-tag { color: var(--ncm-accent, #f7c948); border-color: color-mix(in srgb, var(--ncm-accent, #f7c948) 45%, transparent); }
 .ncm-composer__gm-tag {
   font-family: var(--ncm-font-title);
   font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-accent);

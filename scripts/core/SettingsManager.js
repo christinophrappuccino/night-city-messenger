@@ -8,6 +8,7 @@
 
 import { MODULE_ID, DEFAULTS, SKILL_MAP } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { SHARD_TERM_PRESETS } from '../utils/shardTerm.js';
 
 export class SettingsManager {
   static #instance = null;
@@ -129,6 +130,41 @@ export class SettingsManager {
       config: true,
       type: String,
       default: 'Exfil',
+    });
+
+    // What players see a shard called. "Shard" is a 2077 word; a 2045 table
+    // may want "Memory Chip". Player-facing surfaces read it through
+    // scripts/utils/shardTerm.js — GM tools keep saying "shard".
+    game.settings.register(MODULE_ID, 'shardTerm', {
+      name: 'What Players Call a Shard',
+      hint: 'The word players see for a data shard — in the Agent, the shard viewer, menus and messages. GM tools keep saying "shard". "Memory Chip" suits a 2045 game. Pick Custom to type your own below.',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: Object.fromEntries(Object.entries(SHARD_TERM_PRESETS).map(([k, v]) => [k, v.label])),
+      default: 'shard',
+      requiresReload: true,
+    });
+    game.settings.register(MODULE_ID, 'shardTermCustom', {
+      name: 'Custom Shard Name',
+      hint: 'Used when the setting above is Custom. Type the name, or "Name / Plural" if the plural is unusual (e.g. "Data Wafer" or "Cyberdeck Cartridge / Cyberdeck Cartridges").',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: '',
+      requiresReload: true,
+    });
+
+    // A name prefix stamped on every item that becomes a shard (GM convert, the
+    // Encoder, a terminal burn) and taken off again when it stops being one —
+    // so shards sort together and Foundry's own Items search finds them.
+    game.settings.register(MODULE_ID, 'shardNamePrefix', {
+      name: 'Shard Name Prefix',
+      hint: 'Optional text added to the front of an item\'s name when it becomes a shard, and removed if the shard data is removed. E.g. "Chip - " or "Shard-". Leave blank to keep item names as they are.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: '',
     });
 
     game.settings.register(MODULE_ID, 'notifyGmNpcMail', {
@@ -742,6 +778,11 @@ export class SettingsManager {
   getExfilFolderName() {
     const v = String(this.get('exfilFolderName') ?? '').trim();
     return v || 'Exfil';
+  }
+
+  /** The `shardNamePrefix` setting, untrimmed on the right so "Chip - " keeps its space. '' = off. */
+  getShardNamePrefix() {
+    return String(this.get('shardNamePrefix') ?? '').replace(/^\s+/, '');
   }
 
   /**

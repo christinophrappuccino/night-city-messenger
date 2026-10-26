@@ -1,0 +1,21 @@
+{{!-- ADMIN ACCESS — the VIEW AS ADMIN section of the account switcher (all
+      three dropdown copies: classic, tabs, desktop). Context = the mailbox
+      context (adminTargets / adminView). Viewing needs no credentials; a
+      "private from admin" account is listed dead with its reason. --}}
+{{#if adminTargets.length}}
+  <div class="ncm-term__acdrop-hd ncm-term__acdrop-hd--admin"><i class="fas fa-user-shield"></i> VIEW AS ADMIN</div>
+  {{#if adminView}}
+    <div class="ncm-term__acdrop-it ncm-term__acdrop-it--admin" data-action="terminalAdminBack">
+      <span class="ncm-term__avatar"><i class="fas fa-arrow-left"></i></span>
+      <span class="ncm-term__acdrop-nm">Back to my account</span>
+    </div>
+  {{/if}}
+  {{#each adminTargets}}
+    <div class="ncm-term__acdrop-it ncm-term__acdrop-it--admin{{#unless ok}} is-private{{/unless}}{{#if isViewing}} is-current{{/if}}"
+         {{#if ok}}data-action="terminalAdminView" data-account-id="{{id}}"{{else}}data-tooltip="{{reason}}"{{/if}}>
+      <span class="ncm-term__avatar">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
+      <span class="ncm-term__acdrop-nm">{{displayName}}{{#if hidden}}<small class="ncm-term__acdrop-sub"><span class="ncm-term__acdrop-chip">HIDDEN</span></small>{{/if}}</span>
+      <span class="ncm-term__acdrop-lk ncm-term__acdrop-lk--admin">{{#if ok}}{{#if isViewing}}viewing{{else}}<i class="fas fa-eye"></i> view{{/if}}{{else}}<i class="fas fa-lock"></i> private{{/if}}</span>
+    </div>
+  {{/each}}
+{{/if}}

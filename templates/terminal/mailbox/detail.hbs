@@ -98,6 +98,9 @@
                 {{#if selectedMessage.canAddContact}}
                   <span class="ncm-term__chip" data-action="terminalAddContact" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-user-plus"></i> Add to contacts</span>
                 {{/if}}
+                {{#if @root.composeAs}}{{#unless selectedMessage.isFile}}
+                  <span class="ncm-term__chip ncm-term__chip--as" data-action="terminalReplyAs" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Reply as {{@root.composeAs.name}} — the reply goes out from their address"><i class="fas fa-user-secret"></i> Reply as {{@root.composeAs.username}}</span>
+                {{/unless}}{{/if}}
                 {{#if selectedMessage.canReply}}
                   <span class="ncm-term__chip" data-action="terminalReplyAgent" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Message this sender from your own Agent"><i class="fas fa-reply"></i> Reply via Agent</span>
                 {{/if}}

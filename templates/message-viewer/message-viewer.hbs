@@ -122,7 +122,7 @@
     </div>
     <div class="ncm-viewer__primary-tab {{#if (eq primaryTab 'shards')}}ncm-viewer__primary-tab--active{{/if}}"
          data-action="set-primary-tab" data-tab="shards">
-      <i class="fas fa-microchip"></i> Shards
+      <i class="fas fa-microchip"></i> {{ncm-term "shortMany"}}
       {{#if counts.shards}}<span class="ncm-viewer__primary-badge">{{counts.shards}}</span>{{/if}}
     </div>
     <div class="ncm-viewer__primary-tab {{#if (eq primaryTab 'scheduled')}}ncm-viewer__primary-tab--active{{/if}}"
@@ -217,7 +217,7 @@
       {{/if}}
       {{#if canEncode}}
         <span class="ncm-pill ncm-pill--action" data-action="open-encoder"
-              data-tooltip="Make a shard of your own" data-tooltip-direction="UP">
+              data-tooltip="{{ncm-term "short" "lower" pre="Make " a=true post=" of your own"}}" data-tooltip-direction="UP">
           <i class="fas fa-microchip"></i> Encode new
         </span>
       {{/if}}
@@ -349,7 +349,7 @@
         {{/each}}
       {{else}}
         {{> "modules/night-city-messenger/templates/partials/empty-state.hbs"
-            icon="fas fa-microchip" prompt="> SHARD SLOT EMPTY" }}
+            icon="fas fa-microchip" prompt=(ncm-term "short" "upper" pre="> " post=" SLOT EMPTY") }}
       {{/if}}
     </div>
 

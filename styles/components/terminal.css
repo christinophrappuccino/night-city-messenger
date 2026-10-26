@@ -2540,3 +2540,69 @@
 .ncm-cfg-mstyle__nm { font-family: var(--ncm-font-display); font-weight: 700; font-size: 12px; color: var(--ncm-text-primary, #ededf0); }
 .ncm-cfg-mstyle__nm i { margin-right: 4px; color: var(--ncm-secondary, #19f3f7); }
 .ncm-cfg-mstyle__hint { font-family: var(--ncm-font-body); font-size: 10.5px; line-height: 1.3; color: var(--ncm-text-secondary, #bdbdd0); white-space: normal; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADMIN ACCESS (2026-10-26, mock dev/mockups/terminal-root-access-mock.html)
+   An admin account VIEWING another account: the banner under the HUD
+   (partials/admin-bar.hbs), the VIEW AS ADMIN section of the switcher
+   (partials/admin-view-list.hbs), other homes in the FILES tree. The label
+   colour is the theme's ACCENT, so it stands apart from the machine colour.
+   Tokens only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ncm-term__adminbar {
+  flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  padding: 6px 12px 6px 14px;
+  background: color-mix(in srgb, var(--ncm-accent) 10%, var(--ncm-bg-deep));
+  border-left: 4px solid var(--ncm-accent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-accent) 45%, transparent);
+  font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary);
+}
+.ncm-term__adminbar-tag { flex: 0 0 auto; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 2px 7px; border-radius: 2px; background: var(--ncm-accent); color: var(--ncm-bg-deep); font-weight: 700; letter-spacing: 1.5px; }
+.ncm-term__adminbar-who { display: inline-flex; align-items: center; white-space: nowrap; color: var(--ncm-text-primary); }
+.ncm-term__adminbar-who .ncm-term__avatar { width: 20px; height: 20px; margin: 0 6px; font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-term__adminbar-who b, .ncm-term__adminbar-line b { font-weight: 700; color: var(--ncm-text-primary); }
+.ncm-term__adminbar-rights { white-space: nowrap; padding: 1px 6px; border-radius: 2px; border: 1px solid color-mix(in srgb, var(--ncm-accent) 50%, transparent); color: var(--ncm-accent); letter-spacing: 1px; font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-term__adminbar-rights.is-ro { border-color: color-mix(in srgb, var(--ncm-text-secondary) 50%, transparent); color: var(--ncm-text-secondary); }
+.ncm-term__adminbar-sp { flex: 1; }
+.ncm-app .ncm-term__adminbar button.ncm-term__adminbar-btn {
+  appearance: none !important; flex: 0 0 auto !important; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px !important; border-radius: 2px !important; cursor: pointer;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(10.5px * var(--ncm-text-scale, 1)) !important; letter-spacing: .5px; text-transform: uppercase; line-height: 1.4 !important;
+  background: transparent !important; color: var(--ncm-text-primary) !important; box-shadow: none !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-text-primary) 25%, transparent) !important;
+  transition: border-color var(--ncm-term-fast, .18s) ease, background var(--ncm-term-fast, .18s) ease;
+}
+.ncm-app .ncm-term__adminbar button.ncm-term__adminbar-btn:hover { border-color: var(--ncm-accent) !important; }
+.ncm-app .ncm-term__adminbar button.ncm-term__adminbar-btn--back { background: var(--ncm-accent) !important; color: var(--ncm-bg-deep) !important; border-color: var(--ncm-accent) !important; font-weight: 700; }
+.ncm-app .ncm-term__adminbar button.ncm-term__adminbar-btn i { margin: 0 !important; }
+.ncm-term__adminbar--tty { background: none; border-bottom-style: dashed; }
+.ncm-term__adminbar-line { white-space: normal; }
+
+/* the VIEW AS ADMIN section of the switcher */
+.ncm-term__acdrop-hd--admin { display: flex; align-items: center; gap: 6px; color: var(--ncm-accent); border-top: 1px solid rgba(255,255,255,.06); }
+.ncm-term__acdrop-it--admin .ncm-term__acdrop-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-term__acdrop-lk--admin { flex: 0 0 auto; white-space: nowrap; color: var(--ncm-accent); }
+.ncm-term__acdrop-it--admin.is-private { opacity: .55; cursor: not-allowed; }
+.ncm-term__acdrop-it--admin.is-private:hover { background: none; }
+.ncm-term__acdrop-it--admin.is-private .ncm-term__acdrop-lk--admin { color: var(--ncm-text-muted); }
+.ncm-term__acdrop-sub { display: block; margin-top: 2px; font-weight: 400; }
+.ncm-term__acdrop-chip { padding: 0 4px; border-radius: 1px; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: 1px; border: 1px solid color-mix(in srgb, var(--ncm-warning, #f7c948) 55%, transparent); color: var(--ncm-warning, #f7c948); }
+
+/* other homes in the FILES tree */
+.ncm-term__fs-home.is-locked { cursor: not-allowed; opacity: .6; }
+.ncm-term__fs-home.is-locked:hover { background: none; }
+
+/* Configure Terminal → Accounts → Admin access (admin-themed sheet) */
+.ncm-cfg-adminlabel { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 6px 0 10px; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-cfg-adminlabel__k { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ncm-text-secondary); }
+.ncm-cfg-adminlabel__tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 7px; border-radius: 2px; background: var(--al, #f7c948); color: #0a0a0f; font-family: var(--ncm-font-mono); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; white-space: nowrap; }
+.ncm-cfg-adminlabel__link { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-family: var(--ncm-font-display); font-size: 12px; color: var(--ncm-secondary); }
+.ncm-cfg-adminlabel__link:hover { text-decoration: underline; }
+.ncm-cfg-adminverdict { margin-top: 8px; padding: 8px 10px; border-left: 2px solid var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); font-family: var(--ncm-font-body); font-size: 12.5px; color: var(--ncm-text-secondary); }
+.ncm-cfg-adminverdict strong { color: var(--ncm-text-primary); }
+.ncm-term-cfg-tag--private { color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 55%, transparent); }
+
+/* SEND AS THE ACCOUNT (2026-10-26) — the WRITE chip in the HUD, Reply as on mail. */
+.ncm-term__hud-compose { cursor: pointer; color: var(--ncm-accent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 45%, transparent); border-radius: 4px; padding: 2px 8px; font-weight: 700; letter-spacing: 1px; transition: background var(--ncm-term-fast, .18s) ease; }
+.ncm-term__hud-compose:hover { background: color-mix(in srgb, var(--ncm-accent) 12%, transparent); }
+.ncm-term__chip--as { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 45%, transparent); }

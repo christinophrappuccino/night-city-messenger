@@ -9,6 +9,7 @@
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
+import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf } from '../utils/identities.js';
 
 export class MasterContactService {
 
@@ -70,7 +71,79 @@ export class MasterContactService {
    * @returns {object|null}
    */
   getByActorId(actorId) {
-    return this._contacts.find(c => c.actorId === actorId) ?? null;
+    // Several contacts can link one character (IDENTITIES, utils/identities.js) —
+    // "the" contact for a character is its MAIN identity.
+    return primaryOf(this._contacts, actorId);
+  }
+
+  // ─── Identities — one character, several addresses (utils/identities.js) ───
+
+  /** Every contact linked to this character, main first. */
+  identitiesFor(actorId) { return identitiesOf(this._contacts, actorId); }
+
+  /** Every identity in this contact's group (a character's, or a contact-only NPC's), main first. */
+  identitiesForContact(contactOrId) {
+    const c = typeof contactOrId === 'string' ? this.getContact(contactOrId) : contactOrId;
+    return identitiesOfContact(this._contacts, c);
+  }
+
+  /** { isPrimary, isAlias, primary, count } for a linked contact with siblings, else null. */
+  identityRoleOf(contactOrId) {
+    const c = typeof contactOrId === 'string' ? this.getContact(contactOrId) : contactOrId;
+    return identityRole(this._contacts, c);
+  }
+
+  /** Make this contact its character's main identity (clears the flag on the others). GM only. */
+  async setPrimaryIdentity(contactId) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const c = this._contacts.find(x => x.id === contactId);
+    const key = groupKeyOf(this._contacts, c);
+    if (!key) return { success: false, error: 'This contact has no other identities' };
+    for (const x of this._contacts) if (groupKeyOf(this._contacts, x) === key) x.primaryIdentity = x.id === contactId;
+    await this._persistContacts();
+    this.eventBus?.emit('contacts:masterUpdated', { action: 'update', contactId });
+    return { success: true };
+  }
+
+  /**
+   * Add another identity for a character: a new contact linked to it. The first
+   * identity a character gets is marked main. GM only.
+   * @param {string} actorId @param {{name: string, email?: string}} data
+   */
+  async addIdentity(actorId, data = {}) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const actor = game.actors?.get(actorId);
+    if (!actor) return { success: false, error: 'Character not found' };
+    const first = !this.identitiesFor(actorId).length;
+    const res = await this.addContact({
+      name: data.name || actor.name, email: data.email || '', actorId,
+      portrait: data.portrait || null, type: actor.hasPlayerOwner ? 'player' : 'npc',
+      notes: first ? '' : `Another identity of ${actor.name}.`,
+    });
+    if (res.success && first) await this.setPrimaryIdentity(res.contact.id);
+    return res;
+  }
+
+  /**
+   * Add another identity for a CONTACT — the way an NPC with no actor gets an
+   * alias. A contact linked to a character just gets a character identity;
+   * otherwise the new contact points at the group's root (`identityOf`) and
+   * its mail is routed into that NPC's inbox. GM only.
+   * @param {string} contactId @param {{name: string, email?: string, portrait?: string}} data
+   */
+  async addContactIdentity(contactId, data = {}) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const base = this.getContact(contactId);
+    if (!base) return { success: false, error: 'Contact not found' };
+    if (base.actorId) return this.addIdentity(base.actorId, data);
+    const rootId = base.identityOf || base.id;
+    const root = this.getContact(rootId) || base;
+    const res = await this.addContact({
+      name: data.name || root.name, email: data.email || '', portrait: data.portrait || null,
+      type: root.type || 'npc', organization: root.organization || '', role: root.role || '',
+      identityOf: rootId, notes: `Another identity of ${root.name}.`,
+    });
+    return res;
   }
 
   /**
@@ -211,6 +284,8 @@ export class MasterContactService {
       iceActorId: data.iceActorId || '',
       maxBreachAttempts: data.maxBreachAttempts || 3,
       revealTrust: !!data.revealTrust,
+      primaryIdentity: !!data.primaryIdentity,   // main identity of its group (utils/identities.js)
+      identityOf: data.identityOf || '',         // a contact-only NPC's alias points at the NPC's contact
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -243,7 +318,7 @@ export class MasterContactService {
       'trust', 'relationships', 'burned', 'sendOnly',
       'encrypted', 'encryptionDV', 'encryptionSkill', 'blackIce', 'blackIceDamage',
       'iceSource', 'iceCustomName', 'iceCustomPortrait', 'iceActorId', 'maxBreachAttempts',
-      'revealTrust',
+      'revealTrust', 'primaryIdentity', 'identityOf',
     ];
     for (const key of allowed) {
       if (key in updates) {

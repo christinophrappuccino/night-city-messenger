@@ -128,9 +128,13 @@
           {{/if}}
         </span>
       {{/if}}
+      {{!-- SEND AS THE ACCOUNT (config.accountMail.compose): write mail as whoever owns it. --}}
+      {{#if composeAs}}<span class="ncm-term__hud-seg ncm-term__hud-compose" data-action="terminalComposeAs" data-tooltip="Write mail as {{composeAs.name}} ({{composeAs.email}}) — to anyone in their address book"><i class="fas fa-pen-to-square"></i> WRITE</span>{{/if}}
       {{#if isGM}}<span class="ncm-term__hud-seg ncm-term__hud-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
       {{#if hud.trace}}<span class="ncm-term__hud-seg ncm-term__hud-trace"><i class="fa-regular fa-clock"></i> TRACE {{hud.trace}}</span>{{/if}}
     </div>
+    {{!-- ADMIN ACCESS: an admin account viewing another account (every layout). --}}
+    {{#if adminView}}{{> "modules/night-city-messenger/templates/terminal/partials/admin-bar.hbs"}}{{/if}}
 
     {{!-- MAILBOX STYLE (2026-10-25, config.mailboxStyle — TERMINAL_MAILBOX_STYLES):
           tabs / tty / desktop are partials over the SAME context and actions;
@@ -165,6 +169,7 @@
                   <span class="ncm-term__acdrop-lk{{#if isOpen}} is-open{{/if}}">{{{statusLabel}}}</span>
                 </div>
               {{/each}}
+              {{> "modules/night-city-messenger/templates/terminal/partials/admin-view-list.hbs"}}
               <div class="ncm-term__acdrop-ft" data-action="terminalLogout"><i class="fas fa-right-from-bracket"></i> Log out → login screen</div>
             </div>
           {{/if}}

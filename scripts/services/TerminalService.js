@@ -29,6 +29,7 @@ import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils
 import { log, isGM, generateId, formatCyberDate } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
 import { suggestFilename } from '../ui/content/ContentRenderers.js';
+import { adminViewVerdict as _adminVerdict, adminViewTargets as _adminTargets } from '../utils/terminalAdmin.js';
 import { SHARED_SCOPE, sanitizeFilesConfig, sanitizeFolder, normalizeFolderPath, visibleEntries, buildTree, canOpenFolder, rewritePlan } from '../utils/terminalFiles.js';
 
 export class TerminalService {
@@ -302,7 +303,7 @@ export class TerminalService {
    * @param {string} accountId
    * @returns {object[]}
    */
-  getAccountMessages(item, accountId, { includeShared = true, enforceGates = true } = {}) {
+  getAccountMessages(item, accountId, { includeShared = true, enforceGates = true, gateAccountId = null } = {}) {
     const journal = this._getLinkedJournal(item);
     if (!journal || !accountId) return [];
     const repo = this.messageRepository;
@@ -327,7 +328,120 @@ export class TerminalService {
     // the list at all (GM bypasses; admin accounts pass every gate). ONE place,
     // so every by-id reader (content actions, exfil, edit) is covered too.
     if (!enforceGates || isGM()) return list;
-    return visibleEntries(list, this.getFileFolders(item), this.getAccount(item, accountId), { isGM: false });
+    // `gateAccountId`: an ADMIN viewing another account reads THAT account's
+    // entries but opens folders with its OWN rights (admins pass every gate).
+    return visibleEntries(list, this.getFileFolders(item), this.getAccount(item, gateAccountId || accountId), { isGM: false });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ADMIN ACCESS — view another account (utils/terminalAdmin.js)
+  // ═══════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════
+  //  SEND AS THE ACCOUNT — a logged-in user emails as the account's owner
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Who an account sends AS: its linked directory contact (else the main
+   * identity of its linked character, else the directory entry for its
+   * address). Null when the account is linked to no one — it has no address
+   * the rest of the Net would recognise.
+   * @returns {{fromContactId: string|null, fromActorId: string|null, email: string, name: string, username: string}|null}
+   */
+  accountSendIdentity(item, accountId) {
+    const acct = this.getAccount(item, accountId);
+    if (!acct) return null;
+    const mcs = game.nightcity?.masterContactService;
+    const contact = (acct.masterContactId && mcs?.getContact?.(acct.masterContactId))
+      || (acct.actorId && mcs?.getByActorId?.(acct.actorId))
+      || (acct.email && mcs?.getByEmail?.(acct.email))
+      || null;
+    const actorId = acct.actorId || contact?.actorId || null;
+    if (!contact && !actorId) return null;
+    return {
+      fromContactId: contact?.id || null,
+      fromActorId: actorId,
+      email: contact?.email || acct.email || '',
+      name: contact?.name || acct.displayName || acct.username || 'account',
+      username: acct.username || acct.displayName || 'account',
+    };
+  }
+
+  /** Is "send as this account" on for this machine, and can this account send? */
+  canAccountCompose(item, accountId) {
+    if (this.getConfig(item).accountMail?.compose !== true) return false;
+    const id = this.accountSendIdentity(item, accountId);
+    // A player can't see a GM-owned NPC sheet, so the account must resolve to a
+    // DIRECTORY contact (or a character this client can see) to send as it.
+    return !!id && (!!id.fromContactId || !!game.actors?.get?.(id.fromActorId));
+  }
+
+  /**
+   * The account's ADDRESS BOOK, built from what is on the machine: everyone it
+   * has mail from or sent mail to (sender of received mail, recipients of its
+   * Sent folder), plus its linked character's own contacts when this client can
+   * read them. Names come from the GM directory when the address is in it.
+   * Its own addresses (every identity of its owner) are left out.
+   * @returns {Array<{email: string, name: string, contactId: string|null, actorId: string|null, count: number}>}
+   */
+  accountAddressBook(item, accountId) {
+    const id = this.accountSendIdentity(item, accountId);
+    const mcs = game.nightcity?.masterContactService;
+    const norm = (e) => String(e || '').trim().toLowerCase();
+    const mine = new Set([id?.email, ...((id?.fromContactId && mcs?.identitiesForContact?.(id.fromContactId)) || []).map(c => c.email)].map(norm).filter(Boolean));
+    const book = new Map();
+    const add = (email, name) => {
+      const e = norm(email);
+      if (!e || !e.includes('@') || mine.has(e)) return;
+      const hit = book.get(e);
+      if (hit) { hit.count++; return; }
+      const dir = mcs?.getByEmail?.(e) || null;
+      book.set(e, { email: dir?.email || String(email).trim(), name: dir?.name || name || String(email).trim(), contactId: dir?.id || null, actorId: dir?.actorId || null, count: 1 });
+    };
+    for (const m of this.getAccountMessages(item, accountId, { includeShared: false })) {
+      if (m.envelope === 'file') continue;
+      if (m.status?.sent || m.folder === 'sent') for (const e of String(m.to || '').split(',')) add(e, '');
+      else add(m.from, '');
+    }
+    const actor = id?.fromActorId ? game.actors?.get(id.fromActorId) : null;
+    for (const c of (actor?.getFlag?.(MODULE_ID, 'contacts') || [])) add(c?.email, c?.name);
+    return [...book.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }
+
+  /**
+   * GM-side check of a relayed "send as" (MessageService.handleMessageRelay):
+   * the machine allows it, the account exists, and the message really is FROM
+   * that account's identity. Blocks a tampered relay from sending as anyone.
+   * @returns {{ok: boolean, reason?: string, item?: Item}}
+   */
+  verifyAccountSend(data) {
+    const t = data?.terminalSend;
+    if (!t?.itemUuid || !t.accountId) return { ok: false, reason: 'not a terminal send' };
+    let item = null;
+    try { item = fromUuidSync(t.itemUuid); } catch { item = null; }
+    if (!item || !this.isTerminal(item)) return { ok: false, reason: 'that terminal no longer exists' };
+    if (this.getConfig(item).accountMail?.compose !== true) return { ok: false, reason: 'this terminal does not allow sending as its accounts' };
+    const id = this.accountSendIdentity(item, t.accountId);
+    if (!id) return { ok: false, reason: 'that account has no address' };
+    const sameContact = !id.fromContactId || data.fromContactId === id.fromContactId
+      || (game.nightcity?.masterContactService?.identitiesForContact?.(id.fromContactId) || []).some(c => c.id === data.fromContactId);
+    const sameActor = !data.fromActorId || data.fromActorId === id.fromActorId;
+    if (!sameContact || !sameActor) return { ok: false, reason: 'the sender does not match the account' };
+    return { ok: true, item };
+  }
+
+  /** May account `viewerId` view account `targetId`? → { ok, listed, reason } */
+  adminViewVerdict(item, viewerId, targetId) {
+    const cfg = this.getConfig(item);
+    const find = (id) => (cfg.accounts || []).find(a => a.id === id) || null;
+    return _adminVerdict(cfg, find(viewerId), find(targetId), { visible: (a) => this.isContentVisible(item, a.network) });
+  }
+
+  /** The accounts `viewerId` may view (and the private ones, listed dead). */
+  adminViewTargets(item, viewerId) {
+    const cfg = this.getConfig(item);
+    const viewer = (cfg.accounts || []).find(a => a.id === viewerId) || null;
+    return _adminTargets(cfg, viewer, { visible: (a) => this.isContentVisible(item, a.network) });
   }
 
   /** Every entry on the machine, any scope (GM tooling — the config sheet). */
@@ -540,6 +654,9 @@ export class TerminalService {
       const journal = this._getLinkedJournal(item);
       if (!journal) continue;
       for (const acct of (this.getConfig(item).accounts || [])) {
+        // Per-account switch (account editor → "Show this identity's Agent
+        // mail here"). Absent = on, so every account made before it mirrors.
+        if (acct.mirrorAgentMail === false) continue;
         const match =
           (data.toContactId && acct.masterContactId && acct.masterContactId === data.toContactId) ||
           (data.toActorId && acct.actorId && acct.actorId === data.toActorId) ||
@@ -561,6 +678,117 @@ export class TerminalService {
     }
     if (mirrored) log.debug(`Delivery ${data.messageId} mirrored to ${mirrored} terminal account(s)`);
     return { success: true, mirrored };
+  }
+
+  /**
+   * The outgoing half of the mirror: a SENT copy written for an identity also
+   * lands in the Sent folder of every terminal account linked to that sender
+   * (same match rules as the delivery mirror, read from the FROM side, same
+   * per-account switch). Called by MessageService._createSentCopy (GM client).
+   * @param {object} sentCopy - the sender's sent copy (status.sent = true)
+   * @returns {Promise<{ success: boolean, mirrored: number }>}
+   */
+  async mirrorSentToAccounts(sentCopy) {
+    if (!isGM() || !sentCopy?.messageId) return { success: true, mirrored: 0 };
+    const fromEmail = (sentCopy.from || '').trim().toLowerCase();
+    let mirrored = 0;
+    for (const item of this.collectTerminals()) {
+      for (const acct of (this.getConfig(item).accounts || [])) {
+        if (acct.mirrorAgentMail === false) continue;
+        const match =
+          (sentCopy.fromContactId && acct.masterContactId && acct.masterContactId === sentCopy.fromContactId) ||
+          (sentCopy.fromActorId && acct.actorId && acct.actorId === sentCopy.fromActorId) ||
+          (fromEmail && (acct.email || '').trim().toLowerCase() === fromEmail);
+        if (!match) continue;
+        const res = await this.copyMessagesToAccount(item, acct.id, [{ ...sentCopy, status: { ...(sentCopy.status || {}), sent: true } }]);
+        mirrored += res?.copied || 0;
+      }
+    }
+    if (mirrored) log.debug(`Sent copy ${sentCopy.messageId} mirrored to ${mirrored} terminal account(s)`);
+    return { success: true, mirrored };
+  }
+
+  /** The copy id an Agent message gets on an account — the mirror's id, so a copy is never made twice. */
+  static copyIdFor(messageId, accountId) { return `${messageId}-t-${accountId}`; }
+
+  /**
+   * The Agent mail the identity behind an account already has — its linked
+   * character's inbox and its master contact's inbox, received AND sent — for
+   * the "Import from inbox…" picker. Read-only: inboxes are found by flag
+   * (identifyInbox), never created. Deleted and spam mail are left out.
+   * @param {Item} item @param {string} accountId
+   * @returns {{ messages: object[], copied: Set<string>, identity: string }}
+   */
+  gatherIdentityMail(item, accountId) {
+    const acct = this.getAccount(item, accountId);
+    const empty = { messages: [], copied: new Set(), identity: '' };
+    if (!acct) return empty;
+    const owners = new Set([acct.actorId, acct.masterContactId].filter(Boolean));
+    if (!owners.size) return empty;
+    const repo = game.nightcity?.messageRepository;
+    const messages = [];
+    for (const j of game.journal?.contents || []) {
+      const who = MessageRepository.identifyInbox(j);
+      if (!who || !owners.has(who.ownerId)) continue;
+      for (const p of j.pages.contents) {
+        const m = repo?._pageToMessage?.(p);
+        if (!m || m.status?.deleted || m.status?.spam) continue;
+        messages.push(m);
+      }
+    }
+    messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const journal = this._getLinkedJournal(item);
+    const copied = new Set((journal?.pages?.contents || []).map(p => p.flags?.[MODULE_ID]?.messageId).filter(Boolean));
+    const identity = (acct.actorId && game.actors?.get(acct.actorId)?.name)
+      || game.nightcity?.masterContactService?.getContact?.(acct.masterContactId)?.name || '';
+    return { messages, copied, identity };
+  }
+
+  /**
+   * Copy Agent messages onto a terminal account. GM only. Same rules as the
+   * delivery mirror: the original From + timestamp are kept, each copy gets its
+   * own id (`copyIdFor`, which also makes a second import a no-op), and money
+   * never duplicates (eddies 0, neutralized contentData). Received mail lands
+   * in the Inbox; the identity's SENT mail lands in a "Sent" folder, created
+   * on the account's mailbox the first time it is needed.
+   * @param {Item} item @param {string} accountId @param {object[]} messages - Agent message objects
+   * @returns {Promise<{ success: boolean, copied: number, skipped: number, error?: string }>}
+   */
+  async copyMessagesToAccount(item, accountId, messages = []) {
+    if (!isGM()) return { success: false, copied: 0, skipped: 0, error: 'GM only' };
+    const journal = this._getLinkedJournal(item);
+    if (!journal) return { success: false, copied: 0, skipped: 0, error: 'No linked journal' };
+    if (!this.getAccount(item, accountId)) return { success: false, copied: 0, skipped: 0, error: 'Unknown account' };
+    const have = new Set(journal.pages.contents.map(p => p.flags?.[MODULE_ID]?.messageId).filter(Boolean));
+    let copied = 0, skipped = 0, sentFolder = null;
+    for (const msg of messages) {
+      if (!msg?.messageId) { skipped++; continue; }
+      const copyId = TerminalService.copyIdFor(msg.messageId, accountId);
+      if (have.has(copyId)) { skipped++; continue; }
+      const isSent = !!msg.status?.sent;
+      if (isSent && !sentFolder) sentFolder = await this._ensureSentFolder(item);
+      const res = await this.addAccountMessage(item, accountId, {
+        ...msg,
+        messageId: copyId,
+        eddies: 0,
+        contentData: this._exfilContentData(msg),
+        folder: isSent ? (sentFolder || '') : '',
+        status: { read: isSent ? true : !!msg.status?.read },
+      });
+      if (res?.success) { copied++; have.add(copyId); } else skipped++;
+    }
+    return { success: true, copied, skipped };
+  }
+
+  /** @private The mailbox's "Sent" folder id — reuses one named Sent, else adds it. */
+  async _ensureSentFolder(item) {
+    const cfg = this.getConfig(item);
+    const custom = [...(cfg.folders?.custom || [])];
+    const found = custom.find(c => c?.id === 'sent' || String(c?.name || '').trim().toLowerCase() === 'sent');
+    if (found) return found.id;
+    custom.push({ id: 'sent', name: 'Sent', icon: 'fas fa-paper-plane' });
+    await this.updateConfig(item, { folders: { ...(cfg.folders || {}), custom } });
+    return 'sent';
   }
 
   /**

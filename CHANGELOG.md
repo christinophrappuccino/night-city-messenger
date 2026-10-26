@@ -3,6 +3,22 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [1.6.0] — 2026-10-26
+
+### Added
+- **Admin Overview rebuilt.** It opens on **Needs you**: one ranked list of everything waiting on the GM — player mail an NPC hasn't answered (with **Reply as**), characters running hot or burned, trace countdowns, armed plants, mail sent while impersonating someone, bricked shards, scheduled mail about to go out, players with no address, a dead-zone scene. Every item has its own buttons and filter chips; dismissing one hides it until it changes. Below: **At the table** (each player, their character, online status and the network they're on), a tile per tab, **Recent activity** (saved mail + the Security log, survives a reload), **Coming up** (every timer in one place), the players' characters, and the NPCs players are talking to. Long lists scroll inside their own box.
+- **Aliases / identities.** One character — or an NPC with no actor — can have several directory contacts: a main address plus burners and cover names. **+ Add alias** in the GM Contact Manager. Mail to any alias reaches the same inbox, replies go out as the alias that was written to, Send-as keeps the exact alias, and an alias never shows the character's real portrait unless it has its own. Admin → Contacts nests aliases under their main (with an Aliases filter) and Admin → Messages labels mail "alias of …".
+- **Terminal ADMIN ACCESS.** An admin account can **View as admin** and browse another account's mail and files. Configure Terminal → Accounts → Admin access: on/off, read-only, include hidden accounts; per-account **Private from admin**. What players see it called (ADMIN OVERRIDE, SYSOP, NETWATCH AUTHORITY…) comes with the theme and can be renamed on the Theme tab. Viewing is logged in the Activity Log.
+- **Send mail as a terminal account** (GM switch, Configure Terminal → Accounts → Sending as an account): a logged-in player gets **Write** and **Reply as**; the address book is the account's own correspondents. A player on their own character's machine is just sending their own mail (eddies work). Someone impersonating an account is flagged for the GM: "via <machine> · typed by <character>" on the message in Admin → Messages, it counts as player mail in the NPC Inbox, and it appears in Needs you. The GM verifies every terminal send.
+- **An account's existing mail on the machine.** **Import from inbox** on a linked account copies messages from that person's Agent (sent mail into a Sent folder); a **Terminal** button on any message in the GM's inbox copies it to an account. New mail to *and from* that person now appears on the machine automatically; untick **Show this identity's Agent mail here** for a machine that keeps its own mail.
+- **What players call a shard** (Module Settings): Data Shard, Memory Chip, Data Chip, or your own word — on every player-facing surface and the item menus. GM windows keep saying "shard".
+- **Rename shards** from the right-click menu (shard and item together). **Shard Name Prefix** setting tags every shard's name. Turning a shard back into an item restores its original name and picture.
+- **What players can write shards on** (Player Authoring → Blanks): Gear items and listed blanks by default, or listed blanks only, or anything.
+
+### Fixed
+- The GM's To search couldn't find a directory contact with no linked actor (it offered "raw address only").
+- Replying from a character's alias, or to one, collapsed to the character's main address.
+
 ## [1.5.0] — 2026-10-25
 
 ### Added

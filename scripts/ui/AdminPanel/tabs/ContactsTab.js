@@ -26,6 +26,7 @@ import { editGroupDialog } from '../../ContactGroups/GroupEditorDialog.js';
 import { memberFromMasterContact, memberFromActor } from '../../../services/ContactGroupService.js';
 import { memberKey } from '../../../utils/participants.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
+import { identityRole } from '../../../utils/identities.js';
 
 export class ContactsTab extends BaseTab {
 
@@ -409,6 +410,18 @@ export class ContactsTab extends BaseTab {
         isPlayerOwned,
         portrait: c.portrait || null,
         hasPortrait: !!c.portrait,
+        // IDENTITIES (utils/identities.js) — contacts linked to one character.
+        ...(() => {
+          const role = identityRole(contacts, c);
+          return {
+            identityGroup: role ? role.key : null,
+            isAliasRow: !!role?.isAlias,
+            isMainIdentity: !!role?.isPrimary,
+            identityCount: role?.count || 0,
+            aliasOf: role?.isAlias ? role.primary.name : '',
+            aliasOfId: role?.isAlias ? role.primary.id : '',
+          };
+        })(),
         initial: (c.name || '?').charAt(0).toUpperCase(),
         avatarColor,
         avatarBorderColor: `${avatarColor}66`,
@@ -562,6 +575,12 @@ export class ContactsTab extends BaseTab {
         (c.playerOwnerName && c.playerOwnerName.toLowerCase().includes(q)) ||
         c.tags.some(t => t.toLowerCase().includes(q))
       );
+      // A hit on any identity brings the character's other identities along.
+      const hitGroups = new Set(filtered.map(c => c.identityGroup).filter(Boolean));
+      if (hitGroups.size) {
+        const have = new Set(filtered.map(c => c.id));
+        filtered = [...filtered, ...enriched.filter(c => c.identityGroup && hitGroups.has(c.identityGroup) && !have.has(c.id))];
+      }
     }
 
     // ── Apply filter ──
@@ -573,6 +592,7 @@ export class ContactsTab extends BaseTab {
         case 'burned':   filtered = filtered.filter(c => c.burned); break;
         case 'ice':      filtered = filtered.filter(c => c.encrypted); break;
         case 'player':   filtered = filtered.filter(c => c.isPlayerOwned); break;
+        case 'aliases':  filtered = filtered.filter(c => c.identityGroup); break;
         default:
           filtered = filtered.filter(c =>
             c.roleLower === f.toLowerCase() ||
@@ -629,9 +649,10 @@ export class ContactsTab extends BaseTab {
         default: return roleGroupFor(c);
       }
     };
+    const byId = new Map(enriched.map(c => [c.id, c]));
     const groupMap = {};
     for (const c of filtered) {
-      const groupName = groupNameFor(c);
+      const groupName = groupNameFor(c.isAliasRow && byId.get(c.aliasOfId) ? byId.get(c.aliasOfId) : c);
       if (!groupMap[groupName]) groupMap[groupName] = [];
       groupMap[groupName].push(c);
     }
@@ -659,10 +680,19 @@ export class ContactsTab extends BaseTab {
     for (const name of orderedNames) {
       if (!groupMap[name]?.length) continue;
       const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      // Aliases sit right under their main identity (when it is in the list).
+      const list = groupMap[name];
+      const ids = new Set(list.map(c => c.id));
+      const nested = [];
+      for (const c of list) {
+        if (c.isAliasRow && ids.has(c.aliasOfId)) continue;
+        nested.push(c);
+        if (c.isMainIdentity) nested.push(...list.filter(a => a.isAliasRow && a.aliasOfId === c.id));
+      }
       groups.push({
         key,
         name,
-        contacts: groupMap[name],
+        contacts: nested,
         collapsed: this._collapsedGroups.has(key),
       });
     }
@@ -691,6 +721,7 @@ export class ContactsTab extends BaseTab {
       unlinked,
       playerCount,
       filteredCount: filtered.length,
+      aliasCount: enriched.filter(c => c.identityGroup).length,
       groups,
       roleCounts,
       sendAsChips,

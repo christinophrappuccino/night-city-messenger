@@ -26,6 +26,12 @@
         </div>
       {{/each}}
     {{/each}}
+    {{!-- ADMIN ACCESS: other accounts' homes — double as "view that account". --}}
+    {{#each fs.otherHomes}}
+      <div class="ncm-tmdesk__icon ncm-tmdesk__icon--drive{{#unless ok}} is-locked{{/unless}}" {{#if ok}}data-action="{{#if isBack}}terminalAdminBack{{else}}terminalAdminView{{/if}}" data-account-id="{{id}}" data-files="1"{{/if}} data-tooltip="{{#if ok}}{{#if isBack}}Back to your own account{{else}}View {{username}}'s files as admin{{/if}}{{else}}{{reason}}{{/if}}">
+        <i class="fas {{#if ok}}fa-house-user{{else}}fa-house-lock{{/if}}"></i><span>home</span><small>{{username}}{{#if tag}} · {{tag}}{{/if}}</small>
+      </div>
+    {{/each}}
   </div>
 
   <div class="ncm-tmdesk__win">
@@ -81,6 +87,7 @@
               <span class="ncm-term__acdrop-lk{{#if isOpen}} is-open{{/if}}">{{{statusLabel}}}</span>
             </div>
           {{/each}}
+          {{> "modules/night-city-messenger/templates/terminal/partials/admin-view-list.hbs"}}
           <div class="ncm-term__acdrop-ft" data-action="terminalLogout"><i class="fas fa-right-from-bracket"></i> Log out → login screen</div>
         </div>
       {{/if}}

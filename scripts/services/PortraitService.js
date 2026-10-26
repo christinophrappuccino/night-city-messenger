@@ -17,6 +17,7 @@
 
 import { MODULE_ID } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { identityRole } from '../utils/identities.js';
 
 /** Maximum portrait dimension (square) */
 const PORTRAIT_SIZE = 128;
@@ -249,7 +250,11 @@ export class PortraitService {
     // 1. Custom portrait (base64 or file path)
     if (contact.portrait) return contact.portrait;
 
-    // 2. Linked actor image
+    // 2. Linked actor image — but never for an ALIAS (another identity of the
+    //    character, utils/identities.js): its face would unmask it.
+    const all = game.nightcity?.masterContactService?.getAll?.() || [];
+    const master = all.find(c => c.id === (contact.masterContactId || contact.id)) || null;
+    if (master && identityRole(all, master)?.isAlias) return contact.customImg || null;
     if (contact.actorId) {
       const actor = game.actors.get(contact.actorId);
       if (actor?.img && actor.img !== 'icons/svg/mystery-man.svg') {
