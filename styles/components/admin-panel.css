@@ -1213,3 +1213,144 @@
   accent-color: var(--ncm-secondary);
   cursor: pointer;
 }
+
+/* ── Export / import tool rows (domains + addresses, 2026-10-24) ── */
+.ncm-domain-dialog__hint--block {
+  padding: 0 10px 8px;
+  font-family: var(--ncm-font-body);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ncm-text-muted);
+}
+.ncm-domain-dialog__hint--block code {
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-secondary);
+}
+.ncm-domain-dialog__tools {
+  display: flex;
+  gap: 6px;
+  padding: 6px 10px 0;
+}
+/* Foundry override at 0,2,1 — same vocabulary as the Add Domain button */
+.ncm-pick-dialog button.ncm-domain-dialog__tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 0;
+  width: auto;
+  padding: 6px 8px;
+  margin: 0;
+  background: none;
+  background-image: none;
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ncm-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  appearance: none;
+  box-shadow: none;
+  min-height: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.ncm-pick-dialog button.ncm-domain-dialog__tool:hover {
+  color: var(--ncm-secondary);
+  border-color: var(--ncm-secondary);
+  background-color: color-mix(in srgb, var(--ncm-secondary) 5%, transparent);
+  background-image: none;
+}
+.ncm-pick-dialog button.ncm-domain-dialog__tool--primary {
+  color: var(--ncm-secondary);
+  border-color: color-mix(in srgb, var(--ncm-secondary) 55%, transparent);
+}
+
+/* ── Import plan preview ── */
+.ncm-dirimp__sum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 0 0 8px;
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ncm-text-secondary);
+}
+.ncm-dirimp__sum b { color: var(--ncm-text-primary); font-family: var(--ncm-font-mono); }
+.ncm-dirimp__sum-skip { color: var(--ncm-text-muted); }
+.ncm-dirimp__sum-warn { color: var(--ncm-warning, #f0c55b); }
+.ncm-dirimp__scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+}
+.ncm-dirimp__table {
+  width: 100%;
+  margin: 0;                 /* core ships table { margin: 1rem } — it clips the last column */
+  border-collapse: collapse;
+  background: none;
+  border: none;
+}
+.ncm-dirimp__table th {
+  position: sticky;
+  top: 0;
+  background: var(--ncm-bg-surface);
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-muted);
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--ncm-border);
+}
+.ncm-dirimp__table td {
+  padding: 4px 8px;
+  font-family: var(--ncm-font-body);
+  font-size: 12px;
+  color: var(--ncm-text-primary);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
+  vertical-align: top;
+}
+.ncm-dirimp__row--skip td { color: var(--ncm-text-muted); }
+.ncm-dirimp__n, .ncm-dirimp__mail { font-family: var(--ncm-font-mono); font-size: 11px; }
+.ncm-dirimp__n { color: var(--ncm-text-muted); width: 28px; }
+.ncm-dirimp__mail { color: var(--ncm-secondary); word-break: break-all; }
+.ncm-dirimp__row--skip .ncm-dirimp__mail { color: var(--ncm-text-muted); }
+.ncm-dirimp__act {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 1px;
+  border: 1px solid currentColor;
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.ncm-dirimp__act--actor   { color: var(--ncm-secondary); }
+.ncm-dirimp__act--contact { color: var(--ncm-accent); }
+.ncm-dirimp__act--create  { color: var(--ncm-success, #34d399); }
+.ncm-dirimp__act--skip    { color: var(--ncm-text-muted); }
+.ncm-dirimp__notes { font-size: 11px; color: var(--ncm-text-secondary); }
+.ncm-dirimp__notes > span { display: block; }
+.ncm-dirimp__prev, .ncm-dirimp__also { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); }
+.ncm-dirimp__warn { color: var(--ncm-warning, #f0c55b); }
+.ncm-dirimp__warn i { font-size: 9px; margin-right: 3px; }
+.ncm-dirimp__foot {
+  padding: 8px 0 0;
+  font-family: var(--ncm-font-body);
+  font-size: 11px;
+  color: var(--ncm-text-muted);
+}

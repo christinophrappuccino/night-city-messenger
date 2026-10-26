@@ -97,8 +97,23 @@
             <button type="button" class="ncm-cfg-btn-sm" data-action="addAccount"><i class="fas fa-plus"></i> Add</button>
           </div>
 
+          {{!-- SHARED VOLUME (2026-10-25) — files on the machine itself, every
+                login sees them. Folds open to its folder tree. --}}
+          {{#with content.shared}}
+            <div class="ncm-acctl-row ncm-acctl-row--vol{{#if open}} is-open{{/if}}" data-action="ctToggle" data-scope="{{scope}}">
+              <span class="ncm-acctl-av"><i class="fas fa-hard-drive"></i></span>
+              <span class="ncm-acctl-id">
+                <span class="ncm-acctl-nm">Shared volume <b class="ncm-term-cfg-tag ncm-term-cfg-tag--shared">every login sees it</b></span>
+                <span class="ncm-acctl-sub">files on the machine itself · a folder can still be limited to admins, a clearance level, or named accounts</span>
+              </span>
+              <span class="ncm-acctl-right"><span class="ncm-acctl-cnt"><span><i class="fas fa-folder"></i><b>{{files.folderCount}}</b> folder{{#unless (eq files.folderCount 1)}}s{{/unless}}</span><span><i class="fas fa-file"></i><b>{{files.count}}</b> file{{#unless (eq files.count 1)}}s{{/unless}}</span></span></span>
+              <span class="ncm-acctl-cv"><i class="fas fa-chevron-{{#if open}}up{{else}}down{{/if}}"></i></span>
+            </div>
+            {{#if open}}{{> "modules/night-city-messenger/templates/terminal/partials/config-content.hbs"}}{{/if}}
+          {{/with}}
+
           {{#each accounts}}
-            <div class="ncm-acctl-row" data-action="editAccount" data-account-id="{{id}}">
+            <div class="ncm-acctl-row{{#if ct.open}} is-open{{/if}}" data-action="ctToggle" data-scope="{{id}}" data-tooltip="{{#if ct.open}}Hide{{else}}Show{{/if}} this account's mail and files — the pen edits the login">
               <span class="ncm-acctl-av">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}
                 {{#if isAdmin}}<i class="fas fa-user-shield ncm-acctl-av-adm" data-tooltip="Administrator"></i>{{/if}}
               </span>
@@ -119,7 +134,13 @@
                 <button type="button" class="ncm-cfg-btn-icon" data-action="editAccount" data-account-id="{{id}}" data-tooltip="Edit"><i class="fas fa-pen"></i></button>
                 <button type="button" class="ncm-cfg-btn-icon ncm-cfg-btn-icon--danger" data-action="removeAccount" data-account-id="{{id}}" data-tooltip="Remove"><i class="fas fa-trash-can"></i></button>
               </span>
+              {{!-- CONTENT fold (2026-10-25): this account's mail + home files. --}}
+              <span class="ncm-acctl-cv" data-action="ctToggle" data-scope="{{id}}" data-tooltip="{{#if ct.open}}Hide{{else}}Show{{/if}} this account's mail and files">
+                <span class="ncm-acctl-cnt"><span><i class="fas fa-envelope"></i><b>{{ct.mail.total}}</b></span><span><i class="fas fa-folder"></i><b>{{ct.files.count}}</b></span></span>
+                <i class="fas fa-chevron-{{#if ct.open}}up{{else}}down{{/if}}"></i>
+              </span>
             </div>
+            {{#if ct.open}}{{#with ct}}{{> "modules/night-city-messenger/templates/terminal/partials/config-content.hbs"}}{{/with}}{{/if}}
           {{else}}
             <div class="ncm-acctl-empty">{{#if acctControls.isFiltered}}No accounts match "{{acctControls.search}}".{{else}}No accounts yet — Add one, or stage a preset (Theme tab) to seed some.{{/if}}</div>
           {{/each}}
@@ -186,7 +207,7 @@
       {{#if presetKitLabel}}
         <div class="ncm-cfg-kitbar">
           <i class="fas fa-boxes-packing"></i>
-          <span><strong>{{presetKitLabel}}</strong> staged — palette, fonts, boot screen, login style, MOTD, screensaver, folder names &amp; sound profile all update on <strong>Save</strong> (accounts seed too when this terminal has none).</span>
+          <span><strong>{{presetKitLabel}}</strong> staged — palette, fonts, boot screen, login style, mailbox layout, MOTD, screensaver, folder names &amp; sound profile all update on <strong>Save</strong> (accounts seed too when this terminal has none).</span>
           <button type="button" class="ncm-tc__paction ncm-cfg-kitbar-btn" data-action="clearPresetKit" data-tooltip="Keep only the colors & fonts from this preset">palette only</button>
         </div>
       {{else}}
@@ -220,12 +241,14 @@
       </div>
 
       <div class="ncm-tc__divider"></div>
-      <div class="ncm-tc__slabel">Saved Themes — palette &amp; fonts only</div>
+      <div class="ncm-tc__slabel">Saved Themes — palette, fonts, CRT film &amp; mailbox layout</div>
+      <div class="ncm-tc__name-hint">A saved theme remembers the mailbox layout it was saved with (set under Boot &amp; Login) and brings it back when applied. Boot screen, login style and accounts live in the Full Terminal Preset Library above.</div>
       <div class="ncm-tc__clist">
         {{#each savedThemes}}
         <div class="ncm-tc__citem" data-theme-index="{{index}}">
           <div class="ncm-tc__citem-swatch"><span style="background:{{sw1}};"></span><span style="background:{{sw2}};"></span><span style="background:{{sw3}};"></span></div>
           <span class="ncm-tc__citem-name">{{name}}</span>
+          {{#if layoutIcon}}<i class="{{layoutIcon}} ncm-tc__citem-layout" data-tooltip="Mailbox layout: {{layoutLabel}}"></i>{{/if}}
           <div class="ncm-tc__citem-actions">
             <button type="button" data-action="applyTermTheme" data-tooltip="Apply"><i class="fas fa-check"></i></button>
             <button type="button" data-action="overwriteTermTheme" data-tooltip="Overwrite with current"><i class="fas fa-save"></i></button>
@@ -269,11 +292,13 @@
           <input type="range" name="ttcWallStrength" min="5" max="100" step="5" value="{{themeWallStrength}}" class="ncm-tc__slider" />
           <span class="ncm-tc__srow-val ncm-ttc-wall-val">{{themeWallStrength}}%</span>
         </div>
+        {{!-- The ONE CRT film (scripts/utils/crt.js + styles/components/crt.css): this terminal's
+              own pane, previewed on the strip above AND on an open viewer — the shared panel. --}}
+        <div class="ncm-tc__slabel" style="padding-left:0">CRT film</div>
+        {{> "modules/night-city-messenger/templates/partials/crt-panel.hbs" crt=themeCrt}}
         <div class="ncm-tc__srow">
-          <span class="ncm-tc__srow-label">Scanlines</span>
-          <div class="ncm-tc__switch{{#if themeScanlines}} ncm-tc__switch--on{{/if}}" data-ttc-toggle="scanlines"></div>
-          <span class="ncm-tc__srow-label" style="min-width:0;margin-left:14px">CRT Flicker</span>
-          <div class="ncm-tc__switch{{#if themeFlicker}} ncm-tc__switch--on{{/if}}" data-ttc-toggle="flicker"></div>
+          <span class="ncm-tc__srow-label" style="min-width:0;margin-left:14px">Flicker</span>
+          <div class="ncm-tc__switch{{#if themeFlicker}} ncm-tc__switch--on{{/if}}" data-ttc-toggle="flicker" data-tooltip="Occasional brightness dips"></div>
         </div>
         <div class="ncm-tc__srow">
           <span class="ncm-tc__srow-label">Glitch</span>
@@ -338,6 +363,7 @@
           <div class="ncm-cfg-bootprev-sub" data-bp="subtitle">{{bootSubtitle}}</div>
           <div class="ncm-cfg-bootprev-bar"><span></span></div>
           <div class="ncm-cfg-bootprev-log" data-bp="log">{{#each bootLogLines}}<div>{{this}}</div>{{/each}}</div>
+          <div class="ncm-cfg-bootprev-video" data-bp="video" style="display:none"><i class="fas fa-film"></i> VIDEO BOOT — <b></b> plays instead of this splash</div>
         </div>
       </div>
 
@@ -373,6 +399,18 @@
         </div>
       </div>
 
+      {{!-- Boot VIDEO (2026-10-25): a video stands in for the whole splash. --}}
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-film ncm-cfg-section-icon" style="color:#ffcc00"></i><div class="ncm-cfg-section-title">Boot Video</div></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Video</span>
+          <input type="text" name="bootVideoUrl" class="ncm-cfg-input ncm-cfg-flex" value="{{bootVideoUrl}}" placeholder="leave empty for the animated splash — a .webm or .mp4 file">
+          <button type="button" data-action="browseBootVideo" class="ncm-cfg-btn-icon" data-tooltip="Browse / upload"><i class="fas fa-folder-open"></i></button>
+          <button type="button" data-action="clearBootVideo" class="ncm-cfg-btn-icon" data-tooltip="Remove the video"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="ncm-cfg-row"><label style="display:inline-flex;align-items:center;gap:6px;font-family:var(--ncm-font-mono);font-size:12px"><input type="checkbox" name="bootVideoOverlay" {{#if bootVideoOverlay}}checked{{/if}}> Show the title and subtitle over the video</label></div>
+        <div class="ncm-cfg-hint">The video replaces the animated splash. It plays with its own audio at the module's sound volume, and the boot lasts exactly as long as the video — players can click to skip. The icon, animation and speed settings don't apply while a video is set; the icon still shows on the login screen.</div>
+      </div>
+
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-wand-magic-sparkles ncm-cfg-section-icon" style="color:#a855f7"></i><div class="ncm-cfg-section-title">Animation &amp; Log</div></div>
         <input type="hidden" name="bootAnimation" value="{{bootAnimation}}">
@@ -383,12 +421,32 @@
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Speed</span>
           <div class="ncm-cfg-chips" data-chip-group="bootSpeed">{{#each speedOptions}}<button type="button" class="ncm-cfg-chip{{#if selected}} is-on{{/if}}" data-chip="{{value}}">{{value}}</button>{{/each}}</div>
         </div>
+        <div class="ncm-cfg-row" data-boot-custom {{#unless bootSpeedIsCustom}}style="display:none"{{/unless}}><span class="ncm-cfg-label">Boot length</span>
+          <input type="number" name="bootCustomSeconds" class="ncm-cfg-input ncm-cfg-input--short" value="{{bootCustomSeconds}}" min="0.5" max="60" step="0.5" placeholder="2.1"> <span class="ncm-cfg-hint">seconds for the whole splash (fast ≈ 1 · normal ≈ 2 · dramatic ≈ 4)</span>
+        </div>
         <div class="ncm-cfg-row ncm-cfg-row--col"><span class="ncm-cfg-label" style="margin-bottom:4px">Log Lines</span>
           <div class="ncm-cfg-boot-log-list">{{#each bootLogLines}}<div class="ncm-cfg-boot-log-entry"><input type="text" name="bootLogLine" class="ncm-cfg-input" value="{{this}}"><button type="button" class="ncm-cfg-btn-icon ncm-cfg-btn-icon--danger" data-action="removeBootLogLine"><i class="fas fa-times"></i></button></div>{{/each}}</div>
           <div style="display:flex;gap:6px;margin-top:4px">
             <button type="button" data-action="addBootLogLine" class="ncm-cfg-btn-sm"><i class="fas fa-plus"></i> Add</button>
             <button type="button" data-action="generateBootLines" class="ncm-cfg-btn-sm" data-tooltip="Roll 4 random flavor lines"><i class="fas fa-dice"></i> Generate flavor lines</button>
           </div>
+        </div>
+      </div>
+
+      {{!-- Mailbox LAYOUT (2026-10-25) — how the account looks once logged in.
+            Cards like the login styles; hidden input is the save contract. --}}
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-table-columns ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Mailbox Layout</div></div>
+        <div class="ncm-cfg-desc">How the account looks <strong>after</strong> login — the same mail, files, folders and actions in a different arrangement. Classic is the default; the others change the look, not what players can do. <strong>The layout travels with the theme:</strong> a preset card on the Theme tab brings its own, a saved theme brings the one it was saved with, and you can change it here afterwards.</div>
+        <input type="hidden" name="mailboxStyle" value="{{mailboxStyleKey}}">
+        <div class="ncm-cfg-lstyles ncm-cfg-mstyles">
+          {{#each mailboxStyles}}
+          <button type="button" class="ncm-cfg-lstyle ncm-cfg-mstyle{{#if active}} is-on{{/if}}" data-mailbox-style="{{key}}" data-tooltip="{{hint}}">
+            <span class="ncm-cfg-mstyle__thumb ncm-cfg-mstyle__thumb--{{key}}"><i></i><i></i><i></i></span>
+            <span class="ncm-cfg-mstyle__nm"><i class="{{icon}}"></i> {{label}}</span>
+            <span class="ncm-cfg-mstyle__hint">{{hint}}</span>
+          </button>
+          {{/each}}
         </div>
       </div>
 

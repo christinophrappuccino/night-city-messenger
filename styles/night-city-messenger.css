@@ -22,7 +22,9 @@
 @import 'base/interactions.css';
 
 /* Effects — visual atmosphere layers */
-@import 'effects/scanlines.css';
+/* effects/scanlines.css was DELETED 2026-10-25: a legacy body-class film that drew 3px lines over any
+   .ncm-app element without data-ncm-scanlines — i.e. the terminal's inner .ncm-terminal-viewer.ncm-app —
+   whenever the player's Agent film was on, whatever the terminal's own CRT setting said. */
 @import 'effects/glitch.css';
 @import 'effects/neon-glow.css';
 @import 'effects/matrix-rain.css';
@@ -82,6 +84,9 @@
 @import 'components/contact-groups.css';
 @import 'components/name-picker.css';
 @import 'components/toast.css';
+@import 'components/boot-video.css';
+@import 'components/crt.css';
+@import 'components/terminal-styles.css';
 
 /* Chat — Foundry chat card styling */
 @import 'chat/chat-cards.css';

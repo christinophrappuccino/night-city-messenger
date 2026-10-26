@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CRT glass — tunable layers (mock v2)</title>
+<!--
+  MOCK v2 (2026-10-25). Dev on v1: "the bezel doesn't look like a terminal… the glass is
+  cool… all of this should be customizable." So: ONE pane of glass over the whole window
+  (header included), built from independent LAYERS, every layer on a slider:
+
+    RASTER   light lines (screen blend — the glass) + a separate CUT layer of dark gaps
+             (multiply — only visible across text and fills, which is what makes glyphs
+             look scanned) · pitch · softness (blur)
+    GRILLE   RGB subpixel stripes (aperture grille)
+    PHOSPHOR text glow (bleed) and chromatic aberration (red/cyan fringe) — text-shadow on
+             the viewer root, inherited by every glyph
+    ROOM     vignette · primary-colour bloom at the edges · diagonal sheen
+    TUBE     curvature (the raster fades toward the edges) · optional bezel · corner radius
+    MOTION   slow rolling band · flicker · grain
+
+  Presets at the top (Glass / Tube / Arcade / Off) are starting points; the readout at the
+  bottom of the panel is the JSON to port into crt.css + the config knobs.
+  Both frames are the REAL terminal-viewer.hbs on the real cascade (Arasaka · Tabs,
+  Streetkid BBS · TTY). Serve it: node dev/tools/serve-mockups.cjs →
+  http://127.0.0.1:8123/dev/mockups/crt-glass-mock.html
+  ?p=arasaka|streetkid one frame · ?start=glass|tube|arcade|off · ?k=<readout json>
+-->
+<link id="css-foundry" rel="stylesheet" href="">
+<link id="css-fa" rel="stylesheet" href="">
+<link id="css-cpr" rel="stylesheet" href="">
+<script>
+  const isFile = location.protocol === 'file:';
+  const FVTT = 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public';
+  document.getElementById('css-foundry').href = isFile ? `${FVTT}/css/foundry2.css` : '/_vendor/foundry2.css';
+  document.getElementById('css-fa').href = isFile ? `${FVTT}/fonts/fontawesome/css/all.min.css` : '/_vendor/fa/css/all.min.css';
+  document.getElementById('css-cpr').href = isFile ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+<style>
+  html, body { height: auto; min-height: 100%; }
+  body { margin: 0; background: #0b0b10; padding: 20px 0 60px; color: #c9c9d6; font: 13px/1.5 var(--ncm-font-body, sans-serif); }
+  .mk-page { width: 1320px; margin: 0 auto; display: grid; grid-template-columns: 900px 380px; gap: 0 24px; align-items: start; }
+  .mk-head { grid-column: 1 / -1; margin-bottom: 10px; }
+  h1 { font: 700 18px/1.3 var(--ncm-font-display, sans-serif); color: #ededf0; margin: 0 0 4px; }
+  .mk-sub { color: #9a9ab0; margin: 0; }
+  .mk-cap { display: flex; gap: 12px; align-items: baseline; margin: 18px 0 8px; }
+  .mk-cap b { font: 800 12px/1 var(--ncm-font-mono, monospace); letter-spacing: 2px; color: #19f3f7; padding: 4px 8px; border: 1px solid #19f3f755; border-radius: 2px; }
+  .mk-cap span { color: #9a9ab0; }
+  #err { color: #f65261; font: 12px monospace; white-space: pre-wrap; grid-column: 1 / -1; }
+
+  /* ── window frames (pinned back into flow: .ncm-app is position:fixed !important) ── */
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win.application { width: 900px; height: 560px; display: flex; flex-direction: column; overflow: hidden; margin: 0 0 6px; border-radius: var(--k-radius, 6px); isolation: isolate; }
+  .mk-win > .window-content { flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
+  .mk-win .ncm-terminal-viewer { width: 898px !important; height: 530px !important; min-width: 0; min-height: 0; flex: 0 0 530px !important; }
+  .mk-win .window-header { background: var(--ncm-bg-deep); border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 35%, transparent); color: var(--ncm-text-primary); font-family: var(--ncm-font-mono); letter-spacing: 1px; }
+
+  /* ═══ THE PANE — every layer an absolutely positioned child, driven by --k-* vars ═══ */
+  .mk-pane { position: absolute; inset: 0; pointer-events: none; z-index: 120; border-radius: inherit; overflow: hidden; }
+  .mk-pane > div { position: absolute; inset: 0; }
+  /* flicker + glow/aberration apply to the CONTENT, not the pane */
+  .mk-win > .window-header, .mk-win > .window-content { animation: mk-flicker var(--k-flicker-period, 4s) steps(1) infinite; animation-play-state: var(--k-flicker-play, paused); }
+  .mk-win .ncm-terminal-viewer, .mk-win .window-title {
+    text-shadow:
+      calc(var(--k-aberr, 0) * -1px) 0 rgba(255, 40, 60, calc(.55 * var(--k-aberr-on, 0))),
+      calc(var(--k-aberr, 0) * 1px) 0 rgba(40, 230, 255, calc(.45 * var(--k-aberr-on, 0))),
+      0 0 calc(var(--k-glow, 0) * 1px) currentColor;
+  }
+  @keyframes mk-flicker { 0%, 100% { opacity: 1; } 7% { opacity: calc(1 - var(--k-flicker, 0)); } 8% { opacity: 1; } 53% { opacity: calc(1 - var(--k-flicker, 0) * .5); } 54% { opacity: 1; } }
+
+  /* RASTER — light lines, screen blend: lines LIVE IN THE DARK (the glass) */
+  .mk-light {
+    mix-blend-mode: screen; filter: blur(var(--k-soft, 0px));
+    background: repeating-linear-gradient(0deg,
+      rgba(255,255,255, var(--k-light, .12)) 0 1px,
+      transparent 1px var(--k-pitch, 3px));
+  }
+  /* CUT — dark gaps, multiply: invisible on black, visible across glyphs and fills.
+     THIS is what makes text read as scanned; 0 turns it off (pure glass). */
+  .mk-cut {
+    mix-blend-mode: multiply; filter: blur(var(--k-soft, 0px));
+    background: repeating-linear-gradient(0deg,
+      transparent 0 calc(var(--k-pitch, 3px) - 1px),
+      rgba(0,0,0, var(--k-cut, 0)) calc(var(--k-pitch, 3px) - 1px) var(--k-pitch, 3px));
+  }
+  /* GRILLE — RGB subpixel stripes (aperture grille), screen blend */
+  .mk-grille {
+    mix-blend-mode: screen; opacity: var(--k-grille, 0);
+    background: repeating-linear-gradient(90deg, rgba(255,60,60,.5) 0 1px, rgba(60,255,90,.4) 1px 2px, rgba(70,110,255,.5) 2px 3px);
+  }
+  /* curvature: the raster + grille fade toward the edges like a curved face */
+  .mk-light, .mk-cut, .mk-grille {
+    -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, #000 calc(100% - var(--k-curve, 0%) * 1.2), rgba(0,0,0,.35) calc(100% - var(--k-curve, 0%) * .4), transparent 100%);
+            mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, #000 calc(100% - var(--k-curve, 0%) * 1.2), rgba(0,0,0,.35) calc(100% - var(--k-curve, 0%) * .4), transparent 100%);
+  }
+  /* ROOM — vignette · primary bloom · sheen */
+  .mk-room {
+    background:
+      linear-gradient(115deg, transparent 38%, rgba(255,255,255, var(--k-sheen, 0)) 50%, transparent 62%),
+      radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0,0,0, var(--k-vignette, 0)) 100%);
+    box-shadow: inset 0 0 var(--k-bloom-size, 90px) color-mix(in srgb, var(--ncm-primary) calc(var(--k-bloom, 0) * 100%), transparent);
+  }
+  /* TUBE — bezel (optional): a plastic lip with a hairline, inner shadow, reflection */
+  .mk-bezel {
+    opacity: var(--k-bezel-on, 0);
+    box-shadow:
+      inset 0 0 0 var(--k-bezel, 6px) #07070b,
+      inset 0 0 0 calc(var(--k-bezel, 6px) + 1px) rgba(255,255,255,.08),
+      inset 0 0 calc(var(--k-bezel, 6px) * 4) rgba(0,0,0,.55);
+    background: radial-gradient(ellipse 60% 45% at 18% 8%, rgba(255,255,255,.07) 0%, transparent 70%);
+  }
+  /* MOTION — the slow band; grain */
+  .mk-roll {
+    opacity: var(--k-roll-on, 0);
+    background: linear-gradient(180deg, transparent, rgba(255,255,255, var(--k-roll, .05)) 50%, transparent) 0 -200px / 100% 180px no-repeat;
+    animation: mk-roll var(--k-roll-speed, 9s) linear infinite; animation-play-state: var(--k-roll-play, paused);
+  }
+  @keyframes mk-roll { from { background-position-y: -200px; } to { background-position-y: calc(100% + 200px); } }
+  .mk-noise {
+    opacity: var(--k-noise, 0); mix-blend-mode: screen;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .6 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+    animation: mk-grain .6s steps(4) infinite; animation-play-state: var(--k-noise-play, paused);
+  }
+  @keyframes mk-grain { 0% { background-position: 0 0; } 25% { background-position: 37px -21px; } 50% { background-position: -29px 44px; } 75% { background-position: 51px 13px; } 100% { background-position: 0 0; } }
+
+  /* ═══ control panel ═══ */
+  .mk-panel { position: sticky; top: 14px; background: #12121a; border: 1px solid #2a2a45; border-radius: 6px; padding: 12px 14px; font: 12px/1.4 var(--ncm-font-body, sans-serif); }
+  .mk-panel h2 { font: 700 11px/1 var(--ncm-font-display, sans-serif); letter-spacing: 2px; text-transform: uppercase; color: #19f3f7; margin: 12px 0 6px; padding-top: 10px; border-top: 1px solid #2a2a45; }
+  .mk-panel h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 2px; }
+  .mk-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .mk-presets button, .mk-copy { all: unset; cursor: pointer; font: 700 11px/1 var(--ncm-font-mono, monospace); letter-spacing: 1px; text-transform: uppercase; padding: 6px 9px; border: 1px solid #19f3f766; color: #19f3f7; border-radius: 2px; }
+  .mk-presets button:hover, .mk-copy:hover { background: #19f3f71a; }
+  .mk-presets button.is-on { background: #19f3f7; color: #0a0a0f; }
+  .mk-row { display: grid; grid-template-columns: 96px 1fr 44px; gap: 8px; align-items: center; margin: 3px 0; }
+  .mk-row label { color: #bdbdd0; }
+  .mk-row input[type=range] { width: 100%; margin: 0; accent-color: #19f3f7; }
+  .mk-row output { font: 11px var(--ncm-font-mono, monospace); color: #8e8ea8; text-align: right; }
+  .mk-row.is-check { grid-template-columns: 96px 1fr; }
+  .mk-row input[type=checkbox] { width: 14px; height: 14px; accent-color: #19f3f7; margin: 0; }
+  .mk-hint { color: #8e8ea8; font-size: 11px; margin: 0 0 4px; }
+  #readout { width: 100%; box-sizing: border-box; height: 92px; background: #0a0a0f; color: #bdbdd0; border: 1px solid #2a2a45; border-radius: 2px; font: 10.5px/1.35 var(--ncm-font-mono, monospace); padding: 6px; resize: vertical; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="mk-page">
+  <div class="mk-head">
+    <h1>CRT glass — one pane, every layer a knob</h1>
+    <p class="mk-sub">Both frames are the real <code>terminal-viewer.hbs</code>. The pane on top is built from the layers in the panel; drag anything and both frames follow. The readout is what gets ported.</p>
+  </div>
+  <div id="err"></div>
+  <div id="frames"></div>
+  <aside class="mk-panel" id="panel">
+    <h2>Start from</h2>
+    <div class="mk-presets" id="presets"></div>
+    <p class="mk-hint">Glass = the direction you liked. Tube = the same glass with the raster allowed to cut through text, phosphor bleed and fringe. Arcade = grille. Off = control.</p>
+    <h2>Raster</h2>
+    <div class="mk-row"><label>pitch</label><input type="range" data-k="pitch" min="2" max="6" step="1"><output></output></div>
+    <div class="mk-row"><label>light line</label><input type="range" data-k="light" min="0" max=".4" step=".01"><output></output></div>
+    <div class="mk-row"><label>cut (dark gap)</label><input type="range" data-k="cut" min="0" max=".7" step=".01"><output></output></div>
+    <div class="mk-row"><label>softness</label><input type="range" data-k="soft" min="0" max="1.2" step=".05"><output></output></div>
+    <div class="mk-row"><label>grille (RGB)</label><input type="range" data-k="grille" min="0" max=".5" step=".01"><output></output></div>
+    <h2>Phosphor</h2>
+    <div class="mk-row"><label>glow</label><input type="range" data-k="glow" min="0" max="10" step=".5"><output></output></div>
+    <div class="mk-row"><label>fringe</label><input type="range" data-k="aberr" min="0" max="1.2" step=".05"><output></output></div>
+    <h2>Room</h2>
+    <div class="mk-row"><label>vignette</label><input type="range" data-k="vignette" min="0" max=".8" step=".01"><output></output></div>
+    <div class="mk-row"><label>bloom</label><input type="range" data-k="bloom" min="0" max=".5" step=".01"><output></output></div>
+    <div class="mk-row"><label>bloom size</label><input type="range" data-k="bloomSize" min="30" max="200" step="5"><output></output></div>
+    <div class="mk-row"><label>sheen</label><input type="range" data-k="sheen" min="0" max=".08" step=".005"><output></output></div>
+    <h2>Tube</h2>
+    <div class="mk-row"><label>curvature</label><input type="range" data-k="curve" min="0" max="40" step="1"><output></output></div>
+    <div class="mk-row is-check"><label>bezel</label><input type="checkbox" data-k="bezelOn"></div>
+    <div class="mk-row"><label>bezel width</label><input type="range" data-k="bezel" min="2" max="16" step="1"><output></output></div>
+    <div class="mk-row"><label>corners</label><input type="range" data-k="radius" min="0" max="22" step="1"><output></output></div>
+    <h2>Motion</h2>
+    <div class="mk-row is-check"><label>rolling band</label><input type="checkbox" data-k="rollOn"></div>
+    <div class="mk-row"><label>band speed</label><input type="range" data-k="rollSpeed" min="3" max="20" step="1"><output></output></div>
+    <div class="mk-row"><label>flicker</label><input type="range" data-k="flicker" min="0" max=".12" step=".01"><output></output></div>
+    <div class="mk-row"><label>grain</label><input type="range" data-k="noise" min="0" max=".2" step=".01"><output></output></div>
+    <h2>Readout</h2>
+    <textarea id="readout" readonly></textarea>
+    <div style="display:flex;gap:6px;margin-top:6px"><button class="mk-copy" id="copy">Copy</button><span class="mk-hint" id="copied"></span></div>
+  </aside>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const ONLYP = q.get('p');
+const H = Handlebars;
+for (const h of ['eq','neq','gt','lt','gte','lte','and','or','not']) H.registerHelper(h, function (...a) { const [x, y] = a; switch (h) { case 'eq': return String(x) === String(y); case 'neq': return String(x) !== String(y); case 'gt': return x > y; case 'lt': return x < y; case 'gte': return x >= y; case 'lte': return x <= y; case 'and': return a.slice(0, -1).every(Boolean); case 'or': return a.slice(0, -1).some(Boolean); case 'not': return !x; } });
+H.registerHelper('add', (a, b) => Number(a) + Number(b));
+H.registerHelper('ncm-net-icon', () => new H.SafeString('<i class="fas fa-network-wired"></i>'));
+H.registerHelper('helperMissing', () => '');
+async function loadWithPartials(path) {
+  const src = await (await fetch(path)).text();
+  const refs = [...src.matchAll(/\{\{>\s*"?([^\s}"]+)"?/g)].map(m => m[1]).filter(n => n.startsWith('modules/'));
+  for (const name of refs) {
+    if (name in H.partials) continue;
+    H.registerPartial(name, '');
+    try { H.registerPartial(name, await loadWithPartials('../../' + name.replace(/^modules\/night-city-messenger\//, ''))); } catch (e) { console.warn('partial failed', name, e); }
+  }
+  return src;
+}
+const PRESETS = {
+  arasaka: { key: 'arasaka-workstation', title: 'v_arasaka @ ARASAKA NET', style: 'tabs', vars: { '--ncm-primary': '#ff0033', '--ncm-bg-deep': '#0a0006', '--ncm-text-primary': '#f4e6ea' }, from: 'hr@arasaka.net', folders: ['Correspondence', 'Flagged', 'Shredder'] },
+  streetkid: { key: 'streetkid-bbs', title: 'choom @ AFTERLIFE BBS', style: 'tty', vars: { '--ncm-primary': '#00ff41', '--ncm-bg-deep': '#040a06', '--ncm-text-primary': '#daffe4' }, from: 'rogue@afterlife.nc', folders: ['Posts', 'Pinned', 'Burned'] },
+};
+const ctxFor = (p) => ({
+  state: 'mailbox', preset: p.key, formFactor: 'desktop', isGM: false, terminalName: p.title.split('@ ')[1], presetIcon: 'fas fa-building',
+  account: { username: p.title.split(' @')[0], displayName: 'Operator', initials: 'OP', portrait: null }, hud: { signal: 75, sigLabel: '75%' }, uplink: { name: 'CITINET', signal: 75 },
+  switchAccounts: [], switcherOpen: false, listLabel: p.folders[0].toUpperCase() + ' · 4 MESSAGES', emptyLabel: 'empty', syncHint: null, screensaver: null, pagination: null, sideCollapsed: false,
+  folders: p.folders.map((f, i) => ({ key: ['inbox', 'saved', 'trash'][i], label: f, icon: ['fas fa-inbox', 'fa-regular fa-star', 'fas fa-trash-can'][i], count: [4, 1, 1][i], unread: [1, 0, 0][i], active: i === 0 })),
+  mailboxStyle: p.style, msTabs: p.style === 'tabs', msTty: p.style === 'tty', msDesktop: false,
+  ttyPrompt: `${p.title.split(' @')[0]}@${p.title.split('@ ')[1].replace(/\s+/g, '-')}:~/${p.folders[0].toLowerCase()}$`, deskClock: '', deskWindow: { title: p.folders[0], icon: 'fas fa-inbox' },
+  isFilesView: false, view: { mail: 4, files: 9 }, fs: { roots: [], listing: null, listFiles: [], showListing: false, usage: { label: '', pct: 0 } },
+  messages: [
+    { messageId: 'm1', isFile: false, from: p.from, subject: 'Q3 Restructuring', priority: 'critical', isSelected: true, time: '2046-03-12', preview: 'Per board directive, the following personnel are flagged for transition…', isNew: true, accent: '' },
+    { messageId: 'm2', isFile: false, from: 'security@arasaka.nc', subject: 'Re: badge access 7F', priority: 'normal', isSelected: false, time: '2046-03-10', preview: 'Your after-hours access has been logged. Please confirm…', isNew: true, accent: '' },
+    { messageId: 'm3', isFile: false, from: 'm.takeda@arasaka.nc', subject: 'lunch?', priority: 'normal', isSelected: false, time: '2046-03-09', preview: "the place on 7F-E, 12:30. don't be late again", isNew: false, accent: '' },
+    { messageId: 'm4', isFile: false, from: 'facilities', subject: 'Workstation 7F-12 maintenance', priority: 'low', isSelected: false, time: '2046-03-02', preview: 'Scheduled firmware update tonight 02:00–02:30…', isNew: false, accent: '' },
+  ],
+  selectedMessage: { messageId: 'm1', isFile: false, subject: 'Q3 Restructuring', classification: 'CONFIDENTIAL', sender: { name: 'Arasaka HR', email: p.from, initials: 'HR', portrait: null }, isContact: false, canAddContact: true, canReply: true, isTypedContent: false, bodyHtml: '<p>Per board directive, the following personnel are flagged for transition. Distribution restricted to executive tier. Do not forward outside the corporate net.</p><p>— Takeda, M. (7F) · Alvarez, J. (7F) · one entry redacted pending legal review.</p>', exfil: [{ key: 'agent', label: 'To my Agent', icon: 'fas fa-download' }, { key: 'shard', label: 'Burn to shard', icon: 'fas fa-microchip' }], moveOptions: [] },
+});
+
+// ── knobs ────────────────────────────────────────────────────────────────────
+const START = {
+  off:    { pitch: 3, light: 0, cut: 0, soft: 0, grille: 0, glow: 0, aberr: 0, vignette: 0, bloom: 0, bloomSize: 90, sheen: 0, curve: 0, bezelOn: false, bezel: 6, radius: 6, rollOn: false, rollSpeed: 9, flicker: 0, noise: 0 },
+  glass:  { pitch: 3, light: .13, cut: .10, soft: .25, grille: 0, glow: 2, aberr: 0, vignette: .45, bloom: .22, bloomSize: 110, sheen: .03, curve: 14, bezelOn: false, bezel: 6, radius: 8, rollOn: false, rollSpeed: 9, flicker: 0, noise: .05 },
+  tube:   { pitch: 3, light: .16, cut: .38, soft: .35, grille: 0, glow: 5, aberr: .6, vignette: .6, bloom: .32, bloomSize: 140, sheen: .025, curve: 26, bezelOn: true, bezel: 8, radius: 14, rollOn: true, rollSpeed: 11, flicker: .04, noise: .08 },
+  arcade: { pitch: 3, light: .10, cut: .25, soft: .2, grille: .32, glow: 3, aberr: .3, vignette: .5, bloom: .25, bloomSize: 120, sheen: .02, curve: 20, bezelOn: false, bezel: 6, radius: 10, rollOn: false, rollSpeed: 9, flicker: .02, noise: .04 },
+};
+const K = { ...START.glass };
+const UNIT = { pitch: 'px', soft: 'px', bloomSize: 'px', curve: '%', bezel: 'px', radius: 'px', rollSpeed: 's' };
+function apply() {
+  for (const f of document.querySelectorAll('.mk-win')) {
+    const st = f.style;
+    for (const [k, v] of Object.entries(K)) {
+      if (typeof v === 'boolean') continue;
+      st.setProperty('--k-' + k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), v + (UNIT[k] || ''));
+    }
+    st.setProperty('--k-aberr-on', K.aberr > 0 ? '1' : '0');
+    st.setProperty('--k-bezel-on', K.bezelOn ? '1' : '0');
+    st.setProperty('--k-roll-on', K.rollOn ? '1' : '0');
+    st.setProperty('--k-roll-play', K.rollOn ? 'running' : 'paused');
+    st.setProperty('--k-flicker-play', K.flicker > 0 ? 'running' : 'paused');
+    st.setProperty('--k-noise-play', K.noise > 0 ? 'running' : 'paused');
+  }
+  for (const el of document.querySelectorAll('[data-k]')) {
+    const k = el.dataset.k;
+    if (el.type === 'checkbox') el.checked = !!K[k]; else { el.value = K[k]; const o = el.parentElement.querySelector('output'); if (o) o.textContent = K[k] + (UNIT[k] || ''); }
+  }
+  document.getElementById('readout').value = JSON.stringify(K);
+  document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('is-on', JSON.stringify(START[b.dataset.p]) === JSON.stringify(K)));
+}
+for (const [name, def] of Object.entries(START)) {
+  const b = document.createElement('button'); b.textContent = name; b.dataset.p = name;
+  b.addEventListener('click', () => { Object.assign(K, def); apply(); });
+  document.getElementById('presets').appendChild(b);
+}
+document.getElementById('panel').addEventListener('input', (e) => {
+  const el = e.target; if (!el.dataset.k) return;
+  K[el.dataset.k] = el.type === 'checkbox' ? el.checked : parseFloat(el.value);
+  apply();
+});
+document.getElementById('copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(document.getElementById('readout').value); document.getElementById('copied').textContent = 'copied'; } catch { document.getElementById('readout').select(); }
+});
+// ?k=<json> preloads knobs (the readout, pasted back) — so a tuned state has a URL
+try { if (q.get('k')) Object.assign(K, JSON.parse(q.get('k'))); } catch {}
+if (q.get('start') && START[q.get('start')]) Object.assign(K, START[q.get('start')]);
+
+(async () => {
+  try {
+    const tpl = H.compile(await loadWithPartials('../../templates/terminal/terminal-viewer.hbs'));
+    const host = document.getElementById('frames');
+    for (const [pk, p] of Object.entries(PRESETS)) {
+      if (ONLYP && pk !== ONLYP) continue;
+      const vars = Object.entries(p.vars).map(([k, v]) => `${k}:${v}`).join(';');
+      host.insertAdjacentHTML('beforeend',
+        `<div class="mk-cap"><b>${p.key}</b><span>${p.style} layout · the pane follows the panel</span></div>
+         <div class="application ncm-app ncm-terminal-app mk-win" style="${vars}">
+           <header class="window-header"><h1 class="window-title">${p.title}</h1></header>
+           <section class="window-content">${tpl(ctxFor(p))}</section>
+           <div class="mk-pane"><div class="mk-cut"></div><div class="mk-light"></div><div class="mk-grille"></div><div class="mk-room"></div><div class="mk-noise"></div><div class="mk-roll"></div><div class="mk-bezel"></div></div>
+         </div>`);
+    }
+    apply();
+    document.title = 'OK — CRT glass mock v2';
+  } catch (e) {
+    const offDisk = location.protocol === 'file:';
+    document.getElementById('err').innerHTML = offDisk
+      ? '<b>This page fetches the real template, and a page opened off disk (file://) is not allowed to.</b><br>Serve the repo and open it over http:<br><code>node dev/tools/serve-mockups.cjs</code> → <a href="http://127.0.0.1:8123/dev/mockups/crt-glass-mock.html" style="color:#19f3f7">http://127.0.0.1:8123/dev/mockups/crt-glass-mock.html</a><br><small>' + String(e.message) + '</small>'
+      : String(e.stack || e);
+    document.title = 'ERR ' + e.message;
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+{{!-- Mailbox style "tabs" (2026-10-25, dev-approved mock terminal-mailbox-styles-mock.html,
+      style 1): folders + FILES as tabs across the top, the account in the tab bar, a tight
+      list on the left, the message on the right. Same context + same data-actions as the
+      classic layout — a SKIN. The detail pane is the shared partial. --}}
+<div class="ncm-tmtabs">
+  <div class="ncm-tmtabs__bar">
+    <span class="ncm-tmtabs__acct{{#if switcherOpen}} is-open{{/if}}" data-action="terminalToggleSwitcher" data-tooltip="Switch account / log out">
+      <span class="ncm-term__avatar">{{#if account.portrait}}<img src="{{account.portrait}}" alt="">{{else}}{{account.initials}}{{/if}}</span>
+      <span class="ncm-tmtabs__acct-nm">{{account.username}}</span><i class="fas fa-chevron-down"></i>
+    </span>
+    {{#each folders}}
+      <span class="ncm-tmtabs__tab{{#if active}}{{#unless @root.isFilesView}} is-on{{/unless}}{{/if}}" data-action="terminalFolder" data-folder="{{key}}"><i class="{{icon}}"></i>{{label}} <b>{{count}}</b></span>
+    {{/each}}
+    <span class="ncm-tmtabs__tab ncm-tmtabs__tab--files{{#if isFilesView}} is-on{{/if}}" data-action="terminalView" data-view="files"><i class="fas fa-folder-tree"></i>Files <b>{{view.files}}</b></span>
+    <span class="ncm-tmtabs__out" data-action="terminalLogout" data-tooltip="Log out → login screen"><i class="fas fa-right-from-bracket"></i></span>
+  </div>
+  {{!-- The account dropdown lives OUTSIDE the tab bar: the bar scrolls sideways when
+        folders overflow (overflow-x: auto), and a scroller clips on both axes, so a
+        dropdown nested inside it was trapped in a 40px strip (dev, 2026-10-25). --}}
+  {{#if switcherOpen}}
+    <div class="ncm-term__acdrop ncm-tmtabs__acdrop">
+      <div class="ncm-term__acdrop-hd">SWITCH ACCOUNT</div>
+      {{#each switchAccounts}}
+        <div class="ncm-term__acdrop-it{{#if isCurrent}} is-current{{/if}}" data-action="terminalSwitchAccount" data-account-id="{{id}}">
+          <span class="ncm-term__avatar">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
+          <span class="ncm-term__acdrop-nm">{{displayName}}</span>
+          <span class="ncm-term__acdrop-lk{{#if isOpen}} is-open{{/if}}">{{{statusLabel}}}</span>
+        </div>
+      {{/each}}
+      <div class="ncm-term__acdrop-ft" data-action="terminalLogout"><i class="fas fa-right-from-bracket"></i> Log out → login screen</div>
+    </div>
+  {{/if}}
+  <div class="ncm-tmtabs__panes">
+    <div class="ncm-tmtabs__list">
+      {{#if isFilesView}}
+        {{> "modules/night-city-messenger/templates/terminal/mailbox/tree.hbs"}}
+      {{else}}
+        <div class="ncm-term__list ncm-tmtabs__rows">
+          {{> "modules/night-city-messenger/templates/terminal/mailbox/rows.hbs"}}
+          {{#if syncHint}}
+            <div class="ncm-term__synchint"><i class="fas fa-triangle-exclamation"></i> {{syncHint.count}} object{{#unless (eq syncHint.count 1)}}s{{/unless}} failed to sync — uplink required</div>
+          {{/if}}
+          {{#if pagination}}
+            <div class="ncm-term__pager">
+              <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="prev" {{#unless pagination.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i></button>
+              <span class="ncm-term__pager-lbl">{{pagination.page}} / {{pagination.maxPage}}</span>
+              <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="next" {{#unless pagination.hasNext}}disabled{{/unless}}><i class="fas fa-chevron-right"></i></button>
+            </div>
+          {{/if}}
+        </div>
+      {{/if}}
+      {{#if isGM}}
+        <button type="button" class="ncm-term__gm-add" data-action="terminalNewMessage"><i class="fas fa-plus"></i> {{#if isFilesView}}Add a file here (GM){{else}}Add message or file (GM){{/if}}</button>
+      {{/if}}
+    </div>
+    <div class="ncm-term__detail ncm-tmtabs__detail{{#if fs.showListing}} is-listing{{/if}}">
+      {{> "modules/night-city-messenger/templates/terminal/mailbox/detail.hbs"}}
+    </div>
+  </div>
+</div>

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Terminal files — real-template probe</title>
+<!--
+  Probe (2026-10-25): renders the REAL templates/terminal/terminal-viewer.hbs in
+  the mailbox state with the FILES view open (and, below it, the REAL
+  templates/terminal/partials/config-content.hbs inside a config frame) through
+  Handlebars against the real cascade. The contexts are hand-built to the shape
+  TerminalViewerApp._filesContext / TerminalContentPanel.buildContentContext
+  emit — a MARKUP + CSS check, not a data check (the sim covers the data).
+  ?view=fs|cfg|cmp|all   ?t=<terminal preset>   ?admin=1 (opens the locked folder)
+  ?view=cmp renders ONLY the composer's ② DELIVERY section (cut out of the real
+  data-shard-composer.hbs) with a terminal-target context: the message-or-file
+  chooser + Store on / Folder.
+  ?file=1 (a file selected instead of the listing)
+  Serve it (node dev/tools/serve-mockups.cjs) or open off disk with
+  --allow-file-access-from-files: it fetches the .hbs files.
+-->
+<link id="css-foundry" rel="stylesheet" href="">
+<link id="css-fa" rel="stylesheet" href="">
+<link id="css-cpr" rel="stylesheet" href="">
+<script>
+  const isFile = location.protocol === 'file:';
+  const FVTT = 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public';
+  document.getElementById('css-foundry').href = isFile ? `${FVTT}/css/foundry2.css` : '/_vendor/foundry2.css';
+  document.getElementById('css-fa').href = isFile ? `${FVTT}/fonts/fontawesome/css/all.min.css` : '/_vendor/fa/css/all.min.css';
+  document.getElementById('css-cpr').href = isFile ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+<style>
+  html, body { height: auto; min-height: 100%; }
+  body { margin: 0; background: #0b0b10; padding: 24px 0 60px; }
+  .mk-wrap { width: 920px; margin: 0 auto; }
+  .mk-cap { font: 600 13px/1.5 var(--ncm-font-display, sans-serif); color: #9a9ab0; margin: 0 0 10px; }
+  .application { position: relative !important; inset: auto !important; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; margin-bottom: 40px; }
+  .mk-term.application { width: 900px; height: 600px; }
+  .mk-cfg.application { width: 700px; height: 1500px; }
+  .mk-cmp.application { width: 920px; height: 460px; }
+  .mk-cmp .window-content { padding: 0; }
+  .mk-cmp .ncm-composer-shell { padding: 12px; height: 100%; overflow-y: auto; }
+  .application > .window-content { flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
+  .mk-term .ncm-terminal-viewer { width: 898px !important; height: 570px !important; min-width: 0; min-height: 0; flex: 0 0 570px !important; }
+  #err { color: #f65261; font: 12px monospace; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="mk-wrap">
+  <div id="err"></div>
+  <section data-view="fs">
+    <p class="mk-cap">Real <code>terminal-viewer.hbs</code>, mailbox state, FILES view.</p>
+    <div class="application ncm-app ncm-terminal-app mk-term"><header class="window-header"><h1 class="window-title">v_arasaka @ ARASAKA NET</h1></header><section class="window-content" id="termOut"></section></div>
+  </section>
+  <section data-view="cmp">
+    <p class="mk-cap">Real <code>data-shard-composer.hbs</code> — ② DELIVERY only, terminal target, FILE.</p>
+    <div class="application ncm-app ncm-data-shard-composer mk-cmp" data-ncm-admin-theme="clean-dark" data-ncm-scanlines="false" data-ncm-neon="false"><header class="window-header"><h1 class="window-title">Add Entry: WS-7F-12</h1></header><section class="window-content"><div class="ncm-composer-shell"><form class="ncm-shard-composer" id="cmpOut" autocomplete="off" style="flex:1 1 auto;min-width:0"></form></div></section></div>
+  </section>
+  <section data-view="cfg">
+    <p class="mk-cap">Real <code>config-content.hbs</code> (shared volume + one account) inside the config frame.</p>
+    <div class="application ncm-app ncm-item-inbox-config ncm-term-config mk-cfg" data-ncm-admin-theme="clean-dark" data-ncm-scanlines="false" data-ncm-neon="false"><header class="window-header"><h1 class="window-title">Configure Terminal</h1></header><section class="window-content"><div class="ncm-cfg"><div class="ncm-cfg-content" style="padding:12px 14px"><div class="ncm-cfg-panel ncm-cfg-panel--active"><div class="ncm-cfg-section" id="cfgOut"></div></div></div></div></section></div>
+  </section>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const view = q.get('view') || 'all';
+if (view !== 'all') document.querySelectorAll('section[data-view]').forEach(s => { if (s.dataset.view !== view) s.remove(); });
+const ADMIN = q.get('admin') === '1';
+const FILE = q.get('file') === '1';
+const H = Handlebars;
+for (const h of ['eq','neq','gt','lt','gte','lte','and','or','not']) H.registerHelper(h, function (...a) { const [x, y] = a; switch (h) { case 'eq': return String(x) === String(y); case 'neq': return String(x) !== String(y); case 'gt': return x > y; case 'lt': return x < y; case 'gte': return x >= y; case 'lte': return x <= y; case 'and': return a.slice(0, -1).every(Boolean); case 'or': return a.slice(0, -1).some(Boolean); case 'not': return !x; } });
+H.registerHelper('ncm-net-icon', () => new H.SafeString('<i class="fas fa-network-wired"></i>'));
+H.registerHelper('helperMissing', () => '');
+async function loadWithPartials(path) {
+  const src = await (await fetch(path)).text();
+  const refs = [...src.matchAll(/\{\{>\s*"?([^\s}"]+)"?/g)].map(m => m[1]).filter(n => n.includes('/'));
+  for (const name of refs) {
+    if (name in H.partials) continue;
+    H.registerPartial(name, '');
+    const local = '../../' + name.replace(/^modules\/night-city-messenger\//, '');
+    try { H.registerPartial(name, await loadWithPartials(local)); } catch (e) { console.warn('partial failed', name, e); }
+  }
+  return src;
+}
+const row = (id, filename, typeLabel, typeIcon, accent, fileSize, modified, fileOwner, extra = {}) => ({ messageId: id, isFile: true, filename, typeLabel, typeIcon, accent, fileSize, modified, fileOwner, isStream: false, isNew: false, encrypted: false, isSelected: false, subject: filename, from: fileOwner, priority: 'normal', time: modified.slice(0, 10), preview: '', ...extra });
+const dir = (scope, path, name, depth, count, size, locked, gated, lockLabel, active = false) => ({ scope, path, name, depth, count, size, locked, gated, lockLabel, active });
+const SH = '__shared__';
+const roots = [
+  { scope: 'v', label: 'home', subLabel: 'v_arasaka', icon: 'fas fa-house', tag: null, isActiveRoot: false, count: 3,
+    dirs: [dir('v', 'drafts', 'drafts', 1, 1, '9 KB', false, false, 'everyone')],
+    files: [row('f6', 'q3_payroll.xls', 'SPREADSHEET', 'fas fa-table', 'green', '31 KB', '2046-03-08 10:00', 'v_arasaka'), row('f9', 'memo_7f.doc', 'DOCUMENT', 'fas fa-file-lines', 'cyan', '6 KB', '2046-03-11 09:00', 'v_arasaka', { isNew: true })] },
+  { scope: SH, label: 'shared', subLabel: 'WS-7F-12', icon: 'fas fa-hard-drive', tag: 'SHARED', isActiveRoot: false, count: 7,
+    dirs: [dir(SH, 'cams', 'cams', 1, 2, '14 KB', false, false, 'everyone'), dir(SH, 'records', 'records', 1, 4, '71 KB', false, false, 'everyone', true), dir(SH, 'secure', 'secure', 1, 1, '2 KB', !ADMIN, true, 'admins only')],
+    files: [row('f4', 'readme.txt', 'NOTE', 'fas fa-note-sticky', 'muted', '1 KB', '2045-12-30 08:00', 'root'), row('f10', 'system.log', 'SYSLOG', 'fas fa-terminal', 'amber', '', '', 'SEC-DAEMON', { isStream: true })] },
+];
+const files = [
+  row('f1', 'patient_intake_0412.rec', 'RECORD', 'fas fa-id-card', 'purple', '18 KB', '2046-03-11 09:12', 'kowalski'),
+  row('f2', 'incident_7f.log', 'SYSLOG', 'fas fa-terminal', 'amber', '4 KB', '2046-03-09 23:48', 'SEC-DAEMON'),
+  row('f3', 'vendor_payments.xls', 'SPREADSHEET', 'fas fa-table', 'green', '31 KB', '2046-02-27 17:05', 'finance_7f', { encrypted: true }),
+  row('f5', 'kowalski_dossier.dos', 'DOSSIER', 'fas fa-user-secret', 'red', '18 KB', '2046-03-02 11:30', 'root'),
+];
+const listing = { scope: SH, path: 'records', isRoot: false, isShared: true, machine: 'WS-7F-12', icon: 'fas fa-folder-open',
+  crumb: [{ scope: SH, path: '', name: 'shared', last: false }, { scope: SH, path: 'records', name: 'records', last: true }],
+  locked: false, lockLabel: '', gated: false, gateLabel: '', parent: { scope: SH, path: '' },
+  stats: { files: 4, dirs: 1, size: '71 KB', modified: '2046-03-11' },
+  subdirs: [dir(SH, 'records/archive', 'archive', 2, 3, '12 KB', !ADMIN, true, 'clearance ≥ 3')],
+  files, empty: false };
+const ctxTerm = {
+  state: 'mailbox', preset: q.get('t') || 'arasaka-workstation', formFactor: 'desktop', isGM: true,
+  hud: { isAdmin: ADMIN, trace: null, operator: 'Rache', canSwitchOperator: true, tools: { open: false, canOperate: true, items: [], active: [], activeCount: 0, activeMine: false } },
+  uplink: { name: 'ARASAKA-NET', signal: 75, sigLabel: 'good', offline: false, wired: false, open: false, interfaces: [], theme: {} },
+  account: { displayName: ADMIN ? 'sysadmin' : 'Veronica A.', username: ADMIN ? 'root' : 'v_arasaka', initials: ADMIN ? 'SA' : 'VA', portrait: null },
+  switchAccounts: [{ id: 'v', displayName: 'Veronica A.', initials: 'VA', portrait: null, isCurrent: true, isOpen: true, statusLabel: 'open' }, { id: 'r', displayName: 'root', initials: 'R', portrait: null, isCurrent: false, isOpen: false, statusLabel: '<i class="fas fa-lock"></i> locked' }], switcherOpen: q.get('sw') === '1', listLabel: 'CORRESPONDENCE · 4 MESSAGES', emptyLabel: 'empty', syncHint: null, screensaver: null, terminalName: 'WS-7F-12', presetIcon: 'fas fa-building',
+  folders: [{ key: 'inbox', label: 'Correspondence', icon: 'fas fa-inbox', count: 4, unread: 1, active: true }, { key: 'saved', label: 'Flagged', icon: 'fa-regular fa-star', count: 1, unread: 0, active: false }, { key: 'trash', label: 'Shredder', icon: 'fas fa-trash-can', count: 1, unread: 0, active: false }],
+  mailboxStyle: q.get('ms') || 'classic', msTabs: q.get('ms') === 'tabs', msTty: q.get('ms') === 'tty', msDesktop: q.get('ms') === 'desktop',
+  ttyPrompt: 'v_arasaka@WS-7F-12:~/correspondence$', deskClock: '2046-03-13 · 02:14', deskWindow: { title: 'Correspondence', icon: 'fas fa-inbox' },
+  sideCollapsed: false, pagination: null,
+  messages: [
+    { messageId: 'm1', isFile: false, from: 'hr@arasaka.net', subject: 'Q3 Restructuring', priority: 'critical', encrypted: false, isSelected: !FILE, time: '2046-03-12', preview: 'Per board directive, the following personnel are flagged for transition…', typeLabel: null, typeIcon: null, isNew: true, accent: '' },
+    { messageId: 'm2', isFile: false, from: 'security@arasaka.nc', subject: 'Re: badge access 7F', priority: 'normal', encrypted: false, isSelected: false, time: '2046-03-10', preview: 'Your after-hours access has been logged. Please confirm…', isNew: true, accent: '' },
+    { messageId: 'm3', isFile: false, from: 'm.takeda@arasaka.nc', subject: 'lunch?', priority: 'normal', encrypted: false, isSelected: false, time: '2046-03-09', preview: 'the place on 7F-E, 12:30. don\'t be late again', isNew: false, accent: '' },
+    { messageId: 'm4', isFile: false, from: 'facilities', subject: 'Workstation 7F-12 maintenance', priority: 'low', encrypted: false, isSelected: false, time: '2046-03-02', preview: 'Scheduled firmware update tonight 02:00–02:30…', isNew: false, accent: '' },
+  ],
+  isFilesView: q.get('ms') ? q.get('files') === '1' : true, view: { mail: 9, files: 14 },
+  fs: { roots, listing, listFiles: files, showListing: q.get('ms') ? (q.get('files') === '1' && !FILE) : !FILE, usage: { label: 'WS-7F-12 · 14 files · 212 KB', pct: 21 } },
+  fsBack: FILE,
+  selectedMessage: (q.get('ms') && !FILE && q.get('files') !== '1') ? { messageId: 'm1', isFile: false, subject: 'Q3 Restructuring', classification: 'CONFIDENTIAL', sender: { name: 'Arasaka HR', email: 'hr@arasaka.net', initials: 'HR', portrait: null }, isContact: false, canAddContact: true, canReply: false, isTypedContent: false, bodyHtml: '<p>Per board directive, the following personnel are flagged for transition. Distribution restricted to executive tier. Do not forward outside ARASAKA-NET.</p><p>— Takeda, M. (7F) · Alvarez, J. (7F) · one entry redacted pending legal review.</p>', exfil: [{ key: 'agent', label: 'To my Agent', icon: 'fas fa-download' }, { key: 'shard', label: 'Burn to shard', icon: 'fas fa-microchip' }], moveOptions: [] } : FILE ? { messageId: 'f3', isFile: true, subject: 'vendor_payments.xls', file: { filename: 'vendor_payments.xls', path: 'records/', fullPath: 'records/vendor_payments.xls', typeIcon: 'fas fa-table', typeLabel: 'SPREADSHEET', accent: 'green', owner: 'finance_7f', modifiedLabel: '2046-02-27 17:05', size: '31 KB', hasCount: true, countLabel: 'Rows', countValue: '42' }, moveOptions: [], isTypedContent: false, bodyHtml: '<p>(file body)</p>', exfil: [], sender: {}, isContact: false } : null,
+};
+const cfgBlockShared = { scope: SH, isShared: true, accountId: null, open: true, mail: null, tabMail: false, tabFiles: true,
+  files: { scope: SH, root: '/shared', count: 7, folderCount: 4, size: '82 KB', rows: [
+    { isDir: true, scope: SH, path: 'records', name: 'records', depth: 0, open: true, registered: true, count: 4, size: '71 KB', gate: { mode: 'everyone', min: 0, isEveryone: true, isGated: false, accountCount: 0, accountsLabel: '', inherited: false, inheritedFrom: '', label: 'everyone' }, files: [(() => { const r = files[0]; return { ...r, depth: 1, size: r.fileSize, date: r.modified.slice(0, 10), unread: false, moveOptions: [{ value: SH + '|', label: 'shared: /' }, { value: SH + '|records', label: 'shared: /records', selected: true }, { value: 'v|', label: 'v_arasaka: /', selected: false }, { value: '__new__', label: '＋ New folder…' }] }; })(),(() => { const r = files[1]; return { ...r, depth: 1, size: r.fileSize, date: r.modified.slice(0, 10), unread: false, moveOptions: [{ value: SH + '|', label: 'shared: /' }, { value: SH + '|records', label: 'shared: /records', selected: true }, { value: 'v|', label: 'v_arasaka: /', selected: false }, { value: '__new__', label: '＋ New folder…' }] }; })(),(() => { const r = files[2]; return { ...r, depth: 1, size: r.fileSize, date: r.modified.slice(0, 10), unread: false, moveOptions: [{ value: SH + '|', label: 'shared: /' }, { value: SH + '|records', label: 'shared: /records', selected: true }, { value: 'v|', label: 'v_arasaka: /', selected: false }, { value: '__new__', label: '＋ New folder…' }] }; })(),(() => { const r = files[3]; return { ...r, depth: 1, size: r.fileSize, date: r.modified.slice(0, 10), unread: false, moveOptions: [{ value: SH + '|', label: 'shared: /' }, { value: SH + '|records', label: 'shared: /records', selected: true }, { value: 'v|', label: 'v_arasaka: /', selected: false }, { value: '__new__', label: '＋ New folder…' }] }; })()] },
+    { isDir: true, scope: SH, path: 'cams', name: 'cams', depth: 0, open: false, registered: true, count: 2, size: '14 KB', gate: { mode: 'everyone', min: 0, isEveryone: true, isGated: false, accountCount: 0, accountsLabel: '', inherited: false, inheritedFrom: '', label: 'everyone' }, files: [] },
+    { isDir: true, scope: SH, path: 'secure', name: 'secure', depth: 0, open: true, registered: true, count: 1, size: '2 KB', gate: { mode: 'admin', min: 0, isAdmin: true, isGated: true, accountCount: 0, accountsLabel: '', inherited: false, inheritedFrom: '', label: 'admins only' }, files: [(() => { const r = row('f11', 'vault_creds.key', 'CREDENTIALS', 'fas fa-key', 'gold', '2 KB', '2046-01-14 00:00', 'root'); return { ...r, depth: 1, size: r.fileSize, date: r.modified.slice(0, 10), unread: false, moveOptions: [{ value: SH + '|', label: 'shared: /' }, { value: SH + '|records', label: 'shared: /records', selected: false }, { value: 'v|', label: 'v_arasaka: /', selected: false }, { value: '__new__', label: '＋ New folder…' }] }; })()] },
+    { isDir: true, scope: SH, path: 'secure/deeper', name: 'deeper', depth: 1, open: true, registered: true, count: 0, size: '', gate: { mode: 'everyone', min: 0, isEveryone: true, isGated: true, accountCount: 0, accountsLabel: '', inherited: true, inheritedFrom: '/secure', label: 'admins only' }, files: [] },
+    { isDir: true, scope: SH, path: 'hr', name: 'hr', depth: 0, open: false, registered: true, count: 1, size: '6 KB', gate: { mode: 'clearance', min: 3, isClearance: true, isGated: true, accountCount: 0, accountsLabel: '', inherited: false, inheritedFrom: '', label: 'clearance ≥ 3' }, files: [] },
+    { isRootFiles: true, scope: SH, files: [(() => { const r = row('f4', 'readme.txt', 'NOTE', 'fas fa-note-sticky', 'muted', '1 KB', '2045-12-30 00:00', 'root'); return { ...r, depth: 0, size: r.fileSize, date: r.modified.slice(0, 10), unread: false, moveOptions: [{ value: SH + '|', label: 'shared: /' }, { value: SH + '|records', label: 'shared: /records', selected: false }, { value: 'v|', label: 'v_arasaka: /', selected: false }, { value: '__new__', label: '＋ New folder…' }] }; })()] },
+  ] } };
+const cfgBlockAcct = { scope: 'v', isShared: false, accountId: 'v', open: true, tabMail: true, tabFiles: false,
+  mail: { total: 6, folders: [
+    { id: 'inbox', scope: 'v', name: 'Correspondence', icon: 'fas fa-inbox', sys: 'INBOX', count: 4, unread: 1, open: true, rows: [
+      { messageId: 'm1', isFile: false, subject: 'Q3 headcount — do not forward', from: 'hr-7f@arasaka.nc', typeLabel: 'Message', typeIcon: 'fas fa-envelope', accent: '', date: '2046-03-12', unread: true },
+      { messageId: 'm2', isFile: false, subject: 'Re: badge access 7F', from: 'security@arasaka.nc', typeLabel: 'Message', typeIcon: 'fas fa-envelope', accent: '', date: '2046-03-10', unread: false },
+    ] },
+    { id: 'saved', scope: 'v', name: 'Flagged', icon: 'fa-regular fa-star', sys: 'SAVED', count: 1, unread: 0, open: false, rows: [] },
+    { id: 'trash', scope: 'v', name: 'Shredder', icon: 'fas fa-trash-can', sys: 'TRASH', count: 1, unread: 0, open: false, rows: [] },
+  ] },
+  files: { scope: 'v', root: '/home/v_arasaka', count: 3, folderCount: 1, size: '46 KB', rows: [
+    { isDir: true, scope: 'v', path: 'drafts', name: 'drafts', depth: 0, open: false, registered: true, count: 1, size: '9 KB', gate: { mode: 'everyone', min: 0, isEveryone: true, isGated: false, accountCount: 0, accountsLabel: '', inherited: false, inheritedFrom: '', label: 'everyone' }, files: [] },
+    { isRootFiles: true, scope: 'v', files: [(() => { const r = row('f6', 'q3_payroll.xls', 'SPREADSHEET', 'fas fa-table', 'green', '31 KB', '2046-03-08 00:00', 'v_arasaka'); return { ...r, depth: 0, size: r.fileSize, date: r.modified.slice(0, 10), unread: false, moveOptions: [{ value: SH + '|', label: 'shared: /' }, { value: SH + '|records', label: 'shared: /records', selected: false }, { value: 'v|', label: 'v_arasaka: /', selected: true }, { value: '__new__', label: '＋ New folder…' }] }; })()] },
+  ] } };
+(async () => {
+  try {
+    if (document.getElementById('termOut')) {
+      const src = await loadWithPartials('../../templates/terminal/terminal-viewer.hbs');
+      document.getElementById('termOut').innerHTML = H.compile(src)(ctxTerm);
+    }
+    if (document.getElementById('cfgOut')) {
+      const src = await loadWithPartials('../../templates/terminal/partials/config-content.hbs');
+      const tpl = H.compile(src);
+      document.getElementById('cfgOut').innerHTML =
+        '<div class="ncm-acctl-row ncm-acctl-row--vol is-open"><span class="ncm-acctl-av"><i class="fas fa-hard-drive"></i></span><span class="ncm-acctl-id"><span class="ncm-acctl-nm">Shared volume <b class="ncm-term-cfg-tag ncm-term-cfg-tag--shared">every login sees it</b></span><span class="ncm-acctl-sub">files on the machine itself</span></span><span class="ncm-acctl-cv"><i class="fas fa-chevron-up"></i></span></div>' + tpl(cfgBlockShared) +
+        '<div class="ncm-acctl-row is-open"><span class="ncm-acctl-av">VA</span><span class="ncm-acctl-id"><span class="ncm-acctl-nm">Veronica A. <small style="opacity:.6">(MAIL tab)</small></span><span class="ncm-acctl-sub">v_arasaka</span></span><span class="ncm-acctl-cv"><span class="ncm-acctl-cnt"><span><i class="fas fa-envelope"></i><b>6</b></span><span><i class="fas fa-folder"></i><b>3</b></span></span><i class="fas fa-chevron-up"></i></span></div>' + tpl(cfgBlockAcct) +
+        '<div class="ncm-acctl-row is-open"><span class="ncm-acctl-av">VA</span><span class="ncm-acctl-id"><span class="ncm-acctl-nm">Veronica A. <small style="opacity:.6">(FILES tab)</small></span><span class="ncm-acctl-sub">v_arasaka</span></span><span class="ncm-acctl-cv"><i class="fas fa-chevron-up"></i></span></div>' + tpl({ ...cfgBlockAcct, tabMail: false, tabFiles: true });
+    }
+    if (document.getElementById('cmpOut')) {
+      const src = await (await fetch('../../templates/item-inbox/data-shard-composer.hbs')).text();
+      const i = src.indexOf('data-cmp-sec="delivery"');
+      const start = src.lastIndexOf('<section', i);
+      const end = src.indexOf('</section>', i) + '</section>'.length;
+      const sec = src.slice(start, end);
+      const ctx = {
+        secOpen: { delivery: true }, isTerminalTarget: true, isGM: true,
+        env: { envelope: 'file', isFile: true, filename: 'access_audit_0313.log', filenameSuggest: 'file.log', owner: 'SEC-DAEMON', size: '', sizeSuggest: '~3 KB' },
+        fileStore: { isTerminal: true, canAccount: true, accountLabel: 'V_ARASAKA', scope: 'shared', isShared: true, isAccount: false,
+          accountOpts: [{ value: '', label: '/ (root)' }, { value: 'drafts', label: '/drafts' }, { value: '__new__', label: '＋ New folder…' }],
+          sharedOpts: [{ value: '', label: '/ (root)' }, { value: 'records', label: '/records', selected: true }, { value: 'cams', label: '/cams' }, { value: 'secure', label: '/secure' }, { value: '__new__', label: '＋ New folder…' }] },
+        targetFolders: [{ id: 'inbox', name: 'Inbox', selected: true }], masterEmails: [], editFrom: '', defaultTimestampFormatted: '2046-03-13 02:14', defaultTimestamp: '2046-03-13T02:14:00Z',
+        exfilRows: [], exfilMode: 'inherit',
+      };
+      document.getElementById('cmpOut').innerHTML = H.compile(sec)(ctx);
+    }
+    // ?crt=fine|classic|grille|phosphor&ci=0.35&vig=1&roll=1 — stamp the ONE CRT film on the viewer root (crt.css)
+    // ?crt=glass|tube|arcade&ci=35&cap=asis|dim|off — the REAL crt.js pane on the WINDOW ROOT (header included), the way the viewer paints it
+    const crt = q.get('crt'); if (crt) { const C = await import('../../scripts/utils/crt.js'); const win = document.querySelector('.mk-term'); C.applyCrt(win, C.capCrt({ style: crt, intensity: Number(q.get('ci') || 35), roll: q.get('roll') === '1' }, q.get('cap') || 'asis')); }
+    document.title = 'OK — terminal files probe';
+  } catch (e) { document.getElementById('err').textContent = String(e.stack || e); document.title = 'ERR ' + e.message; }
+})();
+</script>
+</body>
+</html>

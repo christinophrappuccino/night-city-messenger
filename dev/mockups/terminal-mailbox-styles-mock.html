@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Terminal — mailbox styles (2077 tabs · TTY · desktop)</title>
+<!--
+  Design mock (2026-10-25). Dev: "multiple templates for how accounts are
+  viewed — our default (folders left, content below), one that looks like a
+  desktop, one that looks more like a terminal, one Cyberpunk 2077 style with
+  tabs on top, list left, message right."
+
+  The proposal is a `mailboxStyle` per terminal, a registry like the six login
+  styles, each preset carrying one. Every style renders the SAME view-model the
+  mailbox builds today and MUST keep the mechanics: the HUD (uplink · operator ·
+  OPS · EDIT), MAIL + FILES, the folder gates, the exfil rail. Three directions
+  on the same sample data, each on a different preset so the dependence shows:
+
+  FRAME 1 — "NETWATCH" / 2077-style (Arasaka preset): folders + FILES as TABS
+            across the top, a tight list on the left, the message on the right
+            with a metadata rail. Cut corners, hard rules, uppercase mono tabs.
+            A SKIN: same DOM regions, rearranged. Cheapest to ship.
+  FRAME 2 — TTY (Retro DOS preset): one monospace column. The folder is the
+            working directory, the list is an `ls`, opening is `cat 03`, the
+            prompt at the bottom takes a number / m / f / a folder name.
+            A SKIN with a different list/detail split (detail BELOW the list).
+  FRAME 3 — DESKTOP (NetWatch preset): a wallpapered canvas of icons (mail
+            folders, the home + shared drives, files) with ONE floating window
+            for whatever was double-clicked, and a taskbar carrying the HUD
+            chips. A different interaction model: its own template + state.
+            Ship AFTER the registry exists.
+
+  Real cascade: foundry2.css → CPR main.css → night-city-messenger.css. The HUD
+  and account chrome reuse the real .ncm-term__* classes; the layout classes are
+  mock-only (tm27-*, tmtty-*, tmdesk-*), every colour a --ncm-* token so each
+  preset drives its frame. Open off disk or serve it; nothing here imports a module.
+  ?view=classic|2077|tty|desk|all
+-->
+<link id="css-foundry" rel="stylesheet" href="">
+<link id="css-fa" rel="stylesheet" href="">
+<link id="css-cpr" rel="stylesheet" href="">
+<script>
+  const isFile = location.protocol === 'file:';
+  const FVTT = 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public';
+  document.getElementById('css-foundry').href = isFile ? `${FVTT}/css/foundry2.css` : '/_vendor/foundry2.css';
+  document.getElementById('css-fa').href = isFile ? `${FVTT}/fonts/fontawesome/css/all.min.css` : '/_vendor/fa/css/all.min.css';
+  document.getElementById('css-cpr').href = isFile ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  html, body { height: auto; min-height: 100%; }
+  body { margin: 0; background: #0b0b10; color: #ccc; font-family: var(--ncm-font-display, sans-serif); padding: 28px 0 60px; }
+  .mk-wrap { width: 920px; margin: 0 auto; }
+  .mk-cap { font: 600 13px/1.5 var(--ncm-font-display, sans-serif); color: #9a9ab0; margin: 0 0 10px; }
+  .mk-cap b { color: #e6e6ee; }
+  .mk-cap small { display: block; font-weight: 400; font-size: 12px; color: #7a7a90; margin-top: 2px; }
+  .mk-frame { margin: 0 auto 46px; }
+  .mk-win { position: relative; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); background: #0a0a0f; }
+  .mk-win > .window-header { flex: 0 0 auto; display: flex; align-items: center; padding: 0 12px; height: 36px; background: rgba(0,0,0,.5); border-bottom: 1px solid rgba(255,255,255,.08); }
+  .mk-win > .window-header .window-title { margin: 0; font-size: 13px; line-height: 36px; }
+  .mk-win > .window-content { flex: 1; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .ncm-terminal-viewer { width: 898px !important; height: 570px !important; min-width: 0; min-height: 0; flex: 0 0 570px !important; display: flex; flex-direction: column; }
+  .mk-body { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+  /* shared mock bits */
+  .mk-row { display: flex; align-items: center; gap: 8px; }
+  .mk-sp { flex: 1; }
+
+  /* ═══════════════ FRAME 1 · 2077 tabs ═══════════════ */
+  .tm27-tabs { display: flex; align-items: flex-end; gap: 2px; padding: 8px 14px 0; border-bottom: 2px solid color-mix(in srgb, var(--ncm-primary) 55%, transparent); background: color-mix(in srgb, var(--ncm-bg-deep) 70%, transparent); flex: 0 0 auto; }
+  .tm27-tab { position: relative; font-family: var(--ncm-font-mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--ncm-text-secondary); padding: 8px 16px 7px; cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); border-top: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+  .tm27-tab b { font-weight: 400; opacity: .7; margin-left: 6px; }
+  .tm27-tab.is-on { color: var(--ncm-bg-deep); background: var(--ncm-primary); font-weight: 700; }
+  .tm27-tab.is-on b { opacity: .85; }
+  .tm27-tab--files { margin-left: auto; }
+  .tm27-tab i { margin-right: 6px; }
+  .tm27-acct { margin-left: 10px; display: inline-flex; align-items: center; gap: 8px; font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: 1px; color: var(--ncm-text-secondary); padding-bottom: 9px; }
+  .tm27-acct .ncm-term__avatar { width: 20px; height: 20px; font-size: 9px; }
+  .tm27-panes { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px 1fr; }
+  .tm27-list { border-right: 1px solid color-mix(in srgb, var(--ncm-primary) 20%, transparent); overflow-y: auto; overflow-x: hidden; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .tm27-item { position: relative; padding: 7px 10px 7px 14px; cursor: pointer; font-family: var(--ncm-font-mono); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: color-mix(in srgb, var(--ncm-text-primary) 3%, transparent); border-left: 3px solid color-mix(in srgb, var(--ncm-text-muted) 40%, transparent); }
+  .tm27-item.is-urgent { border-left-color: var(--ncm-danger); }
+  .tm27-item.is-on { background: color-mix(in srgb, var(--ncm-primary) 14%, transparent); border-left-color: var(--ncm-primary); }
+  .tm27-item .l1 { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 1px; color: var(--ncm-text-secondary); text-transform: uppercase; }
+  .tm27-item .l2 { font-family: var(--ncm-font-body); font-weight: 700; font-size: 13px; color: var(--ncm-text-primary); margin-top: 2px; }
+  .tm27-item .l3 { font-size: 10px; color: var(--ncm-text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tm27-item.is-unread .l2::before { content: ''; display: inline-block; width: 6px; height: 6px; background: var(--ncm-primary); margin-right: 6px; vertical-align: middle; }
+  .tm27-msg { display: grid; grid-template-columns: 1fr 150px; min-height: 0; }
+  .tm27-main { padding: 16px 20px; overflow-y: auto; }
+  .tm27-hd { border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 35%, transparent); padding-bottom: 10px; margin-bottom: 12px; }
+  .tm27-kicker { font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: 2px; color: var(--ncm-primary); }
+  .tm27-subject { font-family: var(--ncm-font-title); font-size: 20px; letter-spacing: 1px; color: var(--ncm-text-primary); margin: 4px 0 6px; text-transform: uppercase; }
+  .tm27-from { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-secondary); }
+  .tm27-body { font-family: var(--ncm-font-body); font-size: 13.5px; line-height: 1.55; color: var(--ncm-text-primary); }
+  .tm27-rail { border-left: 1px solid color-mix(in srgb, var(--ncm-primary) 20%, transparent); padding: 14px 12px; font-family: var(--ncm-font-mono); font-size: 10px; display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--ncm-bg-deep) 50%, transparent); }
+  .tm27-rail b { display: block; letter-spacing: 1.5px; color: var(--ncm-text-secondary); font-weight: 400; font-size: 9px; margin-bottom: 2px; }
+  .tm27-rail span { color: var(--ncm-text-primary); }
+  .tm27-ex { margin-top: auto; display: flex; flex-direction: column; gap: 4px; }
+  .tm27-ex .ncm-term__btn { justify-content: flex-start; }
+  /* the exfil chips: the real .ncm-term__btn rules are scoped under the exfil rail, so the mock resets them here */
+  .ncm-app button.ncm-term__btn { appearance: none !important; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 3px 8px !important; display: inline-flex !important; align-items: center; gap: 5px; font-family: var(--ncm-font-mono) !important; font-size: 9.5px !important; letter-spacing: .5px; border: 1px solid color-mix(in srgb, var(--ncm-primary) 45%, transparent) !important; border-radius: 4px !important; background: color-mix(in srgb, var(--ncm-primary) 8%, transparent) !important; color: var(--ncm-text-primary) !important; box-shadow: none !important; line-height: 1.4 !important; cursor: pointer; }
+  .ncm-app button.ncm-term__btn.is-denied { opacity: .55; border-style: dashed !important; }
+  .ncm-app button.ncm-term__btn .ncm-term__exfil-why { font-size: 8.5px; color: var(--ncm-accent); margin-left: 4px; }
+
+  /* ═══════════════ FRAME 2 · TTY ═══════════════ */
+  .tmtty { flex: 1; min-height: 0; display: flex; flex-direction: column; font-family: var(--ncm-font-mono); font-size: 13px; line-height: 1.55; color: var(--ncm-primary); background: var(--ncm-bg-deep); padding: 10px 16px 8px; position: relative; }
+  .tmtty::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0,0,0,.18) 2px 3px); }
+  .tmtty-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; white-space: pre; }
+  .tmtty .p { color: var(--ncm-text-secondary); }
+  .tmtty .cmd { color: var(--ncm-text-primary); }
+  .tmtty .dim { color: color-mix(in srgb, var(--ncm-primary) 55%, var(--ncm-bg-deep)); }
+  .tmtty .hd { color: var(--ncm-accent); }
+  .tmtty .sel { background: var(--ncm-primary); color: var(--ncm-bg-deep); }
+  .tmtty .new::before { content: '*'; color: var(--ncm-accent); position: absolute; left: -12px; }
+  .tmtty .row { position: relative; display: inline; cursor: pointer; }
+  .tmtty .row:hover { background: color-mix(in srgb, var(--ncm-primary) 12%, transparent); }
+  .tmtty-out { margin: 8px 0 0 0; padding: 8px 0 0; border-top: 1px dashed color-mix(in srgb, var(--ncm-primary) 35%, transparent); white-space: pre-wrap; color: var(--ncm-text-primary); }
+  .tmtty-in { flex: 0 0 auto; display: flex; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--ncm-primary) 25%, transparent); margin-top: 6px; }
+  .tmtty-in .cur { display: inline-block; width: 9px; height: 15px; background: var(--ncm-primary); animation: tmtty-blink 1s steps(1) infinite; vertical-align: -2px; }
+  @keyframes tmtty-blink { 50% { opacity: 0; } }
+  .tmtty-help { margin-left: auto; font-size: 10px; color: var(--ncm-text-secondary); letter-spacing: .5px; }
+  .tmtty .lock { color: var(--ncm-accent); }
+
+  /* ═══════════════ FRAME 3 · DESKTOP ═══════════════ */
+  .tmdesk { flex: 1; min-height: 0; position: relative; overflow: hidden; background: radial-gradient(120% 90% at 70% 20%, color-mix(in srgb, var(--ncm-primary) 18%, var(--ncm-bg-deep)), var(--ncm-bg-deep) 60%); }
+  .tmdesk-grid::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(color-mix(in srgb, var(--ncm-primary) 7%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--ncm-primary) 7%, transparent) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; }
+  .tmdesk-icons { position: absolute; left: 18px; top: 16px; display: grid; grid-template-columns: repeat(2, 84px); gap: 14px 10px; }
+  .tmdesk-icon { width: 84px; text-align: center; cursor: pointer; padding: 6px 2px; border-radius: 4px; }
+  .tmdesk-icon:hover { background: color-mix(in srgb, var(--ncm-text-primary) 8%, transparent); }
+  .tmdesk-icon.is-on { background: color-mix(in srgb, var(--ncm-primary) 22%, transparent); outline: 1px solid color-mix(in srgb, var(--ncm-primary) 55%, transparent); }
+  .tmdesk-icon i { font-size: 30px; color: var(--ncm-primary); display: block; margin-bottom: 5px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+  .tmdesk-icon i.doc { color: var(--ncm-secondary); }
+  .tmdesk-icon i.drive { color: var(--ncm-text-secondary); }
+  .tmdesk-icon i.lock { color: var(--ncm-accent); }
+  .tmdesk-icon span { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-primary); text-shadow: 0 1px 3px rgba(0,0,0,.9); display: block; line-height: 1.25; word-break: break-word; }
+  .tmdesk-icon small { display: block; font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-secondary); }
+  .tmdesk-icon { position: relative; }
+  .tmdesk-badge { position: absolute; top: 2px; right: 14px; background: var(--ncm-danger); color: #fff; font: 700 9px/1 var(--ncm-font-mono); padding: 2px 5px; border-radius: 8px; }
+  .tmdesk-win { position: absolute; left: 230px; top: 24px; width: 630px; height: 440px; display: flex; flex-direction: column; background: var(--ncm-bg-base); border: 1px solid color-mix(in srgb, var(--ncm-primary) 45%, transparent); box-shadow: 0 18px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.6); border-radius: 4px; overflow: hidden; }
+  .tmdesk-win__bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: color-mix(in srgb, var(--ncm-primary) 14%, var(--ncm-bg-deep)); border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 35%, transparent); font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-primary); letter-spacing: .5px; }
+  .tmdesk-win__bar i.app { color: var(--ncm-primary); }
+  .tmdesk-win__ctl { margin-left: auto; display: flex; gap: 6px; }
+  .tmdesk-win__ctl b { width: 11px; height: 11px; border-radius: 50%; display: inline-block; background: color-mix(in srgb, var(--ncm-text-muted) 60%, transparent); }
+  .tmdesk-win__ctl b.x { background: var(--ncm-danger); }
+  .tmdesk-win__body { flex: 1; min-height: 0; display: grid; grid-template-columns: 210px 1fr; }
+  .tmdesk-win__list { border-right: 1px solid var(--ncm-border); overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 3px; }
+  .tmdesk-mail { padding: 7px 9px; border-radius: 4px; cursor: pointer; font-family: var(--ncm-font-mono); font-size: 10.5px; color: var(--ncm-text-secondary); }
+  .tmdesk-mail b { display: block; font-family: var(--ncm-font-body); font-size: 12.5px; color: var(--ncm-text-primary); font-weight: 600; }
+  .tmdesk-mail.is-on { background: color-mix(in srgb, var(--ncm-primary) 16%, transparent); }
+  .tmdesk-win__detail { padding: 14px 16px; overflow-y: auto; }
+  .tmdesk-sub { font-family: var(--ncm-font-display); font-weight: 700; font-size: 16px; color: var(--ncm-text-primary); }
+  .tmdesk-meta { font-family: var(--ncm-font-mono); font-size: 10.5px; color: var(--ncm-text-secondary); margin: 4px 0 10px; }
+  .tmdesk-body { font-family: var(--ncm-font-body); font-size: 13px; line-height: 1.55; color: var(--ncm-text-primary); }
+  .tmdesk-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: color-mix(in srgb, var(--ncm-bg-deep) 88%, transparent); border-top: 1px solid color-mix(in srgb, var(--ncm-primary) 35%, transparent); backdrop-filter: blur(4px); font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-secondary); }
+  .tmdesk-start { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; background: var(--ncm-primary); color: var(--ncm-bg-deep); font-weight: 700; letter-spacing: 1px; border-radius: 3px; }
+  .tmdesk-task { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid color-mix(in srgb, var(--ncm-primary) 45%, transparent); border-radius: 3px; color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-primary) 10%, transparent); }
+  .tmdesk-clock { margin-left: auto; color: var(--ncm-text-primary); }
+
+  /* A window root class (.ncm-app) is positioned FIXED by the module (it IS a window in Foundry); on a scrolling mock page every frame must be in flow. */
+  .mk-win, .mk-win .ncm-terminal-viewer, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; z-index: auto !important; max-height: none !important; }
+  .mk-win > .window-header { width: 100%; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div class="mk-wrap">
+
+<!-- ══════════ FRAME 0 · CLASSIC (today) ══════════ -->
+<section class="mk-frame" data-view="classic">
+  <p class="mk-cap"><b>Style 0 — CLASSIC (what ships today, and stays the default).</b> Account card, MAIL | FILES switch, folder strip, the message list below it, the message on the right. Every new style is a <em>choice per terminal</em> on top of this one; a terminal that never picks keeps it.
+  <small>Real .ncm-term__* classes throughout — this frame is the reference the others rearrange. Arasaka preset.</small></p>
+  <div class="mk-win ncm-app ncm-terminal-app"><header class="window-header"><h1 class="window-title"><span class="ncm-term__title-user">v_arasaka</span><span class="ncm-term__title-at">@</span><span class="ncm-term__title-org">ARASAKA NET</span></h1></header><section class="window-content">
+    <div class="ncm-terminal-viewer ncm-app" data-terminal-preset="arasaka-workstation" data-terminal-state="mailbox">
+      <div class="ncm-term__hud">
+        <span class="ncm-term__hud-seg"><i class="fas fa-plug-circle-check ncm-term__hud-on"></i> <span class="ncm-term__hud-on">logged in</span></span><span class="ncm-term__hud-sep">·</span>
+        <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> ARASAKA-NET</span><span class="ncm-term__hud-seg ncm-term__bars"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></span>
+        <span class="ncm-term__hud-spacer"></span>
+        <span class="ncm-term__hud-seg ncm-term__hud-op is-switchable"><i class="fas fa-user-gear"></i> Rache <i class="fas fa-chevron-down ncm-term__hud-opcv"></i></span>
+        <span class="ncm-term__hud-seg ncm-term__hud-tools"><i class="fas fa-user-secret"></i> OPS <i class="fas fa-chevron-down ncm-term__hud-opcv"></i></span>
+        <span class="ncm-term__hud-seg ncm-term__hud-gm"><i class="fas fa-sliders"></i> EDIT</span>
+      </div>
+      <div class="ncm-term__panes">
+        <button type="button" class="ncm-term__side-toggle"><i class="fas fa-chevron-left"></i></button>
+        <div class="ncm-term__side">
+          <div class="ncm-term__acsw"><span class="ncm-term__avatar">VA</span><span class="ncm-term__acsw-nm">Veronica A.<small>v_arasaka</small></span><span class="ncm-term__acsw-caret"><i class="fas fa-chevron-down"></i></span></div>
+          <div class="ncm-term__fs-view"><button type="button" class="is-on"><i class="fas fa-envelope"></i> MAIL <b>6</b></button><button type="button"><i class="fas fa-folder-tree"></i> FILES <b>14</b></button></div>
+          <div class="ncm-term__folds">
+            <div class="ncm-term__fold is-active"><i class="fas fa-inbox"></i> Correspondence <span class="ncm-term__fold-ct">4</span></div>
+            <div class="ncm-term__fold"><i class="fa-regular fa-star"></i> Flagged <span class="ncm-term__fold-ct">1</span></div>
+            <div class="ncm-term__fold"><i class="fas fa-trash-can"></i> Shredder <span class="ncm-term__fold-ct">1</span></div>
+          </div>
+          <div class="ncm-term__lsep"></div>
+          <div class="ncm-term__slabel">CORRESPONDENCE · 4 MESSAGES</div>
+          <div class="ncm-term__list">
+            <div class="ncm-term__row is-active ncm-term__row--critical"><div class="ncm-term__row-l1"><span class="ncm-term__pdot"></span><span class="ncm-term__row-from">hr@arasaka.net</span><span class="ncm-term__row-time">2046-03-12</span></div><div class="ncm-term__row-subj">Q3 Restructuring</div><div class="ncm-term__row-prev">Per board directive, the following personnel are flagged for transition…</div></div>
+            <div class="ncm-term__row ncm-term__row--normal"><div class="ncm-term__row-l1"><span class="ncm-term__pdot"></span><span class="ncm-term__row-from">security@arasaka.nc</span><span class="ncm-term__row-time">2046-03-10</span></div><div class="ncm-term__row-subj">Re: badge access 7F</div><div class="ncm-term__row-prev">Your after-hours access has been logged. Please confirm…</div></div>
+            <div class="ncm-term__row ncm-term__row--normal"><div class="ncm-term__row-l1"><span class="ncm-term__pdot"></span><span class="ncm-term__row-from">m.takeda@arasaka.nc</span><span class="ncm-term__row-time">2046-03-09</span></div><div class="ncm-term__row-subj">lunch?</div><div class="ncm-term__row-prev">the place on 7F-E, 12:30. don't be late again</div></div>
+            <div class="ncm-term__row ncm-term__row--low"><div class="ncm-term__row-l1"><span class="ncm-term__pdot"></span><span class="ncm-term__row-from">facilities</span><span class="ncm-term__row-time">2046-03-02</span></div><div class="ncm-term__row-subj">Workstation 7F-12 maintenance</div><div class="ncm-term__row-prev">Scheduled firmware update tonight 02:00–02:30…</div></div>
+          </div>
+          <button type="button" class="ncm-term__gm-add"><i class="fas fa-plus"></i> Add message or file (GM)</button>
+        </div>
+        <div class="ncm-term__detail">
+          <div class="ncm-term__subject">Q3 Restructuring — <span class="ncm-term__cls">CONFIDENTIAL</span></div>
+          <div class="ncm-term__sender"><span class="ncm-term__avatar">HR</span><div><div class="ncm-term__sender-nm">Arasaka HR</div><div class="ncm-term__sender-em">hr@arasaka.net</div></div></div>
+          <div class="ncm-term__body"><p>Per board directive, the following personnel are flagged for transition. Distribution restricted to executive tier. Do not forward outside ARASAKA-NET.</p><p>— Takeda, M. (7F) · Alvarez, J. (7F) · one entry redacted pending legal review.</p><p>Exit interviews will be conducted by Corporate Security, not HR.</p></div>
+          <div class="ncm-term__exfil"><span class="ncm-term__exfil-lbl">EXFILTRATE</span><button class="ncm-term__btn"><i class="fas fa-download"></i> To my Agent</button><button class="ncm-term__btn"><i class="fas fa-microchip"></i> Burn to shard</button><button class="ncm-term__btn is-denied"><i class="fas fa-share"></i> Forward <span class="ncm-term__exfil-why">DV 14</span></button></div>
+        </div>
+      </div>
+    </div>
+  </section></div>
+</section>
+
+<!-- ══════════ FRAME 1 · 2077 tabs ══════════ -->
+<section class="mk-frame" data-view="2077">
+  <p class="mk-cap"><b>Style 1 — "NETWATCH" (2077 tabs).</b> Folders and FILES are tabs across the top; a tight list on the left; the message on the right with a metadata rail that carries the exfil chips. Cut corners and hard rules. The account lives in the tab bar, not a sidebar card.
+  <small>A skin: the same regions the mailbox already builds, rearranged. Arasaka preset.</small></p>
+  <div class="mk-win ncm-app ncm-terminal-app"><header class="window-header"><h1 class="window-title"><span class="ncm-term__title-user">v_arasaka</span><span class="ncm-term__title-at">@</span><span class="ncm-term__title-org">ARASAKA NET</span></h1></header><section class="window-content">
+    <div class="ncm-terminal-viewer ncm-app" data-terminal-preset="arasaka-workstation" data-terminal-state="mailbox">
+      <div class="ncm-term__hud">
+        <span class="ncm-term__hud-seg"><i class="fas fa-plug-circle-check ncm-term__hud-on"></i> <span class="ncm-term__hud-on">logged in</span></span><span class="ncm-term__hud-sep">·</span>
+        <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> ARASAKA-NET</span><span class="ncm-term__hud-seg ncm-term__bars"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></span>
+        <span class="ncm-term__hud-spacer"></span>
+        <span class="ncm-term__hud-seg ncm-term__hud-op is-switchable"><i class="fas fa-user-gear"></i> Rache <i class="fas fa-chevron-down ncm-term__hud-opcv"></i></span>
+        <span class="ncm-term__hud-seg ncm-term__hud-tools"><i class="fas fa-user-secret"></i> OPS <i class="fas fa-chevron-down ncm-term__hud-opcv"></i></span>
+        <span class="ncm-term__hud-seg ncm-term__hud-gm"><i class="fas fa-sliders"></i> EDIT</span>
+      </div>
+      <div class="mk-body">
+        <div class="tm27-tabs">
+          <span class="tm27-acct"><span class="ncm-term__avatar">VA</span> V_ARASAKA <i class="fas fa-chevron-down" style="font-size:8px;opacity:.6"></i></span>
+          <span class="tm27-tab is-on"><i class="fas fa-inbox"></i>Correspondence <b>4</b></span>
+          <span class="tm27-tab"><i class="fas fa-flag"></i>Flagged <b>1</b></span>
+          <span class="tm27-tab"><i class="fas fa-trash"></i>Shredder <b>1</b></span>
+          <span class="tm27-tab tm27-tab--files"><i class="fas fa-folder-tree"></i>Files <b>14</b></span>
+        </div>
+        <div class="tm27-panes">
+          <div class="tm27-list">
+            <div class="tm27-item is-urgent is-unread is-on"><div class="l1"><span>hr@arasaka.net</span><span>03-12</span></div><div class="l2">Q3 Restructuring</div><div class="l3">Per board directive, the following personnel are flagged…</div></div>
+            <div class="tm27-item is-unread"><div class="l1"><span>security@arasaka.nc</span><span>03-10</span></div><div class="l2">Re: badge access 7F</div><div class="l3">Your after-hours access has been logged. Please confirm…</div></div>
+            <div class="tm27-item"><div class="l1"><span>m.takeda@arasaka.nc</span><span>03-09</span></div><div class="l2">lunch?</div><div class="l3">the place on 7F-E, 12:30. don't be late again</div></div>
+            <div class="tm27-item"><div class="l1"><span>facilities</span><span>03-02</span></div><div class="l2">Workstation 7F-12 maintenance</div><div class="l3">Scheduled firmware update tonight 02:00–02:30…</div></div>
+          </div>
+          <div class="tm27-msg">
+            <div class="tm27-main">
+              <div class="tm27-hd"><div class="tm27-kicker">// CONFIDENTIAL · CRITICAL</div><div class="tm27-subject">Q3 Restructuring</div><div class="tm27-from">hr@arasaka.net → v.arasaka@arasaka.nc · 2046-03-12 09:12</div></div>
+              <div class="tm27-body"><p>Per board directive, the following personnel are flagged for transition. Distribution restricted to executive tier. Do not forward outside ARASAKA-NET.</p><p>— Takeda, M. (7F) · Alvarez, J. (7F) · one entry redacted pending legal review.</p><p>Exit interviews will be conducted by Corporate Security, not HR.</p></div>
+            </div>
+            <div class="tm27-rail">
+              <div><b>FROM</b><span>hr@arasaka.net</span></div>
+              <div><b>RECEIVED</b><span>2046-03-12 09:12</span></div>
+              <div><b>CLASS</b><span style="color:var(--ncm-danger)">CONFIDENTIAL</span></div>
+              <div><b>THREAD</b><span>1 of 1</span></div>
+              <div class="tm27-ex"><b>EXFILTRATE</b><button class="ncm-term__btn"><i class="fas fa-download"></i> To my Agent</button><button class="ncm-term__btn"><i class="fas fa-microchip"></i> Burn to shard</button><button class="ncm-term__btn is-denied"><i class="fas fa-share"></i> Forward <span class="ncm-term__exfil-why">DV 14</span></button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section></div>
+</section>
+
+<!-- ══════════ FRAME 2 · TTY ══════════ -->
+<section class="mk-frame" data-view="tty">
+  <p class="mk-cap"><b>Style 2 — TTY.</b> One monospace column. The folder is the working directory, the list is an <code>ls</code>, opening a message is <code>cat 01</code> and the text prints below. The prompt takes a number, <code>m</code>/<code>f</code> for mail/files, or a folder name. Everything the HUD does stays in the HUD.
+  <small>A skin with a different split: the detail prints BELOW the list instead of beside it. Retro DOS preset.</small></p>
+  <div class="mk-win ncm-app ncm-terminal-app"><header class="window-header"><h1 class="window-title"><span class="ncm-term__title-user">guest</span><span class="ncm-term__title-at">@</span><span class="ncm-term__title-org">NCDOS</span></h1></header><section class="window-content">
+    <div class="ncm-terminal-viewer ncm-app" data-terminal-preset="retro-dos" data-terminal-state="mailbox">
+      <div class="ncm-term__hud">
+        <span class="ncm-term__hud-seg"><i class="fas fa-plug-circle-check ncm-term__hud-on"></i> <span class="ncm-term__hud-on">logged in</span></span><span class="ncm-term__hud-sep">·</span>
+        <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> LOCAL ONLY</span>
+        <span class="ncm-term__hud-spacer"></span>
+        <span class="ncm-term__hud-seg ncm-term__hud-op is-switchable"><i class="fas fa-user-gear"></i> Rache <i class="fas fa-chevron-down ncm-term__hud-opcv"></i></span>
+        <span class="ncm-term__hud-seg ncm-term__hud-tools"><i class="fas fa-user-secret"></i> OPS <i class="fas fa-chevron-down ncm-term__hud-opcv"></i></span>
+        <span class="ncm-term__hud-seg ncm-term__hud-gm"><i class="fas fa-sliders"></i> EDIT</span>
+      </div>
+      <div class="tmtty">
+        <div class="tmtty-scroll"><span class="dim">NCDOS v3.30 · 640K OK · mailbox mounted as C:\MAIL</span>
+<span class="p">guest@NCDOS:C:\MAIL&gt;</span> <span class="cmd">ls</span>
+<span class="hd">  #   FROM                   DATE        SUBJECT</span>
+<span class="row new sel">  01  sysop                  03-12 02:48 READ ME FIRST                 </span>
+<span class="row new">  02  bbs@afterlife          03-11 23:10 tonight's board is live</span>
+<span class="row">  03  rogue                  03-09 19:02 job, if you want it</span>
+<span class="row">  04  (unknown)              03-02 04:14 ░░░░ CORRUPT ░░░░</span>
+<span class="dim">  4 messages · 2 new · folders: INBOX* SAVED TRASH · type <b>f</b> for files (7)</span>
+
+<span class="p">guest@NCDOS:C:\MAIL&gt;</span> <span class="cmd">cat 01</span>
+<div class="tmtty-out"><span class="hd">FROM:</span> sysop
+<span class="hd">DATE:</span> 2046-03-12 02:48
+<span class="hd">SUBJ:</span> READ ME FIRST
+
+Welcome to the box. House rules: no narcs, no cops, no mercy.
+Files you leave in C:\PUB are everyone's. C:\PRIV is yours.
+If the uplink pill up top says LOCAL ONLY, nothing you do here
+leaves the room. That is a feature.
+                                                            -- sysop
+
+<span class="dim">[ exfil: </span><span class="cmd">d</span><span class="dim">ownload · </span><span class="cmd">b</span><span class="dim">urn to shard · </span><span class="lock">forward DV 14</span><span class="dim"> ]</span></div>
+</div>
+        <div class="tmtty-in"><span class="p">guest@NCDOS:C:\MAIL&gt;</span> <span class="cur"></span><span class="tmtty-help">number = open · m = mail · f = files · cd &lt;folder&gt; · ? = help</span></div>
+      </div>
+    </div>
+  </section></div>
+</section>
+
+<!-- ══════════ FRAME 3 · DESKTOP ══════════ -->
+<section class="mk-frame" data-view="desk">
+  <p class="mk-cap"><b>Style 3 — DESKTOP.</b> A wallpapered canvas of icons: the mail folders, the home and shared drives, loose files. Double-click opens ONE floating window; the taskbar at the bottom carries the operator, uplink and OPS chips. A locked folder shows a padlock on its icon.
+  <small>A different interaction model, not a skin: its own template and state. Ship after the style registry exists. NetWatch preset.</small></p>
+  <div class="mk-win ncm-app ncm-terminal-app"><header class="window-header"><h1 class="window-title"><span class="ncm-term__title-user">agent_7</span><span class="ncm-term__title-at">@</span><span class="ncm-term__title-org">NETWATCH</span></h1></header><section class="window-content">
+    <div class="ncm-terminal-viewer ncm-app" data-terminal-preset="netwatch-unit" data-terminal-state="mailbox">
+      <div class="tmdesk tmdesk-grid">
+        <div class="tmdesk-icons">
+          <div class="tmdesk-icon"><i class="fas fa-inbox"></i><span class="tmdesk-badge">2</span><span>Bulletins</span><small>inbox</small></div>
+          <div class="tmdesk-icon"><i class="fas fa-box-archive"></i><span>Casework</span><small>saved</small></div>
+          <div class="tmdesk-icon"><i class="fas fa-trash"></i><span>Purged</span><small>trash</small></div>
+          <div class="tmdesk-icon"><i class="fas fa-house drive"></i><span>home</span><small>agent_7</small></div>
+          <div class="tmdesk-icon is-on"><i class="fas fa-hard-drive drive"></i><span>shared</span><small>NW-FIELD-07</small></div>
+          <div class="tmdesk-icon"><i class="fas fa-lock lock"></i><span>evidence</span><small>clearance ≥ 3</small></div>
+          <div class="tmdesk-icon"><i class="fas fa-table doc"></i><span>wall_breaches.xls</span><small>31 KB</small></div>
+          <div class="tmdesk-icon"><i class="fas fa-video doc"></i><span>perimeter.feed</span><small>LIVE</small></div>
+          <div class="tmdesk-icon"><i class="fas fa-user-secret doc"></i><span>ghost_dossier.dos</span><small>18 KB</small></div>
+          <div class="tmdesk-icon"><i class="fas fa-terminal doc"></i><span>system.log</span><small>LIVE</small></div>
+        </div>
+        <div class="tmdesk-win">
+          <div class="tmdesk-win__bar"><i class="fas fa-hard-drive app"></i> shared — NW-FIELD-07 · /records<span class="tmdesk-win__ctl"><b></b><b></b><b class="x"></b></span></div>
+          <div class="tmdesk-win__body">
+            <div class="tmdesk-win__list">
+              <div class="tmdesk-mail is-on"><b><i class="fas fa-id-card" style="color:var(--ncm-secondary)"></i> intake_0412.rec</b>18 KB · 2046-03-11</div>
+              <div class="tmdesk-mail"><b><i class="fas fa-terminal" style="color:var(--ncm-accent)"></i> incident_7.log</b>4 KB · 2046-03-09</div>
+              <div class="tmdesk-mail"><b><i class="fas fa-table" style="color:var(--ncm-success)"></i> wall_breaches.xls</b>31 KB · 2046-02-27 · <i class="fas fa-lock" style="color:var(--ncm-danger)"></i></div>
+              <div class="tmdesk-mail"><b><i class="fas fa-user-secret" style="color:var(--ncm-danger)"></i> ghost_dossier.dos</b>18 KB · 2046-03-02</div>
+              <div class="tmdesk-mail" style="opacity:.55"><b><i class="fas fa-arrow-turn-up"></i> ..</b>up to /</div>
+            </div>
+            <div class="tmdesk-win__detail">
+              <div class="tmdesk-sub">intake_0412.rec</div>
+              <div class="tmdesk-meta">RECORD · owner kowalski · 18 KB · modified 2046-03-11 09:12</div>
+              <div class="tmdesk-body"><p><b>SUBJECT 0412 — "Ghost".</b> Netrunner, unaffiliated. Last seen Watson, Kabuki. Known associate of a fixer operating out of the Afterlife.</p><p>Field note: do not approach without a second unit. Subject has cut two of our cameras this month and left a calling card on the third.</p></div>
+              <div style="margin-top:14px;display:flex;gap:6px;flex-wrap:wrap"><button class="ncm-term__btn"><i class="fas fa-download"></i> To my Agent</button><button class="ncm-term__btn"><i class="fas fa-microchip"></i> Burn to shard</button><button class="ncm-term__btn"><i class="fas fa-magnifying-glass"></i> Analyze</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="tmdesk-bar">
+          <span class="tmdesk-start"><i class="fas fa-satellite-dish"></i> NETWATCH</span>
+          <span class="tmdesk-task"><i class="fas fa-hard-drive"></i> shared</span>
+          <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> NETWATCH-SEC</span>
+          <span class="ncm-term__hud-seg ncm-term__hud-op is-switchable"><i class="fas fa-user-gear"></i> Rache <i class="fas fa-chevron-down ncm-term__hud-opcv"></i></span>
+          <span class="ncm-term__hud-seg ncm-term__hud-tools"><i class="fas fa-user-secret"></i> OPS</span>
+          <span class="tmdesk-clock">2046-03-13 · 02:14</span>
+        </div>
+      </div>
+    </div>
+  </section></div>
+</section>
+
+</div>
+<script>
+  const q = new URLSearchParams(location.search); const v = q.get('view') || 'all';
+  if (v !== 'all') document.querySelectorAll('.mk-frame').forEach(s => { if (s.dataset.view !== v) s.remove(); });
+</script>
+</body>
+</html>

@@ -33,68 +33,11 @@
 }
 
 
-/* ─── 1. Vignette — Edge Darkening ──────────────────────────────────────── */
-/* Simulates curved CRT display with darkened edges/corners.
-   Uses ::before so it sits BEHIND scanlines but OVER the background. */
-
-.ncm-app[data-ncm-scanlines="true"]::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: var(--ncm-z-overlay, 300);
-  background: radial-gradient(
-    ellipse 80% 70% at 50% 50%,
-    transparent 50%,
-    rgba(0, 0, 0, 0.15) 80%,
-    rgba(0, 0, 0, 0.35) 100%
-  );
-  /* Slightly lower than scanlines so glow can peek through */
-  opacity: 1;
-}
-
-
-/* ─── 2. Scanlines + Noise Grain — Combined ::after ─────────────────────── */
-/* Both textures composited into a single pseudo-element for performance.
-   Scanlines: repeating horizontal dark bands (2px interval, 0.06 opacity)
-   Noise: layered SVG-style grain via multiple gradients */
-
-.ncm-app[data-ncm-scanlines="true"]::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: calc(var(--ncm-z-overlay, 300) + 1);
-
-  /* Scanline pattern — 2px transparent, 1px dark band */
-  background:
-    /* Layer 1: CRT scanlines */
-    repeating-linear-gradient(
-      0deg,
-      transparent 0px,
-      transparent 2px,
-      rgba(0, 0, 0, 0.06) 2px,
-      rgba(0, 0, 0, 0.06) 3px
-    ),
-    /* Layer 2: Faint noise grain (cross-hatch approximation) */
-    repeating-linear-gradient(
-      90deg,
-      transparent 0px,
-      transparent 3px,
-      rgba(255, 255, 255, 0.008) 3px,
-      rgba(255, 255, 255, 0.008) 4px
-    ),
-    /* Layer 3: Secondary noise at offset angle */
-    repeating-linear-gradient(
-      45deg,
-      transparent 0px,
-      transparent 5px,
-      rgba(255, 255, 255, 0.005) 5px,
-      rgba(255, 255, 255, 0.005) 6px
-    );
-
-  mix-blend-mode: multiply;
-}
+/* ─── 1 + 2. Vignette · scanlines · grain ──────────────────────────────── */
+/* MOVED to styles/components/crt.css (2026-10-25): the ONE CRT film, stamped
+   on every player window root by BaseApplication._applyAtmosphere from the
+   Theme Customizer's `crt` prefs (style / intensity / vignette / rolling band).
+   data-ncm-scanlines stays as the master on/off other rules gate on. */
 
 
 /* ─── 3. Screen Flicker — Very Slow Brightness Oscillation ──────────────── */

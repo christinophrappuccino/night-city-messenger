@@ -86,6 +86,7 @@ export class TerminalsTab extends BaseTab {
         locked: secured && !state.gmBypassed,
         preset: cfg.theme?.preset || 'classic',
         loginStyle: cfg.loginStyle || 'cards',
+        mailboxStyle: cfg.mailboxStyle || 'classic',
         soundSet: cfg.soundSet || 'default',
       };
     });

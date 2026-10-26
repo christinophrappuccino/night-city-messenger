@@ -153,7 +153,11 @@
       </div>
 
       <div class="ncm-tc__divider"></div>
-      <div class="ncm-tc__slabel">Saved looks <span style="opacity:.6">— palette, fonts and wallpaper; never security</span></div>
+      <div class="ncm-tc__slabel">CRT film <span style="opacity:.6">— this shard's own pane of glass; a player can dim or drop it for themselves</span></div>
+      {{> "modules/night-city-messenger/templates/partials/crt-panel.hbs" crt=themeCrt}}
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Saved looks <span style="opacity:.6">— palette, fonts, wallpaper and CRT film; never security</span></div>
       <div class="ncm-tc__clist" data-stc-saved>
         {{#each savedThemes}}
         <div class="ncm-tc__citem">
@@ -561,6 +565,12 @@
           <div class="ncm-cfg-row"><span class="ncm-cfg-label">Size</span><input type="number" name="bootImageSize" class="ncm-cfg-input ncm-cfg-input--short" value="{{bootImageSize}}" min="32" max="128" /></div>
         </div>
         <div class="ncm-cfg-icon-mode-section" data-icon-mode="item" {{#unless bootIconModeItem}}style="display:none"{{/unless}}><div class="ncm-cfg-hint">Uses item's default image.</div></div>
+
+        <div class="ncm-cfg-divider"></div>
+        {{!-- Boot VIDEO (2026-10-25): a video stands in for the whole splash. --}}
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Boot video</span><input type="text" name="bootVideoUrl" class="ncm-cfg-input ncm-cfg-flex" value="{{bootVideoUrl}}" placeholder="leave empty for the animated splash — .webm / .mp4" /><button type="button" data-action="browseVideo" data-target="bootVideoUrl" class="ncm-cfg-btn-icon" data-tooltip="Browse / upload"><i class="fas fa-folder-open"></i></button></div>
+        <div class="ncm-cfg-row"><label style="display:inline-flex;align-items:center;gap:6px;font-family:var(--ncm-font-mono);font-size:12px"><input type="checkbox" name="bootVideoOverlay" {{#if bootVideoOverlay}}checked{{/if}} /> Show the title and subtitle over the video</label></div>
+        <div class="ncm-cfg-hint">A video replaces the animated splash: it plays with its own audio at the module's sound volume and the boot lasts as long as the video. Players can click to skip. Icon, speed and the preset's animation don't apply while a video is set.</div>
 
         <div class="ncm-cfg-divider"></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Title</span><input type="text" name="bootTitle" class="ncm-cfg-input ncm-cfg-flex" value="{{bootTitle}}" /></div>

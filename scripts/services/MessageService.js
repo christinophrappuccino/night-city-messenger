@@ -293,6 +293,29 @@ export class MessageService {
   }
 
   /**
+   * The address an actor-backed sender writes from — the registered flag, then
+   * the master directory entry (by `fromContactId`, else the entry linked to the
+   * actor), else '' so the caller synthesizes name@nightcity.net.
+   *
+   * The twin of `_recipientEmailFor`, fixed for the same reason (tester,
+   * 2026-10-24): the GM picked "example@ARK.com" from the Send-as list, but a
+   * master contact WITH a linked actor is picked by actor id, so the service
+   * saw only `fromActorId`, never the directory, and stamped the synthesized
+   * address. The player then saw — and added to contacts — example@nightcity.net.
+   * @param {Object} data
+   * @param {Actor} fromActor
+   * @returns {string}
+   */
+  _senderEmailFor(data, fromActor) {
+    const flagged = this._contactRepo.getActorEmail(data.fromActorId);
+    if (flagged) return flagged;
+    const mcs = game.nightcity?.masterContactService;
+    const entry = (data.fromContactId && mcs?.getContact?.(data.fromContactId))
+      || mcs?.getByActorId?.(fromActor?.id);
+    return entry?.email || '';
+  }
+
+  /**
    * Everything sendMessage stamps on an outgoing message once the recipient is
    * known: from/to addresses, NPC auto-registration, display names, ids,
    * thread, the GM overrides, network + signal + timestamp.
@@ -303,7 +326,7 @@ export class MessageService {
       // ── Resolve email addresses ──
       if (!data.from) {
         if (fromActor) {
-          data.from = this._contactRepo.getActorEmail(data.fromActorId)
+          data.from = this._senderEmailFor(data, fromActor)
             || `${fromActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
         } else if (fromContact) {
           data.from = fromContact.email || `${fromContact.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;

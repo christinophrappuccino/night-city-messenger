@@ -308,6 +308,34 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   /**
+   * The viewer's own contact for a message's SENDER: by the stored address,
+   * then by the master-directory address for that sender (mail stamped before
+   * 2026-10-24 carries a synthesized name@nightcity.net while the player's
+   * contact — added from a later message, or shared by the GM — holds the
+   * directory address), then by the sender's actor / master id. Never used
+   * for masked anonymous mail — those paths hide the Add button first.
+   * @param {Object} msg
+   * @returns {Object|null}
+   */
+  _findSenderContact(msg) {
+    if (!msg || !this._cachedContacts) return null;
+    const byAddress = this._findContact(msg.from);
+    if (byAddress) return byAddress;
+    const mcs = game.nightcity?.masterContactService;
+    const entry = (msg.fromContactId && mcs?.getContact?.(msg.fromContactId))
+      || (msg.fromActorId && mcs?.getByActorId?.(msg.fromActorId))
+      || null;
+    if (entry?.email && entry.email.toLowerCase() !== (msg.from || '').toLowerCase()) {
+      const byDirectory = this._findContact(entry.email);
+      if (byDirectory) return byDirectory;
+    }
+    return this._cachedContacts.find(c =>
+      (msg.fromActorId && c.actorId && c.actorId === msg.fromActorId)
+      || (entry?.id && c.masterContactId && c.masterContactId === entry.id)
+    ) || null;
+  }
+
+  /**
    * Refresh the cached contact list for the viewer's owner.
    * Called during _prepareContext before any _findContact calls.
    */
@@ -1545,9 +1573,11 @@ export class MessageViewerApp extends BaseApplication {
         break;
 
       // ── Feature 7: Data Shards ──
-      case 'open-shard':
-        this._openShard(target.closest('[data-item-id]')?.dataset.itemId);
+      case 'open-shard': {
+        const host = target.closest('[data-item-id]');
+        this._openShard(host?.dataset.itemId, host?.dataset.itemUuid);
         break;
+      }
       case 'filter-shards':
         this._filterShards(target.dataset.shardFilter, target);
         break;
@@ -2980,16 +3010,52 @@ export class MessageViewerApp extends BaseApplication {
 
   // ── Feature 7: Open Data Shard ──
 
-  _openShard(itemId) {
-    if (!itemId) return;
-    const item = game.items.get(itemId)
-      || game.actors.get(this.actorId)?.items.get(itemId);
+  _openShard(itemId, itemUuid = '') {
+    if (!itemId && !itemUuid) return;
+    const item = this._resolveAttachedShard({ itemId, itemUuid });
     if (item) {
       const actor = game.actors.get(this.actorId);
       game.nightcity?.openDataShard?.(item, { actor });
     } else {
-      ui.notifications.warn('Data shard not found.');
+      ui.notifications.warn(MessageViewerApp.SHARD_GONE_MSG);
     }
+  }
+
+  /** The one message for a shard attachment whose item no longer exists anywhere. */
+  static SHARD_GONE_MSG = 'That data shard no longer exists where it was sent from — ask your GM.';
+
+  /**
+   * Resolve a shard attachment to the live Item, wherever it lives.
+   *
+   * An attachment carries `itemUuid` (since 2026-10-24) and `itemId`. The id of
+   * an item inside an actor's inventory only means something inside THAT actor
+   * — the GM's Attach picker offers shards from every actor's gear, and a shard
+   * sent from a character's inventory used to die here as "not found" because
+   * the viewer looked only in the world collection and the RECIPIENT's own
+   * inventory (tester, 2026-10-24). Order: the uuid → the world collection →
+   * the viewing actor → every actor (the legacy fallback for attachments that
+   * predate `itemUuid`, same scan `openDataShard` runs for a string id).
+   * @param {{itemId?: string, itemUuid?: string}|string} att
+   * @returns {Item|null}
+   */
+  _resolveAttachedShard(att) {
+    if (!att) return null;
+    const uuid = typeof att === 'string' ? '' : (att.itemUuid || '');
+    const id = typeof att === 'string' ? att : (att.itemId || '');
+    let item = null;
+    if (uuid) {
+      try { item = fromUuidSync(uuid); } catch { item = null; }
+    }
+    if (!item && id) {
+      item = game.items?.get(id) || game.actors?.get(this.actorId)?.items?.get(id) || null;
+      if (!item) {
+        for (const a of game.actors ?? []) {
+          const hit = a.items?.get(id);
+          if (hit) { item = hit; break; }
+        }
+      }
+    }
+    return item || null;
   }
 
   /**
@@ -3059,7 +3125,7 @@ export class MessageViewerApp extends BaseApplication {
     const msg = this._getSelectedMessage();
     if (!msg?.from || !this.actorId) return;
 
-    const existing = this._findContact(msg.from);
+    const existing = this._findSenderContact(msg);
     if (existing) {
       ui.notifications.info(`NCM | ${msg.from} is already in your contacts.`);
       return;
@@ -3073,6 +3139,16 @@ export class MessageViewerApp extends BaseApplication {
     const masterContact = (msg.fromContactId && game.nightcity?.masterContactService?.getContact(msg.fromContactId))
       || (msg.fromActorId && game.nightcity?.masterContactService?.getByActorId?.(msg.fromActorId))
       || null;
+    // The directory's address beats the stored one. Mail sent before 2026-10-24
+    // from an actor-backed NPC carries a synthesized name@nightcity.net even when
+    // the GM had typed a real address into the directory; adding THAT would put
+    // a dead address in the player's list. Masked anonymous mail never reaches
+    // here (the Add button is hidden), so this can't leak a real sender.
+    const contactEmail = masterContact?.email || msg.from;
+    if (contactEmail !== msg.from && this._findContact(contactEmail)) {
+      ui.notifications.info(`NCM | ${contactEmail} is already in your contacts.`);
+      return;
+    }
 
     try {
       const repo = this.contactRepository;
@@ -3084,7 +3160,7 @@ export class MessageViewerApp extends BaseApplication {
       // actor rides in contactData.actorId so PortraitService can resolve it.
       const result = await repo.addContact(this.actorId, {
         name: displayName,
-        email: msg.from,
+        email: contactEmail,
         network: msg.network || 'CITINET',
         actorId: msg.fromActorId || masterContact?.actorId || null,
         masterContactId: masterContact?.id || null,
@@ -3093,7 +3169,7 @@ export class MessageViewerApp extends BaseApplication {
         notes: `Added from message: "${msg.subject || '(no subject)'}"`,
       });
       if (result?.success) {
-        ui.notifications.info(`NCM | Added "${displayName}" (${msg.from}) to contacts.`);
+        ui.notifications.info(`NCM | Added "${displayName}" (${contactEmail}) to contacts.`);
         this.soundService?.play?.('receive');
         await this._refreshContactCache();
         this.render(true);
@@ -4001,14 +4077,13 @@ export class MessageViewerApp extends BaseApplication {
     if (!att) return;
 
     // Data shard — open in ItemInboxApp
-    if (att.itemId) {
-      const item = game.items.get(att.itemId)
-        || game.actors.get(this.actorId)?.items.get(att.itemId);
+    if (att.itemId || att.itemUuid) {
+      const item = this._resolveAttachedShard(att);
       if (item) {
         const actor = game.actors.get(this.actorId);
         game.nightcity?.openDataShard?.(item, { actor });
       } else {
-        ui.notifications.warn('Data shard not found in inventory.');
+        ui.notifications.warn(MessageViewerApp.SHARD_GONE_MSG);
       }
       return;
     }
@@ -4296,7 +4371,7 @@ export class MessageViewerApp extends BaseApplication {
     if (!msg) return null;
 
     const displayData = this._enrichMessageDisplay(msg, this._getCurrentNetworkData()?.name);
-    const contact = this._findContact(msg.from);
+    const contact = this._findSenderContact(msg);
     const attachments = msg.attachments || [];
 
     // Media attachments embed as inline players; everything else stays a
@@ -4484,7 +4559,15 @@ export class MessageViewerApp extends BaseApplication {
       threadEntries: threadExpanded ? this._buildThreadEntries(msg, allMessages) : null,
       attachments,
       security,
-      encryptedAttachments: classified.encrypted,
+      // Only an attachment with its OWN ICE block gets the breach panel. The
+      // composer stamps `encrypted: true` on every attachment of an encrypted
+      // MESSAGE, and this branch renders only after the message itself was
+      // decrypted — so those used to show a second, locked copy of each shard
+      // or file whose Breach button called an API that does not exist
+      // (`attemptBreachAttachment` / `forceBreachAttachment`, never built),
+      // beside the working card. No writer produces `ice` on an attachment
+      // today, so the panel is dormant until one does.
+      encryptedAttachments: classified.encrypted.filter(a => !!a.ice),
       regularAttachments: classified.regular,
       eddiesData,
       attachmentCards,
@@ -4617,7 +4700,7 @@ export class MessageViewerApp extends BaseApplication {
     // The directory beats the raw actor name on purpose: the GM edits the
     // directory entry ("Rogue"), the actor keeps its bookkeeping label
     // ("Rogue-Fixer"), and players must see the edited name.
-    const contact = this._findContact(msg.from);
+    const contact = this._findSenderContact(msg);
     const fromActor = msg.fromActorId ? game.actors?.get(msg.fromActorId) : null;
     const fromIds = { contactId: msg.fromContactId, actorId: msg.fromActorId, email: msg.from, storedName: msg.fromName };
     let fromDisplay = contact?.name || resolveDisplayName(fromIds);
@@ -4950,11 +5033,12 @@ export class MessageViewerApp extends BaseApplication {
 
       const ext = (att.name || att.path || '').split('.').pop()?.toLowerCase() || '';
       const isImage = ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
-      const isShard = !!att.itemId;
+      const isShard = !!(att.itemId || att.itemUuid);
 
       cards.push({
         action: isShard ? 'open-shard' : 'open-attachment',
         itemId: att.itemId || '',
+        itemUuid: att.itemUuid || '',
         name: att.name || 'Unknown',
         meta: isShard ? `DATA SHARD${att.size ? ` • ${att.size}` : ''}` : `${ext.toUpperCase() || 'FILE'}${att.size ? ` • ${att.size}` : ''}`,
         metaClass: isShard ? 'ncm-attach-card__meta--shard' : '',
@@ -5130,6 +5214,7 @@ export class MessageViewerApp extends BaseApplication {
         const messages = game.nightcity?.dataShardService?.getShardMessages?.(item) || [];
         items.push({
           id: item.id,
+          uuid: item.uuid,
           name: item.name,
           img: item.img,
           isReceived: false,
@@ -5144,9 +5229,13 @@ export class MessageViewerApp extends BaseApplication {
     for (const msg of allMessages) {
       if (!msg.attachments) continue;
       for (const att of msg.attachments) {
-        if (!att.itemId || seenIds.has(att.itemId)) continue;
-        seenIds.add(att.itemId);
-        const item = game.items?.get(att.itemId) || actor?.items?.get(att.itemId);
+        const key = att.itemUuid || att.itemId;
+        if (!key || seenIds.has(key)) continue;
+        seenIds.add(key);
+        // Wherever the shard lives — world, this actor, the SENDER's inventory
+        // (see _resolveAttachedShard; a bare id only resolved the first two).
+        const item = this._resolveAttachedShard(att);
+        if (item) seenIds.add(item.id);
         // The attachment carries the lock state AS SENT; the shard may have been
         // breached since (a player's hack on a world shard now lands via the GM),
         // so read the live item when it is still around.
@@ -5154,13 +5243,18 @@ export class MessageViewerApp extends BaseApplication {
         const liveState = item?.getFlag?.(MODULE_ID_LOCAL, 'state');
         const isEncrypted = liveCfg ? (!!liveCfg.encrypted && !liveState?.decrypted) : (att.encrypted || false);
         items.push({
-          id: att.itemId,
+          id: att.itemId || item?.id || '',
+          uuid: att.itemUuid || item?.uuid || '',
           name: att.name || item?.name || 'Unknown Shard',
           img: item?.img || null,
           isReceived: true,
           isEncrypted,
           fragmentCount: null,
-          fromName: msg.from || msg.fromActorId ? (game.actors.get(msg.fromActorId)?.name || msg.from) : null,
+          // Directory name → stored name → actor label → address (the standing
+          // precedence; it used to print the raw actor label).
+          fromName: (msg.from || msg.fromActorId || msg.fromContactId)
+            ? resolveDisplayName({ contactId: msg.fromContactId, actorId: msg.fromActorId, email: msg.from, storedName: msg.fromName }, msg.from || '')
+            : null,
         });
       }
     }

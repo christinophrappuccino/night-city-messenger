@@ -198,6 +198,7 @@
 <section class="page">
   <h3 style="margin-top:0">5 — Install the macros</h3>
   <p>Admin Panel → <strong>Tools</strong> → <strong>Import / Reinstall Macros</strong>. This adds two macro folders with handy shortcuts for you and your players. Optional, but nice to have.</p>
+  <p><strong>Addresses in bulk:</strong> Tools → <strong>Email Domains &amp; Addresses</strong> also exports every character and master-contact address as CSV or JSON, and imports a <code>name, email</code> list — matched to a character by name, then a contact, else a new contact — with the whole plan shown before anything is written.</p>
 
   <h3>6 — Pick a clock</h3>
   <p>In Module Settings, find <strong>Time Provider</strong>. This controls what clock the module uses for timestamps and countdowns. Your options: real time, world time (works with Simple Calendar), manual (you move it forward yourself), or a fake in-game date. Real time is fine to start. You can change it later.</p>
@@ -327,7 +328,8 @@
 
 <!-- ═══════════════ PART 4 (c) — PERMISSIONS + PLAYER EDITING ═══════════════ -->
 <section class="page">
-  <h3 style="margin-top:0">No permissions needed</h3>
+  <h3 style="margin-top:0">Attaching one to a message</h3>
+  <p>In the composer, the microchip button beside the paperclip is <strong>Attach Data Shard</strong>; it lists every shard in the world and in any character's gear. The player opens it <strong>straight from the message</strong>: the shard appears as a DATA SHARD card under the body, and clicking it opens the shard viewer. It is also listed on the Agent's <strong>Shards</strong> tab as <em>Received</em>.</p>
   <p>A shard you attach to a message stays a <strong>world item that players have no permission on</strong>, and that is how it should be: any permission at all would put the shard in their Items sidebar before you meant them to see it. When a player breaks into it, the module asks the GM's client to record the unlock, so nothing about the shard has to change hands first.</p>
   <div class="tip"><span class="k">GM online</span>This works the same way as every other player action on a shard or terminal: a GM needs to be connected. If no GM is online, the player is told and nothing is lost.</div>
   <p>If you really do want to hand a shard over outright — give the player the Item, not just access to it — the <strong>Permissions</strong> button on the shard's row in Admin → Shards opens Foundry's ownership dialog. It only shows for world items; a shard on a character's sheet already follows that character.</p>
@@ -412,12 +414,15 @@
   <p>Right-click an Item and pick <strong>Convert to Terminal</strong>. The setup screen has six tabs:</p>
   <ul>
     <li><strong>Identity</strong> — name, organization, folder names.</li>
-    <li><strong>Accounts</strong> — the important one. Each account is a login with its own mailbox. Set a username, portrait, admin rights, and security (password, skill check, or key item). Accounts can be <strong>hidden</strong> — players only find them if they learn the username somewhere else.</li>
+    <li><strong>Accounts</strong> — the important one. Each account is a login with its own mailbox <strong>and its own files</strong>. Set a username, portrait, admin rights, and security (password, skill check, or key item). Accounts can be <strong>hidden</strong> — players only find them if they learn the username somewhere else.</li>
     <li><strong>Theme</strong> — colors, fonts, and wallpaper for this machine. There's a <strong>preset library</strong> with 12 ready-made looks (Arasaka workstation, NCPD precinct, Trauma Team, street BBS, and more) that set everything up in one click.</li>
-    <li><strong>Boot &amp; Login</strong> — the startup screen, six different login screen styles, a message of the day, and a screensaver. Each terminal can have its own sound effects too.</li>
+    <li><strong>Boot &amp; Login</strong> — the startup screen (or a video that plays instead), six different login screen styles, four <strong>mailbox layouts</strong> for after login (Classic, Tabs, TTY, Desktop), a message of the day, and a screensaver. Each terminal can have its own sound effects too.</li>
     <li><strong>Network</strong> — which network the machine itself is connected to.</li>
     <li><strong>Exfil</strong> — what players are allowed to do with what they find (see below).</li>
   </ul>
+
+  <h3>Put things on it</h3>
+  <p>Everything a machine holds is in <strong>Accounts</strong>. Each account row folds open into its <strong>mail</strong> (the folders from Identity) and its <strong>files</strong> (its home folder). Above the accounts sits the <strong>Shared volume</strong> — files on the machine itself, which every login sees. <strong>+ Message</strong> and <strong>+ File</strong> open the same editor the shards use; <strong>+ Folder</strong> adds a folder, and every folder has a <strong>who can open it</strong> control: everyone, admins only, a clearance level, or named accounts. A player who can't open a folder sees it locked with the reason, never an empty space.</p>
 
   <h3>Put it in the world</h3>
   <p><strong>Drag the terminal Item onto the map.</strong> It becomes a pin that players double-click to log in. You can require their token to be standing near it. Or skip the pin and let players open the Item directly.</p>
@@ -427,7 +432,7 @@
 <!-- ═══════════════ PART 5 (b) ═══════════════ -->
 <section class="page">
   <h3 style="margin-top:0">What players see</h3>
-  <p>Boot screen, then login, then the machine's mailbox — all in that machine's own look. Machines hold both mail and files (camera feeds, spreadsheets, logs). If an account belongs to an NPC, mail sent to that NPC also shows up on the machine. The paper trail is really there.</p>
+  <p>Boot screen, then login, then the machine — all in that machine's own look. Under the account name a switch picks <strong>MAIL</strong> (the account's folders) or <strong>FILES</strong> (a directory tree of the account's home and the shared volume). Machines hold both mail and files (camera feeds, spreadsheets, logs). If an account belongs to an NPC, mail sent to that NPC also shows up on the machine. The paper trail is really there.</p>
   <figure class="fig-85"><div class="shot"><img src="img/terminal-login.png" alt="Terminal login — access granted"></div>
   <figcaption>Logging into an Arasaka workstation — the credential badge fills in, then the machine opens its mailbox.</figcaption></figure>
 

@@ -46,8 +46,12 @@
 .ncm-app .ncm-tc__tabs { display: flex; background: var(--ncm-bg-deep); border-bottom: 1px solid var(--ncm-border); padding: 4px 8px 0; flex-shrink: 0; gap: 2px; }
 .ncm-tc button.ncm-tc__tab { display: flex; align-items: center; gap: 5px; padding: 7px 14px; font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-muted); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.04em; }
 .ncm-app .ncm-tc__tab i { font-size: calc(10px * var(--ncm-text-scale, 1)); }
-.ncm-app .ncm-tc__tab:hover { color: var(--ncm-text-secondary); }
-.ncm-app .ncm-tc__tab--active { color: var(--ncm-text-primary); border-bottom-color: var(--ncm-primary); }
+/* Hover + active must match the base rule's specificity (.ncm-tc button.ncm-tc__tab = 0,2,1): at .ncm-app
+   .ncm-tc__tab--active (0,2,0) the active state lost every property, so no tab ever looked selected
+   (dev, 2026-10-25). Active = full-strength text, an accent underline, a faint tint, the icon in the accent. */
+.ncm-tc button.ncm-tc__tab:hover { color: var(--ncm-text-secondary); background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); }
+.ncm-tc button.ncm-tc__tab.ncm-tc__tab--active { color: var(--ncm-text-primary); border-bottom-color: var(--ncm-primary); background: color-mix(in srgb, var(--ncm-primary) 10%, transparent); }
+.ncm-tc button.ncm-tc__tab.ncm-tc__tab--active i { color: var(--ncm-primary); }
 
 /* ═══ BODY ═══ */
 .ncm-app .ncm-tc__body { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
@@ -77,6 +81,8 @@
 .ncm-app .ncm-tc__citem-swatch span { width: 8px; height: 16px; border-radius: 1px; }
 .ncm-app .ncm-tc__citem-name { font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ncm-app .ncm-tc__citem-actions { display: flex; gap: 4px; flex-shrink: 0; }
+/* The mailbox layout a saved terminal theme carries (2026-10-25). */
+.ncm-app .ncm-tc__citem-layout { flex: 0 0 auto; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); margin-right: 6px; }
 .ncm-tc .ncm-tc__citem-actions button, .ncm-term-config .ncm-tc__citem-actions button,
 .ncm-item-inbox-config .ncm-tc__citem-actions button { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid transparent; border-radius: 2px; color: var(--ncm-text-muted); cursor: pointer; font-size: calc(9px * var(--ncm-text-scale, 1)); transition: all 0.15s; padding: 0; margin: 0; }
 .ncm-tc .ncm-tc__citem-actions button:hover, .ncm-term-config .ncm-tc__citem-actions button:hover,
@@ -154,3 +160,28 @@
 .ncm-app .ncm-tc__fbtn--disabled { opacity: 0.5; cursor: not-allowed; }
 .ncm-app .ncm-tc__fspace { flex: 1; }
 .ncm-app .ncm-tc__fbtn i { font-size: calc(10px * var(--ncm-text-scale, 1)); }
+
+/* CRT film chips (the ONE film, 2026-10-25) — used by the Theme Customizer and
+   the terminal config's Theme tab (which borrows the .ncm-tc__ widgets). */
+.ncm-tc__crt-chips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.ncm-app button.ncm-tc__crt-chip { appearance: none !important; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4px 9px !important; line-height: 1.2 !important; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-family: var(--ncm-font-mono) !important; font-size: 10px !important; letter-spacing: .8px; text-transform: uppercase; border-radius: 3px !important; border: 1px solid var(--ncm-border, #2a2a45) !important; background: transparent !important; color: var(--ncm-text-secondary, #bdbdd0) !important; box-shadow: none !important; }
+.ncm-app button.ncm-tc__crt-chip:hover { color: var(--ncm-text-primary, #ededf0) !important; border-color: var(--ncm-text-muted, #8e8ea8) !important; }
+.ncm-app button.ncm-tc__crt-chip.is-on { color: var(--ncm-text-primary, #ededf0) !important; border-color: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 60%, transparent) !important; background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 12%, transparent) !important; }
+.ncm-app button.ncm-tc__crt-chip.is-on i { color: var(--ncm-secondary, #19f3f7); }
+.ncm-tc__crt.is-off, .ncm-ttc-crt-row.is-off { opacity: .45; pointer-events: none; }
+.ncm-tc__crt.is-off .ncm-tc__crt-chips { pointer-events: auto; opacity: 1; }
+/* The shared CRT panel (templates/partials/crt-panel.hbs, 2026-10-25 v2) — three hosts, one look. */
+.ncm-crt-panel.is-off .ncm-crt-row { opacity: .45; pointer-events: none; }
+.ncm-crt-panel__lbl2 { min-width: 0 !important; margin-left: 14px; }
+.ncm-app button.ncm-crt-panel__adv-btn, .ncm-app button.ncm-crt-panel__reset { appearance: none !important; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 0 0 auto !important; padding: 4px 9px !important; line-height: 1 !important; box-shadow: none !important; background: transparent !important; border: 1px solid color-mix(in srgb, var(--ncm-border, #2a2a45) 90%, transparent) !important; border-radius: 3px !important; color: var(--ncm-text-secondary, #bdbdd0) !important; font-family: var(--ncm-font-mono) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
+.ncm-app button.ncm-crt-panel__adv-btn:hover, .ncm-app button.ncm-crt-panel__reset:hover { color: var(--ncm-text-primary, #ededf0) !important; border-color: var(--ncm-text-muted, #8e8ea8) !important; }
+.ncm-app button.ncm-crt-panel__adv-btn.is-on { color: var(--ncm-text-primary, #ededf0) !important; border-color: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 60%, transparent) !important; background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 12%, transparent) !important; }
+.ncm-app button.ncm-crt-panel__reset { margin: 6px 0 0 auto !important; display: block; }
+.ncm-app button.ncm-crt-panel__reset.is-idle { opacity: .4; }
+.ncm-crt-panel__adv { display: none; margin: 4px 0 2px; padding: 6px 8px 8px; border: 1px dashed color-mix(in srgb, var(--ncm-border, #2a2a45) 90%, transparent); border-radius: 4px; }
+.ncm-crt-panel__adv.is-open { display: block; }
+.ncm-crt-panel__hint { font-family: var(--ncm-font-body); font-size: calc(10.5px * var(--ncm-text-scale, 1)); line-height: 1.35; color: var(--ncm-text-secondary, #bdbdd0); margin: 0 0 6px; }
+.ncm-crt-panel__lrow { padding: 3px 0 !important; }
+.ncm-crt-panel__lrow .ncm-tc__srow-label { min-width: 84px; }
+.ncm-crt-panel__lrow.is-override .ncm-tc__srow-label::after { content: '•'; color: var(--ncm-secondary, #19f3f7); margin-left: 4px; }
+.ncm-app select.ncm-tc__cap-select { width: auto !important; min-width: 130px; height: auto !important; }

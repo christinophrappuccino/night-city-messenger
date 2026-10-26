@@ -1,0 +1,36 @@
+{{!-- The ONE CRT film's config panel (2026-10-25) — shared by the Theme Customizer
+      (the player's Agent film), the terminal config Theme tab and the shard config
+      Theme tab. Context = crtPanelContext(block) from scripts/utils/crt.js; the host
+      wires it with wireCrtPanel(panel, { draft, onChange }) — manual listeners, no
+      re-render, the draft contract. Chips pick a LOOK (a clean start), Intensity /
+      Vignette / Rolling band are the everyday knobs, Advanced opens one slider per
+      layer, Reset returns to the look. --}}
+<div class="ncm-crt-panel{{#if crt.isOff}} is-off{{/if}}" data-crt-panel>
+  <div class="ncm-tc__srow">
+    <span class="ncm-tc__srow-label">Look</span>
+    <div class="ncm-tc__crt-chips">{{#each crt.styles}}<button type="button" class="ncm-tc__crt-chip{{#if active}} is-on{{/if}}" data-crt-style="{{key}}" data-tooltip="{{hint}}"><i class="{{icon}}"></i> {{label}}</button>{{/each}}</div>
+  </div>
+  <div class="ncm-tc__srow ncm-crt-row">
+    <span class="ncm-tc__srow-label">Intensity</span>
+    <input type="range" data-crt-intensity min="5" max="100" step="5" value="{{crt.intensity}}" class="ncm-tc__slider" />
+    <span class="ncm-tc__srow-val" data-crt-intensity-val>{{crt.intensity}}%</span>
+  </div>
+  <div class="ncm-tc__srow ncm-crt-row">
+    <span class="ncm-tc__srow-label">Vignette</span>
+    <div class="ncm-tc__switch{{#if crt.vignette}} ncm-tc__switch--on{{/if}}" data-crt-toggle="vignette" data-tooltip="Darkened edges and corners"></div>
+    <span class="ncm-tc__srow-label ncm-crt-panel__lbl2">Rolling band</span>
+    <div class="ncm-tc__switch{{#if crt.roll}} ncm-tc__switch--on{{/if}}" data-crt-toggle="roll" data-tooltip="A faint bright bar drifting down every few seconds (off under reduced motion)"></div>
+    <button type="button" class="ncm-crt-panel__adv-btn" data-crt-adv data-tooltip="Every layer of the film on its own slider"><i class="fas fa-sliders"></i> Advanced</button>
+  </div>
+  <div class="ncm-crt-panel__adv ncm-crt-row" data-crt-advanced>
+    <div class="ncm-crt-panel__hint">Each layer of the film. A value is the look's own until you move it; <b>Reset</b> returns to the look. Softness keeps text readable under a strong cut.</div>
+    {{#each crt.layers}}
+    <div class="ncm-tc__srow ncm-crt-panel__lrow{{#if overridden}} is-override{{/if}}">
+      <span class="ncm-tc__srow-label" data-tooltip="{{hint}}">{{label}}</span>
+      <input type="range" data-crt-k="{{key}}" min="{{min}}" max="{{max}}" step="{{step}}" value="{{value}}" class="ncm-tc__slider" />
+      <span class="ncm-tc__srow-val" data-crt-val="{{key}}">{{value}}{{unit}}</span>
+    </div>
+    {{/each}}
+    <button type="button" class="ncm-crt-panel__reset{{#unless crt.hasOverrides}} is-idle{{/unless}}" data-crt-reset><i class="fas fa-rotate-left"></i> Reset to the look</button>
+  </div>
+</div>

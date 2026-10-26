@@ -142,17 +142,9 @@
 .app.window-app .ncm-item-inbox ::-webkit-scrollbar-thumb { background: var(--sp-border, #2a2a45) !important; border-radius: 2px !important; }
 .app.window-app .ncm-item-inbox ::-webkit-scrollbar-thumb:hover { background: var(--sp-accent, #19f3f7) !important; }
 
-/* Scanline overlay */
-.ncm-app .ncm-item-inbox::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(0deg,
-    transparent, transparent 2px,
-    rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px);
-  pointer-events: none;
-  z-index: 100;
-}
+/* Scanline overlay — REMOVED 2026-10-25: the shard window's root already
+   carries the ONE CRT film (styles/components/crt.css) from the player's
+   Theme Customizer prefs; a second faint raster here just muddied it. */
 
 
 /* ═══════════════════════════════════════════
@@ -3219,3 +3211,23 @@
 .ncm-app.ncm-item-inbox > .window-header .header-control[data-action="close"]:hover > i {
   color: var(--ncm-danger, #F65261) !important;
 }
+
+/* Composer ② DELIVERY — Store on (2026-10-25, terminal targets): the two-button
+   segmented control must show both labels (the generic gal-seg clips). */
+.ncm-app .ncm-storeseg { width: auto; max-width: none; overflow: visible; }
+.ncm-app .ncm-storeseg button { white-space: nowrap; padding: 0 9px !important; width: auto !important; display: inline-flex !important; align-items: center; gap: 5px; }
+
+/* Composer ② DELIVERY — the MESSAGE / FILE chooser (2026-10-25). Two cards,
+   one lit. Foundry's button defaults are reset per the usual rule. */
+.ncm-app .ncm-envpick { margin: 2px 0 10px; }
+.ncm-app .ncm-envpick__q { font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--sp-text-secondary, var(--ncm-text-secondary)); margin-bottom: 6px; }
+.ncm-app .ncm-envpick__q b { color: var(--sp-text-primary, var(--ncm-text-primary)); font-weight: 600; }
+.ncm-app .ncm-envpick__opts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; } /* minmax(0,…): Foundry buttons are white-space:nowrap, so a bare 1fr grew each column to the sentence width and pushed the FILE card off-screen */
+.ncm-app button.ncm-envpick__opt { appearance: none !important; white-space: normal !important; min-width: 0; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 9px 11px 9px 40px !important; text-align: left; position: relative; cursor: pointer; display: block; line-height: 1.3 !important; box-shadow: none !important; border: 1px solid var(--sp-border, var(--ncm-border)) !important; border-radius: 6px !important; background: color-mix(in srgb, var(--sp-bg-deep, var(--ncm-bg-deep)) 60%, transparent) !important; color: var(--sp-text-secondary, var(--ncm-text-secondary)) !important; font-family: var(--ncm-font-body) !important; }
+.ncm-app button.ncm-envpick__opt > i { position: absolute; left: 13px; top: 11px; font-size: calc(15px * var(--ncm-text-scale, 1)); color: var(--sp-text-muted, var(--ncm-text-muted)); }
+.ncm-app .ncm-envpick__t { display: block; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); letter-spacing: 1.5px; font-weight: 700; color: var(--sp-text-primary, var(--ncm-text-primary)); }
+.ncm-app .ncm-envpick__d { display: block; font-size: calc(10.5px * var(--ncm-text-scale, 1)); margin-top: 2px; }
+.ncm-app button.ncm-envpick__opt:hover { border-color: color-mix(in srgb, var(--sp-primary, var(--ncm-primary)) 45%, transparent) !important; }
+.ncm-app button.ncm-envpick__opt.is-on { border-color: var(--sp-primary, var(--ncm-primary)) !important; background: color-mix(in srgb, var(--sp-primary, var(--ncm-primary)) 12%, transparent) !important; color: var(--sp-text-primary, var(--ncm-text-primary)) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sp-primary, var(--ncm-primary)) 45%, transparent) !important; }
+.ncm-app button.ncm-envpick__opt.is-on > i { color: var(--sp-primary, var(--ncm-primary)); }
+.ncm-app .ncm-cmp-chip--env { font-weight: 700; }

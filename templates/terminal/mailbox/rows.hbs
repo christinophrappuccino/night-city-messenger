@@ -1,0 +1,41 @@
+{{!-- The message LIST rows (mail + file skeleton) — shared by the mailbox styles.
+      Rendered with the mailbox context (messages[]). --}}
+          {{#each messages}}
+            {{!-- ONE row skeleton for both kinds (#37 revision): line 1 = WHO/WHAT
+                  (sender or filename, the row's anchor) · line 2 = WHAT IT IS
+                  (subject, or a type chip + size) · line 3 = muted detail
+                  (body snippet, or the path). A mixed list then reads as ONE
+                  list instead of two competing ones. --}}
+            {{#if isFile}}
+              <div class="ncm-term__row ncm-term__row--file{{#if isSelected}} is-active{{/if}}{{#if encrypted}} is-encrypted{{/if}}" style="--ncm-i:{{@index}}" data-env="file" data-ct-color="{{accent}}" data-action="terminalSelectMessage" data-message-id="{{messageId}}">
+                <div class="ncm-term__row-l1">
+                  {{#if encrypted}}<i class="fas fa-lock ncm-term__ficon"></i>{{else}}<i class="{{typeIcon}} ncm-term__ficon"></i>{{/if}}
+                  <span class="ncm-term__row-file">{{filename}}</span>
+                  {{#if isNew}}<span class="ncm-term__new">NEW</span>{{/if}}
+                  {{#if time}}<span class="ncm-term__row-time">{{time}}</span>{{/if}}
+                </div>
+                <div class="ncm-term__row-l2">
+                  <span class="ncm-term__row-tag">{{typeLabel}}</span>
+                  {{#if fileSize}}<span class="ncm-term__row-size">{{fileSize}}</span>{{/if}}
+                  {{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this on the current uplink">OFF-NET</span>{{/if}}
+                </div>
+                {{#if filePath}}<div class="ncm-term__row-prev ncm-term__row-prev--path">{{filePath}}</div>{{/if}}
+              </div>
+            {{else}}
+              <div class="ncm-term__row{{#if isSelected}} is-active{{/if}}{{#if encrypted}} is-encrypted{{/if}} ncm-term__row--{{priority}}" style="--ncm-i:{{@index}}" data-env="mail" data-action="terminalSelectMessage" data-message-id="{{messageId}}">
+                <div class="ncm-term__row-l1">
+                  {{#if encrypted}}<i class="fas fa-lock ncm-term__pdot"></i>{{else}}<i class="fas fa-circle ncm-term__pdot ncm-term__pdot--{{priority}}"></i>{{/if}}
+                  <span class="ncm-term__row-from">{{from}}</span>
+                  {{#if time}}<span class="ncm-term__row-time">{{time}}</span>{{/if}}
+                </div>
+                <div class="ncm-term__row-subj">{{subject}}{{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this on the current uplink">OFF-NET</span>{{/if}}</div>
+                {{#if typeLabel}}
+                  <div class="ncm-term__row-l2"><span class="ncm-term__row-tag" data-ct-color="{{accent}}"><i class="{{typeIcon}}"></i> {{typeLabel}}</span></div>
+                {{else if preview}}
+                  <div class="ncm-term__row-prev">{{preview}}</div>
+                {{/if}}
+              </div>
+            {{/if}}
+          {{else}}
+            <div class="ncm-term__list-empty"><i class="fas fa-inbox"></i> {{emptyLabel}}</div>
+          {{/each}}

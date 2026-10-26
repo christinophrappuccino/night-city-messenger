@@ -1,0 +1,126 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   TERMINAL MAILBOX STYLES (2026-10-25) — `config.mailboxStyle`, a registry
+   like the login styles (TERMINAL_MAILBOX_STYLES). 'classic' is the shipped
+   layout in terminal.css; these three are the dev-approved alternatives from
+   dev/mockups/terminal-mailbox-styles-mock.html. All of them render the SAME
+   mailbox view-model and the SAME data-actions; the detail pane is the shared
+   partial (templates/terminal/mailbox/detail.hbs). Tokens only; fonts scale.
+     .ncm-tmtabs-*  tabs across the top · list left · message right
+     .ncm-tmtty-*   one monospace column with a prompt
+     .ncm-tmdesk-*  an icon desktop with one floating window + taskbar
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── shared: the host is a column under the HUD ── */
+.ncm-terminal-viewer[data-mailbox-style="tabs"] .ncm-tmtabs,
+.ncm-terminal-viewer[data-mailbox-style="tty"] .ncm-tmtty,
+.ncm-terminal-viewer[data-mailbox-style="desktop"] .ncm-tmdesk { flex: 1 1 auto; min-height: 0; position: relative; display: flex; flex-direction: column; }
+
+/* ═══════════════ TABS ═══════════════ */
+.ncm-tmtabs__bar { display: flex; align-items: flex-end; gap: 2px; padding: 8px 14px 0; border-bottom: 2px solid color-mix(in srgb, var(--ncm-primary) 55%, transparent); background: color-mix(in srgb, var(--ncm-bg-deep) 70%, transparent); flex: 0 0 auto; overflow-x: auto; overflow-y: visible; }
+.ncm-tmtabs__acct { position: relative; display: inline-flex; align-items: center; gap: 8px; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-text-secondary); padding: 0 10px 9px 0; cursor: pointer; white-space: nowrap; }
+.ncm-tmtabs__acct .ncm-term__avatar { width: 20px; height: 20px; font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-tmtabs__acct > i { font-size: calc(8px * var(--ncm-text-scale, 1)); opacity: .6; }
+/* The dropdown is a sibling of the bar (the bar is an x-scroller and would clip it). */
+.ncm-tmtabs__acdrop { top: 42px; left: 14px; right: auto; width: min(320px, calc(100% - 28px)); z-index: 40; }
+.ncm-tmtabs__out { margin-left: auto; align-self: center; padding: 6px 8px 10px; color: var(--ncm-text-secondary); cursor: pointer; font-size: calc(12px * var(--ncm-text-scale, 1)); }
+.ncm-tmtabs__out:hover { color: var(--ncm-primary); }
+.ncm-tmtty__lnk { color: var(--ncm-primary); cursor: pointer; text-decoration: underline dotted; }
+.ncm-tmtabs__tab { position: relative; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); letter-spacing: 2px; text-transform: uppercase; color: var(--ncm-text-secondary); padding: 8px 16px 7px; cursor: pointer; white-space: nowrap; clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); border-top: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); transition: background var(--ncm-term-fast) ease, color var(--ncm-term-fast) ease; }
+.ncm-tmtabs__tab:hover { color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-text-primary) 8%, transparent); }
+.ncm-tmtabs__tab i { margin-right: 6px; }
+.ncm-tmtabs__tab b { font-weight: 400; opacity: .7; margin-left: 6px; }
+.ncm-tmtabs__tab.is-on { color: var(--ncm-bg-deep); background: var(--ncm-primary); font-weight: 700; }
+.ncm-tmtabs__tab.is-on b { opacity: .85; }
+.ncm-tmtabs__tab--files { margin-left: auto; }
+.ncm-tmtabs__panes { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
+.ncm-tmtabs__list { border-right: 1px solid color-mix(in srgb, var(--ncm-primary) 20%, transparent); display: flex; flex-direction: column; min-height: 0; padding: 8px 10px; overflow: hidden; }
+.ncm-tmtabs__list .ncm-term__fs-tree { flex: 1 1 auto; }
+.ncm-tmtabs__rows { flex: 1; min-height: 0; }
+/* the row skeleton from terminal.css applies; the tabs skin cuts its corner */
+.ncm-tmtabs__rows .ncm-term__row { clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); border-radius: 0; }
+.ncm-tmtabs__detail { min-width: 0; }
+@container (max-width: 640px) { .ncm-tmtabs__panes { grid-template-columns: 1fr; } .ncm-tmtabs__list { display: none; } }
+
+/* ═══════════════ TTY ═══════════════ */
+.ncm-tmtty { font-family: var(--ncm-font-mono); font-size: calc(13px * var(--ncm-text-scale, 1)); line-height: 1.55; color: var(--ncm-primary); background: var(--ncm-bg-deep); padding: 10px 16px 8px; }
+.ncm-tmtty__scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-tmtty__ln { white-space: pre-wrap; }
+.ncm-tmtty__p { color: var(--ncm-text-secondary); white-space: nowrap; }
+.ncm-tmtty__cmd { color: var(--ncm-text-primary); }
+.ncm-tmtty__dim { color: color-mix(in srgb, var(--ncm-primary) 60%, var(--ncm-text-secondary)); }
+.ncm-tmtty__dim b { color: var(--ncm-text-primary); font-weight: 700; }
+.ncm-tmtty__hd { color: var(--ncm-accent); letter-spacing: 1px; }
+.ncm-tmtty__lock { color: var(--ncm-accent); }
+.ncm-tmtty__grid { display: grid; grid-template-columns: 3ch minmax(0, 22ch) minmax(0, 12ch) minmax(0, 1fr) minmax(0, 14ch); gap: 0 1.5ch; align-items: baseline; }
+/* the FILES listing: name takes the room, size + modified are fixed (a date+time is 16ch) */
+.ncm-tmtty__grid--f { grid-template-columns: 3ch minmax(0, 1fr) minmax(0, 12ch) 7ch 17ch; }
+.ncm-tmtty__grid > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-tmtty__row { cursor: pointer; padding: 1px 4px; margin: 0 -4px; position: relative; }
+.ncm-tmtty__row:hover { background: color-mix(in srgb, var(--ncm-primary) 12%, transparent); }
+.ncm-tmtty__row.is-sel { background: var(--ncm-primary); color: var(--ncm-bg-deep); }
+.ncm-tmtty__row.is-sel .ncm-tmtty__dim, .ncm-tmtty__row.is-sel .ncm-tmtty__lock { color: var(--ncm-bg-deep); opacity: .8; }
+.ncm-tmtty__row.is-new > span:first-child::after { content: '*'; color: var(--ncm-accent); margin-left: 2px; }
+.ncm-tmtty__row.is-locked { opacity: .6; cursor: not-allowed; }
+.ncm-tmtty__out { padding: 8px 0 0 !important; margin-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--ncm-primary) 35%, transparent); overflow: visible !important; }
+.ncm-tmtty__out .ncm-term__subject { font-family: var(--ncm-font-mono); }
+.ncm-tmtty__in { flex: 0 0 auto; display: flex; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--ncm-primary) 25%, transparent); margin-top: 6px; }
+.ncm-app input.ncm-tmtty__cmd-in { flex: 1 1 auto; min-width: 0; height: calc(22px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 0 !important; padding: 0 4px !important; background: transparent !important; border: 0 !important; box-shadow: none !important; outline: none !important; font-family: var(--ncm-font-mono) !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; color: var(--ncm-text-primary) !important; caret-color: var(--ncm-primary); }
+.ncm-tmtty__help { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); letter-spacing: .5px; white-space: nowrap; }
+.ncm-tmtty__gm { display: inline-flex !important; width: auto !important; margin: 0 !important; padding: 2px 8px !important; }
+.ncm-app .ncm-tmtty button.ncm-term__gm-add { width: auto; }
+
+/* ═══════════════ DESKTOP ═══════════════ */
+.ncm-tmdesk { overflow: hidden; background: radial-gradient(120% 90% at 70% 20%, color-mix(in srgb, var(--ncm-primary) 18%, var(--ncm-bg-deep)), var(--ncm-bg-deep) 60%); }
+.ncm-tmdesk::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(color-mix(in srgb, var(--ncm-primary) 7%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--ncm-primary) 7%, transparent) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+.ncm-tmdesk__icons { position: absolute; left: 14px; top: 14px; bottom: 50px; width: 196px; display: grid; grid-template-columns: repeat(2, 88px); grid-auto-rows: min-content; gap: 10px 8px; align-content: start; overflow-y: auto; overflow-x: hidden; z-index: 1; padding-right: 4px; }
+.ncm-tmdesk__icon { position: relative; width: 88px; text-align: center; cursor: pointer; padding: 6px 2px; border-radius: 4px; transition: background var(--ncm-term-fast) ease; }
+.ncm-tmdesk__icon:hover { background: color-mix(in srgb, var(--ncm-text-primary) 8%, transparent); }
+.ncm-tmdesk__icon.is-on { background: color-mix(in srgb, var(--ncm-primary) 22%, transparent); outline: 1px solid color-mix(in srgb, var(--ncm-primary) 55%, transparent); }
+.ncm-tmdesk__icon.is-locked { cursor: not-allowed; }
+.ncm-tmdesk__icon i { font-size: calc(28px * var(--ncm-text-scale, 1)); color: var(--ncm-primary); display: block; margin-bottom: 5px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+.ncm-tmdesk__icon--drive i { color: var(--ncm-text-secondary); }
+.ncm-tmdesk__icon--file i { color: var(--ct-c, var(--ncm-secondary)); }
+.ncm-tmdesk__icon.is-locked i { color: var(--ncm-accent); }
+.ncm-tmdesk__icon span { display: block; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); text-shadow: 0 1px 3px rgba(0,0,0,.9); line-height: 1.25; word-break: break-word; }
+.ncm-tmdesk__icon small { display: block; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); text-shadow: 0 1px 3px rgba(0,0,0,.9); }
+.ncm-tmdesk__badge { position: absolute; top: 2px; right: 14px; background: var(--ncm-danger); color: var(--ncm-bg-deep, #0a0a0f); font: 700 calc(9px * var(--ncm-text-scale, 1))/1 var(--ncm-font-mono); padding: 2px 5px; border-radius: 8px; }
+.ncm-tmdesk__badge--new { background: var(--ncm-success); color: var(--ncm-bg-deep); }
+.ncm-tmdesk__win { position: absolute; left: 226px; top: 16px; right: 16px; bottom: 54px; display: flex; flex-direction: column; background: var(--ncm-bg-base); border: 1px solid color-mix(in srgb, var(--ncm-primary) 45%, transparent); box-shadow: 0 18px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.6); border-radius: 4px; overflow: hidden; z-index: 2; }
+.ncm-tmdesk__win-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: color-mix(in srgb, var(--ncm-primary) 14%, var(--ncm-bg-deep)); border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 35%, transparent); font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); letter-spacing: .5px; flex: 0 0 auto; }
+.ncm-tmdesk__win-app { color: var(--ncm-primary); }
+.ncm-tmdesk__win-sync { margin-left: 8px; color: var(--ncm-accent); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-tmdesk__win-ctl { margin-left: auto; display: flex; gap: 6px; }
+.ncm-tmdesk__win-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; background: color-mix(in srgb, var(--ncm-text-muted) 60%, transparent); }
+.ncm-tmdesk__win-dot--x { background: var(--ncm-danger); cursor: pointer; }
+.ncm-tmdesk__win-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1fr); }
+.ncm-tmdesk__win-list { border-right: 1px solid var(--ncm-border); overflow-y: auto; overflow-x: hidden; padding: 6px; display: flex; flex-direction: column; gap: 3px; }
+.ncm-tmdesk__row { padding: 7px 9px; border-radius: 4px; cursor: pointer; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); flex: 0 0 auto; }
+.ncm-tmdesk__row:hover { background: color-mix(in srgb, var(--ncm-text-primary) 5%, transparent); }
+.ncm-tmdesk__row b { display: block; font-family: var(--ncm-font-body); font-size: calc(12.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-tmdesk__row b i { color: var(--ct-c, var(--ncm-secondary)); font-size: calc(11px * var(--ncm-text-scale, 1)); margin-right: 4px; }
+.ncm-tmdesk__row--dir b i { color: var(--ncm-text-muted); }
+.ncm-tmdesk__row.is-on { background: color-mix(in srgb, var(--ncm-primary) 16%, transparent); }
+.ncm-tmdesk__row.is-new b::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ncm-primary); margin-right: 6px; vertical-align: middle; }
+.ncm-tmdesk__row.is-locked { opacity: .6; cursor: not-allowed; }
+.ncm-tmdesk__lock { color: var(--ncm-danger) !important; }
+.ncm-tmdesk__empty { padding: 18px 8px; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); text-align: center; }
+.ncm-tmdesk__gm { margin-top: auto !important; }
+.ncm-tmdesk__detail { min-width: 0; }
+/* The desktop window is narrower than the classic detail pane: the listing drops OWNER and
+   tightens TYPE / MODIFIED so NAME keeps room (table-layout: fixed gives the remainder to NAME). */
+.ncm-tmdesk__detail .ncm-term__fs-table col.c-type { width: calc(92px * var(--ncm-text-scale, 1)); }
+.ncm-tmdesk__detail .ncm-term__fs-table col.c-size { width: calc(58px * var(--ncm-text-scale, 1)); }
+.ncm-tmdesk__detail .ncm-term__fs-table col.c-mod { width: calc(112px * var(--ncm-text-scale, 1)); }
+.ncm-tmdesk__detail .ncm-term__fs-table col.c-own, .ncm-tmdesk__detail .ncm-term__fs-table th:nth-child(5), .ncm-tmdesk__detail .ncm-term__fs-table td:nth-child(5) { display: none; }
+.ncm-tmdesk__detail .ncm-term__fs-table th:first-child, .ncm-tmdesk__detail .ncm-term__fs-table td:first-child { padding-left: 10px; }
+.ncm-tmdesk__task { position: absolute; left: 0; right: 0; bottom: 0; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: color-mix(in srgb, var(--ncm-bg-deep) 88%, transparent); border-top: 1px solid color-mix(in srgb, var(--ncm-primary) 35%, transparent); backdrop-filter: blur(4px); font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); z-index: 3; }
+.ncm-tmdesk__start { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; background: var(--ncm-primary); color: var(--ncm-bg-deep); font-weight: 700; letter-spacing: 1px; border-radius: 3px; white-space: nowrap; }
+.ncm-tmdesk__taskbtn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid color-mix(in srgb, var(--ncm-primary) 45%, transparent); border-radius: 3px; color: var(--ncm-text-primary); cursor: pointer; white-space: nowrap; }
+.ncm-tmdesk__taskbtn.is-on { background: color-mix(in srgb, var(--ncm-primary) 10%, transparent); }
+.ncm-tmdesk__taskbtn:hover { border-color: var(--ncm-primary); }
+.ncm-tmdesk__acct { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--ncm-text-primary); position: relative; }
+.ncm-tmdesk__acct .ncm-term__avatar { width: 20px; height: 20px; font-size: calc(9px * var(--ncm-text-scale, 1)); }
+/* the switcher lives INSIDE the account chip and opens straight up from it */
+.ncm-tmdesk__acct .ncm-tmdesk__acdrop { top: auto; bottom: calc(100% + 12px); left: 0; right: auto; width: 300px; cursor: default; }
+.ncm-tmdesk__clock { margin-left: auto; color: var(--ncm-text-primary); white-space: nowrap; }
+@container (max-width: 640px) { .ncm-tmdesk__icons { width: 100px; grid-template-columns: 88px; } .ncm-tmdesk__win { left: 120px; } .ncm-tmdesk__win-body { grid-template-columns: 1fr; } .ncm-tmdesk__win-list { display: none; } }

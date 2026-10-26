@@ -16,6 +16,10 @@ import { resolveMember, worldAdapter } from '../../../utils/participants.js';
 import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
 import { gatherResetPlan, runFactoryReset } from '../../../core/FactoryReset.js';
+import {
+  NON_PERSON_ACTOR_TYPES, buildDirectoryRows, directoryToCsv, directoryToJson,
+  parseDirectoryImport, planDirectoryImport, domainsToJson, parseDomainsImport,
+} from '../../../utils/emailDirectory.js';
 
 export class ToolsTab extends BaseTab {
 
@@ -527,6 +531,34 @@ export class ToolsTab extends BaseTab {
         <button type="button" class="ncm-domain-dialog__add" id="ncm-add-domain">
           <i class="fas fa-plus"></i> Add Domain
         </button>
+        <div class="ncm-domain-dialog__tools">
+          <button type="button" class="ncm-domain-dialog__tool" id="ncm-dom-export" title="Download this domain list as JSON">
+            <i class="fas fa-file-export"></i> Export domains
+          </button>
+          <button type="button" class="ncm-domain-dialog__tool" id="ncm-dom-import" title="Load a domain list (JSON, or one domain per line) into this dialog — Save keeps it">
+            <i class="fas fa-file-import"></i> Import domains
+          </button>
+        </div>
+
+        <div class="ncm-domain-dialog__divider"></div>
+
+        <div class="ncm-domain-dialog__list-label">Addresses</div>
+        <div class="ncm-domain-dialog__hint ncm-domain-dialog__hint--block">
+          Every registered character address and every master-contact address.
+          Import a CSV or JSON of <code>name, email</code> to assign addresses in bulk —
+          you see the whole plan before anything is written.
+        </div>
+        <div class="ncm-domain-dialog__tools">
+          <button type="button" class="ncm-domain-dialog__tool" id="ncm-dir-export-csv" title="Download every address as CSV (edit it in a spreadsheet, import it back)">
+            <i class="fas fa-file-csv"></i> Export CSV
+          </button>
+          <button type="button" class="ncm-domain-dialog__tool" id="ncm-dir-export-json" title="Download every address as JSON">
+            <i class="fas fa-file-code"></i> Export JSON
+          </button>
+          <button type="button" class="ncm-domain-dialog__tool ncm-domain-dialog__tool--primary" id="ncm-dir-import" title="Assign addresses from a CSV / JSON file">
+            <i class="fas fa-file-import"></i> Import addresses…
+          </button>
+        </div>
 
         <div class="ncm-domain-dialog__divider"></div>
 
@@ -589,14 +621,235 @@ export class ToolsTab extends BaseTab {
         html.find('.ncm-domain-row__clear').on('click', function () {
           this.closest('.ncm-domain-row')?.remove();
         });
+
+        // ── Domain list export / import (operates on THIS dialog's rows; Save persists) ──
+        const readDialogDomains = () => ({
+          defaultDomain: html.find('#ncm-default-domain').val()?.trim() || '',
+          domains: html.find('.ncm-domain-row [data-field="domain"]').toArray().map(i => i.value?.trim()).filter(Boolean),
+          allowCustom: html.find('#ncm-allow-custom').is(':checked'),
+        });
+        html.find('#ncm-dom-export').on('click', () => {
+          const cfg = readDialogDomains();
+          this._downloadText(`ncm-email-domains-${new Date().toISOString().slice(0, 10)}.json`, domainsToJson(cfg), 'application/json');
+          ui.notifications.info(`NCM | Exported ${cfg.domains.length + 1} domain${cfg.domains.length ? 's' : ''}.`);
+        });
+        html.find('#ncm-dom-import').on('click', async () => {
+          const text = await this._pickTextFile('.json,.txt,.csv');
+          if (text == null) return;
+          const parsed = parseDomainsImport(text);
+          if (parsed.error) return ui.notifications.error(`NCM | ${parsed.error}`);
+          if (parsed.defaultDomain) html.find('#ncm-default-domain').val(parsed.defaultDomain);
+          if (parsed.allowCustom != null) html.find('#ncm-allow-custom').prop('checked', parsed.allowCustom);
+          const current = readDialogDomains().domains.map(d => d.toLowerCase());
+          let added = 0;
+          for (const d of parsed.domains) {
+            if (current.includes(d) || d === (parsed.defaultDomain || readDialogDomains().defaultDomain).toLowerCase()) continue;
+            const temp = document.createElement('div');
+            temp.innerHTML = _buildRow(d).trim();
+            const row = temp.firstElementChild;
+            list.appendChild(row);
+            row.querySelector('.ncm-domain-row__clear')?.addEventListener('click', () => row.remove());
+            current.push(d);
+            added++;
+          }
+          ui.notifications.info(`NCM | Loaded ${added} new domain${added !== 1 ? 's' : ''} — press Save to keep them.`);
+        });
+
+        // ── Address directory export / import ──
+        html.find('#ncm-dir-export-csv').on('click', () => this._exportDirectory('csv'));
+        html.find('#ncm-dir-export-json').on('click', () => this._exportDirectory('json'));
+        html.find('#ncm-dir-import').on('click', () => this._importDirectory());
       },
     }, {
       classes: ['ncm-pick-dialog'],
-      width: 460,
+      width: 480,
       height: 'auto',
     });
 
     dialog.render(true);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Address directory — export / import (2026-10-24)
+  //  The rules live in scripts/utils/emailDirectory.js (pure); this side
+  //  builds the world adapter, shows the plan, and does the writes.
+  // ═══════════════════════════════════════════════════════════════
+
+  /** Every person-actor + every master contact, in the pure module's shape. */
+  _directoryWorld() {
+    const actors = (game.actors?.contents ?? [])
+      .filter(a => a && !NON_PERSON_ACTOR_TYPES.has(a.type))
+      .map(a => ({
+        id: a.id,
+        name: a.name,
+        type: a.type,
+        email: a.getFlag?.(MODULE_ID, 'email') || '',
+        hasPlayerOwner: !!a.hasPlayerOwner,
+      }));
+    const contacts = (this.masterContactService?.getAll?.() ?? [])
+      .map(c => ({ id: c.id, name: c.name, email: c.email || '', actorId: c.actorId || null }));
+    return { actors, contacts };
+  }
+
+  _exportDirectory(format) {
+    const rows = buildDirectoryRows(this._directoryWorld());
+    if (!rows.length) return ui.notifications.warn('NCM | No addresses to export yet — nobody has an address.');
+    const stamp = new Date().toISOString().slice(0, 10);
+    if (format === 'json') this._downloadText(`ncm-addresses-${stamp}.json`, directoryToJson(rows), 'application/json');
+    else this._downloadText(`ncm-addresses-${stamp}.csv`, directoryToCsv(rows), 'text/csv');
+    ui.notifications.info(`NCM | Exported ${rows.length} address${rows.length !== 1 ? 'es' : ''}.`);
+  }
+
+  async _importDirectory() {
+    const text = await this._pickTextFile('.csv,.tsv,.txt,.json');
+    if (text == null) return;
+    const parsed = parseDirectoryImport(text);
+    if (parsed.error) return ui.notifications.error(`NCM | ${parsed.error}`);
+    if (!parsed.rows.length) return ui.notifications.warn('NCM | The file has no rows with a name or an address.');
+
+    const { plan, summary } = planDirectoryImport(parsed.rows, this._directoryWorld());
+    const writes = summary.updateActor + summary.updateContact + summary.createContact;
+
+    const ACT = {
+      'update-actor':   { label: 'Character',   cls: 'actor' },
+      'update-contact': { label: 'Contact',     cls: 'contact' },
+      'create-contact': { label: 'New contact', cls: 'create' },
+      'skip':           { label: 'Skip',        cls: 'skip' },
+    };
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    const rowsHtml = plan.map(p => {
+      const a = ACT[p.action];
+      const notes = [];
+      if (p.action === 'skip') notes.push(`<span class="ncm-dirimp__why">${esc(p.reason)}</span>`);
+      else {
+        if (p.previous) notes.push(`<span class="ncm-dirimp__prev">was ${esc(p.previous)}</span>`);
+        if (p.also) notes.push(`<span class="ncm-dirimp__also">also ${p.also.contactId ? 'contact' : 'character'} ${esc(p.also.name)}</span>`);
+      }
+      for (const w of p.warnings) notes.push(`<span class="ncm-dirimp__warn"><i class="fas fa-triangle-exclamation"></i> ${esc(w)}</span>`);
+      return `<tr class="ncm-dirimp__row ncm-dirimp__row--${a.cls}">
+        <td class="ncm-dirimp__n">${p.line}</td>
+        <td class="ncm-dirimp__name">${esc(p.targetName || p.name || '—')}</td>
+        <td class="ncm-dirimp__mail">${esc(p.email || '—')}</td>
+        <td><span class="ncm-dirimp__act ncm-dirimp__act--${a.cls}">${a.label}</span></td>
+        <td class="ncm-dirimp__notes">${notes.join('')}</td>
+      </tr>`;
+    }).join('');
+
+    const content = `
+      <div class="ncm-dirimp">
+        <div class="ncm-dirimp__sum">
+          <span><b>${summary.updateActor}</b> character${summary.updateActor !== 1 ? 's' : ''}</span>
+          <span><b>${summary.updateContact}</b> contact${summary.updateContact !== 1 ? 's' : ''}</span>
+          <span><b>${summary.createContact}</b> new contact${summary.createContact !== 1 ? 's' : ''}</span>
+          <span class="ncm-dirimp__sum-skip"><b>${summary.skip}</b> skipped</span>
+          ${summary.warnings ? `<span class="ncm-dirimp__sum-warn"><i class="fas fa-triangle-exclamation"></i> <b>${summary.warnings}</b> warning${summary.warnings !== 1 ? 's' : ''}</span>` : ''}
+        </div>
+        <div class="ncm-dirimp__scroll">
+          <table class="ncm-dirimp__table">
+            <thead><tr><th>#</th><th>Who</th><th>Address</th><th>Action</th><th>Notes</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+        <div class="ncm-dirimp__foot">
+          ${writes ? 'Nothing is written until you press Apply. Mail already sent keeps the address it was stamped with.' : 'Nothing to write — every row was skipped (see Notes).'}
+        </div>
+      </div>`;
+
+    const buttons = {
+      cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+    };
+    if (writes) {
+      buttons.apply = {
+        icon: '<i class="fas fa-check"></i>',
+        label: `Apply ${writes} change${writes !== 1 ? 's' : ''}`,
+        callback: () => this._applyDirectoryPlan(plan),
+      };
+    }
+    adminDialog({
+      title: `Import Addresses — ${parsed.format.toUpperCase()}, ${parsed.rows.length} row${parsed.rows.length !== 1 ? 's' : ''}`,
+      content,
+      buttons,
+      default: writes ? 'apply' : 'cancel',
+    }, { classes: ['ncm-pick-dialog', 'ncm-dirimp-dialog'], width: 640, height: 'auto' }).render(true);
+  }
+
+  /** Do the writes the plan promised. Characters through EmailService (the one writer, warns on a taken address); contacts through MasterContactService. */
+  async _applyDirectoryPlan(plan) {
+    const emailService = game.nightcity?.emailService;
+    const mcs = this.masterContactService;
+    const res = { actors: 0, contacts: 0, created: 0, failed: [] };
+    const setActor = async (actorId, email) => {
+      const a = game.actors.get(actorId);
+      if (!a) throw new Error('character no longer exists');
+      if (emailService?.forceSetEmail) await emailService.forceSetEmail(a, email);
+      else await a.setFlag(MODULE_ID, 'email', email);
+      res.actors++;
+    };
+    const setContact = async (contactId, email) => {
+      const r = await mcs?.updateContact?.(contactId, { email });
+      if (!r?.success) throw new Error(r?.error || 'contact update failed');
+      res.contacts++;
+    };
+    for (const p of plan) {
+      if (p.action === 'skip') continue;
+      try {
+        if (p.action === 'update-actor') {
+          await setActor(p.targetId, p.email);
+          if (p.also?.contactId) await setContact(p.also.contactId, p.email);
+        } else if (p.action === 'update-contact') {
+          await setContact(p.targetId, p.email);
+          if (p.also?.actorId) await setActor(p.also.actorId, p.email);
+        } else if (p.action === 'create-contact') {
+          const r = await mcs?.addContact?.({ name: p.name, email: p.email, type: 'npc', notes: 'Created by the address import (Admin → Tools → Email Domains).' });
+          if (!r?.success) throw new Error(r?.error || 'contact create failed');
+          res.created++;
+        }
+      } catch (err) {
+        res.failed.push(`${p.targetName || p.name || p.email}: ${err?.message || err}`);
+        log.warn(`ToolsTab: address import row ${p.line} failed — ${err?.message || err}`);
+      }
+    }
+    const parts = [];
+    if (res.actors) parts.push(`${res.actors} character${res.actors !== 1 ? 's' : ''}`);
+    if (res.contacts) parts.push(`${res.contacts} contact${res.contacts !== 1 ? 's' : ''}`);
+    if (res.created) parts.push(`${res.created} new contact${res.created !== 1 ? 's' : ''}`);
+    ui.notifications.info(`NCM | Addresses applied: ${parts.join(', ') || 'nothing'}.`);
+    if (res.failed.length) ui.notifications.warn(`NCM | ${res.failed.length} row${res.failed.length !== 1 ? 's' : ''} failed — ${res.failed.join('; ')}`, { permanent: true });
+    this.app?.render?.();
+  }
+
+  /** Blob download (the ContactsTab export pattern). */
+  _downloadText(filename, text, mime = 'text/plain') {
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Hidden file input → the file's text, or null when the picker was dismissed. */
+  _pickTextFile(accept) {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = accept;
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      let settled = false;
+      const done = (v) => { if (settled) return; settled = true; input.remove(); resolve(v); };
+      input.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return done(null);
+        try { done(await file.text()); }
+        catch (err) { ui.notifications.error(`NCM | Could not read the file: ${err?.message || err}`); done(null); }
+      });
+      // A dismissed picker fires no event; release the promise a beat after focus
+      // returns (a chosen file's `change` lands well inside that beat and wins).
+      window.addEventListener('focus', () => setTimeout(() => done(null), 1500), { once: true });
+      input.click();
+    });
   }
 
   /**

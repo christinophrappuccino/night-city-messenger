@@ -20,6 +20,8 @@ import { BUILTIN_EXAMPLES, getEntryTemplates, saveEntryTemplate, deleteEntryTemp
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 import { showNamePicker, documentEntries, folderPathOf } from '../../utils/namePicker.js';
 import { RICH_TEXT_PALETTE, cleanHtml, htmlToBlocks, pasteToBlocks, pasteToHtml, isSimplePaste, splitBlockParagraphs } from '../../utils/richText.js';
+import { parseCsv } from '../../utils/csv.js';
+import { SHARED_SCOPE, normalizeFolderPath } from '../../utils/terminalFiles.js';
 
 /** Content type pill definitions */
 const TYPE_PILLS = [
@@ -294,6 +296,7 @@ export class DataShardComposer extends BaseApplication {
       chatSeen: DataShardComposer._onChatSeen,
       chatBrowsePhoto: DataShardComposer._onChatBrowsePhoto,
       envSeg: DataShardComposer._onEnvSeg,
+      storeSeg: DataShardComposer._onStoreSeg,
       exfState: DataShardComposer._onExfState,
       exfMode: DataShardComposer._onExfMode,
       galSeg: DataShardComposer._onGalSeg,
@@ -540,6 +543,7 @@ export class DataShardComposer extends BaseApplication {
 
       // Envelope (#37) — mail vs file, + the per-entry exfil override grid.
       env: this._envContext(),
+      fileStore: this._fileStoreContext(),
       exfil: this._exfilOverrideContext(),
 
       // Scalar edit pre-fills (repeatable rows are injected in _onRender from
@@ -690,6 +694,11 @@ export class DataShardComposer extends BaseApplication {
     // ("Timestamp" for mail, "Modified" for a file) — the template ships both
     // halves as "Timestamp|Modified" and this picks one without a re-render.
     this._syncEnvLabels(el.querySelector('[name="envelope"]')?.value || 'mail');
+    // File repository (2026-10-25): picking "＋ New folder…" in a Folder select
+    // reveals the name box; both selects + the box stay in step with the
+    // Store-on control (storeSeg) without a re-render.
+    el.querySelectorAll('[data-store-of]').forEach(s => s.addEventListener('change', () => { this._syncStoreNewdir(); this._syncCmpChips(); }));
+    this._syncStoreNewdir();
 
     // ─── Repeatable rows: inject edit pre-fill, else seed one blank row ───
     const cd0 = (this.editData?.contentType === this._selectedType) ? (this.editData.contentData ?? {}) : {};
@@ -1023,6 +1032,7 @@ export class DataShardComposer extends BaseApplication {
     const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
     // ENVELOPE (#37) — a FILE summarizes as filename · owner-node, not a sender.
     const isFile = el.querySelector('[name="envelope"]')?.value === 'file';
+    set('env', isFile ? '<i class="fas fa-file-lines"></i> FILE' : '<i class="fas fa-envelope"></i> MESSAGE');
     if (isFile) {
       const fname = el.querySelector('[name="fileName"]')?.value?.trim()
         || el.querySelector('[name="fileName"]')?.placeholder || 'file';
@@ -1034,6 +1044,13 @@ export class DataShardComposer extends BaseApplication {
     set('when', `<i class="fas fa-clock"></i> ${esc(el.querySelector('.ncm-ctp-trigger__value')?.textContent?.trim() || '')}`);
     const foldSel = el.querySelector('[name="entryFolder"]');
     if (foldSel) set('folder', `<i class="fas fa-folder"></i> ${esc(foldSel.selectedOptions[0]?.textContent || 'Inbox')}`);
+    if (isFile && el.querySelector('[name="fileScope"]')) {
+      const scope = el.querySelector('[name="fileScope"]').value === 'shared' ? 'shared' : 'account';
+      const sel = el.querySelector(`[data-store-of="${scope}"]`);
+      const nw = el.querySelector('[data-file-newdir]')?.value?.trim();
+      const where = sel?.value === '__new__' ? (nw ? `/${nw} (new)` : 'new folder…') : (sel?.selectedOptions[0]?.textContent || '/');
+      set('folder', `<i class="fas ${scope === 'shared' ? 'fa-hard-drive' : 'fa-user'}"></i> ${esc(scope)} · ${esc(where)}`);
+    }
     const encBox = el.querySelector('[name="encrypted"]');
     const enc = !!encBox?.checked;
     const encChip = set('enc', enc
@@ -3722,9 +3739,20 @@ export class DataShardComposer extends BaseApplication {
     entryData.envelope = data.envelope === 'file' ? 'file' : 'mail';
     if (entryData.envelope === 'file') {
       const owner = (data.fileOwner || '').trim();
+      // File repository (2026-10-25, terminal targets): the folder comes from
+      // the Store-on + Folder controls, never a typed path. A "＋ New folder…"
+      // pick carries its name in fileFolderNew; _persistEntry registers it.
+      let path = (data.filePath || '').trim();
+      if (this._isTerminal) {
+        const scope = data.fileScope === 'shared' ? 'shared' : 'account';
+        const sel = scope === 'shared' ? data.fileFolderShared : data.fileFolderAccount;
+        path = sel === '__new__' ? (data.fileFolderNew || '') : (sel || '');
+        entryData.accountId = scope === 'shared' ? SHARED_SCOPE : (this._target.homeAccountId || this._target.accountId);
+        if (sel === '__new__' && validate && !normalizeFolderPath(path)) { ui.notifications.warn('Name the new folder, or pick an existing one.'); return null; }
+      }
       entryData.file = {
         filename: (data.fileName || '').trim(),
-        path: (data.filePath || '').trim(),
+        path: this._isTerminal ? normalizeFolderPath(path) : path,
         owner,
         size: (data.fileSize || '').trim(),
         modified: timestamp,
@@ -3732,6 +3760,9 @@ export class DataShardComposer extends BaseApplication {
       if (owner) entryData.from = owner;
     } else {
       entryData.file = null;
+      // Mail composed from the shared volume's row lands on the home account
+      // when there is one — mail belongs to a login, files can be shared.
+      if (this._isTerminal) entryData.accountId = this._target.accountId === SHARED_SCOPE ? (this._target.homeAccountId || SHARED_SCOPE) : this._target.accountId;
     }
 
     // ── Per-entry exfil override (#37, terminal targets only) ──
@@ -4075,7 +4106,13 @@ export class DataShardComposer extends BaseApplication {
       return { success: true, label: typeLabel, edited: true };
     }
     let res;
-    if (this._isTerminal) res = await this.terminalService?.addAccountMessage(this._item, this._target.accountId, entryData);
+    if (this._isTerminal) {
+      // A folder picked as "＋ New folder…" exists once it holds a file, but
+      // registering it keeps it in the tree even if that file moves later.
+      const scope = entryData.accountId || this._target.accountId;
+      if (entryData.envelope === 'file' && entryData.file?.path) await this.terminalService?.saveFileFolder?.(this._item, { scope, path: entryData.file.path });
+      res = await this.terminalService?.addAccountMessage(this._item, scope, entryData);
+    }
     else res = await this.dataShardService?.addMessage(this._item, entryData);
     return res?.success ? { success: true, label: typeLabel } : { success: false, error: res?.error || 'save failed' };
   }
@@ -4391,30 +4428,12 @@ export class DataShardComposer extends BaseApplication {
   }
 
   /**
-   * Minimal RFC-4180 CSV parser: quoted fields, escaped quotes (""), CRLF.
-   * The delimiter (comma / semicolon / tab) is auto-detected from the first line.
+   * CSV → grid. The parser itself lives in `scripts/utils/csv.js` (shared with
+   * the email-directory import since 2026-10-24); this stays as the method the
+   * spreadsheet / records / calendar importers call.
    */
   _parseCsv(text) {
-    const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
-    const delim = [',', ';', '\t'].reduce((a, b) =>
-      (firstLine.split(b).length > firstLine.split(a).length ? b : a));
-    const rows = [];
-    let row = [], field = '', inQ = false;
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
-      if (inQ) {
-        if (ch === '"') {
-          if (text[i + 1] === '"') { field += '"'; i++; }
-          else inQ = false;
-        } else field += ch;
-      }
-      else if (ch === '"') inQ = true;
-      else if (ch === delim) { row.push(field); field = ''; }
-      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-      else if (ch !== '\r') field += ch;
-    }
-    if (field !== '' || row.length) { row.push(field); rows.push(row); }
-    return rows.filter(r => r.some(v => String(v).trim() !== ''));
+    return parseCsv(text);
   }
 
   /** Guess a column's type from its values (status > currency > number > text). */
@@ -5337,6 +5356,63 @@ export class DataShardComposer extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
   //  ENVELOPE (#37) — Show as MESSAGE / FILE + the exfil override grid
   // ═══════════════════════════════════════════════════════════
+
+  /**
+   * File repository (2026-10-25) — the Store-on / Folder view-model for a
+   * terminal target. Folders come from the live tree of each volume (the
+   * registry ∪ what files already sit in), so the select only ever offers
+   * folders that exist, plus "＋ New folder…". A shard target has none of
+   * this and keeps the plain path box.
+   */
+  _fileStoreContext() {
+    if (!this._isTerminal) return { isTerminal: false };
+    const svc = game.nightcity?.terminalService;
+    const t = this._target || {};
+    const home = (t.homeAccountId === undefined ? (t.accountId !== SHARED_SCOPE ? t.accountId : null) : t.homeAccountId) || null;
+    // The target's volume wins (an edit keeps the entry's own scope; a new file
+    // opened from the shared volume starts shared); no home account = shared only.
+    const scope = (t.accountId === SHARED_SCOPE || !home) ? 'shared' : 'account';
+    const cur = normalizeFolderPath(this.editData?.file?.path ?? t.folderPath ?? '');
+    const opts = (vol) => {
+      const dirs = svc?.buildFileTree?.(this._item, vol)?.dirs?.map(d => d.path) || [];
+      const list = ['', ...dirs].map(p => ({ value: p, label: p ? `/${p}` : '/ (root)', selected: p === cur }));
+      if (cur && !dirs.includes(cur)) list.push({ value: cur, label: `/${cur}`, selected: true });
+      list.push({ value: '__new__', label: '＋ New folder…', selected: false });
+      return list;
+    };
+    const acct = home ? svc?.getAccount?.(this._item, home) : null;
+    return {
+      isTerminal: true,
+      canAccount: !!home,
+      accountLabel: (acct?.username || 'THIS ACCOUNT').toUpperCase(),
+      scope, isShared: scope === 'shared', isAccount: scope === 'account',
+      accountOpts: home ? opts(home) : [],
+      sharedOpts: opts(SHARED_SCOPE),
+    };
+  }
+
+  /** Store-on segmented control → hidden input + the matching Folder select. */
+  static _onStoreSeg(event, target) {
+    const wrap = target.closest('[data-store-seg]');
+    const input = this.element?.querySelector('[name="fileScope"]');
+    if (!wrap || !input) return;
+    const val = target.dataset.val === 'shared' ? 'shared' : 'account';
+    input.value = val;
+    wrap.querySelectorAll('button').forEach(b => b.classList.toggle('is-on', b === target));
+    this.element.querySelectorAll('[data-store-of]').forEach(s => { s.style.display = s.dataset.storeOf === val ? '' : 'none'; });
+    this._syncStoreNewdir();
+    this._syncCmpChips();
+  }
+
+  /** The "new folder name" box shows only while the active Folder select says ＋ New folder…. */
+  _syncStoreNewdir() {
+    const el = this.element;
+    if (!el) return;
+    const scope = el.querySelector('[name="fileScope"]')?.value === 'shared' ? 'shared' : 'account';
+    const sel = el.querySelector(`[data-store-of="${scope}"]`);
+    const nw = el.querySelector('[data-file-newdir]');
+    if (nw) nw.style.display = sel?.value === '__new__' ? '' : 'none';
+  }
 
   /** Show-as segmented control → hidden input + DOM-only field swap. */
   static _onEnvSeg(event, target) {

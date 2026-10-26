@@ -145,5 +145,22 @@ globalThis.game.nightcity.masterContactService.addContact = async () => { throw 
 c = await reg({ from: 'q@nc.net' }, { id: 'npcQ', name: 'Q', hasPlayerOwner: false, items: [] });
 ok(c === null, 'directory write failure → send is not blocked');
 
+
+// ═══ _senderEmailFor — the directory beats the synthesized address (tester 2026-10-24: the GM
+// picked "example@ARK.com" from Send-as, the player saw example@nightcity.net) ═══
+const flags = { npc1: '' };
+const svcEmail = { _contactRepo: { getActorEmail: (id) => flags[id] || '' } };
+const sendFrom = (data, actor) => MessageService.prototype._senderEmailFor.call(svcEmail, data, actor);
+ok(sendFrom({ fromActorId: 'npc1' }, actors.get('npc1')) === 'rogue@afterlife.nc',
+  'actor-backed pick with NO flag → the directory entry linked to the actor, not name@nightcity.net');
+ok(sendFrom({ fromActorId: 'npc1', fromContactId: 'mc2' }, actors.get('npc1')) === 'alerts@localhost',
+  'an explicit fromContactId wins over the actor link');
+flags.npc1 = 'rogue@registered.nc';
+ok(sendFrom({ fromActorId: 'npc1' }, actors.get('npc1')) === 'rogue@registered.nc',
+  'a registered Email-Setup flag still beats the directory (same order as _recipientEmailFor)');
+flags.npc1 = '';
+ok(sendFrom({ fromActorId: 'npc2' }, actors.get('npc2')) === '',
+  'no flag, no directory entry → empty so the caller synthesizes');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

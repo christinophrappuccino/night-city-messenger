@@ -321,7 +321,7 @@
     <div class="ncm-viewer__tab-list ncm-scrollbar">
       {{#if shardItems.length}}
         {{#each shardItems}}
-          <div class="ncm-viewer__shard-item" data-action="open-shard" data-item-id="{{this.id}}"
+          <div class="ncm-viewer__shard-item" data-action="open-shard" data-item-id="{{this.id}}" data-item-uuid="{{this.uuid}}"
                data-shard-type="{{#if this.isReceived}}received{{else}}inventory{{/if}}"
                data-shard-encrypted="{{this.isEncrypted}}">
             <div class="ncm-viewer__shard-icon {{#if this.isReceived}}ncm-viewer__shard-icon--received{{/if}}">

@@ -11,10 +11,13 @@
  */
 
 import { BaseApplication } from '../BaseApplication.js';
-import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
+import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_MAILBOX_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
 import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound } from '../../utils/helpers.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
+import { buildContentContext } from './TerminalContentPanel.js';
+import { SHARED_SCOPE, normalizeFolderPath, parentPath, folderName } from '../../utils/terminalFiles.js';
+import { applyCrt, resolveCrt, crtPanelContext, wireCrtPanel } from '../../utils/crt.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
 const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
@@ -46,8 +49,23 @@ export class TerminalConfigApp extends BaseApplication {
    * at save when the terminal has none. Cleared on save/close/"palette only".
    */
   _presetKit = null;
+  /**
+   * Mailbox layout staged but not saved (2026-10-25). The layout TRAVELS WITH A
+   * THEME: a preset card brings its own (via the kit), a saved theme brings the
+   * one it was saved with, and a manual card pick lands here too so a re-render
+   * never snaps the Boot & Login card back to the kit's value. Save reads the
+   * hidden input the context fills from this; cleared on save / close.
+   */
+  _stagedMailboxStyle = null;
   // Accounts tab list controls (search / sort / pagination — 10 per page).
   _acctSearch = '';
+  // CONTENT blocks (2026-10-25): which volumes are unfolded, which folders are
+  // collapsed, which mail folders are open. The shared volume starts open.
+  _ctOpen = new Set([SHARED_SCOPE]);
+  _ctDirClosed = new Set();
+  _ctMailOpen = new Set();
+  _ctTab = new Map();          // accountId → 'mail' | 'files'
+  _ctFocusNewdir = null;
   _acctSort = 'name';
   _acctPage = 1;
   _acctSearchRefocus = false;
@@ -86,6 +104,8 @@ export class TerminalConfigApp extends BaseApplication {
       exportConfig: TerminalConfigApp._onExportConfig,
       importConfig: TerminalConfigApp._onImportConfig,
       browseBootImage: TerminalConfigApp._onBrowseBootImage,
+      browseBootVideo: TerminalConfigApp._onBrowseBootVideo,
+      clearBootVideo: TerminalConfigApp._onClearBootVideo,
       browseWallpaper: TerminalConfigApp._onBrowseWallpaper,
       generateBootLines: TerminalConfigApp._onGenerateBootLines,
       browseSsImage: TerminalConfigApp._onBrowseSsImage,
@@ -101,6 +121,20 @@ export class TerminalConfigApp extends BaseApplication {
       pickKeyItem: TerminalConfigApp._onPickKeyItem,
       folderAdd: TerminalConfigApp._onFolderAdd,
       folderRemove: TerminalConfigApp._onFolderRemove,
+      // Content blocks — the file repository (2026-10-25).
+      ctToggle: TerminalConfigApp._onCtToggle,
+      ctTab: TerminalConfigApp._onCtTab,
+      ctDirToggle: TerminalConfigApp._onCtDirToggle,
+      ctMailToggle: TerminalConfigApp._onCtMailToggle,
+      ctFolderFocus: TerminalConfigApp._onCtFolderFocus,
+      ctFolderAddSub: TerminalConfigApp._onCtFolderAddSub,
+      ctFolderRename: TerminalConfigApp._onCtFolderRename,
+      ctFolderRemove: TerminalConfigApp._onCtFolderRemove,
+      ctGateAccounts: TerminalConfigApp._onCtGateAccounts,
+      ctAdd: TerminalConfigApp._onCtAdd,
+      ctEntryEdit: TerminalConfigApp._onCtEntryEdit,
+      ctEntryDelete: TerminalConfigApp._onCtEntryDelete,
+      ctOpenTerminal: TerminalConfigApp._onCtOpenTerminal,
     },
   }, { inplace: false });
 
@@ -166,6 +200,7 @@ export class TerminalConfigApp extends BaseApplication {
     const kit = this._presetKit ? TERMINAL_PRESETS[this._presetKit] : null;
     const bootCfg = kit?.boot ? { ...(cfg.boot || {}), ...kit.boot } : (cfg.boot || {});
     const loginStyleKey = kit?.loginStyle || cfg.loginStyle || 'cards';
+    const mailboxStyleKey = this._currentMailboxStyle();
     const loginCfg = kit?.login ? { ...(cfg.login || {}), ...kit.login } : (cfg.login || {});
     const ssCfg = kit?.screensaver ? { ...(cfg.screensaver || {}), ...kit.screensaver } : (cfg.screensaver || {});
     const fnCfg = kit?.folderNames ? { ...(cfg.folderNames || {}), ...kit.folderNames } : (cfg.folderNames || {});
@@ -173,6 +208,9 @@ export class TerminalConfigApp extends BaseApplication {
     const savedThemes = this._getTermThemes().map((entry, i) => ({
       index: i,
       name: entry.name,
+      // The layout the theme was saved with (legacy entries have none → applying leaves the layout alone).
+      layoutIcon: TERMINAL_MAILBOX_STYLES.find(s => s.key === entry.mailboxStyle)?.icon || '',
+      layoutLabel: TERMINAL_MAILBOX_STYLES.find(s => s.key === entry.mailboxStyle)?.label || '',
       sw1: entry.theme?.primary || TERMINAL_PRESETS[entry.theme?.preset]?.theme?.primary || '#F65261',
       sw2: entry.theme?.secondary || TERMINAL_PRESETS[entry.theme?.preset]?.theme?.secondary || '#19f3f7',
       sw3: entry.theme?.bgSurface || TERMINAL_PRESETS[entry.theme?.preset]?.theme?.bgSurface || '#1a1a2e',
@@ -214,7 +252,16 @@ export class TerminalConfigApp extends BaseApplication {
     filtered = [...filtered].sort(sorters[this._acctSort] || sorters.name);
     const acctMaxPage = Math.max(1, Math.ceil(filtered.length / TerminalConfigApp.ACCT_PAGE_SIZE));
     if (this._acctPage > acctMaxPage) this._acctPage = acctMaxPage;
-    const accounts = filtered.slice((this._acctPage - 1) * TerminalConfigApp.ACCT_PAGE_SIZE, this._acctPage * TerminalConfigApp.ACCT_PAGE_SIZE);
+    // CONTENT (2026-10-25): the shared volume + every account's mail/files,
+    // drawn as the folder tree the player will see (TerminalContentPanel).
+    const content = buildContentContext({
+      svc: this.terminalService, item: this.item, accounts: cfg.accounts || [],
+      folderDefs: this.terminalService.getFolders(this.item),
+      ui: { open: this._ctOpen, dirClosed: this._ctDirClosed, mailOpen: this._ctMailOpen, tab: this._ctTab },
+    });
+    const accounts = filtered
+      .slice((this._acctPage - 1) * TerminalConfigApp.ACCT_PAGE_SIZE, this._acctPage * TerminalConfigApp.ACCT_PAGE_SIZE)
+      .map(a => ({ ...a, ct: content.byAccount[a.id] }));
     const acctSummary = {
       total: allAccounts.length,
       admins: allAccounts.filter(a => a.isAdmin).length,
@@ -256,6 +303,7 @@ export class TerminalConfigApp extends BaseApplication {
       },
       accountCount: acctSummary.total,
       acctSummary, acctControls,
+      content,
 
       // Identity
       terminalName: cfg.terminalName || '',
@@ -278,13 +326,17 @@ export class TerminalConfigApp extends BaseApplication {
       contrast: theme.contrast || 100,
       themeWallpaper: theme.wallpaper || '',
       themeWallStrength: theme.wallpaperStrength ?? 25,
-      themeScanlines: theme.scanlines === true,
       themeFlicker: theme.flicker === true,
+      // The ONE CRT film — resolved from the draft/saved theme, else the preset's.
+      themeCrt: crtPanelContext(resolveCrt(theme, TERMINAL_PRESETS[theme.preset]?.theme?.crt || null)),
       themeGlitch: theme.glitch ?? 0,
 
       // Login screen + screensaver + folder names (Boot & Login / Identity tabs)
       loginStyles: TERMINAL_LOGIN_STYLES.map(s => ({ ...s, active: loginStyleKey === s.key })),
       loginStyleKey,
+      // Mailbox layout cards (TERMINAL_MAILBOX_STYLES, 2026-10-25).
+      mailboxStyles: TERMINAL_MAILBOX_STYLES.map(s => ({ ...s, active: mailboxStyleKey === s.key })),
+      mailboxStyleKey,
       soundSets: Object.entries(TERMINAL_SOUND_SETS).map(([key, s]) => ({
         key, label: s.label, icon: s.icon, hint: s.hint, active: key === soundSetKey,
       })),
@@ -344,6 +396,8 @@ export class TerminalConfigApp extends BaseApplication {
       bootFaIcon: bootCfg.faIcon || '',
       bootImageUrl: bootCfg.imageUrl || '',
       bootImageFree: bootCfg.imageFrame === 'free',
+      bootVideoUrl: bootCfg.videoUrl || '',
+      bootVideoOverlay: !!bootCfg.videoOverlay,
       bootIconModes: ['preset', 'fa', 'image'].map(v => ({
         value: v,
         label: { preset: 'Theme preset icon', fa: 'Font Awesome icon', image: 'Custom image / logo' }[v],
@@ -353,11 +407,13 @@ export class TerminalConfigApp extends BaseApplication {
       bootIcon: TERMINAL_PRESETS[presetKey]?.icon || 'fas fa-server',
       bootAnimation: bootCfg.animationStyle || 'standard-fade',
       bootSpeed: bootCfg.speed || 'normal',
+      bootCustomSeconds: bootCfg.customSeconds ?? '',
+      bootSpeedIsCustom: bootCfg.speed === 'custom',
       bootLogLines: bootCfg.logLines || [],
       animationOptions: BOOT_ANIMATIONS.map(a => ({
         value: a.key, hint: a.hint, selected: a.key === (bootCfg.animationStyle || 'standard-fade'),
       })),
-      speedOptions: ['fast', 'normal', 'dramatic'].map(v => ({ value: v, selected: v === (bootCfg.speed || 'normal') })),
+      speedOptions: ['fast', 'normal', 'dramatic', 'custom'].map(v => ({ value: v, selected: v === (bootCfg.speed || 'normal') })),
 
       // Network
       networkRequired: !!cfg.network?.required,
@@ -514,15 +570,44 @@ export class TerminalConfigApp extends BaseApplication {
   //  Render — restore tab + manual change listeners
   // ═══════════════════════════════════════════════════════════
 
+  /**
+   * Scroll memo (2026-10-25): every data-action re-renders the whole sheet, so
+   * unfolding an account or a folder snapped the sheet back to the top. The
+   * .ncm-cfg-content scroller and every per-folder scroller ([data-ct-scroll])
+   * remember their position across the render; opening/closing the account
+   * editor deliberately starts at the top (`_scrollReset`).
+   * @override
+   */
+  async _preRender(context, options) {
+    await super._preRender?.(context, options);
+    const el = this.element;
+    if (!el) return;
+    if (this._scrollReset) { this._scrollReset = false; this._scrollMemo = null; return; }
+    const memo = { content: el.querySelector('.ncm-cfg-content')?.scrollTop ?? 0, inner: {} };
+    el.querySelectorAll('[data-ct-scroll]').forEach(s => { if (s.scrollTop) memo.inner[s.dataset.ctScroll] = s.scrollTop; });
+    this._scrollMemo = memo;
+  }
+
   _onRender(context, options) {
     super._onRender?.(context, options);
     const el = this.element;
     if (!el) return;
+    const memo = this._scrollMemo;
+    if (memo) {
+      const c = el.querySelector('.ncm-cfg-content');
+      if (c && memo.content) c.scrollTop = memo.content;
+      for (const [k, v] of Object.entries(memo.inner)) {
+        const s = el.querySelector(`[data-ct-scroll="${CSS.escape(k)}"]`);
+        if (s) s.scrollTop = v;
+      }
+    }
     el.querySelectorAll('.ncm-cfg-tab').forEach(t => t.classList.toggle('ncm-cfg-tab--active', t.dataset.tab === this._activeTab));
     el.querySelectorAll('.ncm-cfg-panel').forEach(p => p.classList.toggle('ncm-cfg-panel--active', p.dataset.panel === this._activeTab));
 
     this._wireBootTab(el, context);
+    this._foldOpenAfterRender();   // accordion: grow a just-opened fold from 0
     this._wireAccountsTab(el);
+    this._wireContentTab(el);
     this._wireAccountEditor(el);
     this._wireThemeTab(el);
     // Paint the in-sheet theme preview (draft or saved) on every render.
@@ -610,6 +695,15 @@ export class TerminalConfigApp extends BaseApplication {
     });
     panel.querySelector('[name="bootImageUrl"]')?.addEventListener('input', syncBootIcon);
     panel.querySelector('[name="bootImageFree"]')?.addEventListener('change', syncBootIcon);
+    // Boot VIDEO (2026-10-25): the splash preview cannot play it, so it says so.
+    const syncBootVideo = () => {
+      const url = panel.querySelector('[name="bootVideoUrl"]')?.value?.trim();
+      const note = panel.querySelector('[data-bp="video"]');
+      if (note) { note.style.display = url ? '' : 'none'; note.querySelector('b').textContent = url ? url.split('/').pop() : ''; }
+      panel.querySelector('.ncm-cfg-bootprev-splash')?.classList.toggle('is-video', !!url);
+    };
+    panel.querySelector('[name="bootVideoUrl"]')?.addEventListener('input', syncBootVideo);
+    syncBootVideo();
 
     // ── Animation / speed chips. Picking a boot animation replays it in the
     //    splash preview (attr swap + forced reflow to restart the CSS). ──
@@ -628,6 +722,12 @@ export class TerminalConfigApp extends BaseApplication {
           if (input) input.value = chip.dataset.chip;
           group.querySelectorAll('[data-chip]').forEach(c => c.classList.toggle('is-on', c === chip));
           if (name === 'bootAnimation') replayBootAnim(chip.dataset.chip);
+          if (name === 'bootSpeed') {
+            // The seconds field shows only for the custom chip. style.display,
+            // not [hidden] — .ncm-cfg-row is display:flex and would win.
+            const row = panel.querySelector('[data-boot-custom]');
+            if (row) row.style.display = chip.dataset.chip === 'custom' ? '' : 'none';
+          }
         });
       });
     });
@@ -636,6 +736,18 @@ export class TerminalConfigApp extends BaseApplication {
     splash?.setAttribute('data-boot-animation', panel.querySelector('[name="bootAnimation"]')?.value || 'standard-fade');
     panel.querySelector('[data-boot-replay]')?.addEventListener('click', () => {
       replayBootAnim(panel.querySelector('[name="bootAnimation"]')?.value || 'standard-fade');
+    });
+
+    // ── Mailbox layout cards (hidden input `mailboxStyle`, the login-style contract) ──
+    panel.querySelectorAll('[data-mailbox-style]').forEach(card => {
+      card.addEventListener('click', () => {
+        const input = panel.querySelector('[name="mailboxStyle"]');
+        if (input) input.value = card.dataset.mailboxStyle;
+        panel.querySelectorAll('[data-mailbox-style]').forEach(c => c.classList.toggle('is-on', c === card));
+        // Stage it (survives re-renders, beats a staged kit) and show it on any open viewer.
+        this._stagedMailboxStyle = card.dataset.mailboxStyle;
+        this._applyThemeLive();
+      });
     });
 
     // ── Login style cards + live login preview ──
@@ -832,6 +944,7 @@ export class TerminalConfigApp extends BaseApplication {
       theme: this._themeDraft ?? cfg.theme ?? { preset: 'classic' },
       boot: cfg.boot || {},
       loginStyle: cfg.loginStyle || 'cards',
+      mailboxStyle: cfg.mailboxStyle || 'classic',
       login: cfg.login || {},
       screensaver: cfg.screensaver || {},
       folderNames: cfg.folderNames || {},
@@ -877,7 +990,7 @@ export class TerminalConfigApp extends BaseApplication {
     const seedCount = (entry.config.accounts || []).length;
     const confirmed = await adminConfirm({
       title: `Apply Terminal Preset: ${entry.name}`,
-      content: `<p>Overwrites this terminal's <strong>theme, boot, login style, MOTD/welcome, screensaver, and folder names</strong>${(cfg.accounts || []).length ? '' : (seedCount ? ` and seeds <strong>${seedCount} account${seedCount === 1 ? '' : 's'}</strong>` : '')}. Messages and existing accounts are untouched.</p>`,
+      content: `<p>Overwrites this terminal's <strong>theme, boot, login style, mailbox layout, MOTD/welcome, screensaver, and folder names</strong>${(cfg.accounts || []).length ? '' : (seedCount ? ` and seeds <strong>${seedCount} account${seedCount === 1 ? '' : 's'}</strong>` : '')}. Messages and existing accounts are untouched.</p>`,
     });
     if (!confirmed) return;
     const { accounts, ...rest } = foundry.utils.deepClone(entry.config);
@@ -1143,6 +1256,22 @@ export class TerminalConfigApp extends BaseApplication {
     }).render(true);
   }
 
+  /** FilePicker for the boot VIDEO (.webm / .mp4). */
+  static _onBrowseBootVideo() {
+    const input = this.element?.querySelector('[name="bootVideoUrl"]');
+    new FilePicker({
+      type: 'video',
+      current: input?.value || '',
+      callback: (path) => {
+        if (input) { input.value = path; input.dispatchEvent(new Event('input', { bubbles: true })); }
+      },
+    }).render(true);
+  }
+  static _onClearBootVideo() {
+    const input = this.element?.querySelector('[name="bootVideoUrl"]');
+    if (input) { input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); }
+  }
+
   /** FilePicker for the boot logo image. */
   static _onBrowseBootImage(event, target) {
     const input = this.element?.querySelector('[name="bootImageUrl"]');
@@ -1186,8 +1315,11 @@ export class TerminalConfigApp extends BaseApplication {
         iconMode: val('bootIconMode', 'preset'), faIcon: val('bootFaIcon'), imageUrl: val('bootImageUrl'),
         imageFrame: chk('bootImageFree') ? 'free' : 'framed',
         animationStyle: val('bootAnimation'), speed: val('bootSpeed'), logLines,
+        customSeconds: parseFloat(val('bootCustomSeconds')) || null,
+        videoUrl: val('bootVideoUrl'), videoOverlay: chk('bootVideoOverlay'),
       },
       loginStyle: val('loginStyle', 'cards') || 'cards',
+      mailboxStyle: val('mailboxStyle', 'classic') || 'classic',
       login: { motd: val('loginMotd'), welcomeText: val('loginWelcome') },
       screensaver: {
         enabled: chk('ssEnabled'),
@@ -1269,6 +1401,7 @@ export class TerminalConfigApp extends BaseApplication {
       }
       this._themeDraft = null; // saved — context reads cfg.theme again
       this._presetKit = null;
+      this._stagedMailboxStyle = null;
       ui.notifications.info('Terminal configuration saved.');
     } else ui.notifications.error(res?.error || 'Save failed.');
     this.render(false);
@@ -1342,8 +1475,9 @@ export class TerminalConfigApp extends BaseApplication {
     // transitions — palette-only updates go through cheap inline vars below,
     // so color/slider drags never trigger render storms.
     const kit = this._presetKit ? TERMINAL_PRESETS[this._presetKit] : null;
-    const overlay = (this._themeDraft || kit) ? {
+    const overlay = (this._themeDraft || kit || this._stagedMailboxStyle) ? {
       ...(this._themeDraft ? { theme: foundry.utils.deepClone(this._themeDraft) } : {}),
+      mailboxStyle: this._currentMailboxStyle(),
       ...(kit ? foundry.utils.deepClone({
         boot: { ...(cfg.boot || {}), ...(kit.boot || {}) },
         loginStyle: kit.loginStyle || cfg.loginStyle || 'cards',
@@ -1353,7 +1487,8 @@ export class TerminalConfigApp extends BaseApplication {
         soundSet: kit.soundSet || cfg.soundSet || 'default',
       }) : {}),
     } : null;
-    const kitChanged = (this._presetKit || null) !== (this._lastKitPushed ?? null);
+    const kitSig = `${this._presetKit || ''}|${this._currentMailboxStyle()}`;
+    const kitChanged = kitSig !== (this._lastKitPushed ?? null);
 
     for (const app of foundry.applications?.instances?.values?.() ?? []) {
       if (app === this || !app.rendered) continue;
@@ -1366,11 +1501,27 @@ export class TerminalConfigApp extends BaseApplication {
       // The window header (title/controls) lives outside the viewer element —
       // theme the app frame root too so the chrome previews along.
       if (app.element && app.element !== viewerEl) this.themeService.applyTheme(prefs, app.element);
-      // Per-terminal effects preview on the real viewer (the strip can't show them).
-      viewerEl.setAttribute('data-term-scanlines', String(t.scanlines === true));
+      // Per-terminal effects preview on the real viewer; the CRT film also
+      // previews on the strip (it is just attributes on a host).
+      app.refreshCrt?.();   // the viewer re-reads its (overlaid) theme.crt and paints its window root
       viewerEl.setAttribute('data-term-flicker', String(t.flicker === true));
     }
-    this._lastKitPushed = this._presetKit || null;
+    const stripCrt = resolveCrt(t, TERMINAL_PRESETS[t.preset]?.theme?.crt || null);
+    this.element?.querySelectorAll('.ncm-tc__preview.ncm-ttc-live').forEach(el => applyCrt(el, stripCrt));
+    this._lastKitPushed = kitSig;
+  }
+
+  /**
+   * The mailbox layout as currently staged: a manual pick / an applied saved
+   * theme (`_stagedMailboxStyle`) → the staged preset kit's → the saved config.
+   * ONE reader so the Boot & Login card, the live preview and the saved-theme
+   * writer can never disagree.
+   */
+  _currentMailboxStyle() {
+    const kit = this._presetKit ? TERMINAL_PRESETS[this._presetKit] : null;
+    const cfg = this.terminalService?.getConfig(this.item) || {};
+    const v = this._stagedMailboxStyle || kit?.mailboxStyle || cfg.mailboxStyle || 'classic';
+    return TERMINAL_MAILBOX_STYLES.some(s => s.key === v) ? v : 'classic';
   }
 
   /** Clear the preview overlay on open viewers (re-renders the saved state). @private */
@@ -1386,10 +1537,11 @@ export class TerminalConfigApp extends BaseApplication {
 
   /** @override — closing with unsaved staging reverts previewed viewers. */
   async close(options = {}) {
-    if (this._themeDraft || this._presetKit) {
+    if (this._themeDraft || this._presetKit || this._stagedMailboxStyle) {
       this._revertThemePreview();
       this._themeDraft = null;
       this._presetKit = null;
+      this._stagedMailboxStyle = null;
     }
     return super.close(options);
   }
@@ -1443,7 +1595,7 @@ export class TerminalConfigApp extends BaseApplication {
       this._applyThemeLive();
     });
 
-    // Effect switches (scanlines / flicker) — tc-style knobs, draft-backed.
+    // Effect switches (flicker) — tc-style knobs, draft-backed.
     panel.querySelectorAll('[data-ttc-toggle]').forEach(sw => {
       sw.addEventListener('click', () => {
         const key = sw.dataset.ttcToggle;
@@ -1453,6 +1605,16 @@ export class TerminalConfigApp extends BaseApplication {
         this._applyThemeLive();
       });
     });
+    // The ONE CRT film: style chips · intensity · vignette · rolling band, all
+    // on draft.crt (DOM-only, no re-render — the Theme tab contract).
+    const crtDraft = () => {
+      const d = this._ensureThemeDraft();
+      if (!d.crt || typeof d.crt !== 'object') d.crt = resolveCrt(d, TERMINAL_PRESETS[d.preset]?.theme?.crt || null);
+      delete d.scanlines; // the legacy boolean is superseded the moment crt exists
+      return d.crt;
+    };
+    // The shared CRT panel (templates/partials/crt-panel.hbs): crt.js wires it to this terminal's draft.
+    wireCrtPanel(panel.querySelector('[data-crt-panel]'), { draft: crtDraft, onChange: () => this._applyThemeLive() });
   }
 
   /**
@@ -1469,6 +1631,7 @@ export class TerminalConfigApp extends BaseApplication {
     for (const k of [...Object.keys(COLOR_VAR_MAP), 'fontDisplay', 'fontMono', 'fontTitle']) delete draft[k];
     this._themeDraft = { ...draft, ...foundry.utils.deepClone(TERMINAL_PRESETS[key]?.theme || {}), preset: key };
     this._presetKit = TERMINAL_PRESETS[key] ? key : null;
+    this._stagedMailboxStyle = null;   // the preset's own layout rides the kit
     this._applyThemeLive();
     this.render(false);
   }
@@ -1507,7 +1670,7 @@ export class TerminalConfigApp extends BaseApplication {
     if (!name) return;
     const cfg = this.terminalService.getConfig(this.item);
     const themes = this._getTermThemes();
-    themes.push({ name, theme: foundry.utils.deepClone(this._themeDraft ?? cfg.theme ?? { preset: 'classic' }) });
+    themes.push({ name, theme: foundry.utils.deepClone(this._themeDraft ?? cfg.theme ?? { preset: 'classic' }), mailboxStyle: this._currentMailboxStyle() });
     await this._setTermThemes(themes);
     this.render(false);
     ui.notifications.info(`Saved terminal theme: ${name}`);
@@ -1518,6 +1681,8 @@ export class TerminalConfigApp extends BaseApplication {
     const entry = this._getTermThemes()[index];
     if (!entry) return;
     this._themeDraft = foundry.utils.deepClone(entry.theme || {});
+    // A theme saved since 2026-10-25 carries its mailbox layout; an older one leaves the layout alone.
+    if (TERMINAL_MAILBOX_STYLES.some(s => s.key === entry.mailboxStyle)) this._stagedMailboxStyle = entry.mailboxStyle;
     this._applyThemeLive();
     this.render(false);
   }
@@ -1527,7 +1692,7 @@ export class TerminalConfigApp extends BaseApplication {
     const themes = this._getTermThemes();
     if (!themes[index]) return;
     const cfg = this.terminalService.getConfig(this.item);
-    themes[index] = { name: themes[index].name, theme: foundry.utils.deepClone(this._themeDraft ?? cfg.theme ?? { preset: 'classic' }) };
+    themes[index] = { name: themes[index].name, theme: foundry.utils.deepClone(this._themeDraft ?? cfg.theme ?? { preset: 'classic' }), mailboxStyle: this._currentMailboxStyle() };
     await this._setTermThemes(themes);
     this.render(false);
     ui.notifications.info(`Overwrote theme: ${themes[index].name}`);
@@ -1549,7 +1714,7 @@ export class TerminalConfigApp extends BaseApplication {
   static _onExportTermTheme() {
     const cfg = this.terminalService.getConfig(this.item);
     const theme = this._themeDraft ?? cfg.theme ?? { preset: 'classic' };
-    const data = JSON.stringify({ ncmTerminalTheme: 1, theme }, null, 2);
+    const data = JSON.stringify({ ncmTerminalTheme: 1, theme, mailboxStyle: this._currentMailboxStyle() }, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1576,6 +1741,7 @@ export class TerminalConfigApp extends BaseApplication {
           return ui.notifications.warn('Not a terminal theme file.');
         }
         this._themeDraft = { preset: 'classic', ...foundry.utils.deepClone(theme) };
+        if (TERMINAL_MAILBOX_STYLES.some(s => s.key === parsed.mailboxStyle)) this._stagedMailboxStyle = parsed.mailboxStyle;
         this._applyThemeLive();
         this.render(false);
         ui.notifications.info('Terminal theme imported — Save to keep it.');
@@ -1590,6 +1756,123 @@ export class TerminalConfigApp extends BaseApplication {
   static _onAcctPage(event, target) {
     const dir = parseInt(target?.dataset?.dir, 10) || 0;
     this._acctPage = Math.max(1, this._acctPage + dir);
+    this.render(false);
+  }
+
+  /**
+   * CONTENT blocks (2026-10-25) — the three selects (who-can-open, its
+   * clearance level, Move-to…) and the "new folder" input need manual
+   * listeners (selects don't fire via data-action). Every write goes through
+   * TerminalService (saveFileFolder / moveFile / …) and re-renders.
+   * @private
+   */
+  _wireContentTab(el) {
+    const panel = el.querySelector('[data-panel="accounts"]');
+    if (!panel) return;
+    const svc = this.terminalService;
+    const item = this.item;
+
+    // "New folder in /x" — type a name, press Enter.
+    panel.querySelectorAll('[data-ct-newdir]').forEach(inp => {
+      inp.addEventListener('keydown', async (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const name = normalizeFolderPath(inp.value);
+        if (!name) return;
+        const res = await svc.saveFileFolder(item, { scope: inp.dataset.scope, path: name });
+        if (!res.success) { ui.notifications.warn(res.error || 'Could not add the folder.'); return; }
+        this._ctFocusNewdir = inp.dataset.scope;
+        this.render(false);
+      });
+      // Enter inside the row must not bubble into the account row's editAccount.
+      inp.addEventListener('click', (e) => e.stopPropagation());
+    });
+    if (this._ctFocusNewdir) {
+      const inp = panel.querySelector(`[data-ct-newdir][data-scope="${this._ctFocusNewdir}"]`);
+      this._ctFocusNewdir = null;
+      inp?.focus();
+    }
+
+    // Who can open — the gate mode. Picking "chosen accounts" opens the picker.
+    panel.querySelectorAll('[data-ct-gate]').forEach(sel => {
+      sel.addEventListener('click', (e) => e.stopPropagation());
+      sel.addEventListener('change', async () => {
+        const { scope, path } = sel.dataset;
+        const mode = sel.value;
+        if (mode === 'accounts') { await this._pickGateAccounts(scope, path); return; }
+        const cur = svc.getFileFolders(item).find(f => f.scope === scope && f.path === path);
+        const res = await svc.saveFileFolder(item, { ...(cur || {}), scope, path, gate: { mode, min: cur?.gate?.min ?? 1, accountIds: cur?.gate?.accountIds || [] } });
+        if (!res.success) ui.notifications.warn(res.error || 'Could not save the folder.');
+        this.render(false);
+      });
+    });
+    panel.querySelectorAll('[data-ct-gatemin]').forEach(inp => {
+      inp.addEventListener('click', (e) => e.stopPropagation());
+      inp.addEventListener('change', async () => {
+        const { scope, path } = inp.dataset;
+        const cur = svc.getFileFolders(item).find(f => f.scope === scope && f.path === path);
+        const min = Math.max(0, parseInt(inp.value, 10) || 0);
+        await svc.saveFileFolder(item, { ...(cur || {}), scope, path, gate: { ...(cur?.gate || { mode: 'clearance', accountIds: [] }), mode: 'clearance', min } });
+        this.render(false);
+      });
+    });
+
+    // Move to… (any volume / folder, or a new folder on the same volume).
+    panel.querySelectorAll('[data-ct-move]').forEach(sel => {
+      sel.addEventListener('click', (e) => e.stopPropagation());
+      sel.addEventListener('change', async () => {
+        const id = sel.dataset.messageId;
+        let [scope, path] = sel.value === '__new__' ? [null, null] : sel.value.split('|');
+        if (sel.value === '__new__') {
+          const entry = svc.getAllMessages(item).find(m => m.messageId === id);
+          scope = entry?.accountId || SHARED_SCOPE;
+          const name = await this._askText({ title: 'New folder', label: 'Folder name', value: '' });
+          if (!name) { this.render(false); return; }
+          path = normalizeFolderPath(name);
+          await svc.saveFileFolder(item, { scope, path });
+        }
+        const res = await svc.moveFile(item, id, { scope, path: path || '' });
+        if (!res.success) ui.notifications.warn(res.error || 'Could not move the entry.');
+        this.render(false);
+      });
+    });
+  }
+
+  /** A one-line text prompt in the admin preset. Resolves the trimmed text or null. */
+  _askText({ title, label, value = '' }) {
+    const esc = (s) => Handlebars.escapeExpression(s ?? '');
+    return new Promise(resolve => {
+      let out = null;
+      adminDialog({
+        title,
+        content: `<div class="ncm-cfg-prompt"><label style="display:flex;flex-direction:column;gap:6px;text-transform:none">${esc(label)}<input type="text" name="ncmText" value="${esc(value)}" autofocus autocomplete="off"></label></div>`,
+        buttons: {
+          ok: { icon: '<i class="fas fa-check"></i>', label: 'OK', callback: (html) => { out = (html.find?.('[name="ncmText"]').val() ?? html[0]?.querySelector('[name="ncmText"]')?.value ?? '').trim() || null; } },
+          cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+        },
+        default: 'ok',
+        close: () => resolve(out),
+      }, { classes: ['ncm-pick-dialog'], width: 340 }).render(true);
+    });
+  }
+
+  /** Multi-pick the accounts that may open a folder, then save the gate. */
+  async _pickGateAccounts(scope, path) {
+    const svc = this.terminalService;
+    const cur = svc.getFileFolders(this.item).find(f => f.scope === scope && f.path === path);
+    const accounts = this.terminalService.getConfig(this.item).accounts || [];
+    const picks = await showNamePicker({
+      title: `Who can open /${path}`,
+      hint: 'Admin accounts always can. Pick the others.',
+      multi: true, chips: false,
+      entries: accounts.map(a => ({ id: a.id, name: a.displayName || a.username, sub: a.username, img: a.portrait || '' })),
+      selected: cur?.gate?.accountIds || [],
+      emptyText: 'no accounts on this terminal yet',
+      placeholder: 'search accounts…',
+    });
+    if (!Array.isArray(picks)) { this.render(false); return; }
+    const accountIds = picks.map(p => p.id).filter(Boolean);
+    await svc.saveFileFolder(this.item, { ...(cur || {}), scope, path, gate: { mode: accountIds.length ? 'accounts' : 'everyone', min: cur?.gate?.min ?? 0, accountIds } });
     this.render(false);
   }
 
@@ -1621,8 +1904,8 @@ export class TerminalConfigApp extends BaseApplication {
     });
   }
 
-  static _onAddAccount() { this._editingAccountId = 'new'; this._editorLink = null; this._activeTab = 'accounts'; this.render(false); }
-  static _onEditAccount(event, target) { this._editingAccountId = target.dataset.accountId; this._editorLink = null; this._activeTab = 'accounts'; this.render(false); }
+  static _onAddAccount() { this._editingAccountId = 'new'; this._editorLink = null; this._activeTab = 'accounts'; this._scrollReset = true; this.render(false); }
+  static _onEditAccount(event, target) { this._editingAccountId = target.dataset.accountId; this._editorLink = null; this._activeTab = 'accounts'; this._scrollReset = true; this.render(false); }
   static _onCancelAccount() { this._editingAccountId = null; this._editorLink = null; this.render(false); }
 
   /** Clear the identity link (pending + stored on next save). DOM-only. */
@@ -1763,6 +2046,151 @@ export class TerminalConfigApp extends BaseApplication {
     if (this._editingAccountId === id) this._editingAccountId = null;
     this.render(false);
   }
+
+  // ── CONTENT blocks (the file repository, 2026-10-25) ──
+  static async _onCtToggle(event, target) {
+    const s = target.dataset.scope;
+    const sel = `[data-action="ctToggle"][data-scope="${CSS.escape(s)}"]`;
+    if (this._ctOpen.has(s)) { await this._foldClose(target); this._ctOpen.delete(s); }
+    else { this._ctOpen.add(s); this._foldEnter = sel; }
+    this.render(false);
+  }
+
+  /**
+   * Accordion motion (2026-10-25, dev: "make the opening of the accordion animate open smoothly").
+   * The sheet re-renders on every click and a fold's body only exists while open, so a CSS
+   * transition has nothing to animate from (the standing AppV2 rule). Opening: the toggle stores
+   * a selector for its trigger, and _onRender grows the freshly rendered body from 0. Closing:
+   * the LIVE body shrinks to 0 first, then the state changes and the sheet re-renders.
+   * The body is the element right after the toggle's row (an account's content block, a
+   * folder's scroll list). Reduced motion skips both.
+   */
+  _foldBody(trigger) {
+    const row = trigger?.closest?.('.ncm-acctl-row, .ncm-acctl-dir');
+    const next = row?.nextElementSibling;
+    return next?.matches?.('.ncm-acctl-ent, .ncm-acctl-scroll') ? next : null;
+  }
+  _foldMotionOk() {
+    try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false; } catch { /* ignore */ }
+    const lvl = this.element?.dataset?.ncmAnimationLevel;
+    return lvl !== 'off' && lvl !== 'reduced';
+  }
+  async _foldClose(trigger) {
+    const body = this._foldBody(trigger);
+    if (!body || !this._foldMotionOk() || typeof body.animate !== 'function') return;
+    const h = body.getBoundingClientRect().height;
+    body.style.overflow = 'hidden';
+    try {
+      await body.animate([{ height: `${h}px`, opacity: 1 }, { height: '0px', opacity: 0 }],
+        { duration: 200, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }).finished;
+    } catch { /* interrupted — the render replaces it anyway */ }
+  }
+  _foldOpenAfterRender() {
+    const sel = this._foldEnter; this._foldEnter = null;
+    if (!sel || !this._foldMotionOk()) return;
+    const body = this._foldBody(this.element?.querySelector(sel));
+    if (!body || typeof body.animate !== 'function') return;
+    const h = body.getBoundingClientRect().height;
+    if (!h) return;
+    body.style.overflow = 'hidden';
+    const anim = body.animate([{ height: '0px', opacity: 0 }, { height: `${h}px`, opacity: 1 }],
+      { duration: 280, easing: 'cubic-bezier(.22,1,.36,1)' });
+    anim.finished.then(() => { body.style.overflow = ''; }).catch(() => {});
+  }
+  static _onCtTab(event, target) {
+    this._ctTab.set(target.dataset.scope, target.dataset.tab === 'files' ? 'files' : 'mail');
+    this.render(false);
+  }
+  static async _onCtDirToggle(event, target) {
+    const k = `${target.dataset.scope}:${target.dataset.path}`;
+    if (this._ctDirClosed.has(k)) {
+      this._ctDirClosed.delete(k);
+      this._foldEnter = `.ncm-acctl-dir-cv[data-action="ctDirToggle"][data-scope="${CSS.escape(target.dataset.scope)}"][data-path="${CSS.escape(target.dataset.path)}"]`;
+    } else { await this._foldClose(target); this._ctDirClosed.add(k); }
+    this.render(false);
+  }
+  static async _onCtMailToggle(event, target) {
+    const k = `${target.dataset.account}:${target.dataset.folder}`;
+    if (this._ctMailOpen.has(k)) { await this._foldClose(target); this._ctMailOpen.delete(k); }
+    else {
+      this._ctMailOpen.add(k);
+      this._foldEnter = `.ncm-acctl-dir-cv[data-action="ctMailToggle"][data-account="${CSS.escape(target.dataset.account)}"][data-folder="${CSS.escape(target.dataset.folder)}"]`;
+    }
+    this.render(false);
+  }
+  static _onCtFolderFocus(event, target) {
+    this.element?.querySelector(`[data-ct-newdir][data-scope="${target.dataset.scope}"]`)?.focus();
+  }
+  static async _onCtFolderAddSub(event, target) {
+    const { scope, path } = target.dataset;
+    const name = await this._askText({ title: 'New sub-folder', label: `Inside /${path}` });
+    if (!name) return;
+    const res = await this.terminalService.saveFileFolder(this.item, { scope, path: `${path}/${normalizeFolderPath(name)}` });
+    if (!res.success) ui.notifications.warn(res.error || 'Could not add the folder.');
+    this._ctDirClosed.delete(`${scope}:${path}`);
+    this.render(false);
+  }
+  static async _onCtFolderRename(event, target) {
+    const { scope, path } = target.dataset;
+    const cur = folderName(path);
+    const name = await this._askText({ title: 'Rename folder', label: 'New name', value: cur });
+    if (!name || normalizeFolderPath(name) === cur) return;
+    const parent = parentPath(path);
+    const res = await this.terminalService.renameFileFolder(this.item, scope, path, parent ? `${parent}/${normalizeFolderPath(name)}` : normalizeFolderPath(name));
+    if (!res.success) ui.notifications.warn(res.error || 'Could not rename the folder.');
+    else if (res.moved) ui.notifications.info(`Folder renamed — ${res.moved} file${res.moved === 1 ? '' : 's'} re-filed.`);
+    this.render(false);
+  }
+  static async _onCtFolderRemove(event, target) {
+    const { scope, path } = target.dataset;
+    const ok = await adminConfirm({ title: 'Delete Folder', content: `<p>Delete <strong>/${Handlebars.escapeExpression(path)}</strong>? Its files and sub-folders move up one level — nothing is deleted from the machine.</p>` });
+    if (!ok) return;
+    const res = await this.terminalService.removeFileFolder(this.item, scope, path);
+    if (!res.success) ui.notifications.warn(res.error || 'Could not delete the folder.');
+    this.render(false);
+  }
+  static async _onCtGateAccounts(event, target) {
+    await this._pickGateAccounts(target.dataset.scope, target.dataset.path);
+  }
+  /** + Message / + File — the SAME composer the mailbox button opens, pre-filed. */
+  static async _onCtAdd(event, target) {
+    const { scope, env, path, folder } = target.dataset;
+    const { DataShardComposer } = await import('../ItemInbox/DataShardComposer.js');
+    const editData = env === 'file'
+      ? { envelope: 'file', file: { path: path || '' } }
+      : (folder ? { envelope: 'mail', folder: (folder === 'inbox' || folder === 'saved' || folder === 'trash') ? '' : folder, status: { saved: folder === 'saved', deleted: folder === 'trash' } } : undefined);
+    new DataShardComposer({
+      target: { kind: 'terminal', item: this.item, accountId: scope, homeAccountId: scope === SHARED_SCOPE ? null : scope, folderPath: path || '' },
+      editData,
+      onSave: () => this.render(false),
+    }).render(true);
+  }
+  static async _onCtEntryEdit(event, target) {
+    const id = target.dataset.messageId;
+    const raw = this.terminalService.getAllMessages(this.item).find(m => m.messageId === id);
+    if (!raw) return;
+    const { DataShardComposer } = await import('../ItemInbox/DataShardComposer.js');
+    new DataShardComposer({
+      target: { kind: 'terminal', item: this.item, accountId: raw.accountId, homeAccountId: raw.shared ? null : raw.accountId, folderPath: raw.file?.path || '' },
+      editData: {
+        entryId: id, contentType: raw.contentType || 'message',
+        from: raw.from || '', subject: raw.subject || '', body: raw.body || '',
+        timestamp: raw.timestamp || '', contentData: raw.contentData ?? {},
+        envelope: raw.envelope || 'mail', file: raw.file || null, exfil: raw.exfil || null,
+        folder: raw.folder || '', status: raw.status || {},
+      },
+      onSave: () => this.render(false),
+    }).render(true);
+  }
+  static async _onCtEntryDelete(event, target) {
+    const id = target.dataset.messageId;
+    const ok = await adminConfirm({ title: 'Delete Entry', content: '<p>Permanently delete this entry from the terminal?</p>' });
+    if (!ok) return;
+    const res = await this.terminalService.removeAccountMessage(this.item, id);
+    if (!res.success) ui.notifications.warn(res.error || 'Could not delete the entry.');
+    this.render(false);
+  }
+  static _onCtOpenTerminal() { game.nightcity?.openTerminal?.(this.item); }
 
   static _onAddBootLogLine() {
     const list = this.element.querySelector('.ncm-cfg-boot-log-list');

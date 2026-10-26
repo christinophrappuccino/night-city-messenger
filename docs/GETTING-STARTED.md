@@ -80,6 +80,8 @@ Don't build the whole city. Two or three NPCs your party actually talks to is pl
 
 Admin Panel → **Tools** → **Import / Reinstall Macros**. This adds two macro folders with handy shortcuts for you and your players. Optional, but nice to have.
 
+**Addresses in bulk.** Admin Panel → **Tools** → **Email Domains & Addresses** holds the domains players can pick from, and an **Export / Import** for every address in the world: each registered character's address and each master contact's. Export gives you a CSV (or JSON) you can edit in a spreadsheet; import takes a CSV or JSON with at least `name, email` columns. Each row is matched to a character by name, then to a master contact by name, and a name that matches nothing becomes a new master contact. You see the whole plan, row by row, before anything is written. A blank address leaves the current one alone, and mail already sent keeps the address it went out with.
+
 ### 6. Pick a clock
 
 In Module Settings, find **Time Provider**. This controls what clock the module uses for timestamps and countdowns. Your options: real time, world time (works with Simple Calendar), manual (you move it forward yourself), or a fake in-game date. Real time is fine to start. You can change it later.
@@ -171,6 +173,8 @@ Almost anything can be locked. Encrypted photos, blacked-out paragraphs, hidden 
 
 The shard is a normal Item. Hand it over however you like: drop it as loot, put it on a body, trade it, or attach it to a message. The player cracks it open with a skill check. There's a whole animated hacking sequence, and lockouts if they keep failing.
 
+**Attaching one to a message.** In the composer, the microchip button next to the paperclip is **Attach Data Shard**. It lists every shard in the world and in any character's gear. The player opens it straight from the message: the shard shows up as a DATA SHARD card under the body, and clicking the card opens the shard viewer right there. It is also listed on the Agent's **Shards** tab as *Received*, so they can come back to it later. If a shard has both a world copy and a copy in a character's inventory, the picker shows both with the owner's name; they are separate items with separate contents, so pick the one you mean.
+
 You do **not** need to give players permission on the shard. A shard attached to a message stays a world item nobody can see in the Items sidebar; when a player breaks into it, the module asks the GM's client to record that, so the reveal is never spoiled by a permissions change. If you really do want to hand a shard over outright, the **Permissions** button on the shard's row in Admin → Shards opens Foundry's ownership dialog.
 
 ### Letting players write on them
@@ -188,11 +192,15 @@ A terminal is an Item turned into a computer that players log into. A corp works
 Right-click an Item and pick **Convert to Terminal**. The setup screen has six tabs:
 
 - **Identity** — name, organization, folder names.
-- **Accounts** — the important one. Each account is a login with its own mailbox. Set a username, portrait, admin rights, and security (password, skill check, or key item). Accounts can be **hidden** — players only find them if they learn the username somewhere else.
+- **Accounts** — the important one. Each account is a login with its own mailbox **and its own files**. Set a username, portrait, admin rights, and security (password, skill check, or key item). Accounts can be **hidden** — players only find them if they learn the username somewhere else. This tab is also where the machine's content lives (next section).
 - **Theme** — colors, fonts, and wallpaper for this machine. There's a **preset library** with 12 ready-made looks (Arasaka workstation, NCPD precinct, Trauma Team, street BBS, and more) that set everything up in one click.
-- **Boot & Login** — the startup screen, six different login screen styles, a message of the day, and a screensaver. Each terminal can have its own sound effects too.
+- **Boot & Login** — the startup screen (or a video that plays instead), six different login screen styles, four **mailbox layouts** for after login (Classic, Tabs, TTY, Desktop), a message of the day, and a screensaver. Each terminal can have its own sound effects too.
 - **Network** — which network the machine itself is connected to.
 - **Exfil** — what players are allowed to do with what they find (see below).
+
+### Put things on it
+
+Everything a machine holds is in **Accounts**. Each account row folds open into its **mail** (the folders from the Identity tab) and its **files** (its home folder). Above the accounts sits the **Shared volume** — files on the machine itself, which every login sees. **+ Message** and **+ File** open the same editor the shards use, with all 18 kinds of content; **+ Folder** adds a folder, and every folder has a **who can open it** control: everyone, admins only, a minimum clearance level, or named accounts. A player who can't open a folder sees it locked with the reason, never an empty space. You can also add content from inside the machine: log in and use **Add message or file** at the bottom of the sidebar.
 
 ### Put it in the world
 
@@ -200,7 +208,7 @@ Right-click an Item and pick **Convert to Terminal**. The setup screen has six t
 
 ### What players see
 
-Boot screen, then login, then the machine's mailbox — all in that machine's own look. Machines hold both mail and files (camera feeds, spreadsheets, logs). If an account belongs to an NPC, mail sent to that NPC also shows up on the machine. The paper trail is really there.
+Boot screen, then login, then the machine — all in that machine's own look. Under the account name a switch picks **MAIL** (the account's folders) or **FILES** (a directory tree: the account's home and the shared volume, with a folder listing on the right). Machines hold both mail and files (camera feeds, spreadsheets, logs). If an account belongs to an NPC, mail sent to that NPC also shows up on the machine. The paper trail is really there.
 
 ### Taking data
 

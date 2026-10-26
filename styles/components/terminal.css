@@ -36,7 +36,7 @@
 .ncm-terminal-viewer {
   --ncm-primary: #F65261; --ncm-secondary: #19f3f7; --ncm-accent: #f7c948;
   --ncm-bg-deep: #0a0a0f; --ncm-bg-base: #12121a; --ncm-bg-surface: #1a1a2e; --ncm-bg-elevated: #252540;
-  --ncm-text-primary: #e0e0e8; --ncm-text-secondary: #8888a0; --ncm-text-muted: #555570;
+  --ncm-text-primary: #e0e0e8; --ncm-text-secondary: #8888a0; --ncm-text-muted: #8e8ea8; /* 6.2:1 on bg-deep. Was #555570 = 2.9:1 on Arasaka (tester 2026-10-25); the player theme had already moved on. */
   --ncm-border: #2a2a45; --ncm-success: #00ff41; --ncm-warning: #f7c948; --ncm-danger: #ff3355;
 }
 
@@ -45,27 +45,27 @@
 .ncm-terminal-viewer[data-terminal-preset="arasaka-workstation"] {
   --ncm-primary: #ff0033; --ncm-secondary: #19f3f7; --ncm-accent: #ffcc00;
   --ncm-bg-deep: #0a0006; --ncm-bg-base: #160008; --ncm-bg-surface: #22060e; --ncm-bg-elevated: #2c0a14;
-  --ncm-text-primary: #f4e6ea; --ncm-text-secondary: #c79aa6;
+  --ncm-text-primary: #f4e6ea; --ncm-text-secondary: #c79aa6; --ncm-text-muted: #9f7883;
 }
 .ncm-terminal-viewer[data-terminal-preset="netwatch-unit"] {
   --ncm-primary: #4aa3ff; --ncm-secondary: #b9d8ff; --ncm-accent: #9ad0ff;
   --ncm-bg-deep: #04070f; --ncm-bg-base: #070d18; --ncm-bg-surface: #0b1726; --ncm-bg-elevated: #102236;
-  --ncm-text-primary: #e6eefc; --ncm-text-secondary: #90a8c8;
+  --ncm-text-primary: #e6eefc; --ncm-text-secondary: #90a8c8; --ncm-text-muted: #788ba4;
 }
 .ncm-terminal-viewer[data-terminal-preset="streetkid-bbs"] {
   --ncm-primary: #00ff41; --ncm-secondary: #19f3f7; --ncm-accent: #f7c948;
   --ncm-bg-deep: #040a06; --ncm-bg-base: #07120a; --ncm-bg-surface: #0c1a0f; --ncm-bg-elevated: #102414;
-  --ncm-text-primary: #daffe4; --ncm-text-secondary: #7fae8d;
+  --ncm-text-primary: #daffe4; --ncm-text-secondary: #7fae8d; --ncm-text-muted: #689275;
 }
 .ncm-terminal-viewer[data-terminal-preset="retro-dos"] {
   --ncm-primary: #ffb000; --ncm-secondary: #ffd070; --ncm-accent: #ff8a00;
   --ncm-bg-deep: #0a0700; --ncm-bg-base: #140d00; --ncm-bg-surface: #1c1300; --ncm-bg-elevated: #261a00;
-  --ncm-text-primary: #ffe6b0; --ncm-text-secondary: #b89250;
+  --ncm-text-primary: #ffe6b0; --ncm-text-secondary: #b89250; --ncm-text-muted: #a18045;
 }
 .ncm-terminal-viewer[data-terminal-preset="ripperdoc"] {
   --ncm-primary: #e8a0ff; --ncm-secondary: #ffddaa; --ncm-accent: #ff9ecb;
   --ncm-bg-deep: #0c0410; --ncm-bg-base: #160a1c; --ncm-bg-surface: #200f28; --ncm-bg-elevated: #2a1634;
-  --ncm-text-primary: #f4e2fb; --ncm-text-secondary: #b890c8;
+  --ncm-text-primary: #f4e2fb; --ncm-text-secondary: #b890c8; --ncm-text-muted: #9b7ca8;
 }
 
 /* ============================================================================
@@ -134,14 +134,10 @@
   height: 100%;
   background: radial-gradient(120% 120% at 50% 0%, var(--ncm-bg-base), var(--ncm-bg-deep));
 }
-/* CRT scanline + vignette overlay (decorative, never intercepts clicks) */
-.ncm-terminal-viewer::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 90;
-  background:
-    repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px),
-    radial-gradient(120% 90% at 50% 50%, transparent 62%, rgba(0,0,0,.4));
-  mix-blend-mode: multiply;
-}
+/* The CRT film (scanlines / vignette / glow / rolling band) is ONE shared
+   layer now — styles/components/crt.css, stamped by applyCrt() from the
+   terminal's theme.crt. The always-on raster that used to live here (and the
+   second one behind the Scanlines switch) is gone (2026-10-25). */
 
 /* ── Window-frame chrome (desktop): title "{user} @ {ORG}" pop ── */
 /* Window-frame chrome follows the TERMINAL theme (the viewer's _onRender also
@@ -515,7 +511,8 @@
 .ncm-term__acdrop-nm { flex: 1; font-weight: 700; color: var(--ncm-text-primary); font-size: calc(14px * var(--ncm-text-scale, 1)); }
 .ncm-term__acdrop-lk { font-size: calc(10px * var(--ncm-text-scale, 1)); font-family: var(--ncm-font-mono); color: var(--ncm-primary); }
 .ncm-term__acdrop-lk.is-open { color: var(--ncm-success); }
-.ncm-term__acdrop-ft { padding: 8px 11px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 7px; }
+.ncm-term__acdrop-ft { padding: 8px 11px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 7px; cursor: pointer; transition: background var(--ncm-term-fast, .18s) ease, color var(--ncm-term-fast, .18s) ease; }
+.ncm-term__acdrop-ft:hover { background: var(--ncm-term-tint); color: var(--ncm-text-primary); }
 .ncm-term__acdrop-ft i { color: var(--ncm-primary); }
 
 .ncm-term__fold { display: flex; align-items: center; gap: 10px; font-family: var(--ncm-font-body); font-weight: 600; font-size: calc(14px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); padding: 8px 9px; border-radius: 6px; cursor: pointer; }
@@ -834,7 +831,7 @@
   background: linear-gradient(120deg, color-mix(in srgb, var(--ncm-primary) 14%, transparent), transparent 70%);
   border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 22%, transparent);
 }
-.ncm-term__hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in srgb, var(--ncm-primary) 4%, transparent) 6px 7px); }
+/* (the hero's baked stripe film was removed 2026-10-25 — the ONE film is crt.js) */
 .ncm-term__hero-logo {
   width: 54px; height: 54px; border-radius: 13px; display: grid; place-items: center; font-size: calc(24px * var(--ncm-text-scale, 1)); color: var(--ncm-primary, #F65261); flex: 0 0 auto; overflow: hidden;
   background: var(--ncm-term-tint); border: 1px solid color-mix(in srgb, var(--ncm-primary, #F65261) 55%, transparent);
@@ -898,7 +895,7 @@
   border: 1px solid color-mix(in srgb, var(--ncm-primary) 45%, transparent);
   box-shadow: 0 0 40px color-mix(in srgb, var(--ncm-primary) 22%, transparent);
 }
-.ncm-term__console::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.15) 0 1px, transparent 1px 3px); }
+/* (the console's baked scanlines were removed 2026-10-25 — the ONE film is crt.js) */
 .ncm-term__console-hd { display: flex; align-items: center; gap: 10px; padding: 11px 16px; background: color-mix(in srgb, var(--ncm-primary) 14%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 35%, transparent); }
 .ncm-term__console-hd i { color: var(--ncm-primary); }
 .ncm-term__console-hd .ncm-term__console-ttl { font-family: var(--ncm-font-title); font-weight: 700; letter-spacing: 2px; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); flex: 1; }
@@ -971,7 +968,7 @@
 .ncm-term__boot-prog-label { font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); margin-bottom: 6px; }
 .ncm-term__boot-track { height: 8px; border-radius: 6px; background: var(--ncm-bg-surface); overflow: hidden; border: 1px solid color-mix(in srgb, var(--ncm-primary) 25%, transparent); }
 .ncm-term__boot-fill { height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, var(--ncm-primary), var(--ncm-accent)); box-shadow: 0 0 14px var(--ncm-primary); transition: width .3s; }
-.ncm-term__boot-log { width: min(520px, 80%); font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1)); line-height: 1.9; color: color-mix(in srgb, var(--ncm-primary) 70%, var(--ncm-text-primary)); }
+.ncm-term__boot-log { width: min(520px, 80%); font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1)); line-height: 1.9; color: color-mix(in srgb, var(--ncm-primary) 55%, var(--ncm-text-primary)); } /* 55%, not 70%: a pure-red primary on near-black is ~5:1; pulled toward text-primary the log passes 7:1 on every preset (tester 2026-10-25) */
 /* Lines reveal via CSS (staggered) so the boot is never empty even if JS timing
    is interrupted; the app still drives the progress fill + dissolve. */
 .ncm-term__boot-log div { opacity: 0; animation: ncm-term-bootline .35s ease forwards; }
@@ -1516,10 +1513,7 @@
     radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--ncm-primary) 7%, transparent), transparent 75%),
     var(--ncm-bg-deep);
 }
-.ncm-term__crt::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.22) 2px 3px);
-}
+/* (the CRT login style's baked scanlines were removed 2026-10-25 — the ONE film is crt.js) */
 .ncm-term__crt-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .ncm-term__crt-host { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: 1px; flex: 1; }
 .ncm-term__crt-hd {
@@ -1757,12 +1751,7 @@
   opacity: min(1, calc(var(--ncm-wallpaper-strength, .25) * 2.6));
 }
 
-/* ═══ Per-terminal effects (theme.scanlines / theme.flicker) ═══ */
-.ncm-terminal-viewer[data-term-scanlines="true"] { position: relative; }
-.ncm-terminal-viewer[data-term-scanlines="true"]::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 90;
-  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.14) 3px 4px);
-}
+/* ═══ Per-terminal effects (theme.flicker; the CRT film is crt.css) ═══ */
 .ncm-terminal-viewer[data-term-flicker="true"] { animation: ncm-term-flicker 4.2s steps(1) infinite; }
 @keyframes ncm-term-flicker {
   0%, 100% { opacity: 1; }
@@ -2190,7 +2179,7 @@
 }
 .ncm-acctl-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .ncm-acctl-nm { font-family: var(--ncm-font-display); font-weight: 700; font-size: 13px; color: var(--ncm-text-primary, #ededf0); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.ncm-acctl-sub { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted, #8e8ea8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-acctl-sub { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-secondary, #bdbdd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ncm-acctl-mail { font-style: normal; color: var(--ncm-secondary, #19f3f7); }
 .ncm-acctl-role { font-family: var(--ncm-font-mono); font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ncm-text-secondary, #bdbdd0); }
 .ncm-acctl-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
@@ -2321,3 +2310,233 @@
   background: color-mix(in srgb, #a855f7 20%, transparent);
   border-color: #a855f7;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FILE REPOSITORY (2026-10-25, scripts/utils/terminalFiles.js) — the MAIL |
+   FILES view switch, the directory tree (HOME + SHARED roots, locked folders
+   with a reason), and the folder LISTING in the detail pane. Mock:
+   dev/mockups/terminal-file-repository-mock.html. Tokens only.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ncm-term__fs-view { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 8px 0; padding: 2px; border: 1px solid var(--ncm-border); border-radius: 7px; background: color-mix(in srgb, var(--ncm-bg-deep) 60%, transparent); flex: 0 0 auto; }
+.ncm-app .ncm-term__fs-view button { appearance: none !important; margin: 0 !important; height: auto !important; min-height: 0 !important; width: auto !important; box-shadow: none !important; border: 0 !important; border-radius: 5px !important; background: transparent !important; padding: 5px 0 !important; font-family: var(--ncm-font-mono) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1.2px; color: var(--ncm-text-muted) !important; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; line-height: 1.2 !important; }
+.ncm-app .ncm-term__fs-view button b { font-weight: 400; opacity: .75; }
+.ncm-app .ncm-term__fs-view button.is-on { background: var(--ncm-term-tint) !important; color: var(--ncm-text-primary) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ncm-primary) 45%, transparent) !important; }
+.ncm-app .ncm-term__fs-view button.is-on i { color: var(--ncm-primary); }
+
+.ncm-term__fs-tree { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 4px; }
+.ncm-term__fs-root { display: flex; align-items: center; gap: 8px; padding: 7px 9px 5px; border-radius: 6px; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); letter-spacing: 1.2px; color: var(--ncm-text-muted); cursor: pointer; transition: background var(--ncm-term-fast) ease; }
+.ncm-term__fs-root:hover { background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); }
+.ncm-term__fs-root.is-active { background: var(--ncm-term-tint); box-shadow: inset 2px 0 0 var(--ncm-primary); }
+.ncm-term__fs-root > i:first-child { width: 16px; text-align: center; color: var(--ncm-text-secondary); }
+.ncm-term__fs-root.is-active > i:first-child { color: var(--ncm-primary); }
+.ncm-term__fs-root-nm { color: var(--ncm-text-secondary); font-family: var(--ncm-font-body); font-weight: 600; font-size: calc(13px * var(--ncm-text-scale, 1)); letter-spacing: 0; }
+.ncm-term__fs-root.is-active .ncm-term__fs-root-nm { color: var(--ncm-text-primary); }
+.ncm-term__fs-root-sub { opacity: .7; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ncm-term__fs-root .ncm-term__fs-ct { margin-left: auto; letter-spacing: 0; }
+.ncm-term__fs-tag { font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; padding: 1px 6px; border-radius: 3px; color: var(--ncm-secondary); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); white-space: nowrap; }
+.ncm-term__fs-tag--lock { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 40%, transparent); background: color-mix(in srgb, var(--ncm-accent) 8%, transparent); text-transform: uppercase; }
+.ncm-term__fs-tag--home { color: var(--ncm-text-secondary); border-color: color-mix(in srgb, var(--ncm-text-muted) 50%, transparent); background: color-mix(in srgb, var(--ncm-text-muted) 10%, transparent); }
+.ncm-term__fs-dir { display: flex; align-items: center; gap: 8px; padding: 6px 9px 6px calc(9px + var(--d, 0) * 14px); border-radius: 6px; cursor: pointer; font-family: var(--ncm-font-mono); font-size: calc(12.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); transition: background var(--ncm-term-fast) ease, color var(--ncm-term-fast) ease; }
+.ncm-term__fs-dir > i:first-child { width: 16px; text-align: center; color: var(--ncm-text-muted); font-size: calc(12px * var(--ncm-text-scale, 1)); }
+.ncm-term__fs-dir:hover { background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); color: var(--ncm-text-primary); }
+.ncm-term__fs-dir.is-active { color: var(--ncm-text-primary); background: var(--ncm-term-tint); box-shadow: inset 2px 0 0 var(--ncm-primary); }
+.ncm-term__fs-dir.is-active > i:first-child { color: var(--ncm-primary); }
+.ncm-term__fs-dir.is-locked { color: var(--ncm-text-muted); cursor: not-allowed; }
+.ncm-term__fs-dir.is-locked > i:first-child { color: var(--ncm-accent); }
+.ncm-term__fs-ct { margin-left: auto; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+.ncm-term__fs-slash { opacity: .45; }
+.ncm-term__fs-file { display: flex; align-items: center; gap: 8px; padding: 5px 9px 5px calc(9px + var(--d, 0) * 14px); border-radius: 6px; cursor: pointer; font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); min-width: 0; }
+.ncm-term__fs-file > i:first-child { width: 16px; text-align: center; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ct-c, var(--ncm-secondary)); flex: 0 0 auto; }
+.ncm-term__fs-file:hover { background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); color: var(--ncm-text-primary); }
+.ncm-term__fs-file.is-active { color: var(--ncm-text-primary); background: var(--ncm-term-tint); box-shadow: inset 2px 0 0 var(--ncm-primary); }
+.ncm-term__fs-sz { margin-left: auto; font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); white-space: nowrap; }
+.ncm-term__fs-new { font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-success); margin-left: 4px; }
+.ncm-term__fs-file.is-live .ncm-term__fs-sz, .ncm-term__fs-live { color: var(--ncm-success); letter-spacing: 1px; }
+.ncm-term__fs-usage { flex: 0 0 auto; margin: 0 4px 2px; font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-term__fs-usage-bar { height: 3px; margin-top: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ncm-text-muted) 25%, transparent); overflow: hidden; }
+.ncm-term__fs-usage-bar b { display: block; height: 100%; width: var(--p, 20%); background: var(--ncm-primary); opacity: .8; }
+
+/* The listing (detail pane while a folder, not a file, is open). */
+.ncm-term__detail.is-listing { display: flex; flex-direction: column; padding: 0 !important; overflow: hidden !important; min-width: 0; }
+.ncm-term__detail.is-listing .ncm-term__fs-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-term__fs-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px 12px; border-bottom: 1px solid var(--ncm-border); flex: 0 0 auto; }
+.ncm-term__fs-head-ico { width: calc(44px * var(--ncm-text-scale, 1)); height: calc(44px * var(--ncm-text-scale, 1)); flex: 0 0 auto; display: grid; place-items: center; border-radius: 8px; font-size: calc(18px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent); }
+.ncm-term__fs-head-id { flex: 1; min-width: 0; }
+.ncm-term__fs-crumb { font-family: var(--ncm-font-mono); font-size: calc(15px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); letter-spacing: .3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ncm-term__fs-crumb span { color: var(--ncm-text-secondary); cursor: pointer; }
+.ncm-term__fs-crumb span:hover { color: var(--ncm-text-primary); text-decoration: underline; }
+.ncm-term__fs-crumb span.ncm-term__fs-crumb-m { cursor: default; text-decoration: none; }
+.ncm-term__fs-crumb i { font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+.ncm-term__fs-crumb b { font-weight: 400; color: var(--ncm-primary); }
+.ncm-term__fs-stats { margin-top: 4px; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.ncm-term__fs-stats i { color: var(--ncm-text-secondary); font-size: calc(10px * var(--ncm-text-scale, 1)); margin-right: 3px; }
+.ncm-term__fs-head-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: 0 0 auto; }
+.ncm-term__fs-head-sub { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: .5px; }
+.ncm-term__fs-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 0 !important; font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1)); }
+.ncm-term__fs-table col.c-type { width: calc(128px * var(--ncm-text-scale, 1)); } .ncm-term__fs-table col.c-size { width: calc(68px * var(--ncm-text-scale, 1)); } .ncm-term__fs-table col.c-mod { width: calc(138px * var(--ncm-text-scale, 1)); } .ncm-term__fs-table col.c-own { width: calc(104px * var(--ncm-text-scale, 1)); }
+.ncm-term__fs-table th { text-align: left; font-weight: 400; font-size: calc(9.5px * var(--ncm-text-scale, 1)); letter-spacing: 1.5px; color: var(--ncm-text-muted); padding: 10px 10px 7px; border-bottom: 1px solid var(--ncm-border); position: sticky; top: 0; background: var(--ncm-bg-base); z-index: 1; }
+.ncm-term__fs-table th:first-child, .ncm-term__fs-table td:first-child { padding-left: 18px; }
+.ncm-term__fs-table td { overflow: hidden; text-overflow: ellipsis; padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); color: var(--ncm-text-secondary); white-space: nowrap; vertical-align: middle; }
+.ncm-term__fs-table tr.ncm-term__fs-r { cursor: pointer; }
+.ncm-term__fs-table tr.ncm-term__fs-r:hover td { background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); color: var(--ncm-text-primary); }
+.ncm-term__fs-nm { color: var(--ncm-text-primary); display: inline-flex; align-items: center; gap: 9px; max-width: 100%; }
+.ncm-term__fs-nm > i:first-child { width: 16px; text-align: center; color: var(--ct-c, var(--ncm-secondary)); font-size: calc(12px * var(--ncm-text-scale, 1)); flex: 0 0 auto; }
+.ncm-term__fs-nm small { font-family: var(--ncm-font-body); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); font-weight: 500; }
+.ncm-term__fs-type { display: inline-flex; align-items: center; gap: 5px; font-size: calc(9.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; color: var(--ct-c, var(--ncm-secondary)); background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 35%, transparent); }
+.ncm-term__fs-dirtype { font-size: calc(9.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-text-muted); }
+.ncm-term__fs-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ncm-term__fs-table tr.is-dir td, .ncm-term__fs-table tr.is-dir .ncm-term__fs-nm { color: var(--ncm-text-secondary); }
+.ncm-term__fs-table tr.is-dir .ncm-term__fs-nm > i:first-child { color: var(--ncm-text-muted); }
+.ncm-term__fs-table tr.is-locked td, .ncm-term__fs-table tr.is-locked .ncm-term__fs-nm { color: var(--ncm-text-muted); }
+.ncm-term__fs-table tr.is-locked .ncm-term__fs-nm > i:first-child { color: var(--ncm-accent); }
+.ncm-term__fs-table tr.is-locked { cursor: not-allowed; }
+.ncm-term__fs-why { font-size: calc(9.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-accent); text-transform: uppercase; }
+.ncm-term__fs-enc { color: var(--ncm-danger); font-size: calc(10px * var(--ncm-text-scale, 1)); width: auto !important; }
+.ncm-term__fs-empty { padding: 26px 0; text-align: center; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: 1px; }
+.ncm-term__fs-empty i { margin-right: 6px; }
+.ncm-term__fs-locked { margin: 40px auto; max-width: calc(360px * var(--ncm-text-scale, 1)); text-align: center; display: flex; flex-direction: column; gap: 6px; align-items: center; font-family: var(--ncm-font-mono); color: var(--ncm-text-muted); }
+.ncm-term__fs-locked i { font-size: calc(28px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); }
+.ncm-term__fs-locked b { font-size: calc(14px * var(--ncm-text-scale, 1)); letter-spacing: 3px; color: var(--ncm-accent); }
+.ncm-term__fs-foot { padding: 10px 18px; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: .5px; display: flex; gap: 14px; align-items: center; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); flex: 0 0 auto; }
+.ncm-term__fs-foot kbd { font-family: inherit; font-size: inherit; padding: 1px 5px; border: 1px solid var(--ncm-border); border-radius: 3px; color: var(--ncm-text-secondary); background: transparent; box-shadow: none; }
+.ncm-term__fs-foot-r { margin-left: auto; }
+/* "back to the folder" chip on a file opened from the tree */
+.ncm-term__fs-back { display: inline-flex; align-items: center; gap: 5px; font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; padding: 3px 8px; border-radius: 4px; cursor: pointer; color: var(--ncm-text-secondary); border: 1px solid color-mix(in srgb, var(--ncm-text-muted) 45%, transparent); white-space: nowrap; }
+.ncm-term__fs-back:hover { color: var(--ncm-text-primary); border-color: var(--ncm-text-secondary); }
+@media (prefers-reduced-motion: reduce) { .ncm-term__fs-dir, .ncm-term__fs-root { transition: none; } }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONFIG → ACCOUNTS: CONTENT BLOCKS (2026-10-25) — the shared volume row and
+   each account's MAIL + FILES drawn as the folder tree. Folders are rows with
+   a who-can-open select; files nest under them with a Move-to select.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ncm-acctl-row.is-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; }
+.ncm-acctl-row--vol .ncm-acctl-av { color: var(--ncm-secondary, #19f3f7); background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 35%, transparent); font-size: 15px; }
+.ncm-acctl-cv { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; min-width: 22px; justify-content: flex-end; color: var(--ncm-text-muted, #8e8ea8); font-size: 11px; cursor: pointer; padding: 4px 2px; border-radius: 4px; }
+.ncm-acctl-cv:hover { color: var(--ncm-text-primary, #ededf0); background: color-mix(in srgb, var(--ncm-text-primary, #ededf0) 6%, transparent); }
+.ncm-acctl-row.is-open .ncm-acctl-cv { color: var(--ncm-text-secondary, #bdbdd0); }
+.ncm-acctl-cnt { font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: .5px; color: var(--ncm-text-secondary, #bdbdd0); display: inline-flex; gap: 8px; }
+.ncm-acctl-cnt b { color: var(--ncm-text-secondary, #bdbdd0); font-weight: 400; }
+.ncm-acctl-cnt i { font-size: 8px; margin-right: 3px; }
+.ncm-term-cfg-tag--shared { color: var(--ncm-text-primary, #ededf0); background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 45%, transparent); }
+
+.ncm-acctl-ent { margin: 0 0 8px; padding: 8px 10px 10px; border: 1px solid var(--ncm-border, #2a2a45); border-top: 0; border-radius: 0 0 8px 8px; background: color-mix(in srgb, var(--ncm-bg-deep, #0a0a0f) 55%, transparent); }
+.ncm-acctl-ent-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--ncm-text-secondary, #bdbdd0); }
+.ncm-acctl-ent-hd--gap { margin-top: 12px; }
+.ncm-acctl-ent-hd > i:first-child { font-size: 9px; }
+.ncm-acctl-ent-hd .sp { flex: 1; }
+.ncm-acctl-ent-hd .ncm-cfg-btn-sm { font-size: 9px; }
+.ncm-acctl-ent-root { font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: 0; color: var(--ncm-text-secondary, #bdbdd0); margin-left: 2px; text-transform: none; }
+.ncm-acctl-ent-tools { display: flex; gap: 14px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border, #2a2a45) 80%, transparent); font-family: var(--ncm-font-mono); font-size: 10.5px; }
+.ncm-acctl-ent-link { letter-spacing: .5px; color: var(--ncm-text-secondary, #bdbdd0); text-decoration: underline dotted; cursor: pointer; }
+.ncm-acctl-ent-link:hover { color: var(--ncm-text-primary, #ededf0); }
+.ncm-acctl-ent-link i { margin-right: 4px; font-size: 9px; }
+
+/* a FOLDER row — chevron · icon · name · who-can-open · count · actions */
+.ncm-acctl-dir { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px calc(8px + var(--d, 0) * 14px); margin-top: 4px; border-radius: 5px; font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-primary, #ededf0); background: color-mix(in srgb, var(--ncm-text-primary, #ededf0) 3%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-border, #2a2a45) 70%, transparent); }
+.ncm-acctl-dir.is-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.ncm-acctl-dir.is-gated { border-color: color-mix(in srgb, var(--ncm-accent, #f7c948) 35%, transparent); background: color-mix(in srgb, var(--ncm-accent, #f7c948) 5%, transparent); }
+.ncm-acctl-dir.is-mail { background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 4%, transparent); }
+.ncm-app button.ncm-acctl-dir-cv { appearance: none !important; width: 18px !important; height: 18px !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 3px !important; background: transparent !important; box-shadow: none !important; display: grid; place-items: center; font-size: 10px; line-height: 1; color: var(--ncm-text-secondary, #bdbdd0) !important; cursor: pointer; }
+.ncm-app button.ncm-acctl-dir-cv:hover, .ncm-app button.ncm-acctl-dir-cv:focus-visible { color: var(--ncm-text-primary, #ededf0) !important; background: color-mix(in srgb, var(--ncm-text-primary, #ededf0) 10%, transparent) !important; outline: none; }
+.ncm-app button.ncm-acctl-dir-cv > i { margin: 0 !important; }
+.ncm-acctl-dir-ico { width: 16px; text-align: center; font-size: 12px; color: var(--ncm-secondary, #19f3f7); }
+.ncm-acctl-dir.is-gated .ncm-acctl-dir-ico { color: var(--ncm-accent, #f7c948); }
+.ncm-acctl-dir-nm { font-weight: 700; letter-spacing: .3px; cursor: pointer; padding: 0 3px; border-radius: 3px; }
+.ncm-acctl-dir-nm:hover { background: color-mix(in srgb, var(--ncm-text-primary, #ededf0) 8%, transparent); }
+.ncm-acctl-dir-sys { font-size: 9px; letter-spacing: 1px; color: var(--ncm-text-secondary, #bdbdd0); padding: 1px 5px; border: 1px solid color-mix(in srgb, var(--ncm-border, #2a2a45) 80%, transparent); border-radius: 3px; }
+.ncm-acctl-dir-ct { margin-left: auto; font-size: 10px; color: var(--ncm-text-secondary, #bdbdd0); white-space: nowrap; }
+.ncm-acctl-dir-act { display: inline-flex; gap: 2px; opacity: .55; }
+.ncm-acctl-dir:hover .ncm-acctl-dir-act { opacity: 1; }
+.ncm-app .ncm-acctl-dir-act button, .ncm-app .ncm-acctl-ent-act > button { appearance: none !important; width: 22px !important; height: 22px !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; display: grid; place-items: center; border-radius: 4px !important; border: 0 !important; background: transparent !important; box-shadow: none !important; cursor: pointer; font-size: 10px; line-height: 1; color: var(--ncm-text-secondary, #bdbdd0) !important; }
+.ncm-app .ncm-acctl-dir-act button:hover, .ncm-app .ncm-acctl-ent-act > button:hover, .ncm-app .ncm-acctl-dir-act button:focus-visible, .ncm-app .ncm-acctl-ent-act > button:focus-visible { background: color-mix(in srgb, var(--ncm-text-primary, #ededf0) 10%, transparent) !important; color: var(--ncm-text-primary, #ededf0) !important; outline: none; }
+.ncm-app .ncm-acctl-dir-act button.is-danger:hover, .ncm-app .ncm-acctl-ent-act > button.is-danger:hover { color: var(--ncm-danger, #F65261) !important; }
+.ncm-app .ncm-acctl-dir-act button > i, .ncm-app .ncm-acctl-ent-act > button > i { margin: 0 !important; }
+/* the who-can-open select is a chip, not a form field */
+.ncm-app select.ncm-acctl-gate { appearance: none !important; width: auto !important; height: 20px !important; min-height: 0 !important; padding: 0 18px 0 8px !important; margin: 0 !important; border-radius: 10px !important; font-family: var(--ncm-font-mono) !important; font-size: 10px !important; letter-spacing: .5px; color: var(--ncm-text-secondary, #bdbdd0) !important; border: 1px solid color-mix(in srgb, var(--ncm-border, #2a2a45) 90%, transparent) !important; background-color: color-mix(in srgb, var(--ncm-bg-deep, #0a0a0f) 50%, transparent) !important; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%) !important; background-position: calc(100% - 9px) 7px, calc(100% - 6px) 7px !important; background-size: 3px 3px !important; background-repeat: no-repeat !important; box-shadow: none !important; cursor: pointer; line-height: 18px !important; }
+.ncm-app select.ncm-acctl-gate.is-on { color: var(--ncm-accent, #f7c948) !important; border-color: color-mix(in srgb, var(--ncm-accent, #f7c948) 55%, transparent) !important; background-color: color-mix(in srgb, var(--ncm-accent, #f7c948) 10%, transparent) !important; }
+.ncm-app input.ncm-acctl-gate-min { width: 44px !important; height: 20px !important; min-height: 0 !important; padding: 0 4px !important; margin: 0 !important; font-family: var(--ncm-font-mono) !important; font-size: 10px !important; text-align: center; border-radius: 4px !important; }
+.ncm-acctl-gate-who { font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: .3px; color: var(--ncm-accent, #f7c948); text-decoration: underline dotted; cursor: pointer; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-acctl-gate-inh { font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: .5px; color: var(--ncm-text-secondary, #bdbdd0); white-space: nowrap; }
+.ncm-acctl-gate-inh i { color: var(--ncm-accent, #f7c948); }
+
+/* file / mail rows nest under their folder */
+.ncm-acctl-ent-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) 90px 46px 72px auto; align-items: center; gap: 8px; margin-left: calc(10px + var(--d, 0) * 14px); padding: 5px 8px 5px 6px; border-left: 1px solid color-mix(in srgb, var(--ncm-border, #2a2a45) 70%, transparent); border-radius: 0 5px 5px 0; font-family: var(--ncm-font-mono); font-size: 10.5px; color: var(--ncm-text-secondary, #bdbdd0); }
+.ncm-acctl-ent-row:hover { background: color-mix(in srgb, var(--ncm-text-primary, #ededf0) 4%, transparent); }
+.ncm-acctl-ent-row > i:first-child { text-align: center; color: var(--ct-c, var(--ncm-secondary, #19f3f7)); font-size: 11px; }
+.ncm-acctl-ent-row.is-mail > i:first-child { color: var(--ncm-text-muted, #8e8ea8); }
+.ncm-acctl-ent-nm { color: var(--ncm-text-primary, #ededf0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; cursor: pointer; }
+.ncm-acctl-ent-nm:hover { text-decoration: underline dotted; }
+.ncm-acctl-ent-row.is-mail .ncm-acctl-ent-nm { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 600; line-height: 1.2; }
+.ncm-acctl-ent-nm small { display: block; color: var(--ncm-text-secondary, #bdbdd0); font-weight: 400; font-family: var(--ncm-font-mono); font-size: 10px; }
+.ncm-acctl-ent-tag { font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--ct-c, var(--ncm-text-secondary, #bdbdd0)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-acctl-ent-tag--unread { color: var(--ncm-text-primary, #ededf0); font-weight: 700; }
+.ncm-acctl-ent-row[data-ct-color="muted"] .ncm-acctl-ent-tag, .ncm-acctl-ent-row.is-mail .ncm-acctl-ent-tag { color: var(--ncm-text-secondary, #bdbdd0); } /* the muted content accent and plain mail read at body contrast, not at the accent's */
+.ncm-acctl-ent-sz { text-align: right; color: var(--ncm-text-secondary, #bdbdd0); font-variant-numeric: tabular-nums; }
+.ncm-acctl-ent-dt { color: var(--ncm-text-secondary, #bdbdd0); font-variant-numeric: tabular-nums; }
+.ncm-acctl-ent-act { display: inline-flex; align-items: center; gap: 2px; opacity: .55; }
+.ncm-acctl-ent-row:hover .ncm-acctl-ent-act { opacity: 1; }
+.ncm-app select.ncm-acctl-move { width: 118px !important; height: 20px !important; min-height: 0 !important; padding: 0 4px !important; margin: 0 4px 0 0 !important; font-family: var(--ncm-font-mono) !important; font-size: 10px !important; border-radius: 4px !important; color: var(--ncm-text-secondary, #bdbdd0) !important; }
+.ncm-acctl-ent-chip { font-size: 9px; letter-spacing: 1px; padding: 1px 5px; border-radius: 3px; color: var(--ncm-danger, #F65261); border: 1px solid color-mix(in srgb, var(--ncm-danger, #F65261) 40%, transparent); margin-left: 4px; }
+.ncm-acctl-ent-more { margin-left: 10px; padding: 6px 8px; font-family: var(--ncm-font-mono); font-size: 10.5px; color: var(--ncm-text-secondary, #bdbdd0); font-style: italic; border-left: 1px solid color-mix(in srgb, var(--ncm-border, #2a2a45) 70%, transparent); }
+.ncm-acctl-ent-more b { color: var(--ncm-text-secondary, #bdbdd0); font-weight: 600; }
+/* the dashed "new folder" row at the end of every tree */
+.ncm-acctl-newdir { margin-top: 6px; padding: 5px 10px; border: 1px dashed color-mix(in srgb, var(--ncm-text-muted, #8e8ea8) 55%, transparent); border-radius: 5px; font-family: var(--ncm-font-mono); font-size: 10.5px; color: var(--ncm-text-secondary, #bdbdd0); display: flex; align-items: center; gap: 7px; }
+.ncm-acctl-newdir:focus-within { color: var(--ncm-text-secondary, #bdbdd0); border-color: var(--ncm-text-muted, #8e8ea8); }
+.ncm-acctl-newdir b { color: var(--ncm-text-secondary, #bdbdd0); font-weight: 400; }
+.ncm-app input.ncm-acctl-newdir-in { flex: 1; height: 20px !important; min-height: 0 !important; padding: 0 6px !important; margin: 0 !important; font-family: var(--ncm-font-mono) !important; font-size: 10px !important; background: transparent !important; border: 0 !important; box-shadow: none !important; color: var(--ncm-text-primary, #ededf0) !important; }
+.ncm-app input.ncm-acctl-newdir-in::placeholder { color: var(--ncm-text-secondary, #bdbdd0); font-style: italic; opacity: .9; }
+.ncm-term__fs-tag--gate { color: var(--ncm-text-muted); border-color: color-mix(in srgb, var(--ncm-text-muted) 45%, transparent); background: transparent; padding: 1px 4px; }
+.ncm-acctl-ent-lock { color: var(--ncm-danger, #F65261); font-size: 9px; margin-right: 2px; }
+
+/* Config sheet revisions (2026-10-25, dev live-test): the account editor's sticky
+   footer sits FLUSH with the bottom of the scroller — the content padding and the
+   section's bottom border used to leave a strip under it. */
+.ncm-app .ncm-cfg-content:has(.ncm-acct-editor) { padding-bottom: 0; }
+.ncm-app .ncm-acct-editor { border-bottom: 0; }
+.ncm-app .ncm-acct-foot { margin-bottom: -12px; }
+/* Each folder's rows scroll on their own (a hundred files should not push the
+   next account off the sheet). */
+.ncm-acctl-scroll { max-height: 240px; overflow-y: auto; overflow-x: hidden; }
+.ncm-acctl-scroll > .ncm-acctl-ent-row + .ncm-acctl-ent-row { margin-top: 2px; }
+
+/* Config content fold — MAIL | FILES tabs (2026-10-25). */
+.ncm-acctl-tabs { display: flex; gap: 4px; margin: 0 0 10px; }
+.ncm-app button.ncm-acctl-tab { appearance: none !important; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4px 11px !important; line-height: 1.2 !important; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-radius: 2px !important; border: 1px solid var(--ncm-border, #2a2a45) !important; background: transparent !important; color: var(--ncm-text-secondary, #bdbdd0) !important; box-shadow: none !important; }
+.ncm-app button.ncm-acctl-tab:hover { color: var(--ncm-text-primary, #ededf0) !important; border-color: var(--ncm-text-muted, #8e8ea8) !important; }
+.ncm-app button.ncm-acctl-tab.is-on { color: var(--ncm-text-primary, #ededf0) !important; border-color: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 55%, transparent) !important; background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 10%, transparent) !important; }
+.ncm-app button.ncm-acctl-tab.is-on i { color: var(--ncm-secondary, #19f3f7); }
+.ncm-app button.ncm-acctl-tab b { font-family: var(--ncm-font-mono); font-weight: 400; font-size: 10px; opacity: .9; }
+
+/* The content-type accents (CT_COLORS) are chosen for a dark screen; under the
+   light admin preset a 9.5px lime tag sits at 3.4:1. Pull them toward the
+   text colour there (the composer network-pill precedent). */
+[data-ncm-admin-theme="clean-light"] .ncm-acctl-ent-tag, [data-ncm-admin-theme="clean-light"] .ncm-acctl-ent-row > i:first-child { color: color-mix(in oklab, var(--ct-c, var(--ncm-text-secondary, #bdbdd0)) 50%, var(--ncm-text-primary, #ededf0)); }
+
+/* Boot & Login — the splash preview cannot play a video, so it says so. */
+.ncm-cfg-bootprev-video { margin-top: 8px; font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: 1px; color: var(--ncm-accent, #f7c948); }
+.ncm-cfg-bootprev-video b { font-weight: 400; color: var(--ncm-text-primary, #ededf0); }
+.ncm-cfg-bootprev-splash.is-video .ncm-cfg-bootprev-icon, .ncm-cfg-bootprev-splash.is-video .ncm-cfg-bootprev-bar, .ncm-cfg-bootprev-splash.is-video .ncm-cfg-bootprev-log { opacity: .25; }
+
+/* Config → Boot & Login → Mailbox Layout cards (2026-10-25). The thumb is three
+   CSS strokes arranged per style — a layout glyph, not a screenshot. */
+.ncm-cfg-mstyles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ncm-app button.ncm-cfg-mstyle { display: flex; flex-direction: column; align-items: stretch; gap: 6px; text-align: left; padding: 8px !important; height: auto !important; }
+.ncm-cfg-mstyle__thumb { position: relative; height: 54px; border-radius: 3px; background: color-mix(in srgb, var(--ncm-bg-deep, #0a0a0f) 70%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-border, #2a2a45) 90%, transparent); overflow: hidden; }
+.ncm-cfg-mstyle__thumb i { position: absolute; background: color-mix(in srgb, var(--ncm-text-muted, #8e8ea8) 55%, transparent); border-radius: 1px; }
+.ncm-cfg-mstyle.is-on .ncm-cfg-mstyle__thumb i { background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 70%, transparent); }
+.ncm-cfg-mstyle__thumb--classic i:nth-child(1) { left: 5px; top: 6px; width: 22px; height: 10px; }
+.ncm-cfg-mstyle__thumb--classic i:nth-child(2) { left: 5px; top: 20px; width: 22px; height: 28px; }
+.ncm-cfg-mstyle__thumb--classic i:nth-child(3) { left: 32px; top: 6px; right: 5px; height: 42px; opacity: .55; }
+.ncm-cfg-mstyle__thumb--tabs i:nth-child(1) { left: 5px; right: 5px; top: 5px; height: 7px; }
+.ncm-cfg-mstyle__thumb--tabs i:nth-child(2) { left: 5px; top: 16px; width: 24px; height: 32px; }
+.ncm-cfg-mstyle__thumb--tabs i:nth-child(3) { left: 34px; right: 5px; top: 16px; height: 32px; opacity: .55; }
+.ncm-cfg-mstyle__thumb--tty i:nth-child(1) { left: 6px; top: 8px; width: 60%; height: 3px; }
+.ncm-cfg-mstyle__thumb--tty i:nth-child(2) { left: 6px; top: 16px; width: 80%; height: 3px; box-shadow: 0 8px 0 0 currentColor; opacity: .7; }
+.ncm-cfg-mstyle__thumb--tty i:nth-child(3) { left: 6px; bottom: 6px; width: 6px; height: 9px; }
+.ncm-cfg-mstyle__thumb--desktop i:nth-child(1) { left: 6px; top: 6px; width: 10px; height: 10px; box-shadow: 0 14px 0 0 currentColor, 0 28px 0 0 currentColor; }
+.ncm-cfg-mstyle__thumb--desktop i:nth-child(2) { left: 24px; top: 8px; right: 8px; height: 32px; opacity: .55; }
+.ncm-cfg-mstyle__thumb--desktop i:nth-child(3) { left: 0; right: 0; bottom: 0; height: 6px; opacity: .8; }
+.ncm-cfg-mstyle__nm { font-family: var(--ncm-font-display); font-weight: 700; font-size: 12px; color: var(--ncm-text-primary, #ededf0); }
+.ncm-cfg-mstyle__nm i { margin-right: 4px; color: var(--ncm-secondary, #19f3f7); }
+.ncm-cfg-mstyle__hint { font-family: var(--ncm-font-body); font-size: 10.5px; line-height: 1.3; color: var(--ncm-text-secondary, #bdbdd0); white-space: normal; }

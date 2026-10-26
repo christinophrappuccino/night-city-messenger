@@ -3,6 +3,39 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [1.5.0] — 2026-10-25
+
+### Added
+- **Terminal file repository.** A terminal now has a **shared volume** (files on the machine itself, seen from every login) beside each account's own files, and real **folders**. A folder can be limited to **admins**, a **clearance level**, or **named accounts**; locked folders refuse with their reason and their files never reach the player. Players get a **MAIL | FILES** switch in the mailbox with a folder tree and a file listing.
+- **Configure Terminal → Accounts holds the content.** Each account (and the shared volume) folds open into **MAIL** and **FILES** tabs: add messages or files straight into a folder, create / rename / delete folders, set who can open them, move files between folders and volumes. Folds animate open and shut.
+- **Message or file, made obvious.** The entry composer's Delivery section asks "a message someone sent, or a file on the machine?" up front, and a file picks **Store on** (this account / shared) and a **Folder** from the real tree instead of a typed path.
+- **Four mailbox layouts** for terminals: **Classic** (the default), **Tabs** (folders as tabs across the top), **TTY** (one monospace column with a prompt: type a number to open, `m`/`f`, `cd`, `logout`), **Desktop** (icons, one window, a taskbar). Set in Configure → Boot & Login → Mailbox Layout.
+- **A theme carries its mailbox layout.** Preset cards bring their own, saved themes remember the layout they were saved with, and theme export/import carries it.
+- **Boot video** for terminals and shards: play a video file as the startup screen, with its own audio, for as long as it runs. Click to skip.
+- **Custom boot length** in seconds, beside fast / normal / dramatic.
+- **One CRT film, redesigned as a pane of glass** over the whole window, title bar included. Four looks (**Off · Glass · Tube · Arcade**), an Intensity slider, vignette and a slow rolling band, plus an **Advanced** panel with one slider per layer (line pitch, light line, cut, softness, RGB grille, glow, fringe, vignette, bloom, sheen, curvature, bezel, band speed, flicker, grain). The same panel is in the Theme Customizer (your Agent), Configure Terminal and — new — **Configure Shard**: shards now have their own film.
+- **Accessibility: "Film on terminals & shards"** in Theme Customizer → Effects: As designed / Dimmed / Off. Your own ceiling over every film a GM designed, on your screen only.
+- **Address directory export / import** (Admin → Tools → Email Domains & Addresses): export every character and contact address as CSV or JSON, import a file, review the plan, then apply. Email domains export and import too.
+
+### Changed
+- Every built-in terminal and shard preset carries a mailbox layout and a CRT film tuned for readability; existing terminals, shards, saved themes and preset libraries are brought down to the new film levels automatically on first load (GM).
+- Preset palettes were audited for contrast: 36 text colours lifted so secondary and muted text read on every surface of every Agent, terminal and shard preset.
+- Two terminal presets named boot animations that did not exist (they fell back to a plain fade); they now use real ones.
+
+### Fixed
+- Boot speed did nothing — every terminal booted for the same time.
+- Arasaka (and other red/dark presets) muted text was too dark to read on the boot and mailbox screens.
+- A shard sent from a **character's inventory** arrived as "shard not found".
+- An NPC sender's address was rewritten to `name@nightcity.net` instead of their directory address.
+- The Tabs layout's account switcher was trapped in a tiny scrolling strip; it now opens over the panes.
+- TTY had no way to log out or switch account.
+- The Desktop layout's account switcher opened far to the right instead of above the account chip.
+- Old built-in scanline films kept drawing lines over terminals even with the CRT film off (four of them; all removed).
+- The film's lines cut through bright buttons and the active tab.
+- "Log out → login screen" in the account switcher had no hover state.
+- The Theme Customizer's tabs never showed which one was open.
+- Encrypted-message attachments showed dead "Breach" buttons after the message was decrypted.
+
 ## [1.4.0] — 2026-10-23
 
 ### Added

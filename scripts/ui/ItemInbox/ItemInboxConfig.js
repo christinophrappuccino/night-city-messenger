@@ -10,6 +10,7 @@ import { resolveIntegrity, garbleString, garbleRate } from '../content/Integrity
 import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES, FAILURE_MODES, ENCRYPTION_TYPES, COLOR_VAR_MAP, FONT_OPTIONS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, applyContrastToElement, buildShardThemePrefs } from '../../utils/helpers.js';
 import { SHARD_EDIT_MODES, resolveShardEditing } from '../content/EncoderModel.js';
+import { resolveCrt, applyCrt, crtPanelContext, wireCrtPanel, paintCrtPanel } from '../../utils/crt.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
@@ -117,6 +118,7 @@ export class ItemInboxConfig extends BaseApplication {
       resetDefaults: ItemInboxConfig._onResetDefaults,
       selectIcon: ItemInboxConfig._onSelectIcon,
       browseImage: ItemInboxConfig._onBrowseImage,
+      browseVideo: ItemInboxConfig._onBrowseVideo,
       changeIconMode: ItemInboxConfig._onChangeIconMode,
       selectIconColor: ItemInboxConfig._onSelectIconColor,
       relockShard: ItemInboxConfig._onRelockShard,
@@ -261,6 +263,20 @@ export class ItemInboxConfig extends BaseApplication {
 
     const touch = () => { this._displayPreviewed = true; this._displaySaved = false; };
 
+    // The shared CRT panel (templates/partials/crt-panel.hbs) — the block lives on the
+    // theme draft, created from the saved/preset film on first touch.
+    wireCrtPanel(panel.querySelector('[data-crt-panel]'), {
+      draft: () => {
+        const d = this._draft();
+        if (!d.crt || typeof d.crt !== 'object') {
+          const presetKey = this._themePresetKey ?? this.dataShardService?.getConfig(this.item)?.preset ?? 'blank';
+          d.crt = resolveCrt(d, SHARD_PRESETS[presetKey]?.crt || null);
+        }
+        return d.crt;
+      },
+      onChange: () => { touch(); this._previewTheme(); },
+    });
+
     // Colour pickers fire `input` continuously while dragging — preview live,
     // which is the whole point of a colour picker.
     panel.addEventListener('input', (ev) => {
@@ -309,6 +325,8 @@ export class ItemInboxConfig extends BaseApplication {
         // cleared, or the card you just clicked would visibly do nothing.
         this._themePresetKey = target.dataset.key || 'blank';
         d.colors = {};
+        delete d.crt;   // the look's own film comes back with the look
+        paintCrtPanel(this.element?.querySelector('[data-crt-panel]'), resolveCrt({}, SHARD_PRESETS[this._themePresetKey]?.crt || null));
         touch(); this._repaintThemeTab(); this._previewTheme();
         return;
       }
@@ -775,6 +793,7 @@ export class ItemInboxConfig extends BaseApplication {
       const contrast = ItemInboxConfig._clampContrast(this.element?.querySelector('[name="contrast"]')?.value);
       ts.applyTheme(buildShardThemePrefs(theme, presetKey, { textScale: scale, contrast: 100 }), appRoot);
       applyContrastToElement(inbox, contrast, { baseFrom: appRoot });
+      app.refreshCrt?.({ theme, preset: presetKey });   // the draft's film on the open viewer
     }
 
     // The strip inside this sheet. It is NOT admin-themed on purpose: it has to
@@ -784,6 +803,7 @@ export class ItemInboxConfig extends BaseApplication {
     if (strip) {
       ts.applyTheme(buildShardThemePrefs(theme, presetKey, { textScale: 100, contrast: 100 }), strip);
       applyContrastToElement(strip, ItemInboxConfig._clampContrast(this.element?.querySelector('[name="contrast"]')?.value), { baseFrom: strip });
+      applyCrt(strip, resolveCrt(theme, SHARD_PRESETS[presetKey]?.crt || null));
     }
   }
 
@@ -1114,6 +1134,8 @@ export class ItemInboxConfig extends BaseApplication {
       themeDirty: !!this._themeDraft,
       themeWallpaper: theme.wallpaper || '',
       themeWallpaperStrength: ItemInboxConfig._clampStrength(theme.wallpaperStrength),
+      // The shard's own CRT film (crt.js): the draft's crt, else the staged/saved preset's.
+      themeCrt: crtPanelContext(resolveCrt(theme, SHARD_PRESETS[this._themePresetKey ?? config.preset ?? 'blank']?.crt || null)),
       previewName: config.shardName || this.item.name,
 
       // Identity
@@ -1236,6 +1258,8 @@ export class ItemInboxConfig extends BaseApplication {
       bootFaIconCustom: boot.faIcon || '',
       bootImageUrl: boot.imageUrl || '',
       bootImageSize: boot.imageSize || 64,
+      bootVideoUrl: boot.videoUrl || '',
+      bootVideoOverlay: !!boot.videoOverlay,
       bootTitle: boot.title || '',
       bootSubtitle: boot.subtitle || '',
       bootProgressLabel: boot.progressLabel || '',
@@ -1424,6 +1448,8 @@ export class ItemInboxConfig extends BaseApplication {
         logLines: bootLogLines,
         speed: val('bootSpeed', 'normal'),
         customSeconds: parseFloat(val('bootCustomSeconds')) || null,
+        videoUrl: val('bootVideoUrl') || null,
+        videoOverlay: checked('bootVideoOverlay'),
         animationStyle: SHARD_PRESETS[val('preset')]?.boot?.animationStyle || 'standard-fade',
       },
 
@@ -2017,6 +2043,17 @@ export class ItemInboxConfig extends BaseApplication {
     grid?.querySelectorAll('.ncm-cfg-ig-item').forEach(el => {
       el.classList.toggle('ncm-cfg-ig-item--active', el.dataset.icon === icon);
     });
+  }
+
+  /** FilePicker for the boot VIDEO (.webm / .mp4). */
+  static _onBrowseVideo(event, target) {
+    const targetInput = target.dataset.target || 'bootVideoUrl';
+    const input = this.element?.querySelector(`[name="${targetInput}"]`);
+    new FilePicker({
+      type: 'video',
+      current: input?.value || '',
+      callback: (path) => { if (input) input.value = path; },
+    }).render(true);
   }
 
   static _onBrowseImage(event, target) {

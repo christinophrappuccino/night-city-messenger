@@ -450,9 +450,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     // From actor — or master contact fallback
     const fromActor = this.fromActorId ? game.actors.get(this.fromActorId) : null;
-    const fromEmail = fromActor
-      ? (this.contactRepo?.getActorEmail(this.fromActorId) || '')
-      : (this.fromContact?.email || '');
+    const fromEmail = this._fromEmail();
     // Explicit master-contact pick → its name; else directory-by-actor → actor label.
     const fromName = this.fromContact?.name
       || (fromActor ? resolveDisplayName({ actorId: this.fromActorId, email: fromEmail }, fromActor.name) : 'Unknown');
@@ -2453,8 +2451,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const isGM = game.user.isGM;
 
     // Convert Foundry Items to plain objects for display
+    // `uuid` is what the recipient resolves: an item in an actor's inventory
+    // has an id that only means something inside THAT actor, so a bare id
+    // sent from a character's gear died as "shard not found" on the other end.
     const toShardEntry = (item, ownerName = '') => ({
       id: item.id,
+      uuid: item.uuid,
       name: item.name,
       img: item.img,
       ownerName,
@@ -2533,6 +2535,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
             size: '',
             icon: 'fa-microchip',
             itemId: item.id,
+            itemUuid: item.uuid,
             isEddies: false,
             encrypted: this.encryptionEnabled,
           });
@@ -2822,7 +2825,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     const actor = game.actors.get(this.fromActorId);
     const name = actor?.name || this.fromContact?.name || 'Unknown';
-    const email = actor ? (this.contactRepo?.getActorEmail(this.fromActorId) || '') : (this.fromContact?.email || '');
+    const email = this._fromEmail();
     const alias = actor?.system?.information?.alias || '';
 
     const sigLine = alias
@@ -2864,6 +2867,26 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   /** Whether the Anonymous Send feature is enabled in world settings. */
   _isAnonFeatureEnabled() {
     try { return game.settings.get(MODULE_ID, 'anonSendEnabled') !== false; } catch { return true; }
+  }
+
+  /**
+   * The address the current From identity will write from — the same precedence
+   * `MessageService._senderEmailFor` stamps at send: an actor's registered flag,
+   * then its master-directory entry, else blank (the service synthesizes
+   * name@nightcity.net). An explicit master-contact pick uses that contact's
+   * address. Shown in the header and the signature so the GM sees what will
+   * actually go out — before this an actor-backed NPC showed blank/synthesized
+   * even when the directory had a real address for it.
+   * @returns {string}
+   */
+  _fromEmail() {
+    if (!this.fromActorId) return this.fromContact?.email || '';
+    const flagged = this.contactRepo?.getActorEmail(this.fromActorId) || '';
+    if (flagged) return flagged;
+    const mcs = game.nightcity?.masterContactService;
+    const entry = (this.fromContact?.id && mcs?.getContact?.(this.fromContact.id))
+      || mcs?.getByActorId?.(this.fromActorId);
+    return entry?.email || '';
   }
 
   _getDefaultFromActor() {

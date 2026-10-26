@@ -17,6 +17,8 @@ import { runSiphon, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, 
 import { runSecurityConsole } from '../content/SecurityConsole.js';
 import { entryLevel, applyLoss, damageSummary, garbleString, reconDV, afterRecon, traceGeometry, tierOf, rng, TIER_WORD, TIER_ORDER } from '../content/IntegrityModel.js';
 import { paintIntegrity, startShimmer, playHit, playBurnOut } from '../content/IntegrityFX.js';
+import { playBootVideo } from '../content/BootVideo.js';
+import { applyCrt, resolveCrt, capCrt, playerCrtCap } from '../../utils/crt.js';
 
 export class ItemInboxApp extends BaseApplication {
 
@@ -801,6 +803,22 @@ export class ItemInboxApp extends BaseApplication {
    * @param {object} context the prepared render context
    * @param {HTMLElement} inbox the `.ncm-item-inbox` element
    */
+  /**
+   * Paint this shard's film on its window root: the shard theme's crt (a theme can
+   * be the palette object, a legacy string or the preset chrome block — only the
+   * object shape can carry one), else its preset's crt, capped by the player's
+   * "Film on terminals & shards" setting. The config sheet previews a draft through
+   * `opts.theme`; the Theme Customizer previews a cap through `opts.cap`.
+   */
+  refreshCrt(opts = {}) {
+    if (!this.element) return;
+    const config = this.dataShardService?.getConfig?.(this.item) ?? {};
+    const theme = opts.theme ?? config.theme;
+    const preset = opts.preset ?? config.preset ?? 'blank';
+    const own = theme && typeof theme === 'object' ? theme : {};
+    applyCrt(this.element, capCrt(resolveCrt(own, SHARD_PRESETS[preset]?.crt || null), opts.cap ?? playerCrtCap()));
+  }
+
   _applyShardTheme(context, inbox) {
     const root = this.element;
     if (!root) return;
@@ -847,6 +865,8 @@ export class ItemInboxApp extends BaseApplication {
       inbox.classList.add(`ncm-preset-${presetKey}`);
       this._applyShardTheme(context, inbox);
     }
+    // The shard's own CRT film on the window root (over the player's, capped by the player).
+    this.refreshCrt({ theme: context.shardTheme, preset: context.presetKey || 'blank' });
 
     this._renderIntegrity(context);
 
@@ -1779,6 +1799,24 @@ export class ItemInboxApp extends BaseApplication {
     // Animation gating: off = skip entirely, reduced = quick fade only
     if (animLevel === 'off') {
       this._finishBoot(bootEl);
+      return;
+    }
+
+    // VIDEO boot (2026-10-25, BootVideo.js): the GM's video IS the splash — no
+    // choreography, no boot sound, its own audio, its own length. Reduced motion
+    // skips it the way it would skip the choreography's drama.
+    if ((config.videoUrl || '').trim()) {
+      if (animLevel === 'reduced') { this._finishBoot(bootEl); return; }
+      bootEl.style.opacity = '1';
+      bootEl.classList.add('is-video');
+      if (config.videoOverlay) {
+        const esc = Handlebars.escapeExpression;
+        const ov = document.createElement('div');
+        ov.className = 'ncm-boot-video-overlay';
+        ov.innerHTML = `<div class="ncm-boot-title">${esc(config.title || '')}</div>${config.subtitle ? `<div class="ncm-boot-subtitle">${esc(config.subtitle)}</div>` : ''}`;
+        bootEl.appendChild(ov);
+      }
+      this._bootVideo = playBootVideo(bootEl, { url: config.videoUrl.trim(), onDone: () => { this._bootVideo = null; this._finishBoot(bootEl); } });
       return;
     }
 
@@ -3186,6 +3224,7 @@ export class ItemInboxApp extends BaseApplication {
     if (this._hookId) Hooks.off('updateItem', this._hookId);
     if (this._pageHookId) Hooks.off('updateJournalEntryPage', this._pageHookId);
     this._stopShimmer?.();
+    this._bootVideo?.destroy?.(); this._bootVideo = null;
     // Clean up boot sequence timers
     this._bootTimers.forEach(t => clearTimeout(t));
     this._bootTimers = [];

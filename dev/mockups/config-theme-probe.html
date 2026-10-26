@@ -49,6 +49,12 @@ if (Z !== 100) document.getElementById('out').style.zoom = String(Z / 100);
 // own name; arrays used by {{#each}} get two sample rows.
 const FALSY = new Set((q.get('f') || '').split(',').filter(Boolean));
 const SAMPLE_ARRAYS = new Set(['presetOptions','skillOptions','skillRows','networkOptions','networkTypes','typeOptions','accounts','folders','customFolders','iceOptions','keyItems','themePresets','savedThemes','presetLibrary','loginStyles','soundSets','bootAnimations','iconLibrary','interfaces','exfilRows','clearances','contentTypes','fontOptions','colorKeys','colors','fonts','bootLines','wallStrengths','methods','lines','rows','options','items','chips']);
+const MAILBOX_CARDS = [
+  { key: 'classic', label: 'Classic', icon: 'fas fa-table-columns', hint: 'Account card, MAIL | FILES switch, folders, the list below, the message on the right. The default.', active: true },
+  { key: 'tabs', label: 'Tabs', icon: 'fas fa-window-maximize', hint: 'Folders and FILES as tabs across the top, a tight list left, the message right. Corp consoles.' },
+  { key: 'tty', label: 'TTY', icon: 'fas fa-terminal', hint: 'One monospace column with a prompt: ls, cat, cd. Type a number to open.' },
+  { key: 'desktop', label: 'Desktop', icon: 'fas fa-desktop', hint: 'An icon desktop: folders, drives and files as icons, one floating window, a taskbar.' },
+];
 function mk(path) {
   // Target must be a plain object: Handlebars INVOKES function-valued context
   // properties, so a function proxy reads as `undefined` in every {{#if}}.
@@ -60,6 +66,7 @@ function mk(path) {
       if (typeof k === 'symbol') return undefined;
       // Duck-typing probes Handlebars/JS make on values — must read as absent.
       if (['toHTML', 'then', 'toJSON', 'constructor', '__proto__', 'hasOwnProperty', 'call', 'apply', 'bind', 'nodeType', 'jquery'].includes(k)) return undefined;
+      if (k === 'mailboxStyles') return MAILBOX_CARDS;   // a real list so the Mailbox Layout cards render (TERMINAL_MAILBOX_STYLES mirror)
       if (SAMPLE_ARRAYS.has(k)) return [mk(path + '.' + k + '[0]'), mk(path + '.' + k + '[1]')];
       if (k === 'activeTab') return TAB;
       if (FALSY.has(k)) return false;       // ?f=key1,key2 — force these branches OFF (hide overlays etc.)
@@ -118,6 +125,8 @@ async function loadWithPartials(path) {
 loadWithPartials(file).then(src => {
   const html = Handlebars.compile(src)(mk('ctx'));
   document.getElementById('out').innerHTML = html;
+  // ?focus=<selector> hides every section ABOVE that element in its panel, so a shot shows it first.
+  if (q.get('focus')) setTimeout(() => { const el = document.querySelector(q.get('focus')); const sec = el?.closest('.ncm-cfg-section') || el; if (!sec) return; let p = sec.previousElementSibling; while (p) { p.style.setProperty('display', 'none', 'important'); p = p.previousElementSibling; } }, 60);
   // Show the requested tab like the app does.
   const root = document.querySelector('.ncm-cfg');
   if (root) root.dataset.activeTab = TAB;

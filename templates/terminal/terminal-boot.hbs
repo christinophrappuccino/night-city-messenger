@@ -1,7 +1,12 @@
 {{!-- Boot splash. The TerminalViewerApp animates this (reusing the shard
       _playBootSequence engine) then transitions to the next state. Single root.
       Context: boot {icon, title, subtitle, progressLabel, logLines[]} --}}
-<div class="ncm-term__boot" data-boot-animation="{{boot.animationStyle}}" data-boot-speed="{{boot.speed}}">
+<div class="ncm-term__boot{{#if boot.isVideo}} is-video{{/if}}" data-boot-animation="{{boot.animationStyle}}" data-boot-speed="{{boot.speed}}">
+  {{#if boot.isVideo}}
+    {{!-- VIDEO boot: BootVideo.js mounts the <video> here; the choreography is
+          not rendered at all. The overlay is the GM's opt-in. --}}
+    {{#if boot.videoOverlay}}<div class="ncm-boot-video-overlay"><div class="ncm-term__boot-title">{{boot.title}}</div>{{#if boot.subtitle}}<div class="ncm-term__boot-sub">{{boot.subtitle}}</div>{{/if}}</div>{{/if}}
+  {{else}}
   <div class="ncm-term__boot-icon{{#if boot.imageFree}} ncm-term__boot-icon--free{{/if}}">{{#if boot.imageUrl}}<img src="{{boot.imageUrl}}" alt="">{{else}}<i class="{{boot.icon}}"></i>{{/if}}</div>
   <div class="ncm-term__boot-title">{{boot.title}}</div>
   <div class="ncm-term__boot-sub">{{boot.subtitle}}</div>
@@ -12,4 +17,5 @@
   <div class="ncm-term__boot-log">
     {{#each boot.logLines}}<div>{{{this}}}</div>{{/each}}
   </div>
+  {{/if}}
 </div>

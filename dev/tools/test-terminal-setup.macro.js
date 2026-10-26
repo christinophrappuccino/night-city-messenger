@@ -657,6 +657,31 @@
   });
 
   ui.notifications.info('Test Terminal ready — v_arasaka=1234 · root=toor · m_takeda=hidden. Opening…');
+  // 6) FILE REPOSITORY (2026-10-25): folders + a SHARED VOLUME + gates.
+  //    FILES view (the switch under the account switcher) shows this as a tree:
+  //    /home/v_arasaka (drafts/) and /shared (records/, cams/, secure/ — admins
+  //    only, hr/ — clearance ≥ 3). As Veronica (LEVEL 2) secure/ and hr/ read
+  //    LOCKED with their reason; log in as root to open them. Configure → Accounts
+  //    shows the same tree per account, with the who-can-open select per folder.
+  const _tsvc = game.nightcity.terminalService;
+  const _SH = '__shared__';
+  await _tsvc.saveFileFolder(_item, { scope: _SH, path: 'records' });
+  await _tsvc.saveFileFolder(_item, { scope: _SH, path: 'cams' });
+  await _tsvc.saveFileFolder(_item, { scope: _SH, path: 'secure', gate: { mode: 'admin' } });
+  await _tsvc.saveFileFolder(_item, { scope: _SH, path: 'hr', gate: { mode: 'clearance', min: 3 } });
+  await _tsvc.saveFileFolder(_item, { scope: _acct, path: 'drafts' });
+  const _file = (acct, path, filename, owner, size, subject, body, ago) => _api.addTerminalMessage(_item, acct, {
+    envelope: 'file', file: { filename, path, owner, size }, from: owner, subject, body, timestamp: new Date(_now - ago).toISOString(),
+  });
+  await _file(_SH, '', 'readme.txt', 'root', '1 KB', 'readme.txt', '<p>WS-7F-12 shared volume. Records go in /records, camera dumps in /cams. Personal files belong in your home folder, not here. — sysadmin</p>', 40 * _d);
+  await _file(_SH, 'records', 'vendor_payments_q3.txt', 'finance_7f', '31 KB', 'vendor_payments_q3', '<p>Q3 vendor ledger extract. Three payments to "Kowalski Logistics" have no PO attached.</p>', 12 * _d);
+  await _file(_SH, 'records', 'incident_7f.log', 'SEC-DAEMON', '4 KB', 'incident_7f', '<p>03-09 23:48 badge 7F-0412 after hours · 03-09 23:51 door 7F-E opened · 03-10 00:02 badge 7F-0412 exit</p>', 4 * _d);
+  await _file(_SH, 'cams', 'lobby_cam_dump.txt', 'SECCAM-7F', '14 KB', 'lobby_cam_dump', '<p>Frame index for the lobby camera, 03-09. Frames 118–131 are missing.</p>', 3 * _d);
+  await _file(_SH, 'secure', 'vault_creds.txt', 'root', '2 KB', 'vault_creds', '<p>vault-7f / correct-horse-battery-arasaka · rotate monthly · DO NOT COPY</p>', 60 * _d);
+  await _file(_SH, 'hr', 'transition_list.txt', 'hr@arasaka.net', '6 KB', 'transition_list', '<p>Personnel flagged for transition (LEVEL 3 and above only): Takeda, M. · Alvarez, J. · one redacted.</p>', 2 * _d);
+  await _file(_acct, 'drafts', 'resignation_draft.txt', 'v_arasaka', '2 KB', 'resignation_draft', '<p>To whom it may concern — I can no longer… (unfinished)</p>', 1 * _d);
+  await _file(_acct, '', 'q3_payroll.txt', 'v_arasaka', '31 KB', 'q3_payroll', '<p>Payroll export, Q3. Kept for the audit.</p>', 5 * _d);
+
   game.nightcity.openTerminal(_item);
 
   /* ────────────────────────────────────────────────────────────────────────
@@ -665,11 +690,20 @@
    * MIXED SIDEBAR (#37)
    *   Log in as v_arasaka. The list holds MAIL (sender + subject + preview) and
    *   FILES (type icon + filename + "type · size · path"). Unread files show
-   *   NEW; the camera feed's date column reads LIVE. The ALL / MAIL / FILES
-   *   chips appear because this mailbox has both — click to solo.
+   *   NEW; the camera feed's date column reads LIVE. MAIL | FILES at the top of
+   *   the sidebar is a VIEW switch (2026-10-25): FILES shows the directory tree.
    *   Open a file: no avatar, no Reply, no Add-to-contacts — it shows owner /
    *   modified / size / a type-aware count instead. Nothing was authored for
    *   size: it derives from the content.
+   *
+   * MAILBOX STYLES + CRT FILM (2026-10-25 pm)
+   *   - Configure → Boot & Login → Mailbox Layout: pick Tabs / TTY / Desktop, Save, log in.
+   *     Tabs = folders + FILES as tabs; TTY = type a number / m / f / cd records / cd .. / ? at the
+   *     prompt (a locked folder refuses with its reason); Desktop = icons + one window + taskbar.
+   *     Every style must show the same mail, files, folders and exfil chips as Classic.
+   *   - Configure → Theme → CRT film: Off / Fine / Classic / Grille / Phosphor + intensity, vignette,
+   *     roll — live on the open viewer. The Agent's own film is Theme Customizer → Effects → CRT Film
+   *     and must NOT double up on a terminal (the terminal's own setting wins there).
    *
    * CAMERA FEED + PTZ (#36)
    *   Open "dock-level-b.feed". Clocks tick off the game time provider (advance

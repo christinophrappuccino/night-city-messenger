@@ -579,7 +579,7 @@
           {{#each message.attachmentCards}}
             <div class="ncm-viewer__attach-card" data-action="{{this.action}}"
                  data-attachment-index="{{@index}}" data-message-id="{{../message.messageId}}"
-                 data-item-id="{{this.itemId}}">
+                 data-item-id="{{this.itemId}}" data-item-uuid="{{this.itemUuid}}">
               <div class="ncm-viewer__attach-thumb {{this.thumbClass}}">
                 {{#if this.thumbSrc}}<img src="{{this.thumbSrc}}" alt="">
                 {{else}}<i class="{{this.thumbIcon}}"></i>{{/if}}

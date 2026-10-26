@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Terminal — file repository (shared volume + file browser + config entries)</title>
+<!--
+  Design mock (2026-10-25). Tester (Aegaeon): "How do I add files? Do I need a
+  separate terminal? Can I combine a terminal that accesses mail and files to
+  replicate a workstation… letting someone browse a file depository."
+
+  Three proposals, two frames, no module imports (open off disk or serve it):
+
+  FRAME 1 — the terminal mailbox in FILES view.
+    · MAIL | FILES is a VIEW switch under the account switcher (today the
+      ALL/MAIL/FILES chips only filter one flat list, and only when a folder is mixed).
+    · FILES replaces the mail folder strip with a directory TREE built from each
+      file entry's existing `path`. Two roots: the account's HOME and the machine's
+      SHARED VOLUME (new: entries stored on the terminal, not on an account, so every
+      login sees them). A subfolder can be admin/clearance-gated — it shows locked,
+      it does not vanish.
+    · Selecting a DIRECTORY turns the detail pane into a listing (name · type ·
+      size · modified · owner). Selecting a file shows the shipped file header.
+    · Nothing new is stored except `scope: 'shared'` on an entry; exfil / upload /
+      ANALYZE / SWEEP / integrity keep working because a file is still an entry.
+
+  FRAME 2 — the config sheet's Accounts tab gains the content.
+    · A SHARED VOLUME row at the top of the account list (drive icon), and every
+      account row folds open to an ENTRIES list: type · name · where · size ·
+      date, with edit / delete / move-to-shared, and "+ Message" "+ File" buttons
+      that open the SAME DataShardComposer with { kind:'terminal', item, accountId }.
+      This is the discoverability fix: a GM authors everything from one sheet and
+      never has to log in to find the "New message (GM)" button.
+
+  Real cascade: foundry2.css → CPR main.css → night-city-messenger.css (+ admin
+  theme for frame 2). Every new colour is a --ncm-* token. New class prefixes:
+  ncm-term__fs-* (viewer), ncm-acctl-ent* / ncm-acctl-row--vol (config) — both
+  grep-free in styles/ at the time of writing.
+  ?view=fs|cfg|cmp|all (default all)   ?t=<terminal preset key> (default arasaka-workstation)
+  ?admin=1 logs in as the admin account (the locked folder opens)
+-->
+<link id="css-foundry" rel="stylesheet" href="">
+<link id="css-fa" rel="stylesheet" href="">
+<link id="css-cpr" rel="stylesheet" href="">
+<script>
+  const isFile = location.protocol === 'file:';
+  const FVTT = 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public';
+  document.getElementById('css-foundry').href = isFile ? `${FVTT}/css/foundry2.css` : '/_vendor/foundry2.css';
+  document.getElementById('css-fa').href = isFile ? `${FVTT}/fonts/fontawesome/css/all.min.css` : '/_vendor/fa/css/all.min.css';
+  document.getElementById('css-cpr').href = isFile ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  html, body { height: auto; min-height: 100%; }
+  body { margin: 0; background: #0b0b10; color: #ccc; font-family: var(--ncm-font-display, sans-serif); padding: 28px 0 60px; }
+  .mk-wrap { width: 920px; margin: 0 auto; }
+  .mk-cap { font: 600 13px/1.5 var(--ncm-font-display, sans-serif); color: #9a9ab0; margin: 0 0 10px; letter-spacing: .02em; }
+  .mk-cap b { color: #e6e6ee; font-weight: 700; }
+  .mk-cap small { display: block; font-weight: 400; font-size: 12px; color: #7a7a90; margin-top: 2px; }
+  .mk-frame { margin: 0 auto 46px; }
+  /* window frames — static stand-ins for the AppV2 chrome */
+  .mk-win { position: relative; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); background: #0a0a0f; }
+  .mk-win.mk-term { width: 900px; height: 600px; }
+  .mk-win.mk-cfg  { width: 700px; height: 1000px; }
+  .mk-win > .window-header { flex: 0 0 auto; display: flex; align-items: center; padding: 0 12px; height: 36px; background: rgba(0,0,0,.5); border-bottom: 1px solid rgba(255,255,255,.08); }
+  .mk-win > .window-header .window-title { margin: 0; font-size: 13px; line-height: 36px; }
+  .mk-win > .window-content { flex: 1; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .mk-term .ncm-terminal-viewer { width: 898px !important; height: 570px !important; min-width: 0; min-height: 0; flex: 0 0 570px !important; }
+  .mk-term .ncm-term__detail.is-listing { min-width: 0; }
+  .mk-code { font-style: normal; font-family: var(--ncm-font-mono); font-size: .95em; color: #c9c9dc; background: none; padding: 0; }
+
+  /* ───────────────── FRAME 1: viewer additions (ncm-term__fs-*) ───────────────── */
+  /* MAIL | FILES view switch — a segmented control under the account switcher. */
+  .ncm-term__fs-view { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 6px 0 8px; padding: 2px; border: 1px solid var(--ncm-border); border-radius: 7px; background: color-mix(in srgb, var(--ncm-bg-deep) 60%, transparent); }
+  .ncm-term__fs-view button { appearance: none !important; margin: 0 !important; height: auto !important; min-height: 0 !important; width: auto !important; box-shadow: none !important; border: 0 !important; border-radius: 5px !important; background: transparent !important; padding: 5px 0 !important; font-family: var(--ncm-font-mono) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important; letter-spacing: 1.2px; color: var(--ncm-text-muted) !important; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+  .ncm-term__fs-view button b { font-weight: 400; opacity: .75; }
+  .ncm-term__fs-view button.is-on { background: var(--ncm-term-tint) !important; color: var(--ncm-text-primary) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ncm-primary) 45%, transparent) !important; }
+  .ncm-term__fs-view button.is-on i { color: var(--ncm-primary); }
+
+  /* The tree — replaces the folder strip in FILES view. Rows share the fold's hierarchy. */
+  .ncm-term__fs-tree { flex: 0 1 auto; max-height: 58%; overflow-y: auto; overflow-x: hidden; padding-bottom: 4px; }
+  .ncm-term__fs-root { display: flex; align-items: center; gap: 8px; padding: 7px 9px 5px; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); letter-spacing: 1.2px; color: var(--ncm-text-muted); cursor: pointer; }
+  .ncm-term__fs-root > i.fas:first-child { width: 16px; text-align: center; color: var(--ncm-text-secondary); }
+  .ncm-term__fs-root .ncm-term__fs-cv { margin-left: auto; font-size: 9px; opacity: .7; }
+  .ncm-term__fs-root-nm { color: var(--ncm-text-secondary); font-family: var(--ncm-font-body); font-weight: 600; font-size: calc(13px * var(--ncm-text-scale, 1)); letter-spacing: 0; }
+  .ncm-term__fs-tag { font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; padding: 1px 6px; border-radius: 3px; color: var(--ncm-secondary); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent); background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
+  .ncm-term__fs-tag--lock { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 40%, transparent); background: color-mix(in srgb, var(--ncm-accent) 8%, transparent); }
+  .ncm-term__fs-dir { display: flex; align-items: center; gap: 8px; padding: 6px 9px 6px calc(9px + var(--d, 0) * 14px); border-radius: 6px; cursor: pointer; font-family: var(--ncm-font-mono); font-size: calc(12.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); transition: background var(--ncm-term-fast) ease, color var(--ncm-term-fast) ease; }
+  .ncm-term__fs-dir > i:first-child { width: 16px; text-align: center; color: var(--ncm-text-muted); font-size: 12px; }
+  .ncm-term__fs-dir:hover { background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); color: var(--ncm-text-primary); }
+  .ncm-term__fs-dir.is-active { color: var(--ncm-text-primary); background: var(--ncm-term-tint); box-shadow: inset 2px 0 0 var(--ncm-primary); }
+  .ncm-term__fs-dir.is-active > i:first-child { color: var(--ncm-primary); }
+  .ncm-term__fs-dir.is-locked { color: var(--ncm-text-muted); }
+  .ncm-term__fs-dir.is-locked > i:first-child { color: var(--ncm-accent); }
+  .ncm-term__fs-dir .ncm-term__fs-ct { margin-left: auto; font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+  .ncm-term__fs-dir .ncm-term__fs-slash { opacity: .45; }
+  .ncm-term__fs-file { display: flex; align-items: center; gap: 8px; padding: 5px 9px 5px calc(9px + var(--d, 0) * 14px); border-radius: 6px; cursor: pointer; font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-term__fs-file > i:first-child { width: 16px; text-align: center; font-size: 11px; color: var(--ct-c, var(--ncm-secondary)); }
+  .ncm-term__fs-file:hover { background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); color: var(--ncm-text-primary); }
+  .ncm-term__fs-file .ncm-term__fs-sz { margin-left: auto; font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+  .ncm-term__fs-file .ncm-term__fs-new { font-size: calc(8.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-success); }
+  .ncm-term__fs-file.is-live .ncm-term__fs-sz { color: var(--ncm-success); letter-spacing: 1px; }
+
+  /* usage strip under the tree — a machine's disk, derived from the file sizes */
+  .ncm-term__fs-usage { margin: 6px 4px 2px; font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: .5px; }
+  .ncm-term__fs-usage-bar { height: 3px; margin-top: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ncm-text-muted) 25%, transparent); overflow: hidden; }
+  .ncm-term__fs-usage-bar b { display: block; height: 100%; width: var(--p, 20%); background: var(--ncm-primary); opacity: .8; }
+
+  /* DIRECTORY LISTING — the detail pane when a folder is selected */
+  .ncm-term__fs-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px 12px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-term__fs-head-ico { width: 44px; height: 44px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 8px; font-size: 18px; color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent); }
+  .ncm-term__fs-head-id { flex: 1; min-width: 0; }
+  .ncm-term__fs-crumb { font-family: var(--ncm-font-mono); font-size: calc(15px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); letter-spacing: .3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ncm-term__fs-crumb span { color: var(--ncm-text-secondary); cursor: pointer; }
+  .ncm-term__fs-crumb span:hover { color: var(--ncm-text-primary); text-decoration: underline; }
+  .ncm-term__fs-crumb i { font-size: 9px; color: var(--ncm-text-muted); }
+  .ncm-term__fs-crumb b { font-weight: 400; color: var(--ncm-primary); }
+  .ncm-term__fs-stats { margin-top: 4px; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+  .ncm-term__fs-stats i { color: var(--ncm-text-secondary); font-size: 10px; margin-right: 3px; }
+  .ncm-term__fs-head-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: 0 0 auto; }
+  .ncm-term__fs-head-sub { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); letter-spacing: .5px; }
+
+  .ncm-term__fs-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 0 !important; font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1)); }
+  .ncm-term__fs-table th { text-align: left; font-weight: 400; font-size: calc(9.5px * var(--ncm-text-scale, 1)); letter-spacing: 1.5px; color: var(--ncm-text-muted); padding: 10px 10px 7px; border-bottom: 1px solid var(--ncm-border); position: sticky; top: 0; background: var(--ncm-bg-base); }
+  .ncm-term__fs-table th:first-child, .ncm-term__fs-table td:first-child { padding-left: 18px; }
+  .ncm-term__fs-table col.c-type { width: 128px; } .ncm-term__fs-table col.c-size { width: 68px; } .ncm-term__fs-table col.c-mod { width: 132px; } .ncm-term__fs-table col.c-own { width: 104px; }
+  .ncm-term__fs-table td { overflow: hidden; text-overflow: ellipsis; padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); color: var(--ncm-text-secondary); white-space: nowrap; vertical-align: middle; }
+  .ncm-term__fs-table tr.ncm-term__fs-r { cursor: pointer; }
+  .ncm-term__fs-table tr.ncm-term__fs-r:hover td { background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); color: var(--ncm-text-primary); }
+  .ncm-term__fs-table .ncm-term__fs-nm { color: var(--ncm-text-primary); display: inline-flex; align-items: center; gap: 9px; }
+  .ncm-term__fs-table .ncm-term__fs-nm i { width: 16px; text-align: center; color: var(--ct-c, var(--ncm-secondary)); font-size: 12px; }
+  .ncm-term__fs-table .ncm-term__fs-nm small { font-family: var(--ncm-font-body); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); font-weight: 500; }
+  .ncm-term__fs-type { display: inline-flex; align-items: center; gap: 5px; font-size: calc(9.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; padding: 2px 7px; border-radius: 3px; color: var(--ct-c, var(--ncm-secondary)); background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 35%, transparent); }
+  .ncm-term__fs-num { text-align: right; font-variant-numeric: tabular-nums; }
+  .ncm-term__fs-table tr.is-dir td .ncm-term__fs-nm i { color: var(--ncm-text-muted); }
+  .ncm-term__fs-table tr.is-dir td { color: var(--ncm-text-muted); }
+  .ncm-term__fs-table tr.is-locked td { color: var(--ncm-text-muted); }
+  .ncm-term__fs-table tr.is-locked .ncm-term__fs-nm { color: var(--ncm-text-muted); }
+  .ncm-term__fs-table tr.is-locked .ncm-term__fs-nm i { color: var(--ncm-accent); }
+  .ncm-term__fs-why { font-size: calc(9.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-accent); }
+  .ncm-term__fs-enc { color: var(--ncm-danger); font-size: 10px; margin-left: 6px; width: auto !important; }
+  .ncm-term__fs-flag { color: var(--ncm-accent); font-size: 10px; margin-left: 6px; width: auto !important; }
+  .ncm-term__fs-foot { padding: 10px 18px; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: .5px; display: flex; gap: 14px; align-items: center; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+  .ncm-term__fs-foot kbd { font-family: inherit; font-size: inherit; padding: 1px 5px; border: 1px solid var(--ncm-border); border-radius: 3px; color: var(--ncm-text-secondary); }
+  /* the detail pane for a listing is a column: head · scrolling table · foot */
+  .ncm-term__detail.is-listing { display: flex; flex-direction: column; padding: 0 !important; }
+  .ncm-term__detail.is-listing .ncm-term__fs-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+
+  /* ───────────────── FRAME 2: config Accounts tab additions ───────────────── */
+  .ncm-acctl-row.is-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; }
+  .ncm-acctl-row--vol .ncm-acctl-av { color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent); font-size: 15px; }
+  .ncm-acctl-cv { flex: 0 0 auto; width: 22px; text-align: center; color: var(--ncm-text-muted); font-size: 11px; }
+  .ncm-acctl-row.is-open .ncm-acctl-cv { color: var(--ncm-text-secondary); }
+  .ncm-acctl-cnt { font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: .5px; color: var(--ncm-text-muted); display: inline-flex; gap: 8px; }
+  .ncm-acctl-cnt b { color: var(--ncm-text-secondary); font-weight: 400; }
+  .ncm-acctl-cnt i { font-size: 8px; margin-right: 3px; }
+  .ncm-term-cfg-tag--shared { color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); }
+
+  .ncm-acctl-ent { margin: 0 0 8px; padding: 8px 10px 10px; border: 1px solid var(--ncm-border); border-top: 0; border-radius: 0 0 8px 8px; background: color-mix(in srgb, var(--ncm-bg-deep) 55%, transparent); }
+  .ncm-acctl-ent-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 1.5px; color: var(--ncm-text-muted); }
+  .ncm-acctl-ent-hd .sp { flex: 1; }
+  .ncm-acctl-ent-hd b { font-weight: 400; color: var(--ncm-text-secondary); }
+  .ncm-acctl-ent-hd .ncm-cfg-btn-sm { font-size: 9px; }
+  .ncm-acctl-ent-link { letter-spacing: .5px; color: var(--ncm-text-secondary); text-decoration: underline dotted; cursor: pointer; }
+  .ncm-acctl-ent-row { display: grid; grid-template-columns: 22px minmax(0, 1.5fr) minmax(0, 1.2fr) 52px 74px auto; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 5px; font-family: var(--ncm-font-mono); font-size: 10.5px; color: var(--ncm-text-secondary); }
+  .ncm-acctl-ent-row:hover { background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); }
+  .ncm-acctl-ent-row > i:first-child { text-align: center; color: var(--ct-c, var(--ncm-secondary)); font-size: 11px; }
+  .ncm-acctl-ent-row.is-mail > i:first-child { color: var(--ncm-text-muted); }
+  .ncm-acctl-ent-nm { color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .ncm-acctl-ent-row.is-mail .ncm-acctl-ent-nm { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 600; }
+  .ncm-acctl-ent-nm small { color: var(--ncm-text-muted); font-weight: 400; font-family: var(--ncm-font-mono); font-size: 9.5px; }
+  .ncm-acctl-ent-where { color: var(--ncm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-acctl-ent-where i { font-size: 8px; margin-right: 4px; opacity: .8; }
+  .ncm-acctl-ent-sz { text-align: right; color: var(--ncm-text-muted); font-variant-numeric: tabular-nums; }
+  .ncm-acctl-ent-dt { color: var(--ncm-text-muted); font-variant-numeric: tabular-nums; }
+  .ncm-acctl-ent-act { display: inline-flex; gap: 2px; opacity: .45; transition: opacity .15s; }
+  .ncm-acctl-ent-row:hover .ncm-acctl-ent-act { opacity: 1; }
+  .ncm-acctl-ent-act span { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 4px; cursor: pointer; color: var(--ncm-text-secondary); font-size: 10px; }
+  .ncm-acctl-ent-act span:hover { background: color-mix(in srgb, var(--ncm-text-primary) 8%, transparent); color: var(--ncm-text-primary); }
+  .ncm-acctl-ent-act span.is-danger:hover { color: var(--ncm-danger); }
+  .ncm-acctl-ent-act span.is-share:hover { color: var(--ncm-secondary); }
+  .ncm-acctl-ent-chip { font-size: 8px; letter-spacing: 1px; padding: 1px 5px; border-radius: 3px; color: var(--ncm-danger); border: 1px solid color-mix(in srgb, var(--ncm-danger) 40%, transparent); }
+  .ncm-acctl-ent-chip--lock { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 40%, transparent); }
+  .ncm-acctl-ent-empty { padding: 10px 8px; font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); font-style: italic; }
+  .ncm-acctl-ent-note { margin-top: 8px; padding: 7px 9px; border-radius: 5px; font-family: var(--ncm-font-body); font-size: 11px; color: var(--ncm-text-secondary); background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); border-left: 2px solid color-mix(in srgb, var(--ncm-secondary) 50%, transparent); }
+  .ncm-acctl-ent-note b { color: var(--ncm-text-primary); font-weight: 600; }
+  .mk-cfg .ncm-cfg-content { padding: 12px 14px; }
+  /* ── Frame 2 (folder-first) additions ── */
+  .mk-win.mk-cfg  { height: 1400px; }
+  .ncm-acctl-ent-row.is-moving { grid-template-columns: 14px 18px minmax(0, 1fr) auto; }
+  .ncm-acctl-ent-row.is-moving .ncm-acctl-ent-tag, .ncm-acctl-ent-row.is-moving .ncm-acctl-ent-sz, .ncm-acctl-ent-row.is-moving .ncm-acctl-ent-dt { display: none; }
+  .ncm-acctl-ent-hd i.fas:first-child { font-size: 9px; }
+  .ncm-acctl-ent-root { font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 0; color: var(--ncm-text-muted); opacity: .85; margin-left: 2px; text-transform: none; }
+  .ncm-acctl-ent-tools { display: flex; gap: 14px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); font-family: var(--ncm-font-mono); font-size: 9.5px; }
+  .ncm-acctl-ent-tools .ncm-acctl-ent-link i { margin-right: 4px; font-size: 9px; }
+  /* a FOLDER row — the structural unit. Chevron · icon · name · gate chip · count · actions */
+  .ncm-acctl-dir { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-top: 4px; border-radius: 5px; font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-text-primary) 3%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .ncm-acctl-dir.is-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .ncm-acctl-dir.is-gated { border-color: color-mix(in srgb, var(--ncm-accent) 35%, transparent); background: color-mix(in srgb, var(--ncm-accent) 5%, transparent); }
+  .ncm-acctl-dir.is-mail { background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent); }
+  .ncm-acctl-dir-cv { width: 14px; text-align: center; font-size: 9px; color: var(--ncm-text-muted); cursor: pointer; }
+  .ncm-acctl-dir-ico { width: 16px; text-align: center; font-size: 12px; color: var(--ncm-secondary); }
+  .ncm-acctl-dir.is-gated .ncm-acctl-dir-ico { color: var(--ncm-accent); }
+  .ncm-acctl-dir-nm { font-weight: 700; letter-spacing: .3px; cursor: text; padding: 0 3px; border-radius: 3px; }
+  .ncm-acctl-dir-nm:hover { background: color-mix(in srgb, var(--ncm-text-primary) 8%, transparent); }
+  .ncm-acctl-dir-sys { font-size: 8px; letter-spacing: 1px; color: var(--ncm-text-muted); padding: 1px 5px; border: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); border-radius: 3px; text-transform: uppercase; }
+  .ncm-acctl-gate { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; letter-spacing: .5px; padding: 2px 8px; border-radius: 10px; cursor: pointer; color: var(--ncm-text-muted); border: 1px solid color-mix(in srgb, var(--ncm-border) 90%, transparent); background: color-mix(in srgb, var(--ncm-bg-deep) 50%, transparent); }
+  .ncm-acctl-gate:hover { color: var(--ncm-text-primary); border-color: var(--ncm-text-muted); }
+  .ncm-acctl-gate.is-on { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 55%, transparent); background: color-mix(in srgb, var(--ncm-accent) 10%, transparent); }
+  .ncm-acctl-dir-ct { margin-left: auto; font-size: 9.5px; color: var(--ncm-text-muted); white-space: nowrap; }
+  .ncm-acctl-dir-act { display: inline-flex; gap: 2px; opacity: .5; }
+  .ncm-acctl-dir:hover .ncm-acctl-dir-act { opacity: 1; }
+  .ncm-acctl-dir-act span { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 4px; cursor: pointer; font-size: 9.5px; color: var(--ncm-text-secondary); }
+  .ncm-acctl-dir-act span:hover { background: color-mix(in srgb, var(--ncm-text-primary) 8%, transparent); color: var(--ncm-text-primary); }
+  .ncm-acctl-dir-act span.is-danger:hover { color: var(--ncm-danger); }
+  /* file rows nest under their folder: indented, with a drag handle and a TYPE column instead of a path column */
+  .ncm-acctl-ent-row { grid-template-columns: 14px 18px minmax(0, 1fr) 96px 48px 72px auto; gap: 8px; margin-left: 10px; padding: 5px 8px 5px 4px; border-left: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); border-radius: 0 5px 5px 0; }
+  .ncm-acctl-ent-row.is-moving { background: color-mix(in srgb, var(--ncm-secondary) 7%, transparent); }
+  .ncm-acctl-drag { font-size: 10px; color: var(--ncm-text-muted); opacity: .35; cursor: grab; letter-spacing: -2px; text-align: center; }
+  .ncm-acctl-ent-row:hover .ncm-acctl-drag { opacity: .9; }
+  .ncm-acctl-ent-row > i.fas { text-align: center; }
+  .ncm-acctl-ent-nm small { display: block; font-size: 9px; }
+  .ncm-acctl-ent-row.is-mail .ncm-acctl-ent-nm { display: block; line-height: 1.2; }
+  .ncm-acctl-ent-tag { font-size: 8px; letter-spacing: 1px; color: var(--ct-c, var(--ncm-text-muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-acctl-ent-tag--unread { color: var(--ncm-success); }
+  .ncm-acctl-ent-chip--auto { color: var(--ncm-secondary); border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
+  .ncm-acctl-ent-act.is-open { opacity: 1; }
+  .ncm-acctl-move { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: .5px; color: var(--ncm-text-secondary); text-transform: none; }
+  .ncm-acctl-move .ncm-cfg-select { width: 150px; height: 20px; font-size: 10px; padding: 0 4px; }
+  .ncm-acctl-ent-more { margin-left: 10px; padding: 4px 8px; font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--ncm-text-muted); font-style: italic; border-left: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  /* who-can-open picker, shown open under the gated folder */
+  .ncm-acctl-gatepick { margin: 4px 0 2px 10px; padding: 8px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; border-radius: 0 0 6px 6px; border: 1px solid color-mix(in srgb, var(--ncm-accent) 30%, transparent); border-top: 0; background: color-mix(in srgb, var(--ncm-accent) 4%, transparent); font-family: var(--ncm-font-mono); font-size: 9.5px; }
+  .ncm-acctl-gatepick-lbl { color: var(--ncm-text-secondary); margin-right: 4px; letter-spacing: .5px; }
+  .ncm-acctl-gatepick-lbl b { color: var(--ncm-text-primary); }
+  .ncm-acctl-gatepick-opt { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 10px; cursor: pointer; color: var(--ncm-text-muted); border: 1px solid color-mix(in srgb, var(--ncm-border) 90%, transparent); }
+  .ncm-acctl-gatepick-opt.is-on { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 55%, transparent); background: color-mix(in srgb, var(--ncm-accent) 10%, transparent); }
+  .ncm-acctl-gatepick-sel { height: 18px !important; font-size: 9px !important; padding: 0 3px !important; width: 84px; }
+  .ncm-acctl-gatepick-hint { flex-basis: 100%; font-family: var(--ncm-font-body); font-size: 10.5px; color: var(--ncm-text-muted); margin-top: 2px; }
+  /* the dashed "new folder" row at the end of every tree */
+  .ncm-acctl-newdir { margin-top: 6px; padding: 6px 10px; border: 1px dashed color-mix(in srgb, var(--ncm-text-muted) 55%, transparent); border-radius: 5px; font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--ncm-text-muted); cursor: text; display: flex; align-items: center; gap: 7px; }
+  .ncm-acctl-newdir:hover { color: var(--ncm-text-secondary); border-color: var(--ncm-text-muted); }
+  .ncm-acctl-newdir b { color: var(--ncm-text-secondary); font-weight: 400; }
+  .ncm-acctl-newdir-in { opacity: .7; font-style: italic; }
+
+  /* ── Frame 3 (composer) ── */
+  .mk-win.mk-cmp { width: 620px; height: 470px; }
+  .mk-cmp .window-content { padding: 0; }
+  .mk-cmp .ncm-composer-shell { display: flex; flex-direction: column; gap: 8px; padding: 12px; height: 100%; overflow-y: auto; }
+  .mk-cmp .ncm-cmp-sec { flex: 0 0 auto; }
+  .ncm-mk-storeon { display: inline-flex !important; width: auto !important; max-width: none !important; overflow: visible !important; }
+  .ncm-mk-storeon button { display: inline-flex !important; align-items: center; gap: 5px; white-space: nowrap; width: auto !important; padding: 0 9px !important; flex: 0 0 auto; }
+  .mk-cmp .ncm-composer-from-status { display: block !important; line-height: 1.55; }
+  .mk-cmp .ncm-composer-from-status i.fas { margin-right: 5px; }
+  .mk-cmp .ncm-composer-from-status { margin-top: 8px; }
+
+  /* A window root class (.ncm-app) is positioned FIXED by the module (it IS a window in Foundry); on a scrolling mock page every frame must be in flow. */
+  .mk-win, .mk-win .ncm-terminal-viewer, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; z-index: auto !important; max-height: none !important; }
+  .mk-win > .window-header { width: 100%; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div class="mk-wrap">
+
+<!-- ══════════════════════ FRAME 1 — terminal, FILES view ══════════════════════ -->
+<section class="mk-frame" data-view="fs">
+  <p class="mk-cap"><b>Frame 1 — the terminal in FILES view.</b> MAIL | FILES is a view switch; FILES turns the sidebar into a directory tree from each file's existing <em class="mk-code">path</em>, with the account's HOME and the machine's SHARED VOLUME as two roots. A selected folder lists its contents in the detail pane.
+  <small>Logged in as <b>v_arasaka</b> (not admin) — so <em class="mk-code">/pub/secure</em> shows LOCKED instead of vanishing. Add <em class="mk-code">?admin=1</em> to see it open. Mail is one click away and untouched.</small></p>
+
+  <div class="mk-win ncm-app ncm-terminal-app mk-term" id="termApp">
+    <header class="window-header"><h1 class="window-title"><span class="ncm-term__title-user">v_arasaka</span><span class="ncm-term__title-at">@</span><span class="ncm-term__title-org">ARASAKA NET</span></h1></header>
+    <section class="window-content">
+      <div class="ncm-terminal-viewer ncm-app" id="termRoot" data-terminal-preset="arasaka-workstation" data-terminal-state="mailbox" data-form-factor="desktop">
+
+        <div class="ncm-term__hud">
+          <span class="ncm-term__hud-seg"><i class="fas fa-plug-circle-check ncm-term__hud-on"></i> <span class="ncm-term__hud-on">logged in</span></span>
+          <span class="ncm-term__hud-sep">·</span>
+          <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> ARASAKA-NET</span>
+          <span class="ncm-term__hud-seg ncm-term__bars"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></span>
+          <span id="hudAdmin" hidden><span class="ncm-term__hud-sep">·</span><span class="ncm-term__hud-seg ncm-term__hud-admin"><i class="fas fa-user-shield"></i> ADMIN</span></span>
+          <span class="ncm-term__hud-spacer"></span>
+          <span class="ncm-term__hud-seg ncm-term__hud-op is-switchable"><i class="fas fa-user-gear"></i> Rache <i class="fas fa-chevron-down ncm-term__hud-opcv"></i></span>
+          <span class="ncm-term__hud-seg ncm-term__hud-tools"><i class="fas fa-user-secret"></i> OPS <i class="fas fa-chevron-down ncm-term__hud-opcv"></i></span>
+          <span class="ncm-term__hud-seg ncm-term__hud-gm"><i class="fas fa-sliders"></i> EDIT</span>
+        </div>
+
+        <div class="ncm-term__panes">
+          <button type="button" class="ncm-term__side-toggle"><i class="fas fa-chevron-left"></i></button>
+          <div class="ncm-term__side">
+            <div class="ncm-term__acsw">
+              <span class="ncm-term__avatar" id="acAv">VA</span>
+              <span class="ncm-term__acsw-nm"><span id="acNm">Veronica A.</span><small id="acUs">v_arasaka</small></span>
+              <span class="ncm-term__acsw-caret"><i class="fas fa-chevron-down"></i></span>
+            </div>
+
+            <!-- NEW: view switch -->
+            <div class="ncm-term__fs-view">
+              <button type="button"><i class="fas fa-envelope"></i> MAIL <b>9</b></button>
+              <button type="button" class="is-on"><i class="fas fa-folder-tree"></i> FILES <b>14</b></button>
+            </div>
+
+            <!-- NEW: directory tree (replaces the folder strip in FILES view) -->
+            <div class="ncm-term__fs-tree">
+              <div class="ncm-term__fs-root"><i class="fas fa-house"></i><span class="ncm-term__fs-root-nm">home</span> <span style="opacity:.7" id="homeUs">v_arasaka</span><i class="fas fa-chevron-down ncm-term__fs-cv"></i></div>
+              <div class="ncm-term__fs-dir" style="--d:1"><i class="fas fa-folder"></i>drafts<span class="ncm-term__fs-slash">/</span><span class="ncm-term__fs-ct">2</span></div>
+              <div class="ncm-term__fs-file" style="--d:1" data-ct-color="green"><i class="fas fa-table"></i>q3_payroll.xls<span class="ncm-term__fs-sz">31 KB</span></div>
+              <div class="ncm-term__fs-file" style="--d:1" data-ct-color="cyan"><i class="fas fa-file-lines"></i>memo_7f.doc<span class="ncm-term__fs-new">NEW</span><span class="ncm-term__fs-sz">6 KB</span></div>
+
+              <div class="ncm-term__fs-root" style="margin-top:6px"><i class="fas fa-hard-drive"></i><span class="ncm-term__fs-root-nm">pub</span><span class="ncm-term__fs-tag">SHARED</span><i class="fas fa-chevron-down ncm-term__fs-cv"></i></div>
+              <div class="ncm-term__fs-dir is-active" style="--d:1"><i class="fas fa-folder-open"></i>records<span class="ncm-term__fs-slash">/</span><span class="ncm-term__fs-ct">4</span></div>
+              <div class="ncm-term__fs-dir" style="--d:1"><i class="fas fa-folder"></i>cams<span class="ncm-term__fs-slash">/</span><span class="ncm-term__fs-ct">2</span></div>
+              <div class="ncm-term__fs-dir is-locked" id="secureDir" style="--d:1"><i class="fas fa-lock"></i>secure<span class="ncm-term__fs-slash">/</span><span class="ncm-term__fs-tag ncm-term__fs-tag--lock" style="margin-left:4px">ADMIN</span><span class="ncm-term__fs-ct">3</span></div>
+              <div class="ncm-term__fs-file" style="--d:1" data-ct-color="muted"><i class="fas fa-note-sticky"></i>readme.txt<span class="ncm-term__fs-sz">1 KB</span></div>
+              <div class="ncm-term__fs-file is-live" style="--d:1" data-ct-color="amber"><i class="fas fa-terminal"></i>system.log<span class="ncm-term__fs-sz">LIVE</span></div>
+            </div>
+
+            <div class="ncm-term__lsep"></div>
+            <div class="ncm-term__fs-usage">WS-7F-12 · 14 files · 212 KB used<div class="ncm-term__fs-usage-bar" style="--p:21%"><b></b></div></div>
+            <button type="button" class="ncm-term__gm-add"><i class="fas fa-plus"></i> Add message or file (GM)</button>
+          </div>
+
+          <!-- NEW: directory listing in the detail pane -->
+          <div class="ncm-term__detail is-listing">
+            <div class="ncm-term__fs-head">
+              <span class="ncm-term__fs-head-ico"><i class="fas fa-folder-open"></i></span>
+              <div class="ncm-term__fs-head-id">
+                <div class="ncm-term__fs-crumb"><span>//WS-7F-12</span><i class="fas fa-chevron-right"></i><span>pub</span><i class="fas fa-chevron-right"></i><b>records</b></div>
+                <div class="ncm-term__fs-stats"><span><i class="fas fa-file"></i>4 files</span><span><i class="fas fa-database"></i>71 KB</span><span><i class="fas fa-clock"></i>modified 2046-03-11</span><span><i class="fas fa-user"></i>owner kowalski</span></div>
+              </div>
+              <div class="ncm-term__fs-head-tags"><span class="ncm-term__fs-tag">SHARED VOLUME</span><span class="ncm-term__fs-head-sub">visible from every account</span></div>
+            </div>
+            <div class="ncm-term__fs-scroll">
+              <table class="ncm-term__fs-table">
+                <colgroup><col><col class="c-type"><col class="c-size"><col class="c-mod"><col class="c-own"></colgroup><thead><tr><th>NAME</th><th>TYPE</th><th class="ncm-term__fs-num">SIZE</th><th>MODIFIED</th><th>OWNER</th></tr></thead>
+                <tbody>
+                  <tr class="ncm-term__fs-r is-dir"><td><span class="ncm-term__fs-nm"><i class="fas fa-arrow-turn-up"></i>..</span></td><td></td><td></td><td></td><td></td></tr>
+                  <tr class="ncm-term__fs-r" data-ct-color="purple"><td><span class="ncm-term__fs-nm"><i class="fas fa-id-card"></i>patient_intake_0412.rec</span></td><td><span class="ncm-term__fs-type">RECORD</span></td><td class="ncm-term__fs-num">18 KB</td><td>2046-03-11 09:12</td><td>kowalski</td></tr>
+                  <tr class="ncm-term__fs-r" data-ct-color="amber"><td><span class="ncm-term__fs-nm"><i class="fas fa-terminal"></i>incident_7f.log</span></td><td><span class="ncm-term__fs-type">SYSLOG</span></td><td class="ncm-term__fs-num">4 KB</td><td>2046-03-09 23:48</td><td>SEC-DAEMON</td></tr>
+                  <tr class="ncm-term__fs-r" data-ct-color="green"><td><span class="ncm-term__fs-nm"><i class="fas fa-table"></i>vendor_payments.xls<i class="fas fa-lock ncm-term__fs-enc" data-tooltip="Encrypted — DECRYPT to read"></i></span></td><td><span class="ncm-term__fs-type">SPREADSHEET</span></td><td class="ncm-term__fs-num">31 KB</td><td>2046-02-27 17:05</td><td>finance_7f</td></tr>
+                  <tr class="ncm-term__fs-r" data-ct-color="red"><td><span class="ncm-term__fs-nm"><i class="fas fa-user-secret"></i>kowalski_dossier.dos<i class="fas fa-flag ncm-term__fs-flag" data-tooltip="Flagged"></i></span></td><td><span class="ncm-term__fs-type">DOSSIER</span></td><td class="ncm-term__fs-num">18 KB</td><td>2046-03-02 11:30</td><td>root</td></tr>
+                  <tr class="ncm-term__fs-r is-locked" id="secureRow"><td><span class="ncm-term__fs-nm"><i class="fas fa-lock"></i>../secure/ <small>3 files</small></span></td><td><span class="ncm-term__fs-why">ADMIN ONLY</span></td><td class="ncm-term__fs-num">—</td><td>—</td><td>root</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ncm-term__fs-foot"><span><kbd>click</kbd> open a file</span><span><kbd>⇧ click</kbd> select several for exfil</span><span style="margin-left:auto">sorted by name</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ══════════════════════ FRAME 2 — config Accounts tab, folder-first ══════════════════════ -->
+<section class="mk-frame" data-view="cfg">
+  <p class="mk-cap"><b>Frame 2 — Configure Terminal → Accounts, folder-first.</b> Content is shown AS the folder tree the player will see, not as a flat list with a "where" column. Folders are real rows: each carries its own <b>who-can-see</b> chip, a count, and <b>+ File here</b>. Every account has two things, its MAIL (the mailbox folders from Identity) and its FILES (its home directory); the shared volume has only FILES.
+  <small>Adding a folder = the <b>+ Folder</b> button or the dashed row at the end of any tree. Moving a file = drag the ⋮⋮ handle, or the <b>Move to</b> select on hover (open on <em class="mk-code">incident_7f.log</em> below). Nothing here is typed as a path string.</small></p>
+
+  <div class="mk-win ncm-app ncm-item-inbox-config ncm-term-config mk-cfg" data-ncm-admin-theme="clean-dark" data-ncm-scanlines="false" data-ncm-neon="false">
+    <header class="window-header"><h1 class="window-title">Configure Terminal: Arasaka Workstation 7F-12</h1></header>
+    <section class="window-content">
+      <div class="ncm-cfg">
+        <div class="ncm-cfg-tabs">
+          <button type="button" class="ncm-cfg-tab"><i class="fas fa-id-badge"></i> Identity</button>
+          <button type="button" class="ncm-cfg-tab ncm-cfg-tab--active"><i class="fas fa-users"></i> Accounts <span class="ncm-cfg-badge ncm-cfg-badge--on">2</span></button>
+          <button type="button" class="ncm-cfg-tab"><i class="fas fa-palette"></i> Theme</button>
+          <button type="button" class="ncm-cfg-tab"><i class="fas fa-power-off"></i> Boot &amp; Login</button>
+          <button type="button" class="ncm-cfg-tab"><i class="fas fa-network-wired"></i> Network</button>
+          <button type="button" class="ncm-cfg-tab"><i class="fas fa-download"></i> Exfil</button>
+        </div>
+        <div class="ncm-cfg-content">
+          <div class="ncm-cfg-panel ncm-cfg-panel--active" data-panel="accounts">
+            <div class="ncm-cfg-section">
+              <div class="ncm-cfg-section-header"><i class="fas fa-users ncm-cfg-section-icon" style="color:var(--ncm-secondary)"></i><div class="ncm-cfg-section-title">Accounts &amp; content</div></div>
+
+              <div class="ncm-acctl-summary">
+                <span class="ncm-acctl-stat"><b>2</b> accounts</span>
+                <span class="ncm-acctl-stat ncm-acctl-stat--adm"><i class="fas fa-user-shield"></i> <b>1</b> admin</span>
+                <span class="ncm-acctl-stat"><i class="fas fa-envelope"></i> <b>9</b> mail</span>
+                <span class="ncm-acctl-stat"><i class="fas fa-folder"></i> <b>14</b> files in <b>7</b> folders</span>
+                <span class="ncm-acctl-stat ncm-acctl-stat--net"><i class="fas fa-hard-drive"></i> <b>7</b> shared</span>
+              </div>
+
+              <div class="ncm-acctl-bar">
+                <div class="ncm-cfg-icon-search" style="margin:0;flex:1"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="search accounts, folders, files, subjects…"></div>
+                <button type="button" class="ncm-cfg-btn-sm"><i class="fas fa-plus"></i> Account</button>
+              </div>
+
+              <!-- ── SHARED VOLUME ── -->
+              <div class="ncm-acctl-row ncm-acctl-row--vol is-open">
+                <span class="ncm-acctl-av"><i class="fas fa-hard-drive"></i></span>
+                <span class="ncm-acctl-id">
+                  <span class="ncm-acctl-nm">Shared volume <b class="ncm-term-cfg-tag ncm-term-cfg-tag--shared">every login sees it</b></span>
+                  <span class="ncm-acctl-sub">files on the machine itself · a folder can still be limited to admins or a clearance</span>
+                </span>
+                <span class="ncm-acctl-right"><span class="ncm-acctl-cnt"><span><i class="fas fa-folder"></i><b>4</b> folders</span><span><i class="fas fa-file"></i><b>7</b> files</span></span></span>
+                <span class="ncm-acctl-cv"><i class="fas fa-chevron-up"></i></span>
+              </div>
+              <div class="ncm-acctl-ent">
+                <div class="ncm-acctl-ent-hd"><i class="fas fa-folder-tree"></i> FILES <span class="ncm-acctl-ent-root">//WS-7F-12/pub</span><span class="sp"></span><button type="button" class="ncm-cfg-btn-sm"><i class="fas fa-folder-plus"></i> Folder</button><button type="button" class="ncm-cfg-btn-sm"><i class="fas fa-plus"></i> File</button></div>
+
+                <!-- folder: records (open) -->
+                <div class="ncm-acctl-dir is-open">
+                  <span class="ncm-acctl-dir-cv"><i class="fas fa-chevron-down"></i></span>
+                  <i class="fas fa-folder-open ncm-acctl-dir-ico"></i>
+                  <span class="ncm-acctl-dir-nm" contenteditable="false">records</span>
+                  <span class="ncm-acctl-gate" data-tooltip="Who can open this folder — click to change"><i class="fas fa-users"></i> everyone</span>
+                  <span class="ncm-acctl-dir-ct">4 files · 71 KB</span>
+                  <span class="ncm-acctl-dir-act"><span data-tooltip="Add a file in this folder"><i class="fas fa-plus"></i></span><span data-tooltip="Rename"><i class="fas fa-pen"></i></span><span class="is-danger" data-tooltip="Delete folder (files move up a level)"><i class="fas fa-trash-can"></i></span></span>
+                </div>
+                <div class="ncm-acctl-ent-row" data-ct-color="purple"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-id-card"></i><span class="ncm-acctl-ent-nm">patient_intake_0412.rec</span><span class="ncm-acctl-ent-tag">RECORD</span><span class="ncm-acctl-ent-sz">18 KB</span><span class="ncm-acctl-ent-dt">2046-03-11</span><span class="ncm-acctl-ent-act"><span data-tooltip="Move to…"><i class="fas fa-folder-tree"></i></span><span data-tooltip="Edit"><i class="fas fa-pen"></i></span><span class="is-danger" data-tooltip="Delete"><i class="fas fa-trash-can"></i></span></span></div>
+                <div class="ncm-acctl-ent-row is-moving" data-ct-color="amber"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-terminal"></i><span class="ncm-acctl-ent-nm">incident_7f.log</span><span class="ncm-acctl-ent-tag">SYSLOG</span><span class="ncm-acctl-ent-sz">4 KB</span><span class="ncm-acctl-ent-dt">2046-03-09</span><span class="ncm-acctl-ent-act is-open"><label class="ncm-acctl-move">Move to <select class="ncm-cfg-select"><optgroup label="Shared volume"><option>/pub</option><option selected>/pub/records</option><option>/pub/cams</option><option>/pub/secure (admin)</option></optgroup><optgroup label="Veronica A."><option>/home/v_arasaka</option><option>/home/v_arasaka/drafts</option></optgroup><optgroup label="sysadmin"><option>/home/root</option></optgroup><option>＋ New folder…</option></select></label></span></div>
+                <div class="ncm-acctl-ent-row" data-ct-color="green"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-table"></i><span class="ncm-acctl-ent-nm">vendor_payments.xls <span class="ncm-acctl-ent-chip">ENCRYPTED</span></span><span class="ncm-acctl-ent-tag">SPREADSHEET</span><span class="ncm-acctl-ent-sz">31 KB</span><span class="ncm-acctl-ent-dt">2046-02-27</span><span class="ncm-acctl-ent-act"><span><i class="fas fa-folder-tree"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span></div>
+                <div class="ncm-acctl-ent-row" data-ct-color="red"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-user-secret"></i><span class="ncm-acctl-ent-nm">kowalski_dossier.dos</span><span class="ncm-acctl-ent-tag">DOSSIER</span><span class="ncm-acctl-ent-sz">18 KB</span><span class="ncm-acctl-ent-dt">2046-03-02</span><span class="ncm-acctl-ent-act"><span><i class="fas fa-folder-tree"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span></div>
+
+                <!-- folder: cams (closed) -->
+                <div class="ncm-acctl-dir">
+                  <span class="ncm-acctl-dir-cv"><i class="fas fa-chevron-right"></i></span>
+                  <i class="fas fa-folder ncm-acctl-dir-ico"></i>
+                  <span class="ncm-acctl-dir-nm">cams</span>
+                  <span class="ncm-acctl-gate"><i class="fas fa-users"></i> everyone</span>
+                  <span class="ncm-acctl-dir-ct">2 files · 1 live feed</span>
+                  <span class="ncm-acctl-dir-act"><span><i class="fas fa-plus"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span>
+                </div>
+
+                <!-- folder: secure (open, gated) -->
+                <div class="ncm-acctl-dir is-open is-gated">
+                  <span class="ncm-acctl-dir-cv"><i class="fas fa-chevron-down"></i></span>
+                  <i class="fas fa-lock ncm-acctl-dir-ico"></i>
+                  <span class="ncm-acctl-dir-nm">secure</span>
+                  <span class="ncm-acctl-gate is-on" data-tooltip="Only admin accounts can open this folder"><i class="fas fa-user-shield"></i> admins only</span>
+                  <span class="ncm-acctl-dir-ct">1 file · 2 KB</span>
+                  <span class="ncm-acctl-dir-act"><span><i class="fas fa-plus"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span>
+                </div>
+                <div class="ncm-acctl-ent-row" data-ct-color="gold"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-key"></i><span class="ncm-acctl-ent-nm">vault_creds.key</span><span class="ncm-acctl-ent-tag">CREDENTIALS</span><span class="ncm-acctl-ent-sz">2 KB</span><span class="ncm-acctl-ent-dt">2046-01-14</span><span class="ncm-acctl-ent-act"><span><i class="fas fa-folder-tree"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span></div>
+                <div class="ncm-acctl-gatepick"><span class="ncm-acctl-gatepick-lbl">Who can open <b>secure</b></span><span class="ncm-acctl-gatepick-opt"><i class="fas fa-users"></i> Everyone</span><span class="ncm-acctl-gatepick-opt is-on"><i class="fas fa-user-shield"></i> Admins only</span><span class="ncm-acctl-gatepick-opt"><i class="fas fa-id-badge"></i> Clearance ≥ <select class="ncm-cfg-select ncm-acctl-gatepick-sel"><option>LEVEL 3</option><option>LEVEL 4</option></select></span><span class="ncm-acctl-gatepick-opt"><i class="fas fa-user"></i> These accounts…</span><span class="ncm-acctl-gatepick-hint">A player who can't open it sees the folder locked with the reason, never an empty space.</span></div>
+
+                <!-- root-level files -->
+                <div class="ncm-acctl-ent-row" data-ct-color="muted"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-note-sticky"></i><span class="ncm-acctl-ent-nm">readme.txt <small>at the root</small></span><span class="ncm-acctl-ent-tag">NOTE</span><span class="ncm-acctl-ent-sz">1 KB</span><span class="ncm-acctl-ent-dt">2045-12-30</span><span class="ncm-acctl-ent-act"><span><i class="fas fa-folder-tree"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span></div>
+                <div class="ncm-acctl-ent-row" data-ct-color="amber"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-terminal"></i><span class="ncm-acctl-ent-nm">system.log <span class="ncm-acctl-ent-chip ncm-acctl-ent-chip--auto">MACHINE-WRITTEN</span></span><span class="ncm-acctl-ent-tag">SYSLOG</span><span class="ncm-acctl-ent-sz">—</span><span class="ncm-acctl-ent-dt">LIVE</span><span class="ncm-acctl-ent-act"><span data-tooltip="The login log, rendered as a file. Switch off in Identity."><i class="fas fa-toggle-on"></i></span></span></div>
+                <div class="ncm-acctl-newdir"><i class="fas fa-folder-plus"></i> New folder in <b>/pub</b> — <span class="ncm-acctl-newdir-in">type a name and press Enter</span></div>
+              </div>
+
+              <!-- ── ACCOUNT: Veronica (open) ── -->
+              <div class="ncm-acctl-row is-open">
+                <span class="ncm-acctl-av">VA</span>
+                <span class="ncm-acctl-id">
+                  <span class="ncm-acctl-nm">Veronica A. <b class="ncm-term-cfg-tag ncm-term-cfg-tag--default">★ default</b></span>
+                  <span class="ncm-acctl-sub">v_arasaka · <i class="ncm-acctl-mail">v.arasaka@arasaka.nc</i> · ◉ Veronica Arasaka</span>
+                  <span class="ncm-acctl-role">Junior Analyst</span>
+                </span>
+                <span class="ncm-acctl-right">
+                  <b class="ncm-acctl-clr">LEVEL 2</b>
+                  <span class="ncm-acctl-cnt"><span><i class="fas fa-envelope"></i><b>6</b> mail</span><span><i class="fas fa-folder"></i><b>3</b> files</span></span>
+                </span>
+                <span class="ncm-acctl-cv"><i class="fas fa-chevron-up"></i></span>
+              </div>
+              <div class="ncm-acctl-ent">
+                <div class="ncm-acctl-ent-tools"><span class="ncm-acctl-ent-link"><i class="fas fa-user-pen"></i> edit login &amp; security</span><span class="ncm-acctl-ent-link"><i class="fas fa-right-to-bracket"></i> open the terminal as this account</span></div>
+
+                <!-- MAIL -->
+                <div class="ncm-acctl-ent-hd"><i class="fas fa-envelope"></i> MAIL <span class="ncm-acctl-ent-root">the mailbox folders from Identity</span><span class="sp"></span><button type="button" class="ncm-cfg-btn-sm"><i class="fas fa-plus"></i> Message</button></div>
+                <div class="ncm-acctl-dir is-open is-mail">
+                  <span class="ncm-acctl-dir-cv"><i class="fas fa-chevron-down"></i></span>
+                  <i class="fas fa-inbox ncm-acctl-dir-ico"></i>
+                  <span class="ncm-acctl-dir-nm">Correspondence</span><span class="ncm-acctl-dir-sys">inbox</span>
+                  <span class="ncm-acctl-dir-ct">4 messages · 1 unread</span>
+                  <span class="ncm-acctl-dir-act"><span data-tooltip="New message in this folder"><i class="fas fa-plus"></i></span></span>
+                </div>
+                <div class="ncm-acctl-ent-row is-mail"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-envelope"></i><span class="ncm-acctl-ent-nm">Q3 headcount — do not forward<small>from hr-7f@arasaka.nc</small></span><span class="ncm-acctl-ent-tag ncm-acctl-ent-tag--unread">UNREAD</span><span class="ncm-acctl-ent-sz"></span><span class="ncm-acctl-ent-dt">2046-03-12</span><span class="ncm-acctl-ent-act"><span data-tooltip="Move to…"><i class="fas fa-folder-tree"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span></div>
+                <div class="ncm-acctl-ent-row is-mail"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-envelope"></i><span class="ncm-acctl-ent-nm">Re: badge access 7F<small>from security@arasaka.nc</small></span><span class="ncm-acctl-ent-tag"></span><span class="ncm-acctl-ent-sz"></span><span class="ncm-acctl-ent-dt">2046-03-10</span><span class="ncm-acctl-ent-act"><span><i class="fas fa-folder-tree"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span></div>
+                <div class="ncm-acctl-ent-more">… 2 more — <span class="ncm-acctl-ent-link">show all</span></div>
+                <div class="ncm-acctl-dir is-mail">
+                  <span class="ncm-acctl-dir-cv"><i class="fas fa-chevron-right"></i></span>
+                  <i class="fas fa-flag ncm-acctl-dir-ico"></i>
+                  <span class="ncm-acctl-dir-nm">Flagged</span><span class="ncm-acctl-dir-sys">saved</span>
+                  <span class="ncm-acctl-dir-ct">1 message</span>
+                  <span class="ncm-acctl-dir-act"><span><i class="fas fa-plus"></i></span></span>
+                </div>
+                <div class="ncm-acctl-dir is-mail">
+                  <span class="ncm-acctl-dir-cv"><i class="fas fa-chevron-right"></i></span>
+                  <i class="fas fa-trash ncm-acctl-dir-ico"></i>
+                  <span class="ncm-acctl-dir-nm">Shredder</span><span class="ncm-acctl-dir-sys">trash</span>
+                  <span class="ncm-acctl-dir-ct">1 message</span>
+                  <span class="ncm-acctl-dir-act"><span><i class="fas fa-plus"></i></span></span>
+                </div>
+
+                <!-- FILES -->
+                <div class="ncm-acctl-ent-hd" style="margin-top:10px"><i class="fas fa-folder-tree"></i> FILES <span class="ncm-acctl-ent-root">/home/v_arasaka · only this login sees them</span><span class="sp"></span><button type="button" class="ncm-cfg-btn-sm"><i class="fas fa-folder-plus"></i> Folder</button><button type="button" class="ncm-cfg-btn-sm"><i class="fas fa-plus"></i> File</button></div>
+                <div class="ncm-acctl-ent-row" data-ct-color="green"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-table"></i><span class="ncm-acctl-ent-nm">q3_payroll.xls</span><span class="ncm-acctl-ent-tag">SPREADSHEET</span><span class="ncm-acctl-ent-sz">31 KB</span><span class="ncm-acctl-ent-dt">2046-03-08</span><span class="ncm-acctl-ent-act"><span><i class="fas fa-folder-tree"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span></div>
+                <div class="ncm-acctl-ent-row" data-ct-color="cyan"><span class="ncm-acctl-drag">⋮⋮</span><i class="fas fa-file-lines"></i><span class="ncm-acctl-ent-nm">memo_7f.doc</span><span class="ncm-acctl-ent-tag">DOCUMENT</span><span class="ncm-acctl-ent-sz">6 KB</span><span class="ncm-acctl-ent-dt">2046-03-11</span><span class="ncm-acctl-ent-act"><span><i class="fas fa-folder-tree"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span></div>
+                <div class="ncm-acctl-dir">
+                  <span class="ncm-acctl-dir-cv"><i class="fas fa-chevron-right"></i></span>
+                  <i class="fas fa-folder ncm-acctl-dir-ico"></i>
+                  <span class="ncm-acctl-dir-nm">drafts</span>
+                  <span class="ncm-acctl-dir-ct">1 file</span>
+                  <span class="ncm-acctl-dir-act"><span><i class="fas fa-plus"></i></span><span><i class="fas fa-pen"></i></span><span class="is-danger"><i class="fas fa-trash-can"></i></span></span>
+                </div>
+                <div class="ncm-acctl-newdir"><i class="fas fa-folder-plus"></i> New folder in <b>/home/v_arasaka</b></div>
+              </div>
+
+              <!-- ── ACCOUNT: sysadmin (collapsed) ── -->
+              <div class="ncm-acctl-row">
+                <span class="ncm-acctl-av">SA<i class="fas fa-user-shield ncm-acctl-av-adm"></i></span>
+                <span class="ncm-acctl-id">
+                  <span class="ncm-acctl-nm">sysadmin <b class="ncm-term-cfg-tag"><i class="fas fa-eye-slash"></i> hidden</b></span>
+                  <span class="ncm-acctl-sub">root · opens every gated folder</span>
+                  <span class="ncm-acctl-role">Systems Administrator</span>
+                </span>
+                <span class="ncm-acctl-right">
+                  <b class="ncm-acctl-clr">LEVEL 5</b>
+                  <span class="ncm-acctl-cnt"><span><i class="fas fa-envelope"></i><b>3</b> mail</span><span><i class="fas fa-folder"></i><b>4</b> files</span></span>
+                </span>
+                <span class="ncm-acctl-cv"><i class="fas fa-chevron-down"></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ══════════════════════ FRAME 3 — the composer's DELIVERY section ══════════════════════ -->
+<section class="mk-frame" data-view="cmp">
+  <p class="mk-cap"><b>Frame 3 — where a file is put, inside the composer.</b> Today ② DELIVERY has a free-text "Path (optional)" box with a placeholder like <em class="mk-code">/var/spool/cam/</em>. That is the hidden field. It becomes a <b>Store on</b> choice (this account / shared volume) and a <b>Folder</b> picker listing the folders that exist, with "+ New folder…" at the end. The row still reads back as a path so the fiction holds.
+  <small>Opened from + File on the shared volume's <em class="mk-code">records</em> folder, so both are pre-filled; the GM only types a filename.</small></p>
+
+  <div class="mk-win ncm-app ncm-data-shard-composer mk-cmp" data-ncm-admin-theme="clean-dark" data-ncm-scanlines="false" data-ncm-neon="false">
+    <header class="window-header"><h1 class="window-title">New file — Arasaka Workstation 7F-12</h1></header>
+    <section class="window-content">
+      <div class="ncm-composer-shell">
+        <section class="ncm-cmp-sec ncm-cmp-sec--closed" data-cmp-sec="content">
+          <div class="ncm-cmp-sec__hd"><span class="ncm-cmp-sec__num">①</span><span class="ncm-cmp-sec__title">Content</span><span class="ncm-cmp-sec__sum"><span class="ncm-cmp-chip"><i class="fas fa-terminal"></i> Syslog · 14 lines</span><i class="fas fa-chevron-down ncm-cmp-sec__caret"></i></span></div>
+        </section>
+        <section class="ncm-cmp-sec" data-cmp-sec="delivery">
+          <div class="ncm-cmp-sec__hd"><span class="ncm-cmp-sec__num">②</span><span class="ncm-cmp-sec__title">Delivery</span><span class="ncm-cmp-sec__sum"><i class="fas fa-chevron-down ncm-cmp-sec__caret"></i></span></div>
+          <div class="ncm-cmp-sec__bd">
+            <div class="ncm-fg">
+              <span class="ncm-f"><label class="ncm-cl-lbl">Show as</label>
+                <span class="ncm-gal-seg"><button type="button">MESSAGE</button><button type="button" class="is-on">FILE</button></span>
+              </span>
+              <span class="ncm-f" style="flex:1 1 200px"><label class="ncm-cl-lbl">Filename</label><input type="text" class="ncm-config-input" value="access_audit_0313.log"></span>
+            </div>
+            <div class="ncm-fg">
+              <span class="ncm-f" style="--fw:250px;flex:0 0 auto;width:auto;overflow:visible"><label class="ncm-cl-lbl">Store on</label>
+                <span class="ncm-gal-seg ncm-mk-storeon"><button type="button" data-tooltip="Only this login's mailbox sees it"><i class="fas fa-user"></i> THIS ACCOUNT</button><button type="button" class="is-on" data-tooltip="Every login on the machine sees it"><i class="fas fa-hard-drive"></i> SHARED</button></span>
+              </span>
+              <span class="ncm-f" style="flex:1 1 220px"><label class="ncm-cl-lbl">Folder</label>
+                <select class="ncm-config-input ncm-cfg-select"><option>/pub (root)</option><option selected>/pub/records</option><option>/pub/cams</option><option>/pub/secure · admins only</option><option>＋ New folder…</option></select>
+              </span>
+            </div>
+            <div class="ncm-fg">
+              <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Owner / node</label><input type="text" class="ncm-config-input" value="SEC-DAEMON"></span>
+              <span class="ncm-f" style="--fw:110px"><label class="ncm-cl-lbl">Size</label><input type="text" class="ncm-config-input" placeholder="~3 KB" data-tooltip="Blank = derived from the content"></span>
+              <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Modified</label><input type="text" class="ncm-config-input" value="2046-03-13 02:14"></span>
+            </div>
+            <div class="ncm-composer-from-status ncm-composer-from-status--node" style="display:flex">
+              <i class="fas fa-folder-open"></i> Will appear as <b style="margin:0 4px">//WS-7F-12/pub/records/access_audit_0313.log</b> to every account. Who can open <b style="margin:0 4px">records</b> is set on the folder in Configure → Accounts.
+            </div>
+          </div>
+        </section>
+        <section class="ncm-cmp-sec ncm-cmp-sec--closed" data-cmp-sec="security">
+          <div class="ncm-cmp-sec__hd"><span class="ncm-cmp-sec__num">③</span><span class="ncm-cmp-sec__title">Security &amp; access</span><span class="ncm-cmp-sec__sum"><span class="ncm-cmp-chip">not encrypted</span><span class="ncm-cmp-chip">follows terminal exfil</span><i class="fas fa-chevron-down ncm-cmp-sec__caret"></i></span></div>
+        </section>
+      </div>
+    </section>
+  </div>
+</section>
+
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const view = q.get('view') || 'all';
+  if (view !== 'all') document.querySelectorAll('.mk-frame').forEach(s => { if (s.dataset.view !== view) s.remove(); });
+  const t = q.get('t'); if (t) document.getElementById('termRoot')?.setAttribute('data-terminal-preset', t);
+  if (q.get('admin') === '1') {
+    document.getElementById('hudAdmin')?.removeAttribute('hidden');
+    const av = document.getElementById('acAv'); if (av) av.textContent = 'SA';
+    const nm = document.getElementById('acNm'); if (nm) nm.textContent = 'sysadmin';
+    const us = document.getElementById("acUs"); if (us) us.textContent = "root"; const hu = document.getElementById("homeUs"); if (hu) hu.textContent = "root";
+    const d = document.getElementById('secureDir'); if (d) { d.classList.remove('is-locked'); d.querySelector('i').className = 'fas fa-folder'; d.querySelector('.ncm-term__fs-tag')?.remove(); }
+    const r = document.getElementById('secureRow'); if (r) { r.classList.remove('is-locked'); r.classList.add('is-dir'); r.querySelector('.ncm-term__fs-nm i').className = 'fas fa-folder'; const w = r.querySelector('.ncm-term__fs-why'); if (w) w.textContent = ''; }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{{!-- The FILES tree (roots · folders · root files · usage strip) — shared by the
+      mailbox styles. Rendered with the mailbox context (fs.roots / fs.usage). --}}
+        <div class="ncm-term__fs-tree">
+          {{#each fs.roots}}
+            <div class="ncm-term__fs-root{{#if isActiveRoot}} is-active{{/if}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="">
+              <i class="{{icon}}"></i><span class="ncm-term__fs-root-nm">{{label}}</span>{{#if subLabel}}<span class="ncm-term__fs-root-sub">{{subLabel}}</span>{{/if}}{{#if tag}}<span class="ncm-term__fs-tag">{{tag}}</span>{{/if}}<span class="ncm-term__fs-ct">{{count}}</span>
+            </div>
+            {{#each dirs}}
+              <div class="ncm-term__fs-dir{{#if active}} is-active{{/if}}{{#if locked}} is-locked{{/if}}" style="--d:{{depth}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="{{path}}"{{#if locked}} data-locked="1" data-lock-label="{{lockLabel}}"{{/if}}>
+                <i class="fas {{#if locked}}fa-lock{{else if active}}fa-folder-open{{else}}fa-folder{{/if}}"></i>{{name}}<span class="ncm-term__fs-slash">/</span>{{#if locked}}<span class="ncm-term__fs-tag ncm-term__fs-tag--lock">{{lockLabel}}</span>{{else if gated}}<span class="ncm-term__fs-tag ncm-term__fs-tag--gate" data-tooltip="Opens for: {{lockLabel}}"><i class="fas fa-lock-open"></i></span>{{/if}}<span class="ncm-term__fs-ct">{{count}}</span>
+              </div>
+            {{/each}}
+            {{#each files}}
+              <div class="ncm-term__fs-file{{#if isSelected}} is-active{{/if}}{{#if isStream}} is-live{{/if}}" style="--d:1" data-ct-color="{{accent}}" data-action="terminalFsOpen" data-scope="{{../scope}}" data-path="" data-message-id="{{messageId}}">
+                <i class="{{typeIcon}}"></i>{{filename}}{{#if isNew}}<span class="ncm-term__fs-new">NEW</span>{{/if}}<span class="ncm-term__fs-sz">{{#if isStream}}LIVE{{else}}{{fileSize}}{{/if}}</span>
+              </div>
+            {{/each}}
+          {{/each}}
+        </div>
+        <div class="ncm-term__lsep"></div>
+        <div class="ncm-term__fs-usage">{{fs.usage.label}}<div class="ncm-term__fs-usage-bar" style="--p:{{fs.usage.pct}}%"><b></b></div></div>

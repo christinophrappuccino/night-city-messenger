@@ -344,16 +344,16 @@ export const SKILL_PRESETS = Object.freeze({
 // ─── Theme Presets ───
 
 export const THEME_PRESETS = Object.freeze({
-  classic:     { label: 'Night City Standard', primary: '#F65261', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#0a0a0f', bgBase: '#12121a', bgSurface: '#1a1a2e', bgElevated: '#252540', textPrimary: '#e0e0e8', textSecondary: '#8888a0', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'orbitron', textScale: 100 },
-  netrunner:   { label: 'Netrunner',           primary: '#00ff41', secondary: '#40e8d0', accent: '#88ff88', bgDeep: '#030d03', bgBase: '#0a1a0a', bgSurface: '#0f2a12', bgElevated: '#183a1c', textPrimary: '#b8ffb8', textSecondary: '#5a9a5e', fontDisplay: 'chakrapetch', fontMono: 'firacode', fontTitle: 'electrolize', textScale: 100 },
-  arasaka:     { label: 'Arasaka',             primary: '#e82030', secondary: '#f0f0f0', accent: '#ff4444', bgDeep: '#080000', bgBase: '#140404', bgSurface: '#220a0a', bgElevated: '#301010', textPrimary: '#f0d8d8', textSecondary: '#a06868', fontDisplay: 'saira', fontMono: 'ibmplexmono', fontTitle: 'michroma', textScale: 100 },
-  militech:    { label: 'Militech',            primary: '#c8a832', secondary: '#88aa66', accent: '#e8c840', bgDeep: '#080a04', bgBase: '#101408', bgSurface: '#1a2010', bgElevated: '#242c18', textPrimary: '#d8dcc0', textSecondary: '#8a9068', fontDisplay: 'barlowcondensed', fontMono: 'robotomono', fontTitle: 'quantico', textScale: 100 },
-  afterlife:   { label: 'Afterlife',           primary: '#e040ff', secondary: '#00e5ff', accent: '#ff66cc', bgDeep: '#08001a', bgBase: '#120030', bgSurface: '#1c0048', bgElevated: '#280060', textPrimary: '#e8d0ff', textSecondary: '#9060c0', fontDisplay: 'exo2', fontMono: 'spacemono', fontTitle: 'audiowide', textScale: 100 },
-  traumaTeam:  { label: 'Trauma Team',         primary: '#ff2255', secondary: '#ffffff', accent: '#ff6690', bgDeep: '#0a0004', bgBase: '#180810', bgSurface: '#281018', bgElevated: '#381820', textPrimary: '#f8e0e8', textSecondary: '#b07080', fontDisplay: 'play', fontMono: 'sourcecodepro', fontTitle: 'orbitron', textScale: 100 },
-  combatZone:  { label: 'Combat Zone',         primary: '#ff6a00', secondary: '#ffcc00', accent: '#ff9933', bgDeep: '#0c0804', bgBase: '#1a1208', bgSurface: '#281c0c', bgElevated: '#382814', textPrimary: '#e8d8c0', textSecondary: '#a08858', fontDisplay: 'teko', fontMono: 'vt323', fontTitle: 'blackopsone', textScale: 100 },
-  chrome:      { label: 'Chrome',              primary: '#c0c0c0', secondary: '#e8e8e8', accent: '#ffffff', bgDeep: '#060606', bgBase: '#0e0e0e', bgSurface: '#181818', bgElevated: '#242424', textPrimary: '#e0e0e0', textSecondary: '#808080', fontDisplay: 'jura', fontMono: 'jetbrains', fontTitle: 'michroma', textScale: 100 },
-  blackwall:   { label: 'Blackwall',           primary: '#cc2200', secondary: '#ff4433', accent: '#ff6644', bgDeep: '#0a0200', bgBase: '#140600', bgSurface: '#200c04', bgElevated: '#2c1408', textPrimary: '#f0d8cc', textSecondary: '#a06848', fontDisplay: 'oxanium', fontMono: 'firacode', fontTitle: 'aldrich', textScale: 100 },
-  kiroshi:     { label: 'Kiroshi',             primary: '#2E90FA', secondary: '#F0C55B', accent: '#60b0ff', bgDeep: '#040810', bgBase: '#0a1020', bgSurface: '#101830', bgElevated: '#182240', textPrimary: '#d0e0f8', textSecondary: '#6888b0', fontDisplay: 'exo2', fontMono: 'jetbrains', fontTitle: 'electrolize', textScale: 100 },
+  classic:     { label: 'Night City Standard', primary: '#F65261', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#0a0a0f', bgBase: '#12121a', bgSurface: '#1a1a2e', bgElevated: '#252540', textPrimary: '#e0e0e8', textSecondary: '#8e8ea5', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'orbitron', textScale: 100 },
+  netrunner:   { label: 'Netrunner',           primary: '#00ff41', secondary: '#40e8d0', accent: '#88ff88', bgDeep: '#030d03', bgBase: '#0a1a0a', bgSurface: '#0f2a12', bgElevated: '#183a1c', textPrimary: '#b8ffb8', textSecondary: '#6eaa71', textMuted: '#80a784', fontDisplay: 'chakrapetch', fontMono: 'firacode', fontTitle: 'electrolize', textScale: 100 },
+  arasaka:     { label: 'Arasaka',             primary: '#e82030', secondary: '#f0f0f0', accent: '#ff4444', bgDeep: '#080000', bgBase: '#140404', bgSurface: '#220a0a', bgElevated: '#301010', textPrimary: '#f0d8d8', textSecondary: '#aa7878', fontDisplay: 'saira', fontMono: 'ibmplexmono', fontTitle: 'michroma', textScale: 100 },
+  militech:    { label: 'Militech',            primary: '#c8a832', secondary: '#88aa66', accent: '#e8c840', bgDeep: '#080a04', bgBase: '#101408', bgSurface: '#1a2010', bgElevated: '#242c18', textPrimary: '#d8dcc0', textSecondary: '#8f956d', fontDisplay: 'barlowcondensed', fontMono: 'robotomono', fontTitle: 'quantico', textScale: 100 },
+  afterlife:   { label: 'Afterlife',           primary: '#e040ff', secondary: '#00e5ff', accent: '#ff66cc', bgDeep: '#08001a', bgBase: '#120030', bgSurface: '#1c0048', bgElevated: '#280060', textPrimary: '#e8d0ff', textSecondary: '#9f76c9', fontDisplay: 'exo2', fontMono: 'spacemono', fontTitle: 'audiowide', textScale: 100 },
+  traumaTeam:  { label: 'Trauma Team',         primary: '#ff2255', secondary: '#ffffff', accent: '#ff6690', bgDeep: '#0a0004', bgBase: '#180810', bgSurface: '#281018', bgElevated: '#381820', textPrimary: '#f8e0e8', textSecondary: '#b57a89', fontDisplay: 'play', fontMono: 'sourcecodepro', fontTitle: 'orbitron', textScale: 100 },
+  combatZone:  { label: 'Combat Zone',         primary: '#ff6a00', secondary: '#ffcc00', accent: '#ff9933', bgDeep: '#0c0804', bgBase: '#1a1208', bgSurface: '#281c0c', bgElevated: '#382814', textPrimary: '#e8d8c0', textSecondary: '#a99263', textMuted: '#a49077', fontDisplay: 'teko', fontMono: 'vt323', fontTitle: 'blackopsone', textScale: 100 },
+  chrome:      { label: 'Chrome',              primary: '#c0c0c0', secondary: '#e8e8e8', accent: '#ffffff', bgDeep: '#060606', bgBase: '#0e0e0e', bgSurface: '#181818', bgElevated: '#242424', textPrimary: '#e0e0e0', textSecondary: '#8d8d8d', fontDisplay: 'jura', fontMono: 'jetbrains', fontTitle: 'michroma', textScale: 100 },
+  blackwall:   { label: 'Blackwall',           primary: '#cc2200', secondary: '#ff4433', accent: '#ff6644', bgDeep: '#0a0200', bgBase: '#140600', bgSurface: '#200c04', bgElevated: '#2c1408', textPrimary: '#f0d8cc', textSecondary: '#b27754', fontDisplay: 'oxanium', fontMono: 'firacode', fontTitle: 'aldrich', textScale: 100 },
+  kiroshi:     { label: 'Kiroshi',             primary: '#2E90FA', secondary: '#F0C55B', accent: '#60b0ff', bgDeep: '#040810', bgBase: '#0a1020', bgSurface: '#101830', bgElevated: '#182240', textPrimary: '#d0e0f8', textSecondary: '#7290b5', fontDisplay: 'exo2', fontMono: 'jetbrains', fontTitle: 'electrolize', textScale: 100 },
   kawaii:      { label: 'Kawaii',              primary: '#ff88b4', secondary: '#b8a0ff', accent: '#80e8c8', bgDeep: '#0a0610', bgBase: '#140e1c', bgSurface: '#1e1628', bgElevated: '#2a2036', textPrimary: '#f0e0f0', textSecondary: '#a088b0', fontDisplay: 'play', fontMono: 'sourcecodepro', fontTitle: 'oxanium', textScale: 100 },
   tygerClaws:  { label: 'Tyger Claws',         primary: '#e8a820', secondary: '#cc2244', accent: '#ffcc44', bgDeep: '#0a0804', bgBase: '#141008', bgSurface: '#201a0c', bgElevated: '#2c2414', textPrimary: '#f0e0c8', textSecondary: '#a89060', fontDisplay: 'chakrapetch', fontMono: 'sharetechmono', fontTitle: 'audiowide', textScale: 100 },
 });
@@ -365,7 +365,8 @@ export const THEME_PRESETS = Object.freeze({
 export const SHARD_PRESETS = Object.freeze({
   'corporate-dossier': {
     label: 'Corporate Dossier',
-    palette: { primary: '#aa1010', secondary: '#ee3030', accent: '#e0b040', bgDeep: '#0a0606', bgBase: '#0e0808', bgSurface: '#120a0a', bgElevated: '#1a0e0e', textPrimary: '#f5eee8', textSecondary: '#c0a090', textMuted: '#887060', border: '#3a1515' },
+    crt: { style: 'glass', intensity: 25, vignette: true, roll: true },   // the shard's own film (crt.js); the viewer applies it on its window, capped by the player
+    palette: { primary: '#aa1010', secondary: '#ee3030', accent: '#e0b040', bgDeep: '#0a0606', bgBase: '#0e0808', bgSurface: '#120a0a', bgElevated: '#1a0e0e', textPrimary: '#f5eee8', textSecondary: '#c0a090', textMuted: '#947a68', border: '#3a1515' },
     icon: 'fas fa-building',
     theme: {
       accent: '#ff0033', accentSecondary: '#ffcc00', headerBg: '#1a0000',
@@ -385,7 +386,8 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'black-market': {
     label: 'Black Market Data Dump',
-    palette: { primary: '#606878', secondary: '#c0c8d8', accent: '#00e5ff', bgDeep: '#0c0d0e', bgBase: '#10111a', bgSurface: '#14161e', bgElevated: '#1c1e28', textPrimary: '#eef0f5', textSecondary: '#a0a8bb', textMuted: '#606878', border: '#353840' },
+    crt: { style: 'tube', intensity: 30, vignette: true, roll: true },   // the shard's own film (crt.js); the viewer applies it on its window, capped by the player
+    palette: { primary: '#606878', secondary: '#c0c8d8', accent: '#00e5ff', bgDeep: '#0c0d0e', bgBase: '#10111a', bgSurface: '#14161e', bgElevated: '#1c1e28', textPrimary: '#eef0f5', textSecondary: '#a0a8bb', textMuted: '#81899a', border: '#353840' },
     icon: 'fas fa-skull-crossbones',
     theme: {
       accent: '#c0c0c0', accentSecondary: '#19f3f7', headerBg: '#0a0a0a',
@@ -405,7 +407,8 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'personal-memory': {
     label: 'Personal Memory Chip',
-    palette: { primary: '#d09040', secondary: '#f0b860', accent: '#e0a0a0', bgDeep: '#0f0c08', bgBase: '#120e08', bgSurface: '#15120a', bgElevated: '#1e1a10', textPrimary: '#f8f0e0', textSecondary: '#c8a878', textMuted: '#808090', border: '#3a2a18' },
+    crt: { style: 'off', intensity: 0, vignette: false, roll: false },   // the shard's own film (crt.js); the viewer applies it on its window, capped by the player
+    palette: { primary: '#d09040', secondary: '#f0b860', accent: '#e0a0a0', bgDeep: '#0f0c08', bgBase: '#120e08', bgSurface: '#15120a', bgElevated: '#1e1a10', textPrimary: '#f8f0e0', textSecondary: '#c8a878', textMuted: '#838392', border: '#3a2a18' },
     icon: 'fas fa-brain',
     theme: {
       accent: '#e8a0ff', accentSecondary: '#ffddaa', headerBg: '#1a0a20',
@@ -425,7 +428,8 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'military-intel': {
     label: 'Military Intelligence',
-    palette: { primary: '#4a7a2a', secondary: '#80cc50', accent: '#e0b040', bgDeep: '#080a08', bgBase: '#0a0d08', bgSurface: '#0d100a', bgElevated: '#141a0e', textPrimary: '#e0f0d0', textSecondary: '#90bb60', textMuted: '#608090', border: '#2a3a20' },
+    crt: { style: 'tube', intensity: 30, vignette: true, roll: true },   // the shard's own film (crt.js); the viewer applies it on its window, capped by the player
+    palette: { primary: '#4a7a2a', secondary: '#80cc50', accent: '#e0b040', bgDeep: '#080a08', bgBase: '#0a0d08', bgSurface: '#0d100a', bgElevated: '#141a0e', textPrimary: '#e0f0d0', textSecondary: '#90bb60', textMuted: '#668899', border: '#2a3a20' },
     icon: 'fas fa-crosshairs',
     theme: {
       accent: '#44aa44', accentSecondary: '#88cc88', headerBg: '#0a1a0a',
@@ -445,7 +449,8 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'media-leak': {
     label: 'Media Leak',
-    palette: { primary: '#2a6acc', secondary: '#60b0ff', accent: '#ff5050', bgDeep: '#08090f', bgBase: '#0a0c14', bgSurface: '#0e1018', bgElevated: '#141820', textPrimary: '#e8f0f8', textSecondary: '#90b0dd', textMuted: '#607898', border: '#1a2a4a' },
+    crt: { style: 'glass', intensity: 25, vignette: true, roll: true },   // the shard's own film (crt.js); the viewer applies it on its window, capped by the player
+    palette: { primary: '#2a6acc', secondary: '#60b0ff', accent: '#ff5050', bgDeep: '#08090f', bgBase: '#0a0c14', bgSurface: '#0e1018', bgElevated: '#141820', textPrimary: '#e8f0f8', textSecondary: '#90b0dd', textMuted: '#6e85a3', border: '#1a2a4a' },
     icon: 'fas fa-tower-broadcast',
     theme: {
       accent: '#4488ff', accentSecondary: '#ffffff', headerBg: '#0a0a1a',
@@ -465,7 +470,8 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'fixer-dead-drop': {
     label: 'Fixer Dead Drop',
-    palette: { primary: '#d040e0', secondary: '#e070ff', accent: '#ff60b0', bgDeep: '#0c080f', bgBase: '#0e0a12', bgSurface: '#120e18', bgElevated: '#1a1422', textPrimary: '#f0e0f8', textSecondary: '#bb90cc', textMuted: '#7050a0', border: '#3a2050' },
+    crt: { style: 'arcade', intensity: 30, vignette: true, roll: true },   // the shard's own film (crt.js); the viewer applies it on its window, capped by the player
+    palette: { primary: '#d040e0', secondary: '#e070ff', accent: '#ff60b0', bgDeep: '#0c080f', bgBase: '#0e0a12', bgSurface: '#120e18', bgElevated: '#1a1422', textPrimary: '#f0e0f8', textSecondary: '#bb90cc', textMuted: '#9074b9', border: '#3a2050' },
     icon: 'fas fa-handshake-angle',
     theme: {
       accent: '#ff6600', accentSecondary: '#19f3f7', headerBg: '#1a0a00',
@@ -485,7 +491,8 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'street-shard': {
     label: 'Street Shard',
-    palette: { primary: '#777777', secondary: '#b0a090', accent: '#d0a050', bgDeep: '#0c0c0c', bgBase: '#101010', bgSurface: '#141414', bgElevated: '#1c1c1c', textPrimary: '#e8e0d8', textSecondary: '#aaa8a0', textMuted: '#606060', border: '#2a2a2a' },
+    crt: { style: 'tube', intensity: 30, vignette: true, roll: true },   // the shard's own film (crt.js); the viewer applies it on its window, capped by the player
+    palette: { primary: '#777777', secondary: '#b0a090', accent: '#d0a050', bgDeep: '#0c0c0c', bgBase: '#101010', bgSurface: '#141414', bgElevated: '#1c1c1c', textPrimary: '#e8e0d8', textSecondary: '#aaa8a0', textMuted: '#868686', border: '#2a2a2a' },
     icon: 'fas fa-microchip',
     theme: {
       accent: '#888888', accentSecondary: '#cccccc', headerBg: '#0f0f0f',
@@ -505,7 +512,8 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'netwatch-evidence': {
     label: 'NetWatch Evidence',
-    palette: { primary: '#dd3030', secondary: '#aa88ee', accent: '#e0b040', bgDeep: '#0a080c', bgBase: '#0c0a10', bgSurface: '#10101a', bgElevated: '#181420', textPrimary: '#e8e0f0', textSecondary: '#a098cc', textMuted: '#607090', border: '#2a2040' },
+    crt: { style: 'glass', intensity: 20, vignette: true, roll: true },   // the shard's own film (crt.js); the viewer applies it on its window, capped by the player
+    palette: { primary: '#dd3030', secondary: '#aa88ee', accent: '#e0b040', bgDeep: '#0a080c', bgBase: '#0c0a10', bgSurface: '#10101a', bgElevated: '#181420', textPrimary: '#e8e0f0', textSecondary: '#a098cc', textMuted: '#7282a1', border: '#2a2040' },
     icon: 'fas fa-eye',
     theme: {
       accent: '#ff8800', accentSecondary: '#4488ff', headerBg: '#0a0a1a',
@@ -525,6 +533,7 @@ export const SHARD_PRESETS = Object.freeze({
   },
   'blank': {
     label: 'Blank / Custom',
+    crt: { style: 'off', intensity: 0, vignette: false, roll: false },   // the shard's own film (crt.js); the viewer applies it on its window, capped by the player
     icon: 'fas fa-microchip',
     theme: {
       accent: 'var(--ncm-primary)', accentSecondary: 'var(--ncm-secondary)', headerBg: 'var(--ncm-bg-surface)',
@@ -554,11 +563,11 @@ export const SHARD_PRESETS = Object.freeze({
 // TERMINAL_ACCOUNT seeds (merged over DEFAULTS.TERMINAL_ACCOUNT on apply).
 export const TERMINAL_PRESETS = Object.freeze({
   'arasaka-workstation': {
-    label: 'Arasaka Workstation', icon: 'fas fa-building', loginStyle: 'cards', soundSet: 'corp-chime',
+    label: 'Arasaka Workstation', icon: 'fas fa-building', loginStyle: 'cards', mailboxStyle: 'tabs', soundSet: 'corp-chime',
     login: {motd: 'ARASAKA NETWORK — ALL ACTIVITY IS MONITORED',welcomeText: 'Welcome back, employee. Productivity is loyalty.'},
     screensaver: {enabled: true,idleSeconds: 180,text: 'ARASAKA',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Correspondence',saved: 'Flagged',trash: 'Shredder'},
-    theme: { primary: '#ff0033', secondary: '#19f3f7', accent: '#ffcc00', bgDeep: '#0a0006', bgBase: '#160008', bgSurface: '#22060e', bgElevated: '#2c0a14', textPrimary: '#f4e6ea', textSecondary: '#c79aa6', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
+    theme: { primary: '#ff0033', secondary: '#19f3f7', accent: '#ffcc00', bgDeep: '#0a0006', bgBase: '#160008', bgSurface: '#22060e', bgElevated: '#2c0a14', textPrimary: '#f4e6ea', textSecondary: '#c79aa6', textMuted: '#9f7883', crt: { style: 'glass', intensity: 25, vignette: true, roll: true }, fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 18, encryptionType: 'BLACK_ICE', failureMode: 'damage', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'ARASAKA NET', subtitle: 'Secure Workstation // Access Level: Restricted', banner: 'ARASAKA NET · WORKSTATION 7F-12', animationStyle: 'holographic-snap', speed: 'normal', logLines: ['ARASAKA-NET handshake ........ VERIFIED', 'Credential gateway .......... ONLINE', 'BLACK_ICE countermeasure .... ARMED', 'Mounting user volumes ....... OK'] },
     accounts: [
@@ -567,54 +576,54 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'netwatch-unit': {
-    label: 'NetWatch Field Unit', icon: 'fas fa-satellite-dish', loginStyle: 'cards', soundSet: 'mil-hardline',
+    label: 'NetWatch Field Unit', icon: 'fas fa-satellite-dish', loginStyle: 'cards', mailboxStyle: 'tabs', soundSet: 'mil-hardline',
     login: {motd: 'CLASSIFIED SYSTEM — NETWATCH EYES ONLY',welcomeText: 'Clearance verified. Watch the Wall.'},
     screensaver: {enabled: true,idleSeconds: 120,text: 'NETWATCH',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Bulletins',saved: 'Casework',trash: 'Purged'},
-    theme: { primary: '#4aa3ff', secondary: '#b9d8ff', accent: '#9ad0ff', bgDeep: '#04070f', bgBase: '#070d18', bgSurface: '#0b1726', bgElevated: '#102236', textPrimary: '#e6eefc', textSecondary: '#90a8c8', fontDisplay: 'exo2', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
+    theme: { primary: '#4aa3ff', secondary: '#b9d8ff', accent: '#9ad0ff', bgDeep: '#04070f', bgBase: '#070d18', bgSurface: '#0b1726', bgElevated: '#102236', textPrimary: '#e6eefc', textSecondary: '#90a8c8', textMuted: '#788ba4', crt: { style: 'glass', intensity: 20, vignette: true, roll: true }, fontDisplay: 'exo2', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, authLogic: 'all', bypassSkills: ['Cryptography'], bypassDC: 20, encryptionType: 'BLACK_ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'NETWATCH', subtitle: 'Field Intelligence Unit // CLASSIFIED', banner: 'NETWATCH FIELD UNIT · TTY0', animationStyle: 'scan-sweep', speed: 'normal', logLines: ['NETWATCH uplink ............. SECURE', 'Clearance check ............. PENDING', 'ICE lattice ................. ACTIVE'] },
     accounts: [{ username: 'root', displayName: 'field-agent', isAdmin: true, security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, authLogic: 'all', bypassSkills: ['Cryptography'], bypassDC: 20 } }],
   },
   'streetkid-bbs': {
-    label: 'Streetkid BBS', icon: 'fas fa-skull', loginStyle: 'crt', soundSet: 'street-bbs',
+    label: 'Streetkid BBS', icon: 'fas fa-skull', loginStyle: 'crt', mailboxStyle: 'tty', soundSet: 'street-bbs',
     login: {motd: 'no narcs. no corpos. no exceptions.',welcomeText: 'yo. the board remembers you.'},
     screensaver: {enabled: true,idleSeconds: 150,text: 'AFTERLIFE BBS',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Posts',saved: 'Pinned',trash: 'Burned'},
-    theme: { primary: '#00ff41', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#040a06', bgBase: '#07120a', bgSurface: '#0c1a0f', bgElevated: '#102414', textPrimary: '#daffe4', textSecondary: '#7fae8d', fontDisplay: 'chakrapetch', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
+    theme: { primary: '#00ff41', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#040a06', bgBase: '#07120a', bgSurface: '#0c1a0f', bgElevated: '#102414', textPrimary: '#daffe4', textSecondary: '#7fae8d', textMuted: '#689275', crt: { style: 'tube', intensity: 30, vignette: true, roll: true }, fontDisplay: 'chakrapetch', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
     security: { requiresAuth: false, allowPassword: false, allowSkillCheck: true, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 13, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 5, lockoutDuration: 1800000 },
-    boot: { enabled: true, title: 'AFTERLIFE BBS', subtitle: 'no narcs // no cops // no mercy', banner: 'AFTERLIFE BBS · NODE 7', animationStyle: 'glitch-stutter', speed: 'dramatic', logLines: ['Dialing node ................ CARRIER', 'Trackers .................... NONE', 'Welcome back, choom.'] },
+    boot: { enabled: true, title: 'AFTERLIFE BBS', subtitle: 'no narcs // no cops // no mercy', banner: 'AFTERLIFE BBS · NODE 7', animationStyle: 'glitch-flood', speed: 'dramatic', logLines: ['Dialing node ................ CARRIER', 'Trackers .................... NONE', 'Welcome back, choom.'] },
     accounts: [
       { username: 'guest', displayName: 'guest', isAdmin: false, security: { requiresAuth: false } },
       { username: 'fixer', displayName: '???', isAdmin: true, hidden: true, security: { requiresAuth: true, allowPassword: true } },
     ],
   },
   'retro-dos': {
-    label: 'Retro-DOS', icon: 'fas fa-terminal', loginStyle: 'crt', soundSet: 'street-bbs',
+    label: 'Retro-DOS', icon: 'fas fa-terminal', loginStyle: 'crt', mailboxStyle: 'tty', soundSet: 'street-bbs',
     login: {motd: 'C:\\\\> AUTHORIZED USERS ONLY',welcomeText: 'SESSION OK. HAVE A PRODUCTIVE DAY.'},
     screensaver: {enabled: true,idleSeconds: 90,text: 'INSERT CREDCHIP',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Mail',saved: 'Archive',trash: 'Deleted'},
-    theme: { primary: '#ffb000', secondary: '#ffd070', accent: '#ff8a00', bgDeep: '#0a0700', bgBase: '#140d00', bgSurface: '#1c1300', bgElevated: '#261a00', textPrimary: '#ffe6b0', textSecondary: '#b89250', fontDisplay: 'jura', fontMono: 'spacemono', fontTitle: 'michroma' },
+    theme: { primary: '#ffb000', secondary: '#ffd070', accent: '#ff8a00', bgDeep: '#0a0700', bgBase: '#140d00', bgSurface: '#1c1300', bgElevated: '#261a00', textPrimary: '#ffe6b0', textSecondary: '#b89250', textMuted: '#a18045', crt: { style: 'tube', intensity: 30, vignette: true, roll: true }, fontDisplay: 'jura', fontMono: 'spacemono', fontTitle: 'michroma' },
     security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 15, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 3600000 },
-    boot: { enabled: true, title: 'NCDOS', subtitle: 'Night City DOS v3.30', banner: 'NCDOS · DRIVE C:', animationStyle: 'instant-dump', speed: 'fast', logLines: ['POST ........................ OK', 'Loading COMMAND.COM ......... DONE', 'C:\\>'] },
+    boot: { enabled: true, title: 'NCDOS', subtitle: 'Night City DOS v3.30', banner: 'NCDOS · DRIVE C:', animationStyle: 'crt-power-on', speed: 'fast', logLines: ['POST ........................ OK', 'Loading COMMAND.COM ......... DONE', 'C:\\>'] },
     accounts: [{ username: 'user', displayName: 'user', isAdmin: false, security: { requiresAuth: true, allowPassword: true } }],
   },
   'ripperdoc': {
-    label: 'Ripperdoc PC', icon: 'fas fa-staff-snake', loginStyle: 'cards', soundSet: 'med-soft',
+    label: 'Ripperdoc PC', icon: 'fas fa-staff-snake', loginStyle: 'cards', mailboxStyle: 'classic', soundSet: 'med-soft',
     login: {motd: 'PATIENT CONFIDENTIALITY IN EFFECT',welcomeText: 'Scrub in. Charts are current.'},
     screensaver: {enabled: true,idleSeconds: 200,text: 'CLINIC — RING BELL',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Patients',saved: 'Charts',trash: 'Disposal'},
-    theme: { primary: '#e8a0ff', secondary: '#ffddaa', accent: '#ff9ecb', bgDeep: '#0c0410', bgBase: '#160a1c', bgSurface: '#200f28', bgElevated: '#2a1634', textPrimary: '#f4e2fb', textSecondary: '#b890c8', fontDisplay: 'rajdhani', fontMono: 'sourcecodepro', fontTitle: 'orbitron' },
+    theme: { primary: '#e8a0ff', secondary: '#ffddaa', accent: '#ff9ecb', bgDeep: '#0c0410', bgBase: '#160a1c', bgSurface: '#200f28', bgElevated: '#2a1634', textPrimary: '#f4e2fb', textSecondary: '#b890c8', textMuted: '#9b7ca8', crt: { style: 'off', intensity: 0, vignette: false, roll: false }, fontDisplay: 'rajdhani', fontMono: 'sourcecodepro', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: false, allowSkillCheck: false, allowKeyItem: true, authLogic: 'any', keyItemName: 'Clinic Keycard', bypassSkills: ['Interface'], bypassDC: 14, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 1800000 },
     boot: { enabled: true, title: 'RIPPERDOC OS', subtitle: 'Cyberware Clinic // Patient Records', banner: 'CLINIC TERMINAL · FRONT DESK', animationStyle: 'warm-dissolve', speed: 'normal', logLines: ['Clinic uplink ............... OK', 'Patient DB .................. MOUNTED', 'Insurance relay ............. STANDBY'] },
     accounts: [{ username: 'frontdesk', displayName: 'Front Desk', isAdmin: false, security: { requiresAuth: true, allowKeyItem: true, keyItemName: 'Clinic Keycard' } }],
   },
   'trauma-team': {
-    label: 'Trauma Team Platinum', icon: 'fas fa-truck-medical', loginStyle: 'roster', soundSet: 'med-soft',
+    label: 'Trauma Team Platinum', icon: 'fas fa-truck-medical', loginStyle: 'roster', mailboxStyle: 'classic', soundSet: 'med-soft',
     login: {motd: 'SUBSCRIBER DATA — PLATINUM TIER PROTECTED',welcomeText: 'Dispatch link secure. Fly safe.'},
     screensaver: {enabled: true,idleSeconds: 120,text: 'TRAUMA TEAM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Dispatches',saved: 'Priority',trash: 'Closed'},
-    theme: { primary: '#ff9e2c', secondary: '#e8f1ff', accent: '#ff3b3b', bgDeep: '#050a12', bgBase: '#0a1220', bgSurface: '#101c30', bgElevated: '#182842', textPrimary: '#f2f6ff', textSecondary: '#9fb4d8', fontDisplay: 'exo2', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
+    theme: { primary: '#ff9e2c', secondary: '#e8f1ff', accent: '#ff3b3b', bgDeep: '#050a12', bgBase: '#0a1220', bgSurface: '#101c30', bgElevated: '#182842', textPrimary: '#f2f6ff', textSecondary: '#9fb4d8', textMuted: '#8493ad', crt: { style: 'off', intensity: 0, vignette: false, roll: false }, fontDisplay: 'exo2', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: true, allowKeyItem: true, keyItemName: 'TT Platinum Card', authLogic: 'any', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 1800000 },
     boot: { enabled: true, title: 'TRAUMA TEAM', subtitle: 'Platinum Response // Dispatch Console', banner: 'TT DISPATCH · AV-4 READY', animationStyle: 'scan-sweep', speed: 'fast', logLines: ['Dispatch uplink ............. LIVE', 'AV-4 telemetry .............. NOMINAL', 'Subscriber database ......... MOUNTED', 'Biomonitor relay ............ ARMED'] },
     accounts: [
@@ -623,21 +632,21 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'militech-checkpoint': {
-    label: 'Militech Checkpoint', icon: 'fas fa-shield-halved', loginStyle: 'keypad', soundSet: 'mil-hardline',
+    label: 'Militech Checkpoint', icon: 'fas fa-shield-halved', loginStyle: 'keypad', mailboxStyle: 'tabs', soundSet: 'mil-hardline',
     login: {motd: 'LETHAL FORCE AUTHORIZED BEYOND THIS POINT',welcomeText: 'Checkpoint online. Stay frosty.'},
     screensaver: {enabled: true,idleSeconds: 90,text: 'MILITECH',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Orders',saved: 'Standing',trash: 'Expired'},
-    theme: { primary: '#ffb000', secondary: '#b8c29a', accent: '#ff4d2e', bgDeep: '#0a0c05', bgBase: '#12150a', bgSurface: '#1a1f10', bgElevated: '#252c18', textPrimary: '#eef0e2', textSecondary: '#a8b090', fontDisplay: 'barlowcondensed', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
+    theme: { primary: '#ffb000', secondary: '#b8c29a', accent: '#ff4d2e', bgDeep: '#0a0c05', bgBase: '#12150a', bgSurface: '#1a1f10', bgElevated: '#252c18', textPrimary: '#eef0e2', textSecondary: '#a8b090', textMuted: '#90977c', crt: { style: 'glass', intensity: 20, vignette: true, roll: true }, fontDisplay: 'barlowcondensed', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: true, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'MILITECH', subtitle: 'Checkpoint Access Control // ZONE 4', banner: 'M-SEC GATE 07 · ARMED', animationStyle: 'holographic-snap', speed: 'fast', logLines: ['Perimeter mesh .............. ARMED', 'Turret handshake ............ OK', 'Access roster ............... SYNCED'] },
     accounts: [{ username: 'gate07', displayName: 'Gate Console', role: 'CHECKPOINT CONSOLE', security: { requiresAuth: true, allowPassword: true, password: '0451' } }],
   },
   'ncpd-precinct': {
-    label: 'NCPD Precinct', icon: 'fas fa-handcuffs', loginStyle: 'roster', soundSet: 'mil-hardline',
+    label: 'NCPD Precinct', icon: 'fas fa-handcuffs', loginStyle: 'roster', mailboxStyle: 'tabs', soundSet: 'mil-hardline',
     login: {motd: 'ALL ACCESS LOGGED — IAD AUDITS WEEKLY',welcomeText: 'Shift logged. Watch your six out there.'},
     screensaver: {enabled: true,idleSeconds: 150,text: 'NCPD',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Case Files',saved: 'Evidence',trash: 'Purged'},
-    theme: { primary: '#4aa3ff', secondary: '#ffd257', accent: '#ff5f5f', bgDeep: '#05070d', bgBase: '#0a0f1a', bgSurface: '#111a2b', bgElevated: '#1a2740', textPrimary: '#e9eefb', textSecondary: '#94a5c6', fontDisplay: 'rajdhani', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
+    theme: { primary: '#4aa3ff', secondary: '#ffd257', accent: '#ff5f5f', bgDeep: '#05070d', bgBase: '#0a0f1a', bgSurface: '#111a2b', bgElevated: '#1a2740', textPrimary: '#e9eefb', textSecondary: '#94a5c6', textMuted: '#8591aa', crt: { style: 'tube', intensity: 30, vignette: true, roll: true }, fontDisplay: 'rajdhani', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 17, authLogic: 'any', failureMode: 'lockout', maxAttempts: 4, lockoutDuration: 1800000 },
     boot: { enabled: true, title: 'NCPD', subtitle: 'Evidence & Records // Precinct Net', banner: 'PRECINCT TERMINAL · ALL ACCESS LOGGED', animationStyle: 'standard-fade', speed: 'normal', logLines: ['Precinct net ................ SECURE', 'Evidence locker index ....... MOUNTED', 'Warrant sync ................ CURRENT', 'Bodycam archive ............. ONLINE'] },
     accounts: [
@@ -646,11 +655,11 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'nomad-rig': {
-    label: 'Nomad Rig-OS', icon: 'fas fa-mountain', loginStyle: 'portraits', soundSet: 'street-bbs',
+    label: 'Nomad Rig-OS', icon: 'fas fa-mountain', loginStyle: 'portraits', mailboxStyle: 'desktop', soundSet: 'street-bbs',
     login: {motd: 'family only. you know the rules.',welcomeText: 'Welcome home. Road is long.'},
     screensaver: {enabled: true,idleSeconds: 240,text: 'ON THE ROAD',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Radio',saved: 'Maps',trash: 'Dust'},
-    theme: { primary: '#ff7a3d', secondary: '#7fd4c1', accent: '#ffd257', bgDeep: '#0d0805', bgBase: '#160e08', bgSurface: '#221610', bgElevated: '#2f1f16', textPrimary: '#f4ece2', textSecondary: '#c2a888', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
+    theme: { primary: '#ff7a3d', secondary: '#7fd4c1', accent: '#ffd257', bgDeep: '#0d0805', bgBase: '#160e08', bgSurface: '#221610', bgElevated: '#2f1f16', textPrimary: '#f4ece2', textSecondary: '#c2a888', textMuted: '#9e8a71', crt: { style: 'tube', intensity: 30, vignette: true, roll: true }, fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
     security: { requiresAuth: false },
     boot: { enabled: true, title: 'RIG-OS', subtitle: 'Clan Convoy Mesh // Badlands', banner: 'FAMILY RIG · SHARED', animationStyle: 'warm-dissolve', speed: 'normal', logLines: ['Convoy mesh ................. LINKED', 'Solar array ................. 82%', 'Water recycler .............. OK', 'Radio uplink ................ SCANNING'] },
     accounts: [
@@ -659,31 +668,31 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'bd-lounge': {
-    label: 'Braindance Lounge', icon: 'fas fa-martini-glass', loginStyle: 'lockscreen', soundSet: 'ghost-wall',
+    label: 'Braindance Lounge', icon: 'fas fa-martini-glass', loginStyle: 'lockscreen', mailboxStyle: 'desktop', soundSet: 'ghost-wall',
     login: {motd: 'what happens in the booth stays in the booth',welcomeText: 'Enjoy the ride. Tip your editor.'},
     screensaver: {enabled: true,idleSeconds: 120,text: 'VELVET ROOM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Bookings',saved: 'Regulars',trash: 'Burned'},
-    theme: { primary: '#ff5fa2', secondary: '#8de3ff', accent: '#c77bff', bgDeep: '#0d040c', bgBase: '#170a16', bgSurface: '#241224', bgElevated: '#321a32', textPrimary: '#fbeaf6', textSecondary: '#c79ab8', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
+    theme: { primary: '#ff5fa2', secondary: '#8de3ff', accent: '#c77bff', bgDeep: '#0d040c', bgBase: '#170a16', bgSurface: '#241224', bgElevated: '#321a32', textPrimary: '#fbeaf6', textSecondary: '#c79ab8', textMuted: '#a28198', crt: { style: 'arcade', intensity: 30, vignette: true, roll: true }, fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
     security: { requiresAuth: true, allowPassword: true, authLogic: 'any', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 900000 },
     boot: { enabled: true, title: 'VELVET ROOM', subtitle: 'BD Lounge // Private Booth Console', banner: 'BOOTH 6 · SESSIONS BY APPOINTMENT', animationStyle: 'warm-dissolve', speed: 'dramatic', logLines: ['Booth network ............... UP', 'BD wreath diagnostics ....... PASSED', 'Session ledger .............. LOCKED'] },
     accounts: [{ username: 'boothhost', displayName: 'Booth Host', role: 'LOUNGE HOST', security: { requiresAuth: true, allowPassword: true } }],
   },
   'maelstrom-chopshop': {
-    label: 'Maelstrom Chopshop', icon: 'fas fa-skull-crossbones', loginStyle: 'crt', soundSet: 'street-bbs',
+    label: 'Maelstrom Chopshop', icon: 'fas fa-skull-crossbones', loginStyle: 'crt', mailboxStyle: 'tty', soundSet: 'street-bbs',
     login: {motd: 'FLESH IS A COSTUME',welcomeText: 'meat verified. get to work.'},
     screensaver: {enabled: true,idleSeconds: 100,text: 'MAELSTROM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Jobs',saved: 'Parts',trash: 'Scrap'},
-    theme: { primary: '#ff2222', secondary: '#8d99ae', accent: '#ff7a2f', bgDeep: '#070404', bgBase: '#0e0707', bgSurface: '#180d0d', bgElevated: '#241313', textPrimary: '#f1e6e6', textSecondary: '#a88c8c', fontDisplay: 'sharetechmono', fontMono: 'vt323', fontTitle: 'orbitron' },
+    theme: { primary: '#ff2222', secondary: '#8d99ae', accent: '#ff7a2f', bgDeep: '#070404', bgBase: '#0e0707', bgSurface: '#180d0d', bgElevated: '#241313', textPrimary: '#f1e6e6', textSecondary: '#a88c8c', textMuted: '#947c7c', crt: { style: 'tube', intensity: 30, vignette: true, roll: true }, fontDisplay: 'sharetechmono', fontMono: 'vt323', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 15, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'MEAT-GRID', subtitle: 'chopshop node // no questions', banner: 'DUM DUM SAYS HI', animationStyle: 'glitch-flood', speed: 'fast', logLines: ['rippers online .............. yeah', 'parts inventory ............. dont ask', 'ice ......................... HUNGRY'] },
     accounts: [{ username: 'wrench', displayName: 'Wrench', role: 'CHOP LEAD', security: { requiresAuth: true, allowPassword: true } }],
   },
   'blackwall-relay': {
-    label: 'Blackwall Relay', icon: 'fas fa-infinity', loginStyle: 'crt', soundSet: 'ghost-wall',
+    label: 'Blackwall Relay', icon: 'fas fa-infinity', loginStyle: 'crt', mailboxStyle: 'tty', soundSet: 'ghost-wall',
     login: {motd: 'DO NOT ANSWER. DO NOT ANSWER. DO NOT ANSWER.',welcomeText: 'it sees you now.'},
     screensaver: {enabled: true,idleSeconds: 60,text: '██████',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Signals',saved: 'Kept',trash: 'Devoured'},
-    theme: { primary: '#ff1a1a', secondary: '#6b6b7a', accent: '#ff5252', bgDeep: '#030303', bgBase: '#080607', bgSurface: '#100a0c', bgElevated: '#180f12', textPrimary: '#e8dede', textSecondary: '#8d7a7e', fontDisplay: 'sharetechmono', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
+    theme: { primary: '#ff1a1a', secondary: '#6b6b7a', accent: '#ff5252', bgDeep: '#030303', bgBase: '#080607', bgSurface: '#100a0c', bgElevated: '#180f12', textPrimary: '#e8dede', textSecondary: '#8d7a7e', textMuted: '#8d7a7e', crt: { style: 'arcade', intensity: 30, vignette: true, roll: true }, fontDisplay: 'sharetechmono', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 22, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 2, lockoutDuration: 7200000 },
     boot: { enabled: true, title: 'RELAY-0', subtitle: '?????? // DO NOT ANSWER', banner: 'SIGNAL ORIGIN: BEYOND', animationStyle: 'crt-power-on', speed: 'dramatic', logLines: ['handshake ................... [no carrier]', 'handshake ................... [no carrier]', 'handshake ................... ACCEPTED', 'something is listening ......'] },
     accounts: [{ username: 'null', displayName: '▓▓▓▓▓', role: 'UNKNOWN', hidden: false, security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 22 } }],
@@ -835,6 +844,16 @@ export const TERMINAL_FOLDER_ICONS = Object.freeze([
   { c: 'fas fa-photo-film', label: 'Media' },
   { c: 'fas fa-sack-dollar', label: 'Finance' },
   { c: 'fas fa-users', label: 'Personnel' },
+]);
+
+/** Mailbox LAYOUTS (2026-10-25) — how an account's mail/files are laid out
+ *  once logged in. 'classic' is the shipped layout; the others are partials
+ *  in templates/terminal/mailbox/ over the same view-model + actions. */
+export const TERMINAL_MAILBOX_STYLES = Object.freeze([
+  { key: 'classic', label: 'Classic',  icon: 'fas fa-table-columns', hint: 'Account card, MAIL | FILES switch, folders, the list below, the message on the right. The default.' },
+  { key: 'tabs',    label: 'Tabs',     icon: 'fas fa-window-maximize', hint: 'Folders and FILES as tabs across the top, a tight list left, the message right with a metadata rail. Corp consoles.' },
+  { key: 'tty',     label: 'TTY',      icon: 'fas fa-terminal', hint: 'One monospace column with a prompt: ls, cat, cd. Type a number to open. BBS boxes, retro DOS, the Blackwall.' },
+  { key: 'desktop', label: 'Desktop',  icon: 'fas fa-desktop', hint: 'An icon desktop: folders, drives and files as icons, one floating window, a taskbar. Personal rigs, lounges.' },
 ]);
 
 export const TERMINAL_LOGIN_STYLES = Object.freeze([
@@ -1105,6 +1124,14 @@ export const TEMPLATES = Object.freeze({
   TERMINAL_OPERATOR_CHIP: `${T}/terminal/partials/operator-chip.hbs`,
   TERMINAL_CONFIG: `${T}/terminal/terminal-config.hbs`,
   TERMINAL_CONFIG_ACCOUNT: `${T}/terminal/partials/config-account.hbs`,
+  TERMINAL_CONFIG_CONTENT: `${T}/terminal/partials/config-content.hbs`,
+  CRT_PANEL: `${T}/partials/crt-panel.hbs`,
+  TERMINAL_MAILBOX_DETAIL: `${T}/terminal/mailbox/detail.hbs`,
+  TERMINAL_MAILBOX_TREE: `${T}/terminal/mailbox/tree.hbs`,
+  TERMINAL_MAILBOX_ROWS: `${T}/terminal/mailbox/rows.hbs`,
+  TERMINAL_MAILBOX_TABS: `${T}/terminal/mailbox/tabs.hbs`,
+  TERMINAL_MAILBOX_TTY: `${T}/terminal/mailbox/tty.hbs`,
+  TERMINAL_MAILBOX_DESKTOP: `${T}/terminal/mailbox/desktop.hbs`,
   MALWARE_WORKSHOP: `${T}/malware-workshop/malware-workshop.hbs`,
   SHARD_ENCODER: `${T}/shard-encoder/shard-encoder.hbs`,
   ENCODER_CONFIG: `${T}/shard-encoder/encoder-config.hbs`,
@@ -1120,6 +1147,12 @@ export const DEFAULTS = Object.freeze({
     fonts: { display: 'rajdhani', mono: 'sharetechmono', title: 'orbitron' },
     textScale: 100, contrast: 100, agentName: 'Agent',
     scanlines: true, glitchIntensity: 0.5, animationLevel: 'full', neonGlow: true,
+    // The ONE CRT film (scripts/utils/crt.js): style off|fine|classic|grille|phosphor,
+    // intensity 0–100, vignette, rolling band. `scanlines` above is its master switch.
+    crt: { style: 'glass', intensity: 25, vignette: true, roll: true },
+    // The player's ACCESSIBILITY CAP over films a GM authored on terminals + shards (crt.js capCrt):
+    // 'asis' | 'dim' | 'off'. A ceiling, never a floor — it only ever lowers, on this client only.
+    crtCap: 'asis',
     // wallpaper = image behind the MessageViewer panes (Theme Customizer →
     // Effects); strength 0–100 drives --ncm-wallpaper-strength (default 25).
     messageDensity: 'normal', sidebarWidth: 300, defaultSort: 'newest', showAvatars: true, wallpaper: null, wallpaperStrength: 25,
@@ -1196,7 +1229,10 @@ export const DEFAULTS = Object.freeze({
         'Data integrity ................ VERIFIED',
         'Loading ...',
       ],
-      speed: 'normal',                 // 'fast' | 'normal' | 'dramatic'
+      speed: 'normal',                 // 'fast' | 'normal' | 'dramatic' | 'custom' (→ customSeconds)
+      customSeconds: null,             // whole-boot length in seconds when speed === 'custom'
+      videoUrl: null,                  // a video as the boot screen (replaces the choreography; its audio + length rule the boot)
+      videoOverlay: false,             // show title/subtitle over the video
       animationStyle: 'standard-fade', // Per-preset animation choreography
     },
 
@@ -1356,7 +1392,10 @@ export const DEFAULTS = Object.freeze({
         'Link established ............ OK',
         'Authenticating .............. STANDBY',
       ],
-      speed: 'normal',            // 'fast' | 'normal' | 'dramatic'
+      speed: 'normal',            // 'fast' | 'normal' | 'dramatic' | 'custom' (→ customSeconds)
+      customSeconds: null,        // whole-boot length in seconds when speed === 'custom'
+      videoUrl: '',               // a video as the boot screen (BootVideo.js): replaces the choreography, its audio + length rule the boot
+      videoOverlay: false,        // show title/subtitle over the video
     },
 
     // Per-terminal theme — applied to the .ncm-terminal-viewer element (NOT :root),
@@ -1399,6 +1438,8 @@ export const DEFAULTS = Object.freeze({
     // badge-card grid (default). All styles share the same accounts/security/
     // auth flow underneath and follow the terminal theme palette.
     loginStyle: 'cards',
+    // Mailbox layout once logged in — one of TERMINAL_MAILBOX_STYLES (2026-10-25).
+    mailboxStyle: 'classic',
     // Login-screen flavor: motd = a banner line under the hero ("UNAUTHORIZED
     // ACCESS WILL BE TRACED"); welcomeText = custom ACCESS GRANTED line
     // (empty = the default "Welcome, {name}").
@@ -1419,6 +1460,12 @@ export const DEFAULTS = Object.freeze({
     // flag (composer Entry Header); messages whose folder no longer exists
     // fall back to the Inbox. Resolved by TerminalService.getFolders.
     folders: { icons: {}, savedEnabled: true, trashEnabled: true, custom: [] },
+    // FILE repository (2026-10-25, scripts/utils/terminalFiles.js): the folder
+    // REGISTRY. A file's folder is its `file.path`; this list adds what a path
+    // string cannot carry — an empty folder, and a GATE. Entries:
+    //   { id, scope: '__shared__' | <accountId>, path: 'records/2046',
+    //     gate: { mode: 'everyone'|'admin'|'clearance'|'accounts', min, accountIds } }
+    files: { folders: [] },
     // Per-terminal sound palette — a TERMINAL_SOUND_SETS key. Sets remap the
     // terminal's sound ids onto other SOUND_PATHS entries with rate/volume
     // shaping (no new audio assets). All terminal-played sounds resolve

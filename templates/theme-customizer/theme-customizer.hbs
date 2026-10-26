@@ -153,8 +153,16 @@
       <div class="ncm-tc__slabel">Visual Effects</div>
       <div class="ncm-tc__fx">
         <div class="ncm-tc__trow">
-          <div><div class="ncm-tc__trow-label">CRT Scanlines</div><div class="ncm-tc__trow-desc">Horizontal scan lines over NCM windows</div></div>
+          <div><div class="ncm-tc__trow-label">CRT Film</div><div class="ncm-tc__trow-desc">One screen film over every NCM window — scanlines, vignette, glow. Pick a look below.</div></div>
           <div class="ncm-tc__switch {{#if scanlines}}ncm-tc__switch--on{{/if}}" data-action="toggleScanlines"></div>
+        </div>
+        {{!-- The ONE CRT film (scripts/utils/crt.js + styles/components/crt.css) — the shared panel. --}}
+        <div class="ncm-tc__crt{{#unless scanlines}} is-off{{/unless}}">
+          {{> "modules/night-city-messenger/templates/partials/crt-panel.hbs" crt=crt}}
+        </div>
+        <div class="ncm-tc__trow">
+          <div><div class="ncm-tc__trow-label">Film on terminals &amp; shards</div><div class="ncm-tc__trow-desc">A GM designs each machine's and shard's film. This is your ceiling — dim it or switch it off for yourself without changing it for anyone else.</div></div>
+          <select name="crtCap" class="ncm-tc__font-select ncm-tc__cap-select">{{#each crtCaps}}<option value="{{key}}" {{#if active}}selected{{/if}} title="{{hint}}">{{label}}</option>{{/each}}</select>
         </div>
         <div class="ncm-tc__trow">
           <div><div class="ncm-tc__trow-label">Neon Glow</div><div class="ncm-tc__trow-desc">Glow effects on primary/secondary elements</div></div>

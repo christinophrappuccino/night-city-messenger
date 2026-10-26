@@ -1,0 +1,126 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   CRT FILM — the ONE pane of glass (2026-10-25 v2, scripts/utils/crt.js)
+   ──────────────────────────────────────────────────────────────────────────
+   A host (a WINDOW ROOT — header included — or a preview strip) carries
+   data-ncm-crt (off|glass|tube|arcade) + the --ncm-crt-* variables that
+   crt.js computes, and ONE click-through child, .ncm-crt-pane, with seven
+   layers (applyCrt builds it; nothing else does):
+
+     cut     dark gaps between lines, MULTIPLY — invisible on black, visible
+             across glyphs and fills: this is what makes text look scanned
+     light   the bright lines, SCREEN — they live in the dark, add almost
+             nothing on a bright fill (the "lines through a button" fix)
+     grille  red/green/blue subpixel stripes (arcade)
+     room    vignette · diagonal sheen · the machine's primary bleeding in
+             from the edges (bloom)
+     grain   analogue noise (animated)
+     roll    the slow rolling band (animated)
+     bezel   a dark lip with a hairline (optional)
+
+   The raster layers are MASKED toward the edges (--ncm-crt-curve) so the lines
+   thin out at the corners like a curved face. Phosphor glow and the red/cyan
+   fringe are a text-shadow on the HOST, inherited by every glyph. Flicker dips
+   the window content, not the pane. Tokens only; the bloom rides --ncm-primary
+   so it follows each preset. GM tools never show it: [data-ncm-admin-theme]
+   hides the pane and the text-shadow. Reduced motion stops roll/grain/flicker.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:where([data-ncm-crt]:not([data-ncm-crt="off"])) { position: relative; }
+
+/* ── phosphor: glow + fringe on the text under the host ── */
+[data-ncm-crt]:not([data-ncm-crt="off"]) {
+  text-shadow:
+    calc(var(--ncm-crt-fringe, 0) * -1px) 0 rgba(255, 40, 60, var(--ncm-crt-fringe-a, 0)),
+    calc(var(--ncm-crt-fringe, 0) * 1px) 0 rgba(40, 230, 255, var(--ncm-crt-fringe-b, 0)),
+    0 0 var(--ncm-crt-glow, 0px) currentColor;
+}
+
+/* ── the pane ── */
+.ncm-crt-pane {
+  position: absolute; inset: 0; pointer-events: none; z-index: var(--ncm-crt-z, 90);
+  border-radius: inherit; overflow: hidden;
+}
+.ncm-crt-pane > i { position: absolute; inset: 0; display: block; }
+
+/* raster: light lines (screen) and the cut (multiply), both softened, both fading to the edges */
+.ncm-crt__light {
+  mix-blend-mode: screen;
+  background: repeating-linear-gradient(0deg,
+    /* the line takes the MACHINE'S colour (2026-10-25): on a dark background it reads as a faint phosphor
+       line; on anything filled with that colour — the active tab, a selected row, a primary button — screen
+       adds nothing, so the fill stays clean (dev: "lines in the tabs on active"). */
+    color-mix(in srgb, var(--ncm-primary, #F65261) calc(var(--ncm-crt-light, 0) * 100%), transparent) 0 1px,
+    transparent 1px var(--ncm-crt-pitch, 3px));
+}
+.ncm-crt__cut {
+  mix-blend-mode: multiply;
+  background: repeating-linear-gradient(0deg,
+    transparent 0 calc(var(--ncm-crt-pitch, 3px) - 1px),
+    rgba(0, 0, 0, var(--ncm-crt-cut, 0)) calc(var(--ncm-crt-pitch, 3px) - 1px) var(--ncm-crt-pitch, 3px));
+}
+.ncm-crt__grille {
+  mix-blend-mode: screen; opacity: var(--ncm-crt-grille, 0);
+  background: repeating-linear-gradient(90deg, rgba(255, 60, 60, .5) 0 1px, rgba(60, 255, 90, .4) 1px 2px, rgba(70, 110, 255, .5) 2px 3px);
+}
+.ncm-crt__light, .ncm-crt__cut, .ncm-crt__grille {
+  -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, #000 calc(100% - var(--ncm-crt-curve, 0%) * 1.2), rgba(0, 0, 0, .35) calc(100% - var(--ncm-crt-curve, 0%) * .4), transparent 100%);
+          mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, #000 calc(100% - var(--ncm-crt-curve, 0%) * 1.2), rgba(0, 0, 0, .35) calc(100% - var(--ncm-crt-curve, 0%) * .4), transparent 100%);
+}
+
+/* room: sheen · vignette · bloom */
+.ncm-crt__room {
+  background:
+    linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, var(--ncm-crt-sheen, 0)) 50%, transparent 62%),
+    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, var(--ncm-crt-vignette, 0)) 100%);
+  box-shadow: inset 0 0 var(--ncm-crt-bloom-size, 90px) color-mix(in srgb, var(--ncm-primary, #F65261) calc(var(--ncm-crt-bloom, 0) * 100%), transparent);
+}
+
+/* bezel: a plastic lip with a hairline, an inner shadow, a top-left reflection */
+.ncm-crt__bezel { display: none; }
+[data-ncm-crt-bezel="true"] > .ncm-crt-pane > .ncm-crt__bezel {
+  display: block;
+  box-shadow:
+    inset 0 0 0 var(--ncm-crt-bezel, 6px) #07070b,
+    inset 0 0 0 calc(var(--ncm-crt-bezel, 6px) + 1px) rgba(255, 255, 255, .08),
+    inset 0 0 calc(var(--ncm-crt-bezel, 6px) * 4) rgba(0, 0, 0, .55);
+  background: radial-gradient(ellipse 60% 45% at 18% 8%, rgba(255, 255, 255, .07) 0%, transparent 70%);
+}
+
+/* motion: the rolling band and the grain */
+.ncm-crt__roll, .ncm-crt__grain { display: none; }
+[data-ncm-crt-roll="true"] > .ncm-crt-pane > .ncm-crt__roll {
+  display: block;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, var(--ncm-crt-roll-a, .045)) 50%, transparent) 0 -200px / 100% 180px no-repeat;
+  animation: ncm-crt-roll var(--ncm-crt-roll-speed, 9s) linear infinite;
+}
+@keyframes ncm-crt-roll { from { background-position-y: -200px; } to { background-position-y: calc(100% + 200px); } }
+[data-ncm-crt-grain="true"] > .ncm-crt-pane > .ncm-crt__grain {
+  display: block; opacity: var(--ncm-crt-grain, 0); mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .6 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+  animation: ncm-crt-grain .6s steps(4) infinite;
+}
+@keyframes ncm-crt-grain { 0% { background-position: 0 0; } 25% { background-position: 37px -21px; } 50% { background-position: -29px 44px; } 75% { background-position: 51px 13px; } 100% { background-position: 0 0; } }
+
+/* flicker: brightness dips on the CONTENT (a window's header + content), not the pane */
+[data-ncm-crt-flicker="true"] > .window-header, [data-ncm-crt-flicker="true"] > .window-content {
+  animation: ncm-crt-flicker 4s steps(1) infinite;
+}
+@keyframes ncm-crt-flicker {
+  0%, 100% { opacity: 1; }
+  7% { opacity: calc(1 - var(--ncm-crt-flicker, 0)); } 8% { opacity: 1; }
+  53% { opacity: calc(1 - var(--ncm-crt-flicker, 0) * .5); } 54% { opacity: 1; }
+}
+
+/* ── Guards ── */
+[data-ncm-admin-theme] .ncm-crt-pane, [data-ncm-admin-theme] > .ncm-crt-pane { display: none !important; }
+[data-ncm-admin-theme][data-ncm-crt], [data-ncm-admin-theme] [data-ncm-crt] { text-shadow: none; }
+[data-ncm-animation-level="off"] .ncm-crt__roll, [data-ncm-animation-level="reduced"] .ncm-crt__roll,
+[data-ncm-animation-level="off"][data-ncm-crt-roll] > .ncm-crt-pane > .ncm-crt__roll, [data-ncm-animation-level="reduced"][data-ncm-crt-roll] > .ncm-crt-pane > .ncm-crt__roll { display: none !important; }
+[data-ncm-animation-level="off"] .ncm-crt__grain, [data-ncm-animation-level="reduced"] .ncm-crt__grain,
+[data-ncm-animation-level="off"][data-ncm-crt-grain] > .ncm-crt-pane > .ncm-crt__grain, [data-ncm-animation-level="reduced"][data-ncm-crt-grain] > .ncm-crt-pane > .ncm-crt__grain { animation: none !important; }
+[data-ncm-animation-level="off"][data-ncm-crt-flicker] > .window-header, [data-ncm-animation-level="off"][data-ncm-crt-flicker] > .window-content,
+[data-ncm-animation-level="reduced"][data-ncm-crt-flicker] > .window-header, [data-ncm-animation-level="reduced"][data-ncm-crt-flicker] > .window-content { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .ncm-crt__roll { display: none !important; }
+  .ncm-crt__grain, [data-ncm-crt-flicker] > .window-header, [data-ncm-crt-flicker] > .window-content { animation: none !important; }
+}

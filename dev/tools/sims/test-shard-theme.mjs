@@ -317,6 +317,10 @@ if (!Handlebars) {
     themeWallpaper: 'worlds/x.webp', themeWallpaperStrength: 40,
     textScale: 120, contrast: 110,
   };
+  // The Theme tab renders the shared CRT panel (2026-10-25) — register the REAL partial and give it a real context.
+  const CRT = await import(new URL('../../../scripts/utils/crt.js', import.meta.url).href);
+  ctx.themeCrt = CRT.crtPanelContext(CRT.resolveCrt({}, SHARD_PRESETS['corporate-dossier'].crt));
+  Handlebars.registerPartial('modules/night-city-messenger/templates/partials/crt-panel.hbs', fs.readFileSync(new URL('../../../templates/partials/crt-panel.hbs', import.meta.url), 'utf8'));
   Handlebars.registerHelper('helperMissing', () => '');
   const out = Handlebars.compile(tpl)(ctx);
   // Handlebars strips {{!-- --}} comments, so slice to the NEXT panel instead.

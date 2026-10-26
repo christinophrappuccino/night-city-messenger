@@ -1,0 +1,90 @@
+{{!-- Mailbox style "desktop" (2026-10-25, dev-approved mock, style 3): a wallpapered canvas
+      of icons — the mail folders, the home + shared drives, the open volume's top-level
+      folders and root files — with ONE floating window for whatever was opened (its list on
+      the left, the shared detail partial on the right) and a taskbar. A locked folder shows
+      a padlock and refuses with its reason (_onFsOpen). Click opens; no double-click needed. --}}
+<div class="ncm-tmdesk">
+  <div class="ncm-tmdesk__icons">
+    {{#each folders}}
+      <div class="ncm-tmdesk__icon{{#if active}}{{#unless @root.isFilesView}} is-on{{/unless}}{{/if}}" data-action="terminalFolder" data-folder="{{key}}" data-tooltip="{{label}} — {{count}} message{{#unless (eq count 1)}}s{{/unless}}">
+        <i class="{{icon}}"></i>{{#if unread}}<span class="ncm-tmdesk__badge">{{unread}}</span>{{/if}}
+        <span>{{label}}</span><small>{{count}}</small>
+      </div>
+    {{/each}}
+    {{#each fs.roots}}
+      <div class="ncm-tmdesk__icon ncm-tmdesk__icon--drive{{#if isActiveRoot}} is-on{{/if}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="" data-tooltip="{{label}} · {{count}} file{{#unless (eq count 1)}}s{{/unless}}">
+        <i class="{{icon}}"></i><span>{{label}}</span><small>{{subLabel}}</small>
+      </div>
+      {{#each dirs}}{{#if (eq depth 1)}}
+        <div class="ncm-tmdesk__icon{{#if active}} is-on{{/if}}{{#if locked}} is-locked{{/if}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="{{path}}"{{#if locked}} data-locked="1" data-lock-label="{{lockLabel}}"{{/if}} data-tooltip="/{{path}}{{#if locked}} — {{lockLabel}}{{/if}}">
+          <i class="fas {{#if locked}}fa-lock{{else}}fa-folder{{/if}}"></i><span>{{name}}</span><small>{{#if locked}}{{lockLabel}}{{else}}{{count}} file{{#unless (eq count 1)}}s{{/unless}}{{/if}}</small>
+        </div>
+      {{/if}}{{/each}}
+      {{#each files}}
+        <div class="ncm-tmdesk__icon ncm-tmdesk__icon--file{{#if isSelected}} is-on{{/if}}" data-action="terminalFsOpen" data-scope="{{../scope}}" data-path="" data-message-id="{{messageId}}" data-ct-color="{{accent}}" data-tooltip="{{filename}}">
+          <i class="{{typeIcon}}"></i>{{#if isNew}}<span class="ncm-tmdesk__badge ncm-tmdesk__badge--new">NEW</span>{{/if}}<span>{{filename}}</span><small>{{#if isStream}}LIVE{{else}}{{fileSize}}{{/if}}</small>
+        </div>
+      {{/each}}
+    {{/each}}
+  </div>
+
+  <div class="ncm-tmdesk__win">
+    <div class="ncm-tmdesk__win-bar">
+      <i class="{{deskWindow.icon}} ncm-tmdesk__win-app"></i> {{deskWindow.title}}
+      {{#if syncHint}}<span class="ncm-tmdesk__win-sync"><i class="fas fa-triangle-exclamation"></i> {{syncHint.count}} failed to sync</span>{{/if}}
+      <span class="ncm-tmdesk__win-ctl">{{#if selectedMessage}}<b class="ncm-tmdesk__win-dot ncm-tmdesk__win-dot--x" data-action="terminalFsBack" data-tooltip="Back to the list"></b>{{else}}<b class="ncm-tmdesk__win-dot"></b>{{/if}}</span>
+    </div>
+    <div class="ncm-tmdesk__win-body">
+      <div class="ncm-tmdesk__win-list">
+        {{#if isFilesView}}
+          {{#with fs.listing}}
+            {{#if parent}}<div class="ncm-tmdesk__row ncm-tmdesk__row--dir" data-action="terminalFsOpen" data-scope="{{parent.scope}}" data-path="{{parent.path}}"><b><i class="fas fa-arrow-turn-up"></i> ..</b>up a level</div>{{/if}}
+            {{#each subdirs}}<div class="ncm-tmdesk__row ncm-tmdesk__row--dir{{#if locked}} is-locked{{/if}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="{{path}}"{{#if locked}} data-locked="1" data-lock-label="{{lockLabel}}"{{/if}}><b><i class="fas {{#if locked}}fa-lock{{else}}fa-folder{{/if}}"></i> {{name}}/</b>{{#if locked}}{{lockLabel}}{{else}}{{count}} file{{#unless (eq count 1)}}s{{/unless}} · {{size}}{{/if}}</div>{{/each}}
+            {{#each files}}<div class="ncm-tmdesk__row{{#if isSelected}} is-on{{/if}}" data-action="terminalSelectMessage" data-message-id="{{messageId}}" data-ct-color="{{accent}}"><b><i class="{{typeIcon}}"></i> {{filename}}{{#if encrypted}} <i class="fas fa-lock ncm-tmdesk__lock"></i>{{/if}}</b>{{#if isStream}}LIVE{{else}}{{fileSize}} · {{time}}{{/if}}</div>{{/each}}
+            {{#if empty}}<div class="ncm-tmdesk__empty">Empty folder</div>{{/if}}
+            {{#if locked}}<div class="ncm-tmdesk__empty"><i class="fas fa-lock"></i> ACCESS DENIED — {{lockLabel}}</div>{{/if}}
+          {{/with}}
+        {{else}}
+          {{#each messages}}
+            <div class="ncm-tmdesk__row{{#if isSelected}} is-on{{/if}}{{#if isNew}} is-new{{/if}}" data-action="terminalSelectMessage" data-message-id="{{messageId}}" data-ct-color="{{accent}}"><b>{{#if isFile}}<i class="{{typeIcon}}"></i> {{filename}}{{else}}{{subject}}{{/if}}</b>{{#if isFile}}{{typeLabel}} · {{fileSize}}{{else}}{{from}} · {{time}}{{/if}}</div>
+          {{else}}
+            <div class="ncm-tmdesk__empty">{{emptyLabel}}</div>
+          {{/each}}
+          {{#if pagination}}
+            <div class="ncm-term__pager">
+              <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="prev" {{#unless pagination.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i></button>
+              <span class="ncm-term__pager-lbl">{{pagination.page}} / {{pagination.maxPage}}</span>
+              <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="next" {{#unless pagination.hasNext}}disabled{{/unless}}><i class="fas fa-chevron-right"></i></button>
+            </div>
+          {{/if}}
+        {{/if}}
+        {{#if isGM}}<button type="button" class="ncm-term__gm-add ncm-tmdesk__gm" data-action="terminalNewMessage"><i class="fas fa-plus"></i> {{#if isFilesView}}Add a file here{{else}}Add message or file{{/if}}</button>{{/if}}
+      </div>
+      <div class="ncm-term__detail ncm-tmdesk__detail{{#if fs.showListing}} is-listing{{/if}}">
+        {{> "modules/night-city-messenger/templates/terminal/mailbox/detail.hbs"}}
+      </div>
+    </div>
+  </div>
+
+  <div class="ncm-tmdesk__task">
+    <span class="ncm-tmdesk__start"><i class="{{presetIcon}}"></i> {{terminalName}}</span>
+    <span class="ncm-tmdesk__taskbtn is-on" data-action="terminalFsBack"><i class="{{deskWindow.icon}}"></i> {{deskWindow.title}}</span>
+    <span class="ncm-tmdesk__taskbtn{{#if isFilesView}} is-on{{/if}}" data-action="terminalView" data-view="{{#if isFilesView}}mail{{else}}files{{/if}}" data-tooltip="Switch to {{#if isFilesView}}mail{{else}}files{{/if}}"><i class="fas {{#if isFilesView}}fa-envelope{{else}}fa-folder-tree{{/if}}"></i> {{#if isFilesView}}Mail {{view.mail}}{{else}}Files {{view.files}}{{/if}}</span>
+    <span class="ncm-tmdesk__acct" data-action="terminalToggleSwitcher"><span class="ncm-term__avatar">{{#if account.portrait}}<img src="{{account.portrait}}" alt="">{{else}}{{account.initials}}{{/if}}</span> {{account.username}}
+      {{#if switcherOpen}}
+        <div class="ncm-term__acdrop ncm-tmdesk__acdrop">
+          <div class="ncm-term__acdrop-hd">SWITCH ACCOUNT</div>
+          {{#each switchAccounts}}
+            <div class="ncm-term__acdrop-it{{#if isCurrent}} is-current{{/if}}" data-action="terminalSwitchAccount" data-account-id="{{id}}">
+              <span class="ncm-term__avatar">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
+              <span class="ncm-term__acdrop-nm">{{displayName}}</span>
+              <span class="ncm-term__acdrop-lk{{#if isOpen}} is-open{{/if}}">{{{statusLabel}}}</span>
+            </div>
+          {{/each}}
+          <div class="ncm-term__acdrop-ft" data-action="terminalLogout"><i class="fas fa-right-from-bracket"></i> Log out → login screen</div>
+        </div>
+      {{/if}}
+      </span>
+    <span class="ncm-tmdesk__clock">{{deskClock}}</span>
+  </div>
+</div>

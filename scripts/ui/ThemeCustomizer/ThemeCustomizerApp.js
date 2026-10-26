@@ -13,6 +13,7 @@ import { MODULE_ID, TEMPLATES, THEME_PRESETS, COLOR_VAR_MAP, FONT_OPTIONS, DEFAU
 import { log } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { applyCrt, resolveCrt, CRT_OFF, CRT_CAPS, crtPanelContext, wireCrtPanel } from '../../utils/crt.js';
 
 export class ThemeCustomizerApp extends BaseApplication {
 
@@ -146,6 +147,10 @@ export class ThemeCustomizerApp extends BaseApplication {
       animationLevels,
       densityOptions,
       scanlines: prefs.scanlines !== false,
+      // The ONE CRT film (crt.js): style chips + intensity + vignette + rolling band.
+      crt: crtPanelContext(resolveCrt({ crt: prefs.crt, scanlines: true })),
+      // The accessibility cap over GM-authored films on terminals + shards (crt.js capCrt).
+      crtCaps: CRT_CAPS.map(c => ({ ...c, active: (CRT_CAPS.some(x => x.key === prefs.crtCap) ? prefs.crtCap : 'asis') === c.key })),
       neonGlow: prefs.neonGlow !== false,
       glitchIntensity: Math.round((prefs.glitchIntensity ?? 0.5) * 100),
       textScale: prefs.textScale ?? 100,
@@ -225,6 +230,12 @@ export class ThemeCustomizerApp extends BaseApplication {
     this._markDirty();
     this._applyLive();
     this.render(true);
+  }
+
+  /** The working crt block, created from the resolved prefs on first touch. */
+  _crtDraft() {
+    if (!this._workingPrefs.crt || typeof this._workingPrefs.crt !== 'object') this._workingPrefs.crt = resolveCrt({ crt: this._workingPrefs.crt, scanlines: true });
+    return this._workingPrefs.crt;
   }
 
   static _onToggleNeonGlow(event, target) {
@@ -329,6 +340,26 @@ export class ThemeCustomizerApp extends BaseApplication {
     super._onRender(context, options);
     // GM view: keep the preview strip on the player palette (see method).
     this._scopePreviewToPlayerTheme();
+
+    // ── The CRT film panel (shared partial; crt.js wires it — live, no re-render).
+    //    Picking a look while the master switch is off turns it on; Off turns it off.
+    wireCrtPanel(this.element.querySelector('[data-crt-panel]'), {
+      draft: () => this._crtDraft(),
+      onChange: () => {
+        const c = this._crtDraft();
+        this._workingPrefs.scanlines = c.style !== 'off';
+        this.element.querySelector('.ncm-tc__crt')?.classList.toggle('is-off', c.style === 'off');
+        this.element.querySelectorAll('[data-action="toggleScanlines"]').forEach(sw => sw.classList.toggle('ncm-tc__switch--on', c.style !== 'off'));
+        this._markDirty();
+        this._applyLive();
+      },
+    });
+    // ── The player's cap on GM-authored films (terminals + shards) ──
+    this.element.querySelector('[name="crtCap"]')?.addEventListener('change', (e) => {
+      this._workingPrefs.crtCap = CRT_CAPS.some(c => c.key === e.target.value) ? e.target.value : 'asis';
+      this._markDirty();
+      this._applyLive();
+    });
 
     // ── Tab switching (DOM-based, not data-action) ──
     this.element.querySelectorAll('[data-tc-tab]').forEach(tab => {
@@ -470,11 +501,19 @@ export class ThemeCustomizerApp extends BaseApplication {
     // carrying the admin theme (GM tools, GM-view windows) keep their forced
     // scanlines/neon=false — re-stamping them here painted scanlines back onto
     // the Admin Panel while the customizer was open.
+    const crt = this._workingPrefs.scanlines === false ? CRT_OFF : resolveCrt({ crt: this._workingPrefs.crt, scanlines: true });
     document.querySelectorAll('.ncm-app:not([data-ncm-admin-theme])').forEach(el => {
       el.dataset.ncmScanlines = String(this._workingPrefs.scanlines !== false);
       el.dataset.ncmNeon = String(this._workingPrefs.neonGlow !== false);
       el.dataset.ncmAnimationLevel = this._workingPrefs.animationLevel || 'full';
+      // A terminal or a shard owns its own film (its theme.crt, capped by the player) — leave those alone.
+      if (el.classList.contains('ncm-terminal-app') || el.classList.contains('ncm-item-inbox') || el.querySelector(':scope > .window-content > .ncm-terminal-viewer')) return;
+      applyCrt(el, crt);
     });
+    // Machines and shards re-read their own film under the WORKING cap (live preview of "Film on terminals & shards").
+    for (const app of foundry.applications?.instances?.values?.() ?? []) {
+      if (app !== this && app.rendered && typeof app.refreshCrt === 'function') app.refreshCrt({ cap: this._workingPrefs.crtCap });
+    }
     this._scopePreviewToPlayerTheme();
   }
 
@@ -493,6 +532,7 @@ export class ThemeCustomizerApp extends BaseApplication {
       try { this.themeService?.applyTheme(this._workingPrefs, el); } catch { /* non-fatal */ }
       el.dataset.ncmScanlines = String(this._workingPrefs.scanlines !== false);
       el.dataset.ncmNeon = String(this._workingPrefs.neonGlow !== false);
+      applyCrt(el, this._workingPrefs.scanlines === false ? CRT_OFF : resolveCrt({ crt: this._workingPrefs.crt, scanlines: true }));
     }
   }
 

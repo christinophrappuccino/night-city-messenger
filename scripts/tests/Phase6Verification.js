@@ -12,7 +12,7 @@
  *              manual run: game.nightcity.verifyPhase6().
  */
 
-import { MODULE_ID, TEMPLATES, SOCKET_OPS } from '../utils/constants.js';
+import { MODULE_ID, TEMPLATES, SOCKET_OPS, DEFAULTS } from '../utils/constants.js';
 import { canOperate, resolveOperator, getOperatorActors } from '../utils/helpers.js';
 import { PROGRAM_EFFECTS, programEffectInfo } from '../ui/content/ContentRenderers.js';
 import { forgeOutcome, forgeQualityFromMargin } from '../ui/content/UploadFlow.js';
@@ -271,6 +271,59 @@ export class Phase6Verification {
       if (typeof cfg.reencode?.allowed !== 'boolean') problems.push('reencode.allowed is not resolved');
       if (problems.length) return { passed: false, detail: problems.join('; ') };
       return { passed: true, detail: `3 edit modes, state relay ops decrypt/session/decryptPage/destroy, re-encode ${cfg.reencode.allowed ? 'on' : 'off'} at DV +${cfg.reencode.dv}` };
+    });
+
+    // ─── 6.18: Terminal file repository (shared volume · folders · gates · boot speed) ───
+    await this._check('6.18', 'Terminal files — rules, service, views', async () => {
+      const F = await import('../utils/terminalFiles.js');
+      const ts = game.nightcity?.terminalService;
+      const problems = [];
+      if (F.SHARED_SCOPE !== '__shared__') problems.push('SHARED_SCOPE changed');
+      if (F.normalizeFolderPath('/a//b/') !== 'a/b') problems.push('normalizeFolderPath');
+      if (F.gatePasses({ mode: 'admin' }, { isAdmin: false })) problems.push('admin gate let a non-admin through');
+      if (!F.gatePasses({ mode: 'clearance', min: 2 }, { clearance: 'LEVEL 3' })) problems.push('clearance 3 must pass min 2');
+      for (const fn of ['getAllMessages', 'getSharedMessages', 'getFileFolders', 'canOpenFolder', 'buildFileTree', 'saveFileFolder', 'renameFileFolder', 'removeFileFolder', 'moveFile']) {
+        if (typeof ts?.[fn] !== 'function') problems.push(`terminalService.${fn} missing`);
+      }
+      if (!TEMPLATES.TERMINAL_CONFIG_CONTENT) problems.push('TEMPLATES.TERMINAL_CONFIG_CONTENT missing');
+      else { try { await getTemplate(TEMPLATES.TERMINAL_CONFIG_CONTENT); } catch { problems.push('config-content partial fails to load'); } }
+      const { TerminalViewerApp } = await import('../ui/Terminal/TerminalViewerApp.js');
+      const hold = TerminalViewerApp.bootHoldMs;
+      if (typeof hold !== 'function') problems.push('bootHoldMs missing');
+      else {
+        if (!(hold({ speed: 'fast' }) < hold({ speed: 'normal' }) && hold({ speed: 'normal' }) < hold({ speed: 'dramatic' }))) problems.push('boot speeds are not ordered fast < normal < dramatic');
+        if (hold({ speed: 'custom', customSeconds: 7 }) !== 7000) problems.push('custom seconds not honoured');
+      }
+      if (!(DEFAULTS.TERMINAL_CONFIG.files?.folders instanceof Array)) problems.push('DEFAULTS.TERMINAL_CONFIG.files.folders missing');
+      if (problems.length) return { passed: false, detail: problems.join('; ') };
+      return { passed: true, detail: 'shared scope, gate rules, 9 service methods, config-content partial, boot speed ladder' };
+    });
+
+    // ─── 6.19: Mailbox styles (classic · tabs · tty · desktop) + the shared CRT film ───
+    await this._check('6.19', 'Mailbox styles — registry, partials, viewer flags, CRT film', async () => {
+      const C = await import('../utils/constants.js');
+      const problems = [];
+      const styles = C.TERMINAL_MAILBOX_STYLES;
+      if (!Array.isArray(styles) || styles.length !== 4 || styles[0].key !== 'classic') problems.push('TERMINAL_MAILBOX_STYLES is not the 4-entry registry');
+      if (DEFAULTS.TERMINAL_CONFIG.mailboxStyle !== 'classic') problems.push('default mailboxStyle is not classic');
+      const keys = new Set((styles || []).map(s => s.key));
+      for (const [k, p] of Object.entries(C.TERMINAL_PRESETS || {})) if (!keys.has(p.mailboxStyle)) problems.push(`preset ${k} has no valid mailboxStyle (a theme must carry its layout)`);
+      for (const k of ['DETAIL', 'TREE', 'ROWS', 'TABS', 'TTY', 'DESKTOP']) {
+        const t = TEMPLATES['TERMINAL_MAILBOX_' + k];
+        if (!t) { problems.push(`TEMPLATES.TERMINAL_MAILBOX_${k} missing`); continue; }
+        try { await getTemplate(t); } catch { problems.push(`mailbox partial ${k} fails to load`); }
+      }
+      const { TerminalViewerApp } = await import('../ui/Terminal/TerminalViewerApp.js');
+      if (typeof TerminalViewerApp.prototype._onTtyCommand !== 'function') problems.push('_onTtyCommand missing (TTY prompt)');
+      for (const a of ['terminalView', 'terminalFsOpen', 'terminalFsBack', 'terminalFolder', 'terminalSelectMessage']) {
+        if (!TerminalViewerApp.DEFAULT_OPTIONS?.actions?.[a]) problems.push(`viewer action ${a} missing`);
+      }
+      const crt = await import('../utils/crt.js');
+      if (!Array.isArray(crt.CRT_STYLES) || !crt.CRT_STYLES.some(s => s.key === 'off')) problems.push('CRT_STYLES missing an off entry');
+      if (typeof crt.applyCrt !== 'function' || typeof crt.resolveCrt !== 'function') problems.push('crt helpers missing');
+      if (crt.resolveCrt({ crt: { style: 'nonsense' } }).style === 'nonsense') problems.push('resolveCrt accepted an unknown style');
+      if (problems.length) return { passed: false, detail: problems.join('; ') };
+      return { passed: true, detail: '4 styles, 6 partials load, tty prompt, 5 shared actions, CRT film helpers' };
     });
 
     await this._check('6.13', 'Core services intact (Phase 1-5 regression)', () => {

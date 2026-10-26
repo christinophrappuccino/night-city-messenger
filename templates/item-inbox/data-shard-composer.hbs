@@ -938,6 +938,7 @@
     <div class="ncm-cmp-sec__hd" data-action="cmpToggleSec">
       <span class="ncm-cmp-sec__num">②</span><span class="ncm-cmp-sec__title">Delivery</span>
       <span class="ncm-cmp-sec__sum">
+        <span class="ncm-cmp-chip ncm-cmp-chip--env" data-cmp-chip="env"></span>
         <span class="ncm-cmp-chip" data-cmp-chip="from"></span>
         <span class="ncm-cmp-chip" data-cmp-chip="when"></span>
         {{#if isTerminalTarget}}<span class="ncm-cmp-chip" data-cmp-chip="folder"></span>{{/if}}
@@ -949,14 +950,23 @@
             FILE = a machine artifact (filename / path / owner-node / modified /
             size), which also switches off reply, add-to-contacts, threading,
             the delivery toast, and the master-contact auto-create. --}}
+      {{!-- The envelope is the FIRST question of DELIVERY, asked in plain words
+            (dev 2026-10-25: the old "Show as" segmented control was too easy to
+            miss). Two cards, one lit; the hidden input is the save contract and
+            envSeg still drives the DOM-only field swap. --}}
+      <div class="ncm-envpick" data-env-seg="envelope">
+        <div class="ncm-envpick__q">Is this a <b>message</b> someone sent, or a <b>file</b> sitting on the machine?</div>
+        <div class="ncm-envpick__opts">
+          <button type="button" data-action="envSeg" data-val="mail" class="ncm-envpick__opt{{#unless env.isFile}} is-on{{/unless}}">
+            <i class="fas fa-envelope"></i><span class="ncm-envpick__t">MESSAGE</span><span class="ncm-envpick__d">From someone. It has a sender and a subject, lands in a mail folder, and can be replied to.</span>
+          </button>
+          <button type="button" data-action="envSeg" data-val="file" class="ncm-envpick__opt{{#if env.isFile}} is-on{{/if}}">
+            <i class="fas fa-file-lines"></i><span class="ncm-envpick__t">FILE</span><span class="ncm-envpick__d">On the machine. A filename in a folder, owned by a node. No sender, no reply, no threading.</span>
+          </button>
+        </div>
+        <input type="hidden" name="envelope" value="{{env.envelope}}" />
+      </div>
       <div class="ncm-fg">
-        <span class="ncm-f"><label class="ncm-cl-lbl">Show as</label>
-          <span class="ncm-gal-seg" data-env-seg="envelope">
-            <button type="button" data-action="envSeg" data-val="mail" class="{{#unless env.isFile}}is-on{{/unless}}" data-tooltip="Mail — it came from someone">MESSAGE</button>
-            <button type="button" data-action="envSeg" data-val="file" class="{{#if env.isFile}}is-on{{/if}}" data-tooltip="A file on the machine — no sender, no reply">FILE</button>
-          </span>
-          <input type="hidden" name="envelope" value="{{env.envelope}}" />
-        </span>
         <span class="ncm-f" style="flex:1 1 200px" data-env-only="file"><label class="ncm-cl-lbl">Filename</label>
           <input type="text" name="fileName" class="ncm-config-input" value="{{env.filename}}" placeholder="{{env.filenameSuggest}}" />
         </span>
@@ -977,9 +987,28 @@
       {{!-- FILE fields --}}
       <div data-env-only="file">
         <div class="ncm-fg">
+          {{#if fileStore.isTerminal}}
+          {{!-- Store on + Folder (2026-10-25): WHERE the file lives on the machine —
+                this login's home or the shared volume, and which folder. The
+                select offers only folders that exist, plus "＋ New folder…". Who
+                can open a folder is set on the folder in Configure → Accounts. --}}
+          <span class="ncm-f" style="--fw:230px;flex:0 0 auto;max-width:none"><label class="ncm-cl-lbl">Store on</label>
+            <span class="ncm-gal-seg ncm-storeseg" data-store-seg>
+              {{#if fileStore.canAccount}}<button type="button" data-action="storeSeg" data-val="account" class="{{#if fileStore.isAccount}}is-on{{/if}}" data-tooltip="Only this login's mailbox sees it"><i class="fas fa-user"></i> {{fileStore.accountLabel}}</button>{{/if}}
+              <button type="button" data-action="storeSeg" data-val="shared" class="{{#if fileStore.isShared}}is-on{{/if}}" data-tooltip="Every login on the machine sees it"><i class="fas fa-hard-drive"></i> SHARED</button>
+            </span>
+            <input type="hidden" name="fileScope" value="{{fileStore.scope}}" />
+          </span>
+          <span class="ncm-f" style="flex:1 1 200px"><label class="ncm-cl-lbl">Folder</label>
+            <select name="fileFolderAccount" class="ncm-config-input" data-store-of="account"{{#unless fileStore.isAccount}} style="display:none"{{/unless}}>{{#each fileStore.accountOpts}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+            <select name="fileFolderShared" class="ncm-config-input" data-store-of="shared"{{#unless fileStore.isShared}} style="display:none"{{/unless}}>{{#each fileStore.sharedOpts}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+            <input type="text" name="fileFolderNew" class="ncm-config-input" data-file-newdir placeholder="new folder name" style="display:none" autocomplete="off" />
+          </span>
+          {{else}}
           <span class="ncm-f" style="flex:1 1 180px"><label class="ncm-cl-lbl">Path (optional)</label>
             <input type="text" name="filePath" class="ncm-config-input" value="{{env.path}}" placeholder="/var/spool/cam/" />
           </span>
+          {{/if}}
           <span class="ncm-f" style="--fw:150px"><label class="ncm-cl-lbl">Owner / node</label>
             <input type="text" name="fileOwner" class="ncm-config-input" value="{{env.owner}}" placeholder="SECCAM-B2" />
           </span>
@@ -988,7 +1017,7 @@
           </span>
         </div>
         <div class="ncm-composer-from-status ncm-composer-from-status--node" style="display:flex">
-          <i class="fas fa-server"></i> System node — stays as typed. A file's owner is a machine, not an Agent: no contact is created, and players can't reply to it.
+          <i class="fas fa-server"></i> System node — stays as typed. A file's owner is a machine, not an Agent: no contact is created, and players can't reply to it.{{#if fileStore.isTerminal}} Who can open a folder is set on the folder in Configure Terminal → Accounts; a shared file is on the machine for every login.{{/if}}
         </div>
       </div>
 
@@ -1002,7 +1031,7 @@
         <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
       </div>
       {{#if isTerminalTarget}}
-        <div class="ncm-config-row">
+        <div class="ncm-config-row" data-env-only="mail">
           <label class="ncm-config-label">Folder</label>
           <select name="entryFolder" class="ncm-config-input ncm-config-flex">
             {{#each targetFolders}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}

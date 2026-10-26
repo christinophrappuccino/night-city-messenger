@@ -26,16 +26,45 @@
 
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
+import { tameCrtDeep } from '../utils/crt.js';
 
 /** The schema version this build of the module writes. */
-export const DATA_SCHEMA_VERSION = 1;
+export const DATA_SCHEMA_VERSION = 2;
 
 /**
  * Ordered upgrade steps. Version 1 is the baseline (no steps — existing worlds
  * are already in shape 1); the first real entry will be `{ to: 2, ... }`.
  * @type {Array<{to: number, label: string, run: () => Promise<void>}>}
  */
-const MIGRATIONS = [];
+const MIGRATIONS = [
+  {
+    // The CRT film v2 retune (2026-10-25): terminals and shards set up earlier carry their own stored
+    // film at the old, stronger levels (up to 55) under the old style names. Bring every stored block —
+    // on world items, items on actors, saved themes and the preset libraries — to the new levels.
+    to: 2,
+    label: 'CRT film: stored terminal + shard films to the v2 levels',
+    run: async () => {
+      let changed = 0;
+      const items = [...(game.items ?? [])];
+      for (const a of game.actors ?? []) items.push(...(a.items ?? []));
+      for (const item of items) {
+        for (const key of ['terminalConfig', 'config']) {
+          const cfg = item.getFlag?.(MODULE_ID, key);
+          if (!cfg || typeof cfg !== 'object') continue;
+          const copy = foundry.utils.deepClone(cfg);
+          if (tameCrtDeep(copy)) { await item.setFlag(MODULE_ID, key, copy); changed++; }
+        }
+      }
+      for (const key of ['terminalThemePresets', 'terminalPresetLibrary', 'shardThemePresets', 'shardPresetLibrary']) {
+        let v; try { v = game.settings.get(MODULE_ID, key); } catch { continue; }
+        if (!v || typeof v !== 'object') continue;
+        const copy = foundry.utils.deepClone(v);
+        if (tameCrtDeep(copy)) { await game.settings.set(MODULE_ID, key, copy); changed++; }
+      }
+      log.info(`CRT film retune: ${changed} stored terminal/shard/library entr${changed === 1 ? 'y' : 'ies'} updated`);
+    },
+  },
+];
 
 /**
  * Run every migration above the world's stored schema version, then stamp the

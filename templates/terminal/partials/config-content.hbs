@@ -1,0 +1,99 @@
+{{!-- Configure Terminal → Accounts: ONE volume's content (2026-10-25). Context =
+      a block from TerminalContentPanel.buildContentContext — the shared volume
+      (files only) or an account (MAIL folders + its home FILES). Folders are
+      real rows with a who-can-open select; files nest under their folder with
+      a Move-to select. Selects are wired by TerminalConfigApp._wireContentTab
+      (the select-vs-data-action gotcha). Single root. --}}
+<div class="ncm-acctl-ent" data-ct-block="{{scope}}">
+  {{#if mail}}
+    <div class="ncm-acctl-ent-tools">
+      <span class="ncm-acctl-ent-link" data-action="editAccount" data-account-id="{{accountId}}"><i class="fas fa-user-pen"></i> edit login &amp; security</span>
+      <span class="ncm-acctl-ent-link" data-action="ctOpenTerminal"><i class="fas fa-right-to-bracket"></i> open the terminal</span>
+    </div>
+    {{!-- MAIL | FILES tabs (dev 2026-10-25: "tabbing both makes more sense than
+          sub-collapsing"). The same two words, same order, as the viewer's
+          switch. Remembered per account (TerminalConfigApp._ctTab). --}}
+    <div class="ncm-acctl-tabs">
+      <button type="button" class="ncm-acctl-tab{{#if tabMail}} is-on{{/if}}" data-action="ctTab" data-scope="{{scope}}" data-tab="mail"><i class="fas fa-envelope"></i> Mail <b>{{mail.total}}</b></button>
+      <button type="button" class="ncm-acctl-tab{{#if tabFiles}} is-on{{/if}}" data-action="ctTab" data-scope="{{scope}}" data-tab="files"><i class="fas fa-folder-tree"></i> Files <b>{{files.count}}</b></button>
+    </div>
+  {{/if}}
+  {{#if tabMail}}
+    <div class="ncm-acctl-ent-hd"><i class="fas fa-envelope"></i> MAIL <span class="ncm-acctl-ent-root">the mailbox folders from Identity · {{mail.total}} message{{#unless (eq mail.total 1)}}s{{/unless}}</span><span class="sp"></span><button type="button" class="ncm-cfg-btn-sm" data-action="ctAdd" data-scope="{{scope}}" data-env="mail"><i class="fas fa-plus"></i> Message</button></div>
+    {{#each mail.folders}}
+      <div class="ncm-acctl-dir is-mail{{#if open}} is-open{{/if}}">
+        <button type="button" class="ncm-acctl-dir-cv" data-action="ctMailToggle" data-account="{{../accountId}}" data-folder="{{id}}" aria-label="{{#if open}}Collapse{{else}}Expand{{/if}} {{name}}" aria-expanded="{{#if open}}true{{else}}false{{/if}}"><i class="fas fa-chevron-{{#if open}}down{{else}}right{{/if}}"></i></button>
+        <i class="{{icon}} ncm-acctl-dir-ico"></i>
+        <span class="ncm-acctl-dir-nm" data-action="ctMailToggle" data-account="{{../accountId}}" data-folder="{{id}}">{{name}}</span>{{#if sys}}<span class="ncm-acctl-dir-sys">{{sys}}</span>{{/if}}
+        <span class="ncm-acctl-dir-ct">{{count}} message{{#unless (eq count 1)}}s{{/unless}}{{#if unread}} · {{unread}} unread{{/if}}</span>
+        <span class="ncm-acctl-dir-act"><button type="button" data-action="ctAdd" data-scope="{{../scope}}" data-env="mail" data-folder="{{id}}" data-tooltip="New message in this folder" aria-label="New message in {{name}}"><i class="fas fa-plus"></i></button></span>
+      </div>
+      {{#if open}}
+        <div class="ncm-acctl-scroll" data-ct-scroll="{{scope}}:mail:{{id}}">
+        {{#each rows}}
+          <div class="ncm-acctl-ent-row is-mail" style="--d:1" data-ct-color="{{accent}}">
+            <i class="{{typeIcon}}"></i>
+            <span class="ncm-acctl-ent-nm" data-action="ctEntryEdit" data-message-id="{{messageId}}" data-tooltip="Edit">{{subject}}<small>from {{from}}</small></span>
+            <span class="ncm-acctl-ent-tag{{#if unread}} ncm-acctl-ent-tag--unread{{/if}}">{{#if unread}}UNREAD{{else}}{{typeLabel}}{{/if}}</span>
+            <span class="ncm-acctl-ent-sz"></span>
+            <span class="ncm-acctl-ent-dt">{{date}}</span>
+            <span class="ncm-acctl-ent-act"><button type="button" data-action="ctEntryEdit" data-message-id="{{messageId}}" data-tooltip="Edit" aria-label="Edit {{subject}}"><i class="fas fa-pen"></i></button><button type="button" class="is-danger" data-action="ctEntryDelete" data-message-id="{{messageId}}" data-tooltip="Delete" aria-label="Delete {{subject}}"><i class="fas fa-trash-can"></i></button></span>
+          </div>
+        {{else}}
+          <div class="ncm-acctl-ent-more">empty</div>
+        {{/each}}
+        </div>
+      {{/if}}
+    {{/each}}
+  {{/if}}
+
+  {{!-- One file row, used under a folder AND at the volume root (inline partial). --}}
+  {{#*inline "ncmCtFile"}}
+      <div class="ncm-acctl-ent-row" style="--d:{{depth}}" data-ct-color="{{accent}}">
+        <i class="{{typeIcon}}"></i>
+        <span class="ncm-acctl-ent-nm" data-action="ctEntryEdit" data-message-id="{{messageId}}" data-tooltip="Edit">{{filename}}</span>
+        <span class="ncm-acctl-ent-tag">{{#if encrypted}}<i class="fas fa-lock ncm-acctl-ent-lock" data-tooltip="Encrypted"></i> {{/if}}{{typeLabel}}</span>
+        <span class="ncm-acctl-ent-sz">{{#if isStream}}LIVE{{else}}{{size}}{{/if}}</span>
+        <span class="ncm-acctl-ent-dt">{{date}}</span>
+        <span class="ncm-acctl-ent-act">
+          <select class="ncm-acctl-move" data-ct-move data-message-id="{{messageId}}" data-tooltip="Move to…" aria-label="Move {{filename}} to">{{#each moveOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+          <button type="button" data-action="ctEntryEdit" data-message-id="{{messageId}}" data-tooltip="Edit" aria-label="Edit {{filename}}"><i class="fas fa-pen"></i></button>
+          <button type="button" class="is-danger" data-action="ctEntryDelete" data-message-id="{{messageId}}" data-tooltip="Delete" aria-label="Delete {{filename}}"><i class="fas fa-trash-can"></i></button>
+        </span>
+      </div>
+  {{/inline}}
+
+  {{#if tabFiles}}
+  <div class="ncm-acctl-ent-hd"><i class="fas fa-folder-tree"></i> FILES <span class="ncm-acctl-ent-root">{{files.root}}{{#if isShared}} · every login sees it{{else}} · only this login sees them{{/if}} · {{files.count}} file{{#unless (eq files.count 1)}}s{{/unless}}{{#if files.size}} · {{files.size}}{{/if}}</span><span class="sp"></span><button type="button" class="ncm-cfg-btn-sm" data-action="ctFolderFocus" data-scope="{{scope}}"><i class="fas fa-folder-plus"></i> Folder</button><button type="button" class="ncm-cfg-btn-sm" data-action="ctAdd" data-scope="{{scope}}" data-env="file"><i class="fas fa-plus"></i> File</button></div>
+  {{#each files.rows}}
+    {{#if isDir}}
+      <div class="ncm-acctl-dir{{#if open}} is-open{{/if}}{{#if gate.isGated}} is-gated{{/if}}" style="--d:{{depth}}">
+        <button type="button" class="ncm-acctl-dir-cv" data-action="ctDirToggle" data-scope="{{scope}}" data-path="{{path}}" aria-label="{{#if open}}Collapse{{else}}Expand{{/if}} {{name}}" aria-expanded="{{#if open}}true{{else}}false{{/if}}"><i class="fas fa-chevron-{{#if open}}down{{else}}right{{/if}}"></i></button>
+        <i class="fas {{#if gate.isGated}}fa-lock{{else if open}}fa-folder-open{{else}}fa-folder{{/if}} ncm-acctl-dir-ico"></i>
+        <span class="ncm-acctl-dir-nm" data-action="ctFolderRename" data-scope="{{scope}}" data-path="{{path}}" data-tooltip="Rename this folder">{{name}}</span>
+        <select class="ncm-acctl-gate{{#if gate.isGated}} is-on{{/if}}" data-ct-gate data-scope="{{scope}}" data-path="{{path}}" data-tooltip="Who can open this folder" aria-label="Who can open {{name}}">
+          <option value="everyone" {{#if gate.isEveryone}}selected{{/if}}>everyone</option>
+          <option value="admin" {{#if gate.isAdmin}}selected{{/if}}>admins only</option>
+          <option value="clearance" {{#if gate.isClearance}}selected{{/if}}>clearance level ≥</option>
+          <option value="accounts" {{#if gate.isAccounts}}selected{{/if}}>chosen accounts{{#if gate.isAccounts}} ({{gate.accountCount}}){{/if}}</option>
+        </select>
+        {{#if gate.isClearance}}<input type="number" class="ncm-acctl-gate-min" data-ct-gatemin data-scope="{{scope}}" data-path="{{path}}" value="{{gate.min}}" min="0" max="99" data-tooltip="Minimum level — the first number in the account's clearance (LEVEL 3 → 3)">{{/if}}
+        {{#if gate.isAccounts}}<span class="ncm-acctl-gate-who" data-action="ctGateAccounts" data-scope="{{scope}}" data-path="{{path}}" data-tooltip="Pick the accounts that may open it">{{gate.accountsLabel}}</span>{{/if}}
+        {{#if gate.inherited}}<span class="ncm-acctl-gate-inh" data-tooltip="Locked by its parent folder — admins and whoever opens {{gate.inheritedFrom}} get in"><i class="fas fa-lock"></i> via {{gate.inheritedFrom}}</span>{{/if}}
+        <span class="ncm-acctl-dir-ct">{{count}} file{{#unless (eq count 1)}}s{{/unless}}{{#if size}} · {{size}}{{/if}}</span>
+        <span class="ncm-acctl-dir-act">
+          <button type="button" data-action="ctAdd" data-scope="{{scope}}" data-env="file" data-path="{{path}}" data-tooltip="Add a file in this folder" aria-label="Add a file in {{name}}"><i class="fas fa-plus"></i></button>
+          <button type="button" data-action="ctFolderAddSub" data-scope="{{scope}}" data-path="{{path}}" data-tooltip="New sub-folder" aria-label="New sub-folder in {{name}}"><i class="fas fa-folder-plus"></i></button>
+          <button type="button" class="is-danger" data-action="ctFolderRemove" data-scope="{{scope}}" data-path="{{path}}" data-tooltip="Delete this folder — its files move up a level" aria-label="Delete folder {{name}}"><i class="fas fa-trash-can"></i></button>
+        </span>
+      </div>
+      {{#if open}}{{#if files.length}}<div class="ncm-acctl-scroll" data-ct-scroll="{{scope}}:{{path}}">{{#each files}}{{> ncmCtFile}}{{/each}}</div>{{/if}}{{/if}}
+    {{else if isRootFiles}}
+      <div class="ncm-acctl-scroll" data-ct-scroll="{{scope}}:">{{#each files}}{{> ncmCtFile}}{{/each}}</div>
+    {{/if}}
+  {{else}}
+    <div class="ncm-acctl-ent-more">No files yet — <b>+ File</b> adds one here, <b>+ Folder</b> lays out the structure first.</div>
+  {{/each}}
+  <div class="ncm-acctl-newdir"><i class="fas fa-folder-plus"></i> New folder in <b>{{files.root}}</b> <input type="text" class="ncm-acctl-newdir-in" data-ct-newdir data-scope="{{scope}}" placeholder="type a name and press Enter" autocomplete="off" aria-label="New folder in {{files.root}}"></div>
+  {{/if}}
+</div>

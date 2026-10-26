@@ -29,6 +29,7 @@ import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils
 import { log, isGM, generateId, formatCyberDate } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
 import { suggestFilename } from '../ui/content/ContentRenderers.js';
+import { SHARED_SCOPE, sanitizeFilesConfig, sanitizeFolder, normalizeFolderPath, visibleEntries, buildTree, canOpenFolder, rewritePlan } from '../utils/terminalFiles.js';
 
 export class TerminalService {
 
@@ -301,15 +302,172 @@ export class TerminalService {
    * @param {string} accountId
    * @returns {object[]}
    */
-  getAccountMessages(item, accountId) {
+  getAccountMessages(item, accountId, { includeShared = true, enforceGates = true } = {}) {
     const journal = this._getLinkedJournal(item);
     if (!journal || !accountId) return [];
     const repo = this.messageRepository;
-    return journal.pages.contents
-      .filter(p => p.flags?.[MODULE_ID]?.accountId === accountId)
-      .map(p => repo?._pageToMessage?.(p))
+    // The SHARED VOLUME (2026-10-25): pages tagged SHARED_SCOPE live on the
+    // machine, not on a login, so every account's read includes them. The
+    // page's accountId rides on the message object (`accountId` / `shared`) so
+    // the viewer and the config sheet can tell a home file from a shared one.
+    const list = journal.pages.contents
+      .filter(p => {
+        const a = p.flags?.[MODULE_ID]?.accountId;
+        return a === accountId || (includeShared && a === SHARED_SCOPE);
+      })
+      .map(p => {
+        const m = repo?._pageToMessage?.(p);
+        if (!m) return null;
+        const a = p.flags?.[MODULE_ID]?.accountId;
+        return { ...m, accountId: a, shared: a === SHARED_SCOPE };
+      })
       .filter(Boolean)
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    // Folder gates — a file inside a folder this account cannot open is not in
+    // the list at all (GM bypasses; admin accounts pass every gate). ONE place,
+    // so every by-id reader (content actions, exfil, edit) is covered too.
+    if (!enforceGates || isGM()) return list;
+    return visibleEntries(list, this.getFileFolders(item), this.getAccount(item, accountId), { isGM: false });
+  }
+
+  /** Every entry on the machine, any scope (GM tooling — the config sheet). */
+  getAllMessages(item) {
+    const journal = this._getLinkedJournal(item);
+    if (!journal) return [];
+    const repo = this.messageRepository;
+    return journal.pages.contents
+      .map(p => {
+        const m = repo?._pageToMessage?.(p);
+        if (!m) return null;
+        const a = p.flags?.[MODULE_ID]?.accountId;
+        return { ...m, accountId: a, shared: a === SHARED_SCOPE };
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }
+
+  /** Entries stored on the shared volume. */
+  getSharedMessages(item) {
+    return this.getAllMessages(item).filter(m => m.shared);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PUBLIC API — File repository (folders + the shared volume)
+  //  Rules live in scripts/utils/terminalFiles.js (pure, sim-tested).
+  // ═══════════════════════════════════════════════════════════
+
+  /** The sanitised folder registry, optionally for one scope. */
+  getFileFolders(item, scope = null) {
+    const all = sanitizeFilesConfig(this.getConfig(item).files).folders;
+    return scope ? all.filter(f => f.scope === scope) : all;
+  }
+
+  /** Can this account open the folder? (GM: always.) */
+  canOpenFolder(item, scope, path, accountId) {
+    return canOpenFolder(this.getFileFolders(item), scope, path, this.getAccount(item, accountId), { isGM: isGM() });
+  }
+
+  /**
+   * The directory tree of one volume for one viewer. GM tooling passes
+   * accountId null (every folder open). `entries` defaults to the full page
+   * set so the GM config sheet and the player viewer build from the same data.
+   */
+  buildFileTree(item, scope, accountId = null, entries = null) {
+    const gm = isGM();
+    return buildTree({
+      entries: entries || this.getAllMessages(item),
+      folders: this.getFileFolders(item),
+      scope,
+      account: accountId ? this.getAccount(item, accountId) : null,
+      isGM: gm,
+    });
+  }
+
+  /** Upsert one registered folder (by id, else by scope+path). GM only. */
+  async saveFileFolder(item, folder) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const f = sanitizeFolder(folder);
+    if (!f) return { success: false, error: 'A folder needs a scope and a name' };
+    const folders = this.getFileFolders(item).filter(x => x.id !== f.id && !(x.scope === f.scope && x.path === f.path));
+    folders.push(f);
+    const res = await this.updateConfig(item, { files: sanitizeFilesConfig({ folders }) });
+    return res.success ? { success: true, folder: f } : res;
+  }
+
+  /**
+   * Rename / move a folder: the registry entry AND every file under the old
+   * path are rewritten (the file's `file.path` is where its folder lives).
+   * Child registered folders move with it. GM only.
+   */
+  async renameFileFolder(item, scope, oldPath, newPath) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const o = normalizeFolderPath(oldPath), n = normalizeFolderPath(newPath);
+    if (!o || !n) return { success: false, error: 'A folder needs a name' };
+    if (o === n) return { success: true, moved: 0 };
+    const folders = this.getFileFolders(item).map(f => {
+      if (f.scope !== scope) return f;
+      if (f.path === o) return { ...f, path: n };
+      if (f.path.startsWith(o + '/')) return { ...f, path: n + f.path.slice(o.length) };
+      return f;
+    });
+    // A derived folder (no registry row) still renames: its files carry it.
+    if (!folders.some(f => f.scope === scope && f.path === n)) folders.push(sanitizeFolder({ scope, path: n }));
+    await this.updateConfig(item, { files: sanitizeFilesConfig({ folders }) });
+    const moved = await this._rewriteFilePaths(item, rewritePlan(this.getAllMessages(item), scope, o, n));
+    return { success: true, moved };
+  }
+
+  /**
+   * Delete a folder. Its files (and sub-folders) move UP one level — a delete
+   * must never make content vanish from the machine. GM only.
+   */
+  async removeFileFolder(item, scope, path) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const p = normalizeFolderPath(path);
+    if (!p) return { success: false, error: 'The root cannot be deleted' };
+    const parent = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
+    const folders = this.getFileFolders(item).filter(f => !(f.scope === scope && f.path === p)).map(f => {
+      if (f.scope === scope && f.path.startsWith(p + '/')) return { ...f, path: normalizeFolderPath((parent ? parent + '/' : '') + f.path.slice(p.length + 1)) };
+      return f;
+    });
+    await this.updateConfig(item, { files: sanitizeFilesConfig({ folders }) });
+    const moved = await this._rewriteFilePaths(item, rewritePlan(this.getAllMessages(item), scope, p, parent));
+    return { success: true, moved };
+  }
+
+  /**
+   * Move one entry to a folder (and/or another volume). `scope` is
+   * SHARED_SCOPE or an account id; `path` the folder ('' = root). Mail can be
+   * moved to the shared volume too — it simply becomes a shared entry. GM only.
+   */
+  async moveFile(item, messageId, { scope, path } = {}) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const journal = this._getLinkedJournal(item);
+    const page = journal?.pages.find(p => p.flags?.[MODULE_ID]?.messageId === messageId);
+    if (!page) return { success: false, error: 'Entry not found' };
+    const ns = `flags.${MODULE_ID}`;
+    const fl = page.flags?.[MODULE_ID] || {};
+    const upd = {};
+    if (scope && (scope === SHARED_SCOPE || this.getAccount(item, scope))) upd[`${ns}.accountId`] = scope;
+    if (path !== undefined) upd[`${ns}.file`] = { ...(fl.file || {}), path: normalizeFolderPath(path) };
+    if (!Object.keys(upd).length) return { success: true };
+    try { await page.update(upd); return { success: true }; }
+    catch (err) { return { success: false, error: err.message }; }
+  }
+
+  /** @private Apply a rewritePlan: one page update per affected file. */
+  async _rewriteFilePaths(item, plan) {
+    const journal = this._getLinkedJournal(item);
+    if (!journal) return 0;
+    let n = 0;
+    for (const { entry, newPath } of plan) {
+      const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === entry.messageId);
+      if (!page) continue;
+      const fl = page.flags?.[MODULE_ID] || {};
+      try { await page.update({ [`flags.${MODULE_ID}.file`]: { ...(fl.file || {}), path: newPath } }); n++; }
+      catch (err) { log.warn(`Folder rewrite skipped "${entry.subject}": ${err.message}`); }
+    }
+    return n;
   }
 
   /**
@@ -326,7 +484,7 @@ export class TerminalService {
     if (!isGM()) return { success: false, error: 'GM only' };
     const journal = this._getLinkedJournal(item);
     if (!journal) return { success: false, error: 'No linked journal' };
-    if (!this.getAccount(item, accountId)) return { success: false, error: 'Unknown account' };
+    if (accountId !== SHARED_SCOPE && !this.getAccount(item, accountId)) return { success: false, error: 'Unknown account' };
 
     try {
       const messageId = messageData.messageId || generateId();
@@ -423,6 +581,13 @@ export class TerminalService {
       const upd = {};
       if (updates.from !== undefined) upd[`${ns}.from`] = updates.from;
       if (updates.folder !== undefined) upd[`${ns}.folder`] = updates.folder;
+      // File repository (2026-10-25): re-home an entry (shared volume ↔ an
+      // account) and/or re-file it (`file.path` is its folder). The whole
+      // `file` block is rewritten — a nested dot-path into a null block is the
+      // unreliable-nested-flag gotcha.
+      if (updates.accountId !== undefined && (updates.accountId === SHARED_SCOPE || this.getAccount(item, updates.accountId))) upd[`${ns}.accountId`] = updates.accountId;
+      if (updates.file !== undefined) upd[`${ns}.file`] = updates.file ? { ...(page.flags[MODULE_ID].file || {}), ...updates.file, path: normalizeFolderPath(updates.file.path ?? page.flags[MODULE_ID].file?.path ?? '') } : null;
+      if (updates.envelope !== undefined) upd[`${ns}.envelope`] = updates.envelope === 'file' ? 'file' : 'mail';
       if (updates.subject !== undefined) { upd[`${ns}.subject`] = updates.subject; upd.name = this._pageName({ from: updates.from ?? page.flags[MODULE_ID].from, subject: updates.subject, timestamp: page.flags[MODULE_ID].timestamp }); }
       if (updates.priority !== undefined) upd[`${ns}.priority`] = updates.priority;
       if (updates.classification !== undefined) upd[`${ns}.metadata.classification`] = updates.classification;
@@ -1890,7 +2055,9 @@ export class TerminalService {
       // filename/path/owner-node instead of a sender. `file` holds only what the
       // GM AUTHORED; everything else derives at read time (resolveEnvelope).
       envelope: data.envelope === 'file' ? 'file' : 'mail',
-      file: data.file ? { ...data.file } : null,
+      // The path IS the folder (terminalFiles.js) — stored normalised so the
+      // tree, the gate lookup and a hand-typed path always agree.
+      file: data.file ? { ...data.file, path: normalizeFolderPath(data.file.path || '') } : null,
       // Per-entry exfil override (#37) — layered over the terminal's policy by
       // TerminalService.resolveEntryExfil. null = inherit everything.
       exfil: data.exfil ? { ...data.exfil } : null,

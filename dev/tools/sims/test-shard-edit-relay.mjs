@@ -434,5 +434,43 @@ await ok('the ownership dialog is referenced BARE with a typeof guard (the Image
   assert.ok(!tab.includes('globalThis.DocumentOwnershipConfig'));
 });
 
+
+// ── 2026-10-24: an attached shard resolves wherever it lives ──
+// Tester: a shard sent from a CHARACTER's inventory arrived as "shard not found" —
+// an embedded item's id only means something inside that actor, and the viewer
+// looked only in game.items + the recipient's own gear.
+await ok('the composer stamps itemUuid on a shard attachment', () => {
+  const comp = read('scripts/ui/MessageComposer/MessageComposerApp.js');
+  assert.ok(comp.includes('itemUuid: item.uuid'));
+  assert.ok(comp.includes('uuid: item.uuid'));
+});
+await ok('the viewer resolves attachments through ONE resolver: uuid → world → this actor → every actor', () => {
+  const viewer = read('scripts/ui/MessageViewer/MessageViewerApp.js');
+  const m = viewer.match(/_resolveAttachedShard\(att\) \{([\s\S]*?)\n  \}/);
+  assert.ok(m, 'resolver exists');
+  const body = m[1];
+  const order = ['fromUuidSync(uuid)', 'game.items?.get(id)', 'game.actors?.get(this.actorId)', 'for (const a of game.actors'].map((k) => body.indexOf(k));
+  assert.ok(order.every((i) => i >= 0), 'all four lookups present');
+  assert.deepStrictEqual([...order].sort((a, b) => a - b), order, 'in that order');
+  assert.strictEqual((viewer.match(/_resolveAttachedShard\(/g) || []).length, 4, 'defined once, used by _openShard, _openAttachment and _buildShardItems');
+  assert.ok(!/game\.items\.get\(att\.itemId\)/.test(viewer), 'no bare id-only attachment lookup remains');
+  assert.ok(!/game\.items\?\.get\(att\.itemId\)/.test(viewer));
+});
+await ok('both shard click surfaces carry the uuid for the resolver', () => {
+  assert.ok(read('templates/message-viewer/partials/message-detail.hbs').includes('data-item-uuid="{{this.itemUuid}}"'));
+  assert.ok(read('templates/message-viewer/message-viewer.hbs').includes('data-item-uuid="{{this.uuid}}"'));
+  const viewer = read('scripts/ui/MessageViewer/MessageViewerApp.js');
+  assert.ok(viewer.includes('this._openShard(host?.dataset.itemId, host?.dataset.itemUuid)'));
+});
+await ok('a missing shard is reported as gone, never as "not in your inventory"', () => {
+  const viewer = read('scripts/ui/MessageViewer/MessageViewerApp.js');
+  assert.ok(!viewer.includes('Data shard not found in inventory'));
+  assert.strictEqual((viewer.match(/SHARD_GONE_MSG/g) || []).length, 3);
+});
+await ok('the dormant encrypted-attachment breach panel only renders for an attachment with its OWN ice block', () => {
+  const viewer = read('scripts/ui/MessageViewer/MessageViewerApp.js');
+  assert.ok(viewer.includes('encryptedAttachments: classified.encrypted.filter(a => !!a.ice)'));
+});
+
 console.log(`\n${fail ? '✗' : '✓'} ${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

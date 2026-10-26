@@ -30,10 +30,13 @@ import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { getInitials } from '../../utils/designHelpers.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
 import { cleanHtml } from '../../utils/richText.js';
+import { SHARED_SCOPE, listingFor, formatSize, gateLabel, parentPath } from '../../utils/terminalFiles.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType, programEffectInfo } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
 import { runSecurityConsole } from '../content/SecurityConsole.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
+import { playBootVideo } from '../content/BootVideo.js';
+import { applyCrt, resolveCrt, CRT_OFF, capCrt, playerCrtCap } from '../../utils/crt.js';
 
 const PRIORITY_ICONS = { critical: 'fa-triangle-exclamation', urgent: 'fa-circle-exclamation', normal: 'fa-circle-info' };
 
@@ -112,7 +115,9 @@ export class TerminalViewerApp extends BaseApplication {
       galleryView: action('_onGalleryView'),
       camAction: action('_onCamAction'),
       goToScene: action('_onGoToScene'),
-      terminalEnvFilter: action('_onEnvFilter'),
+      terminalView: action('_onView'),
+      terminalFsOpen: action('_onFsOpen'),
+      terminalFsBack: action('_onFsBack'),
       terminalToggleSide: action('_onToggleSide'),
       terminalPage: action('_onPage'),
       terminalConfigure: action('_onConfigure'),
@@ -142,6 +147,11 @@ export class TerminalViewerApp extends BaseApplication {
   _selectedMessageId = null;
   _currentFolder = 'inbox';
   _currentPage = 1;
+  // MAIL | FILES view (2026-10-25) and the open folder of the FILES tree
+  // ({ scope: SHARED_SCOPE | accountId, path }). Both are app state so they
+  // survive the re-render every click triggers.
+  _view = 'mail';
+  _fsSel = null;
   _switcherOpen = false;
   _toolsOpen = false;
   _manualError = '';
@@ -278,6 +288,9 @@ export class TerminalViewerApp extends BaseApplication {
     const ctx = {
       preset,
       formFactor: cfg.formFactor || 'desktop',
+      // Mailbox layout (TERMINAL_MAILBOX_STYLES) — a root attribute so CSS can
+      // skin per style; the mailbox context adds the per-style flags.
+      mailboxStyle: cfg.mailboxStyle || 'classic',
       state: this._state,
       terminalName: this._terminalName(),
       // Login-hero logo — same 3-source resolution as the boot splash so a
@@ -446,6 +459,12 @@ export class TerminalViewerApp extends BaseApplication {
       progressLabel: boot.progressLabel || 'Establishing secure session...',
       animationStyle: boot.animationStyle || 'standard-fade',
       speed: boot.speed || 'normal',
+      customSeconds: boot.customSeconds ?? null,
+      // VIDEO boot (2026-10-25): the video IS the splash — the template drops the
+      // choreography and BootVideo.js runs the stage.
+      isVideo: !!(boot.videoUrl || '').trim(),
+      videoUrl: (boot.videoUrl || '').trim(),
+      videoOverlay: !!boot.videoOverlay,
       logLines: Array.isArray(boot.logLines) ? boot.logLines : [],
     };
   }
@@ -665,9 +684,28 @@ export class TerminalViewerApp extends BaseApplication {
       trash: m => !!m.status?.deleted,
     };
     for (const id of customIds) inFolder[id] = m => m.folder === id && !m.status?.deleted && !m.status?.saved && !m.status?.sent;
-    const counts = Object.fromEntries(folderDefs.map(fd => [fd.id, all.filter(inFolder[fd.id]).length]));
+    // MAIL | FILES is a VIEW, not a filter (2026-10-25, terminalFiles.js): the
+    // mail folders hold mail, and a file only when it is in the Trash (a
+    // deleted file sits in the shredder like anything else); FILES is the
+    // directory tree built from every live file's path, across this account's
+    // home and the machine's shared volume.
+    const mailish = all.filter(m => m.envelope !== 'file' || m.status?.deleted);
+    const liveFiles = all.filter(m => m.envelope === 'file' && !m.status?.deleted);
+    const isFilesView = this._view === 'files';
+    const counts = Object.fromEntries(folderDefs.map(fd => [fd.id, mailish.filter(inFolder[fd.id]).length]));
+    const unread = Object.fromEntries(folderDefs.map(fd => [fd.id, mailish.filter(inFolder[fd.id]).filter(m => !m.status?.read && !m.status?.deleted).length]));
     const folder = inFolder[this._currentFolder] ? this._currentFolder : 'inbox';
-    let list = all.filter(inFolder[folder]);   // narrowed further by the MAIL/FILES solo below
+    let list = mailish.filter(inFolder[folder]);
+    // Mailbox STYLE (2026-10-25): tabs / tty / desktop are skins over this same
+    // context; the desktop shows the drives as icons even in MAIL view, so it
+    // builds the files context regardless (the listing stays hidden there).
+    const style = cfg.mailboxStyle || 'classic';
+    let fsCtx = null;
+    if (isFilesView || style === 'desktop') {
+      fsCtx = this._filesContext(account, all, liveFiles);
+      if (isFilesView) list = fsCtx.listFiles;   // the open folder's files are what the detail can show
+      else fsCtx.showListing = false;
+    }
 
     // "N objects failed to sync" — GM-toggleable per terminal (showSyncHint).
     // Counted within the current folder so the number matches what's missing
@@ -679,27 +717,14 @@ export class TerminalViewerApp extends BaseApplication {
       if (hiddenInFolder.length) syncHint = { count: hiddenInFolder.length };
     }
 
-    // MAIL / FILES solo (#37). Counted BEFORE the solo is applied (the chips
-    // must always show both totals), then applied to the LIST itself rather
-    // than hidden with CSS — hiding rows would leave the pagination counting
-    // things you can't see. It's app state (`_envFilter`), so it survives the
-    // re-render that selecting a message triggers; force-cleared when the
-    // folder isn't mixed, so a stale solo can't empty a folder with no chip
-    // left to undo it.
-    const mailCount = list.filter(m => m.envelope !== 'file').length;
-    const fileCount = list.length - mailCount;
-    const envMixed = !!(mailCount && fileCount);
-    const activeEnvFilter = envMixed ? (this._envFilter || 'all') : 'all';
-    if (activeEnvFilter !== 'all') {
-      const wantFile = activeEnvFilter === 'file';
-      list = list.filter(m => (m.envelope === 'file') === wantFile);
-    }
+    const fileCount = list.filter(m => m.envelope === 'file').length;
 
     if (this._selectedMessageId && !list.find(m => m.messageId === this._selectedMessageId)) this._selectedMessageId = null;
-    if (!this._selectedMessageId && list.length) this._selectedMessageId = list[0].messageId;
+    // FILES view opens on the folder LISTING, not on its first file.
+    if (!this._selectedMessageId && list.length && !isFilesView) this._selectedMessageId = list[0].messageId;
 
-    // Pagination.
-    const PAGE = TerminalViewerApp.PAGE_SIZE;
+    // Pagination (the FILES listing scrolls instead).
+    const PAGE = isFilesView ? Math.max(1, list.length) : TerminalViewerApp.PAGE_SIZE;
     const maxPage = Math.max(1, Math.ceil(list.length / PAGE));
     if (this._currentPage > maxPage) this._currentPage = maxPage;
     if (this._currentPage < 1) this._currentPage = 1;
@@ -707,52 +732,9 @@ export class TerminalViewerApp extends BaseApplication {
     const pageItems = list.slice(start, start + PAGE);
 
     const gm = isGM();
-    const messages = pageItems.map(m => {
-      // Typed content shows its file-type tag as the preview line; plain
-      // messages show a stripped-HTML body snippet. `displayContentType`
-      // resolves a disguised payload to its COVER type — reading contentType
-      // straight off the message announced "Payload" in the sidebar and blew
-      // the disguise before the player ever opened it.
-      const ct = displayContentType(m, { isGM: gm });
-      const ctInfo = ct ? CONTENT_TYPE_INFO[ct] : null;
-      const snippet = ct ? '' : String(m.body || '')
-        .replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
-      // ENVELOPE (#37) — a FILE row drops the sender line entirely: the
-      // content-type icon replaces the priority dot, the filename replaces the
-      // sender, and "type · size · path" replaces the body preview. A disguised
-      // payload still resolves through displayContentType first, so a file row
-      // can't blow the disguise either.
-      const env = resolveEnvelope({ ...m, contentType: ct });
-      return {
-        messageId: m.messageId,
-        isFile: env.isFile,
-        from: m.from || 'unknown',
-        subject: m.subject || '(no subject)',
-        priority: m.priority || 'normal',
-        encrypted: !!m.status?.encrypted,
-        isSelected: m.messageId === this._selectedMessageId,
-        // A live feed isn't FROM a moment — it's happening.
-        time: env.isStream ? 'LIVE' : (m.timestamp ? formatCyberDate(m.timestamp, { dateOnly: true }) : ''),
-        preview: snippet,
-        // A file row leads with the ENVELOPE's icon/label — a live feed reads as
-        // a CAMERA FEED, not an "Image Gallery" (the mode is its identity).
-        typeLabel: (env.isFile ? env.typeLabel : ctInfo?.label) || null,
-        typeIcon: (env.isFile ? env.typeIcon : ctInfo?.icon) || null,
-        // File-row fields — kept as SEPARATE values (not one pre-joined string)
-        // so the row can render the type as a colored chip and the size/path as
-        // their own muted line: same 3-line skeleton as a mail row, so a mixed
-        // list reads as one list instead of two competing ones.
-        filename: env.filename || '',
-        fileSize: env.isFile && env.size !== '—' ? env.size : '',
-        filePath: env.path || '',
-        fileOwner: env.owner || '',
-        accent: env.accent || (ctInfo ? CONTENT_TYPE_INFO[ct]?.accent : '') || '',
-        // A file has no urgency — it just wasn't there before.
-        isNew: env.isFile && !m.status?.read,
-        // GM-only marker: gated off the current uplink (players never see the row).
-        offNet: gm && !this.terminalService.uplinkReaches(this.item, m.networkVisibility),
-      };
-    });
+    const messages = pageItems.map(m => this._rowVm(m, gm));
+    // The TTY prompt opens entries by NUMBER — the numbers are the rows as shown.
+    this._ttyList = isFilesView ? (fsCtx?.listFiles || []) : pageItems;
 
     const folderDef = folderDefs.find(fd => fd.id === folder) || folderDefs[0];
     const selected = list.find(m => m.messageId === this._selectedMessageId);
@@ -778,8 +760,16 @@ export class TerminalViewerApp extends BaseApplication {
       switchAccounts: this._switcherOpen ? this._switcherAccounts() : [],
       switcherOpen: this._switcherOpen,
       folders: folderDefs.map(fd => ({
-        key: fd.id, label: fd.name, icon: fd.icon, count: counts[fd.id] ?? 0, active: folder === fd.id,
+        key: fd.id, label: fd.name, icon: fd.icon, count: counts[fd.id] ?? 0, unread: unread[fd.id] ?? 0, active: folder === fd.id,
       })),
+      // Mailbox style flags + the bits only a style needs (tty prompt, desktop window/clock).
+      mailboxStyle: style,
+      msTabs: style === 'tabs', msTty: style === 'tty', msDesktop: style === 'desktop',
+      ttyPrompt: `${account?.username || 'guest'}@${this._terminalName().replace(/\s+/g, '-').toUpperCase()}:${isFilesView ? '/' + (this._fsSel?.path || '') : '~/' + (folderDef?.name || 'inbox').toLowerCase().replace(/\s+/g, '_')}$`,
+      deskWindow: isFilesView
+        ? { title: '/' + (fsCtx?.listing?.path || '') + (fsCtx?.listing?.isShared ? '  (shared)' : ''), icon: 'fas fa-folder-open' }
+        : { title: folderDef?.name || 'Inbox', icon: folderDef?.icon || 'fas fa-inbox' },
+      deskClock: formatCyberDate(game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString()),
       // Idle screensaver (config.screensaver) — overlay markup lives in the
       // mailbox state; _resetScreensaver drives the --on class. Logo resolves
       // per iconMode: 'boot' follows the boot icon, 'fa'/'image' are custom,
@@ -791,8 +781,12 @@ export class TerminalViewerApp extends BaseApplication {
         : `${(folderDef?.name || 'Inbox').toUpperCase()} · ${list.length} MESSAGE${list.length === 1 ? '' : 'S'}`,
       emptyLabel: `${folderDef?.name || 'This folder'} is empty`,
       // One mixed list, so the chips only render when there's something to separate.
-      envFilter: envMixed ? { mail: mailCount, file: fileCount } : null,
-      activeEnvFilter,
+      // MAIL | FILES view switch + the FILES tree/listing (2026-10-25).
+      isFilesView,
+      view: { mail: mailish.filter(m => !m.status?.deleted).length, files: liveFiles.length },
+      fs: fsCtx,
+      // A file opened from the FILES tree gets a "back to the folder" chip.
+      fsBack: isFilesView && !!selected,
       // Mailbox collapsed to a rail → the open file gets the full width.
       sideCollapsed: !!this._sideCollapsed,
       messages,
@@ -948,6 +942,10 @@ export class TerminalViewerApp extends BaseApplication {
       side: el.querySelector('.ncm-term__list')?.scrollTop ?? 0,
       detail: el.querySelector('.ncm-term__detail')?.scrollTop ?? 0,
       msgId: this._renderedMsgId ?? null,
+      // FILES view (2026-10-25): the tree and the folder listing are scrollers too.
+      tree: el.querySelector('.ncm-term__fs-tree')?.scrollTop ?? 0,
+      listing: el.querySelector('.ncm-term__fs-scroll')?.scrollTop ?? 0,
+      fsKey: this._fsSel ? `${this._fsSel.scope}:${this._fsSel.path}` : null,
     };
   }
 
@@ -970,9 +968,26 @@ export class TerminalViewerApp extends BaseApplication {
     // the player's own atmosphere prefs). Glitch rides --ncm-glitch-intensity
     // via applyTheme. Overlay-aware, like everything render-visible.
     const themeCfg = this._effectiveConfig().theme || {};
-    viewerEl?.setAttribute('data-term-scanlines', String(themeCfg.scanlines === true));
+    // The ONE CRT film (crt.css): this terminal's theme.crt (a legacy scanlines:true
+    // reads as a look), else its preset's crt, else off — painted on the WINDOW ROOT
+    // (header included) over the player's own film, and capped by the player's
+    // accessibility setting. The viewer element itself carries no film.
+    this.refreshCrt();
+    if (viewerEl && viewerEl !== this.element) applyCrt(viewerEl, CRT_OFF);
     viewerEl?.setAttribute('data-term-flicker', String(themeCfg.flicker === true));
     this._syncWindowTitle(context);
+    // TTY mailbox style: the prompt line. Enter runs the command; focus returns
+    // to it after a command so the keyboard flow never breaks.
+    const tty = this.element?.querySelector('[data-tty-prompt]');
+    if (tty) {
+      tty.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const v = tty.value; tty.value = '';
+        this._onTtyCommand(v);
+      });
+      if (this._ttyFocus) { this._ttyFocus = false; tty.focus(); }
+    }
     // SAVE FRAME (#37) — only the terminal knows the exfil policy, so it stamps
     // the capturable feed thumbs here; the shared lightbox reads the attrs and
     // renders the button (+ the honest "can't copy a stream" chip). Keeps the
@@ -993,6 +1008,13 @@ export class TerminalViewerApp extends BaseApplication {
       if (memo.detail && memo.msgId && memo.msgId === this._selectedMessageId) {
         const det = this.element?.querySelector('.ncm-term__detail');
         if (det) det.scrollTop = memo.detail;
+      }
+      const tree = this.element?.querySelector('.ncm-term__fs-tree');
+      if (tree && memo.tree) tree.scrollTop = memo.tree;
+      const fsKey = this._fsSel ? `${this._fsSel.scope}:${this._fsSel.path}` : null;
+      if (memo.listing && fsKey && fsKey === memo.fsKey) {
+        const ls = this.element?.querySelector('.ncm-term__fs-scroll');
+        if (ls) ls.scrollTop = memo.listing;
       }
     }
     // ─── MOTION (#38) — stamp the entrance animations ───
@@ -1153,21 +1175,64 @@ export class TerminalViewerApp extends BaseApplication {
     }
   }
 
+  /** Boot length per speed chip, as a multiple of BOOT_BASE_MS. 'dramatic' is
+   *  deliberately well past the shard's 1.4 — the tester could not tell it
+   *  from normal. 'custom' reads boot.customSeconds (whole-boot length). */
+  static BOOT_SPEED_MULT = { fast: 0.5, normal: 1.0, dramatic: 1.9 };
+  static BOOT_BASE_MS = 2100;
+
+  /** Whole-boot hold in ms for a boot config (speed chip or custom seconds). */
+  static bootHoldMs(boot = {}) {
+    const base = TerminalViewerApp.BOOT_BASE_MS;
+    if (boot.speed === 'custom') {
+      const s = Number(boot.customSeconds);
+      if (Number.isFinite(s) && s > 0) return Math.round(Math.min(60, Math.max(0.5, s)) * 1000);
+      return base;
+    }
+    return Math.round(base * (TerminalViewerApp.BOOT_SPEED_MULT[boot.speed] ?? 1));
+  }
+
   _playBoot() {
     if (this._bootPlayed) return;
     this._bootPlayed = true;
     const bootEl = this.element?.querySelector('.ncm-term__boot');
     if (!bootEl) { this._afterBoot(); return; }
+    const bootCfg = this._effectiveConfig().boot || {};
+    // VIDEO boot (2026-10-25): no choreography, no boot sound — the video's own
+    // audio and its own length rule the boot; click skips; reduced motion skips
+    // the whole thing like it skips the choreography. BootVideo.js owns the
+    // wall-clock cap so a bad path can never leave a black stage.
+    if ((bootCfg.videoUrl || '').trim()) {
+      const level = this.themeService?.getAnimationLevel?.() || 'full';
+      if (level !== 'full') { this._afterBoot(); return; }
+      this._bootVideo = playBootVideo(bootEl, {
+        url: bootCfg.videoUrl.trim(),
+        onDone: () => {
+          this._bootVideo = null;
+          bootEl.style.transition = 'opacity .4s'; bootEl.style.opacity = '0';
+          this._timer(() => this._afterBoot(), 420);
+        },
+      });
+      return;
+    }
     this._playTermSound('shard-boot');
+    // Speed was a dead chip until 2026-10-25: this hold was a literal 2100 and
+    // the log-line stagger lived in CSS nth-child delays, so fast / normal /
+    // dramatic rendered identically. Everything below scales off ONE hold.
+    const hold = TerminalViewerApp.bootHoldMs(this._effectiveConfig().boot || {});
     const fill = bootEl.querySelector('.ncm-term__boot-fill');
+    if (fill) fill.style.transition = `width ${Math.round(hold * 0.85)}ms cubic-bezier(.22,1,.36,1)`;
     requestAnimationFrame(() => { if (fill) fill.style.width = '100%'; });
-    bootEl.querySelectorAll('.ncm-term__boot-log div').forEach((d, i) => {
-      this._timer(() => { d.style.opacity = '1'; }, 400 + i * 240);
-    });
+    const lines = bootEl.querySelectorAll('.ncm-term__boot-log div');
+    // Lines land evenly across the first ~80% of the hold (the CSS nth-child
+    // delays stay as the no-JS fallback; an inline animation-delay beats them).
+    const step = lines.length ? Math.min(Math.round(hold * 0.8 / lines.length), Math.round(350 * hold / TerminalViewerApp.BOOT_BASE_MS)) : 0;
+    const lead = Math.round(hold * 0.12);
+    lines.forEach((d, i) => { d.style.animationDelay = `${lead + i * step}ms`; });
     this._timer(() => {
       bootEl.style.transition = 'opacity .4s'; bootEl.style.opacity = '0';
       this._timer(() => this._afterBoot(), 420);
-    }, 2100);
+    }, hold);
   }
 
   _afterBoot() { this._enterState(this._resolveEntryState()); }
@@ -1751,9 +1816,7 @@ export class TerminalViewerApp extends BaseApplication {
     this._currentFolder = target?.dataset?.folder || 'inbox';
     this._currentPage = 1;
     this._selectedMessageId = null;
-    // Changing folder clears the MAIL/FILES solo — a folder with no files, still
-    // filtered to FILES, would render an empty list with no chips to undo it.
-    this._envFilter = 'all';
+    this._view = 'mail';
     this.render(false);
   }
 
@@ -1780,17 +1843,230 @@ export class TerminalViewerApp extends BaseApplication {
     }
   }
 
-  /**
-   * MAIL / FILES solo — real app state, so it SURVIVES the re-render that
-   * selecting a message triggers (as a display-only class toggle it reset
-   * itself on the very first click). Clicking the active chip returns to ALL.
-   */
-  _onEnvFilter(event, target) {
-    const f = target?.dataset?.f;
-    const next = (f === 'mail' || f === 'file') ? f : 'all';
-    this._envFilter = (this._envFilter === next && next !== 'all') ? 'all' : next;
+  /** MAIL | FILES view switch (2026-10-25). */
+  _onView(event, target) {
+    const v = target?.dataset?.view === 'files' ? 'files' : 'mail';
+    if (v === this._view) return;
+    this._view = v;
+    this._selectedMessageId = null;
     this._currentPage = 1;
     this.render(false);
+  }
+
+  /**
+   * Open a folder of the FILES tree (a root, a directory row, a breadcrumb
+   * segment, the ".." row). A locked folder refuses with its reason — it is in
+   * the tree so the player knows it exists, never so they can open it. A tree
+   * row that is a FILE carries data-message-id and selects it as well.
+   */
+  _onFsOpen(event, target) {
+    const scope = target?.dataset?.scope;
+    if (!scope) return;
+    if (target.dataset.locked === '1') {
+      ui.notifications?.warn(`ACCESS DENIED — ${target.dataset.lockLabel || 'restricted folder'}`);
+      this._playTermSound('login-fail');
+      return;
+    }
+    this._view = 'files';
+    this._fsSel = { scope, path: target.dataset.path || '' };
+    this._selectedMessageId = target.dataset.messageId || null;
+    this.render(false);
+  }
+
+  /**
+   * TTY mailbox style — the prompt's command set. Deliberately tiny and
+   * forgiving: a NUMBER opens that row, m/f switch MAIL/FILES, cd <name> opens
+   * a mail folder or a sub-folder (cd .. goes up), n/p page, ls re-lists, ?
+   * explains. Anything else is echoed back as unknown. Mouse clicks still work.
+   */
+  _onTtyCommand(raw) {
+    const c = String(raw || '').trim();
+    this._ttyFocus = true;
+    if (!c) { this.render(false); return; }
+    const say = (m) => ui.notifications?.info(`${this._terminalName()}: ${m}`);
+    const lower = c.toLowerCase();
+    if (/^\d+$/.test(c)) {
+      const m = (this._ttyList || [])[Number(c) - 1];
+      if (!m) { say(`no entry #${c}`); return; }
+      this._selectedMessageId = m.messageId;
+      this.render(false);
+      return;
+    }
+    if (lower === 'm' || lower === 'mail') { this._view = 'mail'; this._selectedMessageId = null; this.render(false); return; }
+    if (lower === 'f' || lower === 'files' || lower === 'ls -l') { this._view = 'files'; this._selectedMessageId = null; this.render(false); return; }
+    if (lower === 'ls' || lower === 'clear' || lower === 'back' || lower === 'q') { this._selectedMessageId = null; this.render(false); return; }
+    // The way OUT of a tty box: logout / exit / su / switch all go back to the login screen,
+    // where another account can be picked (there is no dropdown in this style).
+    if (['logout', 'exit', 'su', 'switch', 'users'].includes(lower)) { this._onLogout(); return; }
+    if (lower === 'n' || lower === 'p') { this._currentPage += lower === 'n' ? 1 : -1; this.render(false); return; }
+    if (lower === '?' || lower === 'help') { say('a number opens that row · m = mail · f = files · cd <folder> (cd .. = up) · n / p = next / previous page · ls = relist · logout / su = back to the login screen'); return; }
+    const cd = /^cd\s+(.+)$/i.exec(c);
+    if (cd) {
+      const name = cd[1].trim().replace(/\/+$/, '');
+      const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (this._view === 'files' && this._fsSel) {
+        if (name === '..' || name === '/') { this._fsSel = { scope: this._fsSel.scope, path: name === '/' ? '' : (this._fsSel.path.includes('/') ? this._fsSel.path.slice(0, this._fsSel.path.lastIndexOf('/')) : '') }; this._selectedMessageId = null; this.render(false); return; }
+        const tree = this.terminalService.buildFileTree(this.item, this._fsSel.scope, this._accountId);
+        const want = norm(this._fsSel.path ? `${this._fsSel.path}/${name}` : name);
+        const hit = tree.dirs.find(d => norm(d.path) === want) || tree.dirs.find(d => norm(d.name) === norm(name) && d.parent === this._fsSel.path);
+        if (hit) {
+          if (hit.locked) { say(`ACCESS DENIED — ${hit.path}: ${hit.effectiveGate?.mode === 'admin' ? 'admins only' : 'restricted'}`); this._playTermSound('login-fail'); return; }
+          this._fsSel = { scope: this._fsSel.scope, path: hit.path }; this._selectedMessageId = null; this.render(false); return;
+        }
+        if (norm(name) === 'home' || norm(name) === 'shared') { this._fsSel = { scope: norm(name) === 'shared' ? SHARED_SCOPE : this._accountId, path: '' }; this._selectedMessageId = null; this.render(false); return; }
+      }
+      const fd = (this.terminalService.getFolders(this.item) || []).find(f => norm(f.name) === norm(name) || norm(f.id) === norm(name));
+      if (fd) { this._currentFolder = fd.id; this._view = 'mail'; this._currentPage = 1; this._selectedMessageId = null; this.render(false); return; }
+      say(`no such folder: ${name}`);
+      return;
+    }
+    say(`unknown command: ${c} — type ? for help`);
+  }
+
+  /**
+   * Paint this terminal's film on its window root: the (overlaid) theme's crt, else
+   * the preset's, capped by the player's "Film on terminals & shards" setting.
+   * @param {{cap?: string}} [opts] - a cap to preview instead of the saved one
+   */
+  refreshCrt(opts = {}) {
+    if (!this.element) return;
+    const cfg = this._effectiveConfig?.() || {};
+    const theme = cfg.theme && typeof cfg.theme === 'object' ? cfg.theme : {};
+    const presetCrt = TERMINAL_PRESETS[theme.preset]?.theme?.crt || null;
+    applyCrt(this.element, capCrt(resolveCrt(theme, presetCrt), opts.cap ?? playerCrtCap()));
+  }
+
+  /** Back from an open file to its folder listing. */
+  _onFsBack() {
+    this._selectedMessageId = null;
+    this.render(false);
+  }
+
+  /**
+   * One sidebar/listing row for a message (mail or file). Typed content shows
+   * its file-type tag as the preview line; plain messages show a stripped-HTML
+   * body snippet. `displayContentType` resolves a disguised payload to its
+   * COVER type — reading contentType straight off the message announced
+   * "Payload" in the sidebar and blew the disguise before the player ever
+   * opened it. ENVELOPE (#37): a FILE row drops the sender line entirely — the
+   * content-type icon replaces the priority dot, the filename replaces the
+   * sender, and "type · size · path" replaces the body preview.
+   */
+  _rowVm(m, gm = isGM()) {
+    const ct = displayContentType(m, { isGM: gm });
+    const ctInfo = ct ? CONTENT_TYPE_INFO[ct] : null;
+    const snippet = ct ? '' : String(m.body || '')
+      .replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
+    const env = resolveEnvelope({ ...m, contentType: ct });
+    return {
+      messageId: m.messageId,
+      isFile: env.isFile,
+      isStream: !!env.isStream,
+      shared: !!m.shared,
+      from: m.from || 'unknown',
+      subject: m.subject || '(no subject)',
+      priority: m.priority || 'normal',
+      encrypted: !!m.status?.encrypted,
+      isSelected: m.messageId === this._selectedMessageId,
+      // A live feed isn't FROM a moment — it's happening.
+      time: env.isStream ? 'LIVE' : (m.timestamp ? formatCyberDate(m.timestamp, { dateOnly: true }) : ''),
+      modified: env.isStream ? 'LIVE' : (m.timestamp ? formatCyberDate(m.timestamp) : ''),
+      preview: snippet,
+      // A file row leads with the ENVELOPE's icon/label — a live feed reads as
+      // a CAMERA FEED, not an "Image Gallery" (the mode is its identity).
+      typeLabel: (env.isFile ? env.typeLabel : ctInfo?.label) || null,
+      typeIcon: (env.isFile ? env.typeIcon : ctInfo?.icon) || null,
+      filename: env.filename || '',
+      fileSize: env.isFile && env.size !== '—' ? env.size : '',
+      filePath: env.path || '',
+      fileOwner: env.owner || '',
+      accent: env.accent || (ctInfo ? CONTENT_TYPE_INFO[ct]?.accent : '') || '',
+      // A file has no urgency — it just wasn't there before.
+      isNew: env.isFile && !m.status?.read,
+      flagged: !!m.contentData?.flagged,
+      // GM-only marker: gated off the current uplink (players never see the row).
+      offNet: gm && !this.terminalService.uplinkReaches(this.item, m.networkVisibility),
+    };
+  }
+
+  /**
+   * FILES view-model (2026-10-25): the tree per volume (this account's HOME and
+   * the machine's SHARED volume) and the listing of the open folder. The rules
+   * are terminalFiles.js; this only shapes them for the template. `all` is
+   * already gate-filtered for a player (getAccountMessages), so a locked
+   * folder's files never reach the DOM; the folder itself stays in the tree,
+   * locked, with its reason.
+   */
+  _filesContext(account, all, liveFiles) {
+    const svc = this.terminalService;
+    const gm = isGM();
+    const folders = svc.getFileFolders(this.item);
+    // NB: the key is subLabel, not `sub` — `sub` is a registered Handlebars helper and a context field by that name renders NaN.
+    const mk = (scope, label, subLabel, icon, tag) => ({ scope, label, subLabel, icon, tag, tree: svc.buildFileTree(this.item, scope, this._accountId, all) });
+    const roots = [mk(this._accountId, 'home', account?.username || '', 'fas fa-house', null)];
+    const shared = mk(SHARED_SCOPE, 'shared', this._terminalName(), 'fas fa-hard-drive', 'SHARED');
+    if (gm || shared.tree.dirs.length || shared.tree.files.length) roots.push(shared);
+
+    let sel = this._fsSel;
+    if (!sel || !roots.some(r => r.scope === sel.scope)) sel = { scope: roots[0].scope, path: '' };
+    const root = roots.find(r => r.scope === sel.scope);
+    // A folder that no longer exists (deleted / renamed under you) → its root.
+    if (sel.path && !root.tree.dirs.some(d => d.path === sel.path)) sel = { scope: sel.scope, path: '' };
+    this._fsSel = sel;
+
+    const dirVm = (r, d) => ({
+      scope: r.scope, path: d.path, name: d.name, depth: d.depth + 1,
+      count: d.deepCount, size: formatSize(d.bytes),
+      locked: d.locked, gated: d.effectiveGate?.mode !== 'everyone',
+      lockLabel: gateLabel(d.effectiveGate),
+      active: sel.scope === r.scope && sel.path === d.path,
+    });
+    const rootsVm = roots.map(r => ({
+      scope: r.scope, label: r.label, subLabel: r.subLabel, icon: r.icon, tag: r.tag,
+      isActiveRoot: sel.scope === r.scope && sel.path === '',
+      count: r.tree.totalFiles,
+      dirs: r.tree.dirs.map(d => dirVm(r, d)),
+      // Root-level files sit in the tree; a folder's files show in the listing.
+      files: (r.tree.byPath.get('') || []).map(e => this._rowVm(e, gm)),
+    }));
+
+    const listing = listingFor(root.tree, sel.path, { account, isGM: gm, folders });
+    const dir = listing.dir;
+    const newest = listing.files.reduce((t, e) => (e.timestamp && (!t || e.timestamp > t)) ? e.timestamp : t, '');
+    const crumb = [{ scope: sel.scope, path: '', name: root.label }, ...listing.crumb.slice(1).map(c => ({ scope: sel.scope, path: c.path, name: c.name }))];
+    crumb.forEach((c, i) => { c.last = i === crumb.length - 1; });
+    const listingVm = {
+      scope: sel.scope, path: sel.path, isRoot: !sel.path, isShared: sel.scope === SHARED_SCOPE,
+      machine: this._terminalName(),
+      icon: listing.locked ? 'fas fa-lock' : 'fas fa-folder-open',
+      crumb,
+      locked: listing.locked,
+      lockLabel: listing.locked ? gateLabel(dir?.effectiveGate) : '',
+      gated: !!dir && dir.effectiveGate?.mode !== 'everyone',
+      gateLabel: dir ? gateLabel(dir.effectiveGate) : '',
+      parent: sel.path ? { scope: sel.scope, path: parentPath(sel.path) } : null,
+      stats: {
+        files: listing.files.length, dirs: listing.subdirs.length,
+        size: formatSize(listing.bytes),
+        modified: newest ? formatCyberDate(newest, { dateOnly: true }) : '',
+      },
+      subdirs: listing.subdirs.map(d => dirVm(root, d)),
+      files: listing.files.map(e => this._rowVm(e, gm)),
+      empty: !listing.locked && !listing.subdirs.length && !listing.files.length,
+    };
+    const totalBytes = roots.reduce((s, r) => s + r.tree.totalBytes, 0);
+    return {
+      roots: rootsVm,
+      listing: listingVm,
+      listFiles: listing.files,
+      showListing: !this._selectedMessageId,
+      usage: {
+        label: `${this._terminalName()} · ${liveFiles.length} file${liveFiles.length === 1 ? '' : 's'} · ${formatSize(totalBytes)}`,
+        // A machine's disk is fiction: 5% per MB, capped, so the bar reads as
+        // "some" rather than lying about capacity.
+        pct: Math.min(92, Math.max(4, Math.round(totalBytes / (1024 * 1024) * 5))),
+      },
+    };
   }
 
   _onPage(event, target) {
@@ -1814,9 +2090,15 @@ export class TerminalViewerApp extends BaseApplication {
   /** New message — opens the shared content composer (all content types). */
   _onNewMessage() {
     if (!isGM() || !this._accountId) return;
+    // In FILES view the new entry is a FILE in the open folder, on the open
+    // volume (shared → the shared volume). `homeAccountId` is what "this
+    // account" means in the composer's Store-on control.
+    const inFiles = this._view === 'files' && this._fsSel;
+    const scope = inFiles ? this._fsSel.scope : this._accountId;
     import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
       new DataShardComposer({
-        target: { kind: 'terminal', item: this.item, accountId: this._accountId },
+        target: { kind: 'terminal', item: this.item, accountId: scope, homeAccountId: this._accountId, folderPath: inFiles ? this._fsSel.path : '' },
+        editData: inFiles ? { envelope: 'file', file: { path: this._fsSel.path } } : undefined,
         onSave: () => this.render(false),
       }).render(true);
     });
@@ -1839,7 +2121,8 @@ export class TerminalViewerApp extends BaseApplication {
     };
     import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
       new DataShardComposer({
-        target: { kind: 'terminal', item: this.item, accountId: this._accountId },
+        // The entry's OWN scope (a shared file stays shared when edited).
+        target: { kind: 'terminal', item: this.item, accountId: raw.accountId || this._accountId, homeAccountId: this._accountId, folderPath: raw.file?.path || '' },
         editData, onSave: () => this.render(false),
       }).render(true);
     });
@@ -2473,7 +2756,7 @@ export class TerminalViewerApp extends BaseApplication {
 
     // Signature of WHAT'S IN the list — deliberately excludes the selection.
     const sig = [
-      this._accountId, this._currentFolder, this._envFilter || 'all', this._currentPage,
+      this._accountId, this._currentFolder, this._view, this._fsSel ? `${this._fsSel.scope}:${this._fsSel.path}` : '', this._currentPage,
       (context?.messages || []).map(m => m.messageId).join(','),
     ].join('|');
     const listEl = el.querySelector('.ncm-term__list');
@@ -2665,6 +2948,7 @@ export class TerminalViewerApp extends BaseApplication {
   async close(options) {
     this._timers.forEach(clearTimeout);
     this._timers = [];
+    this._bootVideo?.destroy?.(); this._bootVideo = null;
     if (this._lockdownTimer) { clearInterval(this._lockdownTimer); this._lockdownTimer = null; }
     Hooks.off('updateItem', this._onItemUpdate);
     Hooks.off('createJournalEntryPage', this._onPageChange);

@@ -29,6 +29,7 @@
 import { MODULE_ID, ESSENTIAL_EFFECTS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 import { getAdminThemePrefs, stampAdminTheme, applyAdminZoom, applyGmView, toggleGmView } from '../utils/adminTheme.js';
+import { applyCrt, resolveCrt, CRT_OFF } from '../utils/crt.js';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -236,6 +237,10 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
       el.dataset.ncmScanlines = String(prefs.scanlines !== false);
       el.dataset.ncmNeon = String(prefs.neonGlow !== false);
       el.dataset.ncmAnimationLevel = prefs.animationLevel || 'full';
+      // The ONE CRT film (crt.css): the master switch is `scanlines`, the look
+      // is `crt` (style / intensity / vignette / roll). A terminal viewer
+      // re-stamps its own theme's film over this on its viewer root.
+      applyCrt(el, prefs.scanlines === false ? CRT_OFF : resolveCrt(prefs));
 
     } catch (err) {
       // Non-fatal — atmosphere is progressive enhancement
@@ -243,6 +248,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
       el.dataset.ncmScanlines = 'true';
       el.dataset.ncmNeon = 'true';
       el.dataset.ncmAnimationLevel = 'full';
+      applyCrt(el, resolveCrt({}));
     }
   }
 

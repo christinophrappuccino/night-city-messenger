@@ -6,7 +6,8 @@
 <div class="ncm-terminal-viewer ncm-app"
      data-terminal-preset="{{preset}}"
      data-form-factor="{{formFactor}}"
-     data-terminal-state="{{state}}">
+     data-terminal-state="{{state}}"
+     data-mailbox-style="{{mailboxStyle}}">
 
   {{#if (eq state "boot")}}
     {{> "modules/night-city-messenger/templates/terminal/terminal-boot.hbs"}}
@@ -131,6 +132,16 @@
       {{#if hud.trace}}<span class="ncm-term__hud-seg ncm-term__hud-trace"><i class="fa-regular fa-clock"></i> TRACE {{hud.trace}}</span>{{/if}}
     </div>
 
+    {{!-- MAILBOX STYLE (2026-10-25, config.mailboxStyle — TERMINAL_MAILBOX_STYLES):
+          tabs / tty / desktop are partials over the SAME context and actions;
+          classic is the layout below. --}}
+    {{#if msTabs}}
+      {{> "modules/night-city-messenger/templates/terminal/mailbox/tabs.hbs"}}
+    {{else if msTty}}
+      {{> "modules/night-city-messenger/templates/terminal/mailbox/tty.hbs"}}
+    {{else if msDesktop}}
+      {{> "modules/night-city-messenger/templates/terminal/mailbox/desktop.hbs"}}
+    {{else}}
     {{!-- Sidebar collapse (the message viewer's --list-collapsed precedent):
           the mailbox list folds to a thin rail so a spreadsheet / camera feed /
           schematic gets the full width of the machine. --}}
@@ -158,6 +169,17 @@
             </div>
           {{/if}}
         </div>
+        {{!-- MAIL | FILES view switch (2026-10-25, terminalFiles.js). FILES
+              swaps the mail folder strip for the directory tree: this account's
+              HOME and the machine's SHARED volume as roots, folders from every
+              file's path, a locked folder shown with its reason. --}}
+        <div class="ncm-term__fs-view">
+          <button type="button" class="{{#unless isFilesView}}is-on{{/unless}}" data-action="terminalView" data-view="mail"><i class="fas fa-envelope"></i> MAIL <b>{{view.mail}}</b></button>
+          <button type="button" class="{{#if isFilesView}}is-on{{/if}}" data-action="terminalView" data-view="files"><i class="fas fa-folder-tree"></i> FILES <b>{{view.files}}</b></button>
+        </div>
+        {{#if isFilesView}}
+        {{> "modules/night-city-messenger/templates/terminal/mailbox/tree.hbs"}}
+        {{else}}
         {{!-- Pinned zone: folders + list label never scroll away; only the
              message list below scrolls (.ncm-term__list). --}}
         <div class="ncm-term__folds">
@@ -168,58 +190,9 @@
           {{/each}}
         </div>
         <div class="ncm-term__lsep"></div>
-        {{!-- MAIL / FILES solo chips — app STATE (activeEnvFilter), not a
-              display-only toggle: the viewer re-renders on every click, so a
-              visual-only filter reset itself the moment you opened a message.
-              Only rendered when the folder holds both kinds. --}}
-        {{#if envFilter}}
-          <div class="ncm-term__envchips">
-            <button type="button" class="ncm-term__envchip {{#if (eq activeEnvFilter 'all')}}is-on{{/if}}" data-action="terminalEnvFilter" data-f="all">ALL</button>
-            <button type="button" class="ncm-term__envchip {{#if (eq activeEnvFilter 'mail')}}is-on{{/if}}" data-action="terminalEnvFilter" data-f="mail" data-tooltip="Show only mail"><i class="fas fa-envelope"></i> {{envFilter.mail}}</button>
-            <button type="button" class="ncm-term__envchip {{#if (eq activeEnvFilter 'file')}}is-on{{/if}}" data-action="terminalEnvFilter" data-f="file" data-tooltip="Show only files"><i class="fas fa-folder"></i> {{envFilter.file}}</button>
-          </div>
-        {{/if}}
         <div class="ncm-term__slabel">{{listLabel}}</div>
-        <div class="ncm-term__list" data-env-filter="{{activeEnvFilter}}">
-          {{#each messages}}
-            {{!-- ONE row skeleton for both kinds (#37 revision): line 1 = WHO/WHAT
-                  (sender or filename, the row's anchor) · line 2 = WHAT IT IS
-                  (subject, or a type chip + size) · line 3 = muted detail
-                  (body snippet, or the path). A mixed list then reads as ONE
-                  list instead of two competing ones. --}}
-            {{#if isFile}}
-              <div class="ncm-term__row ncm-term__row--file{{#if isSelected}} is-active{{/if}}{{#if encrypted}} is-encrypted{{/if}}" style="--ncm-i:{{@index}}" data-env="file" data-ct-color="{{accent}}" data-action="terminalSelectMessage" data-message-id="{{messageId}}">
-                <div class="ncm-term__row-l1">
-                  {{#if encrypted}}<i class="fas fa-lock ncm-term__ficon"></i>{{else}}<i class="{{typeIcon}} ncm-term__ficon"></i>{{/if}}
-                  <span class="ncm-term__row-file">{{filename}}</span>
-                  {{#if isNew}}<span class="ncm-term__new">NEW</span>{{/if}}
-                  {{#if time}}<span class="ncm-term__row-time">{{time}}</span>{{/if}}
-                </div>
-                <div class="ncm-term__row-l2">
-                  <span class="ncm-term__row-tag">{{typeLabel}}</span>
-                  {{#if fileSize}}<span class="ncm-term__row-size">{{fileSize}}</span>{{/if}}
-                  {{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this on the current uplink">OFF-NET</span>{{/if}}
-                </div>
-                {{#if filePath}}<div class="ncm-term__row-prev ncm-term__row-prev--path">{{filePath}}</div>{{/if}}
-              </div>
-            {{else}}
-              <div class="ncm-term__row{{#if isSelected}} is-active{{/if}}{{#if encrypted}} is-encrypted{{/if}} ncm-term__row--{{priority}}" style="--ncm-i:{{@index}}" data-env="mail" data-action="terminalSelectMessage" data-message-id="{{messageId}}">
-                <div class="ncm-term__row-l1">
-                  {{#if encrypted}}<i class="fas fa-lock ncm-term__pdot"></i>{{else}}<i class="fas fa-circle ncm-term__pdot ncm-term__pdot--{{priority}}"></i>{{/if}}
-                  <span class="ncm-term__row-from">{{from}}</span>
-                  {{#if time}}<span class="ncm-term__row-time">{{time}}</span>{{/if}}
-                </div>
-                <div class="ncm-term__row-subj">{{subject}}{{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this on the current uplink">OFF-NET</span>{{/if}}</div>
-                {{#if typeLabel}}
-                  <div class="ncm-term__row-l2"><span class="ncm-term__row-tag" data-ct-color="{{accent}}"><i class="{{typeIcon}}"></i> {{typeLabel}}</span></div>
-                {{else if preview}}
-                  <div class="ncm-term__row-prev">{{preview}}</div>
-                {{/if}}
-              </div>
-            {{/if}}
-          {{else}}
-            <div class="ncm-term__list-empty"><i class="fas fa-inbox"></i> {{emptyLabel}}</div>
-          {{/each}}
+        <div class="ncm-term__list">
+          {{> "modules/night-city-messenger/templates/terminal/mailbox/rows.hbs"}}
           {{#if syncHint}}
             <div class="ncm-term__synchint"><i class="fas fa-triangle-exclamation"></i> {{syncHint.count}} object{{#unless (eq syncHint.count 1)}}s{{/unless}} failed to sync — uplink required</div>
           {{/if}}
@@ -231,112 +204,17 @@
             </div>
           {{/if}}
         </div>
+        {{/if}}
         {{#if isGM}}
-          <button type="button" class="ncm-term__gm-add" data-action="terminalNewMessage"><i class="fas fa-plus"></i> New message (GM)</button>
+          <button type="button" class="ncm-term__gm-add" data-action="terminalNewMessage"><i class="fas fa-plus"></i> {{#if isFilesView}}Add a file here (GM){{else}}Add message or file (GM){{/if}}</button>
         {{/if}}
       </div>
 
-      <div class="ncm-term__detail">
-        {{#if selectedMessage}}
-          {{#if selectedMessage.isFile}}
-            {{!-- FILE header — a machine artifact, not mail. No avatar, no ADD,
-                  no REPLY: its owner is a NODE (SECCAM-B2), not an Agent. --}}
-            <div class="ncm-term__file" data-ct-color="{{selectedMessage.file.accent}}">
-              <div class="ncm-term__file-top">
-                <span class="ncm-term__file-ico"><i class="{{selectedMessage.file.typeIcon}}"></i></span>
-                <div class="ncm-term__file-id">
-                  <div class="ncm-term__file-name">{{selectedMessage.file.filename}}</div>
-                  {{#if selectedMessage.file.path}}<div class="ncm-term__file-path">{{selectedMessage.file.fullPath}}</div>{{/if}}
-                </div>
-                <span class="ncm-term__file-tag">{{selectedMessage.file.typeLabel}}</span>
-                {{#if isGM}}
-                  <span class="ncm-term__file-gm">
-                    <select class="ncm-term__move-select" data-move-message="{{selectedMessage.messageId}}" data-tooltip="Move to folder (GM)">
-                      {{#each selectedMessage.moveOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
-                    </select>
-                    <span class="ncm-term__gm-edit" data-action="terminalEditMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Edit file (GM)"><i class="fas fa-pen"></i></span>
-                    <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Permanently delete (GM)"><i class="fas fa-trash-can"></i></span>
-                  </span>
-                {{/if}}
-              </div>
-              <div class="ncm-term__file-grid">
-                {{#if selectedMessage.file.owner}}<span class="ncm-term__file-f"><b>Owner</b><i>{{selectedMessage.file.owner}}</i></span>{{/if}}
-                <span class="ncm-term__file-f"><b>Modified</b><i>{{selectedMessage.file.modifiedLabel}}</i></span>
-                <span class="ncm-term__file-f"><b>Size</b><i>{{selectedMessage.file.size}}</i></span>
-                {{#if selectedMessage.file.hasCount}}<span class="ncm-term__file-f"><b>{{selectedMessage.file.countLabel}}</b><i>{{selectedMessage.file.countValue}}</i></span>{{/if}}
-              </div>
-            </div>
-          {{else}}
-            <div class="ncm-term__subject">{{selectedMessage.subject}}{{#if selectedMessage.classification}} — <span class="ncm-term__cls">{{selectedMessage.classification}}</span>{{/if}}</div>
-            <div class="ncm-term__sender">
-              <span class="ncm-term__avatar">{{#if selectedMessage.sender.portrait}}<img src="{{selectedMessage.sender.portrait}}" alt="">{{else}}{{selectedMessage.sender.initials}}{{/if}}</span>
-              <div><div class="ncm-term__sender-nm">{{selectedMessage.sender.name}}</div><div class="ncm-term__sender-em">{{selectedMessage.sender.email}}</div></div>
-              <span class="ncm-term__sender-actions">
-                {{#if selectedMessage.canAddContact}}
-                  <span class="ncm-term__chip" data-action="terminalAddContact" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-user-plus"></i> Add to contacts</span>
-                {{/if}}
-                {{#if selectedMessage.canReply}}
-                  <span class="ncm-term__chip" data-action="terminalReplyAgent" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Message this sender from your own Agent"><i class="fas fa-reply"></i> Reply via Agent</span>
-                {{/if}}
-                {{#if isGM}}
-                  <select class="ncm-term__move-select" data-move-message="{{selectedMessage.messageId}}" data-tooltip="Move to folder (GM)">
-                    {{#each selectedMessage.moveOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
-                  </select>
-                  <span class="ncm-term__gm-edit" data-action="terminalEditMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Edit message (GM)"><i class="fas fa-pen"></i></span>
-                  <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Permanently delete (GM)"><i class="fas fa-trash-can"></i></span>
-                {{/if}}
-              </span>
-            </div>
-            <div class="ncm-term__metabar">
-              <span class="ncm-term__mpill ncm-term__mpill--time" data-tooltip="{{selectedMessage.timeAgo}}"><i class="fa-regular fa-clock"></i> {{selectedMessage.timeAbs}}</span>
-              <span class="ncm-term__mpill ncm-term__mpill--{{selectedMessage.priority}}"><i class="fas {{selectedMessage.priorityIcon}}"></i> {{selectedMessage.priorityLabel}}</span>
-              <span class="ncm-term__mpill ncm-term__mpill--net"><i class="fas fa-network-wired"></i> {{selectedMessage.network}}</span>
-            </div>
-          {{/if}}
-          {{#if selectedMessage.isTypedContent}}
-            <div class="ncm-term__body ncm-term__body--typed">
-              {{#with selectedMessage.content}}
-                {{> "modules/night-city-messenger/templates/content/content-body.hbs"}}
-              {{/with}}
-            </div>
-          {{else}}
-            <div class="ncm-term__body">{{{selectedMessage.bodyHtml}}}</div>
-          {{/if}}
-          {{!-- ANALYZE — offered on EVERY typed file, never only on suspicious
-                ones (its presence must not be a tell). Rolls vs the file's
-                sniff DV: unmasks a disguised payload, or reports "no
-                anomalies" on a clean file. --}}
-          {{#if selectedMessage.isTypedContent}}
-            <div class="ncm-term__analyze">
-              <span class="ncm-term__btn ncm-term__analyze-btn" data-action="analyzeFile" data-entry-id="{{selectedMessage.messageId}}"
-                    data-tooltip="Pull the file apart — see what it really is. Not every file has something to find.">
-                <i class="fas fa-magnifying-glass"></i> ANALYZE
-              </span>
-            </div>
-          {{/if}}
-          {{#if exfilActions.length}}
-            {{!-- A DENIED action renders dead with its reason ("LIVE STREAM")
-                  rather than vanishing — a missing button reads as a broken UI,
-                  a stated reason teaches the rule. Authoring can still force a
-                  silent hide (hideDenied) for secrets. --}}
-            <div class="ncm-term__exfil">
-              {{#each exfilActions}}
-                {{#if denied}}
-                  <span class="ncm-term__btn ncm-term__exfil-btn is-denied" data-action="terminalExfil" data-exfil="{{action}}" data-message-id="{{../selectedMessage.messageId}}"
-                        data-tooltip="This file can’t leave the machine{{#if denyReason}} — {{denyReason}}{{/if}}"><i class="{{icon}}"></i> {{label}}
-                    <span class="ncm-term__exfil-why">{{denyReason}}</span>
-                  </span>
-                {{else}}
-                  <span class="ncm-term__btn ncm-term__exfil-btn{{#if gated}} is-gated{{/if}}{{#if (eq action "saveFrame")}} is-frame{{/if}}" data-action="terminalExfil" data-exfil="{{action}}" data-message-id="{{../selectedMessage.messageId}}"{{#if gated}} data-tooltip="Security check — DV {{dv}} (fail trips a trace)"{{/if}}><i class="{{icon}}"></i> {{label}}{{#if gated}} <i class="fas fa-lock ncm-term__exfil-lock"></i>{{/if}}</span>
-                {{/if}}
-              {{/each}}
-            </div>
-          {{/if}}
-        {{else}}
-          <div class="ncm-term__prompt" style="margin-top:40px;text-align:center">&gt; select a message</div>
-        {{/if}}
+      <div class="ncm-term__detail{{#if fs.showListing}} is-listing{{/if}}">
+        {{> "modules/night-city-messenger/templates/terminal/mailbox/detail.hbs"}}
       </div>
     </div>
+    {{/if}}
 
     {{!-- Idle screensaver (config.screensaver) — dim overlay + drifting logo/
           marquee; _resetScreensaver toggles --on after idleSeconds, any
