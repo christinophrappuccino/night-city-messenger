@@ -25,6 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # BEFORE the stamp (2026-10-29): checked after it, the stamp had already made them match, so a tag
+      # pushed on the wrong commit published the old code under the new version number.
+      - name: Tag must match module.json's version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          FILE="$(jq -r .version module.json)"
+          if [ "$TAG" != "$FILE" ]; then echo "tag v$TAG but module.json says $FILE"; exit 1; fi
+
       - name: Stamp version and download URL into module.json
         run: |
           TAG="${GITHUB_REF_NAME}"            # e.g. v1.0.0
@@ -39,12 +47,6 @@ jobs:
              module.json > module.json.tmp
           mv module.json.tmp module.json
           jq -r '"version=\(.version)  manifest=\(.manifest)  download=\(.download)"' module.json
-
-      - name: Tag must match module.json's version
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          FILE="$(jq -r .version module.json)"
-          if [ "$TAG" != "$FILE" ]; then echo "tag v$TAG but module.json says $FILE"; exit 1; fi
 
       - name: Build the macro packs (LevelDB, with Foundry's own LevelDB library)
         run: |
