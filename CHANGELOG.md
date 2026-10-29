@@ -3,6 +3,41 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.0.0] — 2026-10-29
+
+A big one. Nothing in an existing world breaks: no settings are lost and no data is rewritten.
+
+### Added
+- **Network nodes.** A node is a router, relay, mast, junction box or antenna that carries a network into a scene (Admin → Networks → a network → Nodes). A scene with nodes only gets that network while one of them is up; switch them off, jam them or damage them and the network goes dark there — players are moved off it (or queue their mail), machines go local-only. Nodes are optional.
+  - **The node console** (players): signal, state, alert, live traffic; Connect, and **Jack in** — a skill roll (Interface by default) behind a three-ring lock, then a session of **moves** by rank: switch it off/on, **jam** it, **tap** it (mail sent from that scene lands in your inbox), open a **backdoor** (skip the network's login), **insert a shard** of network programs — **worm** (spreads to other nodes), **tap**, **blackout bomb**, **sniffer**, **patch** — **system sweep** for what others left, **wipe your log line**.
+  - **Jacking-in rules** (Security → Hacking rules → Jacking in): who can jack in (anyone / the terminal operator rule / chosen roles and skills), skill and DV, what rank unlocks, eases and gives, each action's DV, failure costs. Saved sessions: jacking out and back in, or a refresh, keeps the moves you spent. A failed jack-in counts against the network's own login lockout.
+  - **The GM node inspector**: everything on a node with a control on each — the jam, infections, taps, backdoors, runners (give a move back, **kick** with damage and a lockout), lockouts, the full log — and **Add your own**: a quest infection (whispers you when a player cleans it), an NPC's tap or backdoor, a jam, a log-line clue, damage.
+- **Access points.** Every way into a terminal, shard or node, from one menu: **Place on a scene** as a map pin or a step-on area (shown, or hidden until you reveal it), **Add to hotbar** (or drag it there), **Post to chat** (a card in the thing's colours, yours, or the module's), **Copy journal link** (`@NCM[...]`), **Copy macro code / Make a macro** for trigger modules. **Admin → Access points** maps every way in and lists what players can't reach yet.
+- **The Admin Panel, rebuilt** — every tab redesigned, grouped Comms / Net / World, pop-out windows, one colour system, a contrast pass (all text 4.5:1 or better in all three admin themes).
+  - **Overview**: one timeline — what just happened above the line, what needs you on it (as chips), timers below — with the clock, the table and quick actions beside it.
+  - **Messages**: the **Needs a reply** desk (answer as the NPC, their voice note beside you), **All mail** as a calendar you click into, a journey for every message (where it went, and why not), **Inboxes**, and the **Outbox** (failed, held, scheduled, timers). Junk senders by address.
+  - **Contacts**: the directory with filters, an NPC's **Correspondents** switchboard, players and **who they know** (orbit, roles, rack of held groups), groups with pictures, a **who-knows-whom map**, a **voice** note per NPC, a role manager.
+  - **Networks**: the **This scene** dial, a six-step network editor, the **Scenes** atlas (your scene folders as shelves with pictures, paint networks onto scenes, pre-wire compendium scenes), the activity log (now with node use and scene moves).
+  - **Terminals** as a server rack, **Shards** as cartridges with an integrity track, **Security** as a seismograph and heat thermometers.
+- **Roll reveal**: every skill check plays on screen (stat, skill, die, total vs DV) and posts its chat card when it lands; waits for **Dice So Nice**.
+- **The composer, cleaned up**: delivery options as chips with one panel at a time, a list of drafts per character, **Preview as recipient**, **message templates**, a searchable **Attach Shard** that takes several at once.
+- **Sound board** (Admin → Tools → Sounds): every sound, where it plays, and your own file in its place (upload from the file picker), per-sound volume or off, import/export.
+- **Per-skill bypass DVs** on networks and terminal accounts; the operator gate takes several skills; **Role Ability Rolls** setting (stat + rank, or rank only).
+- **Countermeasure visibility**: decide whether players see what guards a lock or only that it's locked; an expert can scan.
+- Minimize buttons on every NCM window; themed dialogs; mark mail unread.
+
+### Changed
+- The Getting Started guide is rewritten for all of the above and ships as a PDF the Overview's **Guide** button opens.
+- The Network Manager and the GM Contact Manager windows are folded into their Admin Panel tabs (their buttons and macros open the tabs).
+- Macro packs ship as Foundry's LevelDB folders (built at release), so they load on read-only hosts like The Forge.
+
+### Fixed
+- **Scheduled messages** failed from an NPC directory contact (or to a contact, several people or a group) — scheduling now accepts what an immediate send does. A player's scheduled message was never saved (now the GM saves it); with two GMs online scheduled mail was delivered twice.
+- The macro API's **setNetwork** and **toggleDeadZone** (and the Set Network / Toggle Dead Zone macros) called functions that didn't exist.
+- Terminal **Reset** didn't lift a timed lockout on the player's screen.
+- Typing in admin search boxes could jumble letters while the tab re-rendered.
+- The Netrunner role's Interface rank wasn't read on newer CPR data (it read 0).
+
 ## [1.6.0] — 2026-10-26
 
 ### Added

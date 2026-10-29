@@ -1,0 +1,91 @@
+  /* ── Fonts (bundled with the module) ─────────────────────────── */
+  @font-face { font-family:'Orbitron'; src:url('../../assets/fonts/Orbitron/Orbitron-var-latin.woff2') format('woff2'); font-weight:400 900; }
+  @font-face { font-family:'Rajdhani'; src:url('../../assets/fonts/Rajdhani/Rajdhani-500-latin.woff2') format('woff2'); font-weight:500; }
+  @font-face { font-family:'Rajdhani'; src:url('../../assets/fonts/Rajdhani/Rajdhani-600-latin.woff2') format('woff2'); font-weight:600; }
+  @font-face { font-family:'Rajdhani'; src:url('../../assets/fonts/Rajdhani/Rajdhani-700-latin.woff2') format('woff2'); font-weight:700; }
+  @font-face { font-family:'Share Tech Mono'; src:url('../../assets/fonts/ShareTechMono/ShareTechMono-400-latin.woff2') format('woff2'); font-weight:400; }
+
+  /* ── Page setup ──────────────────────────────────────────────── */
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root{
+    --ink:#1c2130; --ink-soft:#4a5268; --paper:#ffffff; --paper-tint:#f4f6fa;
+    --cyan:#0e7d90; --cyan-bright:#00e5ff; --red:#c8323f; --gold:#a97b1f;
+    --line:#d8dde8; --dark:#0b0e14; --dark2:#121722;
+  }
+  body { font-family:'Rajdhani',-apple-system,'Segoe UI',sans-serif; font-weight:500; color:var(--ink); background:var(--paper); font-size:12.5pt; line-height:1.5; }
+  .page { width:210mm; height:297mm; overflow:hidden; padding:16mm 17mm 18mm; position:relative; page-break-after:always; background:var(--paper); }
+  .page:last-child { page-break-after:auto; }
+
+  /* ── Cover ───────────────────────────────────────────────────── */
+  .cover { background:var(--dark); color:#e8f4f8; display:flex; flex-direction:column; padding:22mm 18mm; }
+  .cover-kicker { font-family:'Share Tech Mono',monospace; font-size:10pt; letter-spacing:.35em; color:var(--cyan-bright); text-transform:uppercase; }
+  .cover h1 { font-family:'Orbitron',sans-serif; font-weight:800; font-size:34pt; line-height:1.15; margin:6mm 0 3mm; letter-spacing:.04em;
+              color:#fff; text-shadow:0 0 18px rgba(0,229,255,.45); }
+  .cover h1 .accent { color:var(--cyan-bright); }
+  .cover-sub { font-size:15pt; font-weight:600; color:#9fb2c5; margin-bottom:10mm; }
+  .cover-shot { border:1px solid rgba(0,229,255,.35); border-radius:4px; overflow:hidden; box-shadow:0 0 30px rgba(0,229,255,.15); }
+  .cover-shot img { width:100%; display:block; }
+  .cover-foot { margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end; font-family:'Share Tech Mono',monospace; font-size:9pt; color:#5f7387; }
+  .cover-foot .r { text-align:right; }
+
+  /* ── Headings ────────────────────────────────────────────────── */
+  h2 { font-family:'Orbitron',sans-serif; font-weight:700; font-size:16pt; letter-spacing:.03em; color:var(--ink); margin:0 0 2mm; }
+  h2 .num { color:var(--cyan); font-size:11pt; letter-spacing:.2em; display:block; font-family:'Share Tech Mono',monospace; margin-bottom:1.5mm; }
+  .h2rule { height:2px; background:linear-gradient(90deg,var(--cyan) 0 28mm,var(--line) 28mm); margin:0 0 6mm; }
+  h3 { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:13.5pt; text-transform:uppercase; letter-spacing:.05em; color:var(--ink); margin:6mm 0 2mm; }
+  h3::before { content:'▸ '; color:var(--cyan); }
+  p { margin:0 0 3mm; }
+  strong { font-weight:700; }
+  em { font-style:italic; }
+  code, .mono { font-family:'Share Tech Mono',monospace; font-size:.92em; background:var(--paper-tint); border:1px solid var(--line); border-radius:2px; padding:0 .25em; white-space:nowrap; }
+  ul, ol { margin:0 0 3mm 6mm; }
+  li { margin-bottom:1.2mm; }
+
+  /* ── Tables ──────────────────────────────────────────────────── */
+  table { width:100%; border-collapse:collapse; margin:2mm 0 4mm; font-size:11.5pt; }
+  th { font-family:'Rajdhani',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.06em; font-size:9.5pt; color:var(--cyan);
+       text-align:left; padding:1.5mm 3mm; border-bottom:2px solid var(--cyan); }
+  td { padding:1.6mm 3mm; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:nth-child(even) td { background:var(--paper-tint); }
+
+  /* ── Figures ─────────────────────────────────────────────────── */
+  figure { margin:4mm 0 5mm; }
+  .shot { background:var(--dark2); border:1px solid #2a3242; border-radius:4px; padding:2.5mm; }
+  .shot img { width:100%; display:block; border-radius:2px; }
+  figcaption { font-family:'Share Tech Mono',monospace; font-size:8.5pt; color:var(--ink-soft); margin-top:1.6mm; padding-left:1mm; }
+  figcaption::before { content:'▪ '; color:var(--cyan); }
+  .fig-row { display:flex; gap:5mm; align-items:flex-start; }
+  .fig-row figure { flex:1; margin:4mm 0 5mm; }
+  .fig-85 { width:85%; margin-left:auto; margin-right:auto; }
+  .fig-80 { width:80%; margin-left:auto; margin-right:auto; }
+  .fig-63 { width:63%; margin-left:auto; margin-right:auto; }
+  .fig-70 { width:70%; margin-left:auto; margin-right:auto; }
+
+  /* Placeholder slots for real Foundry screenshots */
+  .slot { border:2px dashed #b6c0d2; border-radius:4px; background:var(--paper-tint); padding:8mm 6mm; text-align:center; margin:4mm 0 5mm; }
+  .slot .t { font-family:'Rajdhani',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.08em; font-size:10pt; color:#8894aa; }
+  .slot .d { font-size:10.5pt; color:#8894aa; margin-top:1mm; }
+
+  /* ── Callouts ────────────────────────────────────────────────── */
+  .tip { border-left:3px solid var(--cyan); background:var(--paper-tint); padding:2.5mm 4mm; margin:3mm 0 4mm; }
+  .tip .k { font-family:'Rajdhani',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.08em; font-size:9.5pt; color:var(--cyan); margin-right:1.5mm; }
+  .warn { border-left:3px solid var(--red); background:#fbf1f2; padding:2.5mm 4mm; margin:3mm 0 4mm; }
+  .warn .k { font-family:'Rajdhani',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.08em; font-size:9.5pt; color:var(--red); margin-right:1.5mm; }
+
+  .rule-card { border:1px solid var(--line); border-top:3px solid var(--red); border-radius:3px; padding:3.5mm 4.5mm; margin-bottom:4mm; background:var(--paper); }
+  .rule-card .n { font-family:'Orbitron',sans-serif; font-weight:800; font-size:15pt; color:var(--red); float:left; margin:0 4mm 0 0; }
+  .rule-card h4 { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:12.5pt; text-transform:uppercase; letter-spacing:.04em; }
+
+  /* ── TOC ─────────────────────────────────────────────────────── */
+  .toc { columns:2; column-gap:10mm; margin-top:4mm; }
+  .toc-item { break-inside:avoid; display:flex; align-items:baseline; gap:3mm; padding:2mm 0; border-bottom:1px solid var(--line); }
+  .toc-item .no { font-family:'Share Tech Mono',monospace; color:var(--cyan); font-size:10pt; min-width:8mm; }
+  .toc-item .lbl { font-weight:600; font-size:12pt; }
+  .toc-item .who { margin-left:auto; font-family:'Share Tech Mono',monospace; font-size:8pt; color:var(--ink-soft); text-transform:uppercase; }
+
+  .pgfoot { position:absolute; bottom:8mm; left:17mm; right:17mm; display:flex; justify-content:space-between;
+            font-family:'Share Tech Mono',monospace; font-size:8pt; color:#9aa5b8; border-top:1px solid var(--line); padding-top:1.6mm; }
+
+  .lead { font-size:13.5pt; font-weight:600; color:var(--ink-soft); margin-bottom:5mm; }
+  .divider { height:1px; background:var(--line); margin:5mm 0; }

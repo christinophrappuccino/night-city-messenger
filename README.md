@@ -26,6 +26,7 @@ Every PC gets a diegetic **Agent** — a themed in-fiction phone/inbox — and t
 ### Networks
 - Scene-based network availability, dead zones, signal strength — the Agent only sees what's reachable.
 - Secured networks with password / skill-check / key-item auth (AND/OR logic), lockouts, and Black ICE that bites on failure.
+- **Network nodes**: routers, relays and masts on the map carry a network into a scene. Switch one off, jam it, or let a netrunner **jack in** (a skill roll, then moves by rank): tap the traffic, open a backdoor, plant a worm, a blackout bomb or a sniffer, sweep for what others left. The GM's node inspector shows everything on a node and plants quest infections of their own.
 
 ### Data Shards
 - Convert any Item into an encrypted **data shard**; players hack them open with real CPR skill checks (animated breach sequence, lockouts, ICE).
@@ -34,7 +35,10 @@ Every PC gets a diegetic **Agent** — a themed in-fiction phone/inbox — and t
 ### Terminals
 - Convert an Item into a **machine you log into**: multiple accounts (hidden ones included), six login-screen styles, per-terminal themes/sound-sets/boot sequences, its own network uplink.
 - Account mailboxes with custom folders, file-vs-mail envelopes, per-entry security, and a full **exfiltration** policy (download / burn to shard / forward / leak / sell / wipe — each optionally skill-gated).
-- Drag a terminal onto a scene to place a **map pin** players double-click to jack in. Login footprints are recorded per machine.
+- Four mailbox layouts (Classic, Tabs, TTY, Desktop), a shared volume with gated folders, admin "view as", and sending mail as an account.
+
+### Access points
+- Every way into a terminal, shard or node: **map pins** and **step-on areas** (visible, or hidden until the GM reveals them), **hotbar** macros, **chat cards** in your colours, **journal links**, and copyable macro code for trigger modules. The Access points tab maps them all and shows what players can't reach yet.
 
 ### Netrunning-adjacent play
 - **Upload / forge**: carry forged files or programs to a breached box and leave them behind — a forge-check ladder decides clean / sloppy / rejected.
@@ -43,7 +47,8 @@ Every PC gets a diegetic **Agent** — a themed in-fiction phone/inbox — and t
 - Three table-selectable **netrunning resolution modes**: auto-roll, auto-roll + NET-action card to the GM, or full GM adjudication ("run the NET at the table, then call it").
 
 ### GM tooling
-- One **Admin Panel** (9 tabs): overview, messages, contacts, networks, shards, spam, terminals, security, tools — with its own clean theme, separate from the player look.
+- One **Admin Panel** (10 tabs in Comms / Net / World groups), each tab a working surface: an Overview timeline of what happened, what needs you and what's about to fire; a reply desk for NPC mail; a calendar for all mail; a scenes atlas you paint networks onto; a who-knows-whom map; a terminal rack; shard cartridges; a security seismograph and heat thermometers. Pop any tab out into its own window. Its own clean theme (dark, light, high contrast), separate from the player look.
+- A **Sound board**: replace any of the module's sounds with your own files.
 - Ready-made macro compendiums (player + GM), a scoped message purge, journal reorganization, orphan audit, JSON import/export for templates/terminals/themes/spam/programs.
 - A **time provider** so timestamps, countdowns, and expiries follow real time, world time, Simple Calendar, or a disguised in-fiction clock.
 
