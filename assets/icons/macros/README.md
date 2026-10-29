@@ -1,14 +1,14 @@
 # NCM macro icons
 
 One SVG per shipped macro. **Replace any file with your own art using the
-exact same filename.** Your file is never overwritten — `tools/gen-macros.cjs`
+exact same filename.** Your file is never overwritten — `dev/tools/gen-macros.cjs`
 only writes a neon placeholder when a file is missing. Replacing a file in
 place takes effect immediately (no regen, no reinstall) because the macro
 points at this fixed path.
 
 Keep the `.svg` extension (the path is baked into the macro documents). To
 switch to PNG/WebP instead, change `ICON_WEB_BASE`/extension in
-`tools/gen-macros.cjs`, rerun it, then reinstall via Admin → Tools.
+`dev/tools/gen-macros.cjs`, rerun it, then reinstall via Admin → Tools.
 
 | File | Macro | Pack |
 |---|---|---|

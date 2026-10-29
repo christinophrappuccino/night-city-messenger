@@ -37,12 +37,16 @@ const SHIP = [
   'templates',
   'assets',
   'languages',
-  'packs/ncm-macros-player.db',
-  'packs/ncm-macros-gm.db',
+  'packs/ncm-macros-player',
+  'packs/ncm-macros-gm',
 ];
 
 /** Anything matching these must never end up inside the archive. */
-const FORBIDDEN = [/^dev\//, /^\.github\//, /^CLAUDE\.md$/, /^INTEGRATION\.md$/, /\.local\.md$/, /\.pdf$/i, /^packs\/ncm-macros-(gm|player)\//, /^\.claude\//];
+const FORBIDDEN = [/^dev\//, /^\.github\//, /^CLAUDE\.md$/, /^INTEGRATION\.md$/, /\.local\.md$/, /^(?!docs\/)[^]*\.pdf$/i, /^packs\/[^/]+\.db$/, /^packs\/[^/]+\/(LOCK|LOG|LOG\.old)$/, /^\.claude\//];
+// The macro packs ship as LevelDB folders written by dev/tools/gen-macros.cjs (with Foundry closed); refuse a zip without them.
+for (const p of ['packs/ncm-macros-player', 'packs/ncm-macros-gm']) {
+  if (!fs.existsSync(path.join(__dirname, '..', '..', p, 'CURRENT'))) { console.error('build-zip: ' + p + '/ is not a LevelDB pack — close Foundry and run node dev/tools/gen-macros.cjs'); process.exit(1); }
+}
 
 function die(msg) { console.error(`build-zip: ${msg}`); process.exit(1); }
 

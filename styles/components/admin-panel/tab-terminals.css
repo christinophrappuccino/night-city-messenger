@@ -1,171 +1,701 @@
 /* ============================================================================
- * Admin Panel — Terminals tab (split-panel manager, 2026-07-11 redesign)
+ * Admin Panel — Terminals tab (2026-10-27 redesign)
  * @file styles/components/admin-panel/tab-terminals.css
- * List left (search / sort / filter / pagination), selected terminal's detail
- * right. Uses --ncm-* tokens (resolve to the admin theme inside
- * .ncm-admin-panel — clean slate look, no neon).
+ * Mocks: dev/mockups/admin-terminals-redesign-mock.html (toolbar, filters, groups)
+ *        + dev/mockups/admin-terminals-rack-modules-mock.html Version A (rack + detail)
+ * Grouped list (sticky foldable headers, its own scroll) left, the selected
+ * terminal right (its own scroll). Prefix `ncm-term2-*` (the shipped
+ * `ncm-term-admin-*` and the viewer's `ncm-term__*` are other things).
+ * --ncm-* tokens only — follows every admin preset. 2px radius, 1px badges,
+ * display font for chrome, mono for values.
  * ========================================================================== */
 
-/* ── Toolbar ── */
-.ncm-admin-panel .ncm-term-admin-toolbar { display: flex; gap: 8px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
-.ncm-admin-panel .ncm-term-admin-search {
-  flex: 1 1 200px; min-width: 160px; padding: 8px 12px; border-radius: 2px; font-family: var(--ncm-font-display); font-size: 12px;
-  color: var(--ncm-text-primary); background: var(--ncm-bg-deep);
-  border: 1px solid var(--ncm-border);
+.ncm-admin-panel .ncm-term2 {
+  display: flex; flex-direction: column; height: 100%; min-height: 440px; box-sizing: border-box;
 }
-.ncm-admin-panel select.ncm-term-admin-sort {
-  flex: 0 0 auto; width: auto; padding: 7px 10px; border-radius: 2px;
-  font-family: var(--ncm-font-display); font-size: 11.5px;
-  color: var(--ncm-text-primary); background: var(--ncm-bg-deep);
-  border: 1px solid var(--ncm-border); cursor: pointer;
-}
-.ncm-admin-panel .ncm-term-admin-filters { display: inline-flex; gap: 0; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
-.ncm-admin-panel button.ncm-term-admin-filter {
-  appearance: none !important; box-shadow: none !important; margin: 0 !important;
-  width: auto !important; flex: 0 0 auto !important; min-height: 0 !important;
-  padding: 7px 12px !important; border: 0 !important; border-radius: 0 !important;
-  background: transparent !important; cursor: pointer;
-  font-family: var(--ncm-font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-  color: var(--ncm-text-muted) !important; line-height: 1.2;
-}
-.ncm-admin-panel button.ncm-term-admin-filter + .ncm-term-admin-filter { border-left: 1px solid var(--ncm-border) !important; }
-.ncm-admin-panel button.ncm-term-admin-filter.is-active { color: var(--ncm-text-primary) !important; background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent) !important; }
+.ncm-admin-panel .ncm-term2 > * { flex: 0 0 auto; }
 
-/* ── Split panel ── */
-.ncm-admin-panel .ncm-term-admin-split { display: flex; gap: 12px; align-items: stretch; min-height: 320px; }
-.ncm-admin-panel .ncm-term-admin-list { flex: 0 0 300px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.ncm-admin-panel .ncm-term-admin-detail {
-  flex: 1; min-width: 0; border: 1px solid var(--ncm-border); border-radius: 2px;
-  background: var(--ncm-bg-surface); padding: 14px; display: flex; flex-direction: column; gap: 12px;
-}
+.ncm-admin-panel .ncm-term2-grow { flex: 1; }
 
-/* ── List rows ── */
-.ncm-admin-panel .ncm-term-admin-row {
-  display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 2px;
-  border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); cursor: pointer;
-  transition: border-color .12s, background .12s;
-}
-.ncm-admin-panel .ncm-term-admin-row:hover { border-color: color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border)); }
-.ncm-admin-panel .ncm-term-admin-row.is-selected {
-  border-color: var(--ncm-secondary);
-  background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-surface));
-}
-.ncm-admin-panel .ncm-term-admin-row.is-locked:not(.is-selected) { border-color: color-mix(in srgb, var(--ncm-danger) 30%, var(--ncm-border)); }
-.ncm-admin-panel .ncm-term-admin-row__img { width: 30px; height: 30px; border-radius: 2px; object-fit: cover; border: 1px solid var(--ncm-border); flex: 0 0 30px; }
-.ncm-admin-panel .ncm-term-admin-row__id { flex: 1; min-width: 0; }
-.ncm-admin-panel .ncm-term-admin-row__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: 13px; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ncm-admin-panel .ncm-term-admin-row__meta { font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--ncm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-.ncm-admin-panel .ncm-term-admin-row__tags { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; font-family: var(--ncm-font-display); font-weight: 700; font-size: 10px; }
-.ncm-admin-panel .ncm-term-admin-row__accts { color: var(--ncm-text-secondary); }
-.ncm-admin-panel .ncm-term-admin-row__online { color: var(--ncm-success); }
-.ncm-admin-panel .ncm-term-admin-row__online i { font-size: 6px; vertical-align: middle; }
-.ncm-admin-panel .ncm-term-admin-row__lock { color: var(--ncm-danger); }
-.ncm-admin-panel .ncm-term-admin-row__bypass { color: var(--ncm-accent); }
-
-.ncm-admin-panel .ncm-term-admin-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 4px; font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-muted); }
-
-/* ── Detail panel ── */
-.ncm-admin-panel .ncm-term-admin-detail__head { display: flex; align-items: center; gap: 12px; }
-.ncm-admin-panel .ncm-term-admin-detail__img { width: 44px; height: 44px; border-radius: 2px; object-fit: cover; border: 1px solid var(--ncm-border); flex: 0 0 44px; }
-.ncm-admin-panel .ncm-term-admin-detail__id { min-width: 0; flex: 1; }
-.ncm-admin-panel .ncm-term-admin-detail__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: 17px; color: var(--ncm-text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.ncm-admin-panel .ncm-term-admin-detail__meta { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-muted); margin-top: 2px; }
-.ncm-admin-panel .ncm-term-admin-detail__cls { color: var(--ncm-warning); letter-spacing: 1px; }
-.ncm-admin-panel .ncm-term-admin-tag { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 1px; }
-.ncm-admin-panel .ncm-term-admin-tag--locked { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 14%, transparent); }
-.ncm-admin-panel .ncm-term-admin-tag--bypass { color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 14%, transparent); }
-
-/* Facts — labeled key/value grid (was an icon-chip jumble). */
-.ncm-admin-panel .ncm-term-admin-detail__facts {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
-  gap: 8px 14px; padding: 10px 12px; border-radius: 2px;
-  background: var(--ncm-bg-deep);
-}
-.ncm-admin-panel .ncm-term-admin-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ncm-admin-panel .ncm-term-admin-fact__lbl {
-  font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--ncm-text-muted); white-space: nowrap;
-}
-.ncm-admin-panel .ncm-term-admin-fact__lbl i { opacity: .6; margin-right: 4px; width: 11px; text-align: center; }
-.ncm-admin-panel .ncm-term-admin-fact__val {
-  font-family: var(--ncm-font-mono); font-size: 11.5px; color: var(--ncm-text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-.ncm-admin-panel .ncm-term-admin-detail__sec { display: flex; flex-direction: column; gap: 6px; }
-.ncm-admin-panel .ncm-term-admin-detail__label { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-muted); }
-.ncm-admin-panel .ncm-term-admin-detail__accts { display: flex; flex-wrap: wrap; gap: 6px; }
-.ncm-admin-panel .ncm-term-admin-acct {
-  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 2px;
-  border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep);
-  font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-primary);
-}
-.ncm-admin-panel .ncm-term-admin-acct i { font-size: 9px; color: var(--ncm-text-muted); }
-.ncm-admin-panel .ncm-term-admin-acct i.fa-lock { color: var(--ncm-danger); }
-.ncm-admin-panel .ncm-term-admin-acct i.fa-unlock { color: var(--ncm-success); }
-.ncm-admin-panel .ncm-term-admin-acct.is-admin { border-color: color-mix(in srgb, var(--ncm-warning) 45%, var(--ncm-border)); }
-.ncm-admin-panel .ncm-term-admin-acct i.fa-crown { color: var(--ncm-warning); }
-
-.ncm-admin-panel .ncm-term-admin-detail__sessions { display: flex; flex-direction: column; gap: 3px; padding: 7px 9px; border-radius: 2px; background: var(--ncm-bg-deep); }
-.ncm-admin-panel .ncm-term-admin-login { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-secondary); }
-.ncm-admin-panel .ncm-term-admin-login i { color: var(--ncm-secondary); margin-right: 5px; }
-.ncm-admin-panel .ncm-term-admin-detail__none { font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-muted); }
-
-/* ── Login footprints (terminalState.loginLog) — machine log rows, mono values. ── */
-.ncm-admin-panel .ncm-term-admin-detail__footprints { display: flex; flex-direction: column; gap: 3px; padding: 7px 9px; border-radius: 2px; background: var(--ncm-bg-deep); }
-.ncm-admin-panel .ncm-term-admin-footprint { display: flex; align-items: baseline; gap: 6px; font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-secondary); }
-.ncm-admin-panel .ncm-term-admin-footprint i { color: var(--ncm-secondary); font-size: 10px; align-self: center; }
-.ncm-admin-panel .ncm-term-admin-footprint__acct { color: var(--ncm-text-primary); }
-.ncm-admin-panel .ncm-term-admin-footprint__op { font-family: var(--ncm-font-body); color: var(--ncm-text-muted); }
-.ncm-admin-panel .ncm-term-admin-footprint__when { margin-left: auto; color: var(--ncm-text-muted); white-space: nowrap; }
-
-.ncm-admin-panel .ncm-term-admin-detail__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--ncm-border); }
-.ncm-admin-panel .ncm-term-admin-detail__acts-sp { flex: 1; }
-
-/* ── Tab buttons — proper text buttons (the shared .ncm-action-btn is a 26px
-     ICON button; labels inside it read as "text pushing against the borders",
-     the dev's exact complaint). ── */
-.ncm-admin-panel button.ncm-term-admin-btn {
+/* ── buttons (the panel's reference button: .ncm-spam-send-btn) ── */
+.ncm-admin-panel button.ncm-term2-btn {
   appearance: none !important; -webkit-appearance: none !important;
-  width: auto !important; flex: 0 0 auto !important; height: auto !important;
+  width: auto !important; flex: 0 0 auto !important; height: 30px !important;
   min-height: 0 !important; min-width: 0 !important; margin: 0 !important;
-  display: inline-flex !important; align-items: center !important; gap: 7px !important;
-  padding: 6px 13px !important; border-radius: 2px !important;
-  background: var(--ncm-bg-deep) !important;
-  border: 1px solid var(--ncm-border) !important;
-  box-shadow: none !important; cursor: pointer;
-  font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: .04em !important;
-  letter-spacing: .8px !important; text-transform: uppercase !important; line-height: 1.4 !important;
+  display: inline-flex !important; align-items: center !important; gap: 6px !important;
+  padding: 0 11px !important; border-radius: 2px !important; white-space: nowrap;
+  background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important;
+  box-shadow: none !important; text-shadow: none !important; cursor: pointer;
+  font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700 !important;
+  letter-spacing: .04em !important; text-transform: uppercase !important; line-height: 1 !important;
   color: var(--ncm-text-secondary) !important;
-  transition: color .12s, border-color .12s, background .12s !important;
+  transition: color .12s, border-color .12s, background .12s;
 }
-.ncm-admin-panel button.ncm-term-admin-btn i { font-size: 10px; opacity: .75; }
-.ncm-admin-panel button.ncm-term-admin-btn:hover {
+.ncm-admin-panel button.ncm-term2-btn i { font-size: 10px; margin: 0 !important; }
+.ncm-admin-panel button.ncm-term2-btn:hover {
   color: var(--ncm-text-primary) !important;
   border-color: color-mix(in srgb, var(--ncm-secondary) 55%, var(--ncm-border)) !important;
   background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-deep)) !important;
 }
-.ncm-admin-panel button.ncm-term-admin-btn--primary {
+.ncm-admin-panel button.ncm-term2-btn--primary {
   color: var(--ncm-secondary) !important;
   border-color: color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border)) !important;
 }
-.ncm-admin-panel button.ncm-term-admin-btn--danger:hover {
-  color: var(--ncm-danger) !important;
+.ncm-admin-panel button.ncm-term2-btn--danger { color: var(--ncm-danger) !important; }
+.ncm-admin-panel button.ncm-term2-btn--danger:hover {
   border-color: color-mix(in srgb, var(--ncm-danger) 55%, var(--ncm-border)) !important;
   background: color-mix(in srgb, var(--ncm-danger) 8%, var(--ncm-bg-deep)) !important;
 }
-.ncm-admin-panel button.ncm-term-admin-btn--icon { padding: 6px 10px !important; }
-.ncm-admin-panel button.ncm-term-admin-btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+.ncm-admin-panel button.ncm-term2-btn--icon { padding: 0 10px !important; }
+.ncm-admin-panel button.ncm-term2-btn--ghost { height: 24px !important; background: transparent !important; }
 
-/* ── Empty states ── */
-.ncm-admin-panel .ncm-term-admin-empty { text-align: center; padding: 48px 20px; color: var(--ncm-text-muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.ncm-admin-panel .ncm-term-admin-empty i { font-size: 30px; opacity: .4; }
-.ncm-admin-panel .ncm-term-admin-empty p { font-family: var(--ncm-font-body); font-size: 14px; max-width: 420px; }
-.ncm-admin-panel .ncm-term-admin-empty--list { padding: 24px 10px; flex-direction: row; justify-content: center; gap: 8px; font-size: 12px; }
-.ncm-admin-panel .ncm-term-admin-empty--list i { font-size: 14px; }
-
-/* Narrow admin window: stack the panes. */
-@media (max-width: 980px) {
-  .ncm-admin-panel .ncm-term-admin-split { flex-direction: column; }
-  .ncm-admin-panel .ncm-term-admin-list { flex: 0 0 auto; }
+/* ── toolbar ── */
+.ncm-admin-panel .ncm-term2-tb { display: flex; gap: 6px; align-items: center; margin-bottom: 7px; flex-wrap: wrap; }
+.ncm-admin-panel .ncm-term2-srch {
+  flex: 1 1 180px; min-width: 150px; display: flex; align-items: center; gap: 7px; height: 30px; box-sizing: border-box;
+  padding: 0 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-deep);
 }
+.ncm-admin-panel .ncm-term2-srch > i { color: var(--ncm-text-muted); font-size: 12px; }
+.ncm-admin-panel .ncm-term2-srch input[type=text] {
+  flex: 1; min-width: 0; height: 28px !important; padding: 0 !important; margin: 0; border: 0 !important; background: transparent !important;
+  box-shadow: none !important; outline: none; font: 14px var(--ncm-font-body); color: var(--ncm-text-primary);
+}
+.ncm-admin-panel button.ncm-term2-srch__x {
+  appearance: none !important; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+  padding: 2px 4px !important; border: 0 !important; background: none !important; box-shadow: none !important; cursor: pointer;
+  color: var(--ncm-text-muted) !important; line-height: 1 !important; flex: 0 0 auto !important;
+}
+.ncm-admin-panel button.ncm-term2-srch__x i { margin: 0 !important; font-size: 11px; }
+.ncm-admin-panel button.ncm-term2-srch__x:hover { color: var(--ncm-text-primary) !important; }
+.ncm-admin-panel .ncm-term2-picked { padding: 0 4px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; }
+.ncm-admin-panel .ncm-term2-picked b { font-family: var(--ncm-font-mono); color: var(--ncm-secondary); }
+
+/* ── filter chips ── */
+.ncm-admin-panel .ncm-term2-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-bottom: 10px; }
+.ncm-admin-panel .ncm-term2-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer;
+  background: var(--ncm-bg-base); font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ncm-text-secondary); user-select: none;
+}
+.ncm-admin-panel .ncm-term2-chip:hover { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-term2-n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; text-transform: none; font-weight: 400; }
+.ncm-admin-panel .ncm-term2-chip.is-on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 9%, var(--ncm-bg-base)); }
+.ncm-admin-panel .ncm-term2-chip.is-on .ncm-term2-n { color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-term2-chip.is-warn .ncm-term2-n { color: var(--ncm-warning); }
+.ncm-admin-panel .ncm-term2-scope { margin-left: auto; display: inline-flex; }
+
+/* ── the split ── */
+.ncm-admin-panel .ncm-term2 > .ncm-term2-split { flex: 1 1 auto; }
+.ncm-admin-panel .ncm-term2-split { min-height: 0; display: grid; grid-template-columns: 334px minmax(0, 1fr); gap: 10px; }
+.ncm-admin-panel .ncm-term2-list,
+.ncm-admin-panel .ncm-term2-det {
+  min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base);
+}
+
+/* group header (sticky, foldable) */
+.ncm-admin-panel .ncm-term2-grp {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 7px; padding: 6px 10px; cursor: pointer; user-select: none;
+  background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border);
+  font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary);
+}
+.ncm-admin-panel .ncm-term2-grp__t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-admin-panel .ncm-term2-grp__ic { color: var(--ncm-secondary); font-size: 11px; width: 12px; text-align: center; }
+.ncm-admin-panel .ncm-term2-grp .ncm-term2-n { margin-left: auto; }
+.ncm-admin-panel .ncm-term2-grp__chev { color: var(--ncm-text-muted); font-size: 10px; transition: transform .2s; }
+.ncm-admin-panel .ncm-term2-grp.is-shut .ncm-term2-grp__chev { transform: rotate(-90deg); }
+
+.ncm-admin-panel .ncm-term2-ck {
+  width: 13px; height: 13px; box-sizing: border-box; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px;
+  display: none; place-items: center; font-size: 8px; color: var(--ncm-secondary);
+}
+
+/* empty */
+.ncm-admin-panel .ncm-term2-empty { padding: 22px 14px; text-align: center; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-term2-empty i { margin-right: 6px; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-term2-empty--big { border: 1px dashed var(--ncm-border); border-radius: 2px; padding: 40px 20px; }
+.ncm-admin-panel .ncm-term2-empty--big i { display: block; font-size: 26px; margin: 0 0 10px; }
+.ncm-admin-panel .ncm-term2-empty p { margin: 0; }
+
+/* ⋯ menu */
+.ncm-admin-panel .ncm-term2-more {
+  position: absolute; right: 12px; top: 52px; z-index: 6; min-width: 230px; padding: 4px; display: none;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px;
+  background: var(--ncm-bg-elevated, var(--ncm-bg-surface)); box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+}
+.ncm-admin-panel .ncm-term2-more.is-open { display: block; }
+.ncm-admin-panel .ncm-term2-more button {
+  appearance: none !important; width: 100% !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+  display: flex !important; align-items: center; gap: 9px; padding: 7px 9px !important; border: 0 !important; border-radius: 2px !important;
+  background: transparent !important; box-shadow: none !important; text-shadow: none !important; cursor: pointer; text-align: left;
+  font: 13px var(--ncm-font-body) !important; color: var(--ncm-text-primary) !important; text-transform: none !important; letter-spacing: 0 !important;
+}
+.ncm-admin-panel .ncm-term2-more button:hover { background: var(--ncm-bg-surface) !important; }
+.ncm-admin-panel .ncm-term2-more button i { width: 14px; text-align: center; margin: 0 !important; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-term2-more button small { margin-left: auto; padding-left: 10px; color: var(--ncm-text-secondary); font-size: 11px; }
+.ncm-admin-panel .ncm-term2-more hr { border: 0; border-top: 1px solid var(--ncm-border); margin: 4px 0; background: none !important; border-image: none !important; height: 0; }
+.ncm-admin-panel .ncm-term2-more button.is-danger,
+.ncm-admin-panel .ncm-term2-more button.is-danger i { color: var(--ncm-danger) !important; }
+
+.ncm-admin-panel .ncm-term2-quiet { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+/* setup columns */
+.ncm-admin-panel .ncm-term2-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 18px; }
+.ncm-admin-panel .ncm-term2-kv { display: grid; grid-template-columns: 66px minmax(0, 1fr); gap: 8px; padding: 3px 0; font: 13px var(--ncm-font-body); }
+.ncm-admin-panel .ncm-term2-kv__l { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); padding-top: 2px; }
+.ncm-admin-panel .ncm-term2-kv__v { color: var(--ncm-text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-admin-panel .ncm-term2-kv__v.is-dim { color: var(--ncm-text-secondary); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * THE RACK + INFORMATION DETAIL (2026-10-28, dev-approved mock
+ * dev/mockups/admin-terminals-rack-modules-mock.html, Version A).
+ * List = a server rack per group, one rack unit per terminal (icon tile, four
+ * lights, an 8-segment heat bar, a trace timer). Detail = labelled modules with
+ * corner ticks: header + status line, Right now, Accounts table, Recent logins,
+ * Setup. A lock is violet (secret), never red.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* light legend above the rack */
+.ncm-admin-panel .ncm-term2-legend {
+  display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; padding: 8px 12px;
+  border-bottom: 1px solid var(--ncm-border); font: 12px var(--ncm-font-body); color: var(--ncm-text-label);
+}
+.ncm-admin-panel .ncm-term2-legend > span { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+.ncm-admin-panel .ncm-term2-legend b { font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-term2-legend .ncm-term2-led { animation: none !important; }
+
+/* the rack: two rails with mounting holes, units between them */
+.ncm-admin-panel .ncm-term2-rack {
+  position: relative; margin: 8px 8px 10px; padding: 4px 15px; border: 1px solid var(--ncm-border-active); border-radius: 2px;
+  background: color-mix(in srgb, var(--ncm-bg-canvas, var(--ncm-bg-deep)) 70%, var(--ncm-bg-pane, var(--ncm-bg-base)));
+}
+.ncm-admin-panel .ncm-term2-rack::before,
+.ncm-admin-panel .ncm-term2-rack::after {
+  content: ''; position: absolute; top: 4px; bottom: 4px; width: 9px; box-sizing: border-box; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--ncm-border-active) 80%, transparent);
+  background: repeating-linear-gradient(180deg, transparent 0 6px, color-mix(in srgb, var(--ncm-border-active) 90%, transparent) 6px 9px, transparent 9px 15px);
+}
+.ncm-admin-panel .ncm-term2-rack::before { left: 3px; }
+.ncm-admin-panel .ncm-term2-rack::after { right: 3px; }
+
+/* one rack unit */
+.ncm-admin-panel .ncm-term2-ru {
+  position: relative; display: grid; grid-template-columns: 6px 30px minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  margin: 4px 0; padding: 7px 10px 7px 6px; cursor: pointer; box-sizing: border-box;
+  background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); border-radius: 2px;
+  transition: border-color .15s, background .15s;
+}
+.ncm-admin-panel .ncm-term2-ru:hover { border-color: var(--ncm-border-active); background: var(--ncm-bg-hover); }
+.ncm-admin-panel .ncm-term2-ru.is-sel {
+  border-color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 10%, var(--ncm-bg-card)); box-shadow: inset 3px 0 var(--ncm-act);
+}
+.ncm-admin-panel .ncm-term2-scr { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--ncm-border-active); background: var(--ncm-bg-pane, var(--ncm-bg-base)); box-sizing: border-box; }
+.ncm-admin-panel .ncm-term2-ru .ncm-term2-ck { display: none; }
+.ncm-admin-panel .is-bulk .ncm-term2-ru { grid-template-columns: 13px 30px minmax(0, 1fr) auto; }
+.ncm-admin-panel .is-bulk .ncm-term2-ru .ncm-term2-ck { display: grid; }
+.ncm-admin-panel .is-bulk .ncm-term2-ru .ncm-term2-scr { display: none; }
+.ncm-admin-panel .ncm-term2-ru.is-picked .ncm-term2-ck { background: color-mix(in srgb, var(--ncm-act) 15%, transparent); border-color: var(--ncm-act); }
+.ncm-admin-panel .ncm-term2-ru__id { min-width: 0; }
+.ncm-admin-panel .ncm-term2-ru__nm { font: 700 13px/1.25 var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* location · N accounts — wraps instead of cutting; the count never splits */
+.ncm-admin-panel .ncm-term2-ru__sub { font: 11.5px/1.3 var(--ncm-font-body); color: var(--ncm-text-label); overflow-wrap: anywhere; }
+.ncm-admin-panel .ncm-term2-ru__n { white-space: nowrap; }
+.ncm-admin-panel .ncm-term2-vent {
+  height: 3px; margin-top: 4px; opacity: .7;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--ncm-border-active) 85%, transparent) 0 2px, transparent 2px 4px);
+}
+.ncm-admin-panel .ncm-term2-face { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.ncm-admin-panel .ncm-term2-leds { display: flex; gap: 5px; }
+.ncm-admin-panel .ncm-term2-led {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none;
+  background: color-mix(in srgb, var(--ncm-border-active) 80%, transparent);
+}
+.ncm-admin-panel .ncm-term2-led.is-good { background: var(--ncm-good); box-shadow: 0 0 6px var(--ncm-good); }
+.ncm-admin-panel .ncm-term2-led.is-bad { background: var(--ncm-bad); box-shadow: 0 0 6px var(--ncm-bad); animation: ncm-term2-blink 1.1s steps(2, end) infinite; }
+.ncm-admin-panel .ncm-term2-led.is-attn { background: var(--ncm-attn); box-shadow: 0 0 6px var(--ncm-attn); }
+.ncm-admin-panel .ncm-term2-led.is-secret { background: var(--ncm-secret); box-shadow: 0 0 5px var(--ncm-secret); }
+@keyframes ncm-term2-blink { 50% { opacity: .25; } }
+
+/* heat: one colour per tier (cold green → warm amber-grey → hot amber → burned red) */
+.ncm-admin-panel :is(.ncm-term2-hbar, .ncm-term2-nr) { --hc: var(--ncm-good); }
+.ncm-admin-panel :is(.ncm-term2-hbar, .ncm-term2-nr).is-warm { --hc: color-mix(in srgb, var(--ncm-attn) 60%, var(--ncm-text-label)); }
+.ncm-admin-panel :is(.ncm-term2-hbar, .ncm-term2-nr).is-hot { --hc: var(--ncm-attn); }
+.ncm-admin-panel :is(.ncm-term2-hbar, .ncm-term2-nr).is-burned { --hc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-term2-hbar { display: flex; gap: 1px; }
+.ncm-admin-panel .ncm-term2-hbar i { width: 5px; height: 4px; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); }
+.ncm-admin-panel .ncm-term2-hbar i.on { background: var(--hc); }
+.ncm-admin-panel .ncm-term2-trace {
+  position: absolute; right: -1px; top: -1px; padding: 0 4px; line-height: 13px;
+  font: 700 9px/13px var(--ncm-font-mono); color: var(--ncm-bad);
+  background: color-mix(in srgb, var(--ncm-bad) 14%, var(--ncm-bg-card)); border: 1px solid color-mix(in srgb, var(--ncm-bad) 55%, transparent);
+}
+
+/* the icon tile: the item's art (background-image) or the preset's glyph, tinted by organisation */
+.ncm-admin-panel .ncm-term2-ic {
+  --tc: var(--ncm-act);
+  width: 30px; height: 30px; display: grid; place-items: center; border-radius: 2px; flex: none; position: relative; overflow: hidden; box-sizing: border-box;
+  background: color-mix(in srgb, var(--tc) 16%, var(--ncm-bg-pane, var(--ncm-bg-base))) center / cover no-repeat;
+  border: 1px solid color-mix(in srgb, var(--tc) 50%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, black 22%, transparent);
+  color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading));
+}
+.ncm-admin-panel .ncm-term2-ic i { font-size: 13px; line-height: 1; margin: 0; }
+.ncm-admin-panel .ncm-term2-ic.has-img { background-size: cover; }
+.ncm-admin-panel .ncm-term2-ic--lg { width: 42px; height: 42px; }
+.ncm-admin-panel .ncm-term2-ic--lg i { font-size: 18px; }
+[data-ncm-admin-theme="clean-light"] .ncm-term2-ic { color: color-mix(in oklab, var(--tc) 75%, black); }
+.ncm-admin-panel .ncm-term2-ru.is-sel .ncm-term2-ic { border-color: var(--ncm-act); }
+
+/* ── detail header ── */
+.ncm-admin-panel .ncm-term2-hdr {
+  position: relative; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 2px; align-items: center;
+  padding: 12px 12px 4px;
+}
+.ncm-admin-panel .ncm-term2-hdr > .ncm-term2-ic { grid-row: 1 / 4; align-self: start; }
+.ncm-admin-panel .ncm-term2-hdr__nm { grid-column: 2; grid-row: 1; min-width: 0; font: 700 17px/1.2 var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term2-hdr__acts { grid-column: 3; grid-row: 1; display: flex; gap: 4px; }
+.ncm-admin-panel .ncm-term2-hdr__where { grid-column: 2 / 4; grid-row: 2; min-width: 0; font: 12px/1.35 var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-hdr__pre { color: var(--ncm-text-hint); }
+.ncm-admin-panel .ncm-term2-hdr__pre::before { content: '·'; margin: 0 6px; }
+.ncm-admin-panel .ncm-term2-hdr__st { grid-column: 2 / 4; grid-row: 3; font: 600 12.5px/1.35 var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-term2-hdr__st .dot { margin: 0 6px; color: var(--ncm-text-hint); font-weight: 400; }
+.ncm-admin-panel .ncm-term2-hdr__st .is-good { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-term2-hdr__st .is-bad, .ncm-admin-panel .ncm-term2-hdr__st .is-heat-burned { color: var(--ncm-bad); }
+.ncm-admin-panel .ncm-term2-hdr__st .is-attn, .ncm-admin-panel .ncm-term2-hdr__st .is-heat-hot { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-term2-hdr__st .is-heat-warm { color: color-mix(in srgb, var(--ncm-attn) 60%, var(--ncm-text-label)); }
+.ncm-admin-panel .ncm-term2-hdr__st .is-dim { color: var(--ncm-text-hint); font-weight: 400; }
+.ncm-admin-panel .ncm-term2-hdr > .ncm-term2-more { top: 44px; right: 12px; }
+
+/* small tags: Admin / Hidden / Private / a network / a classification */
+.ncm-admin-panel .ncm-term2-tg {
+  --tc: var(--ncm-text-label);
+  display: inline-block; flex: none; padding: 0 3px; border-radius: 1px; white-space: nowrap; vertical-align: 1px;
+  font: 700 8.5px/13px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--tc) 75%, var(--ncm-text-heading));
+  border: 1px solid color-mix(in srgb, var(--tc) 50%, transparent); background: color-mix(in srgb, var(--tc) 10%, transparent);
+}
+.ncm-admin-panel .ncm-term2-tg.is-adm { --tc: var(--ncm-act); }
+.ncm-admin-panel .ncm-term2-tg.is-hid { --tc: var(--ncm-secret); }
+.ncm-admin-panel .ncm-term2-tg.is-bad { --tc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-term2-tg.is-attn { --tc: var(--ncm-attn); }
+
+/* ── the module frame (labelled box, corner ticks) ── */
+.ncm-admin-panel .ncm-term2-mod {
+  position: relative; margin: 10px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px;
+  background: var(--ncm-bg-pane, var(--ncm-bg-base));
+}
+.ncm-admin-panel .ncm-term2-mod:last-child { margin-bottom: 12px; }
+.ncm-admin-panel .ncm-term2-mod::before,
+.ncm-admin-panel .ncm-term2-mod::after {
+  content: ''; position: absolute; width: 7px; height: 7px; pointer-events: none;
+  border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid;
+}
+.ncm-admin-panel .ncm-term2-mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.ncm-admin-panel .ncm-term2-mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+.ncm-admin-panel .ncm-term2-mod__k {
+  display: flex; align-items: center; gap: 6px; padding: 5px 9px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+  font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label);
+}
+.ncm-admin-panel .ncm-term2-mod__k > i { color: var(--ncm-act); font-size: 9px; }
+.ncm-admin-panel .ncm-term2-mod__hint { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+.ncm-admin-panel .ncm-term2-mod > .ncm-term2-quiet { padding: 8px 9px 9px; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+.ncm-admin-panel .ncm-term2-mod > .ncm-term2-cols { padding: 4px 9px 6px; }
+
+/* ── Right now: icon · what · time · action ── */
+.ncm-admin-panel .ncm-term2-nows { display: block; }
+.ncm-admin-panel .ncm-term2-nr {
+  display: grid; grid-template-columns: 14px minmax(0, 1fr) 64px auto; gap: 8px; align-items: center;
+  min-height: 30px; padding: 3px 9px; box-sizing: border-box;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent);
+}
+.ncm-admin-panel .ncm-term2-nr:last-child { border-bottom: 0; }
+.ncm-admin-panel .ncm-term2-nr > i { font-size: 11px; text-align: center; color: var(--ncm-act); margin: 0; }
+.ncm-admin-panel .ncm-term2-nr.is-good > i { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-term2-nr.is-bad > i { color: var(--ncm-bad); }
+.ncm-admin-panel .ncm-term2-nr.is-attn > i { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-term2-nr:is(.is-warm, .is-hot, .is-burned) > i { color: var(--hc); }
+.ncm-admin-panel .ncm-term2-nr__m { min-width: 0; font: 700 12.5px/1.35 var(--ncm-font-display); color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-term2-nr__m small { margin-left: 6px; font: 400 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-nr__m small b { font: 600 11.5px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-term2-nr__num { font: 700 12.5px var(--ncm-font-mono); color: var(--hc); }
+.ncm-admin-panel .ncm-term2-nr__l2 { display: block; font: 400 11.5px var(--ncm-font-body); color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-term2-nr__tm { text-align: right; white-space: nowrap; }
+.ncm-admin-panel .ncm-term2-nr__tm b { font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-heading); font-variant-numeric: tabular-nums; }
+.ncm-admin-panel .ncm-term2-nr__tm span { margin-left: 3px; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-nr__ac { display: flex; gap: 4px; justify-content: flex-end; }
+.ncm-admin-panel .ncm-term2-hm { display: inline-flex; gap: 1px; margin-right: 6px; vertical-align: middle; }
+.ncm-admin-panel .ncm-term2-hm i { width: 6px; height: 7px; background: color-mix(in srgb, var(--ncm-border-active) 60%, transparent); }
+.ncm-admin-panel .ncm-term2-hm i.on { background: var(--hc); }
+
+/* small buttons inside modules */
+.ncm-admin-panel button.ncm-term2-btn--sm { height: 22px !important; padding: 0 8px !important; font-size: 10px !important; }
+.ncm-admin-panel button.ncm-term2-btn--sm i { font-size: 9px; }
+
+/* ── Accounts table ── */
+.ncm-admin-panel .ncm-term2-at { --cols: minmax(0, 1.3fr) minmax(0, 1fr) 86px 52px; }
+.ncm-admin-panel .ncm-term2-ar {
+  display: grid; grid-template-columns: var(--cols); column-gap: 8px; align-items: start; padding: 6px 9px; cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent);
+}
+.ncm-admin-panel .ncm-term2-ar:not(.ncm-term2-ar--hd):hover { background: var(--ncm-bg-hover); }
+.ncm-admin-panel .ncm-term2-ar:focus-visible { outline: 1px solid var(--ncm-act); outline-offset: -1px; }
+.ncm-admin-panel .ncm-term2-ar.is-open { background: color-mix(in srgb, var(--ncm-act) 10%, transparent); box-shadow: inset 3px 0 var(--ncm-act); border-bottom-color: transparent; }
+.ncm-admin-panel .ncm-term2-ar--hd {
+  cursor: default; align-items: center; padding-top: 4px; padding-bottom: 4px;
+  background: var(--ncm-bg-card-head, var(--ncm-bg-card));
+  font: 700 9px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label);
+}
+.ncm-admin-panel .ncm-term2-ar--hd .pad1 { padding-left: 14px; }
+.ncm-admin-panel .ncm-term2-ar--hd .pad2 { padding-left: 16px; }
+.ncm-admin-panel .ncm-term2-ar--hd .ll { text-align: right; }
+.ncm-admin-panel .ncm-term2-an { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ncm-admin-panel .ncm-term2-an .l1 { display: flex; align-items: center; gap: 5px; min-width: 0; height: 18px; }
+.ncm-admin-panel .ncm-term2-an .chev { width: 9px; flex: none; margin: 0; font-size: 8px; color: var(--ncm-text-hint); transition: transform .15s; }
+.ncm-admin-panel .ncm-term2-ar.is-open .chev { transform: rotate(90deg); color: var(--ncm-act); }
+.ncm-admin-panel .ncm-term2-an .u { min-width: 0; font: 700 12.5px var(--ncm-font-mono); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term2-an .own { padding-left: 14px; font: 11.5px/1.3 var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term2-an .own i { margin: 0 4px 0 0; font-size: 9px; color: var(--ncm-act); }
+.ncm-admin-panel :is(.ncm-term2-at, .ncm-term2-ax) .dim { color: var(--ncm-text-hint); }
+.ncm-admin-panel .ncm-term2-lkw { display: grid; grid-template-columns: 11px minmax(0, 1fr); gap: 5px; min-width: 0; font: 12px/18px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-term2-lkw .lk { margin: 0; font-size: 10px; line-height: 18px; text-align: center; color: var(--ncm-secret); }
+.ncm-admin-panel .ncm-term2-ar.is-unlocked .lk { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-term2-lkw > span { line-height: 1.35; padding-top: 1px; }
+.ncm-admin-panel :is(.ncm-term2-lkw, .ncm-term2-kvg .lkf) b { font: 700 11.5px var(--ncm-font-mono); color: var(--ncm-secret); white-space: nowrap; }
+.ncm-admin-panel :is(.ncm-term2-lkw, .ncm-term2-kvg .lkf) em { font-style: normal; color: var(--ncm-text-hint); }
+.ncm-admin-panel :is(.ncm-term2-lkw, .ncm-term2-kvg) .ok { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-term2-st { min-width: 0; font: 12px/18px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term2-st > i { margin: 0 4px 0 0; font-size: 7px; vertical-align: 1px; }
+.ncm-admin-panel .ncm-term2-st > i.fa-ban { font-size: 9px; vertical-align: 0; }
+.ncm-admin-panel .ncm-term2-st .st2 { display: block; padding-left: 13px; font: 400 11.5px/1.3 var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-st.is-good { color: var(--ncm-good); font-weight: 600; }
+.ncm-admin-panel .ncm-term2-st.is-bad { color: var(--ncm-bad); font-weight: 600; }
+.ncm-admin-panel .ncm-term2-st.is-attn { color: var(--ncm-attn); font-weight: 600; }
+.ncm-admin-panel .ncm-term2-st.is-quiet { color: var(--ncm-text-hint); }
+.ncm-admin-panel :is(.ncm-term2-at, .ncm-term2-ax) .mono { font-family: var(--ncm-font-mono); }
+.ncm-admin-panel .ncm-term2-ll { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; }
+.ncm-admin-panel .ncm-term2-ll .lw { max-width: 100%; font: 600 12px/18px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term2-ll .lt { font: 11.5px/1.3 var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+.ncm-admin-panel .ncm-term2-ll .lt:only-child { line-height: 18px; }
+
+/* the expanded row: the account's facts */
+.ncm-admin-panel .ncm-term2-ax {
+  padding: 4px 9px 9px 23px; background: color-mix(in srgb, var(--ncm-act) 6%, transparent); box-shadow: inset 3px 0 var(--ncm-act);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent);
+}
+.ncm-admin-panel .ncm-term2-ax[hidden] { display: none !important; }
+.ncm-admin-panel .ncm-term2-kvg { display: grid; grid-template-columns: 84px minmax(0, 1fr); column-gap: 10px; }
+.ncm-admin-panel .ncm-term2-kvg > .k,
+.ncm-admin-panel .ncm-term2-kvg > .v { padding: 5px 0; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+.ncm-admin-panel .ncm-term2-kvg > .k:first-child,
+.ncm-admin-panel .ncm-term2-kvg > .k:first-child + .v { border-top: 0; }
+.ncm-admin-panel .ncm-term2-kvg > .k { font: 700 9.5px/16px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-kvg > .v { min-width: 0; font: 12px/16px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-term2-kvg > .v > b { font-family: var(--ncm-font-display); color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-term2-addr { margin-left: 4px; font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-label)); overflow-wrap: anywhere; }
+.ncm-admin-panel .ncm-term2-kvg .un { color: var(--ncm-attn); font-weight: 700; }
+.ncm-admin-panel .ncm-term2-kvg .used { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-term2-kvg .lg { display: grid; grid-template-columns: minmax(0, 1fr) 34px 84px; column-gap: 8px; row-gap: 2px; }
+.ncm-admin-panel .ncm-term2-kvg .lgr { display: contents; }
+.ncm-admin-panel .ncm-term2-kvg .lgr .w { font: 600 12px/16px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term2-kvg .lgr .t { text-align: right; font: 11.5px/16px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+.ncm-admin-panel .ncm-term2-kvg .lgr .r { font: 12px/16px var(--ncm-font-body); white-space: nowrap; }
+.ncm-admin-panel :is(.ncm-term2-kvg .lgr, .ncm-term2-lr) .r i { width: 10px; margin: 0 4px 0 0; font-size: 10px; text-align: center; }
+.ncm-admin-panel :is(.ncm-term2-kvg, .ncm-term2-lr) .r.is-good { color: var(--ncm-good); }
+.ncm-admin-panel :is(.ncm-term2-kvg, .ncm-term2-lr) .r.is-bad { color: var(--ncm-bad); }
+.ncm-admin-panel :is(.ncm-term2-kvg, .ncm-term2-lr) .pl { font-family: var(--ncm-font-body); font-weight: 400; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-axb { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 7px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+
+/* ── Recent logins ── */
+.ncm-admin-panel .ncm-term2-lr {
+  display: grid; grid-template-columns: 18px minmax(0, 1fr) minmax(0, 100px) 84px 30px; gap: 8px; align-items: center;
+  height: 26px; padding: 0 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent);
+}
+.ncm-admin-panel .ncm-term2-lr:last-child { border-bottom: 0; }
+.ncm-admin-panel .ncm-term2-av {
+  --tc: var(--ncm-act);
+  width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; box-sizing: border-box;
+  font: 700 8px var(--ncm-font-display); color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading));
+  background: color-mix(in srgb, var(--tc) 25%, var(--ncm-bg-pane, var(--ncm-bg-base))); border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent);
+}
+[data-ncm-admin-theme="clean-light"] .ncm-term2-av { color: color-mix(in oklab, var(--tc) 80%, black); }
+.ncm-admin-panel .ncm-term2-lr .w { min-width: 0; font: 700 12px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term2-lr .a { min-width: 0; font: 12px var(--ncm-font-mono); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term2-lr .a i { margin: 0 5px 0 0; font-size: 9px; color: var(--ncm-text-hint); }
+.ncm-admin-panel .ncm-term2-lr .r { font: 12px var(--ncm-font-body); white-space: nowrap; }
+.ncm-admin-panel .ncm-term2-lr .t { text-align: right; font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ncm-admin-panel .ncm-term2-led { animation: none !important; }
+  .ncm-admin-panel :is(.ncm-term2-ru, .ncm-term2-an .chev) { transition: none !important; }
+}
+
+/* ── pop-out: more room ── */
+.ncm-admin-panel--pop .ncm-term2-split { grid-template-columns: 380px minmax(0, 1fr); gap: 14px; }
+.ncm-admin-panel--pop .ncm-term2-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; }
+.ncm-admin-panel--pop .ncm-term2-kv { grid-template-columns: 80px minmax(0, 1fr); }
+.ncm-admin-panel--pop .ncm-term2-at { --cols: minmax(0, 1.3fr) minmax(0, 1.2fr) 110px 70px; }
+.ncm-admin-panel .ncm-term2--pop { min-height: 600px; }
+
+/* filter chips: "Needs you" with something waiting is a solid amber count */
+.ncm-admin-panel .ncm-term2-chip.is-hot .ncm-term2-n {
+  background: var(--ncm-attn); color: var(--ncm-text-inverse) !important; font-weight: 700;
+  padding: 0 5px; border-radius: 1px;
+}
+.ncm-admin-panel .ncm-term2-chip.is-hot:not(.is-on) { border-color: color-mix(in srgb, var(--ncm-attn) 55%, var(--ncm-border)); color: var(--ncm-text-primary); }
+
+/* a heat row has no time — its words take the empty time cell instead of wrapping */
+.ncm-admin-panel .ncm-term2-nr[data-kind="heat"] .ncm-term2-nr__m { grid-column: 2 / 4; }
+.ncm-admin-panel .ncm-term2-nr[data-kind="heat"] .ncm-term2-nr__tm { display: none; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Colour hierarchy pass (2026-10-28, dev: "hard to differentiate text… hard to
+ * tell each account from another"). Tiers: names = heading 700 · meta = label ·
+ * counts = num (mono) · times = time (mono) · states = their meaning, pulled a
+ * little toward the heading tone (--t2-*) so they hold >= 4.5:1 on tinted rows
+ * in every preset. Measured with admin-terminals-preview.html?contrast=1.
+ * ══════════════════════════════════════════════════════════════════════════ */
+.ncm-admin-panel .ncm-term2 {
+  --t2-good: color-mix(in oklab, var(--ncm-good) 78%, var(--ncm-text-heading));
+  --t2-bad: color-mix(in oklab, var(--ncm-bad) 80%, var(--ncm-text-heading));
+  --t2-attn: color-mix(in oklab, var(--ncm-attn) 78%, var(--ncm-text-heading));
+  --t2-secret: color-mix(in oklab, var(--ncm-secret) 78%, var(--ncm-text-heading));
+  --t2-act: color-mix(in oklab, var(--ncm-act) 85%, var(--ncm-text-heading));
+}
+
+/* buttons sit on a card, not the canvas (the canvas made act/bad text fail on clean-light) */
+.ncm-admin-panel .ncm-term2 button.ncm-term2-btn { background: var(--ncm-bg-card) !important; border-color: var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; }
+.ncm-admin-panel .ncm-term2 button.ncm-term2-btn:hover { background: var(--ncm-bg-hover, var(--ncm-bg-card)) !important; border-color: var(--ncm-act) !important; }
+.ncm-admin-panel .ncm-term2 button.ncm-term2-btn--primary { color: var(--t2-act) !important; border-color: color-mix(in srgb, var(--ncm-act) 60%, transparent) !important; }
+.ncm-admin-panel .ncm-term2 button.ncm-term2-btn--danger { color: var(--t2-bad) !important; border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent) !important; }
+
+/* counts: number tier */
+.ncm-admin-panel .ncm-term2 .ncm-term2-n { color: var(--ncm-text-num) !important; }
+.ncm-admin-panel .ncm-term2 .ncm-term2-chip.is-hot .ncm-term2-n { color: var(--ncm-text-inverse) !important; }
+
+/* ── LIST: the rack ── */
+.ncm-admin-panel .ncm-term2-ru__nm { font-weight: 700; color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-term2-ru__sub,
+.ncm-admin-panel .ncm-term2-ru__n { color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-ru { border-color: var(--ncm-border-active); }
+.ncm-admin-panel .ncm-term2-ru.is-sel {
+  border-color: var(--ncm-act);
+  background: color-mix(in srgb, var(--ncm-act) 10%, var(--ncm-bg-card));
+  box-shadow: inset 4px 0 var(--ncm-act), 0 0 0 1px color-mix(in srgb, var(--ncm-act) 45%, transparent);
+}
+.ncm-admin-panel .ncm-term2-trace { font-size: 10px; color: var(--t2-bad); background: var(--ncm-bg-card); border-color: color-mix(in srgb, var(--ncm-bad) 70%, transparent); }
+.ncm-admin-panel .ncm-term2-legend b { color: var(--ncm-text-num); }
+
+/* ── detail header ── */
+.ncm-admin-panel .ncm-term2-hdr__st .is-good { color: var(--t2-good); }
+.ncm-admin-panel .ncm-term2-hdr__st :is(.is-bad, .is-heat-burned) { color: var(--t2-bad); }
+.ncm-admin-panel .ncm-term2-hdr__st :is(.is-attn, .is-heat-hot) { color: var(--t2-attn); }
+.ncm-admin-panel .ncm-term2-hdr__pre { color: var(--ncm-text-label); }
+
+/* module heads: label tier on a band */
+.ncm-admin-panel .ncm-term2-mod__k { background: var(--ncm-bg-card-head, var(--ncm-bg-card)); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-mod__hint { color: var(--ncm-text-label); }
+
+/* ── RIGHT NOW: who (heading) · what (label) · account + time (num, mono) · unit (label) ── */
+.ncm-admin-panel .ncm-term2-nr:nth-child(even) { background: color-mix(in srgb, var(--ncm-bg-card) 55%, transparent); }
+.ncm-admin-panel .ncm-term2-nr__m { color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-term2-nr__m small { color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-nr__m small b,
+.ncm-admin-panel .ncm-term2-nr__tm b { color: var(--ncm-text-num); }
+.ncm-admin-panel .ncm-term2-nr__l2 { color: var(--t2-attn); }
+.ncm-admin-panel .ncm-term2-nr__num { color: color-mix(in oklab, var(--hc) 78%, var(--ncm-text-heading)); }
+.ncm-admin-panel .ncm-term2-nr.is-good > i { color: var(--t2-good); }
+.ncm-admin-panel .ncm-term2-nr.is-bad > i { color: var(--t2-bad); }
+.ncm-admin-panel .ncm-term2-nr.is-attn > i { color: var(--t2-attn); }
+
+/* ── ACCOUNTS: every account is its own block ── */
+.ncm-admin-panel .ncm-term2-at { background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); }
+.ncm-admin-panel .ncm-term2-acc { border-top: 1px solid var(--ncm-border-active); box-shadow: inset 3px 0 color-mix(in srgb, var(--tc) 70%, transparent); }
+.ncm-admin-panel .ncm-term2-acc:nth-child(odd) { background: color-mix(in srgb, var(--ncm-bg-card) 60%, var(--ncm-bg-pane-alt, var(--ncm-bg-pane))); } /* child 1 is the header row */
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-ar { padding-top: 8px; padding-bottom: 8px; border-bottom: 0; }
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-ar:hover { background: var(--ncm-bg-hover); }
+.ncm-admin-panel .ncm-term2-acc.is-open { box-shadow: inset 4px 0 var(--ncm-act); }
+.ncm-admin-panel .ncm-term2-acc.is-open .ncm-term2-ar { background: color-mix(in srgb, var(--ncm-act) 5%, transparent); box-shadow: none; }
+.ncm-admin-panel .ncm-term2-an .u { font: 700 13px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-term2-an .own { padding-left: 27px; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-an .own i { color: var(--t2-act); }
+.ncm-admin-panel :is(.ncm-term2-at, .ncm-term2-ax) .dim { color: var(--ncm-text-label); font-style: italic; }
+/* the lock: violet; open: green; joiners: label */
+.ncm-admin-panel .ncm-term2-lkw > span,
+.ncm-admin-panel .ncm-term2-kvg .lkf,
+.ncm-admin-panel .ncm-term2-lkw .lk,
+.ncm-admin-panel :is(.ncm-term2-lkw, .ncm-term2-kvg .lkf) b { color: var(--t2-secret); }
+.ncm-admin-panel :is(.ncm-term2-lkw, .ncm-term2-kvg .lkf) em { color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-ar.is-unlocked .lk,
+.ncm-admin-panel :is(.ncm-term2-lkw, .ncm-term2-kvg) .ok { color: var(--t2-good); }
+/* status in its meaning */
+.ncm-admin-panel .ncm-term2-st.is-good { color: var(--t2-good); }
+.ncm-admin-panel .ncm-term2-st.is-bad { color: var(--t2-bad); }
+.ncm-admin-panel .ncm-term2-st.is-attn { color: var(--t2-attn); }
+.ncm-admin-panel .ncm-term2-st.is-quiet { color: var(--ncm-text-label); font-style: italic; font-weight: 400; }
+.ncm-admin-panel .ncm-term2-st .st2 { color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-st .st2 .mono { color: var(--ncm-text-num); }
+/* last: who in body, when in the time role */
+.ncm-admin-panel .ncm-term2-ll .lw { font: 500 12px/18px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-term2-ll .lt { color: var(--ncm-text-time, var(--ncm-text-label)); }
+.ncm-admin-panel .ncm-term2-ll .lt.dim { font-style: italic; }
+
+/* the expanded facts: an inset card edged in the account's hue */
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-ax {
+  margin: 0 9px 10px 23px; padding: 6px 10px 9px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane));
+  border: 1px solid var(--ncm-border-active); border-left: 3px solid var(--tc); border-radius: 2px; box-shadow: none;
+}
+.ncm-admin-panel .ncm-term2-kvg > .k { color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-kvg > .v { color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-term2-kvg .mono { color: var(--ncm-text-num); }
+.ncm-admin-panel .ncm-term2-kvg .un,
+.ncm-admin-panel .ncm-term2-kvg .used { color: var(--t2-attn); }
+.ncm-admin-panel .ncm-term2-kvg .lgr .w { color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-term2-kvg .lgr .t { color: var(--ncm-text-time, var(--ncm-text-label)); }
+
+/* ── RECENT LOGINS: who (heading) · player (label) · account (num mono) · result (meaning) · when (time) ── */
+.ncm-admin-panel .ncm-term2-lr:nth-child(odd) { background: color-mix(in srgb, var(--ncm-bg-card) 55%, transparent); }
+.ncm-admin-panel .ncm-term2-lr .w { color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-term2-lr .a { color: var(--ncm-text-num); }
+.ncm-admin-panel .ncm-term2-lr .a i { color: var(--ncm-text-label); }
+.ncm-admin-panel :is(.ncm-term2-kvg, .ncm-term2-lr) .r.is-good { color: var(--t2-good); }
+.ncm-admin-panel :is(.ncm-term2-kvg, .ncm-term2-lr) .r.is-bad { color: var(--t2-bad); }
+.ncm-admin-panel :is(.ncm-term2-kvg, .ncm-term2-lr) .pl { color: var(--ncm-text-label); }
+/* the account name never truncates for its tags — they wrap under it */
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-an .l1 { flex-wrap: wrap; height: auto; min-height: 18px; row-gap: 2px; }
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-an .u { flex: 0 1 auto; max-width: 100%; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * The View menu (2026-10-28): ONE button replaces the Group and Sort selects.
+ * The button summarises the pick ("View  By location · Name ▾"); the menu is a
+ * body-mounted portal (TerminalsTab._mountViewMenu) with two radio sections.
+ * It carries .ncm-app + the window's data-ncm-admin-theme, so the admin tokens
+ * resolve on it even though it lives outside the panel.
+ * ══════════════════════════════════════════════════════════════════════════ */
+.ncm-admin-panel .ncm-term2 button.ncm-term2-view { gap: 7px !important; max-width: 340px; }
+.ncm-admin-panel .ncm-term2 button.ncm-term2-view.is-open { border-color: var(--ncm-act) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ncm-act) 40%, transparent) !important; }
+.ncm-admin-panel .ncm-term2-view__k { color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-view__v {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 600 12px var(--ncm-font-body); letter-spacing: 0; text-transform: none; color: var(--ncm-text-heading);
+}
+.ncm-admin-panel .ncm-term2 button.ncm-term2-view i.ncm-term2-view__chev { font-size: 9px; color: var(--ncm-text-label); transition: transform .15s; }
+.ncm-admin-panel .ncm-term2 button.ncm-term2-view.is-open i.ncm-term2-view__chev { transform: rotate(180deg); }
+
+/* in the panel the menu is never shown — only the portal copy is */
+.ncm-term2-viewpop { display: none; }
+.ncm-app.ncm-term2-viewpop.is-portal {
+  display: flex; flex-direction: column; position: fixed; z-index: 10000; min-width: 230px; padding: 4px 4px 6px; box-sizing: border-box;
+  background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active); border-radius: 2px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .45); color: var(--ncm-text-primary); font: 13px var(--ncm-font-body);
+}
+.ncm-app.ncm-term2-viewpop .ncm-term2-viewpop__k {
+  padding: 7px 8px 4px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label);
+}
+.ncm-app.ncm-term2-viewpop .ncm-term2-viewpop__k:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--ncm-border); padding-top: 9px; }
+.ncm-app.ncm-term2-viewpop button.ncm-term2-viewpop__opt {
+  appearance: none !important; display: flex !important; align-items: center; justify-content: flex-start !important; gap: 8px; width: 100% !important; height: auto !important; min-height: 0 !important;
+  margin: 0 !important; padding: 5px 8px !important; border: 0 !important; border-radius: 2px !important; box-shadow: none !important; text-shadow: none !important;
+  background: transparent !important; cursor: pointer; text-align: left; line-height: 1.3 !important;
+  font: 500 13px var(--ncm-font-body) !important; letter-spacing: 0 !important; text-transform: none !important; color: var(--ncm-text-primary) !important;
+}
+.ncm-app.ncm-term2-viewpop button.ncm-term2-viewpop__opt:hover,
+.ncm-app.ncm-term2-viewpop button.ncm-term2-viewpop__opt:focus-visible { background: var(--ncm-bg-hover, var(--ncm-bg-card-head)) !important; outline: none; }
+.ncm-app.ncm-term2-viewpop button.ncm-term2-viewpop__opt.is-on {
+  background: color-mix(in srgb, var(--ncm-act) 12%, transparent) !important; color: var(--ncm-text-heading) !important; font-weight: 700 !important;
+  box-shadow: inset 3px 0 var(--ncm-act) !important;
+}
+.ncm-app.ncm-term2-viewpop .ncm-term2-viewpop__opt i { margin: 0 !important; width: 14px; text-align: center; font-size: 11px; }
+.ncm-app.ncm-term2-viewpop .ncm-term2-viewpop__opt i.rd { font-size: 10px; color: var(--ncm-text-label); }
+.ncm-app.ncm-term2-viewpop .ncm-term2-viewpop__opt.is-on i.rd { color: color-mix(in oklab, var(--ncm-act) 85%, var(--ncm-text-heading)); }
+.ncm-app.ncm-term2-viewpop .ncm-term2-viewpop__opt i.ic { color: var(--ncm-text-label); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Distinguishable rows (2026-10-28, dev: "location, account number could have
+ * colours/chips · start accounts closed · use the portrait · the Admin tag is
+ * aligned with the arrow, not the name").
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* rack unit: location = a tag pill in its name hue, account count = a small chip */
+.ncm-admin-panel .ncm-term2-ru__sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px; margin-top: 2px; }
+.ncm-admin-panel .ncm-term2-ru__sub .ncm-tagp.ncm-term2-ru__pl {
+  min-width: 0; max-width: 100%; padding: 0 6px !important; line-height: 17px; gap: 4px;
+  font-size: 11.5px !important; font-weight: 600 !important;
+}
+.ncm-admin-panel .ncm-term2-ru__pl > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term2-ru__none { font: italic 11.5px/17px var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-ru__sub .ncm-term2-ru__n {
+  flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; line-height: 17px; white-space: nowrap;
+  border: 1px solid var(--ncm-border-active); border-radius: 1px; background: var(--ncm-bg-pane, var(--ncm-bg-base));
+}
+.ncm-admin-panel .ncm-term2-ru__n i { margin: 0; font-size: 9px; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-term2-ru__n b { font: 700 11.5px var(--ncm-font-mono); color: var(--ncm-text-num); }
+
+/* account row: chevron · face · (name + tags / owner) — tags wrap under the NAME, not the chevron */
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-an { display: grid; grid-template-columns: 9px 30px minmax(0, 1fr); column-gap: 7px; align-items: center; }
+.ncm-admin-panel .ncm-term2-an__tx { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-an .l1 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 5px; height: auto; min-height: 18px; }
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-an .l1 .ncm-term2-tg { vertical-align: middle; align-self: center; }
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-an .own { padding-left: 0; }
+.ncm-admin-panel .ncm-term2-aav {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; box-sizing: border-box; overflow: hidden;
+  font: 700 11px var(--ncm-font-display); letter-spacing: .02em;
+  color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading));
+  background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane, var(--ncm-bg-base)));
+  border: 2px solid color-mix(in srgb, var(--tc) 70%, transparent);
+}
+[data-ncm-admin-theme="clean-light"] .ncm-term2-aav { color: color-mix(in oklab, var(--tc) 70%, black); }
+.ncm-admin-panel .ncm-term2-aav.has-img { background: var(--ncm-bg-pane, var(--ncm-bg-base)); }
+.ncm-admin-panel .ncm-term2-aav img { width: 100%; height: 100%; object-fit: cover; border: 0; border-radius: 50%; display: block; }
+/* header + expanded facts line up with the name column (9 + 7 + 30 + 7 = 53px) */
+.ncm-admin-panel .ncm-term2-at .ncm-term2-ar--hd .pad1 { padding-left: 46px; }
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-ax { margin-left: 55px; }
+.ncm-admin-panel .ncm-term2-acc .ncm-term2-ar { align-items: center; }
+/* the account column now carries a face — give it a little more of the row */
+.ncm-admin-panel .ncm-term2 .ncm-term2-at { --cols: minmax(0, 1.6fr) minmax(0, 1fr) 86px 52px; }
+.ncm-admin-panel--pop .ncm-term2 .ncm-term2-at { --cols: minmax(0, 1.5fr) minmax(0, 1.2fr) 110px 70px; }
+/* the pill sits on a card (not the band the shared pill was tuned for) — pull its text a touch further toward the heading tone */
+.ncm-admin-panel .ncm-term2-ru__sub .ncm-tagp.ncm-term2-ru__pl { color: color-mix(in oklab, var(--tc) 62%, var(--ncm-text-heading)) !important; }
+/* Lock column: a long bypass skill ("Cryptography DV 20") wraps between words instead of spilling past the
+   column when the panel's scrollbar narrows the table (2026-10-28). */
+.ncm-admin-panel .ncm-term2-lkw > span { min-width: 0; overflow-wrap: anywhere; }
+.ncm-admin-panel .ncm-term2-lkw b { white-space: normal; }
+
+/* ═══ Default rack folds (2026-10-28): a CLOSED group head summarises its units ═══
+ * One count chip per light kind that is on (needs-you first: lockout · trace · armed · heat,
+ * then in · all-locked). Count chips, not a light-per-unit strip: they keep a fixed width at
+ * the 334px list column whatever the group size, and they can carry heat and a trace, which
+ * the four lights cannot. Only shown on a closed head — an open group shows its units. */
+.ncm-admin-panel .ncm-term2-gsum { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; margin-left: auto; }
+.ncm-admin-panel .ncm-term2-gsum + .ncm-term2-n { margin-left: 6px; }
+.ncm-admin-panel .ncm-term2-gsum__c {
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 4px; border-radius: 1px;
+  border: 1px solid color-mix(in srgb, var(--gc, var(--ncm-border)) 45%, transparent);
+  background: color-mix(in srgb, var(--gc, var(--ncm-border)) 10%, transparent);
+  font: 600 10.5px var(--ncm-font-mono); letter-spacing: 0; text-transform: none; color: var(--ncm-text-heading, var(--ncm-text-primary));
+}
+.ncm-admin-panel .ncm-term2-gsum__c b { font-weight: 700; }
+.ncm-admin-panel .ncm-term2-gsum__c > i.fas { font-size: 9.5px; color: var(--gt, var(--gc)); }
+.ncm-admin-panel .ncm-term2-gsum__c .ncm-term2-led { width: 7px; height: 7px; flex: 0 0 auto; }
+.ncm-admin-panel .ncm-term2-gsum__c.is-bad, .ncm-admin-panel .ncm-term2-gsum__c.is-trace { --gc: var(--ncm-bad); --gt: var(--t2-bad, var(--ncm-bad)); }
+.ncm-admin-panel .ncm-term2-gsum__c.is-attn, .ncm-admin-panel .ncm-term2-gsum__c.is-hot, .ncm-admin-panel .ncm-term2-gsum__c.is-unl { --gc: var(--ncm-attn); --gt: var(--t2-attn, var(--ncm-attn)); }
+.ncm-admin-panel .ncm-term2-gsum__c.is-good { --gc: var(--ncm-good); }
+.ncm-admin-panel .ncm-term2-gsum__c.is-secret { --gc: var(--ncm-secret); }
+/* The head of a closed group that needs you carries the meaning on its left edge. */
+.ncm-admin-panel .ncm-term2-grp.is-shut.is-bad { box-shadow: inset 3px 0 0 var(--ncm-bad); }
+.ncm-admin-panel .ncm-term2-grp.is-shut.is-attn { box-shadow: inset 3px 0 0 var(--ncm-attn); }
+/* Forced open (holds the selection / a search is on): the chevron cannot fold it, so it dims. */
+.ncm-admin-panel .ncm-term2-grp.is-forced { cursor: default; }
+.ncm-admin-panel .ncm-term2-grp.is-forced .ncm-term2-grp__chev { opacity: .35; }
+@media (prefers-reduced-motion: reduce) { .ncm-admin-panel .ncm-term2-gsum .ncm-term2-led { animation: none !important; } }
+
+/* ── + New ▾ (2026-10-29; the Shards tab's New menu, for terminals: blank · convert · import) ── */
+.ncm-admin-panel .ncm-term2-new { position: relative; display: inline-flex; flex: none; }
+.ncm-admin-panel .ncm-term2-newmenu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; min-width: 290px; padding: 4px; display: none;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-elevated, var(--ncm-bg-card)); box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+.ncm-admin-panel .ncm-term2-new.is-open .ncm-term2-newmenu { display: block; }
+.ncm-admin-panel .ncm-term2-newmenu__it { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 2px; cursor: pointer; text-align: left;
+  font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; }
+.ncm-admin-panel .ncm-term2-newmenu__it:hover { background: var(--ncm-bg-surface, var(--ncm-bg-hover)); }
+.ncm-admin-panel .ncm-term2-newmenu__it > i { width: 14px; flex: none; text-align: center; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-term2-newmenu__it small { margin-left: auto; padding-left: 10px; font-size: 11px; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-term2-grp__chev { transition: transform .18s cubic-bezier(.4,0,.2,1); }

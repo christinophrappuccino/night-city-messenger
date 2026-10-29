@@ -1,0 +1,446 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Jack in — the lock</title>
+<!--
+  JACK IN, round 3 (2026-10-29). The v2 tunnel/walls version "doesn't feel climactic" (dev). This one is built around
+  a payoff: three rings of a lock, each layer you beat clicks into the slot, the last one is the roll with real
+  tension, and getting in OPENS the lock and blooms the network out in front of you.
+  Off disk is fine (no module imports). ?kind=in|miss|wait · ?at=<seconds> freeze a moment · ?still=1 = the end frame
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  body { margin: 0; padding: 22px; background: #141419; font-family: sans-serif; }
+  .mk-h { max-width: 1100px; margin: 10px auto 4px; color: #eee; font: 700 15px sans-serif; }
+  .mk-p { max-width: 1100px; margin: 0 auto 12px; color: #aaa; font: 13px/1.5 sans-serif; } .mk-p b { color: #ddd; }
+  .mk-row { max-width: 1100px; margin: 0 auto; display: flex; gap: 22px; align-items: flex-start; }
+  .mk-ctl { display: flex; gap: 8px; margin: 0 0 8px; }
+  .mk-ctl button { all: unset; cursor: pointer; padding: 5px 12px; border: 1px solid #555; color: #ddd; font: 600 12px sans-serif; background: #222; }
+  .mk-ctl button:hover { border-color: #5c9bff; color: #fff; }
+  .mk-beats { color: #aaa; font: 12.5px/1.55 sans-serif; max-width: 380px; }
+  .mk-beats b { color: #ddd; } .mk-beats ol { margin: 6px 0 0; padding-left: 18px; } .mk-beats li { margin: 0 0 6px; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+
+  .jl { --nc: #5c9bff; --bad: #ff4d5e; --ok: #3ddc84; position: relative; width: 680px; height: 480px; overflow: hidden; color: #e8eefc; font: 13px var(--ncm-font-body);
+    background: radial-gradient(60% 60% at 50% 46%, color-mix(in srgb, var(--nc) 10%, transparent), transparent 70%), #03050b;
+    clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px); }
+  .jl::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 20; background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px); }
+  .jl-frame { position: absolute; inset: 0; pointer-events: none; z-index: 21; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nc) 30%, transparent); }
+  .jl-bar { position: absolute; left: 0; right: 0; top: 0; z-index: 10; display: flex; align-items: center; gap: 10px; padding: 7px 16px 7px 22px; font: 700 10.5px var(--ncm-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--nc);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 18%, transparent), transparent 70%); border-bottom: 1px solid color-mix(in srgb, var(--nc) 30%, transparent); }
+  .jl-bar i { margin: 0 !important; } .jl-bar .r { margin-left: auto; color: #8a93ad; }
+  .jl svg { position: absolute; left: 50%; top: 38px; width: 360px; height: 360px; margin-left: -180px; overflow: visible; z-index: 2; }
+  .arc { fill: none; stroke: var(--nc); stroke-linecap: butt; }
+  .ring.ok .arc { stroke: color-mix(in srgb, var(--nc) 45%, #fff); filter: drop-shadow(0 0 6px var(--nc)); }
+  .ring.bad .arc { stroke: var(--bad); filter: drop-shadow(0 0 6px var(--bad)); }
+  .tick { fill: none; stroke: color-mix(in srgb, var(--nc) 45%, transparent); stroke-width: 1; }
+  .notch { fill: color-mix(in srgb, var(--nc) 70%, #fff); }
+  .ring.ok .notch { fill: #fff; } .ring.bad .notch { fill: var(--bad); }
+  .slot { fill: none; stroke: #fff; stroke-width: 1.5; }
+  .guide { stroke: color-mix(in srgb, var(--nc) 30%, transparent); stroke-width: 1; stroke-dasharray: 2 4; }
+  .core { fill: #070b16; stroke: var(--nc); stroke-width: 1.5; }
+  .shock { fill: none; stroke: color-mix(in srgb, var(--nc) 60%, #fff); }
+  .edge { stroke: var(--nc); stroke-width: 1.4; fill: none; filter: drop-shadow(0 0 3px var(--nc)); }
+  .bn { fill: #060a14; stroke: var(--nc); stroke-width: 1.6; filter: drop-shadow(0 0 5px var(--nc)); }
+  .bn.hub { fill: color-mix(in srgb, var(--nc) 35%, #060a14); stroke: #fff; }
+  .crack { stroke: #fff; stroke-width: 2; fill: none; filter: drop-shadow(0 0 4px var(--bad)); }
+  .jl-lock { position: absolute; left: 50%; top: 218px; z-index: 4; width: 60px; height: 40px; margin: -20px 0 0 -30px; display: grid; place-items: center; font-size: 24px; color: var(--nc); }
+  .jl-lock i { margin: 0 !important; filter: drop-shadow(0 0 8px currentColor); }
+  /* left: the three layers */
+  .jl-layers { position: absolute; left: 22px; top: 66px; z-index: 5; display: flex; flex-direction: column; gap: 8px; }
+  .ly { display: grid; grid-template-columns: 22px auto; gap: 1px 8px; align-items: center; opacity: .45; }
+  .ly i { grid-row: span 2; margin: 0 !important; width: 22px; text-align: center; color: var(--nc); }
+  .ly b { font: 700 10.5px var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; }
+  .ly small { font: 700 9.5px var(--ncm-font-mono); letter-spacing: .1em; color: #8a93ad; }
+  .ly.live { opacity: 1; } .ly.ok { opacity: 1; } .ly.ok i, .ly.ok small { color: var(--ok); } .ly.bad { opacity: 1; } .ly.bad i, .ly.bad small { color: var(--bad); }
+  .jl-alert { position: absolute; right: 18px; top: 66px; z-index: 5; text-align: right; font: 700 9.5px var(--ncm-font-mono); letter-spacing: .12em; color: #8a93ad; }
+  .jl-alert div { display: flex; gap: 3px; justify-content: flex-end; margin-top: 4px; }
+  .jl-alert span { width: 14px; height: 6px; background: rgba(255,255,255,.12); clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%); }
+  .jl-alert span.w { background: #f7c948; } .jl-alert span.a { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+  /* bottom: the roll */
+  .jl-roll { position: absolute; left: 0; right: 0; bottom: 18px; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .cols { display: flex; align-items: flex-end; gap: 6px; }
+  .cw { display: flex; flex-direction: column; align-items: center; gap: 3px; font: 700 8.5px var(--ncm-font-mono); letter-spacing: .1em; color: #8a93ad; }
+  .cw .c { width: 32px; height: 34px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--nc) 35%, transparent); font: 700 18px var(--ncm-font-mono); color: #8a93ad; background: rgba(3,5,11,.85); }
+  .cw.lock .c { color: #fff; border-color: var(--nc); box-shadow: 0 0 8px color-mix(in srgb, var(--nc) 55%, transparent); }
+  .cw.is-d10 .c { width: 40px; border-color: color-mix(in srgb, var(--nc) 60%, transparent); }
+  .op { font: 700 14px var(--ncm-font-mono); color: #5d6680; padding-bottom: 14px; }
+  .tot { margin-left: 10px; padding-bottom: 2px; text-align: left; font: 700 8.5px var(--ncm-font-mono); letter-spacing: .1em; color: #8a93ad; }
+  .tot b { display: block; font: 700 30px/1 var(--ncm-font-mono); color: #fff; letter-spacing: 0; }
+  .meter { position: relative; width: 420px; height: 6px; background: rgba(255,255,255,.08); }
+  .meter i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 40%, transparent), var(--nc)); }
+  .meter em { position: absolute; left: 60%; top: -5px; bottom: -5px; width: 2px; background: #fff; }
+  .meter em::after { content: 'DV 15'; position: absolute; top: 12px; left: -13px; font: 700 9px var(--ncm-font-mono); font-style: normal; color: #cfd6ea; white-space: nowrap; }
+  /* the payoff */
+  .jl-result { position: absolute; left: 0; right: 0; bottom: 22px; z-index: 7; text-align: center; opacity: 0; }
+  .jl-result .nm { font: 700 34px var(--ncm-font-display); letter-spacing: .22em; color: #fff; text-shadow: 0 0 18px var(--nc); }
+  .jl-result .sub { margin-top: 2px; font: 700 10.5px var(--ncm-font-mono); letter-spacing: .18em; color: color-mix(in srgb, var(--nc) 70%, #fff); }
+  .jl-result .pips { display: flex; justify-content: center; gap: 8px; margin-top: 10px; align-items: center; font: 700 10px var(--ncm-font-display); letter-spacing: .14em; color: #cfd6ea; }
+  .jl-result .pip { width: 14px; height: 14px; transform: rotate(45deg); background: var(--nc); box-shadow: 0 0 10px var(--nc); opacity: 0; }
+  .jl.miss .jl-result .nm { color: var(--bad); text-shadow: 0 0 18px var(--bad); }
+  .jl.miss .jl-result .sub { color: #ffb3ba; }
+  .jl-flash { position: absolute; inset: 0; z-index: 15; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 46%, #fff, color-mix(in srgb, var(--nc) 60%, transparent) 35%, transparent 75%); }
+  .jl-vig { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 46%, transparent 30%, rgba(0,0,0,.85) 75%); }
+  .jl-static { position: absolute; inset: 0; z-index: 14; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+    background: repeating-linear-gradient(0deg, rgba(255,77,94,.28) 0 2px, transparent 2px 4px), repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px); }
+  .jl-skull { position: absolute; left: 50%; top: 218px; z-index: 13; width: 120px; height: 120px; margin: -60px 0 0 -60px; display: grid; place-items: center; font-size: 64px; color: var(--bad); opacity: 0; }
+  .jl-skull i { margin: 0 !important; filter: drop-shadow(0 0 18px var(--bad)); }
+  .jl-wait { position: absolute; left: 50%; width: 360px; margin-left: -180px; padding: 6px 0; background: rgba(3,5,11,.85); bottom: 112px; z-index: 7; text-align: center; opacity: 0; }
+  .jl-wait b { display: block; font: 700 15px var(--ncm-font-display); letter-spacing: .24em; color: #f7c948; }
+  .jl-wait small { color: #bbb; }
+  .jl-skip { position: absolute; right: 18px; bottom: 8px; z-index: 9; font: 700 9.5px var(--ncm-font-mono); letter-spacing: .12em; color: #5d6680; }
+
+  /* ── cyberpunk pass ── */
+  .jl { --hl: #fcee0a; }
+  .jl-frame { background:
+      linear-gradient(var(--hl), var(--hl)) 0 16px / 2px 26px no-repeat,
+      linear-gradient(var(--hl), var(--hl)) 16px 0 / 26px 2px no-repeat,
+      linear-gradient(var(--hl), var(--hl)) 100% calc(100% - 16px) / 2px 26px no-repeat,
+      linear-gradient(var(--hl), var(--hl)) calc(100% - 16px) 100% / 26px 2px no-repeat; }
+  .jl-bar .haz { width: 54px; height: 10px; background: repeating-linear-gradient(-45deg, var(--hl) 0 4px, transparent 4px 8px); opacity: .85; }
+  .jl-bar .r { color: var(--hl); }
+  .jl-rain { position: absolute; inset: 34px 0 0 0; z-index: 0; overflow: hidden; pointer-events: none; opacity: .16;
+    -webkit-mask-image: radial-gradient(70% 70% at 50% 45%, transparent 22%, #000 70%); mask-image: radial-gradient(70% 70% at 50% 45%, transparent 22%, #000 70%); }
+  .jl-rain div { position: absolute; top: 0; width: 14px; font: 700 10px/12px var(--ncm-font-mono); color: var(--nc); white-space: pre; text-align: center; }
+  .jl-sweep { position: absolute; left: 50%; top: 218px; width: 400px; height: 400px; margin: -200px 0 0 -200px; z-index: 1; border-radius: 50%; pointer-events: none;
+    background: conic-gradient(from 0deg, transparent 0 300deg, color-mix(in srgb, var(--nc) 0%, transparent) 300deg, color-mix(in srgb, var(--nc) 28%, transparent) 358deg, transparent 360deg); }
+  .txt { font: 700 7.5px var(--ncm-font-mono); letter-spacing: 2.2px; fill: color-mix(in srgb, var(--nc) 60%, transparent); }
+  .ring.ok .txt { fill: color-mix(in srgb, var(--nc) 55%, #fff); } .ring.bad .txt { fill: var(--bad); }
+  .notch { fill: var(--hl) !important; }
+  .ring.bad .notch { fill: var(--bad) !important; }
+  .slot { stroke: var(--hl); stroke-width: 2; }
+  .hlt { fill: var(--hl); }
+  .jl-hud { position: absolute; z-index: 5; font: 700 9px/1.6 var(--ncm-font-mono); letter-spacing: .1em; color: #6f7a96; white-space: pre; }
+  .jl-hud b { color: var(--hl); font-weight: 700; } .jl-hud em { color: var(--nc); font-style: normal; }
+  .ly { border-left: 2px solid transparent; padding-left: 8px; }
+  .ly .ix { font: 700 8.5px var(--ncm-font-mono); color: var(--hl); letter-spacing: .1em; margin-right: 4px; }
+  .ly.live { border-left-color: var(--hl); } .ly.ok { border-left-color: var(--ok); } .ly.bad { border-left-color: var(--bad); }
+  .jl-slices { position: absolute; inset: 34px 0 0 0; z-index: 12; pointer-events: none; }
+  .jl-slices i { position: absolute; left: 0; right: 0; display: block; mix-blend-mode: screen; }
+  .tot b { text-shadow: 2px 0 rgba(255,0,80,.55), -2px 0 rgba(0,220,255,.55); }
+  .jl-result .nm { text-shadow: 3px 0 rgba(255,0,80,.6), -3px 0 rgba(0,220,255,.6), 0 0 18px var(--nc) !important; }
+  .jl.miss .jl-result .nm { text-shadow: 3px 0 rgba(255,0,80,.8), -3px 0 rgba(0,220,255,.5), 0 0 18px var(--bad) !important; }
+</style>
+</head>
+<body>
+<div class="mk-h">Jack in — the lock opens</div>
+<div class="mk-p">Three rings of a lock, one per layer. Each layer you beat <b>clicks into the slot</b>. The last ring is the roll: it slows, the total stalls one short, the screen tightens… then it lands. Getting in <b>cracks the lock open</b> and the network <b>blooms out</b> in front of you, with your moves dropping in. A miss grinds, goes red, and slams shut.</div>
+<div class="mk-row">
+  <div>
+    <div class="mk-ctl"><button data-k="in">▶ Play — IN</button><button data-k="miss">▶ Play — MISS</button><button data-k="wait">▶ GM decides</button></div>
+    <div class="ncm-app jl mk-win" id="JL">
+      <div class="jl-frame"></div>
+      <div class="jl-rain" id="RAIN"></div><div class="jl-sweep" id="SWEEP"></div>
+      <div class="jl-bar"><i class="fas fa-plug"></i>Jacking in // Kabuki relay mast<span class="r">Interface · DV 15</span><span class="haz"></span></div>
+      <div class="jl-vig" id="VIG"></div>
+      <svg viewBox="-180 -180 360 360" id="SVG"></svg>
+      <div class="jl-slices" id="SLICES"></div>
+      <div class="jl-hud" id="HUDL" style="left:22px;bottom:96px"></div>
+      <div class="jl-hud" id="HUDR" style="right:18px;top:98px;text-align:right"></div>
+      <div class="jl-lock" id="LOCK"><i class="fas fa-lock"></i></div>
+      <div class="jl-layers">
+        <div class="ly" data-ly="0"><i class="fas fa-lock"></i><b><span class="ix">L1</span>Box lock</b><small>—</small></div>
+        <div class="ly" data-ly="1"><i class="fas fa-microchip"></i><b><span class="ix">L2</span>Firmware</b><small>—</small></div>
+        <div class="ly" data-ly="2"><i class="fas fa-tower-broadcast"></i><b><span class="ix">L3</span>Network</b><small>—</small></div>
+      </div>
+      <div class="jl-alert">ALERT<div><span class="w"></span><span id="AL2"></span><span></span></div></div>
+      <div class="jl-roll" id="ROLL">
+        <div class="cols">
+          <div class="cw" data-c="0"><div class="c">7</div>TECH</div><div class="op">+</div>
+          <div class="cw" data-c="1"><div class="c">4</div>INTERFACE</div><div class="op">+</div>
+          <div class="cw" data-c="2"><div class="c">1</div>DECK</div><div class="op">+</div>
+          <div class="cw is-d10" data-c="3"><div class="c">?</div>d10</div>
+          <div class="tot">TOTAL<b id="TOT">—</b></div>
+        </div>
+        <div class="meter"><i id="MET"></i><em></em></div>
+      </div>
+      <div class="jl-result" id="RES"><div class="nm" id="NM"></div><div class="sub" id="SUB"></div><div class="pips" id="PIPS"></div></div>
+      <div class="jl-wait" id="WAIT"><b>AWAITING GM</b><small>Run the netrun at the table — step away any time</small></div>
+      <div class="jl-skull" id="SKULL"><i class="fas fa-skull"></i></div>
+      <div class="jl-static" id="STAT"></div>
+      <div class="jl-flash" id="FLASH"></div>
+      <div class="jl-skip">CLICK TO SKIP</div>
+    </div>
+  </div>
+  <div class="mk-beats">
+    <b>The beats (about 6 seconds, skippable)</b>
+    <ol>
+      <li><b>Line in.</b> The lock fades up, three rings spinning at different speeds.</li>
+      <li><b>Box lock, firmware.</b> Each ring decelerates and <b>clicks</b> into the slot at the top (a snap, a flash along the guide, the layer turns green on the left).</li>
+      <li><b>The roll.</b> Tech, Interface and Deck lock in. The d10 and the last ring keep spinning; the total stalls at 12, the screen darkens at the edges and pulses like a heartbeat.</li>
+      <li><b>IN.</b> The ring overshoots, settles in the slot, the d10 lands: 18. Every ring flashes white, a shockwave goes out, the lock <b>splits apart</b>, and the network blooms outward node by node behind it. The name decodes; your moves drop in one at a time.</li>
+      <li><b>MISS.</b> The ring stops short of the slot and grinds. The rings go red from the inside out, a crack runs across, the lock slams shut, static, the ICE skull, the alert jumps.</li>
+      <li><b>GM decides.</b> The first two rings click in; the last keeps turning slowly until the GM calls it.</li>
+    </ol>
+    <b>Sound</b> (existing assets): a click per snap, the hack-progress hum building through the stall, hack-success on the open (shard-decrypt as the bloom), hack-fail + black-ice on a miss.
+  </div>
+</div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const JL = document.getElementById('JL'), SVG = document.getElementById('SVG');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent?.appendChild(e); return e; };
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = (u) => 1 - Math.pow(1 - u, 3);
+const eIn = (u) => u * u * u;
+const eBack = (u) => { const c = 1.9; return 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2); };
+const pt = (r, a) => [r * Math.sin(a * Math.PI / 180), -r * Math.cos(a * Math.PI / 180)];
+const arcD = (r, a0, a1) => { const [x0, y0] = pt(r, a0), [x1, y1] = pt(r, a1); return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
+
+// ── build the lock ──
+const RINGS = [
+  { r: 150, w: 7, seg: 6, spin: 300, dir: 1, t0: 0.45, T: 1.35 },
+  { r: 118, w: 6, seg: 5, spin: 260, dir: -1, t0: 1.25, T: 2.25 },
+  { r: 86, w: 9, seg: 4, spin: 520, dir: 1, t0: 3.1, T: 4.1 },
+];
+// chromatic split: red and blue copies pulled apart; dx is driven per frame
+const DEFS = el('defs', {}, SVG);
+const FIL = el('filter', { id: 'chroma', x: '-20%', y: '-20%', width: '140%', height: '140%' }, DEFS);
+el('feColorMatrix', { in: 'SourceGraphic', type: 'matrix', values: '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0', result: 'r' }, FIL);
+const OFR = el('feOffset', { in: 'r', dx: 0, dy: 0, result: 'ro' }, FIL);
+el('feColorMatrix', { in: 'SourceGraphic', type: 'matrix', values: '0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0', result: 'gb' }, FIL);
+const OFB = el('feOffset', { in: 'gb', dx: 0, dy: 0, result: 'gbo' }, FIL);
+el('feBlend', { in: 'ro', in2: 'gbo', mode: 'screen' }, FIL);
+// bloom network behind the lock (drawn first = underneath)
+const BLOOM = el('g', {}, SVG);
+const NODES = [
+  { a: 0, r: 0, p: -1, hub: 1 }, { a: 20, r: 70, p: 0 }, { a: 100, r: 78, p: 0 }, { a: 200, r: 72, p: 0 }, { a: 290, r: 80, p: 0 },
+  { a: 5, r: 140, p: 1 }, { a: 45, r: 130, p: 1 }, { a: 90, r: 150, p: 2 }, { a: 130, r: 140, p: 2 }, { a: 175, r: 150, p: 3 },
+  { a: 225, r: 140, p: 3 }, { a: 265, r: 150, p: 4 }, { a: 320, r: 140, p: 4 }, { a: 25, r: 172, p: 6 }, { a: 150, r: 172, p: 8 }, { a: 245, r: 172, p: 10 }, { a: 340, r: 172, p: 12 },
+];
+NODES.forEach((n, i) => { n.xy = pt(n.r, n.a); n.depth = n.p < 0 ? 0 : NODES[n.p].depth + 1; });
+NODES.forEach((n, i) => {
+  if (n.p >= 0) { const [x0, y0] = NODES[n.p].xy, [x1, y1] = n.xy; n.len = Math.hypot(x1 - x0, y1 - y0); n.line = el('line', { class: 'edge', x1: x0, y1: y0, x2: x1, y2: y1, 'stroke-dasharray': n.len, 'stroke-dashoffset': n.len }, BLOOM); }
+});
+NODES.forEach((n) => { n.dot = el('circle', { class: 'bn' + (n.hub ? ' hub' : ''), cx: n.xy[0], cy: n.xy[1], r: 0 }, BLOOM); });
+const SHOCK = el('circle', { class: 'shock', r: 0, 'stroke-width': 0, opacity: 0 }, SVG);
+const GUIDE = el('line', { class: 'guide', x1: 0, y1: -170, x2: 0, y2: -40 }, SVG);
+const LOCKG = el('g', { filter: 'url(#chroma)' }, SVG);
+const RING_TXT = ['L1 // BOX LOCK // AUTH 0x3FA2 // SEQ 0482 // ', 'L2 // FIRMWARE NCPD-OS 4.7 // CHK 9E21 // ', 'L3 // NCPD DISPATCH // HANDSHAKE // '];
+RINGS.forEach((R, ri) => {
+  R.g = el('g', { class: 'ring' }, LOCKG);
+  R.rot = el('g', {}, R.g);
+  el('circle', { class: 'tick', r: R.r - R.w - 3, 'stroke-dasharray': '1 7' }, R.rot);
+  const step = 360 / R.seg, gap = 7;
+  R.arcs = [];
+  for (let i = 0; i < R.seg; i++) {
+    const a0 = i * step + gap / 2 + (i === 0 ? 5 : 0), a1 = (i + 1) * step - gap / 2 - (i === R.seg - 1 ? 5 : 0);
+    const g = el('g', {}, R.rot);
+    el('path', { class: 'arc', d: arcD(R.r, a0, a1), 'stroke-width': R.w }, g);
+    R.arcs.push({ g, mid: (a0 + a1) / 2 });
+  }
+  const tr = R.r - R.w / 2 - 10;
+  el('path', { id: 'tp' + ri, d: `M0 ${-tr} A${tr} ${tr} 0 1 1 -0.01 ${-tr}`, fill: 'none' }, DEFS);
+  const circ = 2 * Math.PI * tr, base = RING_TXT[ri];
+  R.txt = el('text', { class: 'txt' }, R.rot);
+  const tp = el('textPath', { href: '#tp' + ri }, R.txt);
+  tp.textContent = base.repeat(Math.ceil(circ / (base.length * 6.6)) + 1).slice(0, Math.floor(circ / 6.6));
+  R.notch = el('polygon', { class: 'notch', points: `-5,${-R.r - R.w / 2 - 7} 5,${-R.r - R.w / 2 - 7} 0,${-R.r + R.w / 2 + 1}` }, R.rot);
+});
+const HLT = [-22, -16, 16, 22].map((x) => el('rect', { class: 'hlt', x: x - 1.5, y: -178, width: 3, height: 6 }, SVG));
+const SLOT = el('path', { class: 'slot', d: 'M-12 -176 L-6 -168 L6 -168 L12 -176' }, SVG);
+const CORE = el('polygon', { class: 'core', points: [0, 60, 120, 180, 240, 300].map((a) => pt(40, a).map((v) => v.toFixed(1)).join(',')).join(' ') }, SVG);
+const CRACK = el('path', { class: 'crack', d: 'M-150 -40 L-60 -10 L-20 -34 L30 12 L80 -6 L150 30', 'stroke-dasharray': 360, 'stroke-dashoffset': 360, opacity: 0 }, SVG);
+
+// ── the timeline ──
+let KIND = Q.get('kind') || 'in';
+const OPEN = 4.1, END = { in: 6.4, miss: 5.6, wait: 99 };
+const D10 = { in: 6, miss: 1 };
+const TOTAL = { in: 18, miss: 13 };
+const GLYPHS = '0123456789ABCDEF#$%&@';
+const scramble = (txt, u, seed) => [...txt].map((ch, i) => (ch === ' ' || i / txt.length < u) ? ch : GLYPHS[(i * 7 + seed) % GLYPHS.length]).join('');
+
+function ringAngle(R, i, t) {
+  const final = i === 2;
+  const target = final && KIND === 'miss' ? -34 : 0;
+  if (final && KIND === 'wait') {
+    // decelerates to a slow drift, never settles
+    const v = R.spin * Math.max(0.12, 1 - prog(t, 2.6, 3.6) * 0.88);
+    return (R.spin * Math.min(t, 2.6) + R.spin * 0.56 * Math.max(0, Math.min(t, 3.6) - 2.6) + v * Math.max(0, t - 3.6)) * R.dir;
+  }
+  const Rem = R.spin * (R.T - R.t0) / 3;
+  let a;
+  if (t < R.t0) a = target - R.dir * (Rem + R.spin * (R.t0 - t));
+  else if (t < R.T) { const u = prog(t, R.t0, R.T); a = target - R.dir * Rem * (1 - (final ? eBack(u) : eOut(u))); }
+  else a = target;
+  if (final && KIND === 'miss' && t > R.T && t < R.T + 0.5) a += Math.sin(t * 90) * 4 * (1 - prog(t, R.T, R.T + 0.5));
+  return a;
+}
+
+const RAIN = document.getElementById('RAIN');
+const RAIN_COLS = Array.from({ length: 30 }, (_, i) => {
+  const d = document.createElement('div');
+  d.style.left = (i * 23 + 4) + 'px';
+  d.textContent = Array.from({ length: 40 }, (_, k) => '0123456789ABCDEF'[(i * 13 + k * 7 + (i * k) % 5) % 16]).join('\n');
+  RAIN.appendChild(d);
+  return { d, speed: 30 + (i * 37) % 50, phase: (i * 71) % 480 };
+});
+const SLICES = document.getElementById('SLICES');
+const hex = (n, w = 4) => (n >>> 0).toString(16).toUpperCase().padStart(w, '0').slice(-w);
+// glitch moments: every click, the open / the miss
+function glitchAmt(t) {
+  const marks = RINGS.map((R, i) => (i === 2 && KIND === 'wait') ? null : R.T).filter((x) => x != null).concat(KIND === 'wait' ? [] : [OPEN + (KIND === 'miss' ? 0.45 : 0)]);
+  let g = 0; marks.forEach((m) => { const d = t - m; if (d >= 0 && d < 0.14) g = Math.max(g, 1 - d / 0.14); });
+  return g;
+}
+let lastPips = -1;
+function paint(t) {
+  const isIn = KIND === 'in', isMiss = KIND === 'miss', isWait = KIND === 'wait';
+  JL.classList.toggle('miss', isMiss);
+  const fade = eOut(prog(t, 0, 0.45));
+  SVG.style.opacity = fade;
+  // background: rain, sweep, hud
+  RAIN_COLS.forEach((c) => { c.d.style.transform = `translateY(${(((t * c.speed + c.phase) % 480) - 480).toFixed(1)}px)`; });
+  const SW = document.getElementById('SWEEP');
+  SW.style.transform = `rotate(${(t * 140) % 360}deg)`;
+  SW.style.opacity = isIn && t > OPEN ? 1 - prog(t, OPEN, OPEN + 0.4) : (isMiss && t > OPEN ? 0 : fade * 0.9);
+  const f = Math.floor(t * 20);
+  document.getElementById('HUDL').innerHTML = `SYN ▸ <em>0x3FA2:C9</em>\nLAT ${String(9 + (f * 7) % 9).padStart(3, '0')}ms\nPKT <b>${hex(f * 2654435761, 6)}</b>\nKEY ${hex(f * 40503 + 77, 4)}-${hex(f * 9176 + 3, 4)}`;
+  const hs = RINGS.filter((R, i) => t >= R.T && !(i === 2 && (isWait || isMiss))).length;
+  document.getElementById('HUDR').innerHTML = `HANDSHAKE <b>${hs}/3</b>\nTRACE ${isMiss && t > OPEN ? '<b style="color:var(--bad)">LOCKED</b>' : (Math.min(t, OPEN) * 0.11).toFixed(2)}\nICE <em>${isMiss && t > OPEN ? 'ARMED' : 'DORMANT'}</em>`;
+  // chromatic split + glitch slices
+  const g = glitchAmt(t);
+  const stallBeat = prog(t, 3.0, 3.3) * (isWait ? 0.4 : 1 - prog(t, 4.0, 4.1)) * Math.pow(Math.max(0, Math.sin(t * Math.PI * 2.4)), 6);
+  const dx = 0.7 + g * 6 + stallBeat * 3 + (isMiss && t > OPEN + 0.45 ? 2.5 + Math.sin(t * 50) * 1.5 : 0);
+  OFR.setAttribute('dx', dx.toFixed(2)); OFB.setAttribute('dx', (-dx).toFixed(2));
+  SVG.style.transform = g > 0 ? `translateX(${((f % 2 ? 1 : -1) * g * 5).toFixed(1)}px)` : '';
+  if (g > 0.05) {
+    const seed = Math.floor(t * 50);
+    SLICES.innerHTML = [0, 1, 2, 3].map((k) => { const y = ((seed * 37 + k * 113) % 400); const h = 3 + ((seed + k * 7) % 14); const col = isMiss && t > OPEN ? 'var(--bad)' : (k % 2 ? 'var(--hl)' : 'var(--nc)'); return `<i style="top:${y}px;height:${h}px;background:${col};opacity:${(g * 0.45).toFixed(2)};transform:translateX(${((k % 2 ? 1 : -1) * 20 * g).toFixed(0)}px)"></i>`; }).join('');
+  } else if (SLICES.innerHTML) SLICES.innerHTML = '';
+  // rings
+  RINGS.forEach((R, i) => {
+    const ang = ringAngle(R, i, t);
+    const settled = t >= R.T && !(i === 2 && isWait);
+    const snap = settled ? Math.max(0, 1 - (t - R.T) / 0.25) : 0;
+    let scale = 1 + snap * 0.04;
+    // miss: rings go red inside-out, then slam
+    const redAt = OPEN + (2 - i) * 0.1;
+    const bad = isMiss && t >= redAt;
+    R.g.classList.toggle('ok', settled && !(i === 2 && isMiss) && !bad);
+    R.g.classList.toggle('bad', bad);
+    if (isMiss) scale *= 1 - 0.12 * eIn(prog(t, OPEN + 0.4, OPEN + 0.55)) + 0.03 * Math.sin(prog(t, OPEN + 0.55, OPEN + 0.9) * Math.PI);
+    R.rot.setAttribute('transform', `rotate(${ang.toFixed(2)})`);
+    R.g.setAttribute('transform', `scale(${scale.toFixed(4)})`);
+    // IN: the lock splits apart
+    const o = isIn ? prog(t, OPEN + 0.05, OPEN + 0.75) : 0;
+    R.arcs.forEach((A) => {
+      const k = eIn(o) * (130 + i * 30), [dx, dy] = pt(k, A.mid);
+      A.g.setAttribute('transform', `translate(${dx.toFixed(1)} ${dy.toFixed(1)})`);
+      A.g.style.opacity = 1 - o;
+    });
+    R.notch.style.opacity = 1 - o;
+    R.txt.style.opacity = 1 - o;
+    if (isIn) R.g.style.filter = t >= OPEN && t < OPEN + 0.25 ? 'brightness(2.4)' : '';
+  });
+  // the guide lights per click
+  const lit = RINGS.filter((R, i) => t >= R.T && !(i === 2 && (isWait || isMiss))).length;
+  GUIDE.style.stroke = lit ? `color-mix(in srgb, var(--nc) ${30 + lit * 22}%, #fff)` : '';
+  GUIDE.style.opacity = isIn ? 1 - prog(t, OPEN, OPEN + 0.4) : 1;
+  SLOT.style.opacity = isIn ? 1 - prog(t, OPEN, OPEN + 0.4) : 1;
+  HLT.forEach((h) => { h.style.opacity = SLOT.style.opacity; });
+  CORE.style.opacity = isIn ? 1 - prog(t, OPEN, OPEN + 0.35) : 1;
+  CORE.style.stroke = isMiss && t > OPEN ? 'var(--bad)' : '';
+  // layers on the left
+  document.querySelectorAll('.ly').forEach((ly, i) => {
+    const R = RINGS[i], s = ly.querySelector('small');
+    const state = t >= R.T ? (i === 2 ? (isIn ? 'ok' : isMiss ? 'bad' : 'live') : 'ok') : t >= R.t0 - 0.3 ? 'live' : '';
+    ly.className = 'ly ' + state;
+    s.textContent = state === 'ok' ? 'OPEN' : state === 'bad' ? 'DENIED' : state === 'live' ? (i === 2 && isWait && t >= R.T ? 'AWAITING GM' : 'WORKING…') : '—';
+  });
+  // the roll
+  const locks = [2.3, 2.55, 2.8];
+  document.querySelectorAll('.cw').forEach((cw, i) => {
+    const c = cw.querySelector('.c');
+    const lockT = i < 3 ? locks[i] : (isWait ? 1e9 : 4.0);
+    const locked = t >= lockT;
+    cw.classList.toggle('lock', locked);
+    if (i === 3) c.textContent = locked ? D10[KIND] : (t > 2.0 ? GLYPHS[Math.floor(t * 23) % 10] : '?');
+    else c.textContent = t >= 1.9 ? (locked ? [7, 4, 1][i] : Math.floor(t * 31 + i * 3) % 10) : [7, 4, 1][i];
+  });
+  let tot = 0; [7, 4, 1].forEach((v, i) => { if (t >= locks[i]) tot += v; });
+  if (!isWait && t >= 4.0) tot = Math.round(12 + (TOTAL[KIND] - 12) * eOut(prog(t, 4.0, 4.18)));
+  document.getElementById('TOT').textContent = t >= locks[0] ? tot : '—';
+  document.getElementById('MET').style.width = (Math.min(tot, 25) / 25 * 100).toFixed(1) + '%';
+  // tension: the stall, the heartbeat
+  const stall = prog(t, 3.0, 3.3) * (isWait ? 1 : 1 - prog(t, 4.0, 4.1));
+  const beat = Math.pow(Math.max(0, Math.sin(t * Math.PI * 2.4)), 6);
+  document.getElementById('VIG').style.opacity = (stall * (0.55 + 0.35 * beat)).toFixed(3);
+  RINGS[2].g.style.filter = stall > 0 && !isMiss ? `drop-shadow(0 0 ${(4 + 8 * beat).toFixed(1)}px var(--nc))` : (isIn && t >= OPEN && t < OPEN + 0.25 ? 'brightness(2.4)' : '');
+  // the lock glyph
+  const LOCK = document.getElementById('LOCK'), li = LOCK.querySelector('i');
+  if (isIn && t >= OPEN) { li.className = 'fas fa-lock-open'; LOCK.style.transform = `scale(${1 + prog(t, OPEN, OPEN + 0.5) * 0.9})`; LOCK.style.opacity = 1 - prog(t, OPEN + 0.15, OPEN + 0.6); LOCK.style.color = '#fff'; }
+  else { li.className = 'fas fa-lock'; LOCK.style.transform = isMiss && t > OPEN + 0.4 && t < OPEN + 0.9 ? `translateX(${(Math.sin(t * 80) * 4).toFixed(1)}px)` : ''; LOCK.style.opacity = isMiss ? 1 - prog(t, OPEN + 0.5, OPEN + 0.6) : fade; LOCK.style.color = isMiss && t > OPEN ? 'var(--bad)' : ''; }
+  // IN: flash, shockwave, bloom, result
+  const FL = document.getElementById('FLASH');
+  FL.style.opacity = isIn ? (0.75 * (prog(t, OPEN, OPEN + 0.06) - prog(t, OPEN + 0.06, OPEN + 0.5))).toFixed(3) : 0;
+  const sw = isIn ? prog(t, OPEN, OPEN + 0.8) : 0;
+  SHOCK.setAttribute('r', (40 + eOut(sw) * 300).toFixed(1));
+  SHOCK.setAttribute('stroke-width', (6 * (1 - sw)).toFixed(2));
+  SHOCK.setAttribute('opacity', sw > 0 && sw < 1 ? (1 - sw).toFixed(3) : 0);
+  NODES.forEach((n) => {
+    const t0 = OPEN + 0.25 + n.depth * 0.2;
+    const u = isIn ? prog(t, t0, t0 + 0.3) : 0;
+    if (n.line) n.line.setAttribute('stroke-dashoffset', (n.len * (1 - eOut(u))).toFixed(1));
+    const p = isIn ? prog(t, t0 + 0.2, t0 + 0.4) : 0;
+    n.dot.setAttribute('r', ((n.hub ? 9 : 5) * eBack(p) * (p > 0 ? 1 : 0)).toFixed(2));
+  });
+  const ROLL = document.getElementById('ROLL'), RES = document.getElementById('RES');
+  ROLL.style.opacity = isWait ? 1 : 1 - prog(t, OPEN + 0.2, OPEN + 0.5);
+  RES.style.opacity = isWait ? 0 : prog(t, OPEN + 0.45, OPEN + 0.7);
+  RES.style.transform = `translateY(${(10 * (1 - eOut(prog(t, OPEN + 0.45, OPEN + 0.8)))).toFixed(1)}px)`;
+  const NM = document.getElementById('NM'), SUB = document.getElementById('SUB'), PIPS = document.getElementById('PIPS');
+  if (isIn) {
+    NM.textContent = scramble('NCPD DISPATCH', prog(t, OPEN + 0.5, OPEN + 1.3), Math.floor(t * 30));
+    SUB.textContent = 'ACCESS GRANTED · 18 VS DV 15 · NODE 0x3FA2';
+    const n = [5.6, 5.85, 6.1].filter((x) => t >= x).length;
+    if (PIPS.dataset.k !== 'in') { PIPS.dataset.k = 'in'; PIPS.innerHTML = '<span>MOVES</span><span class="pip"></span><span class="pip"></span><span class="pip"></span>'; }
+    PIPS.querySelectorAll('.pip').forEach((p, i) => {
+      const u = prog(t, [5.6, 5.85, 6.1][i], [5.6, 5.85, 6.1][i] + 0.18);
+      p.style.opacity = u; p.style.transform = `rotate(45deg) translateY(${(-14 * (1 - eOut(u))).toFixed(1)}px)`;
+    });
+  } else if (isMiss) {
+    NM.textContent = scramble('REJECTED', prog(t, OPEN + 0.6, OPEN + 1.1), Math.floor(t * 30));
+    SUB.textContent = '13 VS DV 15 · TRACE FIRED · HEAT +20 · 2 TRIES LEFT';
+    PIPS.dataset.k = 'miss'; PIPS.innerHTML = '';
+  }
+  // MISS: crack, static, skull, alert, shake
+  CRACK.setAttribute('opacity', isMiss && t > OPEN + 0.25 ? 1 - prog(t, OPEN + 1.0, OPEN + 1.4) * 0.6 : 0);
+  CRACK.setAttribute('stroke-dashoffset', (360 * (1 - eOut(isMiss ? prog(t, OPEN + 0.25, OPEN + 0.45) : 0))).toFixed(1));
+  document.getElementById('STAT').style.opacity = isMiss ? (prog(t, OPEN + 0.45, OPEN + 0.5) * (1 - 0.6 * prog(t, OPEN + 0.9, OPEN + 1.4)) * (0.7 + 0.3 * Math.sin(t * 60))).toFixed(3) : 0;
+  const sk = isMiss ? prog(t, OPEN + 0.5, OPEN + 0.72) : 0;
+  const SK = document.getElementById('SKULL');
+  SK.style.opacity = sk; SK.style.transform = `scale(${(3 - 2 * eOut(sk)).toFixed(3)})`;
+  document.getElementById('AL2').className = isMiss && t > OPEN + 0.5 ? 'a' : '';
+  JL.style.transform = isMiss && t > OPEN + 0.5 && t < OPEN + 0.9 ? `translate(${(Math.sin(t * 70) * 5).toFixed(1)}px, ${(Math.cos(t * 53) * 3).toFixed(1)}px)` : '';
+  document.getElementById('WAIT').style.opacity = isWait ? prog(t, 3.6, 3.9) * (0.75 + 0.25 * Math.sin(t * 4)) : 0;
+}
+
+let start = 0, raf = 0, frozen = null;
+function run(kind) {
+  KIND = kind; cancelAnimationFrame(raf); start = performance.now();
+  const loop = (now) => { const t = (now - start) / 1000; paint(t); if (t < END[KIND]) raf = requestAnimationFrame(loop); };
+  raf = requestAnimationFrame(loop);
+}
+document.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => run(b.dataset.k)));
+JL.addEventListener('click', () => { if (KIND === 'wait') return; cancelAnimationFrame(raf); paint(END[KIND]); });
+const at = Q.get('at');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (at != null) paint(parseFloat(at));
+else if (Q.get('still') === '1' || reduced) paint(END[KIND] === 99 ? 5 : END[KIND]);
+else paint(0);
+</script>
+</body>
+</html>

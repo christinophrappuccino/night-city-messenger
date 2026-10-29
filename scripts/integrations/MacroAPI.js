@@ -160,7 +160,7 @@ export class MacroAPI {
      */
     ns.messenger.setNetwork = async (networkId) => {
       if (!isGM()) return { success: false, error: 'GM only' };
-      return ns.networkService?.setNetwork(networkId) ?? { success: false };
+      return ns.networkService?.switchNetwork(networkId, { force: true }) ?? { success: false };
     };
 
     /**
@@ -172,7 +172,8 @@ export class MacroAPI {
       if (!isGM()) return { success: false, error: 'GM only' };
       const scene = sceneId ? game.scenes.get(sceneId) : game.scenes.active;
       if (!scene) return { success: false, error: 'Scene not found' };
-      return ns.networkService?.setDeadZone(scene.id, isDeadZone) ?? { success: false };
+      await ns.networkService?.toggleDeadZone(scene.id, isDeadZone ?? !scene.getFlag(MODULE_ID, 'deadZone'));
+      return { success: true, deadZone: !!scene.getFlag(MODULE_ID, 'deadZone') };
     };
 
     // ═══════════════════════════════════════════════════════════

@@ -68,7 +68,9 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
   const svc = makeService();
   const r = await svc._relayMessage(msg('m2'));
   ok(r.success === true && r.queued === true && r.reason === 'dead_zone', 'dead zone → queued with reason dead_zone');
-  ok(svc.emitted.length === 0, 'dead zone → nothing relayed to the GM');
+  ok(!svc.emitted.some(e => e.op === SOCKET_OPS.MESSAGE_RELAY), 'dead zone → nothing relayed to the GM');
+  // Admin → Messages → Outbox: the GM (online) is TOLD what is being held — a report, not a relay.
+  ok(svc.emitted.length === 1 && svc.emitted[0].op === SOCKET_OPS.MESSAGE_QUEUE_SYNC && svc.emitted[0].data.entries.length === 1, 'dead zone → the held message is reported to the GM (MESSAGE_QUEUE_SYNC)');
   deadZone = false;
 }
 

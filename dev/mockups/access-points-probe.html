@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Access points probe</title>
+<!--
+  Renders the REAL handout markup (scripts/utils/accessPoints.js) against the real cascade: the chat card in the
+  three colour styles, the journal chip (found + missing), and the grouped Night City menu.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/access-points-probe.html
+  (or headless with --allow-file-access-from-files)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 20px; background: #1b1b22; display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+  .col { width: 300px; } .lbl { color: #aaa; font: 12px sans-serif; margin: 10px 0 4px; }
+  .chat { padding: 6px; background: #2a2a30; border: 1px solid #444; }
+  .jr { padding: 12px; background: #f1ead8; color: #222; font: 14px serif; width: 320px; }
+  .ncm-ctx-menu { position: relative !important; }
+</style>
+</head>
+<body>
+<div class="col" id="cards"></div>
+<div class="col"><div class="lbl">Journal page</div><div class="jr" id="jr"></div>
+  <div class="lbl">Night City menu (sheet / directory)</div><div id="menu"></div>
+  <div class="lbl">Admin Access menu (clean-light)</div><div id="menu2" data-ncm-admin-theme="clean-light" class="ncm-app"></div></div>
+<script type="module">
+  const A = await import('../../scripts/utils/accessPoints.js');
+  const ref = A.accessRef('terminal', 'Item.ws7f12');
+  const src = { primary: '#ff2a4f', accent: '#ffb000', bgDeep: '#12060a', textPrimary: '#ffe9ee', textSecondary: '#c99aa5' };
+  const info = { name: 'WS-7F-12', sub: 'Arasaka · Tower 7F', tags: ['3 accounts', 'SECRET'] };
+  const styles = [['Match the source (Arasaka red)', { mode: 'match' }], ['Module default', { mode: 'default' }], ['My colours', { mode: 'custom', custom: { primary: '#c084fc', accent: '#34d399', bg: '#0d0a14', text: '#efe9ff' } }]];
+  document.getElementById('cards').innerHTML = styles.map(([l, s]) => `<div class="lbl">${l}</div><div class="chat">${A.accessCardHtml(ref, info, A.handoutPalette(s, src))}</div>`).join('');
+  document.getElementById('jr').innerHTML = `Rache said the files are on ${A.accessChipHtml(ref, 'WS-7F-12', A.handoutPalette({ mode: 'match' }, src))} — and the old ${A.accessChipHtml(A.accessRef('shard', 'Item.gone'), 'Go-bag', A.HANDOUT_DEFAULT, true)} is gone.`;
+  const menu = (title, rows) => `<div class="ncm-ctx-menu">${title ? `<div class="ncm-ctx-menu__title"><i class="fas fa-terminal"></i>${title}</div>` : ''}${rows.map(r => r.head ? `<div class="ncm-ctx-menu__head">${r.head}</div>` : r.sep ? '<div class="ncm-ctx-menu__sep"></div>' : `<div class="ncm-ctx-menu__item${r.bad ? ' is-bad' : ''}"><i class="${r.icon}"></i> ${r.label}</div>`).join('')}</div>`;
+  const rows = [{ head: 'Access' }, { label: 'Place on this scene', icon: 'fas fa-map-pin' }, { label: 'Add to hotbar', icon: 'fas fa-bolt' }, { label: 'Post to chat…', icon: 'fas fa-comment' }, { label: 'Copy journal link', icon: 'fas fa-link' }, { head: 'Item' }, { label: 'Edit item sheet', icon: 'fas fa-file-alt' }, { sep: true }, { label: 'Remove terminal data', icon: 'fas fa-rotate-left', bad: true }];
+  document.getElementById('menu').innerHTML = menu('WS-7F-12', rows);
+  document.getElementById('menu2').innerHTML = menu('', rows.slice(0, 5));
+  document.title = 'OK';
+</script>
+</body>
+</html>

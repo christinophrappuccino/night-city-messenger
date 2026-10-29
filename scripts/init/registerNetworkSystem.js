@@ -24,19 +24,14 @@ import { NetworkAccessLogService } from '../services/NetworkAccessLogService.js'
 import { TraceService } from '../services/TraceService.js';
 
 // UI Applications
-import { NetworkManagementApp } from '../ui/NetworkManagement/NetworkManagementApp.js';
 import { NetworkAuthDialog } from '../ui/NetworkManagement/NetworkAuthDialog.js';
 import { CreateNetworkDialog } from '../ui/NetworkManagement/CreateNetworkDialog.js';
+import { NodeConsoleApp } from '../ui/NetworkNodes/NodeConsoleApp.js';
+import { NodeInspectorApp } from '../ui/NetworkNodes/NodeInspectorApp.js';
 import { DeadZoneWarningApp } from '../ui/NetworkManagement/DeadZoneWarningApp.js';
 
 // Verification
 import { Phase3Verification } from '../tests/Phase3Verification.js';
-
-/**
- * Track open management app instance for singleton behavior
- * @type {NetworkManagementApp|null}
- */
-let _managementApp = null;
 
 export function registerNetworkSystem(initializer) {
 
@@ -48,6 +43,12 @@ export function registerNetworkSystem(initializer) {
     const networkService = new NetworkService();
     game.nightcity.networkService = networkService;
     log.info('NetworkService initialized');
+    // A scene imported from a compendium picks up its pre-wiring (Admin → Networks → Scenes → In compendiums).
+    // Only the client that created it applies it — that is the GM who imported, so it is written once.
+    Hooks.on('createScene', (scene, _opts, userId) => {
+      if (userId !== game.user.id) return;
+      game.nightcity?.networkService?.applyScenePrewire?.(scene);
+    });
   });
 
   // ═══════════════════════════════════════════════════════════
@@ -110,6 +111,13 @@ export function registerNetworkSystem(initializer) {
     }
 
     // ─── Network State Changed (GM → All Clients) ─────────
+    // Network nodes: a player's switch-off / jam relays here; one GM lands it.
+    socketManager.register(SOCKET_OPS.NETWORK_NODE_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
+      try { await game.nightcity?.networkService?.handleNodeRequest(data); } catch (err) { log.error('Network node relay failed:', err); }
+    });
+
     socketManager.register(SOCKET_OPS.NETWORK_STATE_CHANGED, (data, sender) => {
       const { type, networkId, sceneId, isDead, actorId, actorName, isGMAction } = data;
 
@@ -259,103 +267,33 @@ export function registerNetworkSystem(initializer) {
     const ns = game.nightcity;
     log.info('Registering network UI launch functions...');
 
-    // ─── openNetworkManagement (GM only) ────────────────────
-    ns.openNetworkManagement = () => {
+    // ─── The Network Manager is folded into Admin → Networks (2026-10-27) ───
+    // Every old opener (scene-control button, macro API, Security deep links,
+    // CreateNetworkDialog) now opens that tab in its own larger window.
+    // `select` grammar: NetworksTab.openTo — 'view:<v>' | 'new' | 'show:<id>' | 'log:<id>' | '<id>' (edit).
+    const openNetworksTab = (select = null) => {
       if (!isGM()) {
         ui.notifications.warn('NCM | Network Management is GM-only.');
-        return;
+        return null;
       }
-
-      // Singleton pattern: reuse if already rendered, otherwise create fresh
-      if (_managementApp?.rendered) {
-        _managementApp.bringToFront();
-        return;
-      }
-
-      _managementApp = new NetworkManagementApp();
-      _managementApp.render(true);
+      return ns.openAdminTab?.('networks', { popout: true, select });
     };
+
+    ns.openNetworkManagement = () => openNetworksTab();
 
     // Network Manager Alias
     ns.openNetworkManager = ns.openNetworkManagement;
 
-    /**
-     * Open Network Manager with a specific network pre-selected.
-     * Has direct closure access to _managementApp, avoiding ui.windows lookup.
-     * @param {string} networkId - Network to select
-     */
-    ns.openNetworkManagerToNetwork = (networkId) => {
-      if (!isGM()) {
-        ui.notifications.warn('NCM | Network Management is GM-only.');
-        return;
-      }
-
-      const wasRendered = _managementApp?.rendered;
-
-      // If already rendered, set state and re-render
-      if (wasRendered) {
-        _managementApp._activeTab = 'networks';
-        _managementApp._selectedNetworkId = networkId;
-        _managementApp._isEditMode = true;
-        _managementApp._isCreating = false;
-        _managementApp.bringToFront();
-        _managementApp.render(true);
-        return;
-      }
-
-      // Create fresh, set state BEFORE first render picks it up
-      _managementApp = new NetworkManagementApp();
-      _managementApp._selectedNetworkId = networkId;
-      _managementApp._activeTab = 'networks';
-      _managementApp._isEditMode = true;
-      _managementApp.render(true);
-    };
+    /** Open on one network, in the editor. @param {string} networkId */
+    ns.openNetworkManagerToNetwork = (networkId) => openNetworksTab(networkId || null);
 
     /**
      * Open Network Manager directly to the Logs tab.
      */
-    ns.openNetworkManagerToLogs = () => {
-      if (!isGM()) {
-        ui.notifications.warn('NCM | Network Management is GM-only.');
-        return;
-      }
+    ns.openNetworkManagerToLogs = () => openNetworksTab('view:log');
 
-      if (_managementApp?.rendered) {
-        _managementApp._activeTab = 'logs';
-        _managementApp.bringToFront();
-        _managementApp.render(true);
-        return;
-      }
-
-      _managementApp = new NetworkManagementApp();
-      _managementApp._activeTab = 'logs';
-      _managementApp.render(true);
-    };
-
-    /**
-     * Open Network Manager in create-new-network mode.
-     */
-    ns.openNetworkManagerToCreate = () => {
-      if (!isGM()) {
-        ui.notifications.warn('NCM | Network Management is GM-only.');
-        return;
-      }
-
-      if (_managementApp?.rendered) {
-        _managementApp._activeTab = 'networks';
-        _managementApp._selectedNetworkId = null;
-        _managementApp._isEditMode = false;
-        _managementApp._isCreating = true;
-        _managementApp.bringToFront();
-        _managementApp.render(true);
-        return;
-      }
-
-      _managementApp = new NetworkManagementApp();
-      _managementApp._activeTab = 'networks';
-      _managementApp._isCreating = true;
-      _managementApp.render(true);
-    };
+    /** Open on a New network. */
+    ns.openNetworkManagerToCreate = () => openNetworksTab('new');
 
     // ─── Network Public API Functions ───────────────────────
     ns.getCurrentNetwork = () => ns.networkService?.currentNetwork ?? null;
@@ -410,6 +348,11 @@ export function registerNetworkSystem(initializer) {
     // ─── Dead Zone Warning Overlay ────────────────────
     DeadZoneWarningApp.registerListeners();
     ns.showDeadZoneWarning = (sceneName) => DeadZoneWarningApp.show(sceneName);
+
+    // ─── Network nodes: the console a player opens at a node (dev/design/NETWORK-NODES.md) ───
+    ns.openNode = (nodeId) => NodeConsoleApp.open(nodeId);
+    ns.inspectNode = (nodeId) => NodeInspectorApp.open(nodeId);
+    ns.openSoundBoard = () => import('../ui/Sounds/SoundBoardApp.js').then(({ SoundBoardApp }) => SoundBoardApp.open());
 
     // ─── Quick Create Network Dialog ────────────────
     ns.createNetwork = (options) => CreateNetworkDialog.show(options);

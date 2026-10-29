@@ -43,7 +43,6 @@
 .ncm-app .ncm-contact-manager,
 .ncm-app .ncm-admin-panel,
 .ncm-app .ncm-item-inbox,
-.ncm-app .ncm-network-management,
 .ncm-app .ncm-theme-customizer {
   background: var(--ncm-bg-deep);
 }
@@ -352,7 +351,6 @@
 .ncm-app .ncm-contact-manager,
 .ncm-app .ncm-admin-panel,
 .ncm-app .ncm-item-inbox,
-.ncm-app .ncm-network-management,
 .ncm-app .ncm-theme-customizer {
   position: relative;
 }

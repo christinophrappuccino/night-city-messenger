@@ -529,6 +529,8 @@ export class MessageRepository {
 
           status: {
             read: messageData.status?.read || false,
+            // When it was read, on the game clock (markAsRead stamps it). New mail: null.
+            readAt: null,
             saved: false,
             spam: messageData.status?.spam || false,
             encrypted: messageData.status?.encrypted || !!messageData.encryption || false,
@@ -572,6 +574,10 @@ export class MessageRepository {
             recoveredFrom: messageData.metadata?.recoveredFrom || null,
             recoveredTo: messageData.metadata?.recoveredTo || null,
             recoveredOrigTs: messageData.metadata?.recoveredOrigTs || null,
+            // Spam generator provenance — survives a player moving the mail out of Spam.
+            spamSource: messageData.metadata?.spamSource || null,
+            spamCategory: messageData.metadata?.spamCategory || null,
+            spamTemplateId: messageData.metadata?.spamTemplateId || null,
           },
 
           attachments: messageData.attachments || [],
@@ -821,10 +827,34 @@ export class MessageRepository {
     }
   }
 
+  /**
+   * WHEN a message was read, on the GAME clock (the time provider) — the
+   * Admin → Messages delivery line shows it. `readAt` (top level) stays the
+   * real-time stamp it always was; `status.readAt` is the game-time one.
+   * @returns {string} ISO
+   */
+  static readStamp() {
+    try {
+      const t = game.nightcity?.timeService?.getCurrentTime?.();
+      if (t) return typeof t === 'string' ? t : new Date(t).toISOString();
+    } catch { /* fall through */ }
+    return new Date().toISOString();
+  }
+
   async markAsRead(actorId, messageId) {
     return this.updateMessage(actorId, messageId, {
       'status.read': true,
+      'status.readAt': MessageRepository.readStamp(),
       readAt: new Date().toISOString(),
+    });
+  }
+
+  /** The other way: back to unread (tester, 2026-10-29 — "marked all read, could not mark the last one unread"). */
+  async markAsUnread(actorId, messageId) {
+    return this.updateMessage(actorId, messageId, {
+      'status.read': false,
+      'status.readAt': null,
+      readAt: null,
     });
   }
 
@@ -842,6 +872,7 @@ export class MessageRepository {
       if (!journal) return { success: false, count: 0, error: 'Inbox not found' };
 
       const readAt = new Date().toISOString();
+      const gameReadAt = MessageRepository.readStamp();
       const updates = journal.pages.contents
         .filter(p => {
           const f = p.flags?.[MODULE_ID];
@@ -850,6 +881,7 @@ export class MessageRepository {
         .map(p => ({
           _id: p.id,
           [`flags.${MODULE_ID}.status.read`]: true,
+          [`flags.${MODULE_ID}.status.readAt`]: gameReadAt,
           [`flags.${MODULE_ID}.readAt`]: readAt,
         }));
 
@@ -1158,7 +1190,7 @@ export class MessageRepository {
       simpleCalendarData: flags.simpleCalendarData,
       readAt: flags.readAt,
       network: flags.network,
-      status: { ...flags.status },
+      status: { ...flags.status, readAt: flags.status?.readAt || null },
       encryption: flags.encryption ? { ...flags.encryption } : null,
       metadata: { ...flags.metadata },
       attachments: flags.attachments || [],

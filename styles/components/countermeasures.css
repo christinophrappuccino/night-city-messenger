@@ -1,0 +1,156 @@
+/* ============================================================================
+ * Countermeasure visibility (2026-10-27) — `ncm-cmv-*`.
+ * Mock: dev/mockups/countermeasure-visibility-mock.html. Rules: utils/countermeasures.js.
+ *
+ *  1. The player readout in the auth dialog (layperson / spotted), on --nad-* tokens
+ *     (network-auth-dialog.css defines them on the dialog root, with fallbacks).
+ *  2. The shard breach dialog's notice (body-mounted Dialog → hard fallbacks).
+ *  3. The admin card + the per-object override block, on --ncm-* tokens only
+ *     (they follow the admin presets inside admin-tagged windows).
+ * ========================================================================== */
+
+/* ─── 1 · the security readout: same slot, size and anatomy as .ncm-auth__ice ─── */
+.ncm-cmv-sec { --cmv-c: var(--nad-text-muted, #8e8ea8);
+  margin-bottom: 10px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--cmv-c) 35%, var(--nad-border, #2a2a45));
+  background: color-mix(in srgb, var(--cmv-c) 5%, var(--nad-bg-base, #12121a)); overflow: hidden; }
+.ncm-cmv-sec--spotted { --cmv-c: var(--nad-accent, #f7c948); }
+.ncm-cmv-sec__hd { display: flex; align-items: center; gap: 12px; padding: 11px 13px 9px; }
+.ncm-cmv-sec__por { position: relative; width: 42px; height: 42px; flex: none; border-radius: 5px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cmv-c) 40%, transparent); background: var(--nad-bg-deep, #0a0a0f);
+  display: grid; place-items: center; color: color-mix(in srgb, var(--cmv-c) 80%, var(--nad-text-primary, #ededf0)); font-size: calc(17px * var(--ncm-text-scale, 1)); }
+.ncm-cmv-sec__por::before { content: ''; position: absolute; inset: -50%;
+  background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--cmv-c) 22%, transparent) 0 1px, transparent 1px 3px),
+              repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 2px, transparent 2px 5px);
+  animation: ncm-cmv-static .45s steps(4) infinite; opacity: .9; }
+.ncm-cmv-sec__por i { position: relative; z-index: 1; text-shadow: 0 0 8px var(--nad-bg-deep, #0a0a0f); }
+@keyframes ncm-cmv-static { 0% { transform: translate(0,0); } 25% { transform: translate(-6%,4%); } 50% { transform: translate(5%,-3%); } 75% { transform: translate(-3%,-5%); } 100% { transform: translate(0,0); } }
+.ncm-cmv-sec__ttl { font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--nad-font-title, 'Orbitron', sans-serif); letter-spacing: .06em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--cmv-c) 75%, var(--nad-text-primary, #ededf0)); }
+.ncm-cmv-sec__sub { margin-top: 2px; font: calc(13px * var(--ncm-text-scale, 1))/1.35 var(--nad-font-display, 'Rajdhani', sans-serif); color: var(--nad-text-secondary, #bdbdd0); }
+
+.ncm-cmv-ro { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 0 13px 11px;
+  background: var(--nad-border, #2a2a45); border: 1px solid var(--nad-border, #2a2a45); border-radius: 3px; overflow: hidden; }
+.ncm-cmv-ro__c { padding: 6px 9px; background: var(--nad-bg-deep, #0a0a0f); min-width: 0; }
+.ncm-cmv-ro__k { display: flex; align-items: center; gap: 5px; font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--nad-font-display, 'Rajdhani', sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--nad-text-secondary, #bdbdd0); }
+.ncm-cmv-ro__k i { font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-cmv-ro__v { margin-top: 3px; font: calc(13px * var(--ncm-text-scale, 1)) var(--nad-font-mono, 'Share Tech Mono', monospace); color: var(--nad-text-primary, #ededf0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-cmv-ro__v.is-known { color: color-mix(in srgb, var(--cmv-c) 80%, var(--nad-text-primary, #ededf0)); }
+.ncm-cmv-ro__v small { color: var(--nad-text-secondary, #bdbdd0); font-size: calc(11px * var(--ncm-text-scale, 1)); }
+.ncm-cmv-redact { display: inline-block; height: 9px; vertical-align: middle; border-radius: 1px;
+  background: linear-gradient(90deg, var(--nad-border-active, #3a3a5a) 0 40%, color-mix(in srgb, var(--cmv-c) 35%, var(--nad-border-active, #3a3a5a)) 50%, var(--nad-border-active, #3a3a5a) 60% 100%);
+  background-size: 300% 100%; animation: ncm-cmv-shimmer 2.4s linear infinite; }
+@keyframes ncm-cmv-shimmer { from { background-position: 100% 0; } to { background-position: -200% 0; } }
+
+/* the scan strip — collapsible; the header is a real button (keyboard + aria-expanded) */
+.ncm-cmv-scan { border-top: 1px solid color-mix(in srgb, var(--cmv-c) 22%, var(--nad-border, #2a2a45));
+  background: color-mix(in srgb, var(--nad-secondary, #19f3f7) 3%, transparent); }
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog button.ncm-cmv-scan__hd { appearance: none; box-sizing: border-box !important; display: flex !important; align-items: center; gap: 8px; width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+  height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 9px 13px !important; border: 0 !important; border-radius: 0 !important;
+  background: transparent !important; box-shadow: none !important; cursor: pointer; text-align: left; line-height: 1.2; }
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog button.ncm-cmv-scan__hd:hover { background: color-mix(in srgb, var(--nad-secondary, #19f3f7) 7%, transparent) !important; }
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog button.ncm-cmv-scan__hd:focus-visible { outline: 1px solid var(--nad-secondary, #19f3f7); outline-offset: -2px; }
+.ncm-cmv-scan__t { font: 700 calc(12px * var(--ncm-text-scale, 1)) var(--nad-font-display, 'Rajdhani', sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--nad-secondary, #19f3f7); }
+.ncm-cmv-scan__t i { margin-right: 5px; }
+.ncm-cmv-scan__count { padding: 1px 6px; border-radius: 1px; border: 1px solid color-mix(in srgb, var(--nad-secondary, #19f3f7) 40%, transparent);
+  font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--nad-font-display, 'Rajdhani', sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--nad-secondary, #19f3f7); }
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-cmv-scan__more { margin-left: auto !important; }
+.ncm-cmv-scan__more { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--nad-secondary, #19f3f7) 45%, transparent);
+  font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--nad-font-display, 'Rajdhani', sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--nad-secondary, #19f3f7); }
+.ncm-cmv-scan__more i { font-size: 9px; transition: transform .25s cubic-bezier(.22,1,.36,1); }
+.ncm-cmv-scan.is-open .ncm-cmv-scan__more i { transform: rotate(180deg); }
+.ncm-cmv-scan__t, .ncm-cmv-scan__count, .ncm-cmv-scan__more { flex: none; white-space: nowrap; }
+.ncm-cmv-scan__body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.22,1,.36,1); }
+.ncm-cmv-scan.is-open .ncm-cmv-scan__body { grid-template-rows: 1fr; }
+.ncm-cmv-scan__in { overflow: hidden; min-height: 0; }
+.ncm-cmv-scan__pad { padding: 2px 13px 11px; opacity: 0; transform: translateY(-4px); transition: opacity .2s, transform .3s cubic-bezier(.22,1,.36,1); }
+.ncm-cmv-scan.is-open .ncm-cmv-scan__pad { opacity: 1; transform: none; }
+.ncm-cmv-scan .ncm-auth__skrow { --accent-c: var(--nad-secondary, #19f3f7); }
+.ncm-cmv-scan .ncm-auth__skrow + .ncm-auth__skrow { margin-top: 6px; }
+.ncm-cmv-scan .ncm-auth__skrow-ico { color: var(--nad-secondary, #19f3f7); }
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-cmv-scan .ncm-auth__skrow-btn {
+  color: var(--nad-secondary, #19f3f7) !important; border-color: color-mix(in srgb, var(--nad-secondary, #19f3f7) 45%, transparent) !important;
+  background: color-mix(in srgb, var(--nad-secondary, #19f3f7) 10%, transparent) !important; }
+.ncm-cmv-scan__foot { margin-top: 7px; font: calc(12px * var(--ncm-text-scale, 1)) var(--nad-font-display, 'Rajdhani', sans-serif); color: var(--nad-text-secondary, #bdbdd0); }
+.ncm-cmv-scan__foot i { margin-right: 5px; }
+.ncm-cmv-scanned { padding: 7px 13px 10px; font: calc(12px * var(--ncm-text-scale, 1)) var(--nad-font-display, 'Rajdhani', sans-serif); color: var(--nad-text-secondary, #bdbdd0); }
+.ncm-cmv-scanned i { margin-right: 5px; color: var(--cmv-c); }
+
+/* "how you know" — the credit line on an identified ICE panel */
+.ncm-cmv-credit { display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; padding: 1px 6px; border-radius: 1px;
+  border: 1px solid color-mix(in srgb, var(--nad-secondary, #19f3f7) 40%, transparent); color: var(--nad-secondary, #19f3f7);
+  font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--nad-font-display, 'Rajdhani', sans-serif); letter-spacing: .08em; text-transform: uppercase; }
+.ncm-cmv-qq { font-family: var(--nad-font-mono, 'Share Tech Mono', monospace); color: var(--nad-text-secondary, #bdbdd0); }
+@media (prefers-reduced-motion: reduce) {
+  .ncm-cmv-sec__por::before, .ncm-cmv-redact { animation: none; }
+  .ncm-cmv-scan__body, .ncm-cmv-scan__pad, .ncm-cmv-scan__more i { transition: none; }
+}
+
+/* ─── 2 · the shard breach dialog's notice (Dialog is body-mounted: hard fallbacks) ─── */
+.ncm-hd-cmv { display: flex; gap: 10px; align-items: center; margin: 0 0 10px; padding: 8px 10px; border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--ncm-text-muted, #8e8ea8) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-text-muted, #8e8ea8) 7%, transparent); }
+.ncm-hd-cmv--spotted { border-color: color-mix(in srgb, var(--ncm-accent, #f7c948) 45%, transparent); background: color-mix(in srgb, var(--ncm-accent, #f7c948) 7%, transparent); }
+.ncm-hd-cmv > i { font-size: 16px; color: var(--ncm-text-secondary, #bdbdd0); width: 22px; text-align: center; }
+.ncm-hd-cmv--spotted > i { color: var(--ncm-accent, #f7c948); }
+.ncm-hd-cmv__t { font: 700 12px var(--ncm-font-display, 'Rajdhani', sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary, #ededf0); }
+.ncm-hd-cmv__s { font: 12px/1.35 var(--ncm-font-body, 'Rajdhani', sans-serif); color: var(--ncm-text-secondary, #bdbdd0); }
+
+/* ─── 3 · admin card + per-object override (inside .ncm-app windows) ─── */
+.ncm-app .ncm-cmv-modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+.ncm-app .ncm-cmv-mode { position: relative; display: flex !important; flex-direction: column; gap: 3px; margin: 0 !important; padding: 8px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer; background: var(--ncm-bg-base);
+  text-transform: none !important; letter-spacing: 0 !important; }
+.ncm-app .ncm-cmv-mode input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+.ncm-app .ncm-cmv-mode:has(input:checked) { border-color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-base)); }
+.ncm-app .ncm-cmv-mode:has(input:focus-visible) { outline: 1px solid var(--ncm-secondary); outline-offset: 1px; }
+.ncm-app .ncm-cmv-mode i { color: var(--ncm-secondary); font-size: 13px; }
+.ncm-app .ncm-cmv-mode .t { font: 700 12px var(--ncm-font-display); text-transform: uppercase; letter-spacing: .04em; color: var(--ncm-text-primary); }
+.ncm-app .ncm-cmv-mode .d { font: 12px/1.3 var(--ncm-font-display); color: var(--ncm-text-secondary); }
+
+.ncm-app .ncm-cmv-block { border: 1px solid var(--ncm-border); border-radius: 2px; margin-bottom: 10px; background: var(--ncm-bg-deep); }
+.ncm-app .ncm-cmv-block__hd { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-base);
+  font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-app .ncm-cmv-block__hd i { color: var(--ncm-secondary); }
+.ncm-app .ncm-cmv-block__hd .hint { margin-left: auto; font: italic 500 11px var(--ncm-font-display); text-transform: none; letter-spacing: 0; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-cmv-block__bd { padding: 9px 10px; display: flex; flex-direction: column; gap: 8px; }
+.ncm-app .ncm-cmv-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font: 13px var(--ncm-font-display); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-cmv-line[hidden], .ncm-app .ncm-cmv-ovr [hidden] { display: none !important; }
+.ncm-app .ncm-cmv-line > .k { width: 68px; flex: none; font: 700 10px var(--ncm-font-display); text-transform: uppercase; letter-spacing: .06em; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-cmv-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 1px;
+  font: 700 11px var(--ncm-font-display); color: var(--ncm-text-primary); background: var(--ncm-bg-surface); }
+.ncm-app .ncm-cmv-chip img { width: 14px; height: 14px; object-fit: cover; border: 0; border-radius: 1px; }
+.ncm-app .ncm-cmv-chip .m { font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-secondary); }
+.ncm-app .ncm-cmv-chip [data-op] { cursor: pointer; color: var(--ncm-text-secondary); font-size: 10px; }
+.ncm-app .ncm-cmv-chip [data-op]:hover { color: var(--ncm-danger); }
+.ncm-app .ncm-cmv-chip--add { border-style: dashed; color: var(--ncm-secondary); background: transparent; cursor: pointer; }
+.ncm-app .ncm-cmv-chip--add:hover { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); }
+.ncm-app .ncm-cmv-none { font: italic 12px var(--ncm-font-display); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-cmv-or { font: 700 10px var(--ncm-font-display); color: var(--ncm-text-secondary); letter-spacing: .1em; }
+.ncm-app input.ncm-cmv-num { width: 52px !important; height: 24px !important; min-height: 0 !important; flex: none !important; text-align: center; font-family: var(--ncm-font-mono) !important; }
+.ncm-app .ncm-cmv-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 14px; }
+.ncm-app label.ncm-cmv-check { display: flex; gap: 7px; align-items: flex-start; margin: 0; cursor: pointer; font: 13px/1.3 var(--ncm-font-body) !important; text-transform: none !important; color: var(--ncm-text-primary) !important; letter-spacing: 0 !important; }
+.ncm-app label.ncm-cmv-check small { display: block; color: var(--ncm-text-secondary); font-size: 12px; }
+.ncm-app .ncm-cmv-check input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+.ncm-app .ncm-cmv-box { flex: none; width: 13px; height: 13px; margin-top: 2px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; display: grid; place-items: center; font-size: 9px; color: transparent; }
+.ncm-app .ncm-cmv-check input:checked + .ncm-cmv-box { background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); border-color: var(--ncm-secondary); color: var(--ncm-secondary); }
+.ncm-app .ncm-cmv-check input:focus-visible + .ncm-cmv-box { outline: 1px solid var(--ncm-secondary); outline-offset: 1px; }
+.ncm-app .ncm-cmv-verdict { padding: 8px 10px; border-left: 3px solid var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 7%, transparent);
+  font: 13px/1.4 var(--ncm-font-display); color: var(--ncm-text-primary); }
+.ncm-app label.ncm-cmv-dvtoggle { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base);
+  cursor: pointer; text-transform: none !important; letter-spacing: 0 !important; }
+.ncm-app .ncm-cmv-dvtoggle input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+.ncm-app .ncm-cmv-knob { flex: none; width: 30px; height: 16px; border-radius: 8px; background: var(--ncm-border); position: relative; }
+.ncm-app .ncm-cmv-knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-secondary); transition: left .18s; }
+.ncm-app .ncm-cmv-dvtoggle input:checked + .ncm-cmv-knob { background: color-mix(in srgb, var(--ncm-secondary) 60%, transparent); }
+.ncm-app .ncm-cmv-dvtoggle input:checked + .ncm-cmv-knob::after { left: 16px; background: var(--ncm-text-primary); }
+.ncm-app .ncm-cmv-dvtoggle input:focus-visible + .ncm-cmv-knob { outline: 1px solid var(--ncm-secondary); outline-offset: 2px; }
+.ncm-app .ncm-cmv-dvtoggle .t { flex: 1; font: 13px/1.3 var(--ncm-font-display); color: var(--ncm-text-primary); }
+.ncm-app .ncm-cmv-dvtoggle .t small { display: block; color: var(--ncm-text-secondary); font-size: 12px; }
+
+.ncm-app .ncm-cmv-seg { display: inline-flex; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+.ncm-app .ncm-cmv-seg > span { padding: 4px 10px; cursor: pointer; user-select: none; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); border-right: 1px solid var(--ncm-border); }
+.ncm-app .ncm-cmv-seg > span:last-child { border-right: 0; }
+.ncm-app .ncm-cmv-seg > span:hover { color: var(--ncm-text-primary); }
+.ncm-app .ncm-cmv-seg > span:focus-visible { outline: 1px solid var(--ncm-secondary); outline-offset: -2px; }
+.ncm-app .ncm-cmv-seg > span.on { background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent); color: var(--ncm-secondary); }
+.ncm-app .ncm-cmv-ovr { margin: 10px 0; }

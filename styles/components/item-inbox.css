@@ -3231,3 +3231,12 @@
 .ncm-app button.ncm-envpick__opt.is-on { border-color: var(--sp-primary, var(--ncm-primary)) !important; background: color-mix(in srgb, var(--sp-primary, var(--ncm-primary)) 12%, transparent) !important; color: var(--sp-text-primary, var(--ncm-text-primary)) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sp-primary, var(--ncm-primary)) 45%, transparent) !important; }
 .ncm-app button.ncm-envpick__opt.is-on > i { color: var(--sp-primary, var(--ncm-primary)); }
 .ncm-app .ncm-cmp-chip--env { font-weight: 700; }
+
+/* ── Uploadable → network programs: only the fields of the picked verb (pure CSS, no re-render) ── */
+.ncm-app .ncm-cmp-node { display: none !important; }
+.ncm-app .ncm-cmp-upl.is-on:has(select[name="uploadEffect"] option[value^="node"]:checked) .ncm-cmp-node { display: flex !important; }
+.ncm-app .ncm-cmp-node > .ncm-cmp-node--worm, .ncm-app .ncm-cmp-node > .ncm-cmp-node--bomb, .ncm-app .ncm-cmp-node > .ncm-cmp-node--sniffer { display: none !important; }
+.ncm-app .ncm-cmp-upl.is-on:has(option[value="nodeWorm"]:checked) .ncm-cmp-node--worm,
+.ncm-app .ncm-cmp-upl.is-on:has(option[value="nodeBomb"]:checked) .ncm-cmp-node--bomb,
+.ncm-app .ncm-cmp-upl.is-on:has(option[value="nodeSniffer"]:checked) .ncm-cmp-node--sniffer { display: flex !important; }
+.ncm-app .ncm-cmp-node--hint { flex-basis: 100%; }

@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages Tab Redesign — mock</title>
+<!--
+  ADMIN → MESSAGES, REORGANISED — design mock (2026-10-27).
+
+  Today: six stacked sections (NPC Inbox, Quick Compose, Message Activity,
+  Scheduled Deliveries, Message Queue, Inbox Management). Reorganised by the job:
+
+    NEEDS A REPLY   player mail waiting on an NPC — conversation + reply as, inline
+    ALL MAIL        the feed as list + reading pane, with flags for everything we added
+                    (anonymous, group sends, typed on a terminal, eddies, self-destruct…)
+    OUTBOX          scheduled · waiting to deliver · didn't arrive · timers
+    INBOXES         every mailbox: counts, open, export, purge, orphans
+
+  Header: New message · Broadcast (inline) · Send as (scope picker).
+    ?view=reply|all|outbox|inboxes   ?t=clean-light   ?bc=1   ?sel=<id>   ?pick=people|sendas
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  html, body { margin: 0; background: #06060a; color: #8fa0b2; font-family: 'Rajdhani', sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; padding: 9px 14px;
+    background: #0b0b12; border-bottom: 1px solid #1b1b28; font: 11px 'Share Tech Mono', monospace; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a; padding: 3px 8px; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+  .bar a.on { color: #07070b; background: #19f3f7; border-color: #19f3f7; }
+  .stage { display: flex; gap: 26px; justify-content: center; padding: 24px 16px 60px; flex-wrap: wrap; }
+  .notes { width: 320px; font-size: 14px; line-height: 1.5; color: #9aa6b4; }
+  .notes h3 { margin: 0 0 6px; font: 700 12px 'Rajdhani'; letter-spacing: .14em; text-transform: uppercase; color: #e6edf5; }
+  .notes p { margin: 0 0 12px; } .notes b { color: #d6dee8; }
+  .mk, .mk.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-panel { width: 820px; height: 760px; display: flex; flex-direction: column; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); overflow: hidden; }
+  .mk-panel > .ncm-admin-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0 14px 14px; }
+
+  /* ═════════════════════════ .ncm-msg2-* ═════════════════════════ */
+  .ncm-admin-panel .ncm-msg2-nav { display: flex; align-items: center; gap: 4px; margin: 0 -14px 10px; padding: 8px 14px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .ncm-admin-panel button.ncm-msg2-navbtn { appearance: none; width: auto !important; height: 30px !important; min-height: 0 !important; margin: 0 !important; white-space: nowrap;
+    display: inline-flex !important; align-items: center; gap: 6px; padding: 0 9px !important; border-radius: 2px !important; cursor: pointer;
+    background: transparent !important; border: 1px solid transparent !important; box-shadow: none !important;
+    font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary) !important; }
+  .ncm-admin-panel button.ncm-msg2-navbtn.on { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-surface) !important; border-color: var(--ncm-border) !important; box-shadow: inset 0 -2px 0 var(--ncm-secondary) !important; }
+  .ncm-admin-panel .ncm-msg2-navbtn i { color: var(--ncm-secondary); font-size: 11px; }
+  .ncm-admin-panel .ncm-msg2-ct { min-width: 16px; padding: 0 4px; height: 15px; display: inline-grid; place-items: center; border-radius: 1px; font: 700 10px var(--ncm-font-mono); background: var(--ncm-bg-elevated); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-ct.hot { background: var(--ncm-accent); color: #111; }
+  .ncm-admin-panel .ncm-msg2-ct.bad { background: var(--ncm-danger); color: #fff; }
+  .ncm-admin-panel .grow { flex: 1; }
+  .ncm-admin-panel .ncm-msg2-view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .ncm-admin-panel .ncm-msg2-hd { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; flex: none; }
+  .ncm-admin-panel .ncm-msg2-hd h2 { margin: 0; border: 0; text-shadow: none !important; background: none !important; padding: 0; font: 700 16px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-hd p { margin: 0; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+  /* broadcast */
+  .ncm-admin-panel .ncm-msg2-bc { flex: none; margin-bottom: 10px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border)); border-radius: 2px; background: color-mix(in srgb, var(--ncm-secondary) 5%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-msg2-bc .r { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ncm-admin-panel .ncm-msg2-bc .r + .r { margin-top: 7px; }
+  .ncm-admin-panel .ncm-msg2-bc input[type=text] { flex: 1; height: 30px; min-width: 140px; }
+  .ncm-admin-panel .ncm-msg2-bc textarea { width: 100%; min-height: 54px; resize: vertical; font: 13px var(--ncm-font-body); }
+  .ncm-admin-panel .ncm-msg2-bc .t { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-bc .h { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+  .ncm-admin-panel .ncm-msg2-tb { display: flex; gap: 6px; align-items: center; margin-bottom: 7px; flex: none; }
+  .ncm-admin-panel .ncm-msg2-tb .srch { flex: 1; position: relative; }
+  .ncm-admin-panel .ncm-msg2-tb .srch i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--ncm-text-muted); font-size: 12px; }
+  .ncm-admin-panel .ncm-msg2-tb .srch input { width: 100%; height: 30px; padding-left: 28px !important; box-sizing: border-box; }
+  .ncm-admin-panel .ncm-msg2-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; flex: none; align-items: center; }
+  .ncm-admin-panel .ncm-msg2-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer; user-select: none;
+    background: var(--ncm-bg-base); font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-chip i { font-size: 10px; }
+  .ncm-admin-panel .ncm-msg2-chip .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-msg2-chip.on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 9%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-msg2-chip.on .n { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-msg2-sep { width: 1px; height: 18px; background: var(--ncm-border); margin: 0 3px; }
+
+  .ncm-admin-panel .ncm-msg2-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px 1fr; gap: 12px; }
+  .ncm-admin-panel .ncm-msg2-list, .ncm-admin-panel .ncm-msg2-det { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-msg2-det.flex { display: flex; flex-direction: column; overflow: hidden; }
+  .ncm-admin-panel .ncm-msg2-grp { position: sticky; top: 0; z-index: 2; padding: 5px 10px; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border);
+    font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); display: flex; }
+  .ncm-admin-panel .ncm-msg2-grp .n { margin-left: auto; font: 10px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-msg2-r { display: grid; grid-template-columns: 30px 1fr auto; gap: 9px; align-items: center; padding: 7px 10px; cursor: pointer; border-left: 2px solid transparent;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-msg2-r:hover { background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); }
+  .ncm-admin-panel .ncm-msg2-r.sel { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border-left-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-msg2-r.unread .sj { color: var(--ncm-text-primary); font-weight: 700; }
+  .ncm-admin-panel .ncm-msg2-r .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-msg2-r .nm .to { color: var(--ncm-text-secondary); font-weight: 600; }
+  .ncm-admin-panel .ncm-msg2-r .sj { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-msg2-r .fl { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
+  .ncm-admin-panel .ncm-msg2-r .w { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); text-align: right; align-self: start; padding-top: 2px; }
+  .ncm-admin-panel .ncm-msg2-r .w .u { display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--ncm-accent); margin: 5px 0 0 auto; }
+  .ncm-admin-panel .ncm-msg2-av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; box-sizing: border-box; font: 700 11px var(--ncm-font-display);
+    border: 1px solid var(--ncm-border-active, var(--ncm-border)); background: color-mix(in srgb, var(--ncm-secondary) 12%, var(--ncm-bg-surface)); color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-msg2-av.sm { width: 20px; height: 20px; font-size: 8px; }
+  .ncm-admin-panel .ncm-msg2-av.anon { background: repeating-linear-gradient(45deg, var(--ncm-bg-elevated) 0 3px, var(--ncm-bg-surface) 3px 6px); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-stack { display: inline-flex; }
+  .ncm-admin-panel .ncm-msg2-stack .ncm-msg2-av { margin-left: -6px; border: 2px solid var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-msg2-stack .ncm-msg2-av:first-child { margin-left: 0; }
+
+  .ncm-admin-panel .ncm-msg2-flag { display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; height: 16px; border-radius: 1px; border: 1px solid color-mix(in srgb, var(--fc) 45%, transparent);
+    font: 700 9px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--fc); white-space: nowrap; }
+  .ncm-admin-panel .ncm-msg2-flag i { font-size: 8px; }
+
+  /* reading pane */
+  .ncm-admin-panel .ncm-msg2-rd { padding: 12px 14px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-msg2-rd h3 { margin: 0 0 8px; border: 0; padding: 0; background: none; text-shadow: none; font: 700 17px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-pp { display: grid; grid-template-columns: 46px 1fr; gap: 4px 10px; align-items: center; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-pp .k { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-pp .p { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ncm-admin-panel .ncm-msg2-pp .a { font: 12px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-facts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+  .ncm-admin-panel .ncm-msg2-acts { display: flex; gap: 5px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-msg2-body { padding: 12px 14px; font: 14px/1.5 var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-body p { margin: 0 0 9px; }
+  .ncm-admin-panel .ncm-msg2-att { margin: 0 14px 12px; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-att i { color: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-msg2-att small { display: block; color: var(--ncm-text-secondary); font-size: 12px; }
+  .ncm-admin-panel .ncm-msg2-rcp { margin: 0 14px 14px; border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .ncm-admin-panel .ncm-msg2-rcp .h { padding: 6px 10px; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border); font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-rcp .row { display: grid; grid-template-columns: 20px 1fr auto auto; gap: 8px; align-items: center; padding: 5px 10px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-rcp .row + .row { border-top: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-msg2-rcp .s { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-rcp a { font: 12px var(--ncm-font-body); color: var(--ncm-secondary); cursor: pointer; }
+
+  /* conversation (needs a reply) */
+  .ncm-admin-panel .ncm-msg2-cvhd { display: flex; align-items: center; gap: 10px; padding: 10px 13px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .ncm-admin-panel .ncm-msg2-cvhd .t { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-cvhd .t small { display: block; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); font-weight: 400; }
+  .ncm-admin-panel .ncm-msg2-thread { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 13px; display: flex; flex-direction: column; gap: 10px; }
+  .ncm-admin-panel .ncm-msg2-b { max-width: 82%; padding: 8px 11px; border-radius: 2px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); font: 13px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-b .m { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-b .m b { font: 700 12px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-b .sj { font: 700 13px var(--ncm-font-display); margin-bottom: 3px; }
+  .ncm-admin-panel .ncm-msg2-b.me { align-self: flex-end; border-color: color-mix(in srgb, var(--ncm-secondary) 40%, var(--ncm-border)); background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-msg2-b.new { border-color: color-mix(in srgb, var(--ncm-accent) 55%, var(--ncm-border)); }
+  .ncm-admin-panel .ncm-msg2-reply { flex: none; border-top: 1px solid var(--ncm-border); padding: 9px 12px; background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-msg2-reply .r { display: flex; align-items: center; gap: 6px; }
+  .ncm-admin-panel .ncm-msg2-reply textarea { width: 100%; min-height: 58px; margin: 7px 0; resize: vertical; font: 13px var(--ncm-font-body); box-sizing: border-box; }
+  .ncm-admin-panel .ncm-msg2-reply .k { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-reply .h { font: 12px var(--ncm-font-body); color: var(--ncm-text-muted); }
+
+  /* outbox + inboxes cards */
+  .ncm-admin-panel .ncm-msg2-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; }
+  .ncm-admin-panel .ncm-msg2-card { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); flex: none; }
+  .ncm-admin-panel .ncm-msg2-card > .hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-msg2-card > .hd .t { font: 700 12px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-card > .hd .t i { color: var(--ncm-secondary); margin-right: 6px; }
+  .ncm-admin-panel .ncm-msg2-card > .hd .d { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-msg2-card.bad > .hd .t i { color: var(--ncm-danger); }
+  .ncm-admin-panel .ncm-msg2-card.warn > .hd .t i { color: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-msg2-ob { display: grid; grid-template-columns: 92px 1fr auto; gap: 10px; align-items: center; padding: 7px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-msg2-ob:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-msg2-ob .when { font: 12px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-ob .when small { display: block; color: var(--ncm-text-secondary); font-size: 11px; }
+  .ncm-admin-panel .ncm-msg2-ob .what { min-width: 0; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-msg2-ob .what b { font: 700 13px var(--ncm-font-display); }
+  .ncm-admin-panel .ncm-msg2-ob .what small { display: block; color: var(--ncm-text-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-msg2-ob .acts { display: flex; gap: 4px; }
+  .ncm-admin-panel .ncm-msg2-quiet { padding: 12px; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel table.ncm-msg2-tbl { margin: 0; width: 100%; border-collapse: collapse; }
+  .ncm-admin-panel table.ncm-msg2-tbl, .ncm-admin-panel table.ncm-msg2-tbl * { background: transparent; text-shadow: none; }
+  .ncm-admin-panel table.ncm-msg2-tbl th, .ncm-admin-panel table.ncm-msg2-tbl td { border: 0; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); padding: 6px 10px; text-align: left; }
+  .ncm-admin-panel table.ncm-msg2-tbl thead th { position: sticky; top: 0; background: var(--ncm-bg-surface) !important; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel table.ncm-msg2-tbl td { font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel table.ncm-msg2-tbl td.n { font: 12px var(--ncm-font-mono); text-align: right; }
+  .ncm-admin-panel table.ncm-msg2-tbl td .who { display: flex; align-items: center; gap: 8px; }
+  .ncm-admin-panel table.ncm-msg2-tbl td .who small { display: block; color: var(--ncm-text-secondary); font-size: 12px; }
+  .ncm-admin-panel table.ncm-msg2-tbl tr.grp td { background: var(--ncm-bg-surface) !important; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); padding: 5px 10px; }
+  .ncm-admin-panel table.ncm-msg2-tbl tr.orphan td { background: color-mix(in srgb, var(--ncm-danger) 6%, transparent) !important; }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="stage">
+  <div class="mk mk-panel ncm-app ncm-admin-panel" id="panel" data-ncm-scanlines="false">
+    <nav class="ncm-admin-tabs">
+      <button class="ncm-admin-tab"><i class="fas fa-chart-bar"></i> Overview</button>
+      <button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-envelope"></i> Messages</button>
+      <button class="ncm-admin-tab"><i class="fas fa-address-book"></i> Contacts</button>
+      <button class="ncm-admin-tab"><i class="fas fa-network-wired"></i> Networks</button>
+      <button class="ncm-admin-tab"><i class="fas fa-database"></i> Shards</button>
+      <button class="ncm-admin-tab"><i class="fas fa-terminal"></i> Terminals</button>
+      <button class="ncm-admin-tab"><i class="fas fa-shield-halved"></i> Security</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelopes-bulk"></i> Spam</button>
+      <button class="ncm-admin-tab"><i class="fas fa-wrench"></i> Tools</button>
+    </nav>
+    <div class="ncm-admin-content" id="content"></div>
+  </div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<script src="scope-picker.js"></script>
+<script>
+const Q = new URLSearchParams(location.search);
+document.getElementById('panel').dataset.ncmAdminTheme = Q.get('t') || 'clean-dark';
+let VIEW = Q.get('view') || 'reply';
+let SEL = Q.get('sel') || null;
+let BC = Q.get('bc') === '1';
+let RFILT = 'waiting';
+let AF = new Set();
+let BOX = 'all';
+
+const FACE = (c) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="${c}"/><circle cx="20" cy="16" r="7.5" fill="#0d0d14" opacity=".75"/><path d="M5 40c1-9 7-13 15-13s14 4 15 13z" fill="#0d0d14" opacity=".75"/></svg>`);
+const P = { V: '#b85c7a', Rache: '#5c86b8', Kiri: '#7ab85c', Jo: '#b8995c', Rogue: '#c76bff', Viktor: '#5cb8a8', Hana: '#e05c5c', Judy: '#5c86b8' };
+const ini = (n) => n.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+const av = (n, sm = '') => n === '?' ? `<span class="ncm-msg2-av anon ${sm}"><i class="fas fa-user-secret"></i></span>` : P[n.split(' ')[0]] ? `<img class="ncm-msg2-av ${sm}" src="${FACE(P[n.split(' ')[0]])}" alt="">` : `<span class="ncm-msg2-av ${sm}">${ini(n)}</span>`;
+const btn = (label, cls = '', icon = '', attrs = '') => `<button type="button" class="ncm-term-admin-btn ${cls}" ${attrs}>${icon ? `<i class="fas ${icon}"></i>` : ''}${label ? ` ${label}` : ''}</button>`;
+const FLAG = {
+  anon: ['Anonymous', 'fa-user-secret', 'var(--ncm-text-secondary)'], group: ['Group ×', 'fa-users', 'var(--ncm-secondary)'], via: ['via', 'fa-terminal', 'var(--ncm-secondary)'],
+  typed: ['typed by', 'fa-user-ninja', 'var(--ncm-danger)'], eb: ['eb', 'fa-coins', 'var(--ncm-accent)'], sd: ['Self-destruct', 'fa-hourglass-half', 'var(--ncm-danger)'],
+  enc: ['Encrypted', 'fa-lock', 'var(--ncm-danger)'], shard: ['Shard', 'fa-microchip', 'var(--ncm-accent)'], alias: ['alias of', 'fa-masks-theater', 'var(--ncm-text-secondary)'],
+  dated: ['Backdated', 'fa-clock-rotate-left', 'var(--ncm-text-secondary)'], net: ['via', 'fa-wifi', 'var(--ncm-text-secondary)'], spam: ['Spam', 'fa-filter', 'var(--ncm-text-muted)'],
+};
+const flag = (k, extra = '') => { const [l, i, c] = FLAG[k]; return `<span class="ncm-msg2-flag" style="--fc:${c}"><i class="fas ${i}"></i>${l}${extra ? ' ' + extra : ''}</span>`; };
+
+/* ── data ── */
+const CONV = [
+  { id: 'rogue', npc: 'Rogue', alias: null, from: ['V', 'Rache'], n: 2, age: '12m', msgs: [
+    ['V', 'Need a fixer', 'You still hiring for the Konpeki thing? I can get Rache in.', '2d', false],
+    ['Rogue', 'Re: Need a fixer', 'Tomorrow, Afterlife, back booth. Bring the netrunner.', '2d', true],
+    ['V', 'Re: Need a fixer', 'We’re here. Where are you?', '18m', false, true],
+    ['Rache', 'Re: Need a fixer', 'V says you’re late. I’m not waiting on the floor.', '12m', false, true]] },
+  { id: 'queen', npc: 'Queen of Hearts', alias: 'Rogue', from: ['Kiri'], n: 1, age: '40m', msgs: [['Kiri', 'Who is this', 'You sent me a map with no name on it. Who are you?', '40m', false, true]] },
+  { id: 'hana', npc: 'Hana Ito', alias: null, from: ['Rache'], n: 1, age: '2h', msgs: [['Rache', 'The files', 'I have what you asked for. Price went up.', '2h', false, true]], typed: 'WS-7F-12' },
+  { id: 'vik', npc: 'Viktor Vektor', alias: null, from: ['Jo'], n: 1, age: '5h', msgs: [['Jo', 'Arm’s acting up', 'Twitching again. Can I come in tonight?', '5h', false, true]] },
+  { id: 'dex', npc: 'Dexter DeShawn', alias: null, from: ['V'], n: 0, age: '1d', answered: true, msgs: [['V', 'Re: Job', 'Done. Where’s the money?', '1d', false], ['Dexter DeShawn', 'Re: Job', 'Check your inbox.', '1d', true]] },
+];
+const MAIL = [
+  { id: 'm1', from: 'Rache', to: 'Rogue', sj: 'Re: Need a fixer', w: '22:05', unread: true, f: [] , g: 'Today' },
+  { id: 'm2', from: 'Rogue', to: 'The crew (4)', sj: 'Job tonight — Lizzie’s', w: '21:40', f: [['group', '4'], ['eb', '500 ×4']], g: 'Today', fan: [['V', 'read'], ['Rache', 'read'], ['Kiri', 'unread'], ['Jo', 'not delivered: dead zone']] },
+  { id: 'm3', from: '?', to: 'Kiri', sj: 'I know what you did', w: '21:12', f: [['anon']], g: 'Today', real: 'Hana Ito' },
+  { id: 'm4', from: 'Hana Ito', to: 'Viktor Vektor', sj: 'Payment for the arm', w: '20:58', f: [['via', 'WS-7F-12'], ['typed', 'Rache']], g: 'Today' },
+  { id: 'm5', from: 'Queen of Hearts', to: 'Kiri', sj: '(no subject)', w: '20:40', f: [['alias', 'Rogue'], ['shard']], g: 'Today' },
+  { id: 'm6', from: 'Viktor Vektor', to: 'Jo', sj: 'Diagnostics', w: '19:02', f: [['sd', '6h'], ['enc']], g: 'Today' },
+  { id: 'm7', from: 'NetWatch notice', to: 'Everyone (4)', sj: 'Curfew in Watson', w: 'Yesterday', f: [['group', '4']], g: 'Yesterday' },
+  { id: 'm8', from: 'V', to: 'Dexter DeShawn', sj: 'Re: Job', w: 'Yesterday', f: [['net', 'DarkNet']], g: 'Yesterday' },
+  { id: 'm9', from: 'Judy Álvarez', to: 'V', sj: 'BD is ready', w: '2 days', f: [['dated']], g: 'Earlier' },
+  { id: 'm10', from: 'Trauma Team', to: 'Jo', sj: 'Platinum renewal', w: '3 days', f: [['spam']], g: 'Earlier' },
+];
+const AFILT = [['unread', 'Unread', 'fa-envelope', (m) => m.unread], ['anon', 'Anonymous', 'fa-user-secret', (m) => m.f.some((x) => x[0] === 'anon')], ['group', 'Group sends', 'fa-users', (m) => m.f.some((x) => x[0] === 'group')],
+  ['term', 'Typed on a terminal', 'fa-terminal', (m) => m.f.some((x) => x[0] === 'via')], ['eb', 'Eddies', 'fa-coins', (m) => m.f.some((x) => x[0] === 'eb')], ['sd', 'Self-destruct', 'fa-hourglass-half', (m) => m.f.some((x) => x[0] === 'sd')],
+  ['att', 'Attachments', 'fa-paperclip', (m) => m.f.some((x) => x[0] === 'shard')], ['spam', 'Spam', 'fa-filter', (m) => m.f.some((x) => x[0] === 'spam')]];
+const PEOPLE = [...['V', 'Rache', 'Kiri', 'Jo'].map((n) => ({ id: n, name: n, group: 'Players’ characters', color: P[n], icon: 'fa-user' })),
+  ...['Rogue', 'Queen of Hearts', 'Viktor Vektor', 'Hana Ito', 'Dexter DeShawn', 'Judy Álvarez', 'NetWatch notice', 'Trauma Team'].map((n) => ({ id: n, name: n, group: 'NPCs & aliases', color: P[n.split(' ')[0]] || 'var(--ncm-secondary)', icon: n === 'Queen of Hearts' ? 'fa-masks-theater' : 'fa-user-tie', meta: n === 'Queen of Hearts' ? 'alias of Rogue' : '' })),
+  { id: 'crew', name: 'The crew', group: 'Groups', color: '#c76bff', icon: 'fa-users', meta: '4 members' }]
+  .map((x) => ({ ...x, count: MAIL.filter((m) => m.from === x.id || m.to.startsWith(x.id)).length }));
+const SENDAS = [['Rogue', 'Fixer · main'], ['Queen of Hearts', 'alias of Rogue'], ['Viktor Vektor', 'Medtech'], ['Hana Ito', 'Exec · main'], ['Hana Ito (old)', 'alias of Hana Ito'], ['NetWatch notice', 'System address'], ['Trauma Team', 'System address']]
+  .map(([n, m]) => ({ id: n, name: n, meta: m, group: m.includes('System') ? 'System addresses' : 'NPCs & aliases', color: P[n.split(' ')[0]] || 'var(--ncm-secondary)', icon: m.includes('alias') ? 'fa-masks-theater' : m.includes('System') ? 'fa-tower-broadcast' : 'fa-user-tie' }));
+ScopePicker.on('people', () => render()); ScopePicker.on('sendas', () => render()); ScopePicker.on('bcto', () => render()); ScopePicker.on('bcfrom', () => render()); ScopePicker.on('rpas', () => render());
+if (Q.get('pick') === 'people') { VIEW = 'all'; ScopePicker.open('people'); }
+if (Q.get('pick') === 'sendas') ScopePicker.open('sendas');
+
+/* ── views ── */
+function replyView() {
+  const list = CONV.filter((c) => RFILT === 'all' || (RFILT === 'waiting' ? !c.answered : c.answered));
+  const c = list.find((x) => x.id === SEL) || list[0];
+  if (c && !SEL) SEL = c.id;
+  const waiting = CONV.filter((x) => !x.answered).length;
+  const ids = c?.alias ? ['Rogue', 'Queen of Hearts'] : c?.npc === 'Rogue' ? ['Rogue', 'Queen of Hearts'] : [c?.npc];
+  if (c && !ScopePicker.value('rpas').length) ScopePicker.set('rpas', [c.npc]);
+  return `
+  <div class="ncm-msg2-chips">
+    <span class="ncm-msg2-chip ${RFILT === 'waiting' ? 'on' : ''}" data-rf="waiting"><i class="fas fa-reply"></i>Waiting<span class="n">${waiting}</span></span>
+    <span class="ncm-msg2-chip ${RFILT === 'answered' ? 'on' : ''}" data-rf="answered"><i class="fas fa-check"></i>Answered<span class="n">${CONV.length - waiting}</span></span>
+    <span class="ncm-msg2-chip ${RFILT === 'all' ? 'on' : ''}" data-rf="all">All<span class="n">${CONV.length}</span></span>
+    <span class="grow"></span><span class="ncm-msg2-chip"><i class="fas fa-square-check"></i>Include mail I sent</span></div>
+  <div class="ncm-msg2-split">
+    <div class="ncm-msg2-list">${list.map((x) => `
+      <div class="ncm-msg2-r ${x.id === c.id ? 'sel' : ''} ${x.n ? 'unread' : ''}" data-sel="${x.id}">${av(x.npc)}
+        <div style="min-width:0"><div class="nm">${x.npc}</div>
+          <div class="sj">${x.msgs[x.msgs.length - 1][2]}</div>
+          <div class="fl"><span class="ncm-msg2-stack">${x.from.map((p) => av(p, 'sm')).join('')}</span>${x.alias ? flag('alias', x.alias) : ''}${x.typed ? flag('typed', 'a player') : ''}</div></div>
+        <div class="w">${x.age}${x.n ? `<span class="u" title="${x.n} waiting"></span>` : ''}</div></div>`).join('') || '<div class="ncm-msg2-quiet">Nothing waiting. Nice.</div>'}</div>
+    <div class="ncm-msg2-det flex">${c ? `
+      <div class="ncm-msg2-cvhd">${av(c.npc)}<div class="t">${c.npc}<small>${c.alias ? 'Alias of ' + c.alias + ' · ' : ''}with ${c.from.join(' & ')}</small></div><span class="grow"></span>
+        ${btn('Inbox', '', 'fa-inbox')}${btn('', 'ncm-term-admin-btn--icon', 'fa-check', 'title="Mark answered without replying"')}</div>
+      ${c.typed ? `<div class="ncm-msg2-quiet" style="border-bottom:1px solid var(--ncm-border);padding:7px 13px">${flag('typed', 'Rache')} This came from Hana’s account on ${c.typed} — a player typed it, not Hana.</div>` : ''}
+      <div class="ncm-msg2-thread">${c.msgs.map(([who, sj, body, w, mine, nu]) => `
+        <div class="ncm-msg2-b ${mine ? 'me' : ''} ${nu ? 'new' : ''}"><div class="m">${av(who, 'sm')}<b>${who}</b><span>${w}</span>${nu ? flag('eb').replace(/eb/, 'new').replace('fa-coins', 'fa-circle') : ''}</div><div class="sj">${sj}</div>${body}</div>`).join('')}</div>
+      <div class="ncm-msg2-reply">
+        <div class="r"><span class="k">Reply as</span>${ScopePicker.html('rpas', { noun: 'identity', nouns: 'identities', icon: 'fa-masks-theater', items: ids.map((n) => ({ id: n, name: n, color: P[n.split(' ')[0]] || 'var(--ncm-secondary)', icon: n === 'Queen of Hearts' ? 'fa-masks-theater' : 'fa-user-tie', meta: n === 'Queen of Hearts' ? 'alias of Rogue' : 'main' })) })}
+          <span class="h">to ${c.from.join(', ')}</span><span class="grow"></span></div>
+        <textarea placeholder="Write a reply…"></textarea>
+        <div class="r">${btn('', 'ncm-term-admin-btn--icon', 'fa-paperclip', 'title="Attach a shard or eddies"')}${btn('', 'ncm-term-admin-btn--icon', 'fa-user-secret', 'title="Send anonymously"')}<span class="h">Ctrl+Enter sends</span><span class="grow"></span>
+          ${btn('Open in composer', '', 'fa-up-right-from-square')}${btn('Send', 'ncm-term-admin-btn--primary', 'fa-paper-plane')}</div>
+      </div>` : ''}</div>
+  </div>`;
+}
+
+function allView() {
+  const pv = ScopePicker.value('people');
+  let rows = MAIL.filter((m) => (!pv.length || pv.some((p) => m.from === p || m.to.startsWith(p) || (p === 'crew' && m.to.startsWith('The crew'))))
+    && [...AF].every((k) => AFILT.find((a) => a[0] === k)[3](m))
+    && (BOX === 'all' || (BOX === 'npc' ? !P[m.from] || ['Rogue', 'Viktor', 'Hana', 'Judy'].includes(m.from.split(' ')[0]) : ['V', 'Rache', 'Kiri', 'Jo'].includes(m.from))));
+  const m = rows.find((x) => x.id === SEL) || rows[0];
+  const groups = [...new Set(rows.map((r) => r.g))];
+  return `
+  <div class="ncm-msg2-tb"><span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search subject, body, address…"></span>
+    ${ScopePicker.html('people', { noun: 'person', nouns: 'people', icon: 'fa-user', label: 'Who', multi: true, allLabel: 'Anyone', items: PEOPLE, countLabel: 'messages', activeLabel: 'Has mail' })}
+    ${btn('Any time', '', 'fa-calendar')}</div>
+  <div class="ncm-msg2-chips">${[['all', 'Everything'], ['pc', 'From players'], ['npc', 'From NPCs']].map(([k, l]) => `<span class="ncm-msg2-chip ${BOX === k ? 'on' : ''}" data-box="${k}">${l}</span>`).join('')}<span class="ncm-msg2-sep"></span>
+    ${AFILT.map(([k, l, i, f]) => `<span class="ncm-msg2-chip ${AF.has(k) ? 'on' : ''}" data-af="${k}"><i class="fas ${i}"></i>${l}<span class="n">${MAIL.filter(f).length}</span></span>`).join('')}</div>
+  <div class="ncm-msg2-split">
+    <div class="ncm-msg2-list">${groups.map((g) => `<div class="ncm-msg2-grp">${g}<span class="n">${rows.filter((r) => r.g === g).length}</span></div>` + rows.filter((r) => r.g === g).map((x) => `
+      <div class="ncm-msg2-r ${m && x.id === m.id ? 'sel' : ''} ${x.unread ? 'unread' : ''}" data-sel="${x.id}">${av(x.from)}
+        <div style="min-width:0"><div class="nm">${x.from === '?' ? 'Anonymous' : x.from} <span class="to">→ ${x.to}</span></div><div class="sj">${x.sj}</div>
+          ${x.f.length ? `<div class="fl">${x.f.map(([k, e]) => flag(k, e)).join('')}</div>` : ''}</div>
+        <div class="w">${x.w}${x.unread ? '<span class="u"></span>' : ''}</div></div>`).join('')).join('') || '<div class="ncm-msg2-quiet">No mail matches.</div>'}</div>
+    <div class="ncm-msg2-det">${m ? mailDetail(m) : ''}</div>
+  </div>`;
+}
+function mailDetail(m) {
+  const fromLine = m.from === '?' ? `${av('?', 'sm')}<span>Anonymous</span><span class="a">ghost@void.net</span>${flag('anon')}<span class="a" style="color:var(--ncm-text-primary)">really ${m.real} — only you see this</span>` : `${av(m.from, 'sm')}<span>${m.from}</span><span class="a">${m.from.toLowerCase().replace(/[^a-z]+/g, '.')}@nightcity.net</span>${m.f.some((x) => x[0] === 'alias') ? flag('alias', 'Rogue') : ''}`;
+  return `
+  <div class="ncm-msg2-rd"><h3>${m.sj}</h3>
+    <div class="ncm-msg2-pp"><span class="k">From</span><span class="p">${fromLine}</span>
+      <span class="k">To</span><span class="p">${m.fan ? `<span>${m.to}</span>` : `${av(m.to, 'sm')}<span>${m.to}</span>`}</span>
+      <span class="k">When</span><span class="p"><span class="a" style="color:var(--ncm-text-primary)">2045-08-14 ${m.w.includes(':') ? m.w : '09:12'}</span><span class="a">CitiNet · signal 75%</span></span></div>
+    ${m.f.length ? `<div class="ncm-msg2-facts">${m.f.map(([k, e]) => flag(k, e)).join('')}</div>` : ''}
+    ${m.f.some((x) => x[0] === 'via') ? '<div class="ncm-msg2-quiet" style="padding:8px 0 0">Sent from Hana Ito’s account on <b>WS-7F-12</b>, typed by <b>Rache</b>. Viktor sees it as from Hana.</div>' : ''}
+  </div>
+  <div class="ncm-msg2-acts">${btn('Open in inbox', '', 'fa-inbox')}${m.from !== '?' && !['V', 'Rache', 'Kiri', 'Jo'].includes(m.from) ? '' : btn('Reply as ' + (m.to.split(' (')[0]), 'ncm-term-admin-btn--primary', 'fa-reply')}${btn('Share to chat', '', 'fa-comment')}${btn('Copy to a terminal', '', 'fa-terminal')}<span class="grow"></span>${btn('', 'ncm-term-admin-btn--icon ncm-term-admin-btn--danger', 'fa-trash', 'title="Delete for good"')}</div>
+  <div class="ncm-msg2-body"><p>${m.id === 'm2' ? 'Lizzie’s, 23:00. Usual split. I’m fronting 500 each for gear — don’t make me regret it.' : 'Short body of the message as the recipient sees it.'}</p></div>
+  ${m.f.some((x) => x[0] === 'shard') ? '<div class="ncm-msg2-att"><i class="fas fa-microchip"></i><div>Floor 7 map<small>Data shard · encrypted · not opened yet</small></div></div>' : ''}
+  ${m.fan ? `<div class="ncm-msg2-rcp"><div class="h">Each recipient</div>${m.fan.map(([p, s]) => `<div class="row">${av(p, 'sm')}<span>${p}</span><span class="s" style="${s.startsWith('not') ? 'color:var(--ncm-danger)' : ''}">${s}${m.f.some((x) => x[0] === 'eb') && s === 'read' ? ' · 500 eb claimed' : ''}</span><a>Open</a></div>`).join('')}</div>` : ''}`;
+}
+
+function outboxView() {
+  const ob = (when, sub, who, what, small, acts) => `<div class="ncm-msg2-ob"><div class="when">${when}<small>${sub}</small></div><div class="what"><b>${who}</b> — ${what}<small>${small}</small></div><div class="acts">${acts}</div></div>`;
+  return `<div class="ncm-msg2-scroll">
+    <div class="ncm-msg2-card bad"><div class="hd"><span class="t"><i class="fas fa-triangle-exclamation"></i>Didn’t arrive</span><span class="ncm-msg2-ct bad">2</span><span class="d">refused or failed — only you were told</span></div>
+      ${ob('21:40', 'today', 'Rogue → Jo', '“Job tonight — Lizzie’s”', 'Jo was in a dead zone · part of a group send to The crew', btn('Retry', '', 'fa-rotate-right') + btn('Open', '', 'fa-inbox'))}
+      ${ob('20:02', 'today', 'Kiri → system@arasaka', '“who runs this?”', 'Refused: a send-only address', btn('Dismiss', '', 'fa-xmark'))}</div>
+    <div class="ncm-msg2-card warn"><div class="hd"><span class="t"><i class="fas fa-hourglass-half"></i>Waiting to deliver</span><span class="ncm-msg2-ct">2</span><span class="d">held until the GM is online or the signal returns</span><span class="grow"></span>${btn('Deliver all', '', 'fa-paper-plane')}</div>
+      ${ob('19:55', 'queued', 'Jo → Viktor Vektor', '“Arm’s acting up”', 'Dead zone: Badlands — Route 66', btn('Deliver now', '', 'fa-paper-plane') + btn('', 'ncm-term-admin-btn--icon', 'fa-xmark', 'title="Cancel"'))}
+      ${ob('19:20', 'queued', 'Kiri → Queen of Hearts', '“Who is this”', 'No GM was online', btn('Deliver now', '', 'fa-paper-plane') + btn('', 'ncm-term-admin-btn--icon', 'fa-xmark', 'title="Cancel"'))}</div>
+    <div class="ncm-msg2-card"><div class="hd"><span class="t"><i class="fas fa-calendar-days"></i>Scheduled</span><span class="ncm-msg2-ct">3</span><span class="d">game time</span></div>
+      ${ob('23:00', 'tonight · in 55m', 'Hana Ito → Rache', '“Change of plans”', 'Encrypted · DV 15', btn('Send now', '', 'fa-paper-plane') + btn('', 'ncm-term-admin-btn--icon', 'fa-pen', 'title="Edit"') + btn('', 'ncm-term-admin-btn--icon', 'fa-xmark', 'title="Cancel"'))}
+      ${ob('08:00', 'tomorrow', 'NetWatch notice → Everyone', '“Curfew lifted”', 'Group send · 4 recipients', btn('Send now', '', 'fa-paper-plane') + btn('', 'ncm-term-admin-btn--icon', 'fa-pen', 'title="Edit"') + btn('', 'ncm-term-admin-btn--icon', 'fa-xmark', 'title="Cancel"'))}
+      ${ob('08-20', 'in 6 days', 'Rogue → V', '“You owe me”', 'Attaches 0 eb · asks for payment', btn('Send now', '', 'fa-paper-plane') + btn('', 'ncm-term-admin-btn--icon', 'fa-pen', 'title="Edit"') + btn('', 'ncm-term-admin-btn--icon', 'fa-xmark', 'title="Cancel"'))}</div>
+    <div class="ncm-msg2-card"><div class="hd"><span class="t"><i class="fas fa-stopwatch"></i>Timers</span><span class="ncm-msg2-ct">2</span><span class="d">mail that will erase itself</span></div>
+      ${ob('in 4h 12m', 'self-destruct', 'Viktor Vektor → Jo', '“Diagnostics”', 'Erased whether or not Jo reads it', btn('Stop', '', 'fa-hand') + btn('Open', '', 'fa-inbox'))}
+      ${ob('on read', 'self-destruct', '? → Kiri', '“I know what you did”', 'Erased when Kiri leaves it', btn('Stop', '', 'fa-hand') + btn('Open', '', 'fa-inbox'))}</div>
+  </div>`;
+}
+
+function inboxesView() {
+  const r = (who, sub, n, u, last, opts = {}) => `<tr class="${opts.orphan ? 'orphan' : ''}"><td><div class="who">${opts.orphan ? '<span class="ncm-msg2-av" style="color:var(--ncm-danger)"><i class="fas fa-ghost"></i></span>' : av(who)}<div>${who}<small>${sub}</small></div></div></td><td class="n">${n}</td><td class="n" style="${u ? 'color:var(--ncm-accent)' : ''}">${u || '—'}</td><td style="color:var(--ncm-text-secondary);font-size:12px">${last}</td>
+    <td style="text-align:right;white-space:nowrap">${opts.orphan ? btn('Fix in Orphan Audit', '', 'fa-screwdriver-wrench') : btn('Open', '', 'fa-inbox') + btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'title="Mark all read · Export · Purge older than… · Delete inbox"')}</td></tr>`;
+  return `
+  <div class="ncm-msg2-tb"><span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Find an inbox…"></span>
+    ${btn('Mark everything read', '', 'fa-envelope-open')}${btn('Export all', '', 'fa-file-export')}${btn('Purge old mail…', 'ncm-term-admin-btn--danger', 'fa-broom')}</div>
+  <div class="ncm-msg2-card" style="flex:1;min-height:0;overflow:auto"><table class="ncm-msg2-tbl"><thead><tr><th>Inbox</th><th style="text-align:right">Mail</th><th style="text-align:right">Unread</th><th>Last</th><th></th></tr></thead><tbody>
+    <tr class="grp"><td colspan="5">Players’ characters</td></tr>
+    ${r('V', 'v@nightcity.net · Marta', 42, 3, '12m ago')}${r('Rache', 'rache@nightcity.net · Sam', 31, 0, '2h ago')}${r('Kiri', 'kiri@nightcity.net · Lou', 18, 2, '40m ago')}${r('Jo', 'no address yet · Dee', 7, 1, '5h ago')}
+    <tr class="grp"><td colspan="5">NPCs & their aliases</td></tr>
+    ${r('Rogue', 'rogue@afterlife.nc · + Queen of Hearts', 26, 3, '12m ago')}${r('Viktor Vektor', 'vik@kabuki.clinic', 9, 1, '5h ago')}${r('Hana Ito', 'h.ito@newcorp.nc · + 1 alias', 6, 1, '2h ago')}${r('Dexter DeShawn', 'dex@nightcity.net', 4, 0, '1d ago')}
+    <tr class="grp"><td colspan="5">Needs attention</td></tr>
+    ${r('Old Fixer — Inbox', 'its contact was deleted', 3, 0, '2 weeks ago', { orphan: true })}
+  </tbody></table></div>`;
+}
+
+const HEAD = {
+  reply: ['Needs a reply', 'Player mail waiting on an NPC — read the conversation and answer as them here.'],
+  all: ['All mail', 'Every message in the world, with what makes it unusual flagged.'],
+  outbox: ['Outbox', 'What didn’t arrive, what’s waiting, what’s scheduled, and what will erase itself.'],
+  inboxes: ['Inboxes', 'Every mailbox: size, unread, export and clean-up.'],
+};
+const NOTES = {
+  reply: '<h3>Needs a reply</h3><p>The NPC Inbox, made the default view. One row per NPC (and per alias — Queen of Hearts is separate from Rogue because the player wrote to the alias), with who wrote and how long ago.</p><p>The right side is the <b>conversation</b>, oldest first, unanswered messages outlined, and a <b>reply box at the bottom</b>: Reply as (the scope picker, defaulting to the identity they wrote to), attach, anonymous, Send — or Open in composer for the full tools.</p><p>A message a player typed on someone’s terminal is flagged and explained, so you don’t answer the wrong person.</p><p>Answered moves it out of Waiting; the ✓ marks it answered without replying.</p>',
+  all: '<h3>All mail</h3><p>The Message Activity feed, as list + reading pane. Rows group by day; a <b>group send is one row</b> (Rogue → The crew), and the reading pane lists <b>each recipient</b> with read / not delivered / eddies claimed.</p><p><b>Who</b> is the scope picker over characters, NPCs, aliases and groups (several at once). The chips filter by everything we added: unread, anonymous, group sends, typed on a terminal, eddies, self-destruct, attachments, spam.</p><p>Anonymous mail shows the real sender to you only. Actions: open in inbox, reply as, share to chat, copy to a terminal, delete.</p>',
+  outbox: '<h3>Outbox</h3><p>Scheduled and the Message Queue merged, plus two things that had no home: <b>Didn’t arrive</b> (refused or failed sends — today these are only a toast you can miss) and <b>Timers</b> (self-destructing mail).</p><p>Ordered by urgency: problems first.</p>',
+  inboxes: '<h3>Inboxes</h3><p>Inbox Management, as a table: every mailbox with size, unread and last mail, grouped players / NPCs; an NPC’s row covers its aliases. Each row: Open, then mark read / export / purge / delete in ⋯.</p><p>An orphaned inbox (owner deleted) sits under Needs attention with a link to the Orphan Audit.</p>',
+};
+
+function render() {
+  const waiting = CONV.filter((x) => !x.answered).length;
+  const nav = [['reply', 'fa-reply', 'Needs a reply', waiting, 'hot'], ['all', 'fa-envelopes-bulk', 'All mail', MAIL.length, ''], ['outbox', 'fa-paper-plane', 'Outbox', 2, 'bad'], ['inboxes', 'fa-inbox', 'Inboxes', 9, '']];
+  document.getElementById('content').innerHTML = `
+    <div class="ncm-msg2-nav">${nav.map(([k, i, l, n, c]) => `<button type="button" class="ncm-msg2-navbtn ${VIEW === k ? 'on' : ''}" data-view="${k}"><i class="fas ${i}"></i>${l}<span class="ncm-msg2-ct ${c}">${n}</span></button>`).join('')}
+      <span class="grow"></span>${ScopePicker.html('sendas', { noun: 'identity', nouns: 'identities', icon: 'fa-paper-plane', label: 'Send as', allLabel: 'an NPC…', items: SENDAS })}${btn('', 'ncm-term-admin-btn--icon', 'fa-bullhorn', 'title="Broadcast" data-bc')}${btn('New', 'ncm-term-admin-btn--primary', 'fa-pen')}</div>
+    ${BC ? `<div class="ncm-msg2-bc"><div class="r"><span class="t"><i class="fas fa-bullhorn"></i> Broadcast</span><span class="h">one message to many — refused recipients are listed in Outbox</span><span class="grow"></span>${btn('', 'ncm-term-admin-btn--icon', 'fa-xmark', 'data-bc')}</div>
+      <div class="r">${ScopePicker.html('bcto', { noun: 'recipient', nouns: 'recipients', icon: 'fa-users', label: 'To', multi: true, allLabel: 'Every player character', items: PEOPLE.filter((p) => p.group !== 'NPCs & aliases').map((p) => ({ ...p, count: 0 })), pinned: [{ id: 'online', name: 'Everyone online', icon: 'fa-signal' }] })}
+        ${ScopePicker.html('bcfrom', { noun: 'sender', nouns: 'senders', icon: 'fa-tower-broadcast', label: 'From', allLabel: 'NetWatch notice', items: SENDAS })}<input type="text" placeholder="Subject"></div>
+      <div class="r"><textarea placeholder="Message…"></textarea></div>
+      <div class="r"><span class="ncm-msg2-chip on">Normal</span><span class="ncm-msg2-chip">Urgent</span><span class="ncm-msg2-chip"><i class="fas fa-calendar"></i>Send later</span><span class="grow"></span>${btn('Send to 4', 'ncm-term-admin-btn--primary', 'fa-paper-plane')}</div></div>` : ''}
+    <div class="ncm-msg2-view"><div class="ncm-msg2-hd"><h2>${HEAD[VIEW][0]}</h2><p>${HEAD[VIEW][1]}</p></div>
+      ${VIEW === 'reply' ? replyView() : VIEW === 'all' ? allView() : VIEW === 'outbox' ? outboxView() : inboxesView()}</div>`;
+  document.getElementById('notes').innerHTML = NOTES[VIEW] + '<h3>Header</h3><p><b>Send as</b> (scope picker over NPC identities and system addresses) opens the composer as them. <b>Broadcast</b> (bullhorn) opens inline — To is several characters or groups, From any identity. <b>New</b> opens a blank composer. Quick Compose and its NPC chips are gone; Send as replaces them.</p>';
+  ScopePicker.after();
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('[data-view]'); if (v) { VIEW = v.dataset.view; SEL = null; render(); return; }
+  const s = e.target.closest('[data-sel]'); if (s) { SEL = s.dataset.sel; ScopePicker.set('rpas', []); render(); return; }
+  const rf = e.target.closest('[data-rf]'); if (rf) { RFILT = rf.dataset.rf; SEL = null; render(); return; }
+  const af = e.target.closest('[data-af]'); if (af) { AF.has(af.dataset.af) ? AF.delete(af.dataset.af) : AF.add(af.dataset.af); render(); return; }
+  const bx = e.target.closest('[data-box]'); if (bx) { BOX = bx.dataset.box; render(); return; }
+  if (e.target.closest('[data-bc]')) { BC = !BC; render(); }
+});
+render();
+
+const link = (k, v, label) => { const q = new URLSearchParams(location.search); if (v === null) q.delete(k); else q.set(k, v); const on = (Q.get(k) ?? null) === v; return `<a class="${on ? 'on' : ''}" href="?${q}">${label}</a>`; };
+document.getElementById('bar').innerHTML = `<b>MESSAGES TAB — REDESIGN</b>
+  <span>view</span>${link('view', null, 'needs a reply')}${link('view', 'all', 'all mail')}${link('view', 'outbox', 'outbox')}${link('view', 'inboxes', 'inboxes')}
+  <span>preset</span>${link('t', null, 'clean-dark')}${link('t', 'clean-light', 'clean-light')}
+  <span>state</span>${link('bc', '1', 'broadcast open')}${link('pick', 'people', 'who picker')}${link('pick', 'sendas', 'send-as picker')}${link('sel', 'm2', 'group send')}${link('sel', 'm3', 'anonymous')}${link('sel', 'm4', 'typed on terminal')}`;
+</script>
+</body>
+</html>

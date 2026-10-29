@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Contacts map probe</title>
+<!--
+  Probe: renders the REAL partial templates/admin-panel/partials/contacts-map.hbs through Handlebars
+  over the REAL view-model (scripts/ui/AdminPanel/tabs/contactsMap.js → contactsMapModel.js), inside the
+  real cascade, with mock world data (5 characters, 25 contacts, The Crew).
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/contacts-map-probe.html
+  ?t=clean-dark|clean-light|high-contrast   ?sel=<character or contact name>   ?hi=several|one|group:crew   ?w=790 (panel) | 1100 (pop-out)   ?h=<view height, default 1180>   ?z=<zoom-in clicks>   ?table=1
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 16px; background: #1b1b22; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); padding: 10px 12px; box-sizing: border-box; }
+  #err { color: #f66; font: 13px monospace; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div id="slot"></div><div id="err"></div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark', W = Number(q.get('w') || 790);
+const isFile = location.protocol === 'file:';
+const fail = (e) => { document.getElementById('err').textContent = String(e?.stack || e); document.title = 'PROBE FAILED'; };
+try {
+  await new Promise((res, rej) => { const s = document.createElement('script'); s.src = isFile ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/node_modules/handlebars/dist/handlebars.js' : '/_vendor/handlebars.js'; s.onload = res; s.onerror = () => rej(new Error('Handlebars did not load')); document.head.appendChild(s); });
+  const RAW = [
+    ['Rogue Amendiares', 'fixer', 'Afterlife', 4, 'V Rache Judy Panam Brick', { Brick: 2 }],
+    ['Dexter DeShawn', 'fixer', '', 2, 'V Brick', { V: 1 }], ['Wakako Okada', 'fixer', 'Tyger Claws', 3, 'V Judy', {}], ['Padre', 'fixer', 'Valentinos', 3, 'V', {}],
+    ['Regina Jones', 'fixer', '', 4, 'Rache Judy Panam', { Panam: 5 }], ['Mr. Hands', 'fixer', '', 0, '', {}],
+    ['Goro Takemura', 'corp', 'Arasaka', 2, 'V Rache', { Rache: 1 }], ['Meredith Stout', 'corp', 'Militech', 1, 'V Brick', {}], ['Anders Hellman', 'corp', 'Kang Tao', 0, 'Rache', {}], ['Hiromi Sato', 'corp', 'Arasaka', 2, '', {}],
+    ['Jackie Welles', 'solo', 'Valentinos', 5, 'V Rache Judy Panam Brick', {}], ['Royce', 'solo', 'Maelstrom', 1, 'Brick', { Brick: 3 }], ['Weldon', 'solo', '', 3, 'Panam', {}],
+    ['River Ward', 'lawman', 'NCPD', 4, 'V Judy', { Judy: 3 }], ['Officer Hayes', 'lawman', 'NCPD', 2, 'Judy Brick', {}],
+    ['T-Bug', 'netrunner', '', 4, 'V Rache', {}], ['Placide', 'netrunner', 'Voodoo Boys', 1, 'V Rache', { Rache: 2 }], ['Song So Mi', 'netrunner', '', 0, '', {}],
+    ['Viktor Vektor', 'medtech', '', 5, 'V Rache Judy Panam Brick', { Brick: 4 }], ['Fingers', 'medtech', '', 1, 'V Judy', {}], ['Robert Wilson', 'tech', '', 3, 'V Panam Brick', {}],
+    ['Saul Panzer', 'nomad', 'Aldecaldos', 3, 'Panam', { Panam: 5 }], ['Mitch Anderson', 'nomad', 'Aldecaldos', 4, 'Panam Brick', {}], ['Kerry Eurodyne', 'media', 'Us Cracks', 3, 'Rache Judy', {}],
+    ['Misty Olszewski', '', 'Esoterica', 5, 'V Judy', {}],
+  ];
+  // V also knows a crowd of extras so one side of their chip passes the bus limit
+  for (const n of ['Delamain', 'Claire Russell', 'Ozob', 'Lizzy Wizzy', 'Rosalind']) RAW.push([n, 'fixer', '', 3, 'V', {}]);
+  const PCS = [['V', 'Sam'], ['Rache', 'Dee'], ['Judy', 'Mo'], ['Panam', 'Kit'], ['Brick', 'Jo']].map(([name, player]) => ({ actorId: 'a-' + name, name, player, initials: name.slice(0, 2).toUpperCase(), img: '' }));
+  const contacts = RAW.map(([name, role, org, trust, kb, ov], i) => ({ id: 'c' + i, name, role, organization: org, trust, email: name.toLowerCase().replace(/[^a-z]+/g, '.').replace(/^\.|\.$/g, '') + '@night.city',
+    knowsIds: kb ? kb.split(' ').map((n) => 'a-' + n) : [], relationships: Object.fromEntries(Object.entries(ov).map(([k, v]) => ['a-' + k, { trust: v }])) }));
+  globalThis.game = { nightcity: { contactGroupService: { getActorGroups: (id) => id === 'a-V' ? [{ name: 'The Crew', sharedFrom: { groupId: 'crew' } }] : [] } },
+    settings: { get: (m, k) => ({ dateFormat: 'YMD', dateMonthStyle: 'short', timeFormat: '24h' }[k]) } };
+  const { buildMapContext, wireContactsMap } = await import('../../scripts/ui/AdminPanel/tabs/contactsMap.js');
+  const { registerTagHueHelper } = await import('../../scripts/utils/tagHue.js');
+  registerTagHueHelper(Handlebars);
+  const crew = ['Rogue Amendiares', 'Jackie Welles', 'Viktor Vektor', 'T-Bug', 'Misty Olszewski'].map((n) => contacts.find((c) => c.name === n));
+  const groups = [{ id: 'crew', name: 'The Crew', color: 'var(--ncm-hue-4)', members: crew.map((c) => ({ hint: { contactId: c.id }, email: c.email })) }];
+  const mail = { byContact: new Map([
+    [contacts[0].id, { waiting: 2, recent: [{ sent: false, subject: 'The Afterlife, tonight. Come alone.', ts: '2045-03-02T21:10:00Z' }] }],
+    [contacts[6].id, { waiting: 1, recent: [{ sent: false, subject: 'We need to speak.', ts: '2045-03-03T08:00:00Z' }] }],
+    [contacts[18].id, { waiting: 0, recent: [{ sent: true, subject: 'Re: checkup', ts: '2045-02-25T12:00:00Z' }] }],
+  ]) };
+  const sel = q.get('sel');
+  const pick = sel ? (PCS.find((p) => p.name.toLowerCase() === sel.toLowerCase())?.actorId || contacts.find((c) => c.name.toLowerCase().startsWith(sel.toLowerCase()))?.id) : null;
+  const tab = { _mapSel: pick, _mapHi: q.get('hi') || '', _mapPanelFor: '__first__', scopeId: (n) => `probe:contacts:${n}`, _roleLabel: (r) => r ? r.charAt(0).toUpperCase() + r.slice(1) : '' };
+  const kx = { knows: (c, aid) => c.knowsIds.includes(aid) };
+  const map = buildMapContext(tab, { all: contacts, npcs: contacts, pcs: PCS, kx, mail, groups });
+  const tpl = Handlebars.compile(await (await fetch('../../templates/admin-panel/partials/contacts-map.hbs')).text());
+  const html = tpl({ map: q.get('table') ? { on: false } : map });
+  document.getElementById('slot').innerHTML = `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:${W}px"><div class="ncm-admin-panel"><div class="ncm-ct2" data-owner="contacts"><div class="ncm-ct2-view" style="height:${Number(q.get('h') || 1180)}px">${html}</div></div></div></div>`;
+  wireContactsMap(document.getElementById('slot'));
+  for (let i = 0; i < Number(q.get('z') || 0); i++) document.querySelector('[data-map-zoom="in"]')?.click();
+  // report: label boxes overlapping each other, and label count
+  const lb = [...document.querySelectorAll('.ncm-ct2-map__svg .lbp')].map((r) => r.getBBox());
+  let over = 0; for (let i = 0; i < lb.length; i++) for (let j = i + 1; j < lb.length; j++) { const a = lb[i], b = lb[j]; if (a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y) over++; }
+  document.title = `labels ${lb.length} · overlaps ${over} · buses ${map.view.buses.length}`;
+  if (q.get('nav')) {   // ?nav=1 — drive the REAL navigation wiring with synthetic events and report
+    const sc = document.querySelector('.ncm-ct2-map__scroll');
+    const r = sc.getBoundingClientRect();
+    const zoom = () => Number(getComputedStyle(sc).getPropertyValue('--ncm-map-zoom')) || 1;
+    const out = [];
+    sc.dispatchEvent(new WheelEvent('wheel', { deltaY: -60, clientX: r.left + 100, clientY: r.top + 80, bubbles: true, cancelable: true }));
+    sc.dispatchEvent(new WheelEvent('wheel', { deltaY: -60, clientX: r.left + 100, clientY: r.top + 80, bubbles: true, cancelable: true }));
+    out.push(`wheelZoom=${zoom().toFixed(2)}`);
+    const l0 = sc.scrollLeft, t0 = sc.scrollTop;
+    const pe = (type, x, y) => sc.dispatchEvent(new PointerEvent(type, { pointerId: 7, button: 0, clientX: x, clientY: y, bubbles: true }));
+    pe('pointerdown', r.left + 200, r.top + 200); pe('pointermove', r.left + 150, r.top + 170); pe('pointermove', r.left + 100, r.top + 140); pe('pointerup', r.left + 100, r.top + 140);
+    let clickReached = false; document.addEventListener('click', () => { clickReached = true; }, { once: true });
+    sc.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    out.push(`dragPan=${sc.scrollLeft - l0},${sc.scrollTop - t0}`, `clickAfterDragSwallowed=${!clickReached}`);
+    sc.dispatchEvent(new KeyboardEvent('keydown', { key: '0', bubbles: true, cancelable: true }));
+    out.push(`key0=${zoom()} label=${document.querySelector('[data-map-zoom-label]').textContent}`);
+    document.title = 'NAV ' + out.join(' · ');
+  }
+} catch (e) { fail(e); }
+</script>
+</body>
+</html>

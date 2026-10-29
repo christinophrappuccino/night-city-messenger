@@ -740,7 +740,7 @@ export function enrichContactForDisplay(contact, options = {}) {
     // Breach attempt tracking
     maxBreachAttempts: contact.maxBreachAttempts || 3,
     breachAttempts: contact.breachAttempts || 0,
-    isLockedOut: !!(contact.breachLockoutUntil && Date.now() < contact.breachLockoutUntil),
+    isLockedOut: !!(contact.breachLockoutUntil && (Number(globalThis.game?.nightcity?.timeService?.getCurrentTimeMs?.()) || Date.now()) < contact.breachLockoutUntil),   // game clock, like the stamp
     attemptDots: contact.encrypted ? (() => {
       const max = contact.maxBreachAttempts || 3;
       const used = contact.breachAttempts || 0;

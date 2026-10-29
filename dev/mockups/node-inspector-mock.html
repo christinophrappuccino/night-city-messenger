@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Node inspector — mock</title>
+<!--
+  GM node inspector (2026-10-29). One admin window per node: everything affecting it right now, with a control
+  on every row, and an Add strip for planting things yourself (a quest infection, an NPC's tap, a jam).
+  ?t=clean-dark|clean-light|high-contrast   ?add=infection|tap|jam|log   ?quiet=1 (a clean node)
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body { background: #05060a; margin: 0; padding: 24px; display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; font-family: var(--ncm-font-body, sans-serif); }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-cap { color: #8a90a6; font: 12px/1.4 monospace; margin: 0 0 8px; max-width: 760px; }
+  .mk-win { width: 760px; background: var(--ncm-bg-canvas); border: 1px solid var(--ncm-border); color: var(--ncm-text-primary); }
+  .mk-title { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--ncm-bg-canvas); border-bottom: 1px solid var(--ncm-border);
+    font: 700 12px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .mk-title .sp { flex: 1; } .mk-title i { color: var(--ncm-text-label); }
+
+  .nin { --nc: #19f3f7; --ink: color-mix(in oklab, var(--nc) 70%, var(--ncm-text-heading)); }
+  [data-ncm-admin-theme="clean-light"] .nin { --ink: color-mix(in oklab, var(--nc) 36%, var(--ncm-text-heading)); }
+  .nin__hd { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; padding: 14px 16px; background: var(--ncm-bg-pane); border-bottom: 1px solid var(--ncm-border); }
+  .nin__ic { width: 52px; height: 52px; display: grid; place-items: center; font-size: 22px; color: var(--nc);
+    background: color-mix(in srgb, var(--nc) 10%, var(--ncm-bg-card)); border: 1px solid color-mix(in srgb, var(--nc) 50%, transparent); }
+  .nin__name { font: 700 18px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .nin__sub { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; font-size: 12px; color: var(--ncm-text-label); align-items: center; }
+  .nin__net { color: var(--ink); font-weight: 700; } .nin__net::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--nc); margin-right: 5px; }
+  .nin__mono { font-family: var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .nin__acts { display: flex; gap: 6px; }
+  .b { appearance: none; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 2px; cursor: pointer;
+    background: var(--ncm-bg-card); border: 1px solid var(--ncm-border-active, var(--ncm-border)); color: var(--ncm-text-heading);
+    font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+  .b i { margin: 0; color: var(--ncm-act); }
+  .b.pri { background: var(--ncm-act); border-color: var(--ncm-act); color: var(--ncm-text-inverse); } .b.pri i { color: inherit; }
+  .b.bad i { color: var(--ncm-bad); } .b.good i { color: var(--ncm-good); }
+  .b.ic { width: 28px; padding: 0; justify-content: center; }
+  .b.sm { height: 24px; padding: 0 8px; font-size: 10px; } .b.sm.ic { width: 24px; }
+
+  /* controls strip: state segments · alert stepper · switches */
+  .nin__ctl { display: grid; grid-template-columns: auto auto 1fr; gap: 18px; align-items: end; padding: 12px 16px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-pane-alt); }
+  .k { display: block; font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); margin-bottom: 5px; }
+  .seg { display: inline-flex; border: 1px solid var(--ncm-border-active, var(--ncm-border)); }
+  .seg span { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); cursor: pointer; border-right: 1px solid var(--ncm-border); background: var(--ncm-bg-card); }
+  .seg span:last-child { border-right: 0; }
+  .seg span.on-good { background: color-mix(in srgb, var(--ncm-good) 18%, var(--ncm-bg-card)); color: var(--ncm-text-heading); box-shadow: inset 0 -2px var(--ncm-good); }
+  .seg span.on-attn { background: color-mix(in srgb, var(--ncm-attn) 18%, var(--ncm-bg-card)); color: var(--ncm-text-heading); box-shadow: inset 0 -2px var(--ncm-attn); }
+  .seg span .t { font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-time); }
+  .step { display: inline-flex; align-items: center; border: 1px solid var(--ncm-border-active, var(--ncm-border)); background: var(--ncm-bg-card); height: 28px; }
+  .step b { width: 26px; text-align: center; color: var(--ncm-act); cursor: pointer; font-weight: 700; }
+  .step .lv { min-width: 96px; text-align: center; font: 700 11px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-attn); }
+  .step .pips { display: inline-flex; gap: 2px; margin-left: 6px; } .step .pips i { width: 6px; height: 10px; background: var(--ncm-border); display: inline-block; }
+  .step .pips i.on { background: var(--ncm-attn); }
+  .sw { display: flex; gap: 14px; justify-content: flex-end; flex-wrap: wrap; }
+  .sw label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ncm-text-primary); text-transform: none; font-family: var(--ncm-font-body); cursor: pointer; }
+  .tg { width: 28px; height: 15px; border-radius: 8px; background: var(--ncm-border); position: relative; }
+  .tg::after { content: ''; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--ncm-text-secondary); }
+  .tg.on { background: color-mix(in srgb, var(--ncm-secret) 55%, var(--ncm-bg-card)); } .tg.on::after { left: 15px; background: var(--ncm-text-heading); }
+
+  .nin__body { display: grid; grid-template-columns: 1fr 250px; min-height: 380px; }
+  .nin__now { padding: 0 0 12px; border-right: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
+  .band { display: flex; align-items: center; gap: 8px; padding: 7px 16px; background: var(--ncm-bg-card-head, var(--ncm-bg-card)); border-left: 3px solid var(--sk, var(--ncm-act));
+    font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); margin-top: 10px; }
+  .band i { color: var(--sk, var(--ncm-act)); } .band .n { margin-left: auto; font-family: var(--ncm-font-mono); color: var(--ncm-text-label); font-weight: 400; }
+  .band.bad { --sk: var(--ncm-bad); } .band.secret { --sk: var(--ncm-secret); } .band.attn { --sk: var(--ncm-attn); } .band.act { --sk: var(--ncm-act); } .band.plain { --sk: var(--ncm-text-label); }
+  .row { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 8px 16px; border-bottom: 1px dashed var(--ncm-border); }
+  .row > i { color: var(--rc, var(--ncm-text-label)); text-align: center; }
+  .row .t1 { font-weight: 700; color: var(--ncm-text-heading); font-size: 13px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .row .t2 { font-size: 12px; color: var(--ncm-text-secondary); margin-top: 2px; }
+  .row .t2 .m { font-family: var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .row .a { display: flex; gap: 5px; }
+  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; height: 17px; border: 1px solid currentColor; font: 700 9px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+  .tag.secret { color: var(--ncm-secret); } .tag.attn { color: var(--ncm-attn); } .tag.good { color: var(--ncm-good); } .tag.plain { color: var(--ncm-text-label); } .tag.act { color: var(--ncm-act); }
+  .row.quest { background: color-mix(in srgb, var(--ncm-attn) 7%, transparent); box-shadow: inset 3px 0 var(--ncm-attn); }
+  .quiet { padding: 10px 16px; font-size: 12px; color: var(--ncm-text-hint); font-style: italic; }
+
+  .nin__side { background: var(--ncm-bg-pane-alt); padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .add { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .add .b { justify-content: flex-start; }
+  .add .b.is-open { border-color: var(--ncm-act); box-shadow: inset 0 -2px var(--ncm-act); }
+  .form { border: 1px solid var(--ncm-act); background: var(--ncm-bg-card); padding: 10px; display: grid; gap: 8px; }
+  .form h4 { margin: 0; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); border: 0; }
+  .f { display: grid; gap: 3px; } .f > span { font: 700 9px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .in { height: 26px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); background: var(--ncm-bg-pane); color: var(--ncm-text-heading); padding: 0 7px; font-size: 12px; display: flex; align-items: center; }
+  .in.mono { font-family: var(--ncm-font-mono); }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chips span { height: 22px; padding: 0 7px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--ncm-border); font-size: 11px; color: var(--ncm-text-secondary); background: var(--ncm-bg-pane); }
+  .chips span.on { border-color: var(--ncm-secret); color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-secret) 14%, var(--ncm-bg-pane)); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .chk { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; color: var(--ncm-text-primary); }
+  .chk .bx { width: 13px; height: 13px; border: 1px solid var(--ncm-act); flex: none; margin-top: 2px; display: grid; place-items: center; font-size: 9px; color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 14%, transparent); }
+  .hint { font-size: 11px; color: var(--ncm-text-hint); font-style: italic; }
+  .log { display: grid; gap: 0; max-height: 170px; overflow: auto; border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
+  .log div { display: grid; grid-template-columns: 52px 1fr; gap: 6px; padding: 4px 7px; font-size: 11px; color: var(--ncm-text-primary); border-bottom: 1px dashed var(--ncm-border); }
+  .log div .m { font-family: var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .log div.wiped { color: var(--ncm-text-hint); text-decoration: line-through; }
+  .log div.wiped .m::after { content: ' wiped'; text-decoration: none; color: var(--ncm-secret); }
+</style>
+</head>
+<body>
+<script>
+  const P = new URLSearchParams(location.search);
+  const T = P.get('t') || 'clean-dark';
+  const ADD = P.get('add') || 'infection';
+  const QUIET = P.get('quiet') === '1';
+  const row = (icon, rc, t1, t2, acts, cls = '') => `<div class="row ${cls}" style="--rc:${rc}"><i class="fas ${icon}"></i><div><div class="t1">${t1}</div><div class="t2">${t2}</div></div><div class="a">${acts}</div></div>`;
+  const now = QUIET ? '<div class="quiet">Nothing is affecting this node. Use Add on the right to plant something — a quest infection, an NPC\'s tap, a jam.</div>' : `
+    <div class="band attn"><i class="fas fa-wave-square"></i>State<span class="n">jammed</span></div>
+    ${row('fa-wave-square', 'var(--ncm-attn)', 'Jammed <span class="tag plain">by Rache</span>', 'Back on in <span class="m">18 min</span> · started <span class="m">22:41</span>', '<button class="b sm good"><i class="fas fa-power-off"></i>Unjam</button><button class="b sm"><i class="fas fa-plus"></i>30 min</button>')}
+    <div class="band bad"><i class="fas fa-bug"></i>Infections<span class="n">2</span></div>
+    ${row('fa-bug', 'var(--ncm-bad)', 'Worm “Lazarus” <span class="tag attn"><i class="fas fa-flag"></i>quest</span><span class="tag plain">GM · Voodoo Boys</span>', 'Carries a tap · on <span class="m">3</span> nodes · next hop in <span class="m">2 h</span> · found by a sweep at DV <span class="m">17</span>', '<button class="b sm ic" title="Edit"><i class="fas fa-pen"></i></button><button class="b sm" title="Clean this node"><i class="fas fa-broom"></i>Clean</button><button class="b sm ic bad" title="Remove from every node"><i class="fas fa-xmark"></i></button>', 'quest')}
+    ${row('fa-satellite-dish', 'var(--ncm-bad)', 'Sniffer <span class="tag plain">V</span><span class="tag attn">sloppy</span>', '<span class="m">4</span> of 10 mails caught · found at DV <span class="m">9</span>', '<button class="b sm" title="Read what it caught"><i class="fas fa-envelope-open"></i>4</button><button class="b sm" title="Clean"><i class="fas fa-broom"></i>Clean</button>')}
+    <div class="band secret"><i class="fas fa-ear-listen"></i>Taps &amp; backdoors<span class="n">2</span></div>
+    ${row('fa-ear-listen', 'var(--ncm-secret)', 'Tap <span class="tag plain">Rache</span>', 'Copies mail sent from Watson Docks over CitiNet · until removed', '<button class="b sm ic bad" title="Remove"><i class="fas fa-xmark"></i></button>')}
+    ${row('fa-door-open', 'var(--ncm-secret)', 'Backdoor <span class="tag plain">Militech (NPC)</span>', 'Skips the CitiNet login · <span class="m">5 h</span> left', '<button class="b sm ic bad" title="Remove"><i class="fas fa-xmark"></i></button>')}
+    <div class="band act"><i class="fas fa-plug"></i>Runners<span class="n">2</span></div>
+    ${row('fa-plug', 'var(--ncm-act)', 'Rache <span class="tag good">in now</span>', 'Interface 5 · <span class="m">1</span> of 3 moves left · session ends in <span class="m">42 min</span>', '<button class="b sm" title="Give a move back"><i class="fas fa-plus"></i>Move</button><button class="b sm" title="Kick them out"><i class="fas fa-right-from-bracket"></i>Kick</button><button class="b sm ic" title="Reset — next jack-in starts fresh"><i class="fas fa-rotate-left"></i></button>')}
+    ${row('fa-plug', 'var(--ncm-text-label)', 'V', 'Jacked out · <span class="m">0</span> of 2 moves left · ends in <span class="m">12 min</span>', '<button class="b sm ic" title="Reset"><i class="fas fa-rotate-left"></i></button>')}
+    <div class="band bad"><i class="fas fa-ban"></i>Locked out<span class="n">1</span></div>
+    ${row('fa-ban', 'var(--ncm-bad)', 'Kerry', 'Failed <span class="m">3</span> of 3 tries on CitiNet · <span class="m">54 min</span> left · counts for the network login too', '<button class="b sm good"><i class="fas fa-unlock"></i>Clear</button>')}
+  `;
+  const forms = {
+    infection: `<div class="form"><h4><i class="fas fa-bug"></i> Plant an infection</h4>
+      <div class="f"><span>Program</span><div class="chips"><span class="on"><i class="fas fa-bug"></i>Worm</span><span><i class="fas fa-ear-listen"></i>Tap</span><span><i class="fas fa-bomb"></i>Bomb</span><span><i class="fas fa-satellite-dish"></i>Sniffer</span></div></div>
+      <div class="f"><span>Name players see after a sweep</span><div class="in">Lazarus</div></div>
+      <div class="two"><div class="f"><span>Who planted it</span><div class="in">Voodoo Boys</div></div><div class="f"><span>Found at DV</span><div class="in mono">17</div></div></div>
+      <div class="two"><div class="f"><span>Hops every (h)</span><div class="in mono">3</div></div><div class="f"><span>Up to nodes</span><div class="in mono">4</div></div></div>
+      <label class="chk"><span class="bx">✓</span>Quest — tell me when a player cleans it</label>
+      <label class="chk"><span class="bx">✓</span>Players see symptoms</label>
+      <div style="display:flex;gap:6px;justify-content:flex-end"><button class="b sm">Cancel</button><button class="b sm pri"><i class="fas fa-plus"></i>Plant it</button></div></div>`,
+    tap: `<div class="form"><h4><i class="fas fa-ear-listen"></i> Add a tap</h4>
+      <div class="f"><span>For</span><div class="in"><i class="fas fa-user" style="margin-right:6px;color:var(--ncm-text-label)"></i>Militech (NPC) ▾</div></div>
+      <div class="f"><span>How long</span><div class="chips"><span>1 h</span><span>1 day</span><span class="on">Until removed</span></div></div>
+      <div class="hint">An NPC's copies land in that NPC's inbox — read them in Admin → Messages.</div>
+      <div style="display:flex;gap:6px;justify-content:flex-end"><button class="b sm">Cancel</button><button class="b sm pri"><i class="fas fa-plus"></i>Add tap</button></div></div>`,
+    jam: `<div class="form"><h4><i class="fas fa-wave-square"></i> Jam it</h4>
+      <div class="f"><span>For</span><div class="chips"><span>10 min</span><span class="on">30 min</span><span>1 h</span><span>Until I lift it</span></div></div>
+      <div class="f"><span>Log line (optional)</span><div class="in">Arasaka countermeasures</div></div>
+      <div style="display:flex;gap:6px;justify-content:flex-end"><button class="b sm">Cancel</button><button class="b sm pri"><i class="fas fa-wave-square"></i>Jam</button></div></div>`,
+    log: `<div class="form"><h4><i class="fas fa-scroll"></i> Write in its log</h4>
+      <div class="two"><div class="f"><span>Who</span><div class="in">maint.crew</div></div><div class="f"><span>When</span><div class="in mono">now</div></div></div>
+      <div class="f"><span>What</span><div class="in">firmware patched — reboot</div></div>
+      <div class="hint">Players see it in the console's ticker. A clue goes here.</div>
+      <div style="display:flex;gap:6px;justify-content:flex-end"><button class="b sm">Cancel</button><button class="b sm pri"><i class="fas fa-plus"></i>Write</button></div></div>`,
+  };
+  const addBtn = (k, icon, label) => `<button class="b sm ${ADD === k ? 'is-open' : ''}"><i class="fas ${icon}"></i>${label}</button>`;
+  document.body.innerHTML = `
+  <div>
+    <p class="mk-cap">GM node inspector — Admin → Networks → a node → Inspect, the console's GM button, or the pin's right-click. Every row has its control; Add plants your own. Theme: ${T}.</p>
+    <div class="mk-win ncm-app" data-ncm-admin-theme="${T}">
+      <div class="mk-title"><i class="fas fa-magnifying-glass"></i>Inspect node — Dock Mast<span class="sp"></span><i class="fas fa-minus"></i><i class="fas fa-xmark"></i></div>
+      <div class="nin">
+        <div class="nin__hd"><div class="nin__ic"><i class="fas fa-tower-broadcast"></i></div>
+          <div><div class="nin__name">Dock Mast</div><div class="nin__sub"><span class="nin__net">CitiNet</span>·<span>Relay</span>·<span>Watson Docks</span>·<span class="nin__mono">0x7F3A</span></div></div>
+          <div class="nin__acts"><button class="b"><i class="fas fa-terminal"></i>Console</button><button class="b"><i class="fas fa-pen"></i>Edit</button><button class="b ic" title="Ways in"><i class="fas fa-ellipsis"></i></button></div></div>
+        <div class="nin__ctl">
+          <div><span class="k">State</span><div class="seg"><span>On</span><span>Off</span><span class="${QUIET ? '' : 'on-attn'}">Jammed${QUIET ? '' : ' <span class="t">18m</span>'}</span><span>Damaged</span></div></div>
+          <div><span class="k">Alert</span><div class="step"><b>−</b><span class="lv">${QUIET ? 'Calm' : 'Alarmed'}<span class="pips">${[1,2,3].map(i => `<i class="${!QUIET && i <= 2 ? 'on' : ''}"></i>`).join('')}</span></span><b>+</b></div></div>
+          <div class="sw"><label><span class="tg on"></span>Box locked</label><label><span class="tg"></span>Hidden</label><label><span class="tg on"></span>Show traffic</label></div>
+        </div>
+        <div class="nin__body">
+          <div class="nin__now">${now}</div>
+          <div class="nin__side">
+            <div><span class="k">Add</span><div class="add">${addBtn('infection', 'fa-bug', 'Infection')}${addBtn('tap', 'fa-ear-listen', 'Tap')}${addBtn('backdoor', 'fa-door-open', 'Backdoor')}${addBtn('jam', 'fa-wave-square', 'Jam')}${addBtn('log', 'fa-scroll', 'Log line')}${addBtn('damage', 'fa-triangle-exclamation', 'Damage')}</div></div>
+            ${forms[ADD] || ''}
+            <div><span class="k">Log — players see the lines that aren't wiped</span><div class="log">
+              <div><span class="m">22:41</span><span>Rache — jammed for 30 min</span></div>
+              <div class="wiped"><span class="m">22:38</span><span>Rache — jacked in</span></div>
+              <div><span class="m">22:30</span><span>intrusion attempt</span></div>
+              <div><span class="m">21:02</span><span>Voodoo Boys — installed Lazarus</span></div>
+              <div><span class="m">18:15</span><span>maint.crew — firmware patched</span></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+</script>
+</body>
+</html>

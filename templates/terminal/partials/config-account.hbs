@@ -138,10 +138,8 @@
       <label class="ncm-acct-tgl"><input type="checkbox" name="secAllowSkill" {{#if allowSkillCheck}}checked{{/if}}><span class="ncm-acct-tgl-knob"></span></label>
     </div>
     <div class="ncm-acct-mcard-b">
-      <div class="ncm-cfg-row" style="margin:0">
-        <select name="secSkill" class="ncm-cfg-select ncm-cfg-flex">{{#each skillOpts}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select>
-        <span class="ncm-cfg-label" style="min-width:0">DV</span><input type="number" name="secDV" class="ncm-cfg-input ncm-cfg-input--short" value="{{bypassDC}}" min="0" max="40">
-      </div>
+      {{!-- Any one listed skill opens the account; each has its own DV. --}}
+      {{{bypassRowsHtml}}}
     </div>
   </div>
 
@@ -174,6 +172,13 @@
   </div>
   <div class="ncm-cfg-hint">BLACK ICE bites the netrunner on a failed attempt.</div>
   <div class="ncm-cfg-row"><span class="ncm-cfg-label">Max attempts</span><input type="number" name="secMaxAttempts" class="ncm-cfg-input ncm-cfg-input--short" value="{{maxAttempts}}" min="1" max="10"><span class="ncm-cfg-label" style="min-width:0">Lockout (min)</span><input type="number" name="secLockoutMin" class="ncm-cfg-input ncm-cfg-input--short" value="{{lockoutMin}}" min="0"></div>
+
+  {{!-- How hard for your party — painted live by TerminalConfigApp._paintLockOdds from the
+       fields above (no re-render; the editor's save contract is untouched). --}}
+  <div class="ncm-lodds-host" data-lock-odds></div>
+
+  {{!-- Countermeasure visibility — what a layperson can tell about this account's defences --}}
+  {{> "modules/night-city-messenger/templates/partials/countermeasure-override.hbs" cmv=cmvOverride}}
 
   {{!-- ── F · Sticky footer ── --}}
   <div class="ncm-acct-foot">

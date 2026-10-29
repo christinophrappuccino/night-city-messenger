@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security Tab Redesign — mock</title>
+<!--
+  ADMIN → SECURITY, REORGANISED — design mock (2026-10-27).
+
+  The tab grew to eight stacked cards (nine with Countermeasure Visibility):
+  the things that need a GM decision NOW (a countdown, a HOT operator, an
+  armed plant) sat in three different cards, and the rarely-touched rules sat
+  at the bottom under the log. This splits it by the question the GM is asking:
+
+    LIVE        what needs me right now?      (landing view)
+    ACTIVITY    what happened?                (the full log, full height)
+    HEAT        who is running hot, who is being traced?
+    MACHINES    what is sitting on the machines? (plants + recycle bin)
+    RULES       how does this table play?     (fold-out cards with one-line summaries)
+
+  Programs (create / library) become two buttons on the sub-tab bar.
+  Every sub-tab carries a count, so nothing hides behind a tab silently.
+
+  Built from the real classes (.ncm-admin-*, .ncm-sec-admin-*) against the real
+  cascade at the panel's true 820px; new pieces are .ncm-sec-admin-nav / -queue /
+  -fold / -peek. Click the sub-tabs, or:
+    ?view=live|activity|heat|machines|rules   ?t=clean-dark|clean-light|high-contrast
+    ?quiet=1   an empty table (every empty state)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  /* ── page chrome (not part of the design) ── */
+  html, body { margin: 0; background: #06060a; color: #8fa0b2; font-family: 'Rajdhani', sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; padding: 9px 14px;
+    background: #0b0b12; border-bottom: 1px solid #1b1b28; font: 11px 'Share Tech Mono', monospace; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a; padding: 3px 8px; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+  .bar a.on { color: #07070b; background: #19f3f7; border-color: #19f3f7; }
+  .stage { display: flex; gap: 26px; justify-content: center; padding: 24px 16px 60px; flex-wrap: wrap; }
+  .notes { width: 330px; font-size: 14px; line-height: 1.5; color: #9aa6b4; }
+  .notes h3 { margin: 0 0 6px; font: 700 12px 'Rajdhani'; letter-spacing: .14em; text-transform: uppercase; color: #e6edf5; }
+  .notes p { margin: 0 0 12px; } .notes b { color: #d6dee8; }
+
+  /* The panel frame, pinned into flow (.ncm-app is position:fixed in the real cascade). */
+  .mk, .mk.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-panel { width: 820px; height: 760px; display: flex; flex-direction: column; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); overflow: hidden; }
+  .mk-panel > .ncm-admin-content { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: hidden; padding: 0 14px 14px; }
+
+  /* ═════════════════════════════════════════════════════════════
+     NEW — .ncm-sec-admin-nav: the Security sub-tabs (sticky)
+     ═════════════════════════════════════════════════════════════ */
+  .ncm-admin-panel .ncm-sec-admin-nav { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 4px;
+    margin: 0 -14px 12px; padding: 8px 14px; background: var(--ncm-bg-deep); border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel button.ncm-sec-admin-navbtn { appearance: none; width: auto !important; height: 30px !important; min-height: 0 !important; margin: 0 !important;
+    display: inline-flex !important; align-items: center; gap: 6px; padding: 0 10px !important; border-radius: 2px !important; cursor: pointer; white-space: nowrap;
+    background: transparent !important; border: 1px solid transparent !important; box-shadow: none !important;
+    font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary) !important; }
+  .ncm-admin-panel button.ncm-sec-admin-navbtn:hover { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-surface) !important; }
+  .ncm-admin-panel button.ncm-sec-admin-navbtn.on { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-surface) !important;
+    border-color: var(--ncm-border) !important; box-shadow: inset 0 -2px 0 var(--ncm-secondary) !important; }
+  .ncm-admin-panel .ncm-sec-admin-navbtn i { color: var(--ncm-secondary); font-size: 11px; }
+  .ncm-admin-panel .ncm-sec-admin-navct { min-width: 16px; padding: 0 4px; height: 15px; display: inline-grid; place-items: center; border-radius: 1px;
+    font: 700 10px var(--ncm-font-mono); background: var(--ncm-bg-elevated); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-navct.hot { background: var(--ncm-danger); color: #fff; }
+  .ncm-admin-panel .ncm-sec-admin-navct.new { background: color-mix(in srgb, var(--ncm-secondary) 22%, transparent); color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-nav .grow { flex: 1; }
+
+  .ncm-admin-panel .ncm-sec-admin-view { display: none; }
+  .ncm-admin-panel .ncm-sec-admin-view.on { display: block; }
+  .ncm-admin-panel .ncm-sec-admin-viewhd { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 2px 0 12px; }
+  .ncm-admin-panel .ncm-sec-admin-viewhd h2 { margin: 0; border: 0; text-shadow: none !important; box-shadow: none !important;
+    font: 700 17px var(--ncm-font-display); letter-spacing: .02em; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-sec-admin-viewhd p { margin: 0; font: 14px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-legend { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; margin-top: 6px; }
+  .ncm-admin-panel .ncm-sec-admin-legend span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 3px; border: 1px solid var(--ncm-border); border-radius: 2px;
+    background: var(--ncm-bg-surface); font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-legend b { padding: 1px 6px; border-radius: 1px; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+  .ncm-admin-panel .ncm-sec-admin-legend .m { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-sec-admin-legend .cold b { background: var(--ncm-bg-elevated); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-legend .warm b { background: color-mix(in srgb, var(--ncm-accent) 22%, transparent); color: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-sec-admin-legend .hot b { background: color-mix(in srgb, var(--ncm-warning) 22%, transparent); color: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-sec-admin-legend .burned b { background: color-mix(in srgb, var(--ncm-danger) 22%, transparent); color: var(--ncm-danger); }
+
+  /* clickable stats (Live) */
+  .ncm-admin-panel .ncm-sec-admin-strip.links .ncm-sec-admin-stat { cursor: pointer; }
+  .ncm-admin-panel .ncm-sec-admin-strip.links .ncm-sec-admin-stat:hover { border-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-stat .go { float: right; font-size: 10px; color: var(--ncm-text-muted); margin-top: 4px; }
+
+  /* ═════ NEW — .ncm-sec-admin-queue: "needs your call" ═════ */
+  .ncm-admin-panel .ncm-sec-admin-queue { display: flex; flex-direction: column; }
+  .ncm-admin-panel .ncm-sec-admin-q { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 9px 13px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-sec-admin-q:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-sec-admin-q .qi { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 2px; font-size: 13px;
+    background: color-mix(in srgb, var(--q-c) 14%, transparent); color: var(--q-c); border: 1px solid color-mix(in srgb, var(--q-c) 40%, transparent); }
+  .ncm-admin-panel .ncm-sec-admin-q.cd { --q-c: var(--ncm-danger); }
+  .ncm-admin-panel .ncm-sec-admin-q.hot { --q-c: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-sec-admin-q.plant { --q-c: var(--ncm-purple); }
+  .ncm-admin-panel .ncm-sec-admin-q .qt { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-sec-admin-q .qt .mono { font-family: var(--ncm-font-mono); font-weight: 400; color: var(--q-c); margin-left: 4px; }
+  .ncm-admin-panel .ncm-sec-admin-q .qd { font: 13px var(--ncm-font-display); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-q .qa { display: flex; gap: 5px; }
+  .ncm-admin-panel .ncm-sec-admin-q .qa .ncm-sec-admin-btn { white-space: nowrap; }
+
+  /* ═════ NEW — .ncm-sec-admin-peek: latest activity, compact ═════ */
+  .ncm-admin-panel .ncm-sec-admin-peek { display: grid; grid-template-columns: 54px 14px 1fr auto; gap: 4px 10px; align-items: center; padding: 6px 13px; border-bottom: 1px solid var(--ncm-border); font: 13px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-sec-admin-peek:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-sec-admin-peek .ago { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-peek .who { font-weight: 700; }
+  .ncm-admin-panel .ncm-sec-admin-peek .obj { color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-peek .x-ok { color: var(--ncm-success); font-weight: 700; }
+  .ncm-admin-panel .ncm-sec-admin-peek .x-fail { color: var(--ncm-danger); font-weight: 700; }
+
+  /* ═════ NEW — .ncm-sec-admin-fold: rule cards that fold, with a summary ═════ */
+  .ncm-admin-panel .ncm-sec-admin-fold > .ncm-sec-admin-card__hd { cursor: pointer; }
+  .ncm-admin-panel .ncm-sec-admin-fold > .ncm-sec-admin-card__hd:hover { background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-sec-admin-fold .sum { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 1px;
+    border: 1px solid var(--ncm-border-active, var(--ncm-border)); font: 700 11px var(--ncm-font-display); color: var(--ncm-text-primary); background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-sec-admin-fold .sum.off { color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-fold .sum b { color: var(--ncm-secondary); font-weight: 700; }
+  .ncm-admin-panel .ncm-sec-admin-fold .chev { color: var(--ncm-text-secondary); font-size: 11px; transition: transform .25s cubic-bezier(.22,1,.36,1); }
+  .ncm-admin-panel .ncm-sec-admin-fold.open .chev { transform: rotate(180deg); }
+  .ncm-admin-panel .ncm-sec-admin-fold > .ncm-sec-admin-card__bd { display: none; }
+  .ncm-admin-panel .ncm-sec-admin-fold.open > .ncm-sec-admin-card__bd { display: block; }
+  .ncm-admin-panel .ncm-sec-admin-fold .lede { margin: 0 0 10px; font: 14px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-opts { margin: 0 0 10px; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .ncm-admin-panel .ncm-sec-admin-opts li { padding: 7px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); font: 13px/1.35 var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-opts li b { display: block; margin-bottom: 2px; font: 700 11px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-sec-admin-opts li.on { border-color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-sec-admin-opts li.on b { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ncm-admin-panel .ncm-sec-admin-mini { font: 13px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-sec-admin-mini .k { display: block; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); margin-bottom: 3px; }
+  .ncm-admin-panel .ncm-sec-admin-chiprow { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-admin-panel .ncm-sec-admin-tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 1px;
+    font: 700 11px var(--ncm-font-display); color: var(--ncm-text-primary); background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-sec-admin-tag .m { font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-tag.add { border-style: dashed; color: var(--ncm-secondary); background: transparent; }
+  .ncm-admin-panel .ncm-sec-admin-modes4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+  .ncm-admin-panel .ncm-sec-admin-modes4 > div { padding: 7px 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); font: 700 11px var(--ncm-font-display); text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-sec-admin-modes4 > div span { display: block; margin-top: 2px; font: 12px/1.3 var(--ncm-font-display); text-transform: none; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-sec-admin-modes4 > div.on { border-color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-sec-admin-modes4 i { color: var(--ncm-secondary); margin-right: 5px; }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="stage">
+  <div class="mk mk-panel ncm-app ncm-admin-panel" id="panel" data-ncm-scanlines="false">
+    <nav class="ncm-admin-tabs">
+      <button class="ncm-admin-tab"><i class="fas fa-chart-bar"></i> Overview</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelope"></i> Messages</button>
+      <button class="ncm-admin-tab"><i class="fas fa-address-book"></i> Contacts</button>
+      <button class="ncm-admin-tab"><i class="fas fa-network-wired"></i> Networks</button>
+      <button class="ncm-admin-tab"><i class="fas fa-database"></i> Shards</button>
+      <button class="ncm-admin-tab"><i class="fas fa-terminal"></i> Terminals</button>
+      <button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-shield-halved"></i> Security</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelopes-bulk"></i> Spam</button>
+      <button class="ncm-admin-tab"><i class="fas fa-wrench"></i> Tools</button>
+    </nav>
+    <div class="ncm-admin-content" id="content"></div>
+  </div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const T = Q.get('t') || 'clean-dark';
+const QUIET = Q.get('quiet') === '1';
+let VIEW = Q.get('view') || 'live';
+document.getElementById('panel').dataset.ncmAdminTheme = T;
+
+/* ── sample table state ── */
+const D = QUIET ? { newLog: 0, hot: 0, cds: [], armed: [], log: [], bin: [], heat: [] } : {
+  newLog: 3,
+  cds: [{ who: 'V', src: 'Arasaka', obj: 'Arasaka Tower — WS-7F-12', rem: '14:32', game: true }],
+  heat: [
+    { who: 'Rache', obj: 'Arasaka Tower — WS-7F-12', v: 72, tier: 'hot', esc: true },
+    { who: 'V', obj: 'CorpNet', v: 54, tier: 'hot', esc: true },
+    { who: 'Kiri', obj: 'Ripperdoc terminal', v: 31, tier: 'warm', esc: true },
+  ],
+  armed: [
+    { name: 'Forged chatlog — "the bribe"', forge: 'clean', host: 'WS-7F-12', by: 'Rache', trig: 'on next login', plant: true },
+    { name: 'Keylogger', forge: 'sloppy', host: 'Afterlife BBS', by: 'V', trig: 'on next login', plant: false },
+  ],
+  log: [
+    { ago: '2m', who: 'Rache', ok: false, act: 'Network bypass', verb: 'Backdoor', obj: 'CorpNet', icon: 'fa-network-wired', cls: 'net', roll: '13 vs 17', heat: 54, tier: 'hot', sev: 'major', isNew: true },
+    { ago: '6m', who: 'V', ok: true, act: 'Terminal login', verb: '', obj: 'WS-7F-12 · root', icon: 'fa-terminal', cls: 'term', roll: '19 vs 15', sev: 'minor', isNew: true },
+    { ago: '11m', who: 'V', ok: true, act: 'Plant uploaded', verb: 'Virus', obj: 'WS-7F-12', icon: 'fa-terminal', cls: 'term', roll: '18 vs 16', sev: 'major', isNew: true },
+    { ago: '40m', who: 'Kiri', ok: false, act: 'Shard breach', verb: '', obj: 'Ghost’s go-bag', icon: 'fa-sd-card', cls: 'shard', roll: '9 vs 15', heat: 31, tier: 'warm', sev: 'minor' },
+    { ago: '1h', who: 'Rache', ok: true, act: 'Siphon', verb: 'Control', obj: 'Biotechnica account', icon: 'fa-sack-dollar', cls: 'msg', roll: '21 vs 18', sev: 'major' },
+    { ago: '2h', who: 'V', ok: true, act: 'Message decrypt', verb: '', obj: '“RE: the shipment”', icon: 'fa-envelope', cls: 'msg', roll: '16 vs 15', sev: 'minor' },
+  ],
+  bin: [{ file: 'dock-cam.feed', host: 'Militech checkpoint', by: 'V', ago: '3h' }],
+};
+D.hot = D.heat.filter((h) => h.v >= 50).length;
+
+/* ── pieces ── */
+const btn = (label, cls = '', icon = '') => `<button type="button" class="ncm-sec-admin-btn sm ${cls}">${icon ? `<i class="fas ${icon}"></i> ` : ''}${label}</button>`;
+const card = (icon, title, info, actions, body, { nopad = false, extraCls = '' } = {}) => `
+  <div class="ncm-sec-admin-card ${extraCls}">
+    <div class="ncm-sec-admin-card__hd"><i class="fas ${icon} lead"></i><h3>${title}</h3>${info ? `<span class="ncm-sec-admin-info" data-tooltip="${info}">ⓘ</span>` : ''}<span class="grow"></span>${actions || ''}</div>
+    <div class="ncm-sec-admin-card__bd ${nopad ? 'nopad' : ''}">${body}</div>
+  </div>`;
+const empty = (t) => `<div class="ncm-sec-admin-empty">${t}</div>`;
+
+const navCount = { live: D.cds.length + D.hot + D.armed.length, activity: D.newLog, heat: D.hot + D.cds.length, machines: D.armed.length, rules: 0 };
+const nav = () => `
+  <div class="ncm-sec-admin-nav">
+    ${[['live', 'fa-bolt', 'Live', navCount.live, 'hot'], ['activity', 'fa-list-check', 'Activity', navCount.activity, 'new'],
+       ['heat', 'fa-fire', 'Heat', navCount.heat, 'hot'], ['machines', 'fa-server', 'Machines', navCount.machines, ''],
+       ['rules', 'fa-sliders', 'Hacking rules', 0, '']].map(([k, ic, l, n, c]) =>
+      `<button type="button" class="ncm-sec-admin-navbtn ${VIEW === k ? 'on' : ''}" data-view="${k}"><i class="fas ${ic}"></i>${l}${n ? `<span class="ncm-sec-admin-navct ${c}">${n}</span>` : ''}</button>`).join('')}
+    <span class="grow"></span>
+    ${btn('New program', 'primary', 'fa-flask')}${btn('Library', '', 'fa-book-bookmark')}
+  </div>`;
+const viewHd = (h, p, extra = '') => `<div class="ncm-sec-admin-viewhd"><h2>${h}</h2><p>${p}</p>${extra}</div>`;
+
+const queue = () => {
+  const rows = [
+    ...D.cds.map((c) => `<div class="ncm-sec-admin-q cd"><span class="qi"><i class="fas fa-hourglass-half"></i></span>
+      <div><div class="qt">${c.src} is closing in on ${c.who}<span class="mono">${c.rem}${c.game ? ' ⏱' : ''}</span></div><div class="qd">on ${c.obj} · at zero ${c.who} is burned</div></div>
+      <div class="qa">${btn('Call off')}</div></div>`),
+    ...D.heat.filter((h) => h.v >= 50).map((h) => `<div class="ncm-sec-admin-q hot"><span class="qi"><i class="fas fa-fire"></i></span>
+      <div><div class="qt">${h.who} is running hot<span class="mono">${h.v} HOT</span></div><div class="qd">on ${h.obj}</div></div>
+      <div class="qa">${btn('Escalate', 'danger')}${btn('Adjust')}${btn('Clear')}</div></div>`),
+    ...D.armed.map((p) => `<div class="ncm-sec-admin-q plant"><span class="qi"><i class="fas ${p.plant ? 'fa-comments' : 'fa-key'}"></i></span>
+      <div><div class="qt">${p.name}<span class="mono">armed</span></div><div class="qd">${p.by} on ${p.host} · ${p.forge} · fires ${p.trig}</div></div>
+      <div class="qa">${btn('Fire now')}${btn('Defuse')}</div></div>`),
+  ];
+  return rows.length ? `<div class="ncm-sec-admin-queue">${rows.join('')}</div>` : empty('Nothing needs you right now.');
+};
+const peek = () => D.log.length ? D.log.slice(0, 5).map((r) => `
+  <div class="ncm-sec-admin-peek"><span class="ago">${r.isNew ? '<span class="newdot"></span>' : ''}${r.ago}</span>
+    <span>${r.ok ? '<span class="x-ok">✓</span>' : '<span class="x-fail">✗</span>'}</span>
+    <span><span class="who">${r.who}</span> · ${r.act} <span class="obj">→ ${r.obj}</span></span>
+    <span class="ago">${r.roll}</span></div>`).join('') : empty('No activity yet.');
+
+const logTable = () => `
+  <div class="ncm-sec-admin-scroll" style="max-height:none"><table class="ncm-sec-admin-table">
+    <thead><tr><th>When</th><th>Operator</th><th>What happened</th><th>Target</th><th>Roll</th><th>Heat</th><th></th></tr></thead>
+    <tbody>${D.log.length ? D.log.map((r) => `<tr class="${r.isNew ? 'is-new' : ''}">
+      <td class="ago">${r.isNew ? '<span class="newdot"></span>' : ''}${r.ago}</td>
+      <td><span class="who clk">${r.who}</span></td>
+      <td><span class="act"><span class="dot ${r.sev}"></span>${r.ok ? '<span class="x-ok">✓</span>' : '<span class="x-fail">✗</span>'} ${r.act}${r.verb ? `<span class="nverb">${r.verb}</span>` : ''}</span></td>
+      <td><span class="obj clk"><i class="fas ${r.icon} tk ${r.cls}"></i>${r.obj}</span></td>
+      <td class="roll">${r.roll}</td>
+      <td class="mono">${r.ok ? '<span class="noheat">— no heat</span>' : `${r.heat} <span class="tier ${r.tier}">${r.tier}</span>`}</td>
+      <td><i class="fas fa-arrow-up-right-from-square jump"></i></td></tr>`).join('') : '<tr><td colspan="7" class="ncm-sec-admin-empty">No activity.</td></tr>'}</tbody>
+  </table></div>`;
+
+const heatRows = () => D.heat.length ? D.heat.map((h) => `
+  <div class="ncm-sec-admin-heat"><span class="who">${h.who}</span><span class="obj">${h.obj}</span>
+    <span class="bar"><span class="fill ${h.tier}" style="width:${h.v}%"></span></span>
+    <span class="val">${h.v} <span class="tier ${h.tier}">${h.tier}</span></span>
+    ${h.esc ? btn('Escalate', 'danger') : ''}${btn('Adjust')}${btn('Clear')}</div>`).join('') : empty('Nobody’s running hot.');
+const cdRows = () => D.cds.length ? D.cds.map((c) => `
+  <div class="ncm-sec-admin-heat ncm-sec-admin-cd"><span class="who"><i class="fas fa-hourglass-half cdicon"></i>${c.who}</span>
+    <span class="obj"><span class="cdsrc">${c.src}</span> → ${c.obj}</span>
+    <span class="cdrem">${c.rem}${c.game ? ' <i class="fas fa-clock cdclock"></i>' : ''}</span>${btn('Call off')}</div>`).join('') : empty('No traces running. Escalate a HOT operator to start one.');
+const plantRows = () => D.armed.length ? D.armed.map((p) => `
+  <div class="ncm-sec-admin-prow"><span class="ic ${p.plant ? '' : 'exe'}"><i class="fas ${p.plant ? 'fa-comments' : 'fa-key'}"></i></span>
+    <div class="m"><div class="t">${p.name} <span class="fq">${p.forge}</span></div><div class="d">on <b>${p.host}</b> · by <b>${p.by}</b> · fires ${p.trig}</div></div>
+    <span class="state armed">armed</span>${btn('Fire now')}${btn('Defuse')}</div>`).join('') : empty('Nothing planted.');
+const binRows = () => `<table class="ncm-sec-admin-table"><thead><tr><th>File</th><th>Taken from</th><th>Wiped by</th><th>When</th><th></th></tr></thead><tbody>
+  ${D.bin.length ? D.bin.map((b) => `<tr><td>${b.file}</td><td class="obj">${b.host}</td><td class="who">${b.by}</td><td class="ago">${b.ago}</td>
+    <td class="ncm-sec-admin-right">${btn('Restore')} ${btn('Purge', 'danger')}</td></tr>`).join('') : '<tr><td colspan="5" class="ncm-sec-admin-empty">Bin is empty.</td></tr>'}</tbody></table>`;
+
+const fold = (id, icon, title, summary, body, open) => `
+  <div class="ncm-sec-admin-card ncm-sec-admin-fold ${open ? 'open' : ''}" data-fold="${id}">
+    <div class="ncm-sec-admin-card__hd"><i class="fas ${icon} lead"></i><h3>${title}</h3><span class="grow"></span>${summary}<i class="fas fa-chevron-down chev"></i></div>
+    <div class="ncm-sec-admin-card__bd">${body}</div>
+  </div>`;
+
+/* ── the five views ── */
+const VIEWS = {
+  live: () => viewHd('Live', 'Running traces, operators running hot and armed plants waiting on your call, plus the latest rolls.') + `
+    <div class="ncm-sec-admin-strip links">
+      <div class="ncm-sec-admin-stat" data-view="activity"><i class="fas fa-arrow-right go"></i><div class="n">${D.log.length}</div><div class="l">Events (24h)</div></div>
+      <div class="ncm-sec-admin-stat h" data-view="heat"><i class="fas fa-arrow-right go"></i><div class="n">${D.hot}</div><div class="l">Running hot</div></div>
+      <div class="ncm-sec-admin-stat" data-view="heat"><i class="fas fa-arrow-right go"></i><div class="n">${D.cds.length}</div><div class="l">Traces running</div></div>
+      <div class="ncm-sec-admin-stat p" data-view="machines"><i class="fas fa-arrow-right go"></i><div class="n">${D.armed.length}</div><div class="l">Armed plants</div></div>
+    </div>`
+    + card('fa-hand-point-right', 'Needs your call', 'Traces counting down, operators at HOT or worse, and armed plants — everything you can act on, in one list.', '', queue(), { nopad: true })
+    + card('fa-list-check', 'Latest activity', '', `<button type="button" class="ncm-sec-admin-btn sm" data-view="activity">Full log <i class="fas fa-arrow-right"></i></button>`, peek(), { nopad: true }),
+
+  activity: () => viewHd('Activity', 'Every login, bypass, breach, decrypt, upload and siphon roll, pass or fail. Only a failure adds heat.') + `
+    <div class="ncm-sec-admin-card">
+      <div class="ncm-sec-admin-card__hd"><i class="fas fa-list-check lead"></i><h3>Activity Log</h3>
+        ${D.newLog ? `<span class="ncm-sec-admin-newbadge">${D.newLog} new</span>` : ''}<span class="grow"></span>
+        <div class="ncm-sec-admin-chips"><button type="button" class="ncm-sec-admin-fchip on">All</button><button type="button" class="ncm-sec-admin-fchip">Serious</button><button type="button" class="ncm-sec-admin-fchip">Break-ins</button><button type="button" class="ncm-sec-admin-fchip">Fumbles</button></div>
+        <input type="text" class="ncm-sec-admin-searchbox" placeholder="search…">
+        <select class="ncm-sec-admin-alertsel" data-tooltip="Which events ping you. Only affects you; the log records everything."><option selected>Ping me: serious</option><option>Ping me: every event</option><option>Ping me: never</option></select>${btn('Clear', 'danger')}</div>
+      <div class="ncm-sec-admin-card__bd nopad">${logTable()}</div>
+      <div class="ncm-sec-admin-card__ft"><i class="fas fa-circle-info"></i> Click a name to filter · ↗ opens it · tags name the NET action<span class="grow"></span><span>1 / 3</span>${btn('‹ Newer')}${btn('Older ›')}</div>
+    </div>`,
+
+  heat: () => viewHd('Heat & traces', 'Each operator’s heat on each system, and the traces you’ve started. Heat rises on a failed check and cools 5 an hour.', `<div class="ncm-sec-admin-legend">
+      <span class="cold"><b>Cold</b><span class="m">0–24</span>logged</span>
+      <span class="warm"><b>Warm</b><span class="m">25+</span>lockout</span>
+      <span class="hot"><b>Hot</b><span class="m">50+</span>Black ICE</span>
+      <span class="burned"><b>Burned</b><span class="m">80+</span>trace</span></div>`)
+    + card('fa-hourglass-half', 'Traces running', 'A countdown started by Escalate. When it reaches zero the trace completes and the operator BURNS.', '', cdRows())
+    + card('fa-fire', 'Heat', 'Rises when an operator trips a defence, cools over game time.', btn('Clear all'), `
+      ${heatRows()}${D.heat.length ? '<div class="ncm-sec-admin-divider">2 more cooling (under 25)</div>' : ''}`),
+
+  machines: () => viewHd('On machines', 'Forged files and programs players planted on terminals, and files they wiped. Players never see this.')
+    + card('fa-syringe', 'Planted & resident', 'Forged files and programs players planted. Fire or defuse them.', '', plantRows())
+    + card('fa-trash-can-arrow-up', 'Recycle bin', 'Files a player wiped off a machine — gone for the owner, recoverable here.', D.bin.length ? btn('Empty bin', 'danger') : '', binRows(), { nopad: true }),
+
+  rules: () => viewHd('Hacking rules', 'How hacks are resolved, who can hack, and what a character can tell before trying.')
+    + fold('res', 'fa-dice-d20', 'Netrunning resolution', '<span class="sum">Auto-roll</span>', `
+      <p class="lede">How hacks and uploads are decided. A terminal can override it.</p>
+      <ul class="ncm-sec-admin-opts">
+        <li class="on"><b>Auto-roll</b>Rolls and applies the result.</li>
+        <li><b>+ NET card</b>Same, and whispers you the NET action.</li>
+        <li><b>GM adjudicates</b>Waits for your pass or fail.</li>
+      </ul>`, false)
+    + fold('op', 'fa-user-shield', 'Operator access', '<span class="sum">Only <b>Netrunner</b> or <b>Interface 4+</b></span>', `
+      <p class="lede">Who can use the hacking tools. Password logins are never gated.</p>
+      <div class="ncm-sec-admin-twocol">
+        <div class="ncm-sec-admin-mini"><span class="k">Role</span><div class="ncm-sec-admin-chiprow"><span class="ncm-sec-admin-tag">Netrunner</span><span class="ncm-sec-admin-tag add"><i class="fas fa-plus"></i> role</span></div></div>
+        <div class="ncm-sec-admin-mini"><span class="k">Skill (any one)</span><div class="ncm-sec-admin-chiprow"><span class="ncm-sec-admin-tag">Interface <span class="m">4+</span></span><span class="ncm-sec-admin-tag add"><i class="fas fa-plus"></i> skill</span></div></div>
+      </div>`, true)
+    + fold('cmv', 'fa-eye-slash', 'Countermeasure visibility', '<span class="sum">Experts + scan · <b>DV hidden</b></span>', `
+      <p class="lede">Who can tell what’s guarding a lock. Experts see it; others can scan.</p>
+      <div class="ncm-sec-admin-modes4"><div><i class="fas fa-lock-open"></i>Open</div><div><i class="fas fa-user-graduate"></i>Experts</div><div><i class="fas fa-satellite-dish"></i>Scan</div><div class="on"><i class="fas fa-user-secret"></i>Experts + scan</div></div>`, false),
+};
+
+const NOTES = {
+  live: '<h3>Live</h3><p>The landing view. <b>Needs your call</b> is one queue for everything you can act on — a trace counting down, an operator at HOT, an armed plant — each with its buttons right there. It used to be spread over three cards.</p><p>The stats are links to their view. The Overview tab\'s "Needs you" keeps linking here.</p>',
+  activity: '<h3>Activity</h3><p>The full log gets the whole height. Your alert level sits on the log as <b>Ping me</b> — it is about this log, and only affects you.</p>',
+  heat: '<h3>Heat & traces</h3><p>Running traces come FIRST and get their own card — they are time-critical, and before they sat under the heat list as a footnote.</p>',
+  machines: '<h3>On machines</h3><p>Planted files and the recycle bin, together: both are "what is sitting on the machines".</p>',
+  rules: '<h3>Rules</h3><p>Settings you touch once per campaign. Folded by default, each with a one-line summary of what it is set to — so you can read the whole table\'s policy at a glance without opening anything.</p><p>Countermeasure Visibility slots in here. So does anything later.</p><p>The tab always opens on <b>Live</b>.</p>',
+};
+
+function render() {
+  document.getElementById('content').innerHTML = nav() + Object.entries(VIEWS)
+    .map(([k, f]) => `<div class="ncm-sec-admin-view ${VIEW === k ? 'on' : ''}" data-v="${k}">${f()}</div>`).join('');
+  document.getElementById('notes').innerHTML = NOTES[VIEW];
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('[data-view]');
+  if (v) { VIEW = v.dataset.view; render(); document.getElementById('content').scrollTop = 0; return; }
+  const f = e.target.closest('.ncm-sec-admin-fold > .ncm-sec-admin-card__hd');
+  if (f) f.parentElement.classList.toggle('open');
+});
+render();
+
+/* control bar */
+const link = (k, v, label) => { const q = new URLSearchParams(location.search); if (v === null) q.delete(k); else q.set(k, v); const on = (Q.get(k) ?? null) === v; return `<a class="${on ? 'on' : ''}" href="?${q}">${label}</a>`; };
+document.getElementById('bar').innerHTML = `<b>SECURITY TAB — REDESIGN</b>
+  <span>view</span>${['live', 'activity', 'heat', 'machines', 'rules'].map((v) => link('view', v === 'live' ? null : v, v)).join('')}
+  <span>preset</span>${link('t', null, 'clean-dark')}${link('t', 'clean-light', 'clean-light')}${link('t', 'high-contrast', 'high-contrast')}
+  <span>table</span>${link('quiet', null, 'busy')}${link('quiet', '1', 'quiet')}`;
+</script>
+</body>
+</html>

@@ -1559,6 +1559,8 @@
   transition: background 0.12s; cursor: pointer;
 }
 .ncm-app .ncm-viewer__sched-item:hover { background: var(--ncm-bg-surface); }
+/* Drafts tab (2026-10-28, drafts are a list): the reply / forward tag on a draft row */
+.ncm-app .ncm-viewer__sched-kind { display: inline-grid; place-items: center; margin-left: 5px; height: calc(14px * var(--ncm-text-scale, 1)); padding: 0 5px; border: 1px solid color-mix(in srgb, var(--ncm-secondary) 55%, transparent); border-radius: 1px; font-family: var(--ncm-font-display); font-size: calc(8.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-secondary); vertical-align: middle; }
 .ncm-app .ncm-viewer__sched-icon { font-size: calc(14px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); opacity: 0.5; flex-shrink: 0; }
 .ncm-app .ncm-viewer__sched-info { flex: 1; min-width: 0; }
 .ncm-app .ncm-viewer__sched-to { font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary); }

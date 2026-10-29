@@ -18,6 +18,7 @@ import { log, isGM } from '../utils/helpers.js';
 import { EVENTS, MODULE_ID } from '../utils/constants.js';
 import { TerminalService } from '../services/TerminalService.js';
 import { TerminalScenePins } from '../integrations/TerminalScenePins.js';
+import { registerAccessPoints, registerAccessEnricher } from '../integrations/AccessPoints.js';
 import { Phase6Verification } from '../tests/Phase6Verification.js';
 
 /**
@@ -157,6 +158,16 @@ export function registerTerminalSystem(initializer) {
     } catch (err) {
       log.error(`openTerminal launch registration failed: ${err.message}`);
     }
+  });
+
+  // ─── Access points — the @NCM[kind:id]{label} journal enricher (init) + the one door (ready/113) ───
+  // game.nightcity.openAccess(ref) opens a terminal / shard / inbox / message; hotbar macros, chat
+  // cards and journal links all carry a ref (scripts/utils/accessPoints.js).
+  initializer.register('init', 90, 'Access point enricher', () => {
+    try { registerAccessEnricher(); } catch (err) { log.error(`Access enricher failed: ${err.message}`); }
+  });
+  initializer.register('ready', 113, 'Access points', () => {
+    try { registerAccessPoints(); } catch (err) { log.error(`Access points failed: ${err.message}`); }
   });
 
   // ─── Terminal macro API — Priority 122 (ready) ───

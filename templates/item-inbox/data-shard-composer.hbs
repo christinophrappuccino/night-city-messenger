@@ -1101,6 +1101,16 @@
               </select>
             </label>
           </div>
+          {{!-- network programs (Insert a shard into a node) — shown by CSS only when a "Network node ·" verb is picked --}}
+          <div class="ncm-fg ncm-cmp-node" data-cmp-upl-fields>
+            <label class="ncm-f ncm-cmp-node--worm" style="--fw:96px;">Spreads every (h)<input type="number" name="nodeEvery" class="ncm-config-input" value="{{uploadParams.every}}" min="0.25" step="0.25" /></label>
+            <label class="ncm-f ncm-cmp-node--worm" style="--fw:84px;">Most nodes<input type="number" name="nodeMax" class="ncm-config-input" value="{{uploadParams.maxNodes}}" min="1" max="50" /></label>
+            <label class="ncm-f ncm-cmp-node--worm" style="--flex:1;">Carries
+              <select name="nodeCarry" class="ncm-config-input">{{#each uploadParams.carry}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+            <label class="ncm-f ncm-cmp-node--bomb" style="--fw:110px;">Goes off after (h)<input type="number" name="nodeDelay" class="ncm-config-input" value="{{uploadParams.delay}}" min="0" step="0.25" /></label>
+            <label class="ncm-f ncm-cmp-node--sniffer" style="--fw:96px;">Keeps up to<input type="number" name="nodeCap" class="ncm-config-input" value="{{uploadParams.cap}}" min="1" max="100" /></label>
+            <div class="ncm-config-hint ncm-cmp-node--hint">Network programs go into a network <b>node</b>: jack in, then <b>Insert a shard</b>. The Run DV and skill are the insert roll; a sloppy insert is easier to find, a Worm spreads half as fast and a sloppy Tap gets subjects only.</div>
+          </div>
         {{/if}}
         <div class="ncm-fg" data-cmp-upl-fields>
           <label class="ncm-f" style="--fw:76px;">{{#if isExecuteProgram}}Run DV{{else}}Forge DV{{/if}}<input type="number" name="uploadDV" class="ncm-config-input" value="{{uploadDV}}" min="1" max="30" /></label>

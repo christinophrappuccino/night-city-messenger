@@ -1,0 +1,224 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lock odds — in the real account editor</title>
+<!--
+  3a, placed for real: the Security section of Configure Terminal → Accounts → (edit an account),
+  built from the REAL config-account.hbs markup (method cards, toggles, the per-skill bypass rows,
+  the ANY/ALL + On-failure chips), at the window's real width. The "How hard is this for your party"
+  panel sits under the failure rules and updates as you edit. Party size switch: 3 / 7 / 12.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-lock-odds-mock.html
+  ?t=clean-dark|clean-light|high-contrast   ?n=3|7|12
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 0 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px sans-serif; margin: 0 0 12px; max-width: 980px; line-height: 1.45; }
+  .mk-bar { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; color: #ccc; font: 12px sans-serif; }
+  .mk-bar button { padding: 3px 10px; background: #2a2f3a; color: #ddd; border: 1px solid #444; border-radius: 3px; cursor: pointer; }
+  .mk-bar button.on { background: #0d5560; border-color: #3fd0e2; color: #fff; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win { width: var(--mkw, 700px); }
+  /* narrow host (the Admin Panel detail pane, ~486px): the explanation drops under the bar */
+  .ncm-app .ncm-lodds { container-type: inline-size; }
+  @container (max-width: 520px) {
+    .ncm-app .ncm-lodds__r { grid-template-columns: 20px minmax(0,1fr) 90px 38px; row-gap: 1px; }
+    .ncm-app .ncm-lodds__r .how { grid-column: 2 / -1; }
+    .ncm-app .ncm-lodds__dist { width: 90px; }
+  }
+  .mk-win .window-content { display: flex; flex-direction: column; }
+  .mk-frame { border: 1px solid var(--ncm-border); background: var(--ncm-bg-base); }
+  .mk-frame .ncm-cfg-content { max-height: none !important; overflow: visible !important; }
+
+  /* ═══════ THE ODDS PANEL (the part that would be built) ═══════ */
+  .ncm-app .ncm-lodds { margin: 12px 0 4px; border: 1px solid var(--ncm-border); border-radius: 2px; background: color-mix(in srgb, var(--ncm-bg-elevated, var(--ncm-bg-surface)) 50%, transparent); }
+  .ncm-app .ncm-lodds__hd { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-lodds__hd i { color: var(--ncm-hue-3, var(--ncm-secondary)); }
+  .ncm-app .ncm-lodds__t { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-app .ncm-lodds__src { margin-left: auto; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  /* the summary line every party size gets */
+  .ncm-app .ncm-lodds__sum { display: flex; align-items: center; gap: 10px; padding: 8px 11px; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 70%, transparent); font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-lodds__sum b { color: var(--vc); }
+  .ncm-app .ncm-lodds__dist { display: flex; height: 8px; width: 130px; border-radius: 1px; overflow: hidden; flex: none; margin-left: auto; background: color-mix(in srgb, var(--ncm-border-active) 60%, transparent); }
+  .ncm-app .ncm-lodds__dist i { display: block; height: 100%; }
+  .ncm-app .ncm-lodds__dist .hi { background: var(--ncm-good, var(--ncm-success)); } .ncm-app .ncm-lodds__dist .mid { background: var(--ncm-attn, var(--ncm-warning)); }
+  .ncm-app .ncm-lodds__dist .lo { background: var(--ncm-bad, var(--ncm-danger)); } .ncm-app .ncm-lodds__dist .none { background: var(--ncm-text-muted); }
+  .ncm-app .ncm-lodds__key { display: flex; gap: 8px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-lodds__key span::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 1px; margin-right: 3px; vertical-align: 0; background: var(--kc); }
+
+  /* small party (≤4): the cards side by side — the design you liked */
+  .ncm-app .ncm-lodds__cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 14px; padding: 10px 11px; }
+  .ncm-app .ncm-lodds__c { --mc: var(--ncm-good, var(--ncm-success)); display: grid; grid-template-columns: 22px minmax(0,1fr) auto; gap: 3px 7px; align-items: center; }
+  .ncm-app .ncm-lodds__c .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-lodds__c .nm small { font: 400 11px var(--ncm-font-body); color: var(--ncm-text-secondary); margin-left: 3px; }
+  .ncm-app .ncm-lodds__c .p { font: 700 12.5px var(--ncm-font-mono); color: var(--mc); }
+  .ncm-app .ncm-lodds__c .mt { grid-column: 2 / 4; }
+  .ncm-app .ncm-lodds__c .how { grid-column: 2 / 4; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-lodds__c .how.no { font-style: italic; }
+
+  /* bigger party (5+): one compact row each, best first, its own scroll box */
+  .ncm-app .ncm-lodds__list { max-height: 196px; overflow-y: auto; overflow-x: hidden; }
+  .ncm-app .ncm-lodds__r { --mc: var(--ncm-good, var(--ncm-success)); display: grid; grid-template-columns: 20px 118px 120px 40px minmax(0,1fr); gap: 9px; align-items: center; padding: 5px 11px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); }
+  .ncm-app .ncm-lodds__r .av { width: 20px; height: 20px; font-size: 8px; }
+  .ncm-app .ncm-lodds__r .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-lodds__r .p { font: 700 12px var(--ncm-font-mono); color: var(--mc); text-align: right; }
+  .ncm-app .ncm-lodds__r .how { font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-lodds__r.is-none .nm { color: var(--ncm-text-secondary); font-weight: 600; }
+  .ncm-app .ncm-lodds__more { display: block; width: 100%; padding: 5px 11px; text-align: left; font: 12px var(--ncm-font-body); color: var(--ncm-secondary); cursor: pointer; background: none; border: 0; }
+
+  .ncm-app .ncm-lodds .meter { --mc: inherit; height: 6px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-border-active, var(--ncm-border)) 70%, transparent); position: relative; overflow: hidden; }
+  .ncm-app .ncm-lodds .meter i { position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--mc); transition: width .35s cubic-bezier(.22,1,.36,1), background .35s; }
+  .ncm-app .ncm-lodds .hi { --mc: var(--ncm-good, var(--ncm-success)); } .ncm-app .ncm-lodds .mid { --mc: var(--ncm-attn, var(--ncm-warning)); }
+  .ncm-app .ncm-lodds .lo { --mc: var(--ncm-bad, var(--ncm-danger)); } .ncm-app .ncm-lodds .none { --mc: var(--ncm-text-muted); }
+  .ncm-app .ncm-lodds__v { margin: 0 11px 10px; padding: 8px 10px; border-left: 3px solid var(--vc); background: color-mix(in srgb, var(--vc) 9%, transparent); font: 12.5px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-lodds__v b { color: var(--vc); }
+  .ncm-app .ncm-lodds__note { padding: 0 11px 9px; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .av { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 8.5px var(--ncm-font-display); flex: none;
+    color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-primary)); background: color-mix(in srgb, var(--tc) 18%, var(--ncm-bg-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 55%, transparent); }
+</style>
+</head>
+<body>
+<p class="mk-h">LOCK ODDS — inside the real account editor (Configure Terminal, 700px)</p>
+<p class="mk-p">Everything above the dashed line is the existing Security section, unchanged — the real method cards, toggles and per-skill rows. The new part is the panel under it. Toggle a method, change a skill or its DV, switch ANY/ALL or the failure rule, and the panel moves. Switch the party size to see how it holds up: 3 people = side-by-side cards; 5 or more = one row each, best first, in its own scroll box, with a summary and a spread bar on top.</p>
+<div class="mk-bar">Party: <button data-n="3">3</button><button data-n="7">7</button><button data-n="12">12</button></div>
+<div data-slot></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const av = (n) => `<span class="av" style="--tc:${hue(n)}">${n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>`;
+const SKILLS = ['Interface', 'Electronics/Security Tech', 'Basic Tech', 'Cryptography', 'Library Search'];
+const ALL = [
+  ['V', 'Netrunner', { Interface: 14, 'Electronics/Security Tech': 9, 'Basic Tech': 8 }],
+  ['Rache', 'Solo', { Interface: 8, 'Basic Tech': 6 }],
+  ['Judy', 'Tech', { 'Electronics/Security Tech': 15, 'Basic Tech': 14, Cryptography: 11 }],
+  ['Brick', 'Solo', { 'Basic Tech': 5 }],
+  ['Misty', 'Media', { 'Library Search': 12 }],
+  ['Kerry', 'Rockerboy', {}],
+  ['Takemura', 'Exec', { 'Electronics/Security Tech': 10, Cryptography: 7 }],
+  ['Panam', 'Nomad', { 'Basic Tech': 12, 'Electronics/Security Tech': 9 }],
+  ['River', 'Lawman', { 'Library Search': 10, 'Electronics/Security Tech': 7 }],
+  ['Wakako', 'Fixer', {}],
+  ['Viktor', 'Medtech', { 'Basic Tech': 11, Cryptography: 6 }],
+  ['Lizzy', 'Netrunner', { Interface: 11, Cryptography: 9 }],
+];
+const S = { n: +(q.get('n') || 3), auth: true, pw: true, skill: true, key: false, rows: [{ name: 'Interface', dv: 18 }, { name: 'Electronics/Security Tech', dv: 21 }], logic: 'any', fail: 'lockout', max: 3, lock: 60, showAll: false };
+const chance = (base, dv) => base <= 0 ? 0 : Math.max(0, Math.min(100, (11 - Math.max(1, dv - base)) * 10));
+function best(pc) {
+  const [, , sk] = pc;
+  if (!S.skill) return null;
+  let top = { p: 0, how: '' };
+  for (const r of S.rows) { const b = sk[r.name] || 0; const p = chance(b, r.dv); if (p > top.p || (!top.how && b)) top = { p, how: b ? `${r.name.replace('Electronics/Security Tech', 'Elec/Sec Tech')} ${b} + d10 vs ${r.dv}` : '', base: b }; }
+  return top;
+}
+function rowsFor(party) {
+  return party.map((pc) => { const b = best(pc); const p = b ? b.p : null;
+    const how = !S.auth ? 'open — walks straight in' : b == null ? (S.pw || S.key ? 'no roll — only the ' + [S.pw && 'password', S.key && 'key item'].filter(Boolean).join(' or ') : 'no way in') : b.how ? b.how + (S.logic === 'all' && (S.pw || S.key) ? ', and the ' + [S.pw && 'password', S.key && 'key item'].filter(Boolean).join(' + ') : '') : 'no skill on the list';
+    return { n: pc[0], role: pc[1], p: !S.auth ? 100 : p, how, none: S.auth && (p == null || p === 0) };
+  });
+}
+const tone = (p) => p == null || p === 0 ? 'none' : p < 35 ? 'lo' : p < 65 ? 'mid' : 'hi';
+function verdict(rs) {
+  if (!S.auth) return ['var(--ncm-hue-2, var(--ncm-secondary))', '<b>Open account.</b> Anyone at the machine walks straight in.'];
+  if (!S.pw && !S.skill && !S.key) return ['var(--ncm-bad, var(--ncm-danger))', '<b>Sealed.</b> No way in at all — even you would have to force it open.'];
+  if (!S.skill) return ['var(--ncm-hue-2, var(--ncm-secondary))', `<b>No roll can open it.</b> Only the ${[S.pw && 'password', S.key && 'key item'].filter(Boolean).join(' or ')} gets them in — make sure it exists somewhere they can find.`];
+  const able = rs.filter((r) => r.p >= 40), top = rs.reduce((a, r) => (r.p > a.p ? r : a), { p: 0 });
+  if (top.p === 0) return ['var(--ncm-attn, var(--ncm-warning))', '<b>Nobody can win the roll.</b> Leave the password where they\'ll find it, or bring a DV down.'];
+  if (!able.length) return ['var(--ncm-attn, var(--ncm-warning))', `<b>Hard.</b> The best chance is ${top.n} at ${top.p}% — expect a lockout or two.`];
+  if (able.length === rs.length && top.p >= 90) return ['var(--ncm-hue-2, var(--ncm-secondary))', '<b>Easy for everyone</b> — more a door than a lock.'];
+  const names = able.slice(0, 3).map((r) => r.n).join(', ') + (able.length > 3 ? ` and ${able.length - 3} more` : '');
+  return ['var(--ncm-good, var(--ncm-success))', `<b>Fair.</b> ${names} ${able.length === 1 ? 'is the one' : 'are the ones'} to try it (${top.p}% at best).`];
+}
+function oddsPanel() {
+  if (!S.auth) return `<div class="ncm-lodds"><div class="ncm-lodds__hd"><i class="fas fa-lock-open"></i><span class="ncm-lodds__t">How hard for your party</span><span class="ncm-lodds__src">Open — anyone at the machine walks straight in.</span></div></div>`;
+  const party = ALL.slice(0, S.n);
+  const rs = rowsFor(party).sort((a, b) => (b.p ?? -1) - (a.p ?? -1));
+  const [vc, vt] = verdict(rs);
+  const cnt = { hi: 0, mid: 0, lo: 0, none: 0 }; rs.forEach((r) => cnt[tone(r.p)]++);
+  const big = rs.length > 4;
+  const dist = `<span class="ncm-lodds__dist" title="${cnt.hi} likely · ${cnt.mid} maybe · ${cnt.lo} long shot · ${cnt.none} can't">${['hi', 'mid', 'lo', 'none'].map((k) => `<i class="${k}" style="width:${cnt[k] / rs.length * 100}%"></i>`).join('')}</span>`;
+  const sum = `<div class="ncm-lodds__sum" style="--vc:${vc}"><span><b>${cnt.hi + cnt.mid}</b> of ${rs.length} can realistically get in</span>${dist}</div>
+    <div class="ncm-lodds__sum" style="padding-top:4px;padding-bottom:6px;border-bottom:0"><span class="ncm-lodds__key"><span style="--kc:var(--ncm-good, var(--ncm-success))">likely ${cnt.hi}</span><span style="--kc:var(--ncm-attn, var(--ncm-warning))">maybe ${cnt.mid}</span><span style="--kc:var(--ncm-bad, var(--ncm-danger))">long shot ${cnt.lo}</span><span style="--kc:var(--ncm-text-muted)">can't ${cnt.none}</span></span></div>`;
+  let body;
+  if (!big) {
+    body = `<div class="ncm-lodds__cards">${rs.map((r) => `<div class="ncm-lodds__c ${tone(r.p)}">${av(r.n)}<span class="nm">${r.n}<small>${r.role}</small></span><span class="p">${r.p == null ? '—' : r.p + '%'}</span>
+      <span></span><span class="meter mt"><i style="--w:${r.p || 0}%"></i></span><span></span><span class="how ${r.none ? 'no' : ''}">${r.how}</span></div>`).join('')}</div>`;
+  } else {
+    const shown = S.showAll ? rs : rs.filter((r) => !r.none);
+    const hidden = rs.length - shown.length;
+    body = `${sum}<div class="ncm-lodds__list">${shown.map((r) => `<div class="ncm-lodds__r ${tone(r.p)} ${r.none ? 'is-none' : ''}">${av(r.n)}<span class="nm">${r.n} <small style="font:400 11px var(--ncm-font-body);color:var(--ncm-text-secondary)">${r.role}</small></span>
+      <span class="meter"><i style="--w:${r.p || 0}%"></i></span><span class="p">${r.p == null ? '—' : r.p + '%'}</span><span class="how">${r.how}</span></div>`).join('')}</div>
+      ${hidden ? `<button class="ncm-lodds__more" data-more>${S.showAll ? '' : `+ ${hidden} who can't roll — show them`}</button>` : S.showAll && rs.some((r) => r.none) ? '<button class="ncm-lodds__more" data-more>Hide the ones who can\'t roll</button>' : ''}`;
+  }
+  return `<div class="ncm-lodds"><div class="ncm-lodds__hd"><i class="fas fa-users"></i><span class="ncm-lodds__t">How hard for your party</span><span class="ncm-lodds__src">${rs.length} characters · from their sheets</span></div>
+    ${body}<div class="ncm-lodds__v" style="--vc:${vc}">${vt}</div>
+    <div class="ncm-lodds__note">${S.fail === 'damage' ? '<span style="color:var(--ncm-bad, var(--ncm-danger))">A miss hurts:</span> Black ICE hits the runner. ' : S.fail === 'lockout' ? `${S.max} misses lock that character out for ${S.lock} min. ` : S.fail === 'permanent' ? `${S.max} misses lock them out for good. ` : ''}Their best skill on the list is used. Odds are a plain d10 — no crits or fumbles.</div></div>`;
+}
+function bypassRows() {
+  return `<div class="ncm-bypass" data-bypass-rows><div class="ncm-bypass__list">${S.rows.map((r, i) => `<div class="ncm-bypass__row">
+    <select class="ncm-bypass__skill" data-row-skill="${i}">${SKILLS.map((s) => `<option ${s === r.name ? 'selected' : ''}>${s}</option>`).join('')}</select>
+    <span class="ncm-bypass__dvl">DV</span><input type="number" class="ncm-bypass__dv" data-row-dv="${i}" value="${r.dv}" min="0" max="40">
+    <button type="button" class="ncm-bypass__rm" data-row-rm="${i}"><i class="fas fa-xmark"></i></button></div>`).join('')}</div>
+    <button type="button" class="ncm-bypass__add" data-row-add><i class="fas fa-plus"></i> Add skill</button></div>`;
+}
+const card = (key, on, icon, nm, d, body) => `<div class="ncm-acct-mcard${on ? ' ncm-acct-mcard--on' : ''}"><div class="ncm-acct-mcard-h"><span class="ncm-acct-mcard-ic"><i class="fas ${icon}"></i></span>
+  <div class="ncm-acct-mcard-t"><div class="ncm-acct-mcard-nm">${nm}</div><div class="ncm-acct-mcard-d">${d}</div></div>
+  <label class="ncm-acct-tgl"><input type="checkbox" data-tog="${key}" ${on ? 'checked' : ''}><span class="ncm-acct-tgl-knob"></span></label></div><div class="ncm-acct-mcard-b">${body}</div></div>`;
+const chips = (key, list) => `<div class="ncm-acct-chips">${list.map(([v, l, cls]) => `<span class="ncm-acct-chip ${cls || ''} ${S[key] === v ? 'ncm-acct-chip--on' : ''}" data-chip="${key}:${v}">${l}</span>`).join('')}</div>`;
+function render(keepFocus) {
+  const f = document.activeElement?.dataset; const fk = f?.rowDv ?? null;
+  document.querySelector('[data-slot]').innerHTML = `<div class="mk-win ncm-app ncm-item-inbox-config" style="--mkw:${q.get('w') || 700}px" data-ncm-admin-theme="${theme}" data-ncm-scanlines="false"><div class="window-content"><div class="ncm-item-inbox-config ncm-term-config ncm-cfg mk-frame"><div class="ncm-cfg-content">
+    <div class="ncm-cfg-section ncm-acct-editor">
+      <div class="ncm-cfg-section-header"><i class="fas fa-shield-halved ncm-cfg-section-icon" style="color:#ff0033"></i><div class="ncm-cfg-section-title">Security</div>
+        <label class="ncm-acct-tgl"><input type="checkbox" data-tog="auth" ${S.auth ? 'checked' : ''}><span class="ncm-acct-tgl-knob"></span><span class="ncm-acct-tgl-lbl">Require login</span></label></div>
+      ${card('pw', S.pw, 'fa-key', 'Password', 'a passphrase the player types at the prompt', '<div class="ncm-cfg-row" style="margin:0"><input type="text" class="ncm-cfg-input ncm-cfg-flex" value="blackwall-77"><button type="button" class="ncm-cfg-btn-sm"><i class="fas fa-dice"></i> generate</button></div>')}
+      ${card('skill', S.skill, 'fa-dice-d20', 'Skill check', 'bypass with a CPR roll vs DV — the netrunner hacks in', bypassRows())}
+      ${card('key', S.key, 'fa-id-badge', 'Key item', "requires a specific item in the character's inventory", '<div class="ncm-cfg-row" style="margin:0"><input type="text" class="ncm-cfg-input ncm-cfg-flex" value="Arasaka keycard"><button type="button" class="ncm-cfg-btn-sm"><i class="fas fa-folder-open"></i> browse items…</button></div>')}
+      <div class="ncm-cfg-row ncm-acct-chip-row" style="margin-top:9px"><span class="ncm-cfg-label">When 2+ methods</span>${chips('logic', [['any', 'ANY — one grants (OR)'], ['all', 'ALL — every one (AND)']])}</div>
+      <div class="ncm-cfg-row ncm-acct-chip-row"><span class="ncm-cfg-label">On failure</span>${chips('fail', [['nothing', 'nothing'], ['lockout', 'lockout'], ['permanent', 'permanent'], ['damage', '<i class="fas fa-skull"></i> BLACK ICE', 'ncm-acct-chip--ice']])}</div>
+      <div class="ncm-cfg-row"><span class="ncm-cfg-label">Max attempts</span><input type="number" class="ncm-cfg-input ncm-cfg-input--short" value="${S.max}" data-max><span class="ncm-cfg-label" style="min-width:0">Lockout (min)</span><input type="number" class="ncm-cfg-input ncm-cfg-input--short" value="${S.lock}" data-lock></div>
+      <div style="border-top:1px dashed #6a7a8a;margin:10px 0 0;position:relative"><span style="position:absolute;right:0;top:-9px;background:#1b1b22;color:#9aa;font:10px sans-serif;padding:0 6px">new ↓</span></div>
+      ${oddsPanel()}
+    </div></div></div></div></div>`;
+  document.querySelectorAll('.mk-bar button').forEach((b) => b.classList.toggle('on', +b.dataset.n === S.n));
+  if (fk != null) { const el = document.querySelector(`[data-row-dv="${fk}"]`); el?.focus(); }
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-n],[data-chip],[data-row-add],[data-row-rm],[data-more]');
+  if (!t) return;
+  if (t.dataset.n) { S.n = +t.dataset.n; S.showAll = false; }
+  else if (t.dataset.chip) { const [k, v] = t.dataset.chip.split(':'); S[k] = v; }
+  else if ('rowAdd' in t.dataset) { const used = new Set(S.rows.map((r) => r.name)); S.rows.push({ name: SKILLS.find((s) => !used.has(s)) || 'Interface', dv: 15 }); }
+  else if (t.dataset.rowRm) { S.rows.splice(+t.dataset.rowRm, 1); }
+  else if ('more' in t.dataset) { S.showAll = !S.showAll; }
+  render();
+});
+document.addEventListener('change', (e) => {
+  const d = e.target.dataset;
+  if (d.tog) S[d.tog] = e.target.checked;
+  else if (d.rowSkill) S.rows[+d.rowSkill].name = e.target.value;
+  else if ('max' in d) S.max = +e.target.value;
+  else if ('lock' in d) S.lock = +e.target.value;
+  else return;
+  render();
+});
+document.addEventListener('input', (e) => { const d = e.target.dataset; if (d.rowDv != null) { S.rows[+d.rowDv].dv = +e.target.value || 0; render(true); } });
+render();
+</script>
+</body>
+</html>

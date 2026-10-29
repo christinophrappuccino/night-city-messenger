@@ -24,7 +24,7 @@
     {{#each contactGroups.list}}
     <button type="button" class="ncm-cgr__chip{{#if isOpen}} is-open{{/if}}" style="--g:{{color}}"
             data-action="cgOpen" data-group-id="{{id}}" data-tooltip="{{#if isOpen}}Close{{else}}Show who is in it{{/if}}">
-      <span class="ncm-cgr__chip-bar"></span>
+      {{#if img}}<img class="ncm-cgr__chip-img" src="{{img}}" alt="">{{else}}<span class="ncm-cgr__chip-bar"></span>{{/if}}
       <span class="ncm-cgr__chip-name">{{name}}</span>
       <span class="ncm-cgr__stack">{{#each stack}}<span>{{#if img}}<img src="{{img}}" alt="">{{else}}{{initials}}{{/if}}</span>{{/each}}{{#if more}}<span class="is-more">+{{more}}</span>{{/if}}</span>
       <span class="ncm-cgr__chip-n">{{count}}</span>
@@ -48,13 +48,14 @@
   {{#with contactGroups.open}}
   <div class="ncm-cgr__tray" style="--g:{{color}}" data-group-id="{{id}}">
     <div class="ncm-cgr__tray-head">
+      {{#if img}}<img class="ncm-cgr__tray-img" src="{{img}}" alt="">{{/if}}
       <span class="ncm-cgr__tray-name">{{name}}</span>
       <span class="ncm-cgr__tray-meta">{{count}} {{#if (eq count 1)}}person{{else}}people{{/if}}{{#if shared}} · <i class="fas fa-shield-halved"></i>shared by the GM{{/if}}</span>
       <span class="ncm-cgr__tray-actions">
         <button type="button" class="ncm-cgr__btn ncm-cgr__btn--send" data-action="cgMessage" data-group-id="{{id}}" data-tooltip="One message to everyone in it">
           <i class="fas fa-paper-plane"></i> Message all
         </button>
-        <button type="button" class="ncm-cgr__btn" data-action="cgEdit" data-group-id="{{id}}" data-tooltip="Name, colour, members">
+        <button type="button" class="ncm-cgr__btn" data-action="cgEdit" data-group-id="{{id}}" data-tooltip="Name, colour, picture, members">
           <i class="fas fa-pen"></i> Edit
         </button>
         <button type="button" class="ncm-cgr__btn ncm-cgr__btn--icon ncm-cgr__btn--danger" data-action="cgDelete" data-group-id="{{id}}" data-tooltip="Delete group">

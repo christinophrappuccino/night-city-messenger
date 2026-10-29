@@ -1,0 +1,242 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Needs a reply — rethink</title>
+<!--
+  Admin → Messages → Needs a reply, rethought (2026-10-28, dev: "we need to rethink… Needs a reply").
+  Both versions replace the board-plus-answer-panel with a CHAT THREAD: the GM reads the conversation the way the
+  player sees it in their Agent and answers in a composer pinned at the bottom, as the NPC.
+  Version A = SWITCHBOARD + CORD: the jacks become a rail on the left; picking one patches a cord into the thread.
+  Version B = THE DESK: queue on the left (faces + wait meters), the thread in the middle, and the NPC's PERSONA CARD
+              on the right — who you are answering as, how this NPC talks (GM notes), what they last said, how they
+              rate this player — so the GM stays in character.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-needs-reply-rethink-mock.html  ?t=clean-light|high-contrast  ?v=a|b
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; }
+  .mk-h:first-child { margin-top: 0; }
+  .mk-p { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 12px; max-width: 820px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .P { width: 820px; height: 640px; box-sizing: border-box; padding: 10px 12px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); display: flex; flex-direction: column; gap: 8px; }
+
+  .mod { position: relative; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); min-width: 0; display: flex; flex-direction: column; }
+  .mod::before, .mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid; pointer-events: none; }
+  .mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; } .mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+  .mod__k { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); flex: none;
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .mod__k i { color: var(--ncm-act); font-size: 9px; } .mod__k.attn i { color: var(--ncm-attn); }
+  .mod__k .n { font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading)); padding: 0 5px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-act) 18%, transparent); }
+  .mod__k .n.attn { background: var(--ncm-attn); color: var(--ncm-text-inverse); }
+  .mod__k .hint { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+
+  .av { position: relative; flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 9.5px var(--ncm-font-display); box-sizing: border-box;
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane)); border: 1.5px solid var(--tc); box-shadow: 0 0 6px -2px var(--tc); }
+  .av.sm { width: 18px; height: 18px; font-size: 8px; } .av.lg { width: 34px; height: 34px; font-size: 12px; }
+  .av.alias { border-style: dashed; }
+  .btn { appearance: none; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; padding: 0 9px !important; height: 24px !important; min-height: 0 !important; margin: 0 !important; width: auto !important;
+    font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; border-radius: 2px !important; cursor: pointer; box-shadow: none !important; background-image: none !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: var(--ncm-bg-card) !important; }
+  .btn.pri { border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse) !important; background: var(--ncm-act) !important; }
+  .btn.quiet { background: transparent !important; color: var(--ncm-text-label) !important; }
+  .btn.ic { padding: 0 !important; width: 24px !important; justify-content: center; }
+  .btn i { margin: 0 !important; font-size: 10px; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; height: 17px; border-radius: 1px; font: 600 10.5px var(--ncm-font-body); white-space: nowrap;
+    color: color-mix(in oklab, var(--tc) 63%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 18%, var(--ncm-bg-card-head)); border: 1px solid var(--tc); }
+  .pill i { font-size: 9px; color: var(--tc); }
+  .mono { font-family: var(--ncm-font-mono); } .lab { color: var(--ncm-text-label); } .hint { color: var(--ncm-text-hint); }
+  .t-attn { color: var(--ncm-attn); } .t-bad { color: var(--ncm-bad); } .t-good { color: var(--ncm-good); } .t-secret { color: var(--ncm-secret); } .t-act { color: var(--ncm-act); }
+
+  /* ── the thread (shared by both versions) ── */
+  .thread { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .thread__hd { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head); flex: none; }
+  .thread__hd .who { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); display: flex; align-items: center; gap: 6px; }
+  .thread__hd .arrow { color: var(--ncm-text-hint); font-size: 10px; }
+  .thread__hd .sub { margin-left: auto; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msgs { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: linear-gradient(180deg, var(--ncm-bg-pane), color-mix(in srgb, var(--ncm-bg-pane) 85%, var(--ncm-bg-canvas))); }
+  .day { align-self: center; font: 700 9px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-text-hint); padding: 1px 8px; border: 1px solid var(--ncm-border); border-radius: 1px; }
+  .b { max-width: 78%; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 7px; align-items: flex-end; }
+  .b.them { align-self: flex-start; }
+  .b.me { align-self: flex-end; grid-template-columns: minmax(0, 1fr) 24px; }
+  .b .bub { padding: 7px 10px; border-radius: 2px; font: 12.5px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--tc); }
+  .b.me .bub { box-shadow: inset -3px 0 var(--tc); background: color-mix(in srgb, var(--tc) 8%, var(--ncm-bg-card)); }
+  .b .bub .s { display: block; font: 700 11px var(--ncm-font-display); color: color-mix(in oklab, var(--tc) 70%, var(--ncm-text-heading)); margin-bottom: 2px; }
+  .b .bub .t { display: block; margin-top: 4px; font: 10px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-hint)); text-align: right; }
+  .b .bub .t.wait { color: var(--ncm-attn); font-weight: 700; }
+  .b.them.waiting .bub { border-color: color-mix(in srgb, var(--ncm-attn) 55%, var(--ncm-border)); box-shadow: inset 3px 0 var(--ncm-attn); }
+  .compose { flex: none; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-card); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .compose__as { display: flex; align-items: center; gap: 7px; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); flex-wrap: wrap; }
+  .compose__as b { color: var(--ncm-text-heading); font-weight: 600; }
+  .compose__as .sel { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane); color: var(--ncm-text-heading); font-weight: 600; }
+  .compose__as .sel .caret { font-size: 8px; color: var(--ncm-text-hint); }
+  .compose__as .addr { font: 11px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-secondary)); }
+  .compose__box { min-height: 54px; padding: 7px 9px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane); font: 12.5px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .compose__box .ph { color: var(--ncm-text-hint); }
+  .compose__row { display: flex; align-items: center; gap: 5px; }
+  .compose__row .sp { flex: 1; } .compose__row .k { font: 10px var(--ncm-font-mono); color: var(--ncm-text-hint); }
+  .compose__more { display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); flex-wrap: wrap; }
+  .compose__more .opts { display: inline-flex; align-items: center; gap: 7px; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .compose__more .opts i { font-size: 11px; color: color-mix(in srgb, var(--ncm-act) 75%, var(--ncm-text-secondary)); }
+  .persona__sec .k .edit { margin-left: auto; color: var(--ncm-text-hint); cursor: pointer; } .persona__sec .k .edit i { color: inherit; font-size: 9px; } .persona__sec .k .edit:hover { color: var(--ncm-act); }
+
+  /* ════════ A · SWITCHBOARD + CORD ════════ */
+  .A { flex: 1; min-height: 0; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 0; position: relative; }
+  .rail { display: flex; flex-direction: column; min-height: 0; border-right: 0; }
+  .rail .strip { display: flex; align-items: flex-end; gap: 2px; height: 34px; padding: 6px 9px 4px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .rail .strip i { flex: 1; display: block; background: color-mix(in srgb, var(--ncm-act) 55%, transparent); border-radius: 1px 1px 0 0; }
+  .rail .strip i.w { background: var(--ncm-attn); }
+  .rail .strip small { position: absolute; right: 9px; top: 30px; font: 9px var(--ncm-font-mono); color: var(--ncm-text-hint); }
+  .jacks { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .jack { position: relative; display: grid; grid-template-columns: 14px 24px minmax(0, 1fr) auto; gap: 7px; align-items: center; padding: 6px 8px; border-radius: 2px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); cursor: pointer; }
+  .jack .led { width: 8px; height: 8px; border-radius: 50%; background: var(--ncm-text-hint); justify-self: center; }
+  .jack.lit .led { background: var(--ncm-attn); box-shadow: 0 0 8px var(--ncm-attn); }
+  .jack.lit.new .led { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { to { opacity: .25; } }
+  .jack .nm { font: 600 12px var(--ncm-font-body); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jack .nm small { display: block; font: 10px var(--ncm-font-body); color: var(--ncm-text-label); font-weight: 400; }
+  .jack .nm small.alias { color: color-mix(in oklab, var(--ncm-secret) 70%, var(--ncm-text-heading)); }
+  .jack .r { text-align: right; }
+  .jack .r b { display: block; font: 700 11px var(--ncm-font-mono); color: var(--ncm-attn); }
+  .jack .r small { font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-hint)); }
+  .jack.dark .r b { color: var(--ncm-text-hint); } .jack.dark .nm { color: var(--ncm-text-primary); }
+  .jack.on { border-color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 10%, var(--ncm-bg-card)); box-shadow: inset 4px 0 var(--ncm-act); }
+  .jack .faces { display: inline-flex; margin-left: 4px; vertical-align: middle; } .jack .faces .av { width: 14px; height: 14px; font-size: 6px; border-width: 1px; } .jack .faces .av + .av { margin-left: -4px; }
+  .cord { position: absolute; left: 238px; width: 24px; height: 100%; top: 0; pointer-events: none; }
+  .cord path { fill: none; stroke: var(--ncm-act); stroke-width: 2; filter: drop-shadow(0 0 3px var(--ncm-act)); }
+  .cord circle { fill: var(--ncm-act); }
+  .A .thread { margin-left: 12px; }
+
+  /* ════════ B · THE DESK ════════ */
+  .B { flex: 1; min-height: 0; display: grid; grid-template-columns: 196px minmax(0, 1fr) 210px; gap: 8px; }
+  .queue { display: flex; flex-direction: column; min-height: 0; }
+  .qrows { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .qr { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 7px; align-items: center; padding: 6px 7px; border-radius: 2px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); cursor: pointer; }
+  .qr.on { border-color: var(--ncm-act); box-shadow: inset 3px 0 var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 10%, var(--ncm-bg-card)); }
+  .qr .pair { position: relative; width: 30px; height: 30px; } .qr .pair .av { position: absolute; } .qr .pair .av.p { left: 0; top: 0; } .qr .pair .av.n { right: -4px; bottom: -3px; width: 18px; height: 18px; font-size: 7.5px; }
+  .qr .tx { min-width: 0; }
+  .qr .tx b { display: block; font: 600 12px var(--ncm-font-body); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qr .tx small { display: block; font: 10px var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qr .meter { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--ncm-border) 80%, transparent); overflow: hidden; }
+  .qr .meter i { display: block; height: 100%; width: var(--w); background: var(--ncm-attn); }
+  .qr.hot .meter i { background: var(--ncm-bad); }
+  .qr .age { position: absolute; }
+  .qr.done .meter i { background: var(--ncm-good); width: 100%; opacity: .5; }
+  .qr.done .tx b { color: var(--ncm-text-primary); }
+  .persona { display: flex; flex-direction: column; min-height: 0; }
+  .persona__id { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 10px 8px; text-align: center; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .persona__id .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .persona__id .addr { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-secondary)); }
+  .persona__sec { padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .persona__sec .k { font: 700 9px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+  .persona__sec .k i { font-size: 8.5px; color: var(--ncm-act); }
+  .persona__sec p { margin: 0; font: 11.5px/1.4 var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .persona__sec p.note { font-style: italic; color: var(--ncm-text-secondary); }
+  .said { display: flex; flex-direction: column; gap: 3px; }
+  .said span { font: 11px/1.35 var(--ncm-font-body); color: var(--ncm-text-primary); padding: 3px 6px; border-left: 2px solid var(--ncm-secret); background: color-mix(in srgb, var(--ncm-secret) 6%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .trust { display: flex; gap: 2px; align-items: center; } .trust i { flex: 1; height: 6px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-border) 90%, transparent); } .trust i.on { background: var(--ncm-good); }
+  .trust small { margin-left: 6px; font: 700 9px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-good); }
+  .ids { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ids .pill.on { box-shadow: inset 0 -2px var(--ncm-act); }
+</style>
+</head>
+<body>
+
+<div class="mk-h">A · SWITCHBOARD + CORD — the jacks become a rail, the answer becomes a chat</div>
+<p class="mk-p">The board survives as a narrow rail: one jack per NPC × alias, lit amber while someone waits (the newest blinks), dark once answered, the traffic sparkline across its top. Picking a jack patches a cord into the thread on the right, which reads like the player's own messenger: their messages on the left in their colour, the NPC's on the right, the message still waiting edged amber with how long it has waited. The composer is pinned at the bottom, already set to reply as the identity they wrote to.</p>
+<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="clean-dark" data-mk="a"><div class="ncm-admin-panel"><div class="P">
+  <div class="A">
+    <div class="mod rail">
+      <div class="mod__k attn"><i class="fas fa-bell"></i>Lines <span class="n attn">3</span><span class="hint">waiting · 7 lines</span></div>
+      <div class="strip"><i style="height:6px"></i><i style="height:10px"></i><i style="height:4px"></i><i class="w" style="height:14px"></i><i style="height:8px"></i><i class="w" style="height:18px"></i><i class="w" style="height:22px"></i></div>
+      <div class="jacks">
+        <div class="jack lit new on"><i class="led"></i><span class="av" style="--tc:#ff67e4">RO</span><span class="nm">Rogue<small class="alias"><i class="fas fa-mask" style="font-size:8px"></i> as queen.h@darknet</small></span><span class="r"><b>2</b><small>3h</small></span></div>
+        <div class="jack lit"><i class="led"></i><span class="av" style="--tc:#00acf8">DD</span><span class="nm">Dexter DeShawn<small>Rache · "Job offer"</small></span><span class="r"><b>1</b><small>41m</small></span></div>
+        <div class="jack lit"><i class="led"></i><span class="av" style="--tc:#a0d157">JU</span><span class="nm">Judy<small>Kiri · "That BD you promised"</small></span><span class="r"><b>1</b><small>2d</small></span></div>
+        <div class="jack dark"><i class="led"></i><span class="av" style="--tc:#899cff">BR</span><span class="nm">Brick Jones<small>answered 3h ago</small></span><span class="r"><b>✓</b><small>V</small></span></div>
+        <div class="jack dark"><i class="led"></i><span class="av" style="--tc:#dab78f">MA</span><span class="nm">Mama Welles<small>answered yesterday</small></span><span class="r"><b>✓</b><small>Jo</small></span></div>
+        <div class="jack dark" style="opacity:.55"><i class="led"></i><span class="av" style="--tc:#00b698">WK</span><span class="nm">Wakako<small>quiet · nobody wrote</small></span><span class="r"></span></div>
+        <div class="jack dark" style="opacity:.55"><i class="led"></i><span class="av" style="--tc:#b0c3ba">NW</span><span class="nm">NetWatch alerts<small>quiet · system address</small></span><span class="r"></span></div>
+      </div>
+    </div>
+    <svg class="cord" viewBox="0 0 24 640" preserveAspectRatio="none"><path d="M0 92 C 14 92, 10 120, 24 120"/><circle cx="0" cy="92" r="3"/><circle cx="24" cy="120" r="3"/></svg>
+    <div class="mod thread">
+      <div class="thread__hd"><span class="who"><span class="av" style="--tc:#ff67e4">V</span>V</span><i class="fas fa-arrow-right-long arrow"></i><span class="who"><span class="av alias" style="--tc:var(--ncm-secret)">Q</span>Rogue <span class="pill" style="--tc:var(--ncm-secret)"><i class="fas fa-mask"></i>queen.h@darknet</span></span><span class="sub">"Where's my cut?" · 4 messages</span><button class="btn ic quiet" title="Open in the full viewer"><i class="fas fa-up-right-from-square"></i></button></div>
+      <div class="msgs">
+        <span class="day">Tue 9 Mar</span>
+        <div class="b them" style="--tc:#ff67e4"><span class="av sm" style="--tc:#ff67e4">V</span><div class="bub"><span class="s">V · v@nightcity.net</span>Queen — the Arasaka job is done. Payroll's wiped and the backdoor's in. Where do I pick up?<span class="t">21:04</span></div></div>
+        <div class="b me" style="--tc:var(--ncm-secret)"><div class="bub"><span class="s">Rogue as queen.h@darknet</span>Afterlife. Back booth. Bring the shard, not your friends.<span class="t">21:30 · read</span></div><span class="av sm alias" style="--tc:var(--ncm-secret)">Q</span></div>
+        <span class="day">Thu 11 Mar</span>
+        <div class="b them" style="--tc:#ff67e4"><span class="av sm" style="--tc:#ff67e4">V</span><div class="bub"><span class="s">V</span>Booth was empty. Twice. Where's my cut?<span class="t">20:12</span></div></div>
+        <div class="b them waiting" style="--tc:#ff67e4"><span class="av sm" style="--tc:#ff67e4">V</span><div class="bub"><span class="s">V</span>Rogue. I know you're reading these.<span class="t wait">20:40 · waiting 3h</span></div></div>
+      </div>
+      <div class="compose">
+        <div class="compose__as">Reply as <span class="sel"><span class="av sm alias" style="--tc:var(--ncm-secret)">Q</span>Rogue · queen.h@darknet <i class="fas fa-caret-down caret"></i></span><span class="hint">the identity V wrote to</span><span style="margin-left:auto" class="pill" style="--tc:var(--ncm-attn)"><i class="fas fa-user"></i>to V only</span></div>
+        <div class="compose__box"><span class="ph">Type as Rogue… Ctrl+Enter sends</span></div>
+        <div class="compose__row"><button class="btn pri"><i class="fas fa-reply"></i>Send as Rogue</button><button class="btn"><i class="fas fa-check"></i>Mark answered</button><button class="btn"><i class="fas fa-pen-to-square"></i>Full composer</button><span class="sp"></span><span class="k">J / K next line · Esc close</span></div>
+      </div>
+    </div>
+  </div>
+</div></div></div>
+
+<div class="mk-h">B · THE DESK — queue, thread, and who you are answering as</div>
+<p class="mk-p">Three panes. Left: the queue as faces (player over NPC) with a wait meter under each — amber grows with the wait, red past a day, green when answered. Middle: the same chat thread with the composer pinned. Right: the NPC's persona card — the identity you are replying as, every alias this NPC has (click one to answer from it), how this NPC talks (your GM notes, so the voice stays consistent), the last things they said, and how they rate this player. Built for staying in character across a long session.</p>
+<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="clean-dark" data-mk="b"><div class="ncm-admin-panel"><div class="P">
+  <div class="B">
+    <div class="mod queue">
+      <div class="mod__k attn"><i class="fas fa-bell"></i>Waiting <span class="n attn">3</span><span class="hint">oldest first</span></div>
+      <div class="qrows">
+        <div class="qr on" style="--w:70%"><span class="pair"><span class="av p" style="--tc:#ff67e4">V</span><span class="av n alias" style="--tc:var(--ncm-secret)">Q</span></span><span class="tx"><b>V → Rogue</b><small>"Where's my cut?" · 3h</small></span><span class="meter"><i></i></span></div>
+        <div class="qr hot" style="--w:100%"><span class="pair"><span class="av p" style="--tc:#a0d157">KI</span><span class="av n" style="--tc:#a0d157">JU</span></span><span class="tx"><b>Kiri → Judy</b><small>"That BD you promised" · 2 days</small></span><span class="meter"><i></i></span></div>
+        <div class="qr" style="--w:25%"><span class="pair"><span class="av p" style="--tc:#00acf8">RA</span><span class="av n" style="--tc:#00acf8">DD</span></span><span class="tx"><b>Rache → Dexter</b><small>"Job offer" · 41m</small></span><span class="meter"><i></i></span></div>
+        <div class="mod__k" style="border-top:1px solid var(--ncm-border);margin-top:4px"><i class="fas fa-check"></i>Answered</div>
+        <div class="qr done"><span class="pair"><span class="av p" style="--tc:#ff67e4">V</span><span class="av n" style="--tc:#899cff">BR</span></span><span class="tx"><b>V → Brick</b><small>answered 3h ago</small></span><span class="meter"><i></i></span></div>
+        <div class="qr done"><span class="pair"><span class="av p" style="--tc:#dab78f">JO</span><span class="av n" style="--tc:#dab78f">MA</span></span><span class="tx"><b>Jo → Mama Welles</b><small>answered yesterday</small></span><span class="meter"><i></i></span></div>
+      </div>
+    </div>
+    <div class="mod thread">
+      <div class="thread__hd"><span class="who"><span class="av" style="--tc:#ff67e4">V</span>V</span><i class="fas fa-arrow-right-long arrow"></i><span class="who">Rogue</span><span class="sub">"Where's my cut?" · 4 messages</span><button class="btn ic quiet" title="Open in the full viewer"><i class="fas fa-up-right-from-square"></i></button></div>
+      <div class="msgs">
+        <span class="day">Tue 9 Mar</span>
+        <div class="b them" style="--tc:#ff67e4"><span class="av sm" style="--tc:#ff67e4">V</span><div class="bub"><span class="s">V · v@nightcity.net</span>Queen — the Arasaka job is done. Payroll's wiped and the backdoor's in. Where do I pick up?<span class="t">21:04</span></div></div>
+        <div class="b me" style="--tc:var(--ncm-secret)"><div class="bub"><span class="s">Rogue as queen.h@darknet</span>Afterlife. Back booth. Bring the shard, not your friends.<span class="t">21:30 · read</span></div><span class="av sm alias" style="--tc:var(--ncm-secret)">Q</span></div>
+        <span class="day">Thu 11 Mar</span>
+        <div class="b them" style="--tc:#ff67e4"><span class="av sm" style="--tc:#ff67e4">V</span><div class="bub"><span class="s">V</span>Booth was empty. Twice. Where's my cut?<span class="t">20:12</span></div></div>
+        <div class="b them waiting" style="--tc:#ff67e4"><span class="av sm" style="--tc:#ff67e4">V</span><div class="bub"><span class="s">V</span>Rogue. I know you're reading these.<span class="t wait">20:40 · waiting 3h</span></div></div>
+      </div>
+      <div class="compose">
+        <div class="compose__box"><span class="ph">Type as Rogue (queen.h@darknet)… Ctrl+Enter sends</span></div>
+        <div class="compose__row"><button class="btn pri"><i class="fas fa-reply"></i>Send as Rogue</button><button class="btn"><i class="fas fa-check"></i>Mark answered</button><span class="sp"></span><span class="k">Ctrl+Enter</span></div>
+        <div class="compose__more"><button class="btn"><i class="fas fa-pen-to-square"></i>Open in the full composer</button><span class="opts"><span>carries this reply, as Rogue, to V —</span><i class="fas fa-paperclip" title="attachments / a shard"></i><i class="fas fa-coins" title="eddies"></i><i class="fas fa-lock" title="encryption + ICE"></i><i class="fas fa-fire" title="self-destruct"></i><i class="fas fa-clock" title="schedule / backdate"></i><i class="fas fa-mask" title="anonymous"></i><i class="fas fa-wifi" title="send via a network"></i><i class="fas fa-flag" title="priority"></i></span></div>
+      </div>
+    </div>
+    <div class="mod persona">
+      <div class="mod__k"><i class="fas fa-id-badge"></i>Answering as</div>
+      <div class="persona__id"><span class="av lg" style="--tc:#ff67e4">RO</span><span class="nm">Rogue</span><span class="addr">rogue@afterlife.nc</span><span class="pill" style="--tc:#ff67e4"><i class="fas fa-handshake"></i>Fixer · Afterlife</span></div>
+      <div class="persona__sec"><div class="k"><i class="fas fa-masks-theater"></i>From which identity</div><div class="ids"><span class="pill" style="--tc:#ff67e4"><i class="fas fa-star"></i>Rogue</span><span class="pill on" style="--tc:var(--ncm-secret)"><i class="fas fa-mask"></i>queen.h@darknet</span></div><p class="hint" style="margin-top:4px;font-size:10.5px">V wrote to the alias — keep it, or answer as the main name to drop the mask.</p></div>
+      <div class="persona__sec"><div class="k"><i class="fas fa-comment-dots"></i>How Rogue talks<span class="edit" title="Click to edit — saves to the contact"><i class="fas fa-pen"></i></span></div><p class="note">Short. Never apologises. Calls everyone "kid". Won't say a job's name over the net.</p><p class="hint" style="margin-top:4px;font-size:10px">The contact's <b>Voice</b> field — also in Contacts → Edit → Notes. Players never see it.</p></div>
+      <div class="persona__sec"><div class="k"><i class="fas fa-clock-rotate-left"></i>Last things Rogue said</div><div class="said"><span>Afterlife. Back booth. Bring the shard, not your friends.</span><span>You're late, kid. Price went up.</span><span>Don't call this number again.</span></div></div>
+      <div class="persona__sec"><div class="k"><i class="fas fa-handshake"></i>Rogue on V</div><div class="trust"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><small>trusted</small></div><p class="hint" style="margin-top:4px;font-size:10.5px">V has done 2 jobs for Rogue; 1 open debt (2,000 eb).</p></div>
+      <div class="persona__sec" style="border:0;margin-top:auto"><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn quiet"><i class="fas fa-inbox"></i>Inbox</button><button class="btn quiet"><i class="fas fa-pen"></i>Edit</button><button class="btn quiet"><i class="fas fa-address-book"></i>Open</button></div></div>
+    </div>
+  </div>
+</div></div></div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const t = q.get('t'); if (t) document.querySelectorAll('[data-ncm-admin-theme]').forEach((e) => e.setAttribute('data-ncm-admin-theme', t));
+  const v = q.get('v'); if (v) document.querySelectorAll('.mk-h, .mk-p, .mk-win').forEach((e, i) => { const idx = Math.floor(i / 3); if ((v === 'a') !== (idx === 0)) e.style.display = 'none'; });
+</script>
+</body>
+</html>

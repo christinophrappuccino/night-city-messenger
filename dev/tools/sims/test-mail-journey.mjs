@@ -1,0 +1,43 @@
+// All mail → "Where it went": the delivery line's steps drawn as stops, groups as segment rows,
+// Junk + Delete grouped at the right of the action row.
+import fs from 'node:fs';
+const root = new URL('../../../', import.meta.url);
+const M = await import(new URL('scripts/ui/AdminPanel/tabs/messagesModel.js', root));
+let pass = 0, fail = 0;
+const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
+const read = M.deliveryLine({ toName: 'Rogue', sentAt: '21:04', read: true, readAt: '21:30', toIsPlayer: false });
+const t1 = M.journeyTrack(read.steps, { netName: 'CitiNet', netSignal: 'signal 82%' });
+ok(t1.map(s => s.label).join() === 'Sent,CitiNet,Delivered,Read,Replied', 'network stop slots in after Sent');
+ok(t1[1].subline === '82% signal' && t1.slice(0, 4).every(s => s.st === 'done') && t1[4].st === 'todo', 'stop states');
+const held = M.deliveryLine({ toName: 'Judy', held: { reason: 'dead_zone', place: 'The Docks', by: 'Rache' } });
+const t2 = M.journeyTrack(held.steps, { netName: 'CitiNet' });
+ok(t2.length === 4 && t2[1].st === 'wait', 'held: no network stop, the wait stop instead');
+const ref = M.deliveryLine({ toName: 'NetWatch', failure: { sendOnly: true, addr: 'x@y', contactId: 'c' } });
+const t3 = M.journeyTrack(ref.steps, { netName: 'CitiNet' });
+ok(t3[1].label === 'CitiNet' && t3[2].st === 'bad', 'refused: it reached the network, then the door');
+ok(M.journeyTrack(read.steps, {}).length === 4, 'no network known → no network stop');
+ok(M.journeySegs('ans').every(s => s.s === 'done') && M.journeySegs('held')[1].s === 'wait' && M.journeySegs('fail')[1].s === 'bad' && M.journeySegs('zzz').length === 4, 'segments per state');
+const hbs = fs.readFileSync(new URL('templates/admin-panel/tab-messages.hbs', root), 'utf8');
+const js = fs.readFileSync(new URL('scripts/ui/AdminPanel/tabs/MessagesTab.js', root), 'utf8');
+ok(hbs.includes('Where it went') && hbs.includes('ncm-msg2-jr__track') && hbs.includes('ncm-msg2-jr__people'), 'journey markup');
+ok(!/class="ncm-msg2-dl__line"/.test(hbs), 'the old one-line button is gone');
+const acts = hbs.slice(hbs.indexOf('<div class="ncm-msg2-acts '), hbs.indexOf('<div class="ncm-msg2-body">'));
+const end = acts.slice(acts.indexOf('ncm-msg2-acts__end'));
+ok(end.includes('ncm-msg2-junkbtn') && end.includes('hardDeleteMessage'), 'Junk and Delete share the right-hand group');
+ok(/addEventListener\('toggle'/.test(js) && js.includes("removeEventListener('pointerdown', this._junkCloser, true)"), 'junk menu flips to the side with room; outside click closes; listener removed on close');
+// round 2: fold, big groups, colour hierarchy, joined segments
+const many = Array.from({ length: 20 }, (_, i) => ({ name: 'P' + i, state: ['read', 'got', 'fail', 'ans', 'held', 'got'][i % 6] }));
+const g = M.journeyPeople(many);
+ok(g.big && g.searchable && g.total === 20, 'big + searchable past the thresholds');
+ok(g.people[0].state === 'fail' && g.people.at(-1).state === 'ans', 'problems first, answered last');
+ok(g.counts.problem + g.counts.unread + g.counts.read === 20 && g.bar.reduce((n, b) => n + b.pct, 0) > 99.5, 'counts + bar add up');
+ok(g.defaultFilter === 'problem' && M.journeyPeople(many.map(p => ({ ...p, state: 'read' }))).defaultFilter === 'all', 'opens on problems, or everyone when nothing is wrong');
+ok(!M.journeyPeople(many.slice(0, 5)).big, 'a small group is not big');
+ok(M.journeyStatus(t2).tone === 'wait' && M.journeyStatus(t1).word === 'Read', 'folded status word');
+ok(js.includes("case 'jrFold'") && js.includes("case 'jrFilter'") && hbs.includes('data-op="jrFold"') && hbs.includes('data-op="jrFilter"'), 'fold + filter wired');
+ok(!/\{\{\.\.\/id\}\}/.test(hbs.slice(hbs.indexOf('Where it went'))), 'no ../ inside the nested journey blocks');
+const css = fs.readFileSync(new URL('styles/components/admin-panel/tab-messages.css', root), 'utf8');
+ok(css.includes('.ncm-msg2-jr__p .seg::before { left: -50%; right: 50%'), 'segment lines run centre to centre');
+ok(css.includes('max-height: 300px; overflow-y: auto') && css.includes('.ncm-msg2-jr__phead { position: sticky'), 'any number of people scrolls under a sticky header');
+ok(css.includes('ncm-msg2-btn--quiet') && hbs.includes('ncm-msg2-btn--quiet'), 'one filled button, the rest quiet');
+console.log(`test-mail-journey: ${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

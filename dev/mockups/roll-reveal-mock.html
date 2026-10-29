@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roll Reveal — mock</title>
+<!--
+  ROLL REVEAL — design mock (2026-10-27).
+
+  One shared climax for every skill check that has no animation of its own
+  (network bypass, terminal logins, message network bypass, anon trace, the
+  macro / non-animated shard hack path). The roll is computed FIRST, the reveal
+  plays it back, and the chat card posts only when the reveal lands — so the
+  table never reads the result in chat before the player sees it.
+
+  Self-contained (no module imports), so it opens off disk or through
+  `node dev/tools/serve-mockups.cjs`. Renders against the real cascade.
+
+  Query params:
+    ?o=success|fail|crit|fumble|exact|critfail   outcome (default success)
+    ?ctx=network|terminal|decrypt|trace|access   what is being rolled
+    ?t=brand|arasaka|netwatch|bbs                host palette (terminal presets)
+    ?luck=2                                      Luck spent
+    ?speed=0.5                                   slow motion
+    ?at=0..1                                     freeze at that point (still frame)
+    ?still=1                                     reduced-motion: final frame only
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet'; l.href = href;
+      document.head.appendChild(l);
+    }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  /* ── mock page chrome (not part of the design) ── */
+  html, body { margin: 0; min-height: 100%; background: #07070b; color: #8fa0b2;
+    font-family: 'Share Tech Mono', ui-monospace, monospace; }
+  .bar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 6px 14px;
+    align-items: center; padding: 9px 14px; background: #0b0b12; border-bottom: 1px solid #1b1b28; font-size: 11px; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; }
+  .bar .grp { display: flex; gap: 4px; align-items: center; }
+  .bar .grp > span { color: #5d6b7a; margin-right: 2px; text-transform: uppercase; letter-spacing: .1em; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a; padding: 3px 8px;
+    text-decoration: none; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+  .bar a.on { color: #07070b; background: #19f3f7; border-color: #19f3f7; }
+  .bar a:hover { color: #e6edf5; }
+  .stage { display: grid; place-items: center; padding: 34px 16px 60px; }
+  .note { max-width: 640px; margin: 0 auto 40px; padding: 0 16px; font: 13px/1.6 'Rajdhani', sans-serif; color: #8e8ea8; }
+  .note b { color: #c9d3de; }
+
+  /* The host window the reveal mounts into (a stand-in for the network auth
+     dialog / terminal). Pinned into flow: .ncm-app is position:fixed in the
+     real cascade. */
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important;
+    width: 520px; max-width: 100%; height: 470px; border: 1px solid var(--ncm-border);
+    background: var(--ncm-bg-base); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .mk-win__hd { height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    background: var(--ncm-bg-deep); border-bottom: 1px solid var(--ncm-border);
+    font: 600 12px var(--ncm-font-display); color: var(--ncm-text-secondary); letter-spacing: .06em; text-transform: uppercase; }
+  .mk-win__body { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .mk-card { border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); padding: 12px; border-radius: 2px;
+    font: 14px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .mk-card i { color: var(--ncm-secondary); margin-right: 6px; }
+
+  /* host palettes — the reveal reads only --ncm-* tokens, so it wears whatever
+     window it opens in (terminal presets shown here). */
+  .mk-win[data-t="arasaka"]  { --ncm-primary:#ff0033; --ncm-secondary:#19f3f7; --ncm-accent:#ffcc00; --ncm-bg-deep:#0a0006; --ncm-bg-base:#160008; --ncm-bg-surface:#22060e; --ncm-bg-elevated:#2c0a14; --ncm-text-primary:#f4e6ea; --ncm-text-secondary:#c79aa6; --ncm-text-muted:#9f7883; --ncm-border:#4a1622; }
+  .mk-win[data-t="netwatch"] { --ncm-primary:#4aa3ff; --ncm-secondary:#b9d8ff; --ncm-accent:#9ad0ff; --ncm-bg-deep:#04070f; --ncm-bg-base:#070d18; --ncm-bg-surface:#0b1726; --ncm-bg-elevated:#102236; --ncm-text-primary:#e6eefc; --ncm-text-secondary:#90a8c8; --ncm-text-muted:#788ba4; --ncm-border:#1a3350; }
+  .mk-win[data-t="bbs"]      { --ncm-primary:#00ff41; --ncm-secondary:#19f3f7; --ncm-accent:#f7c948; --ncm-bg-deep:#040a06; --ncm-bg-base:#07120a; --ncm-bg-surface:#0c1a0f; --ncm-bg-elevated:#102414; --ncm-text-primary:#daffe4; --ncm-text-secondary:#7fae8d; --ncm-text-muted:#689275; --ncm-border:#1b3a22; }
+
+  /* ═════════════════════════════════════════════════════════════════
+     THE DESIGN — .ncm-rr-* (Roll Reveal)
+     ═════════════════════════════════════════════════════════════════ */
+  .ncm-rr-scrim { position: absolute; inset: 0; z-index: 120; display: grid; place-items: center;
+    background: color-mix(in srgb, var(--ncm-bg-deep, #0a0a0f) 72%, transparent);
+    backdrop-filter: blur(2px); opacity: var(--rr-scrim, 1); }
+
+  .ncm-rr { --rr-c: var(--ncm-secondary, #19f3f7);
+    position: relative; width: 392px; max-width: calc(100% - 32px); padding: 14px 16px 12px;
+    background: var(--ncm-bg-deep, #0a0a0f); border: 1px solid color-mix(in srgb, var(--rr-c) 45%, var(--ncm-border, #2a2a45));
+    box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 18px 50px rgba(0,0,0,.65), 0 0 28px color-mix(in srgb, var(--rr-c) 18%, transparent);
+    font-family: var(--ncm-font-body, 'Rajdhani', sans-serif); color: var(--ncm-text-primary, #ededf0);
+    clip-path: inset(calc(50% - var(--rr-open, 1) * 50%) 0 calc(50% - var(--rr-open, 1) * 50%) 0);
+    transition: border-color .25s, box-shadow .25s; }
+  .ncm-rr[data-tone="ok"]     { --rr-c: var(--ncm-success, #00ff41); }
+  .ncm-rr[data-tone="fail"]   { --rr-c: var(--ncm-danger, #ff0033); }
+  .ncm-rr[data-tone="crit"]   { --rr-c: var(--ncm-accent, #f7c948); }
+  .ncm-rr[data-tone="fumble"] { --rr-c: var(--ncm-danger, #ff0033); }
+
+  /* corner brackets */
+  .ncm-rr__brk { position: absolute; width: 10px; height: 10px; border: 2px solid var(--rr-c); pointer-events: none; }
+  .ncm-rr__brk--tl { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+  .ncm-rr__brk--tr { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
+  .ncm-rr__brk--bl { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
+  .ncm-rr__brk--br { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+  /* record line */
+  .ncm-rr__top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px;
+    font: 700 10px var(--ncm-font-display, sans-serif); letter-spacing: .14em; text-transform: uppercase; }
+  .ncm-rr__kind { color: var(--rr-c); }
+  .ncm-rr__ctx { color: var(--ncm-text-secondary, #bdbdd0); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ncm-rr__who { color: var(--ncm-text-muted, #8e8ea8); font-family: var(--ncm-font-mono, monospace); letter-spacing: .04em; text-transform: none; }
+  .ncm-rr__title { font: 700 17px var(--ncm-font-display, sans-serif); letter-spacing: .03em; margin-bottom: 22px; color: var(--ncm-text-primary, #ededf0); }
+
+  /* the equation */
+  .ncm-rr__eq { display: flex; align-items: stretch; gap: 5px; margin-bottom: 12px; }
+  .ncm-rr__op { align-self: center; color: var(--ncm-text-muted, #8e8ea8); font: 700 14px var(--ncm-font-mono, monospace); opacity: var(--o, 0); }
+  .ncm-rr__tile { flex: 1 1 0; min-width: 0; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 7px 4px 6px; border: 1px solid var(--ncm-border, #2a2a45); background: var(--ncm-bg-surface, #1a1a2e); border-radius: 2px;
+    opacity: var(--o, 0); transform: translateY(calc((1 - var(--o, 0)) * 6px)); }
+  .ncm-rr__tile.is-lit { border-color: color-mix(in srgb, var(--rr-c) 55%, var(--ncm-border, #2a2a45)); }
+  .ncm-rr__val { font: 400 22px/1 var(--ncm-font-mono, monospace); color: var(--ncm-text-primary, #ededf0); font-variant-numeric: tabular-nums; }
+  .ncm-rr__lbl { margin-top: 4px; font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ncm-text-secondary, #bdbdd0); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* the die — the moment everything waits on */
+  .ncm-rr__tile--die { flex: 1.25 1 0; border-color: color-mix(in srgb, var(--rr-c) 60%, transparent); }
+  .ncm-rr__tile--die .ncm-rr__val { font-size: 28px; color: var(--rr-c); text-shadow: 0 0 12px color-mix(in srgb, var(--rr-c) 55%, transparent); }
+  .ncm-rr__tile--die.is-spinning .ncm-rr__val { filter: blur(var(--blur, 0px)); }
+  .ncm-rr__die2 { position: absolute; top: 3px; right: 4px; font: 700 11px var(--ncm-font-mono, monospace); color: var(--rr-c); opacity: var(--o2, 0); }
+  .ncm-rr__tile--die::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, transparent 0 40%, color-mix(in srgb, var(--rr-c) 22%, transparent) 50%, transparent 60%);
+    background-size: 100% 300%; background-position: 0 var(--scan, 100%); opacity: var(--scanO, 0); }
+  .ncm-rr__flag { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%) scale(var(--fs, .6));
+    padding: 2px 6px; white-space: nowrap; font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase;
+    background: var(--rr-c); color: var(--ncm-bg-deep, #0a0a0f); border-radius: 1px; opacity: var(--fo, 0); }
+
+  .ncm-rr__tile--total { flex: 1.25 1 0; background: color-mix(in srgb, var(--rr-c) 10%, var(--ncm-bg-surface, #1a1a2e)); }
+  .ncm-rr__tile--total .ncm-rr__val { font-size: 28px; }
+
+  /* the threshold meter: running total vs the DV line */
+  .ncm-rr__meter { position: relative; height: 30px; margin: 6px 0 10px; }
+  .ncm-rr__track { position: absolute; left: 0; right: 0; top: 4px; height: 6px; background: var(--ncm-bg-surface, #1a1a2e);
+    border: 1px solid var(--ncm-border, #2a2a45); border-radius: 1px; overflow: hidden; }
+  .ncm-rr__fill { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--fill, 0) * 100%); background: var(--rr-c);
+    box-shadow: 0 0 10px var(--rr-c); }
+  .ncm-rr__dv { position: absolute; top: 0; bottom: 0; left: calc(var(--dvx, .5) * 100%); width: 2px; margin-left: -1px;
+    background: var(--ncm-text-primary, #ededf0); opacity: .85; }
+  .ncm-rr__dvtag { position: absolute; top: 15px; left: calc(var(--dvx, .5) * 100%); transform: translateX(-50%);
+    font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .1em; color: var(--ncm-text-primary, #ededf0); white-space: nowrap; }
+  .ncm-rr__ticks { position: absolute; left: 0; right: 0; top: 19px; display: flex; justify-content: space-between;
+    font: 9px var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #8e8ea8); }
+
+  /* verdict */
+  .ncm-rr__verdict { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 6px 10px; border-left: 3px solid var(--rr-c);
+    background: color-mix(in srgb, var(--rr-c) 9%, transparent); opacity: var(--vo, 0); transform: translateX(calc((1 - var(--vo, 0)) * -10px)); }
+  .ncm-rr__vtxt { flex: 1; font: 700 18px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--rr-c); }
+  .ncm-rr__margin { font: 13px var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary, #bdbdd0); white-space: nowrap; }
+
+  .ncm-rr__foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; min-height: 18px;
+    font: 11px var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #8e8ea8); }
+  .ncm-rr__status { flex: 1; }
+  .ncm-rr__chat { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border: 1px solid var(--ncm-border, #2a2a45);
+    color: var(--ncm-text-secondary, #bdbdd0); border-radius: 1px; opacity: var(--co, 0); }
+  .ncm-rr__chat i { color: var(--ncm-success, #00ff41); }
+  .ncm-rr__skip { color: var(--ncm-text-muted, #8e8ea8); opacity: calc(1 - var(--co, 0)); }
+
+  /* fail shake + fumble glitch (CSS keyframes, fired once by a class) */
+  .ncm-rr.is-shake { animation: ncm-rr-shake .32s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes ncm-rr-shake { 20%,80% { transform: translateX(-2px); } 40%,60% { transform: translateX(3px); } }
+  .ncm-rr.is-glitch .ncm-rr__tile--die { animation: ncm-rr-glitch .45s steps(2) 1; }
+  @keyframes ncm-rr-glitch { 0% { transform: translate(2px,-1px); filter: hue-rotate(40deg); } 50% { transform: translate(-3px,1px); } 100% { transform: none; filter: none; } }
+  .ncm-rr.is-crit .ncm-rr__tile--die { animation: ncm-rr-pop .5s cubic-bezier(.22,1,.36,1) 1; }
+  @keyframes ncm-rr-pop { 0% { transform: scale(1); } 35% { transform: scale(1.12); box-shadow: 0 0 22px var(--rr-c); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .ncm-rr.is-shake, .ncm-rr.is-glitch .ncm-rr__tile--die, .ncm-rr.is-crit .ncm-rr__tile--die { animation: none; } }
+</style>
+</head>
+<body>
+
+<div class="bar" id="bar"></div>
+<div class="stage">
+  <div class="mk-win ncm-app" id="win">
+    <div class="mk-win__hd"><i class="fas fa-shield-halved"></i> <span id="winTitle">Network Authentication</span></div>
+    <div class="mk-win__body">
+      <div class="mk-card"><i class="fas fa-key"></i> Password</div>
+      <div class="mk-card"><i class="fas fa-dice-d20"></i> Skill check bypass — Interface · Electronics/Security Tech</div>
+      <div class="mk-card"><i class="fas fa-id-badge"></i> Key item</div>
+    </div>
+    <div id="mount"></div>
+  </div>
+</div>
+<div class="note">
+  <b>What this is.</b> One shared reveal for every roll that has no animation of its own. The roll is computed first; the reveal plays it back (~2.6 s, a crit or fumble adds the second die), and the chat card posts when the verdict lands. Click anywhere on it to skip to the result. Reduced motion shows the final frame. It mounts inside the window that asked for the roll and wears that window's palette (try the terminal presets).
+</div>
+
+<script>
+/* ─── scenario ─────────────────────────────────────────────────── */
+const Q = new URLSearchParams(location.search);
+const OUT = Q.get('o') || 'success';
+const CTX = Q.get('ctx') || 'network';
+const THEME = Q.get('t') || 'brand';
+const LUCK = Math.max(0, Number(Q.get('luck')) || 0);
+const SPEED = Number(Q.get('speed')) || 1;
+const AT = Q.has('at') ? Math.min(1, Math.max(0, Number(Q.get('at')))) : null;
+const STILL = Q.get('still') === '1';
+
+const CONTEXTS = {
+  network:  { kind: 'Skill check', ctx: 'Network bypass · CorpNet', title: 'Bypassing CorpNet authentication', win: 'Network Authentication', ok: 'Bypass granted', no: 'Bypass rejected' },
+  terminal: { kind: 'Skill check', ctx: 'Terminal login · WS-7F-12 · root', title: 'Forcing the root login', win: 'WS-7F-12', ok: 'Access granted', no: 'Access denied' },
+  decrypt:  { kind: 'Skill check', ctx: 'Message decrypt · ICE', title: 'Breaking the message cipher', win: 'Agent — Inbox', ok: 'Cipher broken', no: 'Cipher holds' },
+  trace:    { kind: 'Skill check', ctx: 'Trace anonymous sender', title: 'Triangulating the relay', win: 'Agent — Inbox', ok: 'Sender traced', no: 'Trace lost' },
+  access:   { kind: 'Skill check', ctx: 'Message bypass · off-network', title: 'Reaching a message off your network', win: 'Agent — Inbox', ok: 'Bypass granted', no: 'Bypass rejected' },
+};
+// stat, skill, d10, second die (crit/fumble), DV
+const OUTCOMES = {
+  success:  { stat: ['TECH', 6], skill: ['Interface', 4], die: 7, die2: null, dv: 15 },
+  fail:     { stat: ['TECH', 6], skill: ['Interface', 4], die: 3, die2: null, dv: 15 },
+  exact:    { stat: ['TECH', 6], skill: ['Interface', 4], die: 5, die2: null, dv: 15 },
+  crit:     { stat: ['TECH', 6], skill: ['Interface', 4], die: 10, die2: 6, dv: 20 },
+  fumble:   { stat: ['TECH', 6], skill: ['Interface', 4], die: 1, die2: 7, dv: 15 },
+  critfail: { stat: ['TECH', 4], skill: ['Electronics/Security Tech', 2], die: 10, die2: 2, dv: 22 },
+};
+const C = CONTEXTS[CTX] || CONTEXTS.network;
+const R = OUTCOMES[OUT] || OUTCOMES.success;
+const isCrit = R.die === 10, isFumble = R.die === 1;
+const dieTotal = isCrit ? 10 + R.die2 : isFumble ? 1 - R.die2 : R.die;
+const base = R.stat[1] + R.skill[1];
+const total = base + dieTotal + LUCK;
+const success = total >= R.dv;
+const margin = total - R.dv;
+
+/* ─── timeline (fractions of DURATION) ─────────────────────────── */
+const SECOND = (isCrit || isFumble);
+const DURATION = (SECOND ? 3500 : 2600) / SPEED;
+// Every beat as [start, end] — deterministic paint(p), the BootSplash pattern.
+const S = SECOND ? {
+  open: [0, .07], stat: [.07, .15], skill: [.13, .21], luck: [.19, .25],
+  die: [.24, .52], flag: [.52, .58], die2: [.58, .78], count: [.78, .86], verdict: [.86, .93], chat: [.95, 1],
+} : {
+  open: [0, .09], stat: [.09, .19], skill: [.16, .26], luck: [.23, .31],
+  die: [.30, .70], flag: [1, 1], die2: [1, 1], count: [.70, .82], verdict: [.82, .91], chat: [.94, 1],
+};
+const clamp = (x) => Math.min(1, Math.max(0, x));
+const local = (p, [a, b]) => (b <= a ? (p >= a ? 1 : 0) : clamp((p - a) / (b - a)));
+const easeOut = (u) => 1 - Math.pow(1 - u, 3);
+
+/* A slot-machine digit stream that decelerates and lands on the result. */
+function spinDigit(u, final, seed) {
+  if (u >= 1) return final;
+  const ticks = Math.floor(easeOut(u) * 22);
+  const x = Math.sin((ticks + 1) * 12.9898 + seed * 78.233) * 43758.5453;
+  return 1 + Math.floor((x - Math.floor(x)) * 10);
+}
+
+/* ─── markup ───────────────────────────────────────────────────── */
+const win = document.getElementById('win');
+win.dataset.t = THEME;
+document.getElementById('winTitle').textContent = C.win;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+document.getElementById('mount').innerHTML = `
+<div class="ncm-rr-scrim" id="scrim">
+  <div class="ncm-rr" id="rr" data-tone="cyan" role="status" aria-live="polite">
+    <span class="ncm-rr__brk ncm-rr__brk--tl"></span><span class="ncm-rr__brk ncm-rr__brk--tr"></span>
+    <span class="ncm-rr__brk ncm-rr__brk--bl"></span><span class="ncm-rr__brk ncm-rr__brk--br"></span>
+    <div class="ncm-rr__top"><span class="ncm-rr__kind">${esc(C.kind)}</span><span class="ncm-rr__ctx">${esc(C.ctx)}</span><span class="ncm-rr__who">V</span></div>
+    <div class="ncm-rr__title">${esc(C.title)}</div>
+    <div class="ncm-rr__eq">
+      <div class="ncm-rr__tile" data-k="stat"><span class="ncm-rr__val">${R.stat[1]}</span><span class="ncm-rr__lbl">${esc(R.stat[0])}</span></div>
+      <span class="ncm-rr__op" data-k="op1">+</span>
+      <div class="ncm-rr__tile" data-k="skill"><span class="ncm-rr__val">${R.skill[1]}</span><span class="ncm-rr__lbl" title="${esc(R.skill[0])}">${esc(R.skill[0])}</span></div>
+      ${LUCK ? `<span class="ncm-rr__op" data-k="op3">+</span><div class="ncm-rr__tile" data-k="luck"><span class="ncm-rr__val">${LUCK}</span><span class="ncm-rr__lbl">Luck</span></div>` : ''}
+      <span class="ncm-rr__op" data-k="op2">+</span>
+      <div class="ncm-rr__tile ncm-rr__tile--die" data-k="die"><span class="ncm-rr__flag" id="flag"></span><span class="ncm-rr__die2" id="die2"></span><span class="ncm-rr__val" id="dieVal">–</span><span class="ncm-rr__lbl">1d10</span></div>
+      <span class="ncm-rr__op" data-k="eq">=</span>
+      <div class="ncm-rr__tile ncm-rr__tile--total" data-k="total"><span class="ncm-rr__val" id="totVal">–</span><span class="ncm-rr__lbl">Total</span></div>
+    </div>
+    <div class="ncm-rr__meter" id="meter">
+      <div class="ncm-rr__track"><div class="ncm-rr__fill"></div><div class="ncm-rr__dv"></div></div>
+      <span class="ncm-rr__dvtag">DV ${R.dv}</span>
+    </div>
+    <div class="ncm-rr__verdict" id="verdict"><span class="ncm-rr__vtxt" id="vtxt"></span><span class="ncm-rr__margin" id="vmargin"></span></div>
+    <div class="ncm-rr__foot"><span class="ncm-rr__status" id="status">Rolling…</span><span class="ncm-rr__skip">click to skip</span><span class="ncm-rr__chat"><i class="fas fa-check"></i> Posted to chat</span></div>
+  </div>
+</div>`;
+
+const rr = document.getElementById('rr');
+const $ = (k) => rr.querySelector(`[data-k="${k}"]`);
+const scale = Math.max(R.dv + 6, total + 3, 20);
+rr.style.setProperty('--dvx', (R.dv / scale).toFixed(4));
+
+let fired = {};
+function once(key, fn) { if (!fired[key]) { fired[key] = true; fn(); } }
+
+/* ─── paint(p): the whole reveal at one moment ─────────────────── */
+function paint(p) {
+  rr.style.setProperty('--rr-open', easeOut(local(p, S.open)).toFixed(3));
+  const show = (k, u) => { const el = $(k); if (el) el.style.setProperty('--o', easeOut(u).toFixed(3)); };
+  const uStat = local(p, S.stat), uSkill = local(p, S.skill), uLuck = local(p, S.luck);
+  show('stat', uStat); show('op1', uSkill); show('skill', uSkill);
+  if (LUCK) { show('op3', uLuck); show('luck', uLuck); }
+  const uDie = local(p, S.die);
+  show('op2', Math.min(1, uDie * 4)); show('die', Math.min(1, uDie * 4));
+  show('eq', local(p, S.count)); show('total', local(p, S.count));
+  $('stat').classList.toggle('is-lit', uStat >= 1);
+  $('skill').classList.toggle('is-lit', uSkill >= 1);
+
+  // running total (what the meter shows)
+  let running = R.stat[1] * easeOut(uStat) + R.skill[1] * easeOut(uSkill) + LUCK * easeOut(uLuck);
+
+  // ── the die ──
+  const dieEl = $('die'), dieVal = document.getElementById('dieVal');
+  const spinning = uDie > 0 && uDie < 1;
+  dieEl.classList.toggle('is-spinning', spinning);
+  dieEl.style.setProperty('--blur', spinning ? `${(1 - easeOut(uDie)) * 2.2}px` : '0px');
+  dieEl.style.setProperty('--scanO', spinning ? '1' : '0');
+  dieEl.style.setProperty('--scan', `${100 - (uDie * 600) % 100}%`);
+  dieVal.textContent = uDie <= 0 ? '–' : String(spinDigit(uDie, R.die, 1));
+
+  const uFlag = local(p, S.flag), uDie2 = local(p, S.die2);
+  const flag = document.getElementById('flag'), die2 = document.getElementById('die2');
+  let tone = 'cyan';
+  if (uDie >= 1 && SECOND) {
+    tone = isCrit ? 'crit' : 'fumble';
+    flag.textContent = isCrit ? 'Critical · roll again' : 'Fumble · roll again';
+    flag.style.setProperty('--fo', '1');
+    flag.style.setProperty('--fs', (0.6 + 0.4 * easeOut(uFlag)).toFixed(3));
+    once('second', () => { rr.classList.add(isCrit ? 'is-crit' : 'is-glitch'); });
+    if (uDie2 > 0) {
+      const d2 = spinDigit(uDie2, R.die2, 7);
+      die2.textContent = (isCrit ? '+' : '−') + d2;
+      die2.style.setProperty('--o2', '1');
+      dieEl.style.setProperty('--scanO', uDie2 < 1 ? '1' : '0');
+      dieEl.style.setProperty('--scan', `${100 - (uDie2 * 600) % 100}%`);
+    }
+    if (uDie2 >= 1) dieVal.textContent = String(dieTotal);
+  } else {
+    flag.style.setProperty('--fo', '0');
+    die2.style.setProperty('--o2', '0');
+  }
+  if (uDie >= 1) running += SECOND ? (uDie2 >= 1 ? dieTotal : R.die) : R.die;
+  else if (uDie > 0) running += spinDigit(uDie, R.die, 1) * 0; // no partial credit while spinning
+
+  // ── the count into the meter ──
+  const uCount = local(p, S.count);
+  const shownTotal = uCount > 0 ? Math.round(running) : null;
+  document.getElementById('totVal').textContent = shownTotal === null ? '–' : String(shownTotal);
+  rr.style.setProperty('--fill', clamp(running / scale).toFixed(4));
+
+  // ── verdict ──
+  const uV = local(p, S.verdict);
+  if (uV > 0) {
+    tone = success ? (isCrit ? 'crit' : 'ok') : 'fail';
+    document.getElementById('vtxt').textContent = success ? C.ok : C.no;
+    document.getElementById('vmargin').textContent = margin === 0 ? 'exactly DV' : (margin > 0 ? `+${margin} over DV` : `${margin} under DV`);
+    if (!success) once('shake', () => rr.classList.add('is-shake'));
+  }
+  rr.style.setProperty('--vo', easeOut(uV).toFixed(3));
+  rr.dataset.tone = tone;
+
+  // ── chat posts after the verdict ──
+  const uChat = local(p, S.chat);
+  rr.style.setProperty('--co', easeOut(uChat).toFixed(3));
+  document.getElementById('status').textContent =
+    uV >= 1 ? (isCrit && success ? 'Critical success.' : isFumble ? 'Fumbled.' : 'Check resolved.')
+    : (uDie > 0 && uDie < 1) || (uDie2 > 0 && uDie2 < 1) ? 'Rolling 1d10…'
+    : uCount > 0 ? 'Tallying…'
+    : 'Reading stats…';
+}
+
+/* ─── driver ───────────────────────────────────────────────────── */
+let start = null, raf = null, skipped = false;
+function frame(ts) {
+  if (start === null) start = ts;
+  const p = skipped ? 1 : clamp((ts - start) / DURATION);
+  paint(p);
+  if (p < 1) raf = requestAnimationFrame(frame);
+}
+function play() {
+  fired = {}; skipped = false; start = null;
+  rr.classList.remove('is-shake', 'is-glitch', 'is-crit');
+  cancelAnimationFrame(raf);
+  if (STILL) { paint(1); return; }
+  if (AT !== null) { paint(AT); return; }
+  raf = requestAnimationFrame(frame);
+}
+document.getElementById('scrim').addEventListener('click', () => { skipped = true; paint(1); });
+play();
+
+/* ─── control bar ──────────────────────────────────────────────── */
+const bar = document.getElementById('bar');
+const link = (k, v, label) => {
+  const q = new URLSearchParams(location.search);
+  if (v === null) q.delete(k); else q.set(k, v);
+  const on = (Q.get(k) ?? null) === v || (!Q.has(k) && v === defaults[k]);
+  return `<a class="${on ? 'on' : ''}" href="?${q}">${label}</a>`;
+};
+const defaults = { o: 'success', ctx: 'network', t: 'brand', speed: null, still: null, luck: null };
+bar.innerHTML = `<b>ROLL REVEAL</b>
+  <span class="grp"><span>outcome</span>${['success', 'fail', 'exact', 'crit', 'fumble', 'critfail'].map((o) => link('o', o, o)).join('')}</span>
+  <span class="grp"><span>context</span>${Object.keys(CONTEXTS).map((c) => link('ctx', c, c)).join('')}</span>
+  <span class="grp"><span>host</span>${['brand', 'arasaka', 'netwatch', 'bbs'].map((t) => link('t', t, t)).join('')}</span>
+  <span class="grp"><span>luck</span>${link('luck', null, '0')}${link('luck', '2', '2')}</span>
+  <span class="grp"><span>speed</span>${link('speed', null, '1×')}${link('speed', '0.4', '0.4×')}</span>
+  <span class="grp"><a id="replay">↻ replay</a>${link('still', '1', 'reduced motion')}</span>`;
+document.getElementById('replay').addEventListener('click', (e) => { e.preventDefault(); play(); });
+</script>
+</body>
+</html>

@@ -368,3 +368,57 @@ export function registerAdminDialogHook() {
     }
   });
 }
+
+// ═══════════════════════════════════════════════════════════
+//  Themed small dialogs (2026-10-29) — the `ncm-themed-dialog` look (styles/components/ncm-dialog.css)
+//  with a dialogBodyHtml() body. A GM gets the admin preset, a player their own theme.
+// ═══════════════════════════════════════════════════════════
+
+const THEMED = ['dialog', 'ncm-themed-dialog'];
+
+/**
+ * A two-button confirm. Resolves true only on the action button; closing = false.
+ * @param {{title:string, content:string, yes?:string, yesIcon?:string, no?:string, bad?:boolean, width?:number}} o
+ */
+export function themedConfirm(o = {}) {
+  const gm = !!globalThis.game?.user?.isGM;
+  const make = gm ? adminDialog : playerDialog;
+  return new Promise((resolve) => {
+    let ok = false;
+    make({
+      title: o.title, content: o.content,
+      buttons: {
+        no: { icon: '<i class="fas fa-xmark"></i>', label: o.no || 'Cancel' },
+        yes: { icon: `<i class="${o.yesIcon || 'fas fa-check'}"></i>`, label: o.yes || 'Confirm', callback: () => { ok = true; } },
+      },
+      default: 'yes',
+      close: () => resolve(ok),
+    }, { width: o.width || 440, classes: [...THEMED, 'ncm-dlg-confirm', ...(o.bad ? ['ncm-dlg-bad'] : [])] }).render(true);
+  });
+}
+
+/**
+ * A one-field prompt. `read(root)` returns the value; resolves null on cancel.
+ * @param {{title:string, content:string, label?:string, icon?:string, read:(root:HTMLElement)=>any, width?:number}} o
+ */
+export function themedPrompt(o = {}) {
+  const gm = !!globalThis.game?.user?.isGM;
+  const make = gm ? adminDialog : playerDialog;
+  return new Promise((resolve) => {
+    let val = null;
+    make({
+      title: o.title, content: o.content,
+      buttons: {
+        no: { icon: '<i class="fas fa-xmark"></i>', label: 'Cancel' },
+        yes: { icon: `<i class="${o.icon || 'fas fa-check'}"></i>`, label: o.label || 'Save', callback: (html) => { val = o.read?.(html[0] ?? html) ?? null; } },
+      },
+      default: 'yes',
+      render: (html) => {
+        const root = html[0] ?? html;
+        const input = root.querySelector('input[type=text]');
+        if (input) { input.focus(); input.select(); }
+      },
+      close: () => resolve(val),
+    }, { width: o.width || 420, classes: THEMED }).render(true);
+  });
+}

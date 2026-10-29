@@ -45,6 +45,7 @@ import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { selfKeys } from '../../utils/participants.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
+import { DRAFTS_FLAG, readDrafts, draftRecipientName, draftLabel, draftKind, relativeAge } from '../../utils/drafts.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
 
@@ -427,7 +428,10 @@ export class MessageViewerApp extends BaseApplication {
     if (!networkService) return { selectorNetworks: [], availableCount: 0 };
 
     const isDeadZone = networkService.isDeadZone;
-    if (isDeadZone) return { selectorNetworks: [], availableCount: 0 };
+    // a node-made dead zone still lists the networks — as jammed / down rows (network nodes)
+    if (isDeadZone && !networkService.isNodeDead) return { selectorNetworks: [], availableCount: 0 };
+    const blocks = networkService.getSceneBlocks?.() ?? {};
+    const nowMs = networkService._nowMs?.() ?? Date.now();
 
     const allNetworks = networkService.getAllNetworks?.() ?? [];
     const availableIds = new Set(
@@ -451,7 +455,10 @@ export class MessageViewerApp extends BaseApplication {
       const isGM = game.user?.isGM ?? false;
 
       let state;
-      if (!isAvailable) {
+      const block = blocks[net.id];
+      if (block) {
+        state = 'jammed';
+      } else if (!isAvailable) {
         state = 'unavailable';
       } else if (isActive) {
         state = 'active';
@@ -473,16 +480,21 @@ export class MessageViewerApp extends BaseApplication {
         state,
         requiresAuth,
         isAuthenticated,
+        isJammed: !!block,
+        blockIcon: !block ? '' : block.state === 'jammed' ? 'fa-wave-square' : block.state === 'damaged' ? 'fa-triangle-exclamation' : 'fa-power-off',
+        blockLabel: !block ? '' : block.state === 'jammed'
+          ? `Jammed${block.until > nowMs ? ` · ${Math.max(1, Math.ceil((block.until - nowMs) / 60000))}m` : ''}`
+          : block.state === 'damaged' ? 'Node damaged' : 'Node down',
       };
     })
-    // Hide out-of-range / 0% signal — only show reachable networks.
-    .filter(net => net.state !== 'unavailable' && net.signalStrength > 0);
+    // Hide out-of-range / 0% signal — only show reachable networks (and the ones a node is cutting here).
+    .filter(net => net.state === 'jammed' || (net.state !== 'unavailable' && net.signalStrength > 0));
 
-    // Sort: active first, then available, then locked
-    const stateOrder = { active: 0, available: 1, locked: 2 };
+    // Sort: active first, then available, then locked, then jammed
+    const stateOrder = { active: 0, available: 1, locked: 2, jammed: 3 };
     selectorNetworks.sort((a, b) => (stateOrder[a.state] ?? 9) - (stateOrder[b.state] ?? 9));
 
-    return { selectorNetworks, availableCount: selectorNetworks.length };
+    return { selectorNetworks, availableCount: selectorNetworks.filter(n => n.state !== 'jammed').length };
   }
 
   _signalToLevel(strength) {
@@ -766,6 +778,7 @@ export class MessageViewerApp extends BaseApplication {
       signalQuality,
       signalSegments,
       isDeadZone,
+      selectorDead: isDeadZone && !this.networkService?.isNodeDead,
       selectorNetworks,
       availableCount,
       currentSceneName,
@@ -1411,6 +1424,9 @@ export class MessageViewerApp extends BaseApplication {
       case 'save-message':
         this._toggleSave(messageId);
         break;
+      case 'mark-unread':
+        this._markUnread(messageId);
+        break;
       case 'mark-spam':
         this._markSpam(messageId);
         break;
@@ -1588,12 +1604,16 @@ export class MessageViewerApp extends BaseApplication {
         break;
 
       // ── Drafts ──
-      case 'open-draft':
-        this._openDraft(target.closest('[data-actor-id]')?.dataset.actorId);
+      case 'open-draft': {
+        const row = target.closest('[data-draft-id]');
+        this._openDraft(row?.dataset.actorId, row?.dataset.draftId);
         break;
-      case 'delete-draft':
-        this._deleteDraft(target.closest('[data-actor-id]')?.dataset.actorId);
+      }
+      case 'delete-draft': {
+        const row = target.closest('[data-draft-id]');
+        this._deleteDraft(row?.dataset.actorId, row?.dataset.draftId);
         break;
+      }
 
       // ── Sprint 2B: Attachment Actions ──
       case 'breach-attachment':
@@ -2158,6 +2178,12 @@ export class MessageViewerApp extends BaseApplication {
    * @param {string} networkId
    */
   async _onSelectNetwork(networkId) {
+    const block = this.networkService?.getSceneBlocks?.()?.[networkId];
+    if (block) {
+      const net = this.networkService.getNetwork(networkId);
+      ui.notifications.warn(`${net?.name || 'That network'} is ${block.state === 'jammed' ? 'jammed' : 'down'} here — its node on this scene is ${block.state === 'jammed' ? 'jammed' : block.state === 'damaged' ? 'damaged' : 'switched off'}.`);
+      return;
+    }
     if (!networkId) return;
     this._closeNetworkSelector();
 
@@ -2670,6 +2696,15 @@ export class MessageViewerApp extends BaseApplication {
     this.render();
   }
 
+  /** Back to unread, and back to the list — leaving it open would read it again. */
+  async _markUnread(messageId) {
+    if (!messageId) return;
+    const res = await this.messageService?.markAsUnread?.(this.actorId, messageId);
+    if (res && res.success === false) { ui.notifications.warn(`NCM | ${res.error || 'Could not mark it unread.'}`); return; }
+    this.selectedMessageId = null;
+    this.render();
+  }
+
   async _markSpam(messageId) {
     if (!messageId) return;
     await this.messageService?.markSpam?.(this.actorId, messageId);
@@ -3091,27 +3126,25 @@ export class MessageViewerApp extends BaseApplication {
 
   // ── Drafts ──
 
-  _openDraft(actorId) {
-    if (!actorId) return;
+  /** Drafts are a LIST per character (utils/drafts.js) — open ONE by id, on purpose. */
+  _openDraft(actorId, draftId) {
+    if (!actorId || !draftId) return;
     const actor = game.actors.get(actorId);
     if (!actor) return;
-
-    const draft = actor.getFlag('night-city-messenger', 'composerDraft');
-    if (!draft) {
-      ui.notifications.warn('Draft not found or expired.');
+    const { map } = readDrafts(actor, MODULE_ID);
+    if (!map[draftId]) {
+      ui.notifications.warn('That draft is gone.');
+      this.render();
       return;
     }
-
-    // Open composer — it will auto-restore the draft via _restoreDraft()
-    game.nightcity?.composeMessage?.({ fromActorId: actorId });
+    game.nightcity?.composeMessage?.({ fromActorId: actorId, draftId });
   }
 
-  async _deleteDraft(actorId) {
-    if (!actorId) return;
+  async _deleteDraft(actorId, draftId) {
+    if (!actorId || !draftId) return;
     const actor = game.actors.get(actorId);
     if (!actor) return;
-
-    await actor.unsetFlag('night-city-messenger', 'composerDraft').catch(() => {});
+    await actor.setFlag(MODULE_ID, DRAFTS_FLAG, { [`-=${draftId}`]: null }).catch(() => {});
     ui.notifications.info('Draft deleted.');
     this.render();
   }
@@ -3319,6 +3352,8 @@ export class MessageViewerApp extends BaseApplication {
       showChat: true,
       context: 'Tracing an anonymous sender',
       flavor: `Trace // DV ${dv}`,
+      // This handler plays the reveal/miss sound itself, so the reveal only spins.
+      reveal: { host: this.element, title: 'Triangulating the relay', ctx: 'Trace anonymous sender', ok: 'Sender traced', no: 'Trace lost', verdictSound: false },
     });
 
     const byPayload = {
@@ -3393,7 +3428,11 @@ export class MessageViewerApp extends BaseApplication {
     // Find the encrypted overlay container (re-query — DOM may have re-rendered during dialog)
     const overlay = this.element?.querySelector('.ncm-viewer__encrypted');
     if (!overlay) {
-      const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId, { skillName: chosenSkill, luckSpend: chosenLuck });
+      // No cipher grid on screen: the shared Roll Reveal is the climax.
+      const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId, {
+        skillName: chosenSkill, luckSpend: chosenLuck,
+        reveal: { host: this.element, title: 'Breaking the message cipher', ctx: `Message decrypt · ${encryption.type || 'ICE'}`, ok: 'Cipher broken', no: 'Cipher holds' },
+      });
       if (result?.success) this.render();
       return;
     }
@@ -3516,6 +3555,7 @@ export class MessageViewerApp extends BaseApplication {
     const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId, {
       skillName: chosenSkill,
       luckSpend: chosenLuck,
+      deferChat: true,   // posted when the result card lands, below
     });
     const success = !!result?.success;
     const roll = result?.roll || {};
@@ -3609,6 +3649,8 @@ export class MessageViewerApp extends BaseApplication {
           </div>`;
       }, iceDmg?.damage > 0 ? 1200 : 800);
     }
+    // The result card is on screen — now the chat card.
+    await result?.roll?.postChat?.();
 
     await new Promise(resolve => {
       const dismiss = () => { resultEl?.removeEventListener('click', dismiss); resolve(); };
@@ -3673,8 +3715,10 @@ export class MessageViewerApp extends BaseApplication {
       return;
     }
 
+    const netName = msg.accessControl?.requiredNetworkName || msg.accessControl?.requiredNetwork || 'its network';
     const result = await this.messageAccessService?.attemptSkillBypass(
-      messageId, actor, skillName, msg.accessControl
+      messageId, actor, skillName, msg.accessControl,
+      { reveal: { host: this.element, title: `Reaching a message on ${netName}`, ctx: 'Message bypass · off-network', ok: 'Bypass granted', no: 'Bypass rejected' } },
     );
 
     if (result?.success) {
@@ -3908,6 +3952,7 @@ export class MessageViewerApp extends BaseApplication {
       luckSpend: chosenLuck,
       flavor: `Reconstructing signal-degraded message`,
       context: 'ncm-signal-reconstruct',
+      deferChat: true,   // posted when the result card lands, below
     });
 
     const success = !!result?.success;
@@ -3974,6 +4019,9 @@ export class MessageViewerApp extends BaseApplication {
           </div>`;
       }, 400);
     }
+
+    // The result card is on screen — now the chat card.
+    await result?.postChat?.();
 
     // Wait for click to dismiss
     await new Promise(resolve => {
@@ -4747,7 +4795,14 @@ export class MessageViewerApp extends BaseApplication {
     const fromActor = msg.fromActorId ? game.actors?.get(msg.fromActorId) : null;
     const fromIds = { contactId: msg.fromContactId, actorId: msg.fromActorId, email: msg.from, storedName: msg.fromName };
     let fromDisplay = contact?.name || resolveDisplayName(fromIds);
-    let fromPortrait = contact?.portrait || resolveDisplayPortrait(fromIds) || fromActor?.img || null;
+    // An ALIAS sender never falls back to its character's face — not via the
+    // actor image, and not via a player contact that saved that face before
+    // this was fixed (2026-10-27).
+    const mcsvc = game.nightcity?.masterContactService;
+    const senderMc = msg.fromContactId ? mcsvc?.getContact?.(msg.fromContactId) : null;
+    const senderIsAlias = !!(senderMc && mcsvc?.identityRoleOf?.(senderMc)?.isAlias);
+    const ownSaved = (senderIsAlias && contact?.portrait && contact.portrait === fromActor?.img && !senderMc.portrait) ? null : contact?.portrait;
+    let fromPortrait = ownSaved || resolveDisplayPortrait(fromIds) || (senderIsAlias ? null : fromActor?.img) || null;
 
     // ── Anonymous sender ──
     // Non-GM (and GM viewing the scrubbed recipient copy) see the masked alias +
@@ -5190,51 +5245,39 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   /**
-   * Build draft items from actors with saved composerDraft flags.
+   * The Drafts tab: every draft in the viewed character's `composerDrafts`
+   * list (newest first; a legacy single draft is lifted on read). The GM also
+   * sees the drafts of other characters they wrote as, tagged with the name.
    */
   _buildDraftItems() {
-    const MODULE_ID_LOCAL = 'night-city-messenger';
+    const now = Date.now();
+    const nameOf = (aid) => game.actors.get(aid)?.name || null;
+    const rowsFor = (a, prefix = '') => readDrafts(a, MODULE_ID).list.map(d => {
+      const kind = draftKind(d);
+      const ms = Date.parse(d.savedAt || '');
+      return {
+        draftId: d.id,
+        actorId: a.id,
+        recipientName: draftRecipientName(d, nameOf) || null,
+        subject: `${prefix}${draftLabel(d)}`,
+        kind,
+        kindLabel: kind === 'reply' ? 'Reply' : kind === 'forward' ? 'Forward' : '',
+        age: relativeAge(ms, now),
+        savedAt: ms ? formatCyberDate(new Date(ms).toISOString()) : '',
+      };
+    });
+
     const items = [];
-
-    // Check current viewing actor
     const actor = game.actors.get(this.actorId);
-    if (actor) {
-      const draft = actor.getFlag(MODULE_ID_LOCAL, 'composerDraft');
-      if (draft?.savedAt) {
-        const age = Date.now() - new Date(draft.savedAt).getTime();
-        if (age < 86400000) { // < 24 hours
-          const recipientName = draft.recipients?.[0]?.email
-            || (draft.recipients?.[0]?.actorId ? game.actors.get(draft.recipients[0].actorId)?.name : null)
-            || null;
-          items.push({
-            actorId: this.actorId,
-            recipientName,
-            subject: draft.subject || '',
-            savedAt: formatCyberDate(draft.savedAt),
-          });
-        }
-      }
-    }
+    if (actor) items.push(...rowsFor(actor));
 
-    // GM: also check other actors they might have drafted as
     if (game.user.isGM) {
       for (const a of game.actors) {
         if (a.id === this.actorId) continue;
-        const draft = a.getFlag(MODULE_ID_LOCAL, 'composerDraft');
-        if (draft?.savedAt) {
-          const age = Date.now() - new Date(draft.savedAt).getTime();
-          if (age < 86400000) {
-            items.push({
-              actorId: a.id,
-              recipientName: draft.recipients?.[0]?.email || null,
-              subject: draft.subject ? `[${a.name}] ${draft.subject}` : `[${a.name}] (no subject)`,
-              savedAt: formatCyberDate(draft.savedAt),
-            });
-          }
-        }
+        if (!a.getFlag(MODULE_ID, DRAFTS_FLAG) && !a.getFlag(MODULE_ID, 'composerDraft')) continue;
+        items.push(...rowsFor(a, `[${a.name}] `));
       }
     }
-
     return items;
   }
 

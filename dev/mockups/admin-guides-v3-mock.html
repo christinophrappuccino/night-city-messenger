@@ -1,0 +1,402 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Admin guides v3 — interactive</title>
+<!--
+  Round 3: the v2 content, made interactive. Everything here WORKS (it is fake data, but every
+  button changes the state and the panels answer back).
+    1. Ask about a message — a conversation: click a question, get the answer + the next questions
+    2. Preview the table — pick a scene, every player's Agent changes; fixes flip a card ready
+    3. Lock bench — drag the DV, toggle ways in, move a character's network, "try it as" rolls a d10
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-guides-v3-mock.html
+  ?t=clean-dark|clean-light|high-contrast
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px sans-serif; margin: 0 0 12px; max-width: 1060px; line-height: 1.45; }
+  .mk-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .P { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .band { display: flex; align-items: center; gap: 8px; padding: 7px 13px 7px 10px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border);
+    box-shadow: inset 3px 0 var(--bk, var(--ncm-act)); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .band > i { color: var(--bk, var(--ncm-act)); }
+  .band .r { margin-left: auto; display: flex; gap: 6px; align-items: center; font: 400 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); }
+  .av { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 8.5px var(--ncm-font-display); flex: none;
+    color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 18%, var(--ncm-bg-card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 55%, transparent); }
+  .btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important; flex: none;
+    border: 1px solid var(--ncm-act) !important; color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 10%, transparent) !important; cursor: pointer; white-space: nowrap; box-shadow: none !important; margin: 0 !important; line-height: 1.4; }
+  .btn:hover { background: color-mix(in srgb, var(--ncm-act) 22%, transparent) !important; }
+  .btn.q { border-color: var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; }
+  .btn.bad { border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent) !important; color: var(--ncm-bad) !important; background: none !important; }
+  .chipq { appearance: none; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px !important; height: auto !important; width: auto !important; min-height: 0 !important; margin: 0 !important;
+    border-radius: 14px !important; border: 1px solid var(--ncm-border-active) !important; background: var(--ncm-bg-card) !important; color: var(--ncm-text-primary) !important;
+    font: 600 12.5px var(--ncm-font-body) !important; cursor: pointer; box-shadow: none !important; transition: border-color .15s, background .15s; }
+  .chipq i { color: var(--ncm-act); font-size: 11px; }
+  .chipq:hover { border-color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 12%, var(--ncm-bg-card)) !important; }
+  .chipq.fix i { color: var(--ncm-good); }
+  .chipq.fix:hover { border-color: var(--ncm-good) !important; background: color-mix(in srgb, var(--ncm-good) 12%, var(--ncm-bg-card)) !important; }
+  @keyframes inUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes flash { 0% { background: color-mix(in srgb, var(--ncm-good) 30%, transparent); } 100% { background: transparent; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  /* ═══ 1. ASK ABOUT A MESSAGE ═══ */
+  .ask { display: grid; grid-template-columns: 230px minmax(0,1fr); min-height: 380px; }
+  .ask__state { border-right: 1px solid var(--ncm-border); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; background: var(--ncm-bg-pane); }
+  .ask__state .h { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); margin: 2px 0 6px; }
+  .ask__s { --sc: var(--ncm-text-hint); display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; padding: 6px 6px; border-radius: 2px; cursor: pointer; }
+  .ask__s:hover { background: var(--ncm-bg-hover); }
+  .ask__s i { color: var(--sc); text-align: center; }
+  .ask__s .l { font: 600 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ask__s .t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .ask__s.ok { --sc: var(--ncm-good); } .ask__s.wait { --sc: var(--ncm-attn); } .ask__s.bad { --sc: var(--ncm-bad); }
+  .ask__s.no .l { color: var(--ncm-text-hint); }
+  .ask__s.is-on { background: color-mix(in srgb, var(--ncm-act) 12%, transparent); box-shadow: inset 3px 0 var(--ncm-act); }
+  .ask__s.flash { animation: flash 1.2s ease-out; }
+  .ask__msg { margin-top: auto; padding-top: 10px; border-top: 1px dashed var(--ncm-border); font: 12px var(--ncm-font-body); color: var(--ncm-text-label); line-height: 1.45; }
+  .ask__msg b { color: var(--ncm-text-heading); }
+  .ask__chat { display: flex; flex-direction: column; padding: 12px; gap: 10px; overflow-y: auto; max-height: 420px; }
+  .ask__q { align-self: flex-end; max-width: 78%; padding: 7px 11px; border-radius: 10px 10px 2px 10px; background: color-mix(in srgb, var(--ncm-act) 18%, var(--ncm-bg-card));
+    border: 1px solid color-mix(in srgb, var(--ncm-act) 45%, transparent); font: 600 12.5px var(--ncm-font-body); color: var(--ncm-text-heading); animation: inUp .2s ease-out; }
+  .ask__a { --ac: var(--ncm-good); align-self: flex-start; max-width: 92%; padding: 9px 12px; border-radius: 10px 10px 10px 2px; background: var(--ncm-bg-card);
+    border: 1px solid var(--ncm-border); border-left: 3px solid var(--ac); line-height: 1.5; animation: inUp .25s ease-out; }
+  .ask__a.wait { --ac: var(--ncm-attn); } .ask__a.bad { --ac: var(--ncm-bad); } .ask__a.info { --ac: var(--ncm-hue-2); }
+  .ask__a .v { font: 800 12px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ac); margin-right: 6px; }
+  .ask__a .ts { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .ask__a .ncm-addr, .ask__a .addr { font-family: var(--ncm-font-mono); color: var(--ncm-text-addr); font-size: .92em; }
+  .ask__a .screen { display: block; margin-top: 7px; padding: 7px 9px; border-radius: 2px; background: #08090d; color: #cfd6e2; font: 11px var(--ncm-font-mono); border: 1px solid var(--ncm-border); }
+  .ask__a .screen .err { color: #f2994a; } .ask__a .screen .bad { color: #ee6b6b; }
+  .ask__next { display: flex; flex-wrap: wrap; gap: 6px; animation: inUp .3s ease-out; }
+  .ask__typing { align-self: flex-start; display: inline-flex; gap: 3px; padding: 9px 12px; border-radius: 10px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); }
+  .ask__typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--ncm-text-label); animation: dot 1s infinite; }
+  .ask__typing i:nth-child(2) { animation-delay: .15s; } .ask__typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes dot { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+  .seg { display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+  .seg button { appearance: none; padding: 3px 9px !important; height: auto !important; width: auto !important; min-height: 0 !important; margin: 0 !important; border: 0 !important; border-radius: 0 !important;
+    background: none !important; color: var(--ncm-text-label) !important; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; cursor: pointer; box-shadow: none !important; }
+  .seg button + button { border-left: 1px solid var(--ncm-border-active) !important; }
+  .seg button.on { background: color-mix(in srgb, var(--ncm-act) 18%, transparent) !important; color: var(--ncm-act) !important; }
+
+  /* ═══ 2. PREVIEW THE TABLE ═══ */
+  .tbl { padding: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .card { --ac: var(--ncm-good); border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); display: flex; flex-direction: column; overflow: hidden; box-shadow: inset 0 3px var(--ac); transition: box-shadow .3s; }
+  .card.warn { --ac: var(--ncm-attn); } .card.bad { --ac: var(--ncm-bad); }
+  .card.flash { animation: flash 1.2s ease-out; }
+  .card__hd { display: flex; gap: 8px; align-items: center; padding: 9px 10px 7px; }
+  .card__hd .nm { font: 700 13.5px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .card__hd .pl { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .card__hd .st { margin-left: auto; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ac); }
+  .agent { margin: 0 10px; border-radius: 3px; background: #08090d; border: 1px solid color-mix(in srgb, var(--ac) 35%, #22252e); color: #cfd6e2; font: 11px var(--ncm-font-mono); overflow: hidden; }
+  .agent__bar { display: flex; justify-content: space-between; padding: 4px 7px; background: #11141b; color: #8fa0b8; font-size: 10px; }
+  .agent__bar .s.dead { color: #ee6b6b; } .agent__bar .s.low { color: #f2994a; }
+  .agent__tabs { display: flex; border-bottom: 1px solid #1d2230; }
+  .agent__tabs span { flex: 1; text-align: center; padding: 3px 0; cursor: pointer; color: #7c879a; font-size: 10px; }
+  .agent__tabs span.on { color: #3fd0e2; box-shadow: inset 0 -2px #3fd0e2; }
+  .agent__body { padding: 7px 8px; min-height: 70px; }
+  .agent__body .ln { color: #dfe6f0; } .agent__body .dim { color: #7c879a; } .agent__body .err { color: #f2994a; } .agent__body .bad { color: #ee6b6b; }
+  .agent__body .big { display: block; text-align: center; margin: 8px 0 2px; color: #f2994a; font: 700 12px var(--ncm-font-display); letter-spacing: .06em; }
+  .agent__body .mrow { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px dashed #1d2230; }
+  .agent__body .mrow b { color: #dfe6f0; font-weight: 400; } .agent__body .mrow.unread b { color: #fff; font-weight: 700; }
+  .card__says { padding: 8px 10px; font: 12.5px var(--ncm-font-body); line-height: 1.45; color: var(--ncm-text-primary); }
+  .card__says b { color: var(--ac); }
+  .card__ft { margin-top: auto; display: flex; gap: 6px; flex-wrap: wrap; padding: 7px 10px 9px; }
+  .scene-pick { display: inline-flex; gap: 4px; }
+  .scene-pick button { appearance: none; padding: 3px 9px !important; height: auto !important; width: auto !important; min-height: 0 !important; margin: 0 !important; border-radius: 2px !important;
+    border: 1px solid var(--ncm-border-active) !important; background: none !important; color: var(--ncm-text-primary) !important; font: 600 12px var(--ncm-font-body) !important; cursor: pointer; box-shadow: none !important; }
+  .scene-pick button.on { border-color: var(--ncm-act) !important; color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 12%, transparent) !important; }
+  .scene-pick button.dz.on { border-color: var(--ncm-bad) !important; color: var(--ncm-bad) !important; background: color-mix(in srgb, var(--ncm-bad) 12%, transparent) !important; }
+
+  /* ═══ 3. LOCK BENCH ═══ */
+  .bench { display: grid; grid-template-columns: 250px minmax(0,1fr); }
+  .bench__ctl { border-right: 1px solid var(--ncm-border); padding: 10px 12px; background: var(--ncm-bg-pane); display: flex; flex-direction: column; gap: 12px; }
+  .bench__ctl .h { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); margin-bottom: 5px; }
+  .way { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 2px; border: 1px solid var(--ncm-border); cursor: pointer; margin-bottom: 4px; font: 600 12.5px var(--ncm-font-body); }
+  .way i.b { width: 14px; height: 14px; border-radius: 2px; border: 1.5px solid var(--ncm-border-active); display: grid; place-items: center; font-size: 8px; color: transparent; }
+  .way.on { border-color: color-mix(in srgb, var(--ncm-secret) 55%, transparent); background: color-mix(in srgb, var(--ncm-secret) 10%, transparent); }
+  .way.on i.b { border-color: var(--ncm-secret); background: var(--ncm-secret); color: var(--ncm-text-inverse, #0b0d12); }
+  .way .ic { color: var(--ncm-secret); width: 14px; text-align: center; }
+  .dv { display: flex; align-items: center; gap: 10px; }
+  .dv input[type=range] { flex: 1; accent-color: var(--ncm-secret); height: 18px; margin: 0; }
+  .dv .n { font: 700 18px var(--ncm-font-mono); color: var(--ncm-text-heading); width: 30px; text-align: right; }
+  .fail { display: flex; flex-direction: column; gap: 4px; }
+  .fail label { display: flex; gap: 7px; align-items: center; font: 12.5px var(--ncm-font-body) !important; text-transform: none !important; color: var(--ncm-text-primary); cursor: pointer; }
+  .fail input { margin: 0 !important; width: 13px !important; height: 13px !important; }
+  .bench__out { padding: 0; display: flex; flex-direction: column; }
+  .rule { padding: 11px 13px; font: 13.5px/1.6 var(--ncm-font-body); border-bottom: 1px solid var(--ncm-border); transition: background .3s; }
+  .rule.flash { animation: flash 1s ease-out; }
+  .k { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 1px; font: 600 12px var(--ncm-font-body); line-height: 19px;
+    color: color-mix(in oklab, var(--kc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--kc) 15%, transparent); border: 1px solid color-mix(in srgb, var(--kc) 50%, transparent); }
+  .k i { color: var(--kc); font-size: 10px; } .k.lock { --kc: var(--ncm-secret); } .k.bad { --kc: var(--ncm-bad); } .k.warn { --kc: var(--ncm-attn); } .k.net { --kc: var(--ncm-hue-2); }
+  .party { display: flex; flex-direction: column; }
+  .pc { display: grid; grid-template-columns: 120px 108px minmax(0,1fr) 150px; gap: 10px; align-items: center; padding: 8px 13px; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .pc .who { display: flex; gap: 7px; align-items: center; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .pc select { height: 24px !important; font: 12px var(--ncm-font-body) !important; padding: 0 4px !important; background-color: var(--ncm-bg-pane) !important; color: var(--ncm-text-primary) !important; border: 1px solid var(--ncm-border-active) !important; border-radius: 2px !important; }
+  .pc .od { display: flex; align-items: center; gap: 8px; }
+  .meter { --mc: var(--ncm-good); flex: 1; max-width: 110px; height: 7px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); position: relative; overflow: hidden; }
+  .meter i { position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--mc); transition: width .35s cubic-bezier(.22,1,.36,1), background .35s; }
+  .pct { font: 700 12.5px var(--ncm-font-mono); color: var(--mc); width: 38px; transition: color .35s; }
+  .lo { --mc: var(--ncm-bad); } .mid { --mc: var(--ncm-attn); } .hi { --mc: var(--ncm-good); }
+  .why { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .why.no { color: var(--ncm-bad); }
+  .pc .act { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+  .tries { display: inline-flex; gap: 2px; } .tries i { width: 7px; height: 7px; border-radius: 1px; background: var(--ncm-attn); } .tries i.gone { background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); }
+  .pc.is-lock { background: color-mix(in srgb, var(--ncm-bad) 7%, transparent); }
+  .pc.is-in { background: color-mix(in srgb, var(--ncm-good) 7%, transparent); }
+  .roll { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 4px; border: 2px solid var(--ncm-act); font: 800 14px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .roll.spin { animation: spin .5s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+  .roll.ok { border-color: var(--ncm-good); color: var(--ncm-good); } .roll.no { border-color: var(--ncm-bad); color: var(--ncm-bad); }
+  .verdict { padding: 9px 13px; border-top: 1px solid var(--ncm-border); display: flex; gap: 10px; align-items: center; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .verdict i { color: var(--vc, var(--ncm-hue-2)); }
+  .verdict .grow { flex: 1; }
+</style>
+</head>
+<body>
+<p class="mk-h">1 — ASK ABOUT A MESSAGE</p>
+<p class="mk-p">Left: the message's state as a short list — click any line to ask about it. Right: a conversation. Ask a question and the answer arrives with the next questions that make sense for <i>this</i> message: "Why?", "What does the player see?", "Fix it". Fix buttons really act — <b>Deliver now</b> moves it to delivered and the list ticks over. Switch the scenario at the top to see a different message.</p>
+<div class="mk-row" data-slot="ask"></div>
+
+<p class="mk-h">2 — PREVIEW THE TABLE</p>
+<p class="mk-p">Pick a scene and every player's Agent changes to what they'd see there. The little Agents are clickable (Inbox / Contacts). A fix button does the fix and the card flips to ready.</p>
+<div class="mk-row" data-slot="tbl"></div>
+
+<p class="mk-h">3 — LOCK BENCH</p>
+<p class="mk-p">Change the lock on the left — drag the DV, tick ways in, pick what failing costs — and the sentence and every character's odds move with it. Move a character to another network to see who loses sight of the account. <b>Try it</b> rolls a real d10 for that character against the lock (and burns an attempt on a miss), so you can feel how hard it is before your players do.</p>
+<div class="mk-row" data-slot="bench"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const av = (n) => `<span class="av" style="--tc:${hue(n)}">${n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>`;
+const shell = (w, inner) => `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:${w}px"><div class="ncm-admin-panel">${inner}</div></div>`;
+const $ = (s, r = document) => r.querySelector(s);
+
+/* ═══════════ 1. ASK ═══════════ */
+const SCEN = {
+  held: { from: 'Rache', to: 'Judy', subject: 'need a ride out', net: 'The Docks (dead zone)',
+    state: () => [
+      ['ok', 'fa-paper-plane', 'Sent', '22:10'],
+      [ask1.delivered ? 'ok' : 'wait', ask1.delivered ? 'fa-inbox' : 'fa-hourglass-half', ask1.delivered ? 'Delivered' : 'Held — no signal', ask1.delivered ? 'now' : ''],
+      ['no', 'fa-eye', 'Read', ''], ['no', 'fa-reply', 'Answered', '']],
+    open: ['arrive'] },
+  refused: { from: 'V', to: 'system@netwatch.gov', subject: 'turning myself in', net: 'CitiNet 64%',
+    state: () => [['ok', 'fa-paper-plane', 'Sent', '20:52'], ['bad', 'fa-ban', 'Refused', ''], ['no', 'fa-eye', 'Read', ''], ['no', 'fa-reply', 'Answered', '']],
+    open: ['arrive'] },
+  unread: { from: 'Rogue', to: 'V', subject: 'the job', net: 'CitiNet 82%',
+    state: () => [['ok', 'fa-paper-plane', 'Sent', '21:04'], ['ok', 'fa-inbox', 'Delivered', '21:04'], [ask1.nudged ? 'wait' : 'wait', 'fa-eye', 'Not read yet', ask1.nudged ? 'nudged' : ''], ['no', 'fa-reply', 'Answered', '']],
+    open: ['read'] },
+};
+const ask1 = { scen: 'held', delivered: false, nudged: false, log: [] };
+// Each answer: [tone, verdict, html, next-questions]
+const ANSWERS = {
+  held: {
+    leave: () => ['', 'Yes', 'Rache pressed Send at <span class="ts">22:10</span>, from <b>The Docks</b>.', ['arrive', 'see']],
+    arrive: () => ask1.delivered ? ['', 'Yes', 'You delivered it just now — it\'s in Judy\'s inbox, unread.', ['read', 'undo']] :
+      ['wait', 'Not yet', 'It\'s <b>held on Rache\'s Agent</b>. The Docks are a dead zone, so there\'s no signal to send it on.', ['why', 'see', 'fix-deliver', 'when']],
+    why: () => ['info', '', 'A dead zone means no network reaches the scene. Mail written there waits on the sender\'s Agent instead of being lost — it\'s the "jammed" fiction. You set it in <b>Networks → This scene</b>.', ['when', 'fix-deliver', 'fix-zone']],
+    when: () => ['info', '', 'As soon as Rache\'s Agent has signal — when they move to a scene with a network, or you turn the dead zone off. Nobody has to do anything.', ['fix-deliver']],
+    see: () => ['info', '', 'Rache saw the amber <b>Message queued</b> panel instead of "Delivered":<span class="screen"><span class="err">◷ MESSAGE QUEUED</span><br>no signal — it sends when you\'re back in range</span>', ['arrive', 'fix-deliver']],
+    'fix-deliver': () => { if (!ask1.delivered) { ask1.delivered = true; flashState(1); } return ['', 'Done', 'Delivered to Judy as GM. Rache\'s queue is cleared, and Judy gets the toast.', ['read', 'undo']]; },
+    'fix-zone': () => ['info', '', 'That would open <b>Networks → This scene</b> with the dead-zone switch. (Mock — nothing changes here.)', []],
+    undo: () => { ask1.delivered = false; flashState(1); return ['wait', 'Undone', 'Back in Rache\'s queue.', ['fix-deliver']]; },
+    read: () => ['wait', 'Not yet', 'Judy hasn\'t opened it. She\'s online.', ['nudge']],
+    nudge: () => ['', 'Sent', 'Judy got a toast: "You have 1 unread from Rache."', []],
+  },
+  refused: {
+    leave: () => ['', 'Yes', 'V sent it at <span class="ts">20:52</span> on CitiNet (64%).', ['arrive']],
+    arrive: () => ['bad', 'No', '<span class="addr">system@netwatch.gov</span> is a <b>system address</b> — a send-only contact. Players can\'t write to it, so the message stopped at the door.', ['why', 'see', 'fix-open', 'fix-npc']],
+    why: () => ['info', '', 'Send-only is for addresses that only ever send — alerts, news feeds, a corp\'s noreply. It\'s set on the contact in <b>Contacts → Edit → Addresses</b>.', ['fix-open', 'fix-npc']],
+    see: () => ['info', '', 'V saw this on their screen and the message stayed in their composer:<span class="screen"><span class="bad">✕ TRANSMISSION REFUSED</span><br>this address does not accept mail</span>', ['why']],
+    'fix-open': () => ['', 'Changed', 'Send-only is off for NetWatch Notice. V can send it again. (Mock.)', []],
+    'fix-npc': () => ['info', '', 'Or keep it locked and answer in character — reply as NetWatch Notice from the composer.', []],
+  },
+  unread: {
+    leave: () => ['', 'Yes', 'Rogue sent it at <span class="ts">21:04</span>.', ['arrive']],
+    arrive: () => ['', 'Yes', 'It\'s in V\'s inbox, delivered <span class="ts">21:04</span>.', ['read']],
+    read: () => ['wait', 'Not yet', `V hasn't opened it.${ask1.nudged ? ' You nudged them.' : ' Their player (Marta) is <b>offline</b> — they\'ll see it next time.'}`, ask1.nudged ? [] : ['see', 'nudge']],
+    see: () => ['info', '', 'When V opens their Agent it\'s at the top with an unread dot:<span class="screen">▸ <b style="color:#fff">Rogue</b> — the job &nbsp; 21:04</span>', ['nudge']],
+    nudge: () => { ask1.nudged = true; flashState(2); return ['', 'Queued', 'Marta will get a toast the moment she logs in.', []]; },
+  },
+};
+const QTXT = { leave: 'Did it leave?', arrive: 'Did it arrive?', read: 'Have they read it?', why: 'Why?', when: 'When will it go?', see: 'What did the player see?',
+  'fix-deliver': 'Deliver it now', 'fix-zone': 'Turn off the dead zone', 'fix-open': 'Let players write to it', 'fix-npc': 'Answer as NetWatch instead', undo: 'Undo that', nudge: 'Nudge them' };
+const STATE_Q = ['leave', 'arrive', 'read', 'read'];
+function renderAsk() {
+  const S = SCEN[ask1.scen];
+  $('[data-slot="ask"]').innerHTML = shell(860, `<div class="P"><div class="band" style="--bk:var(--ncm-hue-2)"><i class="fas fa-comments"></i>Ask about this message
+    <span class="r">Example: <span class="seg">${Object.keys(SCEN).map((k) => `<button data-scen="${k}" class="${k === ask1.scen ? 'on' : ''}">${{ held: 'held', refused: 'refused', unread: 'unread' }[k]}</button>`).join('')}</span></span></div>
+    <div class="ask"><div class="ask__state"><div class="h">What happened</div>
+      ${S.state().map(([c, ic, l, t], i) => `<div class="ask__s ${c}" data-ask="${STATE_Q[i]}" data-i="${i}"><i class="fas ${ic}"></i><span class="l">${l}</span><span class="t">${t}</span></div>`).join('')}
+      <div class="ask__msg"><b>${S.from}</b> → <b>${S.to}</b><br>"${S.subject}"<br>${S.net}</div></div>
+      <div class="ask__chat" data-chat></div></div></div>`);
+  const chat = $('[data-chat]');
+  if (!ask1.log.length) { addQA(S.open[0], true); } else chat.innerHTML = ask1.log.join('');
+}
+function flashState(i) { requestAnimationFrame(() => { const S = SCEN[ask1.scen]; const rows = document.querySelectorAll('.ask__s'); const st = S.state()[i];
+  const el = rows[i]; if (!el) return; el.className = `ask__s ${st[0]} flash`; el.innerHTML = `<i class="fas ${st[1]}"></i><span class="l">${st[2]}</span><span class="t">${st[3]}</span>`; }); }
+function addQA(key, instant) {
+  const chat = $('[data-chat]'); if (!chat) return;
+  chat.querySelectorAll('.ask__next').forEach((n) => n.remove());
+  const qEl = `<div class="ask__q">${QTXT[key]}</div>`;
+  chat.insertAdjacentHTML('beforeend', qEl);
+  const fn = ANSWERS[ask1.scen][key]; if (!fn) return;
+  const go = () => {
+    chat.querySelector('.ask__typing')?.remove();
+    const [tone, v, html, next] = fn();
+    const a = `<div class="ask__a ${tone}">${v ? `<span class="v">${v}</span>` : ''}${html}</div>`;
+    const n = next.length ? `<div class="ask__next">${next.map((k) => `<button class="chipq ${k.startsWith('fix') || k === 'nudge' ? 'fix' : ''}" data-ask="${k}"><i class="fas ${k.startsWith('fix') || k === 'nudge' ? 'fa-wrench' : k === 'undo' ? 'fa-rotate-left' : 'fa-circle-question'}"></i>${QTXT[k]}</button>`).join('')}</div>` : '';
+    chat.insertAdjacentHTML('beforeend', a + n);
+    ask1.log = [...chat.children].filter((c) => !c.classList.contains('ask__next')).map((c) => c.outerHTML);
+    chat.scrollTop = chat.scrollHeight;
+  };
+  if (instant) go(); else { chat.insertAdjacentHTML('beforeend', '<div class="ask__typing"><i></i><i></i><i></i></div>'); chat.scrollTop = chat.scrollHeight; setTimeout(go, 450); }
+}
+
+/* ═══════════ 2. TABLE ═══════════ */
+const tbl = { scene: 'market', fixed: new Set(), tab: {} };
+const PLAYERS = [
+  { n: 'Rache', p: 'Sam', on: true, addr: '', contacts: 3, unread: 0 },
+  { n: 'Judy', p: 'Ana', on: true, addr: 'judy@mox.nc', contacts: 0, unread: 1 },
+  { n: 'V', p: 'Marta', on: false, addr: 'v@nightcity.net', contacts: 6, unread: 2 },
+];
+const SCENES = { market: { name: 'Night Market', net: 'CitiNet', sig: 82 }, docks: { name: 'The Docks', net: null, sig: 0, dz: true }, tower: { name: 'Arasaka Tower', net: 'Arasaka CorpNet', sig: 41 } };
+function cardFor(pl) {
+  const sc = SCENES[tbl.scene];
+  const addr = pl.addr || (tbl.fixed.has(pl.n + ':addr') ? pl.n.toLowerCase() + '@nightcity.net' : '');
+  const contacts = pl.contacts || (tbl.fixed.has(pl.n + ':contacts') ? 2 : 0);
+  let cls = '', st = 'ready', says = '', btns = '';
+  if (!addr) { cls = 'bad'; st = 'can\'t mail'; says = `<b>${pl.n} can't send or receive yet.</b> They'll be asked to pick an address the first time they open the Agent.`; btns = `<button class="btn" data-fix="${pl.n}:addr">Set an address</button><button class="btn q" data-fix="${pl.n}:addr">Let them choose</button>`; }
+  else if (sc.dz) { cls = 'bad'; st = 'no signal'; says = `<b>No signal on ${sc.name}.</b> What ${pl.n} writes waits on their Agent until they're back in range.`; btns = `<button class="btn q" data-scene="market">Preview another scene</button>`; }
+  else if (!contacts) { cls = 'warn'; st = 'nobody to write to'; says = `<b>${pl.n} has no contacts.</b> They can read mail but have to type an address to send.`; btns = `<button class="btn" data-fix="${pl.n}:contacts">Share the crew</button>`; }
+  else if (sc.sig < 50) { cls = 'warn'; st = 'weak signal'; says = `<b>Weak signal (${sc.sig}%).</b> Mail gets through, but long messages can arrive garbled.`; }
+  else { says = `<b>${pl.n} is good to go.</b>${pl.unread ? ` ${pl.unread} unread waiting for them.` : ''}`; }
+  const tab = tbl.tab[pl.n] || 'inbox';
+  let body;
+  if (!addr) body = '<span class="big">SET UP YOUR ADDRESS</span><div class="dim" style="text-align:center">choose a handle to continue</div>';
+  else if (tab === 'contacts') body = contacts ? ['Rogue', 'Brick', 'Dexter', 'Misty', 'Padre', 'Wakako'].slice(0, contacts).map((c) => `<div class="mrow"><b>${c}</b><span class="dim">●</span></div>`).join('') : '<div class="err">no contacts yet</div>';
+  else body = pl.unread ? [['Rogue', 'the job', 1], ['Dexter', 'payment', 1], ['Misty', 'tarot?', 0]].slice(0, pl.unread + 1).map(([f, s, u]) => `<div class="mrow ${u ? 'unread' : ''}"><b>${u ? '● ' : ''}${f}</b><span class="dim">${s}</span></div>`).join('') : '<div class="dim">inbox empty</div>';
+  const sig = sc.dz ? '<span class="s dead">✕ NO SIGNAL</span>' : `<span class="s ${sc.sig < 50 ? 'low' : ''}">${sc.net} ${sc.sig}%</span>`;
+  return `<div class="card ${cls}" data-card="${pl.n}"><div class="card__hd">${av(pl.n)}<div><div class="nm">${pl.n}</div><div class="pl">${pl.p} · ${pl.on ? 'online' : 'offline'}</div></div><span class="st">${st}</span></div>
+    <div class="agent"><div class="agent__bar"><span>${addr || 'no address'}</span>${addr ? sig : ''}</div>${addr ? `<div class="agent__tabs"><span data-tab="${pl.n}:inbox" class="${tab === 'inbox' ? 'on' : ''}">INBOX</span><span data-tab="${pl.n}:contacts" class="${tab === 'contacts' ? 'on' : ''}">CONTACTS</span></div>` : ''}<div class="agent__body">${body}</div></div>
+    <div class="card__says">${says}</div>${btns ? `<div class="card__ft">${btns}</div>` : ''}</div>`;
+}
+function renderTbl(flashName) {
+  const sc = SCENES[tbl.scene];
+  const need = PLAYERS.filter((p) => !/good to go/.test(cardFor(p))).length;
+  $('[data-slot="tbl"]').innerHTML = shell(860, `<div class="P"><div class="band" style="--bk:${need ? 'var(--ncm-attn)' : 'var(--ncm-good)'}"><i class="fas fa-users-viewfinder"></i>What your players will see
+    <span class="r">on <span class="scene-pick">${Object.entries(SCENES).map(([k, s]) => `<button data-scene="${k}" class="${k === tbl.scene ? 'on' : ''} ${s.dz ? 'dz' : ''}">${s.name}</button>`).join('')}</span> · <b style="color:${need ? 'var(--ncm-attn)' : 'var(--ncm-good)'}">${need ? need + ' need you' : 'all ready'}</b></span></div>
+    <div class="tbl">${PLAYERS.map(cardFor).join('')}</div></div>`);
+  if (flashName) document.querySelector(`[data-card="${flashName}"]`)?.classList.add('flash');
+}
+
+/* ═══════════ 3. BENCH ═══════════ */
+const bench = { dv: 18, ways: { password: true, skill: true, key: false }, logic: 'or', fail: 'lock', net: 'any',
+  pcs: [{ n: 'V', interface: 14, net: 'CitiNet', tries: 3, state: '' }, { n: 'Rache', interface: 8, net: 'CitiNet', tries: 3, state: '' }, { n: 'Judy', interface: 0, net: 'CitiNet', tries: 3, state: '' }] };
+const chance = (base, dv) => Math.max(0, Math.min(100, (11 - Math.max(1, dv - base)) * 10));
+function benchRule() {
+  const w = [];
+  if (bench.ways.password) w.push('<span class="k lock"><i class="fas fa-key"></i>the password</span>');
+  if (bench.ways.skill) w.push(`<span class="k lock"><i class="fas fa-dice-d20"></i>beat Interface DV ${bench.dv}</span>`);
+  if (bench.ways.key) w.push('<span class="k lock"><i class="fas fa-id-card"></i>the Arasaka keycard</span>');
+  const where = bench.net === 'any' ? 'Anyone at the machine can see this account.' : `Only characters on <span class="k net"><i class="fas fa-wifi"></i>${bench.net}</span> can see it.`;
+  const how = !w.length ? 'There is <b>no way in</b> — it\'s sealed.' : `To get in they need ${w.join(bench.logic === 'or' ? ' <b>or</b> ' : ' <b>and</b> ')}.`;
+  const fail = { lock: ' Three wrong tries <span class="k warn"><i class="fas fa-ban"></i>lock them out for 1 hour</span>.', ice: ' A miss sets off <span class="k bad"><i class="fas fa-skull"></i>Black ICE — 5d6 to the runner</span>.', none: ' Missing costs nothing — they can keep trying.' }[bench.fail];
+  return where + ' ' + how + (w.length ? fail : '');
+}
+function pcView(pc) {
+  const sees = bench.net === 'any' || pc.net === bench.net;
+  const canRoll = bench.ways.skill && pc.interface > 0;
+  const p = !sees ? 0 : canRoll ? chance(pc.interface, bench.dv) : 0;
+  const needsAlsoKey = bench.logic === 'and' && bench.ways.key;
+  const why = !sees ? `<span class="why no">can't see it — on ${pc.net}</span>` : !bench.ways.skill ? '<span class="why">no roll — only the password or key works</span>'
+    : pc.interface === 0 ? '<span class="why no">no Interface to roll</span>' : `<span class="why">Interface ${pc.interface} + d10 needs ${Math.max(1, bench.dv - pc.interface)}+${needsAlsoKey ? ' · and the keycard' : ''}</span>`;
+  const tone = p < 35 ? 'lo' : p < 65 ? 'mid' : 'hi';
+  const state = pc.state === 'in' ? '<span class="why" style="color:var(--ncm-good);font-weight:600">● got in</span>' : pc.state === 'lock' ? '<span class="why no"><i class="fas fa-ban"></i> locked out</span>' : '';
+  return `<div class="pc ${pc.state === 'lock' ? 'is-lock' : pc.state === 'in' ? 'is-in' : ''}"><span class="who">${av(pc.n)}${pc.n}</span>
+    <select data-net="${pc.n}">${['CitiNet', 'Arasaka CorpNet', 'Militech MilNet'].map((n) => `<option ${n === pc.net ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    <div><div class="od"><span class="meter ${tone}"><i style="--w:${p}%"></i></span><span class="pct ${tone}">${p}%</span>${bench.fail === 'lock' ? `<span class="tries" title="tries left">${[0, 1, 2].map((i) => `<i class="${i < pc.tries ? '' : 'gone'}"></i>`).join('')}</span>` : ''}</div>${why}</div>
+    <div class="act">${state}<span class="roll" data-roll-face="${pc.n}" style="${pc.lastRoll ? '' : 'visibility:hidden'}">${pc.lastRoll || ''}</span>${sees && canRoll && pc.state !== 'lock' && pc.state !== 'in' ? `<button class="btn" data-try="${pc.n}">Try it</button>` : pc.state ? `<button class="btn q" data-reset="${pc.n}">Reset</button>` : ''}</div></div>`;
+}
+function benchVerdict() {
+  const best = Math.max(...bench.pcs.map((pc) => (bench.net === 'any' || pc.net === bench.net) && bench.ways.skill && pc.interface ? chance(pc.interface, bench.dv) : 0));
+  const anySee = bench.pcs.some((pc) => bench.net === 'any' || pc.net === bench.net);
+  if (!anySee) return ['var(--ncm-attn)', 'Nobody in the party can see this account yet — they need to get onto ' + bench.net + ' first.'];
+  if (!bench.ways.password && !bench.ways.skill && !bench.ways.key) return ['var(--ncm-bad)', 'No way in at all — even you would need to force it open.'];
+  if (best === 0) return ['var(--ncm-attn)', 'No one can win the roll. Hide the password or the keycard somewhere they\'ll find it, or lower the DV.'];
+  if (best >= 90) return ['var(--ncm-hue-2)', 'Very easy for this party — fine for a side door, not much of a lock.'];
+  return ['var(--ncm-good)', `A fair lock: the best runner gets in ${best}% of the time.`];
+}
+function renderBench(flashRule) {
+  const [vc, vt] = benchVerdict();
+  $('[data-slot="bench"]').innerHTML = shell(980, `<div class="P"><div class="band" style="--bk:var(--ncm-secret)"><i class="fas fa-user-lock"></i>Who can get into <span style="text-transform:none;font-family:var(--ncm-font-mono);color:var(--ncm-text-addr)">root</span><span class="r">WS-7F-12 · changes here are a sandbox until you save</span></div>
+    <div class="bench"><div class="bench__ctl">
+      <div><div class="h">Ways in</div>
+        ${[['password', 'fa-key', 'Password'], ['skill', 'fa-dice-d20', 'Interface roll'], ['key', 'fa-id-card', 'Arasaka keycard']].map(([k, ic, l]) => `<div class="way ${bench.ways[k] ? 'on' : ''}" data-way="${k}"><i class="b fas fa-check"></i><i class="ic fas ${ic}"></i>${l}</div>`).join('')}
+        <span class="seg" style="margin-top:4px">${['or', 'and'].map((k) => `<button data-logic="${k}" class="${bench.logic === k ? 'on' : ''}">${k === 'or' ? 'any one' : 'all of them'}</button>`).join('')}</span></div>
+      <div><div class="h">Interface DV</div><div class="dv"><input type="range" min="8" max="30" value="${bench.dv}" data-dv><span class="n">${bench.dv}</span></div></div>
+      <div><div class="h">Who can see it</div><select data-seenet style="height:24px;width:100%">${['any', 'CitiNet', 'Arasaka CorpNet', 'Militech MilNet'].map((n) => `<option value="${n}" ${n === bench.net ? 'selected' : ''}>${n === 'any' ? 'Anyone at the machine' : 'Only on ' + n}</option>`).join('')}</select></div>
+      <div class="fail"><div class="h">When they miss</div>${[['lock', 'Lock them out after 3'], ['ice', 'Black ICE bites'], ['none', 'Nothing — try again']].map(([k, l]) => `<label><input type="radio" name="bf" value="${k}" ${bench.fail === k ? 'checked' : ''} data-fail>${l}</label>`).join('')}</div>
+    </div><div class="bench__out"><div class="rule ${flashRule ? 'flash' : ''}">${benchRule()}</div>
+      <div class="party">${bench.pcs.map(pcView).join('')}</div>
+      <div class="verdict" style="--vc:${vc}"><i class="fas fa-circle-info"></i><span>${vt}</span><span class="grow"></span><button class="btn q">Discard</button><button class="btn">Save this lock</button></div></div></div></div>`);
+}
+function tryIt(name) {
+  const pc = bench.pcs.find((p) => p.n === name); const face = document.querySelector(`[data-roll-face="${name}"]`);
+  face.style.visibility = 'visible'; face.className = 'roll spin'; face.textContent = '?';
+  const d = 1 + Math.floor(Math.random() * 10);
+  setTimeout(() => {
+    pc.lastRoll = d;
+    const total = pc.interface + d;
+    if (total >= bench.dv) pc.state = 'in';
+    else if (bench.fail === 'lock') { pc.tries -= 1; if (pc.tries <= 0) pc.state = 'lock'; }
+    renderBench();
+    const f = document.querySelector(`[data-roll-face="${name}"]`); if (f) { f.classList.add(total >= bench.dv ? 'ok' : 'no'); f.title = `${pc.interface} + ${d} = ${total} vs ${bench.dv}`; }
+  }, 700);
+}
+
+/* ── events ── */
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-scen],[data-ask],[data-scene],[data-fix],[data-tab],[data-way],[data-logic],[data-try],[data-reset]');
+  if (!t) return;
+  if (t.dataset.scen) { ask1.scen = t.dataset.scen; ask1.log = []; ask1.delivered = false; ask1.nudged = false; renderAsk(); }
+  else if (t.dataset.ask) { addQA(t.dataset.ask); document.querySelectorAll('.ask__s').forEach((s) => s.classList.toggle('is-on', s === t)); }
+  else if (t.dataset.scene) { tbl.scene = t.dataset.scene; renderTbl(); }
+  else if (t.dataset.fix) { tbl.fixed.add(t.dataset.fix); renderTbl(t.dataset.fix.split(':')[0]); }
+  else if (t.dataset.tab) { const [n, tab] = t.dataset.tab.split(':'); tbl.tab[n] = tab; renderTbl(); }
+  else if (t.dataset.way) { bench.ways[t.dataset.way] = !bench.ways[t.dataset.way]; renderBench(true); }
+  else if (t.dataset.logic) { bench.logic = t.dataset.logic; renderBench(true); }
+  else if (t.dataset.try) tryIt(t.dataset.try);
+  else if (t.dataset.reset) { const pc = bench.pcs.find((p) => p.n === t.dataset.reset); pc.state = ''; pc.tries = 3; pc.lastRoll = 0; renderBench(); }
+});
+document.addEventListener('input', (e) => { if (e.target.matches('[data-dv]')) { bench.dv = +e.target.value; const pos = e.target.selectionStart; renderBench(); const r = document.querySelector('[data-dv]'); r.focus(); } });
+document.addEventListener('change', (e) => {
+  if (e.target.matches('[data-fail]')) { bench.fail = e.target.value; renderBench(true); }
+  if (e.target.matches('[data-seenet]')) { bench.net = e.target.value; renderBench(true); }
+  if (e.target.matches('[data-net]')) { bench.pcs.find((p) => p.n === e.target.dataset.net).net = e.target.value; renderBench(); }
+});
+renderAsk(); renderTbl(); renderBench();
+// headless helpers: ?demo=1 runs a few clicks so a screenshot shows the conversation
+if (q.get('demo')) { setTimeout(() => addQA('see'), 50); setTimeout(() => addQA('fix-deliver'), 600); }
+
+/* ?only= */
+(() => { const only = (new URLSearchParams(location.search).get('only') || '').split(',').filter(Boolean); if (!only.length) return;
+  document.querySelectorAll('[data-slot]').forEach((slot) => { if (only.includes(slot.dataset.slot)) return; slot.style.display = 'none';
+    let p = slot.previousElementSibling; while (p && p.matches('p.mk-p, p.mk-h')) { p.style.display = 'none'; p = p.previousElementSibling; } });
+  document.body.style.padding = '8px 4px'; document.querySelectorAll('p.mk-h, p.mk-p').forEach((p) => { if (p.style.display !== 'none') p.style.display = 'none'; });
+})();
+</script>
+</body>
+</html>

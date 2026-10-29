@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Admin guides v2 — answers, not paths</title>
+<!--
+  Round 2 of the three guides. Each takes the form of the GM's actual question:
+    1. Delivery — "did it get through, and if not why?"   → questions answered (1a) / postmarks (1b)
+    2. Ready    — "what will my players run into?"        → each player's Agent, seen from their side
+    3. Access   — "who can get into this, and how likely?" → the rule in a sentence + odds per character
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-guides-v2-mock.html
+  ?t=clean-dark|clean-light|high-contrast
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px sans-serif; margin: 0 0 12px; max-width: 1060px; line-height: 1.45; }
+  .mk-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-cap { color: #9aa; font: 600 11px sans-serif; margin: 0 0 5px; text-transform: uppercase; letter-spacing: .06em; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-pane { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font-family: var(--ncm-font-body); }
+  .mk-band { display: flex; align-items: center; gap: 7px; padding: 7px 13px 7px 10px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border);
+    box-shadow: inset 3px 0 var(--bk, var(--ncm-act)); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .mk-band > i { color: var(--bk, var(--ncm-act)); }
+  .mk-band .r { margin-left: auto; font: 400 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); }
+  .mk-av { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 8.5px var(--ncm-font-display); flex: none;
+    color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 18%, var(--ncm-bg-card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 55%, transparent); }
+  .mk-btn { font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px; border-radius: 2px; border: 1px solid var(--ncm-act);
+    color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 10%, transparent); white-space: nowrap; cursor: pointer; }
+  .mk-btn.q { border-color: var(--ncm-border-active); color: var(--ncm-text-primary); background: none; }
+
+  /* ═══ 1a. QUESTIONS ANSWERED ═══ */
+  .qa { padding: 4px 0; }
+  .qa__r { --qc: var(--ncm-good); display: grid; grid-template-columns: 22px 150px minmax(0,1fr); gap: 10px; align-items: baseline; padding: 6px 13px; }
+  .qa__r + .qa__r { border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .qa__ic { color: var(--qc); font-size: 13px; text-align: center; }
+  .qa__q { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-label); }
+  .qa__a { font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .qa__a b { color: var(--qc); }
+  .qa__a .t { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-time); margin-left: 4px; }
+  .qa__r.wait { --qc: var(--ncm-attn); } .qa__r.bad { --qc: var(--ncm-bad); } .qa__r.no { --qc: var(--ncm-text-hint); }
+  .qa__r.no .qa__a { color: var(--ncm-text-hint); }
+  .qa__fix { margin: 4px 13px 10px 45px; padding: 8px 10px; border-left: 3px solid var(--qc); background: color-mix(in srgb, var(--qc) 9%, transparent); display: flex; gap: 10px; align-items: center;
+    font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .qa__fix .grow { flex: 1; }
+  .qa__fix i { color: var(--qc); }
+
+  /* ═══ 1b. POSTMARKS ═══ */
+  .pm { position: relative; padding: 14px 14px 12px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .pm__s { --pc: var(--ncm-good); position: relative; width: 98px; height: 70px; border: 2px solid var(--pc); border-radius: 50% / 45%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; color: var(--pc); transform: rotate(var(--rot, -6deg)); opacity: .92; text-align: center; }
+  .pm__s::before { content: ''; position: absolute; inset: 4px; border: 1px dashed color-mix(in srgb, var(--pc) 60%, transparent); border-radius: inherit; }
+  .pm__s b { font: 800 12px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; }
+  .pm__s span { font: 10px var(--ncm-font-mono); color: color-mix(in oklab, var(--pc) 70%, var(--ncm-text-primary)); }
+  .pm__s.wait { --pc: var(--ncm-attn); } .pm__s.bad { --pc: var(--ncm-bad); border-style: double; border-width: 4px; }
+  .pm__s.ghost { --pc: var(--ncm-text-hint); opacity: .45; border-style: dashed; }
+  .pm__why { flex-basis: 100%; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); display: flex; gap: 8px; align-items: center; }
+  .pm__why .grow { flex: 1; }
+
+  /* ═══ 2. EACH PLAYER'S AGENT ═══ */
+  .ag { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px; }
+  .ag__c { --ac: var(--ncm-good); border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); overflow: hidden; display: flex; flex-direction: column; }
+  .ag__c.warn { --ac: var(--ncm-attn); } .ag__c.bad { --ac: var(--ncm-bad); }
+  .ag__hd { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--ncm-border); box-shadow: inset 0 3px var(--ac); }
+  .ag__hd .nm { font: 700 13.5px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .ag__hd .pl { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ag__hd .on { margin-left: auto; font: 10.5px var(--ncm-font-mono); color: var(--ncm-good); }
+  .ag__hd .on.off { color: var(--ncm-text-hint); }
+  /* a tiny Agent: what the player would actually see on opening it */
+  .ag__screen { margin: 10px; border-radius: 2px; border: 1px solid color-mix(in srgb, var(--ac) 40%, var(--ncm-border)); background: #08090d; color: #cfd6e2; padding: 8px 9px; min-height: 78px;
+    font: 11px var(--ncm-font-mono); position: relative; }
+  .ag__screen .bar { display: flex; justify-content: space-between; color: #8fa0b8; font-size: 10px; margin-bottom: 6px; }
+  .ag__screen .sig { letter-spacing: 1px; } .ag__screen .sig.dead { color: #ee6b6b; }
+  .ag__screen .ln { color: #dfe6f0; } .ag__screen .dim { color: #7c879a; }
+  .ag__screen .err { color: #f2994a; }
+  .ag__screen .big { display: block; text-align: center; margin-top: 10px; color: #f2994a; font: 700 12px var(--ncm-font-display); letter-spacing: .06em; }
+  .ag__says { padding: 0 10px 8px; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); line-height: 1.4; }
+  .ag__says b { color: var(--ac); }
+  .ag__ft { margin-top: auto; display: flex; gap: 6px; padding: 7px 10px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+
+  /* ═══ 3. THE RULE + ODDS ═══ */
+  .rule { padding: 12px 13px; font: 13.5px/1.55 var(--ncm-font-body); color: var(--ncm-text-primary); border-bottom: 1px solid var(--ncm-border); }
+  .rule .k { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 1px; font: 600 12px var(--ncm-font-body); line-height: 19px;
+    color: color-mix(in oklab, var(--kc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--kc) 15%, transparent); border: 1px solid color-mix(in srgb, var(--kc) 50%, transparent); }
+  .rule .k i { color: var(--kc); font-size: 10px; }
+  .rule .net { --kc: var(--ncm-hue-2); } .rule .lock { --kc: var(--ncm-secret); } .rule .bad { --kc: var(--ncm-bad); } .rule .warn { --kc: var(--ncm-attn); }
+  .odds { width: 100%; border-collapse: separate; border-spacing: 0; margin: 0 !important; }
+  .odds th { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); text-align: left; padding: 7px 10px 5px; border-bottom: 1px solid var(--ncm-border); }
+  .odds td { padding: 7px 10px; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); font: 12.5px var(--ncm-font-body); vertical-align: middle; }
+  .odds .who { display: flex; align-items: center; gap: 7px; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .odds .m { font: 12px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-primary)); }
+  .odds .no { color: var(--ncm-text-hint); font-style: italic; }
+  .odds .best { display: flex; align-items: center; gap: 8px; }
+  .meter { --mc: var(--ncm-good); width: 74px; height: 6px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); position: relative; overflow: hidden; flex: none; }
+  .meter i { position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--mc); }
+  .pct { font: 700 12px var(--ncm-font-mono); color: var(--mc); width: 34px; }
+  .lo { --mc: var(--ncm-bad); } .mid { --mc: var(--ncm-attn); } .hi { --mc: var(--ncm-good); }
+  .odds tr.is-locked td { background: color-mix(in srgb, var(--ncm-bad) 7%, transparent); }
+  .odds .lk { color: var(--ncm-bad); font-weight: 600; }
+  .odds .in { color: var(--ncm-good); font-weight: 600; }
+  .acc-foot { display: flex; gap: 8px; align-items: center; padding: 8px 12px; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .acc-foot .grow { flex: 1; }
+</style>
+</head>
+<body>
+
+<p class="mk-h">1 — DELIVERY: "did it get through, and if not, why?"</p>
+<p class="mk-p"><b>1a — Questions answered.</b> The four things a GM actually asks, each answered in a sentence: <i>Did it leave?  Did it arrive?  Have they read it?  Did they answer?</i> The first "no" is the one that matters, so it carries the colour, the reason and the button that fixes it; everything after it is greyed. Reads like a person explaining it to you.<br>
+<b>1b — Postmarks.</b> The diegetic version: each thing that happened to the message is a stamp on it (SENT · VIA CITINET · DELIVERED · OPENED), a missing one is a faint outline, a failure a heavy red stamp. Fun and quick to scan; it explains less on its own, so the reason still sits under it.</p>
+<div class="mk-row" data-slot="d"></div>
+
+<p class="mk-h">2 — GETTING READY: "what will my players run into?"</p>
+<p class="mk-p">One card per player showing <b>what their Agent will look like when they open it</b> — a little screen, the way they'll see it — and one sentence underneath saying what that means and what to do. Instead of a checklist of settings, the GM sees the consequence: "Rache will see the address setup screen", "Judy has nobody to write to", "V is good to go". Cards needing you sort first; the top edge is the verdict.</p>
+<div class="mk-row" data-slot="r"></div>
+
+<p class="mk-h">3 — TERMINAL ACCESS: "who can get into this, and how likely are they?"</p>
+<p class="mk-p">The account's lock written as <b>a rule in one sentence</b> (with the pieces coloured: network, ways in, what failing costs), then <b>a table of the players' characters</b>: can they even see it, which way in suits them best, and their real odds from their sheet (Interface 14 + d10 vs DV 18 → 70%). The GM learns the lock by reading it, and can tell at a glance whether it's too easy or impossible for this party. Lockouts and who's logged in sit in the same table.</p>
+<div class="mk-row" data-slot="a"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const av = (n) => `<span class="mk-av" style="--tc:${hue(n)}">${n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>`;
+const win = (cap, w, inner) => `<div><p class="mk-cap">${cap}</p><div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:${w}px"><div class="ncm-admin-panel">${inner}</div></div></div>`;
+
+/* ── 1a / 1b ── */
+const qa = (rows, fix) => `<div class="mk-pane"><div class="mk-band" style="--bk:${fix ? (fix.k === 'bad' ? 'var(--ncm-bad)' : 'var(--ncm-attn)') : 'var(--ncm-good)'}"><i class="fas fa-circle-question"></i>Did it get through?</div><div class="qa">
+  ${rows.map(([cls, icon, qq, a]) => `<div class="qa__r ${cls}"><span class="qa__ic"><i class="fas ${icon}"></i></span><span class="qa__q">${qq}</span><span class="qa__a">${a}</span></div>`).join('')}</div>
+  ${fix ? `<div class="qa__fix" style="--qc:var(--ncm-${fix.k === 'bad' ? 'bad' : 'attn'})"><i class="fas fa-wrench"></i><span>${fix.text}</span><span class="grow"></span><span class="mk-btn">${fix.btn}</span></div>` : ''}</div>`;
+const pm = (stamps, why) => `<div class="mk-pane"><div class="mk-band" style="--bk:var(--ncm-hue-8)"><i class="fas fa-stamp"></i>Postmarks</div><div class="pm">
+  ${stamps.map(([cls, b, s], i) => `<div class="pm__s ${cls}" style="--rot:${[-7, 4, -3, 6, -5][i]}deg"><b>${b}</b><span>${s}</span></div>`).join('')}
+  ${why ? `<div class="pm__why">${why}</div>` : ''}</div></div>`;
+document.querySelector('[data-slot="d"]').innerHTML = [
+  win('1a · all good', 470, qa([
+    ['', 'fa-circle-check', 'Did it leave?', '<b>Yes</b> — V sent it from the Night Market on CitiNet (82%) <span class="t">21:04</span>'],
+    ['', 'fa-circle-check', 'Did it arrive?', '<b>Yes</b> — it\'s in Rogue\'s inbox <span class="t">21:04</span>'],
+    ['', 'fa-circle-check', 'Have they read it?', '<b>Yes</b> <span class="t">21:30</span>'],
+    ['', 'fa-circle-check', 'Did they answer?', '<b>Yes</b> — "Meet at the Afterlife" <span class="t">21:41</span>']])),
+  win('1a · held in a dead zone', 470, qa([
+    ['', 'fa-circle-check', 'Did it leave?', '<b>Yes</b> — Rache pressed Send <span class="t">22:10</span>'],
+    ['wait', 'fa-hourglass-half', 'Did it arrive?', '<b>Not yet</b> — it\'s waiting on Rache\'s Agent. The Docks are a dead zone, so it\'s queued until they get signal.'],
+    ['no', 'fa-minus', 'Have they read it?', 'not yet'], ['no', 'fa-minus', 'Did they answer?', 'not yet']],
+    { k: 'wait', text: 'It goes out by itself when Rache has signal. Or send it now as GM.', btn: 'Deliver now' })),
+  win('1a · refused', 470, qa([
+    ['', 'fa-circle-check', 'Did it leave?', '<b>Yes</b> — V sent it on CitiNet (64%) <span class="t">20:52</span>'],
+    ['bad', 'fa-circle-xmark', 'Did it arrive?', '<b>No</b> — <span class="ncm-addr">system@netwatch.gov</span> is a system address. Players can\'t write to it, and V saw "Transmission refused".'],
+    ['no', 'fa-minus', 'Have they read it?', '—'], ['no', 'fa-minus', 'Did they answer?', '—']],
+    { k: 'bad', text: 'If players should reach it, turn off Send-only on the contact.', btn: 'Open the contact' })),
+  win('1b · postmarks: read', 470, pm([['', 'Sent', '21:04'], ['', 'Via CitiNet', '82% signal'], ['', 'Delivered', '21:04'], ['', 'Opened', '21:30'], ['ghost', 'Answered', '—']])),
+  win('1b · postmarks: refused', 470, pm([['', 'Sent', '20:52'], ['', 'Via CitiNet', '64%'], ['bad', 'Refused', 'send-only'], ['ghost', 'Opened', '—']],
+    '<i class="fas fa-ban" style="color:var(--ncm-bad)"></i><span><b>Refused</b> — a system address; players can\'t write to it.</span><span class="grow"></span><span class="mk-btn">Open the contact</span>')),
+].join('');
+
+/* ── 2 ── */
+const agent = (cls, name, player, online, screen, says, btns) => `<div class="ag__c ${cls}"><div class="ag__hd">${av(name)}<div><div class="nm">${name}</div><div class="pl">${player}</div></div><span class="on ${online ? '' : 'off'}">● ${online ? 'online' : 'offline'}</span></div>
+  <div class="ag__screen">${screen}</div><div class="ag__says">${says}</div>${btns ? `<div class="ag__ft">${btns}</div>` : ''}</div>`;
+document.querySelector('[data-slot="r"]').innerHTML = [
+  win('Before the session — Night Market', 820, `<div class="mk-pane"><div class="mk-band" style="--bk:var(--ncm-attn)"><i class="fas fa-users-viewfinder"></i>What your players will see<span class="r">on <b style="color:var(--ncm-text-heading)">Night Market</b> · 2 need you</span></div><div class="ag">
+    ${agent('bad', 'Rache', 'Sam', true, '<div class="bar"><span>NIGHT CITY MESSENGER</span><span></span></div><span class="big">SET UP YOUR ADDRESS</span><div class="dim" style="text-align:center;margin-top:4px">choose a handle to continue</div>',
+      '<b>Rache can\'t send or receive yet.</b> They\'ll be asked to pick an address the first time they open the Agent — or you can set one now.', '<span class="mk-btn">Set an address</span><span class="mk-btn q">Let them choose</span>')}
+    ${agent('warn', 'Judy', 'Ana', true, '<div class="bar"><span>judy@mox.nc</span><span class="sig">▂▄▆█</span></div><div class="ln">INBOX · 0</div><div class="dim">CONTACTS · none</div><div class="err" style="margin-top:6px">no one to write to</div>',
+      '<b>Judy has nobody in her contacts.</b> She can read mail but has to type an address to send — share a fixer or the crew.', '<span class="mk-btn">Share contacts</span>')}
+    ${agent('', 'V', 'Marta', false, '<div class="bar"><span>v@nightcity.net</span><span class="sig">▂▄▆_</span></div><div class="ln">INBOX · 2 unread</div><div class="dim">CONTACTS · 6</div><div class="dim">on CitiNet · 82%</div>',
+      '<b>V is good to go.</b> Two unread waiting — they\'ll see them when they log in.', '')}
+  </div></div>`),
+  win('A dead-zone scene — every card says so', 820, `<div class="mk-pane"><div class="mk-band" style="--bk:var(--ncm-bad)"><i class="fas fa-users-viewfinder"></i>What your players will see<span class="r">on <b style="color:var(--ncm-bad)">The Docks</b> — a dead zone</span></div><div class="ag">
+    ${['V', 'Rache', 'Judy'].map((n, i) => agent('bad', n, ['Marta', 'Sam', 'Ana'][i], i !== 0, '<div class="bar"><span>' + n.toLowerCase() + '@…</span><span class="sig dead">✕ NO SIGNAL</span></div><div class="dim">mail they write is held</div><div class="dim">until they have signal</div>',
+      i === 0 ? '<b>No signal here.</b> Anything they send waits on their Agent; anything you send waits too unless you send it as GM.' : '<b>No signal here</b> — same for everyone on this scene.', i === 0 ? '<span class="mk-btn">Turn off dead zone</span><span class="mk-btn q">Leave it — it\'s the point</span>' : '')).join('')}
+  </div></div>`),
+].join('');
+
+/* ── 3 ── */
+const row = (name, see, wayHtml, pct, extra, cls) => `<tr class="${cls || ''}"><td><span class="who">${av(name)}${name}</span></td><td>${see}</td><td>${wayHtml}</td>
+  <td>${pct == null ? '<span class="no">—</span>' : `<span class="best"><span class="meter ${pct < 35 ? 'lo' : pct < 65 ? 'mid' : 'hi'}"><i style="--w:${pct}%"></i></span><span class="pct ${pct < 35 ? 'lo' : pct < 65 ? 'mid' : 'hi'}">${pct}%</span></span>`}</td><td>${extra || ''}</td></tr>`;
+const table = (rows) => `<table class="odds"><thead><tr><th>Character</th><th>Can see it?</th><th>Best way in</th><th>Odds</th><th>Now</th></tr></thead><tbody>${rows}</tbody></table>`;
+document.querySelector('[data-slot="a"]').innerHTML = [
+  win('root on WS-7F-12', 720, `<div class="mk-pane"><div class="mk-band" style="--bk:var(--ncm-secret)"><i class="fas fa-user-lock"></i>Who can get into <span style="text-transform:none;font-family:var(--ncm-font-mono);color:var(--ncm-text-addr)">root</span><span class="r">WS-7F-12</span></div>
+    <div class="rule">Anyone at the machine can see this account. To get in they need <span class="k lock"><i class="fas fa-key"></i>the password</span> <b>or</b> to beat <span class="k lock"><i class="fas fa-dice-d20"></i>Interface DV 18</span>.
+      Three wrong tries <span class="k warn"><i class="fas fa-ban"></i>lock them out for 1 hour</span>.</div>
+    ${table(
+      row('V', '<span class="in">yes</span>', 'Interface <span class="m">14 + d10</span>', 70, '<span class="in">● logged in 21:04</span>') +
+      row('Rache', '<span class="in">yes</span>', 'Interface <span class="m">8 + d10</span>', 10, '<span class="lk"><i class="fas fa-ban"></i> locked out · 42 min</span> <span class="mk-btn q" style="margin-left:6px">Clear</span>', 'is-locked') +
+      row('Judy', '<span class="in">yes</span>', '<span class="no">no Interface — only the password</span>', null, ''))}
+    <div class="acc-foot"><i class="fas fa-circle-info"></i> Rache only gets in on a 10, and Judy can't roll at all — if the party is meant to get in, put the password somewhere they'll find it, or lower the DV.<span class="grow"></span><span class="mk-btn q">Edit login &amp; security</span></div></div>`),
+  win('sec-ops — Black ICE, only on MilNet', 720, `<div class="mk-pane"><div class="mk-band" style="--bk:var(--ncm-bad)"><i class="fas fa-user-lock"></i>Who can get into <span style="text-transform:none;font-family:var(--ncm-font-mono);color:var(--ncm-text-addr)">sec-ops</span><span class="r">hidden account</span></div>
+    <div class="rule">Only characters on <span class="k net"><i class="fas fa-wifi"></i>Militech MilNet</span> see it, and it's <span class="k lock"><i class="fas fa-eye-slash"></i>hidden</span> — they have to type its name. To get in they must beat <span class="k lock"><i class="fas fa-dice-d20"></i>Interface DV 18</span>;
+      a miss sets off <span class="k bad"><i class="fas fa-skull"></i>Black ICE — 5d6 to the runner</span>.</div>
+    ${table(
+      row('V', '<span class="lk">no — on CitiNet</span>', 'Interface <span class="m">14 + d10</span>', 70, '<span class="no">would need MilNet first</span>') +
+      row('Rache', '<span class="lk">no — on CitiNet</span>', 'Interface <span class="m">8 + d10</span>', 10, '') +
+      row('Judy', '<span class="lk">no — on CitiNet</span>', '<span class="no">no Interface</span>', null, ''))}
+    <div class="acc-foot"><i class="fas fa-circle-info" style="color:var(--ncm-attn)"></i> Nobody in the party can reach this yet. That may be the point — they need a way onto MilNet first.<span class="grow"></span><span class="mk-btn q">Edit login &amp; security</span></div></div>`),
+].join('');
+</script>
+</body>
+</html>

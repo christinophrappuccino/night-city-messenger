@@ -1,0 +1,526 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Network nodes</title>
+<!--
+  NETWORK NODES — networks as access points (2026-10-29). Design: dev/design/NETWORK-NODES.md.
+  Player frames (1–5) wear the player theme + the network's own colour; GM frames (6–9) the admin preset.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/network-nodes-mock.html   ?t=clean-light|high-contrast
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #17171d; font-family: sans-serif; }
+  .mk-h { max-width: 1180px; margin: 30px auto 4px; color: #eee; font: 700 15px sans-serif; } .mk-h:first-of-type { margin-top: 0; }
+  .mk-p { max-width: 1180px; margin: 0 auto 12px; color: #aaa; font: 13px/1.5 sans-serif; }
+  .mk-p b { color: #ddd; }
+  .mk-row { max-width: 1180px; margin: 0 auto; display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-cap { color: #888; font: 11.5px sans-serif; margin: 6px 0 0; max-width: 520px; }
+
+  /* ═══ PLAYER: the node console family (player theme + the network colour --nc) ═══ */
+  .nn { --nc: #5c9bff; width: 520px; background: var(--ncm-bg-deep, #08080d); border: 1px solid color-mix(in srgb, var(--nc) 45%, var(--ncm-border)); border-radius: 2px;
+    color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); box-shadow: 0 0 0 1px color-mix(in srgb, var(--nc) 12%, transparent), 0 14px 40px rgba(0,0,0,.5); overflow: hidden; position: relative; }
+  .nn::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--nc) 5%, transparent) 0 1px, transparent 1px 3px); }
+  .nn-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: color-mix(in srgb, var(--nc) 10%, var(--ncm-bg-deep)); border-bottom: 1px solid color-mix(in srgb, var(--nc) 35%, transparent);
+    font: 700 11px var(--ncm-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--nc); }
+  .nn-bar .r { margin-left: auto; color: var(--ncm-text-secondary); letter-spacing: .05em; }
+  .nn-bar i { margin: 0 !important; }
+  .nn-hd { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; padding: 14px 14px 12px; }
+  .nn-ico { width: 64px; height: 64px; display: grid; place-items: center; border: 1px solid var(--nc); background: color-mix(in srgb, var(--nc) 14%, transparent); color: var(--nc); font-size: 26px;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+  .nn-ico i { margin: 0 !important; }
+  .nn-nm b { display: block; font: 700 19px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .nn-nm small { display: block; font: 12px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .nn-state { text-align: right; font: 700 10.5px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; }
+  .nn-led { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .on .nn-led { background: #3ddc84; box-shadow: 0 0 8px #3ddc84; } .on { color: #3ddc84; }
+  .off .nn-led { background: #5a5a6a; } .off { color: var(--ncm-text-secondary); }
+  .jam .nn-led { background: #f7c948; box-shadow: 0 0 8px #f7c948; animation: nnblink 1s steps(2) infinite; } .jam { color: #f7c948; }
+  @keyframes nnblink { 50% { opacity: .2; } }
+  .nn-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 0 14px; border: 1px solid var(--ncm-border); }
+  .nn-stats div { padding: 7px 10px; border-right: 1px solid var(--ncm-border); }
+  .nn-stats div:last-child { border-right: 0; }
+  .nn-stats span { display: block; font: 700 9px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .nn-stats b { font: 700 15px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .bars { display: inline-flex; gap: 2px; align-items: flex-end; height: 13px; vertical-align: middle; margin-right: 5px; }
+  .bars .bar { display: inline-block; width: 3px; background: var(--nc); } .bars .bar.o { background: color-mix(in srgb, var(--nc) 25%, transparent); }
+  .alert { display: inline-flex; gap: 3px; vertical-align: middle; }
+  .alert .al { display: inline-block; width: 14px; height: 6px; background: color-mix(in srgb, var(--ncm-text-secondary) 25%, transparent); }
+  .alert .al.w { background: #f7c948; } .alert .al.a { background: #ff4d5e; box-shadow: 0 0 6px #ff4d5e; }
+  .nn-sec { margin: 12px 14px 0; }
+  .nn-k { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; font: 700 10px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .nn-k i { color: var(--nc); }
+  .nn-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px 14px; }
+  .nn-act { display: grid; grid-template-columns: 30px 1fr; gap: 3px 10px; align-items: center; padding: 10px 11px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-surface, #12121a); cursor: pointer; }
+  .nn-act:hover { border-color: var(--nc); }
+  .nn-act > i { grid-row: span 2; width: 30px; height: 30px; display: grid; place-items: center; margin: 0 !important; color: var(--nc); background: color-mix(in srgb, var(--nc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--nc) 45%, transparent); font-size: 13px; }
+  .nn-act b { font: 700 13px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .nn-act small { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .nn-act.pri { border-color: var(--nc); background: color-mix(in srgb, var(--nc) 12%, var(--ncm-bg-surface)); }
+  .nn-act.no { opacity: .55; cursor: not-allowed; }
+  .nn-act.no small { color: #f7c948; }
+  .nn-act.mal > i { color: #c084fc; background: color-mix(in srgb, #c084fc 14%, transparent); border-color: color-mix(in srgb, #c084fc 45%, transparent); }
+  .nn-req { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 14px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border: 1px solid var(--ncm-border); border-radius: 1px; font: 600 11.5px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .chip i { margin: 0 !important; font-size: 10px; color: var(--nc); }
+  .chip.ok i { color: #3ddc84; } .chip.miss { border-color: color-mix(in srgb, #f7c948 55%, transparent); } .chip.miss i { color: #f7c948; }
+  .nn-foot { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--ncm-border); font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+
+  /* breach path */
+  .path { display: flex; align-items: center; padding: 16px 20px 6px; }
+  .stop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 90px; text-align: center; }
+  .stop .d { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--ncm-border); color: var(--ncm-text-secondary); background: var(--ncm-bg-deep); font-size: 15px; z-index: 1; }
+  .stop .d i { margin: 0 !important; }
+  .stop b { font: 700 10.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .stop small { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .stop.done .d { border-color: #3ddc84; color: #3ddc84; } .stop.done b { color: #3ddc84; }
+  .stop.now .d { border-color: var(--nc); color: var(--nc); box-shadow: 0 0 0 4px color-mix(in srgb, var(--nc) 20%, transparent), 0 0 18px color-mix(in srgb, var(--nc) 60%, transparent); }
+  .stop.now b { color: var(--nc); }
+  .wire { flex: 1; height: 2px; background: var(--ncm-border); margin-top: -26px; }
+  .wire.done { background: #3ddc84; } .wire.now { background: linear-gradient(90deg, #3ddc84, var(--nc)); }
+  .roll { margin: 10px 14px 0; padding: 12px; border: 1px solid color-mix(in srgb, var(--nc) 40%, var(--ncm-border)); background: color-mix(in srgb, var(--nc) 6%, var(--ncm-bg-deep)); }
+  .tiles { display: flex; align-items: stretch; gap: 6px; }
+  .tile { flex: 1; padding: 6px 8px; border: 1px solid var(--ncm-border); text-align: center; }
+  .tile span { display: block; font: 700 9px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .tile b { font: 700 18px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .tile.die { border-color: var(--nc); } .tile.die b { color: var(--nc); }
+  .tile.gear b { color: #3ddc84; }
+  .op { display: grid; place-items: center; color: var(--ncm-text-secondary); font: 700 14px var(--ncm-font-mono); }
+  .meter { position: relative; height: 10px; margin: 12px 0 4px; background: color-mix(in srgb, var(--ncm-text-secondary) 15%, transparent); }
+  .meter i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 60%, transparent), var(--nc)); }
+  .meter em { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #fff; }
+  .meter em::after { content: attr(data-l); position: absolute; top: 14px; left: -12px; font: 700 9.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); white-space: nowrap; font-style: normal; }
+  .verdict { margin-top: 18px; display: flex; align-items: center; gap: 10px; font: 700 20px var(--ncm-font-display); letter-spacing: .12em; color: #3ddc84; }
+  .verdict small { font: 12px var(--ncm-font-body); letter-spacing: 0; color: var(--ncm-text-secondary); }
+  .awaiting { margin: 10px 14px 0; padding: 14px; border: 1px dashed color-mix(in srgb, #f7c948 60%, transparent); text-align: center; }
+  .awaiting b { display: block; font: 700 15px var(--ncm-font-display); letter-spacing: .1em; color: #f7c948; }
+  .awaiting small { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .btnrow { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 14px 14px; }
+  .b { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 14px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); color: var(--ncm-text-primary);
+    font: 700 11px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  .b i { margin: 0 !important; }
+  .b.pri { background: var(--nc); border-color: var(--nc); color: #05070c; }
+  .b.mal { background: #c084fc; border-color: #c084fc; color: #0a0612; }
+
+  /* session */
+  .sess { display: grid; grid-template-columns: 1fr 190px; gap: 0; }
+  .sess-acts { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--ncm-border); }
+  .sa { display: grid; grid-template-columns: 26px 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); }
+  .sa > i { grid-row: span 2; margin: 0 !important; width: 26px; height: 26px; display: grid; place-items: center; color: var(--nc); }
+  .sa b { font: 700 12.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; }
+  .sa small { grid-column: 2; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .sa .dv { grid-row: span 2; font: 700 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); text-align: right; }
+  .sa.mal > i { color: #c084fc; }
+  .sess-side { padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+  .log { font: 11px/1.6 var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .log div { display: flex; gap: 6px; } .log .me { color: #f7c948; }
+  .log .me a { margin-left: auto; color: #ff4d5e; cursor: pointer; text-decoration: underline; }
+
+  /* insert a shard */
+  .shards { display: flex; flex-direction: column; gap: 6px; padding: 4px 14px 0; }
+  .sh { display: grid; grid-template-columns: 34px 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); cursor: pointer; }
+  .sh.on { border-color: #c084fc; background: color-mix(in srgb, #c084fc 8%, var(--ncm-bg-surface)); box-shadow: inset 3px 0 0 #c084fc; }
+  .sh .chipimg { grid-row: span 2; width: 34px; height: 34px; display: grid; place-items: center; color: #c084fc; border: 1px solid color-mix(in srgb, #c084fc 50%, transparent);
+    clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+  .sh .chipimg i { margin: 0 !important; }
+  .sh b { font: 700 13px var(--ncm-font-display); }
+  .sh small { grid-column: 2; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .sh .fx { grid-row: span 2; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 150px; }
+  .fxp { padding: 1px 6px; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; border: 1px solid color-mix(in srgb, #c084fc 55%, transparent); color: #d9b8ff; }
+  .ladder { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; margin: 12px 14px 0; border: 1px solid var(--ncm-border); }
+  .ladder div { padding: 8px 10px; border-right: 1px solid var(--ncm-border); }
+  .ladder div:last-child { border-right: 0; }
+  .ladder b { display: block; font: 700 11px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; }
+  .ladder small { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ladder .g b { color: #3ddc84; } .ladder .s b { color: #f7c948; } .ladder .r b { color: #ff4d5e; }
+  .fate { display: flex; gap: 0; margin: 10px 14px 0; border: 1px solid var(--ncm-border); }
+  .fate span { flex: 1; padding: 7px 8px; text-align: center; font: 600 12px var(--ncm-font-display); color: var(--ncm-text-secondary); border-right: 1px solid var(--ncm-border); }
+  .fate span:last-child { border-right: 0; }
+  .fate span.on { color: var(--ncm-text-primary); background: color-mix(in srgb, #c084fc 14%, transparent); box-shadow: inset 0 -2px 0 #c084fc; }
+
+  /* symptoms */
+  .toast { width: 360px; display: grid; grid-template-columns: 34px 1fr; gap: 3px 10px; padding: 10px 12px; background: var(--ncm-bg-surface); border: 1px solid color-mix(in srgb, #ff4d5e 50%, var(--ncm-border)); border-left: 3px solid #ff4d5e; color: var(--ncm-text-primary); }
+  .toast > i { grid-row: span 2; margin: 0 !important; width: 34px; height: 34px; display: grid; place-items: center; color: #ff4d5e; font-size: 16px; }
+  .toast b { font: 700 13px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+  .toast small { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ransom { width: 360px; border: 1px solid #ff4d5e; background: #0b0306; color: #ffd9de; font: 12.5px/1.5 var(--ncm-font-mono); padding: 12px 14px; position: relative; }
+  .ransom b { display: block; font: 700 18px var(--ncm-font-display); letter-spacing: .14em; color: #ff4d5e; margin-bottom: 6px; }
+  .ransom .pay { margin-top: 10px; display: flex; gap: 8px; }
+  .garble { width: 360px; padding: 10px 12px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); font: 12.5px/1.5 var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .garble s { text-decoration: none; color: color-mix(in srgb, var(--ncm-text-primary) 40%, transparent); }
+
+  /* ═══ GM (admin preset) ═══ */
+  .gm { width: 1180px; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); border: 1px solid #555; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); padding: 12px 14px; }
+  .gm .ncm-tabhd { margin: 0 0 10px; }
+  .card { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); }
+  .card-hd { display: flex; align-items: center; gap: 9px; padding: 9px 12px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 0 var(--ncm-act); }
+  .card-hd b { font: 700 12px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .card-hd small { font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-secondary)); }
+  .card-hd i { color: var(--ncm-act); margin: 0 !important; }
+  .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .rsec { padding: 12px 14px; border-right: 1px solid var(--ncm-border); border-bottom: 1px solid var(--ncm-border); }
+  .rsec:nth-child(2n) { border-right: 0; }
+  .rk { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; font: 700 10.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+  .rk i { margin: 0 !important; color: var(--ncm-act); }
+  .rk.mal i { color: var(--ncm-secret); }
+  .rhint { font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-secondary)); margin: 6px 0 0; }
+  .seg { display: flex; } .seg span { flex: 1; padding: 6px 8px; text-align: center; border: 1px solid var(--ncm-border); margin-left: -1px; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); background: var(--ncm-bg-card); }
+  .seg span.on { color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-act) 16%, var(--ncm-bg-card)); box-shadow: inset 0 -2px 0 var(--ncm-act); }
+  .fr { display: grid; grid-template-columns: 130px 1fr; gap: 8px; align-items: center; padding: 4px 0; font: 13px var(--ncm-font-body); }
+  .fr > span { font: 600 12px var(--ncm-font-display); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+  .inp { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); font: 13px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .tg { display: inline-flex; align-items: center; gap: 7px; font: 13px var(--ncm-font-body); }
+  .tg i.box { width: 14px; height: 14px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); display: grid; place-items: center; font-size: 9px; color: var(--ncm-act); font-style: normal; }
+  .opt { border: 1px solid var(--ncm-border); padding: 7px 9px; margin-top: 6px; }
+  .opt b { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); display: block; margin-bottom: 4px; }
+  .tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .tagp { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border: 1px solid var(--tc, var(--ncm-border)); border-radius: 1px; font: 600 11.5px var(--ncm-font-display); color: color-mix(in srgb, var(--tc, var(--ncm-text-primary)) 70%, var(--ncm-text-heading)); }
+  .tagp i { margin: 0 !important; font-size: 10px; color: var(--tc); }
+
+  /* nodes table */
+  .nodes { width: 100%; border-collapse: collapse; margin: 0 !important; }
+  .nodes th { text-align: left; padding: 7px 10px; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border); }
+  .nodes td { padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); vertical-align: middle; }
+  .nodes tr.inf td:first-child { box-shadow: inset 3px 0 0 var(--ncm-secret); }
+  .nodes .nm { display: flex; align-items: center; gap: 9px; }
+  .nodes .nm i.k { width: 28px; height: 28px; display: grid; place-items: center; margin: 0 !important; color: #5c9bff; border: 1px solid color-mix(in srgb, #5c9bff 50%, transparent); background: color-mix(in srgb, #5c9bff 12%, transparent); }
+  .nodes .nm b { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); display: block; }
+  .nodes .nm small { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 1px; font: 700 10.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; border: 1px solid; }
+  .pill.on { color: var(--ncm-good); border-color: color-mix(in srgb, var(--ncm-good) 55%, transparent); background: color-mix(in srgb, var(--ncm-good) 10%, transparent); }
+  .pill.off { color: var(--ncm-text-secondary); border-color: var(--ncm-border); }
+  .pill.jam { color: var(--ncm-attn); border-color: color-mix(in srgb, var(--ncm-attn) 55%, transparent); background: color-mix(in srgb, var(--ncm-attn) 10%, transparent); }
+  .pill.dmg { color: var(--ncm-bad); border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent); background: color-mix(in srgb, var(--ncm-bad) 10%, transparent); }
+  .pill.inf { color: var(--ncm-secret); border-color: color-mix(in srgb, var(--ncm-secret) 55%, transparent); background: color-mix(in srgb, var(--ncm-secret) 12%, transparent); animation: nnpulse 1.6s ease-in-out infinite; }
+  .pill.lock { color: var(--ncm-secret); border-color: color-mix(in srgb, var(--ncm-secret) 45%, transparent); }
+  @keyframes nnpulse { 50% { box-shadow: 0 0 10px color-mix(in srgb, var(--ncm-secret) 55%, transparent); } }
+  .ab { display: inline-flex; gap: 4px; }
+  .ab span { width: 28px; height: 26px; display: inline-grid; place-items: center; border: 1px solid var(--ncm-border); background: var(--ncm-bg-card); color: var(--ncm-text-secondary); cursor: pointer; }
+  .ab span:hover { border-color: var(--ncm-act); color: var(--ncm-act); }
+  .ab span.bad:hover { border-color: var(--ncm-bad); color: var(--ncm-bad); }
+  .ab span i { margin: 0 !important; font-size: 11px; }
+  .add { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px dashed var(--ncm-border); color: var(--ncm-act); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+  .add i { margin: 0 !important; }
+  .steps { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid var(--ncm-border); }
+  .steps span { flex: 1; padding: 6px 8px; font: 700 10.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); border-right: 1px solid var(--ncm-border); text-align: center; }
+  .steps span:last-child { border-right: 0; }
+  .steps span.on { color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-act) 14%, transparent); box-shadow: inset 0 -2px 0 var(--ncm-act); }
+  .steps span.new::after { content: 'new'; margin-left: 5px; font-size: 8.5px; color: var(--ncm-attn); }
+
+  /* the dial column */
+  .dialcols { display: flex; gap: 12px; }
+  .dc { width: 132px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; --c: #5c9bff; }
+  .dc b { font: 700 12px var(--ncm-font-display); color: color-mix(in srgb, var(--c) 70%, var(--ncm-text-heading)); }
+  .seg20 { display: flex; flex-direction: column-reverse; gap: 2px; width: 34px; }
+  .seg20 i { height: 5px; background: color-mix(in srgb, var(--c) 18%, transparent); }
+  .seg20 i.l { background: var(--c); box-shadow: 0 0 5px var(--c); }
+  .seg20.cut i.l { background: color-mix(in srgb, var(--c) 30%, transparent); box-shadow: none; }
+  .ndl { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+  .ndl span { width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid var(--ncm-border); font-size: 10px; cursor: pointer; }
+  .ndl span i { margin: 0 !important; }
+  .ndl .on { color: var(--ncm-good); border-color: color-mix(in srgb, var(--ncm-good) 55%, transparent); }
+  .ndl .off { color: var(--ncm-text-secondary); }
+  .ndl .inf { color: var(--ncm-secret); border-color: var(--ncm-secret); animation: nnpulse 1.6s ease-in-out infinite; }
+  .dc small { font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); text-align: center; }
+  .dc small.cut { color: var(--ncm-bad); font-weight: 700; }
+
+  /* infections */
+  .inf-row { display: grid; grid-template-columns: 34px 1.4fr 150px 130px 300px; gap: 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .inf-row > i { margin: 0 !important; width: 34px; height: 34px; display: grid; place-items: center; color: var(--ncm-secret); border: 1px solid color-mix(in srgb, var(--ncm-secret) 50%, transparent); background: color-mix(in srgb, var(--ncm-secret) 12%, transparent); }
+  .inf-row b { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); display: block; }
+  .inf-row small { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .spread { display: flex; gap: 4px; align-items: center; }
+  .spread i { width: 12px; height: 12px; border: 1px solid var(--ncm-border); transform: rotate(45deg); margin: 0 2px; }
+  .spread i.x { background: var(--ncm-secret); border-color: var(--ncm-secret); box-shadow: 0 0 6px var(--ncm-secret); }
+  .clock { font: 700 13px var(--ncm-font-mono); color: var(--ncm-attn); }
+  .gb { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-card); font: 700 10.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .gb i { margin: 0 !important; font-size: 10.5px; }
+  .gb.pri { background: var(--ncm-act); border-color: var(--ncm-act); color: var(--ncm-text-inverse); }
+  .gb.bad { border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent); color: color-mix(in srgb, var(--ncm-bad) 80%, var(--ncm-text-heading)); }
+</style>
+</head>
+<body>
+
+<div class="mk-h">1 · The node console — what a player opens (double-click the pin)</div>
+<div class="mk-p">A relay box on the map. It says what it is, whether it's working, and what you can do with it. <b>Jack in</b> shows what it needs; a player who doesn't qualify sees why instead of a dead button.</div>
+<div class="mk-row">
+  <div>
+    <div class="ncm-app nn mk-win">
+      <div class="nn-bar"><i class="fas fa-tower-broadcast"></i>Node // NCPD Dispatch<span class="r">Kabuki · relay 03</span></div>
+      <div class="nn-hd">
+        <div class="nn-ico"><i class="fas fa-tower-cell"></i></div>
+        <div class="nn-nm"><b>Kabuki relay mast</b><small>NCPD Dispatch · relay · rooftop, 4th &amp; Kabuki</small></div>
+        <div class="nn-state on"><span class="nn-led"></span>On</div>
+      </div>
+      <div class="nn-stats">
+        <div><span>Signal</span><b><span class="bars"><span class="bar" style="height:4px"></span><span class="bar" style="height:7px"></span><span class="bar" style="height:10px"></span><span class="bar o" style="height:13px"></span></span>78%</b></div>
+        <div><span>Connected</span><b>3</b></div>
+        <div><span>Alert</span><b><span class="alert"><span class="al w"></span><span class="al"></span><span class="al"></span></span></b></div>
+        <div><span>Box</span><b style="font-size:13px"><i class="fas fa-lock" style="color:#c084fc;margin:0 5px 0 0"></i>Locked</b></div>
+      </div>
+      <div class="nn-acts">
+        <div class="nn-act"><i class="fas fa-wifi"></i><b>Connect</b><small>Join NCPD Dispatch — it asks for its login</small></div>
+        <div class="nn-act pri"><i class="fas fa-plug"></i><b>Jack in</b><small>Breach the box and take control</small></div>
+        <div class="nn-act mal"><i class="fas fa-microchip"></i><b>Insert a shard</b><small>Plant a program from a shard you carry</small></div>
+        <div class="nn-act"><i class="fas fa-power-off"></i><b>Switch off</b><small>Needs the box open — or jack in</small></div>
+      </div>
+      <div class="nn-sec" style="margin-top:0"><div class="nn-k"><i class="fas fa-key"></i>Jacking in needs</div></div>
+      <div class="nn-req" style="padding-bottom:12px"><span class="chip ok"><i class="fas fa-check"></i>Netrunner</span><span class="chip ok"><i class="fas fa-check"></i>a cyberdeck</span><span class="chip ok"><i class="fas fa-check"></i>interface plugs</span><span class="chip"><i class="fas fa-gauge"></i>Interface vs DV 15</span></div>
+      <div class="nn-foot"><i class="fas fa-location-crosshairs"></i>You're 1 square away · in reach</div>
+    </div>
+    <div class="mk-cap">Coloured by the network (NCPD blue). Alert has three steps: calm, wary, alarmed. The defences show only as much as the character can tell (the same visibility rules as terminals).</div>
+  </div>
+  <div>
+    <div class="ncm-app nn mk-win" style="--nc:#ff3355">
+      <div class="nn-bar"><i class="fas fa-tower-broadcast"></i>Node // Arasaka SecNet<span class="r">Tower 7F · junction</span></div>
+      <div class="nn-hd">
+        <div class="nn-ico"><i class="fas fa-server"></i></div>
+        <div class="nn-nm"><b>7F junction box</b><small>Arasaka SecNet · junction · service corridor</small></div>
+        <div class="nn-state jam"><span class="nn-led"></span>Jammed · 18m</div>
+      </div>
+      <div class="nn-stats">
+        <div><span>Signal</span><b><span class="bars"><span class="bar o" style="height:4px"></span><span class="bar o" style="height:7px"></span><span class="bar o" style="height:10px"></span><span class="bar o" style="height:13px"></span></span>0%</b></div>
+        <div><span>Connected</span><b>0</b></div>
+        <div><span>Alert</span><b><span class="alert"><span class="al w"></span><span class="al w"></span><span class="al a"></span></span></b></div>
+        <div><span>Box</span><b style="font-size:13px">Open</b></div>
+      </div>
+      <div class="nn-acts">
+        <div class="nn-act no"><i class="fas fa-wifi"></i><b>Connect</b><small>Jammed — nothing to join</small></div>
+        <div class="nn-act no"><i class="fas fa-plug"></i><b>Jack in</b><small>You need Interface 4+ or a Netrunner</small></div>
+        <div class="nn-act mal no"><i class="fas fa-microchip"></i><b>Insert a shard</b><small>You carry no shard with a program</small></div>
+        <div class="nn-act"><i class="fas fa-power-off"></i><b>Switch off</b><small>The box is open — no roll</small></div>
+      </div>
+      <div class="nn-foot"><i class="fas fa-triangle-exclamation" style="color:#ff4d5e"></i>Alarmed — every mistake here bites back</div>
+    </div>
+    <div class="mk-cap">The same console for a solo with no deck, at a jammed and alarmed node. Each action says why it's off. The box is open, so switching it off needs no roll.</div>
+  </div>
+</div>
+
+<div class="mk-h">2 · Jack in — the breach</div>
+<div class="mk-p">A short path, outside in: <b>Box lock → Firmware → Network</b>. The roll plays through the roll reveal, and gear bonuses show as their own tile. With <b>GM decides</b>, there is no roll; the console waits, and both sides can step away.</div>
+<div class="mk-row">
+  <div>
+    <div class="ncm-app nn mk-win">
+      <div class="nn-bar"><i class="fas fa-plug"></i>Jacking in // Kabuki relay mast<span class="r">Interface · DV 15</span></div>
+      <div class="path">
+        <div class="stop done"><span class="d"><i class="fas fa-lock-open"></i></span><b>Box lock</b><small>opened</small></div>
+        <div class="wire done"></div>
+        <div class="stop now"><span class="d"><i class="fas fa-microchip"></i></span><b>Firmware</b><small>rolling…</small></div>
+        <div class="wire"></div>
+        <div class="stop"><span class="d"><i class="fas fa-tower-broadcast"></i></span><b>Network</b><small>NCPD Dispatch</small></div>
+      </div>
+      <div class="roll">
+        <div class="tiles"><div class="tile"><span>TECH</span><b>7</b></div><div class="op">+</div><div class="tile"><span>Interface</span><b>4</b></div><div class="op">+</div><div class="tile gear"><span>Deck</span><b>+1</b></div><div class="op">+</div><div class="tile die"><span>d10</span><b>6</b></div><div class="op">=</div><div class="tile"><span>Total</span><b>18</b></div></div>
+        <div class="meter"><i style="width:72%"></i><em data-l="DV 15" style="left:60%"></em></div>
+        <div class="verdict"><i class="fas fa-check" style="margin:0"></i>IN<small>Beat it by 3 — you're in, alert stays calm</small></div>
+      </div>
+      <div class="btnrow"><span class="b"><i class="fas fa-xmark"></i>Pull out</span><span class="b pri"><i class="fas fa-arrow-right"></i>Open session</span></div>
+    </div>
+    <div class="mk-cap">On a miss: the trace fires, heat goes up, alert goes up a step, and a try is used (with a lockout after N tries). If the node or the rules set Black ICE, it hits.</div>
+  </div>
+  <div>
+    <div class="ncm-app nn mk-win">
+      <div class="nn-bar"><i class="fas fa-plug"></i>Jacking in // Kabuki relay mast<span class="r">GM decides</span></div>
+      <div class="path">
+        <div class="stop done"><span class="d"><i class="fas fa-lock-open"></i></span><b>Box lock</b><small>opened</small></div>
+        <div class="wire now"></div>
+        <div class="stop now"><span class="d"><i class="fas fa-hourglass-half"></i></span><b>Firmware</b><small>waiting on the GM</small></div>
+        <div class="wire"></div>
+        <div class="stop"><span class="d"><i class="fas fa-tower-broadcast"></i></span><b>Network</b><small>NCPD Dispatch</small></div>
+      </div>
+      <div class="awaiting"><b>AWAITING GM</b><small>Play out the netrun at the table. The GM calls the result; this window waits.</small></div>
+      <div class="btnrow"><span class="b"><i class="fas fa-xmark"></i>Withdraw</span><span class="b"><i class="fas fa-arrow-down-left-and-arrow-up-right-to-center"></i>Step away</span></div>
+    </div>
+    <div class="mk-cap">The same step-away dock terminals already use, so neither the GM nor the player is stuck staring at a modal.</div>
+  </div>
+</div>
+
+<div class="mk-h">3 · Inside — the session</div>
+<div class="mk-p">What you can do once you're in, each with its own DV. On the right are the node's alert and its log; you can <b>wipe your own line</b> (a roll), and a sloppy wipe leaves a trace.</div>
+<div class="mk-row">
+  <div>
+    <div class="ncm-app nn mk-win" style="width:620px">
+      <div class="nn-bar"><i class="fas fa-terminal"></i>Session // Kabuki relay mast<span class="r">NCPD Dispatch · you're in</span></div>
+      <div class="sess">
+        <div class="sess-acts">
+          <div class="sa"><i class="fas fa-power-off"></i><b>Switch off</b><small>NCPD Dispatch goes dark on this scene</small><span class="dv">no roll</span></div>
+          <div class="sa"><i class="fas fa-wave-square"></i><b>Jam</b><small>Off for a while, then it comes back by itself</small><span class="dv">DV 13<br>30 min</span></div>
+          <div class="sa"><i class="fas fa-ear-listen"></i><b>Tap</b><small>See mail sent over NCPD Dispatch while it lasts</small><span class="dv">DV 17</span></div>
+          <div class="sa"><i class="fas fa-door-open"></i><b>Backdoor</b><small>Skip the network's login for 24 hours</small><span class="dv">DV 15</span></div>
+          <div class="sa mal"><i class="fas fa-microchip"></i><b>Insert a shard</b><small>Plant a program you carry</small><span class="dv">forge<br>ladder</span></div>
+          <div class="sa"><i class="fas fa-radar"></i><b>System sweep</b><small>Look for anything planted here</small><span class="dv">DV 15</span></div>
+        </div>
+        <div class="sess-side">
+          <div><div class="nn-k"><i class="fas fa-bell"></i>Alert</div><span class="alert"><span class="al w"></span><span class="al"></span><span class="al"></span></span> <span style="font:12px var(--ncm-font-body);color:var(--ncm-text-secondary);margin-left:6px">wary</span></div>
+          <div><div class="nn-k"><i class="fas fa-list"></i>Node log</div>
+            <div class="log">
+              <div>21:04 ncpd.unit-12</div>
+              <div>21:31 ncpd.unit-07</div>
+              <div class="me">21:52 unknown<a>wipe</a></div>
+            </div>
+          </div>
+          <div style="font:11.5px var(--ncm-font-body);color:var(--ncm-text-secondary)">Uplinks: <b style="color:var(--ncm-text-primary)">2 terminals</b> run through this node — switch it off and they go local-only.</div>
+        </div>
+      </div>
+      <div class="btnrow"><span class="b"><i class="fas fa-right-from-bracket"></i>Jack out</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-h">4 · Insert a shard — infect the network</div>
+<div class="mk-p">Pick a carried shard with a program on it. The upload uses the same three-band forge ladder as terminal uploads. <b>What happens to the shard</b> is set on the program; "stays plugged in" leaves evidence someone can find and pull out.</div>
+<div class="mk-row">
+  <div>
+    <div class="ncm-app nn mk-win">
+      <div class="nn-bar" style="color:#c084fc"><i class="fas fa-microchip"></i>Insert a shard // Kabuki relay mast<span class="r">Interface · DV 17</span></div>
+      <div class="nn-sec"><div class="nn-k"><i class="fas fa-hard-drive" style="color:#c084fc"></i>Shards you carry with a program</div></div>
+      <div class="shards">
+        <div class="sh on"><span class="chipimg"><i class="fas fa-bug"></i></span><b>GHOSTWORM.bin</b><small>From the Afterlife · forged clean</small><span class="fx"><span class="fxp">Worm</span><span class="fxp">Tap</span></span></div>
+        <div class="sh"><span class="chipimg"><i class="fas fa-sack-dollar"></i></span><b>Paywall</b><small>Your own · sloppy</small><span class="fx"><span class="fxp">Ransom</span></span></div>
+        <div class="sh"><span class="chipimg"><i class="fas fa-bomb"></i></span><b>Lights-out</b><small>From Rogue</small><span class="fx"><span class="fxp">Blackout · 2h</span></span></div>
+      </div>
+      <div class="ladder">
+        <div class="g"><b>Clean</b><small>17+ · it takes, no tell</small></div>
+        <div class="s"><b>Sloppy</b><small>13–16 · takes, easy to sweep; Tap gets subjects only</small></div>
+        <div class="r"><b>Rejected</b><small>12 or less · nothing installs</small></div>
+      </div>
+      <div class="nn-sec"><div class="nn-k"><i class="fas fa-plug-circle-xmark" style="color:#c084fc"></i>The shard afterwards <span style="text-transform:none;letter-spacing:0;font-weight:400">— set on the program</span></div></div>
+      <div class="fate" style="margin-top:0"><span class="on">Stays plugged in</span><span>Wipes itself</span><span>Bricks</span></div>
+      <div class="btnrow"><span class="b"><i class="fas fa-xmark"></i>Cancel</span><span class="b mal"><i class="fas fa-upload"></i>Insert GHOSTWORM.bin</span></div>
+    </div>
+    <div class="mk-cap">The first build's effects: <b>Worm</b> (spreads to another node every N hours), <b>Tap</b> (copies network mail to you), <b>Ransom</b> (locks the network; paying moves eddies to you) and <b>Blackout bomb</b> (every infected node goes dark at once).</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="mk-p" style="margin:0;max-width:380px"><b>5 · What players notice.</b> Symptoms arrive before anyone explains them.</div>
+    <div class="ncm-app toast mk-win"><i class="fas fa-tower-broadcast"></i><b>NCPD Dispatch — signal lost</b><small>Kabuki relay mast went dark. Mail you send waits until it's back.</small></div>
+    <div class="ncm-app ransom mk-win"><b>// YOUR NETWORK IS OURS</b>NCPD Dispatch is locked. Every message, every log.<br>Send <b style="display:inline;font-size:13px;letter-spacing:0;color:#ffd9de">500 eb</b> to <u>paywall@darknet.nc</u> to get your access back.<div class="pay"><span class="b" style="--nc:#ff4d5e;background:#ff4d5e;border-color:#ff4d5e;color:#120306"><i class="fas fa-coins"></i>Pay 500 eb</span><span class="b"><i class="fas fa-xmark"></i>Ignore</span></div></div>
+    <div class="ncm-app garble mk-win"><b style="font:700 12px var(--ncm-font-display);letter-spacing:.08em;text-transform:uppercase">Tapped — Re: the drop</b><br>Meet at <s>█▒</s> the Afterlife, back booth. Bring the <s>▒█▒▓</s> chip. Come alone.<br><small style="color:var(--ncm-text-secondary);font:11.5px var(--ncm-font-mono)">copied from NCPD Dispatch · a sloppy tap shows only the subject</small></div>
+  </div>
+</div>
+
+<div class="mk-h">6 · GM: Security → Hacking rules → Jacking in</div>
+<div class="mk-p">One card for the whole rule set, built from parts that exist: Operator access for <b>who</b>, the netrunning modes for <b>how it resolves</b>, a bypass, failure and infection rules. Any node can override it.</div>
+<div class="mk-row">
+  <div class="ncm-app ncm-admin-panel gm mk-win" data-ncm-admin-theme="T">
+    <header class="ncm-tabhd"><i class="fas fa-shield-halved"></i><div><h2>Hacking rules</h2><p>How players break in — networks, terminals and network nodes.</p></div></header>
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-plug"></i><b>Jacking in</b><small>— network nodes now; terminals and shards can share it later</small></div>
+      <div class="rules">
+        <div class="rsec">
+          <div class="rk"><i class="fas fa-user-check"></i>Who can jack in</div>
+          <div class="seg"><span>Anyone</span><span class="on">Only who qualifies</span></div>
+          <div class="opt"><b>Role</b><div class="tags"><span class="tagp" style="--tc:var(--ncm-hue-3)"><i class="fas fa-laptop-code"></i>Netrunner</span><span class="tagp" style="--tc:var(--ncm-hue-5)"><i class="fas fa-wrench"></i>Tech</span></div></div>
+          <div class="opt"><b>Or a skill</b><div class="fr" style="grid-template-columns:1fr auto"><span class="inp" style="width:100%">Interface</span><span class="inp">4+</span></div></div>
+          <div class="opt"><b>And gear — any one option</b><div class="tags"><span class="tagp"><i class="fas fa-a"></i>Cyberdeck + Interface plugs</span><span class="tagp"><i class="fas fa-b"></i>Netwatch rig</span></div></div>
+          <p class="rhint">Someone who doesn't qualify sees why on the node, not a dead button.</p>
+        </div>
+        <div class="rsec">
+          <div class="rk"><i class="fas fa-dice-d20"></i>How it resolves</div>
+          <div class="seg"><span class="on">Inherit</span><span>Auto</span><span>Flagged</span><span>GM decides</span></div>
+          <p class="rhint">Inherit follows Netrunning resolution (now: <b style="font-style:normal">Auto</b>). GM decides = no roll; both sides can step away.</p>
+          <div class="rk" style="margin-top:12px"><i class="fas fa-key"></i>The bypass</div>
+          <div class="fr"><span>Skill</span><span class="inp">Interface</span></div>
+          <div class="fr"><span>DV</span><span class="inp">15</span></div>
+          <div class="fr"><span>Gear bonus</span><span><span class="inp">Cyberdeck +1</span> <span class="inp">Netwatch rig +2</span></span></div>
+        </div>
+        <div class="rsec">
+          <div class="rk"><i class="fas fa-triangle-exclamation"></i>On a miss</div>
+          <div class="fr"><span>Trace</span><span class="tg"><i class="box">✓</i>fire a trace</span></div>
+          <div class="fr"><span>Heat</span><span class="inp">+20</span></div>
+          <div class="fr"><span>Lockout</span><span><span class="inp">3 tries</span> then <span class="inp">30 min</span></span></div>
+          <div class="fr"><span>Black ICE</span><div class="seg" style="white-space:nowrap"><span>None</span><span class="on">The node's own</span><span>Pick one</span></div></div>
+          <div class="fr"><span>Alert</span><span class="tg"><i class="box">✓</i>a miss raises the node's alert · decays 1 step / hour</span></div>
+        </div>
+        <div class="rsec">
+          <div class="rk mal"><i class="fas fa-bug"></i>Infection</div>
+          <div class="fr"><span>Worm spreads</span><span>every <span class="inp">4 h</span> of game time</span></div>
+          <div class="fr"><span>Most nodes</span><span class="inp">6</span></div>
+          <div class="fr"><span>Dormant first</span><span class="inp">1 h</span></div>
+          <div class="fr"><span>Players see</span><span class="tg"><i class="box">✓</i>symptoms (lost signal, ransom notes, garbled mail)</span></div>
+          <p class="rhint">What a program DOES (Worm / Tap / Ransom / Blackout) is set on the program in the Workshop or the Encoder.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-h">7 · GM: Networks → a network's editor → Nodes (a new step)</div>
+<div class="mk-p">Every node of the network: where it is, its state, its lock, its alert and whether it's infected, with one-click Place / Edit / Switch off / Repair / Clean.</div>
+<div class="mk-row">
+  <div class="ncm-app ncm-admin-panel gm mk-win" data-ncm-admin-theme="T">
+    <div class="steps"><span>1 · Basics</span><span>2 · Where</span><span>3 · Access</span><span>4 · Signal</span><span class="on new">5 · Nodes</span><span>6 · Look</span><span>7 · Review</span></div>
+    <div class="card">
+      <div class="card-hd" style="box-shadow:inset 3px 0 0 #5c9bff"><i class="fas fa-tower-broadcast" style="color:#5c9bff"></i><b>NCPD Dispatch — 4 nodes</b><small>— with nodes, it reaches a scene only while one of its nodes there is on</small></div>
+      <table class="nodes">
+        <thead><tr><th>Node</th><th>Scene</th><th>State</th><th>Box</th><th>Alert</th><th>Planted</th><th></th></tr></thead>
+        <tbody>
+          <tr class="inf"><td><div class="nm"><i class="fas fa-tower-cell k"></i><div><b>Kabuki relay mast</b><small>relay · pin + area</small></div></div></td><td>Kabuki Market</td><td><span class="pill on">On</span></td><td><span class="pill lock"><i class="fas fa-lock"></i>Locked</span></td><td><span class="alert"><span class="al w"></span><span class="al"></span><span class="al"></span></span></td><td><span class="pill inf"><i class="fas fa-bug"></i>Worm · Tap</span></td><td><span class="ab"><span><i class="fas fa-crosshairs"></i></span><span><i class="fas fa-pen"></i></span><span><i class="fas fa-power-off"></i></span><span><i class="fas fa-broom"></i></span></span></td></tr>
+          <tr class="inf"><td><div class="nm"><i class="fas fa-server k"></i><div><b>Precinct 4 router</b><small>router · pin</small></div></div></td><td>NCPD Precinct 4</td><td><span class="pill jam">Jammed · 18m</span></td><td><span class="pill lock"><i class="fas fa-lock"></i>Locked</span></td><td><span class="alert"><span class="al w"></span><span class="al w"></span><span class="al a"></span></span></td><td><span class="pill inf"><i class="fas fa-bug"></i>Worm</span></td><td><span class="ab"><span><i class="fas fa-crosshairs"></i></span><span><i class="fas fa-pen"></i></span><span><i class="fas fa-power-off"></i></span><span><i class="fas fa-broom"></i></span></span></td></tr>
+          <tr><td><div class="nm"><i class="fas fa-box k"></i><div><b>Docks junction</b><small>junction · hidden</small></div></div></td><td>Docks — Container 9</td><td><span class="pill dmg">Damaged</span></td><td><span class="pill off">Open</span></td><td><span class="alert"><span class="al"></span><span class="al"></span><span class="al"></span></span></td><td>—</td><td><span class="ab"><span><i class="fas fa-crosshairs"></i></span><span><i class="fas fa-pen"></i></span><span><i class="fas fa-screwdriver-wrench"></i></span><span class="bad"><i class="fas fa-trash"></i></span></span></td></tr>
+          <tr><td><div class="nm"><i class="fas fa-satellite-dish k"></i><div><b>Watson mast</b><small>mast · pin</small></div></div></td><td>Watson street</td><td><span class="pill off">Off</span></td><td><span class="pill lock"><i class="fas fa-lock"></i>Locked</span></td><td><span class="alert"><span class="al"></span><span class="al"></span><span class="al"></span></span></td><td>—</td><td><span class="ab"><span><i class="fas fa-crosshairs"></i></span><span><i class="fas fa-pen"></i></span><span><i class="fas fa-power-off"></i></span><span class="bad"><i class="fas fa-trash"></i></span></span></td></tr>
+        </tbody>
+      </table>
+      <div class="add"><i class="fas fa-plus"></i>Add a node — opens Place on a scene…</div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-h">8 · GM: Networks → This scene — nodes on the dial</div>
+<div class="mk-p">Each network's column shows its nodes on this scene as lights you can click to switch on or off. When every node is off, the meter dims: the network is cut here.</div>
+<div class="mk-row">
+  <div class="ncm-app ncm-admin-panel gm mk-win" data-ncm-admin-theme="T" style="width:auto">
+    <div class="dialcols">
+      <div class="dc"><b>CitiNet</b><div class="seg20" data-l="15"></div><div class="ndl"><small>no nodes — as today</small></div></div>
+      <div class="dc"><b>NCPD Dispatch</b><div class="seg20" data-l="16"></div><div class="ndl"><span class="on" title="Kabuki relay mast · on"><i class="fas fa-tower-cell"></i></span><span class="inf" title="infected"><i class="fas fa-bug"></i></span></div><small>1 node · on · infected</small></div>
+      <div class="dc" style="--c:#ff3355"><b>Arasaka SecNet</b><div class="seg20 cut" data-l="18"></div><div class="ndl"><span class="off"><i class="fas fa-server"></i></span><span class="off"><i class="fas fa-satellite-dish"></i></span></div><small class="cut">cut here — 2 nodes off</small></div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-h">9 · GM: Security → Machines → Infections</div>
+<div class="mk-p">Infections sit beside terminal plants: which network, how far it has spread, who planted it, and what happens next (the next spread, or when a bomb goes off). Clean, Fire now, Remove.</div>
+<div class="mk-row">
+  <div class="ncm-app ncm-admin-panel gm mk-win" data-ncm-admin-theme="T">
+    <div class="card">
+      <div class="card-hd" style="box-shadow:inset 3px 0 0 var(--ncm-secret)"><i class="fas fa-bug" style="color:var(--ncm-secret)"></i><b>Infections</b><small>— programs planted in network nodes</small></div>
+      <div class="inf-row"><i class="fas fa-bug"></i><div><b>GHOSTWORM.bin · Worm + Tap</b><small>NCPD Dispatch · planted by <b style="display:inline;font-size:12px">Rache</b> at Kabuki relay mast · forged clean</small></div><div><div class="spread"><i class="x"></i><i class="x"></i><i></i><i></i><i></i><i></i></div><small>2 of 6 nodes</small></div><div><span class="clock">3h 12m</span><br><small>until it spreads</small></div><div style="display:flex;gap:5px;justify-content:flex-end"><span class="gb pri"><i class="fas fa-broom"></i>Clean</span><span class="gb"><i class="fas fa-forward"></i>Spread now</span><span class="gb bad"><i class="fas fa-trash"></i>Remove</span></div></div>
+      <div class="inf-row"><i class="fas fa-bomb"></i><div><b>Lights-out · Blackout bomb</b><small>Arasaka SecNet · planted by <b style="display:inline;font-size:12px">V</b> at 7F junction · shard still plugged in</small></div><div><div class="spread"><i class="x"></i></div><small>1 node</small></div><div><span class="clock">0h 41m</span><br><small>until it fires</small></div><div style="display:flex;gap:5px;justify-content:flex-end"><span class="gb pri"><i class="fas fa-broom"></i>Clean</span><span class="gb"><i class="fas fa-bolt"></i>Fire now</span><span class="gb bad"><i class="fas fa-trash"></i>Remove</span></div></div>
+      <div class="inf-row"><i class="fas fa-sack-dollar"></i><div><b>Paywall · Ransom</b><small>NCPD Dispatch · planted by <b style="display:inline;font-size:12px">Rache</b> · sloppy</small></div><div><small>locked for 4 · 1 paid (500 eb)</small></div><div><span class="clock" style="color:var(--ncm-bad)">live</span></div><div style="display:flex;gap:5px;justify-content:flex-end"><span class="gb pri"><i class="fas fa-broom"></i>Clean</span><span class="gb bad"><i class="fas fa-trash"></i>Remove</span></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const T = new URLSearchParams(location.search).get('t') || 'clean-dark';
+// ?only=N — show one numbered section (its heading + everything up to the next heading)
+{
+  const only = new URLSearchParams(location.search).get('only');
+  if (only) {
+    let show = false;
+    for (const el of [...document.body.children]) {
+      if (el.tagName === 'SCRIPT') continue;
+      if (el.classList.contains('mk-h')) show = el.textContent.trim().startsWith(only + ' ');
+      el.style.display = show ? '' : 'none';
+    }
+  }
+}
+document.querySelectorAll('[data-ncm-admin-theme]').forEach((el) => { el.dataset.ncmAdminTheme = T; el.dataset.ncmScanlines = 'false'; });
+// the dial meters
+document.querySelectorAll('.seg20').forEach((m) => {
+  const lit = Number(m.dataset.l || 15);
+  m.innerHTML = Array.from({ length: 20 }, (_, i) => `<i class="${i < lit ? 'l' : ''}"></i>`).join('');
+});
+</script>
+</body>
+</html>

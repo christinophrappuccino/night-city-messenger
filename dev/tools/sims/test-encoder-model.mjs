@@ -695,7 +695,7 @@ check('the badge colour is one the stylesheet actually defines', () => {
   const m = tab.match(/type: made\.outcome === 'sloppy' \? '(\w+)' : '(\w+)'/);
   assert.ok(m, 'the badge type is not set the way this check expects');
   for (const colour of [m[1], m[2]]) {
-    assert.ok(css.includes(`ncm-sc-badge--${colour}`), `no badge style for "${colour}"`);
+    assert.ok(css.includes(`ncm-sh2-tag--${colour}`), `no tag style for "${colour}"`);
   }
 });
 
@@ -909,13 +909,13 @@ check('picking a preset adopts its animation until the player picks their own', 
 check('the GM can gather player-made shards by maker', () => {
   const tab = fs.readFileSync(path.join(ROOT, 'scripts/ui/AdminPanel/tabs/ShardsTab.js'), 'utf8');
   assert.ok(tab.includes("case 'maker':"), 'no maker grouping');
-  assert.ok(tab.includes("const order = ['owner', 'maker', 'preset', 'status', 'none']"), 'it must be in the cycle');
+  assert.ok(/SHARD_GROUP_MODES = Object\.freeze\(\{[^}]*maker:/.test(tab), 'it must be a group-by choice');
   assert.ok(tab.includes('makerName,'), 'the row must carry the maker');
 });
 
 check('the GM card says WHERE a player-made shard lives', () => {
   const tpl = fs.readFileSync(path.join(ROOT, 'templates/admin-panel/tab-shards.hbs'), 'utf8');
-  assert.ok(tpl.includes('ncm-shard-authoring__where'), 'no explanation on the card');
+  assert.ok(tpl.includes('ncm-sh2-auth__where'), 'no explanation on the authoring strip');
   assert.ok(tpl.includes('Data Shards → Player-Made'), 'it must name the journal folder');
   assert.ok(tpl.includes("character's gear"), 'and say the ITEM cannot be foldered');
 });
@@ -1220,14 +1220,14 @@ check('the startup wears the chip the player designed', () => {
   assert.ok(fn.includes("else if (!out.faIcon)"), 'and a glyph must still be there if there is no art');
 });
 
-check('Copy to Items sits with Configure, not in the danger row', () => {
+check('Copy to Items sits in the header ⋯ menu, above the danger item', () => {
+  // 2026-10-27 redesign: Relock all / Copy player shards to Items / Purge sit in ⋯.
   const tpl = fs.readFileSync(path.join(ROOT, 'templates/admin-panel/tab-shards.hbs'), 'utf8');
-  const card = tpl.indexOf('ncm-shard-authoring');
+  const menu = tpl.indexOf('data-menu-id="more"');
   const btn = tpl.indexOf('data-action="archiveShards"');
-  const cfgBtn = tpl.indexOf('data-action="openEncoderConfig"');
-  assert.ok(btn > card && btn < cfgBtn + 400, 'it belongs on the Player Authoring card');
-  assert.ok(!tpl.slice(tpl.indexOf('ncm-shard-quick-actions')).includes('archiveShards'),
-    'and not in Quick Actions any more');
+  const danger = tpl.indexOf('ncm-sh2-menu__it--danger', menu);
+  assert.ok(menu > -1 && btn > menu && btn < danger, 'it belongs in the ⋯ menu, above the separator');
+  assert.equal((tpl.match(/data-action="archiveShards"/g) || []).length, 1, 'exactly one door');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

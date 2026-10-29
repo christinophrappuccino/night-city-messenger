@@ -7,11 +7,20 @@
  *
  *     node dev/tools/gen-macros.cjs
  *
- * It writes the two NeDB compendium packs declared in module.json:
- *   packs/ncm-macros-player.db   (default ownership OBSERVER — players can run)
- *   packs/ncm-macros-gm.db       (default ownership NONE — GM only)
+ * It writes the two compendium packs declared in module.json, in BOTH formats:
+ *   packs/ncm-macros-player.db  +  packs/ncm-macros-player/   (default ownership OBSERVER)
+ *   packs/ncm-macros-gm.db      +  packs/ncm-macros-gm/       (default ownership NONE — GM only)
  *
- * Each pack line is one Macro document (newline-delimited JSON, NeDB format).
+ * The .db (newline-delimited JSON, NeDB) is the readable, diffable copy that is
+ * committed. The FOLDER is the LevelDB pack Foundry actually loads (module.json
+ * points at it). Shipping NeDB alone made Foundry convert it on the user's server
+ * at load — a read-only host (The Forge…) cannot, and the pack was "not found";
+ * a leftover empty folder then shadowed the .db ("the compendium is empty").
+ * The folder is written with Foundry's OWN LevelDB library (classic-level), found
+ * in the local Foundry install, or in node_modules on CI (release.yml installs it).
+ * CLOSE FOUNDRY FIRST — a running world holds the folder's LOCK.
+ * Without classic-level the .db files are still written and checked, the folders
+ * are skipped with a warning (pass --require-ldb to make that an error: CI does).
  * Every shipped macro carries flags.night-city-messenger.managed=true so the
  * Admin Panel "Import / Reinstall NCM Macros" action can overwrite exactly
  * these and never clobber a GM's own macros.
@@ -415,7 +424,9 @@ function doc(m, ownershipDefault, packKey, sort) {
 }
 
 function writePack(file, macros, ownershipDefault, packKey, accent) {
-  const lines = macros.map((m, i) => JSON.stringify(doc(m, ownershipDefault, packKey, (i + 1) * 100)));
+  const docs = macros.map((m, i) => doc(m, ownershipDefault, packKey, (i + 1) * 100));
+  WRITTEN.push({ folder: file.replace(/\.db$/, ''), docs });
+  const lines = docs.map((d) => JSON.stringify(d));
   fs.writeFileSync(path.join(PACKS_DIR, file), lines.join('\n') + '\n', 'utf8');
 
   // Validate every line round-trips and parses the way Foundry runs it:
@@ -456,6 +467,44 @@ function writeReadme() {
 
 if (!fs.existsSync(PACKS_DIR)) fs.mkdirSync(PACKS_DIR, { recursive: true });
 if (!fs.existsSync(ICON_FS_DIR)) fs.mkdirSync(ICON_FS_DIR, { recursive: true });
+// ── LevelDB: the pack folders Foundry loads ──
+const WRITTEN = [];
+function findClassicLevel() {
+  const { createRequire } = require('module');
+  const tries = [];
+  if (process.env.NCM_CLASSIC_LEVEL) tries.push(process.env.NCM_CLASSIC_LEVEL);
+  tries.push(path.join(__dirname, '..', '..', 'node_modules', 'package.json'));
+  for (const base of ['C:/Program Files/Foundry Virtual Tabletop', 'C:/Program Files (x86)/Foundry Virtual Tabletop', '/opt/foundryvtt', '/Applications/Foundry Virtual Tabletop.app/Contents/Resources'])
+    tries.push(path.join(base, 'resources', 'app', 'package.json'));
+  for (const p of tries) {
+    try { return createRequire(p)('classic-level').ClassicLevel; } catch { /* next */ }
+  }
+  try { return require('classic-level').ClassicLevel; } catch { return null; }
+}
+async function writeLevelPacks() {
+  const ClassicLevel = findClassicLevel();
+  if (!ClassicLevel) {
+    const msg = 'classic-level not found — the LevelDB pack folders were NOT written (the .db files were). Run with Foundry installed, or npm install classic-level.';
+    if (process.argv.includes('--require-ldb')) { console.error('gen-macros: ' + msg); process.exit(1); }
+    console.warn('gen-macros: ' + msg);
+    return;
+  }
+  for (const { folder, docs } of WRITTEN) {
+    const dir = path.join(PACKS_DIR, folder);
+    try { fs.rmSync(dir, { recursive: true, force: true }); }
+    catch (e) { console.error('gen-macros: could not clear ' + dir + ' — close Foundry first (a running world holds the pack). ' + e.message); process.exit(1); }
+    const db = new ClassicLevel(dir, { keyEncoding: 'utf8', valueEncoding: 'json' });
+    await db.batch(docs.map((d) => ({ type: 'put', key: '!macros!' + d._id, value: d })));
+    let n = 0;
+    for await (const [k, v] of db.iterator()) { if (!k.startsWith('!macros!') || k.slice(8) !== v._id) throw new Error('bad key ' + k); n++; }
+    await db.close();
+    for (const junk of ['LOCK', 'LOG', 'LOG.old']) fs.rmSync(path.join(dir, junk), { force: true });
+    if (n !== docs.length) throw new Error(folder + ': wrote ' + docs.length + ', read back ' + n);
+    console.log(folder + '/: ' + n + ' macros written as LevelDB (read back OK)');
+  }
+}
+
 writePack('ncm-macros-player.db', PLAYER, 2, 'player', '#00E5FF');
 writePack('ncm-macros-gm.db', GM, 0, 'gm', '#FF2A6D');
 writeReadme();
+writeLevelPacks().catch((e) => { console.error('gen-macros: ' + e.message); process.exit(1); });

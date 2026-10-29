@@ -15,6 +15,7 @@
  */
 
 import { resolveTerminalSound } from '../../utils/helpers.js';
+import { bypassDCFor } from '../../utils/bypassSkills.js';
 
 /**
  * Network adapter — preserves the original NetworkService-backed behavior
@@ -38,8 +39,8 @@ export class NetworkAuthAdapter {
     return this._svc?.authenticatePassword(this.networkId, password) ?? { success: false };
   }
 
-  checkSkill(total, skillName) {
-    return this._svc?.authenticateSkillCheck(this.networkId, total, skillName) ?? { success: false };
+  checkSkill(total, skillName, opts = {}) {
+    return this._svc?.authenticateSkillCheck(this.networkId, total, skillName, opts) ?? { success: false };
   }
 
   /** Mark the network authenticated (GM bypass + on-complete). */
@@ -107,15 +108,15 @@ export class TerminalAuthAdapter {
   }
 
   /** Pre-rolled total vs the account's bypass DV (mirrors NetworkService). */
-  checkSkill(total, skillName) {
+  checkSkill(total, skillName, { silent = false } = {}) {
     const sec = this._svc?.getAccount(this.item, this.accountId)?.security || {};
     if (!sec.requiresAuth) return { success: true };
-    const dc = sec.bypassDC ?? 15;
+    const dc = bypassDCFor(sec, skillName);
     if (total >= dc) {
-      this._play('hack-success');
+      if (!silent) this._play('hack-success');
       return { success: true };
     }
-    this._play('hack-fail');
+    if (!silent) this._play('hack-fail');
     return { success: false, reason: 'skill_check_failed' };
   }
 

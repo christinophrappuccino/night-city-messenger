@@ -322,6 +322,17 @@ export const PROGRAM_EFFECTS = Object.freeze({
   logicBomb:    { label: 'Logic bomb',   icon: 'fas fa-bomb',            blurb: 'holds another effect until its trigger fires',    modes: ['triggered'],            host: 'terminal', group: 'Persistence',
     params: [{ f: 'inner', type: 'effect', label: 'Effect to hold', hint: 'Any triggered effect except another logic bomb.' }] },
 
+  // ── Network: inserted into a network NODE from a jack-in session (dev/design/NETWORK-NODES.md, step 5). Mode 'node'
+  //    keeps them out of every terminal / payload picker; the applier is NetworkService.insertProgram. ──
+  nodeWorm:     { label: 'Worm',          icon: 'fas fa-bug',              blurb: 'copies itself to another node of the network every few hours', modes: ['node'], host: 'node', group: 'Network',
+    params: [{ f: 'every', type: 'number', label: 'Spreads every (h)', def: 3 }, { f: 'maxNodes', type: 'number', label: 'Most nodes', def: 6 }, { f: 'carry', type: 'text', label: 'Carries', hint: 'tap / bomb / sniffer, or blank' }] },
+  nodeTap:      { label: 'Tap',           icon: 'fas fa-ear-listen',       blurb: 'mail sent over the network is copied to you',       modes: ['node'], host: 'node', group: 'Network' },
+  nodeBomb:     { label: 'Blackout bomb', icon: 'fas fa-bomb',             blurb: 'after a delay every node it reached goes dark',     modes: ['node'], host: 'node', group: 'Network',
+    params: [{ f: 'delay', type: 'number', label: 'Goes off after (h)', def: 2 }] },
+  nodeSniffer:  { label: 'Sniffer',       icon: 'fas fa-satellite-dish',   blurb: 'records traffic — come back and collect it',        modes: ['node'], host: 'node', group: 'Network',
+    params: [{ f: 'cap', type: 'number', label: 'Keeps up to', def: 20 }] },
+  nodePatch:    { label: 'Patch',         icon: 'fas fa-kit-medical',      blurb: 'cleans every infection on the node',                modes: ['node'], host: 'node', group: 'Network' },
+
   // ── Fallback ──
   adjudicate:   { label: 'Program',      icon: 'fas fa-bolt',            blurb: 'runs a custom routine (GM adjudicates the effect)', modes: ['instant', 'triggered'], host: 'any',    group: 'Custom' },
 });

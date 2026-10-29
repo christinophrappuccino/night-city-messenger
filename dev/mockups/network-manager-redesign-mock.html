@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network Manager Redesign — mock</title>
+<!--
+  NETWORK MANAGER, CLEANED UP — design mock (2026-10-27).
+
+  Mostly good already; this strips the leftovers and tidies the editor:
+    · no scanline film (.ncm-netmgr::after), no gradient accent bar, no pulsing
+      icon ring, no "GM Clearance // Network Operations" flavour — a plain
+      header: title + one summary line + New network;
+    · tabs renamed to match the admin panel: Networks · Scenes · Activity log;
+    · the editor is no longer one long form: six sections you step through
+      (Identity · Signal · Access · Behaviour · Where · Look), Save/Cancel pinned;
+    · the comma-separated "allowed recipients" box becomes a chip picker, the
+      bypass skills are rows with their own DV, "Where" is a scene checklist,
+      "Look" has a live preview;
+    · Scenes: pick a scene, switch networks on/off for it, dead zone, start network.
+
+  ?view=detail|edit|scenes   ?step=identity|signal|access|behaviour|where|look   ?t=clean-dark|clean-light|high-contrast
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  html, body { margin: 0; background: #06060a; color: #8fa0b2; font-family: 'Rajdhani', sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; padding: 9px 14px;
+    background: #0b0b12; border-bottom: 1px solid #1b1b28; font: 11px 'Share Tech Mono', monospace; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a; padding: 3px 8px; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+  .bar a.on { color: #07070b; background: #19f3f7; border-color: #19f3f7; }
+  .stage { display: flex; gap: 26px; justify-content: center; padding: 24px 16px 60px; flex-wrap: wrap; }
+  .notes { width: 320px; font-size: 14px; line-height: 1.5; color: #9aa6b4; }
+  .notes h3 { margin: 0 0 6px; font: 700 12px 'Rajdhani'; letter-spacing: .14em; text-transform: uppercase; color: #e6edf5; }
+  .notes p { margin: 0 0 12px; } .notes b { color: #d6dee8; }
+  .mk, .mk.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  /* the window: 800 × 600, its default size */
+  .mk-win { width: 800px; height: 600px; display: flex; flex-direction: column; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .mk-win__frame { height: 30px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: var(--ncm-bg-base); border-bottom: 1px solid var(--ncm-border);
+    font: 700 12px var(--ncm-font-display); letter-spacing: .04em; color: var(--ncm-text-primary); }
+  .mk-win__frame .x { margin-left: auto; color: var(--ncm-text-secondary); }
+
+  /* ═════════════ the window body — .ncm-nm2-* ═════════════ */
+  .ncm-app .ncm-nm2 { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .ncm-app .ncm-nm2-hd { display: flex; align-items: center; gap: 4px 12px; padding: 10px 14px 0; flex: none; }
+  .ncm-app .ncm-nm2-hd h2 { margin: 0; border: 0; text-shadow: none !important; font: 700 16px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-hd p { margin: 0; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-hd .grow { flex: 1; }
+  .ncm-app .ncm-nm2-tabs { display: flex; gap: 4px; padding: 8px 14px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .ncm-app button.ncm-nm2-tab { appearance: none; width: auto !important; height: 28px !important; min-height: 0 !important; margin: 0 !important; white-space: nowrap;
+    display: inline-flex !important; align-items: center; gap: 6px; padding: 0 10px !important; border-radius: 2px !important; cursor: pointer;
+    background: transparent !important; border: 1px solid transparent !important; box-shadow: none !important;
+    font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary) !important; }
+  .ncm-app button.ncm-nm2-tab.on { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-surface) !important; border-color: var(--ncm-border) !important; box-shadow: inset 0 -2px 0 var(--ncm-secondary) !important; }
+  .ncm-app .ncm-nm2-tab i { color: var(--ncm-secondary); font-size: 11px; }
+  .ncm-app .ncm-nm2-tab .n { font: 10px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-app .ncm-nm2-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 240px 1fr; }
+
+  /* list */
+  .ncm-app .ncm-nm2-list { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--ncm-border); background: var(--ncm-bg-base); }
+  .ncm-app .ncm-nm2-search { padding: 8px; border-bottom: 1px solid var(--ncm-border); position: relative; flex: none; }
+  .ncm-app .ncm-nm2-search i { position: absolute; left: 17px; top: 50%; transform: translateY(-50%); color: var(--ncm-text-muted); font-size: 11px; }
+  .ncm-app .ncm-nm2-search input { width: 100%; height: 28px; padding-left: 26px !important; box-sizing: border-box; }
+  .ncm-app .ncm-nm2-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  .ncm-app .ncm-nm2-grp { position: sticky; top: 0; z-index: 2; display: flex; padding: 5px 10px; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border);
+    font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-grp .n { margin-left: auto; font: 10px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-app .ncm-nm2-r { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 6px 10px; cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); border-left: 2px solid transparent; }
+  .ncm-app .ncm-nm2-r:hover { background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); }
+  .ncm-app .ncm-nm2-r.sel { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border-left-color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-r .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-nm2-r .sub { font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-nm2-r .st { font: 10px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-app .ncm-nm2-ic { width: 26px; height: 26px; flex: none; border-radius: 2px; display: grid; place-items: center; font-size: 11px;
+    background: color-mix(in srgb, var(--c) 14%, var(--ncm-bg-deep)); color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+
+  /* right pane */
+  .ncm-app .ncm-nm2-pane { min-height: 0; display: flex; flex-direction: column; background: var(--ncm-bg-deep); }
+  .ncm-app .ncm-nm2-phead { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .ncm-app .ncm-nm2-phead .ncm-nm2-ic { width: 36px; height: 36px; font-size: 15px; }
+  .ncm-app .ncm-nm2-phead .nm { font: 700 16px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-phead .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-phead .acts { display: flex; gap: 5px; }
+  .ncm-app .ncm-nm2-pscroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  .ncm-app .ncm-nm2-sec { padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-nm2-sec > .k { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-sec > .k i { color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-sec > .k a { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-secondary); cursor: pointer; font-weight: 400; }
+  .ncm-app .ncm-nm2-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-app .ncm-nm2-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 2px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-tag i { font-size: 11px; color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-tag .m { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-tag.bad i { color: var(--ncm-danger); } .ncm-app .ncm-nm2-tag.warn i { color: var(--ncm-warning); }
+  .ncm-app .ncm-nm2-kv { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .ncm-app .ncm-nm2-kv div { padding: 6px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-app .ncm-nm2-kv .l { display: block; font: 700 9px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-kv .v { font: 15px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-quiet { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+  /* editor */
+  .ncm-app .ncm-nm2-steps { display: flex; gap: 3px; padding: 7px 14px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-base); flex: none; flex-wrap: wrap; }
+  .ncm-app .ncm-nm2-step { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 2px; cursor: pointer; border: 1px solid transparent;
+    font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-step i { font-size: 11px; }
+  .ncm-app .ncm-nm2-step.on { color: var(--ncm-text-primary); background: var(--ncm-bg-surface); border-color: var(--ncm-border); box-shadow: inset 0 -2px 0 var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-step.on i { color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-form { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .ncm-app .ncm-nm2-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ncm-app .ncm-nm2-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .ncm-app .ncm-nm2-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .ncm-app .ncm-nm2-f > span { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-f input, .ncm-app .ncm-nm2-f select, .ncm-app .ncm-nm2-f textarea { width: 100%; box-sizing: border-box; }
+  .ncm-app .ncm-nm2-f input, .ncm-app .ncm-nm2-f select { height: 28px; }
+  .ncm-app .ncm-nm2-f textarea { min-height: 54px; resize: vertical; }
+  .ncm-app .ncm-nm2-f small { font: 12px var(--ncm-font-body); color: var(--ncm-text-muted); text-transform: none; letter-spacing: 0; }
+  .ncm-app .ncm-nm2-f input[type=range] { height: 18px; padding: 0; background: none; border: 0; accent-color: var(--ncm-secondary); }
+  .ncm-app button.ncm-nm2-btn { appearance: none; width: auto !important; height: 28px !important; min-height: 0 !important; margin: 0 !important; white-space: nowrap;
+    display: inline-flex !important; align-items: center; justify-content: center; gap: 6px; padding: 0 11px !important; border-radius: 2px !important; cursor: pointer;
+    background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border-active, var(--ncm-border)) !important; box-shadow: none !important;
+    font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary) !important; }
+  .ncm-app button.ncm-nm2-btn:hover { border-color: var(--ncm-secondary) !important; }
+  .ncm-app button.ncm-nm2-btn i { margin: 0 !important; font-size: 11px; }
+  .ncm-app button.ncm-nm2-btn--primary { background: color-mix(in srgb, var(--ncm-secondary) 14%, var(--ncm-bg-surface)) !important; border-color: var(--ncm-secondary) !important; color: var(--ncm-secondary) !important; }
+  .ncm-app button.ncm-nm2-btn--icon { width: 28px !important; padding: 0 !important; }
+  .ncm-app .ncm-nm2-seg { display: inline-flex; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+  .ncm-app .ncm-nm2-seg span { padding: 5px 11px; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); border-right: 1px solid var(--ncm-border); cursor: pointer; }
+  .ncm-app .ncm-nm2-seg span:last-child { border-right: 0; }
+  .ncm-app .ncm-nm2-seg span.on { background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent); color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-method { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-app .ncm-nm2-method.on { border-color: color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border)); }
+  .ncm-app .ncm-nm2-method > .h { display: flex; align-items: center; gap: 9px; padding: 8px 10px; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-method > .h i { color: var(--ncm-secondary); width: 14px; text-align: center; }
+  .ncm-app .ncm-nm2-method > .h small { font: 12px var(--ncm-font-body); font-weight: 400; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-method > .h .tg { margin-left: auto; display: inline-flex; }
+  .ncm-app .ncm-nm2-method > .b { padding: 0 10px 10px 33px; display: flex; flex-direction: column; gap: 8px; }
+  .ncm-app .ncm-nm2-method:not(.on) > .b { display: none; }
+  .ncm-app .ncm-nm2-sw { width: 30px; height: 16px; flex: none; border-radius: 8px; position: relative; cursor: pointer; background: var(--ncm-border); }
+  .ncm-app .ncm-nm2-sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-sw.on { background: color-mix(in srgb, var(--ncm-success) 55%, transparent); }
+  .ncm-app .ncm-nm2-sw.on::after { left: 16px; background: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-chiprow { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-app .ncm-nm2-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 2px; border: 1px solid var(--ncm-border); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); background: var(--ncm-bg-surface); }
+  .ncm-app .ncm-nm2-chip i { font-size: 10px; color: var(--c, var(--ncm-secondary)); }
+  .ncm-app .ncm-nm2-chip .x { color: var(--ncm-text-muted); margin-left: 2px; }
+  .ncm-app .ncm-nm2-chip.add { border-style: dashed; color: var(--ncm-secondary); background: transparent; }
+  .ncm-app .ncm-nm2-check { display: flex; align-items: center; gap: 9px; padding: 6px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-check small { color: var(--ncm-text-secondary); margin-left: auto; font-size: 12px; }
+  .ncm-app .ncm-nm2-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .ncm-app .ncm-nm2-foot { display: flex; gap: 6px; align-items: center; padding: 9px 14px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-base); flex: none; }
+  .ncm-app .ncm-nm2-foot .grow { flex: 1; }
+  .ncm-app .ncm-nm2-foot .note { font: 12px var(--ncm-font-body); color: var(--ncm-text-muted); }
+  .ncm-app .ncm-nm2-presets { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-app .ncm-nm2-icons { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+  .ncm-app .ncm-nm2-icons span { aspect-ratio: 1; display: grid; place-items: center; border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-secondary); cursor: pointer; }
+  .ncm-app .ncm-nm2-icons span.on { border-color: var(--ncm-secondary); color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); }
+  .ncm-app .ncm-nm2-sw8 { display: flex; gap: 5px; align-items: center; }
+  .ncm-app .ncm-nm2-sw8 span { width: 22px; height: 22px; border-radius: 2px; cursor: pointer; border: 2px solid transparent; }
+  .ncm-app .ncm-nm2-sw8 span.on { border-color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-preview { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px dashed var(--ncm-border); border-radius: 2px; }
+  .ncm-app .ncm-nm2-preview .pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 12px; border: 1px solid #4488ff; color: #4488ff; font: 700 12px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; }
+  /* bypass rows: the real component (styles/components/bypass-skills.css) */
+  .ncm-app .ncm-nm2-sr { display: flex; flex-direction: column; gap: 4px; }
+
+  /* scenes tab: right pane */
+  .ncm-app .ncm-nm2-nets { display: flex; flex-direction: column; border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .ncm-app .ncm-nm2-netrow { display: grid; grid-template-columns: 26px 1fr auto 30px; gap: 9px; align-items: center; padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .ncm-app .ncm-nm2-netrow:last-child { border-bottom: 0; }
+  .ncm-app .ncm-nm2-netrow .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-netrow .nm small { font: 12px var(--ncm-font-body); font-weight: 400; color: var(--ncm-text-secondary); margin-left: 6px; }
+  .ncm-app .ncm-nm2-netrow .sig { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-netrow.off .nm { color: var(--ncm-text-muted); }
+  /* activity log (full width) */
+  .ncm-app .ncm-nm2-logwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 14px 14px; }
+  .ncm-app .ncm-nm2-logtb { display: flex; gap: 6px; align-items: center; margin-bottom: 7px; flex: none; }
+  .ncm-app .ncm-nm2-srch { flex: 1; position: relative; }
+  .ncm-app .ncm-nm2-srch i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--ncm-text-muted); font-size: 11px; }
+  .ncm-app .ncm-nm2-srch input { width: 100%; height: 28px; padding-left: 26px !important; box-sizing: border-box; }
+  .ncm-app .ncm-nm2-logtb select { width: auto; height: 28px; }
+  .ncm-app .ncm-nm2-logchips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; flex: none; }
+  .ncm-app .ncm-nm2-lchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer;
+    background: var(--ncm-bg-base); font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); user-select: none; }
+  .ncm-app .ncm-nm2-lchip .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-app .ncm-nm2-lchip.on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 9%, var(--ncm-bg-base)); }
+  .ncm-app .ncm-nm2-lchip.on .n { color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-addnote { display: flex; gap: 6px; align-items: center; margin-bottom: 9px; padding: 8px; border: 1px solid color-mix(in srgb, var(--ncm-accent) 45%, var(--ncm-border)); border-radius: 2px;
+    background: color-mix(in srgb, var(--ncm-accent) 6%, var(--ncm-bg-base)); flex: none; }
+  .ncm-app .ncm-nm2-addnote select { width: auto; height: 28px; }
+  .ncm-app .ncm-nm2-addnote input { flex: 1; height: 28px; }
+  .ncm-app .ncm-nm2-log { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-app .ncm-nm2-lrow { display: grid; grid-template-columns: 44px 112px minmax(0, 1fr) 120px 46px; gap: 10px; align-items: center; padding: 7px 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-lrow:last-child { border-bottom: 0; }
+  .ncm-app .ncm-nm2-lrow:hover { background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent); }
+  .ncm-app .ncm-nm2-lrow .w { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-lrow .ty { display: inline-flex; align-items: center; gap: 6px; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--c); white-space: nowrap; }
+  .ncm-app .ncm-nm2-lrow .tx { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-nm2-lrow .net { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-nm2-lrow .act { display: flex; gap: 9px; justify-content: flex-end; color: var(--ncm-text-secondary); font-size: 11px; }
+  .ncm-app .ncm-nm2-lrow .act i { cursor: pointer; }
+  .ncm-app .ncm-nm2-lrow .act i:hover { color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-saved { font: 700 11px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-success); }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="stage">
+  <div class="mk mk-win ncm-app ncm-network-management" id="win" data-ncm-scanlines="false">
+    <div class="mk-win__frame"><i class="fas fa-network-wired" style="color:var(--ncm-secondary)"></i>Network Manager<i class="fas fa-xmark x"></i></div>
+    <div class="ncm-nm2" id="body"></div>
+  </div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<script src="scope-picker.js"></script>
+<script>
+const Q = new URLSearchParams(location.search);
+document.getElementById('win').dataset.ncmAdminTheme = Q.get('t') || 'clean-dark';
+let VIEW = Q.get('view') || 'detail';
+let STEP = Q.get('step') || 'access';
+let SCENE = 'Arasaka Tower — 7th Floor';
+
+const N = [
+  ['Public', [['CitiNet', '#19f3f7', 'fa-wifi', 'Everywhere · open'], ['Data Pool', '#f7c948', 'fa-database', 'Everywhere · open']]],
+  ['Corporate', [['CorpNet', '#4488ff', 'fa-building', '3 scenes · secured', 1], ['Arasaka SecNet', '#ff3355', 'fa-shield-halved', '1 scene · Black ICE'], ['Militech tactical', '#7fbf3f', 'fa-crosshairs', 'off']]],
+  ['Underground', [['DarkNet', '#00ff41', 'fa-mask', '3 scenes · open'], ['Afterlife mesh', '#c76bff', 'fa-skull', '1 scene · secured'], ['Maelstrom relay', '#ff4d4d', 'fa-radiation', '1 scene · Black ICE']]],
+  ['Government', [['GovNet', '#ff6600', 'fa-landmark', '1 scene · secured'], ['NCPD Dispatch', '#5c9bff', 'fa-handcuffs', '1 scene · secured']]],
+  ['Custom', [['Aldecaldo band', '#d4a35c', 'fa-tower-broadcast', '2 scenes · secured'], ['Trauma Team', '#ff5577', 'fa-truck-medical', 'nowhere yet']]],
+];
+const SC = ['Arasaka Tower — 7th Floor', 'Arasaka Tower — Lobby', 'The Afterlife', 'Vik’s clinic', 'Totentanz', 'NCPD Precinct 7', 'Badlands — Route 66', 'Badlands — Camp', 'Biotechnica HQ', 'Watson — Kabuki market', 'Militech checkpoint'];
+const btn = (label, cls = '', icon = '', attrs = '') => `<button type="button" class="ncm-nm2-btn ${cls.replace(/ncm-term-admin-btn--/g, 'ncm-nm2-btn--')}" ${attrs}>${icon ? `<i class="fas ${icon}"></i>` : ''}${label ? ` ${label}` : ''}</button>`;
+const ic = (c, i) => `<span class="ncm-nm2-ic" style="--c:${c}"><i class="fas ${i}"></i></span>`;
+
+const netList = () => `
+  <div class="ncm-nm2-search"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search networks…"></div>
+  <div class="ncm-nm2-scroll">${N.map(([g, rows]) => `<div class="ncm-nm2-grp">${g}<span class="n">${rows.length}</span></div>`
+    + rows.map(([n, c, i, sub, sel]) => `<div class="ncm-nm2-r ${sel ? 'sel' : ''}">${ic(c, i)}<div style="min-width:0"><div class="nm">${n}</div><div class="sub">${sub}</div></div><span class="st"></span></div>`).join('')).join('')}</div>`;
+
+const head = (acts) => `<div class="ncm-nm2-phead">${ic('#4488ff', 'fa-building')}<div><div class="nm">CorpNet</div><div class="sub">Corporate · core network</div></div><div class="acts">${acts}</div></div>`;
+
+const DETAIL = () => `
+  ${head(btn('Edit', 'ncm-term-admin-btn--primary', 'fa-pen') + btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'title="Reset logins · Duplicate · Export"'))}
+  <div class="ncm-nm2-pscroll">
+    <div class="ncm-nm2-sec"><div class="ncm-nm2-kv">
+      <div><span class="l">Signal</span><span class="v">95%</span></div><div><span class="l">Reliability</span><span class="v">99%</span></div><div><span class="l">Delay</span><span class="v">none</span></div></div></div>
+    <div class="ncm-nm2-sec"><div class="k"><i class="fas fa-lock"></i>Getting in</div>
+      <div class="ncm-nm2-tags"><span class="ncm-nm2-tag"><i class="fas fa-key"></i>Password</span><span class="ncm-nm2-tag"><i class="fas fa-dice-d20"></i>Interface <span class="m">DV 15</span></span><span class="ncm-nm2-tag"><i class="fas fa-dice-d20"></i>Electronics/Security Tech <span class="m">DV 17</span></span><span class="ncm-nm2-tag"><i class="fas fa-id-badge"></i>Corporate ID</span></div>
+      <div class="ncm-nm2-quiet" style="margin-top:6px">Any one of these · 3 attempts, then a 1-hour lockout</div></div>
+    <div class="ncm-nm2-sec"><div class="k"><i class="fas fa-sliders"></i>Behaviour</div>
+      <div class="ncm-nm2-tags"><span class="ncm-nm2-tag bad"><i class="fas fa-satellite-dish"></i>Traffic is traced</span><span class="ncm-nm2-tag"><i class="fas fa-envelope"></i>Can message <span class="m">CorpNet, CitiNet</span></span></div></div>
+    <div class="ncm-nm2-sec"><div class="k"><i class="fas fa-location-dot"></i>Where it exists<a>Edit scenes</a></div>
+      <div class="ncm-nm2-tags">${SC.filter((s) => /Arasaka|Biotech/.test(s)).map((s) => `<span class="ncm-nm2-tag"><i class="fas fa-map"></i>${s}</span>`).join('')}</div></div>
+    <div class="ncm-nm2-sec" style="border-bottom:0"><div class="k"><i class="fas fa-book"></i>Notes</div><div class="ncm-nm2-quiet">Corporate communications. Arasaka runs its own SecNet inside the tower — CorpNet is the lobby-level layer.</div></div>
+  </div>`;
+
+const STEPS = [['identity', 'fa-id-card', 'Identity'], ['signal', 'fa-signal', 'Signal'], ['access', 'fa-lock', 'Access'], ['behaviour', 'fa-sliders', 'Behaviour'], ['where', 'fa-location-dot', 'Where'], ['look', 'fa-palette', 'Look']];
+const sw = (on) => `<span class="ncm-nm2-sw ${on ? 'on' : ''}"></span>`;
+const bypassRow = (n, dv) => `<div class="ncm-bypass__row"><select class="ncm-bypass__skill"><option>${n}</option></select><span class="ncm-bypass__dvl">DV</span><input type="number" class="ncm-bypass__dv" value="${dv}"><button type="button" class="ncm-bypass__rm"><i class="fas fa-xmark"></i></button></div>`;
+const FORM = {
+  identity: `<div class="ncm-nm2-row"><label class="ncm-nm2-f"><span>Name</span><input type="text" value="CorpNet"></label><label class="ncm-nm2-f"><span>Type</span><select><option>Corporate</option></select></label></div>
+    <label class="ncm-nm2-f"><span>Description</span><input type="text" value="Corporate communications"><small>Players see this when they pick the network.</small></label>
+    <label class="ncm-nm2-f"><span>GM notes</span><textarea>Arasaka runs its own SecNet inside the tower — CorpNet is the lobby-level layer.</textarea><small>Only you see these.</small></label>
+    <label class="ncm-nm2-f"><span>Group</span><input type="text" value="Corporate"><small>Groups networks in the lists.</small></label>`,
+  signal: `<div class="ncm-nm2-row three"><label class="ncm-nm2-f"><span>Signal %</span><input type="number" value="95"></label><label class="ncm-nm2-f"><span>Reliability %</span><input type="number" value="99"></label><label class="ncm-nm2-f"><span>Delay (ms)</span><input type="number" value="0"></label></div>
+    <div class="ncm-nm2-quiet">Signal sets how garbled messages get. Reliability is how often a send drops. Delay holds each message before it arrives.</div>`,
+  access: `<div class="ncm-nm2-row"><label class="ncm-nm2-f"><span>Needs a login</span><span class="ncm-nm2-seg"><span>Open</span><span class="on">Secured</span></span></label>
+      <label class="ncm-nm2-f"><span>Players need</span><span class="ncm-nm2-seg"><span class="on">Any one method</span><span>All of them</span></span></label></div>
+    <div class="ncm-nm2-method on"><div class="h"><i class="fas fa-key"></i>Password <small>a passphrase they’re given or find</small><span class="tg">${sw(1)}</span></div>
+      <div class="b"><div class="ncm-nm2-row"><label class="ncm-nm2-f"><span>Password</span><input type="text" value="kiroshi-blue"></label><label class="ncm-nm2-f"><span>Attempts, then lock out for</span><div style="display:flex;gap:6px"><input type="number" value="3" style="width:60px"><input type="number" value="60" style="width:70px"><small style="align-self:center">min</small></div></label></div></div></div>
+    <div class="ncm-nm2-method on"><div class="h"><i class="fas fa-dice-d20"></i>Skill bypass <small>hack in with a roll — each skill has its own DV</small><span class="tg">${sw(1)}</span></div>
+      <div class="b"><div class="ncm-bypass">${bypassRow('Interface', 15)}${bypassRow('Electronics/Security Tech', 17)}<button type="button" class="ncm-bypass__add"><i class="fas fa-plus"></i> Add skill</button></div></div></div>
+    <div class="ncm-nm2-method on"><div class="h"><i class="fas fa-id-badge"></i>Key item <small>carrying the right item opens it</small><span class="tg">${sw(1)}</span></div>
+      <div class="b"><div class="ncm-nm2-chiprow"><span class="ncm-nm2-chip"><i class="fas fa-id-badge"></i>Corporate ID<span class="x">✕</span></span><span class="ncm-nm2-chip add"><i class="fas fa-magnifying-glass"></i>Pick an item…</span></div></div></div>
+    <div class="ncm-nm2-method on"><div class="h"><i class="fas fa-skull" style="color:var(--ncm-danger)"></i>When they fail <small>after the last attempt</small></div>
+      <div class="b"><span class="ncm-nm2-seg"><span class="on">Lock out</span><span>Black ICE</span><span>Nothing</span></span></div></div>`,
+  behaviour: `<div class="ncm-nm2-check"><i class="fas fa-satellite-dish" style="color:var(--ncm-danger)"></i>Traffic is traced<small>sends show up in the Security log</small>${sw(1)}</div>
+    <div class="ncm-nm2-check"><i class="fas fa-user-secret" style="color:var(--ncm-secondary)"></i>Anonymous<small>the sender's name is hidden</small>${sw(0)}</div>
+    <div class="ncm-nm2-check"><i class="fas fa-route" style="color:var(--ncm-secondary)"></i>Can reach other networks<small>off: only people on this network</small>${sw(1)}</div>
+    <label class="ncm-nm2-f"><span>Can send messages to</span><div class="ncm-nm2-chiprow"><span class="ncm-nm2-chip" style="--c:#4488ff"><i class="fas fa-building"></i>CorpNet<span class="x">✕</span></span><span class="ncm-nm2-chip" style="--c:#19f3f7"><i class="fas fa-wifi"></i>CitiNet<span class="x">✕</span></span><span class="ncm-nm2-chip add"><i class="fas fa-plus"></i>network</span></div><small>Empty means every network.</small></label>`,
+  where: `<div class="ncm-nm2-check"><i class="fas fa-globe" style="color:var(--ncm-secondary)"></i>Everywhere<small>every scene, always</small>${sw(0)}</div>
+    <label class="ncm-nm2-f"><span>Or on these scenes</span><input type="text" placeholder="Search scenes…"></label>
+    <div class="ncm-nm2-grid2">${SC.map((s) => `<div class="ncm-nm2-check" style="padding:5px 8px">${s}<small></small>${sw(/Arasaka|Biotech/.test(s))}</div>`).join('')}</div>`,
+  look: `<div class="ncm-nm2-preview"><span class="pill"><i class="fas fa-building"></i>CorpNet</span><span class="ncm-nm2-quiet">how players see it</span></div>
+    <label class="ncm-nm2-f"><span>Icon</span><span class="ncm-nm2-seg" style="align-self:flex-start;margin-bottom:6px"><span class="on">Symbol</span><span>Image</span></span>
+      <div class="ncm-nm2-icons">${['fa-building', 'fa-wifi', 'fa-mask', 'fa-landmark', 'fa-shield-halved', 'fa-database', 'fa-skull', 'fa-tower-broadcast', 'fa-satellite-dish', 'fa-crosshairs'].map((i, k) => `<span class="${k ? '' : 'on'}"><i class="fas ${i}"></i></span>`).join('')}</div></label>
+    <label class="ncm-nm2-f"><span>Colour</span><div class="ncm-nm2-sw8">${['#4488ff', '#19f3f7', '#00ff41', '#f7c948', '#ff6600', '#ff3355', '#c76bff', '#d4a35c'].map((c, k) => `<span class="${k ? '' : 'on'}" style="background:${c}"></span>`).join('')}<input type="text" value="#4488ff" style="width:90px;height:26px"></div></label>
+    <label class="ncm-nm2-f"><span>Glitch on the player's screen</span><input type="range" min="0" max="100" value="0"><small>How much the network's name and pill flicker. 0 = steady.</small></label>`,
+};
+const EDIT = () => `
+  ${head('<span class="ncm-nm2-quiet">Editing</span>')}
+  <div class="ncm-nm2-steps">${STEPS.map(([k, i, l]) => `<span class="ncm-nm2-step ${k === STEP ? 'on' : ''}" data-step="${k}"><i class="fas ${i}"></i>${l}</span>`).join('')}</div>
+  <div class="ncm-nm2-pscroll"><div class="ncm-nm2-form">${FORM[STEP]}</div></div>
+  <div class="ncm-nm2-foot"><span class="note">Changes to every section save together.</span><span class="grow"></span>${btn('Cancel')}${btn('Save', 'ncm-term-admin-btn--primary', 'fa-check')}</div>`;
+
+const ON_HERE = { 'Arasaka Tower — 7th Floor': ['CorpNet', 'Arasaka SecNet', 'DarkNet'] };
+const SCENES = () => {
+  const here = ON_HERE[SCENE] || [];
+  const all = N.flatMap(([, r]) => r);
+  return `
+  <div class="ncm-nm2-phead" style="grid-template-columns:36px 1fr auto"><span class="ncm-nm2-ic" style="--c:var(--ncm-secondary);width:36px;height:36px;font-size:15px"><i class="fas fa-map"></i></span>
+    <div><div class="nm">${SCENE}</div><div class="sub">the scene you're viewing</div></div><div class="acts"><span class="ncm-nm2-saved"><i class="fas fa-check"></i> Saved</span></div></div>
+  <div class="ncm-nm2-pscroll"><div class="ncm-nm2-form">
+    <div class="ncm-nm2-row"><div class="ncm-nm2-check"><i class="fas fa-ban" style="color:var(--ncm-danger)"></i>Dead zone<small>no signal at all</small>${sw(0)}</div>
+      <label class="ncm-nm2-f"><span>Players start on</span><select><option>CorpNet</option></select></label></div>
+    <label class="ncm-nm2-f"><span>Networks on this scene</span></label>
+    <div class="ncm-nm2-nets">${all.map(([n, c, i, sub]) => {
+      const ev = /Everywhere/.test(sub); const on = ev || here.includes(n);
+      return `<div class="ncm-nm2-netrow ${on ? '' : 'off'}">${ic(c, i)}<div class="nm">${n}${ev ? '<small>everywhere</small>' : ''}</div><span class="sig"></span><span class="ncm-nm2-sw ${on ? 'on' : ''}" style="${ev ? 'opacity:.55' : ''}"></span></div>`;
+    }).join('')}</div>
+    <div class="ncm-nm2-quiet">Changes save as you make them.</div>
+  </div></div>`;
+};
+const sceneList = () => `
+  <div class="ncm-nm2-search"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search scenes…"></div>
+  <div class="ncm-nm2-scroll">${SC.map((s, k) => `<div class="ncm-nm2-r ${s === SCENE ? 'sel' : ''}" data-scene="${s}"><span class="ncm-nm2-ic" style="--c:${k === 6 ? 'var(--ncm-danger)' : 'var(--ncm-text-secondary)'}"><i class="fas ${k === 6 ? 'fa-ban' : k ? 'fa-map' : 'fa-location-crosshairs'}"></i></span>
+    <div style="min-width:0"><div class="nm">${s}</div><div class="sub">${k === 6 ? 'dead zone' : k === 3 || k === 9 ? 'only everywhere networks' : ((m) => m + (m === 1 ? ' network' : ' networks'))((k % 3) + 1)}</div></div><span class="st"></span></div>`).join('')}</div>`;
+
+const NOTES = {
+  detail: '<h3>Networks</h3><p><b>Gone:</b> the scanline film over the whole window, the gradient top bar, the pulsing icon ring and the "GM Clearance // Network Operations" flavour. The header is a title, a summary line and New network.</p><p>The tabs match the admin panel: Networks · Scenes · Activity log. Quick-create from a preset moves into the New network menu, so there is one way to make a network.</p><p>The detail reads like the admin panel\'s: signal at a glance, how you get in, behaviour, where it exists, notes.</p>',
+  edit: '<h3>The editor</h3><p>One long form became <b>six sections you step between</b> — Identity · Signal · Access · Behaviour · Where · Look — with Save and Cancel pinned at the bottom. Everything still saves together.</p><p><b>Access:</b> open/secured and any-one/all as switches, each method a card you switch on, skills as rows with their own DV, the key item from the picker, and what happens on failure.</p><p><b>Behaviour:</b> the comma-separated "allowed recipient networks" box is now a chip picker. <b>Where:</b> a scene checklist instead of a separate trip to the Scenes tab. <b>Look:</b> a live preview of the pill players see.</p>',
+  log: '<h3>Activity log</h3><p>Full width — a log has no use for the list column. Filter by network, or by kind with the chips (connections, logins, hacks, lockouts &amp; traces, malware, GM notes, system), each with its count.</p><p><b>Add a note</b> opens one inline row: kind, network, what happened. Your own notes can be edited or deleted; entries about a terminal, shard or player have ↗ to open it.</p><p>Import, Export, Clear the log and Reset all lockouts sit under ⋯ — rarely used, and Clear is destructive.</p>',
+  scenes: '<h3>Scenes</h3><p>Pick a scene, then switch networks on or off for it — one row per network, global ones locked on. Dead zone and start network sit at the top. Saves as you go (the existing auto-save).</p><p>This is where the admin panel\'s "Change which networks reach this scene" and the Scenes tab\'s ↗ lead.</p>',
+};
+
+/* ── ACTIVITY LOG: full width — a log needs no list column ── */
+const LT = {
+  connect: ['Connect', 'fa-plug', 'var(--ncm-success)'], disconnect: ['Disconnect', 'fa-plug-circle-xmark', 'var(--ncm-text-secondary)'],
+  auth_success: ['Login', 'fa-right-to-bracket', 'var(--ncm-success)'], auth_failure: ['Failed login', 'fa-circle-xmark', 'var(--ncm-warning)'],
+  hack: ['Hack', 'fa-dice-d20', 'var(--ncm-secondary)'], lockout: ['Lockout', 'fa-lock', 'var(--ncm-danger)'], trace: ['Trace', 'fa-satellite-dish', 'var(--ncm-danger)'],
+  malware: ['Malware', 'fa-biohazard', 'var(--ncm-purple)'], manual: ['GM note', 'fa-pen', 'var(--ncm-accent)'], system: ['System', 'fa-gear', 'var(--ncm-text-secondary)'],
+};
+const LOG = [
+  ['22:05', 'hack', 'Rache bypassed CorpNet with Interface — 19 vs 15', 'CorpNet', 'Rache', true],
+  ['22:01', 'auth_failure', 'Rache failed the CorpNet password (2 of 3)', 'CorpNet', 'Rache', true],
+  ['21:58', 'trace', 'Black ICE struck Rache on Arasaka SecNet — 9 HP', 'Arasaka SecNet', 'Rache', true],
+  ['21:52', 'manual', '[TRACE] Unusual traffic from Floor 7 — security notified', 'Arasaka SecNet', 'GM', false, true],
+  ['21:40', 'auth_success', 'V joined CorpNet with the password', 'CorpNet', 'V', false],
+  ['21:31', 'lockout', 'Kiri locked out of Afterlife mesh for 60 min', 'Afterlife mesh', 'Kiri', false],
+  ['21:12', 'system', 'DarkNet switched off', 'DarkNet', 'GM', false],
+  ['20:58', 'connect', 'Jo connected to Maelstrom relay', 'Maelstrom relay', 'Jo', false],
+  ['20:47', 'malware', 'Keylogger planted on Afterlife mesh', 'Afterlife mesh', 'V', true],
+  ['20:40', 'disconnect', 'Kiri dropped off CitiNet — dead zone', 'CitiNet', 'Kiri', false],
+];
+let LFILTER = 'all';
+const ALLNETS = [...N.flatMap(([g, rows]) => rows.map(([name, color, icon, meta]) => ({ id: name, name, group: g, color, icon, meta }))),
+  ...SCOPE_DEMO_EXTRA.map(([name, group, color, icon]) => ({ id: name, name, group, color, icon, meta: '1 scene' }))]
+  .map((n) => ({ ...n, count: LOG.filter((r) => r[3] === n.id).length }));
+ScopePicker.on('nmlog', () => render()); ScopePicker.on('nmnote', () => render());
+ScopePicker.set('nmnote', ['Arasaka SecNet']);
+if (Q.get('pick') === 'log') ScopePicker.open('nmlog');
+if (Q.get('pick') === 'note') ScopePicker.open('nmnote');
+let ADDING = Q.get('add') === '1';
+const LOGVIEW = () => {
+  const groups = [['all', 'All', () => true], ['conn', 'Connections', (t) => /connect/.test(t)], ['auth', 'Logins', (t) => /auth/.test(t)], ['hack', 'Hacks', (t) => t === 'hack'],
+    ['sec', 'Lockouts & traces', (t) => t === 'lockout' || t === 'trace'], ['mal', 'Malware', (t) => t === 'malware'], ['note', 'GM notes', (t) => t === 'manual'], ['sys', 'System', (t) => t === 'system']];
+  const f = groups.find((g) => g[0] === LFILTER)[2];
+  const pv = ScopePicker.value('nmlog');
+  const rows = LOG.filter((r) => f(r[1]) && (!pv.length || pv.includes(r[3])));
+  return `
+  <div class="ncm-nm2-logtb">
+    <span class="ncm-nm2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search the log…"></span>
+    ${ScopePicker.html('nmlog', { noun: 'network', nouns: 'networks', icon: 'fa-network-wired', multi: true, items: ALLNETS, countLabel: 'entries', activeLabel: 'In the log' })}
+    ${btn('Add a note', '', 'fa-pen', 'data-add')}${btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'title="Import · Export · Clear the log · Reset all lockouts"')}
+  </div>
+  <div class="ncm-nm2-logchips">${groups.map(([k, l, fn]) => `<span class="ncm-nm2-lchip ${k === LFILTER ? 'on' : ''}" data-lf="${k}">${l}<span class="n">${LOG.filter((r) => fn(r[1])).length}</span></span>`).join('')}</div>
+  ${ADDING ? `<div class="ncm-nm2-addnote">
+    <select><option>GM note</option><option>Trace</option><option>Hack</option><option>System</option></select>
+    ${ScopePicker.html('nmnote', { noun: 'network', nouns: 'networks', icon: 'fa-network-wired', label: 'On', items: ALLNETS.map((n) => ({ ...n, count: 0 })), pinned: [{ id: 'none', name: 'No network', icon: 'fa-circle-minus', meta: 'A general note' }] })}
+    <input type="text" placeholder="What happened — players never see this log">
+    ${btn('Add', 'ncm-term-admin-btn--primary', 'fa-check')}${btn('', 'ncm-term-admin-btn--icon', 'fa-xmark', 'data-add')}
+  </div>` : ''}
+  <div class="ncm-nm2-log">${rows.map(([w, t, txt, net, who, ref, mine]) => { const [l, i, c] = LT[t]; return `
+    <div class="ncm-nm2-lrow" style="--c:${c}">
+      <span class="w">${w}</span>
+      <span class="ty"><i class="fas ${i}"></i>${l}</span>
+      <span class="tx">${txt}</span>
+      <span class="net" data-lognet="${net}" title="Show only ${net}" style="cursor:pointer">${net}</span>
+      <span class="act">${ref ? '<i class="fas fa-up-right-from-square" title="Open what this is about"></i>' : ''}${mine ? '<i class="fas fa-pen" title="Edit"></i><i class="fas fa-trash" title="Delete"></i>' : ''}</span>
+    </div>`; }).join('') || '<div class="ncm-nm2-quiet" style="padding:14px">Nothing here.</div>'}</div>`;
+};
+
+function render() {
+  const tabs = [['net', 'fa-network-wired', 'Networks', 12], ['scenes', 'fa-map', 'Scenes', SC.length], ['log', 'fa-scroll', 'Activity log', LOG.length]];
+  const cur = VIEW === 'scenes' ? 'scenes' : VIEW === 'log' ? 'log' : 'net';
+  document.getElementById('body').innerHTML = `
+    <div class="ncm-nm2-hd"><h2>Network Manager</h2><p>12 networks · 9 secured · 1 dead zone</p><span class="grow"></span>${btn('New network', 'ncm-term-admin-btn--primary', 'fa-plus')}</div>
+    <div class="ncm-nm2-tabs">${tabs.map(([k, i, l, n]) => `<button type="button" class="ncm-nm2-tab ${k === cur ? 'on' : ''}" data-tab="${k}"><i class="fas ${i}"></i>${l}${n ? `<span class="n">${n}</span>` : ''}</button>`).join('')}</div>
+    ${cur === 'log'
+      ? `<div class="ncm-nm2-logwrap">${LOGVIEW()}</div>`
+      : `<div class="ncm-nm2-body"><div class="ncm-nm2-list">${cur === 'scenes' ? sceneList() : netList()}</div><div class="ncm-nm2-pane">${VIEW === 'edit' ? EDIT() : VIEW === 'scenes' ? SCENES() : DETAIL()}</div></div>`}`;
+  document.getElementById('notes').innerHTML = NOTES[VIEW];
+  ScopePicker.after();
+}
+document.addEventListener('click', (e) => {
+  const st = e.target.closest('[data-step]'); if (st) { STEP = st.dataset.step; render(); return; }
+  const tb = e.target.closest('[data-tab]'); if (tb) { VIEW = tb.dataset.tab === 'scenes' ? 'scenes' : tb.dataset.tab === 'log' ? 'log' : 'detail'; render(); return; }
+  const lf = e.target.closest('[data-lf]'); if (lf) { LFILTER = lf.dataset.lf; render(); return; }
+  const ln = e.target.closest('[data-lognet]'); if (ln) { ScopePicker.set('nmlog', [ln.dataset.lognet]); render(); return; }
+  if (e.target.closest('[data-add]')) { ADDING = !ADDING; render(); return; }
+  const sc = e.target.closest('[data-scene]'); if (sc) { SCENE = sc.dataset.scene; render(); return; }
+  if (e.target.closest('.ncm-nm2-phead .ncm-nm2-btn--primary')) { VIEW = 'edit'; render(); return; }
+  if (e.target.closest('.ncm-nm2-foot .ncm-nm2-btn')) { VIEW = 'detail'; render(); }
+});
+render();
+
+const link = (k, v, label) => { const q = new URLSearchParams(location.search); if (v === null) q.delete(k); else q.set(k, v); const on = (Q.get(k) ?? null) === v; return `<a class="${on ? 'on' : ''}" href="?${q}">${label}</a>`; };
+document.getElementById('bar').innerHTML = `<b>NETWORK MANAGER — CLEANUP</b>
+  <span>view</span>${link('view', null, 'detail')}${link('view', 'edit', 'editor')}${link('view', 'scenes', 'scenes')}${link('view', 'log', 'log')}${link('add', '1', 'log + add note')}${link('pick', 'log', 'log picker')}
+  <span>editor step</span>${STEPS.map(([k, , l]) => link('step', k === 'access' ? null : k, l)).join('')}
+  <span>preset</span>${link('t', null, 'clean-dark')}${link('t', 'clean-light', 'clean-light')}`;
+</script>
+</body>
+</html>

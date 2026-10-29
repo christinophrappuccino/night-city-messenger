@@ -3529,3 +3529,62 @@
 /* Linked Actor picker row (player + GM contact forms): the read-only label IS the opener. */
 .ncm-app .ncm-form-input-row input[data-picker-label-for] { cursor: pointer; }
 .ncm-app .ncm-form-input-row input[data-picker-label-for]::placeholder { font-style: italic; }
+
+/* One toolbar row (dev, 2026-10-27: "put the All dropdown, grid/list and search on one row — saves space").
+   Search takes the room; the tag filter and the view toggle sit at its right; with many
+   active tag pills the row wraps rather than squeezing the search box. */
+.ncm-app .ncm-contacts-v5 .ncm-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; padding-bottom: 6px; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar > .ncm-search-row { flex: 1 1 220px; min-width: 0; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar > .ncm-filter-row { flex: 0 1 auto; margin-top: 0; flex-wrap: nowrap; min-width: 0; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar > .ncm-filter-row .ncm-tag-dropdown { flex-wrap: wrap; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar > .ncm-filter-row .ncm-view-toggle { margin-left: 6px; flex: none; }
+/* One toolbar row, one look (dev: "those three look mismatched"): search, the tag filter and the view
+   toggle share ONE height, radius, border and surface. The filter is a joined [ALL | ▾] box, the view
+   toggle a joined [grid | list] box; active tag pills match the height. Heights scale with Text Size. */
+.ncm-app .ncm-contacts-v5 .ncm-toolbar { --tb-h: calc(30px * var(--ncm-text-scale, 1)); --tb-r: 3px; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar > .ncm-search-row {
+  height: var(--tb-h); padding: 0 10px; border-radius: var(--tb-r); box-sizing: border-box;
+  background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border);
+}
+.ncm-app .ncm-contacts-v5 .ncm-toolbar > .ncm-search-row .ncm-search-input { height: 100% !important; min-height: 0 !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; background: none !important; border-radius: 0 !important; outline: none !important; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-search-count {
+  flex: none; padding-left: 8px; border-left: 1px solid var(--ncm-border); line-height: calc(var(--tb-h) - 12px);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary);
+}
+.ncm-app .ncm-contacts-v5 .ncm-toolbar > .ncm-filter-row { gap: 8px; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-tag-dropdown { gap: 6px; flex-wrap: nowrap; }
+/* [ALL | ▾] */
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-pill--all {
+  height: var(--tb-h); box-sizing: border-box; padding: 0 12px; margin: 0;
+  border-radius: var(--tb-r) 0 0 var(--tb-r); background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border);
+  font-size: calc(10.5px * var(--ncm-text-scale, 1)); letter-spacing: .07em;
+}
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-pill--all.ncm-pill--active {
+  color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 10%, var(--ncm-bg-surface)); border-color: color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border));
+}
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-pill--all + .ncm-tag-dropdown__toggle {
+  width: calc(var(--tb-h) - 4px) !important; height: var(--tb-h) !important; box-sizing: border-box !important; margin-left: -6px !important;
+  border-radius: 0 var(--tb-r) var(--tb-r) 0 !important; border-left-width: 0 !important;
+  background: var(--ncm-bg-surface) !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important;
+}
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-pill--all.ncm-pill--active + .ncm-tag-dropdown__toggle { border-color: color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border)) !important; border-left-width: 0 !important; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-tag-dropdown__toggle:hover { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-elevated, var(--ncm-bg-surface)) !important; }
+/* active tag pills: the same height, so the row stays one line of equal boxes */
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-pill--tag { height: var(--tb-h); box-sizing: border-box; padding: 0 10px; border-radius: var(--tb-r); white-space: nowrap; }
+/* [grid | list] */
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-view-toggle {
+  gap: 0; height: var(--tb-h); box-sizing: border-box; border: 1px solid var(--ncm-border); border-radius: var(--tb-r); overflow: hidden; background: var(--ncm-bg-surface);
+}
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-view-btn {
+  width: var(--tb-h) !important; height: 100% !important; border: 0 !important; border-radius: 0 !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important; color: var(--ncm-text-secondary) !important; margin: 0 !important;
+}
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-view-btn + .ncm-view-btn { border-left: 1px solid var(--ncm-border) !important; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-view-btn:hover { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-elevated, transparent) !important; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-view-btn--active { color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent) !important; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-view-btn i, .ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-tag-dropdown__toggle i { margin: 0 !important; }
+
+/* The tag panel opens LEFTWARD from the filter (it sits at the toolbar's right end; opening right ran it out of the window, cropped).
+   .is-flip = the window was narrow enough to wrap the filter to the left edge, so it opens rightward instead. */
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-tag-dropdown__panel { left: auto; right: 0; }
+.ncm-app .ncm-contacts-v5 .ncm-toolbar .ncm-tag-dropdown__panel.is-flip { left: 0; right: auto; }

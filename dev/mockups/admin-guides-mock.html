@@ -1,0 +1,251 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Admin guides — journey, setup, access path</title>
+<!--
+  Three guiding pieces for the Admin Panel, a few states each:
+    1. Delivery journey  (Messages → All mail → the open message)
+    2. Getting the table ready  (Overview, top)
+    3. Terminal access path  (Terminals → detail → an account)
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-guides-mock.html
+  ?t=clean-dark|clean-light|high-contrast
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px sans-serif; margin: 0 0 12px; max-width: 1040px; line-height: 1.45; }
+  .mk-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-cap { color: #9aa; font: 600 11px sans-serif; margin: 0 0 5px; text-transform: uppercase; letter-spacing: .06em; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-pane { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font-family: var(--ncm-font-body); }
+
+  /* ═══════════ 1. DELIVERY JOURNEY ═══════════ */
+  .ncm-admin-panel .ncm-jrny { padding: 10px 13px 12px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-jrny__k { display: flex; align-items: center; gap: 7px; margin: -10px -13px 10px; padding: 7px 13px 7px 10px; background: var(--ncm-bg-card);
+    border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--jk, var(--ncm-act));
+    font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .ncm-admin-panel .ncm-jrny__k > i { color: var(--jk, var(--ncm-act)); }
+  .ncm-admin-panel .ncm-jrny__k .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+  .ncm-admin-panel .ncm-jrny__track { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+  .ncm-admin-panel .ncm-jrny__st { --sc: var(--ncm-text-hint); position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; padding: 0 2px; }
+  .ncm-admin-panel .ncm-jrny__st::before { content: ''; position: absolute; top: 13px; left: 50%; width: 100%; height: 2px; background: color-mix(in srgb, var(--ncm-border-active) 75%, transparent); }
+  .ncm-admin-panel .ncm-jrny__st:last-child::before { display: none; }
+  .ncm-admin-panel .ncm-jrny__st.is-done { --sc: var(--ncm-good); }
+  .ncm-admin-panel .ncm-jrny__st.is-done::before { background: var(--ncm-good); }
+  .ncm-admin-panel .ncm-jrny__st.is-wait { --sc: var(--ncm-attn); }
+  .ncm-admin-panel .ncm-jrny__st.is-wait::before { background: repeating-linear-gradient(90deg, var(--ncm-attn) 0 5px, transparent 5px 9px); }
+  .ncm-admin-panel .ncm-jrny__st.is-bad { --sc: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-jrny__dot { position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px;
+    border: 2px solid var(--sc); color: var(--sc); background: color-mix(in srgb, var(--sc) 15%, var(--ncm-bg-pane-alt, var(--ncm-bg-base))); }
+  .ncm-admin-panel .ncm-jrny__st.is-todo .ncm-jrny__dot { border-style: dashed; }
+  .ncm-admin-panel .ncm-jrny__st.is-wait .ncm-jrny__dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ncm-attn) 22%, transparent); }
+  .ncm-admin-panel .ncm-jrny__st.is-bad .ncm-jrny__dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ncm-bad) 22%, transparent); }
+  .ncm-admin-panel .ncm-jrny__nm { font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .ncm-admin-panel .ncm-jrny__st.is-todo .ncm-jrny__nm { color: var(--ncm-text-hint); }
+  .ncm-admin-panel .ncm-jrny__sub { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-time); min-height: 13px; white-space: nowrap; }
+  .ncm-admin-panel .ncm-jrny__st.is-wait .ncm-jrny__sub { color: var(--ncm-attn); }
+  .ncm-admin-panel .ncm-jrny__st.is-bad .ncm-jrny__sub { color: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-jrny__why { display: flex; align-items: center; gap: 9px; margin-top: 10px; padding: 7px 10px; border-radius: 2px;
+    border-left: 3px solid var(--wc); background: color-mix(in srgb, var(--wc) 10%, transparent); font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-jrny__why > i { color: var(--wc); }
+  .ncm-admin-panel .ncm-jrny__why b { color: var(--ncm-text-heading); }
+  .ncm-admin-panel .ncm-jrny__why .grow { flex: 1; }
+  .ncm-admin-panel .ncm-jrny__why--wait { --wc: var(--ncm-attn); }
+  .ncm-admin-panel .ncm-jrny__why--bad { --wc: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-jrny__why--ok { --wc: var(--ncm-good); }
+  /* group: one mini track per recipient */
+  .ncm-admin-panel .ncm-jrny__people { display: flex; flex-direction: column; gap: 4px; }
+  .ncm-admin-panel .ncm-jrny__p { display: grid; grid-template-columns: 118px repeat(4, 1fr); align-items: center; gap: 0; padding: 4px 0; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-jrny__p .who { display: flex; align-items: center; gap: 6px; font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; }
+  .ncm-admin-panel .ncm-jrny__p .seg { --sc: var(--ncm-text-hint); position: relative; height: 18px; display: grid; place-items: center; }
+  .ncm-admin-panel .ncm-jrny__p .seg::before { content: ''; position: absolute; left: 0; right: 50%; top: 50%; height: 2px; margin-top: -1px; background: var(--sc); opacity: .55; }
+  .ncm-admin-panel .ncm-jrny__p .seg:nth-child(2)::before { display: none; }
+  .ncm-admin-panel .ncm-jrny__p .seg i { position: relative; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 8px;
+    background: color-mix(in srgb, var(--sc) 22%, var(--ncm-bg-pane-alt, var(--ncm-bg-base))); color: var(--sc); border: 1.5px solid var(--sc); }
+  .ncm-admin-panel .ncm-jrny__p .seg.done { --sc: var(--ncm-good); }
+  .ncm-admin-panel .ncm-jrny__p .seg.wait { --sc: var(--ncm-attn); }
+  .ncm-admin-panel .ncm-jrny__p .seg.bad { --sc: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-jrny__p .seg.todo i { border-style: dashed; }
+  .ncm-admin-panel .ncm-jrny__phead { display: grid; grid-template-columns: 118px repeat(4, 1fr); font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); text-align: center; }
+  .ncm-admin-panel .ncm-jrny__phead span:first-child { text-align: left; }
+  .ncm-admin-panel .ncm-jrny__p .note { grid-column: 2 / -1; font: 11.5px var(--ncm-font-body); color: var(--ncm-bad); padding-left: 6px; }
+  .mk-av { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 8px var(--ncm-font-display); flex: none;
+    color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 18%, var(--ncm-bg-card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 55%, transparent); }
+
+  /* ═══════════ 2. GETTING THE TABLE READY ═══════════ */
+  .ncm-admin-panel .ncm-ready { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); overflow: hidden; }
+  .ncm-admin-panel .ncm-ready__hd { display: flex; align-items: center; gap: 12px; padding: 10px 13px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-act); }
+  .ncm-admin-panel .ncm-ready__ring { --p: 0; width: 42px; height: 42px; border-radius: 50%; flex: none; display: grid; place-items: center;
+    background: conic-gradient(var(--ncm-good) calc(var(--p) * 1%), color-mix(in srgb, var(--ncm-border-active) 70%, transparent) 0); }
+  .ncm-admin-panel .ncm-ready__ring span { width: 32px; height: 32px; border-radius: 50%; background: var(--ncm-bg-card); display: grid; place-items: center; font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .ncm-admin-panel .ncm-ready__t { font: 700 14px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .ncm-admin-panel .ncm-ready__s { font: 12.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-ready__s b { color: var(--ncm-attn); }
+  .ncm-admin-panel .ncm-ready__hd .grow { flex: 1; }
+  .ncm-admin-panel .ncm-ready__hide { font: 12px var(--ncm-font-body); color: var(--ncm-text-hint); cursor: pointer; }
+  .ncm-admin-panel .ncm-ready__list { display: grid; grid-template-columns: 1fr 1fr; }
+  .ncm-admin-panel .ncm-ready__it { --ic: var(--ncm-attn); display: grid; grid-template-columns: 26px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 9px 13px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-ready__it:nth-child(odd) { border-right: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-ready__it .ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px;
+    border: 2px solid var(--ic); color: var(--ic); background: color-mix(in srgb, var(--ic) 14%, transparent); }
+  .ncm-admin-panel .ncm-ready__it .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .ncm-admin-panel .ncm-ready__it .why { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-ready__it .why b { color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ready__it.is-done { --ic: var(--ncm-good); }
+  .ncm-admin-panel .ncm-ready__it.is-done .nm { color: var(--ncm-text-label); font-weight: 600; }
+  .ncm-admin-panel .ncm-ready__it.is-done .why { color: var(--ncm-text-hint); }
+  .ncm-admin-panel .ncm-ready__it.is-opt { --ic: var(--ncm-text-hint); }
+  .ncm-admin-panel .ncm-ready__go { font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-act);
+    border: 1px solid var(--ncm-act); border-radius: 2px; padding: 4px 9px; white-space: nowrap; cursor: pointer; background: color-mix(in srgb, var(--ncm-act) 10%, transparent); }
+  .ncm-admin-panel .ncm-ready__it.is-opt .ncm-ready__go { color: var(--ncm-text-label); border-color: var(--ncm-border-active); background: none; }
+  .ncm-admin-panel .ncm-ready__done { font: 11px var(--ncm-font-mono); color: var(--ncm-good); }
+  .ncm-admin-panel .ncm-ready--min .ncm-ready__hd { box-shadow: inset 3px 0 var(--ncm-good); border-bottom: 0; padding: 7px 13px; }
+  .ncm-admin-panel .ncm-ready--min .ncm-ready__ring { width: 26px; height: 26px; }
+  .ncm-admin-panel .ncm-ready--min .ncm-ready__ring span { width: 20px; height: 20px; font-size: 10px; color: var(--ncm-good); }
+
+  /* ═══════════ 3. TERMINAL ACCESS PATH ═══════════ */
+  .ncm-admin-panel .ncm-acc { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); margin-bottom: 8px; }
+  .ncm-admin-panel .ncm-acc__hd { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 9px; align-items: center; padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-acc__hd .mk-av { width: 30px; height: 30px; font-size: 10px; }
+  .ncm-admin-panel .ncm-acc__nm { font: 700 13.5px var(--ncm-font-display); color: var(--ncm-text-heading); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ncm-admin-panel .ncm-acc__nm .ncm-tagp { font-size: 10.5px !important; line-height: 15px; padding: 0 5px !important; }
+  .ncm-admin-panel .ncm-acc__u { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr); }
+  .ncm-admin-panel .ncm-acc__last { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); text-align: right; }
+  .ncm-admin-panel .ncm-acc__path { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(70px, 1fr); padding: 10px 6px 8px; overflow-x: auto; }
+  .ncm-admin-panel .ncm-acc__st { --nc: var(--ncm-secret); position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; cursor: pointer; }
+  .ncm-admin-panel .ncm-acc__st::before { content: ''; position: absolute; top: 16px; left: 50%; width: 100%; height: 2px; background: color-mix(in srgb, var(--ncm-border-active) 75%, transparent); }
+  .ncm-admin-panel .ncm-acc__st:last-child::before { display: none; }
+  .ncm-admin-panel .ncm-acc__st.is-open { --nc: var(--ncm-good); }
+  .ncm-admin-panel .ncm-acc__st.is-open::before { background: var(--ncm-good); }
+  .ncm-admin-panel .ncm-acc__st.is-ice { --nc: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-acc__st.is-block { --nc: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-acc__st.is-gm { --nc: var(--ncm-attn); }
+  .ncm-admin-panel .ncm-acc__st.is-gm::before { background: repeating-linear-gradient(90deg, var(--ncm-attn) 0 5px, transparent 5px 9px); }
+  .ncm-admin-panel .ncm-acc__st.is-goal { --nc: var(--ncm-text-hint); cursor: default; }
+  .ncm-admin-panel .ncm-acc__st.is-goal.is-reached { --nc: var(--ncm-good); }
+  .ncm-admin-panel .ncm-acc__dot { position: relative; z-index: 1; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 13px;
+    border: 2px solid var(--nc); color: var(--nc); background: color-mix(in srgb, var(--nc) 15%, var(--ncm-bg-pane)); }
+  .ncm-admin-panel .ncm-acc__st.is-goal:not(.is-reached) .ncm-acc__dot { border-style: dashed; }
+  .ncm-admin-panel .ncm-acc__st.is-block .ncm-acc__dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ncm-bad) 22%, transparent); }
+  .ncm-admin-panel .ncm-acc__st:not(.is-goal):hover .ncm-acc__dot { transform: translateY(-2px); box-shadow: 0 0 0 4px color-mix(in srgb, var(--nc) 30%, transparent); }
+  .ncm-admin-panel .ncm-acc__nm2 { font: 700 10.5px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .ncm-admin-panel .ncm-acc__sub { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-label); white-space: nowrap; }
+  .ncm-admin-panel .ncm-acc__st.is-block .ncm-acc__sub, .ncm-admin-panel .ncm-acc__st.is-ice .ncm-acc__sub { color: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-acc__st.is-gm .ncm-acc__sub { color: var(--ncm-attn); }
+  /* the ways in: one stop, the methods as an OR / AND stack */
+  .ncm-admin-panel .ncm-acc__ways { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+  .ncm-admin-panel .ncm-acc__ways .ncm-tagp { font-size: 10.5px !important; line-height: 15px; padding: 0 5px !important; }
+  .ncm-admin-panel .ncm-acc__ways .or { font: 700 9px var(--ncm-font-display); letter-spacing: .08em; color: var(--ncm-text-hint); }
+  .ncm-admin-panel .ncm-acc__foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px 8px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-acc__foot .grow { flex: 1; }
+  .ncm-admin-panel .ncm-acc__btn { font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; padding: 4px 8px; border-radius: 2px; border: 1px solid var(--ncm-border-active); color: var(--ncm-text-primary); cursor: pointer; }
+  .ncm-admin-panel .ncm-acc__btn.act { color: var(--ncm-act); border-color: var(--ncm-act); }
+  .ncm-admin-panel .ncm-acc__btn.bad { color: var(--ncm-bad); border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent); }
+  .ncm-admin-panel .ncm-acc__lock { color: var(--ncm-bad); font-weight: 600; }
+  .ncm-admin-panel .ncm-acc__in { color: var(--ncm-good); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<p class="mk-h">1 — DELIVERY JOURNEY &nbsp;·&nbsp; Messages → All mail → the open message</p>
+<p class="mk-p">A track under the From / To / When block: <b>Sent → Network → Delivered → Read → Replied</b>. Each stop has its time; the line is green as far as the message got. Where it stopped, the stop turns amber (waiting) or red (failed) and a line underneath says why in plain words, with the button that fixes it. A group send swaps the big track for one small track per recipient.</p>
+<div class="mk-row" data-slot="j"></div>
+
+<p class="mk-h">2 — GETTING THE TABLE READY &nbsp;·&nbsp; Overview, at the top</p>
+<p class="mk-p">A checklist that knows the world: each line checks something real and says what's missing in words ("Rache has no address"). The button on each line opens the exact place that fixes it. Optional items are grey and never block the ring. Once it's all done the card folds to one line, and "Hide" removes it until something breaks again.</p>
+<div class="mk-row" data-slot="r"></div>
+
+<p class="mk-h">3 — TERMINAL ACCESS PATH &nbsp;·&nbsp; Terminals → detail → Accounts</p>
+<p class="mk-p">Each account gets the breach path: <b>reach</b> (the network a player must be on) → <b>uplink</b> (the machine's own connection) → <b>ways in</b> (password / skill / key item, as OR or AND) → <b>mailbox</b>. Green as far as someone's got; a locked-out character shows red at the step that stopped them, with their name and the time left. Click a step to force it open or shut for everyone; the footer has the per-character actions.</p>
+<div class="mk-row" data-slot="a"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const av = (n) => `<span class="mk-av" style="--tc:${hue(n)}">${n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>`;
+const win = (cap, w, inner) => `<div><p class="mk-cap">${cap}</p><div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:${w}px"><div class="ncm-admin-panel">${inner}</div></div></div>`;
+
+/* ── 1. journey ── */
+const ST = { done: 'is-done', wait: 'is-wait', bad: 'is-bad', todo: 'is-todo' };
+const stop = (s, name, icon, sub) => `<div class="ncm-jrny__st ${ST[s]}"><span class="ncm-jrny__dot"><i class="fas ${icon}"></i></span><span class="ncm-jrny__nm">${name}</span><span class="ncm-jrny__sub">${sub || '&nbsp;'}</span></div>`;
+const why = (kind, icon, html, btn) => `<div class="ncm-jrny__why ncm-jrny__why--${kind}"><i class="fas ${icon}"></i><span>${html}</span><span class="grow"></span>${btn ? `<button type="button" class="ncm-msg2-btn">${btn}</button>` : ''}</div>`;
+const jbox = (k, right, track, extra = '') => `<div class="mk-pane"><div class="ncm-jrny" style="--jk:${k}"><div class="ncm-jrny__k"><i class="fas fa-route"></i>Where it went<span class="r">${right}</span></div>${track}${extra}</div></div>`;
+document.querySelector('[data-slot="j"]').innerHTML = [
+  win('Read and answered', 480, jbox('var(--ncm-good)', 'V → Rogue', `<div class="ncm-jrny__track">
+    ${stop('done', 'Sent', 'fa-paper-plane', '21:04')}${stop('done', 'CitiNet', 'fa-wifi', '82% signal')}${stop('done', 'Delivered', 'fa-inbox', '21:04')}${stop('done', 'Read', 'fa-eye', '21:30')}${stop('done', 'Replied', 'fa-reply', '21:41')}</div>`)),
+  win('Held — dead zone', 480, jbox('var(--ncm-attn)', 'Rache → Judy', `<div class="ncm-jrny__track">
+    ${stop('done', 'Sent', 'fa-paper-plane', '22:10')}${stop('wait', 'No signal', 'fa-tower-broadcast', 'dead zone')}${stop('todo', 'Delivered', 'fa-inbox')}${stop('todo', 'Read', 'fa-eye')}${stop('todo', 'Replied', 'fa-reply')}</div>`,
+    why('wait', 'fa-hourglass-half', '<b>Waiting on Rache\'s side</b> — the Docks scene is a dead zone. It goes out by itself when they get signal.', 'Deliver now'))),
+  win('Failed — refused', 480, jbox('var(--ncm-bad)', 'V → system@netwatch.gov', `<div class="ncm-jrny__track">
+    ${stop('done', 'Sent', 'fa-paper-plane', '20:52')}${stop('done', 'CitiNet', 'fa-wifi', '64% signal')}${stop('bad', 'Refused', 'fa-ban', 'send-only')}${stop('todo', 'Read', 'fa-eye')}${stop('todo', 'Replied', 'fa-reply')}</div>`,
+    why('bad', 'fa-ban', '<b>Not delivered.</b> <span class="ncm-addr">system@netwatch.gov</span> is a system address — players can\'t write to it.', 'Open the contact'))),
+  win('Group — one track each', 480, `<div class="mk-pane"><div class="ncm-jrny" style="--jk:var(--ncm-attn)"><div class="ncm-jrny__k"><i class="fas fa-route"></i>Where it went<span class="r">Rogue → 4 people · 2 read</span></div>
+    <div class="ncm-jrny__phead"><span>To</span><span>Sent</span><span>Delivered</span><span>Read</span><span>Replied</span></div>
+    <div class="ncm-jrny__people">
+      ${[['V', ['done', 'done', 'done', 'done']], ['Rache', ['done', 'done', 'done', 'todo']], ['Judy', ['done', 'done', 'todo', 'todo']], ['Brick', ['done', 'bad', 'todo', 'todo'], 'no inbox — the character was deleted']].map(([n, segs, note]) =>
+        `<div class="ncm-jrny__p"><span class="who">${av(n)}${n}</span>${segs.map((s) => `<span class="seg ${s}"><i class="fas ${s === 'done' ? 'fa-check' : s === 'bad' ? 'fa-xmark' : s === 'wait' ? 'fa-hourglass-half' : 'fa-minus'}"></i></span>`).join('')}${note ? `<span></span><span class="note"><i class="fas fa-triangle-exclamation"></i> ${note}</span>` : ''}</div>`).join('')}
+    </div></div></div>`),
+].join('');
+
+/* ── 2. ready ── */
+const item = (state, icon, nm, whyTxt, go) => `<div class="ncm-ready__it ${state ? 'is-' + state : ''}"><span class="ic"><i class="fas ${state === 'done' ? 'fa-check' : icon}"></i></span><div><div class="nm">${nm}</div><div class="why">${whyTxt}</div></div>${state === 'done' ? '<span class="ncm-ready__done">done</span>' : `<span class="ncm-ready__go">${go}</span>`}</div>`;
+const ready = (n, of, sub, items) => `<div class="ncm-ready"><div class="ncm-ready__hd"><span class="ncm-ready__ring" style="--p:${Math.round(n / of * 100)}"><span>${n}/${of}</span></span>
+  <div><div class="ncm-ready__t">Getting the table ready</div><div class="ncm-ready__s">${sub}</div></div><span class="grow"></span><span class="ncm-ready__hide">Hide</span></div><div class="ncm-ready__list">${items}</div></div>`;
+const ITEMS = {
+  addr: ['fa-at', 'Every player has an address', (d) => d ? 'V, Rache and Judy can send and receive' : '<b>Rache</b> has no address yet — they can\'t send or receive', 'Set it'],
+  net: ['fa-wifi', 'This scene has a network', (d) => d ? 'Night Market reaches CitiNet and Watson Free' : '<b>Night Market</b> reaches no network — Agents show no signal', 'Pick networks'],
+  know: ['fa-address-book', 'Players know someone', (d) => d ? 'each character has at least one contact' : '<b>Judy</b> has no contacts — nobody to write to', 'Share contacts'],
+  npc: ['fa-user-tie', 'You have NPCs to write as', (d) => d ? '12 contacts in the directory' : 'the directory is empty — add the fixer first', 'Add a contact'],
+  time: ['fa-clock', 'The game clock is set', (d) => d ? 'Simple Calendar — 2045-06-12' : 'mail is stamped with real time', 'Choose'],
+  mac: ['fa-terminal', 'Player macros installed', (d) => d ? '6 macros in NCM — Player Tools' : 'optional · Agent shortcut for players\' hotbars', 'Install'],
+};
+const build = (doneSet) => Object.entries(ITEMS).map(([k, [ic, nm, w, go]]) => item(doneSet.has(k) ? 'done' : (k === 'mac' ? 'opt' : ''), ic, nm, w(doneSet.has(k)), go)).join('');
+document.querySelector('[data-slot="r"]').innerHTML = [
+  win('A new world', 790, ready(1, 5, '<b>4 things</b> to do before players open their Agents', build(new Set(['time'])))),
+  win('Nearly there', 790, ready(4, 5, '<b>1 thing</b> left — Rache has no address', build(new Set(['net', 'know', 'npc', 'time'])))),
+  win('Ready — folded to one line', 790, `<div class="ncm-ready ncm-ready--min"><div class="ncm-ready__hd"><span class="ncm-ready__ring" style="--p:100"><span><i class="fas fa-check"></i></span></span>
+    <div><div class="ncm-ready__t" style="font-size:12px">The table is ready</div></div><span class="grow"></span><span class="ncm-ready__hide">Show the list</span><span class="ncm-ready__hide">Hide</span></div></div>`),
+].join('');
+
+/* ── 3. access path ── */
+const astop = (cls, icon, nm, sub, tip) => `<div class="ncm-acc__st ${cls}" data-tooltip="${tip || ''}"><span class="ncm-acc__dot"><i class="fas ${icon}"></i></span><span class="ncm-acc__nm2">${nm}</span><span class="ncm-acc__sub">${sub || '&nbsp;'}</span></div>`;
+const ways = (cls, list, and) => `<div class="ncm-acc__st ${cls}"><span class="ncm-acc__dot"><i class="fas fa-key"></i></span><span class="ncm-acc__nm2">Ways in</span><span class="ncm-acc__ways">${list.map((w, i) => (i ? `<span class="or">${and ? 'AND' : 'OR'}</span>` : '') + `<span class="ncm-tagp ${w[1]}"><i class="fas ${w[0]}"></i>${w[2]}</span>`).join('')}</span></div>`;
+const acct = (name, user, tags, last, path, foot) => `<div class="ncm-acc"><div class="ncm-acc__hd">${av(name)}<div><div class="ncm-acc__nm">${name}${tags}</div><div class="ncm-acc__u">${user}</div></div><div class="ncm-acc__last">${last}</div></div>
+  <div class="ncm-acc__path">${path}</div>${foot ? `<div class="ncm-acc__foot">${foot}</div>` : ''}</div>`;
+const termWin = (cap, inner) => win(cap, 500, `<div class="mk-pane" style="padding:10px 12px;"><div class="ncm-term2-k" style="margin:-10px -12px 10px;padding:7px 12px;background:var(--ncm-bg-card);border-bottom:1px solid var(--ncm-border);box-shadow:inset 3px 0 var(--ncm-act);font:700 11px var(--ncm-font-display);letter-spacing:.06em;text-transform:uppercase;color:var(--ncm-text-heading);display:flex;gap:7px;align-items:center"><i class="fas fa-users" style="color:var(--ncm-act)"></i>Accounts <span style="margin-left:auto;font:400 12px var(--ncm-font-body);text-transform:none;letter-spacing:0;color:var(--ncm-text-label)">WS-7F-12</span></div>${inner}</div>`);
+document.querySelector('[data-slot="a"]').innerHTML = [
+  termWin('Secured — someone is in', acct('Kowalski', 'k.kowalski', '<span class="ncm-tagp is-good"><i class="fas fa-circle"></i>V is in</span>', 'last login<br>21:04 today',
+    astop('is-open', 'fa-wifi', 'Reach', 'CorpNet', 'Players must be on Arasaka CorpNet to see this account') + astop('is-open', 'fa-network-wired', 'Uplink', 'wired') +
+    ways('is-open', [['fa-key', 'is-good', 'password'], ['fa-dice-d20', 'is-good', 'Interface 14']]) + astop('is-goal is-reached', 'fa-inbox', 'Mailbox', '12 mail'),
+    '<span class="ncm-acc__in"><i class="fas fa-circle"></i> V</span> logged in 21:04 with the password<span class="grow"></span><span class="ncm-acc__btn bad">Log V out</span>')),
+  termWin('A character locked out', acct('root', 'root', '<span class="ncm-tagp is-money"><i class="fas fa-crown"></i>Admin</span><span class="ncm-tagp is-bad"><i class="fas fa-ban"></i>Rache locked out</span>', 'last login<br>3 days ago',
+    astop('is-open', 'fa-wifi', 'Reach', 'anywhere') + astop('is-open', 'fa-network-wired', 'Uplink', 'CorpNet') +
+    ways('is-block', [['fa-key', 'is-secret', 'password'], ['fa-id-card', 'is-secret', 'Arasaka keycard']], true) + astop('is-goal', 'fa-inbox', 'Mailbox', 'sealed'),
+    '<span class="ncm-acc__lock"><i class="fas fa-ban"></i> Rache</span> locked out at <b>Ways in</b> — 42 min left (3 wrong passwords)<span class="grow"></span><span class="ncm-acc__btn act">Clear lockout</span>')),
+  termWin('Black ICE + off the network', acct('sec-ops', 'secops', '<span class="ncm-tagp is-secret"><i class="fas fa-eye-slash"></i>Hidden</span>', 'never',
+    astop('is-block', 'fa-wifi', 'Reach', 'not on Militech', 'V is on CitiNet; this account only shows on MilNet') + astop('', 'fa-network-wired', 'Uplink', 'MilNet') +
+    ways('is-ice', [['fa-dice-d20', 'is-secret', 'Interface DV 18'], ['fa-skull', 'is-bad', 'Black ICE bites']]) + astop('is-goal', 'fa-inbox', 'Mailbox', 'sealed'),
+    'Players don\'t see this account on the login screen — it\'s hidden and off their network<span class="grow"></span><span class="ncm-acc__btn">Force open</span>')),
+  termWin('GM force-unlocked', acct('guest', 'guest', '<span class="ncm-tagp is-attn"><i class="fas fa-lock-open"></i>Unlocked by you</span>', 'last login<br>yesterday',
+    astop('is-open', 'fa-wifi', 'Reach', 'anywhere') + astop('is-open', 'fa-network-wired', 'Uplink', 'CitiNet') +
+    ways('is-gm', [['fa-key', 'is-plain', 'password']]) + astop('is-goal is-reached', 'fa-inbox', 'Mailbox', '3 mail'),
+    'Anyone gets straight in until you relock it<span class="grow"></span><span class="ncm-acc__btn act">Relock</span>')),
+].join('');
+</script>
+</body>
+</html>

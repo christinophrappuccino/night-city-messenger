@@ -3,56 +3,84 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Composer Netpicker Probe</title>
+<title>Composer Probe</title>
 <!--
   Renders the REAL templates/message-composer/message-composer.hbs through
-  Handlebars against the real Foundry core + CPR + module cascade, with the
-  header network picker / GM date chip in a chosen state. A palette/layout
-  check, not a data check.
-    ?as=gm|player   ?open=1 (picker open)   ?via=1 (GM override)   ?dated=1
-    ?q=ara&f=corporate (GM filter state)
-    ?t=clean-dark|clean-light|high-contrast (GM view admin preset)
-  It fetch()es the .hbs, so open it through dev/tools/serve-mockups.cjs (or a
-  headless render with --allow-file-access-from-files).
+  Handlebars against the real Foundry core + CPR + module cascade, in a chosen
+  state. A palette/layout check, not a data check (the context is a hand-built
+  twin of MessageComposerApp._prepareContext).
+    ?as=gm|player        who is composing (gm = GM view, data-ncm-admin-theme)
+    ?t=clean-dark|clean-light|high-contrast   the GM view's admin preset
+    ?p=arasaka|netrunner|…   a PLAYER preset's palette on :root (THEME_PRESETS, needs the server)
+    ?mode=compose|reply|forward   ?dead=1 (dead zone)   ?darknet=1
+    ?all=1   everything switched on (urgent, Black ICE DV 18, self-destruct, anonymous, schedule)
+    ?drawer=pri|enc|sd|anon|sched   the open drawer     ?preview=1 (GM preview as recipient)
+    ?drafts=3   the footer link     ?att=1 (attachments)   ?err=1 (validation errors)
+    ?open=1 (network picker open) ?via=1 (GM override) ?dated=1 ?q=ara&f=corporate
+    ?sendas=1 (the send-as dropdown open)   ?tpl=1 (the templates menu open)
+    ?contrast=1   walk every text node and count the ones under 4.5:1 (in <title>)
+  On disk it loads Handlebars + Font Awesome from the Foundry install; over
+  dev/tools/serve-mockups.cjs it uses the vendor mirror + a CDN for Handlebars.
 -->
 <script>
   (function () {
     const onDisk = location.protocol === 'file:';
     const vendor = onDisk
       ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
-         '../../../../systems/cyberpunk-red-core/main.css']
-      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+         '../../../../systems/cyberpunk-red-core/main.css',
+         'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
     for (const href of vendor) {
       const l = document.createElement('link');
       l.rel = 'stylesheet'; l.href = href;
       document.head.appendChild(l);
     }
+    const hb = document.createElement('script');
+    hb.src = onDisk
+      ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/node_modules/handlebars/dist/handlebars.min.js'
+      : 'https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js';
+    document.head.appendChild(hb);
   }());
 </script>
 <link rel="stylesheet" href="../../styles/night-city-messenger.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js"></script>
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
 <style>
-  html, body { margin: 0; background: #07070b; }
-  .frame { position: absolute; left: 20px; top: 20px; width: 640px; height: 560px; }
-  .frame > .window-content { height: 100%; padding: 0; }
+  html, body { margin: 0; background: #1b1b22; }
+  .frame { position: absolute; left: 20px; top: 20px; width: 640px; height: 560px; display: flex; flex-direction: column; }
+  .frame > .window-content { flex: 1; min-height: 0; padding: 0; display: flex; }
+  .frame > .window-content > .ncm-composer { flex: 1; }
 </style>
 </head>
 <body>
 <div class="frame application ncm-app ncm-message-composer"><section class="window-content" id="host"></section></div>
+<script type="module">
+  const sp = new URLSearchParams(location.search);
+  if (sp.get('p')) try {
+    const { THEME_PRESETS, COLOR_VAR_MAP } = await import('../../scripts/utils/constants.js');
+    const t = THEME_PRESETS[sp.get('p')]; if (!t) throw new Error('no preset ' + sp.get('p'));
+    for (const [k, v] of Object.entries(COLOR_VAR_MAP)) if (t[k]) document.documentElement.style.setProperty(v, t[k]);
+  } catch (e) { console.warn('?p failed', e.message); }
+</script>
 <script>
-(async () => {
+window.addEventListener('load', async () => {
   const sp = new URLSearchParams(location.search);
   const isGM = sp.get('as') !== 'player';
-  // ?t=clean-dark|clean-light|high-contrast = the composer in GM view.
-  if (sp.get('t')) document.querySelector('.frame').dataset.ncmAdminTheme = sp.get('t');
+  const mode = sp.get('mode') || 'compose';
+  const all = sp.get('all') === '1';
+  const dead = sp.get('dead') === '1';
+  const darknet = sp.get('darknet') === '1' || (all && isGM);
+  const drawer = sp.get('drawer') || null;
+  if (isGM && sp.get('t')) document.querySelector('.frame').dataset.ncmAdminTheme = sp.get('t');
+  if (typeof Handlebars === 'undefined') { document.title = 'ERR no Handlebars'; return; }
   const H = Handlebars;
   H.registerHelper('eq', (a, b) => a === b);
   H.registerHelper('gt', (a, b) => a > b);
   H.registerHelper('gte', (a, b) => a >= b);
   H.registerHelper('ncm-net-icon', (t) => new H.SafeString(`<i class="fas ${t?.icon || 'fa-wifi'}"></i>`));
-  H.registerHelper('ncm-anon-avatar', () => '');
+  H.registerHelper('ncm-anon-avatar', (style) => new H.SafeString(`<span class="ncm-anon-av" data-anon-style="${style || 'scrambled'}"><span class="ncm-anon-av__face"></span><span class="ncm-anon-av__noise"></span><span class="ncm-anon-av__vignette"></span></span>`));
+  H.registerHelper('ncm-term', function (form, cs, o) { const h = (o && o.hash) || (cs && cs.hash) || {}; const w = form === 'short' ? 'chip' : 'data shard'; return `${h.pre || ''}${h.a ? 'a ' : ''}${w}${h.post || ''}`; });
 
+  const hue = (n) => `var(--ncm-hue-${(n.length % 8) + 1}, var(--ncm-secondary))`;
   const nets = [
     ['CITINET', 'CitiNet', 'public', 'fa-wifi', '#19f3f7', 90, true],
     ['AFTER', 'Afterlife Back Room', 'hidden', 'fa-martini-glass', '#f472b6', 30, true],
@@ -89,20 +117,83 @@
     ...['hidden', 'corporate', 'government'].map(k => ({ key: k, label: { hidden: 'Hidden', corporate: 'Corp', government: 'Gov' }[k], count: others.filter(r => r.kind === k).length })),
   ] : [];
   const viaNet = via ? nets.find(n => n[0] === via) : null;
+  const netName = dead ? 'DEAD ZONE' : darknet ? 'DarkNet' : viaNet ? viaNet[1] : 'CitiNet';
+  const netColor = dead ? null : darknet ? '#a855f7' : viaNet ? viaNet[4] : '#19f3f7';
+
+  const anon = all && isGM;
+  const enc = all && isGM;
+  const V = { name: 'V', email: 'v@nightcity.net' };
+  const rogue = { name: 'Rogue Amendiares', email: 'rogue@afterlife.nc' };
+  const me = isGM ? rogue : V;
+  const other = isGM ? V : rogue;
+  const chip = (p, extra = {}) => ({ actorId: p.name, contactId: null, name: p.name, email: p.email, initials: p.name[0], hue: hue(p.name), mismatch: false, unreachable: false, locked: false, ...extra });
+  let recipients = [];
+  if (mode === 'reply') recipients = [chip(other, { locked: true })];
+  else if (sp.get('err') === '1') recipients = [];
+  else recipients = [chip(other), { isGroup: true, groupId: 'g1', name: 'The crew', email: '', actorId: null, contactId: null, initials: '', hue: hue('The crew'), memberCount: 4, memberNames: 'V, Judy Alvarez, Panam Palmer, Jackie Welles', mismatch: false, unreachable: false, locked: false }, chip({ name: 'Panam Palmer', email: 'panam@aldecaldos.nc' }, { mismatch: true, mismatchTooltip: 'Cross-net: BADLANDS — delivery may be delayed' })];
+
+  const original = mode !== 'compose' ? {
+    sender: other.name, email: other.email, initials: other.name[0], hue: hue(other.name), portrait: null,
+    formattedTime: '14 Aug 2045 20:12', network: 'CitiNet', networkColor: '#19f3f7',
+    subject: 'About the Konpeki job',
+    body: '<p>Choom, the window is Thursday. Bring the Ghost and nothing else you can\'t walk away from. If this came from Dex I want it in writing before I go up those stairs.</p>',
+    encrypted: !isGM, encDV: 15,
+    attachments: [{ name: '500 eb', icon: 'fa-coins', isEddies: true }, { name: 'Konpeki floorplan', icon: 'fa-microchip', isEddies: false }], hasAttachments: true,
+  } : null;
+
+  const body = all || sp.get('att') === '1' || mode === 'reply' ? '<p>Thursday works. <b>Nobody else knows</b> about the window — read this once.</p>' : '';
+  const attachments = sp.get('att') === '1' ? [
+    { name: 'Clouds export.shard', size: '2 files', icon: 'fa-microchip', isEddies: false, encrypted: false },
+    { name: 'Eddies', icon: 'fa-coins', isEddies: true, eddiesFormatted: '250 eb', encrypted: false },
+    { name: 'braindance_03.webm', size: '14 MB', icon: 'fa-film', isEddies: false, encrypted: false },
+  ] : [];
+  const priority = all ? 'urgent' : (mode === 'reply' && !isGM ? 'critical' : 'normal');
+  const PT = { low: 'hint', normal: 'act', high: 'attn', urgent: 'attn', critical: 'bad' };
+  const PL = { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent', critical: 'Critical' };
+  const sched = all || sp.get('drawer') === 'sched' || (!isGM && mode === 'compose' && sp.get('att') === '1');
+  const preview = isGM && sp.get('preview') === '1';
+  const errors = sp.get('err') === '1' ? { to: 'Pick at least one recipient.', general: 'Message must have a subject or body.' } : {};
+
   const ctx = {
-    isGM, isGMSendAs: isGM, fromName: isGM ? 'Rogue' : 'V', fromEmail: isGM ? 'rogue@afterlife.nc' : 'v@citinet.nc',
-    fromInitials: isGM ? 'RO' : 'V',
-    networkName: viaNet ? viaNet[1].toUpperCase() : 'CITINET', networkThemeColor: viaNet ? viaNet[4] : '#19f3f7',
-    netPillState: 'connected', netPillBars: [1, 1, 1, viaNet ? 0 : 1].map(a => ({ active: !!a })), fxTags: viaNet ? [{ label: 'RESTRICTED', variant: 'warn' }] : [],
+    mode, isReply: mode === 'reply', isForward: mode === 'forward', isGM, isGMSendAs: isGM, canSwitchFrom: isGM, terminalSend: null,
+    fromName: me.name, fromEmail: me.email, fromInitials: me.name[0], fromImg: null, fromHue: hue(me.name),
+    anonFeatureEnabled: isGM, anonActive: anon, anonymousEnabled: anon, anonStyle: 'scrambled', anonStyleLabel: 'Scrambled',
+    anonStyleList: ['filtered', 'scrambled', 'ghost', 'monolith'].map(id => ({ id, label: id[0].toUpperCase() + id.slice(1), active: id === 'scrambled' })),
+    anonAlias: anon ? 'GHOST_7F' : '', anonAliasDisplay: 'GHOST_7F', anonMaskedEmail: 'unknown@relay.darknet', anonAllowReplies: true, anonTraceFeatureEnabled: true, anonTraceDV: 15,
+    networkName: netName, networkThemeColor: netColor, isDeadZone: dead,
+    netPillState: dead ? 'dead' : darknet ? 'darknet' : 'connected',
+    netPillBars: [1, 1, 1, viaNet || darknet ? 0 : 1].map(a => ({ active: !dead && !!a })),
+    fxTags: darknet ? [{ label: 'MASKED', variant: 'info' }] : viaNet ? [{ label: 'RESTRICTED', variant: 'warn' }] : [],
     netViaOverride: !!viaNet,
-    netPicker: { isGM, rows, hasRows: true, filters, showFilters: isGM,
-      header: isGM ? 'Send this message via' : 'Available Networks',
-      footer: isGM ? 'This message only — you stay on CitiNet' : 'Switches your connection — your inbox follows' },
-    sendBackdated: isGM && sp.get('dated') === '1', sendTimestampFormatted: '2045.10.12 03:40',
-    currentGameTime: '2045.10.17 22:14',
-    modeLabelText: isGM ? 'Send-As' : 'New', modeLabelIcon: isGM ? 'fa-masks-theater' : 'fa-pen', modeKey: isGM ? 'sendas' : 'compose',
-    recipients: [], priorities: [{ id: 'normal', label: 'Normal', active: true }], selfDestructOptions: [], anonStyleList: [],
-    attachments: [], errors: {}, charCount: 0, subject: 'Package is ready', body: '',
+    netPicker: { isGM, rows, hasRows: !dead, isDeadZone: dead, filters, showFilters: isGM,
+      header: isGM ? 'Send this message via' : 'Available networks',
+      footer: dead ? 'Dead zone — all signals jammed' : isGM ? 'This message only — you stay on CitiNet' : 'Switches your connection — your inbox follows' },
+    sendBackdated: isGM && sp.get('dated') === '1', sendTimestampFormatted: '03 Aug 2045 09:15', currentGameTime: '14 Aug 2045 20:40',
+    recipients, recipientLocked: mode === 'reply', subject: mode === 'reply' ? '' : (sp.get('err') === '1' ? '' : 'About the Konpeki job'), body,
+    drawer, priorities: Object.entries(PL).map(([id, label]) => ({ id, label, active: id === priority })),
+    priorityLabel: PL[priority], priorityTone: PT[priority], priorityOn: priority !== 'normal',
+    encryptionEnabled: enc, encryptionDV: 18, encryptionType: enc ? 'BLACK_ICE' : 'ICE', encryptionFailureMode: 'damage', isLethalICE: enc,
+    encTypes: [['ICE', 'Standard'], ['RED_ICE', 'Red ICE'], ['BLACK_ICE', 'Black ICE']].map(([id, label]) => ({ id, label, active: enc ? id === 'BLACK_ICE' : id === 'ICE' })),
+    lockLabel: enc ? 'Black ICE' : 'Open', lockTone: enc ? 'bad' : 'secret', iceSource: enc ? 'actor' : 'default', iceActorId: 'hell',
+    iceActors: [{ id: 'hell', name: 'Hellhound', img: null, atk: 6 }, { id: 'kraken', name: 'Kraken', img: null, atk: 8 }],
+    selfDestructEnabled: all && isGM, selfDestructLabel: 'after reading',
+    selfDestructOptions: [['after_read', 'after reading'], ['1h', 'in 1 h'], ['6h', 'in 6 h'], ['24h', 'in 24 h']].map(([id, label]) => ({ id, label, active: id === 'after_read' })),
+    scheduleEnabled: sched, scheduledTime: sched ? '2045-08-15T08:00:00Z' : '', scheduledTimeFormatted: sched ? '15 Aug 2045 08:00' : '',
+    charCount: body.replace(/<[^>]+>/g, '').length, originalMessageCard: original,
+    isDarknet: darknet, degradedSignal: true, reliabilityFailChance: 12,
+    attachments, hasAttachments: attachments.length > 0, errors, sending: false,
+    autoSaveTime: sp.get('drafts') ? '20:38' : null, draftCount: Number(sp.get('drafts') || 0), templateCount: 4,
+    preview: preview ? {
+      who: other.name,
+      sender: anon ? { anon: true, style: 'scrambled', name: 'GHOST_7F', email: 'unknown@relay.darknet', initials: '?' } : { anon: false, name: me.name, email: me.email, initials: me.name[0] },
+      meta: `${anon ? 'unknown@relay.darknet' : me.email} · ${netName} · 14 Aug 2045 20:40`,
+      priority: { label: PL[priority], show: priority !== 'normal', bad: priority === 'critical', attn: priority !== 'critical' },
+      subject: mode === 'reply' ? 'Re: About the Konpeki job' : 'About the Konpeki job', toLine: recipients.map(r => r.name).join(', '), toCount: recipients.length,
+      lock: enc ? { dv: 18, typeLabel: 'Black ICE', lethal: true, text: `The body stays scrambled until ${other.name} breaches it. A failed breach deals damage — the Black ICE bites back.` } : null,
+      bodyHtml: body, bodyEmpty: !body,
+      attachments: attachments.map(a => ({ name: a.isEddies ? a.eddiesFormatted : a.name, icon: a.icon, isEddies: a.isEddies })),
+      notes: [...(all ? [{ icon: 'fa-bomb', text: 'Self-destructs after reading' }, { icon: 'fa-reply', text: 'Replies go back to the mask' }] : []), ...(sched ? [{ icon: 'fa-clock', text: 'Arrives 15 Aug 2045 08:00' }] : [])],
+    } : null,
   };
   try {
     const src = await (await fetch('../../templates/message-composer/message-composer.hbs')).text();
@@ -114,24 +205,55 @@
     const menu = document.querySelector('[data-id="net-picker"]');
     menu.classList.remove('ncm-hidden');
     pill.classList.add('ncm-composer__net-pill--open');
-    menu.style.left = pill.offsetLeft + 'px';
-    menu.style.animation = 'none';
+    const hostW = pill.offsetParent.clientWidth;
+    menu.style.left = Math.max(8, Math.min(pill.offsetLeft, hostW - menu.offsetWidth - 12)) + 'px';
     const q = sp.get('q') || '', f = sp.get('f') || 'all';
     menu.querySelectorAll('[data-net-filter]').forEach(c => c.classList.toggle('ncm-composer__net-fchip--on', c.dataset.netFilter === f));
     const s = menu.querySelector('[data-id="net-search"]'); if (s) s.value = q;
-    let shown = 0;
     menu.querySelectorAll('[data-net-pick]').forEach(r => {
       if (r.dataset.pinned) return;
       const okF = f === 'all' || (f === 'range' ? r.dataset.range === '1' : r.dataset.kind === f);
-      const okk = okF && (!q || (r.dataset.search || '').includes(q));
-      r.classList.toggle('ncm-hidden', !okk); if (okk) shown++;
+      r.classList.toggle('ncm-hidden', !(okF && (!q || (r.dataset.search || '').includes(q))));
     });
   }
-  // Report: pill + chip computed boxes (button reset sanity).
+  if (sp.get('sendas') === '1' && isGM) {
+    const dd = document.querySelector('[data-id="sendas-dropdown"]'); dd.classList.remove('ncm-hidden');
+    const list = dd.querySelector('[data-id="sendas-list"]');
+    list.innerHTML = [['Rogue Amendiares', 'rogue@afterlife.nc', 'main', true], ['The Queen', 'queen@relay.darknet', 'alias', false], ['Judy Alvarez', 'judy@mox.nc', 'npc', false], ['Wakako Okada', 'wakako@kabuki.nc', 'npc', false]]
+      .map(([n, e, t, on]) => `<div class="ncm-sendas-item ${on ? 'ncm-sendas-item--active' : ''}" style="--tc:${hue(n)}"><div class="ncm-sendas-item__avatar">${n[0]}</div><div class="ncm-sendas-item__info"><div class="ncm-sendas-item__name">${n}</div><div class="ncm-sendas-item__email">${e}</div></div><span class="ncm-sendas-item__type ${t === 'alias' ? 'is-alias' : ''}">${t}</span></div>`).join('');
+  }
+  if (sp.get('tpl') === '1' && isGM) document.querySelector('[data-id="tpl-menu"]')?.classList.remove('ncm-hidden');
+
+  // Report: pill + chip computed boxes (button reset sanity), or the contrast walk.
   const pill = document.querySelector('.ncm-composer__net-pill').getBoundingClientRect();
-  const chip = document.querySelector('.ncm-composer__time-chip').getBoundingClientRect();
-  document.title = `pill ${Math.round(pill.width)}x${Math.round(pill.height)} | chip ${Math.round(chip.width)}x${Math.round(chip.height)}`;
-})();
+  const tchip = document.querySelector('.ncm-composer__time-chip').getBoundingClientRect();
+  document.title = `pill ${Math.round(pill.width)}x${Math.round(pill.height)} | chip ${Math.round(tchip.width)}x${Math.round(tchip.height)}`;
+  if (sp.get('contrast') === '1') {
+    // A color-mix(in oklab …) computes to oklab(…) — paint every colour through a
+    // canvas so the channels are always sRGB 0–255 (the regex alone misreads oklab).
+    const cv = document.createElement('canvas'); cv.width = cv.height = 1; const cx = cv.getContext('2d', { willReadFrequently: true });
+    const chan = (c) => {
+      try { cx.clearRect(0, 0, 1, 1); cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; } catch { /* fall back */ }
+      const m = (c.match(/-?[\d.]+(?:e-?\d+)?/g) || []).map(Number); return c.startsWith('color(') ? [m[0] * 255, m[1] * 255, m[2] * 255, m.length > 3 ? m[3] : 1] : [m[0], m[1], m[2], m.length > 3 ? m[3] : 1];
+    };
+    const lum = (c) => { const [r, g, b] = chan(c).slice(0, 3).map(v => { v = Math.max(0, Math.min(255, v)) / 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+    const alpha = (c) => chan(c)[3];
+    const bgOf = (el) => { for (let e = el; e; e = e.parentElement) { const bg = getComputedStyle(e).backgroundColor; if (bg && alpha(bg) >= .95 && bg !== 'transparent') return bg; } return 'rgb(0,0,0)'; };
+    const bad = [];
+    const walker = document.createTreeWalker(document.getElementById('host'), NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = walker.nextNode())) {
+      if (!n.textContent.trim()) continue;
+      const el = n.parentElement; const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+      const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) < .5) continue;
+      if (el.closest('.ncm-hidden')) continue;
+      const l1 = lum(cs.color), l2 = lum(bgOf(el)); const ratio = (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05);
+      if (ratio < 4.5) bad.push(`${ratio.toFixed(2)} ${el.className || el.tagName} "${n.textContent.trim().slice(0, 30)}"`);
+    }
+    document.title = `contrast: ${bad.length} under 4.5`;
+    const pre = document.createElement('pre'); pre.style.cssText = 'position:absolute;left:680px;top:20px;color:#fff;font:11px monospace;white-space:pre-wrap;width:400px'; pre.textContent = bad.join('\n') || 'all text ≥ 4.5:1'; document.body.appendChild(pre);
+  }
+});
 </script>
 </body>
 </html>

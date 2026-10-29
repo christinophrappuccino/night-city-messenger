@@ -141,7 +141,7 @@ ok(/impersonated: !this\.terminalSend\.own/.test(cmp), 'every terminal send reco
 const repo = read('scripts/data/MessageRepository.js');
 ok(/sentVia: \(messageData\.status\?\.sent && messageData\.sentVia\) \? messageData\.sentVia : null/.test(repo), "sentVia is persisted on the SENDER's sent copy only — never the recipient's");
 ok(/sentVia: flags\.sentVia \|\| null/.test(repo), 'sentVia reads back');
-ok(/flags\.sentVia \?/.test(read('scripts/ui/AdminPanel/tabs/MessagesTab.js')) && /typed by \{\{this\.sentVia\.typist\}\}/.test(read('templates/admin-panel/tab-messages.hbs')), 'GM feed shows the machine + the real typist');
+ok(/flags\.sentVia \?/.test(read('scripts/ui/AdminPanel/tabs/MessagesTab.js')) && /typed by <b>\{\{via\.typist\}\}<\/b>/.test(read('templates/admin-panel/tab-messages.hbs')) && /flag\('typed', e\.sentVia\.typist\)/.test(read('scripts/ui/AdminPanel/tabs/MessagesTab.js')), 'GM feed (All mail row flag + reading pane) shows the machine + the real typist');
 ok(/terminalSend\.impersonating/.test(read('templates/message-composer/message-composer.hbs')) && /impersonating: !this\.terminalSend\.own/.test(cmp), 'eddies button hidden only when impersonating');
 
 
@@ -151,7 +151,8 @@ ok(/terminalSend\.impersonating/.test(read('templates/message-composer/message-c
 { const mtSrc = read('scripts/ui/AdminPanel/tabs/MessagesTab.js');
   ok(mtSrc.includes('const viaByBase = this._sentViaIndex();') && mtSrc.includes('!!fromActor?.hasPlayerOwner || !!via?.impersonated') && mtSrc.includes('sentVia: via,'), 'NPC Inbox: impersonations count as player mail and carry the note');
   ok(mtSrc.includes("senderName: fromActor?.name ||"), 'NPC Inbox: a sender with no visible character no longer throws');
-  ok(read('templates/admin-panel/tab-messages.hbs').split(String.fromCharCode(10)).some((l) => l.includes('ncm-npcinbox-msg__sender') && l.includes('this.sentVia.typist')), 'NPC Inbox template shows the note'); }
+  // The NPC Inbox panel became Messages → Needs a reply (2026-10-27): the conversation flags the typist and explains it.
+  ok(read('templates/admin-panel/tab-messages.hbs').split(String.fromCharCode(10)).some((l) => l.includes('typedNotes') && l.includes('typed by {{typist}}')), 'Needs a reply shows the note'); }
 
 const C = await imp('scripts/utils/constants.js');
 ok(C.DEFAULTS.TERMINAL_CONFIG.accountMail.compose === false && C.DEFAULTS.TERMINAL_CONFIG.accountMail.log === true, 'defaults: off, logging on');

@@ -1,0 +1,312 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Access points v2</title>
+<!--
+  ACCESS POINTS, round 2 (2026-10-29, dev):
+    1. "What players get — tie it to whatever theme the shard or terminal is using, so the colours make sense; or a
+       default option too." → each artifact (chat card, journal chip, hotbar icon) takes the SOURCE's palette
+       (terminal preset / shard preset / its own overrides), or the module default. A per-world default + a per-
+       artifact override. The real build reads buildTerminalThemePrefs / buildShardThemePrefs, no new palettes.
+    2. "Organise access points when there's a lot of stuff — cool, intuitive, like every other section." Two views
+       of the same data, one switch (the Atlas | Grid precedent):
+       A · MAP SHELVES — scene folders as shelves; every scene a card with a mini-map that plots its access points
+           where they really sit; pick a scene → a big map + the list of its points (hover a row ↔ its dot lights).
+           Off-map access (hotbar, chat, journal links) has its own shelf.
+       B · BY THING — every terminal / shard / inbox / message / contact as a row with chips saying WHERE players
+           can reach it; "Not reachable" finds what you forgot to place.
+     One toolbar for both: search · Show · Group · Sort · Map | By thing.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/access-points-v2-mock.html  ?t=clean-light  ?view=thing
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { max-width: 1120px; margin: 28px auto 4px; color: #eee; font: 700 15px sans-serif; } .mk-h:first-child { margin-top: 0; }
+  .mk-p { max-width: 1120px; margin: 0 auto 12px; color: #aaa; font: 13px/1.5 sans-serif; }
+  .mk-row { max-width: 1120px; margin: 0 auto; display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+
+  /* ═══ 1 · themed artifacts ═══ */
+  .th { --p: #19f3f7; --s: #ff2a6d; --a: #f7c948; --bg: #0b0b12; --bg2: #14141e; --tx: #e6ecf5; --tx2: #9aa4b8; --fd: 'Rajdhani', sans-serif; --fm: 'Share Tech Mono', monospace; }
+  .th-col { width: 340px; display: flex; flex-direction: column; gap: 10px; }
+  .th-lbl { font: 700 12px sans-serif; color: #ddd; display: flex; gap: 8px; align-items: center; }
+  .th-lbl small { font-weight: 400; color: #999; }
+  .th-sw { display: inline-flex; gap: 2px; } .th-sw i { width: 12px; height: 12px; border-radius: 2px; }
+  .chat { background: #e8e2d4; border: 1px solid #b9b2a3; border-radius: 4px; }
+  .chat .h { padding: 5px 8px; font: 700 12px sans-serif; color: #333; border-bottom: 1px solid #c9c2b2; display: flex; justify-content: space-between; } .chat .h span { font-weight: 400; color: #777; }
+  .card { margin: 8px; padding: 10px 12px; background: var(--bg); border-top: 2px solid var(--p); color: var(--tx); position: relative; overflow: hidden; }
+  .card::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--p) 6%, transparent) 0 1px, transparent 1px 3px); }
+  .card .k { display: flex; justify-content: space-between; font: 700 9.5px var(--fm); letter-spacing: .12em; text-transform: uppercase; color: var(--p); }
+  .card .k span { color: var(--tx2); letter-spacing: .05em; }
+  .card .t { margin: 7px 0 2px; display: flex; gap: 8px; align-items: center; font: 700 16px var(--fd); color: var(--tx); }
+  .card .t .ico { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--p) 60%, transparent); background: color-mix(in srgb, var(--p) 14%, transparent); color: var(--p); }
+  .card .s { font: 12px var(--fd); color: var(--tx2); }
+  .card .lk { margin-top: 6px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .card .lk span { font: 10px var(--fm); padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--a) 55%, transparent); color: var(--a); }
+  .card .open { margin-top: 10px; height: 30px; display: flex; align-items: center; justify-content: center; gap: 7px; background: var(--p); color: var(--bg); font: 700 11px var(--fd); letter-spacing: .1em; text-transform: uppercase; }
+  .jr { padding: 10px 12px; background: #f3efe4; border: 1px solid #c8c0ad; border-radius: 3px; font: 14px/1.7 Georgia, serif; color: #2a2620; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 0 7px 0 0; border: 1px solid var(--p); background: var(--bg); color: var(--tx); font: 600 12.5px var(--fd); white-space: nowrap; vertical-align: middle; }
+  .chip i { display: grid; place-items: center; width: 20px; height: 20px; background: var(--p); color: var(--bg); font-size: 10px; }
+  .hb { display: inline-flex; gap: 3px; padding: 4px; background: rgba(0,0,0,.6); border: 1px solid #555; border-radius: 4px; }
+  .hb .sl { position: relative; width: 48px; height: 48px; border: 1px solid #555; background: #1a1a1a; }
+  .hb .sl.ncm { border-color: var(--p); background: var(--bg); color: var(--p); display: grid; place-items: center; font-size: 19px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p) 30%, transparent), 0 0 8px color-mix(in srgb, var(--p) 40%, transparent); }
+  .hb .sl.ncm::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--a); }
+  .hb .sl .n { position: absolute; top: 1px; left: 3px; font: 10px sans-serif; color: #aaa; }
+  .style-pick { max-width: 1120px; margin: 0 auto 12px; display: flex; gap: 10px; align-items: center; color: #ccc; font: 13px sans-serif; }
+  .style-pick b { color: #fff; }
+  .seg { display: inline-flex; border: 1px solid #555; border-radius: 3px; overflow: hidden; } .seg span { padding: 4px 10px; cursor: pointer; color: #bbb; } .seg span.on { background: #19f3f7; color: #000; font-weight: 700; }
+
+  /* ═══ 2 · the tab ═══ */
+  .ap { width: 1120px; height: 640px; display: flex; flex-direction: column; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); border: 1px solid #555; }
+  .ap-hd { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); }
+  .ap-hd i { color: var(--ncm-act); } .ap-hd h2 { margin: 0; border: 0; font: 700 12px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .ap-hd p { margin: 0; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ap-tb { display: flex; align-items: center; gap: 6px; padding: 8px 12px; }
+  .srch { flex: 1; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); color: var(--ncm-text-secondary); }
+  .sel { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading); cursor: pointer; }
+  .sel span { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .sel i { font-size: 9px; color: var(--ncm-text-secondary); }
+  .sw { display: inline-flex; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+  .sw b { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; font: 700 10.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary); cursor: pointer; }
+  .sw b.on { background: var(--ncm-act); color: var(--ncm-text-inverse); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); font: 700 10.5px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); cursor: pointer; white-space: nowrap; }
+  .btn i:only-child { margin: 0 !important; line-height: 1; }
+  .btn.ic { display: inline-grid; place-items: center; }
+  .btn.pri { background: var(--ncm-act); border-color: var(--ncm-act); color: var(--ncm-text-inverse); } .btn.ic { width: 28px; padding: 0; justify-content: center; }
+  .ap-stats { display: flex; gap: 0; margin: 0 12px 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .ap-stats div { flex: 1; padding: 4px 10px; border-right: 1px solid var(--ncm-border); display: flex; gap: 6px; align-items: baseline; cursor: pointer; }
+  .ap-stats div:last-child { border-right: 0; } .ap-stats div.on { background: color-mix(in srgb, var(--ncm-act) 12%, transparent); box-shadow: inset 0 -2px var(--ncm-act); }
+  .ap-stats b { font: 700 15px var(--ncm-font-mono); color: var(--ncm-text-heading); } .ap-stats span { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .ap-stats .attn b { color: var(--ncm-secret); } .ap-stats .bad b { color: var(--ncm-bad); } .ap-stats .warn b { color: var(--ncm-attn); }
+  .ap-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 8px; padding: 0 12px 12px; }
+  .pane { min-height: 0; overflow-y: auto; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .desk { min-height: 0; overflow-y: auto; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); }
+  /* kinds (category hues, never meaning colours) */
+  .k-terminal { --kc: var(--ncm-hue-3); } .k-shard { --kc: var(--ncm-hue-2); } .k-inbox { --kc: var(--ncm-hue-5); } .k-message { --kc: var(--ncm-hue-7); } .k-contact { --kc: var(--ncm-hue-1); }
+  /* A · shelves */
+  .shelf__hd { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 5px 10px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border); font: 700 10.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); cursor: pointer; }
+  .shelf__hd .ch { font-size: 9px; color: var(--ncm-text-label); } .shelf__hd .n { font-family: var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .shelf__hd .dots { margin-left: auto; display: flex; gap: 3px; } .shelf__hd .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--kc); }
+  .shelf__row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; padding: 8px; }
+  .sc { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); cursor: pointer; overflow: hidden; }
+  .sc:hover { border-color: var(--ncm-act); } .sc.on { border-color: var(--ncm-act); box-shadow: inset 0 0 0 1px var(--ncm-act); }
+  .mm { position: relative; height: 78px; background: linear-gradient(135deg, color-mix(in srgb, var(--tc) 30%, var(--ncm-bg-deep)), var(--ncm-bg-deep)); }
+  .mm::before { content: ''; position: absolute; inset: 0; background: linear-gradient(color-mix(in srgb, #fff 6%, transparent) 1px, transparent 1px) 0 0 / 13px 13px, linear-gradient(90deg, color-mix(in srgb, #fff 6%, transparent) 1px, transparent 1px) 0 0 / 13px 13px; }
+  .mm .pt { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 0 2px var(--ncm-bg-deep), 0 0 6px var(--kc); }
+  .mm .pt.area { border-radius: 1px; width: 16px; height: 12px; margin: -6px 0 0 -8px; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--kc) 70%, transparent) 0 3px, transparent 3px 6px); box-shadow: 0 0 0 1px var(--kc); }
+  .mm .pt.hid { opacity: .45; outline: 1px dashed var(--ncm-secret); outline-offset: 2px; }
+  .mm .pt.bad { background: var(--ncm-bad); box-shadow: 0 0 0 2px var(--ncm-bg-deep), 0 0 6px var(--ncm-bad); }
+  .sc__f { display: flex; align-items: center; gap: 6px; padding: 5px 7px; }
+  .sc__f b { flex: 1; min-width: 0; font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sc__f .c { font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-secondary)); }
+  .sc__f .w { color: var(--ncm-secret); font-size: 10px; } .sc__f .x { color: var(--ncm-bad); font-size: 10px; }
+  .off { display: flex; flex-direction: column; }
+  /* desk */
+  .dk-hd { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+  .dk-hd b { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-heading); } .dk-hd small { display: block; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .dk-hd .g { flex: 1; }
+  .bigmap { position: relative; height: 200px; margin: 10px 12px; border: 1px solid var(--ncm-border); background: linear-gradient(135deg, color-mix(in srgb, var(--ncm-hue-3) 22%, var(--ncm-bg-deep)), var(--ncm-bg-deep)); }
+  .bigmap::before { content: ''; position: absolute; inset: 0; background: linear-gradient(color-mix(in srgb, #fff 6%, transparent) 1px, transparent 1px) 0 0 / 20px 20px, linear-gradient(90deg, color-mix(in srgb, #fff 6%, transparent) 1px, transparent 1px) 0 0 / 20px 20px; }
+  .bigmap .wall { position: absolute; background: color-mix(in srgb, #fff 22%, transparent); }
+  .bigmap .pt { position: absolute; display: grid; place-items: center; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 2px solid var(--kc); color: var(--kc); font: 700 10px var(--ncm-font-mono); transition: transform .12s, box-shadow .12s; z-index: 2; }
+  .bigmap .pt.area { border-radius: 2px; width: 60px; height: 44px; margin: -22px 0 0 -30px; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--kc) 22%, transparent) 0 6px, transparent 6px 12px); z-index: 1; }
+  .bigmap .pt.hid { border-style: dashed; opacity: .65; }
+  .bigmap .pt.bad { border-color: var(--ncm-bad); color: var(--ncm-bad); }
+  .bigmap .pt.lit, .bigmap .pt:hover { transform: scale(1.25); box-shadow: 0 0 0 3px color-mix(in srgb, var(--kc) 40%, transparent), 0 0 14px var(--kc); }
+  .bigmap .ring { position: absolute; border: 1px dashed color-mix(in srgb, var(--ncm-hue-3) 70%, transparent); border-radius: 50%; z-index: 0; }
+  .pl { display: grid; grid-template-columns: 22px 26px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 6px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); cursor: pointer; }
+  .pl:hover, .pl.lit { background: var(--ncm-bg-hover, var(--ncm-bg-card)); }
+  .pl .num { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--kc); color: var(--kc); font: 700 10px var(--ncm-font-mono); }
+  .pl .ic { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--kc) 60%, transparent); color: var(--kc); background: color-mix(in srgb, var(--kc) 10%, transparent); }
+  .pl b { font: 600 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); } .pl small { display: block; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .pl small .hid { color: var(--ncm-secret); font-weight: 700; } .pl small .bad { color: var(--ncm-bad); font-weight: 700; }
+  .pl .acts { display: flex; gap: 3px; opacity: .55; } .pl:hover .acts { opacity: 1; }
+  .k { padding: 8px 12px 4px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); display: flex; gap: 6px; align-items: center; }
+  .k i { color: var(--ncm-act); }
+  /* B · by thing */
+  .grp { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 5px 10px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border); font: 700 10.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .grp i { color: var(--kc); } .grp .n { font-family: var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .th-r { display: grid; grid-template-columns: 30px minmax(0, 220px) minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); cursor: pointer; }
+  .th-r:hover { background: var(--ncm-bg-hover, var(--ncm-bg-card)); } .th-r.on { background: color-mix(in srgb, var(--ncm-act) 10%, var(--ncm-bg-card)); box-shadow: inset 3px 0 var(--ncm-act); }
+  .th-r .ic { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--kc) 60%, transparent); color: var(--kc); background: color-mix(in srgb, var(--kc) 10%, transparent); }
+  .th-r b { font: 600 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); } .th-r small { display: block; font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .reach { display: flex; flex-wrap: wrap; gap: 4px; }
+  .rc { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border: 1px solid var(--ncm-border); border-radius: 1px; background: var(--ncm-bg-card); font: 11px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; }
+  .rc i { font-size: 9px; color: var(--ncm-text-secondary); }
+  .rc.hid { border-color: color-mix(in srgb, var(--ncm-secret) 55%, transparent); } .rc.hid i { color: var(--ncm-secret); }
+  .rc.bad { border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent); color: var(--ncm-bad); } .rc.bad i { color: var(--ncm-bad); }
+  .rc.none { border-style: dashed; color: var(--ncm-attn); } .rc.none i { color: var(--ncm-attn); }
+</style>
+</head>
+<body>
+
+<div class="mk-h">1 · What players get — in the colours of the thing it opens</div>
+<div class="mk-p">Three choices: <b>Match the source</b>, <b>Module default</b>, or <b>My colours</b> (pick them — per world as the default, or per handout when you post it). A chat card, a journal link and a hotbar icon take the <b>source's own palette</b>: a terminal's preset (or its custom theme), a shard's preset / overrides, an inbox the player's Agent theme. Or the <b>module default</b> for everything. A world setting picks the default; a single card can override it when you post it.</div>
+<div class="style-pick">Style: <span class="seg" id="stylePick"><span class="on" data-s="match">Match the source</span><span data-s="default">Module default</span><span data-s="custom">My colours</span></span><span id="customPick" style="display:none;gap:8px;align-items:center"> Primary <input type="color" id="cP" value="#c084fc"> Accent <input type="color" id="cA" value="#34d399"> Background <input type="color" id="cB" value="#0d0a14"> Text <input type="color" id="cT" value="#efe9ff"></span></div>
+<div class="mk-row" id="themed"></div>
+
+<div class="mk-h">2 · Admin → World → Access points — when there is a lot of it</div>
+<div class="mk-p">One toolbar (search · <b>Show</b> · <b>Group</b> · <b>Sort</b> · <b>Map | By thing</b>), a stats strip that filters, and two views of the same data. <b>Click around: scene cards, the Map | By thing switch, rows (hovering a row lights its dot on the map), the stats.</b></div>
+<div class="mk-row"><div class="ncm-app ncm-admin-panel mk-win ap" id="AP" data-ncm-admin-theme="T"></div></div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const T = Q.get('t') || 'clean-dark';
+document.querySelectorAll('[data-ncm-admin-theme]').forEach(el => { el.dataset.ncmAdminTheme = T; el.dataset.ncmScanlines = 'false'; });
+
+// ── 1 · themed artifacts (palettes copied from TERMINAL_PRESETS / SHARD_PRESETS) ──
+const SOURCES = [
+  { name: 'WS-7F-12', kind: 'Terminal', from: 'arasaka-workstation preset', icon: 'fa-terminal', sub: 'Arasaka 7F · 4 accounts', tags: ['LOGIN REQUIRED'], open: 'Log in', p: { p: '#ff0033', s: '#19f3f7', a: '#ffcc00', bg: '#0a0006', bg2: '#22060e', tx: '#f4e6ea', tx2: '#c79aa6' } },
+  { name: "Ghost's go-bag", kind: 'Shard', from: 'personal-memory preset', icon: 'fa-microchip', sub: '3 files · locked', tags: ['ENCRYPTED', 'DV 14'], open: 'Open the shard', p: { p: '#d09040', s: '#f0b860', a: '#e0a0a0', bg: '#0f0c08', bg2: '#15120a', tx: '#f8f0e0', tx2: '#c8a878' } },
+  { name: 'NW-RELAY-03', kind: 'Terminal', from: 'netwatch-unit preset', icon: 'fa-server', sub: 'Netwatch relay · 2 accounts', tags: ['TRACE ACTIVE'], open: 'Log in', p: { p: '#4aa3ff', s: '#b9d8ff', a: '#9ad0ff', bg: '#04070f', bg2: '#0b1726', tx: '#e6eefc', tx2: '#90a8c8' } },
+];
+const CUSTOM = () => { const g = (id) => document.getElementById(id).value; const bg = g('cB'); return { p: g('cP'), s: g('cP'), a: g('cA'), bg, bg2: bg, tx: g('cT'), tx2: g('cT') + 'b0' }; };
+let STYLE = 'match';
+const DEF = { p: '#19f3f7', s: '#ff2a6d', a: '#f7c948', bg: '#0b0b12', bg2: '#14141e', tx: '#e6ecf5', tx2: '#9aa4b8' };
+function drawThemed(style) {
+  document.getElementById('themed').innerHTML = SOURCES.map((s, i) => {
+    const p = style === 'match' ? s.p : style === 'custom' ? CUSTOM() : DEF;
+    const v = `--p:${p.p};--s:${p.s};--a:${p.a};--bg:${p.bg};--bg2:${p.bg2};--tx:${p.tx};--tx2:${p.tx2}`;
+    return `<div class="th th-col" style="${v}">
+      <div class="th-lbl">${s.kind} · ${s.name} <small>${style === 'match' ? 'from its ' + s.from : style === 'custom' ? 'your colours' : 'module default'}</small><span class="th-sw"><i style="background:${p.p}"></i><i style="background:${p.a}"></i><i style="background:${p.bg};outline:1px solid #555"></i></span></div>
+      <div class="chat"><div class="h">Gamemaster <span>${i === 1 ? 'whispered to V' : 'to everyone'}</span></div>
+        <div class="card"><div class="k">// ${s.kind.toLowerCase()}<span>${i === 1 ? 'found' : 'access point'}</span></div><div class="t"><span class="ico"><i class="fas ${s.icon}"></i></span>${s.name}</div><div class="s">${s.sub}</div><div class="lk">${s.tags.map(t => `<span>${t}</span>`).join('')}</div><div class="open"><i class="fas fa-door-open"></i>${s.open}</div></div></div>
+      <div class="jr">…the console by the window, <span class="chip"><i class="fas ${s.icon}"></i>${s.name}</span>, is still logged in.</div>
+      <div class="hb"><div class="sl"><span class="n">2</span></div><div class="sl ncm"><span class="n">3</span><i class="fas ${s.icon}"></i></div><div class="sl"><span class="n">4</span></div></div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('stylePick').addEventListener('click', (e) => { const b = e.target.closest('span[data-s]'); if (!b) return; document.querySelectorAll('#stylePick span').forEach(x => x.classList.toggle('on', x === b)); STYLE = b.dataset.s; document.getElementById('customPick').style.display = STYLE === 'custom' ? 'inline-flex' : 'none'; drawThemed(STYLE); });
+document.getElementById('customPick').addEventListener('input', () => drawThemed(STYLE));
+drawThemed('match');
+
+// ── 2 · the tab ──
+const SCENES = [
+  { id: 's1', name: 'Arasaka Tower 7F', folder: 'Arasaka Tower', hue: 'var(--ncm-hue-3)' },
+  { id: 's2', name: 'Arasaka Tower Lobby', folder: 'Arasaka Tower', hue: 'var(--ncm-hue-3)' },
+  { id: 's3', name: 'Afterlife', folder: 'Watson', hue: 'var(--ncm-hue-1)' },
+  { id: 's4', name: 'Kabuki Market', folder: 'Watson', hue: 'var(--ncm-hue-1)' },
+  { id: 's5', name: 'Docks — Container 9', folder: 'Watson', hue: 'var(--ncm-hue-1)' },
+  { id: 's6', name: 'Ripperdoc clinic', folder: 'Little China', hue: 'var(--ncm-hue-6)' },
+  { id: 's7', name: 'Militech checkpoint', folder: 'Badlands', hue: 'var(--ncm-hue-5)' },
+];
+const P = [ // access points: scene or off-map
+  { id: 1, scene: 's1', x: 30, y: 40, how: 'pin', thing: 'WS-7F-12', kind: 'terminal', icon: 'fa-terminal', reach: '2 sq' },
+  { id: 2, scene: 's1', x: 62, y: 55, how: 'area', thing: 'WS-7F-12', kind: 'terminal', icon: 'fa-terminal', size: '2×2', hidden: true },
+  { id: 3, scene: 's1', x: 78, y: 28, how: 'pin', thing: "Takeda's last mail", kind: 'message', icon: 'fa-envelope' },
+  { id: 4, scene: 's1', x: 48, y: 78, how: 'tile', thing: "Ghost's go-bag", kind: 'shard', icon: 'fa-microchip' },
+  { id: 5, scene: 's2', x: 40, y: 50, how: 'pin', thing: 'LOBBY-KIOSK', kind: 'terminal', icon: 'fa-terminal' },
+  { id: 6, scene: 's3', x: 55, y: 45, how: 'pin', thing: 'Rogue — inbox', kind: 'inbox', icon: 'fa-inbox' },
+  { id: 7, scene: 's3', x: 25, y: 70, how: 'pin', thing: 'Afterlife jukebox', kind: 'terminal', icon: 'fa-terminal' },
+  { id: 8, scene: 's4', x: 60, y: 35, how: 'area', thing: 'Market data drop', kind: 'shard', icon: 'fa-microchip' },
+  { id: 9, scene: 's5', x: 50, y: 60, how: 'pin', thing: 'Old safehouse terminal', kind: 'terminal', icon: 'fa-terminal', broken: true },
+  { id: 10, scene: 's6', x: 40, y: 40, how: 'pin', thing: "Viktor's records", kind: 'terminal', icon: 'fa-terminal' },
+  { id: 11, scene: 's6', x: 70, y: 65, how: 'area', thing: 'Clinic intake', kind: 'shard', icon: 'fa-microchip', hidden: true },
+  { id: 12, off: 'hotbar', how: 'hotbar', thing: 'V — inbox', kind: 'inbox', icon: 'fa-inbox', slot: 4 },
+  { id: 13, off: 'hotbar', how: 'hotbar', thing: 'WS-7F-12', kind: 'terminal', icon: 'fa-terminal', slot: 3 },
+  { id: 14, off: 'journal', how: 'journal', thing: "Takeda's last mail", kind: 'message', icon: 'fa-envelope', page: '7F — Office 712' },
+  { id: 15, off: 'chat', how: 'chat', thing: "Ghost's go-bag", kind: 'shard', icon: 'fa-microchip', when: '2h ago' },
+];
+const THINGS = [
+  { name: 'WS-7F-12', kind: 'terminal', icon: 'fa-terminal', sub: 'Arasaka 7F' }, { name: 'LOBBY-KIOSK', kind: 'terminal', icon: 'fa-terminal', sub: 'Arasaka lobby' },
+  { name: 'Afterlife jukebox', kind: 'terminal', icon: 'fa-terminal', sub: 'Afterlife' }, { name: "Viktor's records", kind: 'terminal', icon: 'fa-terminal', sub: 'Ripperdoc' },
+  { name: 'Old safehouse terminal', kind: 'terminal', icon: 'fa-terminal', sub: 'deleted', broken: true }, { name: 'NW-RELAY-03', kind: 'terminal', icon: 'fa-server', sub: 'Netwatch' },
+  { name: "Ghost's go-bag", kind: 'shard', icon: 'fa-microchip', sub: 'held by V' }, { name: 'Market data drop', kind: 'shard', icon: 'fa-microchip', sub: 'world item' },
+  { name: 'Clinic intake', kind: 'shard', icon: 'fa-microchip', sub: 'world item' }, { name: 'Arasaka payroll', kind: 'shard', icon: 'fa-microchip', sub: 'world item' },
+  { name: 'V — inbox', kind: 'inbox', icon: 'fa-inbox', sub: 'player' }, { name: 'Rogue — inbox', kind: 'inbox', icon: 'fa-inbox', sub: 'NPC' },
+  { name: "Takeda's last mail", kind: 'message', icon: 'fa-envelope', sub: 'in Takeda — inbox' },
+];
+const HOW = { pin: ['fa-map-pin', 'Pin'], area: ['fa-draw-polygon', 'Step-on area'], tile: ['fa-image', 'Tile'], hotbar: ['fa-bolt', 'Hotbar'], journal: ['fa-link', 'Journal link'], chat: ['fa-comment', 'Chat card'] };
+const KIND = { terminal: 'Terminals', shard: 'Shards', inbox: 'Inboxes', message: 'Messages', contact: 'Contacts' };
+let view = Q.get('view') === 'thing' ? 'thing' : 'map', selScene = 's1', selThing = 'WS-7F-12', stat = 'all', shut = new Set(['Badlands']);
+const passes = (p) => stat === 'all' || (stat === 'map' && p.scene) || (stat === 'off' && p.off) || (stat === 'hid' && p.hidden) || (stat === 'bad' && p.broken);
+function stats() {
+  const n = (f) => P.filter(f).length;
+  const none = THINGS.filter(t => !P.some(p => p.thing === t.name)).length;
+  const it = (k, l, v, c = '') => `<div class="${c} ${stat === k ? 'on' : ''}" data-stat="${k}"><b>${v}</b><span>${l}</span></div>`;
+  return `<div class="ap-stats">${it('all', 'Access points', P.length)}${it('map', 'On maps', n(p => p.scene))}${it('off', 'Hotbar · chat · links', n(p => p.off))}${it('hid', 'Hidden', n(p => p.hidden), 'attn')}${it('bad', 'Point at nothing', n(p => p.broken), 'bad')}${it('none', 'Not reachable', none, 'warn')}</div>`;
+}
+function mapView() {
+  const folders = [...new Set(SCENES.map(s => s.folder))];
+  const left = folders.map(f => {
+    const sc = SCENES.filter(s => s.folder === f);
+    const pts = P.filter(p => sc.some(s => s.id === p.scene) && passes(p));
+    const isShut = shut.has(f);
+    return `<div class="shelf"><div class="shelf__hd" data-fold="${f}"><i class="fas fa-chevron-${isShut ? 'right' : 'down'} ch"></i><i class="fas fa-folder" style="color:var(--ncm-text-secondary)"></i>${f}<span class="n">${sc.length} scenes · ${pts.length} points</span><span class="dots">${pts.slice(0, 8).map(p => `<i class="k-${p.kind}"></i>`).join('')}</span></div>
+      ${isShut ? '' : `<div class="shelf__row">${sc.map(s => { const ps = P.filter(p => p.scene === s.id && passes(p)); return `<div class="sc ${selScene === s.id ? 'on' : ''}" data-scene="${s.id}"><div class="mm" style="--tc:${s.hue}">${ps.map(p => `<i class="pt k-${p.kind} ${p.how === 'area' ? 'area' : ''} ${p.hidden ? 'hid' : ''} ${p.broken ? 'bad' : ''}" style="left:${p.x}%;top:${p.y}%"></i>`).join('')}</div><div class="sc__f"><b>${s.name}</b>${ps.some(p => p.hidden) ? '<i class="fas fa-eye-slash w" title="has hidden points"></i>' : ''}${ps.some(p => p.broken) ? '<i class="fas fa-triangle-exclamation x" title="points at something deleted"></i>' : ''}<span class="c">${ps.length}</span></div></div>`; }).join('')}</div>`}</div>`;
+  }).join('') + `<div class="shelf"><div class="shelf__hd"><i class="fas fa-chevron-down ch"></i><i class="fas fa-bolt" style="color:var(--ncm-act)"></i>Off the map<span class="n">hotbar · chat cards · journal links</span></div>
+    <div class="off">${P.filter(p => p.off && passes(p)).map(p => `<div class="pl k-${p.kind}"><span class="num" style="border-style:dashed"><i class="fas ${HOW[p.how][0]}" style="font-size:9px"></i></span><span class="ic"><i class="fas ${p.icon}"></i></span><div><b>${p.thing}</b><small>${HOW[p.how][1]}${p.slot ? ' · slot ' + p.slot : ''}${p.page ? ' · in “' + p.page + '”' : ''}${p.when ? ' · posted ' + p.when : ''}</small></div><span class="acts"><button class="btn ic" title="Run / open"><i class="fas fa-play"></i></button><button class="btn ic" title="Remove"><i class="fas fa-trash"></i></button></span></div>`).join('')}</div></div>`;
+  const s = SCENES.find(x => x.id === selScene);
+  const ps = P.filter(p => p.scene === selScene && passes(p));
+  const right = `<div class="dk-hd"><i class="fas fa-map" style="color:${s.hue}"></i><div class="g"><b>${s.name}</b><small>${s.folder} · ${ps.length} access point${ps.length === 1 ? '' : 's'}</small></div><button class="btn" title="Go to this scene"><i class="fas fa-crosshairs"></i>View scene</button><button class="btn pri"><i class="fas fa-plus"></i>Place…</button></div>
+    <div class="bigmap"><span class="wall" style="left:0;top:34%;width:40%;height:4px"></span><span class="wall" style="left:58%;top:34%;width:42%;height:4px"></span><span class="wall" style="left:46%;top:60%;width:4px;height:40%"></span>
+      ${ps.filter(p => p.how === 'pin' && p.reach).map(p => `<span class="ring" style="left:calc(${p.x}% - 34px);top:calc(${p.y}% - 34px);width:68px;height:68px"></span>`).join('')}
+      ${ps.map((p, i) => `<span class="pt k-${p.kind} ${p.how === 'area' ? 'area' : ''} ${p.hidden ? 'hid' : ''} ${p.broken ? 'bad' : ''}" data-pt="${p.id}" style="left:${p.x}%;top:${p.y}%">${p.how === 'area' ? '' : i + 1}</span>`).join('')}</div>
+    <div class="k"><i class="fas fa-list"></i>On this scene</div>
+    ${ps.map((p, i) => `<div class="pl k-${p.kind}" data-row="${p.id}"><span class="num">${i + 1}</span><span class="ic"><i class="fas ${p.icon}"></i></span><div><b>${p.thing}</b><small><i class="fas ${HOW[p.how][0]}"></i> ${HOW[p.how][1]}${p.reach ? ' · reach ' + p.reach : ''}${p.size ? ' · ' + p.size : ''}${p.hidden ? ' · <span class="hid">hidden</span>' : ''}${p.broken ? ' · <span class="bad">points at nothing</span>' : ''}</small></div>
+      <span class="acts"><button class="btn ic" title="Go to it on the map"><i class="fas fa-crosshairs"></i></button><button class="btn ic" title="${p.hidden ? 'Reveal' : 'Hide from players'}"><i class="fas ${p.hidden ? 'fa-eye' : 'fa-eye-slash'}"></i></button><button class="btn ic" title="Move"><i class="fas fa-up-down-left-right"></i></button><button class="btn ic" title="Edit"><i class="fas fa-pen"></i></button><button class="btn ic" title="Remove"><i class="fas fa-trash"></i></button></span></div>`).join('') || '<div class="k" style="text-transform:none">Nothing here — Place… adds one.</div>'}`;
+  return [left, right];
+}
+function thingView() {
+  const kinds = Object.keys(KIND).filter(k => THINGS.some(t => t.kind === k));
+  const left = kinds.map(k => {
+    const list = THINGS.filter(t => t.kind === k).filter(t => stat !== 'none' || !P.some(p => p.thing === t.name));
+    if (!list.length) return '';
+    return `<div class="grp k-${k}"><i class="fas ${list[0].icon}"></i>${KIND[k]}<span class="n">${list.length}</span></div>` + list.map(t => {
+      const ps = P.filter(p => p.thing === t.name && passes(p));
+      return `<div class="th-r k-${t.kind} ${selThing === t.name ? 'on' : ''}" data-thing="${t.name}"><span class="ic"><i class="fas ${t.icon}"></i></span><div><b>${t.name}</b><small>${t.sub}</small></div>
+        <div class="reach">${ps.map(p => `<span class="rc ${p.hidden ? 'hid' : ''} ${p.broken ? 'bad' : ''}"><i class="fas ${HOW[p.how][0]}"></i>${p.scene ? SCENES.find(s => s.id === p.scene).name : HOW[p.how][1] + (p.slot ? ' ' + p.slot : '')}</span>`).join('') || '<span class="rc none"><i class="fas fa-circle-exclamation"></i>not reachable anywhere</span>'}</div>
+        <button class="btn" title="Make access"><i class="fas fa-location-crosshairs"></i></button></div>`;
+    }).join('');
+  }).join('');
+  const t = THINGS.find(x => x.name === selThing) || THINGS[0];
+  const ps = P.filter(p => p.thing === t.name);
+  const right = `<div class="dk-hd k-${t.kind}"><span class="ic" style="width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--kc);color:var(--kc)"><i class="fas ${t.icon}"></i></span><div class="g"><b>${t.name}</b><small>${t.sub} · reachable ${ps.length} way${ps.length === 1 ? '' : 's'}</small></div><button class="btn pri"><i class="fas fa-location-crosshairs"></i>Make access ▾</button></div>
+    <div class="k"><i class="fas fa-route"></i>Where players can reach it</div>
+    ${ps.map((p, i) => `<div class="pl k-${p.kind}"><span class="num"><i class="fas ${HOW[p.how][0]}" style="font-size:9px"></i></span><span class="ic"><i class="fas ${p.scene ? 'fa-map' : 'fa-bolt'}"></i></span><div><b>${p.scene ? SCENES.find(s => s.id === p.scene).name : HOW[p.how][1]}</b><small>${HOW[p.how][1]}${p.reach ? ' · reach ' + p.reach : ''}${p.slot ? ' · slot ' + p.slot : ''}${p.page ? ' · “' + p.page + '”' : ''}${p.hidden ? ' · <span class="hid">hidden</span>' : ''}${p.broken ? ' · <span class="bad">points at nothing</span>' : ''}</small></div>
+      <span class="acts"><button class="btn ic"><i class="fas fa-crosshairs"></i></button><button class="btn ic"><i class="fas fa-eye-slash"></i></button><button class="btn ic"><i class="fas fa-trash"></i></button></span></div>`).join('') || '<div class="k" style="text-transform:none;color:var(--ncm-attn)">Players can’t reach this anywhere yet. Make access ▾ places it.</div>'}
+    <div class="k"><i class="fas fa-palette"></i>Its handouts look like</div>
+    <div style="padding:4px 12px 12px;font:12px var(--ncm-font-body);color:var(--ncm-text-secondary)">Match the source (its preset’s colours) · <a style="color:var(--ncm-act)">change…</a></div>`;
+  return [left, right];
+}
+function draw() {
+  const ap = document.getElementById('AP');
+  const [left, right] = view === 'map' ? mapView() : thingView();
+  ap.innerHTML = `<div class="ap-hd"><i class="fas fa-location-crosshairs"></i><h2>Access points</h2><p>Every way players can open a terminal, shard, inbox or message — on a map, the hotbar, chat or a journal page.</p></div>
+    <div class="ap-tb"><span class="srch"><i class="fas fa-magnifying-glass"></i>Find a scene, a terminal, a shard…</span>
+      <span class="sel"><span>Show</span>All kinds <i class="fas fa-caret-down"></i></span>
+      <span class="sel"><span>Group</span>${view === 'map' ? 'Scene folder' : 'Kind of thing'} <i class="fas fa-caret-down"></i></span>
+      <span class="sel"><span>Sort</span>${view === 'map' ? 'Most points' : 'Name'} <i class="fas fa-caret-down"></i></span>
+      <span class="sw"><b class="${view === 'map' ? 'on' : ''}" data-view="map"><i class="fas fa-map"></i>Map</b><b class="${view === 'thing' ? 'on' : ''}" data-view="thing"><i class="fas fa-list"></i>By thing</b></span>
+      <button class="btn pri"><i class="fas fa-plus"></i>New ▾</button></div>
+    ${stats()}
+    <div class="ap-split"><div class="pane">${left}</div><div class="desk">${right}</div></div>`;
+}
+document.getElementById('AP').addEventListener('click', (e) => {
+  const v = e.target.closest('[data-view]'); if (v) { view = v.dataset.view; return draw(); }
+  const st = e.target.closest('[data-stat]'); if (st) { stat = stat === st.dataset.stat ? 'all' : st.dataset.stat; if (stat === 'none') view = 'thing'; return draw(); }
+  const sc = e.target.closest('[data-scene]'); if (sc) { selScene = sc.dataset.scene; return draw(); }
+  const th = e.target.closest('[data-thing]'); if (th && !e.target.closest('button')) { selThing = th.dataset.thing; return draw(); }
+  const f = e.target.closest('[data-fold]'); if (f) { shut.has(f.dataset.fold) ? shut.delete(f.dataset.fold) : shut.add(f.dataset.fold); return draw(); }
+});
+document.getElementById('AP').addEventListener('mouseover', (e) => {
+  const r = e.target.closest('[data-row]'); const pt = e.target.closest('[data-pt]');
+  const id = r?.dataset.row || pt?.dataset.pt;
+  document.querySelectorAll('#AP .lit').forEach(x => x.classList.remove('lit'));
+  if (id) document.querySelectorAll(`#AP [data-row="${id}"], #AP [data-pt="${id}"]`).forEach(x => x.classList.add('lit'));
+});
+draw();
+</script>
+</body>
+</html>

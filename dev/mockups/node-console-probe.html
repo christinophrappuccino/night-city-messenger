@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>loading…</title>
+<!--
+  Probe: the REAL node console template (templates/network-nodes/node-console.hbs) + its REAL stylesheet over the
+  REAL view-model, dumped by the sim:   NCM_DUMP=<dir> node dev/tools/sims/test-network-nodes.mjs
+  then open  ?ctx=<file:///…/node-console-on.json>  (also -locked / -off / -gm). Without ?ctx a built-in sample shows.
+  Off disk: chrome --allow-file-access-from-files. ?still=1 stops the motion.
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  body { margin: 0; padding: 20px; background: #141419; }
+  .frame { position: relative !important; inset: auto !important; transform: none !important; width: 560px; max-height: none !important; }
+  .frame.ncm-app { position: relative !important; }
+  .row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .still *, .still *::before, .still *::after { animation: none !important; transition: none !important; }
+</style>
+</head>
+<body>
+<div class="row" id="out"></div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+if (q.get('still') === '1') document.body.classList.add('still');
+const load = (src) => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('load ' + src)); document.head.appendChild(s); });
+try {
+  await load(location.protocol === 'file:' ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/node_modules/handlebars/dist/handlebars.js' : '/_vendor/handlebars.js');
+  const tpl = Handlebars.compile(await (await fetch('../../templates/network-nodes/node-console.hbs')).text());
+  const sample = { name: 'Kabuki relay mast', place: 'rooftop, 4th & Kabuki', kindLabel: 'Mast', icon: 'fas fa-tower-broadcast', hex: '0xBCB4·87', firmware: 'MAST-CTRL 4.7',
+    networkName: 'NCPD Dispatch', color: '#5c9bff', state: 'on', isUp: true, stateLabel: 'On', signal: 78, rate: '4.3 kb/s',
+    bars: [5, 8, 11, 14].map((h, i) => ({ h, on: i < 3 })), here: 2, alertLabel: 'Wary', alertPips: [{ cls: 'is-w' }, { cls: '' }, { cls: '' }], boxLocked: false,
+    canConnect: true, connectHint: 'Join NCPD Dispatch — it asks for its login', canSwitch: true, switchHint: 'NCPD Dispatch goes dark here',
+    ticker: '22:00 Rache — switched on     ·     0xBCB4·87 NCPD-07 keepalive     ·     0xBCB4·87 ncpd-dispatch.unit-07 → relay · 412b · ▲' };
+  const ctxs = q.get('ctx') ? await Promise.all(q.get('ctx').split(',').map(async (u) => (await fetch(u)).json())) : [sample];
+  for (const c of ctxs) {
+    const w = document.createElement('div');
+    w.className = 'frame ncm-app ncm-node-console';
+    w.innerHTML = `<section class="window-content">${tpl(c)}</section>`;
+    document.getElementById('out').appendChild(w);
+    const p = w.querySelector('[data-ndc-wave]');
+    if (p) { const pts = Array.from({ length: 60 }, (_, i) => 26 + (c.state === 'on' ? Math.sin(i * 1.7) * 12 + Math.cos(i * 0.6) * 5 : c.state === 'jammed' ? (i % 9 === 0 ? 14 : 0) : 0)); p.setAttribute('d', pts.map((v, i) => `${i ? 'L' : 'M'}${(i * 500 / 59).toFixed(1)} ${v.toFixed(1)}`).join(' ')); }
+  }
+  document.title = 'OK';
+} catch (e) { document.title = 'FAIL ' + e.message; document.body.insertAdjacentHTML('beforeend', `<pre style="color:#f66">${e.stack}</pre>`); }
+</script>
+</body>
+</html>

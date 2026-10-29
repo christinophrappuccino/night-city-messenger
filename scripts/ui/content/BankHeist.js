@@ -176,7 +176,7 @@ export async function runBankHeist(opts = {}) {
       await wait(connMs);
 
       // Phase 2 — the roll, the GM's call (Tier C), or force.
-      let ok = true, total = null;
+      let ok = true, total = null, rolled = null;
       const mode = force ? 'auto' : resolveHackResolution(hostItem);
       if (!force && mode === 'gm') {
         // hackResolution: 'gm' — no roll; the table runs the NET and the GM calls it.
@@ -231,8 +231,10 @@ export async function runBankHeist(opts = {}) {
         try {
           const roll = await skillSvc?.performCheck(actor, skill || 'Interface', {
             dc: useDV, showChat: true,
+            deferChat: true,   // posted when the transfer / trace verdict lands
             context: `Siphon: ${accountLabel}`, flavor: `Account Siphon // DV ${useDV}`,
           });
+          rolled = roll;
           ok = !!roll?.success; total = roll?.total ?? null;
         } catch (err) { log.error(`BankHeist roll failed: ${err.message}`); ok = false; }
         // Tier B — same roll, but announce the NET-action shape to the GM.
@@ -257,6 +259,7 @@ export async function runBankHeist(opts = {}) {
         el.querySelector('.ncm-heist')?.classList.add('is-ok');
         if (verdict) { verdict.removeAttribute('hidden'); verdict.innerHTML = `<i class="fas fa-circle-check"></i> TRANSFER COMPLETE <span>${amount.toLocaleString()} ${cur} SECURED</span>`; }
         sound?.play?.('hack-success');
+        await rolled?.postChat?.();
         await wait(reduced() ? 300 : 1300);
         finish({ ok: true, amount, total, dv: useDV, cancelled: false });
       } else {
@@ -268,6 +271,7 @@ export async function runBankHeist(opts = {}) {
         if (verdict) { verdict.removeAttribute('hidden'); verdict.innerHTML = `<i class="fas fa-triangle-exclamation"></i> TRACE FIRED${total != null ? ` <span>rolled ${total} vs DV ${useDV}</span>` : ''}`; }
         sound?.play?.('hack-fail');
         sound?.play?.('trace-fire');
+        await rolled?.postChat?.();
         await wait(reduced() ? 300 : 1300);
         finish({ ok: false, amount, total, dv: useDV, cancelled: false });
       }

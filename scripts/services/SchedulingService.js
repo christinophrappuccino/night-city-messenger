@@ -71,8 +71,18 @@ export class SchedulingService {
    */
   async scheduleMessage(messageData, deliveryTime, options = {}) {
     try {
-      if (!messageData.toActorId || !messageData.fromActorId) {
+      // Accept every sender and recipient an immediate send accepts (tester 2026-10-29: a GM paying a player FROM an
+      // NPC directory contact sent fine at once and failed the moment it was scheduled — the old check wanted two actors).
+      const hasSender = !!(messageData.fromActorId || messageData.fromContactId || messageData.from);
+      const hasRecipient = !!(messageData.toActorId || messageData.toContactId || messageData.to
+        || (Array.isArray(messageData.recipients) && messageData.recipients.length) || messageData.groupId || messageData.anonReply);
+      if (!hasSender || !hasRecipient) {
         return { success: false, error: 'Sender and recipient are required' };
+      }
+      // 2. the schedule lives in a world setting only the GM can write, and only the GM delivers it — a player's
+      // scheduled message is handed to the GM's client, which saves it. No GM online = it would be lost, so say so.
+      if (!isGM() && !game.users?.activeGM) {
+        return { success: false, error: 'A GM must be online to schedule a message — send it now, or try again when the GM is on.' };
       }
 
       if (!deliveryTime) {
@@ -102,7 +112,7 @@ export class SchedulingService {
       };
 
       this._scheduled.push(entry);
-      await this._persistScheduled();
+      if (isGM()) await this._persistScheduled();
 
       // Sync to other clients
       this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, {
@@ -144,7 +154,7 @@ export class SchedulingService {
 
       entry.status = 'cancelled';
       this._scheduled.splice(idx, 1);
-      await this._persistScheduled();
+      if (isGM()) await this._persistScheduled();
 
       this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, {
         action: 'cancel',
@@ -182,7 +192,7 @@ export class SchedulingService {
         foundry.utils.mergeObject(entry.messageData, updates.messageData);
       }
 
-      await this._persistScheduled();
+      if (isGM()) await this._persistScheduled();
 
       this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, {
         action: 'edit',
@@ -244,8 +254,21 @@ export class SchedulingService {
    * Only the GM client performs actual delivery.
    * @private
    */
+  /** The ONE client that delivers and saves: the active GM (two GMs online used to deliver everything twice). */
+  _isDeliverer() {
+    if (!isGM()) return false;
+    const active = game.users?.activeGM;
+    return !active || active.id === game.user.id;
+  }
+
   async _checkAndDeliver() {
-    if (!isGM()) return; // Only GM delivers
+    if (!this._isDeliverer()) return; // only the active GM delivers
+    if (this._delivering) return;      // the interval and a world-time hook can overlap
+    this._delivering = true;
+    try { await this._checkAndDeliverInner(); } finally { this._delivering = false; }
+  }
+
+  async _checkAndDeliverInner() {
 
     const pending = this.getPending();
     if (pending.length === 0) return;
@@ -368,6 +391,9 @@ export class SchedulingService {
           }
         }
       }
+      // A player cannot write the world setting: the active GM saves the change for them (before this, a player's
+      // scheduled message lived only in the GM's memory and was lost on a reload).
+      if (this._isDeliverer()) this._persistScheduled();
     });
   }
 

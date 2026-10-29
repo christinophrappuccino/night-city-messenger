@@ -1,0 +1,249 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Who they know — modules</title>
+<!--
+  Admin → Contacts → Players → a character → "Who they know", built from small interactive MODULES
+  (dev: "immersive, but clean and user friendly — little modules, interactive-looking UI things that fit inside these areas").
+  Orbit · Role equaliser · Waiting ticker · Contact card — each one narrows the same compact list underneath.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-who-they-know-modules-mock.html  ?t=clean-light  ?w=700
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 0 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px/1.45 sans-serif; margin: 0 0 14px; max-width: 900px; }
+  .mk-row { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .mk-note { width: 360px; color: #b8c0cc; font: 13px/1.5 sans-serif; }
+  .mk-note b { color: #eee; } .mk-note li { margin-bottom: 7px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .P { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .band { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-act);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .band > i { color: var(--ncm-act); }
+  .band .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+
+  /* module frame: a little instrument with its own label line */
+  .mod { margin: 10px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); position: relative; }
+  .mod__k { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .mod__k i { color: var(--ncm-act); font-size: 9px; }
+  .mod__k .x { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-act); cursor: pointer; }
+  .mod__k .hint { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+  .mod::before, .mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid; pointer-events: none; }
+  .mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 12px 0; }
+  .split > .mod { margin: 0; }
+
+  /* ORBIT */
+  .orbit { display: grid; place-items: center; padding: 6px 0 4px; }
+  .orbit svg { display: block; overflow: visible; }
+  .orbit .ring { fill: none; stroke: color-mix(in srgb, var(--ncm-border-active) 80%, transparent); stroke-width: 1; }
+  .orbit .ring.hot { stroke: var(--ncm-act); stroke-width: 1.5; }
+  .orbit .band-hit { fill: transparent; cursor: pointer; }
+  .orbit .band-hit:hover { fill: color-mix(in srgb, var(--ncm-act) 6%, transparent); }
+  .orbit .band-hit.on { fill: color-mix(in srgb, var(--ncm-act) 10%, transparent); }
+  .orbit .sweep { fill: url(#sw); transform-origin: 0 0; animation: spin 7s linear infinite; pointer-events: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .orbit .sweep { animation: none; opacity: 0; } }
+  .orbit .dot { cursor: pointer; transition: r .15s; stroke: var(--ncm-bg-pane); stroke-width: 1.5; }
+  .orbit .dot:hover, .orbit .dot.sel { stroke: var(--ncm-text-heading); stroke-width: 2; }
+  .orbit .dot.dim { opacity: .18; }
+  .orbit .wait-ring { fill: none; stroke: var(--ncm-attn); stroke-width: 1.5; stroke-dasharray: 2 2; pointer-events: none; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .orbit .lbl { font: 700 8.5px var(--ncm-font-display); letter-spacing: .08em; fill: var(--ncm-text-label); text-transform: uppercase; pointer-events: none; paint-order: stroke; stroke: var(--ncm-bg-pane, #111); stroke-width: 3px; }
+  .orbit .me { fill: color-mix(in srgb, var(--ncm-act) 25%, var(--ncm-bg-pane)); stroke: var(--ncm-act); stroke-width: 1.5; }
+  .orbit .me-t { font: 700 10px var(--ncm-font-display); fill: var(--ncm-text-heading); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .orbit .tip { font: 600 11px var(--ncm-font-display); fill: var(--ncm-text-heading); pointer-events: none; paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 3px; }
+  .legend { display: flex; justify-content: center; gap: 10px; padding: 0 8px 8px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); flex-wrap: wrap; }
+  .legend span { display: inline-flex; gap: 4px; align-items: center; } .legend i.d { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* EQUALISER */
+  .eq { display: flex; align-items: flex-end; gap: 5px; height: 112px; padding: 8px 9px 0; }
+  .eq__c { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; min-width: 0; height: 100%; justify-content: flex-end; }
+  .eq__bar { width: 100%; max-width: 22px; background: color-mix(in srgb, var(--tc) 30%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 70%, transparent); border-bottom: 0; position: relative;
+    background-image: repeating-linear-gradient(0deg, transparent 0 5px, color-mix(in srgb, var(--ncm-bg-pane) 70%, transparent) 5px 6px); transition: height .25s cubic-bezier(.22,1,.36,1), opacity .15s; }
+  .eq__bar .cap { position: absolute; left: -1px; right: -1px; top: -4px; height: 3px; background: var(--ncm-attn); box-shadow: 0 0 6px var(--ncm-attn); }
+  .eq__c:hover .eq__bar { background-color: color-mix(in srgb, var(--tc) 45%, transparent); }
+  .eq__c.on .eq__bar { background-color: color-mix(in srgb, var(--tc) 65%, transparent); border-color: var(--tc); }
+  .eq__c.dim .eq__bar { opacity: .3; }
+  .eq__n { font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .eq__c.on .eq__n { color: var(--ncm-text-heading); }
+  .eq__ic { font-size: 10px; color: var(--tc); padding: 3px 0 6px; }
+  .eq-axis { height: 1px; background: var(--ncm-border-active); margin: 0 9px 0; }
+
+  /* WAITING TICKER */
+  .tick { display: flex; flex-direction: column; gap: 0; max-height: 128px; overflow-y: auto; overflow-x: hidden; }
+  .tick__r { display: grid; grid-template-columns: 6px 22px minmax(0,1fr) auto; gap: 7px; align-items: center; padding: 6px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); cursor: pointer; }
+  .tick__r:hover { background: var(--ncm-bg-hover); }
+  .tick__r .led { width: 6px; height: 6px; border-radius: 50%; background: var(--ncm-attn); box-shadow: 0 0 6px var(--ncm-attn); animation: pulse 1.6s infinite; }
+  .tick__r .nm { font: 700 12px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tick__r .sub { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tick__r .n { font: 700 11px var(--ncm-font-mono); color: var(--ncm-attn); }
+  .tick__none { padding: 14px; text-align: center; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+
+  /* CONTACT CARD */
+  .card { display: grid; grid-template-columns: 54px minmax(0,1fr); gap: 4px 12px; padding: 10px; position: relative; overflow: hidden; }
+  .card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--ncm-act) 10%, transparent) 50%, transparent 52%); background-size: 100% 220%; animation: scan 2.4s ease-out 1; pointer-events: none; }
+  @keyframes scan { from { background-position: 0 100%; } to { background-position: 0 -10%; } }
+  .card .ph { grid-row: span 3; width: 54px; height: 54px; border-radius: 2px; display: grid; place-items: center; font: 700 18px var(--ncm-font-display); color: color-mix(in oklab, var(--tc) 80%, white);
+    background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--tc) 60%, transparent); }
+  .card .nm { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .card .rw { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .card .ln { grid-column: 1 / -1; display: grid; grid-template-columns: 74px minmax(0,1fr); gap: 3px 8px; margin-top: 6px; padding-top: 7px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+  .card .ln .k { font: 700 9.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); padding-top: 2px; }
+  .card .ln .v { font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .card .ln .v.mono { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-secondary)); }
+  .trust { display: inline-flex; gap: 2px; } .trust i { width: 12px; height: 5px; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); } .trust i.on { background: var(--ncm-good); }
+  .card .acts { grid-column: 1 / -1; display: flex; gap: 6px; margin-top: 8px; }
+  .tag { display: inline-flex; gap: 4px; align-items: center; padding: 0 6px; border-radius: 1px; font: 600 11px var(--ncm-font-body); white-space: nowrap;
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+  .btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; cursor: pointer; box-shadow: none !important; margin: 0 !important; display: inline-flex; gap: 5px; align-items: center; line-height: 1.3; }
+  .btn.pri { border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse, #0b0d12) !important; background: var(--ncm-act) !important; }
+  .btn.bad { border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent) !important; color: var(--ncm-bad) !important; }
+
+  /* the list the modules narrow */
+  .filt { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 10px 12px 6px; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .filt .chip { --tc: var(--ncm-act); display: inline-flex; gap: 5px; align-items: center; padding: 1px 4px 1px 7px; border-radius: 1px; font: 600 11.5px var(--ncm-font-body);
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+  .filt .chip span { cursor: pointer; color: var(--ncm-text-label); padding: 0 2px; } .filt .chip span:hover { color: var(--ncm-bad); }
+  .filt .srch { margin-left: auto; display: flex; align-items: center; gap: 5px; height: 24px; padding: 0 7px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .filt .srch i { font-size: 10px; } .P .filt .srch input[data-q] { width: 120px; border: 0 !important; background: none !important; height: 22px !important; padding: 0 !important; box-shadow: none !important; color: var(--ncm-text-primary); font: 12px var(--ncm-font-body); outline: none !important; }
+  .list { max-height: 210px; overflow-y: auto; overflow-x: hidden; border-top: 1px solid var(--ncm-border); }
+  .lr { display: grid; grid-template-columns: 22px minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 5px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); cursor: pointer; }
+  .lr:hover { background: var(--ncm-bg-hover); } .lr.sel { background: color-mix(in srgb, var(--ncm-act) 12%, transparent); box-shadow: inset 3px 0 var(--ncm-act); }
+  .av { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 9px var(--ncm-font-display);
+    color: color-mix(in oklab, var(--tc) 80%, white); background: color-mix(in srgb, var(--tc) 25%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); }
+  .lr .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lr .t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); white-space: nowrap; }
+  .lr .w { font: 700 11px var(--ncm-font-mono); color: var(--ncm-attn); margin-right: 6px; }
+  .empty { padding: 14px; text-align: center; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+</style>
+</head>
+<body>
+<p class="mk-h">Who they know — built from modules</p>
+<p class="mk-p">Admin → Contacts → Players → V. Small instruments on top, the same compact list underneath. Every module narrows the list; the chips under the modules show what's narrowing it. Try: click a ring of the orbit, a dot, a role bar, a waiting row.</p>
+<div class="mk-row">
+  <div data-slot></div>
+  <div class="mk-note"><ul>
+    <li><b>Orbit</b> — V in the middle; everyone they know is a dot. Inner ring = talked this week, then this month, longer ago, and the outer ring = never written. Colour = role, size = how much mail, a dashed amber ring = waiting on an answer. Click a ring to filter to it, a dot to pick that person.</li>
+    <li><b>Role equaliser</b> — one bar per role, height = how many. The amber cap means someone in that role is waiting. Click bars to filter (several at once).</li>
+    <li><b>Waiting</b> — who wrote and hasn't been answered, newest first, with the count.</li>
+    <li><b>Contact card</b> — whoever is picked, as a readout: role, org, address, trust, last mail, and the buttons.</li>
+    <li>Each is a separate piece, so we can mix and match — e.g. Orbit + list only, or Equaliser + Waiting only — and reuse them in other tabs (an orbit for an NPC's correspondents, an equaliser for a terminal's accounts…).</li>
+  </ul></div>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const W = Number(q.get('w') || 470);
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const ini = (n) => n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+const ROLES = { fixer: ['Fixers', 'fa-handshake'], corp: ['Corpos', 'fa-briefcase'], solo: ['Solos', 'fa-crosshairs'], netrunner: ['Netrunners', 'fa-terminal'], medtech: ['Medtechs', 'fa-staff-snake'], tech: ['Techs', 'fa-gear'], nomad: ['Nomads', 'fa-truck-monster'], media: ['Media', 'fa-podcast'], lawman: ['Lawmen', 'fa-shield-halved'], '': ['No role', 'fa-circle-question'] };
+const RAW = [
+  ['Rogue Amendiares', 'fixer', 'Afterlife', 0, 2, 14, 4], ['Dexter DeShawn', 'fixer', '', 3, 0, 6, 2], ['Wakako Okada', 'fixer', 'Tyger Claws', 12, 0, 3, 3], ['Padre', 'fixer', 'Valentinos', 40, 0, 2, 3], ['Regina Jones', 'fixer', '', 1, 1, 9, 4], ['Mr. Hands', 'fixer', '', null, 0, 0, 1],
+  ['Goro Takemura', 'corp', 'Arasaka', 2, 0, 7, 2], ['Meredith Stout', 'corp', 'Militech', 60, 0, 2, 1], ['Anders Hellman', 'corp', 'Kang Tao', null, 0, 0, 0], ['Saul Bright', 'corp', 'Arasaka', 20, 0, 1, 1], ['Yorinobu', 'corp', 'Arasaka', null, 0, 0, 0],
+  ['Jackie Welles', 'solo', 'Valentinos', 0, 1, 18, 5], ['River Ward', 'lawman', 'NCPD', 5, 0, 5, 4], ['Brick Jones', 'solo', 'Maelstrom', 30, 0, 2, 0], ['Royce', 'solo', 'Maelstrom', null, 0, 0, 0], ['Weldon', 'solo', '', 90, 0, 1, 2],
+  ['T-Bug', 'netrunner', '', 1, 0, 8, 4], ['Lizzy Wizzy', 'media', '', 15, 0, 2, 2], ['Song So Mi', 'netrunner', '', null, 0, 0, 2], ['Placide', 'netrunner', 'Voodoo Boys', 8, 3, 4, 1], ['Brigitte', 'netrunner', 'Voodoo Boys', null, 0, 0, 1],
+  ['Viktor Vektor', 'medtech', '', 0, 0, 11, 5], ['Misty Olszewski', '', 'Esoterica', 2, 0, 6, 5], ['Fingers', 'medtech', '', 45, 0, 1, 0], ['Robert Wilson', 'tech', '', 4, 0, 3, 3], ['Judy Alvarez', 'tech', 'Mox', 0, 1, 16, 5],
+  ['Panam Palmer', 'nomad', 'Aldecaldos', 6, 0, 9, 4], ['Saul Panzer', 'nomad', 'Aldecaldos', null, 0, 0, 2], ['Mitch Anderson', 'nomad', 'Aldecaldos', 25, 0, 2, 3], ['Bob', 'nomad', 'Aldecaldos', null, 0, 0, 2],
+  ['Ozob', '', 'Bozos', 70, 0, 1, 1], ['Kerry Eurodyne', 'media', 'Us Cracks', 3, 0, 5, 3], ['Max Jones', 'media', 'N54', null, 0, 0, 2], ['Gloria', 'media', '', 33, 0, 1, 2],
+  ['Joss', 'lawman', 'NCPD', null, 0, 0, 1], ['Officer Hayes', 'lawman', 'NCPD', 11, 0, 2, 2], ['Barry', 'lawman', 'NCPD', 50, 0, 1, 3], ['Claire Russell', 'tech', 'Afterlife', 9, 0, 3, 4], ['Rosalind', '', '', null, 0, 0, 1], ['Hiromi Sato', 'corp', 'Arasaka', 7, 0, 2, 2],
+];
+const C = RAW.map(([name, role, org, days, wait, mail, trust], i) => ({ id: 'c' + i, name, role, org, days, wait, mail, trust, email: name.toLowerCase().replace(/[^a-z]+/g, '.').replace(/\.$/, '') + '@net.nc' }));
+const RINGS = [['week', 'This week', (c) => c.days != null && c.days <= 7], ['month', 'This month', (c) => c.days > 7 && c.days <= 30], ['older', 'Longer ago', (c) => c.days > 30], ['never', 'Never written', (c) => c.days == null]];
+const ringOf = (c) => RINGS.findIndex(([, , f]) => f(c));
+const ago = (d) => d == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : d < 30 ? `${d}d ago` : `${Math.round(d / 30)}mo ago`;
+const S = { ring: null, roles: new Set(), sel: 'c0', hover: null, q: '' };
+const passes = (c) => (S.ring == null || ringOf(c) === S.ring) && (!S.roles.size || S.roles.has(c.role)) && (!S.q || `${c.name} ${c.org} ${c.email}`.toLowerCase().includes(S.q));
+const colOf = (c) => c.role ? hue('role:' + c.role) : 'var(--ncm-text-hint)';
+
+// fixed, deterministic positions on each ring
+const POS = {};
+RINGS.forEach((r, ri) => { const list = C.filter((c) => ringOf(c) === ri); list.forEach((c, i) => { const a = (i / list.length) * Math.PI * 2 + ri * 0.7; POS[c.id] = a; }); });
+function orbit() {
+  const size = Math.min(W - 26, 300), R = size / 2 - 14, rad = [0.32, 0.55, 0.77, 0.98].map((k) => k * R), cx = 0;
+  const bands = rad.map((r, i) => { const r0 = i ? rad[i - 1] : 22; return `<path class="band-hit${S.ring === i ? ' on' : ''}" data-ring="${i}" d="M ${-r} 0 A ${r} ${r} 0 1 0 ${r} 0 A ${r} ${r} 0 1 0 ${-r} 0 M ${-r0} 0 A ${r0} ${r0} 0 1 1 ${r0} 0 A ${r0} ${r0} 0 1 1 ${-r0} 0 Z" fill-rule="evenodd"/>`; }).join('');
+  const rings = rad.map((r, i) => `<circle class="ring${S.ring === i ? ' hot' : ''}" r="${r}"/><text class="lbl" x="4" y="${-r + 10}">${RINGS[i][1]}</text>`).join('');
+  const dots = C.map((c) => {
+    const ri = ringOf(c), r0 = ri ? rad[ri - 1] : 22, rr = (r0 + rad[ri]) / 2, a = POS[c.id];
+    const x = Math.cos(a) * rr, y = Math.sin(a) * rr, s = 3.5 + Math.min(c.mail, 18) / 3.2;
+    return `${c.wait ? `<circle class="wait-ring" cx="${x}" cy="${y}" r="${s + 3.5}"/>` : ''}<circle class="dot${S.sel === c.id ? ' sel' : ''}${passes(c) ? '' : ' dim'}" data-dot="${c.id}" cx="${x}" cy="${y}" r="${s}" style="fill:${colOf(c)}"><title>${c.name}</title></circle>`;
+  }).join('');
+  const h = C.find((c) => c.id === (S.hover || S.sel));
+  let tip = '';
+  if (h) { const ri = ringOf(h), r0 = ri ? rad[ri - 1] : 22, rr = (r0 + rad[ri]) / 2, a = POS[h.id]; const x = Math.cos(a) * rr, y = Math.sin(a) * rr; tip = `<text class="tip" x="${x + 9}" y="${y - 7}">${h.name}</text>`; }
+  return `<div class="mod"><div class="mod__k"><i class="fas fa-circle-nodes"></i>Orbit${S.ring != null ? `<span class="x" data-clear-ring>show all rings</span>` : '<span class="hint">click a ring or a dot</span>'}</div>
+    <div class="orbit"><svg width="${size}" height="${size}" viewBox="${-size / 2} ${-size / 2} ${size} ${size}">
+      <defs><radialGradient id="sw"><stop offset="0" stop-color="var(--ncm-act)" stop-opacity=".22"/><stop offset="1" stop-color="var(--ncm-act)" stop-opacity="0"/></radialGradient></defs>
+      ${bands}${rings}<path class="sweep" d="M0 0 L ${R} 0 A ${R} ${R} 0 0 1 ${R * Math.cos(0.5)} ${R * Math.sin(0.5)} Z"/>${dots}
+      <circle class="me" r="18"/><text class="me-t">V</text>${tip}</svg></div>
+    <div class="legend"><span><i class="d" style="background:var(--ncm-text-label)"></i>size = mail</span><span><i class="d" style="border:1.5px dashed var(--ncm-attn)"></i>waiting</span><span>colour = role</span></div></div>`;
+}
+function equaliser() {
+  const keys = Object.keys(ROLES).filter((k) => C.some((c) => c.role === k)); const max = Math.max(...keys.map((k) => C.filter((c) => c.role === k).length));
+  return `<div class="mod"><div class="mod__k"><i class="fas fa-chart-simple"></i>Roles${S.roles.size ? `<span class="x" data-clear-roles>clear</span>` : ''}</div>
+    <div class="eq">${keys.map((k) => { const list = C.filter((c) => c.role === k), w = list.some((c) => c.wait);
+      return `<div class="eq__c${S.roles.has(k) ? ' on' : ''}${S.roles.size && !S.roles.has(k) ? ' dim' : ''}" data-role="${k}" style="--tc:${k ? hue('role:' + k) : 'var(--ncm-text-hint)'}" title="${ROLES[k][0]}: ${list.length}${w ? ' · someone waiting' : ''}">
+        <span class="eq__n">${list.length}</span><div class="eq__bar" style="height:${Math.round((list.length / max) * 70) + 6}px">${w ? '<span class="cap"></span>' : ''}</div></div>`; }).join('')}</div>
+    <div class="eq-axis"></div><div class="eq" style="height:auto;padding-top:0">${keys.map((k) => `<div class="eq__c" style="--tc:${k ? hue('role:' + k) : 'var(--ncm-text-hint)'}"><i class="fas ${ROLES[k][1]} eq__ic"></i></div>`).join('')}</div></div>`;
+}
+function ticker() {
+  const w = C.filter((c) => c.wait).sort((a, b) => (a.days ?? 999) - (b.days ?? 999));
+  return `<div class="mod"><div class="mod__k"><i class="fas fa-bell" style="color:var(--ncm-attn)"></i>Waiting on you<span class="hint" style="color:var(--ncm-attn)">${w.reduce((n, c) => n + c.wait, 0)} messages</span></div>
+    <div class="tick">${w.map((c) => `<div class="tick__r" data-pick="${c.id}"><span class="led"></span><span class="av" style="--tc:${hue(c.name)}">${ini(c.name)}</span><div style="min-width:0"><div class="nm">${c.name}</div><div class="sub">${ago(c.days)}</div></div><span class="n">${c.wait}</span></div>`).join('') || '<div class="tick__none">Nobody waiting.</div>'}</div></div>`;
+}
+function card() {
+  const c = C.find((x) => x.id === S.sel); if (!c) return '';
+  return `<div class="mod" data-card="${c.id}"><div class="mod__k"><i class="fas fa-id-card"></i>Contact</div>
+    <div class="card"><div class="ph" style="--tc:${hue(c.name)}">${ini(c.name)}</div>
+      <div class="nm">${c.name}</div>
+      <div class="rw">${c.role ? `<span class="tag" style="--tc:${hue('role:' + c.role)}"><i class="fas ${ROLES[c.role][1]}"></i>${ROLES[c.role][0]}</span>` : ''}${c.org ? `<span class="tag" style="--tc:${hue(c.org)}">${c.org}</span>` : ''}</div>
+      <div class="rw" style="font:12px var(--ncm-font-body);color:var(--ncm-text-label)">${c.wait ? `<b style="color:var(--ncm-attn)">${c.wait} waiting</b> · ` : ''}${c.mail} messages · last ${ago(c.days)}</div>
+      <div class="ln"><span class="k">Address</span><span class="v mono">${c.email}</span>
+        <span class="k">Trust</span><span class="v"><span class="trust">${[1, 2, 3, 4, 5].map((n) => `<i class="${n <= c.trust ? 'on' : ''}"></i>`).join('')}</span></span>
+        <span class="k">Last mail</span><span class="v">${c.days == null ? '<i style="color:var(--ncm-text-hint)">never written</i>' : '“Need you at the Afterlife tonight.”'}</span></div>
+      <div class="acts">${c.wait ? `<button class="btn pri"><i class="fas fa-reply"></i>Reply as ${c.name.split(' ')[0]}</button>` : `<button class="btn"><i class="fas fa-pen"></i>Write as ${c.name.split(' ')[0]}</button>`}<button class="btn"><i class="fas fa-address-card"></i>Open</button><button class="btn bad"><i class="fas fa-xmark"></i>Take back</button></div></div></div>`;
+}
+function list() {
+  const L = C.filter(passes).sort((a, b) => b.wait - a.wait || (a.days ?? 999) - (b.days ?? 999));
+  const chips = [S.ring != null ? `<span class="chip">${RINGS[S.ring][1]}<span data-clear-ring>✕</span></span>` : '', ...[...S.roles].map((k) => `<span class="chip" style="--tc:${k ? hue('role:' + k) : 'var(--ncm-text-hint)'}">${ROLES[k][0]}<span data-role-off="${k}">✕</span></span>`)].join('');
+  return `<div class="filt">${chips ? `Showing ${chips}` : `<span>Everyone · ${C.length}</span>`}<label class="srch"><i class="fas fa-magnifying-glass"></i><input data-q placeholder="Find…" value="${S.q}"></label></div>
+    <div class="list">${L.map((c) => `<div class="lr${S.sel === c.id ? ' sel' : ''}" data-pick="${c.id}"><span class="av" style="--tc:${hue(c.name)}">${ini(c.name)}</span><span class="nm">${c.name}</span><span>${c.wait ? `<span class="w">${c.wait} waiting</span>` : ''}<span class="t">${ago(c.days)}</span></span></div>`).join('') || '<div class="empty">Nobody matches.</div>'}</div>`;
+}
+function render() {
+  const half = W >= 640;
+  document.querySelector('[data-slot]').innerHTML = `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:${W}px"><div class="ncm-admin-panel"><div class="P" style="padding-bottom:10px">
+    <div class="band"><i class="fas fa-address-book"></i>Who they know<span class="r">${C.length} from your directory</span></div>
+    ${half ? `<div class="split">${orbit()}<div style="display:flex;flex-direction:column;gap:10px">${equaliser()}${ticker()}</div></div>` : `${orbit()}<div class="split">${equaliser()}${ticker()}</div>`}
+    ${card()}${list()}</div></div></div>`;
+}
+render();
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  const ring = t.closest('[data-ring]'); if (ring) { const i = Number(ring.dataset.ring); S.ring = S.ring === i ? null : i; return render(); }
+  const dot = t.closest('[data-dot]'); if (dot) { S.sel = dot.dataset.dot; return render(); }
+  const role = t.closest('[data-role]'); if (role) { const k = role.dataset.role; S.roles.has(k) ? S.roles.delete(k) : S.roles.add(k); return render(); }
+  const off = t.closest('[data-role-off]'); if (off) { S.roles.delete(off.dataset.roleOff); return render(); }
+  if (t.closest('[data-clear-ring]')) { S.ring = null; return render(); }
+  if (t.closest('[data-clear-roles]')) { S.roles.clear(); return render(); }
+  const pick = t.closest('[data-pick]'); if (pick) { S.sel = pick.dataset.pick; return render(); }
+});
+document.addEventListener('mouseover', (e) => { const d = e.target.closest?.('[data-dot]'); const id = d ? d.dataset.dot : null; if (id !== S.hover) { S.hover = id; const i = document.querySelector('[data-q]'); render(); } });
+document.addEventListener('input', (e) => { if (e.target.matches('[data-q]')) { S.q = e.target.value.toLowerCase(); render(); const i = document.querySelector('[data-q]'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); } });
+</script>
+</body>
+</html>

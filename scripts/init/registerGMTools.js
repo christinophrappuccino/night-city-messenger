@@ -138,13 +138,26 @@ export function registerGMTools(initializer) {
       );
     };
 
-    // ─── GM Contact Manager (GM only) ───
-    ns.openGMContacts = async () => {
+    // ─── One admin tab, in the panel or popped out (2026-10-27 redesign) ───
+    // openAdminTab('contacts', { select: contactId })            → the panel, on that tab
+    // openAdminTab('networks', { popout: true, select: netId })  → its own larger window
+    // `select` is handed to the tab's openTo(select) so it can open on that row.
+    ns.openAdminTab = async (tab, { popout = false, select = null } = {}) => {
       if (!game.user.isGM) return ui.notifications.warn('GM only');
-      return _openSingleton('gm-contacts', () =>
-        import('../ui/GMContactManager/GMContactManagerApp.js')
-      );
+      const { AdminPanelApp } = await import('../ui/AdminPanel/AdminPanelApp.js');
+      if (popout) return AdminPanelApp.openTabWindow(tab, { select });
+      const panel = await ns.openAdmin();
+      if (!panel) return null;
+      if (select && typeof panel.tabs?.[tab]?.openTo === 'function') panel.tabs[tab].openTo(select);
+      panel._activeTab = tab;
+      panel.render(true);
+      return panel;
     };
+
+    // ─── GM Contact Manager → Admin → Contacts (the window was folded into the tab, 2026-10-27) ───
+    // Kept as an alias so macros and old buttons still land somewhere: opens the
+    // panel on Contacts (on a contact when given its id).
+    ns.openGMContacts = async (select = null) => ns.openAdminTab('contacts', { select });
 
     // ── Store the class reference for AdminPanel's GM inspect mode ──
     ns._ContactManagerApp = ContactManagerApp;

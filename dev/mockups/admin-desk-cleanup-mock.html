@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Needs a reply — cleanup mock</title>
+<!--
+  Admin → Messages → Needs a reply (the Desk), cleanup pass (2026-10-29).
+  Four frames, the real cascade + the real Desk classes; only the .ncm-msg2-dd / -sendbtn /
+  -desk__qhd / -desk__rail rules in the <style> below are new.
+    A  default             B  "Reply as" menu open     C  "Show" menu open     D  queue + persona folded
+  Serve it (node dev/tools/serve-mockups.cjs) or open with --allow-file-access-from-files.
+  ?t=clean-light|high-contrast switches the admin preset.
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body { margin: 0; background: #2b2b2b; padding: 16px; font: 13px system-ui; color: #ddd; }
+  .mk-cap { width: 820px; margin: 18px auto 6px; font: 600 13px system-ui; color: #eee; }
+  .mk-cap span { font-weight: 400; color: #aaa; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important;
+    width: 820px; height: 600px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #555; }
+
+  /* ═══ NEW: a generic dropdown (the Junk ▾ <details> pattern, generalised) ═══ */
+  .ncm-admin-panel .ncm-msg2-dd { position: relative; flex: 0 0 auto; margin: 0; padding: 0; border: 0; }
+  .ncm-admin-panel .ncm-msg2-dd > summary { list-style: none; cursor: pointer; user-select: none; width: max-content !important; }
+  .ncm-admin-panel .ncm-msg2-dd > summary::-webkit-details-marker { display: none; }
+  .ncm-admin-panel .ncm-msg2-dd__caret { font-size: 9px; opacity: .75; margin-left: 2px; }
+  .ncm-admin-panel .ncm-msg2-dd__menu { position: absolute; z-index: 30; min-width: 220px; display: flex; flex-direction: column; padding: 4px;
+    background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+  .ncm-admin-panel .ncm-msg2-dd--down .ncm-msg2-dd__menu { top: calc(100% + 4px); left: 0; }
+  .ncm-admin-panel .ncm-msg2-dd--up .ncm-msg2-dd__menu { bottom: calc(100% + 4px); right: 0; }
+  .ncm-admin-panel .ncm-msg2-dd__k { padding: 6px 8px 3px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+  .ncm-admin-panel .ncm-msg2-dd__sep { height: 1px; margin: 4px 2px; background: var(--ncm-border); }
+  .ncm-app .ncm-admin-panel button.ncm-msg2-dd__item { appearance: none; display: flex !important; align-items: center; gap: 9px; width: 100% !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+    padding: 6px 8px !important; border: 0 !important; border-radius: 2px !important; background: transparent !important; box-shadow: none !important; text-align: left;
+    font: 500 12px var(--ncm-font-display) !important; color: var(--ncm-text-primary) !important; cursor: pointer; }
+  .ncm-app .ncm-admin-panel button.ncm-msg2-dd__item:hover, .ncm-app .ncm-admin-panel button.ncm-msg2-dd__item.is-cur { background: var(--ncm-bg-hover, color-mix(in srgb, var(--ncm-text-primary) 6%, transparent)) !important; }
+  .ncm-app .ncm-admin-panel button.ncm-msg2-dd__item > i { width: 14px; margin: 0 !important; text-align: center; color: var(--ncm-text-label); flex: none; }
+  .ncm-app .ncm-admin-panel button.ncm-msg2-dd__item.is-on > i.ck { color: var(--ncm-act, var(--ncm-secondary)); }
+  .ncm-app .ncm-admin-panel button.ncm-msg2-dd__item.is-alias > i.id { color: var(--ncm-secret, var(--ncm-purple)); }
+  .ncm-admin-panel .ncm-msg2-dd__item > span { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .ncm-admin-panel .ncm-msg2-dd__item small { font: 400 10.5px var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-msg2-dd__item small.addr { font-family: var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-label)); }
+  .ncm-admin-panel .ncm-msg2-dd__item .n { margin-left: auto; font: 600 11px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-secondary)); }
+  .ncm-admin-panel .ncm-msg2-dd__item .n.attn { color: var(--ncm-attn, var(--ncm-accent)); }
+  .ncm-admin-panel .ncm-msg2-dd__item .wrote { font: 600 9px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-attn, var(--ncm-accent)); margin-left: auto; white-space: nowrap; }
+
+  /* ═══ NEW: the queue head — one row: Show ▾ · (count) · fold ═══ */
+  .ncm-app .ncm-msg2-desk__qhd { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 8px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+  .ncm-app .ncm-msg2-desk__qhd .sum { flex: 1; min-width: 0; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-msg2-desk__qhd .sum b { color: var(--ncm-attn, var(--ncm-accent)); font: 700 11px var(--ncm-font-mono); }
+  .ncm-app .ncm-msg2-desk__qhd summary .v { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .ncm-app .ncm-msg2-desk__qhd summary .c { font-family: var(--ncm-font-mono); color: var(--ncm-attn, var(--ncm-accent)); }
+
+  /* ═══ NEW: queue folded to a rail of faces ═══ */
+  .ncm-app .ncm-msg2-desk.is-qshut { grid-template-columns: 46px minmax(0, 1fr) 196px; }
+  .ncm-app .ncm-msg2-desk.is-qshut.is-pshut { grid-template-columns: 46px minmax(0, 1fr); }
+  .ncm-app .ncm-msg2-desk.is-pshut { grid-template-columns: 224px minmax(0, 1fr); }
+  .ncm-app .ncm-msg2-desk__rail { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 0; border-right: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); overflow-y: auto; overflow-x: hidden; }
+  .ncm-app .ncm-msg2-desk__rail .f { position: relative; cursor: pointer; border-radius: 50%; }
+  .ncm-app .ncm-msg2-desk__rail .f .ncm-msg2-av { width: 30px; height: 30px; font-size: 11px; }
+  .ncm-app .ncm-msg2-desk__rail .f.is-sel { box-shadow: 0 0 0 2px var(--ncm-act, var(--ncm-secondary)); }
+  .ncm-app .ncm-msg2-desk__rail .f.is-done { opacity: .55; }
+  .ncm-app .ncm-msg2-desk__rail .f .ct { position: absolute; top: -4px; right: -6px; min-width: 15px; height: 15px; padding: 0 3px; display: grid; place-items: center; border-radius: 1px;
+    background: var(--ncm-attn, var(--ncm-accent)); color: var(--ncm-text-inverse, #000); font: 700 9px var(--ncm-font-mono); }
+  .ncm-app .ncm-msg2-desk__rail hr { width: 22px; margin: 0; border: 0; border-top: 1px solid var(--ncm-border); background: none; height: 0; }
+
+  /* ═══ the reply box, consolidated ═══ */
+  .ncm-app .ncm-msg2-desk__box { gap: 5px !important; padding: 6px 10px 7px !important; }
+  .ncm-app .ncm-msg2-desk__ta { min-height: 56px; }
+  .ncm-app .ncm-msg2-desk__bar { display: flex; align-items: center; gap: 6px; }
+  .ncm-app .ncm-msg2-desk__bar .to { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; }
+  .ncm-app .ncm-msg2-desk__bar .to i { font-size: 9px; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+  .ncm-app .ncm-msg2-desk__bar .to b { font: 600 11.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .ncm-app .ncm-msg2-desk__bar .anon { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 60%, transparent); border-radius: 1px;
+    font: 700 9px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-secret, var(--ncm-purple)); }
+  .ncm-app .ncm-msg2-desk__sent { padding: 3px 8px !important; font-size: 11px !important; }
+  /* the ✓ — icon only, green */
+  .ncm-app .ncm-admin-panel .ncm-msg2-btn.ncm-msg2-desk__done { border-color: color-mix(in srgb, var(--ncm-good, var(--ncm-success)) 55%, transparent) !important; color: var(--ncm-good, var(--ncm-success)) !important; }
+  /* split button: [Reply as X | ▾] */
+  .ncm-app .ncm-msg2-sendbtn { display: inline-flex; flex: none; }
+  .ncm-app .ncm-msg2-sendbtn > .ncm-msg2-btn { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; max-width: 230px; }
+  .ncm-app .ncm-msg2-sendbtn > .ncm-msg2-btn .lb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-msg2-sendbtn > details > summary.ncm-msg2-btn { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; padding: 0 7px !important;
+    border-left: 1px solid color-mix(in srgb, var(--ncm-text-inverse, #000) 35%, transparent) !important; }
+  .ncm-app .ncm-msg2-sendbtn > details > summary .ncm-msg2-dd__caret { margin: 0; opacity: 1; }
+
+  /* thread head: fold the persona */
+  .ncm-app .ncm-msg2-desk__hd .ncm-msg2-btn--icon.is-on { color: var(--ncm-act, var(--ncm-secondary)) !important; }
+
+  /* persona: the identity list is gone (it lives in Reply as ▾); one line says who is being answered as */
+  .ncm-app .ncm-msg2-desk__pas { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card);
+    font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-msg2-desk__pas i { color: var(--ncm-secret, var(--ncm-purple)); font-size: 10px; }
+</style></head>
+<body>
+<div id="frames"></div>
+<script>
+const T = new URLSearchParams(location.search).get('t') || 'clean-dark';
+
+const NAV = `<div class="ncm-msg2-nav">
+  <button type="button" class="ncm-msg2-navbtn on"><i class="fas fa-reply"></i>Needs a reply<span class="ncm-msg2-ct hot">2</span></button>
+  <button type="button" class="ncm-msg2-navbtn"><i class="fas fa-envelopes-bulk"></i>All mail<span class="ncm-msg2-ct">14</span></button>
+  <button type="button" class="ncm-msg2-navbtn"><i class="fas fa-paper-plane"></i>Outbox<span class="ncm-msg2-ct bad">3</span></button>
+  <button type="button" class="ncm-msg2-navbtn"><i class="fas fa-inbox"></i>Inboxes<span class="ncm-msg2-ct">5</span></button>
+  <span class="ncm-msg2-grow"></span>
+  <span class="ncm-scope"><button type="button" class="ncm-scope-btn"><i class="fas fa-paper-plane" style="font-size:11px;color:var(--ncm-text-secondary);margin:0"></i><span class="k">Send as</span><span class="v">an NPC…</span><i class="fas fa-chevron-down caret"></i></button></span>
+  <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Broadcast"><i class="fas fa-bullhorn"></i></button>
+  <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Pop out"><i class="fas fa-up-right-from-square"></i></button>
+  <button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary"><i class="fas fa-pen"></i> New</button>
+</div>`;
+const HEAD = `<header class="ncm-tabhd"><i class="fas fa-reply"></i><div><h2>Needs a reply</h2><p>Player mail to your NPCs that nobody has answered yet — pick a line to read it and reply as that NPC.</p></div></header>`;
+
+const av = (t, hue, cls = '') => `<span class="ncm-msg2-av ${cls}" style="--tc:var(--ncm-hue-${hue})">${t}</span>`;
+const ROWS = `
+<div class="ncm-msg2-dq is-hot">${av('R', 8)}
+  <div class="ncm-msg2-dq__tx"><div class="nm"><span class="n">Rogue</span><i class="fas fa-user-ninja ty"></i></div><div class="sl">RE: Meet</div>
+    <div class="who"><span class="ncm-msg2-stack">${av('V', 4, 'sm')}${av('HI', 2, 'sm')}${av('R', 1, 'sm')}</span><span class="w">V, Hana Ito, Rache</span></div></div>
+  <div class="ncm-msg2-dq__end"><span class="ct">3</span><span class="t">1d 2h</span></div>
+  <div class="ncm-msg2-dq__meter"><i style="width:100%"></i></div></div>
+<div class="ncm-msg2-dq is-sel">${av('QH', 8)}
+  <div class="ncm-msg2-dq__tx"><div class="nm"><span class="n">Rogue</span><span class="ncm-msg2-dq__alias"><i class="fas fa-mask"></i>Queen of Hearts</span></div><div class="sl">Who is this</div>
+    <div class="who"><span class="ncm-msg2-stack">${av('V', 4, 'sm')}</span><span class="w">V</span></div></div>
+  <div class="ncm-msg2-dq__end"><span class="ct">1</span><span class="t">7h</span></div>
+  <div class="ncm-msg2-dq__meter"><i style="width:29%"></i></div></div>
+<div class="ncm-msg2-dq">${av('MW', 5)}
+  <div class="ncm-msg2-dq__tx"><div class="nm"><span class="n">Mr. Blue Eyes</span></div><div class="sl">the job in Watson</div>
+    <div class="who"><span class="ncm-msg2-stack">${av('HI', 2, 'sm')}</span><span class="w">Hana Ito</span></div></div>
+  <div class="ncm-msg2-dq__end"><span class="ct">1</span><span class="t">2h</span></div>
+  <div class="ncm-msg2-dq__meter"><i style="width:8%"></i></div></div>`;
+
+function showMenu(open) {
+  return `<details class="ncm-msg2-dd ncm-msg2-dd--down"${open ? ' open' : ''}>
+    <summary class="ncm-msg2-btn"><i class="fas fa-filter"></i><span class="v">Waiting</span> <span class="c">3</span><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+    <div class="ncm-msg2-dd__menu">
+      <div class="ncm-msg2-dd__k">Show</div>
+      <button type="button" class="ncm-msg2-dd__item"><i class="fas ck fa-circle"></i><span>All lines</span><span class="n">5</span></button>
+      <button type="button" class="ncm-msg2-dd__item is-on is-cur"><i class="fas ck fa-circle-dot"></i><span>Waiting</span><span class="n attn">3</span></button>
+      <button type="button" class="ncm-msg2-dd__item"><i class="fas ck fa-circle"></i><span>Answered</span><span class="n">2</span></button>
+      <div class="ncm-msg2-dd__sep"></div>
+      <button type="button" class="ncm-msg2-dd__item"><i class="far ck fa-square"></i><span>Include mail I sent<small>also list mail you wrote TO an NPC</small></span></button>
+      <button type="button" class="ncm-msg2-dd__item"><i class="far ck fa-square"></i><span>Show quiet inboxes<small>1 NPC nobody has written to</small></span></button>
+    </div></details>`;
+}
+
+const queue = (open) => `<div class="ncm-msg2-desk__q">
+  <div class="ncm-msg2-desk__qhd">${showMenu(open)}<span class="sum"><b>4</b> players waiting</span>
+    <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Fold the list" aria-label="Fold the list"><i class="fas fa-angles-left"></i></button></div>
+  <div class="ncm-msg2-desk__list">${ROWS}</div></div>`;
+
+const rail = `<div class="ncm-msg2-desk__rail">
+  <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Open the list" aria-label="Open the list"><i class="fas fa-angles-right"></i></button>
+  <hr>
+  <span class="f" title="Rogue — RE: Meet · 3 waiting">${av('R', 8)}<span class="ct">3</span></span>
+  <span class="f is-sel" title="Queen of Hearts — Who is this">${av('QH', 8)}<span class="ct">1</span></span>
+  <span class="f" title="Mr. Blue Eyes — the job in Watson">${av('MW', 5)}<span class="ct">1</span></span></div>`;
+
+const mid = (replyOpen, pshut) => `<div class="ncm-msg2-desk__mid">
+  <div class="ncm-msg2-desk__hd"><span class="ncm-msg2-stack">${av('V', 4, 'sm')}</span>
+    <div class="tx"><div class="sj">Who is this</div><div class="sl">Alias of Rogue · with V · 3 messages</div></div>
+    <span class="ncm-msg2-flag is-accent"><i class="fas fa-circle"></i>1 waiting</span>
+    <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Open Rogue’s inbox"><i class="fas fa-inbox"></i></button>
+    <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon ${pshut ? '' : 'is-on'}" title="${pshut ? 'Show' : 'Hide'} who you are answering as"><i class="fas fa-id-card"></i></button></div>
+  <div class="ncm-msg2-desk__feed">
+    <div class="ncm-msg2-desk__day"><span>2045.08.13</span></div>
+    <div class="ncm-msg2-b"><div class="m">${av('V', 4, 'sm')}<b style="--tc:var(--ncm-hue-4)">V</b><span class="ncm-addr">v@nightcity.net</span><span class="ncm-msg2-age">22:10 · 1d</span></div>
+      <div class="sj">Who is this</div><div class="ncm-msg2-bbody"><p>Got a card under my door. Just a heart. You know anything?</p></div></div>
+    <div class="ncm-msg2-b me"><div class="m">${av('QH', 8, 'sm')}<b style="--tc:var(--ncm-hue-8)">Queen of Hearts</b><span class="ncm-msg2-age">23:40 · 1d</span></div>
+      <div class="ncm-msg2-bbody"><p>Everybody knows something, choom. Question is what it's worth.</p></div></div>
+    <div class="ncm-msg2-desk__day"><span>2045.08.14</span></div>
+    <div class="ncm-msg2-b new"><div class="m">${av('V', 4, 'sm')}<b style="--tc:var(--ncm-hue-4)">V</b><span class="ncm-addr">v@nightcity.net</span><span class="ncm-msg2-age">15:00 · 7h</span><span class="ncm-msg2-flag is-accent"><i class="fas fa-circle"></i>waiting</span></div>
+      <div class="ncm-msg2-bbody"><p>Name a price.</p></div></div>
+  </div>
+  <div class="ncm-msg2-desk__box">
+    <textarea class="ncm-msg2-ta ncm-msg2-desk__ta" placeholder="Write to V as Queen of Hearts…  (Ctrl+Enter sends · the draft is kept)"></textarea>
+    <div class="ncm-msg2-desk__bar">
+      <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon ncm-msg2-desk__done" title="Mark answered without replying" aria-label="Mark answered"><i class="fas fa-check"></i></button>
+      <span class="to"><i class="fas fa-arrow-right-long"></i>to <b>V</b>${replyOpen ? '<span class="anon"><i class="fas fa-user-secret"></i>anonymous</span>' : ''}</span>
+      <span class="ncm-msg2-sendbtn">
+        <button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary"><i class="fas fa-reply"></i> <span class="lb">Reply as Queen of Hearts</span></button>
+        <details class="ncm-msg2-dd ncm-msg2-dd--up"${replyOpen ? ' open' : ''}><summary class="ncm-msg2-btn ncm-msg2-btn--primary" title="More ways to reply" aria-label="More ways to reply"><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+          <div class="ncm-msg2-dd__menu" style="min-width:260px">
+            <div class="ncm-msg2-dd__k">Answer as</div>
+            <button type="button" class="ncm-msg2-dd__item is-on is-alias"><i class="fas id fa-masks-theater"></i><span>Queen of Hearts<small class="addr">queen@void.nc · alias</small></span><span class="wrote">they wrote here</span></button>
+            <button type="button" class="ncm-msg2-dd__item"><i class="fas id fa-user-tie"></i><span>Rogue<small class="addr">rogue@afterlife.nc · main</small></span></button>
+            <div class="ncm-msg2-dd__sep"></div>
+            <button type="button" class="ncm-msg2-dd__item is-on"><i class="fas ck fa-square-check"></i><span>Send anonymously<small>the player sees a mask, not the name</small></span></button>
+            <button type="button" class="ncm-msg2-dd__item"><i class="fas fa-up-right-from-square"></i><span>Open in the full composer<small>attach a shard or eddies, schedule, encrypt</small></span></button>
+          </div></details>
+      </span>
+    </div>
+  </div></div>`;
+
+const persona = `<aside class="ncm-msg2-desk__who"><div class="ncm-msg2-desk__pcard">
+  <div class="ncm-msg2-desk__pface">${av('QH', 8, 'lg')}
+    <div class="tx"><div class="nm">Queen of Hearts<span class="ncm-tagp is-secret"><i class="fas fa-mask"></i>alias</span></div><div class="ncm-addr">queen@void.nc</div></div>
+    <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Open in Contacts"><i class="fas fa-pen"></i></button></div>
+  <div class="ncm-msg2-desk__ptags"><span class="ncm-tagp" style="--tc:var(--ncm-hue-3)"><i class="fas fa-handshake"></i>Fixer</span><span class="ncm-tagp" style="--tc:var(--ncm-hue-6)">Afterlife</span></div>
+  <div class="ncm-msg2-desk__pk"><i class="fas fa-comment-dots"></i>How they talk<span class="n">from Rogue</span></div>
+  <div class="ncm-msg2-desk__pvoice">Short. Never says a name twice. Prices everything.</div>
+  <div class="ncm-msg2-desk__pk"><i class="fas fa-quote-left"></i>What they last said</div>
+  <div class="ncm-msg2-desk__said"><div><span class="q">Everybody knows something, choom…</span><span class="t">1d</span></div></div>
+</div></aside>`;
+
+const frames = [
+  ['A', 'Default', 'one-row queue head (Show ▾ · count · fold), the reply box is one bar: ✓ · to V · [Reply as X ▾]', { }],
+  ['B', '"Reply as" menu open', 'the identity list, anonymous and the full composer all live behind the ▾', { reply: true }],
+  ['C', '"Show" menu open', 'All lines / Waiting / Answered + the two list options', { show: true }],
+  ['D', 'Queue and persona folded', 'the list folds to a rail of faces with counts; the id-card button hides the persona — the thread gets the width', { qshut: true, pshut: true }],
+];
+document.getElementById('frames').innerHTML = frames.map(([k, t, s, o]) => `
+  <div class="mk-cap">${k} · ${t} <span>— ${s}</span></div>
+  <div class="ncm-app ncm-admin-panel mk-win" data-ncm-admin-theme="${T}" data-ncm-scanlines="false">
+    <div class="ncm-admin-panel" style="flex:1;min-height:0;display:flex;flex-direction:column"><div class="ncm-admin-content">
+      <div class="ncm-msg2">${NAV}<div class="ncm-msg2-view">${HEAD}
+        <div class="ncm-msg2-desk ${o.qshut ? 'is-qshut' : ''} ${o.pshut ? 'is-pshut' : ''}">
+          ${o.qshut ? rail : queue(o.show)}${mid(o.reply, o.pshut)}${o.pshut ? '' : persona}
+        </div></div></div>
+    </div></div></div>`).join('');
+</script>
+</body></html>

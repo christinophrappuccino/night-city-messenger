@@ -10,6 +10,7 @@
 
 import { MODULE_ID, SKILL_MAP } from '../utils/constants.js';
 import { log, chatCardTime } from '../utils/helpers.js';
+import { playRollReveal } from '../ui/content/RollReveal.js';
 
 export class SkillService {
 
@@ -58,6 +59,12 @@ export class SkillService {
     const dc = options.dc ?? 0;
     const luckSpend = options.luckSpend ?? 0;
     const showChat = options.showChat !== false;
+    // TIMING (2026-10-27): the chat card must not land before the player has
+    // SEEN the result. `reveal` plays the shared Roll Reveal in that window and
+    // posts at its verdict; `deferChat` hands back `result.postChat()` for a
+    // caller with its own animation to fire at ITS climax. Neither → post now.
+    const reveal = options.reveal || null;
+    const deferChat = !!options.deferChat;
     const flavor = options.flavor ?? '';
     const context = options.context ?? '';
     // Flat situational bonus/penalty (e.g. a premium blank's "+1 craft roll" perk).
@@ -72,6 +79,10 @@ export class SkillService {
 
     // ─── Roll 1d10 with Crit/Fumble ───
     const rollResult = await this._rollD10WithCritFumble();
+
+    // Dice So Nice: the 3D dice play BEFORE anything reveals the number, and
+    // every caller waits for them (this method does not return until they land).
+    if (options.dice3d !== false) await this._showDice3d(rollResult.rolls);
 
     // ─── Calculate Total ───
     const total = statValue + skillLevel + rollResult.processedRoll + actualLuckSpend + modifier;
@@ -100,9 +111,24 @@ export class SkillService {
       roll: rollResult.roll,
     };
 
-    // ─── Post to Chat ───
-    if (showChat) {
-      await this._postChatMessage(actor, skillName, result, { flavor, context });
+    // ─── Post to Chat — now, at the reveal's verdict, or when the caller says ───
+    let posted = null;
+    result.postChat = () => {
+      if (!showChat) return Promise.resolve();
+      if (!posted) posted = this._postChatMessage(actor, skillName, result, { flavor, context });
+      return posted;
+    };
+    if (reveal) {
+      await playRollReveal({
+        host: reveal.host, result, skillName,
+        title: reveal.title || context || `${skillName} check`,
+        ctx: reveal.ctx || flavor || '', who: reveal.who ?? actor.name,
+        ok: reveal.ok, no: reveal.no, sound: reveal.sound, verdictSound: reveal.verdictSound, hideDV: !!reveal.hideDV,
+        onChat: () => result.postChat(),
+      });
+      await result.postChat();
+    } else if (!deferChat) {
+      await result.postChat();
     }
 
     log.debug(`SkillCheck: ${actor.name} / ${skillName} — ` +
@@ -168,6 +194,15 @@ export class SkillService {
   // ═══════════════════════════════════════════════════════════
 
   /**
+   * Is a Role Ability (Interface and kin) rolled as rank + d10, with no stat?
+   * World setting `roleAbilityRoll` — 'rank' (rulebook) or 'stat' (default).
+   * @returns {boolean}
+   */
+  static roleAbilityRankOnly() {
+    try { return game.settings.get(MODULE_ID, 'roleAbilityRoll') === 'rank'; } catch { return false; }
+  }
+
+  /**
    * @private
    */
   _readSkillData(actor, skillName) {
@@ -176,6 +211,7 @@ export class SkillService {
     let statValue = 0;
     let statFromItem = false;
     let _found = false;
+    let isRoleAbility = false;
 
     const wanted = this._normSkill(skillName);
 
@@ -195,12 +231,16 @@ export class SkillService {
       }
 
       // Role abilities (e.g. Interface from the Netrunner role) are NOT skill
-      // items — resolve their rank from the actor's role item(s).
-      if (!_found) {
+      // items — resolve their rank from the actor's role item(s). Also when a
+      // same-named SKILL item exists at level 0: some sheets carry an empty
+      // "Interface" skill, which used to hide the role's real rank.
+      if (!_found || !(Number(skillLevel) > 0)) {
         const role = this._readRoleAbility(actor, skillName);
-        if (role.found) {
+        if (role.found && (!_found || Number(role.rank) > Number(skillLevel))) {
           _found = true;
+          isRoleAbility = true;
           skillLevel = role.rank;
+          statFromItem = false;
         }
       }
 
@@ -215,6 +255,14 @@ export class SkillService {
       if (statName && actor.system?.stats) {
         const stat = actor.system.stats[statName];
         statValue = stat?.value ?? stat ?? 0;
+      }
+
+      // World setting `roleAbilityRoll`: 'rank' = the rulebook's Role Ability
+      // check (Interface = rank + d10, no stat). The default 'stat' keeps the
+      // module's long-standing TECH + rank + d10.
+      if (isRoleAbility && SkillService.roleAbilityRankOnly()) {
+        statName = 'none';
+        statValue = 0;
       }
     } catch (err) {
       log.debug(`SkillService._readSkillData: "${skillName}" on ${actor.name}: ${err.message}`);
@@ -247,9 +295,14 @@ export class SkillService {
     for (const role of roles) {
       const sys = role.system ?? {};
 
+      // CPR's role data model stores the main ability as a plain STRING (mainRoleAbility: "Interface") with the rank
+      // in system.rank; older data used an object { name, rank }. Read both — the string form never matched before,
+      // so Interface was only found when the role item happened to be named "Netrunner".
       const main = sys.mainRoleAbility;
-      if (main && this._normSkill(main.name) === target) {
-        return { rank: main.rank ?? sys.rank ?? sys.value ?? 0, found: true };
+      const mainName = typeof main === 'string' ? main : main?.name;
+      if (mainName && this._normSkill(mainName) === target) {
+        const r = (main && typeof main === 'object') ? (main.rank ?? sys.rank ?? sys.value) : (sys.rank ?? sys.value);
+        return { rank: Number(r) || 0, found: true };
       }
 
       const subs = sys.subRoleAbilities ?? sys.abilities ?? sys.roleskills ?? [];
@@ -287,10 +340,30 @@ export class SkillService {
    * - Natural 1: roll again and subtract
    * @private
    */
+  /**
+   * Play the 3D dice and wait for them to land, when Dice So Nice is active.
+   * Synchronized so the table sees the same throw. Capped, so a stuck or
+   * misconfigured DSN can never hang a login.
+   * @param {Roll[]} rolls
+   */
+  async _showDice3d(rolls = []) {
+    const d3 = game.dice3d;
+    if (!d3?.showForRoll || !rolls.length) return;
+    const cap = (ms) => new Promise((res) => setTimeout(res, ms));
+    try {
+      for (const r of rolls) {
+        await Promise.race([d3.showForRoll(r, game.user, true), cap(12000)]);
+      }
+    } catch (err) {
+      log.debug(`SkillService: Dice So Nice failed: ${err.message}`);
+    }
+  }
+
   async _rollD10WithCritFumble() {
     const roll = new Roll('1d10');
     await roll.evaluate();
     const rawValue = roll.total;
+    const rolls = [roll];
 
     let processedRoll = rawValue;
     let isCritical = false;
@@ -304,6 +377,7 @@ export class SkillService {
       while (nextRoll === 10) {
         const bonus = new Roll('1d10');
         await bonus.evaluate();
+        rolls.push(bonus);
         nextRoll = bonus.total;
         explosion += nextRoll;
       }
@@ -312,10 +386,11 @@ export class SkillService {
       isFumble = true;
       const penalty = new Roll('1d10');
       await penalty.evaluate();
+      rolls.push(penalty);
       processedRoll = rawValue - penalty.total;
     }
 
-    return { rawValue, processedRoll, isCritical, isFumble, roll };
+    return { rawValue, processedRoll, isCritical, isFumble, roll, rolls };
   }
 
   // ═══════════════════════════════════════════════════════════

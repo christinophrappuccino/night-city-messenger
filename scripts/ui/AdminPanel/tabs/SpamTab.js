@@ -10,6 +10,7 @@
 
 import { BaseTab } from '../BaseTab.js';
 import { adminConfirm } from '../../../utils/adminTheme.js';
+import { ScopePicker } from '../../../utils/scopePicker.js';
 
 export class SpamTab extends BaseTab {
 
@@ -66,6 +67,26 @@ export class SpamTab extends BaseTab {
     }));
     const allSelected = playerActors.length > 0 && playerActors.every(a => a.selected);
 
+    // Recipients: ONE searchable multi picker instead of a chip per character (2026-10-28, dev: "I have a lot of
+    // characters there… a button that shows me who to select"). Quick Blast and the template's Send-to bar each
+    // get a picker over the SAME selection (`_recipients`). "Every player" is a pinned select-all row.
+    const toPicker = (key) => {
+      const id = this.scopeId(key);
+      if (!ScopePicker.isOpen(id)) ScopePicker.set(id, [...this._recipients]);
+      ScopePicker.on(id, (v) => {
+        const ids = (v || []).filter(x => x !== '__all');
+        this._recipients = new Set((v || []).includes('__all') ? playerActors.map(a => a.id) : ids);
+        ScopePicker.set(id, [...this._recipients]);
+        this._saveListScroll();
+        this.render(true);
+      });
+      return ScopePicker.html(id, {
+        noun: 'player', nouns: 'players', icon: 'fa-user-group', label: 'To', multi: true, allLabel: 'Pick players',
+        pinned: playerActors.length ? [{ id: '__all', name: 'Every player', icon: 'fa-users', meta: `Pick all ${playerActors.length}` }] : [],
+        items: playerActors.map(a => ({ id: a.id, name: a.name, color: a.color, img: a.img || game.actors?.get?.(a.id)?.img || '', icon: 'fa-user' })),
+      });
+    };
+
     // Category data
     const counts = spam.getCategoryCounts();
     const categories = spam.categories;
@@ -108,7 +129,7 @@ export class SpamTab extends BaseTab {
         let bodyHtml = (tmpl.body || '')
           .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
           .replace(/\n/g, '<br>')
-          .replace(/\{\{(\w+)\}\}/g, '<span style="color: var(--ncm-accent); font-weight: 700;">{{$1}}</span>');
+          .replace(/\{\{(\w+)\}\}/g, '<span class="ncm-spam-token">{{$1}}</span>');
 
         selectedTemplate = {
           ...tmpl,
@@ -136,10 +157,14 @@ export class SpamTab extends BaseTab {
     return {
       spamPlayerActors: playerActors,
       spamAllSelected: allSelected,
+      spamPickedCount: this._recipients.size,
+      spamToPicker: toPicker('spamto'),
+      spamToPicker2: toPicker('spamto2'),
       spamBlastCount: this._blastCount,
       spamCategoryFilter: this._categoryFilter,
       spamCategoryCounts: counts,
       spamCategoryList: categoryList,
+      spamCategoryActive: categoryList.find((c) => c.active) || null,   // tints the Category dropdown card
       spamTemplates: templates,
       spamSelectedTemplate: selectedTemplate,
       spamTotalCount: spam.totalCount,
@@ -159,11 +184,21 @@ export class SpamTab extends BaseTab {
    * for auto-spam volume selects and the creator form inputs/selects.
    */
   onRender(context, options) {
+    ScopePicker.after();   // place the recipient pickers' popovers (body-mounted portals)
+
     // Restore spam library list scroll position
     const listEl = this.element?.querySelector('.ncm-spam-lib__list');
     if (listEl && this._listScroll) {
       listEl.scrollTop = this._listScroll;
     }
+
+    // Category dropdown (it was a row of pills) — a <select> needs a change listener, not data-action.
+    const catSel = this.element?.querySelector('[data-spam-category]');
+    if (catSel) catSel.addEventListener('change', () => {
+      this._categoryFilter = catSel.value || 'all';
+      this._selectedId = null;   // a new category clears the selection, as the pills did
+      this.render(true);
+    });
 
     // Auto-spam volume selects (data-action on <select> fires on click, not change)
     const volSelects = this.element?.querySelectorAll('.ncm-spam-auto-row__vol-select') ?? [];

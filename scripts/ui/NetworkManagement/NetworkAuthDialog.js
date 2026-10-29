@@ -25,6 +25,9 @@ import { log, resolveOperator, guardSecretInputs } from '../../utils/helpers.js'
 import { BaseApplication } from '../BaseApplication.js';
 import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
 import { NetworkAuthAdapter, TerminalAuthAdapter } from './SecurityAuthAdapters.js';
+import { bypassDCFor } from '../../utils/bypassSkills.js';
+import { cmvReadout, rememberScan } from '../../utils/countermeasures.js';
+import { cmvForViewer } from '../../utils/countermeasureView.js';
 
 export class NetworkAuthDialog extends BaseApplication {
 
@@ -100,6 +103,8 @@ export class NetworkAuthDialog extends BaseApplication {
       switchMode: NetworkAuthDialog._onSwitchMode,
       browseKeyItem: NetworkAuthDialog._onBrowseKeyItem,
       cancel: NetworkAuthDialog._onCancel,
+      toggleCmvScan: NetworkAuthDialog._onToggleCmvScan,
+      scanDefences: NetworkAuthDialog._onScanDefences,
     },
   }, { inplace: false });
 
@@ -307,7 +312,7 @@ export class NetworkAuthDialog extends BaseApplication {
     // when there's a single bypass skill; multi-skill networks show per-row values.
     const showBreakdownGrid = !!skillBreakdown && (network.security.bypassSkills?.length ?? 0) <= 1;
 
-    return {
+    const ctx = {
       network: {
         id: network.id,
         name: network.name,
@@ -360,7 +365,7 @@ export class NetworkAuthDialog extends BaseApplication {
           // Canonical skill name (matches the actor's Item) for display AND the
           // data-skill the roll fires with — falls back to the raw config name.
           name: bd?.skillName ?? skill,
-          dc: network.security.bypassDC ?? 15,
+          dc: bypassDCFor(network.security, skill),
           danger: skillDanger,
           // Per-skill resolved values so each row shows the character's own level
           statName: bd?.statName ?? 'INT',
@@ -369,7 +374,15 @@ export class NetworkAuthDialog extends BaseApplication {
           total: bd?.total ?? 0,
         };
       }),
-      bypassDC: network.security.bypassDC ?? 15,
+      // The single-skill breakdown grid quotes ONE DV — the first skill's own.
+      bypassDC: bypassDCFor(network.security, (network.security.bypassSkills ?? [])[0]),
+      // The card header: one DV, or the range when the skills differ ("13–17").
+      bypassDCLabel: (() => {
+        const dvs = (network.security.bypassSkills ?? []).map(s => bypassDCFor(network.security, s));
+        if (!dvs.length) return String(network.security.bypassDC ?? 15);
+        const lo = Math.min(...dvs), hi = Math.max(...dvs);
+        return lo === hi ? String(lo) : `${lo}–${hi}`;
+      })(),
 
       isLockedOut,
       lockoutRemaining: this._formatDuration(lockoutRemaining),
@@ -394,6 +407,55 @@ export class NetworkAuthDialog extends BaseApplication {
 
       MODULE_ID,
     };
+    return this._applyCountermeasures(ctx, network, { isLethalICE, iceInfo, iceDealsDamage, maxAttempts, usedAttempts });
+  }
+
+  /**
+   * Countermeasure visibility (utils/countermeasures.js): what can THIS character
+   * tell about what guards the lock? A layperson sees the ways in, never the ICE /
+   * damage / trace / attempt limit, and (optionally) not the DV — those values are
+   * REMOVED from the context, never hidden with CSS, so they are not in the DOM.
+   * Experts and the GM see everything; a scan may lift it.
+   * @private
+   */
+  _applyCountermeasures(ctx, network, { isLethalICE, iceInfo, iceDealsDamage, maxAttempts, usedAttempts }) {
+    const view = cmvForViewer({ override: network.security?.countermeasures, key: this.networkId, attemptsUsed: usedAttempts });
+    this._cmv = view;
+    const knows = view.state === 'identified' || view.state === 'open';
+    const readout = cmvReadout(view, {
+      icePresent: !!isLethalICE || network.security?.failureMode === 'damage',
+      iceName: iceInfo?.name || '', formula: iceDealsDamage ? iceInfo?.formula : '',
+      failureMode: network.security?.failureMode || 'lockout',
+      traced: !!network.effects?.traced, maxAttempts,
+    });
+    const scanSkills = view.canScan ? view.scanSkills.map(name => {
+      const bd = this._breakdownForSkill({ security: { bypassSkills: [name], bypassDC: view.scanDV } }, name);
+      return { name: bd?.skillName ?? name, statName: bd?.statName ?? '', statValue: bd?.statValue ?? 0, skillValue: bd?.skillValue ?? 0, total: bd?.total ?? 0 };
+    }) : [];
+    ctx.cmv = {
+      state: view.state, knows,
+      isHidden: !knows, isSpotted: view.state === 'spotted',
+      showDV: view.showDV, credit: knows && view.state !== 'open' && view.credit !== 'GM' ? view.credit : '',
+      readout, canScan: view.canScan, scanFailed: view.scanFailed,
+      scanSkills, scanCount: scanSkills.length, scanDVLabel: view.showDV ? String(view.scanDV) : '??',
+      scanOpen: !!this._scanOpen,
+      showAttempts: knows || !!view.show?.attemptsCount,
+    };
+    if (!knows) {
+      // Nothing the character can't know rides into the template.
+      ctx.isLethalICE = false;
+      ctx.iceInfo = null;
+      ctx.iceDealsDamage = false;
+      ctx.bypassSkills = ctx.bypassSkills.map(s => ({ ...s, danger: '' }));
+    }
+    if (!view.showDV) {
+      ctx.bypassSkills = ctx.bypassSkills.map(s => ({ ...s, dc: '??' }));
+      ctx.bypassDC = '??';
+      ctx.bypassDCLabel = '??';
+      if (ctx.skillBreakdown) ctx.skillBreakdown = { ...ctx.skillBreakdown, needed: '?' };
+    }
+    if (!ctx.cmv.showAttempts) ctx.attemptPips = [];
+    return ctx;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -556,7 +618,7 @@ export class NetworkAuthDialog extends BaseApplication {
       return;
     }
 
-    const dc = this.network.security.bypassDC ?? 15;
+    const dc = bypassDCFor(this.network.security, skillName);
 
     // Roll through SkillService.performCheck — the canonical CPR path (the SAME
     // one shard hacking / ICE breach use). It resolves stat + skill correctly,
@@ -565,13 +627,26 @@ export class NetworkAuthDialog extends BaseApplication {
     let total;
     const svc = this.skillService;
     if (svc?.performCheck) {
+      // The Roll Reveal plays in this dialog and the chat card posts at its
+      // verdict; it owns the outcome sound, so the adapter check below is silent.
+      const isAccount = this._adapter instanceof TerminalAuthAdapter;
+      const name = this.network.name || (isAccount ? 'Account' : 'Network');
       const rollResult = await svc.performCheck(actor, skillName, {
         dc,
         showChat: true,
-        context: `Network Bypass: ${this.network.name || 'Network'}`,
-        flavor: `${this.network.security.encryptionType || 'ICE'} // DV ${dc}`,
+        context: `${isAccount ? 'Account Login' : 'Network Bypass'}: ${name}`,
+        // A layperson's chat card must not name the ICE they could not see.
+        flavor: `${(this._cmv && !['identified', 'open'].includes(this._cmv.state)) ? 'Security' : (this.network.security.encryptionType || 'ICE')} // DV ${dc}`,
+        reveal: {
+          hideDV: this._cmv ? !this._cmv.showDV : false,
+          host: this.element,
+          title: isAccount ? `Forcing the ${name} login` : `Bypassing ${name}`,
+          ctx: `${isAccount ? 'Account login' : 'Network bypass'} · ${name}`,
+          ok: 'Access granted', no: 'Access denied',
+        },
       });
       total = rollResult.total;
+      this._revealPlayed = true;
     } else {
       const roll = new Roll('1d10');
       await roll.evaluate();
@@ -586,7 +661,8 @@ export class NetworkAuthDialog extends BaseApplication {
     }
 
     // The adapter checks the roll total vs the bypass DV; it owns the sound.
-    const authResult = this._adapter.checkSkill(total, skillName);
+    const authResult = this._adapter.checkSkill(total, skillName, { silent: !!this._revealPlayed });
+    this._revealPlayed = false;
 
     if (authResult.success) {
       this.securityService?.recordSuccess(actor.id, this.networkId);
@@ -688,6 +764,53 @@ export class NetworkAuthDialog extends BaseApplication {
 
   static _onCancel() {
     this.close();
+  }
+
+  /** Fold the "Scan the defences" strip open/shut — DOM-only (grid 0fr→1fr animates). */
+  static _onToggleCmvScan(event, target) {
+    const box = target.closest('.ncm-cmv-scan');
+    if (!box) return;
+    this._scanOpen = !box.classList.contains('is-open');
+    box.classList.toggle('is-open', this._scanOpen);
+    target.setAttribute('aria-expanded', String(this._scanOpen));
+    const lbl = target.querySelector('[data-more-label]');
+    if (lbl) lbl.textContent = this._scanOpen ? 'Hide' : 'Show';
+  }
+
+  /**
+   * Scan the defences — one optional roll vs the scan DV. Beat it by
+   * `identifyBy` and the defences are identified; meet it and they are spotted;
+   * miss and you go in blind (and, if the GM says so, the miss is traced).
+   * Remembered per actor + object for the session on this client.
+   */
+  static async _onScanDefences(event, target) {
+    const skillName = target.dataset.skill;
+    const actor = resolveOperator();
+    const view = this._cmv;
+    if (!skillName || !view?.canScan) return;
+    if (!actor) { ui.notifications.warn('NCM | No character assigned. Set your character in User Configuration.'); return; }
+    const svc = this.skillService;
+    if (!svc?.performCheck) return;
+    const name = this.network?.name || 'this lock';
+    const dc = view.scanDV;
+    const by = view.identifyBy;
+    const res = await svc.performCheck(actor, skillName, {
+      dc, showChat: true,
+      context: `Countermeasure scan: ${name}`, flavor: `Scan // DV ${dc}`,
+      reveal: {
+        host: this.element,
+        title: `Scanning ${name}'s defences`, ctx: `Scan · ${name}`,
+        ok: (r) => ((r.margin ?? 0) >= by ? 'Defences identified' : 'Defences detected'),
+        no: 'Nothing readable', hideDV: !view.showDV,
+      },
+    });
+    rememberScan(actor.id, this.networkId, res.total);
+    const ts = game.nightcity?.traceService;
+    const payload = { actor, action: 'cmv-scan', objectName: name, targetKind: this._adapter instanceof TerminalAuthAdapter ? 'terminal' : 'network', targetNetworkId: this.networkId, dv: dc, margin: res.total - dc, severity: 'minor' };
+    // A miss is only the GM's business when the table says scans are traced.
+    if (res.success) ts?.logSuccess?.(payload);
+    else if (view.failTraced) ts?.fireTrace?.(payload);
+    this.render();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -869,7 +992,7 @@ export class NetworkAuthDialog extends BaseApplication {
   _breakdownForSkill(network, skillName) {
     const actor = resolveOperator();
     if (!actor || !skillName) return null;
-    const dc = network.security.bypassDC ?? 15;
+    const dc = bypassDCFor(network.security, skillName);
 
     // Canonicalize to the actor's real skill name (handles missing spaces etc.)
     skillName = this._resolveSkillName(actor, skillName);
@@ -918,7 +1041,7 @@ export class NetworkAuthDialog extends BaseApplication {
    * @returns {object}
    */
   _manualSkillBreakdown(actor, skillName, network) {
-    const dc = network.security.bypassDC ?? 15;
+    const dc = bypassDCFor(network.security, skillName);
     const wanted = (skillName || '').toLowerCase().trim();
 
     let skillValue = 0;

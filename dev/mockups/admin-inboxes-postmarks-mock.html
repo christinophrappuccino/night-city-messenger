@@ -1,0 +1,534 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Inboxes — two directions</title>
+<!--
+  Admin → Messages → Inboxes, two interactive directions (2026-10-29, dev: "mock up two interactive interesting
+  directions. Postmarks sounds cool but make sure it's still cyberpunk while retaining clarity").
+    A · THE WALL     — the picked Mailroom, grown up: each pigeonhole holds a stack of envelope edges (amber unread ·
+                       violet anon/encrypted · gold eddies · red Black ICE / not delivered), hover fans the newest three
+                       out, click pulls a DRAWER under the shelf (latest mail, 14-day traffic, the networks it was
+                       routed over as postmarks, who it talks to, actions). Quiet mailboxes gather dust.
+    B · THE SORTER   — a routing desk: an INTAKE BELT of the latest mail across the top, a rack of BINS (one per
+                       mailbox) below, and a MANIFEST on the right. Hover a parcel → a route line to its bin; hover a
+                       bin → its parcels light up. The postmarks ARE a filter: click one in the key to see only mail
+                       routed over that network.
+  Postmark = a routing tag, not a rubber stamp: a cut corner, the network's own colour as an edge + a short
+  barcode, a 3-letter code and the hour in mono. The colour says WHICH network; the text says it in words.
+  Every interaction is live: hover, click, type (/ focuses search, arrows + Enter), "Simulate delivery".
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-inboxes-postmarks-mock.html
+  ?t=clean-light|high-contrast  ?only=a|b  ?open=<mailbox id> (A: drawer open, B: manifest)  ?fan=<id> (A)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { width: 820px; margin: 26px auto 4px; color: #eee; font: 700 15px sans-serif; letter-spacing: .04em; }
+  .mk-h:first-child { margin-top: 0; }
+  .mk-p { width: 820px; margin: 0 auto 12px; color: #aaa; font: 13px/1.5 sans-serif; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important;
+    width: 820px; height: 640px; margin: 0 auto; display: flex; flex-direction: column; overflow: visible; border: 1px solid #555; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); }
+
+  /* ═══ shared: postmark, envelope edge, face, stats ═══ */
+  .ncm-mr { --pm: var(--ncm-act); display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 8px 10px 10px; gap: 8px; color: var(--ncm-text-primary); }
+  .ncm-mr__bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ncm-mr__search { flex: 1; min-width: 180px; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .ncm-mr__search i { font-size: 11px; color: var(--ncm-text-label); }
+  .ncm-app .ncm-mr__search input { flex: 1; height: 26px !important; border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; color: var(--ncm-text-primary) !important; font: 12px var(--ncm-font-body) !important; }
+  .ncm-mr__search kbd { font: 700 9px var(--ncm-font-mono); padding: 1px 4px; border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-label); background: var(--ncm-bg-card); }
+  .ncm-mr__btn { appearance: none; display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); cursor: pointer; white-space: nowrap; }
+  .ncm-mr__btn:hover { border-color: var(--ncm-act); }
+  .ncm-mr__btn.is-pri { background: var(--ncm-act); border-color: var(--ncm-act); color: var(--ncm-text-inverse); }
+  .ncm-mr__btn i { font-size: 10px; }
+  .ncm-mr__stats { display: flex; gap: 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .ncm-mr__stat { flex: 1; display: flex; flex-direction: column; gap: 1px; padding: 5px 10px; border-right: 1px solid var(--ncm-border); cursor: pointer; }
+  .ncm-mr__stat:last-child { border-right: 0; }
+  .ncm-mr__stat:hover, .ncm-mr__stat.is-on { background: color-mix(in srgb, var(--ncm-act) 10%, transparent); }
+  .ncm-mr__stat b { font: 700 16px var(--ncm-font-mono); color: var(--ncm-text-heading, var(--ncm-text-primary)); line-height: 1.1; }
+  .ncm-mr__stat span { font: 600 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .ncm-mr__stat.attn b { color: var(--ncm-attn); } .ncm-mr__stat.bad b { color: var(--ncm-bad); } .ncm-mr__stat.dim b { color: var(--ncm-text-secondary); }
+
+  .ncm-mr-face { flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--tc, var(--ncm-act));
+    background: color-mix(in srgb, var(--tc, var(--ncm-act)) 16%, var(--ncm-bg-card)); color: color-mix(in srgb, var(--tc) 55%, var(--ncm-text-heading, #fff)); font: 700 11px var(--ncm-font-display); }
+  .ncm-mr-face.sm { width: 18px; height: 18px; font-size: 8px; border-width: 1px; }
+
+  /* the POSTMARK — a routing tag: cut corner, network-colour edge + barcode, code + hour in mono */
+  .ncm-mr-pm { --n: var(--ncm-act); display: inline-flex; align-items: stretch; height: 16px; flex: none; border: 1px solid color-mix(in srgb, var(--n) 70%, transparent);
+    clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%); background: color-mix(in srgb, var(--n) 10%, var(--ncm-bg-card)); cursor: default; }
+  .ncm-mr-pm i.bc { width: 9px; flex: none; background: repeating-linear-gradient(90deg, var(--n) 0 1px, transparent 1px 2px, var(--n) 2px 4px, transparent 4px 5px); opacity: .9; }
+  .ncm-mr-pm b { display: flex; align-items: center; padding: 0 4px; font: 700 9px var(--ncm-font-mono); letter-spacing: .06em; color: color-mix(in srgb, var(--n) 45%, var(--ncm-text-heading, #fff)); }
+  .ncm-mr-pm span { display: flex; align-items: center; padding: 0 6px 0 4px; border-left: 1px dashed color-mix(in srgb, var(--n) 50%, transparent); font: 9px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-mr-pm.is-big { height: 22px; } .ncm-mr-pm.is-big b { font-size: 10.5px; } .ncm-mr-pm.is-big span { font-size: 10px; }
+  .ncm-mr-pm.is-click { cursor: pointer; }
+  .ncm-mr-pm.is-off { opacity: .35; }
+  .ncm-mr-pm.is-on { box-shadow: 0 0 0 1px var(--n), 0 0 8px color-mix(in srgb, var(--n) 50%, transparent); }
+
+  /* an envelope edge / state colour */
+  .st-unread { --e: var(--ncm-attn); } .st-read { --e: var(--ncm-text-label); } .st-anon { --e: var(--ncm-secret); } .st-eddies { --e: var(--ncm-money); } .st-ice { --e: var(--ncm-bad); }
+
+  .mk-toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 60; padding: 6px 12px; border: 1px solid var(--ncm-act); border-radius: 2px; background: var(--ncm-bg-raised, var(--ncm-bg-card));
+    font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); box-shadow: 0 6px 18px rgba(0,0,0,.5); opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .mk-toast.on { opacity: 1; }
+
+  /* ═══ A · THE WALL ═══ */
+  .ncm-mr-wall { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+  .ncm-mr-jump { display: flex; gap: 4px; flex-wrap: wrap; }
+  .ncm-mr-jump span { display: inline-flex; gap: 5px; align-items: center; padding: 2px 7px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer;
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-mr-jump span b { font-family: var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-secondary)); }
+  .ncm-mr-jump span:hover { border-color: var(--ncm-act); color: var(--ncm-text-primary); }
+  .ncm-mr-shelf__hd { display: flex; align-items: center; gap: 7px; padding: 4px 6px; cursor: pointer; border-bottom: 1px solid var(--ncm-border);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .ncm-mr-shelf__hd i.ch { font-size: 9px; color: var(--ncm-text-label); transition: transform .15s; }
+  .ncm-mr-shelf.is-shut .ncm-mr-shelf__hd i.ch { transform: rotate(-90deg); }
+  .ncm-mr-shelf__hd .ic { color: var(--sh, var(--ncm-act)); font-size: 10px; }
+  .ncm-mr-shelf__hd .n { font-family: var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .ncm-mr-shelf__hd .u { padding: 0 5px; border-radius: 1px; background: var(--ncm-attn); color: var(--ncm-text-inverse); font: 700 9px var(--ncm-font-mono); }
+  .ncm-mr-shelf__row { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; padding: 8px 2px 4px; }
+  .ncm-mr-shelf.is-shut .ncm-mr-shelf__row, .ncm-mr-shelf.is-shut .ncm-mr-drawer { display: none; }
+  .ncm-mr-shelf__shutfaces { display: none; gap: 3px; padding: 5px 4px; }
+  .ncm-mr-shelf.is-shut .ncm-mr-shelf__shutfaces { display: flex; }
+
+  .ncm-mr-slot { position: relative; height: 96px; padding: 6px 7px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); cursor: pointer; outline: none;
+    display: flex; flex-direction: column; gap: 4px; overflow: hidden; transition: border-color .15s, opacity .15s; }
+  .ncm-mr-slot::before { content: ''; position: absolute; left: 6px; right: 6px; bottom: 0; height: 30px; border: 1px solid var(--ncm-border); border-bottom: 0; background: var(--ncm-bg-pane); }
+  .ncm-mr-slot:hover, .ncm-mr-slot:focus-visible, .ncm-mr-slot.is-kb { border-color: var(--ncm-act); }
+  .ncm-mr-slot.is-sel { border-color: var(--ncm-act); box-shadow: inset 0 0 0 1px var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 8%, var(--ncm-bg-card)); }
+  .ncm-mr-slot__top { position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .ncm-mr-slot__nm { min-width: 0; font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-mr-slot__sub { font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; z-index: 1; }
+  .ncm-mr-slot__flag { position: absolute; top: 0; right: 6px; z-index: 2; min-width: 16px; height: 20px; padding: 0 3px; display: grid; place-items: center; background: var(--ncm-attn);
+    color: var(--ncm-text-inverse); font: 700 10px var(--ncm-font-mono); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
+  .ncm-mr-slot__flag.pop { animation: mr-pop .6s cubic-bezier(.22,1,.36,1); }
+  @keyframes mr-pop { 0% { transform: translateY(-12px) scale(1.4); } 100% { transform: none; } }
+  /* the envelope stack: one edge per message (max 8), newest on top */
+  .ncm-mr-stack { position: absolute; left: 12px; right: 12px; bottom: 0; height: 28px; z-index: 1; }
+  .ncm-mr-stack i { position: absolute; left: calc(var(--k) * 3px); right: calc(var(--k) * 3px); bottom: calc(var(--k) * 3px); height: 14px; border: 1px solid color-mix(in srgb, var(--e) 80%, transparent);
+    background: linear-gradient(160deg, transparent 49%, color-mix(in srgb, var(--e) 45%, transparent) 50%, transparent 52%), linear-gradient(20deg, transparent 49%, color-mix(in srgb, var(--e) 45%, transparent) 50%, transparent 52%), color-mix(in srgb, var(--e) 16%, var(--ncm-bg-card)); }
+  .ncm-mr-stack .more { position: absolute; right: -4px; top: -6px; font: 700 9px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-mr-stack i.drop { animation: mr-drop .7s cubic-bezier(.22,1,.36,1); }
+  @keyframes mr-drop { 0% { transform: translateY(-46px) rotate(-8deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; } }
+  /* dust: a quiet mailbox fades and says how long */
+  .ncm-mr-slot.is-quiet { opacity: .62; background-image: radial-gradient(color-mix(in srgb, var(--ncm-text-label) 22%, transparent) .6px, transparent .8px); background-size: 5px 5px; }
+  .ncm-mr-slot.is-quiet:hover { opacity: 1; }
+  .ncm-mr-slot__quiet { position: absolute; top: 4px; right: 6px; z-index: 2; font: 700 8.5px var(--ncm-font-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-mr-slot.is-gone { border-style: dashed; border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent); }
+  .ncm-mr-slot.is-gone .ncm-mr-slot__nm { text-decoration: line-through; color: var(--ncm-text-secondary); }
+  .ncm-mr-slot__gone { position: absolute; top: 0; left: 0; z-index: 2; padding: 1px 5px; background: var(--ncm-bad); color: var(--ncm-text-inverse); font: 700 8.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; }
+  .ncm-mr-wall.is-searching .ncm-mr-slot:not(.is-hit) { opacity: .18; }
+
+  /* the FAN — newest three, out of the slot (positioned on the frame so the scroller can't clip it) */
+  .ncm-mr-fan { position: absolute; z-index: 40; width: 250px; pointer-events: none; }
+  .ncm-mr-fan__c { position: absolute; left: 0; width: 236px; padding: 6px 8px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-left: 3px solid var(--e);
+    background: var(--ncm-bg-raised, var(--ncm-bg-card)); box-shadow: 0 6px 18px rgba(0,0,0,.45); pointer-events: auto; cursor: pointer;
+    transform-origin: 50% 120%; animation: mr-fan .25s cubic-bezier(.22,1,.36,1) both; display: flex; flex-direction: column; gap: 3px; }
+  .ncm-mr-fan__c:hover { border-color: var(--ncm-act); z-index: 5; }
+  @keyframes mr-fan { from { opacity: 0; transform: translateY(14px) rotate(0); } }
+  .ncm-mr-fan__c .r1 { display: flex; align-items: center; gap: 6px; font: 600 11.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .ncm-mr-fan__c .r1 .ag { margin-left: auto; font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .ncm-mr-fan__c .r2 { display: flex; align-items: center; gap: 6px; font: 11px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-mr-fan__c .r2 .s { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* the DRAWER — pulled out under the shelf, a caret points at its slot */
+  .ncm-mr-drawer { position: relative; margin: 2px 2px 6px; border: 1px solid var(--ncm-act); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane));
+    display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); animation: mr-drawer .28s cubic-bezier(.22,1,.36,1); }
+  @keyframes mr-drawer { from { opacity: 0; transform: translateY(-8px); clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+  .ncm-mr-drawer::before { content: ''; position: absolute; top: -7px; left: var(--cx, 40px); width: 12px; height: 12px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane));
+    border-left: 1px solid var(--ncm-act); border-top: 1px solid var(--ncm-act); transform: rotate(45deg); }
+  .ncm-mr-drawer__hd { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+  .ncm-mr-drawer__hd .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .ncm-mr-drawer__hd .ad { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-secondary)); }
+  .ncm-mr-drawer__hd .g { flex: 1; }
+  .ncm-mr-drawer__l { padding: 6px 8px 8px; border-right: 1px solid var(--ncm-border); display: flex; flex-direction: column; gap: 3px; }
+  .ncm-mr-drawer__r { padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .ncm-mr-k { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); display: flex; align-items: center; gap: 6px; }
+  .ncm-mr-k .x { margin-left: auto; font: 9.5px var(--ncm-font-mono); letter-spacing: 0; text-transform: none; color: var(--ncm-text-secondary); }
+  .ncm-mr-env { display: grid; grid-template-columns: 4px 18px minmax(0, 1fr) auto auto; align-items: center; gap: 7px; padding: 4px 6px 4px 0; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); cursor: pointer; }
+  .ncm-mr-env:hover { background: var(--ncm-bg-hover, var(--ncm-bg-card)); }
+  .ncm-mr-env .ed { align-self: stretch; background: var(--e); }
+  .ncm-mr-env .tx { min-width: 0; display: flex; flex-direction: column; }
+  .ncm-mr-env .tx b { font: 600 11px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-mr-env .tx span { font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-mr-env .ag { font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .ncm-mr-env.st-unread .tx b::after { content: ' • new'; color: var(--ncm-attn); font-size: 10px; }
+  .ncm-mr-spark { display: flex; align-items: flex-end; gap: 2px; height: 36px; padding-bottom: 2px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-mr-spark i { flex: 1; min-height: 1px; background: color-mix(in srgb, var(--ncm-act) 70%, transparent); }
+  .ncm-mr-spark i.u { background: var(--ncm-attn); } .ncm-mr-spark i.z { background: var(--ncm-border); }
+  .ncm-mr-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .ncm-mr-nums div { padding: 4px 6px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); display: flex; flex-direction: column; }
+  .ncm-mr-nums b { font: 700 14px var(--ncm-font-mono); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .ncm-mr-nums span { font: 600 8.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .ncm-mr-nums .attn b { color: var(--ncm-attn); } .ncm-mr-nums .money b { color: var(--ncm-money); }
+  .ncm-mr-pms { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-mr-who { display: flex; gap: 4px; flex-wrap: wrap; }
+  .ncm-mr-who span { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 2px; border: 1px solid var(--ncm-border); border-radius: 10px; cursor: pointer; font: 11px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-mr-who span:hover { border-color: var(--ncm-act); }
+  .ncm-mr-who span em { font: normal 9.5px var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .ncm-mr-acts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; }
+
+  /* ═══ B · THE SORTER ═══ */
+  .ncm-mr-belt { position: relative; flex: none; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .ncm-mr-belt__hd { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+  .ncm-mr-belt__key { display: flex; gap: 5px; margin-left: auto; }
+  .ncm-mr-belt__lane { position: relative; height: 92px; overflow-x: auto; overflow-y: hidden; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    background: repeating-linear-gradient(90deg, transparent 0 22px, color-mix(in srgb, var(--ncm-border) 55%, transparent) 22px 23px); }
+  .ncm-mr-belt__lane::after { content: ''; position: absolute; left: 0; right: 0; bottom: 8px; height: 2px; background: color-mix(in srgb, var(--ncm-act) 30%, transparent); pointer-events: none; }
+  .ncm-mr-belt__lane .now { flex: none; align-self: stretch; display: flex; align-items: center; padding-left: 6px; border-left: 2px solid var(--ncm-act); font: 700 9px var(--ncm-font-mono); color: var(--ncm-act); writing-mode: vertical-rl; letter-spacing: .1em; }
+  .ncm-mr-parcel { flex: none; position: relative; width: 132px; padding: 5px 7px 6px; border: 1px solid var(--ncm-border); border-top: 3px solid var(--e); border-radius: 2px; background: var(--ncm-bg-card); cursor: pointer;
+    display: flex; flex-direction: column; gap: 4px; transition: opacity .15s, transform .15s, border-color .15s; }
+  .ncm-mr-parcel:hover, .ncm-mr-parcel.is-lit { border-color: var(--ncm-act); border-top-color: var(--e); transform: translateY(-3px); }
+  .ncm-mr-belt.is-focus .ncm-mr-parcel:not(.is-lit) { opacity: .22; }
+  .ncm-mr-parcel .rt { display: flex; align-items: center; gap: 3px; font: 10.5px var(--ncm-font-display); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; }
+  .ncm-mr-parcel .rt b { color: var(--ncm-text-heading, var(--ncm-text-primary)); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-mr-parcel .rt i { font-size: 8px; color: var(--ncm-text-label); }
+  .ncm-mr-parcel .sj { font: 11px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-mr-parcel.drop { animation: mr-in .8s cubic-bezier(.22,1,.36,1); }
+  @keyframes mr-in { from { transform: translateX(60px); opacity: 0; } }
+  .ncm-mr-routes { position: absolute; inset: 0; pointer-events: none; z-index: 30; overflow: visible; }
+  .ncm-mr-routes path { fill: none; stroke: var(--ncm-act); stroke-width: 1.5; stroke-dasharray: 4 3; animation: mr-dash .6s linear infinite; }
+  @keyframes mr-dash { to { stroke-dashoffset: -14; } }
+
+  .ncm-mr-floor { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 8px; }
+  .ncm-mr-rack { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); padding: 6px; display: flex; flex-direction: column; gap: 8px; }
+  .ncm-mr-rack__g { display: flex; flex-direction: column; gap: 4px; }
+  .ncm-mr-rack__k { display: flex; align-items: center; gap: 6px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .ncm-mr-rack__k .ic { color: var(--sh, var(--ncm-act)); }
+  .ncm-mr-bins { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 5px; }
+  .ncm-mr-bin { position: relative; height: 82px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); cursor: pointer; padding: 4px 5px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px; transition: border-color .15s, opacity .15s; }
+  .ncm-mr-bin:hover, .ncm-mr-bin.is-lit { border-color: var(--ncm-act); }
+  .ncm-mr-bin.is-sel { border-color: var(--ncm-act); box-shadow: inset 0 0 0 1px var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 8%, var(--ncm-bg-card)); }
+  .ncm-mr-bin .nm { width: 100%; text-align: center; font: 600 10.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-mr-bin .meter { width: 100%; flex: 1; display: flex; flex-direction: column-reverse; gap: 1px; padding: 2px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
+  .ncm-mr-bin .meter i { height: 3px; flex: none; background: var(--e); }
+  .ncm-mr-bin .u { position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px; padding: 0 3px; display: grid; place-items: center; background: var(--ncm-attn); color: var(--ncm-text-inverse); font: 700 9px var(--ncm-font-mono); }
+  .ncm-mr-bin.is-quiet { opacity: .6; }
+  .ncm-mr-bin.is-gone { border-style: dashed; border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent); }
+  .ncm-mr-rack.is-searching .ncm-mr-bin:not(.is-hit), .ncm-mr-rack.is-net .ncm-mr-bin:not(.is-net) { opacity: .18; }
+
+  .ncm-mr-man { min-height: 0; overflow-y: auto; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); display: flex; flex-direction: column; }
+  .ncm-mr-man__hd { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+  .ncm-mr-man__hd .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .ncm-mr-man__hd .ad { font: 10px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-secondary)); }
+  .ncm-mr-man__bd { padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .ncm-mr-man__empty { margin: auto; padding: 20px; text-align: center; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-mr-man__empty i { display: block; font-size: 20px; margin-bottom: 8px; color: var(--ncm-text-label); }
+
+  .mk-win .ncm-msg2-nav { margin: 0 !important; }
+  @media (prefers-reduced-motion: reduce) { .ncm-mr * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="mk-h" data-only="a">A · THE WALL — pigeonholes that hold envelopes</div>
+<div class="mk-p" data-only="a">Hover a mailbox: its newest three fan out (click one = that message). Click a mailbox: a drawer pulls out under the shelf — latest mail, 14-day traffic, the networks it was routed over as postmarks, who it talks to, actions. Quiet mailboxes gather dust. Press <b>/</b> and type, arrows + Enter. Try “Simulate delivery”.</div>
+<div class="ncm-app ncm-admin-panel mk-win" id="A" data-only="a"></div>
+
+<div class="mk-h" data-only="b">B · THE SORTER — an intake belt, a rack of bins, a manifest</div>
+<div class="mk-p" data-only="b">The belt carries the latest mail, newest at the right. Hover a parcel: a route line drops to its bin. Hover a bin: its parcels light up on the belt. Click a postmark in the key: only mail routed over that network, everywhere. Click a bin: the manifest on the right. “Simulate delivery” drops a parcel onto the belt.</div>
+<div class="ncm-app ncm-admin-panel mk-win" id="B" data-only="b"></div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const T = Q.get('t') || 'clean-dark';
+if (Q.get('only')) document.querySelectorAll('[data-only]').forEach(el => { if (el.dataset.only !== Q.get('only')) el.remove(); });
+
+// ── data: networks are identity colours (each network wears its own), the rest are meaning tokens ──
+const NETS = {
+  CTN: { name: 'CitiNet', c: '#19f3f7' },
+  DKN: { name: 'DarkNet relay', c: '#c86bff' },
+  ARS: { name: 'Arasaka CorpNet', c: '#ff5a6e' },
+  NCP: { name: 'NCPD Dispatch', c: '#4f8dff' },
+  AFT: { name: 'Afterlife LAN', c: '#ffb347' },
+};
+const HUE = (n) => `var(--ncm-hue-${(([...n].reduce((h, c) => (h * 33 + c.charCodeAt(0)) >>> 0, 5381)) % 8) + 1})`;
+const ini = (n) => n.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+const M = (from, subj, net, st, ageH) => ({ from, subj, net, st, ageH });
+const BOXES = [
+  { id: 'v', name: 'V', kind: 'Players', addr: 'v@nightcity.net', sent: 9, mail: [M('Rogue', 'The job in Watson', 'AFT', 'unread', 1), M('Queen of Hearts', 'Who is this', 'DKN', 'anon', 7), M('Hana Ito', 'Drinks?', 'CTN', 'read', 20), M('Dexter DeShawn', 'Payment', 'CTN', 'eddies', 30), M('NCPD', 'Citation 4471', 'NCP', 'read', 50), M('Rogue', 'RE: Meet', 'AFT', 'read', 60), M('Arasaka HR', 'Offer', 'ARS', 'ice', 90)], spark: [0,1,0,2,1,0,3,1,0,2,4,1,2,3], u: [0,0,0,0,0,0,0,0,0,0,1,0,0,1] },
+  { id: 'rache', name: 'Rache', kind: 'Players', addr: 'rache@nightcity.net', sent: 4, mail: [M('Rogue', 'RE: Meet', 'AFT', 'unread', 2), M('Judy', 'BD files', 'CTN', 'unread', 5), M('Brick Jones', 'Parts', 'CTN', 'read', 40)], spark: [0,0,1,0,0,1,0,0,1,0,0,2,1,1], u: [] },
+  { id: 'kiri', name: 'Kiri', kind: 'Players', addr: 'kiri@nightcity.net', sent: 2, mail: [M('Dexter DeShawn', 'Gig', 'CTN', 'read', 26), M('Mr. Blue Eyes', 'An offer', 'DKN', 'anon', 70)], spark: [0,1,0,0,0,0,1,0,0,0,0,0,1,0], u: [] },
+  { id: 'jo', name: 'Jo', kind: 'Players', addr: 'no address yet', sent: 0, mail: [], spark: Array(14).fill(0), u: [], quiet: 0 },
+  { id: 'rogue', name: 'Rogue', kind: 'Fixers', addr: 'rogue@afterlife.nc', sent: 11, alias: 'Queen of Hearts', mail: [M('V', 'Name a price', 'AFT', 'unread', 1), M('Rache', 'RE: Meet', 'AFT', 'unread', 3), M('Hana Ito', 'RE: Meet', 'AFT', 'unread', 8), M('V', 'Who is this', 'DKN', 'read', 24), M('Kiri', 'Intro', 'CTN', 'read', 80)], spark: [1,0,2,1,0,1,3,2,1,0,2,3,4,3], u: [0,0,0,0,0,0,0,0,0,0,0,0,2,1] },
+  { id: 'dex', name: 'Dexter DeShawn', kind: 'Fixers', addr: 'dex@afterlife.nc', sent: 6, mail: [M('Kiri', 'RE: Gig', 'CTN', 'unread', 4), M('V', 'RE: Payment', 'CTN', 'read', 28)], spark: [0,0,1,0,1,0,0,1,0,0,1,0,1,0], u: [] },
+  { id: 'judy', name: 'Judy', kind: 'Techs', addr: 'judy@lizzies.nc', sent: 3, mail: [M('Rache', 'RE: BD files', 'CTN', 'unread', 6)], spark: [0,0,0,0,0,1,0,0,0,0,0,1,0,1], u: [] },
+  { id: 'brick', name: 'Brick Jones', kind: 'Techs', addr: 'brick@kabuki.nc', sent: 1, mail: [M('Rache', 'Parts', 'CTN', 'read', 230)], spark: [1,0,0,0,0,0,0,0,0,0,0,0,0,0], u: [], quiet: 9 },
+  { id: 'hr', name: 'Arasaka HR', kind: 'Corporate', addr: 'hr@arasaka.co', sent: 5, mail: [M('V', 'RE: Offer', 'ARS', 'read', 88)], spark: [0,0,0,0,0,0,0,0,0,0,1,0,0,0], u: [] },
+  { id: 'yuki', name: 'Yuki Mori', kind: 'Corporate', addr: 'y.mori@militech.co', sent: 0, mail: [M('Hana Ito', 'Contract', 'ARS', 'read', 400)], spark: Array(14).fill(0), u: [], quiet: 16 },
+  { id: 'ncpd', name: 'NCPD', kind: 'Corporate', addr: 'dispatch@ncpd.gov', sent: 14, mail: [M('V', 'RE: Citation', 'NCP', 'read', 48)], spark: [0,0,2,0,1,0,0,0,1,0,0,1,0,0], u: [] },
+  { id: 'kow', name: 'Kowalski', kind: 'Owner gone', addr: 'its owner was deleted', sent: 0, gone: true, mail: [M('V', 'Old job', 'CTN', 'read', 900), M('Rache', 'Ping', 'CTN', 'read', 1000)], spark: Array(14).fill(0), u: [] },
+];
+const SHELF = { 'Recently opened': 'fa-clock-rotate-left', Players: 'fa-user', Fixers: 'fa-handshake', Techs: 'fa-wrench', Corporate: 'fa-building', 'Owner gone': 'fa-triangle-exclamation' };
+const SHELF_HUE = { 'Recently opened': 'var(--ncm-act)', Players: 'var(--ncm-good)', Fixers: 'var(--ncm-hue-1)', Techs: 'var(--ncm-hue-3)', Corporate: 'var(--ncm-hue-5)', 'Owner gone': 'var(--ncm-bad)' };
+const unread = (b) => b.mail.filter(m => m.st === 'unread').length;
+const ago = (h) => h < 1 ? 'now' : h < 24 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
+const hour = (h) => { const d = new Date(Date.UTC(2045, 7, 14, 22, 0) - h * 3600e3); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
+const pm = (code, h, extra = '') => `<span class="ncm-mr-pm ${extra}" style="--n:${NETS[code].c}" title="Routed over ${NETS[code].name}${h != null ? ' at ' + hour(h) : ''}"><i class="bc"></i><b>${code}</b>${h != null ? `<span>${hour(h)}</span>` : ''}</span>`;
+const face = (n, sm = '') => `<span class="ncm-mr-face ${sm}" style="--tc:${HUE(n)}">${ini(n)}</span>`;
+const statsHtml = (frame) => {
+  const all = BOXES.reduce((n, b) => n + b.mail.length, 0), u = BOXES.reduce((n, b) => n + unread(b), 0);
+  const quiet = BOXES.filter(b => b.quiet).length, gone = BOXES.filter(b => b.gone).length;
+  return `<div class="ncm-mr__stats">
+    <div class="ncm-mr__stat" data-f="all"><b>${BOXES.length}</b><span>Mailboxes</span></div>
+    <div class="ncm-mr__stat" data-f="all"><b>${all}</b><span>Messages</span></div>
+    <div class="ncm-mr__stat attn" data-f="unread"><b data-mr-total-u>${u}</b><span>Unread</span></div>
+    <div class="ncm-mr__stat dim" data-f="quiet"><b>${quiet}</b><span>Quiet a week+</span></div>
+    <div class="ncm-mr__stat bad" data-f="gone"><b>${gone}</b><span>Owner gone</span></div></div>`;
+};
+const toast = (root, msg) => { let t = root.querySelector('.mk-toast'); if (!t) { t = document.createElement('div'); t.className = 'mk-toast'; root.appendChild(t); } t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 1600); };
+const shell = (id, inner) => {
+  const el = document.getElementById(id); if (!el) return null;
+  el.dataset.ncmAdminTheme = T; el.dataset.ncmScanlines = 'false';
+  el.innerHTML = `<div class="ncm-msg2-nav" style="padding:8px 10px 0">
+    <button type="button" class="ncm-msg2-navbtn"><i class="fas fa-reply"></i>Needs a reply<span class="ncm-msg2-ct hot">2</span></button>
+    <button type="button" class="ncm-msg2-navbtn"><i class="fas fa-envelopes-bulk"></i>All mail<span class="ncm-msg2-ct">14</span></button>
+    <button type="button" class="ncm-msg2-navbtn"><i class="fas fa-paper-plane"></i>Outbox<span class="ncm-msg2-ct bad">3</span></button>
+    <button type="button" class="ncm-msg2-navbtn on"><i class="fas fa-inbox"></i>Inboxes<span class="ncm-msg2-ct">${BOXES.length}</span></button></div>
+    <div class="ncm-mr">${inner}</div>`;
+  return el;
+};
+
+// ═════════════════ A · THE WALL ═════════════════
+(function wall() {
+  const root = shell('A', `
+    <div class="ncm-mr__bar">
+      <label class="ncm-mr__search"><i class="fas fa-magnifying-glass"></i><input type="text" data-q placeholder="Find a mailbox — name, address, role…"><kbd>/</kbd></label>
+      <button class="ncm-mr__btn" type="button"><i class="fas fa-layer-group"></i>Shelves: role <i class="fas fa-caret-down"></i></button>
+      <button class="ncm-mr__btn" type="button"><i class="fas fa-arrow-down-wide-short"></i>Recent <i class="fas fa-caret-down"></i></button>
+      <button class="ncm-mr__btn" type="button" data-sim><i class="fas fa-envelope-circle-check"></i>Simulate delivery</button>
+      <button class="ncm-mr__btn" type="button" title="Mark everything read · Export all · Purge old mail"><i class="fas fa-ellipsis"></i></button>
+    </div>
+    ${statsHtml()}
+    <div class="ncm-mr-jump" data-jump></div>
+    <div class="ncm-mr-wall" data-wall></div>`);
+  if (!root) return;
+  const wallEl = root.querySelector('[data-wall]');
+  let open = Q.get('open') || null, shut = new Set(['Corporate']), recent = ['rogue', 'v'];
+  const fanEl = document.createElement('div'); fanEl.className = 'ncm-mr-fan'; root.appendChild(fanEl);
+
+  const slot = (b) => {
+    const n = b.mail.length, stack = b.mail.slice(0, 8).reverse();
+    return `<div class="ncm-mr-slot ${b.quiet ? 'is-quiet' : ''} ${b.gone ? 'is-gone' : ''} ${open === b.id ? 'is-sel' : ''}" tabindex="0" data-id="${b.id}" data-hay="${(b.name + ' ' + b.addr + ' ' + b.kind + ' ' + (b.alias || '')).toLowerCase()}">
+      ${b.gone ? '<span class="ncm-mr-slot__gone">owner gone</span>' : ''}
+      ${unread(b) ? `<span class="ncm-mr-slot__flag" data-flag>${unread(b)}</span>` : (b.quiet ? `<span class="ncm-mr-slot__quiet">quiet ${b.quiet}d</span>` : '')}
+      <div class="ncm-mr-slot__top">${face(b.name, 'sm')}<span class="ncm-mr-slot__nm">${b.name}</span></div>
+      <div class="ncm-mr-slot__sub">${n ? `${n} mail · ${ago(b.mail[0].ageH)}` : 'empty'}${b.alias ? ' · +1 alias' : ''}</div>
+      <div class="ncm-mr-stack" data-stack>${stack.map((m, i) => `<i class="st-${m.st}" style="--k:${stack.length - 1 - i}"></i>`).join('')}${n > 8 ? `<span class="more">+${n - 8}</span>` : ''}</div>
+    </div>`;
+  };
+  const drawer = (b) => {
+    const nets = {}; b.mail.forEach(m => { nets[m.net] = (nets[m.net] || 0) + 1; });
+    const who = {}; b.mail.forEach(m => { who[m.from] = (who[m.from] || 0) + 1; });
+    const max = Math.max(1, ...b.spark);
+    return `<div class="ncm-mr-drawer" data-drawer>
+      <div class="ncm-mr-drawer__hd">${face(b.name)}<div><div class="nm">${b.name}${b.alias ? ` <span class="ncm-tagp is-secret"><i class="fas fa-mask"></i>+ ${b.alias}</span>` : ''}</div><div class="ad">${b.addr}</div></div><span class="g"></span>
+        <button class="ncm-mr__btn is-pri" type="button" data-say="Opens ${b.name}’s inbox"><i class="fas fa-inbox"></i>Open inbox</button>
+        <button class="ncm-mr__btn" type="button" data-close title="Close (Esc)"><i class="fas fa-xmark"></i></button></div>
+      <div class="ncm-mr-drawer__l">
+        <div class="ncm-mr-k"><i class="fas fa-envelopes-bulk"></i>Latest<span class="x">${b.mail.length} in the box</span></div>
+        ${b.mail.slice(0, 6).map(m => `<div class="ncm-mr-env st-${m.st}" data-say="Opens “${m.subj}”"><i class="ed"></i>${face(m.from, 'sm')}<div class="tx"><b>${m.from}</b><span>${m.subj}</span></div>${pm(m.net, m.ageH)}<span class="ag">${ago(m.ageH)}</span></div>`).join('') || '<div class="ncm-mr-k" style="padding:10px 0">Nothing in this box yet.</div>'}
+      </div>
+      <div class="ncm-mr-drawer__r">
+        <div><div class="ncm-mr-k"><i class="fas fa-chart-column"></i>Last 14 days<span class="x">amber = still unread</span></div>
+          <div class="ncm-mr-spark">${b.spark.map((v, i) => `<i class="${!v ? 'z' : (b.u[i] ? 'u' : '')}" style="height:${v ? Math.max(8, v / max * 100) : 3}%" title="${v} message${v === 1 ? '' : 's'}"></i>`).join('')}</div></div>
+        <div class="ncm-mr-nums"><div><b>${b.mail.length}</b><span>in</span></div><div><b>${b.sent}</b><span>sent</span></div><div class="attn"><b>${unread(b)}</b><span>unread</span></div><div class="money"><b>${b.mail.filter(m => m.st === 'eddies').length}</b><span>eddies</span></div></div>
+        <div><div class="ncm-mr-k"><i class="fas fa-route"></i>Routed over</div><div class="ncm-mr-pms">${Object.entries(nets).map(([c, k]) => `${pm(c, null, 'is-big')}<b style="font:700 11px var(--ncm-font-mono);color:var(--ncm-text-num,var(--ncm-text-secondary));margin:0 6px 0 -1px;align-self:center">×${k}</b>`).join('') || '<span class="ncm-mr-k">—</span>'}</div></div>
+        <div><div class="ncm-mr-k"><i class="fas fa-user-group"></i>Talks to</div><div class="ncm-mr-who">${Object.entries(who).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([n, k]) => `<span data-say="Opens ${n}’s mailbox">${face(n, 'sm')}${n}<em>${k}</em></span>`).join('') || '<span class="ncm-mr-k">—</span>'}</div></div>
+        <div class="ncm-mr-acts">
+          <button class="ncm-mr__btn" type="button" data-say="Composer opens as ${b.name}"><i class="fas fa-pen"></i>Write as</button>
+          <button class="ncm-mr__btn" type="button" data-say="Marked read"><i class="fas fa-envelope-open"></i>Mark read</button>
+          <button class="ncm-mr__btn" type="button" data-say="Exported"><i class="fas fa-file-export"></i>Export</button>
+          <button class="ncm-mr__btn" type="button" data-say="Purge dialog"><i class="fas fa-broom"></i>Purge</button>
+        </div>
+      </div></div>`;
+  };
+  const render = () => {
+    const shelves = [['Recently opened', recent.map(id => BOXES.find(b => b.id === id))]];
+    for (const k of ['Players', 'Fixers', 'Techs', 'Corporate', 'Owner gone']) shelves.push([k, BOXES.filter(b => b.kind === k)]);
+    root.querySelector('[data-jump]').innerHTML = shelves.map(([k, list]) => `<span data-jump-to="${k}"><i class="fas ${SHELF[k]}" style="color:${SHELF_HUE[k]}"></i>${k}<b>${list.length}</b></span>`).join('');
+    wallEl.innerHTML = shelves.map(([k, list]) => {
+      const u = list.reduce((n, b) => n + unread(b), 0), hasOpen = list.some(b => b.id === open) && k !== 'Recently opened';
+      const isShut = shut.has(k) && !hasOpen;
+      return `<section class="ncm-mr-shelf ${isShut ? 'is-shut' : ''}" data-shelf="${k}" style="--sh:${SHELF_HUE[k]}">
+        <div class="ncm-mr-shelf__hd" data-fold><i class="fas fa-chevron-down ch"></i><i class="fas ${SHELF[k]} ic"></i>${k}<span class="n">${list.length}</span>${u ? `<span class="u">${u} unread</span>` : ''}</div>
+        <div class="ncm-mr-shelf__shutfaces">${list.slice(0, 8).map(b => face(b.name, 'sm')).join('')}</div>
+        <div class="ncm-mr-shelf__row">${list.map(slot).join('')}</div>
+        ${hasOpen ? drawer(BOXES.find(b => b.id === open)) : ''}</section>`;
+    }).join('');
+    const sel = wallEl.querySelector(`.ncm-mr-shelf:not([data-shelf="Recently opened"]) .ncm-mr-slot[data-id="${open}"]`), dr = wallEl.querySelector('[data-drawer]');
+    if (sel && dr) dr.style.setProperty('--cx', `${sel.offsetLeft + sel.offsetWidth / 2 - 8}px`);
+    filter();
+  };
+  const filter = () => {
+    const q = root.querySelector('[data-q]').value.trim().toLowerCase();
+    wallEl.classList.toggle('is-searching', !!q);
+    wallEl.querySelectorAll('.ncm-mr-slot').forEach(s => s.classList.toggle('is-hit', !!q && s.dataset.hay.includes(q)));
+    if (q) wallEl.querySelectorAll('.ncm-mr-shelf').forEach(sh => sh.classList.remove('is-shut'));
+  };
+  const showFan = (s) => {
+    const b = BOXES.find(x => x.id === s.dataset.id); if (!b?.mail.length) return hideFan();
+    const r = s.getBoundingClientRect(), rr = root.getBoundingClientRect();
+    fanEl.style.left = `${Math.min(r.left - rr.left - 6, rr.width - 262)}px`;
+    const top3 = b.mail.slice(0, 3);
+    fanEl.style.top = `${r.top - rr.top - 8 - top3.length * 50 - 6}px`;
+    fanEl.innerHTML = top3.map((m, i) => `<div class="ncm-mr-fan__c st-${m.st}" data-say="Opens “${m.subj}”" style="top:${i * 50}px;transform:rotate(${(i - 1) * 1.2}deg);animation-delay:${i * 40}ms">
+      <div class="r1">${face(m.from, 'sm')}${m.from}<span class="ag">${ago(m.ageH)}</span></div><div class="r2"><span class="s">${m.subj}</span>${pm(m.net, m.ageH)}</div></div>`).join('');
+  };
+  const hideFan = () => { fanEl.innerHTML = ''; };
+  const openBox = (id) => { open = open === id ? null : id; if (open) recent = [open, ...recent.filter(x => x !== open)].slice(0, 6); hideFan(); render(); wallEl.querySelector('[data-drawer]')?.scrollIntoView({ block: 'nearest' }); };
+
+  root.addEventListener('click', (e) => {
+    const say = e.target.closest('[data-say]'); if (say) return toast(root, say.dataset.say);
+    if (e.target.closest('[data-close]')) { open = null; return render(); }
+    const s = e.target.closest('.ncm-mr-slot'); if (s) return openBox(s.dataset.id);
+    const f = e.target.closest('[data-fold]'); if (f) { const k = f.parentElement.dataset.shelf; shut.has(k) ? shut.delete(k) : shut.add(k); return render(); }
+    const j = e.target.closest('[data-jump-to]'); if (j) { shut.delete(j.dataset.jumpTo); render(); wallEl.querySelector(`[data-shelf="${j.dataset.jumpTo}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
+    if (e.target.closest('[data-sim]')) return deliver();
+  });
+  root.addEventListener('mouseover', (e) => { const s = e.target.closest('.ncm-mr-slot'); if (s && !s.contains(e.relatedTarget)) showFan(s); });
+  root.addEventListener('mouseout', (e) => { const s = e.target.closest('.ncm-mr-slot'); if (s && !s.contains(e.relatedTarget) && !fanEl.contains(e.relatedTarget)) hideFan(); });
+  fanEl.addEventListener('mouseleave', hideFan);
+  root.querySelector('[data-q]').addEventListener('input', filter);
+  document.addEventListener('keydown', (e) => {
+    if (!document.body.contains(root)) return;
+    const q = root.querySelector('[data-q]');
+    if (e.key === '/' && document.activeElement !== q) { e.preventDefault(); q.focus(); return; }
+    if (e.key === 'Escape') { if (open) { open = null; render(); } return; }
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Enter'].includes(e.key) || !root.contains(document.activeElement)) return;
+    const slots = [...wallEl.querySelectorAll('.ncm-mr-shelf:not(.is-shut) .ncm-mr-slot')].filter(s => !wallEl.classList.contains('is-searching') || s.classList.contains('is-hit'));
+    if (!slots.length) return;
+    let i = slots.indexOf(document.activeElement);
+    if (e.key === 'Enter') { if (i < 0) i = 0; return openBox(slots[i].dataset.id); }
+    e.preventDefault();
+    i = i < 0 ? 0 : Math.max(0, Math.min(slots.length - 1, i + ({ ArrowRight: 1, ArrowLeft: -1, ArrowDown: 4, ArrowUp: -4 })[e.key]));
+    slots[i].focus(); showFan(slots[i]);
+  });
+  const deliver = () => {
+    const b = BOXES.find(x => x.id === 'judy');
+    b.mail.unshift(M('V', 'Need a braindance tech', 'CTN', 'unread', 0)); b.spark[13]++; b.u[13] = 1;
+    shut.delete('Techs'); render();
+    const s = wallEl.querySelector('.ncm-mr-shelf:not([data-shelf="Recently opened"]) .ncm-mr-slot[data-id="judy"]');
+    s?.scrollIntoView({ block: 'nearest' });
+    s?.querySelector('[data-stack] i:last-of-type')?.classList.add('drop');
+    s?.querySelector('[data-flag]')?.classList.add('pop');
+    root.querySelector('[data-mr-total-u]').textContent = BOXES.reduce((n, x) => n + unread(x), 0);
+    toast(root, 'New mail for Judy — over CitiNet');
+  };
+  render();
+  if (open) setTimeout(() => wallEl.querySelector('[data-drawer]')?.scrollIntoView({ block: 'end' }), 30);
+  if (Q.get('fan')) setTimeout(() => { const s = wallEl.querySelector(`.ncm-mr-slot[data-id="${Q.get('fan')}"]`); if (s) showFan(s); }, 50);
+}());
+
+// ═════════════════ B · THE SORTER ═════════════════
+(function sorter() {
+  const root = shell('B', `
+    <div class="ncm-mr__bar">
+      <label class="ncm-mr__search"><i class="fas fa-magnifying-glass"></i><input type="text" data-q placeholder="Find a mailbox or a subject…"><kbd>/</kbd></label>
+      <button class="ncm-mr__btn" type="button"><i class="fas fa-layer-group"></i>Bins: role <i class="fas fa-caret-down"></i></button>
+      <button class="ncm-mr__btn" type="button" data-sim><i class="fas fa-envelope-circle-check"></i>Simulate delivery</button>
+      <button class="ncm-mr__btn" type="button" title="Mark everything read · Export all · Purge old mail"><i class="fas fa-ellipsis"></i></button>
+    </div>
+    <div class="ncm-mr-belt" data-belt>
+      <div class="ncm-mr-belt__hd"><span class="ncm-mr-k"><i class="fas fa-right-left"></i>Intake · last 3 days</span>
+        <div class="ncm-mr-belt__key" data-key></div></div>
+      <div class="ncm-mr-belt__lane" data-lane></div>
+    </div>
+    <div class="ncm-mr-floor"><div class="ncm-mr-rack" data-rack></div><div class="ncm-mr-man" data-man></div></div>
+    <svg class="ncm-mr-routes" data-routes></svg>`);
+  if (!root) return;
+  const lane = root.querySelector('[data-lane]'), rack = root.querySelector('[data-rack]'), man = root.querySelector('[data-man]'), svg = root.querySelector('[data-routes]'), belt = root.querySelector('[data-belt]');
+  let sel = Q.get('open') || 'rogue', net = null;
+  const parcels = [];
+  BOXES.forEach(b => b.mail.forEach(m => { if (m.ageH <= 72) parcels.push({ ...m, to: b.id, toName: b.name }); }));
+  parcels.sort((a, b) => b.ageH - a.ageH);
+
+  const keyHtml = () => Object.keys(NETS).map(c => `<span data-net="${c}">${pm(c, null, 'is-click' + (net === c ? ' is-on' : (net ? ' is-off' : '')))}</span>`).join('');
+  const parcelHtml = (p, i) => `<div class="ncm-mr-parcel st-${p.st}" data-to="${p.to}" data-net="${p.net}" data-i="${i}" data-say="Opens “${p.subj}”">
+      <div class="rt"><b>${p.from}</b><i class="fas fa-arrow-right-long"></i><b>${p.toName}</b></div>
+      <div class="sj">${p.subj}</div>${pm(p.net, p.ageH)}</div>`;
+  const binHtml = (b) => {
+    const segs = b.mail.slice(0, 14).reverse();
+    const nets = new Set(b.mail.map(m => m.net));
+    return `<div class="ncm-mr-bin ${b.quiet ? 'is-quiet' : ''} ${b.gone ? 'is-gone' : ''} ${sel === b.id ? 'is-sel' : ''} ${net && nets.has(net) ? 'is-net' : ''}" data-bin="${b.id}" data-hay="${(b.name + ' ' + b.addr + ' ' + b.kind + ' ' + b.mail.map(m => m.subj).join(' ')).toLowerCase()}" title="${b.name} — ${b.mail.length} mail${b.quiet ? ` · quiet ${b.quiet}d` : ''}">
+      ${unread(b) ? `<span class="u">${unread(b)}</span>` : ''}${face(b.name, 'sm')}<span class="nm">${b.name}</span>
+      <div class="meter">${segs.map(m => `<i class="st-${m.st}"></i>`).join('')}</div></div>`;
+  };
+  const manHtml = (b) => {
+    if (!b) return '<div class="ncm-mr-man__empty"><i class="fas fa-box-open"></i>Pick a bin to see its manifest.</div>';
+    const nets = {}; b.mail.forEach(m => { nets[m.net] = (nets[m.net] || 0) + 1; });
+    const max = Math.max(1, ...b.spark);
+    const list = b.mail.filter(m => !net || m.net === net);
+    return `<div class="ncm-mr-man__hd">${face(b.name)}<div style="min-width:0"><div class="nm">${b.name}</div><div class="ad">${b.addr}</div></div></div>
+      <div class="ncm-mr-man__bd">
+        <div class="ncm-mr-nums"><div><b>${b.mail.length}</b><span>in</span></div><div><b>${b.sent}</b><span>sent</span></div><div class="attn"><b>${unread(b)}</b><span>unread</span></div><div class="money"><b>${b.mail.filter(m => m.st === 'eddies').length}</b><span>eddies</span></div></div>
+        <div><div class="ncm-mr-k"><i class="fas fa-chart-column"></i>Last 14 days</div><div class="ncm-mr-spark">${b.spark.map((v, i) => `<i class="${!v ? 'z' : (b.u[i] ? 'u' : '')}" style="height:${v ? Math.max(8, v / max * 100) : 3}%"></i>`).join('')}</div></div>
+        <div><div class="ncm-mr-k"><i class="fas fa-route"></i>Routed over</div><div class="ncm-mr-pms">${Object.entries(nets).map(([c, k]) => `${pm(c, null, 'is-big')}<b style="font:700 11px var(--ncm-font-mono);color:var(--ncm-text-num,var(--ncm-text-secondary));align-self:center;margin-right:4px">×${k}</b>`).join('') || '—'}</div></div>
+        <div><div class="ncm-mr-k"><i class="fas fa-envelopes-bulk"></i>Manifest${net ? ` · ${NETS[net].name} only` : ''}</div>
+          ${list.slice(0, 6).map(m => `<div class="ncm-mr-env st-${m.st}" style="grid-template-columns:4px 18px minmax(0,1fr) auto" data-say="Opens “${m.subj}”"><i class="ed"></i>${face(m.from, 'sm')}<div class="tx"><b>${m.from}</b><span>${m.subj}</span></div><span class="ag">${ago(m.ageH)}</span></div>`).join('') || '<div class="ncm-mr-k" style="padding:6px 0">Nothing here.</div>'}</div>
+        <div class="ncm-mr-acts"><button class="ncm-mr__btn is-pri" type="button" data-say="Opens ${b.name}’s inbox"><i class="fas fa-inbox"></i>Open inbox</button><button class="ncm-mr__btn" type="button" data-say="Composer opens as ${b.name}"><i class="fas fa-pen"></i>Write as</button><button class="ncm-mr__btn" type="button" data-say="Marked read"><i class="fas fa-envelope-open"></i></button><button class="ncm-mr__btn" type="button" data-say="Exported"><i class="fas fa-file-export"></i></button></div>
+      </div>`;
+  };
+  const render = () => {
+    root.querySelector('[data-key]').innerHTML = keyHtml();
+    lane.innerHTML = parcels.map(parcelHtml).join('') + '<span class="now">NOW</span>';
+    lane.scrollLeft = lane.scrollWidth;
+    const groups = ['Players', 'Fixers', 'Techs', 'Corporate', 'Owner gone'];
+    rack.innerHTML = groups.map(k => `<div class="ncm-mr-rack__g" style="--sh:${SHELF_HUE[k]}"><div class="ncm-mr-rack__k"><i class="fas ${SHELF[k]} ic"></i>${k}</div><div class="ncm-mr-bins">${BOXES.filter(b => b.kind === k).map(binHtml).join('')}</div></div>`).join('');
+    rack.classList.toggle('is-net', !!net);
+    man.innerHTML = manHtml(BOXES.find(b => b.id === sel));
+    netFocus(); filter();
+  };
+  const netFocus = () => {
+    belt.classList.toggle('is-focus', !!net);
+    lane.querySelectorAll('.ncm-mr-parcel').forEach(p => p.classList.toggle('is-lit', !!net && p.dataset.net === net));
+  };
+  const filter = () => {
+    const q = root.querySelector('[data-q]').value.trim().toLowerCase();
+    rack.classList.toggle('is-searching', !!q);
+    rack.querySelectorAll('.ncm-mr-bin').forEach(b => b.classList.toggle('is-hit', !!q && b.dataset.hay.includes(q)));
+  };
+  const route = (pEl) => {
+    const bin = rack.querySelector(`[data-bin="${pEl.dataset.to}"]`); if (!bin) return;
+    bin.scrollIntoView({ block: 'nearest' });
+    const rr = root.getBoundingClientRect(), a = pEl.getBoundingClientRect(), c = bin.getBoundingClientRect();
+    const x1 = a.left - rr.left + a.width / 2, y1 = a.bottom - rr.top, x2 = c.left - rr.left + c.width / 2, y2 = c.top - rr.top;
+    svg.setAttribute('viewBox', `0 0 ${rr.width} ${rr.height}`); svg.setAttribute('width', rr.width); svg.setAttribute('height', rr.height);
+    svg.innerHTML = `<path d="M${x1} ${y1} C ${x1} ${y1 + 50}, ${x2} ${y2 - 50}, ${x2} ${y2}"/><circle cx="${x2}" cy="${y2}" r="3" fill="var(--ncm-act)"/>`;
+    bin.classList.add('is-lit');
+  };
+  const clear = () => { svg.innerHTML = ''; rack.querySelectorAll('.is-lit').forEach(b => b.classList.remove('is-lit')); if (!net) { belt.classList.remove('is-focus'); lane.querySelectorAll('.is-lit').forEach(p => p.classList.remove('is-lit')); } else netFocus(); };
+
+  root.addEventListener('mouseover', (e) => {
+    const p = e.target.closest('.ncm-mr-parcel'); if (p && !p.contains(e.relatedTarget)) { clear(); route(p); return; }
+    const b = e.target.closest('.ncm-mr-bin');
+    if (b && !b.contains(e.relatedTarget)) { clear(); belt.classList.add('is-focus'); lane.querySelectorAll(`.ncm-mr-parcel`).forEach(x => x.classList.toggle('is-lit', x.dataset.to === b.dataset.bin && (!net || x.dataset.net === net))); const first = lane.querySelector(`.ncm-mr-parcel.is-lit`); first?.scrollIntoView({ inline: 'nearest', block: 'nearest' }); }
+  });
+  root.addEventListener('mouseout', (e) => { if (e.target.closest('.ncm-mr-parcel, .ncm-mr-bin') && !e.relatedTarget?.closest?.('.ncm-mr-parcel, .ncm-mr-bin')) clear(); });
+  root.addEventListener('click', (e) => {
+    const n = e.target.closest('[data-net]'); if (n && n.closest('[data-key]')) { net = net === n.dataset.net ? null : n.dataset.net; return render(); }
+    const say = e.target.closest('[data-say]'); if (say) return toast(root, say.dataset.say);
+    const b = e.target.closest('.ncm-mr-bin'); if (b) { sel = b.dataset.bin; return render(); }
+    if (e.target.closest('[data-sim]')) {
+      const p = { from: 'V', subj: 'Need a braindance tech', net: 'CTN', st: 'unread', ageH: 0, to: 'judy', toName: 'Judy' };
+      parcels.push(p); BOXES.find(x => x.id === 'judy').mail.unshift({ ...p }); render();
+      const el = lane.querySelector(`.ncm-mr-parcel[data-i="${parcels.length - 1}"]`); el?.classList.add('drop');
+      setTimeout(() => el && route(el), 500); setTimeout(clear, 2200);
+      toast(root, 'New mail for Judy — over CitiNet');
+    }
+  });
+  root.querySelector('[data-q]').addEventListener('input', filter);
+  render();
+}());
+</script>
+</body>
+</html>

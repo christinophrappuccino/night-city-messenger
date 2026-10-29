@@ -46,8 +46,11 @@ jobs:
           FILE="$(jq -r .version module.json)"
           if [ "$TAG" != "$FILE" ]; then echo "tag v$TAG but module.json says $FILE"; exit 1; fi
 
-      - name: Validate macro packs
-        run: node dev/tools/gen-macros.cjs
+      - name: Build the macro packs (LevelDB, with Foundry's own LevelDB library)
+        run: |
+          npm install --no-save --no-package-lock classic-level@1.4.1
+          node dev/tools/gen-macros.cjs --require-ldb
+          rm -f packs/ncm-macros-player/LOCK packs/ncm-macros-gm/LOCK
 
       - name: Build module.zip
         run: |
@@ -61,8 +64,8 @@ jobs:
             templates \
             assets \
             languages \
-            packs/ncm-macros-player.db \
-            packs/ncm-macros-gm.db
+            packs/ncm-macros-player \
+            packs/ncm-macros-gm
 
       - name: Create release
         uses: softprops/action-gh-release@v2

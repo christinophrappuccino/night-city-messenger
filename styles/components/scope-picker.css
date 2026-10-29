@@ -1,0 +1,63 @@
+/* ═══════════════════════════════════════════════════════════
+ * Scope picker — the one control for "which network / scene / person / identity"
+ * anywhere a list of world things can outgrow a <select>.
+ * JS: scripts/utils/scopePicker.js. Prefix ncm-scope-*. Tokens only.
+ * Dev-approved mock: dev/mockups/scope-picker.js (2026-10-27).
+ * ═══════════════════════════════════════════════════════════ */
+  .ncm-scope { position: relative; display: inline-flex; flex: none; }
+  .ncm-app button.ncm-scope-btn { appearance: none; width: auto !important; height: 30px !important; min-height: 0 !important; margin: 0 !important;
+    display: inline-flex !important; align-items: center; gap: 7px; padding: 0 9px !important; border-radius: 2px !important; cursor: pointer; max-width: 230px;
+    background: var(--ncm-bg-base) !important; border: 1px solid var(--ncm-border) !important; box-shadow: none !important; white-space: nowrap;
+    font: 600 12px var(--ncm-font-display) !important; color: var(--ncm-text-primary) !important; }
+  .ncm-app button.ncm-scope-btn:hover, .ncm-app button.ncm-scope-btn.open { border-color: var(--ncm-secondary) !important; }
+  .ncm-app button.ncm-scope-btn.set { border-color: color-mix(in srgb, var(--ncm-secondary) 60%, var(--ncm-border)) !important; background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-base)) !important; }
+  .ncm-scope-btn .k { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-scope-btn .v { overflow: hidden; text-overflow: ellipsis; }
+  .ncm-scope-btn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+  .ncm-scope-btn .caret { font-size: 10px; color: var(--ncm-text-secondary); margin: 0 !important; }
+  .ncm-scope-btn .x { margin-left: 2px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 2px; color: var(--ncm-text-secondary); font-size: 10px; }
+  .ncm-scope-btn .x:hover { background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); }
+
+  .ncm-scope-pop { position: fixed !important; z-index: 10000; width: 330px; max-height: 400px; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; box-shadow: 0 14px 34px rgba(0,0,0,.5); }
+  .ncm-scope-pop .sr { display: flex; align-items: center; gap: 7px; padding: 8px 9px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .ncm-scope-pop .sr i { color: var(--ncm-text-muted); font-size: 12px; }
+  .ncm-app .ncm-scope-pop .sr input, .ncm-scope-pop .sr input { width: auto !important; flex: 1; min-width: 0; height: 26px; border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; height: 26px !important;
+    font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); outline: none; }
+  .ncm-scope-pop .sr .ct { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); white-space: nowrap; }
+  .ncm-scope-pop .chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 9px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .ncm-scope-pop .chip { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer; user-select: none;
+    font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary); background: var(--ncm-bg-base); }
+  .ncm-scope-pop .chip .n { font: 10px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-scope-pop .chip.on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); }
+  .ncm-scope-pop .chip.on .n { color: var(--ncm-secondary); }
+  .ncm-scope-pop .list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  .ncm-scope-pop .gh { position: sticky; top: 0; z-index: 1; padding: 4px 10px; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border);
+    font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); display: flex; }
+  .ncm-scope-pop .gh .n { margin-left: auto; font: 10px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; }
+  .ncm-scope-pop .row { display: grid; grid-template-columns: 16px 22px 1fr auto; gap: 8px; align-items: center; padding: 5px 10px; cursor: pointer; position: relative; }
+  .ncm-scope-pop.single .row { grid-template-columns: 22px 1fr auto; }
+  .ncm-scope-pop .row:hover, .ncm-scope-pop .row.cur { background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
+  .ncm-scope-pop .row.on { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); }
+  .ncm-scope-pop .row.quiet .nm { color: var(--ncm-text-secondary); }
+  .ncm-scope-pop .cb { width: 14px; height: 14px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; display: grid; place-items: center; font-size: 9px; color: transparent; }
+  .ncm-scope-pop .row.on .cb { border-color: var(--ncm-secondary); color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); }
+  .ncm-scope-pop .ic { width: 22px; height: 22px; border-radius: 2px; display: grid; place-items: center; font-size: 11px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+  .ncm-scope-pop .nm { font: 600 13px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-scope-pop .nm b { color: var(--ncm-secondary); font-weight: 700; }
+  .ncm-scope-pop .mt { font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-scope-pop .cnt { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-scope-pop .row.quiet .cnt { color: var(--ncm-text-muted); }
+  .ncm-scope-pop .only { display: none; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-secondary); padding: 0 4px; }
+  .ncm-scope-pop .row:hover .only { display: inline; }
+  .ncm-scope-pop .row:hover .cnt { display: none; }
+  .ncm-scope-pop .pin { border-bottom: 1px solid var(--ncm-border); }
+  .ncm-scope-pop .empty { padding: 18px 12px; text-align: center; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-scope-pop .empty a { color: var(--ncm-secondary); cursor: pointer; }
+  .ncm-scope-pop .ft { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-top: 1px solid var(--ncm-border); flex: none;
+    font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-scope-pop .ft a { color: var(--ncm-secondary); cursor: pointer; }
+  .ncm-scope-pop .ft .grow { flex: 1; }
+  .ncm-scope-pop .ft .keys { font: 10px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+    .ncm-scope-pop .ic img { width: 100%; height: 100%; object-fit: cover; border-radius: 2px; }
+  .ncm-scope-pop .row.cur { outline: 1px solid color-mix(in srgb, var(--ncm-secondary) 50%, transparent); outline-offset: -1px; }

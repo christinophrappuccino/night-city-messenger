@@ -1,6 +1,8 @@
     {{#if (eq activeTab 'tools')}}
 
-    <div class="ncm-section-title"><i class="fas fa-display"></i> Admin Appearance</div>
+    <header class="ncm-tabhd"><i class="fas fa-screwdriver-wrench"></i><div><h2>Tools</h2><p>How the admin panel looks, module-wide settings and maintenance, and the clean-up and reset tools.</p></div></header>
+
+    <div class="ncm-section-title ncm-tools-sect ncm-tools-sect--setup"><i class="fas fa-display"></i> Admin Appearance</div>
     <div class="ncm-admin-theme-picker">
       {{#each adminThemePresets}}
         <button type="button" class="ncm-admin-theme-opt{{#if this.active}} ncm-admin-theme-opt--active{{/if}}"
@@ -25,72 +27,75 @@
       <span class="ncm-admin-textsize__hint">Scales the Admin Panel and every GM tool window (Contact Manager, Network Manager, configs, composer, Workshop, dialogs). Messenger windows have their own Text Size slider under Themes &rarr; Text.</span>
     </div>
 
-    <div class="ncm-section-title"><i class="fas fa-cog"></i> System Tools</div>
+    <div class="ncm-section-title ncm-tools-sect ncm-tools-sect--act"><i class="fas fa-cog"></i> System Tools</div>
     <div class="ncm-tools-grid">
       <div class="ncm-tool-card" data-action="openThemeCustomizer">
-        <i class="fas fa-palette ncm-tool-card__icon ncm-tool-card__icon--gold"></i>
+        <i class="fas fa-palette ncm-tool-card__icon ncm-tool-card__icon--setup"></i>
         <span class="ncm-tool-card__name">Themes</span>
         <span class="ncm-tool-card__desc">Colors, fonts &amp; effects</span>
       </div>
       <div class="ncm-tool-card" data-action="forceRefreshAll">
-        <i class="fas fa-broadcast-tower ncm-tool-card__icon ncm-tool-card__icon--green"></i>
+        <i class="fas fa-broadcast-tower ncm-tool-card__icon ncm-tool-card__icon--sync"></i>
         <span class="ncm-tool-card__name">Force Refresh</span>
         <span class="ncm-tool-card__desc">Sync all clients</span>
       </div>
       <div class="ncm-tool-card" data-action="exportLogs">
-        <i class="fas fa-file-export ncm-tool-card__icon"></i>
+        <i class="fas fa-file-export ncm-tool-card__icon ncm-tool-card__icon--data"></i>
         <span class="ncm-tool-card__name">Export Logs</span>
         <span class="ncm-tool-card__desc">Download message JSON</span>
       </div>
       <div class="ncm-tool-card" data-action="healthCheck">
-        <i class="fas fa-heartbeat ncm-tool-card__icon ncm-tool-card__icon--green"></i>
+        <i class="fas fa-heartbeat ncm-tool-card__icon ncm-tool-card__icon--sync"></i>
         <span class="ncm-tool-card__name">Health Check</span>
         <span class="ncm-tool-card__desc">Run diagnostics</span>
       </div>
       <div class="ncm-tool-card" data-action="openTimeSettings">
-        <i class="fas fa-clock-rotate-left ncm-tool-card__icon ncm-tool-card__icon--gold"></i>
+        <i class="fas fa-clock-rotate-left ncm-tool-card__icon ncm-tool-card__icon--setup"></i>
         <span class="ncm-tool-card__name">Time Settings</span>
         <span class="ncm-tool-card__desc">Clock provider &amp; game time</span>
       </div>
       <div class="ncm-tool-card" data-action="openSoundSettings">
-        <i class="fas fa-volume-high ncm-tool-card__icon"></i>
-        <span class="ncm-tool-card__name">Sound Settings</span>
-        <span class="ncm-tool-card__desc">Opens Theme &rarr; Effects (volume)</span>
+        <i class="fas fa-volume-high ncm-tool-card__icon ncm-tool-card__icon--setup"></i>
+        <span class="ncm-tool-card__name">Sounds</span>
+        <span class="ncm-tool-card__desc">Every sound, where it plays &middot; use your own files</span>
       </div>
       <div class="ncm-tool-card" data-action="manageDomains">
-        <i class="fas fa-at ncm-tool-card__icon ncm-tool-card__icon--cyan"></i>
+        <i class="fas fa-at ncm-tool-card__icon ncm-tool-card__icon--data"></i>
         <span class="ncm-tool-card__name">Email Domains &amp; Addresses</span>
         <span class="ncm-tool-card__desc">Domains players can pick &middot; export / import every address (CSV, JSON)</span>
       </div>
       <div class="ncm-tool-card" data-action="reorganizeJournals">
-        <i class="fas fa-folder-tree ncm-tool-card__icon ncm-tool-card__icon--gold"></i>
+        <i class="fas fa-folder-tree ncm-tool-card__icon ncm-tool-card__icon--data"></i>
         <span class="ncm-tool-card__name">Reorganize Journals</span>
         <span class="ncm-tool-card__desc">Rename &amp; sort into subfolders</span>
       </div>
       <div class="ncm-tool-card" data-action="importNCMMacros">
-        <i class="fas fa-wand-magic-sparkles ncm-tool-card__icon ncm-tool-card__icon--cyan"></i>
+        <i class="fas fa-wand-magic-sparkles ncm-tool-card__icon ncm-tool-card__icon--data"></i>
         <span class="ncm-tool-card__name">Import / Reinstall Macros</span>
         <span class="ncm-tool-card__desc">Player &amp; GM macro compendiums</span>
       </div>
     </div>
 
     <div class="ncm-danger-zone">
-      <div class="ncm-section-title"><i class="fas fa-triangle-exclamation"></i> Danger Zone</div>
+      <div class="ncm-section-title ncm-tools-sect ncm-tools-sect--bad"><i class="fas fa-triangle-exclamation"></i> Danger Zone <small>each one asks before it changes anything</small></div>
       <div class="ncm-tools-grid">
-        <div class="ncm-tool-card" data-action="purgeMessages">
+        <div class="ncm-tool-card ncm-tool-card--bad" data-action="purgeMessages">
           <i class="fas fa-trash ncm-tool-card__icon"></i>
           <span class="ncm-tool-card__name">Purge Messages</span>
           <span class="ncm-tool-card__desc">Pick a character, shard, or all</span>
+          <span class="ncm-tool-card__risk">deletes messages</span>
         </div>
-        <div class="ncm-tool-card" data-action="orphanAudit">
+        <div class="ncm-tool-card ncm-tool-card--attn" data-action="orphanAudit">
           <i class="fas fa-broom ncm-tool-card__icon"></i>
           <span class="ncm-tool-card__name">Orphan Audit</span>
           <span class="ncm-tool-card__desc">Find &amp; clean data whose owner is gone</span>
+          <span class="ncm-tool-card__risk">lists first · safe</span>
         </div>
-        <div class="ncm-tool-card" data-action="factoryReset">
+        <div class="ncm-tool-card ncm-tool-card--severe" data-action="factoryReset">
           <i class="fas fa-bomb ncm-tool-card__icon"></i>
           <span class="ncm-tool-card__name">Factory Reset</span>
           <span class="ncm-tool-card__desc">Wipe every NCM journal, flag &amp; setting</span>
+          <span class="ncm-tool-card__risk">cannot be undone</span>
         </div>
       </div>
     </div>

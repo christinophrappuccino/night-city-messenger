@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>scope picker probe</title>
+<!--
+  Drives the REAL scripts/utils/scopePicker.js in a browser: mounts a multi picker, opens it, clicks rows, and reports
+  in <title> whether the body-mounted popover shows the picks (checked rows, the Picked chip, the footer count) WITHOUT
+  being closed and reopened. Written for the 2026-10-28 report "selecting works but it doesn't appear checked":
+  the host's callback re-rendered the button, never the popover.
+  Serve it (node dev/tools/serve-mockups.cjs) — a file:// page cannot import the module.
+    http://127.0.0.1:8123/dev/mockups/scope-picker-probe.html   → title: "OK …" or "FAIL …"
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css'] : ['/_vendor/foundry2.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style> body { margin: 0; padding: 40px; background: #1b1b22; } .host { display: inline-block; padding: 12px; } </style>
+</head>
+<body>
+<div class="host ncm-app" data-ncm-admin-theme="clean-dark" id="host"></div>
+<script type="module">
+  const out = [];
+  const ok = (c, m) => out.push((c ? 'ok ' : 'FAIL ') + m);
+  try {
+    const { ScopePicker } = await import('../../scripts/utils/scopePicker.js');
+    const host = document.getElementById('host');
+    const items = [{ id: 'a', name: 'Arasaka', group: 'Corporate' }, { id: 'b', name: 'Biotechnica', group: 'Corporate' }, { id: 'c', name: 'CitiNet', group: 'Public' }];
+    let renders = 0;
+    const paint = () => { host.innerHTML = ScopePicker.html('p1', { items, multi: true, nouns: 'networks', label: 'Filter' }); ScopePicker.after(); };
+    ScopePicker.on('p1', () => { renders++; paint(); });   // the host re-renders its window on every change, like every tab does
+    paint();
+    const click = (el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    click(host.querySelector('[data-scope-btn="p1"]'));
+    await new Promise((r) => setTimeout(r, 80));
+    const pop = () => document.querySelector('[data-scope-pop="p1"]');
+    ok(!!pop(), 'the popover mounted on body');
+    click(pop().querySelector('[data-scope-row="p1"][data-v="a"]'));
+    await new Promise((r) => setTimeout(r, 80));
+    ok(ScopePicker.value('p1').join() === 'a', 'the pick is in the state');
+    ok(pop() && pop().querySelector('[data-v="a"]')?.classList.contains('on'), 'the picked row shows checked without reopening');
+    ok(pop() && /1 picked/.test(pop().querySelector('.ft')?.textContent || ''), 'the footer says 1 picked');
+    ok(pop() && !!pop().querySelector('[data-scope-chip="p1"][data-c="picked"]'), 'the Picked chip appears');
+    click(pop().querySelector('[data-scope-row="p1"][data-v="c"]'));
+    await new Promise((r) => setTimeout(r, 80));
+    ok(ScopePicker.value('p1').join() === 'a,c' && pop().querySelectorAll('.row.on').length === 2, 'a second pick: both rows checked (multi)');
+    ok(/2 networks/.test(host.querySelector('[data-scope-btn="p1"]')?.textContent || ''), 'the button says 2 networks');
+    click(pop().querySelector('[data-scope-row="p1"][data-v="a"]'));
+    await new Promise((r) => setTimeout(r, 80));
+    ok(ScopePicker.value('p1').join() === 'c' && pop().querySelectorAll('.row.on').length === 1 && pop().querySelector('[data-v="c"]').classList.contains('on'), 'unpicking clears that row\'s check');
+    ok(renders === 4, `the host re-rendered once per change (${renders})`);
+  } catch (e) { out.push('FAIL ' + e.message); }
+  document.title = (out.some((l) => l.startsWith('FAIL')) ? 'FAIL ' : 'OK ') + out.join(' | ');
+  document.body.insertAdjacentHTML('beforeend', `<pre style="color:#ddd;font:12px monospace">${document.title.replace(/ \| /g, '\n')}</pre>`);
+</script>
+</body>
+</html>

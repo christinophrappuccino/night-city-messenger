@@ -3,7 +3,7 @@
 {{!-- @module night-city-messenger --}}
 {{!--
   Structure:
-    admin-panel.hbs         — Shell (header, tabs, footer)
+    admin-panel.hbs         — Shell (tab bar only since 2026-10-27; header/HUD/footer removed)
     tab-overview.hbs        — Tab 1: Overview
     tab-messages.hbs        — Tab 2: Messages
     tab-contacts.hbs        — Tab 3: Contacts
@@ -14,93 +14,82 @@
 --}}
 
 {{#if isGM}}
-<div class="ncm-admin-panel">
+<div class="ncm-admin-panel {{#if isPopout}}ncm-admin-panel--pop{{/if}}">
 
-  {{!-- ═══ CONDENSED HEADER ═══ --}}
-  <div class="ncm-admin-header">
-    <div class="ncm-admin-header__identity">
-      <div class="ncm-admin-header__icon-ring"><i class="fas fa-shield-halved"></i></div>
-      <div class="ncm-admin-header__label">
-        <span class="ncm-admin-header__title">GM Dashboard</span>
-        <span class="ncm-admin-header__subtitle">ADMIN CLEARANCE // FULL ACCESS</span>
-      </div>
-    </div>
-    <div class="ncm-admin-header__sep"></div>
-    <div class="ncm-admin-header__stats">
-      <div class="ncm-admin-header__stat">
-        <span class="ncm-admin-header__stat-value ncm-admin-header__stat-value--cyan">{{stats.totalMessages}}</span>
-        <span class="ncm-admin-header__stat-label">Messages</span>
-      </div>
-      <div class="ncm-admin-header__stat">
-        <span class="ncm-admin-header__stat-value ncm-admin-header__stat-value--red">{{stats.unreadMessages}}</span>
-        <span class="ncm-admin-header__stat-label">Unread</span>
-      </div>
-      <div class="ncm-admin-header__stat">
-        <span class="ncm-admin-header__stat-value ncm-admin-header__stat-value--gold">{{scheduledCount}}</span>
-        <span class="ncm-admin-header__stat-label">Scheduled</span>
-      </div>
-      <div class="ncm-admin-header__stat">
-        <span class="ncm-admin-header__stat-value ncm-admin-header__stat-value--green">{{onlineCount}}</span>
-        <span class="ncm-admin-header__stat-label">Online</span>
-      </div>
-    </div>
-    <div class="ncm-admin-header__network">
-      <div class="ncm-admin-header__network-dot"></div>
-      <span class="ncm-admin-header__network-name">{{currentNetwork}}</span>
-    </div>
+  {{#if isPopout}}
+  {{!-- Popped-out single-tab window (AdminTabWindow): no panel chrome, one way back. --}}
+  <div class="ncm-admin-popbar">
+    <span class="ncm-admin-popbar__t"><i class="fas fa-up-right-from-square"></i> Popped out from the admin panel</span>
+    <button type="button" class="ncm-admin-popbar__dock" data-action="dockTab"><i class="fas fa-down-left-and-up-right-to-center"></i> Back to the admin panel</button>
   </div>
-
-  {{!-- ═══ HUD STRIP ═══ --}}
-  <div class="ncm-hud-strip">
-    <div class="ncm-hud-strip__item">ACTORS <span>{{hudCounts.actors}}</span></div>
-    <div class="ncm-hud-strip__item">CONTACTS <span>{{hudCounts.contacts}}</span></div>
-    <div class="ncm-hud-strip__item">NETWORKS <span>{{hudCounts.networks}}</span></div>
-    <div class="ncm-hud-strip__item ncm-hud-strip__item--gold">SHARDS <span>{{hudCounts.shards}}</span></div>
-    <div class="ncm-hud-strip__online">
-      <div class="ncm-hud-strip__online-dot"></div> SYSTEM NOMINAL
-    </div>
-  </div>
+  {{else}}
 
   {{!-- ═══ TAB NAVIGATION ═══ --}}
-  <nav class="ncm-admin-tabs">
-    <button class="ncm-admin-tab {{#if (eq activeTab 'overview')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="overview">
-      <i class="fas fa-chart-bar"></i> Overview
-    </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'messages')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="messages">
-      <i class="fas fa-envelope"></i> Messages
-      {{#if stats.unreadMessages}}<span class="ncm-admin-tab__count">{{stats.unreadMessages}}</span>{{/if}}
-    </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'contacts')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="contacts">
-      <i class="fas fa-address-book"></i> Contacts
-    </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'networks')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="networks">
-      <i class="fas fa-network-wired"></i> Networks
-    </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'shards')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="shards">
-      <i class="fas fa-database"></i> Shards
-    </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'terminals')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="terminals">
-      <i class="fas fa-terminal"></i> Terminals
-    </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'security')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="security">
-      <i class="fas fa-shield-halved"></i> Security
-    </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'spam')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="spam">
-      <i class="fas fa-envelopes-bulk"></i> Spam
-    </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'tools')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="tools">
-      <i class="fas fa-wrench"></i> Tools
-    </button>
+  {{!-- The GM Dashboard header, HUD strip and footer were removed 2026-10-27 (dev: they 'don't play a role in anything' and cost the tabs their room). Counts live on the tabs themselves. --}}
+  {{!-- Grouped tab bar (2026-10-29, dev-picked "clustered tab bar", dev/mockups/admin-nav-groups-mock.html):
+        ONE row, one click per tab, the tabs in labelled clusters. When the row runs out of room the labels
+        fold (AdminPanelApp._foldTabs): other groups' tabs first, then the rest of the open group — the open
+        tab always keeps its label. Every tab names itself on hover (data-tooltip). --}}
+  <nav class="ncm-admin-tabs ncm-admin-tabs--grouped">
+    <div class="ncm-admin-tabgrp" data-tab-group="home">
+      <span class="ncm-admin-tabgrp__cap">&nbsp;</span>
+      <div class="ncm-admin-tabgrp__tabs">
+      <button class="ncm-admin-tab {{#if (eq activeTab 'overview')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="overview" data-tooltip="Overview · what is happening right now and what needs you" aria-label="Overview">
+        <i class="fas fa-chart-bar"></i><span class="ncm-admin-tab__lb">Overview</span>
+      </button>
+      </div>
+    </div>
+    <div class="ncm-admin-tabgrp" data-tab-group="comms">
+      <span class="ncm-admin-tabgrp__cap">Comms</span>
+      <div class="ncm-admin-tabgrp__tabs">
+      <button class="ncm-admin-tab {{#if (eq activeTab 'messages')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="messages" data-tooltip="Messages · the reply desk, all mail, the outbox and every inbox" aria-label="Messages">
+        <i class="fas fa-envelope"></i><span class="ncm-admin-tab__lb">Messages</span>{{#if stats.unreadMessages}}<span class="ncm-admin-tab__count">{{stats.unreadMessages}}</span>{{/if}}
+      </button>
+      <button class="ncm-admin-tab {{#if (eq activeTab 'contacts')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="contacts" data-tooltip="Contacts · the NPC directory, players, groups and who knows whom" aria-label="Contacts">
+        <i class="fas fa-address-book"></i><span class="ncm-admin-tab__lb">Contacts</span>
+      </button>
+      <button class="ncm-admin-tab {{#if (eq activeTab 'spam')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="spam" data-tooltip="Spam · junk-mail templates, blasts and auto-spam by network" aria-label="Spam">
+        <i class="fas fa-envelopes-bulk"></i><span class="ncm-admin-tab__lb">Spam</span>
+      </button>
+      </div>
+    </div>
+    <div class="ncm-admin-tabgrp" data-tab-group="net">
+      <span class="ncm-admin-tabgrp__cap">Net</span>
+      <div class="ncm-admin-tabgrp__tabs">
+      <button class="ncm-admin-tab {{#if (eq activeTab 'networks')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="networks" data-tooltip="Networks · what reaches each scene, every network, scenes and the activity log" aria-label="Networks">
+        <i class="fas fa-network-wired"></i><span class="ncm-admin-tab__lb">Networks</span>
+      </button>
+      <button class="ncm-admin-tab {{#if (eq activeTab 'security')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="security" data-tooltip="Security · live traces, heat, planted programs and the hacking rules" aria-label="Security">
+        <i class="fas fa-shield-halved"></i><span class="ncm-admin-tab__lb">Security</span>
+      </button>
+      </div>
+    </div>
+    <div class="ncm-admin-tabgrp" data-tab-group="world">
+      <span class="ncm-admin-tabgrp__cap">World</span>
+      <div class="ncm-admin-tabgrp__tabs">
+      <button class="ncm-admin-tab {{#if (eq activeTab 'terminals')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="terminals" data-tooltip="Terminals · every computer players can log into" aria-label="Terminals">
+        <i class="fas fa-terminal"></i><span class="ncm-admin-tab__lb">Terminals</span>
+      </button>
+      <button class="ncm-admin-tab {{#if (eq activeTab 'shards')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="shards" data-tooltip="Shards · every data shard and who holds it" aria-label="Shards">
+        <i class="fas fa-database"></i><span class="ncm-admin-tab__lb">Shards</span>
+      </button>
+      <button class="ncm-admin-tab {{#if (eq activeTab 'access')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="access" data-tooltip="Access points · every way players can open a terminal or shard — map pins, hotbar, chat cards, journal links" aria-label="Access points">
+        <i class="fas fa-location-crosshairs"></i><span class="ncm-admin-tab__lb">Access</span>
+      </button>
+      </div>
+    </div>
+    <div class="ncm-admin-tabgrp" data-tab-group="tools">
+      <span class="ncm-admin-tabgrp__cap">&nbsp;</span>
+      <div class="ncm-admin-tabgrp__tabs">
+      <button class="ncm-admin-tab {{#if (eq activeTab 'tools')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="tools" data-tooltip="Tools · settings, imports, health checks and clean-up" aria-label="Tools">
+        <i class="fas fa-wrench"></i><span class="ncm-admin-tab__lb">Tools</span>
+      </button>
+      </div>
+    </div>
+    <span class="ncm-admin-tabs__keys" data-tooltip="Keys: 1–9 and 0 switch tabs (in the order shown) · / search · N new" aria-label="Keyboard shortcuts"><i class="fas fa-keyboard"></i></span>
   </nav>
+
+  {{/if}}{{!-- /isPopout chrome --}}
 
   {{!-- ═══ TAB CONTENT ═══ --}}
   <div class="ncm-admin-content">
@@ -117,6 +106,8 @@
 
     {{> "modules/night-city-messenger/templates/admin-panel/tab-terminals.hbs"}}
 
+    {{> "modules/night-city-messenger/templates/admin-panel/tab-access.hbs"}}
+
     {{> "modules/night-city-messenger/templates/admin-panel/tab-security.hbs"}}
 
     {{> "modules/night-city-messenger/templates/admin-panel/tab-spam.hbs"}}
@@ -125,28 +116,6 @@
 
   </div>{{!-- /ncm-admin-content --}}
 
-  {{!-- ═══ FOOTER ═══ --}}
-  <div class="ncm-admin-footer">
-    <div class="ncm-admin-footer__info">
-      <span><i class="fas fa-shield-halved"></i> GM ADMIN</span>
-      {{#if (eq activeTab 'overview')}}<span><i class="fas fa-inbox"></i> {{stats.totalMessages}} MESSAGES</span><span><i class="fas fa-wifi"></i> {{currentNetwork}}</span>{{/if}}
-      {{#if (eq activeTab 'messages')}}<span><i class="fas fa-clock"></i> {{scheduledCount}} SCHEDULED</span>{{/if}}
-      {{#if (eq activeTab 'contacts')}}<span><i class="fas fa-address-book"></i> {{contactSummary.total}} CONTACTS</span>{{#if contactSummary.burned}}<span style="color: var(--ncm-danger);"><i class="fas fa-fire"></i> {{contactSummary.burned}} BURNED</span>{{/if}}{{/if}}
-      {{#if (eq activeTab 'networks')}}<span><i class="fas fa-network-wired"></i> {{netStats.active}}/{{netStats.total}} ACTIVE</span><span><i class="fas fa-ban"></i> {{netStats.deadZones}} DEAD ZONES</span><span><i class="fas fa-users"></i> {{netStats.connected}} CONNECTED</span>{{/if}}
-      {{#if (eq activeTab 'shards')}}<span><i class="fas fa-database"></i> {{shardSummary.total}} SHARDS</span>{{#if shardSummary.locked}}<span style="color: var(--ncm-accent);"><i class="fas fa-lock"></i> {{shardSummary.locked}} LOCKED</span>{{/if}}{{#if shardSummary.breached}}<span style="color: var(--ncm-success);"><i class="fas fa-unlock"></i> {{shardSummary.breached}} BREACHED</span>{{/if}}{{#if shardSummary.unclaimedEddies}}<span style="color: var(--ncm-accent);"><i class="fas fa-coins"></i> {{shardSummary.unclaimedEddies}} eb</span>{{/if}}{{/if}}
-      {{#if (eq activeTab 'spam')}}<span><i class="fas fa-envelopes-bulk"></i> {{spamTotalCount}} TEMPLATES</span><span><i class="fas fa-pen-fancy"></i> {{spamCustomCount}} CUSTOM</span><span><i class="fas fa-paper-plane"></i> {{spamSentThisSession}} SENT</span>{{/if}}
-      {{#if (eq activeTab 'tools')}}<span><i class="fas fa-code-branch"></i> NCM v4.1</span>{{/if}}
-    </div>
-    <div class="ncm-admin-footer__shortcuts">
-      {{#if (eq activeTab 'overview')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>R</kbd> REFRESH{{/if}}
-      {{#if (eq activeTab 'messages')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>N</kbd> NEW MESSAGE{{/if}}
-      {{#if (eq activeTab 'contacts')}}<kbd>/</kbd> SEARCH &nbsp; <kbd>N</kbd> NEW &nbsp; <kbd>P</kbd> PUSH SELECTED{{/if}}
-      {{#if (eq activeTab 'networks')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>N</kbd> NEW NETWORK{{/if}}
-      {{#if (eq activeTab 'shards')}}<kbd>/</kbd> SEARCH &nbsp; <kbd>F</kbd> FORCE DECRYPT &nbsp; <kbd>R</kbd> RELOCK{{/if}}
-      {{#if (eq activeTab 'spam')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>N</kbd> NEW TEMPLATE{{/if}}
-      {{#if (eq activeTab 'tools')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>ESC</kbd> CLOSE{{/if}}
-    </div>
-  </div>
 
 </div>{{!-- /ncm-admin-panel --}}
 

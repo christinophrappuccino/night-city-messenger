@@ -72,7 +72,7 @@ Go to Admin Panel → **Contacts**. This is your master list of every NPC that p
 - **Import Actor** — turn an existing actor into a contact in two clicks. The portrait and email come with it.
 - **Push contacts to players** — give an NPC's contact card to one player or the whole party.
 - Mark an address as **send-only** — good for system addresses like `alerts@arasaka.com`. Players get mail from it but can't reply.
-- **Aliases** — one character can have several identities: a main address and burners, cover names, a work account. Open a contact in the GM Contact Manager and use **+ Add alias** (an NPC with no actor can have them too). Mail to any alias lands in the same inbox, replies go out as the alias the mail reached, and an alias never shows the character's real portrait unless you give it one. The Contacts tab nests aliases under their main and has an **Aliases** filter, and the Messages tab labels mail with "alias of …" so you can keep track of who is who.
+- **Aliases** — one character can have several identities: a main address and burners, cover names, a work account. Open a contact in Admin → Contacts and use **Add an alias** (an NPC with no actor can have them too). Mail to any alias lands in the same inbox, replies go out as the alias the mail reached, and an alias never shows the character's real portrait unless you give it one. The Contacts tab nests aliases under their main and has an **Aliases** filter, and the Messages tab labels mail with "alias of …" so you can keep track of who is who.
 - **Groups** — the Groups card at the top of the tab. Make a named list of contacts ("The Crew", "Arasaka Leads"), then **Push** it to a player and it lands in their contact book, contacts included. Re-pushing updates their copy.
 
 Don't build the whole city. Two or three NPCs your party actually talks to is plenty for the first night.
@@ -113,6 +113,8 @@ Done. NPCs and other players can now message you at that address.
 - **Share to chat** — posts a message as a chat card. Anyone reading the card who doesn't have the sender in their contacts gets an **Add contact** button right on it.
 - **Money** — a message can have eddies attached. Click **Claim** and the money goes straight to your character sheet. It can only be claimed once.
 - **Self-destructing messages** exist. If you get one, read it carefully. It won't be there later.
+- **Writing a message.** The composer is one window: who you are, your network and the date on the top line; To / Cc / Subject; a row of chips for the delivery options (priority, scheduling — the GM gets more); the editor with its toolbar; and Send. Click a chip to open its panel under the row — only one panel opens at a time. Type a contact's name in To and pick from the list; a group's name adds everyone in it as one chip.
+- **Drafts.** The composer saves what you are writing as a draft every half-minute, and **Draft** saves it and closes the window. A character can hold up to twenty drafts, and a new composer always opens empty — your drafts are on the Agent's **Drafts** tab, or behind the **N drafts** link at the bottom of the composer, which opens one in the window you are in (what you were writing is kept as its own draft). A reply draft comes back with the message it answers. Sending deletes that draft; closing an empty composer leaves nothing behind.
 
 ### Contacts
 
@@ -140,6 +142,9 @@ Once messaging works, here's what you can do with it:
 - **Anonymous send.** Turn this on in settings, and the composer gets a checkbox that hides who you are. Players see a glitchy masked avatar instead. They can reply without knowing who they're talking to, and if you allow it, they can roll to trace you. Great for mystery employers.
 - **Self-destruct.** Set a message to delete after it's read, or after 1, 6, or 24 hours.
 - **Scheduled messages.** Write now, send later.
+- **Lock it.** The **Lock** chip puts ICE on a message — a DV, Standard / Red / Black ICE, what a miss does, and which Black ICE actor bites. All of it lives in one panel under the chip row; so do self-destruct, anonymous and schedule, one panel at a time.
+- **Preview as recipient.** The **Preview** button at the bottom of the composer shows exactly what the player will open — the masked sender if you are anonymous, the ICE lock they have to breach, the self-destruct note. **Back to editing** returns the form as you left it.
+- **Message templates.** The file icon at the right of the editor toolbar holds your templates: insert one (an empty subject takes the template's; the body asks Replace or Append when you already wrote something; priority, lock and self-destruct follow the template), save what you are writing as a new one, or import / export them as JSON. There is no Insert Signature any more — it only ever pasted the header's own name and address.
 - **One message, many people.** Type a group's name in To and it goes to everyone in it; each recipient gets their own copy and can Reply All. **Mass Broadcast** (Admin → Messages) has a **Send to** picker for the whole party or one of your groups, and tells you by name if anyone couldn't receive it. In the Messages activity feed a group send folds into one row you can expand.
 - **Spam.** The Spam tab has ready-made junk mail you can send to players, and can even send it automatically when they join certain networks. It sounds silly, but a "spam" message can carry anything a real message can. Use that.
 

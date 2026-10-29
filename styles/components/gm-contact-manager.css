@@ -9,6 +9,12 @@
  *
  *   Uses NCM design tokens (--ncm-*) for full theme compatibility.
  *   Visual reference: ncm-gm-editor-mockup-v3.html
+ *
+ *   2026-10-27: the GM Contact Manager WINDOW is retired (folded into Admin →
+ *   Contacts, styles in admin-panel/tab-contacts.css). This file stays because
+ *   it also styles the shared contact-form partial and the player Contact
+ *   Manager's detail (.ncm-form-*, .ncm-rel-*, .ncm-trust-*, .ncm-cfg-ice-*).
+ *   The .ncm-gm-* window rules below are now dead and can be pruned.
  */
 
 /* ═══════════════════════════════════════════
@@ -1966,7 +1972,7 @@
 
 /* ─── Burned UI hidden — "burned" retired from current scope ───
    Reversible: delete this block to restore the burn/restore controls + chip.
-   Logic in GMContactManagerApp / MasterContactService is untouched. */
+   Logic in MasterContactService is untouched. */
 .ncm-app .ncm-gm-contacts [data-action="burnContact"],
 .ncm-app .ncm-gm-contacts [data-action="restoreContact"],
 .ncm-app .ncm-gm-contacts .ncm-chip--burned { display: none !important; }

@@ -12,6 +12,7 @@ import { log, isGM, formatCyberDate, applyContrastToElement, buildShardThemePref
 import { SHARD_EDIT_MODES, resolveShardEditing } from '../content/EncoderModel.js';
 import { resolveCrt, applyCrt, crtPanelContext, wireCrtPanel, paintCrtPanel } from '../../utils/crt.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { cmvOverrideContext, wireCmvOverride, readCmvOverride } from '../../utils/countermeasureView.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
@@ -106,7 +107,7 @@ export class ItemInboxConfig extends BaseApplication {
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
     id: 'ncm-item-inbox-config',
     classes: ['ncm-app', 'ncm-item-inbox-config'],
-    window: { title: 'NCM.DataShard.Config', icon: 'fas fa-cog', resizable: true, minimizable: false },
+    window: { title: 'NCM.DataShard.Config', icon: 'fas fa-cog', resizable: true, minimizable: true },
     position: { width: 680, height: 720 },
     actions: {
       saveConfig: ItemInboxConfig._onSaveConfig,
@@ -155,6 +156,9 @@ export class ItemInboxConfig extends BaseApplication {
     super._onRender?.(context, options);
     const el = this.element;
     if (!el) return;
+
+    // Countermeasure visibility override (Security tab) — DOM-only segments.
+    wireCmvOverride(el);
 
     // ─── Restore active tab ───
     if (this._activeTab && this._activeTab !== 'identity') {
@@ -1161,6 +1165,8 @@ export class ItemInboxConfig extends BaseApplication {
         ? `Maker only — ${config.playerMade.actorName || 'the character who encoded it'}`
         : 'Locked — GM-made shards are read-only for players',
       playerEditingModes: Object.entries(SHARD_EDIT_MODES).map(([value, m]) => ({ value, label: m.label, blurb: m.blurb, selected: config.playerEditing === value })),
+      // Countermeasure visibility — this shard's override of the world rule.
+      cmvOverride: cmvOverrideContext(config.countermeasures, 'shard'),
 
       // Encryption
       isEncrypted: config.encrypted,
@@ -1330,6 +1336,8 @@ export class ItemInboxConfig extends BaseApplication {
       shardDescription: val('shardDescription'),
       // '' = follow the default rule (GM-made → locked, player-made → maker only).
       playerEditing: val('playerEditing', ''),
+      // Countermeasure visibility override (absent block → keep what is stored).
+      countermeasures: readCmvOverride(el) ?? (this.dataShardService?.getConfig?.(this.item)?.countermeasures || { visibility: 'inherit', scanDV: null, dv: 'inherit' }),
 
       metadata: {
         creator: val('metaCreator'),

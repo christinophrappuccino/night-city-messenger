@@ -3,7 +3,7 @@
   @file templates/contact-manager/partials/contact-form.hbs
   @module night-city-messenger
   @description Unified form used by both player ContactManagerApp and
-    GM GMContactManagerApp for creating/editing contacts.
+    GM inspect mode for creating/editing contacts (the GM directory form lives in Admin → Contacts).
     GM-only fields (notes, relationships, linked actor, ICE) gated by an isGM check.
 
   Phase 2 changes:
@@ -412,6 +412,19 @@
         </label>
         <textarea name="notes" rows="2" placeholder="Private GM notes..."
                   class="ncm-form-textarea">{{contact.notes}}</textarea>
+      </div>
+    </div>
+
+    {{!-- ── Voice (GM only — how this NPC talks; lives on the MASTER contact, never a player's copy) ── --}}
+    <div class="ncm-form-row">
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">
+          <i class="fas fa-comment-dots" style="font-size: 8px;"></i>
+          Voice
+          <span class="ncm-form-hint ncm-form-hint--danger">(never shared)</span>
+        </label>
+        <textarea name="voice" rows="2" placeholder="How they talk — short, never apologises, calls everyone kid…"
+                  class="ncm-form-textarea">{{contact.voice}}</textarea>
       </div>
     </div>
 

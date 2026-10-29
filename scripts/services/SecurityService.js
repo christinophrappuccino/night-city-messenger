@@ -36,6 +36,15 @@ export class SecurityService {
      */
     this._timers = new Map();
 
+    /**
+     * GM only: attempt / lockout state REPORTED by players' clients
+     * (SOCKET_OPS.SECURITY_REPORT). SecurityService state is client-local, so
+     * without this the GM never sees a player's failed tries or an earned
+     * lockout. Kept apart from `_states` so the GM's own enforcement is untouched.
+     * @type {Map<string, object>}
+     */
+    this._remote = new Map();
+
     this._initialized = true;
     log.info('SecurityService initialized');
   }
@@ -177,9 +186,11 @@ export class SecurityService {
       });
 
       log.info(`Lockout triggered: actor ${actorId} → target ${targetId} for ${state.lockoutDuration}ms`);
+      this._reportToGM(state);
       return { state: { ...state }, lockedOut: true };
     }
 
+    this._reportToGM(state);
     return { state: { ...state }, lockedOut: false };
   }
 
@@ -199,7 +210,7 @@ export class SecurityService {
    * @returns {number} the lockout deadline (ms)
    */
   forceLockout(actorId, targetId, { durationMs = 3600000, reason = '' } = {}) {
-    const until = this._applyForced(actorId, targetId, durationMs);
+    const until = this._applyForced(actorId, targetId, durationMs, reason);
     this.eventBus.emit(EVENTS.NETWORK_LOCKOUT, {
       actorId, targetId, lockoutUntil: until, duration: durationMs, forced: true,
     });
@@ -223,7 +234,7 @@ export class SecurityService {
    */
   forceLockoutMany(actorId, targets = [], { durationMs = 3600000, reason = '', label = '' } = {}) {
     if (!actorId || !targets.length) return;
-    for (const t of targets) this._applyForced(actorId, t, durationMs);
+    for (const t of targets) this._applyForced(actorId, t, durationMs, reason);
     this.eventBus.emit(EVENTS.NETWORK_LOCKOUT, {
       actorId, targetId: targets[0], targets, duration: durationMs, forced: true, label,
     });
@@ -241,9 +252,9 @@ export class SecurityService {
    * @param {object} p { actorId, targets, durationMs, label, reason }
    */
   receiveForcedLockout(p = {}) {
-    const { actorId, targets = [], durationMs = 3600000, label = '' } = p;
+    const { actorId, targets = [], durationMs = 3600000, label = '', reason = '' } = p;
     if (!actorId || !targets.length) return;
-    for (const t of targets) this._applyForced(actorId, t, durationMs);
+    for (const t of targets) this._applyForced(actorId, t, durationMs, reason);
     this.eventBus.emit(EVENTS.NETWORK_LOCKOUT, {
       actorId, targetId: targets[0], targets, duration: durationMs, forced: true, label,
     });
@@ -266,10 +277,12 @@ export class SecurityService {
   }
 
   /** @private Set the forced-lockout state for one key (no events, no wire). */
-  _applyForced(actorId, targetId, durationMs) {
+  _applyForced(actorId, targetId, durationMs, reason = '') {
     const key = this._key(actorId, targetId);
     let state = this._states.get(key);
     if (!state) { state = this._defaultState(actorId, targetId); this._states.set(key, state); }
+    state.forced = true;
+    state.reason = reason || state.reason || '';
     state.lockoutDuration = durationMs;
     state.attempts = Math.max(state.attempts, state.maxAttempts);
     state.lockoutUntil = this._nowMs() + durationMs;
@@ -283,7 +296,7 @@ export class SecurityService {
    * slammed the door"); an open shard viewer on a locked shard closes. Scans
    * both app registries (AppV1 ui.windows + AppV2 foundry.applications.instances).
    */
-  _kickLockedViewers(actorId, targets, label = '') {
+  _kickLockedViewers(actorId, targets, label = '', message = '') {
     try {
       const apps = [
         ...Object.values(ui.windows ?? {}),
@@ -300,7 +313,7 @@ export class SecurityService {
         const opId = app.actorId || app.actor?.id || null;
         if (opId && opId !== actorId) continue;
         if (typeof app.forceLogout === 'function') {
-          app.forceLogout(`CONNECTION TERMINATED — ${label || 'the system'} locked you out.`);
+          app.forceLogout(message || `CONNECTION TERMINATED — ${label || 'the system'} locked you out.`);
         } else if (app.element?.classList?.contains('ncm-item-inbox')) {
           app.close();
         }
@@ -319,8 +332,148 @@ export class SecurityService {
     if (state) {
       state.attempts = 0;
       state.lockoutUntil = null;
+      state.forced = false;
+      state.reason = '';
     }
     this._clearTimer(key);
+    this._reportToGM(state || { actorId, targetId, attempts: 0, maxAttempts: 3, lockoutUntil: null, lockoutDuration: 0 });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PUBLIC API — What the GM can see of players' tries (2026-10-27)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * @private Player → GM: report this client's attempt / lockout state for a
+   * compound key (a terminal account `termId::acctId`, a net join). Networks and
+   * shards (bare ids) are not reported. No GM online = nothing to do.
+   */
+  _reportToGM(state) {
+    try {
+      if (!state || isGM() || !String(state.targetId || '').includes('::')) return;
+      if (!game.users?.activeGM) return;
+      game.nightcity?.socketManager?.emit(SOCKET_OPS.SECURITY_REPORT, {
+        actorId: state.actorId, targetId: state.targetId,
+        attempts: Number(state.attempts) || 0, maxAttempts: Number(state.maxAttempts) || 3,
+        lockoutUntil: state.lockoutUntil || null, lockoutDuration: Number(state.lockoutDuration) || 0,
+        forced: !!state.forced, reason: state.reason || '',
+      });
+    } catch (err) { log.debug(`Security report failed: ${err.message}`); }
+  }
+
+  /**
+   * GM: store a player's reported state (SOCKET_OPS.SECURITY_REPORT), then
+   * tell any open admin view (`ncmSecurityReport` hook).
+   * @param {object} p { actorId, targetId, attempts, maxAttempts, lockoutUntil, lockoutDuration, forced, reason }
+   * @param {string} [senderId]
+   */
+  receiveReport(p = {}, senderId = '') {
+    if (!isGM() || !p.actorId || !p.targetId) return;
+    const key = this._key(p.actorId, p.targetId);
+    if (!(Number(p.attempts) > 0) && !p.lockoutUntil) this._remote.delete(key);
+    else {
+      this._remote.set(key, {
+        actorId: p.actorId, targetId: p.targetId,
+        attempts: Number(p.attempts) || 0, maxAttempts: Number(p.maxAttempts) || 3,
+        lockoutUntil: Number(p.lockoutUntil) || null, lockoutDuration: Number(p.lockoutDuration) || 0,
+        forced: !!p.forced, reason: String(p.reason || ''),
+        reportedAt: Date.now(), reportedBy: senderId || '',
+      });
+    }
+    try { globalThis.Hooks?.callAll?.('ncmSecurityReport', { actorId: p.actorId, targetId: p.targetId }); } catch { /* no hooks */ }
+  }
+
+  /**
+   * What is known about an actor on a target: this client's own state and any
+   * state a player reported, with an expired lockout read as cleared (expiry
+   * resets the attempt counter, as on the player's client). A live lockout wins
+   * (latest deadline); otherwise the higher attempt count.
+   * @returns {{attempts:number, maxAttempts:number, lockoutUntil:number|null, lockoutRemaining:number, forced:boolean, reason:string, source:string}|null}
+   */
+  getKnownState(actorId, targetId) {
+    const key = this._key(actorId, targetId);
+    const now = this._nowMs();
+    const norm = (s, source) => {
+      if (!s) return null;
+      const live = !!s.lockoutUntil && s.lockoutUntil > now;
+      const expired = !!s.lockoutUntil && !live;
+      return {
+        attempts: expired ? 0 : (Number(s.attempts) || 0),
+        maxAttempts: Number(s.maxAttempts) || 3,
+        lockoutUntil: live ? s.lockoutUntil : null,
+        lockoutRemaining: live ? s.lockoutUntil - now : 0,
+        forced: live && !!s.forced,
+        reason: live ? (s.reason || '') : '',
+        source,
+      };
+    };
+    const c = [norm(this._states.get(key), 'local'), norm(this._remote.get(key), 'remote')]
+      .filter((s) => s && (s.attempts > 0 || s.lockoutUntil));
+    if (!c.length) return null;
+    const locked = c.filter((s) => s.lockoutUntil).sort((a, b) => b.lockoutUntil - a.lockoutUntil);
+    if (locked.length) return locked[0];
+    return c.sort((a, b) => b.attempts - a.attempts)[0];
+  }
+
+  /**
+   * GM: clear an actor's tries + lockout on these targets — here AND on every
+   * client (SOCKET_OPS.SECURITY_CLEAR), so the player's own login checks really
+   * unblock. "Clear lockout" and "Reset tries" are both this.
+   * @param {string} actorId @param {string[]} targets
+   */
+  clearFor(actorId, targets = []) {
+    if (!actorId || !targets.length) return;
+    this._clearLocal(actorId, targets);
+    game.nightcity?.socketManager?.emit(SOCKET_OPS.SECURITY_CLEAR, { actorId, targets });
+    log.info(`Security cleared: actor ${actorId} → ${targets.length} target(s)`);
+  }
+
+  /** Socket receiver for SECURITY_CLEAR (every client). actorId '*' = every actor on those targets. */
+  receiveClear(p = {}) {
+    if (!p.actorId || !Array.isArray(p.targets) || !p.targets.length) return;
+    if (p.actorId === '*') { for (const t of p.targets) this._clearTargetLocal(t); return; }
+    this._clearLocal(p.actorId, p.targets);
+  }
+
+  /** @private Every actor's tries + lockout on one target, on THIS client (own states and mirrored ones). */
+  _clearTargetLocal(targetId) {
+    let n = 0;
+    for (const map of [this._states, this._remote]) {
+      for (const key of [...map.keys()]) {
+        if (key.slice(key.indexOf('::') + 2) !== targetId) continue;
+        map.delete(key); this._clearTimer(key); n++;
+      }
+    }
+    return n;
+  }
+
+  /** @private */
+  _clearLocal(actorId, targets) {
+    for (const t of targets) {
+      const key = this._key(actorId, t);
+      this._states.delete(key);
+      this._remote.delete(key);
+      this._clearTimer(key);
+    }
+  }
+
+  /**
+   * GM: end an actor's live session on terminal accounts — bounce their open
+   * viewer back to its login screen, here and on every client
+   * (SOCKET_OPS.TERMINAL_KICK). The stored session record is the caller's write.
+   * @param {string} actorId @param {string[]} targets `termId::acctId` keys
+   * @param {string} [message] the login-screen error line
+   */
+  kickSession(actorId, targets = [], message = 'SESSION ENDED BY THE SYSTEM.') {
+    if (!actorId || !targets.length) return;
+    this._kickLockedViewers(actorId, targets, '', message);
+    game.nightcity?.socketManager?.emit(SOCKET_OPS.TERMINAL_KICK, { actorId, targets, message });
+  }
+
+  /** Socket receiver for TERMINAL_KICK. */
+  receiveKick(p = {}) {
+    if (!p.actorId || !Array.isArray(p.targets) || !p.targets.length) return;
+    this._kickLockedViewers(p.actorId, p.targets, '', p.message || 'SESSION ENDED BY THE SYSTEM.');
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -344,18 +497,13 @@ export class SecurityService {
    * Useful when a network password changes or a shard is relocked.
    * @param {string} targetId
    */
-  resetAllForTarget(targetId) {
-    const toDelete = [];
-    for (const [key, state] of this._states) {
-      if (state.targetId === targetId) {
-        toDelete.push(key);
-      }
-    }
-    for (const key of toDelete) {
-      this._states.delete(key);
-      this._clearTimer(key);
-    }
-    log.debug(`Security states reset for target: ${targetId} (${toDelete.length} cleared)`);
+  resetAllForTarget(targetId, { broadcast = true } = {}) {
+    // A reset means "unlock it for everyone": the lockout a player hit lives on THEIR client
+    // (and is mirrored to others), so clearing only this client's copy left them locked out
+    // until game time ran the clock down (tester, 2026-10-29: Admin → Terminals → Reset did nothing).
+    const n = this._clearTargetLocal(targetId);
+    if (broadcast) game.nightcity?.socketManager?.emit(SOCKET_OPS.SECURITY_CLEAR, { actorId: '*', targets: [targetId] });
+    log.debug(`Security states reset for target: ${targetId} (${n} cleared here, every client told)`);
   }
 
   /**
@@ -395,6 +543,20 @@ export class SecurityService {
    * Get all active lockouts.
    * @returns {SecurityState[]}
    */
+  /**
+   * Every actor this client knows about on a target (own states + the ones players reported), as
+   * { actorId, attempts, maxAttempts, lockoutRemaining } — the GM's node inspector reads it.
+   * @param {string} targetId
+   */
+  knownForTarget(targetId) {
+    const ids = new Set();
+    for (const map of [this._states, this._remote]) for (const key of map.keys()) {
+      const i = key.indexOf('::');
+      if (key.slice(i + 2) === targetId) ids.add(key.slice(0, i));
+    }
+    return [...ids].map((actorId) => ({ actorId, ...(this.getKnownState(actorId, targetId) || {}) })).filter((x) => x.attempts > 0 || x.lockoutRemaining > 0);
+  }
+
   getActiveLockouts() {
     const now = this._nowMs();
     const lockouts = [];

@@ -1,0 +1,672 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Network nodes v2</title>
+<!--
+  NETWORK NODES — round 2 (2026-10-29). Design: dev/design/NETWORK-NODES.md ("Round 2"). Round 1 stays as a record:
+  network-nodes-mock.html. Click the PLAY buttons — the jack-in runs for real here.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/network-nodes-v2-mock.html
+  ?only=N one section · ?t=clean-light|high-contrast the GM frames · ?still=1 final frames, no motion
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #141419; font-family: sans-serif; }
+  .mk-h { max-width: 1180px; margin: 32px auto 4px; color: #eee; font: 700 15px sans-serif; }
+  .mk-p { max-width: 1180px; margin: 0 auto 12px; color: #aaa; font: 13px/1.5 sans-serif; } .mk-p b { color: #ddd; }
+  .mk-row { max-width: 1180px; margin: 0 auto; display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-cap { color: #888; font: 11.5px sans-serif; margin: 6px 0 0; max-width: 560px; }
+  .mk-ctl { display: flex; gap: 8px; margin: 0 0 8px; }
+  .mk-ctl button { all: unset; cursor: pointer; padding: 5px 12px; border: 1px solid #555; color: #ddd; font: 600 12px sans-serif; background: #222; }
+  .mk-ctl button:hover { border-color: #19f3f7; color: #fff; }
+
+  /* ═══ PLAYER — node family (player theme + the network colour --nc) ═══ */
+  .nn { --nc: #5c9bff; --cut: 14px; position: relative; width: 540px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body);
+    background: radial-gradient(120% 80% at 100% 0, color-mix(in srgb, var(--nc) 10%, transparent), transparent 60%), var(--ncm-bg-deep, #07070c);
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+    filter: drop-shadow(0 0 0 transparent); }
+  .nn-frame { position: absolute; inset: 0; pointer-events: none; z-index: 3;
+    background: linear-gradient(var(--nc), var(--nc)) top left / 40px 1px no-repeat, linear-gradient(var(--nc), var(--nc)) top left / 1px 40px no-repeat,
+      linear-gradient(var(--nc), var(--nc)) bottom right / 40px 1px no-repeat, linear-gradient(var(--nc), var(--nc)) bottom right / 1px 40px no-repeat;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nc) 28%, transparent); }
+  .nn::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2; background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--nc) 5%, transparent) 0 1px, transparent 1px 3px); }
+  .nn-bar { position: relative; display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 20px; border-bottom: 1px solid color-mix(in srgb, var(--nc) 35%, transparent);
+    font: 700 10.5px var(--ncm-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--nc); background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 16%, transparent), transparent 70%); }
+  .nn-bar i { margin: 0 !important; }
+  .nn-bar .hex { color: color-mix(in srgb, var(--nc) 55%, var(--ncm-text-secondary)); letter-spacing: .06em; }
+  .nn-bar .r { margin-left: auto; color: var(--ncm-text-secondary); letter-spacing: .06em; }
+  .nn-hd { display: grid; grid-template-columns: 66px 1fr auto; gap: 14px; align-items: center; padding: 14px 16px 10px; }
+  .nn-ico { position: relative; width: 66px; height: 66px; display: grid; place-items: center; color: var(--nc); font-size: 26px; border: 1px solid var(--nc); background: color-mix(in srgb, var(--nc) 12%, transparent);
+    clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
+  .nn-ico i { margin: 0 !important; filter: drop-shadow(0 0 6px var(--nc)); }
+  .nn-ico::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; top: 0; background: var(--nc); box-shadow: 0 0 8px var(--nc); animation: nnscan 2.6s linear infinite; opacity: .7; }
+  @keyframes nnscan { from { top: 0; } to { top: 100%; } }
+  .nn-nm b { display: block; font: 700 20px var(--ncm-font-display); letter-spacing: .02em; }
+  .nn-nm small { display: block; font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .nn-state { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; font: 700 10.5px var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; border: 1px solid currentColor; }
+  .nn-state .led { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+  .nn[data-state="on"] .nn-state { color: #3ddc84; }
+  .nn[data-state="jam"] .nn-state { color: #f7c948; } .nn[data-state="jam"] .nn-state .led { animation: nnblink 1s steps(2) infinite; }
+  .nn[data-state="off"] .nn-state { color: #77778a; } .nn[data-state="off"] .nn-state .led { box-shadow: none; }
+  @keyframes nnblink { 50% { opacity: .15; } }
+  .nn.glitch .nn-hd, .nn.glitch .nn-wave { animation: nnglitch .45s steps(6) 1; }
+  @keyframes nnglitch { 0% { transform: translate(0); filter: none; } 20% { transform: translate(-3px, 1px); filter: hue-rotate(60deg) saturate(2); } 40% { transform: translate(3px, -1px); clip-path: inset(10% 0 40% 0); } 60% { transform: translate(-2px, 0); clip-path: inset(50% 0 5% 0); } 80% { transform: translate(1px, 1px); filter: none; clip-path: none; } 100% { transform: none; } }
+  .nn-wave { position: relative; margin: 0 16px; height: 52px; border: 1px solid color-mix(in srgb, var(--nc) 22%, var(--ncm-border)); background: linear-gradient(color-mix(in srgb, var(--nc) 7%, transparent) 1px, transparent 1px) 0 0 / 100% 13px; }
+  .nn-wave svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .nn-wave path { fill: none; stroke: var(--nc); stroke-width: 1.5; filter: drop-shadow(0 0 3px var(--nc)); }
+  .nn-wave .lbl { position: absolute; left: 6px; top: 3px; font: 700 9px var(--ncm-font-mono); letter-spacing: .12em; color: color-mix(in srgb, var(--nc) 70%, var(--ncm-text-secondary)); }
+  .nn-wave .lbl.r { left: auto; right: 6px; }
+  .nn[data-state="off"] .nn-wave path { stroke: #55556a; filter: none; }
+  .nn-stats { display: grid; grid-template-columns: repeat(4, 1fr); margin: 10px 16px 0; }
+  .nn-stats > div { padding: 6px 10px; border-left: 2px solid color-mix(in srgb, var(--nc) 40%, transparent); }
+  .nn-stats span.k { display: block; font: 700 9px var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .nn-stats b { font: 700 16px var(--ncm-font-mono); }
+  .bars { display: inline-flex; gap: 2px; align-items: flex-end; height: 14px; margin-right: 6px; vertical-align: -1px; }
+  .bars .bar { display: inline-block; width: 3px; background: var(--nc); animation: nnbreathe 2.4s ease-in-out infinite; }
+  .bars .bar:nth-child(2) { animation-delay: .2s; } .bars .bar:nth-child(3) { animation-delay: .4s; }
+  .bars .bar.o { background: color-mix(in srgb, var(--nc) 22%, transparent); animation: none; }
+  @keyframes nnbreathe { 50% { opacity: .55; } }
+  .alert { display: inline-flex; gap: 3px; vertical-align: 2px; }
+  .alert .al { display: inline-block; width: 14px; height: 6px; background: color-mix(in srgb, var(--ncm-text-secondary) 25%, transparent); clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%); }
+  .alert .al.w { background: #f7c948; } .alert .al.a { background: #ff4d5e; box-shadow: 0 0 6px #ff4d5e; }
+  .nn-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px 12px; }
+  .nn-act { position: relative; display: grid; grid-template-columns: 32px 1fr; gap: 3px 10px; align-items: center; padding: 10px 12px; cursor: pointer; overflow: hidden;
+    border: 1px solid var(--ncm-border); background: linear-gradient(135deg, color-mix(in srgb, var(--nc) 5%, var(--ncm-bg-surface, #12121a)), var(--ncm-bg-surface, #12121a));
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); transition: border-color .15s; }
+  .nn-act::before { content: ''; position: absolute; left: -40%; top: 0; bottom: 0; width: 30%; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--nc) 22%, transparent), transparent); transform: skewX(-20deg); opacity: 0; }
+  .nn-act:hover { border-color: var(--nc); } .nn-act:hover::before { opacity: 1; animation: nnsweep .7s ease-out; }
+  @keyframes nnsweep { to { left: 120%; } }
+  .nn-act > i { grid-row: span 2; width: 32px; height: 32px; display: grid; place-items: center; margin: 0 !important; color: var(--nc); border: 1px solid color-mix(in srgb, var(--nc) 45%, transparent); background: color-mix(in srgb, var(--nc) 12%, transparent); }
+  .nn-act b { font: 700 13px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+  .nn-act small { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .nn-act.pri { border-color: var(--nc); box-shadow: inset 0 0 18px color-mix(in srgb, var(--nc) 18%, transparent); }
+  .nn-act.mal > i { color: #c084fc; border-color: color-mix(in srgb, #c084fc 45%, transparent); background: color-mix(in srgb, #c084fc 12%, transparent); }
+  .nn-ticker { position: relative; height: 24px; overflow: hidden; border-top: 1px solid color-mix(in srgb, var(--nc) 25%, transparent); font: 11px/24px var(--ncm-font-mono); color: color-mix(in srgb, var(--nc) 60%, var(--ncm-text-secondary)); white-space: nowrap; }
+  .nn-ticker span { display: inline-block; padding-left: 100%; animation: nntick 22s linear infinite; }
+  .still .nn-ticker span { animation: none; padding-left: 16px; }
+  .nn[data-state="off"] .nn-ticker span { animation: none; padding-left: 16px; color: #77778a; }
+  @keyframes nntick { to { transform: translateX(-100%); } }
+
+  /* ═══ the JACK-IN sequence ═══ */
+  .jk { --nc: #5c9bff; position: relative; width: 640px; height: 420px; overflow: hidden; background: #03040a; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body);
+    clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px); }
+  .jk .nn-frame { z-index: 9; }
+  .jk-bar { position: absolute; left: 0; right: 0; top: 0; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 7px 16px 7px 22px; font: 700 10.5px var(--ncm-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--nc);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 18%, transparent), transparent 70%); border-bottom: 1px solid color-mix(in srgb, var(--nc) 35%, transparent); }
+  .jk-bar i { margin: 0 !important; } .jk-bar .r { margin-left: auto; color: var(--ncm-text-secondary); }
+  /* tunnel */
+  .jk-tunnel { position: absolute; inset: 34px 0 0 0; perspective: 260px; overflow: hidden; opacity: 0; transition: opacity .4s; }
+  .jk[data-phase] .jk-tunnel { opacity: 1; }
+  .jk-floor, .jk-ceil { position: absolute; left: -50%; right: -50%; height: 70%; background:
+      linear-gradient(color-mix(in srgb, var(--nc) 55%, transparent) 2px, transparent 2px) 0 0 / 100% 40px,
+      linear-gradient(90deg, color-mix(in srgb, var(--nc) 40%, transparent) 1px, transparent 1px) 0 0 / 50px 100%; }
+  .jk-floor { bottom: -12%; transform: rotateX(78deg); transform-origin: bottom; }
+  .jk-ceil { top: -12%; transform: rotateX(-78deg); transform-origin: top; opacity: .45; }
+  .jk[data-phase="run"] .jk-floor, .jk[data-phase="run"] .jk-ceil, .jk[data-phase="wait"] .jk-floor, .jk[data-phase="wait"] .jk-ceil { animation: jkrush .35s linear infinite; }
+  .jk[data-phase="wait"] .jk-floor, .jk[data-phase="wait"] .jk-ceil { animation-duration: 2.4s; }
+  @keyframes jkrush { to { background-position: 0 40px, 0 0; } }
+  .jk-vanish { position: absolute; left: 50%; top: 50%; width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--nc) 80%, #fff) 0, color-mix(in srgb, var(--nc) 30%, transparent) 30%, transparent 70%); filter: blur(4px); }
+  /* plug-in line */
+  .jk-plug { position: absolute; left: 22px; top: 52px; z-index: 5; display: flex; align-items: center; gap: 10px; opacity: 0; }
+  .jk[data-phase] .jk-plug { opacity: 1; }
+  .jk-face { width: 46px; height: 46px; display: grid; place-items: center; border: 1px solid var(--nc); background: #0a0d18; color: var(--nc); font: 700 15px var(--ncm-font-display); }
+  .jk-wire { height: 2px; width: 0; background: linear-gradient(90deg, var(--nc), #fff); box-shadow: 0 0 10px var(--nc); transition: width .7s cubic-bezier(.2,.9,.2,1); }
+  .jk[data-phase="plug"] .jk-wire, .jk[data-phase="run"] .jk-wire, .jk[data-phase="roll"] .jk-wire, .jk[data-phase="in"] .jk-wire, .jk[data-phase="miss"] .jk-wire, .jk[data-phase="wait"] .jk-wire { width: 120px; }
+  .jk-plug small { font: 700 10px var(--ncm-font-mono); letter-spacing: .1em; color: var(--nc); }
+  /* the walls */
+  .jk-walls { position: absolute; left: 0; right: 0; top: 112px; z-index: 5; display: flex; justify-content: center; gap: 38px; }
+  .jk-wall { position: relative; width: 110px; height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    border: 1px solid color-mix(in srgb, var(--nc) 60%, transparent); background: color-mix(in srgb, var(--nc) 10%, rgba(3,4,10,.85)); color: var(--nc); text-align: center;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); transition: transform .3s, opacity .3s; }
+  .jk-wall i { margin: 0 !important; font-size: 22px; }
+  .jk-wall b { font: 700 10.5px var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; }
+  .jk-wall::before, .jk-wall::after { content: ''; position: absolute; background: #fff; opacity: 0; box-shadow: 0 0 6px #fff; }
+  .jk-wall::before { width: 2px; height: 120%; left: 46%; top: -10%; transform: rotate(18deg); }
+  .jk-wall::after { width: 2px; height: 70%; left: 30%; top: 30%; transform: rotate(-38deg); }
+  .jk-wall.crack::before, .jk-wall.crack::after { opacity: .9; }
+  .jk-wall.crack { animation: jkhit .25s 2; }
+  @keyframes jkhit { 50% { transform: translateY(-3px) scale(1.03); } }
+  .jk-wall.gone { transform: scale(1.5); opacity: 0; filter: blur(3px); }
+  .jk-wall.done { border-color: #3ddc84; color: #3ddc84; background: rgba(61,220,132,.08); transform: none; opacity: 1; filter: none; }
+  .jk-wall.done::before, .jk-wall.done::after { opacity: 0; }
+  .jk-wall.ice { border-color: #ff4d5e; color: #ff4d5e; background: rgba(255,77,94,.1); }
+  /* hex roll */
+  .jk-roll { position: absolute; left: 50%; bottom: 66px; z-index: 5; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 12px; opacity: 0; transition: opacity .3s; }
+  .jk[data-phase="roll"] .jk-roll, .jk[data-phase="in"] .jk-roll, .jk[data-phase="miss"] .jk-roll { opacity: 1; }
+  .jk-cols { display: flex; gap: 4px; }
+  .jk-colw { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 700 9px var(--ncm-font-mono); letter-spacing: .08em; color: #8a93ad; }
+  .jk-colw.op { font: 700 18px var(--ncm-font-mono); color: #8a93ad; padding-bottom: 18px; }
+  .jk-col { width: 34px; height: 40px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nc) 50%, transparent); background: rgba(3,4,10,.9); font: 700 20px/40px var(--ncm-font-mono); text-align: center; color: color-mix(in srgb, var(--nc) 60%, #fff); }
+  .jk-col.lock { color: #fff; border-color: var(--nc); box-shadow: 0 0 10px color-mix(in srgb, var(--nc) 60%, transparent); }
+  .jk-sum { font: 700 11px var(--ncm-font-mono); letter-spacing: .08em; color: var(--ncm-text-secondary); text-align: center; }
+  .jk-sum b { display: block; font: 700 30px var(--ncm-font-mono); color: #fff; letter-spacing: 0; }
+  .jk-meter { position: absolute; left: 60px; right: 60px; bottom: 36px; z-index: 5; height: 8px; background: rgba(255,255,255,.08); opacity: 0; }
+  .jk[data-phase="roll"] .jk-meter, .jk[data-phase="in"] .jk-meter, .jk[data-phase="miss"] .jk-meter { opacity: 1; }
+  .jk-meter i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 50%, transparent), var(--nc)); transition: width 1.1s cubic-bezier(.2,.9,.2,1); }
+  .jk-meter em { position: absolute; top: -5px; bottom: -5px; width: 2px; background: #fff; }
+  .jk-meter em::after { content: 'DV 15'; position: absolute; top: 14px; left: -14px; font: 700 9.5px var(--ncm-font-mono); color: #aaa; font-style: normal; white-space: nowrap; }
+  /* verdicts */
+  .jk-flash { position: absolute; inset: 0; z-index: 7; pointer-events: none; opacity: 0; }
+  .jk[data-phase="in"] .jk-flash { background: radial-gradient(circle, color-mix(in srgb, var(--nc) 70%, #fff), transparent 70%); animation: jkflash .7s ease-out 1 forwards; }
+  @keyframes jkflash { 0% { opacity: 0; } 15% { opacity: .9; } 100% { opacity: 0; } }
+  .jk-verdict { position: absolute; left: 0; right: 0; top: 52%; z-index: 8; text-align: center; font: 700 44px var(--ncm-font-display); letter-spacing: .3em; opacity: 0; transform: scale(1.4); transition: opacity .25s, transform .35s cubic-bezier(.2,1.4,.4,1); }
+  .jk-verdict small { display: block; font: 13px var(--ncm-font-body); letter-spacing: .02em; color: #ddd; }
+  .jk[data-phase="in"] .jk-verdict.in, .jk[data-phase="miss"] .jk-verdict.miss { opacity: 1; transform: none; }
+  .jk-verdict.in { color: #9ff3ff; text-shadow: 0 0 20px var(--nc); } .jk-verdict.miss { color: #ff4d5e; text-shadow: 0 0 20px #ff4d5e; }
+  .jk-static { position: absolute; inset: 0; z-index: 6; pointer-events: none; opacity: 0; background:
+      repeating-linear-gradient(0deg, rgba(255,77,94,.25) 0 2px, transparent 2px 4px), repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px); mix-blend-mode: screen; }
+  .jk[data-phase="miss"] .jk-static { opacity: 1; animation: jkstatic .12s steps(2) infinite; }
+  @keyframes jkstatic { 50% { background-position: 0 3px, 2px 0; } }
+  .jk[data-phase="miss"] { animation: jkshake .4s 2; }
+  @keyframes jkshake { 25% { transform: translate(-6px, 2px); } 50% { transform: translate(5px, -3px); } 75% { transform: translate(-3px, 1px); } }
+  .jk-ice { position: absolute; left: 50%; top: 20%; z-index: 8; width: 90px; height: 90px; margin-left: -45px; display: grid; place-items: center; font-size: 46px; color: #ff4d5e; opacity: 0; transform: scale(3); }
+  .jk-ice i { margin: 0 !important; filter: drop-shadow(0 0 14px #ff4d5e); }
+  .jk[data-phase="miss"] .jk-ice { opacity: 1; transform: scale(1); transition: transform .25s cubic-bezier(.2,1.6,.4,1), opacity .1s; }
+  .jk-wait { position: absolute; left: 0; right: 0; bottom: 70px; z-index: 6; text-align: center; opacity: 0; }
+  .jk[data-phase="wait"] .jk-wait { opacity: 1; }
+  .jk-wait b { display: block; font: 700 18px var(--ncm-font-display); letter-spacing: .24em; color: #f7c948; animation: nnblink 1.6s steps(2) infinite; }
+  .jk-wait small { color: #bbb; }
+  .jk-alert { position: absolute; right: 18px; top: 50px; z-index: 6; text-align: right; font: 700 9.5px var(--ncm-font-mono); letter-spacing: .12em; color: var(--ncm-text-secondary); }
+  .jk-alert .alert { display: flex; gap: 3px; justify-content: flex-end; margin-top: 4px; }
+  .jk[data-phase="miss"] .jk-alert .al:nth-child(2) { background: #ff4d5e; box-shadow: 0 0 8px #ff4d5e; animation: nnblink .4s steps(2) 4; }
+  .jk-skip { position: absolute; right: 18px; bottom: 10px; z-index: 9; font: 700 10px var(--ncm-font-mono); letter-spacing: .12em; color: #777; }
+  @media (prefers-reduced-motion: reduce) { .jk *, .jk { animation: none !important; transition: none !important; } }
+
+  /* ═══ session ═══ */
+  .ss { width: 700px; }
+  .ss-top { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--ncm-border); }
+  .moves { display: flex; align-items: center; gap: 8px; font: 700 10px var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .moves .pips { display: flex; gap: 4px; }
+  .moves .pip { width: 16px; height: 16px; transform: rotate(45deg) scale(.75); border: 1px solid var(--nc); }
+  .moves .pip.on { background: var(--nc); box-shadow: 0 0 8px var(--nc); }
+  .ss-top .who { margin-left: auto; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ss-top .who b { color: var(--ncm-text-primary); }
+  .ss-grid { display: grid; grid-template-columns: 1fr 200px; }
+  .ss-acts { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--ncm-border); }
+  .sa { position: relative; display: grid; grid-template-columns: 30px 1fr 120px; gap: 2px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface);
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%); }
+  .sa > i { grid-row: span 2; width: 30px; height: 30px; display: grid; place-items: center; margin: 0 !important; color: var(--nc); border: 1px solid color-mix(in srgb, var(--nc) 40%, transparent); }
+  .sa b { font: 700 12.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+  .sa small { grid-column: 2; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .sa .dv { grid-row: span 2; text-align: right; font: 700 12px var(--ncm-font-mono); }
+  .sa .dv s { color: var(--ncm-text-secondary); text-decoration: line-through; margin-right: 4px; font-weight: 400; }
+  .sa .dv em { display: block; font: 600 10.5px var(--ncm-font-body); font-style: normal; color: #3ddc84; }
+  .sa.lock { opacity: .5; } .sa.lock .dv em { color: #f7c948; }
+  .sa.lock > i { color: var(--ncm-text-secondary); border-color: var(--ncm-border); }
+  .sa.mal > i { color: #c084fc; border-color: color-mix(in srgb, #c084fc 45%, transparent); }
+  .sa.gear .dv em { color: #c084fc; }
+  .ss-side { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .k2 { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .k2 i { margin: 0 !important; color: var(--nc); }
+  .log { font: 11px/1.6 var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .log .me { color: #f7c948; display: flex; } .log .me a { margin-left: auto; color: #ff4d5e; text-decoration: underline; cursor: pointer; }
+  .rank { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .rank b { font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .btnrow { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 16px 14px; }
+  .b { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 14px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); color: var(--ncm-text-primary); font: 700 11px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  .b i { margin: 0 !important; } .b.pri { background: var(--nc); border-color: var(--nc); color: #04060c; }
+
+  /* ═══ shard building ═══ */
+  .wk { width: 760px; border: 1px solid #3a2a55; background: linear-gradient(180deg, #120c1c, #0a0710); color: #eadcff; font: 13px var(--ncm-font-body); }
+  .wk-h { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid #3a2a55; font: 700 10.5px var(--ncm-font-mono); letter-spacing: .14em; text-transform: uppercase; color: #c084fc; }
+  .wk-h i { margin: 0 !important; }
+  .wk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px 14px; }
+  .pg { position: relative; padding: 10px; border: 1px solid #3a2a55; background: #150e22; cursor: pointer; }
+  .pg.on { border-color: #c084fc; box-shadow: inset 0 0 0 1px #c084fc, 0 0 16px rgba(192,132,252,.25); }
+  .pg i.ic { margin: 0 0 6px !important; display: block; font-size: 18px; color: #c084fc; }
+  .pg b { display: block; font: 700 13px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; }
+  .pg small { display: block; font: 11.5px var(--ncm-font-body); color: #b9a6d6; line-height: 1.35; }
+  .pg .tier { position: absolute; top: 8px; right: 8px; font: 700 9px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: #8f7bb0; }
+  .pg .tier.need { color: #f7c948; }
+  .pg.new::after { content: 'NEW'; position: absolute; bottom: 8px; right: 8px; font: 700 9px var(--ncm-font-display); color: #3ddc84; }
+  .wk-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid #3a2a55; }
+  .wk-detail > div { padding: 12px 14px; }
+  .wk-detail > div + div { border-left: 1px solid #3a2a55; }
+  .q { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font: 12.5px var(--ncm-font-body); color: #d8c8f0; }
+  .q b { font: 700 10.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; }
+  .q .g { color: #3ddc84; } .q .s { color: #f7c948; } .q .r { color: #ff4d5e; }
+  .chain { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .chain span { padding: 4px 9px; border: 1px solid #c084fc; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+  .loot { width: 360px; border: 1px solid #5c9bff; background: #070b14; color: #dce8ff; font: 12px var(--ncm-font-mono); }
+  .loot-h { padding: 8px 12px; border-bottom: 1px solid #23365c; display: flex; gap: 8px; align-items: center; font: 700 11px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; color: #8fb8ff; }
+  .loot-h i { margin: 0 !important; }
+  .loot div.l { padding: 4px 12px; border-bottom: 1px dashed #1b2a48; display: flex; gap: 10px; } .loot div.l span { color: #6b84b0; }
+
+  /* ═══ GM (admin preset) ═══ */
+  .gm { width: 1180px; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); border: 1px solid #555; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); padding: 12px 14px; }
+  .gm .ncm-tabhd { margin: 0 0 10px; }
+  .card { border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); }
+  .card-hd { display: flex; align-items: center; gap: 9px; padding: 9px 12px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 0 var(--ncm-act); }
+  .card-hd b { font: 700 12px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .card-hd small { font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-secondary)); }
+  .card-hd i { margin: 0 !important; color: var(--ncm-act); }
+  .card-hd .r { margin-left: auto; display: flex; gap: 6px; }
+  .tbl { width: 100%; border-collapse: collapse; margin: 0 !important; }
+  .tbl th { text-align: left; padding: 6px 10px; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+  .tbl td { padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 65%, transparent); }
+  .tbl td .act { display: flex; align-items: center; gap: 8px; font: 600 13px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .tbl td .act i { margin: 0 !important; width: 22px; text-align: center; color: var(--ncm-act); }
+  .tbl td .act.mal i { color: var(--ncm-secret); }
+  .num { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 26px; padding: 0 8px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); font: 13px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .sw { display: inline-block; width: 30px; height: 16px; border-radius: 8px; background: var(--ncm-act); position: relative; vertical-align: middle; }
+  .sw::after { content: ''; position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-inverse, #06121a); }
+  .sw.off { background: var(--ncm-border); } .sw.off::after { right: auto; left: 2px; background: var(--ncm-text-secondary); }
+  .dials { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px; border-bottom: 1px solid var(--ncm-border); }
+  .dial { padding: 10px 12px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-card); }
+  .dial .h { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font: 700 12px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .dial .h i { margin: 0 !important; color: var(--ncm-act); } .dial .h .sw { margin-left: auto; }
+  .dial p { margin: 0 0 6px !important; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ladder5 { display: flex; gap: 0; }
+  .ladder5 span { flex: 1; padding: 4px 0; text-align: center; border: 1px solid var(--ncm-border); margin-left: -1px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ladder5 span b { display: block; font: 700 14px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .disc { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px dashed var(--ncm-border); color: var(--ncm-text-secondary); font: 12.5px var(--ncm-font-body); }
+  .disc i { margin: 0 !important; color: var(--ncm-text-hint, var(--ncm-text-secondary)); }
+  .disc b { color: var(--ncm-text-heading); }
+
+  /* nodes at scale */
+  .tb { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--ncm-border); }
+  .srch { flex: 1; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 9px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); color: var(--ncm-text-secondary); font: 12.5px var(--ncm-font-body); }
+  .srch i { margin: 0 !important; }
+  .chipf { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-card); font: 700 10.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .chipf b { font: 700 12px var(--ncm-font-mono); }
+  .chipf.inf b { color: var(--ncm-secret); } .chipf.alarm b { color: var(--ncm-bad); } .chipf.jam b { color: var(--ncm-attn); } .chipf.on { background: color-mix(in srgb, var(--ncm-secret) 16%, var(--ncm-bg-card)); box-shadow: inset 0 -2px 0 var(--ncm-secret); }
+  .sel { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-card); font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .sel span { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .bulk { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: color-mix(in srgb, var(--ncm-act) 10%, var(--ncm-bg-card)); border-bottom: 1px solid var(--ncm-border); font: 12.5px var(--ncm-font-body); }
+  .bulk b { font: 700 13px var(--ncm-font-mono); color: var(--ncm-act); }
+  .gb { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-card); font: 700 10.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .gb i { margin: 0 !important; font-size: 10.5px; } .gb.pri { background: var(--ncm-act); border-color: var(--ncm-act); color: var(--ncm-text-inverse); }
+  .gb.bad { border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent); color: color-mix(in srgb, var(--ncm-bad) 80%, var(--ncm-text-heading)); }
+  .grp { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border); font: 700 10.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .grp i { margin: 0 !important; font-size: 9px; color: var(--ncm-text-label); }
+  .grp .n { font: 400 11px var(--ncm-font-mono); letter-spacing: 0; text-transform: none; color: var(--ncm-text-secondary); }
+  .grp .dots { margin-left: auto; display: flex; gap: 3px; } .grp .dots span { width: 8px; height: 8px; border-radius: 50%; }
+  .grp .wt { padding: 0 6px; border: 1px solid color-mix(in srgb, var(--ncm-secret) 50%, transparent); color: var(--ncm-secret); font: 700 10px var(--ncm-font-mono); letter-spacing: 0; }
+  .nrow { display: grid; grid-template-columns: 22px 30px 1.4fr 1fr 110px 90px 70px 110px 100px; gap: 10px; align-items: center; padding: 6px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 65%, transparent); font: 12.5px var(--ncm-font-body); }
+  .nrow.inf { box-shadow: inset 3px 0 0 var(--ncm-secret); }
+  .nrow .cb { width: 14px; height: 14px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); display: grid; place-items: center; font-size: 9px; color: var(--ncm-act); }
+  .nrow .ki { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--c) 50%, transparent); color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
+  .nrow .ki i { margin: 0 !important; }
+  .nrow b { display: block; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); } .nrow small { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; border: 1px solid; }
+  .pill.on { color: var(--ncm-good); border-color: color-mix(in srgb, var(--ncm-good) 55%, transparent); } .pill.off { color: var(--ncm-text-secondary); border-color: var(--ncm-border); }
+  .pill.jam { color: var(--ncm-attn); border-color: color-mix(in srgb, var(--ncm-attn) 55%, transparent); } .pill.dmg { color: var(--ncm-bad); border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent); }
+  .pill.inf { color: var(--ncm-secret); border-color: color-mix(in srgb, var(--ncm-secret) 55%, transparent); animation: pulseV 1.6s ease-in-out infinite; }
+  @keyframes pulseV { 50% { box-shadow: 0 0 10px color-mix(in srgb, var(--ncm-secret) 55%, transparent); } }
+  .more { padding: 8px 12px; color: var(--ncm-act); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+
+  /* topology */
+  .topo { display: grid; grid-template-columns: 1fr 300px; gap: 0; }
+  .topo svg { display: block; width: 100%; height: 470px; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--ncm-act) 5%, transparent), transparent 70%), var(--ncm-bg-pane); }
+  .topo .cl { fill: color-mix(in srgb, var(--ncm-text-primary) 3%, transparent); stroke: color-mix(in srgb, var(--ncm-border) 90%, transparent); stroke-dasharray: 3 4; }
+  .topo .cll { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; fill: var(--ncm-text-label, var(--ncm-text-secondary)); }
+  .topo .bb { stroke: color-mix(in srgb, #5c9bff 45%, transparent); stroke-width: 1.5; fill: none; }
+  .topo .sp { stroke: var(--ncm-secret); stroke-width: 2.4; fill: none; stroke-dasharray: 6 6; animation: dash 1s linear infinite; filter: drop-shadow(0 0 4px var(--ncm-secret)); }
+  .topo .nxt { stroke: var(--ncm-secret); stroke-width: 1.5; fill: none; stroke-dasharray: 2 5; opacity: .6; }
+  @keyframes dash { to { stroke-dashoffset: -12; } }
+  .topo .nd { stroke-width: 2; }
+  .topo .nd.on { fill: #0d1830; stroke: #5c9bff; } .topo .nd.inf { fill: color-mix(in srgb, var(--ncm-secret) 25%, #0d0818); stroke: var(--ncm-secret); filter: drop-shadow(0 0 6px var(--ncm-secret)); }
+  .topo .nd.jam { fill: #1e1606; stroke: var(--ncm-attn); animation: nnblink 1s steps(2) infinite; } .topo .nd.off { fill: #121218; stroke: #55556a; } .topo .nd.dmg { fill: #1e070b; stroke: var(--ncm-bad); }
+  .topo .nd.ghost { fill: none; stroke: var(--ncm-secret); stroke-dasharray: 3 3; opacity: .7; }
+  .topo .nl { font: 600 10.5px var(--ncm-font-display); fill: var(--ncm-text-primary); }
+  .topo .ring { fill: none; stroke: var(--ncm-act); stroke-width: 1.5; }
+  .topo-side { border-left: 1px solid var(--ncm-border); padding: 12px; display: flex; flex-direction: column; gap: 12px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); }
+  .lg { display: grid; grid-template-columns: 14px 1fr; gap: 5px 8px; align-items: center; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .lg i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid; display: inline-block; }
+  .kv2 { display: grid; grid-template-columns: 90px 1fr; gap: 4px 8px; font: 12.5px var(--ncm-font-body); }
+  .kv2 span { color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+
+  /* timeline */
+  .tl { padding: 14px 16px 18px; }
+  .tlr { display: grid; grid-template-columns: 200px 1fr; gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--ncm-border); }
+  .tlr b { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); display: block; } .tlr small { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .track { position: relative; height: 46px; }
+  .track::before { content: ''; position: absolute; left: 0; right: 0; top: 18px; height: 2px; background: var(--ncm-border); }
+  .track .now { position: absolute; top: 4px; bottom: 8px; width: 2px; background: var(--ncm-act); }
+  .track .now::after { content: 'now'; position: absolute; top: -12px; left: -9px; font: 700 9.5px var(--ncm-font-mono); color: var(--ncm-act); }
+  .hop { position: absolute; top: 12px; width: 14px; height: 14px; margin-left: -7px; transform: rotate(45deg); background: var(--ncm-secret); box-shadow: 0 0 8px var(--ncm-secret); }
+  .hop.ghost { background: none; border: 1px dashed var(--ncm-secret); box-shadow: none; }
+  .hop.bomb { background: var(--ncm-bad); box-shadow: 0 0 10px var(--ncm-bad); }
+  .hopl { position: absolute; top: 30px; transform: translateX(-50%); font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); white-space: nowrap; }
+  .hopl.ghost { color: var(--ncm-secret); }
+  .seg-fill { position: absolute; top: 18px; height: 2px; background: var(--ncm-secret); box-shadow: 0 0 6px var(--ncm-secret); }
+</style>
+</head>
+<body>
+
+<div class="mk-h">1 · The node console — more cyberpunk, still clean</div>
+<div class="mk-p">Cut corners, a hex address in the header, a <b>live traffic trace</b> (it flatlines when the node is off), a packet ticker, bars that breathe, a scan line over the icon. State changes <b>glitch</b> over. Try the buttons.</div>
+<div class="mk-row">
+  <div>
+    <div class="mk-ctl"><button data-st="on">On</button><button data-st="jam">Jammed</button><button data-st="off">Off</button></div>
+    <div class="ncm-app nn mk-win" id="CON" data-state="on">
+      <div class="nn-frame"></div>
+      <div class="nn-bar"><i class="fas fa-tower-broadcast"></i>Node<span class="hex">0x3FA2·C9</span>// NCPD Dispatch<span class="r">Kabuki · relay 03</span></div>
+      <div class="nn-hd">
+        <div class="nn-ico"><i class="fas fa-tower-cell"></i></div>
+        <div class="nn-nm"><b>Kabuki relay mast</b><small>NCPD Dispatch · relay · rooftop, 4th &amp; Kabuki</small></div>
+        <div class="nn-state"><span class="led"></span><span data-stl>On</span></div>
+      </div>
+      <div class="nn-wave"><span class="lbl">TRAFFIC</span><span class="lbl r" data-rate>4.2 kb/s</span><svg viewBox="0 0 500 52" preserveAspectRatio="none"><path id="WAVE" d=""/></svg></div>
+      <div class="nn-stats">
+        <div><span class="k">Signal</span><b><span class="bars"><span class="bar" style="height:5px"></span><span class="bar" style="height:8px"></span><span class="bar" style="height:11px"></span><span class="bar o" style="height:14px"></span></span><span data-sig>78%</span></b></div>
+        <div><span class="k">Connected</span><b data-con>3</b></div>
+        <div><span class="k">Alert</span><b><span class="alert"><span class="al w"></span><span class="al"></span><span class="al"></span></span></b></div>
+        <div><span class="k">Box</span><b style="font-size:13px"><i class="fas fa-lock" style="color:#c084fc;margin:0 5px 0 0"></i>Locked</b></div>
+      </div>
+      <div class="nn-acts">
+        <div class="nn-act"><i class="fas fa-wifi"></i><b>Connect</b><small>Join NCPD Dispatch — it asks for its login</small></div>
+        <div class="nn-act pri"><i class="fas fa-plug"></i><b>Jack in</b><small>Interface 4 · deck +1 · 3 moves</small></div>
+        <div class="nn-act mal"><i class="fas fa-microchip"></i><b>Insert a shard</b><small>2 shards with programs</small></div>
+        <div class="nn-act"><i class="fas fa-power-off"></i><b>Switch off</b><small>Needs the box open — or jack in</small></div>
+      </div>
+      <div class="nn-ticker"><span data-tick>0x3F·A2 ncpd.unit-07 → dispatch · 412b · ▲  0x3F·A2 dispatch → ncpd.unit-12 · 1.1kb · ▼  0x3F·A2 ncpd.unit-03 handshake ok  0x3F·A2 relay sync 03→04 · ▲</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-h">2 · Jack in — the sequence (press play)</div>
+<div class="mk-p">The neural line plugs in, a <b>data tunnel</b> rushes forward, and each stop is a <b>wall</b> that cracks and shatters. The roll is <b>hex columns locking</b> while a bar climbs to the DV line. <b>IN</b> flashes cyan and the session unfolds. <b>MISS</b> brings red static and a shake, the ICE glyph slams in, and the alert jumps. <b>GM decides</b> idles the tunnel. Skippable; reduced motion shows the final frame.</div>
+<div class="mk-row">
+  <div>
+    <div class="mk-ctl"><button data-jk="in">▶ Play — IN</button><button data-jk="miss">▶ Play — MISS</button><button data-jk="wait">▶ GM decides</button></div>
+    <div class="ncm-app jk mk-win" id="JK">
+      <div class="nn-frame"></div>
+      <div class="jk-bar"><i class="fas fa-plug"></i>Jacking in // Kabuki relay mast<span class="r" data-jkr>Interface · DV 15</span></div>
+      <div class="jk-tunnel"><div class="jk-ceil"></div><div class="jk-floor"></div><div class="jk-vanish"></div></div>
+      <div class="jk-plug"><div class="jk-face">R</div><div class="jk-wire"></div><small data-plugtx>LINK</small></div>
+      <div class="jk-alert">ALERT<div class="alert"><span class="al w"></span><span class="al"></span><span class="al"></span></div></div>
+      <div class="jk-walls">
+        <div class="jk-wall" data-w="0"><i class="fas fa-lock"></i><b>Box lock</b></div>
+        <div class="jk-wall" data-w="1"><i class="fas fa-microchip"></i><b>Firmware</b></div>
+        <div class="jk-wall" data-w="2"><i class="fas fa-tower-broadcast"></i><b>Network</b></div>
+      </div>
+      <div class="jk-roll"><div class="jk-cols" id="COLS"></div><div class="jk-sum">TOTAL<b data-total>—</b></div></div>
+      <div class="jk-meter"><i data-meter></i><em style="left:60%"></em></div>
+      <div class="jk-ice"><i class="fas fa-skull"></i></div>
+      <div class="jk-static"></div>
+      <div class="jk-flash"></div>
+      <div class="jk-verdict in">IN<small>Beat it by 3 · 3 moves this session</small></div>
+      <div class="jk-verdict miss">REJECTED<small>13 vs DV 15 · trace fired · heat +20 · alert ▲ · 2 tries left</small></div>
+      <div class="jk-wait"><b>AWAITING GM</b><small>Run the netrun at the table — this waits (step away any time)</small></div>
+      <div class="jk-skip">CLICK TO SKIP</div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-h">3 · Inside — the session, where skill matters</div>
+<div class="mk-p">Moves left as pips (from your rank, plus one for beating the DV by 5 or more). Each action shows its DV with your <b>edge</b> taken off, or the rank it <b>unlocks</b> at. A program on a shard you carry can unlock an action.</div>
+<div class="mk-row">
+  <div class="ncm-app nn ss mk-win" style="--cut:16px">
+    <div class="nn-frame"></div>
+    <div class="nn-bar"><i class="fas fa-terminal"></i>Session<span class="hex">0x3FA2·C9</span>// Kabuki relay mast<span class="r">NCPD Dispatch · in</span></div>
+    <div class="ss-top">
+      <div class="moves">Moves<span class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip"></span></span>2 of 3 left</div>
+      <div class="moves">Alert<span class="alert"><span class="al w"></span><span class="al"></span><span class="al"></span></span></div>
+      <div class="who">Rache · <b>Interface 4</b> · deck <b>+1</b></div>
+    </div>
+    <div class="ss-grid">
+      <div class="ss-acts">
+        <div class="sa"><i class="fas fa-power-off"></i><b>Switch off</b><small>NCPD Dispatch goes dark on this scene</small><span class="dv">no roll<em>rank 1+</em></span></div>
+        <div class="sa"><i class="fas fa-wave-square"></i><b>Jam · 30 min</b><small>Off for a while, then back by itself</small><span class="dv"><s>13</s>DV 11<em>edge −2</em></span></div>
+        <div class="sa"><i class="fas fa-ear-listen"></i><b>Tap</b><small>See mail sent over NCPD Dispatch</small><span class="dv">DV 17<em>rank 4 · no edge</em></span></div>
+        <div class="sa lock"><i class="fas fa-door-open"></i><b>Backdoor</b><small>Skip the network's login for 24 hours</small><span class="dv">DV 15<em>needs Interface 6</em></span></div>
+        <div class="sa gear"><i class="fas fa-key"></i><b>Spoof the login</b><small>From your shard "Badge-clone" — one use</small><span class="dv">no roll<em>from a shard</em></span></div>
+        <div class="sa mal"><i class="fas fa-microchip"></i><b>Insert a shard</b><small>Plant a program you carry</small><span class="dv">ladder<em>rank 3+</em></span></div>
+        <div class="sa"><i class="fas fa-satellite-dish"></i><b>System sweep</b><small>Look for anything planted here</small><span class="dv"><s>15</s>DV 14<em>edge −1</em></span></div>
+      </div>
+      <div class="ss-side">
+        <div><div class="k2"><i class="fas fa-user-gear"></i>Your edge</div><div class="rank"><b>4</b><span>Interface rank</span><b>−1</b><span>DV per rank above an action's minimum (cap −3)</span><b>3</b><span>moves (rank 3–5)</span></div></div>
+        <div><div class="k2"><i class="fas fa-list"></i>Node log</div><div class="log"><div>21:04 ncpd.unit-12</div><div>21:31 ncpd.unit-07</div><div class="me">21:52 unknown<a>wipe</a></div></div></div>
+        <div style="font:11.5px var(--ncm-font-body);color:var(--ncm-text-secondary)"><b style="color:var(--ncm-text-primary)">2 terminals</b> run through this node — switch it off and they go local-only.</div>
+      </div>
+    </div>
+    <div class="btnrow"><span class="b"><i class="fas fa-right-from-bracket"></i>Jack out</span></div>
+  </div>
+</div>
+
+<div class="mk-h">4 · Building shards — network programs (Workshop / Encoder)</div>
+<div class="mk-p">New programs alongside the existing ones. Each says what blank tier it needs. <b>Quality comes from the build roll</b> (clean = stealthier and stronger). Programs can be <b>chained</b> (a logic bomb carrying a worm). A <b>Sniffer</b> collects loot onto the shard itself.</div>
+<div class="mk-row">
+  <div class="wk mk-win">
+    <div class="wk-h"><i class="fas fa-flask"></i>Program // network<span style="margin-left:auto;color:#8f7bb0">blank: Standard · holds 3</span></div>
+    <div class="wk-grid">
+      <div class="pg on"><span class="tier">Standard+</span><i class="fas fa-bug ic"></i><b>Worm</b><small>Copies to another node of the network every few hours</small></div>
+      <div class="pg"><span class="tier">any</span><i class="fas fa-ear-listen ic"></i><b>Tap</b><small>Mail sent over the network comes to you</small></div>
+      <div class="pg"><span class="tier">Standard+</span><i class="fas fa-sack-dollar ic"></i><b>Ransom</b><small>Locks the network; payment moves eddies to you</small></div>
+      <div class="pg"><span class="tier">Standard+</span><i class="fas fa-bomb ic"></i><b>Blackout bomb</b><small>Every infected node goes dark at once</small></div>
+      <div class="pg new"><span class="tier">any</span><i class="fas fa-satellite-dish ic"></i><b>Sniffer</b><small>Records traffic onto this shard — come back for it</small></div>
+      <div class="pg new"><span class="tier">any</span><i class="fas fa-id-badge ic"></i><b>Spoofed creds</b><small>Skip a box lock or a network login, once</small></div>
+      <div class="pg new"><span class="tier">any</span><i class="fas fa-kit-medical ic"></i><b>Patch</b><small>Cleans an infection or repairs a node</small></div>
+      <div class="pg"><span class="tier need">Premium</span><i class="fas fa-link ic"></i><b>Chain</b><small>Put one program inside another</small></div>
+    </div>
+    <div class="wk-detail">
+      <div>
+        <div class="k2" style="color:#b9a6d6"><i class="fas fa-dice-d20" style="color:#c084fc"></i>What the build roll buys</div>
+        <div class="q"><b class="g">Clean</b><span>Sweep DV 18 · spreads every 3h · Tap reads full text</span><b class="s">Sloppy</b><span>Sweep DV 10 · spreads every 6h · Tap gets subjects only</span><b class="r">Rejected</b><span>Nothing compiles; a Scrap blank bricks</span></div>
+      </div>
+      <div>
+        <div class="k2" style="color:#b9a6d6"><i class="fas fa-link" style="color:#c084fc"></i>Chain (Premium blank)</div>
+        <div class="chain"><span>Logic bomb · 2h</span><i class="fas fa-arrow-right" style="margin:0;color:#c084fc"></i><span>Worm</span><i class="fas fa-arrow-right" style="margin:0;color:#c084fc"></i><span>Blackout</span></div>
+        <small style="display:block;margin-top:8px;color:#b9a6d6">"Wait two hours, spread, then black out everything it reached."</small>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="loot mk-win">
+      <div class="loot-h"><i class="fas fa-satellite-dish"></i>Sniffer shard · collected<span style="margin-left:auto;color:#6b84b0">14 msgs</span></div>
+      <div class="l"><span>21:31</span>ncpd.unit-07 → dispatch · "Re: Kabuki 10-31"</div>
+      <div class="l"><span>21:48</span>dispatch → all units · "BOLO — black Thorton"</div>
+      <div class="l"><span>22:02</span>ncpd.unit-12 → sgt.harmon · "the Rache file"</div>
+      <div class="l" style="color:#6b84b0;justify-content:center">— 11 more · pick the shard up to read them —</div>
+    </div>
+    <div class="mk-cap" style="max-width:360px">Plug a Sniffer in, walk away, and come back later. Picking the shard up turns the recorded traffic into files on it (the existing file types), so it's loot worth returning for.</div>
+  </div>
+</div>
+
+<div class="mk-h">5 · GM: Hacking rules → Jacking in — DVs, unlocks, edge, moves</div>
+<div class="mk-p">One table for every session action (DV, minimum rank, time, on/off), the three skill dials each switchable, and a <b>Discovery</b> slot set up for hidden-node scanning, with the rules still to be decided. Any node can override any value.</div>
+<div class="mk-row">
+  <div class="ncm-app ncm-admin-panel gm mk-win" data-ncm-admin-theme="T">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-plug"></i><b>Jacking in — what you can do inside</b><small>— defaults; a node can override any of these</small><span class="r"><span class="gb"><i class="fas fa-rotate-left"></i>Defaults</span></span></div>
+      <div class="dials">
+        <div class="dial"><div class="h"><i class="fas fa-unlock-keyhole"></i>Unlocks<span class="sw"></span></div><p>Each action needs a minimum rank. Better netrunners get more options.</p></div>
+        <div class="dial"><div class="h"><i class="fas fa-arrow-trend-down"></i>Edge<span class="sw"></span></div><p>−1 DV per rank above the minimum, up to <span class="num" style="min-width:34px;height:22px">3</span>. Better netrunners find it easier.</p></div>
+        <div class="dial"><div class="h"><i class="fas fa-shoe-prints"></i>Moves per session<span class="sw"></span></div><p>From rank · +1 for beating the jack-in DV by <span class="num" style="min-width:34px;height:22px">5</span></p>
+          <div class="ladder5"><span>1–2<b>2</b></span><span>3–5<b>3</b></span><span>6–8<b>4</b></span><span>9+<b>5</b></span></div></div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>Action</th><th>DV</th><th>Min rank</th><th>Time</th><th>Costs a move</th><th>On</th></tr></thead>
+        <tbody>
+          <tr><td><span class="act"><i class="fas fa-power-off"></i>Switch off / on</span></td><td><span class="num">—</span></td><td><span class="num">1</span></td><td><span class="num">0</span></td><td><span class="sw"></span></td><td><span class="sw"></span></td></tr>
+          <tr><td><span class="act"><i class="fas fa-wave-square"></i>Jam</span></td><td><span class="num">13</span></td><td><span class="num">2</span></td><td><span class="num">30m</span></td><td><span class="sw"></span></td><td><span class="sw"></span></td></tr>
+          <tr><td><span class="act"><i class="fas fa-ear-listen"></i>Tap</span></td><td><span class="num">17</span></td><td><span class="num">4</span></td><td><span class="num">—</span></td><td><span class="sw"></span></td><td><span class="sw"></span></td></tr>
+          <tr><td><span class="act"><i class="fas fa-door-open"></i>Backdoor</span></td><td><span class="num">15</span></td><td><span class="num">6</span></td><td><span class="num">24h</span></td><td><span class="sw"></span></td><td><span class="sw"></span></td></tr>
+          <tr><td><span class="act mal"><i class="fas fa-microchip"></i>Insert a shard</span></td><td><span class="num">ladder</span></td><td><span class="num">3</span></td><td><span class="num">—</span></td><td><span class="sw"></span></td><td><span class="sw"></span></td></tr>
+          <tr><td><span class="act"><i class="fas fa-satellite-dish"></i>System sweep</span></td><td><span class="num">15</span></td><td><span class="num">1</span></td><td><span class="num">10m</span></td><td><span class="sw off"></span></td><td><span class="sw"></span></td></tr>
+          <tr><td><span class="act"><i class="fas fa-eraser"></i>Wipe your log line</span></td><td><span class="num">13</span></td><td><span class="num">1</span></td><td><span class="num">—</span></td><td><span class="sw off"></span></td><td><span class="sw"></span></td></tr>
+        </tbody>
+      </table>
+      <div class="disc"><i class="fas fa-eye-slash"></i><span><b>Discovery</b> — nodes can be hidden and marked <b>discoverable</b>. How a scan finds them isn't decided yet; this is where its rules will go.</span><span class="gb" style="margin-left:auto;opacity:.6"><i class="fas fa-lock"></i>Coming later</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-h">6 · GM: a network's Nodes — at scale</div>
+<div class="mk-p">Search, filter chips with counts, Group by and Sort, grouped by scene folder with the standard fold rule (a closed group still shows its state dots and an infected count), bulk actions, and "+N more" in long groups.</div>
+<div class="mk-row">
+  <div class="ncm-app ncm-admin-panel gm mk-win" data-ncm-admin-theme="T">
+    <div class="card">
+      <div class="card-hd" style="box-shadow:inset 3px 0 0 #5c9bff"><i class="fas fa-tower-broadcast" style="color:#5c9bff"></i><b>NCPD Dispatch — 38 nodes</b><small>— on 31 scenes</small><span class="r"><span class="gb"><i class="fas fa-diagram-project"></i>Topology</span><span class="gb pri"><i class="fas fa-plus"></i>Add a node</span></span></div>
+      <div class="tb">
+        <span class="srch"><i class="fas fa-magnifying-glass"></i>Find a node or a scene…</span>
+        <span class="chipf inf on"><i class="fas fa-bug" style="margin:0"></i>Infected <b>5</b></span>
+        <span class="chipf alarm">Alarmed <b>3</b></span><span class="chipf jam">Jammed <b>2</b></span><span class="chipf">Damaged <b>1</b></span><span class="chipf">Hidden <b>9</b></span>
+        <span class="sel"><span>Group</span>Scene folder ▾</span><span class="sel"><span>Sort</span>Most alert ▾</span>
+      </div>
+      <div class="bulk"><b>3</b> picked · <span class="gb"><i class="fas fa-power-off"></i>Switch off</span><span class="gb"><i class="fas fa-rotate-left"></i>Reset alert</span><span class="gb"><i class="fas fa-broom"></i>Clean</span><span class="gb"><i class="fas fa-eye-slash"></i>Hide</span><span style="margin-left:auto;color:var(--ncm-text-secondary)">Showing the 5 infected of 38</span></div>
+      <div class="grp"><i class="fas fa-chevron-down"></i>Watson<span class="n">4 nodes</span><span class="wt">3 infected</span><span class="dots"><span style="background:var(--ncm-secret)"></span><span style="background:var(--ncm-secret)"></span><span style="background:var(--ncm-secret)"></span><span style="background:var(--ncm-good)"></span></span></div>
+      <div class="nrow inf" style="--c:#5c9bff"><span class="cb">✓</span><span class="ki"><i class="fas fa-tower-cell"></i></span><div><b>Kabuki relay mast</b><small>relay · pin + area</small></div><span>Kabuki Market</span><span class="pill on">On</span><span class="alert"><span class="al w"></span><span class="al"></span><span class="al"></span></span><span>alert 1</span><span class="pill inf">Worm · Tap</span><span style="color:var(--ncm-text-secondary)">2 hops ago</span></div>
+      <div class="nrow inf" style="--c:#5c9bff"><span class="cb">✓</span><span class="ki"><i class="fas fa-server"></i></span><div><b>Docks router</b><small>router · hidden</small></div><span>Docks — Container 9</span><span class="pill jam">Jammed 18m</span><span class="alert"><span class="al w"></span><span class="al w"></span><span class="al a"></span></span><span>alarmed</span><span class="pill inf">Worm</span><span style="color:var(--ncm-text-secondary)">just now</span></div>
+      <div class="nrow inf" style="--c:#5c9bff"><span class="cb">✓</span><span class="ki"><i class="fas fa-box"></i></span><div><b>Afterlife junction</b><small>junction · pin</small></div><span>Afterlife</span><span class="pill on">On</span><span class="alert"><span class="al"></span><span class="al"></span><span class="al"></span></span><span>calm</span><span class="pill inf">Ransom</span><span style="color:var(--ncm-text-secondary)">live · 1 paid</span></div>
+      <div class="grp"><i class="fas fa-chevron-right"></i>Arasaka Tower<span class="n">11 nodes</span><span class="wt">1 infected</span><span class="dots"><span style="background:var(--ncm-good)"></span><span style="background:var(--ncm-good)"></span><span style="background:var(--ncm-attn)"></span><span style="background:var(--ncm-secret)"></span><span style="background:var(--ncm-good)"></span><span style="background:var(--ncm-text-secondary)"></span></span></div>
+      <div class="grp"><i class="fas fa-chevron-right"></i>Badlands<span class="n">9 nodes</span><span class="wt">1 infected</span><span class="dots"><span style="background:var(--ncm-bad)"></span><span style="background:var(--ncm-good)"></span><span style="background:var(--ncm-secret)"></span></span></div>
+      <div class="grp"><i class="fas fa-chevron-right"></i>Little China<span class="n">14 nodes</span><span class="dots"><span style="background:var(--ncm-good)"></span><span style="background:var(--ncm-good)"></span><span style="background:var(--ncm-good)"></span></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-h">7 · GM: Topology — see the network and the spread</div>
+<div class="mk-p">Nodes clustered by scene, the network's backbone as quiet blue lines, the worm's spread as <b>animated violet lines</b>, its next hop as a dashed ghost, jammed nodes blinking amber. Click a node to see it on the right.</div>
+<div class="mk-row">
+  <div class="ncm-app ncm-admin-panel gm mk-win" data-ncm-admin-theme="T" style="padding:0">
+    <div class="topo">
+      <svg viewBox="0 0 860 470" id="TOPO"></svg>
+      <div class="topo-side">
+        <div><div class="k2" style="color:var(--ncm-text-label)"><i class="fas fa-circle-info" style="color:var(--ncm-act)"></i>Legend</div>
+          <div class="lg"><i style="border-color:#5c9bff;background:#0d1830"></i>On<i style="border-color:var(--ncm-secret);background:color-mix(in srgb,var(--ncm-secret) 25%,#000)"></i>Infected<i style="border-color:var(--ncm-attn)"></i>Jammed<i style="border-color:#55556a"></i>Off<i style="border-color:var(--ncm-bad)"></i>Damaged<i style="border-color:var(--ncm-secret);border-style:dashed"></i>Next hop</div></div>
+        <div><div class="k2" style="color:var(--ncm-text-label)"><i class="fas fa-tower-cell" style="color:var(--ncm-act)"></i>Kabuki relay mast</div>
+          <div class="kv2"><span>Scene</span>Kabuki Market<span>State</span><b style="color:var(--ncm-good)">On</b><span>Infected</span><b style="color:var(--ncm-secret)">Worm · Tap</b><span>Since</span>2 hops ago<span>Planted by</span>Rache</div>
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><span class="gb pri"><i class="fas fa-broom"></i>Clean</span><span class="gb"><i class="fas fa-power-off"></i>Quarantine</span><span class="gb"><i class="fas fa-crosshairs"></i>Go to</span></div></div>
+        <div style="font:12px var(--ncm-font-body);color:var(--ncm-text-secondary)">Next spread in <b style="color:var(--ncm-attn);font-family:var(--ncm-font-mono)">3h 12m</b> → <b>Little China mast</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-h">8 · GM: Infection timeline</div>
+<div class="mk-p">One track per infection on the game clock: where it has been (solid hops), where it goes next (a ghost hop with its time), and when a bomb fires.</div>
+<div class="mk-row">
+  <div class="ncm-app ncm-admin-panel gm mk-win" data-ncm-admin-theme="T">
+    <div class="card">
+      <div class="card-hd" style="box-shadow:inset 3px 0 0 var(--ncm-secret)"><i class="fas fa-bug" style="color:var(--ncm-secret)"></i><b>Infections — timeline</b><small>— last 12 hours and the next 6</small></div>
+      <div class="tl">
+        <div class="tlr"><div><b>GHOSTWORM.bin</b><small>Worm + Tap · NCPD Dispatch · Rache</small></div>
+          <div class="track"><span class="seg-fill" style="left:18%;width:49%"></span><span class="hop" style="left:18%"></span><span class="hopl" style="left:18%">Kabuki 14:10</span><span class="hop" style="left:44%"></span><span class="hopl" style="left:44%">Docks 18:10</span><span class="hop" style="left:62%"></span><span class="hopl" style="left:62%">Afterlife 21:50</span><span class="now" style="left:67%"></span><span class="hop ghost" style="left:86%"></span><span class="hopl ghost" style="left:86%">Little China · 3h 12m</span></div></div>
+        <div class="tlr"><div><b>Lights-out</b><small>Blackout bomb · Arasaka SecNet · V</small></div>
+          <div class="track"><span class="hop" style="left:58%"></span><span class="hopl" style="left:58%">planted 20:30</span><span class="now" style="left:67%"></span><span class="hop bomb" style="left:72%"></span><span class="hopl" style="left:72%;color:var(--ncm-bad)">fires · 41m</span></div></div>
+        <div class="tlr" style="border-bottom:0"><div><b>Paywall</b><small>Ransom · NCPD Dispatch · Rache</small></div>
+          <div class="track"><span class="hop" style="left:40%"></span><span class="hopl" style="left:40%">planted 17:30</span><span class="seg-fill" style="left:40%;width:27%;background:var(--ncm-bad);box-shadow:0 0 6px var(--ncm-bad)"></span><span class="now" style="left:67%"></span><span class="hopl" style="left:54%;top:-2px;color:var(--ncm-bad)">locked · 1 paid 500 eb</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const T = Q.get('t') || 'clean-dark';
+const STILL = Q.get('still') === '1' || matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (STILL) document.body.classList.add('still');
+document.querySelectorAll('[data-ncm-admin-theme]').forEach((el) => { el.dataset.ncmAdminTheme = T; el.dataset.ncmScanlines = 'false'; });
+{ const only = Q.get('only'); if (only) { let show = false; for (const el of [...document.body.children]) { if (el.tagName === 'SCRIPT') continue; if (el.classList.contains('mk-h')) show = el.textContent.trim().startsWith(only + ' '); el.style.display = show ? '' : 'none'; } } }
+
+// ── 1 · the console: a live traffic trace + state changes that glitch ──
+const CON = document.getElementById('CON'), WAVE = document.getElementById('WAVE');
+let pts = Array.from({ length: 60 }, () => 26);
+function drawWave() {
+  const st = CON.dataset.state;
+  const amp = st === 'on' ? 18 : st === 'jam' ? 6 : 0;
+  pts.shift();
+  pts.push(26 + (amp ? (Math.random() - .5) * 2 * amp * (Math.random() < .15 ? 1.4 : .6) : 0) + (st === 'jam' && Math.random() < .2 ? (Math.random() - .5) * 30 : 0));
+  WAVE.setAttribute('d', pts.map((y, i) => `${i ? 'L' : 'M'}${(i * 500 / 59).toFixed(1)} ${Math.max(3, Math.min(49, y)).toFixed(1)}`).join(' '));
+}
+for (let i = 0; i < 60; i++) drawWave();
+if (!STILL) setInterval(drawWave, 70);
+document.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', () => {
+  const st = b.dataset.st;
+  CON.classList.remove('glitch'); void CON.offsetWidth; CON.classList.add('glitch');
+  CON.dataset.state = st;
+  CON.querySelector('[data-stl]').textContent = st === 'on' ? 'On' : st === 'jam' ? 'Jammed · 30m' : 'Off';
+  CON.querySelector('[data-sig]').textContent = st === 'on' ? '78%' : '0%';
+  CON.querySelector('[data-con]').textContent = st === 'on' ? '3' : '0';
+  CON.querySelector('[data-rate]').textContent = st === 'on' ? '4.2 kb/s' : st === 'jam' ? 'noise' : 'no carrier';
+  CON.querySelectorAll('.bars .bar').forEach((x, i) => x.classList.toggle('o', st !== 'on' || i === 3));
+  CON.querySelector('[data-tick]').textContent = st === 'off' ? '— no carrier —' : st === 'jam' ? '0x3F·A2 !! carrier noise !! retry · retry · 0x3F·A2 !! carrier noise' : '0x3F·A2 ncpd.unit-07 → dispatch · 412b · ▲  0x3F·A2 dispatch → ncpd.unit-12 · 1.1kb · ▼';
+}));
+
+// ── 2 · the jack-in sequence ──
+const JK = document.getElementById('JK'), COLS = document.getElementById('COLS');
+const HEX = '0123456789ABCDEF';
+let timers = [];
+const at = (ms, fn) => timers.push(setTimeout(fn, STILL ? 0 : ms));
+function reset() {
+  timers.forEach(clearTimeout); timers = [];
+  delete JK.dataset.phase;
+  JK.querySelectorAll('.jk-wall').forEach((w) => { w.className = 'jk-wall'; });
+  COLS.innerHTML = PARTS.map((p, i) => (i ? '<div class="jk-colw op">+</div>' : '') + '<div class="jk-colw"><div class="jk-col">0</div>' + p + '</div>').join('');
+  JK.querySelector('[data-total]').textContent = '—';
+  JK.querySelector('[data-meter]').style.width = '0';
+}
+const PARTS = ['TECH', 'INTERFACE', 'DECK', 'd10'];
+function spin(d10) {
+  const cols = [...COLS.querySelectorAll('.jk-col')];
+  const chars = ['7', '4', '1', String(d10)];
+  let tick = 0;
+  const iv = setInterval(() => { cols.forEach((c, i) => { if (!c.classList.contains('lock')) c.textContent = HEX[(Math.random() * 16) | 0]; }); tick++; }, 45);
+  timers.push(iv);
+  cols.forEach((c, i) => at(350 + i * 260, () => { c.classList.add('lock'); c.textContent = chars[i]; if (i === cols.length - 1) { clearInterval(iv); } }));
+}
+function play(kind) {
+  reset();
+  JK.dataset.phase = 'plug';
+  JK.querySelector('[data-plugtx]').textContent = 'LINK…';
+  at(700, () => { JK.dataset.phase = kind === 'wait' ? 'wait' : 'run'; JK.querySelector('[data-plugtx]').textContent = 'LINKED'; });
+  const W = [...JK.querySelectorAll('.jk-wall')];
+  // box lock: cracks, shatters, cleared
+  at(1100, () => W[0].classList.add('crack'));
+  at(1500, () => W[0].classList.add('gone'));
+  at(1750, () => { W[0].className = 'jk-wall done'; });
+  if (kind === 'wait') { at(1900, () => W[1].classList.add('crack')); return; }
+  at(1900, () => W[1].classList.add('crack'));
+  at(2100, () => { JK.dataset.phase = 'roll'; spin(kind === 'in' ? 6 : 1); });
+  at(3400, () => { JK.querySelector('[data-total]').textContent = kind === 'in' ? '18' : '13'; JK.querySelector('[data-meter]').style.width = kind === 'in' ? '72%' : '52%'; });
+  if (kind === 'in') {
+    at(4300, () => { W[1].classList.add('gone'); });
+    at(4500, () => { W[1].className = 'jk-wall done'; W[2].classList.add('crack'); });
+    at(4800, () => { W[2].classList.add('gone'); });
+    at(5000, () => { W[2].className = 'jk-wall done'; JK.dataset.phase = 'in'; });
+  } else {
+    at(4300, () => { W[1].className = 'jk-wall ice'; JK.dataset.phase = 'miss'; });
+  }
+}
+document.querySelectorAll('[data-jk]').forEach((b) => b.addEventListener('click', () => play(b.dataset.jk)));
+JK.addEventListener('click', () => { if (!JK.dataset.phase) return; const k = JK.querySelector('.jk-verdict.miss') && JK.dataset.phase === 'miss'; });
+reset();
+if (STILL) { play(Q.get('jk') || 'in'); }
+
+// ── 7 · topology ──
+{
+  const svg = document.getElementById('TOPO');
+  const clusters = [
+    { name: 'Watson', x: 40, y: 40, w: 300, h: 190 }, { name: 'Little China', x: 520, y: 40, w: 300, h: 170 },
+    { name: 'Arasaka Tower', x: 40, y: 260, w: 330, h: 180 }, { name: 'Badlands', x: 520, y: 250, w: 300, h: 190 },
+  ];
+  const N = [
+    { id: 'k', n: 'Kabuki mast', x: 110, y: 110, s: 'inf', sel: true }, { id: 'd', n: 'Docks router', x: 240, y: 90, s: 'inf jam' }, { id: 'a', n: 'Afterlife jct', x: 200, y: 190, s: 'inf' }, { id: 'w', n: 'Watson mast', x: 300, y: 170, s: 'on' },
+    { id: 'l1', n: 'Little China mast', x: 600, y: 110, s: 'ghost' }, { id: 'l2', n: 'Clinic relay', x: 720, y: 90, s: 'on' }, { id: 'l3', n: 'Market jct', x: 680, y: 170, s: 'on' },
+    { id: 't1', n: '7F junction', x: 120, y: 330, s: 'jam' }, { id: 't2', n: 'Lobby router', x: 250, y: 320, s: 'on' }, { id: 't3', n: 'Roof mast', x: 190, y: 400, s: 'off' }, { id: 't4', n: 'Garage relay', x: 320, y: 400, s: 'on' },
+    { id: 'b1', n: 'Checkpoint mast', x: 600, y: 320, s: 'dmg' }, { id: 'b2', n: 'Nomad relay', x: 740, y: 340, s: 'on' }, { id: 'b3', n: 'Oasis jct', x: 660, y: 410, s: 'on' },
+  ];
+  const by = Object.fromEntries(N.map((n) => [n.id, n]));
+  const bb = [['k', 'd'], ['d', 'w'], ['k', 'a'], ['a', 'w'], ['w', 'l1'], ['l1', 'l2'], ['l1', 'l3'], ['l2', 'l3'], ['a', 't2'], ['t1', 't2'], ['t2', 't4'], ['t3', 't4'], ['t4', 'b1'], ['b1', 'b2'], ['b1', 'b3'], ['l3', 'b2']];
+  const spread = [['k', 'd'], ['k', 'a']], next = [['a', 'w'], ['w', 'l1']];
+  const line = ([a, b], cls) => `<path class="${cls}" d="M${by[a].x} ${by[a].y} Q ${(by[a].x + by[b].x) / 2} ${Math.min(by[a].y, by[b].y) - 18} ${by[b].x} ${by[b].y}"/>`;
+  svg.innerHTML = clusters.map((c) => `<rect class="cl" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="2"/><text class="cll" x="${c.x + 10}" y="${c.y + 16}">${c.name}</text>`).join('')
+    + bb.map((e) => line(e, 'bb')).join('') + next.map((e) => line(e, 'nxt')).join('') + spread.map((e) => line(e, 'sp')).join('')
+    + N.map((n) => `${n.sel ? `<circle class="ring" cx="${n.x}" cy="${n.y}" r="17"/>` : ''}<circle class="nd ${n.s}" cx="${n.x}" cy="${n.y}" r="10"/><text class="nl" x="${n.x + 15}" y="${n.y + 4}">${n.n}</text>`).join('');
+}
+</script>
+</body>
+</html>

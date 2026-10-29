@@ -89,8 +89,16 @@ ok('a junk mode falls back to anyone, not to a lockout', () => {
   assert.equal(sanitizeGate({ mode: 'banana' }).mode, 'anyone');
 });
 ok('skill rank coerces to a non-negative integer', () => {
-  assert.equal(sanitizeGate({ skill: { name: 'Interface', min: '4.6' } }).skill.min, 5);
-  assert.equal(sanitizeGate({ skill: { min: -3 } }).skill.min, 0);
+  // A legacy single skill folds into the list (2026-10-27), rank coerced.
+  assert.equal(sanitizeGate({ skill: { name: 'Interface', min: '4.6' } }).skills[0].min, 5);
+  assert.equal(sanitizeGate({ skill: { name: 'Interface', min: '4.6' } }).skill.name, '');
+  assert.equal(sanitizeGate({ skills: [{ name: 'Interface', min: -3 }] }).skills[0].min, 0);
+  assert.equal(sanitizeGate({ skill: { min: -3 } }).skills.length, 0);
+});
+ok('several skills: any one qualifies, each at its own rank', () => {
+  const g = sanitizeGate({ mode: 'gated', skills: [{ name: 'Interface', min: 4 }, { name: 'Electronics/Security Tech', min: 6 }, { name: '', min: 2 }] });
+  assert.equal(g.skills.length, 2);
+  assert.ok(gateSummary(g).parts[0].includes('Interface 4+ or Electronics/Security Tech 6+'));
 });
 
 console.log('\n── 2 · the summary the GM reads ──');

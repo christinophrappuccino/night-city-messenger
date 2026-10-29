@@ -280,17 +280,17 @@
     <div class="ncm-viewer__tab-list ncm-scrollbar">
       {{#if draftItems.length}}
         {{#each draftItems}}
-          <div class="ncm-viewer__sched-item" data-action="open-draft" data-actor-id="{{this.actorId}}">
-            <i class="fas fa-file-pen ncm-viewer__sched-icon" style="color: var(--ncm-text-muted);"></i>
+          <div class="ncm-viewer__sched-item" data-action="open-draft" data-actor-id="{{this.actorId}}" data-draft-id="{{this.draftId}}">
+            <i class="fas {{#if (eq this.kind 'reply')}}fa-reply{{else if (eq this.kind 'forward')}}fa-share{{else}}fa-file-pen{{/if}} ncm-viewer__sched-icon" style="color: var(--ncm-text-muted);"></i>
             <div class="ncm-viewer__sched-info">
-              <div class="ncm-viewer__sched-to">{{#if this.recipientName}}→ {{this.recipientName}}{{else}}(no recipient){{/if}}</div>
-              <div class="ncm-viewer__sched-subject">{{#if this.subject}}{{this.subject}}{{else}}(no subject){{/if}}</div>
+              <div class="ncm-viewer__sched-to">{{#if this.recipientName}}→ {{this.recipientName}}{{else}}(no recipient){{/if}}{{#if this.kindLabel}} <span class="ncm-viewer__sched-kind">{{this.kindLabel}}</span>{{/if}}</div>
+              <div class="ncm-viewer__sched-subject">{{this.subject}}</div>
             </div>
             <div class="ncm-viewer__sched-time">
-              <div>{{this.savedAt}}</div>
-              <div class="ncm-viewer__sched-time-label">Last saved</div>
+              <div>{{this.age}}</div>
+              <div class="ncm-viewer__sched-time-label">{{this.savedAt}}</div>
             </div>
-            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="delete-draft" data-actor-id="{{this.actorId}}">Delete</button>
+            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="delete-draft" data-actor-id="{{this.actorId}}" data-draft-id="{{this.draftId}}">Delete</button>
           </div>
         {{/each}}
       {{else}}

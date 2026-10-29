@@ -1,0 +1,94 @@
+/* ═══ The jack-in lock (scripts/ui/NetworkNodes/JackInLock.js) ═══
+   Dev-approved: dev/mockups/network-nodes-jackin-mock.html (+ the cyberpunk pass). Mounted over the node console;
+   the network colour rides --nc, the yellow hazard accent --jk-hl. Prefix ncm-jk-*. */
+
+.ncm-jk {
+  --nc: #19f3f7; --jk-hl: #fcee0a; --jk-bad: var(--ncm-danger, #ff4d5e); --jk-ok: var(--ncm-success, #3ddc84);
+  position: absolute; inset: 0; z-index: 40; overflow: hidden; color: #e8eefc; font: 13px var(--ncm-font-body, sans-serif);
+  background: radial-gradient(60% 60% at 50% 46%, color-mix(in srgb, var(--nc) 10%, transparent), transparent 70%), #03050b;
+  transition: opacity .3s;
+}
+.ncm-jk.is-out { opacity: 0; }
+.ncm-jk::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 20; background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px); }
+
+.ncm-jk__bar { position: absolute; left: 0; right: 0; top: 0; z-index: 10; display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 18px;
+  font: 700 10.5px var(--ncm-font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--nc); white-space: nowrap; overflow: hidden;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 18%, transparent), transparent 70%); border-bottom: 1px solid color-mix(in srgb, var(--nc) 30%, transparent); }
+.ncm-jk__bar i { margin: 0 !important; }
+.ncm-jk__bar-r { margin-left: auto; color: var(--jk-hl); }
+.ncm-jk__haz { flex: none; width: 50px; height: 10px; background: repeating-linear-gradient(-45deg, var(--jk-hl) 0 4px, transparent 4px 8px); opacity: .85; }
+
+.ncm-jk__rain { position: absolute; inset: 34px 0 0 0; z-index: 0; overflow: hidden; pointer-events: none; opacity: .16;
+  -webkit-mask-image: radial-gradient(70% 70% at 50% 45%, transparent 22%, #000 70%); mask-image: radial-gradient(70% 70% at 50% 45%, transparent 22%, #000 70%); }
+.ncm-jk__rain div { position: absolute; top: 0; width: 14px; font: 700 10px/12px var(--ncm-font-mono, monospace); color: var(--nc); white-space: pre; text-align: center; }
+.ncm-jk__sweep { position: absolute; left: 50%; top: 210px; width: 380px; height: 380px; margin: -190px 0 0 -190px; z-index: 1; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from 0deg, transparent 0 300deg, color-mix(in srgb, var(--nc) 28%, transparent) 358deg, transparent 360deg); }
+.ncm-jk__vig { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 44%, transparent 30%, rgba(0,0,0,.85) 75%); }
+
+.ncm-jk__svg { position: absolute; left: 50%; top: 40px; width: 340px; height: 340px; margin-left: -170px; overflow: visible; z-index: 2; }
+.ncm-jk .arc { fill: none; stroke: var(--nc); }
+.ncm-jk .ring.ok .arc { stroke: color-mix(in srgb, var(--nc) 45%, #fff); filter: drop-shadow(0 0 6px var(--nc)); }
+.ncm-jk .ring.bad .arc { stroke: var(--jk-bad); filter: drop-shadow(0 0 6px var(--jk-bad)); }
+.ncm-jk .tick { fill: none; stroke: color-mix(in srgb, var(--nc) 45%, transparent); stroke-width: 1; }
+.ncm-jk .txt { font: 700 7.5px var(--ncm-font-mono, monospace); letter-spacing: 2.2px; fill: color-mix(in srgb, var(--nc) 60%, transparent); }
+.ncm-jk .ring.ok .txt { fill: color-mix(in srgb, var(--nc) 55%, #fff); } .ncm-jk .ring.bad .txt { fill: var(--jk-bad); }
+.ncm-jk .notch { fill: var(--jk-hl); } .ncm-jk .ring.bad .notch { fill: var(--jk-bad); }
+.ncm-jk .slot { fill: none; stroke: var(--jk-hl); stroke-width: 2; }
+.ncm-jk .hlt { fill: var(--jk-hl); }
+.ncm-jk .guide { stroke: color-mix(in srgb, var(--nc) 30%, transparent); stroke-width: 1; stroke-dasharray: 2 4; }
+.ncm-jk .core { fill: #070b16; stroke: var(--nc); stroke-width: 1.5; }
+.ncm-jk .shock { fill: none; stroke: color-mix(in srgb, var(--nc) 60%, #fff); }
+.ncm-jk .edge { stroke: var(--nc); stroke-width: 1.4; fill: none; filter: drop-shadow(0 0 3px var(--nc)); }
+.ncm-jk .bn { fill: #060a14; stroke: var(--nc); stroke-width: 1.6; filter: drop-shadow(0 0 5px var(--nc)); }
+.ncm-jk .bn.hub { fill: color-mix(in srgb, var(--nc) 35%, #060a14); stroke: #fff; }
+.ncm-jk .crack { stroke: #fff; stroke-width: 2; fill: none; filter: drop-shadow(0 0 4px var(--jk-bad)); }
+.ncm-jk__lock { position: absolute; left: 50%; top: 210px; z-index: 4; width: 60px; height: 40px; margin: -20px 0 0 -30px; display: grid; place-items: center; font-size: 24px; color: var(--nc); pointer-events: none; }
+.ncm-jk__lock i { margin: 0 !important; filter: drop-shadow(0 0 8px currentColor); }
+
+.ncm-jk__layers { position: absolute; left: 16px; top: 52px; z-index: 5; display: flex; flex-direction: column; gap: 8px; }
+.ncm-jk__ly { display: grid; grid-template-columns: 20px auto; gap: 1px 8px; align-items: center; padding-left: 8px; border-left: 2px solid transparent; opacity: .45; }
+.ncm-jk__ly i { grid-row: span 2; margin: 0 !important; width: 20px; text-align: center; color: var(--nc); }
+.ncm-jk__ly b { font: 700 10px var(--ncm-font-display, sans-serif); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.ncm-jk__ly .ix { margin-right: 4px; font: 700 8.5px var(--ncm-font-mono, monospace); color: var(--jk-hl); }
+.ncm-jk__ly small { font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .1em; color: #8a93ad; }
+.ncm-jk__ly.live { opacity: 1; border-left-color: var(--jk-hl); }
+.ncm-jk__ly.ok { opacity: 1; border-left-color: var(--jk-ok); } .ncm-jk__ly.ok i, .ncm-jk__ly.ok small { color: var(--jk-ok); }
+.ncm-jk__ly.bad { opacity: 1; border-left-color: var(--jk-bad); } .ncm-jk__ly.bad i, .ncm-jk__ly.bad small { color: var(--jk-bad); }
+
+.ncm-jk__hud { position: absolute; z-index: 5; font: 700 9px/1.6 var(--ncm-font-mono, monospace); letter-spacing: .1em; color: #6f7a96; white-space: pre; pointer-events: none; }
+.ncm-jk__hud--l { left: 16px; bottom: 92px; } .ncm-jk__hud--r { right: 16px; top: 52px; text-align: right; }
+.ncm-jk__hud b { color: var(--jk-hl); } .ncm-jk__hud b.bad { color: var(--jk-bad); } .ncm-jk__hud em { color: var(--nc); font-style: normal; }
+
+.ncm-jk__roll { position: absolute; left: 0; right: 0; bottom: 14px; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ncm-jk__cols { display: flex; align-items: flex-end; gap: 6px; }
+.ncm-jk__cols .cw { display: flex; flex-direction: column; align-items: center; gap: 3px; font: 700 8.5px var(--ncm-font-mono, monospace); letter-spacing: .1em; color: #8a93ad; text-transform: uppercase; }
+.ncm-jk__cols .c { width: 32px; height: 34px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--nc) 35%, transparent); background: rgba(3,5,11,.85); font: 700 18px var(--ncm-font-mono, monospace); color: #8a93ad; }
+.ncm-jk__cols .cw.lock .c { color: #fff; border-color: var(--nc); box-shadow: 0 0 8px color-mix(in srgb, var(--nc) 55%, transparent); }
+.ncm-jk__cols .cw.is-d10 .c { width: 40px; }
+.ncm-jk__cols .op { font: 700 14px var(--ncm-font-mono, monospace); color: #5d6680; padding-bottom: 14px; }
+.ncm-jk__cols .tot { margin-left: 10px; font: 700 8.5px var(--ncm-font-mono, monospace); letter-spacing: .1em; color: #8a93ad; }
+.ncm-jk__cols .tot b { display: block; font: 700 28px/1 var(--ncm-font-mono, monospace); color: #fff; letter-spacing: 0; text-shadow: 2px 0 rgba(255,0,80,.55), -2px 0 rgba(0,220,255,.55); }
+.ncm-jk__meter { position: relative; width: 400px; max-width: 80%; height: 6px; background: rgba(255,255,255,.08); }
+.ncm-jk__meter i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 40%, transparent), var(--nc)); }
+.ncm-jk__meter em { position: absolute; top: -5px; bottom: -5px; width: 2px; background: #fff; }
+.ncm-jk__meter em::after { content: attr(data-dv); position: absolute; top: 12px; left: -13px; font: 700 9px var(--ncm-font-mono, monospace); font-style: normal; color: #cfd6ea; white-space: nowrap; }
+
+.ncm-jk__res { position: absolute; left: 0; right: 0; bottom: 18px; z-index: 7; text-align: center; opacity: 0; pointer-events: none; }
+.ncm-jk__res .nm { font: 700 30px var(--ncm-font-display, sans-serif); letter-spacing: .22em; color: #fff; text-shadow: 3px 0 rgba(255,0,80,.6), -3px 0 rgba(0,220,255,.6), 0 0 18px var(--nc); }
+.ncm-jk__res .sub { margin-top: 2px; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .16em; color: color-mix(in srgb, var(--nc) 70%, #fff); }
+.ncm-jk__res .pips { display: flex; justify-content: center; gap: 8px; margin-top: 9px; align-items: center; font: 700 10px var(--ncm-font-display, sans-serif); letter-spacing: .14em; color: #cfd6ea; }
+.ncm-jk__res .pip { width: 13px; height: 13px; transform: rotate(45deg); background: var(--nc); box-shadow: 0 0 10px var(--nc); opacity: 0; }
+.ncm-jk.is-miss .ncm-jk__res .nm { color: var(--jk-bad); text-shadow: 3px 0 rgba(255,0,80,.8), -3px 0 rgba(0,220,255,.5), 0 0 18px var(--jk-bad); }
+.ncm-jk.is-miss .ncm-jk__res .sub { color: #ffb3ba; }
+
+.ncm-jk__wait { position: absolute; left: 50%; width: 340px; margin-left: -170px; bottom: 104px; z-index: 7; padding: 6px 0; text-align: center; background: rgba(3,5,11,.85); opacity: 0; pointer-events: none; }
+.ncm-jk__wait b { display: block; font: 700 15px var(--ncm-font-display, sans-serif); letter-spacing: .24em; color: #f7c948; }
+.ncm-jk__wait small { color: #bbb; }
+.ncm-jk__slices { position: absolute; inset: 34px 0 0 0; z-index: 12; pointer-events: none; }
+.ncm-jk__slices i { position: absolute; left: 0; right: 0; display: block; mix-blend-mode: screen; }
+.ncm-jk__skull { position: absolute; left: 50%; top: 210px; z-index: 13; width: 120px; height: 120px; margin: -60px 0 0 -60px; display: grid; place-items: center; font-size: 60px; color: var(--jk-bad); opacity: 0; pointer-events: none; }
+.ncm-jk__skull i { margin: 0 !important; filter: drop-shadow(0 0 18px var(--jk-bad)); }
+.ncm-jk__static { position: absolute; inset: 0; z-index: 14; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+  background: repeating-linear-gradient(0deg, rgba(255,77,94,.28) 0 2px, transparent 2px 4px), repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px); }
+.ncm-jk__flash { position: absolute; inset: 0; z-index: 15; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 44%, #fff, color-mix(in srgb, var(--nc) 60%, transparent) 35%, transparent 75%); }
+.ncm-jk__skip { position: absolute; right: 14px; bottom: 6px; z-index: 9; font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .12em; color: #5d6680; }

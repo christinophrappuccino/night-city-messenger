@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!-- Admin contrast check (2026-10-29). Renders real tab dumps in the real cascade and lists every text node under 4.5:1
+     against what is really behind it. Colours are read by painting them to a canvas, so oklab()/color-mix() work.
+     1) NCM_DUMP=<dir> node dev/tools/sims/test-admin-contacts.mjs (and test-admin-messages, test-overview, test-access-tab,
+        test-node-inspector, test-sound-board, test-spam-layout, test-npc-switchboard)
+     2) chrome --headless=new --allow-file-access-from-files --dump-dom "file:///.../admin-contrast-check.html?t=clean-light&f=file:///<dir>/a.html,file:///<dir>/b.html"
+     Results are in <pre id=out> (theme, file, ratio, element, count, sample) or NONE. -->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>body{background:#05060a;margin:0}.application.ncm-app{position:relative!important;inset:auto!important;transform:none!important;width:820px;height:auto!important;max-height:none!important;overflow:visible!important}
+.application.ncm-app .window-content{overflow:visible!important;height:auto!important}</style>
+</head><body><div id="host"></div><pre id="out"></pre>
+<script>
+const Q = new URLSearchParams(location.search);
+const files = (Q.get('f') || '').split(',').filter(Boolean);
+const T = Q.get('t') || 'clean-dark';
+const cv = document.createElement('canvas'); cv.width = cv.height = 1; const cx = cv.getContext('2d', { willReadFrequently: true });
+const rgba = (c) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+const lin = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; };
+const L = ([r, g, b]) => .2126 * lin(r) + .7152 * lin(g) + .0722 * lin(b);
+const over = (top, bot) => { const a = top[3]; return [top[0] * a + bot[0] * (1 - a), top[1] * a + bot[1] * (1 - a), top[2] * a + bot[2] * (1 - a), 1]; };
+const bgOf = (el) => {
+  const layers = [];
+  for (let e = el; e; e = e.parentElement) {
+    const c = rgba(getComputedStyle(e).backgroundColor);
+    if (c[3] > 0) { layers.push(c); if (c[3] >= .95) break; }
+  }
+  let b = [0, 0, 0, 1];
+  for (let i = layers.length - 1; i >= 0; i--) b = over(layers[i], b);
+  return b;
+};
+const sel = (el) => { const c = (typeof el.className === 'string' ? el.className : '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.'); return `${el.tagName.toLowerCase()}${c ? '.' + c : ''}`; };
+(async () => {
+  const out = [];
+  for (const f of files) {
+    const html = await fetch(f).then((r) => r.text());
+    const wrap = f.includes('node-inspector') ? 'ncm-node-inspector' : f.includes('sound-board') ? 'ncm-sound-board' : 'ncm-admin-panel';
+    const host = document.getElementById('host');
+    host.innerHTML = `<div class="application ncm-app ${wrap}" data-ncm-admin-theme="${T}"><section class="window-content">${wrap === 'ncm-admin-panel' ? `<div class="ncm-admin-panel"><div class="ncm-admin-content">${html}</div></div>` : html}</section></div>`;
+    await new Promise((r) => setTimeout(r, 50));
+    const seen = new Map();
+    const w = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) {
+      const txt = n.textContent.trim(); if (!txt) continue;
+      const el = n.parentElement; const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+      const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || Number(cs.opacity) < .5) continue;
+      let hidden = false; for (let e = el; e; e = e.parentElement) { const s = getComputedStyle(e); if (s.display === 'none' || Number(s.opacity) < .5) { hidden = true; break; } } if (hidden) continue;
+      const bg = bgOf(el); const fg = over(rgba(cs.color), bg);
+      const l1 = L(fg), l2 = L(bg); const ratio = (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05);
+      if (ratio < 4.5) { const k = sel(el); const cur = seen.get(k); if (!cur || ratio < cur.r) seen.set(k, { r: ratio, t: txt.slice(0, 24), n: (cur?.n || 0) + 1 }); else cur.n++; }
+    }
+    for (const [k, v] of seen) out.push(`${T}\t${f.split('/').pop()}\t${v.r.toFixed(2)}\t${k}\t×${v.n}\t"${v.t}"`);
+  }
+  document.getElementById('out').textContent = out.join('\n') || 'NONE';
+  document.title = 'done';
+})();
+</script></body></html>

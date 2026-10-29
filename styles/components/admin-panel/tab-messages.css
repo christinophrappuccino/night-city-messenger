@@ -1,2307 +1,1085 @@
-/* ═══════════════════════════════════════════
-   TAB 2: MESSAGES — v2 Rewrite
-   Message Operations Center: Quick Compose,
-   Activity Feed, Scheduled, Queue, Inbox Mgmt
-   ═══════════════════════════════════════════ */
-
-/* ───────────────────────────────────────────
-   §1 SUMMARY STRIP
-   ─────────────────────────────────────────── */
-
-.ncm-app .ncm-msg-summary {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 8px 14px;
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  margin-bottom: 12px;
-}
-
-.ncm-app .ncm-msg-stat {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-}
-
-.ncm-app .ncm-msg-stat__value {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-}
-
-.ncm-app .ncm-msg-stat__value--cyan    { color: var(--ncm-secondary, var(--ncm-secondary)); }
-.ncm-app .ncm-msg-stat__value--red     { color: var(--ncm-primary, var(--ncm-primary)); }
-.ncm-app .ncm-msg-stat__value--gold    { color: var(--ncm-accent, var(--ncm-accent)); }
-.ncm-app .ncm-msg-stat__value--green   { color: var(--ncm-success, var(--ncm-success)); }
-.ncm-app .ncm-msg-stat__value--orange  { color: var(--ncm-warning, var(--ncm-warning)); }
-
-.ncm-app .ncm-msg-stat__label {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--ncm-text-secondary, var(--ncm-text-muted));
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.7;
-}
-
-.ncm-app .ncm-msg-stat__sep {
-  width: 1px;
-  height: 20px;
-  background: var(--ncm-border, var(--ncm-border));
-  flex-shrink: 0;
-}
-
-/* ───────────────────────────────────────────
-   §2 QUICK COMPOSE
-   ─────────────────────────────────────────── */
-
-.ncm-app .ncm-msg-compose-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-  align-items: stretch;
-}
-
-.ncm-app .ncm-msg-compose-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  overflow: hidden;
-  transition: border-color 0.15s;
-}
-
-.ncm-app .ncm-msg-compose-card:hover {
-  border-color: var(--ncm-border-active, var(--ncm-border-active));
-}
-
-.ncm-app .ncm-msg-compose-card__header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: var(--ncm-bg-base, var(--ncm-bg-base));
-  border-bottom: 1px solid var(--ncm-border, var(--ncm-border));
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--ncm-text-secondary, var(--ncm-text-muted));
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.ncm-app .ncm-msg-compose-card__header i {
-  font-size: 9px;
-  color: var(--ncm-primary, var(--ncm-primary));
-}
-
-/* NPC Quick-Send Chips */
-
-.ncm-app .ncm-msg-npc-grid {
-  display: flex;
-  gap: 6px;
-  padding: 10px 12px;
-  flex-wrap: wrap;
-  flex: 1;
-  align-content: flex-start;
-}
-
-.ncm-app .ncm-msg-npc-chip {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 10px 5px 5px;
-  background: var(--ncm-bg-deep, var(--ncm-bg-deep));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.ncm-app .ncm-msg-npc-chip:hover {
-  border-color: var(--ncm-primary, var(--ncm-primary));
-  background: color-mix(in srgb, var(--ncm-primary) 4%, transparent);
-}
-
-.ncm-app .ncm-msg-npc-chip__avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 11px;
-  flex-shrink: 0;
-  border: 1.5px solid;
-}
-
-.ncm-app .ncm-msg-npc-chip__info {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.ncm-app .ncm-msg-npc-chip__name {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  line-height: 1.2;
-}
-
-.ncm-app .ncm-msg-npc-chip__email {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  line-height: 1;
-}
-
-/* NPC chip avatar image */
-.ncm-app .ncm-msg-npc-chip__avatar img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-/* NPC search bar inside compose card */
-.ncm-app .ncm-msg-npc-search {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-  padding: 4px 10px;
-  background: var(--ncm-bg-deep, var(--ncm-bg-deep));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  transition: border-color 0.15s;
-}
-
-.ncm-app .ncm-msg-npc-search:focus-within {
-  border-color: var(--ncm-secondary, var(--ncm-secondary));
-}
-
-.ncm-app .ncm-msg-npc-search i {
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-npc-search input {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  min-width: 0;
-}
-
-.ncm-app .ncm-msg-npc-search input::placeholder {
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  font-weight: 500;
-}
-
-/* NPC toolbar — search + pager */
-.ncm-app .ncm-msg-npc-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--ncm-border, var(--ncm-border));
-  background: var(--ncm-bg-deep, var(--ncm-bg-deep));
-}
-
-/* NPC pager */
-.ncm-app .ncm-msg-npc-pager {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-npc-pager__label {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  min-width: 32px;
-  text-align: center;
-}
-
-.ncm-app .ncm-msg-npc-pager__btn {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  font-size: 9px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.ncm-app .ncm-msg-npc-pager__btn:hover {
-  color: var(--ncm-secondary, var(--ncm-secondary));
-  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
-}
-
-.ncm-app .ncm-msg-npc-pager__btn--disabled {
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-/* NPC grid — scrollable when many entries */
-.ncm-app .ncm-msg-npc-grid {
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-.ncm-app .ncm-msg-npc-grid::-webkit-scrollbar { width: 4px; }
-.ncm-app .ncm-msg-npc-grid::-webkit-scrollbar-track { background: transparent; }
-.ncm-app .ncm-msg-npc-grid::-webkit-scrollbar-thumb { background: var(--ncm-border, var(--ncm-border)); border-radius: 2px; }
-
-/* Compose card header count badge */
-.ncm-app .ncm-msg-compose-card__count {
-  margin-left: auto;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-/* ─── Inbox Dropdown ─── */
-
-.ncm-app .ncm-msg-inbox-dd__panel {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  margin-bottom: 4px;
-  background: var(--ncm-bg-base, var(--ncm-bg-base));
-  border: 1px solid var(--ncm-border-active, var(--ncm-border-active));
-  border-radius: 2px;
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-}
-
-.ncm-app .ncm-msg-inbox-dd__search {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--ncm-border, var(--ncm-border));
-}
-
-.ncm-app .ncm-msg-inbox-dd__search i {
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-inbox-dd__search input {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  min-width: 0;
-}
-
-.ncm-app .ncm-msg-inbox-dd__search input::placeholder {
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  font-weight: 500;
-}
-
-.ncm-app .ncm-msg-inbox-dd__scroll {
-  max-height: 220px;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.ncm-app .ncm-msg-inbox-dd__scroll::-webkit-scrollbar { width: 4px; }
-.ncm-app .ncm-msg-inbox-dd__scroll::-webkit-scrollbar-track { background: transparent; }
-.ncm-app .ncm-msg-inbox-dd__scroll::-webkit-scrollbar-thumb { background: var(--ncm-border, var(--ncm-border)); border-radius: 2px; }
-
-.ncm-app .ncm-msg-inbox-dd__item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-
-.ncm-app .ncm-msg-inbox-dd__item:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent);
-}
-
-.ncm-app .ncm-msg-inbox-dd__pip {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-inbox-dd__info {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  min-width: 0;
-}
-
-.ncm-app .ncm-msg-inbox-dd__name {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-msg-inbox-dd__type {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-inbox-dd__type i {
-  font-size: 7px;
-  margin-right: 2px;
-}
-
-.ncm-app .ncm-msg-inbox-dd__empty {
-  padding: 12px 10px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  text-align: center;
-}
-
-/* Compose Actions */
-
-.ncm-app .ncm-msg-compose-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  flex: 1;
-}
-
-.ncm-app .ncm-msg-compose-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--ncm-bg-deep, var(--ncm-bg-deep));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex: 1;
-}
-
-.ncm-app .ncm-msg-compose-btn:hover {
-  border-color: var(--ncm-border-active, var(--ncm-border-active));
-  background: var(--ncm-bg-elevated, var(--ncm-bg-elevated));
-}
-
-.ncm-app .ncm-msg-compose-btn__icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-compose-btn__icon--compose {
-  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
-  color: var(--ncm-primary, var(--ncm-primary));
-  border: 1px solid color-mix(in srgb, var(--ncm-primary) 20%, transparent);
-}
-
-.ncm-app .ncm-msg-compose-btn__icon--broadcast {
-  background: color-mix(in srgb, var(--ncm-purple) 6%, transparent);
-  color: var(--ncm-purple);
-  border: 1px solid color-mix(in srgb, var(--ncm-purple) 12%, transparent);
-}
-
-.ncm-app .ncm-msg-compose-btn__text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.ncm-app .ncm-msg-compose-btn__title {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  text-transform: uppercase;
-}
-
-.ncm-app .ncm-msg-compose-btn__desc {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-
-/* ───────────────────────────────────────────
-   §3 ACTIVITY FEED
-   ─────────────────────────────────────────── */
-
-/* Toolbar */
-
-.ncm-app .ncm-msg-feed-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.ncm-app .ncm-msg-feed-search {
-  flex: 1;
-  min-width: 160px;
-  max-width: 240px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 12px;
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  transition: border-color 0.15s;
-}
-
-.ncm-app .ncm-msg-feed-search:focus-within {
-  border-color: var(--ncm-secondary, var(--ncm-secondary));
-}
-
-.ncm-app .ncm-msg-feed-search i {
-  font-size: 10px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-feed-search input {
-  background: none !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  color: var(--ncm-text-primary, var(--ncm-text-primary)) !important;
-  width: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-}
-
-.ncm-app .ncm-msg-feed-search input::placeholder {
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  font-weight: 500;
-}
-
-.ncm-app .ncm-msg-feed-toolbar__spacer {
-  flex: 1;
-}
-
-/* Actor filter pill */
-
-.ncm-app .ncm-msg-actor-filter {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--ncm-text-secondary, var(--ncm-text-muted));
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  position: relative;
-}
-
-.ncm-app .ncm-msg-actor-filter:hover {
-  border-color: var(--ncm-border-active, var(--ncm-border-active));
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-}
-
-.ncm-app .ncm-msg-actor-filter--active {
-  border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
-  color: var(--ncm-secondary, var(--ncm-secondary));
-  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
-}
-
-.ncm-app .ncm-msg-actor-filter .filter-val {
-  color: var(--ncm-secondary, var(--ncm-secondary));
-  font-weight: 700;
-}
-
-/* Actor filter dropdown */
-
-.ncm-app .ncm-msg-actor-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 4px;
-  width: 220px;
-  background: var(--ncm-bg-base, var(--ncm-bg-base));
-  border: 1px solid var(--ncm-border-active, var(--ncm-border-active));
-  border-radius: 2px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-}
-
-.ncm-app .ncm-msg-actor-dropdown__scroll {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-  max-height: 260px;
-}
-
-.ncm-app .ncm-msg-actor-dropdown__scroll::-webkit-scrollbar { width: 4px; }
-.ncm-app .ncm-msg-actor-dropdown__scroll::-webkit-scrollbar-track { background: transparent; }
-.ncm-app .ncm-msg-actor-dropdown__scroll::-webkit-scrollbar-thumb { background: var(--ncm-border, var(--ncm-border)); border-radius: 2px; }
-
-.ncm-app .ncm-msg-actor-dropdown__header {
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--ncm-border, var(--ncm-border));
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.ncm-app .ncm-msg-actor-dropdown__search {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-bottom: 1px solid var(--ncm-border, var(--ncm-border));
-  background: var(--ncm-bg-deep, var(--ncm-bg-deep));
-}
-
-.ncm-app .ncm-msg-actor-dropdown__search i {
-  font-size: 8px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-actor-dropdown__search input {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  min-width: 0;
-}
-
-.ncm-app .ncm-msg-actor-dropdown__search input::placeholder {
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  font-weight: 500;
-}
-
-.ncm-app .ncm-msg-actor-dropdown__group-label {
-  padding: 4px 10px 2px;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.ncm-app .ncm-msg-actor-dropdown__item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-
-.ncm-app .ncm-msg-actor-dropdown__item:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent);
-}
-
-.ncm-app .ncm-msg-actor-dropdown__item--active {
-  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
-}
-
-.ncm-app .ncm-msg-actor-dropdown__pip {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 8px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-actor-dropdown__name {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-}
-
-.ncm-app .ncm-msg-actor-dropdown__count {
-  margin-left: auto;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-actor-dropdown__sep {
-  height: 1px;
-  background: var(--ncm-border, var(--ncm-border));
-  margin: 2px 0;
-}
-
-/* Date range filter row — clickable, opens DateRangePicker dialog */
-
-.ncm-app .ncm-msg-feed-daterange {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 12px;
-  background: var(--ncm-bg-deep, var(--ncm-bg-deep));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-top: none;
-  border-radius: 0 0 2px 2px;
-  margin-top: -2px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.ncm-app .ncm-msg-feed-daterange:hover {
-  border-color: var(--ncm-border-active, var(--ncm-border-active));
-  background: color-mix(in srgb, var(--ncm-secondary) 2%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-daterange > i {
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-feed-daterange__placeholder {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-feed-daterange__range {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ncm-app .ncm-msg-feed-daterange__date {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 11px;
-  color: var(--ncm-secondary, var(--ncm-secondary));
-}
-
-.ncm-app .ncm-msg-feed-daterange__arrow {
-  font-size: 10px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-feed-daterange__clear {
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: 1px solid color-mix(in srgb, var(--ncm-primary) 20%, transparent);
-  border-radius: 2px;
-  color: var(--ncm-primary, var(--ncm-primary));
-  font-size: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.ncm-app .ncm-msg-feed-daterange__clear:hover {
-  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
-  border-color: color-mix(in srgb, var(--ncm-primary) 40%, transparent);
-}
-
-/* Feed list container */
-
-.ncm-app .ncm-msg-feed-list {
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-height: 340px;
-  margin-bottom: 14px;
-}
-
-.ncm-app .ncm-msg-feed-list::-webkit-scrollbar { width: 4px; }
-.ncm-app .ncm-msg-feed-list::-webkit-scrollbar-track { background: transparent; }
-.ncm-app .ncm-msg-feed-list::-webkit-scrollbar-thumb { background: var(--ncm-border, var(--ncm-border)); border-radius: 2px; }
-
-/* Column headers — sticky at top when scrolling */
-
-.ncm-app .ncm-msg-feed-col-headers {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 12px;
-  border-bottom: 1px solid var(--ncm-border, var(--ncm-border));
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.ncm-app .ncm-msg-feed-col-headers__dir     { width: 22px; flex-shrink: 0; text-align: center; }
-.ncm-app .ncm-msg-feed-col-headers__route   { width: 200px; flex-shrink: 0; }
-.ncm-app .ncm-msg-feed-col-headers__subject { flex: 1; }
-.ncm-app .ncm-msg-feed-col-headers__status  { width: 72px; flex-shrink: 0; }
-.ncm-app .ncm-msg-feed-col-headers__time    { min-width: 48px; text-align: right; flex-shrink: 0; }
-.ncm-app .ncm-msg-feed-col-headers__actions { width: 56px; flex-shrink: 0; }
-
-/* Feed row */
-
-.ncm-app .ncm-msg-feed-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
-  cursor: pointer;
-  transition: all 0.12s;
-  position: relative;
-}
-
-.ncm-app .ncm-msg-feed-row:last-child { border-bottom: none; }
-
-.ncm-app .ncm-msg-feed-row:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 2%, transparent);
-}
-
-/* Unread left-bar + subtle bg */
-
-.ncm-app .ncm-msg-feed-row--unread {
-  background: color-mix(in srgb, var(--ncm-primary) 3%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-row--unread::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 4px; bottom: 4px;
-  width: 2px;
-  background: var(--ncm-primary, var(--ncm-primary));
-  border-radius: 0 1px 1px 0;
-}
-
-/* Expanded state */
-
-.ncm-app .ncm-msg-feed-row--expanded {
-  background: color-mix(in srgb, var(--ncm-secondary) 2%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-row--expanded::after {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 2px;
-  background: var(--ncm-secondary, var(--ncm-secondary));
-  border-radius: 0 1px 1px 0;
-}
-
-/* Direction icon */
-
-.ncm-app .ncm-msg-feed-row__dir {
-  width: 22px;
-  height: 22px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-feed-row__dir--in {
-  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent);
-  color: var(--ncm-secondary, var(--ncm-secondary));
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-row__dir--out {
-  background: color-mix(in srgb, var(--ncm-primary) 6%, transparent);
-  color: var(--ncm-primary, var(--ncm-primary));
-  border: 1px solid color-mix(in srgb, var(--ncm-primary) 15%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-row__dir--system {
-  background: color-mix(in srgb, var(--ncm-purple) 6%, transparent);
-  color: var(--ncm-purple);
-  border: 1px solid color-mix(in srgb, var(--ncm-purple) 12%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-row__dir--queued {
-  background: color-mix(in srgb, var(--ncm-warning) 6%, transparent);
-  color: var(--ncm-warning, var(--ncm-warning));
-  border: 1px solid color-mix(in srgb, var(--ncm-warning) 15%, transparent);
-}
-
-/* Route */
-
-.ncm-app .ncm-msg-feed-row__route {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  width: 200px;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-feed-row__names {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.2;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-msg-feed-row__from { color: var(--ncm-text-primary, var(--ncm-text-primary)); }
-.ncm-app .ncm-msg-feed-row__arrow { color: var(--ncm-text-muted, var(--ncm-text-muted)); font-size: 9px; flex-shrink: 0; opacity: 0.6; }
-.ncm-app .ncm-msg-feed-row__to { color: var(--ncm-text-secondary, var(--ncm-text-secondary)); }
-
-/* Color from/to based on direction */
-.ncm-app .ncm-msg-feed-row__dir--in + .ncm-msg-feed-row__route .ncm-msg-feed-row__from { color: var(--ncm-secondary, var(--ncm-secondary)); }
-.ncm-app .ncm-msg-feed-row__dir--out + .ncm-msg-feed-row__route .ncm-msg-feed-row__from { color: var(--ncm-primary, var(--ncm-primary)); }
-
-.ncm-app .ncm-msg-feed-row__network {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-/* Subject */
-
-.ncm-app .ncm-msg-feed-row__subject {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ncm-text-secondary, var(--ncm-text-muted));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-msg-feed-row--unread .ncm-msg-feed-row__subject {
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  font-weight: 700;
-}
-
-/* Status pip */
-
-.ncm-app .ncm-msg-feed-status {
-  font-size: 9px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 2px 6px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-feed-status i { font-size: 8px; }
-
-.ncm-app .ncm-msg-feed-status--delivered {
-  color: var(--ncm-success, var(--ncm-success));
-  background: color-mix(in srgb, var(--ncm-success) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-success) 12%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-status--read {
-  color: var(--ncm-secondary, var(--ncm-secondary));
-  background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 10%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-status--queued {
-  color: var(--ncm-warning, var(--ncm-warning));
-  background: color-mix(in srgb, var(--ncm-warning) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-warning) 12%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-status--deleted {
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  background: color-mix(in srgb, var(--ncm-text-muted) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-text-muted) 10%, transparent);
-  text-decoration: line-through;
-}
-
-.ncm-app .ncm-msg-feed-status--unread {
-  color: var(--ncm-primary, var(--ncm-primary));
-  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-primary) 15%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-status--sent {
-  color: var(--ncm-accent, var(--ncm-accent));
-  background: color-mix(in srgb, var(--ncm-accent) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-accent) 12%, transparent);
-}
-
-/* Timestamp — stacked date + relative */
-
-.ncm-app .ncm-msg-feed-row__time {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0;
-  flex-shrink: 0;
-  min-width: 80px;
-  text-align: right;
-}
-
-.ncm-app .ncm-msg-feed-row__time-date {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--ncm-text-primary, var(--ncm-text-secondary));
-  line-height: 1.2;
-}
-
-.ncm-app .ncm-msg-feed-row__time-rel {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  line-height: 1.2;
-}
-
-.ncm-app .ncm-msg-feed-row__time--recent .ncm-msg-feed-row__time-date {
-  color: var(--ncm-secondary, var(--ncm-secondary));
-}
-
-.ncm-app .ncm-msg-feed-row__time--recent .ncm-msg-feed-row__time-rel {
-  color: color-mix(in srgb, var(--ncm-secondary) 60%, transparent);
-}
-
-/* Hover actions */
-
-.ncm-app .ncm-msg-feed-row__actions {
-  display: flex;
-  gap: 3px;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-
-.ncm-app .ncm-msg-feed-row:hover .ncm-msg-feed-row__actions {
-  opacity: 1;
-}
-
-/* Deleted row dimming */
-
-.ncm-app .ncm-msg-feed-row--deleted .ncm-msg-feed-row__from,
-.ncm-app .ncm-msg-feed-row--deleted .ncm-msg-feed-row__to {
-  opacity: 0.6;
-}
-
-.ncm-app .ncm-msg-feed-row--deleted .ncm-msg-feed-row__subject {
-  opacity: 0.55;
-  text-decoration: line-through;
-}
-
-
-/* ───────────────────────────────────────────
-   §3b INLINE EXPAND
-   ─────────────────────────────────────────── */
-
-.ncm-app .ncm-msg-feed-expand {
-  padding: 0 12px 10px 44px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
-  background: color-mix(in srgb, var(--ncm-secondary) 1.5%, transparent);
-  animation: ncm-msg-expand-in 0.15s ease;
-}
-
-@keyframes ncm-msg-expand-in {
-  from { opacity: 0; max-height: 0; }
-  to   { opacity: 1; max-height: 300px; }
-}
-
-.ncm-app .ncm-msg-feed-expand__inner {
-  display: flex;
-  gap: 14px;
-  padding-top: 8px;
-  border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-expand__body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ncm-app .ncm-msg-feed-expand__subject {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  line-height: 1.2;
-}
-
-.ncm-app .ncm-msg-feed-expand__text {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--ncm-text-secondary, var(--ncm-text-muted));
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.ncm-app .ncm-msg-feed-expand__meta {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  flex-wrap: wrap;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.ncm-app .ncm-msg-feed-expand__meta > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  background: color-mix(in srgb, var(--ncm-bg-surface) 60%, transparent);
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-}
-
-.ncm-app .ncm-msg-feed-expand__meta i { font-size: 8px; }
-
-/* Calendar — gold */
-.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(1) i { color: var(--ncm-accent, var(--ncm-accent)); }
-.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(1) .ncm-msg-feed-expand__meta-val { color: var(--ncm-accent, var(--ncm-accent)); }
-
-/* Network — color set inline from network theme data */
-
-/* Signal — green */
-.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(3) i { color: var(--ncm-success, var(--ncm-success)); }
-.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(3) .ncm-msg-feed-expand__meta-val { color: var(--ncm-success, var(--ncm-success)); }
-
-/* Encryption — last child, colored per state in template */
-.ncm-app .ncm-msg-feed-expand__meta > span:last-child .fa-lock { color: var(--ncm-primary, var(--ncm-primary)); }
-.ncm-app .ncm-msg-feed-expand__meta > span:last-child .fa-lock-open { color: var(--ncm-success, var(--ncm-success)); }
-
-.ncm-app .ncm-msg-feed-expand__meta-val {
-  color: var(--ncm-text-secondary, var(--ncm-text-secondary));
-}
-
-.ncm-app .ncm-msg-feed-expand__meta-val--encrypted { color: var(--ncm-primary, var(--ncm-primary)) !important; }
-.ncm-app .ncm-msg-feed-expand__meta-val--open { color: var(--ncm-success, var(--ncm-success)) !important; }
-
-.ncm-app .ncm-msg-feed-expand__attachments {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.ncm-app .ncm-msg-feed-expand__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex-shrink: 0;
-  justify-content: flex-start;
-  padding-top: 2px;
-}
-
-
-/* ───────────────────────────────────────────
-   §3c LOAD MORE + FEED FOOTER
-   ─────────────────────────────────────────── */
-
-.ncm-app .ncm-msg-feed-load-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ncm-secondary, var(--ncm-secondary));
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-top: 1px solid var(--ncm-border, var(--ncm-border));
-  background: var(--ncm-bg-base, var(--ncm-bg-base));
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-}
-
-.ncm-app .ncm-msg-feed-load-more:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
-}
-
-.ncm-app .ncm-msg-feed-load-more i {
-  font-size: 9px;
-}
-
-.ncm-app .ncm-msg-feed-load-more__count {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  font-weight: 400;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-feed-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 5px 12px;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  border-top: 1px solid var(--ncm-border, var(--ncm-border));
-  background: var(--ncm-bg-base, var(--ncm-bg-base));
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-}
-
-
-/* ───────────────────────────────────────────
-   §4 SCHEDULED DELIVERIES
-   ─────────────────────────────────────────── */
-
-.ncm-app .ncm-msg-sched-list {
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 14px;
-}
-
-.ncm-app .ncm-msg-sched-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
-  transition: background 0.12s;
-}
-
-.ncm-app .ncm-msg-sched-row:last-child { border-bottom: none; }
-
-.ncm-app .ncm-msg-sched-row:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 2%, transparent);
-}
-
-.ncm-app .ncm-msg-sched-row__countdown {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 14px;
-  color: var(--ncm-accent, var(--ncm-accent));
-  min-width: 72px;
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
-
-.ncm-app .ncm-msg-sched-row__countdown--soon {
-  color: var(--ncm-danger, var(--ncm-danger));
-  animation: ncm-sched-pulse 2s ease-in-out infinite;
-}
-
-@keyframes ncm-sched-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.ncm-app .ncm-msg-sched-row__sep {
-  width: 1px;
-  height: 24px;
-  background: var(--ncm-border, var(--ncm-border));
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-sched-row__route {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-
-.ncm-app .ncm-msg-sched-row__from-to {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.ncm-app .ncm-msg-sched-row__from-to .from  { color: var(--ncm-primary, var(--ncm-primary)); }
-.ncm-app .ncm-msg-sched-row__from-to .arrow { color: var(--ncm-text-muted, var(--ncm-text-muted)); font-size: 9px; }
-.ncm-app .ncm-msg-sched-row__from-to .to    { color: var(--ncm-text-primary, var(--ncm-text-primary)); }
-
-.ncm-app .ncm-msg-sched-row__subject {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-msg-sched-row__priority {
-  flex-shrink: 0;
-  padding: 2px 6px;
-  border-radius: 2px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  border: 1px solid;
-}
-
-.ncm-app .ncm-msg-sched-row__priority--normal   { color: var(--ncm-text-muted, var(--ncm-text-muted)); border-color: var(--ncm-border, var(--ncm-border)); }
-.ncm-app .ncm-msg-sched-row__priority--urgent   { color: var(--ncm-accent, var(--ncm-accent)); border-color: color-mix(in srgb, var(--ncm-accent) 25%, transparent); background: color-mix(in srgb, var(--ncm-accent) 6%, transparent); }
-.ncm-app .ncm-msg-sched-row__priority--critical { color: var(--ncm-danger, var(--ncm-danger)); border-color: color-mix(in srgb, var(--ncm-danger) 25%, transparent); background: color-mix(in srgb, var(--ncm-danger) 6%, transparent); }
-
-.ncm-app .ncm-msg-sched-row__date {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  flex-shrink: 0;
-  min-width: 110px;
-  text-align: right;
-}
-
-.ncm-app .ncm-msg-sched-row__actions {
-  display: flex;
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-
-/* ───────────────────────────────────────────
-   §5 MESSAGE QUEUE
-   ─────────────────────────────────────────── */
-
-.ncm-app .ncm-msg-queue-empty {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  margin-bottom: 14px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-}
-
-.ncm-app .ncm-msg-queue-empty i {
-  font-size: 14px;
-  color: var(--ncm-success, var(--ncm-success));
-}
-
-.ncm-app .ncm-msg-queue-list {
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid color-mix(in srgb, var(--ncm-warning) 15%, transparent);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 14px;
-}
-
-.ncm-app .ncm-msg-queue-list__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--ncm-warning) 3%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--ncm-warning) 10%, transparent);
-}
-
-.ncm-app .ncm-msg-queue-list__label {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--ncm-warning, var(--ncm-warning));
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.ncm-app .ncm-msg-queue-list__label i {
-  font-size: 9px;
-  margin-right: 4px;
-}
-
-.ncm-app .ncm-msg-queue-list__count {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  margin-left: auto;
-}
-
-.ncm-app .ncm-msg-queue-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 40%, transparent);
-}
-
-.ncm-app .ncm-msg-queue-row:last-child { border-bottom: none; }
-
-.ncm-app .ncm-msg-queue-row__icon {
-  font-size: 10px;
-  color: var(--ncm-warning, var(--ncm-warning));
-  flex-shrink: 0;
-  width: 22px;
-  text-align: center;
-}
-
-.ncm-app .ncm-msg-queue-row__route {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.ncm-app .ncm-msg-queue-row__names {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-}
-
-.ncm-app .ncm-msg-queue-row__names .arrow {
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  font-size: 9px;
-  margin: 0 3px;
-}
-
-.ncm-app .ncm-msg-queue-row__reason {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--ncm-warning, var(--ncm-warning));
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.ncm-app .ncm-msg-queue-row__reason i { font-size: 8px; }
-
-.ncm-app .ncm-msg-queue-row__queued {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-msg-queue-row__actions {
-  display: flex;
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-
-/* ───────────────────────────────────────────
-   §6 INBOX MANAGEMENT
-   ─────────────────────────────────────────── */
-
-.ncm-app .ncm-msg-inbox-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.ncm-app .ncm-msg-inbox-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  transition: all 0.15s;
-  cursor: pointer;
-}
-
-.ncm-app .ncm-msg-inbox-card:hover {
-  border-color: var(--ncm-border-active, var(--ncm-border-active));
-  background: var(--ncm-bg-elevated, var(--ncm-bg-elevated));
-}
-
-.ncm-app .ncm-msg-inbox-card__avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 13px;
-  flex-shrink: 0;
-  border: 1.5px solid;
-}
-
-.ncm-app .ncm-msg-inbox-card__info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.ncm-app .ncm-msg-inbox-card__name {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-msg-inbox-card__meta {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  display: flex;
-  gap: 6px;
-}
-
-.ncm-app .ncm-msg-inbox-card__meta i { font-size: 8px; }
-
-.ncm-app .ncm-msg-inbox-card__count {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--ncm-text-secondary, var(--ncm-text-muted));
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-.ncm-app .ncm-msg-inbox-card__count--alert {
-  color: var(--ncm-primary, var(--ncm-primary));
-}
-
-.ncm-app .ncm-msg-inbox-card__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-
-.ncm-app .ncm-msg-inbox-card:hover .ncm-msg-inbox-card__actions {
-  opacity: 1;
-}
-
-
-/* ───────────────────────────────────────────
-   §7 FOUNDRY BUTTON OVERRIDES
-   Required to prevent Foundry's global button
-   styles from rendering white boxes with
-   browser chrome on all interactive elements.
-   ─────────────────────────────────────────── */
-
-/* NPC chips */
-.ncm-app .ncm-admin-panel .ncm-msg-npc-chip {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-}
-
-/* Compose action buttons */
-.ncm-app .ncm-admin-panel .ncm-msg-compose-btn {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  width: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  outline: none !important;
-}
-
-/* Actor filter */
-.ncm-app .ncm-admin-panel .ncm-msg-actor-filter {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  width: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  outline: none !important;
-}
-
-/* Feed row action buttons */
-.ncm-app .ncm-admin-panel .ncm-msg-feed-row__actions .ncm-admin-action-btn,
-.ncm-app .ncm-admin-panel .ncm-msg-sched-row__actions .ncm-admin-action-btn,
-.ncm-app .ncm-admin-panel .ncm-msg-queue-row__actions .ncm-admin-action-btn {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 24px !important;
-  height: 24px !important;
-  padding: 0 !important;
-  background: transparent !important;
-  border: 1px solid var(--ncm-border) !important;
-  border-radius: 2px !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  cursor: pointer !important;
-  color: var(--ncm-text-muted) !important;
-  font-size: 9px !important;
-  transition: all 0.15s !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-row__actions .ncm-admin-action-btn:hover,
-.ncm-app .ncm-admin-panel .ncm-msg-sched-row__actions .ncm-admin-action-btn:hover,
-.ncm-app .ncm-admin-panel .ncm-msg-queue-row__actions .ncm-admin-action-btn:hover {
-  color: var(--ncm-secondary) !important;
-  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-row__actions .ncm-admin-action-btn--danger:hover,
-.ncm-app .ncm-admin-panel .ncm-msg-sched-row__actions .ncm-admin-action-btn--danger:hover,
-.ncm-app .ncm-admin-panel .ncm-msg-queue-row__actions .ncm-admin-action-btn--danger:hover {
-  color: var(--ncm-danger) !important;
-  border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent) !important;
-}
-
-/* Queue flush button */
-.ncm-app .ncm-admin-panel button.ncm-msg-queue-list__flush,
-.ncm-app .ncm-admin-panel .ncm-msg-queue-list__flush {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  font-family: var(--ncm-font-display) !important;
-  font-size: 9px !important;
-  font-weight: 700 !important;
-  color: var(--ncm-text-muted) !important;
-  text-transform: uppercase !important;
-  cursor: pointer !important;
-  background: transparent !important;
-  border: 1px solid var(--ncm-border) !important;
-  padding: 2px 8px !important;
-  border-radius: 2px !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  width: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  outline: none !important;
-  transition: all 0.15s !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-queue-list__flush:hover {
-  color: var(--ncm-success) !important;
-  border-color: color-mix(in srgb, var(--ncm-success) 25%, transparent) !important;
-}
-
-/* Expand sidebar buttons */
-.ncm-app .ncm-admin-panel .ncm-msg-feed-expand__actions button,
-.ncm-app .ncm-admin-panel .ncm-msg-feed-expand__actions .ncm-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  padding: 3px 8px !important;
-  font-family: var(--ncm-font-display) !important;
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-  border-radius: 2px !important;
-  cursor: pointer !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  width: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  outline: none !important;
-  transition: all 0.15s !important;
-  background: transparent !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-expand__actions .ncm-btn--cyan {
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
-  color: var(--ncm-secondary) !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-expand__actions .ncm-btn--cyan:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-expand__actions .ncm-btn--ghost {
-  border: 1px solid var(--ncm-border) !important;
-  color: var(--ncm-text-muted) !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-expand__actions .ncm-btn--ghost:hover {
-  border-color: var(--ncm-border-active) !important;
-  color: var(--ncm-text-secondary) !important;
-}
-
-/* Inbox card action buttons */
-.ncm-app .ncm-admin-panel button.ncm-msg-inbox-card__action,
-.ncm-app .ncm-admin-panel .ncm-msg-inbox-card__action {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 22px !important;
-  height: 22px !important;
-  padding: 0 !important;
-  background: transparent !important;
-  border: 1px solid var(--ncm-border) !important;
-  border-radius: 2px !important;
-  color: var(--ncm-text-muted) !important;
-  font-size: 9px !important;
-  cursor: pointer !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  transition: all 0.12s !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-inbox-card__action:hover {
-  color: var(--ncm-secondary) !important;
-  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
-}
-
-/* Export button in toolbar */
-.ncm-app .ncm-admin-panel .ncm-msg-feed-toolbar button,
-.ncm-app .ncm-admin-panel .ncm-msg-feed-toolbar .ncm-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  padding: 3px 8px !important;
-  font-family: var(--ncm-font-display) !important;
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  border-radius: 2px !important;
-  cursor: pointer !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  width: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  outline: none !important;
-  border: 1px solid var(--ncm-border) !important;
-  color: var(--ncm-text-muted) !important;
-  background: transparent !important;
-  transition: all 0.15s !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-toolbar button:hover,
-.ncm-app .ncm-admin-panel .ncm-msg-feed-toolbar .ncm-btn:hover {
-  border-color: var(--ncm-border-active) !important;
-  color: var(--ncm-text-secondary) !important;
-}
-
-/* Search input belt-and-suspenders */
-.ncm-app .ncm-admin-panel .ncm-msg-feed-search input {
-  background: none !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-}
-
-/* Load More button */
-.ncm-app .ncm-admin-panel .ncm-msg-feed-load-more {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 6px !important;
-  padding: 8px 12px !important;
-  cursor: pointer !important;
-  background: var(--ncm-bg-base) !important;
-  border: none !important;
-  border-top: 1px solid var(--ncm-border) !important;
-  border-radius: 0 !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  outline: none !important;
-  font-family: var(--ncm-font-display) !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  color: var(--ncm-secondary) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-  transition: all 0.15s !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-load-more:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent) !important;
-}
-
-/* ─── Foundry overrides: NPC pager buttons ─── */
-.ncm-app .ncm-admin-panel .ncm-msg-npc-pager__btn {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 22px !important;
-  height: 22px !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  max-height: 22px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  background: none !important;
-  border: 1px solid var(--ncm-border) !important;
-  border-radius: 2px !important;
-  color: var(--ncm-text-muted) !important;
-  font-size: 9px !important;
-  cursor: pointer !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
-  line-height: 1 !important;
-  transition: all 0.15s !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-npc-pager__btn:hover {
-  color: var(--ncm-secondary) !important;
-  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-npc-pager__btn--disabled {
-  opacity: 0.3 !important;
-  pointer-events: none !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-npc-pager__btn i {
-  font-size: 9px !important;
-  margin: 0 !important;
-}
-
-/* ─── Foundry overrides: NPC search input ─── */
-.ncm-app .ncm-admin-panel .ncm-msg-npc-search input,
-.ncm-app .ncm-admin-panel .ncm-msg-npc-search__input {
-  background: none !important;
-  border: none !important;
-  border-radius: 0 !important;
-  outline: none !important;
-  box-shadow: none !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  width: auto !important;
-  flex: 1 !important;
-  font-family: var(--ncm-font-display) !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: var(--ncm-text-primary) !important;
-}
-
-/* ─── Foundry overrides: Inbox dropdown search input ─── */
-.ncm-app .ncm-admin-panel .ncm-msg-inbox-dd-search__input,
-.ncm-app .ncm-admin-panel .ncm-msg-inbox-dd__search input {
-  background: none !important;
-  border: none !important;
-  border-radius: 0 !important;
-  outline: none !important;
-  box-shadow: none !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  width: auto !important;
-  flex: 1 !important;
-  font-family: var(--ncm-font-display) !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: var(--ncm-text-primary) !important;
-}
-
-/* ─── Foundry overrides: Inbox dropdown items ─── */
-.ncm-app .ncm-admin-panel .ncm-msg-inbox-dd__item {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  padding: 5px 10px !important;
-  cursor: pointer !important;
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  min-height: 0 !important;
-  height: auto !important;
-  width: 100% !important;
-  margin: 0 !important;
-  font-family: inherit !important;
-  text-align: left !important;
-  transition: background 0.1s !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-inbox-dd__item:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent) !important;
-}
-
-/* ─── Foundry overrides: Actor dropdown search input ─── */
-.ncm-app .ncm-admin-panel .ncm-msg-actor-dd-search__input,
-.ncm-app .ncm-admin-panel .ncm-msg-actor-dropdown__search input {
-  background: none !important;
-  border: none !important;
-  border-radius: 0 !important;
-  outline: none !important;
-  box-shadow: none !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  width: auto !important;
-  flex: 1 !important;
-  font-family: var(--ncm-font-display) !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: var(--ncm-text-primary) !important;
-}
-
-/* ─── Foundry overrides: Date range clear button ─── */
-.ncm-app .ncm-admin-panel .ncm-msg-feed-daterange__clear {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  max-height: 18px !important;
-  padding: 0 !important;
-  margin: 0 0 0 auto !important;
-  background: none !important;
-  border: 1px solid color-mix(in srgb, var(--ncm-primary) 20%, transparent) !important;
-  border-radius: 2px !important;
-  color: var(--ncm-primary) !important;
-  font-size: 8px !important;
-  cursor: pointer !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  flex-shrink: 0 !important;
-  line-height: 1 !important;
-  transition: all 0.15s !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-daterange__clear:hover {
-  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent) !important;
-  border-color: color-mix(in srgb, var(--ncm-primary) 40%, transparent) !important;
-}
-
-.ncm-app .ncm-admin-panel .ncm-msg-feed-daterange__clear i {
-  font-size: 8px !important;
-  margin: 0 !important;
-}
-
-
-/* ═══════════════════════════════════════════
-   NPC INBOX — player → NPC triage section
-   ═══════════════════════════════════════════ */
-
-.ncm-app .ncm-section-title__count--alert {
-  color: var(--ncm-primary, var(--ncm-primary));
-}
-
-.ncm-app .ncm-npcinbox-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.ncm-app .ncm-npcinbox-toolbar__spacer { flex: 1; }
-
-.ncm-app .ncm-npcinbox-sortwrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  font-size: 10px;
-}
-
-.ncm-app .ncm-admin-panel .ncm-npcinbox-sort {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: var(--ncm-text-secondary, var(--ncm-text-secondary)) !important;
-  background-color: var(--ncm-bg-surface, var(--ncm-bg-surface)) !important;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M1 3l4 4 4-4' stroke='%238888a0' stroke-width='1.4' fill='none'/></svg>") !important;
-  background-repeat: no-repeat !important;
-  background-position: right 8px center !important;
-  border: 1px solid var(--ncm-border, var(--ncm-border)) !important;
-  border-radius: 2px !important;
-  padding: 4px 24px 4px 8px !important;
-  height: auto !important;
-  min-height: 0 !important;
-  outline: none !important;
-  box-shadow: none !important;
-  cursor: pointer !important;
-}
-
-.ncm-app .ncm-npcinbox-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ncm-app .ncm-npcinbox-card {
-  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
-  border: 1px solid var(--ncm-border, var(--ncm-border));
-  border-radius: 2px;
-  overflow: hidden;
-  transition: border-color 0.15s;
-}
-
-.ncm-app .ncm-npcinbox-card--expanded {
-  border-color: var(--ncm-border-active, var(--ncm-border-active));
-}
-
-.ncm-app .ncm-npcinbox-card__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-
-.ncm-app .ncm-npcinbox-card__head:hover {
-  background: var(--ncm-bg-elevated, var(--ncm-bg-elevated));
-}
-
-.ncm-app .ncm-npcinbox-card__chevron {
-  flex: 0 0 auto;
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  transition: transform 0.15s;
-}
-
-.ncm-app .ncm-npcinbox-card--expanded .ncm-npcinbox-card__chevron {
-  transform: rotate(90deg);
-}
-
-.ncm-app .ncm-npcinbox-card__avatar {
-  flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 12px;
-  border: 1.5px solid;
-  overflow: hidden;
-}
-
-.ncm-app .ncm-npcinbox-card__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-
-.ncm-app .ncm-npcinbox-card__info {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.ncm-app .ncm-npcinbox-card__name {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-npcinbox-card__meta {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-npcinbox-card__meta i { font-size: 8px; }
-
-.ncm-app .ncm-npcinbox-card__badge {
-  flex: 0 0 auto;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--ncm-primary, var(--ncm-primary));
-  background: color-mix(in srgb, var(--ncm-primary) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-primary) 25%, transparent);
-  border-radius: 2px;
-  padding: 2px 6px;
-  line-height: 1;
-}
-
-.ncm-app .ncm-npcinbox-card__total {
-  flex: 0 0 auto;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  min-width: 18px;
-  text-align: center;
-}
-
-.ncm-app .ncm-npcinbox-card__time {
-  flex: 0 0 auto;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  min-width: 56px;
-  text-align: right;
-}
-
-.ncm-app .ncm-npcinbox-card__actions {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 4px;
-}
-
-.ncm-app .ncm-npcinbox-card__msgs {
-  border-top: 1px solid var(--ncm-border, var(--ncm-border));
-  background: var(--ncm-bg-base, var(--ncm-bg-base));
-}
-
-.ncm-app .ncm-npcinbox-msg {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 12px 7px 32px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 40%, transparent);
-}
-
-.ncm-app .ncm-npcinbox-msg:last-child { border-bottom: none; }
-
-.ncm-app .ncm-npcinbox-msg--unread {
-  box-shadow: inset 2px 0 0 var(--ncm-primary, var(--ncm-primary));
-}
-
-.ncm-app .ncm-npcinbox-msg__main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  cursor: pointer;
-}
-
-.ncm-app .ncm-npcinbox-msg__topline {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-}
-
-.ncm-app .ncm-npcinbox-msg__sender {
-  flex: 0 0 auto;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ncm-secondary, var(--ncm-secondary));
-  white-space: nowrap;
-}
-
-.ncm-app .ncm-npcinbox-msg__subject {
-  flex: 1 1 auto;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ncm-text-primary, var(--ncm-text-primary));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-npcinbox-msg--unread .ncm-npcinbox-msg__subject {
-  color: var(--ncm-text-primary);
-}
-
-.ncm-app .ncm-npcinbox-msg__preview {
-  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
-  font-size: 10px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-npcinbox-msg__time {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, var(--ncm-text-muted));
-  min-width: 64px;
-  line-height: 1.3;
-}
-
-.ncm-app .ncm-npcinbox-msg__actions {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 4px;
-}
-
-/* ── Fan-out rows: one send, N recipients (expand lists each copy) ── */
-.ncm-app .ncm-admin-panel .ncm-msg-feed-row__to--group { color: var(--ncm-secondary); display: inline-flex; align-items: center; gap: 4px; }
-.ncm-app .ncm-admin-panel .ncm-msg-feed-row__to--group i { font-size: 9px; }
-.ncm-app .ncm-admin-panel .ncm-msg-feed-expand__recips { display: flex; flex-direction: column; gap: 2px; margin: 0 0 8px; }
-.ncm-app .ncm-admin-panel .ncm-msg-feed-recip {
-  display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 8px; padding: 4px 8px;
-  background: var(--ncm-bg-deep); border: 1px solid var(--ncm-border); border-radius: 2px;
-}
-.ncm-app .ncm-admin-panel .ncm-msg-feed-recip--unread { border-left: 2px solid var(--ncm-secondary); }
-.ncm-app .ncm-admin-panel .ncm-msg-feed-recip__name { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 600; color: var(--ncm-text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* SEND AS A TERMINAL ACCOUNT — the machine + the real typist on a sent copy. */
-.ncm-app .ncm-msg-via { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; padding: 0 5px; border-radius: 1px; border: 1px solid var(--ncm-border); color: var(--ncm-text-secondary); font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; white-space: nowrap; vertical-align: middle; }
-.ncm-app .ncm-msg-via.is-imp { color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent); }
-
-/* IDENTITIES — the alias a message went out from / came in on (utils/identities.js). */
-.ncm-app .ncm-msg-alias { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; padding: 0 5px; border-radius: 1px; border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent); color: var(--ncm-secondary); font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; vertical-align: middle; }
+/* ═══════════════════════════════════════════════════════════
+ * Admin → Messages (2026-10-27 redesign) — prefix ncm-msg2-*
+ * Mock: dev/mockups/admin-messages-redesign-mock.html
+ * Tokens only (follows the admin preset). Display font for chrome, mono for
+ * values. Radius 2px; badges 1px.
+ * ═══════════════════════════════════════════════════════════ */
+
+/* The tab fills the content pane; its own lists scroll. */
+.ncm-app .ncm-admin-content:has(> .ncm-msg2) { display: flex; flex-direction: column; overflow: hidden; padding-top: 0; }
+.ncm-admin-panel .ncm-msg2 { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ncm-admin-panel .ncm-msg2-grow { flex: 1; }
+.ncm-admin-panel .ncm-msg2-min { min-width: 0; }
+
+/* ── buttons + inputs (reset Foundry chrome) ── */
+.ncm-admin-panel :is(button, summary).ncm-msg2-btn {
+  appearance: none !important; box-shadow: none !important; margin: 0 !important; width: auto !important; min-height: 0 !important; height: 26px !important; flex: 0 0 auto !important;
+  display: inline-flex !important; align-items: center; gap: 5px; vertical-align: middle; white-space: nowrap; line-height: 1 !important;
+  font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: .04em !important; text-transform: uppercase !important;
+  color: var(--ncm-text-secondary) !important; background: var(--ncm-bg-elevated) !important; background-image: none !important;
+  border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; padding: 0 10px !important; cursor: pointer;
+}
+.ncm-admin-panel :is(button, summary).ncm-msg2-btn i { margin: 0 !important; font-size: 11px; }
+.ncm-admin-panel :is(button, summary).ncm-msg2-btn:hover, .ncm-admin-panel .ncm-msg2-junkbtn[open] > summary.ncm-msg2-btn { color: var(--ncm-text-primary) !important; border-color: var(--ncm-secondary) !important; }
+.ncm-admin-panel button.ncm-msg2-btn.ncm-msg2-btn--icon { width: 26px !important; min-width: 26px !important; padding: 0 !important; justify-content: center; }
+.ncm-admin-panel button.ncm-msg2-btn--primary { color: var(--ncm-text-inverse) !important; background: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; }
+.ncm-admin-panel button.ncm-msg2-btn--primary:hover { color: var(--ncm-text-inverse) !important; filter: brightness(1.1); }
+.ncm-admin-panel button.ncm-msg2-btn--danger { color: var(--ncm-danger) !important; }
+.ncm-admin-panel button.ncm-msg2-btn--danger:hover { color: var(--ncm-text-inverse) !important; background: var(--ncm-danger) !important; border-color: var(--ncm-danger) !important; }
+.ncm-admin-panel button.ncm-msg2-btn.is-on { color: var(--ncm-text-primary) !important; border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 14%, var(--ncm-bg-elevated)) !important; }
+
+.ncm-admin-panel .ncm-msg2 input.ncm-msg2-in, .ncm-admin-panel .ncm-msg2 textarea.ncm-msg2-ta, .ncm-admin-panel .ncm-msg2 .ncm-msg2-srch input {
+  box-sizing: border-box; margin: 0; border-radius: 2px; box-shadow: none;
+  border: 1px solid var(--ncm-border); background: var(--ncm-bg-base); color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-body) !important; font-size: 13px !important;
+}
+.ncm-admin-panel input.ncm-msg2-in { height: 28px; flex: 1; min-width: 140px; padding: 0 8px; }
+.ncm-admin-panel input.ncm-msg2-in--from { flex: 0 1 180px; min-width: 120px; }
+.ncm-admin-panel .ncm-msg2 input.ncm-msg2-in--when { flex: 0 0 auto; min-width: 0; font-family: var(--ncm-font-mono) !important; font-size: 12px !important; }
+.ncm-admin-panel textarea.ncm-msg2-ta { width: 100%; min-height: 58px; padding: 6px 8px; resize: vertical; }
+.ncm-admin-panel input.ncm-msg2-in:focus, .ncm-admin-panel textarea.ncm-msg2-ta:focus, .ncm-admin-panel .ncm-msg2-srch:focus-within { outline: none; border-color: var(--ncm-secondary); }
+
+/* search: bordered wrapper + borderless input (the flex pattern) */
+.ncm-admin-panel .ncm-msg2-srch { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px; box-sizing: border-box; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+.ncm-admin-panel .ncm-msg2-srch i { color: var(--ncm-text-muted); font-size: 12px; }
+.ncm-admin-panel .ncm-msg2-srch input { flex: 1; min-width: 0; height: 26px; padding: 0; border: 0 !important; background: none !important; }
+
+/* ── sub-tab nav ── */
+.ncm-admin-panel .ncm-msg2-nav { display: flex; align-items: center; flex-wrap: nowrap; min-width: 0; gap: 4px; margin: 0 -16px 10px; padding: 8px 16px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+.ncm-admin-panel button.ncm-msg2-navbtn { appearance: none; width: auto !important; height: 30px !important; min-height: 0 !important; margin: 0 !important; white-space: nowrap; flex: 0 0 auto !important;
+  display: inline-flex !important; align-items: center; gap: 6px; padding: 0 8px !important; border-radius: 2px !important; cursor: pointer;
+  background: transparent !important; background-image: none !important; border: 1px solid transparent !important; box-shadow: none !important;
+  font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary) !important; }
+.ncm-admin-panel button.ncm-msg2-navbtn:hover { color: var(--ncm-text-primary) !important; }
+.ncm-admin-panel button.ncm-msg2-navbtn.on { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-surface) !important; border-color: var(--ncm-border) !important; box-shadow: inset 0 -2px 0 var(--ncm-secondary) !important; }
+.ncm-admin-panel .ncm-msg2-navbtn i { color: var(--ncm-secondary); font-size: 11px; margin: 0 !important; }
+.ncm-admin-panel .ncm-msg2-ct { min-width: 16px; padding: 0 4px; height: 15px; display: inline-grid; place-items: center; border-radius: 1px; font: 700 10px var(--ncm-font-mono); background: var(--ncm-bg-elevated); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-ct.hot { background: var(--ncm-accent); color: var(--ncm-text-inverse); }
+.ncm-admin-panel .ncm-msg2-ct.bad { background: var(--ncm-danger); color: #fff; }
+
+.ncm-admin-panel .ncm-msg2-view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── broadcast ── */
+.ncm-admin-panel .ncm-msg2-bc { flex: none; margin-bottom: 10px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border)); border-radius: 2px; background: color-mix(in srgb, var(--ncm-secondary) 5%, var(--ncm-bg-base)); }
+.ncm-admin-panel .ncm-msg2-bc .r { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ncm-admin-panel .ncm-msg2-bc .r + .r { margin-top: 7px; }
+.ncm-admin-panel .ncm-msg2-bc .t { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-bc .t i { color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-msg2-bc .h { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+/* ── toolbar + chips ── */
+.ncm-admin-panel .ncm-msg2-tb { display: flex; gap: 6px; align-items: center; margin-bottom: 7px; flex: none; }
+.ncm-admin-panel .ncm-msg2-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; flex: none; align-items: center; }
+.ncm-admin-panel .ncm-msg2-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer; user-select: none;
+  background: var(--ncm-bg-base); font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-chip:hover { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-chip i { font-size: 10px; }
+.ncm-admin-panel .ncm-msg2-chip .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-msg2-chip.on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 9%, var(--ncm-bg-base)); }
+.ncm-admin-panel .ncm-msg2-chip.on .n { color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-msg2-chip--clear { border-style: dashed; }
+.ncm-admin-panel .ncm-msg2-sep { width: 1px; height: 18px; background: var(--ncm-border); margin: 0 3px; }
+
+/* ── list + detail ── */
+.ncm-admin-panel .ncm-msg2-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 12px; }
+.ncm-admin-panel .ncm-msg2-list, .ncm-admin-panel .ncm-msg2-det { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+.ncm-admin-panel .ncm-msg2-det--flex { display: flex; flex-direction: column; overflow: hidden; }
+.ncm-admin-panel .ncm-msg2-grp { position: sticky; top: 0; z-index: 2; padding: 5px 10px; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border);
+  font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); display: flex; }
+.ncm-admin-panel .ncm-msg2-grp .n { margin-left: auto; font: 10px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-msg2-r { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 7px 10px; cursor: pointer; border-left: 2px solid transparent;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+.ncm-admin-panel .ncm-msg2-r:hover { background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); }
+.ncm-admin-panel .ncm-msg2-r.sel { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border-left-color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-msg2-r.unread .sj { color: var(--ncm-text-primary); font-weight: 700; }
+.ncm-admin-panel .ncm-msg2-r.is-group .nm .to { color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-msg2-r .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-msg2-r .nm .to { color: var(--ncm-text-secondary); font-weight: 600; }
+.ncm-admin-panel .ncm-msg2-r .sj { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-msg2-r .fl { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; align-items: center; }
+.ncm-admin-panel .ncm-msg2-r .w { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); text-align: right; align-self: start; padding-top: 2px; white-space: nowrap; }
+.ncm-admin-panel .ncm-msg2-r .w .u { display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--ncm-accent); margin: 5px 0 0 auto; }
+.ncm-admin-panel .ncm-msg2-more { padding: 8px; display: flex; justify-content: center; }
+
+.ncm-admin-panel .ncm-msg2-av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; box-sizing: border-box; flex: none;
+  font: 700 11px var(--ncm-font-display); border: 1px solid var(--ncm-border-active, var(--ncm-border));
+  background: color-mix(in srgb, var(--ncm-secondary) 12%, var(--ncm-bg-surface)); color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-msg2-av.sm { width: 20px; height: 20px; font-size: 8px; }
+.ncm-admin-panel .ncm-msg2-av i { margin: 0; font-size: 11px; }
+.ncm-admin-panel .ncm-msg2-av.sm i { font-size: 8px; }
+.ncm-admin-panel .ncm-msg2-av.anon { background: repeating-linear-gradient(45deg, var(--ncm-bg-elevated) 0 3px, var(--ncm-bg-surface) 3px 6px); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-av.is-bad { color: var(--ncm-danger); }
+.ncm-admin-panel .ncm-msg2-stack { display: inline-flex; }
+.ncm-admin-panel .ncm-msg2-stack .ncm-msg2-av { margin-left: -6px; border: 2px solid var(--ncm-bg-base); }
+.ncm-admin-panel .ncm-msg2-stack .ncm-msg2-av:first-child { margin-left: 0; }
+
+.ncm-admin-panel .ncm-msg2-flag { --fc: var(--ncm-text-secondary); display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; height: 16px; border-radius: 1px; box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--fc) 45%, transparent); font: 700 9px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--fc); white-space: nowrap; }
+.ncm-admin-panel .ncm-msg2-flag i { font-size: 8px; margin: 0; }
+.ncm-admin-panel .ncm-msg2-flag.is-muted { --fc: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-flag.is-sec { --fc: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-msg2-flag.is-accent { --fc: var(--ncm-accent); }
+.ncm-admin-panel .ncm-msg2-flag.is-danger { --fc: var(--ncm-danger); }
+/* identities sim guard: the alias note keeps its historic class */
+.ncm-admin-panel .ncm-msg-alias { font-style: normal; }
+
+/* ── reading pane ── */
+.ncm-admin-panel .ncm-msg2-rd { padding: 12px 14px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-msg2-rd h3 { margin: 0 0 8px; border: 0; padding: 0; background: none; text-shadow: none; font: 700 17px var(--ncm-font-display); color: var(--ncm-text-primary); text-transform: none; letter-spacing: 0; }
+.ncm-admin-panel .ncm-msg2-pp { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 4px 10px; align-items: center; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-pp .k { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-pp .p { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-pp .p > i { color: var(--ncm-secondary); font-size: 11px; }
+.ncm-admin-panel .ncm-msg2-pp .a { font: 12px var(--ncm-font-mono); color: var(--ncm-text-secondary); overflow-wrap: anywhere; }
+.ncm-admin-panel .ncm-msg2-pp .a.ncm-msg2-strong { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-real { font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); font-style: italic; }
+.ncm-admin-panel .ncm-msg2-facts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.ncm-admin-panel .ncm-msg2-acts { display: flex; gap: 5px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-msg2-body { padding: 12px 14px; font: 14px/1.5 var(--ncm-font-body); color: var(--ncm-text-primary); overflow-wrap: anywhere; }
+.ncm-admin-panel .ncm-msg2-body p { margin: 0 0 9px; }
+.ncm-admin-panel .ncm-msg2-body img { max-width: 100%; }
+.ncm-admin-panel .ncm-msg2-att { margin: 0 14px 10px; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-att i { color: var(--ncm-accent); }
+.ncm-admin-panel .ncm-msg2-rcp { margin: 0 14px 14px; border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-admin-panel .ncm-msg2-rcp .h { padding: 6px 10px; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border); font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-rcp .row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 5px 10px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-rcp .row + .row { border-top: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+.ncm-admin-panel .ncm-msg2-rcp .s { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-rcp .s.is-unread { color: var(--ncm-accent); }
+.ncm-admin-panel .ncm-msg2-rcp .s.is-bad, .ncm-admin-panel .ncm-msg2-rcp .s.is-deleted { color: var(--ncm-danger); }
+.ncm-admin-panel .ncm-msg2-rcpacts { display: inline-flex; gap: 10px; align-items: center; }
+.ncm-admin-panel .ncm-msg2-rcp a { font: 12px var(--ncm-font-body); color: var(--ncm-secondary); cursor: pointer; text-shadow: none; }
+.ncm-admin-panel .ncm-msg2-rcp a.is-danger { color: var(--ncm-danger); }
+.ncm-admin-panel .ncm-msg2-rcp a i { margin: 0; font-size: 11px; }
+
+/* ── conversation (Needs a reply) ── */
+.ncm-admin-panel .ncm-msg2-cvhd { display: flex; align-items: center; gap: 10px; padding: 10px 13px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+.ncm-admin-panel .ncm-msg2-cvhd .t { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-primary); min-width: 0; }
+.ncm-admin-panel .ncm-msg2-cvhd .t small { display: block; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); font-weight: 400; }
+.ncm-admin-panel .ncm-msg2-note { flex: none; padding: 7px 13px; border-bottom: 1px solid var(--ncm-border); font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-note b { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-note > div + div { margin-top: 4px; }
+.ncm-admin-panel .ncm-msg2-note--in { border: 0; padding: 8px 0 0; }
+.ncm-admin-panel .ncm-msg2-thread { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 13px; display: flex; flex-direction: column; gap: 10px; }
+.ncm-admin-panel .ncm-msg2-b { flex: none; max-width: 82%; padding: 8px 11px; border-radius: 2px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); font: 13px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); align-self: flex-start; overflow-wrap: anywhere; }
+.ncm-admin-panel .ncm-msg2-b .m { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); flex-wrap: wrap; }
+.ncm-admin-panel .ncm-msg2-b .m b { font: 700 12px var(--ncm-font-display); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-b .sj { font: 700 13px var(--ncm-font-display); margin-bottom: 3px; }
+.ncm-admin-panel .ncm-msg2-bbody p { margin: 0 0 6px; }
+.ncm-admin-panel .ncm-msg2-bbody p:last-child { margin: 0; }
+.ncm-admin-panel .ncm-msg2-b.me { align-self: flex-end; border-color: color-mix(in srgb, var(--ncm-secondary) 40%, var(--ncm-border)); background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-base)); }
+.ncm-admin-panel .ncm-msg2-b.new { border-color: color-mix(in srgb, var(--ncm-accent) 60%, var(--ncm-border)); box-shadow: inset 2px 0 0 var(--ncm-accent); }
+.ncm-admin-panel .ncm-msg2-reply { flex: none; border-top: 1px solid var(--ncm-border); padding: 9px 12px; background: var(--ncm-bg-surface); }
+.ncm-admin-panel .ncm-msg2-reply .r { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ncm-admin-panel .ncm-msg2-reply textarea.ncm-msg2-ta { margin: 7px 0; }
+.ncm-admin-panel .ncm-msg2-reply .k { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-reply .h { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+/* ── outbox + inboxes cards ── */
+.ncm-admin-panel .ncm-msg2-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; }
+.ncm-admin-panel .ncm-msg2-card { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); flex: none; }
+.ncm-admin-panel .ncm-msg2-card--fill { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-admin-panel .ncm-msg2-card > .hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); flex-wrap: wrap; }
+.ncm-admin-panel .ncm-msg2-card > .hd .t { font: 700 12px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); white-space: nowrap; }
+.ncm-admin-panel .ncm-msg2-card > .hd .t i { color: var(--ncm-secondary); margin-right: 6px; }
+.ncm-admin-panel .ncm-msg2-card > .hd .d { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-card.bad > .hd .t i { color: var(--ncm-danger); }
+.ncm-admin-panel .ncm-msg2-card.warn > .hd .t i { color: var(--ncm-accent); }
+.ncm-admin-panel .ncm-msg2-ob { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+.ncm-admin-panel .ncm-msg2-ob:last-child { border-bottom: 0; }
+.ncm-admin-panel .ncm-msg2-ob .when { font: 12px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-ob .when .is-soon { color: var(--ncm-danger); }
+.ncm-admin-panel .ncm-msg2-ob .when small { display: block; color: var(--ncm-text-secondary); font-size: 11px; }
+.ncm-admin-panel .ncm-msg2-ob .what { min-width: 0; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-ob .what b { font: 700 13px var(--ncm-font-display); }
+.ncm-admin-panel .ncm-msg2-ob .what small { display: block; color: var(--ncm-text-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-msg2-ob .acts { display: flex; gap: 4px; }
+.ncm-admin-panel .ncm-msg2-quiet { padding: 12px; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+.ncm-admin-panel table.ncm-msg2-tbl { margin: 0; width: 100%; border-collapse: collapse; border: 0; }
+.ncm-admin-panel table.ncm-msg2-tbl, .ncm-admin-panel table.ncm-msg2-tbl * { background: transparent; text-shadow: none; }
+.ncm-admin-panel table.ncm-msg2-tbl th, .ncm-admin-panel table.ncm-msg2-tbl td { border: 0; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); padding: 6px 10px; text-align: left; }
+.ncm-admin-panel table.ncm-msg2-tbl thead th { position: sticky; top: 0; z-index: 1; background: var(--ncm-bg-surface) !important; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-admin-panel table.ncm-msg2-tbl th.n, .ncm-admin-panel table.ncm-msg2-tbl td.n { text-align: right; }
+.ncm-admin-panel table.ncm-msg2-tbl td { font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel table.ncm-msg2-tbl td.n { font: 12px var(--ncm-font-mono); }
+.ncm-admin-panel table.ncm-msg2-tbl td.n.is-hot { color: var(--ncm-accent); }
+.ncm-admin-panel table.ncm-msg2-tbl td.last { color: var(--ncm-text-secondary); font: 12px var(--ncm-font-mono); white-space: nowrap; }
+.ncm-admin-panel table.ncm-msg2-tbl td.acts { text-align: right; white-space: nowrap; }
+.ncm-admin-panel table.ncm-msg2-tbl td.acts .ncm-msg2-btn + .ncm-msg2-btn { margin-left: 4px !important; }
+.ncm-admin-panel table.ncm-msg2-tbl td .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ncm-admin-panel table.ncm-msg2-tbl td .who small { display: block; color: var(--ncm-text-secondary); font-size: 12px; }
+.ncm-admin-panel table.ncm-msg2-tbl tr.grp td { background: var(--ncm-bg-surface) !important; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); padding: 5px 10px; }
+.ncm-admin-panel table.ncm-msg2-tbl tr.orphan td { background: color-mix(in srgb, var(--ncm-danger) 6%, transparent) !important; }
+
+/* ── popped out (1120×780): roomier columns ── */
+.ncm-admin-panel--pop .ncm-msg2-split { grid-template-columns: 360px minmax(0, 1fr); }
+.ncm-admin-panel--pop .ncm-msg2-b { max-width: 70%; }
+.ncm-admin-panel--pop .ncm-msg2-nav { margin: 0 -16px 10px; }
+.ncm-admin-panel .ncm-msg2--pop .ncm-tabhd p { max-width: 80ch; }
+/* group sends' recipient list (class kept for test-group-admin) */
+.ncm-admin-panel .ncm-msg-feed-recip { margin-top: 2px; }
+
+/* ── body-mounted admin dialogs built by the tab (edit scheduled, legacy broadcast) ── */
+.ncm-msg2-dlg { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; font-family: var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-msg2-dlg label { font: 700 11px var(--ncm-font-display); text-transform: none; color: var(--ncm-text-secondary); }
+.ncm-msg2-dlg__box { border: 1px solid var(--ncm-border); border-radius: 2px; padding: 8px 12px; background: var(--ncm-bg-surface); }
+.ncm-msg2-dlg__k { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); margin-bottom: 5px; }
+.ncm-msg2-dlg__s { font-size: 12px; color: var(--ncm-text-secondary); margin-top: 3px; }
+.ncm-msg2-dlg__row { display: flex; gap: 8px; }
+.ncm-msg2-dlg__row input { flex: 1; font-family: var(--ncm-font-mono); }
+
+/* The header stays ONE line at any width (dev: "the New button is by itself on a line").
+   Sub-tabs and the Send-as picker give up width (their labels ellipsize) before anything wraps. */
+.ncm-admin-panel .ncm-msg2-nav > button.ncm-msg2-navbtn { flex: 0 1 auto !important; min-width: 0; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start !important; }
+.ncm-admin-panel .ncm-msg2-nav > .ncm-scope { flex: 0 1 auto; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-nav > .ncm-scope > .ncm-scope-btn { min-width: 0; max-width: 100%; }
+.ncm-admin-panel .ncm-msg2-nav > .ncm-msg2-btn { flex: 0 0 auto !important; }
+
+/* junk senders: the reading-pane note + the mark-as-junk row */
+.ncm-admin-panel .ncm-msg2-note--junk { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  border-left: 3px solid var(--ncm-bad, var(--ncm-danger)) !important; background: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 9%, transparent) !important; }
+.ncm-admin-panel .ncm-msg2-note--junk > i { color: var(--ncm-bad, var(--ncm-danger)); }
+
+/* core gives every table overflow:hidden, which breaks the sticky header (see tab-contacts.css) */
+.ncm-admin-panel table.ncm-msg2-tbl { overflow: visible !important; }
+
+/* ═══ colour hierarchy, second pass (2026-10-27) — every colour means something ═══
+   people: a person's avatar wears the hue of their NAME (same name → same hue across the
+   panel), so one NPC can be followed down a list · waiting = amber, answered = green ·
+   failed = red, held = amber, scheduled = cyan, self-destruct = red · eddies = gold. */
+.ncm-admin-panel .ncm-msg2-av[style*="--tc"]:not(.anon):not(.is-bad) {
+  color: color-mix(in oklab, var(--tc) 78%, var(--ncm-text-heading));
+  background: color-mix(in srgb, var(--tc) 20%, var(--ncm-bg-card));
+  border-color: color-mix(in srgb, var(--tc) 60%, transparent);
+}
+.ncm-admin-panel img.ncm-msg2-av[style*="--tc"] { border: 2px solid color-mix(in srgb, var(--tc) 70%, transparent); }
+.ncm-admin-panel .ncm-msg2-stack .ncm-msg2-av[style*="--tc"] { border-width: 2px; }
+.ncm-admin-panel .ncm-msg2-r .fl .ncm-tagp { line-height: 14px; font-size: 11px !important; padding: 0 6px !important; }
+/* answered conversations step back; waiting ones keep the amber edge from the shared layer */
+.ncm-admin-panel .ncm-msg2-r.is-answered:not(.sel) .sj { color: var(--ncm-text-label) !important; }
+/* the Waiting / Answered chips say which is which before they are picked */
+.ncm-admin-panel .ncm-msg2-chip[data-f="waiting"] i { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-chip[data-f="answered"] i { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-chip[data-f="waiting"] .n { color: var(--ncm-attn); }
+/* the conversation: each speaker's name in their hue; the GM's replies cyan, waiting mail amber */
+.ncm-admin-panel .ncm-msg2-b .m b[style*="--tc"] { color: color-mix(in oklab, var(--tc) 70%, var(--ncm-text-heading)) !important; }
+.ncm-admin-panel .ncm-msg2-b .ncm-msg2-age { color: var(--ncm-text-time); }
+.ncm-admin-panel .ncm-msg2-b.me { border-color: color-mix(in srgb, var(--ncm-act) 45%, var(--ncm-border)) !important; background: color-mix(in srgb, var(--ncm-act) 9%, var(--ncm-bg-card)) !important; box-shadow: inset -3px 0 var(--ncm-act); }
+.ncm-admin-panel .ncm-msg2-b.new { border-color: color-mix(in srgb, var(--ncm-attn) 60%, var(--ncm-border)) !important; box-shadow: inset 3px 0 var(--ncm-attn); background: color-mix(in srgb, var(--ncm-attn) 6%, var(--ncm-bg-card)) !important; }
+.ncm-admin-panel .ncm-msg2-reply { background: var(--ncm-bg-card-head) !important; box-shadow: inset 0 2px 0 color-mix(in srgb, var(--ncm-act) 50%, transparent); }
+.ncm-admin-panel .ncm-msg2-reply .h { color: var(--ncm-text-hint); }
+/* reading pane: the network in its own colour, the signal by band */
+.ncm-admin-panel .ncm-msg2-pp .ncm-tagp { font-size: 11px !important; line-height: 16px; }
+.ncm-admin-panel .ncm-msg2-sig { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); }
+.ncm-admin-panel .ncm-msg2-sig.is-good { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-sig.is-low { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-sig.is-dead { color: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-real { color: var(--ncm-secret) !important; }
+/* each recipient: read is done, unread waits, deleted is gone, eddies are gold */
+.ncm-admin-panel .ncm-msg2-rcp .s.is-read { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-rcp .s.is-unread { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-rcp .s .is-money { color: var(--ncm-money); }
+/* outbox: each card is a band in its own tone, and the row's line says why in that tone */
+.ncm-admin-panel .ncm-msg2-card { --ok: var(--ncm-text-label); background: var(--ncm-bg-pane) !important; border-color: var(--ncm-border-active) !important; }
+.ncm-admin-panel .ncm-msg2-card.bad  { --ok: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-card.warn { --ok: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-card.plan { --ok: var(--ncm-act); }
+.ncm-admin-panel .ncm-msg2-card.burn { --ok: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-scroll > .ncm-msg2-card > .hd { background: var(--ncm-bg-card-head); box-shadow: inset 3px 0 var(--ok); }
+.ncm-admin-panel .ncm-msg2-card > .hd .t { color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-msg2-card:is(.bad, .warn, .plan, .burn) > .hd .t i { color: var(--ok); }
+.ncm-admin-panel .ncm-msg2-card > .hd .d { color: var(--ncm-text-hint); }
+.ncm-admin-panel .ncm-msg2-ob .what small.is-bad, .ncm-admin-panel .ncm-msg2-ob .what .is-bad { color: color-mix(in oklab, var(--ncm-bad) 80%, var(--ncm-text-heading)); }
+.ncm-admin-panel .ncm-msg2-ob .what .is-attn { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-ob .what .is-money, .ncm-admin-panel .ncm-msg2-ob .what small.is-money { color: var(--ncm-money); }
+.ncm-admin-panel .ncm-msg2-ob .when small { color: var(--ncm-text-time); }
+.ncm-admin-panel .ncm-msg2-card.plan .ncm-msg2-ob .when > span { color: var(--ncm-act); }
+.ncm-admin-panel .ncm-msg2-card.plan .ncm-msg2-ob .when .is-soon { color: var(--ncm-attn); font-weight: 700; }
+.ncm-admin-panel .ncm-msg2-card.burn .ncm-msg2-ob .when { color: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-card.bad .ncm-msg2-ob { box-shadow: inset 3px 0 color-mix(in srgb, var(--ncm-bad) 55%, transparent); }
+/* inboxes: groups as bands in their tone; a mailbox with unread mail steps forward */
+.ncm-admin-panel table.ncm-msg2-tbl tr.grp td { background: var(--ncm-bg-card-head) !important; color: var(--ncm-text-heading) !important; box-shadow: inset 3px 0 var(--ncm-text-label); }
+.ncm-admin-panel table.ncm-msg2-tbl tr.grp--pc td { box-shadow: inset 3px 0 var(--ncm-act); }
+.ncm-admin-panel table.ncm-msg2-tbl tr.grp--npc td { box-shadow: inset 3px 0 var(--ncm-hue-4); }
+.ncm-admin-panel table.ncm-msg2-tbl tr.grp--bad td { box-shadow: inset 3px 0 var(--ncm-bad); color: color-mix(in oklab, var(--ncm-bad) 70%, var(--ncm-text-heading)) !important; }
+.ncm-admin-panel table.ncm-msg2-tbl td .who .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); }
+.ncm-admin-panel table.ncm-msg2-tbl td .who small { color: var(--ncm-text-label); }
+.ncm-admin-panel table.ncm-msg2-tbl td.n { color: var(--ncm-text-num, var(--ncm-text-primary)); }
+.ncm-admin-panel table.ncm-msg2-tbl td.n.is-hot { color: var(--ncm-attn); font-weight: 700; }
+.ncm-admin-panel table.ncm-msg2-tbl td.last { color: var(--ncm-text-time); }
+.ncm-admin-panel table.ncm-msg2-tbl tr.has-unread:not(.orphan) td:first-child { box-shadow: inset 3px 0 var(--ncm-attn); }
+.ncm-admin-panel table.ncm-msg2-tbl tr.orphan .who .nm { color: color-mix(in oklab, var(--ncm-bad) 70%, var(--ncm-text-heading)); }
+/* the broadcast panel: an action you are composing, so it wears the action colour */
+.ncm-admin-panel .ncm-msg2-bc .t i { color: var(--ncm-act); }
+.ncm-admin-panel .ncm-msg2-bc .h { color: var(--ncm-text-hint); }
+/* priority: urgent waits on you, critical is an alarm */
+.ncm-admin-panel .ncm-msg2-chip[data-p="urgent"].on { border-color: var(--ncm-attn); color: var(--ncm-attn); background: color-mix(in srgb, var(--ncm-attn) 12%, var(--ncm-bg-card)); }
+.ncm-admin-panel .ncm-msg2-chip[data-p="critical"].on { border-color: var(--ncm-bad); color: var(--ncm-bad); background: color-mix(in srgb, var(--ncm-bad) 12%, var(--ncm-bg-card)); }
+/* a network colour is picked for a dark screen; on the light preset pull it toward the text */
+[data-ncm-admin-theme="clean-light"] .ncm-msg2-pp .ncm-tagp { color: color-mix(in oklab, var(--tc) 40%, var(--ncm-text-heading)) !important; }
+
+/* ═══ The delivery line (All mail → reading pane, under From / To / When) ═══
+   Mock: dev/mockups/admin-guides-v4-mock.html (slot "dl") + admin-guides-v5-mock.html (slot "grp").
+   --dc = the line's meaning: good (fine) · attn (waiting) · bad (failed). Starts closed. */
+.ncm-admin-panel .ncm-msg2-dl { --dc: var(--ncm-good); margin: 10px -14px 0; border-top: 1px solid var(--ncm-border); border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-msg2-dl:last-child { margin-bottom: -12px; border-bottom: 0; }
+.ncm-admin-panel .ncm-msg2-dl.is-wait { --dc: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-dl.is-bad { --dc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-dl > button.ncm-msg2-dl__line {
+  display: flex !important; align-items: center; gap: 9px; width: 100% !important; max-width: none !important; flex: none !important; box-sizing: border-box !important; min-height: 0 !important; height: auto !important; margin: 0 !important;
+  padding: 7px 14px !important; border: 0 !important; border-radius: 0 !important; cursor: pointer; text-align: left; appearance: none;
+  box-shadow: inset 3px 0 var(--dc) !important; background: color-mix(in srgb, var(--dc) 7%, transparent) !important;
+  font: 13px var(--ncm-font-body) !important; color: var(--ncm-text-primary) !important; text-transform: none !important; letter-spacing: 0 !important; line-height: 1.35 !important;
+}
+.ncm-admin-panel .ncm-msg2-dl > button.ncm-msg2-dl__line:hover { background: color-mix(in srgb, var(--dc) 13%, transparent) !important; }
+.ncm-admin-panel button.ncm-msg2-dl__line:focus-visible { outline: 1px solid var(--ncm-act); outline-offset: -1px; }
+.ncm-admin-panel .ncm-msg2-dl__ic { color: var(--dc); width: 16px; text-align: center; flex: none; margin: 0 !important; font-size: 12px; }
+.ncm-admin-panel .ncm-msg2-dl__txt { flex: 1 1 auto; min-width: 0; font: 13px/1.35 var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-dl__txt b { color: var(--dc); font-weight: 700; }
+.ncm-admin-panel .ncm-msg2-dl__txt b.is-n { color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-msg2-dl__txt b.is-good { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-dl__txt b.is-wait { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-dl__txt b.is-bad { color: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-dl__addr { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr); font-weight: 400; overflow-wrap: anywhere; }
+.ncm-admin-panel .ncm-msg2-dl__pips, .ncm-admin-panel .ncm-msg2-dl__stack { display: flex; gap: 3px; flex: none; }
+.ncm-admin-panel .ncm-msg2-dl__pips i { width: 14px; height: 4px; border-radius: 1px; margin: 0 !important; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); }
+.ncm-admin-panel .ncm-msg2-dl__pips i.is-on { background: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-dl__pips i.is-wait { background: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-dl__pips i.is-bad { background: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-dl__stack { gap: 2px; flex-wrap: wrap; max-width: 120px; justify-content: flex-end; }
+.ncm-admin-panel .ncm-msg2-dl__stack i { width: 10px; height: 10px; border-radius: 2px; margin: 0 !important; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); }
+.ncm-admin-panel .ncm-msg2-dl__stack i.is-read { background: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-dl__stack i.is-got { background: color-mix(in srgb, var(--ncm-good) 40%, transparent); box-shadow: inset 0 0 0 1px var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-dl__stack i.is-held { background: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-dl__stack i.is-fail { background: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-dl__chev { color: var(--ncm-text-label); font-size: 10px; flex: none; margin: 0 !important; transition: transform .15s; }
+.ncm-admin-panel .ncm-msg2-dl.is-open .ncm-msg2-dl__chev { transform: rotate(180deg); }
+.ncm-admin-panel .ncm-msg2-dl__more { display: none; padding: 4px 14px 12px 39px; }
+.ncm-admin-panel .ncm-msg2-dl.is-open .ncm-msg2-dl__more { display: block; animation: ncm-msg2-dl-open .18s ease-out; }
+@keyframes ncm-msg2-dl-open { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ncm-admin-panel .ncm-msg2-dl.is-open .ncm-msg2-dl__more { animation: none; } }
+.ncm-admin-panel .ncm-msg2-dl__grid { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 7px 12px; margin-top: 6px; }
+.ncm-admin-panel .ncm-msg2-dl__k { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); padding-top: 3px; }
+.ncm-admin-panel .ncm-msg2-dl__v { min-width: 0; font: 12.5px/1.5 var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-dl__v b { color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-msg2-dl__steps { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-msg2-dl__steps > span { display: inline-flex; gap: 5px; align-items: center; }
+.ncm-admin-panel .ncm-msg2-dl__steps i { margin: 0 !important; font-size: 10px; }
+.ncm-admin-panel .ncm-msg2-dl__steps .is-ok { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-dl__steps .is-wait { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-dl__steps .is-bad { color: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-dl__steps .is-no, .ncm-admin-panel .ncm-msg2-dl__steps .is-sep { color: var(--ncm-text-hint); }
+.ncm-admin-panel .ncm-msg2-dl__steps .t, .ncm-admin-panel .ncm-msg2-dl__st .t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); font-weight: 400; }
+/* What the player saw: a scrap of their Agent's screen — always a dark screen, under any preset. */
+.ncm-admin-panel .ncm-msg2-dl__screen { display: inline-block; margin-top: 2px; padding: 6px 9px; border-radius: 2px; border: 1px solid var(--ncm-border);
+  background: color-mix(in srgb, black 90%, var(--ncm-act)); color: color-mix(in srgb, white 80%, var(--ncm-act)); font: 11px/1.4 var(--ncm-font-mono); }
+.ncm-admin-panel .ncm-msg2-dl__screen .is-e { color: color-mix(in srgb, var(--ncm-attn) 75%, white); }
+.ncm-admin-panel .ncm-msg2-dl__screen .is-b { color: color-mix(in srgb, var(--ncm-bad) 75%, white); }
+.ncm-admin-panel .ncm-msg2-dl__screen .is-g { color: color-mix(in srgb, var(--ncm-good) 75%, white); }
+.ncm-admin-panel .ncm-msg2-dl__acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+/* Group mail: one row per recipient. */
+.ncm-admin-panel .ncm-msg2-dl__rcp { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 3px 9px; align-items: center; padding: 6px 2px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+.ncm-admin-panel .ncm-msg2-dl__nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-dl__st { display: inline-flex; gap: 5px; align-items: center; font: 600 11.5px var(--ncm-font-body); white-space: nowrap; }
+.ncm-admin-panel .ncm-msg2-dl__st i { margin: 0 !important; font-size: 10px; }
+.ncm-admin-panel .ncm-msg2-dl__st.is-read { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-dl__st.is-got { color: color-mix(in oklab, var(--ncm-good) 70%, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-msg2-dl__st.is-held { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-dl__st.is-fail { color: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-dl__st.is-ans { color: var(--ncm-act); }
+.ncm-admin-panel .ncm-msg2-dl__why { grid-column: 2 / -1; font: 11.5px/1.45 var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-msg2-dl__why b { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-dl__foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 9px; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-msg2-dl__foot b { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-dl__foot b.is-secret { color: var(--ncm-secret); }
+
+/* Junk ▾ — a branching button in the reading-pane action row (native <details>, no JS) */
+.ncm-admin-panel .ncm-msg2-junkbtn { position: relative; flex: 0 0 auto; width: max-content; margin: 0; padding: 0; border: 0; }
+.ncm-admin-panel .ncm-msg2-junkbtn > summary.ncm-msg2-btn { list-style: none; cursor: pointer; user-select: none; width: max-content !important; max-width: none !important; }
+.ncm-admin-panel .ncm-msg2-junkbtn > summary::-webkit-details-marker { display: none; }
+.ncm-admin-panel .ncm-msg2-junkbtn > summary > i:first-child { color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-admin-panel .ncm-msg2-junkbtn.is-junk > summary { border-color: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 55%, transparent); color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-admin-panel .ncm-msg2-junkbtn__caret { font-size: 9px; opacity: .7; margin-left: 2px; }
+.ncm-admin-panel .ncm-msg2-junkbtn__menu { position: absolute; top: calc(100% + 4px); right: 0; left: auto; z-index: 20; min-width: 230px; display: flex; flex-direction: column; padding: 4px;
+  background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active); border-radius: 2px; box-shadow: 0 8px 22px rgba(0,0,0,.4); }
+.ncm-app .ncm-admin-panel button.ncm-msg2-junkbtn__item { appearance: none; display: flex !important; align-items: center; gap: 9px; width: 100% !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+  padding: 6px 8px !important; border: 0 !important; border-radius: 2px !important; background: none !important; box-shadow: none !important; text-align: left; cursor: pointer;
+  color: var(--ncm-text-primary) !important; font: 600 12.5px var(--ncm-font-body) !important; line-height: 1.25 !important; text-transform: none; letter-spacing: 0; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-junkbtn__item:hover { background: var(--ncm-bg-hover, color-mix(in srgb, var(--ncm-text-primary) 6%, transparent)) !important; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-junkbtn__item > i { width: 14px; margin: 0 !important; text-align: center; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-msg2-junkbtn__item span { display: flex; flex-direction: column; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-junkbtn__item small { font: 400 11px var(--ncm-font-mono); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* All mail: the list head (Group by Day/Week/Month · Newest/Oldest · fold all) + foldable date groups */
+.ncm-admin-panel .ncm-msg2-lhead { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  background: var(--ncm-bg-pane, var(--ncm-bg-base)); border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-msg2-seg { display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+.ncm-admin-panel .ncm-msg2-seg__b { padding: 2px 8px; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); cursor: pointer; user-select: none; }
+.ncm-admin-panel .ncm-msg2-seg__b + .ncm-msg2-seg__b { border-left: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-msg2-seg__b:hover { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-seg__b.is-on { color: var(--ncm-act, var(--ncm-secondary)); background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 14%, transparent); }
+.ncm-admin-panel .ncm-msg2-lhead__b { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border: 1px solid var(--ncm-border-active); border-radius: 2px;
+  font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); cursor: pointer; user-select: none; }
+.ncm-admin-panel .ncm-msg2-lhead__b:hover { color: var(--ncm-text-primary); border-color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-admin-panel .ncm-msg2-lhead__b--icon { width: 22px; justify-content: center; padding: 0; }
+.ncm-admin-panel .ncm-msg2-lhead ~ .ncm-msg2-grp { top: 35px; }     /* date heads stick under the list head */
+.ncm-admin-panel .ncm-msg2-grp--fold { cursor: pointer; user-select: none; align-items: center; gap: 6px; }
+.ncm-admin-panel .ncm-msg2-grp--fold:hover { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-grp__chev { font-size: 9px; width: 10px; transition: transform .15s; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-msg2-grp--fold.is-shut .ncm-msg2-grp__chev { transform: rotate(-90deg); }
+.ncm-admin-panel .ncm-msg2-grp--fold .u { font: 700 10px var(--ncm-font-mono); color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-admin-panel .ncm-msg2-grp--fold .f { font: 700 10px var(--ncm-font-mono); color: var(--ncm-bad, var(--ncm-danger)); } /* not delivered — stays on a closed head */
+.ncm-admin-panel .ncm-msg2-grpbody[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .ncm-admin-panel .ncm-msg2-grp__chev { transition: none; } }
+
+/* ═══ "Where it went" — the journey (mock admin-guides-mock.html slot "j"), replaces the one-line look ═══ */
+.ncm-admin-panel .ncm-msg2-jr { padding: 0 14px 12px; }
+.ncm-admin-panel .ncm-msg2-jr__k { display: flex; align-items: center; gap: 7px; margin: 0 -14px 12px; padding: 7px 14px 7px 11px; background: var(--ncm-bg-card);
+  border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--dc); font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-msg2-jr__k > i { color: var(--dc); margin: 0 !important; }
+.ncm-admin-panel .ncm-msg2-jr__k .r { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+.ncm-admin-panel .ncm-msg2-jr__k .r b { font-weight: 700; }
+.ncm-admin-panel .ncm-msg2-jr__track { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.ncm-admin-panel .ncm-msg2-jr__st { --sc: var(--ncm-text-hint); position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; padding: 0 2px; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-jr__st::before { content: ''; position: absolute; top: 13px; left: 50%; width: 100%; height: 2px; background: color-mix(in srgb, var(--ncm-border-active) 75%, transparent); }
+.ncm-admin-panel .ncm-msg2-jr__st:last-child::before { display: none; }
+.ncm-admin-panel .ncm-msg2-jr__st.is-done { --sc: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-jr__st.is-done::before { background: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-jr__st.is-wait { --sc: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-jr__st.is-wait::before { background: repeating-linear-gradient(90deg, var(--ncm-attn) 0 5px, transparent 5px 9px); }
+.ncm-admin-panel .ncm-msg2-jr__st.is-bad { --sc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-jr__dot { position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px;
+  border: 2px solid var(--sc); color: var(--sc); background: color-mix(in srgb, var(--sc) 15%, var(--ncm-bg-pane-alt, var(--ncm-bg-base))); }
+.ncm-admin-panel .ncm-msg2-jr__dot i { margin: 0 !important; }
+.ncm-admin-panel .ncm-msg2-jr__st.is-todo .ncm-msg2-jr__dot { border-style: dashed; }
+.ncm-admin-panel .ncm-msg2-jr__st.is-wait .ncm-msg2-jr__dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ncm-attn) 22%, transparent); }
+.ncm-admin-panel .ncm-msg2-jr__st.is-bad .ncm-msg2-jr__dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ncm-bad) 22%, transparent); }
+.ncm-admin-panel .ncm-msg2-jr__nm { font: 700 10.5px/1.2 var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-heading); overflow-wrap: anywhere; }
+.ncm-admin-panel .ncm-msg2-jr__st.is-todo .ncm-msg2-jr__nm { color: var(--ncm-text-hint); }
+.ncm-admin-panel .ncm-msg2-jr__sub { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-time); min-height: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ncm-admin-panel .ncm-msg2-jr__st.is-wait .ncm-msg2-jr__sub { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-jr__st.is-bad .ncm-msg2-jr__sub { color: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-jr__why { --wc: var(--ncm-good); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 9px; margin-top: 12px; padding: 7px 10px; border-radius: 2px;
+  border-left: 3px solid var(--wc); background: color-mix(in srgb, var(--wc) 10%, transparent); font: 12.5px/1.4 var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-jr__why.is-wait { --wc: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-jr__why.is-bad { --wc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-jr__why > i { color: var(--wc); margin: 0 !important; flex: none; }
+.ncm-admin-panel .ncm-msg2-jr__txt { flex: 1 1 200px; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-jr__txt b { color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-msg2-jr__fix { display: flex; flex-wrap: wrap; gap: 5px; margin-left: auto; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-jr__morebtn { appearance: none; display: inline-flex !important; align-items: center; gap: 6px; width: auto !important; height: auto !important; min-height: 0 !important;
+  margin: 9px 0 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; cursor: pointer;
+  font: 600 12px var(--ncm-font-body) !important; color: var(--ncm-act) !important; text-transform: none; letter-spacing: 0; }
+.ncm-admin-panel .ncm-msg2-jr__morebtn .is-opened, .ncm-admin-panel .ncm-msg2-jr.is-open .ncm-msg2-jr__morebtn .is-closed { display: none; }
+.ncm-admin-panel .ncm-msg2-jr.is-open .ncm-msg2-jr__morebtn .is-opened { display: inline; }
+.ncm-admin-panel .ncm-msg2-jr .ncm-msg2-dl__more { padding: 6px 0 0; }
+/* group: one row of segments per person */
+.ncm-admin-panel .ncm-msg2-jr__phead, .ncm-admin-panel .ncm-msg2-jr__p { display: grid; grid-template-columns: minmax(96px, 1.4fr) repeat(4, minmax(0, 1fr)); align-items: center; }
+.ncm-admin-panel .ncm-msg2-jr__phead { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); text-align: center; margin-bottom: 4px; }
+.ncm-admin-panel .ncm-msg2-jr__phead span:first-child { text-align: left; }
+.ncm-admin-panel .ncm-msg2-jr__people { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; overflow-x: hidden; }
+.ncm-admin-panel .ncm-msg2-jr__p { padding: 5px 0; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+.ncm-admin-panel .ncm-msg2-jr__p .who { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-jr__p .who .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-msg2-jr__p .seg { --sc: var(--ncm-text-hint); position: relative; height: 18px; display: grid; place-items: center; }
+.ncm-admin-panel .ncm-msg2-jr__p .seg::before { content: ''; position: absolute; left: 0; right: 50%; top: 50%; height: 2px; margin-top: -1px; background: var(--sc); opacity: .55; }
+.ncm-admin-panel .ncm-msg2-jr__p .who + .seg::before { display: none; }
+.ncm-admin-panel .ncm-msg2-jr__p .seg i { position: relative; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 8px; margin: 0 !important;
+  background: color-mix(in srgb, var(--sc) 22%, var(--ncm-bg-pane-alt, var(--ncm-bg-base))); color: var(--sc); border: 1.5px solid var(--sc); }
+.ncm-admin-panel .ncm-msg2-jr__p .seg.is-done { --sc: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-jr__p .seg.is-wait { --sc: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-jr__p .seg.is-bad { --sc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-jr__p .seg.is-todo i { border-style: dashed; }
+.ncm-admin-panel .ncm-msg2-jr__p .note { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 3px 0 0 6px; font: 11.5px/1.4 var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-msg2-jr__p .note.is-fail { color: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-jr__p .note.is-held { color: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-jr__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 10px; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-msg2-jr__foot b { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-jr__foot b.is-secret { color: var(--ncm-secret); }
+
+/* the action row: Junk ▾ and Delete sit together at the right, on the row's centre line */
+.ncm-admin-panel .ncm-msg2-acts { align-items: center; }
+.ncm-admin-panel .ncm-msg2-acts__end { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; flex: none; }
+.ncm-admin-panel .ncm-msg2-acts__end > .ncm-msg2-btn--icon { margin: 0 !important; }
+.ncm-admin-panel .ncm-msg2-junkbtn > summary.ncm-msg2-btn { height: 26px !important; }
+
+/* ═══ "Where it went", round 2: fold, colour hierarchy, joined group lines, big groups ═══ */
+/* the band is the fold */
+.ncm-app .ncm-admin-panel button.ncm-msg2-jr__k { appearance: none; width: calc(100% + 28px) !important; height: auto !important; min-height: 0 !important; margin: 0 -14px 12px !important;
+  display: flex !important; align-items: center; gap: 8px; padding: 8px 14px 8px 11px !important; border: 0 !important; border-bottom: 1px solid var(--ncm-border) !important; border-radius: 0 !important;
+  background: var(--ncm-bg-card) !important; box-shadow: inset 3px 0 var(--dc) !important; cursor: pointer; text-align: left; line-height: 1.2 !important; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-jr__k:hover { background: var(--ncm-bg-hover, var(--ncm-bg-card)) !important; }
+.ncm-admin-panel .ncm-msg2-jr__kic { color: var(--dc); margin: 0 !important; font-size: 11px; }
+.ncm-admin-panel .ncm-msg2-jr__kt { font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); white-space: nowrap; }
+.ncm-admin-panel .ncm-msg2-jr__stat { font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; padding: 1px 6px; border-radius: 1px; white-space: nowrap;
+  color: var(--sc); background: color-mix(in srgb, var(--sc) 13%, transparent); border: 1px solid color-mix(in srgb, var(--sc) 40%, transparent); }
+.ncm-admin-panel .ncm-msg2-jr__stat.is-good { --sc: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-jr__stat.is-wait { --sc: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-jr__stat.is-bad { --sc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-jr__stat:empty { display: none; }
+.ncm-admin-panel button.ncm-msg2-jr__k .r { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-label); text-transform: none; letter-spacing: 0; }
+.ncm-admin-panel button.ncm-msg2-jr__k .r b { font-weight: 700; color: var(--ncm-text-heading); }
+.ncm-admin-panel button.ncm-msg2-jr__k .r .arr { margin: 0 6px; color: var(--ncm-text-hint); }
+.ncm-admin-panel .ncm-msg2-jr__kchev { flex: none; margin: 0 !important; font-size: 10px; color: var(--ncm-text-label); transition: transform .15s; }
+.ncm-admin-panel .ncm-msg2-jr.is-shut .ncm-msg2-jr__kchev { transform: rotate(-90deg); }
+.ncm-admin-panel .ncm-msg2-jr.is-shut { padding-bottom: 0; }
+.ncm-admin-panel .ncm-msg2-jr.is-shut button.ncm-msg2-jr__k { margin-bottom: 0 !important; }
+.ncm-admin-panel .ncm-msg2-jr.is-shut .ncm-msg2-jr__body { display: none; }
+@media (prefers-reduced-motion: reduce) { .ncm-admin-panel .ncm-msg2-jr__kchev { transition: none; } }
+
+/* colour hierarchy: the strip's lead in its tone, the rest in body text; one filled button, the rest quiet */
+.ncm-admin-panel .ncm-msg2-jr__txt { color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-msg2-jr__txt b { color: var(--wc); }
+.ncm-admin-panel .ncm-msg2-jr__why.is-good .ncm-msg2-jr__txt b { color: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-jr__txt .ncm-msg2-dl__addr, .ncm-admin-panel .ncm-msg2-jr__txt .ncm-addr { color: var(--ncm-text-addr, var(--ncm-text-secondary)); }
+.ncm-app .ncm-admin-panel button.ncm-msg2-btn.ncm-msg2-btn--quiet { background: transparent !important; color: var(--ncm-text-primary) !important; border-color: var(--ncm-border-active) !important; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-btn.ncm-msg2-btn--quiet i { color: var(--ncm-text-label); }
+.ncm-app .ncm-admin-panel button.ncm-msg2-btn.ncm-msg2-btn--quiet:hover { border-color: var(--ncm-act, var(--ncm-secondary)) !important; }
+.ncm-admin-panel .ncm-msg2-jr__nm { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-jr__st.is-wait .ncm-msg2-jr__nm { color: color-mix(in oklab, var(--ncm-attn) 75%, var(--ncm-text-heading)); }
+.ncm-admin-panel .ncm-msg2-jr__st.is-bad .ncm-msg2-jr__nm { color: color-mix(in oklab, var(--ncm-bad) 75%, var(--ncm-text-heading)); }
+.ncm-admin-panel .ncm-msg2-jr__foot { color: var(--ncm-text-secondary); }
+
+/* group: segments joined centre to centre (each draws the line from the previous centre) */
+.ncm-admin-panel .ncm-msg2-jr__p .seg::before { left: -50%; right: 50%; opacity: .7; }
+.ncm-admin-panel .ncm-msg2-jr__p .seg.is-todo::before { background: color-mix(in srgb, var(--ncm-border-active) 75%, transparent); opacity: 1; }
+.ncm-admin-panel .ncm-msg2-jr__p .seg.is-wait::before { background: repeating-linear-gradient(90deg, var(--ncm-attn) 0 4px, transparent 4px 7px); opacity: 1; }
+.ncm-admin-panel .ncm-msg2-jr__p .seg i { z-index: 1; }
+.ncm-admin-panel .ncm-msg2-jr__p .who .nm { color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-msg2-jr__p.is-fail .who .nm { color: color-mix(in oklab, var(--ncm-bad) 70%, var(--ncm-text-heading)); }
+.ncm-admin-panel .ncm-msg2-jr__p .note { color: var(--ncm-text-secondary); }
+
+/* any number of people: the list scrolls under a sticky header */
+.ncm-admin-panel .ncm-msg2-jr__people { max-height: 300px; overflow-y: auto; overflow-x: hidden; position: relative; }
+.ncm-admin-panel .ncm-msg2-jr__phead { position: sticky; top: 0; z-index: 2; background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); padding: 2px 0 4px; margin-bottom: 0; }
+.ncm-admin-panel .ncm-msg2-jr__none { display: none; padding: 10px 0; text-align: center; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+/* big groups: a proportional summary bar, filter chips, a name search */
+.ncm-admin-panel .ncm-msg2-jr__sum { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 10px; }
+.ncm-admin-panel .ncm-msg2-jr__bar { display: flex; flex: 1 1 100%; height: 6px; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--ncm-border-active) 50%, transparent); }
+.ncm-admin-panel .ncm-msg2-jr__bar i { display: block; height: 100%; margin: 0 !important; }
+.ncm-admin-panel .ncm-msg2-jr__bar i.is-bad { background: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-jr__bar i.is-wait { background: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-jr__bar i.is-good { background: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-jr__chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-admin-panel .ncm-msg2-jr__chip { --cc: var(--ncm-text-label); display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 2px; cursor: pointer; user-select: none;
+  border: 1px solid var(--ncm-border-active); font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-msg2-jr__chip b { font: 700 10px var(--ncm-font-mono); color: var(--cc); }
+.ncm-admin-panel .ncm-msg2-jr__chip.is-problem { --cc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-jr__chip.is-unread { --cc: var(--ncm-attn); }
+.ncm-admin-panel .ncm-msg2-jr__chip.is-read { --cc: var(--ncm-good); }
+.ncm-admin-panel .ncm-msg2-jr__chip:hover { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-jr__chip.is-on { color: var(--ncm-act, var(--ncm-secondary)); border-color: var(--ncm-act, var(--ncm-secondary)); background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 12%, transparent); }
+.ncm-admin-panel .ncm-msg2-jr__find { display: flex !important; align-items: center; gap: 6px; margin: 0 0 0 auto; height: 24px; padding: 0 8px; border: 1px solid var(--ncm-border-active); border-radius: 2px;
+  background: var(--ncm-bg-pane, var(--ncm-bg-base)); text-transform: none !important; font: inherit; }
+.ncm-admin-panel .ncm-msg2-jr__find i { color: var(--ncm-text-label); font-size: 10px; margin: 0 !important; }
+.ncm-app .ncm-admin-panel .ncm-msg2-jr__find input[type="text"] { width: 120px !important; height: 22px !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; border: 0 !important;
+  background: none !important; box-shadow: none !important; color: var(--ncm-text-primary) !important; font: 12px var(--ncm-font-body) !important; }
+/* the chip filter (data-jr-f on the journey; rows carry data-b) — a search overrides it */
+.ncm-admin-panel .ncm-msg2-jr[data-jr-f="problem"]:not(.is-searching) .ncm-msg2-jr__p:not([data-b="problem"]),
+.ncm-admin-panel .ncm-msg2-jr[data-jr-f="unread"]:not(.is-searching) .ncm-msg2-jr__p:not([data-b="unread"]),
+.ncm-admin-panel .ncm-msg2-jr[data-jr-f="read"]:not(.is-searching) .ncm-msg2-jr__p:not([data-b="read"]) { display: none; }
+.ncm-admin-panel .ncm-msg2-jr.is-empty .ncm-msg2-jr__none { display: block; }
+
+/* ═══════════════════════════════════════════════════════════
+ * Needs a reply — THE DESK (Version B of
+ * dev/mockups/admin-needs-reply-rethink-mock.html, 2026-10-28; replaced the switchboard)
+ * Three columns: the queue · the conversation + reply box · the persona.
+ * Tokens only. amber = waiting · green = answered · violet = alias/anonymous · names in their hue.
+ * ═══════════════════════════════════════════════════════════ */
+.ncm-app .ncm-msg2-desk { display: grid; grid-template-columns: 224px minmax(0, 1fr) 196px; gap: 0; flex: 1; min-height: 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); overflow: hidden; }
+.ncm-app .ncm-admin-panel--pop .ncm-msg2-desk { grid-template-columns: 280px minmax(0, 1fr) 250px; }
+
+/* ── the queue ── */
+.ncm-app .ncm-msg2-desk__q { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
+.ncm-app .ncm-msg2-desk__list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-msg2-desk__sep { padding: 6px 10px 3px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-muted)); border-top: 1px solid var(--ncm-border); margin-top: 4px; }
+.ncm-app .ncm-msg2-desk__quiet { padding: 8px 10px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); display: flex; gap: 6px; align-items: center; }
+.ncm-app .ncm-msg2-desk__empty { padding: 14px 10px; }
+
+.ncm-app .ncm-msg2-dq { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 8px 9px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); cursor: pointer; box-shadow: inset 3px 0 var(--ncm-attn, var(--ncm-accent)); }
+.ncm-app .ncm-msg2-dq:hover { background: var(--ncm-bg-hover, var(--ncm-bg-surface)); }
+.ncm-app .ncm-msg2-dq.is-sel { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, var(--ncm-bg-card)); box-shadow: inset 4px 0 var(--ncm-act, var(--ncm-secondary)); }
+.ncm-app .ncm-msg2-dq.is-hot { box-shadow: inset 3px 0 var(--ncm-bad, var(--ncm-danger)); }
+.ncm-app .ncm-msg2-dq.is-done { box-shadow: inset 3px 0 color-mix(in srgb, var(--ncm-good, var(--ncm-success)) 55%, transparent); opacity: .72; }
+.ncm-app .ncm-msg2-dq.is-done.is-sel { opacity: 1; box-shadow: inset 4px 0 var(--ncm-act, var(--ncm-secondary)); }
+.ncm-app .ncm-msg2-dq .ncm-msg2-av { width: 30px; height: 30px; font-size: 11px; }
+.ncm-app .ncm-msg2-dq__tx { min-width: 0; }
+.ncm-app .ncm-msg2-dq__tx .nm { display: flex; align-items: center; gap: 5px; min-width: 0; font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app .ncm-msg2-dq__tx .nm .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-msg2-dq__tx .nm .co, .ncm-app .ncm-msg2-dq__tx .nm .ty { font-size: 9px; color: var(--ncm-text-label, var(--ncm-text-muted)); flex: none; }
+.ncm-app .ncm-msg2-dq__tx .nm .ty { color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-app .ncm-msg2-dq__alias { display: inline-flex; align-items: center; gap: 3px; flex: none; font: 600 9.5px var(--ncm-font-display); color: var(--ncm-secret, var(--ncm-purple)); }
+.ncm-app .ncm-msg2-dq__tx .sl { font: 11px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.ncm-app .ncm-msg2-dq__tx .who { display: flex; align-items: center; gap: 5px; margin-top: 3px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-secondary); min-width: 0; }
+.ncm-app .ncm-msg2-dq__tx .who .w { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-msg2-dq__tx .who > i { color: var(--ncm-good, var(--ncm-success)); font-size: 9px; }
+.ncm-app .ncm-msg2-dq__tx .who .ncm-msg2-av.sm { width: 16px; height: 16px; font-size: 7px; }
+.ncm-app .ncm-msg2-dq__end { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.ncm-app .ncm-msg2-dq__end .ct { min-width: 18px; height: 18px; padding: 0 5px; display: inline-grid; place-items: center; border-radius: 1px; background: var(--ncm-attn, var(--ncm-accent)); color: var(--ncm-text-inverse); font: 700 10.5px var(--ncm-font-mono); }
+.ncm-app .ncm-msg2-dq.is-hot .ncm-msg2-dq__end .ct { background: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-app .ncm-msg2-dq__end .t { font: 10px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-muted)); white-space: nowrap; }
+.ncm-app .ncm-msg2-dq__meter { position: absolute; left: 10px; right: 8px; bottom: 3px; height: 2px; background: color-mix(in srgb, var(--ncm-border) 80%, transparent); border-radius: 1px; overflow: hidden; }
+.ncm-app .ncm-msg2-dq__meter i { display: block; height: 100%; background: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-app .ncm-msg2-dq.is-hot .ncm-msg2-dq__meter i { background: var(--ncm-bad, var(--ncm-danger)); }
+
+/* ── the conversation ── */
+.ncm-app .ncm-msg2-desk__mid { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); }
+.ncm-app .ncm-msg2-desk__hd { flex: none; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+.ncm-app .ncm-msg2-desk__hd .tx { min-width: 0; flex: 1; }
+.ncm-app .ncm-msg2-desk__hd .sj { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-msg2-desk__hd .sl { font: 10.5px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-msg2-desk__feed { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.ncm-app .ncm-msg2-desk__day { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-app .ncm-msg2-desk__day::before, .ncm-app .ncm-msg2-desk__day::after { content: ''; flex: 1; height: 1px; background: var(--ncm-border); }
+.ncm-app .ncm-msg2-desk__feed .ncm-msg2-b { max-width: 86%; align-self: flex-start; }
+.ncm-app .ncm-msg2-desk__feed .ncm-msg2-b.me { align-self: flex-end; }
+.ncm-app .ncm-msg2-desk__feed .ncm-msg2-b .m .ncm-addr { font-size: 10px; }
+.ncm-app .ncm-msg2-desk__box { flex: none; border-top: 1px solid var(--ncm-border); padding: 7px 10px 8px; background: var(--ncm-bg-pane); display: flex; flex-direction: column; gap: 6px; }
+.ncm-app .ncm-msg2-desk__sent { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid color-mix(in srgb, var(--ncm-good, var(--ncm-success)) 55%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--ncm-good, var(--ncm-success)) 10%, transparent); font: 11.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-app .ncm-msg2-desk__sent i { color: var(--ncm-good, var(--ncm-success)); }
+.ncm-app .ncm-msg2-desk__none { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 30px; text-align: center; }
+.ncm-app .ncm-msg2-desk__none i { font-size: 22px; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+
+/* ── the persona ── */
+.ncm-app .ncm-msg2-desk__who { min-height: 0; overflow-y: auto; overflow-x: hidden; border-left: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
+.ncm-app .ncm-msg2-desk__pcard { padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+.ncm-app .ncm-msg2-desk__pface { display: flex; align-items: center; gap: 8px; }
+.ncm-app .ncm-msg2-desk__pface .ncm-msg2-av.lg { width: 40px; height: 40px; font-size: 14px; flex: none; }
+.ncm-app .ncm-msg2-desk__pface .tx { min-width: 0; flex: 1; }
+.ncm-app .ncm-msg2-desk__pface .nm { display: flex; align-items: center; gap: 5px; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-msg2-desk__pface .ncm-addr { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.ncm-app .ncm-msg2-desk__ptags { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-app .ncm-msg2-desk__pk { display: flex; align-items: center; gap: 5px; margin-top: 4px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-app .ncm-msg2-desk__pk i { color: var(--ncm-act, var(--ncm-secondary)); font-size: 9px; }
+.ncm-app .ncm-msg2-desk__pk .n { margin-left: auto; font: 500 9px var(--ncm-font-body); letter-spacing: 0; text-transform: none; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-app .ncm-msg2-desk__pvoice { padding: 7px 9px; border: 1px solid var(--ncm-border); border-left: 3px solid var(--ncm-act, var(--ncm-secondary)); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); font: italic 12px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); white-space: pre-wrap; }
+.ncm-app .ncm-msg2-desk__pvoice.is-empty { font-style: normal; border-left-color: var(--ncm-border); color: var(--ncm-text-hint, var(--ncm-text-muted)); border-style: dashed; }
+.ncm-app .ncm-msg2-desk__pvoice.is-empty [role="button"] { color: var(--ncm-act, var(--ncm-secondary)); cursor: pointer; }
+.ncm-app .ncm-msg2-desk__phint { font: 10.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-msg2-desk__phint b { color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-app .ncm-msg2-desk__said { display: flex; flex-direction: column; gap: 4px; }
+.ncm-app .ncm-msg2-desk__said > div { padding: 5px 7px; border: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); }
+.ncm-app .ncm-msg2-desk__said .q { display: block; font: 11px/1.4 var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-app .ncm-msg2-desk__said .t { display: block; margin-top: 2px; font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-muted)); }
+
+/* ═══════════════════════════════════════════════════════════
+ * All mail — the CALENDAR NAVIGATOR (2026-10-28, version A of
+ * dev/mockups/admin-mail-navigator-mock.html). Prefix ncm-msg2-cal*.
+ * The left column is a calendar you open: year tiles → a month grid → a 7-day
+ * strip. Amber = unread, red = not delivered, act = where you are / the pick.
+ * Tokens only; display font for chrome, mono for every number; radius 2px.
+ * ═══════════════════════════════════════════════════════════ */
+.ncm-admin-panel .ncm-msg2-cal { display: flex; flex-direction: column; overflow: hidden; background: var(--ncm-bg-pane, var(--ncm-bg-base)); position: relative; }
+.ncm-admin-panel .ncm-msg2-cal::before, .ncm-admin-panel .ncm-msg2-cal::after { content: ""; position: absolute; width: 7px; height: 7px; border-style: solid; pointer-events: none; z-index: 3;
+  border-color: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 70%, transparent); }
+.ncm-admin-panel .ncm-msg2-cal::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.ncm-admin-panel .ncm-msg2-cal::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+.ncm-admin-panel .ncm-msg2-cal > * { flex: 0 0 auto; }
+
+/* breadcrumb: 2045 › March › Thu 11, every crumb but the last walks back; ‹ › step a sibling */
+.ncm-admin-panel .ncm-msg2-cal__crumb { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 5px 8px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+  font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-msg2-cal__crumb .is-here { color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-msg2-cal__up { cursor: pointer; white-space: nowrap; }
+.ncm-admin-panel .ncm-msg2-cal__up:hover, .ncm-admin-panel .ncm-msg2-cal__up:focus-visible { color: var(--ncm-act, var(--ncm-secondary)); outline: none; }
+.ncm-admin-panel .ncm-msg2-cal__sep { font-size: 7px; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-msg2-cal__nav { margin-left: auto; display: inline-flex; gap: 2px; flex: none; }
+.ncm-admin-panel .ncm-msg2-cal__nb { width: 20px; height: 18px; display: grid; place-items: center; border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-label, var(--ncm-text-secondary)); font-size: 8px; cursor: pointer; }
+.ncm-admin-panel .ncm-msg2-cal__nb:hover, .ncm-admin-panel .ncm-msg2-cal__nb:focus-visible { color: var(--ncm-act, var(--ncm-secondary)); border-color: var(--ncm-act, var(--ncm-secondary)); outline: none; }
+.ncm-admin-panel .ncm-msg2-cal__nb i { margin: 0; }
+
+/* quick shortcuts (borrowed from the drawers idea): Today · This week · This month, + Newest / Oldest */
+.ncm-admin-panel .ncm-msg2-cal__quick { display: flex; align-items: center; flex-wrap: nowrap; gap: 3px; padding: 5px 7px; overflow: hidden; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+.ncm-admin-panel .ncm-msg2-cal__q { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 5px; min-width: 0; overflow: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); cursor: pointer; user-select: none; white-space: nowrap;
+  font: 700 9px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-msg2-cal__q i { font-size: 8px; margin: 0; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-msg2-cal__q:hover, .ncm-admin-panel .ncm-msg2-cal__q:focus-visible { color: var(--ncm-text-heading, var(--ncm-text-primary)); border-color: var(--ncm-act, var(--ncm-secondary)); outline: none; }
+.ncm-admin-panel .ncm-msg2-cal__q.is-on { color: var(--ncm-act, var(--ncm-secondary)); border-color: var(--ncm-act, var(--ncm-secondary)); background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 12%, var(--ncm-bg-pane, var(--ncm-bg-base))); }
+.ncm-admin-panel .ncm-msg2-cal__q.is-on i { color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-admin-panel .ncm-msg2-cal__q--order { flex: none; border-style: dashed; }   /* Newest / Oldest: an order, not a place */
+.ncm-admin-panel .ncm-msg2-cal__q--order i { display: none; }                      /* the word is enough in the 290px column */
+.ncm-admin-panel--pop .ncm-msg2-cal__q--order i { display: inline; }
+
+/* the level's body: a flex column — the grid / strip stays, the rows scroll */
+.ncm-admin-panel .ncm-msg2-cal__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ncm-admin-panel .ncm-msg2-cal__body > * { flex: 0 0 auto; }
+.ncm-admin-panel .ncm-msg2-cal__hd { display: flex; align-items: baseline; gap: 8px; padding: 7px 8px 3px; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-cal__hd b { font: 700 13px var(--ncm-font-mono); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; }
+.ncm-admin-panel .ncm-msg2-cal__hd span:not(.ncm-msg2-cal__un) { font: 11px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-secondary)); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-admin-panel .ncm-msg2-cal__hd--day b { font: 700 13px var(--ncm-font-display); }
+.ncm-admin-panel .ncm-msg2-cal__hd .ncm-msg2-cal__un { margin-left: auto; }
+.ncm-admin-panel .ncm-msg2-cal__un { display: inline-grid; place-items: center; min-width: 15px; height: 14px; padding: 0 4px; border-radius: 1px; box-sizing: border-box; flex: none;
+  background: var(--ncm-attn, var(--ncm-accent)); color: var(--ncm-text-inverse); font: 700 9px var(--ncm-font-mono); }
+.ncm-admin-panel .ncm-msg2-cal__un.is-bad { background: var(--ncm-bad, var(--ncm-danger)); }
+/* on the light presets inverse-on-amber is ~1.2:1, so the badge is a tint with heading text instead */
+[data-ncm-admin-theme="clean-light"] .ncm-msg2-cal__un, [data-ncm-admin-theme="high-contrast"] .ncm-msg2-cal__un { background: color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 22%, var(--ncm-bg-pane, var(--ncm-bg-base))); color: var(--ncm-text-heading, var(--ncm-text-primary)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 70%, transparent); }
+[data-ncm-admin-theme="clean-light"] .ncm-msg2-cal__un.is-bad, [data-ncm-admin-theme="high-contrast"] .ncm-msg2-cal__un.is-bad { background: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 22%, var(--ncm-bg-pane, var(--ncm-bg-base))); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 70%, transparent); }
+
+/* YEAR: twelve tiles, a bar per week (amber where unread), the count, the unread badge */
+.ncm-admin-panel .ncm-msg2-cal__ygrid { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: min-content; gap: 5px; padding: 6px 7px 7px; align-content: start; }
+.ncm-admin-panel .ncm-msg2-cal__mt { display: flex; flex-direction: column; gap: 3px; padding: 7px 7px 6px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); cursor: pointer; position: relative; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-cal__mt:hover, .ncm-admin-panel .ncm-msg2-cal__mt:focus-visible { border-color: var(--ncm-act, var(--ncm-secondary)); outline: none; }
+.ncm-admin-panel .ncm-msg2-cal__mt .m { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-msg2-cal__mt .bars { display: flex; align-items: flex-end; gap: 1px; height: 14px; }
+.ncm-admin-panel .ncm-msg2-cal__mt .bars i { flex: 1; min-height: 1px; margin: 0; background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 55%, var(--ncm-bg-card, var(--ncm-bg-surface))); }
+.ncm-admin-panel .ncm-msg2-cal__mt .bars i.is-hot { background: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-admin-panel .ncm-msg2-cal__mt .ct { display: flex; justify-content: space-between; align-items: center; gap: 3px; }
+.ncm-admin-panel .ncm-msg2-cal__mt .n { font: 700 11px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-admin-panel .ncm-msg2-cal__mt.is-now { border-color: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 70%, var(--ncm-border)); box-shadow: inset 3px 0 var(--ncm-act, var(--ncm-secondary)); }
+.ncm-admin-panel .ncm-msg2-cal__mt.is-empty { opacity: .45; }
+.ncm-admin-panel .ncm-msg2-cal__mt.is-empty .bars { visibility: hidden; }
+
+/* MONTH: a cell per day tinted by volume (--v), the count, amber / red dots; week buttons under it.
+   The grid + weeks sit in __top, whose max-height the grip sets (the grid scrolls when squeezed). */
+.ncm-admin-panel .ncm-msg2-cal__top { flex: 0 0 auto; max-height: var(--cal-grid-h, none); overflow-y: auto; overflow-x: hidden; }   /* whole by default; the grip caps it */
+.ncm-admin-panel .ncm-msg2-cal__grip { flex: none; height: 9px; display: grid; place-items: center; cursor: row-resize; user-select: none; touch-action: none; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-top: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+.ncm-admin-panel .ncm-msg2-cal__grip i { width: 34px; height: 3px; border-radius: 2px; margin: 0; background: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-msg2-cal__grip:hover i, .ncm-admin-panel .ncm-msg2-cal__grip:focus-visible i, .ncm-admin-panel .ncm-msg2-cal__grip.is-dragging i { background: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-admin-panel .ncm-msg2-cal__grip.is-set i { background: var(--ncm-act, var(--ncm-secondary)); opacity: .7; }
+.ncm-admin-panel .ncm-msg2-cal__grip:focus-visible { outline: 1px solid var(--ncm-act, var(--ncm-secondary)); outline-offset: -1px; }
+.ncm-admin-panel .ncm-msg2-cal__mgrid { padding: 4px 7px 0; }
+.ncm-admin-panel .ncm-msg2-cal__dow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 3px; }
+.ncm-admin-panel .ncm-msg2-cal__dow span { text-align: center; font: 700 8px var(--ncm-font-display); letter-spacing: .06em; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-msg2-cal__days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.ncm-admin-panel .ncm-msg2-cal__dc { position: relative; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; box-sizing: border-box; cursor: pointer; min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); border-radius: 2px;
+  background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) calc(var(--v, 0) * 1%), var(--ncm-bg-card, var(--ncm-bg-surface))); }
+.ncm-admin-panel .ncm-msg2-cal__dc:hover, .ncm-admin-panel .ncm-msg2-cal__dc:focus-visible { border-color: var(--ncm-act, var(--ncm-secondary)); outline: none; }
+/* a cell's numbers sit on a tint, so they take the primary / heading tones (label failed 4.5:1 on a busy day) */
+.ncm-admin-panel .ncm-msg2-cal__dc .d { font: 10px var(--ncm-font-mono); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-msg2-cal__dc.is-z .d { color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-msg2-cal__dc .c { font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-msg2-cal__dc .wd { font: 700 7.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-msg2-cal__dc.is-z .wd { color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-msg2-cal__dc.is-z { opacity: .4; }
+.ncm-admin-panel .ncm-msg2-cal__dc.is-out { visibility: hidden; }
+.ncm-admin-panel .ncm-msg2-cal__dc .dot { position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; margin: 0; border-radius: 50%; background: var(--ncm-attn, var(--ncm-accent)); box-shadow: 0 0 4px var(--ncm-attn, var(--ncm-accent)); }
+.ncm-admin-panel .ncm-msg2-cal__dc .dot.is-x { left: 2px; right: auto; background: var(--ncm-bad, var(--ncm-danger)); box-shadow: 0 0 4px var(--ncm-bad, var(--ncm-danger)); }
+/* today: an act border + an act underline under the number (an act-coloured number on an act tint failed 4.5:1) */
+.ncm-admin-panel .ncm-msg2-cal__dc.is-today { border-color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-admin-panel .ncm-msg2-cal__dc.is-today .d { font-weight: 700; text-decoration: underline 2px var(--ncm-act, var(--ncm-secondary)); text-underline-offset: 2px; }
+.ncm-admin-panel .ncm-msg2-cal__dc.is-on { outline: 2px solid var(--ncm-act, var(--ncm-secondary)); outline-offset: -1px; }
+.ncm-admin-panel .ncm-msg2-cal__wk { display: flex; gap: 3px; padding: 5px 7px 6px; }
+.ncm-admin-panel .ncm-msg2-cal__wk span { flex: 1; min-width: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 2px; cursor: pointer;
+  border: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); border-radius: 2px; font: 700 8px var(--ncm-font-display); letter-spacing: .04em; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-msg2-cal__wk span.has-unread { color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-admin-panel .ncm-msg2-cal__wk span:hover, .ncm-admin-panel .ncm-msg2-cal__wk span:focus-visible { color: var(--ncm-act, var(--ncm-secondary)); border-color: var(--ncm-act, var(--ncm-secondary)); outline: none; }
+.ncm-admin-panel .ncm-msg2-cal__hr { display: flex; align-items: center; gap: 6px; padding: 3px 8px 2px; font: 700 8.5px var(--ncm-font-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-msg2-cal__hr::after { content: ""; flex: 1; height: 1px; background: color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+
+/* WEEK / DAY: the grid folded into a seven-day strip */
+.ncm-admin-panel .ncm-msg2-cal__strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 6px 7px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+.ncm-admin-panel .ncm-msg2-cal__strip .ncm-msg2-cal__dc { aspect-ratio: auto; height: 36px; }
+
+/* the rows: the only scroller; tighter than the old feed, same anatomy */
+.ncm-admin-panel .ncm-msg2-cal__rows { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-admin-panel .ncm-msg2-r--cal { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 7px; padding: 5px 8px; border-left: 0; box-shadow: inset 3px 0 transparent; }
+.ncm-admin-panel .ncm-msg2-r--cal.sel { box-shadow: inset 3px 0 var(--ncm-act, var(--ncm-secondary)); background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, var(--ncm-bg-card, var(--ncm-bg-surface))); }
+.ncm-admin-panel .ncm-msg2-r--cal .nm { font: 600 11.5px var(--ncm-font-body); }
+.ncm-admin-panel .ncm-msg2-r--cal .nm .to { font-weight: 400; }
+.ncm-admin-panel .ncm-msg2-r--cal .nm .to i { font-size: 8px; color: var(--ncm-text-hint, var(--ncm-text-muted)); margin: 0 2px; }
+.ncm-admin-panel .ncm-msg2-r--cal .sj { font: 11px var(--ncm-font-body); }
+.ncm-admin-panel .ncm-msg2-r--cal .w { font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); padding-top: 1px; }
+/* on the selected row's act tint the dim time / label tones (admin-hierarchy, !important) drop under 4.5:1 → primary there */
+.ncm-admin-panel .ncm-msg2-r--cal.sel .w { color: var(--ncm-text-primary) !important; }
+.ncm-admin-panel .ncm-msg2-r--cal.sel .nm .to { color: var(--ncm-text-primary) !important; }
+.ncm-admin-panel .ncm-msg2-r--cal .w .u { width: 6px; height: 6px; margin-top: 4px; background: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-admin-panel .ncm-msg2-r--cal .fl { margin-top: 2px; }
+
+/* the foot: ‹ the sibling before · its count | N of M | the one after · its count › */
+.ncm-admin-panel .ncm-msg2-cal__foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 6px; border-top: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); font: 10px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-msg2-cal__foot .h { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--ncm-font-mono); }
+.ncm-admin-panel .ncm-msg2-cal__fb { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; flex: none; color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-msg2-cal__fb b { font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-admin-panel .ncm-msg2-cal__fb i { font-size: 8px; margin: 0; }
+.ncm-admin-panel .ncm-msg2-cal__fb:hover, .ncm-admin-panel .ncm-msg2-cal__fb:focus-visible { color: var(--ncm-act, var(--ncm-secondary)); outline: none; }
+
+/* the entrance, played ONCE per level change (the template stamps is-fresh + data-cal-anim for one render):
+   a month tile grows into the grid, the grid folds into the strip, a sibling slides in, up zooms out.
+   Vetoed by reduced motion and by the module's animation pref (no class is stamped then). */
+.ncm-admin-panel .ncm-msg2-cal__body.is-fresh[data-cal-anim="grow"] { animation: ncm-msg2-cal-grow .26s cubic-bezier(.22, 1, .36, 1) both; transform-origin: 50% 0; }
+.ncm-admin-panel .ncm-msg2-cal__body.is-fresh[data-cal-anim="fold"] { animation: ncm-msg2-cal-fold .24s cubic-bezier(.22, 1, .36, 1) both; }
+.ncm-admin-panel .ncm-msg2-cal__body.is-fresh[data-cal-anim="step-next"] { animation: ncm-msg2-cal-next .2s cubic-bezier(.22, 1, .36, 1) both; }
+.ncm-admin-panel .ncm-msg2-cal__body.is-fresh[data-cal-anim="step-prev"] { animation: ncm-msg2-cal-prev .2s cubic-bezier(.22, 1, .36, 1) both; }
+.ncm-admin-panel .ncm-msg2-cal__body.is-fresh[data-cal-anim="up"] { animation: ncm-msg2-cal-up .22s cubic-bezier(.22, 1, .36, 1) both; transform-origin: 50% 0; }
+@keyframes ncm-msg2-cal-grow { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes ncm-msg2-cal-fold { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@keyframes ncm-msg2-cal-next { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes ncm-msg2-cal-prev { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+@keyframes ncm-msg2-cal-up { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ncm-admin-panel .ncm-msg2-cal__body.is-fresh { animation: none !important; } }
+
+/* pop-out: four tiles a row and roomier cells */
+.ncm-admin-panel--pop .ncm-msg2-cal__ygrid { grid-template-columns: repeat(4, 1fr); }
+.ncm-admin-panel--pop .ncm-msg2-cal__strip .ncm-msg2-cal__dc { height: 42px; }
+
+/* ── the reading pane, tidied to the left column's vocabulary (dev: "clean it up to match the left") ── */
+.ncm-admin-panel .ncm-msg2-rd { padding: 10px 12px; }
+.ncm-admin-panel .ncm-msg2-rd h3 { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); margin-bottom: 7px; line-height: 1.25; }
+.ncm-admin-panel .ncm-msg2-pp { grid-template-columns: 44px minmax(0, 1fr); gap: 3px 8px; font-size: 12.5px; }
+.ncm-admin-panel .ncm-msg2-pp .k { font-size: 9px; letter-spacing: .07em; color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-msg2-pp .p > span:first-of-type { color: var(--ncm-text-heading, var(--ncm-text-primary)); font-weight: 600; }
+.ncm-admin-panel .ncm-msg2-pp .a { font-size: 11px; color: var(--ncm-text-addr, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-msg2-pp .a.ncm-msg2-strong { color: var(--ncm-text-primary) !important; }   /* the When value: the time tone sat at 4.2:1 on the pane */
+.ncm-admin-panel .ncm-msg2-body { padding: 10px 12px; font-size: 13px; }
+.ncm-admin-panel .ncm-msg2-att { margin: 0 12px 8px; padding: 6px 9px; font-size: 12px; }
+.ncm-admin-panel .ncm-msg2-rcp { margin: 0 12px 12px; }
+.ncm-admin-panel .ncm-msg2-rcp .h { background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); color: var(--ncm-text-heading, var(--ncm-text-primary)); box-shadow: inset 3px 0 var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-msg2-note--in { padding: 7px 0 0; font-size: 12px; }
+
+/* the action row: ONE line, never wraps — Reply as · Inbox · [sent copy] · Share · Copy to terminal · Junk ▾ · Delete.
+   Named buttons keep their words (ellipsized when cramped); the quiet ones are icons with a tooltip at 820px
+   and grow their label back in the pop-out. */
+.ncm-admin-panel .ncm-msg2-acts--line { flex-wrap: nowrap; overflow: hidden; gap: 4px; padding: 8px 12px; }
+.ncm-admin-panel .ncm-msg2-acts--line > button.ncm-msg2-btn--named { flex: 0 1 auto !important; min-width: 26px !important; overflow: hidden; }
+.ncm-admin-panel .ncm-msg2-acts--line .lb { display: none; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-msg2-acts--line .lb--keep { display: inline; }
+.ncm-admin-panel .ncm-msg2-acts--line .ncm-msg2-acts__end { flex: none; margin-left: auto; }
+.ncm-admin-panel .ncm-msg2-acts--line .ncm-msg2-junkbtn > summary.ncm-msg2-btn { padding: 0 8px !important; }
+.ncm-admin-panel--pop .ncm-msg2-acts--line .lb { display: inline; }
+/* (0,3,1): beats the --icon square so the pop-out can give the quiet buttons their words back */
+.ncm-admin-panel--pop button.ncm-msg2-btn.ncm-msg2-btn--quietact { width: auto !important; min-width: 0 !important; padding: 0 9px !important; gap: 5px; }
+
+/* ═══════════════════════════════════════════════════════════
+ * The Desk, cleanup pass (2026-10-29 — dev/mockups/admin-desk-cleanup-mock.html).
+ * The queue head is ONE row (Show ▾ · who is waiting · fold); the queue folds to a
+ * rail of faces; the reply box is ONE bar (✓ · to … · [Reply as X | ▾]) and the
+ * identities / anonymous / full composer live behind the ▾; the id-card button in
+ * the thread head folds the persona.
+ * ═══════════════════════════════════════════════════════════ */
+
+/* ── a generic dropdown: the Junk ▾ <details> pattern, generalised ── */
+.ncm-admin-panel .ncm-msg2-dd { position: relative; flex: 0 0 auto; margin: 0; padding: 0; border: 0; }
+.ncm-admin-panel .ncm-msg2-dd > summary { list-style: none; cursor: pointer; user-select: none; width: max-content !important; max-width: none !important; }
+.ncm-admin-panel .ncm-msg2-dd > summary::-webkit-details-marker { display: none; }
+.ncm-admin-panel .ncm-msg2-dd[open] > summary.ncm-msg2-btn:not(.ncm-msg2-btn--primary) { color: var(--ncm-text-primary) !important; border-color: var(--ncm-act, var(--ncm-secondary)) !important; }
+.ncm-admin-panel .ncm-msg2-dd__caret { font-size: 9px; opacity: .75; margin-left: 2px; }
+.ncm-admin-panel .ncm-msg2-dd__menu { position: absolute; z-index: 30; min-width: 220px; display: flex; flex-direction: column; padding: 4px;
+  background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.ncm-admin-panel .ncm-msg2-dd__menu--wide { min-width: 270px; }
+.ncm-admin-panel .ncm-msg2-dd--down .ncm-msg2-dd__menu { top: calc(100% + 4px); left: 0; }
+.ncm-admin-panel .ncm-msg2-dd--up .ncm-msg2-dd__menu { bottom: calc(100% + 4px); right: 0; }
+.ncm-admin-panel .ncm-msg2-dd__k { padding: 6px 8px 3px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-msg2-dd__sep { flex: none; height: 1px; margin: 4px 2px; background: var(--ncm-border); }
+.ncm-app .ncm-admin-panel button.ncm-msg2-dd__item { appearance: none; display: flex !important; align-items: center; gap: 9px; width: 100% !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+  padding: 6px 8px !important; border: 0 !important; border-radius: 2px !important; background: transparent !important; box-shadow: none !important; text-align: left;
+  font: 500 12px var(--ncm-font-display) !important; text-transform: none !important; letter-spacing: 0 !important; color: var(--ncm-text-primary) !important; cursor: pointer; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-dd__item:hover, .ncm-app .ncm-admin-panel button.ncm-msg2-dd__item.is-cur { background: var(--ncm-bg-hover, color-mix(in srgb, var(--ncm-text-primary) 6%, transparent)) !important; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-dd__item > i { flex: none; width: 14px; margin: 0 !important; text-align: center; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-app .ncm-admin-panel button.ncm-msg2-dd__item.is-on > i.ck, .ncm-app .ncm-admin-panel button.ncm-msg2-dd__item.is-on > i.id { color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-app .ncm-admin-panel button.ncm-msg2-dd__item.is-alias > i.id { color: var(--ncm-secret, var(--ncm-purple)); }
+.ncm-admin-panel .ncm-msg2-dd__item > span:not(.n):not(.wrote) { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ncm-admin-panel .ncm-msg2-dd__item small { font: 400 10.5px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-msg2-dd__item small.addr { font-family: var(--ncm-font-mono); }
+.ncm-admin-panel .ncm-msg2-dd__item .n { margin-left: auto; font: 600 11px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-msg2-dd__item .n.attn { color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-admin-panel .ncm-msg2-dd__item .wrote { flex: none; font: 700 9px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-attn, var(--ncm-accent)); white-space: nowrap; }
+
+/* ── the queue head ── */
+.ncm-app .ncm-msg2-desk__qhd { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 8px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+.ncm-app .ncm-msg2-desk__qhd .sum { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-msg2-desk__qhd .sum b { color: var(--ncm-attn, var(--ncm-accent)); font: 700 11px var(--ncm-font-mono); }
+.ncm-app .ncm-msg2-desk__qhd .sum i { color: var(--ncm-good, var(--ncm-success)); font-size: 10px; }
+.ncm-app .ncm-msg2-desk__qhd summary .v { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app .ncm-msg2-desk__qhd summary .c { font-family: var(--ncm-font-mono); color: var(--ncm-attn, var(--ncm-accent)); }
+
+/* ── folds ── */
+.ncm-app .ncm-msg2-desk.is-qshut { grid-template-columns: 46px minmax(0, 1fr) 196px; }
+.ncm-app .ncm-msg2-desk.is-pshut { grid-template-columns: 224px minmax(0, 1fr); }
+.ncm-app .ncm-msg2-desk.is-qshut.is-pshut { grid-template-columns: 46px minmax(0, 1fr); }
+.ncm-app .ncm-admin-panel--pop .ncm-msg2-desk.is-qshut { grid-template-columns: 46px minmax(0, 1fr) 250px; }
+.ncm-app .ncm-admin-panel--pop .ncm-msg2-desk.is-pshut { grid-template-columns: 280px minmax(0, 1fr); }
+.ncm-app .ncm-admin-panel--pop .ncm-msg2-desk.is-qshut.is-pshut { grid-template-columns: 46px minmax(0, 1fr); }
+.ncm-app .ncm-msg2-desk__rail { display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 6px 0 10px; min-height: 0; border-right: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-msg2-desk__rail .f { position: relative; flex: none; cursor: pointer; border-radius: 50%; }
+.ncm-app .ncm-msg2-desk__rail .f .ncm-msg2-av { width: 30px; height: 30px; font-size: 11px; }
+.ncm-app .ncm-msg2-desk__rail .f.is-sel { box-shadow: 0 0 0 2px var(--ncm-act, var(--ncm-secondary)); }
+.ncm-app .ncm-msg2-desk__rail .f.is-done { opacity: .55; }
+.ncm-app .ncm-msg2-desk__rail .f.is-done.is-sel { opacity: 1; }
+.ncm-app .ncm-msg2-desk__rail .f .ct { position: absolute; top: -4px; right: -6px; min-width: 15px; height: 15px; padding: 0 3px; display: grid; place-items: center; border-radius: 1px;
+  background: var(--ncm-attn, var(--ncm-accent)); color: var(--ncm-text-inverse, #000); font: 700 9px var(--ncm-font-mono); }
+.ncm-app .ncm-msg2-desk__rail .f .ct.is-hot { background: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-app .ncm-msg2-desk__rail hr { flex: none; width: 22px; height: 0; margin: 0; border: 0; border-top: 1px solid var(--ncm-border); background: none; border-image: none; }
+.ncm-app .ncm-msg2-desk__hd .ncm-msg2-btn--icon.is-on { color: var(--ncm-act, var(--ncm-secondary)) !important; }
+
+/* ── the reply box: textarea + one bar ── */
+.ncm-app .ncm-msg2-desk__box { gap: 5px; padding: 6px 10px 7px; }
+.ncm-app .ncm-msg2-desk__ta { min-height: 56px; }
+.ncm-app .ncm-msg2-desk__sent { padding: 3px 8px; font-size: 11px; }
+.ncm-app .ncm-msg2-desk__bar { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ncm-app .ncm-msg2-desk__bar .to { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; }
+.ncm-app .ncm-msg2-desk__bar .to > i { font-size: 9px; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-app .ncm-msg2-desk__bar .to b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: 600 11.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app .ncm-msg2-desk__bar .anon { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 60%, transparent); border-radius: 1px;
+  font: 700 9px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-secret, var(--ncm-purple)); }
+.ncm-app .ncm-msg2-sendbtn { display: inline-flex; flex: none; }
+.ncm-app .ncm-msg2-sendbtn > .ncm-msg2-btn { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; max-width: 230px; }
+.ncm-app .ncm-admin-panel--pop .ncm-msg2-sendbtn > .ncm-msg2-btn { max-width: 340px; }
+.ncm-app .ncm-msg2-sendbtn > .ncm-msg2-btn .lb { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-msg2-sendbtn > details > summary.ncm-msg2-btn { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; padding: 0 7px !important;
+  border-left: 1px solid color-mix(in srgb, var(--ncm-text-inverse, #000) 35%, transparent) !important; }
+.ncm-app .ncm-msg2-sendbtn > details > summary .ncm-msg2-dd__caret { margin: 0; opacity: 1; }
+/* the ▾ half of the split button is a <summary>, which the base :is(button, summary) rule (0,2,1) paints grey */
+.ncm-admin-panel .ncm-msg2-sendbtn summary.ncm-msg2-btn.ncm-msg2-btn--primary, .ncm-admin-panel .ncm-msg2-sendbtn summary.ncm-msg2-btn.ncm-msg2-btn--primary:hover { color: var(--ncm-text-inverse) !important; background: var(--ncm-act, var(--ncm-secondary)) !important; border-color: var(--ncm-act, var(--ncm-secondary)) !important; }
+
+/* ── round 2 (2026-10-29): Mark answered lives on the status it clears; the identity is its own control ── */
+/* the head's "N waiting" IS the button: hover/focus says what a click does, a click marks the conversation answered */
+.ncm-app .ncm-admin-panel button.ncm-msg2-desk__wait { appearance: none; flex: none; display: inline-grid !important; width: auto !important; height: 22px !important; min-height: 0 !important; margin: 0 !important; padding: 0 8px !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 60%, transparent) !important; border-radius: 2px !important; box-shadow: none !important;
+  background: color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 12%, transparent) !important; cursor: pointer;
+  font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-attn, var(--ncm-accent)) !important; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-desk__wait > span { grid-area: 1 / 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-desk__wait i { margin: 0 !important; font-size: 8px; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-desk__wait .is-h { visibility: hidden; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-desk__wait:is(:hover, :focus-visible) { border-color: var(--ncm-good, var(--ncm-success)) !important; background: color-mix(in srgb, var(--ncm-good, var(--ncm-success)) 14%, transparent) !important; color: var(--ncm-good, var(--ncm-success)) !important; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-desk__wait:is(:hover, :focus-visible) .is-w { visibility: hidden; }
+.ncm-app .ncm-admin-panel button.ncm-msg2-desk__wait:is(:hover, :focus-visible) .is-h { visibility: visible; }
+.ncm-app .ncm-msg2-desk__answered { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; box-sizing: border-box; border: 1px solid color-mix(in srgb, var(--ncm-good, var(--ncm-success)) 50%, transparent); border-radius: 2px;
+  font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-good, var(--ncm-success)); }
+.ncm-app .ncm-msg2-desk__answered i { font-size: 8px; }
+
+/* the bar's left side: "as <identity ▾> → to V" — the menu must not be clipped, so the names ellipsise instead of the row */
+.ncm-app .ncm-msg2-desk__bar .to { overflow: visible; }
+.ncm-app .ncm-msg2-desk__bar .to b { max-width: 150px; white-space: nowrap; }
+.ncm-app .ncm-msg2-desk__as > summary { display: inline-flex; align-items: center; gap: 3px; padding: 1px 5px; border: 1px dashed color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 55%, transparent); border-radius: 2px; }
+.ncm-app .ncm-msg2-desk__as > summary b { color: var(--ncm-act, var(--ncm-secondary)) !important; }
+.ncm-app .ncm-msg2-desk__as > summary .ncm-msg2-dd__caret { margin: 0; opacity: 1; color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-app .ncm-msg2-desk__as > summary:hover, .ncm-app .ncm-msg2-desk__as[open] > summary { border-style: solid; background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, transparent); }
+.ncm-admin-panel .ncm-msg2-dd--upl .ncm-msg2-dd__menu { bottom: calc(100% + 6px); left: 0; }
+.ncm-admin-panel .ncm-msg2-dd--upl .ncm-msg2-dd__menu * { white-space: normal; }
+.ncm-admin-panel .ncm-msg2-dd--upl .ncm-msg2-dd__item small { white-space: nowrap; }
+
+/* the Reply button's ▾: a stronger split, a wider target, and how many identities wait behind it */
+.ncm-app .ncm-msg2-sendbtn > details > summary.ncm-msg2-btn { gap: 4px; padding: 0 9px !important; border-left: 2px solid color-mix(in srgb, var(--ncm-text-inverse, #000) 45%, transparent) !important; }
+.ncm-app .ncm-msg2-sendbtn > details > summary .ncm-msg2-dd__caret { font-size: 11px; }
+.ncm-app .ncm-msg2-sendbtn .nid { display: inline-grid; place-items: center; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-text-inverse, #000) 25%, transparent); font: 700 9px var(--ncm-font-mono); }
+/* anonymous on: the whole button wears the secret colour, so masked mail is never sent by accident */
+.ncm-admin-panel .ncm-msg2-sendbtn.is-anon :is(button, summary).ncm-msg2-btn.ncm-msg2-btn--primary { background: var(--ncm-secret, var(--ncm-purple)) !important; border-color: var(--ncm-secret, var(--ncm-purple)) !important; color: var(--ncm-text-inverse) !important; }
+
+
+/* ═══════════════════════════════════════════════════════════
+ * Inboxes — LIST + DESK (2026-10-29, dev-picked A of
+ * dev/mockups/admin-inboxes-rethink-mock.html; it replaced the Mailroom wall).
+ * One toolbar row · a grouped list (left) · the desk (right): Needs a look, or
+ * the picked mailbox. Prefix ncm-ib-*. Meaning colours only: amber unread ·
+ * violet alias · red owner gone; a network wears its own colour on its postmark.
+ * ═══════════════════════════════════════════════════════════ */
+.ncm-admin-panel .ncm-ib { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.ncm-admin-panel .ncm-ib__tb { flex: none; display: flex; align-items: center; gap: 6px; }
+.ncm-admin-panel .ncm-ib__kbd { flex: none; padding: 1px 4px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); box-shadow: none; font: 700 9px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-ib__sel { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 2px 0 9px; box-sizing: border-box; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); text-transform: none; }
+.ncm-admin-panel .ncm-ib__sel > span { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-app .ncm-admin-panel .ncm-ib__sel select { height: 24px !important; min-height: 0 !important; width: auto !important; padding: 0 2px !important; border: 0 !important; background: transparent !important; box-shadow: none !important;
+  font: 600 12px var(--ncm-font-display) !important; color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; cursor: pointer; }
+.ncm-app .ncm-admin-panel .ncm-ib__sel select option { background: var(--ncm-bg-card); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-ib__more .ncm-msg2-dd__menu { left: auto; right: 0; }
+
+.ncm-admin-panel .ncm-ib__split { flex: 1; min-height: 0; display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 8px; }
+.ncm-admin-panel--pop .ncm-ib__split { grid-template-columns: 340px minmax(0, 1fr); }
+
+/* ── the list ── */
+.ncm-admin-panel .ncm-ib__list { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+.ncm-admin-panel .ncm-ib__n { padding: 5px 9px; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-ib__none { padding: 20px; text-align: center; }
+.ncm-admin-panel .ncm-ib__gh { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 7px; padding: 5px 9px; cursor: pointer; user-select: none;
+  border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface));
+  font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ib__gh .ch { font-size: 9px; color: var(--ncm-text-label, var(--ncm-text-muted)); transition: transform .15s; }
+.ncm-admin-panel .ncm-ib__grp.is-shut .ncm-ib__gh .ch { transform: rotate(-90deg); }
+.ncm-admin-panel .ncm-ib__grp.is-shut .ncm-ib__rows { display: none; }
+.ncm-admin-panel .ncm-ib__gh .cnt { font-family: var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ib__gh .u { margin-left: auto; min-width: 18px; padding: 0 5px; text-align: center; border-radius: 1px; background: var(--ncm-attn, var(--ncm-accent)); color: var(--ncm-text-inverse); font: 700 10px var(--ncm-font-mono); letter-spacing: 0; }
+.ncm-admin-panel .ncm-ib__grp.is-bad .ncm-ib__gh { color: var(--ncm-bad, var(--ncm-danger)); }
+
+/* a row (a <button>: Foundry + CPR centre a button's content, so the layout is forced) */
+.ncm-app .ncm-admin-panel button.ncm-ib__r { appearance: none; display: grid !important; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; justify-content: stretch !important; gap: 9px;
+  width: 100% !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 6px 9px !important; text-align: left !important;
+  border: 0 !important; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent) !important; border-radius: 0 !important; box-shadow: none; background: transparent !important;
+  color: var(--ncm-text-primary) !important; font: inherit !important; text-transform: none !important; letter-spacing: 0 !important; line-height: normal !important; cursor: pointer; }
+.ncm-app .ncm-admin-panel button.ncm-ib__r:hover { background: var(--ncm-bg-hover, var(--ncm-bg-card)) !important; }
+.ncm-app .ncm-admin-panel button.ncm-ib__r.is-unread { box-shadow: inset 3px 0 var(--ncm-attn, var(--ncm-accent)); }
+.ncm-app .ncm-admin-panel button.ncm-ib__r.is-sel { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 11%, var(--ncm-bg-card)) !important; box-shadow: inset 3px 0 var(--ncm-act, var(--ncm-secondary)); }
+.ncm-app .ncm-admin-panel button.ncm-ib__r.is-quiet:not(.is-sel) .tx { opacity: .75; }
+.ncm-admin-panel .ncm-ib__r .ncm-msg2-av { width: 26px; height: 26px; font-size: 10px; }
+.ncm-admin-panel .ncm-ib__r .tx { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ncm-admin-panel .ncm-ib__r .nm { display: flex; align-items: center; gap: 6px; min-width: 0; font: 600 12.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ib__r .nm .t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-ib__r .sl { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-ib__r .end { display: flex; align-items: center; }
+.ncm-admin-panel .ncm-ib__u { display: inline-grid; place-items: center; min-width: 20px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 1px;
+  background: var(--ncm-attn, var(--ncm-accent)); color: var(--ncm-text-inverse); font: 700 10.5px var(--ncm-font-mono); }
+.ncm-admin-panel .ncm-ib__tag { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 16px; padding: 0 5px; box-sizing: border-box; border: 1px solid; border-radius: 1px;
+  font: 700 8.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; }
+.ncm-admin-panel .ncm-ib__tag i { font-size: 8px; }
+.ncm-admin-panel .ncm-ib__tag.is-quiet, .ncm-admin-panel .ncm-ib__tag.is-none { border-color: var(--ncm-border); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-ib__tag.is-none { border-style: dashed; }
+.ncm-admin-panel .ncm-ib__tag.is-gone { border-color: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 60%, transparent); color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-admin-panel .ncm-ib__tag.is-alias { border-color: color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 55%, transparent); color: color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 72%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+
+/* ── the desk ── */
+.ncm-admin-panel .ncm-ib__desk { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); }
+.ncm-admin-panel .ncm-ib__dhd { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+.ncm-admin-panel .ncm-ib__dhd .ncm-msg2-av.lg { width: 40px; height: 40px; font-size: 14px; }
+.ncm-admin-panel .ncm-ib__dhd .tx { flex: 1; min-width: 0; }
+.ncm-admin-panel .ncm-ib__dhd .nm { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ib__dhd .ad { margin-top: 1px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-secondary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-ib__acts { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-ib__acts:empty { display: none; }
+.ncm-admin-panel .ncm-ib__sec { padding: 9px 12px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-ib__sec:last-child { border-bottom: 0; }
+.ncm-admin-panel .ncm-ib__k { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-ib__k i { font-size: 9px; color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-admin-panel .ncm-ib__k.is-bad i { color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-admin-panel .ncm-ib__k .x { margin-left: auto; font: 10px var(--ncm-font-mono); letter-spacing: 0; text-transform: none; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-ib__quiet { padding: 4px 0; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-ib__row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ncm-app .ncm-admin-panel button.ncm-ib__mail { appearance: none; display: grid !important; grid-template-columns: 3px 20px minmax(0, 1fr) auto auto; align-items: center; justify-content: stretch !important; gap: 8px;
+  width: 100% !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4px 4px 4px 0 !important; text-align: left !important;
+  border: 0 !important; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent) !important; border-radius: 0 !important; box-shadow: none; background: transparent !important;
+  color: var(--ncm-text-primary) !important; font: inherit !important; text-transform: none !important; letter-spacing: 0 !important; line-height: normal !important; cursor: pointer; }
+.ncm-app .ncm-admin-panel button.ncm-ib__mail:hover { background: var(--ncm-bg-hover, var(--ncm-bg-card)) !important; }
+.ncm-admin-panel .ncm-ib__mail .e { align-self: stretch; background: var(--ncm-border-active, var(--ncm-border)); }
+.ncm-admin-panel .ncm-ib__mail.is-unread .e { background: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-admin-panel .ncm-ib__mail .tx { min-width: 0; display: flex; align-items: baseline; gap: 6px; }
+.ncm-admin-panel .ncm-ib__mail .tx b { flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 11.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ib__mail .tx span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-ib__mail.is-unread .tx span { color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-ib__mail .ag { font: 10px var(--ncm-font-mono); color: var(--ncm-text-secondary); white-space: nowrap; }
+.ncm-admin-panel .ncm-ib__mail .ncm-msg2-av.is-sent { background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-admin-panel .ncm-ib__bars { display: flex; align-items: flex-end; gap: 2px; height: 34px; }
+.ncm-admin-panel .ncm-ib__bars i { flex: 1; min-height: 2px; background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 65%, transparent); }
+.ncm-admin-panel .ncm-ib__bars i.z { background: var(--ncm-border); }
+.ncm-admin-panel .ncm-ib__bars i.u { background: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-admin-panel .ncm-ib__nums { display: flex; gap: 14px; margin-top: 6px; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-ib__nums b { margin-right: 3px; font: 700 13px var(--ncm-font-mono); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ib__nums .attn b { color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-admin-panel .ncm-ib__who { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 1px; border: 1px solid var(--ncm-border); border-radius: 10px; font: 11px var(--ncm-font-display); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-ib__who em { font: normal 10px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+
+/* the postmark: a small routing tag — the network's own colour as an edge + barcode, its 3-letter code */
+.ncm-admin-panel .ncm-ib-pm { --n: var(--ncm-act, var(--ncm-secondary)); flex: none; display: inline-flex; align-items: stretch; height: 18px; box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--n) 70%, transparent); clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%); background: color-mix(in srgb, var(--n) 10%, var(--ncm-bg-card)); }
+.ncm-admin-panel .ncm-ib-pm i.bc { width: 8px; background: repeating-linear-gradient(90deg, var(--n) 0 1px, transparent 1px 2px, var(--n) 2px 4px, transparent 4px 5px); }
+.ncm-admin-panel .ncm-ib-pm > b { display: flex; align-items: center; padding: 0 5px 0 4px; font: 700 9.5px var(--ncm-font-mono); letter-spacing: .05em; color: color-mix(in srgb, var(--n) 40%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-admin-panel .ncm-ib-pm > span { display: flex; align-items: center; padding: 0 7px 0 5px; border-left: 1px dashed color-mix(in srgb, var(--n) 50%, transparent); font: 10.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-ib-pm.is-big { height: 22px; }
+[data-ncm-admin-theme="clean-light"] .ncm-ib-pm > b { color: color-mix(in srgb, var(--n) 22%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+
+/* Needs a look */
+.ncm-admin-panel .ncm-ib__look { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px; }
+.ncm-admin-panel .ncm-ib__card { min-width: 0; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); }
+.ncm-admin-panel .ncm-ib__card .ncm-ib__k + .ncm-ib__quiet { padding-top: 0; }
+.ncm-admin-panel .ncm-ib__card .ncm-ib__k:not(:first-child) { margin-top: 12px; }
+.ncm-app .ncm-admin-panel button.ncm-ib__li { appearance: none; display: grid !important; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; justify-content: stretch !important; gap: 8px;
+  width: 100% !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4px 0 !important; text-align: left !important;
+  border: 0 !important; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 70%, transparent) !important; border-radius: 0 !important; box-shadow: none; background: transparent !important;
+  color: var(--ncm-text-primary) !important; font: inherit !important; text-transform: none !important; letter-spacing: 0 !important; line-height: normal !important; cursor: pointer; }
+.ncm-app .ncm-admin-panel button.ncm-ib__li:last-of-type { border-bottom: 0 !important; }
+.ncm-app .ncm-admin-panel button.ncm-ib__li:hover b { color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-admin-panel .ncm-ib__li .tx { min-width: 0; display: flex; flex-direction: column; }
+.ncm-admin-panel .ncm-ib__li .tx b { font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-ib__li .tx span { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+/* the panel's red button text sits under 4.5:1 on a dark card — lift it toward the heading tone here */
+.ncm-app .ncm-admin-panel .ncm-ib .ncm-msg2-btn--danger { color: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 70%, var(--ncm-text-heading, var(--ncm-text-primary))) !important; }

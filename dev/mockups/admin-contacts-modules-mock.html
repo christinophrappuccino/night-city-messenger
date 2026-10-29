@@ -1,0 +1,1012 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Contacts modules — trust + who knows whom</title>
+<!--
+  Admin → Contacts — two modules, two versions each (A and B are different takes, not restyles).
+    1) Trust spectrum (top of the Directory view)        A = segmented strip   B = dot lanes by role with per-character spread
+    2) Who knows whom (second view of the matrix)        A = constellation     B = ring of rings (radial matrix)
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-contacts-modules-mock.html
+  ?t=clean-dark|clean-light|high-contrast   ?only=ta|tb|ka|kc|kg|kb (one frame)   ?sel=<contact name> preselect in the constellations
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; }
+  .mk-h:first-child { margin-top: 0; }
+  .mk-p { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 12px; max-width: 814px; }
+  .mk-p b { color: #ddd; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+
+  /* ---- shared frame vocabulary (copied from the who-they-know mock) ---- */
+  .cs-P { width: 814px; box-sizing: border-box; background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); padding-bottom: 12px; }
+  .cs-band { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-act);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .cs-band > i { color: var(--ncm-act); }
+  .cs-band .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+  .cs-mod { margin: 10px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); position: relative; }
+  .cs-mod__k { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .cs-mod__k > i { color: var(--ncm-act); font-size: 9px; }
+  .cs-mod__k .x { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-act); cursor: pointer; }
+  .cs-mod__k .hint { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+  .cs-mod::before, .cs-mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid; pointer-events: none; }
+  .cs-mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .cs-mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+  .cs-tag { --tc: var(--ncm-text-label); display: inline-flex; gap: 4px; align-items: center; padding: 0 6px; border-radius: 1px; font: 600 11px/17px var(--ncm-font-body); white-space: nowrap;
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+  .cs-tag i { font-size: 9.5px; }
+  .cs-av { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 9px var(--ncm-font-display);
+    color: color-mix(in oklab, var(--tc) 80%, white); background: color-mix(in srgb, var(--tc) 25%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); }
+  .cs-btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; cursor: pointer; box-shadow: none !important; margin: 0 !important; display: inline-flex; gap: 5px; align-items: center; line-height: 1.3; flex: none; }
+  .cs-btn:hover { border-color: var(--ncm-act) !important; }
+  .cs-btn.is-pri { border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse, #0b0d12) !important; background: var(--ncm-act) !important; }
+  .cs-btn.is-bad { border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent) !important; color: var(--ncm-bad) !important; }
+  .cs-seg { display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+  .cs-seg span { padding: 2px 9px; font: 700 10px/18px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); cursor: pointer; border-left: 1px solid var(--ncm-border); white-space: nowrap; }
+  .cs-seg span:first-child { border-left: 0; }
+  .cs-seg span:hover { color: var(--ncm-text-heading); background: var(--ncm-bg-hover); }
+  .cs-seg span.on { color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-act) 18%, transparent); box-shadow: inset 0 -2px var(--ncm-act); }
+  .cs-lbl { font: 700 9.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); }
+
+  /* trust colours (one scale, same as the rest of the panel) */
+  .cs-t0 { --lv: var(--ncm-text-hint); } .cs-t1 { --lv: var(--ncm-bad); } .cs-t2 { --lv: var(--ncm-attn); }
+  .cs-t3 { --lv: var(--ncm-text-label); } .cs-t4 { --lv: color-mix(in oklab, var(--ncm-good) 62%, var(--ncm-text-label)); } .cs-t5 { --lv: var(--ncm-good); }
+  .cs-tpill { display: inline-flex; align-items: center; gap: 5px; padding: 0 6px; border-radius: 1px; font: 600 11px/17px var(--ncm-font-body); white-space: nowrap;
+    color: color-mix(in oklab, var(--lv) 80%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--lv) 13%, transparent); border: 1px solid color-mix(in srgb, var(--lv) 50%, transparent); }
+  .cs-tpill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--lv); }
+
+  /* ---- the directory list the trust modules narrow ---- */
+  .cs-filt { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 10px 12px 6px; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); min-height: 22px; }
+  .cs-filt .cs-chip { --tc: var(--ncm-act); display: inline-flex; gap: 5px; align-items: center; padding: 1px 4px 1px 7px; border-radius: 1px; font: 600 11.5px var(--ncm-font-body);
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+  .cs-filt .cs-chip b { cursor: pointer; color: var(--ncm-text-label); padding: 0 2px; font-weight: 400; } .cs-filt .cs-chip b:hover { color: var(--ncm-bad); }
+  .cs-filt .n { margin-left: auto; font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .cs-list { margin: 0 12px; max-height: 236px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .cs-lr { display: grid; grid-template-columns: 22px 168px 120px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 5px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .cs-lr:last-child { border-bottom: 0; }
+  .cs-lr:hover { background: var(--ncm-bg-hover); }
+  .cs-lr.sel { background: color-mix(in srgb, var(--ncm-act) 12%, transparent); box-shadow: inset 3px 0 var(--ncm-act); }
+  .cs-lr .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; }
+  .cs-lr .org { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; }
+  .cs-lr .dif { display: flex; flex-wrap: wrap; gap: 4px; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .cs-lr .dif .d { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+  .cs-lr .dif .d::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--lv); }
+  .cs-lr .dif .d b { color: var(--ncm-text-heading); font-weight: 600; }
+  .cs-empty { padding: 14px; text-align: center; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+
+  /* ===== TRUST A — the segmented spectrum ===== */
+  .cs-ta__top { display: flex; align-items: center; gap: 10px; padding: 8px 10px 0; flex-wrap: wrap; }
+  .cs-ta__top .note { margin-left: auto; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .cs-ta__top .note b { color: var(--ncm-secret); font-weight: 600; }
+  .cs-ta__strip { display: flex; gap: 10px; padding: 10px 10px 4px; align-items: stretch; }
+  .cs-ta__scale { display: flex; flex: 1; gap: 2px; min-width: 0; }
+  .cs-ta__b { position: relative; flex: 1 1 0; min-width: 102px; cursor: pointer; border: 1px solid var(--ncm-border); border-top: 0; border-radius: 0 0 2px 2px; padding: 7px 8px 7px;
+    background: color-mix(in srgb, var(--lv) 7%, var(--ncm-bg-pane)); box-shadow: inset 0 3px var(--lv); display: flex; flex-direction: column; gap: 3px; transition: background .15s, opacity .15s; }
+  .cs-ta__b:hover { background: color-mix(in srgb, var(--lv) 16%, var(--ncm-bg-pane)); }
+  .cs-ta__b.on { background: color-mix(in srgb, var(--lv) 24%, var(--ncm-bg-pane)); border-color: color-mix(in srgb, var(--lv) 70%, transparent); box-shadow: inset 0 3px var(--lv), 0 0 0 1px color-mix(in srgb, var(--lv) 55%, transparent); }
+  .cs-ta__b.dim { opacity: .45; }
+  .cs-ta__b.zero { cursor: default; }
+  .cs-ta__b.is-unk { flex: 0 0 102px; border-style: dashed; border-top: 0; }
+  .cs-ta__b .c { font: 700 20px/1 var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .cs-ta__b.zero .c { color: var(--ncm-text-hint); }
+  .cs-ta__b .l { font: 600 11.5px var(--ncm-font-body); color: color-mix(in oklab, var(--lv) 75%, var(--ncm-text-heading)); white-space: nowrap; }
+  .cs-ta__b .dots { display: flex; flex-wrap: wrap; gap: 3px; min-height: 7px; margin-top: 2px; }
+  .cs-ta__b .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--tc); }
+  .cs-ta__b .dots i.dv { box-shadow: 0 0 0 1.5px var(--ncm-bg-pane), 0 0 0 2.5px var(--ncm-secret); }
+  .cs-ta__axis { display: flex; padding: 0 10px 8px 122px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .cs-ta__axis span:last-child { margin-left: auto; }
+  .cs-ta__axis .ln { flex: 1; margin: 7px 8px 0; height: 1px; background: linear-gradient(90deg, var(--ncm-bad), var(--ncm-attn), var(--ncm-text-label), var(--ncm-good)); opacity: .6; }
+  .cs-pop { position: absolute; z-index: 5; top: calc(100% + 4px); left: -1px; min-width: 180px; max-width: 260px; padding: 6px 8px; background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active);
+    border-radius: 2px; box-shadow: 0 6px 18px rgba(0,0,0,.35); pointer-events: none; display: none; }
+  .cs-ta__b:hover .cs-pop { display: block; }
+  .cs-ta__b:last-child .cs-pop { left: auto; right: -1px; }
+  .cs-pop .h { font: 700 9.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); margin-bottom: 4px; }
+  .cs-pop .p { display: flex; align-items: center; gap: 6px; font: 12px/20px var(--ncm-font-body); color: var(--ncm-text-heading); white-space: nowrap; }
+  .cs-pop .p i { width: 7px; height: 7px; border-radius: 50%; background: var(--tc); flex: none; }
+  .cs-pop .p em { margin-left: auto; padding-left: 10px; font-style: normal; font-size: 11px; color: var(--ncm-secret); }
+
+  /* ===== TRUST B — lanes by role, per-character spread ===== */
+  .cs-tb__top { display: flex; align-items: center; gap: 10px; padding: 8px 10px 4px; flex-wrap: wrap; }
+  .cs-tb__top .tg { display: inline-flex; align-items: center; gap: 6px; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); cursor: pointer; margin-left: auto; }
+  .cs-tb__top .tg .bx { width: 13px; height: 13px; border: 1px solid var(--ncm-border-active); border-radius: 2px; display: grid; place-items: center; font-size: 9px; color: var(--ncm-act); }
+  .cs-tb__top .tg.on .bx { background: color-mix(in srgb, var(--ncm-act) 14%, transparent); border-color: var(--ncm-act); }
+  .cs-tb__grid { display: grid; grid-template-columns: 112px 654px; padding: 0 10px 8px; position: relative; }
+  .cs-tb__hd { display: grid; grid-template-columns: 70px repeat(5, 1fr); }
+  .cs-tb__hd span { padding: 4px 4px 5px; text-align: center; cursor: pointer; font: 600 11px var(--ncm-font-body); color: color-mix(in oklab, var(--lv) 75%, var(--ncm-text-heading)); white-space: nowrap; border-bottom: 2px solid color-mix(in srgb, var(--lv) 55%, transparent); }
+  .cs-tb__hd span:hover { background: color-mix(in srgb, var(--lv) 10%, transparent); }
+  .cs-tb__hd span.on { background: color-mix(in srgb, var(--lv) 20%, transparent); border-bottom-color: var(--lv); }
+  .cs-tb__hd span b { font: 700 11px var(--ncm-font-mono); color: var(--ncm-text-label); margin-left: 3px; }
+  .cs-tb__rl { display: flex; align-items: center; gap: 6px; height: 30px; padding-right: 6px; cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; }
+  .cs-tb__rl i { width: 14px; text-align: center; font-size: 10.5px; color: var(--tc); }
+  .cs-tb__rl b { margin-left: auto; font: 700 10.5px var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .cs-tb__rl:hover { background: var(--ncm-bg-hover); }
+  .cs-tb__rl.on { background: color-mix(in srgb, var(--tc) 14%, transparent); box-shadow: inset 3px 0 var(--tc); }
+  .cs-tb__rl.dim, .cs-tb__lane.dim { opacity: .35; }
+  .cs-tb__lane { height: 30px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); }
+  .cs-tb__lane svg { display: block; overflow: visible; }
+  .cs-tb svg .col { fill: transparent; } .cs-tb svg .col.unk { fill: color-mix(in srgb, var(--ncm-text-hint) 7%, transparent); }
+  .cs-tb svg .col.on { fill: color-mix(in srgb, var(--ncm-act) 8%, transparent); }
+  .cs-tb svg .sep { stroke: color-mix(in srgb, var(--ncm-border) 70%, transparent); stroke-width: 1; }
+  .cs-tb svg .rng { stroke: var(--ncm-secret); stroke-width: 2; stroke-linecap: round; opacity: .55; }
+  .cs-tb svg .rng.hot { opacity: 1; stroke-width: 2.5; }
+  .cs-tb svg .dt { stroke: var(--ncm-bg-pane); stroke-width: 1.5; cursor: pointer; }
+  .cs-tb svg .dt:hover, .cs-tb svg .dt.sel { stroke: var(--ncm-text-heading); stroke-width: 2; }
+  .cs-tb svg .dt.off { opacity: .2; }
+  .cs-tb svg .pip { fill: var(--ncm-bg-card); stroke: var(--ncm-secret); stroke-width: 1.2; }
+  .cs-tb svg .pip-t { font: 700 8.5px var(--ncm-font-display); fill: var(--ncm-text-heading); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .cs-tb__tip { position: absolute; z-index: 6; pointer-events: none; padding: 6px 9px; background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active); border-radius: 2px; box-shadow: 0 6px 18px rgba(0,0,0,.35); display: none; }
+  .cs-tb__tip .h { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; margin-bottom: 3px; }
+  .cs-tb__tip .r { display: flex; gap: 8px; font: 11.5px/18px var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; }
+  .cs-tb__tip .r b { color: var(--ncm-text-heading); font-weight: 600; min-width: 48px; }
+  .cs-tb__legend { display: flex; gap: 14px; padding: 0 10px 8px 122px; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); align-items: center; flex-wrap: wrap; }
+  .cs-tb__legend .s { display: inline-flex; gap: 5px; align-items: center; }
+  .cs-tb__legend .s .rl { width: 22px; height: 2px; background: var(--ncm-secret); }
+  .cs-tb__legend .s .pp { width: 12px; height: 12px; border-radius: 50%; border: 1.2px solid var(--ncm-secret); font: 700 7.5px/12px var(--ncm-font-display); text-align: center; color: var(--ncm-text-heading); box-sizing: border-box; }
+
+  /* ===== WHO KNOWS WHOM — shared ===== */
+  .cs-kbar { display: flex; align-items: center; gap: 10px; padding: 8px 10px 0; flex-wrap: wrap; }
+  .cs-kbar .rk { display: flex; gap: 9px; flex-wrap: wrap; margin-left: auto; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .cs-kbar .rk span { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; white-space: nowrap; }
+  .cs-kbar .rk span:hover { color: var(--ncm-text-heading); }
+  .cs-kbar .rk span.on { color: var(--ncm-text-heading); text-decoration: underline; text-decoration-color: var(--tc); text-underline-offset: 3px; }
+  .cs-kbar .rk i.d { width: 8px; height: 8px; border-radius: 50%; background: var(--tc); display: inline-block; }
+  .cs-detail { display: flex; align-items: center; gap: 12px; margin: 0 10px 0; padding: 9px 10px; min-height: 40px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); flex-wrap: wrap; }
+  .cs-detail .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .cs-detail .who .nm { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; }
+  .cs-detail .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .cs-detail .sub b { color: var(--ncm-text-heading); font-weight: 600; }
+  .cs-detail .kn { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+  .cs-pc { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px 0 3px; border-radius: 11px; cursor: pointer; font: 600 11.5px var(--ncm-font-display); white-space: nowrap;
+    border: 1px dashed var(--ncm-border-active); color: var(--ncm-text-label); background: none; }
+  .cs-pc .pi { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font: 700 8px var(--ncm-font-display); background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border-active); color: var(--ncm-text-label); }
+  .cs-pc .ac { font: 600 10.5px var(--ncm-font-body); color: var(--ncm-act); }
+  .cs-pc.k { border-style: solid; border-color: color-mix(in srgb, var(--ncm-act) 60%, transparent); color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-act) 12%, transparent); }
+  .cs-pc.k .pi { background: var(--ncm-act); border-color: var(--ncm-act); color: var(--ncm-text-inverse, #0b0d12); }
+  .cs-pc.k .ac { color: var(--ncm-text-label); }
+  .cs-pc.k:hover { border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent); }
+  .cs-pc.k:hover .ac { color: var(--ncm-bad); }
+  .cs-pc:not(.k):hover { border-color: var(--ncm-act); color: var(--ncm-text-heading); }
+  .cs-detail .hintl { font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .cs-dock { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 10px 0; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .cs-dock .dc { display: inline-flex; gap: 5px; align-items: center; padding: 1px 8px 1px 3px; border: 1px dashed var(--ncm-border-active); border-radius: 11px; cursor: pointer; color: var(--ncm-text-heading); font: 600 11.5px var(--ncm-font-display); }
+  .cs-dock .dc:hover, .cs-dock .dc.sel { border-color: var(--ncm-act); }
+  .cs-dock .dc .cs-av { width: 16px; height: 16px; font-size: 7px; }
+
+  /* ===== WHO KNOWS WHOM A — constellation ===== */
+  .cs-ka__svg { display: block; margin: 6px 10px 8px; overflow: visible; }
+  .cs-ka .ln { stroke: color-mix(in srgb, var(--ncm-border-active) 90%, transparent); stroke-width: 1; fill: none; transition: opacity .2s, stroke .2s; }
+  .cs-ka .ln.hot { stroke: var(--ncm-act); stroke-width: 1.6; }
+  .cs-ka .ln.dim { opacity: .1; }
+  .cs-ka .nd { transition: opacity .2s; cursor: pointer; }
+  .cs-ka .nd.dim { opacity: .18; }
+  .cs-ka .nd .c { stroke: var(--ncm-bg-pane); stroke-width: 1.5; }
+  .cs-ka .nd:hover .c, .cs-ka .nd.sel .c { stroke: var(--ncm-text-heading); stroke-width: 2; }
+  .cs-ka .nd .grp { fill: none; stroke: var(--ncm-secret); stroke-width: 1.2; stroke-dasharray: 2 2; }
+  .cs-ka .lb { font: 600 11px var(--ncm-font-display); fill: var(--ncm-text-heading); paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+  .cs-ka .nd.lab .t { opacity: 1; }
+  .cs-ka .pcn .c { fill: color-mix(in srgb, var(--ncm-act) 22%, var(--ncm-bg-pane)); stroke: var(--ncm-act); stroke-width: 1.8; }
+  .cs-ka .pcn.sel .c { fill: var(--ncm-act); }
+  .cs-ka .pcn .halo { fill: none; stroke: var(--ncm-act); stroke-width: 1; opacity: .35; }
+  .cs-ka .pcn .i { font: 700 12px var(--ncm-font-display); fill: var(--ncm-text-heading); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .cs-ka .pcn.sel .i { fill: var(--ncm-text-inverse, #0b0d12); }
+  .cs-ka .pcn .n { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; fill: var(--ncm-text-heading); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 3px; }
+  .cs-ka .pcn .k { font: 11px var(--ncm-font-mono); fill: var(--ncm-text-label); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 3px; }
+  .cs-ka .ring0 { fill: none; stroke: color-mix(in srgb, var(--ncm-border) 80%, transparent); stroke-dasharray: 2 5; }
+  .cs-ka .zone { font: 700 9px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; fill: var(--ncm-text-hint); text-anchor: middle; }
+  .cs-mv .nd, .cs-mv .ln { transition: transform .45s cubic-bezier(.22,1,.36,1), opacity .2s, d .45s cubic-bezier(.22,1,.36,1); }
+
+  /* ===== WHO KNOWS WHOM B — ring of rings ===== */
+  .cs-kb__wrap { display: grid; grid-template-columns: 540px minmax(0,1fr); gap: 10px; padding: 6px 10px 0; align-items: start; }
+  .cs-kb svg { display: block; overflow: visible; }
+  .cs-kb .cell { stroke: var(--ncm-bg-pane); stroke-width: 1; cursor: pointer; transition: opacity .15s; }
+  .cs-kb .cell.no { fill: color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .cs-kb .cell.yes { fill: var(--ncm-act); }
+  .cs-kb .cell.dim { opacity: .14; }
+  .cs-kb .cell:hover { stroke: var(--ncm-text-heading); }
+  .cs-kb .cell.pick { stroke: var(--ncm-text-heading); stroke-width: 2; }
+  .cs-kb .rb { opacity: .9; }
+  .cs-kb .nm { font: 600 11px var(--ncm-font-display); fill: var(--ncm-text-primary); cursor: pointer; dominant-baseline: central; }
+  .cs-kb .nm.dim { opacity: .3; } .cs-kb .nm.hot { fill: var(--ncm-text-heading); font-weight: 700; }
+  .cs-kb .nm.sel { fill: var(--ncm-act); font-weight: 700; }
+  .cs-kb .spoke { fill: transparent; cursor: pointer; }
+  .cs-kb .spoke:hover, .cs-kb .spoke.sel { fill: color-mix(in srgb, var(--ncm-act) 9%, transparent); }
+  .cs-kb .rl { font: 700 9px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; fill: var(--ncm-text-label); text-anchor: middle; dominant-baseline: central; cursor: pointer; }
+  .cs-kb .rl.on { fill: var(--ncm-act); }
+  .cs-kb .ctr1 { font: 700 13px var(--ncm-font-display); fill: var(--ncm-text-heading); text-anchor: middle; }
+  .cs-kb .ctr2 { font: 11px var(--ncm-font-body); fill: var(--ncm-text-label); text-anchor: middle; }
+  .cs-kb .ctr3 { font: 700 22px var(--ncm-font-mono); fill: var(--ncm-act); text-anchor: middle; }
+  .cs-kb__side { display: flex; flex-direction: column; gap: 8px; }
+  .cs-kb__card { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; }
+  .cs-kb__card .nm2 { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .cs-kb__card .row { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .cs-kb__card .kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .cs-kb__card .kv b { font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-heading); text-align: right; }
+  .cs-kb__card .pcs { display: flex; flex-direction: column; gap: 4px; }
+  .cs-kb__card .pcs .cs-pc { justify-content: flex-start; }
+  .cs-kb__card .pcs .cs-pc .tr { margin-left: auto; }
+  .cs-kb__card .hintl { font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .cs-kb__card .only { display: flex; flex-wrap: wrap; gap: 4px; }
+
+  /* ===== WHO KNOWS WHOM A-cyber — the netmap ===== */
+  .cs-kc__ro { display: flex; flex-wrap: wrap; gap: 0; margin: 8px 10px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); }
+  .cs-kc__ro span { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-right: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); white-space: nowrap; }
+  .cs-kc__ro span b { font: 700 12px var(--ncm-font-mono); letter-spacing: 0; color: var(--ncm-text-heading); }
+  .cs-kc__ro span.is-attn b { color: var(--ncm-attn); }
+  .cs-kc__ro span.is-focus { margin-left: auto; border-right: 0; border-left: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); color: var(--ncm-act); }
+  .cs-kc__ro span.is-focus b { color: var(--ncm-act); }
+  .cs-kc__stage { position: relative; margin: 6px 10px 8px; border: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); border-radius: 2px;
+    background: color-mix(in srgb, var(--ncm-bg-pane) 70%, var(--ncm-bg-canvas, var(--ncm-bg-deep))); overflow: hidden; }
+  .cs-kc__stage > i { position: absolute; width: 10px; height: 10px; border-color: var(--ncm-act); border-style: solid; pointer-events: none; z-index: 1; }
+  .cs-kc__stage > i:nth-child(1) { top: 3px; left: 3px; border-width: 1.5px 0 0 1.5px; }
+  .cs-kc__stage > i:nth-child(2) { top: 3px; right: 3px; border-width: 1.5px 1.5px 0 0; }
+  .cs-kc__stage > i:nth-child(3) { bottom: 3px; left: 3px; border-width: 0 0 1.5px 1.5px; }
+  .cs-kc__stage > i:nth-child(4) { bottom: 3px; right: 3px; border-width: 0 1.5px 1.5px 0; }
+  .cs-kc svg { display: block; }
+  .cs-kc .grid { stroke: color-mix(in srgb, var(--ncm-border) 55%, transparent); stroke-width: 1; }
+  .cs-kc .grid2 { stroke: color-mix(in srgb, var(--ncm-act) 10%, transparent); stroke-width: 1; }
+  .cs-kc .orbit { fill: none; stroke: color-mix(in srgb, var(--ncm-act) 22%, transparent); stroke-dasharray: 1 5; }
+  .cs-kc .scan { fill: url(#cs-kc-scan); animation: cs-kc-scan 7s linear infinite; pointer-events: none; }
+  @keyframes cs-kc-scan { from { transform: translateY(-60px); } to { transform: translateY(470px); } }
+  .cs-kc .tr { fill: none; stroke: color-mix(in srgb, var(--ncm-text-label) 45%, transparent); stroke-width: 1; stroke-linejoin: miter; transition: opacity .2s; }
+  .cs-kc .tr.dim { opacity: .12; }
+  .cs-kc.is-idle .tr { opacity: .55; }
+  .cs-kc .tr.hot { stroke: var(--ncm-act); stroke-width: 1.5; opacity: 1; filter: drop-shadow(0 0 2.5px color-mix(in srgb, var(--ncm-act) 70%, transparent)); }
+  .cs-kc .via { fill: var(--ncm-bg-pane); stroke: var(--ncm-act); stroke-width: 1.2; }
+  .cs-kc .nd { cursor: pointer; transition: opacity .2s; }
+  .cs-kc .nd.dim { opacity: .2; }
+  .cs-kc .dm { stroke: var(--ncm-bg-pane); stroke-width: 1.5; }
+  .cs-kc .nd:hover .dm, .cs-kc .nd.sel .dm { stroke: var(--ncm-text-heading); stroke-width: 2; }
+  .cs-kc .dm-grp { fill: none; stroke: var(--ncm-secret); stroke-width: 1.2; stroke-dasharray: 2 2; }
+  .cs-kc .hx { fill: color-mix(in srgb, var(--ncm-act) 16%, var(--ncm-bg-pane)); stroke: var(--ncm-act); stroke-width: 1.6; }
+  .cs-kc .hx2 { fill: none; stroke: color-mix(in srgb, var(--ncm-act) 45%, transparent); stroke-width: 1; }
+  .cs-kc .pcn.sel .hx { fill: var(--ncm-act); }
+  .cs-kc .pcn .ini { font: 700 12px var(--ncm-font-display); letter-spacing: .04em; fill: var(--ncm-text-heading); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .cs-kc .pcn.sel .ini { fill: var(--ncm-text-inverse, #0b0d12); }
+  .cs-kc .plate { fill: var(--ncm-bg-card); stroke: color-mix(in srgb, var(--ncm-act) 55%, transparent); stroke-width: 1; }
+  .cs-kc .plate-bar { fill: var(--ncm-act); }
+  .cs-kc .pn { font: 700 11px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; fill: var(--ncm-text-heading); pointer-events: none; }
+  .cs-kc .pk { font: 10.5px var(--ncm-font-mono); fill: var(--ncm-text-label); pointer-events: none; }
+  .cs-kc .lbp { fill: color-mix(in srgb, var(--ncm-bg-card) 94%, transparent); stroke: color-mix(in srgb, var(--ncm-border-active) 80%, transparent); stroke-width: 1; }
+  .cs-kc .lbp.hot { stroke: color-mix(in srgb, var(--ncm-act) 60%, transparent); }
+  .cs-kc .lbt { font: 600 11px var(--ncm-font-display); fill: var(--ncm-text-heading); pointer-events: none; }
+  .cs-kc .lead { stroke: color-mix(in srgb, var(--ncm-act) 55%, transparent); stroke-width: 1; }
+  .cs-kc .gridf { stroke: color-mix(in srgb, var(--ncm-border) 32%, transparent); stroke-width: 1; }
+  .cs-kc--grid .grid2 { stroke: color-mix(in srgb, var(--ncm-act) 14%, transparent); }
+  .cs-kc--grid .tr { stroke-linejoin: miter; shape-rendering: crispEdges; }
+  .cs-kc--grid .tr.hot { shape-rendering: auto; }
+  .cs-kc .pin { fill: var(--ncm-act); stroke: var(--ncm-bg-pane); stroke-width: 1; }
+  .cs-np .cs-tpill .own { font-style: normal; font-size: 10px; color: var(--ncm-secret); margin-left: 4px; }
+
+  /* the information panel under the map */
+  .cs-np { position: relative; margin: 0 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); }
+  .cs-np.is-new { animation: cs-np-in .32s cubic-bezier(.22,1,.36,1); }
+  @keyframes cs-np-in { from { opacity: 0; transform: translateY(8px); } }
+  .cs-np > i { position: absolute; width: 8px; height: 8px; border-color: color-mix(in srgb, var(--ncm-act) 75%, transparent); border-style: solid; pointer-events: none; }
+  .cs-np > i:nth-child(1) { top: -1px; left: -1px; border-width: 1.5px 0 0 1.5px; }
+  .cs-np > i:nth-child(2) { top: -1px; right: -1px; border-width: 1.5px 1.5px 0 0; }
+  .cs-np > i:nth-child(3) { bottom: -1px; left: -1px; border-width: 0 0 1.5px 1.5px; }
+  .cs-np > i:nth-child(4) { bottom: -1px; right: -1px; border-width: 0 1.5px 1.5px 0; }
+  .cs-np__k { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border);
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .cs-np__k > i { color: var(--ncm-act); font-size: 10px; }
+  .cs-np__k .x { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-act); cursor: pointer; }
+  .cs-np__hint { display: flex; gap: 7px; align-items: center; padding: 6px 10px; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary, var(--ncm-text-label)); border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+  .cs-np__hint i { color: var(--ncm-act); font-size: 11px; }
+  .cs-np__legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; padding: 10px 12px; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .cs-np__legend > span { display: flex; align-items: center; gap: 9px; }
+  .cs-np__legend svg { flex: none; overflow: visible; width: 30px; height: 22px; }
+  .cs-np__legend .lg-dark { margin: 0 5px; }
+  .cs-np .lg-hx { fill: color-mix(in srgb, var(--ncm-act) 16%, var(--ncm-bg-pane)); stroke: var(--ncm-act); stroke-width: 1.4; }
+  .cs-np .lg-hx.sel { fill: var(--ncm-act); }
+  .cs-np .lg-ini { font: 700 11px var(--ncm-font-display); fill: var(--ncm-text-inverse, #0b0d12); text-anchor: middle; dominant-baseline: central; }
+  .cs-np .lg-dm { fill: var(--ncm-hue-3); stroke: var(--ncm-bg-pane); stroke-width: 1.4; }
+  .cs-np .lg-dm2 { stroke: var(--ncm-bg-pane); stroke-width: 1.5; }
+  .cs-np .lg-grp { fill: none; stroke: var(--ncm-secret); stroke-width: 1.2; stroke-dasharray: 2 2; }
+  .cs-np .lg-tr { fill: none; stroke: color-mix(in srgb, var(--ncm-text-label) 70%, transparent); stroke-width: 1.2; }
+  .cs-np .lg-tr.hot { stroke: var(--ncm-act); stroke-width: 1.6; }
+  .cs-np .lg-dark { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 1px dashed var(--ncm-border-active); display: grid; place-items: center; font: 700 7.5px var(--ncm-font-display); color: var(--ncm-text-label); }
+  .cs-np__body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+  .cs-np__id { display: flex; align-items: center; gap: 12px; }
+  .cs-np__id svg { flex: none; overflow: visible; }
+  .cs-np__id .nm { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .cs-np__id .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .cs-np__id .sub b { color: var(--ncm-text-heading); font-weight: 600; }
+  .cs-np__id .row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 3px; }
+  .cs-np__stat { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; padding-left: 14px; border-left: 1px solid var(--ncm-border); }
+  .cs-np__stat + .cs-np__stat { margin-left: 0; }
+  .cs-np__stat b { font: 700 18px var(--ncm-font-mono); color: var(--ncm-text-heading); line-height: 1.1; }
+  .cs-np__stat span { font: 700 9px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); white-space: nowrap; }
+  .cs-np__grid { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); gap: 14px; }
+  .cs-np__sec .h { font: 700 9.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .cs-np__sec .dim { font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .cs-np__sec .mono { font: 12px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-act)); word-break: break-all; }
+  .cs-np__rr { display: grid; grid-template-columns: 104px minmax(0,1fr); gap: 8px; align-items: start; padding: 3px 0; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .cs-np .lnk { cursor: pointer; color: var(--ncm-text-heading); border-bottom: 1px dotted color-mix(in srgb, var(--ncm-act) 60%, transparent); }
+  .cs-np .lnk:hover { color: var(--ncm-act); }
+  .cs-np__kv { display: flex; justify-content: space-between; gap: 8px; font: 12.5px var(--ncm-font-body); padding: 2px 0; }
+  .cs-np__pcs { display: flex; flex-direction: column; gap: 3px; }
+  .cs-np__pc { display: grid; grid-template-columns: 22px 54px minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 3px 6px; border: 1px dashed var(--ncm-border-active); border-radius: 2px; font: 12px var(--ncm-font-body); }
+  .cs-np__pc.k { border-style: solid; border-color: color-mix(in srgb, var(--ncm-act) 45%, transparent); background: color-mix(in srgb, var(--ncm-act) 6%, transparent); }
+  .cs-np__pc .pi { width: 20px; height: 20px; display: grid; place-items: center; font: 700 8px var(--ncm-font-display); background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border-active); color: var(--ncm-text-label);
+    clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+  .cs-np__pc.k .pi { background: var(--ncm-act); color: var(--ncm-text-inverse, #0b0d12); border-color: var(--ncm-act); }
+  .cs-np__pc .pn2 { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .cs-np__pc .dim { font-size: 11.5px; }
+  .cs-np__pc .cs-tpill { justify-self: start; }
+  .cs-np__mail { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 7px; align-items: center; font: 12.5px var(--ncm-font-body); }
+  .cs-np__mail .dir { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 2px; font-size: 9px; }
+  .cs-np__mail .dir.in { color: var(--ncm-good); background: color-mix(in srgb, var(--ncm-good) 14%, transparent); }
+  .cs-np__mail .dir.out { color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 14%, transparent); }
+  .cs-np__mail .sj { color: var(--ncm-text-heading); }
+  .cs-np__mail .tm { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); white-space: nowrap; }
+  .cs-np__sec .wait { margin-top: 4px; font: 600 11.5px var(--ncm-font-body); color: var(--ncm-attn); }
+  .cs-np__acts { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cs-kc .scan { animation: none; opacity: 0; }
+    .cs-np.is-new { animation: none; }
+    .cs-kc .tr, .cs-kc .nd { transition: none !important; }
+    .cs-mv .nd, .cs-mv .ln, .cs-ka .ln, .cs-ka .nd, .cs-ta__b, .cs-kb .cell { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div data-sec="ta">
+<p class="mk-h">1A · Trust spectrum — the segmented strip (picked)</p>
+<p class="mk-p">One strip across the top of the Directory: Unknown sits apart on the left (it isn't a level of trust, it means "not decided"), then Suspicious → Implicitly trusted, each band as wide as how many contacts are in it, with a dot per contact in its role colour. Click bands to filter the list underneath (several at once); hover a band to read the names. <b>Trust as seen by</b> switches the strip to one character's own trust — counts, dots and the list all re-sort, and only the contacts that character knows are counted. A violet ring on a dot, and the line on a row, mean some character trusts that contact differently from the default.</p>
+<div data-slot="ta"></div>
+</div>
+
+<div data-sec="tb">
+<p class="mk-h">1B · Trust spectrum — lanes by role, with each character's spread (not picked, kept as a record)</p>
+<p class="mk-p">The same scale as columns, but one lane per role, so the shape answers "who do we trust, by kind of person" — fixers lean trusted, corpos lean suspicious. Each dot is a contact at its default trust; a violet line behind a dot runs from the lowest to the highest trust any character holds, so disagreement is visible without opening anyone. Hover a dot to see each character's trust as lettered pips on the line. Click a column, a role, or a dot to narrow the list; "Only where characters disagree" keeps just the contacts with a line.</p>
+<div data-slot="tb"></div>
+</div>
+
+<div data-sec="ka">
+<p class="mk-h">2A · Who knows whom — the constellation (picked; first pass, compare with 2A-cyber below)</p>
+<p class="mk-p">The five player characters are the bright nodes around the edge. A contact sits between the characters who know them: known by one = just outside that character, shared by two = between them, known by everyone = in the middle. Lines show "knows". Names stay hidden until you focus — hover or click a character to light up their contacts and name them, or a contact to see who knows them. The strip under the map is where you act: share with a character (dashed) or take back (solid). Contacts nobody knows sit in the dock below, not on the map. Highlight chips pick out a group ("The Crew", dashed violet ring) or the shared/lonely contacts.</p>
+<div data-slot="ka"></div>
+</div>
+
+<div data-sec="kc">
+<p class="mk-h">2A-cyber · Who knows whom — the netmap (picked direction, second pass)</p>
+<p class="mk-p">Same layout, same rules, same actions as 2A above — redrawn as a net map. Characters are <b>hex chips</b> with a name plate; contacts are <b>diamond nodes</b> in their role colour (size = how many characters know them, dashed violet frame = in the highlighted group). Links are <b>circuit traces</b>: a 45° run out of the contact, then straight into the character, so the lines arrive at each chip as a bus instead of a fan. Idle traces sit dim; focusing a character or contact lights its traces with a soft glow and puts every name on its own backplate, placed so no name covers a node, another name, or a chip. A grid and a slow scan line sit behind everything (the scan stops under reduced motion). The mono readout strip above the map counts the graph and, on focus, the focused node. <b>Click</b> a chip or a node to open the information panel under the map (it slides in): for a contact — tags, address, trust, who knows them with share / take back per character, groups, last mail and the actions; for a character — player, how many they know, who only they know, groups they hold, and The Crew members they're missing. With nothing picked the panel is a legend of the shapes and lines.</p>
+<div data-slot="kc"></div>
+</div>
+
+<div data-sec="kg">
+<p class="mk-h">2A-cyber-grid · the netmap routed on the grid (variant)</p>
+<p class="mk-p">Same map, traces drawn as a circuit board: the grid is 10px (a major line every 50px) and <b>every trace runs along a grid line or a grid diagonal</b> — every bend lands on an intersection. When several traces arrive at a chip from the same side they take <b>adjacent grid lines</b>, one wire per line. Nodes are snapped to the nearest grid point; the furthest any node moves is 7px, which changes nothing the layout says (who sits between whom), so the snap is kept. Compare with 2A-cyber above, where the traces are free and only their bends sit on the 45°.</p>
+<div data-slot="kg"></div>
+</div>
+
+<div data-sec="kb">
+<p class="mk-h">2B · Who knows whom — ring of rings (not picked, kept as a record)</p>
+<p class="mk-p">The matrix bent into a circle, so nothing overlaps: every contact is a spoke (grouped by role, colour band on the outside, name at the end), every character is a ring (V innermost, Brick outermost). A filled cell = that character knows that contact; a ring with gaps is a character with blind spots, a spoke filled all the way is someone everyone knows. Click a ring label to see one character, a name or a cell to see one contact; the card on the right shows the numbers and does the share / take back. "Colour by trust" re-paints the filled cells with each character's own trust in that contact.</p>
+<div data-slot="kb"></div>
+</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const only = q.get('only');
+if (only) document.querySelectorAll('[data-sec]').forEach((s) => { if (s.dataset.sec !== only) s.remove(); });
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const ini = (n) => n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const ROLES = { fixer: ['Fixer', 'fa-handshake'], corp: ['Corpo', 'fa-briefcase'], solo: ['Solo', 'fa-crosshairs'], netrunner: ['Netrunner', 'fa-terminal'], medtech: ['Medtech', 'fa-staff-snake'],
+  tech: ['Tech', 'fa-gear'], nomad: ['Nomad', 'fa-truck-monster'], media: ['Media', 'fa-podcast'], lawman: ['Lawman', 'fa-shield-halved'], '': ['No role', 'fa-circle-question'] };
+const ROLE_ORDER = ['fixer', 'corp', 'solo', 'lawman', 'netrunner', 'medtech', 'tech', 'nomad', 'media', ''];
+/* Role colours. The live module hashes 'role:<id>' onto 8 hues (tagHue) — with 10 roles that put
+   Solo, Lawman and Media on near-identical blues. Suggested fix (no new tokens): a fixed table for
+   the BUILT-IN roles, mapped across the existing hue tokens so neighbours never share a family;
+   custom roles keep their Role Manager colour, else the hash. Nomad is the 9th role on 8 hues, so it
+   takes an oklab mix of two existing hues (still token-derived). */
+const ROLE_HUE = {
+  fixer: 'var(--ncm-hue-8)', corp: 'var(--ncm-hue-6)', solo: 'var(--ncm-hue-1)', lawman: 'var(--ncm-hue-2)',
+  netrunner: 'var(--ncm-hue-3)', medtech: 'var(--ncm-hue-4)', tech: 'var(--ncm-hue-7)', media: 'var(--ncm-hue-5)',
+  nomad: 'color-mix(in oklab, var(--ncm-hue-1) 50%, var(--ncm-hue-6))',
+};
+const rcol = (r) => r ? (ROLE_HUE[r] || hue('role:' + r)) : 'var(--ncm-text-hint)';
+const TL = ['Unknown', 'Suspicious', 'Cautious', 'Neutral', 'Trusted', 'Implicitly trusted'];
+const PCS = ['V', 'Rache', 'Judy', 'Panam', 'Brick'];
+const GROUPS = { crew: ['Rogue Amendiares', 'Jackie Welles', 'Viktor Vektor', 'T-Bug', 'Misty Olszewski'] };
+
+// name, role, org, default trust, known by, per-character trust that differs from the default
+const RAW = [
+  ['Rogue Amendiares', 'fixer', 'Afterlife', 4, 'V Rache Judy Panam Brick', { Brick: 2 }],
+  ['Dexter DeShawn', 'fixer', '', 2, 'V Brick', { V: 1 }],
+  ['Wakako Okada', 'fixer', 'Tyger Claws', 3, 'V Judy', {}],
+  ['Padre', 'fixer', 'Valentinos', 3, 'V', {}],
+  ['Regina Jones', 'fixer', '', 4, 'Rache Judy Panam', { Panam: 5 }],
+  ['Mr. Hands', 'fixer', '', 0, '', {}],
+  ['Goro Takemura', 'corp', 'Arasaka', 2, 'V Rache', { Rache: 1 }],
+  ['Meredith Stout', 'corp', 'Militech', 1, 'V Brick', {}],
+  ['Anders Hellman', 'corp', 'Kang Tao', 0, 'Rache', {}],
+  ['Hiromi Sato', 'corp', 'Arasaka', 2, '', {}],
+  ['Jackie Welles', 'solo', 'Valentinos', 5, 'V Rache Judy Panam Brick', {}],
+  ['Royce', 'solo', 'Maelstrom', 1, 'Brick', { Brick: 3 }],
+  ['Weldon', 'solo', '', 3, 'Panam', {}],
+  ['River Ward', 'lawman', 'NCPD', 4, 'V Judy', { Judy: 3 }],
+  ['Officer Hayes', 'lawman', 'NCPD', 2, 'Judy Brick', {}],
+  ['T-Bug', 'netrunner', '', 4, 'V Rache', {}],
+  ['Placide', 'netrunner', 'Voodoo Boys', 1, 'V Rache', { Rache: 2 }],
+  ['Song So Mi', 'netrunner', '', 0, '', {}],
+  ['Viktor Vektor', 'medtech', '', 5, 'V Rache Judy Panam Brick', { Brick: 4 }],
+  ['Fingers', 'medtech', '', 1, 'V Judy', {}],
+  ['Robert Wilson', 'tech', '', 3, 'V Panam Brick', {}],
+  ['Saul Panzer', 'nomad', 'Aldecaldos', 3, 'Panam', { Panam: 5 }],
+  ['Mitch Anderson', 'nomad', 'Aldecaldos', 4, 'Panam Brick', {}],
+  ['Kerry Eurodyne', 'media', 'Us Cracks', 3, 'Rache Judy', {}],
+  ['Misty Olszewski', '', 'Esoterica', 5, 'V Judy', {}],
+];
+const C = RAW.map(([name, role, org, trust, kb, ov], i) => ({ id: 'c' + i, name, role, org, trust, ov, knows: new Set(kb ? kb.split(' ') : []) }));
+const byId = (id) => C.find((c) => c.id === id);
+const trustFor = (c, pc) => (pc && c.ov[pc] != null) ? c.ov[pc] : c.trust;
+const differs = (c) => [...c.knows].filter((p) => c.ov[p] != null && c.ov[p] !== c.trust);
+const levelsOf = (c) => { const L = [c.trust, ...[...c.knows].map((p) => trustFor(c, p))].filter((v) => v > 0); return L.length ? [Math.min(...L), Math.max(...L)] : [c.trust, c.trust]; };
+const win = (inner, key) => `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" data-frame="${key}" style="width:814px"><div class="ncm-admin-panel"><div class="cs-P">${inner}</div></div></div>`;
+const tagRole = (r) => `<span class="cs-tag" style="--tc:${rcol(r)}"><i class="fas ${ROLES[r][1]}"></i>${ROLES[r][0]}</span>`;
+
+/* shared directory list */
+function dirList(L, sel, viewPc) {
+  return `<div class="cs-list">${L.map((c) => {
+    const t = trustFor(c, viewPc), dv = differs(c).filter((p) => p !== viewPc);
+    const dif = viewPc ? (c.ov[viewPc] != null ? `<span class="d cs-t${c.trust}">default <b>${TL[c.trust]}</b></span>` : '') : dv.map((p) => `<span class="d cs-t${c.ov[p]}"><b>${p}</b> ${TL[c.ov[p]]}</span>`).join('');
+    return `<div class="cs-lr${sel === c.id ? ' sel' : ''}" data-pick="${c.id}"><span class="cs-av" style="--tc:${hue(c.name)}">${ini(c.name)}</span><span class="nm">${esc(c.name)}</span>
+      <span>${tagRole(c.role)}</span><span class="org">${c.org ? esc(c.org) : '<span style="color:var(--ncm-text-hint)">—</span>'}</span>
+      <span style="display:flex;gap:10px;align-items:center;justify-content:flex-end"><span class="dif">${dif}</span><span class="cs-tpill cs-t${t}">${TL[t]}</span></span></div>`;
+  }).join('') || '<div class="cs-empty">Nobody matches.</div>'}</div>`;
+}
+
+/* ================= 1A ================= */
+const TA = { pc: null, lv: new Set(), sel: null };
+function renderTA() {
+  const pool = C.filter((c) => !TA.pc || c.knows.has(TA.pc));
+  const at = (lv) => pool.filter((c) => trustFor(c, TA.pc) === lv);
+  const band = (lv) => {
+    const L = at(lv), on = TA.lv.has(lv), dim = TA.lv.size && !on;
+    return `<div class="cs-ta__b cs-t${lv}${lv === 0 ? ' is-unk' : ''}${on ? ' on' : ''}${dim ? ' dim' : ''}${L.length ? '' : ' zero'}" data-lv="${lv}">
+      <span class="c">${L.length}</span><span class="l">${TL[lv]}</span>
+      <span class="dots">${L.map((c) => `<i class="${!TA.pc && differs(c).length ? 'dv' : ''}" style="--tc:${rcol(c.role)}"></i>`).join('')}</span>
+      ${L.length ? `<div class="cs-pop"><div class="h">${TL[lv]} · ${L.length}</div>${L.map((c) => `<div class="p" style="--tc:${rcol(c.role)}"><i></i>${esc(c.name)}${!TA.pc && differs(c).length ? `<em>${differs(c).map((p) => p + ': ' + TL[c.ov[p]]).join(', ')}</em>` : ''}</div>`).join('')}</div>` : ''}</div>`;
+  };
+  const nd = C.filter((c) => differs(c).length).length;
+  const L = pool.filter((c) => !TA.lv.size || TA.lv.has(trustFor(c, TA.pc))).sort((a, b) => trustFor(b, TA.pc) - trustFor(a, TA.pc) || a.name.localeCompare(b.name));
+  const chips = [...TA.lv].sort().map((lv) => `<span class="cs-chip cs-t${lv}" style="--tc:var(--lv)">${TL[lv]}<b data-ta-off="${lv}">✕</b></span>`).join('');
+  document.querySelector('[data-slot="ta"]').innerHTML = win(`
+    <div class="cs-band"><i class="fas fa-address-book"></i>Directory<span class="r">${C.length} contacts</span></div>
+    <div class="cs-mod"><div class="cs-mod__k"><i class="fas fa-scale-balanced"></i>Trust${TA.lv.size ? '<span class="x" data-ta-clear>show every level</span>' : '<span class="hint">click a band to filter · hover for names</span>'}</div>
+      <div class="cs-ta__top"><span class="cs-lbl">Trust as seen by</span><span class="cs-seg">${[null, ...PCS].map((p) => `<span class="${TA.pc === p ? 'on' : ''}" data-ta-pc="${p ?? ''}">${p ?? 'Default'}</span>`).join('')}</span>
+        <span class="note">${TA.pc ? `${TA.pc} knows <b style="color:var(--ncm-text-heading)">${pool.length}</b> of ${C.length} · ${pool.filter((c) => c.ov[TA.pc] != null).length} set differently` : `<b>${nd}</b> contacts are trusted differently by some characters`}</span></div>
+      <div class="cs-ta__strip">${band(0)}<div class="cs-ta__scale">${[1, 2, 3, 4, 5].map(band).join('')}</div></div>
+      <div class="cs-ta__axis"><span>less trust</span><span class="ln"></span><span>more trust</span></div></div>
+    <div class="cs-filt">${chips ? 'Showing ' + chips : `<span>${TA.pc ? 'Everyone ' + TA.pc + ' knows' : 'Everyone'}</span>`}<span class="n">${L.length} shown</span></div>
+    ${dirList(L, TA.sel, TA.pc)}`, 'ta');
+}
+
+/* ================= 1B ================= */
+const TB = { lv: null, role: null, sel: null, onlyDis: false, hover: null };
+const LW = 654, UNKW = 70, COLW = (LW - UNKW) / 5;
+const xOf = (lv) => lv === 0 ? UNKW / 2 : UNKW + (lv - 0.5) * COLW;
+function tbPlace() { // deterministic placement inside each lane × level cell
+  const P = {};
+  for (const r of ROLE_ORDER) for (let lv = 0; lv <= 5; lv++) {
+    const L = C.filter((c) => c.role === r && c.trust === lv), n = L.length;
+    L.forEach((c, i) => { P[c.id] = { x: xOf(lv) + (i - (n - 1) / 2) * 15, y: 15 + (n > 1 ? (i % 2 ? 5 : -5) : 0) }; });
+  }
+  return P;
+}
+const TBP = tbPlace();
+function tbPasses(c) { return (TB.lv == null || c.trust === TB.lv) && (TB.role == null || c.role === TB.role) && (!TB.onlyDis || differs(c).length) && (!TB.sel || c.id === TB.sel); }
+function renderTB() {
+  const roles = ROLE_ORDER.filter((r) => C.some((c) => c.role === r));
+  const focus = TB.hover || TB.sel;
+  const lane = (r) => {
+    const L = C.filter((c) => c.role === r), dim = TB.role != null && TB.role !== r;
+    const cols = `<rect class="col unk${TB.lv === 0 ? ' on' : ''}" x="0" y="0" width="${UNKW}" height="30"/>${[1, 2, 3, 4, 5].map((lv) => `<rect class="col${TB.lv === lv ? ' on' : ''}" x="${UNKW + (lv - 1) * COLW}" y="0" width="${COLW}" height="30"/>`).join('')}
+      ${[0, 1, 2, 3, 4].map((k) => `<line class="sep" x1="${UNKW + k * COLW}" y1="0" x2="${UNKW + k * COLW}" y2="30"/>`).join('')}`;
+    const rngs = L.map((c) => { const [a, b] = levelsOf(c), p = TBP[c.id], ex = (lv) => lv === c.trust ? p.x : xOf(lv); return a === b ? '' : `<line class="rng${focus === c.id ? ' hot' : ''}" x1="${ex(a)}" y1="${p.y}" x2="${ex(b)}" y2="${p.y}"/>`; }).join('');
+    const dots = L.map((c) => { const p = TBP[c.id]; return `<circle class="dt${TB.sel === c.id ? ' sel' : ''}${tbPasses(c) ? '' : ' off'}" data-tb-dot="${c.id}" cx="${p.x}" cy="${p.y}" r="5.5" style="fill:${rcol(c.role)}"/>`; }).join('');
+    let pips = '';
+    const fc = focus && byId(focus);
+    if (fc && fc.role === r) {
+      const p = TBP[fc.id], at = {};
+      [...fc.knows].forEach((pc) => { const lv = trustFor(fc, pc); (at[lv] = at[lv] || []).push(pc); });
+      pips = Object.entries(at).map(([lv, list]) => list.map((pc, i) => { const x = xOf(+lv) + (i - (list.length - 1) / 2) * 15, y = p.y - 13; return `<circle class="pip" cx="${x}" cy="${y}" r="6.5"/><text class="pip-t" x="${x}" y="${y}">${pc[0]}</text>`; }).join('')).join('');
+    }
+    return `<div class="cs-tb__rl${TB.role === r ? ' on' : ''}${dim ? ' dim' : ''}" data-tb-role="${r}" style="--tc:${rcol(r)}"><i class="fas ${ROLES[r][1]}"></i>${ROLES[r][0]}<b>${L.length}</b></div>
+      <div class="cs-tb__lane${dim ? ' dim' : ''}"><svg width="${LW}" height="30">${cols}${rngs}${dots}${pips}</svg></div>`;
+  };
+  const counts = [0, 1, 2, 3, 4, 5].map((lv) => C.filter((c) => c.trust === lv).length);
+  const L = C.filter(tbPasses).sort((a, b) => b.trust - a.trust || a.name.localeCompare(b.name));
+  const chips = [TB.lv != null ? `<span class="cs-chip cs-t${TB.lv}" style="--tc:var(--lv)">${TL[TB.lv]}<b data-tb-off="lv">✕</b></span>` : '',
+    TB.role != null ? `<span class="cs-chip" style="--tc:${rcol(TB.role)}">${ROLES[TB.role][0]}<b data-tb-off="role">✕</b></span>` : '',
+    TB.sel ? `<span class="cs-chip">${esc(byId(TB.sel).name)}<b data-tb-off="sel">✕</b></span>` : '',
+    TB.onlyDis ? `<span class="cs-chip" style="--tc:var(--ncm-secret)">Characters disagree<b data-tb-off="dis">✕</b></span>` : ''].join('');
+  document.querySelector('[data-slot="tb"]').innerHTML = win(`
+    <div class="cs-band"><i class="fas fa-address-book"></i>Directory<span class="r">${C.length} contacts</span></div>
+    <div class="cs-mod cs-tb"><div class="cs-mod__k"><i class="fas fa-scale-balanced"></i>Trust by role${(TB.lv != null || TB.role != null || TB.sel || TB.onlyDis) ? '<span class="x" data-tb-clear>clear</span>' : '<span class="hint">click a column, a role or a dot</span>'}</div>
+      <div class="cs-tb__top"><span style="font:12px var(--ncm-font-body);color:var(--ncm-text-label)">Dot = default trust · <span style="color:var(--ncm-secret)">line</span> = the range the characters hold</span>
+        <span class="tg${TB.onlyDis ? ' on' : ''}" data-tb-dis><span class="bx">${TB.onlyDis ? '<i class="fas fa-check"></i>' : ''}</span>Only where characters disagree</span></div>
+      <div class="cs-tb__grid"><div></div><div class="cs-tb__hd">${[0, 1, 2, 3, 4, 5].map((lv) => `<span class="cs-t${lv}${TB.lv === lv ? ' on' : ''}" data-tb-lv="${lv}">${lv === 5 ? 'Implicit' : TL[lv]}<b>${counts[lv]}</b></span>`).join('')}</div>
+        ${roles.map(lane).join('')}<div class="cs-tb__tip" data-tb-tip></div></div>
+      <div class="cs-tb__legend"><span class="s"><span class="rl"></span>lowest → highest character trust</span><span class="s"><span class="pp">R</span>a character's trust (on hover)</span></div></div>
+    <div class="cs-filt">${chips ? 'Showing ' + chips : '<span>Everyone</span>'}<span class="n">${L.length} shown</span></div>
+    ${dirList(L, TB.sel, null)}`, 'tb');
+  if (TB.hover) tbTip(TB.hover);
+}
+function tbTip(id) {
+  const tip = document.querySelector('[data-tb-tip]'), dot = document.querySelector(`[data-tb-dot="${id}"]`); if (!tip || !dot) return;
+  const c = byId(id), g = tip.parentElement.getBoundingClientRect(), d = dot.getBoundingClientRect();
+  tip.innerHTML = `<div class="h">${esc(c.name)}</div><div class="r"><b>Default</b><span class="cs-t${c.trust}" style="color:var(--lv)">${TL[c.trust]}</span></div>` +
+    ([...c.knows].map((p) => `<div class="r"><b>${p}</b><span class="cs-t${trustFor(c, p)}" style="color:${c.ov[p] != null ? 'var(--lv)' : 'var(--ncm-text-hint)'}">${c.ov[p] != null ? TL[c.ov[p]] : 'same as default'}</span></div>`).join('') || '<div class="r"><span>No character knows them yet</span></div>');
+  tip.style.display = 'block';
+  let left = d.left - g.left + 14; if (left + tip.offsetWidth > g.width) left = d.left - g.left - tip.offsetWidth - 10;
+  tip.style.left = left + 'px'; tip.style.top = (d.top - g.top + 12) + 'px';
+}
+
+/* ================= 2A ================= */
+const KA = { sel: null, hover: null, hi: null, prev: null };
+const KW = 790 - 20, KH = 430, KCX = KW / 2, KCY = 212, KRX = 290, KRY = 156;
+const pcPos = (i) => { const a = (-90 + i * 72) * Math.PI / 180; return { x: KCX + Math.cos(a) * KRX, y: KCY + Math.sin(a) * KRY }; };
+function kaLayout() {
+  const P = {}; PCS.forEach((p, i) => { P[p] = pcPos(i); });
+  const nodes = [], solo = {};
+  C.filter((c) => c.knows.size).forEach((c, i) => {
+    const ks = [...c.knows];
+    let x, y;
+    if (ks.length === 1) {
+      const p = P[ks[0]], dx = p.x - KCX, dy = p.y - KCY, m = Math.hypot(dx / KRX, dy / KRY) || 1;
+      const ux = dx / Math.hypot(dx, dy), uy = dy / Math.hypot(dx, dy);
+      const j = (solo[ks[0]] = (solo[ks[0]] || 0) + 1) - 1;
+      x = p.x + ux * 58 + -uy * (j % 2 ? 1 : -1) * (14 + 18 * j); y = p.y + uy * 58 + ux * (j % 2 ? 1 : -1) * (14 + 18 * j);
+    } else {
+      x = ks.reduce((s, k) => s + P[k].x, 0) / ks.length; y = ks.reduce((s, k) => s + P[k].y, 0) / ks.length;
+      // pull pairs a little toward the middle so they don't sit on the rim
+      x = KCX + (x - KCX) * 0.82; y = KCY + (y - KCY) * 0.82;
+    }
+    const ga = i * 2.399963; x += Math.cos(ga) * 4; y += Math.sin(ga) * 4;
+    nodes.push({ id: c.id, x, y, x0: x, y0: y });
+  });
+  for (let it = 0; it < 160; it++) {
+    for (let a = 0; a < nodes.length; a++) for (let b = a + 1; b < nodes.length; b++) {
+      const A = nodes[a], B = nodes[b], dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 0.01;
+      if (d < 40) { const f = (40 - d) / 2 / d; A.x -= dx * f; A.y -= dy * f; B.x += dx * f; B.y += dy * f; }
+    }
+    for (const n of nodes) {
+      for (const p of PCS) { const dx = n.x - P[p].x, dy = n.y - P[p].y, d = Math.hypot(dx, dy) || 0.01; if (d < 44) { n.x += dx / d * (44 - d); n.y += dy / d * (44 - d); } }
+      n.x += (n.x0 - n.x) * 0.04; n.y += (n.y0 - n.y) * 0.04;
+      n.x = Math.max(16, Math.min(KW - 16, n.x)); n.y = Math.max(14, Math.min(KH - 14, n.y));
+    }
+  }
+  nodes.forEach((n) => { P[n.id] = { x: n.x, y: n.y }; });
+  return P;
+}
+function hiSet(hi = KA.hi) {
+  if (hi === 'crew') return new Set(C.filter((c) => GROUPS.crew.includes(c.name)).map((c) => c.id));
+  if (hi === 'shared') return new Set(C.filter((c) => c.knows.size >= 3).map((c) => c.id));
+  if (hi === 'one') return new Set(C.filter((c) => c.knows.size === 1).map((c) => c.id));
+  if (hi && hi.startsWith('role:')) return new Set(C.filter((c) => 'role:' + c.role === hi).map((c) => c.id));
+  return null;
+}
+function renderKA() {
+  if (!document.querySelector('[data-slot="ka"]')) return;
+  const P = kaLayout(), prev = KA.prev; KA.prev = P;
+  const f = KA.hover || KA.sel, isPc = f && PCS.includes(f), fc = f && !isPc ? byId(f) : null;
+  const hs = hiSet();
+  const lit = (c) => { if (isPc) return c.knows.has(f); if (fc) return c.id === fc.id; if (hs) return hs.has(c.id); return true; };
+  const pcLit = (p) => { if (isPc) return p === f; if (fc) return fc.knows.has(p); return true; };
+  const pos = (id, useP) => (useP && prev && prev[id]) ? prev[id] : P[id];
+  const firstPass = !!prev;
+  const lines = (useP) => C.filter((c) => c.knows.size).flatMap((c) => [...c.knows].map((p) => {
+    const a = pos(c.id, useP), b = pos(p, useP), hot = (isPc && p === f) || (fc && fc.id === c.id), dim = f ? !hot : (hs ? !hs.has(c.id) : false);
+    return `<path class="ln${hot ? ' hot' : ''}${dim ? ' dim' : ''}" data-ln="${c.id}|${p}" style="d:path('M ${a.x.toFixed(1)} ${a.y.toFixed(1)} L ${b.x.toFixed(1)} ${b.y.toFixed(1)}')"/>`;
+  })).join('');
+  const cnodes = (useP) => C.filter((c) => c.knows.size).map((c) => {
+    const p = pos(c.id, useP), on = lit(c), lab = (isPc && on) || (fc && fc.id === c.id) || KA.hover === c.id || (hs && hs.has(c.id) && !f);
+    const right = p.x < KCX + 30, crew = GROUPS.crew.includes(c.name);
+    return `<g class="nd${on ? '' : ' dim'}${lab ? ' lab' : ''}${KA.sel === c.id ? ' sel' : ''}" data-ka="${c.id}" style="transform:translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px)">
+      ${crew && KA.hi === 'crew' ? '<circle class="grp" r="11"/>' : ''}<circle class="c" r="${5 + c.knows.size * 0.8}" style="fill:${rcol(c.role)}"/>
+      <title>${esc(c.name)}</title></g>`;
+  }).join('');
+  // label layer — placed greedily so focused names never sit on top of each other or a character
+  const labeled = C.filter((c) => c.knows.size && ((isPc && lit(c)) || (fc && fc.id === c.id) || KA.hover === c.id || (hs && hs.has(c.id) && !f)));
+  const boxes = PCS.flatMap((p) => { const q2 = P[p], top = q2.y < KCY - KRY + 10, below = q2.y < KCY;
+    const node = { x0: q2.x - 28, y0: q2.y - 28, x1: q2.x + 28, y1: q2.y + 28 };
+    const lab = top ? { x0: q2.x + 30, y0: q2.y - 14, x1: q2.x + 100, y1: q2.y + 16 }
+      : below ? { x0: q2.x - 36, y0: q2.y - 58, x1: q2.x + 36, y1: q2.y - 28 } : { x0: q2.x - 36, y0: q2.y + 28, x1: q2.x + 36, y1: q2.y + 58 };
+    return [node, lab]; });
+  labeled.forEach((c) => { const p = P[c.id], r = 5 + c.knows.size * 0.8; boxes.push({ x0: p.x - r, y0: p.y - r, x1: p.x + r, y1: p.y + r }); });
+  const hit = (b) => boxes.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
+  const labels = labeled.sort((a, b) => P[a.id].y - P[b.id].y).map((c) => {
+    const p = P[c.id], r = 5 + c.knows.size * 0.8 + 4, w = c.name.length * 6.4 + 4, h = 14;
+    const pref = p.x < KCX + 30 ? ['r', 'l'] : ['l', 'r'];
+    const tries = [...pref.map((s) => [s, 0]), ...pref.flatMap((s) => [[s, -13], [s, 13]]), ['c', -r - 9], ['c', r + 9], ...pref.flatMap((s) => [[s, -24], [s, 24], [s, -36], [s, 36]]), ['c', -r - 22], ['c', r + 22], ...pref.flatMap((s) => [[s, -48], [s, 48]])];
+    let pick = null;
+    for (const [s, dy] of tries) {
+      const x0 = s === 'r' ? p.x + r : s === 'l' ? p.x - r - w : Math.max(4, Math.min(KW - 4 - w, p.x - w / 2)), y0 = p.y + dy - h / 2, b = { x0, y0, x1: x0 + w, y1: y0 + h };
+      if (b.x0 < 2 || b.x1 > KW - 2 || b.y0 < 2 || b.y1 > KH - 2) continue;
+      if (!hit(b)) { pick = b; break; }
+    }
+    if (!pick) { const x0 = p.x < KCX ? p.x + r : p.x - r - w; pick = { x0, y0: p.y - h / 2, x1: x0 + w, y1: p.y + h / 2 }; }
+    boxes.push(pick);
+    return `<text class="lb" x="${(pick.x0 + 2).toFixed(1)}" y="${(pick.y0 + 11).toFixed(1)}">${esc(c.name)}</text>`;
+  }).join('');
+  const pnodes = PCS.map((p) => { const q2 = P[p], n = C.filter((c) => c.knows.has(p)).length, top = q2.y < KCY - KRY + 10, below = q2.y < KCY;
+    const lab = top
+      ? `<text class="n" x="34" y="-2" style="text-anchor:start">${p}</text><text class="k" x="34" y="12" style="text-anchor:start">${n} known</text>`
+      : `<text class="n" y="${below ? -44 : 42}">${p}</text><text class="k" y="${below ? -31 : 55}">${n} known</text>`;
+    return `<g class="nd pcn${pcLit(p) ? '' : ' dim'}${KA.sel === p ? ' sel' : ''}" data-ka="${p}" style="transform:translate(${q2.x}px,${q2.y}px)">
+      <circle class="halo" r="26"/><circle class="c" r="19"/><text class="i">${p.slice(0, 2).toUpperCase()}</text>${lab}</g>`; }).join('');
+  const nobody = C.filter((c) => !c.knows.size);
+  const svg = (useP) => `<svg class="cs-ka__svg${firstPass ? ' cs-mv' : ''}" width="${KW}" height="${KH}" viewBox="0 0 ${KW} ${KH}">
+      <ellipse class="ring0" cx="${KCX}" cy="${KCY}" rx="${KRX}" ry="${KRY}"/>
+      ${lines(useP)}${cnodes(useP)}${pnodes}<g class="lbs">${labels}</g></svg>`;
+  const det = detailKA(f, isPc, fc);
+  const html = win(`
+    <div class="cs-band"><i class="fas fa-diagram-project"></i>Who knows whom<span class="r">${C.length} contacts × ${PCS.length} characters</span></div>
+    <div class="cs-mod cs-ka"><div class="cs-mod__k"><i class="fas fa-circle-nodes"></i>Constellation${(KA.sel || KA.hi) ? '<span class="x" data-ka-clear>clear focus</span>' : '<span class="hint">hover or click a character or a contact</span>'}</div>
+      <div class="cs-kbar"><span class="cs-lbl">Highlight</span><span class="cs-seg">${[['', 'None'], ['crew', 'The Crew'], ['shared', 'Known by 3+'], ['one', 'Known by one']].map(([k, l]) => `<span class="${(KA.hi || '') === k ? 'on' : ''}" data-ka-hi="${k}">${l}</span>`).join('')}</span>
+        <span class="rk">${ROLE_ORDER.filter((r) => C.some((c) => c.role === r)).map((r) => `<span class="${KA.hi === 'role:' + r ? 'on' : ''}" data-ka-hi="role:${r}" style="--tc:${rcol(r)}"><i class="d"></i>${ROLES[r][0]}</span>`).join('')}</span></div>
+      ${svg(true)}
+      ${det}
+      <div class="cs-dock"><span class="cs-lbl">Nobody knows yet · ${nobody.length}</span>${nobody.map((c) => `<span class="dc${KA.sel === c.id ? ' sel' : ''}" data-ka="${c.id}"><span class="cs-av" style="--tc:${hue(c.name)}">${ini(c.name)}</span>${esc(c.name)}</span>`).join('')}</div>
+      <div style="height:10px"></div></div>`, 'ka');
+  const slot = document.querySelector('[data-slot="ka"]');
+  slot.innerHTML = html;
+  if (prev) requestAnimationFrame(() => requestAnimationFrame(() => {
+    slot.querySelectorAll('[data-ka]').forEach((g) => { const p = P[g.dataset.ka]; if (p && g.tagName === 'g') g.style.transform = `translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px)`; });
+    slot.querySelectorAll('[data-ln]').forEach((l) => { const [c, p] = l.dataset.ln.split('|'), a = P[c], b = P[p]; l.style.d = `path('M ${a.x.toFixed(1)} ${a.y.toFixed(1)} L ${b.x.toFixed(1)} ${b.y.toFixed(1)}')`; });
+  }));
+}
+function pcToggles(c, cls = '') {
+  return PCS.map((p) => { const k = c.knows.has(p); return `<span class="cs-pc${k ? ' k' : ''}${cls}" data-share="${c.id}|${p}" title="${k ? 'Take back from ' + p : 'Share with ' + p}"><span class="pi">${k ? '<i class="fas fa-check" style="font-size:8px"></i>' : p[0]}</span>${p}<span class="ac">${k ? 'take back' : '+ share'}</span>${cls ? `<span class="tr cs-tpill cs-t${trustFor(c, p)}" style="${k ? '' : 'visibility:hidden'}">${TL[trustFor(c, p)]}</span>` : ''}</span>`; }).join('');
+}
+function detailKA(f, isPc, fc) {
+  if (!f) return `<div class="cs-detail"><span class="hintl">Pick a character to see everyone they know, or a contact to see who knows them and share or take them back. Just outside a character = only they know them · between two = shared · the middle = everyone.</span></div>`;
+  if (isPc) {
+    const mine = C.filter((c) => c.knows.has(f)), onlyMe = mine.filter((c) => c.knows.size === 1), crewMissing = C.filter((c) => GROUPS.crew.includes(c.name) && !c.knows.has(f));
+    return `<div class="cs-detail"><div class="who"><span class="cs-av" style="--tc:var(--ncm-act);width:28px;height:28px;font-size:11px">${f.slice(0, 2).toUpperCase()}</span><span class="nm">${f}</span></div>
+      <span class="sub">knows <b>${mine.length}</b> of ${C.length} · only ${f}: <b>${onlyMe.length ? onlyMe.map((c) => esc(c.name)).join(', ') : 'none'}</b></span>
+      <span class="kn">${crewMissing.length ? `<button class="cs-btn is-pri" data-ka-crew="${f}"><i class="fas fa-users"></i>Share The Crew (${crewMissing.length} missing)</button>` : '<span class="cs-tag" style="--tc:var(--ncm-good)"><i class="fas fa-check"></i>Has all of The Crew</span>'}<button class="cs-btn"><i class="fas fa-table-cells"></i>Open in grid</button></span></div>`;
+  }
+  return `<div class="cs-detail"><div class="who"><span class="cs-av" style="--tc:${hue(fc.name)};width:28px;height:28px;font-size:11px">${ini(fc.name)}</span><span class="nm">${esc(fc.name)}</span>${tagRole(fc.role)}${fc.org ? `<span class="cs-tag" style="--tc:${hue(fc.org)}">${esc(fc.org)}</span>` : ''}</div>
+    <span class="kn"><span class="cs-lbl" style="margin-right:2px">Known by ${fc.knows.size}/5</span>${pcToggles(fc)}</span></div>`;
+}
+
+/* ================= 2B ================= */
+const KB = { sel: null, pc: null, cell: null, trust: false };
+const BS = 540, BC = BS / 2, R0 = 66, RW = 16, RG = 3;
+const ringR = (i) => [R0 + i * (RW + RG), R0 + i * (RW + RG) + RW];
+const ORD = ROLE_ORDER.flatMap((r) => C.filter((c) => c.role === r));
+const SLOTS = (() => { // angle per contact, gap between roles + a gap at the top for ring labels
+  const unit = 360 / (ORD.length + ROLE_ORDER.filter((r) => C.some((c) => c.role === r)).length * 0.55 + 2.4);
+  let a = 1.7 * unit, last = null; const S = {};
+  ORD.forEach((c) => { if (last !== null && last !== c.role) a += 0.55 * unit; S[c.id] = { a0: a, a1: a + unit, m: a + unit / 2 }; a += unit; last = c.role; });
+  return { S, unit };
+})();
+const pol = (r, deg) => { const t = (deg - 90) * Math.PI / 180; return [BC + Math.cos(t) * r, BC + Math.sin(t) * r]; };
+const sector = (r0, r1, a0, a1) => { const [x0, y0] = pol(r1, a0), [x1, y1] = pol(r1, a1), [x2, y2] = pol(r0, a1), [x3, y3] = pol(r0, a0), lg = (a1 - a0) > 180 ? 1 : 0;
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r1} ${r1} 0 ${lg} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} L${x2.toFixed(2)} ${y2.toFixed(2)} A${r0} ${r0} 0 ${lg} 0 ${x3.toFixed(2)} ${y3.toFixed(2)}Z`; };
+function renderKB() {
+  const pad = 0.6;
+  const fc = KB.sel && byId(KB.sel);
+  const cells = ORD.map((c) => PCS.map((p, i) => {
+    const s = SLOTS.S[c.id], [r0, r1] = ringR(i), k = c.knows.has(p);
+    const dim = (KB.pc && KB.pc !== p) || (fc && fc.id !== c.id);
+    const fill = k && KB.trust ? `style="fill:${['var(--ncm-text-hint)', 'var(--ncm-bad)', 'var(--ncm-attn)', 'var(--ncm-text-label)', 'color-mix(in oklab, var(--ncm-good) 62%, var(--ncm-text-label))', 'var(--ncm-good)'][trustFor(c, p)]}"` : '';
+    return `<path class="cell ${k ? 'yes' : 'no'}${dim ? ' dim' : ''}${KB.cell === c.id + '|' + p ? ' pick' : ''}" data-kb-cell="${c.id}|${p}" ${fill} d="${sector(r0, r1, s.a0 + pad, s.a1 - pad)}"><title>${p} ${k ? 'knows' : "doesn't know"} ${esc(c.name)}</title></path>`;
+  }).join('')).join('');
+  const rOut = ringR(4)[1];
+  const spokes = ORD.map((c) => { const s = SLOTS.S[c.id]; return `<path class="spoke${KB.sel === c.id ? ' sel' : ''}" data-kb-sel="${c.id}" d="${sector(R0 - 4, rOut + 18, s.a0, s.a1)}"/>`; }).join('');
+  const rband = ROLE_ORDER.filter((r) => C.some((c) => c.role === r)).map((r) => { const L = ORD.filter((c) => c.role === r), a0 = SLOTS.S[L[0].id].a0, a1 = SLOTS.S[L[L.length - 1].id].a1;
+    return `<path class="rb" style="fill:${rcol(r)}" d="${sector(rOut + 5, rOut + 9, a0 + pad, a1 - pad)}"><title>${ROLES[r][0]}</title></path>`; }).join('');
+  const names = ORD.map((c) => { const s = SLOTS.S[c.id], [x, y] = pol(rOut + 15, s.m), left = s.m > 180, rot = left ? s.m + 90 : s.m - 90;
+    const cls = KB.sel === c.id ? ' sel' : (KB.pc ? (c.knows.has(KB.pc) ? ' hot' : ' dim') : '');
+    return `<text class="nm${cls}" data-kb-sel="${c.id}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${left ? 'end' : 'start'}" transform="rotate(${rot.toFixed(2)} ${x.toFixed(1)} ${y.toFixed(1)})">${esc(c.name)}</text>`; }).join('');
+  const rlabels = PCS.map((p, i) => { const [r0, r1] = ringR(i), [x, y] = pol((r0 + r1) / 2, 0); return `<text class="rl${KB.pc === p ? ' on' : ''}" data-kb-pc="${p}" x="${x}" y="${y}">${p}</text>`; }).join('');
+  let c1 = 'Who knows whom', c2 = `${C.reduce((n, c) => n + c.knows.size, 0)} of ${C.length * 5} links`, c3 = `${Math.round(C.reduce((n, c) => n + c.knows.size, 0) / (C.length * 5) * 100)}%`;
+  if (KB.pc) { const n = C.filter((c) => c.knows.has(KB.pc)).length; c1 = KB.pc; c2 = `knows ${n} of ${C.length}`; c3 = `${n}`; }
+  if (fc) { c1 = fc.name; c2 = `known by ${fc.knows.size} of 5`; c3 = `${fc.knows.size}/5`; }
+  const svg = `<svg width="${BS}" height="${BS}" viewBox="0 0 ${BS} ${BS}">${spokes}${cells}${rband}${names}${rlabels}
+    <text class="ctr3" x="${BC}" y="${BC - 2}">${c3}</text>${c1.length > 14 && c1.includes(' ') ? `<text class="ctr1" x="${BC}" y="${BC + 15}">${esc(c1.slice(0, c1.indexOf(' ')))}</text><text class="ctr1" x="${BC}" y="${BC + 30}">${esc(c1.slice(c1.indexOf(' ') + 1))}</text><text class="ctr2" x="${BC}" y="${BC + 45}">${c2}</text>` : `<text class="ctr1" x="${BC}" y="${BC + 16}">${esc(c1)}</text><text class="ctr2" x="${BC}" y="${BC + 31}">${c2}</text>`}</svg>`;
+  const side = sideKB(fc);
+  document.querySelector('[data-slot="kb"]').innerHTML = win(`
+    <div class="cs-band"><i class="fas fa-diagram-project"></i>Who knows whom<span class="r">${C.length} contacts × ${PCS.length} characters</span></div>
+    <div class="cs-mod cs-kb"><div class="cs-mod__k"><i class="fas fa-bullseye"></i>Ring of rings${(KB.sel || KB.pc) ? '<span class="x" data-kb-clear>clear focus</span>' : '<span class="hint">click a ring label, a name or a cell</span>'}</div>
+      <div class="cs-kbar"><span class="cs-lbl">Fill</span><span class="cs-seg"><span class="${KB.trust ? '' : 'on'}" data-kb-trust="0">Knows</span><span class="${KB.trust ? 'on' : ''}" data-kb-trust="1">Colour by trust</span></span>
+        <span class="rk">${ROLE_ORDER.filter((r) => C.some((c) => c.role === r)).map((r) => `<span style="--tc:${rcol(r)};cursor:default"><i class="d"></i>${ROLES[r][0]}</span>`).join('')}</span></div>
+      <div class="cs-kb__wrap">${svg}<div class="cs-kb__side">${side}</div></div><div style="height:6px"></div></div>`, 'kb');
+}
+function sideKB(fc) {
+  if (fc) {
+    const dv = differs(fc);
+    return `<div class="cs-kb__card"><div class="row"><span class="cs-av" style="--tc:${hue(fc.name)};width:28px;height:28px;font-size:11px">${ini(fc.name)}</span><span class="nm2">${esc(fc.name)}</span></div>
+      <div class="row">${tagRole(fc.role)}${fc.org ? `<span class="cs-tag" style="--tc:${hue(fc.org)}">${esc(fc.org)}</span>` : ''}<span class="cs-tpill cs-t${fc.trust}">${TL[fc.trust]}</span></div>
+      <div class="cs-lbl">Known by ${fc.knows.size} of 5</div><div class="pcs">${pcToggles(fc, ' wide')}</div>
+      ${dv.length ? `<div class="hintl" style="font-style:normal;color:var(--ncm-text-label)"><span style="color:var(--ncm-secret)">●</span> ${dv.length} set their own trust</div>` : ''}</div>`;
+  }
+  if (KB.pc) {
+    const mine = C.filter((c) => c.knows.has(KB.pc)), onlyMe = mine.filter((c) => c.knows.size === 1), missing = C.filter((c) => !c.knows.has(KB.pc) && c.knows.size >= 3);
+    return `<div class="cs-kb__card"><div class="row"><span class="cs-av" style="--tc:var(--ncm-act);width:28px;height:28px;font-size:11px">${KB.pc.slice(0, 2).toUpperCase()}</span><span class="nm2">${KB.pc}</span></div>
+      <div class="kv"><span>Knows</span><b>${mine.length} / ${C.length}</b><span>Only ${KB.pc} knows</span><b>${onlyMe.length}</b><span>Everyone else knows, ${KB.pc} doesn't</span><b>${missing.length}</b></div>
+      ${missing.length ? `<div class="cs-lbl">Catch up</div><div class="only">${missing.map((c) => `<span class="cs-pc" data-share="${c.id}|${KB.pc}"><span class="pi">+</span>${esc(c.name)}</span>`).join('')}</div>` : ''}
+      ${onlyMe.length ? `<div class="cs-lbl">Only ${KB.pc}</div><div class="only">${onlyMe.map((c) => `<span class="cs-tag" style="--tc:${rcol(c.role)}">${esc(c.name)}</span>`).join('')}</div>` : ''}</div>`;
+  }
+  const nobody = C.filter((c) => !c.knows.size), all = C.filter((c) => c.knows.size === 5);
+  return `<div class="cs-kb__card"><div class="cs-lbl">The table</div>
+    <div class="kv">${PCS.map((p) => `<span>${p}</span><b>${C.filter((c) => c.knows.has(p)).length}</b>`).join('')}</div>
+    <div class="cs-lbl">Everyone knows</div><div class="only">${all.map((c) => `<span class="cs-tag" style="--tc:${rcol(c.role)}">${esc(c.name)}</span>`).join('')}</div>
+    <div class="cs-lbl">Nobody knows</div><div class="only">${nobody.map((c) => `<span class="cs-tag" style="--tc:var(--ncm-text-hint)">${esc(c.name)}</span>`).join('')}</div>
+    <div class="hintl">Click a ring label or a name to focus.</div></div>`;
+}
+
+/* ================= 2A-cyber ================= */
+const hexPts = (r) => [0, 1, 2, 3, 4, 5].map((k) => { const a = (k * 60 - 90) * Math.PI / 180; return `${(Math.cos(a) * r).toFixed(1)},${(Math.sin(a) * r).toFixed(1)}`; }).join(' ');
+const dmSize = (c) => 5 + c.knows.size * 0.9;
+const tracePath = (a, b0, off = 0, inset = 0) => { // 45° out of the contact, then straight into the chip on its own lane
+  const horiz = Math.abs(b0.x - a.x) >= Math.abs(b0.y - a.y), b = horiz ? { x: b0.x - Math.sign(b0.x - a.x) * inset, y: b0.y + off } : { x: b0.x + off, y: b0.y - Math.sign(b0.y - a.y) * inset };
+  const dx = b.x - a.x, dy = b.y - a.y, d = Math.min(Math.abs(dx), Math.abs(dy));
+  const m = { x: a.x + Math.sign(dx) * d, y: a.y + Math.sign(dy) * d };
+  return { d: `M ${a.x.toFixed(1)} ${a.y.toFixed(1)} L ${m.x.toFixed(1)} ${m.y.toFixed(1)} L ${b.x.toFixed(1)} ${b.y.toFixed(1)}`, m, end: b };
+};
+// Lanes: traces arriving at one chip from the same side get parallel lanes 4px apart (ordered by where
+// they come from), so a bus reads as N wires instead of one thick line.
+function traceLanes(P, pitch = 0) {
+  const L = {};
+  for (const p of PCS) {
+    const inc = C.filter((c) => c.knows.has(p)).map((c) => { const a = P[c.id], b = P[p], horiz = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y);
+      return { k: `${c.id}|${p}`, side: horiz ? (a.x < b.x ? 'w' : 'e') : (a.y < b.y ? 'n' : 's'), key: horiz ? a.y : a.x }; });
+    for (const side of ['w', 'e', 'n', 's']) {
+      const g = inc.filter((t) => t.side === side).sort((x, y) => x.key - y.key), step = pitch || Math.min(4, 26 / Math.max(1, g.length - 1));
+      g.forEach((t, i) => { L[t.k] = pitch ? (i - Math.floor((g.length - 1) / 2)) * pitch : (i - (g.length - 1) / 2) * step; });
+    }
+  }
+  return L;
+}
+function kcPlate(p, q2, n) { // the name plate beside each character chip, pushed AWAY from the map's middle
+  const top = q2.y < KCY - KRY + 10, below = q2.y < KCY, cnt = `${n} links`;
+  const w = p.length * 8.2 + 16 + cnt.length * 6.4 + 8, h = 20;
+  let x0, y0;
+  if (top) { x0 = q2.x + 30; y0 = q2.y - h / 2; }
+  else if (below) { x0 = q2.x - w / 2; y0 = q2.y - 30 - h; }
+  else { x0 = q2.x - w / 2; y0 = q2.y + 30; }
+  return { x0, y0, x1: x0 + w, y1: y0 + h, w, h, cnt };
+}
+/* ---- mock facts for the information panel (deterministic, display only) ---- */
+const PLAYERS = { V: 'Sam', Rache: 'Dee', Judy: 'Mo', Panam: 'Kit', Brick: 'Jo' };
+const HELD = { V: ['The Crew'], Judy: ['The Crew'], Rache: [], Panam: ['Aldecaldos run'], Brick: [] };
+const addrOf = (c) => c.name.toLowerCase().replace(/[^a-z]+/g, '.').replace(/^\.|\.$/g, '') + '@' + (c.org ? c.org.toLowerCase().replace(/[^a-z]+/g, '') : 'nightcity') + '.net';
+const MAIL = {
+  'Rogue Amendiares': ['in', 'yesterday', 'The Afterlife, tonight. Come alone.', 2],
+  'Dexter DeShawn': ['out', '3d ago', 'Re: the Konpeki job', 0],
+  'Goro Takemura': ['in', 'today', 'We need to speak.', 1],
+  'Jackie Welles': ['in', 'today', 'Mama Welles says dinner Sunday', 0],
+  'Viktor Vektor': ['out', '5d ago', 'Re: checkup', 0],
+  'Regina Jones': ['in', '2d ago', 'Another cyberpsycho sighting', 1],
+  'T-Bug': ['in', '6h ago', 'Rig is ready when you are', 0],
+  'Kerry Eurodyne': ['out', '1w ago', 'Re: the show', 0],
+  'Placide': ['in', '4d ago', 'The Voodoo Boys want a word', 0],
+};
+const S_NET = { kc: { sel: null, hover: null, hi: null, prev: null, prevLanes: null, panelFor: null },
+                kg: { sel: null, hover: null, hi: null, prev: null, prevLanes: null, panelFor: null } };
+const KC = S_NET.kc;
+const GRID_PITCH = 10;      // the PCB variant routes on a 10px grid; every 5th line is a major line
+const snapP = (P) => { const o = {}; for (const k in P) o[k] = { x: Math.round(P[k].x / GRID_PITCH) * GRID_PITCH, y: Math.round(P[k].y / GRID_PITCH) * GRID_PITCH }; return o; };
+
+function netPanel(S, key, f, isPc, fc) {
+  const fresh = S.panelFor !== (S.sel || null); S.panelFor = S.sel || null;
+  const anim = fresh ? ' is-new' : '';
+  const corners = '<i></i><i></i><i></i><i></i>';
+  const hint = '<div class="cs-np__hint"><i class="fas fa-circle-info"></i>Lines show who knows whom. Click a character to see their contacts, or a contact to share or take them back.</div>';
+  if (!S.sel) {
+    return `<div class="cs-np${anim}">${corners}<div class="cs-np__k"><i class="fas fa-book-open"></i>How to read the map</div>${hint}
+      <div class="cs-np__legend">
+        <span><svg width="22" height="22" viewBox="-11 -11 22 22"><polygon class="lg-hx" points="${hexPts(9)}"/></svg>A player character</span>
+        <span><svg width="22" height="22" viewBox="-11 -11 22 22"><polygon class="lg-dm" points="0,-7 7,0 0,7 -7,0"/></svg>A contact — colour is the role, bigger = known by more</span>
+        <span><svg width="30" height="22" viewBox="0 0 30 22"><path class="lg-tr" d="M2 18 L10 10 L28 10"/></svg>A trace — this character knows this contact</span>
+        <span><svg width="30" height="22" viewBox="0 0 30 22"><path class="lg-tr hot" d="M2 18 L10 10 L28 10"/></svg>Lit trace — part of what you picked</span>
+        <span><svg width="22" height="22" viewBox="-11 -11 22 22"><polygon class="lg-grp" points="0,-9 9,0 0,9 -9,0"/></svg>Dashed violet frame — in the highlighted group</span>
+        <span><span class="lg-dark">MH</span>Dock under the map — contacts nobody knows yet</span>
+      </div></div>`;
+  }
+  if (isPc) {
+    const mine = C.filter((c) => c.knows.has(f)), only = mine.filter((c) => c.knows.size === 1);
+    const crewMissing = C.filter((c) => GROUPS.crew.includes(c.name) && !c.knows.has(f));
+    const byRole = ROLE_ORDER.map((r) => [r, mine.filter((c) => c.role === r)]).filter(([, l]) => l.length);
+    return `<div class="cs-np${anim}">${corners}<div class="cs-np__k"><i class="fas fa-user-astronaut"></i>Character<span class="x" data-nk-clear>close</span></div>${hint}
+      <div class="cs-np__body">
+        <div class="cs-np__id"><svg width="40" height="40" viewBox="-20 -20 40 40"><polygon class="lg-hx sel" points="${hexPts(18)}"/><text class="lg-ini">${f.slice(0, 2).toUpperCase()}</text></svg>
+          <div><div class="nm">${f}</div><div class="sub">played by <b>${PLAYERS[f]}</b></div></div>
+          <div class="cs-np__stat"><b>${mine.length}</b><span>of ${C.length} known</span></div><div class="cs-np__stat"><b>${only.length}</b><span>only ${f}</span></div></div>
+        <div class="cs-np__grid">
+          <div class="cs-np__sec"><div class="h">Who ${f} knows</div>${byRole.map(([r, l]) => `<div class="cs-np__rr"><span class="cs-tag" style="--tc:${rcol(r)}"><i class="fas ${ROLES[r][1]}"></i>${ROLES[r][0]}</span><span class="nm2">${l.map((c) => `<span data-nk="${c.id}" class="lnk">${esc(c.name)}</span>`).join(', ')}</span></div>`).join('')}</div>
+          <div class="cs-np__sec"><div class="h">Only ${f} knows</div>${only.length ? only.map((c) => `<div class="cs-np__kv"><span data-nk="${c.id}" class="lnk">${esc(c.name)}</span><span class="dim">nobody else has this contact</span></div>`).join('') : '<div class="dim">Nobody — everyone they know is shared.</div>'}
+            <div class="h" style="margin-top:10px">Groups ${f} holds</div>${(HELD[f] || []).length ? HELD[f].map((g) => `<span class="cs-tag" style="--tc:var(--ncm-secret)"><i class="fas fa-users"></i>${g}</span>`).join(' ') : '<div class="dim">None pushed to them.</div>'}
+            <div class="h" style="margin-top:10px">The Crew</div>${crewMissing.length ? `<div class="dim">Missing: ${crewMissing.map((c) => esc(c.name)).join(', ')}</div>` : '<div class="dim">Has every member.</div>'}</div>
+        </div>
+        <div class="cs-np__acts">${crewMissing.length ? `<button class="cs-btn is-pri" data-nk-crew="${f}"><i class="fas fa-users"></i>Share The Crew (${crewMissing.length})</button>` : ''}<button class="cs-btn"><i class="fas fa-inbox"></i>Open inbox</button><button class="cs-btn"><i class="fas fa-pen"></i>Write to ${f}</button><button class="cs-btn"><i class="fas fa-address-book"></i>Their contacts</button></div>
+      </div></div>`;
+  }
+  const c = fc, mail = MAIL[c.name], missing = PCS.filter((p) => !c.knows.has(p)), groups = [GROUPS.crew.includes(c.name) ? 'The Crew' : null, c.org === 'Aldecaldos' ? 'Aldecaldos run' : null].filter(Boolean);
+  const first = c.name.split(' ')[0];
+  return `<div class="cs-np${anim}">${corners}<div class="cs-np__k"><i class="fas fa-id-card"></i>Contact<span class="x" data-nk-clear>close</span></div>${hint}
+    <div class="cs-np__body">
+      <div class="cs-np__id"><svg width="40" height="40" viewBox="-20 -20 40 40"><polygon class="lg-dm2" style="fill:${rcol(c.role)}" points="0,-15 15,0 0,15 -15,0"/></svg>
+        <div><div class="nm">${esc(c.name)}</div><div class="row">${tagRole(c.role)}${c.org ? `<span class="cs-tag" style="--tc:${hue(c.org)}">${esc(c.org)}</span>` : ''}<span class="cs-tpill cs-t${c.trust}">${TL[c.trust]}</span></div></div>
+        <div class="cs-np__stat"><b>${c.knows.size}/5</b><span>characters know them</span></div></div>
+      <div class="cs-np__grid">
+        <div class="cs-np__sec"><div class="h">Who knows them</div><div class="cs-np__pcs">${PCS.map((p) => { const k = c.knows.has(p), t = trustFor(c, p);
+          return `<div class="cs-np__pc${k ? ' k' : ''}"><span class="pi">${p.slice(0, 2).toUpperCase()}</span><span class="pn2">${p}</span>${k ? `<span class="cs-tpill cs-t${t}">${TL[t]}${c.ov[p] != null ? '<em class="own">their own</em>' : ''}</span>` : '<span class="dim">doesn’t know them</span>'}<button class="cs-btn${k ? ' is-bad' : ''}" data-share="${c.id}|${p}">${k ? '<i class="fas fa-xmark"></i>Take back' : '<i class="fas fa-share"></i>Share'}</button></div>`; }).join('')}</div></div>
+        <div class="cs-np__sec">
+          <div class="h">Address</div><div class="mono">${addrOf(c)}</div>
+          <div class="h" style="margin-top:10px">Groups</div>${groups.length ? groups.map((g) => `<span class="cs-tag" style="--tc:var(--ncm-secret)"><i class="fas fa-users"></i>${g}</span>`).join(' ') : '<div class="dim">Not in any group.</div>'}
+          <div class="h" style="margin-top:10px">Last mail</div>${mail ? `<div class="cs-np__mail"><span class="dir ${mail[0]}"><i class="fas fa-arrow-${mail[0] === 'in' ? 'down-left' : 'up-right'}"></i></span><span class="sj">${esc(mail[2])}</span><span class="tm">${mail[1]}</span></div>${mail[3] ? `<div class="wait">${mail[3]} waiting on a reply</div>` : ''}` : '<div class="dim">No mail yet.</div>'}
+        </div>
+      </div>
+      <div class="cs-np__acts">${mail && mail[3] ? `<button class="cs-btn is-pri"><i class="fas fa-reply"></i>Reply as ${esc(first)}</button>` : `<button class="cs-btn"><i class="fas fa-pen"></i>Write as ${esc(first)}</button>`}<button class="cs-btn"><i class="fas fa-address-card"></i>Open</button>${missing.length ? `<button class="cs-btn${mail && mail[3] ? '' : ' is-pri'}" data-nk-shareall="${c.id}"><i class="fas fa-share-nodes"></i>Share with the other ${missing.length}</button>` : ''}</div>
+    </div></div>`;
+}
+
+function renderNet(key, grid) {
+  const slot = document.querySelector(`[data-slot="${key}"]`); if (!slot) return;
+  const S = S_NET[key];
+  let P = kaLayout(); if (grid) P = snapP(P);
+  const prev = S.prev; S.prev = P;
+  const lanes = traceLanes(P, grid ? GRID_PITCH : 0), prevLanes = S.prevLanes; S.prevLanes = lanes;
+  const f = S.hover || S.sel, isPc = f && PCS.includes(f), fc = f && !isPc ? byId(f) : null, hs = hiSet(S.hi);
+  const sf = S.sel, sIsPc = sf && PCS.includes(sf), sfc = sf && !sIsPc ? byId(sf) : null;
+  const on = C.filter((c) => c.knows.size);
+  const lit = (c) => isPc ? c.knows.has(f) : fc ? c.id === fc.id : hs ? hs.has(c.id) : true;
+  const pcLit = (p) => isPc ? p === f : fc ? fc.knows.has(p) : true;
+  const pos = (id) => (prev && prev[id]) ? prev[id] : P[id];
+  const grid2 = [];
+  if (grid) {
+    for (let x = 0; x <= KW; x += GRID_PITCH) grid2.push(`<line class="${x % 50 === 0 ? 'grid2' : 'gridf'}" x1="${x}" y1="0" x2="${x}" y2="${KH}"/>`);
+    for (let y = 0; y <= KH; y += GRID_PITCH) grid2.push(`<line class="${y % 50 === 0 ? 'grid2' : 'gridf'}" x1="0" y1="${y}" x2="${KW}" y2="${y}"/>`);
+  } else {
+    for (let x = 0; x <= KW; x += 22) grid2.push(`<line class="${x % 110 === 0 ? 'grid2' : 'grid'}" x1="${x}" y1="0" x2="${x}" y2="${KH}"/>`);
+    for (let y = 0; y <= KH; y += 22) grid2.push(`<line class="${y % 110 === 0 ? 'grid2' : 'grid'}" x1="0" y1="${y}" x2="${KW}" y2="${y}"/>`);
+  }
+  const vias = [];
+  const traces = on.flatMap((c) => [...c.knows].map((p) => {
+    const hot = (isPc && p === f) || (fc && fc.id === c.id), dim = f ? !hot : (hs ? !hs.has(c.id) : false);
+    const k = `${c.id}|${p}`, ins = grid ? 30 : 0, t0 = tracePath(pos(c.id), pos(p), (prevLanes || lanes)[k] || 0, ins), t1 = tracePath(P[c.id], P[p], lanes[k] || 0, ins);
+    if (hot && grid) vias.push(`<rect class="pin" x="${(t1.end.x - 3).toFixed(1)}" y="${(t1.end.y - 3).toFixed(1)}" width="6" height="6"/>`);
+    if (hot) vias.push(`<rect class="via" x="${(t1.m.x - 2.5).toFixed(1)}" y="${(t1.m.y - 2.5).toFixed(1)}" width="5" height="5" transform="rotate(45 ${t1.m.x.toFixed(1)} ${t1.m.y.toFixed(1)})"/>`);
+    return `<path class="tr${hot ? ' hot' : ''}${dim ? ' dim' : ''}" data-tr="${k}" style="d:path('${t0.d}')"/>`;
+  })).join('');
+  const nodes = on.map((c) => { const p = pos(c.id), s = dmSize(c), crew = GROUPS.crew.includes(c.name) && S.hi === 'crew';
+    return `<g class="nd${lit(c) ? '' : ' dim'}${S.sel === c.id ? ' sel' : ''}" data-nk="${c.id}" style="transform:translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px)">
+      ${crew ? `<polygon class="dm-grp" points="0,${-s - 5} ${s + 5},0 0,${s + 5} ${-s - 5},0"/>` : ''}
+      <polygon class="dm" points="0,${-s} ${s},0 0,${s} ${-s},0" style="fill:${rcol(c.role)}"/><title>${esc(c.name)} — ${ROLES[c.role][0]} · known by ${c.knows.size}/5</title></g>`; }).join('');
+  const obstacles = [];
+  const chips = PCS.map((p) => { const q2 = P[p], n = C.filter((c) => c.knows.has(p)).length, pl = kcPlate(p, q2, n);
+    obstacles.push({ x0: q2.x - 27, y0: q2.y - 27, x1: q2.x + 27, y1: q2.y + 27 }, pl);
+    const rx = pl.x0 - q2.x, ry = pl.y0 - q2.y;
+    return `<g class="nd pcn${pcLit(p) ? '' : ' dim'}${S.sel === p ? ' sel' : ''}" data-nk="${p}" style="transform:translate(${q2.x}px,${q2.y}px)">
+      <polygon class="hx2" points="${hexPts(27)}"/><polygon class="hx" points="${hexPts(21)}"/><text class="ini">${p.slice(0, 2).toUpperCase()}</text>
+      <rect class="plate" x="${rx}" y="${ry}" width="${pl.w}" height="${pl.h}"/><rect class="plate-bar" x="${rx}" y="${ry}" width="3" height="${pl.h}"/>
+      <text class="pn" x="${rx + 9}" y="${ry + 14}">${p}</text><text class="pk" x="${rx + pl.w - 7}" y="${ry + 14}" text-anchor="end">${pl.cnt}</text></g>`; }).join('');
+  const labeled = on.filter((c) => (isPc && lit(c)) || (fc && fc.id === c.id) || S.hover === c.id || (hs && hs.has(c.id) && !f));
+  labeled.forEach((c) => { const p = P[c.id], s = dmSize(c) + 2; obstacles.push({ x0: p.x - s, y0: p.y - s, x1: p.x + s, y1: p.y + s }); });
+  const hit = (b) => obstacles.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
+  const names = labeled.sort((a, b) => P[a.id].y - P[b.id].y).map((c) => {
+    const p = P[c.id], r = dmSize(c) + 5, w = c.name.length * 6.4 + 12, h = 17, pref = p.x < KCX + 30 ? ['r', 'l'] : ['l', 'r'];
+    const tries = [...pref.map((s) => [s, 0]), ...pref.flatMap((s) => [[s, -14], [s, 14]]), ['c', -r - 10], ['c', r + 10], ...pref.flatMap((s) => [[s, -26], [s, 26], [s, -38], [s, 38]]), ['c', -r - 26], ['c', r + 26], ...pref.flatMap((s) => [[s, -50], [s, 50]])];
+    let pick = null;
+    for (const [s, dy] of tries) {
+      const x0 = s === 'r' ? p.x + r : s === 'l' ? p.x - r - w : Math.max(4, Math.min(KW - 4 - w, p.x - w / 2)), y0 = p.y + dy - h / 2, b = { x0, y0, x1: x0 + w, y1: y0 + h };
+      if (b.x0 < 3 || b.x1 > KW - 3 || b.y0 < 3 || b.y1 > KH - 3) continue;
+      if (!hit(b)) { pick = b; break; }
+    }
+    if (!pick) { const x0 = p.x < KCX ? p.x + r : p.x - r - w; pick = { x0, y0: p.y - h / 2, x1: x0 + w, y1: p.y + h / 2 }; }
+    obstacles.push(pick);
+    const cy = (pick.y0 + pick.y1) / 2, ex = pick.x1 < p.x ? pick.x1 : pick.x0 > p.x ? pick.x0 : p.x, ey = Math.abs(cy - p.y) < 3 ? cy : (cy < p.y ? pick.y1 : pick.y0);
+    const lead = Math.hypot(ex - p.x, ey - p.y) > dmSize(c) + 7 ? `<line class="lead" x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}"/>` : '';
+    return `${lead}<rect class="lbp${(fc && fc.id === c.id) ? ' hot' : ''}" x="${pick.x0.toFixed(1)}" y="${pick.y0.toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="1"/><text class="lbt" x="${(pick.x0 + 6).toFixed(1)}" y="${(pick.y0 + 12.5).toFixed(1)}">${esc(c.name)}</text>`;
+  }).join('');
+  const links = on.reduce((n, c) => n + c.knows.size, 0), nobody = C.filter((c) => !c.knows.size);
+  let focus = '';
+  if (isPc) { const mine = C.filter((c) => c.knows.has(f)); focus = `<span class="is-focus">Focus ${f} <b>${mine.length}</b> links · <b>${mine.filter((c) => c.knows.size === 1).length}</b> unique</span>`; }
+  else if (fc) focus = `<span class="is-focus">Focus ${esc(fc.name)} <b>${fc.knows.size}/5</b></span>`;
+  const ro = `<div class="cs-kc__ro"><span>Nodes <b>${on.length}</b></span><span>Links <b>${links}</b></span><span>Known by 3+ <b>${C.filter((c) => c.knows.size >= 3).length}</b></span><span>Known by one <b>${C.filter((c) => c.knows.size === 1).length}</b></span><span class="${nobody.length ? 'is-attn' : ''}">Dark <b>${nobody.length}</b></span>${focus}</div>`;
+  const gid = `cs-${key}-scan`;
+  const svg = `<svg width="${KW}" height="${KH}" viewBox="0 0 ${KW} ${KH}" class="${prev ? 'cs-mv' : ''}">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--ncm-act)" stop-opacity="0"/><stop offset=".85" stop-color="var(--ncm-act)" stop-opacity=".07"/><stop offset="1" stop-color="var(--ncm-act)" stop-opacity=".18"/></linearGradient></defs>
+    ${grid2.join('')}${grid ? '' : `<ellipse class="orbit" cx="${KCX}" cy="${KCY}" rx="${KRX}" ry="${KRY}"/>`}<rect class="scan" x="0" y="0" width="${KW}" height="60" style="fill:url(#${gid})"/>
+    ${traces}${vias.join('')}${nodes}${chips}<g>${names}</g></svg>`;
+  slot.innerHTML = win(`
+    <div class="cs-band"><i class="fas fa-diagram-project"></i>Who knows whom<span class="r">${C.length} contacts × ${PCS.length} characters</span></div>
+    <div class="cs-mod cs-kc${grid ? ' cs-kc--grid' : ''}${f || hs ? '' : ' is-idle'}"><div class="cs-mod__k"><i class="fas fa-network-wired"></i>Net map${grid ? ' · PCB grid' : ''}${(S.sel || S.hi) ? '<span class="x" data-nk-clear>clear focus</span>' : '<span class="hint">hover or click a chip or a node</span>'}</div>
+      <div class="cs-kbar"><span class="cs-lbl">Highlight</span><span class="cs-seg">${[['', 'None'], ['crew', 'The Crew'], ['shared', 'Known by 3+'], ['one', 'Known by one']].map(([k, l]) => `<span class="${(S.hi || '') === k ? 'on' : ''}" data-nk-hi="${k}">${l}</span>`).join('')}</span>
+        <span class="rk">${ROLE_ORDER.filter((r) => C.some((c) => c.role === r)).map((r) => `<span class="${S.hi === 'role:' + r ? 'on' : ''}" data-nk-hi="role:${r}" style="--tc:${rcol(r)}"><i class="d" style="border-radius:0;transform:rotate(45deg) scale(.85)"></i>${ROLES[r][0]}</span>`).join('')}</span></div>
+      ${ro}
+      <div class="cs-kc__stage"><i></i><i></i><i></i><i></i>${svg}</div>
+      ${netPanel(S, key, sf, sIsPc, sfc)}
+      <div class="cs-dock"><span class="cs-lbl">Dark — nobody knows yet · ${nobody.length}</span>${nobody.map((c) => `<span class="dc${S.sel === c.id ? ' sel' : ''}" data-nk="${c.id}"><span class="cs-av" style="--tc:${hue(c.name)}">${ini(c.name)}</span>${esc(c.name)}</span>`).join('')}</div>
+      <div style="height:10px"></div></div>`, key);
+  if (prev) requestAnimationFrame(() => requestAnimationFrame(() => {
+    slot.querySelectorAll('g[data-nk]').forEach((g) => { const p = P[g.dataset.nk]; if (p) g.style.transform = `translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px)`; });
+    slot.querySelectorAll('[data-tr]').forEach((l) => { const [c, p] = l.dataset.tr.split('|'); l.style.d = `path('${tracePath(P[c], P[p], lanes[`${c}|${p}`] || 0, grid ? 30 : 0).d}')`; });
+  }));
+}
+const renderKC = () => { renderNet('kc', false); renderNet('kg', true); };
+const rerenderK = () => { renderKA(); renderKC(); if (document.querySelector('[data-slot="kb"]')) renderKB(); };
+
+const renderAll = () => { if (document.querySelector('[data-slot="ta"]')) renderTA(); if (document.querySelector('[data-slot="tb"]')) renderTB(); if (document.querySelector('[data-slot="ka"]')) renderKA(); if (document.querySelector('[data-slot="kb"]')) renderKB(); renderKC(); };
+const pre = q.get('sel'); if (pre) { const pcHit = PCS.find((p) => p.toLowerCase() === pre.toLowerCase()); const c = pcHit ? null : C.find((x) => x.name.toLowerCase().startsWith(pre.toLowerCase())); const id = c ? c.id : PCS.find((p) => p.toLowerCase() === pre.toLowerCase()); KA.sel = id || null; S_NET.kc.sel = S_NET.kg.sel = id || null; if (c) KB.sel = c.id; else KB.pc = id || null; }
+if (q.get('hi')) KA.hi = S_NET.kc.hi = S_NET.kg.hi = q.get('hi');
+renderAll();
+
+document.addEventListener('click', (e) => {
+  const t = e.target, fr = t.closest('[data-frame]')?.dataset.frame;
+  const share = t.closest('[data-share]'); if (share) { const [id, p] = share.dataset.share.split('|'), c = byId(id); c.knows.has(p) ? c.knows.delete(p) : c.knows.add(p); rerenderK(); return; }
+  if (fr === 'ta') {
+    const b = t.closest('[data-lv]'); if (b && !b.classList.contains('zero')) { const lv = +b.dataset.lv; TA.lv.has(lv) ? TA.lv.delete(lv) : TA.lv.add(lv); return renderTA(); }
+    const pc = t.closest('[data-ta-pc]'); if (pc) { TA.pc = pc.dataset.taPc || null; TA.lv.clear(); return renderTA(); }
+    const off = t.closest('[data-ta-off]'); if (off) { TA.lv.delete(+off.dataset.taOff); return renderTA(); }
+    if (t.closest('[data-ta-clear]')) { TA.lv.clear(); return renderTA(); }
+    const pk = t.closest('[data-pick]'); if (pk) { TA.sel = pk.dataset.pick; return renderTA(); }
+  }
+  if (fr === 'tb') {
+    const lv = t.closest('[data-tb-lv]'); if (lv) { const v = +lv.dataset.tbLv; TB.lv = TB.lv === v ? null : v; return renderTB(); }
+    const rl = t.closest('[data-tb-role]'); if (rl) { const r = rl.dataset.tbRole; TB.role = TB.role === r ? null : r; return renderTB(); }
+    const d = t.closest('[data-tb-dot]'); if (d) { TB.sel = TB.sel === d.dataset.tbDot ? null : d.dataset.tbDot; return renderTB(); }
+    if (t.closest('[data-tb-dis]')) { TB.onlyDis = !TB.onlyDis; return renderTB(); }
+    const off = t.closest('[data-tb-off]'); if (off) { const k = off.dataset.tbOff; if (k === 'lv') TB.lv = null; if (k === 'role') TB.role = null; if (k === 'sel') TB.sel = null; if (k === 'dis') TB.onlyDis = false; return renderTB(); }
+    if (t.closest('[data-tb-clear]')) { TB.lv = TB.role = TB.sel = null; TB.onlyDis = false; return renderTB(); }
+    const pk = t.closest('[data-pick]'); if (pk) { TB.sel = pk.dataset.pick; return renderTB(); }
+  }
+  if (fr === 'ka') {
+    const crew = t.closest('[data-ka-crew]'); if (crew) { C.filter((c) => GROUPS.crew.includes(c.name)).forEach((c) => c.knows.add(crew.dataset.kaCrew)); rerenderK(); return; }
+    const hi = t.closest('[data-ka-hi]'); if (hi) { KA.hi = hi.dataset.kaHi || null; KA.sel = null; return renderKA(); }
+    if (t.closest('[data-ka-clear]')) { KA.sel = null; KA.hi = null; return renderKA(); }
+    const n = t.closest('[data-ka]'); if (n) { KA.sel = KA.sel === n.dataset.ka ? null : n.dataset.ka; KA.hover = null; return renderKA(); }
+  }
+  if (fr === 'kc' || fr === 'kg') {
+    const S = S_NET[fr], grid = fr === 'kg';
+    const crew = t.closest('[data-nk-crew]'); if (crew) { C.filter((c) => GROUPS.crew.includes(c.name)).forEach((c) => c.knows.add(crew.dataset.nkCrew)); rerenderK(); return; }
+    const all = t.closest('[data-nk-shareall]'); if (all) { const c = byId(all.dataset.nkShareall); PCS.forEach((p) => c.knows.add(p)); rerenderK(); return; }
+    const hi = t.closest('[data-nk-hi]'); if (hi) { S.hi = hi.dataset.nkHi || null; S.sel = null; return renderNet(fr, grid); }
+    if (t.closest('[data-nk-clear]')) { S.sel = null; S.hi = null; return renderNet(fr, grid); }
+    const n = t.closest('[data-nk]'); if (n) { S.sel = S.sel === n.dataset.nk ? null : n.dataset.nk; S.hover = null; return renderNet(fr, grid); }
+  }
+  if (fr === 'kb') {
+    const tr = t.closest('[data-kb-trust]'); if (tr) { KB.trust = tr.dataset.kbTrust === '1'; return renderKB(); }
+    if (t.closest('[data-kb-clear]')) { KB.sel = KB.pc = KB.cell = null; return renderKB(); }
+    const pc = t.closest('[data-kb-pc]'); if (pc) { KB.pc = KB.pc === pc.dataset.kbPc ? null : pc.dataset.kbPc; KB.sel = KB.cell = null; return renderKB(); }
+    const cell = t.closest('[data-kb-cell]'); if (cell) { const [id] = cell.dataset.kbCell.split('|'); KB.sel = id; KB.pc = null; KB.cell = cell.dataset.kbCell; return renderKB(); }
+    const s = t.closest('[data-kb-sel]'); if (s) { KB.sel = KB.sel === s.dataset.kbSel ? null : s.dataset.kbSel; KB.pc = KB.cell = null; return renderKB(); }
+  }
+});
+document.addEventListener('mouseover', (e) => {
+  const d = e.target.closest?.('[data-tb-dot]'); const id = d ? d.dataset.tbDot : null;
+  if (e.target.closest?.('[data-frame="tb"]') || TB.hover) { if (id !== TB.hover) { TB.hover = id; renderTB(); } }
+  const n = e.target.closest?.('svg [data-ka]'); const kid = n ? n.dataset.ka : null;
+  if (kid !== KA.hover && (e.target.closest?.('[data-frame="ka"]') || KA.hover)) { KA.hover = kid; if (document.querySelector('[data-slot="ka"]')) renderKA(); }
+  for (const key of ['kc', 'kg']) { const S = S_NET[key], inF = e.target.closest?.(`[data-frame="${key}"]`), m = inF && e.target.closest('svg [data-nk]'), mid = m ? m.dataset.nk : null;
+    if (mid !== S.hover && (inF || S.hover)) { S.hover = mid; renderNet(key, key === 'kg'); } }
+});
+</script>
+</body>
+</html>

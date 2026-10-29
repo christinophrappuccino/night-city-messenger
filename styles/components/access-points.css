@@ -1,0 +1,156 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Access points — handouts (chat card, journal chip) + the Post dialog + the
+   grouped Night City right-click menu.  Mock: dev/mockups/access-points-v2-mock.html
+   Handouts are body-mounted (chat log, journal sheet), so their colours come ONLY
+   from the --h-* properties stamped inline by handoutPalette(); fonts fall back hard.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── The chat card ─── */
+.ncm-ap-card {
+  position: relative; overflow: hidden; margin: 2px 0; padding: 10px 12px 12px;
+  background: var(--h-bg, #0b0b12); border-top: 2px solid var(--h-p, #19f3f7); color: var(--h-tx, #e6ecf5) !important;
+}
+.ncm-ap-card::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--h-p, #19f3f7) 6%, transparent) 0 1px, transparent 1px 3px);
+}
+.ncm-ap-card__k {
+  display: flex; justify-content: space-between; gap: 8px;
+  font: 700 9.5px var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--h-p, #19f3f7) !important;
+}
+.ncm-ap-card__k span { color: var(--h-tx2, #9aa4b8) !important; letter-spacing: .05em; }
+.ncm-ap-card__t {
+  margin: 8px 0 2px; display: flex; gap: 8px; align-items: center;
+  font: 700 16px/1.15 var(--ncm-font-display, 'Rajdhani', sans-serif); color: var(--h-tx, #e6ecf5) !important;
+}
+.ncm-ap-card__ico {
+  flex: none; width: 30px; height: 30px; display: grid; place-items: center;
+  border: 1px solid color-mix(in srgb, var(--h-p, #19f3f7) 60%, transparent);
+  background: color-mix(in srgb, var(--h-p, #19f3f7) 14%, transparent); color: var(--h-p, #19f3f7) !important;
+}
+.ncm-ap-card__ico i { margin: 0 !important; line-height: 1; font-size: 13px; }
+.ncm-ap-card__s { font: 12.5px var(--ncm-font-display, 'Rajdhani', sans-serif); color: var(--h-tx2, #9aa4b8) !important; }
+.ncm-ap-card__tags { margin-top: 6px; display: flex; gap: 5px; flex-wrap: wrap; }
+.ncm-ap-card__tag {
+  font: 10px var(--ncm-font-mono, 'Share Tech Mono', monospace); padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--h-a, #f7c948) 55%, transparent); color: var(--h-a, #f7c948) !important;
+}
+.ncm-ap-card button.ncm-ap-card__open {
+  position: relative; z-index: 1; margin: 10px 0 0 !important; width: 100% !important; height: 30px !important; min-height: 0 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important; gap: 7px;
+  appearance: none; border: 0 !important; border-radius: 2px !important; box-shadow: none !important; cursor: pointer;
+  background: var(--h-p, #19f3f7) !important; color: var(--h-bg, #0b0b12) !important;
+  font: 700 11px var(--ncm-font-display, 'Rajdhani', sans-serif) !important; letter-spacing: .1em; text-transform: uppercase;
+}
+.ncm-ap-card button.ncm-ap-card__open i { margin: 0 !important; line-height: 1; }
+.ncm-ap-card button.ncm-ap-card__open:hover { filter: brightness(1.12); }
+
+/* ─── The journal chip ─── */
+a.ncm-ap-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 0 7px 0 0; margin: 0 1px;
+  border: 1px solid var(--h-p, #19f3f7); background: var(--h-bg, #0b0b12); color: var(--h-tx, #e6ecf5) !important;
+  font: 600 12.5px/20px var(--ncm-font-display, 'Rajdhani', sans-serif); white-space: nowrap; vertical-align: middle; text-decoration: none !important; cursor: pointer;
+}
+a.ncm-ap-chip i { display: grid; place-items: center; width: 20px; height: 20px; margin: 0 !important; background: var(--h-p, #19f3f7); color: var(--h-bg, #0b0b12) !important; font-size: 10px; }
+a.ncm-ap-chip:hover { box-shadow: 0 0 0 1px var(--h-p, #19f3f7), 0 0 8px color-mix(in srgb, var(--h-p, #19f3f7) 40%, transparent); }
+a.ncm-ap-chip.is-missing { border-style: dashed; opacity: .6; cursor: not-allowed; }
+a.ncm-ap-chip.is-missing i { background: transparent; color: var(--h-tx2, #9aa4b8) !important; }
+
+/* ─── The Post to chat dialog (admin-themed Dialog — the admin panel's vocabulary) ─── */
+.ncm-ap-dlg { display: flex; flex-direction: column; font: 13px var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+/* the thing being handed out */
+.ncm-ap-dlg__thing {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border);
+  box-shadow: inset 3px 0 0 var(--h-p);
+}
+.ncm-ap-dlg__ico { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 2px;
+  background: var(--h-bg); border: 1px solid color-mix(in srgb, var(--h-p) 60%, transparent); color: var(--h-p) !important; }
+.ncm-ap-dlg__ico i { margin: 0 !important; font-size: 15px; line-height: 1; }
+.ncm-ap-dlg__nm { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ncm-ap-dlg__nm b { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-ap-dlg__nm small { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-ap-dlg__kind { flex: none; padding: 2px 7px; border-radius: 1px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ncm-text-secondary); border: 1px solid var(--ncm-border); background: var(--ncm-bg-card, var(--ncm-bg-surface)); }
+/* sections */
+.ncm-ap-dlg__sec { padding: 11px 14px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+.ncm-ap-dlg__k { display: flex; align-items: center; gap: 7px; margin-bottom: 8px;
+  font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-ap-dlg__k i { width: 14px; text-align: center; color: var(--ncm-act, var(--ncm-secondary)); font-size: 11px; }
+.ncm-ap-dlg__kh { margin-left: auto; font: italic 500 11px var(--ncm-font-body); letter-spacing: 0; text-transform: none; color: var(--ncm-text-hint, var(--ncm-text-secondary)); }
+/* segmented "who sees it" */
+.ncm-ap-dlg__seg { display: flex; }
+.ncm-ap-dlg button.ncm-ap-dlg__segb {
+  flex: 1 1 0 !important; width: auto !important; height: 30px !important; min-height: 0 !important; margin: 0 !important; padding: 0 8px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px;
+  border: 1px solid var(--ncm-border) !important; border-radius: 0 !important; box-shadow: none !important;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface)) !important; color: var(--ncm-text-secondary) !important;
+  font: 700 11px var(--ncm-font-display) !important; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; cursor: pointer;
+}
+.ncm-ap-dlg button.ncm-ap-dlg__segb + .ncm-ap-dlg__segb { border-left-width: 0 !important; }
+.ncm-ap-dlg button.ncm-ap-dlg__segb:first-child { border-radius: 2px 0 0 2px !important; }
+.ncm-ap-dlg button.ncm-ap-dlg__segb:last-child { border-radius: 0 2px 2px 0 !important; }
+.ncm-ap-dlg button.ncm-ap-dlg__segb i { margin: 0 !important; font-size: 11px; }
+.ncm-ap-dlg button.ncm-ap-dlg__segb:hover { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-hover, var(--ncm-bg-card)) !important; }
+.ncm-ap-dlg button.ncm-ap-dlg__segb.is-on {
+  background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 16%, var(--ncm-bg-card, var(--ncm-bg-surface))) !important;
+  color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; box-shadow: inset 0 -2px 0 var(--ncm-act, var(--ncm-secondary)) !important;
+}
+.ncm-ap-dlg button.ncm-ap-dlg__segb.is-on i { color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-ap-dlg__one { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.ncm-ap-dlg__one[hidden] { display: none !important; }
+.ncm-ap-dlg__one select { flex: 1; height: 28px !important; }
+.ncm-ap-dlg__note { font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-secondary)); white-space: nowrap; }
+/* colour cards */
+.ncm-ap-dlg__opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ncm-ap-dlg button.ncm-ap-dlg__opt {
+  width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 8px 9px 9px !important;
+  display: flex !important; flex-direction: column; align-items: flex-start !important; justify-content: flex-start !important; gap: 3px; text-align: left;
+  border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; box-shadow: none !important;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface)) !important; color: var(--ncm-text-primary) !important; cursor: pointer;
+}
+.ncm-ap-dlg button.ncm-ap-dlg__opt:hover { border-color: var(--ncm-border-active, var(--ncm-text-secondary)) !important; }
+.ncm-ap-dlg button.ncm-ap-dlg__opt.is-on {
+  border-color: var(--ncm-act, var(--ncm-secondary)) !important;
+  background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, var(--ncm-bg-card, var(--ncm-bg-surface))) !important;
+  box-shadow: inset 0 0 0 1px var(--ncm-act, var(--ncm-secondary)) !important;
+}
+.ncm-ap-dlg__sw { display: flex; height: 14px; width: 100%; margin-bottom: 4px; border: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+.ncm-ap-dlg__sw i { flex: 1; margin: 0 !important; }
+.ncm-ap-dlg__sw i:nth-child(1) { background: var(--h-bg); }
+.ncm-ap-dlg__sw i:nth-child(2) { background: var(--h-p); flex: 2; }
+.ncm-ap-dlg__sw i:nth-child(3) { background: var(--h-a); }
+.ncm-ap-dlg__ol { font: 700 11.5px var(--ncm-font-display); letter-spacing: .03em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-ap-dlg__oh { font: 11.5px/1.25 var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-ap-dlg__custom { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; padding: 9px; border-radius: 2px;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface)); border: 1px dashed var(--ncm-border); }
+.ncm-ap-dlg__custom[hidden] { display: none !important; }
+.ncm-ap-dlg label.ncm-ap-dlg__pick { display: flex; flex-direction: column; align-items: stretch; gap: 3px; margin: 0;
+  text-transform: none !important; font: 600 11px var(--ncm-font-display) !important; letter-spacing: .03em; color: var(--ncm-text-label, var(--ncm-text-secondary)) !important; text-align: center; }
+.ncm-ap-dlg__pick input[type=color] { width: 100% !important; height: 26px !important; padding: 2px !important; cursor: pointer;
+  background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; }
+/* preview — framed like a chat log */
+.ncm-ap-dlg__sec--prev { border-bottom: 0; background: var(--ncm-bg-pane, var(--ncm-bg-deep)); }
+.ncm-ap-dlg__prev { padding: 8px; border-radius: 2px; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); border: 1px solid var(--ncm-border); }
+
+/* ─── The Night City menu: section heads + the ▸ entry in Foundry's directory menu ─── */
+.ncm-ctx-menu {
+  background: var(--ncm-bg-surface, #1e1e24); border-color: var(--ncm-border, #3a3a44);
+  font-family: var(--ncm-font-body, -apple-system, 'Segoe UI', Roboto, sans-serif);
+}
+.ncm-ctx-menu__item { color: var(--ncm-text-primary, #ccc); }
+.ncm-ctx-menu__item i { color: var(--ncm-secondary, #19f3f7); }
+.ncm-ctx-menu__item.is-bad, .ncm-ctx-menu__item.is-bad i { color: var(--ncm-danger, #F65261); }
+.ncm-ctx-menu__head {
+  padding: 6px 12px 2px; font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ncm-text-muted, #8e8ea8);
+}
+.ncm-ctx-menu__title {
+  display: flex; align-items: center; gap: 7px; padding: 6px 12px; border-bottom: 1px solid var(--ncm-border, #333);
+  font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-primary, #ddd);
+}
+.ncm-ctx-menu__title i { color: var(--ncm-secondary, #19f3f7); }
+#context-menu li.ncm-ctx-more { display: flex; align-items: center; }
+#context-menu li.ncm-ctx-more .ncm-ctx-more__arrow { margin-left: auto; padding-left: 14px; opacity: .7; }
+
+.ncm-ctx-menu__sep { height: 1px; margin: 4px 6px; background: var(--ncm-border, rgba(255,255,255,.12)); }

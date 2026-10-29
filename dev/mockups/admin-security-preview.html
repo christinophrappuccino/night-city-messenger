@@ -55,6 +55,7 @@ if (qs.get('h')) document.getElementById('p').style.height = qs.get('h') + 'px';
 const EMPTY = qs.get('empty') === '1';
 
 // helpers the admin panel registers for real
+Handlebars.registerHelper('ncm-hue', (t) => { const s = String(t ?? '').trim().toLowerCase(); if (!s) return 'var(--ncm-text-label)'; let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return 'var(--ncm-hue-' + ((h % 8) + 1) + ')'; }); // mirrors scripts/utils/tagHue.js
 Handlebars.registerHelper('eq', (a, b) => a === b);
 Handlebars.registerHelper('gt', (a, b) => a > b);
 Handlebars.registerHelper('letter', (i) => String.fromCharCode(65 + (((i || 0) % 26) + 26) % 26));
@@ -267,7 +268,14 @@ function diag() {
   document.body.appendChild(pre);
 }
 
-fetch('../../templates/admin-panel/tab-security.hbs')
+// ?ctx=<url of a JSON dump>&key=<view>  renders a REAL SecurityTab context instead of the
+// hand-built one above — e.g. NCM_DUMP=dump.json node dev/tools/sims/test-security-modules.mjs
+// writes { activity, activityPicked, heat } (the seismograph + thermometers as the tab builds them).
+const ctxUrl = qs.get('ctx');
+const ctxReady = ctxUrl
+  ? fetch(ctxUrl).then(r => r.json()).then(j => { ctx.security = j[qs.get('key') || 'activity'] || j; })
+  : Promise.resolve();
+ctxReady.then(() => fetch('../../templates/admin-panel/tab-security.hbs'))
   .then(r => r.text())
   .then(src => {
     document.getElementById('out').innerHTML = Handlebars.compile(src)(ctx);

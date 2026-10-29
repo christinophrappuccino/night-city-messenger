@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roll Reveal — probe (real module)</title>
+<!--
+  Mounts the REAL scripts/ui/content/RollReveal.js against the real cascade.
+  Serve it (node dev/tools/serve-mockups.cjs) or open with
+  --allow-file-access-from-files — a file:// page cannot import an ES module.
+  ?o=success|fail|crit|fumble  ?t=brand|arasaka  ?luck=2  ?mod=1  ?rank=1 (rank-only Interface)  ?still=1 (animation off → the final frame, the reduced-motion path)
+  The design mock with frozen frames is roll-reveal-mock.html.
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  html, body { margin: 0; background: #07070b; }
+  .stage { display: grid; place-items: center; padding: 30px; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important;
+    width: 520px; height: 440px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-base); overflow: hidden; }
+  .mk-win[data-t="arasaka"] { --ncm-primary:#ff0033; --ncm-accent:#ffcc00; --ncm-bg-deep:#0a0006; --ncm-bg-base:#160008; --ncm-bg-surface:#22060e; --ncm-text-primary:#f4e6ea; --ncm-text-secondary:#c79aa6; --ncm-text-muted:#9f7883; --ncm-border:#4a1622; }
+  #log { color: #8fa0b2; font: 12px monospace; text-align: center; }
+</style>
+</head>
+<body>
+<div class="stage"><div class="mk-win ncm-app" id="win"></div></div>
+<div id="log"></div>
+<script type="module">
+  const Q = new URLSearchParams(location.search);
+  globalThis.game = { nightcity: { soundService: { play: (id) => log(`sound: ${id}`) }, themeService: { getAnimationLevel: () => (Q.get('still') ? 'off' : 'full') } } };
+  const logEl = document.getElementById('log');
+  const log = (s) => { logEl.textContent += ` · ${s}`; };
+  document.getElementById('win').dataset.t = Q.get('t') || 'brand';
+  const o = Q.get('o') || 'success';
+  const luck = Number(Q.get('luck')) || 0, mod = Number(Q.get('mod')) || 0;
+  const raw = { success: 7, fail: 3, crit: 10, fumble: 1 }[o] ?? 7;
+  const processed = o === 'crit' ? 16 : o === 'fumble' ? -6 : raw;
+  const statValue = Q.get('rank') ? 0 : 6;
+  const total = statValue + 4 + processed + luck + mod, dc = o === 'crit' ? 20 : 15;
+  const result = { statName: Q.get('rank') ? 'none' : 'tech', statValue, skillLevel: 4, luckSpent: luck, modifier: mod,
+    rollValue: raw, processedRoll: processed, isCritical: o === 'crit', isFumble: o === 'fumble',
+    total, dc, success: total >= dc, margin: total - dc };
+  try {
+    const { playRollReveal } = await import('../../scripts/ui/content/RollReveal.js');
+    const t0 = performance.now();
+    await playRollReveal({
+      host: document.getElementById('win'), result, skillName: 'Interface',
+      title: 'Bypassing CorpNet', ctx: 'Network bypass · CorpNet', who: 'V', ok: 'Access granted', no: 'Access denied',
+      onChat: () => log(`chat posted at ${Math.round(performance.now() - t0)}ms`),
+    });
+    log(`resolved at ${Math.round(performance.now() - t0)}ms`);
+  } catch (e) { log(`import failed: ${e.message}`); }
+</script>
+</body>
+</html>

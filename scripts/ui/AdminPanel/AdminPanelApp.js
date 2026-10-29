@@ -8,6 +8,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
+import { wireAccessDrag } from '../../integrations/AccessPoints.js';
 import { MODULE_ID, EVENTS, TEMPLATES } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
 import { DateRangePicker } from '../components/DateRangePicker.js';
@@ -15,6 +16,7 @@ import { BaseApplication } from '../BaseApplication.js';
 import { ToolsTab } from './tabs/ToolsTab.js';
 import { SpamTab } from './tabs/SpamTab.js';
 import { ShardsTab } from './tabs/ShardsTab.js';
+import { AccessTab } from './tabs/AccessTab.js';
 import { TerminalsTab } from './tabs/TerminalsTab.js';
 import { SecurityTab } from './tabs/SecurityTab.js';
 import { ContactsTab } from './tabs/ContactsTab.js';
@@ -61,6 +63,16 @@ export class AdminPanelApp extends BaseApplication {
     if (this._securitySettingHook) {
       Hooks.off('updateSetting', this._securitySettingHook);
       this._securitySettingHook = null;
+    }
+    this._tabFoldObs?.disconnect(); this._tabFoldObs = null;
+    if (this._sceneHook) {
+      for (const h of ['createScene', 'updateScene', 'deleteScene']) Hooks.off(h, this._sceneHook);
+      this._sceneHook = null;
+    }
+    if (this._worldTimeHook) {
+      Hooks.off('updateWorldTime', this._worldTimeHook);
+      Hooks.off('simple-calendar-date-time-change', this._worldTimeHook);
+      this._worldTimeHook = null;
     }
     // Tell every extracted tab to clean up its own intervals/listeners
     if (this._tabs) {
@@ -114,6 +126,7 @@ export class AdminPanelApp extends BaseApplication {
         overview: new OverviewTab(this),
         shards: new ShardsTab(this),
         terminals: new TerminalsTab(this),
+        access: new AccessTab(this),
         security: new SecurityTab(this),
         spam: new SpamTab(this),
         tools: new ToolsTab(this),
@@ -137,11 +150,19 @@ export class AdminPanelApp extends BaseApplication {
     },
     position: {
       width: 820,
-      height: 600,
+      height: 760,
     },
     actions: {
       // Tab navigation
       switchTab: AdminPanelApp._onSwitchTab,
+
+      // ONE generic hook per tab (2026-10-27 redesign): data-action="tabAct"
+      // data-owner="<tab key>" data-op="<what>" → this.tabs[owner].onAct(op, event, target).
+      // New tab actions use this instead of a new static delegator each.
+      tabAct: AdminPanelApp._onTabAct,
+      // Pop a tab out into its own larger window, and dock it back.
+      popOutTab: AdminPanelApp._openToTab,
+      dockTab: AdminPanelApp._onDockTab,
 
       // Overview actions
       openInbox: AdminPanelApp._onOpenInbox,
@@ -224,37 +245,10 @@ export class AdminPanelApp extends BaseApplication {
       batchBurnContacts:   AdminPanelApp._onBatchBurnContacts,
       openRecentMessage:   AdminPanelApp._onOpenRecentMessage,
 
-      // Networks actions
-      toggleNetwork: AdminPanelApp._onToggleNetwork,
+      // Networks actions — the 2026-10-27 tab uses tabAct (NetworksTab.onAct);
+      // these two survive for the Overview button and keyboard N.
       openNetworkManager: AdminPanelApp._onOpenNetworkManager,
-      editNetworkInManager: AdminPanelApp._onEditNetworkInManager,
-      toggleSceneDeadZone: AdminPanelApp._onToggleSceneDeadZone,
-      toggleSceneHideImported: AdminPanelApp._onToggleSceneHideImported,
-      scenePagePrev: AdminPanelApp._onScenePagePrev,
-      scenePageNext: AdminPanelApp._onScenePageNext,
-      switchNetworkSubView: AdminPanelApp._onSwitchNetworkSubView,
-      toggleCardLog: AdminPanelApp._onToggleCardLog,
-      deleteLogEntry: AdminPanelApp._onDeleteLogEntry,
-      editLogEntry: AdminPanelApp._onEditLogEntry,
-      openLogReference: AdminPanelApp._onOpenLogReference,
-      filterLogType: AdminPanelApp._onFilterLogType,
-      addManualLogEntry: AdminPanelApp._onAddManualLogEntry,
-      toggleAddLogForm: AdminPanelApp._onToggleAddLogForm,
-      exportNetworkLogs: AdminPanelApp._onExportNetworkLogs,
-      exportFormattedNetworkLogs: AdminPanelApp._onExportFormattedNetworkLogs,
-      importNetworkLogs: AdminPanelApp._onImportNetworkLogs,
-      clearNetworkLogs: AdminPanelApp._onClearNetworkLogs,
-      resetNetworkAuth: AdminPanelApp._onResetNetworkAuth,
       createNetwork: AdminPanelApp._onCreateNetwork,
-      deleteNetwork: AdminPanelApp._onDeleteNetwork,
-      sendBroadcast: AdminPanelApp._onSendBroadcast,
-      scrollMixerLeft: AdminPanelApp._onScrollMixerLeft,
-      scrollMixerRight: AdminPanelApp._onScrollMixerRight,
-      cycleNetAuthFilter: AdminPanelApp._onCycleNetAuthFilter,
-      cycleNetStatusFilter: AdminPanelApp._onCycleNetStatusFilter,
-      cycleNetGroupFilter: AdminPanelApp._onCycleNetGroupFilter,
-      openNetworkManagerLogs: AdminPanelApp._onOpenNetworkManagerLogs,
-      toggleNetworkGroup: AdminPanelApp._onToggleNetworkGroup,
 
       // Data Shards actions
       openShardItem: AdminPanelApp._onOpenShardItem,
@@ -319,6 +313,8 @@ export class AdminPanelApp extends BaseApplication {
       securityGateAddGroup: AdminPanelApp._onSecurityGateAddGroup,
       securityGateAddItem: AdminPanelApp._onSecurityGateAddItem,
       securityGateAddRole: AdminPanelApp._onSecurityGateAddRole,
+      securityGateAddSkill: AdminPanelApp._onSecurityGateAddSkill,
+      securityGateRemoveSkill: AdminPanelApp._onSecurityGateRemoveSkill,
       securityGateRemoveItem: AdminPanelApp._onSecurityGateRemoveItem,
       terminalExportAdmin: AdminPanelApp._onTerminalExport,
       cycleShardSort: AdminPanelApp._onCycleShardSort,
@@ -446,6 +442,8 @@ export class AdminPanelApp extends BaseApplication {
     return {
       isGM: true,
       activeTab: this._activeTab,
+      isPopout: this.isPopout,
+      popTitle: this.isPopout ? this.title : '',
       compactMode: this._compactMode,
 
       // Header
@@ -476,6 +474,9 @@ export class AdminPanelApp extends BaseApplication {
 
       // Terminals tab
       ...this.tabs.terminals.prepareContext(),
+
+      // Access points tab
+      ...this.tabs.access.prepareContext(),
 
       // Security tab
       ...this.tabs.security.prepareContext(),
@@ -548,7 +549,7 @@ export class AdminPanelApp extends BaseApplication {
           avatarColor,
           avatarBorderColor: `${avatarColor}66`,
           initial,
-          lastActive: unread === 0 ? this._getRelativeTime(messages[0]?.timestamp) : '',
+          lastActive: unread === 0 ? this._relativeTime(messages[0]?.timestamp) : '',   // a message stamp = game clock
         });
       }
 
@@ -570,9 +571,14 @@ export class AdminPanelApp extends BaseApplication {
    * @param {string} isoTimestamp
    * @returns {string}
    */
-  _relativeTime(isoTimestamp) {
+  _relativeTime(isoTimestamp, { real = false } = {}) {
     try {
-      const diff = Date.now() - new Date(isoTimestamp).getTime();
+      // Mail, trace rows, readAt, login footprints … are stamped on the GAME clock, so "how long ago" must be
+      // measured against the game clock too (2026-10-28, dev: mail sent at game time 11 Mar 2026 read
+      // "last mail · 231d ago" because this compared it to the computer's real date). Pass { real: true }
+      // only for stamps written with the real clock (delivery failures, group pushes).
+      const now = real ? Date.now() : (Number(game.nightcity?.timeService?.getCurrentTimeMs?.()) || Date.now());
+      const diff = Math.max(0, now - new Date(isoTimestamp).getTime());
       const mins = Math.floor(diff / 60000);
       if (mins < 1) return 'Just now';
       if (mins < 60) return `${mins} min ago`;
@@ -665,6 +671,40 @@ export class AdminPanelApp extends BaseApplication {
   // (Implementation lives in BaseApplication._applyAdminTheme — this panel is
   //  just one of the ADMIN_THEMED windows; see utils/adminTheme.js.)
 
+  /**
+   * Typing into a search box re-renders its tab, and the render REPLACES the box. Keys typed while
+   * a render is in flight landed in the old box and the new one came back with an older value and
+   * a caret in the wrong place — the "jumbled text" in Contacts search (tester, 2026-10-29), and
+   * the same race in every tab. So the panel itself remembers the focused text box — its live
+   * value and caret — just before a render, and puts both back after it (see _restoreTyping).
+   * @override
+   */
+  async _preRender(context, options) {
+    await super._preRender?.(context, options);
+    this._typing = null;
+    const el = document.activeElement;
+    if (!el || !this.element?.contains(el) || !el.matches?.('input[type="text"], input[type="search"], input:not([type]), textarea')) return;
+    const attrs = [...el.attributes].filter(a => a.name.startsWith('data-') && !/[\]"]/.test(a.value)).map(a => `[${a.name}="${a.value}"]`).join('');
+    const sel = attrs ? `${el.tagName.toLowerCase()}${attrs}` : (el.name ? `${el.tagName.toLowerCase()}[name="${el.name}"]` : null);
+    if (sel) this._typing = { sel, value: el.value, start: el.selectionStart, end: el.selectionEnd };
+  }
+
+  /** @private Put the focused text box back as it was typed, and let its tab catch up if it moved on. */
+  _restoreTyping() {
+    const t = this._typing;
+    this._typing = null;
+    if (!t) return;
+    let box = null;
+    try { box = this.element?.querySelector(t.sel); } catch { return; }
+    if (!box) return;
+    const changed = box.value !== t.value;
+    if (changed) box.value = t.value;
+    if (document.activeElement !== box) box.focus({ preventScroll: true });
+    try { box.setSelectionRange(Math.min(t.start ?? t.value.length, t.value.length), Math.min(t.end ?? t.value.length, t.value.length)); } catch { /* not a text box */ }
+    // The tab rendered from an older value: one input event lets its own debounce re-filter.
+    if (changed) box.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   _onRender(context, options) {
     // BaseApplication applies the admin theme (preset + text size) after the
     // atmosphere pass because ADMIN_THEMED is true on this class.
@@ -693,11 +733,123 @@ export class AdminPanelApp extends BaseApplication {
     });
 
     // ── Active tab onRender hook (DOM wire-up, controls, etc.) ──
+    // A tab's own wiring must never stop the panel's shared steps below (tab-bar folding, address colours, drag
+    // handles) — an error there used to leave the whole panel half-styled. Report it and carry on.
     const activeTab = this.tabs[this._activeTab];
-    if (activeTab) activeTab.onRender(context, options);
+    if (activeTab) {
+      try { activeTab.onRender(context, options); }
+      catch (err) { log.error(`Admin panel — the ${this._activeTab} tab's wiring failed: ${err.message}`); console.error(err); }
+    }
+
+    // ── The grouped tab bar folds its labels when the row runs out of room ──
+    this._wireTabFold();
+    try { this._clockRenderedAt = Number(game.nightcity?.timeService?.getCurrentTimeMs?.()); } catch { /* no clock */ }
+
+    // ── Text roles: an email address gets its own colour + mono (admin-hierarchy.css) ──
+    this._tagAddresses();
+
+    // ── Terminal racks + shard cartridges drag onto the hotbar as an access macro ──
+    wireAccessDrag(this.element, '.ncm-term2-ru[data-item-id], .ncm-sh2-slot[data-item-id]', (id) => AdminPanelApp._findItem(id));
+
+    // ── Page heads are one line; a description cut off by the ellipsis shows in full on hover ──
+    for (const p of this.element?.querySelectorAll('.ncm-tabhd p') ?? []) {
+      if (!p.dataset.tooltip) p.dataset.tooltip = p.textContent.trim();
+    }
+
+    // ── The search box being typed in keeps every key and its caret across the render ──
+    this._restoreTyping();
 
     // ── Keyboard shortcuts ──
     this._setupKeyboardHandler();
+  }
+
+  /** Tabs that print game time (ages, countdowns, the clock) — the only ones the game clock re-renders. */
+  static CLOCK_TABS = Object.freeze(new Set(['overview', 'messages', 'security', 'terminals', 'shards']));
+  /** Game-time movement (ms) below which a clock tick does not re-render — a real-time clock ticks every second. */
+  static CLOCK_RERENDER_MS = 60000;
+
+  /**
+   * The game clock moved. A real-time clock (Simple Calendar, or a world-time ticker) fires this every second, and a
+   * full re-render every second replayed the panel's entrance animations (dev 2026-10-29: "it keeps redoing the open
+   * animation of the nav, sliding in every second"). So: only a tab that prints game time re-renders, and only once
+   * the clock has moved a minute since the last time it did — or at once for a deliberate change (Set time, a
+   * provider switch: `force`). The Overview and Security tabs tick their own clocks in the DOM between re-renders.
+   * @param {boolean} force
+   * @private
+   */
+  _onGameClock(force) {
+    if (!AdminPanelApp.CLOCK_TABS.has(this._activeTab)) return;
+    let now = NaN;
+    try { now = Number(game.nightcity?.timeService?.getCurrentTimeMs?.()); } catch { /* no clock */ }
+    if (!force && Number.isFinite(now) && Number.isFinite(this._clockRenderedAt) && Math.abs(now - this._clockRenderedAt) < AdminPanelApp.CLOCK_RERENDER_MS) return;
+    this._clockRenderedAt = now;
+    this._debouncedRender();
+  }
+
+  /** Number keys → tabs, in the order the grouped bar shows them. */
+  static TAB_KEYS = Object.freeze({ '1': 'overview', '2': 'messages', '3': 'contacts', '4': 'spam', '5': 'networks', '6': 'security', '7': 'terminals', '8': 'shards', '9': 'access', '0': 'tools' });
+
+  /**
+   * Fold the grouped tab bar's labels when it overflows, in a fixed order: tabs OUTSIDE the open group
+   * become icon-only first, then the rest of the open group; the open tab always keeps its label. Every
+   * tab already names itself on hover (data-tooltip), so a folded icon is never a mystery. Re-measured
+   * when the window resizes (one ResizeObserver per rendered bar).
+   * @private
+   */
+  _wireTabFold() {
+    const nav = this.element?.querySelector('.ncm-admin-tabs--grouped');
+    this._tabFoldObs?.disconnect();
+    if (!nav) return;
+    const fold = () => {
+      const tabs = [...nav.querySelectorAll('.ncm-admin-tab')];
+      const openGroup = nav.querySelector('.ncm-admin-tab--active')?.closest('[data-tab-group]');
+      nav.querySelectorAll('[data-tab-group]').forEach(g => g.classList.toggle('is-open', g === openGroup));
+      tabs.forEach(t => t.classList.remove('is-fold'));
+      const over = () => nav.scrollWidth > nav.clientWidth + 1;
+      if (over()) tabs.filter(t => t.closest('[data-tab-group]') !== openGroup).forEach(t => t.classList.add('is-fold'));
+      if (over()) tabs.filter(t => !t.classList.contains('ncm-admin-tab--active')).forEach(t => t.classList.add('is-fold'));
+    };
+    fold();
+    if (typeof ResizeObserver !== 'undefined') {
+      this._tabFoldObs = new ResizeObserver(() => fold());
+      this._tabFoldObs.observe(nav);
+    }
+  }
+
+  /**
+   * Wrap every email address printed in the tab content in `<span class="ncm-addr">`
+   * so it reads as an address, not as more of the same text (the colour hierarchy,
+   * 2026-10-27). One pass over text nodes; inputs, editable areas and spans already
+   * tagged are skipped, so it is safe on every render.
+   * @private
+   */
+  _tagAddresses() {
+    const root = this.element?.querySelector('.ncm-admin-content');
+    if (!root || typeof document === 'undefined') return;
+    const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)*/g;
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => {
+        const p = n.parentElement;
+        if (!p || !n.nodeValue.includes('@')) return NodeFilter.FILTER_REJECT;
+        if (p.closest('input, textarea, select, option, script, style, [contenteditable], .ncm-addr')) return NodeFilter.FILTER_REJECT;
+        EMAIL.lastIndex = 0;
+        return EMAIL.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      },
+    });
+    const hits = [];
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) hits.push(n);
+    for (const t of hits) {
+      const frag = document.createDocumentFragment();
+      let last = 0; const s = t.nodeValue;
+      EMAIL.lastIndex = 0;
+      for (let m = EMAIL.exec(s); m; m = EMAIL.exec(s)) {
+        if (m.index > last) frag.append(s.slice(last, m.index));
+        const span = document.createElement('span'); span.className = 'ncm-addr'; span.textContent = m[0];
+        frag.append(span); last = m.index + m[0].length;
+      }
+      if (last < s.length) frag.append(s.slice(last));
+      t.replaceWith(frag);
+    }
   }
 
   /**
@@ -759,9 +911,9 @@ export class AdminPanelApp extends BaseApplication {
     const key = event.key;
     const tab = this._activeTab;
 
-    // ── Tab switching: 1–6 ──
-    const tabMap = { '1': 'overview', '2': 'messages', '3': 'contacts', '4': 'networks', '5': 'shards', '6': 'terminals', '7': 'spam', '8': 'tools' };
-    if (tabMap[key]) {
+    // ── Tab switching: 1–9, in the grouped bar's order (Overview · Comms · Net · World · Tools) ──
+    const tabMap = AdminPanelApp.TAB_KEYS;
+    if (tabMap[key] && !this.isPopout) {
       event.preventDefault();
       if (tab !== tabMap[key]) {
         const content = this.element?.querySelector('.ncm-admin-content');
@@ -853,10 +1005,27 @@ export class AdminPanelApp extends BaseApplication {
       const key = String(setting?.key || '');
       if (!key.startsWith(`${MODULE_ID}.`)) return;
       const leaf = key.slice(MODULE_ID.length + 1);
+      // The GAME CLOCK being set / advanced / re-provided (2026-10-28, dev: "is anything that uses live time
+      // live?") — every tab prints game-time ages, countdowns and the clock, so any of them re-renders.
+      if (['manualTime', 'disguisedBaseTime', 'disguisedAnchor', 'timeProvider'].includes(leaf)) return this._onGameClock(true);
       if (!['traceLog', 'traceHeat', 'traceCountdowns', 'recycleBin'].includes(leaf)) return;
       if (this._activeTab === 'security') this._debouncedRender();
     };
     Hooks.on('updateSetting', this._securitySettingHook);
+    // World time (the Foundry clock + Simple Calendar) advancing: same reason. SC's own hook fires on a
+    // calendar change even when Foundry's world time is untouched (its "date-time-change" event name).
+    this._worldTimeHook = () => this._onGameClock(false);
+    Hooks.on('updateWorldTime', this._worldTimeHook);
+    Hooks.on('simple-calendar-date-time-change', this._worldTimeHook);
+    // Scenes changing under the Networks tab: a new scene's thumbnail is generated a moment AFTER
+    // it is created (tester, 2026-10-29: "a newly added scene doesn't update its picture"), and a
+    // rename / folder move / delete should show too. Only while Networks is on screen.
+    this._sceneHook = (doc, change) => {
+      if (this._activeTab !== 'networks') return;
+      if (change && typeof change === 'object' && !('thumb' in change || 'name' in change || 'folder' in change || 'navigation' in change || 'flags' in change)) return;
+      this._debouncedRender();
+    };
+    for (const h of ['createScene', 'updateScene', 'deleteScene']) Hooks.on(h, this._sceneHook);
 
     // Messages — with overview activity logging
     this.subscribe(EVENTS.MESSAGE_SENT, (data) => {
@@ -887,6 +1056,8 @@ export class AdminPanelApp extends BaseApplication {
     // Contacts — with overview activity logging
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this._refreshIfTab('contacts'));
     this.subscribe(EVENTS.CONTACT_BURNED, () => this._refreshIfTab('contacts'));
+    this.subscribe('roles:updated', () => this._refreshIfTab('contacts'));                       // Role Manager edits recolour / rename tags live
+    this.subscribe('contacts:masterUpdated', () => this._refreshIfTab('contacts'));
     this.subscribe(EVENTS.CONTACT_SHARED, (data) => {
       const contactName = data?.contactName || 'Unknown';
       const targetName = data?.targetActorName || game.actors.get(data?.targetActorId)?.name || 'Unknown';
@@ -899,6 +1070,8 @@ export class AdminPanelApp extends BaseApplication {
 
     // Networks — with overview activity logging
     this.subscribe(EVENTS.NETWORK_CHANGED, (data) => {
+      // a node changed (utils/networkNodes.js) — not a switch: refresh, never log "switched to Unknown"
+      if (data?.type === 'nodes') return this._refreshIfTab('networks', 'overview');
       const netName = data?.networkName || data?.networkId || 'Unknown';
       this.tabs.overview.logActivity('net', 'wifi',
         `Network switched to <span class="ncm-ov-hl--green">${netName}</span>`,
@@ -997,6 +1170,52 @@ export class AdminPanelApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
   //  Action Handlers — Tab Navigation
   // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Generic per-tab action: the tab named by data-owner (on the target or an
+   * ancestor) handles data-op in its onAct(op, event, target).
+   */
+  static _onTabAct(event, target) {
+    const owner = target.dataset.owner || target.closest('[data-owner]')?.dataset.owner;
+    const op = target.dataset.op;
+    const tab = owner && this.tabs[owner];
+    if (!tab || typeof tab.onAct !== 'function') { log.warn(`Admin tabAct: no handler for ${owner}:${op}`); return; }
+    return tab.onAct(op, event, target);
+  }
+
+  /** Open a tab in its own larger window (the redesign's Pop out). */
+  static async _openToTab(event, target) {
+    const tab = target.dataset.tab || target.closest('[data-tab]')?.dataset.tab || this._activeTab;
+    return AdminPanelApp.openTabWindow(tab, { select: target.dataset.select });
+  }
+
+  /** From a popped-out window: close it and bring the panel back on that tab. */
+  static async _onDockTab() {
+    const tab = this._activeTab;
+    await this.close();
+    const panel = await game.nightcity?.openAdmin?.();
+    if (panel) { panel._activeTab = tab; panel.render(true); }
+  }
+
+  /**
+   * Open (or focus) the popped-out window for one tab.
+   * @param {string} tab — tab key
+   * @param {object} [opts] — { select }: handed to the tab's openTo(select) when it has one
+   * @returns {Promise<AdminPanelApp>}
+   */
+  static async openTabWindow(tab, opts = {}) {
+    const { AdminTabWindow } = await import('./AdminTabWindow.js');
+    const id = `ncm-admin-pop-${tab}`;
+    let win = foundry.applications.instances?.get?.(id);
+    if (!win) win = new AdminTabWindow({ id, popTab: tab });
+    if (opts.select && typeof win.tabs[tab]?.openTo === 'function') win.tabs[tab].openTo(opts.select);
+    await win.render(true);
+    win.bringToFront?.();
+    return win;
+  }
+
+  /** True on a popped-out single-tab window (AdminTabWindow). */
+  get isPopout() { return false; }
 
   static _onSwitchTab(event, target) {
     const tab = target.closest('[data-tab]')?.dataset.tab;
@@ -1101,36 +1320,9 @@ export class AdminPanelApp extends BaseApplication {
   //  Action Handlers — Networks (delegated to NetworksTab)
   // ═══════════════════════════════════════════════════════════
 
-  static async _onToggleNetwork(event, target) { return this.tabs.networks.onToggle(event, target); }
+  // Everything else on the tab is tabAct → NetworksTab.onAct (2026-10-27 redesign).
   static _onOpenNetworkManager(event, target) { this.tabs.networks.onOpenManager(event, target); }
-  static _onEditNetworkInManager(event, target) { this.tabs.networks.onEditInManager(event, target); }
-  static _onOpenNetworkManagerLogs(event, target) { this.tabs.networks.onOpenManagerLogs(event, target); }
   static _onCreateNetwork(event, target) { this.tabs.networks.onCreate(event, target); }
-  static async _onDeleteNetwork(event, target) { return this.tabs.networks.onDelete(event, target); }
-  static _onToggleNetworkGroup(event, target) { this.tabs.networks.onToggleGroup(event, target); }
-  static async _onToggleSceneDeadZone(event, target) { return this.tabs.networks.onToggleSceneDeadZone(event, target); }
-  static _onToggleSceneHideImported(event, target) { this.tabs.networks.onToggleSceneHideImported(event, target); }
-  static _onScenePagePrev(event, target) { this.tabs.networks.onScenePagePrev(event, target); }
-  static _onScenePageNext(event, target) { this.tabs.networks.onScenePageNext(event, target); }
-  static _onSwitchNetworkSubView(event, target) { this.tabs.networks.onSwitchSubView(event, target); }
-  static _onToggleCardLog(event, target) { this.tabs.networks.onToggleCardLog(event, target); }
-  static _onDeleteLogEntry(event, target) { this.tabs.networks.onDeleteLogEntry(event, target); }
-  static _onEditLogEntry(event, target) { this.tabs.networks.onEditLogEntry(event, target); }
-  static _onOpenLogReference(event, target) { this.tabs.networks.onOpenLogReference(event, target); }
-  static _onFilterLogType(event, target) { this.tabs.networks.onFilterLogType(event, target); }
-  static _onToggleAddLogForm() { this.tabs.networks.onToggleAddLogForm(); }
-  static _onAddManualLogEntry(event, target) { this.tabs.networks.onAddManualLogEntry(event, target); }
-  static _onExportNetworkLogs() { this.tabs.networks.onExportLogs(); }
-  static _onExportFormattedNetworkLogs() { this.tabs.networks.onExportFormattedLogs(); }
-  static _onImportNetworkLogs() { this.tabs.networks.onImportLogs(); }
-  static _onClearNetworkLogs() { this.tabs.networks.onClearLogs(); }
-  static _onResetNetworkAuth(event, target) { this.tabs.networks.onResetAuth(event, target); }
-  static async _onSendBroadcast(event, target) { return this.tabs.networks.onSendBroadcast(event, target); }
-  static _onScrollMixerLeft(event, target) { this.tabs.networks.onScrollMixerLeft(event, target); }
-  static _onScrollMixerRight(event, target) { this.tabs.networks.onScrollMixerRight(event, target); }
-  static _onCycleNetAuthFilter() { this.tabs.networks.onCycleAuthFilter(); }
-  static _onCycleNetStatusFilter() { this.tabs.networks.onCycleStatusFilter(); }
-  static _onCycleNetGroupFilter() { this.tabs.networks.onCycleGroupFilter(); }
   // ═══════════════════════════════════════════════════════════
   //  Action Handlers — Data Shards (delegated to ShardsTab)
   // ═══════════════════════════════════════════════════════════
@@ -1171,6 +1363,8 @@ export class AdminPanelApp extends BaseApplication {
   static _onSecurityGateAddItem(event, target) { this.tabs.security.onGateAddItem(event, target); }
   static _onSecurityGateAddRole(event, target) { this.tabs.security.onGateAddRole(event, target); }
   static _onSecurityGateRemoveItem(event, target) { this.tabs.security.onGateRemoveItem(event, target); }
+  static _onSecurityGateAddSkill(event, target) { this.tabs.security.onGateAddSkill(event, target); }
+  static _onSecurityGateRemoveSkill(event, target) { this.tabs.security.onGateRemoveSkill(event, target); }
   static _onSecurityHeatPage(event, target) { this.tabs.security.onHeatPage(event, target); }
   static _onSecurityPlantPage(event, target) { this.tabs.security.onPlantPage(event, target); }
   static _onSecurityBinPage(event, target) { this.tabs.security.onBinPage(event, target); }

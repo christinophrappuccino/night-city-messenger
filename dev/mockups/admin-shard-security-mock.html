@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Shard security chain</title>
+<!--
+  Admin → Shards → detail → Security. Same function as today (click a layer: unlock
+  through it / relock from it, for everyone), two new looks.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-shard-security-mock.html
+  ?t=clean-dark|clean-light|high-contrast
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #ddd; font: 700 14px sans-serif; margin: 22px 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px sans-serif; margin: 0 0 10px; max-width: 980px; }
+  .mk-row { display: flex; gap: 18px; flex-wrap: wrap; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win { width: 480px; }
+  .mk-cap { color: #9aa; font: 600 11px sans-serif; margin: 0 0 5px; text-transform: uppercase; letter-spacing: .06em; }
+  .mk-det { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; }
+
+  /* ═══ shared bits ═══ */
+  .ncm-admin-panel .ncm-shsec__sum { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-shsec__sum b { color: var(--ncm-text-heading); font-weight: 700; }
+  .ncm-admin-panel .ncm-shsec__meter { display: flex; gap: 3px; margin-left: auto; }
+  .ncm-admin-panel .ncm-shsec__meter i { width: 18px; height: 5px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-secret) 35%, transparent); }
+  .ncm-admin-panel .ncm-shsec__meter i.on { background: var(--ncm-good); }
+  .ncm-admin-panel .ncm-shsec__meter i.ice { background: color-mix(in srgb, var(--ncm-bad) 55%, transparent); }
+
+  /* ═══ A — THE BREACH PATH (a stepper from the outside in) ═══ */
+  .ncm-admin-panel .ncm-shpath { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: start; padding: 4px 0 2px; }
+  .ncm-admin-panel .ncm-shpath__node { --nc: var(--ncm-secret); position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; padding: 0 2px; text-align: center; }
+  .ncm-admin-panel .ncm-shpath__node::before { /* the line to the next node */
+    content: ''; position: absolute; top: 19px; left: 50%; width: 100%; height: 2px; background: color-mix(in srgb, var(--ncm-border-active) 80%, transparent); z-index: 0; }
+  .ncm-admin-panel .ncm-shpath__node:last-child::before { display: none; }
+  .ncm-admin-panel .ncm-shpath__node.is-open::before { background: var(--ncm-good); }
+  .ncm-admin-panel .ncm-shpath__dot { position: relative; z-index: 1; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%;
+    border: 2px solid var(--nc); background: color-mix(in srgb, var(--nc) 16%, var(--ncm-bg-pane-alt, var(--ncm-bg-base))); color: var(--nc); font-size: 15px;
+    transition: transform .15s, box-shadow .15s; }
+  .ncm-admin-panel .ncm-shpath__dot .st { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 9px; background: var(--nc); color: var(--ncm-text-inverse, #0b0d12); border: 2px solid var(--ncm-bg-pane-alt, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-shpath__node.is-open { --nc: var(--ncm-good); }
+  .ncm-admin-panel .ncm-shpath__node.is-ice { --nc: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-shpath__node.is-ice:not(.is-open) .ncm-shpath__dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ncm-bad) 18%, transparent); }
+  .ncm-admin-panel .ncm-shpath__node.is-next .ncm-shpath__dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ncm-attn) 25%, transparent); border-color: var(--ncm-attn); }
+  .ncm-admin-panel .ncm-shpath__node:hover .ncm-shpath__dot { transform: translateY(-2px); box-shadow: 0 0 0 4px color-mix(in srgb, var(--nc) 28%, transparent); }
+  .ncm-admin-panel .ncm-shpath__nm { font: 700 12px var(--ncm-font-display); letter-spacing: .03em; color: var(--ncm-text-heading); text-transform: uppercase; }
+  .ncm-admin-panel .ncm-shpath__sub { font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); min-height: 14px; }
+  .ncm-admin-panel .ncm-shpath__node.is-ice .ncm-shpath__sub { color: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-shpath__act { font: 600 10.5px var(--ncm-font-body); color: var(--ncm-act); opacity: 0; transition: opacity .15s; }
+  .ncm-admin-panel .ncm-shpath__node:hover .ncm-shpath__act { opacity: 1; }
+  .ncm-admin-panel .ncm-shpath__node.is-goal { cursor: default; --nc: var(--ncm-text-hint); }
+  .ncm-admin-panel .ncm-shpath__node.is-goal.is-reached { --nc: var(--ncm-good); }
+  .ncm-admin-panel .ncm-shpath__node.is-goal .ncm-shpath__dot { border-style: dashed; }
+  .ncm-admin-panel .ncm-shpath__node.is-goal.is-reached .ncm-shpath__dot { border-style: solid; }
+
+  /* ═══ B — THE DOORS (stacked, one row per layer, a rail down the side) ═══ */
+  .ncm-admin-panel .ncm-shdoors { position: relative; display: flex; flex-direction: column; gap: 5px; padding-left: 16px; }
+  .ncm-admin-panel .ncm-shdoors::before { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; background: var(--ncm-border-active); }
+  .ncm-admin-panel .ncm-shdoor { --nc: var(--ncm-secret); position: relative; display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 10px; align-items: center;
+    padding: 7px 10px 7px 8px; border: 1px solid color-mix(in srgb, var(--nc) 45%, var(--ncm-border)); border-radius: 2px;
+    background: color-mix(in srgb, var(--nc) 8%, var(--ncm-bg-pane)); cursor: pointer; }
+  .ncm-admin-panel .ncm-shdoor::before { content: ''; position: absolute; left: -15px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%; background: var(--nc); box-shadow: 0 0 0 3px var(--ncm-bg-pane-alt, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-shdoor.is-open { --nc: var(--ncm-good); }
+  .ncm-admin-panel .ncm-shdoor.is-ice { --nc: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-shdoor:hover { background: color-mix(in srgb, var(--nc) 16%, var(--ncm-bg-pane)); }
+  .ncm-admin-panel .ncm-shdoor__ic { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 2px; background: color-mix(in srgb, var(--nc) 20%, transparent); color: var(--nc); font-size: 13px; }
+  .ncm-admin-panel .ncm-shdoor__nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); display: flex; gap: 7px; align-items: center; }
+  .ncm-admin-panel .ncm-shdoor__nm .ncm-tagp { font-size: 10.5px !important; line-height: 15px; padding: 0 5px !important; }
+  .ncm-admin-panel .ncm-shdoor__sub { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-shdoor__btn { font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-act);
+    border: 1px solid var(--ncm-border-active); border-radius: 2px; padding: 4px 8px; opacity: .55; }
+  .ncm-admin-panel .ncm-shdoor:hover .ncm-shdoor__btn { opacity: 1; border-color: var(--ncm-act); }
+  .ncm-admin-panel .ncm-shdoor--goal { --nc: var(--ncm-text-hint); cursor: default; border-style: dashed; }
+  .ncm-admin-panel .ncm-shdoor--goal.is-reached { --nc: var(--ncm-good); border-style: solid; }
+</style>
+</head>
+<body>
+<p class="mk-h">TODAY</p>
+<div class="mk-row" data-slot="today"></div>
+<p class="mk-h">A — THE BREACH PATH</p>
+<p class="mk-p">The layers as stops on a line, outside in, ending at the contents. The line turns green as far as players have got; the next lock they face has an amber ring; ICE is red with a halo. Hover a stop to see what clicking does. A meter in the summary counts layers open.</p>
+<div class="mk-row" data-slot="a"></div>
+<p class="mk-h">B — THE DOORS</p>
+<p class="mk-p">The same layers as a stack of doors on a rail, each with its detail written out and the action as a button. Takes more height, reads more like a sentence, and has room to say what each lock is (which network, which key item, the ICE's DV).</p>
+<div class="mk-row" data-slot="b"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const CASES = [
+  { cap: 'Nothing opened yet', fails: 0, layers: [
+    { key: 'network', name: 'Network', sub: 'Arasaka CorpNet', icon: 'fa-wifi', open: false },
+    { key: 'keyitem', name: 'Key item', sub: 'Arasaka keycard', icon: 'fa-key', open: false },
+    { key: 'login', name: 'Login', sub: 'password', icon: 'fa-user-lock', open: false },
+    { key: 'encryption', name: 'Encryption', sub: 'DV 15', icon: 'fa-lock', open: false }] },
+  { cap: 'Players got through two', fails: 2, opener: 'V 5m ago', layers: [
+    { key: 'network', name: 'Network', sub: 'CitiNet', icon: 'fa-wifi', open: true },
+    { key: 'login', name: 'Login', sub: 'password', icon: 'fa-user-lock', open: true },
+    { key: 'encryption', name: 'Black ICE', sub: 'DV 20', icon: 'fa-skull', open: false, ice: true }] },
+  { cap: 'Fully breached', fails: 0, opener: 'Rache 1h ago', layers: [
+    { key: 'login', name: 'Login', sub: 'password', icon: 'fa-user-lock', open: true },
+    { key: 'encryption', name: 'Encryption', sub: 'DV 18', icon: 'fa-lock', open: true }] },
+];
+const frame = (cap, inner) => `<div><p class="mk-cap">${cap}</p><div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}"><div class="ncm-admin-panel"><div class="ncm-sh2"><div class="mk-det ncm-sh2-det">${inner}</div></div></div></div></div>`;
+const head = (c) => `<div class="ncm-sh2-sec__k"><i class="fas fa-lock"></i>Security${c.fails ? `<span class="ncm-sh2-sec__r ncm-sh2-sec__r--bad">${c.fails} failed attempts</span>` : ''}</div>`;
+const summary = (c) => {
+  const n = c.layers.filter((l) => l.open).length, all = n === c.layers.length;
+  const next = c.layers.find((l) => !l.open);
+  return `<div class="ncm-shsec__sum">${all ? '<b>Breached</b> — players can read everything' : n ? `<b>${n} of ${c.layers.length}</b> open — next: ${next.name}` : `<b>${c.layers.length} layers</b>, none open`}
+    <span class="ncm-shsec__meter">${c.layers.map((l) => `<i class="${l.open ? 'on' : l.ice ? 'ice' : ''}"></i>`).join('')}</span></div>`;
+};
+const hint = (c) => `<div class="ncm-sh2-hint">Click a layer to lock or unlock it for everyone.${c.opener ? ` Last opened by ${c.opener}.` : ''}</div>`;
+
+/* TODAY: the shipped markup */
+document.querySelector('[data-slot="today"]').innerHTML = CASES.map((c) => frame(c.cap, `<div class="ncm-sh2-sec">${head(c)}<div class="ncm-sh2-chain">${c.layers.map((l, i) =>
+  `<span class="ncm-sh2-layer ncm-sh2-layer--${l.open ? 'done' : l.ice ? 'ice' : 'lock'}"><i class="fas ${l.open ? 'fa-check' : l.ice ? 'fa-skull' : 'fa-lock'}"></i>${l.name} <small>${l.sub}</small></span>${i < c.layers.length - 1 ? '<i class="fas fa-chevron-right ncm-sh2-chain__arr"></i>' : ''}`).join('')}</div>${hint(c)}</div>`)).join('');
+
+/* A */
+document.querySelector('[data-slot="a"]').innerHTML = CASES.map((c) => {
+  const nextIdx = c.layers.findIndex((l) => !l.open);
+  const all = nextIdx < 0;
+  const nodes = c.layers.map((l, i) => `<div class="ncm-shpath__node ${l.open ? 'is-open' : ''} ${l.ice ? 'is-ice' : ''} ${i === nextIdx && !l.ice ? 'is-next' : ''}" data-tooltip="${l.open ? 'Relock from here' : 'Unlock through here'}">
+      <span class="ncm-shpath__dot"><i class="fas ${l.icon}"></i><span class="st"><i class="fas ${l.open ? 'fa-check' : l.ice ? 'fa-bolt' : 'fa-lock'}"></i></span></span>
+      <span class="ncm-shpath__nm">${l.name}</span><span class="ncm-shpath__sub">${l.sub}</span>
+      <span class="ncm-shpath__act">${l.open ? 'relock' : 'unlock'}</span></div>`).join('')
+    + `<div class="ncm-shpath__node is-goal ${all ? 'is-reached' : ''}"><span class="ncm-shpath__dot"><i class="fas ${all ? 'fa-folder-open' : 'fa-folder'}"></i></span><span class="ncm-shpath__nm">Contents</span><span class="ncm-shpath__sub">${all ? 'readable' : 'sealed'}</span></div>`;
+  return frame(c.cap, `<div class="ncm-sh2-sec">${head(c)}${summary(c)}<div class="ncm-shpath">${nodes}</div>${hint(c)}</div>`);
+}).join('');
+
+/* B */
+document.querySelector('[data-slot="b"]').innerHTML = CASES.map((c) => {
+  const all = c.layers.every((l) => l.open);
+  const nextIdx = c.layers.findIndex((l) => !l.open);
+  const doors = c.layers.map((l, i) => `<div class="ncm-shdoor ${l.open ? 'is-open' : ''} ${l.ice ? 'is-ice' : ''}">
+      <span class="ncm-shdoor__ic"><i class="fas ${l.icon}"></i></span>
+      <div><div class="ncm-shdoor__nm">${l.name}${l.open ? '<span class="ncm-tagp is-good"><i class="fas fa-check"></i>open</span>' : l.ice ? '<span class="ncm-tagp is-bad"><i class="fas fa-bolt"></i>bites</span>' : i === nextIdx ? '<span class="ncm-tagp is-attn">next</span>' : '<span class="ncm-tagp is-secret"><i class="fas fa-lock"></i>locked</span>'}</div>
+        <div class="ncm-shdoor__sub">${l.key === 'network' ? `only reachable on ${l.sub}` : l.key === 'keyitem' ? `needs ${l.sub}` : l.key === 'login' ? `account login (${l.sub})` : l.ice ? `${l.sub} — a failed breach hits the runner` : `cipher at ${l.sub}`}</div></div>
+      <span class="ncm-shdoor__btn">${l.open ? 'Relock' : 'Unlock'}</span></div>`).join('')
+    + `<div class="ncm-shdoor ncm-shdoor--goal ${all ? 'is-reached' : ''}"><span class="ncm-shdoor__ic"><i class="fas ${all ? 'fa-folder-open' : 'fa-folder'}"></i></span><div><div class="ncm-shdoor__nm">Contents</div><div class="ncm-shdoor__sub">${all ? 'players can read every entry' : 'sealed until every door is open'}</div></div><span></span></div>`;
+  return frame(c.cap, `<div class="ncm-sh2-sec">${head(c)}${summary(c)}<div class="ncm-shdoors">${doors}</div>${hint(c)}</div>`);
+}).join('');
+</script>
+</body>
+</html>

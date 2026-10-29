@@ -145,8 +145,8 @@ const base = fs.readFileSync(`${ROOT}/scripts/ui/BaseApplication.js`, 'utf8');
 ok(/static ADMIN_THEMED = false;/.test(base), 'BaseApplication defaults ADMIN_THEMED=false');
 ok(/if \(this\.constructor\.ADMIN_THEMED\) this\._applyAdminTheme\(\);/.test(base), 'BaseApplication._onRender applies it after atmosphere');
 const flagged = [
-  'ui/AdminPanel/AdminPanelApp.js', 'ui/GMContactManager/GMContactManagerApp.js', 'ui/GMContactManager/ActorImportPickerApp.js',
-  'ui/NetworkManagement/NetworkManagementApp.js', 'ui/NetworkManagement/CreateNetworkDialog.js', 'ui/Terminal/TerminalConfigApp.js',
+  'ui/AdminPanel/AdminPanelApp.js', 'ui/GMContactManager/ActorImportPickerApp.js',   // the GM Contact Manager window lives in Admin → Contacts now
+  'ui/NetworkManagement/CreateNetworkDialog.js', 'ui/Terminal/TerminalConfigApp.js',
   'ui/ItemInbox/ItemInboxConfig.js', 'ui/ItemInbox/DataShardComposer.js', 'ui/MalwareWorkshop/MalwareWorkshopApp.js',
   'ui/ContactManager/ContactShareDialog.js',
 ];

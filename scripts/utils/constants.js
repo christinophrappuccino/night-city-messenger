@@ -100,6 +100,9 @@ export const EVENTS = Object.freeze({
 export const SOCKET_OPS = Object.freeze({
   MESSAGE_RELAY: 'message:relay',
   MESSAGE_DELIVERED: 'message:delivered',
+  // Admin → Messages → Outbox: a player's held mail reported to the GM, and the GM's deliver/cancel back.
+  MESSAGE_QUEUE_SYNC: 'message:queueSync',
+  MESSAGE_QUEUE_CMD: 'message:queueCmd',
   MESSAGE_NOTIFY: 'message:notify',
   MESSAGE_STATUS_UPDATE: 'message:statusUpdate',
   SCHEDULE_SYNC: 'schedule:sync',
@@ -172,6 +175,18 @@ export const SOCKET_OPS = Object.freeze({
   // for events applied on another client. { userIds[], kind, data } — the
   // receiving client renders via NotificationService.
   SECURITY_NOTIFY: 'security:notify',
+  // Player→GM: this client's attempt / lockout state on a compound key (a
+  // terminal account `termId::acctId`) — SecurityService state is client-local,
+  // so the GM's Terminals tab never saw a player's failed tries or an EARNED
+  // lockout. { actorId, targetId, attempts, maxAttempts, lockoutUntil, lockoutDuration, forced, reason }.
+  SECURITY_REPORT: 'security:report',
+  // GM→everyone: clear an actor's tries + lockout on these keys (Admin →
+  // Terminals → Clear lockout / Reset tries) so the player's own checks unblock.
+  // { actorId, targets[] }.
+  SECURITY_CLEAR: 'security:clear',
+  // GM→everyone: end an actor's live terminal session (Admin → Terminals →
+  // Log out) — the open viewer drops to its login screen. { actorId, targets[], message }.
+  TERMINAL_KICK: 'terminal:kick',
   // Player→GM: a shard-integrity write. The integrity number lives on the item
   // and entry damage on the GM-owned shard journal, so a player's failed breach,
   // reconstruct, repair or salvage relays here. { op, itemUuid, ... } — ops:
@@ -184,6 +199,9 @@ export const SOCKET_OPS = Object.freeze({
   // message attachment — relays here instead of throwing on item.update.
   // { op, itemUuid, userId, ... } — ops: 'decrypt' | 'session' | 'decryptPage' | 'destroy'.
   SHARD_STATE_REQUEST: 'shard:stateRequest',
+  // Player→GM: a network-node write (switch off/on, jam, a log line). Nodes live in a world setting, so a
+  // player's action relays here. { op, nodeId, userId, ... } — ops: 'state' | 'log'.
+  NETWORK_NODE_REQUEST: 'network:nodeRequest',
 });
 
 // ─── Netrunning binding (design §5) ───
@@ -1050,7 +1068,6 @@ export const TEMPLATES = Object.freeze({
   IDENTITY_DRAWER: `${T}/message-viewer/partials/identity-drawer.hbs`,
   MESSAGE_COMPOSER: `${T}/message-composer/message-composer.hbs`,
   CONTACT_MANAGER: `${T}/contact-manager/contact-manager.hbs`,
-  GM_CONTACT_MANAGER: `${T}/gm-contact-manager/gm-contact-manager.hbs`,
   ACTOR_IMPORT_PICKER: `${T}/gm-contact-manager/actor-import-picker.hbs`,
   ITEM_INBOX: `${T}/item-inbox/item-inbox.hbs`,
   SECURITY_OVERLAY_NETWORK: `${T}/item-inbox/security-overlay-network.hbs`,
@@ -1070,7 +1087,7 @@ export const TEMPLATES = Object.freeze({
   ITEM_INBOX_CONFIG: `${T}/item-inbox/item-inbox-config.hbs`,
   DATA_SHARD_COMPOSER: `${T}/item-inbox/data-shard-composer.hbs`,
   ADMIN_SHARD_CARD: `${T}/admin-panel/partials/shard-card.hbs`,
-  NETWORK_MANAGEMENT: `${T}/network-management/network-management.hbs`,
+  ADMIN_CONTACTS_MAP: `${T}/admin-panel/partials/contacts-map.hbs`,   // Admin → Contacts → Who knows whom → Map (contactsMap.js)
   ADMIN_PANEL: `${T}/admin-panel/admin-panel.hbs`,
   ADMIN_TAB_OVERVIEW: `${T}/admin-panel/tab-overview.hbs`,
   ADMIN_TAB_MESSAGES: `${T}/admin-panel/tab-messages.hbs`,
@@ -1078,14 +1095,17 @@ export const TEMPLATES = Object.freeze({
   ADMIN_TAB_NETWORKS: `${T}/admin-panel/tab-networks.hbs`,
   ADMIN_TAB_SHARDS: `${T}/admin-panel/tab-shards.hbs`,
   ADMIN_TAB_TERMINALS: `${T}/admin-panel/tab-terminals.hbs`,
+  ADMIN_TAB_ACCESS: `${T}/admin-panel/tab-access.hbs`,
   ADMIN_TAB_SECURITY: `${T}/admin-panel/tab-security.hbs`,
   ADMIN_TAB_SPAM: `${T}/admin-panel/tab-spam.hbs`,
   ADMIN_TAB_TOOLS: `${T}/admin-panel/tab-tools.hbs`,
-  ADMIN_NETWORK_CARD: `${T}/admin-panel/partials/network-card.hbs`,
   THEME_CUSTOMIZER: `${T}/theme-customizer/theme-customizer.hbs`,
   NETWORK_AUTH_DIALOG: `${T}/dialogs/network-auth-dialog.hbs`,
   CREATE_NETWORK_DIALOG: `${T}/dialogs/create-network.hbs`,
   DEAD_ZONE_WARNING: `${T}/dialogs/dead-zone-warning.hbs`,
+  NODE_CONSOLE: `${T}/network-nodes/node-console.hbs`,
+  NODE_INSPECTOR: `${T}/network-nodes/node-inspector.hbs`,
+  SOUND_BOARD: `${T}/sounds/sound-board.hbs`,
   NETWORK_SELECTOR: `${T}/message-viewer/partials/network-selector.hbs`,
   PLAYER_EMAIL_SETUP: `${T}/dialogs/player-email-setup.hbs`,
   EMAIL_SETUP_FLOW: `${T}/dialogs/email-setup.hbs`,
@@ -1140,6 +1160,7 @@ export const TEMPLATES = Object.freeze({
   TERMINAL_CONFIG_ACCOUNT: `${T}/terminal/partials/config-account.hbs`,
   TERMINAL_CONFIG_CONTENT: `${T}/terminal/partials/config-content.hbs`,
   CRT_PANEL: `${T}/partials/crt-panel.hbs`,
+  CMV_OVERRIDE: `${T}/partials/countermeasure-override.hbs`,
   TERMINAL_MAILBOX_DETAIL: `${T}/terminal/mailbox/detail.hbs`,
   TERMINAL_MAILBOX_TREE: `${T}/terminal/mailbox/tree.hbs`,
   TERMINAL_MAILBOX_ROWS: `${T}/terminal/mailbox/rows.hbs`,
@@ -1561,7 +1582,8 @@ export const DEFAULTS = Object.freeze({
     logic: 'any',                      // combine the role/skill/gear checks: 'any' | 'all'
     roles: [],                         // allowed CPR role names (substring match), e.g. ['Netrunner']
     roleLogic: 'any',                  // 'any' of the listed roles | 'all'
-    skill: { name: '', min: 0 },       // required skill + min rank (name '' = not required)
+    skill: { name: '', min: 0 },       // LEGACY single skill — read only when `skills` is empty
+    skills: [],                        // [{name, min}] — ANY one at its own min rank qualifies
     itemGroups: [],                    // OR-of-AND gear groups: [['Cyberdeck','Interface Plug'],['Militech Falcon']]
                                        //   = (Cyberdeck AND Interface Plug) OR (Militech Falcon). Each item = {name,img?} or a name string.
     actors: [],                        // explicit actor-id allowlist (always pass)

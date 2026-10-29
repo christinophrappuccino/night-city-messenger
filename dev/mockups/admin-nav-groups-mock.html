@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Admin nav — groups</title>
+<!--
+  Admin panel top navigation, grouped (2026-10-29, dev-picked "clustered tab bar"): ONE row, still one click per
+  tab, tabs sit in labelled clusters — OVERVIEW · COMMS (Messages, Contacts, Spam, later Phone) · NET (Networks,
+  Security, later Browser) · WORLD (Terminals, Shards, Access points) · TOOLS. Sub-tabs inside a tab are unchanged.
+  When the row runs out of room the labels fold in a fixed order (measured, live — resize the frames):
+    1. every tab shows its label   2. tabs OUTSIDE the active group fold to icon + tooltip
+    3. tabs in the active group fold too, except the active tab   (the active tab always keeps its label)
+  Counts (unread, needs-you) stay on the icon when folded.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-nav-groups-mock.html  ?t=clean-light|high-contrast
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { margin: 26px 0 4px; color: #eee; font: 700 15px sans-serif; } .mk-h:first-child { margin-top: 0; }
+  .mk-p { margin: 0 0 10px; color: #aaa; font: 13px/1.5 sans-serif; max-width: 1100px; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .frame { border: 1px solid #555; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); resize: horizontal; overflow: hidden; min-width: 480px; }
+  .frame .body { height: 110px; padding: 10px 14px; color: var(--ncm-text-secondary); font: 12px var(--ncm-font-body); }
+  .frame .body .sub { display: flex; gap: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--ncm-border); font: 700 10.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .frame .body .sub b { color: var(--ncm-text-heading); box-shadow: 0 2px 0 var(--ncm-act); }
+
+  /* ═══ the grouped bar ═══ */
+  .gnav { display: flex; align-items: stretch; gap: 0; padding: 4px 6px 0; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); border-bottom: 1px solid var(--ncm-border); overflow: hidden; }
+  .gnav__g { display: flex; flex-direction: column; min-width: 0; flex: none; padding: 0 6px; border-left: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+  .gnav__g:first-child { border-left: 0; padding-left: 0; }
+  .gnav__cap { height: 13px; padding-left: 2px; font: 700 8.5px var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-hint, var(--ncm-text-secondary)); white-space: nowrap; }
+  .gnav__g.is-cur .gnav__cap { color: var(--ncm-act); }
+  .gnav__tabs { display: flex; gap: 2px; }
+  .gnav__t { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border: 0; border-radius: 2px 2px 0 0; background: transparent; cursor: pointer;
+    font: 700 11px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); white-space: nowrap; }
+  .gnav__t i { font-size: 12px; color: var(--ncm-text-secondary); }
+  .gnav__t:hover { color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-text-primary) 5%, transparent); }
+  .gnav__t.is-on { color: var(--ncm-text-heading); background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); box-shadow: inset 0 2px 0 var(--ncm-act); }
+  .gnav__t.is-on i { color: var(--ncm-act); }
+  .gnav__t .ct { min-width: 16px; height: 16px; padding: 0 4px; display: inline-grid; place-items: center; border-radius: 1px; font: 700 9.5px var(--ncm-font-mono); background: var(--ncm-attn); color: var(--ncm-text-inverse); }
+  .gnav__t .ct.bad { background: var(--ncm-bad); }
+  .gnav__t.is-soon { opacity: .45; }
+  .gnav__t.is-soon::after { content: 'soon'; position: absolute; top: 1px; right: 2px; font: 700 7.5px var(--ncm-font-display); letter-spacing: .06em; color: var(--ncm-text-secondary); }
+  /* folded = icon only, the count rides the icon */
+  .gnav__t.is-fold { padding: 0 9px; }
+  .gnav__t.is-fold .lb { display: none; }
+  .gnav__t.is-fold .ct { position: absolute; top: 2px; right: 1px; min-width: 13px; height: 13px; font-size: 8.5px; padding: 0 3px; }
+  .gnav__end { margin-left: auto; display: flex; align-items: flex-end; padding: 0 2px 8px 8px; color: var(--ncm-text-secondary); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="mk-h">1 · The panel today (820px) — 10 tabs once Access points joins WORLD</div>
+<div class="mk-p">Messages is open. Its group (COMMS) keeps its labels; the other groups show icons with a tooltip, and their counts stay on the icon. <b>Drag the frame's bottom-right corner to resize — the labels fold live.</b></div>
+<div class="ncm-app ncm-admin-panel mk-win frame" data-ncm-admin-theme="T" style="width:820px" data-set="now" data-active="messages"></div>
+
+<div class="mk-h">2 · Far future at 820px — Phone (COMMS) and Browser (NET) added, Terminals open</div>
+<div class="mk-p">Twelve tabs. Tabs outside WORLD fold to icons with tooltips; the WORLD cluster and the open tab keep their labels. Counts stay on the folded icons.</div>
+<div class="ncm-app ncm-admin-panel mk-win frame" data-ncm-admin-theme="T" style="width:820px" data-set="future" data-active="terminals"></div>
+
+<div class="mk-h">3 · Popped out (1120px) — the future set, Access points open (widen the frame past ~1300px and every label comes back)</div>
+<div class="ncm-app ncm-admin-panel mk-win frame" data-ncm-admin-theme="T" style="width:1120px" data-set="future" data-active="access"></div>
+
+<div class="mk-h">4 · Narrow (620px) — the last fold: only the open tab keeps its label</div>
+<div class="ncm-app ncm-admin-panel mk-win frame" data-ncm-admin-theme="T" style="width:620px" data-set="future" data-active="contacts"></div>
+
+<script>
+const T = new URLSearchParams(location.search).get('t') || 'clean-dark';
+const GROUPS = (future) => [
+  { key: 'home', cap: 'Overview', tabs: [{ k: 'overview', l: 'Overview', i: 'fa-chart-bar' }] },
+  { key: 'comms', cap: 'Comms', tabs: [{ k: 'messages', l: 'Messages', i: 'fa-envelope', ct: 4 }, { k: 'contacts', l: 'Contacts', i: 'fa-address-book' }, { k: 'spam', l: 'Spam', i: 'fa-envelopes-bulk' }, ...(future ? [{ k: 'phone', l: 'Phone', i: 'fa-mobile-screen', soon: true }] : [])] },
+  { key: 'net', cap: 'Net', tabs: [{ k: 'networks', l: 'Networks', i: 'fa-network-wired' }, { k: 'security', l: 'Security', i: 'fa-shield-halved', ct: 2, bad: true }, ...(future ? [{ k: 'browser', l: 'Browser', i: 'fa-globe', soon: true }] : [])] },
+  { key: 'world', cap: 'World', tabs: [{ k: 'terminals', l: 'Terminals', i: 'fa-terminal' }, { k: 'shards', l: 'Shards', i: 'fa-database' }, { k: 'access', l: 'Access points', i: 'fa-location-crosshairs' }] },
+  { key: 'tools', cap: 'Tools', tabs: [{ k: 'tools', l: 'Tools', i: 'fa-wrench' }] },
+];
+function build(frame) {
+  frame.dataset.ncmAdminTheme = T; frame.dataset.ncmScanlines = 'false';
+  const groups = GROUPS(frame.dataset.set === 'future');
+  const draw = () => {
+    const act = frame.dataset.active;
+    const curG = groups.find(g => g.tabs.some(t => t.k === act))?.key;
+    frame.innerHTML = `<nav class="gnav">${groups.map(g => `<div class="gnav__g ${g.key === curG ? 'is-cur' : ''}" data-g="${g.key}"><span class="gnav__cap">${g.cap === 'Overview' || g.cap === 'Tools' ? '&nbsp;' : g.cap}</span><div class="gnav__tabs">${g.tabs.map(t =>
+      `<button type="button" class="gnav__t ${t.k === act ? 'is-on' : ''} ${t.soon ? 'is-soon' : ''}" data-k="${t.k}" data-g="${g.key}" title="${t.l}${t.soon ? ' — coming later' : ''}"><i class="fas ${t.i}"></i><span class="lb">${t.l}</span>${t.ct ? `<span class="ct ${t.bad ? 'bad' : ''}">${t.ct}</span>` : ''}</button>`).join('')}</div></div>`).join('')}<span class="gnav__end" title="Keys: 1–9 switch tabs"><i class="fas fa-keyboard"></i></span></nav>
+      <div class="body"><div class="sub"><b>${(groups.flatMap(g => g.tabs).find(t => t.k === act) || {}).l}</b><span>sub-tab</span><span>sub-tab</span></div><p>(the tab, with its own sub-tabs, as now)</p></div>`;
+    fold();
+  };
+  const fold = () => {
+    const nav = frame.querySelector('.gnav');
+    const tabs = [...nav.querySelectorAll('.gnav__t')];
+    const curG = nav.querySelector('.gnav__g.is-cur')?.dataset.g;
+    tabs.forEach(t => t.classList.remove('is-fold'));
+    const over = () => nav.scrollWidth > nav.clientWidth + 1;
+    if (over()) tabs.filter(t => t.dataset.g !== curG).forEach(t => t.classList.add('is-fold'));
+    if (over()) tabs.filter(t => !t.classList.contains('is-on')).forEach(t => t.classList.add('is-fold'));
+  };
+  frame.addEventListener('click', (e) => { const b = e.target.closest('.gnav__t'); if (b && !b.classList.contains('is-soon')) { frame.dataset.active = b.dataset.k; draw(); } });
+  new ResizeObserver(fold).observe(frame);
+  draw();
+}
+document.querySelectorAll('.frame').forEach(build);
+</script>
+</body>
+</html>

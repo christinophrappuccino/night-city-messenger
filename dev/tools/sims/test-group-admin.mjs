@@ -60,7 +60,8 @@ globalThis.game = {
 globalThis.foundry = { utils: { deepClone: (o) => JSON.parse(JSON.stringify(o)), mergeObject: (a, b) => ({ ...a, ...b }), randomID: (() => { let n = 0; return () => `id${++n}`; })() } };
 globalThis.Hooks = { on: () => {}, once: () => {}, off: () => {} };
 globalThis.ui = { notifications: { info: () => {}, warn: () => {}, error: () => {} } };
-globalThis.document = { createElement: () => ({ _h: '', set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h; }, querySelectorAll: () => [] }) };
+globalThis.document = { createElement: () => ({ _h: '', set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h; }, querySelectorAll: () => [] }), addEventListener: () => {}, querySelectorAll: () => [] };
+globalThis.window = globalThis.window || { addEventListener: () => {} };   // scopePicker.js wires its listeners at import
 globalThis.Handlebars = { escapeExpression: (s) => String(s ?? '') };
 
 const { MessageService } = await import(pathToFileURL(`${ROOT}/scripts/services/MessageService.js`).href);
@@ -132,7 +133,7 @@ tab._npcInboxExpanded = new Set(); tab._npcInboxUnreadOnly = false; tab._npcInbo
   ok(!/for \(const pa of playerActors\) \{\s*try \{\s*\/\/ `to` is left/.test(mt), 'the old per-player broadcast loop is gone');
   ok(/_collapseFanout\(filtered\)/.test(mt), 'the feed runs the fan-out collapse after filtering, before pagination');
   const tpl = readFileSync(`${ROOT}/templates/admin-panel/tab-messages.hbs`, 'utf8');
-  ok(/this\.isGroupRow/.test(tpl) && /ncm-msg-feed-recip/.test(tpl) && /data-mode="gm"/.test(tpl), 'feed template renders the group row, its recipient list, and the Include GM-sent chip');
+  ok(/this\.isGroupRow/.test(tpl) && /ncm-msg-feed-recip/.test(tpl) && /data-op="includeGm"/.test(tpl), 'feed template renders the group row, its recipient list, and the Include-mail-I-sent chip (Needs a reply)');
   const tt = readFileSync(`${ROOT}/scripts/ui/AdminPanel/tabs/ToolsTab.js`, 'utf8');
   ok(/found\.groupMembers\.length/.test(tt) && /_pruneGroupMembers/.test(tt), 'Orphan Audit counts, lists and prunes dead group members');
 }

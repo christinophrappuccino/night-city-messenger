@@ -37,7 +37,8 @@ const famOf = (p) => FAM[p.family] || (p.effectType === 'plant' ? FAM.plant : FA
  * @param {HTMLElement} [opts.host] viewer element (theme source)
  * @returns {Promise<{program:object, accountId:string|null}|null>}
  */
-export function runUploadConsole({ programs = [], accounts = [], terminalName = 'the terminal', host = null } = {}) {
+export function runUploadConsole({ programs = [], accounts = [], terminalName = 'the terminal', host = null,
+  tag = 'UPLOAD', sub = null, goLabel = 'FORGE &amp; UPLOAD', delivery = true, outcomeFor = null, deliveryHint = 'where it lands · when it fires' } = {}) {
   return new Promise((resolve) => {
     if (!programs.length) {
       try { ui.notifications?.info?.('NCM | You are not carrying anything uploadable.'); } catch { /* no ui */ }
@@ -80,13 +81,13 @@ export function runUploadConsole({ programs = [], accounts = [], terminalName = 
         <span class="ncm-upcon__ck ncm-upcon__ck--tl"></span><span class="ncm-upcon__ck ncm-upcon__ck--tr"></span>
         <span class="ncm-upcon__ck ncm-upcon__ck--bl"></span><span class="ncm-upcon__ck ncm-upcon__ck--br"></span>
         <div class="ncm-upcon__hd">
-          <span class="ncm-upcon__tag"><i class="fas fa-upload"></i> UPLOAD</span>
-          <span class="ncm-upcon__sub">push a carried program onto ${esc(terminalName)}</span>
+          <span class="ncm-upcon__tag"><i class="fas fa-upload"></i> ${esc(tag)}</span>
+          <span class="ncm-upcon__sub">${esc(sub || `push a carried program onto ${terminalName}`)}</span>
         </div>
         <div class="ncm-upcon__list">${rows}</div>
         <div class="ncm-upcon__deliver">
-          <div class="ncm-upcon__dhd"><i class="fas fa-crosshairs"></i> DELIVERY<span class="ncm-upcon__dhint">where it lands · when it fires</span></div>
-          <div class="ncm-upcon__drow">
+          <div class="ncm-upcon__dhd"><i class="fas fa-crosshairs"></i> DELIVERY<span class="ncm-upcon__dhint">${esc(deliveryHint)}</span></div>
+          <div class="ncm-upcon__drow"${delivery ? '' : ' hidden style="display:none"'}>
             <span class="ncm-upcon__dlbl">TARGET</span>
             <select class="ncm-upcon__acct">${acctOpts}</select>
           </div>
@@ -104,7 +105,7 @@ export function runUploadConsole({ programs = [], accounts = [], terminalName = 
         </div>
         <div class="ncm-upcon__ft">
           <button type="button" class="ncm-upcon__cancel">CANCEL</button>
-          <button type="button" class="ncm-upcon__go" disabled><i class="fas fa-fingerprint"></i> FORGE &amp; UPLOAD</button>
+          <button type="button" class="ncm-upcon__go" disabled><i class="fas fa-fingerprint"></i> ${goLabel}</button>
         </div>
       </div>`;
 
@@ -127,6 +128,12 @@ export function runUploadConsole({ programs = [], accounts = [], terminalName = 
       }
       out.dataset.empty = '0';
       const prog = programs[selectedIdx];
+      if (typeof outcomeFor === 'function') {           // a caller with its own words (a network node)
+        const o = outcomeFor(prog) || {};
+        if (whatEl) whatEl.innerHTML = o.what || '';
+        if (whenEl) whenEl.innerHTML = o.when || '';
+        return;
+      }
       const acct = acctById(panel().querySelector('.ncm-upcon__acct')?.value || '');
       const who = acct ? esc(acct.label || acct.email || 'that account') : 'anyone';
       const isExec = famOf(prog).cls === 'exe';

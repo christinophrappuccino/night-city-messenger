@@ -31,14 +31,14 @@
     {
       "name": "ncm-macros-player",
       "label": "Night City Messenger — Player Tools",
-      "path": "packs/ncm-macros-player.db",
+      "path": "packs/ncm-macros-player",
       "type": "Macro",
       "ownership": { "PLAYER": "OBSERVER", "ASSISTANT": "OWNER" }
     },
     {
       "name": "ncm-macros-gm",
       "label": "Night City Messenger — GM Tools",
-      "path": "packs/ncm-macros-gm.db",
+      "path": "packs/ncm-macros-gm",
       "type": "Macro",
       "ownership": { "PLAYER": "NONE", "ASSISTANT": "OWNER" }
     }

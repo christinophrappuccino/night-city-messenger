@@ -614,6 +614,11 @@ export class DataShardService {
       showChat: true,
       context: `Breaching ICE: ${shardItem.name}`,
       flavor: `${config.encryptionType} // DV ${dc}`,
+      // An animated caller (`silent`, the breach sequence) posts the chat card at
+      // its own climax via result.postChat(); a caller with a window but no
+      // animation passes `reveal`; the macro path posts at once.
+      deferChat: !!options.silent && !options.reveal,
+      reveal: options.reveal ? { verdictSound: false, ...options.reveal } : null,
     });
 
     // ─── Resolve ICE info for UI display ───
@@ -629,11 +634,13 @@ export class DataShardService {
       const successResult = await this._handleHackSuccess(shardItem, actor, rollResult, isMessageHack, options.messageId, options.silent);
       successResult.iceInfo = iceInfo;
       successResult.encryptionType = config.encryptionType;
+      successResult.postChat = rollResult.postChat;
       return successResult;
     } else {
       const failResult = await this._handleHackFailure(shardItem, actor, rollResult, config, session, options.silent);
       if (!failResult.iceInfo) failResult.iceInfo = iceInfo;
       failResult.encryptionType = config.encryptionType;
+      failResult.postChat = rollResult.postChat;
       return failResult;
     }
   }

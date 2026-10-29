@@ -468,10 +468,10 @@ export class ToolsTab extends BaseTab {
     dialog.render(true);
   }
 
-  onOpenSoundSettings(event, target) {
-    // Sound settings live in the Theme Customizer's Effects panel (volume slider)
-    // — this is just a shortcut to that tab, not a separate surface.
-    game.nightcity?.openThemeCustomizer?.({ activeTab: 'effects' });
+  /** The Sound board: every NCM sound, where it plays, and the GM's own file for it (volume lives per player in Themes → Effects). */
+  async onOpenSoundSettings(event, target) {
+    const { SoundBoardApp } = await import('../../Sounds/SoundBoardApp.js');
+    SoundBoardApp.open();
   }
 
   /**

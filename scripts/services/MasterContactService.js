@@ -102,7 +102,33 @@ export class MasterContactService {
     for (const x of this._contacts) if (groupKeyOf(this._contacts, x) === key) x.primaryIdentity = x.id === contactId;
     await this._persistContacts();
     this.eventBus?.emit('contacts:masterUpdated', { action: 'update', contactId });
+    await this._syncActorEmail(c?.actorId);
     return { success: true };
+  }
+
+  /**
+   * Keep an NPC's registered address (the actor `email` flag) in step with its
+   * MAIN identity. The flag is what an actor-only send writes from, so a GM who
+   * moved an NPC to a new address — new main identity, old one kept as an alias —
+   * still sent from the old one (tester, 2026-10-27). Player characters are left
+   * alone: their address is the player's own Email Setup choice. Never throws.
+   * @param {string|null} actorId
+   */
+  async _syncActorEmail(actorId) {
+    try {
+      if (!actorId || !isGM()) return;
+      const actor = game.actors?.get(actorId);
+      if (!actor || actor.hasPlayerOwner) return;
+      const main = primaryOf(this._contacts, actorId);
+      const email = (main?.email || '').trim();
+      if (!email || !email.includes('@')) return;
+      const current = actor.getFlag?.(MODULE_ID, 'email') || '';
+      if (current.toLowerCase() === email.toLowerCase()) return;
+      const es = game.nightcity?.emailService;
+      if (es?.forceSetEmail) await es.forceSetEmail(actor, email);
+      else await actor.setFlag(MODULE_ID, 'email', email);
+      log.info(`Registered address of ${actor.name} now follows its main identity: ${email}`);
+    } catch (e) { log.warn(`Identity address sync failed: ${e.message}`); }
   }
 
   /**
@@ -235,6 +261,7 @@ export class MasterContactService {
    * @param {string} [data.portrait] - Image path
    * @param {Array<string>} [data.tags] - Tags for filtering
    * @param {string} [data.notes] - GM notes
+   * @param {string} [data.voice] - GM-only "how they talk" note (never shared with players)
    * @param {string} [data.actorId] - Linked Foundry actor ID
    * @param {string} [data.type] - Contact type: npc, player (deprecated — use role)
    * @param {string} [data.role] - Role: fixer, solo, netrunner, etc. (or custom role ID)
@@ -261,6 +288,9 @@ export class MasterContactService {
       portrait: data.portrait || null,
       tags: Array.isArray(data.tags) ? data.tags.map(t => t.trim()).filter(Boolean) : [],
       notes: data.notes?.trim() || '',
+      // VOICE — how this NPC talks (GM only, never pushed to players; an alias
+      // without one inherits its main identity's — utils/identities.js voiceFor).
+      voice: data.voice?.trim?.() || '',
       actorId: data.actorId || null,
       type: data.type || 'npc',
       role: data.role?.trim() || '',
@@ -314,11 +344,12 @@ export class MasterContactService {
     // Apply updates (whitelist fields)
     const allowed = [
       'name', 'email', 'alias', 'organization', 'phone', 'location', 'portrait',
-      'tags', 'notes', 'actorId', 'type', 'role', 'folder',
+      'tags', 'notes', 'voice', 'actorId', 'type', 'role', 'folder',
       'trust', 'relationships', 'burned', 'sendOnly',
       'encrypted', 'encryptionDV', 'encryptionSkill', 'blackIce', 'blackIceDamage',
       'iceSource', 'iceCustomName', 'iceCustomPortrait', 'iceActorId', 'maxBreachAttempts',
       'revealTrust', 'primaryIdentity', 'identityOf',
+      'reviewed',   // Admin → Contacts "Looks right" on an auto-added NPC sender
     ];
     for (const key of allowed) {
       if (key in updates) {
@@ -339,6 +370,7 @@ export class MasterContactService {
     this.eventBus?.emit('contacts:masterUpdated', { action: 'update', contactId });
     log.info(`Master contact updated: ${contact.name} (${contactId})`);
     if (updates.email) await this._onMasterListChanged(); 
+    if ('email' in updates || 'actorId' in updates || 'primaryIdentity' in updates) await this._syncActorEmail(contact.actorId);
     return { success: true, contact };
   }
 
@@ -411,6 +443,7 @@ export class MasterContactService {
         customImg: contact.portrait,
         tags: [...(contact.tags || [])],
         notes: '', // Don't copy GM notes to players
+        voice: '', // …nor the GM's voice note (ContactRepository drops it anyway — this says so on purpose)
         actorId: contact.actorId,
         type: contact.type,
         role: contact.role || '',

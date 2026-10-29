@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Terminals tab — REAL template render</title>
+<!--
+  Renders the REAL templates/admin-panel/tab-terminals.hbs through Handlebars,
+  against the real cascade (Foundry core -> CPR -> module CSS -> admin theme),
+  with a view-model produced by the REAL TerminalsTab.prepareContext():
+
+    NCM_DUMP=<abs path>/ctx.json node dev/tools/sims/test-admin-terminals.mjs
+    chrome --allow-file-access-from-files "admin-terminals-preview.html?ctx=file:///<abs path>/ctx.json"
+
+  ?t=clean-light|high-contrast   admin preset
+  ?pop=1                          the 1120x780 pop-out window
+  ?menu=1                         the ⋯ menu open
+  ?bulk=1                         select mode with two rows ticked
+  ?scroll=<px>                    scroll the detail pane
+  ?h=<px>                         a taller frame (see the whole detail at once)
+  ?open=<accountId>               expand that account row (others folded)
+  ?view=1                         the View menu open (mounted as the tab mounts it)
+  ?contrast=1                     report every text node under 4.5:1 in #status / <title>
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+<style>
+  body { margin: 0; background: #333; padding: 16px; }
+  .app-frame { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important;
+    width: 820px; height: 600px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #555; }
+  .app-frame.pop { width: 1120px; height: 780px; }
+  .window-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0; background: var(--ncm-bg-deep); }
+  .window-content > .ncm-admin-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #status { font: 12px monospace; color: #ccc; margin-bottom: 6px; }
+</style></head>
+<body>
+<div id="status">loading…</div>
+<div class="ncm-app ncm-admin-panel app-frame" id="p" data-ncm-scanlines="false">
+  <section class="window-content">
+    <div class="ncm-admin-panel" id="inner">
+      <nav class="ncm-admin-tabs"><button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-terminal"></i> Terminals</button></nav>
+      <div class="ncm-admin-content" id="out"></div>
+    </div>
+  </section>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const P = document.getElementById('p');
+P.dataset.ncmAdminTheme = q.get('t') || 'clean-dark';
+if (q.get('h')) P.style.height = q.get('h') + 'px';
+if (q.get('pop')) { P.classList.add('pop', 'ncm-admin-panel--pop'); document.getElementById('inner').classList.add('ncm-admin-panel--pop'); document.querySelector('nav').remove(); }
+Handlebars.registerHelper('ncm-hue', (t) => { const s = String(t ?? '').trim().toLowerCase(); if (!s) return 'var(--ncm-text-label)'; let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return 'var(--ncm-hue-' + ((h % 8) + 1) + ')'; }); // mirrors scripts/utils/tagHue.js
+  Handlebars.registerHelper('eq', (a, b) => String(a) === String(b));
+const face = (c) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="${c}"/><circle cx="20" cy="16" r="7.5" fill="#0d0d14" opacity=".7"/><path d="M5 40c1-9 7-13 15-13s14 4 15 13z" fill="#0d0d14" opacity=".7"/></svg>`);
+const CHIP = '../../../../systems/cyberpunk-red-core/icons/compendium/gear/memory_chip.svg';
+(async () => {
+  try {
+    const [tpl, ctx] = await Promise.all([
+      fetch('../../templates/admin-panel/tab-terminals.hbs').then((r) => r.text()),
+      fetch(q.get('ctx')).then((r) => r.json()),
+    ]);
+    const fix = (o) => { if (!o || typeof o !== 'object') return; for (const k of Object.keys(o)) {
+      if ((k === 'img') && typeof o[k] === 'string') o[k] = CHIP;
+      else if (k === 'portrait' && o[k]) o[k] = face(o[k].length % 2 ? '#b85c7a' : '#5c86b8');
+      else fix(o[k]); } };
+    fix(ctx);
+    ctx.term2.isPopout = !!q.get('pop');
+    if (q.get('menu') && ctx.term2.sel) ctx.term2.sel.menuOpen = true;
+    if (q.get('bulk')) { ctx.term2.bulk = true; ctx.term2.pickedCount = 2; ctx.term2.groups.flatMap((g) => g.rows).slice(0, 2).forEach((r) => { r.picked = true; }); }
+    if (q.get('open') && ctx.term2.sel) ctx.term2.sel.accounts.forEach((a) => { a.open = a.id === q.get('open'); });
+    if (q.get('view')) ctx.term2.viewOpen = true;
+    document.getElementById('out').innerHTML = Handlebars.compile(tpl)(ctx);
+    // ?view=1 — mount the View menu the way TerminalsTab._mountViewMenu does (a body portal under its button)
+    if (q.get('view')) { const pop = document.querySelector('[data-term2-viewpop]'); const btn = document.querySelector('[data-term2-viewbtn]'); pop.classList.add('ncm-app', 'is-portal'); pop.dataset.ncmAdminTheme = P.dataset.ncmAdminTheme; document.body.appendChild(pop); const r = btn.getBoundingClientRect(); pop.style.top = (r.bottom + 4) + 'px'; pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8)) + 'px'; }
+    if (q.get('scroll')) document.querySelector('.ncm-term2-det').scrollTop = +q.get('scroll');
+    // report horizontal overflow / clipped text
+    const over = [...document.querySelectorAll('.ncm-term2 *')].filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX === 'visible' && !/ellipsis/.test(getComputedStyle(e).textOverflow)).map((e) => e.className).slice(0, 6);
+    document.getElementById('status').textContent = `rendered · overflow: ${over.join(', ') || 'none'}`;
+    if (q.get('contrast')) {
+      // ?contrast=1 — every visible text node's contrast against the background it really sits on
+      // (translucent tints composited down to the first opaque ancestor). Report in #status + <title>.
+      const cv = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+      const rgba = (c) => { cv.clearRect(0, 0, 1, 1); cv.fillStyle = '#000'; cv.fillStyle = c; cv.fillRect(0, 0, 1, 1); const d = cv.getImageData(0, 0, 1, 1).data; const m = /\/\s*([\d.]+%?)\s*\)|rgba\([^)]*,\s*([\d.]+)\)/.exec(c); let a = 1; if (m) { const v = m[1] ?? m[2]; a = v.endsWith('%') ? parseFloat(v) / 100 : parseFloat(v); } if (c === 'transparent') a = 0; return [d[0], d[1], d[2], a]; };
+      const over2 = (top, base) => [0, 1, 2].map((i) => top[i] * top[3] + base[i] * (1 - top[3]));
+      const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+      const bgOf = (el) => { const layers = []; for (let e = el; e; e = e.parentElement) { const c = rgba(getComputedStyle(e).backgroundColor); if (c[3] > 0) { layers.push(c); if (c[3] >= 0.99) break; } } let base = [0, 0, 0]; for (let i = layers.length - 1; i >= 0; i--) base = i === layers.length - 1 && layers[i][3] >= 0.99 ? layers[i].slice(0, 3) : over2(layers[i], base); return base; };
+      const bad = []; let n = 0;
+      for (const el of document.querySelectorAll('.ncm-term2 *, .ncm-term2-viewpop.is-portal *')) {
+        if (!(el.offsetParent || getComputedStyle(el).position === 'fixed' || el.closest('.is-portal')) || ![...el.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim())) continue;
+        const cs = getComputedStyle(el); if (parseFloat(cs.fontSize) === 0 || cs.visibility === 'hidden') continue;
+        const fg = rgba(cs.color); const bg = bgOf(el); const f = over2(fg, bg);
+        const L1 = lum(f), L2 = lum(bg); const r = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05); n++;
+        if (r < 4.5) bad.push(`${r.toFixed(2)} .${String(el.className).split(' ')[0] || el.tagName} "${[...el.childNodes].filter((t) => t.nodeType === 3).map((t) => t.textContent.trim()).join(' ').slice(0, 24)}"`);
+      }
+      bad.sort();
+      document.getElementById('status').textContent = `contrast: ${n} text nodes, ${bad.length} under 4.5 :: ${bad.slice(0, 25).join(' | ')}`;
+      document.title = `CONTRAST ${bad.length}/${n}`;
+    }
+    document.title = `OK overflow=${over.length}`;
+  } catch (e) { document.getElementById('status').textContent = 'ERROR ' + e.message; document.title = 'ERR ' + e.message; }
+})();
+</script>
+</body></html>

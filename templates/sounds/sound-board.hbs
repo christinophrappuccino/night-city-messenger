@@ -1,0 +1,41 @@
+<div class="ncm-sb">
+  <header class="ncm-sb__hd">
+    <div class="ncm-sb__intro">
+      <b>Every sound the messenger makes.</b> Replace any of them with your own file — <i>Browse</i> opens Foundry's file picker, where you can upload. Your choice plays for everyone, so keep the file somewhere your players can load (your User Data folder).
+      {{#unless soundOn}}<span class="ncm-sb__warn"><i class="fas fa-volume-xmark"></i> Your own messenger sounds are switched off (Themes → Effects) — ▶ still plays here.</span>{{/unless}}
+    </div>
+    <div class="ncm-sb__tb">
+      <span class="ncm-sb__srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-sb-q value="{{query}}" placeholder="Find a sound or where it plays…" aria-label="Find a sound"></span>
+      <button type="button" class="ncm-sb__b {{#if changedOnly}}is-on{{/if}}" data-action="changed" aria-pressed="{{#if changedOnly}}true{{else}}false{{/if}}"><i class="fas fa-pen"></i>Changed <span class="n">{{changed}}</span></button>
+      <span class="ncm-sb__sp"></span>
+      <button type="button" class="ncm-sb__b ic" data-action="importSet" data-tooltip="Import a sounds file (JSON)" aria-label="Import"><i class="fas fa-file-import"></i></button>
+      <button type="button" class="ncm-sb__b ic" data-action="exportSet" data-tooltip="Export your changes (JSON) — the files themselves are not included" aria-label="Export"><i class="fas fa-file-export"></i></button>
+      <button type="button" class="ncm-sb__b bad" data-action="resetAll" {{#unless changed}}disabled{{/unless}} data-tooltip="Every sound back to the module's own"><i class="fas fa-rotate-left"></i>Reset all</button>
+    </div>
+  </header>
+
+  <div class="ncm-sb__list">
+    {{#each groups}}
+    <section class="ncm-sb__grp" data-sb-group="{{key}}">
+      <div class="ncm-sb__band"><i class="fas {{icon}}"></i>{{label}}<span class="n">{{rows.length}}</span></div>
+      {{#each rows}}
+      <div class="ncm-sb__row {{#if custom}}is-custom{{/if}} {{#if off}}is-off{{/if}} {{#if unused}}is-unused{{/if}}" data-sb-row data-sb-text="{{lower label}} {{lower where}} {{lower id}}" data-sb-changed="{{#if changed}}1{{else}}0{{/if}}">
+        <button type="button" class="ncm-sb__play" data-action="play" data-id="{{id}}" data-tooltip="Play it" aria-label="Play {{label}}" {{#if off}}disabled{{/if}}><i class="fas fa-play"></i></button>
+        <div class="ncm-sb__id">
+          <div class="ncm-sb__nm">{{label}}
+            {{#if off}}<span class="ncm-sb__tag is-bad">off</span>{{else}}{{#if custom}}<span class="ncm-sb__tag is-act" data-tooltip="{{src}}"><i class="fas fa-file-audio"></i>{{file}}</span>{{else}}<span class="ncm-sb__tag">module's own</span>{{/if}}{{/if}}
+          </div>
+          <div class="ncm-sb__wh">{{where}}</div>
+        </div>
+        <label class="ncm-sb__vol" data-tooltip="Volume for this sound (your own volume slider still applies)"><input type="number" min="10" max="200" step="10" value="{{volume}}" data-sb-vol="{{id}}" aria-label="Volume for {{label}}"><span>%</span></label>
+        <div class="ncm-sb__acts">
+          <button type="button" class="ncm-sb__b sm" data-action="browse" data-id="{{id}}" data-tooltip="Pick or upload your own file"><i class="fas fa-folder-open"></i>Browse</button>
+          <button type="button" class="ncm-sb__b sm ic {{#if off}}is-on{{/if}}" data-action="off" data-id="{{id}}" data-tooltip="{{#if off}}Switch it back on{{else}}Switch this sound off{{/if}}" aria-label="Off"><i class="fas {{#if off}}fa-volume-xmark{{else}}fa-volume-high{{/if}}"></i></button>
+          <button type="button" class="ncm-sb__b sm ic" data-action="reset" data-id="{{id}}" {{#unless changed}}disabled{{/unless}} data-tooltip="Back to the module's own" aria-label="Reset"><i class="fas fa-rotate-left"></i></button>
+        </div>
+      </div>
+      {{/each}}
+    </section>
+    {{/each}}
+  </div>
+</div>

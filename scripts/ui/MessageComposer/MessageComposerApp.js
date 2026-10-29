@@ -17,11 +17,24 @@
 
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
-import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveOperator } from '../../utils/helpers.js';
+import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
-import { applyGmView, applyAdminZoom, toggleGmView, playerDialog } from '../../utils/adminTheme.js';
+import { applyGmView, applyAdminZoom, toggleGmView, playerDialog, adminPrompt, adminConfirm } from '../../utils/adminTheme.js';
 import { pasteToHtml } from '../../utils/richText.js';
 import { shardTerm as T } from '../../utils/shardTerm.js';
+import { tagHueIndex } from '../../utils/tagHue.js';
+import { showNamePicker } from '../../utils/namePicker.js';
+import { DRAFTS_FLAG, newDraftId, readDrafts, pruneDrafts, draftRecipientName, draftLabel, draftKind, draftHasContent, relativeAge } from '../../utils/drafts.js';
+import { buildPreview } from './previewModel.js';
+
+/** A name's category hue — defined by the admin presets, else the act colour. */
+const hueVar = (name) => `var(--ncm-hue-${tagHueIndex(name) || 1}, var(--ncm-secondary))`;
+
+const PRIORITY_LABELS = { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent', critical: 'Critical' };
+const PRIORITY_TONES = { low: 'hint', normal: 'act', high: 'attn', urgent: 'attn', critical: 'bad' };
+const SD_LABELS = { after_read: 'after reading', '1h': 'in 1 h', '6h': 'in 6 h', '24h': 'in 24 h' };
+const ENC_TYPE_LABELS = { ICE: 'Standard', RED_ICE: 'Red ICE', BLACK_ICE: 'Black ICE' };
+const ANON_STYLE_LABELS = { filtered: 'Filtered', scrambled: 'Scrambled', ghost: 'Ghost', monolith: 'Monolith' };
 
 export class MessageComposerApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
@@ -84,7 +97,15 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       editorCommand: MessageComposerApp._onEditorCommand,
       insertTimestamp: MessageComposerApp._onInsertTimestamp,
       insertCoords: MessageComposerApp._onInsertCoords,
-      insertSignature: MessageComposerApp._onInsertSignature,
+      // The clean revision (2026-10-28): one drawer, preview, drafts, templates.
+      toggleDrawer: MessageComposerApp._onToggleDrawer,
+      togglePreview: MessageComposerApp._onTogglePreview,
+      openDrafts: MessageComposerApp._onOpenDrafts,
+      toggleTemplates: MessageComposerApp._onToggleTemplates,
+      tplInsert: MessageComposerApp._onTplInsert,
+      tplSave: MessageComposerApp._onTplSave,
+      tplImport: MessageComposerApp._onTplImport,
+      tplExport: MessageComposerApp._onTplExport,
     },
   };
 
@@ -220,6 +241,20 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   /** @type {boolean} */
   _sending = false;
 
+  // The clean revision (2026-10-28)
+  /** @type {string|null} the ONE open delivery drawer: 'pri'|'enc'|'sd'|'anon'|'sched' */
+  _drawer = null;
+  /** @type {boolean} GM: the form is swapped for what the recipient will open */
+  _preview = false;
+  /** @type {string|null} this window's draft id (minted on the first autosave) */
+  _draftId = null;
+  /** @type {string|null} a draft to open on the first render (composeMessage({ draftId })) */
+  _pendingDraftId = null;
+  /** @type {boolean} the message went out (or was saved on purpose) — close() must not autosave it again */
+  _draftDone = false;
+  /** @type {Function|null} outside-click closer for the templates menu */
+  _tplCloser = null;
+
   // ─── Service Accessors ────────────────────────────────────
 
   get messageService() { return game.nightcity?.messageService; }
@@ -231,6 +266,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   get eventBus() { return game.nightcity?.eventBus; }
   get schedulingService() { return game.nightcity?.schedulingService; }
   get timeService() { return game.nightcity?.timeService; }
+  get messageTemplateService() { return game.nightcity?.messageTemplateService; }
 
   // ─── Constructor ──────────────────────────────────────────
 
@@ -266,8 +302,58 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
 
     this.originalMessage = options.originalMessage || null;
+    // A draft opened on purpose. A fresh composer never restores one by itself.
+    this._pendingDraftId = options.draftId || null;
 
-    if (this.mode === 'reply' && this.originalMessage) {
+    if (this.mode === 'reply' && this.originalMessage) this._initReply(options);
+    else if (this.mode === 'forward' && this.originalMessage) this._initForward();
+    else this._initCompose(options);
+
+    // Priority applies to all modes
+    if (options.priority) this.priority = options.priority;
+
+    // Seed Anonymous Send defaults from world settings (GM only).
+    if (game.user.isGM) {
+      try {
+        this.anonStyle = game.settings.get(MODULE_ID, 'anonDefaultStyle') || 'scrambled';
+        this.anonAllowReplies = game.settings.get(MODULE_ID, 'anonAllowRepliesDefault') ?? true;
+        this.anonTraceDV = Number(game.settings.get(MODULE_ID, 'anonTraceDV')) || 15;
+      } catch { /* settings not ready — keep field defaults */ }
+    }
+
+    // GM replying within an anonymous thread — pre-tick Anonymous Send and carry the
+    // thread's original masking config (alias/style/replies/traceDV) so the
+    // conversation stays anonymous by default. Left toggleable: the GM can turn it
+    // off for any given reply via the composer toggle.
+    this._preTickAnonThread();
+
+    // Keep the network pill honest when the connection changes elsewhere (the
+    // inbox selector, a scene change). Only THIS client's switches — socket
+    // echoes of other users' switches carry source:'socket' and don't move us.
+    this._netChangedHandle = this.eventBus?.on?.(EVENTS.NETWORK_CHANGED, (data) => {
+      if (data?.source === 'socket' || !this.rendered || this._sending) return;
+      this.render();
+    }) ?? null;
+  }
+
+  /** GM reply inside an anonymous thread → Anonymous pre-ticked with the thread's mask. */
+  _preTickAnonThread() {
+    if (game.user.isGM && this.mode === 'reply' && this.originalMessage
+        && this._isAnonFeatureEnabled()) {
+      const cfg = this.messageService?.getThreadAnonConfig(this.originalMessage);
+      if (cfg) {
+        this.anonymousEnabled = true;
+        this.anonStyle = cfg.style;
+        this.anonAlias = cfg.alias;
+        this.anonAllowReplies = cfg.allowReplies;
+        this.anonTraceDV = cfg.traceDV;
+      }
+    }
+  }
+
+  /** Reply setup — the locked chip(s), subject, thread fields, inherited encryption. */
+  _initReply(options = {}) {
+    {
       const reply = this.messageService?.buildReply(this.originalMessage, this.fromActorId, '', { all: !!options.replyAll, fromContactId: this.fromContact?.id || null });
       if (reply) {
         if (reply.anonReply) {
@@ -368,14 +454,21 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         }
         this.encryptionBypassSkills = this.originalMessage.encryption.bypassSkills || null;
       }
-    } else if (this.mode === 'forward' && this.originalMessage) {
-      const fwd = this.messageService?.buildForward(this.originalMessage, this.fromActorId, '', '');
-      if (fwd) {
-        this.subject = fwd.subject;
-        this.body = fwd.body;
-      }
-    } else {
-      // New compose
+    }
+  }
+
+  /** Forward setup — subject + quoted body from the service. */
+  _initForward() {
+    const fwd = this.messageService?.buildForward(this.originalMessage, this.fromActorId, '', '');
+    if (fwd) {
+      this.subject = fwd.subject;
+      this.body = fwd.body;
+    }
+  }
+
+  /** New message setup — pre-filled recipient / subject / body from the launcher. */
+  _initCompose(options = {}) {
+    {
       if (options.groupId) this._addGroupById(options.groupId);
       if (options.toActorId) this._addRecipient(options.toActorId, false);
       // Fallback: if actor-based add failed or no actorId, try raw email
@@ -404,50 +497,14 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       this.threadId = options.threadId || null;
       this.inReplyTo = options.inReplyTo || null;
     }
-
-    // Priority applies to all modes
-    if (options.priority) this.priority = options.priority;
-
-    // Seed Anonymous Send defaults from world settings (GM only).
-    if (game.user.isGM) {
-      try {
-        this.anonStyle = game.settings.get(MODULE_ID, 'anonDefaultStyle') || 'scrambled';
-        this.anonAllowReplies = game.settings.get(MODULE_ID, 'anonAllowRepliesDefault') ?? true;
-        this.anonTraceDV = Number(game.settings.get(MODULE_ID, 'anonTraceDV')) || 15;
-      } catch { /* settings not ready — keep field defaults */ }
-    }
-
-    // GM replying within an anonymous thread — pre-tick Anonymous Send and carry the
-    // thread's original masking config (alias/style/replies/traceDV) so the
-    // conversation stays anonymous by default. Left toggleable: the GM can turn it
-    // off for any given reply via the composer toggle.
-    if (game.user.isGM && this.mode === 'reply' && this.originalMessage
-        && this._isAnonFeatureEnabled()) {
-      const cfg = this.messageService?.getThreadAnonConfig(this.originalMessage);
-      if (cfg) {
-        this.anonymousEnabled = true;
-        this.anonStyle = cfg.style;
-        this.anonAlias = cfg.alias;
-        this.anonAllowReplies = cfg.allowReplies;
-        this.anonTraceDV = cfg.traceDV;
-      }
-    }
-
-    // Restore draft if opening fresh compose with no pre-filled data
-    this._restoreDraft();
-
-    // Keep the network pill honest when the connection changes elsewhere (the
-    // inbox selector, a scene change). Only THIS client's switches — socket
-    // echoes of other users' switches carry source:'socket' and don't move us.
-    this._netChangedHandle = this.eventBus?.on?.(EVENTS.NETWORK_CHANGED, (data) => {
-      if (data?.source === 'socket' || !this.rendered || this._sending) return;
-      this.render();
-    }) ?? null;
   }
 
   // ─── Lifecycle ────────────────────────────────────────────
 
   async _prepareContext(options) {
+    // A draft opened on purpose lands before the first paint (reply drafts load
+    // their original through the repository, which is async).
+    await this._loadPendingDraft();
     const ns = this.networkService;
     // GM "send via" override: the pill (and everything keyed off the network)
     // describes the network THIS MESSAGE goes out on, not the GM's connection.
@@ -467,28 +524,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       || (fromActor ? resolveDisplayName({ actorId: this.fromActorId, email: fromEmail }, fromActor.name) : 'Unknown');
     const fromAvatarColor = getAvatarColor(fromName);
 
-    // Mode label + key
     const isGM = game.user.isGM;
     const isGMSendAs = isGM && (this.fromContact || this.fromActorId !== this._getDefaultFromActor());
-    let modeLabelText, modeLabelIcon, modeKey;
-
-    if (isGMSendAs) {
-      modeLabelText = 'Send-As';
-      modeLabelIcon = 'fa-masks-theater';
-      modeKey = 'sendas';
-    } else if (this.mode === 'reply') {
-      modeLabelText = 'Reply';
-      modeLabelIcon = 'fa-reply';
-      modeKey = 'reply';
-    } else if (this.mode === 'forward') {
-      modeLabelText = 'Forward';
-      modeLabelIcon = 'fa-share';
-      modeKey = 'forward';
-    } else {
-      modeLabelText = 'New';
-      modeLabelIcon = 'fa-pen';
-      modeKey = 'compose';
-    }
 
     // Network pill state
     const netPillState = isDeadZone ? 'dead'
@@ -509,32 +546,24 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       if (network.effects?.traced) fxTags.push({ label: 'TRACED', variant: 'danger' });
     }
 
-    // Priorities
-    const priorities = [
-      { id: 'low', label: 'Low', active: this.priority === 'low' },
-      { id: 'normal', label: 'Normal', active: this.priority === 'normal' },
-      { id: 'high', label: 'High', active: this.priority === 'high' },
-      { id: 'urgent', label: 'Urgent', active: this.priority === 'urgent' },
-      { id: 'critical', label: 'Critical', active: this.priority === 'critical' },
-    ];
-
-    // Self-destruct options
-    const selfDestructOptions = [
-      { id: 'after_read', label: 'After Read', active: this.selfDestructMode === 'after_read' },
-      { id: '1h', label: '1 Hour', active: this.selfDestructMode === '1h' },
-      { id: '6h', label: '6 Hours', active: this.selfDestructMode === '6h' },
-      { id: '24h', label: '24 Hours', active: this.selfDestructMode === '24h' },
-    ];
+    // Priorities / self-destruct / lock type — the drawer segments
+    const priorities = Object.entries(PRIORITY_LABELS).map(([id, label]) => ({ id, label, active: this.priority === id }));
+    const selfDestructOptions = Object.entries(SD_LABELS).map(([id, label]) => ({ id, label, active: this.selfDestructMode === id }));
+    const encTypes = Object.entries(ENC_TYPE_LABELS).map(([id, label]) => ({ id, label, active: this.encryptionType === id }));
+    const isLethalICE = this.encryptionType === 'BLACK_ICE' || this.encryptionType === 'RED_ICE';
+    const lockLabel = !this.encryptionEnabled ? 'Open' : (this.encryptionType === 'ICE' ? 'ICE' : ENC_TYPE_LABELS[this.encryptionType]);
+    const lockTone = this.encryptionEnabled && isLethalICE ? 'bad' : 'secret';
 
     // Original message card (reply/forward) — full rendered card data
     let originalMessageCard = null;
     if ((this.mode === 'reply' || this.mode === 'forward') && this.originalMessage) {
       const orig = this.originalMessage;
       const senderActor = game.actors.get(orig.fromActorId);
-      const senderName = senderActor?.name || orig.from || 'Unknown';
-      const senderEmail = senderActor
-        ? (this.contactRepo?.getActorEmail(orig.fromActorId) || orig.from || '')
-        : (orig.from || '');
+      // The identity the quoted mail came FROM (an alias stays the alias).
+      const origIds = { contactId: orig.fromContactId, actorId: orig.fromActorId, email: orig.from, storedName: orig.fromName };
+      const senderName = resolveDisplayName(origIds, senderActor?.name || orig.from || 'Unknown');
+      const senderEmail = orig.from
+        || (senderActor ? (this.contactRepo?.getActorEmail(orig.fromActorId) || '') : '');
       const origNetwork = orig.network || orig.metadata?.networkTrace || 'CITINET';
 
       // Try to resolve network color
@@ -549,7 +578,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         email: senderEmail,
         initials: getInitials(senderName),
         avatarColor: getAvatarColor(senderName),
-        portrait: senderActor?.img || null,
+        hue: hueVar(senderName),
+        portrait: resolveDisplayPortrait(origIds) || null,
         formattedTime: orig.timestamp ? formatCyberDate(orig.timestamp) : '',
         network: origNetwork.toUpperCase(),
         networkColor: origNetColor,
@@ -583,12 +613,14 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const anonStyleNorm = normalizeAnonStyle(this.anonStyle);
     let anonTraceEnabled = true;
     try { anonTraceEnabled = game.settings.get(MODULE_ID, 'anonTraceEnabled'); } catch { /* default on */ }
-    const anonStyleList = [
-      { id: 'filtered', label: 'Filtered' },
-      { id: 'scrambled', label: 'Scrambled' },
-      { id: 'ghost', label: 'Ghost' },
-      { id: 'monolith', label: 'Monolith' },
-    ].map(s => ({ ...s, active: s.id === anonStyleNorm }));
+    const anonStyleList = Object.entries(ANON_STYLE_LABELS).map(([id, label]) => ({ id, label, active: id === anonStyleNorm }));
+
+    // The picked identity's own face. An alias never borrows its character's
+    // portrait (resolveDisplayPortrait) — it shows its own, else initials.
+    const fromImgResolved = (this.fromContact?.id
+      ? resolveDisplayPortrait({ contactId: this.fromContact.id, actorId: this.fromActorId })
+      : (resolveDisplayPortrait({ actorId: this.fromActorId }) || fromActor?.img))
+      || this.fromContact?.portrait || null;
 
     return {
       MODULE_ID,
@@ -604,7 +636,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Header
       fromName,
       fromEmail,
-      fromImg: fromActor?.img || this.fromContact?.portrait || null,
+      fromImg: fromImgResolved,
       fromInitials,
       fromAvatarColor,
 
@@ -614,6 +646,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       anonymousEnabled: this.anonymousEnabled,
       anonStyle: anonStyleNorm,
       anonStyleList,
+      anonStyleLabel: ANON_STYLE_LABELS[anonStyleNorm] || 'Scrambled',
       anonAlias: this.anonAlias,
       anonAliasDisplay: (this.anonAlias || '').trim() || 'UNKNOWN',
       anonMaskedEmail: ANON_MASKED_EMAIL,
@@ -632,19 +665,23 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // GM date chip (backdate)
       sendBackdated: isGM && !!this.sendTimestamp,
       sendTimestampFormatted: this.sendTimestamp ? formatCyberDate(this.sendTimestamp) : '',
-      modeLabelText,
-      modeLabelIcon,
-      modeKey,
+      fromHue: hueVar(fromName),
 
       // Time
       currentGameTime: formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString()),
 
-      // Fields
-      recipients: this.recipients,
+      // Fields — every chip carries its name's hue
+      recipients: this.recipients.map(r => ({ ...r, hue: hueVar(r.name || r.email || '?') })),
       recipientLocked: this.mode === 'reply' && this.recipients.length > 0,
       subject: this.subject,
       body: this.body,
+
+      // Delivery chips + the one drawer
+      drawer: this._drawer,
       priorities,
+      priorityLabel: PRIORITY_LABELS[this.priority] || this.priority,
+      priorityTone: PRIORITY_TONES[this.priority] || 'act',
+      priorityOn: this.priority !== 'normal',
 
       // Encryption
       encryptionEnabled: this.encryptionEnabled,
@@ -652,7 +689,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       encryptionType: this.encryptionType,
       encryptionFailureMode: this.encryptionFailureMode,
       encryptionMaxAttempts: this.encryptionMaxAttempts,
-      isLethalICE: this.encryptionType === 'BLACK_ICE' || this.encryptionType === 'RED_ICE',
+      isLethalICE,
+      encTypes,
+      lockLabel,
+      lockTone,
       iceSource: this.iceSource,
       iceActorId: this.iceActorId,
       iceActors: game.nightcity?.iceService?.getAvailableICEActors() ?? [],
@@ -660,6 +700,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Self-destruct
       selfDestructEnabled: this.selfDestructEnabled,
       selfDestructOptions,
+      selfDestructLabel: SD_LABELS[this.selfDestructMode] || this.selfDestructMode,
 
       // Schedule
       scheduleEnabled: this.scheduleEnabled,
@@ -687,7 +728,36 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Footer
       sending: this._sending,
       autoSaveTime: this.autoSaveTime,
+      draftCount: this._draftCount(),
+      templateCount: isGM ? (this.messageTemplateService?.count ?? 0) : 0,
+
+      // GM: the form swapped for what the recipient will open
+      preview: (isGM && this._preview) ? this._buildPreview({ fromName, fromEmail, fromImg: fromImgResolved, fromInitials, networkName: network?.name || networkName, anonStyleNorm }) : null,
     };
+  }
+
+  /** The preview view-model (previewModel.js) from the composer's live state. */
+  _buildPreview({ fromName, fromEmail, fromImg, fromInitials, networkName, anonStyleNorm }) {
+    const anon = game.user.isGM && this.anonymousEnabled && this._isAnonFeatureEnabled();
+    return buildPreview({
+      anon,
+      anonStyle: anonStyleNorm,
+      anonAlias: this.anonAlias,
+      anonMaskedEmail: ANON_MASKED_EMAIL,
+      anonAllowReplies: this.anonAllowReplies,
+      fromName, fromEmail, fromImg, fromInitials,
+      networkName,
+      when: this.sendTimestamp ? formatCyberDate(this.sendTimestamp) : formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString()),
+      priority: this.priority,
+      subject: this.subject,
+      body: this.body,
+      isReply: this.mode === 'reply',
+      encryption: { enabled: this.encryptionEnabled, dv: this.encryptionDV, type: this.encryptionType, failureMode: this.encryptionFailureMode },
+      selfDestruct: { enabled: this.selfDestructEnabled, mode: this.selfDestructMode },
+      schedule: { enabled: this.scheduleEnabled, timeFormatted: this.scheduledTime ? formatCyberDate(this.scheduledTime) : '' },
+      recipients: this.recipients,
+      attachments: this.attachments,
+    });
   }
 
   /** Header controls (mirrors BaseApplication): the GM-view toggle is the injected header BUTTON, not a ⋮ entry. Always a copy. */
@@ -746,6 +816,17 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   async close(options = {}) {
     this._stopAutoSave();
     this._closeNetPicker();
+    this._closeTemplatesMenu();
+    // A window with something in it leaves a draft behind (nothing is lost to
+    // Esc); an empty one takes its draft with it. A sent / saved-on-purpose
+    // message is already settled (_draftDone).
+    if (!this._draftDone && !options.noDraft) {
+      try {
+        this._syncFormData();
+        if (draftHasContent(this._draftRecord())) this._performAutoSave({ silent: true });
+        else if (this._draftId) await this._deleteDraft(this._draftId);
+      } catch { /* never block closing */ }
+    }
     this._netChangedHandle?.unsubscribe?.();
     this._netChangedHandle = null;
     if (this._editorStateHandler) {
@@ -908,8 +989,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     menu.classList.remove('ncm-hidden');
     target.classList.add('ncm-composer__net-pill--open');
-    // Anchor under the pill (the header is the positioning context).
-    menu.style.left = `${target.offsetLeft}px`;
+    // Anchor under the pill (the header is the positioning context) — pulled
+    // left when the dropdown would run past the window's right edge.
+    const hostW = target.offsetParent?.clientWidth || 0;
+    const left = hostW ? Math.max(8, Math.min(target.offsetLeft, hostW - menu.offsetWidth - 12)) : target.offsetLeft;
+    menu.style.left = `${left}px`;
     menu.querySelector('[data-id="net-search"]')?.focus();
 
     this._netOutsideHandler = (e) => {
@@ -1379,8 +1463,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     const items = this._searchResults.map((r, i) => r.isGroup ? `
       <div class="ncm-autocomplete-item ncm-autocomplete-item--group ${i === this._selectedResultIndex ? 'ncm-autocomplete-item--selected' : ''}"
-           data-index="${i}" data-group-id="${r.groupId}">
-        <div class="ncm-autocomplete__avatar" style="color: ${r.avatarColor}; border-color: ${r.avatarColor}30;"><i class="fas fa-users" style="font-size:9px;"></i></div>
+           data-index="${i}" data-group-id="${r.groupId}" style="--tc:${hueVar(r.name)}">
+        <div class="ncm-autocomplete__avatar">${r.img ? `<img src="${String(r.img).replace(/"/g, '&quot;')}" alt="">` : '<i class="fas fa-users"></i>'}</div>
         <div class="ncm-autocomplete__info">
           <div class="ncm-autocomplete__name">${r.name}</div>
           <div class="ncm-autocomplete__email">${r.memberCount} ${r.memberCount === 1 ? 'member' : 'members'} · ${r.memberNames}</div>
@@ -1388,8 +1472,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       </div>
     ` : `
       <div class="ncm-autocomplete-item ${i === this._selectedResultIndex ? 'ncm-autocomplete-item--selected' : ''} ${r.greyed ? 'ncm-autocomplete-item--greyed' : ''}"
-           data-index="${i}" data-actor-id="${r.actorId || ''}">
-        <div class="ncm-autocomplete__avatar" style="color: ${r.avatarColor}; border-color: ${r.avatarColor}30;">${r.initials}</div>
+           data-index="${i}" data-actor-id="${r.actorId || ''}" style="--tc:${hueVar(r.name)}">
+        <div class="ncm-autocomplete__avatar">${r.initials}</div>
         <div class="ncm-autocomplete__info">
           <div class="ncm-autocomplete__name">${r.name}</div>
           <div class="ncm-autocomplete__email">${r.email || ''}</div>
@@ -1451,7 +1535,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     return {
       isGroup: true, groupId: g.id, scope: g.scope || 'actor',
       name: esc(g.name), email: '', actorId: null, contactId: null,
-      initials: '', avatarColor: g.color || '#19f3f7',
+      initials: '', avatarColor: g.color || '#19f3f7', img: g.img || '',
       memberCount: (g.members || []).length,
       memberNames: esc((g.members || []).map(m => m.name || m.email).filter(Boolean).join(', ')),
     };
@@ -1475,7 +1559,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (unresolved.length) ui.notifications.warn(`NCM | "${group.name}": ${unresolved.join(', ')} could not be found and will be skipped.`);
     this.recipients.push({
       isGroup: true, groupId: group.id, name: group.name, email: '', actorId: null, contactId: null,
-      initials: '', avatarColor: group.color || '#19f3f7',
+      initials: '', avatarColor: group.color || '#19f3f7', img: group.img || '',
       members: recipients, memberCount: recipients.length,
       memberNames: recipients.map(r => r.name || r.email).join(', '),
       locked: false, mismatch: false, unreachable: false, isRaw: false,
@@ -1554,13 +1638,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       }
     });
 
-    // Also guard overflow menu items
-    const overflow = this.element?.querySelector('[data-id="overflow-menu"]');
-    if (overflow) {
-      overflow.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.ncm-composer__overflow-item')) {
-          e.preventDefault();
-        }
+    // Also guard the overflow + templates menu items
+    for (const id of ['overflow-menu', 'tpl-menu']) {
+      const menu = this.element?.querySelector(`[data-id="${id}"]`);
+      menu?.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.ncm-composer__overflow-item')) e.preventDefault();
       });
     }
   }
@@ -1676,82 +1758,135 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
   }
 
-  _performAutoSave() {
-    // Sync latest editor content
-    const editor = this.element?.querySelector('[data-id="editor-content"]');
-    if (editor) this.body = editor.innerHTML;
+  /**
+   * Autosave = write THIS window's draft (minted on the first save) into the
+   * character's `composerDrafts` list. Nothing is written for an empty window,
+   * so opening and closing a composer never leaves a draft behind.
+   * @param {{ silent?: boolean }} [o] silent = no indicator repaint (close path)
+   */
+  _performAutoSave({ silent = false } = {}) {
+    this._syncFormData();
+    const record = this._draftRecord();
+    if (!draftHasContent(record)) return false;
 
-    const subjectInput = this.element?.querySelector('[data-id="subject-input"]');
-    if (subjectInput) this.subject = subjectInput.value;
+    const actor = game.actors.get(this.fromActorId);
+    if (!actor || !(actor.isOwner || game.user.isGM)) return false;
 
-    // Save draft timestamp
+    if (!this._draftId) this._draftId = newDraftId();
+    record.id = this._draftId;
     const now = new Date();
+    record.savedAt = now.toISOString();
     this.autoSaveTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Update the auto-save indicator without full re-render
-    const indicator = this.element?.querySelector('.ncm-composer__autosave');
-    if (indicator) {
-      indicator.innerHTML = `<i class="fas fa-check-circle"></i> Saved ${this.autoSaveTime}`;
-    }
-
-    // Persist draft to actor flags
-    const actor = game.actors.get(this.fromActorId);
-    if (actor?.isOwner || game.user.isGM) {
-      const draftData = {
-        mode: this.mode,
-        recipients: this.recipients.map(r => ({ actorId: r.actorId, email: r.email, isRaw: r.isRaw || false, groupId: r.groupId || null })),
-        subject: this.subject,
-        body: this.body,
-        priority: this.priority,
-        encryptionEnabled: this.encryptionEnabled,
-        encryptionDV: this.encryptionDV,
-        encryptionType: this.encryptionType,
-        encryptionFailureMode: this.encryptionFailureMode,
-        encryptionMaxAttempts: this.encryptionMaxAttempts,
-        iceSource: this.iceSource,
-        iceActorId: this.iceActorId,
-        encryptionBypassSkills: this.encryptionBypassSkills,
-        selfDestructEnabled: this.selfDestructEnabled,
-        selfDestructMode: this.selfDestructMode,
-        savedAt: now.toISOString(),
-      };
-      actor.setFlag(MODULE_ID, 'composerDraft', draftData).catch(() => {});
-    }
-  }
-
-  /**
-   * Restore a previously auto-saved draft from actor flags.
-   * Only restores for 'compose' mode (not reply/forward).
-   */
-  _restoreDraft() {
-    if (this.mode !== 'compose') return;
-    if (this.recipients.length > 0 || this.subject || this.body) return; // Already has content
-
-    const actor = game.actors.get(this.fromActorId);
-    if (!actor) return;
-
-    const draft = actor.getFlag(MODULE_ID, 'composerDraft');
-    if (!draft || !draft.savedAt) return;
-
-    // Only restore if draft is < 24 hours old
-    const age = Date.now() - new Date(draft.savedAt).getTime();
-    if (age > 86400000) return;
-
-    // Restore fields
-    if (draft.recipients?.length) {
-      for (const r of draft.recipients) {
-        if (r.groupId) { this._addGroupById(r.groupId); continue; }
-        if (r.isRaw) {
-          this._addRawRecipient(r.email);
-        } else if (r.actorId) {
-          this._addRecipient(r.actorId, false);
-        }
+    if (!silent) {
+      const indicator = this.element?.querySelector('.ncm-composer__autosave');
+      if (indicator) {
+        indicator.innerHTML = `<i class="fas fa-circle-check"></i> Saved ${this.autoSaveTime}`;
+        indicator.classList.remove('ncm-hidden');
       }
     }
-    this.subject = draft.subject || '';
+
+    // One key merged in; the oldest past the cap go out as deletion keys.
+    const { map } = readDrafts(actor, MODULE_ID);
+    map[record.id] = record;
+    const { dropped } = pruneDrafts(map);
+    const patch = { [record.id]: record };
+    for (const id of dropped) if (id !== record.id) patch[`-=${id}`] = null;
+    actor.setFlag(MODULE_ID, DRAFTS_FLAG, patch).catch(() => {});
+    return true;
+  }
+
+  /** Everything a draft needs to come back as it was — including its quote card. */
+  _draftRecord() {
+    return {
+      id: this._draftId,
+      mode: this.mode,
+      originalMessageId: this.originalMessage?.messageId || null,
+      originalActorId: this.originalMessage ? (this.fromActorId || null) : null,
+      threadId: this.threadId,
+      inReplyTo: this.inReplyTo,
+      fromActorId: this.fromActorId,
+      fromContactId: this.fromContact?.id || null,
+      recipients: this.recipients.filter(r => !r.isAnonTarget).map(r => ({
+        actorId: r.actorId || null, contactId: r.contactId || null, email: r.email || '', name: r.name || '',
+        isRaw: !!r.isRaw, groupId: r.groupId || null,
+      })),
+      subject: this.subject,
+      body: this.body,
+      priority: this.priority,
+      encryptionEnabled: this.encryptionEnabled,
+      encryptionDV: this.encryptionDV,
+      encryptionType: this.encryptionType,
+      encryptionFailureMode: this.encryptionFailureMode,
+      encryptionMaxAttempts: this.encryptionMaxAttempts,
+      iceSource: this.iceSource,
+      iceActorId: this.iceActorId,
+      encryptionBypassSkills: this.encryptionBypassSkills,
+      selfDestructEnabled: this.selfDestructEnabled,
+      selfDestructMode: this.selfDestructMode,
+      scheduleEnabled: this.scheduleEnabled,
+      scheduledTime: this.scheduledTime,
+      scheduleGameTime: this.scheduleGameTime,
+      anonymousEnabled: this.anonymousEnabled,
+      anonStyle: this.anonStyle,
+      anonAlias: this.anonAlias,
+      anonAllowReplies: this.anonAllowReplies,
+      anonTraceDV: this.anonTraceDV,
+      sendNetworkId: this.sendNetworkId,
+      sendTimestamp: this.sendTimestamp,
+      savedAt: null,
+    };
+  }
+
+  /** The character's drafts (newest first), lifting a legacy single draft once. */
+  _drafts() {
+    const actor = game.actors.get(this.fromActorId);
+    return actor ? readDrafts(actor, MODULE_ID).list : [];
+  }
+
+  _draftCount() { return this._drafts().length; }
+
+  /**
+   * Put a draft back into this window. Resets the composer first, then
+   * rebuilds a reply/forward from its original (through the repository; if the
+   * original is gone it opens as a plain message and says so).
+   */
+  async _applyDraft(draft) {
+    if (!draft) return false;
+    this._resetForDraft();
+    this._draftId = draft.id;
+    this.mode = 'compose';
+    this.originalMessage = null;
+
+    if ((draft.mode === 'reply' || draft.mode === 'forward') && draft.originalMessageId) {
+      const inboxActorId = draft.originalActorId || this.fromActorId;
+      const orig = inboxActorId ? await this.messageService?.getMessage?.(inboxActorId, draft.originalMessageId).catch(() => null) : null;
+      if (orig) {
+        this.mode = draft.mode;
+        this.originalMessage = orig;
+        if (draft.mode === 'reply') this._initReply({});
+        else this._initForward();
+      } else {
+        ui.notifications.warn('NCM | The message this draft answered is gone — opening it as a new message.');
+      }
+    }
+
+    // The draft's own fields win over what the reply/forward setup seeded.
+    const have = new Set(this.recipients.map(r => MessageComposerApp.recipientKey(r)));
+    for (const r of (draft.recipients || [])) {
+      if (r.groupId) { if (!have.has(r.groupId)) this._addGroupById(r.groupId); continue; }
+      if (r.actorId && !have.has(r.actorId)) this._addRecipient(r.actorId, false, r.contactId ? { contactId: r.contactId, email: r.email, name: r.name } : null);
+      else if (!r.actorId && (r.contactId || r.email) && !have.has(r.contactId || r.email)) {
+        if (r.isRaw || !r.name) this._addRawRecipient(r.email);
+        else this._addContactRecipient({ contactId: r.contactId, email: r.email, name: r.name });
+      }
+    }
+    this.subject = draft.subject || this.subject || '';
     this.body = draft.body || '';
+    this.threadId = draft.threadId ?? this.threadId;
+    this.inReplyTo = draft.inReplyTo ?? this.inReplyTo;
     this.priority = draft.priority || 'normal';
-    this.encryptionEnabled = draft.encryptionEnabled || false;
+    this.encryptionEnabled = !!draft.encryptionEnabled;
     this.encryptionDV = draft.encryptionDV || 12;
     this.encryptionType = draft.encryptionType || 'ICE';
     this.encryptionFailureMode = draft.encryptionFailureMode || 'nothing';
@@ -1759,19 +1894,99 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.iceSource = draft.iceSource || 'default';
     this.iceActorId = draft.iceActorId || null;
     this.encryptionBypassSkills = draft.encryptionBypassSkills || null;
-    this.selfDestructEnabled = draft.selfDestructEnabled || false;
+    this.selfDestructEnabled = !!draft.selfDestructEnabled;
     this.selfDestructMode = draft.selfDestructMode || 'after_read';
+    this.scheduleEnabled = !!draft.scheduleEnabled;
+    this.scheduledTime = draft.scheduledTime || '';
+    this.scheduleGameTime = !!draft.scheduleGameTime;
+    if (game.user.isGM) {
+      this.anonymousEnabled = !!draft.anonymousEnabled;
+      if (draft.anonStyle) this.anonStyle = draft.anonStyle;
+      this.anonAlias = draft.anonAlias || '';
+      if (typeof draft.anonAllowReplies === 'boolean') this.anonAllowReplies = draft.anonAllowReplies;
+      if (draft.anonTraceDV) this.anonTraceDV = draft.anonTraceDV;
+      this.sendNetworkId = draft.sendNetworkId || null;
+      this.sendTimestamp = draft.sendTimestamp || '';
+    }
+    if (draft.fromContactId && !this.fromContact) {
+      const mc = game.nightcity?.masterContactService?.getContact?.(draft.fromContactId);
+      if (mc) this.fromContact = { id: mc.id, name: mc.name, email: mc.email, portrait: mc.portrait };
+    }
+    this.autoSaveTime = draft.savedAt ? new Date(draft.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+    this._errors = {};
+    return true;
   }
 
-  /**
-   * Clear the saved draft from actor flags (called after successful send).
-   */
-  async _clearDraft() {
-    const actor = game.actors.get(this.fromActorId);
-    if (actor && (actor.isOwner || game.user.isGM)) {
-      await actor.unsetFlag(MODULE_ID, 'composerDraft').catch(() => {});
-    }
+  /** Back to an empty window (keeps the sender, the terminal lock and the window). */
+  _resetForDraft() {
+    this.recipients = [];
+    this.subject = '';
+    this.body = '';
+    this.threadId = null;
+    this.inReplyTo = null;
+    this.anonReplyTo = null;
+    this.attachments = [];
+    this.eddiesAmount = 0;
+    this._drawer = null;
+    this._preview = false;
+    this.ccFieldVisible = false;
   }
+
+  /** composeMessage({ draftId }) → the draft lands before the first paint. */
+  async _loadPendingDraft() {
+    const id = this._pendingDraftId;
+    if (!id) return;
+    this._pendingDraftId = null;
+    const draft = this._drafts().find(d => d.id === id);
+    if (!draft) { ui.notifications.warn('NCM | That draft is gone.'); return; }
+    await this._applyDraft(draft);
+  }
+
+  /** The footer link: pick one of this character's drafts and open it HERE.
+   *  What is in the window now is saved first as its own draft (if it has
+   *  content), so nothing is lost and nothing has to be asked. */
+  async _openDraftInPlace() {
+    const list = this._drafts();
+    if (!list.length) return ui.notifications.info('No drafts for this character.');
+    const now = Date.now();
+    const entries = list.map(d => ({
+      id: d.id,
+      name: draftRecipientName(d, (aid) => game.actors.get(aid)?.name) || '(no recipient)',
+      sub: draftLabel(d),
+      note: relativeAge(Date.parse(d.savedAt || ''), now),
+      tag: draftKind(d) ? (draftKind(d) === 'reply' ? 'Reply' : 'Forward') : '',
+      img: 'icons/svg/book.svg',
+    }));
+    const pick = await showNamePicker({
+      title: 'Your drafts', hint: 'Opens in this window. What you were writing is kept as its own draft.',
+      entries, chips: false, admin: false, placeholder: 'search drafts…', closeLabel: 'Cancel',
+      taken: this._draftId ? [this._draftId] : [], takenLabel: 'open now',
+    });
+    if (!pick?.id || pick.id === this._draftId) return;
+    this._syncFormData();
+    if (draftHasContent(this._draftRecord())) this._performAutoSave({ silent: true });
+    const draft = this._drafts().find(d => d.id === pick.id);
+    if (!draft) return ui.notifications.warn('NCM | That draft is gone.');
+    await this._applyDraft(draft);
+    this.render(true);
+  }
+
+  /** Delete one draft by id (a `-=id` deletion key on the flag). */
+  async _deleteDraft(id) {
+    const actor = game.actors.get(this.fromActorId);
+    if (!actor || !id || !(actor.isOwner || game.user.isGM)) return;
+    const map = actor.getFlag(MODULE_ID, DRAFTS_FLAG) || {};
+    if (!(id in map)) return;
+    await actor.setFlag(MODULE_ID, DRAFTS_FLAG, { [`-=${id}`]: null }).catch(() => {});
+  }
+
+  /** After a successful send: only THIS window's draft goes. */
+  async _clearDraft() {
+    this._draftDone = true;
+    if (this._draftId) await this._deleteDraft(this._draftId);
+    this._draftId = null;
+  }
+
 
   // ─── GM Send-As (WP-4.5.6) ───────────────────────────────
 
@@ -1819,18 +2034,21 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       : combined;
 
     list.innerHTML = filtered.slice(0, 30).map(c => {
-      const isActive = (c.actorId && c.actorId === this.fromActorId) || (c.contactId && c.contactId === this.fromContact?.id);
-      const color = getAvatarColor(c.name);
+      // With an identity picked, only THAT row is lit (not every identity of the character).
+      const isActive = this.fromContact?.id
+        ? c.contactId === this.fromContact.id
+        : !!(c.actorId && c.actorId === this.fromActorId);
       const initials = getInitials(c.name);
+      const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
       return `
-        <div class="ncm-sendas-item ${isActive ? 'ncm-sendas-item--active' : ''}"
+        <div class="ncm-sendas-item ${isActive ? 'ncm-sendas-item--active' : ''}" style="--tc:${hueVar(c.name)}"
              data-ncm-sendas-pick="${c.actorId}" data-ncm-contact-id="${c.contactId}">
-          <div class="ncm-sendas-item__avatar" style="color: ${color};">${initials}</div>
+          <div class="ncm-sendas-item__avatar">${esc(initials)}</div>
           <div class="ncm-sendas-item__info">
-            <div class="ncm-sendas-item__name">${c.name}${c.org ? ` <span style="color:var(--ncm-text-muted);font-size:0.85em;">— ${c.org}</span>` : ''}</div>
-            <div class="ncm-sendas-item__email">${c.email}</div>
+            <div class="ncm-sendas-item__name">${esc(c.name)}${c.org ? ` <span>· ${esc(c.org)}</span>` : ''}</div>
+            <div class="ncm-sendas-item__email">${esc(c.email)}</div>
           </div>
-          <span class="ncm-sendas-item__type">${c.isAlias ? 'ALIAS' : (c.isMaster ? 'MASTER' : c.type || 'NPC')}</span>
+          <span class="ncm-sendas-item__type ${c.isAlias ? 'is-alias' : ''}">${c.isAlias ? 'alias' : (c.isMaster ? 'main' : esc(c.type || 'npc'))}</span>
         </div>
       `;
     }).join('');
@@ -1848,7 +2066,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     // Validate (WP-4.5.7)
     this._errors = {};
     if (this.recipients.length === 0) {
-      this._errors.to = 'Recipient required';
+      this._errors.to = 'Pick at least one recipient.';
     }
     if (!this.subject.trim() && !this._getEditorText().trim()) {
       this._errors.general = 'Message must have a subject or body.';
@@ -2114,9 +2332,13 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     MessageComposerApp._onSend.call(this, event, target);
   }
 
-  static _onSaveDraft(event, target) {
-    this._performAutoSave();
-    ui.notifications.info('Draft saved.');
+  /** Draft = save and CLOSE (autosave keeps writing the same id while open). */
+  static async _onSaveDraft(event, target) {
+    const saved = this._performAutoSave({ silent: true });
+    if (!saved) { ui.notifications.info('Nothing to save yet.'); return; }
+    this._draftDone = true;
+    ui.notifications.info('Draft saved — it is on the Agent\'s Drafts tab.');
+    this.close({ noDraft: true });
   }
 
   static _onSetPriority(event, target) {
@@ -2135,10 +2357,15 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.render(true);
   }
 
+  /** The lock-type segment (data-type); without one it cycles, as it always did. */
   static _onCycleEncryptionType(event, target) {
     const types = ['ICE', 'BLACK_ICE', 'RED_ICE'];
-    const idx = types.indexOf(this.encryptionType);
-    this.encryptionType = types[(idx + 1) % types.length];
+    const picked = target?.dataset?.type;
+    if (picked && types.includes(picked)) this.encryptionType = picked;
+    else {
+      const idx = types.indexOf(this.encryptionType);
+      this.encryptionType = types[(idx + 1) % types.length];
+    }
 
     // Auto-set failure mode for lethal ICE
     const isLethal = this.encryptionType === 'BLACK_ICE' || this.encryptionType === 'RED_ICE';
@@ -2170,13 +2397,24 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   // ── Self-Destruct (WP-4.5.5) ──
 
+  /** Explicit `data-on="1|0"` from a drawer segment, else a toggle. */
+  static _wantOn(target, current) {
+    const v = target?.dataset?.on;
+    return v === '1' ? true : v === '0' ? false : !current;
+  }
+
   static _onToggleSelfDestruct(event, target) {
-    this.selfDestructEnabled = !this.selfDestructEnabled;
+    this._syncFormData();
+    this.selfDestructEnabled = MessageComposerApp._wantOn(target, this.selfDestructEnabled);
+    if (this.selfDestructEnabled) this._drawer = 'sd';
     this.render(true);
   }
 
+  /** Picking a mode is wanting it — it switches self-destruct on too. */
   static _onSetSelfDestructMode(event, target) {
+    this._syncFormData();
     this.selfDestructMode = target.dataset.mode;
+    this.selfDestructEnabled = true;
     this.render(true);
   }
 
@@ -2185,22 +2423,23 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   static _onToggleAnonymous(event, target) {
     if (!game.user.isGM) return;
     // Persist any typed alias/DV before re-render so it survives the toggle.
-    this._syncAnonFields();
-    this.anonymousEnabled = !this.anonymousEnabled;
+    this._syncFormData();
+    this.anonymousEnabled = MessageComposerApp._wantOn(target, this.anonymousEnabled);
+    if (this.anonymousEnabled) this._drawer = 'anon';
     this.render(true);
   }
 
   static _onSetAnonStyle(event, target) {
     if (!game.user.isGM) return;
-    this._syncAnonFields();
+    this._syncFormData();
     this.anonStyle = target.dataset.style || 'scrambled';
     this.render(true);
   }
 
   static _onToggleAnonReplies(event, target) {
     if (!game.user.isGM) return;
-    this._syncAnonFields();
-    this.anonAllowReplies = !this.anonAllowReplies;
+    this._syncFormData();
+    this.anonAllowReplies = MessageComposerApp._wantOn(target, this.anonAllowReplies);
     this.render(true);
   }
 
@@ -2217,7 +2456,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   // ── Schedule (WP-4.5.6) ──
 
   static _onToggleSchedule(event, target) {
-    this.scheduleEnabled = !this.scheduleEnabled;
+    this._syncFormData();
+    this.scheduleEnabled = MessageComposerApp._wantOn(target, this.scheduleEnabled);
+    if (this.scheduleEnabled) this._drawer = 'sched';
     // A scheduled message is stamped when it's delivered — drop any backdate.
     if (this.scheduleEnabled) this.sendTimestamp = '';
     // Pre-fill with current time when enabling
@@ -2393,7 +2634,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         icon.classList.toggle('fa-chevron-up');
       }
       const text = body.classList.contains('ncm-composer__msg-body--expanded')
-        ? 'Hide full message' : 'Show full message';
+        ? 'Hide the whole message' : 'Show the whole message';
       target.childNodes[target.childNodes.length - 1].textContent = ` ${text}`;
     }
   }
@@ -2514,7 +2755,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.render(true);
   }
 
-  static _onAttachShard(event, target) {
+  static async _onAttachShard(event, target) {
     const actor = game.actors.get(this.fromActorId);
     const isGM = game.user.isGM;
 
@@ -2555,11 +2796,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       }
     }
 
-    // Deduplicate by ID
+    // Deduplicate by uuid — an embedded item's id is only unique inside its actor (two characters can carry the same id)
     const seen = new Set();
     allShards = allShards.filter(s => {
-      if (seen.has(s.id)) return false;
-      seen.add(s.id);
+      if (seen.has(s.uuid)) return false;
+      seen.add(s.uuid);
       return true;
     });
 
@@ -2570,51 +2811,34 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       return;
     }
 
-    // Build selection dialog
-    const content = `<div style="max-height:200px;overflow-y:auto;">
-      ${allShards.map(s => `
-        <div style="display:flex;align-items:center;gap:8px;padding:4px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.1);"
-             class="ncm-shard-pick" data-item-id="${s.id}">
-          <i class="fas fa-microchip" style="color:var(--ncm-secondary);"></i>
-          <span>${s.name}</span>
-          ${s.ownerName ? `<span style="font-size:0.7em;color:var(--ncm-text-muted);margin-left:auto;">(${s.ownerName})</span>` : ''}
-        </div>
-      `).join('')}
-    </div>`;
-
-    playerDialog({
-      title: `Attach ${T('one')}`,
-      content,
-      buttons: { cancel: { label: 'Cancel' } },
-      render: (html) => {
-        html.find('.ncm-shard-pick').on('click', (e) => {
-          const itemId = e.currentTarget.dataset.itemId;
-          const item = allShards.find(s => s.id === itemId);
-          if (!item) return;
-
-          // Prevent duplicate
-          if (this.attachments.find(a => a.itemId === itemId)) {
-            ui.notifications.warn(`${T('short')} already attached.`);
-            return;
-          }
-
-          this.attachments.push({
-            name: `${item.name}.shard`,
-            size: '',
-            icon: 'fa-microchip',
-            itemId: item.id,
-            itemUuid: item.uuid,
-            isEddies: false,
-            encrypted: this.encryptionEnabled,
-          });
-          this.render(true);
-
-          // Close dialog
-          const app = Object.values(ui.windows).find(w => w.title === `Attach ${T('one')}`);
-          app?.close();
-        });
-      },
-    }).render(true);
+    // The shared searchable picker (the composer's last hand-rolled list, 2026-10-29): art, whose it is, a chip per
+    // owner, already-attached ones greyed, several at once.
+    const mine = actor?.name || '';
+    const entries = allShards.map(s => ({
+      id: s.uuid, name: s.name, img: s.img,
+      sub: s.ownerName === 'World' ? 'World item' : s.ownerName,
+      group: s.ownerName === 'World' ? 'World items' : (s.ownerName && s.ownerName === mine ? 'Your gear' : 'Other characters'),
+    }));
+    const attached = new Set(this.attachments.filter(a => a.itemUuid || a.itemId).map(a => a.itemUuid || allShards.find(x => x.id === a.itemId)?.uuid).filter(Boolean));
+    const picks = await showNamePicker({
+      title: `Attach ${T('one')}`, hint: isGM ? `${T('many')} in every inventory and the world.` : `${T('many')} you carry.`,
+      entries, multi: true, taken: attached, takenLabel: 'attached', placeholder: 'search…', admin: isGM,
+    });
+    if (!Array.isArray(picks) || !picks.length) return;
+    for (const p of picks) {
+      const item = allShards.find(x => x.uuid === p.id);
+      if (!item || this.attachments.some(a => (a.itemUuid || '') === item.uuid)) continue;
+      this.attachments.push({
+        name: `${item.name}.shard`,
+        size: '',
+        icon: 'fa-microchip',
+        itemId: item.id,
+        itemUuid: item.uuid,
+        isEddies: false,
+        encrypted: this.encryptionEnabled,
+      });
+    }
+    this.render(true);
   }
 
   static _onAttachEddies(event, target) {
@@ -2887,24 +3111,201 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }).render(true);
   }
 
-  static _onInsertSignature(event, target) {
-    const editor = this.element?.querySelector('[data-id="editor-content"]');
-    if (!editor) return;
-    editor.focus();
+  // ─── The clean revision: drawer · preview · drafts · templates ──────
 
-    const actor = game.actors.get(this.fromActorId);
-    const name = actor?.name || this.fromContact?.name || 'Unknown';
-    const email = this._fromEmail();
-    const alias = actor?.system?.information?.alias || '';
+  /** ONE drawer under the delivery chips; clicking its chip again closes it. */
+  static _onToggleDrawer(event, target) {
+    const key = target?.dataset?.drawer || null;
+    this._syncFormData();
+    this._drawer = (this._drawer === key) ? null : key;
+    this.render(true);
+  }
 
-    const sigLine = alias
-      ? `— ${alias} // ${email}`
-      : `— ${name} // ${email}`;
+  /** GM: swap the form for what the recipient will open (state is kept — a re-render). */
+  static _onTogglePreview(event, target) {
+    if (!game.user.isGM) return;
+    this._syncFormData();
+    this._preview = !this._preview;
+    this._closeTemplatesMenu();
+    this.render(true);
+  }
 
-    document.execCommand('insertHTML', false,
-      `<br><div class="ncm-signature" style="border-top:1px solid var(--ncm-border);padding-top:6px;margin-top:8px;color:var(--ncm-text-muted);font-family:var(--ncm-font-mono);font-size:0.85em;font-style:italic;">${sigLine}</div>`
-    );
-    this.body = editor.innerHTML;
+  static _onOpenDrafts(event, target) {
+    this._openDraftInPlace();
+  }
+
+  // ── Templates (GM) ──
+
+  static _onToggleTemplates(event, target) {
+    if (!game.user.isGM) return;
+    const menu = this.element?.querySelector('[data-id="tpl-menu"]');
+    if (!menu) return;
+    if (!menu.classList.contains('ncm-hidden')) { this._closeTemplatesMenu(); return; }
+    menu.classList.remove('ncm-hidden');
+    target?.classList.add('is-on');
+    this._tplCloser = (e) => {
+      if (menu.contains(e.target) || target?.contains(e.target)) return;
+      this._closeTemplatesMenu();
+    };
+    requestAnimationFrame(() => document.addEventListener('click', this._tplCloser, true));
+  }
+
+  _closeTemplatesMenu() {
+    this.element?.querySelector('[data-id="tpl-menu"]')?.classList.add('ncm-hidden');
+    this.element?.querySelector('[data-action="toggleTemplates"]')?.classList.remove('is-on');
+    if (this._tplCloser) {
+      document.removeEventListener('click', this._tplCloser, true);
+      this._tplCloser = null;
+    }
+  }
+
+  /** Insert: the shared picker over the templates, then fill the composer. */
+  static async _onTplInsert(event, target) {
+    if (!game.user.isGM) return;
+    this._closeTemplatesMenu();
+    const svc = this.messageTemplateService;
+    const list = svc?.getAll?.() || [];
+    if (!list.length) return ui.notifications.info('No message templates yet — write one and save it from this menu.');
+    const Svc = svc.constructor;
+    const pick = await showNamePicker({
+      title: 'Insert a template', hint: 'Fills an empty subject and the delivery options the template carries.',
+      entries: list.map(t => ({ id: t.id, name: t.name, sub: Svc.summary(t), img: 'icons/svg/book.svg' })),
+      chips: false, admin: false, placeholder: 'search templates…', closeLabel: 'Cancel',
+    });
+    if (!pick?.id) return;
+    const t = svc.get(pick.id);
+    if (t) await this._insertTemplate(t);
+  }
+
+  /**
+   * Apply a template: an empty subject takes the template's; priority, lock and
+   * self-destruct follow it; the body asks Replace / Append when the editor
+   * already has text (the Import-from-Journal precedent).
+   */
+  async _insertTemplate(t) {
+    this._syncFormData();
+    if (!this.subject.trim() && t.subject) this.subject = t.subject;
+    if (t.priority) this.priority = t.priority;
+    if (t.encryption) {
+      this.encryptionEnabled = !!t.encryption.enabled;
+      if (t.encryption.enabled) {
+        this.encryptionDV = t.encryption.dv || this.encryptionDV;
+        this.encryptionType = t.encryption.type || 'ICE';
+        this.encryptionFailureMode = t.encryption.failureMode || 'nothing';
+      }
+    }
+    if (t.selfDestruct) {
+      this.selfDestructEnabled = !!t.selfDestruct.enabled;
+      if (t.selfDestruct.enabled) this.selfDestructMode = t.selfDestruct.mode || 'after_read';
+    }
+    const tplBody = String(t.body || '');
+    if (tplBody) {
+      const hasText = this._getEditorText().trim().length > 0;
+      let how = 'replace';
+      if (hasText) {
+        how = await new Promise((resolve) => {
+          playerDialog({
+            title: 'Insert template',
+            content: `<p>The message already has text. Put the template's body in place of it, or after it?</p>`,
+            buttons: {
+              replace: { icon: '<i class="fas fa-rotate"></i>', label: 'Replace', callback: () => resolve('replace') },
+              append: { icon: '<i class="fas fa-arrow-down"></i>', label: 'Append', callback: () => resolve('append') },
+              cancel: { icon: '<i class="fas fa-xmark"></i>', label: 'Cancel', callback: () => resolve(null) },
+            },
+            default: 'append',
+            close: () => resolve(null),
+          }).render(true);
+        });
+        if (!how) return;
+      }
+      this.body = how === 'append' ? `${this.body}<p><br></p>${tplBody}` : tplBody;
+    }
+    this.render(true);
+    ui.notifications.info(`NCM | Template "${t.name}" inserted.`);
+  }
+
+  /** Save what is in the composer now as a template (a known name asks Overwrite). */
+  static async _onTplSave(event, target) {
+    if (!game.user.isGM) return;
+    this._closeTemplatesMenu();
+    this._syncFormData();
+    const svc = this.messageTemplateService;
+    if (!svc) return;
+    const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const name = await adminPrompt({
+      title: 'Save as a template',
+      content: `<p>Name this template. The subject, body, priority, lock and self-destruct settings are saved with it.</p><input type="text" name="tplName" value="${esc(this.subject)}" placeholder="e.g. Bounty notice" autocomplete="off" style="width:100%" />`,
+      label: 'Save',
+      callback: (html) => (html instanceof jQuery ? html[0] : html).querySelector('[name="tplName"]')?.value?.trim() || '',
+      rejectClose: false,
+    });
+    if (!name) return;
+    const existing = svc.findByName(name);
+    if (existing) {
+      const yes = await adminConfirm({
+        title: 'Overwrite template?',
+        content: `<p>A template called "${esc(name)}" exists. Replace it with this message?</p>`,
+      });
+      if (!yes) return;
+    }
+    try {
+      const { overwrote } = await svc.save({
+        name, subject: this.subject, body: this.body, priority: this.priority,
+        encryption: { enabled: this.encryptionEnabled, dv: this.encryptionDV, type: this.encryptionType, failureMode: this.encryptionFailureMode },
+        selfDestruct: { enabled: this.selfDestructEnabled, mode: this.selfDestructMode },
+      });
+      ui.notifications.info(`NCM | Template "${name}" ${overwrote ? 'updated' : 'saved'}.`);
+      this.render(true);
+    } catch (e) {
+      ui.notifications.error(e.message || 'Could not save the template.');
+    }
+  }
+
+  /** Import (the spam-template pattern: hidden file input, envelope or bare array). */
+  static _onTplImport(event, target) {
+    if (!game.user.isGM) return;
+    this._closeTemplatesMenu();
+    const svc = this.messageTemplateService;
+    if (!svc) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) { input.remove(); return; }
+      try {
+        const payload = JSON.parse(await file.text());
+        const { imported, skipped } = await svc.importTemplates(payload);
+        ui.notifications.info(`Imported ${imported} template(s).${skipped ? ` ${skipped} skipped (same name or invalid).` : ''}`);
+        this.render(true);
+      } catch (err) {
+        console.error('NCM | Import message templates failed:', err);
+        ui.notifications.error(err.message || 'Failed to parse JSON file.');
+      } finally {
+        input.remove();
+      }
+    });
+    input.click();
+  }
+
+  /** Export every template as a downloadable JSON envelope. */
+  static _onTplExport(event, target) {
+    if (!game.user.isGM) return;
+    this._closeTemplatesMenu();
+    const svc = this.messageTemplateService;
+    if (!svc) return;
+    const payload = svc.exportTemplates();
+    if (!payload.templates.length) return ui.notifications.warn('No templates to export.');
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-message-templates-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ui.notifications.info(`Exported ${payload.templates.length} template(s).`);
   }
 
   // ─── Form Data Sync ───────────────────────────────────────
@@ -2967,6 +3368,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (!this.fromActorId) return this.fromContact?.email || '';
     // An identity picked in Send-as (or a reply sent as the alias it came to) wins.
     if (this.fromContact?.email) return this.fromContact.email;
+    // A starred main identity beats a registered address left from before a move.
+    const starred = game.nightcity?.masterContactService?.getByActorId?.(this.fromActorId);
+    if (starred?.primaryIdentity && starred.email && !game.actors?.get(this.fromActorId)?.hasPlayerOwner) return starred.email;
     const flagged = this.contactRepo?.getActorEmail(this.fromActorId) || '';
     if (flagged) return flagged;
     const mcs = game.nightcity?.masterContactService;
@@ -3151,14 +3555,14 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         const detail = el.querySelector('[data-id="send-success-detail"]');
         successEl.classList.toggle('ncm-composer__send-success--queued', !!details.queued);
         if (details.queued) {
-          if (title) title.textContent = 'Message Queued';
+          if (title) title.textContent = 'Message queued';
           if (detail) {
             detail.textContent = details.reason === 'dead_zone'
               ? `No signal here — ${recipientName} will receive it once you are back in network range.`
               : `Your GM is offline — it will be sent to ${recipientName} when they connect.`;
           }
         } else {
-          if (title) title.textContent = 'Message Transmitted';
+          if (title) title.textContent = 'Message sent';
           if (detail) {
             const time = formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString());
             const who = details.count > 1 ? `${details.count} recipients` : recipientName;

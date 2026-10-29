@@ -1,0 +1,263 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Role Manager + Directory filter</title>
+<!--
+  A. The Role Manager, cleaned up: one window, list on the left (search + Built-in / Custom / In use
+     chips, how many contacts use each), editor on the right (colour from the theme palette or any hex,
+     an icon grid you can search, a preview the way it shows on a contact). Editing never closes the window.
+  B. Directory → Filter: a picker beside Group/Sort with Roles, Organizations and Trust — tick several;
+     the active ones show as removable chips under the toolbar, and the list narrows.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-roles-filter-mock.html   ?t=clean-light
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 22px 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px sans-serif; margin: 0 0 12px; max-width: 1060px; line-height: 1.45; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .P { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 5px 10px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important; flex: none;
+    border: 1px solid var(--ncm-act) !important; color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 10%, transparent) !important; cursor: pointer; white-space: nowrap; box-shadow: none !important; margin: 0 !important; line-height: 1.4; display: inline-flex; gap: 6px; align-items: center; }
+  .btn.solid { background: var(--ncm-act) !important; color: var(--ncm-text-inverse, #0b0d12) !important; }
+  .btn.q { border-color: var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; }
+  .btn.bad { border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent) !important; color: var(--ncm-bad) !important; background: none !important; }
+  .inp { height: 26px !important; padding: 0 8px !important; border: 1px solid var(--ncm-border-active) !important; border-radius: 2px !important; background: var(--ncm-bg-pane) !important; color: var(--ncm-text-primary) !important; font: 13px var(--ncm-font-body) !important; box-shadow: none !important; }
+  .srch { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .srch i { color: var(--ncm-text-label); font-size: 11px; }
+  .srch input { flex: 1; min-width: 0; border: 0 !important; background: none !important; height: 24px !important; padding: 0 !important; box-shadow: none !important; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 2px; border: 1px solid var(--ncm-border-active); font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); cursor: pointer; }
+  .chip .n { font: 10px var(--ncm-font-mono); color: var(--ncm-text-hint); }
+  .chip.on { border-color: var(--ncm-act); color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 14%, transparent); }
+
+  /* ═══ A. ROLE MANAGER ═══ */
+  .rm { display: grid; grid-template-columns: 250px minmax(0,1fr); height: 520px; }
+  .rm__list { border-right: 1px solid var(--ncm-border); display: flex; flex-direction: column; min-height: 0; background: var(--ncm-bg-pane); }
+  .rm__tools { padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; border-bottom: 1px solid var(--ncm-border); }
+  .rm__chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .rm__rows { flex: 1; overflow-y: auto; overflow-x: hidden; }
+  .rm__gh { position: sticky; top: 0; z-index: 1; padding: 5px 10px; background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border); font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); display: flex; gap: 6px; }
+  .rm__gh .n { margin-left: auto; font: 10px var(--ncm-font-mono); }
+  .rm__r { --rc: var(--ncm-text-label); display: grid; grid-template-columns: 26px minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 6px 10px; cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); }
+  .rm__r:hover { background: var(--ncm-bg-hover); }
+  .rm__r.sel { background: color-mix(in srgb, var(--ncm-act) 12%, var(--ncm-bg-pane)); box-shadow: inset 3px 0 var(--ncm-act); }
+  .rm__ic { width: 26px; height: 26px; border-radius: 2px; display: grid; place-items: center; font-size: 12px; color: var(--rc); background: color-mix(in srgb, var(--rc) 16%, transparent); border: 1px solid color-mix(in srgb, var(--rc) 45%, transparent); }
+  .rm__nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rm__sub { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .rm__sub.zero { color: var(--ncm-text-hint); }
+  .rm__tag { font: 700 9px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-hint); }
+  .rm__new { margin: 8px 10px 10px; }
+  .rm__ed { padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .rm__ed h4 { margin: 0; font: 700 16px var(--ncm-font-display); color: var(--ncm-text-heading); display: flex; gap: 8px; align-items: center; border: 0; }
+  .rm__ed h4 small { font: 400 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .lbl { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+  .lbl small { font: 400 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+  .sw { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .sw span { width: 22px; height: 22px; border-radius: 2px; cursor: pointer; background: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 30%, transparent); }
+  .sw span.on { box-shadow: 0 0 0 2px var(--ncm-bg-pane-alt, var(--ncm-bg-base)), 0 0 0 4px var(--c); }
+  .sw input[type=color] { width: 28px !important; height: 22px !important; padding: 0 !important; border: 1px solid var(--ncm-border-active) !important; background: none !important; }
+  .sw .hex { font: 12px var(--ncm-font-mono); color: var(--ncm-text-label); margin-left: 4px; }
+  .ig { display: grid; grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); gap: 4px; max-height: 120px; overflow-y: auto; padding: 2px; }
+  .ig span { height: 32px; display: grid; place-items: center; border-radius: 2px; border: 1px solid var(--ncm-border); color: var(--ncm-text-primary); cursor: pointer; font-size: 13px; }
+  .ig span:hover { border-color: var(--ncm-act); color: var(--ncm-act); }
+  .ig span.on { border-color: var(--rc); color: var(--rc); background: color-mix(in srgb, var(--rc) 16%, transparent); }
+  .pv { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border: 1px dashed var(--ncm-border-active); border-radius: 2px; }
+  .pv .tag { display: inline-flex; gap: 5px; align-items: center; padding: 1px 7px; border-radius: 1px; font: 600 12px var(--ncm-font-body); color: color-mix(in oklab, var(--rc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--rc) 15%, transparent); border: 1px solid color-mix(in srgb, var(--rc) 50%, transparent); }
+  .pv .tag i { color: var(--rc); }
+  .pv .band { display: inline-flex; gap: 7px; align-items: center; padding: 4px 10px; background: var(--ncm-bg-card-head); box-shadow: inset 3px 0 var(--rc); font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .pv .band i { color: var(--rc); }
+  .pv .cap { font: 11px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .who { display: flex; gap: 5px; flex-wrap: wrap; }
+  .who span { padding: 1px 7px; border-radius: 10px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); font: 12px var(--ncm-font-body); }
+  .rm__foot { margin-top: auto; display: flex; gap: 8px; align-items: center; padding-top: 10px; border-top: 1px solid var(--ncm-border); }
+  .rm__foot .grow { flex: 1; }
+  .ro { padding: 9px 11px; border-left: 3px solid var(--ncm-text-hint); background: var(--ncm-bg-card); font: 12.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+
+  /* ═══ B. DIRECTORY FILTER ═══ */
+  .tb { display: flex; gap: 6px; align-items: center; padding: 10px; }
+  .tb .srch { flex: 1; }
+  .mksel { height: 26px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane); font: 12px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .fbtn { height: 26px; padding: 0 9px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane); cursor: pointer; font: 700 10.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); position: relative; }
+  .fbtn.on { border-color: var(--ncm-act); color: var(--ncm-act); }
+  .fbtn .ct { font: 700 10px var(--ncm-font-mono); background: var(--ncm-act); color: var(--ncm-text-inverse, #0b0d12); border-radius: 2px; padding: 0 4px; }
+  .pop { position: absolute; top: calc(100% + 4px); right: 0; z-index: 5; width: 310px; background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active); border-radius: 2px; box-shadow: 0 10px 28px rgba(0,0,0,.45); text-transform: none; letter-spacing: 0; font-weight: 400; cursor: default; }
+  .pop__s { padding: 8px; border-bottom: 1px solid var(--ncm-border); }
+  .pop__tabs { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--ncm-border); }
+  .pop__rows { max-height: 240px; overflow-y: auto; }
+  .pop__gh { padding: 5px 10px; background: var(--ncm-bg-card-head); font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); display: flex; }
+  .pop__gh .n { margin-left: auto; font: 10px var(--ncm-font-mono); }
+  .pop__r { display: grid; grid-template-columns: 16px 20px minmax(0,1fr) auto; gap: 7px; align-items: center; padding: 5px 10px; cursor: pointer; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .pop__r:hover { background: var(--ncm-bg-hover); }
+  .pop__r .cb { width: 13px; height: 13px; border: 1.5px solid var(--ncm-border-active); border-radius: 2px; display: grid; place-items: center; font-size: 8px; color: transparent; }
+  .pop__r.on .cb { background: var(--ncm-act); border-color: var(--ncm-act); color: var(--ncm-text-inverse, #0b0d12); }
+  .pop__r .ri { color: var(--rc); text-align: center; }
+  .pop__r .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-hint); }
+  .pop__r .only { font: 11px var(--ncm-font-body); color: var(--ncm-act); opacity: 0; }
+  .pop__r:hover .only { opacity: 1; }
+  .pop__ft { display: flex; gap: 6px; padding: 7px 8px; border-top: 1px solid var(--ncm-border); }
+  .pop__ft .grow { flex: 1; }
+  .act { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 10px 8px; align-items: center; }
+  .act .lab { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .af { --rc: var(--ncm-act); display: inline-flex; gap: 5px; align-items: center; padding: 1px 4px 1px 7px; border-radius: 1px; font: 600 12px var(--ncm-font-body);
+    color: color-mix(in oklab, var(--rc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--rc) 15%, transparent); border: 1px solid color-mix(in srgb, var(--rc) 50%, transparent); }
+  .af i.k { color: var(--rc); font-size: 10px; }
+  .af .x { cursor: pointer; padding: 0 3px; color: var(--ncm-text-label); }
+  .af .x:hover { color: var(--ncm-bad); }
+  .act .clr { font: 12px var(--ncm-font-body); color: var(--ncm-act); cursor: pointer; margin-left: 4px; }
+  .dir { border-top: 1px solid var(--ncm-border); max-height: 300px; overflow-y: auto; }
+  .dir .gh { position: sticky; top: 0; padding: 5px 10px; background: var(--ncm-bg-card-head); box-shadow: inset 3px 0 var(--rc); font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); display: flex; gap: 7px; }
+  .dir .gh i { color: var(--rc); } .dir .gh .n { margin-left: auto; font: 10px var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .dir .r { padding: 6px 10px 6px 14px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); }
+  .dir .r b { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); display: block; }
+  .dir .r span { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .dir .empty { padding: 18px; text-align: center; color: var(--ncm-text-hint); font: italic 12.5px var(--ncm-font-body); }
+</style>
+</head>
+<body>
+<p class="mk-h">A — THE ROLE MANAGER &nbsp;·&nbsp; Admin → Contacts → edit a contact → Role → Manage roles…</p>
+<p class="mk-p">One window that never closes on you. Left: every role — search, chips for <b>Built-in / Custom / In use</b>, how many contacts use each. Right: the selected role. A custom role is edited right there — name, colour (the theme palette, or any colour), icon (search the grid), and a preview the way it shows on a contact and as a Directory group. A built-in role can't be changed, but you see who uses it. <b>New role</b> starts a blank one. Delete says how many contacts lose it first.</p>
+<div data-slot="rm"></div>
+
+<p class="mk-h">B — DIRECTORY FILTER &nbsp;·&nbsp; Admin → Contacts → Directory</p>
+<p class="mk-p">A <b>Filter</b> button beside Group and Sort opens a picker with three tabs — <b>Roles</b>, <b>Organizations</b>, <b>Trust</b> — each with search and counts. Tick several (Fixers + Execs + Medtechs) or use <b>only</b> on a row. Active filters sit under the toolbar as chips in their colour; ✕ removes one; the list narrows as you go. Same picker the Messages filter uses.</p>
+<div data-slot="dir"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const shell = (w, inner) => `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:${w}px"><div class="ncm-admin-panel">${inner}</div></div>`;
+const PAL = ['var(--ncm-hue-1)', 'var(--ncm-hue-2)', 'var(--ncm-hue-3)', 'var(--ncm-hue-4)', 'var(--ncm-hue-5)', 'var(--ncm-hue-6)', 'var(--ncm-hue-7)', 'var(--ncm-hue-8)', 'var(--ncm-good)', 'var(--ncm-attn)', 'var(--ncm-bad)', 'var(--ncm-money)'];
+const ICONS = ['crosshairs', 'terminal', 'gear', 'briefcase', 'shield-halved', 'guitar', 'syringe', 'podcast', 'truck-monster', 'building-columns', 'staff-snake', 'users-line', 'user', 'landmark', 'microchip', 'jet-fighter', 'box-open', 'satellite-dish', 'ghost', 'skull', 'binoculars', 'bolt-lightning', 'car', 'hand-fist', 'mask', 'money-bill-wave', 'bomb', 'robot', 'flask', 'warehouse', 'helicopter', 'handshake', 'crown', 'eye', 'fire', 'gun', 'anchor', 'dragon'];
+const ROLES = [
+  { id: 'fixer', label: 'Fixer', icon: 'handshake', c: '#d4a017', n: 4, builtin: true, who: ['Rogue', 'Dexter DeShawn', 'Wakako', 'Padre'] },
+  { id: 'solo', label: 'Solo', icon: 'crosshairs', c: '#e04848', n: 3, builtin: true, who: ['Brick Jones', 'Jackie', 'River'] },
+  { id: 'netrunner', label: 'Netrunner', icon: 'terminal', c: '#00e5ff', n: 2, builtin: true, who: ['Lizzy', 'T-Bug'] },
+  { id: 'tech', label: 'Tech', icon: 'gear', c: '#2ecc71', n: 1, builtin: true, who: ['Judy Alvarez'] },
+  { id: 'medtech', label: 'Medtech', icon: 'staff-snake', c: '#1abc9c', n: 2, builtin: true, who: ['Viktor', 'Misty'] },
+  { id: 'media', label: 'Media', icon: 'podcast', c: '#b87aff', n: 0, builtin: true, who: [] },
+  { id: 'exec', label: 'Exec', icon: 'building-columns', c: '#6ec1e4', n: 5, builtin: true, who: ['Takemura', 'Hellman', 'Meredith', 'Goro', 'Saul'] },
+  { id: 'lawman', label: 'Lawman', icon: 'shield-halved', c: '#6b8fa3', n: 1, builtin: true, who: ['River'] },
+  { id: 'nomad', label: 'Nomad', icon: 'truck-monster', c: '#d4844a', n: 1, builtin: true, who: ['Panam'] },
+  { id: 'rockerboy', label: 'Rockerboy', icon: 'guitar', c: '#e05cb5', n: 1, builtin: true, who: ['Kerry'] },
+  { id: 'smuggler', label: 'Smuggler', icon: 'box-open', c: '#8a9cf0', n: 2, who: ['Dino', 'Mitch'] },
+  { id: 'cultist', label: 'Cultist', icon: 'eye', c: '#a993f0', n: 0, who: [] },
+];
+const R = { sel: 'smuggler', q: '', chip: 'all', iq: '', draft: null, isNew: false };
+function rmRender() {
+  const pass = (r) => (!R.q || r.label.toLowerCase().includes(R.q)) && (R.chip === 'all' || (R.chip === 'builtin' ? r.builtin : R.chip === 'custom' ? !r.builtin : r.n > 0));
+  const list = ROLES.filter(pass);
+  const grp = (b) => list.filter((r) => !!r.builtin === b);
+  const row = (r) => `<div class="rm__r ${R.sel === r.id && !R.isNew ? 'sel' : ''}" data-rsel="${r.id}" style="--rc:${r.c}"><span class="rm__ic"><i class="fas fa-${r.icon}"></i></span>
+    <div><div class="rm__nm">${r.label}</div><div class="rm__sub ${r.n ? '' : 'zero'}">${r.n ? `${r.n} contact${r.n > 1 ? 's' : ''}` : 'not used'}</div></div><span class="rm__tag">${r.builtin ? '<i class="fas fa-lock"></i>' : ''}</span></div>`;
+  const cur = R.isNew ? { id: '', label: '', icon: 'user', c: '#8a9cf0', n: 0, who: [] } : ROLES.find((r) => r.id === R.sel);
+  const d = R.draft || { label: cur.label, icon: cur.icon, c: cur.c };
+  const counts = { all: ROLES.length, builtin: ROLES.filter((r) => r.builtin).length, custom: ROLES.filter((r) => !r.builtin).length, used: ROLES.filter((r) => r.n).length };
+  const editor = cur.builtin ? `
+      <h4><span class="rm__ic" style="--rc:${cur.c}"><i class="fas fa-${cur.icon}"></i></span>${cur.label} <small>built-in</small></h4>
+      <div class="ro"><i class="fas fa-lock"></i> Built-in roles come with the module and can't be renamed or recoloured. Make a custom role if you need a variant.</div>
+      <div><div class="lbl">Looks like</div><div class="pv" style="--rc:${cur.c}"><span class="tag"><i class="fas fa-${cur.icon}"></i>${cur.label}</span><span class="cap">on a contact</span><span class="band"><i class="fas fa-${cur.icon}"></i>${cur.label}s</span><span class="cap">as a Directory group</span></div></div>
+      <div><div class="lbl">Used by <small>${cur.n} contact${cur.n === 1 ? '' : 's'}</small></div><div class="who">${cur.who.map((w) => `<span>${w}</span>`).join('') || '<i style="color:var(--ncm-text-hint)">nobody yet</i>'}</div></div>
+      <div class="rm__foot"><span class="grow"></span><button class="btn q" data-dup><i class="fas fa-copy"></i> Make a custom copy</button></div>` : `
+      <h4><span class="rm__ic" style="--rc:${d.c}"><i class="fas fa-${d.icon}"></i></span>${R.isNew ? 'New role' : (d.label || 'Untitled')} <small>${R.isNew ? 'not saved yet' : 'custom'}</small></h4>
+      <div><div class="lbl">Name</div><input class="inp" style="width:100%" value="${d.label}" placeholder="e.g. Smuggler" data-rname></div>
+      <div><div class="lbl">Colour <small>from the theme, or pick any</small></div><div class="sw">${PAL.map((c) => `<span style="--c:${c}" data-rcol="${c}" class="${d.c === c ? 'on' : ''}"></span>`).join('')}<input type="color" value="${d.c.startsWith('#') ? d.c : '#8a9cf0'}" data-rhex><span class="hex">${d.c.startsWith('#') ? d.c : 'theme'}</span></div></div>
+      <div><div class="lbl">Icon</div><div class="srch" style="margin-bottom:6px"><i class="fas fa-magnifying-glass"></i><input placeholder="Find an icon…" value="${R.iq}" data-iq></div>
+        <div class="ig" style="--rc:${d.c}">${ICONS.filter((i) => !R.iq || i.includes(R.iq)).map((i) => `<span class="${d.icon === i ? 'on' : ''}" data-ric="${i}" title="${i}"><i class="fas fa-${i}"></i></span>`).join('')}</div></div>
+      <div><div class="lbl">Looks like</div><div class="pv" style="--rc:${d.c}"><span class="tag"><i class="fas fa-${d.icon}"></i>${d.label || 'Role'}</span><span class="cap">on a contact</span><span class="band"><i class="fas fa-${d.icon}"></i>${(d.label || 'Role')}s</span><span class="cap">as a Directory group</span></div></div>
+      ${R.isNew ? '' : `<div><div class="lbl">Used by <small>${cur.n} contact${cur.n === 1 ? '' : 's'}</small></div><div class="who">${cur.who.map((w) => `<span>${w}</span>`).join('') || '<i style="color:var(--ncm-text-hint)">nobody yet</i>'}</div></div>`}
+      <div class="rm__foot">${R.isNew ? '' : `<button class="btn bad" title="${cur.n} contact(s) lose this role"><i class="fas fa-trash"></i> Delete${cur.n ? ` (${cur.n} use it)` : ''}</button>`}<span class="grow"></span><button class="btn q" data-rcancel>Cancel</button><button class="btn solid"><i class="fas fa-check"></i> ${R.isNew ? 'Create role' : 'Save'}</button></div>`;
+  document.querySelector('[data-slot="rm"]').innerHTML = shell(660, `<div class="P" style="overflow:hidden">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--ncm-bg-card);border-bottom:1px solid var(--ncm-border);box-shadow:inset 3px 0 var(--ncm-act);font:700 11px var(--ncm-font-display);letter-spacing:.06em;text-transform:uppercase;color:var(--ncm-text-heading)"><i class="fas fa-user-tag" style="color:var(--ncm-act)"></i>Roles <span style="font:400 12px var(--ncm-font-body);text-transform:none;letter-spacing:0;color:var(--ncm-text-label)">${ROLES.length} · ${counts.custom} custom</span></div>
+    <div class="rm"><div class="rm__list"><div class="rm__tools"><div class="srch"><i class="fas fa-magnifying-glass"></i><input placeholder="Find a role…" value="${R.q}" data-rq></div>
+      <div class="rm__chips">${[['all', 'All'], ['builtin', 'Built-in'], ['custom', 'Custom'], ['used', 'In use']].map(([k, l]) => `<span class="chip ${R.chip === k ? 'on' : ''}" data-rchip="${k}">${l}<span class="n">${counts[k]}</span></span>`).join('')}</div></div>
+      <div class="rm__rows">${grp(false).length ? `<div class="rm__gh">Custom<span class="n">${grp(false).length}</span></div>${grp(false).map(row).join('')}` : ''}${grp(true).length ? `<div class="rm__gh"><i class="fas fa-lock"></i>Built-in<span class="n">${grp(true).length}</span></div>${grp(true).map(row).join('')}` : ''}${!list.length ? '<div style="padding:14px;color:var(--ncm-text-hint);font-style:italic;text-align:center">No role matches.</div>' : ''}</div>
+      <button class="btn rm__new" data-rnew><i class="fas fa-plus"></i> New role</button></div>
+      <div class="rm__ed">${editor}</div></div></div>`);
+}
+
+/* ── B ── */
+const CONTACTS = [
+  ['Rogue', 'fixer', 'Afterlife', 'trusted'], ['Dexter DeShawn', 'fixer', '', 'suspicious'], ['Wakako', 'fixer', 'Tyger Claws', 'neutral'], ['Padre', 'fixer', '', 'neutral'],
+  ['Brick Jones', 'solo', 'Maelstrom', 'suspicious'], ['Jackie', 'solo', 'Valentinos', 'implicit'], ['Takemura', 'exec', 'Arasaka', 'cautious'], ['Hellman', 'exec', 'Kang Tao', 'cautious'],
+  ['Meredith', 'exec', 'Militech', 'neutral'], ['Viktor', 'medtech', '', 'trusted'], ['Misty', 'medtech', 'Esoterica', 'trusted'], ['Judy Alvarez', 'tech', 'Mox', 'implicit'],
+  ['Lizzy', 'netrunner', 'Voodoo Boys', 'cautious'], ['Panam', 'nomad', 'Aldecaldos', 'trusted'], ['Dino', 'smuggler', '', 'neutral'], ['River', 'lawman', 'NCPD', 'neutral'],
+];
+const TRUST = { implicit: ['Implicitly trusted', 'var(--ncm-good)'], trusted: ['Trusted', 'color-mix(in srgb, var(--ncm-good) 70%, var(--ncm-text-label))'], neutral: ['Neutral', 'var(--ncm-text-label)'], cautious: ['Cautious', 'var(--ncm-attn)'], suspicious: ['Suspicious', 'var(--ncm-bad)'] };
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const F = { open: true, tab: 'roles', q: '', on: new Set(['role:fixer', 'role:exec']) };
+function facets() {
+  const roles = ROLES.filter((r) => CONTACTS.some((c) => c[1] === r.id)).map((r) => ({ k: 'role:' + r.id, l: r.label + 's', icon: r.icon, c: r.c, n: CONTACTS.filter((c) => c[1] === r.id).length, g: r.builtin ? 'Built-in' : 'Custom' }));
+  const orgs = [...new Set(CONTACTS.map((c) => c[2]).filter(Boolean))].sort().map((o) => ({ k: 'org:' + o, l: o, icon: 'building', c: hue(o), n: CONTACTS.filter((c) => c[2] === o).length, g: '' }));
+  orgs.push({ k: 'org:', l: 'No organization', icon: 'circle-question', c: 'var(--ncm-text-hint)', n: CONTACTS.filter((c) => !c[2]).length, g: '' });
+  const trust = Object.entries(TRUST).map(([k, [l, c]]) => ({ k: 'trust:' + k, l, icon: 'handshake', c, n: CONTACTS.filter((x) => x[3] === k).length, g: '' }));
+  return { roles, orgs, trust };
+}
+function matches(c) {
+  const by = { role: [], org: [], trust: [] };
+  for (const k of F.on) { const [t, v] = k.split(':'); by[t].push(v); }
+  return (!by.role.length || by.role.includes(c[1])) && (!by.org.length || by.org.includes(c[2])) && (!by.trust.length || by.trust.includes(c[3]));
+}
+function dirRender() {
+  const fx = facets(); const all = [...fx.roles, ...fx.orgs, ...fx.trust];
+  const tabList = fx[F.tab].filter((x) => !F.q || x.l.toLowerCase().includes(F.q));
+  const groups = [...new Set(tabList.map((x) => x.g))];
+  const pop = F.open ? `<div class="pop" data-pop><div class="pop__tabs">${[['roles', 'Roles'], ['orgs', 'Organizations'], ['trust', 'Trust']].map(([k, l]) => `<span class="chip ${F.tab === k ? 'on' : ''}" data-ftab="${k}">${l}<span class="n">${[...F.on].filter((x) => x.startsWith({ roles: 'role', orgs: 'org', trust: 'trust' }[k] + ':')).length || ''}</span></span>`).join('')}</div>
+    <div class="pop__s"><div class="srch"><i class="fas fa-magnifying-glass"></i><input placeholder="Find…" value="${F.q}" data-fq></div></div>
+    <div class="pop__rows">${groups.map((g) => `${g ? `<div class="pop__gh">${g}<span class="n">${tabList.filter((x) => x.g === g).length}</span></div>` : ''}${tabList.filter((x) => x.g === g).map((x) => `<div class="pop__r ${F.on.has(x.k) ? 'on' : ''}" data-fk="${x.k}" style="--rc:${x.c}"><span class="cb"><i class="fas fa-check"></i></span><i class="fas fa-${x.icon} ri"></i><span>${x.l} <span class="n">${x.n}</span></span><span class="only" data-fonly="${x.k}">only</span></div>`).join('')}`).join('')}</div>
+    <div class="pop__ft"><span class="btn q" data-fclear>Clear all</span><span class="grow"></span><span class="btn solid" data-fdone>Done</span></div></div>` : '';
+  const chips = [...F.on].map((k) => { const x = all.find((y) => y.k === k); return x ? `<span class="af" style="--rc:${x.c}"><i class="fas fa-${x.icon} k"></i>${x.l}<span class="x" data-fx="${k}"><i class="fas fa-xmark"></i></span></span>` : ''; }).join('');
+  const shown = CONTACTS.filter(matches);
+  const byRole = ROLES.map((r) => ({ r, rows: shown.filter((c) => c[1] === r.id) })).filter((g) => g.rows.length);
+  document.querySelector('[data-slot="dir"]').innerHTML = shell(560, `<div class="P">
+    <div class="tb"><div class="srch"><i class="fas fa-magnifying-glass"></i><input placeholder="Search name, address, organization, tag, notes…"></div>
+      <span class="fbtn ${F.on.size ? 'on' : ''}" data-fopen><i class="fas fa-filter"></i>Filter${F.on.size ? `<span class="ct">${F.on.size}</span>` : ''}${pop}</span>
+      <span class="mksel">Group: Role <i class="fas fa-chevron-down" style="font-size:9px"></i></span><span class="mksel">Sort: A–Z <i class="fas fa-chevron-down" style="font-size:9px"></i></span></div>
+    ${F.on.size ? `<div class="act"><span class="lab">Showing</span>${chips}<span class="clr" data-fclear>clear</span><span style="margin-left:auto;font:11px var(--ncm-font-mono);color:var(--ncm-text-label)">${shown.length} of ${CONTACTS.length}</span></div>` : ''}
+    <div class="dir">${byRole.map(({ r, rows }) => `<div class="gh" style="--rc:${r.c}"><i class="fas fa-${r.icon}"></i>${r.label}s<span class="n">${rows.length}</span></div>${rows.map((c) => `<div class="r"><b>${c[0]}</b><span>${c[2] || 'no organization'} · ${TRUST[c[3]][0].toLowerCase()}</span></div>`).join('')}`).join('') || '<div class="empty">No contact matches every filter. <a style="color:var(--ncm-act);cursor:pointer" data-fclear>Clear them</a></div>'}</div></div>`);
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-rsel],[data-rchip],[data-rnew],[data-rcol],[data-ric],[data-rcancel],[data-dup],[data-fopen],[data-ftab],[data-fk],[data-fonly],[data-fx],[data-fclear],[data-fdone]');
+  if (!t) { if (F.open && !e.target.closest('[data-pop]')) { /* keep open in the mock */ } return; }
+  const d = t.dataset;
+  if (d.rsel) { R.sel = d.rsel; R.isNew = false; R.draft = null; return rmRender(); }
+  if (d.rchip) { R.chip = d.rchip; return rmRender(); }
+  if ('rnew' in d) { R.isNew = true; R.draft = { label: '', icon: 'user', c: 'var(--ncm-hue-7)' }; return rmRender(); }
+  if ('dup' in d) { const r = ROLES.find((x) => x.id === R.sel); R.isNew = true; R.draft = { label: r.label + ' (copy)', icon: r.icon, c: r.c }; return rmRender(); }
+  if (d.rcol) { R.draft = { ...(R.draft || pick()), c: d.rcol }; return rmRender(); }
+  if (d.ric) { R.draft = { ...(R.draft || pick()), icon: d.ric }; return rmRender(); }
+  if ('rcancel' in d) { R.draft = null; R.isNew = false; return rmRender(); }
+  if (d.fonly) { e.stopPropagation(); const t0 = d.fonly.split(':')[0]; for (const k of [...F.on]) if (k.startsWith(t0 + ':')) F.on.delete(k); F.on.add(d.fonly); return dirRender(); }
+  if (d.fk) { F.on.has(d.fk) ? F.on.delete(d.fk) : F.on.add(d.fk); return dirRender(); }
+  if (d.ftab) { F.tab = d.ftab; F.q = ''; return dirRender(); }
+  if (d.fx) { F.on.delete(d.fx); return dirRender(); }
+  if ('fclear' in d) { F.on.clear(); return dirRender(); }
+  if ('fdone' in d) { F.open = false; return dirRender(); }
+  if ('fopen' in d) { if (e.target.closest('[data-pop]')) return; F.open = !F.open; return dirRender(); }
+});
+function pick() { const r = ROLES.find((x) => x.id === R.sel); return { label: r.label, icon: r.icon, c: r.c }; }
+document.addEventListener('input', (e) => {
+  const d = e.target.dataset;
+  const keep = (sel) => { const v = e.target.value, p = e.target.selectionStart; return () => { const n = document.querySelector(sel); if (n) { n.focus(); n.setSelectionRange(p, p); } }; };
+  if ('rq' in d) { const k = keep('[data-rq]'); R.q = e.target.value.toLowerCase(); rmRender(); k(); }
+  else if ('iq' in d) { const k = keep('[data-iq]'); R.iq = e.target.value.toLowerCase(); rmRender(); k(); }
+  else if ('rname' in d) { R.draft = { ...(R.draft || pick()), label: e.target.value }; const k = keep('[data-rname]'); rmRender(); k(); }
+  else if ('rhex' in d) { R.draft = { ...(R.draft || pick()), c: e.target.value }; rmRender(); }
+  else if ('fq' in d) { const k = keep('[data-fq]'); F.q = e.target.value.toLowerCase(); dirRender(); k(); }
+});
+rmRender(); dirRender();
+</script>
+</body>
+</html>

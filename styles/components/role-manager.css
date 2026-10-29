@@ -1,484 +1,109 @@
 /**
- * Custom Role Manager Dialog — Styles
- * @file styles/components/role-manager.css
- * @module night-city-messenger
- * @description Styles for the GM custom role CRUD dialog.
- *   Header bar, built-in roles list (locked), custom roles list (editable),
- *   create/edit form with icon grid, color picker, and live chip preview.
- *
- *   Visual reference: ncm-gm-editor-mockup-v3.html — State 4
+ * Role Manager — scripts/ui/GMContactManager/RoleManagerDialog.js
+ * A body-mounted admin Dialog (.ncm-rmgr-dialog[data-ncm-admin-theme]); every colour is an
+ * admin token so all three presets drive it. Two panes: role list | editor.
+ * Mock: dev/mockups/admin-roles-filter-mock.html (frame A).
  */
 
-/* ═══════════════════════════════════════════
-   DIALOG BODY
-   ═══════════════════════════════════════════ */
+.ncm-rmgr-dialog .window-content { padding: 0 !important; overflow: hidden !important; display: flex; flex-direction: column; }
+.ncm-rmgr-dialog .dialog-content { flex: 1 1 auto; min-height: 0; margin: 0 !important; }
+.ncm-rmgr-dialog .dialog-buttons { flex: 0 0 auto; padding: 6px 10px !important; margin: 0 !important; border-top: 1px solid var(--ncm-border); }
 
-.ncm-role-manager__body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 4px 0;
-}
+.ncm-rmgr { color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); }
+.ncm-rmgr * { box-sizing: border-box; }
 
-/* ═══════════════════════════════════════════
-   HEADER BAR
-   ═══════════════════════════════════════════ */
+.ncm-rmgr__head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ncm-bg-card, var(--ncm-bg-surface));
+  border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-act, var(--ncm-secondary));
+  font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-rmgr__head > i { color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-rmgr__head span { font: 400 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label, var(--ncm-text-secondary)); }
 
-.ncm-rm-header-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--ncm-secondary) 8%, transparent) 0%, color-mix(in srgb, var(--ncm-secondary) 2%, transparent) 100%);
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
-  border-radius: 4px;
-  margin-bottom: 4px;
-}
+.ncm-rmgr__body { display: grid; grid-template-columns: 240px minmax(0, 1fr); height: 520px; }
 
-.ncm-rm-header-bar__title {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 12px;
-  color: var(--ncm-secondary, #19f3f7);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
+/* ── list ── */
+.ncm-rmgr__list { border-right: 1px solid var(--ncm-border); display: flex; flex-direction: column; min-height: 0; background: var(--ncm-bg-pane, var(--ncm-bg-deep)); }
+.ncm-rmgr__tools { padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+.ncm-rmgr__chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.ncm-rmgr__chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 2px; border: 1px solid var(--ncm-border-active);
+  font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); cursor: pointer; user-select: none; }
+.ncm-rmgr__chip .n { font: 10px var(--ncm-font-mono); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-rmgr__chip.is-on { border-color: var(--ncm-act, var(--ncm-secondary)); color: var(--ncm-act, var(--ncm-secondary)); background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 14%, transparent); }
+.ncm-rmgr__rows { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-rmgr__gh { position: sticky; top: 0; z-index: 1; padding: 5px 10px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border);
+  font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); display: flex; gap: 6px; align-items: center; }
+.ncm-rmgr__gh .n { margin-left: auto; font: 10px var(--ncm-font-mono); }
+.ncm-rmgr__r { --rc: var(--ncm-text-label); display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 10px; cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); }
+.ncm-rmgr__r:hover { background: var(--ncm-bg-hover, color-mix(in srgb, var(--ncm-text-primary) 5%, transparent)); }
+.ncm-rmgr__r.is-sel { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 12%, var(--ncm-bg-pane, var(--ncm-bg-deep))); box-shadow: inset 3px 0 var(--ncm-act, var(--ncm-secondary)); }
+.ncm-rmgr__ic { --rc: var(--ncm-text-label); flex: none; width: 26px; height: 26px; border-radius: 2px; display: inline-grid; place-items: center; font-size: 12px; color: var(--rc);
+  background: color-mix(in srgb, var(--rc) 16%, transparent); border: 1px solid color-mix(in srgb, var(--rc) 45%, transparent); }
+.ncm-rmgr__r .ncm-rmgr__ic { --rc: inherit; }
+.ncm-rmgr__nmw { display: flex; flex-direction: column; min-width: 0; }
+.ncm-rmgr__nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-rmgr__sub { font: 11px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-rmgr__sub.is-zero { color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-rmgr__lock { font-size: 10px; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-rmgr__empty { padding: 16px; text-align: center; font-style: italic; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
 
-.ncm-rm-header-bar__title i {
-  margin-right: 5px;
-  font-size: 11px;
-}
+/* ── search ── */
+.ncm-rmgr__srch { display: flex !important; align-items: center; gap: 6px; height: 26px; padding: 0 8px; margin: 0; border: 1px solid var(--ncm-border-active); border-radius: 2px;
+  background: var(--ncm-bg-pane, var(--ncm-bg-deep)); text-transform: none !important; font: inherit; }
+.ncm-rmgr__srch i { color: var(--ncm-text-label, var(--ncm-text-secondary)); font-size: 11px; }
+.ncm-rmgr-dialog[data-ncm-admin-theme] .window-content .ncm-rmgr .ncm-rmgr__srch input[type="text"] { flex: 1; min-width: 0; border: 0 !important; background: none !important; height: 24px !important; padding: 0 !important; margin: 0;
+  box-shadow: none !important; color: var(--ncm-text-primary) !important; font: 13px var(--ncm-font-body) !important; text-align: left; }
 
-/* ═══════════════════════════════════════════
-   SECTION HEADERS
-   ═══════════════════════════════════════════ */
+/* ── editor ── */
+.ncm-rmgr__ed { padding: 14px 16px 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.ncm-rmgr__h { margin: 0 !important; padding: 0 !important; border: 0 !important; font: 700 16px var(--ncm-font-display) !important; color: var(--ncm-text-heading, var(--ncm-text-primary)) !important;
+  display: flex; gap: 8px; align-items: center; }
+.ncm-rmgr__h small { font: 400 12px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-rmgr__lbl { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+.ncm-rmgr__lbl small { font: 400 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-rmgr-dialog[data-ncm-admin-theme] .window-content .ncm-rmgr input.ncm-rmgr__inp { width: 100% !important; height: 26px !important; min-height: 0; padding: 0 8px !important; margin: 0; border: 1px solid var(--ncm-border-active) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-pane, var(--ncm-bg-deep)) !important; color: var(--ncm-text-primary) !important; font: 13px var(--ncm-font-body) !important; box-shadow: none !important; text-align: left; }
+.ncm-rmgr__sw { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ncm-rmgr__sw > span[data-rcol] { width: 22px; height: 22px; border-radius: 2px; cursor: pointer; background: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 30%, transparent); }
+.ncm-rmgr__sw > span[data-rcol].is-on { box-shadow: 0 0 0 2px var(--ncm-bg-pane-alt, var(--ncm-bg-base)), 0 0 0 4px var(--c); }
+.ncm-rmgr-dialog[data-ncm-admin-theme] .window-content .ncm-rmgr .ncm-rmgr__sw input[type="color"] { width: 30px !important; height: 22px !important; min-height: 0; padding: 0 !important; margin: 0 0 0 4px; border: 1px solid var(--ncm-border-active) !important; background: none !important; cursor: pointer; }
+.ncm-rmgr__sw .hex { font: 12px var(--ncm-font-mono); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-rmgr__ig { --rc: var(--ncm-act); display: grid; grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); gap: 4px; max-height: 112px; overflow-y: auto; overflow-x: hidden; padding: 2px; margin-top: 6px; }
+.ncm-rmgr__ig > span { height: 32px; display: grid; place-items: center; border-radius: 2px; border: 1px solid var(--ncm-border); color: var(--ncm-text-primary); cursor: pointer; font-size: 13px; }
+.ncm-rmgr__ig > span:hover { border-color: var(--ncm-act, var(--ncm-secondary)); color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-rmgr__ig > span.is-on { border-color: var(--rc); color: var(--rc); background: color-mix(in srgb, var(--rc) 16%, transparent); }
+.ncm-rmgr__ig em { grid-column: 1 / -1; color: var(--ncm-text-hint, var(--ncm-text-muted)); padding: 6px; }
+.ncm-rmgr__pv { --rc: var(--ncm-act); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border: 1px dashed var(--ncm-border-active); border-radius: 2px; }
+.ncm-rmgr__tag { display: inline-flex; gap: 5px; align-items: center; padding: 1px 7px; border-radius: 1px; font: 600 12px var(--ncm-font-body);
+  color: color-mix(in oklab, var(--rc) 72%, var(--ncm-text-heading, var(--ncm-text-primary))); background: color-mix(in srgb, var(--rc) 15%, transparent); border: 1px solid color-mix(in srgb, var(--rc) 50%, transparent); }
+.ncm-rmgr__tag i, .ncm-rmgr__band i { color: var(--rc); }
+.ncm-rmgr__band { display: inline-flex; gap: 7px; align-items: center; padding: 4px 10px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); box-shadow: inset 3px 0 var(--rc);
+  font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-rmgr__pv .cap { font: 11px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-rmgr__who { display: flex; gap: 5px; flex-wrap: wrap; max-height: 96px; overflow-y: auto; overflow-x: hidden; }
+.ncm-rmgr__who span { padding: 1px 7px; border-radius: 10px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); border: 1px solid var(--ncm-border); font: 12px var(--ncm-font-body); }
+.ncm-rmgr__who i { color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-rmgr__ro { padding: 9px 11px; border-left: 3px solid var(--ncm-text-hint, var(--ncm-text-muted)); background: var(--ncm-bg-card, var(--ncm-bg-surface)); font: 12.5px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-rmgr__foot { margin-top: auto; position: sticky; bottom: 0; z-index: 2; display: flex; gap: 8px; align-items: center; padding: 10px 0 12px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); }
+.ncm-rmgr__foot .grow { flex: 1; }
 
-.ncm-rm-section {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 10px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin: 8px 0 3px;
-  padding-bottom: 2px;
-  border-bottom: 1px solid rgba(42, 42, 69, 0.5);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
+/* ── buttons (the admin-dialog chrome restyles <button> with !important; win it here) ── */
+.ncm-rmgr-dialog .ncm-rmgr button.ncm-rmgr__btn { appearance: none; flex: none; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; line-height: 1.4 !important;
+  display: inline-flex !important; gap: 6px; align-items: center; justify-content: center; padding: 5px 10px !important; border-radius: 2px !important; box-shadow: none !important;
+  font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--ncm-act, var(--ncm-secondary)) !important; color: var(--ncm-act, var(--ncm-secondary)) !important; background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, transparent) !important; }
+.ncm-rmgr-dialog .ncm-rmgr button.ncm-rmgr__btn i { margin: 0 !important; }
+.ncm-rmgr-dialog .ncm-rmgr button.ncm-rmgr__btn--solid { background: var(--ncm-act, var(--ncm-secondary)) !important; color: var(--ncm-text-inverse, #0b0d12) !important; }
+.ncm-rmgr-dialog .ncm-rmgr button.ncm-rmgr__btn--q { border-color: var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; }
+.ncm-rmgr-dialog .ncm-rmgr button.ncm-rmgr__btn--bad { border-color: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 60%, transparent) !important; color: var(--ncm-bad, var(--ncm-danger)) !important; background: none !important; }
+.ncm-rmgr-dialog .ncm-rmgr button.ncm-rmgr__new { margin: 8px 10px 10px !important; }
 
-.ncm-rm-section i {
-  font-size: 9px;
-  opacity: 0.6;
-}
-
-.ncm-rm-section__hint {
-  font-weight: 500;
-  font-size: 8px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: none;
-  letter-spacing: 0;
-  margin-left: 3px;
-}
-
-/* ═══════════════════════════════════════════
-   ROLE LIST
-   ═══════════════════════════════════════════ */
-
-.ncm-role-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  max-height: 140px;
-  overflow-y: auto;
-}
-
-.ncm-rm-builtin-list {
-  max-height: 100px;
-}
-
-.ncm-role-list-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 3px;
-  transition: border-color 0.15s;
-}
-
-.ncm-role-list-item:hover {
-  border-color: var(--ncm-border-active, #3a3a5a);
-}
-
-.ncm-role-list-item--builtin {
-  opacity: 0.7;
-}
-
-.ncm-role-list-item__swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.ncm-role-list-item__icon {
-  width: 18px;
-  text-align: center;
-  font-size: 10px;
-  flex-shrink: 0;
-}
-
-.ncm-role-list-item__name {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 600;
-  font-size: 11px;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--ncm-text-primary, #e0e0e8);
-}
-
-.ncm-role-list-item__tag {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
-  color: var(--ncm-text-muted, #555570);
-  flex-shrink: 0;
-}
-
-.ncm-role-list-item__actions {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.ncm-role-list-item__action {
-  background: none;
-  border: none;
-  color: var(--ncm-text-muted, #555570);
-  cursor: pointer;
-  font-size: 9px;
-  padding: 2px;
-  transition: color 0.15s;
-  outline: none;
-}
-
-.ncm-role-list-item__action:hover {
-  color: var(--ncm-secondary, #19f3f7);
-}
-
-.ncm-role-list-item__action--delete:hover {
-  color: var(--ncm-danger, #ff0033);
-}
-
-/* ═══════════════════════════════════════════
-   CREATE / EDIT FORM
-   ═══════════════════════════════════════════ */
-
-.ncm-role-form {
-  padding: 10px;
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 4px;
-  margin-top: 6px;
-}
-
-.ncm-role-form__title {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 9px;
-  color: var(--ncm-accent, #f7c948);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.ncm-role-form__title i {
-  font-size: 8px;
-}
-
-.ncm-role-form__row {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-  margin-bottom: 6px;
-}
-
-.ncm-role-form__color-picker {
-  width: 32px;
-  height: 26px;
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 3px;
-  cursor: pointer;
-  background: none;
-  padding: 2px;
-  flex-shrink: 0;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-/* ═══════════════════════════════════════════
-   ICON GRID
-   ═══════════════════════════════════════════ */
-
-.ncm-role-form__icon-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  padding: 6px;
-  background: var(--ncm-bg-elevated, #252540);
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 3px;
-  max-height: 80px;
-  overflow-y: auto;
-}
-
-.ncm-role-form__icon-option {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 10px;
-  color: var(--ncm-text-muted, #555570);
-  border: 1px solid transparent;
-  transition: all 0.15s;
-  background: none;
-  appearance: none;
-  -webkit-appearance: none;
-  outline: none;
-  box-shadow: none;
-  padding: 0;
-}
-
-.ncm-role-form__icon-option:hover {
-  color: var(--ncm-text-primary, #e0e0e8);
-  border-color: var(--ncm-border-active, #3a3a5a);
-}
-
-.ncm-role-form__icon-option--selected {
-  color: var(--ncm-secondary, #19f3f7);
-  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
-  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
-}
-
-/* ═══════════════════════════════════════════
-   LIVE PREVIEW
-   ═══════════════════════════════════════════ */
-
-.ncm-role-form__preview {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  margin-top: 4px;
-}
-
-.ncm-role-form__preview-label {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-/* Preview pill (matches list item role chip) */
-.ncm-rm-preview-pill {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 7px;
-  letter-spacing: 0.06em;
-  padding: 1px 5px;
-  border-radius: 3px;
-  text-transform: uppercase;
-  border: 1px solid;
-}
-
-/* ═══════════════════════════════════════════
-   SCROLLBAR STYLING
-   ═══════════════════════════════════════════ */
-
-.ncm-role-list::-webkit-scrollbar,
-.ncm-role-form__icon-grid::-webkit-scrollbar {
-  width: 4px;
-}
-
-.ncm-role-list::-webkit-scrollbar-track,
-.ncm-role-form__icon-grid::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ncm-role-list::-webkit-scrollbar-thumb,
-.ncm-role-form__icon-grid::-webkit-scrollbar-thumb {
-  background: var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-}
-
-.ncm-role-list,
-.ncm-role-form__icon-grid {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
-}
-
-/* ═══════════════════════════════════════════
-   FOUNDRY OVERRIDES
-   ═══════════════════════════════════════════ */
-
-.ncm-app.ncm-role-manager-dialog .window-content {
-  background: var(--ncm-bg-base, #12121a);
-  color: var(--ncm-text-primary, #e0e0e8);
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-}
-
-.ncm-app.ncm-role-manager-dialog button {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  width: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
-}
-
-.ncm-app.ncm-role-manager-dialog .ncm-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  font-family: var(--ncm-font-display) !important;
-  font-weight: 600 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
-  background: transparent !important;
-  border-radius: 3px !important;
-  cursor: pointer !important;
-  line-height: 1.2 !important;
-}
-
-.ncm-app.ncm-role-manager-dialog .ncm-btn--accent {
-  color: var(--ncm-accent) !important;
-  border: 1px solid var(--ncm-accent) !important;
-  font-size: 9px !important;
-  padding: 3px 8px !important;
-}
-
-.ncm-app.ncm-role-manager-dialog .ncm-btn--accent:hover {
-  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent) !important;
-}
-
-.ncm-app.ncm-role-manager-dialog .ncm-btn--ghost {
-  color: var(--ncm-text-muted) !important;
-  border: 1px solid var(--ncm-border) !important;
-  font-size: 9px !important;
-  padding: 3px 8px !important;
-}
-
-.ncm-app.ncm-role-manager-dialog .ncm-btn--ghost:hover {
-  color: var(--ncm-text-secondary) !important;
-}
-
-.ncm-app.ncm-role-manager-dialog input,
-.ncm-app.ncm-role-manager-dialog select {
-  font-family: var(--ncm-font-display) !important;
-  font-weight: 600 !important;
-  font-size: 11px !important;
-  color: var(--ncm-text-primary) !important;
-  background: var(--ncm-bg-surface) !important;
-  border: 1px solid var(--ncm-border) !important;
-  border-radius: 3px !important;
-  padding: 4px 7px !important;
-  outline: none !important;
-  box-shadow: none !important;
-  height: auto !important;
-  min-height: 0 !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-}
-
-.ncm-app.ncm-role-manager-dialog input:focus {
-  border-color: var(--ncm-secondary) !important;
-}
-
-.ncm-app.ncm-role-manager-dialog input::placeholder {
-  color: var(--ncm-text-muted) !important;
-  font-weight: 500 !important;
-}
-
-/* Color picker special override */
-.ncm-app.ncm-role-manager-dialog .ncm-role-form__color-picker {
-  padding: 2px !important;
-  width: 32px !important;
-  height: 26px !important;
-  cursor: pointer !important;
-}
-
-/* Icon grid buttons */
-.ncm-app.ncm-role-manager-dialog .ncm-role-form__icon-option {
-  width: 22px !important;
-  height: 22px !important;
-  padding: 0 !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  border: 1px solid transparent !important;
-  background: none !important;
-  color: var(--ncm-text-muted) !important;
-  cursor: pointer !important;
-  font-size: 10px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 3px !important;
-  transition: all 0.15s !important;
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
-}
-.ncm-app.ncm-role-manager-dialog .ncm-role-form__icon-option:hover {
-  color: var(--ncm-text-primary) !important;
-  border-color: var(--ncm-border-active) !important;
-}
-.ncm-app.ncm-role-manager-dialog .ncm-role-form__icon-option--selected {
-  color: var(--ncm-secondary) !important;
-  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important;
-}
-
-/* Role list action buttons */
-.ncm-app.ncm-role-manager-dialog .ncm-role-list-item__action {
-  border: none !important;
-  background: none !important;
-  padding: 2px !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  width: auto !important;
-  height: auto !important;
-}
-
-/* Dialog footer button override */
-.ncm-app.ncm-role-manager-dialog .dialog-buttons button {
-  font-family: var(--ncm-font-display) !important;
-  font-weight: 600 !important;
-  font-size: 10px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
-  background: transparent !important;
-  color: var(--ncm-text-muted) !important;
-  border: 1px solid var(--ncm-border) !important;
-  border-radius: 3px !important;
-  padding: 5px 14px !important;
-}
-
-.ncm-app.ncm-role-manager-dialog .dialog-buttons button:hover {
-  color: var(--ncm-text-secondary) !important;
-  border-color: var(--ncm-text-muted) !important;
-}
+/* admin-hierarchy keeps decoration icons neutral; a role glyph IS the role's colour */
+.ncm-rmgr-dialog .ncm-rmgr .ncm-rmgr__ic i,
+.ncm-rmgr-dialog .ncm-rmgr .ncm-rmgr__tag i,
+.ncm-rmgr-dialog .ncm-rmgr .ncm-rmgr__band i { color: var(--rc) !important; }
+.ncm-rmgr-dialog .ncm-rmgr .ncm-rmgr__ig > span.is-on i { color: var(--rc) !important; }
+.ncm-rmgr-dialog .ncm-rmgr, .ncm-rmgr-dialog .ncm-rmgr * { text-shadow: none !important; }
+/* role colours are chosen for a dark screen — on the light preset pull them toward the text */
+.ncm-rmgr-dialog[data-ncm-admin-theme="clean-light"] .ncm-rmgr .ncm-rmgr__ic i,
+.ncm-rmgr-dialog[data-ncm-admin-theme="clean-light"] .ncm-rmgr .ncm-rmgr__tag i,
+.ncm-rmgr-dialog[data-ncm-admin-theme="clean-light"] .ncm-rmgr .ncm-rmgr__band i { color: color-mix(in oklab, var(--rc) 55%, var(--ncm-text-primary)) !important; }

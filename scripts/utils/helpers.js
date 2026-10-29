@@ -770,6 +770,20 @@ export function chatCardTime(iso) {
  * @param {object} [override] per-target gate override merged over the world policy
  * @returns {{ ok: boolean, reason?: string }}
  */
+/**
+ * The skill requirements of a gate as `[{name, min}]`: the `skills` list,
+ * else the legacy single `skill` (gates saved before 2026-10-27), else none.
+ * @param {object} gate
+ * @returns {{name: string, min: number}[]}
+ */
+export function gateSkillsOf(gate) {
+  const clean = (s) => ({ name: String(s?.name || '').trim(), min: Math.max(0, Math.round(Number(s?.min) || 0)) });
+  const list = Array.isArray(gate?.skills) ? gate.skills.map(clean).filter(s => s.name) : [];
+  if (list.length) return list;
+  const one = clean(gate?.skill);
+  return one.name ? [one] : [];
+}
+
 export function canOperate(actor, override = null, { standalone = false, label = 'Operator tools require' } = {}) {
   let gate;
   if (standalone) {
@@ -801,9 +815,14 @@ export function canOperate(actor, override = null, { standalone = false, label =
     const ok = gate.roleLogic === 'all' ? wants.every(hasRole) : wants.some(hasRole);
     checks.push({ label: gate.roles.join(gate.roleLogic === 'all' ? ' + ' : '/'), ok });
   }
-  if (gate.skill?.name) {
-    const lvl = game.nightcity?.skillService?.getSkillData?.(actor, gate.skill.name)?.skillLevel ?? 0;
-    checks.push({ label: `${gate.skill.name} ${Number(gate.skill.min) || 0}+`, ok: lvl >= (Number(gate.skill.min) || 0) });
+  // Skills: ANY one listed skill at its own minimum rank (Interface 4+ OR
+  // Electronics/Security Tech 6+). A gate saved before the list existed
+  // carries one `skill`, read as a list of one.
+  const skillReqs = gateSkillsOf(gate);
+  if (skillReqs.length) {
+    const svc = game.nightcity?.skillService;
+    const ok = skillReqs.some(s => (svc?.getSkillData?.(actor, s.name)?.skillLevel ?? 0) >= s.min);
+    checks.push({ label: skillReqs.map(s => `${s.name} ${s.min}+`).join(' or '), ok });
   }
   // Gear: OR-of-AND groups — satisfied if a character carries EVERY item in ANY
   // one group. Legacy flat `items` array is treated as a single group.

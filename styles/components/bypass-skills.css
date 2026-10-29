@@ -1,0 +1,51 @@
+/* ═══════════════════════════════════════════════════════════════
+   Bypass skill rows — one row per skill, each with its own DV.
+   Shared by the Network Manager editor and the terminal account
+   editor (scripts/utils/bypassSkills.js). Tokens only: both hosts
+   are admin-themed windows, so the admin preset drives the colours.
+   ═══════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-bypass { display: flex; flex-direction: column; gap: 6px; }
+.ncm-app .ncm-bypass__list { display: flex; flex-direction: column; gap: 4px; }
+
+.ncm-app .ncm-bypass__row {
+  display: flex; align-items: center; gap: 6px;
+}
+.ncm-app .ncm-bypass__row > * { flex: 0 0 auto !important; }
+.ncm-app .ncm-bypass__row > .ncm-bypass__skill { flex: 1 1 auto !important; min-width: 0; }
+
+.ncm-app .ncm-bypass__dvl {
+  font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ncm-text-secondary);
+}
+.ncm-app input.ncm-bypass__dv {
+  width: 58px !important; max-width: 58px !important; min-width: 0 !important;
+  font-family: var(--ncm-font-mono); text-align: center;
+}
+
+.ncm-app button.ncm-bypass__rm,
+.ncm-app button.ncm-bypass__add {
+  appearance: none; box-shadow: none !important; background-image: none !important;
+  width: auto !important; min-height: 0 !important; margin: 0 !important;
+  border-radius: 2px !important; cursor: pointer;
+  font-family: var(--ncm-font-display) !important; font-weight: 700 !important;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.ncm-app button.ncm-bypass__rm {
+  height: 24px !important; width: 24px !important; padding: 0 !important;
+  display: inline-flex; align-items: center; justify-content: center;
+  background-color: transparent !important;
+  border: 1px solid var(--ncm-border) !important;
+  color: var(--ncm-text-secondary) !important; font-size: 11px !important;
+}
+.ncm-app button.ncm-bypass__rm:hover { color: var(--ncm-danger) !important; border-color: var(--ncm-danger) !important; }
+.ncm-app button.ncm-bypass__rm i:only-child { margin: 0 !important; line-height: 1 !important; }
+
+.ncm-app button.ncm-bypass__add {
+  align-self: flex-start; height: 24px !important; padding: 0 10px !important;
+  background-color: transparent !important;
+  border: 1px dashed var(--ncm-border-active, var(--ncm-border)) !important;
+  color: var(--ncm-secondary) !important; font-size: 11px !important;
+}
+.ncm-app button.ncm-bypass__add:hover { background-color: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important; }

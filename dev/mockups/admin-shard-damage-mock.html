@@ -122,7 +122,8 @@ const REAL = qs.get('real') === '1';
 if (qs.get('t')) document.getElementById('p').setAttribute('data-ncm-admin-theme', qs.get('t'));
 if (qs.get('h')) document.getElementById('p').style.height = qs.get('h') + 'px';
 
-Handlebars.registerHelper('eq', (a, b) => a === b);
+Handlebars.registerHelper('ncm-hue', (t) => { const s = String(t ?? '').trim().toLowerCase(); if (!s) return 'var(--ncm-text-label)'; let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return 'var(--ncm-hue-' + ((h % 8) + 1) + ')'; }); // mirrors scripts/utils/tagHue.js
+  Handlebars.registerHelper('eq', (a, b) => a === b);
 Handlebars.registerHelper('gt', (a, b) => a > b);
 Handlebars.registerHelper('helperMissing', () => '');
 

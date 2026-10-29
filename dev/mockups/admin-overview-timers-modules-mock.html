@@ -1,0 +1,418 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Coming up — timer modules</title>
+<!--
+  Admin → Overview → "Coming up": every timer in one place, as a small interactive MODULE.
+  Two versions: A = the clock dial (dev-approved idea), B = the runway timeline.
+  Same vocabulary as admin-who-they-know-modules-mock.html (module frame, meaning tokens, 2px radius).
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-overview-timers-modules-mock.html
+  ?t=clean-dark|clean-light|high-contrast   ?still=1 (no clock running)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 0 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px/1.45 sans-serif; margin: 0 0 14px; max-width: 900px; }
+  .mk-v { color: #eee; font: 700 14px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; }
+  .mk-row { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .mk-note { width: 360px; color: #b8c0cc; font: 13px/1.5 sans-serif; }
+  .mk-note b { color: #eee; } .mk-note li { margin-bottom: 7px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+
+  /* the Overview pane the module sits in */
+  .tk-P { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); padding-bottom: 12px; }
+  .tk-band { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-act);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .tk-band > i { color: var(--ncm-act); }
+  .tk-band .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+  .tk-band .r b { font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-heading)); }
+
+  /* module frame */
+  .tk-mod { margin: 10px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); position: relative; }
+  .tk-mod__k { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .tk-mod__k i { color: var(--ncm-act); font-size: 9px; }
+  .tk-mod__k .hint { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+  .tk-mod::before, .tk-mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid; pointer-events: none; }
+  .tk-mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .tk-mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+  /* shared bits */
+  .tk-tag { --tc: var(--ncm-act); display: inline-flex; gap: 4px; align-items: center; padding: 0 6px; border-radius: 1px; font: 600 11px var(--ncm-font-body); white-space: nowrap; line-height: 17px;
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+  .tk-tag i { font-size: 9px; }
+  .tk-btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; cursor: pointer; box-shadow: none !important; margin: 0 !important; display: inline-flex; gap: 5px; align-items: center; line-height: 1.3; flex: 0 0 auto !important; }
+  .tk-btn:hover { border-color: var(--ncm-act) !important; }
+  .tk-btn i { margin: 0 !important; font-size: 9px; }
+  .tk-btn.pri { border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse, #0b0d12) !important; background: var(--ncm-act) !important; }
+  .tk-btn.bad { border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent) !important; color: var(--ncm-bad) !important; }
+  .tk-left { font: 700 11.5px var(--ncm-font-mono); white-space: nowrap; color: var(--ncm-text-primary); }
+  .tk-left.is-attn { color: var(--ncm-attn); } .tk-left.is-bad { color: var(--ncm-bad); }
+  .tk-at { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); white-space: nowrap; }
+  .tk-empty { padding: 14px; text-align: center; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+
+  /* detail readout (both versions) */
+  .tk-det { padding: 9px 10px 10px; position: relative; overflow: hidden; }
+  .tk-det.is-fresh::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--ncm-act) 10%, transparent) 50%, transparent 52%); background-size: 100% 220%; animation: tk-scan 1.2s ease-out 1; pointer-events: none; }
+  @keyframes tk-scan { from { background-position: 0 100%; } to { background-position: 0 -10%; } }
+  .tk-det__top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tk-det__nm { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .tk-det__when { margin-left: auto; display: flex; gap: 8px; align-items: baseline; }
+  .tk-det__ln { display: grid; grid-template-columns: 70px minmax(0,1fr); gap: 3px 8px; margin-top: 7px; padding-top: 7px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+  .tk-det__ln .k { font: 700 9.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); padding-top: 2px; }
+  .tk-det__ln .v { font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); min-width: 0; }
+  .tk-det__ln .v.mono { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-secondary)); }
+  .tk-det__acts { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+  .tk-det__said { margin-top: 7px; font: italic 11.5px var(--ncm-font-body); color: var(--ncm-good); min-height: 15px; }
+
+  /* ================= VERSION A — the dial ================= */
+  .tk-dial { display: grid; place-items: center; padding: 6px 0 2px; }
+  .tk-dial svg { display: block; overflow: visible; }
+  .tk-dial .trk { fill: none; stroke: color-mix(in srgb, var(--ncm-border-active) 55%, transparent); stroke-width: 7; }
+  .tk-dial .scale { fill: none; stroke: var(--ncm-border-active); stroke-width: 1; }
+  .tk-dial .tick { stroke: var(--ncm-border-active); stroke-width: 1; }
+  .tk-dial .tick.maj { stroke: var(--ncm-text-label); }
+  .tk-dial .tlbl { font: 9px var(--ncm-font-mono); fill: var(--ncm-text-label); text-anchor: middle; dominant-baseline: central; }
+  .tk-dial .zone { fill: none; stroke-width: 3; }
+  .tk-dial .zone.bad { stroke: color-mix(in srgb, var(--ncm-bad) 70%, transparent); }
+  .tk-dial .zone.attn { stroke: color-mix(in srgb, var(--ncm-attn) 55%, transparent); }
+  .tk-dial .arc { fill: none; stroke-width: 7; cursor: pointer; transition: stroke-width .15s, opacity .15s; }
+  .tk-dial .arc.calm { stroke-width: 4; opacity: .5; }
+  .tk-dial .arc.dim { opacity: .18; }
+  .tk-dial .arc.on { stroke-width: 10; }
+  .tk-dial .end { stroke: var(--ncm-bg-pane); stroke-width: 1.5; cursor: pointer; }
+  .tk-dial .end.on { stroke: var(--ncm-text-heading); stroke-width: 2; }
+  .tk-dial .end.dim { opacity: .25; }
+  .tk-dial .hit { fill: none; stroke: transparent; stroke-width: 14; cursor: pointer; }
+  .tk-dial .nowhand { stroke: var(--ncm-act); stroke-width: 2; }
+  .tk-dial .nowdot { fill: var(--ncm-act); animation: tk-pulse 1.8s ease-in-out infinite; }
+  .tk-dial .sweep { fill: url(#tk-sw); transform-origin: 0 0; animation: tk-spin 14s linear infinite; pointer-events: none; }
+  @keyframes tk-spin { to { transform: rotate(360deg); } }
+  @keyframes tk-pulse { 50% { opacity: .35; } }
+  .tk-dial .hub { fill: color-mix(in srgb, var(--ncm-act) 10%, var(--ncm-bg-pane)); stroke: color-mix(in srgb, var(--ncm-act) 60%, transparent); stroke-width: 1; }
+  .tk-dial .hub-t { font: 700 17px var(--ncm-font-mono); fill: var(--ncm-text-heading); text-anchor: middle; dominant-baseline: central; }
+  .tk-dial .hub-s { font: 700 8px var(--ncm-font-display); letter-spacing: .1em; fill: var(--ncm-text-label); text-anchor: middle; dominant-baseline: central; text-transform: uppercase; }
+  .tk-dial .hub-n { font: 600 10px var(--ncm-font-display); fill: var(--ncm-text-heading); text-anchor: middle; dominant-baseline: central; }
+  .tk-dial .hub-l { font: 700 12px var(--ncm-font-mono); text-anchor: middle; dominant-baseline: central; }
+  .tk-key { display: flex; justify-content: center; gap: 4px 10px; padding: 2px 8px 8px; flex-wrap: wrap; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .tk-key span { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; padding: 1px 4px; border: 1px solid transparent; border-radius: 2px; }
+  .tk-key span:hover { border-color: var(--ncm-border-active); }
+  .tk-key span.off { opacity: .4; text-decoration: line-through; }
+  .tk-key i.sw { width: 10px; height: 4px; display: inline-block; }
+  .tk-list { max-height: 196px; overflow-y: auto; overflow-x: hidden; }
+  .tk-row { display: grid; grid-template-columns: 6px 16px minmax(0,1fr) auto; gap: 7px; align-items: center; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); cursor: pointer; }
+  .tk-row:hover { background: var(--ncm-bg-hover); }
+  .tk-row.sel { background: color-mix(in srgb, var(--ncm-act) 12%, transparent); box-shadow: inset 3px 0 var(--ncm-act); }
+  .tk-row .led { width: 6px; height: 6px; border-radius: 50%; background: var(--ncm-border-active); }
+  .tk-row .led.is-attn { background: var(--ncm-attn); box-shadow: 0 0 6px var(--ncm-attn); }
+  .tk-row .led.is-bad { background: var(--ncm-bad); box-shadow: 0 0 6px var(--ncm-bad); animation: tk-pulse 1.2s infinite; }
+  .tk-row .ic { font-size: 11px; color: var(--tc); text-align: center; }
+  .tk-row .nm { font: 700 12px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tk-row .sub { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tk-row .tm { text-align: right; line-height: 1.25; }
+
+  /* ================= VERSION B — the runway ================= */
+  .tk-rw__bar { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .tk-seg { display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+  .tk-seg span { padding: 2px 9px; font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-label); cursor: pointer; border-left: 1px solid var(--ncm-border-active); }
+  .tk-seg span:first-child { border-left: 0; }
+  .tk-seg span:hover { color: var(--ncm-text-heading); }
+  .tk-seg span.on { background: color-mix(in srgb, var(--ncm-act) 20%, transparent); color: var(--ncm-text-heading); }
+  .tk-rw__sum { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .tk-rw__sum b { font: 700 11.5px var(--ncm-font-mono); }
+  .tk-rw__sum b.is-bad { color: var(--ncm-bad); } .tk-rw__sum b.is-attn { color: var(--ncm-attn); }
+  .tk-rw__bar .grow { flex: 1; }
+  .tk-rw { display: grid; grid-template-columns: 104px minmax(0,1fr) 62px; }
+  .tk-rw__axis { grid-column: 2; position: relative; height: 22px; border-bottom: 1px solid var(--ncm-border-active); }
+  .tk-rw__axis span { position: absolute; bottom: 3px; transform: translateX(-50%); font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-label); white-space: nowrap; }
+  .tk-rw__axis span::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 4px; background: var(--ncm-border-active); margin-top: 3px; }
+  .tk-rw__axis span.now { color: var(--ncm-act); font-weight: 700; transform: none; }
+  .tk-rw__axis span.now::after { left: 0; }
+  .tk-lane-k { display: flex; align-items: center; gap: 6px; padding: 0 9px; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 45%, transparent); height: 40px; cursor: pointer; }
+  .tk-lane-k:hover { color: var(--ncm-text-heading); }
+  .tk-lane-k i { color: var(--tc); font-size: 10px; width: 12px; text-align: center; }
+  .tk-lane-k .n { margin-left: auto; font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-hint); }
+  .tk-lane-k.off { opacity: .4; }
+  .tk-lane { position: relative; height: 40px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 45%, transparent); overflow: hidden;
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--ncm-border) 40%, transparent) 1px, transparent 1px); background-size: var(--grid, 25%) 100%; }
+  .tk-lane.off .tk-mk { opacity: .15; pointer-events: none; }
+  .tk-lane .z-bad, .tk-lane .z-attn { position: absolute; top: 0; bottom: 0; left: 0; pointer-events: none; }
+  .tk-lane .z-bad { background: color-mix(in srgb, var(--ncm-bad) 10%, transparent); }
+  .tk-lane .z-attn { background: color-mix(in srgb, var(--ncm-attn) 6%, transparent); }
+  .tk-lane-end { display: flex; align-items: center; justify-content: center; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 45%, transparent); border-left: 1px dashed var(--ncm-border-active); height: 40px; }
+  .tk-later { font: 700 10px var(--ncm-font-mono); color: var(--ncm-act); cursor: pointer; padding: 2px 5px; border: 1px solid color-mix(in srgb, var(--ncm-act) 45%, transparent); border-radius: 2px; white-space: nowrap; }
+  .tk-later:hover { background: color-mix(in srgb, var(--ncm-act) 14%, transparent); }
+  .tk-mk { position: absolute; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 5px; cursor: pointer; z-index: 1; }
+  .tk-mk .pin { flex: none; width: 10px; height: 10px; transform: rotate(45deg); background: var(--mc); border: 1px solid var(--ncm-bg-pane); box-shadow: 0 0 0 1px var(--mc); margin-left: -5px; }
+  .tk-mk .lb { display: flex; flex-direction: column; line-height: 1.15; overflow: hidden; max-width: var(--room, 200px); }
+  .tk-mk .lb b { font: 700 11px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tk-mk .lb em { font: normal 700 10px var(--ncm-font-mono); color: var(--mt, var(--ncm-text-label)); white-space: nowrap; }
+  .tk-mk.flip { flex-direction: row-reverse; transform: translate(-100%, -50%); }
+  .tk-mk.flip .pin { margin-left: 0; margin-right: -5px; }
+  .tk-mk.flip .lb { align-items: flex-end; text-align: right; }
+  .tk-mk:hover { z-index: 3; }
+  .tk-mk:hover .lb { max-width: 260px; background: var(--ncm-bg-pane); }
+  .tk-mk.sel { z-index: 2; }
+  .tk-mk.sel .pin { box-shadow: 0 0 0 2px var(--ncm-text-heading); }
+  .tk-mk.is-bad .pin { animation: tk-pulse 1.2s infinite; }
+  .tk-mk.sel .lb b { color: var(--ncm-act); }
+  .tk-rw__body { grid-column: 2; position: relative; }
+  .tk-nowline { position: absolute; top: -22px; bottom: 0; left: 0; width: 2px; background: var(--ncm-act); z-index: 4; pointer-events: none; box-shadow: 0 0 6px color-mix(in srgb, var(--ncm-act) 60%, transparent); }
+  .tk-nowline::after { content: ''; position: absolute; left: 0; width: 2px; height: 22px; background: linear-gradient(180deg, transparent, var(--ncm-text-heading), transparent); animation: tk-fall 3.2s linear infinite; }
+  @keyframes tk-fall { from { top: 0; } to { top: calc(100% - 22px); } }
+  .tk-rw__foot { display: grid; grid-template-columns: minmax(0, 1fr) 270px; border-top: 1px solid var(--ncm-border); }
+  .tk-rw__foot .tk-det { border-right: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .tk-next { padding: 8px 10px; }
+  .tk-next .k { font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); margin-bottom: 5px; }
+  .tk-next__r { display: grid; grid-template-columns: 14px minmax(0,1fr) auto; gap: 6px; align-items: center; padding: 3px 0; cursor: pointer; }
+  .tk-next__r:hover .nm { color: var(--ncm-act); }
+  .tk-next__r i { font-size: 10px; color: var(--tc); text-align: center; }
+  .tk-next__r .nm { font: 600 11.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tk-dial .sweep { animation: none; opacity: 0; }
+    .tk-dial .nowdot, .tk-row .led.is-bad, .tk-mk.is-bad .pin { animation: none; }
+    .tk-nowline::after { animation: none; display: none; }
+    .tk-det.is-fresh::after { animation: none; display: none; }
+  }
+</style>
+</head>
+<body>
+<p class="mk-h">Admin → Overview → Coming up — every timer in one place</p>
+<p class="mk-p">Two takes on the same module. Same data in both: ten timers on the game clock (scheduled mail, trace countdowns, self-destruct mail, forged backdoor accounts, lockouts), from 3 minutes to 20 hours away. The game clock runs fast in this mock (one game minute every 3 seconds) so you can watch timers close in. Click anything.</p>
+
+<p class="mk-v">Version A — the clock dial (half-width column, ~385px)</p>
+<p class="mk-p">The game clock sits in the middle. Each kind of timer has its own ring, and each timer is an arc that starts at "now" (the top) and runs clockwise to when it goes off. The scale is stretched near the top so the next hour gets most of the room and a whole day still fits on one turn. An arc turns amber inside the hour and red inside ten minutes. Hover an arc to see its name in the middle; click it (or a row in the list) to open a small readout with what you can do about it. Click a ring's name in the key to hide that kind.</p>
+<div class="mk-row">
+  <div data-slot="a"></div>
+  <div class="mk-note"><ul>
+    <li><b>Fits a half column.</b> Dial on top, the same timers as a list under it, the picked one at the bottom. Next to it the Overview's other half-width box (e.g. Recent activity) would sit.</li>
+    <li><b>Rings, inside out:</b> lockouts, backdoors, self-destruct, traces, scheduled mail. Two of the same kind share a ring; the nearer one is drawn on top.</li>
+    <li><b>Actions</b> are the existing ones: Send now / Change time / Cancel (mail), Call off / +15 min (trace), Erase now / Stop (self-destruct), Close now / +24h (backdoor), Lift now (lockout).</li>
+  </ul></div>
+</div>
+
+<p class="mk-v">Version B — the runway (full width, ~790px)</p>
+<p class="mk-p">A timeline that reads left to right: the cyan line on the left is now, and time runs off to the right. Each kind has its own lane, so you can see at a glance that two traces and a lockout are bunched up in the next hour. Zoom to the next 1 hour, 6 hours or 24 hours; anything past the edge shows as "+N later" at the end of its lane (click it to zoom out). The first ten minutes are tinted red and the first hour amber. Click a marker for the readout; the "Next up" list on the right is always the five soonest.</p>
+<div class="mk-row">
+  <div data-slot="b"></div>
+</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const STILL = q.has('still');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ---------- data ----------
+const KINDS = {
+  mail:     { label: 'Scheduled mail', short: 'Mail',     icon: 'fa-paper-plane',     tc: 'var(--ncm-hue-3)' },
+  trace:    { label: 'Traces',         short: 'Traces',   icon: 'fa-satellite-dish',  tc: 'var(--ncm-hue-1)' },
+  destruct: { label: 'Self-destruct',  short: 'Destruct', icon: 'fa-hourglass-half',  tc: 'var(--ncm-hue-6)' },
+  backdoor: { label: 'Backdoors',      short: 'Backdoor', icon: 'fa-door-open',       tc: 'var(--ncm-secret)' },
+  lockout:  { label: 'Lockouts',       short: 'Lockouts', icon: 'fa-lock',            tc: 'var(--ncm-hue-7)' },
+};
+const ORDER = ['mail', 'trace', 'destruct', 'backdoor', 'lockout']; // outer → inner ring
+const ACTS = {
+  mail:     [['Send now', 'pri', 'fa-paper-plane', 'now'], ['Change time', '', 'fa-clock', 'later60'], ['Cancel', 'bad', 'fa-xmark', 'drop']],
+  trace:    [['Call off', 'pri', 'fa-ban', 'drop'], ['+15 min', '', 'fa-plus', 'later15']],
+  destruct: [['Erase now', 'bad', 'fa-fire', 'now'], ['Stop', '', 'fa-hand', 'drop']],
+  backdoor: [['Close now', 'bad', 'fa-door-closed', 'now'], ['+24h', '', 'fa-plus', 'later1440']],
+  lockout:  [['Lift now', 'pri', 'fa-unlock', 'now'], ['+30 min', '', 'fa-plus', 'later30']],
+};
+let NOW = Date.UTC(2045, 7, 14, 21, 10);
+const M = 60000;
+let T = [
+  { id: 't1', kind: 'trace',    name: 'Arasaka closing in on Rache', sub: 'Trace · WS-7F-12', min: 3,    lines: [['Who', 'Arasaka'], ['Target', 'Rache Bartmoss'], ['From', 'Terminal WS-7F-12 · heat 82 burned']] },
+  { id: 't2', kind: 'lockout',  name: 'V locked out of CitiNet',     sub: 'Lockout · network',  min: 8,    lines: [['Who', 'V'], ['On', 'CitiNet (network login)'], ['Why', '3 failed passwords']] },
+  { id: 't3', kind: 'mail',     name: '"The job is off"',            sub: 'Rogue → Jackie',     min: 26,   lines: [['From', 'rogue@afterlife.nc', 1], ['To', 'Jackie Welles'], ['Note', 'Backdated off, delivers on the game clock']] },
+  { id: 't4', kind: 'destruct', name: '"Burn after reading"',         sub: 'In Judy\'s inbox',   min: 52,   lines: [['From', 'Anonymous (Ghost)'], ['To', 'Judy Alvarez'], ['Mode', '1 hour after sending']] },
+  { id: 't5', kind: 'trace',    name: 'Maelstrom on Judy',            sub: 'Trace · shard',       min: 100,  lines: [['Who', 'Maelstrom'], ['Target', 'Judy Alvarez'], ['From', 'Shard "Brick\'s Ledger" · heat 55']] },
+  { id: 't6', kind: 'mail',     name: '"Payment received"',          sub: 'Bank → V',           min: 185,  lines: [['From', 'alerts@ncbank.nc', 1], ['To', 'V'], ['Note', 'Scheduled by you']] },
+  { id: 't7', kind: 'lockout',  name: 'Judy locked out of the Mox box', sub: 'Lockout · terminal', min: 270, lines: [['Who', 'Judy Alvarez'], ['On', 'Mox front desk · account susie'], ['Why', 'Escalation by you']] },
+  { id: 't8', kind: 'backdoor', name: 'Backdoor "svc_maint"',         sub: 'Arasaka WS-7F-12',   min: 540,  lines: [['Made by', 'Rache Bartmoss'], ['On', 'Terminal WS-7F-12 (hidden account)'], ['Login', 'svc_maint', 1]] },
+  { id: 't9', kind: 'destruct', name: '"Coords for the drop"',        sub: 'In Panam\'s inbox',  min: 840,  lines: [['From', 'Rogue Amendiares'], ['To', 'Panam Palmer'], ['Mode', '24 hours after sending']] },
+  { id: 't10', kind: 'backdoor', name: 'Backdoor "ghost01"',          sub: 'Militech checkpoint', min: 1200, lines: [['Made by', 'T-Bug'], ['On', 'Militech checkpoint terminal'], ['Login', 'ghost01', 1]] },
+].map((t) => ({ ...t, at: NOW + t.min * M }));
+
+const left = (t) => Math.max(0, (t.at - NOW) / M);
+const urg = (t) => { const l = left(t); return l < 10 ? 'is-bad' : l < 60 ? 'is-attn' : ''; };
+const fmtLeft = (min) => { min = Math.max(0, Math.round(min)); if (min < 60) return `${min}m`; const h = Math.floor(min / 60), m = min % 60; return m ? `${h}h ${String(m).padStart(2, '0')}m` : `${h}h`; };
+const pad = (n) => String(n).padStart(2, '0');
+const fmtClock = (ms) => { const d = new Date(ms); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
+const fmtAt = (ms) => { const d = new Date(ms), n = new Date(NOW); return d.getUTCDate() !== n.getUTCDate() ? `tomorrow ${fmtClock(ms)}` : fmtClock(ms); };
+const fmtDate = (ms) => { const d = new Date(ms); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; };
+const colFor = (t) => { const u = urg(t); return u === 'is-bad' ? 'var(--ncm-bad)' : u === 'is-attn' ? 'var(--ncm-attn)' : KINDS[t.kind].tc; };
+const live = () => T.filter((t) => t.at > NOW).sort((a, b) => a.at - b.at);
+
+const A = { sel: 't1', hover: null, off: new Set(), said: '', fresh: false };
+const B = { sel: 't1', zoom: 60, off: new Set(), said: '', fresh: false };
+
+function detail(st, t) {
+  if (!t) return `<div class="tk-empty">Pick a timer to see it here.</div>`;
+  const k = KINDS[t.kind];
+  return `<div class="tk-det${st.fresh ? ' is-fresh' : ''}">
+    <div class="tk-det__top"><span class="tk-tag" style="--tc:${k.tc}"><i class="fas ${k.icon}"></i>${k.short}</span><span class="tk-det__nm">${t.name}</span></div>
+    <div class="tk-det__top" style="margin-top:4px"><span class="tk-at">${fmtDate(t.at)} ${fmtClock(t.at)}</span><span class="tk-det__when"><span class="tk-left ${urg(t)}">in ${fmtLeft(left(t))}</span></span></div>
+    <div class="tk-det__ln">${t.lines.map(([kk, v, mono]) => `<span class="k">${kk}</span><span class="v${mono ? ' mono' : ''}">${v}</span>`).join('')}</div>
+    <div class="tk-det__acts">${ACTS[t.kind].map(([l, c, ic, op]) => `<button class="tk-btn ${c}" data-op="${op}" data-id="${t.id}"><i class="fas ${ic}"></i>${l}</button>`).join('')}</div>
+    <div class="tk-det__said">${st.said}</div></div>`;
+}
+function doOp(st, id, op) {
+  const t = T.find((x) => x.id === id); if (!t) return;
+  const labels = { now: 'Done — it went off now.', drop: 'Cancelled — it is gone from the list.', later15: 'Pushed back 15 minutes.', later30: 'Pushed back 30 minutes.', later60: 'Moved one hour later.', later1440: 'Kept open another 24 hours.' };
+  if (op === 'now' || op === 'drop') { T = T.filter((x) => x !== t); st.sel = live()[0]?.id || null; }
+  else { t.at += Number(op.replace('later', '')) * M; }
+  A.said = B.said = ''; st.said = labels[op];
+}
+
+// ---------- VERSION A: dial ----------
+const SIZE = 316, RING = { mail: 118, trace: 102, destruct: 86, backdoor: 70, lockout: 54 }, SCALE = 132;
+const SPAN = 1440, ARC = 345; // a day on one turn, small gap before "now"
+const ang = (min) => Math.log1p(Math.max(0, min)) / Math.log1p(SPAN) * ARC;
+const pol = (r, deg) => { const a = deg * Math.PI / 180; return [r * Math.sin(a), -r * Math.cos(a)]; };
+const arcPath = (r, d0, d1) => { const [x0, y0] = pol(r, d0), [x1, y1] = pol(r, Math.max(d1, d0 + 0.5)); return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${d1 - d0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
+
+function dial() {
+  const list = live();
+  const shown = list.filter((t) => !A.off.has(t.kind));
+  const focus = A.hover || A.sel;
+  const ticks = [[0, 'now'], [5, '5m'], [15, '15m'], [60, '1h'], [180, '3h'], [360, '6h'], [720, '12h'], [1440, '24h']];
+  const minor = [1, 2, 3, 10, 30, 45, 90, 120, 240, 480, 960];
+  const tk = ticks.map(([m, l]) => { const d = ang(m), [x0, y0] = pol(SCALE, d), [x1, y1] = pol(SCALE + 6, d), [lx, ly] = pol(SCALE + 15, d); return `<line class="tick maj" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>${m ? `<text class="tlbl" x="${lx}" y="${ly}">${l}</text>` : ''}`; }).join('')
+    + minor.map((m) => { const d = ang(m), [x0, y0] = pol(SCALE, d), [x1, y1] = pol(SCALE + 3, d); return `<line class="tick" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>`; }).join('');
+  const tracks = ORDER.map((k) => `<circle class="trk" r="${RING[k]}" style="${A.off.has(k) ? 'opacity:.3' : ''}"/>`).join('');
+  const zones = `<path class="zone bad" d="${arcPath(SCALE - 3, 0, ang(10))}"/><path class="zone attn" d="${arcPath(SCALE - 3, ang(10), ang(60))}"/>`;
+  // farthest first so the nearest of a kind is on top
+  const arcs = [...shown].sort((a, b) => b.at - a.at).map((t) => {
+    const r = RING[t.kind], d = ang(left(t)), [ex, ey] = pol(r, d), c = colFor(t), dim = A.hover && A.hover !== t.id;
+    return `<path class="arc${urg(t) ? '' : ' calm'}${focus === t.id ? ' on' : ''}${dim ? ' dim' : ''}" d="${arcPath(r, 0, d)}" style="stroke:${c}"/>
+      <path class="hit" data-tid="${t.id}" d="${arcPath(r, Math.max(0, d - 16), d)}"><title>${t.name} — in ${fmtLeft(left(t))}</title></path>
+      <circle class="end${focus === t.id ? ' on' : ''}${dim ? ' dim' : ''}" data-tid="${t.id}" cx="${ex}" cy="${ey}" r="5" style="fill:${c}"><title>${t.name} — in ${fmtLeft(left(t))}</title></circle>`;
+  }).join('');
+  const f = T.find((t) => t.id === A.hover);
+  const hub = f
+    ? `<text class="hub-s" y="-17">${KINDS[f.kind].short}</text><text class="hub-n" y="-2">${f.name.length > 15 ? f.name.slice(0, 14) + '…' : f.name}</text><text class="hub-l" y="14" style="fill:${colFor(f)}">${fmtLeft(left(f))}</text>`
+    : `<text class="hub-s" y="-15">Game time</text><text class="hub-t" y="2">${fmtClock(NOW)}</text><text class="hub-s" y="18" style="font-family:var(--ncm-font-mono);letter-spacing:0">${fmtDate(NOW)}</text>`;
+  const [hx, hy] = pol(SCALE + 2, 0);
+  const bad = list.filter((t) => urg(t) === 'is-bad').length, attn = list.filter((t) => urg(t) === 'is-attn').length;
+
+  return `<div class="tk-P" style="width:385px">
+    <div class="tk-band"><i class="fas fa-hourglass-start"></i>Coming up<span class="r"><b>${list.length}</b> timers</span></div>
+    <div class="tk-mod"><div class="tk-mod__k"><i class="fas fa-clock"></i>Dial<span class="hint">${bad ? `<span style="color:var(--ncm-bad)">${bad} under 10 min</span> · ` : ''}${attn ? `<span style="color:var(--ncm-attn)">${attn} this hour</span>` : 'hover an arc'}</span></div>
+      <div class="tk-dial"><svg width="${SIZE + 24}" height="${SIZE + 24}" viewBox="${-(SIZE + 24) / 2} ${-(SIZE + 24) / 2} ${SIZE + 24} ${SIZE + 24}">
+        <defs><radialGradient id="tk-sw"><stop offset="0" stop-color="var(--ncm-act)" stop-opacity="0"/><stop offset=".7" stop-color="var(--ncm-act)" stop-opacity=".05"/><stop offset="1" stop-color="var(--ncm-act)" stop-opacity=".18"/></radialGradient></defs>
+        ${STILL || reduced ? '' : `<path class="sweep" d="M0 0 L 0 ${-SCALE} A ${SCALE} ${SCALE} 0 0 1 ${SCALE * Math.sin(0.35)} ${-SCALE * Math.cos(0.35)} Z"/>`}
+        <circle class="scale" r="${SCALE}"/>${zones}${tk}${tracks}${arcs}
+        <line class="nowhand" x1="0" y1="${-RING.lockout + 10}" x2="${hx}" y2="${hy}"/><circle class="nowdot" cx="${hx}" cy="${hy}" r="3.5"/>
+        <circle class="hub" r="40"/>${hub}</svg></div>
+      <div class="tk-key">${ORDER.map((k) => `<span data-akey="${k}" class="${A.off.has(k) ? 'off' : ''}"><i class="sw" style="background:${KINDS[k].tc}"></i>${KINDS[k].short}</span>`).join('')}</div>
+    </div>
+    <div class="tk-mod"><div class="tk-mod__k"><i class="fas fa-list"></i>All timers<span class="hint">soonest first</span></div>
+      <div class="tk-list">${shown.length ? shown.map((t) => { const k = KINDS[t.kind]; return `<div class="tk-row${A.sel === t.id ? ' sel' : ''}" data-tid="${t.id}" style="--tc:${k.tc}">
+        <span class="led ${urg(t)}"></span><i class="ic fas ${k.icon}"></i><span style="min-width:0"><div class="nm">${t.name}</div><div class="sub">${t.sub}</div></span>
+        <span class="tm"><div class="tk-left ${urg(t)}">${fmtLeft(left(t))}</div><div class="tk-at">${fmtAt(t.at)}</div></span></div>`; }).join('') : '<div class="tk-empty">Nothing is counting down.</div>'}</div>
+    </div>
+    <div class="tk-mod"><div class="tk-mod__k"><i class="fas fa-crosshairs"></i>Picked</div>${detail(A, T.find((t) => t.id === A.sel && t.at > NOW))}</div>
+  </div>`;
+}
+
+// ---------- VERSION B: runway ----------
+const ZOOMS = [[60, '1h'], [360, '6h'], [1440, '24h']];
+function runway() {
+  const list = live(), Z = B.zoom, TRACKW = 790 - 2 - 104 - 62; // 622px
+  const x = (t) => left(t) / Z * TRACKW;
+  const step = Z === 60 ? 15 : Z === 360 ? 60 : 240;
+  const axis = [`<span class="now" style="left:4px">now ${fmtClock(NOW)}</span>`];
+  for (let m = step; m < Z; m += step) axis.push(`<span style="left:${m / Z * 100}%">${Z === 60 ? '+' + m + 'm' : fmtClock(NOW + m * M)}</span>`);
+  const zb = Math.min(100, 10 / Z * 100), za = Z > 60 ? Math.min(100, 60 / Z * 100) : 0;
+  const rows = ORDER.map((k) => {
+    const kk = KINDS[k], mine = list.filter((t) => t.kind === k), inView = mine.filter((t) => left(t) <= Z), later = mine.length - inView.length, off = B.off.has(k);
+    const mk = inView.map((t, i) => {
+      const nx = i + 1 < inView.length ? x(inView[i + 1]) : TRACKW;
+      const px = i ? x(inView[i - 1]) : 0;
+      let room = Math.max(0, nx - x(t) - 22), flip = false;
+      if (room < 110 && x(t) - px - 22 > room) { flip = true; room = Math.min(200, x(t) - px - 22); }
+      const u = urg(t);
+      return `<div class="tk-mk ${u}${flip ? ' flip' : ''}${B.sel === t.id ? ' sel' : ''}" data-bid="${t.id}" style="left:${x(t).toFixed(1)}px;--mc:${colFor(t)};--mt:${u ? colFor(t) : 'var(--ncm-text-label)'};--room:${room}px" title="${t.name} — in ${fmtLeft(left(t))}">
+        <span class="pin"></span>${room > 18 ? `<span class="lb"><b>${t.name}</b><em>${fmtLeft(left(t))}</em></span>` : ''}</div>`;
+    }).join('');
+    return `<div class="tk-lane-k${off ? ' off' : ''}" data-bkey="${k}" style="--tc:${kk.tc}" title="Hide or show ${kk.label}"><i class="fas ${kk.icon}"></i>${kk.short}<span class="n">${mine.length}</span></div>
+      <div class="tk-lane${off ? ' off' : ''}" style="--grid:${step / Z * 100}%"><span class="z-attn" style="width:${za}%"></span><span class="z-bad" style="width:${zb}%"></span>${mk}</div>
+      <div class="tk-lane-end">${later ? `<span class="tk-later" data-zoomout="${k}" title="Zoom out to see them">+${later} later</span>` : ''}</div>`;
+  }).join('');
+  const bad = list.filter((t) => urg(t) === 'is-bad').length, attn = list.filter((t) => urg(t) === 'is-attn').length;
+  const next = list.slice(0, 5).map((t) => { const k = KINDS[t.kind]; return `<div class="tk-next__r" data-bid="${t.id}" style="--tc:${k.tc}"><i class="fas ${k.icon}"></i><span class="nm">${t.name}</span><span class="tk-left ${urg(t)}">${fmtLeft(left(t))}</span></div>`; }).join('');
+  return `<div class="tk-P" style="width:790px">
+    <div class="tk-band"><i class="fas fa-hourglass-start"></i>Coming up<span class="r">game time <b>${fmtDate(NOW)} ${fmtClock(NOW)}</b></span></div>
+    <div class="tk-mod">
+      <div class="tk-mod__k"><i class="fas fa-road"></i>Runway<span class="hint">click a marker · click a lane name to hide it</span></div>
+      <div class="tk-rw__bar"><span class="tk-seg">${ZOOMS.map(([z, l]) => `<span data-zoom="${z}" class="${B.zoom === z ? 'on' : ''}">${l}</span>`).join('')}</span>
+        <span class="tk-rw__sum">${bad ? `<b class="is-bad">${bad}</b> under 10 min · ` : ''}${attn ? `<b class="is-attn">${attn}</b> this hour · ` : ''}<b>${list.length}</b> in all</span><span class="grow"></span></div>
+      <div class="tk-rw">
+        <div></div><div class="tk-rw__axis">${axis.join('')}</div><div></div>
+        ${rows}
+      </div>
+      <div class="tk-rw__foot">
+        ${detail(B, T.find((t) => t.id === B.sel && t.at > NOW))}
+        <div class="tk-next"><div class="k">Next up</div>${next || '<div class="tk-empty">Nothing is counting down.</div>'}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---------- mount ----------
+const slotA = document.querySelector('[data-slot="a"]'), slotB = document.querySelector('[data-slot="b"]');
+function draw() {
+  slotA.innerHTML = `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}">${dial()}</div>`;
+  slotB.innerHTML = `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}">${runway()}</div>`;
+  // now-line spans the runway lanes
+  const rw = slotB.querySelector('.tk-rw'), axis = slotB.querySelector('.tk-rw__axis');
+  if (rw && axis) {
+    const nl = document.createElement('div'); nl.className = 'tk-nowline';
+    nl.style.cssText = `top:${axis.offsetTop}px;left:${axis.offsetLeft}px;height:${rw.offsetHeight - axis.offsetTop}px;bottom:auto`;
+    rw.style.position = 'relative'; rw.appendChild(nl);
+  }
+  A.fresh = B.fresh = false;
+}
+draw();
+
+slotA.addEventListener('mouseover', (e) => { const h = e.target.closest('[data-tid]'); const id = h && h.closest('svg') ? h.dataset.tid : null; if (id !== A.hover) { A.hover = id; draw(); } });
+slotA.addEventListener('mouseleave', () => { if (A.hover) { A.hover = null; draw(); } });
+slotA.addEventListener('click', (e) => {
+  const op = e.target.closest('[data-op]'); if (op) { doOp(A, op.dataset.id, op.dataset.op); return draw(); }
+  const k = e.target.closest('[data-akey]'); if (k) { A.off.has(k.dataset.akey) ? A.off.delete(k.dataset.akey) : A.off.add(k.dataset.akey); return draw(); }
+  const t = e.target.closest('[data-tid]'); if (t) { A.sel = t.dataset.tid; A.said = ''; A.fresh = true; draw(); }
+});
+slotB.addEventListener('click', (e) => {
+  const op = e.target.closest('[data-op]'); if (op) { doOp(B, op.dataset.id, op.dataset.op); return draw(); }
+  const z = e.target.closest('[data-zoom]'); if (z) { B.zoom = Number(z.dataset.zoom); return draw(); }
+  const zo = e.target.closest('[data-zoomout]'); if (zo) { B.zoom = B.zoom === 60 ? 360 : 1440; return draw(); }
+  const k = e.target.closest('[data-bkey]'); if (k) { B.off.has(k.dataset.bkey) ? B.off.delete(k.dataset.bkey) : B.off.add(k.dataset.bkey); return draw(); }
+  const t = e.target.closest('[data-bid]'); if (t) { B.sel = t.dataset.bid; B.said = ''; B.fresh = true; draw(); }
+});
+
+// the game clock runs: one game minute every 3 real seconds (mock only)
+if (!STILL) setInterval(() => {
+  NOW += M;
+  if (!T.find((t) => t.id === A.sel && t.at > NOW)) A.sel = live()[0]?.id || null;
+  if (!T.find((t) => t.id === B.sel && t.at > NOW)) B.sel = live()[0]?.id || null;
+  if (A.hover && !document.querySelector('[data-slot="a"] :hover')) A.hover = null;
+  draw();
+}, 3000);
+</script>
+</body>
+</html>

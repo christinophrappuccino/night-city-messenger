@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contacts Tab Redesign — mock</title>
+<!--
+  ADMIN → CONTACTS, REORGANISED — design mock (2026-10-27).
+
+  Same content as today, plus everything the module has grown since (identities,
+  groups, send-only addresses, auto-added NPC senders, duplicate addresses, mail
+  waiting), organised by the question the GM is asking:
+
+    DIRECTORY        the NPCs — list + detail; aliases nested under their main;
+                     the detail: mail waiting, who knows them, trust per player,
+                     identities, security, details, notes.
+    PLAYERS          each player character: address, identities, who they know, groups.
+    GROUPS           the contact groups: members, who they are pushed to.
+    WHO KNOWS WHOM   a grid of contacts × characters — one click shares or unshares.
+
+  Click sub-tabs, rows, chips, grid cells, portraits. Or:
+    ?view=directory|players|groups|matrix   ?t=clean-dark|clean-light|high-contrast   ?sel=<id>   ?new=1
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  html, body { margin: 0; background: #06060a; color: #8fa0b2; font-family: 'Rajdhani', sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; padding: 9px 14px;
+    background: #0b0b12; border-bottom: 1px solid #1b1b28; font: 11px 'Share Tech Mono', monospace; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a; padding: 3px 8px; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+  .bar a.on { color: #07070b; background: #19f3f7; border-color: #19f3f7; }
+  .stage { display: flex; gap: 26px; justify-content: center; padding: 24px 16px 60px; flex-wrap: wrap; }
+  .notes { width: 320px; font-size: 14px; line-height: 1.5; color: #9aa6b4; }
+  .notes h3 { margin: 0 0 6px; font: 700 12px 'Rajdhani'; letter-spacing: .14em; text-transform: uppercase; color: #e6edf5; }
+  .notes p { margin: 0 0 12px; } .notes b { color: #d6dee8; }
+  .mk, .mk.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-panel { width: 820px; height: 760px; display: flex; flex-direction: column; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); overflow: hidden; }
+  .mk-panel > .ncm-admin-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0 14px 14px; }
+
+  /* ═════════════════════════ .ncm-ct2-* ═════════════════════════ */
+  .ncm-admin-panel .ncm-ct2-nav { display: flex; align-items: center; gap: 4px; margin: 0 -14px 10px; padding: 8px 14px; border-bottom: 1px solid var(--ncm-border); position: relative; }
+  .ncm-admin-panel button.ncm-ct2-navbtn { appearance: none; width: auto !important; height: 30px !important; min-height: 0 !important; margin: 0 !important; white-space: nowrap;
+    display: inline-flex !important; align-items: center; gap: 6px; padding: 0 10px !important; border-radius: 2px !important; cursor: pointer;
+    background: transparent !important; border: 1px solid transparent !important; box-shadow: none !important;
+    font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary) !important; }
+  .ncm-admin-panel button.ncm-ct2-navbtn.on { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-surface) !important; border-color: var(--ncm-border) !important; box-shadow: inset 0 -2px 0 var(--ncm-secondary) !important; }
+  .ncm-admin-panel .ncm-ct2-navbtn i { color: var(--ncm-secondary); font-size: 11px; }
+  .ncm-admin-panel .ncm-ct2-navct { min-width: 16px; padding: 0 4px; height: 15px; display: inline-grid; place-items: center; border-radius: 1px; font: 700 10px var(--ncm-font-mono); background: var(--ncm-bg-elevated); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-nav .grow { flex: 1; }
+  .ncm-admin-panel .ncm-ct2-view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .ncm-admin-panel .ncm-ct2-menu { position: absolute; right: 44px; top: 42px; z-index: 20; min-width: 230px; padding: 4px; border: 1px solid var(--ncm-border-active, var(--ncm-border));
+    background: var(--ncm-bg-elevated); border-radius: 2px; box-shadow: 0 10px 30px rgba(0,0,0,.45); display: none; }
+  .ncm-admin-panel .ncm-ct2-menu.open { display: block; }
+  .ncm-admin-panel .ncm-ct2-menu .it { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 2px; cursor: pointer; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-menu .it:hover { background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-ct2-menu .it i { width: 14px; text-align: center; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-menu .it small { margin-left: auto; color: var(--ncm-text-muted); font-size: 11px; }
+  .ncm-admin-panel .ncm-ct2-menu hr { border: 0; border-top: 1px solid var(--ncm-border); margin: 4px 0; background: none; height: 0; }
+
+  /* send-as strip */
+  .ncm-admin-panel .ncm-ct2-sendas { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex: none; overflow: hidden; }
+  .ncm-admin-panel .ncm-ct2-sendas .lbl { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); white-space: nowrap; }
+  .ncm-admin-panel .ncm-ct2-sendas .lbl i { color: var(--ncm-primary); margin-right: 5px; }
+  .ncm-admin-panel .ncm-ct2-qs { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 2px; border: 1px solid var(--ncm-border); border-radius: 12px; background: var(--ncm-bg-base);
+    font: 700 12px var(--ncm-font-display); color: var(--ncm-text-primary); cursor: pointer; white-space: nowrap; }
+  .ncm-admin-panel .ncm-ct2-qs:hover { border-color: var(--ncm-primary); }
+  .ncm-admin-panel .ncm-ct2-qs img, .ncm-admin-panel .ncm-ct2-qs .ini { width: 20px; height: 20px; border-radius: 50%; }
+
+  .ncm-admin-panel .ncm-ct2-tb { display: flex; gap: 6px; align-items: center; margin-bottom: 7px; flex: none; }
+  .ncm-admin-panel .ncm-ct2-tb .srch { flex: 1; position: relative; }
+  .ncm-admin-panel .ncm-ct2-tb .srch i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--ncm-text-muted); font-size: 12px; }
+  .ncm-admin-panel .ncm-ct2-tb input[type=text] { width: 100%; height: 30px; padding-left: 28px !important; box-sizing: border-box; }
+  .ncm-admin-panel .ncm-ct2-tb select { height: 30px; width: auto; }
+  .ncm-admin-panel .ncm-ct2-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; flex: none; }
+  .ncm-admin-panel .ncm-ct2-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer;
+    background: var(--ncm-bg-base); font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); user-select: none; }
+  .ncm-admin-panel .ncm-ct2-chip .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-ct2-chip.on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 9%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-ct2-chip.on .n { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-ct2-chip.warn .n { color: var(--ncm-warning); }
+
+  /* split */
+  .ncm-admin-panel .ncm-ct2-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 280px 1fr; gap: 12px; }
+  .ncm-admin-panel .ncm-ct2-list { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-ct2-grp { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 7px; padding: 6px 10px; cursor: pointer;
+    background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-grp i { color: var(--ncm-secondary); font-size: 11px; width: 14px; text-align: center; }
+  .ncm-admin-panel .ncm-ct2-grp .n { margin-left: auto; font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; }
+  .ncm-admin-panel .ncm-ct2-r { display: grid; grid-template-columns: 30px 1fr auto; gap: 9px; align-items: center; padding: 6px 10px; cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); border-left: 2px solid transparent; position: relative; }
+  .ncm-admin-panel .ncm-ct2-r:hover { background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); }
+  .ncm-admin-panel .ncm-ct2-r.sel { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border-left-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-ct2-r.alias { padding-left: 28px; }
+  .ncm-admin-panel .ncm-ct2-r.alias::before { content: ''; position: absolute; left: 18px; top: 0; bottom: 50%; width: 7px; border-left: 1px solid var(--ncm-border-active, var(--ncm-border)); border-bottom: 1px solid var(--ncm-border-active, var(--ncm-border)); }
+  .ncm-admin-panel .ncm-ct2-av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; box-sizing: border-box; font: 700 12px var(--ncm-font-display);
+    border: 1px solid var(--ncm-border-active, var(--ncm-border)); background: color-mix(in srgb, var(--ncm-secondary) 12%, var(--ncm-bg-surface)); color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-ct2-av.sys { border-radius: 6px; background: var(--ncm-bg-deep); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-av.ice { border-color: var(--ncm-danger); }
+  .ncm-admin-panel .ncm-ct2-r.alias .ncm-ct2-av { width: 24px; height: 24px; font-size: 10px; justify-self: center; }
+  .ncm-admin-panel .ncm-ct2-r .nm { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-ct2-r.alias .nm { font-size: 13px; }
+  .ncm-admin-panel .ncm-ct2-r .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-ct2-r .st { display: flex; gap: 5px; align-items: center; font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-ct2-r .st .mail { color: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-ct2-r .st .warn { color: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-ct2-r .st .ice { color: var(--ncm-danger); }
+  .ncm-admin-panel .ncm-ct2-knows { display: inline-flex; }
+  .ncm-admin-panel .ncm-ct2-knows span { width: 9px; height: 9px; border-radius: 50%; margin-left: -2px; border: 1px solid var(--ncm-bg-base); }
+
+  /* detail */
+  .ncm-admin-panel .ncm-ct2-det { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-ct2-dhead { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; padding: 12px 13px 8px; }
+  .ncm-admin-panel .ncm-ct2-dhead .ncm-ct2-av { width: 56px; height: 56px; font-size: 19px; }
+  .ncm-admin-panel .ncm-ct2-dhead .nm { font: 700 18px var(--ncm-font-display); color: var(--ncm-text-primary); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .ncm-admin-panel .ncm-ct2-dhead .addr { font: 13px var(--ncm-font-mono); color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-ct2-dhead .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-dhead .meta i { font-size: 11px; margin-right: 4px; color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-ct2-tag { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 1px; border: 1px solid var(--ncm-border);
+    font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-tag.main { color: var(--ncm-secondary); border-color: color-mix(in srgb, var(--ncm-secondary) 45%, transparent); }
+  .ncm-admin-panel .ncm-ct2-tag.ice { color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent); }
+  .ncm-admin-panel .ncm-ct2-acts { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 13px 11px 13px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-ct2-sec { padding: 10px 13px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-ct2-sec:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-ct2-sec > .k { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-sec > .k i { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-ct2-sec > .k .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-secondary); font-weight: 400; }
+  .ncm-admin-panel .ncm-ct2-sec > .k a { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-secondary); cursor: pointer; font-weight: 400; }
+  .ncm-admin-panel .ncm-ct2-mail { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 2px;
+    border: 1px solid color-mix(in srgb, var(--ncm-accent) 45%, transparent); background: color-mix(in srgb, var(--ncm-accent) 8%, transparent); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-mail i { color: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-ct2-mail .grow { flex: 1; }
+  .ncm-admin-panel .ncm-ct2-quiet { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  /* who knows them: every PC, click to share/unshare */
+  .ncm-admin-panel .ncm-ct2-who { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ncm-admin-panel .ncm-ct2-pc { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 3px; border-radius: 14px; cursor: pointer; font: 13px var(--ncm-font-body);
+    border: 1px dashed var(--ncm-border-active, var(--ncm-border)); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-ct2-pc img { width: 22px; height: 22px; border-radius: 50%; filter: grayscale(1); opacity: .5; }
+  .ncm-admin-panel .ncm-ct2-pc.on { border-style: solid; border-color: color-mix(in srgb, var(--ncm-success) 45%, transparent); background: color-mix(in srgb, var(--ncm-success) 8%, transparent); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-pc.on img { filter: none; opacity: 1; }
+  .ncm-admin-panel .ncm-ct2-pc .s { font: 11px var(--ncm-font-mono); color: var(--ncm-success); }
+  /* trust per player */
+  .ncm-admin-panel .ncm-ct2-trust { display: grid; grid-template-columns: 22px 80px 1fr 64px; gap: 9px; align-items: center; padding: 4px 0; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-trust img { width: 22px; height: 22px; border-radius: 50%; }
+  .ncm-admin-panel .ncm-ct2-trust .tb { display: flex; gap: 3px; }
+  .ncm-admin-panel .ncm-ct2-trust .tb span { flex: 1; height: 8px; border-radius: 1px; background: var(--ncm-bg-elevated); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-trust .tb span.on { background: var(--tc); }
+  .ncm-admin-panel .ncm-ct2-trust .lv { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tc); text-align: right; }
+  /* identities */
+  .ncm-admin-panel .ncm-ct2-ids { display: flex; flex-direction: column; gap: 4px; }
+  .ncm-admin-panel .ncm-ct2-id { display: grid; grid-template-columns: 24px 1fr auto; gap: 9px; align-items: center; padding: 5px 8px; border: 1px solid var(--ncm-border); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-id .ncm-ct2-av { width: 24px; height: 24px; font-size: 10px; }
+  .ncm-admin-panel .ncm-ct2-id .a { font: 12px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-id .star { color: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-ct2-id .star.off { color: var(--ncm-text-muted); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-add { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font: 13px var(--ncm-font-body); color: var(--ncm-secondary); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-kv { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 18px; }
+  .ncm-admin-panel .ncm-ct2-kv div { display: grid; grid-template-columns: 70px 1fr; gap: 8px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); padding: 2px 0; }
+  .ncm-admin-panel .ncm-ct2-kv .l { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); padding-top: 2px; }
+  .ncm-admin-panel .ncm-ct2-notes { font: 13px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); padding: 8px 10px; border-left: 2px solid var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 5%, transparent); }
+
+  /* players view */
+  .ncm-admin-panel .ncm-ct2-plist { display: flex; flex-direction: column; }
+  .ncm-admin-panel .ncm-ct2-mini { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-admin-panel .ncm-ct2-mini span { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px 2px 2px; border: 1px solid var(--ncm-border); border-radius: 12px; font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-ct2-mini span .ncm-ct2-av { width: 18px; height: 18px; font-size: 8px; }
+  .ncm-admin-panel .ncm-ct2-mini span.add { border-style: dashed; color: var(--ncm-secondary); background: transparent; padding-left: 7px; cursor: pointer; }
+
+  /* groups view */
+  .ncm-admin-panel .ncm-ct2-gdot { width: 12px; height: 30px; border-radius: 2px; background: var(--g); justify-self: center; }
+
+  /* who-knows-whom grid */
+  .ncm-admin-panel .ncm-ct2-mx { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel table.ncm-ct2-mxt { margin: 0; width: 100%; border-collapse: separate; border-spacing: 0; }
+  .ncm-admin-panel table.ncm-ct2-mxt, .ncm-admin-panel table.ncm-ct2-mxt * { background: transparent; text-shadow: none; }
+  .ncm-admin-panel table.ncm-ct2-mxt th, .ncm-admin-panel table.ncm-ct2-mxt td { border: 0; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); padding: 5px 8px; }
+  .ncm-admin-panel table.ncm-ct2-mxt thead th { position: sticky; top: 0; z-index: 2; background: var(--ncm-bg-surface) !important; text-align: center; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel table.ncm-ct2-mxt thead th:first-child { text-align: left; }
+  .ncm-admin-panel table.ncm-ct2-mxt thead th img { display: block; width: 26px; height: 26px; border-radius: 50%; margin: 0 auto 3px; }
+  .ncm-admin-panel table.ncm-ct2-mxt thead th small { display: block; font: 10px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-secondary); cursor: pointer; font-weight: 400; }
+  .ncm-admin-panel table.ncm-ct2-mxt tbody th { text-align: left; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; }
+  .ncm-admin-panel table.ncm-ct2-mxt tbody th small { display: block; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); font-weight: 400; }
+  .ncm-admin-panel table.ncm-ct2-mxt tbody tr.grp th { padding-top: 9px; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel table.ncm-ct2-mxt td { text-align: center; }
+  .ncm-admin-panel .ncm-ct2-cell { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 3px; cursor: pointer; border: 1px solid var(--ncm-border); color: transparent; font-size: 11px; }
+  .ncm-admin-panel .ncm-ct2-cell.on { background: color-mix(in srgb, var(--ncm-success) 18%, transparent) !important; border-color: var(--ncm-success); color: var(--ncm-success); }
+  .ncm-admin-panel .ncm-ct2-cell:hover { border-color: var(--ncm-secondary); }
+  /* edit in place */
+  .ncm-admin-panel .ncm-ct2-det.editing { display: flex; flex-direction: column; overflow: hidden; }
+  .ncm-admin-panel .ncm-ct2-edhd { display: flex; align-items: center; gap: 10px; padding: 10px 13px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .ncm-admin-panel .ncm-ct2-edhd .ncm-ct2-av { width: 34px; height: 34px; }
+  .ncm-admin-panel .ncm-ct2-edhd .t { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-edhd .t small { display: block; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); font-weight: 400; }
+  .ncm-admin-panel .ncm-ct2-edtabs { display: flex; gap: 2px; padding: 0 9px; border-bottom: 1px solid var(--ncm-border); flex: none; overflow-x: auto; scrollbar-width: none; background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-ct2-edtab { flex: none; padding: 7px 8px 6px; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap;
+    font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-edtab.on { color: var(--ncm-text-primary); border-bottom-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-ct2-edtab .d { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ncm-accent); margin-left: 5px; vertical-align: middle; visibility: hidden; }
+  .ncm-admin-panel .ncm-ct2-edtab.dirty .d { visibility: visible; }
+  .ncm-admin-panel .ncm-ct2-edbody { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  .ncm-admin-panel .ncm-ct2-esec { padding: 12px 13px 14px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-ct2-esec > h3 { margin: 0 0 3px; border: 0; display: flex; align-items: center; gap: 7px; font: 700 12px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-esec > h3 i { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-ct2-esec > p { margin: 0 0 10px; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-fg { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 12px; }
+  .ncm-admin-panel .ncm-ct2-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .ncm-admin-panel .ncm-ct2-f.w { grid-column: 1 / -1; }
+  .ncm-admin-panel .ncm-ct2-f > span { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-f > span small { text-transform: none; letter-spacing: 0; font: 11px var(--ncm-font-body); color: var(--ncm-text-muted); margin-left: 4px; }
+  .ncm-admin-panel .ncm-ct2-f input[type=text], .ncm-admin-panel .ncm-ct2-f input[type=number], .ncm-admin-panel .ncm-ct2-f select { height: 28px; width: 100%; box-sizing: border-box; }
+  .ncm-admin-panel .ncm-ct2-f textarea { min-height: 96px; resize: vertical; font: 13px/1.45 var(--ncm-font-body); }
+  .ncm-admin-panel .ncm-ct2-idrow { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-bottom: 10px; }
+  .ncm-admin-panel .ncm-ct2-ptile { width: 76px; height: 76px; border-radius: 50%; position: relative; overflow: hidden; cursor: pointer; border: 1px solid var(--ncm-border-active, var(--ncm-border)); }
+  .ncm-admin-panel .ncm-ct2-ptile img { width: 100%; height: 100%; object-fit: cover; }
+  .ncm-admin-panel .ncm-ct2-ptile span { position: absolute; inset: auto 0 0 0; padding: 3px 0 5px; text-align: center; background: rgba(0,0,0,.6); color: #fff; font: 700 9px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+  .ncm-admin-panel .ncm-ct2-roles { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ncm-admin-panel .ncm-ct2-role { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer;
+    font: 700 11px var(--ncm-font-display); letter-spacing: .03em; color: var(--ncm-text-secondary); background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-ct2-role.on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 10%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-ct2-role.ghost { border-style: dashed; color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-ct2-pick { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-deep);
+    font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-pick img { width: 20px; height: 20px; border-radius: 50%; }
+  .ncm-admin-panel .ncm-ct2-pick .grow { flex: 1; }
+  .ncm-admin-panel .ncm-ct2-pick a { font: 12px var(--ncm-font-body); color: var(--ncm-secondary); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 28px; padding: 3px 6px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-deep); }
+  .ncm-admin-panel .ncm-ct2-tags span { padding: 1px 7px; border-radius: 1px; background: var(--ncm-bg-elevated); font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-tags span i { margin-left: 5px; font-size: 9px; color: var(--ncm-text-muted); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-tags input { flex: 1; min-width: 80px; height: 20px !important; border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+  .ncm-admin-panel .ncm-ct2-seg { display: flex; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+  .ncm-admin-panel .ncm-ct2-seg span { flex: 1; text-align: center; padding: 6px 4px; cursor: pointer; font: 700 11px var(--ncm-font-display); letter-spacing: .03em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-seg span + span { border-left: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-ct2-seg span.on { background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-seg.trust span.on { background: color-mix(in srgb, var(--tc) 20%, transparent); color: var(--tc); }
+  .ncm-admin-panel .ncm-ct2-hint { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); margin-top: 6px; }
+  .ncm-admin-panel .ncm-ct2-sw { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-sw b { font: 600 13px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-sw small { display: block; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-sw .k { margin-left: auto; width: 30px; height: 16px; border-radius: 8px; background: var(--ncm-bg-elevated); position: relative; flex: none; }
+  .ncm-admin-panel .ncm-ct2-sw .k::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-secondary); transition: left .15s; }
+  .ncm-admin-panel .ncm-ct2-sw.on { border-color: color-mix(in srgb, var(--ncm-danger) 50%, var(--ncm-border)); }
+  .ncm-admin-panel .ncm-ct2-sw.on .k { background: color-mix(in srgb, var(--ncm-danger) 55%, transparent); }
+  .ncm-admin-panel .ncm-ct2-sw.on .k::after { left: 16px; background: #fff; }
+  .ncm-admin-panel .ncm-ct2-sub { margin-top: 10px; padding: 10px; border-left: 2px solid color-mix(in srgb, var(--ncm-danger) 55%, transparent); background: color-mix(in srgb, var(--ncm-danger) 5%, transparent); }
+  .ncm-admin-panel .ncm-ct2-ptrust { display: grid; grid-template-columns: 22px 64px 1fr; gap: 9px; align-items: center; margin-top: 6px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-ptrust img { width: 22px; height: 22px; border-radius: 50%; }
+  .ncm-admin-panel .ncm-ct2-ptrust .ncm-ct2-seg span { padding: 4px 2px; font-size: 10px; }
+  .ncm-admin-panel .ncm-ct2-edft { display: flex; align-items: center; gap: 8px; padding: 9px 13px; border-top: 1px solid var(--ncm-border); flex: none; background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-ct2-edft .st { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-edft .st.dirty { color: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-ct2-edft .grow { flex: 1; }
+  .ncm-admin-panel .ncm-ct2-guard { display: flex; align-items: center; gap: 8px; padding: 7px 10px; margin-bottom: 8px; border: 1px solid color-mix(in srgb, var(--ncm-accent) 50%, transparent);
+    background: color-mix(in srgb, var(--ncm-accent) 8%, transparent); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); flex: none; }
+  .ncm-admin-panel .ncm-ct2-guard .grow { flex: 1; }
+  .ncm-admin-panel label.ncm-ct2-f { text-transform: none; letter-spacing: 0; font: 13px var(--ncm-font-body); }
+  .ncm-admin-panel .ncm-ct2-esec > h3 { background: none !important; text-shadow: none !important; padding: 0 !important; box-shadow: none !important; }
+  /* pop-out window */
+  .mk-panel.pop { width: 1120px; height: 780px; }
+  .mk-panel.pop .ncm-admin-tabs { display: none; }
+  .mk-panel .ncm-ct2-winhd { display: none; }
+  .mk-panel.pop .ncm-ct2-winhd { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; flex: none; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border);
+    font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .mk-panel.pop .ncm-ct2-winhd i { color: var(--ncm-text-secondary); }
+  .mk-panel.pop .ncm-ct2-winhd .grow { flex: 1; }
+  .mk-panel.pop .ncm-ct2-winhd .dock { font: 12px var(--ncm-font-body); color: var(--ncm-secondary); cursor: pointer; font-weight: 400; }
+  .ncm-admin-panel.pop .ncm-ct2-split { grid-template-columns: 300px 1fr; }
+  .ncm-admin-panel.pop .ncm-ct2-edbody { display: grid; grid-template-columns: 1fr 1fr; align-content: start; }
+  .ncm-admin-panel.pop .ncm-ct2-esec { border-right: 1px solid var(--ncm-border); }
+  .ncm-admin-panel.pop .ncm-ct2-esec.wide { grid-column: 1 / -1; }
+  /* who-knows-whom at scale */
+  .ncm-admin-panel table.ncm-ct2-mxt tbody th, .ncm-admin-panel table.ncm-ct2-mxt thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--ncm-bg-base) !important; }
+  .ncm-admin-panel table.ncm-ct2-mxt thead th:first-child { z-index: 3; background: var(--ncm-bg-surface) !important; }
+  .ncm-admin-panel table.ncm-ct2-mxt tr.grp th, .ncm-admin-panel table.ncm-ct2-mxt tr.grp td { background: var(--ncm-bg-surface) !important; cursor: pointer; }
+  .ncm-admin-panel table.ncm-ct2-mxt tr.grp th { padding-top: 6px !important; }
+  .ncm-admin-panel table.ncm-ct2-mxt tr.grp th i.chev { width: 12px; margin-right: 6px; color: var(--ncm-text-secondary); font-size: 10px; }
+  .ncm-admin-panel table.ncm-ct2-mxt tr.grp th .n { margin-left: 6px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; }
+  .ncm-admin-panel .ncm-ct2-tally { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 42px; height: 20px; padding: 0 6px; border-radius: 2px; cursor: pointer;
+    border: 1px solid var(--ncm-border); font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-tally.all { border-color: var(--ncm-success); color: var(--ncm-success); background: color-mix(in srgb, var(--ncm-success) 12%, transparent) !important; }
+  .ncm-admin-panel .ncm-ct2-tally.some { border-color: color-mix(in srgb, var(--ncm-success) 50%, var(--ncm-border)); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-tally:hover { border-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-ct2-cell.chg { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ncm-accent) 55%, transparent) !important; }
+  .ncm-admin-panel .ncm-ct2-mxbar { display: flex; align-items: center; gap: 8px; margin-top: 7px; flex: none; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-mxbar .grow { flex: 1; }
+  .ncm-admin-panel .ncm-ct2-mxbar .chg { color: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-ct2-mxbar a { color: var(--ncm-secondary); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-mxbar kbd { font: 10px var(--ncm-font-mono); padding: 0 4px; border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-secondary); background: none; box-shadow: none; }
+  .ncm-admin-panel .ncm-ct2-mxempty { padding: 26px; text-align: center; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ct2-mxempty a { color: var(--ncm-secondary); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-mxnote { margin-top: 8px; font: 12px var(--ncm-font-body); color: var(--ncm-text-muted); flex: none; }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="stage">
+  <div class="mk mk-panel ncm-app ncm-admin-panel" id="panel" data-ncm-scanlines="false">
+    <div class="ncm-ct2-winhd"><i class="fas fa-address-book"></i>Contacts<span class="grow"></span><span class="dock" data-dock><i class="fas fa-down-left-and-up-right-to-center"></i> Back to the admin panel</span><i class="fas fa-xmark"></i></div>
+    <nav class="ncm-admin-tabs">
+      <button class="ncm-admin-tab"><i class="fas fa-chart-bar"></i> Overview</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelope"></i> Messages</button>
+      <button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-address-book"></i> Contacts</button>
+      <button class="ncm-admin-tab"><i class="fas fa-network-wired"></i> Networks</button>
+      <button class="ncm-admin-tab"><i class="fas fa-database"></i> Shards</button>
+      <button class="ncm-admin-tab"><i class="fas fa-terminal"></i> Terminals</button>
+      <button class="ncm-admin-tab"><i class="fas fa-shield-halved"></i> Security</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelopes-bulk"></i> Spam</button>
+      <button class="ncm-admin-tab"><i class="fas fa-wrench"></i> Tools</button>
+    </nav>
+    <div class="ncm-admin-content" id="content"></div>
+  </div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<script src="scope-picker.js"></script>
+<script>
+const Q = new URLSearchParams(location.search);
+document.getElementById('panel').dataset.ncmAdminTheme = Q.get('t') || 'clean-dark';
+let VIEW = Q.get('view') || 'directory';
+let SEL = Q.get('sel') || 'rogue';
+let PSEL = 'v';
+let GSEL = 'crew';
+let FILTER = 'all';
+let NEWM = Q.get('new') === '1';
+const FACE = (c) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="${c}"/><circle cx="20" cy="16" r="7.5" fill="#0d0d14" opacity=".75"/><path d="M5 40c1-9 7-13 15-13s14 4 15 13z" fill="#0d0d14" opacity=".75"/></svg>`);
+const PCS = [['v', 'V', '#b85c7a', 'Marta'], ['rache', 'Rache', '#5c86b8', 'Sam'], ['kiri', 'Kiri', '#7ab85c', 'Lou'], ['jo', 'Jo', '#b8995c', 'Dee']];
+const pc = (id) => PCS.find((p) => p[0] === id);
+const ini = (n) => n.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+const av = (c, cls = '') => c.face ? `<img class="ncm-ct2-av ${cls} ${c.ice ? 'ice' : ''}" src="${FACE(c.face)}" alt="">` : c.sys ? `<span class="ncm-ct2-av sys ${cls}"><i class="fas fa-tower-broadcast"></i></span>` : `<span class="ncm-ct2-av ${cls} ${c.ice ? 'ice' : ''}">${ini(c.name)}</span>`;
+
+/* the directory */
+const C = [
+  { id: 'rogue', name: 'Rogue', role: 'Fixer', org: 'Afterlife', addr: 'rogue@afterlife.nc', face: '#c76bff', knows: ['v', 'rache', 'kiri'], mail: 2, main: true, ids: 2, trust: { v: 4, rache: 3, kiri: 2 },
+    phone: '555-0199', net: 'Afterlife mesh', last: 'V · 1h ago' },
+  { id: 'queen', name: 'Queen of Hearts', alias: true, of: 'rogue', role: 'Fixer', addr: 'queen.h@darknet', knows: ['v'] },
+  { id: 'vik', name: 'Viktor Vektor', role: 'Medtech', org: 'Watson', addr: 'vik@kabuki.clinic', face: '#5cb8a8', knows: ['v', 'kiri', 'jo'] },
+  { id: 'jackie', name: 'Jackie Welles', role: 'Solo', org: '', addr: 'jackie.w@nightcity.net', face: '#d48a3a', knows: ['v'] },
+  { id: 'exec', name: 'Exec — Hana Ito', role: 'Exec', org: 'Arasaka', addr: 'h.ito@newcorp.nc', face: '#e05c5c', knows: [], main: true, ids: 2, mail: 1 },
+  { id: 'exec-old', name: 'Hana Ito (old)', alias: true, of: 'exec', role: 'Exec', addr: 'h.ito@arasaka.corp', knows: ['rache'] },
+  { id: 'regina', name: 'Regina Jones', role: 'Media', org: 'N54 News', addr: 'regina@n54.news', knows: ['v', 'rache'] },
+  { id: 'dex', name: 'Dexter DeShawn', role: 'Fixer', org: '', addr: 'dex@nightcity.net', knows: [], auto: true },
+  { id: 'brick', name: 'Brick', role: 'Solo', org: 'Maelstrom', addr: 'brick@maelstrom.gang', ice: true, knows: ['jo'] },
+  { id: 'netw', name: 'NetWatch notice', role: 'System', org: 'NetWatch', addr: 'notice@netwatch.gov', sys: true, knows: ['v', 'rache', 'kiri', 'jo'] },
+  { id: 'judy', name: 'Judy Álvarez', role: 'Techie', org: 'Mox', addr: 'judy@mox.nc', face: '#5c86b8', knows: ['v'], dup: true },
+  { id: 'river', name: 'River Ward', role: 'Lawman', org: 'NCPD', addr: 'r.ward@ncpd.gov', knows: [] },
+];
+const ROLE_ICON = { Fixer: 'fa-handshake', Medtech: 'fa-briefcase-medical', Solo: 'fa-crosshairs', Exec: 'fa-building', Media: 'fa-video', System: 'fa-tower-broadcast', Techie: 'fa-screwdriver-wrench', Lawman: 'fa-shield-halved', Netrunner: 'fa-laptop-code', Nomad: 'fa-truck-pickup', Rockerboy: 'fa-guitar' };
+const PLURAL = (r) => ({ Media: 'Media', Lawman: 'Lawmen', System: 'System addresses' })[r] || r + 's';
+const btn = (label, cls = '', icon = '', attrs = '') => `<button type="button" class="ncm-term-admin-btn ${cls}" ${attrs}>${icon ? `<i class="fas ${icon}"></i>` : ''}${label ? ` ${label}` : ''}</button>`;
+const FILTERS = [
+  ['all', 'All', (c) => true], ['mail', 'Mail waiting', (c) => c.mail], ['unknown', 'Nobody knows', (c) => !c.knows.length],
+  ['alias', 'Aliases', (c) => c.alias || c.main], ['ice', 'Encrypted', (c) => c.ice], ['sys', 'System addresses', (c) => c.sys], ['check', 'Needs a look', (c) => c.auto || c.dup],
+];
+const knowsDots = (c) => c.knows.length ? `<span class="ncm-ct2-knows" title="Known by ${c.knows.map((k) => pc(k)[1]).join(', ')}">${c.knows.map((k) => `<span style="background:${pc(k)[2]}"></span>`).join('')}</span>` : '<span title="No player knows them">—</span>';
+
+function dirList() {
+  const f = FILTERS.find((x) => x[0] === FILTER)[2];
+  const shown = C.filter((c) => f(c) || (c.alias && f(C.find((m) => m.id === c.of))));
+  const roles = [...new Set(shown.filter((c) => !c.alias).map((c) => c.role))];
+  return roles.map((r) => {
+    const mains = shown.filter((c) => !c.alias && c.role === r);
+    return `<div class="ncm-ct2-grp"><i class="fas ${ROLE_ICON[r] || 'fa-user'}"></i>${PLURAL(r)}<span class="n">${mains.length}</span></div>`
+      + mains.map((c) => [c, ...shown.filter((a) => a.of === c.id)].map((x) => `
+        <div class="ncm-ct2-r ${x.alias ? 'alias' : ''} ${x.id === SEL ? 'sel' : ''}" data-id="${x.id}">${av(x)}
+          <div style="min-width:0"><div class="nm">${x.name}</div><div class="sub">${x.alias ? 'alias · ' + x.addr : [x.org, x.addr].filter(Boolean).join(' · ')}</div></div>
+          <div class="st">${x.mail ? `<span class="mail" title="${x.mail} waiting"><i class="fas fa-envelope"></i>${x.mail}</span>` : ''}${x.ice ? '<span class="ice" title="Encrypted"><i class="fas fa-lock"></i></span>' : ''}${x.auto || x.dup ? '<span class="warn" title="Needs a look"><i class="fas fa-triangle-exclamation"></i></span>' : ''}${knowsDots(x)}</div>
+        </div>`).join('')).join('');
+  }).join('');
+}
+
+let EDIT = Q.get('edit') === '1' || Q.get('guard') === '1';
+let POP = Q.get('pop') === '1';
+let DIRTY = new Set((Q.get('dirty') === '1' || Q.get('guard') === '1') ? ['identity', 'security'] : []);
+let GUARD = Q.get('guard') === '1' ? 'vik' : null;   // a row click while there are unsaved edits
+let ED = { role: 'Fixer', route: 'two', enc: true, ice: 'actor', trust: 2, tags: ['afterlife', 'reliable', 'info broker'] };
+const ED_SECS = [['identity', 'Identity', 'fa-id-card'], ['addr', 'Addresses & aliases', 'fa-at'], ['security', 'Security & ICE', 'fa-lock'], ['trust', 'Trust', 'fa-handshake'], ['notes', 'Notes', 'fa-note-sticky']];
+const ED_ROLES = ['Fixer', 'Solo', 'Netrunner', 'Techie', 'Medtech', 'Media', 'Exec', 'Lawman', 'Nomad', 'Rockerboy'];
+function dirEdit() {
+  const c = C.find((x) => x.id === SEL) || C[0];
+  const main = c.alias ? C.find((x) => x.id === c.of) : c;
+  const ids = [main, ...C.filter((x) => x.of === main.id)];
+  const fld = (label, inner, wide = false, small = '') => `<label class="ncm-ct2-f ${wide ? 'w' : ''}"><span>${label}${small ? `<small>${small}</small>` : ''}</span>${inner}</label>`;
+  const seg = (key, opts, cur, cls = '') => `<div class="ncm-ct2-seg ${cls}">${opts.map(([v, l, tc]) => `<span class="${String(v) === String(cur) ? 'on' : ''}" data-edseg="${key}" data-v="${v}" ${tc ? `style="--tc:${tc}"` : ''}>${l}</span>`).join('')}</div>`;
+  const sec = (k, wide, body, p) => { const [, l, i] = ED_SECS.find((x) => x[0] === k); return `<section class="ncm-ct2-esec ${wide ? 'wide' : ''}" data-esec="${k}"><h3><i class="fas ${i}"></i>${l}</h3>${p ? `<p>${p}</p>` : ''}${body}</section>`; };
+  const n = DIRTY.size;
+  return `
+  <div class="ncm-ct2-edhd">${av(c)}<div class="t">Editing ${c.name}<small>${c.alias ? 'Alias of ' + main.name : c.addr}</small></div><span class="grow" style="flex:1"></span>
+    ${POP ? '' : btn('Pop out', '', 'fa-up-right-from-square', 'data-pop title="Keep editing in a larger window"')}</div>
+  <div class="ncm-ct2-edtabs">${ED_SECS.map(([k, l]) => `<span class="ncm-ct2-edtab ${k === 'identity' ? 'on' : ''} ${DIRTY.has(k) ? 'dirty' : ''}" data-edtab="${k}">${l}<span class="d"></span></span>`).join('')}</div>
+  <div class="ncm-ct2-edbody">
+    ${sec('identity', true, `
+      <div class="ncm-ct2-idrow"><div class="ncm-ct2-ptile">${c.face ? `<img src="${FACE(c.face)}" alt="">` : `<span style="position:static;display:grid;place-items:center;height:100%;background:none;font-size:20px;color:var(--ncm-secondary)">${ini(c.name)}</span>`}<span>Change</span></div>
+        <div class="ncm-ct2-fg">${fld('Name', `<input type="text" value="${c.name}">`, true, 'what players see')}${fld('Subtitle', `<input type="text" placeholder="e.g. Queen of the Afterlife">`, true, 'shown under the name')}</div></div>
+      <div class="ncm-ct2-fg">
+        ${fld('Role', `<div class="ncm-ct2-roles">${ED_ROLES.map((r) => `<span class="ncm-ct2-role ${r === ED.role ? 'on' : ''}" data-edrole="${r}"><i class="fas ${ROLE_ICON[r] || 'fa-user'}"></i>${r}</span>`).join('')}<span class="ncm-ct2-role ghost"><i class="fas fa-sliders"></i>Manage roles…</span></div>`, true)}
+        ${fld('Organisation', `<input type="text" value="${c.org || ''}">`)}${fld('Location', '<input type="text" value="Watson">')}
+        ${fld('Tags', `<div class="ncm-ct2-tags">${ED.tags.map((t) => `<span>${t}<i class="fas fa-xmark"></i></span>`).join('')}<input type="text" placeholder="Add a tag…"></div>`, true)}
+        ${fld('Linked character', `<div class="ncm-ct2-pick">${c.face ? `<img src="${FACE(c.face)}" alt="">` : '<i class="fas fa-user" style="color:var(--ncm-text-muted)"></i>'}<span>${c.face ? c.name + ' (actor)' : 'None'}</span><span class="grow"></span><a>${c.face ? 'Change' : 'Pick an actor…'}</a>${c.face ? '<a>Unlink</a>' : ''}</div>`, false, 'mail lands in its inbox')}
+        ${fld('Folder', '<select><option>Afterlife regulars</option><option>None</option></select>')}
+      </div>`)}
+    ${sec('addr', true, `
+      <div class="ncm-ct2-fg">${fld('Address', `<input type="text" value="${c.addr}">`)}${fld('Phone', `<input type="text" value="${c.phone || ''}" placeholder="555-…">`)}
+        ${fld('Messages', seg('route', [['two', 'Two-way'], ['send', 'Send-only']], ED.route), true)}</div>
+      <div class="ncm-ct2-hint">${ED.route === 'send' ? 'A system address: you can send from it; players can’t reply, write to it or add it.' : 'Players can write to it and reply.'}</div>
+      <div class="ncm-ct2-f w" style="margin-top:12px"><span>Identities<small>mail to any of them reaches ${main.name}</small></span>
+        <div class="ncm-ct2-ids">${ids.map((x) => `<div class="ncm-ct2-id">${av(x)}<div><div>${x.name}</div><div class="a">${x.addr}</div></div><i class="fas fa-star star ${x === main ? '' : 'off'}" title="${x === main ? 'Main identity' : 'Make this the main identity'}"></i></div>`).join('')}</div>
+        <span class="ncm-ct2-add"><i class="fas fa-plus"></i>Add an alias</span></div>`)}
+    ${sec('security', false, `
+      <div class="ncm-ct2-sw ${ED.enc ? 'on' : ''}" data-edenc><div><b>Encrypted contact</b><small>Players see a locked card until they breach it</small></div><span class="k"></span></div>
+      ${ED.enc ? `<div class="ncm-ct2-sub"><div class="ncm-ct2-fg">${fld('Breach skill', '<select><option>Interface</option><option>Cryptography</option></select>')}${fld('DV', '<input type="number" value="15">')}
+        ${fld('Tries before lockout', '<input type="number" value="3">')}<span></span>
+        ${fld('Black ICE on a failed breach', seg('ice', [['none', 'None'], ['actor', 'From an actor'], ['custom', 'Custom']], ED.ice), true)}
+        ${ED.ice === 'actor' ? fld('ICE', '<div class="ncm-ct2-pick"><i class="fas fa-skull" style="color:var(--ncm-danger)"></i><span>Hellhound</span><span class="grow"></span><a>Change</a></div>', true) : ED.ice === 'custom' ? fld('Name', '<input type="text" value="Killer">') + fld('Damage', '<input type="text" value="3d6">') : ''}</div></div>` : ''}`)}
+    ${sec('trust', false, `
+      ${fld('How ' + main.name + ' sees players by default', seg('trust', TL.map(([l, tc], i) => [i, l, tc]), ED.trust, 'trust'), true)}
+      <div class="ncm-ct2-hint" style="margin-top:10px">Per player <span style="color:var(--ncm-text-muted)">— overrides the default</span></div>
+      ${PCS.filter(([id]) => c.knows.includes(id)).map(([id, n2, col], i) => `<div class="ncm-ct2-ptrust"><img src="${FACE(col)}" alt=""><span>${n2}</span>${seg('pt-' + id, [['d', 'Default'], ...TL.slice(1).map(([l, tc], j) => [j + 1, l, tc])], i === 0 ? 4 : 'd', 'trust')}</div>`).join('') || '<div class="ncm-ct2-hint">No player knows them yet.</div>'}`, 'Shown to players on their contact card.')}
+    ${sec('notes', true, fld('GM notes', '<textarea>Runs the Afterlife. Owes V one after the Konpeki job. Will sell Rache out if Arasaka pays enough.</textarea>', true, 'players never see these'))}
+  </div>
+  <div class="ncm-ct2-edft"><span class="st ${n ? 'dirty' : ''}" data-edst>${n ? `<i class="fas fa-circle" style="font-size:7px"></i> Unsaved changes in ${n} section${n === 1 ? '' : 's'}` : 'No changes'}</span><span class="grow"></span>
+    ${btn('Cancel', '', '', 'data-edcancel')}${btn('Save', 'ncm-term-admin-btn--primary', 'fa-check', 'data-edsave')}</div>`;
+}
+const TL = [['Unknown', 'var(--ncm-text-muted)'], ['Wary', 'var(--ncm-danger)'], ['Neutral', 'var(--ncm-warning)'], ['Trusted', 'var(--ncm-secondary)'], ['Close', 'var(--ncm-success)']];
+function dirDetail() {
+  const c = C.find((x) => x.id === SEL) || C[0];
+  const main = c.alias ? C.find((x) => x.id === c.of) : c;
+  const ids = [main, ...C.filter((x) => x.of === main.id)];
+  return `
+    <div class="ncm-ct2-dhead">${av(c)}
+      <div style="min-width:0"><div class="nm">${c.name}${c.alias ? '<span class="ncm-ct2-tag">alias of ' + main.name + '</span>' : c.main ? '<span class="ncm-ct2-tag main">main · ' + c.ids + ' identities</span>' : ''}${c.ice ? '<span class="ncm-ct2-tag ice"><i class="fas fa-lock"></i>Encrypted</span>' : ''}${c.sys ? '<span class="ncm-ct2-tag">System address</span>' : ''}</div>
+        <div class="addr">${c.addr}</div>
+        <div class="meta"><span><i class="fas ${ROLE_ICON[c.role] || 'fa-user'}"></i>${c.role}</span>${c.org ? `<span><i class="fas fa-building"></i>${c.org}</span>` : ''}${c.last ? `<span><i class="fas fa-clock"></i>last mail ${c.last}</span>` : ''}</div></div>
+    </div>
+    <div class="ncm-ct2-acts">${btn('Send as', 'ncm-term-admin-btn--primary', 'fa-paper-plane')}${btn('Message', '', 'fa-envelope')}${btn('Inbox', '', 'fa-inbox')}${btn('Edit', '', 'fa-pen', 'data-editor')}${btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'title="Add alias · Duplicate · Export · Delete"')}</div>
+    ${c.auto ? `<div class="ncm-ct2-sec"><div class="ncm-ct2-mail" style="--ncm-accent:var(--ncm-warning)"><i class="fas fa-wand-magic-sparkles"></i><span>Added automatically when you sent mail from this actor. Check the name and address players will see.</span><span class="grow"></span>${btn('Looks right')}</div></div>` : ''}
+    ${c.dup ? `<div class="ncm-ct2-sec"><div class="ncm-ct2-mail" style="--ncm-accent:var(--ncm-warning)"><i class="fas fa-triangle-exclamation"></i><span><b>judy@mox.nc</b> is also V’s address — mail could land with either.</span><span class="grow"></span>${btn('Change')}</div></div>` : ''}
+    ${c.mail ? `<div class="ncm-ct2-sec"><div class="ncm-ct2-mail"><i class="fas fa-envelope"></i><span><b>${c.mail} message${c.mail > 1 ? 's' : ''}</b> from players waiting for ${c.name}</span><span class="grow"></span>${btn('Reply as', 'ncm-term-admin-btn--primary', 'fa-reply')}</div></div>` : ''}
+    <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-users"></i>Who knows ${c.alias ? 'this alias' : 'them'}<span class="r">click to share or take back</span></div>
+      <div class="ncm-ct2-who">${PCS.map(([id, n, col]) => `<span class="ncm-ct2-pc ${c.knows.includes(id) ? 'on' : ''}" data-pc="${id}"><img src="${FACE(col)}" alt="">${n}${c.knows.includes(id) ? '<span class="s">✓</span>' : ''}</span>`).join('')}</div></div>
+    ${c.trust ? `<div class="ncm-ct2-sec"><div class="k"><i class="fas fa-handshake"></i>Trust<span class="r">how ${c.name} sees each of them</span></div>
+      ${Object.entries(c.trust).map(([id, t]) => `<div class="ncm-ct2-trust" style="--tc:${TL[t][1]}"><img src="${FACE(pc(id)[2])}" alt=""><span>${pc(id)[1]}</span><span class="tb">${[1, 2, 3, 4].map((s) => `<span class="${s <= t ? 'on' : ''}"></span>`).join('')}</span><span class="lv">${TL[t][0]}</span></div>`).join('')}</div>` : ''}
+    ${main.main ? `<div class="ncm-ct2-sec"><div class="k"><i class="fas fa-masks-theater"></i>Identities<span class="r">mail to any of them reaches ${main.name}</span></div>
+      <div class="ncm-ct2-ids">${ids.map((x) => `<div class="ncm-ct2-id">${av(x)}<div><div>${x.name}</div><div class="a">${x.addr}</div></div><i class="fas fa-star star ${x === main ? '' : 'off'}" title="${x === main ? 'Main identity' : 'Make this the main identity'}"></i></div>`).join('')}</div>
+      <span class="ncm-ct2-add"><i class="fas fa-plus"></i>Add an alias</span></div>` : ''}
+    <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-id-card"></i>Details</div>
+      <div class="ncm-ct2-kv"><div><span class="l">Phone</span><span>${c.phone || '—'}</span></div><div><span class="l">Network</span><span>${c.net || 'CitiNet'}</span></div>
+        <div><span class="l">Messages</span><span>${c.sys ? 'Send-only' : 'Two-way'}</span></div><div><span class="l">Security</span><span>${c.ice ? 'ICE · Interface DV 15' : 'Open'}</span></div></div></div>
+    <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-note-sticky"></i>GM notes</div><div class="ncm-ct2-notes">${c.id === 'rogue' ? 'Runs the Afterlife. Owes V one after the Konpeki job. Will sell Rache out if Arasaka pays enough.' : '—'}</div></div>`;
+}
+
+function playersView() {
+  const p = pc(PSEL);
+  const known = C.filter((c) => c.knows.includes(PSEL));
+  return `
+  <div class="ncm-ct2-split">
+    <div class="ncm-ct2-list">${PCS.map(([id, n, col, user]) => `
+      <div class="ncm-ct2-r ${id === PSEL ? 'sel' : ''}" data-p="${id}"><img class="ncm-ct2-av" src="${FACE(col)}" alt="">
+        <div style="min-width:0"><div class="nm">${n}</div><div class="sub">${user} · ${id === 'jo' ? 'no address yet' : n.toLowerCase() + '@nightcity.net'}</div></div>
+        <div class="st">${id === 'jo' ? '<span class="warn"><i class="fas fa-triangle-exclamation"></i></span>' : ''}<span title="Contacts they know"><i class="fas fa-address-book" style="font-size:10px"></i> ${C.filter((c) => c.knows.includes(id)).length}</span></div></div>`).join('')}</div>
+    <div class="ncm-ct2-det">
+      <div class="ncm-ct2-dhead"><img class="ncm-ct2-av" src="${FACE(p[2])}" alt=""><div><div class="nm">${p[1]}</div><div class="addr">${p[0] === 'jo' ? 'No address yet' : p[1].toLowerCase() + '@nightcity.net'}</div><div class="meta"><span><i class="fas fa-user"></i>played by ${p[3]}</span></div></div></div>
+      <div class="ncm-ct2-acts">${btn('Open their inbox', 'ncm-term-admin-btn--primary', 'fa-inbox')}${btn('Message', '', 'fa-envelope')}${btn('Their contacts', '', 'fa-address-book')}${btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'title="Set address · Add identity"')}</div>
+      <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-address-book"></i>Who they know <span class="r">${known.length} contacts</span></div>
+        <div class="ncm-ct2-mini">${known.map((c) => `<span>${av(c)}${c.name}</span>`).join('')}<span class="add"><i class="fas fa-plus"></i>Share contacts…</span></div></div>
+      <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-users"></i>Groups they hold</div>
+        <div class="ncm-ct2-mini"><span style="padding-left:7px"><i class="fas fa-circle" style="color:#c76bff;font-size:8px"></i>The crew</span><span class="add"><i class="fas fa-share-nodes"></i>Push a group…</span></div></div>
+      <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-masks-theater"></i>Identities</div>
+        <div class="ncm-ct2-quiet">Just one — ${p[1].toLowerCase()}@nightcity.net. <span class="ncm-ct2-add" style="margin:0 0 0 6px"><i class="fas fa-plus"></i>Add an identity</span></div></div>
+    </div>
+  </div>`;
+}
+
+const G = [
+  { id: 'crew', name: 'The crew', c: '#c76bff', members: ['rogue', 'vik', 'jackie', 'judy'], to: ['v', 'rache'], note: 'Everyone V would call in' },
+  { id: 'arasaka', name: 'Arasaka contacts', c: '#e05c5c', members: ['exec', 'regina'], to: [] },
+  { id: 'maelstrom', name: 'Maelstrom', c: '#ff4d4d', members: ['brick'], to: ['jo'] },
+];
+function groupsView() {
+  const g = G.find((x) => x.id === GSEL);
+  return `
+  <div class="ncm-ct2-split">
+    <div class="ncm-ct2-list">${G.map((x) => `
+      <div class="ncm-ct2-r ${x.id === GSEL ? 'sel' : ''}" data-g="${x.id}"><span class="ncm-ct2-gdot" style="--g:${x.c}"></span>
+        <div style="min-width:0"><div class="nm">${x.name}</div><div class="sub">${x.members.length} member${x.members.length === 1 ? "" : "s"} · ${x.to.length ? 'pushed to ' + x.to.map((k) => pc(k)[1]).join(', ') : 'not pushed'}</div></div><div class="st"></div></div>`).join('')}
+      <div class="ncm-ct2-r" style="color:var(--ncm-secondary);font:13px var(--ncm-font-body)"><span></span><span><i class="fas fa-plus"></i> New group</span><span></span></div></div>
+    <div class="ncm-ct2-det">
+      <div class="ncm-ct2-dhead" style="grid-template-columns:12px 1fr"><span class="ncm-ct2-gdot" style="--g:${g.c};height:44px"></span><div><div class="nm">${g.name}</div><div class="meta"><span>${g.note || ''}</span></div></div></div>
+      <div class="ncm-ct2-acts" style="padding-left:13px">${btn('Push to players', 'ncm-term-admin-btn--primary', 'fa-share-nodes')}${btn('Message the group', '', 'fa-envelope')}${btn('Edit', '', 'fa-pen')}${btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'title="Export · Delete"')}</div>
+      <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-users"></i>Members <span class="r">${g.members.length}</span></div>
+        <div class="ncm-ct2-mini">${g.members.map((id) => { const c = C.find((x) => x.id === id); return `<span>${av(c)}${c.name}</span>`; }).join('')}<span class="add"><i class="fas fa-plus"></i>Add members…</span></div></div>
+      <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-share-nodes"></i>Pushed to<span class="r">click to push or take back</span></div>
+        <div class="ncm-ct2-who">${PCS.map(([id, n, col]) => `<span class="ncm-ct2-pc ${g.to.includes(id) ? 'on' : ''}"><img src="${FACE(col)}" alt="">${n}${g.to.includes(id) ? '<span class="s">✓</span>' : ''}</span>`).join('')}</div></div>
+    </div>
+  </div>`;
+}
+
+/* Who knows whom — built for a campaign with a lot of contacts. */
+const EXTRA_ROLES = ['Fixer', 'Solo', 'Media', 'Exec', 'Techie', 'Medtech', 'Lawman', 'Nomad', 'Rockerboy'];
+const EXTRA_NAMES = ['Wakako Okada', 'Padre', 'Mr. Hands', 'Dino Dinovic', 'Regina’s intern', 'Mama Welles', 'Muamar Reyes', 'El Capitán', 'Sebastian Ibarra', 'Placide', 'Brigitte', 'Nix', 'Misty Olszewski',
+  'Kerry Eurodyne', 'Rogue’s bouncer', 'Takemura', 'Meredith Stout', 'Anders Hellman', 'Dum Dum', 'Royce', 'Bill Jablonsky', 'Panam Palmer', 'Saul Bright', 'Mitch Anderson', 'Claire Russell',
+  'Lizzy Wizzy', 'Nancy Hartley', 'Johnny’s fixer', 'Officer Bakker', 'Detective Han', 'Dr. Fingers', 'Delamain', 'Cassius Ryder', 'Stanley', 'Ozob', 'Sasquatch', 'Maman Brigitte', 'Goro’s handler'];
+const MX = [...C, ...EXTRA_NAMES.map((name, i) => ({ id: 'x' + i, name, role: EXTRA_ROLES[i % EXTRA_ROLES.length], addr: name.toLowerCase().replace(/[^a-z]+/g, '.').replace(/^\.|\.$/g, '') + '@nightcity.net',
+  knows: PCS.map((p) => p[0]).filter((p, j) => (i * 7 + j * 3) % 5 === 0) }))];
+let MXOPEN = new Set(Q.get('mxopen') === 'all' ? EXTRA_ROLES.concat(['System', 'Exec']) : ['Fixer']);
+let MXF = Q.get('mxf') || 'all';
+let MXQ = '';
+const MXCHG = [];                 // [{cid, pid, on}] this session, for Undo
+let MXLAST = null;                // last clicked cell, for shift-click ranges
+const MXFILTERS = [['all', 'All', () => true], ['none', 'Nobody knows', (c) => !c.knows.length], ['some', 'Some know', (c) => c.knows.length && c.knows.length < PCS.length],
+  ['every', 'Everyone knows', (c) => c.knows.length === PCS.length], ['chg', 'Changed this session', (c) => MXCHG.some((x) => x.cid === c.id)]];
+ScopePicker.on('mxcols', () => render());
+const mxCols = () => { const v = ScopePicker.value('mxcols'); return PCS.filter((p) => !v.length || v.includes(p[0])); };
+function mxRows() {
+  const f = MXFILTERS.find((x) => x[0] === MXF)[2], q = MXQ.trim().toLowerCase();
+  return MX.filter((c) => f(c) && (!q || (c.name + ' ' + c.addr + ' ' + c.role + ' ' + (c.org || '')).toLowerCase().includes(q)));
+}
+function mxToggle(cid, pid, force) {
+  const c = MX.find((x) => x.id === cid), has = c.knows.includes(pid), on = force === undefined ? !has : force;
+  if (on === has) return;
+  if (on) c.knows.push(pid); else c.knows.splice(c.knows.indexOf(pid), 1);
+  MXCHG.push({ cid, pid, on });
+}
+function matrixView() {
+  const cols = mxCols(), rows = mxRows(), q = MXQ.trim();
+  const roles = [...new Set(MX.filter((c) => !c.alias).map((c) => c.role))].sort((a, b) => a.localeCompare(b));
+  const open = (r) => q || MXF !== 'all' || MXOPEN.has(r);
+  const body = roles.map((r) => {
+    const inG = rows.filter((c) => c.role === r).flatMap((c) => c.alias ? [] : [c, ...rows.filter((a) => a.of === c.id)]);
+    const aliasHits = rows.filter((c) => c.alias && c.role === r && !inG.includes(c));
+    const list = [...inG, ...aliasHits];
+    if (!list.length) return '';
+    const tally = cols.map(([pid]) => { const k = list.filter((c) => c.knows.includes(pid)).length;
+      return `<td><span class="ncm-ct2-tally ${k === list.length ? 'all' : k ? 'some' : ''}" data-gtally="${r}:${pid}" title="${k === list.length ? 'Take every ' + r + ' back from' : 'Share every ' + r + ' with'} ${pid === 'v' ? 'V' : pid[0].toUpperCase() + pid.slice(1)}">${k}/${list.length}</span></td>`; }).join('');
+    return `<tr class="grp" data-grp="${r}"><th><i class="fas fa-chevron-${open(r) ? 'down' : 'right'} chev"></i>${PLURAL(r)}<span class="n">${list.length}</span></th>${tally}</tr>`
+      + (open(r) ? list.map((c) => `<tr><th>${c.alias ? '<span style="color:var(--ncm-text-muted);margin-right:4px">└</span>' : ''}${c.name}<small>${c.addr}</small></th>${cols.map(([pid]) => `<td><span class="ncm-ct2-cell ${c.knows.includes(pid) ? 'on' : ''} ${MXCHG.some((x) => x.cid === c.id && x.pid === pid) ? 'chg' : ''}" data-cell="${c.id}:${pid}"><i class="fas fa-check"></i></span></td>`).join('')}</tr>`).join('') : '');
+  }).join('');
+  const nchg = new Set(MXCHG.map((x) => x.cid + ':' + x.pid)).size;
+  return `
+  <div class="ncm-ct2-tb"><span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-mxq value="${MXQ.replace(/"/g, '&quot;')}" placeholder="Find a contact — name, address, role, organisation…"></span>
+    ${ScopePicker.html('mxcols', { noun: 'character', nouns: 'characters', icon: 'fa-user', label: 'Columns', multi: true, allLabel: 'All characters',
+      items: PCS.map(([id, n, col, user]) => ({ id, name: n, color: col, icon: 'fa-user', group: 'Players’ characters', meta: 'played by ' + user, count: MX.filter((c) => c.knows.includes(id)).length })), countLabel: 'contacts known', activeLabel: 'Know anyone' })}
+    <select><option>Group: Role</option><option>Group: Organisation</option></select></div>
+  <div class="ncm-ct2-chips">${MXFILTERS.map(([k, l, fn]) => `<span class="ncm-ct2-chip ${k === MXF ? 'on' : ''}" data-mxf="${k}">${l}<span class="n">${MX.filter(fn).length}</span></span>`).join('')}
+    <span style="flex:1"></span><span class="ncm-ct2-chip" data-mxall="${MXOPEN.size ? 'close' : 'open'}"><i class="fas fa-${MXOPEN.size ? 'compress' : 'expand'}"></i>${MXOPEN.size ? 'Collapse all' : 'Expand all'}</span></div>
+  <div class="ncm-ct2-mx">${body ? `<table class="ncm-ct2-mxt">
+    <thead><tr><th>${rows.length} contact${rows.length === 1 ? '' : 's'}</th>${cols.map(([id, n, col]) => `<th><img src="${FACE(col)}" alt="">${n}<small>knows ${MX.filter((c) => c.knows.includes(id)).length}</small></th>`).join('')}</tr></thead>
+    <tbody>${body}</tbody></table>` : `<div class="ncm-ct2-mxempty">No contact matches. <a data-mxreset>Show everyone</a></div>`}</div>
+  <div class="ncm-ct2-mxbar">${nchg ? `<span class="chg"><i class="fas fa-pen"></i> ${nchg} change${nchg === 1 ? '' : 's'} this session</span><a data-mxundo>Undo last</a>` : '<span>Changes save as you click.</span>'}
+    <span class="grow"></span><span><kbd>Shift</kbd>-click fills a column range · a group’s <b>n/m</b> shares or takes back the whole group</span></div>`;
+}
+
+const NOTES = {
+  get directory() { return (EDIT ? '<h3>Editing in place</h3><p><b>The Contact Manager window is folded into this tab.</b> Edit turns the detail pane into the form — the list stays on the left, so you never lose your place.</p><p>Five sections, jumped to from the strip (it follows your scroll): <b>Identity</b> (portrait, name, subtitle, role chips + Manage roles, org, location, tags, linked character, folder) · <b>Addresses & aliases</b> (address, phone, two-way / send-only, identities with ★ main + Add an alias) · <b>Security & ICE</b> · <b>Trust</b> (default + per-player override) · <b>Notes</b>.</p><p>A section you changed gets a dot; Save and Cancel are pinned. Clicking another contact with unsaved edits asks first (<b>?guard=1</b>).</p><p><b>Pop out</b> opens the same view in a larger window (<b>?pop=1</b>): same code, so the two can never drift again.</p>' : '') + (POP ? '<h3>Pop-out window</h3><p>The whole Contacts tab, at 1120px: wider list, and the editor lays its sections out in two columns. "Back to the admin panel" closes it and returns you to the tab on the same contact.</p>' : '') + '<h3>Directory</h3><p>The NPCs, list + detail like the other tabs. Grouped by role (or organisation, trust, none). <b>Aliases sit under their main identity</b>, so a character\'s burners are never scattered.</p><p>Each row shows <b>mail waiting</b> (gold), encrypted, needs-a-look, and coloured dots for <b>which players know them</b>.</p><p>The detail, top to bottom: anything that needs fixing (auto-added, shared address), mail waiting with <b>Reply as</b>, <b>who knows them — click a portrait to share or take back</b>, trust per player, identities (star = main, + alias), details, GM notes.</p><p>The Send-as strip stays above the list. New contact covers blank / from an actor / import.</p>'; },
+  players: '<h3>Players</h3><p>Each player character: their address (warns when they have none), who they know, which groups they hold, their identities — and buttons for their inbox and their own Contacts window.</p>',
+  groups: '<h3>Groups</h3><p>The contact groups as their own view: members with portraits, and <b>who they\'re pushed to — click to push or take back</b>. Message the whole group from here.</p>',
+  matrix: '<h3>Who knows whom</h3><p>Every contact down the side, every character across the top, one click per cell. Built for a campaign with ~50 contacts (this mock has 50).</p><p><b>Groups fold.</b> Only the groups you open show rows; a closed group is one line with a <b>n/m tally per character</b> — click it to share the whole group with that character (or take it back when they already have all of it). Searching or filtering opens every group that has a hit.</p><p><b>Filters answer the session-prep questions:</b> Nobody knows · Some know · Everyone knows · Changed this session.</p><p><b>Columns</b> is the scope picker, for tables with many characters. The name column and the header stay put while you scroll.</p><p>Shift-click fills a range in one column; changed cells are outlined and <b>Undo last</b> walks them back.</p>',
+};
+
+function render() {
+  document.getElementById('panel').classList.toggle('pop', POP);
+  const counts = Object.fromEntries(FILTERS.map(([k, , f]) => [k, C.filter((c) => !c.alias && f(c)).length]));
+  const nav = [['directory', 'fa-address-book', 'Directory', C.filter((c) => !c.alias).length], ['players', 'fa-user', 'Players', PCS.length], ['groups', 'fa-users', 'Groups', G.length], ['matrix', 'fa-table-cells', 'Who knows whom', 0]];
+  document.getElementById('content').innerHTML = `
+    <div class="ncm-ct2-nav">${nav.map(([k, i, l, n]) => `<button type="button" class="ncm-ct2-navbtn ${VIEW === k ? 'on' : ''}" data-view="${k}"><i class="fas ${i}"></i>${l}${n ? `<span class="ncm-ct2-navct">${n}</span>` : ''}</button>`).join('')}
+      <span class="grow"></span>${btn('New', 'ncm-term-admin-btn--primary', 'fa-plus', 'data-new')}${POP ? '' : btn('Pop out', '', 'fa-up-right-from-square', 'title="Open Contacts in its own larger window — handy beside a scene or on a second screen" data-pop')}
+      <div class="ncm-ct2-menu ${NEWM ? 'open' : ''}">
+        <div class="it"><i class="fas fa-user-plus"></i>New contact</div>
+        <div class="it"><i class="fas fa-person-circle-plus"></i>From an actor…<small>name, portrait, role</small></div>
+        <div class="it"><i class="fas fa-users"></i>New group</div>
+        <hr><div class="it"><i class="fas fa-file-import"></i>Import from JSON…</div><div class="it"><i class="fas fa-file-export"></i>Export all</div>
+        <div class="it"><i class="fas fa-users-between-lines"></i>Sync from actors<small>add every NPC actor</small></div>
+      </div></div>
+    <div class="ncm-ct2-view">${VIEW === 'directory' ? `
+      <div class="ncm-ct2-sendas"><span class="lbl"><i class="fas fa-paper-plane"></i>Send as</span>${C.filter((c) => c.face).slice(0, 5).map((c) => `<span class="ncm-ct2-qs">${c.face ? `<img src="${FACE(c.face)}" alt="">` : ''}${c.name.split(' ')[0]}</span>`).join('')}</div>
+      <div class="ncm-ct2-tb"><span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search name, address, organisation, tag, notes…"></span>
+        <select><option>Group: Role</option><option>Group: Organisation</option><option>Group: Trust</option><option>Group: None</option></select><select><option>Sort: A–Z</option><option>Sort: Recent mail</option></select></div>
+      <div class="ncm-ct2-chips">${FILTERS.map(([k, l]) => `<span class="ncm-ct2-chip ${k === FILTER ? 'on' : ''} ${k === 'check' || k === 'mail' ? 'warn' : ''}" data-filter="${k}">${l}<span class="n">${counts[k]}</span></span>`).join('')}</div>
+      ${GUARD ? `<div class="ncm-ct2-guard"><i class="fas fa-circle-exclamation" style="color:var(--ncm-accent)"></i><span>You have unsaved changes to <b>${(C.find((x) => x.id === SEL) || C[0]).name}</b>.</span><span class="grow"></span>${btn('Keep editing', '', '', 'data-guard="stay"')}${btn('Discard', '', '', 'data-guard="discard"')}${btn('Save and open', 'ncm-term-admin-btn--primary', 'fa-check', 'data-guard="save"')}</div>` : ''}
+      <div class="ncm-ct2-split"><div class="ncm-ct2-list">${dirList()}</div><div class="ncm-ct2-det ${EDIT ? 'editing' : ''}">${EDIT ? dirEdit() : dirDetail()}</div></div>`
+      : VIEW === 'players' ? playersView() : VIEW === 'groups' ? groupsView() : matrixView()}</div>`;
+  document.getElementById('notes').innerHTML = NOTES[VIEW];
+  ScopePicker.after();
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-editor]')) { EDIT = true; render(); return; }
+  if (e.target.closest('[data-pop]')) { POP = true; render(); return; }
+  if (e.target.closest('[data-dock]')) { POP = false; render(); return; }
+  if (e.target.closest('[data-edcancel]') || e.target.closest('[data-edsave]')) { EDIT = false; DIRTY.clear(); render(); return; }
+  const gd = e.target.closest('[data-guard]'); if (gd) { if (gd.dataset.guard !== 'stay') { SEL = GUARD; EDIT = false; DIRTY.clear(); } GUARD = null; render(); return; }
+  const et = e.target.closest('[data-edtab]'); if (et) { document.querySelector('[data-esec="' + et.dataset.edtab + '"]')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
+  const es = e.target.closest('[data-edseg]'); if (es) { const k = es.dataset.edseg; if (k in ED) ED[k] = isNaN(+es.dataset.v) ? es.dataset.v : +es.dataset.v; DIRTY.add(es.closest('[data-esec]').dataset.esec); render(); return; }
+  const er = e.target.closest('[data-edrole]'); if (er) { ED.role = er.dataset.edrole; DIRTY.add('identity'); render(); return; }
+  if (e.target.closest('[data-edenc]')) { ED.enc = !ED.enc; DIRTY.add('security'); render(); return; }
+  if (EDIT && DIRTY.size) { const row = e.target.closest('.ncm-ct2-r[data-id]'); if (row && row.dataset.id !== SEL) { GUARD = row.dataset.id; render(); return; } }
+  if (EDIT && !DIRTY.size && e.target.closest('.ncm-ct2-r[data-id]')) { EDIT = false; }
+  const v = e.target.closest('[data-view]'); if (v) { VIEW = v.dataset.view; render(); return; }
+  const r = e.target.closest('.ncm-ct2-r[data-id]'); if (r) { SEL = r.dataset.id; render(); return; }
+  const p = e.target.closest('[data-p]'); if (p) { PSEL = p.dataset.p; render(); return; }
+  const g = e.target.closest('[data-g]'); if (g) { GSEL = g.dataset.g; render(); return; }
+  const f = e.target.closest('[data-filter]'); if (f) { FILTER = f.dataset.filter; render(); return; }
+  const k = e.target.closest('[data-pc]'); if (k) { const c = C.find((x) => x.id === SEL); const i = c.knows.indexOf(k.dataset.pc); i < 0 ? c.knows.push(k.dataset.pc) : c.knows.splice(i, 1); render(); return; }
+  const cell = e.target.closest('[data-cell]'); if (cell) {
+    const [cid, pid] = cell.dataset.cell.split(':');
+    if (e.shiftKey && MXLAST && MXLAST.pid === pid) {
+      const ids = [...document.querySelectorAll('[data-cell$=":' + pid + '"]')].map((x) => x.dataset.cell.split(':')[0]);
+      const a = ids.indexOf(MXLAST.cid), b = ids.indexOf(cid), on = MX.find((x) => x.id === MXLAST.cid).knows.includes(pid);
+      ids.slice(Math.min(a, b), Math.max(a, b) + 1).forEach((id) => mxToggle(id, pid, on));
+    } else mxToggle(cid, pid);
+    MXLAST = { cid, pid }; render(); return; }
+  const gt = e.target.closest('[data-gtally]'); if (gt) { const [r, pid] = gt.dataset.gtally.split(':'); const list = mxRows().filter((c) => c.role === r); const all = list.every((c) => c.knows.includes(pid)); list.forEach((c) => mxToggle(c.id, pid, !all)); render(); return; }
+  const gr = e.target.closest('[data-grp]'); if (gr) { const r = gr.dataset.grp; MXOPEN.has(r) ? MXOPEN.delete(r) : MXOPEN.add(r); render(); return; }
+  const mf = e.target.closest('[data-mxf]'); if (mf) { MXF = mf.dataset.mxf; render(); return; }
+  const ma = e.target.closest('[data-mxall]'); if (ma) { MXOPEN = ma.dataset.mxall === 'open' ? new Set(MX.map((c) => c.role)) : new Set(); render(); return; }
+  if (e.target.closest('[data-mxundo]')) { const x = MXCHG.pop(); if (x) { const c = MX.find((y) => y.id === x.cid); if (x.on) c.knows.splice(c.knows.indexOf(x.pid), 1); else c.knows.push(x.pid); } render(); return; }
+  if (e.target.closest('[data-mxreset]')) { MXQ = ''; MXF = 'all'; render(); return; }
+  if (e.target.closest('[data-new]')) { NEWM = !NEWM; render(); return; }
+  if (NEWM && !e.target.closest('.ncm-ct2-menu')) { NEWM = false; render(); }
+});
+document.addEventListener('input', (e) => {
+  const sec = e.target.closest('[data-esec]'); if (sec) { DIRTY.add(sec.dataset.esec); const n = DIRTY.size;
+    document.querySelector('[data-edtab="' + sec.dataset.esec + '"]')?.classList.add('dirty');
+    const st = document.querySelector('[data-edst]'); if (st) { st.classList.add('dirty'); st.innerHTML = '<i class="fas fa-circle" style="font-size:7px"></i> Unsaved changes in ' + n + ' section' + (n === 1 ? '' : 's'); } }
+});
+document.addEventListener('scroll', (e) => {
+  const body = e.target.closest?.('.ncm-ct2-edbody'); if (!body) return;
+  const top = body.getBoundingClientRect().top; let cur = 'identity';
+  body.querySelectorAll('[data-esec]').forEach((x) => { if (x.getBoundingClientRect().top - top < 40) cur = x.dataset.esec; });
+  document.querySelectorAll('[data-edtab]').forEach((t) => t.classList.toggle('on', t.dataset.edtab === cur));
+}, true);
+document.addEventListener('input', (e) => { const q = e.target.closest('[data-mxq]'); if (!q) return; MXQ = q.value; const at = q.selectionStart; render(); const n = document.querySelector('[data-mxq]'); n.focus(); n.setSelectionRange(at, at); });
+render();
+if (Q.get('esec')) { const b = document.querySelector('.ncm-ct2-edbody'), x = document.querySelector('[data-esec="' + Q.get('esec') + '"]'); if (b && x) b.scrollTop = x.offsetTop - b.offsetTop; }
+
+const link = (k, v, label) => { const q = new URLSearchParams(location.search); if (v === null) q.delete(k); else q.set(k, v); const on = (Q.get(k) ?? null) === v; return `<a class="${on ? 'on' : ''}" href="?${q}">${label}</a>`; };
+document.getElementById('bar').innerHTML = `<b>CONTACTS TAB — REDESIGN</b>
+  <span>view</span>${link('view', null, 'directory')}${link('view', 'players', 'players')}${link('view', 'groups', 'groups')}${link('view', 'matrix', 'who knows whom')}${link('mxopen', 'all', 'all groups open')}${link('mxf', 'none', 'nobody knows')}
+  <span>preset</span>${link('t', null, 'clean-dark')}${link('t', 'clean-light', 'clean-light')}
+  <span>state</span>${link('sel', 'queen', 'an alias')}${link('sel', 'dex', 'auto-added')}${link('new', '1', '+ new open')}${link('edit', '1', 'editing')}${link('dirty', '1', 'unsaved')}${link('guard', '1', 'leave guard')}${link('pop', '1', 'pop-out')}`;
+</script>
+</body>
+</html>

@@ -241,7 +241,7 @@ export function showNamePicker({
   const selIc = multi ? '' : '<i class="fas fa-check ncm-pkr__sel-ic"></i>';
   const rowHtml = (e) => `
     <div class="ncm-pkr__row${isTaken(e) ? ' is-taken' : ''}${selected && e.id === selected ? ' is-selected' : ''}" data-name="${esc(e.name)}" data-sub="${esc(e.sub || '')}" data-group="${esc(e.group || '')}" data-img="${esc(e.img || '')}"${e.id ? ` data-id="${esc(e.id)}"` : ''}>
-      ${multi ? '<span class="ncm-pkr__check"><i class="fas fa-check"></i></span>' : ''}<img class="ncm-pkr__art" src="${esc(e.img || FALLBACK_ITEM_IMG)}" alt="">
+      ${multi ? '<span class="ncm-pkr__check"><i class="fas fa-check"></i></span>' : ''}${(!e.img && e.icon) ? `<span class="ncm-pkr__art ncm-pkr__art--ic" style="--c:${esc(e.color || 'var(--ncm-secondary)')}"><i class="${esc(e.icon)}"></i></span>` : `<img class="ncm-pkr__art" src="${esc(e.img || FALLBACK_ITEM_IMG)}" alt="">`}
       <span class="ncm-pkr__main">
         <span class="ncm-pkr__name">${esc(e.name)}</span>
         ${e.sub ? `<span class="ncm-pkr__sub"><i class="fas fa-folder"></i>${esc(e.sub)}</span>` : ''}

@@ -1,9 +1,29 @@
 {{!-- Mailbox style "tty" (2026-10-25, dev-approved mock, style 2): one monospace column.
       The folder is the working directory, the list is an `ls`, an open message prints
-      below after `cat`, and the prompt at the bottom takes a number / m / f / cd <name> /
+      below after `cat`, and the prompt (at the TOP, boxed, since 2026-10-29) takes a number / m / f / cd <name> /
       n / p / ? (TerminalViewerApp._onTtyCommand). Rows are still data-actions, so the
       mouse works too. The HUD above keeps every mechanic; the detail is the shared partial. --}}
 <div class="ncm-tmtty">
+  {{!-- The controls sit at the TOP, outside the scroller (2026-10-29, testers: "we don't see where to
+        type anything" — the prompt used to be an unboxed line at the bottom, and could fall below the
+        window). Folder bar first, then a boxed command line that takes focus on render. --}}
+  <div class="ncm-tmtty__top">
+      {{!-- Where you can go, clickable (2026-10-29, testers: "how do I move?"): every folder as a
+            [name count] button, the open one lit, and the MAIL | FILES switch. Typing still works. --}}
+      <div class="ncm-tmtty__nav" role="navigation" aria-label="Folders">
+        <span class="ncm-tmtty__navk">cd</span>
+        {{#each folders}}<button type="button" class="ncm-tmtty__dir{{#if active}}{{#unless @root.isFilesView}} is-on{{/unless}}{{/if}}" data-action="terminalFolder" data-folder="{{key}}" data-drop-folder="{{key}}" title="Open {{label}}"><span class="n">{{label}}/</span>{{#if unread}}<span class="u">{{unread}}</span>{{else if count}}<span class="c">{{count}}</span>{{/if}}</button>{{/each}}
+        <span class="ncm-tmtty__navsep" aria-hidden="true">│</span>
+        <button type="button" class="ncm-tmtty__dir ncm-tmtty__dir--view{{#unless isFilesView}} is-on{{/unless}}" data-action="terminalView" data-view="mail" title="Mail">mail</button>
+        <button type="button" class="ncm-tmtty__dir ncm-tmtty__dir--view{{#if isFilesView}} is-on{{/if}}" data-action="terminalView" data-view="files" title="Files">files</button>
+      </div>
+  <label class="ncm-tmtty__in">
+      <span class="ncm-tmtty__ink"><i class="fas fa-terminal"></i> Type here</span><span class="ncm-tmtty__p">$</span>
+      <input type="text" class="ncm-tmtty__cmd-in" data-tty-prompt autocomplete="off" spellcheck="false" aria-label="command" placeholder="type a command and press Enter — m · f · a number · cd folder · ?">
+      <button type="button" class="ncm-tmtty__run" data-tty-run title="Run the command (Enter)" aria-label="Run">⏎</button>
+      <span class="ncm-tmtty__help"><span class="ncm-tmtty__lnk" data-action="terminalTtyCmd" data-cmd="?">?</span> = every command</span>
+    </label>
+  </div>
   <div class="ncm-tmtty__scroll">
     <div class="ncm-tmtty__ln ncm-tmtty__dim">{{terminalName}} · {{#if isFilesView}}files{{else}}mailbox{{/if}} mounted · logged in as {{account.username}} · type <b>?</b> for help · <span class="ncm-tmtty__lnk" data-action="terminalLogout">logout</span></div>
     <div class="ncm-tmtty__ln"><span class="ncm-tmtty__p">{{ttyPrompt}}</span> <span class="ncm-tmtty__cmd">ls{{#if isFilesView}} -l{{/if}}</span></div>
@@ -24,7 +44,7 @@
       {{else}}
         <div class="ncm-tmtty__ln ncm-tmtty__dim">{{emptyLabel}}</div>
       {{/each}}
-      <div class="ncm-tmtty__ln ncm-tmtty__dim">{{messages.length}} shown{{#if pagination}} · page {{pagination.page}}/{{pagination.maxPage}} (<b>n</b>/<b>p</b>){{/if}} · folders: {{#each folders}}{{#if active}}<b>{{label}}</b>{{else}}{{label}}{{/if}} {{/each}}· <b>f</b> = files ({{view.files}})</div>
+      <div class="ncm-tmtty__ln ncm-tmtty__dim">{{messages.length}} shown{{#if pagination}} · page {{pagination.page}}/{{pagination.maxPage}} (<b>n</b>/<b>p</b>){{/if}} · folders: {{#each folders}}<span class="ncm-tmtty__lnk{{#if active}} is-on{{/if}}" data-action="terminalFolder" data-folder="{{key}}" data-drop-folder="{{key}}">{{label}}</span> {{/each}}· <b>f</b> = files ({{view.files}})</div>
       {{#if syncHint}}<div class="ncm-tmtty__ln ncm-tmtty__lock">{{syncHint.count}} object{{#unless (eq syncHint.count 1)}}s{{/unless}} failed to sync — uplink required</div>{{/if}}
     {{/if}}
     {{#if selectedMessage}}
@@ -34,10 +54,5 @@
       </div>
     {{/if}}
     {{#if isGM}}<div class="ncm-tmtty__ln ncm-tmtty__dim" style="margin-top:8px"><span class="ncm-term__gm-add ncm-tmtty__gm" data-action="terminalNewMessage"><i class="fas fa-plus"></i> {{#if isFilesView}}add a file here (GM){{else}}add message or file (GM)</span>{{/if}}</div>{{/if}}
-  </div>
-  <div class="ncm-tmtty__in">
-    <span class="ncm-tmtty__p">{{ttyPrompt}}</span>
-    <input type="text" class="ncm-tmtty__cmd-in" data-tty-prompt autocomplete="off" spellcheck="false" aria-label="command">
-    <span class="ncm-tmtty__help">number = open · m = mail · f = files · cd &lt;folder&gt; · n/p = page · logout · ? = help</span>
   </div>
 </div>

@@ -1,0 +1,194 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Players — who they know</title>
+<!--
+  Admin → Contacts → Players: the "Who they know" and "Groups they hold" sections,
+  BEFORE (chip walls) and AFTER (grouped, searchable list + group rows).
+  Serve it:  node dev/tools/serve-mockups.cjs  →  http://127.0.0.1:8123/dev/mockups/admin-players-known-mock.html
+  ?t=clean-dark|clean-light|high-contrast   ?n=<how many contacts, default 26>
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 24px; background: #1b1b22; font-family: sans-serif; }
+  .mk-row { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .mk-cap { color: #ccc; font: 600 13px sans-serif; margin: 0 0 8px; letter-spacing: .04em; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win { width: 500px; }
+  .mk-win .ncm-ct2-det { height: auto !important; max-height: none !important; overflow: visible !important; }
+
+  /* ═══ PROPOSED ═══ */
+  .ncm-admin-panel .ncm-ct2-kn__bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .ncm-admin-panel .ncm-ct2-kn__search { flex: 1 1 150px; display: flex; align-items: center; gap: 6px; padding: 0 8px; height: 26px;
+    border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .ncm-admin-panel .ncm-ct2-kn__search i { font-size: 11px; color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-ct2-kn__search input { flex: 1; border: 0 !important; background: transparent !important; box-shadow: none !important; height: 24px !important;
+    padding: 0 !important; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .ncm-admin-panel .ncm-ct2-kn__seg { display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+  .ncm-admin-panel .ncm-ct2-kn__seg span { padding: 4px 8px; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase;
+    color: var(--ncm-text-label); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-kn__seg span + span { border-left: 1px solid var(--ncm-border-active); }
+  .ncm-admin-panel .ncm-ct2-kn__seg span.on { background: color-mix(in srgb, var(--ncm-act) 18%, transparent); color: var(--ncm-act); }
+
+  .ncm-admin-panel .ncm-ct2-kn__list { max-height: 280px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .ncm-admin-panel .ncm-ct2-kn__gh { --gc: var(--ncm-text-label); position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 7px; padding: 5px 9px;
+    background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--gc);
+    font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-kn__gh i.c { font-size: 9px; color: var(--ncm-text-label); width: 9px; }
+  .ncm-admin-panel .ncm-ct2-kn__gh i.g { color: var(--gc); }
+  .ncm-admin-panel .ncm-ct2-kn__gh .n { margin-left: auto; font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); letter-spacing: 0; }
+  .ncm-admin-panel .ncm-ct2-kn__r { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto 22px; gap: 8px; align-items: center; padding: 5px 9px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); cursor: pointer; }
+  .ncm-admin-panel .ncm-ct2-kn__r:hover { background: var(--ncm-bg-hover); }
+  .ncm-admin-panel .ncm-ct2-kn__r .ncm-ct2-av { width: 24px; height: 24px; font-size: 9px; }
+  .ncm-admin-panel .ncm-ct2-kn__r .t { min-width: 0; }
+  .ncm-admin-panel .ncm-ct2-kn__r .nm { display: flex; align-items: center; gap: 6px; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; }
+  .ncm-admin-panel .ncm-ct2-kn__r .nm .ncm-tagp { font-size: 10.5px !important; line-height: 15px; padding: 0 5px !important; }
+  .ncm-admin-panel .ncm-ct2-kn__r .a { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-ct2-kn__r .w { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); white-space: nowrap; }
+  .ncm-admin-panel .ncm-ct2-kn__r .w.hot { color: var(--ncm-attn); }
+  .ncm-admin-panel .ncm-ct2-kn__x { opacity: 0; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 2px; color: var(--ncm-bad); }
+  .ncm-admin-panel .ncm-ct2-kn__r:hover .ncm-ct2-kn__x { opacity: 1; }
+  .ncm-admin-panel .ncm-ct2-kn__x:hover { background: color-mix(in srgb, var(--ncm-bad) 18%, transparent); }
+  .ncm-admin-panel .ncm-ct2-kn__r.own { background: repeating-linear-gradient(0deg, transparent 0 0); }
+  .ncm-admin-panel .ncm-ct2-kn__r.own .nm { font-weight: 600; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-ct2-kn__empty { padding: 14px; text-align: center; color: var(--ncm-text-hint); font: italic 12px var(--ncm-font-body); }
+
+  .ncm-admin-panel .ncm-ct2-gh__r { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 7px 10px 7px 0;
+    border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); margin-bottom: 5px; }
+  .ncm-admin-panel .ncm-ct2-gh__r .bar { align-self: stretch; background: var(--g); border-radius: 2px 0 0 2px; }
+  .ncm-admin-panel .ncm-ct2-gh__r .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); display: flex; align-items: center; gap: 6px; }
+  .ncm-admin-panel .ncm-ct2-gh__r .sub { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-ct2-gh__r .sub.stale { color: var(--ncm-attn); }
+  .ncm-admin-panel .ncm-ct2-gh__stack { display: flex; }
+  .ncm-admin-panel .ncm-ct2-gh__stack .ncm-ct2-av { width: 22px; height: 22px; font-size: 8px; margin-left: -6px; border: 2px solid var(--ncm-bg-pane); }
+  .ncm-admin-panel .ncm-ct2-gh__stack .more { margin-left: 4px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); align-self: center; }
+  .ncm-admin-panel .ncm-ct2-gh__acts { display: flex; gap: 4px; }
+  .ncm-admin-panel .ncm-ct2-gh__sub { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); margin: 8px 0 5px; }
+</style>
+</head>
+<body>
+<div class="mk-row">
+  <div>
+    <p class="mk-cap">BEFORE — chips that wrap forever</p>
+    <div class="mk-win ncm-app ncm-admin-panel" id="before"><div class="ncm-admin-panel"><div class="ncm-ct2"><div class="ncm-ct2-det" data-slot></div></div></div></div>
+  </div>
+  <div>
+    <p class="mk-cap">AFTER — grouped list you can search, groups as rows</p>
+    <div class="mk-win ncm-app ncm-admin-panel" id="after"><div class="ncm-admin-panel"><div class="ncm-ct2"><div class="ncm-ct2-det" data-slot></div></div></div></div>
+  </div>
+</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+document.querySelectorAll('.mk-win').forEach((w) => w.setAttribute('data-ncm-admin-theme', theme));
+const N = +(q.get('n') || 26);
+
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); if (!s) return 'var(--ncm-text-label)'; let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const ROLES = { fixer: ['Fixers', 'fa-handshake'], solo: ['Solos', 'fa-crosshairs'], netrunner: ['Netrunners', 'fa-laptop-code'], exec: ['Execs', 'fa-briefcase'], medtech: ['Medtechs', 'fa-kit-medical'], media: ['Media', 'fa-video'], cop: ['Lawmen', 'fa-shield-halved'], '': ['No role', 'fa-user'] };
+const FIRST = ['Rogue', 'Dexter', 'Judy', 'Brick', 'Misty', 'Viktor', 'Wakako', 'Regina', 'Padre', 'Jackie', 'Evelyn', 'Kerry', 'River', 'Panam', 'Takemura', 'Hellman', 'Meredith', 'Goro', 'Claire', 'Mama Welles', 'Nix', 'Sasquatch', 'Placide', 'Jotaro', 'Dino', 'Mitch', 'Saul', 'Lizzy', 'Sebastian', 'Bes'];
+const ROLEK = Object.keys(ROLES).filter(Boolean);
+const ORGS = ['Afterlife', 'Arasaka', 'Militech', 'Maelstrom', 'Tyger Claws', 'NCPD', 'Aldecaldos', 'Trauma Team', '', ''];
+const contacts = Array.from({ length: N }, (_, i) => {
+  const name = FIRST[i % FIRST.length] + (i >= FIRST.length ? ' II' : '');
+  const role = i % 7 === 6 ? '' : ROLEK[(i * 5) % ROLEK.length];
+  const org = ORGS[(i * 3) % ORGS.length];
+  return { name, role, org, email: name.toLowerCase().replace(/[^a-z]/g, '') + '@' + (org ? org.toLowerCase().replace(/\s/g, '') : 'nightcity') + '.nc',
+    last: i % 4 === 0 ? `${(i % 9) + 1}h ago` : i % 4 === 1 ? `${(i % 5) + 2}d ago` : '', waiting: i % 9 === 0 };
+}).sort((a, b) => a.name.localeCompare(b.name));
+const own = [{ name: 'Mom', email: 'mom@nightcity.net' }, { name: 'Lucky Lin', email: 'lucky@zpost.nc' }, { name: 'Ripper #2', email: '' }];
+const groups = [
+  { name: 'The crew', color: '#3fd0e2', n: 4, from: true, at: '3d ago', stale: false, members: ['Rogue', 'Brick', 'Judy', 'Misty'] },
+  { name: 'Arasaka contacts', color: '#ee6b6b', n: 7, from: true, at: '6d ago', stale: true, members: ['Takemura', 'Hellman', 'Goro', 'Sasquatch', 'Jotaro', 'Saul', 'Dino'] },
+  { name: 'Ripperdocs', color: '#56c896', n: 2, from: false, members: ['Viktor', 'Ripper #2'] },
+];
+const ini = (s) => s.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+const av = (n) => `<span class="ncm-ct2-av">${ini(n)}</span>`;
+
+/* ── BEFORE: the shipped markup ── */
+document.querySelector('#before [data-slot]').innerHTML = `
+  <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-address-book"></i>Who they know<span class="r">${N} from the directory</span></div>
+    <div class="ncm-ct2-mini">${contacts.map((c) => `<span>${av(c.name)}${c.name}</span>`).join('')}
+      <span class="add"><i class="fas fa-plus"></i>Share contacts…</span></div>
+    <div class="ncm-ct2-hint">Also in their list (added themselves): ${own.map((o) => o.name).join(', ')}</div>
+  </div>
+  <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-users"></i>Groups they hold</div>
+    <div class="ncm-ct2-mini">${groups.map((g) => `<span class="grp"><i class="fas fa-circle" style="color:${g.color}"></i>${g.name}<small>${g.n}${g.from ? ' · from you' : ''}</small></span>`).join('')}
+      <span class="add"><i class="fas fa-share-nodes"></i>Push a group…</span></div>
+  </div>`;
+
+/* ── AFTER ── */
+const S = { by: 'role', q: '', shut: new Set() };
+function groupOf(c) {
+  if (S.by === 'org') return [c.org || 'No organisation', c.org ? 'fa-building' : 'fa-circle-question', c.org ? hue(c.org) : 'var(--ncm-text-label)'];
+  if (S.by === 'az') return [c.name[0].toUpperCase(), 'fa-font', 'var(--ncm-text-label)'];
+  const r = ROLES[c.role]; return [r[0], r[1], c.role ? hue('role:' + c.role) : 'var(--ncm-text-label)'];
+}
+function row(c) {
+  const tag = S.by !== 'org' && c.org ? `<span class="ncm-tagp" style="--tc:${hue(c.org)}">${c.org}</span>` : '';
+  const role = S.by !== 'role' && c.role ? `<span class="ncm-tagp" style="--tc:${hue('role:' + c.role)}"><i class="fas ${ROLES[c.role][1]}"></i>${ROLES[c.role][0].replace(/s$/, '')}</span>` : '';
+  return `<div class="ncm-ct2-kn__r" data-tooltip="Open ${c.name}">${av(c.name)}
+    <div class="t"><div class="nm">${c.name}${role}${tag}</div><div class="a">${c.email}</div></div>
+    <span class="w ${c.waiting ? 'hot' : ''}">${c.waiting ? '<i class="fas fa-envelope"></i> waiting' : c.last ? c.last : ''}</span>
+    <span class="ncm-ct2-kn__x" data-tooltip="Take back — remove from their contacts"><i class="fas fa-xmark"></i></span></div>`;
+}
+function renderAfter() {
+  const hit = (c) => !S.q || (c.name + ' ' + c.org + ' ' + c.email + ' ' + c.role).toLowerCase().includes(S.q);
+  const shown = contacts.filter(hit);
+  const map = new Map();
+  for (const c of shown) { const [g, ic, col] = groupOf(c); if (!map.has(g)) map.set(g, { ic, col, rows: [] }); map.get(g).rows.push(c); }
+  const keys = [...map.keys()].sort((a, b) => (/^No /.test(a) - /^No /.test(b)) || a.localeCompare(b));
+  const ownShown = own.filter((o) => !S.q || (o.name + o.email).toLowerCase().includes(S.q));
+  const forced = !!S.q;
+  let list = keys.map((k) => { const g = map.get(k); const shut = !forced && S.shut.has(k);
+    return `<div class="ncm-ct2-kn__gh" data-g="${k}" style="--gc:${g.col}"><i class="fas fa-chevron-${shut ? 'right' : 'down'} c"></i><i class="fas ${g.ic} g"></i>${k}<span class="n">${g.rows.length}</span></div>${shut ? '' : g.rows.map(row).join('')}`; }).join('');
+  if (ownShown.length) list += `<div class="ncm-ct2-kn__gh" style="--gc:var(--ncm-text-hint)"><i class="fas fa-chevron-down c"></i><i class="fas fa-user-pen g"></i>Added themselves<span class="n">${ownShown.length}</span></div>`
+    + ownShown.map((o) => `<div class="ncm-ct2-kn__r own">${av(o.name)}<div class="t"><div class="nm">${o.name}<span class="ncm-tagp is-plain">not in your directory</span></div><div class="a">${o.email || '<i>no address</i>'}</div></div><span class="w"></span><span></span></div>`).join('');
+  if (!shown.length && !ownShown.length) list = `<div class="ncm-ct2-kn__empty">Nobody matches “${S.q}”.</div>`;
+
+  const fromYou = groups.filter((g) => g.from), theirs = groups.filter((g) => !g.from);
+  const grow = (g) => `<div class="ncm-ct2-gh__r" style="--g:${g.color}"><span class="bar"></span>
+    <div><div class="nm">${g.name}<span class="ncm-tagp ${g.from ? 'is-act' : 'is-plain'}">${g.from ? 'from you' : 'their own'}</span></div>
+      <div class="sub ${g.stale ? 'stale' : ''}">${g.n} members${g.from ? ` · pushed ${g.at}` : ''}${g.stale ? ' · <b>your copy has changed since</b>' : ''}</div></div>
+    <div class="ncm-ct2-gh__stack">${g.members.slice(0, 4).map(av).join('')}${g.members.length > 4 ? `<span class="more">+${g.members.length - 4}</span>` : ''}</div>
+    <div class="ncm-ct2-gh__acts">${g.from ? `${g.stale ? '<button type="button" class="ncm-ct2-btn ncm-ct2-btn--primary"><i class="fas fa-rotate"></i> Update</button>' : ''}<button type="button" class="ncm-ct2-btn ncm-ct2-btn--icon" data-tooltip="Take it back"><i class="fas fa-xmark"></i></button>` : '<button type="button" class="ncm-ct2-btn ncm-ct2-btn--icon" data-tooltip="See members"><i class="fas fa-eye"></i></button>'}</div></div>`;
+
+  document.querySelector('#after [data-slot]').innerHTML = `
+  <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-address-book"></i>Who they know<span class="r">${N} from your directory · ${own.length} their own</span></div>
+    <div class="ncm-ct2-kn__bar">
+      <label class="ncm-ct2-kn__search"><i class="fas fa-magnifying-glass"></i><input data-kn-q placeholder="Find a contact…" value="${S.q}"></label>
+      <span class="ncm-ct2-kn__seg">${[['role', 'Role'], ['org', 'Org'], ['az', 'A–Z']].map(([k, l]) => `<span data-by="${k}" class="${S.by === k ? 'on' : ''}">${l}</span>`).join('')}</span>
+      <button type="button" class="ncm-ct2-btn ncm-ct2-btn--primary"><i class="fas fa-plus"></i> Share contacts</button>
+    </div>
+    <div class="ncm-ct2-kn__list">${list}</div>
+  </div>
+  <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-users"></i>Groups they hold<span class="r">${groups.length} · ${fromYou.length} from you</span></div>
+    ${fromYou.length ? `<div class="ncm-ct2-gh__sub">Pushed by you</div>${fromYou.map(grow).join('')}` : ''}
+    ${theirs.length ? `<div class="ncm-ct2-gh__sub">Their own</div>${theirs.map(grow).join('')}` : ''}
+    <button type="button" class="ncm-ct2-btn" style="margin-top:4px"><i class="fas fa-share-nodes"></i> Push a group</button>
+  </div>`;
+  const inp = document.querySelector('[data-kn-q]');
+  inp.addEventListener('input', () => { S.q = inp.value.trim().toLowerCase(); const pos = inp.selectionStart; renderAfter(); const n = document.querySelector('[data-kn-q]'); n.focus(); n.setSelectionRange(pos, pos); });
+}
+document.addEventListener('click', (e) => {
+  const by = e.target.closest('[data-by]'); if (by) { S.by = by.dataset.by; S.shut.clear(); renderAfter(); return; }
+  const gh = e.target.closest('.ncm-ct2-kn__gh[data-g]'); if (gh) { const k = gh.dataset.g; S.shut.has(k) ? S.shut.delete(k) : S.shut.add(k); renderAfter(); }
+});
+renderAfter();
+</script>
+</body>
+</html>

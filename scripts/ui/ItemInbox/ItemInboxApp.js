@@ -20,6 +20,7 @@ import { paintIntegrity, startShimmer, playHit, playBurnOut } from '../content/I
 import { playBootVideo } from '../content/BootVideo.js';
 import { applyCrt, resolveCrt, capCrt, playerCrtCap } from '../../utils/crt.js';
 import { shardTerm as T } from '../../utils/shardTerm.js';
+import { cmvForViewer } from '../../utils/countermeasureView.js';
 
 export class ItemInboxApp extends BaseApplication {
 
@@ -384,11 +385,13 @@ export class ItemInboxApp extends BaseApplication {
 
     // Lockout timer
     let lockoutRemaining = 0;
-    if (session.lockoutUntil && session.lockoutUntil > Date.now()) {
-      lockoutRemaining = Math.ceil((session.lockoutUntil - Date.now()) / 1000);
+    // lockoutUntil is written on the GAME clock (DataShardService._nowMs) — compare on the same clock.
+    const nowMs = (Number(game.nightcity?.timeService?.getCurrentTimeMs?.()) || Date.now());
+    if (session.lockoutUntil && session.lockoutUntil > nowMs) {
+      lockoutRemaining = Math.ceil((session.lockoutUntil - nowMs) / 1000);
     }
 
-    return {
+    const ctx = {
       hasItem: true,
       item: this.item,
       config,
@@ -577,6 +580,32 @@ export class ItemInboxApp extends BaseApplication {
         description: this.item?.system?.description?.value || '',
       },
     };
+    return this._applyShardCountermeasures(ctx, config, session, actor);
+  }
+
+  /**
+   * Countermeasure visibility on the shard's lock screen + breach sequence: a
+   * layperson sees THAT it is ICE-protected, never which ICE, how many tries, or
+   * (optionally) the DV. Values are replaced in the context, never CSS-hidden.
+   * Scope: the encryption overlay, the hacking sequence and the breach dialog.
+   * (No scan strip on shards yet — experts and the GM are the readers there.)
+   * @private
+   */
+  _applyShardCountermeasures(ctx, config, session, actor) {
+    const view = cmvForViewer({ override: config.countermeasures, key: this.item?.uuid || this.item?.id, actor, attemptsUsed: session?.hackAttempts || 0 });
+    this._cmv = view;
+    const knows = view.state === 'identified' || view.state === 'open';
+    ctx.cmv = { state: view.state, knows, showDV: view.showDV, credit: knows && view.credit !== 'GM' && view.state !== 'open' ? view.credit : '' };
+    if (!knows) {
+      Object.assign(ctx, {
+        iceImg: null, iceName: view.state === 'spotted' ? 'ICE' : 'Security', encryptionType: view.state === 'spotted' ? 'ICE — type unknown' : 'Unknown',
+        isBlackICE: false, isRedICE: false, isLethalICE: false,
+        iceClass: config.encrypted ? 'standard' : ctx.iceClass,
+      });
+      if (!view.show?.attemptsCount) Object.assign(ctx, { attemptDots: [], maxHackAttempts: '?', attemptsRemaining: '?' });
+    }
+    if (!view.showDV) ctx.encryptionDC = '??';
+    return ctx;
   }
 
   // ─── Entry Enrichment Helpers ───
@@ -1153,22 +1182,27 @@ export class ItemInboxApp extends BaseApplication {
     } : null;
 
     // ─── Resolve ICE info for dialog display ───
-    const isLethalICE = config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE';
+    // Countermeasure visibility: a layperson's dialog never names the ICE, its
+    // damage or the attempt limit — and may not show the DV.
+    const cmv = cmvForViewer({ override: config.countermeasures, key: this.item?.uuid || this.item?.id, actor, attemptsUsed: session.hackAttempts || 0 });
+    const cmvKnows = cmv.state === 'identified' || cmv.state === 'open';
+    const isLethalICE = cmvKnows && (config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE');
     const iceInfo = isLethalICE ? this.dataShardService?._resolveICE(config) : null;
 
     // ─── Themed Hack Dialog (skill + luck combined) ───
     const dialogResult = await this._showHackDialog({
+      cmv,
       title: isLethalICE ? `${iceInfo?.name || 'BLACK ICE'} Breach` : 'ICE Breach',
       icon: isLethalICE ? 'fas fa-skull-crossbones' : 'fas fa-shield-halved',
       color: isLethalICE ? '#ff0033' : '#19f3f7',
-      subtitle: `Breaching ${iceInfo?.name || config.encryptionType || 'Standard'} encryption on ${this.item.name}`,
+      subtitle: cmvKnows ? `Breaching ${iceInfo?.name || config.encryptionType || 'Standard'} encryption on ${this.item.name}` : `Breaching the encryption on ${this.item.name}`,
       skills,
       dc,
       availableLuck,
       actorName: actor.name,
-      encryptionType: config.encryptionType,
+      encryptionType: cmvKnows ? config.encryptionType : null,
       iceInfo,
-      attempts,
+      attempts: (cmvKnows || cmv.show?.attemptsCount) ? attempts : null,
     });
     if (!dialogResult) return;
 
@@ -1191,8 +1225,10 @@ export class ItemInboxApp extends BaseApplication {
       silent: true,
     });
 
-    // ─── Play the terminal sequence ───
-    await this._playHackSequence(result, skillName, luckSpend);
+    // ─── Play the terminal sequence, THEN post the chat card ───
+    // (the result must not reach chat before the sequence reveals it)
+    try { await this._playHackSequence(result, skillName, luckSpend); }
+    finally { await result?.postChat?.(); }
 
     this._hackingActive = false;
     this._transitionActive = false;
@@ -1290,6 +1326,7 @@ export class ItemInboxApp extends BaseApplication {
       dc: selectedDC,
       luckSpend,
       showChat: true,
+      deferChat: true,   // posted after _playLayerHackSequence below
       context: `${flavor.title}: ${this.item.name}`,
       flavor: `${layer.toUpperCase()} Layer // DV ${selectedDC}`,
     });
@@ -1318,6 +1355,7 @@ export class ItemInboxApp extends BaseApplication {
         consequence, hackInfo,
       });
     }
+    await rollResult.postChat?.();
 
     this._transitionActive = false;
     this.render(true);
@@ -1750,6 +1788,7 @@ export class ItemInboxApp extends BaseApplication {
 
     const result = await this.dataShardService.attemptHack(this.item, actor, skillName, {
       messageId,
+      reveal: { host: this.element, title: 'Decrypting the entry', ctx: `Entry decrypt · ${this.item.name}`, ok: 'Entry decrypted', no: 'Cipher holds' },
     });
 
     if (result.success) {
@@ -2567,7 +2606,9 @@ export class ItemInboxApp extends BaseApplication {
     const base = (rollData.statValue ?? 0) + (rollData.skillLevel ?? 0) + (rollData.luckSpent ?? 0);
     const encType = result.encryptionType || config?.encryptionType || 'ICE';
     const ice = result.iceInfo;
-    const iceName = ice?.name || encType;
+    // Countermeasure visibility: before the verdict a layperson never sees the ICE named.
+    const knowsIce = !this._cmv || this._cmv.state === 'identified' || this._cmv.state === 'open';
+    const iceName = knowsIce ? (ice?.name || encType) : 'unknown ICE';
 
     // Phase 1: Init
     addLine('system', `░░ BREACHER PROTOCOL v4.6 ░░`);
@@ -2584,7 +2625,7 @@ export class ItemInboxApp extends BaseApplication {
     // Phase 3: Probe
     await delay(() => addLine('blank', ''), 200);
     await delay(() => addLine('ice', `⚠ ${iceName} DETECTED — COUNTERMEASURES ARMED`), 400);
-    if (encType === 'BLACK_ICE' || encType === 'RED_ICE') {
+    if (knowsIce && (encType === 'BLACK_ICE' || encType === 'RED_ICE')) {
       const iceClassStr = ice?.class ? ` [${ice.class}]` : '';
       const iceAtkStr = ice?.atk ? ` // ATK: ${ice.atk}` : '';
       await delay(() => addLine('warn', `WARNING: Lethal ICE${iceClassStr}${iceAtkStr}. Failure may cause system damage.`), 400);
@@ -2787,6 +2828,10 @@ export class ItemInboxApp extends BaseApplication {
     let selectedDC = opts.dc;
     let luckSpend = 0;
     let cancelled = true;
+    // Countermeasure visibility: a hidden DV leaves no number (and no odds) before the roll.
+    const hideDV = !!opts.cmv && !opts.cmv.showDV;
+    const cmvHidden = !!opts.cmv && !(opts.cmv.state === 'identified' || opts.cmv.state === 'open');
+    const dvTxt = (n) => (hideDV ? '??' : n);
 
     // Compute odds: P(total + 1d10 + luck >= DC) where 1d10 is [1..10]
     const calcOdds = (total, luck, dc) => {
@@ -2801,7 +2846,7 @@ export class ItemInboxApp extends BaseApplication {
     if (opts.skills?.length) {
       const skillRows = opts.skills.map(s => {
         const dc = s.dc ?? opts.dc;
-        return `<button type="button" class="ncm-hd-skill-btn" data-skill="${s.name}" data-total="${s.total}" data-stat="${s.stat}" data-dc="${dc}">
+        return `<button type="button" class="ncm-hd-skill-btn" data-skill="${s.name}" data-total="${s.total}" data-stat="${s.stat}" data-dc="${hideDV ? '' : dc}">
           <div class="ncm-hd-skill-check"><i class="fas fa-check"></i></div>
           <span class="ncm-hd-skill-name">${s.name}</span>
           <span class="ncm-hd-skill-detail">${s.stat} ${s.total} + 1d10</span>
@@ -2828,7 +2873,10 @@ export class ItemInboxApp extends BaseApplication {
     const isBlackICE = opts.isBlackICE || opts.encryptionType === 'BLACK_ICE' || opts.encryptionType === 'RED_ICE';
     const ice = opts.iceInfo;
     let dangerHTML = '';
-    if (isBlackICE) {
+    if (cmvHidden) {
+      const sp = opts.cmv.state === 'spotted';
+      dangerHTML = `<div class="ncm-hd-cmv ${sp ? 'ncm-hd-cmv--spotted' : ''}"><i class="fas ${sp ? 'fa-eye' : 'fa-question'}"></i><div><div class="ncm-hd-cmv__t">${sp ? 'Defences detected' : 'Security unreadable'}</div><div class="ncm-hd-cmv__s">${sp ? 'Something is running on this — not enough to name it.' : 'You can’t tell what guards this, or what it does when you get it wrong.'}</div></div></div>`;
+    } else if (isBlackICE) {
       const iceImgHTML = ice?.img
         ? `<img src="${ice.img}" alt="${ice.name}" class="ncm-hd-danger-portrait" />`
         : `<div class="ncm-hd-danger-icon"><i class="fas fa-radiation"></i></div>`;
@@ -2863,13 +2911,13 @@ export class ItemInboxApp extends BaseApplication {
     }
 
     // ─── Odds gauge + breakdown ───
-    const initOdds = selectedSkill ? calcOdds(selectedTotal, 0, selectedDC) : 0;
+    const initOdds = (selectedSkill && !hideDV) ? calcOdds(selectedTotal, 0, selectedDC) : 0;
     const oddsClass = initOdds >= 60 ? 'high' : initOdds >= 30 ? 'mid' : 'low';
     const oddsHTML = `
       <div class="ncm-hd-odds">
         <div class="ncm-hd-odds-header">
           <span class="ncm-hd-odds-label">Success Probability</span>
-          <span class="ncm-hd-odds-pct ${oddsClass}" data-odds-pct>${selectedSkill ? initOdds + '%' : '—'}</span>
+          <span class="ncm-hd-odds-pct ${oddsClass}" data-odds-pct>${selectedSkill ? (hideDV ? '??' : initOdds + '%') : '—'}</span>
         </div>
         <div class="ncm-hd-odds-track">
           <div class="ncm-hd-odds-fill ${oddsClass}" data-odds-fill style="width:${selectedSkill ? initOdds : 0}%;"></div>
@@ -2877,7 +2925,7 @@ export class ItemInboxApp extends BaseApplication {
       </div>
       <div class="ncm-hd-breakdown" data-breakdown>
         ${selectedSkill
-          ? `<span class="ncm-hd-val">${selectedTotal}</span> <span class="ncm-hd-op">+</span> <span class="ncm-hd-die">1d10</span> <span class="ncm-hd-op" style="margin:0 4px;">vs</span> <span class="ncm-hd-vs">DV ${selectedDC}</span>`
+          ? `<span class="ncm-hd-val">${selectedTotal}</span> <span class="ncm-hd-op">+</span> <span class="ncm-hd-die">1d10</span> <span class="ncm-hd-op" style="margin:0 4px;">vs</span> <span class="ncm-hd-vs">DV ${dvTxt(selectedDC)}</span>`
           : 'Select a skill...'}
       </div>`;
 
@@ -2930,9 +2978,9 @@ export class ItemInboxApp extends BaseApplication {
           const body = jq.find('.ncm-hd-body').length ? jq : jq.parent();
 
           const updateAll = () => {
-            const odds = selectedSkill ? calcOdds(selectedTotal, luckSpend, selectedDC) : 0;
+            const odds = (selectedSkill && !hideDV) ? calcOdds(selectedTotal, luckSpend, selectedDC) : 0;
             const cls = odds >= 60 ? 'high' : odds >= 30 ? 'mid' : 'low';
-            body.find('[data-odds-pct]').text(selectedSkill ? odds + '%' : '—').removeClass('high mid low').addClass(cls);
+            body.find('[data-odds-pct]').text(selectedSkill ? (hideDV ? '??' : odds + '%') : '—').removeClass('high mid low').addClass(cls);
             body.find('[data-odds-fill]').css('width', (selectedSkill ? odds : 0) + '%').removeClass('high mid low').addClass(cls);
 
             const bd = body.find('[data-breakdown]');
@@ -2940,7 +2988,7 @@ export class ItemInboxApp extends BaseApplication {
             else {
               let p = `<span class="ncm-hd-val">${selectedTotal}</span> <span class="ncm-hd-op">+</span> <span class="ncm-hd-die">1d10</span>`;
               if (luckSpend > 0) p += ` <span class="ncm-hd-op">+</span> <span class="ncm-hd-luck-color">${luckSpend} LUCK</span>`;
-              p += ` <span class="ncm-hd-op" style="margin:0 4px;">vs</span> <span class="ncm-hd-vs">DV ${selectedDC}</span>`;
+              p += ` <span class="ncm-hd-op" style="margin:0 4px;">vs</span> <span class="ncm-hd-vs">DV ${dvTxt(selectedDC)}</span>`;
               bd.html(p);
             }
 

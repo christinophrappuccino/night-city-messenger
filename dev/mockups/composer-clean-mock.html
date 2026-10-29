@@ -1,0 +1,443 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Composer — the clean revision</title>
+<!--
+  Message Composer, revised (2026-10-28, dev: "a new revised version in a mockup that's more clean with all the same
+  functionality"). Same 640×560 window, same 34 actions, same data — rearranged so that nothing competes:
+    · ONE header line: who you are · the network · the date. The mode badge is gone — the quote card says "Replying to",
+      the Send button says "Send reply"; a new message needs no badge.
+    · An ADDRESS BLOCK: To / Cc / Subject as hairline rows with one label column (sentence case, no "SUBJ:").
+    · DELIVERY = CHIPS + ONE DRAWER. Every option is a chip that states its value (Normal · Open · + Schedule…); a lit
+      chip opens the one drawer under the row with that option's settings. Encryption's DV, type, fail mode and ICE
+      actor live in ONE panel (today two strips); self-destruct, anonymous and schedule each get a panel; only one
+      panel is ever open. Off chips are quiet outlines, on chips fill in their meaning colour (ICE/destruct red,
+      anonymous violet, schedule amber, priority by level).
+    · The editor toolbar is two groups: format | insert. Attachments are chips above the footer.
+    · Alerts (dead zone / darknet) are ONE slim banner under the header.
+  Tokens only (--ncm-*), so the SAME markup wears the GM view (admin preset, data-ncm-admin-theme) or the player theme.
+  Added 2026-10-28 (dev agreed): DRAFTS are a list per character (a fresh composer opens empty; a quiet "N drafts" link
+  in the footer opens the picker; Draft saves and closes; reply drafts keep their quote), PREVIEW AS RECIPIENT (GM footer
+  toggle: the locked ICE screen / masked sender the player will see), MESSAGE TEMPLATES (GM: insert one / save this as
+  one, the spam-template plumbing). Insert Signature is REMOVED (it only ever pasted the header's own name + address).
+  Frames: 1 GM new message · 2 GM reply, everything on (encryption drawer open) · 3 GM, send-as + network picker open ·
+          4 player reply in a dead zone · 5 player new, schedule + attachments · 6 sending overlay · 7 GM preview as
+          recipient · 8 the drafts picker + the templates menu
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/composer-clean-mock.html
+         ?t=clean-light|high-contrast (the GM frames' preset)   ?p=arasaka|netrunner|militech|… (the PLAYER frames' preset, from THEME_PRESETS)   ?only=1..6
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; } .mk-h:first-child { margin-top: 0; }
+  .mk-p { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 12px; max-width: 1320px; }
+  .mk-grid { display: grid; grid-template-columns: repeat(2, 640px); gap: 28px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win { width: 640px; height: 560px; box-sizing: border-box; display: flex; flex-direction: column; border: 1px solid #444; border-radius: 3px; overflow: hidden; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .mk-win .window-content { flex: 1; min-height: 0; padding: 0; display: flex; }
+  .mk-title { flex: none; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border); font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .mk-title i { color: var(--ncm-act, var(--ncm-secondary)); font-size: 11px; } .mk-title .x { margin-left: auto; color: var(--ncm-text-label, var(--ncm-text-muted)); font-size: 11px; }
+  .mk-title .eye { color: var(--ncm-act, var(--ncm-secondary)); font-size: 11px; margin-left: auto; } .mk-title .eye + .x { margin-left: 10px; }
+
+  /* ───────────── the composer, revised ───────────── */
+  .cm { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ncm-bg-pane, var(--ncm-bg-base)); position: relative; }
+  .cm * { box-sizing: border-box; }
+  :where(.cm [role="button"]) { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-family: var(--ncm-font-display); line-height: 1; white-space: nowrap; }
+  .cm [role="button"]:focus-visible { outline: 1px solid var(--ncm-act, var(--ncm-secondary)); outline-offset: 1px; }
+  .cm .i { font-size: 10px; }
+
+  /* header: who · network · date — one line */
+  .cm-hd { flex: none; display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 12px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)); position: relative; }
+  .cm-who { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; cursor: pointer; padding: 4px 6px 4px 4px; margin-left: -4px; border-radius: 2px; }
+  .cm-who:hover { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 8%, transparent); }
+  .cm-av { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 11px var(--ncm-font-display); color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading, var(--ncm-text-primary))); background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane, var(--ncm-bg-base))); border: 1px solid var(--tc); }
+  .cm-av.anon { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 35%, transparent) 0 2px, transparent 2px 4px); border-color: var(--ncm-secret, var(--ncm-purple)); color: var(--ncm-secret, var(--ncm-purple)); }
+  .cm-who .t { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .cm-who .n { font: 600 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+  .cm-who .a { font: 11px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cm-who .c { color: var(--ncm-text-hint, var(--ncm-text-muted)); font-size: 9px; }
+  .cm-tag { display: inline-grid; place-items: center; height: 14px; padding: 0 5px; border-radius: 1px; font: 700 8.5px var(--ncm-font-display); letter-spacing: .06em; color: var(--tc); border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); background: color-mix(in srgb, var(--tc) 14%, transparent); }
+  .cm-net { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px; border: 1px solid color-mix(in srgb, var(--net-c) 45%, var(--ncm-border)); border-radius: 2px; background: color-mix(in srgb, var(--net-c) 8%, transparent); color: var(--ncm-text-heading, var(--ncm-text-primary)); font: 600 12px var(--ncm-font-display); }
+  .cm-net .d { width: 7px; height: 7px; border-radius: 50%; background: var(--net-c); box-shadow: 0 0 5px var(--net-c); }
+  .cm-net .bars { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; } .cm-net .bars b { width: 3px; background: color-mix(in srgb, var(--net-c) 30%, transparent); } .cm-net .bars b.on { background: var(--net-c); }
+  .cm-net .bars b:nth-child(1) { height: 4px } .cm-net .bars b:nth-child(2) { height: 6px } .cm-net .bars b:nth-child(3) { height: 8px } .cm-net .bars b:nth-child(4) { height: 10px }
+  .cm-net.via { border-style: dashed; border-color: var(--ncm-attn, var(--ncm-accent)); } .cm-net .via { font: 700 8.5px var(--ncm-font-display); letter-spacing: .08em; color: var(--ncm-attn, var(--ncm-accent)); }
+  .cm-net .fx { font: 700 8.5px var(--ncm-font-display); letter-spacing: .05em; color: var(--ncm-bad, var(--ncm-danger)); }
+  .cm-date { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-time, var(--ncm-text-secondary)); font: 12px var(--ncm-font-mono); }
+  .cm-date .i { color: var(--ncm-text-label, var(--ncm-text-muted)); } .cm-date.dated { border-color: var(--ncm-attn, var(--ncm-accent)); color: var(--ncm-text-heading, var(--ncm-text-primary)); } .cm-date.dated .i { color: var(--ncm-attn, var(--ncm-accent)); }
+
+  /* alert banner: one slim line */
+  .cm-alert { flex: none; display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 4px 12px; border-bottom: 1px solid color-mix(in srgb, var(--tc) 40%, var(--ncm-border)); background: color-mix(in srgb, var(--tc) 10%, var(--ncm-bg-pane, var(--ncm-bg-base))); font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .cm-alert .i { color: var(--tc); } .cm-alert b { color: var(--tc); font-weight: 700; } .cm-alert .act { margin-left: auto; height: 20px; padding: 0 8px; border: 1px solid var(--tc); border-radius: 2px; color: var(--tc); font: 700 10px var(--ncm-font-display); }
+
+  .cm-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* quote card (reply / forward) */
+  .cm-quote { flex: none; margin: 10px 12px 0; border: 1px solid var(--ncm-border); border-left: 3px solid var(--tc); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); padding: 7px 10px 6px; }
+  .cm-quote .lbl { display: flex; align-items: center; gap: 6px; font: 700 10px var(--ncm-font-display); letter-spacing: .04em; color: var(--tc); margin-bottom: 5px; }
+  .cm-quote .lbl .ice { margin-left: auto; font-size: 9px; color: var(--ncm-secret, var(--ncm-purple)); display: inline-flex; gap: 4px; align-items: center; letter-spacing: 0; }
+  .cm-quote .hd { display: grid; grid-template-columns: 22px minmax(0,1fr) auto; gap: 7px; align-items: center; }
+  .cm-quote .hd .cm-av { width: 22px; height: 22px; font-size: 8.5px; }
+  .cm-quote .hd .n { font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); } .cm-quote .hd .n span { font: 11px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-muted)); margin-left: 6px; }
+  .cm-quote .hd .m { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-muted)); display: inline-flex; gap: 6px; align-items: center; } .cm-quote .hd .m .nt { color: var(--net-c); font-family: var(--ncm-font-display); font-weight: 700; font-size: 10px; }
+  .cm-quote .s { font: 600 12.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); margin: 6px 0 2px; }
+  .cm-quote .b { font: 12px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cm-quote .more { display: inline-flex; gap: 5px; align-items: center; margin-top: 4px; font: 11px var(--ncm-font-display); color: var(--ncm-act, var(--ncm-secondary)); cursor: pointer; }
+  .cm-quote .att { display: flex; gap: 5px; margin-top: 5px; } .cm-quote .att span { display: inline-flex; gap: 4px; align-items: center; height: 18px; padding: 0 6px; border: 1px solid var(--ncm-border); border-radius: 2px; font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); } .cm-quote .att span.eb { color: var(--ncm-money, var(--ncm-accent)); border-color: color-mix(in srgb, var(--ncm-money, var(--ncm-accent)) 50%, transparent); }
+
+  /* address block */
+  .cm-addr { flex: none; margin: 10px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); }
+  .cm-row { display: grid; grid-template-columns: 58px minmax(0,1fr) auto; align-items: center; min-height: 32px; padding: 0 8px 0 10px; gap: 8px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .cm-row:last-child { border-bottom: 0; }
+  .cm-row .k { font: 500 11.5px var(--ncm-font-display); color: var(--ncm-text-label, var(--ncm-text-muted)); }
+  .cm-row .v { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-width: 0; padding: 4px 0; }
+  .cm-row .v .ph { font: 12px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+  .cm-row .v .txt { font: 12.5px var(--ncm-font-body); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .cm-row .e { font: 11px var(--ncm-font-display); color: var(--ncm-text-label, var(--ncm-text-muted)); cursor: pointer; } .cm-row .e:hover { color: var(--ncm-act, var(--ncm-secondary)); }
+  .cm-row.err { box-shadow: inset 3px 0 var(--ncm-bad, var(--ncm-danger)); } .cm-row.err .k { color: var(--ncm-bad, var(--ncm-danger)); }
+  .cm-err { grid-column: 1 / -1; font: 11px var(--ncm-font-body); color: var(--ncm-bad, var(--ncm-danger)); padding: 0 0 5px; display: flex; gap: 5px; align-items: center; margin-top: -3px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px 0 3px; border: 1px solid color-mix(in srgb, var(--tc) 50%, var(--ncm-border)); border-radius: 11px; background: color-mix(in srgb, var(--tc) 9%, var(--ncm-bg-pane, var(--ncm-bg-base))); font: 600 11.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .chip .cm-av { width: 16px; height: 16px; font-size: 7px; } .chip .x { font-size: 9px; color: var(--ncm-text-hint, var(--ncm-text-muted)); margin-left: 1px; cursor: pointer; } .chip .x:hover { color: var(--ncm-bad, var(--ncm-danger)); }
+  .chip.lock { padding-left: 7px; border-style: solid; } .chip.lock .i { font-size: 8px; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+  .chip.grp .ct { font: 700 10px var(--ncm-font-mono); color: var(--tc); } .chip.grp .cm-av { border-radius: 3px; }
+  .chip.warn { border-color: var(--ncm-attn, var(--ncm-accent)); } .chip.warn .w { color: var(--ncm-attn, var(--ncm-accent)); font-size: 9px; }
+  .chip.anon { border-color: var(--ncm-secret, var(--ncm-purple)); background: color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 10%, transparent); padding-left: 7px; } .chip.anon .i { color: var(--ncm-secret, var(--ncm-purple)); font-size: 9px; }
+
+  /* delivery: chips + one drawer */
+  .cm-del { flex: none; margin: 8px 12px 0; }
+  .cm-del .chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .cm-del .chips .k { font: 500 11px var(--ncm-font-display); color: var(--ncm-text-label, var(--ncm-text-muted)); margin-right: 3px; }
+  .opt { height: 24px; padding: 0 8px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)); font: 600 11px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .opt .i { color: var(--ncm-text-label, var(--ncm-text-muted)); } .opt .c { font-size: 8px; color: var(--ncm-text-hint, var(--ncm-text-muted)); margin-left: 1px; }
+  .opt.off { border-color: color-mix(in srgb, var(--ncm-border-active, var(--ncm-border)) 70%, transparent); color: var(--ncm-text-label, var(--ncm-text-muted)); background: transparent; } .opt.off .i { color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+  .opt.on { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 16%, var(--ncm-bg-pane, var(--ncm-bg-base))); color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading, var(--ncm-text-primary))); box-shadow: 0 0 6px color-mix(in srgb, var(--tc) 25%, transparent); }
+  .opt.on .i, .opt.on .c { color: var(--tc); }
+  .opt.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; position: relative; } .opt.open::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: color-mix(in srgb, var(--tc) 16%, var(--ncm-bg-pane, var(--ncm-bg-base))); }
+  .opt .v { font-family: var(--ncm-font-mono); font-weight: 400; font-size: 11px; }
+  .drawer { margin-top: 5px; border: 1px solid var(--tc); border-radius: 2px; background: color-mix(in srgb, var(--tc) 5%, var(--ncm-bg-card, var(--ncm-bg-surface))); padding: 8px 10px; display: grid; grid-template-columns: auto minmax(0,1fr); gap: 7px 12px; align-items: center; position: relative; }
+  .drawer .k { font: 500 11px var(--ncm-font-display); color: var(--ncm-text-label, var(--ncm-text-muted)); }
+  .drawer .g { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 0; }
+  .drawer .close { position: absolute; top: 6px; right: 7px; font-size: 10px; color: var(--ncm-text-hint, var(--ncm-text-muted)); cursor: pointer; } .drawer .close:hover { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .seg { display: inline-flex; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; overflow: hidden; }
+  .seg [role="button"] { height: 22px; padding: 0 8px; font: 600 10.5px var(--ncm-font-display); color: var(--ncm-text-secondary); background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)); border-right: 1px solid var(--ncm-border); } .seg [role="button"]:last-child { border-right: 0; }
+  .seg [role="button"].on { background: color-mix(in srgb, var(--tc, var(--ncm-act, var(--ncm-secondary))) 20%, var(--ncm-bg-pane, var(--ncm-bg-base))); color: color-mix(in oklab, var(--tc, var(--ncm-act, var(--ncm-secondary))) 75%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+  .num { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)); font: 11px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-primary)); } .num .k2 { font: 500 10px var(--ncm-font-display); color: var(--ncm-text-label, var(--ncm-text-muted)); }
+  .num input, .txtin { all: unset; width: 34px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-primary)); } .txtin { width: 110px; font-family: var(--ncm-font-body); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .num.wide input { width: 110px; }
+  .ice-actor { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 3px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)); font: 600 11px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ice-actor .p { width: 20px; height: 20px; border-radius: 2px; background: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 25%, transparent); display: grid; place-items: center; color: var(--ncm-bad, var(--ncm-danger)); font-size: 10px; }
+  .ice-actor .atk { font: 10px var(--ncm-font-mono); color: var(--ncm-text-label, var(--ncm-text-muted)); } .ice-actor.sel { border-color: var(--ncm-bad, var(--ncm-danger)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 40%, transparent); }
+  .drawer .hint { grid-column: 1 / -1; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .pick { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)); font: 12px var(--ncm-font-mono); color: var(--ncm-text-heading, var(--ncm-text-primary)); } .pick .i { color: var(--tc, var(--ncm-act, var(--ncm-secondary))); } .pick .c { font-size: 8px; color: var(--ncm-text-hint, var(--ncm-text-muted)); } .pick.empty { color: var(--ncm-text-hint, var(--ncm-text-muted)); font-family: var(--ncm-font-body); }
+
+  /* editor */
+  .cm-ed { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 8px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); overflow: hidden; }
+  .cm-ed.ice { border-color: color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 55%, var(--ncm-border)); }
+  .cm-tb { flex: none; display: flex; align-items: center; gap: 2px; height: 30px; padding: 0 6px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .cm-tb [role="button"] { width: 24px; height: 22px; justify-content: center; border-radius: 2px; color: var(--ncm-text-secondary); font-size: 11px; } .cm-tb [role="button"]:hover { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, transparent); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .cm-tb .sep { width: 1px; height: 14px; background: var(--ncm-border); margin: 0 5px; }
+  .cm-tb .sp { flex: 1; } .cm-tb .eb { color: var(--ncm-money, var(--ncm-accent)); }
+  .cm-tb .grp { display: inline-flex; gap: 2px; } .cm-tb .lbl { font: 500 10px var(--ncm-font-display); color: var(--ncm-text-hint, var(--ncm-text-muted)); margin: 0 4px 0 2px; }
+  .cm-txt { flex: 1; min-height: 0; padding: 9px 11px; font: 13px/1.5 var(--ncm-font-body); color: var(--ncm-text-primary); overflow: auto; position: relative; }
+  .cm-txt .ph { color: var(--ncm-text-hint, var(--ncm-text-muted)); } .cm-txt .ph::before { content: '> '; color: var(--ncm-act, var(--ncm-secondary)); }
+  .cm-txt .caret { display: inline-block; width: 1px; height: 14px; background: var(--ncm-act, var(--ncm-secondary)); vertical-align: -2px; animation: cmblink 1s steps(1) infinite; } @keyframes cmblink { 50% { opacity: 0 } }
+  .cm-edfoot { flex: none; display: flex; align-items: center; gap: 8px; height: 22px; padding: 0 10px; font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-hint, var(--ncm-text-muted)); border-top: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); }
+  .cm-edfoot .ice { color: var(--ncm-secret, var(--ncm-purple)); display: inline-flex; gap: 4px; align-items: center; font-family: var(--ncm-font-display); font-weight: 700; font-size: 10px; } .cm-edfoot .sp { flex: 1; }
+  .cm-att { flex: none; display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 12px 0; }
+  .cm-att span { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); font: 11.5px var(--ncm-font-body); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .cm-att span .i { color: var(--tc, var(--ncm-act, var(--ncm-secondary))); } .cm-att span .sz { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-hint, var(--ncm-text-muted)); } .cm-att span .x { font-size: 9px; color: var(--ncm-text-hint, var(--ncm-text-muted)); margin-left: 2px; }
+  .cm-att span.eb { border-color: color-mix(in srgb, var(--ncm-money, var(--ncm-accent)) 55%, transparent); color: var(--ncm-money, var(--ncm-accent)); font-family: var(--ncm-font-mono); font-weight: 700; } .cm-att span.eb .i { color: var(--ncm-money, var(--ncm-accent)); }
+
+  /* footer */
+  .cm-ft { flex: none; display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 12px; margin-top: 8px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)); }
+  .btn { height: 30px; padding: 0 14px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); font: 700 12px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .btn .i { font-size: 11px; color: var(--ncm-act, var(--ncm-secondary)); }
+  .btn.pri { border-color: var(--tc, var(--ncm-act, var(--ncm-secondary))); background: var(--tc, var(--ncm-act, var(--ncm-secondary))); color: var(--ncm-text-inverse); box-shadow: 0 0 8px color-mix(in srgb, var(--tc, var(--ncm-act, var(--ncm-secondary))) 35%, transparent); } .btn.pri .i { color: var(--ncm-text-inverse); }
+  .btn.dis { opacity: .4; cursor: default; }
+  .cm-ft .meta { margin-left: auto; display: flex; align-items: center; gap: 12px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+  .cm-ft .meta .ok { color: var(--ncm-good, var(--ncm-success)); display: inline-flex; gap: 4px; align-items: center; }
+  .cm-ft kbd { display: inline-grid; place-items: center; min-width: 16px; height: 15px; padding: 0 3px; border: 1px solid var(--ncm-border); border-bottom-width: 2px; border-radius: 2px; font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+
+  /* footer extras: drafts link, preview toggle on */
+  .cm-ft .dlink { display: inline-flex; align-items: center; gap: 5px; font: 600 11px var(--ncm-font-display); color: var(--ncm-act, var(--ncm-secondary)); cursor: pointer; } .cm-ft .dlink.on { text-decoration: underline; }
+  .btn.on { border-color: var(--ncm-act, var(--ncm-secondary)); background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 14%, var(--ncm-bg-card, var(--ncm-bg-surface))); }
+  .cm-tb [role="button"].on { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 16%, transparent); color: var(--ncm-act, var(--ncm-secondary)); }
+  /* preview as recipient */
+  .cm-prev { flex: 1; min-height: 0; margin: 10px 12px 0; display: flex; flex-direction: column; gap: 8px; }
+  .cm-prev__lbl { display: flex; align-items: center; gap: 6px; font: 700 10.5px var(--ncm-font-display); letter-spacing: .04em; color: var(--ncm-act, var(--ncm-secondary)); }
+  .cm-prev__card { flex: 1; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .cm-prev__card .hd { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 9px; align-items: center; } .cm-prev__card .hd .cm-av { width: 30px; height: 30px; font-size: 12px; }
+  .cm-prev__card .hd .n { font: 600 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); display: flex; align-items: center; } .cm-prev__card .hd .a { font: 11px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-muted)); }
+  .cm-prev__card .pri { font: 700 10.5px var(--ncm-font-display); color: var(--ncm-attn, var(--ncm-accent)); display: inline-flex; gap: 4px; align-items: center; }
+  .cm-prev__card .s { font: 600 15px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .cm-prev__card .lock { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 14px; border: 1px solid color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 55%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 8%, transparent); }
+  .cm-prev__card .lock > i { font-size: 22px; color: var(--ncm-secret, var(--ncm-purple)); } .cm-prev__card .lock b { display: block; font: 700 12px var(--ncm-font-display); color: var(--ncm-secret, var(--ncm-purple)); } .cm-prev__card .lock span { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .cm-prev__card .lock .go { height: 28px; padding: 0 12px; display: inline-grid; place-items: center; border: 1px solid var(--ncm-secret, var(--ncm-purple)); border-radius: 2px; font: 700 11px var(--ncm-font-display); color: var(--ncm-secret, var(--ncm-purple)); }
+  .cm-prev__card .foot { margin-top: auto; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); } .cm-prev__card .foot i { color: var(--ncm-text-label, var(--ncm-text-muted)); font-size: 10px; }
+  /* dropdowns */
+  .dd { position: absolute; z-index: 5; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-raised, var(--ncm-bg-elevated, var(--ncm-bg-surface))); box-shadow: 0 10px 28px rgba(0,0,0,.45); }
+  .dd .h { display: flex; align-items: center; gap: 6px; padding: 7px 10px; font: 700 10.5px var(--ncm-font-display); letter-spacing: .04em; color: var(--ncm-text-label, var(--ncm-text-muted)); border-bottom: 1px solid var(--ncm-border); } .dd .h .i { color: var(--ncm-act, var(--ncm-secondary)); }
+  .dd .srch { display: flex; align-items: center; gap: 6px; margin: 7px 8px 5px; height: 24px; padding: 0 8px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)); font: 11.5px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); } .dd .srch .i { color: var(--ncm-text-label, var(--ncm-text-muted)); font-size: 9.5px; }
+  .dd .fch { display: flex; gap: 4px; padding: 0 8px 6px; } .dd .fch span { height: 18px; padding: 0 6px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--ncm-border); border-radius: 2px; font: 600 9.5px var(--ncm-font-display); color: var(--ncm-text-secondary); } .dd .fch span.on { border-color: var(--ncm-act, var(--ncm-secondary)); color: var(--ncm-act, var(--ncm-secondary)); } .dd .fch span b { font: 9px var(--ncm-font-mono); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+  .dd .r { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); cursor: pointer; } .dd .r:hover { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 8%, transparent); } .dd .r.on { background: color-mix(in srgb, var(--net-c, var(--ncm-act, var(--ncm-secondary))) 10%, transparent); box-shadow: inset 3px 0 var(--net-c, var(--ncm-act, var(--ncm-secondary))); }
+  .dd .r .ic { width: 26px; height: 26px; border-radius: 2px; display: grid; place-items: center; color: var(--net-c); background: color-mix(in srgb, var(--net-c) 12%, transparent); border: 1px solid color-mix(in srgb, var(--net-c) 30%, transparent); font-size: 11px; }
+  .dd .r .n { font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); } .dd .r .m { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+  .dd .r .st { font: 700 9.5px var(--ncm-font-display); color: var(--ncm-text-label, var(--ncm-text-muted)); } .dd .r.on .st { color: var(--net-c); } .dd .r .st.go { color: var(--ncm-act, var(--ncm-secondary)); } .dd .r.oor { opacity: .5; }
+  .dd .r .cm-av { width: 26px; height: 26px; font-size: 9px; } .dd .r .m.role { font-family: var(--ncm-font-display); color: var(--tc); font-weight: 600; }
+  .dd .r .st.al { color: var(--ncm-secret, var(--ncm-purple)); }
+  .dd .ft { padding: 6px 10px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+
+  /* send overlay */
+  .cm-ov { position: absolute; inset: 0; z-index: 9; background: color-mix(in srgb, var(--ncm-bg-pane, var(--ncm-bg-base)) 92%, transparent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+  .cm-ov .ring { width: 64px; height: 64px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 30%, transparent); border-top-color: var(--ncm-act, var(--ncm-secondary)); display: grid; place-items: center; color: var(--ncm-act, var(--ncm-secondary)); font-size: 20px; animation: cmspin 1.2s linear infinite; } .cm-ov .ring i { animation: cmspin 1.2s linear infinite reverse; } @keyframes cmspin { to { transform: rotate(360deg) } }
+  .cm-ov .st { font: 700 13px var(--ncm-font-display); letter-spacing: .06em; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .cm-ov .route { display: flex; align-items: center; gap: 8px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); } .cm-ov .route .d { width: 7px; height: 7px; border-radius: 50%; background: var(--ncm-act, var(--ncm-secondary)); } .cm-ov .route .l { width: 60px; height: 1px; background: linear-gradient(90deg, var(--ncm-act, var(--ncm-secondary)), transparent 50%, var(--ncm-act, var(--ncm-secondary))); background-size: 12px 1px; } .cm-ov .route b { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .cm-ov .bar { width: 240px; height: 3px; background: var(--ncm-border); border-radius: 2px; overflow: hidden; } .cm-ov .bar i { display: block; width: 62%; height: 100%; background: var(--ncm-act, var(--ncm-secondary)); }
+  .cm-ov .queued { border: 1px solid var(--ncm-attn, var(--ncm-accent)); background: color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 10%, transparent); border-radius: 2px; padding: 12px 18px; text-align: center; } .cm-ov .queued .st { color: var(--ncm-attn, var(--ncm-accent)); } .cm-ov .queued p { margin: 6px 0 0; font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); max-width: 300px; }
+  @media (prefers-reduced-motion: reduce) { .cm-txt .caret, .cm-ov .ring, .cm-ov .ring i { animation: none; } }
+</style>
+</head>
+<body>
+<h1 class="mk-h">The composer, revised — same 640×560, same 34 actions, nothing fighting for the line</h1>
+<p class="mk-p">
+  What changed: one header line (who · network · date; the mode badge is gone because the quote card and the Send button already say it) ·
+  To / Cc / Subject as a quiet address block · <b>delivery as chips with one drawer</b> — each option chip states its value, a lit chip opens
+  its own panel under the row (encryption's DV / type / fail mode / ICE actor are ONE panel instead of two strips), only one panel is ever
+  open, off chips are dashed · the editor toolbar is format | insert · attachments as chips · one slim alert line for dead zone / darknet.
+  Tokens only, so the GM frames wear the admin preset and the player frames the player theme. <code>?t=clean-light|high-contrast</code> for the GM frames · <code>?p=arasaka|netrunner|afterlife…</code> for the player frames<br><b style="color:#eee">Added:</b> drafts as a list (footer link → picker, frame 8) · Preview as recipient for the GM (frame 7) · message templates for the GM (the file icon in Insert, frame 8) · Insert Signature removed.</p>
+<div class="mk-grid" id="grid"></div>
+
+<script type="module">
+  // ?p=arasaka|netrunner|militech|… — a PLAYER preset's palette on :root, the way ThemeService.applyTheme writes it
+  // (colours only; fonts + contrast are the service's). Proves the player frames follow a player-made theme.
+  const p = new URLSearchParams(location.search).get('p');
+  if (p) try {
+    const { THEME_PRESETS, COLOR_VAR_MAP } = await import('../../scripts/utils/constants.js');
+    const t = THEME_PRESETS[p]; if (!t) throw new Error('no preset ' + p + ' — ' + Object.keys(THEME_PRESETS).join(', '));
+    for (const [k, v] of Object.entries(COLOR_VAR_MAP)) if (t[k]) document.documentElement.style.setProperty(v, t[k]);
+    document.querySelector('.mk-p').insertAdjacentHTML('beforeend', ' <b style="color:#eee">Player preset: ' + t.label + '</b>');
+  } catch (e) { document.body.insertAdjacentHTML('afterbegin', '<p style="color:#f88;font:13px sans-serif">?p failed: ' + e.message + ' (serve the mock — a file:// page cannot import the module)</p>'); }
+</script>
+<script>
+(function () {
+  const sp = new URLSearchParams(location.search);
+  const T = sp.get('t') || 'clean-dark';
+  const only = sp.get('only');
+  const av = (tx, hue, cls = '') => `<span class="cm-av ${cls}" style="--tc:${hue}">${tx}</span>`;
+  const H = { v: 'var(--ncm-hue-5, var(--ncm-secondary))', rogue: 'var(--ncm-hue-1, var(--ncm-primary))', judy: 'var(--ncm-hue-3, var(--ncm-accent))', pan: 'var(--ncm-hue-7, var(--ncm-secondary))', wak: 'var(--ncm-hue-2, var(--ncm-purple))' };
+  const C = { act: 'var(--ncm-act, var(--ncm-secondary))', attn: 'var(--ncm-attn, var(--ncm-accent))', bad: 'var(--ncm-bad, var(--ncm-danger))', secret: 'var(--ncm-secret, var(--ncm-purple))', good: 'var(--ncm-good, var(--ncm-success))', money: 'var(--ncm-money, var(--ncm-accent))', hint: 'var(--ncm-text-label, var(--ncm-text-muted))' };
+
+  function header(o) {
+    const who = o.anon
+      ? `${av('<i class="fas fa-user-secret"></i>', C.secret, 'anon')}<span class="t"><span class="n">GHOST_7F<span class="cm-tag" style="--tc:${C.secret}">ANON</span></span><span class="a">unknown@relay.darknet</span></span>`
+      : `${av(o.me.ini, o.me.hue)}<span class="t"><span class="n">${o.me.name}${o.gmTag ? `<span class="cm-tag" style="--tc:${C.attn}">GM</span>` : ''}${o.via ? `<span class="cm-tag" style="--tc:${C.attn}">VIA WS-7F-12</span>` : ''}</span><span class="a">${o.me.addr}</span></span>`;
+    const net = o.dead
+      ? `<span class="cm-net" style="--net-c:${C.bad}"><span class="d"></span>No signal<span class="bars"><b></b><b></b><b></b><b></b></span><i class="fas fa-caret-down c i"></i></span>`
+      : `<button class="cm-net ${o.netVia ? 'via' : ''}" style="--net-c:${o.net.c}">${o.netVia ? '<span class="via">VIA</span>' : ''}<span class="d"></span>${o.net.name}<span class="bars">${[1,2,3,4].map(i => `<b class="${i <= o.net.bars ? 'on' : ''}"></b>`).join('')}</span>${o.net.fx ? `<span class="fx">${o.net.fx}</span>` : ''}<i class="fas fa-caret-down c i" style="color:${C.hint}"></i></button>`;
+    const date = o.gm
+      ? `<button class="cm-date ${o.dated ? 'dated' : ''}"><i class="fas ${o.dated ? 'fa-calendar-check' : 'fa-clock'} i"></i>${o.dated ? '03 Aug 2045 09:15' : '14 Aug 2045 20:40'}<i class="fas fa-caret-down i" style="color:${C.hint}"></i></button>`
+      : `<span class="cm-date"><i class="fas fa-clock i"></i>14 Aug 2045 20:40</span>`;
+    return `<div class="cm-hd">
+      <div class="cm-who">${who}${o.gm ? `<i class="fas fa-caret-down c"></i>` : ''}</div>
+      ${net}${date}
+      ${o.sendas ? sendasDD() : ''}${o.netpick ? netDD(o) : ''}
+    </div>`;
+  }
+  function sendasDD() {
+    const r = (ini, hue, n, role, addr, st = '') => `<div class="r" style="--tc:${hue}">${av(ini, hue)}<div><div class="n">${n}</div><div class="m role">${role} <span style="color:var(--ncm-text-addr, var(--ncm-text-muted));font-weight:400;font-family:var(--ncm-font-mono)">· ${addr}</span></div></div>${st ? `<span class="st ${st === 'alias' ? 'al' : ''}">${st}</span>` : ''}</div>`;
+    return `<div class="dd" style="left:12px;top:44px;width:300px">
+      <div class="h"><i class="fas fa-masks-theater i"></i>Send as</div>
+      <div class="srch"><i class="fas fa-magnifying-glass i"></i>Search the directory…</div>
+      <div class="fch"><span class="on">Recent <b>5</b></span><span>Fixers <b>9</b></span><span>Corporate <b>14</b></span><span>Media <b>3</b></span><span>Gangs <b>7</b></span></div>
+      ${r('R', H.rogue, 'Rogue Amendiares', 'Fixer', 'rogue@afterlife.nc', 'main')}
+      ${r('R', H.rogue, 'The Queen', 'Fixer', 'queen@relay.darknet', 'alias')}
+      ${r('J', H.judy, 'Judy Alvarez', 'Media', 'judy@mox.nc')}
+      ${r('W', H.wak, 'Wakako Okada', 'Fixer', 'wakako@kabuki.nc')}
+      <div class="ft">Everyone else by role below · the GM writes as anyone</div>
+    </div>`;
+  }
+  function netDD(o) {
+    const r = (n, meta, c, ic, st, cls = '') => `<div class="r ${cls}" style="--net-c:${c}"><span class="ic"><i class="fas ${ic}"></i></span><div><div class="n">${n}</div><div class="m">${meta}</div></div><span class="st ${cls === 'on' ? '' : 'go'}">${st}</span></div>`;
+    return `<div class="dd" style="right:12px;top:44px;width:300px">
+      <div class="h"><i class="fas fa-tower-broadcast i"></i>Send this message via</div>
+      <div class="srch"><i class="fas fa-magnifying-glass i"></i>Search networks…</div>
+      <div class="fch"><span class="on">All <b>7</b></span><span>Public <b>1</b></span><span>Corporate <b>3</b></span><span>Government <b>1</b></span><span>Hidden <b>2</b></span></div>
+      ${r('CitiNet', 'Your connection · 90%', '#19f3f7', 'fa-wifi', 'Default', 'on')}
+      ${r('Arasaka CorpNet', 'Corporate subnet · 70%', '#F65261', 'fa-building', 'Send via')}
+      ${r('Afterlife Back Room', 'Hidden subnet · 30%', '#f472b6', 'fa-martini-glass', 'Send via')}
+      ${r('DarkNet', 'Hidden subnet · 55% · anonymised', '#a855f7', 'fa-user-secret', 'Send via')}
+      ${r('Militech TacNet', 'Corporate subnet · out of range', '#84cc16', 'fa-crosshairs', 'Send via', 'oor')}
+      <div class="ft"><i class="fas fa-envelope"></i> The message is stamped with the network you pick; your own connection does not change.</div>
+    </div>`;
+  }
+  function alert(o) {
+    if (o.dead) return `<div class="cm-alert" style="--tc:${C.bad}"><i class="fas fa-triangle-exclamation i"></i><span><b>Dead zone.</b> No signal here — the message queues and sends when one comes back.</span><button class="act">Queue</button></div>`;
+    if (o.darknet) return `<div class="cm-alert" style="--tc:${C.secret}"><i class="fas fa-mask i"></i><span><b>Darknet.</b> Anonymised routing — your identity is masked. ${o.fail ? `${o.fail}% chance the transmission fails.` : ''}</span></div>`;
+    return '';
+  }
+  function quote(o) {
+    if (!o.quote) return '';
+    const fwd = o.mode === 'forward';
+    const tc = fwd ? C.attn : C.act;
+    return `<div class="cm-quote" style="--tc:${tc};--net-c:#19f3f7">
+      <div class="lbl"><i class="fas ${fwd ? 'fa-share' : 'fa-reply'}"></i>${fwd ? 'Forwarding this message' : 'Replying to'}${o.quote.ice ? `<span class="ice"><i class="fas fa-shield-halved"></i>ICE · DV ${o.quote.ice}</span>` : ''}</div>
+      <div class="hd">${av(o.quote.ini, o.quote.hue)}<div class="n">${o.quote.name}<span>${o.quote.addr}</span></div><div class="m">${o.quote.when}<span class="nt">CitiNet</span></div></div>
+      <div class="s">${o.quote.subject}</div>
+      <div class="b">${o.quote.body}</div>
+      <div class="more"><i class="fas fa-chevron-down" style="font-size:9px"></i>Show the whole message</div>
+      ${o.quote.att ? `<div class="att">${o.quote.att}</div>` : ''}
+    </div>`;
+  }
+  function addr(o) {
+    const to = o.to.map(t => {
+      if (t.grp) return `<span class="chip grp" style="--tc:${t.hue}">${av('<i class="fas fa-users"></i>', t.hue)}${t.name}<span class="ct">×${t.n}</span><i class="fas fa-xmark x"></i></span>`;
+      if (t.anon) return `<span class="chip anon"><i class="fas fa-user-secret i"></i>${t.name}</span>`;
+      return `<span class="chip ${t.lock ? 'lock' : ''} ${t.warn ? 'warn' : ''}" style="--tc:${t.hue}">${t.lock ? '<i class="fas fa-lock i"></i>' : av(t.ini, t.hue)}${t.name}${t.warn ? '<i class="fas fa-triangle-exclamation w" title="Not reachable on this network"></i>' : ''}${t.lock ? '' : '<i class="fas fa-xmark x"></i>'}</span>`;
+    }).join('');
+    const locked = o.to.some(t => t.lock || t.anon);
+    return `<div class="cm-addr">
+      <div class="cm-row ${o.errTo ? 'err' : ''}"><span class="k">To</span><div class="v">${to}${locked ? '' : `<span class="ph">${o.to.length ? 'Add someone…' : 'Search contacts…'}</span>`}</div>${locked ? '' : `<span class="e">Cc</span>`}${o.errTo ? `<div class="cm-err"><i class="fas fa-circle-exclamation"></i>${o.errTo}</div>` : ''}</div>
+      ${o.cc ? `<div class="cm-row"><span class="k">Cc</span><div class="v">${o.cc}<span class="ph">Add someone…</span></div><span class="e"><i class="fas fa-xmark"></i></span></div>` : ''}
+      ${o.mode === 'reply' ? '' : `<div class="cm-row"><span class="k">Subject</span><div class="v">${o.subject ? `<span class="txt">${o.subject}</span>` : '<span class="ph">What is it about?</span>'}</div><span></span></div>`}
+    </div>`;
+  }
+  // delivery chips + the one open drawer
+  function delivery(o) {
+    const d = o.d || {};
+    const chip = (key, icon, label, val, tc, on, extra = '') => {
+      const open = o.drawer === key;
+      return `<button class="opt ${on ? 'on' : 'off'} ${open ? 'open' : ''}" style="--tc:${tc}"><i class="fas ${icon} i"></i>${label}${val ? `<span class="v">${val}</span>` : ''}${extra}<i class="fas fa-caret-down c"></i></button>`;
+    };
+    const priTc = { low: C.hint, normal: C.act, urgent: C.attn, critical: C.bad }[d.pri || 'normal'];
+    const priLabel = { low: 'Low', normal: 'Normal', urgent: 'Urgent', critical: 'Critical' }[d.pri || 'normal'];
+    let chips = chip('pri', 'fa-flag', priLabel, '', priTc, (d.pri || 'normal') !== 'normal');
+    if (o.gm) {
+      chips += chip('enc', d.enc ? 'fa-lock' : 'fa-unlock', d.enc ? (d.encType || 'ICE') : 'Open', d.enc ? `DV ${d.dv || 15}` : '', d.encType === 'Black ICE' ? C.bad : C.secret, !!d.enc);
+      chips += chip('sd', 'fa-bomb', 'Self-destruct', d.sd ? d.sd : '', C.bad, !!d.sd);
+      chips += chip('anon', 'fa-user-secret', 'Anonymous', d.anon ? d.anon : '', C.secret, !!d.anon);
+    }
+    chips += chip('sched', 'fa-clock', 'Schedule', d.sched ? d.sched : '', C.attn, !!d.sched);
+    let drawer = '';
+    const seg = (opts, on, tc) => `<span class="seg" style="--tc:${tc}">${opts.map(x => `<button class="${x === on ? 'on' : ''}">${x}</button>`).join('')}</span>`;
+    if (o.drawer === 'pri') drawer = `<div class="drawer" style="--tc:${priTc}"><span class="k">Priority</span><div class="g">${seg(['Low', 'Normal', 'Urgent', 'Critical'], priLabel, priTc)}</div><div class="hint">Urgent and critical mail is flagged in the recipient's inbox and toasts louder.</div><i class="fas fa-xmark close"></i></div>`;
+    if (o.drawer === 'enc') drawer = `<div class="drawer" style="--tc:${d.encType === 'Black ICE' ? C.bad : C.secret}">
+        <span class="k">Lock</span><div class="g">${seg(['Open', 'ICE'], d.enc ? 'ICE' : 'Open', C.secret)}<span class="num"><span class="k2">DV</span><input value="${d.dv || 15}"></span>${seg(['Standard', 'Red ICE', 'Black ICE'], d.encType || 'Standard', C.bad)}</div>
+        <span class="k">On a miss</span><div class="g">${seg(['Damage', 'Lockout', 'Nothing'], d.fail || 'Damage', C.bad)}</div>
+        <span class="k">The ICE</span><div class="g">${seg(['Default', 'An actor'], d.iceSrc || 'Default', C.bad)}${d.iceSrc === 'An actor' ? `<span class="ice-actor sel"><span class="p"><i class="fas fa-ghost"></i></span>Hellhound<span class="atk">ATK 6</span></span><span class="ice-actor"><span class="p"><i class="fas fa-ghost"></i></span>Kraken<span class="atk">ATK 8</span></span>` : ''}</div>
+        <div class="hint">The recipient has to breach it to read the message. Black ICE bites the runner who fails.</div><i class="fas fa-xmark close"></i></div>`;
+    if (o.drawer === 'sd') drawer = `<div class="drawer" style="--tc:${C.bad}"><span class="k">Self-destruct</span><div class="g">${seg(['after reading', 'in 1 h', 'in 6 h', 'in 24 h'], d.sd || 'in 1 h', C.bad)}</div><div class="hint">Gone for good when it fires — the recipient can't recover it, and neither can you.</div><i class="fas fa-xmark close"></i></div>`;
+    if (o.drawer === 'anon') drawer = `<div class="drawer" style="--tc:${C.secret}">
+        <span class="k">Mask</span><div class="g">${seg(['Filtered', 'Scrambled', 'Ghost', 'Monolith'], d.anon || 'Scrambled', C.secret)}</div>
+        <span class="k">Alias</span><div class="g"><span class="num wide"><input value="${d.alias || ''}" placeholder="UNKNOWN"></span>${seg(['Replies on', 'One-way'], d.oneWay ? 'One-way' : 'Replies on', C.secret)}<span class="num"><span class="k2">Trace DV</span><input value="15"></span></div>
+        <div class="hint">The recipient sees the mask and the alias; who you are stays on your sent copy only.</div><i class="fas fa-xmark close"></i></div>`;
+    if (o.drawer === 'sched') drawer = `<div class="drawer" style="--tc:${C.attn}"><span class="k">Deliver at</span><div class="g"><span class="pick ${d.sched ? '' : 'empty'}" style="--tc:${C.attn}"><i class="fas fa-clock i"></i>${d.sched ? '15 Aug 2045 08:00' : 'Pick a time…'}<i class="fas fa-chevron-down c"></i></span></div><div class="hint">Held until then on the game clock; Send becomes Schedule.</div><i class="fas fa-xmark close"></i></div>`;
+    return `<div class="cm-del"><div class="chips">${chips}</div>${drawer}</div>`;
+  }
+  function editor(o) {
+    const tb = `<div class="cm-tb">
+      <span class="grp"><button title="Bold"><i class="fas fa-bold"></i></button><button title="Italic"><i class="fas fa-italic"></i></button><button title="Code"><i class="fas fa-code"></i></button><button title="Link"><i class="fas fa-link"></i></button><button title="List"><i class="fas fa-list-ul"></i></button><button title="More formatting — underline, strike, quote, numbered, divider, clear, ICE text block">⋯</button></span>
+      <span class="sp"></span>
+      <span class="grp"><span class="lbl">Insert</span><button title="Attach a ${window.SHARD_TERM || 'data shard'}"><i class="fas fa-microchip"></i></button><button title="Attach a file"><i class="fas fa-paperclip"></i></button><button title="Embed audio / video"><i class="fas fa-photo-film"></i></button>${o.noEddies ? '' : `<button class="eb" title="Attach eddies"><i class="fas fa-coins"></i></button>`}<span class="sep"></span><button title="Timestamp"><i class="fas fa-clock"></i></button><button title="Location"><i class="fas fa-location-dot"></i></button>${o.gm ? '<span class="sep"></span><button title="Templates — insert one, or save this message as one" class="' + (o.tplMenu ? 'on' : '') + '"><i class="fas fa-file-lines"></i></button>' : ''}</span>
+    </div>`;
+    const body = o.body ? `${o.body}<span class="caret"></span>` : `<span class="ph">${o.mode === 'forward' ? 'Add a note (optional)…' : 'Type your message…'}</span>`;
+    return `<div class="cm-ed ${o.d && o.d.enc ? 'ice' : ''}">${tb}<div class="cm-txt">${body}</div><div class="cm-edfoot">${o.d && o.d.enc ? `<span class="ice"><i class="fas fa-shield-halved"></i>ICE-protected</span>` : ''}<span class="sp"></span>${(o.body || '').replace(/<[^>]+>/g, '').length} chars</div></div>`;
+  }
+  function attachments(o) {
+    if (!o.att) return '';
+    return `<div class="cm-att">${o.att}</div>`;
+  }
+  function footer(o) {
+    let primary;
+    if (o.dead) primary = `<button class="btn dis"><i class="fas fa-paper-plane i"></i>Send</button><button class="btn pri" style="--tc:${C.attn}"><i class="fas fa-clock i"></i>Queue</button>`;
+    else if (o.d && o.d.sched) primary = `<button class="btn pri" style="--tc:${C.attn}"><i class="fas fa-clock i"></i>Schedule</button>`;
+    else primary = `<button class="btn pri"><i class="fas fa-paper-plane i"></i>${o.mode === 'reply' ? 'Send reply' : o.mode === 'forward' ? 'Forward' : 'Send'}</button>`;
+    return `<div class="cm-ft">${primary}<button class="btn" title="Save as a draft and close"><i class="fas fa-floppy-disk i"></i>Draft</button>${o.gm ? `<button class="btn ${o.preview ? 'on' : ''}" title="See it as the recipient will"><i class="fas ${o.preview ? 'fa-eye-slash' : 'fa-eye'} i"></i>${o.preview ? 'Back to editing' : 'Preview'}</button>` : ''}
+      <div class="meta">${o.drafts ? `<span class="dlink ${o.draftMenu ? 'on' : ''}"><i class="fas fa-folder-open"></i>${o.drafts} drafts</span>` : ''}${o.saved ? `<span class="ok"><i class="fas fa-circle-check"></i>Saved ${o.saved}</span>` : ''}<span><kbd>Ctrl</kbd>+<kbd>↵</kbd> ${o.dead ? 'Queue' : o.d && o.d.sched ? 'Schedule' : 'Send'}</span><span><kbd>Esc</kbd> Close</span></div></div>`;
+  }
+  function draftsDD(o) {
+    if (!o.draftMenu) return '';
+    const r = (ini, hue, to, sub, age, kind) => `<div class="r" style="--tc:${hue}">${av(ini, hue)}<div><div class="n">${to}${kind ? `<span class="cm-tag" style="--tc:${C.act};margin-left:6px">${kind}</span>` : ''}</div><div class="m">${sub}</div></div><span class="st">${age}</span></div>`;
+    return `<div class="dd" style="left:12px;bottom:50px;width:330px"><div class="h"><i class="fas fa-folder-open i"></i>Your drafts</div>
+      ${r('V', H.v, 'V', 'About the Konpeki job', '2 min', '')}${r('J', H.judy, 'Judy Alvarez', 'Re: BD rig — the files you wanted', '1 h', 'reply')}${r('W', H.wak, 'Wakako Okada', '(no subject)', 'yesterday', '')}
+      <div class="ft">A draft is yours until you send it or delete it from the Agent's Drafts tab.</div></div>`;
+  }
+  function tplDD(o) {
+    if (!o.tplMenu) return '';
+    const r = (n, m) => `<div class="r" style="--tc:${C.act};grid-template-columns:minmax(0,1fr) auto"><div><div class="n">${n}</div><div class="m">${m}</div></div><span class="st go">Insert</span></div>`;
+    return `<div class="dd" style="right:12px;top:90px;width:300px"><div class="h"><i class="fas fa-file-lines i"></i>Templates</div>
+      <div class="srch"><i class="fas fa-magnifying-glass i"></i>Search templates…</div>
+      ${r('Bounty notice', 'NCPD · subject + body')}${r('Job offer — fixer', 'body only')}${r('Arasaka HR boilerplate', 'subject + body + ICE DV 14')}${r('Trauma Team invoice', 'body + 0 eb attached')}
+      <div class="ft" style="display:flex;justify-content:space-between"><span><i class="fas fa-plus"></i> Save this message as a template</span><span>Import / Export</span></div></div>`;
+  }
+  function previewPane(o) {
+    if (!o.preview) return '';
+    return `<div class="cm-prev"><div class="cm-prev__lbl"><i class="fas fa-eye"></i>What V will see</div>
+      <div class="cm-prev__card">
+        <div class="hd">${av('<i class="fas fa-user-secret"></i>', C.secret, 'anon')}<div><div class="n">GHOST_7F <span class="cm-tag" style="--tc:${C.secret};margin-left:6px">ANON</span></div><div class="a">unknown@relay.darknet · DarkNet · 14 Aug 2045 20:40</div></div><span class="pri"><i class="fas fa-flag"></i> Urgent</span></div>
+        <div class="s">Re: About the Konpeki job</div>
+        <div class="lock"><i class="fas fa-lock"></i><div><b>ICE-protected · DV 18 · Black ICE</b><span>The body stays scrambled until V breaches it. A failed breach deals damage.</span></div><span class="go">Breach</span></div>
+        <div class="foot"><i class="fas fa-bomb"></i> Self-destructs after reading · <i class="fas fa-reply"></i> Replies go back to the mask</div>
+      </div></div>`;
+  }
+  function overlay(o) {
+    if (!o.overlay) return '';
+    if (o.overlay === 'queued') return `<div class="cm-ov"><div class="queued"><div class="st"><i class="fas fa-clock"></i> Message queued</div><p>No signal in this dead zone. It sends by itself when your Agent finds a network.</p></div></div>`;
+    return `<div class="cm-ov"><div class="ring"><i class="fas fa-paper-plane"></i></div><div class="st">Transmitting</div><div class="route"><b>V</b><span class="d"></span><span class="l"></span>CitiNet<span class="l"></span><span class="d"></span><b>Rogue Amendiares</b></div><div class="bar"><i></i></div></div>`;
+  }
+  function frame(o) {
+    const title = o.mode === 'reply' ? 'Reply' : o.mode === 'forward' ? 'Forward' : 'New message';
+    return `<div class="mk-win application ncm-app ncm-message-composer" ${o.gm ? `data-ncm-admin-theme="${T}"` : ''}>
+      <div class="mk-title"><i class="fas fa-pen-to-square"></i>${title}${o.gm ? `<i class="fas fa-eye eye" title="Switch to player view"></i>` : ''}<i class="fas fa-xmark x"></i></div>
+      <div class="window-content"><div class="cm">
+        ${header(o)}${alert(o)}
+        <div class="cm-body">${o.preview ? previewPane(o) : quote(o) + addr(o) + delivery(o) + editor(o) + attachments(o)}${tplDD(o)}</div>
+        ${footer(o)}${draftsDD(o)}${overlay(o)}
+      </div></div></div>`;
+  }
+
+  const V = { ini: 'V', hue: H.v, name: 'V', addr: 'v@nightcity.net' };
+  const GM = { ini: 'R', hue: H.rogue, name: 'Rogue Amendiares', addr: 'rogue@afterlife.nc' };
+  const citi = { name: 'CitiNet', c: '#19f3f7', bars: 4 };
+  const frames = [
+    { n: 1, cap: 'GM · new message, nothing switched on. The delivery row is five quiet chips; the header is one line.',
+      o: { gm: true, gmTag: true, me: GM, net: citi, mode: 'new', to: [{ ini: 'V', hue: H.v, name: 'V' }], subject: 'About the Konpeki job', d: {}, body: 'Choom, the window is Thursday. Bring the <b>Ghost</b> and nothing else you can\'t walk away from.', saved: '2 min ago', drafts: 3 } },
+    { n: 2, cap: 'GM · reply with everything on — ICE, self-destruct, anonymous, urgent. The encryption drawer is open; the other lit chips carry their value and stay closed.',
+      o: { gm: true, me: GM, anon: true, net: { name: 'DarkNet', c: '#a855f7', bars: 3, fx: 'MASKED' }, darknet: true, fail: 12, mode: 'reply', quote: { ini: 'V', hue: H.v, name: 'V', addr: 'v@nightcity.net', when: '14 Aug 20:12', subject: 'Re: About the Konpeki job', body: 'Thursday works. Who else knows about the window? If this came from Dex I want it in writing before I go up those stairs.' },
+        to: [{ lock: true, ini: 'V', hue: H.v, name: 'V' }], d: { pri: 'urgent', enc: true, encType: 'Black ICE', dv: 18, fail: 'Damage', iceSrc: 'An actor', sd: 'after reading', anon: 'Scrambled', alias: 'GHOST_7F' }, drawer: 'enc', body: 'Nobody. Read this once.' } },
+    { n: 3, cap: 'GM · the two header pickers: Send as (directory, recents first, aliases marked) and the network picker (this message only, VIA). Both are the shared name-picker vocabulary.',
+      o: { gm: true, gmTag: true, me: GM, net: { name: 'Arasaka CorpNet', c: '#F65261', bars: 3 }, netVia: true, dated: true, sendas: true, netpick: true, mode: 'new', to: [{ grp: true, hue: H.judy, name: 'The crew', n: 4 }, { ini: 'P', hue: H.pan, name: 'Panam', warn: true }], subject: 'Badlands run — Saturday', d: { sched: '15 Aug 08:00' }, body: '' } },
+    { n: 4, cap: 'Player · reply in a dead zone, player theme. The alert is one line, Send is disabled, Queue is the primary — the same rule the footer already follows.',
+      o: { gm: false, me: V, dead: true, mode: 'reply', quote: { ini: 'R', hue: H.rogue, name: 'Rogue Amendiares', addr: 'rogue@afterlife.nc', when: '14 Aug 19:50', subject: 'About the Konpeki job', body: 'Choom, the window is Thursday. Bring the Ghost and nothing else you can\'t walk away from.', ice: 15, att: '<span class="eb"><i class="fas fa-coins"></i>500 eb</span><span><i class="fas fa-microchip"></i>Konpeki floorplan</span>' },
+        to: [{ lock: true, ini: 'R', hue: H.rogue, name: 'Rogue Amendiares' }], d: { pri: 'critical' }, body: 'Thursday works. Who else knows?', saved: 'just now' } },
+    { n: 5, cap: 'Player · new message with the schedule drawer open and two attachments. A player sees priority and schedule only — the GM chips are simply not there.',
+      o: { gm: false, me: V, net: citi, mode: 'new', to: [{ ini: 'J', hue: H.judy, name: 'Judy Alvarez' }], cc: `<span class="chip" style="--tc:${H.pan}">${av('P', H.pan)}Panam<i class="fas fa-xmark x"></i></span>`, subject: 'BD rig — the files you wanted', d: { sched: '15 Aug 08:00' }, drawer: 'sched', body: 'Sending the scrubbed ones. The raw feed stays with me.',
+        att: `<span style="--tc:${C.act}"><i class="fas fa-microchip i"></i>Clouds export<span class="sz">2 files</span><i class="fas fa-xmark x"></i></span><span class="eb"><i class="fas fa-coins i"></i>250 eb<i class="fas fa-xmark x"></i></span><span style="--tc:${C.act}"><i class="fas fa-photo-film i"></i>braindance_03.webm<span class="sz">14 MB</span><i class="fas fa-xmark x"></i></span>` } },
+    { n: 6, cap: 'Sending. The overlay is the one moment of motion in the window; a queued send shows an amber card instead, and a failure keeps the composer open with Retry / Queue / Save draft.',
+      o: { gm: false, me: V, net: citi, mode: 'new', to: [{ ini: 'R', hue: H.rogue, name: 'Rogue Amendiares' }], subject: 'Thursday', d: {}, body: 'On my way.', overlay: 'send' } },
+    { n: 7, cap: 'GM · Preview as recipient. The Preview button in the footer swaps the form for what the player will actually open: here the masked sender, the ICE lock they have to breach, the self-destruct note. Back to editing returns the form untouched.',
+      o: { gm: true, me: GM, anon: true, net: { name: 'DarkNet', c: '#a855f7', bars: 3, fx: 'MASKED' }, mode: 'reply', to: [{ lock: true, ini: 'V', hue: H.v, name: 'V' }], d: { pri: 'urgent', enc: true, encType: 'Black ICE', dv: 18, sd: 'after reading', anon: 'Scrambled' }, body: 'Nobody. Read this once.', preview: true } },
+    { n: 8, cap: 'The drafts picker (from the footer link — a fresh composer never restores one by itself) and the GM\'s Templates menu (insert one, or save what you are writing as one).',
+      o: { gm: true, gmTag: true, me: GM, net: citi, mode: 'new', to: [], subject: '', d: {}, body: '', drafts: 3, draftMenu: true, tplMenu: true } },
+  ];
+  const grid = document.getElementById('grid');
+  for (const f of frames) {
+    if (only && String(f.n) !== only) continue;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<p class="mk-p" style="margin:0 0 6px"><b style="color:#eee">${f.n}.</b> ${f.cap}</p>${frame(f.o).replace(/<button/g, '<span role="button" tabindex="0"').replace(/<\/button>/g, '</span>')}`; // spans: a real <button> here is restyled by core/CPR at a specificity the mock need not fight (the build does, in message-composer.css)
+    grid.appendChild(wrap);
+  }
+}());
+</script>
+</body>
+</html>

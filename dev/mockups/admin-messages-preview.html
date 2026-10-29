@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Messages tab — faithful render</title>
+<!--
+  Shows the REAL tab-messages.hbs rendered by the sim against the real cascade.
+    1. NCM_DUMP=<dir> node dev/tools/sims/test-admin-messages.mjs   (writes msg2-<view>.html)
+    2. chrome --allow-file-access-from-files "…/admin-messages-preview.html?dir=file:///<dir>&view=reply|all|outbox|inboxes&t=clean-light&pop=1"
+  ?open=<selector> opens those <details> (the Desk dropdowns: .ncm-msg2-desk__qhd .ncm-msg2-dd / .ncm-msg2-sendbtn .ncm-msg2-dd).
+  ?pop=1 renders the 1120×780 pop-out frame instead of the 820×600 panel; ?h=<px> overrides the height.
+  ?view=all&cal=year|month|week|day renders the calendar navigator at that level (the sim writes msg2-all-<level>.html).
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body { margin: 0; background: #333; padding: 12px; }
+  .frame { margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #555; }
+  .frame, .frame.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+</style></head>
+<body>
+<div class="ncm-app ncm-admin-panel frame" id="p" data-ncm-scanlines="false">
+  <div class="ncm-admin-panel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div class="ncm-admin-content" id="c"></div>
+  </div>
+</div>
+<script>
+  const Q = new URLSearchParams(location.search);
+  const p = document.getElementById('p');
+  p.dataset.ncmAdminTheme = Q.get('t') || 'clean-dark';
+  const pop = Q.get('pop') === '1';
+  p.style.width = pop ? '1120px' : '820px';
+  p.style.height = Q.get('h') ? Q.get('h') + 'px' : (pop ? '780px' : '600px');
+  if (pop) p.classList.add('ncm-admin-panel--pop');
+  const view = Q.get('view') || 'reply';
+  const file = view === 'all' && Q.get('cal') ? `msg2-all-${Q.get('cal')}.html` : `msg2-${view}.html`;
+  fetch(`${Q.get('dir')}/${file}`).then(r => r.text()).then(h => { document.getElementById('c').innerHTML = h; document.title = 'rendered';
+      // ?open=<css selector>: open those <details> menus (e.g. .ncm-msg2-dd).
+      if (Q.get('open')) document.querySelectorAll(Q.get('open')).forEach((d) => { d.open = true; });
+      // ?contrast=1: walk every text node in the tab and list the ones under 4.5:1 against the first opaque background behind them.
+      if (Q.get('contrast') === '1') {
+        // rgb(a)() channels are 0–255; a color-mix() computes to color(srgb r g b / a) with 0–1 channels.
+        const chan = (c) => { const m = (c.match(/-?[\d.]+(?:e-?\d+)?/g) || []).map(Number); return c.startsWith('color(') ? [m[0] * 255, m[1] * 255, m[2] * 255, m.length > 3 ? m[3] : 1] : [m[0], m[1], m[2], m.length > 3 ? m[3] : 1]; };
+        const lum = (c) => { const [r, g, b] = chan(c).slice(0, 3).map(v => { v = Math.max(0, Math.min(255, v)) / 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+        const alpha = (c) => chan(c)[3];
+        const bgOf = (el) => { for (let e = el; e; e = e.parentElement) { const bg = getComputedStyle(e).backgroundColor; if (bg && alpha(bg) >= .95 && bg !== 'transparent') return bg; } return 'rgb(0,0,0)'; };
+        const bad = [];
+        const walker = document.createTreeWalker(document.getElementById('c'), NodeFilter.SHOW_TEXT);
+        let n;
+        while ((n = walker.nextNode())) {
+          if (!n.textContent.trim()) continue;
+          const el = n.parentElement; const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+          const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) < .5) continue;
+          const l1 = lum(cs.color), l2 = lum(bgOf(el)); const ratio = (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05);
+          if (ratio < 4.5) bad.push(`${ratio.toFixed(2)} ${el.className || el.tagName} "${n.textContent.trim().slice(0, 30)}"`);
+        }
+        document.title = `contrast: ${bad.length} under 4.5`;
+        const pre = document.createElement('pre'); pre.style.cssText = 'color:#fff;font:11px monospace;white-space:pre-wrap'; pre.textContent = bad.join('\n') || 'all text ≥ 4.5:1'; document.body.appendChild(pre);
+      }
+      // ?diag=<css selector>: dump each match's box + key computed styles into the page.
+      if (Q.get('diag')) {
+        const out = [...document.querySelectorAll(Q.get('diag'))].slice(0, 12).map((el) => { const r = el.getBoundingClientRect(), s = getComputedStyle(el); return `${el.className} ${Math.round(r.width)}x${Math.round(r.height)} pad=${s.padding} w=${s.width} minw=${s.minWidth} flex=${s.flex} box=${s.boxSizing} font=${s.fontFamily.split(',')[0]} ${s.fontSize}`; });
+        const pre = document.createElement('pre'); pre.style.cssText = 'color:#fff;font:11px monospace;white-space:pre-wrap'; pre.textContent = out.join('\n'); document.body.appendChild(pre);
+      } })
+    .catch(e => { document.getElementById('c').textContent = 'fetch failed: ' + e; });
+</script>
+</body></html>

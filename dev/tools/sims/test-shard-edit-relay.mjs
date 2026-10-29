@@ -414,7 +414,8 @@ await ok('viewer, sheet rows, directory menu, launch flow, admin badge, config s
   assert.ok(hbs.includes('{{#if canPlayerEdit}}'));
   assert.ok(hbs.includes('{{else if canPlayerEdit}}'));
   const so = read('scripts/integrations/ShardSheetOverride.js');
-  assert.equal((so.match(/canEditShard\(/g) || []).length, 4, 'directory menu, inventory row, launch flow, canRename');
+  assert.equal((so.match(/canEditShard\(/g) || []).length, 3, 'the shared Night City menu (directory + inventory row), launch flow, canRename');
+  assert.ok(so.includes('this._nightCityEntries(item, actor)') && so.includes('this._nightCityEntries(item, resolveOperator())'), 'both menus read the one Night City builder');
   const tab = read('scripts/ui/AdminPanel/tabs/ShardsTab.js');
   assert.ok(tab.includes('resolveShardEditing(config)'));
   assert.ok(tab.includes("isWorldItem: ownerKey === 'world'"));
@@ -422,8 +423,8 @@ await ok('viewer, sheet rows, directory menu, launch flow, admin badge, config s
   const app = read('scripts/ui/AdminPanel/AdminPanelApp.js');
   assert.ok(app.includes('shardOwnership: AdminPanelApp._onShardOwnership'));
   const sh = read('templates/admin-panel/tab-shards.hbs');
-  assert.equal((sh.match(/data-action="shardOwnership"/g) || []).length, 2, 'row + expanded actions');
-  assert.ok(sh.includes('{{#if this.isWorldItem}}'), 'an embedded item has no ownership of its own');
+  assert.equal((sh.match(/data-action="shardOwnership"/g) || []).length, 1, 'the detail ⋯ menu (2026-10-27 redesign)');
+  assert.ok(sh.includes('{{#if d.isWorldItem}}'), 'an embedded item has no ownership of its own');
   const cfg = read('scripts/ui/ItemInbox/ItemInboxConfig.js');
   assert.ok(cfg.includes("playerEditing: val('playerEditing', '')"));
   assert.ok(read('templates/item-inbox/item-inbox-config.hbs').includes('name="playerEditing"'));

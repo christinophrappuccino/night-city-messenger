@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Role Manager probe</title>
+<!--
+  Mounts the REAL RoleManagerDialog (scripts/ui/GMContactManager/RoleManagerDialog.js) with a stub
+  Dialog + service, against the real cascade. Serve: node dev/tools/serve-mockups.cjs →
+  http://127.0.0.1:8123/dev/mockups/role-manager-probe.html?t=clean-dark|clean-light|high-contrast&sel=smuggler|solo&new=1
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>body { margin: 0; padding: 20px; background: #1b1b22; } .application.dialog, .app.dialog { position: relative !important; inset: auto !important; }</style>
+</head>
+<body>
+<div id="out"></div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+globalThis.ui = { notifications: { info: console.log, warn: console.warn, error: console.error } };
+globalThis.game = { settings: { get: () => null }, user: { isGM: true } };
+class Dialog {
+  constructor(data, opts) { this.data = data; this.opts = opts; }
+  render() {
+    const el = document.createElement('div');
+    el.className = ['app', 'window-app', 'dialog', ...(this.opts.classes || [])].join(' ');
+    el.setAttribute('data-ncm-admin-theme', theme);
+    el.style.width = (this.opts.width || 600) + 'px';
+    el.innerHTML = `<header class="window-header"><h4 class="window-title">${this.data.title}</h4></header>
+      <section class="window-content"><div class="dialog-content">${this.data.content}</div><div class="dialog-buttons"><button class="dialog-button">Close</button></div></section>`;
+    document.getElementById('out').appendChild(el);
+    this.data.render?.([el]);
+  }
+  static confirm() { return Promise.resolve(true); }
+}
+globalThis.Dialog = Dialog;
+const contacts = [
+  { name: 'Rogue', role: 'fixer' }, { name: 'Wakako', role: 'fixer' }, { name: 'Brick Jones', role: 'solo' },
+  { name: 'Jackie', role: 'solo' }, { name: 'Dino', role: 'smuggler' }, { name: 'Mitch', role: 'smuggler' }, { name: 'Viktor', role: 'medtech' },
+];
+const custom = [{ id: 'smuggler', label: 'Smuggler', icon: 'box-open', color: 'var(--ncm-hue-3)' }, { id: 'cultist', label: 'Cultist', icon: 'eye', color: '#a993f0' }];
+const svc = { getAll: () => contacts, getCustomRoles: () => custom,
+  addCustomRole: async (d) => ({ success: true, role: { id: d.label.toLowerCase(), ...d } }), updateCustomRole: async () => ({ success: true }), deleteCustomRole: async () => ({ success: true, affectedContacts: 0 }) };
+try {
+  const { RoleManagerDialog } = await import('../../scripts/ui/GMContactManager/RoleManagerDialog.js');
+  const m = new RoleManagerDialog(svc);
+  await m.open(q.get('sel') || 'smuggler');
+  if (q.get('new')) document.querySelector('[data-rnew]').click();
+  if (q.get('q')) { const i = document.querySelector('[data-rq]'); i.value = q.get('q'); i.dispatchEvent(new Event('input', { bubbles: true })); }
+  document.title = 'ok';
+} catch (e) { document.body.insertAdjacentHTML('afterbegin', `<pre style="color:#f66">${e.stack}</pre>`); document.title = 'ERR ' + e.message; }
+</script>
+</body>
+</html>

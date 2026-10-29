@@ -48,6 +48,17 @@ export class SocketHandlers {
     });
 
     // ─── Delivery Confirmation (GM → Sender) ──────────────
+    // ─── Held mail (Admin → Messages → Outbox) ──────────
+    // Player → GM: what this client is holding (dead zone). GM → player: deliver/cancel.
+    socketManager.register(SOCKET_OPS.MESSAGE_QUEUE_SYNC, (data, sender) => {
+      if (!game.user.isGM) return;
+      messageService.receiveQueueSync?.(data, sender);
+    });
+    socketManager.register(SOCKET_OPS.MESSAGE_QUEUE_CMD, (data) => {
+      if (game.user.isGM || data?.forUserId !== game.user.id) return;
+      messageService.handleQueueCommand?.(data);
+    });
+
     socketManager.register(SOCKET_OPS.MESSAGE_DELIVERED, (data) => {
       // All clients check if they sent this message
       messageService.handleDeliveryConfirmation(data);
@@ -450,6 +461,37 @@ export class SocketHandlers {
         }
       } catch (err) {
         log.error('Security notify failed:', err);
+      }
+    });
+
+    // ─── Players' tries reach the GM (player → GM) ────────
+    // SecurityService state is client-local; a player's client reports its
+    // attempt / lockout state on terminal-account keys so Admin → Terminals can
+    // show "tried and missed" and an EARNED lockout. GM only stores it.
+    socketManager.register(SOCKET_OPS.SECURITY_REPORT, (data, sender) => {
+      if (!game.user.isGM) return;
+      try {
+        game.nightcity?.securityService?.receiveReport?.(data, sender);
+      } catch (err) {
+        log.error('Security report failed:', err);
+      }
+    });
+
+    // ─── Clear tries / lockout (GM → everyone) ────────────
+    socketManager.register(SOCKET_OPS.SECURITY_CLEAR, (data) => {
+      try {
+        game.nightcity?.securityService?.receiveClear?.(data);
+      } catch (err) {
+        log.error('Security clear sync failed:', err);
+      }
+    });
+
+    // ─── End a terminal session (GM → everyone) ───────────
+    socketManager.register(SOCKET_OPS.TERMINAL_KICK, (data) => {
+      try {
+        game.nightcity?.securityService?.receiveKick?.(data);
+      } catch (err) {
+        log.error('Terminal kick failed:', err);
       }
     });
 

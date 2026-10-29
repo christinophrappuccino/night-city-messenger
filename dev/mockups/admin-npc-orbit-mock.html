@@ -1,0 +1,607 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NPC correspondents — orbit</title>
+<!--
+  Admin → Contacts → Directory → an NPC → "Who writes to them": the Players-tab Orbit reversed.
+  The NPC sits in the middle; the characters (and other NPCs) who exchange mail with them sit around it.
+  Two versions of the same module: A = the orbit, B = an exchange timeline. Both feed the same correspondent card.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-npc-orbit-mock.html
+  ?t=clean-dark|clean-light|high-contrast   ?pa=<id> ?pb=<id> (start picked: v rache judy panam brick dexter wakako)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 0 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px/1.45 sans-serif; margin: 0 0 16px; max-width: 980px; }
+  .mk-row { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+  .mk-col { width: 470px; }
+  .mk-v { color: #eee; font: 700 13px sans-serif; letter-spacing: .05em; margin: 0 0 4px; }
+  .mk-cap { color: #b8c0cc; font: 13px/1.5 sans-serif; margin: 0 0 10px; min-height: 78px; }
+  .mk-win { --no-attn-text: color-mix(in oklab, var(--ncm-attn) 72%, var(--ncm-text-heading)); }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+
+  /* pane + band */
+  .no-pane { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); padding-bottom: 12px; }
+  .no-band { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ncm-bg-card-head, var(--ncm-bg-card)); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-act);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .no-band > i { color: var(--ncm-act); }
+  .no-band__r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+  .no-band__r b { color: var(--no-attn-text); font-weight: 700; }
+
+  /* module frame */
+  .no-mod { margin: 10px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); position: relative; }
+  .no-mod__k { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+    font: 700 10px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .no-mod__k > i { color: var(--ncm-act); font-size: 9px; }
+  .no-mod__hint { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+  .no-mod__x { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-act); cursor: pointer; }
+  .no-mod::before, .no-mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid; pointer-events: none; }
+  .no-mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .no-mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+  /* identity + scope chips */
+  .no-chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; padding: 7px 9px 0; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .no-chip { --tc: var(--ncm-act); display: inline-flex; gap: 5px; align-items: center; padding: 1px 7px; border-radius: 1px; cursor: pointer; font: 600 11px var(--ncm-font-body); white-space: nowrap;
+    color: var(--ncm-text-label); border: 1px solid var(--ncm-border-active); background: none; }
+  .no-chip b { font: 700 10.5px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-label)); }
+  .no-chip:hover { border-color: color-mix(in srgb, var(--tc) 60%, transparent); color: var(--ncm-text-primary); }
+  .no-chip.is-on { color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 14%, transparent); border-color: color-mix(in srgb, var(--tc) 55%, transparent); }
+  .no-chip.is-on b { color: inherit; }
+  .no-chip--secret { --tc: var(--ncm-secret); }
+  .no-chip i { font-size: 9.5px; }
+  .no-chips__sep { width: 1px; height: 14px; background: var(--ncm-border-active); margin: 0 3px; }
+
+  /* ===== A · ORBIT ===== */
+  .no-orbit { position: relative; margin: 4px auto 0; }
+  .no-orbit svg { display: block; overflow: visible; }
+  .no-ring { fill: none; stroke: color-mix(in srgb, var(--ncm-border-active) 85%, transparent); stroke-width: 1; }
+  .no-ring.is-hot { stroke: var(--ncm-act); stroke-width: 1.5; }
+  .no-bandhit { fill: transparent; cursor: pointer; }
+  .no-bandhit:hover { fill: color-mix(in srgb, var(--ncm-act) 6%, transparent); }
+  .no-bandhit.is-on { fill: color-mix(in srgb, var(--ncm-act) 10%, transparent); }
+  .no-ringlbl { font: 700 8.5px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; fill: var(--ncm-text-label); text-anchor: middle; dominant-baseline: central; pointer-events: none;
+    paint-order: stroke; stroke: var(--ncm-bg-pane, #111); stroke-width: 4px; stroke-linejoin: round; }
+  .no-ringlbl.is-hot { fill: var(--ncm-act); }
+  .no-sweep-wedge { fill: url(#no-sw); pointer-events: none; }
+  .no-sweep-edge { stroke: color-mix(in srgb, var(--ncm-act) 55%, transparent); stroke-width: 1; pointer-events: none; }
+  .no-dot { cursor: pointer; stroke: var(--ncm-bg-pane); stroke-width: 1.5; }
+  .no-dot:hover, .no-dot.is-sel { stroke: var(--ncm-text-heading); stroke-width: 2; }
+  .no-dot--never { fill: none !important; stroke: var(--ncm-text-label); stroke-width: 1.6; stroke-dasharray: 2 1.6; }
+  .no-dot--never.is-sel, .no-dot--never:hover { stroke: var(--ncm-text-heading); stroke-dasharray: none; }
+  .no-dim { opacity: .16; }
+  .no-selhalo { fill: none; stroke: var(--ncm-act); stroke-width: 1; opacity: .7; pointer-events: none; }
+  .no-alias-seg { fill: none; stroke: var(--ncm-secret); stroke-width: 2.5; pointer-events: none; }
+  .no-wait { fill: none; stroke: var(--ncm-attn); stroke-width: 1.5; stroke-dasharray: 2.5 2; pointer-events: none; animation: no-pulse 1.6s ease-in-out infinite; }
+  @keyframes no-pulse { 50% { opacity: .35; } }
+  .no-name { font: 700 11px var(--ncm-font-display); fill: var(--ncm-text-heading); dominant-baseline: central; pointer-events: none; paint-order: stroke; stroke: var(--ncm-bg-pane, #111); stroke-width: 4px; stroke-linejoin: round; }
+  .no-name.is-npc { fill: var(--ncm-text-label); font-weight: 600; }
+  .no-name .no-name__n { font: 700 10px var(--ncm-font-mono); fill: var(--ncm-attn); }
+  .no-me { fill: color-mix(in srgb, var(--ncm-act) 22%, var(--ncm-bg-pane)); stroke: var(--ncm-act); stroke-width: 1.5; }
+  .no-me-id { fill: none; stroke: var(--ncm-border-active); stroke-width: 3; }
+  .no-me-id--alias { stroke: var(--ncm-secret); }
+  .no-me-t { font: 700 11px var(--ncm-font-display); fill: var(--ncm-text-heading); text-anchor: middle; dominant-baseline: central; pointer-events: none; letter-spacing: .04em; }
+  /* HTML overlay for FA glyphs on the dial (FA does not render as SVG text) */
+  .no-ov { position: absolute; pointer-events: none; transform: translate(-50%, -50%); font-size: 8px; color: var(--ncm-text-heading); line-height: 1; }
+  .no-legend { display: flex; justify-content: center; gap: 12px; padding: 4px 8px 8px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); flex-wrap: wrap; }
+  .no-legend span { display: inline-flex; gap: 5px; align-items: center; }
+  .no-legend i.no-k { width: 9px; height: 9px; display: inline-block; flex: none; }
+
+  /* ===== B · TIMELINE ===== */
+  .no-tl { padding: 6px 9px 4px; }
+  .no-tl__axis, .no-tl__r { display: grid; grid-template-columns: 96px 272px minmax(0,1fr); gap: 0 8px; align-items: center; }
+  .no-tl__axis { padding: 0 0 3px; }
+  .no-tl__ax { position: relative; height: 14px; font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .no-tl__ax span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+  .no-tl__ax span:last-child { transform: translateX(-100%); color: var(--ncm-act); font-weight: 700; }
+  .no-tl__r { padding: 3px 0; border-top: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); cursor: pointer; }
+  .no-tl__r:hover { background: var(--ncm-bg-hover); }
+  .no-tl__r.is-sel { background: color-mix(in srgb, var(--ncm-act) 12%, transparent); box-shadow: inset 3px 0 var(--ncm-act); }
+  .no-tl__who { display: flex; gap: 6px; align-items: center; min-width: 0; padding-left: 5px; }
+  .no-tl__nm { font: 700 12px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .no-tl__nm.is-npc { color: var(--ncm-text-label); font-weight: 600; }
+  .no-tl__lane { display: block; overflow: visible; }
+  .no-tl__base { stroke: var(--ncm-border-active); stroke-width: 1; }
+  .no-tl__base--never { stroke-dasharray: 3 3; stroke: var(--ncm-text-hint); }
+  .no-tl__grid { stroke: color-mix(in srgb, var(--ncm-border) 60%, transparent); stroke-width: 1; }
+  .no-tl__now { stroke: color-mix(in srgb, var(--ncm-act) 50%, transparent); stroke-width: 1; }
+  .no-tl__tick { stroke-width: 2.5; stroke-linecap: round; }
+  .no-tl__wait { fill: color-mix(in srgb, var(--ncm-attn) 18%, transparent); stroke: var(--ncm-attn); stroke-width: 1; stroke-dasharray: 2.5 2; animation: no-pulse 1.6s ease-in-out infinite; }
+  .no-tl__never { font: italic 10.5px var(--ncm-font-body); fill: var(--ncm-text-hint); }
+  .no-tl__sum { text-align: right; padding-right: 6px; white-space: nowrap; }
+  .no-tl__sum .n { font: 700 11px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-primary)); }
+  .no-tl__sum .w { font: 700 10.5px var(--ncm-font-mono); color: var(--ncm-attn); display: block; }
+  .no-tl__sum .t { font: 10px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); display: block; }
+  .no-tl__grp { font: 700 9px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); padding: 6px 5px 3px; border-top: 1px solid var(--ncm-border); }
+
+  /* avatars + shapes */
+  .no-av { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 10px var(--ncm-font-display);
+    color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 25%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); }
+  .no-av.is-npc { border-radius: 2px; }
+
+  /* ===== CARD ===== */
+  .no-card { display: grid; grid-template-columns: 52px minmax(0,1fr); gap: 4px 12px; padding: 10px; position: relative; overflow: hidden; }
+  .no-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--ncm-act) 10%, transparent) 50%, transparent 52%); background-size: 100% 220%; animation: no-scan 2.2s ease-out 1; pointer-events: none; }
+  @keyframes no-scan { from { background-position: 0 100%; } to { background-position: 0 -10%; } }
+  .no-card__ph { grid-row: span 3; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font: 700 17px var(--ncm-font-display); color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading));
+    background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--tc) 60%, transparent); }
+  .no-card__ph.is-npc { border-radius: 2px; }
+  .no-card__nm { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .no-card__nm small { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); margin-left: 6px; }
+  .no-rw { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .no-rw--meta { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .no-rw--meta b { color: var(--no-attn-text); }
+  .no-rw--meta .m { font-family: var(--ncm-font-mono); font-size: 11.5px; color: var(--ncm-text-num, var(--ncm-text-primary)); }
+  .no-tag { --tc: var(--ncm-text-label); display: inline-flex; gap: 4px; align-items: center; padding: 0 6px; border-radius: 1px; font: 600 11px var(--ncm-font-body); white-space: nowrap;
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+  .no-tag i { font-size: 9.5px; }
+  .no-tag--secret { --tc: var(--ncm-secret); }
+  .no-tag--plain { --tc: var(--ncm-text-label); }
+  .no-sec { grid-column: 1 / -1; margin-top: 7px; padding-top: 7px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+  .no-sec__k { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); margin-bottom: 5px; display: flex; gap: 6px; align-items: center; }
+  .no-sec__k .r { margin-left: auto; text-transform: none; letter-spacing: 0; font: 11px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .no-waitbox { border: 1px solid color-mix(in srgb, var(--ncm-attn) 45%, transparent); background: color-mix(in srgb, var(--ncm-attn) 8%, transparent); border-radius: 2px; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; }
+  .no-waitbox__r { display: grid; grid-template-columns: 7px minmax(0,1fr) auto; gap: 7px; align-items: center; }
+  .no-waitbox__led { width: 6px; height: 6px; border-radius: 50%; background: var(--ncm-attn); animation: no-pulse 1.6s infinite; }
+  .no-waitbox__s { font: 600 12.5px var(--ncm-font-body); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .no-waitbox__t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .no-recent { display: flex; flex-direction: column; gap: 3px; }
+  .no-recent__r { display: grid; grid-template-columns: 18px minmax(0,1fr) auto auto; gap: 7px; align-items: center; font: 12px var(--ncm-font-body); }
+  .no-dir { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 2px; font-size: 9px; }
+  .no-dir--in { color: var(--ncm-good); background: color-mix(in srgb, var(--ncm-good) 14%, transparent); }
+  .no-dir--out { color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 14%, transparent); }
+  .no-recent__s { color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .no-recent__t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); white-space: nowrap; }
+  .no-recent__via { font: 600 10px var(--ncm-font-body); color: var(--ncm-secret); white-space: nowrap; }
+
+  /* trust: five clickable steps */
+  .no-trust { display: flex; align-items: center; gap: 8px; }
+  .no-trust__seg { display: inline-flex; gap: 3px; }
+  .no-trust__s { width: 26px; height: 14px; border-radius: 1px; cursor: pointer; border: 1px solid var(--ncm-border-active); background: color-mix(in srgb, var(--ncm-border-active) 35%, transparent); position: relative; }
+  .no-trust__s:hover { border-color: var(--ncm-text-heading); }
+  .no-trust__s.is-on { background: var(--tc); border-color: var(--tc); }
+  .no-trust__s.is-cur::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 0; height: 0; transform: translateX(-50%); border: 3px solid transparent; border-top-color: var(--tc); }
+  .no-trust__lbl { font: 700 11.5px var(--ncm-font-display); color: var(--tc); min-width: 66px; }
+  .no-trust__clr { font: 11px var(--ncm-font-body); color: var(--ncm-text-hint); cursor: pointer; }
+  .no-trust__clr:hover { color: var(--ncm-bad); }
+  .no-saved { font: 11px var(--ncm-font-body); color: var(--ncm-good); animation: no-fade 1.8s ease-out 1 forwards; }
+  @keyframes no-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+  .no-note { font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+
+  /* write-as identity toggle */
+  .no-as { display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+  .no-as span { padding: 2px 8px; font: 600 11px var(--ncm-font-body); color: var(--ncm-text-label); cursor: pointer; white-space: nowrap; }
+  .no-as span + span { border-left: 1px solid var(--ncm-border-active); }
+  .no-as span.is-on { background: color-mix(in srgb, var(--ncm-act) 16%, transparent); color: var(--ncm-text-heading); }
+  .no-as span.is-on.is-alias { background: color-mix(in srgb, var(--ncm-secret) 18%, transparent); color: color-mix(in oklab, var(--ncm-secret) 70%, var(--ncm-text-heading)); }
+
+  .no-acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+  .no-btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important; flex: 0 0 auto !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; cursor: pointer; box-shadow: none !important; margin: 0 !important; display: inline-flex; gap: 5px; align-items: center; line-height: 1.3; }
+  .no-btn:hover { border-color: var(--ncm-act) !important; }
+  .no-btn i { margin: 0 !important; font-size: 10px; }
+  .no-btn--pri { border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse, #0b0d12) !important; background: var(--ncm-act) !important; }
+  .no-btn--attn { border-color: var(--ncm-attn) !important; color: var(--ncm-text-inverse, #0b0d12) !important; background: var(--ncm-attn) !important; }
+  .no-btn.is-open { border-color: var(--ncm-act) !important; color: var(--ncm-act) !important; }
+  .no-btn[data-op="share"] i { color: var(--ncm-good); }
+  .no-btn[data-op="inbox"] i { color: var(--ncm-hue-6); }
+  .no-btn[data-op="conv"] i { color: var(--ncm-hue-2); }
+
+  /* share drawer */
+  .no-share { grid-column: 1 / -1; margin-top: 7px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-card); }
+  .no-share__k { padding: 5px 8px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); border-bottom: 1px solid var(--ncm-border); }
+  .no-share__r { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 4px 8px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .no-share__r:last-child { border-bottom: 0; }
+  .no-share__nm { font: 700 12px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .no-share__nm small { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); font-weight: 400; margin-left: 5px; }
+  .no-share__st { font: 11px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .no-share__st.is-done { color: var(--ncm-good); }
+
+
+  /* ===== C · SWITCHBOARD ===== */
+  .no-sb { position: relative; margin: 4px auto 0; }
+  .no-sb svg { display: block; overflow: visible; }
+  .no-sb__guide { fill: none; stroke: color-mix(in srgb, var(--ncm-border-active) 85%, transparent); stroke-width: 1; }
+  .no-sb__guide--owe { stroke: color-mix(in srgb, var(--ncm-attn) 55%, transparent); stroke-dasharray: 3 3; }
+  .no-sb__zone { fill: color-mix(in srgb, var(--ncm-attn) 6%, transparent); }
+  .no-sb__glbl { font: 700 10px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; fill: var(--ncm-text-label); text-anchor: middle; dominant-baseline: central;
+    paint-order: stroke; stroke: var(--ncm-bg-pane, #111); stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
+  .no-sb__glbl--owe { fill: var(--no-attn-text); }
+  .no-sb__wedge { cursor: pointer; stroke: var(--ncm-bg-pane); stroke-width: 2; }
+  .no-sb__wedge--main { fill: color-mix(in srgb, var(--ncm-text-label) 30%, var(--ncm-bg-pane)); }
+  .no-sb__wedge--alias { fill: color-mix(in srgb, var(--ncm-secret) 40%, var(--ncm-bg-pane)); }
+  .no-sb__wedge:hover { filter: brightness(1.2); }
+  .no-sb__wedge.is-on { stroke: var(--ncm-text-heading); stroke-width: 1.5; }
+  .no-sb__core { fill: var(--ncm-bg-card); stroke: var(--ncm-border-active); stroke-width: 1; }
+  .no-sb__core-t { font: 700 11px var(--ncm-font-display); fill: var(--ncm-text-heading); text-anchor: middle; dominant-baseline: central; pointer-events: none; letter-spacing: .04em; }
+  .no-sb__wlbl { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; text-anchor: middle; dominant-baseline: central; pointer-events: none;
+    paint-order: stroke; stroke: none; }
+  .no-sb__wlbl--main { fill: var(--ncm-text-heading); }
+  .no-sb__wlbl--alias { fill: var(--ncm-text-heading); }
+  .no-sb__link { fill: none; stroke-linecap: round; pointer-events: none; }
+  .no-sb__link--main { stroke: color-mix(in srgb, var(--ncm-text-label) 60%, transparent); }
+  .no-sb__link--alias { stroke: color-mix(in srgb, var(--ncm-secret) 65%, transparent); }
+  .no-sb__link--owe { stroke: var(--ncm-attn); stroke-dasharray: 5 4; animation: no-flow 1.2s linear infinite; }
+  @keyframes no-flow { to { stroke-dashoffset: -18; } }
+  .no-sb__dir { pointer-events: none; }
+  .no-sb__dir--theirs { fill: var(--ncm-attn); }
+  .no-sb__dir--yours { fill: var(--ncm-text-label); }
+  .no-sb__dot { cursor: pointer; }
+  .no-sb__dot--pc { stroke: var(--ncm-bg-pane); stroke-width: 1.5; }
+  .no-sb__dot--npc { fill: var(--ncm-bg-pane) !important; stroke-width: 1.6; }
+  .no-sb__dot--never { fill: none !important; stroke: var(--ncm-text-label) !important; stroke-width: 1.6; stroke-dasharray: 2 1.6; }
+  .no-sb__dot:hover, .no-sb__dot.is-sel { stroke: var(--ncm-text-heading) !important; stroke-width: 2; }
+  .no-sb__halo { fill: none; stroke: var(--ncm-attn); stroke-width: 1.5; pointer-events: none; animation: no-pulse 1.6s ease-in-out infinite; }
+  .no-sb__selr { fill: none; stroke: var(--ncm-act); stroke-width: 1; pointer-events: none; }
+  .no-sb__name { font: 700 11px var(--ncm-font-display); fill: var(--ncm-text-heading); dominant-baseline: central; pointer-events: none;
+    paint-order: stroke; stroke: var(--ncm-bg-pane, #111); stroke-width: 4px; stroke-linejoin: round; }
+  .no-sb__name.is-npc { fill: var(--ncm-text-label); font-weight: 600; }
+  .no-sb__name .w { font: 700 10px var(--ncm-font-mono); fill: var(--no-attn-text); }
+  .no-sb .no-ov { font-size: 8.5px; }
+  .no-dimc { opacity: .18; }
+
+  /* reply queue */
+  .no-q { border-top: 1px solid var(--ncm-border); }
+  .no-q__k { display: flex; align-items: center; gap: 6px; padding: 6px 9px 4px; font: 700 10px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--no-attn-text); }
+  .no-q__k .r { margin-left: auto; text-transform: none; letter-spacing: 0; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .no-q__list { max-height: 168px; overflow-y: auto; overflow-x: hidden; }
+  .no-q__r { display: grid; grid-template-columns: 34px 22px minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 5px 9px; border-top: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); cursor: pointer; }
+  .no-q__r:hover { background: var(--ncm-bg-hover); }
+  .no-q__r.is-sel { background: color-mix(in srgb, var(--ncm-act) 12%, transparent); box-shadow: inset 3px 0 var(--ncm-act); }
+  .no-q__age { font: 700 12px var(--ncm-font-mono); color: var(--no-attn-text); text-align: right; line-height: 1.1; }
+  .no-q__age small { display: block; font: 10px var(--ncm-font-body); color: var(--ncm-text-label); font-weight: 400; }
+  .no-q__top { display: flex; gap: 5px; align-items: center; min-width: 0; flex-wrap: wrap; }
+  .no-q__nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; }
+  .no-q__s { font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app button.no-btn--q { border-color: color-mix(in srgb, var(--ncm-attn) 60%, var(--ncm-border-active)) !important; }
+  .ncm-app button.no-btn--q i { color: var(--ncm-attn); }
+  .no-q__none { padding: 12px; text-align: center; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .no-sb__link--owe, .no-sb__halo { animation: none; }
+    .no-sweep { display: none; }
+    .no-wait, .no-tl__wait, .no-waitbox__led { animation: none; }
+    .no-card::after { animation: none; display: none; }
+  }
+</style>
+</head>
+<body>
+<p class="mk-h">NPC detail — who writes to them (the Players-tab orbit, reversed)</p>
+<p class="mk-p">Admin → Contacts → Directory → Rogue Amendiares. The module sits in the NPC's detail pane (~470px). Both versions show the same data and feed the same card: who exchanges mail with Rogue, how recently, how much, who is waiting on an answer, and which of Rogue's identities they write to. Click a dot / a row to pick someone, a ring to narrow, an identity chip to see only mail that reached that address. Try the trust steps, Write as, and Share in the card.</p>
+<div class="mk-row">
+  <div class="mk-col">
+    <p class="mk-v">C · Switchboard (NPC-specific)</p>
+    <p class="mk-cap">Rogue is a switchboard, not a face: the hub is split into one wedge per identity (her own address, and Queen of Hearts in violet), sized by how much mail each one gets, and every correspondent's line plugs into the wedge they actually wrote to. Distance means how much she owes them: anyone waiting on a reply is pulled inside the amber "your turn" ring, and the longer they have waited the closer they sit; answered people drift back out (brightness = how recently). Player characters are solid dots; other NPCs are dim outlines. The small arrow on each line says who wrote last: amber pointing in = they did, it is your turn; grey pointing out = Rogue did, waiting on them. The reply queue under it lists everyone waiting, longest first, with a one-click reply as the identity they wrote to.</p>
+    <div data-slot="c"></div>
+  </div>
+  <div class="mk-col">
+    <p class="mk-v">A · Orbit</p>
+    <p class="mk-cap">Rogue is the disc in the middle; its outer ring shows how her mail splits between her own address (grey) and her alias Queen of Hearts (violet). Everyone who writes to her is a dot: inner ring = this week, then this month, longer ago, and the outer ring = has her as a contact but never wrote. Round dots are player characters, diamonds are NPCs; colour = role, size = how much mail, a violet arc on a dot = the share of their mail that went to the alias, and a dashed amber ring = they're waiting on a reply.</p>
+    <div data-slot="a"></div>
+  </div>
+  <div class="mk-col">
+    <p class="mk-v">B · Exchange timeline</p>
+    <p class="mk-cap">One lane per correspondent, the last eight weeks left to right with "now" at the right edge. A tick above the line is mail they sent Rogue, a tick below is Rogue's answer; violet ticks went through the Queen of Hearts alias. An amber box marks mail still waiting, stretching from when it arrived to now, so you can see how long they've been left hanging. Player characters first, waiting ones on top; never-written contacts get a dashed lane. Click a lane to pick someone.</p>
+    <div data-slot="b"></div>
+  </div>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const ini = (n) => n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+const ROLE = { solo: ['Solo', 'fa-crosshairs'], netrunner: ['Netrunner', 'fa-terminal'], tech: ['Tech', 'fa-gear'], nomad: ['Nomad', 'fa-truck-monster'], fixer: ['Fixer', 'fa-handshake'] };
+const NPC = { name: 'Rogue Amendiares', short: 'Rogue', alias: 'Queen of Hearts', aliasShort: 'Queen', email: 'rogue@afterlife.nc', aliasEmail: 'queen.of.hearts@hush.nc' };
+const TRUST = [null, ['Suspicious', 'var(--ncm-bad)'], ['Cautious', 'var(--ncm-attn)'], ['Neutral', 'var(--ncm-text-label)'], ['Trusted', 'color-mix(in oklab, var(--ncm-good) 65%, var(--ncm-text-label))'], ['Implicit', 'var(--ncm-good)']];
+
+// messages: d = days ago, dir in = they wrote to Rogue, out = Rogue wrote; a = reached / sent as the alias
+const M = (d, dir, s, a) => ({ d, dir, s, a: !!a });
+const P = [
+  { id: 'v', name: 'V', full: 'V', kind: 'pc', player: 'Sam', role: 'solo', trust: 4, msgs: [M(0, 'in', 'Re: the Konpeki job — when do we move?'), M(1, 'in', 'Need a ride out of Watson'), M(2, 'out', 'Afterlife. Tonight. Come alone.'), M(4, 'in', 'Got the chip'), M(6, 'out', 'A friend wants a word', 1), M(9, 'in', 'Who is this?', 1), M(13, 'out', 'Payment sent'), M(20, 'in', 'Job done'), M(27, 'out', 'New gig'), M(33, 'in', 'Re: a favour', 1), M(40, 'out', 'A favour', 1), M(48, 'in', 'Looking for work'), M(55, 'out', 'Heard you\'re good'), M(60, 'in', 'Intro from Jackie')] },
+  { id: 'rache', name: 'Rache', full: 'Rache Bartmoss', kind: 'pc', player: 'Ari', role: 'netrunner', trust: 2, msgs: [M(5, 'out', 'Stop poking my subnet', 1), M(7, 'in', 'Nice ICE, Queenie', 1), M(15, 'out', 'Proposal'), M(18, 'in', 'Not interested'), M(31, 'out', 'Got a job for a runner'), M(34, 'in', 'Who gave you this address?')] },
+  { id: 'judy', name: 'Judy', full: 'Judy Alvarez', kind: 'pc', player: 'Kim', role: 'tech', trust: 3, msgs: [M(9, 'in', 'Did Clouds ever pay up?'), M(12, 'out', 'Re: braindance rig'), M(13, 'in', 'Need a BD wreath'), M(29, 'out', 'Clouds owes me'), M(30, 'in', 'Evelyn\'s missing')] },
+  { id: 'panam', name: 'Panam', full: 'Panam Palmer', kind: 'pc', player: 'Lou', role: 'nomad', trust: 3, msgs: [] },
+  { id: 'brick', name: 'Brick', full: 'Brick Jones', kind: 'pc', player: 'Dev', role: 'solo', trust: 1, msgs: [M(45, 'out', 'Last warning'), M(47, 'in', 'You don\'t scare me')] },
+  { id: 'dexter', name: 'Dexter', full: 'Dexter DeShawn', kind: 'npc', role: 'fixer', msgs: [M(2, 'in', 'Splitting the Konpeki take'), M(3, 'out', 'You\'re reckless, Dex'), M(8, 'in', 'Need two names'), M(11, 'out', 'Try V'), M(19, 'in', 'Coffee?'), M(24, 'out', 'No.'), M(38, 'in', 'Territory'), M(50, 'out', 'Stay out of Watson')] },
+  { id: 'wakako', name: 'Wakako', full: 'Wakako Okada', kind: 'npc', role: 'fixer', msgs: [M(20, 'out', 'A card for the Queen', 1), M(22, 'in', 'The Queen plays a long game', 1), M(41, 'in', 'Tea in Westbrook', 1)] },
+];
+// Characters who might receive a share (not correspondents)
+const ROSTER = [{ name: 'Kerry Eurodyne', player: 'Jo', knows: false }, { name: 'Misty Olszewski', player: 'Pat', knows: false }, { name: 'Panam Palmer', player: 'Lou', knows: true }, { name: 'V', player: 'Sam', knows: true }];
+
+P.forEach((p) => {
+  p.msgs.sort((x, y) => x.d - y.d);
+  p.days = p.msgs.length ? p.msgs[0].d : null;
+  const lastOut = p.msgs.find((m) => m.dir === 'out');
+  p.waitMsgs = p.msgs.filter((m) => m.dir === 'in' && (!lastOut || m.d < lastOut.d));
+  p.wait = p.waitMsgs.length;
+  p.alias = p.msgs.filter((m) => m.a).length;
+  p.col = hue('role:' + p.role);
+});
+const RINGS = ['This week', 'This month', 'Longer ago', 'Never written'];
+const ringOf = (p) => p.days == null ? 3 : p.days <= 7 ? 0 : p.days <= 30 ? 1 : 2;
+const ago = (d) => d == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : d < 14 ? `${d}d ago` : d < 60 ? `${Math.round(d / 7)}w ago` : `${Math.round(d / 30)}mo ago`;
+const TOTAL = P.reduce((n, p) => n + p.msgs.length, 0), ALIAS = P.reduce((n, p) => n + p.alias, 0), WAITING = P.reduce((n, p) => n + p.wait, 0);
+const countFor = (p, ident) => ident === 'alias' ? p.alias : ident === 'main' ? p.msgs.length - p.alias : p.msgs.length;
+
+const ST = {
+  c: { sel: q.get('pc') || 'judy', ident: 'all', share: false, as: null, saved: false },
+  a: { sel: q.get('pa') || 'v', ring: null, ident: 'all', hover: null, share: false, as: null, saved: false },
+  b: { sel: q.get('pb') || 'rache', span: 56, ident: 'all', share: false, as: null, saved: false },
+};
+
+function identChips(v) {
+  const S = ST[v];
+  return `<div class="no-chips">Reached
+    <span class="no-chip${S.ident === 'all' ? ' is-on' : ''}" data-ident="all">All<b>${TOTAL}</b></span>
+    <span class="no-chip${S.ident === 'main' ? ' is-on' : ''}" data-ident="main" title="${NPC.email}">${NPC.name}<b>${TOTAL - ALIAS}</b></span>
+    <span class="no-chip no-chip--secret${S.ident === 'alias' ? ' is-on' : ''}" data-ident="alias" title="${NPC.aliasEmail}"><i class="fas fa-mask"></i>${NPC.alias}<b>${ALIAS}</b></span>
+    ${v === 'b' ? `<span class="no-chips__sep"></span>${[[14, '2w'], [56, '8w'], [90, '3mo']].map(([n, l]) => `<span class="no-chip${S.span === n ? ' is-on' : ''}" data-span="${n}">${l}</span>`).join('')}` : ''}
+  </div>`;
+}
+
+/* ---------- A · ORBIT ---------- */
+const SIZE = 324, R = 146, RAD = [68, 96, 122, 146], DISC = 20;
+// hand-placed angles (deg, SVG: 0 = right, 90 = down). The top (230°–310°) is kept clear for ring labels.
+const ANG = { v: 168, dexter: 18, rache: 100, judy: 140, wakako: 335, brick: 205, panam: 55 };
+function posOf(p) {
+  const ri = ringOf(p), r0 = ri ? RAD[ri - 1] : DISC + 4, rr = (r0 + RAD[ri]) / 2, a = ANG[p.id] * Math.PI / 180;
+  return { x: +(Math.cos(a) * rr).toFixed(2), y: +(Math.sin(a) * rr).toFixed(2), a };
+}
+const sizeOf = (p, ident) => { const n = countFor(p, ident); return p.msgs.length === 0 ? 5.5 : n === 0 ? 3.5 : 3.5 + Math.min(n, 14) / 3; };
+function arcDash(r, frac) { const c = 2 * Math.PI * r; return `${(c * frac).toFixed(2)} ${(c).toFixed(2)}`; }
+
+function orbitA() {
+  const S = ST.a, h = SIZE / 2;
+  const bands = RAD.map((r, i) => { const r0 = i ? RAD[i - 1] : DISC + 4; return `<path class="no-bandhit${S.ring === i ? ' is-on' : ''}" data-ring="${i}" fill-rule="evenodd" d="M ${-r} 0 A ${r} ${r} 0 1 0 ${r} 0 A ${r} ${r} 0 1 0 ${-r} 0 Z M ${-r0} 0 A ${r0} ${r0} 0 1 0 ${r0} 0 A ${r0} ${r0} 0 1 0 ${-r0} 0 Z"><title>${RINGS[i]} — click to narrow</title></path>`; }).join('');
+  const rings = RAD.map((r, i) => `<circle class="no-ring${S.ring === i ? ' is-hot' : ''}" cx="0" cy="0" r="${r}"/>`).join('');
+  // ring labels sit in the clear top sector, centred on the band they name
+  const lbls = RAD.map((r, i) => { const r0 = i ? RAD[i - 1] : DISC + 4; return `<text class="no-ringlbl${S.ring === i ? ' is-hot' : ''}" x="0" y="${-(r0 + r) / 2}">${RINGS[i]}</text>`; }).join('');
+  const wedge = 0.55;
+  const sweep = `<g class="no-sweep"><path class="no-sweep-wedge" d="M0 0 L ${R} 0 A ${R} ${R} 0 0 0 ${(R * Math.cos(-wedge)).toFixed(2)} ${(R * Math.sin(-wedge)).toFixed(2)} Z"/><line class="no-sweep-edge" x1="0" y1="0" x2="${R}" y2="0"/>
+      <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="8s" repeatCount="indefinite"/></g>`;
+  const passes = (p) => (S.ring == null || ringOf(p) === S.ring) && (S.ident === 'all' || countFor(p, S.ident) > 0 || (S.ident === 'main' && p.msgs.length === 0));
+  let dots = '', names = '', ov = '';
+  P.forEach((p) => {
+    const { x, y, a } = posOf(p), s = sizeOf(p, S.ident), dim = passes(p) ? '' : ' no-dim', sel = S.sel === p.id;
+    const never = p.msgs.length === 0;
+    const shape = p.kind === 'npc'
+      ? `<rect class="no-dot${sel ? ' is-sel' : ''}" data-dot="${p.id}" x="${(x - s * 0.66).toFixed(2)}" y="${(y - s * 0.66).toFixed(2)}" width="${(s * 1.32).toFixed(2)}" height="${(s * 1.32).toFixed(2)}" rx="1" transform="rotate(45 ${x} ${y})" style="fill:${p.col}"><title>${p.full}</title></rect>`
+      : `<circle class="no-dot${never ? ' no-dot--never' : ''}${sel ? ' is-sel' : ''}" data-dot="${p.id}" cx="${x}" cy="${y}" r="${s}" style="fill:${p.col}"><title>${p.full}${never ? ' — never written' : ''}</title></circle>`;
+    const aliasArc = p.alias && S.ident !== 'main' ? `<circle class="no-alias-seg" cx="${x}" cy="${y}" r="${s + 2.6}" stroke-dasharray="${arcDash(s + 2.6, S.ident === 'alias' ? 1 : p.alias / p.msgs.length)}" transform="rotate(-90 ${x} ${y})"/>` : '';
+    const waitR = p.wait ? `<circle class="no-wait" cx="${x}" cy="${y}" r="${s + 6}"/>` : '';
+    const halo = sel ? `<circle class="no-selhalo" cx="${x}" cy="${y}" r="${s + (p.wait ? 9.5 : 6.5)}"/>` : '';
+    dots += `<g class="${dim}">${halo}${waitR}${aliasArc}${shape}</g>`;
+    // name label pushed outward along the dot's own radius, anchored away from the centre
+    const off = s + (p.wait ? 12 : 8), cx = Math.cos(a), cy = Math.sin(a);
+    const lx = x + cx * off, ly = y + cy * off + (Math.abs(cx) < 0.35 ? (cy > 0 ? 4 : -4) : 0);
+    const anchor = Math.abs(cx) < 0.35 ? 'middle' : cx > 0 ? 'start' : 'end';
+    names += `<text class="no-name${p.kind === 'npc' ? ' is-npc' : ''}${dim}" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}">${p.name}${p.wait ? `<tspan class="no-name__n" dx="4">${p.wait}</tspan>` : ''}</text>`;
+  });
+  // the NPC disc + identity split ring (starts at 12 o'clock: rotate(-90) about the true centre)
+  const idR = DISC + 3.5, frac = S.ident === 'main' ? 0 : S.ident === 'alias' ? 1 : ALIAS / TOTAL;
+  const me = `<circle class="no-me-id" cx="0" cy="0" r="${idR}"/><circle class="no-me-id no-me-id--alias" cx="0" cy="0" r="${idR}" stroke-dasharray="${arcDash(idR, frac)}" transform="rotate(-90)"/>
+    <circle class="no-me" cx="0" cy="0" r="${DISC}"><title>${NPC.name} — ${TOTAL - ALIAS} to her own address, ${ALIAS} to ${NPC.alias}</title></circle><text class="no-me-t" x="0" y="0">RA</text>`;
+  // FA glyphs as HTML overlays (role icon inside each PC dot)
+  P.forEach((p) => { if (!p.msgs.length || p.kind === 'npc') return; const { x, y } = posOf(p); const s = sizeOf(p, S.ident); if (s < 6.5) return;
+    ov += `<i class="fas ${ROLE[p.role][1]} no-ov${passes(p) ? '' : ' no-dim'}" style="left:${h + x}px;top:${h + y}px"></i>`; });
+  return `<div class="no-mod"><div class="no-mod__k"><i class="fas fa-circle-nodes"></i>Correspondents${S.ring != null ? `<span class="no-mod__x" data-ring-clear>show all rings</span>` : '<span class="no-mod__hint">click a ring or a dot</span>'}</div>
+    ${identChips('a')}
+    <div class="no-orbit" style="width:${SIZE}px;height:${SIZE}px"><svg width="${SIZE}" height="${SIZE}" viewBox="${-h} ${-h} ${SIZE} ${SIZE}">
+      <defs><radialGradient id="no-sw" cx="0" cy="0" r="${R}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--ncm-act)" stop-opacity=".05"/><stop offset=".8" stop-color="var(--ncm-act)" stop-opacity=".2"/><stop offset="1" stop-color="var(--ncm-act)" stop-opacity="0"/></radialGradient></defs>
+      ${bands}${rings}${sweep}${lbls}${dots}${me}${names}</svg>${ov}</div>
+    <div class="no-legend"><span><i class="no-k" style="border-radius:50%;background:var(--ncm-text-label)"></i>player</span><span><i class="no-k" style="transform:rotate(45deg) scale(.8);background:var(--ncm-text-label)"></i>NPC</span><span><i class="no-k" style="border-radius:50%;border:1.5px dashed var(--ncm-attn)"></i>waiting</span><span><i class="no-k" style="border-radius:50%;border:2px solid var(--ncm-secret)"></i>via ${NPC.alias}</span><span>size = mail</span></div></div>`;
+}
+
+/* ---------- B · TIMELINE ---------- */
+const LW = 272, LH = 30;
+function timelineB() {
+  const S = ST.b, span = S.span, X = (d) => +(LW - (d / span) * (LW - 6)).toFixed(1);
+  const marks = span === 14 ? [14, 10, 7, 3, 0] : span === 56 ? [56, 42, 28, 14, 0] : [90, 60, 30, 0];
+  const lab = (d) => d === 0 ? 'now' : span === 14 ? `${d}d` : span === 56 ? `${d / 7}w` : `${Math.round(d / 30)}mo`;
+  const order = (a, b) => (a.kind === b.kind ? 0 : a.kind === 'pc' ? -1 : 1) || b.wait - a.wait || (a.days ?? 999) - (b.days ?? 999);
+  const row = (p) => {
+    const ms = p.msgs.filter((m) => m.d <= span && (S.ident === 'all' || (S.ident === 'alias') === m.a));
+    const mid = LH / 2;
+    const grid = marks.slice(0, -1).map((d) => `<line class="no-tl__grid" x1="${X(d)}" y1="3" x2="${X(d)}" y2="${LH - 3}"/>`).join('');
+    let body;
+    if (!p.msgs.length) body = `<line class="no-tl__base no-tl__base--never" x1="0" y1="${mid}" x2="${LW}" y2="${mid}"/><text class="no-tl__never" x="6" y="${mid - 4}">has ${NPC.short} as a contact · never written</text>`;
+    else {
+      const wait = p.waitMsgs.length && S.ident !== 'alias' ? (() => { const d0 = Math.min(span, Math.max(...p.waitMsgs.map((m) => m.d))); const x0 = X(d0) - 4; return `<rect class="no-tl__wait" x="${x0}" y="2" width="${(LW - x0 + 1).toFixed(1)}" height="${mid - 2}" rx="1"><title>${p.wait} waiting since ${ago(d0)}</title></rect>`; })() : '';
+      const ticks = ms.map((m) => { const x = X(m.d), up = m.dir === 'in'; const c = m.a ? 'var(--ncm-secret)' : up ? p.col : 'var(--ncm-text-label)';
+        return `<line class="no-tl__tick" x1="${x}" y1="${mid}" x2="${x}" y2="${up ? 5 : LH - 5}" style="stroke:${c}"><title>${up ? p.name + ' → ' + (m.a ? NPC.alias : NPC.short) : (m.a ? NPC.alias : NPC.short) + ' → ' + p.name}: ${m.s} · ${ago(m.d)}</title></line>`; }).join('');
+      const older = p.msgs.filter((m) => m.d > span).length;
+      body = `${wait}<line class="no-tl__base" x1="0" y1="${mid}" x2="${LW}" y2="${mid}"/>${ticks}${older ? `<text class="no-tl__never" x="2" y="${LH - 2}" style="font-style:normal;font-size:9px">+${older} older</text>` : ''}`;
+    }
+    return `<div class="no-tl__r${S.sel === p.id ? ' is-sel' : ''}" data-pick="${p.id}">
+      <div class="no-tl__who"><span class="no-av${p.kind === 'npc' ? ' is-npc' : ''}" style="--tc:${p.col}">${ini(p.full)}</span><span class="no-tl__nm${p.kind === 'npc' ? ' is-npc' : ''}">${p.name}</span></div>
+      <svg class="no-tl__lane" width="${LW}" height="${LH}" viewBox="0 0 ${LW} ${LH}">${grid}<line class="no-tl__now" x1="${LW - 0.5}" y1="1" x2="${LW - 0.5}" y2="${LH - 1}"/>${body}</svg>
+      <div class="no-tl__sum">${p.wait ? `<span class="w">${p.wait} waiting</span>` : `<span class="n">${countFor(p, S.ident)}</span>`}<span class="t">${ago(p.days)}</span></div></div>`;
+  };
+  const list = [...P].sort(order);
+  const pcs = list.filter((p) => p.kind === 'pc'), npcs = list.filter((p) => p.kind === 'npc');
+  return `<div class="no-mod"><div class="no-mod__k"><i class="fas fa-timeline"></i>Mail with ${NPC.short}<span class="no-mod__hint">▲ to ${NPC.short} · ▼ from ${NPC.short}</span></div>
+    ${identChips('b')}
+    <div class="no-tl"><div class="no-tl__axis"><span></span><div class="no-tl__ax">${marks.map((d) => `<span style="left:${X(d)}px">${lab(d)}</span>`).join('')}</div><span></span></div>
+      <div class="no-tl__grp">Player characters · ${pcs.length}</div>${pcs.map(row).join('')}
+      <div class="no-tl__grp">NPCs · ${npcs.length}</div>${npcs.map(row).join('')}</div></div>`;
+}
+
+/* ---------- CARD (shared) ---------- */
+function card(v) {
+  const S = ST[v], p = P.find((x) => x.id === S.sel); if (!p) return '';
+  const pc = p.kind === 'pc';
+  const lastIn = p.msgs.find((m) => m.dir === 'in');
+  const asDefault = lastIn && lastIn.a ? 'alias' : 'main';
+  const as = S.as || asDefault, asName = as === 'alias' ? NPC.alias : NPC.short;
+  const waitAs = p.waitMsgs.some((m) => m.a) ? NPC.alias : NPC.short;
+  const t = p.trust || 0, tc = t ? TRUST[t][1] : 'var(--ncm-text-hint)';
+  const via = `${p.msgs.length - p.alias ? `<span class="no-tag no-tag--plain">${NPC.name} ×${p.msgs.length - p.alias}</span>` : ''}${p.alias ? `<span class="no-tag no-tag--secret"><i class="fas fa-mask"></i>${NPC.alias} ×${p.alias}</span>` : ''}`;
+  const share = S.share ? `<div class="no-share"><div class="no-share__k">Share ${NPC.name} with…</div>${ROSTER.map((r, i) => `<div class="no-share__r"><span class="no-av" style="--tc:${hue(r.name)}">${ini(r.name)}</span><span class="no-share__nm">${r.name}<small>played by ${r.player}</small></span>${r.knows ? '<span class="no-share__st">already has her</span>' : r.done ? '<span class="no-share__st is-done"><i class="fas fa-check"></i> shared</span>' : `<button class="no-btn" data-share-to="${i}"><i class="fas fa-share-nodes" style="color:var(--ncm-good)"></i>Share</button>`}</div>`).join('')}</div>` : '';
+  return `<div class="no-mod" data-card="${p.id}"><div class="no-mod__k"><i class="fas fa-id-card"></i>Correspondent<span class="no-mod__hint">${pc ? 'player character' : 'NPC'}</span></div>
+    <div class="no-card"><div class="no-card__ph${pc ? '' : ' is-npc'}" style="--tc:var(--ncm-text-label)">${ini(p.full)}</div>
+      <div class="no-card__nm">${p.full}${pc ? `<small>played by ${p.player}</small>` : ''}</div>
+      <div class="no-rw"><span class="no-tag no-tag--plain"><i class="fas ${ROLE[p.role][1]}"></i>${ROLE[p.role][0]}</span>${via}</div>
+      <div class="no-rw no-rw--meta">${p.wait ? `<b>${p.wait} waiting</b> · ` : ''}${p.msgs.length ? `<span class="m">${p.msgs.length}</span> messages · last ${ago(p.days)}` : 'has her as a contact · never written'}</div>
+      ${p.wait ? `<div class="no-sec"><div class="no-sec__k" style="color:var(--no-attn-text)"><i class="fas fa-bell"></i>Waiting on ${NPC.short}<span class="r">to ${waitAs}</span></div><div class="no-waitbox">${p.waitMsgs.map((m) => `<div class="no-waitbox__r"><span class="no-waitbox__led"></span><span class="no-waitbox__s">${m.s}</span><span class="no-waitbox__t">${ago(m.d)}</span></div>`).join('')}</div></div>` : ''}
+      ${p.msgs.length ? `<div class="no-sec"><div class="no-sec__k"><i class="fas fa-clock-rotate-left" style="color:var(--ncm-act)"></i>Recent<span class="r">newest first</span></div><div class="no-recent">${p.msgs.slice(0, 3).map((m) => `<div class="no-recent__r"><span class="no-dir no-dir--${m.dir}" title="${m.dir === 'in' ? 'to ' + NPC.short : 'from ' + NPC.short}"><i class="fas fa-arrow-${m.dir === 'in' ? 'down-left' : 'up-right'}"></i></span><span class="no-recent__s">${m.s}</span><span class="no-recent__via">${m.a ? NPC.alias : ''}</span><span class="no-recent__t">${ago(m.d)}</span></div>`).join('')}</div></div>` : ''}
+      <div class="no-sec"><div class="no-sec__k"><i class="fas fa-handshake" style="color:var(--ncm-good)"></i>${pc ? `How ${p.name} rates ${NPC.short}` : 'Trust'}<span class="r">${pc ? `on ${p.name}'s contact card` : ''}</span></div>
+        ${pc ? `<div class="no-trust" style="--tc:${tc}"><span class="no-trust__seg">${[1, 2, 3, 4, 5].map((n) => `<span class="no-trust__s${n <= t ? ' is-on' : ''}${n === t ? ' is-cur' : ''}" data-trust="${n}" title="${TRUST[n][0]}"></span>`).join('')}</span><span class="no-trust__lbl">${t ? TRUST[t][0] : 'Not set'}</span>${t ? '<span class="no-trust__clr" data-trust="0">clear</span>' : ''}${S.saved ? '<span class="no-saved"><i class="fas fa-check"></i> saved</span>' : ''}</div>`
+          : `<div class="no-note">NPCs don't keep trust — that lives on a player's contact card.</div>`}</div>
+      <div class="no-sec"><div class="no-sec__k"><i class="fas fa-pen" style="color:var(--ncm-act)"></i>Write as<span class="r">last used: ${asDefault === 'alias' ? NPC.alias : NPC.name}</span></div>
+        <span class="no-as"><span data-as="main" class="${as === 'main' ? 'is-on' : ''}">${NPC.name}</span><span data-as="alias" class="is-alias${as === 'alias' ? ' is-on' : ''}"><i class="fas fa-mask"></i> ${NPC.alias}</span></span></div>
+      <div class="no-acts">
+        ${p.wait ? `<button class="no-btn no-btn--attn" data-op="reply"><i class="fas fa-reply"></i>Reply as ${waitAs}</button><button class="no-btn" data-op="write"><i class="fas fa-pen"></i>New as ${asName}</button>` : `<button class="no-btn no-btn--pri" data-op="write"><i class="fas fa-pen"></i>Write as ${asName}</button>`}
+        ${p.msgs.length ? '<button class="no-btn" data-op="conv"><i class="fas fa-comments"></i>Conversation</button>' : ''}
+        <button class="no-btn" data-op="inbox"><i class="fas fa-inbox"></i>${p.name}'s inbox</button>
+        <button class="no-btn${S.share ? ' is-open' : ''}" data-op="share"><i class="fas fa-share-nodes"></i>Share ${NPC.short}…</button>
+      </div>${share}</div></div>`;
+}
+
+/* ---------- C · SWITCHBOARD ---------- */
+const CS = 336, HUB_IN = 22, HUB_OUT = 40, OWE_R = 108;
+// wedge sizes follow the mail split; Queen of Hearts is centred on the right (0°)
+const ALIAS_SPAN = Math.max(70, 360 * ALIAS / TOTAL);
+const WEDGE = { alias: [-ALIAS_SPAN / 2, ALIAS_SPAN / 2], main: [ALIAS_SPAN / 2, 360 - ALIAS_SPAN / 2] };
+// hand-placed angles inside each identity's sector; the top (245°–295°) stays clear for the guide labels
+const CANG = { judy: 205, v: 160, dexter: 115, rache: 232, brick: 312, panam: 72, wakako: 6 };
+const rad = (d) => d * Math.PI / 180;
+const pt = (r, d) => [+(Math.cos(rad(d)) * r).toFixed(2), +(Math.sin(rad(d)) * r).toFixed(2)];
+const waitAge = (p) => p.wait ? Math.max(...p.waitMsgs.map((m) => m.d)) : 0;
+const lastDir = (p) => p.msgs.length ? p.msgs[0].dir : null;
+function cRadius(p) {
+  if (!p.msgs.length) return 140;
+  if (p.wait) { const pull = Math.min(1, .35 + .12 * p.wait + .07 * waitAge(p)); return 60 + (1 - pull) * 40; }
+  return 118 + Math.min(1, p.days / 60) * 12;
+}
+const recency = (p) => p.days == null ? .55 : p.days <= 7 ? 1 : p.days <= 30 ? .8 : .58;
+function annulus(r0, r1, a0, a1) {
+  const big = (a1 - a0) > 180 ? 1 : 0, [x0, y0] = pt(r1, a0), [x1, y1] = pt(r1, a1), [x2, y2] = pt(r0, a1), [x3, y3] = pt(r0, a0);
+  return `M ${x0} ${y0} A ${r1} ${r1} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${r0} ${r0} 0 ${big} 0 ${x3} ${y3} Z`;
+}
+const inSpan = (a, [s, e]) => { const n = ((a - s) % 360 + 360) % 360; return n <= (e - s); };
+const angDist = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+const clampSpan = (a, [s, e]) => inSpan(a, [s, e]) ? a : (angDist(a, s) < angDist(a, e) ? s + 5 : e - 5);
+function switchboardC() {
+  const S = ST.c, h = CS / 2;
+  const owes = (k) => S.ident === 'all' || S.ident === k;
+  const wedges = ['main', 'alias'].map((k) => `<path class="no-sb__wedge no-sb__wedge--${k}${S.ident === k ? ' is-on' : ''}${owes(k) ? '' : ' no-dimc'}" data-ident="${k}" d="${annulus(HUB_IN, HUB_OUT, ...WEDGE[k])}"><title>${k === 'alias' ? NPC.alias + ' — ' + ALIAS : NPC.name + ' — ' + (TOTAL - ALIAS)} messages · click to see only this identity</title></path>`).join('');
+  const [mlx, mly] = pt((HUB_IN + HUB_OUT) / 2, 180), [alx, aly] = pt((HUB_IN + HUB_OUT) / 2, 0);
+  const wl = `<text class="no-sb__wlbl no-sb__wlbl--main" x="${mlx}" y="${mly}" transform="rotate(-90 ${mlx} ${mly})">${NPC.short}</text><text class="no-sb__wlbl no-sb__wlbl--alias" x="${alx}" y="${aly}" transform="rotate(90 ${alx} ${aly})">${NPC.aliasShort}</text>`;
+  let links = '', dots = '', marks = '', names = '', ov = '';
+  P.forEach((p) => {
+    const a = CANG[p.id], r = cRadius(p), [x, y] = pt(r, a), sel = S.sel === p.id;
+    const main = p.msgs.length - p.alias, alias = p.alias;
+    const show = S.ident === 'all' || (S.ident === 'alias' ? alias : main) || (S.ident === 'main' && !p.msgs.length);
+    const dim = show ? '' : ' no-dimc';
+    const s = !p.msgs.length ? 5.5 : p.kind === 'npc' ? 5.5 : 6 + Math.min(p.msgs.length, 14) / 3.5;
+    // one link per identity actually written to; thickness = that identity's share of their mail
+    [['main', main], ['alias', alias]].forEach(([k, n]) => {
+      if (!n || !owes(k)) return;
+      const pa = clampSpan(a, WEDGE[k]), [sx, sy] = pt(HUB_OUT, pa), [ex, ey] = pt(r - s - 2, a);
+      const mid = angDist(a, pa) > 30 ? (a + pa + (Math.abs(a - pa) > 180 ? 360 : 0)) / 2 : a;
+      const [cx, cy] = pt((HUB_OUT + r) / 2 + 6, mid);
+      const owe = p.wait && p.waitMsgs.some((m) => (k === 'alias') === m.a);
+      links += `<path class="no-sb__link no-sb__link--${owe ? 'owe' : k}${dim}" d="M ${sx} ${sy} Q ${cx} ${cy} ${ex} ${ey}" stroke-width="${(1 + Math.min(n, 12) / 3.5).toFixed(2)}"/>`;
+    });
+    // who wrote last: an arrow on the line, just inside the dot
+    const ld = lastDir(p);
+    if (ld) {
+      const [ax, ay] = pt(r - s - (p.wait ? 12 : 8), a), rot = ld === 'in' ? a + 180 : a;
+      marks += `<path class="no-sb__dir no-sb__dir--${ld === 'in' ? 'theirs' : 'yours'}${dim}" d="M 4.5 0 L -3.5 -4 L -3.5 4 Z" transform="translate(${ax} ${ay}) rotate(${rot})"><title>${ld === 'in' ? p.name + ' wrote last — your turn' : NPC.short + ' wrote last — waiting on ' + p.name}</title></path>`;
+    }
+    const fill = p.wait ? `color-mix(in oklab, ${p.col} ${Math.max(20, 70 - waitAge(p) * 6)}%, var(--ncm-attn))` : p.col;
+    const cls = !p.msgs.length ? 'no-sb__dot--never' : p.kind === 'npc' ? 'no-sb__dot--npc' : 'no-sb__dot--pc';
+    const style = p.kind === 'npc' ? `stroke:color-mix(in srgb, ${p.col} 55%, var(--ncm-text-label))` : `fill:${fill};opacity:${recency(p)}`;
+    dots += `<g class="${dim.trim()}">${sel ? `<circle class="no-sb__selr" cx="${x}" cy="${y}" r="${s + (p.wait ? 9 : 5)}"/>` : ''}${p.wait ? `<circle class="no-sb__halo" cx="${x}" cy="${y}" r="${s + 4.5}"/>` : ''}<circle class="no-sb__dot ${cls}${sel ? ' is-sel' : ''}" data-dot="${p.id}" cx="${x}" cy="${y}" r="${s}" style="${style}"><title>${p.full}${p.wait ? ' — waiting ' + (waitAge(p) || '<1') + 'd' : !p.msgs.length ? ' — has her as a contact, never written' : ''}</title></circle></g>`;
+    const off = s + (p.wait ? 11 : 7), cxu = Math.cos(rad(a)), cyu = Math.sin(rad(a));
+    const lx = x + cxu * off, ly = y + cyu * off + (Math.abs(cxu) < .35 ? (cyu > 0 ? 4 : -4) : 0);
+    const anchor = Math.abs(cxu) < .35 ? 'middle' : cxu > 0 ? 'start' : 'end';
+    names += `<text class="no-sb__name${p.kind === 'npc' ? ' is-npc' : ''}${dim}" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}">${p.name}${p.wait ? `<tspan class="w" dx="4">${p.wait}</tspan>` : ''}</text>`;
+    if (p.msgs.length && s >= 7.5 && p.kind === 'pc') ov += `<i class="fas ${ROLE[p.role][1]} no-ov${dim}" style="left:${h + x}px;top:${h + y}px"></i>`;
+  });
+  const [gx1, gy1] = pt(OWE_R - 9, 270), [gx2, gy2] = pt(OWE_R + 9, 270), [gx3, gy3] = pt(140, 270);
+  const svg = `<svg width="${CS}" height="${CS}" viewBox="${-h} ${-h} ${CS} ${CS}">
+    <circle class="no-sb__zone" cx="0" cy="0" r="${OWE_R}"/>
+    <circle class="no-sb__guide" cx="0" cy="0" r="140"/>
+    <circle class="no-sb__guide no-sb__guide--owe" cx="0" cy="0" r="${OWE_R}"/>
+    <text class="no-sb__glbl no-sb__glbl--owe" x="${gx1}" y="${gy1}">Your turn</text><text class="no-sb__glbl" x="${gx2}" y="${gy2}">Even</text><text class="no-sb__glbl" x="${gx3}" y="${gy3}">Never written</text>
+    ${links}${wedges}<circle class="no-sb__core" cx="0" cy="0" r="${HUB_IN - 2}"/><text class="no-sb__core-t" x="0" y="0">RA</text>${wl}${dots}${marks}${names}</svg>`;
+  const queue = P.filter((p) => p.wait && (S.ident === 'all' || p.waitMsgs.some((m) => (S.ident === 'alias') === m.a))).sort((x, y) => waitAge(y) - waitAge(x) || y.wait - x.wait);
+  const qrows = queue.map((p) => {
+    const m = p.waitMsgs[p.waitMsgs.length - 1], viaAlias = p.waitMsgs.some((w) => w.a), age = waitAge(p);
+    return `<div class="no-q__r${S.sel === p.id ? ' is-sel' : ''}" data-pick="${p.id}"><span class="no-q__age">${age === 0 ? '&lt;1d' : age + 'd'}<small>waiting</small></span><span class="no-av${p.kind === 'npc' ? ' is-npc' : ''}" style="--tc:var(--ncm-text-label)">${ini(p.full)}</span>
+      <div style="min-width:0"><div class="no-q__top"><span class="no-q__nm">${p.name}</span>${p.kind === 'npc' ? '<span class="no-tag no-tag--plain">NPC</span>' : ''}${p.wait > 1 ? `<span class="no-tag" style="--tc:var(--no-attn-text)">${p.wait} unanswered</span>` : ''}<span class="no-tag ${viaAlias ? 'no-tag--secret' : 'no-tag--plain'}">${viaAlias ? '<i class="fas fa-mask"></i>' : ''}to ${viaAlias ? NPC.alias : NPC.short}</span></div><div class="no-q__s">${m.s}</div></div>
+      <button class="no-btn no-btn--q" data-op="reply" data-q="${p.id}"><i class="fas fa-reply"></i>Reply as ${viaAlias ? NPC.aliasShort : NPC.short}</button></div>`;
+  }).join('');
+  return `<div class="no-mod"><div class="no-mod__k"><i class="fas fa-tower-broadcast"></i>Switchboard<span class="no-mod__hint">closer = she owes them more</span></div>
+    ${identChips('c')}
+    <div class="no-sb" style="width:${CS}px;height:${CS}px">${svg}${ov}</div>
+    <div class="no-legend"><span><i class="no-k" style="border-radius:50%;background:var(--ncm-text-heading)"></i>player</span><span><i class="no-k" style="border-radius:50%;border:1.5px solid var(--ncm-text-label)"></i>NPC</span><span><i class="no-k" style="border-radius:50%;border:1.5px solid var(--ncm-attn)"></i>waiting on her</span><span><i class="fas fa-play" style="color:var(--ncm-attn);font-size:8px;transform:rotate(180deg)"></i>they wrote last</span><span><i class="fas fa-play" style="color:var(--ncm-text-label);font-size:8px"></i>she wrote last</span></div>
+    <div class="no-q"><div class="no-q__k"><i class="fas fa-bell"></i>Reply queue<span class="r">longest wait first · ${queue.reduce((n, p) => n + p.wait, 0)} messages</span></div>
+      <div class="no-q__list">${qrows || '<div class="no-q__none">Nobody is waiting on Rogue.</div>'}</div></div></div>`;
+}
+
+function frame(v, mod) {
+  return `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" data-v="${v}" style="width:470px"><div class="ncm-admin-panel"><div class="no-pane">
+    <div class="no-band"><i class="fas fa-satellite-dish"></i>Who writes to ${NPC.short}<span class="no-band__r">${P.length} correspondents · <b>${WAITING} waiting</b></span></div>
+    ${mod}${card(v)}</div></div></div>`;
+}
+function render(v) {
+  if (!v || v === 'c') document.querySelector('[data-slot="c"]').innerHTML = frame('c', switchboardC());
+  if (!v || v === 'a') document.querySelector('[data-slot="a"]').innerHTML = frame('a', orbitA());
+  if (!v || v === 'b') document.querySelector('[data-slot="b"]').innerHTML = frame('b', timelineB());
+}
+render();
+
+document.addEventListener('click', (e) => {
+  const t = e.target, root = t.closest('[data-v]'); if (!root) return;
+  const v = root.dataset.v, S = ST[v];
+  const pick = (id) => { if (S.sel !== id) { S.sel = id; S.share = false; S.as = null; S.saved = false; } };
+  const ring = t.closest('[data-ring]'); if (ring && !t.closest('[data-dot]')) { const i = +ring.dataset.ring; S.ring = S.ring === i ? null : i; return render(v); }
+  if (t.closest('[data-ring-clear]')) { S.ring = null; return render(v); }
+  const dot = t.closest('[data-dot]'); if (dot) { pick(dot.dataset.dot); return render(v); }
+  const pr = t.closest('[data-pick]'); if (pr) { pick(pr.dataset.pick); return render(v); }
+  const id = t.closest('[data-ident]'); if (id) { S.ident = id.dataset.ident; return render(v); }
+  const sp = t.closest('[data-span]'); if (sp) { S.span = +sp.dataset.span; return render(v); }
+  const tr = t.closest('[data-trust]'); if (tr) { const p = P.find((x) => x.id === S.sel); p.trust = +tr.dataset.trust; S.saved = true; render(); return; }
+  const as = t.closest('[data-as]'); if (as) { S.as = as.dataset.as; return render(v); }
+  const sh = t.closest('[data-share-to]'); if (sh) { ROSTER[+sh.dataset.shareTo].done = true; return render(); }
+  const qp = t.closest('[data-q]'); if (qp) { ST[v].sel = qp.dataset.q; render(v); return; }
+  const op = t.closest('[data-op]'); if (op) { if (op.dataset.op === 'share') { S.share = !S.share; return render(v); } op.animate?.([{ opacity: .4 }, { opacity: 1 }], 300); }
+});
+
+if (q.get('a11y')) setTimeout(() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1; const cx = cv.getContext('2d', { willReadFrequently: true });
+  const rgba = (c) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+  const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+  const bgOf = (el) => { const layers = []; for (let e = el; e; e = e.parentElement) { const c = rgba(getComputedStyle(e).backgroundColor); if (c[3] > 0) { layers.push(c); if (c[3] >= .99) break; } } let out = [255, 255, 255]; for (const c of layers.reverse()) out = out.map((v, i) => v * (1 - c[3]) + c[i] * c[3]); return out; };
+  const slot = document.querySelector('[data-slot="' + (q.get('a11y') === '1' ? 'c' : q.get('a11y')) + '"]');
+  const rows = []; const tw = document.createTreeWalker(slot, NodeFilter.SHOW_TEXT);
+  for (let n; (n = tw.nextNode());) {
+    const t = n.textContent.trim(); if (!t) continue; const el = n.parentElement; const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || el.closest('title')) continue;
+    const isSvg = el instanceof SVGElement; let fg = rgba(isSvg ? cs.fill : cs.color);
+    let op = 1; for (let e = el; e && e !== slot; e = e.parentElement) op *= Number(getComputedStyle(e).opacity);
+    const bg = bgOf(isSvg ? el.closest('svg') : el); fg = fg.map((v, i) => i < 3 ? v * fg[3] * op + bg[i] * (1 - fg[3] * op) : 1);
+    const L1 = lum(fg), L2 = lum(bg); const ratio = (Math.max(L1, L2) + .05) / (Math.min(L1, L2) + .05);
+    rows.push({ t: t.slice(0, 26), ratio: +ratio.toFixed(2), px: parseFloat(cs.fontSize), cls: el.getAttribute('class') || el.tagName });
+  }
+  rows.sort((a, b) => a.ratio - b.ratio);
+  const bad = rows.filter((x) => x.ratio < 4.5); const small = rows.filter((x) => x.px < 10);
+  document.title = 'A11Y worst=' + rows[0]?.ratio + ' under4.5=' + bad.length + ' under10px=' + small.length + ' of ' + rows.length;
+  const pre = document.createElement('pre'); pre.id = 'no-a11y'; pre.textContent = JSON.stringify({ bad, small: small.map((x) => x.t + ' ' + x.px + ' ' + x.cls) }, null, 1); document.body.appendChild(pre);
+}, 600);
+</script>
+</body>
+</html>

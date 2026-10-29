@@ -1,0 +1,642 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Shards — modules</title>
+<!--
+  Admin → Shards, round 4. The picked list (B-left chip cartridges) + a REAL detail pane:
+  header (image, name, state pill, holder/preset/folder/maker pills, actions — one primary), the breach path,
+  the A2 ladder-track integrity module (embedded), and the entries list (type icon + state badge, encrypted / eddies / damage).
+  Records below: B-right, A shelves. ?audit=1 measures every text node in the main frame against the real cascade.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-shards-modules-mock.html  ?t=clean-light|high-contrast  ?audit=1
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 0 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px/1.45 sans-serif; margin: 0 0 18px; max-width: 960px; }
+  .mk-sec { color: #eee; font: 700 17px sans-serif; margin: 6px 0 14px; padding-bottom: 6px; border-bottom: 1px solid #333; letter-spacing: .04em; }
+  .mk-ver { margin: 0 0 34px; }
+  .mk-ver h2 { color: #eee; font: 700 14px sans-serif; margin: 0 0 4px; letter-spacing: .05em; }
+  .mk-ver p { color: #b8c0cc; font: 13px/1.5 sans-serif; margin: 0 0 12px; max-width: 960px; }
+  .mk-audit { margin: 8px 0 0; color: #cfe; font: 12px/1.4 monospace; white-space: pre-wrap; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+
+  /* ---------- frame ---------- */
+  .sv-P { width: 820px; display: grid; grid-template-columns: 330px minmax(0,1fr); background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); border: 1px solid var(--ncm-border); border-radius: 2px;
+    color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); height: 820px; }
+  .sv-col { background: var(--ncm-bg-pane, var(--ncm-bg-base)); border-right: 1px solid var(--ncm-border); min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+  .sv-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 14px; }
+  .sv-det { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); min-width: 0; overflow-y: auto; overflow-x: hidden; position: relative; }
+  .sv-detin { animation: sv-detin .3s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes sv-detin { from { opacity: 0; transform: translateX(10px); } }
+  .sv-band { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-act);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); flex: none; }
+  .sv-band > i { color: var(--ncm-act); }
+  .sv-band .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+  .sv-band .r b { font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+
+  /* text roles */
+  .sv-num { font-family: var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading)); }
+  .sv-hn { color: var(--hc); font-weight: 600; }
+  [data-ncm-admin-theme="clean-light"] .sv-hn { color: color-mix(in oklab, var(--hc) 58%, black); }
+  .t-intact { --tc: var(--ncm-good); } .t-damaged { --tc: var(--ncm-attn); } .t-unstable { --tc: color-mix(in oklab, var(--ncm-attn) 50%, var(--ncm-bad)); }
+  .t-critical, .t-bricked { --tc: var(--ncm-bad); } .t-off { --tc: var(--ncm-text-label); }
+  .sv-tx { color: var(--tc); }
+  [data-ncm-admin-theme="clean-light"] .sv-tx { color: color-mix(in oklab, var(--tc) 55%, black); }
+
+  /* pills (ncm-tagp style: one shape, colour from --tc) */
+  .sv-tag { --tc: var(--ncm-act); display: inline-flex; gap: 4px; align-items: center; padding: 0 7px; border-radius: 2px; font: 600 11px var(--ncm-font-body); white-space: nowrap; line-height: 19px;
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+  .sv-tag i { font-size: 9px; }
+  .sv-tag .k { color: var(--ncm-text-label); font-weight: 500; }
+  [data-ncm-admin-theme="clean-light"] .sv-tag { color: color-mix(in oklab, var(--tc) 55%, black); }
+  .sv-tag.is-secret { --tc: var(--ncm-secret); } .sv-tag.is-bad { --tc: var(--ncm-bad); } .sv-tag.is-attn { --tc: var(--ncm-attn); } .sv-tag.is-good { --tc: var(--ncm-good); } .sv-tag.is-plain { --tc: var(--ncm-text-label); } .sv-tag.is-money { --tc: var(--ncm-money); }
+  .sv-tag.is-fill { background: color-mix(in srgb, var(--tc) 26%, transparent); border-color: var(--tc); }
+
+  /* buttons */
+  .sv-btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 5px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; cursor: pointer; box-shadow: none !important; margin: 0 !important; display: inline-flex; gap: 6px; align-items: center; line-height: 1.3; flex: none; transition: background .18s; }
+  .sv-btn i { margin: 0 !important; font-size: 10px; color: var(--ncm-text-label); }
+  .sv-btn:hover { background: var(--ncm-bg-hover) !important; }
+  .sv-btn.pri { border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse, #0b0d12) !important; background: var(--ncm-act) !important; }
+  .sv-btn.pri i { color: inherit; }
+  .sv-btn.bad { border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent) !important; color: var(--ncm-bad) !important; } .sv-btn.bad i { color: inherit; }
+  .sv-btn.good { border-color: color-mix(in srgb, var(--ncm-good) 55%, transparent) !important; color: var(--ncm-good) !important; } .sv-btn.good i { color: inherit; }
+  [data-ncm-admin-theme="clean-light"] .sv-btn.bad { color: color-mix(in oklab, var(--ncm-bad) 75%, black) !important; }
+  [data-ncm-admin-theme="clean-light"] .sv-btn.good { color: color-mix(in oklab, var(--ncm-good) 60%, black) !important; }
+  .sv-btn[disabled] { opacity: .45; cursor: default; }
+  .sv-seg { display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; flex: none; }
+  .sv-seg span { padding: 2px 8px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); cursor: pointer; line-height: 16px; transition: background .18s; }
+  .sv-seg span + span { border-left: 1px solid var(--ncm-border-active); }
+  .sv-seg span.on { background: color-mix(in srgb, var(--ncm-act) 18%, transparent); color: var(--ncm-text-heading); }
+
+  /* ===== detail: sections as bands, tone picked by the heading's icon ===== */
+  .sv-sec { margin-top: 12px; }
+  .sv-sec__k { --sk: var(--ncm-act); display: flex; align-items: center; gap: 7px; padding: 6px 12px; background: var(--ncm-bg-card-head, var(--ncm-bg-card)); border-top: 1px solid var(--ncm-border); border-bottom: 1px solid var(--ncm-border);
+    box-shadow: inset 3px 0 var(--sk); font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .sv-sec__k > i { color: var(--sk); font-size: 10px; width: 12px; text-align: center; }
+  .sv-sec__k .r { margin-left: auto; font: 11.5px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); }
+  .sv-sec__k:has(.fa-shield-halved, .fa-lock) { --sk: var(--ncm-secret); }
+  .sv-sec__k:has(.fa-folder-open) { --sk: var(--ncm-hue-2); }
+  .sv-sec__k:has(.fa-bolt, .fa-battery-three-quarters) { --sk: var(--ncm-attn); }
+  .sv-sec__k:has(.fa-clock-rotate-left) { --sk: var(--ncm-text-label); }
+  .sv-sec__b { padding: 10px 12px 0; }
+
+  /* header */
+  .dh { display: grid; grid-template-columns: 56px minmax(0,1fr); gap: 4px 12px; padding: 14px 12px 0; position: relative; }
+  .dh::before { content: ''; position: absolute; left: -1px; top: 26px; width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 8px solid var(--ncm-act); }
+  .dh .sv-img { --sz: 56px; grid-row: 1 / 4; }
+  .dh .nm { font: 700 18px/1.2 var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .dh .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .dh .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .dh .acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+  /* breach path */
+  .bp-sum { display: flex; align-items: center; gap: 10px; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .bp-sum b { font-weight: 600; }
+  .bp-sum .meter { margin-left: auto; display: flex; gap: 2px; }
+  .bp-sum .meter i { width: 18px; height: 6px; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); }
+  .bp-sum .meter i.on { background: var(--ncm-good); }
+  .bp-path { display: flex; align-items: flex-start; padding: 14px 0 4px; }
+  .bp-stop { flex: 0 0 76px; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; min-width: 0; }
+  .bp-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; position: relative; box-sizing: border-box;
+    color: var(--ncm-secret); background: var(--ncm-bg-pane); border: 2px solid color-mix(in srgb, var(--ncm-secret) 70%, transparent); }
+  .bp-stop.is-clear .bp-dot { color: var(--ncm-bg-pane); background: var(--ncm-good); border-color: var(--ncm-good); }
+  .bp-stop.is-next .bp-dot { box-shadow: 0 0 0 3px var(--ncm-bg-pane-alt, var(--ncm-bg-base)), 0 0 0 5px var(--ncm-attn); }
+  .bp-stop.is-ice .bp-dot { color: var(--ncm-bad); border-color: var(--ncm-bad); background: color-mix(in srgb, var(--ncm-bad) 14%, var(--ncm-bg-pane)); }
+  .bp-stop.is-ice:not(.is-clear) .bp-dot::after { content: ''; position: absolute; inset: -7px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--ncm-bad) 50%, transparent); animation: bp-halo 1.8s ease-in-out infinite; }
+  @keyframes bp-halo { 50% { opacity: .2; transform: scale(1.1); } }
+  .bp-stop.is-end .bp-dot { color: var(--ncm-text-label); border-color: var(--ncm-border-active); border-style: dashed; }
+  .bp-stop.is-end.is-clear .bp-dot { color: var(--ncm-bg-pane); background: var(--ncm-good); border-style: solid; }
+  .bp-stop.is-dead .bp-dot { color: var(--ncm-text-label); border-color: var(--ncm-border-active); background: var(--ncm-bg-pane); }
+  .bp-stop .n { font: 700 10px/1.2 var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .bp-stop .v { font: 11px/1.25 var(--ncm-font-body); color: var(--ncm-text-label); }
+  .bp-stop .v .sv-num { font-size: 11px; }
+  .bp-line { flex: 1 1 0; height: 2px; margin-top: 15px; background: color-mix(in srgb, var(--ncm-border-active) 80%, transparent); min-width: 8px; }
+  .bp-line.is-clear { background: var(--ncm-good); }
+  .bp-none { padding: 10px 0 2px; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-label); display: flex; gap: 8px; align-items: center; }
+
+  /* integrity (A2 ladder track, approved) */
+  .ba-top { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: end; }
+  .ba-read .k { display: inline-flex; align-items: center; gap: 5px; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 3px; }
+  .ba-read .k i { width: 8px; height: 8px; border-radius: 50%; background: var(--tc); box-shadow: 0 0 6px var(--tc); }
+  .ba-read .v { font: 700 26px/1 var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .ba-read .v small { font-size: 14px; color: var(--ncm-text-label); font-weight: 400; }
+  .ba-say { font: 12px/1.45 var(--ncm-font-body); color: var(--ncm-text-label); text-align: right; }
+  .ba-say b { color: var(--ncm-text-heading); font: 700 12px var(--ncm-font-mono); }
+  .ba-say em { font-style: normal; font-weight: 600; }
+  .ba-cellwrap { display: flex; align-items: center; padding-top: 10px; }
+  .ba-cell { flex: 1; height: 42px; border: 2px solid var(--ncm-border-active); border-radius: 3px; position: relative; padding: 3px; box-sizing: border-box; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); }
+  .ba-nub { width: 6px; height: 18px; background: var(--ncm-border-active); border-radius: 0 2px 2px 0; }
+  .ba-in { position: relative; height: 100%; overflow: hidden; }
+  .ba-track, .ba-lit { position: absolute; inset: 0; background: linear-gradient(90deg, var(--ncm-bad) 0 25%, color-mix(in oklab, var(--ncm-attn) 50%, var(--ncm-bad)) 25% 50%, var(--ncm-attn) 50% 75%, var(--ncm-good) 75% 100%); }
+  .ba-track { opacity: .14; }
+  .ba-lit { z-index: 1; opacity: .85; transition: clip-path .55s cubic-bezier(.22,1,.36,1);
+    -webkit-mask: repeating-linear-gradient(90deg, #000 0 9px, rgba(0,0,0,.55) 9px 11px); mask: repeating-linear-gradient(90deg, #000 0 9px, rgba(0,0,0,.55) 9px 11px); }
+  .ba-needle { position: absolute; top: -3px; bottom: -3px; width: 3px; margin-left: -1.5px; background: var(--ncm-text-heading); box-shadow: 0 0 0 1px var(--ncm-bg-canvas, #000), 0 0 8px var(--tc); z-index: 3; }
+  .ba-ghost, .ba-gain { position: absolute; top: 0; bottom: 0; animation: ba-drain .9s ease-out forwards; z-index: 2; }
+  .ba-ghost { background: var(--ncm-bad); } .ba-gain { background: var(--ncm-good); }
+  @keyframes ba-drain { to { opacity: 0; } }
+  .ba-div { position: absolute; top: -3px; bottom: -3px; width: 1px; background: color-mix(in srgb, var(--ncm-border-active) 90%, transparent); z-index: 3; }
+  .ba-cell.hit { animation: ba-shake .35s; }
+  @keyframes ba-shake { 20% { transform: translateX(-3px); } 45% { transform: translateX(3px); } 70% { transform: translateX(-2px); } }
+  .ba-dead { position: absolute; inset: 0; display: grid; place-items: center; font: 700 12px var(--ncm-font-display); letter-spacing: .14em; color: var(--ncm-text-heading); text-transform: uppercase; z-index: 4; }
+  .ba-scale { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin: 5px 6px 2px 3px; }
+  .ba-scale > div { text-align: center; padding: 3px 0 2px; border-top: 2px solid color-mix(in srgb, var(--tc) 30%, transparent); }
+  .ba-scale > div.on { border-top-color: var(--tc); }
+  .ba-scale .n { font: 700 9.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .ba-scale > div.on .n { color: var(--ncm-text-heading); }
+  .ba-scale .r { font: 10px var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .ba-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 0 0; }
+  .ba-acts .sp { flex: 1; }
+  .sv-amt { display: inline-flex; align-items: center; border: 1px solid color-mix(in srgb, var(--ncm-bad) 55%, transparent); border-radius: 2px; height: 24px; }
+  .sv-amt span { width: 18px; text-align: center; cursor: pointer; color: var(--ncm-text-label); font: 700 12px var(--ncm-font-mono); line-height: 22px; }
+  .sv-amt span:hover { color: var(--ncm-text-heading); background: var(--ncm-bg-hover); }
+  .sv-amt b { min-width: 28px; text-align: center; font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .sv-amt .go { width: auto; padding: 0 8px; border-left: 1px solid color-mix(in srgb, var(--ncm-bad) 55%, transparent); font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-bad); display: inline-flex; gap: 5px; align-items: center; height: 100%; }
+  [data-ncm-admin-theme="clean-light"] .sv-amt .go { color: color-mix(in oklab, var(--ncm-bad) 75%, black); }
+  .ba-off { display: flex; gap: 10px; align-items: center; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ba-off b { color: var(--ncm-text-heading); font-weight: 600; }
+  .sv-hist { max-height: 132px; overflow-y: auto; overflow-x: hidden; margin: 10px 0 0; border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .sv-h { display: grid; grid-template-columns: 20px 34px minmax(0,1fr) auto; gap: 7px; align-items: center; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); box-shadow: inset 2px 0 color-mix(in srgb, var(--hc) 70%, transparent); }
+  .sv-h:last-child { border-bottom: 0; }
+  .sv-h .ic { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 2px; font-size: 10px; color: var(--hc); background: color-mix(in srgb, var(--hc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--hc) 45%, transparent); }
+  [data-ncm-admin-theme="clean-light"] .sv-h .ic { color: color-mix(in oklab, var(--hc) 65%, black); }
+  .sv-h .d { font: 700 12px var(--ncm-font-mono); text-align: right; color: var(--ncm-text-heading); }
+  .sv-h .w { font: 12px/1.3 var(--ncm-font-body); color: var(--ncm-text-primary); min-width: 0; }
+  .sv-h .w small { color: var(--ncm-text-label); font-size: 11px; }
+  .sv-h .t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .sv-h.fresh { animation: sv-in .3s cubic-bezier(.22,1,.36,1); }
+  @keyframes sv-in { from { opacity: 0; transform: translateY(-4px); } }
+  .k-hit, .k-gm, .k-brick { --hc: var(--ncm-bad); } .k-fix { --hc: var(--ncm-good); } .k-salv { --hc: var(--ncm-act); }
+  .ba-cross { display: inline-flex; gap: 4px; align-items: center; margin-left: 4px; padding: 0 5px; border-radius: 1px; font: 700 9.5px/16px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase;
+    background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 50%, transparent); vertical-align: 1px; }
+  .ba-cross i { font-size: 8px; }
+
+  /* entries */
+  .en-list { border: 1px solid var(--ncm-border); border-radius: 2px; max-height: 250px; overflow-y: auto; overflow-x: hidden; }
+  .en { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; gap: 9px; align-items: center; padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .en:last-child { border-bottom: 0; }
+  .en-ic { width: 26px; height: 26px; position: relative; display: grid; place-items: center; border-radius: 2px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border-active); color: var(--ncm-text-label); font-size: 11px; }
+  .en-ic .bdg { position: absolute; right: -4px; bottom: -4px; width: 12px; height: 12px; border-radius: 50%; display: grid; place-items: center; font-size: 7px; background: var(--tc); color: var(--ncm-bg-pane, #000); box-shadow: 0 0 0 1.5px var(--ncm-bg-pane-alt, #000); }
+  .en.lost .en-ic { border-style: dashed; color: var(--ncm-text-hint); }
+  .en.lost .en-ic::after { content: ''; position: absolute; inset: 3px; background: linear-gradient(135deg, transparent 45%, var(--ncm-bad) 46% 54%, transparent 55%); }
+  .en .nm { font: 600 12.5px/1.25 var(--ncm-font-display); color: var(--ncm-text-heading); overflow-wrap: break-word; }
+  .en.lost .nm { color: var(--ncm-text-label); text-decoration: line-through; }
+  .en .sb { font: 11px/1.3 var(--ncm-font-body); color: var(--ncm-text-label); }
+  .en .bd { display: flex; gap: 5px; align-items: center; justify-content: flex-end; flex-wrap: wrap; max-width: 170px; }
+  .ba-q { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ncm-border-active); border-radius: 2px; }
+  .ba-q i { width: 6px; height: 10px; background: color-mix(in srgb, var(--ncm-text-label) 55%, transparent); }
+  .ba-q i.x { background-color: color-mix(in srgb, var(--ncm-bad) 22%, transparent); background-image: repeating-linear-gradient(135deg, transparent 0 2px, color-mix(in srgb, var(--ncm-bad) 85%, transparent) 2px 3px); }
+
+  /* ===== LIST — chip cartridges, contacts on the left ===== */
+  .sv-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .sv-tools .lbl { font: 700 9.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .sv-srch { flex: 1 1 100%; display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 7px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); min-width: 0; box-sizing: border-box; }
+  .sv-srch i { font-size: 10px; color: var(--ncm-text-label); }
+  .sv-P .sv-srch input { flex: 1; min-width: 0; border: 0 !important; background: none !important; height: 24px !important; padding: 0 !important; box-shadow: none !important; color: var(--ncm-text-primary); font: 12px var(--ncm-font-body); outline: none !important; }
+  .sv-P select.sv-sel { height: 22px !important; padding: 0 20px 0 6px !important; margin: 0 !important; font: 600 11.5px var(--ncm-font-body) !important; color: var(--ncm-text-primary) !important; background-color: var(--ncm-bg-canvas, var(--ncm-bg-deep)) !important;
+    border: 1px solid var(--ncm-border-active) !important; border-radius: 2px !important; width: auto !important; flex: 0 1 auto; min-width: 0; max-width: 140px; box-shadow: none !important; }
+  .sv-P select.sv-sel option { background: var(--ncm-bg-pane); color: var(--ncm-text-primary); }
+  .cr-meter { padding: 8px 12px 8px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .cr-meter .bar2 { display: flex; height: 8px; gap: 2px; }
+  .cr-meter .bar2 span { cursor: pointer; min-width: 6px; opacity: .85; transition: opacity .18s; }
+  .cr-meter .bar2 span.on { opacity: 1; box-shadow: 0 0 0 1px var(--ncm-text-heading); }
+  .cr-meter .bar2.has-on span:not(.on) { opacity: .3; }
+  .cr-meter .lg { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 6px; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .cr-meter .lg span { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
+  .cr-meter .lg span b { font: 700 10.5px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .cr-meter .lg span.on { color: var(--ncm-text-heading); text-decoration: underline; text-underline-offset: 3px; }
+  .sv-led { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; box-sizing: border-box; }
+  .sv-led.open { border: 1.5px solid var(--ncm-text-label); }
+  .sv-led.locked { background: var(--ncm-secret); box-shadow: 0 0 5px var(--ncm-secret); }
+  .sv-led.breached { background: var(--ncm-good); box-shadow: 0 0 5px var(--ncm-good); }
+  .sv-led.ice { background: var(--ncm-bad); box-shadow: 0 0 6px var(--ncm-bad); animation: sv-blink 1.1s steps(2, end) infinite; }
+  .sv-led.bricked { border: 1.5px solid var(--ncm-bad); position: relative; }
+  .sv-led.bricked::after { content: ''; position: absolute; left: -1px; right: -1px; top: 50%; height: 1.5px; margin-top: -.75px; background: var(--ncm-bad); transform: rotate(-45deg); }
+  @keyframes sv-blink { 50% { opacity: .3; } }
+  .sv-pm { font: 700 8.5px var(--ncm-font-display); letter-spacing: .05em; color: var(--ncm-hue-6); border: 1px solid color-mix(in srgb, var(--ncm-hue-6) 55%, transparent); padding: 0 3px; border-radius: 1px; line-height: 12px; display: inline-flex; gap: 3px; align-items: center; flex: none; }
+  [data-ncm-admin-theme="clean-light"] .sv-pm { color: color-mix(in oklab, var(--ncm-hue-6) 60%, black); }
+  .sv-pm i { font-size: 7.5px; }
+  .sv-empty { padding: 18px; text-align: center; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .sv-img { --sz: 32px; width: var(--sz); height: var(--sz); flex: none; position: relative; display: grid; place-items: center; border-radius: 2px; overflow: hidden;
+    background: color-mix(in srgb, var(--ncm-text-label) 12%, var(--ncm-bg-canvas, var(--ncm-bg-deep))); border: 1px solid var(--ncm-border-active); }
+  .sv-img img { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
+  .sv-img > i { display: none; color: var(--ncm-text-label); font-size: calc(var(--sz) * .42); }
+  .sv-img.is-glyph > i { display: block; }
+  .sv-img.is-bricked img { filter: grayscale(1) brightness(.6); }
+  .sv-img.is-bricked::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent 47%, var(--ncm-bad) 48% 52%, transparent 53%); }
+
+  /* bay header = a band; obvious that it folds */
+  .cr-grp { --gc: var(--ncm-border-active); display: flex; align-items: center; gap: 7px; margin: 12px 12px 0; padding: 6px 8px; cursor: pointer; user-select: none;
+    background: var(--ncm-bg-card-head, var(--ncm-bg-card)); border: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--gc); border-radius: 2px 2px 0 0;
+    font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); transition: background .18s; }
+  .cr-grp:hover { background: var(--ncm-bg-hover); }
+  .cr-grp.shut { border-radius: 2px; }
+  .cr-grp .chev { width: 16px; height: 16px; display: grid; place-items: center; border: 1px solid var(--ncm-border-active); border-radius: 2px; font-size: 8px; color: var(--ncm-text-heading);
+    background: var(--ncm-bg-pane); transition: transform .18s cubic-bezier(.22,1,.36,1); }
+  .cr-grp.shut .chev { transform: rotate(-90deg); }
+  .cr-grp .av { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font: 700 7.5px var(--ncm-font-display); letter-spacing: 0;
+    color: color-mix(in oklab, var(--hc) 80%, white); background: color-mix(in srgb, var(--hc) 25%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--hc) 55%, transparent); }
+  [data-ncm-admin-theme="clean-light"] .cr-grp .av { color: color-mix(in oklab, var(--hc) 60%, black); }
+  .cr-grp .fh { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; opacity: 0; transition: opacity .18s; }
+  .cr-grp:hover .fh { opacity: 1; }
+  .cr-grp .n { font: 700 11px var(--ncm-font-mono); letter-spacing: 0; color: var(--ncm-text-heading); padding: 0 6px; border-radius: 2px; background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border-active); line-height: 16px; }
+  .cr-grp:not(:hover) .n { margin-left: auto; }
+  .cr-peek { display: none; flex-wrap: wrap; gap: 4px; align-items: center; margin: 0 12px; padding: 5px 9px 6px 33px; border: 1px solid var(--ncm-border); border-top: 0; border-radius: 0 0 2px 2px; background: var(--ncm-bg-pane);
+    font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .cr-grp.shut + .cr-peek { display: flex; }
+  .cr-grp.shut { border-radius: 2px 2px 0 0; }
+  .cr-peek .more { font: 700 10.5px var(--ncm-font-mono); margin-left: 4px; }
+  .cr-fold { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .3s cubic-bezier(.22,1,.36,1), opacity .3s; }
+  .cr-fold.shut { grid-template-rows: 0fr; opacity: .2; }
+  .cr-foldin { min-height: 0; overflow: hidden; }
+  .cr-bay { margin: 0 12px; border: 1px solid var(--ncm-border); border-top: 0; border-radius: 0 0 2px 2px; max-height: 372px; overflow-y: auto; overflow-x: hidden;
+    background: color-mix(in srgb, var(--ncm-bg-canvas, var(--ncm-bg-deep)) 70%, var(--ncm-bg-pane)); }
+  /* the socket rail runs down the left: cartridges plug in from the left and eject to the right */
+  .cr-bayin { display: flex; flex-direction: column; gap: 8px; padding: 9px 18px 9px 6px; border-left: 4px solid color-mix(in srgb, var(--ncm-border-active) 85%, transparent); }
+  .cr-slot { position: relative; }
+  .cr-c { --edge: var(--ncm-border); position: relative; cursor: pointer; padding: 1px; background: var(--edge);
+    clip-path: polygon(13px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 13px 100%, 13px calc(100% - 8px), 0 calc(100% - 8px), 0 8px, 13px 8px);
+    transition: translate .3s cubic-bezier(.22,1,.36,1), background .18s; animation: cr-in .3s cubic-bezier(.22,1,.36,1) backwards; animation-delay: calc(var(--i, 0) * 25ms); }
+  @keyframes cr-in { from { opacity: 0; transform: translateY(4px); } }
+  .cr-in { position: relative; display: grid; grid-template-columns: 34px minmax(0,1fr) 6px; gap: 10px; align-items: center; min-height: 56px; padding: 8px 12px 8px 22px; box-sizing: border-box;
+    background: var(--ncm-bg-card); clip-path: inherit; transition: background .18s; }
+  .cr-pins { position: absolute; left: 0; top: 8px; bottom: 8px; width: 12px; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); }
+  .cr-pins::before { content: ''; position: absolute; inset: 2px; background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--ncm-text-label) 70%, transparent) 0 2px, transparent 2px 4px); }
+  .cr-c:hover { --edge: var(--ncm-border-active); }
+  .cr-c:hover .cr-in { background: var(--ncm-bg-hover); }
+  .cr-c.sel { --edge: var(--ncm-act); translate: 10px 0; }
+  .cr-c.sel .cr-in { background: color-mix(in srgb, var(--ncm-act) 12%, var(--ncm-bg-card)); }
+  .cr-c.sel .cr-pins::before { background: repeating-linear-gradient(180deg, var(--ncm-act) 0 2px, transparent 2px 4px); }
+  /* the open cue: a caret outside the chip pointing into the detail pane */
+  .cr-caret { position: absolute; right: -16px; top: 50%; margin-top: -9px; width: 12px; height: 18px; display: grid; place-items: center; font-size: 10px; color: var(--ncm-act);
+    opacity: 0; translate: -6px 0; transition: opacity .18s, translate .3s cubic-bezier(.22,1,.36,1); pointer-events: none; }
+  .cr-slot:hover .cr-caret { opacity: .55; }
+  .cr-slot.sel .cr-caret { opacity: 1; translate: 6px 0; }
+  .cr-c .sv-img { --sz: 34px; }
+  .cr-lbl { min-width: 0; }
+  .cr-lbl .nm { display: flex; gap: 5px; align-items: baseline; flex-wrap: wrap; font: 700 12.5px/1.25 var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .cr-lbl .nm span { overflow-wrap: break-word; }
+  .cr-c.is-bricked .cr-lbl .nm span { color: var(--ncm-text-label); }
+  .cr-lbl .sub { margin-top: 2px; font: 11px/1.3 var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cr-lbl .sub .sv-num { font-size: 10.5px; color: var(--ncm-text-label); }
+  .cr-lbl .sub .key { color: var(--ncm-text-heading); }
+  .cr-lbl .sub i { font-size: 8.5px; margin-right: 2px; }
+  .cr-notch { display: inline-grid; grid-template-columns: repeat(5, 13px); gap: 2px; }
+  .cr-row3 { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+  .cr-row3 .st { font: 600 10.5px var(--ncm-font-body); color: var(--ncm-text-label); display: inline-flex; gap: 5px; align-items: center; }
+  .cr-notch i { height: 13px; display: grid; place-items: center; font-size: 7px; border-radius: 1px; color: color-mix(in srgb, var(--ncm-text-label) 45%, transparent); background: color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .cr-notch i.on { color: var(--ncm-bg-pane); background: var(--ncm-secret); }
+  .cr-notch i.on.net { background: var(--ncm-act); } .cr-notch i.on.ice { background: var(--ncm-bad); } .cr-notch i.on.ok { background: var(--ncm-good); }
+  .cr-ch { width: 6px; height: 44px; align-self: stretch; height: auto; background: color-mix(in srgb, var(--ncm-border-active) 55%, transparent); position: relative; border-radius: 1px; }
+  .cr-ch i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--tc); border-radius: 1px; }
+  .cr-ch.na { background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--ncm-border-active) 70%, transparent) 0 2px, transparent 2px 4px); }
+  /* B-right record: mirrored */
+  .is-R .cr-bayin { padding: 9px 6px 9px 18px; border-left: 0; border-right: 4px solid color-mix(in srgb, var(--ncm-border-active) 85%, transparent); }
+  .is-R .cr-c { clip-path: polygon(10px 0, calc(100% - 13px) 0, calc(100% - 13px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 13px) calc(100% - 8px), calc(100% - 13px) 100%, 0 100%, 0 10px); }
+  .is-R .cr-in { padding: 8px 22px 8px 10px; }
+  .is-R .cr-pins { left: auto; right: 0; }
+  .is-R .cr-c.sel { translate: -10px 0; }
+  .is-R .cr-caret { display: none; }
+
+  /* A shelves record */
+  .sh-head { display: flex; align-items: center; gap: 6px; margin: 10px 12px 6px; padding: 4px 6px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .sh-head .n { margin-left: auto; font: 700 11px var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .sh-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin: 0 12px; }
+  .sh-chip { padding: 6px 7px; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 7px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px)); }
+  .sh-chip .sv-img { --sz: 34px; }
+  .sh-chip .nm { font: 700 11.5px/1.2 var(--ncm-font-display); color: var(--ncm-text-heading); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ba-lit, .cr-c, .cr-fold, .cr-grp .chev, .cr-caret, .sv-seg span { transition: none !important; }
+    .ba-ghost, .ba-gain, .ba-cell.hit, .sv-led.ice, .sv-h.fresh, .cr-c, .sv-detin, .bp-dot::after { animation: none !important; }
+    .ba-ghost, .ba-gain { display: none; }
+  }
+</style>
+</head>
+<body>
+<p class="mk-h">Admin → Shards — round 4: the cartridge list (contacts on the left) + the real detail pane</p>
+<p class="mk-p">Click a cartridge: it ejects toward the detail and a caret points into it; the detail slides in. Click a bay header to fold it (its contents stay as a row of state lights). Damage / Repair / Brick / Salvage work on whichever shard is open. <code>?t=clean-dark | clean-light | high-contrast</code>, <code>?audit=1</code> measures every text node in the main frame.</p>
+
+<div class="mk-sec">The Shards tab</div>
+<div class="mk-ver">
+  <div data-slot="main"></div>
+  <div class="mk-audit" data-audit></div>
+</div>
+<div class="mk-sec">Records (not picked)</div>
+<div class="mk-ver"><h2>B-right — contacts on the right</h2><div data-slot="rec-R"></div></div>
+<div class="mk-ver"><h2>A — chips on shelves</h2><div data-slot="rec-A"></div></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+function djb(s) { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h; }
+const hue = (s) => `var(--ncm-hue-${(djb(s) % 8) + 1})`;
+const ini = (n) => n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const win = (inner) => `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:fit-content"><div class="ncm-admin-panel">${inner}</div></div>`;
+
+/* ---------- data: 42 shards ---------- */
+const svgUri = (s) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">${s}</svg>`);
+const ART = [ // stand-ins for item art
+  svgUri('<rect width="40" height="40" fill="#163a2c"/><rect x="9" y="7" width="22" height="26" rx="2" fill="#2f8f5c"/><rect x="13" y="11" width="14" height="9" fill="#0d241a"/><g fill="#e2b84a"><rect x="11" y="27" width="2" height="6"/><rect x="15" y="27" width="2" height="6"/><rect x="19" y="27" width="2" height="6"/><rect x="23" y="27" width="2" height="6"/><rect x="27" y="27" width="2" height="6"/></g>'),
+  svgUri('<rect width="40" height="40" fill="#20202c"/><rect x="5" y="11" width="30" height="19" rx="2" fill="#3a3a52"/><rect x="8" y="14" width="16" height="10" fill="#4ed3d9"/><circle cx="29" cy="18" r="2" fill="#e05a5a"/><circle cx="29" cy="24" r="2" fill="#6ad06a"/>'),
+  svgUri('<rect width="40" height="40" fill="#2a2430"/><rect x="6" y="10" width="28" height="20" rx="2" fill="#e8e4ee"/><rect x="6" y="14" width="28" height="4" fill="#b03a5b"/><rect x="9" y="22" width="10" height="5" fill="#d9b44a"/>'),
+  svgUri('<rect width="40" height="40" fill="#14202e"/><circle cx="20" cy="20" r="13" fill="#2f5fa0"/><circle cx="20" cy="20" r="9" fill="#5b8fd6"/><circle cx="20" cy="20" r="3" fill="#14202e"/>'),
+  svgUri('<rect width="40" height="40" fill="#2e2614"/><rect x="8" y="16" width="24" height="8" rx="4" fill="#e2b84a"/><rect x="26" y="17" width="6" height="6" fill="#8a6a1c"/><rect x="11" y="19" width="10" height="2" fill="#8a6a1c"/>'),
+  svgUri('<rect width="40" height="40" fill="#2a1416"/><rect x="11" y="6" width="18" height="28" rx="2" fill="#a83a3a"/><rect x="14" y="9" width="12" height="7" fill="#f0d0d0"/><rect x="14" y="22" width="12" height="2" fill="#f0d0d0"/><rect x="14" y="26" width="8" height="2" fill="#f0d0d0"/>'),
+];
+const NAMES = [
+  ['Militech Exec Dossier', 'V'], ['Afterlife Ledger', 'V'], ['Delamain Route Log', 'V'], ['Kiroshi Optics Firmware', 'V'], ["Takemura's Burner Codes", 'V'],
+  ["Ghost's Go-Bag", 'Rache'], ["Rache's Forged Alibi", 'Rache'], ['Voodoo Relay Keys', 'Rache'], ['Maelstrom Payroll', 'Rache'],
+  ['Kiroshi Patch Notes', 'Judy'], ['Clouds Client List', 'Judy'], ['Lizzy Wizzy BD Rip', 'Judy'], ['Mox Safehouse Map', 'Judy'],
+  ['Aldecaldo Convoy Plan', 'Panam'], ['Nomad Rig Telemetry', 'Panam'], ['Raffen Shiv Bounties', 'Panam'],
+  ['Arasaka Payroll Q3', null], ['NCPD Case 2045 117', null], ['Evidence Fob Dump', null], ['Burnt Courier Chip', null], ['Biotechnica Trial Data', null],
+  ['Kang Tao Weapon Specs', null], ['Petrochem Shipping Manifest', null], ['Trauma Team Patient Log', null], ['Netwatch Watchlist', null], ['Zetatech Prototype Notes', null],
+  ['Tyger Claws Ledger', null], ['Valentinos Shrine Photos', null], ['Scav Den Inventory', null], ['Badlands Beacon Recording', null], ["Dexter's Deal Sheet", null],
+  ['Combat Zone Map', null], ['Night Corp Memo', null], ['Ripperdoc Client File', null], ['Old Net Fragment', null], ['Ziggurat Access Key', null],
+  ['Wraith Bounty Board', null], ['Pacifica Hotel Cams', null], ['Watson Market Prices', null], ["Hellman's Research", null], ['Blue Eyes Tape', null], ['Corpo Plaza Floorplan', null],
+];
+const PM = { "Ghost's Go-Bag": 'Rache', "Rache's Forged Alibi": 'Rache', 'Kiroshi Patch Notes': 'Judy', 'Clouds Client List': 'Judy', 'Nomad Rig Telemetry': 'Panam' };
+const PRESETS = ['Corporate', 'Street Shard', 'Police Evidence', 'Blackwall', 'Classic', 'Medical'];
+const FOLDERS = ['Corp intel', 'Street', 'Evidence', 'Loot', 'Jobs'];
+const STATE_PAT = 'iboblloliboblobloilllbolokbbllolilobolllbo';
+const SETS_LOCK = [['enc'], ['login', 'enc'], ['net', 'login', 'enc'], ['key'], ['login'], ['net', 'key', 'enc']];
+const SETS_ICE = [['enc', 'ice'], ['net', 'enc', 'ice'], ['login', 'enc', 'ice']];
+// CONTENT_TYPE_INFO glyphs (ContentRenderers.js)
+const CT = {
+  message: ['Message', 'fa-envelope'], dossier: ['Dossier', 'fa-id-badge'], chatlog: ['Chat log', 'fa-comments'], spreadsheet: ['Spreadsheet', 'fa-table-cells'],
+  gallery: ['Gallery', 'fa-images'], eddies: ['Eddies drop', 'fa-sack-dollar'], credentials: ['Credentials', 'fa-key'], document: ['Document', 'fa-file-lines'],
+  syslog: ['System log', 'fa-terminal'], location: ['Location', 'fa-map-marker-alt'],
+};
+const ENTRY_NAMES = {
+  message: ['Re: the drop', "Handler's last message", 'Meet at the Afterlife'], dossier: ['Meredith Stout', 'Target: Goro', 'Fixer profile'],
+  chatlog: ['Stout / Hellman chat', 'Crew channel'], spreadsheet: ['Q3 transfers', 'Payroll export'], gallery: ['Lot 7 stills', 'Dock cams'],
+  eddies: ['Dead drop', 'Advance'], credentials: ['Vault logins'], document: ['Memo: Project Kraken', 'Shipping manifest'], syslog: ['gate-ops.log'], location: ['Safehouse pin'],
+};
+const TYPES = Object.keys(CT);
+const SH = NAMES.map(([name, holder], i) => {
+  const h = djb(name), c = STATE_PAT[i % STATE_PAT.length];
+  const state = name === 'Burnt Courier Chip' || name === 'Old Net Fragment' ? 'bricked' : { i: 'ice', l: 'locked', b: 'breached', o: 'open', k: 'bricked' }[c];
+  const set = state === 'open' ? [] : state === 'ice' ? SETS_ICE[h % 3] : SETS_LOCK[h % 6];
+  const layers = {}; for (const k of set) layers[k] = { net: 'Arasaka net only', key: 'Evidence fob', login: 'password', enc: 'DV ' + (13 + h % 9), ice: 'Hellhound · DV 20' }[k];
+  const artIx = h % 7, integ = state === 'bricked' ? 0 : (h % 4 === 0 ? null : 12 + (h % 89)), nFiles = 3 + (h % 7);
+  const entries = Array.from({ length: nFiles }, (_, j) => {
+    const t = TYPES[(h + j * 3) % TYPES.length], pool = ENTRY_NAMES[t], dmg = integ == null ? 0 : integ <= 0 ? 4 : integ < 75 ? Math.max(0, ((h >> j) % 5) - (integ >= 50 ? 2 : 0)) : 0;
+    return { t, name: pool[(h + j) % pool.length], q: Math.min(4, dmg), enc: !!(state !== 'open' && (h + j) % 3 === 0), dv: 13 + ((h + j) % 8), eb: t === 'eddies' ? 250 * (1 + (h + j) % 8) : 0 };
+  });
+  return { id: 's' + i, name, holder, preset: PRESETS[h % 6], folder: FOLDERS[h % 5], layers, set, state, integ, files: nFiles, entries, maker: PM[name] || null,
+    touched: (h % 997) + 3, cleared: state === 'breached' ? set : state === 'locked' && set.length > 1 ? [set[0]] : [],
+    img: name === 'Old Net Fragment' ? 'missing/old-net.webp' : artIx < 6 ? ART[artIx] : null };
+});
+const LAYERS = { net: ['Network', 'fa-wifi'], key: ['Key item', 'fa-key'], login: ['Login', 'fa-user-lock'], enc: ['Encryption', 'fa-lock'], ice: ['Black ICE', 'fa-skull'] };
+const STATES = {
+  ice: { name: 'Black ICE armed', short: 'Black ICE', tag: 'is-bad', ic: 'fa-skull', tok: '--ncm-bad' }, locked: { name: 'Locked', short: 'Locked', tag: 'is-secret', ic: 'fa-lock', tok: '--ncm-secret' },
+  breached: { name: 'Breached', short: 'Breached', tag: 'is-good', ic: 'fa-lock-open', tok: '--ncm-good' }, open: { name: 'Open', short: 'Open', tag: 'is-plain', ic: 'fa-lock-open', tok: '--ncm-text-label' },
+  bricked: { name: 'Bricked', short: 'Bricked', tag: 'is-bad', ic: 'fa-skull-crossbones', tok: '--ncm-bad' },
+};
+const STATE_ORDER = ['ice', 'locked', 'breached', 'open', 'bricked'];
+const HOLDERS = ['V', 'Rache', 'Judy', 'Panam', null];
+const TIERS = [{ key: 'critical', name: 'Critical', lo: 1, hi: 24 }, { key: 'unstable', name: 'Unstable', lo: 25, hi: 49 }, { key: 'damaged', name: 'Damaged', lo: 50, hi: 74 }, { key: 'intact', name: 'Intact', lo: 75, hi: 100 }];
+const BRICKED = { key: 'bricked', name: 'Bricked', lo: 0, hi: 0 };
+const tierOf = (p) => p <= 0 ? BRICKED : TIERS.find((t) => p >= t.lo && p <= t.hi) || TIERS[3];
+const tierByKey = (k) => k === 'bricked' ? BRICKED : TIERS.find((t) => t.key === k);
+const tc = (s) => s.integ == null ? 't-off' : `t-${tierOf(s.integ).key}`;
+const isCleared = (s, k) => s.state === 'breached' || s.cleared.includes(k);
+const holderName = (h) => h || 'World item';
+const ago = (m) => m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
+const imgTile = (s) => `<span class="sv-img${s.img ? '' : ' is-glyph'}${s.state === 'bricked' ? ' is-bricked' : ''}">${s.img ? `<img src="${s.img}" alt="" onerror="this.parentNode.classList.add('is-glyph');this.remove()">` : ''}<i class="fas fa-microchip"></i></span>`;
+const pmTag = (s) => s.maker ? '<span class="sv-pm" title="A player made this shard"><i class="fas fa-user-pen"></i>PM</span>' : '';
+const holderHtml = (h) => h ? `<span class="sv-hn" style="--hc:${hue(h)}">${h}</span>` : '<i class="fas fa-globe"></i>world';
+
+/* ---------- integrity state per shard (A2 module) ---------- */
+const IS = {};
+function integOf(s) {
+  if (IS[s.id]) return IS[s.id];
+  const hist = s.integ == null ? [] : s.integ <= 0 ? [{ kind: 'hit', d: -18, why: 'Black ICE fought back', t: '3d ago' }, { kind: 'brick', d: -22, why: 'Failed breach', who: 'V', t: '2d ago', cross: 'bricked' }]
+    : s.integ >= 100 ? [] : [{ kind: 'hit', d: -Math.min(18, 100 - s.integ), why: 'Black ICE fought back', t: '2d ago', cross: s.integ < 75 ? tierOf(s.integ).key : null }, { kind: 'hit', d: -8, why: 'Failed breach', who: 'V', t: '2h ago' }].filter((h) => h.d < 0);
+  return (IS[s.id] = { on: s.integ != null, cur: s.integ ?? 100, max: 100, per: 8, amt: 8, hist, hit: null, fresh: null, salvaged: null });
+}
+const pctOf = (st) => Math.round((st.cur / st.max) * 100);
+function hacksTo(st) {
+  const t = tierOf(pctOf(st));
+  if (t.key === 'bricked') return 'It is <em class="t-bricked sv-tx">bricked</em> — nothing on it can be read.';
+  const steps = (target) => Math.max(1, Math.ceil((st.cur - target) / st.per)), next = t.key === 'critical' ? null : TIERS[TIERS.indexOf(t) - 1], toBrick = steps(0);
+  if (!next) return `<b>${toBrick}</b> more failed hack${toBrick === 1 ? '' : 's'} to <em class="t-bricked sv-tx">bricked</em>.`;
+  const n = steps(Math.floor(st.max * next.hi / 100));
+  return `<b>${n}</b> more failed hack${n === 1 ? '' : 's'} to <em class="t-${next.key} sv-tx">${next.name}</em>,<br><b>${toBrick}</b> to <em class="t-bricked sv-tx">bricked</em>.`;
+}
+function hitOne(s, st, from, kind, d, why) {
+  const to = pctOf(st), h = { kind, d, why, t: 'now' }; if (tierOf(from).key !== tierOf(to).key) h.cross = tierOf(to).key;
+  st.hist.unshift(h); st.fresh = 0; st.hit = { from, to, up: d > 0 }; s.integ = st.on ? to : s.integ;
+}
+const OPS = {
+  toggle: (s, st) => { st.on = !st.on; s.integ = st.on ? pctOf(st) : null; },
+  'amt-': (s, st) => { st.amt = Math.max(1, st.amt - 1); }, 'amt+': (s, st) => { st.amt = Math.min(100, st.amt + 1); },
+  dmg: (s, st) => { if (st.cur <= 0) return; const from = pctOf(st); st.cur = Math.max(0, st.cur - st.amt); const e = s.entries.find((x) => x.q < 4); if (e) e.q++; if (st.cur === 0) s.entries.forEach((x) => { x.q = 4; }); hitOne(s, st, from, st.cur === 0 ? 'brick' : 'gm', -st.amt, 'Damaged by you'); },
+  rep: (s, st) => { if (st.cur >= st.max) return; const from = pctOf(st), n = Math.min(25, st.max - st.cur); st.cur += n; st.salvaged = null; const e = [...s.entries].reverse().find((x) => x.q > 0); if (e) e.q--; hitOne(s, st, from, 'fix', n, 'Repaired by you'); },
+  brick: (s, st) => { if (st.cur <= 0) return; const from = pctOf(st), n = st.cur; st.cur = 0; s.entries.forEach((x) => { x.q = 4; }); hitOne(s, st, from, 'brick', -n, 'Bricked by you'); },
+  salv: (s, st) => { if (st.cur > 0 || st.salvaged != null) return; st.salvaged = s.entries.filter((x) => x.q < 4).length; st.hist.unshift({ kind: 'salv', d: 0, why: `Salvaged ${st.salvaged} of ${s.entries.length} entries`, t: 'now' }); st.fresh = 0; },
+};
+const HIT_IC = { hit: 'fa-bolt', gm: 'fa-burst', brick: 'fa-skull', fix: 'fa-screwdriver-wrench', salv: 'fa-box-archive' };
+
+/* ---------- detail pane ---------- */
+function breachPath(s) {
+  const raw = ['net', 'key', 'login'].filter((k) => s.layers[k]);
+  if (s.layers.enc) raw.push(s.layers.ice ? 'crypt-ice' : 'enc');
+  if (!raw.length) return `<div class="bp-none"><i class="fas fa-lock-open"></i>No security — anyone holding it can read it.</div>`;
+  const dead = s.state === 'bricked';
+  const stops = raw.map((k) => {
+    const ice = k === 'crypt-ice', base = ice ? 'enc' : k, cleared = isCleared(s, base);
+    return { k, ice, cleared, name: ice ? 'Black ICE' : LAYERS[base][0], ic: ice ? 'fa-skull' : LAYERS[base][1],
+      v: ice ? `<span class="sv-num">${s.layers.enc}</span> · Hellhound` : base === 'enc' ? `<span class="sv-num">${s.layers.enc}</span>` : s.layers[base] };
+  });
+  const firstOpen = stops.findIndex((x) => !x.cleared), done = stops.filter((x) => x.cleared).length;
+  const next = firstOpen < 0 ? null : stops[firstOpen];
+  const sum = dead ? `<span><b>Bricked</b> — the contents can't be reached any more.</span>`
+    : next ? `<span><b class="sv-num">${done}</b> of <b class="sv-num">${stops.length}</b> open — next: <b>${next.name}</b></span>` : `<span><b>All open</b> — the contents are readable.</span>`;
+  let html = '';
+  stops.forEach((x, i) => {
+    const cls = dead ? 'is-dead' : `${x.cleared ? 'is-clear' : ''}${i === firstOpen ? ' is-next' : ''}${x.ice ? ' is-ice' : ''}`;
+    if (i) html += `<span class="bp-line${!dead && stops[i - 1].cleared ? ' is-clear' : ''}"></span>`;
+    html += `<div class="bp-stop ${cls}" title="${x.cleared ? 'Cleared — click to relock' : 'Click to mark cleared'}"><span class="bp-dot"><i class="fas ${x.cleared && !dead ? 'fa-check' : x.ic}"></i></span><span class="n">${x.name}</span><span class="v">${x.v}</span></div>`;
+  });
+  const reached = !dead && firstOpen < 0;
+  html += `<span class="bp-line${reached ? ' is-clear' : ''}"></span><div class="bp-stop is-end${reached ? ' is-clear' : ''}${dead ? ' is-dead' : ''}"><span class="bp-dot"><i class="fas fa-folder-open"></i></span><span class="n">Contents</span><span class="v"><span class="sv-num">${s.entries.length}</span> entries</span></div>`;
+  return `<div class="bp-sum">${sum}<span class="meter">${stops.map((x) => `<i class="${x.cleared && !dead ? 'on' : ''}"></i>`).join('')}</span></div><div class="bp-path">${html}</div>`;
+}
+function integrityModule(s) {
+  const st = integOf(s);
+  if (!st.on) return `<div class="ba-off"><span>Integrity is <b>off</b> for this shard — it never degrades, and players see no bar.</span><button class="sv-btn" data-op="toggle"><i class="fas fa-power-off"></i>Turn on</button></div>`;
+  const p = pctOf(st), t = tierOf(p), hit = st.hit;
+  const ghost = hit ? (hit.up ? `<span class="ba-gain" style="left:${hit.from}%;width:${hit.to - hit.from}%"></span>` : `<span class="ba-ghost" style="left:${hit.to}%;width:${hit.from - hit.to}%"></span>`) : '';
+  const dead = st.cur <= 0;
+  const hist = st.hist.length ? st.hist.map((h, i) => {
+    const cross = h.cross ? `<span class="ba-cross t-${h.cross} sv-tx"><i class="fas fa-arrow-right-long"></i>${tierByKey(h.cross).name}</span>` : '';
+    return `<div class="sv-h k-${h.kind}${st.fresh === i ? ' fresh' : ''}"><span class="ic"><i class="fas ${HIT_IC[h.kind]}"></i></span><span class="d">${h.d ? (h.d > 0 ? '+' : '') + h.d : '—'}</span><span class="w">${h.why}${h.who ? ` <small>· ${h.who}</small>` : ''}${cross}</span><span class="t">${h.t}</span></div>`;
+  }).join('') : '<div class="sv-h k-salv" style="--hc:var(--ncm-border-active)"><span class="ic"><i class="fas fa-check"></i></span><span class="d">—</span><span class="w">No hits yet.</span><span class="t"></span></div>';
+  return `<div class="ba-top t-${t.key}"><div class="ba-read"><div class="k sv-tx"><i></i>${t.name}</div><div class="v">${st.cur}<small> / ${st.max}</small></div></div><div class="ba-say">Loses <b>${st.per}</b> per failed hack.<br>${hacksTo(st)}</div></div>
+    <div class="ba-cellwrap"><div class="ba-cell${hit && !hit.up ? ' hit' : ''}"><div class="ba-in"><span class="ba-track"></span><span class="ba-lit" style="clip-path:inset(0 ${100 - p}% 0 0)"></span>${ghost}
+      ${[25, 50, 75].map((x) => `<span class="ba-div" style="left:${x}%"></span>`).join('')}<span class="ba-needle t-${t.key}" style="left:${p}%"></span>${dead ? '<span class="ba-dead"><span><i class="fas fa-skull"></i>&nbsp; Bricked</span></span>' : ''}</div></div><div class="ba-nub"></div></div>
+    <div class="ba-scale">${TIERS.map((x) => `<div class="t-${x.key}${t.key === x.key ? ' on' : ''}"><div class="n">${x.name}</div><div class="r">${x.lo}–${x.hi}%</div></div>`).join('')}</div>
+    <div class="ba-acts"><span class="sv-amt" title="How much one Damage takes off"><span data-op="amt-">−</span><b>${st.amt}</b><span data-op="amt+">+</span><span class="go" data-op="dmg"><i class="fas fa-bolt"></i>Damage</span></span>
+      <button class="sv-btn good" data-op="rep"${st.cur >= st.max ? ' disabled' : ''}><i class="fas fa-screwdriver-wrench"></i>Repair +25</button><span class="sp"></span>
+      <button class="sv-btn bad" data-op="brick"${dead ? ' disabled' : ''}><i class="fas fa-skull"></i>Brick</button>
+      <button class="sv-btn" data-op="salv"${!dead || st.salvaged != null ? ' disabled' : ''} title="${dead ? 'Pull the readable entries off the dead shard' : 'Only a bricked shard can be salvaged'}"><i class="fas fa-box-archive"></i>Salvage</button></div>
+    <div class="sv-hist">${hist}</div>`;
+}
+function entriesList(s) {
+  return `<div class="en-list">${s.entries.map((e) => {
+    const [lbl, ic] = CT[e.t], fs = e.q >= 4 ? ['bricked', 'fa-xmark', 'Lost'] : e.q ? [e.q >= 2 ? 'unstable' : 'damaged', 'fa-circle-half-stroke', `${(4 - e.q) * 25}% left`] : null;
+    const badges = [e.enc ? `<span class="sv-tag is-secret" title="Encrypted"><i class="fas fa-lock"></i><span class="sv-num">DV ${e.dv}</span></span>` : '',
+      e.eb ? `<span class="sv-tag is-money"><i class="fas fa-coins"></i><span class="sv-num">${e.eb.toLocaleString()} eb</span></span>` : '',
+      fs ? `<span class="ba-q" title="${fs[2]}">${[0, 1, 2, 3].map((x) => `<i class="${x >= 4 - e.q ? 'x' : ''}"></i>`).join('')}</span>` : ''].join('');
+    return `<div class="en${e.q >= 4 ? ' lost' : ''} t-${fs ? fs[0] : 'intact'}"><span class="en-ic" title="${lbl}"><i class="fas ${ic}"></i>${fs ? `<span class="bdg"><i class="fas ${fs[1]}"></i></span>` : ''}</span>
+      <span><span class="nm">${esc(e.name)}</span><br><span class="sb">${lbl}${fs ? ` · <span class="sv-tx">${fs[2]}</span>` : ''}</span></span><span class="bd">${badges}</span></div>`;
+  }).join('')}</div>`;
+}
+function detail(s, anim) {
+  const st = STATES[s.state], eb = s.entries.reduce((n, e) => n + e.eb, 0), enc = s.entries.filter((e) => e.enc).length;
+  return `<div class="${anim ? 'sv-detin' : ''}" data-shard="${s.id}">
+    <div class="dh">${imgTile(s)}<div class="nm">${esc(s.name)}</div>
+      <div class="tags"><span class="sv-tag ${st.tag} is-fill"><i class="fas ${st.ic}"></i>${st.name}</span>
+        <span class="sv-tag" style="--tc:${s.holder ? hue(s.holder) : 'var(--ncm-text-label)'}"><i class="fas ${s.holder ? 'fa-user' : 'fa-globe'}"></i>${holderName(s.holder)}</span>
+        <span class="sv-tag" style="--tc:${hue(s.preset)}"><i class="fas fa-palette"></i>${s.preset}</span>
+        <span class="sv-tag" style="--tc:${hue(s.folder)}"><i class="fas fa-folder"></i>${s.folder}</span>
+        ${s.maker ? `<span class="sv-tag" style="--tc:${hue(s.maker)}"><i class="fas fa-user-pen"></i>Made by ${s.maker}</span>` : '<span class="sv-tag is-plain"><i class="fas fa-pen-ruler"></i>GM-made</span>'}</div>
+      <div class="sub">Last touched <span class="sv-num">${ago(s.touched)}</span></div>
+      <div class="acts"><button class="sv-btn pri"><i class="fas fa-up-right-from-square"></i>Open</button><button class="sv-btn"><i class="fas fa-gear"></i>Configure</button>
+        <button class="sv-btn"><i class="fas fa-lock"></i>Relock</button><button class="sv-btn"><i class="fas fa-user-shield"></i>Permissions</button><button class="sv-btn"><i class="fas fa-file-export"></i>Export</button></div></div>
+    <div class="sv-sec"><div class="sv-sec__k"><i class="fas fa-shield-halved"></i>Breach path<span class="r">outside in · click a stop to toggle</span></div><div class="sv-sec__b">${breachPath(s)}</div></div>
+    <div class="sv-sec"><div class="sv-sec__k"><i class="fas fa-battery-three-quarters"></i>Integrity<span class="r">${s.integ == null ? 'off' : `<span class="sv-num">${s.integ}%</span>`}</span></div><div class="sv-sec__b" data-integ>${integrityModule(s)}</div></div>
+    <div class="sv-sec"><div class="sv-sec__k"><i class="fas fa-folder-open"></i>Entries<span class="r"><span class="sv-num">${s.entries.length}</span> · <span class="sv-num">${enc}</span> encrypted${eb ? ` · <span class="sv-num">${eb.toLocaleString()}</span> eb` : ''}</span></div><div class="sv-sec__b" style="padding-bottom:14px">${entriesList(s)}</div></div>
+  </div>`;
+}
+
+/* ---------- the list ---------- */
+const SORTS = {
+  state: ['State first', (a, b) => STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state) || a.name.localeCompare(b.name)],
+  name: ['Name A–Z', (a, b) => a.name.localeCompare(b.name)],
+  integ: ['Integrity, lowest', (a, b) => (a.integ ?? 999) - (b.integ ?? 999) || a.name.localeCompare(b.name)],
+  touched: ['Recently touched', (a, b) => a.touched - b.touched],
+  holder: ['Holder', (a, b) => holderName(a.holder).localeCompare(holderName(b.holder)) || a.name.localeCompare(b.name)],
+  files: ['Most entries', (a, b) => b.files - a.files || a.name.localeCompare(b.name)],
+};
+const LB = { main: { side: 'L', sel: 's0', q: '', st: 'all', group: 'state', sort: 'state', shut: new Set(['open', 'bricked']) },
+             'rec-R': { side: 'R', sel: 's0', q: '', st: 'all', group: 'holder', sort: 'integ', shut: new Set(['Rache', 'Judy', 'Panam', 'world']) } };
+function cartridge(s, L, i) {
+  const key = L.sort === 'touched' ? `<span class="key">${ago(s.touched)}</span> · ` : '';
+  const notch = `<span class="cr-notch">${['net', 'key', 'login', 'enc', 'ice'].map((k) => `<i class="${s.layers[k] ? 'on ' + (isCleared(s, k) ? 'ok' : k === 'net' ? 'net' : k === 'ice' ? 'ice' : '') : ''}" title="${LAYERS[k][0]}${s.layers[k] ? ': ' + s.layers[k] + (isCleared(s, k) ? ' — cleared' : '') : ' — none'}"><span class="fas ${LAYERS[k][1]}"></span></i>`).join('')}</span>`;
+  return `<div class="cr-slot${L.sel === s.id ? ' sel' : ''}"><div class="cr-c ${tc(s)}${s.state === 'bricked' ? ' is-bricked' : ''}${L.sel === s.id ? ' sel' : ''}" style="--i:${Math.min(i, 9)}" data-pick="${s.id}" title="${STATES[s.state].name} — click to open"><div class="cr-in"><span class="cr-pins"></span>
+    ${imgTile(s)}<div class="cr-lbl"><div class="nm"><span>${esc(s.name)}</span>${pmTag(s)}</div><div class="sub">${key}${L.group === 'holder' ? '' : holderHtml(s.holder) + ' · '}<span class="sv-num${L.sort === 'files' ? ' key' : ''}" title="${s.files} entries"><i class="fas fa-file"></i>${s.files}</span>${s.integ != null ? ` · <span class="sv-num${L.sort === 'integ' ? ' key' : ''}">${s.integ}%</span>` : ''}</div><div class="cr-row3">${notch}<span class="st"><i class="sv-led ${s.state}"></i>${STATES[s.state].short}</span></div></div>
+    <span class="cr-ch${s.integ == null ? ' na' : ''}" title="${s.integ == null ? 'Integrity off' : 'Integrity ' + s.integ + '%'}">${s.integ == null ? '' : `<i style="height:${s.integ}%"></i>`}</span></div></div><span class="cr-caret"><i class="fas fa-caret-right"></i></span></div>`;
+}
+function panel(slot) {
+  const L = LB[slot], pool = SH.filter((s) => !L.q || `${s.name} ${holderName(s.holder)} ${s.preset}`.toLowerCase().includes(L.q));
+  const counts = STATE_ORDER.map((k) => [k, pool.filter((s) => s.state === k).length]);
+  const meter = `<div class="cr-meter"><div class="bar2${L.st !== 'all' ? ' has-on' : ''}">${counts.filter(([, n]) => n).map(([k, n]) => `<span class="${L.st === k ? 'on' : ''}" data-st="${k}" style="flex:${n};background:var(${STATES[k].tok})" title="${STATES[k].name}: ${n}"></span>`).join('')}</div>
+    <div class="lg">${counts.map(([k, n]) => `<span class="${L.st === k ? 'on' : ''}" data-st="${k}"><i class="sv-led ${k}"></i>${STATES[k].short} <b>${n}</b></span>`).join('')}${L.st !== 'all' ? '<span data-st="all" style="color:var(--ncm-act)">show all</span>' : ''}</div></div>`;
+  const shown = pool.filter((s) => L.st === 'all' || s.state === L.st).sort(SORTS[L.sort][1]);
+  const groups = L.group === 'state' ? STATE_ORDER.map((k) => ({ key: k, label: STATES[k].name, gc: `var(${STATES[k].tok})`, lead: `<i class="sv-led ${k}"></i>`, list: shown.filter((s) => s.state === k) }))
+    : L.group === 'holder' ? HOLDERS.map((h) => ({ key: h || 'world', label: holderName(h), gc: h ? hue(h) : 'var(--ncm-border-active)', lead: h ? `<span class="av" style="--hc:${hue(h)}">${ini(h)}</span>` : '<i class="fas fa-globe" style="color:var(--ncm-text-label)"></i>', list: shown.filter((s) => s.holder === h) }))
+    : [{ key: 'all', label: 'All shards', gc: 'var(--ncm-act)', lead: '<i class="fas fa-microchip" style="color:var(--ncm-text-label)"></i>', list: shown }];
+  const rack = groups.filter((g) => g.list.length).map((g) => {
+    const shut = L.shut.has(g.key) && !L.q;
+    return `<div class="cr-grp${shut ? ' shut' : ''}" style="--gc:${g.gc}" data-fold="${g.key}" title="${shut ? 'Click to unfold' : 'Click to fold'}"><span class="chev"><i class="fas fa-chevron-down"></i></span>${g.lead}${g.label}<span class="fh">${shut ? 'unfold' : 'fold'}</span><span class="n">${g.list.length}</span></div>
+      <div class="cr-peek">${g.list.slice(0, 22).map((s) => `<i class="sv-led ${s.state}" title="${esc(s.name)}"></i>`).join('')}${g.list.length > 22 ? `<span class="more">+${g.list.length - 22}</span>` : ''}</div>
+      <div class="cr-fold${shut ? ' shut' : ''}" data-foldbody="${g.key}"><div class="cr-foldin"><div class="cr-bay"><div class="cr-bayin">${g.list.map((s, i) => cartridge(s, L, i)).join('')}</div></div></div></div>`;
+  }).join('') || '<div class="sv-empty">No shard matches.</div>';
+  return win(`<div class="sv-P is-${L.side}" data-panel="${slot}"><div class="sv-col"><div class="sv-band"><i class="fas fa-microchip"></i>Shards<span class="r"><b>${SH.length}</b> shards</span></div>
+    <div class="sv-tools"><label class="sv-srch"><i class="fas fa-magnifying-glass"></i><input data-q="${slot}" placeholder="Find a shard, holder, look…" value="${esc(L.q)}"></label>
+      <span class="lbl">Group</span><span class="sv-seg">${[['state', 'State'], ['holder', 'Holder'], ['none', 'None']].map(([k, t]) => `<span data-group="${k}" class="${L.group === k ? 'on' : ''}">${t}</span>`).join('')}</span>
+      <span class="lbl">Sort</span><select class="sv-sel" data-sort="${slot}">${Object.entries(SORTS).map(([k, [t]]) => `<option value="${k}"${L.sort === k ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
+    ${meter}<div class="sv-scroll" data-scroll>${rack}</div></div>
+    <div class="sv-det">${detail(SH.find((s) => s.id === L.sel), true)}</div></div>`);
+}
+function recordA() {
+  return win(`<div class="sv-P" style="height:auto;grid-template-columns:330px"><div class="sv-col">${HOLDERS.slice(0, 2).map((h) => { const list = SH.filter((s) => s.holder === h);
+    return `<div class="sh-head">${holderName(h)}<span class="n">${list.length}</span></div><div class="sh-row">${list.slice(0, 4).map((s) => `<div class="sh-chip">${imgTile(s)}<div class="nm">${esc(s.name)}</div></div>`).join('')}</div>`; }).join('')}<div style="height:12px"></div></div></div>`);
+}
+
+function renderSlot(slot) {
+  const el = document.querySelector(`[data-slot="${slot}"]`), keep = el.querySelector('[data-scroll]')?.scrollTop;
+  el.innerHTML = slot === 'rec-A' ? recordA() : panel(slot);
+  const sc = el.querySelector('[data-scroll]'); if (sc && keep != null) sc.scrollTop = keep;
+}
+['main', 'rec-R', 'rec-A'].forEach(renderSlot);
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-op], [data-pick], [data-group], [data-st], [data-fold], .bp-stop:not(.is-end)'); if (!t || t.disabled) return;
+  const pnl = t.closest('[data-panel]'); if (!pnl) return; const slot = pnl.dataset.panel, L = LB[slot];
+  if (t.dataset.pick) {                         // DOM-only: eject the new one, ease the old one back in, slide the detail in
+    if (L.sel === t.dataset.pick) return; L.sel = t.dataset.pick;
+    pnl.querySelectorAll('.cr-slot.sel, .cr-c.sel').forEach((c) => c.classList.remove('sel'));
+    t.classList.add('sel'); t.parentNode.classList.add('sel');
+    pnl.querySelector('.sv-det').innerHTML = detail(SH.find((s) => s.id === L.sel), true); return;
+  }
+  if (t.dataset.fold) {                          // DOM-only: grid-rows animates the height
+    const k = t.dataset.fold, shut = !L.shut.has(k); shut ? L.shut.add(k) : L.shut.delete(k);
+    t.classList.toggle('shut', shut); t.title = shut ? 'Click to unfold' : 'Click to fold'; t.querySelector('.fh').textContent = shut ? 'unfold' : 'fold';
+    pnl.querySelector(`[data-foldbody="${CSS.escape(k)}"]`)?.classList.toggle('shut', shut); return;
+  }
+  if (t.dataset.group) { L.group = t.dataset.group; return renderSlot(slot); }
+  if (t.dataset.st) { L.st = L.st === t.dataset.st ? 'all' : t.dataset.st; return renderSlot(slot); }
+  const s = SH.find((x) => x.id === L.sel);
+  if (t.classList.contains('bp-stop')) {         // toggle a layer cleared (the shipped toggleShardLayer)
+    const i = [...t.parentNode.querySelectorAll('.bp-stop:not(.is-end)')].indexOf(t), keys = ['net', 'key', 'login'].filter((k) => s.layers[k]); if (s.layers.enc) keys.push('enc');
+    const k = keys[i]; if (!k || s.state === 'bricked') return;
+    if (s.state === 'breached') { s.state = s.layers.ice ? 'ice' : 'locked'; s.cleared = [...s.set]; }
+    s.cleared.includes(k) ? (s.cleared = s.cleared.filter((x) => x !== k)) : s.cleared.push(k);
+    if (s.set.every((x) => s.cleared.includes(x) || x === 'ice')) s.state = 'breached';
+  } else {
+    const st = integOf(s); for (const x of Object.values(IS)) { x.hit = null; x.fresh = null; }
+    OPS[t.dataset.op]?.(s, st);
+  }
+  const det = pnl.querySelector('.sv-det'), keep = det.scrollTop; det.innerHTML = detail(s, false); det.scrollTop = keep;
+  const cart = pnl.querySelector(`[data-pick="${s.id}"]`); if (cart) cart.outerHTML = cartridge(s, L, 0).replace(/^<div class="cr-slot[^"]*">/, '').replace(/<span class="cr-caret">.*<\/span><\/div>$/, '');
+});
+document.addEventListener('change', (e) => { const slot = e.target.dataset?.sort; if (slot) { LB[slot].sort = e.target.value; renderSlot(slot); } });
+document.addEventListener('input', (e) => {
+  const slot = e.target.dataset?.q; if (!slot) return;
+  LB[slot].q = e.target.value.toLowerCase(); renderSlot(slot);
+  const i = document.querySelector(`[data-q="${slot}"]`); i.focus(); i.setSelectionRange(i.value.length, i.value.length);
+});
+
+/* ---- ?audit=1 : worst text contrast in the main frame (list + detail), real cascade ---- */
+if (q.get('audit')) setTimeout(() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1; const cx = cv.getContext('2d', { willReadFrequently: true });
+  const rgba = (c) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+  const lum = ([r, g, b]) => { const f = (x) => { x /= 255; return x <= .03928 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4; }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+  const blend = (top, under) => top.map((x, i) => i < 3 ? x * top[3] + under[i] * (1 - top[3]) : 1);
+  const bgOf = (el) => { const layers = []; for (let n = el; n; n = n.parentElement) { const v = rgba(getComputedStyle(n).backgroundColor); if (v[3] > 0) { layers.push(v); if (v[3] > .95) break; } }
+    let c = [27, 27, 34, 1]; for (let i = layers.length - 1; i >= 0; i--) c = blend(layers[i], c); return c; };
+  const res = {};
+  for (const [name, sel] of [['list', '[data-slot="main"] .sv-col'], ['detail', '[data-slot="main"] .sv-det']]) {
+    const rows = [];
+    document.querySelectorAll(`${sel} *`).forEach((el) => {
+      const own = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim()).map((n) => n.textContent.trim()).join(' ');
+      if (!own || el.closest('[disabled], option, .ba-dead')) return;
+      const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none' || el.getClientRects().length === 0 || +cs.opacity === 0) return;
+      const bg = bgOf(el), fg = blend(rgba(cs.color), bg), a = lum(fg), b = lum(bg);
+      rows.push([(Math.max(a, b) + .05) / (Math.min(a, b) + .05), own.slice(0, 26), parseFloat(cs.fontSize)]);
+    });
+    rows.sort((x, y) => x[0] - y[0]); res[name] = rows;
+  }
+  const out = Object.entries(res).map(([n, r]) => `${theme} ${n}: worst ${r[0][0].toFixed(2)}:1 · ${r.filter((x) => x[0] < 4.5).length} of ${r.length} under 4.5\n` + r.slice(0, 4).map((x) => `   ${x[0].toFixed(2)}  ${x[2]}px  "${x[1]}"`).join('\n')).join('\n');
+  document.querySelector('[data-audit]').textContent = out; document.title = out.split('\n')[0];
+}, 1200);
+</script>
+</body>
+</html>

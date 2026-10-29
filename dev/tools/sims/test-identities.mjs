@@ -107,7 +107,8 @@ ok(PortraitService.prototype.resolvePortrait.call(ps, { id: 'c2', actorId: 'lin'
 ok(PortraitService.prototype.resolvePortrait.call(ps, { id: 'x', masterContactId: 'c2', actorId: 'lin' }) === null, "PortraitService: a player's copy of an alias → initials");
 ok(PortraitService.prototype.resolvePortrait.call(ps, { id: 'c1', actorId: 'lin' }) === 'faces/lucky-lin.webp', 'PortraitService: main → the character');
 ok(PortraitService.prototype.resolvePortrait.call(ps, { id: 'c3', actorId: 'lin', portrait: 'faces/mr-blue.webp' }) === 'faces/mr-blue.webp', "PortraitService: alias's own picture");
-ok(/name="ncmIdPortrait"/.test(read('scripts/ui/GMContactManager/GMContactManagerApp.js')) && /portrait: root\.querySelector\('\[name="ncmIdPortrait"\]'\)/.test(read('scripts/ui/GMContactManager/GMContactManagerApp.js')), '+ Add alias takes a picture');
+// The GM Contact Manager window was folded into Admin → Contacts (2026-10-27) — the identity tools live there.
+ok(/name="ncmIdPortrait"/.test(read('scripts/ui/AdminPanel/tabs/ContactsTab.js')) && /portrait: root\.querySelector\('\[name="ncmIdPortrait"\]'\)/.test(read('scripts/ui/AdminPanel/tabs/ContactsTab.js')), '+ Add alias takes a picture');
 
 // ═══ 3c. NPCs with NO actor — a contact-only NPC can have aliases too ═══
 const fixer = { id: 'f1', name: 'Rogue', email: 'rogue@afterlife.nc' };
@@ -154,7 +155,40 @@ ok(filedIn === 'f1', "mail sent AS the NPC's alias is filed in the NPC's inbox")
 await MessageService.prototype._createSentCopy.call(ms2, { messageId: 'z2', fromContactId: 'loose' });
 ok(filedIn === 'loose', 'a contact in no group keeps its own inbox (unchanged)');
 game.nightcity.masterContactService = mcs;
-ok(/addContactIdentity\(contactId, picked\)/.test(read('scripts/ui/GMContactManager/GMContactManagerApp.js')) && /data-contact-id="\{\{selectedContact\.identities\.contactId\}\}"/.test(read('templates/gm-contact-manager/gm-contact-manager.hbs')), 'GM card: + Add alias works for a contact-only NPC');
+ok(/addContactIdentity\(contactId, picked\)/.test(read('scripts/ui/AdminPanel/tabs/ContactsTab.js')) && /data-op="aliasAdd" data-id="\{\{id\}\}"/.test(read('templates/admin-panel/tab-contacts.hbs')), 'Admin Contacts: + Add alias works for a contact-only NPC');
+
+// ═══ 3d. VOICE — a GM-only "how they talk" field; an alias inherits its main's (2026-10-28) ═══
+{
+  const vMain = { id: 'c1', name: 'Lucky Lin', actorId: 'lin', primaryIdentity: true, voice: 'Clipped. Corporate. Never says please.' };
+  const vBurner = { id: 'c2', name: 'Burner', actorId: 'lin' };
+  const vBlue = { id: 'c3', name: 'Mr. Blue', actorId: 'lin', voice: '  Slow drawl, every sentence a riddle.  ' };
+  const vLoner = { id: 'c4', name: 'Rogue', actorId: 'rogue' };
+  const vRoot = { id: 'f1', name: 'Rogue2', voice: 'Bored. Expensive.' };
+  const vRootAlias = { id: 'f2', name: 'The Queen', identityOf: 'f1' };
+  const VC = [vBurner, vMain, vBlue, vLoner, vRoot, vRootAlias];
+  ok(I.voiceFor(VC, vMain) === vMain.voice && I.voiceInfo(VC, vMain).own && !I.voiceInfo(VC, vMain).inherited, 'main: its own voice');
+  ok(I.voiceFor(VC, vBurner) === vMain.voice && I.voiceInfo(VC, vBurner).inherited && I.voiceInfo(VC, vBurner).from.id === 'c1', "alias with none inherits the main's, and says whose");
+  ok(I.voiceFor(VC, vBlue) === 'Slow drawl, every sentence a riddle.' && I.voiceInfo(VC, vBlue).own, 'alias with its own keeps it (trimmed)');
+  ok(I.voiceFor(VC, vLoner) === '' && !I.voiceInfo(VC, vLoner).inherited && I.voiceInfo(VC, vLoner).from === null, 'a lone contact with none → empty, nothing inherited');
+  ok(I.voiceFor(VC, vRootAlias) === 'Bored. Expensive.' && I.voiceInfo(VC, vRootAlias).from.id === 'f1', "a contact-only NPC's alias inherits the root's");
+  ok(I.voiceFor(VC, { id: 'c9', name: 'Ghost', actorId: 'lin', voice: '   ' }) === vMain.voice, 'whitespace-only counts as none');
+  ok(I.voiceFor(VC, null) === '' && I.voiceFor([], vBurner) === '', 'null contact / no directory → empty');
+  // Service: stored on add (trimmed), updatable, never on a player copy (ContactRepository drops it too).
+  const addV = await mcs.addContact({ name: 'Wakako', email: 'w@nc', voice: '  Polite menace. Calls you "little bird".  ' });
+  ok(addV.success && addV.contact.voice === 'Polite menace. Calls you "little bird".', 'addContact stores voice, trimmed');
+  const updV = await mcs.updateContact(addV.contact.id, { voice: ' Warmer now. ' });
+  ok(updV.success && mcs.getContact(addV.contact.id).voice === 'Warmer now.', 'updateContact whitelists voice');
+  ok((await mcs.addContact({ name: 'Mute', email: 'm@nc' })).contact.voice === '', 'voice defaults to empty');
+  {
+    const added = [];
+    game.nightcity.contactRepository = { getContacts: async () => [], addContact: async (aid, data) => { added.push(data); return { success: true }; } };
+    const r = await mcs.pushToPlayer(addV.contact.id, 'lin');
+    ok(r.success && added.length === 1 && added[0].voice === '' && added[0].notes === '', 'pushToPlayer never carries the voice (nor the notes) to a player');
+    delete game.nightcity.contactRepository;
+  }
+  ok(!/voice/.test(read('scripts/data/ContactRepository.js')), 'the player-side ContactRepository has no voice field at all (its normalizer drops it)');
+  await mcs.removeContact(addV.contact.id);
+}
 
 // ═══ 4. Wiring ═══
 const cmp = read('scripts/ui/MessageComposer/MessageComposerApp.js');
@@ -164,17 +198,17 @@ ok(/r\.contactId === mc\.id \|\|/.test(cmp), 'GM search lists every identity (de
 ok(/actorRecipients\[0\]\.contactId \|\| undefined/.test(cmp), 'a sole recipient sends its identity id');
 ok(/this\.fromContact = mc \? \{ id: mc\.id/.test(cmp) && /if \(this\.fromContact\?\.email\) return this\.fromContact\.email;/.test(cmp), 'Send-as keeps the identity');
 ok(/reply\.fromContactId && this\.fromContact\?\.id !== reply\.fromContactId/.test(cmp) && /fromContactId: this\.fromContact\?\.id \|\| null/.test(cmp), 'reply composer sends as the alias (character or contact-only NPC)');
-const gm = read('scripts/ui/GMContactManager/GMContactManagerApp.js');
-for (const a of ['identOpen', 'identSetPrimary', 'identAdd']) ok(new RegExp(`${a}:\\s+GMContactManagerApp\\._on`).test(gm), `GM Contact Manager action ${a}`);
-ok(/selectedEnriched\.identities = this\._identitiesContext/.test(gm) && /selectedContact\.identities\.rows/.test(read('templates/gm-contact-manager/gm-contact-manager.hbs')), 'Identities card wired');
 const ct = read('scripts/ui/AdminPanel/tabs/ContactsTab.js');
-ok(/case 'aliases':/.test(ct) && /data-filter="aliases"/.test(read('templates/admin-panel/tab-contacts.hbs')) && /ncm-ct-row--alias/.test(read('templates/admin-panel/tab-contacts.hbs')), 'Admin Contacts: Aliases filter + nested alias rows');
-ok(/hitGroups/.test(ct), 'Admin Contacts: a search hit brings the other identities');
+const cth = read('templates/admin-panel/tab-contacts.hbs');
+for (const a of ['identOpen', 'star', 'aliasAdd']) ok(ct.includes(`case '${a}':`) && cth.includes(`data-op="${a}"`), `Admin Contacts identity op ${a}`);
+ok(/setPrimaryIdentity\?\.\(id\)/.test(ct) && /ids\.rows/.test(cth), 'Identities card wired (star = setPrimaryIdentity)');
+ok(/\['alias', 'Aliases'\]/.test(read('scripts/ui/AdminPanel/tabs/contactsModel.js')) && /class="ncm-ct2-r \{\{#if alias\}\}alias/.test(cth), 'Admin Contacts: Aliases filter + nested alias rows');
+ok(/shownKeys/.test(read('scripts/ui/AdminPanel/tabs/contactsModel.js')), 'Admin Contacts: a hit brings the other identities');
 const mt = read('scripts/ui/AdminPanel/tabs/MessagesTab.js');
 ok(/fromAlias: this\._aliasNote\(fromContactId\)/.test(mt) && /this\.fromAlias/.test(read('templates/admin-panel/tab-messages.hbs')), 'Activity feed names the alias used');
 ok(/identitiesOfContact\(all, self\) : identitiesOf\(all, actId\)/.test(mt), 'filtering by a character or an NPC includes its aliases');
 ok(/senderAlias: this\._aliasNote/.test(mt), 'NPC Inbox names the alias');
-for (const [f, c] of [['styles/components/gm-contact-manager.css', '.ncm-gm-ident'], ['styles/components/admin-panel/tab-contacts.css', '.ncm-ct-badge--alias'], ['styles/components/admin-panel/tab-messages.css', '.ncm-msg-alias']]) ok(read(f).includes(c), `css ${c}`);
+for (const [f, c] of [['styles/components/admin-panel/tab-contacts.css', '.ncm-ct2-id'], ['styles/components/admin-panel/tab-contacts.css', '.ncm-ct2-r.alias'], ['styles/components/admin-panel/tab-messages.css', '.ncm-msg-alias']]) ok(read(f).includes(c), `css ${c}`);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

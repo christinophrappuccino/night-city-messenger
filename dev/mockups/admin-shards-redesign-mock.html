@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shards Tab Redesign — mock</title>
+<!--
+  ADMIN → SHARDS, REORGANISED — design mock (2026-10-27).
+
+  Same family as the Terminals redesign (list on the left, the selected shard on
+  the right), built for many shards:
+    · creation moves into a "+ New" menu (blank / from a preset / convert an
+      item / import); player authoring becomes one header button with its state;
+      the session "Live" strip and the bottom quick-actions go (the Security log
+      keeps the history; Relock all / Purge / Copy to Items sit in ⋯);
+    · one scrolling list, grouped (who holds it, who made it, preset, folder,
+      status) under sticky headers that fold — no expanding rows that shove the
+      list around;
+    · filter chips with counts: locked, breached, unclaimed eddies, damaged,
+      player-made, bricked;
+    · the detail: security as a chain of layers, the contents as a scrollable
+      list (eddies, damage, encryption at a glance), integrity in one block.
+
+  Click rows, chips, group-by, search, + New, ⋯, Select. Or:
+    ?t=clean-dark|clean-light|high-contrast  ?group=holder|maker|preset|folder|status|none
+    ?sel=<id>  ?new=1  ?more=1  ?bulk=1  ?filter=...
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  /* ── page chrome (not part of the design) ── */
+  html, body { margin: 0; background: #06060a; color: #8fa0b2; font-family: 'Rajdhani', sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; padding: 9px 14px;
+    background: #0b0b12; border-bottom: 1px solid #1b1b28; font: 11px 'Share Tech Mono', monospace; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a; padding: 3px 8px; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+  .bar a.on { color: #07070b; background: #19f3f7; border-color: #19f3f7; }
+  .stage { display: flex; gap: 26px; justify-content: center; padding: 24px 16px 60px; flex-wrap: wrap; }
+  .notes { width: 320px; font-size: 14px; line-height: 1.5; color: #9aa6b4; }
+  .notes h3 { margin: 0 0 6px; font: 700 12px 'Rajdhani'; letter-spacing: .14em; text-transform: uppercase; color: #e6edf5; }
+  .notes p { margin: 0 0 12px; } .notes b { color: #d6dee8; }
+  .mk, .mk.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-panel { width: 820px; height: 760px; display: flex; flex-direction: column; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); overflow: hidden; }
+  .mk-panel > .ncm-admin-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 12px 14px 14px; }
+
+  /* ═════════════════════════ .ncm-shard-admin-* ═════════════════════════ */
+  .ncm-admin-panel .ncm-shard-admin-hd { display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; margin-bottom: 10px; position: relative; }
+  .ncm-admin-panel .ncm-shard-admin-hd h2 { margin: 0; border: 0; text-shadow: none !important; font: 700 17px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-shard-admin-hd p { margin: 0; font: 14px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-hd p b { color: var(--ncm-accent); font-weight: 700; }
+  .ncm-admin-panel .ncm-shard-admin-hd .grow { flex: 1; }
+  .ncm-admin-panel .ncm-shard-admin-hd .acts { display: flex; gap: 5px; }
+  /* player authoring: its own strip — a big feature, never a corner chip */
+  .ncm-admin-panel .ncm-shard-admin-authbar { --a: var(--ncm-purple); display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 9px 12px;
+    border: 1px solid color-mix(in srgb, var(--a) 45%, var(--ncm-border)); border-left: 3px solid var(--a); border-radius: 2px;
+    background: color-mix(in srgb, var(--a) 7%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-shard-admin-authbar.off { --a: var(--ncm-text-muted); border-style: dashed; border-left-style: solid; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-shard-admin-authbar .ic { width: 34px; height: 34px; flex: none; border-radius: 2px; display: grid; place-items: center; font-size: 15px;
+    color: var(--a); background: color-mix(in srgb, var(--a) 15%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-authbar.off .ic { color: var(--ncm-purple); background: color-mix(in srgb, var(--ncm-purple) 12%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-authbar .txt { flex: 1; min-width: 0; }
+  .ncm-admin-panel .ncm-shard-admin-authbar .t { display: flex; align-items: center; gap: 8px; font: 700 14px var(--ncm-font-display); letter-spacing: .02em; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-shard-admin-authbar .st { padding: 0 6px; border-radius: 1px; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; }
+  .ncm-admin-panel .ncm-shard-admin-authbar .st.on { background: color-mix(in srgb, var(--ncm-success) 20%, transparent); color: var(--ncm-success); }
+  .ncm-admin-panel .ncm-shard-admin-authbar .st.off { background: var(--ncm-bg-elevated); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-authbar .made { font: 12px var(--ncm-font-body); font-weight: 400; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-authbar .facts { display: flex; flex-wrap: wrap; gap: 3px 14px; margin-top: 3px; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-authbar .facts i { margin-right: 5px; font-size: 11px; color: var(--a); }
+  .ncm-admin-panel .ncm-shard-admin-authbar .pitch { margin-top: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-authbar .wait { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 2px; white-space: nowrap;
+    border: 1px solid color-mix(in srgb, var(--ncm-accent) 50%, transparent); background: color-mix(in srgb, var(--ncm-accent) 10%, transparent);
+    font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-accent); cursor: pointer; }
+
+  .ncm-admin-panel .ncm-shard-admin-tb { display: flex; gap: 6px; align-items: center; margin-bottom: 7px; }
+  .ncm-admin-panel .ncm-shard-admin-tb .srch { flex: 1; position: relative; }
+  .ncm-admin-panel .ncm-shard-admin-tb .srch i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--ncm-text-muted); font-size: 12px; }
+  .ncm-admin-panel .ncm-shard-admin-tb input[type=text] { width: 100%; height: 30px; padding-left: 28px !important; box-sizing: border-box; }
+  .ncm-admin-panel .ncm-shard-admin-tb select { height: 30px; width: auto; }
+  .ncm-admin-panel .ncm-shard-admin-tb .picked { padding: 0 4px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; }
+  .ncm-admin-panel .ncm-shard-admin-tb .picked b { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .ncm-admin-panel .ncm-shard-admin-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer;
+    background: var(--ncm-bg-base); font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); user-select: none; }
+  .ncm-admin-panel .ncm-shard-admin-chip .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-shard-admin-chip.on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 9%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-shard-admin-chip.on .n { color: var(--ncm-secondary); }
+
+  /* menus (+ New, ⋯) */
+  .ncm-admin-panel .ncm-shard-admin-menu { position: absolute; top: 34px; z-index: 20; min-width: 240px; padding: 4px; border: 1px solid var(--ncm-border-active, var(--ncm-border));
+    background: var(--ncm-bg-elevated); border-radius: 2px; box-shadow: 0 10px 30px rgba(0,0,0,.45); display: none; }
+  .ncm-admin-panel .ncm-shard-admin-menu.open { display: block; }
+  .ncm-admin-panel .ncm-shard-admin-menu .it { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 2px; cursor: pointer; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-shard-admin-menu .it:hover { background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-shard-admin-menu .it i { width: 14px; text-align: center; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-menu .it small { margin-left: auto; color: var(--ncm-text-muted); font-size: 11px; }
+  .ncm-admin-panel .ncm-shard-admin-menu .lbl { padding: 6px 9px 3px; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-shard-admin-menu .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+  .ncm-admin-panel .ncm-shard-admin-menu hr { border: 0; border-top: 1px solid var(--ncm-border); margin: 4px 0; background: none; height: 0; }
+  .ncm-admin-panel .ncm-shard-admin-menu .danger, .ncm-admin-panel .ncm-shard-admin-menu .danger i { color: var(--ncm-danger); }
+
+  /* split + list */
+  .ncm-admin-panel .ncm-shard-admin-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 290px 1fr; gap: 12px; }
+  .ncm-admin-panel .ncm-shard-admin-list { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-shard-admin-grp { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 7px; padding: 6px 10px; cursor: pointer;
+    background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-shard-admin-grp img { width: 16px; height: 16px; border-radius: 50%; }
+  .ncm-admin-panel .ncm-shard-admin-grp i.ic { color: var(--ncm-secondary); font-size: 11px; width: 14px; text-align: center; }
+  .ncm-admin-panel .ncm-shard-admin-grp .n { margin-left: auto; font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; }
+  .ncm-admin-panel .ncm-shard-admin-grp .chev { color: var(--ncm-text-muted); font-size: 10px; transition: transform .2s; }
+  .ncm-admin-panel .ncm-shard-admin-grp.shut .chev { transform: rotate(-90deg); }
+  .ncm-admin-panel .ncm-shard-admin-r { display: grid; grid-template-columns: 28px 1fr auto; gap: 9px; align-items: center; padding: 7px 10px; cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); border-left: 2px solid transparent; }
+  .ncm-admin-panel .is-bulk .ncm-shard-admin-r { grid-template-columns: 13px 28px 1fr auto; }
+  .ncm-admin-panel .ncm-shard-admin-r:hover { background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-r.sel { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border-left-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-r .ck { width: 13px; height: 13px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; display: none; place-items: center; font-size: 9px; color: var(--ncm-secondary); }
+  .ncm-admin-panel .is-bulk .ncm-shard-admin-r .ck { display: grid; }
+  .ncm-admin-panel .ncm-shard-admin-r.picked .ck { background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); border-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-r .ico { width: 28px; height: 28px; border-radius: 2px; display: grid; place-items: center; font-size: 13px; position: relative;
+    background: color-mix(in srgb, var(--c) 14%, var(--ncm-bg-deep)); color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-r .ico .lk { position: absolute; right: -4px; bottom: -4px; width: 13px; height: 13px; border-radius: 50%; display: grid; place-items: center; font-size: 7px;
+    background: var(--ncm-bg-base); border: 1px solid var(--ncm-border); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-r .ico .lk.ice { color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 50%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-r .ico .lk.open { color: var(--ncm-success); }
+  .ncm-admin-panel .ncm-shard-admin-r .nm { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-shard-admin-r .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-shard-admin-r .st { display: flex; gap: 7px; align-items: center; font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-shard-admin-r .st .eb { color: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-shard-admin-r .st .dmg { color: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-shard-admin-r .st .dead { color: var(--ncm-danger); }
+
+  /* detail */
+  .ncm-admin-panel .ncm-shard-admin-det { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-shard-admin-dhead { display: grid; grid-template-columns: 44px 1fr auto; gap: 11px; align-items: center; padding: 12px 13px; border-bottom: 1px solid var(--ncm-border); position: relative; }
+  .ncm-admin-panel .ncm-shard-admin-dhead .ico { width: 44px; height: 44px; border-radius: 2px; display: grid; place-items: center; font-size: 19px;
+    background: color-mix(in srgb, var(--c) 14%, var(--ncm-bg-deep)); color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-dhead .nm { font: 700 17px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-shard-admin-dhead .sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-dhead .sub > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .ncm-admin-panel .ncm-shard-admin-dhead .sub img { width: 15px; height: 15px; border-radius: 50%; vertical-align: -3px; margin-right: 3px; }
+  .ncm-admin-panel .ncm-shard-admin-dhead .acts { display: flex; gap: 5px; }
+  .ncm-admin-panel .ncm-shard-admin-dhead .ncm-shard-admin-menu { right: 12px; top: 50px; min-width: 220px; }
+  .ncm-admin-panel .ncm-shard-admin-tag { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 1px; border: 1px solid var(--ncm-border);
+    font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-tag.made { color: var(--ncm-purple); border-color: color-mix(in srgb, var(--ncm-purple) 45%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-tag.sloppy { color: var(--ncm-warning); border-color: color-mix(in srgb, var(--ncm-warning) 45%, transparent); }
+
+  .ncm-admin-panel .ncm-shard-admin-sec { padding: 10px 13px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-shard-admin-sec:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-shard-admin-sec > .k { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-shard-admin-sec > .k i { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-sec > .k .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; }
+  .ncm-admin-panel .ncm-shard-admin-sec > .k .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-secondary); font-weight: 400; }
+  .ncm-admin-panel .ncm-shard-admin-sec > .k .r b { color: var(--ncm-accent); }
+
+  /* security: the layers as a chain you click to lock/unlock */
+  .ncm-admin-panel .ncm-shard-admin-chain { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+  .ncm-admin-panel .ncm-shard-admin-layer { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 2px; cursor: pointer; font: 13px var(--ncm-font-body);
+    border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-shard-admin-layer i { font-size: 11px; }
+  .ncm-admin-panel .ncm-shard-admin-layer.done { border-color: color-mix(in srgb, var(--ncm-success) 45%, transparent); background: color-mix(in srgb, var(--ncm-success) 8%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-layer.done i { color: var(--ncm-success); }
+  .ncm-admin-panel .ncm-shard-admin-layer.lock i { color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-layer.ice { border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent); background: color-mix(in srgb, var(--ncm-danger) 7%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-layer.ice i { color: var(--ncm-danger); }
+  .ncm-admin-panel .ncm-shard-admin-layer small { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-chain .arr { color: var(--ncm-text-muted); font-size: 10px; }
+  .ncm-admin-panel .ncm-shard-admin-hint { margin-top: 6px; font: 12px var(--ncm-font-body); color: var(--ncm-text-muted); }
+
+  /* contents: every entry, scrollable */
+  .ncm-admin-panel .ncm-shard-admin-ents { border: 1px solid var(--ncm-border); border-radius: 2px; max-height: 214px; overflow-y: auto; overflow-x: hidden; }
+  .ncm-admin-panel .ncm-shard-admin-ent { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; gap: 9px; align-items: center; padding: 6px 9px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-ent:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-shard-admin-ent .ti { width: 26px; height: 26px; border-radius: 2px; display: grid; place-items: center; font-size: 11px;
+    background: color-mix(in srgb, var(--c) 13%, transparent); color: var(--c); }
+  .ncm-admin-panel .ncm-shard-admin-ent .t { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-shard-admin-ent .ty { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-ent .fl { display: flex; gap: 4px; }
+  .ncm-admin-panel .ncm-shard-admin-ent .f { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 1px; font: 11px var(--ncm-font-body); border: 1px solid var(--ncm-border); color: var(--ncm-text-secondary); white-space: nowrap; }
+  .ncm-admin-panel .ncm-shard-admin-ent .f.eb { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 45%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-ent .f.got { color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-shard-admin-ent .f.enc { color: var(--ncm-purple); border-color: color-mix(in srgb, var(--ncm-purple) 45%, transparent); }
+  .ncm-admin-panel .ncm-shard-admin-ent .pips { display: inline-flex; gap: 2px; }
+  .ncm-admin-panel .ncm-shard-admin-ent .pips span { width: 7px; height: 9px; border-radius: 1px; background: var(--ncm-bg-elevated); }
+  .ncm-admin-panel .ncm-shard-admin-ent .pips span.on { background: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-shard-admin-ent .eye { color: var(--ncm-text-secondary); cursor: pointer; font-size: 12px; }
+
+  /* integrity: one block */
+  .ncm-admin-panel .ncm-shard-admin-ig { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; }
+  .ncm-admin-panel .ncm-shard-admin-ig .igbar { height: 8px; border-radius: 1px; background: var(--ncm-bg-elevated); overflow: hidden; }
+  .ncm-admin-panel .ncm-shard-admin-ig .igbar span { display: block; height: 100%; background: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-shard-admin-ig .pct { font: 700 16px var(--ncm-font-mono); color: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-shard-admin-ig .row { grid-column: 1 / -1; display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  .ncm-admin-panel .ncm-shard-admin-ig .set { padding: 2px 8px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer; font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-shard-admin-ig .set.on { border-color: var(--ncm-warning); color: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-shard-admin-ig .grow { flex: 1; }
+  .ncm-admin-panel .ncm-shard-admin-ig input { width: 52px; height: 24px; text-align: center; }
+  .ncm-admin-panel .ncm-shard-admin-quiet { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="stage">
+  <div class="mk mk-panel ncm-app ncm-admin-panel" id="panel" data-ncm-scanlines="false">
+    <nav class="ncm-admin-tabs">
+      <button class="ncm-admin-tab"><i class="fas fa-chart-bar"></i> Overview</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelope"></i> Messages</button>
+      <button class="ncm-admin-tab"><i class="fas fa-address-book"></i> Contacts</button>
+      <button class="ncm-admin-tab"><i class="fas fa-network-wired"></i> Networks</button>
+      <button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-database"></i> Shards</button>
+      <button class="ncm-admin-tab"><i class="fas fa-terminal"></i> Terminals</button>
+      <button class="ncm-admin-tab"><i class="fas fa-shield-halved"></i> Security</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelopes-bulk"></i> Spam</button>
+      <button class="ncm-admin-tab"><i class="fas fa-wrench"></i> Tools</button>
+    </nav>
+    <div class="ncm-admin-content" id="content"></div>
+  </div>
+  <div class="notes">
+    <h3>What changed</h3>
+    <p><b>The list comes first.</b> Creating a shard moved into <b>+ New</b> (blank, from a preset, convert an item, import). Player authoring is one header button that shows On/Off. Relock all, Purge destroyed and Copy player shards to Items sit in <b>⋯</b>. The session-only "Live" strip is gone — the Security tab's log keeps the full history.</p>
+    <p><b>Built for many shards:</b> one scrolling list, grouped by who holds it (default), who made it, preset, folder or status, under headers that fold. Rows no longer expand in place and shove the list around.</p>
+    <p><b>Filters with counts:</b> locked, breached, unclaimed eddies, damaged, player-made, bricked.</p>
+    <p><b>The detail</b> shows the lock as a chain (click a layer to lock or unlock it), every entry in a scrollable list with its eddies, encryption and damage at a glance, and integrity in one block.</p>
+    <p><b>Fixed on the way:</b> Import JSON and the bulk "Move to…" were buttons with nothing behind them.</p>
+  </div>
+</div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+document.getElementById('panel').dataset.ncmAdminTheme = Q.get('t') || 'clean-dark';
+let GROUP = Q.get('group') || 'holder';
+let FILTER = Q.get('filter') || 'all';
+let SEL = Q.get('sel') || 'payroll';
+let NEWM = Q.get('new') === '1';
+let MORE = Q.get('more') === '1';
+let DMORE = false;
+let BULK = Q.get('bulk') === '1';
+const AUTH_ON = Q.get('auth') !== 'off';
+let SEARCH = '';
+const PICKED = new Set(BULK ? ['payroll', 'memo'] : []);
+const SHUT = new Set();
+const FACE = (c) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="${c}"/><circle cx="20" cy="16" r="7.5" fill="#0d0d14" opacity=".75"/><path d="M5 40c1-9 7-13 15-13s14 4 15 13z" fill="#0d0d14" opacity=".75"/></svg>`);
+const HOLDERS = { world: ['World items', null], v: ['V', '#b85c7a'], rache: ['Rache', '#5c86b8'], kiri: ['Kiri', '#7ab85c'] };
+
+/* preset → icon + colour (the shipped presets) */
+const P = {
+  corporate: ['fa-building', 'var(--ncm-secondary)', 'Corporate'], military: ['fa-shield-halved', 'var(--ncm-success)', 'Military'],
+  street: ['fa-skull', 'var(--ncm-accent)', 'Street'], blackmarket: ['fa-mask', 'var(--ncm-purple)', 'Black market'],
+  netwatch: ['fa-eye', 'var(--ncm-secondary)', 'NetWatch'], medical: ['fa-briefcase-medical', 'var(--ncm-danger)', 'Medical'],
+  personal: ['fa-user', 'var(--ncm-text-secondary)', 'Personal'], blank: ['fa-sd-card', 'var(--ncm-text-secondary)', 'Blank'],
+};
+const S = [
+  { id: 'payroll', name: 'Arasaka payroll', holder: 'v', preset: 'corporate', folder: 'Arasaka', status: 'locked', ice: true, entries: 6, eb: 500, dmg: 1, ig: 62, opened: 'V · 2h ago' },
+  { id: 'memo', name: 'Board memo — Q3', holder: 'v', preset: 'corporate', folder: 'Arasaka', status: 'breached', ice: false, entries: 3 },
+  { id: 'dossier', name: 'Dossier: Jackie W.', holder: 'v', preset: 'personal', folder: 'Leads', status: 'open', entries: 2 },
+  { id: 'gobag', name: 'Ghost’s go-bag', holder: 'rache', preset: 'street', folder: 'Leads', status: 'open', entries: 4, maker: 'Rache', forge: 'clean' },
+  { id: 'bribe', name: 'Forged chatlog', holder: 'rache', preset: 'blank', folder: 'Leads', status: 'open', entries: 1, maker: 'Rache', forge: 'sloppy' },
+  { id: 'deck', name: 'Rache’s cyberdeck cache', holder: 'rache', preset: 'blackmarket', folder: 'Gear', status: 'breached', entries: 5 },
+  { id: 'clinic', name: 'Clinic records', holder: 'kiri', preset: 'medical', folder: 'Watson', status: 'locked', ice: false, entries: 8, dmg: 2 },
+  { id: 'map', name: 'Route 66 map', holder: 'kiri', preset: 'military', folder: 'Badlands', status: 'open', entries: 1, maker: 'Kiri', forge: 'clean' },
+  { id: 'netw', name: 'NetWatch bulletin', holder: 'world', preset: 'netwatch', folder: 'NetWatch', status: 'locked', ice: true, entries: 2 },
+  { id: 'cache', name: 'Militech cache codes', holder: 'world', preset: 'military', folder: 'Badlands', status: 'locked', ice: true, entries: 3, eb: 2000 },
+  { id: 'bm', name: 'Black market price list', holder: 'world', preset: 'blackmarket', folder: 'Watson', status: 'open', entries: 12 },
+  { id: 'dead', name: 'Scorched shard', holder: 'world', preset: 'street', folder: 'Watson', status: 'bricked', entries: 0, ig: 0 },
+  { id: 'blank1', name: 'Data Shard #4', holder: 'world', preset: 'blank', folder: '(no folder)', status: 'open', entries: 0 },
+];
+const FILTERS = [
+  ['all', 'All', () => true], ['locked', 'Locked', (s) => s.status === 'locked'], ['breached', 'Breached', (s) => s.status === 'breached'],
+  ['eb', 'Unclaimed eb', (s) => s.eb], ['dmg', 'Damaged', (s) => s.dmg], ['made', 'Player-made', (s) => s.maker], ['bricked', 'Bricked', (s) => s.status === 'bricked'],
+];
+const GROUPS = {
+  holder: ['Holder', (s) => s.holder === 'world' ? 'World items' : `${HOLDERS[s.holder][0]}’s gear`, (s) => s.holder],
+  maker: ['Made by', (s) => s.maker ? `Made by ${s.maker}` : 'Made by the GM'],
+  preset: ['Preset', (s) => P[s.preset][2]],
+  folder: ['Folder', (s) => s.folder],
+  status: ['Status', (s) => ({ locked: 'Locked', breached: 'Breached', open: 'Open', bricked: 'Bricked' })[s.status]],
+  none: ['None', () => 'All shards'],
+};
+const btn = (label, cls = '', icon = '', attrs = '') => `<button type="button" class="ncm-term-admin-btn ${cls}" ${attrs}>${icon ? `<i class="fas ${icon}"></i>` : ''}${label ? ` ${label}` : ''}</button>`;
+const lockMark = (s) => s.status === 'locked' ? `<span class="lk ${s.ice ? 'ice' : ''}"><i class="fas ${s.ice ? 'fa-skull' : 'fa-lock'}"></i></span>` : s.status === 'breached' ? '<span class="lk open"><i class="fas fa-lock-open"></i></span>' : '';
+
+function list() {
+  const [, keyOf, holderOf] = GROUPS[GROUP];
+  const f = FILTERS.find((x) => x[0] === FILTER)[2];
+  const q = SEARCH.toLowerCase();
+  const rows = S.filter(f).filter((s) => !q || `${s.name} ${s.folder} ${P[s.preset][2]} ${s.maker || ''}`.toLowerCase().includes(q));
+  if (!rows.length) return '<div class="ncm-term-admin-empty ncm-term-admin-empty--list"><i class="fas fa-magnifying-glass"></i> No shards match.</div>';
+  const groups = new Map();
+  for (const s of rows) { const k = keyOf(s); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(s); }
+  return [...groups.keys()].map((k) => {
+    const items = groups.get(k); const shut = SHUT.has(k);
+    const h = GROUP === 'holder' ? HOLDERS[holderOf(items[0])] : null;
+    const lead = h && h[1] ? `<img src="${FACE(h[1])}" alt="">` : `<i class="fas ${GROUP === 'holder' ? 'fa-globe' : GROUP === 'maker' ? 'fa-user-pen' : GROUP === 'folder' ? 'fa-folder' : GROUP === 'status' ? 'fa-lock' : 'fa-palette'} ic"></i>`;
+    return `<div class="ncm-shard-admin-grp ${shut ? 'shut' : ''}" data-grp="${k}"><i class="fas fa-chevron-down chev"></i>${lead}${k}<span class="n">${items.length}</span></div>`
+      + (shut ? '' : items.map((s) => {
+        const [ic, c] = P[s.preset];
+        const sub = s.status === 'bricked' ? '<span style="color:var(--ncm-danger)">Bricked</span>'
+          : [s.status === 'locked' ? (s.ice ? 'Black ICE' : 'Locked') : s.status === 'breached' ? 'Breached' : 'Open', s.maker && GROUP !== 'maker' ? `by ${s.maker}` : '', GROUP !== 'folder' ? s.folder : ''].filter(Boolean).join(' · ');
+        return `<div class="ncm-shard-admin-r ${s.id === SEL ? 'sel' : ''} ${PICKED.has(s.id) ? 'picked' : ''}" data-id="${s.id}">
+          <span class="ck">${PICKED.has(s.id) ? '<i class="fas fa-check"></i>' : ''}</span>
+          <span class="ico" style="--c:${c}"><i class="fas ${ic}"></i>${lockMark(s)}</span>
+          <div style="min-width:0"><div class="nm">${s.name}</div><div class="sub">${sub}</div></div>
+          <div class="st">${s.eb ? `<span class="eb" title="Unclaimed eddies">${s.eb.toLocaleString()} eb</span>` : ''}${s.dmg ? '<span class="dmg" title="Damaged entries"><i class="fas fa-bolt"></i></span>' : ''}<span title="Entries"><i class="fas fa-file-lines" style="font-size:10px"></i> ${s.entries}</span></div>
+        </div>`;
+      }).join(''));
+  }).join('');
+}
+
+const ENTRIES = [
+  ['fa-envelope', 'var(--ncm-secondary)', 'RE: quarterly bonus', 'Message', ''],
+  ['fa-coins', 'var(--ncm-accent)', 'Severance — 500 eb', 'Eddies', 'eb'],
+  ['fa-table', 'var(--ncm-success)', 'Payroll — Floor 7', 'Spreadsheet', 'dmg'],
+  ['fa-id-card', 'var(--ncm-purple)', 'Employee 4471', 'Dossier', 'enc'],
+  ['fa-calendar', 'var(--ncm-secondary)', 'Board schedule', 'Calendar', ''],
+  ['fa-file-lines', 'var(--ncm-text-secondary)', 'HR notice', 'Document', ''],
+];
+function detail() {
+  const s = S.find((x) => x.id === SEL) || S[0];
+  const [ic, c, pl] = P[s.preset];
+  const h = HOLDERS[s.holder];
+  const where = s.holder === 'world' ? '<i class="fas fa-globe"></i> World item' : `<span><img src="${FACE(h[1])}" alt="">In ${h[0]}’s gear</span>`;
+  const isPay = s.id === 'payroll';
+  const chain = s.status === 'open' ? '<div class="ncm-shard-admin-quiet">No lock — anyone holding it can read it.</div>' : `
+    <div class="ncm-shard-admin-chain">
+      <span class="ncm-shard-admin-layer done"><i class="fas fa-check"></i>Login</span><i class="fas fa-chevron-right arr"></i>
+      <span class="ncm-shard-admin-layer ${s.status === 'breached' ? 'done' : 'lock'}"><i class="fas ${s.status === 'breached' ? 'fa-check' : 'fa-id-badge'}"></i>Key item <small>Arasaka keycard</small></span><i class="fas fa-chevron-right arr"></i>
+      <span class="ncm-shard-admin-layer ${s.status === 'breached' ? 'done' : s.ice ? 'ice' : 'lock'}"><i class="fas ${s.status === 'breached' ? 'fa-check' : s.ice ? 'fa-skull' : 'fa-lock'}"></i>${s.ice ? 'Black ICE' : 'Encryption'} <small>DV 18</small></span>
+    </div>
+    <div class="ncm-shard-admin-hint">Click a layer to lock or unlock it for everyone. ${s.opened ? `Last opened by ${s.opened}.` : ''}</div>`;
+  const ents = isPay ? ENTRIES : ENTRIES.slice(0, Math.min(s.entries, 3));
+  return `
+    <div class="ncm-shard-admin-dhead">
+      <span class="ico" style="--c:${c}"><i class="fas ${ic}"></i></span>
+      <div style="min-width:0"><div class="nm">${s.name}</div>
+        <div class="sub">${where}<span><i class="fas fa-palette" style="font-size:10px"></i>${pl}</span>${s.maker ? `<span class="ncm-shard-admin-tag made"><i class="fas fa-user-pen"></i>Made by ${s.maker}</span>${s.forge === 'sloppy' ? '<span class="ncm-shard-admin-tag sloppy">Sloppy</span>' : ''}` : ''}</div></div>
+      <div class="acts">${btn('Open', 'ncm-term-admin-btn--primary', 'fa-folder-open')}${btn('Configure', '', 'fa-sliders')}${btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'data-dmore title="More"')}</div>
+      <div class="ncm-shard-admin-menu ${DMORE ? 'open' : ''}">
+        <div class="it"><i class="fas fa-unlock"></i>${s.status === 'locked' ? 'Force decrypt' : 'Relock'}</div>
+        <div class="it"><i class="fas fa-user-lock"></i>Permissions<small>who can see it</small></div>
+        <div class="it"><i class="fas fa-file-export"></i>Export</div>
+        <hr><div class="it danger"><i class="fas fa-rotate-left"></i>Unconvert<small>back to a plain item</small></div>
+      </div>
+    </div>
+    <div class="ncm-shard-admin-sec"><div class="k"><i class="fas fa-lock"></i>Security</div>${chain}</div>
+    <div class="ncm-shard-admin-sec"><div class="k"><i class="fas fa-file-lines"></i>Contents <span class="n">${s.entries}</span>${s.eb ? `<span class="r"><b>${s.eb.toLocaleString()} eb</b> not claimed yet</span>` : ''}</div>
+      ${ents.length ? `<div class="ncm-shard-admin-ents">${ents.map(([i, ec, t, ty, fl]) => `
+        <div class="ncm-shard-admin-ent"><span class="ti" style="--c:${ec}"><i class="fas ${i}"></i></span>
+          <div style="min-width:0"><div class="t">${t}</div><div class="ty">${ty}</div></div>
+          <div class="fl">${fl === 'eb' ? '<span class="f eb"><i class="fas fa-coins"></i>Unclaimed</span>' : ''}${fl === 'enc' ? '<span class="f enc"><i class="fas fa-lock"></i>Encrypted</span>' : ''}${fl === 'dmg' ? '<span class="f" title="2 of 4 damaged"><span class="pips"><span class="on"></span><span class="on"></span><span></span><span></span></span>Damaged</span>' : ''}</div>
+          <i class="fas fa-eye eye" title="Open at this entry"></i></div>`).join('')}</div>` : '<div class="ncm-shard-admin-quiet">Empty — Configure to add entries.</div>'}
+    </div>
+    ${s.ig !== undefined ? `<div class="ncm-shard-admin-sec"><div class="k"><i class="fas fa-shield-halved"></i>Integrity</div>
+      <div class="ncm-shard-admin-ig"><div class="igbar"><span style="width:${s.ig}%"></span></div><span class="pct">${s.ig}%</span>
+        <div class="row">${[100, 75, 50, 25, 0].map((v) => `<span class="set ${v === 50 ? 'on' : ''}">${v}</span>`).join('')}<span class="grow"></span>
+          ${btn('Repair', '', 'fa-heart-pulse')}${btn('Damage', 'ncm-term-admin-btn--danger', 'fa-bolt')}<input type="number" value="10"></div></div></div>` : ''}`;
+}
+
+function render() {
+  const counts = Object.fromEntries(FILTERS.map(([k, , f]) => [k, S.filter(f).length]));
+  const eb = S.reduce((n, s) => n + (s.eb || 0), 0);
+  document.getElementById('content').innerHTML = `
+    <div class="ncm-shard-admin-hd">
+      <h2>Shards</h2><p>${S.length} shards · ${counts.locked} locked · <b>${eb.toLocaleString()} eb</b> unclaimed</p><span class="grow"></span>
+      <div class="acts">
+        ${btn('New', 'ncm-term-admin-btn--primary', 'fa-plus', 'data-new')}
+        ${btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'data-more title="More"')}
+      </div>
+      <div class="ncm-shard-admin-menu ${NEWM ? 'open' : ''}" style="right:40px">
+        <div class="it"><i class="fas fa-file-circle-plus"></i>Blank shard<small>new item, opens its config</small></div>
+        <div class="it"><i class="fas fa-arrow-right-arrow-left"></i>Convert an item…</div>
+        <div class="it"><i class="fas fa-file-import"></i>Import from JSON…</div>
+        <hr><div class="lbl">From a preset</div>
+        <div class="presets">${Object.entries(P).filter(([k]) => k !== 'blank').map(([, [i, c, l]]) => `<div class="it"><i class="fas ${i}" style="color:${c}"></i>${l}</div>`).join('')}</div>
+      </div>
+      <div class="ncm-shard-admin-menu ${MORE ? 'open' : ''}" style="right:0">
+        <div class="it"><i class="fas fa-lock"></i>Relock all shards</div>
+        <div class="it"><i class="fas fa-folder-plus"></i>Copy player shards to Items</div>
+        <hr><div class="it danger"><i class="fas fa-trash-can"></i>Purge bricked shards</div>
+      </div>
+    </div>
+    ${AUTH_ON ? `
+    <div class="ncm-shard-admin-authbar">
+      <span class="ic"><i class="fas fa-user-pen"></i></span>
+      <div class="txt">
+        <div class="t">Player authoring <span class="st on">On</span><span class="made">${counts.made} made by players</span></div>
+        <div class="facts">
+          <span><i class="fas fa-user-check"></i>Netrunner or Interface 4+</span>
+          <span><i class="fas fa-sd-card"></i>Blanks: any gear</span>
+          <span><i class="fas fa-tag"></i>Prices: you approve</span>
+        </div>
+      </div>
+      <span class="wait" title="Players asked you to approve a price"><i class="fas fa-bell"></i>2 prices to approve</span>
+      ${btn('Configure', '', 'fa-sliders')}
+    </div>` : `
+    <div class="ncm-shard-admin-authbar off">
+      <span class="ic"><i class="fas fa-user-pen"></i></span>
+      <div class="txt">
+        <div class="t">Player authoring <span class="st off">Off</span></div>
+        <div class="pitch">Let players write their own shards — forged dossiers, programs, cred drops — rolled for with a skill check.</div>
+      </div>
+      ${btn('Set up', '', 'fa-sliders')}${btn('Turn on', 'ncm-term-admin-btn--primary', 'fa-power-off')}
+    </div>`}
+    <div class="ncm-shard-admin-tb">
+      <span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-search placeholder="Search name, folder, preset, maker…" value="${SEARCH}"></span>
+      ${BULK
+        ? `<span class="picked"><b>${PICKED.size}</b> selected</span>${btn('Relock', '', 'fa-lock')}${btn('Export', '', 'fa-file-export')}${btn('Unconvert', 'ncm-term-admin-btn--danger', 'fa-rotate-left')}${btn('Done', 'ncm-term-admin-btn--primary', 'fa-check', 'data-bulk')}`
+        : `<select data-group>${Object.entries(GROUPS).map(([k, [l]]) => `<option value="${k}" ${k === GROUP ? 'selected' : ''}>Group: ${l}</option>`).join('')}</select>${btn('Select', '', 'fa-list-check', 'data-bulk')}`}
+    </div>
+    <div class="ncm-shard-admin-chips">${FILTERS.map(([k, l]) => `<span class="ncm-shard-admin-chip ${k === FILTER ? 'on' : ''}" data-filter="${k}">${l}<span class="n">${counts[k]}</span></span>`).join('')}</div>
+    <div class="ncm-shard-admin-split ${BULK ? 'is-bulk' : ''}">
+      <div class="ncm-shard-admin-list">${list()}</div>
+      <div class="ncm-shard-admin-det">${detail()}</div>
+    </div>`;
+  document.querySelector('[data-search]').addEventListener('input', (e) => { SEARCH = e.target.value; const pos = e.target.selectionStart; render(); const n = document.querySelector('[data-search]'); n.focus(); n.setSelectionRange(pos, pos); });
+  document.querySelector('[data-group]')?.addEventListener('change', (e) => { GROUP = e.target.value; SHUT.clear(); render(); });
+}
+document.addEventListener('click', (e) => {
+  const r = e.target.closest('.ncm-shard-admin-r');
+  if (r) { if (BULK) { PICKED.has(r.dataset.id) ? PICKED.delete(r.dataset.id) : PICKED.add(r.dataset.id); } else { SEL = r.dataset.id; DMORE = false; } render(); return; }
+  const g = e.target.closest('[data-grp]'); if (g) { SHUT.has(g.dataset.grp) ? SHUT.delete(g.dataset.grp) : SHUT.add(g.dataset.grp); render(); return; }
+  const f = e.target.closest('[data-filter]'); if (f) { FILTER = f.dataset.filter; render(); return; }
+  if (e.target.closest('[data-new]')) { NEWM = !NEWM; MORE = false; render(); return; }
+  if (e.target.closest('[data-more]')) { MORE = !MORE; NEWM = false; render(); return; }
+  if (e.target.closest('[data-dmore]')) { DMORE = !DMORE; render(); return; }
+  if (e.target.closest('[data-bulk]')) { BULK = !BULK; if (!BULK) PICKED.clear(); render(); return; }
+  if ((NEWM || MORE || DMORE) && !e.target.closest('.ncm-shard-admin-menu')) { NEWM = MORE = DMORE = false; render(); }
+});
+render();
+
+const link = (k, v, label) => { const q = new URLSearchParams(location.search); if (v === null) q.delete(k); else q.set(k, v); const on = (Q.get(k) ?? null) === v; return `<a class="${on ? 'on' : ''}" href="?${q}">${label}</a>`; };
+document.getElementById('bar').innerHTML = `<b>SHARDS TAB — REDESIGN</b>
+  <span>preset</span>${link('t', null, 'clean-dark')}${link('t', 'clean-light', 'clean-light')}${link('t', 'high-contrast', 'high-contrast')}
+  <span>group</span>${link('group', null, 'holder')}${link('group', 'maker', 'maker')}${link('group', 'status', 'status')}
+  <span>state</span>${link('new', '1', '+ new open')}${link('bulk', '1', 'select mode')}${link('sel', 'bribe', 'player-made')}${link('sel', 'dead', 'bricked')}<span>authoring</span>${link('auth', null, 'on')}${link('auth', 'off', 'off')}`;
+</script>
+</body>
+</html>

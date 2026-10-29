@@ -283,6 +283,8 @@ export class TraceService {
     const list = [...this.getCountdowns(), {
       id: `cd-${foundry.utils.randomID(8)}`, objectId, actorId, objectName: objectName || objectId,
       actorName: a?.name || 'operator', expiresAt, source: src, reason, playerWarning, tellPlayer: !!tellPlayer,
+      // startedAt + minutes let Admin → Security draw the clock ring as a fraction of the whole run.
+      startedAt: this._nowMs(), minutes: Math.max(1, Number(minutes) || 30),
     }];
     await game.settings.set(MODULE_ID, 'traceCountdowns', list);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

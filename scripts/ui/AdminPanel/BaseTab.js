@@ -68,6 +68,33 @@ export class BaseTab {
   onClose() {}
 
   // ═══════════════════════════════════════════════════════════
+  //  Redesign plumbing (2026-10-27)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Generic action entry: `data-action="tabAct" data-owner="<key>" data-op="<op>"`
+   * lands here (AdminPanelApp._onTabAct). Override and switch on `op` — no new
+   * static delegator per button.
+   * @param {string} op
+   * @param {Event} event
+   * @param {HTMLElement} target
+   */
+  onAct(op, event, target) {}
+
+  /** Open on one row (a contact id, a network id…) — from openAdminTab({select}) or a Pop out's data-select. Called before the render. */
+  openTo(select) {}
+
+  /** True when this tab lives in a popped-out AdminTabWindow. */
+  get isPopout() { return !!this.app.isPopout; }
+
+  /**
+   * A scope-picker id namespaced to THIS window, so the panel and a popped-out
+   * copy of the same tab never share an open popover or a selection.
+   * @param {string} name
+   */
+  scopeId(name) { return `${this.app.id}:${this.key}:${name}`; }
+
+  // ═══════════════════════════════════════════════════════════
   //  Convenience Accessors (proxy to parent)
   // ═══════════════════════════════════════════════════════════
 

@@ -30,6 +30,7 @@ import { log, isGM, generateId, formatCyberDate } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
 import { suggestFilename } from '../ui/content/ContentRenderers.js';
 import { adminViewVerdict as _adminVerdict, adminViewTargets as _adminTargets } from '../utils/terminalAdmin.js';
+import { listNodes, nodeStateAt } from '../utils/networkNodes.js';
 import { SHARED_SCOPE, sanitizeFilesConfig, sanitizeFolder, normalizeFolderPath, visibleEntries, buildTree, canOpenFolder, rewritePlan } from '../utils/terminalFiles.js';
 
 export class TerminalService {
@@ -920,7 +921,30 @@ export class TerminalService {
     // the config default; null = explicitly disconnected (LOCAL ONLY).
     const wantedId = conn.currentNetworkId === '__DEFAULT__' ? cfg.defaultNetworkId : conn.currentNetworkId;
     const network = resolve(wantedId);
+    if (network && this._nodeCutsUplink(wantedId, (cfg.interfaces || []).find(i => i.networkId === wantedId)?.wired)) {
+      return { networkId: null, network: null, cutNetworkId: wantedId };
+    }
     return { networkId: network ? wantedId : null, network };
+  }
+
+  /**
+   * Network nodes (utils/networkNodes.js): the uplink network does not reach the scene being viewed because every
+   * node of it there is down. A wired interface rides out a jam (that is radio) — not a node switched off or damaged.
+   * @private
+   */
+  _nodeCutsUplink(networkId, wired = false) {
+    try {
+      const ns = this.networkService ?? game.nightcity?.networkService;
+      const sceneId = game.scenes?.viewed?.id;
+      if (!ns?.getNodes || !sceneId) return false;
+      const here = listNodes(ns.getNodes({ networkId, sceneId }));
+      if (!here.length) return false;
+      const now = ns._nowMs?.() ?? Date.now();
+      const states = here.map(n => nodeStateAt(n, now));
+      if (states.includes('on')) return false;
+      if (wired && states.every(st => st === 'jammed')) return false;
+      return true;
+    } catch { return false; }
   }
 
   /**

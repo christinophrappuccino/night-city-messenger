@@ -108,6 +108,73 @@
 }
 
 
+/* ───────────────────────────────────────────
+   COLOUR HIERARCHY PASS (2026-10-27)
+   Section heads are bands in their tone · the chosen theme / text size reads as
+   SELECTED (cyan fill + edge) · tool icons say what a tool touches (settings =
+   hue 7 · data & files = hue 2 · syncing clients = hue 3 — category, not meaning;
+   they used to be a random gold/green/cyan) · the Danger Zone is ranked by how much
+   it can destroy: Orphan Audit amber (lists first), Purge red, Factory Reset solid red.
+   ─────────────────────────────────────────── */
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-tools-sect {
+  --sk: var(--ncm-act);
+  padding: 6px 10px 6px 11px; margin: 16px 0 8px; font-size: 11px;
+  color: var(--ncm-text-heading, var(--ncm-text-primary));
+  background: var(--ncm-bg-card-head, var(--ncm-bg-elevated)); border: 1px solid var(--ncm-border); border-radius: 2px;
+  box-shadow: inset 3px 0 var(--sk);
+}
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-tools-sect:first-child { margin-top: 0; }
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-tools-sect::after { background: transparent; }
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-tools-sect > i { color: var(--sk); font-size: 10px; }
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-tools-sect small { margin-left: 4px; font-size: 10px; font-weight: 500; font-style: italic; text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-app.ncm-admin-panel .ncm-tools-sect--setup { --sk: var(--ncm-hue-7); }
+.ncm-app.ncm-admin-panel .ncm-tools-sect--act { --sk: var(--ncm-act); }
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-section-title.ncm-tools-sect--bad { --sk: var(--ncm-bad); color: var(--ncm-bad); border-color: color-mix(in srgb, var(--ncm-bad) 45%, var(--ncm-border)); background: color-mix(in srgb, var(--ncm-bad) 10%, var(--ncm-bg-card-head, var(--ncm-bg-elevated))); }
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-section-title.ncm-tools-sect--bad > i { color: var(--ncm-bad); }
+.ncm-app.ncm-admin-panel .ncm-danger-zone { border-top: 0; padding-top: 0; }
+
+/* theme + text size: the chosen one is unmistakable */
+.ncm-app.ncm-admin-panel button.ncm-admin-theme-opt { background: var(--ncm-bg-pane, var(--ncm-bg-surface)); }
+.ncm-app.ncm-admin-panel button.ncm-admin-theme-opt:hover { border-color: var(--ncm-act); background: var(--ncm-bg-hover, var(--ncm-bg-elevated)); }
+.ncm-app.ncm-admin-panel button.ncm-admin-theme-opt--active { border-color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 14%, var(--ncm-bg-pane, var(--ncm-bg-surface))); box-shadow: inset 4px 0 var(--ncm-act); }
+.ncm-app.ncm-admin-panel .ncm-admin-theme-opt__name { color: var(--ncm-text-heading, var(--ncm-text-primary)); font-family: var(--ncm-font-display); font-weight: 700; }
+.ncm-app.ncm-admin-panel .ncm-admin-theme-opt__desc { color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-app.ncm-admin-panel .ncm-admin-theme-opt__check { color: var(--ncm-act); }
+.ncm-app.ncm-admin-panel .ncm-admin-textsize { background: var(--ncm-bg-pane, var(--ncm-bg-surface)); }
+.ncm-app.ncm-admin-panel .ncm-admin-textsize__label { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app.ncm-admin-panel .ncm-admin-textsize__label i { color: var(--ncm-hue-7); }
+.ncm-app.ncm-admin-panel button.ncm-admin-textsize__opt { color: var(--ncm-text-label, var(--ncm-text-secondary)); background: transparent; border-color: var(--ncm-border-active, var(--ncm-border)); }
+.ncm-app.ncm-admin-panel button.ncm-admin-textsize__opt:hover { border-color: var(--ncm-act); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app.ncm-admin-panel button.ncm-admin-textsize__opt--active { color: var(--ncm-text-inverse); background: var(--ncm-act); border-color: var(--ncm-act); }
+.ncm-app.ncm-admin-panel .ncm-admin-textsize__hint { color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+
+/* tool cards: actions — the hover is cyan (you can click it); the icon says what it touches */
+.ncm-app.ncm-admin-panel .ncm-tool-card { background: var(--ncm-bg-pane, var(--ncm-bg-surface)); }
+.ncm-app.ncm-admin-panel .ncm-tool-card:hover { border-color: var(--ncm-act); background: var(--ncm-bg-hover, var(--ncm-bg-elevated)); }
+.ncm-app.ncm-admin-panel .ncm-tool-card:hover::before { background: var(--ncm-act); }
+.ncm-app.ncm-admin-panel .ncm-tool-card__icon { color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-app.ncm-admin-panel .ncm-tool-card__icon--setup { color: var(--ncm-hue-7); }
+.ncm-app.ncm-admin-panel .ncm-tool-card__icon--data  { color: var(--ncm-hue-2); }
+.ncm-app.ncm-admin-panel .ncm-tool-card__icon--sync  { color: var(--ncm-hue-3); }
+.ncm-app.ncm-admin-panel .ncm-tool-card__name { color: var(--ncm-text-heading, var(--ncm-text-primary)); font-weight: 700; }
+.ncm-app.ncm-admin-panel .ncm-tool-card__desc { color: var(--ncm-text-label, var(--ncm-text-muted)); font-family: var(--ncm-font-body); font-size: 10.5px; }
+
+/* danger zone, ranked */
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-tool-card { --tr: var(--ncm-bad); border-color: color-mix(in srgb, var(--tr) 35%, var(--ncm-border)); box-shadow: inset 0 2px 0 var(--tr); }
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-tool-card--attn { --tr: var(--ncm-attn); }
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-tool-card--bad { --tr: var(--ncm-bad); }
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-tool-card--severe { background: color-mix(in srgb, var(--ncm-bad) 12%, var(--ncm-bg-pane, var(--ncm-bg-surface))); border-color: var(--ncm-bad); box-shadow: inset 0 3px 0 var(--ncm-bad); }
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-tool-card__icon { color: var(--tr); }
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-tool-card:hover { border-color: var(--tr); background: color-mix(in srgb, var(--tr) 10%, var(--ncm-bg-hover, var(--ncm-bg-elevated))); }
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-tool-card:hover::before { background: var(--tr); }
+.ncm-app .ncm-tool-card__risk {
+  display: inline-flex; padding: 1px 6px; border-radius: 1px; white-space: nowrap;
+  font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--tr, var(--ncm-bad)); border: 1px solid color-mix(in srgb, var(--tr, var(--ncm-bad)) 50%, transparent);
+  background: color-mix(in srgb, var(--tr, var(--ncm-bad)) 12%, transparent);
+}
+.ncm-app.ncm-admin-panel .ncm-danger-zone .ncm-tool-card--severe .ncm-tool-card__risk { color: #fff; background: var(--ncm-bad); border-color: var(--ncm-bad); }
+
 /* ═══════════════════════════════════════════
    TIME CONFIG DIALOG
    Foundry v1 Dialog override — scoped to

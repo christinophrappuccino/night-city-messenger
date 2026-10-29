@@ -9,6 +9,7 @@
 
 import { MODULE_ID, SOUND_PATHS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { sanitizeSoundOverrides, soundSource } from '../utils/soundCatalog.js';
 
 /**
  * Safe reference to AudioHelper (v12 namespaced path)
@@ -29,6 +30,30 @@ export class SoundService {
   constructor(settingsManager) {
     this._settings = settingsManager;
     this._preloaded = false;
+    // the GM's replacement files (Admin → Tools → Sounds) — re-read when the setting changes on any client
+    this._overrides = null;
+    if (typeof Hooks !== 'undefined') Hooks.on('updateSetting', (st) => {
+      if (st?.key !== `${MODULE_ID}.soundOverrides`) return;
+      this._overrides = null; this._uiBuffers = {};
+    });
+  }
+
+  /** What plays for a sound: { src, volume, off, custom } (the GM's file, else the module's). */
+  source(soundId) {
+    if (!SOUND_PATHS[soundId]) return null;
+    if (!this._overrides) {
+      try { this._overrides = sanitizeSoundOverrides(game.settings.get(MODULE_ID, 'soundOverrides')); } catch { this._overrides = {}; }
+    }
+    return soundSource(soundId, this._overrides, MODULE_ID);
+  }
+
+  /** The Sound board's ▶: plays a sound (or a file being tried out) at the user's volume, even with sounds switched off. */
+  async preview(soundId, { src, volume = 1 } = {}) {
+    const s = src ? { src, volume, off: false } : this.source(soundId);
+    if (!s || s.off) return;
+    const vol = (s.volume ?? 1) * (this._settings.getTheme().soundVolume ?? 0.5);
+    try { await getAudioHelper().play({ src: s.src, volume: Math.min(1, vol), loop: false }, false); }
+    catch { ui.notifications?.warn?.('That sound file could not be played.'); }
   }
 
   /**
@@ -52,14 +77,15 @@ export class SoundService {
     const prefs = this._settings.getTheme();
     if (!prefs.soundEnabled) return;
 
-    const relativePath = SOUND_PATHS[soundId];
-    if (!relativePath) {
+    const s = this.source(soundId);
+    if (!s) {
       log.warn(`Unknown sound ID: ${soundId}`);
       return;
     }
+    if (s.off) return;   // the GM switched this sound off
 
-    const src = `modules/${MODULE_ID}/assets/sounds/${relativePath}`;
-    const vol = (volume ?? 1.0) * (prefs.soundVolume ?? 0.5);
+    const src = s.src;
+    const vol = Math.min(1, (volume ?? 1.0) * (prefs.soundVolume ?? 0.5) * (s.volume ?? 1));
 
     try {
       const AH = getAudioHelper();
@@ -135,8 +161,11 @@ export class SoundService {
     if (!ctx) return false;
     if (ctx.state === 'suspended') { try { await ctx.resume(); } catch { /* ignore */ } }
 
+    const s = this.source(soundId);
+    if (s?.off) return true;   // switched off: play nothing (and do not fall back to the standard player)
     const buffer = await this._getBuffer(soundId, ctx);
     if (!buffer) return false;
+    volume *= (s?.volume ?? 1);
 
     const src = ctx.createBufferSource();
     src.buffer = buffer;
@@ -183,10 +212,10 @@ export class SoundService {
     this._uiBuffers ??= {};
     if (this._uiBuffers[soundId] !== undefined) return this._uiBuffers[soundId];
 
-    const rel = SOUND_PATHS[soundId];
-    if (!rel) return (this._uiBuffers[soundId] = null);
+    const s = this.source(soundId);
+    if (!s?.src) return (this._uiBuffers[soundId] = null);
     try {
-      const resp = await fetch(`modules/${MODULE_ID}/assets/sounds/${rel}`);
+      const resp = await fetch(s.src);
       if (!resp.ok) return (this._uiBuffers[soundId] = null);
       const arr = await resp.arrayBuffer();
       const buf = await ctx.decodeAudioData(arr);
@@ -230,9 +259,9 @@ export class SoundService {
 
     const prioritySounds = ['click', 'receive', 'send', 'open', 'close'];
     for (const id of prioritySounds) {
-      const relativePath = SOUND_PATHS[id];
-      if (relativePath) {
-        const src = `modules/${MODULE_ID}/assets/sounds/${relativePath}`;
+      const s = this.source(id);
+      if (s && !s.off) {
+        const src = s.src;
         try {
           // Timeout protection: never wait more than 2s per sound
           await Promise.race([

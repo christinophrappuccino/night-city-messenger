@@ -1,260 +1,547 @@
+{{!--
+  Admin → Security (redesign 2026-10-27 — dev/mockups/admin-security-redesign-mock.html).
+  Split by the question the GM is asking:
+    LIVE      what needs me right now?   (landing view — one "Needs your call" queue)
+    ACTIVITY  what happened?             (the full log)
+    HEAT      who is running hot, who is being traced?
+    MACHINES  what is sitting on the machines?  (plants + recycle bin)
+    RULES     how does this table play?  (fold-out cards with one-line summaries)
+  Context: `security` from SecurityTab.prepareContext. New buttons use
+  data-action="tabAct" data-owner="security" data-op=… ; existing ones keep their security* actions.
+--}}
 {{#if (eq activeTab 'security')}}
   {{#if security}}
 
-  {{!-- summary --}}
-  <div class="ncm-sec-admin-strip">
-    <div class="ncm-sec-admin-stat"><div class="n">{{security.stats.traces24h}}</div><div class="l">Events (24h)</div></div>
-    <div class="ncm-sec-admin-stat h"><div class="n">{{security.stats.hot}}</div><div class="l">Systems running hot</div></div>
-    <div class="ncm-sec-admin-stat p"><div class="n">{{security.stats.plants}}</div><div class="l">Planted files</div></div>
-    <div class="ncm-sec-admin-stat r"><div class="n">{{security.stats.recycle}}</div><div class="l">In recycle bin</div></div>
+  {{!-- ═══ SUB-TABS ═══ --}}
+  <div class="ncm-sec-admin-nav" role="tablist">
+    {{#each security.nav}}
+      <button type="button" role="tab" aria-selected="{{#if this.on}}true{{else}}false{{/if}}" class="ncm-sec-admin-navbtn {{#if this.on}}on{{/if}}"
+              data-action="tabAct" data-owner="security" data-op="view" data-view="{{this.key}}"><i class="fas {{this.icon}}"></i>{{this.label}}{{#if this.count}}<span class="ncm-sec-admin-navct {{this.cls}}">{{this.count}}</span>{{/if}}</button>
+    {{/each}}
+    <span class="grow"></span>
+    <button type="button" class="ncm-sec-admin-btn primary sm" data-action="securityNewProgram" data-tooltip="Forge a payload or malware in the Malware Workshop"><i class="fas fa-flask"></i> New program</button>
+    <button type="button" class="ncm-sec-admin-btn sm" data-action="securityProgramLibrary" data-tooltip="Your saved program library"><i class="fas fa-book-bookmark"></i> Library</button>
   </div>
 
-  {{!-- ═══ PROGRAMS (forge + library) ═══ --}}
-  <div class="ncm-sec-admin-card">
-    <div class="ncm-sec-admin-card__hd"><i class="fas fa-biohazard lead"></i><h3>Programs</h3>
-      <span class="ncm-sec-admin-info" data-tooltip="Forge payloads and malware, or browse your saved program library. Programs are placed on shards/terminals or carried and uploaded.">ⓘ</span>
-      <span class="grow"></span>
-      <button type="button" class="ncm-sec-admin-btn primary sm" data-action="securityNewProgram"><i class="fas fa-flask"></i> Create a program</button>
-      <button type="button" class="ncm-sec-admin-btn sm" data-action="securityProgramLibrary"><i class="fas fa-book-bookmark"></i> Program library</button>
+  {{!-- ═══════════════════════ LIVE ═══════════════════════ --}}
+  {{#if security.isLive}}
+    <header class="ncm-tabhd"><i class="fas fa-satellite-dish"></i><div><h2>Live</h2><p>What needs your call right now: running traces, operators running hot and armed plants, plus the latest rolls.</p></div></header>
+    <div class="ncm-sec-admin-strip links">
+      <div class="ncm-sec-admin-stat" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="view" data-view="activity"><i class="fas fa-arrow-right go"></i><div class="n">{{security.stats.traces24h}}</div><div class="l">Events (24h)</div></div>
+      <div class="ncm-sec-admin-stat{{#if security.stats.hot}} is-attn{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="view" data-view="heat"><i class="fas fa-arrow-right go"></i><div class="n">{{security.stats.hot}}</div><div class="l">Running hot</div></div>
+      <div class="ncm-sec-admin-stat{{#if security.stats.countdowns}} is-bad{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="view" data-view="heat"><i class="fas fa-arrow-right go"></i><div class="n">{{security.stats.countdowns}}</div><div class="l">Traces running</div></div>
+      <div class="ncm-sec-admin-stat{{#if security.stats.plants}} is-secret{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="view" data-view="machines"><i class="fas fa-arrow-right go"></i><div class="n">{{security.stats.plants}}</div><div class="l">Armed plants</div></div>
     </div>
-  </div>
 
-  {{!-- ═══ ACTIVITY LOG ═══ --}}
-  <div class="ncm-sec-admin-card">
-    <div class="ncm-sec-admin-card__hd">
-      <i class="fas fa-list-check lead"></i><h3>Activity Log</h3>
-      <span class="ncm-sec-admin-info" data-tooltip="Every hack, forge, or auth check in the game — success AND failure. Rows since you last opened this tab are marked NEW.">ⓘ</span>
-      {{#if security.log.newCount}}<span class="ncm-sec-admin-newbadge">{{security.log.newCount}} new</span>{{/if}}
-      <span class="grow"></span>
-      <div class="ncm-sec-admin-chips">
-        <button type="button" class="ncm-sec-admin-fchip {{#if (eq security.log.filter 'all')}}on{{/if}}" data-action="securityFilter" data-filter="all">All</button>
-        <button type="button" class="ncm-sec-admin-fchip {{#if (eq security.log.filter 'serious')}}on{{/if}}" data-action="securityFilter" data-filter="serious">Serious</button>
-        <button type="button" class="ncm-sec-admin-fchip {{#if (eq security.log.filter 'breakins')}}on{{/if}}" data-action="securityFilter" data-filter="breakins">Break-ins</button>
-        <button type="button" class="ncm-sec-admin-fchip {{#if (eq security.log.filter 'fumbles')}}on{{/if}}" data-action="securityFilter" data-filter="fumbles">Fumbles</button>
-      </div>
-      <select class="ncm-sec-admin-alertsel" data-sec-alert data-tooltip="How loudly to be pinged when a trace fires — the log always records regardless">
-        <option value="serious" {{#if (eq security.log.alertLevel 'serious')}}selected{{/if}}>Alert: serious</option>
-        <option value="every" {{#if (eq security.log.alertLevel 'every')}}selected{{/if}}>Alert: every</option>
-        <option value="off" {{#if (eq security.log.alertLevel 'off')}}selected{{/if}}>Alert: off</option>
-      </select>
-      <input type="text" class="ncm-sec-admin-searchbox" data-sec-search placeholder="search…" value="{{security.log.search}}">
-      <button type="button" class="ncm-sec-admin-btn danger sm" data-action="securityClearLog">Clear</button>
-    </div>
-    {{#if security.log.activeFilter}}
-      <div class="ncm-sec-admin-filterbar">Filtered to <b>{{security.log.activeFilter}}</b> <button type="button" class="ncm-sec-admin-btn sm" data-action="securityClearFilter"><i class="fas fa-xmark"></i> clear</button></div>
-    {{/if}}
-    <div class="ncm-sec-admin-card__bd nopad">
-      <div class="ncm-sec-admin-scroll">
-      <table class="ncm-sec-admin-table">
-        <thead><tr><th>When</th><th>Operator</th><th>What happened</th><th>Target</th><th>Roll</th><th>Heat</th><th></th></tr></thead>
-        <tbody>
-          {{#each security.log.rows}}
-          <tr class="{{#if this.isNew}}is-new{{/if}}">
-            <td class="ago">{{#if this.isNew}}<span class="newdot"></span>{{/if}}{{this.agoStr}}</td>
-            <td><span class="who clk" data-action="securityFilterActor" data-actor-id="{{this.actorId}}">{{this.actorName}}</span></td>
-            <td><span class="act"><span class="dot {{this.sev}}" data-tooltip="{{this.sevLabel}} · +{{this.heatDelta}} heat"></span>{{#if this.isFail}}<span class="x-fail">✗</span>{{else}}<span class="x-ok">✓</span>{{/if}} {{this.actionLabel}}{{#if this.netVerb}}<span class="nverb" data-tooltip="The NET-action this abstracts">{{this.netVerb}}</span>{{/if}}</span></td>
-            <td><span class="obj clk" data-action="securityFilterObject" data-object-id="{{this.objectId}}" data-object-name="{{this.objectName}}"><i class="fas {{this.targetIcon}} tk {{this.targetCls}}"></i>{{this.objectName}}</span></td>
-            <td class="roll">{{this.roll}}</td>
-            <td class="mono">{{#if this.isFail}}{{this.heat}} <span class="tier {{this.heatTier}}">{{this.heatTier}}</span>{{else}}<span class="noheat">— no heat</span>{{/if}}</td>
-            <td>{{#if this.canOpen}}<i class="fas fa-arrow-up-right-from-square jump" data-action="securityJump" data-uuid="{{this.targetUuid}}" data-kind="{{this.targetKind}}" data-msg="{{this.targetMessageId}}" data-contact="{{this.targetContactId}}" data-tooltip="Open"></i>{{/if}}</td>
-          </tr>
-          {{else}}
-          <tr><td colspan="7" class="ncm-sec-admin-empty">No activity{{#if security.log.search}} matches your search{{/if}}.</td></tr>
-          {{/each}}
-        </tbody>
-      </table>
-      </div>
-    </div>
-    <div class="ncm-sec-admin-card__ft">
-      <i class="fas fa-circle-info"></i> Click an operator or target to filter · ↗ opens the exact object.
-      <span class="grow"></span>
-      {{#if (gt security.log.maxPage 1)}}<span>{{security.log.page}} / {{security.log.maxPage}}</span>
-        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityPage" data-dir="prev" {{#unless security.log.hasPrev}}disabled{{/unless}}>‹ Newer</button>
-        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityPage" data-dir="next" {{#unless security.log.hasNext}}disabled{{/unless}}>Older ›</button>{{/if}}
-    </div>
-  </div>
-
-  {{!-- ═══ HEAT ═══ --}}
-  <div class="ncm-sec-admin-card">
-    <div class="ncm-sec-admin-card__hd"><i class="fas fa-fire lead"></i><h3>Heat</h3>
-      <span class="ncm-sec-admin-info" data-tooltip="How 'hot' each operator is on each system. Rises when they trip a defense, cools over game time. Higher = the system pushes back harder.">ⓘ</span>
-      <span class="grow"></span><button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatClearAll">Clear all</button></div>
-    <div class="ncm-sec-admin-card__bd">
-      <div class="ncm-sec-admin-hlegend">
-        <span class="cold"><b>COLD</b>logged</span><span class="warm"><b>WARM</b>lockout risk</span>
-        <span class="hot"><b>HOT</b>ICE risk</span><span class="burned"><b>BURNED</b>countdown</span>
-        <span class="muted">— GM confirms every escalation.</span>
-      </div>
-      <div class="ncm-sec-admin-scroll">
-      {{#each security.heat.hot}}
-      <div class="ncm-sec-admin-heat">
-        <span class="who">{{this.actorName}}</span>
-        <span class="obj">{{this.objectName}}</span>
-        <span class="bar"><span class="fill {{this.tier}}" style="width:{{this.value}}%"></span></span>
-        <span class="val">{{this.value}} <span class="tier {{this.tier}}">{{this.tier}}</span></span>
-        {{#if this.canEscalate}}<button type="button" class="ncm-sec-admin-btn sm danger" data-action="securityEscalate" data-object-id="{{this.objectId}}" data-actor-id="{{this.actorId}}" data-object-name="{{this.objectName}}" data-actor-name="{{this.actorName}}" data-tooltip="Start a 'corp found you' trace countdown">Escalate</button>{{/if}}
-        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatAdjust" data-object-id="{{this.objectId}}" data-actor-id="{{this.actorId}}" data-object-name="{{this.objectName}}" data-actor-name="{{this.actorName}}" data-value="{{this.value}}">Adjust</button>
-        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatClear" data-object-id="{{this.objectId}}" data-actor-id="{{this.actorId}}">Clear</button>
-      </div>
-      {{else}}<div class="ncm-sec-admin-empty">Nobody's running hot.</div>{{/each}}
-      </div>
-      {{#if security.heat.pager.multi}}
-      <div class="ncm-sec-admin-pager"><span>{{security.heat.pager.page}} / {{security.heat.pager.maxPage}} · {{security.heat.pager.total}} hot</span>
-        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatPage" data-dir="prev" {{#unless security.heat.pager.hasPrev}}disabled{{/unless}}>‹</button>
-        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatPage" data-dir="next" {{#unless security.heat.pager.hasNext}}disabled{{/unless}}>›</button></div>
-      {{/if}}
-      {{#if security.heat.coolingCount}}<div class="ncm-sec-admin-divider">{{security.heat.coolingCount}} more cooling (under 25)</div>{{/if}}
-      {{#if security.countdowns.length}}
-      <div class="ncm-sec-admin-divider">Trace countdowns — the corp is closing in</div>
-      {{#each security.countdowns}}
-      <div class="ncm-sec-admin-heat ncm-sec-admin-cd">
-        <span class="who"><i class="fas fa-hourglass-half cdicon"></i>{{this.actorName}}</span>
-        <span class="obj" data-tooltip="{{this.source}} is closing in — on {{this.objectName}}"><span class="cdsrc">{{this.source}}</span> → {{this.objectName}}</span>
-        <span class="cdrem" data-tooltip="{{#if this.gameClock}}Runs on the GAME clock — it only counts down when the game clock advances{{else}}Time remaining{{/if}}">{{this.remaining}}{{#if this.gameClock}} <i class="fas fa-clock cdclock"></i>{{/if}}</span>
-        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityCountdownCancel" data-countdown-id="{{this.id}}" data-tooltip="Call the trace off — nothing fires">Call off</button>
-      </div>
-      {{/each}}
-      {{/if}}
-    </div>
-  </div>
-
-  {{!-- ═══ PLANTED & RESIDENT ═══ --}}
-  <div class="ncm-sec-admin-card">
-    <div class="ncm-sec-admin-card__hd"><i class="fas fa-syringe lead"></i><h3>Planted &amp; Resident</h3>
-      <span class="ncm-sec-admin-info" data-tooltip="Forged files and programs players have planted on machines. GM-only — fire or defuse them.">ⓘ</span></div>
-    <div class="ncm-sec-admin-card__bd">
-      <div class="ncm-sec-admin-scroll">
-      {{#each security.plants}}
-      <div class="ncm-sec-admin-prow">
-        <span class="ic {{#unless this.isPlant}}exe{{/unless}}"><i class="fas {{#if this.isPlant}}fa-comments{{else}}fa-key{{/if}}"></i></span>
-        <div class="m"><div class="t">{{this.name}} <span class="fq">{{this.forge}}</span></div>
-          <div class="d">on <b>{{this.hostName}}</b> · by <b>{{this.by}}</b> · fires {{this.trigger}}</div></div>
-        <span class="state {{this.state}}">{{this.state}}</span>
-        {{#if (eq this.state 'armed')}}
-          <button type="button" class="ncm-sec-admin-btn sm" data-action="securityFireResident" data-item-id="{{this.itemId}}" data-resident-id="{{this.id}}">Fire now</button>
-          <button type="button" class="ncm-sec-admin-btn sm" data-action="securityDefuse" data-item-id="{{this.itemId}}" data-resident-id="{{this.id}}">Defuse</button>
+    <div class="ncm-sec-admin-card">
+      <div class="ncm-sec-admin-card__hd"><i class="fas fa-hand-point-right lead"></i><h3>Needs your call</h3>
+        <span class="ncm-sec-admin-info" data-tooltip="Traces counting down, operators at HOT or worse, and armed plants — everything you can act on, in one list.">ⓘ</span></div>
+      <div class="ncm-sec-admin-card__bd nopad">
+        {{#if security.queue.empty}}
+          <div class="ncm-sec-admin-empty">Nothing needs you right now.</div>
         {{else}}
-          <button type="button" class="ncm-sec-admin-btn sm" data-action="securityRemoveResident" data-item-id="{{this.itemId}}" data-resident-id="{{this.id}}">Remove</button>
+        <div class="ncm-sec-admin-queue ncm-sec-admin-scroll">
+          {{#each security.queue.countdowns}}
+          <div class="ncm-sec-admin-q cd"><span class="qi"><i class="fas fa-hourglass-half"></i></span>
+            <div><div class="qt">{{this.source}} is closing in on {{this.actorName}}<span class="mono">{{this.remaining}}{{#if this.gameClock}} <i class="fas fa-clock" data-tooltip="Runs on the GAME clock — it only counts down when the game clock advances"></i>{{/if}}</span></div>
+              <div class="qd">on {{this.objectName}} · at zero the trace completes and {{this.actorName}} burns</div></div>
+            <div class="qa"><button type="button" class="ncm-sec-admin-btn sm" data-action="securityCountdownCancel" data-countdown-id="{{this.id}}" data-tooltip="Call the trace off — nothing fires">Call off</button></div></div>
+          {{/each}}
+          {{#each security.queue.hot}}
+          <div class="ncm-sec-admin-q hot is-{{this.tier}}"><span class="qi"><i class="fas fa-fire"></i></span>
+            <div><div class="qt">{{this.actorName}} is running hot<span class="mono">{{this.value}} {{this.tier}}</span></div><div class="qd">on {{this.objectName}}</div></div>
+            <div class="qa">
+              <button type="button" class="ncm-sec-admin-btn sm danger" data-action="securityEscalate" data-object-id="{{this.objectId}}" data-actor-id="{{this.actorId}}" data-object-name="{{this.objectName}}" data-actor-name="{{this.actorName}}">Escalate</button>
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatAdjust" data-object-id="{{this.objectId}}" data-actor-id="{{this.actorId}}" data-object-name="{{this.objectName}}" data-actor-name="{{this.actorName}}" data-value="{{this.value}}">Adjust</button>
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatClear" data-object-id="{{this.objectId}}" data-actor-id="{{this.actorId}}">Clear</button></div></div>
+          {{/each}}
+          {{#each security.queue.armed}}
+          <div class="ncm-sec-admin-q plant"><span class="qi"><i class="fas {{#if this.isPlant}}fa-comments{{else}}fa-key{{/if}}"></i></span>
+            <div><div class="qt">{{this.name}}<span class="state armed">armed</span></div><div class="qd">{{this.by}} on {{this.hostName}}{{#if this.forge}} · {{this.forge}}{{/if}} · fires {{this.trigger}}</div></div>
+            <div class="qa">
+              <button type="button" class="ncm-sec-admin-btn sm act" data-action="securityFireResident" data-item-id="{{this.itemId}}" data-resident-id="{{this.id}}">Fire now</button>
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityDefuse" data-item-id="{{this.itemId}}" data-resident-id="{{this.id}}">Defuse</button></div></div>
+          {{/each}}
+        </div>
         {{/if}}
       </div>
-      {{else}}<div class="ncm-sec-admin-empty">Nothing planted.</div>{{/each}}
+    </div>
+
+    <div class="ncm-sec-admin-card">
+      <div class="ncm-sec-admin-card__hd"><i class="fas fa-list-check lead"></i><h3>Latest activity</h3><span class="grow"></span>
+        <button type="button" class="ncm-sec-admin-btn sm" data-action="tabAct" data-owner="security" data-op="view" data-view="activity">Full log <i class="fas fa-arrow-right"></i></button></div>
+      <div class="ncm-sec-admin-card__bd nopad">
+        {{#each security.peek}}
+        <div class="ncm-sec-admin-peek{{#if this.isFail}} is-fail{{/if}}"><span class="ago">{{#if this.isNew}}<span class="newdot"></span>{{/if}}{{this.agoStr}}</span>
+          <span>{{#if this.isFail}}<span class="x-fail">✗</span>{{else}}<span class="x-ok">✓</span>{{/if}}</span>
+          <span class="txt"><span class="who" style="--tc:{{ncm-hue this.actorName}}">{{this.actorName}}</span> · {{this.actionLabel}} <span class="obj">→ {{this.objectName}}</span></span>
+          <span class="ago">{{this.roll}}</span></div>
+        {{else}}<div class="ncm-sec-admin-empty">No activity yet.</div>{{/each}}
       </div>
-      {{#if security.plantsPager.multi}}
-      <div class="ncm-sec-admin-pager"><span>{{security.plantsPager.page}} / {{security.plantsPager.maxPage}} · {{security.plantsPager.total}} total</span>
-        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityPlantPage" data-dir="prev" {{#unless security.plantsPager.hasPrev}}disabled{{/unless}}>‹</button>
-        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityPlantPage" data-dir="next" {{#unless security.plantsPager.hasNext}}disabled{{/unless}}>›</button></div>
+    </div>
+  {{/if}}
+
+  {{!-- ═══════════════════════ ACTIVITY ═══════════════════════
+       The seismograph (dev/mockups/admin-security-seismograph-mock.html, version A): one needle
+       line over the session, a kick per failure (taller = more heat), a tick per success. The
+       toolbar pickers (ScopePicker portals) narrow the trace AND the log. Hover = nearest event,
+       click = that moment ±4 min, drag = a range (SecurityTab._wireSeismograph). Rules in
+       securityModel.js; context security.sg (built only while this view is open). --}}
+  {{#if security.isActivity}}
+    <header class="ncm-tabhd"><i class="fas fa-wave-square"></i><div><h2>Activity</h2><p>Every hacking roll players made (logins, bypasses, breaches, decrypts, uploads, siphons), pass or fail; only a failure adds heat.</p></div>
+      <div class="ncm-tabhd__end ncm-sec-admin-viewtools">
+        <select class="ncm-sec-admin-alertsel" data-sec-alert data-tooltip="Which events ping you. Only affects you; the log records everything." aria-label="Ping me">
+          <option value="serious" {{#if (eq security.log.alertLevel 'serious')}}selected{{/if}}>Ping me: serious</option>
+          <option value="every" {{#if (eq security.log.alertLevel 'every')}}selected{{/if}}>Ping me: every event</option>
+          <option value="off" {{#if (eq security.log.alertLevel 'off')}}selected{{/if}}>Ping me: never</option>
+        </select>
+        <button type="button" class="ncm-sec-admin-btn danger sm" data-action="securityClearLog" data-tooltip="Delete the whole log. Heat is unaffected.">Clear log</button>
+      </div></header>
+    {{#if security.sg}}
+    <div class="ncm-sec-admin-sg" data-sg>
+      <div class="ncm-sec-admin-band"><i class="fas fa-wave-square"></i>Activity<span class="r">game time <b>{{security.sg.nowLabel}}</b> · <b>{{security.sg.events}}</b> events in the log</span></div>
+
+      <div class="ncm-sec-admin-mod">
+        <div class="ncm-sec-admin-mod__k"><i class="fas fa-wave-square"></i>Seismograph<span class="hint ncm-sec-admin-sg__readout"><b>{{security.sg.totals.n}}</b> events · <b class="is-bad">{{security.sg.totals.fail}}</b> failed · <b class="is-bad">+{{security.sg.totals.heat}}</b> heat</span></div>
+        <div class="ncm-sec-admin-sg__tools">
+          {{{security.sg.tools.who}}}{{{security.sg.tools.kind}}}{{{security.sg.tools.sev}}}{{{security.sg.tools.res}}}{{{security.sg.tools.verb}}}
+          <span class="grow"></span>{{{security.sg.tools.trace}}}
+        </div>
+        {{#if security.sg.anyPills}}
+        <div class="ncm-sec-admin-sg__pills">
+          {{#each security.sg.pills}}<span class="ncm-sec-admin-sg__pill{{#if this.isTime}} is-time{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="sgUnpick" data-key="{{this.key}}" data-v="{{this.v}}" data-tooltip="Remove this filter">{{#if this.sw}}<i class="ncm-sec-admin-sg__sw" style="--hc:{{this.col}}"></i>{{/if}}{{#if this.icon}}<i class="fas {{this.icon}}"></i>{{/if}}{{this.label}}<i class="fas fa-xmark x"></i></span>{{/each}}
+          <span class="ncm-sec-admin-sg__clearall" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="sgClearAll">Clear all</span>
+        </div>
+        {{/if}}
+
+        <div class="ncm-sec-admin-sg__wrap">
+          <div class="ncm-sec-admin-sg__marks">{{#if security.sg.trace.mark}}<span class="ncm-sec-admin-sg__mk{{#if security.sg.trace.mark.fit}} fit{{/if}}" style="left:{{security.sg.trace.mark.left}}px">{{security.sg.trace.mark.text}}{{#if security.sg.trace.mark.n}} · <b>{{security.sg.trace.mark.n}}</b> new →{{/if}}</span>{{/if}}</div>
+          <div class="ncm-sec-admin-sg__over">
+            <span class="ncm-sec-admin-sg__seg ncm-sec-admin-sg__seg--sm">{{#each security.sg.zooms}}<span role="button" tabindex="0" class="{{#if this.on}}on{{/if}}" data-action="tabAct" data-owner="security" data-op="sgZoom" data-zoom="{{this.key}}">{{this.label}}</span>{{/each}}</span>
+            <span class="ncm-sec-admin-sg__keybtn{{#if security.sg.legend}} on{{/if}}" role="button" tabindex="0" aria-pressed="{{#if security.sg.legend}}true{{else}}false{{/if}}" data-action="tabAct" data-owner="security" data-op="sgKey" data-tooltip="What the marks mean"><i class="fas fa-circle-info"></i>Key</span>
+          </div>
+          <div class="ncm-sec-admin-sg__plotwrap">
+            <div class="ncm-sec-admin-sg__yax" style="height:{{security.sg.trace.PH}}px">
+              {{#each security.sg.trace.yLabels}}<span class="{{#if this.cap}}cap{{/if}}" style="top:{{this.top}}px">{{this.text}}</span>{{/each}}
+              {{#each security.sg.trace.laneLabels}}<span class="lane" role="button" tabindex="0" style="--hc:{{this.col}};top:{{this.top}}px" data-action="tabAct" data-owner="security" data-op="sgWho" data-who="{{this.who}}" data-tooltip="Show only {{this.name}}"><span class="n">{{this.name}}</span><span class="h{{#if this.zero}} zero{{/if}}">{{this.heatLabel}} heat</span></span>{{/each}}
+            </div>
+            <div class="ncm-sec-admin-sg__plot" data-sg-plot data-w="{{security.sg.trace.W}}" data-gut="{{security.sg.trace.gutter}}" data-t0="{{security.sg.trace.t0}}" data-t1="{{security.sg.trace.t1}}" data-lanes="{{#if security.sg.trace.lanesMode}}1{{else}}0{{/if}}" style="height:{{security.sg.trace.PH}}px;width:{{security.sg.trace.W}}px">
+              <svg width="{{security.sg.trace.W}}" height="{{security.sg.trace.PH}}" viewBox="0 0 {{security.sg.trace.W}} {{security.sg.trace.PH}}" aria-hidden="true">
+                <defs><pattern id="ncmSecAdminSgHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="6" class="hatch"/></pattern></defs>
+                {{#each security.sg.trace.vgrid}}<line class="vgrid" x1="{{this}}" x2="{{this}}" y1="0" y2="{{@root.security.sg.trace.PH}}"/>{{/each}}
+                {{#if security.sg.trace.newZone}}<rect class="newz" x="{{security.sg.trace.newZone.x}}" y="0" width="{{security.sg.trace.newZone.w}}" height="{{security.sg.trace.PH}}"/>{{/if}}
+                {{#if security.sg.trace.lastLine}}<line class="lastln" x1="{{security.sg.trace.lastLine}}" x2="{{security.sg.trace.lastLine}}" y1="0" y2="{{security.sg.trace.PH}}"/>{{/if}}
+                {{#if security.sg.trace.future}}<rect class="future" x="{{security.sg.trace.future.x}}" y="0" width="{{security.sg.trace.future.w}}" height="{{security.sg.trace.PH}}" fill="url(#ncmSecAdminSgHatch)"/>{{/if}}
+                {{#each security.sg.trace.hgrid}}<line class="grid" x1="0" x2="{{@root.security.sg.trace.W}}" y1="{{this}}" y2="{{this}}"/>{{/each}}
+                {{#each security.sg.trace.lanesep}}<line class="lanesep" x1="0" x2="{{@root.security.sg.trace.W}}" y1="{{this.y}}" y2="{{this.y}}"/>{{/each}}
+                {{#each security.sg.trace.baselines}}<line class="basel" x1="0" x2="{{this.x2}}" y1="{{this.y}}" y2="{{this.y}}"/>{{/each}}
+                {{#each security.sg.trace.rails}}<line class="rail" x1="0" x2="{{this.x2}}" y1="{{this.y}}" y2="{{this.y}}"/>{{/each}}
+                {{#if security.sg.trace.brush}}<rect class="dim" x="0" y="0" width="{{security.sg.trace.brush.a}}" height="{{security.sg.trace.PH}}"/><rect class="dim" x="{{security.sg.trace.brush.b}}" y="0" width="{{security.sg.trace.brush.rw}}" height="{{security.sg.trace.PH}}"/><rect class="brush" x="{{security.sg.trace.brush.a}}" y="0" width="{{security.sg.trace.brush.w}}" height="{{security.sg.trace.PH}}"/>{{/if}}
+                {{#if security.sg.trace.selX}}<line class="selln" x1="{{security.sg.trace.selX}}" x2="{{security.sg.trace.selX}}" y1="0" y2="{{security.sg.trace.PH}}"/>{{/if}}
+                {{#each security.sg.trace.runs}}<polyline class="trace" style="stroke:{{this.col}}" points="{{this.points}}"/>{{/each}}
+                {{#each security.sg.trace.ticks}}<line class="okt{{#if this.on}} on{{/if}}" x1="{{this.x}}" x2="{{this.x}}" y1="{{this.y1}}" y2="{{this.y2}}" style="stroke:{{this.col}}" data-eid="{{this.id}}" data-t="{{this.t}}" data-x="{{this.x}}" data-y="{{this.y}}" data-lane="{{this.lane}}" data-ok="1" data-heat="0" data-col="{{this.col}}" data-tip-t="{{this.tip.t}}" data-tip-who="{{this.tip.who}}" data-tip-what="{{this.tip.what}}" data-tip-tgt="{{this.tip.tgt}}"/>{{/each}}
+                {{#each security.sg.trace.peaks}}<circle class="peak{{#if this.on}} on{{/if}}" cx="{{this.x}}" cy="{{this.y}}" r="{{this.r}}" style="fill:{{this.col}}" data-eid="{{this.id}}" data-t="{{this.t}}" data-x="{{this.x}}" data-y="{{this.y}}" data-lane="{{this.lane}}" data-ok="0" data-heat="{{this.heat}}" data-col="{{this.col}}" data-tip-t="{{this.tip.t}}" data-tip-who="{{this.tip.who}}" data-tip-what="{{this.tip.what}}" data-tip-tgt="{{this.tip.tgt}}"/>{{/each}}
+                <line class="nowln" x1="{{security.sg.trace.nowX}}" x2="{{security.sg.trace.nowX}}" y1="0" y2="{{security.sg.trace.PH}}"/>
+              </svg>
+              {{#each security.sg.trace.pens}}<span class="ncm-sec-admin-sg__pen" style="left:{{this.x}}px;top:{{this.y}}px"></span>{{/each}}
+              <div class="ncm-sec-admin-sg__live" data-sg-live hidden></div>
+              {{#if security.sg.trace.empty}}<div class="ncm-sec-admin-sg__quiet">Nothing in this window{{#if security.sg.filtered}} with these filters{{/if}}. Try a wider zoom.</div>{{/if}}
+            </div>
+          </div>
+          <div class="ncm-sec-admin-sg__tip" data-sg-tip hidden><div><span class="t" data-k="t"></span><span class="w" data-k="who"></span> · <span data-k="what"></span></div><div class="l2"><span data-k="tgt"></span> · <span data-k="res"></span><b class="bad" data-k="heat"></b></div></div>
+          <div class="ncm-sec-admin-sg__xax">{{#each security.sg.trace.xLabels}}<span style="left:{{this.left}}px">{{this.text}}</span>{{/each}}<span class="now" style="left:{{security.sg.trace.nowX}}px">now {{security.sg.trace.nowLabel}}</span></div>
+        </div>
+        <div class="ncm-sec-admin-sg__key" data-sg-key {{#unless security.sg.legend}}hidden{{/unless}}>
+          <span class="k"><svg width="26" height="14" aria-hidden="true"><polyline points="0,10 8,10 10,2 12,12 14,6 16,10 26,10" class="kfail{{#if security.sg.trace.byWho}} neutral{{/if}}"/></svg>failure: taller = more heat</span>
+          <span class="k"><svg width="10" height="14" aria-hidden="true"><line x1="5" x2="5" y1="1" y2="13" class="kok{{#if security.sg.trace.byWho}} neutral{{/if}}"/></svg>success</span>
+          <span class="k"><svg width="14" height="14" aria-hidden="true"><line x1="7" x2="7" y1="0" y2="14" class="klast"/></svg>your last look</span>
+          <span class="k">click a spike = ±4 min · drag = a stretch of time</span>
+          <span class="grow"></span>
+          {{#if security.sg.trace.keyWho.length}}<span class="who">{{#each security.sg.trace.keyWho}}<span><i class="ncm-sec-admin-sg__sw" style="--hc:{{this.col}}"></i>{{this.name}}</span>{{/each}}</span>{{/if}}
+        </div>
+      </div>
+
+      {{!-- the log under the trace --}}
+      <div class="ncm-sec-admin-mod">
+        <div class="ncm-sec-admin-mod__k"><i class="fas fa-list"></i>Activity log<span class="hint">click a row to find it on the trace · ↗ opens it</span></div>
+        <div class="ncm-sec-admin-sglog__bar">
+          <span class="ncm-sec-admin-sg__seg">{{#each security.sg.log.chips}}<span role="button" tabindex="0" class="{{#if this.on}}on{{/if}}" data-action="tabAct" data-owner="security" data-op="sgChip" data-chip="{{this.key}}">{{this.label}}<b>{{this.n}}</b></span>{{/each}}</span>
+          <label class="ncm-sec-admin-sg__search"><i class="fas fa-magnifying-glass"></i><input type="text" data-sec-search value="{{security.sg.log.search}}" placeholder="Search" aria-label="Search the log"></label>
+          {{{security.sg.tools.sort}}}
+          <span class="grow"></span>
+          <span class="ncm-sec-admin-sg__sum"><b class="is-attn">{{security.sg.newSince}}</b> new since {{security.sg.lookLabel}}</span>
+        </div>
+        {{#if security.sg.filtered}}
+        <div class="ncm-sec-admin-sglog__scope"><i class="fas fa-filter"></i><span class="say">Filtered: <b>{{security.sg.shown}}</b> of <b>{{security.sg.events}}</b> events</span><button type="button" class="ncm-sec-admin-btn sm" data-action="tabAct" data-owner="security" data-op="sgClearAll"><i class="fas fa-xmark"></i> Show all</button></div>
+        {{/if}}
+        <div class="ncm-sec-admin-sglog__head"><span>Time</span><span>Who</span><span>Action</span><span>Target</span><span class="rt">Roll</span><span>Result</span><span>Severity</span><span class="rt">Heat</span><span></span></div>
+        <div class="ncm-sec-admin-sglog__rows ncm-sec-admin-scroll--log">
+          {{#each security.sg.log.rows}}
+            {{#if this.div}}<div class="ncm-sec-admin-sglog__new{{#if (eq this.div.kind 'old')}} is-old{{/if}}">{{this.div.text}}{{#if this.div.at}} · <b>{{this.div.at}}</b>{{/if}}</div>{{/if}}
+            <div class="ncm-sec-admin-sglog__row{{#unless this.ok}} f-{{this.sev}}{{/unless}}{{#if this.sel}} sel{{/if}}{{#if this.isNew}} is-new{{/if}}" role="button" tabindex="0" style="--hc:{{this.hue}}" data-action="tabAct" data-owner="security" data-op="sgSel" data-eid="{{this.eid}}">
+              <span class="tm" data-tooltip="{{this.whenFull}}">{{this.when}}</span>
+              <span class="who"><i class="ncm-sec-admin-sg__sw"></i><span class="nm" data-action="tabAct" data-owner="security" data-op="sgWho" data-who="{{this.whoKey}}" data-tooltip="Only {{this.actorName}}">{{this.actorName}}</span></span>
+              <span class="act"><span class="lbl">{{this.actionLabel}}</span>{{#if this.netVerb}}<span class="nverb" data-tooltip="The NET-action this abstracts">{{this.netVerb}}</span>{{/if}}</span>
+              <span class="tgt"{{#if this.objectId}} data-action="tabAct" data-owner="security" data-op="sgObj" data-object-id="{{this.objectId}}" data-object-name="{{this.objectName}}" data-tooltip="Only {{this.objectName}}"{{/if}}><i class="fas {{this.targetIcon}} tk {{this.targetCls}}"></i><span>{{this.objectName}}</span></span>
+              <span class="roll rt">{{#if this.hasRoll}}{{this.rollTotal}} <em>vs</em> {{this.rollDv}}{{else}}<em>no roll</em>{{/if}}</span>
+              <span class="res{{#if this.ok}} ok{{else}} no{{/if}}">{{#if this.ok}}<i class="fas fa-check"></i>OK{{else}}Failed{{/if}}</span>
+              <span class="sev" data-tooltip="{{this.sevLabel}}"><s>{{#each this.pips}}<u class="{{#if this}}on{{/if}}"></u>{{/each}}</s>{{this.sev}}</span>
+              <span class="heat rt{{#unless this.hasHeat}} none{{/unless}}">{{this.heatLabel}}</span>
+              <span class="jmp">{{#if this.canOpen}}<i class="fas fa-arrow-up-right-from-square jump" role="button" tabindex="0" data-action="securityJump" data-uuid="{{this.targetUuid}}" data-kind="{{this.targetKind}}" data-msg="{{this.targetMessageId}}" data-contact="{{this.targetContactId}}" data-tooltip="Open it"></i>{{/if}}</span>
+            </div>
+          {{else}}
+            <div class="ncm-sec-admin-empty">Nothing matches{{#if security.sg.filtered}}. Clear the time range, the filters or the search{{/if}}.</div>
+          {{/each}}
+        </div>
+        <div class="ncm-sec-admin-sglog__pager"><span><b>{{security.sg.log.from}}–{{security.sg.log.to}}</b> of <b>{{security.sg.log.total}}</b></span><span class="grow"></span>
+          <button type="button" class="ncm-sec-admin-btn sm" data-action="securityPage" data-dir="prev" {{#unless security.sg.log.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i> {{security.sg.log.prevLabel}}</button>
+          <button type="button" class="ncm-sec-admin-btn sm" data-action="securityPage" data-dir="next" {{#unless security.sg.log.hasNext}}disabled{{/unless}}>{{security.sg.log.nextLabel}} <i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+    {{/if}}
+  {{/if}}
+
+  {{!-- ═══════════════════════ HEAT ═══════════════════════
+       Thermometers (dev/mockups/admin-security-heat-modules-mock.html, version A): one gauge per
+       operator showing their hottest object, a tick per object on the side, a red clock ring when
+       a trace countdown is closing in. Click a gauge → the operator on the right; Adjust / Clear /
+       Escalate / Call off are the existing security* actions. Context security.thermo. --}}
+  {{#if security.isHeat}}
+    <header class="ncm-tabhd"><i class="fas fa-temperature-half"></i><div><h2>Heat &amp; traces</h2><p>How hot each operator is on each system and the trace countdowns you have started; heat rises on a failed check and cools 5 per hour of game time.</p></div></header>
+    {{#if security.thermo}}
+    <div class="ncm-sec-admin-hx">
+      <div class="ncm-sec-admin-band ncm-sec-admin-band--attn"><i class="fas fa-temperature-three-quarters"></i>Heat<span class="r"><b>{{security.thermo.hotCount}}</b> running hot · <b>{{security.thermo.traceCount}}</b> {{#if (eq security.thermo.traceCount 1)}}trace{{else}}traces{{/if}} running</span>
+        {{#if security.thermo.any}}<button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatClearAll" data-tooltip="Reset every operator’s heat to zero">Clear all</button>{{/if}}</div>
+      {{#if security.thermo.any}}
+      <div class="ncm-sec-admin-hx__split">
+        <div class="ncm-sec-admin-mod">
+          <div class="ncm-sec-admin-mod__k"><i class="fas fa-temperature-half"></i>Thermometers<span class="hint">click a gauge</span></div>
+          <div class="ncm-sec-admin-hx__gauges">
+            {{#each security.thermo.gauges}}
+            <button type="button" class="ncm-sec-admin-hx__g t-{{this.tier}}{{#if this.selected}} sel{{/if}}" data-action="tabAct" data-owner="security" data-op="heatPick" data-actor-id="{{this.actorId}}" aria-pressed="{{#if this.selected}}true{{else}}false{{/if}}" data-tooltip="{{this.title}}">
+              {{#if this.clock.has}}
+              <span class="ncm-sec-admin-hx__clock" data-tooltip="{{this.clock.title}}"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="trk" cx="20" cy="20" r="17"/><circle class="arc" cx="20" cy="20" r="17" transform="rotate(-90 20 20)" stroke-dasharray="{{this.clock.circ}}" stroke-dashoffset="{{this.clock.offset}}"/></svg><span class="tm">{{this.clock.label}}</span></span>
+              {{else}}<span class="ncm-sec-admin-hx__clock none"><span class="tm">—</span></span>{{/if}}
+              <span class="ncm-sec-admin-hx__tube"><span class="glass"><span class="bands">{{#each this.bands}}<b class="t-{{this.tier}}" style="height:{{this.h}}%"></b>{{/each}}</span><span class="fill" style="height:{{this.fillPct}}%"></span></span><span class="marks">{{#each this.marks}}<i class="t-{{this.tier}}" style="bottom:{{this.bottom}}%" title="{{this.title}}"></i>{{/each}}</span></span>
+              <span class="n">{{this.peak}}</span><span class="nm">{{this.actorName}}</span><span class="tier">{{this.tierLabel}}</span>
+            </button>
+            {{/each}}
+          </div>
+          <div class="ncm-sec-admin-hx__legend"><span class="t-cold"><i class="sw"></i>Cold</span><span class="t-warm"><i class="sw"></i>Warm 25+</span><span class="t-hot"><i class="sw"></i>Hot 50+</span><span class="t-burned"><i class="sw"></i>Burned 80+</span><span class="dec">drains −5 / game hr</span></div>
+        </div>
+
+        <div class="ncm-sec-admin-mod">
+          <div class="ncm-sec-admin-mod__k"><i class="fas fa-crosshairs"></i>Selected</div>
+          {{#if security.thermo.sel}}
+          <div class="ncm-sec-admin-hx__det">
+            <div class="hd"><span class="av" style="--tc:{{security.thermo.sel.hue}}">{{security.thermo.sel.initials}}</span>
+              <div><div class="nm">{{security.thermo.sel.actorName}}</div><div class="sub">{{security.thermo.sel.objCount}} {{security.thermo.sel.objWord}} · peak <b>{{security.thermo.sel.peak}}</b> · acting on <b>{{security.thermo.sel.actOnLabel}}</b></div></div></div>
+            <div class="objs">
+              {{#each security.thermo.sel.objects}}
+              <div class="ncm-sec-admin-hx__obj t-{{this.tier}}{{#if this.selected}} sel{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="heatObj" data-object-id="{{this.objectId}}" data-tooltip="{{#if this.selected}}Back to all objects{{else}}Act on {{this.objectName}} only{{/if}}">
+                <i class="fas {{this.icon}}"></i><span class="nm">{{this.objectName}}{{#if this.kindLabel}} <span class="kd">· {{this.kindLabel}}</span>{{/if}}</span><span class="v">{{this.value}}</span><span class="bar"><b style="width:{{this.value}}%"></b></span>
+              </div>
+              {{else}}<div class="ncm-sec-admin-hx__none">No heat anywhere.</div>{{/each}}
+            </div>
+            {{#if security.thermo.sel.cd}}
+            <div class="ncm-sec-admin-hx__cd"><i class="fas fa-stopwatch"></i><span class="t"><b>{{security.thermo.sel.cd.source}}</b> closing in{{#if security.thermo.sel.cd.objectName}} via {{security.thermo.sel.cd.objectName}}{{/if}}</span><span class="left">{{security.thermo.sel.cd.label}}</span>
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityCountdownCancel" data-countdown-id="{{security.thermo.sel.cd.id}}" data-tooltip="Call the trace off — nothing fires">Call off</button></div>
+            {{/if}}
+            <div class="acts">
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatAdjust" data-object-id="{{security.thermo.sel.actOn.objectId}}" data-actor-id="{{security.thermo.sel.actorId}}" data-object-name="{{security.thermo.sel.actOn.objectName}}" data-actor-name="{{security.thermo.sel.actorName}}" data-value="{{security.thermo.sel.actOn.value}}" {{#unless security.thermo.sel.canAdjust}}disabled{{/unless}} data-tooltip="Set the heat by hand, with a reason posted to chat"><i class="fas fa-sliders"></i> Adjust</button>
+              {{#if security.thermo.sel.objectSelected}}
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatClear" data-object-id="{{security.thermo.sel.actOn.objectId}}" data-actor-id="{{security.thermo.sel.actorId}}" data-tooltip="Cool {{security.thermo.sel.actOn.objectName}} to zero"><i class="fas fa-eraser"></i> Clear</button>
+              {{else}}
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="tabAct" data-owner="security" data-op="heatClearActor" data-actor-id="{{security.thermo.sel.actorId}}" {{#unless security.thermo.sel.canClear}}disabled{{/unless}} data-tooltip="Cool every object for {{security.thermo.sel.actorName}} to zero"><i class="fas fa-eraser"></i> Clear{{#if security.thermo.sel.clearsAll}} all{{/if}}</button>
+              {{/if}}
+              <button type="button" class="ncm-sec-admin-btn sm attn" data-action="securityEscalate" data-object-id="{{security.thermo.sel.actOn.objectId}}" data-actor-id="{{security.thermo.sel.actorId}}" data-object-name="{{security.thermo.sel.actOn.objectName}}" data-actor-name="{{security.thermo.sel.actorName}}" {{#unless security.thermo.sel.canEscalate}}disabled{{/unless}} data-tooltip="{{#if security.thermo.sel.canEscalate}}Lock them out, wake Black ICE, or start a trace countdown{{else}}Escalate opens at warm (25+){{/if}}"><i class="fas fa-bolt"></i> Escalate</button>
+            </div>
+            <div class="ncm-sec-admin-hx__hint">Pick an object to act on it alone; otherwise Adjust and Escalate act on the hottest one.</div>
+          </div>
+          {{/if}}
+        </div>
+      </div>
+      {{else}}
+      <div class="ncm-sec-admin-empty">Nobody’s running hot, and no traces are running. Heat appears here when an operator fails a check.</div>
       {{/if}}
     </div>
-  </div>
-
-  {{!-- ═══ RECYCLE BIN ═══ --}}
-  <div class="ncm-sec-admin-card">
-    <div class="ncm-sec-admin-card__hd"><i class="fas fa-trash-can-arrow-up lead"></i><h3>Recycle Bin</h3>
-      <span class="ncm-sec-admin-info" data-tooltip="Files a player 'wiped' off a machine — gone for the owner, recoverable here.">ⓘ</span>
-      <span class="grow"></span>{{#if security.bin.length}}<button type="button" class="ncm-sec-admin-btn danger sm" data-action="securityEmptyBin">Empty bin</button>{{/if}}</div>
-    <div class="ncm-sec-admin-card__bd nopad">
-      <div class="ncm-sec-admin-scroll">
-      <table class="ncm-sec-admin-table">
-        <thead><tr><th>File</th><th>Taken from</th><th>Wiped by</th><th>When</th><th></th></tr></thead>
-        <tbody>
-          {{#each security.bin}}
-          <tr><td>{{this.pageName}}</td><td class="obj">{{this.hostName}}</td><td class="who">{{this.wipedByName}}</td><td class="ago">{{this.agoStr}}</td>
-            <td class="ncm-sec-admin-right"><button type="button" class="ncm-sec-admin-btn sm" data-action="securityRestore" data-rec-id="{{this.id}}">Restore</button> <button type="button" class="ncm-sec-admin-btn danger sm" data-action="securityPurge" data-rec-id="{{this.id}}">Purge</button></td></tr>
-          {{else}}<tr><td colspan="5" class="ncm-sec-admin-empty">Bin is empty.</td></tr>{{/each}}
-        </tbody>
-      </table>
-      </div>
-    </div>
-    {{#if security.binPager.multi}}
-    <div class="ncm-sec-admin-card__ft"><span class="grow"></span><span>{{security.binPager.page}} / {{security.binPager.maxPage}} · {{security.binPager.total}} files</span>
-      <button type="button" class="ncm-sec-admin-btn sm" data-action="securityBinPage" data-dir="prev" {{#unless security.binPager.hasPrev}}disabled{{/unless}}>‹</button>
-      <button type="button" class="ncm-sec-admin-btn sm" data-action="securityBinPage" data-dir="next" {{#unless security.binPager.hasNext}}disabled{{/unless}}>›</button></div>
     {{/if}}
-  </div>
+  {{/if}}
 
-  {{!-- ═══ NETRUNNING RESOLUTION (design §5 — HOW gated hacks resolve) ═══ --}}
-  <div class="ncm-sec-admin-card">
-    <div class="ncm-sec-admin-card__hd"><i class="fas fa-dice-d10 lead"></i><h3>Netrunning Resolution</h3>
-      <span class="ncm-sec-admin-info" data-tooltip="HOW hack/upload checks resolve, table-wide. A terminal can override this for the odd box (its config sheet).">ⓘ</span></div>
-    <div class="ncm-sec-admin-card__bd">
-      <div class="ncm-sec-admin-frow"><label>Resolve</label>
-        <select data-sec-hackres>
-          <option value="auto" {{#if security.net.isAuto}}selected{{/if}}>Auto-roll (default) — NCM rolls the check itself</option>
-          <option value="flagged" {{#if security.net.isFlagged}}selected{{/if}}>Auto-roll + NET card — rolls, but you get a card naming the NET action</option>
-          <option value="gm" {{#if security.net.isGm}}selected{{/if}}>GM adjudicates — no auto-roll; you call pass/fail at the table</option>
-        </select></div>
-      <div class="ncm-sec-admin-frow"><label></label>
-        <span class="ncm-sec-admin-fhint">{{#if security.net.isGm}}Gated hacks now wait for you: the player's console shows AWAITING GM and you get a verdict prompt — run the NET however your table does, then call it. DISMISS withdraws the action harmlessly.{{else if security.net.isFlagged}}Every gated hack still rolls itself, and each one whispers you a NET-action card (Backdoor / Control / Virus / Eye-Dee) so you can fold it into a live run — or veto it by hand.{{else}}Self-contained: every gated hack is a single skill check, an abstraction of netrunning. Most tables stay here.{{/if}}</span></div>
-    </div>
-  </div>
-
-  {{!-- ═══ OPERATOR ACCESS (gate) ═══ --}}
-  <div class="ncm-sec-admin-card">
-    <div class="ncm-sec-admin-card__hd"><i class="fas fa-user-shield lead"></i><h3>Operator Access</h3>
-      <span class="ncm-sec-admin-info" data-tooltip="WHO can use the hacking tools. Off by default (anyone). Require a role, skill, or gear.">ⓘ</span>
-      <span class="grow"></span><button type="button" class="ncm-sec-admin-btn primary sm" data-action="securitySaveGate">Save</button></div>
-    <div class="ncm-sec-admin-card__bd">
-      {{!-- Access mode — the master switch. --}}
-      <div class="ncm-sec-admin-gate__modes">
-        <label class="ncm-sec-admin-gate__mode {{#if (eq security.gate.mode 'anyone')}}on{{/if}}">
-          <input type="radio" name="gateMode" value="anyone" {{#if (eq security.gate.mode 'anyone')}}checked{{/if}}>
-          <i class="fas fa-lock-open"></i><span class="t">Anyone</span><span class="d">no restriction — everyone can operate</span></label>
-        <label class="ncm-sec-admin-gate__mode {{#if (eq security.gate.mode 'gated')}}on{{/if}}">
-          <input type="radio" name="gateMode" value="gated" {{#if (eq security.gate.mode 'gated')}}checked{{/if}}>
-          <i class="fas fa-user-lock"></i><span class="t">Only who qualifies</span><span class="d">must meet the requirements below</span></label>
+  {{!-- ═══════════════════════ MACHINES ═══════════════════════ --}}
+  {{#if security.isMachines}}
+    <header class="ncm-tabhd"><i class="fas fa-server"></i><div><h2>On machines</h2><p>Files and programs players planted on terminals, and the files they wiped, which you can restore; players never see this page.</p></div></header>
+    <div class="ncm-sec-admin-card">
+      <div class="ncm-sec-admin-card__hd"><i class="fas fa-syringe lead"></i><h3>Planted &amp; resident</h3>
+        <span class="ncm-sec-admin-info" data-tooltip="Forged files and programs players planted. Fire or defuse them.">ⓘ</span></div>
+      <div class="ncm-sec-admin-card__bd">
+        <div class="ncm-sec-admin-scroll">
+        {{#each security.plants}}
+        <div class="ncm-sec-admin-prow is-{{this.state}}">
+          <span class="ic {{#unless this.isPlant}}exe{{/unless}}"><i class="fas {{#if this.isPlant}}fa-comments{{else}}fa-key{{/if}}"></i></span>
+          <div class="m"><div class="t">{{this.name}} <span class="fq{{#if this.forgeSloppy}} is-sloppy{{/if}}">{{#if this.forgeSloppy}}<i class="fas fa-triangle-exclamation"></i> {{/if}}{{this.forge}}</span></div>
+            <div class="d">on <b class="host">{{this.hostName}}</b> · by <b class="by" style="--tc:{{ncm-hue this.by}}">{{this.by}}</b> · fires <span class="trig">{{this.trigger}}</span></div></div>
+          <span class="state {{this.state}}">{{this.state}}</span>
+          {{#if (eq this.state 'armed')}}
+            <button type="button" class="ncm-sec-admin-btn sm act" data-action="securityFireResident" data-item-id="{{this.itemId}}" data-resident-id="{{this.id}}">Fire now</button>
+            <button type="button" class="ncm-sec-admin-btn sm" data-action="securityDefuse" data-item-id="{{this.itemId}}" data-resident-id="{{this.id}}">Defuse</button>
+          {{else}}
+            <button type="button" class="ncm-sec-admin-btn sm" data-action="securityRemoveResident" data-item-id="{{this.itemId}}" data-resident-id="{{this.id}}">Remove</button>
+          {{/if}}
+        </div>
+        {{else}}<div class="ncm-sec-admin-empty">Nothing planted.</div>{{/each}}
+        </div>
+        {{#if security.plantsPager.multi}}
+        <div class="ncm-sec-admin-pager"><span>{{security.plantsPager.page}} / {{security.plantsPager.maxPage}} · {{security.plantsPager.total}} total</span>
+          <button type="button" class="ncm-sec-admin-btn sm" data-action="securityPlantPage" data-dir="prev" {{#unless security.plantsPager.hasPrev}}disabled{{/unless}}>‹</button>
+          <button type="button" class="ncm-sec-admin-btn sm" data-action="securityPlantPage" data-dir="next" {{#unless security.plantsPager.hasNext}}disabled{{/unless}}>›</button></div>
+        {{/if}}
       </div>
+    </div>
 
-      {{!-- Requirements — dimmed by _onRender when mode is "Anyone". --}}
-      <div class="ncm-sec-admin-gate__reqs" data-gate-reqs>
-        <div class="ncm-sec-admin-frow"><label>Combine</label>
-          <select name="gateLogic"><option value="any" {{#if (eq security.gate.logic 'any')}}selected{{/if}}>Any ONE requirement passes</option><option value="all" {{#if (eq security.gate.logic 'all')}}selected{{/if}}>Must meet ALL requirements</option></select></div>
-
-        {{!-- Role requirement --}}
-        <div class="ncm-sec-admin-gate__req">
-          <div class="ncm-sec-admin-gate__reqhd"><i class="fas fa-id-badge"></i><span class="t">Role</span>
-            <span class="grow"></span>
-            <select name="gateRoleLogic" class="ncm-sec-admin-gate__mini"><option value="any" {{#if (eq security.gate.roleLogic 'any')}}selected{{/if}}>any of these</option><option value="all" {{#if (eq security.gate.roleLogic 'all')}}selected{{/if}}>all of these</option></select>
-            <button type="button" class="ncm-sec-admin-btn sm" data-action="securityGateAddRole"><i class="fas fa-plus"></i> role</button></div>
-          <span class="ncm-sec-admin-gate__chips" data-role-chips>
-            {{#each security.gate.roleChips}}<span class="ncm-sec-admin-chip" data-item-name="{{this.name}}"><img src="{{this.img}}" alt="">{{this.name}} <i class="fas fa-xmark" data-action="securityGateRemoveItem"></i></span>{{else}}<span class="ncm-sec-admin-gate__none">no role required</span>{{/each}}
-          </span>
+    <div class="ncm-sec-admin-card">
+      <div class="ncm-sec-admin-card__hd"><i class="fas fa-trash-can-arrow-up lead"></i><h3>Recycle bin</h3>
+        <span class="ncm-sec-admin-info" data-tooltip="Files a player wiped off a machine — gone for the owner, recoverable here.">ⓘ</span>
+        <span class="grow"></span>{{#if security.bin.length}}<button type="button" class="ncm-sec-admin-btn danger sm" data-action="securityEmptyBin">Empty bin</button>{{/if}}</div>
+      <div class="ncm-sec-admin-card__bd nopad">
+        <div class="ncm-sec-admin-scroll">
+        <table class="ncm-sec-admin-table">
+          <thead><tr><th>File</th><th>Taken from</th><th>Wiped by</th><th>When</th><th></th></tr></thead>
+          <tbody>
+            {{#each security.bin}}
+            <tr><td>{{this.pageName}}</td><td class="obj">{{this.hostName}}</td><td><span class="who" style="--tc:{{ncm-hue this.wipedByName}}">{{this.wipedByName}}</span></td><td class="ago">{{this.agoStr}}</td>
+              <td class="ncm-sec-admin-right"><button type="button" class="ncm-sec-admin-btn sm act" data-action="securityRestore" data-rec-id="{{this.id}}">Restore</button> <button type="button" class="ncm-sec-admin-btn danger sm" data-action="securityPurge" data-rec-id="{{this.id}}">Purge</button></td></tr>
+            {{else}}<tr><td colspan="5" class="ncm-sec-admin-empty">Bin is empty.</td></tr>{{/each}}
+          </tbody>
+        </table>
         </div>
+      </div>
+      {{#if security.binPager.multi}}
+      <div class="ncm-sec-admin-card__ft"><span class="grow"></span><span>{{security.binPager.page}} / {{security.binPager.maxPage}} · {{security.binPager.total}} files</span>
+        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityBinPage" data-dir="prev" {{#unless security.binPager.hasPrev}}disabled{{/unless}}>‹</button>
+        <button type="button" class="ncm-sec-admin-btn sm" data-action="securityBinPage" data-dir="next" {{#unless security.binPager.hasNext}}disabled{{/unless}}>›</button></div>
+      {{/if}}
+    </div>
+  {{/if}}
 
-        {{!-- Skill requirement --}}
-        <div class="ncm-sec-admin-gate__req">
-          <div class="ncm-sec-admin-gate__reqhd"><i class="fas fa-brain"></i><span class="t">Skill</span></div>
-          <div class="ncm-sec-admin-gate__skrow">
-            <select name="gateSkill" class="ncm-sec-admin-gate__skill">
-              <option value="" {{#unless security.gate.skillName}}selected{{/unless}}>— none —</option>
-              {{#each security.gate.skillOptions}}<option value="{{this}}" {{#if (eq this ../security.gate.skillName)}}selected{{/if}}>{{this}}</option>{{/each}}
-            </select>
-            <span class="ncm-sec-admin-fhint">at rank</span><input type="number" name="gateSkillMin" value="{{security.gate.skillMin}}" min="0" style="width:56px"><span class="ncm-sec-admin-fhint">or higher</span></div>
+  {{!-- ═══════════════════════ HACKING RULES ═══════════════════════ --}}
+  {{#if security.isRules}}
+    <header class="ncm-tabhd"><i class="fas fa-scale-balanced"></i><div><h2>Hacking rules</h2><p>How hacks are resolved, who may hack, and what a character can tell about a lock before trying; open a card to change it.</p></div></header>
+
+    {{!-- Netrunning resolution --}}
+    <div class="ncm-sec-admin-card ncm-sec-admin-fold {{#if security.rules.folds.res}}open{{/if}}" data-fold="res">
+      <div class="ncm-sec-admin-card__hd" role="button" tabindex="0" aria-expanded="{{#if security.rules.folds.res}}true{{else}}false{{/if}}" data-action="tabAct" data-owner="security" data-op="fold">
+        <i class="fas fa-dice-d20 lead"></i><h3>Netrunning resolution</h3><span class="grow"></span><span class="sum">{{security.rules.resLabel}}</span><i class="fas fa-chevron-down chev"></i></div>
+      <div class="ncm-sec-admin-card__bd">
+        <p class="lede">How hacks and uploads are decided. A terminal can override it on its config sheet.</p>
+        <ul class="ncm-sec-admin-opts">
+          {{#each security.rules.res}}<li role="button" tabindex="0" class="{{#if this.on}}on{{/if}}" data-action="tabAct" data-owner="security" data-op="hackres" data-value="{{this.value}}"><b>{{this.label}}</b>{{this.blurb}}</li>{{/each}}
+        </ul>
+        <div class="ncm-sec-admin-fhint">{{#if security.net.isGm}}Gated hacks wait for you: the player sees AWAITING GM and you get a verdict prompt — run the NET however your table does, then call it. Dismiss withdraws the action harmlessly.{{else if security.net.isFlagged}}Every gated hack still rolls itself, and each one whispers you a NET-action card (Backdoor / Control / Virus / Eye-Dee) so you can fold it into a live run.{{else}}Self-contained: every gated hack is one skill check, an abstraction of netrunning.{{/if}}</div>
+      </div>
+    </div>
+
+    {{!-- Operator access (the capability gate) --}}
+    <div class="ncm-sec-admin-card ncm-sec-admin-fold {{#if security.rules.folds.op}}open{{/if}}" data-fold="op">
+      <div class="ncm-sec-admin-card__hd" role="button" tabindex="0" aria-expanded="{{#if security.rules.folds.op}}true{{else}}false{{/if}}" data-action="tabAct" data-owner="security" data-op="fold">
+        <i class="fas fa-user-shield lead"></i><h3>Terminal operator access</h3><span class="grow"></span><span class="sum {{#if security.rules.opSummary.off}}off{{/if}}">{{security.rules.opSummary.text}}</span><i class="fas fa-chevron-down chev"></i></div>
+      <div class="ncm-sec-admin-card__bd">
+        <p class="lede">Who can use the operator tools on terminals (Upload, System Sweep) — and who counts as an expert who can see what guards a lock (Countermeasure visibility, below). Logging in with a password is never gated.</p>
+        <div class="ncm-sec-admin-gate__modes">
+          <label class="ncm-sec-admin-gate__mode {{#if (eq security.gate.mode 'anyone')}}on{{/if}}">
+            <input type="radio" name="gateMode" value="anyone" {{#if (eq security.gate.mode 'anyone')}}checked{{/if}}>
+            <i class="fas fa-lock-open"></i><span class="t">Anyone</span><span class="d">no restriction — everyone can operate</span></label>
+          <label class="ncm-sec-admin-gate__mode {{#if (eq security.gate.mode 'gated')}}on{{/if}}">
+            <input type="radio" name="gateMode" value="gated" {{#if (eq security.gate.mode 'gated')}}checked{{/if}}>
+            <i class="fas fa-user-lock"></i><span class="t">Only who qualifies</span><span class="d">must meet the requirements below</span></label>
         </div>
-
-        {{!-- Gear requirement — OR-of-ANDs --}}
-        <div class="ncm-sec-admin-gate__req">
-          <div class="ncm-sec-admin-gate__reqhd"><i class="fas fa-toolbox"></i><span class="t">Gear</span>
-            <span class="ncm-sec-admin-gate__andhint">each option = carry ALL its items; options are OR</span></div>
-          <div class="ncm-sec-admin-gate__groups" data-gate-groups>
-            {{#each security.gate.groups}}
-            <div class="ncm-sec-admin-gate__grp" data-gate-group>
-              <div class="ncm-sec-admin-gate__grphd"><span class="ncm-sec-admin-gate__opt">Option {{letter @index}}</span>
-                <span class="ncm-sec-admin-gate__andhint">carry ALL of these</span><span class="grow"></span>
-                <button type="button" class="ncm-sec-admin-gate__rm" data-action="securityGateRemoveGroup" data-tooltip="Remove this option"><i class="fas fa-xmark"></i></button></div>
-              <span class="ncm-sec-admin-gate__chips" data-gate-group-chips>
-                {{#each this}}<span class="ncm-sec-admin-chip" data-item-name="{{this.name}}"><img src="{{this.img}}" alt="">{{this.name}} <i class="fas fa-xmark" data-action="securityGateRemoveItem"></i></span>{{/each}}
-              </span>
-              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityGateAddItem"><i class="fas fa-plus"></i> item</button>
+        <div class="ncm-sec-admin-gate__reqs" data-gate-reqs>
+          <div class="ncm-sec-admin-frow"><label>Combine</label>
+            <select name="gateLogic"><option value="any" {{#if (eq security.gate.logic 'any')}}selected{{/if}}>Any ONE requirement passes</option><option value="all" {{#if (eq security.gate.logic 'all')}}selected{{/if}}>Must meet ALL requirements</option></select></div>
+          <div class="ncm-sec-admin-gate__req">
+            <div class="ncm-sec-admin-gate__reqhd"><i class="fas fa-id-badge"></i><span class="t">Role</span>
+              <span class="grow"></span>
+              <select name="gateRoleLogic" class="ncm-sec-admin-gate__mini"><option value="any" {{#if (eq security.gate.roleLogic 'any')}}selected{{/if}}>any of these</option><option value="all" {{#if (eq security.gate.roleLogic 'all')}}selected{{/if}}>all of these</option></select>
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityGateAddRole"><i class="fas fa-plus"></i> role</button></div>
+            <span class="ncm-sec-admin-gate__chips" data-role-chips>
+              {{#each security.gate.roleChips}}<span class="ncm-sec-admin-chip" data-item-name="{{this.name}}"><img src="{{this.img}}" alt="">{{this.name}} <i class="fas fa-xmark" data-action="securityGateRemoveItem"></i></span>{{else}}<span class="ncm-sec-admin-gate__none">no role required</span>{{/each}}
+            </span>
+          </div>
+          <div class="ncm-sec-admin-gate__req">
+            <div class="ncm-sec-admin-gate__reqhd"><i class="fas fa-brain"></i><span class="t">Skill</span>
+              <span class="grow"></span><span class="ncm-sec-admin-fhint">any one of these</span>
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityGateAddSkill"><i class="fas fa-plus"></i> skill</button></div>
+            <div class="ncm-sec-admin-gate__sklist" data-gate-skills>{{{security.gate.skillRowsHtml}}}</div>
+          </div>
+          <div class="ncm-sec-admin-gate__req">
+            <div class="ncm-sec-admin-gate__reqhd"><i class="fas fa-toolbox"></i><span class="t">Gear</span>
+              <span class="ncm-sec-admin-gate__andhint">each option = carry ALL its items; options are OR</span></div>
+            <div class="ncm-sec-admin-gate__groups" data-gate-groups>
+              {{#each security.gate.groups}}
+              <div class="ncm-sec-admin-gate__grp" data-gate-group>
+                <div class="ncm-sec-admin-gate__grphd"><span class="ncm-sec-admin-gate__opt">Option {{letter @index}}</span>
+                  <span class="ncm-sec-admin-gate__andhint">carry ALL of these</span><span class="grow"></span>
+                  <button type="button" class="ncm-sec-admin-gate__rm" data-action="securityGateRemoveGroup" data-tooltip="Remove this option"><i class="fas fa-xmark"></i></button></div>
+                <span class="ncm-sec-admin-gate__chips" data-gate-group-chips>
+                  {{#each this}}<span class="ncm-sec-admin-chip" data-item-name="{{this.name}}"><img src="{{this.img}}" alt="">{{this.name}} <i class="fas fa-xmark" data-action="securityGateRemoveItem"></i></span>{{/each}}
+                </span>
+                <button type="button" class="ncm-sec-admin-btn sm" data-action="securityGateAddItem"><i class="fas fa-plus"></i> item</button>
+              </div>
+              {{/each}}
+              <div><button type="button" class="ncm-sec-admin-btn sm" data-action="securityGateAddGroup"><i class="fas fa-plus"></i> add an OR option</button></div>
             </div>
-            {{/each}}
-            <div><button type="button" class="ncm-sec-admin-btn sm" data-action="securityGateAddGroup"><i class="fas fa-plus"></i> add an OR option</button></div>
           </div>
         </div>
+        <div class="ncm-sec-admin-frow"><label></label><label class="ncm-sec-admin-check"><input type="checkbox" name="gateAllowGM" {{#if security.gate.allowGM}}checked{{/if}}> GM always has access</label>
+          <span class="grow"></span><button type="button" class="ncm-sec-admin-btn primary sm" data-action="securitySaveGate">Save operator access</button></div>
       </div>
-
-      <div class="ncm-sec-admin-frow"><label></label><label class="ncm-sec-admin-check"><input type="checkbox" name="gateAllowGM" {{#if security.gate.allowGM}}checked{{/if}}> GM always has access</label></div>
     </div>
-  </div>
+
+    {{!-- Countermeasure visibility (world default) --}}
+    <div class="ncm-sec-admin-card ncm-sec-admin-fold {{#if security.rules.folds.cmv}}open{{/if}}" data-fold="cmv">
+      <div class="ncm-sec-admin-card__hd" role="button" tabindex="0" aria-expanded="{{#if security.rules.folds.cmv}}true{{else}}false{{/if}}" data-action="tabAct" data-owner="security" data-op="fold">
+        <i class="fas fa-eye-slash lead"></i><h3>Countermeasure visibility</h3><span class="grow"></span>
+        <span class="sum {{#if security.rules.cmv.chip.off}}off{{/if}}">{{security.rules.cmv.chip.text}}{{#if security.rules.cmv.chip.dvHidden}} · <b>DV hidden</b>{{/if}}</span><i class="fas fa-chevron-down chev"></i></div>
+      <div class="ncm-sec-admin-card__bd" data-cmv-card>
+        <p class="lede">Who can tell what’s guarding a lock — ICE, its damage, traces, the attempt limit, the DV. Everyone always sees that something is locked and the ways in. Networks, terminal accounts and shards can override this.</p>
+        <div class="ncm-cmv-modes" role="radiogroup" aria-label="Mode">
+          {{#each security.rules.cmv.modes}}
+          <label class="ncm-cmv-mode"><input type="radio" name="cmvMode" value="{{this.value}}" {{#if this.on}}checked{{/if}}><i class="fas {{this.icon}}"></i><span class="t">{{this.label}}</span><span class="d">{{this.blurb}}</span></label>
+          {{/each}}
+        </div>
+
+        <div class="ncm-cmv-block ncm-cmv-dimmable {{#if security.rules.cmv.expertOff}}is-ungated{{/if}}" data-cmv-expert>
+          <div class="ncm-cmv-block__hd"><i class="fas fa-user-graduate"></i> Who counts as an expert <span class="hint">sees everything, no roll</span></div>
+          <div class="ncm-cmv-block__bd">
+            <div class="ncm-cmv-line"><span class="k">Role</span>
+              <span class="ncm-sec-admin-chiprow" data-cmv-roles>{{#each security.rules.cmv.roleChips}}<span class="ncm-cmv-chip" data-name="{{this.name}}"><img src="{{this.img}}" alt="">{{this.name}} <i class="fas fa-xmark" data-action="tabAct" data-owner="security" data-op="cmvChipDel" aria-label="Remove"></i></span>{{/each}}</span>
+              <span class="ncm-cmv-chip ncm-cmv-chip--add" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="cmvAddRole"><i class="fas fa-plus"></i> role</span></div>
+            <div class="ncm-cmv-line ncm-cmv-line--top"><span class="k">Skill</span>
+              <div class="ncm-sec-admin-gate__sklist" data-cmv-skills>{{{security.rules.cmv.skillRowsHtml}}}</div>
+              <span class="ncm-cmv-chip ncm-cmv-chip--add" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="cmvAddSkill"><i class="fas fa-plus"></i> skill</span></div>
+            <div class="ncm-cmv-line"><span class="k">Gear</span>
+              <span class="ncm-sec-admin-chiprow" data-cmv-gear>{{#each security.rules.cmv.gearChips}}<span class="ncm-cmv-chip" data-name="{{this.name}}" data-img="{{this.img}}"><img src="{{this.img}}" alt="">{{this.name}} <i class="fas fa-xmark" data-action="tabAct" data-owner="security" data-op="cmvChipDel" aria-label="Remove"></i></span>{{/each}}</span>
+              <span class="ncm-cmv-chip ncm-cmv-chip--add" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="cmvAddGear"><i class="fas fa-plus"></i> gear</span></div>
+            <div class="ncm-sec-admin-fhint">Any one of these makes a character an expert. Leave all three empty and nobody is.</div>
+          </div>
+        </div>
+
+        <div class="ncm-cmv-block ncm-cmv-dimmable {{#if security.rules.cmv.scanOff}}is-ungated{{/if}}" data-cmv-scanblock>
+          <div class="ncm-cmv-block__hd"><i class="fas fa-satellite-dish"></i> The scan <span class="hint">for everyone else</span></div>
+          <div class="ncm-cmv-block__bd">
+            <div class="ncm-cmv-line"><span class="k">Skills</span>
+              <span class="ncm-sec-admin-chiprow" data-cmv-scan>{{#each security.rules.cmv.scanSkills}}<span class="ncm-cmv-chip" data-name="{{this}}">{{this}} <i class="fas fa-xmark" data-action="tabAct" data-owner="security" data-op="cmvChipDel" aria-label="Remove"></i></span>{{/each}}
+              <select class="ncm-cmv-addsel" data-cmv-scan-add aria-label="Add a scan skill"><option value="">+ skill…</option>{{#each security.rules.cmv.scanSkillOpts}}<option value="{{this}}">{{this}}</option>{{/each}}</select></span></div>
+            <div class="ncm-cmv-line"><span class="k">Scan DV</span><input type="number" class="ncm-cmv-num" name="cmvScanDV" value="{{security.rules.cmv.scanDV}}" min="1" max="40" aria-label="Scan DV">
+              <span>objects can set their own · beat it by</span><input type="number" class="ncm-cmv-num" name="cmvIdentifyBy" value="{{security.rules.cmv.identifyBy}}" min="0" max="20" aria-label="Beat it by"><span>or more to identify, not just spot</span></div>
+            <label class="ncm-cmv-check"><input type="checkbox" name="cmvFailTraced" {{#if security.rules.cmv.failTraced}}checked{{/if}}><span class="ncm-cmv-box"><i class="fas fa-check"></i></span><span>A failed scan counts as a traced action<small>Off: a miss just means going in blind.</small></span></label>
+          </div>
+        </div>
+
+        <div class="ncm-cmv-block">
+          <div class="ncm-cmv-block__hd"><i class="fas fa-eye-slash"></i> What a layperson can't see</div>
+          <div class="ncm-cmv-block__bd"><div class="ncm-cmv-checks">
+            <label class="ncm-cmv-check"><input type="checkbox" name="cmvHideIce" {{#if security.rules.cmv.hide.ice}}checked{{/if}}><span class="ncm-cmv-box"><i class="fas fa-check"></i></span><span>That ICE is running<small>spotted → "ICE is running"</small></span></label>
+            <label class="ncm-cmv-check"><input type="checkbox" name="cmvHideIceDetail" {{#if security.rules.cmv.hide.iceDetail}}checked{{/if}}><span class="ncm-cmv-box"><i class="fas fa-check"></i></span><span>Which ICE, and its damage<small>identified only</small></span></label>
+            <label class="ncm-cmv-check"><input type="checkbox" name="cmvHideAttempts" {{#if security.rules.cmv.hide.attempts}}checked{{/if}}><span class="ncm-cmv-box"><i class="fas fa-check"></i></span><span>Attempts left / lockout<small>shown after the first failure</small></span></label>
+            <label class="ncm-cmv-check"><input type="checkbox" name="cmvHideTrace" {{#if security.rules.cmv.hide.trace}}checked{{/if}}><span class="ncm-cmv-box"><i class="fas fa-check"></i></span><span>That a failure is traced<small>spotted → shown</small></span></label>
+          </div></div>
+        </div>
+
+        <label class="ncm-cmv-dvtoggle"><input type="checkbox" name="cmvHideDV" {{#if security.rules.cmv.hideDV}}checked{{/if}}><span class="ncm-cmv-knob"></span>
+          <span class="t">Hide the DV until the roll lands<small>For laypeople and spotters. The roll animation and chat card show it with the verdict. Experts always see it.</small></span></label>
+
+        <div class="ncm-cmv-verdict">Right now: {{security.rules.cmv.summary}}</div>
+        <div class="ncm-sec-admin-foot"><span class="grow"></span><button type="button" class="ncm-sec-admin-btn primary sm" data-action="tabAct" data-owner="security" data-op="cmvSave">Save countermeasure visibility</button></div>
+      </div>
+    </div>
+
+    {{!-- Jacking in (network nodes — utils/jackIn.js, world setting jackInRules) --}}
+    <div class="ncm-sec-admin-card ncm-sec-admin-fold {{#if security.rules.folds.jack}}open{{/if}}" data-fold="jack">
+      <div class="ncm-sec-admin-card__hd" role="button" tabindex="0" aria-expanded="{{#if security.rules.folds.jack}}true{{else}}false{{/if}}" data-action="tabAct" data-owner="security" data-op="fold">
+        <i class="fas fa-plug lead"></i><h3>Jacking in</h3><span class="grow"></span><span class="sum">{{security.rules.jack.summary}}</span><i class="fas fa-chevron-down chev"></i></div>
+      <div class="ncm-sec-admin-card__bd" data-jack-card>
+        <p class="lede">How a character jacks into a network node, and what they can do inside. A node can set its own jack-in DV (edit the node).</p>
+        <div class="ncm-jkr-row">
+          <label class="ncm-jkr-f"><span>Skill</span><select name="jk-skill">{{#each security.rules.jack.skills}}<option value="{{k}}" {{#if on}}selected{{/if}}>{{k}}</option>{{/each}}</select></label>
+          <label class="ncm-jkr-f ncm-jkr-f--n"><span>Jack-in DV</span><input type="number" name="jk-dv" min="1" max="40" value="{{security.rules.jack.dv}}"></label>
+          <label class="ncm-jkr-f"><span>Decided by</span><select name="jk-res">{{#each security.rules.jack.res}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select></label>
+        </div>
+
+        <div class="ncm-jkr-who">
+          <span class="ncm-jkr-k"><i class="fas fa-user-lock"></i>Who can jack in</span>
+          <div class="ncm-jkr-who__seg">{{#each security.rules.jack.gateFrom}}<label><input type="radio" name="jk-gatefrom" value="{{v}}" {{#if on}}checked{{/if}}><span>{{l}}</span></label>{{/each}}</div>
+          <div class="ncm-jkr-who__own">
+            <div class="ncm-jkr-who__line"><span class="ncm-jkr-who__lb">Roles</span><div class="ncm-jkr-who__roles">{{#each security.rules.jack.gateRoles}}<label><input type="checkbox" name="jk-grole" value="{{n}}" {{#if on}}checked{{/if}}><span>{{n}}</span></label>{{/each}}</div></div>
+            <div class="ncm-jkr-who__line"><span class="ncm-jkr-who__lb">
+              <select name="jk-glogic" aria-label="Roles and skills"><option value="any" {{#unless security.rules.jack.gateAll}}selected{{/unless}}>or</option><option value="all" {{#if security.rules.jack.gateAll}}selected{{/if}}>and</option></select> a skill</span>
+              <div class="ncm-jkr-who__skills">{{#each security.rules.jack.gateSkills}}<span><select name="jk-gs-{{i}}" aria-label="Skill">{{#each opts}}<option value="{{k}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select><input type="number" name="jk-gm-{{i}}" min="0" max="20" value="{{min}}" aria-label="At least" data-tooltip="At least this rank"><em>+</em></span>{{/each}}</div></div>
+            <p class="ncm-jkr-who__hint">A character qualifies with any ticked role, or any listed skill at that rank (“and” = needs both). Nothing ticked = anyone. The GM always can.</p>
+          </div>
+        </div>
+
+        <div class="ncm-jkr-dials">
+          <label class="ncm-jkr-dial"><span class="ncm-jkr-dial__hd"><i class="fas fa-unlock-keyhole"></i>Rank unlocks actions<input type="checkbox" name="jk-unlocks" {{#if security.rules.jack.dials.unlocks}}checked{{/if}}><span class="ncm-jkr-sw"></span></span>
+            <small>Each action needs a minimum rank. Better netrunners get more options.</small></label>
+          <label class="ncm-jkr-dial"><span class="ncm-jkr-dial__hd"><i class="fas fa-arrow-trend-down"></i>Rank makes it easier<input type="checkbox" name="jk-edge" {{#if security.rules.jack.dials.edge}}checked{{/if}}><span class="ncm-jkr-sw"></span></span>
+            <small>Every rank above an action's minimum rank takes 1 off its DV, up to <input type="number" name="jk-edgecap" min="0" max="10" value="{{security.rules.jack.dials.edgeCap}}"> off. A netrunner well above the minimum finds it easier.</small></label>
+          <div class="ncm-jkr-dial"><label class="ncm-jkr-dial__hd"><i class="fas fa-shoe-prints"></i>Rank gives more moves<input type="checkbox" name="jk-moves" {{#if security.rules.jack.dials.moves}}checked{{/if}}><span class="ncm-jkr-sw"></span></label>
+            <small>From rank; +1 for beating the jack-in DV by <input type="number" name="jk-margin" min="0" max="20" value="{{security.rules.jack.dials.movesMargin}}">.</small>
+            <div class="ncm-jkr-ladder"><em class="ncm-jkr-ladder__hd">From rank → moves</em>{{#each security.rules.jack.moves}}<span><input type="number" name="jk-mr-{{@index}}" min="0" max="20" value="{{rank}}" aria-label="From rank" data-tooltip="From this rank"><i class="fas fa-arrow-right"></i><input type="number" name="jk-mm-{{@index}}" min="1" max="12" value="{{moves}}" aria-label="Moves" data-tooltip="Moves a session gets"></span>{{/each}}</div></div>
+        </div>
+
+        <table class="ncm-jkr-tbl">
+          <thead><tr><th>Action</th><th>DV</th><th>Min rank</th><th>Time (min)</th><th>Costs a move</th><th>On</th></tr></thead>
+          <tbody>
+            {{#each security.rules.jack.actions}}
+            <tr class="{{#if later}}is-later{{/if}}">
+              <td><span class="ncm-jkr-act"><i class="fas {{icon}}"></i>{{label}}{{#if later}} <span class="ncm-tagp is-plain" data-tooltip="Set it now; it arrives in sessions with a later build">later</span>{{/if}}</span></td>
+              <td><input type="number" name="jk-dv-{{key}}" min="1" max="40" value="{{#unless dvBlank}}{{dv}}{{/unless}}" placeholder="no roll"></td>
+              <td><input type="number" name="jk-min-{{key}}" min="0" max="20" value="{{min}}"></td>
+              <td>{{#if hasTime}}<input type="number" name="jk-time-{{key}}" min="0" max="10080" value="{{minutes}}">{{else}}<span class="ncm-jkr-na">—</span>{{/if}}</td>
+              <td><label class="ncm-jkr-tg"><input type="checkbox" name="jk-move-{{key}}" {{#if move}}checked{{/if}}><span class="ncm-jkr-sw"></span></label></td>
+              <td><label class="ncm-jkr-tg"><input type="checkbox" name="jk-on-{{key}}" {{#if on}}checked{{/if}}><span class="ncm-jkr-sw"></span></label></td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+
+        <div class="ncm-jkr-row ncm-jkr-row--fail">
+          <span class="ncm-jkr-k"><i class="fas fa-triangle-exclamation"></i>On a miss</span>
+          <label class="ncm-jkr-tgl"><input type="checkbox" name="jk-trace" {{#if security.rules.jack.failure.trace}}checked{{/if}}><span class="ncm-jkr-sw"></span>Trace it</label>
+          <label class="ncm-jkr-f ncm-jkr-f--s"><span>Heat</span><select name="jk-sev">{{#each security.rules.jack.sevs}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select></label>
+          <label class="ncm-jkr-tgl"><input type="checkbox" name="jk-alert" {{#if security.rules.jack.failure.alert}}checked{{/if}}><span class="ncm-jkr-sw"></span>Raise the node's alert</label>
+          <label class="ncm-jkr-f ncm-jkr-f--n"><span>Tries</span><input type="number" name="jk-tries" min="0" max="20" value="{{security.rules.jack.failure.maxAttempts}}"></label>
+          <label class="ncm-jkr-f ncm-jkr-f--n"><span>Lockout (min)</span><input type="number" name="jk-lock" min="0" max="10080" value="{{security.rules.jack.failure.lockoutMinutes}}"></label>
+        </div>
+
+        <div class="ncm-jkr-row ncm-jkr-row--fail">
+          <span class="ncm-jkr-k"><i class="fas fa-hourglass-half"></i>Sessions</span>
+          <label class="ncm-jkr-f ncm-jkr-f--n" data-tooltip="Game minutes from the first jack-in. Until then, jacking out and back in (or a refresh) keeps the moves already spent. 0 = every jack-in starts fresh."><span>Last (min)</span><input type="number" name="jk-sessmin" min="0" max="10080" value="{{security.rules.jack.session.minutes}}"></label>
+          <label class="ncm-jkr-tgl"><input type="checkbox" name="jk-return" {{#if security.rules.jack.session.returnAlert}}checked{{/if}}><span class="ncm-jkr-sw"></span>Coming back raises the node's alert</label>
+        </div>
+        <div class="ncm-jkr-row ncm-jkr-row--fail">
+          <span class="ncm-jkr-k ncm-jkr-k--inf"><i class="fas fa-bug"></i>Infections</span>
+          <label class="ncm-jkr-tgl"><input type="checkbox" name="jk-symptoms" {{#if security.rules.jack.symptoms}}checked{{/if}}><span class="ncm-jkr-sw"></span>Players see symptoms (the node's ticker glitches)</label>
+        </div>
+        <div class="ncm-jkr-disc"><i class="fas fa-eye-slash"></i><span><b>Discovery</b> — nodes can be hidden and marked discoverable. How a scan finds them isn't decided yet; its rules will go here.</span><span class="ncm-tagp is-plain">later</span></div>
+        <div class="ncm-sec-admin-foot"><button type="button" class="ncm-sec-admin-btn sm" data-action="tabAct" data-owner="security" data-op="jackReset">Defaults</button><span class="grow"></span><button type="button" class="ncm-sec-admin-btn primary sm" data-action="tabAct" data-owner="security" data-op="jackSave">Save jacking in</button></div>
+      </div>
+    </div>
+
+    {{!-- Role ability rolls (world setting roleAbilityRoll — also in Module Settings) --}}
+    <div class="ncm-sec-admin-card ncm-sec-admin-fold {{#if security.rules.folds.role}}open{{/if}}" data-fold="role">
+      <div class="ncm-sec-admin-card__hd" role="button" tabindex="0" aria-expanded="{{#if security.rules.folds.role}}true{{else}}false{{/if}}" data-action="tabAct" data-owner="security" data-op="fold">
+        <i class="fas fa-laptop-code lead"></i><h3>Role ability rolls</h3><span class="grow"></span><span class="sum">{{security.rules.role.label}}</span><i class="fas fa-chevron-down chev"></i></div>
+      <div class="ncm-sec-admin-card__bd">
+        <p class="lede">How a role ability such as Interface is rolled everywhere the module asks for one — logins, breaches, hacks.</p>
+        <ul class="ncm-sec-admin-opts ncm-sec-admin-opts--2">
+          {{#each security.rules.role.opts}}<li role="button" tabindex="0" class="{{#if this.on}}on{{/if}}" data-action="tabAct" data-owner="security" data-op="roleRoll" data-value="{{this.value}}"><b>{{this.label}}</b>{{this.blurb}}</li>{{/each}}
+        </ul>
+      </div>
+    </div>
+  {{/if}}
 
   {{else}}
   <div class="ncm-sec-admin-empty" style="padding:40px;">Security service unavailable.</div>

@@ -146,9 +146,9 @@ const files = [...walk(`${ROOT}/scripts`), ...walk(`${ROOT}/templates`)];
   ok(bad.length === 0, `every showNamePicker call site imports it (${bad.map(f => f.replace(ROOT + '/', '')).join(', ') || 'none'})`);
   // Every surface routes through the picker — the first seven plus the second sweep's eight.
   for (const f of ['scripts/ui/AdminPanel/tabs/ShardsTab.js', 'scripts/ui/AdminPanel/tabs/TerminalsTab.js', 'scripts/ui/Terminal/TerminalViewerApp.js',
-    'scripts/ui/ItemInbox/DataShardComposer.js', 'scripts/ui/ContactManager/ContactManagerApp.js', 'scripts/ui/GMContactManager/GMContactManagerApp.js',
+    'scripts/ui/ItemInbox/DataShardComposer.js', 'scripts/ui/ContactManager/ContactManagerApp.js', 'scripts/ui/AdminPanel/tabs/ContactsTab.js',
     'scripts/ui/AdminPanel/tabs/SecurityTab.js', 'scripts/ui/AdminPanel/tabs/ToolsTab.js', 'scripts/ui/ShardEncoder/ShardEncoderApp.js', 'scripts/ui/ShardEncoder/EncoderConfigApp.js',
-    'scripts/ui/Terminal/TerminalConfigApp.js', 'scripts/ui/ItemInbox/ItemInboxConfig.js', 'scripts/ui/NetworkManagement/NetworkManagementApp.js', 'scripts/ui/NetworkManagement/NetworkAuthDialog.js']) {
+    'scripts/ui/Terminal/TerminalConfigApp.js', 'scripts/ui/ItemInbox/ItemInboxConfig.js', 'scripts/ui/AdminPanel/tabs/NetworksTab.js', 'scripts/ui/NetworkManagement/NetworkAuthDialog.js']) {
     ok(/showNamePicker\(/.test(readFileSync(`${ROOT}/${f}`, 'utf8')), `${f} uses the picker`);
   }
   // Picker CSS: its own file, imported, tokens only (no literal colour at all), and
@@ -160,15 +160,17 @@ const files = [...walk(`${ROOT}/scripts`), ...walk(`${ROOT}/templates`)];
   const strays = walk(`${ROOT}/styles`).filter(f => f.endsWith('.css') && !f.endsWith('name-picker.css') && /\.ncm-pkr|\.ncm-burn-(row|list|search|chip|hint|name|sub|type|tag|pick|footer|empty|main|none)/.test(readFileSync(f, 'utf8')));
   ok(strays.length === 0, `no other stylesheet styles the picker (${strays.map(f => f.replace(ROOT + '/', '')).join(', ') || 'none'})`);
   ok(/\.ncm-pkr-dialog, \.ncm-pkr-dialog \*/.test(readFileSync(`${ROOT}/styles/base/scrollbars.css`, 'utf8')), 'scrollbars.css themes the picker dialog');
-  // The contact-form partial is shared by BOTH managers: both must pass a label + register the action.
-  const gmHbs = readFileSync(`${ROOT}/templates/gm-contact-manager/gm-contact-manager.hbs`, 'utf8');
-  ok((gmHbs.match(/linkedActorName=/g) || []).length === 2, 'GM Contact Manager passes linkedActorName to both form invocations');
+  // The GM side of the contact form now lives in Admin → Contacts (edit in place,
+  // 2026-10-27): its Linked character goes through the picker and shows the name.
+  const ctTab = readFileSync(`${ROOT}/scripts/ui/AdminPanel/tabs/ContactsTab.js`, 'utf8');
+  const ctHbs = readFileSync(`${ROOT}/templates/admin-panel/tab-contacts.hbs`, 'utf8');
+  ok(/async _edPickActor\(\)[\s\S]{0,400}showNamePicker\(/.test(ctTab) && /linkedName/.test(ctHbs) && /data-op="edLink"/.test(ctHbs), 'Admin Contacts: Linked character picks through the picker and shows the name');
   // The player Contact Manager's form binds to `editingContact` — a bare `contact`
   // there was a ReferenceError at render ("contacts won't open", 2026-10-20).
   const pcm = readFileSync(`${ROOT}/scripts/ui/ContactManager/ContactManagerApp.js`, 'utf8');
   ok(/linkedActorName = \(game\.user\.isGM && editingContact\?\.actorId\)/.test(pcm) && !/&& contact\?\.actorId/.test(pcm),
     'player Contact Manager reads the linked actor from editingContact (not a free contact variable)');
-  for (const f of ['scripts/ui/ContactManager/ContactManagerApp.js', 'scripts/ui/GMContactManager/GMContactManagerApp.js']) {
+  for (const f of ['scripts/ui/ContactManager/ContactManagerApp.js']) {
     ok(/pickLinkedActor:\s+\w+\._onPickLinkedActor/.test(readFileSync(`${ROOT}/${f}`, 'utf8')), `${f} registers the pickLinkedActor action`);
   }
 }
@@ -190,10 +192,12 @@ const files = [...walk(`${ROOT}/scripts`), ...walk(`${ROOT}/templates`)];
   //    selects were {{#each}} loops, which the JS-only guard above never saw.
   const tplActorOpts = files.filter(f => f.endsWith('.hbs')).filter(f => /\{\{#each [^}]*(?:[Aa]ctors|NPCs|shareTarget\w*)\b[^}]*\}\}\s*<option/.test(readFileSync(f, 'utf8')));
   ok(tplActorOpts.length === 0, `no template renders an actor list as <option>s (${tplActorOpts.map(rel).join(', ') || 'none'})`);
-  const gmHbs2 = readFileSync(`${ROOT}/templates/gm-contact-manager/gm-contact-manager.hbs`, 'utf8');
-  ok(!/pushTargetActor|pushAllTargetActor|shareTargetNPCs/.test(gmHbs2) && /data-action="pushToPlayer"/.test(gmHbs2) && /data-action="pushAllToPlayer"/.test(gmHbs2),
-    'GM Contact Manager share buttons survive, the whole-world share selects do not');
-  ok(/_pickShareTarget\(/.test(readFileSync(`${ROOT}/scripts/ui/GMContactManager/GMContactManagerApp.js`, 'utf8')), 'both share handlers pick the target through the picker');
+  // The GM Contact Manager window is retired (2026-10-27); Admin → Contacts shares by
+  // character chips, the grid, and the searchable picker — never a whole-world select.
+  const ctHbs2 = readFileSync(`${ROOT}/templates/admin-panel/tab-contacts.hbs`, 'utf8');
+  ok(!existsSync(`${ROOT}/templates/gm-contact-manager/gm-contact-manager.hbs`) && !/pushTargetActor|pushAllTargetActor|shareTargetNPCs/.test(ctHbs2) && /data-op="whoToggle"/.test(ctHbs2) && /data-op="shareMany"/.test(ctHbs2),
+    'Admin Contacts share affordances survive, the whole-world share selects do not');
+  ok(/async _shareDialog\([\s\S]{0,1400}showNamePicker\(/.test(readFileSync(`${ROOT}/scripts/ui/AdminPanel/tabs/ContactsTab.js`, 'utf8')), 'the share handler picks the target through the picker');
   // 4. itemPicker.js is deleted and nothing imports it or styles its classes.
   ok(!existsSync(`${ROOT}/scripts/utils/itemPicker.js`), 'itemPicker.js is gone');
   const ipRefs = [...js, ...walk(`${ROOT}/styles`).filter(f => f.endsWith('.css'))].filter(f => /from ['"][^'"]*itemPicker\.js['"]|ncm-ip-item|ncm-item-picker-dialog|ncm-itempick/.test(readFileSync(f, 'utf8')));
@@ -226,6 +230,14 @@ const files = [...walk(`${ROOT}/scripts`), ...walk(`${ROOT}/templates`)];
   ok(/id: 'all-inboxes'/.test(tools) && /showNamePicker\(\{\s*title: '⚠ Purge Messages'/.test(tools) && !/ncm-purge-target/.test(tools), 'Purge Messages routes through the picker and keeps the ALL-inboxes row');
   // 10. isCarrier is the ONE gear filter (the picker exports it).
   ok(/export const isCarrier/.test(readFileSync(`${ROOT}/scripts/utils/namePicker.js`, 'utf8')), 'namePicker exports isCarrier');
+}
+
+// the composer's Attach Shard (2026-10-29): the shared picker, not the old inline list
+{
+  const comp = readFileSync(join(ROOT, 'scripts/ui/MessageComposer/MessageComposerApp.js'), 'utf8');
+  const fn = comp.slice(comp.indexOf('static async _onAttachShard('), comp.indexOf('static _onAttachEddies('));
+  ok(fn.includes('await showNamePicker({') && fn.includes('multi: true') && fn.includes("takenLabel: 'attached'") && !fn.includes('ncm-shard-pick'), 'composer Attach Shard: the shared searchable picker, several at once, attached ones greyed');
+  ok(fn.includes('if (seen.has(s.uuid))'), '…de-duplicated by uuid (an embedded item id repeats across characters)');
 }
 
 console.log(`\ntest-world-picker: ${pass} passed, ${fail} failed`);

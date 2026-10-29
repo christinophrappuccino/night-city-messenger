@@ -1,0 +1,262 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Networks → Scenes at scale</title>
+<!--
+  Admin → Networks → Scenes, rethought for a world with MANY scenes and scenes still in compendiums (dev 2026-10-28:
+  "a better engaging way to organize the Networks-Scenes tab… there may be a lot of scenes… different people have
+  different configurations to how they organize their scene stuff"). Three directions, each on the pop-out's 1120px:
+    A = THE ATLAS. Scenes as thumbnail cards on SHELVES that are the GM's own Foundry folders (foldable, counted, nested
+        folders indented), the navigation bar's scenes pinned on top, the viewed scene lit, players as faces. Coverage is
+        network-coloured dots on the card; a dead zone is hatched; the start network is a flag. PAINT mode: pick a
+        network, then click cards to wire / unwire it — one click per scene, no picker per row.
+    B = THE COVERAGE GRID. Rows = scenes under folder bands (sticky, foldable); columns = networks in their colours
+        (globals as one dim "everywhere" column); a cell toggles; shift-click paints a range; a column head wires the
+        whole folder; Start (one per row) and Dead zone columns. The who-knows-whom table, for bulk.
+    C = THE SIGNAL MAP. Networks as transmitters along the top (colour, signal, how many scenes); scenes as tiles under
+        their folders; hover a transmitter and beams light every scene it reaches; click one and the tiles become
+        toggles for it. The same Paint idea drawn as a picture.
+  All three share: search · Folder picker (their tree) · Show (All / Not wired / Dead zones / Players here / On the nav
+  bar / Imported) · Sort (Folder · A–Z · Recently viewed · Most wired) · "Showing N of M" · a COMPENDIUM shelf at the
+  bottom: pack scenes can be PRE-WIRED (coverage stored by the pack uuid, applied when the scene is imported —
+  Foundry stamps _stats.compendiumSource on the import).
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-networks-scenes-atlas-mock.html
+         ?t=clean-light|high-contrast   ?only=a|b|c
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; } .mk-h:first-child { margin-top: 0; }
+  .mk-p { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 12px; max-width: 1120px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win { width: 1120px; height: 720px; box-sizing: border-box; border: 1px solid #444; border-radius: 3px; overflow: hidden; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); display: flex; flex-direction: column; }
+  .mk-win * { box-sizing: border-box; }
+  .mk-win button { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-family: var(--ncm-font-display); line-height: 1; white-space: nowrap; }
+  /* shared chrome */
+  .nav { flex: none; display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
+  .nav .t { height: 26px; padding: 0 10px; border-radius: 2px; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); } .nav .t.on { background: color-mix(in srgb, var(--ncm-act) 26%, transparent); color: var(--ncm-text-heading); }
+  .nav .t .n { display: inline-grid; place-items: center; min-width: 16px; height: 15px; padding: 0 4px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-act) 18%, transparent); font: 700 9.5px var(--ncm-font-mono); color: var(--ncm-act); }
+  .head { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 12px; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); border-bottom: 1px solid var(--ncm-border); } .head i { color: var(--ncm-act); } .head h2 { margin: 0; font: 700 12px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .tb { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 12px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
+  .tb .srch { flex: 1; min-width: 160px; max-width: 260px; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane-alt); font: 12px var(--ncm-font-body); color: var(--ncm-text-hint); } .tb .srch i { font-size: 10px; color: var(--ncm-text-label); }
+  .tb .sel { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane-alt); font: 600 12px var(--ncm-font-display); color: var(--ncm-text-primary); } .tb .sel .k { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); } .tb .sel i.c { font-size: 9px; color: var(--ncm-text-hint); } .tb .sel i.f { font-size: 11px; color: var(--ncm-act); }
+  .tb .cnt { margin-left: auto; font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .tb .paint { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--ncm-border-active); border-radius: 2px; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); background: var(--ncm-bg-pane-alt); }
+  .tb .paint.on { border-color: var(--pc); background: color-mix(in srgb, var(--pc) 16%, var(--ncm-bg-pane-alt)); color: var(--ncm-text-heading); box-shadow: 0 0 8px color-mix(in srgb, var(--pc) 30%, transparent); } .tb .paint .d { width: 9px; height: 9px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 5px var(--pc); }
+  .pbar { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-bottom: 1px solid color-mix(in srgb, var(--pc) 50%, var(--ncm-border)); background: color-mix(in srgb, var(--pc) 8%, var(--ncm-bg-pane)); font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); } .pbar b { color: var(--pc); } .pbar .x { margin-left: auto; font: 700 11px var(--ncm-font-display); color: var(--ncm-text-label); } .pbar kbd { display: inline-grid; place-items: center; height: 15px; padding: 0 4px; border: 1px solid var(--ncm-border); border-bottom-width: 2px; border-radius: 2px; font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .body { flex: 1; min-height: 0; overflow: auto; }
+  .face { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 8px var(--ncm-font-display); color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane)); border: 1px solid var(--tc); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 4px var(--c); display: inline-block; }
+  /* ── A: shelves ── */
+  .shelf { border-bottom: 1px solid var(--ncm-border); }
+  .shelf > .sh { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border); border-left: 3px solid var(--sk, var(--ncm-act)); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); cursor: pointer; }
+  .shelf > .sh i.ch { font-size: 9px; color: var(--ncm-text-label); transition: transform .15s; } .shelf.shut > .sh i.ch { transform: rotate(-90deg); }
+  .shelf > .sh .n { font: 10px var(--ncm-font-mono); color: var(--ncm-text-num); letter-spacing: 0; } .shelf > .sh .sub { font: 500 10px var(--ncm-font-display); letter-spacing: 0; text-transform: none; color: var(--ncm-text-secondary); }
+  .shelf > .sh .lights { margin-left: auto; display: inline-flex; gap: 3px; align-items: center; } .shelf > .sh .warn { font: 700 9.5px var(--ncm-font-display); letter-spacing: .04em; color: var(--ncm-attn); display: inline-flex; gap: 4px; align-items: center; margin-left: 8px; }
+  .shelf > .sh.nested { padding-left: 26px; border-left-color: color-mix(in srgb, var(--sk, var(--ncm-act)) 50%, transparent); font-size: 10.5px; }
+  .shelf.shut > .grid { display: none; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 8px; padding: 10px 12px; }
+  .card { position: relative; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); overflow: hidden; cursor: pointer; }
+  .card:hover { border-color: var(--ncm-border-active); } .card.cur { border-color: var(--ncm-act); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ncm-act) 45%, transparent); }
+  .card .th { height: 72px; background: linear-gradient(135deg, var(--a), var(--b)); position: relative; }
+  .card .th::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, color-mix(in srgb, var(--ncm-bg-card) 85%, transparent)); }
+  .card.dead .th { background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ncm-bad) 35%, transparent) 0 6px, transparent 6px 14px), linear-gradient(135deg, var(--a), var(--b)); }
+  .card .th .flag { position: absolute; top: 5px; left: 6px; display: inline-flex; gap: 4px; align-items: center; height: 16px; padding: 0 5px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-bg-canvas) 80%, transparent); font: 700 9px var(--ncm-font-display); letter-spacing: .04em; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); }
+  .card .th .faces { position: absolute; top: 5px; right: 6px; display: inline-flex; } .card .th .faces .face { margin-left: -5px; }
+  .card .th .pin { position: absolute; bottom: 5px; right: 6px; color: var(--ncm-attn); font-size: 10px; }
+  .card .th .dz { position: absolute; bottom: 5px; left: 6px; font: 700 9px var(--ncm-font-display); letter-spacing: .06em; color: var(--ncm-bad); display: inline-flex; gap: 4px; align-items: center; }
+  .card .tx { padding: 6px 8px 7px; }
+  .card .nm { font: 600 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .cov { display: flex; align-items: center; gap: 4px; margin-top: 4px; min-height: 12px; } .card .cov .more { font: 10px var(--ncm-font-mono); color: var(--ncm-text-hint); } .card .cov .none { font: 10.5px var(--ncm-font-body); color: var(--ncm-attn); display: inline-flex; gap: 4px; align-items: center; }
+  .card .cov .gl { font: 10px var(--ncm-font-mono); color: var(--ncm-text-hint); margin-left: auto; }
+  /* paint mode on cards */
+  .painting .card { outline: 1px dashed color-mix(in srgb, var(--pc) 40%, transparent); outline-offset: -1px; }
+  .painting .card.has { outline: 2px solid var(--pc); outline-offset: -2px; } .painting .card.has .th::before { content: '\f00c'; font: 900 12px 'Font Awesome 6 Free'; position: absolute; top: 5px; right: 6px; z-index: 1; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--pc); color: var(--ncm-text-inverse); }
+  .painting .card .faces { display: none; }
+  .comp .card .th { filter: saturate(.4) brightness(.85); } .comp .card .th .pk { position: absolute; top: 5px; left: 6px; font: 700 9px var(--ncm-font-display); letter-spacing: .04em; color: var(--ncm-text-secondary); background: color-mix(in srgb, var(--ncm-bg-canvas) 80%, transparent); padding: 1px 5px; border-radius: 1px; }
+  .comp .card .pre { font: 10.5px var(--ncm-font-body); color: var(--ncm-act); display: inline-flex; gap: 4px; align-items: center; }
+  .comp .card.wired .pre { color: var(--ncm-good); }
+  /* ── B: grid ── */
+  table.cg { border-collapse: separate; border-spacing: 0; width: 100%; margin: 0; }
+  .cg th, .cg td { padding: 0; }
+  .cg thead th { position: sticky; top: 0; z-index: 3; background: var(--ncm-bg-pane); border-bottom: 1px solid var(--ncm-border); height: 86px; vertical-align: bottom; }
+  .cg thead th.sc { text-align: left; padding: 0 12px 8px; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); min-width: 240px; position: sticky; left: 0; z-index: 4; }
+  .cg thead th.net { width: 64px; } .cg thead th.net .v { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 6px; cursor: pointer; } .cg thead th.net .v .nm { writing-mode: vertical-rl; transform: rotate(180deg); font: 700 10.5px var(--ncm-font-display); color: var(--c); max-height: 56px; overflow: hidden; } .cg thead th.net .v .dot { width: 10px; height: 10px; }
+  .cg thead th.net.dim .v .nm { color: var(--ncm-text-hint); } .cg thead th.net.dim .v .dot { background: var(--ncm-text-hint); box-shadow: none; }
+  .cg thead th.st, .cg thead th.dz { width: 70px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); padding-bottom: 8px; text-align: center; } .cg thead th.dz { color: var(--ncm-bad); }
+  .cg tbody.band > tr.bh > td { position: sticky; top: 86px; z-index: 2; background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border); padding: 4px 12px; font: 700 10.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); cursor: pointer; box-shadow: inset 3px 0 var(--sk, var(--ncm-act)); }
+  .cg tbody.band > tr.bh > td .n { font: 10px var(--ncm-font-mono); color: var(--ncm-text-num); letter-spacing: 0; margin-left: 6px; } .cg tbody.band > tr.bh > td .tally { float: right; font: 500 10px var(--ncm-font-display); letter-spacing: 0; text-transform: none; color: var(--ncm-text-secondary); }
+  .cg tbody.band.shut > tr:not(.bh) { display: none; }
+  .cg tbody tr.r > td { border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); height: 30px; }
+  .cg tbody tr.r > td.sc { position: sticky; left: 0; z-index: 1; background: var(--ncm-bg-pane); padding: 0 12px; font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; } .cg tr.r.cur > td.sc { color: var(--ncm-act); } .cg tr.r > td.sc small { font: 10.5px var(--ncm-font-body); color: var(--ncm-text-secondary); margin-left: 6px; } .cg tr.r > td.sc .face { margin-left: 4px; vertical-align: middle; }
+  .cg tr.r > td.c { text-align: center; } .cg tr.r > td.c .cb { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--ncm-border-active); border-radius: 2px; color: transparent; font-size: 9px; cursor: pointer; background: var(--ncm-bg-pane-alt); }
+  .cg tr.r > td.c .cb.on { border-color: var(--c); color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+  .cg tr.r > td.c .cb.gl { border-style: dashed; color: var(--ncm-text-hint); border-color: var(--ncm-border); background: transparent; }
+  .cg tr.r > td.c .rd { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--ncm-border-active); border-radius: 50%; background: var(--ncm-bg-pane-alt); cursor: pointer; } .cg tr.r > td.c .rd.on { border-color: var(--ncm-attn); } .cg tr.r > td.c .rd.on::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ncm-attn); }
+  .cg tr.r > td.c .sw { display: inline-block; width: 26px; height: 14px; border-radius: 7px; border: 1px solid var(--ncm-border-active); background: var(--ncm-bg-pane-alt); position: relative; cursor: pointer; } .cg tr.r > td.c .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--ncm-text-label); } .cg tr.r > td.c .sw.on { border-color: var(--ncm-bad); background: color-mix(in srgb, var(--ncm-bad) 25%, transparent); } .cg tr.r > td.c .sw.on::after { left: 14px; background: var(--ncm-bad); }
+  .cg tr.r.dead > td.c .cb { opacity: .35; }
+  .cg tr.r.rng > td { background: color-mix(in srgb, var(--ncm-act) 8%, transparent); }
+  .cg tr.r > td.sc .pin { color: var(--ncm-attn); font-size: 9px; margin-left: 5px; }
+  /* ── C: signal map ── */
+  .tx-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; padding: 12px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); position: sticky; top: 0; z-index: 3; }
+  .txm { position: relative; border: 1px solid color-mix(in srgb, var(--c) 45%, var(--ncm-border)); border-radius: 2px; background: color-mix(in srgb, var(--c) 7%, var(--ncm-bg-card)); padding: 8px 10px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; align-items: center; cursor: pointer; }
+  .txm .ic { width: 30px; height: 30px; border-radius: 2px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); font-size: 13px; position: relative; }
+  .txm .ic::before, .txm .ic::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 1px solid var(--c); opacity: 0; } .txm.lit .ic::before { animation: ping 1.6s ease-out infinite; } .txm.lit .ic::after { animation: ping 1.6s .8s ease-out infinite; } @keyframes ping { 0% { transform: scale(.6); opacity: .7 } 100% { transform: scale(1.6); opacity: 0 } }
+  .txm .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .txm .mt { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); } .txm .mt b { color: var(--c); }
+  .txm .pct { font: 700 16px var(--ncm-font-mono); color: var(--c); } .txm .pct small { font: 9px var(--ncm-font-display); color: var(--ncm-text-label); display: block; text-align: right; letter-spacing: .04em; text-transform: uppercase; }
+  .txm.lit { box-shadow: 0 0 0 1px var(--c), 0 0 14px color-mix(in srgb, var(--c) 35%, transparent); } .txm.gl { border-style: dashed; }
+  .tiles { padding: 10px 12px; }
+  .tiles .fl { display: flex; align-items: center; gap: 8px; margin: 8px 0 6px; font: 700 10.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); } .tiles .fl::after { content: ''; flex: 1; height: 1px; background: var(--ncm-border); } .tiles .fl .n { font: 10px var(--ncm-font-mono); color: var(--ncm-text-num); letter-spacing: 0; }
+  .tiles .tg { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+  .tile { position: relative; height: 52px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); padding: 6px 8px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; overflow: hidden; }
+  .tile .nm { font: 600 11.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .tile .cov { display: flex; gap: 3px; } .tile .cov .dot { width: 7px; height: 7px; box-shadow: none; }
+  .tile.dead { background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ncm-bad) 18%, transparent) 0 4px, transparent 4px 10px); } .tile.dead .nm { color: var(--ncm-bad); }
+  .tile.cur { border-color: var(--ncm-act); }
+  .lit-mode .tile { opacity: .45; } .lit-mode .tile.beam { opacity: 1; border-color: var(--pc); box-shadow: inset 0 0 0 1px var(--pc), 0 0 10px color-mix(in srgb, var(--pc) 30%, transparent); background: color-mix(in srgb, var(--pc) 10%, var(--ncm-bg-card)); }
+  .lit-mode .tile.beam::after { content: ''; position: absolute; top: -1px; left: 50%; width: 1px; height: 6px; background: var(--pc); box-shadow: 0 0 6px var(--pc); }
+  .tile .faces { position: absolute; top: 4px; right: 5px; display: inline-flex; } .tile .faces .face { width: 14px; height: 14px; font-size: 6.5px; margin-left: -4px; }
+  .legend { display: flex; gap: 14px; align-items: center; padding: 6px 12px; border-top: 1px solid var(--ncm-border); font: 10.5px var(--ncm-font-body); color: var(--ncm-text-secondary); flex: none; } .legend i { font-size: 9px; }
+  @media (prefers-reduced-motion: reduce) { .txm.lit .ic::before, .txm.lit .ic::after { animation: none; } }
+</style>
+</head>
+<body>
+<h1 class="mk-h">Networks → Scenes, for a world with a hundred scenes</h1>
+<p class="mk-p">The one organizer that is honestly the GM's own is their Foundry <b>folder tree</b> (nested, foldable, counted), with the <b>navigation bar</b> pinned on top and the viewed scene lit. Every direction below shares the same toolbar — search · a Folder picker over their tree · Show (All / Not wired / Dead zones / Players here / On the nav bar / Imported) · Sort (Folder · A–Z · Recently viewed · Most wired) · "Showing N of M" — and the same <b>compendium shelf</b> at the bottom: a scene still in a pack can be <b>pre-wired</b> (coverage kept by its pack uuid and applied the moment it is imported; Foundry stamps the source on the copy). <code>?t=clean-light|high-contrast</code></p>
+<div id="frames"></div>
+
+<script>
+(function () {
+  const sp = new URLSearchParams(location.search);
+  const T = sp.get('t') || 'clean-dark';
+  const only = sp.get('only');
+  // networks
+  const NETS = [
+    { id: 'citi', name: 'CitiNet', c: '#19f3f7', ic: 'fa-wifi', sig: 90, global: true },
+    { id: 'ara', name: 'Arasaka CorpNet', c: '#F65261', ic: 'fa-building', sig: 70 },
+    { id: 'after', name: 'Afterlife Back Room', c: '#f472b6', ic: 'fa-martini-glass', sig: 30 },
+    { id: 'dark', name: 'DarkNet', c: '#a855f7', ic: 'fa-user-secret', sig: 55 },
+    { id: 'mili', name: 'Militech TacNet', c: '#84cc16', ic: 'fa-crosshairs', sig: 65 },
+  ];
+  const H = { v: 'var(--ncm-hue-5)', r: 'var(--ncm-hue-1)', j: 'var(--ncm-hue-3)' };
+  const pal = [['#1b2a4a', '#0d1322'], ['#3a1a2a', '#140a12'], ['#1a3a2a', '#0a1410'], ['#3a2a10', '#14100a'], ['#2a1a3a', '#120a14'], ['#1a2a3a', '#0a1218']];
+  // folders → scenes. cov = network ids; start = id; dead; nav; cur; faces; imported
+  const F = [
+    { name: 'Night City', k: 'var(--ncm-hue-3)', scenes: [
+      ['Afterlife — Bar', ['after', 'dark'], 'after', { nav: 1, faces: ['V', 'J'], cur: 1 }], ['Afterlife — Back Room', ['after'], 'after', { nav: 1 }], ['Lizzie\'s Bar', ['dark'], '', {}], ['Kabuki Market', [], '', { nav: 1 }],
+      ['Watson — Little China', [], '', {}], ['Jig-Jig Street', ['dark'], 'dark', {}], ['Corpo Plaza', ['ara'], 'ara', { faces: ['R'] }], ['Arasaka Tower — Lobby', ['ara'], 'ara', {}],
+      ['Arasaka Tower — Floor 42', ['ara'], 'ara', { dead: 0 }], ['The Docks', [], '', { dead: 1, faces: ['J'] }], ['Pacifica — Grand Imperial Mall', [], '', { dead: 1 }], ['Megabuilding H10', ['citi'], '', {}],
+    ] },
+    { name: 'Night City / Interiors', k: 'var(--ncm-hue-3)', nested: true, scenes: [
+      ['V\'s Apartment', ['dark'], 'dark', {}], ['Viktor\'s Clinic', [], '', {}], ['Misty\'s Esoterica', [], '', {}], ['Judy\'s Studio', ['after'], '', {}], ['Konpeki Plaza — Suite', ['ara'], 'ara', {}], ['Delamain HQ', [], '', {}],
+    ] },
+    { name: 'Badlands', k: 'var(--ncm-hue-6)', scenes: [
+      ['Aldecaldos Camp', ['mili'], 'mili', { faces: ['V'] }], ['Sunset Motel', [], '', {}], ['Militech Checkpoint', ['mili'], 'mili', {}], ['The Oil Fields', [], '', { dead: 1 }], ['Rocky Ridge', [], '', {}], ['Crash Site', [], '', { dead: 1 }],
+    ] },
+    { name: 'Heists', k: 'var(--ncm-hue-1)', scenes: [
+      ['Konpeki Plaza — Garage', ['ara'], '', {}], ['Konpeki Plaza — Roof', ['ara'], 'ara', {}], ['Biotechnica Lab — L2', ['ara'], '', {}], ['Biotechnica Lab — Vault', [], '', { dead: 1 }], ['NCPD Precinct — Evidence', [], '', {}],
+    ] },
+    { name: 'Unfiled', k: 'var(--ncm-text-label)', scenes: [['Test scene', [], '', {}], ['Old battlemap', [], '', {}], ['Arena (imported)', [], '', { imported: 1 }]] },
+  ];
+  const COMP = [['Night City Megabuildings', 'cpr-maps'], ['Pacifica Combat Zone', 'cpr-maps'], ['Badlands Overland', 'cpr-maps'], ['Corporate Office Floor', 'generic-maps'], ['Nightclub Interior', 'generic-maps'], ['Rooftop Helipad', 'generic-maps']];
+  const net = (id) => NETS.find((n) => n.id === id);
+  const faces = (arr) => arr?.length ? `<span class="faces">${arr.map((f) => `<span class="face" style="--tc:${H[f.toLowerCase()] || H.v}">${f}</span>`).join('')}</span>` : '';
+  const total = F.reduce((n, f) => n + f.scenes.length, 0);
+
+  const nav = (on) => `<div class="nav"><button class="t">This scene</button><button class="t">All networks <span class="n">5</span></button><button class="t on">Scenes <span class="n">${total}</span></button><button class="t">Activity log <span class="n">124</span></button></div>`;
+  const head = `<div class="head"><i class="fas fa-map"></i><h2>Scenes</h2>Which networks reach each scene, where players start, and where there is no signal at all.</div>`;
+  const tb = (extra = '', showing = `${total} of ${total}`) => `<div class="tb">
+    <span class="srch"><i class="fas fa-magnifying-glass"></i>Search scenes…</span>
+    <span class="sel"><i class="fas fa-folder-tree f"></i><span class="k">Folder</span>All <i class="fas fa-chevron-down c"></i></span>
+    <span class="sel"><span class="k">Show</span>All <i class="fas fa-chevron-down c"></i></span>
+    <span class="sel"><span class="k">Sort</span>Folder <i class="fas fa-chevron-down c"></i></span>
+    ${extra}<span class="cnt">Showing ${showing} · 6 in compendiums</span></div>`;
+
+  // ── A ──
+  function atlas({ paint = null } = {}) {
+    const pc = paint ? net(paint).c : 'var(--ncm-act)';
+    const card = (s, { comp = false, pre = '' } = {}) => {
+      const [nm, cov, start, o] = s; const i = (nm.length * 7) % pal.length; const has = paint && cov.includes(paint);
+      const dots = cov.filter((c) => !net(c).global).map((c) => `<span class="dot" style="--c:${net(c).c}" title="${net(c).name}"></span>`);
+      const covHtml = comp ? `<span class="pre"><i class="fas ${pre ? 'fa-plug-circle-check' : 'fa-plug'}"></i>${pre || 'Pre-wire…'}</span>`
+        : (dots.length ? dots.slice(0, 4).join('') + (dots.length > 4 ? `<span class="more">+${dots.length - 4}</span>` : '') : (o.dead ? '' : `<span class="none"><i class="fas fa-plug-circle-xmark"></i>not wired</span>`)) + (!comp && !o.dead ? `<span class="gl" title="CitiNet reaches everywhere">+1 everywhere</span>` : '');
+      return `<div class="card ${o.cur ? 'cur' : ''} ${o.dead ? 'dead' : ''} ${has ? 'has' : ''} ${pre ? 'wired' : ''}" style="--a:${pal[i][0]};--b:${pal[i][1]}">
+        <div class="th">${comp ? `<span class="pk">${o.pack}</span>` : ''}${!comp && start ? `<span class="flag" style="--c:${net(start).c}"><i class="fas fa-flag"></i>${net(start).name.split(' ')[0]}</span>` : ''}${!comp ? faces(o.faces) : ''}${o.nav ? '<i class="fas fa-thumbtack pin" title="On the navigation bar"></i>' : ''}${o.dead ? '<span class="dz"><i class="fas fa-ban"></i>DEAD ZONE</span>' : ''}</div>
+        <div class="tx"><div class="nm">${nm}</div><div class="cov">${covHtml}</div></div></div>`;
+    };
+    const navScenes = F.flatMap((f) => f.scenes).filter((s) => s[3].nav);
+    const shelf = (name, k, scenes, { nested = false, shut = false, lights = true, sub = '' } = {}) => {
+      const unwired = scenes.filter((s) => !s[1].length && !s[3].dead).length, dead = scenes.filter((s) => s[3].dead).length;
+      const ls = lights ? `<span class="lights">${[...new Set(scenes.flatMap((s) => s[1]).filter((c) => !net(c).global))].map((c) => `<span class="dot" style="--c:${net(c).c}"></span>`).join('')}${dead ? `<span class="warn" style="color:var(--ncm-bad)"><i class="fas fa-ban"></i>${dead} dead</span>` : ''}${unwired ? `<span class="warn"><i class="fas fa-plug-circle-xmark"></i>${unwired} not wired</span>` : ''}</span>` : '';
+      return `<div class="shelf ${shut ? 'shut' : ''}" style="--sk:${k}"><div class="sh ${nested ? 'nested' : ''}"><i class="fas fa-chevron-down ch"></i>${name}<span class="n">${scenes.length}</span>${sub ? `<span class="sub">${sub}</span>` : ''}${ls}</div><div class="grid">${scenes.map((s) => card(s)).join('')}</div></div>`;
+    };
+    const extra = `<button class="paint ${paint ? 'on' : ''}" style="--pc:${pc}">${paint ? `<span class="d"></span>Painting ${net(paint).name}` : '<i class="fas fa-paintbrush"></i>Paint a network'} <i class="fas fa-chevron-down c" style="font-size:9px;color:var(--ncm-text-hint)"></i></button>`;
+    const pbar = paint ? `<div class="pbar" style="--pc:${pc}"><i class="fas fa-paintbrush" style="color:${pc}"></i>Click a scene to give it <b>${net(paint).name}</b>, click again to take it away · <kbd>Shift</kbd>+click a shelf head wires the whole folder · <kbd>Esc</kbd> stops painting<span class="x">${F.flatMap((f) => f.scenes).filter((s) => s[1].includes(paint)).length} scenes wired</span></div>` : '';
+    return `<div class="mk-win application ncm-app ncm-admin-panel" data-ncm-admin-theme="${T}">${nav()}${head}${tb(extra)}${pbar}
+      <div class="body ${paint ? 'painting' : ''}" style="--pc:${pc}">
+        ${shelf('On the navigation bar', 'var(--ncm-attn)', navScenes, { lights: false, sub: 'the scenes you keep within reach — pinned here too' })}
+        ${F.map((f, i) => shelf(f.name.replace(/^Night City \/ /, ''), f.k, f.scenes, { nested: f.nested, shut: i >= 3 && !paint })).join('')}
+        <div class="shelf comp ${paint ? 'shut' : ''}" style="--sk:var(--ncm-text-label)"><div class="sh"><i class="fas fa-chevron-down ch"></i>In compendiums<span class="n">${COMP.length}</span><span class="sub">not in the world yet — pre-wire them and the coverage follows the import</span></div>
+          <div class="grid">${COMP.map(([n, p], i) => card([n, [], '', { pack: p }], { comp: true, pre: i === 0 ? 'Arasaka CorpNet · start' : '' })).join('')}</div></div>
+      </div></div>`;
+  }
+
+  // ── B ──
+  function grid() {
+    const cols = NETS.filter((n) => !n.global), gl = NETS.filter((n) => n.global);
+    const row = (s, rng) => { const [nm, cov, start, o] = s; return `<tr class="r ${o.cur ? 'cur' : ''} ${o.dead ? 'dead' : ''} ${rng ? 'rng' : ''}"><td class="sc">${nm}${o.nav ? '<i class="fas fa-thumbtack pin"></i>' : ''}${o.cur ? '<small>viewing</small>' : ''}${(o.faces || []).map((f) => `<span class="face" style="--tc:${H[f.toLowerCase()] || H.v}">${f}</span>`).join('')}</td>
+      ${gl.map((n) => `<td class="c"><span class="cb gl" title="${n.name} reaches everywhere"><i class="fas fa-check"></i></span></td>`).join('')}
+      ${cols.map((n) => `<td class="c"><span class="cb ${cov.includes(n.id) ? 'on' : ''}" style="--c:${n.c}"><i class="fas fa-check"></i></span></td>`).join('')}
+      <td class="c"><span class="rd ${start ? 'on' : ''}" title="${start ? `Players start on ${net(start).name}` : 'No start network'}"></span></td>
+      <td class="c"><span class="sw ${o.dead ? 'on' : ''}"></span></td></tr>`; };
+    const band = (f, i) => { const sc = f.scenes; const wired = sc.filter((s) => s[1].length).length; return `<tbody class="band ${i >= 3 ? 'shut' : ''}" style="--sk:${f.k}"><tr class="bh"><td colspan="${cols.length + gl.length + 3}"><i class="fas fa-chevron-down" style="font-size:9px;color:var(--ncm-text-label);margin-right:6px"></i>${f.name.replace(/^Night City \/ /, '↳ ')}<span class="n">${sc.length}</span><span class="tally">${wired} wired · ${sc.filter((s) => s[3].dead).length} dead · ${sc.length - wired - sc.filter((s) => s[3].dead).length} not wired</span></td></tr>${sc.map((s, j) => row(s, i === 0 && j >= 6 && j <= 8)).join('')}</tbody>`; };
+    return `<div class="mk-win application ncm-app ncm-admin-panel" data-ncm-admin-theme="${T}">${nav()}${head}${tb(`<span class="sel"><i class="fas fa-table-cells f"></i>Grid <i class="fas fa-chevron-down c"></i></span>`)}
+      <div class="body"><table class="cg"><thead><tr><th class="sc">Scene — click a column head to wire a whole folder · shift-click for a range</th>
+        ${gl.map((n) => `<th class="net dim"><div class="v"><span class="dot" style="--c:${n.c}"></span><span class="nm" style="--c:${n.c}">${n.name} · everywhere</span></div></th>`).join('')}
+        ${cols.map((n) => `<th class="net"><div class="v"><span class="dot" style="--c:${n.c}"></span><span class="nm" style="--c:${n.c}">${n.name}</span></div></th>`).join('')}
+        <th class="st">Start</th><th class="dz">Dead</th></tr></thead>
+        ${F.map(band).join('')}
+        <tbody class="band shut" style="--sk:var(--ncm-text-label)"><tr class="bh"><td colspan="${cols.length + gl.length + 3}"><i class="fas fa-chevron-right" style="font-size:9px;color:var(--ncm-text-label);margin-right:6px"></i>In compendiums<span class="n">${COMP.length}</span><span class="tally">pre-wire here · applied on import</span></td></tr></tbody>
+      </table></div>
+      <div class="legend"><span><i class="fas fa-square-check" style="color:var(--ncm-act)"></i> wired</span><span><i class="fas fa-square" style="color:var(--ncm-text-hint)"></i> dashed = reaches everywhere, not editable per scene</span><span><i class="fas fa-circle" style="color:var(--ncm-attn)"></i> players start here</span><span><i class="fas fa-ban" style="color:var(--ncm-bad)"></i> dead zone (coverage kept, nothing reaches)</span><span>3 rows selected with shift — the next click sets all three</span></div></div>`;
+  }
+
+  // ── C ──
+  function signal({ lit = 'ara' } = {}) {
+    const pc = net(lit).c;
+    const all = F.flatMap((f) => f.scenes);
+    const txm = (n) => { const reach = n.global ? all.length : all.filter((s) => s[1].includes(n.id)).length; return `<div class="txm ${n.id === lit ? 'lit' : ''} ${n.global ? 'gl' : ''}" style="--c:${n.c}"><span class="ic"><i class="fas ${n.ic}"></i></span><div><div class="nm">${n.name}</div><div class="mt">${n.global ? 'everywhere' : `<b>${reach}</b> scenes`} · ${n.sig}% signal</div></div><div class="pct">${Math.round(reach / all.length * 100)}%<small>coverage</small></div></div>`; };
+    const tile = (s) => { const [nm, cov, start, o] = s; return `<div class="tile ${o.dead ? 'dead' : ''} ${o.cur ? 'cur' : ''} ${cov.includes(lit) ? 'beam' : ''}">${faces(o.faces)}<div class="nm">${nm}</div><div class="cov">${cov.filter((c) => !net(c).global).map((c) => `<span class="dot" style="--c:${net(c).c}"></span>`).join('')}${start ? `<i class="fas fa-flag" style="font-size:8px;color:${net(start).c};margin-left:auto"></i>` : ''}</div></div>`; };
+    return `<div class="mk-win application ncm-app ncm-admin-panel" data-ncm-admin-theme="${T}">${nav()}${head}${tb(`<span class="sel"><i class="fas fa-tower-broadcast f"></i>Map <i class="fas fa-chevron-down c"></i></span>`)}
+      <div class="pbar" style="--pc:${pc}"><i class="fas fa-tower-broadcast" style="color:${pc}"></i><b>${net(lit).name}</b> is lit — the tiles it reaches are beamed; click a tile to wire or unwire it · click another transmitter to switch · click the lit one to stop<span class="x">${all.filter((s) => s[1].includes(lit)).length} of ${all.length} scenes</span></div>
+      <div class="body lit-mode" style="--pc:${pc}"><div class="tx-row">${NETS.map(txm).join('')}</div>
+        <div class="tiles">${F.map((f) => `<div class="fl">${f.name.replace(/^Night City \/ /, '↳ ')}<span class="n">${f.scenes.length}</span></div><div class="tg">${f.scenes.map(tile).join('')}</div>`).join('')}
+          <div class="fl">In compendiums<span class="n">${COMP.length}</span></div><div class="tg">${COMP.map(([n]) => `<div class="tile" style="opacity:.6;border-style:dashed"><div class="nm">${n}</div><div class="cov"><span style="font:10px var(--ncm-font-body);color:var(--ncm-text-hint)">pre-wire</span></div></div>`).join('')}</div>
+        </div></div>
+      <div class="legend"><span><i class="fas fa-tower-broadcast" style="color:${pc}"></i> lit transmitter · beamed tiles = reached</span><span><i class="fas fa-ban" style="color:var(--ncm-bad)"></i> dead zone</span><span><i class="fas fa-flag" style="color:var(--ncm-attn)"></i> players start here</span><span>hover any transmitter to preview its reach without switching</span></div></div>`;
+  }
+
+  const frames = [
+    { k: 'a', title: 'A · The Atlas — shelves are the GM\'s own folders; Paint mode wires a network one click per scene', body: () => atlas() + `<p class="mk-p" style="margin:10px 0 6px"><b style="color:#eee">A, painting:</b> the Paint button picked Arasaka CorpNet. Every card becomes a toggle for that network; wired cards carry a check in the network colour; the folded shelves open so nothing hides. Shift+click a shelf head wires the whole folder.</p>` + atlas({ paint: 'ara' }) },
+    { k: 'b', title: 'B · The Coverage Grid — scenes × networks, for bulk', body: () => grid() },
+    { k: 'c', title: 'C · The Signal Map — transmitters above, scenes beneath, beams show reach', body: () => signal() },
+  ];
+  const host = document.getElementById('frames');
+  for (const f of frames) {
+    if (only && only !== f.k) continue;
+    host.insertAdjacentHTML('beforeend', `<h2 class="mk-h">${f.title}</h2>${f.body()}`);
+  }
+}());
+</script>
+</body>
+</html>

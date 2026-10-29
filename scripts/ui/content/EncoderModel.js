@@ -80,7 +80,8 @@ export const GATE_DEFAULT = Object.freeze({
   logic: 'any',                  // combine role/skill/gear: 'any' | 'all'
   roles: [],                     // CPR role names (substring match)
   roleLogic: 'any',
-  skill: Object.freeze({ name: '', min: 0 }),
+  skill: Object.freeze({ name: '', min: 0 }),   // legacy single skill, folded into `skills`
+  skills: [],                    // [{name, min}] — any one qualifies
   itemGroups: [],                // OR-of-AND gear groups
   actors: [],                    // explicit actor-id allowlist (always passes)
   allowGM: true,
@@ -353,7 +354,14 @@ export function sanitizeGate(stored) {
   g.allowGM = g.allowGM !== false;
   g.roles = (Array.isArray(g.roles) ? g.roles : []).map(gateNameOf).filter(Boolean);
   g.actors = (Array.isArray(g.actors) ? g.actors : []).map((a) => String(a || '')).filter(Boolean);
-  g.skill = { name: String(g.skill?.name || ''), min: Math.max(0, Math.round(num(g.skill?.min))) };
+  // Skills are a list now (any one qualifies). A stored single `skill` is
+  // folded in so an older gate keeps its rule, then cleared so it is never
+  // evaluated twice.
+  const cleanSkill = (s) => ({ name: String(s?.name || '').trim(), min: Math.max(0, Math.round(num(s?.min))) });
+  let skills = (Array.isArray(g.skills) ? g.skills : []).map(cleanSkill).filter((s) => s.name);
+  if (!skills.length && g.skill?.name) skills = [cleanSkill(g.skill)];
+  g.skills = skills;
+  g.skill = { name: '', min: 0 };
   g.itemGroups = (Array.isArray(g.itemGroups) ? g.itemGroups : [])
     .map((grp) => (Array.isArray(grp) ? grp : [grp])
       .map((x) => ({ name: gateNameOf(x), img: (typeof x === 'string' ? '' : (x?.img || '')) }))
@@ -372,7 +380,7 @@ export function gateSummary(gate) {
   const g = sanitizeGate(gate);
   const parts = [];
   if (g.roles.length) parts.push(g.roles.join(g.roleLogic === 'all' ? ' + ' : ' / '));
-  if (g.skill.name) parts.push(`${g.skill.name} ${g.skill.min}+`);
+  if (g.skills.length) parts.push(g.skills.map((s) => `${s.name} ${s.min}+`).join(' or '));
   if (g.itemGroups.length) parts.push(g.itemGroups.map((grp) => grp.map((i) => i.name).join(' + ')).join(' or '));
   const gated = g.mode === 'gated';
   return { gated, inert: gated && !parts.length && !g.actors.length, parts };

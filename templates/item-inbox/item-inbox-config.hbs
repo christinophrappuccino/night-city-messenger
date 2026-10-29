@@ -237,6 +237,9 @@
         <div class="ncm-cfg-hint">Right now: <strong>{{playerEditingResolved}}</strong>. "Anyone who qualifies" still requires the character to pass the encoder gate (Admin → Shards → Player Authoring), and the GM's "rewrite a sloppy shard" switch there must be on.</div>
       </div>
 
+      {{!-- What a layperson can tell about this shard's defences (world rule: Admin → Security → Hacking rules) --}}
+      {{> "modules/night-city-messenger/templates/partials/countermeasure-override.hbs" cmv=cmvOverride}}
+
       {{!-- Skills --}}
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-dice-d20 ncm-cfg-section-icon" style="color:#a855f7"></i><div class="ncm-cfg-section-title">Hacking Skills</div></div>

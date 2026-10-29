@@ -39,6 +39,7 @@ import { adminLabelFor, resolveAdminAccess, adminReadOnlyBlocks } from '../../ut
 import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import { playBootVideo } from '../content/BootVideo.js';
+import { bypassDCFor } from '../../utils/bypassSkills.js';
 import { applyCrt, resolveCrt, CRT_OFF, capCrt, playerCrtCap } from '../../utils/crt.js';
 
 const PRIORITY_ICONS = { critical: 'fa-triangle-exclamation', urgent: 'fa-circle-exclamation', normal: 'fa-circle-info' };
@@ -61,9 +62,23 @@ const EXFIL_META = {
   saveFrame: { order: 0, label: 'Save Frame', icon: 'fas fa-camera', accent: 'green', title: 'Save Frame', confirm: 'Capture', intro: 'You can’t copy a live stream — but you can grab what it’s showing right now.', ok: 'FRAME CAPTURED', fail: 'CAPTURE TRACED' },
 };
 
-/** Delegate an AppV2 action to the bound instance method of the same name. */
+/**
+ * Delegate an AppV2 action to the bound instance method of the same name. A handler that throws
+ * (or rejects) is SAID out loud — testers reported "clicking does nothing" with no console open
+ * (2026-10-29), and a swallowed error looks exactly like a dead button.
+ */
 function action(method) {
-  return function (event, target) { return this[method]?.(event, target); };
+  return function (event, target) {
+    const fail = (err) => {
+      log.error(`Terminal action ${method} failed:`, err);
+      ui.notifications?.error?.(`NCM | Terminal: ${method.replace(/^_on/, '')} failed — ${err?.message || err}`);
+    };
+    if (typeof this[method] !== 'function') { fail(new Error('no handler')); return; }
+    try {
+      const r = this[method](event, target);
+      return r?.catch ? r.catch(fail) : r;
+    } catch (err) { fail(err); }
+  };
 }
 
 export class TerminalViewerApp extends BaseApplication {
@@ -106,6 +121,8 @@ export class TerminalViewerApp extends BaseApplication {
       terminalReplyAs: action('_onReplyAs'),
       terminalLogout: action('_onLogout'),
       terminalFolder: action('_onFolder'),
+      terminalMoveTo: action('_onMoveTo'),
+      terminalTtyCmd: action('_onTtyCmdClick'),
       terminalSelectMessage: action('_onSelectMessage'),
       terminalAddContact: action('_onAddContact'),
       terminalReplyAgent: action('_onReplyAgent'),
@@ -183,6 +200,16 @@ export class TerminalViewerApp extends BaseApplication {
   _uplinkOpen = false;        // machine-uplink dropdown (login hero + mailbox HUD)
   _netAuthTarget = null;      // networkId currently in the join-challenge console
   _netAuthError = '';
+  /**
+   * Accounts unlocked in THIS window → the credentials they were unlocked
+   * against (tester 2026-10-27: a player who once typed a password got in
+   * forever — after closing, refreshing, even after the GM changed the
+   * password — because "unlocked" lived on the item's session record, which
+   * only Relock cleared). The session is the open window now: closing it,
+   * Log out, or a refresh ends it, and a changed password no longer matches.
+   * @type {Map<string, string>}
+   */
+  _unlocked = new Map();
 
   constructor(options = {}) {
     super(options);
@@ -191,6 +218,9 @@ export class TerminalViewerApp extends BaseApplication {
     this.actorId = this.actor?.id ?? null;
     const cfg = this.terminalService?.getConfig(this.item);
     this._state = (cfg?.boot?.enabled) ? 'boot' : this._resolveEntryState();
+    // A session left on the item by a window that never closed cleanly (a
+    // refresh, a closed browser) ends here, so the record matches reality.
+    this._clearStoredSession();
     // The machine's uplink is world state on the item — a relayed player switch
     // or a GM-side edit lands as an item update on every client, so re-render
     // off the document sync (this is also what refreshes the requesting player
@@ -198,10 +228,23 @@ export class TerminalViewerApp extends BaseApplication {
     this._onItemUpdate = (doc, changes) => {
       if (doc.id !== this.item?.id) return;
       if (!foundry.utils.hasProperty(changes, `flags.${MODULE_ID}`)) return;
+      // The GM changed this account's password / login methods while we were
+      // in it: the unlock no longer holds — back to the login screen.
+      if (this._accountId && this._state === 'mailbox' && this._needsAuth(this._accountId)) {
+        this._endSession('CREDENTIALS CHANGED — log in again.');
+        return;
+      }
       if (this._state === 'boot' || this._state === 'granted') return;
       this._debouncedRender();
     };
     Hooks.on('updateItem', this._onItemUpdate);
+    // network nodes: a node switched off / jammed can cut this machine's uplink on the viewed scene
+    this._onNodesChange = (setting) => {
+      if (setting?.key !== `${MODULE_ID}.networkNodes`) return;
+      if (this._state === 'boot' || this._state === 'granted') return;
+      this._debouncedRender();
+    };
+    Hooks.on('updateSetting', this._onNodesChange);
     // Mailbox pages live in the linked world journal — page CRUD from any
     // client (a GM edit, a relayed player write, a delivery mirrored into an
     // account by MessageService) syncs as document hooks, so re-render off
@@ -279,7 +322,16 @@ export class TerminalViewerApp extends BaseApplication {
   }
 
   /** @override */
-  async _prepareContext() {
+  async _prepareContext(options) {
+    try { return await this._buildContext(options); } catch (err) {
+      // Same reason as action(): a context that throws leaves the window frozen on its last frame.
+      log.error('Terminal render failed:', err);
+      ui.notifications?.error?.(`NCM | Terminal could not draw this screen — ${err?.message || err}`);
+      throw err;
+    }
+  }
+
+  async _buildContext() {
     const cfg = this._effectiveConfig();
     const preset = cfg.theme?.preset || cfg.preset || 'arasaka-workstation';
     const logo = this._resolveBootIcon(cfg, preset);
@@ -421,7 +473,7 @@ export class TerminalViewerApp extends BaseApplication {
       shellHost: (this._terminalName() || 'terminal').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       joinCmd: (network?.name || 'network').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       allowPassword: (sec.allowPassword ?? !!sec.password) && !!sec.password,
-      skillBypass: (sec.allowSkillCheck ?? true) ? { skill, dv: sec.bypassDC ?? 15 } : null,
+      skillBypass: (sec.allowSkillCheck ?? true) ? { skill, dv: bypassDCFor(sec, skill) } : null,
       error: this._netAuthError,
       lockout: !!lockedOut,
       isGM: isGM(),
@@ -671,7 +723,7 @@ export class TerminalViewerApp extends BaseApplication {
       shellHost: (this._terminalName() || 'terminal').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       account: account ? { username: account.username, displayName: account.displayName } : null,
       prefillUsername: '',
-      skillBypass: (account && security.allowSkillCheck && skill) ? { skill, dv: security.bypassDC ?? 15 } : null,
+      skillBypass: (account && security.allowSkillCheck && skill) ? { skill, dv: bypassDCFor(security, skill) } : null,
       keyItemBypass: (account && security.allowKeyItem && security.keyItemName) ? { name: security.keyItemName } : null,
       error: this._manualError,
       lockout,
@@ -1060,7 +1112,7 @@ export class TerminalViewerApp extends BaseApplication {
         name: senderName,
         email: msg.from || '',
         initials: getInitials(senderName),
-        portrait: contact ? this.portraitService?.resolvePortrait(contact) : (msg.fromActorId ? this.portraitService?.resolvePortrait({ actorId: msg.fromActorId }) : null),
+        portrait: this._senderPortrait(msg),
       },
       // "Add to contacts" keys on the viewing player's OWN list — a master-
       // directory sender is exactly the kind worth adding (was `!!contact`,
@@ -1097,7 +1149,8 @@ export class TerminalViewerApp extends BaseApplication {
         const all = [...defs];
         if (!all.some(fd => fd.id === 'saved')) all.push({ id: 'saved', name: 'Saved' });
         if (!all.some(fd => fd.id === 'trash')) all.push({ id: 'trash', name: 'Trash' });
-        return all.map(fd => ({ id: fd.id, name: fd.name, selected: fd.id === loc }));
+        const ICON = { inbox: 'fas fa-inbox', saved: 'fas fa-bookmark', trash: 'fas fa-trash' };
+        return all.map(fd => ({ id: fd.id, name: fd.name, icon: fd.icon || ICON[fd.id] || 'fas fa-folder', selected: fd.id === loc }));
       })() : null,
     };
   }
@@ -1125,8 +1178,16 @@ export class TerminalViewerApp extends BaseApplication {
 
   /** @override */
   _onRender(context, options) {
+    try { this._onRenderInner(context, options); } catch (err) {
+      log.error('Terminal post-render wiring failed:', err);
+      ui.notifications?.error?.(`NCM | Terminal: a control failed to wire up — ${err?.message || err}`);
+    }
+  }
+
+  _onRenderInner(context, options) {
     super._onRender(context, options);
     guardSecretInputs(this.element); // read-only until touched — no browser autofill
+    this._wireDragMove();
     // Theme the window: preset attribute (CSS palette fallback) + the saved
     // custom theme applied live as inline variables on the viewer root.
     const viewerEl = this.element?.querySelector('.ncm-terminal-viewer');
@@ -1152,15 +1213,18 @@ export class TerminalViewerApp extends BaseApplication {
     this._syncWindowTitle(context);
     // TTY mailbox style: the prompt line. Enter runs the command; focus returns
     // to it after a command so the keyboard flow never breaks.
+    // Every command runs on Enter (or the ⏎ button beside the prompt).
     const tty = this.element?.querySelector('[data-tty-prompt]');
     if (tty) {
+      const run = () => { const v = tty.value; tty.value = ''; this._onTtyCommand(v); };
       tty.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const v = tty.value; tty.value = '';
-        this._onTtyCommand(v);
+        if (e.key === 'Enter') { e.preventDefault(); run(); }
       });
-      if (this._ttyFocus) { this._ttyFocus = false; tty.focus(); }
+      this.element.querySelector('[data-tty-run]')?.addEventListener('click', (e) => { e.preventDefault(); run(); });
+      // The caret waits in the prompt: after a command, and on every render unless something else
+      // in this window (a field, the Move menu) has the focus.
+      const busy = document.activeElement && this.element.contains(document.activeElement) && document.activeElement !== tty && document.activeElement !== document.body;
+      if (this._ttyFocus || !busy) { this._ttyFocus = false; tty.focus({ preventScroll: true }); }
     }
     // SAVE FRAME (#37) — only the terminal knows the exfil policy, so it stamps
     // the capturable feed thumbs here; the shared lightbox reads the attrs and
@@ -1412,6 +1476,55 @@ export class TerminalViewerApp extends BaseApplication {
   _afterBoot() { this._enterState(this._resolveEntryState()); }
 
   // ═══════════════════════════════════════════════════════════
+  //  Session — what THIS window has unlocked
+  // ═══════════════════════════════════════════════════════════
+
+  /** The account's login settings as one string — any change re-locks it. */
+  _credKey(accountId) {
+    const s = this.terminalService?.getAccount(this.item, accountId)?.security || {};
+    return JSON.stringify([
+      !!s.requiresAuth, s.allowPassword ?? null, s.password || '',
+      !!s.allowSkillCheck, s.bypassSkills || [], s.bypassSkillDCs || {}, s.bypassDC ?? null,
+      !!s.allowKeyItem, s.keyItemName || '', s.keyItemTag || '', s.authLogic || 'any',
+    ]);
+  }
+
+  /**
+   * Does entering this account need a login? Not for an open account or a
+   * GM force-unlocked terminal; otherwise only if THIS window has not unlocked
+   * it against the account's CURRENT credentials.
+   */
+  _needsAuth(accountId) {
+    if (this.terminalService?.getState(this.item)?.gmBypassed) return false;
+    const account = this.terminalService?.getAccount(this.item, accountId);
+    if (!account?.security?.requiresAuth) return false;
+    return this._unlocked.get(accountId) !== this._credKey(accountId);
+  }
+
+  /** Clear this operator's stored session on the item (best effort, players relay). */
+  _clearStoredSession() {
+    if (!this.actorId || !this.item) return;
+    try {
+      const s = this.terminalService?.getSession(this.item, this.actorId);
+      if (s?.activeAccountId || s?.loggedInAccounts?.length) {
+        this.terminalService.logout(this.item, this.actorId, true)?.catch?.(() => {});
+      }
+    } catch { /* session write is best-effort */ }
+  }
+
+  /** End the session in this window — every unlock forgotten, back to login. */
+  _endSession(message = '') {
+    this._unlocked.clear();
+    this._clearStoredSession();
+    this._accountId = null;
+    this._viewAs = null;
+    this._authAccountId = null;
+    this._switcherOpen = false;
+    this._manualError = message;
+    this._enterState('login');
+  }
+
+  // ═══════════════════════════════════════════════════════════
   //  State machine
   // ═══════════════════════════════════════════════════════════
 
@@ -1462,7 +1575,7 @@ export class TerminalViewerApp extends BaseApplication {
     // MOTION (#38): the picked card holds while the others fall away, THEN the
     // flow continues — the machine responds to the choice instead of cutting.
     await this._playCardPick(target);
-    if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) {
+    if (!this._needsAuth(id)) {
       return this._loginSuccess(id);
     }
     // Secured account → the shared method-card auth dialog (password / skill /
@@ -1514,7 +1627,7 @@ export class TerminalViewerApp extends BaseApplication {
     const id = target?.dataset?.accountId;
     if (!id) return;
     if (this._lockGuard(id)) return;
-    if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) return this._loginSuccess(id);
+    if (!this._needsAuth(id)) return this._loginSuccess(id);
     this._focusAccountId = id;
     this._manualError = '';
     this.render(false);
@@ -1541,9 +1654,14 @@ export class TerminalViewerApp extends BaseApplication {
       this._manualError = 'Account locked out.'; return this.render(false);
     }
     const skill = (account.security?.bypassSkills || [])[0];
-    const dc = account.security?.bypassDC ?? 15;
+    const dc = bypassDCFor(account.security, skill);
     try {
-      const result = await this.skillService.performCheck(this.actor, skill, { dc, flavor: 'Terminal Bypass' });
+      const who = account.displayName || account.username || 'account';
+      const result = await this.skillService.performCheck(this.actor, skill, {
+        dc, flavor: 'Terminal Bypass', context: `Terminal login: ${this._terminalName()} · ${who}`,
+        // The login's own sound set plays the outcome; the reveal only spins.
+        reveal: { host: this.element, title: `Forcing the ${who} login`, ctx: `Terminal login · ${this._terminalName()}`, ok: 'Access granted', no: 'Access denied', verdictSound: false },
+      });
       if (result?.success) return this._loginSuccess(account.id);
     } catch (err) { log.error(`Terminal skill bypass failed: ${err.message}`); }
     this._failAuth(account);
@@ -1593,6 +1711,7 @@ export class TerminalViewerApp extends BaseApplication {
     // Capture the PREVIOUS footprint before this login's own write lands (the
     // relayed player write lags anyway; reading first makes both sides agree).
     this._prevLogin = this.terminalService.getLastLogin?.(this.item, accountId) || null;
+    this._unlocked.set(accountId, this._credKey(accountId));
     await this.terminalService.recordLoginSuccess(this.item, accountId, this.actorId);
     this._accountId = accountId;
     this._viewAs = null;
@@ -1623,7 +1742,10 @@ export class TerminalViewerApp extends BaseApplication {
     const skill = (cfg.network?.bypassSkills || [])[0] || 'Interface';
     const dc = cfg.network?.bypassDV ?? 18;
     try {
-      const result = await this.skillService.performCheck(this.actor, skill, { dc, flavor: 'Network Spoof' });
+      const result = await this.skillService.performCheck(this.actor, skill, {
+        dc, flavor: 'Network Spoof', context: `Network spoof: ${this._terminalName()}`,
+        reveal: { host: this.element, title: 'Spoofing the network check', ctx: `Network spoof · ${this._terminalName()}`, ok: 'Spoof accepted', no: 'Spoof rejected' },
+      });
       if (result?.success) { this._networkSpoofed = true; this._enterState('login'); return; }
       ui.notifications.warn('Network spoof failed.');
     } catch (err) { log.error(`Network spoof failed: ${err.message}`); }
@@ -1715,9 +1837,12 @@ export class TerminalViewerApp extends BaseApplication {
       return this.render(false);
     }
     const skill = (network.security?.bypassSkills || [])[0] || 'Interface';
-    const dc = network.security?.bypassDC ?? 15;
+    const dc = bypassDCFor(network.security, skill);
     try {
-      const result = await this.skillService.performCheck(this.actor, skill, { dc, flavor: 'Network Join' });
+      const result = await this.skillService.performCheck(this.actor, skill, {
+        dc, flavor: 'Network Join', context: `Network join: ${network.name || networkId}`,
+        reveal: { host: this.element, title: `Joining ${network.name || 'the network'}`, ctx: `Uplink · ${this._terminalName()}`, ok: 'Uplink established', no: 'Join refused', verdictSound: false },
+      });
       if (result?.success) return this._netJoinSuccess(networkId);
     } catch (err) { log.error(`Uplink skill bypass failed: ${err.message}`); }
     this._failNetAuth(network);
@@ -1949,7 +2074,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (!id || id === this._accountId) { this._switcherOpen = false; return this.render(false); }
     this._switcherOpen = false;
     if (this._lockGuard(id)) return;
-    if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) {
+    if (!this._needsAuth(id)) {
       this._loginSuccess(id);
     } else {
       this._authAccountId = id; this._manualError = ''; this._enterState('manual');
@@ -1957,11 +2082,8 @@ export class TerminalViewerApp extends BaseApplication {
   }
 
   async _onLogout() {
-    await this.terminalService.logout(this.item, this.actorId);
-    this._accountId = null;
-    this._viewAs = null;
-    this._switcherOpen = false;
-    this._enterState('login');
+    // Log out ends the session: every account unlocked in this window locks again.
+    this._endSession('');
   }
 
   /**
@@ -1974,6 +2096,7 @@ export class TerminalViewerApp extends BaseApplication {
    */
   forceLogout(message = 'CONNECTION TERMINATED — locked out.') {
     const lockedAcct = this._accountId;
+    this._unlocked.clear();
     try { this.terminalService.logout(this.item, this.actorId); } catch { /* session write is best-effort */ }
     this._accountId = null;
     this._viewAs = null;
@@ -2327,6 +2450,67 @@ export class TerminalViewerApp extends BaseApplication {
    * ride the `folder` flag; the permanent delete stays a separate confirmed
    * action. Manual `change` listener (selects don't fire via data-action).
    */
+  /** Move ▾ menu item: the message id rides on the menu, the folder on the item. */
+  async _onMoveTo(event, target) {
+    const id = target?.closest?.('[data-move-root]')?.dataset.messageId;
+    const folder = target?.dataset?.folder;
+    if (!id || !folder) return;
+    target.closest('details')?.removeAttribute('open');
+    if (target.classList.contains('is-cur')) return;
+    await this._onMoveMessage(id, folder);
+    const name = this.terminalService?.getFolders(this.item)?.find(f => f.id === folder)?.name || folder;
+    ui.notifications.info(`NCM | Moved to ${name}.`);
+  }
+
+  /** A clickable TTY hint runs the same command as typing it. */
+  _onTtyCmdClick(event, target) {
+    const c = target?.dataset?.cmd;
+    if (c) this._onTtyCommand(c);
+  }
+
+  /**
+   * GM: drag a message row onto a folder (sidebar folder, tab, desktop icon, TTY folder) to move it.
+   * Uses its own drag type so the canvas / Item Piles drop handlers never see it.
+   */
+  _wireDragMove() {
+    if (!isGM() || !this.element) return;
+    const TYPE = 'application/x-ncm-terminal-message';
+    for (const row of this.element.querySelectorAll('[data-action="terminalSelectMessage"][data-message-id]')) {
+      row.setAttribute('draggable', 'true');
+      if (!row.title) row.title = 'Drag onto a folder to move it';
+      row.addEventListener('dragstart', (ev) => {
+        ev.dataTransfer?.setData(TYPE, row.dataset.messageId);
+        if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
+        this.element.classList.add('is-dragging-msg');
+      });
+      row.addEventListener('dragend', () => this.element?.classList.remove('is-dragging-msg'));
+    }
+    for (const f of this.element.querySelectorAll('[data-action="terminalFolder"][data-folder]')) {
+      f.addEventListener('dragover', (ev) => {
+        if (!ev.dataTransfer?.types?.includes(TYPE)) return;
+        ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; f.classList.add('is-drop');
+      });
+      f.addEventListener('dragleave', () => f.classList.remove('is-drop'));
+      f.addEventListener('drop', async (ev) => {
+        const id = ev.dataTransfer?.getData(TYPE);
+        f.classList.remove('is-drop');
+        this.element?.classList.remove('is-dragging-msg');
+        if (!id) return;
+        ev.preventDefault(); ev.stopPropagation();
+        await this._onMoveMessage(id, f.dataset.folder);
+        const name = this.terminalService?.getFolders(this.item)?.find(x => x.id === f.dataset.folder)?.name || f.dataset.folder;
+        ui.notifications.info(`NCM | Moved to ${name}.`);
+      });
+    }
+    // The Move ▾ menu closes on an outside click (it is a <details>).
+    if (!this._moveCloser) {
+      this._moveCloser = (ev) => {
+        for (const d of this.element?.querySelectorAll?.('details.ncm-term__move[open]') || []) if (!d.contains(ev.target)) d.removeAttribute('open');
+      };
+      document.addEventListener('pointerdown', this._moveCloser, true);
+    }
+  }
+
   async _onMoveMessage(messageId, loc) {
     if (!isGM() || !messageId) return;
     const system = loc === 'inbox' || loc === 'saved' || loc === 'trash';
@@ -2394,6 +2578,18 @@ export class TerminalViewerApp extends BaseApplication {
   //  Actions — exfil / contacts
   // ═══════════════════════════════════════════════════════════
 
+  /**
+   * The sender's portrait: the identity the mail names (`fromContactId`) first,
+   * then the directory entry for the address, then the character. An alias
+   * never borrows its character's face (PortraitService).
+   */
+  _senderPortrait(msg) {
+    const mcs = game.nightcity?.masterContactService;
+    const master = (msg.fromContactId && mcs?.getContact?.(msg.fromContactId)) || this._findContactByEmail(msg.from);
+    if (master) return this.portraitService?.resolvePortrait(master) || null;
+    return msg.fromActorId ? (this.portraitService?.resolvePortrait({ actorId: msg.fromActorId }) || null) : null;
+  }
+
   async _onAddContact(event, target) {
     const msg = this._currentSelectedRaw();
     if (!msg || !this.actorId) return;
@@ -2402,9 +2598,7 @@ export class TerminalViewerApp extends BaseApplication {
     // player contact is a real, portrait-bearing identity (the PortraitService
     // contact-creation rule).
     const master = this._findContactByEmail(msg.from);
-    const portrait = master
-      ? this.portraitService?.resolvePortrait(master)
-      : (msg.fromActorId ? this.portraitService?.resolvePortrait({ actorId: msg.fromActorId }) : null);
+    const portrait = this._senderPortrait(msg);
     try {
       const existing = (await this.contactRepository?.getContacts(this.actorId)) || [];
       if (msg.from && existing.some(c => (c.email || '').toLowerCase() === msg.from.toLowerCase())) {
@@ -2842,8 +3036,19 @@ export class TerminalViewerApp extends BaseApplication {
   async _onSwitchOperator() {
     // host = this viewer → the FUI modal inherits this terminal's preset.
     if (!(await openOperatorPicker(this.element))) return;
+    const prev = this.actorId;
     this.actor = resolveOperator() ?? null;
     this.actorId = this.actor?.id ?? null;
+    // Another character did not type those passwords.
+    if (this.actorId !== prev) {
+      this._unlocked.clear();
+      if (this._accountId) {
+        try { if (prev) this.terminalService.logout(this.item, prev, true)?.catch?.(() => {}); } catch { /* best effort */ }
+        this._accountId = null; this._viewAs = null;
+        this._enterState('login');
+        return;
+      }
+    }
     this.render(false);
   }
 
@@ -3144,11 +3349,16 @@ export class TerminalViewerApp extends BaseApplication {
 
   /** @override */
   async close(options) {
+    // Closing the terminal ends the session — the next open asks again.
+    this._unlocked.clear();
+    this._clearStoredSession();
     this._timers.forEach(clearTimeout);
     this._timers = [];
     this._bootVideo?.destroy?.(); this._bootVideo = null;
     if (this._lockdownTimer) { clearInterval(this._lockdownTimer); this._lockdownTimer = null; }
     Hooks.off('updateItem', this._onItemUpdate);
+    Hooks.off('updateSetting', this._onNodesChange);
+    if (this._moveCloser) { document.removeEventListener('pointerdown', this._moveCloser, true); this._moveCloser = null; }
     Hooks.off('createJournalEntryPage', this._onPageChange);
     Hooks.off('updateJournalEntryPage', this._onPageChange);
     Hooks.off('deleteJournalEntryPage', this._onPageChange);

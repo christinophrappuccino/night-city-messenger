@@ -12,13 +12,17 @@
 
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_MAILBOX_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveDisplayName } from '../../utils/helpers.js';
+import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveDisplayName, getPlayerCharacters } from '../../utils/helpers.js';
+import { lockOdds, lockOddsHtml } from '../../utils/lockOdds.js';
+import { tagHue } from '../../utils/tagHue.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
 import { buildContentContext } from './TerminalContentPanel.js';
 import { SHARED_SCOPE, normalizeFolderPath, parentPath, folderName } from '../../utils/terminalFiles.js';
 import { applyCrt, resolveCrt, crtPanelContext, wireCrtPanel } from '../../utils/crt.js';
 import { adminLabelFor, resolveAdminAccess } from '../../utils/terminalAdmin.js';
+import { bypassRowsHtml, wireBypassRows, readBypassRows, bypassFieldsFrom, bypassRowsOf } from '../../utils/bypassSkills.js';
+import { cmvOverrideContext, wireCmvOverride, readCmvOverride } from '../../utils/countermeasureView.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
 const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
@@ -78,7 +82,7 @@ export class TerminalConfigApp extends BaseApplication {
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
     id: 'ncm-terminal-config',
     classes: ['ncm-app', 'ncm-item-inbox-config'],
-    window: { title: 'Configure Terminal', icon: 'fas fa-sliders', resizable: true, minimizable: false },
+    window: { title: 'Configure Terminal', icon: 'fas fa-sliders', resizable: true, minimizable: true },
     position: { width: 700, height: 760 },
     actions: {
       switchTab: TerminalConfigApp._onSwitchTab,
@@ -495,7 +499,11 @@ export class TerminalConfigApp extends BaseApplication {
     const out = [];
     if (!s.requiresAuth) { out.push({ label: 'Open', cls: 'on' }); return out; }
     if (s.allowPassword ?? s.password) out.push({ label: 'Password', cls: 'on' });
-    if (s.allowSkillCheck) out.push({ label: `${(s.bypassSkills || [])[0] || 'Skill'} DV ${s.bypassDC ?? 15}`, cls: 'on' });
+    if (s.allowSkillCheck) {
+      const rows = bypassRowsOf(s);
+      if (!rows.length) out.push({ label: `Skill DV ${s.bypassDC ?? 15}`, cls: 'on' });
+      for (const r of rows) out.push({ label: `${r.name} DV ${r.dv}`, cls: 'on' });
+    }
     if (s.allowKeyItem) out.push({ label: `Key: ${s.keyItemName || '?'}`, cls: 'on' });
     if (out.length > 1) out.push({ label: (s.authLogic === 'all' ? 'ALL (AND)' : 'ANY (OR)'), cls: 'logic' });
     if (s.failureMode === 'damage') out.push({ label: 'BLACK_ICE', cls: 'ice' });
@@ -561,6 +569,8 @@ export class TerminalConfigApp extends BaseApplication {
       allowSkillCheck: !!s.allowSkillCheck,
       skillOpts: skills.map(v => ({ value: v, selected: v === curSkill })),
       bypassDC: s.bypassDC ?? 15,
+      // One row per bypass skill, each with its own DV.
+      bypassRowsHtml: bypassRowsHtml(s, { select: 'ncm-cfg-select', input: 'ncm-cfg-input ncm-cfg-input--short', defaultDV: 15 }),
       allowKeyItem: !!s.allowKeyItem,
       keyItemName: s.keyItemName || '',
       // Network visibility — the account only exists on these uplinks.
@@ -574,6 +584,8 @@ export class TerminalConfigApp extends BaseApplication {
       failPermanent: failureMode === 'permanent', failDamage: failureMode === 'damage',
       maxAttempts: s.maxAttempts ?? 3,
       lockoutMin: Math.round((s.lockoutDuration ?? 3600000) / 60000),
+      // Countermeasure visibility — per-account override of the world rule.
+      cmvOverride: cmvOverrideContext(s.countermeasures, 'account'),
     };
   }
 
@@ -1092,6 +1104,73 @@ export class TerminalConfigApp extends BaseApplication {
   }
 
   /**
+   * The lock as the editor's DOM describes it RIGHT NOW (unsaved edits included).
+   * Same fields `_onSaveAccount` reads; the bypass rows are unnamed → readBypassRows.
+   * @private
+   */
+  _readLockFromEditor(editor) {
+    const q = (n) => editor.querySelector(`[name="${n}"]`);
+    const on = (n) => !!q(n)?.checked;
+    const rows = (readBypassRows(editor) || [])
+      .filter((r) => r.name)
+      .map((r) => ({ name: r.name, dv: Number(r.dv) || 0 }));
+    return {
+      requiresAuth: on('secRequiresAuth'),
+      password: on('secAllowPassword'),
+      skill: on('secAllowSkill'),
+      keyItem: on('secAllowKeyItem'),
+      rows,
+      logic: q('secAuthLogic')?.value === 'all' ? 'all' : 'any',
+      failureMode: q('secFailureMode')?.value || 'lockout',
+      maxAttempts: Number(q('secMaxAttempts')?.value) || 3,
+      lockoutMin: Number(q('secLockoutMin')?.value) || 0,
+    };
+  }
+
+  /**
+   * The party for the odds panel: every player character, with the skill BASE
+   * performCheck would add before the d10 (SkillService.getSkillData → stat + rank;
+   * a role ability honours roleAbilityRoll). Cached per actor × skill for the
+   * life of the open editor.
+   * @private
+   */
+  _oddsParty(skillNames) {
+    const skillSvc = game.nightcity?.skillService;
+    const cache = this._oddsBases || (this._oddsBases = new Map());
+    const MYSTERY = /mystery-man|icons\/svg\/mystery/i;
+    return getPlayerCharacters().map(({ actor }) => {
+      const skills = {};
+      for (const name of skillNames) {
+        const key = `${actor.id}::${name}`;
+        if (!cache.has(key)) {
+          let d = null;
+          try { d = skillSvc?.getSkillData?.(actor, name); } catch { d = null; }
+          cache.set(key, d ? { base: (Number(d.statValue) || 0) + (Number(d.skillLevel) || 0), found: !!d.found } : { base: 0, found: false });
+        }
+        skills[name] = cache.get(key);
+      }
+      const role = actor.items?.find?.((i) => i.type === 'role')?.name || '';
+      const img = actor.img && !MYSTERY.test(actor.img) ? actor.img : '';
+      return { name: actor.name, role, img, skills };
+    });
+  }
+
+  /** Repaint the "How hard for your party" panel. No-op without the host. @private */
+  _paintLockOdds(editor) {
+    const host = editor?.querySelector?.('[data-lock-odds]');
+    if (!host) return;
+    try {
+      const lock = this._readLockFromEditor(editor);
+      const party = lock.requiresAuth ? this._oddsParty(lock.rows.map((r) => r.name)) : [];
+      const vm = lockOdds(lock, party, { showAll: !!this._oddsShowAll });
+      const html = lockOddsHtml(vm, { hue: tagHue });
+      if (host.innerHTML !== html) host.innerHTML = html;
+    } catch (err) {
+      log.debug('Lock odds paint failed', err);
+    }
+  }
+
+  /**
    * Manual listeners for the account editor (A–F UX widgets). All state that
    * chips/pills carry is mirrored into hidden inputs bearing the ORIGINAL
    * field names, so `_onSaveAccount` reads one contract. No-ops when the
@@ -1101,6 +1180,8 @@ export class TerminalConfigApp extends BaseApplication {
   _wireAccountEditor(el) {
     const editor = el.querySelector('.ncm-acct-editor');
     if (!editor) return;
+    wireBypassRows(editor);
+    wireCmvOverride(editor, { onChange: () => editor.classList.add('ncm-acct-editor--dirty') });
     const esc = Handlebars.escapeExpression;
 
     // ── Dirty tracking (F) ──
@@ -1108,6 +1189,23 @@ export class TerminalConfigApp extends BaseApplication {
     editor.addEventListener('input', markDirty);
     editor.addEventListener('change', markDirty);
     this._markEditorDirty = markDirty;
+
+    // ── Lock odds ("How hard for your party") — repainted from the DOM on every
+    // edit in the Security section. Chip clicks write their hidden input in their
+    // own click handler, so the click repaint is deferred one tick.
+    this._oddsShowAll ??= false;
+    this._oddsBases = new Map();
+    const paintOdds = () => this._paintLockOdds(editor);
+    editor.addEventListener('input', paintOdds);
+    editor.addEventListener('change', paintOdds);
+    editor.addEventListener('click', (ev) => {
+      if (ev.target.closest('[data-lodds-more]')) {
+        ev.preventDefault();
+        this._oddsShowAll = !this._oddsShowAll;
+      }
+      setTimeout(paintOdds, 0);
+    });
+    paintOdds();
 
     // ── Network-gated toggle: show/hide the uplink checkbox row ──
     const netToggle = el.querySelector('[name="acctNetRestricted"]');
@@ -2017,14 +2115,24 @@ export class TerminalConfigApp extends BaseApplication {
         allowPassword: chk('secAllowPassword'),
         password: val('secPassword'),
         allowSkillCheck: chk('secAllowSkill'),
-        bypassSkills: [val('secSkill', 'Interface')],
-        bypassDC: parseInt(val('secDV', '15'), 10) || 15,
+        ...(() => {
+          const rows = readBypassRows(el.querySelector('.ncm-acct-editor'));
+          if (rows) return bypassFieldsFrom(rows, 15);
+          return { bypassSkills: [val('secSkill', 'Interface')], bypassDC: parseInt(val('secDV', '15'), 10) || 15 };
+        })(),
         allowKeyItem: chk('secAllowKeyItem'),
         keyItemName: val('secKeyItemName'),
         authLogic: val('secAuthLogic', 'any'),
         failureMode: val('secFailureMode', 'lockout'),
         maxAttempts: parseInt(val('secMaxAttempts', '3'), 10) || 3,
         lockoutDuration: (parseInt(val('secLockoutMin', '60'), 10) || 60) * 60000,
+        // Countermeasure visibility override (absent when the block isn't on screen → keep the stored one).
+        ...(() => {
+          const cm = readCmvOverride(el.querySelector('.ncm-acct-editor'));
+          if (cm) return { countermeasures: cm };
+          const prior = (this.terminalService.getConfig(this.item).accounts || []).find(x => x.id === this._editingAccountId);
+          return prior?.security?.countermeasures ? { countermeasures: prior.security.countermeasures } : {};
+        })(),
       },
       // Account network gating vs the machine's uplink — gated accounts VANISH
       // from the login list until the terminal connects to a matching network.

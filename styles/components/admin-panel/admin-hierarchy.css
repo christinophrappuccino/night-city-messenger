@@ -1,0 +1,297 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Admin Panel — the colour hierarchy, applied (2026-10-27)
+ * @file styles/components/admin-panel/admin-hierarchy.css
+ *
+ * Dev-approved mock: dev/mockups/admin-color-hierarchy-mock.html.
+ * The tokens live in themes/admin-theme.css (--ncm-bg-canvas … --ncm-secret).
+ * This layer puts them in the right places in EVERY redesigned tab at once:
+ *   panes are two shades lifted off the canvas · group headers and section
+ *   heads are bands · selected = cyan tint + edge · unread = amber edge ·
+ *   flags carry meaning · decoration is neutral · each kind of text has a role.
+ * Imported LAST from admin-panel.css so it wins over the tab files.
+ * Tab prefixes: msg2 (Messages) · ct2 (Contacts) · net2 (Networks) ·
+ *   term2 (Terminals) · sh2 (Shards) · sec-admin (Security).
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── canvas: the tab itself; the panes are cards lifted off it ── */
+.ncm-app.ncm-admin-panel .ncm-admin-content { background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); }
+
+.ncm-admin-panel :is(.ncm-msg2-list, .ncm-ct2-list, .ncm-net2-list, .ncm-term2-list, .ncm-sh2-list) {
+  background: var(--ncm-bg-pane) !important;
+  border: 1px solid var(--ncm-border) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .22), 0 6px 18px rgba(0, 0, 0, .16) !important;
+}
+.ncm-admin-panel :is(.ncm-msg2-det, .ncm-ct2-det, .ncm-net2-det, .ncm-term2-det, .ncm-sh2-det) {
+  background: var(--ncm-bg-pane-alt) !important;
+  border: 1px solid var(--ncm-border-active) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .22), 0 8px 22px rgba(0, 0, 0, .2) !important;
+}
+
+/* ── tab bar: the active tab is the only cyan thing up there ── */
+.ncm-admin-panel .ncm-admin-tabs { background: var(--ncm-bg-canvas, var(--ncm-bg-deep)) !important; }
+.ncm-admin-panel .ncm-admin-tab { color: var(--ncm-text-label) !important; }
+.ncm-admin-panel .ncm-admin-tab i { color: var(--ncm-text-hint) !important; }
+.ncm-admin-panel .ncm-admin-tab--active,
+.ncm-admin-panel .ncm-admin-tab--active i { color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel .ncm-admin-tab--active { background: var(--ncm-bg-pane-alt) !important; box-shadow: inset 0 2px 0 var(--ncm-act) !important; }
+
+/* sub-tabs: icons neutral, the active one a filled pill */
+.ncm-admin-panel :is(.ncm-msg2-navbtn, .ncm-ct2-navbtn, .ncm-net2-navbtn, .ncm-sec-admin-navbtn) i { color: var(--ncm-text-hint) !important; }
+.ncm-admin-panel :is(.ncm-msg2-navbtn, .ncm-ct2-navbtn, .ncm-net2-navbtn, .ncm-sec-admin-navbtn).on {
+  background: color-mix(in srgb, var(--ncm-act) 20%, var(--ncm-bg-pane-alt)) !important;
+  border-color: color-mix(in srgb, var(--ncm-act) 60%, transparent) !important;
+  color: var(--ncm-text-heading) !important; box-shadow: none !important;
+}
+.ncm-admin-panel :is(.ncm-msg2-navbtn, .ncm-ct2-navbtn, .ncm-net2-navbtn, .ncm-sec-admin-navbtn).on i { color: var(--ncm-act) !important; }
+
+/* ── group headers: solid bands with a heading-toned label ── */
+.ncm-admin-panel :is(.ncm-msg2-grp, .ncm-ct2-grp, .ncm-net2-grp, .ncm-term2-grp, .ncm-sh2-grp) {
+  background: var(--ncm-bg-card-head) !important; color: var(--ncm-text-heading) !important; font-weight: 700 !important;
+  border-top: 1px solid var(--ncm-border) !important; border-bottom: 1px solid var(--ncm-border) !important;
+}
+.ncm-admin-panel :is(.ncm-msg2-grp, .ncm-ct2-grp, .ncm-net2-grp, .ncm-term2-grp, .ncm-sh2-grp) :is(.n, .ncm-sh2-grp__n) { color: var(--ncm-text-label) !important; font-family: var(--ncm-font-mono) !important; }
+.ncm-admin-panel .ncm-ct2-grp > i:not(.ncm-ct2-grp__chev), .ncm-admin-panel :is(.ncm-term2-grp__ic, .ncm-sh2-grp__ic) { color: var(--ncm-text-label) !important; }
+
+/* ── rows: hover a step, selected unmistakable, unread an amber edge ── */
+.ncm-admin-panel :is(.ncm-msg2-r, .ncm-ct2-r, .ncm-net2-r, .ncm-term2-r, .ncm-sh2-row):hover { background: var(--ncm-bg-hover) !important; }
+.ncm-admin-panel :is(.ncm-msg2-r.sel, .ncm-ct2-r.sel, .ncm-net2-r.sel, .ncm-term2-r.is-sel, .ncm-sh2-row.is-sel) {
+  background: color-mix(in srgb, var(--ncm-act) 24%, var(--ncm-bg-pane)) !important;
+  box-shadow: inset 4px 0 var(--ncm-act) !important; border-left-color: transparent !important;
+}
+.ncm-admin-panel .ncm-msg2-r.unread:not(.sel) {
+  background: color-mix(in srgb, var(--ncm-attn) 6%, var(--ncm-bg-pane)) !important;
+  box-shadow: inset 4px 0 var(--ncm-attn) !important;
+}
+.ncm-admin-panel :is(.ncm-msg2-r, .ncm-ct2-r, .ncm-net2-r, .ncm-term2-r, .ncm-sh2-row) { border-bottom-color: color-mix(in srgb, var(--ncm-border) 70%, transparent) !important; }
+
+/* ── the reading pane opens with a header band ── */
+.ncm-admin-panel :is(.ncm-msg2-rd, .ncm-msg2-cvhd, .ncm-ct2-dhead, .ncm-net2-dhead, .ncm-term2-dhead, .ncm-sh2-dhead) {
+  background: var(--ncm-bg-card-head) !important; border-bottom: 1px solid var(--ncm-border-active) !important;
+}
+.ncm-admin-panel .ncm-msg2-rd h3 { font-size: 20px !important; color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel :is(.ncm-ct2-dhead .nm, .ncm-term2-dhead__nm, .ncm-sh2-dhead__nm, .ncm-net2-dhead .nm) { color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel .ncm-msg2-cvhd .t { color: var(--ncm-text-heading) !important; }
+
+/* detail sections: a heading strip per section */
+.ncm-admin-panel .ncm-ct2-sec > .k { background: var(--ncm-bg-card); margin: -10px -13px 9px !important; padding: 7px 13px !important; border-bottom: 1px solid var(--ncm-border); color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel .ncm-ct2-sec > .k i { color: var(--ncm-text-label) !important; }
+.ncm-admin-panel .ncm-msg2-rcp .h { background: var(--ncm-bg-card-head) !important; color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel :is(.ncm-msg2-rcp, .ncm-msg2-att) { background: var(--ncm-bg-pane) !important; }
+
+/* ── flags carry MEANING: filled pills ── */
+.ncm-admin-panel .ncm-msg2-flag { --fc: var(--ncm-text-label); color: var(--fc) !important; font-weight: 700 !important;
+  background: var(--ncm-bg-card) !important; border-color: var(--ncm-border-active) !important; }
+.ncm-admin-panel .ncm-msg2-flag:is(.is-danger, :has(.fa-hourglass-half)) { --fc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-msg2-flag:is(.is-accent, :has(.fa-coins)) { --fc: var(--ncm-money); }
+.ncm-admin-panel .ncm-msg2-flag:is(:has(.fa-user-secret), :has(.fa-masks-theater), :has(.fa-lock)) { --fc: var(--ncm-secret); }
+.ncm-admin-panel .ncm-msg2-flag:is(.is-danger, .is-accent, :has(.fa-coins), :has(.fa-hourglass-half), :has(.fa-user-secret), :has(.fa-masks-theater), :has(.fa-lock)) {
+  background: color-mix(in srgb, var(--fc) 22%, transparent) !important; border-color: color-mix(in srgb, var(--fc) 70%, transparent) !important;
+}
+/* the waiting count is solid amber; failures solid red */
+.ncm-admin-panel .ncm-msg2-ct.hot { background: var(--ncm-attn) !important; color: #111 !important; font-weight: 800 !important; }
+.ncm-admin-panel .ncm-msg2-ct.bad { background: var(--ncm-bad) !important; color: #fff !important; }
+.ncm-admin-panel .ncm-msg2-r .w .u { background: var(--ncm-attn) !important; }
+/* list status glyphs by meaning */
+.ncm-admin-panel .ncm-ct2-r .st .mail { color: var(--ncm-attn) !important; }
+.ncm-admin-panel .ncm-ct2-r .st .ice { color: var(--ncm-secret) !important; }
+.ncm-admin-panel .ncm-ct2-r .st .warn { color: var(--ncm-attn) !important; }
+.ncm-admin-panel .ncm-sh2-row__eb { color: var(--ncm-money) !important; }
+
+/* ── buttons: secondary = an outline, primary = the one filled cyan action ── */
+.ncm-admin-panel :is(.ncm-msg2-btn, .ncm-ct2-btn):not(:is(.ncm-msg2-btn--primary, .ncm-ct2-btn--primary, .ncm-msg2-btn--danger, .ncm-ct2-btn--danger)) {
+  background: transparent !important; border-color: var(--ncm-border-active) !important;
+}
+.ncm-admin-panel :is(.ncm-msg2-btn--primary, .ncm-ct2-btn--primary) { background: var(--ncm-act) !important; color: var(--ncm-text-inverse) !important; border-color: var(--ncm-act) !important; }
+.ncm-admin-panel :is(.ncm-msg2-btn--primary, .ncm-ct2-btn--primary) i { color: inherit !important; }
+.ncm-admin-panel :is(.ncm-msg2-tb, .ncm-ct2-tb) :is(input, select), .ncm-admin-panel .ncm-scope-btn { background: var(--ncm-bg-pane) !important; border-color: var(--ncm-border-active) !important; }
+
+/* ═══ text roles: each kind of text looks like what it is ═══
+   name = heading, display · subject = body · address = soft blue mono ·
+   time = dim mono · count = mono · field key = small caps label · action = cyan */
+.ncm-admin-panel .ncm-addr { color: var(--ncm-text-addr) !important; font-family: var(--ncm-font-mono) !important; font-size: .92em; letter-spacing: 0; }
+.ncm-admin-panel :is(.ncm-msg2-pp .a, .ncm-ct2-dhead .addr, .ncm-ct2-id .a) { color: var(--ncm-text-addr) !important; }
+.ncm-admin-panel :is(.ncm-msg2-r .w, .ncm-msg2-pp .ncm-msg2-strong) { color: var(--ncm-text-time) !important; font-family: var(--ncm-font-mono) !important; }
+.ncm-admin-panel :is(.ncm-msg2-ct, .ncm-ct2-navct, .ncm-net2-navct, .ncm-sec-admin-navct) { font-family: var(--ncm-font-mono) !important; }
+.ncm-admin-panel :is(.ncm-msg2-r .nm, .ncm-ct2-r .nm, .ncm-net2-r .nm, .ncm-sh2-row__nm) { font-family: var(--ncm-font-display) !important; font-weight: 700 !important; color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel .ncm-msg2-r .sj { color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-body) !important; font-weight: 400 !important; }
+.ncm-admin-panel .ncm-msg2-r.unread .sj { font-weight: 700 !important; color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel :is(.ncm-msg2-r.sel .sj, .ncm-ct2-r.sel .sub) { color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel .ncm-msg2-r .nm .to { color: var(--ncm-text-label) !important; font-weight: 500 !important; }
+.ncm-admin-panel :is(.ncm-ct2-r .sub, .ncm-ct2-dhead .meta, .ncm-sh2-row__sub, .ncm-net2-r .sub) { color: var(--ncm-text-label) !important; }
+.ncm-admin-panel .ncm-msg2-pp .k { color: var(--ncm-text-label) !important; letter-spacing: .08em; }
+.ncm-admin-panel :is(.ncm-msg2-body, .ncm-msg2-b) { color: var(--ncm-text-primary) !important; line-height: 1.55; }
+.ncm-admin-panel .ncm-msg2-b .sj { color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel :is(.ncm-msg2-rcp .s, .ncm-ct2-id .a) { font-family: var(--ncm-font-mono) !important; }
+.ncm-admin-panel :is(.ncm-msg2-rcp a, .ncm-ct2-add, .ncm-ct2-sec > .k a) { color: var(--ncm-act) !important; }
+
+/* ═══ tag pills: one shape for every marker in the panel ═══
+   --tc is the colour: a meaning (is-act/attn/bad/good/money/secret) or a category hue
+   from the ncm-hue helper (style="--tc:{{ncm-hue name}}"). is-time = a dim mono stamp. */
+/* the default colour at zero specificity, so any tab rule (or the inline style) beats it */
+:where(.ncm-admin-panel .ncm-tagp) { --tc: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-tagp {
+  display: inline-flex !important; align-items: center; gap: 5px; flex: 0 0 auto;
+  padding: 1px 7px !important; border-radius: 1px !important; line-height: 18px; white-space: nowrap;
+  font: 600 12px var(--ncm-font-body) !important; letter-spacing: 0 !important; text-transform: none !important;
+  /* NEON (2026-10-28, dev-approved dev/mockups/admin-hue-retune-mock.html): the full-strength colour draws the
+     border, icon and a faint glow; the TEXT keeps --ncm-ink of it (per preset) so it still reads 4.5:1. */
+  color: color-mix(in oklab, var(--tc) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important;
+  background: color-mix(in srgb, var(--tc) 20%, var(--ncm-bg-card-head)) !important;
+  border: 1px solid var(--tc) !important;
+  box-shadow: 0 0 8px -2px color-mix(in srgb, var(--tc) 60%, transparent) !important;
+}
+.ncm-admin-panel .ncm-tagp > i { color: var(--tc) !important; font-size: 10px !important; margin: 0 !important; }
+.ncm-admin-panel .ncm-tagp img { width: 14px; height: 14px; border-radius: 50%; object-fit: cover; border: 0; }
+.ncm-admin-panel .ncm-tagp.is-act    { --tc: var(--ncm-act); }
+.ncm-admin-panel .ncm-tagp:is(.is-attn, .is-warn) { --tc: var(--ncm-attn); }
+.ncm-admin-panel .ncm-tagp.is-bad    { --tc: var(--ncm-bad); }
+.ncm-admin-panel .ncm-tagp.is-good   { --tc: var(--ncm-good); }
+.ncm-admin-panel .ncm-tagp.is-money  { --tc: var(--ncm-money); }
+.ncm-admin-panel .ncm-tagp.is-secret { --tc: var(--ncm-secret); }
+.ncm-admin-panel .ncm-tagp.is-plain  { --tc: var(--ncm-text-label); background: var(--ncm-bg-card) !important; color: var(--ncm-text-primary) !important; border-color: var(--ncm-border-active) !important; }
+.ncm-admin-panel .ncm-tagp.is-time {
+  --tc: var(--ncm-text-time); background: transparent !important; border-color: color-mix(in srgb, var(--ncm-border-active) 70%, transparent) !important;
+  color: var(--ncm-text-time) !important; font: 12px var(--ncm-font-mono) !important;
+}
+.ncm-admin-panel .ncm-tagp .ncm-addr { color: inherit !important; }
+
+/* the contact header: avatar spans the band, actions sit under the last line of text */
+.ncm-admin-panel .ncm-ct2-dhead { padding: 12px 13px 11px !important; row-gap: 9px !important; align-items: start !important; }
+.ncm-admin-panel .ncm-ct2-dhead > :first-child { grid-row: span 2; align-self: start; }
+.ncm-admin-panel .ncm-ct2-dhead > .ncm-ct2-acts { grid-column: 2; padding: 0 !important; border: 0 !important; }
+.ncm-admin-panel .ncm-ct2-dhead .meta { gap: 5px !important; margin-top: 6px !important; }
+.ncm-admin-panel :is(.ncm-sh2-dhead__sub, .ncm-term2-dhead__sub):has(.ncm-tagp) { display: flex !important; flex-wrap: wrap; gap: 5px !important; margin-top: 4px; }
+/* terminal header: actions under the text (the right column squeezed the tags one per line) */
+.ncm-admin-panel .ncm-term2-dhead { grid-template-columns: 44px minmax(0, 1fr) !important; row-gap: 9px !important; align-items: start !important; }
+.ncm-admin-panel .ncm-term2-dhead > img { grid-row: span 2; }
+.ncm-admin-panel .ncm-term2-dhead > .ncm-term2-dhead__acts { grid-column: 2; flex-wrap: wrap; }
+.ncm-admin-panel .ncm-term2-dhead__sub:has(.ncm-tagp) { white-space: normal !important; overflow: visible !important; }
+.ncm-admin-panel .ncm-term2-dhead > .ncm-term2-more { top: calc(100% - 8px) !important; right: auto !important; left: 67px !important; }
+
+/* ═══ the right column: every detail section opens with a band in its own tone ═══
+   A section's tone comes from its heading icon (what the section IS about), so no
+   template has to name it: live/attention = amber, locks & identity = violet, money =
+   gold, people = cyan, places / setup / files / history each a category hue. */
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2) {
+  --sk: var(--ncm-act);
+  background: var(--ncm-bg-card) !important; margin: -10px -13px 9px !important; padding: 7px 13px 7px 10px !important;
+  border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--sk);
+  color: var(--ncm-text-heading) !important;
+}
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2) > i:first-child { color: var(--sk) !important; }
+.ncm-admin-panel .ncm-sec-admin-card__hd { --sk: var(--ncm-act); box-shadow: inset 3px 0 var(--sk); background: var(--ncm-bg-card) !important; }
+.ncm-admin-panel .ncm-sec-admin-card__hd i.lead { color: var(--sk) !important; }
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2, .ncm-sec-admin-card__hd):has(> i:is(.fa-bolt, .fa-triangle-exclamation, .fa-fire, .fa-bell, .fa-hourglass-half, .fa-circle-exclamation)) { --sk: var(--ncm-attn); }
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2, .ncm-sec-admin-card__hd):has(> i:is(.fa-lock, .fa-shield-halved, .fa-shield, .fa-key, .fa-user-secret, .fa-masks-theater, .fa-user-shield, .fa-eye-slash)) { --sk: var(--ncm-secret); }
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2, .ncm-sec-admin-card__hd):has(> i:is(.fa-skull, .fa-heart-crack, .fa-ban, .fa-satellite-dish)) { --sk: var(--ncm-bad); }
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2, .ncm-sec-admin-card__hd):has(> i:is(.fa-coins, .fa-money-bill, .fa-sack-dollar)) { --sk: var(--ncm-money); }
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2, .ncm-sec-admin-card__hd):has(> i:is(.fa-handshake, .fa-heart, .fa-heart-pulse)) { --sk: var(--ncm-good); }
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2, .ncm-sec-admin-card__hd):has(> i:is(.fa-location-dot, .fa-map, .fa-map-pin)) { --sk: var(--ncm-hue-3); }
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2, .ncm-sec-admin-card__hd):has(> i:is(.fa-sliders, .fa-gear, .fa-gears, .fa-wrench)) { --sk: var(--ncm-hue-7); }
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2, .ncm-sec-admin-card__hd):has(> i:is(.fa-file, .fa-file-lines, .fa-folder, .fa-inbox, .fa-envelope, .fa-microchip, .fa-database)) { --sk: var(--ncm-hue-2); }
+.ncm-admin-panel :is(.ncm-ct2-sec > .k, .ncm-term2-k, .ncm-sh2-sec__k, .ncm-net2-k2, .ncm-sec-admin-card__hd):has(> i:is(.fa-scroll, .fa-clock, .fa-clock-rotate-left, .fa-id-card, .fa-note-sticky)) { --sk: var(--ncm-text-label); }
+
+/* key / value rows: the key is a quiet label, the value is the information */
+.ncm-admin-panel :is(.ncm-term2-kv, .ncm-ct2-kv > div) { border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); padding: 4px 0 !important; }
+.ncm-admin-panel :is(.ncm-term2-kv__l, .ncm-ct2-kv .l) { color: var(--ncm-text-label) !important; }
+.ncm-admin-panel :is(.ncm-term2-kv__v, .ncm-ct2-kv .ncm-kvv) { color: var(--ncm-text-heading) !important; font-weight: 600; }
+/* a value that names something wears that name's hue, with a small square before it */
+.ncm-admin-panel :is(.ncm-term2-kv__v, .ncm-kvv)[style*="--tc"]:not(.is-dim) { color: color-mix(in oklab, var(--tc) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+.ncm-admin-panel :is(.ncm-term2-kv__v, .ncm-kvv)[style*="--tc"]:not(.is-dim)::before {
+  content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; vertical-align: 1px; border-radius: 1px; background: var(--tc);
+}
+.ncm-admin-panel .ncm-kvv.is-good   { color: var(--ncm-good) !important; }
+.ncm-admin-panel .ncm-kvv.is-bad    { color: var(--ncm-bad) !important; }
+.ncm-admin-panel .ncm-kvv.is-attn   { color: var(--ncm-attn) !important; }
+.ncm-admin-panel .ncm-kvv.is-secret { color: var(--ncm-secret) !important; }
+.ncm-admin-panel .ncm-kvv.is-mono   { font-family: var(--ncm-font-mono) !important; font-weight: 400; }
+.ncm-admin-panel :is(.ncm-term2-kv__v, .ncm-kvv).is-dim { color: var(--ncm-text-hint) !important; font-weight: 400; font-style: italic; }
+.ncm-admin-panel .ncm-kvtags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* ── Page head: every tab and sub-tab opens with a title + one-line description (2026-10-28).
+      ONE slim line (dev: the two-line version "takes up too much space"): icon · title · description,
+      the description truncates with an ellipsis and wraps only in a pop-out.
+      Markup: <header class="ncm-tabhd"><i class="fas fa-x"></i><div><h2>Title</h2><p>What this page is for.</p></div></header>
+      Optional right-side slot: <div class="ncm-tabhd__end">…buttons…</div> as the header's last child. ── */
+.ncm-admin-panel .ncm-tabhd { display: flex; align-items: center; gap: 7px; flex: none; min-width: 0; margin: 0 0 6px; padding: 0; border: 0; }
+.ncm-admin-panel .ncm-tabhd > i { flex: none; font-size: 11px; color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-admin-panel .ncm-tabhd > div:not(.ncm-tabhd__end) { min-width: 0; flex: 1 1 auto; display: flex; align-items: baseline; gap: 8px; overflow: hidden; }
+.ncm-admin-panel .ncm-tabhd h2 { flex: none; margin: 0; padding: 0; border: 0; background: none !important; text-shadow: none !important; white-space: nowrap;
+  font: 700 12px/1.3 var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-tabhd p { min-width: 0; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 12px/1.3 var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-admin-panel--pop .ncm-tabhd p { white-space: normal; }
+
+/* ── Nav brighter, counts coloured (2026-10-28, dev: "anything with a number like All mail, Outbox… those
+      numbers/boxes need colour, and all the nav buttons and sub-nav buttons can be a bit brighter").
+      Tab bar: resting tabs read in body text with a secondary icon (they were label/hint grey); the active tab
+      keeps its cyan top edge. Sub-tabs: resting text primary, icon in the act colour at rest, the active pill
+      a stronger cyan tint. Counts: a descriptive count is a cyan-tinted box; a count that needs you FILLS amber;
+      a bad one fills red. (0,3,1) so these beat the per-tab (0,2,1) rules without a new !important war. ── */
+.ncm-admin-panel .ncm-admin-tabs button.ncm-admin-tab { color: var(--ncm-text-primary) !important; }
+.ncm-admin-panel .ncm-admin-tabs button.ncm-admin-tab i { color: var(--ncm-text-secondary) !important; }
+.ncm-admin-panel .ncm-admin-tabs button.ncm-admin-tab:hover { color: var(--ncm-text-heading) !important; background: var(--ncm-bg-hover) !important; }
+.ncm-admin-panel .ncm-admin-tabs button.ncm-admin-tab:hover i { color: var(--ncm-act) !important; }
+.ncm-admin-panel .ncm-admin-tabs button.ncm-admin-tab.ncm-admin-tab--active,
+.ncm-admin-panel .ncm-admin-tabs button.ncm-admin-tab.ncm-admin-tab--active i { color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel .ncm-admin-tabs button.ncm-admin-tab.ncm-admin-tab--active i { color: var(--ncm-act) !important; }
+.ncm-admin-panel .ncm-admin-tabs .ncm-admin-tab__count { font-size: 9.5px; padding: 1px 5px; border-radius: 1px;
+  background: var(--ncm-attn) !important; color: var(--ncm-text-inverse) !important; font-weight: 700; }   /* unread mail = needs you */
+
+.ncm-admin-panel :is(.ncm-msg2-nav, .ncm-ct2-nav, .ncm-net2-nav, .ncm-sec-admin-nav) button:is(.ncm-msg2-navbtn, .ncm-ct2-navbtn, .ncm-net2-navbtn, .ncm-sec-admin-navbtn) { color: var(--ncm-text-primary) !important; }
+.ncm-admin-panel :is(.ncm-msg2-nav, .ncm-ct2-nav, .ncm-net2-nav, .ncm-sec-admin-nav) button:is(.ncm-msg2-navbtn, .ncm-ct2-navbtn, .ncm-net2-navbtn, .ncm-sec-admin-navbtn) i { color: color-mix(in srgb, var(--ncm-act) 75%, var(--ncm-text-secondary)) !important; }
+.ncm-admin-panel :is(.ncm-msg2-nav, .ncm-ct2-nav, .ncm-net2-nav, .ncm-sec-admin-nav) button:is(.ncm-msg2-navbtn, .ncm-ct2-navbtn, .ncm-net2-navbtn, .ncm-sec-admin-navbtn):hover { color: var(--ncm-text-heading) !important; background: var(--ncm-bg-hover) !important; }
+.ncm-admin-panel :is(.ncm-msg2-nav, .ncm-ct2-nav, .ncm-net2-nav, .ncm-sec-admin-nav) button:is(.ncm-msg2-navbtn, .ncm-ct2-navbtn, .ncm-net2-navbtn, .ncm-sec-admin-navbtn).on {
+  background: color-mix(in srgb, var(--ncm-act) 26%, var(--ncm-bg-pane-alt)) !important; border-color: color-mix(in srgb, var(--ncm-act) 80%, transparent) !important; color: var(--ncm-text-heading) !important; }
+.ncm-admin-panel :is(.ncm-msg2-nav, .ncm-ct2-nav, .ncm-net2-nav, .ncm-sec-admin-nav) button:is(.ncm-msg2-navbtn, .ncm-ct2-navbtn, .ncm-net2-navbtn, .ncm-sec-admin-navbtn).on i { color: var(--ncm-act) !important; }
+
+/* count boxes: descriptive = cyan tint · needs you = amber fill · bad = red fill */
+.ncm-admin-panel :is(.ncm-msg2-nav .ncm-msg2-ct, .ncm-ct2-nav .ncm-ct2-navct, .ncm-net2-nav .ncm-net2-navct, .ncm-sec-admin-nav .ncm-sec-admin-navct) {
+  background: color-mix(in srgb, var(--ncm-act) 18%, var(--ncm-bg-pane-alt)) !important; color: color-mix(in oklab, var(--ncm-act) 70%, var(--ncm-text-heading)) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-act) 55%, transparent); box-sizing: border-box; min-width: 18px; height: 16px; }
+.ncm-admin-panel :is(.ncm-msg2-nav .ncm-msg2-ct.hot, .ncm-sec-admin-nav .ncm-sec-admin-navct.new, .ncm-ct2-nav .ncm-ct2-navct.is-attn, .ncm-net2-nav .ncm-net2-navct.is-attn) {
+  background: var(--ncm-attn) !important; border-color: var(--ncm-attn); color: var(--ncm-text-inverse) !important; }
+.ncm-admin-panel :is(.ncm-msg2-nav .ncm-msg2-ct.bad, .ncm-sec-admin-nav .ncm-sec-admin-navct.hot, .ncm-ct2-nav .ncm-ct2-navct.is-bad, .ncm-net2-nav .ncm-net2-navct.is-bad) {
+  background: var(--ncm-bad) !important; border-color: var(--ncm-bad); color: var(--ncm-text-inverse) !important; }
+
+/* ═══ The grouped tab bar (2026-10-29, dev/mockups/admin-nav-groups-mock.html) ═══
+   One row of labelled clusters; AdminPanelApp._wireTabFold folds labels to icons when it overflows. */
+.ncm-app .ncm-admin-tabs.ncm-admin-tabs--grouped { display: flex; align-items: stretch; flex-wrap: nowrap; overflow: hidden; padding: 3px 6px 0 !important; }
+.ncm-admin-panel .ncm-admin-tabgrp { flex: none; display: flex; flex-direction: column; min-width: 0; padding: 0 5px; border-left: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); }
+.ncm-admin-panel .ncm-admin-tabgrp:first-child { border-left: 0; padding-left: 0; }
+.ncm-admin-panel .ncm-admin-tabgrp__cap { height: 12px; padding-left: 3px; font: 700 8.5px var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; line-height: 12px;
+  color: var(--ncm-text-hint, var(--ncm-text-secondary)); white-space: nowrap; }
+.ncm-admin-panel .ncm-admin-tabgrp.is-open .ncm-admin-tabgrp__cap { color: var(--ncm-act); }
+.ncm-admin-panel .ncm-admin-tabgrp__tabs { display: flex; gap: 1px; }
+.ncm-app .ncm-admin-tabs--grouped button.ncm-admin-tab { position: relative; }
+.ncm-app .ncm-admin-tabs--grouped button.ncm-admin-tab.is-fold { padding: 7px 9px !important; }
+.ncm-admin-panel .ncm-admin-tab.is-fold .ncm-admin-tab__lb { display: none; }
+.ncm-admin-panel .ncm-admin-tab.is-fold .ncm-admin-tab__count { position: absolute; top: 1px; right: 0; transform: scale(.85); transform-origin: top right; }
+.ncm-app .ncm-admin-tabs--grouped .ncm-admin-tabs__keys { margin-left: auto; align-self: flex-end; padding-bottom: 7px; }
+.ncm-app .ncm-admin-tabs--grouped button.ncm-admin-tab:not(.is-fold) { padding: 7px 7px !important; gap: 5px !important; }
+.ncm-admin-panel .ncm-admin-tabgrp { padding: 0 3px; }
+
+/* ═══ Contrast pass (2026-10-29) — measured with a canvas-based walker over every tab's real render in all three
+   presets; these were the text nodes still under 4.5:1. The rule they share with the tag pills: coloured TEXT keeps
+   --ncm-ink of its colour and the rest is the heading tone; the full colour stays on borders, icons and tints. ═══ */
+.ncm-admin-panel .ncm-msg2-flag { color: color-mix(in oklab, var(--fc) var(--ncm-ink-own, 50%), var(--ncm-text-heading)) !important; }   /* flags sit on their own tint: keep less colour */
+.ncm-admin-panel .ncm-msg2-jr__stat { color: color-mix(in oklab, var(--sc) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+.ncm-admin-panel :is(.ncm-ct2-sub__alias, .ncm-msg2-dq__alias) { color: color-mix(in oklab, var(--ncm-secret) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+.ncm-admin-panel .ncm-ct2-grp .ncm-ct2-grp__p, .ncm-admin-panel .ncm-ct2-menu .it.danger { color: color-mix(in oklab, var(--ncm-bad) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+.ncm-admin-panel :is(.ncm-ct2-grp .ncm-ct2-grp__w, .ncm-ct2-r .st .mail, .ncm-ct2-mxbar .chg, .is-w) { color: color-mix(in oklab, var(--ncm-attn) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+.ncm-admin-panel .ncm-ct2-tally.all { color: color-mix(in oklab, var(--ncm-good) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+.ncm-admin-panel :is(.ncm-msg2-cal__q.is-on, .ncm-ct2-kn__seg span.on, .ncm-ct2-pick a, .ncm-ct2-mxbar a, .ncm-ct2-ptile .ini) { color: color-mix(in oklab, var(--ncm-act) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+/* faces: initials in the name hue */
+.ncm-admin-panel :is(.ncm-ct2-av, .ncm-ct2-km__cd .ph, .ncm-ct2-sb__cd .ph) { color: color-mix(in oklab, var(--tc, var(--ncm-text-label)) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+/* a count badge on a red fill reads in the inverse text (white on the light red of clean-dark was 2.6:1) */
+.ncm-admin-panel .ncm-msg2-ct.bad,
+.ncm-admin-panel :is(.ncm-msg2-nav .ncm-msg2-ct.bad, .ncm-ct2-nav .ncm-ct2-navct.is-bad, .ncm-net2-nav .ncm-net2-navct.is-bad) { color: var(--ncm-text-inverse) !important; }
+/* the send button's identity count: an outline, not a tint that washed the white text out */
+.ncm-app .ncm-msg2-sendbtn .nid { background: none !important; border: 1px solid currentColor; }
+/* the desk queue's wait time sits on selected / hot rows: one tier up */
+.ncm-app .ncm-msg2-dq__end .t { color: var(--ncm-text-label) !important; }
+/* access map: a point's number in its kind's colour */
+.ncm-admin-panel .ncm-acc2-big .pt { color: color-mix(in oklab, var(--kc) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+.ncm-admin-panel .ncm-acc2-big .pt.is-bad { color: color-mix(in oklab, var(--ncm-bad) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+/* tags whose colour is the user's own (a group's colour, a network's colour) may be any shade — mix further */
+.ncm-admin-panel .ncm-tagp[style*="--tc:#"], .ncm-admin-panel .ncm-tagp[style*="--tc: #"] { color: color-mix(in oklab, var(--tc) var(--ncm-ink-own, 50%), var(--ncm-text-heading)) !important; }

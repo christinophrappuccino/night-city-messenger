@@ -48,11 +48,11 @@ const PLAYER_HINT = {
 const SECTORS = ['0x1A · boot', '0x2C · mail', '0x3F · net', '0x44 · svc', '0x5E · sess', '0x6B · logs', '0x7D · shadow'];
 
 /** GM-facing one-line name for a detected resident (what/where). */
-function gmName(term, resident) {
+function gmName(term, item, resident) {
   const p = resident.params || {};
   switch (resident.effectType) {
     case 'plant': {
-      const acct = p.accountId ? term?.getAccount?.(term._sweepItem, p.accountId) : null;
+      const acct = p.accountId ? term?.getAccount?.(item, p.accountId) : null;
       return `${p.entry?.subject || p.name || 'file'}${acct ? ` → ${acct.displayName || acct.username}` : ''}`;
     }
     case 'keylog': return 'captures the next login';
@@ -72,13 +72,15 @@ function gmName(term, resident) {
  * @param {HTMLElement} [opts.host] viewer element (theme source)
  * @param {string}  [opts.skill] sweep skill (default Interface)
  * @param {number}  [opts.dv]    sweep card DV (flavor; detection is per-resident stealthDV)
+ * @param {object}  [opts.source] what to sweep instead of a terminal's residents (network nodes use it):
+ *   { name, sub?, list: () => [{ id, stealthDV, icon, gmTitle, gmType, quality?, by?, hint }], defuse: async (id) => void }
  * @returns {Promise<{swept:boolean, found?:number, defused?:number}>}
  */
-export function runSystemSweep({ item, actor = null, host = null, skill = null, dv = null } = {}) {
+export function runSystemSweep({ item, actor = null, host = null, skill = null, dv = null, source = null } = {}) {
   return new Promise((resolve) => {
     const term = game.nightcity?.terminalService;
-    if (!term?.isTerminal?.(item)) { try { ui.notifications?.warn('NCM | You can only sweep a terminal you are logged into.'); } catch { /* */ } resolve({ swept: false }); return; }
-    term._sweepItem = item; // for gmName's account lookup
+    const src = source || terminalSource(term, item);
+    if (!src) { try { ui.notifications?.warn('NCM | You can only sweep a terminal you are logged into.'); } catch { /* */ } resolve({ swept: false }); return; }
 
     const sweepSkill = skill || DEFAULT_SWEEP_SKILL;
     const sweepDV = Number(dv) || DEFAULT_SWEEP_DV;
@@ -91,7 +93,7 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
     const mount = host || document.body;
     const wrap = document.createElement('div');
     wrap.className = 'ncm-sweep-backdrop';
-    wrap.innerHTML = panelHtml(forceReveal);
+    wrap.innerHTML = panelHtml(forceReveal, src.sub);
     const panel = () => wrap.querySelector('.ncm-sweep');
 
     let defusedCount = 0, foundCount = 0, scanning = false;
@@ -99,14 +101,13 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
     const cleanup = () => {
       document.removeEventListener('keydown', onKey, true);
       wrap.remove();
-      delete term._sweepItem;
       resolve({ swept: true, found: foundCount, defused: defusedCount });
     };
     const onKey = (e) => { if (e.key === 'Escape' && !scanning) { e.preventDefault(); cleanup(); } };
 
     // Reveal the residents whose stealthDV <= total (force = all).
     const reveal = (total) => {
-      const armed = (term.getResidents(item) || []).filter(r => r.state === 'armed');
+      const armed = src.list() || [];
       const found = forceReveal ? armed : armed.filter(r => (Number(r.stealthDV) || 0) <= total);
       foundCount = found.length;
       const p = panel();
@@ -119,7 +120,7 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
       p.classList.add('is-hits', 'is-done');
       p.querySelector('.ncm-sweep__verdict .v').textContent = `${found.length} FOUND`;
       p.querySelector('.ncm-sweep__verdict .vs').textContent = gm ? 'installed programs detected' : 'anomalies detected — defuse them';
-      p.querySelector('.ncm-sweep__hits').innerHTML = found.map(r => hitHtml(term, r, gm)).join('');
+      p.querySelector('.ncm-sweep__hits').innerHTML = found.map(r => hitHtml(r, gm)).join('');
     };
 
     // The RUN SWEEP roll → radar beat → reveal.
@@ -131,18 +132,23 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
       const big = p.querySelector('.big'); const sm = p.querySelector('.sm'); const logEl = p.querySelector('.ncm-sweep__log');
       if (big) big.textContent = 'SWEEPING';
 
-      let total = Infinity;
+      let total = Infinity, rolled = null;
       if (!forceReveal) {
         const svc = game.nightcity?.skillService;
         if (!svc || !actor) { ui.notifications?.warn('NCM | No operator to roll the sweep.'); scanning = false; return cleanup(); }
         try {
-          const res = await svc.performCheck(actor, sweepSkill, { dc: sweepDV, context: 'System Sweep', flavor: `SWEEP // ${item.name}` });
-          total = Number(res?.total) || 0;
-          if (sm) sm.textContent = `rolled ${total}`;
+          // The number and the chat card wait for the sweep to finish.
+          rolled = await svc.performCheck(actor, sweepSkill, { dc: sweepDV, deferChat: true, context: 'System Sweep', flavor: `SWEEP // ${src.name}` });
+          total = Number(rolled?.total) || 0;
         } catch (err) { log.error(`Sweep roll failed: ${err.message}`); total = 0; }
       }
 
-      const finish = () => { p.classList.remove('is-scanning'); if (logEl) logEl.textContent = ''; scanning = false; reveal(total); };
+      const finish = () => {
+        p.classList.remove('is-scanning'); if (logEl) logEl.textContent = ''; scanning = false;
+        if (sm && rolled) sm.textContent = `rolled ${total}`;
+        reveal(total);
+        rolled?.postChat?.();
+      };
       if (reduced) { finish(); return; }
       // Cosmetic sector stream during the sweep.
       let i = 0;
@@ -160,10 +166,8 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
       const btn = hitEl.querySelector('.ncm-sweep__defuse'); if (btn) btn.innerHTML = '<i class="fas fa-check"></i> NEUTRALIZED';
       defusedCount++;
       try {
-        if (gm) await term.updateResident(item, residentId, { state: 'defused' });
-        else game.nightcity?.socketManager?.emit(SOCKET_OPS.TERMINAL_RESIDENT_REQUEST, { op: 'defuse', itemUuid: item.uuid, residentId, userId: game.user.id });
+        await src.defuse(residentId, actor);
         game.nightcity?.soundService?.play('shard-decrypt');
-        game.nightcity?.traceService?.logSuccess?.({ actor, action: 'sweep-defuse', source: 'resident', hostItem: item, severity: 'minor' });
       } catch (err) { log.error(`Defuse failed: ${err.message}`); }
     };
 
@@ -182,12 +186,34 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
     try { game.nightcity?.soundService?.play('click'); } catch { /* */ }
     // Force-reveal (GM no actor) skips the roll — sweep immediately.
     if (forceReveal) runScan();
-    log.debug(`SystemSweep opened on ${item.name} (${forceReveal ? 'force' : 'roll'}).`);
+    log.debug(`SystemSweep opened on ${src.name} (${forceReveal ? 'force' : 'roll'}).`);
   });
 }
 
+/**
+ * The terminal source: its ARMED residents (the original behaviour), defused GM-side or relayed.
+ * @returns {object|null}
+ */
+function terminalSource(term, item) {
+  if (!term?.isTerminal?.(item)) return null;
+  const gm = isGM();
+  return {
+    name: item.name,
+    list: () => (term.getResidents(item) || []).filter(r => r.state === 'armed').map((r) => {
+      const by = r.provenance?.plantedBy ? (game.actors?.get(r.provenance.plantedBy)?.name || r.provenance.sourceLabel || 'unknown') : (r.provenance?.sourceLabel || 'unknown');
+      return { id: r.id, stealthDV: Number(r.stealthDV) || 0, icon: ICON[r.effectType] || 'fa-bug', gmTitle: gmName(term, item, r), gmType: GM_TYPE[r.effectType] || 'PROGRAM',
+        quality: Number(r.provenance?.forgeQuality), by, hint: PLAYER_HINT[r.effectType] || 'an unknown process is running' };
+    }),
+    defuse: async (residentId, actor) => {
+      if (gm) await term.updateResident(item, residentId, { state: 'defused' });
+      else game.nightcity?.socketManager?.emit(SOCKET_OPS.TERMINAL_RESIDENT_REQUEST, { op: 'defuse', itemUuid: item.uuid, residentId, userId: game.user.id });
+      game.nightcity?.traceService?.logSuccess?.({ actor, action: 'sweep-defuse', source: 'resident', hostItem: item, severity: 'minor' });
+    },
+  };
+}
+
 /** The modal shell. */
-function panelHtml(forceReveal) {
+function panelHtml(forceReveal, sub = '') {
   return `
   <div class="ncm-sweep" data-ct-color="cyan" role="dialog" aria-modal="true">
     <div class="ncm-sweep__bar"></div>
@@ -195,11 +221,11 @@ function panelHtml(forceReveal) {
     <span class="ncm-sweep__ck ncm-sweep__ck--bl"></span><span class="ncm-sweep__ck ncm-sweep__ck--br"></span>
     <div class="ncm-sweep__hd">
       <span class="ncm-sweep__tag"><i class="fas fa-satellite-dish"></i> SYSTEM SWEEP</span>
-      <span class="ncm-sweep__sub">deep-scan this host for installed programs</span>
+      <span class="ncm-sweep__sub">${esc(sub || 'deep-scan this host for installed programs')}</span>
     </div>
     <div class="ncm-sweep__ctx">
       <span class="ncm-sweep__chip"><i class="fas fa-microchip"></i> INTERFACE</span>
-      <span class="ncm-sweep__chip"><i class="fas fa-dice-d10"></i> ROLL <b>vs</b> each hidden process</span>
+      <span class="ncm-sweep__chip"><i class="fas fa-dice-d20"></i> ROLL <b>vs</b> each hidden process</span>
     </div>
     <div class="ncm-sweep__radar">
       <div class="ncm-sweep__grid"></div>
@@ -217,22 +243,21 @@ function panelHtml(forceReveal) {
   </div>`;
 }
 
-/** One detected-resident card — role-aware (GM = full intel, player = vague). */
-function hitHtml(term, r, gm) {
-  const q = Number(r.provenance?.forgeQuality);
+/** One detected card from a source view — role-aware (GM = full intel, player = vague). */
+function hitHtml(r, gm) {
+  const q = Number(r.quality);
   const tell = Number.isFinite(q)
     ? (q < SLOPPY_QUALITY
       ? '<span class="ncm-sweep__pill ncm-sweep__pill--sloppy">FORGED — SLOPPY</span>'
       : '<span class="ncm-sweep__pill ncm-sweep__pill--clean">WELL-MADE</span>')
     : '';
   if (gm) {
-    const by = r.provenance?.plantedBy ? (game.actors?.get(r.provenance.plantedBy)?.name || r.provenance.sourceLabel || 'unknown') : (r.provenance?.sourceLabel || 'unknown');
     return `<div class="ncm-sweep__hit" data-id="${esc(r.id)}">
-      <span class="ncm-sweep__hit-ico"><i class="fas ${ICON[r.effectType] || 'fa-bug'}"></i></span>
+      <span class="ncm-sweep__hit-ico"><i class="fas ${esc(r.icon || 'fa-bug')}"></i></span>
       <span class="ncm-sweep__hit-nm">
-        <span class="ncm-sweep__hit-t">${esc(gmName(term, r))}
-          <span class="ncm-sweep__pill ncm-sweep__pill--type">${esc(GM_TYPE[r.effectType] || 'PROGRAM')}</span>${tell}</span>
-        <span class="ncm-sweep__hit-meta"><span>PLANTED BY ${esc(by)}</span><span>STEALTH DV ${Number(r.stealthDV) || 0}</span></span>
+        <span class="ncm-sweep__hit-t">${esc(r.gmTitle)}
+          <span class="ncm-sweep__pill ncm-sweep__pill--type">${esc(r.gmType || 'PROGRAM')}</span>${tell}</span>
+        <span class="ncm-sweep__hit-meta"><span>PLANTED BY ${esc(r.by || 'unknown')}</span><span>STEALTH DV ${Number(r.stealthDV) || 0}</span></span>
       </span>
       <button type="button" class="ncm-sweep__defuse"><i class="fas fa-eraser"></i> DEFUSE</button>
     </div>`;
@@ -241,7 +266,7 @@ function hitHtml(term, r, gm) {
     <span class="ncm-sweep__hit-ico"><i class="fas fa-triangle-exclamation"></i></span>
     <span class="ncm-sweep__hit-nm">
       <span class="ncm-sweep__hit-t">UNKNOWN PROCESS</span>
-      <span class="ncm-sweep__hit-d">${esc(PLAYER_HINT[r.effectType] || 'an unknown process is running')}</span>
+      <span class="ncm-sweep__hit-d">${esc(r.hint || 'an unknown process is running')}</span>
     </span>
     <button type="button" class="ncm-sweep__defuse"><i class="fas fa-eraser"></i> DEFUSE</button>
   </div>`;

@@ -7,8 +7,14 @@
 
 import { MODULE_ID, MODULE_TITLE } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
+import { registerMinimizeControls } from '../utils/windowMinimize.js';
 
 export function registerUIComponents(initializer) {
+  // A visible minimize button on every NCM window + the bigger dialogs (scripts/utils/windowMinimize.js).
+  initializer.register('init', 21, 'Minimize buttons', () => {
+    try { registerMinimizeControls(); } catch (err) { log.error(`Minimize buttons failed: ${err.message}`); }
+  });
+
   initializer.register('init', 20, 'Scene controls', () => {
     Hooks.on('getSceneControlButtons', (controls) => {
       if (!game.nightcity) return;

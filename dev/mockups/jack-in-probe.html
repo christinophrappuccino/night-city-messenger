@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>loading…</title>
+<!--
+  Probe: the REAL jack-in lock (scripts/ui/NetworkNodes/JackInLock.js + styles/components/jack-in.css) over a node
+  console-sized host. ?kind=in|miss|wait  ?at=<seconds> freezes a frame (else it plays)  ?box=0 drops the box ring.
+  Off disk: chrome --allow-file-access-from-files, or serve it (node dev/tools/serve-mockups.cjs).
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>body { margin: 0; padding: 20px; background: #141419; } .host { position: relative; width: 560px; height: 480px; }</style>
+</head>
+<body>
+<div class="host ncm-app" id="host"></div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+try {
+  const { runJackIn } = await import('../../scripts/ui/NetworkNodes/JackInLock.js');
+  const kind = q.get('kind') || 'in';
+  const box = q.get('box') !== '0';
+  const layers = [...(box ? [{ label: 'Box lock', icon: 'fa-lock', text: 'Kabuki relay mast // BOX LOCK' }] : []),
+    { label: 'Firmware', icon: 'fa-microchip', text: 'FIRMWARE MAST-CTRL 2.1 // 0xBCB4·87' }, { label: 'NCPD Dispatch', icon: 'fa-tower-broadcast', text: 'NCPD Dispatch // HANDSHAKE' }];
+  const at = q.get('at');
+  runJackIn(document.getElementById('host'), {
+    color: '#5c9bff', title: 'Jacking in // Kabuki relay mast', dvLabel: 'Interface · DV 15', layers, dv: 15,
+    parts: [{ label: 'TECH', value: 7 }, { label: 'Interface', value: 4 }], bloom: 9, netName: 'NCPD Dispatch', hex: '0xBCB4·87', kind,
+    result: kind === 'wait' ? null : { d10: kind === 'in' ? 6 : 1, total: kind === 'in' ? 17 : 12, dv: 15, moves: 3, sub: kind === 'miss' ? '12 VS DV 15 · TRACE FIRED · ALERT ▲' : undefined },
+    freezeAt: at != null ? parseFloat(at) : undefined,
+  });
+  document.title = 'OK';
+} catch (e) { document.title = 'FAIL ' + e.message; document.body.insertAdjacentHTML('beforeend', `<pre style="color:#f66">${e.stack}</pre>`); }
+</script>
+</body>
+</html>

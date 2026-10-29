@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Admin guides — for final approval</title>
+<!--
+  The four guide pieces picked for approval, each live from its own mock (every one clickable):
+    1. Delivery line           — admin-guides-v4-mock.html?only=dl
+    2. What your players see   — admin-guides-v3-mock.html?only=tbl
+    3. Lock odds in the editor — admin-lock-odds-mock.html
+    4. Account status in play  — admin-guides-v4-mock.html?only=acc
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-guides-final.html   ?t=clean-light
+-->
+<style>
+  body { margin: 0; padding: 24px 28px 60px; background: #15161b; color: #ddd; font: 14px/1.5 system-ui, sans-serif; }
+  h1 { font: 700 20px system-ui, sans-serif; margin: 0 0 4px; color: #fff; letter-spacing: .02em; }
+  .lede { color: #9aa3b2; margin: 0 0 22px; max-width: 980px; }
+  .toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 26px; }
+  .toc a { color: #3fd0e2; text-decoration: none; border: 1px solid #2a3442; border-radius: 3px; padding: 4px 10px; font-size: 13px; }
+  .toc a:hover { border-color: #3fd0e2; }
+  section { margin: 0 0 34px; }
+  .hd { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 0 0 4px; }
+  .hd h2 { font: 700 15px system-ui, sans-serif; margin: 0; color: #fff; letter-spacing: .03em; }
+  .hd .where { color: #8fa0b8; font-size: 12.5px; }
+  .what { color: #b8c0cc; margin: 0 0 6px; max-width: 980px; }
+  .try { color: #8a93a2; margin: 0 0 10px; font-size: 12.5px; max-width: 980px; }
+  .try b { color: #cfd6e2; font-weight: 600; }
+  .needs { display: inline-block; margin-left: 4px; color: #f2994a; font-size: 12px; }
+  iframe { width: 100%; border: 0; display: block; background: #1b1b22; border-radius: 4px; }
+  .ok { margin-top: 8px; color: #56c896; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<h1>Admin guides — for final approval</h1>
+<p class="lede">The four guide pieces, as they stand after our rounds. Each frame is the working mock, so everything is clickable. Approve all, or tell me which to change; I'll build what you approve. (The shards breach path is already built and isn't here.)</p>
+<div class="toc"><a href="#dl">1 · Delivery line</a><a href="#tbl">2 · At the table</a><a href="#odds">3 · Lock odds</a><a href="#acc">4 · Account status in play</a></div>
+
+<section id="dl">
+  <div class="hd"><h2>1 · The delivery line</h2><span class="where">Admin → Messages → All mail → the open message, under From / To / When</span></div>
+  <p class="what">One line that answers "did it get through?" — quiet green when fine, amber or red when not. Click it to open the why, what the player saw, and what happens next by itself, with the fixes inline.</p>
+  <p class="try">Try: <b>click the amber "Held" line</b> → <b>Deliver it now</b> → it turns green with an undo. Same for <b>Refused</b> → Let players write to it. <span class="needs">Needs: the module to start recording when a message is read.</span></p>
+  <iframe data-src="admin-guides-v4-mock.html?only=dl"></iframe>
+  <p class="try" style="margin-top:14px"><b>Group mail</b> (a contact group, several people, or sent as an alias): the line counts the party with one square per person; open it for one row each, with that person's fix. Try <b>Deliver now</b> on Rache or <b>Remove from The Crew</b> on Brick. Problem lines start closed.</p>
+  <iframe data-src="admin-guides-v5-mock.html?only=grp"></iframe>
+</section>
+
+<section id="tbl">
+  <div class="hd"><h2>2 · At the table, reworked</h2><span class="where">Admin → Overview — replaces the current At the table</span></div>
+  <p class="what">Players grouped by the scene they're looking at (with that scene's networks, or that it's a dead zone). Each player: online, network and signal, and the few things that decide whether their Agent works — address, contacts, unread, mail held — with one word for where they stand.</p>
+  <p class="try">Try: <b>click a player</b> to open the why and the fixes under their scene; press <b>Set an address</b> or <b>Deliver it now</b> and watch them flip.</p>
+  <iframe data-src="admin-guides-v5-mock.html?only=table"></iframe>
+</section>
+
+<section id="odds">
+  <div class="hd"><h2>3 · Lock odds in the account editor</h2><span class="where">Admin → Terminals → Configure → Accounts → an account → Security (700px window)</span></div>
+  <p class="what">Everything above the dashed line is the editor as it is today. The new panel under it reads each character's sheet and shows their odds with their best listed skill, plus a one-line verdict. Up to 4 characters: side-by-side cards; 5 or more: a compact best-first list in its own scroll box, with the ones who can't roll folded away.</p>
+  <p class="try">Try: change a <b>DV</b>, add a skill, switch <b>ANY / ALL</b> or the failure rule; switch the party to <b>7</b> or <b>12</b>; turn <b>Require login</b> off and it shrinks to one line.</p>
+  <iframe data-src="admin-lock-odds-mock.html?w=700&n=3"></iframe>
+</section>
+
+<section id="acc">
+  <div class="hd"><h2>4 · Account status in play</h2><span class="where">Admin → Terminals → the terminal's detail → Accounts (Admin Panel width)</span></div>
+  <p class="what">During the session: each character against this account — logged in (since when), locked out (live clock), tries left, or can't see it and why — each with the one action you'd want. The header shows the lock in a few words with a link to edit it.</p>
+  <p class="try">Try: <b>Log out</b>, <b>Clear lockout</b>, <b>Reset tries</b>; watch Rache's clock count down. <span class="needs">Needs: failed tries read from the Security log, and players' lockouts sent to your screen.</span></p>
+  <iframe data-src="admin-guides-v4-mock.html?only=acc"></iframe>
+</section>
+
+<script>
+const t = new URLSearchParams(location.search).get('t');
+for (const f of document.querySelectorAll('iframe[data-src]')) {
+  f.src = f.dataset.src + (t ? `&t=${t}` : '');
+  const fit = () => { try { const d = f.contentDocument; f.style.height = (d.documentElement.scrollHeight + 4) + 'px'; } catch { f.style.height = '900px'; } };
+  f.addEventListener('load', () => { fit(); setTimeout(fit, 300); setTimeout(fit, 1200);
+    try { new ResizeObserver(fit).observe(f.contentDocument.body); f.contentDocument.addEventListener('click', () => setTimeout(fit, 60)); } catch {} });
+}
+</script>
+</body>
+</html>

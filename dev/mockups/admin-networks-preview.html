@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Networks tab — faithful render</title>
+<!--
+  Renders the REAL templates/admin-panel/tab-networks.hbs with a context built by
+  the REAL NetworksTab (scripts/ui/AdminPanel/tabs/NetworksTab.js) over mocked
+  Foundry globals, against the real cascade: Foundry core → CPR → module → admin theme.
+  Off disk: chrome --allow-file-access-from-files (fetch + ES module import);
+  or serve it: node dev/tools/serve-mockups.cjs.
+    ?view=scene|all|scenes|log   ?edit=1  ?new=1  ?step=identity|signal|access|behaviour|where|look
+    Scenes (the Atlas, 2026-10-29): ?sc=grid  ?paint=<net id>  ?scsel=<scene id | pack uuid>  ?show=unwired|dead|…  ?contrast=1 (text under 4.5:1 → title)
+    ?t=clean-light|high-contrast  ?pop=1 (1120×780 pop-out)  ?jam=1  ?h=<px> (taller frame)  ?sel=<net> (dial pick)  ?pick=bcast|scene|log|here  ?menu=net|log  ?note=1
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/fa/css/all.min.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<script src="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/node_modules/handlebars/dist/handlebars.min.js"></script>
+<style>
+  body { margin: 0; background: #333; padding: 16px; }
+  .window-content { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: none; padding: 0; }
+  .app-frame { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important;
+    width: 820px; height: 600px; margin: 0 auto; overflow: hidden; border-radius: 4px; }
+  .app-frame.pop { width: 1120px; height: 780px; }
+  #status { font: 12px monospace; color: #ccc; margin-bottom: 8px; }
+</style></head>
+<body>
+<div id="status">loading…</div>
+<div class="ncm-app ncm-admin-panel app-frame" id="p" data-ncm-scanlines="false">
+ <section class="window-content">
+  <div class="ncm-admin-panel" id="inner">
+   <nav class="ncm-admin-tabs" id="tabs"><button class="ncm-admin-tab"><i class="fas fa-chart-bar"></i> Overview</button><button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-network-wired"></i> Networks</button><button class="ncm-admin-tab"><i class="fas fa-database"></i> Shards</button></nav>
+   <div class="ncm-admin-content" id="out"></div>
+  </div>
+ </section>
+</div>
+<script type="module">
+const Q = new URLSearchParams(location.search);
+const status = (s) => { document.getElementById('status').textContent = s; document.title = s; };
+const P = document.getElementById('p');
+P.dataset.ncmAdminTheme = Q.get('t') || 'clean-dark';
+const POP = Q.get('pop') === '1';
+if (Q.get('h')) P.style.height = Q.get('h') + 'px';
+if (POP) { P.classList.add('pop', 'ncm-admin-panel--pop'); document.getElementById('inner').classList.add('ncm-admin-panel--pop'); document.getElementById('tabs').remove(); }
+
+// ── Foundry stand-ins ──
+const MODULE_ID = 'night-city-messenger';
+const clone = (o) => JSON.parse(JSON.stringify(o));
+globalThis.foundry = { utils: { debounce: (f) => f, deepClone: clone, randomID: () => Math.random().toString(36).slice(2, 10) } };
+globalThis.ui = { notifications: { info() {}, warn() {}, error() {} } };
+const FACE = (c) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="${c}"/><circle cx="20" cy="16" r="7.5" fill="#0d0d14" opacity=".75"/><path d="M5 40c1-9 7-13 15-13s14 4 15 13z" fill="#0d0d14" opacity=".75"/></svg>`);
+const THUMB = (a, b) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 70"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="160" height="70" fill="url(#g)"/><g fill="#000" opacity=".35"><rect x="10" y="30" width="18" height="40"/><rect x="34" y="18" width="14" height="52"/><rect x="54" y="38" width="22" height="32"/><rect x="96" y="12" width="16" height="58"/><rect x="118" y="34" width="26" height="36"/></g></svg>`);
+const FOLDERS = [
+  { id: 'F-Night City', name: 'Night City', type: 'Scene', folder: null, sort: 1 },
+  { id: 'F-Arasaka Tower', name: 'Arasaka Tower', type: 'Scene', folder: { id: 'F-Night City' }, sort: 1 },
+  { id: 'F-Badlands', name: 'Badlands', type: 'Scene', folder: null, sort: 2 },
+  { id: 'F-Heists', name: 'Heists', type: 'Scene', folder: null, sort: 3 },
+];
+let nav = 0;
+const mkScene = (id, name, flags = {}, folder = null, imported = false, o = {}) => {
+  const s = { id, name, flags: clone(flags), folder: folder ? { id: `F-${folder}`, name: folder } : null, _stats: imported ? { compendiumSource: 'Compendium.cpr-maps.scenes.Scene.zzz' } : {},
+    navigation: !!o.nav, navOrder: o.nav ? nav++ : 0, sort: o.sort ?? 0, thumb: o.thumb || '' };
+  s.getFlag = (m, k) => s.flags[k]; return s;
+};
+const JAM = Q.get('jam') === '1';
+const scenes = [
+  mkScene('S1', 'Arasaka Tower — 7th Floor', { networkAvailability: { CORPNET: true, ARASEC: true, DARKNET: false }, defaultNetwork: 'CORPNET', deadZone: JAM }, 'Arasaka Tower', false, { nav: true, thumb: THUMB('#3a1020', '#120610') }),
+  mkScene('S2', 'Arasaka Tower — Lobby', { networkAvailability: { CORPNET: true }, defaultNetwork: 'CORPNET' }, 'Arasaka Tower', false, { thumb: THUMB('#2a1420', '#0c0810') }),
+  mkScene('S3', 'The Afterlife', { networkAvailability: { AFTER: true, DARKNET: true }, defaultNetwork: 'AFTER' }, 'Night City', false, { nav: true, thumb: THUMB('#2a1840', '#0c0818') }),
+  mkScene('S4', 'Vik’s clinic', {}, 'Night City'),
+  mkScene('S5', 'Totentanz', { networkAvailability: { MAEL: true, DARKNET: true } }, 'Night City', false, { thumb: THUMB('#402010', '#140a06') }),
+  mkScene('S6', 'NCPD Precinct 7', { networkAvailability: { NCPD: true, GOVNET: true } }, 'Night City'),
+  mkScene('S7', 'Badlands — Route 66', { deadZone: true, networkAvailability: { NOMAD: true } }, 'Badlands', false, { thumb: THUMB('#40301a', '#14100a') }),
+  mkScene('S8', 'Badlands — Camp', { networkAvailability: { NOMAD: true }, defaultNetwork: 'NOMAD' }, 'Badlands', false, { nav: true }),
+  mkScene('S9', 'Biotechnica HQ', { networkAvailability: { CORPNET: true } }),
+  mkScene('S10', 'Compendium dungeon', {}, null, true),
+  ...['Kabuki Market', 'Jig-Jig Street', 'Lizzie’s Bar', 'Megabuilding H10', 'Watson Docks', 'Corpo Plaza', 'Charter Hill', 'Pacifica Mall'].map((n, i) => mkScene(`N${i}`, n, i % 3 ? {} : { networkAvailability: { DARKNET: true } }, 'Night City', false, { sort: 10 + i })),
+  ...['Konpeki — Garage', 'Konpeki — Roof', 'Biotechnica Lab — L2', 'Biotechnica Lab — Vault'].map((n, i) => mkScene(`H${i}`, n, i === 3 ? { deadZone: true } : { networkAvailability: { CORPNET: true } }, 'Heists')),
+];
+const PACK = { collection: 'cpr-maps.scenes', documentName: 'Scene', indexed: true, metadata: { label: 'CPR Maps', packageName: 'cpr-maps' },
+  index: new Map(['Megabuilding Lobby', 'Pacifica Combat Zone', 'Badlands Overland', 'Corporate Office Floor', 'Nightclub Interior', 'Rooftop Helipad'].map((n, i) => [`p${i}`, { _id: `p${i}`, name: n, thumb: i % 2 ? THUMB('#1a2a3a', '#0a1218') : '', uuid: `Compendium.cpr-maps.scenes.Scene.p${i}` }])) };
+const PREWIRE = { 'Compendium.cpr-maps.scenes.Scene.p0': { nets: ['CORPNET'], start: 'CORPNET' }, 'Compendium.cpr-maps.scenes.Scene.p1': { nets: ['MAEL', 'DARKNET'] } };
+const net = (id, name, type, color, icon, o = {}) => ({ id, name, type, isCore: !!o.core, availability: { global: !!o.global, scenes: [] }, signalStrength: o.sig ?? 75, reliability: o.rel ?? 85,
+  security: { level: o.level || 'NONE', requiresAuth: !!o.auth, password: o.pw || '', allowPassword: !!o.pw, allowSkillCheck: !!o.skills, authLogic: 'any',
+    bypassSkills: o.skills || [], bypassDC: 15, bypassSkillDCs: o.dcs || {}, allowKeyItem: !!o.key, keyItemName: o.key || '', keyItemTag: '', keyItemImg: '', keyItemConsume: false,
+    maxAttempts: 3, lockoutDuration: 3600000, encryptionType: o.ice ? 'BLACK_ICE' : 'ICE', failureMode: o.ice ? 'damage' : 'lockout', ice: { source: 'default', actorId: null, customName: '', customPortrait: '', customDamage: '' } },
+  effects: { messageDelay: o.delay || 0, traced: !!o.traced, anonymity: !!o.anon, canRoute: true, restrictedAccess: false, allowedRecipientNetworks: o.to || [] },
+  theme: { color, icon, iconMode: 'fa', customImage: '', glitchIntensity: 0.1 }, description: o.desc || '', lore: o.lore || '', group: o.group || '' });
+const NETS = [
+  net('CITINET', 'CitiNet', 'PUBLIC', '#19f3f7', 'fa-wifi', { core: true, global: true, sig: 75, rel: 90 }),
+  net('DATA_POOL', 'Data Pool', 'PUBLIC', '#f7c948', 'fa-database', { core: true, global: true, sig: 60, delay: 400 }),
+  net('CORPNET', 'CorpNet', 'CORPORATE', '#4488ff', 'fa-building', { core: true, sig: 95, rel: 99, auth: true, pw: 'kiroshi-blue', skills: ['Interface', 'Electronics/Security Tech'], dcs: { Interface: 15, 'Electronics/Security Tech': 17 }, key: 'Corporate ID', traced: true, level: 'HIGH', to: ['CORPNET', 'CITINET'], desc: 'Corporate communications', lore: 'Arasaka runs its own SecNet inside the tower.', group: 'Arasaka' }),
+  net('ARASEC', 'Arasaka SecNet', 'CORPORATE', '#ff3355', 'fa-shield-halved', { sig: 88, auth: true, skills: ['Interface'], ice: true, traced: true, group: 'Arasaka' }),
+  net('DARKNET', 'DarkNet', 'UNDERGROUND', '#00ff41', 'fa-mask', { core: true, sig: 50, anon: true, delay: 500 }),
+  net('GOVNET', 'GovNet', 'GOVERNMENT', '#ff6600', 'fa-landmark', { core: true, sig: 100, auth: true, pw: 'x', traced: true }),
+  net('NCPD', 'NCPD Dispatch', 'GOVERNMENT', '#5c9bff', 'fa-handcuffs', { sig: 90, auth: true, pw: 'x', traced: true }),
+  net('AFTER', 'Afterlife mesh', 'UNDERGROUND', '#c76bff', 'fa-skull', { sig: 64, auth: true, pw: 'x', anon: true }),
+  net('MAEL', 'Maelstrom relay', 'UNDERGROUND', '#ff4d4d', 'fa-radiation', { sig: 40, auth: true, skills: ['Interface'], ice: true }),
+  net('NOMAD', 'Aldecaldo band', 'CUSTOM', '#d4a35c', 'fa-tower-broadcast', { sig: 35, auth: true, pw: 'x' }),
+  net('MILI', 'Militech tactical', 'CORPORATE', '#7fbf3f', 'fa-crosshairs', { sig: 92, auth: true, skills: ['Interface'], ice: true }),
+];
+// network nodes (?nodes=0 hides them) — the detail's Nodes section
+const NODES = Q.get('nodes') === '0' ? [] : [
+  { id: 'node_kab', networkId: 'NCPD', name: 'Kabuki relay mast', kind: 'mast', sceneId: 'S1', place: 'rooftop, 4th & Kabuki', state: 'on', log: [] },
+  { id: 'node_dok', networkId: 'NCPD', name: 'Docks router', kind: 'router', sceneId: 'S2', place: 'container 9', state: 'jammed', jammedUntil: Date.parse('2045-08-14T22:28:00Z'), hidden: true, log: [] },
+  { id: 'node_dk2', networkId: 'NCPD', name: 'Pier junction', kind: 'junction', sceneId: 'S2', state: 'off', log: [] },
+  { id: 'node_aft', networkId: 'NCPD', name: 'Afterlife antenna', kind: 'antenna', sceneId: 'S3', state: 'damaged', log: [] },
+  { id: 'node_new', networkId: 'NCPD', name: 'Spare relay', kind: 'relay', sceneId: '', state: 'on', log: [] },
+];
+const networkService = { getAllNetworks: () => NETS, getNetwork: (id) => NETS.find((n) => n.id === id) || null, getAvailableNetworks: () => NETS.filter((n) => n.availability.global),
+  getNodes: () => NODES, _nowMs: () => Date.parse('2045-08-14T22:10:00Z') };
+const now = Date.parse('2045-08-14T22:10:00Z');
+const L = (m, type, nid, actor, msg, extra = {}) => ({ id: 'L' + m, type, networkId: nid, networkName: NETS.find((n) => n.id === nid)?.name, actorName: actor, message: msg, timestamp: new Date(now - m * 60000).toISOString(), ...extra });
+const logEntries = [L(5, 'auth_success', 'CORPNET', 'Rache', 'Interface 19 vs 15'), L(12, 'hack', 'ARASEC', 'Rache', 'Black ICE struck — 9 HP'), L(18, 'connect', 'AFTER', 'Jo', ''),
+  L(30, 'auth_success', 'CORPNET', 'V', 'with the password'), L(39, 'lockout', 'AFTER', 'Kiri', '60 min'), L(58, 'manual', 'DARKNET', 'GM', 'DarkNet switched off for the raid', { manual: true }),
+  L(72, 'connect', 'MAEL', 'Jo', ''), L(83, 'system', 'all', 'SYSTEM', 'Broadcast: Curfew in Watson', { networkName: 'ALL NETWORKS' }), L(90, 'shard_trace', 'CITINET', 'Kiri', 'traced reading a shard', { extra: { itemId: 'I1' } })];
+const accessLogService = { get entryCount() { return logEntries.length; }, _entries: logEntries, getEntries: ({ networkId, limit = 50 } = {}) => logEntries.filter((e) => !networkId || e.networkId === networkId).slice(0, limit) };
+const users = [
+  { id: 'U1', name: 'Sam', isGM: false, active: true, character: { name: 'V', img: FACE('#b85c7a') }, viewedScene: 'S1', color: '#b85c7a' },
+  { id: 'U2', name: 'Ana', isGM: false, active: true, character: { name: 'Rache', img: FACE('#5c86b8') }, viewedScene: 'S1', color: '#5c86b8' },
+  { id: 'U3', name: 'Lee', isGM: false, active: true, character: { name: 'Kiri', img: '' }, viewedScene: 'S1', color: '#7ab85c' },
+  { id: 'U4', name: 'Mo', isGM: false, active: true, character: { name: 'Jo', img: FACE('#b8995c') }, viewedScene: 'S5', color: '#b8995c' },
+  { id: 'G1', name: 'GM', isGM: true, active: true, character: null },
+];
+users.get = (id) => users.find((u) => u.id === id);
+globalThis.game = {
+  user: users[4], users, actors: { filter: () => [{ id: 'A1', name: 'Hellhound', system: { stats: { atk: 6 } } }], get: () => null }, items: { contents: [] },
+  scenes: { contents: scenes, get: (id) => scenes.find((s) => s.id === id), viewed: scenes[0] },
+  nightcity: { playerNetworks: new Map([['U1', { networkId: 'CORPNET' }], ['U2', { networkId: 'CORPNET' }], ['U3', { networkId: 'CITINET' }], ['U4', { networkId: 'MAEL' }]]),
+    securityService: { getActiveLockouts: () => [{ actorId: 'A9', targetId: 'AFTER' }] } },
+  settings: { get: (m, k) => (k === 'scenePrewire' ? PREWIRE : false), set: async () => {} },
+  folders: { filter: (fn) => FOLDERS.filter(fn) },
+  packs: Object.assign([PACK], { get: (id) => (id === PACK.collection ? PACK : null) }),
+};
+globalThis.canvas = { scene: scenes[0] };
+
+try {
+  const { NetworksTab } = await import('../../scripts/ui/AdminPanel/tabs/NetworksTab.js');
+  const { ScopePicker } = await import('../../scripts/utils/scopePicker.js');
+  const tpl = await (await fetch('../../templates/admin-panel/tab-networks.hbs')).text();
+  Handlebars.registerPartial('modules/night-city-messenger/templates/partials/countermeasure-override.hbs', await (await fetch('../../templates/partials/countermeasure-override.hbs')).text());
+  Handlebars.registerHelper('ncm-hue', (t) => { const s = String(t ?? '').trim().toLowerCase(); if (!s) return 'var(--ncm-text-label)'; let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return 'var(--ncm-hue-' + ((h % 8) + 1) + ')'; }); // mirrors scripts/utils/tagHue.js
+  Handlebars.registerHelper('eq', (a, b) => String(a) === String(b));
+  Handlebars.registerHelper('gt', (a, b) => a > b);
+  Handlebars.registerHelper('lower', (s) => String(s ?? '').toLowerCase());
+  const render = Handlebars.compile(tpl);
+  const app = { id: 'ncm-admin-panel', _activeTab: 'networks', isPopout: POP, constructor: {},
+    get element() { return document.getElementById('inner'); }, networkService, accessLogService, render: () => paint() };
+  const tab = new NetworksTab(app);
+  tab._view = Q.get('view') || 'scene';
+  if (Q.get('edit') === '1') tab.openTo(Q.get('sel') || 'CORPNET');
+  if (Q.get('new') === '1') tab.openTo('new');
+  if (Q.get('sel') && !Q.get('edit')) { tab._selId = Q.get('sel'); tab._dialSel = Q.get('sel'); }
+  if (Q.get('step')) tab._step = Q.get('step');
+  if (Q.get('menu')) tab._menu = Q.get('menu');
+  if (Q.get('note') === '1') tab._noteOpen = true;
+  if (Q.get('sc') === 'grid') tab._scMode = 'grid';
+  if (Q.get('paint')) { tab._scPaint = Q.get('paint'); tab._scPaintRecent = (Q.get('recent') || '').split(',').filter(Boolean); }
+  if (Q.get('scsel')) tab._scSel = Q.get('scsel');
+  if (Q.get('show')) tab._scShow = Q.get('show');
+  if (Q.get('open') === 'all') ['F-Night City', 'F-Badlands', 'F-Heists', '__unfiled__', 'pack:cpr-maps.scenes'].forEach((k) => tab._scOpen.add(k));
+  const pick = { bcast: 'bcast', scene: 'scene', log: 'netlog', here: 'here' }[Q.get('pick')];
+  if (pick) ScopePicker.open(tab.scopeId(pick));
+  function paint() {
+    const ctx = { activeTab: 'networks', ...tab.prepareContext() };
+    document.getElementById('out').innerHTML = render(ctx);
+    tab.onRender(ctx, {});
+    const worst = [];
+    document.querySelectorAll('#out *').forEach((el) => { if (el.scrollWidth > el.clientWidth + 2 && getComputedStyle(el).overflowX === 'visible' && el.clientWidth > 0 && !el.closest('.ncm-scope-pop')) worst.push(el.className); });
+    const low = '';
+    status(`OK view=${tab._view}${tab._edit ? ' edit' : ''} · overflowing: ${[...new Set(worst)].slice(0, 4).join(' | ') || 'none'}${low}`);
+  }
+  paint();
+  // ?contrast=1 — every text node in the Scenes view against the first opaque background behind it, after the CSS loads.
+  if (Q.get('contrast') === '1') {
+    const run = () => {
+      const lin = (v) => { v = Math.max(0, Math.min(1, v)); return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const parse = (c) => {          // → { Y (relative luminance), a (alpha) }
+        const n = (c.match(/-?[\d.]+(?:e-?\d+)?%?/g) || []).map((x) => (x.endsWith('%') ? parseFloat(x) / 100 : parseFloat(x)));
+        const alpha = c.includes('/') ? n[3] : (c.startsWith('rgba') ? n[3] : 1);
+        if (c.startsWith('oklab(')) {
+          const [L, A, B] = n; const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3, m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3, k = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+          const R = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * k, G = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * k, Bl = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * k;
+          const cl = (v) => Math.max(0, Math.min(1, v));
+          return { Y: 0.2126 * cl(R) + 0.7152 * cl(G) + 0.0722 * cl(Bl), a: alpha ?? 1 };
+        }
+        const [r, g, bb] = c.startsWith('color(') ? [n[0], n[1], n[2]] : [n[0] / 255, n[1] / 255, n[2] / 255];
+        return { Y: 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(bb), a: alpha ?? 1 };
+      };
+      const bgY = (el) => { for (let e = el; e; e = e.parentElement) { const bg = getComputedStyle(e).backgroundColor; if (!bg || bg === 'transparent') continue; const v = parse(bg); if (v.a >= 0.95) return v.Y; } return 0; };
+      const bad = [];
+      const roots = document.querySelectorAll('#out .ncm-net2-attb, #out .ncm-net2-attx, #out .ncm-net2-atpaint, #out .ncm-net2-atbody, #out .ncm-net2-atinsp, #out .ncm-net2-cgwrap');
+      for (const root of roots) {
+        const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let t;
+        while ((t = w.nextNode())) {
+          if (!t.textContent.trim()) continue;
+          const el = t.parentElement; const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+          const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || Number(cs.opacity) < 0.6 || el.closest('.is-preview')) continue;
+          const l1 = parse(cs.color).Y, l2 = bgY(el); const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+          if (ratio < 4.5) bad.push(`${ratio.toFixed(2)} ${el.className || el.tagName} "${t.textContent.trim().slice(0, 24)}"`);
+        }
+      }
+      document.title = `contrast: ${bad.length} under 4.5`;
+      const pre = document.createElement('pre'); pre.style.cssText = 'color:#fff;font:11px monospace;white-space:pre-wrap'; pre.textContent = bad.join('\n') || 'all text >= 4.5:1'; document.body.appendChild(pre);
+    };
+    // wait until the module CSS has demonstrably applied (the @import chain lands late), then walk once
+    let tries = 0; const ready = () => { const el = document.querySelector('#out .ncm-net2-attb, #out .ncm-net2-tb'); return el && getComputedStyle(el).display === 'flex'; };
+    const poll = setInterval(() => { if (ready() || ++tries > 80) { clearInterval(poll); setTimeout(run, 150); } }, 100);
+  }
+} catch (e) { status('ERROR ' + e.message); console.error(e); }
+</script>
+</body></html>

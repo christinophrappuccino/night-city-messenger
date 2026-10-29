@@ -229,7 +229,7 @@ export class DataShardComposer extends BaseApplication {
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
     id: 'ncm-data-shard-composer',
     classes: ['ncm-app', 'ncm-data-shard-composer'],
-    window: { title: 'NCM.DataShard.AddEntry', icon: 'fas fa-file-medical', resizable: true, minimizable: false },
+    window: { title: 'NCM.DataShard.AddEntry', icon: 'fas fa-file-medical', resizable: true, minimizable: true },
     position: { width: 920, height: 640 },
     actions: {
       saveEntry: DataShardComposer._onSaveEntry,
@@ -504,7 +504,16 @@ export class DataShardComposer extends BaseApplication {
         { value: '', label: '— plant this file (default) —' },
         ...programEffectOptions({ mode: 'triggered', host: 'terminal', exclude: ['plant', 'adjudicate', 'logicBomb'] })
           .map(e => ({ value: e.key, label: `${e.label} — ${e.blurb}` })),
+        // network programs — inserted into a network NODE from a jack-in session (Insert a shard)
+        ...programEffectOptions({ mode: 'node' }).map(e => ({ value: e.key, label: `Network node · ${e.label} — ${e.blurb}` })),
       ].map(o => ({ ...o, selected: (this.editData?.contentData?.uploadEffect || '') === o.value })),
+      uploadParams: {
+        every: this.editData?.contentData?.uploadParams?.every ?? 3,
+        maxNodes: this.editData?.contentData?.uploadParams?.maxNodes ?? 6,
+        delay: this.editData?.contentData?.uploadParams?.delay ?? 2,
+        cap: this.editData?.contentData?.uploadParams?.cap ?? 20,
+        carry: ['', 'tap', 'bomb', 'sniffer'].map(v => ({ v, label: v ? { tap: 'a Tap', bomb: 'a Blackout bomb', sniffer: 'a Sniffer' }[v] : 'nothing', on: (this.editData?.contentData?.uploadParams?.carry || '') === v })),
+      },
 
       // Dossier sections (for edit pre-fill)
       editDossierSections: (this.editData?.contentData?.sections ?? []).map((s, i) => ({
@@ -4058,6 +4067,14 @@ export class DataShardComposer extends BaseApplication {
         uploadTraceOnFail: !!data.uploadTraceOnFail,
         ...(stealth > 0 ? { uploadStealthDV: stealth } : {}),
         ...(execVerb ? { uploadEffect: execVerb } : {}),
+        // network programs carry their settings (Worm: every / most nodes / carries; Bomb: delay; Sniffer: cap)
+        ...(/^node[A-Z]/.test(execVerb) ? { uploadParams: {
+          every: Number(data.nodeEvery) > 0 ? Number(data.nodeEvery) : 3,
+          maxNodes: parseInt(data.nodeMax) > 0 ? parseInt(data.nodeMax) : 6,
+          carry: ['tap', 'bomb', 'sniffer'].includes(data.nodeCarry) ? data.nodeCarry : '',
+          delay: Number(data.nodeDelay) >= 0 && data.nodeDelay !== '' ? Number(data.nodeDelay) : 2,
+          cap: parseInt(data.nodeCap) > 0 ? parseInt(data.nodeCap) : 20,
+        } } : {}),
       });
     }
 

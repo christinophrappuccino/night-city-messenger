@@ -349,3 +349,15 @@
 .ncm-app .ncm-net-selector__footer-text--danger {
   color: var(--ncm-danger, #ff0033);
 }
+
+/* ── A network a node is cutting on this scene (network nodes) — its own row, not a vanished one ── */
+.ncm-app .ncm-net-option--jammed { opacity: .72; cursor: not-allowed;
+  background-image: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--ncm-warning, #f7c948) 7%, transparent) 0 6px, transparent 6px 12px); }
+.ncm-app .ncm-net-option--jammed::before { background: var(--ncm-warning, #f7c948) !important; }
+.ncm-app .ncm-net-option--jammed .ncm-net-option__icon { filter: grayscale(.7); }
+.ncm-app .ncm-net-option--jammed .ncm-net-option__sig-bar--on { background: color-mix(in srgb, var(--ncm-warning, #f7c948) 35%, transparent) !important; box-shadow: none !important; }
+.ncm-app .ncm-net-option__chip--jammed { color: var(--ncm-warning, #f7c948); border-color: color-mix(in srgb, var(--ncm-warning, #f7c948) 50%, transparent);
+  background: color-mix(in srgb, var(--ncm-warning, #f7c948) 10%, transparent); white-space: nowrap; }
+.ncm-app .ncm-net-option__chip--jammed i { margin: 0 3px 0 0 !important; font-size: .9em; animation: ncm-net-jam-blink 1.2s steps(2) infinite; }
+@keyframes ncm-net-jam-blink { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .ncm-app .ncm-net-option__chip--jammed i { animation: none; } }

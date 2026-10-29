@@ -18,9 +18,11 @@
  *      - "Open Data Shard" / "Configure Shard" / "Remove Shard Data" on shard items
  */
 
+import { accessMenuEntries } from './AccessPoints.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, canEncode, canEditShard, resolveOperator } from '../utils/helpers.js';
-import { adminConfirm, adminPrompt, playerPrompt } from '../utils/adminTheme.js';
+import { themedConfirm, themedPrompt } from '../utils/adminTheme.js';
+import { dialogBodyHtml } from '../utils/dialogBody.js';
 import { withShardPrefix, stripShardPrefix } from '../utils/shardNaming.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
 import { resolveEncoderConfig, isEligibleBlank, blankRuleRefusal } from '../ui/content/EncoderModel.js';
@@ -64,6 +66,15 @@ export class ShardSheetOverride {
    * Who may rename a shard: the GM always; a player when they own the item and
    * the shard's own editing rule would let them rewrite it (`canEditShard`).
    */
+  /**
+   * The point a sub-menu opens at: right of the row it came from (measured while the row was still on
+   * screen), else the cursor. A zero-size box means the row was already detached — use the cursor.
+   */
+  static _subMenuAt(rect, ev) {
+    const ok = rect && rect.width > 0 && rect.height > 0;
+    return { clientX: ok ? rect.right + 2 : (ev?.clientX ?? 200), clientY: ok ? rect.top - 4 : (ev?.clientY ?? 200), preventDefault() {}, stopPropagation() {} };
+  }
+
   static canRename(item, actor) {
     if (isGM()) return true;
     return !!item?.isOwner && canEditShard(item, actor).ok;
@@ -79,20 +90,16 @@ export class ShardSheetOverride {
     const prefix = game.nightcity?.settingsManager?.getShardNamePrefix?.() || '';
     const current = item.getFlag(MODULE_ID, 'config')?.shardName || stripShardPrefix(item.name, prefix);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const prompt = isGM() ? adminPrompt : playerPrompt;
-    let label = null;
-    try {
-      label = await prompt({
-        title: `Rename ${T('short')}`,
-        content: `<div class="form-group" style="margin:6px 0 10px;">
-          <label style="text-transform:none;">Name</label>
-          <input type="text" name="ncmShardRename" value="${esc(current)}" autofocus>
-        </div>${prefix ? `<p style="font-size:12px;opacity:.75;margin:0 0 8px;">The item will be listed as "${esc(prefix)}…".</p>` : ''}`,
-        label: 'Rename',
-        callback: (html) => (html[0] ?? html).querySelector('[name="ncmShardRename"]')?.value?.trim() || '',
-        rejectClose: false,
-      });
-    } catch { return; }
+    const label = await themedPrompt({
+      title: `Rename ${T('short')}`,
+      label: 'Rename', icon: 'fas fa-i-cursor',
+      content: dialogBodyHtml({
+        icon: 'fas fa-microchip', img: item.img, title: current, sub: item.parent?.name ? `carried by ${item.parent.name}` : '', kind: T('short'),
+        field: { name: 'ncmShardRename', label: 'New name', value: current },
+        hint: prefix ? `It will be listed in the Items sidebar as "${prefix}…".` : '',
+      }),
+      read: (root) => root.querySelector('[name="ncmShardRename"]')?.value?.trim() || '',
+    });
     if (!label || label === current) return;
     try {
       await item.update({
@@ -366,46 +373,80 @@ export class ShardSheetOverride {
 
     const isTerminal = !!item.getFlag(MODULE_ID, 'isTerminal');
 
-    if (isTerminal) {
-      addOption('Open Terminal', 'fas fa-terminal', '#ff3355', () => game.nightcity?.openTerminal(item));
-      if (isGM()) {
-        addOption('Configure Terminal', 'fas fa-sliders', '#ff3355', async () => {
-          const { TerminalConfigApp } = await import('../ui/Terminal/TerminalConfigApp.js');
-          new TerminalConfigApp({ item }).render(true);
+    // Converted items: the two things you do most stay on top, everything else sits behind ONE
+    // "Terminal options ▸" / "Shard options ▸" entry that opens NCM's own grouped menu (ACCESS · ITEM ·
+    // Remove) beside it — Foundry v12's directory menu has no submenus (2026-10-29, dev-picked "Top 2 + one
+    // more ▸"; first named "Night City", renamed the same day as too vague).
+    if (isTerminal || isShard) {
+      if (isTerminal) addOption('Open Terminal', 'fas fa-terminal', '#ff3355', () => game.nightcity?.openTerminal(item));
+      else addOption(`Open ${T('one')}`, 'fas fa-hard-drive', '#00D4E6', () => game.nightcity?.openDataShard(item));
+      if (isGM()) addOption(isTerminal ? 'Configure Terminal' : `Configure ${T('short')}`, 'fas fa-sliders', isTerminal ? '#ff3355' : '#00D4E6', () => this._configure(item));
+      const entries = this._nightCityEntries(item, resolveOperator());
+      if (entries.length) {
+        const li = document.createElement('li');
+        li.className = 'context-item ncm-ctx-more';
+        li.innerHTML = `<i class="fas fa-ellipsis" style="color:#19f3f7;margin-right:6px;"></i> ${isTerminal ? 'Terminal' : T('short')} options<span class="ncm-ctx-more__arrow">▸</span>`;
+        li.style.cssText = 'cursor:pointer;padding:4px 8px;white-space:nowrap;';
+        let rect = null;
+        li.addEventListener('pointerdown', () => { rect = li.getBoundingClientRect(); });
+        li.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          menu.remove();
+          document.querySelector('.context-overlay')?.remove();
+          this._showContextMenu(ShardSheetOverride._subMenuAt(rect, ev), entries, { title: item.name, icon: isTerminal ? 'fas fa-terminal' : 'fas fa-microchip' });
         });
-        addOption('Place on Current Scene', 'fas fa-map-pin', '#f7c948', () => {
-          game.nightcity?.terminalScenePins?.placeAtViewCenter(item);
-        });
-        addOption('Edit Item Sheet', 'fas fa-file-alt', '#f7c948', () => {
-          const sheet = item.sheet;
-          if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
-        });
-        addOption('Remove Terminal Data', 'fas fa-rotate-left', '#F65261', () => this._confirmRemoveTerminal(item));
-      }
-    } else if (isShard) {
-      addOption(`Open ${T('one')}`, 'fas fa-hard-drive', '#00D4E6', () => game.nightcity?.openDataShard(item));
-      addOption('Program Deck', 'fas fa-microchip', '#19f3f7', () => game.nightcity?.openProgramDeck?.(item));
-      if (isGM()) {
-        addOption(`Configure ${T('short')}`, 'fas fa-sliders', '#00D4E6', async () => {
-          const { ItemInboxConfig } = await import('../ui/ItemInbox/ItemInboxConfig.js');
-          new ItemInboxConfig({ item }).render(true);
-        });
-        addOption('Build a Program', 'fas fa-biohazard', '#ff3355', () => game.nightcity?.openMalwareWorkshop?.({ target: { kind: 'shard', item } }));
-        addOption('Rename…', 'fas fa-i-cursor', '#f7c948', () => this._renameShard(item));
-        addOption('Edit Item Sheet', 'fas fa-file-alt', '#f7c948', () => {
-          const sheet = item.sheet;
-          if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
-        });
-        addOption(`Remove ${T('short')} Data`, 'fas fa-rotate-left', '#F65261', () => this._confirmUnconvert(item));
-      } else if (canEditShard(item, resolveOperator()).ok) {
-        addOption('Encode More Onto It', 'fas fa-pen-nib', '#19f3f7', () => game.nightcity?.openEncoder?.({ item, actor: resolveOperator() }));
-        if (ShardSheetOverride.canRename(item, resolveOperator())) addOption('Rename…', 'fas fa-i-cursor', '#f7c948', () => this._renameShard(item));
+        li.addEventListener('mouseenter', () => { li.style.background = 'rgba(255,255,255,0.06)'; });
+        li.addEventListener('mouseleave', () => { li.style.background = ''; });
+        ol.appendChild(li);
       }
     } else if (isGM()) {
       addOption(`Convert to ${T('one')}`, 'fas fa-microchip', '#00D4E6', () => this._launchConversionFlow(item));
       addOption('Convert to Terminal', 'fas fa-terminal', '#ff3355', () => this._convertToTerminal(item));
       addOption('Malware Workshop', 'fas fa-biohazard', '#ff3355', () => game.nightcity?.openMalwareWorkshop?.());
     }
+  }
+
+  /** Open the config sheet for a terminal or a shard. */
+  async _configure(item) {
+    if (item.getFlag(MODULE_ID, 'isTerminal')) {
+      const { TerminalConfigApp } = await import('../ui/Terminal/TerminalConfigApp.js');
+      return new TerminalConfigApp({ item }).render(true);
+    }
+    const { ItemInboxConfig } = await import('../ui/ItemInbox/ItemInboxConfig.js');
+    new ItemInboxConfig({ item }).render(true);
+  }
+
+  /**
+   * The grouped "… options" menu for a converted item — ACCESS (place / hotbar / chat / journal link),
+   * ITEM (rename, programs, the raw item sheet…), then Remove. Shared by the Items directory and the
+   * actor sheets so the two never drift.
+   */
+  _nightCityEntries(item, actor = null) {
+    const isTerminal = !!item.getFlag(MODULE_ID, 'isTerminal');
+    const gm = isGM();
+    const out = [...accessMenuEntries(item)];
+    const itemSec = [];
+    const sheet = () => { const sh = item.sheet; if (sh) { sh._ncmBypass = true; sh.render(true); } };
+    if (isTerminal) {
+      if (gm) itemSec.push({ label: 'Edit item sheet', icon: 'fas fa-file-alt', fn: sheet });
+    } else {
+      itemSec.push({ label: 'Program Deck', icon: 'fas fa-microchip', fn: () => game.nightcity?.openProgramDeck?.(item) });
+      if (gm) {
+        itemSec.push({ label: 'Build a program', icon: 'fas fa-biohazard', fn: () => game.nightcity?.openMalwareWorkshop?.({ target: { kind: 'shard', item } }) });
+      } else if (canEditShard(item, actor).ok) {
+        itemSec.push({ label: 'Encode more onto it', icon: 'fas fa-pen-nib', fn: () => game.nightcity?.openEncoder?.({ item, actor }) });
+      }
+      if (gm || ShardSheetOverride.canRename(item, actor)) itemSec.push({ label: 'Rename…', icon: 'fas fa-i-cursor', fn: () => this._renameShard(item) });
+      if (gm) itemSec.push({ label: 'Edit item sheet', icon: 'fas fa-file-alt', fn: sheet });
+    }
+    if (itemSec.length) out.push({ head: 'Item' }, ...itemSec);
+    const canRemove = gm || (!isTerminal && item.parent && ShardSheetOverride.canAuthor(actor));
+    if (canRemove) {
+      out.push({ sep: true }, isTerminal
+        ? { label: 'Remove terminal data', icon: 'fas fa-rotate-left', bad: true, fn: () => this._confirmRemoveTerminal(item) }
+        : { label: `Remove ${T('short')} data`, icon: 'fas fa-rotate-left', bad: true, fn: () => this._confirmUnconvert(item) });
+    }
+    return out;
   }
 
   /**
@@ -447,9 +488,17 @@ export class ShardSheetOverride {
    * @param {Item} item
    */
   async _confirmRemoveTerminal(item) {
-    const ok = await adminConfirm({
-      title: 'Remove Terminal Data',
-      content: '<p>Revert this item to a plain item? Accounts/config are lost. The message journal is kept unless you also delete it.</p>',
+    const cfg = game.nightcity?.terminalService?.getConfig(item) || {};
+    const n = (cfg.accounts || []).length;
+    const ok = await themedConfirm({
+      title: 'Remove terminal data', yes: 'Remove', yesIcon: 'fas fa-rotate-left', no: 'Keep it', bad: true,
+      content: dialogBodyHtml({
+        tone: 'bad', icon: 'fas fa-terminal', img: item.img, title: cfg.terminalName || item.name,
+        sub: [cfg.metadata?.org, cfg.metadata?.location].filter(Boolean).join(' · '), kind: 'Terminal',
+        lead: `Turn **${item.name}** back into a plain item?`,
+        goes: [`${n} account${n === 1 ? '' : 's'} and their logins`, 'The theme, boot screen and settings', 'Map pins for it'],
+        stays: ['The item itself', 'The message journal (delete it by hand if you want it gone)'],
+      }),
     });
     if (!ok) return;
     await game.nightcity?.terminalService?.removeTerminal(item);
@@ -564,34 +613,9 @@ export class ShardSheetOverride {
       const entries = [
         { label: `Open ${T('one')}`, icon: 'fas fa-hard-drive', color: '#00D4E6', fn: () => game.nightcity?.openDataShard(item) },
       ];
-      if (isGM()) {
-        entries.push(
-          { label: `Configure ${T('short')}`, icon: 'fas fa-sliders', color: '#00D4E6', fn: async () => {
-            const { ItemInboxConfig } = await import('../ui/ItemInbox/ItemInboxConfig.js');
-            new ItemInboxConfig({ item }).render(true);
-          }},
-          { label: 'Rename…', icon: 'fas fa-i-cursor', color: '#f7c948', fn: () => this._renameShard(item) },
-          { label: 'Edit Item Sheet', icon: 'fas fa-file-alt', color: '#f7c948', fn: () => {
-            const sheet = item.sheet;
-            if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
-          }},
-          { sep: true },
-          { label: `Remove ${T('short')} Data`, icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
-        );
-      } else if (ShardSheetOverride.canAuthor(actor)) {
-        // A player may add to a shard the shard's own rule lets them rewrite
-        // (canEditShard) — and strip their OWN shard only if they could have made one.
-        if (canEditShard(item, actor).ok) {
-          entries.push({ label: 'Encode More Onto It', icon: 'fas fa-pen-nib', color: '#19f3f7', fn: () => game.nightcity?.openEncoder?.({ item, actor }) });
-        }
-        if (ShardSheetOverride.canRename(item, actor)) {
-          entries.push({ label: 'Rename…', icon: 'fas fa-i-cursor', color: '#f7c948', fn: () => this._renameShard(item) });
-        }
-        entries.push(
-          { sep: true },
-          { label: `Remove ${T('short')} Data`, icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
-        );
-      }
+      if (isGM()) entries.push({ label: `Configure ${T('short')}`, icon: 'fas fa-sliders', color: '#00D4E6', fn: () => this._configure(item) });
+      const more = this._nightCityEntries(item, actor);
+      if (more.length) entries.push({ label: `${T('short')} options`, icon: 'fas fa-ellipsis', color: '#19f3f7', more: true, fn: (pos) => this._showContextMenu(pos, more, { title: item.name, icon: 'fas fa-microchip' }) });
       this._showContextMenu(ev, entries);
     });
   }
@@ -649,15 +673,22 @@ export class ShardSheetOverride {
    * @param {MouseEvent} ev
    * @param {Array<{label: string, icon: string, color?: string, fn: Function}|{sep: true}>} entries
    */
-  _showContextMenu(ev, entries) {
-    ev.preventDefault();
-    ev.stopPropagation();
+  _showContextMenu(ev, entries, { title = '', icon = '' } = {}) {
+    ev.preventDefault?.();
+    ev.stopPropagation?.();
 
     // Remove any existing NCM context menu
     document.querySelectorAll('.ncm-ctx-menu').forEach(m => m.remove());
 
     const menu = document.createElement('div');
     menu.className = 'ncm-ctx-menu';
+    if (title) {
+      const t = document.createElement('div');
+      t.className = 'ncm-ctx-menu__title';
+      t.innerHTML = `<i class="${icon || 'fas fa-city'}"></i>`;
+      t.append(document.createTextNode(title));
+      menu.appendChild(t);
+    }
 
     for (const entry of entries) {
       if (entry.sep) {
@@ -666,14 +697,25 @@ export class ShardSheetOverride {
         menu.appendChild(sep);
         continue;
       }
+      if (entry.head) {
+        const h = document.createElement('div');
+        h.className = 'ncm-ctx-menu__head';
+        h.textContent = entry.head;
+        menu.appendChild(h);
+        continue;
+      }
 
       const item = document.createElement('div');
-      item.className = 'ncm-ctx-menu__item';
-      item.innerHTML = `<i class="${entry.icon}" style="color:${entry.color || '#ccc'};"></i> ${entry.label}`;
+      item.className = `ncm-ctx-menu__item${entry.bad ? ' is-bad' : ''}`;
+      item.innerHTML = `<i class="${entry.icon}"${entry.color ? ` style="color:${entry.color};"` : ''}></i> ${entry.label}${entry.more ? '<span style="margin-left:auto;padding-left:14px;opacity:.7">▸</span>' : ''}`;
+      // Where a sub-menu opens: the row's box, measured on pointerdown — by 'click' the document-level
+      // closer has already detached the menu and a detached row measures 0,0 (the top-left bug).
+      let rect = null;
+      item.addEventListener('pointerdown', () => { rect = item.getBoundingClientRect(); });
       item.addEventListener('click', (e) => {
         e.stopPropagation();
         menu.remove();
-        entry.fn();
+        entry.fn(entry.more ? ShardSheetOverride._subMenuAt(rect, e) : undefined);
       });
       menu.appendChild(item);
     }
@@ -682,6 +724,9 @@ export class ShardSheetOverride {
     menu.style.left = `${ev.clientX}px`;
     menu.style.top = `${ev.clientY}px`;
     document.body.appendChild(menu);
+    const box = menu.getBoundingClientRect();
+    if (box.right > window.innerWidth - 4) menu.style.left = `${Math.max(4, window.innerWidth - box.width - 4)}px`;
+    if (box.bottom > window.innerHeight - 4) menu.style.top = `${Math.max(4, window.innerHeight - box.height - 4)}px`;
 
     // Close on any outside click or scroll
     const close = () => {
@@ -777,21 +822,16 @@ export class ShardSheetOverride {
     const dataShardService = game.nightcity?.dataShardService;
     if (!dataShardService) return;
 
-    const confirmed = await adminConfirm({
-      title: `Remove ${T('short')} Data`,
-      content: `<div style="font-family: Rajdhani, sans-serif;">
-        <p>Strip all ${T('short', 'lower')} data from <strong style="color:#19f3f7;">${item.name}</strong>?</p>
-        <div style="font-size: 11px; color: #8888a0; padding: 8px 10px; background: rgba(255,0,51,0.04); border: 1px solid rgba(255,0,51,0.15); border-radius: 2px; margin-top: 8px; line-height: 1.7;">
-          <i class="fas fa-exclamation-circle" style="color: #ff0033; margin-right: 4px;"></i>
-          This will permanently remove:<br>
-          &nbsp;&nbsp;• ${T('short')} content and configuration<br>
-          &nbsp;&nbsp;• ICE protection settings<br>
-          &nbsp;&nbsp;• Linked journal entry<br>
-          &nbsp;&nbsp;• Boot sequence and preset<br>
-          <br>
-          The item itself is kept, and gets back the name and image it had before it became ${withArticle(T('short', 'lower'))}.
-        </div>
-      </div>`,
+    const cfg = dataShardService.getConfig?.(item) || {};
+    const confirmed = await themedConfirm({
+      title: `Remove ${T('short', 'lower')} data`, yes: 'Remove', yesIcon: 'fas fa-rotate-left', no: 'Keep it', bad: true,
+      content: dialogBodyHtml({
+        tone: 'bad', icon: 'fas fa-microchip', img: item.img, title: cfg.shardName || item.name,
+        sub: item.parent?.name ? `carried by ${item.parent.name}` : '', kind: T('short'),
+        lead: `Strip all ${T('short', 'lower')} data from **${item.name}**? This can't be undone.`,
+        goes: [`Every file on the ${T('short', 'lower')} (its journal)`, 'Locks, ICE and the boot screen', 'Integrity and anyone\'s hacking progress'],
+        stays: ['The item itself', `The name and picture it had before it became ${withArticle(T('short', 'lower'))}`],
+      }),
     });
 
     if (confirmed) {

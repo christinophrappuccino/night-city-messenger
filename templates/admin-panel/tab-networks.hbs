@@ -1,422 +1,641 @@
-    {{#if (eq activeTab 'networks')}}
+{{!-- Admin → Networks (2026-10-27 redesign — the Network Manager is folded in) --}}
+{{!-- @file templates/admin-panel/tab-networks.hbs --}}
+{{!-- Mock: dev/mockups/admin-networks-redesign-mock.html. Logic: scripts/ui/AdminPanel/tabs/NetworksTab.js --}}
+{{!-- Every button: data-action="tabAct" data-op="…" (owner = the root's data-owner). --}}
+{{!-- Scenes → the Atlas: one scene card (a world scene, or a pack scene when `pack`). --}}
+{{#*inline "ncmNet2Card"}}
+<div class="ncm-net2-atcard {{#if cur}}is-cur{{/if}} {{#if dead}}is-dead{{/if}} {{#if has}}is-has{{/if}} {{#if sel}}is-sel{{/if}} {{#if pack}}is-pack{{/if}}" data-action="tabAct" data-op="scCard" {{#if pack}}data-uuid="{{uuid}}"{{else}}data-scene-id="{{id}}"{{/if}} data-nets="{{netsAttr}}" role="button" tabindex="0" aria-pressed="{{#if sel}}true{{else}}false{{/if}}" style="--tc:{{hue}}" title="{{name}}">
+  <div class="ncm-net2-atcard__th"{{#if thumb}} style="background-image:url('{{thumb}}')"{{/if}}>
+    {{#if start}}<span class="ncm-net2-atcard__flag" style="--c:{{start.color}}" title="Players start on {{start.name}}"><i class="fas fa-flag"></i>{{start.name}}</span>{{/if}}
+    {{#if faces.length}}<span class="ncm-net2-atcard__faces">{{#each faces}}<span class="ncm-net2-atface" style="--fc:{{color}}" title="{{name}} is looking at this scene">{{#if img}}<img src="{{img}}" alt="">{{else}}{{initial}}{{/if}}</span>{{/each}}{{#if moreFaces}}<span class="ncm-net2-atface is-more">+{{moreFaces}}</span>{{/if}}</span>{{/if}}
+    {{#if nav}}<i class="fas fa-thumbtack ncm-net2-atcard__pin" title="On the navigation bar"></i>{{/if}}
+    {{#if dead}}<span class="ncm-net2-atcard__dz"><i class="fas fa-ban"></i>Dead zone</span>{{/if}}
+    {{#if inWorld}}<span class="ncm-net2-atcard__iw" title="A copy of this scene is already in the world"><i class="fas fa-check"></i>In the world</span>{{/if}}
+    <span class="ncm-net2-atcard__ck" aria-hidden="true"><i class="fas fa-check"></i></span>
+  </div>
+  <div class="ncm-net2-atcard__tx">
+    <div class="ncm-net2-atcard__nm">{{name}}</div>
+    <div class="ncm-net2-atcard__cov">{{#each dots}}<span class="ncm-net2-atdot" style="--c:{{color}}" title="{{name}}"></span>{{/each}}{{#if more}}<span class="ncm-net2-atcard__more">+{{more}}</span>{{/if}}{{#if unwired}}<span class="ncm-net2-atcard__none"><i class="fas fa-plug-circle-xmark"></i>not wired</span>{{/if}}{{#if pack}}{{#unless dots.length}}<span class="ncm-net2-atcard__pre">not pre-wired</span>{{/unless}}{{/if}}</div>
+  </div>
+</div>
+{{/inline}}
+{{!-- Scenes → the Atlas: one shelf (a folder, or the navigation bar). --}}
+{{#*inline "ncmNet2Shelf"}}
+<section class="ncm-net2-atshelf {{#if shut}}is-shut{{/if}} {{#if isNav}}is-nav{{/if}} {{#if isNested}}is-nested{{/if}}" data-sc-shelf="{{key}}">
+  <div class="ncm-net2-atshelf__h" data-sc-fold="{{key}}" role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}" style="--ind:{{indent}}px">
+    <i class="fas fa-chevron-down ncm-net2-atshelf__ch"></i><i class="fas {{#if isNav}}fa-thumbtack{{else}}fa-folder{{/if}} ncm-net2-atshelf__fi"></i>
+    <span class="ncm-net2-atshelf__nm">{{name}}</span><span class="ncm-net2-atshelf__n">{{total}}</span>{{#if subline}}<span class="ncm-net2-atshelf__sub">{{subline}}</span>{{/if}}
+    <span class="ncm-net2-grow"></span>
+    {{#each dots}}<span class="ncm-net2-atdot" style="--c:{{color}}" title="{{name}}"></span>{{/each}}
+    {{#if players}}<span class="ncm-net2-atshelf__pl" title="Players looking at scenes here"><i class="fas fa-user"></i>{{players}}</span>{{/if}}
+    {{#if dead}}<span class="ncm-net2-atshelf__dz"><i class="fas fa-ban"></i>{{dead}} dead</span>{{/if}}
+    {{#if unwired}}<span class="ncm-net2-atshelf__uw"><i class="fas fa-plug-circle-xmark"></i>{{unwired}} not wired</span>{{/if}}
+    {{#if paintAll}}<button type="button" class="ncm-net2-atwire {{#unless paintAll.on}}is-off{{/unless}}" data-action="tabAct" data-op="scShelfPaint" data-key="{{key}}" data-tooltip="{{paintAll.tip}}">{{paintAll.label}}</button>{{/if}}
+  </div>
+  <div class="ncm-net2-atshelf__body">
+    <div class="ncm-net2-atgrid">{{#each cards}}{{> ncmNet2Card}}{{/each}}</div>
+    {{#if hidden}}<button type="button" class="ncm-net2-atmore" data-action="tabAct" data-op="scMore" data-key="{{key}}"><i class="fas fa-chevron-down"></i>+{{hidden}} more on this shelf</button>{{else}}{{#if more}}<button type="button" class="ncm-net2-atmore" data-action="tabAct" data-op="scMore" data-key="{{key}}"><i class="fas fa-chevron-up"></i>Show fewer</button>{{/if}}{{/if}}
+  </div>
+</section>
+{{/inline}}
+{{#if (eq activeTab 'networks')}}
+{{#if net2}}
+<div class="ncm-net2 {{#if net2.isPopout}}is-pop{{/if}}" data-owner="networks">
 
-    {{#if (eq networkSubView 'logs')}}
-    {{!-- ═══ FULL ACTIVITY LOG PANEL ═══ --}}
-    <div class="ncm-netlog-header">
-      <button class="ncm-netlog-header__back" data-action="switchNetworkSubView" data-subview="cards">
-        <i class="fas fa-arrow-left"></i> Back
-      </button>
-      <div class="ncm-netlog-header__title"><i class="fas fa-scroll"></i> Network Activity Log</div>
-      <span class="ncm-netlog-header__count">{{logEntryCount}} entries</span>
-      <div class="ncm-netlog-header__spacer"></div>
-      <button class="ncm-netlog-header__action" data-action="openNetworkManagerLogs">
-        <i class="fas fa-up-right-from-square"></i> Full Manager
-      </button>
-    </div>
-
-    <div class="ncm-netlog-panel">
-      <div class="ncm-actlog__toolbar">
-        <div class="ncm-actlog__toolbar-row">
-          <div class="ncm-actlog__filter-group">
-            {{#each logTypeFilters}}
-            <button class="ncm-actlog__filter-btn {{#if this.active}}ncm-actlog__filter-btn--active{{/if}}"
-                    data-action="filterLogType" data-filter="{{this.value}}">{{this.label}}</button>
-            {{/each}}
-          </div>
-          <select class="ncm-actlog__net-filter" data-action="filterLogNetwork">
-            <option value="">All Networks</option>
-            {{#each networks}}
-            <option value="{{this.id}}" {{#if (eq this.id ../logNetworkFilter)}}selected{{/if}}>{{this.name}}</option>
-            {{/each}}
-          </select>
-          <div class="ncm-actlog__spacer"></div>
-          <button class="ncm-actlog__btn ncm-actlog__btn--accent" data-action="toggleAddLogForm">
-            <i class="fas fa-plus"></i> Add
-          </button>
-          <button class="ncm-actlog__btn" data-action="importNetworkLogs" title="Import log entries">
-            <i class="fas fa-file-import"></i>
-          </button>
-          <button class="ncm-actlog__btn" data-action="exportNetworkLogs" title="Export as JSON">
-            <i class="fas fa-file-export"></i>
-          </button>
-          <button class="ncm-actlog__btn ncm-actlog__btn--danger" data-action="clearNetworkLogs" title="Clear all entries">
-            <i class="fas fa-trash"></i>
-          </button>
-        </div>
-      </div>
-
-      <div class="ncm-actlog__list">
-        {{#if fullLogEntries.length}}
-        {{#each fullLogEntries}}
-        <div class="ncm-actlog__entry {{#if this.isTrace}}ncm-actlog__entry--trace{{/if}} {{#if this.manual}}ncm-actlog__entry--manual{{/if}}" data-entry-id="{{this.id}}">
-          <div class="ncm-actlog__badge ncm-actlog__badge--{{this.badgeClass}}">
-            {{#if this.actorImg}}
-            <img class="ncm-actlog__badge-img" src="{{this.actorImg}}" alt="">
-            <span class="ncm-actlog__badge-overlay ncm-actlog__badge-overlay--{{this.badgeClass}}"><i class="fas {{this.badgeIcon}}"></i></span>
-            {{else}}
-            <i class="fas {{this.badgeIcon}}"></i>
-            {{/if}}
-          </div>
-          <div class="ncm-actlog__body">
-            <div class="ncm-actlog__line1">
-              <span class="ncm-actlog__actor">{{this.actorName}}</span>
-              <span class="ncm-actlog__verb">{{this.actionVerb}}</span>
-              <span class="ncm-actlog__network ncm-actlog__network--{{this.networkColor}}">{{this.networkName}}</span>
-            </div>
-            <div class="ncm-actlog__line2">
-              <span class="ncm-actlog__tag ncm-actlog__tag--{{this.typeTagClass}}">{{this.typeTag}}</span>
-              {{#if this.message}}
-              <span class="ncm-actlog__message">{{this.message}}</span>
-              {{/if}}
-              {{#if this.hasLink}}
-              <span class="ncm-actlog__link {{#if (eq this.linkType 'shard')}}ncm-actlog__link--shard{{/if}}"
-                    data-action="openLogReference"
-                    data-link-type="{{this.linkType}}"
-                    data-message-id="{{this.linkMessageId}}"
-                    data-actor-id="{{this.linkActorId}}"
-                    data-item-id="{{this.linkItemId}}">
-                <i class="fas {{this.linkIcon}}"></i> {{this.linkLabel}}
-              </span>
-              {{/if}}
-              <span class="ncm-actlog__time">
-                <span class="ncm-actlog__time-date">{{this.displayDate}} //</span> {{this.displayTime}}
-              </span>
-            </div>
-          </div>
-          <div class="ncm-actlog__actions">
-            <button class="ncm-actlog__act" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit"><i class="fas fa-pen"></i></button>
-            <button class="ncm-actlog__act ncm-actlog__act--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete"><i class="fas fa-trash"></i></button>
-          </div>
-        </div>
-        {{/each}}
-        {{else}}
-        <div class="ncm-actlog__empty">
-          <i class="fas fa-clipboard-list"></i> No log entries
-        </div>
-        {{/if}}
-      </div>
-
-    </div>
-
-    {{#if showAddLogForm}}
-    <div class="ncm-actlog__add-form">
-      <div class="ncm-actlog__add-field ncm-actlog__add-field--net">
-        <label>Network</label>
-        <select name="logNetwork">
-          {{#each networks}}
-          <option value="{{this.id}}">{{this.name}}</option>
-          {{/each}}
-        </select>
-      </div>
-      <div class="ncm-actlog__add-field ncm-actlog__add-field--actor">
-        <label>Actor</label>
-        <input type="text" name="logActor" placeholder="Name">
-      </div>
-      <div class="ncm-actlog__add-field ncm-actlog__add-field--type">
-        <label>Type</label>
-        <select name="logType">
-          <option value="connect">Connect</option>
-          <option value="disconnect">Disconnect</option>
-          <option value="auth_success">Auth Success</option>
-          <option value="auth_failure">Auth Failure</option>
-          <option value="hack">Hack Attempt</option>
-          <option value="lockout">Lockout</option>
-          <option value="trace">Trace</option>
-          <option value="manual">Manual</option>
-          <option value="malware">Malware</option>
-          <option value="system">System</option>
-        </select>
-      </div>
-      <div class="ncm-actlog__add-field ncm-actlog__add-field--msg">
-        <label>Message</label>
-        <input type="text" name="logMessage" placeholder="[TRACE] Unauthorized access from...">
-      </div>
-      <button class="ncm-actlog__add-btn" data-action="addManualLogEntry"><i class="fas fa-plus"></i> Add</button>
-    </div>
-    {{/if}}
-
-    {{else}}
-    {{!-- ═══ WAR ROOM DASHBOARD ═══ --}}
-
-    {{!-- STATUS BAR --}}
-    <div class="ncm-net-status-bar">
-      <div class="ncm-net-stat"><div class="ncm-net-stat__val ncm-net-stat__val--cyan">{{netStats.total}}</div><div class="ncm-net-stat__label">Subnets</div></div>
-      <div class="ncm-net-stat__sep"></div>
-      <div class="ncm-net-stat"><div class="ncm-net-stat__val ncm-net-stat__val--green">{{netStats.active}}</div><div class="ncm-net-stat__label">Active</div></div>
-      <div class="ncm-net-stat__sep"></div>
-      <div class="ncm-net-stat"><div class="ncm-net-stat__val ncm-net-stat__val--red">{{netStats.deadZones}}</div><div class="ncm-net-stat__label">Dead Zones</div></div>
-      <div class="ncm-net-stat__sep"></div>
-      <div class="ncm-net-stat"><div class="ncm-net-stat__val ncm-net-stat__val--gold">{{netStats.secured}}</div><div class="ncm-net-stat__label">Secured</div></div>
-      <div class="ncm-net-stat__sep"></div>
-      <div class="ncm-net-stat"><div class="ncm-net-stat__val">{{netStats.connected}}</div><div class="ncm-net-stat__label">Players Online</div></div>
-    </div>
-
-    {{!-- CONNECTED PLAYERS --}}
-    <div class="ncm-war-section">
-      <i class="fas fa-users ncm-war-section__icon"></i>
-      <div class="ncm-war-section__title">Connected Players</div>
-      <div class="ncm-war-section__hint">— who's on what network right now</div>
-      <div class="ncm-war-section__line"></div>
-    </div>
-
-    <div class="ncm-net-players">
-      {{#if connectedPlayers.length}}
-      {{#each connectedPlayers}}
-      <div class="ncm-player-card ncm-player-card--{{this.signalTier}}">
-        <div class="ncm-player-card__top">
-          {{#if this.img}}
-          <div class="ncm-player-card__avatar"><img src="{{this.img}}" /></div>
-          {{else}}
-          <div class="ncm-player-card__avatar"><i class="fas fa-user"></i></div>
-          {{/if}}
-          <div class="ncm-player-card__name-area">
-            <div class="ncm-player-card__name">{{this.name}}</div>
-            <div class="ncm-player-card__status ncm-player-card__status--{{this.signalTier}}">{{this.statusText}}</div>
-          </div>
-          <button class="ncm-player-card__move" data-action="switchPlayerNetwork" data-user-id="{{this.userId}}"><i class="fas fa-arrow-right-arrow-left"></i> Switch Net</button>
-        </div>
-        <div class="ncm-player-card__bottom">
-          <div class="ncm-player-card__net ncm-player-card__net--{{this.netClass}}"><i class="fas {{this.netIcon}}"></i> {{this.networkName}}</div>
-          <div class="ncm-player-card__signal ncm-player-card__signal--{{this.signalTier}}"><i class="fas {{this.signalIcon}}"></i> {{this.signal}}%</div>
-        </div>
-      </div>
-      {{/each}}
-      {{else}}
-      <div class="ncm-net-players-empty"><i class="fas fa-users-slash"></i> No players online</div>
-      {{/if}}
-    </div>
-
-    {{!-- SIGNAL MIXER --}}
-    <div class="ncm-war-section">
-      <i class="fas fa-sliders ncm-war-section__icon"></i>
-      <div class="ncm-war-section__title">Signal Control</div>
-      <div class="ncm-war-section__hint">— drag sliders to adjust signal strength mid-session</div>
-      <div class="ncm-war-section__line"></div>
-    </div>
-
-    <div class="ncm-mixer-wrap">
-      <div class="ncm-mixer-arrow ncm-mixer-arrow--left" data-action="scrollMixerLeft"><i class="fas fa-chevron-left"></i></div>
-      <div class="ncm-mixer-strip">
-        {{#each networks}}
-        <div class="ncm-mixer-ch {{#if this.enabled}}ncm-mixer-ch--on{{else}}ncm-mixer-ch--off{{/if}} {{#if this.isCurrent}}ncm-mixer-ch--current{{/if}}" data-network-id="{{this.id}}">
-          <div class="ncm-mixer-ch__icon ncm-mixer-ch__icon--{{this.iconClass}}">
-            {{{ncm-net-icon this.theme}}}
-          </div>
-          <div class="ncm-mixer-ch__name">{{this.name}}</div>
-          <div class="ncm-mixer-ch__slider-wrap">
-            <div class="ncm-mixer-ch__slider-label">Signal</div>
-            <div class="ncm-mixer-ch__slider-track" data-network-id="{{this.id}}">
-              <div class="ncm-mixer-ch__slider-fill ncm-mixer-ch__slider-fill--{{this.signalTier}}" style="height:{{this.signal}}%;"></div>
-              {{#if this.enabled}}
-              <div class="ncm-mixer-ch__slider-thumb" style="bottom:calc({{this.signal}}% - 3px);"></div>
-              {{/if}}
-            </div>
-          </div>
-          <input type="number" class="ncm-mixer-ch__pct-input" min="0" max="100" value="{{this.signal}}" data-network-id="{{this.id}}" {{#unless this.enabled}}disabled{{/unless}}>
-          <div class="ncm-mixer-ch__info">
-            <div class="ncm-mixer-ch__auth ncm-mixer-ch__auth--{{this.authClass}}"><i class="fas fa-{{this.authIcon}}"></i> {{this.authLabel}}</div>
-            <div class="ncm-mixer-ch__users"><i class="fas fa-user"></i> <span class="ct">{{this.userCount}}</span> {{#if (eq this.authClass 'blocked')}}trapped{{else}}connected{{/if}}</div>
-            {{#if this.isGlobal}}
-            <div class="ncm-mixer-ch__toggle ncm-mixer-ch__toggle--on ncm-mixer-ch__toggle--global" title="Global — always on"></div>
-            {{else}}
-            <div class="ncm-mixer-ch__toggle {{#if this.enabled}}ncm-mixer-ch__toggle--on{{/if}}" data-action="toggleNetwork" data-network-id="{{this.id}}" title="{{#if this.enabled}}Network is ON — click to disable{{else}}Network is OFF — click to enable{{/if}}"></div>
-            {{/if}}
-          </div>
-        </div>
-        {{/each}}
-      </div>
-      <div class="ncm-mixer-arrow ncm-mixer-arrow--right" data-action="scrollMixerRight"><i class="fas fa-chevron-right"></i></div>
-    </div>
-
-    {{!-- SCENES — Full Row Layout --}}
-    <div class="ncm-war-section">
-      <i class="fas fa-map ncm-war-section__icon ncm-war-section__icon--gold"></i>
-      <div class="ncm-war-section__title">Scene Signal</div>
-      <div class="ncm-war-section__hint">— jam or restore per-scene signal</div>
-      <div class="ncm-war-section__line"></div>
-    </div>
-
-    {{!-- Scene list controls — search / sort / hide-imported / pagination --}}
-    <div class="ncm-scene-ctl">
-      <div class="ncm-scene-ctl__search-wrap">
-        <i class="fas fa-search ncm-scene-ctl__search-icon"></i>
-        <input type="text" class="ncm-scene-ctl__search" placeholder="Search scenes..."
-               value="{{sceneControls.search}}" autocomplete="off" />
-      </div>
-      <label class="ncm-scene-ctl__sort-wrap">
-        <span class="ncm-scene-ctl__sort-label">Sort</span>
-        <select class="ncm-scene-ctl__sort">
-          {{#each sceneControls.sortOptions}}
-          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
-          {{/each}}
-        </select>
-      </label>
-
-      {{#if sceneControls.canHide}}
-      <button class="ncm-scene-ctl__hide {{#if sceneControls.hideImported}}ncm-scene-ctl__hide--on{{/if}}"
-              data-action="toggleSceneHideImported"
-              data-tooltip="Hide compendium-imported scenes that have no NCM network config">
-        <i class="fas {{#if sceneControls.hideImported}}fa-eye-slash{{else}}fa-eye{{/if}}"></i>
-        Hide imported{{#if sceneControls.hiddenCount}} ({{sceneControls.hiddenCount}}){{/if}}
-      </button>
-      {{/if}}
-
-      <div class="ncm-scene-ctl__spacer"></div>
-
-      {{#if sceneControls.showPagination}}
-      <div class="ncm-scene-ctl__pager">
-        <button class="ncm-scene-ctl__pg-btn" data-action="scenePagePrev" {{#unless sceneControls.hasPrev}}disabled{{/unless}}>
-          <i class="fas fa-chevron-left"></i>
-        </button>
-        <span class="ncm-scene-ctl__pg-info">{{sceneControls.rangeStart}}–{{sceneControls.rangeEnd}} of {{sceneControls.total}}</span>
-        <button class="ncm-scene-ctl__pg-btn" data-action="scenePageNext" {{#unless sceneControls.hasNext}}disabled{{/unless}}>
-          <i class="fas fa-chevron-right"></i>
-        </button>
-      </div>
-      {{else}}
-      <span class="ncm-scene-ctl__pg-info">{{sceneControls.total}} scene{{#unless (eq sceneControls.total 1)}}s{{/unless}}</span>
-      {{/if}}
-    </div>
-
-    <div class="ncm-scene-list">
-      {{#each sceneStrip}}
-      <div class="ncm-scene-row {{#if this.isCurrent}}ncm-scene-row--active{{/if}} {{#if this.deadZone}}ncm-scene-row--jammed{{/if}}"
-           data-scene-id="{{this.id}}">
-        <div class="ncm-scene-row__dot"></div>
-        <div class="ncm-scene-row__info">
-          <div class="ncm-scene-row__name">{{this.name}}</div>
-          <div class="ncm-scene-row__sub">{{this.defaultNetworkName}}{{#if this.isCurrent}} · Current scene{{/if}}</div>
-        </div>
-        {{#if this.isCurrent}}
-        <span class="ncm-scene-row__current-tag">Current</span>
-        {{/if}}
-        {{#if this.deadZone}}
-        <span class="ncm-scene-row__jammed-tag"><i class="fas fa-ban"></i> Jammed</span>
-        <button class="ncm-scene-row__btn ncm-scene-row__btn--restore" data-action="toggleSceneDeadZone" data-scene-id="{{this.id}}">
-          <i class="fas fa-wifi"></i> Restore
-        </button>
-        {{else}}
-        <div class="ncm-scene-row__signal">
-          <div class="ncm-scene-row__signal-bar">
-            <div class="ncm-scene-row__signal-fill ncm-scene-row__signal-fill--{{this.signalTier}}" style="width:{{this.signalPct}}%;"></div>
-          </div>
-          <span class="ncm-scene-row__signal-pct ncm-scene-row__signal-pct--{{this.signalTier}}">{{this.signalPct}}%</span>
-        </div>
-        <button class="ncm-scene-row__btn ncm-scene-row__btn--jam" data-action="toggleSceneDeadZone" data-scene-id="{{this.id}}">
-          <i class="fas fa-ban"></i> Jam
-        </button>
-        {{/if}}
-      </div>
-      {{else}}
-      <div class="ncm-scene-list__empty">
-        <i class="fas fa-map-location-dot"></i>
-        <span>No scenes match{{#if sceneControls.search}} "{{sceneControls.search}}"{{else if sceneControls.hideImported}} — imported scenes are hidden{{/if}}.</span>
-      </div>
-      {{/each}}
-    </div>
-
-    {{!-- BROADCAST --}}
-    <div class="ncm-war-section">
-      <i class="fas fa-tower-broadcast ncm-war-section__icon ncm-war-section__icon--red"></i>
-      <div class="ncm-war-section__title">Broadcast</div>
-      <div class="ncm-war-section__hint">— send an in-character system message to players</div>
-      <div class="ncm-war-section__line"></div>
-    </div>
-
-    <div class="ncm-broadcast">
-      <div class="ncm-broadcast__top">
-        <i class="fas fa-tower-broadcast ncm-broadcast__icon"></i>
-        <span class="ncm-broadcast__title">Network Broadcast</span>
-        <span class="ncm-broadcast__desc">All connected players will receive this message</span>
-      </div>
-      <div class="ncm-broadcast__form">
-        <select class="ncm-broadcast__select" name="broadcastNetwork">
-          <option value="all">All Networks</option>
-          {{#each networks}}
-          <option value="{{this.id}}">{{this.name}}</option>
-          {{/each}}
-        </select>
-        <input class="ncm-broadcast__input" name="broadcastMessage" placeholder="Type a message all connected players will see...">
-        <button class="ncm-broadcast__send" data-action="sendBroadcast"><i class="fas fa-paper-plane"></i> Send</button>
-      </div>
-    </div>
-
-    {{!-- ZONE DIVIDER --}}
-    <div class="ncm-net-zone-div">
-      <i class="fas fa-cog ncm-net-zone-div__icon"></i>
-      <div class="ncm-net-zone-div__title">Network Configuration</div>
-      <div class="ncm-net-zone-div__hint">— create, edit, and manage network settings</div>
-      <div class="ncm-net-zone-div__line"></div>
-    </div>
-
-    {{!-- CONFIG TOOLBAR — all actions on one line --}}
-    <div class="ncm-net-config-toolbar">
-      <div class="ncm-net-config-search">
-        <i class="fas fa-search"></i>
-        <input type="text" class="ncm-net-config-search__input" placeholder="Search networks..." value="{{networkSearchQuery}}">
-      </div>
-      <div class="ncm-net-filter-pill" data-action="cycleNetAuthFilter">Auth <span class="ncm-net-filter-val">{{netAuthFilter}}</span> <i class="fas fa-chevron-down"></i></div>
-      <div class="ncm-net-filter-pill" data-action="cycleNetStatusFilter">Status <span class="ncm-net-filter-val">{{netStatusFilter}}</span> <i class="fas fa-chevron-down"></i></div>
-      <div class="ncm-net-filter-pill" data-action="cycleNetGroupFilter">Group <span class="ncm-net-filter-val">{{netGroupFilter}}</span> <i class="fas fa-chevron-down"></i></div>
-      <div class="ncm-net-config-toolbar__spacer"></div>
-      <button class="ncm-net-config-btn" data-action="switchNetworkSubView" data-subview="logs"><i class="fas fa-scroll"></i> Activity Logs</button>
-      <button class="ncm-net-config-btn" data-action="openNetworkManager"><i class="fas fa-external-link-alt"></i> Full Manager</button>
-      <button class="ncm-net-config-btn ncm-net-config-btn--cyan" data-action="createNetwork"><i class="fas fa-plus"></i> Create Network</button>
-    </div>
-
-    {{!-- CONFIG LIST — GROUPED --}}
-    {{#if networkGroups.length}}
-    {{#each networkGroups}}
-    <div class="ncm-net-config-group {{#if this.collapsed}}ncm-net-config-group--collapsed{{/if}}">
-      <div class="ncm-net-config-group__header" data-action="toggleNetworkGroup" data-group-key="{{this.key}}">
-        <i class="fas fa-chevron-down ncm-net-config-group__chevron"></i>
-        <div class="ncm-net-config-group__icon ncm-net-config-group__icon{{this.iconClass}}"><i class="fas {{this.icon}}"></i></div>
-        <div class="ncm-net-config-group__title">{{this.name}}</div>
-        <div class="ncm-net-config-group__summary">
-          <div class="ncm-net-config-group__pips">
-            {{#each this.networks}}
-            <div class="ncm-net-cg-pip {{#if this.enabled}}ncm-net-cg-pip--active{{else}}ncm-net-cg-pip--disabled{{/if}}"></div>
-            {{/each}}
-          </div>
-          <div class="ncm-net-config-group__count">{{this.count}} subnet{{#unless (eq this.count 1)}}s{{/unless}}</div>
-        </div>
-      </div>
-      {{#unless this.collapsed}}
-      <div class="ncm-net-config-group__body">
-        {{#each this.networks}}
-        <div class="ncm-net-config-row {{#unless this.enabled}}ncm-net-config-row--disabled{{/unless}}" data-network-id="{{this.id}}">
-          <div class="ncm-net-config-row__pip {{#if this.enabled}}ncm-net-config-row__pip--active{{else}}ncm-net-config-row__pip--disabled{{/if}}"></div>
-          <div class="ncm-net-config-row__icon ncm-net-config-row__icon--{{this.iconClass}}">
-            {{{ncm-net-icon this.theme}}}
-          </div>
-          <div class="ncm-net-config-row__info">
-            <div class="ncm-net-config-row__name">{{this.name}}</div>
-            <div class="ncm-net-config-row__desc">{{this.type}}{{#if this.isGlobal}} · Available everywhere{{/if}}{{#if this.authLabel}} · {{this.authLabel}}{{/if}}</div>
-          </div>
-          <div class="ncm-net-config-row__badges">
-            {{#each this.tags}}
-            <span class="ncm-net-cbadge ncm-net-cbadge--{{this.class}}">{{this.label}}</span>
-            {{/each}}
-          </div>
-          <div class="ncm-net-config-row__actions">
-            <div class="ncm-action-btn" data-action="editNetworkInManager" data-network-id="{{this.id}}" title="Edit network settings"><i class="fas fa-pen"></i></div>
-            {{#if this.authClass}}{{#if (eq this.authClass 'password')}}
-            <div class="ncm-action-btn ncm-action-btn--gold" data-action="resetNetworkAuth" data-network-id="{{this.id}}" title="Reset all player authentications"><i class="fas fa-key"></i></div>
-            {{/if}}{{/if}}
-            {{#unless this.isCore}}
-            <div class="ncm-action-btn ncm-action-btn--danger" data-action="deleteNetwork" data-network-id="{{this.id}}" title="Delete this network"><i class="fas fa-trash"></i></div>
-            {{/unless}}
-          </div>
-        </div>
-        {{/each}}
-      </div>
-      {{/unless}}
-    </div>
+  {{!-- ═══ SUB-TABS ═══ --}}
+  <div class="ncm-net2-nav">
+    {{#each net2.nav}}
+    <button type="button" class="ncm-net2-navbtn {{#if on}}on{{/if}}" data-action="tabAct" data-op="view" data-view="{{key}}">
+      <i class="fas {{icon}}"></i>{{label}}{{#if count}}<span class="ncm-net2-navct">{{count}}</span>{{/if}}
+    </button>
     {{/each}}
-    {{else}}
-    <div class="ncm-admin-empty"><i class="fas fa-network-wired"></i> No networks found.</div>
+    <span class="ncm-net2-grow"></span>
+    <button type="button" class="ncm-net2-btn ncm-net2-btn--primary" data-action="tabAct" data-op="new"><i class="fas fa-plus"></i> New network</button>
+    {{#unless net2.isPopout}}
+    <button type="button" class="ncm-net2-btn ncm-net2-btn--icon" data-action="popOutTab" data-tab="networks" data-tooltip="Pop out: Networks in its own larger window" aria-label="Pop out"><i class="fas fa-up-right-from-square"></i></button>
+    {{/unless}}
+  </div>
+
+  {{#if net2.error}}<div class="ncm-net2-jamnote"><i class="fas fa-triangle-exclamation"></i>{{net2.error}}</div>{{/if}}
+
+  <div class="ncm-net2-view {{#if net2.isAll}}split{{/if}} {{#if net2.isScenes}}split{{/if}} {{#if net2.isLog}}split{{/if}}" {{#if net2.isScene}}data-net2-scroll="scene"{{/if}}>
+    <header class="ncm-tabhd"><i class="fas {{net2.head.icon}}"></i><div><h2>{{net2.head.h}}</h2><p>{{net2.head.p}}</p></div>{{#if net2.isScenes}}{{#with net2.scenes}}<div class="ncm-tabhd__end"><span class="ncm-net2-atcnt">{{#if narrowed}}Showing {{shown}} of {{total}}{{else}}{{total}} scenes{{/if}}{{#if packTotal}} · {{packTotal}} in compendiums{{/if}}</span></div>{{/with}}{{/if}}</header>
+
+    {{!-- ═══════════════ THIS SCENE ═══════════════ --}}
+    {{#if net2.isScene}}
+    {{#with net2.scene}}
+    {{!-- The scene card and the broadcast card share ONE row (two columns; they stack only when the
+         view is narrower than two ~300px cards), so the dial below gets the height. --}}
+    <div class="ncm-net2-scenerow">
+    <div class="ncm-net2-scene {{#if jam}}jam{{/if}}" data-scene-id="{{id}}">
+      <span class="ncm-net2-mapic"><i class="fas {{#if jam}}fa-ban{{else}}fa-map-location-dot{{/if}}"></i></span>
+      <div class="ncm-net2-scene__pick"><div class="ncm-net2-k">Scene</div>{{{scenePicker}}}
+      <span class="ncm-net2-dialsum">{{#if jam}}<b class="is-bad">Dead zone</b> · no signal{{else}}<b>{{dial.liveCount}}</b> {{#if (eq dial.liveCount 1)}}network reaches{{else}}networks reach{{/if}} it{{#if dial.startName}} · players start on <b>{{dial.startName}}</b>{{else}} · no start network{{/if}}{{/if}}</span></div>
+    </div>
+
+    <div class="ncm-net2-bc">
+      <div class="ncm-net2-bc__hd"><i class="fas fa-tower-broadcast"></i><span class="ncm-net2-k">Broadcast</span>{{{bcastPicker}}}</div>
+      <div class="ncm-net2-bc__row">
+        <input type="text" data-net2-bcast value="{{bcastText}}" placeholder="Broadcast a system message…" aria-label="Broadcast message">
+        <button type="button" class="ncm-net2-btn ncm-net2-btn--primary" data-action="tabAct" data-op="broadcast"><i class="fas fa-paper-plane"></i> Send</button>
+      </div>
+    </div>
+    </div>
+    {{#if jam}}<div class="ncm-net2-jamnote"><i class="fas fa-ban"></i>No signal anywhere on this scene. Messages players send queue until they leave or you lift it.</div>{{/if}}
+
+    {{!-- THE RADIO DIAL (dev-approved Version A, dev/mockups/admin-networks-scene-modules-mock.html):
+         a meter per network in its own colour — drag (or arrow keys) to set its signal, written on
+         release; the players on it ride the meter as faces; the flag = where players start; the
+         lever = dead zone (levels are kept). Rules: networksDial.js; wiring: NetworksTab._wireDialMeters. --}}
+    <div class="ncm-net2-dial{{#if jam}} is-dead{{/if}}">
+      <div class="ncm-net2-dial__k"><i class="fas fa-sliders"></i>Signal on this scene <span class="ncm-net2-n">{{count}}</span><span class="ncm-net2-dial__hint">drag a meter · flag = where players start</span></div>
+      <div class="ncm-net2-dialgrid">
+        <div class="ncm-net2-dialmeters">
+          {{#each dial.cols}}
+          <div class="ncm-net2-dialcol{{#if sel}} is-sel{{/if}}{{#unless on}} is-off{{/unless}}" style="--nc:{{ic.color}}" data-network-id="{{id}}">
+            {{#if canStart}}<button type="button" class="ncm-net2-dialflag{{#if isDefault}} is-on{{/if}}" data-action="tabAct" data-op="dialStart" data-scene-id="{{@root.net2.scene.id}}" data-network-id="{{id}}" aria-pressed="{{#if isDefault}}true{{else}}false{{/if}}" aria-label="Players start on {{name}}" data-tooltip="{{#if isDefault}}Players start on this network here — click to clear{{else}}Make players start on this network here{{/if}}"><i class="fa{{#if isDefault}}s{{else}}r{{/if}} fa-flag"></i></button>{{/if}}
+            <button type="button" class="ncm-net2-dialhd" data-action="tabAct" data-op="dialPick" data-network-id="{{id}}" aria-pressed="{{#if sel}}true{{else}}false{{/if}}">
+              <span class="ncm-net2-dialic">{{#if ic.img}}<img src="{{ic.img}}" alt="">{{else}}<i class="fas {{ic.icon}}"></i>{{/if}}</span>
+              <span class="ncm-net2-dialid"><span class="ncm-net2-dialnm">{{name}}</span><span class="ncm-net2-dialty">{{#unless (eq access.cls 'open')}}<i class="fas {{access.icon}} ncm-net2-dialty--{{access.cls}}"></i>{{/unless}}{{typeLabel}}</span></span>
+            </button>
+            <div class="ncm-net2-dialbody">
+              <div class="ncm-net2-dialm{{#if @root.net2.scene.jam}} is-locked{{/if}}" data-network-id="{{id}}" role="slider" tabindex="{{#if @root.net2.scene.jam}}-1{{else}}0{{/if}}" aria-label="Signal for {{name}}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{level}}" aria-valuetext="{{level}}% · {{quality}}" data-tooltip="Drag or use the arrow keys. The signal is the network's own, so it changes on every scene it reaches.">
+                {{#each segs}}<span class="ncm-net2-dialseg{{#if lit}} is-lit{{/if}}{{#if top}} is-top{{/if}}" style="bottom:{{b}}%"></span>{{/each}}
+                <span class="ncm-net2-dialthumb" style="bottom:{{level}}%"></span>
+              </div>
+              <div class="ncm-net2-dialside">
+                <div class="ncm-net2-dialpct">{{#if @root.net2.scene.jam}}<b>{{pctLabel}}</b><small>{{pctUnit}}</small>{{else}}<input type="number" class="ncm-net2-dialnum" data-dial-num min="0" max="100" step="1" value="{{level}}" aria-label="Signal for {{name}}, percent" data-tooltip="Type a signal strength (0–100) and press Enter"><small>%</small><span class="ncm-net2-dialstep" role="group" aria-label="Step the signal"><button type="button" data-dial-step="1" aria-label="Raise {{name}} signal" data-tooltip="+1 (Shift +10)"><i class="fas fa-caret-up"></i></button><button type="button" data-dial-step="-1" aria-label="Lower {{name}} signal" data-tooltip="−1 (Shift −10)"><i class="fas fa-caret-down"></i></button></span>{{/if}}</div>
+                <div class="ncm-net2-dialq">{{quality}}</div>
+                <div class="ncm-net2-dialcrowd{{#if nobody}} is-nobody{{/if}}" style="bottom:{{crowdAt}}%">{{#each players}}{{#if img}}<img class="ncm-net2-dialav" src="{{img}}" alt="" data-tooltip="{{name}}">{{else}}<span class="ncm-net2-dialav" style="--c:{{color}}" data-tooltip="{{name}}">{{initial}}</span>{{/if}}{{else}}<span class="ncm-net2-dialnone">nobody</span>{{/each}}</div>
+              </div>
+            </div>
+            <div class="ncm-net2-dialft">
+              {{#if isGlobal}}<span class="ncm-net2-dialtog is-on is-lock" data-tooltip="Everywhere networks stay on. Edit the network to change that."><span class="ncm-net2-dialkn"></span>On</span>
+              {{else}}<button type="button" class="ncm-net2-dialtog{{#if on}} is-on{{/if}}" data-action="tabAct" data-op="sceneNet" data-scene-id="{{@root.net2.scene.id}}" data-network-id="{{id}}" aria-pressed="{{#if on}}true{{else}}false{{/if}}" aria-label="Switch {{name}} on or off here" data-tooltip="Switch this network on or off here"><span class="ncm-net2-dialkn"></span>{{#if on}}On{{else}}Off{{/if}}</button>{{/if}}
+              <span class="ncm-net2-dialwho">{{playerCount}} on</span>
+            </div>
+          </div>
+          {{else}}
+          <div class="ncm-net2-quiet ncm-net2-pad">No networks reach this scene.</div>
+          {{/each}}
+          <div class="ncm-net2-dialjam" aria-hidden="true"><b>Dead zone</b><span>No network reaches {{name}}. The strengths you set are kept.</span></div>
+        </div>
+        <div class="ncm-net2-dialrail">
+          <div>
+            <div class="ncm-net2-dialrk ncm-net2-dialrk--dead"><i class="fas fa-tower-broadcast"></i>Dead zone</div>
+            <button type="button" class="ncm-net2-dialkill{{#if jam}} is-on{{/if}}" data-action="tabAct" data-op="sceneDead" data-scene-id="{{id}}" role="switch" aria-checked="{{#if jam}}true{{else}}false{{/if}}">
+              <span class="ncm-net2-diallever"><i></i></span>
+              <span class="ncm-net2-dialkt"><b>{{#if jam}}Dead zone on{{else}}Signal live{{/if}}</b><span>{{#if jam}}Pull up to bring the networks back.{{else}}Pull down to kill all signal here.{{/if}}</span></span>
+            </button>
+          </div>
+          <div>
+            <div class="ncm-net2-dialrk">Picked</div>
+            {{#with dial.picked}}
+            {{!-- The readout: a band in the network's own colour; key = label tone, value = heading tone;
+                 names as hue pills, states in meaning colours (qtone / atone / reachTone, networksDial.js). --}}
+            <div class="ncm-net2-dialread{{#if @root.net2.scene.jam}} is-jam{{/if}}" style="--nc:{{ic.color}}">
+              <div class="ncm-net2-dialread__hd">
+                <span class="ncm-net2-dialread__ic">{{#if ic.img}}<img src="{{ic.img}}" alt="">{{else}}<i class="fas {{ic.icon}}"></i>{{/if}}</span>
+                <span class="ncm-net2-dialread__nm">{{name}}</span>
+              </div>
+              <div class="ncm-net2-dialread__sig is-{{qtone}}" data-tooltip="{{#if @root.net2.scene.jam}}Dead zone — no signal here. The level is kept.{{else}}The network’s own signal{{/if}}">
+                <span class="ncm-net2-dialread__num">{{#if @root.net2.scene.jam}}—{{else}}{{level}}<small>%</small>{{/if}}</span>
+                <span class="ncm-net2-dialread__q">{{quality}}</span>
+                <span class="ncm-net2-dialread__bar"><span style="width:{{#if @root.net2.scene.jam}}0{{else}}{{level}}{{/if}}%"></span></span>
+              </div>
+              <div class="ncm-net2-dialkv">
+                <span class="ncm-net2-dialkv__k">Type</span><span class="ncm-net2-dialkv__v"><span class="ncm-tagp" style="--tc:{{ncm-hue typeLabel}}">{{typeLabel}}</span></span>
+                <span class="ncm-net2-dialkv__k">Reaches</span><span class="ncm-net2-dialkv__v"><span class="ncm-tagp is-{{reachTone}}"><i class="fas {{#if isGlobal}}fa-globe{{else if on}}fa-location-dot{{else}}fa-power-off{{/if}}"></i>{{reach}}</span></span>
+                <span class="ncm-net2-dialkv__k">Access</span><span class="ncm-net2-dialkv__v"><span class="ncm-tagp ncm-net2-dialkv__wrap is-{{atone}}"><i class="fas {{access.icon}}"></i><span>{{accessText}}</span></span></span>
+                <span class="ncm-net2-dialkv__k">On it</span><span class="ncm-net2-dialkv__v ncm-net2-dialkv__pills">{{#each players}}<span class="ncm-tagp" style="--tc:{{ncm-hue name}}">{{#if img}}<img src="{{img}}" alt="">{{/if}}{{name}}</span>{{else}}<i class="ncm-net2-dialnone">nobody</i>{{/each}}</span>
+              </div>
+              <div class="ncm-net2-dialread__acts">
+                <button type="button" class="ncm-net2-btn ncm-net2-btn--primary" data-action="tabAct" data-op="edit" data-network-id="{{id}}"><i class="fas fa-pen"></i> Edit</button>
+                <button type="button" class="ncm-net2-btn ncm-net2-btn--quiet" data-action="tabAct" data-op="dialBcast" data-network-id="{{id}}"><i class="fas fa-bullhorn"></i> Broadcast</button>
+                <button type="button" class="ncm-net2-btn ncm-net2-btn--quiet" data-action="tabAct" data-op="logFor" data-network-id="{{id}}"><i class="fas fa-list"></i> Log</button>
+              </div>
+            </div>
+            {{else}}
+            <div class="ncm-net2-quiet">Nothing to pick — add a network below.</div>
+            {{/with}}
+          </div>
+        </div>
+      </div>
+      <div class="ncm-net2-addrow">{{{herePicker}}}<span class="ncm-net2-grow"></span>
+        <button type="button" class="ncm-net2-link" data-action="tabAct" data-op="goScenes">Every scene <i class="fas fa-arrow-right"></i></button></div>
+    </div>
+
+    <div class="ncm-net2-dialfoot">
+      <span class="ncm-net2-dialfoot__k">Players</span>
+      {{#each foot}}
+      <span class="ncm-net2-dialp{{#if isAway}} is-away{{/if}}{{#if isJam}} is-jam{{/if}}">{{#if img}}<img class="ncm-net2-dialav" src="{{img}}" alt="">{{else}}<span class="ncm-net2-dialav" style="--c:{{color}}">{{initial}}</span>{{/if}}<b>{{name}}</b>{{#if isNone}}<span class="ncm-net2-dialp__s">hasn’t reported a network yet</span>{{else if isJam}}<span class="ncm-net2-dialp__s">no signal</span>{{else if isAway}}<span class="ncm-net2-dialp__s">on {{netName}} — not reachable here</span>{{else}}<span class="ncm-net2-dialp__s">{{netName}}</span>{{/if}}</span>
+      {{else}}
+      <span class="ncm-net2-dialnone">nobody online</span>
+      {{/each}}
+    </div>
+    {{/with}}
     {{/if}}
 
-    {{/if}}{{!-- /networkSubView --}}
+    {{!-- ═══════════════ ALL NETWORKS ═══════════════ --}}
+    {{#if net2.isAll}}
+    {{#with net2.all}}
+    <div class="ncm-net2-tb">
+      <span class="ncm-net2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-net2-search="nets" value="{{search}}" placeholder="Search networks…" aria-label="Search networks"></span>
+      <select data-net2-groupby aria-label="Group by">{{#each groupOptions}}<option value="{{value}}" {{#if on}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+    </div>
+    <div class="ncm-net2-chips">
+      {{#each chips}}<button type="button" class="ncm-net2-chip {{#if on}}on{{/if}}" data-action="tabAct" data-op="netFilter" data-filter="{{key}}">{{label}}<span class="ncm-net2-n">{{count}}</span></button>{{/each}}
+      {{#if canFold}}<button type="button" class="ncm-net2-chip ncm-net2-chip--fold" data-action="tabAct" data-op="netFoldAll" data-shut="{{#if allShut}}0{{else}}1{{/if}}"><i class="fas {{#if allShut}}fa-up-right-and-down-left-from-center{{else}}fa-down-left-and-up-right-to-center{{/if}}"></i> {{#if allShut}}Expand all{{else}}Collapse all{{/if}}</button>{{/if}}
+    </div>
+    <div class="ncm-net2-split">
+      <div class="ncm-net2-list" data-net2-scroll="netlist">
+        {{#each groups}}
+        {{#if name}}<div class="ncm-net2-grp ncm-net2-grp--fold" style="--ge:{{edge}}" data-action="tabAct" data-op="netFold" data-key="{{key}}" role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}"><i class="fas fa-chevron-{{#if shut}}right{{else}}down{{/if}} ncm-net2-grp__c"></i>{{name}}<span class="ncm-net2-n">{{count}}</span></div>{{/if}}
+        {{#unless shut}}{{#each list}}
+        <div class="ncm-net2-r {{#if sel}}sel{{/if}} {{#if nowhere}}off{{/if}}" data-action="tabAct" data-op="select" data-network-id="{{id}}" role="button" tabindex="0">
+          <span class="ncm-net2-ic" style="--c:{{ic.color}}">{{#if ic.img}}<img src="{{ic.img}}" alt="">{{else}}<i class="fas {{ic.icon}}"></i>{{/if}}</span>
+          <div class="ncm-net2-r__id"><div class="ncm-net2-nm">{{name}}</div><div class="ncm-net2-subl"><span class="ncm-net2-auth ncm-net2-auth--{{access.cls}}"><i class="fas {{access.icon}}"></i>{{access.label}}</span><span>{{where}}</span></div></div>
+          <div class="ncm-net2-st">{{#if here}}<span class="ncm-net2-st__here" data-tooltip="Reachable on this scene"><i class="fas fa-location-dot"></i></span>{{/if}}{{#if users}}<span class="ncm-net2-st__on"><i class="fas fa-circle"></i> {{users}}</span>{{/if}}</div>
+        </div>
+        {{/each}}{{/unless}}
+        {{/each}}
+        {{#if empty}}<div class="ncm-net2-quiet ncm-net2-pad">No networks match.</div>{{/if}}
+      </div>
 
+      <div class="ncm-net2-det {{#if editing}}editing{{/if}}" {{#unless editing}}data-net2-scroll="netdet"{{/unless}}>
+        {{#if editing}}
+        {{#with ed}}
+        {{!-- ═══ THE EDITOR (six steps, all in the DOM; the step strip only shows one) ═══ --}}
+        <div class="ncm-net2-dhead">
+          <span class="ncm-net2-ic" style="--c:{{ic.color}}">{{#if ic.img}}<img src="{{ic.img}}" alt="">{{else}}<i class="fas {{ic.icon}}"></i>{{/if}}</span>
+          <div><div class="ncm-net2-nm">{{title}}</div><div class="ncm-net2-stepn" data-net2-stepn>step {{stepNum}} of {{stepTotal}} · {{stepLabel}}</div></div>
+          <div class="ncm-net2-acts">{{#unless @root.net2.isPopout}}{{#unless isNew}}<button type="button" class="ncm-net2-btn" data-action="popOutTab" data-tab="networks" data-select="{{id}}" data-tooltip="Keep editing in a larger window"><i class="fas fa-up-right-from-square"></i> Pop out</button>{{/unless}}{{/unless}}</div>
+        </div>
+        <div class="ncm-net2-steps">
+          {{#each steps}}<button type="button" class="ncm-net2-step {{#if on}}on{{/if}}" data-net2-step="{{key}}"><i class="fas {{icon}}"></i>{{label}}</button>{{/each}}
+        </div>
+        <div class="ncm-net2-pscroll" data-net2-scroll="editor">
+          <div class="ncm-net2-form" data-edit-session="{{session}}">
+
+            {{!-- ① IDENTITY --}}
+            <div class="ncm-net2-stepsec" data-step-sec="identity">
+              {{#if presets.length}}
+              <div class="ncm-net2-start"><span class="ncm-net2-k">Start from</span>
+                {{#each presets}}<button type="button" class="ncm-net2-pchip {{#if on}}on{{/if}}" style="--c:{{color}}" data-action="tabAct" data-op="preset" data-preset="{{key}}"><i class="fas {{icon}}"></i>{{label}}</button>{{/each}}
+              </div>
+              {{/if}}
+              <div class="ncm-net2-row">
+                <label class="ncm-net2-f"><span>Name <em class="ncm-net2-req">required</em></span><input type="text" name="name" value="{{d.name}}" placeholder="e.g. Militech Staging"></label>
+                <label class="ncm-net2-f"><span>Type</span><select name="type">{{#each typeOptions}}<option value="{{value}}" {{#if on}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+              </div>
+              <label class="ncm-net2-f"><span>Description</span><input type="text" name="description" value="{{d.description}}" placeholder="What players see"><small>Players see this when they pick the network.</small></label>
+              <label class="ncm-net2-f"><span>GM notes</span><textarea name="lore" placeholder="Only you see these">{{d.lore}}</textarea><small>Only you see these.</small></label>
+              <label class="ncm-net2-f"><span>Folder</span><input type="text" name="group" value="{{d.group}}" list="ncm-net2-groups-{{session}}" placeholder="e.g. Arasaka"><small>Groups networks in the lists. Pick one you have or type a new name.</small>
+                <datalist id="ncm-net2-groups-{{session}}">{{#each groups}}<option value="{{this}}"></option>{{/each}}</datalist></label>
+            </div>
+
+            {{!-- ② SIGNAL --}}
+            <div class="ncm-net2-stepsec" data-step-sec="signal">
+              <div class="ncm-net2-row three">
+                <label class="ncm-net2-f"><span>Signal %</span><input type="number" name="signalStrength" value="{{d.signalStrength}}" min="0" max="100"></label>
+                <label class="ncm-net2-f"><span>Reliability %</span><input type="number" name="reliability" value="{{d.reliability}}" min="0" max="100"></label>
+                <label class="ncm-net2-f"><span>Delay (ms)</span><input type="number" name="messageDelay" value="{{d.effects.messageDelay}}" min="0"></label>
+              </div>
+              <div class="ncm-net2-quiet">Signal sets how garbled messages get (and the DV of hacking a shard from here). Reliability is how often a send gets through. Delay holds each message before it arrives.</div>
+            </div>
+
+            {{!-- ③ ACCESS --}}
+            <div class="ncm-net2-stepsec" data-step-sec="access">
+              <div class="ncm-net2-row">
+                <div class="ncm-net2-f"><span>Needs a login</span>
+                  <span class="ncm-net2-seg" data-seg="requiresAuth">{{#each authSeg}}<span class="{{#if on}}on{{/if}}" data-v="{{value}}">{{label}}</span>{{/each}}</span>
+                  <input type="hidden" name="requiresAuth" value="{{#if d.security.requiresAuth}}true{{else}}false{{/if}}"></div>
+                <div class="ncm-net2-f"><span>Players need</span>
+                  <span class="ncm-net2-seg" data-seg="authLogic">{{#each logicSeg}}<span class="{{#if on}}on{{/if}}" data-v="{{value}}">{{label}}</span>{{/each}}</span>
+                  <input type="hidden" name="authLogic" value="{{#if (eq d.security.authLogic 'all')}}all{{else}}any{{/if}}"></div>
+              </div>
+              <div class="ncm-net2-secured {{#if isOpen}}is-off{{/if}}" data-when-secured>
+                <div class="ncm-net2-row three">
+                  <label class="ncm-net2-f"><span>Attempts</span><input type="number" name="maxAttempts" value="{{d.security.maxAttempts}}" min="1"></label>
+                  <label class="ncm-net2-f"><span>Then lock out for (min)</span><input type="number" name="lockoutMinutes" value="{{lockoutMinutes}}" min="1"></label>
+                  <label class="ncm-net2-f"><span>Security level</span><select name="securityLevel">{{#each levelOptions}}<option value="{{value}}" {{#if on}}selected{{/if}}>{{label}}</option>{{/each}}</select><small>The tag on the login screen.</small></label>
+                </div>
+
+                <div class="ncm-net2-method {{#if d.security.allowPassword}}on{{/if}}" data-method="allowPassword">
+                  <label class="ncm-net2-method__h"><i class="fas fa-key"></i>Password <small>a passphrase they’re given or find</small>
+                    <span class="ncm-net2-tg"><input type="checkbox" name="allowPassword" {{#if d.security.allowPassword}}checked{{/if}}><span class="ncm-net2-sw"></span></span></label>
+                  <div class="ncm-net2-method__b"><label class="ncm-net2-f"><span>Password</span><input type="text" name="password" value="{{d.security.password}}" autocomplete="off" placeholder="e.g. kiroshi-blue"></label></div>
+                </div>
+
+                <div class="ncm-net2-method {{#if d.security.allowSkillCheck}}on{{/if}}" data-method="allowSkillCheck">
+                  <label class="ncm-net2-method__h"><i class="fas fa-dice-d20"></i>Skill bypass <small>hack in with a roll — each skill has its own DV</small>
+                    <span class="ncm-net2-tg"><input type="checkbox" name="allowSkillCheck" {{#if d.security.allowSkillCheck}}checked{{/if}}><span class="ncm-net2-sw"></span></span></label>
+                  <div class="ncm-net2-method__b">{{{bypassHtml}}}</div>
+                </div>
+
+                <div class="ncm-net2-method {{#if d.security.allowKeyItem}}on{{/if}}" data-method="allowKeyItem">
+                  <label class="ncm-net2-method__h"><i class="fas fa-id-badge"></i>Key item <small>carrying the right item opens it</small>
+                    <span class="ncm-net2-tg"><input type="checkbox" name="allowKeyItem" {{#if d.security.allowKeyItem}}checked{{/if}}><span class="ncm-net2-sw"></span></span></label>
+                  <div class="ncm-net2-method__b">
+                    <div class="ncm-net2-chiprow">
+                      <span class="ncm-net2-tchip" data-key-chip {{#unless hasKeyItem}}hidden{{/unless}}><span class="ncm-net2-tchip__img" data-key-chip-img>{{#if d.security.keyItemImg}}<img src="{{d.security.keyItemImg}}" alt="">{{else}}<i class="fas fa-id-badge"></i>{{/if}}</span><span data-key-chip-name>{{d.security.keyItemName}}</span>
+                        <button type="button" class="ncm-net2-x" data-action="tabAct" data-op="keyClear" aria-label="Clear the key item"><i class="fas fa-xmark"></i></button></span>
+                      <button type="button" class="ncm-net2-tchip ncm-net2-tchip--add" data-action="tabAct" data-op="keyPick"><i class="fas fa-magnifying-glass"></i>Pick an item…</button>
+                    </div>
+                    <input type="hidden" name="keyItemName" value="{{d.security.keyItemName}}"><input type="hidden" name="keyItemImg" value="{{d.security.keyItemImg}}">
+                    <div class="ncm-net2-row">
+                      <label class="ncm-net2-f"><span>Tag</span><input type="text" name="keyItemTag" value="{{d.security.keyItemTag}}" placeholder="e.g. arasaka_keycard"><small>Also matches an item carrying this tag.</small></label>
+                      <label class="ncm-net2-check"><input type="checkbox" name="keyItemConsume" {{#if d.security.keyItemConsume}}checked{{/if}}>Used up when it opens the network</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ncm-net2-method on ncm-net2-method--fail">
+                  <div class="ncm-net2-method__h"><i class="fas fa-skull"></i>When they fail <small>after the last attempt</small></div>
+                  <div class="ncm-net2-method__b">
+                    <span class="ncm-net2-seg" data-seg="failureMode">{{#each failSeg}}<span class="{{#if on}}on{{/if}}" data-v="{{value}}">{{label}}</span>{{/each}}</span>
+                    <input type="hidden" name="failureMode" value="{{#if d.security.failureMode}}{{d.security.failureMode}}{{else}}lockout{{/if}}">
+                    <div class="ncm-net2-ice" data-when-damage {{#unless isDamage}}hidden{{/unless}}>
+                      <div class="ncm-net2-row">
+                        <label class="ncm-net2-f"><span>ICE</span><select name="encryptionType">{{#each encOptions}}<option value="{{value}}" {{#if on}}selected{{/if}}>{{label}}</option>{{/each}}</select><small>Black ICE rolls 3d6, Red ICE 5d6 with standard dice.</small></label>
+                        <div class="ncm-net2-f"><span>Its damage comes from</span>
+                          <span class="ncm-net2-seg" data-seg="iceSource">{{#each iceSeg}}<span class="{{#if on}}on{{/if}}" data-v="{{value}}">{{label}}</span>{{/each}}</span>
+                          <input type="hidden" name="iceSource" value="{{#if d.security.ice.source}}{{d.security.ice.source}}{{else}}default{{/if}}"></div>
+                      </div>
+                      <div class="ncm-net2-row" data-ice-panel="custom" {{#unless (eq d.security.ice.source 'custom')}}hidden{{/unless}}>
+                        <label class="ncm-net2-f"><span>ICE name</span><input type="text" name="iceCustomName" value="{{d.security.ice.customName}}" placeholder="e.g. HELLHOUND"></label>
+                        <label class="ncm-net2-f"><span>Damage</span><input type="text" name="iceCustomDamage" value="{{d.security.ice.customDamage}}" placeholder="e.g. 4d6+2"></label>
+                        <label class="ncm-net2-f ncm-net2-f--wide"><span>Portrait</span><span class="ncm-net2-inrow"><input type="text" name="iceCustomPortrait" value="{{d.security.ice.customPortrait}}" placeholder="Image path (optional)">
+                          <button type="button" class="ncm-net2-btn ncm-net2-btn--icon" data-action="tabAct" data-op="browseIce" aria-label="Browse"><i class="fas fa-folder-open"></i></button></span></label>
+                      </div>
+                      <div class="ncm-net2-row" data-ice-panel="actor" {{#unless (eq d.security.ice.source 'actor')}}hidden{{/unless}}>
+                        <label class="ncm-net2-f"><span>ICE actor</span><select name="iceActorId"><option value="">— pick one —</option>{{#each iceChoices}}<option value="{{id}}" {{#if on}}selected{{/if}}>{{name}}{{#if atk}} (ATK {{atk}}){{/if}}</option>{{/each}}</select><small>Damage is the actor’s ATK + 1d10.</small></label>
+                      </div>
+                      <div class="ncm-net2-quiet" data-ice-panel="default" {{#if d.security.ice.source}}{{#unless (eq d.security.ice.source 'default')}}hidden{{/unless}}{{/if}}>Standard dice: 3d6 for Black ICE, 5d6 for Red ICE.</div>
+                    </div>
+                  </div>
+                </div>
+                {{!-- Countermeasure override — the shared partial (Security builder, 2026-10-27). --}}
+                {{> "modules/night-city-messenger/templates/partials/countermeasure-override.hbs" cmv=cmvOverride}}
+              </div>
+              <div class="ncm-net2-quiet" {{#unless isOpen}}hidden{{/unless}} data-open-note>Open — anyone in range connects. Switch “Needs a login” to Secured to set how they get in.</div>
+            </div>
+
+            {{!-- ④ BEHAVIOUR --}}
+            <div class="ncm-net2-stepsec" data-step-sec="behaviour">
+              <label class="ncm-net2-check"><i class="fas fa-satellite-dish ncm-net2-check__ic--bad"></i>Traffic is traced<small>sends are logged and the sender is recorded</small><span class="ncm-net2-tg"><input type="checkbox" name="traced" {{#if d.effects.traced}}checked{{/if}}><span class="ncm-net2-sw"></span></span></label>
+              <label class="ncm-net2-check"><i class="fas fa-user-secret"></i>Anonymous<small>the sender’s name is hidden</small><span class="ncm-net2-tg"><input type="checkbox" name="anonymity" {{#if d.effects.anonymity}}checked{{/if}}><span class="ncm-net2-sw"></span></span></label>
+              <label class="ncm-net2-check"><i class="fas fa-eye-slash"></i>Mail only readable here<small>messages sent on it can only be read on this network</small><span class="ncm-net2-tg"><input type="checkbox" name="restrictedAccess" {{#if d.effects.restrictedAccess}}checked{{/if}}><span class="ncm-net2-sw"></span></span></label>
+              <label class="ncm-net2-check"><i class="fas fa-route"></i>Can reach other networks<small>off: only people on this network</small><span class="ncm-net2-tg"><input type="checkbox" name="canRoute" {{#if d.effects.canRoute}}checked{{/if}}><span class="ncm-net2-sw"></span></span></label>
+              <div class="ncm-net2-f" data-route-list {{#unless d.effects.canRoute}}hidden{{/unless}}><span>Can send messages to</span>{{{recipientPicker}}}<small>Empty means every network.</small></div>
+            </div>
+
+            {{!-- ⑤ WHERE --}}
+            <div class="ncm-net2-stepsec" data-step-sec="where">
+              <label class="ncm-net2-check"><i class="fas fa-globe"></i>Everywhere<small>every scene, always</small><span class="ncm-net2-tg"><input type="checkbox" name="globalAvailability" {{#if d.availability.global}}checked{{/if}}><span class="ncm-net2-sw"></span></span></label>
+              <div class="ncm-net2-where {{#if d.availability.global}}is-off{{/if}}" data-where-list>
+                <div class="ncm-net2-tb"><span class="ncm-net2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-where-search placeholder="Or on these scenes — search…" aria-label="Search scenes"></span><span class="ncm-net2-n" data-where-count>{{whereCount}} picked</span></div>
+                <div class="ncm-net2-grid2">
+                  {{#each scenes}}
+                  <label class="ncm-net2-check ncm-net2-check--sm" data-where-row="{{lower name}}">{{#if current}}<i class="fas fa-location-crosshairs" data-tooltip="The scene you are viewing"></i>{{/if}}<span class="ncm-net2-ellip">{{name}}</span><span class="ncm-net2-tg"><input type="checkbox" data-where-scene="{{id}}" {{#if on}}checked{{/if}}><span class="ncm-net2-sw"></span></span></label>
+                  {{else}}<div class="ncm-net2-quiet">There are no scenes yet.</div>{{/each}}
+                </div>
+              </div>
+            </div>
+
+            {{!-- ⑥ LOOK --}}
+            <div class="ncm-net2-stepsec" data-step-sec="look">
+              <div class="ncm-net2-preview"><span class="ncm-net2-pill" data-preview-pill style="--c:{{d.theme.color}}"><span data-preview-icon>{{#if isImage}}{{#if d.theme.customImage}}<img src="{{d.theme.customImage}}" alt="">{{else}}<i class="fas {{d.theme.icon}}"></i>{{/if}}{{else}}<i class="fas {{d.theme.icon}}"></i>{{/if}}</span><span data-preview-name>{{#if d.name}}{{d.name}}{{else}}Network{{/if}}</span></span><span class="ncm-net2-quiet">how players see it</span></div>
+              <div class="ncm-net2-f"><span>Icon</span>
+                <span class="ncm-net2-seg ncm-net2-seg--start" data-seg="iconMode">{{#each iconSeg}}<span class="{{#if on}}on{{/if}}" data-v="{{value}}">{{label}}</span>{{/each}}</span>
+                <input type="hidden" name="iconMode" value="{{#if isImage}}image{{else}}fa{{/if}}">
+                <div class="ncm-net2-icons" data-icon-mode="fa" {{#if isImage}}hidden{{/if}}>
+                  {{#each icons}}<button type="button" class="{{#if on}}on{{/if}}" data-icon-pick="{{ic}}" aria-label="{{ic}}"><i class="fas {{ic}}"></i></button>{{/each}}
+                </div>
+                <input type="hidden" name="themeIcon" value="{{d.theme.icon}}">
+                <span class="ncm-net2-inrow" data-icon-mode="image" {{#unless isImage}}hidden{{/unless}}><input type="text" name="customImage" value="{{d.theme.customImage}}" placeholder="Path to an image…">
+                  <button type="button" class="ncm-net2-btn ncm-net2-btn--icon" data-action="tabAct" data-op="browseImg" aria-label="Browse"><i class="fas fa-folder-open"></i></button></span>
+              </div>
+              <div class="ncm-net2-f"><span>Colour</span>
+                <div class="ncm-net2-sw8">{{#each colors}}<button type="button" class="{{#if on}}on{{/if}}" style="background:{{c}}" data-color-sw="{{c}}" aria-label="{{c}}"></button>{{/each}}
+                  <input type="color" data-color-pick value="{{d.theme.color}}" aria-label="Any colour"><input type="text" name="themeColor" value="{{d.theme.color}}" class="ncm-net2-hex" aria-label="Colour hex"></div>
+              </div>
+              <label class="ncm-net2-f"><span>Glitch on the player’s screen <b data-glitch-out>{{glitchPct}}%</b></span><input type="range" name="glitchIntensity" min="0" max="1" step="0.05" value="{{glitch}}"><small>How much the network’s name and pill flicker. 0 = steady.</small></label>
+            </div>
+          </div>
+        </div>
+        <div class="ncm-net2-foot">
+          <button type="button" class="ncm-net2-btn" data-net2-prev data-net2-go="{{prev.key}}" {{#unless prev}}hidden{{/unless}}><i class="fas fa-arrow-left"></i> <span>{{prev.label}}</span></button>
+          <button type="button" class="ncm-net2-btn" data-net2-next data-net2-go="{{next.key}}" {{#unless next}}hidden{{/unless}}><span>{{next.label}}</span> <i class="fas fa-arrow-right"></i></button>
+          <span class="ncm-net2-grow"></span>
+          <button type="button" class="ncm-net2-btn" data-action="tabAct" data-op="cancel">Cancel</button>
+          <button type="button" class="ncm-net2-btn ncm-net2-btn--primary" data-action="tabAct" data-op="save" data-tooltip="Every step saves together"><i class="fas fa-check"></i> {{#if isNew}}Create network{{else}}Save{{/if}}</button>
+        </div>
+        {{/with}}
+
+        {{else}}
+        {{#with det}}
+        <div class="ncm-net2-dhead">
+          <span class="ncm-net2-ic" style="--c:{{ic.color}}">{{#if ic.img}}<img src="{{ic.img}}" alt="">{{else}}<i class="fas {{ic.icon}}"></i>{{/if}}</span>
+          <div><div class="ncm-net2-nm">{{name}}</div>
+            <div class="ncm-net2-subl ncm-net2-facts"><span class="ncm-tagp" style="--tc:{{ic.color}}"><i class="fas {{ic.icon}}"></i>{{typeName}}</span><span class="ncm-net2-auth ncm-net2-auth--{{access.cls}}"><i class="fas {{access.icon}}"></i>{{access.label}}</span><span class="ncm-net2-fact">signal <b class="ncm-net2-tier--{{tier}}">{{signal}}%</b></span><span class="ncm-net2-fact">reliability <b>{{reliability}}%</b></span></div></div>
+          <div class="ncm-net2-acts">
+            <button type="button" class="ncm-net2-btn ncm-net2-btn--primary" data-action="tabAct" data-op="edit" data-network-id="{{id}}"><i class="fas fa-pen"></i> Edit</button>
+            <span class="ncm-net2-menuwrap">
+              <button type="button" class="ncm-net2-btn ncm-net2-btn--icon" data-action="tabAct" data-op="menu" data-menu="net" aria-label="More" data-tooltip="Reset logins · Duplicate · Delete"><i class="fas fa-ellipsis"></i></button>
+              {{#if menuOpen}}
+              <span class="ncm-net2-menu">
+                <button type="button" data-action="tabAct" data-op="resetAuth" data-network-id="{{id}}"><i class="fas fa-key"></i> Reset logins &amp; lockouts</button>
+                <button type="button" data-action="tabAct" data-op="duplicate" data-network-id="{{id}}"><i class="fas fa-clone"></i> Duplicate</button>
+                <button type="button" data-action="tabAct" data-op="logFor" data-network-id="{{id}}"><i class="fas fa-scroll"></i> Its activity log</button>
+                {{#unless isCore}}<button type="button" class="danger" data-action="tabAct" data-op="delete" data-network-id="{{id}}"><i class="fas fa-trash"></i> Delete</button>{{/unless}}
+              </span>
+              {{/if}}
+            </span>
+          </div>
+        </div>
+        {{#if description}}<div class="ncm-net2-sec"><div class="ncm-net2-quiet">{{description}}</div>{{#if lore}}<div class="ncm-net2-lore"><i class="fas fa-eye-slash"></i> {{lore}}</div>{{/if}}</div>{{/if}}
+        <div class="ncm-net2-sec"><div class="ncm-net2-k2"><i class="fas fa-location-dot"></i>Where it exists</div>
+          {{#if isGlobal}}<div class="ncm-net2-quiet">Everywhere — every scene, always.</div>
+          {{else}}<div class="ncm-net2-tags">{{#each scenes}}<span class="ncm-net2-tag ncm-tagp" style="--tc:{{ncm-hue name}}"><i class="fas fa-map"></i>{{name}}</span>{{else}}<span class="ncm-net2-quiet">On no scene yet — Edit → Where, or the Scenes view.</span>{{/each}}</div>{{/if}}
+        </div>
+        <div class="ncm-net2-sec ncm-net2-nodes"><div class="ncm-net2-k2"><i class="fas fa-tower-cell"></i>Nodes{{#if nodes.has}} <span class="ncm-net2-m">{{nodes.count}}</span>{{/if}}
+            <button type="button" class="ncm-net2-btn ncm-net2-nodes__add" data-action="tabAct" data-op="nodeAdd" data-network-id="{{id}}" data-tooltip="A router, relay or mast that carries this network into a scene"><i class="fas fa-plus"></i> Add a node</button></div>
+          {{#if nodes.has}}
+          {{#if nodes.scenes.length}}<div class="ncm-net2-tags">{{#each nodes.scenes}}<span class="ncm-net2-tag ncm-tagp {{#if cut}}is-bad{{else}}is-good{{/if}}" data-tooltip="{{#if cut}}Every node here is down — {{netName}} doesn't reach this scene{{else}}{{up}} of {{total}} up — {{netName}} reaches this scene{{/if}}"><i class="fas {{#if cut}}fa-plug-circle-xmark{{else}}fa-plug-circle-check{{/if}}"></i>{{name}} <span class="ncm-net2-m">{{up}}/{{total}}</span></span>{{/each}}</div>{{/if}}
+          <div class="ncm-net2-nodelist">
+            {{#each nodes.list}}
+            <div class="ncm-net2-node is-{{state}}" data-node-id="{{id}}">
+              <span class="ncm-net2-node__ic"><i class="{{icon}}"></i></span>
+              <div class="ncm-net2-node__id"><div class="ncm-net2-node__nm">{{name}}{{#if hidden}} <span class="ncm-tagp is-secret" data-tooltip="Players can't see it"><i class="fas fa-eye-slash"></i>Hidden</span>{{/if}}</div>
+                {{#if summary.length}}<div class="ncm-net2-node__fx">{{#each summary}}<button type="button" class="ncm-tagp is-{{tone}} ncm-net2-node__sum" data-action="tabAct" data-op="nodeInspect" data-node-id="{{nodeId}}" data-tooltip="{{tip}} — open the inspector"><i class="fas {{icon}}"></i>{{label}}</button>{{/each}}</div>{{/if}}
+                <div class="ncm-net2-node__sub"><span class="ncm-net2-node__hex">{{hex}}</span> · {{kindLabel}} · {{#if noScene}}<em>{{sceneName}}</em>{{else}}<button type="button" class="ncm-net2-node__scene" data-action="tabAct" data-op="nodeScene" data-scene-id="{{sceneId}}" data-tooltip="View this scene">{{sceneName}}</button>{{/if}}{{#if place}} · {{place}}{{/if}}</div></div>
+              <button type="button" class="ncm-tagp is-{{tone}} ncm-net2-node__st" data-action="tabAct" data-op="nodeToggle" data-node-id="{{id}}" aria-pressed="{{#if isUp}}true{{else}}false{{/if}}" data-tooltip="{{#if isUp}}Click to switch it off{{else}}Click to switch it back on{{/if}}"><i class="fas fa-power-off"></i>{{stateLabel}}</button>
+              <div class="ncm-net2-node__acts">
+                <button type="button" class="ncm-net2-btn ncm-net2-btn--icon" data-action="tabAct" data-op="nodeInspect" data-node-id="{{id}}" data-tooltip="Inspect — everything on it, add your own" aria-label="Inspect"><i class="fas fa-magnifying-glass"></i></button>
+                <button type="button" class="ncm-net2-btn ncm-net2-btn--icon" data-action="tabAct" data-op="nodeMenu" data-node-id="{{id}}" data-network-id="{{netId}}" data-tooltip="More — jam, console, place on the map, ways in, edit, remove" aria-label="More"><i class="fas fa-ellipsis"></i></button>
+              </div>
+            </div>
+            {{/each}}
+          </div>
+          {{else}}<div class="ncm-net2-quiet">No nodes — this network reaches its scenes as set above. Add one to give it a physical point that can be switched off, jammed or hacked.</div>{{/if}}
+        </div>
+        <div class="ncm-net2-sec"><div class="ncm-net2-k2"><i class="fas fa-lock"></i>Getting in</div>
+          {{#if isOpen}}<div class="ncm-net2-tags"><span class="ncm-net2-tag ncm-tagp is-plain"><i class="fas fa-lock-open"></i>Open</span><span class="ncm-net2-quiet">anyone in range connects.</span></div>
+          {{else}}
+          <div class="ncm-net2-tags">{{#each ways}}<span class="ncm-net2-tag ncm-tagp is-secret"><i class="fas {{icon}}"></i>{{label}}{{#if m}} <span class="ncm-net2-m">{{m}}</span>{{/if}}</span>{{else}}<span class="ncm-net2-tag ncm-tagp is-attn"><i class="fas fa-triangle-exclamation"></i>Secured, but no way in is switched on</span>{{/each}}
+            {{#if failTag}}<span class="ncm-net2-tag ncm-tagp is-{{failTag.cls}}"><i class="fas {{failTag.icon}}"></i>{{failTag.label}}</span>{{/if}}</div>
+          <div class="ncm-net2-quiet ncm-net2-mt">{{waysNote}}</div>
+          {{/if}}
+        </div>
+        <div class="ncm-net2-sec"><div class="ncm-net2-k2"><i class="fas fa-sliders"></i>Behaviour</div>
+          <div class="ncm-net2-tags">{{#each tags}}<span class="ncm-net2-tag ncm-tagp {{#if cls}}is-{{cls}}{{else}}is-plain{{/if}}"><i class="fas {{icon}}"></i>{{label}}</span>{{else}}<span class="ncm-net2-quiet">Ordinary — nothing special.</span>{{/each}}</div>
+        </div>
+        <div class="ncm-net2-sec"><div class="ncm-net2-k2"><i class="fas fa-users"></i>On it now</div>
+          {{#if users.length}}<div class="ncm-net2-tags">{{#each users}}<span class="ncm-net2-tag ncm-tagp" style="--tc:{{ncm-hue name}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-net2-face ncm-net2-face--sm" style="--c:{{color}}">{{initial}}</span>{{/if}}{{name}}</span>{{/each}}</div>
+          {{else}}<div class="ncm-net2-quiet">Nobody.</div>{{/if}}
+        </div>
+        <div class="ncm-net2-sec"><div class="ncm-net2-k2"><i class="fas fa-scroll"></i>Recent activity
+          <button type="button" class="ncm-net2-link" data-action="tabAct" data-op="logFor" data-network-id="{{id}}">See all <i class="fas fa-arrow-right"></i></button></div>
+          {{#each recent}}<div class="ncm-net2-mini"><span class="ncm-net2-w">{{time}}</span><i class="fas {{icon}} ncm-net2-tone--{{tone}}"></i><span><b>{{actorName}}</b> {{verb}} {{networkName}}{{#if sceneName}} · {{sceneName}}{{/if}}{{#if message}} — {{message}}{{/if}}</span></div>
+          {{else}}<div class="ncm-net2-quiet">Nothing logged yet.</div>{{/each}}
+        </div>
+        {{else}}
+        <div class="ncm-net2-quiet ncm-net2-pad">Pick a network on the left.</div>
+        {{/with}}
+        {{/if}}
+      </div>
+    </div>
+    {{/with}}
     {{/if}}
+
+    {{!-- ═══════════════ SCENES — THE ATLAS (2026-10-29) ═══════════════
+         dev/mockups/admin-networks-scenes-atlas-mock.html: A as the home (cards on shelves =
+         the GM's own folders, the nav bar pinned on top), C's transmitter strip as the Paint
+         picker, B one switch away as Grid. Rules: scripts/utils/scenesAtlas.js. --}}
+    {{#if net2.isScenes}}
+    {{#with net2.scenes}}
+    <div class="ncm-net2-tb ncm-net2-attb">
+      <span class="ncm-net2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-net2-search="scenes" value="{{search}}" placeholder="Search scenes or folders…" aria-label="Search scenes"></span>
+      {{{folderPicker}}}
+      <label class="ncm-net2-atsel" data-tooltip="Show"><i class="fas fa-filter"></i><select data-net2-sc="show" aria-label="Show">{{#each show}}<option value="{{key}}" {{#if on}}selected{{/if}}>{{label}} ({{count}})</option>{{/each}}</select></label>
+      <label class="ncm-net2-atsel" data-tooltip="Sort inside a folder"><i class="fas fa-arrow-down-wide-short"></i><select data-net2-sc="sort" aria-label="Sort">{{#each sort}}<option value="{{key}}" {{#if on}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+      {{#if canHide}}<button type="button" class="ncm-net2-btn ncm-net2-btn--icon" data-action="tabAct" data-op="hideImported" aria-pressed="{{#if hideImported}}true{{else}}false{{/if}}" data-tooltip="{{#if hideImported}}Show the {{hideable}} imported scenes you have not set up{{else}}Hide the {{hideable}} imported scenes you have not set up{{/if}}" aria-label="Imported scenes"><i class="fas {{#if hideImported}}fa-eye-slash{{else}}fa-eye{{/if}}"></i></button>{{/if}}
+      <span class="ncm-net2-atmode" role="group" aria-label="Layout">
+        <button type="button" class="{{#unless isGrid}}on{{/unless}}" data-action="tabAct" data-op="scMode" data-mode="atlas" aria-pressed="{{#if isGrid}}false{{else}}true{{/if}}" data-tooltip="Atlas — cards on folder shelves" aria-label="Atlas"><i class="fas fa-grip"></i></button>
+        <button type="button" class="{{#if isGrid}}on{{/if}}" data-action="tabAct" data-op="scMode" data-mode="grid" aria-pressed="{{#if isGrid}}true{{else}}false{{/if}}" data-tooltip="Grid — scenes × networks" aria-label="Grid"><i class="fas fa-table-cells"></i></button>
+      </span>
+    </div>
+
+    {{#unless isGrid}}
+    {{!-- Paint = ONE brush (2026-10-29, dev: the tile strip got squished): a searchable picker, the network being
+         painted, the last few as quick swaps, Stop. One line however many networks the world has. --}}
+    <div class="ncm-net2-brush {{#if painting}}is-on{{/if}}" role="toolbar" aria-label="Paint a network onto scenes"{{#if painting}} style="--c:{{painting.color}}"{{/if}}>
+      <span class="ncm-net2-brush__k"><i class="fas fa-paintbrush"></i>{{#if painting}}Painting{{else}}Paint{{/if}}</span>
+      {{#if painting}}
+      <span class="ncm-net2-brush__cur" data-sc-tx="{{painting.id}}" data-tooltip="Click a scene to give it {{painting.name}}, click again to take it away. Wire all on a shelf does the folder. Esc stops.">
+        <span class="ncm-net2-brush__ic">{{#if painting.ic.img}}<img src="{{painting.ic.img}}" alt="">{{else}}<i class="fas {{painting.ic.icon}}"></i>{{/if}}</span>
+        <b>{{painting.name}}</b><span class="ncm-net2-brush__cv">{{painting.count}} / {{painting.of}} scenes</span>
+      </span>
+      {{/if}}
+      <span class="ncm-net2-brush__pick">{{{paintPicker}}}</span>
+      {{#if paintRecent.length}}
+      <span class="ncm-net2-brush__rk">Recent</span>
+      {{#each paintRecent}}
+      <button type="button" class="ncm-net2-brush__rc" style="--c:{{ic.color}}" data-action="tabAct" data-op="scPaint" data-network-id="{{id}}" data-sc-tx="{{id}}" data-tooltip="Paint {{name}} — on {{n}} of {{of}} scenes"><span class="dot"></span>{{name}}</button>
+      {{/each}}
+      {{else}}{{#unless painting}}<span class="ncm-net2-brush__hint">Pick a network, then click scenes to give it to them.</span>{{/unless}}{{/if}}
+      {{#if painting}}<button type="button" class="ncm-net2-btn ncm-net2-brush__stop" data-action="tabAct" data-op="scPaintStop" data-tooltip="Stop painting (Esc)"><i class="fas fa-xmark"></i> Stop</button>{{/if}}
+    </div>
+
+    <div class="ncm-net2-atbody {{#if painting}}is-painting{{/if}}" data-net2-scroll="scenes"{{#if painting}} style="--pc:{{painting.color}}"{{/if}}>
+      {{#if nav}}{{> ncmNet2Shelf nav}}{{/if}}
+      {{#each shelves}}{{> ncmNet2Shelf}}{{/each}}
+      {{#if empty}}<div class="ncm-net2-quiet ncm-net2-pad">{{#if total}}No scenes match — clear the search or the filters.{{else}}This world has no scenes yet.{{/if}}</div>{{/if}}
+      {{#if hasPacks}}
+      <div class="ncm-net2-atpk"><i class="fas fa-book"></i><b>In compendiums</b><span>Not in the world yet — pre-wire a scene and its networks follow it when you import it.</span></div>
+      {{#each packs}}
+      <section class="ncm-net2-atshelf is-pack {{#if shut}}is-shut{{/if}}" data-sc-shelf="{{key}}">
+        <div class="ncm-net2-atshelf__h" data-sc-fold="{{key}}" role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}" style="--ind:0px">
+          <i class="fas fa-chevron-down ncm-net2-atshelf__ch"></i><i class="fas fa-book ncm-net2-atshelf__fi"></i>
+          <span class="ncm-net2-atshelf__nm">{{name}}</span>{{#unless loading}}<span class="ncm-net2-atshelf__n">{{total}}</span>{{/unless}}{{#if pkg}}<span class="ncm-net2-atshelf__sub">{{pkg}}</span>{{/if}}
+          <span class="ncm-net2-grow"></span>
+          {{#if loading}}<span class="ncm-net2-atshelf__sub"><i class="fas fa-spinner fa-spin"></i> reading the pack…</span>{{else}}{{#if wiredN}}<span class="ncm-net2-atshelf__pre"><i class="fas fa-plug-circle-check"></i>{{wiredN}} pre-wired</span>{{/if}}{{/if}}
+        </div>
+        <div class="ncm-net2-atshelf__body">
+          <div class="ncm-net2-atgrid">{{#each cards}}{{> ncmNet2Card}}{{/each}}</div>
+          {{#if hidden}}<button type="button" class="ncm-net2-atmore" data-action="tabAct" data-op="scMore" data-key="{{key}}"><i class="fas fa-chevron-down"></i>+{{hidden}} more in this pack</button>{{else}}{{#if more}}<button type="button" class="ncm-net2-atmore" data-action="tabAct" data-op="scMore" data-key="{{key}}"><i class="fas fa-chevron-up"></i>Show fewer</button>{{/if}}{{/if}}
+        </div>
+      </section>
+      {{/each}}
+      {{/if}}
+    </div>
+
+    {{#with sel}}
+    <div class="ncm-net2-atinsp {{#if dead}}is-dead{{/if}}">
+      <div class="ncm-net2-atinsp__th" style="--tc:{{hue}};{{#if thumb}}background-image:url('{{thumb}}'){{/if}}"></div>
+      <div class="ncm-net2-atinsp__main">
+        <div class="ncm-net2-atinsp__hd"><b>{{name}}</b><span class="ncm-net2-atinsp__where"><i class="fas {{#if isPack}}fa-book{{else}}fa-folder{{/if}}"></i>{{where}}</span>{{#if cur}}<span class="ncm-tagp is-act">viewing</span>{{/if}}{{#if inWorld}}<span class="ncm-tagp is-good">in the world</span>{{/if}}
+          <span class="ncm-net2-grow"></span>
+          <button type="button" class="ncm-net2-btn ncm-net2-btn--icon" data-action="tabAct" data-op="scClose" aria-label="Close" data-tooltip="Close"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="ncm-net2-atinsp__row"><span class="ncm-net2-atinsp__k">{{#if isPack}}Pre-wired{{else}}Networks{{/if}}</span>
+          <div class="ncm-net2-snets">
+            {{#each nets}}<span class="ncm-net2-snet" style="--c:{{ic.color}}"><i class="fas {{ic.icon}}"></i>{{name}}<button type="button" class="ncm-net2-x" data-action="tabAct" data-op="{{#if @root.net2.scenes.sel.isPack}}scPreRm{{else}}sceneRm{{/if}}" data-scene-id="{{@root.net2.scenes.sel.id}}" data-uuid="{{@root.net2.scenes.sel.uuid}}" data-network-id="{{id}}" aria-label="Take {{name}} off" data-tooltip="Take {{name}} off"><i class="fas fa-xmark"></i></button></span>{{/each}}
+            {{{picker}}}
+            {{#if globalsNote}}<span class="ncm-net2-atinsp__gl">plus {{globalsNote}} everywhere</span>{{/if}}
+          </div>
+        </div>
+        <div class="ncm-net2-atinsp__row"><span class="ncm-net2-atinsp__k">Players start on</span>
+          {{#if isPack}}<select data-net2-prestart data-uuid="{{uuid}}" {{#if dead}}disabled{{/if}} aria-label="Players start on">{{#each startOptions}}<option value="{{id}}" {{#if on}}selected{{/if}}>{{name}}</option>{{/each}}</select>
+          {{else}}<select data-net2-default data-scene-id="{{id}}" {{#if dead}}disabled{{/if}} aria-label="Players start on">{{#each startOptions}}<option value="{{id}}" {{#if on}}selected{{/if}}>{{name}}</option>{{/each}}</select>{{/if}}
+          <span class="ncm-net2-atinsp__k">Dead zone</span>
+          <button type="button" class="ncm-net2-swbtn" data-action="tabAct" data-op="{{#if isPack}}scPreDead{{else}}sceneDead{{/if}}" data-scene-id="{{id}}" data-uuid="{{uuid}}" aria-pressed="{{#if dead}}true{{else}}false{{/if}}" aria-label="Dead zone"><span class="ncm-net2-sw {{#if dead}}on jam{{/if}}"></span></button>
+          <span class="ncm-net2-grow"></span>
+          {{#if isPack}}
+          <button type="button" class="ncm-net2-btn ncm-net2-btn--primary" data-action="tabAct" data-op="scImport" data-uuid="{{uuid}}"><i class="fas fa-file-import"></i> Import into the world</button>
+          {{else}}
+          <button type="button" class="ncm-net2-btn" data-action="tabAct" data-op="scView" data-scene-id="{{id}}"><i class="fas fa-eye"></i> View scene</button>
+          <button type="button" class="ncm-net2-btn" data-action="tabAct" data-op="scThis" data-scene-id="{{id}}"><i class="fas fa-location-crosshairs"></i> Open in This scene</button>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+    {{/with}}
+    {{/unless}}
+
+    {{#if isGrid}}
+    <div class="ncm-net2-cgwrap" data-net2-scroll="scgrid">
+      {{#if grid.empty}}<div class="ncm-net2-quiet ncm-net2-pad">No scenes match — clear the search or the filters.</div>{{else}}
+      <table class="ncm-net2-cg">
+        <thead><tr>
+          <th class="ncm-net2-cg__sc">Scene <small>click a cell · shift-click for a range · a band's count does the whole folder</small></th>
+          {{#each grid.cols}}<th class="ncm-net2-cg__net {{#if global}}is-global{{/if}}" style="--c:{{ic.color}}" title="{{name}}{{#if global}} — reaches every scene{{/if}}"><div><span class="ncm-net2-atdot"></span><span class="ncm-net2-cg__vn">{{name}}</span></div></th>{{/each}}
+          <th class="ncm-net2-cg__st">Players start on</th><th class="ncm-net2-cg__dz">Dead zone</th>
+        </tr></thead>
+        {{#each grid.bands}}
+        <tbody class="ncm-net2-cg__band {{#if shut}}is-shut{{/if}}" data-sc-shelf="{{key}}">
+          <tr class="ncm-net2-cg__bh">
+            <td class="ncm-net2-cg__sc" data-sc-fold="{{key}}" role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}" style="--ind:{{indent}}px"><i class="fas fa-chevron-down ncm-net2-atshelf__ch"></i>{{name}}<span class="ncm-net2-atshelf__n">{{total}}</span></td>
+            {{#each tallies}}<td class="ncm-net2-cg__c">{{#if global}}<span class="ncm-net2-cg__tl is-global">all</span>{{else}}<button type="button" class="ncm-net2-cg__tl {{#if full}}is-full{{/if}}" style="--c:{{color}}" data-action="tabAct" data-op="scBandNet" data-key="{{bandKey}}" data-network-id="{{id}}" data-tooltip="{{tip}}">{{n}}/{{of}}</button>{{/if}}</td>{{/each}}
+            <td></td><td></td>
+          </tr>
+          {{#each rows}}
+          <tr class="ncm-net2-cg__r {{#if cur}}is-cur{{/if}} {{#if dead}}is-dead{{/if}}" data-scene-id="{{id}}">
+            <td class="ncm-net2-cg__sc"><span class="ncm-net2-cg__nm">{{name}}</span>{{#if nav}}<i class="fas fa-thumbtack ncm-net2-cg__pin" title="On the navigation bar"></i>{{/if}}{{#if cur}}<small>viewing</small>{{/if}}{{#each players}}<span class="ncm-net2-atface" style="--fc:{{color}}" title="{{name}}">{{#if img}}<img src="{{img}}" alt="">{{else}}{{initial}}{{/if}}</span>{{/each}}</td>
+            {{#each cells}}<td class="ncm-net2-cg__c">{{#if global}}<span class="ncm-net2-cg__cb is-global" title="{{name}} reaches every scene"><i class="fas fa-check"></i></span>{{else}}<button type="button" class="ncm-net2-cg__cb {{#if on}}is-on{{/if}}" style="--c:{{color}}" data-action="tabAct" data-op="scCell" data-scene-id="{{sceneId}}" data-network-id="{{id}}" aria-pressed="{{#if on}}true{{else}}false{{/if}}" aria-label="{{name}}"><i class="fas fa-check"></i></button>{{/if}}</td>{{/each}}
+            <td class="ncm-net2-cg__c"><select data-net2-default data-scene-id="{{id}}" {{#if dead}}disabled{{/if}} aria-label="Players start on">{{#each startOptions}}<option value="{{id}}" {{#if on}}selected{{/if}}>{{name}}</option>{{/each}}</select></td>
+            <td class="ncm-net2-cg__c"><button type="button" class="ncm-net2-swbtn" data-action="tabAct" data-op="sceneDead" data-scene-id="{{id}}" aria-pressed="{{#if dead}}true{{else}}false{{/if}}" aria-label="Dead zone"><span class="ncm-net2-sw {{#if dead}}on jam{{/if}}"></span></button></td>
+          </tr>
+          {{/each}}
+        </tbody>
+        {{/each}}
+      </table>
+      {{/if}}
+    </div>
+    {{/if}}
+    {{/with}}
+    {{/if}}
+
+    {{!-- ═══════════════ ACTIVITY LOG ═══════════════ --}}
+    {{#if net2.isLog}}
+    {{#with net2.log}}
+    <div class="ncm-net2-tb">
+      <span class="ncm-net2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-net2-search="log" value="{{search}}" placeholder="Search the log…" aria-label="Search the log"></span>
+      {{{netPicker}}}
+      <button type="button" class="ncm-net2-btn" data-action="tabAct" data-op="noteToggle" aria-pressed="{{#if noteOpen}}true{{else}}false{{/if}}"><i class="fas fa-plus"></i> Add a note</button>
+      <span class="ncm-net2-menuwrap">
+        <button type="button" class="ncm-net2-btn ncm-net2-btn--icon" data-action="tabAct" data-op="menu" data-menu="log" aria-label="More" data-tooltip="Import · Export · Clear · Reset lockouts"><i class="fas fa-ellipsis"></i></button>
+        {{#if menuOpen}}
+        <span class="ncm-net2-menu ncm-net2-menu--right">
+          <button type="button" data-action="tabAct" data-op="logImport"><i class="fas fa-file-import"></i> Import…</button>
+          <button type="button" data-action="tabAct" data-op="logExport"><i class="fas fa-file-export"></i> Export (JSON)</button>
+          <button type="button" data-action="tabAct" data-op="logExportText"><i class="fas fa-file-lines"></i> Export (text)</button>
+          <button type="button" data-action="tabAct" data-op="resetLockouts"><i class="fas fa-unlock"></i> Reset lockouts{{#if lockoutCount}} ({{lockoutCount}}){{/if}}</button>
+          <button type="button" class="danger" data-action="tabAct" data-op="logClear"><i class="fas fa-trash"></i> Clear the log</button>
+        </span>
+        {{/if}}
+      </span>
+    </div>
+    <div class="ncm-net2-chips">
+      {{#each kinds}}<button type="button" class="ncm-net2-chip {{#if on}}on{{/if}}" data-action="tabAct" data-op="logKind" data-kind="{{value}}">{{label}}</button>{{/each}}
+      <span class="ncm-net2-grow"></span>
+      <span class="ncm-net2-n">{{#if capped}}showing {{shown}} of {{matched}}{{else}}{{matched}}{{/if}}{{#if filtered}} · {{total}} in all{{/if}}</span>
+    </div>
+    {{#if lockouts.length}}
+    <div class="ncm-net2-lockouts"><span class="ncm-net2-k">Locked out now</span>
+      {{#each lockouts}}<span class="ncm-net2-tag ncm-tagp is-bad"><i class="fas fa-ban"></i>{{actorName}} · {{targetName}}<button type="button" class="ncm-net2-x" data-action="tabAct" data-op="resetLockout" data-actor-id="{{actorId}}" data-target-id="{{targetId}}" aria-label="Lift this lockout" data-tooltip="Lift this lockout"><i class="fas fa-xmark"></i></button></span>{{/each}}
+    </div>
+    {{/if}}
+    {{#if noteOpen}}
+    <div class="ncm-net2-note" data-net2-note>
+      {{{notePicker}}}
+      <input type="text" name="noteActor" value="{{note.actor}}" placeholder="Who" aria-label="Who">
+      <select name="noteType" aria-label="Kind">{{#each noteTypes}}<option value="{{value}}" {{#if on}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+      <input type="text" name="noteMessage" value="{{note.message}}" placeholder="What happened…" aria-label="What happened">
+      <button type="button" class="ncm-net2-btn ncm-net2-btn--primary" data-action="tabAct" data-op="noteAdd"><i class="fas fa-check"></i> Add</button>
+    </div>
+    {{/if}}
+    <div class="ncm-net2-log" data-net2-scroll="log">
+      {{#each rows}}
+      <div class="ncm-net2-logrow ncm-net2-logrow--{{tone}} {{#if manual}}is-note{{/if}}" style="--c:{{netColor}}">
+        <span class="ncm-net2-w">{{time}}<small>{{date}}</small></span>
+        <span class="ncm-net2-logic ncm-net2-tone--{{tone}}">{{#if actorImg}}<img src="{{actorImg}}" alt="">{{/if}}<i class="fas {{icon}}"></i></span>
+        <span class="ncm-net2-logtx"><b>{{actorName}}</b> {{verb}} <button type="button" class="ncm-net2-lognet" data-action="tabAct" data-op="logNet" data-network-id="{{networkId}}" data-tooltip="Show only {{networkName}}">{{networkName}}</button>{{#if sceneName}}<span class="ncm-net2-logscene" data-tooltip="The scene they were on"><i class="fas fa-map"></i>{{sceneName}}</span>{{/if}}
+          <span class="ncm-net2-logtag ncm-net2-tone--{{tone}}">{{tag}}</span>{{#if message}}<span class="ncm-net2-logmsg">{{message}}</span>{{/if}}
+          {{#if hasLink}}<button type="button" class="ncm-net2-link" data-action="tabAct" data-op="logRef" data-link-type="{{linkType}}" data-message-id="{{linkMessageId}}" data-actor-id="{{linkActorId}}" data-item-id="{{linkItemId}}"><i class="fas {{linkIcon}}"></i> {{linkLabel}}</button>{{/if}}</span>
+        <span class="ncm-net2-logacts">
+          <button type="button" class="ncm-net2-x" data-action="tabAct" data-op="logEdit" data-entry-id="{{id}}" aria-label="Edit"><i class="fas fa-pen"></i></button>
+          <button type="button" class="ncm-net2-x" data-action="tabAct" data-op="logDelete" data-entry-id="{{id}}" aria-label="Delete"><i class="fas fa-trash"></i></button>
+        </span>
+      </div>
+      {{/each}}
+      {{#if empty}}<div class="ncm-net2-quiet ncm-net2-pad">{{#if filtered}}Nothing matches. <button type="button" class="ncm-net2-link" data-action="tabAct" data-op="logClearFilters">Clear the filters</button>{{else}}Nothing logged yet.{{/if}}</div>{{/if}}
+    </div>
+    {{/with}}
+    {{/if}}
+
+  </div>
+</div>
+{{/if}}
+{{/if}}

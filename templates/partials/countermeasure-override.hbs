@@ -1,0 +1,26 @@
+{{!--
+  Countermeasure visibility — the per-object override (networks, terminal accounts, shards).
+  Context: cmv = cmvOverrideContext(override, noun) from scripts/utils/countermeasureView.js.
+  Wire with wireCmvOverride(root) in _onRender; read with readCmvOverride(root) at save.
+  Every control is unnamed (the reader walks the block), so FormDataExtended never sees it.
+--}}
+<div class="ncm-cmv-block ncm-cmv-ovr" data-cmv-ovr data-noun="{{cmv.noun}}" data-visibility="{{cmv.visibility}}">
+  <div class="ncm-cmv-block__hd"><i class="fas fa-eye-slash"></i> Countermeasure visibility <span class="hint">this {{cmv.noun}} only</span></div>
+  <div class="ncm-cmv-block__bd">
+    <div class="ncm-cmv-line"><span class="k">Visibility</span>
+      <span class="ncm-cmv-seg" data-cmv-seg="visibility" role="radiogroup" aria-label="Countermeasure visibility">
+        {{#each cmv.visOpts}}<span role="radio" tabindex="0" aria-checked="{{#if this.on}}true{{else}}false{{/if}}" class="{{#if this.on}}on{{/if}}" data-value="{{this.value}}">{{this.label}}</span>{{/each}}
+      </span>
+    </div>
+    <div class="ncm-cmv-line" data-cmv-scanrow><span class="k">Scan DV</span>
+      <input type="number" class="ncm-cmv-num" data-cmv-scandv value="{{cmv.scanDV}}" min="1" max="40" placeholder="{{cmv.worldScanDV}}" aria-label="Scan DV">
+      <span>blank = the world default ({{cmv.worldScanDV}})</span>
+    </div>
+    <div class="ncm-cmv-line"><span class="k">DV</span>
+      <span class="ncm-cmv-seg" data-cmv-seg="dv" role="radiogroup" aria-label="Show the DV">
+        {{#each cmv.dvOpts}}<span role="radio" tabindex="0" aria-checked="{{#if this.on}}true{{else}}false{{/if}}" class="{{#if this.on}}on{{/if}}" data-value="{{this.value}}">{{this.label}}</span>{{/each}}
+      </span>
+    </div>
+    <div class="ncm-cmv-verdict" data-cmv-verdict>{{cmv.verdict}}</div>
+  </div>
+</div>

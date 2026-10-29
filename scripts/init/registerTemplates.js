@@ -11,6 +11,7 @@
 import { TEMPLATES, MODULE_ID } from '../utils/constants.js';
 import { log, formatCyberDate, truncate } from '../utils/helpers.js';
 import { registerShardTermHelper } from '../utils/shardTerm.js';
+import { registerTagHueHelper, setRoleColorResolver } from '../utils/tagHue.js';
 
 /**
  * Check if the last argument is a Handlebars options object (block mode)
@@ -125,6 +126,8 @@ export function registerTemplates(initializer) {
     Handlebars.registerHelper('sub', (a, b) => (a || 0) - (b || 0));
     // 0→A, 1→B … (option labels); wraps past Z back to A.
     Handlebars.registerHelper('letter', (i) => String.fromCharCode(65 + (((i || 0) % 26) + 26) % 26));
+    registerTagHueHelper(Handlebars);
+    setRoleColorResolver((id) => (game.nightcity?.masterContactService?.getCustomRoles?.() || []).find((r) => r.id === id)?.color || null);
     Handlebars.registerHelper('ncm-json', (context) => JSON.stringify(context, null, 2));
     Handlebars.registerHelper('ncm-isGM', () => game.user?.isGM);
     // What players call a shard (the `shardTerm` setting) — see utils/shardTerm.js.

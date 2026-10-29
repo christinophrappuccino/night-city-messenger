@@ -102,6 +102,8 @@ export class ContactBreachService {
         dc,
         luckSpend: options.luckSpend ?? 0,
         showChat: true,
+        // The Contact Manager's breach animation posts the card when it ends.
+        deferChat: !!options.deferChat,
         context: `Breaching ICE: ${contact.encrypted ? '████████' : contact.name}`,
         flavor: `CONTACT ICE // DV ${dc} // Attempt ${currentAttempts + 1}/${maxAttempts}`,
       });
@@ -117,7 +119,8 @@ export class ContactBreachService {
         breachAttempts: 0,
         breachLockoutUntil: null,
       });
-      return this._handleSuccess(actorId, contactId, contact, actor, rollResult);
+      const ok = await this._handleSuccess(actorId, contactId, contact, actor, rollResult);
+      return Object.assign(ok || {}, { postChat: rollResult.postChat });
     } else {
       // Increment attempts on failure
       const newAttempts = currentAttempts + 1;
@@ -130,7 +133,8 @@ export class ContactBreachService {
       }
       await this.contactRepo.updateContact(actorId, contactId, updates);
 
-      return this._handleFailure(actorId, contactId, contact, actor, rollResult);
+      const no = await this._handleFailure(actorId, contactId, contact, actor, rollResult);
+      return Object.assign(no || {}, { postChat: rollResult.postChat });
     }
   }
 

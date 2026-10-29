@@ -1,0 +1,282 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Admin guides v5 — group delivery line, At the table</title>
+<!--
+  1g. The delivery line for GROUP mail (one send, several recipients — a contact group, or several To chips),
+      including mail sent AS a contact / alias.
+  2.  At the table (Overview), reworked — players grouped by the scene they're looking at, each one's network and
+      signal, and the few things that decide whether their Agent works; click a player for the why + the fix.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-guides-v5-mock.html
+  ?t=clean-dark|clean-light|high-contrast   ?only=grp|table
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 22px 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px sans-serif; margin: 0 0 12px; max-width: 1060px; line-height: 1.45; }
+  .mk-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-cap { color: #9aa; font: 600 11px sans-serif; margin: 0 0 5px; text-transform: uppercase; letter-spacing: .06em; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .P { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .av { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 8.5px var(--ncm-font-display); flex: none;
+    color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 18%, var(--ncm-bg-card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 55%, transparent); }
+  .btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important; flex: none;
+    border: 1px solid var(--ncm-act) !important; color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 10%, transparent) !important; cursor: pointer; white-space: nowrap; box-shadow: none !important; margin: 0 !important; line-height: 1.4; }
+  .btn.q { border-color: var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; }
+  .btn.ic { padding: 4px 7px !important; }
+  @keyframes flash { 0% { background: color-mix(in srgb, var(--ncm-good) 28%, transparent); } 100% { background: transparent; } }
+  @keyframes open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  /* reading-pane head stand-in */
+  .rd { padding: 10px 13px; background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border-active); }
+  .rd h3 { margin: 0 0 6px; font: 700 18px var(--ncm-font-display); color: var(--ncm-text-heading); border: 0; }
+  .rd .pp { display: grid; grid-template-columns: 44px 1fr; gap: 3px 8px; font: 12.5px var(--ncm-font-body); }
+  .rd .pp .k { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); padding-top: 3px; }
+  .rd .pp .v { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; color: var(--ncm-text-primary); }
+  .rd .pp .a { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr); }
+  .rd .pp .t { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .rd .ncm-tagp { font-size: 10.5px !important; line-height: 15px; padding: 0 5px !important; }
+  .body { padding: 12px 13px; color: var(--ncm-text-primary); line-height: 1.55; }
+
+  /* ═══ 1g. GROUP DELIVERY LINE ═══ */
+  .dl { --dc: var(--ncm-good); border-bottom: 1px solid var(--ncm-border); }
+  .dl.wait { --dc: var(--ncm-attn); } .dl.bad { --dc: var(--ncm-bad); }
+  .dl__line { display: flex; align-items: center; gap: 9px; padding: 7px 13px; cursor: pointer; box-shadow: inset 3px 0 var(--dc); background: color-mix(in srgb, var(--dc) 7%, transparent); }
+  .dl__line:hover { background: color-mix(in srgb, var(--dc) 13%, transparent); }
+  .dl__ic { color: var(--dc); width: 16px; text-align: center; }
+  .dl__txt { font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .dl__txt b { font-weight: 700; } .dl__txt .g { color: var(--ncm-good); } .dl__txt .w { color: var(--ncm-attn); } .dl__txt .r { color: var(--ncm-bad); }
+  .dl__stack { margin-left: auto; display: flex; gap: 2px; }
+  .dl__stack i { width: 10px; height: 10px; border-radius: 2px; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); }
+  .dl__stack i.read { background: var(--ncm-good); } .dl__stack i.got { background: color-mix(in srgb, var(--ncm-good) 45%, transparent); box-shadow: inset 0 0 0 1px var(--ncm-good); }
+  .dl__stack i.held { background: var(--ncm-attn); } .dl__stack i.fail { background: var(--ncm-bad); }
+  .dl__chev { color: var(--ncm-text-label); font-size: 10px; transition: transform .15s; }
+  .dl.is-open .dl__chev { transform: rotate(180deg); }
+  .dl__more { display: none; padding: 2px 13px 11px; animation: open .18s ease-out; }
+  .dl.is-open .dl__more { display: block; }
+  .rcp { display: grid; grid-template-columns: 22px minmax(0,1fr) auto auto; gap: 3px 9px; align-items: center; padding: 6px 4px; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .rcp.flash { animation: flash 1s ease-out; }
+  .rcp .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+  .rcp .nm .a { font: 11px var(--ncm-font-mono); color: var(--ncm-text-addr); font-weight: 400; }
+  .rcp .why { grid-column: 2 / -1; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .rcp .why b { color: var(--ncm-text-primary); }
+  .st { display: inline-flex; gap: 5px; align-items: center; font: 600 11.5px var(--ncm-font-body); white-space: nowrap; }
+  .st .t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); font-weight: 400; }
+  .st.read { color: var(--ncm-good); } .st.got { color: color-mix(in oklab, var(--ncm-good) 70%, var(--ncm-text-primary)); } .st.held { color: var(--ncm-attn); } .st.fail { color: var(--ncm-bad); } .st.ans { color: var(--ncm-act); }
+  .dl__foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 9px; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .dl__foot .grow { flex: 1; }
+
+  /* ═══ 2. AT THE TABLE ═══ */
+  .tb { padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+  .tb__hd { display: flex; align-items: center; gap: 8px; padding: 7px 12px 7px 10px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border);
+    box-shadow: inset 3px 0 var(--ncm-act); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .tb__hd > i { color: var(--ncm-act); }
+  .tb__hd small { font: 400 italic 11.5px var(--ncm-font-body); color: var(--ncm-text-hint); text-transform: none; letter-spacing: 0; }
+  .tb__hd .r { margin-left: auto; display: flex; gap: 8px; align-items: center; font: 400 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); }
+  .tb__hd .r b { color: var(--ncm-good); } .tb__hd .r b.w { color: var(--ncm-attn); }
+  /* a scene: its own little band, the players standing in it */
+  .scn { --sc: var(--ncm-hue-3); border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .scn.dz { --sc: var(--ncm-bad); }
+  .scn__hd { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); box-shadow: inset 3px 0 var(--sc); }
+  .scn__hd i { color: var(--sc); }
+  .scn__nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .scn__nets { display: flex; gap: 5px; flex-wrap: wrap; }
+  .scn__nets .ncm-tagp { font-size: 10.5px !important; line-height: 15px; padding: 0 5px !important; }
+  .scn__hd .you { margin-left: auto; font: 10.5px var(--ncm-font-mono); color: var(--ncm-act); }
+  .scn__ppl { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  /* a player */
+  .pl { --pc: var(--ncm-good); display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 2px 9px; align-items: center; padding: 8px 10px; cursor: pointer; position: relative;
+    border-right: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); }
+  .pl:hover { background: var(--ncm-bg-hover); }
+  .pl.is-open { background: color-mix(in srgb, var(--ncm-act) 9%, transparent); box-shadow: inset 0 -2px var(--ncm-act); }
+  .pl.warn { --pc: var(--ncm-attn); } .pl.bad { --pc: var(--ncm-bad); } .pl.off { --pc: var(--ncm-text-hint); }
+  .pl.flash { animation: flash 1s ease-out; }
+  .pl__face { position: relative; width: 30px; height: 30px; }
+  .pl__face .av { width: 30px; height: 30px; font-size: 10px; }
+  .pl__face .dot { position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border-radius: 50%; background: var(--ncm-good); border: 2px solid var(--ncm-bg-pane); }
+  .pl.off .pl__face .dot { background: var(--ncm-text-hint); }
+  .pl__nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pl__nm small { font: 400 11px var(--ncm-font-body); color: var(--ncm-text-label); margin-left: 4px; }
+  .pl__checks { grid-column: 2 / -1; display: flex; gap: 4px; flex-wrap: wrap; }
+  .pl__face { grid-row: 1 / 3; align-self: start; margin-top: 1px; }
+  .chk { display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; border-radius: 1px; font: 600 10.5px var(--ncm-font-body); line-height: 16px;
+    color: color-mix(in oklab, var(--kc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--kc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--kc) 45%, transparent); }
+  .chk i { color: var(--kc); font-size: 9px; }
+  .chk.ok { --kc: var(--ncm-good); } .chk.w { --kc: var(--ncm-attn); } .chk.b { --kc: var(--ncm-bad); } .chk.n { --kc: var(--ncm-text-label); } .chk.net { --kc: var(--nc); }
+  .sig { display: inline-flex; gap: 1px; align-items: flex-end; height: 10px; }
+  .sig i { width: 2px; background: currentColor; opacity: .3; } .sig i.on { opacity: 1; }
+  .sig i:nth-child(1) { height: 3px; } .sig i:nth-child(2) { height: 5px; } .sig i:nth-child(3) { height: 7px; } .sig i:nth-child(4) { height: 10px; }
+  .pl__verdict { grid-row: 1; grid-column: 3; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--pc); text-align: right; }
+  /* the open player: why + fixes, under their scene */
+  .why2 { grid-column: 1 / -1; padding: 9px 12px 11px; border-top: 1px solid var(--ncm-border); background: color-mix(in srgb, var(--ncm-act) 5%, var(--ncm-bg-pane)); animation: open .18s ease-out; }
+  .why2 .h { display: flex; gap: 8px; align-items: center; font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); margin-bottom: 6px; }
+  .why2 .h .x { margin-left: auto; color: var(--ncm-text-label); cursor: pointer; }
+  .why2 ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .why2 li { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; gap: 8px; align-items: center; font: 12.5px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .why2 li > i { color: var(--lc); text-align: center; } .why2 li b { color: var(--lc); }
+  .why2 li.ok { --lc: var(--ncm-good); } .why2 li.w { --lc: var(--ncm-attn); } .why2 li.b { --lc: var(--ncm-bad); }
+  .why2 .go { display: flex; gap: 6px; margin-top: 9px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+</style>
+</head>
+<body>
+<p class="mk-h">1g — THE DELIVERY LINE FOR GROUP MAIL &nbsp;·&nbsp; Messages → All mail → a group send</p>
+<p class="mk-p">One send to several people — a contact group, or several To chips — and mail sent <i>as</i> a contact or an alias. The line counts the party ("Sent to 5 · 2 read · 1 waiting · 1 not delivered") with one square per person. Click it for one row each: their state and time, why when it went wrong, and that person's fix. Use a fix and that row updates.</p>
+<div class="mk-row" data-slot="grp"></div>
+
+<p class="mk-h">2 — AT THE TABLE, REWORKED &nbsp;·&nbsp; Admin → Overview</p>
+<p class="mk-p">Players grouped by <b>the scene they're looking at</b>, so you see who's together and who wandered off. Each scene shows its networks (or that it's a dead zone). Each player shows online/offline, their network and signal, and the few things that decide whether their Agent works: an address, contacts, mail waiting for them, mail they wrote that's held. One word on the right says where they stand. <b>Click a player</b> to open the why and the fixes right there; fix something and they flip to ready.</p>
+<div class="mk-row" data-slot="table"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const av = (n) => `<span class="av" style="--tc:${hue(n)}">${n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>`;
+const shell = (w, inner) => `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:${w}px"><div class="ncm-admin-panel">${inner}</div></div>`;
+
+/* ═══════════ 1g ═══════════ */
+const G = {
+  crew: { open: false, subject: 'Tonight', from: 'Rogue', fa: 'rogue@afterlife.nc', group: 'The Crew', via: '',
+    rcp: [
+      { n: 'V', a: 'v@nightcity.net', s: 'ans', t: '21:41', why: 'replied: "On my way."' },
+      { n: 'Judy', a: 'judy@mox.nc', s: 'read', t: '21:30' },
+      { n: 'Rache', a: 'rache@nightcity.net', s: 'held', why: 'on <b>The Docks</b> — a dead zone. It reaches Rache the moment they have signal.', fix: 'Deliver now' },
+      { n: 'Misty', a: 'misty@esoterica.nc', s: 'got', t: '21:04', why: 'delivered, not opened — Misty is an NPC; it\'s in her inbox for you.', fix: 'Open her inbox' },
+      { n: 'Brick', a: 'brick@maelstrom.gang', s: 'fail', why: 'no inbox — the character was deleted. Nothing was written for him.', fix: 'Remove from The Crew' },
+    ] },
+  alias: { open: false, subject: 'a little job', from: 'Queen of Hearts', fa: 'queen.h@darknet', group: '', via: 'alias of Rogue',
+    rcp: [{ n: 'V', a: 'v@nightcity.net', s: 'read', t: '18:12' }, { n: 'Judy', a: 'judy@mox.nc', s: 'got', t: '18:02', why: 'delivered, not opened yet. Judy\'s player (Ana) is online.', fix: 'Nudge her' }] },
+};
+const ST = { ans: ['ans', 'fa-reply', 'answered'], read: ['read', 'fa-eye', 'read'], got: ['got', 'fa-inbox', 'delivered'], held: ['held', 'fa-hourglass-half', 'waiting'], fail: ['fail', 'fa-ban', 'not delivered'] };
+const SQ = { ans: 'read', read: 'read', got: 'got', held: 'held', fail: 'fail' };
+function grpLine(m) {
+  const c = { read: 0, got: 0, held: 0, fail: 0 }; m.rcp.forEach((r) => c[SQ[r.s]]++);
+  const parts = [`Sent to <b>${m.rcp.length}</b>`];
+  if (c.read) parts.push(`<b class="g">${c.read} read</b>`);
+  if (c.got) parts.push(`${c.got} delivered`);
+  if (c.held) parts.push(`<b class="w">${c.held} waiting</b>`);
+  if (c.fail) parts.push(`<b class="r">${c.fail} not delivered</b>`);
+  const cls = c.fail ? 'bad' : c.held ? 'wait' : '';
+  return { cls, txt: parts.join(' · '), icon: c.fail ? 'fa-triangle-exclamation' : c.held ? 'fa-hourglass-half' : 'fa-users' };
+}
+function renderGrp(flashKey, flashI) {
+  document.querySelector('[data-slot="grp"]').innerHTML = Object.entries(G).map(([k, m]) => {
+    const L = grpLine(m);
+    return `<div><p class="mk-cap">${k === 'crew' ? 'To a contact group — one person failed, one held' : 'Sent as an alias — opened by default: no'}</p>${shell(475, `<div class="P">
+      <div class="rd"><h3>${m.subject}</h3><div class="pp">
+        <span class="k">From</span><span class="v">${av(m.from)}${m.from} <span class="a">${m.fa}</span>${m.via ? `<span class="ncm-tagp is-secret"><i class="fas fa-masks-theater"></i>${m.via}</span>` : ''}</span>
+        <span class="k">To</span><span class="v">${m.group ? `<span class="ncm-tagp" style="--tc:${hue(m.group)}"><i class="fas fa-users"></i>${m.group}</span> ${m.rcp.length} people` : m.rcp.map((r) => `${av(r.n)}${r.n}`).join(' ')}</span>
+        <span class="k">When</span><span class="v"><span class="t">21:04 · CitiNet 82%</span></span></div></div>
+      <div class="dl ${L.cls} ${m.open ? 'is-open' : ''}">
+        <div class="dl__line" data-gtog="${k}"><i class="fas ${L.icon} dl__ic"></i><span class="dl__txt">${L.txt}</span><span class="dl__stack">${m.rcp.map((r) => `<i class="${SQ[r.s]}" title="${r.n}: ${ST[r.s][2]}"></i>`).join('')}</span><i class="fas fa-chevron-down dl__chev"></i></div>
+        <div class="dl__more">${m.rcp.map((r, i) => `<div class="rcp ${flashKey === k && flashI === i ? 'flash' : ''}">${av(r.n)}<span class="nm">${r.n}<span class="a">${r.a}</span></span>
+            <span class="st ${ST[r.s][0]}"><i class="fas ${ST[r.s][1]}"></i>${ST[r.s][2]}${r.t ? ` <span class="t">${r.t}</span>` : ''}</span>
+            ${r.fix ? `<button class="btn ${r.s === 'fail' ? 'q' : ''}" data-gfix="${k}:${i}">${r.fix}</button>` : '<span></span>'}
+            ${r.why ? `<span class="why">${r.why}</span>` : ''}</div>`).join('')}
+          <div class="dl__foot">${m.group ? `Sent to <b style="color:var(--ncm-text-primary)">${m.group}</b> as one message — each person got their own copy.` : `Sent as <b style="color:var(--ncm-secret)">${m.from}</b> — they see the alias, not Rogue.`}<span class="grow"></span>${m.rcp.some((r) => r.s === 'got') ? '<button class="btn q">Nudge everyone who hasn\'t read it</button>' : ''}</div>
+        </div></div><div class="body">${k === 'crew' ? 'Afterlife, midnight. All of you.' : 'Small job, big pay. Interested?'}</div></div>`)}</div>`;
+  }).join('');
+}
+
+/* ═══════════ 2 ═══════════ */
+const NET = { CitiNet: 'var(--ncm-hue-2)', 'Arasaka CorpNet': 'var(--ncm-hue-5)' };
+const T = { open: 'Rache', fixed: new Set(), delivered: false,
+  scenes: [
+    { id: 'market', name: 'Night Market', nets: [['CitiNet', 82], ['Watson Free', 60]], you: true },
+    { id: 'docks', name: 'The Docks', dz: true, nets: [] },
+    { id: 'none', name: 'Not on any scene', nets: [], idle: true },
+  ],
+  players: [
+    { n: 'V', p: 'Marta', on: true, scene: 'market', net: 'CitiNet', sig: 82, addr: 'v@nightcity.net', contacts: 6, unread: 2, held: 0 },
+    { n: 'Judy', p: 'Ana', on: true, scene: 'market', net: 'CitiNet', sig: 82, addr: 'judy@mox.nc', contacts: 0, unread: 1, held: 0 },
+    { n: 'Rache', p: 'Sam', on: true, scene: 'docks', net: '', sig: 0, addr: '', contacts: 3, unread: 0, held: 1 },
+    { n: 'Panam', p: 'Jo', on: false, scene: 'none', net: '', sig: 0, addr: 'panam@aldecaldo.nc', contacts: 4, unread: 3, held: 0 },
+  ] };
+function assess(pl) {
+  const sc = T.scenes.find((s) => s.id === pl.scene);
+  const addr = pl.addr || (T.fixed.has(pl.n + ':addr') ? pl.n.toLowerCase() + '@nightcity.net' : '');
+  const contacts = pl.contacts || (T.fixed.has(pl.n + ':contacts') ? 2 : 0);
+  const held = T.fixed.has(pl.n + ':held') ? 0 : pl.held;
+  const items = [], fixes = [];
+  if (!pl.on) items.push(['ok', 'fa-moon', `<b>Offline</b> — ${pl.p} isn't connected. ${pl.unread ? `${pl.unread} unread will be waiting.` : ''}`]);
+  if (!addr) { items.push(['b', 'fa-at', '<b>No address</b> — they can\'t send or receive. The Agent asks them to pick one the first time it opens.']); fixes.push(['Set an address', pl.n + ':addr'], ['Let them choose', pl.n + ':addr', 'q']); }
+  else items.push(['ok', 'fa-at', `Address <span style="font-family:var(--ncm-font-mono);color:var(--ncm-text-addr)">${addr}</span>`]);
+  if (sc?.dz) items.push(['b', 'fa-tower-broadcast', `<b>No signal</b> — ${sc.name} is a dead zone. Mail they write waits on their Agent.`]);
+  else if (pl.on && pl.net) items.push([pl.sig < 50 ? 'w' : 'ok', 'fa-wifi', `On <b>${pl.net}</b> at ${pl.sig}%${pl.sig < 50 ? ' — long messages can arrive garbled' : ''}`]);
+  if (held) { items.push(['w', 'fa-hourglass-half', `<b>${held} message held</b> on their Agent — "need a ride out" to Judy.`]); fixes.push(['Deliver it now', pl.n + ':held']); }
+  if (!contacts) { items.push(['w', 'fa-address-book', '<b>No contacts</b> — nobody to pick when they write. Share a fixer or the crew.']); fixes.push(['Share the crew', pl.n + ':contacts']); }
+  else items.push(['ok', 'fa-address-book', `${contacts} contacts`]);
+  if (pl.unread && pl.on) items.push(['ok', 'fa-envelope', `${pl.unread} unread waiting for them`]);
+  const worst = items.some((i) => i[0] === 'b') ? 'bad' : items.some((i) => i[0] === 'w') ? 'warn' : pl.on ? '' : 'off';
+  const verdict = { bad: !addr ? 'can\'t mail' : 'no signal', warn: held ? 'mail held' : !contacts ? 'no contacts' : 'weak signal', '': 'ready', off: 'offline' }[worst];
+  const checks = [
+    addr ? '<span class="chk ok"><i class="fas fa-at"></i>address</span>' : '<span class="chk b"><i class="fas fa-at"></i>no address</span>',
+    sc?.dz ? '<span class="chk b"><i class="fas fa-tower-broadcast"></i>no signal</span>' : pl.on && pl.net ? `<span class="chk net" style="--nc:${NET[pl.net] || 'var(--ncm-hue-2)'}"><span class="sig" style="color:${NET[pl.net] || 'var(--ncm-hue-2)'}">${[25, 50, 80, 100].map((th) => `<i class="${pl.sig >= th - 20 ? 'on' : ''}"></i>`).join('')}</span>${pl.net} ${pl.sig}%</span>` : '',
+    contacts ? `<span class="chk n"><i class="fas fa-address-book"></i>${contacts}</span>` : '<span class="chk w"><i class="fas fa-address-book"></i>0 contacts</span>',
+    pl.unread ? `<span class="chk n"><i class="fas fa-envelope"></i>${pl.unread} unread</span>` : '',
+    held ? `<span class="chk w"><i class="fas fa-hourglass-half"></i>${held} held</span>` : '',
+  ].filter(Boolean).join('');
+  return { worst, verdict, checks, items, fixes };
+}
+function renderTable(flashName) {
+  const all = T.players.map((p) => ({ p, a: assess(p) }));
+  const need = all.filter((x) => x.a.worst === 'bad' || x.a.worst === 'warn').length;
+  const online = T.players.filter((p) => p.on).length;
+  const scenes = T.scenes.map((sc) => {
+    const ppl = all.filter((x) => x.p.scene === sc.id);
+    if (!ppl.length) return '';
+    const openOne = ppl.find((x) => x.p.n === T.open);
+    return `<div class="scn ${sc.dz ? 'dz' : ''}"><div class="scn__hd"><i class="fas ${sc.dz ? 'fa-tower-broadcast' : sc.idle ? 'fa-moon' : 'fa-location-dot'}"></i><span class="scn__nm">${sc.name}</span>
+      <span class="scn__nets">${sc.dz ? '<span class="ncm-tagp is-bad"><i class="fas fa-ban"></i>dead zone</span>' : sc.nets.map(([n, s]) => `<span class="ncm-tagp" style="--tc:${NET[n] || hue(n)}"><i class="fas fa-wifi"></i>${n} ${s}%</span>`).join('')}</span>
+      ${sc.you ? '<span class="you"><i class="fas fa-eye"></i> you are here</span>' : ''}</div>
+      <div class="scn__ppl">${ppl.map(({ p, a }) => `<div class="pl ${a.worst} ${p.n === T.open ? 'is-open' : ''} ${flashName === p.n ? 'flash' : ''}" data-pl="${p.n}">
+        <span class="pl__face">${av(p.n)}<span class="dot"></span></span><span class="pl__nm">${p.n}<small>${p.p}</small></span><span class="pl__verdict">${a.verdict}</span>
+        <span class="pl__checks">${a.checks}</span></div>`).join('')}
+      ${openOne ? `<div class="why2"><div class="h">${av(openOne.p.n)}${openOne.p.n} — ${openOne.a.worst === '' ? 'ready to go' : openOne.a.verdict}<span class="x" data-pl="${openOne.p.n}"><i class="fas fa-xmark"></i></span></div>
+        <ul>${openOne.a.items.map(([c, ic, t]) => `<li class="${c}"><i class="fas ${ic}"></i><span>${t}</span><span></span></li>`).join('')}</ul>
+        <div class="go">${openOne.a.fixes.map(([l, k, c]) => `<button class="btn ${c || ''}" data-tfix="${k}">${l}</button>`).join('')}<span style="flex:1"></span>
+          <button class="btn q ic" title="Open their inbox"><i class="fas fa-inbox"></i></button><button class="btn q ic" title="Write to them"><i class="fas fa-envelope"></i></button><button class="btn q ic" title="Their contacts"><i class="fas fa-address-book"></i></button></div></div>` : ''}
+      </div></div>`;
+  }).join('');
+  document.querySelector('[data-slot="table"]').innerHTML = shell(790, `<div class="P"><div class="tb__hd"><i class="fas fa-users"></i>At the table <small>who is where, on what, and whether their Agent works</small>
+    <span class="r">${online} online · ${need ? `<b class="w">${need} need you</b>` : '<b>all ready</b>'}</span></div><div class="tb">${scenes}</div></div>`);
+}
+
+/* ── events ── */
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-gtog],[data-gfix],[data-pl],[data-tfix]');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.gtog) { G[d.gtog].open = !G[d.gtog].open; renderGrp(); }
+  else if (d.gfix) { const [k, i] = d.gfix.split(':'); const r = G[k].rcp[+i];
+    if (r.s === 'held') { r.s = 'got'; r.t = 'now'; r.why = 'delivered by you just now.'; r.fix = ''; }
+    else if (r.s === 'got') { r.why = 'nudged — they get a toast.'; r.fix = ''; }
+    else if (r.s === 'fail') { G[k].rcp.splice(+i, 1); }
+    renderGrp(k, +i); }
+  else if (d.tfix) { T.fixed.add(d.tfix); renderTable(d.tfix.split(':')[0]); }
+  else if (d.pl) { T.open = T.open === d.pl ? null : d.pl; renderTable(); }
+});
+renderGrp(); renderTable();
+
+/* ?only= */
+(() => { const only = (q.get('only') || '').split(',').filter(Boolean); if (!only.length) return;
+  document.querySelectorAll('[data-slot]').forEach((slot) => { if (only.includes(slot.dataset.slot)) return; slot.style.display = 'none'; });
+  document.querySelectorAll('p.mk-h, p.mk-p').forEach((p) => { p.style.display = 'none'; }); document.body.style.padding = '8px 4px';
+})();
+</script>
+</body>
+</html>

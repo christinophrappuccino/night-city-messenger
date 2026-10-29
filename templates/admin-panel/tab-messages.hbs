@@ -1,465 +1,552 @@
-    {{#if (eq activeTab 'messages')}}
+{{!--
+  Admin → Messages (2026-10-27 redesign — dev/mockups/admin-messages-redesign-mock.html)
+  Context: msg2 (MessagesTab._buildContext). Sub-tabs: Needs a reply · All mail · Outbox · Inboxes.
+  New buttons: data-action="tabAct" data-owner="messages" data-op="…" → MessagesTab.onAct.
+--}}
+{{!-- The Desk's queue row: one conversation (an NPC × the alias written to). Context = a deskQueue row. --}}
+{{#*inline "ncmMsg2DeskRow"}}
+<div class="ncm-msg2-dq {{#if sel}}is-sel{{/if}} {{#if done}}is-done{{/if}} {{#if meter.hot}}is-hot{{/if}}" data-action="tabAct" data-owner="messages" data-op="convSel" data-key="{{key}}" role="button" tabindex="0" aria-pressed="{{#if sel}}true{{else}}false{{/if}}">
+  {{#if npc.img}}<img class="ncm-msg2-av" src="{{npc.img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av" style="--tc:{{ncm-hue name}}">{{npc.initials}}</span>{{/if}}
+  <div class="ncm-msg2-dq__tx">
+    <div class="nm"><span class="n">{{name}}</span>{{#if aliasName}}<span class="ncm-msg2-dq__alias" title="alias of {{name}}"><i class="fas fa-mask"></i>{{aliasName}}</span>{{/if}}{{#if contactOnly}}<i class="fas fa-address-card co" title="Contact only — no character sheet"></i>{{/if}}{{#if typed}}<i class="fas fa-user-ninja ty" title="Typed by a player on a terminal"></i>{{/if}}</div>
+    <div class="sl">{{subline}}</div>
+    <div class="who">{{#if done}}<i class="fas fa-check"></i>answered{{else}}<span class="ncm-msg2-stack">{{#each faces}}{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" title="{{name}}" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" title="{{name}}" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{/each}}</span><span class="w">{{whoNames}}</span>{{/if}}</div>
+  </div>
+  <div class="ncm-msg2-dq__end">
+    {{#unless done}}<span class="ct" title="{{playersN}} waiting · {{messages}} unanswered">{{playersN}}</span>{{/unless}}
+    <span class="t">{{#if done}}{{age}}{{else}}{{waitAge}}{{/if}}</span>
+  </div>
+  {{#unless done}}<div class="ncm-msg2-dq__meter" title="waiting {{waitAge}}"><i style="width:{{meter.pct}}%"></i></div>{{/unless}}
+</div>
+{{/inline}}
+{{!-- The Desk's reply menu, behind both the "as <identity> ▾" chip and the Reply button's ▾. Context = desk.compose. --}}
+{{#*inline "ncmMsg2DeskReplyMenu"}}
+<div class="ncm-msg2-dd__menu ncm-msg2-dd__menu--wide">
+  {{#if manyIds}}
+  <div class="ncm-msg2-dd__k">Answer as</div>
+  {{#each identities}}<button type="button" class="ncm-msg2-dd__item {{#if on}}is-on is-cur{{/if}} {{#if isAlias}}is-alias{{/if}}" data-action="tabAct" data-owner="messages" data-op="deskIdent" data-id="{{id}}" aria-pressed="{{#if on}}true{{else}}false{{/if}}"><i class="fas id {{icon}}"></i><span>{{name}}<small class="addr">{{#if addr}}{{addr}}{{/if}}{{#if meta}}{{#if addr}} · {{/if}}{{meta}}{{/if}}</small></span>{{#if wrote}}<span class="wrote">they wrote here</span>{{/if}}</button>{{/each}}
+  <div class="ncm-msg2-dd__sep"></div>
+  {{/if}}
+  {{#if anonOk}}<button type="button" class="ncm-msg2-dd__item {{#if anon}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="replyAnon" aria-pressed="{{#if anon}}true{{else}}false{{/if}}"><i class="{{#if anon}}fas fa-square-check{{else}}far fa-square{{/if}} ck"></i><span>Send anonymously<small>the player sees a mask, not the name</small></span></button>{{/if}}
+  <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="replyComposer"><i class="fas fa-up-right-from-square"></i><span>Open in the full composer<small>attach a shard or eddies, schedule, encrypt</small></span></button>
+</div>
+{{/inline}}
+{{!-- All mail: one message row in the calendar navigator's list (month / week / day). --}}
+{{#*inline "ncmMsg2CalRow"}}
+<div class="ncm-msg2-r ncm-msg2-r--cal {{#if sel}}sel{{/if}} {{#if unread}}unread{{/if}} {{#if this.isGroupRow}}is-group{{/if}}" data-action="tabAct" data-owner="messages" data-op="mailSel" data-id="{{messageId}}">
+  {{#if isAnonRow}}<span class="ncm-msg2-av sm anon"><i class="fas fa-user-secret"></i></span>{{else}}{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue fromLabel}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue fromLabel}}">{{initials}}</span>{{/if}}{{/if}}
+  <div class="ncm-msg2-min">
+    <div class="nm">{{fromLabel}} <span class="to"><i class="fas fa-arrow-right-long"></i> {{toName}}</span></div>
+    <div class="sj">{{subject}}</div>
+    {{#if flags.length}}<div class="fl">{{#each flags}}<span class="ncm-msg2-flag is-{{tone}}"{{#if tip}} data-tooltip="{{tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}</div>{{/if}}
+  </div>
+  <div class="w">{{calWhen}}{{#if unread}}<span class="u"></span>{{/if}}</div>
+</div>
+{{/inline}}
+{{#if (eq activeTab 'messages')}}{{#if msg2}}{{#with msg2}}
+<div class="ncm-msg2 {{#if isPopout}}ncm-msg2--pop{{/if}}" data-owner="messages">
 
-    {{!-- §1 — SUMMARY STRIP --}}
-    <div class="ncm-msg-summary">
-      <div class="ncm-msg-stat">
-        <span class="ncm-msg-stat__value ncm-msg-stat__value--cyan">{{stats.totalMessages}}</span>
-        <span class="ncm-msg-stat__label">Total</span>
-      </div>
-      <div class="ncm-msg-stat__sep"></div>
-      <div class="ncm-msg-stat">
-        <span class="ncm-msg-stat__value ncm-msg-stat__value--red">{{stats.unreadMessages}}</span>
-        <span class="ncm-msg-stat__label">Unread</span>
-      </div>
-      <div class="ncm-msg-stat__sep"></div>
-      <div class="ncm-msg-stat">
-        <span class="ncm-msg-stat__value ncm-msg-stat__value--gold">{{scheduledCount}}</span>
-        <span class="ncm-msg-stat__label">Scheduled</span>
-      </div>
-      <div class="ncm-msg-stat__sep"></div>
-      <div class="ncm-msg-stat">
-        <span class="ncm-msg-stat__value ncm-msg-stat__value--orange">{{msgQueueCount}}</span>
-        <span class="ncm-msg-stat__label">Queued</span>
-      </div>
-      <div class="ncm-msg-stat__sep"></div>
-      <div class="ncm-msg-stat">
-        <span class="ncm-msg-stat__value ncm-msg-stat__value--green">{{msgSentToday}}</span>
-        <span class="ncm-msg-stat__label">Sent Today</span>
-      </div>
+  {{!-- ═══ Sub-tab nav + header actions ═══ --}}
+  <div class="ncm-msg2-nav">
+    {{#each nav}}
+    <button type="button" class="ncm-msg2-navbtn {{#if on}}on{{/if}}" data-action="tabAct" data-owner="messages" data-op="view" data-view="{{key}}">
+      <i class="fas {{icon}}"></i>{{label}}<span class="ncm-msg2-ct {{tone}}">{{count}}</span>
+    </button>
+    {{/each}}
+    <span class="ncm-msg2-grow"></span>
+    {{{sendAsPicker}}}
+    <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon {{#if bcOpen}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="bcToggle" title="Broadcast — one message to many" aria-label="Broadcast"><i class="fas fa-bullhorn"></i></button>
+    {{#unless isPopout}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="popOutTab" data-tab="messages" title="Pop out into its own window" aria-label="Pop out"><i class="fas fa-up-right-from-square"></i></button>{{/unless}}
+    <button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary" data-action="openComposer"><i class="fas fa-pen"></i> New</button>
+  </div>
+
+  {{!-- ═══ Broadcast (inline) ═══ --}}
+  {{#if bcOpen}}
+  <div class="ncm-msg2-bc">
+    <div class="r"><span class="t"><i class="fas fa-bullhorn"></i> Broadcast</span><span class="h">one message to many — refused recipients are listed in Outbox</span><span class="ncm-msg2-grow"></span>
+      <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="bcToggle" title="Close" aria-label="Close"><i class="fas fa-xmark"></i></button></div>
+    <div class="r">{{{bc.toPicker}}}{{{bc.fromPicker}}}
+      {{#unless bc.fromPicked}}<input type="text" class="ncm-msg2-in ncm-msg2-in--from" data-msg2-bc="from" value="{{bc.from}}" placeholder="Sender name, e.g. NCPD">{{/unless}}
+      <input type="text" class="ncm-msg2-in" data-msg2-bc="subject" value="{{bc.subject}}" placeholder="Subject"></div>
+    <div class="r"><textarea class="ncm-msg2-ta" data-msg2-bc="body" placeholder="Message…">{{bc.body}}</textarea></div>
+    <div class="r">
+      {{#each bc.prios}}<span class="ncm-msg2-chip {{#if on}}on{{/if}}" data-action="tabAct" data-owner="messages" data-op="bcPrio" data-p="{{key}}">{{label}}</span>{{/each}}
+      <span class="ncm-msg2-chip {{#if bc.later}}on{{/if}}" data-action="tabAct" data-owner="messages" data-op="bcLater"><i class="fas fa-calendar"></i>Send later</span>
+      {{#if bc.later}}<input type="datetime-local" class="ncm-msg2-in ncm-msg2-in--when" data-msg2-bc="when" value="{{bc.when}}" title="Game time">{{/if}}
+      <span class="ncm-msg2-grow"></span>
+      <button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary" data-action="tabAct" data-owner="messages" data-op="bcSend"><i class="fas fa-paper-plane"></i> {{bc.sendLabel}}</button>
     </div>
+  </div>
+  {{/if}}
 
+  <div class="ncm-msg2-view">
+    <header class="ncm-tabhd"><i class="fas {{headIcon}}"></i><div><h2>{{headTitle}}</h2><p>{{headText}}</p></div></header>
 
-    {{!-- §1.5 — NPC INBOX (player → NPC triage) --}}
-    <div class="ncm-section-title">
-      <i class="fas fa-user-secret"></i> NPC Inbox
-      {{#if npcInboxTotalUnread}}<span class="ncm-section-title__count ncm-section-title__count--alert">{{npcInboxTotalUnread}} new</span>{{else}}<span class="ncm-section-title__count">// {{npcInboxNpcCount}}</span>{{/if}}
-    </div>
+    {{!-- ═══════════════ NEEDS A REPLY — THE DESK ═══════════════
+         dev/mockups/admin-needs-reply-rethink-mock.html (Version B, 2026-10-28). Left: the
+         queue of conversations (one per NPC × the alias written to; the longest wait on
+         top, answered ones below, dim). Middle: the picked conversation as a chat thread
+         with the reply box under it. Right: the PERSONA of the identity being answered
+         as — portrait, role / org, how they talk (the contact's Voice), the identities to
+         answer from, what they last said. Rules: messagesModel.deskQueue / deskThread. --}}
+    {{#if isReply}}{{#with reply}}
+    <div class="ncm-msg2-desk {{#if qShut}}is-qshut{{/if}} {{#if pShut}}is-pshut{{/if}}{{#unless desk}} is-pshut{{/unless}}">
 
-    <div class="ncm-npcinbox-toolbar">
-      <div class="ncm-pill {{#if npcInboxUnreadOnly}}ncm-pill--active{{/if}}" data-action="npcInboxFilter" data-mode="unread"><i class="fas fa-envelope"></i> Unread</div>
-      <div class="ncm-pill {{#unless npcInboxUnreadOnly}}ncm-pill--active{{/unless}}" data-action="npcInboxFilter" data-mode="all"><i class="fas fa-layer-group"></i> All</div>
-      <div class="ncm-pill {{#if npcInboxIncludeGm}}ncm-pill--active{{/if}}" data-action="npcInboxFilter" data-mode="gm" data-tooltip="Also list mail you sent to NPCs as GM (off = only what players sent them)"><i class="fas fa-shield-halved"></i> Include GM-sent</div>
-      <div class="ncm-npcinbox-toolbar__spacer"></div>
-      <div class="ncm-npcinbox-sortwrap">
-        <i class="fas fa-arrow-down-wide-short"></i>
-        <select class="ncm-npcinbox-sort">
-          <option value="recent" {{#if (eq npcInboxSort 'recent')}}selected{{/if}}>Recent activity</option>
-          <option value="name" {{#if (eq npcInboxSort 'name')}}selected{{/if}}>Name (A–Z)</option>
-        </select>
+      {{#if qShut}}
+      {{!-- The queue folded to a rail of faces (amber = how many are waiting). --}}
+      <div class="ncm-msg2-desk__rail" data-msg2-scroll="deskq">
+        <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="deskFoldQ" title="Open the list" aria-label="Open the list" aria-expanded="false"><i class="fas fa-angles-right"></i></button>
+        <hr>
+        {{#each queue.waiting}}<span class="f {{#if sel}}is-sel{{/if}}" data-action="tabAct" data-owner="messages" data-op="convSel" data-key="{{key}}" role="button" tabindex="0" title="{{#if aliasName}}{{aliasName}} (alias of {{name}}){{else}}{{name}}{{/if}} — {{subline}} · {{whoNames}}">{{#if npc.img}}<img class="ncm-msg2-av" src="{{npc.img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av" style="--tc:{{ncm-hue name}}">{{npc.initials}}</span>{{/if}}<span class="ct {{#if meter.hot}}is-hot{{/if}}">{{playersN}}</span></span>{{/each}}
+        {{#if queue.answered.length}}<hr>{{#each queue.answered}}<span class="f is-done {{#if sel}}is-sel{{/if}}" data-action="tabAct" data-owner="messages" data-op="convSel" data-key="{{key}}" role="button" tabindex="0" title="{{#if aliasName}}{{aliasName}} (alias of {{name}}){{else}}{{name}}{{/if}} — answered">{{#if npc.img}}<img class="ncm-msg2-av" src="{{npc.img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av" style="--tc:{{ncm-hue name}}">{{npc.initials}}</span>{{/if}}</span>{{/each}}{{/if}}
       </div>
-    </div>
-
-    {{#if npcInboxGroups.length}}
-    <div class="ncm-npcinbox-list">
-      {{#each npcInboxGroups}}
-      <div class="ncm-npcinbox-card {{#if this.expanded}}ncm-npcinbox-card--expanded{{/if}}" data-npc-id="{{this.npcId}}">
-        <div class="ncm-npcinbox-card__head" data-action="toggleNpcInbox" data-npc-id="{{this.npcId}}">
-          <i class="fas fa-chevron-right ncm-npcinbox-card__chevron"></i>
-          <div class="ncm-npcinbox-card__avatar" style="color:{{this.color}}; border-color:{{this.color}}40; background:{{this.color}}0a;">
-            {{#if this.portrait}}<img src="{{this.portrait}}" alt="{{this.npcName}}">{{else}}{{this.initial}}{{/if}}
-          </div>
-          <div class="ncm-npcinbox-card__info">
-            <span class="ncm-npcinbox-card__name">{{this.npcName}}</span>
-            <span class="ncm-npcinbox-card__meta">
-              <i class="fas fa-user-secret"></i> {{#if this.role}}{{this.role}}{{else}}NPC{{/if}}{{#if this.email}} · {{this.email}}{{/if}}
-            </span>
-          </div>
-          {{#if this.unreadCount}}<span class="ncm-npcinbox-card__badge">{{this.unreadCount}} new</span>{{/if}}
-          <span class="ncm-npcinbox-card__total" title="Total from players">{{this.totalCount}}</span>
-          <span class="ncm-npcinbox-card__time">{{this.latestRel}}</span>
-          <div class="ncm-npcinbox-card__actions">
-            <button class="ncm-admin-action-btn" data-action="openInbox" data-actor-id="{{this.npcId}}" title="Open NPC inbox"><i class="fas fa-envelope-open"></i></button>
-            <button class="ncm-admin-action-btn" data-action="markAllRead" data-actor-id="{{this.npcId}}" title="Mark all read"><i class="fas fa-check-double"></i></button>
-          </div>
-        </div>
-
-        {{#if this.expanded}}
-        <div class="ncm-npcinbox-card__msgs">
-          {{#each this.messages}}
-          <div class="ncm-npcinbox-msg {{#if this.unread}}ncm-npcinbox-msg--unread{{/if}}" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}">
-            <div class="ncm-npcinbox-msg__main" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}">
-              <div class="ncm-npcinbox-msg__topline">
-                <span class="ncm-npcinbox-msg__sender">{{this.senderName}}{{#if this.senderAlias}} <span class="ncm-msg-alias"><i class="fas fa-masks-theater"></i> as {{this.senderAlias.name}}</span>{{/if}}{{#if this.sentVia}} <span class="ncm-msg-via{{#if this.sentVia.impersonated}} is-imp{{/if}}" data-tooltip="{{#if this.sentVia.impersonated}}Sent AS {{this.senderName}} from {{this.sentVia.machine}} — really typed by {{this.sentVia.typist}}{{else}}Sent from {{this.sentVia.machine}} by its owner{{/if}}"><i class="fas {{#if this.sentVia.impersonated}}fa-user-secret{{else}}fa-desktop{{/if}}"></i> via {{this.sentVia.machine}}{{#if this.sentVia.impersonated}} · typed by {{this.sentVia.typist}}{{/if}}</span>{{/if}}{{#if this.toAlias}} <span class="ncm-msg-alias"><i class="fas fa-masks-theater"></i> to {{this.toAlias.name}} · alias of {{this.toAlias.of}}</span>{{/if}}</span>
-                <span class="ncm-npcinbox-msg__subject">{{this.subject}}</span>
-              </div>
-              <div class="ncm-npcinbox-msg__preview">{{this.bodyPreview}}</div>
-            </div>
-            <span class="ncm-npcinbox-msg__time">
-              <span class="ncm-npcinbox-msg__time-date">{{this.shortDate}}</span>
-              <span class="ncm-npcinbox-msg__time-rel">{{this.relativeTime}}</span>
-            </span>
-            <div class="ncm-npcinbox-msg__actions">
-              <button class="ncm-admin-action-btn" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Open in inbox"><i class="fas fa-external-link"></i></button>
-              <button class="ncm-admin-action-btn" data-action="npcInboxReply" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Reply as NPC"><i class="fas fa-reply"></i></button>
-            </div>
-          </div>
-          {{/each}}
-        </div>
-        {{/if}}
-      </div>
-      {{/each}}
-    </div>
-    {{else}}
-    <div class="ncm-admin-empty">
-      {{#if npcInboxHasAny}}
-      <i class="fas fa-circle-check"></i> No unread player mail to NPCs.
       {{else}}
-      <i class="fas fa-user-secret"></i> No players have messaged any NPCs yet.
+      <div class="ncm-msg2-desk__q">
+        <div class="ncm-msg2-desk__qhd">
+          <details class="ncm-msg2-dd ncm-msg2-dd--down">
+            <summary class="ncm-msg2-btn" title="Which lines to show"><i class="fas fa-filter"></i><span class="v">{{filtLabel}}</span> <span class="c">{{filtCount}}</span><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+            <div class="ncm-msg2-dd__menu">
+              <div class="ncm-msg2-dd__k">Show</div>
+              {{#each chips}}<button type="button" class="ncm-msg2-dd__item {{#if on}}is-on is-cur{{/if}}" data-action="tabAct" data-owner="messages" data-op="rFilt" data-f="{{key}}"><i class="fas ck {{#if on}}fa-circle-dot{{else}}fa-circle{{/if}}"></i><span>{{label}}</span><span class="n {{#if (eq key 'waiting')}}attn{{/if}}">{{count}}</span></button>{{/each}}
+              <div class="ncm-msg2-dd__sep"></div>
+              <button type="button" class="ncm-msg2-dd__item {{#if includeGm}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="includeGm"><i class="{{#if includeGm}}fas fa-square-check{{else}}far fa-square{{/if}} ck"></i><span>Include mail I sent<small>also list mail you wrote TO an NPC</small></span></button>
+              <button type="button" class="ncm-msg2-dd__item {{#if quietOn}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="deskQuiet"><i class="{{#if quietOn}}fas fa-square-check{{else}}far fa-square{{/if}} ck"></i><span>Show quiet inboxes<small>{{#if quietN}}{{quietN}} NPC {{#if (eq quietN 1)}}inbox{{else}}inboxes{{/if}} nobody has written to{{else}}every NPC inbox has mail{{/if}}</small></span></button>
+            </div>
+          </details>
+          <span class="sum" title="{{playersWaiting}} {{#if (eq playersWaiting 1)}}player{{else}}players{{/if}} waiting on {{linesWaiting}} {{#if (eq linesWaiting 1)}}line{{else}}lines{{/if}}">{{#if linesWaiting}}<b>{{playersWaiting}}</b> waiting{{else}}<i class="fas fa-circle-check"></i>Nobody waiting{{/if}}</span>
+          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="deskFoldQ" title="Fold the list" aria-label="Fold the list" aria-expanded="true"><i class="fas fa-angles-left"></i></button>
+        </div>
+        <div class="ncm-msg2-desk__list" data-msg2-scroll="deskq">
+          {{#each queue.waiting}}{{> ncmMsg2DeskRow}}{{/each}}
+          {{#if queue.answered.length}}<div class="ncm-msg2-desk__sep">Answered</div>{{#each queue.answered}}{{> ncmMsg2DeskRow}}{{/each}}{{/if}}
+          {{#unless hasQueue}}<div class="ncm-msg2-quiet ncm-msg2-desk__empty">{{emptyText}}</div>{{/unless}}
+          {{#if showQuiet}}<div class="ncm-msg2-desk__quiet"><i class="fas fa-inbox"></i>{{quietN}} NPC {{#if (eq quietN 1)}}inbox{{else}}inboxes{{/if}} nobody has written to</div>{{/if}}
+        </div>
+      </div>
       {{/if}}
-    </div>
-    {{/if}}
 
-
-    {{!-- §2 — QUICK COMPOSE --}}
-    <div class="ncm-section-title">
-      <i class="fas fa-paper-plane"></i> Quick Compose
-    </div>
-
-    <div class="ncm-msg-compose-row">
-      {{!-- NPC Quick-Send --}}
-      <div class="ncm-msg-compose-card" style="flex: 2;">
-        <div class="ncm-msg-compose-card__header">
-          <i class="fas fa-user-secret"></i> Send as NPC
-          <span class="ncm-msg-compose-card__count">{{npcSendTotalCount}}</span>
+      {{#if desk}}{{#with desk}}
+      <div class="ncm-msg2-desk__mid">
+        <div class="ncm-msg2-desk__hd">
+          <span class="ncm-msg2-stack">{{#each head.faces}}{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" title="{{name}}" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" title="{{name}}" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{/each}}</span>
+          <div class="tx"><div class="sj">{{head.subject}}</div><div class="sl">{{head.subline}} · {{head.msgCount}} {{#if (eq head.msgCount 1)}}message{{else}}messages{{/if}}</div></div>
+          {{#if head.waiting}}<button type="button" class="ncm-msg2-desk__wait" data-action="tabAct" data-owner="messages" data-op="markAnswered" title="Mark answered without replying" aria-label="{{head.waiting}} waiting — mark answered"><span class="is-w"><i class="fas fa-circle"></i>{{head.waiting}} waiting</span><span class="is-h"><i class="fas fa-check"></i>Mark answered</span></button>{{else}}<span class="ncm-msg2-desk__answered"><i class="fas fa-check"></i>answered</span>{{/if}}
+          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="openMsgInInbox" data-inbox-owner="{{ownerId}}" title="Open {{npcName}}’s inbox" aria-label="Open inbox"><i class="fas fa-inbox"></i></button>
+          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon {{#unless @root.msg2.reply.pShut}}is-on{{/unless}}" data-action="tabAct" data-owner="messages" data-op="deskFoldP" title="{{#if @root.msg2.reply.pShut}}Show{{else}}Hide{{/if}} who you are answering as" aria-label="Who you are answering as" aria-expanded="{{#if @root.msg2.reply.pShut}}false{{else}}true{{/if}}"><i class="fas fa-id-card"></i></button>
         </div>
-        {{!-- Search + Page Nav --}}
-        <div class="ncm-msg-npc-toolbar">
-          <div class="ncm-msg-npc-search">
-            <i class="fas fa-magnifying-glass"></i>
-            <input type="text" class="ncm-msg-npc-search__input" placeholder="Search NPCs…" value="{{npcSendSearch}}">
-          </div>
-          <div class="ncm-msg-npc-pager">
-            <button class="ncm-msg-npc-pager__btn {{#unless npcSendHasPrev}}ncm-msg-npc-pager__btn--disabled{{/unless}}" data-action="npcPagePrev" title="Previous page"><i class="fas fa-chevron-left"></i></button>
-            <span class="ncm-msg-npc-pager__label">{{npcSendPage}} / {{npcSendTotalPages}}</span>
-            <button class="ncm-msg-npc-pager__btn {{#unless npcSendHasNext}}ncm-msg-npc-pager__btn--disabled{{/unless}}" data-action="npcPageNext" title="Next page"><i class="fas fa-chevron-right"></i></button>
-          </div>
-        </div>
-        {{#if npcSendEntries.length}}
-        <div class="ncm-msg-npc-grid">
-          {{#each npcSendEntries}}
-          <div class="ncm-msg-npc-chip" data-action="npcQuickSend" data-npc-id="{{this.id}}" data-contact-id="{{this.contactId}}">
-            <div class="ncm-msg-npc-chip__avatar" style="color: {{this.color}}; border-color: {{this.color}}40; background: {{this.color}}0a;">
-              {{#if this.portrait}}<img src="{{this.portrait}}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">{{else}}{{this.initial}}{{/if}}
-            </div>
-            <div class="ncm-msg-npc-chip__info">
-              <span class="ncm-msg-npc-chip__name">{{this.name}}</span>
-              <span class="ncm-msg-npc-chip__email">{{this.email}}</span>
-            </div>
-          </div>
-          {{/each}}
-        </div>
-        {{else}}
-        <div class="ncm-admin-empty" style="padding: 16px;">
-          {{#if npcSendSearch}}
-          <i class="fas fa-magnifying-glass"></i> No NPCs matching "{{npcSendSearch}}"
-          {{else}}
-          <i class="fas fa-user-plus"></i> No NPC contacts with emails configured.
-          {{/if}}
-        </div>
+        {{#if hasTyped}}
+        <div class="ncm-msg2-note">{{#each typedNotes}}<div><span class="ncm-msg2-flag is-danger"><i class="fas fa-user-ninja"></i>typed by {{typist}}</span> This came from {{asName}}’s account on <b>{{machine}}</b> — a player typed it, not {{asName}}.</div>{{/each}}</div>
         {{/if}}
-      </div>
-
-      {{!-- Compose Actions --}}
-      <div class="ncm-msg-compose-card" style="flex: 1;">
-        <div class="ncm-msg-compose-card__header"><i class="fas fa-pen-nib"></i> Actions</div>
-        <div class="ncm-msg-compose-actions">
-          <div class="ncm-msg-compose-btn" data-action="openComposer">
-            <div class="ncm-msg-compose-btn__icon ncm-msg-compose-btn__icon--compose"><i class="fas fa-pen"></i></div>
-            <div class="ncm-msg-compose-btn__text">
-              <span class="ncm-msg-compose-btn__title">New Message</span>
-              <span class="ncm-msg-compose-btn__desc">Open full composer</span>
-            </div>
-          </div>
-          <div class="ncm-msg-compose-btn" data-action="msgBroadcast">
-            <div class="ncm-msg-compose-btn__icon ncm-msg-compose-btn__icon--broadcast"><i class="fas fa-tower-broadcast"></i></div>
-            <div class="ncm-msg-compose-btn__text">
-              <span class="ncm-msg-compose-btn__title">Mass Broadcast</span>
-              <span class="ncm-msg-compose-btn__desc">Send to all player inboxes</span>
-            </div>
-          </div>
-          {{!-- View Inbox --}}
-          <div class="ncm-msg-compose-btn" data-action="openViewInboxDialog">
-            <div class="ncm-msg-compose-btn__icon" style="background:rgba(0,255,65,0.06); color:var(--ncm-success,#00ff41); border:1px solid rgba(0,255,65,0.12);"><i class="fas fa-inbox"></i></div>
-            <div class="ncm-msg-compose-btn__text">
-              <span class="ncm-msg-compose-btn__title">View Inbox</span>
-              <span class="ncm-msg-compose-btn__desc">Open any character's inbox</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-    {{!-- §3 — ACTIVITY FEED --}}
-    <div class="ncm-section-title">
-      <i class="fas fa-satellite-dish"></i> Message Activity
-      <span class="ncm-section-title__count">// {{msgFeedShowing}} of {{msgFeedTotalCount}}</span>
-    </div>
-
-    {{!-- Toolbar --}}
-    <div class="ncm-msg-feed-toolbar">
-      <div class="ncm-msg-feed-search">
-        <i class="fas fa-magnifying-glass"></i>
-        <input type="text" class="ncm-msg-feed-search__input" placeholder="Search messages…" value="{{msgFeedSearch}}">
-      </div>
-      <div class="ncm-pill {{#if (eq msgFeedFilter 'all')}}ncm-pill--active{{/if}}" data-action="msgFeedFilter" data-filter="all"><i class="fas fa-layer-group"></i> All</div>
-      <div class="ncm-pill {{#if (eq msgFeedFilter 'received')}}ncm-pill--active{{/if}}" data-action="msgFeedFilter" data-filter="received"><i class="fas fa-arrow-down"></i> Received</div>
-      <div class="ncm-pill {{#if (eq msgFeedFilter 'sent')}}ncm-pill--active{{/if}}" data-action="msgFeedFilter" data-filter="sent"><i class="fas fa-arrow-up"></i> Sent</div>
-      <div class="ncm-pill {{#if (eq msgFeedFilter 'unread')}}ncm-pill--active{{/if}}" data-action="msgFeedFilter" data-filter="unread"><i class="fas fa-eye-slash"></i> Unread</div>
-      <div class="ncm-msg-actor-filter {{#if msgFeedActorFilter}}ncm-msg-actor-filter--active{{/if}}" data-action="toggleMsgActorFilter">
-        <i class="fas fa-user"></i> Actor: <span class="filter-val">{{#if msgFeedActorFilter}}{{msgFeedActorName}}{{else}}All{{/if}}</span> <i class="fas fa-chevron-down" style="font-size: 8px;"></i>
-        {{#if msgActorDropdownOpen}}
-        <div class="ncm-msg-actor-dropdown">
-          <div class="ncm-msg-actor-dropdown__header">Filter by Actor</div>
-          <div class="ncm-msg-actor-dropdown__search">
-            <i class="fas fa-magnifying-glass"></i>
-            <input type="text" class="ncm-msg-actor-dd-search__input" placeholder="Search…" value="{{msgActorDropdownSearch}}">
-          </div>
-          <div class="ncm-msg-actor-dropdown__item {{#unless msgFeedActorFilter}}ncm-msg-actor-dropdown__item--active{{/unless}}" data-action="setMsgActorFilter" data-actor-id="">
-            <i class="fas fa-layer-group" style="font-size: 9px; color: var(--ncm-secondary); width: 18px; text-align: center;"></i>
-            <span class="ncm-msg-actor-dropdown__name" style="{{#unless msgFeedActorFilter}}color: var(--ncm-secondary);{{/unless}}">All Actors</span>
-            <span class="ncm-msg-actor-dropdown__count">{{stats.totalMessages}}</span>
-          </div>
-          <div class="ncm-msg-actor-dropdown__sep"></div>
-          <div class="ncm-msg-actor-dropdown__scroll">
-          {{#each msgActorFilterOptions}}
-          {{#if this.isGroupLabel}}
-          <div class="ncm-msg-actor-dropdown__group-label">{{this.label}}</div>
-          {{else}}
-          <div class="ncm-msg-actor-dropdown__item {{#if this.isActive}}ncm-msg-actor-dropdown__item--active{{/if}}" data-action="setMsgActorFilter" data-actor-id="{{this.actorId}}">
-            <div class="ncm-msg-actor-dropdown__pip" style="color: {{this.color}}; border: 1px solid {{this.color}}33; background: {{this.color}}0a;">{{this.initial}}</div>
-            <span class="ncm-msg-actor-dropdown__name">{{this.name}}</span>
-            <span class="ncm-msg-actor-dropdown__count">{{this.messageCount}}</span>
+        <div class="ncm-msg2-desk__feed" data-msg2-scroll="thread" data-conv="{{key}}">
+          {{#each entries}}
+          {{#if (eq kind 'day')}}<div class="ncm-msg2-desk__day"><span>{{label}}</span></div>{{else}}
+          <div class="ncm-msg2-b {{#if mine}}me{{/if}} {{#if waiting}}new{{/if}}">
+            <div class="m">{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}<b style="--tc:{{ncm-hue name}}">{{name}}</b>{{#if addr}}<span class="ncm-addr">{{addr}}</span>{{/if}}<span class="ncm-msg2-age" title="{{when}}">{{time}} · {{age}}</span>
+              {{#if waiting}}<span class="ncm-msg2-flag is-accent"><i class="fas fa-circle"></i>waiting</span>{{/if}}
+              {{#if typist}}<span class="ncm-msg2-flag is-danger"><i class="fas fa-user-ninja"></i>typed by {{typist}}</span>{{/if}}</div>
+            {{#if subject}}<div class="sj">{{subject}}</div>{{/if}}
+            <div class="ncm-msg2-bbody">{{{bodyHtml}}}</div>
           </div>
           {{/if}}
           {{/each}}
-          </div>
         </div>
-        {{/if}}
+        {{#with compose}}
+        <div class="ncm-msg2-desk__box">
+          {{#if sentLine}}<div class="ncm-msg2-desk__sent"><i class="fas fa-check"></i>{{sentLine}}</div>{{/if}}
+          {{#if canReply}}
+          <textarea class="ncm-msg2-ta ncm-msg2-desk__ta" data-msg2-draft data-key="{{@root.msg2.reply.desk.key}}" placeholder="Write to {{toLine}} as {{replyAsName}}…  (Ctrl+Enter sends · the draft is kept)">{{draft}}</textarea>
+          <div class="ncm-msg2-desk__bar">
+            <span class="to">as {{#if manyIds}}<details class="ncm-msg2-dd ncm-msg2-dd--upl ncm-msg2-desk__as"><summary title="Answer as another identity" aria-label="Answering as {{replyAsName}} — change"><b>{{replyAsName}}</b><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>{{> ncmMsg2DeskReplyMenu}}</details>{{else}}<b>{{replyAsName}}</b>{{/if}}<i class="fas fa-arrow-right-long"></i>to <b>{{toLine}}</b>{{#if anon}}<span class="anon" title="The player sees a mask, not the name"><i class="fas fa-user-secret"></i>anonymous</span>{{/if}}</span>
+            <span class="ncm-msg2-sendbtn {{#if anon}}is-anon{{/if}}">
+              <button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary" data-action="tabAct" data-owner="messages" data-op="replySend" title="Reply as {{replyAsName}}{{#if fromAddr}} ({{fromAddr}}){{/if}}{{#if anon}} — anonymously{{/if}}"><i class="fas {{#if anon}}fa-user-secret{{else}}fa-reply{{/if}}"></i> <span class="lb">Reply as {{replyAsName}}</span></button>
+              <details class="ncm-msg2-dd ncm-msg2-dd--up">
+                <summary class="ncm-msg2-btn ncm-msg2-btn--primary" title="More: {{#if manyIds}}another identity, {{/if}}{{#if anonOk}}send anonymously, {{/if}}the full composer" aria-label="More ways to reply">{{#if manyIds}}<span class="nid">{{idCount}}</span>{{/if}}<i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+                {{> ncmMsg2DeskReplyMenu}}
+              </details>
+            </span>
+          </div>
+          {{else}}
+          <div class="ncm-msg2-quiet">Nobody has written to {{@root.msg2.reply.desk.npcName}} yet — there is no one to answer.</div>
+          {{/if}}
+        </div>
+        {{/with}}
       </div>
-      <div class="ncm-msg-feed-toolbar__spacer"></div>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="exportLogs"><i class="fas fa-file-export"></i> Export</button>
-    </div>
 
-    {{!-- Date Range Filter --}}
-    <div class="ncm-msg-feed-daterange" data-action="openDateRangePicker">
-      <i class="fas fa-calendar-days"></i>
-      {{#if msgFeedDateFrom}}
-      <span class="ncm-msg-feed-daterange__range">
-        <span class="ncm-msg-feed-daterange__date">{{msgFeedDateFrom}}</span>
-        <span class="ncm-msg-feed-daterange__arrow">→</span>
-        <span class="ncm-msg-feed-daterange__date">{{#if msgFeedDateTo}}{{msgFeedDateTo}}{{else}}…{{/if}}</span>
-      </span>
-      <button class="ncm-msg-feed-daterange__clear" data-action="clearFeedDates" title="Clear dates"><i class="fas fa-xmark"></i></button>
-      {{else}}
-      <span class="ncm-msg-feed-daterange__placeholder">Filter by date range…</span>
+      {{#unless @root.msg2.reply.pShut}}{{#with persona}}
+      <aside class="ncm-msg2-desk__who">
+        <div class="ncm-msg2-desk__pcard">
+          <div class="ncm-msg2-desk__pface">{{#if img}}<img class="ncm-msg2-av lg" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av lg" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}
+            <div class="tx"><div class="nm">{{name}}{{#if isAlias}}<span class="ncm-tagp is-secret" title="alias of {{mainName}}"><i class="fas fa-mask"></i>alias</span>{{/if}}</div>{{#if addr}}<div class="ncm-addr">{{addr}}</div>{{/if}}</div>
+            {{#if hasVoiceTarget}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="deskContact" data-contact-id="{{contactId}}" data-actor-id="{{actorId}}" title="Open in Contacts" aria-label="Open in Contacts"><i class="fas fa-pen"></i></button>{{/if}}
+          </div>
+          {{#if role}}<div class="ncm-msg2-desk__ptags"><span class="ncm-tagp" style="--tc:{{ncm-hue role.hue}}"><i class="fas {{role.icon}}"></i>{{role.label}}</span>{{#if org}}<span class="ncm-tagp" style="--tc:{{ncm-hue org}}">{{org}}</span>{{/if}}</div>{{else if org}}<div class="ncm-msg2-desk__ptags"><span class="ncm-tagp" style="--tc:{{ncm-hue org}}">{{org}}</span></div>{{/if}}
+          <div class="ncm-msg2-desk__pk"><i class="fas fa-comment-dots"></i>How they talk{{#if voice.note}}<span class="n">{{voice.note}}</span>{{/if}}</div>
+          {{#if voice.empty}}
+          <div class="ncm-msg2-desk__pvoice is-empty">{{#if hasVoiceTarget}}<span data-action="tabAct" data-owner="messages" data-op="deskContact" data-contact-id="{{contactId}}" data-actor-id="{{actorId}}" role="button" tabindex="0">No voice yet — add one in Contacts</span>{{else}}No voice to read.{{/if}}</div>
+          {{else}}<div class="ncm-msg2-desk__pvoice">{{voice.text}}</div>{{/if}}
+          {{#if manyIds}}{{#if wroteToName}}{{#unless wroteToIsPicked}}<div class="ncm-msg2-desk__phint">They wrote to <b>{{wroteToName}}</b> — you are answering as someone else. Change it under Reply as ▾.</div>{{/unless}}{{/if}}{{/if}}
+          {{#if hasSaid}}
+          <div class="ncm-msg2-desk__pk"><i class="fas fa-quote-left"></i>What they last said</div>
+          <div class="ncm-msg2-desk__said">{{#each said}}<div><span class="q">{{text}}</span>{{#if when}}<span class="t">{{when}}</span>{{/if}}</div>{{/each}}</div>
+          {{/if}}
+        </div>
+      </aside>
+      {{/with}}{{/unless}}
+      {{/with}}{{else}}
+      <div class="ncm-msg2-desk__mid"><div class="ncm-msg2-quiet ncm-msg2-desk__none"><i class="fas fa-reply"></i>{{#if hasQueue}}Pick a line to answer it.{{else}}When a player writes to an NPC, the conversation lands here.{{/if}}</div></div>
       {{/if}}
     </div>
+    {{/with}}{{/if}}
 
-    {{!-- Activity Feed List --}}
-    {{#if msgFeedEntries.length}}
-    <div class="ncm-msg-feed-list">
-      <div class="ncm-msg-feed-col-headers">
-        <span class="ncm-msg-feed-col-headers__dir"></span>
-        <span class="ncm-msg-feed-col-headers__route">Route</span>
-        <span class="ncm-msg-feed-col-headers__subject">Subject</span>
-        <span class="ncm-msg-feed-col-headers__status">Status</span>
-        <span class="ncm-msg-feed-col-headers__time">Date</span>
-        <span class="ncm-msg-feed-col-headers__actions"></span>
-      </div>
-
-      {{#each msgFeedEntries}}
-      {{!-- Feed Row --}}
-      <div class="ncm-msg-feed-row {{#if this.unread}}ncm-msg-feed-row--unread{{/if}} {{#if this.isExpanded}}ncm-msg-feed-row--expanded{{/if}} {{#if this.isDeleted}}ncm-msg-feed-row--deleted{{/if}}"
-           data-action="toggleMsgExpand" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}">
-        <div class="ncm-msg-feed-row__dir ncm-msg-feed-row__dir--{{this.dirClass}}"><i class="fas fa-{{this.dirIcon}}"></i></div>
-        <div class="ncm-msg-feed-row__route">
-          <div class="ncm-msg-feed-row__names">
-            <span class="ncm-msg-feed-row__from">{{this.fromName}}{{#if this.sentVia}} <span class="ncm-msg-via{{#if this.sentVia.impersonated}} is-imp{{/if}}" data-tooltip="{{#if this.sentVia.impersonated}}Sent AS this person from {{this.sentVia.machine}} — really typed by {{this.sentVia.typist}}{{else}}Sent from {{this.sentVia.machine}} by its owner{{/if}}"><i class="fas {{#if this.sentVia.impersonated}}fa-user-secret{{else}}fa-desktop{{/if}}"></i> via {{this.sentVia.machine}}{{#if this.sentVia.impersonated}} · typed by {{this.sentVia.typist}}{{/if}}</span>{{/if}}{{#if this.fromAlias}} <span class="ncm-msg-alias" data-tooltip="Sent as {{this.fromAlias.name}} — an alias of {{this.fromAlias.of}}"><i class="fas fa-masks-theater"></i> {{this.fromAlias.name}} · alias of {{this.fromAlias.of}}</span>{{/if}}</span>
-            <i class="fas fa-arrow-right ncm-msg-feed-row__arrow"></i>
-            {{#if this.isGroupRow}}<span class="ncm-msg-feed-row__to ncm-msg-feed-row__to--group" data-tooltip="One send to several recipients — expand for each"><i class="fas fa-users"></i> {{this.recipientCount}} recipients</span>{{else}}<span class="ncm-msg-feed-row__to">{{this.toName}}{{#if this.toAlias}} <span class="ncm-msg-alias" data-tooltip="Sent to {{this.toAlias.name}} — an alias of {{this.toAlias.of}}"><i class="fas fa-masks-theater"></i> {{this.toAlias.name}} · alias of {{this.toAlias.of}}</span>{{/if}}</span>{{/if}}
-          </div>
-          <span class="ncm-msg-feed-row__network" style="color: {{this.networkColor}};"><i class="fas {{this.networkIcon}}" style="font-size:7px; margin-right:2px;"></i>{{this.networkLabel}}</span>
-        </div>
-        <div class="ncm-msg-feed-row__subject">{{this.subject}}</div>
-        <div class="ncm-msg-feed-row__status">
-          <div class="ncm-msg-feed-status ncm-msg-feed-status--{{this.statusClass}}"><i class="fas fa-{{this.statusIcon}}"></i> {{this.statusLabel}}</div>
-        </div>
-        <div class="ncm-msg-feed-row__time {{#if this.isRecent}}ncm-msg-feed-row__time--recent{{/if}}">
-          <span class="ncm-msg-feed-row__time-date">{{this.shortDate}}</span>
-          <span class="ncm-msg-feed-row__time-rel">{{this.relativeTime}}</span>
-        </div>
-        <div class="ncm-msg-feed-row__actions">
-          {{#unless this.isGroupRow}}
-          <button class="ncm-admin-action-btn" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Open in Inbox"><i class="fas fa-external-link"></i></button>
-          <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="hardDeleteMessage" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Delete"><i class="fas fa-trash"></i></button>
-          {{/unless}}
-        </div>
-      </div>
-
-      {{!-- Inline Expand --}}
-      {{#if this.isExpanded}}
-      <div class="ncm-msg-feed-expand">
-        <div class="ncm-msg-feed-expand__inner">
-          <div class="ncm-msg-feed-expand__body">
-            {{#if this.isGroupRow}}
-            <div class="ncm-msg-feed-expand__recips">
-              {{#each this.recipients}}
-              <div class="ncm-msg-feed-recip {{#if this.unread}}ncm-msg-feed-recip--unread{{/if}}">
-                <span class="ncm-msg-feed-recip__name">{{this.toName}}</span>
-                <span class="ncm-msg-feed-status ncm-msg-feed-status--{{this.statusClass}}"><i class="fas fa-{{this.statusIcon}}"></i> {{this.statusLabel}}</span>
-                <button class="ncm-admin-action-btn" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Open in Inbox"><i class="fas fa-external-link"></i></button>
-                <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="hardDeleteMessage" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Delete this copy"><i class="fas fa-trash"></i></button>
-              </div>
-              {{/each}}
-            </div>
-            {{/if}}
-            <div class="ncm-msg-feed-expand__subject">{{this.subject}}</div>
-            <div class="ncm-msg-feed-expand__text">{{this.bodyPreview}}</div>
-            <div class="ncm-msg-feed-expand__meta">
-              <span><i class="fas fa-calendar"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.fullTimestamp}}</span></span>
-              <span><i class="fas {{this.networkIcon}}" style="color:{{this.networkColor}};"></i> <span class="ncm-msg-feed-expand__meta-val" style="color:{{this.networkColor}};">{{this.networkName}}</span></span>
-              {{#if this.signalStrength}}<span><i class="fas fa-signal"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.signalStrength}}%</span></span>{{/if}}
-              <span><i class="fas {{#if this.encrypted}}fa-lock{{else}}fa-lock-open{{/if}}"></i> <span class="ncm-msg-feed-expand__meta-val {{#if this.encrypted}}ncm-msg-feed-expand__meta-val--encrypted{{else}}ncm-msg-feed-expand__meta-val--open{{/if}}">{{#if this.encrypted}}Encrypted{{else}}Unencrypted{{/if}}</span></span>
-            </div>
-            {{#if this.attachments.length}}
-            <div class="ncm-msg-feed-expand__attachments">
-              {{#each this.attachments}}
-              <span class="sc-badge sc-badge--muted"><i class="fas fa-paperclip"></i> {{this.name}}</span>
-              {{/each}}
-            </div>
-            {{/if}}
-          </div>
-          {{#unless this.isGroupRow}}
-          <div class="ncm-msg-feed-expand__actions">
-            <button class="ncm-btn ncm-btn--cyan ncm-btn--sm" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}"><i class="fas fa-external-link"></i> Open</button>
-            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="replyAsMsg" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}"><i class="fas fa-reply"></i> Reply As</button>
-            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="shareMsgToChat" data-message-id="{{this.messageId}}"><i class="fas fa-share-nodes"></i> Share</button>
-          </div>
-          {{/unless}}
-        </div>
-      </div>
-      {{/if}}
-      {{/each}}
-
-      {{!-- Load More / Pagination Footer --}}
-      {{#if msgFeedHasMore}}
-      <div class="ncm-msg-feed-load-more" data-action="loadMoreMessages">
-        <i class="fas fa-chevron-down"></i> Show More
-        <span class="ncm-msg-feed-load-more__count">(showing {{msgFeedShowing}} of {{msgFeedTotalCount}})</span>
-      </div>
-      {{else}}
-      {{#if msgFeedEntries.length}}
-      <div class="ncm-msg-feed-footer">
-        <span>{{msgFeedShowing}} messages</span>
-      </div>
-      {{/if}}
-      {{/if}}
+    {{!-- ═══════════════ ALL MAIL ═══════════════ --}}
+    {{#if isAll}}
+    <div class="ncm-msg2-tb">
+      <span class="ncm-msg2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-msg2-search value="{{all.search}}" placeholder="Search subject, body, address…"></span>
+      {{{all.whoPicker}}}
+      {{{all.filterPicker}}}
+      <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="exportLogs" title="Export message logs" aria-label="Export message logs"><i class="fas fa-file-export"></i></button>
     </div>
-    {{else}}
-    <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No message activity yet.</div>
-    {{/if}}
-
-
-    {{!-- §4 — SCHEDULED DELIVERIES --}}
-    <div class="ncm-section-title">
-      <i class="fas fa-clock"></i> Scheduled Deliveries
-      {{#if scheduledCount}}<span class="ncm-section-title__count">{{scheduledCount}}</span>{{/if}}
-    </div>
-    {{#if scheduledEntries.length}}
-    <div class="ncm-msg-sched-list">
-      {{#each scheduledEntries}}
-      <div class="ncm-msg-sched-row" data-schedule-id="{{this.scheduleId}}">
-        <div class="ncm-msg-sched-row__countdown {{#if this.isSoon}}ncm-msg-sched-row__countdown--soon{{/if}}"
-             data-delivery-time="{{this.deliveryTime}}" data-use-game-time="{{this.useGameTime}}">{{this.countdown}}</div>
-        <div class="ncm-msg-sched-row__sep"></div>
-        <div class="ncm-msg-sched-row__route">
-          <div class="ncm-msg-sched-row__from-to">
-            <span class="from">{{this.fromName}}</span>
-            <span class="arrow">→</span>
-            <span class="to">{{this.toName}}</span>
-          </div>
-          <div class="ncm-msg-sched-row__subject">"{{this.subject}}"</div>
-        </div>
-        <div class="ncm-msg-sched-row__priority ncm-msg-sched-row__priority--{{this.priority}}">{{this.priority}}</div>
-        <div class="ncm-msg-sched-row__date">{{this.deliveryDate}}</div>
-        <div class="ncm-msg-sched-row__actions">
-          <button class="ncm-admin-action-btn" data-action="editScheduled" data-schedule-id="{{this.scheduleId}}" title="Edit"><i class="fas fa-pen"></i></button>
-          <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="cancelScheduled" data-schedule-id="{{this.scheduleId}}" title="Cancel"><i class="fas fa-xmark"></i></button>
-        </div>
-      </div>
-      {{/each}}
-    </div>
-    {{else}}
-    <div class="ncm-admin-empty"><i class="fas fa-clock"></i> No scheduled messages pending.</div>
-    {{/if}}
-
-
-    {{!-- §5 — MESSAGE QUEUE --}}
-    <div class="ncm-section-title">
-      <i class="fas fa-hourglass-half"></i> Message Queue
-      {{#if msgQueueCount}}<span class="ncm-section-title__count">{{msgQueueCount}} stuck</span>{{/if}}
-    </div>
-    {{#if msgQueueEntries.length}}
-    <div class="ncm-msg-queue-list">
-      <div class="ncm-msg-queue-list__header">
-        <span class="ncm-msg-queue-list__label"><i class="fas fa-triangle-exclamation"></i> Queued — Awaiting Network</span>
-        <span class="ncm-msg-queue-list__count">{{msgQueueCount}} messages</span>
-        <button class="ncm-msg-queue-list__flush" data-action="flushMsgQueue"><i class="fas fa-bolt"></i> Force Deliver All</button>
-      </div>
-      {{#each msgQueueEntries}}
-      <div class="ncm-msg-queue-row" data-message-id="{{this.messageId}}">
-        <div class="ncm-msg-queue-row__icon"><i class="fas fa-{{this.reasonIcon}}"></i></div>
-        <div class="ncm-msg-queue-row__route">
-          <span class="ncm-msg-queue-row__names">{{this.fromName}} <span class="arrow">→</span> {{this.toName}}</span>
-          <span class="ncm-msg-queue-row__reason"><i class="fas fa-{{this.reasonIcon}}"></i> {{this.reason}}</span>
-        </div>
-        <span class="ncm-msg-queue-row__queued">Queued {{this.queuedTime}}</span>
-        <div class="ncm-msg-queue-row__actions">
-          <button class="ncm-admin-action-btn" data-action="forceDeliverMsg" data-message-id="{{this.messageId}}" title="Force Deliver"><i class="fas fa-bolt"></i></button>
-          <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="cancelQueuedMsg" data-message-id="{{this.messageId}}" title="Cancel"><i class="fas fa-xmark"></i></button>
-        </div>
-      </div>
-      {{/each}}
-    </div>
-    {{else}}
-    <div class="ncm-msg-queue-empty">
-      <i class="fas fa-circle-check"></i>
-      <span>All messages delivered — no queued or stuck messages</span>
+    {{#if all.activeFilters.length}}
+    <div class="ncm-msg2-chips">
+      {{#each all.activeFilters}}<span class="ncm-msg2-chip on" data-action="tabAct" data-owner="messages" data-op="unfilter" data-k="{{key}}" data-tooltip="Remove this filter"><i class="fas {{icon}}"></i>{{label}}<i class="fas fa-xmark"></i></span>{{/each}}
+      <span class="ncm-msg2-chip ncm-msg2-chip--clear" data-action="tabAct" data-owner="messages" data-op="clearFlags"><i class="fas fa-xmark"></i>Clear all</span>
     </div>
     {{/if}}
-
-
-    {{!-- §6 — INBOX MANAGEMENT --}}
-    <div class="ncm-section-title">
-      <i class="fas fa-boxes-stacked"></i> Inbox Management
-      <button class="ncm-section-title__action" data-action="exportLogs"><i class="fas fa-file-export"></i> Export All</button>
-    </div>
-    {{#if stats.actorStats.length}}
-    <div class="ncm-msg-inbox-grid">
-      {{#each stats.actorStats}}
-      <div class="ncm-msg-inbox-card" data-action="openInbox" data-actor-id="{{this.actorId}}">
-        <div class="ncm-msg-inbox-card__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}}; background: {{this.avatarColor}}0a;">
-          {{#if this.actorImg}}<img src="{{this.actorImg}}" alt="{{this.actorName}}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">{{else}}{{this.initial}}{{/if}}
-        </div>
-        <div class="ncm-msg-inbox-card__info">
-          <span class="ncm-msg-inbox-card__name">{{this.actorName}}</span>
-          <span class="ncm-msg-inbox-card__meta">
-            {{#if this.hasPlayerOwner}}<span><i class="fas fa-user"></i> {{this.ownerName}}</span>{{else}}<span style="color: var(--ncm-primary);"><i class="fas fa-user-secret"></i> NPC</span>{{/if}}
-            <span>{{this.totalMessages}} msgs</span>
+    <div class="ncm-msg2-split">
+      {{!-- ═══ THE CALENDAR NAVIGATOR (version A of dev/mockups/admin-mail-navigator-mock.html, 2026-10-28) ═══
+           Year (12 month tiles) → Month (a cell per day + the month's mail) → Week / Day (a 7-day strip + that
+           span's mail). Breadcrumb walks back, ‹ › steps a sibling, Esc goes up. Every count comes from
+           messagesModel.calendarCounts over the ALREADY-FILTERED feed (search · Who · Filter narrow it all). --}}
+      {{#with all.cal}}
+      <div class="ncm-msg2-list ncm-msg2-cal" data-cal-level="{{level}}">
+        <div class="ncm-msg2-cal__crumb">
+          {{#each crumbs}}{{#unless @first}}<i class="fas fa-chevron-right ncm-msg2-cal__sep"></i>{{/unless}}{{#if here}}<span class="is-here">{{label}}</span>{{else}}<span class="ncm-msg2-cal__up" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calLevel" data-level="{{level}}" data-tooltip="Back to {{label}}">{{label}}</span>{{/if}}{{/each}}
+          <span class="ncm-msg2-cal__nav">
+            {{#if canUp}}<span class="ncm-msg2-cal__nb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calUp" data-tooltip="Up one level (Esc)" aria-label="Up one level"><i class="fas fa-turn-up"></i></span>{{/if}}
+            <span class="ncm-msg2-cal__nb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="-1" data-tooltip="Previous {{level}} (←)" aria-label="Previous {{level}}"><i class="fas fa-chevron-left"></i></span>
+            <span class="ncm-msg2-cal__nb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="1" data-tooltip="Next {{level}} (→)" aria-label="Next {{level}}"><i class="fas fa-chevron-right"></i></span>
           </span>
         </div>
-        <div class="ncm-msg-inbox-card__count {{#if this.unreadMessages}}ncm-msg-inbox-card__count--alert{{/if}}">{{this.unreadMessages}}</div>
-        <div class="ncm-msg-inbox-card__actions">
-          <button class="ncm-msg-inbox-card__action" data-action="openInbox" data-actor-id="{{this.actorId}}" title="Open Inbox"><i class="fas fa-envelope-open"></i></button>
-          <button class="ncm-msg-inbox-card__action" data-action="markAllRead" data-actor-id="{{this.actorId}}" title="Mark All Read"><i class="fas fa-check-double"></i></button>
-          <button class="ncm-msg-inbox-card__action" data-action="purgeOldMessages" data-actor-id="{{this.actorId}}" title="Purge Old"><i class="fas fa-broom"></i></button>
+        <div class="ncm-msg2-cal__quick">
+          {{#each quick}}<span class="ncm-msg2-cal__q{{#if on}} is-on{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calJump" data-to="{{to}}"><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}
+          <span class="ncm-msg2-grow"></span>
+          <span class="ncm-msg2-cal__q ncm-msg2-cal__q--order" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="mailOrder" data-tooltip="{{#if @root.msg2.all.oldest}}Oldest first — click for newest first{{else}}Newest first — click for oldest first{{/if}}"><i class="fas {{#if @root.msg2.all.oldest}}fa-arrow-up-wide-short{{else}}fa-arrow-down-wide-short{{/if}}"></i>{{#if @root.msg2.all.oldest}}Oldest{{else}}Newest{{/if}}</span>
+        </div>
+        <div class="ncm-msg2-cal__body{{#if fresh}} is-fresh{{/if}}" data-cal-anim="{{anim}}">
+          {{#if isYear}}
+          <div class="ncm-msg2-cal__hd"><b>{{head.title}}</b><span>{{head.subline}}</span></div>
+          <div class="ncm-msg2-cal__ygrid" data-msg2-scroll="alist" data-sel="{{key}}">
+            {{#each tiles}}
+            <div class="ncm-msg2-cal__mt{{#if now}} is-now{{/if}}{{#if empty}} is-empty{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calMonth" data-month="{{month}}" data-tooltip="{{label}}: {{n}} messages{{#if unread}} · {{unread}} unread{{/if}}{{#if failed}} · {{failed}} not delivered{{/if}}">
+              <span class="m">{{label}}</span>
+              <span class="bars">{{#each bars}}<i class="{{#if hot}}is-hot{{/if}}" style="height:{{h}}px"></i>{{/each}}</span>
+              <span class="ct"><span class="n">{{#if n}}{{n}}{{else}}—{{/if}}</span>{{#if failed}}<span class="ncm-msg2-cal__un is-bad" data-tooltip="{{failed}} not delivered">{{failed}}</span>{{/if}}{{#if unread}}<span class="ncm-msg2-cal__un" data-tooltip="{{unread}} unread">{{unread}}</span>{{/if}}</span>
+            </div>
+            {{/each}}
+          </div>
+          {{/if}}
+          {{#if isMonth}}
+          <div class="ncm-msg2-cal__hd"><b>{{head.title}}</b><span>{{head.subline}}</span></div>
+          <div class="ncm-msg2-cal__top" data-cal-top{{#if gridH}} style="--cal-grid-h:{{gridH}}px"{{/if}}>
+          <div class="ncm-msg2-cal__mgrid">
+            <div class="ncm-msg2-cal__dow">{{#each dowLabels}}<span>{{this}}</span>{{/each}}</div>
+            <div class="ncm-msg2-cal__days">
+              {{#each cells}}{{#if out}}<div class="ncm-msg2-cal__dc is-out"></div>{{else}}<div class="ncm-msg2-cal__dc{{#if empty}} is-z{{/if}}{{#if today}} is-today{{/if}}" style="--v:{{v}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calDay" data-ms="{{ms}}" data-tooltip="{{n}} messages{{#if unread}} · {{unread}} unread{{/if}}{{#if failed}} · {{failed}} not delivered{{/if}}"><span class="d">{{day}}</span>{{#if n}}<span class="c">{{n}}</span>{{/if}}{{#if unread}}<i class="dot"></i>{{/if}}{{#if failed}}<i class="dot is-x"></i>{{/if}}</div>{{/if}}{{/each}}
+            </div>
+          </div>
+          <div class="ncm-msg2-cal__wk">{{#each weeks}}<span class="{{#if unread}}has-unread{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calWeek" data-start="{{start}}" data-tooltip="Week {{iso}}: {{n}} messages{{#if unread}} · {{unread}} unread{{/if}}">{{label}}{{#if n}} · {{n}}{{/if}}</span>{{/each}}</div>
+          </div>
+          {{!-- the grip: drag to give the list more or less room (the grid scrolls when squeezed); double-click resets; ↑ ↓ nudge --}}
+          <div class="ncm-msg2-cal__grip" role="separator" aria-orientation="horizontal" tabindex="0" data-cal-grip data-tooltip="Drag up or down to resize the list · double-click resets · ↑ ↓ nudge" aria-label="Resize the list"><i></i></div>
+          <div class="ncm-msg2-cal__hr">{{listLabel}}</div>
+          <div class="ncm-msg2-cal__rows" data-msg2-scroll="alist" data-sel="{{key}}">
+            {{#each rows}}{{> ncmMsg2CalRow}}{{else}}<div class="ncm-msg2-quiet">No mail this month.</div>{{/each}}
+            {{#if @root.msg2.all.hasMore}}<div class="ncm-msg2-more"><button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="calMore"><i class="fas fa-chevron-down"></i> Load more ({{@root.msg2.all.shown}} of {{@root.msg2.all.total}})</button></div>{{/if}}
+          </div>
+          {{/if}}
+          {{#if isStrip}}
+          <div class="ncm-msg2-cal__strip">{{#each strip}}<div class="ncm-msg2-cal__dc{{#if empty}} is-z{{/if}}{{#if today}} is-today{{/if}}{{#if sel}} is-on{{/if}}" style="--v:{{v}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calDay" data-ms="{{ms}}" data-tooltip="{{wd}} {{day}}: {{n}} messages{{#if unread}} · {{unread}} unread{{/if}}{{#if failed}} · {{failed}} not delivered{{/if}}"><span class="wd">{{wd}}</span><span class="d">{{day}}</span>{{#if n}}<span class="c">{{n}}</span>{{/if}}{{#if unread}}<i class="dot"></i>{{/if}}{{#if failed}}<i class="dot is-x"></i>{{/if}}</div>{{/each}}</div>
+          <div class="ncm-msg2-cal__hd ncm-msg2-cal__hd--day"><b>{{head.title}}</b><span>{{head.subline}}</span>{{#if head.unread}}<span class="ncm-msg2-cal__un" data-tooltip="{{head.unread}} unread">{{head.unread}}</span>{{/if}}</div>
+          <div class="ncm-msg2-cal__rows" data-msg2-scroll="alist" data-sel="{{key}}">
+            {{#if isDay}}
+            {{#each bands}}<div class="ncm-msg2-cal__hr">{{label}}</div>{{#each rows}}{{> ncmMsg2CalRow}}{{/each}}{{else}}<div class="ncm-msg2-quiet">No mail this day.</div>{{/each}}
+            {{else}}
+            {{#each rows}}{{> ncmMsg2CalRow}}{{else}}<div class="ncm-msg2-quiet">No mail this week.</div>{{/each}}
+            {{/if}}
+            {{#if @root.msg2.all.hasMore}}<div class="ncm-msg2-more"><button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="calMore"><i class="fas fa-chevron-down"></i> Load more ({{@root.msg2.all.shown}} of {{@root.msg2.all.total}})</button></div>{{/if}}
+          </div>
+          {{/if}}
+        </div>
+        <div class="ncm-msg2-cal__foot">
+          <span class="ncm-msg2-cal__fb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="-1"><i class="fas fa-chevron-left"></i>{{prev.label}} · <b>{{prev.n}}</b></span>
+          <span class="h" data-tooltip="{{total}} in this {{level}} · {{@root.msg2.all.grand}} match in all">{{#if isYear}}{{hint}}{{else}}{{@root.msg2.all.shown}} of {{total}}{{#if undated}} · {{undated}} undated{{/if}}{{/if}}</span>
+          <span class="ncm-msg2-cal__fb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="1">{{next.label}} · <b>{{next.n}}</b><i class="fas fa-chevron-right"></i></span>
         </div>
       </div>
-      {{/each}}
+      {{/with}}
+      <div class="ncm-msg2-det" data-msg2-scroll="adet" data-sel="{{all.sel.messageId}}">
+        {{#if all.sel}}{{#with all.sel}}
+        <div class="ncm-msg2-rd"><h3>{{subject}}</h3>
+          <div class="ncm-msg2-pp">
+            <span class="k">From</span>
+            <span class="p">{{#if anonView}}<span class="ncm-msg2-av sm anon"><i class="fas fa-user-secret"></i></span><span>{{from.name}}</span><span class="a">{{from.addr}}</span><span class="ncm-msg2-flag is-muted"><i class="fas fa-user-secret"></i>Anonymous</span><span class="ncm-msg2-real">really {{from.real}} — only you see this</span>
+              {{else}}{{#if from.img}}<img class="ncm-msg2-av sm" src="{{from.img}}" alt="" style="--tc:{{ncm-hue from.name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue from.name}}">{{from.initials}}</span>{{/if}}<span>{{from.name}}</span><span class="a">{{from.addr}}</span>{{#if this.fromAlias}}<span class="ncm-msg2-flag is-muted ncm-msg-alias"><i class="fas fa-masks-theater"></i>alias of {{this.fromAlias.of}}</span>{{/if}}{{/if}}</span>
+            <span class="k">To</span>
+            <span class="p">{{#if to.group}}<i class="fas fa-users"></i><span>{{to.name}}</span>{{else}}{{#if to.img}}<img class="ncm-msg2-av sm" src="{{to.img}}" alt="" style="--tc:{{ncm-hue to.name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue to.name}}">{{to.initials}}</span>{{/if}}<span>{{to.name}}</span><span class="a">{{to.addr}}</span>{{/if}}</span>
+            <span class="k">When</span>
+            <span class="p"><span class="a ncm-msg2-strong">{{when}}</span>{{#if netName}}<span class="ncm-tagp" style="--tc:{{netColor}}"><i class="fas fa-wifi"></i>{{netName}}</span>{{#if netSignal}}<span class="ncm-msg2-sig is-{{netTier}}">{{netSignal}}</span>{{/if}}{{else}}{{#if net}}<span class="a">{{net}}</span>{{/if}}{{/if}}</span>
+          </div>
+          {{!-- "Where it went" (dev-picked from admin-guides-mock.html): the band folds the whole journey (one choice for every message);
+               a single message is a track of stops + the why strip; a group is one row per person, problems first, with a summary,
+               filter chips and a name search once it gets big. --}}
+          {{#with dl}}
+          <div class="ncm-msg2-dl ncm-msg2-jr is-{{tone}}{{#if open}} is-open{{/if}}{{#if shut}} is-shut{{/if}}{{#if big}} is-big{{/if}}"{{#if group}} data-jr-f="{{filter}}"{{/if}}>
+            <button type="button" class="ncm-msg2-jr__k" data-action="tabAct" data-owner="messages" data-op="jrFold" aria-expanded="{{#if shut}}false{{else}}true{{/if}}" data-tooltip="Fold or open — remembered for every message">
+              <i class="fas fa-route ncm-msg2-jr__kic"></i><span class="ncm-msg2-jr__kt">Where it went</span>
+              <span class="ncm-msg2-jr__stat is-{{status.tone}}">{{status.word}}</span>
+              <span class="r">{{{route}}}</span><i class="fas fa-chevron-down ncm-msg2-jr__kchev"></i>
+            </button>
+            <div class="ncm-msg2-jr__body">
+            {{#if group}}
+            {{#if big}}
+            <div class="ncm-msg2-jr__sum">
+              <span class="ncm-msg2-jr__bar">{{#each bar}}<i class="is-{{tone}}" style="width:{{pct}}%" data-tooltip="{{n}} {{k}}"></i>{{/each}}</span>
+              <span class="ncm-msg2-jr__chips">{{#each chips}}<span class="ncm-msg2-jr__chip{{#if on}} is-on{{/if}} is-{{k}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="jrFilter" data-id="{{id}}" data-f="{{k}}">{{label}}<b>{{n}}</b></span>{{/each}}</span>
+              {{#if searchable}}<label class="ncm-msg2-jr__find"><i class="fas fa-magnifying-glass"></i><input type="text" data-jr-search placeholder="Find a person…" aria-label="Find a person"></label>{{/if}}
+            </div>
+            {{/if}}
+            <div class="ncm-msg2-jr__people">
+              <div class="ncm-msg2-jr__phead"><span>To</span><span>Sent</span><span>Delivered</span><span>Read</span><span>Replied</span></div>
+              {{#each rcp}}
+              <div class="ncm-msg2-jr__p ncm-msg2-dl__rcp is-{{cls}}" data-b="{{bucket}}" data-name="{{nameKey}}">
+                <span class="who">{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}<span class="nm" data-tooltip="{{#if addr}}{{addr}} · {{/if}}{{word}}{{#if time}} {{time}}{{/if}}">{{name}}</span></span>
+                {{#each segs}}<span class="seg is-{{s}}"><i class="fas {{icon}}"></i></span>{{/each}}
+                {{#if why}}<span class="note is-{{cls}}"><span>{{{why}}}</span>{{#if fix}}{{#with fix}} <button type="button" class="ncm-msg2-btn{{#unless quiet}} ncm-msg2-btn--primary{{/unless}}{{#if quiet}} ncm-msg2-btn--quiet{{/if}}" data-action="{{#if action}}{{action}}{{else}}tabAct{{/if}}" data-owner="messages"{{#if op}} data-op="{{op}}"{{/if}}{{#each data}} data-{{@key}}="{{this}}"{{/each}}><i class="fas {{icon}}"></i> {{label}}</button>{{/with}}{{/if}}</span>{{else}}{{#if fix}}<span class="note is-{{cls}}">{{#with fix}}<button type="button" class="ncm-msg2-btn{{#unless quiet}} ncm-msg2-btn--primary{{/unless}}{{#if quiet}} ncm-msg2-btn--quiet{{/if}}" data-action="{{#if action}}{{action}}{{else}}tabAct{{/if}}" data-owner="messages"{{#if op}} data-op="{{op}}"{{/if}}{{#each data}} data-{{@key}}="{{this}}"{{/each}}><i class="fas {{icon}}"></i> {{label}}</button>{{/with}}</span>{{/if}}{{/if}}
+              </div>
+              {{/each}}
+              <div class="ncm-msg2-jr__none">Nobody here.</div>
+            </div>
+            <div class="ncm-msg2-jr__foot"><span>{{{foot.text}}}</span><span class="ncm-msg2-grow"></span>{{#each foot.fixes}}<button type="button" class="ncm-msg2-btn{{#unless quiet}} ncm-msg2-btn--primary{{/unless}}{{#if quiet}} ncm-msg2-btn--quiet{{/if}}" data-action="{{#if action}}{{action}}{{else}}tabAct{{/if}}" data-owner="messages"{{#if op}} data-op="{{op}}"{{/if}}{{#each data}} data-{{@key}}="{{this}}"{{/each}}><i class="fas {{icon}}"></i> {{label}}</button>{{/each}}</div>
+            {{else}}
+            <div class="ncm-msg2-jr__track">{{#each track}}<div class="ncm-msg2-jr__st is-{{st}}"><span class="ncm-msg2-jr__dot"><i class="fas {{icon}}"></i></span><span class="ncm-msg2-jr__nm">{{label}}</span><span class="ncm-msg2-jr__sub">{{#if subline}}{{subline}}{{else}}&nbsp;{{/if}}</span></div>{{/each}}</div>
+            {{#if strip}}<div class="ncm-msg2-jr__why is-{{tone}}"><i class="fas {{icon}}"></i><span class="ncm-msg2-jr__txt">{{{line}}}</span>{{#if fixes.length}}<span class="ncm-msg2-jr__fix">{{#each fixes}}<button type="button" class="ncm-msg2-btn{{#unless quiet}} ncm-msg2-btn--primary{{/unless}}{{#if quiet}} ncm-msg2-btn--quiet{{/if}}" data-action="{{#if action}}{{action}}{{else}}tabAct{{/if}}" data-owner="messages"{{#if op}} data-op="{{op}}"{{/if}}{{#each data}} data-{{@key}}="{{this}}"{{/each}}><i class="fas {{icon}}"></i> {{label}}</button>{{/each}}</span>{{/if}}</div>{{/if}}
+            {{#if hasMore}}
+            <button type="button" class="ncm-msg2-jr__morebtn" data-action="tabAct" data-owner="messages" data-op="dlToggle" data-id="{{id}}" aria-expanded="{{#if open}}true{{else}}false{{/if}}"><i class="fas fa-chevron-down ncm-msg2-dl__chev"></i><span class="is-closed">More about it</span><span class="is-opened">Less</span></button>
+            <div class="ncm-msg2-dl__more"><div class="ncm-msg2-dl__grid">
+              {{#each grid}}<span class="ncm-msg2-dl__k">{{k}}</span>
+              <span class="ncm-msg2-dl__v">{{#if screen}}<span class="ncm-msg2-dl__screen"><span class="is-{{screen.tone}}">{{screen.mark}}</span>{{#if screen.text}}{{#if screen.tone}} —{{/if}} {{screen.text}}{{/if}}{{#if screen.tail}} <span class="is-g">{{screen.tail}}</span>{{/if}}</span>{{else}}{{{v}}}{{/if}}</span>
+              {{/each}}
+            </div></div>
+            {{/if}}
+            {{/if}}
+            </div>
+          </div>
+          {{/with}}
+          {{#if flags.length}}<div class="ncm-msg2-facts">{{#each flags}}<span class="ncm-msg2-flag is-{{tone}}"{{#if tip}} data-tooltip="{{tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}</div>{{/if}}
+          {{#if junk}}<div class="ncm-msg2-note ncm-msg2-note--junk"><i class="fas fa-ban"></i> Junk sender — {{junk.label}}{{#if (eq junk.reason 'listed')}}; new mail from it goes straight to Spam{{/if}}.</div>{{/if}}
+          {{#if via}}<div class="ncm-msg2-note ncm-msg2-note--in">Sent from {{via.asName}}’s account on <b>{{via.machine}}</b>{{#if via.impersonated}}, typed by <b>{{via.typist}}</b>. {{via.toName}} sees it as from {{via.asName}}.{{else}} by its own user.{{/if}}</div>{{/if}}
+        </div>
+        {{!-- ONE line, never wraps (dev 2026-10-28): Reply as · Inbox · [sent copy] · Share · Copy to terminal · Junk ▾ · Delete.
+             The named buttons keep their words (ellipsized when cramped); the quieter ones are icon-only with a tooltip
+             at 820px and show their label in the pop-out (.lb). --}}
+        <div class="ncm-msg2-acts ncm-msg2-acts--line">
+          {{#if replyAs.length}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary ncm-msg2-btn--named" data-action="tabAct" data-owner="messages" data-op="actReply" data-message-id="{{messageId}}" data-tooltip="{{replyAsTip}}"><i class="fas fa-reply"></i><span class="lb lb--keep">Reply as{{#if replyAsMany}}…{{/if}}</span></button>{{/if}}
+          {{#if inboxes.length}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--named" data-action="tabAct" data-owner="messages" data-op="actInbox" data-message-id="{{messageId}}" data-tooltip="{{inboxTip}}"><i class="fas fa-inbox"></i><span class="lb lb--keep">Inbox{{#if inboxMany}}…{{/if}}</span></button>{{/if}}
+          {{#if openId}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon ncm-msg2-btn--quietact" data-action="shareMsgToChat" data-message-id="{{openId}}" data-tooltip="Share to chat" aria-label="Share to chat"><i class="fas fa-comment"></i><span class="lb">Share to chat</span></button>
+          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon ncm-msg2-btn--quietact" data-action="tabAct" data-owner="messages" data-op="copyToTerminal" data-message-id="{{openId}}" data-tooltip="Copy to a terminal account" aria-label="Copy to a terminal"><i class="fas fa-terminal"></i><span class="lb">Copy to terminal</span></button>{{/if}}
+          {{#with readToggle}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon ncm-msg2-btn--quietact" data-action="tabAct" data-owner="messages" data-op="mailReadToggle" data-owner-id="{{owner}}" data-message-id="{{id}}" data-unread="{{#if unread}}1{{/if}}" data-tooltip="{{#if unread}}Mark read{{else}}Mark unread{{/if}}" aria-label="{{#if unread}}Mark read{{else}}Mark unread{{/if}}"><i class="fas {{#if unread}}fa-envelope-open{{else}}fa-envelope{{/if}}"></i><span class="lb">{{#if unread}}Mark read{{else}}Mark unread{{/if}}</span></button>{{/with}}
+          <span class="ncm-msg2-acts__end">
+          {{#if junkMenu}}<details class="ncm-msg2-junkbtn{{#if junk}} is-junk{{/if}}">
+            <summary class="ncm-msg2-btn" data-tooltip="{{#if junk}}This sender is marked as junk{{else}}Mark this sender as junk: their mail is hidden here and new mail goes straight to the recipient's Spam{{/if}}"><i class="fas fa-ban"></i> {{#if junk}}Junk{{else}}Junk{{/if}} <i class="fas fa-caret-down ncm-msg2-junkbtn__caret"></i></summary>
+            <div class="ncm-msg2-junkbtn__menu">
+              {{#if canMarkJunk}}<button type="button" class="ncm-msg2-junkbtn__item" data-action="tabAct" data-owner="messages" data-op="junkOn" data-entry="{{junkAddr}}"><i class="fas fa-at"></i><span>This address<small>{{junkAddr}}</small></span></button>
+              {{#if junkDomain}}<button type="button" class="ncm-msg2-junkbtn__item" data-action="tabAct" data-owner="messages" data-op="junkOn" data-entry="{{junkDomain}}"><i class="fas fa-globe"></i><span>Everyone at {{junkDomain}}<small>every address on that domain</small></span></button>{{/if}}{{/if}}
+              {{#if (eq junk.reason 'listed')}}<button type="button" class="ncm-msg2-junkbtn__item" data-action="tabAct" data-owner="messages" data-op="junkOff" data-entry="{{junk.entry}}"><i class="fas fa-rotate-left"></i><span>Not junk<small>take {{junk.entry}} off the list</small></span></button>{{/if}}
+            </div>
+          </details>{{/if}}
+          {{#if canDelete}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon ncm-msg2-btn--danger" data-action="hardDeleteMessage" data-message-id="{{messageId}}" data-inbox-owner="{{inboxOwnerId}}" title="Delete for good" aria-label="Delete for good"><i class="fas fa-trash"></i></button>{{/if}}</span>
+        </div>
+        <div class="ncm-msg2-body">{{{bodyHtml}}}</div>
+        {{#each attachments}}<div class="ncm-msg2-att"><i class="fas {{icon}}"></i><div>{{name}}</div></div>{{/each}}
+        {{#if isGroupRow}}
+        <div class="ncm-msg2-rcp ncm-msg-feed-recip"><div class="h">Each recipient</div>
+          {{#each recipients}}
+          <div class="row">{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue toName}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue toName}}">{{initials}}</span>{{/if}}<span>{{toName}}</span>
+            <span class="s is-{{state}}">{{state}}{{#if claimed}} · <span class="is-money">eddies claimed</span>{{/if}}</span>
+            <span class="ncm-msg2-rcpacts"><a data-action="openMsgInInbox" data-inbox-owner="{{inboxOwnerId}}" data-message-id="{{messageId}}">Open</a>
+              <a class="is-danger" data-action="hardDeleteMessage" data-inbox-owner="{{inboxOwnerId}}" data-message-id="{{messageId}}" title="Delete this copy"><i class="fas fa-trash"></i></a></span></div>
+          {{/each}}
+          {{#each notDelivered}}<div class="row"><span class="ncm-msg2-av sm"><i class="fas fa-triangle-exclamation"></i></span><span>{{names}}</span><span class="s is-bad">not delivered: {{why}}</span><span></span></div>{{/each}}
+        </div>
+        {{else}}{{#if notDelivered.length}}
+        <div class="ncm-msg2-rcp"><div class="h">Didn’t arrive</div>{{#each notDelivered}}<div class="row"><span class="ncm-msg2-av sm"><i class="fas fa-triangle-exclamation"></i></span><span>{{names}}</span><span class="s is-bad">{{why}}</span><span></span></div>{{/each}}</div>
+        {{/if}}{{/if}}
+        {{/with}}{{else}}
+        <div class="ncm-msg2-quiet">Pick a message on the left.</div>
+        {{/if}}
+      </div>
     </div>
-    {{else}}
-    <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No actors with messages yet.</div>
     {{/if}}
 
+    {{!-- ═══════════════ OUTBOX ═══════════════ --}}
+    {{#if isOutbox}}
+    <div class="ncm-msg2-scroll" data-msg2-scroll="outbox">
+      <div class="ncm-msg2-card bad">
+        <div class="hd"><span class="t"><i class="fas fa-triangle-exclamation"></i>Didn’t arrive</span><span class="ncm-msg2-ct {{#if outbox.counts.failures}}bad{{/if}}">{{outbox.counts.failures}}</span><span class="d">refused or failed — only you were told</span><span class="ncm-msg2-grow"></span>
+          {{#if outbox.counts.failures}}<button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="failDismissAll"><i class="fas fa-broom"></i> Clear list</button>{{/if}}</div>
+        {{#each outbox.failures}}
+        <div class="ncm-msg2-ob"><div class="when">{{whenLabel}}<small>{{ago}}</small></div>
+          <div class="what"><b>{{fromName}} → {{toName}}</b> — “{{subject}}”<small class="is-bad">{{why}}{{#if retried}} · {{retried}}{{/if}}</small>{{#if eddiesNote}}<small class="is-money">{{eddiesNote}}</small>{{/if}}</div>
+          <div class="acts"><button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="failRetry" data-id="{{id}}"><i class="fas fa-rotate-right"></i> Retry</button>
+            <button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="failDismiss" data-id="{{id}}"><i class="fas fa-xmark"></i> Dismiss</button></div></div>
+        {{else}}<div class="ncm-msg2-quiet">Everything that was sent arrived.</div>{{/each}}
+      </div>
+
+      <div class="ncm-msg2-card warn">
+        <div class="hd"><span class="t"><i class="fas fa-hourglass-half"></i>Waiting to deliver</span><span class="ncm-msg2-ct {{#if outbox.counts.queue}}hot{{/if}}">{{outbox.counts.queue}}</span><span class="d">held until the GM is online or the signal returns</span><span class="ncm-msg2-grow"></span>
+          {{#if outbox.counts.queue}}<button type="button" class="ncm-msg2-btn" data-action="flushMsgQueue"><i class="fas fa-paper-plane"></i> Deliver all</button>{{/if}}</div>
+        {{#each outbox.queue}}
+        <div class="ncm-msg2-ob"><div class="when">{{ago}}<small>{{who}}</small></div>
+          <div class="what"><b>{{from}} → {{to}}</b> — “{{subject}}”<small><span class="is-attn">{{reason}}</span>{{#if eddies}} · <span class="is-money">carries {{eddies}} eb</span>{{/if}}</small></div>
+          <div class="acts"><button type="button" class="ncm-msg2-btn" data-action="forceDeliverMsg" data-message-id="{{messageId}}"><i class="fas fa-paper-plane"></i> Deliver now</button>
+            <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="cancelQueuedMsg" data-message-id="{{messageId}}" title="Cancel" aria-label="Cancel"><i class="fas fa-xmark"></i></button></div></div>
+        {{else}}<div class="ncm-msg2-quiet">Nothing is being held.</div>{{/each}}
+      </div>
+
+      <div class="ncm-msg2-card plan">
+        <div class="hd"><span class="t"><i class="fas fa-calendar-days"></i>Scheduled</span><span class="ncm-msg2-ct">{{outbox.counts.scheduled}}</span><span class="d">game time</span></div>
+        {{#each outbox.scheduled}}
+        <div class="ncm-msg2-ob"><div class="when"><span data-delivery-time="{{deliveryTime}}" data-use-game-time="{{useGameTime}}" class="{{#if isSoon}}is-soon{{/if}}">{{countdown}}</span><small>{{deliveryDate}}</small></div>
+          <div class="what"><b>{{fromName}} → {{toName}}</b> — “{{subject}}”<small>{{priority}}</small></div>
+          <div class="acts"><button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="schedSendNow" data-schedule-id="{{scheduleId}}"><i class="fas fa-paper-plane"></i> Send now</button>
+            <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="editScheduled" data-schedule-id="{{scheduleId}}" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
+            <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="cancelScheduled" data-schedule-id="{{scheduleId}}" title="Cancel" aria-label="Cancel"><i class="fas fa-xmark"></i></button></div></div>
+        {{else}}<div class="ncm-msg2-quiet">Nothing scheduled. Schedule mail from the composer.</div>{{/each}}
+      </div>
+
+      <div class="ncm-msg2-card burn">
+        <div class="hd"><span class="t"><i class="fas fa-stopwatch"></i>Timers</span><span class="ncm-msg2-ct">{{outbox.counts.timers}}</span><span class="d">mail that will erase itself</span></div>
+        {{#each outbox.timers}}
+        <div class="ncm-msg2-ob"><div class="when">{{when}}<small>self-destruct</small></div>
+          <div class="what"><b>{{fromName}} → {{toName}}</b> — “{{subject}}”<small>{{note}}</small></div>
+          <div class="acts"><button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="stopTimer" data-journal-id="{{journalId}}" data-page-id="{{pageId}}"><i class="fas fa-hand"></i> Stop</button>
+            <button type="button" class="ncm-msg2-btn" data-action="openMsgInInbox" data-inbox-owner="{{ownerId}}" data-message-id="{{messageId}}"><i class="fas fa-inbox"></i> Open</button></div></div>
+        {{else}}<div class="ncm-msg2-quiet">No self-destructing mail.</div>{{/each}}
+      </div>
+    </div>
     {{/if}}
+
+    {{!-- ═══════════════ INBOXES — LIST + DESK ═══════════════
+         dev/mockups/admin-inboxes-rethink-mock.html A (2026-10-29; replaced the Mailroom wall). One toolbar row
+         (search · Show · Group · Sort · ⋯), the grouped list on the left, the desk on the right: NEEDS A LOOK when
+         nothing is picked, else the mailbox (Open inbox first · Latest mail · Last 14 days · Networks · Talks to ·
+         Housekeeping). Every row prints the number its sort uses. Rules: messagesModel (INBOX_*, slotMetric…). --}}
+    {{#if isInboxes}}{{#with inboxes}}
+    <div class="ncm-ib" data-ib-root>
+      <div class="ncm-ib__tb">
+        <span class="ncm-msg2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-msg2-ibsearch value="{{search}}" placeholder="Find a mailbox…" title="Name, address, role or organization"><kbd class="ncm-ib__kbd" title="Press / to search">/</kbd></span>
+        <label class="ncm-ib__sel"><span>Show</span><select data-msg2-ibsel="show" aria-label="Show">{{#each shows}}<option value="{{key}}" {{#if on}}selected{{/if}}>{{label}} ({{count}})</option>{{/each}}</select></label>
+        <label class="ncm-ib__sel"><span>Group</span><select data-msg2-ibsel="group" aria-label="Group by">{{#each groupBy}}<option value="{{key}}" {{#if on}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+        <label class="ncm-ib__sel"><span>Sort</span><select data-msg2-ibsel="sort" aria-label="Sort">{{#each sorts}}<option value="{{key}}" title="{{hint}}" {{#if on}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+        <details class="ncm-msg2-dd ncm-msg2-dd--down ncm-ib__more">
+          <summary class="ncm-msg2-btn ncm-msg2-btn--icon" title="Mark everything read · Export all · Purge old mail · Fold or open every group" aria-label="More"><i class="fas fa-ellipsis"></i></summary>
+          <div class="ncm-msg2-dd__menu">
+            <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="ibMarkAllRead"><i class="fas fa-envelope-open"></i><span>Mark everything read</span></button>
+            <button type="button" class="ncm-msg2-dd__item" data-action="exportLogs"><i class="fas fa-file-export"></i><span>Export all</span></button>
+            <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="ibPurgeAll"><i class="fas fa-broom"></i><span>Purge old mail…<small>read mail older than a number of days, every inbox</small></span></button>
+            <div class="ncm-msg2-dd__sep"></div>
+            <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="ibFoldAll"><i class="fas fa-layer-group"></i><span>Fold or open every group</span></button>
+          </div>
+        </details>
+      </div>
+
+      <div class="ncm-ib__split">
+        <div class="ncm-ib__list" data-msg2-scroll="ib">
+          {{#if narrowed}}<div class="ncm-ib__n">Showing {{shown}} of {{total}}</div>{{/if}}
+          {{#each groups}}
+          <div class="ncm-ib__grp is-{{kind}} {{#if shut}}is-shut{{/if}}" data-ib-group="{{key}}">
+            <div class="ncm-ib__gh" data-msg2-ibfold="{{key}}" role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}"><i class="fas fa-chevron-down ch"></i>{{label}}<span class="cnt">{{count}}</span>{{#if unread}}<span class="u" title="{{unread}} unread">{{unread}}</span>{{/if}}</div>
+            <div class="ncm-ib__rows">
+              {{#each rows}}
+              <button type="button" class="ncm-ib__r {{#if sel}}is-sel{{/if}} {{#if unread}}is-unread{{/if}} {{#if quiet}}is-quiet{{/if}}" data-action="tabAct" data-owner="messages" data-op="ibSel" data-owner-id="{{ownerId}}" aria-pressed="{{#if sel}}true{{else}}false{{/if}}">
+                {{#if orphan}}<span class="ncm-msg2-av is-bad"><i class="fas fa-ghost"></i></span>{{else}}{{#if img}}<img class="ncm-msg2-av" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{/if}}
+                <span class="tx"><span class="nm"><span class="t">{{name}}</span>{{#if aliases}}<span class="ncm-ib__tag is-alias" title="{{aliases}} more identit{{#if (gt aliases 1)}}ies{{else}}y{{/if}}"><i class="fas fa-mask"></i>+{{aliases}}</span>{{/if}}</span><span class="sl">{{line}}</span></span>
+                <span class="end">{{#if unread}}<span class="ncm-ib__u">{{unread}}</span>{{else if orphan}}<span class="ncm-ib__tag is-gone">gone</span>{{else if noInbox}}<span class="ncm-ib__tag is-none">none</span>{{else if quiet}}<span class="ncm-ib__tag is-quiet">quiet</span>{{/if}}</span>
+              </button>
+              {{/each}}
+            </div>
+          </div>
+          {{else}}
+          <div class="ncm-msg2-quiet ncm-ib__none">No mailboxes match.</div>
+          {{/each}}
+        </div>
+
+        <div class="ncm-ib__desk">
+          {{#if detail}}{{#with detail}}
+          <div class="ncm-ib__dhd">
+            {{#if orphan}}<span class="ncm-msg2-av lg is-bad"><i class="fas fa-ghost"></i></span>{{else}}{{#if img}}<img class="ncm-msg2-av lg" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av lg" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{/if}}
+            <div class="tx"><div class="nm">{{name}}{{#if aliases}}<span class="ncm-ib__tag is-alias"><i class="fas fa-mask"></i>+{{aliases}} alias{{#if (gt aliases 1)}}es{{/if}}</span>{{/if}}{{#if quiet}}<span class="ncm-ib__tag is-quiet">quiet {{quiet}}d</span>{{/if}}</div><div class="ad">{{subText}}</div></div>
+            <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="ibClose" title="Back to Needs a look (Esc)" aria-label="Close"><i class="fas fa-xmark"></i></button>
+          </div>
+          <div class="ncm-ib__acts">
+            {{#if orphan}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary" data-action="orphanAudit"><i class="fas fa-screwdriver-wrench"></i> Fix in Orphan Audit</button>
+            {{else}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary" data-action="openMsgInInbox" data-inbox-owner="{{ownerId}}"><i class="fas fa-inbox"></i> Open inbox</button>
+            <button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="ibWrite" data-owner-id="{{ownerId}}" data-player="{{#if isPlayer}}1{{/if}}" data-contact="{{#if isContact}}1{{/if}}"><i class="fas fa-pen"></i> {{writeLabel}}</button>{{/if}}
+          </div>
+          <section class="ncm-ib__sec">
+            <div class="ncm-ib__k"><i class="fas fa-envelopes-bulk"></i>Latest mail<span class="x">{{total}} in the box</span></div>
+            {{#each latest}}
+            <button type="button" class="ncm-ib__mail {{#if unread}}is-unread{{/if}}" data-action="openMsgInInbox" data-inbox-owner="{{ownerId}}" data-message-id="{{messageId}}" title="Open “{{subject}}”"><i class="e"></i>{{#if sent}}<span class="ncm-msg2-av sm is-sent"><i class="fas fa-arrow-up-right"></i></span>{{else}}{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{/if}}<span class="tx"><b>{{who}}</b><span>{{subject}}</span></span>{{#with pm}}<span class="ncm-ib-pm" style="--n:{{color}}" title="Routed over {{name}}{{#if time}} at {{time}}{{/if}}"><i class="bc"></i><b>{{code}}</b></span>{{/with}}<span class="ag">{{age}}</span></button>
+            {{else}}
+            <div class="ncm-ib__quiet">{{#if noInbox}}No inbox yet — it is made the first time mail arrives.{{else}}Nothing in this box.{{/if}}</div>
+            {{/each}}
+          </section>
+          {{#if total}}
+          <section class="ncm-ib__sec">
+            <div class="ncm-ib__k"><i class="fas fa-chart-column"></i>Last 14 days<span class="x">amber = still unread</span></div>
+            <div class="ncm-ib__bars">{{#each spark}}<i class="{{#if zero}}z{{else if unread}}u{{/if}}" style="height:{{h}}%" title="{{#if ago}}{{ago}}d ago{{else}}today{{/if}}: {{n}}"></i>{{/each}}</div>
+            <div class="ncm-ib__nums"><span><b>{{inN}}</b>received</span><span><b>{{sentN}}</b>sent</span><span class="attn"><b>{{unread}}</b>unread</span></div>
+          </section>
+          {{#if nets.length}}<section class="ncm-ib__sec"><div class="ncm-ib__k"><i class="fas fa-route"></i>Networks it gets mail over</div>
+            <div class="ncm-ib__row">{{#each nets}}<span class="ncm-ib-pm is-big" style="--n:{{color}}" title="{{name}}"><i class="bc"></i><b>{{code}}</b><span>{{name}} ×{{n}}</span></span>{{/each}}</div></section>{{/if}}
+          {{#if who.length}}<section class="ncm-ib__sec"><div class="ncm-ib__k"><i class="fas fa-user-group"></i>Talks to</div>
+            <div class="ncm-ib__row">{{#each who}}<span class="ncm-ib__who" title="{{n}} message{{#if (gt n 1)}}s{{/if}}">{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}<em>{{n}}</em></span>{{/each}}</div></section>{{/if}}
+          {{/if}}
+          {{#unless noInbox}}
+          <section class="ncm-ib__sec">
+            <div class="ncm-ib__k"><i class="fas fa-broom"></i>Housekeeping</div>
+            <div class="ncm-ib__row">
+              {{#if unread}}<button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="ibRead" data-journal-id="{{journalId}}"><i class="fas fa-envelope-open"></i> Mark read</button>{{/if}}
+              <button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="ibExport" data-journal-id="{{journalId}}" data-name="{{name}}"><i class="fas fa-file-export"></i> Export</button>
+              <button type="button" class="ncm-msg2-btn" data-action="tabAct" data-owner="messages" data-op="ibPurge" data-journal-id="{{journalId}}" data-name="{{name}}"><i class="fas fa-broom"></i> Purge old…</button>
+              <button type="button" class="ncm-msg2-btn ncm-msg2-btn--danger" data-action="tabAct" data-owner="messages" data-op="ibDelete" data-journal-id="{{journalId}}" data-name="{{name}}"><i class="fas fa-trash"></i> Delete inbox</button>
+            </div>
+          </section>
+          {{/unless}}
+          {{/with}}{{else}}{{#with look}}
+          <div class="ncm-ib__dhd">
+            <div class="tx"><div class="nm">Needs a look</div><div class="ad">{{unreadTotal}} unread across {{unreadBoxes}} mailbox{{#if (gt unreadBoxes 1)}}es{{/if}} · {{quietN}} gone quiet · {{goneN}} without an owner</div></div>
+          </div>
+          <div class="ncm-ib__look">
+            <div class="ncm-ib__card">
+              <div class="ncm-ib__k"><i class="fas fa-envelope"></i>Most unread</div>
+              {{#each most}}<button type="button" class="ncm-ib__li" data-action="tabAct" data-owner="messages" data-op="ibSel" data-owner-id="{{ownerId}}">{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}<span class="tx"><b>{{name}}</b><span>{{note}}</span></span><span class="ncm-ib__u">{{unread}}</span></button>
+              {{else}}<div class="ncm-ib__quiet">Nothing unread anywhere.</div>{{/each}}
+            </div>
+            <div class="ncm-ib__card">
+              <div class="ncm-ib__k"><i class="fas fa-moon"></i>Gone quiet</div>
+              {{#each quiet}}<button type="button" class="ncm-ib__li" data-action="tabAct" data-owner="messages" data-op="ibSel" data-owner-id="{{ownerId}}">{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}<span class="tx"><b>{{name}}</b><span>{{note}}</span></span></button>
+              {{else}}<div class="ncm-ib__quiet">Nobody has gone quiet.</div>{{/each}}
+              <div class="ncm-ib__k is-bad"><i class="fas fa-triangle-exclamation"></i>Owner gone</div>
+              {{#each gone}}<button type="button" class="ncm-ib__li" data-action="tabAct" data-owner="messages" data-op="ibSel" data-owner-id="{{ownerId}}"><span class="ncm-msg2-av sm is-bad"><i class="fas fa-ghost"></i></span><span class="tx"><b>{{name}}</b><span>{{note}}</span></span></button>
+              {{else}}<div class="ncm-ib__quiet">Every inbox has an owner.</div>{{/each}}
+            </div>
+          </div>
+          {{/with}}{{/if}}
+        </div>
+      </div>
+    </div>
+    {{/with}}{{/if}}
+  </div>
+</div>
+{{/with}}{{/if}}{{/if}}

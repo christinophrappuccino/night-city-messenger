@@ -161,15 +161,15 @@
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
-  color: #fff !important;
-  background: linear-gradient(135deg, var(--ncm-primary), #d4404e) !important;
-  background-image: linear-gradient(135deg, var(--ncm-primary), #d4404e) !important;
-  border: 1px solid color-mix(in srgb, var(--ncm-primary) 50%, transparent) !important;
+  color: var(--ncm-text-inverse) !important;
+  background: var(--ncm-act) !important;
+  background-image: none !important;
+  border: 1px solid var(--ncm-act) !important;
   border-radius: 2px !important;
   cursor: pointer !important;
   transition: all 0.15s !important;
   flex-shrink: 0 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  text-shadow: none !important;
   min-height: 0 !important;
   appearance: none !important;
   -webkit-appearance: none !important;
@@ -178,7 +178,7 @@
 }
 
 .ncm-app button.ncm-spam-send-btn:hover {
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ncm-primary) 40%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-act) 85%, var(--ncm-text-heading, #fff)) !important;
 }
 
 .ncm-app .ncm-spam-send-btn i {
@@ -279,7 +279,7 @@
 .ncm-app .ncm-spam-tmpl__icon--political   { background: color-mix(in srgb, var(--ncm-warning) 8%, transparent); color: var(--ncm-warning); border: 1px solid color-mix(in srgb, var(--ncm-warning) 15%, transparent); }
 .ncm-app .ncm-spam-tmpl__icon--blackmarket { background: color-mix(in srgb, var(--ncm-danger) 8%, transparent); color: var(--ncm-danger); border: 1px solid color-mix(in srgb, var(--ncm-danger) 15%, transparent); }
 .ncm-app .ncm-spam-tmpl__icon--fixer       { background: color-mix(in srgb, var(--ncm-success) 8%, transparent); color: var(--ncm-success); border: 1px solid color-mix(in srgb, var(--ncm-success) 15%, transparent); }
-.ncm-app .ncm-spam-tmpl__icon--custom      { background: rgba(180, 77, 255, 0.08); color: #b44dff; border: 1px solid rgba(180, 77, 255, 0.2); }
+.ncm-app .ncm-spam-tmpl__icon--custom      { background: color-mix(in srgb, var(--ncm-text-label) 8%, transparent); color: var(--ncm-text-label); border: 1px solid color-mix(in srgb, var(--ncm-text-label) 20%, transparent); }
 
 .ncm-app .ncm-spam-tmpl__body {
   flex: 1;
@@ -310,7 +310,7 @@
 
 .ncm-app .ncm-spam-tmpl__custom-badge {
   font-size: 8px;
-  color: #b44dff;
+  color: var(--ncm-text-label);
   flex-shrink: 0;
   margin-top: 3px;
 }
@@ -376,7 +376,7 @@
 .ncm-app .ncm-spam-detail__badge i { font-size: 7px; }
 .ncm-app .ncm-spam-detail__badge--cyan    { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); color: var(--ncm-secondary); border-color: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); }
 .ncm-app .ncm-spam-detail__badge--gold    { background: color-mix(in srgb, var(--ncm-accent) 8%, transparent); color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 20%, transparent); }
-.ncm-app .ncm-spam-detail__badge--red     { background: color-mix(in srgb, var(--ncm-danger) 8%, transparent); color: #ff4466; border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent); }
+.ncm-app .ncm-spam-detail__badge--red     { background: color-mix(in srgb, var(--ncm-danger) 8%, transparent); color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent); }
 .ncm-app .ncm-spam-detail__badge--purple  { background: color-mix(in srgb, var(--ncm-purple) 8%, transparent); color: var(--ncm-purple); border-color: color-mix(in srgb, var(--ncm-purple) 20%, transparent); }
 .ncm-app .ncm-spam-detail__badge--warning { background: color-mix(in srgb, var(--ncm-warning) 8%, transparent); color: var(--ncm-warning); border-color: color-mix(in srgb, var(--ncm-warning) 15%, transparent); }
 .ncm-app .ncm-spam-detail__badge--danger  { background: color-mix(in srgb, var(--ncm-danger) 8%, transparent); color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 25%, transparent); }
@@ -551,11 +551,11 @@
 
 .ncm-app .ncm-spam-creator {
   background: var(--ncm-bg-surface);
-  border: 1px solid rgba(180, 77, 255, 0.2);
+  border: 1px solid color-mix(in srgb, var(--ncm-act) 35%, var(--ncm-border));
   border-radius: 2px;
   padding: 12px 14px;
   margin-top: 10px;
-  border-left: 2px solid #b44dff;
+  border-left: 3px solid var(--ncm-act);
 }
 
 .ncm-app .ncm-spam-creator__title {
@@ -564,7 +564,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #b44dff;
+  color: var(--ncm-text-heading, var(--ncm-text-primary));
   margin-bottom: 10px;
   display: flex;
   align-items: center;
@@ -614,7 +614,7 @@
 }
 
 .ncm-app .ncm-spam-creator__input:focus {
-  border-color: rgba(180, 77, 255, 0.4);
+  border-color: var(--ncm-act);
 }
 
 .ncm-app .ncm-spam-creator__input::placeholder {
@@ -639,7 +639,7 @@
 }
 
 .ncm-app .ncm-spam-creator__textarea:focus {
-  border-color: rgba(180, 77, 255, 0.4);
+  border-color: var(--ncm-act);
 }
 
 .ncm-app .ncm-spam-creator__textarea::placeholder {
@@ -888,3 +888,166 @@
   background: var(--ncm-success);
   box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-success) 50%, transparent);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLOUR HIERARCHY PASS (2026-10-27)
+   One meaning per colour: cyan = act / selected (who you will send to, the chosen
+   template, the Send buttons) · green = auto-spam ON · amber = a flood-level volume ·
+   each spam CATEGORY wears its own category hue (style="--tc:{{ncm-hue key}}"), the
+   same on the filter pill, the row icon and the detail badge. Before this the
+   categories borrowed meaning colours (blackmarket = danger red, fixer = success
+   green, scam = attention gold) and the Blast button was a red gradient, so the tab
+   read as a wall of warnings.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* section heads → bands */
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-spam-sect,
+.ncm-app.ncm-admin-panel .ncm-spam-blast-bar__label,
+.ncm-app.ncm-admin-panel .ncm-spam-auto-strip__title { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-spam-sect {
+  padding: 6px 10px 6px 11px; background: var(--ncm-bg-card-head, var(--ncm-bg-elevated)); border: 1px solid var(--ncm-border);
+  border-radius: 2px; box-shadow: inset 3px 0 var(--ncm-hue-2); font-size: 11px;
+}
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-spam-sect::after { display: none; }
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-spam-sect > .ncm-section-title__action { margin-left: 0 !important; }
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-spam-sect > .ncm-section-title__action:first-of-type { margin-left: auto !important; }
+.ncm-app.ncm-admin-panel .ncm-section-title.ncm-spam-sect > i { color: var(--ncm-hue-2); font-size: 10px; }
+.ncm-app.ncm-admin-panel .ncm-spam-creator__title.ncm-spam-sect i { color: var(--ncm-act); }
+.ncm-app.ncm-admin-panel .ncm-spam-blast-bar { background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); box-shadow: inset 3px 0 var(--ncm-act); }
+.ncm-app.ncm-admin-panel .ncm-spam-blast-bar__label i { color: var(--ncm-act); }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-strip__header { background: var(--ncm-bg-card-head, transparent); box-shadow: inset 3px 0 var(--ncm-text-label); }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-strip:has(.ncm-spam-auto-strip__dot--on) .ncm-spam-auto-strip__header { box-shadow: inset 3px 0 var(--ncm-good); }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-strip__header:hover { background: var(--ncm-bg-hover, var(--ncm-bg-elevated)); }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-strip__title i { color: var(--ncm-text-label); }
+
+/* recipient chips: selected = act */
+.ncm-app.ncm-admin-panel :is(.ncm-spam-chip, .ncm-spam-detail__send-chip) { color: var(--ncm-text-label, var(--ncm-text-muted)); background: transparent; border-color: var(--ncm-border-active, var(--ncm-border)); }
+.ncm-app.ncm-admin-panel :is(.ncm-spam-chip, .ncm-spam-detail__send-chip):hover { color: var(--ncm-text-primary); border-color: var(--ncm-act); }
+.ncm-app.ncm-admin-panel :is(.ncm-spam-chip--selected, .ncm-spam-detail__send-chip--selected) {
+  color: var(--ncm-text-heading, var(--ncm-text-primary)); border-color: color-mix(in srgb, var(--ncm-act) 65%, transparent);
+  background: color-mix(in srgb, var(--ncm-act) 20%, transparent);
+}
+.ncm-app.ncm-admin-panel :is(.ncm-spam-chip--selected, .ncm-spam-detail__send-chip--selected) > i { color: var(--ncm-act); }
+
+/* the count is a number */
+.ncm-app.ncm-admin-panel .ncm-spam-stepper__val { color: var(--ncm-text-num, var(--ncm-text-primary)); }
+.ncm-app.ncm-admin-panel button.ncm-spam-stepper__btn:hover { color: var(--ncm-act) !important; }
+
+/* the detail Send is the pane's one filled action */
+.ncm-app.ncm-admin-panel button.ncm-spam-detail__send-btn { color: var(--ncm-text-inverse) !important; background: var(--ncm-act) !important; border-color: var(--ncm-act) !important; }
+.ncm-app.ncm-admin-panel button.ncm-spam-detail__send-btn:hover { background: color-mix(in srgb, var(--ncm-act) 85%, var(--ncm-text-heading, #fff)) !important; box-shadow: none !important; }
+
+/* category pills: the icon wears the category's hue; the selected pill is act */
+.ncm-app.ncm-admin-panel .ncm-spam-pills .ncm-pill { color: var(--ncm-text-label, var(--ncm-text-secondary)); background: transparent !important; border-color: var(--ncm-border-active, var(--ncm-border)) !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-pills .ncm-spam-catpill > i { color: var(--tc); }
+.ncm-app.ncm-admin-panel .ncm-spam-pills .ncm-pill:hover { color: var(--ncm-text-primary); border-color: var(--ncm-act) !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-pills .ncm-pill.ncm-pill--active {
+  color: var(--ncm-text-heading, var(--ncm-text-primary)); background: color-mix(in srgb, var(--ncm-act) 20%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ncm-act) 65%, transparent) !important;
+}
+.ncm-app.ncm-admin-panel .ncm-spam-pills .ncm-pill__badge { font-family: var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-primary)); }
+
+/* library: panes off the canvas, the selected row is unmistakable */
+.ncm-app.ncm-admin-panel .ncm-spam-lib { background: var(--ncm-bg-pane, var(--ncm-bg-base)); }
+.ncm-app.ncm-admin-panel .ncm-spam-lib__detail { background: var(--ncm-bg-pane-alt, transparent); }
+.ncm-app.ncm-admin-panel .ncm-spam-tmpl:hover { background: var(--ncm-bg-hover, var(--ncm-bg-elevated)); }
+.ncm-app.ncm-admin-panel .ncm-spam-tmpl--active {
+  background: color-mix(in srgb, var(--ncm-act) 22%, var(--ncm-bg-pane, transparent)); border-left: 0; padding-left: 10px;
+  box-shadow: inset 4px 0 var(--ncm-act);
+}
+.ncm-app.ncm-admin-panel .ncm-spam-tmpl__icon[style*="--tc"] {
+  color: var(--tc); background: color-mix(in srgb, var(--tc) 15%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent);
+}
+.ncm-app.ncm-admin-panel .ncm-spam-tmpl__subject { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app.ncm-admin-panel .ncm-spam-tmpl__from { color: var(--ncm-text-label, var(--ncm-text-muted)); font-size: 10px; }
+
+/* detail: sender = heading, address = address, subject = heading (it was cyan, which reads as a link) */
+.ncm-app.ncm-admin-panel .ncm-spam-detail__from-name { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app.ncm-admin-panel .ncm-spam-detail__from-email { color: var(--ncm-text-addr, var(--ncm-text-muted)); font-size: 10px; }
+.ncm-app.ncm-admin-panel .ncm-spam-detail__subject { color: var(--ncm-text-heading, var(--ncm-text-primary)); font-size: 13px; }
+.ncm-app.ncm-admin-panel .ncm-spam-detail__body { color: var(--ncm-text-primary); background: var(--ncm-bg-card, var(--ncm-bg-elevated)); }
+.ncm-app.ncm-admin-panel .ncm-spam-detail__badge.ncm-tagp { font-size: 11px !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-detail__send-label { color: var(--ncm-text-label, var(--ncm-text-muted)); }
+
+/* tokens ({{playerName}} …) are filled in at send time: a mono value chip */
+.ncm-app.ncm-admin-panel :is(.ncm-spam-token, .ncm-spam-creator__tokens code) {
+  font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-num, var(--ncm-text-primary));
+  background: var(--ncm-bg-card-head, var(--ncm-bg-elevated)); border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 1px; padding: 0 3px;
+  display: inline-block; margin: 0 1px; line-height: 1.4;
+}
+.ncm-app.ncm-admin-panel .ncm-spam-creator__actions button.ncm-btn--cyan { color: var(--ncm-text-inverse) !important; background: var(--ncm-act) !important; border-color: var(--ncm-act) !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-creator__actions button.ncm-btn--cyan i { color: inherit !important; }
+
+/* auto-spam: ON rows = green edge + heading name; OFF rows quiet. Each network wears its hue. */
+.ncm-app.ncm-admin-panel .ncm-spam-auto-row { box-shadow: inset 3px 0 transparent; }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-row__name { color: var(--ncm-text-label, var(--ncm-text-secondary)); font-family: var(--ncm-font-display); font-size: 12px; font-weight: 700; letter-spacing: .02em; }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-row__name[style*="--tc"]::before {
+  content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; vertical-align: 1px; border-radius: 1px; background: var(--tc); opacity: .55;
+}
+.ncm-app.ncm-admin-panel .ncm-spam-auto-row--active { box-shadow: inset 3px 0 var(--ncm-good); background: color-mix(in srgb, var(--ncm-good) 6%, transparent); }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-row--active .ncm-spam-auto-row__name { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-row--active .ncm-spam-auto-row__name::before { opacity: 1; }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-row:not(.ncm-spam-auto-row--active) .ncm-spam-auto-row__vol { opacity: .55; }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-row--active select.ncm-spam-auto-row__vol-select.is-flood { color: var(--ncm-attn) !important; border-color: color-mix(in srgb, var(--ncm-attn) 55%, transparent) !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-strip__status-text--on { color: var(--ncm-good); }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-strip__status-text--off { color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-app.ncm-admin-panel .ncm-spam-auto-strip__dot--on { background: var(--ncm-good); box-shadow: none; }
+.ncm-app.ncm-admin-panel .ncm-toggle--on { background: color-mix(in srgb, var(--ncm-good) 18%, transparent); border-color: color-mix(in srgb, var(--ncm-good) 55%, transparent); }
+.ncm-app.ncm-admin-panel .ncm-toggle--on::after { background: var(--ncm-good); box-shadow: none; }
+
+/* ── Top row (2026-10-28, dev: "a two column with quick blast and templates… the markers below it just a
+      clickable drop down… a three column"): Quick Blast · Category dropdown · Templates actions, as three
+      cards on one line. Each card = a small label over its controls. Wraps only when the window is narrow. ── */
+.ncm-app.ncm-admin-panel .ncm-spam-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-bottom: 10px; }
+.ncm-app.ncm-admin-panel .ncm-spam-top > .ncm-spam-blast-bar {
+  flex: 2 1 340px; min-width: 0; margin: 0; padding: 8px 10px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto 1fr; gap: 6px 10px; align-items: center; }
+.ncm-app.ncm-admin-panel .ncm-spam-top > .ncm-spam-blast-bar > .ncm-spam-blast-bar__label { grid-column: 1 / -1; }
+.ncm-app.ncm-admin-panel .ncm-spam-top .ncm-spam-blast-bar__recipients { min-width: 0; flex-wrap: wrap; }
+.ncm-app.ncm-admin-panel .ncm-spam-blast-bar__go { display: flex; align-items: center; gap: 6px; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard {
+  min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; padding: 8px 10px;
+  background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard--cat { flex: 1 1 170px; box-shadow: inset 3px 0 var(--tc); }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard--tmpl { flex: 0 1 auto; box-shadow: inset 3px 0 var(--ncm-hue-3); }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard__k { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); white-space: nowrap; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard--cat .ncm-spam-topcard__k i { color: var(--tc); margin-right: 3px; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard--tmpl .ncm-spam-topcard__k i { color: var(--ncm-hue-3); margin-right: 3px; }
+.ncm-app.ncm-admin-panel select.ncm-spam-catsel { width: 100% !important; height: 28px; min-width: 0; border-color: color-mix(in srgb, var(--tc) 55%, var(--ncm-border)) !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard__acts { display: flex; flex-wrap: wrap; gap: 5px; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard__acts > .ncm-section-title__action { margin: 0 !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard__acts > button.ncm-section-title__action {
+  appearance: none; box-shadow: none; background-image: none; width: auto !important; min-height: 0; height: 28px; padding: 0 10px !important;
+  display: inline-flex; align-items: center; gap: 5px; border-radius: 2px !important;
+  font: 700 11px var(--ncm-font-display) !important; letter-spacing: .04em !important; text-transform: uppercase;
+  color: var(--ncm-text-primary) !important; background: var(--ncm-bg-card) !important; border: 1px solid var(--ncm-border-active) !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard__acts > button.ncm-section-title__action:first-child { color: var(--ncm-act) !important; border-color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 12%, var(--ncm-bg-card)) !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard__acts > button.ncm-section-title__action:hover { border-color: var(--ncm-act) !important; color: var(--ncm-text-heading) !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard__acts > button.ncm-section-title__action i { margin: 0; font-size: 10px; }
+
+/* ── Recipients are ONE picker now (2026-10-28), so the top row is a single slim line: each card puts its
+      label BESIDE its control. The three cards are the same height; nothing is left as empty space. ── */
+.ncm-app.ncm-admin-panel .ncm-spam-top > .ncm-spam-blast-bar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto; }
+.ncm-app.ncm-admin-panel .ncm-spam-top > .ncm-spam-blast-bar > .ncm-spam-blast-bar__label { grid-column: auto; }
+.ncm-app.ncm-admin-panel .ncm-spam-blast-bar__recipients .ncm-scope { display: flex; min-width: 0; }
+.ncm-app.ncm-admin-panel .ncm-spam-blast-bar__recipients .ncm-scope-btn,
+.ncm-app.ncm-admin-panel .ncm-spam-detail__send-chips .ncm-scope-btn { height: 28px; max-width: 100%; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard { flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard--cat select.ncm-spam-catsel { flex: 1 1 auto; width: auto !important; }
+.ncm-app.ncm-admin-panel .ncm-spam-detail__send-chips { display: flex; flex: 1 1 auto; min-width: 0; }
+/* Fit: with their labels the three cards need ~900px. Under that (the 820px panel) Quick Blast takes its own
+   slim line and Category + Templates share the next; in a wider window (pop-out) all three join one line. */
+.ncm-app.ncm-admin-panel .ncm-spam-top { container-type: inline-size; }
+.ncm-app.ncm-admin-panel .ncm-spam-top > .ncm-spam-blast-bar { flex: 1 1 100%; }
+.ncm-app.ncm-admin-panel .ncm-spam-topcard--cat { flex: 1 1 260px; }
+@container (min-width: 900px) {
+  .ncm-app.ncm-admin-panel .ncm-spam-top > .ncm-spam-blast-bar { flex: 2 1 420px; }
+}
+.ncm-app.ncm-admin-panel .ncm-spam-blast-bar__recipients { justify-self: start; max-width: 100%; }
+.ncm-app.ncm-admin-panel .ncm-spam-blast-bar__recipients .ncm-scope-btn { overflow: hidden; }
+.ncm-app.ncm-admin-panel .ncm-spam-blast-bar__recipients .ncm-scope-btn .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── The New / Edit template form sits IN the preview pane (2026-10-28) ── */
+.ncm-app.ncm-admin-panel .ncm-spam-lib__detail > .ncm-spam-creator { flex: 1; min-height: 0; margin: 0; border-left-width: 3px; border-radius: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+.ncm-app.ncm-admin-panel .ncm-spam-lib__detail > .ncm-spam-creator .ncm-spam-creator__grid { flex: none; }
+.ncm-app.ncm-admin-panel .ncm-spam-lib__detail > .ncm-spam-creator .ncm-spam-creator__footer { margin-top: auto; padding-top: 10px; position: sticky; bottom: 0; background: var(--ncm-bg-surface); }

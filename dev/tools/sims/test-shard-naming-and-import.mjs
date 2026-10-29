@@ -200,7 +200,7 @@ ok(read('scripts/services/MessageService.js').includes('mirrorSentToAccounts?.(s
 
 // ═══════════════ 5. Wiring guards ═══════════════
 const sso = read('scripts/integrations/ShardSheetOverride.js');
-ok((sso.match(/Rename…/g) || []).length >= 4, 'Rename… on the directory menu (GM + player) and the sheet menu (GM + player)');
+ok(sso.includes("label: 'Rename…'") && sso.includes('this._nightCityEntries(item, actor)') && sso.includes('this._nightCityEntries(item, resolveOperator())'), 'Rename… in the one Night City menu, which the directory AND the sheet rows open (GM + player)');
 ok(!/View Original Item/.test(sso) && /Edit Item Sheet/.test(sso), '"View Original Item" relabelled');
 ok(/config\.shardName`\]: label/.test(sso) && /withShardPrefix\(label, prefix\)/.test(sso), 'rename writes display name + prefixed item name together');
 ok(/isBlankFor\(item\)/.test(sso) && /blankRefusal\(\)/.test(sso), 'player convert door checks the blank rule');

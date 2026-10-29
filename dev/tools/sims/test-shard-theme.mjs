@@ -321,6 +321,7 @@ if (!Handlebars) {
   const CRT = await import(new URL('../../../scripts/utils/crt.js', import.meta.url).href);
   ctx.themeCrt = CRT.crtPanelContext(CRT.resolveCrt({}, SHARD_PRESETS['corporate-dossier'].crt));
   Handlebars.registerPartial('modules/night-city-messenger/templates/partials/crt-panel.hbs', fs.readFileSync(new URL('../../../templates/partials/crt-panel.hbs', import.meta.url), 'utf8'));
+  Handlebars.registerPartial('modules/night-city-messenger/templates/partials/countermeasure-override.hbs', fs.readFileSync(new URL('../../../templates/partials/countermeasure-override.hbs', import.meta.url), 'utf8'));
   Handlebars.registerHelper('helperMissing', () => '');
   const out = Handlebars.compile(tpl)(ctx);
   // Handlebars strips {{!-- --}} comments, so slice to the NEXT panel instead.

@@ -1,0 +1,103 @@
+{{!-- The node console (scripts/ui/NetworkNodes/NodeConsoleApp.js) — the window a player opens at a network node.
+     Dev-approved look: dev/mockups/network-nodes-v2-mock.html §1. Colour = the network's own (--nc), the rest the
+     player theme. Everything on it is the real node: name, hex, firmware, state, signal, the ticker. --}}
+<div class="ncm-ndc{{#if symptoms}} has-symptoms{{/if}}" data-state="{{state}}" style="--nc: {{color}}">
+  <div class="ncm-ndc__frame"></div>
+  {{!-- the state you can see from across the room: jammed (static), off (no carrier), damaged (fault) --}}
+  {{#unless isUp}}<div class="ncm-ndc__cover is-{{state}}" aria-hidden="true"><div class="ncm-ndc__cover-fx"></div></div>{{/unless}}
+  <div class="ncm-ndc__bar"><i class="fas fa-tower-broadcast"></i>Node<span class="ncm-ndc__hex">{{hex}}</span>// {{networkName}}<span class="ncm-ndc__bar-r">{{firmware}}</span></div>
+  {{#if statusTags.length}}<div class="ncm-ndc__tags">{{#each statusTags}}<span class="ncm-ndc__tag is-{{tone}}" {{#if tip}}data-tooltip="{{tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}</div>{{/if}}
+
+  <div class="ncm-ndc__hd">
+    <div class="ncm-ndc__ico"><i class="{{icon}}"></i></div>
+    <div class="ncm-ndc__nm"><b>{{name}}</b><small>{{networkName}} · {{kindLabel}}{{#if place}} · {{place}}{{/if}}</small></div>
+    <div class="ncm-ndc__state"><span class="ncm-ndc__led"></span><span>{{stateLabel}}</span></div>
+  </div>
+
+  {{#unless isUp}}<div class="ncm-ndc__banner is-{{state}}"><i class="fas {{#if isJammed}}fa-wave-square{{else}}fa-power-off{{/if}}"></i>{{#if isJammed}}JAMMED{{#if jamLeft}} · back in {{jamLeft}} min{{/if}}{{else if isDamaged}}HARDWARE FAULT{{else}}NO CARRIER{{/if}}</div>{{/unless}}
+  <div class="ncm-ndc__op">
+    {{#if operator.name}}
+    <button type="button" class="ncm-ndc__opchip{{#if operator.canSwitch}} is-switchable{{/if}}" {{#if operator.canSwitch}}{{#unless operator.locked}}data-action="switchOperator"{{/unless}}{{/if}}
+      data-tooltip="Operating as {{operator.name}} — jacking in and every roll here uses this character.{{#if operator.canSwitch}}{{#unless operator.locked}} Click to switch.{{/unless}}{{/if}}">
+      {{#if operator.img}}<img src="{{operator.img}}" alt="">{{else}}<i class="fas fa-user-gear"></i>{{/if}}<span class="k">Operator</span><b>{{operator.name}}</b>{{#if operator.canSwitch}}{{#unless operator.locked}}<i class="fas fa-chevron-down cv"></i>{{/unless}}{{/if}}
+    </button>
+    <span class="ncm-ndc__oprank">{{operator.skill}} <b>{{operator.rank}}</b></span>
+    {{else if operator.gmFree}}
+    <button type="button" class="ncm-ndc__opchip is-switchable" {{#if operator.canSwitch}}data-action="switchOperator"{{/if}} data-tooltip="No character picked — as GM you jack in at top rank with no roll.{{#if operator.canSwitch}} Click to act as a character.{{/if}}"><i class="fas fa-user-shield"></i><span class="k">Operator</span><b>GM</b>{{#if operator.canSwitch}}<i class="fas fa-chevron-down cv"></i>{{/if}}</button>
+    <span class="ncm-ndc__oprank">no roll</span>
+    {{else}}
+    <span class="ncm-ndc__opchip is-none" data-tooltip="No character — jacking in and rolls can't run. Assign a character, or pick one if you own several."><i class="fas fa-user-slash"></i><b>NO OPERATOR</b></span>
+    {{/if}}
+  </div>
+
+  <div class="ncm-ndc__wave"><span class="ncm-ndc__lbl">TRAFFIC</span><span class="ncm-ndc__lbl ncm-ndc__lbl--r">{{rate}}</span>
+    <svg viewBox="0 0 500 52" preserveAspectRatio="none" aria-hidden="true"><path data-ndc-wave d=""></path></svg></div>
+
+  <div class="ncm-ndc__stats">
+    <div><span class="ncm-ndc__k">Signal</span><b><span class="ncm-ndc__bars">{{#each bars}}<span class="ncm-ndc__b{{#unless on}} is-off{{/unless}}" style="height:{{h}}px"></span>{{/each}}</span>{{signal}}%</b></div>
+    <div><span class="ncm-ndc__k">On this scene</span><b>{{here}}</b></div>
+    <div><span class="ncm-ndc__k">Alert</span><b><span class="ncm-ndc__alert" data-tooltip="{{alertLabel}}">{{#each alertPips}}<span class="ncm-ndc__al {{cls}}"></span>{{/each}}</span></b></div>
+    <div><span class="ncm-ndc__k">Box</span><b class="ncm-ndc__box {{#if boxLocked}}is-locked{{/if}}"><i class="fas {{#if boxLocked}}fa-lock{{else}}fa-lock-open{{/if}}"></i>{{#if boxLocked}}Locked{{else}}Open{{/if}}</b></div>
+  </div>
+
+  {{#if session}}
+  <div class="ncm-ndc__sess">
+    <div class="ncm-ndc__sess-top">
+      <span class="ncm-ndc__moves">Moves<span class="ncm-ndc__pips">{{#each session.pips}}<span class="ncm-ndc__pip{{#if on}} is-on{{/if}}"></span>{{/each}}</span>{{session.left}} of {{session.total}} left</span>
+      <span class="ncm-ndc__who">{{session.who}} · <b>{{session.skill}} {{session.rank}}</b></span>
+    </div>
+    <div class="ncm-ndc__sacts">
+      {{#each session.actions}}
+      {{#if run}}<button type="button" class="ncm-ndc__sa" data-action="sessAct" data-key="{{key}}">{{else}}<div class="ncm-ndc__sa is-locked">{{/if}}
+        <i class="fas {{icon}}"></i><b>{{label}}</b><small>{{#if have}}<span class="ncm-ndc__have">{{have}}</span> — {{/if}}{{blurb}}</small>
+        <span class="ncm-ndc__sadv">{{#if baseText}}<s>{{baseText}}</s>{{/if}}{{dvText}}<em class="is-{{noteTone}}">{{note}}</em></span>
+      {{#if run}}</button>{{else}}</div>{{/if}}
+      {{/each}}
+    </div>
+    {{#if session.mine.length}}
+    <div class="ncm-ndc__found ncm-ndc__found--mine">
+      <div class="ncm-ndc__found-hd"><i class="fas fa-bug"></i>Your programs here</div>
+      {{#each session.mine}}<div class="ncm-ndc__found-row"><i class="fas {{icon}}"></i><span>{{label}} <em>{{detail}}{{#if sloppy}} · sloppy{{/if}}</em></span>
+        {{#if canCollect}}<button type="button" class="ncm-ndc__kill ncm-ndc__kill--ok" data-action="sessCollect" data-inf-id="{{id}}"><i class="fas fa-download"></i>Collect</button>{{/if}}
+        <button type="button" class="ncm-ndc__kill" data-action="sessRecall" data-family="{{family}}"><i class="fas fa-rotate-left"></i>Recall</button></div>{{/each}}
+    </div>
+    {{/if}}
+    {{#if session.swept}}
+    <div class="ncm-ndc__found">
+      <div class="ncm-ndc__found-hd"><i class="fas fa-satellite-dish"></i>Sweep</div>
+      {{#each session.found}}<div class="ncm-ndc__found-row"><i class="fas {{icon}}"></i><span>{{label}}</span><button type="button" class="ncm-ndc__kill" data-action="sessKill" data-kind="{{kind}}" data-fx-id="{{id}}"><i class="fas fa-xmark"></i>Remove</button></div>{{/each}}
+      {{#if session.foundNone}}<div class="ncm-ndc__found-none">Nothing planted here.</div>{{/if}}
+    </div>
+    {{/if}}
+    <div class="ncm-ndc__sfoot"><button type="button" class="ncm-ndc__out" data-action="jackOut"><i class="fas fa-right-from-bracket"></i>Jack out</button></div>
+  </div>
+  {{else}}
+  <div class="ncm-ndc__acts">
+    {{#if canConnect}}
+    <button type="button" class="ncm-ndc__act" data-action="connect"><i class="fas fa-wifi"></i><b>Connect</b><small>{{connectHint}}</small></button>
+    {{else if onIt}}
+    <div class="ncm-ndc__act is-done"><i class="fas fa-wifi"></i><b>Connected</b><small>{{connectHint}}</small></div>
+    {{else}}
+    <div class="ncm-ndc__act is-dead"><i class="fas fa-wifi"></i><b>Connect</b><small>{{connectHint}}</small></div>
+    {{/if}}
+    {{#if canSwitch}}
+    <button type="button" class="ncm-ndc__act {{#if isUp}}is-warn{{else}}is-pri{{/if}}" data-action="toggle"><i class="fas {{#if isJammed}}fa-wave-square{{else}}fa-power-off{{/if}}"></i><b>{{switchLabel}}</b><small>{{switchHint}}</small></button>
+    {{else}}
+    <div class="ncm-ndc__act is-dead"><i class="fas fa-power-off"></i><b>{{#if isUp}}Switch off{{else}}Switch on{{/if}}</b><small>{{switchHint}}</small></div>
+    {{/if}}
+    {{#if canJack}}
+    <button type="button" class="ncm-ndc__act is-pri ncm-ndc__act--jack" data-action="jack"><i class="fas fa-plug"></i><b>Jack in</b><small>{{jackHint}}</small></button>
+    {{else}}
+    <div class="ncm-ndc__act is-dead"><i class="fas fa-plug"></i><b>Jack in</b><small>{{jackHint}}</small></div>
+    {{/if}}
+    {{#if isGM}}
+    <button type="button" class="ncm-ndc__act ncm-ndc__act--gm" data-action="inspect"><i class="fas fa-magnifying-glass"></i><b>Inspect</b><small>GM — everything on it, add your own</small></button>
+    <button type="button" class="ncm-ndc__act ncm-ndc__act--gm" data-action="edit"><i class="fas fa-pen"></i><b>Edit node</b><small>GM — name, scene, switches</small></button>
+    {{#if isUp}}<button type="button" class="ncm-ndc__act ncm-ndc__act--gm" data-action="jam"><i class="fas fa-wave-square"></i><b>Jam it</b><small>GM — off for a while</small></button>{{/if}}
+    {{/if}}
+  </div>
+
+  {{/if}}
+
+  <div class="ncm-ndc__ticker" aria-label="Node traffic"><span data-ndc-tick>{{ticker}}</span></div>
+</div>

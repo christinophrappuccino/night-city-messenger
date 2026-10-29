@@ -1,5 +1,5 @@
 /**
- * Group editor — name, colour, members. One dialog for the player Contact
+ * Group editor — name, colour, picture, members. One dialog for the player Contact
  * Manager and the Admin Contacts tab; only the member SOURCE differs.
  * @file scripts/ui/ContactGroups/GroupEditorDialog.js
  * @module night-city-messenger
@@ -54,6 +54,13 @@ export async function editGroupDialog(group = {}, { memberSource, title, admin =
           <input type="text" class="ncm-cge__name" value="${esc(draft.name)}" placeholder="The Crew" maxlength="60" autocomplete="off">
           <label class="ncm-cge__lbl">Colour</label>
           <div class="ncm-cge__swatches">${swatches}</div>
+          <label class="ncm-cge__lbl">Picture <span class="ncm-cge__opt">optional — shows on the group's chips and when you message it</span></label>
+          <div class="ncm-cge__pic">
+            <span class="ncm-cge__face" style="--c:${draft.color}">${draft.img ? `<img src="${esc(draft.img)}" alt="">` : '<i class="fas fa-users"></i>'}</span>
+            <input type="text" class="ncm-cge__img" value="${esc(draft.img)}" placeholder="an image path or URL" autocomplete="off">
+            <button type="button" class="ncm-cge__add" data-browse-img><i class="fas fa-folder-open"></i> Browse</button>
+            <button type="button" class="ncm-cge__add ncm-cge__clear" data-clear-img data-tooltip="No picture"${draft.img ? '' : ' hidden'}><i class="fas fa-xmark"></i></button>
+          </div>
           <div class="ncm-cge__members-head">
             <label class="ncm-cge__lbl">Members <b class="ncm-cge__count">${draft.members.length}</b></label>
             <button type="button" class="ncm-cge__add" data-add><i class="fas fa-user-plus"></i> Add members</button>
@@ -69,6 +76,7 @@ export async function editGroupDialog(group = {}, { memberSource, title, admin =
             const root = html[0] ?? html;
             draft.name = root.querySelector('.ncm-cge__name')?.value?.trim() || '';
             draft.note = root.querySelector('.ncm-cge__note')?.value?.trim() || '';
+            draft.img = root.querySelector('.ncm-cge__img')?.value?.trim() || '';
             result = sanitizeGroup(draft);
             if (!draft.name) result.name = 'Untitled group';
           },
@@ -87,7 +95,25 @@ export async function editGroupDialog(group = {}, { memberSource, title, admin =
         root.querySelectorAll('.ncm-cge__swatch').forEach(b => b.addEventListener('click', () => {
           draft.color = b.dataset.color;
           root.querySelectorAll('.ncm-cge__swatch').forEach(x => x.classList.toggle('is-on', x === b));
+          root.querySelector('.ncm-cge__face')?.style.setProperty('--c', draft.color);
         }));
+        // the picture: a path box, the FilePicker (a player without file-browser rights can still paste a path), a live preview
+        const imgIn = root.querySelector('.ncm-cge__img');
+        const face = root.querySelector('.ncm-cge__face');
+        const clear = root.querySelector('[data-clear-img]');
+        const paintFace = () => {
+          const v = imgIn?.value?.trim();
+          if (face) face.innerHTML = v ? `<img src="${esc(v)}" alt="">` : '<i class="fas fa-users"></i>';
+          if (clear) clear.hidden = !v;
+        };
+        imgIn?.addEventListener('input', paintFace);
+        clear?.addEventListener('click', () => { if (imgIn) imgIn.value = ''; paintFace(); });
+        root.querySelector('[data-browse-img]')?.addEventListener('click', () => {
+          const FP = (typeof FilePicker !== 'undefined') ? FilePicker : foundry.applications?.apps?.FilePicker;
+          try {
+            if (FP) new FP({ type: 'image', current: imgIn?.value || '', callback: (path) => { if (imgIn) { imgIn.value = path; paintFace(); } } }).render(true);
+          } catch (err) { ui.notifications.warn('You can\'t browse files here — paste an image path or URL instead.'); }
+        });
         list.addEventListener('click', (ev) => {
           const x = ev.target.closest('[data-remove]');
           if (!x) return;

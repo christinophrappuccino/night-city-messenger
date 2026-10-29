@@ -1,0 +1,190 @@
+<div class="ncm-nin">
+{{#if gone}}
+  <div class="ncm-nin__gone"><i class="fas fa-circle-question"></i> This node no longer exists.</div>
+{{else}}
+  <header class="ncm-nin__hd">
+    <div class="ncm-nin__ic"><i class="{{icon}}"></i></div>
+    <div class="ncm-nin__id">
+      <div class="ncm-nin__name">{{name}}</div>
+      <div class="ncm-nin__sub"><span class="ncm-nin__net">{{netName}}</span><span>·</span><span>{{kindLabel}}</span><span>·</span><span>{{sceneName}}</span><span>·</span><span class="ncm-nin__mono">{{hex}}</span></div>
+    </div>
+    <div class="ncm-nin__acts">
+      <button type="button" class="ncm-nin__b" data-action="console"><i class="fas fa-terminal"></i>Console</button>
+      <button type="button" class="ncm-nin__b" data-action="edit"><i class="fas fa-pen"></i>Edit</button>
+    </div>
+  </header>
+
+  <section class="ncm-nin__ctl">
+    <div class="ncm-nin__c">
+      <span class="ncm-nin__k">State</span>
+      <div class="ncm-nin__seg">{{#each states}}<button type="button" class="{{#if on}}is-on is-{{tone}}{{/if}}" data-action="state" data-v="{{v}}">{{l}}{{#if t}} <span class="t">{{t}}</span>{{/if}}</button>{{/each}}</div>
+    </div>
+    <div class="ncm-nin__c">
+      <span class="ncm-nin__k">Alert</span>
+      <div class="ncm-nin__step">
+        <button type="button" data-action="alert" data-d="-1" {{#unless canDown}}disabled{{/unless}} aria-label="Lower the alert"><i class="fas fa-minus"></i></button>
+        <span class="lv is-{{alertTone}}">{{alertWord}}<span class="pips">{{#each alertPips}}<i class="{{#if on}}on{{/if}}"></i>{{/each}}</span></span>
+        <button type="button" data-action="alert" data-d="1" {{#unless canUp}}disabled{{/unless}} aria-label="Raise the alert"><i class="fas fa-plus"></i></button>
+      </div>
+    </div>
+    <div class="ncm-nin__c">
+      <span class="ncm-nin__k">Jack-ins decided by</span>
+      <select class="ncm-nin__sel" data-nin-res>{{#each res}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select>
+    </div>
+    <div class="ncm-nin__c ncm-nin__c--wide">
+      <span class="ncm-nin__k">The node</span>
+      <div class="ncm-nin__flags">{{#each flags}}<button type="button" class="{{#if on}}is-on{{/if}}" data-action="flag" data-key="{{key}}" data-tooltip="{{tip}}" aria-pressed="{{#if on}}true{{else}}false{{/if}}"><i class="fas {{icon}}"></i>{{label}}<span class="sw"></span></button>{{/each}}</div>
+    </div>
+  </section>
+
+  <div class="ncm-nin__body">
+    <div class="ncm-nin__now">
+      {{#if quiet}}<div class="ncm-nin__quiet">Nothing is affecting this node. Use <b>Add</b> on the right to plant something — a quest infection, an NPC's tap, a jam.</div>{{/if}}
+
+      {{#if stateRow}}
+        <div class="ncm-nin__band is-{{stateRow.tone}}"><i class="fas {{stateRow.icon}}"></i>State</div>
+        <div class="ncm-nin__row" style="--rc: var(--ncm-{{stateRow.tone}}, var(--ncm-text-label))">
+          <i class="fas {{stateRow.icon}}"></i>
+          <div><div class="t1">{{stateRow.label}}{{#if stateRow.by}}<span class="ncm-nin__tag is-plain">by {{stateRow.by}}</span>{{/if}}</div><div class="t2">{{stateRow.detail}}</div></div>
+          <div class="a">{{#if stateRow.isJam}}<button type="button" class="ncm-nin__b sm good" data-action="unjam"><i class="fas fa-power-off"></i>Unjam</button><button type="button" class="ncm-nin__b sm" data-action="jamMore"><i class="fas fa-plus"></i>30 min</button>{{else}}<button type="button" class="ncm-nin__b sm good" data-action="state" data-v="on"><i class="fas fa-power-off"></i>Switch on</button>{{/if}}</div>
+        </div>
+      {{/if}}
+
+      {{#if infections.length}}
+        <div class="ncm-nin__band is-bad"><i class="fas fa-bug"></i>Infections<span class="n">{{counts.inf}}</span></div>
+        {{#each infections}}
+        <div class="ncm-nin__row{{#if quest}} is-quest{{/if}}" style="--rc: var(--ncm-bad)">
+          <i class="fas {{icon}}"></i>
+          <div>
+            <div class="t1">{{label}}{{#if quest}}<span class="ncm-nin__tag is-attn"><i class="fas fa-flag"></i>quest</span>{{/if}}{{#if by}}<span class="ncm-nin__tag is-plain">{{by}}</span>{{/if}}{{#if sloppy}}<span class="ncm-nin__tag is-attn">sloppy</span>{{/if}}</div>
+            <div class="t2">{{kindLabel}} · {{detail}}{{#if note}}<br><i>{{note}}</i>{{/if}}</div>
+          </div>
+          <div class="a">
+            {{#if isSniffer}}<button type="button" class="ncm-nin__b sm" data-action="infLoot" data-id="{{id}}" data-tooltip="Read what it caught"><i class="fas fa-envelope-open"></i>{{loot}}</button>{{/if}}
+            <button type="button" class="ncm-nin__b sm ic" data-action="infEdit" data-id="{{id}}" data-tooltip="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
+            <button type="button" class="ncm-nin__b sm" data-action="infClean" data-id="{{id}}" data-tooltip="Clean it off this node"><i class="fas fa-broom"></i>Clean</button>
+            {{#if isWorm}}<button type="button" class="ncm-nin__b sm ic bad" data-action="infRecall" data-family="{{family}}" data-tooltip="Remove it from every node it reached" aria-label="Remove everywhere"><i class="fas fa-xmark"></i></button>{{/if}}
+          </div>
+        </div>
+        {{/each}}
+      {{/if}}
+
+      {{#if effects.length}}
+        <div class="ncm-nin__band is-secret"><i class="fas fa-ear-listen"></i>Taps &amp; backdoors<span class="n">{{counts.fx}}</span></div>
+        {{#each effects}}
+        <div class="ncm-nin__row" style="--rc: var(--ncm-secret)">
+          <i class="fas {{icon}}"></i>
+          <div><div class="t1">{{label}}<span class="ncm-nin__tag is-plain">{{by}}</span></div><div class="t2">{{detail}}</div></div>
+          <div class="a"><button type="button" class="ncm-nin__b sm ic bad" data-action="fxDel" data-kind="{{kind}}" data-id="{{id}}" data-tooltip="Remove it" aria-label="Remove"><i class="fas fa-xmark"></i></button></div>
+        </div>
+        {{/each}}
+      {{/if}}
+
+      {{#if runs.length}}
+        <div class="ncm-nin__band is-act"><i class="fas fa-plug"></i>Runners<span class="n">{{counts.runs}}</span></div>
+        {{#each runs}}
+        <div class="ncm-nin__row" style="--rc: {{#if open}}var(--ncm-act){{else}}var(--ncm-text-label){{/if}}">
+          <i class="fas fa-plug"></i>
+          <div><div class="t1">{{name}}{{#if open}}<span class="ncm-nin__tag is-good">in now</span>{{else}}<span class="ncm-nin__tag is-plain">jacked out</span>{{/if}}</div><div class="t2">{{detail}}</div></div>
+          <div class="a">
+            {{#if canGive}}<button type="button" class="ncm-nin__b sm" data-action="runMove" data-actor-id="{{actorId}}" data-tooltip="Give a move back"><i class="fas fa-plus"></i>Move</button>{{/if}}
+            {{#if open}}<button type="button" class="ncm-nin__b sm bad" data-action="runKick" data-actor-id="{{actorId}}" data-tooltip="Throw them out — and hit them or lock them out if you like"><i class="fas fa-right-from-bracket"></i>Kick</button>{{/if}}
+            <button type="button" class="ncm-nin__b sm ic" data-action="runReset" data-actor-id="{{actorId}}" data-tooltip="Reset — their next jack-in starts fresh" aria-label="Reset"><i class="fas fa-rotate-left"></i></button>
+          </div>
+        </div>
+        {{/each}}
+      {{/if}}
+
+      {{#if lockouts.length}}
+        <div class="ncm-nin__band is-bad"><i class="fas fa-ban"></i>Tries &amp; lockouts<span class="n">{{counts.locks}}</span></div>
+        {{#each lockouts}}
+        <div class="ncm-nin__row" style="--rc: {{#if locked}}var(--ncm-bad){{else}}var(--ncm-attn){{/if}}">
+          <i class="fas {{#if locked}}fa-ban{{else}}fa-hourglass-half{{/if}}"></i>
+          <div><div class="t1">{{name}}</div><div class="t2">{{detail}}</div></div>
+          <div class="a"><button type="button" class="ncm-nin__b sm good" data-action="lockClear" data-actor-id="{{actorId}}"><i class="fas fa-unlock"></i>Clear</button></div>
+        </div>
+        {{/each}}
+      {{/if}}
+      <p class="ncm-nin__note"><i class="fas fa-circle-info"></i>{{lockNote}}</p>
+    </div>
+
+    <aside class="ncm-nin__side">
+      <div>
+        <span class="ncm-nin__k">Add</span>
+        <div class="ncm-nin__adds">{{#each adds}}<button type="button" class="ncm-nin__b sm{{#if open}} is-open{{/if}}" data-action="add" data-k="{{k}}"><i class="fas {{icon}}"></i>{{label}}</button>{{/each}}</div>
+      </div>
+
+      {{#if addInf}}
+      <div class="ncm-nin__form" data-kind="worm">
+        <h4><i class="fas fa-bug"></i>Plant an infection</h4>
+        <div class="ncm-nin__f"><span>Program</span><div class="ncm-nin__chips" data-pick-group="kind" data-v="worm">{{#each plants}}<button type="button" class="{{#if on}}is-on{{/if}}" data-action="pick" data-v="{{k}}" data-tooltip="{{blurb}}"><i class="fas {{icon}}"></i>{{label}}</button>{{/each}}</div></div>
+        <label class="ncm-nin__f"><span>Name players see after a sweep</span><input type="text" name="name" placeholder="Lazarus"></label>
+        <div class="ncm-nin__two">
+          <label class="ncm-nin__f"><span>Who planted it</span><input type="text" name="by" placeholder="Voodoo Boys"></label>
+          <label class="ncm-nin__f"><span data-tooltip="A System sweep finds it when the roll reaches this">Sweep DV</span><input type="number" name="dv" min="0" max="40" value="15"></label>
+        </div>
+        <div class="ncm-nin__f ncm-nin__only-catch"><span>What it catches goes to</span><button type="button" class="ncm-nin__pickbtn" data-action="pickActor"><i class="fas fa-user"></i><span data-actor-label>Pick a character…</span></button></div>
+        <div class="ncm-nin__two ncm-nin__only-worm">
+          <label class="ncm-nin__f"><span>Hops every (h)</span><input type="number" name="every" min="0.25" step="0.25" value="3"></label>
+          <label class="ncm-nin__f"><span>Up to nodes</span><input type="number" name="max" min="1" max="50" value="4"></label>
+        </div>
+        <label class="ncm-nin__f ncm-nin__only-bomb"><span>Goes off after (h)</span><input type="number" name="delay" min="0" step="0.25" value="2"></label>
+        <label class="ncm-nin__f ncm-nin__only-sniffer"><span>Keeps up to (mails)</span><input type="number" name="cap" min="1" max="100" value="20"></label>
+        <label class="ncm-nin__f"><span>Note (only you see it)</span><input type="text" name="note" placeholder="The job Rogue gave them"></label>
+        <label class="ncm-nin__chk"><input type="checkbox" name="quest">Quest — tell me when a player cleans it</label>
+        <div class="ncm-nin__go"><button type="button" class="ncm-nin__b sm" data-action="addCancel">Cancel</button><button type="button" class="ncm-nin__b sm pri" data-action="addSubmit"><i class="fas fa-plus"></i>Plant it</button></div>
+      </div>
+      {{/if}}
+
+      {{#if addFx}}
+      <div class="ncm-nin__form">
+        <h4><i class="fas {{#if addFxTap}}fa-ear-listen{{else}}fa-door-open{{/if}}"></i>{{#if addFxTap}}Add a tap{{else}}Add a backdoor{{/if}}</h4>
+        <div class="ncm-nin__f"><span>For</span><button type="button" class="ncm-nin__pickbtn" data-action="pickActor"><i class="fas fa-user"></i><span data-actor-label>Pick a character…</span></button></div>
+        <div class="ncm-nin__f"><span>How long</span><div class="ncm-nin__chips" data-pick-group="dur" data-v="0"><button type="button" data-action="pick" data-v="60">1 h</button><button type="button" data-action="pick" data-v="1440">1 day</button><button type="button" class="is-on" data-action="pick" data-v="0">Until removed</button></div></div>
+        <p class="ncm-nin__hint">{{#if addFxTap}}Copies of mail sent from this node's scene land in that character's inbox (an NPC's: read them in Admin → Messages).{{else}}That character skips the network's login.{{/if}}</p>
+        <div class="ncm-nin__go"><button type="button" class="ncm-nin__b sm" data-action="addCancel">Cancel</button><button type="button" class="ncm-nin__b sm pri" data-action="addSubmit"><i class="fas fa-plus"></i>Add</button></div>
+      </div>
+      {{/if}}
+
+      {{#if addJam}}
+      <div class="ncm-nin__form">
+        <h4><i class="fas fa-wave-square"></i>Jam it</h4>
+        <div class="ncm-nin__f"><span>For</span><div class="ncm-nin__chips" data-pick-group="dur" data-v="30"><button type="button" data-action="pick" data-v="10">10 min</button><button type="button" class="is-on" data-action="pick" data-v="30">30 min</button><button type="button" data-action="pick" data-v="60">1 h</button><button type="button" data-action="pick" data-v="525600" data-tooltip="Until you switch it back on">Until I lift it</button></div></div>
+        <div class="ncm-nin__two">
+          <label class="ncm-nin__f"><span>By (in its log)</span><input type="text" name="who" placeholder="GM"></label>
+          <label class="ncm-nin__f"><span>Log line (optional)</span><input type="text" name="line" placeholder="Arasaka countermeasures"></label>
+        </div>
+        <div class="ncm-nin__go"><button type="button" class="ncm-nin__b sm" data-action="addCancel">Cancel</button><button type="button" class="ncm-nin__b sm pri" data-action="addSubmit"><i class="fas fa-wave-square"></i>Jam</button></div>
+      </div>
+      {{/if}}
+
+      {{#if addLog}}
+      <div class="ncm-nin__form">
+        <h4><i class="fas fa-scroll"></i>Write in its log</h4>
+        <label class="ncm-nin__f"><span>Who</span><input type="text" name="who" placeholder="maint.crew"></label>
+        <label class="ncm-nin__f"><span>What</span><input type="text" name="what" placeholder="firmware patched — reboot"></label>
+        <p class="ncm-nin__hint">Players see it in the console's ticker. A good place for a clue.</p>
+        <div class="ncm-nin__go"><button type="button" class="ncm-nin__b sm" data-action="addCancel">Cancel</button><button type="button" class="ncm-nin__b sm pri" data-action="addSubmit"><i class="fas fa-plus"></i>Write</button></div>
+      </div>
+      {{/if}}
+
+      {{#if addDamage}}
+      <div class="ncm-nin__form">
+        <h4><i class="fas fa-triangle-exclamation"></i>Damage it</h4>
+        <p class="ncm-nin__hint">It goes off until you (or a player who fixes it) switch it back on.</p>
+        <div class="ncm-nin__two">
+          <label class="ncm-nin__f"><span>By (in its log)</span><input type="text" name="who" placeholder="GM"></label>
+          <label class="ncm-nin__f"><span>Log line (optional)</span><input type="text" name="line" placeholder="Power surge"></label>
+        </div>
+        <div class="ncm-nin__go"><button type="button" class="ncm-nin__b sm" data-action="addCancel">Cancel</button><button type="button" class="ncm-nin__b sm pri bad" data-action="addSubmit"><i class="fas fa-triangle-exclamation"></i>Damage</button></div>
+      </div>
+      {{/if}}
+
+      <div class="ncm-nin__logwrap">
+        <span class="ncm-nin__k">Log — players see the lines that aren't wiped</span>
+        <div class="ncm-nin__log">{{#each log}}<div class="{{#if wiped}}is-wiped{{/if}}"><span class="m">{{t}}</span><span>{{#if who}}{{who}} — {{/if}}{{what}}{{#if wiped}} <em>wiped</em>{{/if}}</span></div>{{else}}<div class="is-empty">Nothing yet.</div>{{/each}}</div>
+      </div>
+    </aside>
+  </div>
+{{/if}}
+</div>

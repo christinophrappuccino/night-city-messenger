@@ -1294,6 +1294,70 @@
 .ncm-app .ncm-acct-editor--dirty .ncm-acct-dirty { display: inline-flex; }
 .ncm-app .ncm-acct-editor--dirty .ncm-acct-foot-save { border-color: color-mix(in srgb, var(--ncm-success) 55%, transparent) !important; color: var(--ncm-success) !important; box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-success) 25%, transparent) !important; }
 
+/* G · Lock odds — "How hard for your party" (scripts/utils/lockOdds.js, painted by
+   TerminalConfigApp._paintLockOdds). Cards for 4 characters or fewer, compact rows past that. */
+.ncm-app .ncm-lodds-host { container-type: inline-size; }
+.ncm-app .ncm-lodds { margin: 12px 0 4px; border: 1px solid var(--ncm-border); border-radius: 2px; background: color-mix(in srgb, var(--ncm-bg-elevated, var(--ncm-bg-surface)) 50%, transparent); }
+.ncm-app .ncm-lodds__hd { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-app .ncm-lodds.is-open .ncm-lodds__hd { border-bottom: 0; }
+.ncm-app .ncm-lodds__hd > i { color: var(--ncm-hue-3, var(--ncm-secondary)); }
+.ncm-app .ncm-lodds__t { font: 700 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); white-space: nowrap; }
+.ncm-app .ncm-lodds__src { margin-left: auto; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body); color: var(--ncm-text-secondary); text-align: right; }
+.ncm-app .ncm-lodds__sum { display: flex; align-items: center; gap: 10px; padding: 8px 11px 4px; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-app .ncm-lodds__sum b { color: var(--vc); font-family: var(--ncm-font-mono); }
+.ncm-app .ncm-lodds__keyrow { padding: 0 11px 7px; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+.ncm-app .ncm-lodds__dist { display: flex; height: 8px; width: 130px; border-radius: 1px; overflow: hidden; flex: none; margin-left: auto; background: color-mix(in srgb, var(--ncm-border-active, var(--ncm-border)) 60%, transparent); }
+.ncm-app .ncm-lodds__dist i { display: block; height: 100%; }
+.ncm-app .ncm-lodds__dist .hi { background: var(--ncm-good, var(--ncm-success)); }
+.ncm-app .ncm-lodds__dist .mid { background: var(--ncm-attn, var(--ncm-warning)); }
+.ncm-app .ncm-lodds__dist .lo { background: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-app .ncm-lodds__dist .none { background: var(--ncm-text-muted); }
+.ncm-app .ncm-lodds__key { display: flex; flex-wrap: wrap; gap: 4px 10px; font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-lodds__key span::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 1px; margin-right: 4px; background: var(--kc); }
+.ncm-app .ncm-lodds__av { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; overflow: hidden;
+  font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display);
+  color: color-mix(in oklab, var(--tc, var(--ncm-text-label, var(--ncm-text-secondary))) 80%, var(--ncm-text-primary));
+  background: color-mix(in srgb, var(--tc, var(--ncm-text-label, var(--ncm-text-secondary))) 18%, var(--ncm-bg-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc, var(--ncm-text-label, var(--ncm-text-secondary))) 55%, transparent); }
+.ncm-app .ncm-lodds__av img { width: 100%; height: 100%; object-fit: cover; border: 0; }
+/* 4 or fewer: cards side by side */
+.ncm-app .ncm-lodds__cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 14px; padding: 10px 11px; }
+.ncm-app .ncm-lodds__c { --mc: var(--ncm-good, var(--ncm-success)); display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 3px 7px; align-items: center; }
+.ncm-app .ncm-lodds__c .nm { font: 700 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-lodds__c .nm small, .ncm-app .ncm-lodds__r .nm small { font: 400 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body); color: var(--ncm-text-secondary); margin-left: 4px; }
+.ncm-app .ncm-lodds__c .p { font: 700 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--mc); }
+.ncm-app .ncm-lodds__c .mt, .ncm-app .ncm-lodds__c .how { grid-column: 2 / 4; }
+.ncm-app .ncm-lodds__c .how, .ncm-app .ncm-lodds__r .how { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-lodds__c .how.no { font-style: italic; }
+/* 5 or more: one compact row each, best first, its own scroll box */
+.ncm-app .ncm-lodds__list { max-height: 196px; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-lodds__r { --mc: var(--ncm-good, var(--ncm-success)); display: grid; grid-template-columns: 20px 118px 120px 40px minmax(0, 1fr); gap: 9px; align-items: center; padding: 5px 11px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); }
+.ncm-app .ncm-lodds__r .ncm-lodds__av { width: 20px; height: 20px; font-size: calc(8px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-lodds__r .nm { font: 700 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-lodds__r .p { font: 700 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--mc); text-align: right; }
+.ncm-app .ncm-lodds__r .how { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-lodds__r.is-none .nm { color: var(--ncm-text-secondary); font-weight: 600; }
+.ncm-app button.ncm-lodds__more { display: block; width: 100% !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 6px 11px !important; text-align: left; appearance: none;
+  font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body) !important; color: var(--ncm-secondary) !important; cursor: pointer; background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+.ncm-app button.ncm-lodds__more:hover { text-decoration: underline; }
+.ncm-app .ncm-lodds__meter { display: block; height: 6px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-border-active, var(--ncm-border)) 70%, transparent); position: relative; overflow: hidden; }
+.ncm-app .ncm-lodds__meter i { position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--mc); transition: width .35s cubic-bezier(.22, 1, .36, 1), background .35s; }
+.ncm-app .ncm-lodds .hi { --mc: var(--ncm-good, var(--ncm-success)); }
+.ncm-app .ncm-lodds .mid { --mc: var(--ncm-attn, var(--ncm-warning)); }
+.ncm-app .ncm-lodds .lo { --mc: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-app .ncm-lodds .none { --mc: var(--ncm-text-muted); }
+.ncm-app .ncm-lodds__v { margin: 10px 11px; padding: 8px 10px; border-left: 3px solid var(--vc); background: color-mix(in srgb, var(--vc) 9%, transparent); font: calc(12.5px * var(--ncm-text-scale, 1))/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-app .ncm-lodds__cards + .ncm-lodds__v { margin-top: 0; }
+.ncm-app .ncm-lodds__v b { color: var(--vc); }
+.ncm-app .ncm-lodds__note { padding: 0 11px 9px; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body); color: var(--ncm-text-secondary); }
+@media (prefers-reduced-motion: reduce) { .ncm-app .ncm-lodds__meter i { transition: none; } }
+/* a narrow host: the explanation drops under the bar */
+@container (max-width: 520px) {
+  .ncm-app .ncm-lodds__r { grid-template-columns: 20px minmax(0, 1fr) 90px 38px; row-gap: 1px; }
+  .ncm-app .ncm-lodds__r .how { grid-column: 2 / -1; white-space: normal; }
+  .ncm-app .ncm-lodds__dist { width: 90px; }
+}
 /* Items-directory terminal badge — recolor the shared shard badge red. */
 .ncm-terminal-img-tag { background: #ff0033 !important; box-shadow: 0 0 8px rgba(255,0,51,.6) !important; }
 
@@ -2606,3 +2670,24 @@
 .ncm-term__hud-compose { cursor: pointer; color: var(--ncm-accent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 45%, transparent); border-radius: 4px; padding: 2px 8px; font-weight: 700; letter-spacing: 1px; transition: background var(--ncm-term-fast, .18s) ease; }
 .ncm-term__hud-compose:hover { background: color-mix(in srgb, var(--ncm-accent) 12%, transparent); }
 .ncm-term__chip--as { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 45%, transparent); }
+
+/* ── Move ▾ (GM, 2026-10-29): replaced the bare "Move to…" select — every folder with its icon, "here now" on the current one ── */
+.ncm-term__move { position: relative; display: inline-flex; }
+.ncm-term__move > summary { list-style: none; }
+.ncm-term__move > summary::-webkit-details-marker { display: none; }
+.ncm-term__move-btn { display: inline-flex; align-items: center; gap: 5px; height: calc(22px * var(--ncm-text-scale, 1)); padding: 0 8px; cursor: pointer; user-select: none;
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 45%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
+  font: 600 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-term__move-btn:hover, .ncm-term__move[open] > .ncm-term__move-btn { border-color: var(--ncm-primary); background: color-mix(in srgb, var(--ncm-primary) 18%, transparent); }
+.ncm-term__move-btn i { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-primary); }
+.ncm-term__move-menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 60; min-width: 190px; padding: 4px; display: flex; flex-direction: column;
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 50%, var(--ncm-border)); border-radius: 3px; background: var(--ncm-bg-elevated, var(--ncm-bg-surface)); box-shadow: 0 10px 24px rgba(0, 0, 0, .5); }
+.ncm-term__move-k { padding: 4px 8px 3px; font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-terminal-viewer button.ncm-term__move-it { appearance: none; display: flex !important; align-items: center; gap: 8px; width: 100% !important; height: auto !important; min-height: 0 !important; margin: 0 !important;
+  padding: 6px 8px !important; border: 0 !important; border-radius: 2px !important; background: transparent !important; box-shadow: none !important; text-align: left !important;
+  font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body) !important; color: var(--ncm-text-primary) !important; text-transform: none !important; letter-spacing: 0 !important; line-height: 1.2 !important; cursor: pointer; }
+.ncm-app .ncm-terminal-viewer button.ncm-term__move-it:hover { background: color-mix(in srgb, var(--ncm-primary) 14%, transparent) !important; }
+.ncm-app .ncm-terminal-viewer button.ncm-term__move-it i { width: 14px; margin: 0 !important; text-align: center; color: var(--ncm-primary); }
+.ncm-app .ncm-terminal-viewer button.ncm-term__move-it.is-cur { opacity: .6; cursor: default; }
+.ncm-term__move-it small { margin-left: auto; font: calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--ncm-text-secondary); text-transform: uppercase; }
+.ncm-app .ncm-terminal-viewer button.ncm-term__move-it { justify-content: flex-start !important; }

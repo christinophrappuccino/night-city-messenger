@@ -1,0 +1,193 @@
+<!doctype html>
+<!--
+  Admin hue retune (2026-10-28). Dev: "are the general hues bold / high contrast enough?"
+  Measured answer: readable, but pastel on clean-dark, and the eight category hues read as about four
+  families (three blues, two pinks, two lavenders) — one of them near-identical to "secret" on clean-light.
+  Left = the shipped palette. Right = the proposal:
+    · eight hues placed in the GAPS between the six meaning colours, optimised so every pair
+      (hue↔hue AND hue↔meaning) is ≥ 5.9 apart in OKLab (was as low as 1.4);
+    · lightness solved per theme so each hue clears 4.6:1 on every admin background (7:1 on high-contrast);
+    · tag pills carry 80% of their colour (was 72%) on a 16% tint (was 15%) — the boldest mix where every tag, red Black ICE included, still clears 4.5:1;
+    · four meaning colours nudged a step so none sits under 4.5:1 (dark bad; light attn/good/money/act).
+  The numbers under each swatch are measured live from the rendered page (worst background).
+  View: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-hue-retune-mock.html
+        (or off disk with chrome --allow-file-access-from-files). ?t=clean-dark|clean-light|high-contrast shows one theme.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Admin hue retune</title>
+<script>
+  // Two stylesheets live outside the repo: off disk use the file paths, over the mockup server its /_vendor mirror.
+  const OFF = location.protocol === 'file:';
+  document.write(`<link rel="stylesheet" href="${OFF ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css' : '/_vendor/foundry2.css'}">`);
+  document.write(`<link rel="stylesheet" href="${OFF ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css'}">`);
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { background: #2b2b2b; margin: 0; padding: 18px; color: #ddd; font: 13px system-ui, sans-serif; }
+  h1 { font: 700 16px system-ui; margin: 0 0 4px; color: #fff; }
+  .lede { margin: 0 0 16px; color: #bbb; max-width: 1100px; line-height: 1.45; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+  .row > h2 { grid-column: 1 / -1; margin: 0; font: 700 13px system-ui; letter-spacing: .06em; text-transform: uppercase; color: #fff; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important;
+    padding: 14px; border-radius: 3px; background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border); }
+  .mk-cap { font: 700 11px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); margin: 0 0 10px; display: flex; gap: 8px; align-items: center; }
+  .mk-cap b { color: var(--ncm-text-heading); }
+  .mk-sw { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 12px; }
+  .mk-sw > div { text-align: center; }
+  .mk-sw .chip { height: 26px; border-radius: 2px; background: var(--c); }
+  .mk-sw .n { font: 10px var(--ncm-font-mono); color: var(--ncm-text-label); margin-top: 3px; }
+  .mk-sw .n.low { color: var(--ncm-bad); font-weight: 700; }
+  .mk-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .mk-sub { font: 700 9.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); margin: 10px 0 5px; }
+  .mk-card { background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .mk-card .hd { background: var(--ncm-bg-card-head); padding: 5px 10px; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); border-left: 3px solid var(--sk); display: flex; gap: 7px; align-items: center; }
+  .mk-card .hd i { color: var(--sk); }
+  .mk-card .kv { display: grid; grid-template-columns: 110px 1fr; gap: 5px 10px; padding: 8px 10px; font: 13px var(--ncm-font-body); }
+  .mk-card .kv .k { color: var(--ncm-text-label); }
+  .mk-card .kv .v { color: var(--tc, var(--ncm-text-heading)); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .mk-card .kv .v::before { content: ''; width: 7px; height: 7px; background: var(--tc); display: var(--sq, inline-block); }
+  .mk-rows { display: flex; flex-direction: column; }
+  .mk-rows > div { display: flex; align-items: center; gap: 9px; padding: 6px 10px; border-top: 1px solid var(--ncm-border); font: 600 13px var(--ncm-font-body); color: var(--ncm-text-heading); }
+  .mk-rows .av { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 10px var(--ncm-font-display);
+    color: var(--tc); background: color-mix(in srgb, var(--tc) 16%, var(--ncm-bg-card)); box-shadow: inset 0 0 0 1.5px var(--tc); }
+  .mk-rows .meta { margin-left: auto; display: flex; gap: 5px; }
+  .mk-worst { font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); margin-top: 8px; }
+
+  /* ── THE PROPOSAL, round 2: NEON (dev: round 1 was "too pastel and cutesy, doesn't read as cyberpunk").
+       Hues + meaning colours at the strongest chroma the screen can show. The raw colour paints only what has
+       to be SEEN (pill border + icon, dots, edges, avatar rings); the TEXT is that colour pushed toward the
+       heading tone just enough to read (% of colour kept: dark 63 · light 72 · high-contrast 76 — the most colour that still clears 4.5:1). ── */
+  .prop[data-ncm-admin-theme="clean-dark"] { --mk-tx:63%;
+    --ncm-hue-1:#ff67e4; --ncm-hue-2:#ff78be; --ncm-hue-3:#00acf8; --ncm-hue-4:#69aeff; --ncm-hue-5:#899cff; --ncm-hue-6:#00b698; --ncm-hue-7:#93b400; --ncm-hue-8:#00cdb4;
+    --ncm-act:#00e5f7; --ncm-attn:#ffa658; --ncm-bad:#ff767f; --ncm-good:#00f674; --ncm-money:#fdd500; --ncm-secret:#b88bff; }
+  .prop[data-ncm-admin-theme="clean-light"] { --mk-tx:73%;
+    --ncm-hue-1:#9b0088; --ncm-hue-2:#b60077; --ncm-hue-3:#005b86; --ncm-hue-4:#0063b8; --ncm-hue-5:#3f00fe; --ncm-hue-6:#006655; --ncm-hue-7:#556a00; --ncm-hue-8:#007062;
+    --ncm-act:#006c7f; --ncm-attn:#a14900; --ncm-bad:#bb0028; --ncm-good:#00723f; --ncm-money:#7e5e00; --ncm-secret:#6b00d1; }
+  .prop[data-ncm-admin-theme="high-contrast"] { --mk-tx:79%;
+    --ncm-hue-1:#ff73e6; --ncm-hue-2:#ff9ecd; --ncm-hue-3:#1bb3ff; --ncm-hue-4:#8ec2ff; --ncm-hue-5:#98abff; --ncm-hue-6:#00c7a8; --ncm-hue-7:#a4c900; --ncm-hue-8:#00e3c7;
+    --ncm-act:#5aefff; --ncm-attn:#ffba7d; --ncm-bad:#ff6d73; --ncm-good:#3aff81; --ncm-money:#ffe47d; --ncm-secret:#b688ff; }
+  .prop.ncm-admin-panel .ncm-tagp {
+    background: color-mix(in srgb, var(--tc) 20%, var(--ncm-bg-card-head)) !important;
+    border-color: var(--tc) !important; box-shadow: 0 0 8px -2px color-mix(in srgb, var(--tc) 60%, transparent) !important; }
+  .prop .mk-card .kv .v::before { box-shadow: 0 0 6px var(--tc); }
+  .prop .mk-rows .av { box-shadow: inset 0 0 0 2px var(--tc), 0 0 8px -2px var(--tc); }
+  /* tag / value / avatar TEXT: the colour lifted toward the heading tone just enough to read (% = colour kept) */
+  .prop.ncm-admin-panel[data-ncm-admin-theme="clean-dark"] :is(.ncm-tagp, .mk-card .kv .v, .mk-rows .av) { color: color-mix(in oklab, var(--tc) 63%, var(--ncm-text-heading)) !important; }
+  .prop.ncm-admin-panel[data-ncm-admin-theme="clean-light"] :is(.ncm-tagp, .mk-card .kv .v, .mk-rows .av) { color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)) !important; }
+  .prop.ncm-admin-panel[data-ncm-admin-theme="high-contrast"] :is(.ncm-tagp, .mk-card .kv .v, .mk-rows .av) { color: color-mix(in oklab, var(--tc) 76%, var(--ncm-text-heading)) !important; }
+
+  .prop .mk-card .hd { border-left-color: var(--sk); box-shadow: inset 3px 0 0 var(--sk), inset 6px 0 10px -6px var(--sk); }
+</style>
+</head>
+<body>
+<h1>Admin colours — current vs NEON proposal</h1>
+<p class="lede">Left is what ships; right is the neon proposal: every hue and meaning colour at full saturation. The saturated colour paints what you look AT (borders, icons, dots, rings, a faint glow); the label text inside is the same colour lifted just enough to read. Numbers under each swatch = the raw colour against the worst admin background (it only needs 3:1 there — it is never used as body text); the readout line under each panel measures the real tag text.</p>
+<div id="out"></div>
+
+<template id="panel">
+  <div class="mk-cap"><b data-label></b><span data-theme></span></div>
+  <div class="mk-sub">Category hues 1–8</div>
+  <div class="mk-sw" data-sw></div>
+  <div class="mk-sub">Tags in a hue (role · organisation · place)</div>
+  <div class="mk-pills" data-hues></div>
+  <div class="mk-sub">Tags with a meaning</div>
+  <div class="mk-pills">
+    <span class="ncm-tagp is-act"><i class="fas fa-hand-pointer"></i>Selected</span>
+    <span class="ncm-tagp is-attn"><i class="fas fa-bell"></i>3 waiting</span>
+    <span class="ncm-tagp is-bad"><i class="fas fa-skull"></i>Black ICE</span>
+    <span class="ncm-tagp is-good"><i class="fas fa-check"></i>Breached</span>
+    <span class="ncm-tagp is-money"><i class="fas fa-coins"></i>1,200 eb</span>
+    <span class="ncm-tagp is-secret"><i class="fas fa-lock"></i>Encrypted</span>
+  </div>
+  <div class="mk-card">
+    <div class="hd" style="--sk:var(--ncm-hue-3)"><i class="fas fa-location-dot"></i>Details</div>
+    <div class="kv">
+      <span class="k">Organisation</span><span class="v" style="--tc:var(--ncm-hue-1)">Arasaka</span>
+      <span class="k">Location</span><span class="v" style="--tc:var(--ncm-hue-3)">Afterlife</span>
+      <span class="k">Uplink</span><span class="v" style="--tc:var(--ncm-hue-2)">CorpNet</span>
+      <span class="k">Preset</span><span class="v" style="--tc:var(--ncm-hue-8)">Retro DOS</span>
+      <span class="k">Folder</span><span class="v" style="--tc:var(--ncm-hue-7)">Night Market</span>
+    </div>
+    <div class="mk-rows" data-rows></div>
+  </div>
+  <div class="mk-worst" data-worst></div>
+</template>
+
+<script>
+const ROLES = ['Fixer', 'Netrunner', 'Tech', 'Solo', 'Media', 'Nomad', 'Lawman', 'Exec'];
+const PEOPLE = [['Rogue', 1, 'Fixer'], ['Judy', 6, 'Tech'], ['Brick', 4, 'Solo'], ['Queen', 5, 'Media'], ['Dexter', 2, 'Netrunner']];
+const THEMES = (new URLSearchParams(location.search).get('t') || 'clean-dark,clean-light,high-contrast').split(',');
+
+// ── measuring: computed colours come back as rgb() or color(srgb …); resolve to [r,g,b] 0..1 ──
+const probe = document.createElement('ncm-probe'); document.body.append(probe);
+// Any computed colour → [r,g,b] 0..1. Parsed by hand (rgb(), color(srgb …), oklab(…), optional alpha) because a
+// canvas fillStyle silently ignores oklab() in some Chromium builds and keeps the PREVIOUS colour (it reported nonsense).
+const toS = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+function parseColor(s) {
+  let m;
+  if ((m = s.match(/^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/))) return [m[1] / 255, m[2] / 255, m[3] / 255, m[4] === undefined ? 1 : +m[4]];
+  if ((m = s.match(/^color\(srgb ([-\d.e]+) ([-\d.e]+) ([-\d.e]+)(?: \/ ([\d.]+))?/))) return [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]];
+  if ((m = s.match(/^oklab\(([-\d.e]+) ([-\d.e]+) ([-\d.e]+)(?: \/ ([\d.]+))?/))) {
+    const [L, A, B] = [+m[1], +m[2], +m[3]];
+    const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3, mm = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3, ss = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+    const lin = [4.0767416621 * l - 3.3077115913 * mm + 0.2309699292 * ss, -1.2684380046 * l + 2.6097574011 * mm - 0.3413193965 * ss, -0.0041960863 * l - 0.7034186147 * mm + 1.707614701 * ss];
+    return [...lin.map((v) => Math.min(1, Math.max(0, toS(Math.max(0, v))))), m[4] === undefined ? 1 : +m[4]];
+  }
+  return [0, 0, 0, 1];
+}
+function rgbOf(cssColor, host, under) {
+  probe.style.outlineColor = cssColor; host.append(probe);
+  const [r, g, b, al] = parseColor(getComputedStyle(probe).outlineColor);
+  if (al >= 1 || !under) return [r, g, b];
+  const u = parseColor(under);
+  return [r * al + u[0] * (1 - al), g * al + u[1] * (1 - al), b * al + u[2] * (1 - al)];
+}
+const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+
+const out = document.getElementById('out');
+for (const theme of THEMES) {
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = `<h2>${theme}</h2>`;
+  out.append(row);   // attached BEFORE measuring — a detached element has no computed style
+  for (const [label, prop] of [['Current', false], ['Proposed', true]]) {
+    const win = document.createElement('div');
+    win.className = `mk-win ncm-app ncm-admin-panel${prop ? ' prop' : ''}`;
+    win.dataset.ncmAdminTheme = theme;
+    win.append(document.getElementById('panel').content.cloneNode(true));
+    win.querySelector('[data-label]').textContent = label;
+    win.querySelector('[data-hues]').innerHTML = ROLES.map((r, i) => `<span class="ncm-tagp" style="--tc:var(--ncm-hue-${i + 1})"><i class="fas fa-tag"></i>${r}</span>`).join('');
+    win.querySelector('[data-rows]').innerHTML = PEOPLE.map(([n, h, role]) =>
+      `<div><span class="av" style="--tc:var(--ncm-hue-${h})">${n.slice(0, 2).toUpperCase()}</span>${n}<span class="meta"><span class="ncm-tagp" style="--tc:var(--ncm-hue-${h})">${role}</span></span></div>`).join('');
+    row.append(win);
+    // swatches + measured contrast against the four admin backgrounds
+    const bgs = ['--ncm-bg-pane', '--ncm-bg-pane-alt', '--ncm-bg-card', '--ncm-bg-card-head'].map((v) => rgbOf(`var(${v})`, win));
+    const sw = win.querySelector('[data-sw]');
+    let worstAll = 99;
+    for (let i = 1; i <= 8; i++) {
+      const c = rgbOf(`var(--ncm-hue-${i})`, win);
+      const w = Math.min(...bgs.map((b) => ratio(c, b)));
+      worstAll = Math.min(worstAll, w);
+      sw.insertAdjacentHTML('beforeend', `<div><div class="chip" style="--c:var(--ncm-hue-${i})"></div><div class="n ${w < (win.classList.contains('prop') ? 3 : 4.5) ? 'low' : ''}">${i} · ${w.toFixed(2)}</div></div>`);
+    }
+    // worst pill text vs its own tinted background, across every pill
+    let worstPill = 99;
+    for (const p of win.querySelectorAll('.ncm-tagp')) {
+      const cs = getComputedStyle(p);
+      const base = getComputedStyle(p.parentElement).backgroundColor; const bg = rgbOf(cs.backgroundColor, win, 'rgb(' + rgbOf('var(--ncm-bg-card)', win).map((x) => Math.round(x * 255)).join(',') + ')'); const fg = rgbOf(cs.color, win);
+      { const r = ratio(fg, bg); if (r < worstPill) { worstPill = r; win.dataset.worstTag = p.textContent.trim(); } }
+    }
+    win.querySelector('[data-worst]').innerHTML = `worst hue on a background <b>${worstAll.toFixed(2)}</b> · worst tag text <b>${worstPill.toFixed(2)}</b>`;
+    win.dataset.worst = Math.min(worstAll, worstPill).toFixed(2);
+  }
+}
+probe.remove();
+document.title = 'Admin hue retune · ' + [...document.querySelectorAll('.mk-win')].map((w) => (w.classList.contains('prop') ? 'P' : 'C') + w.dataset.worst + '(' + w.dataset.worstTag + ')').join(' ');
+</script>
+</body>
+</html>

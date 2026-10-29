@@ -1,0 +1,325 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Admin guides v4 — delivery line, lock odds, account status</title>
+<!--
+  Round 4 (after "rethink 1 and 3"):
+    1.  Delivery line — one line in the reading pane; click it to open the why / what they saw / what's next, fixes inline
+    3a. Lock odds in the account editor — the party's chances beside the DV, live while you edit
+    3b. Account status in play (Terminals tab) — per character: in / locked out / tries left / can't see, each with its action
+  Everything is clickable. Serve: node dev/tools/serve-mockups.cjs →
+  http://127.0.0.1:8123/dev/mockups/admin-guides-v4-mock.html   ?t=clean-dark|clean-light|high-contrast
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px sans-serif; margin: 0 0 12px; max-width: 1060px; line-height: 1.45; }
+  .mk-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-cap { color: #9aa; font: 600 11px sans-serif; margin: 0 0 5px; text-transform: uppercase; letter-spacing: .06em; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .P { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .av { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 8.5px var(--ncm-font-display); flex: none;
+    color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 18%, var(--ncm-bg-card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 55%, transparent); }
+  .btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important; flex: none;
+    border: 1px solid var(--ncm-act) !important; color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 10%, transparent) !important; cursor: pointer; white-space: nowrap; box-shadow: none !important; margin: 0 !important; line-height: 1.4; }
+  .btn:hover { background: color-mix(in srgb, var(--ncm-act) 22%, transparent) !important; }
+  .btn.q { border-color: var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; }
+  .btn.bad { border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent) !important; color: var(--ncm-bad) !important; background: none !important; }
+  @keyframes flash { 0% { background: color-mix(in srgb, var(--ncm-good) 28%, transparent); } 100% { background: transparent; } }
+  @keyframes open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  /* a stand-in reading pane head so the line has its real context */
+  .rd { padding: 10px 13px; background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border-active); }
+  .rd h3 { margin: 0 0 6px; font: 700 18px var(--ncm-font-display); color: var(--ncm-text-heading); border: 0; }
+  .rd .pp { display: grid; grid-template-columns: 44px 1fr; gap: 3px 8px; font: 12.5px var(--ncm-font-body); }
+  .rd .pp .k { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); padding-top: 2px; }
+  .rd .pp .v { display: flex; gap: 6px; align-items: center; color: var(--ncm-text-primary); }
+  .rd .pp .a { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr); }
+  .rd .pp .t { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .body { padding: 12px 13px; color: var(--ncm-text-primary); line-height: 1.55; min-height: 40px; }
+
+  /* ═══ 1. DELIVERY LINE ═══ */
+  .dl { --dc: var(--ncm-good); border-bottom: 1px solid var(--ncm-border); }
+  .dl.wait { --dc: var(--ncm-attn); } .dl.bad { --dc: var(--ncm-bad); }
+  .dl__line { display: flex; align-items: center; gap: 9px; padding: 7px 13px; cursor: pointer; box-shadow: inset 3px 0 var(--dc); background: color-mix(in srgb, var(--dc) 7%, transparent); }
+  .dl__line:hover { background: color-mix(in srgb, var(--dc) 13%, transparent); }
+  .dl.flash .dl__line { animation: flash 1.1s ease-out; }
+  .dl__ic { color: var(--dc); width: 16px; text-align: center; }
+  .dl__txt { font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .dl__txt b { color: var(--dc); font-weight: 700; }
+  .dl__pips { display: flex; gap: 3px; margin-left: auto; }
+  .dl__pips i { width: 14px; height: 4px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); }
+  .dl__pips i.on { background: var(--ncm-good); } .dl__pips i.wait { background: var(--ncm-attn); } .dl__pips i.bad { background: var(--ncm-bad); }
+  .dl__chev { color: var(--ncm-text-label); font-size: 10px; transition: transform .15s; }
+  .dl.is-open .dl__chev { transform: rotate(180deg); }
+  .dl__more { display: none; padding: 4px 13px 12px 38px; animation: open .18s ease-out; }
+  .dl.is-open .dl__more { display: block; }
+  .dl__grid { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 7px 12px; margin-top: 6px; }
+  .dl__k { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); padding-top: 3px; }
+  .dl__v { font: 12.5px/1.5 var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .dl__v b { color: var(--ncm-text-heading); }
+  .dl__v .addr { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr); }
+  .dl__screen { display: inline-block; margin-top: 2px; padding: 6px 9px; border-radius: 2px; background: #08090d; color: #cfd6e2; font: 11px var(--ncm-font-mono); border: 1px solid var(--ncm-border); }
+  .dl__screen .e { color: #f2994a; } .dl__screen .b { color: #ee6b6b; } .dl__screen .g { color: #56c896; }
+  .dl__steps { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .dl__steps span { display: inline-flex; gap: 5px; align-items: center; }
+  .dl__steps .ok { color: var(--ncm-good); } .dl__steps .wait { color: var(--ncm-attn); } .dl__steps .bad { color: var(--ncm-bad); } .dl__steps .no { color: var(--ncm-text-hint); }
+  .dl__steps .t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .dl__acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+  /* ═══ 3a. LOCK ODDS IN THE EDITOR ═══ */
+  .ed { display: grid; grid-template-columns: minmax(0,1fr); }
+  .ed__form { border-right: 0 !important; border-bottom: 1px solid var(--ncm-border); }
+  .od__party { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px 14px; }
+  .ed__form { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid var(--ncm-border); }
+  .ed__sec { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); display: flex; gap: 7px; align-items: center; }
+  .ed__sec i { color: var(--ncm-secret); }
+  .ed__card { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); padding: 8px 10px; }
+  .ed__card.on { border-color: color-mix(in srgb, var(--ncm-secret) 55%, var(--ncm-border)); box-shadow: inset 3px 0 var(--ncm-secret); }
+  .ed__top { display: flex; align-items: center; gap: 8px; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); cursor: pointer; }
+  .sw { width: 30px; height: 16px; border-radius: 8px; background: var(--ncm-border-active); position: relative; flex: none; transition: background .15s; }
+  .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-heading); transition: left .15s; }
+  .ed__card.on .sw { background: var(--ncm-secret); } .ed__card.on .sw::after { left: 16px; }
+  .ed__body { display: none; margin-top: 8px; gap: 10px; align-items: center; flex-wrap: wrap; font: 12.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ed__card.on .ed__body { display: flex; }
+  .step { display: inline-flex; align-items: center; border: 1px solid var(--ncm-border-active); border-radius: 2px; }
+  .step button { appearance: none; width: 24px !important; height: 24px !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; border: 0 !important; background: none !important; color: var(--ncm-act) !important; cursor: pointer; box-shadow: none !important; }
+  .step b { width: 34px; text-align: center; font: 700 14px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .ed__fake { height: 24px; padding: 0 8px; display: inline-flex; align-items: center; border: 1px solid var(--ncm-border-active); border-radius: 2px; color: var(--ncm-text-primary); background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); font: 12.5px var(--ncm-font-body); }
+  .seg { display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+  .seg button { appearance: none; padding: 3px 9px !important; height: auto !important; width: auto !important; min-height: 0 !important; margin: 0 !important; border: 0 !important; border-radius: 0 !important;
+    background: none !important; color: var(--ncm-text-label) !important; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; cursor: pointer; box-shadow: none !important; }
+  .seg button + button { border-left: 1px solid var(--ncm-border-active) !important; }
+  .seg button.on { background: color-mix(in srgb, var(--ncm-act) 18%, transparent) !important; color: var(--ncm-act) !important; }
+  .seg button.on.bad { background: color-mix(in srgb, var(--ncm-bad) 18%, transparent) !important; color: var(--ncm-bad) !important; }
+  .seg button.on.attn { background: color-mix(in srgb, var(--ncm-attn) 18%, transparent) !important; color: var(--ncm-attn) !important; }
+  /* the odds side panel */
+  .od { padding: 12px 14px; background: var(--ncm-bg-pane); display: flex; flex-direction: column; gap: 9px; }
+  .od__h { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); display: flex; gap: 7px; align-items: center; }
+  .od__h i { color: var(--ncm-hue-3); }
+  .od__h small { margin-left: auto; font: 400 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+  .od__r { display: grid; grid-template-columns: 22px minmax(0,1fr) 40px; gap: 4px 8px; align-items: center; }
+  .od__r .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .od__r .how { grid-column: 2 / 4; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); margin-top: -3px; }
+  .od__r .how.no { color: var(--ncm-text-hint); font-style: italic; }
+  .meter { --mc: var(--ncm-good); height: 7px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); position: relative; overflow: hidden; }
+  .meter i { position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--mc); transition: width .35s cubic-bezier(.22,1,.36,1), background .35s; }
+  .od__r .p { font: 700 12.5px var(--ncm-font-mono); color: var(--mc); text-align: right; }
+  .lo { --mc: var(--ncm-bad); } .mid { --mc: var(--ncm-attn); } .hi { --mc: var(--ncm-good); } .none { --mc: var(--ncm-text-hint); }
+  .od__nmrow { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; grid-column: 2 / 3; }
+  .od__v { margin-top: 2px; padding: 8px 10px; border-left: 3px solid var(--vc); background: color-mix(in srgb, var(--vc) 9%, transparent); font: 12.5px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .od__v b { color: var(--vc); }
+  .od__note { font: 11px var(--ncm-font-body); color: var(--ncm-text-hint); }
+
+  /* ═══ 3b. ACCOUNT STATUS IN PLAY ═══ */
+  .acc { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .acc__hd { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 9px; align-items: center; padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .acc__hd .av { width: 30px; height: 30px; font-size: 10px; }
+  .acc__nm { font: 700 13.5px var(--ncm-font-display); color: var(--ncm-text-heading); display: flex; gap: 6px; align-items: center; }
+  .acc__nm .ncm-tagp { font-size: 10.5px !important; line-height: 15px; padding: 0 5px !important; }
+  .acc__u { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-addr); }
+  .acc__lock { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); text-align: right; }
+  .acc__lock b { color: var(--ncm-secret); font-weight: 600; }
+  .who { display: flex; flex-direction: column; }
+  .who__r { --wc: var(--ncm-text-hint); display: grid; grid-template-columns: 22px 64px minmax(0,1fr) auto; gap: 4px 10px; align-items: center; padding: 6px 10px; min-height: 38px;
+    border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 60%, transparent); box-shadow: inset 3px 0 var(--wc); }
+  .who__r.in { --wc: var(--ncm-good); background: color-mix(in srgb, var(--ncm-good) 7%, transparent); }
+  .who__r.locked { --wc: var(--ncm-bad); background: color-mix(in srgb, var(--ncm-bad) 7%, transparent); }
+  .who__r.tried { --wc: var(--ncm-attn); }
+  .who__r.flash { animation: flash 1s ease-out; }
+  .who__r .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who__r .st { font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); display: flex; gap: 2px 8px; align-items: center; flex-wrap: wrap; line-height: 1.35; }
+  .who__r .st b { color: var(--wc); font-weight: 700; }
+  .who__r .st .t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time); }
+  .who__r .st .dim { color: var(--ncm-text-hint); }
+  .tries { display: inline-flex; gap: 2px; } .tries i { width: 8px; height: 8px; border-radius: 1px; background: var(--ncm-attn); } .tries i.gone { background: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); }
+  .clock { font: 700 12px var(--ncm-font-mono); color: var(--ncm-bad); }
+  .acc__ft { display: flex; gap: 8px; align-items: center; padding: 7px 10px; border-top: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .acc__ft .grow { flex: 1; }
+</style>
+</head>
+<body>
+
+<p class="mk-h">1 — THE DELIVERY LINE &nbsp;·&nbsp; Messages → All mail → the open message</p>
+<p class="mk-p">(Drawn at the real widths now: reading pane 475px, Configure Terminal 668px, Terminals detail 486px.) One line under From / To / When that answers it. Quiet green when all is well; amber or red when not. <b>Click it</b> and it opens in place: what happened, why, what the player saw, what happens next by itself — with the fixes as buttons. Use a fix and the line updates. Try each one.</p>
+<div class="mk-row" data-slot="dl"></div>
+
+<p class="mk-h">3a — LOCK ODDS IN THE ACCOUNT EDITOR &nbsp;·&nbsp; Configure Terminal → Accounts → an account → Login &amp; security</p>
+<p class="mk-p">Where the lock is set. Beside the ways in, a "How hard is this for your party" panel reads each character's sheet and moves as you edit: step the DV, switch skill rolls on and off, require all methods. The verdict underneath says what that means in a sentence.</p>
+<div class="mk-row" data-slot="ed"></div>
+
+<p class="mk-h">3b — ACCOUNT STATUS IN PLAY &nbsp;·&nbsp; Admin → Terminals → detail → Accounts</p>
+<p class="mk-p">During the session: each account lists the party with what's true right now — in (since when), locked out (with a live clock), tries left, or can't even see it (and why). Each row has the one action you'd want. Click them.</p>
+<div class="mk-row" data-slot="acc"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const av = (n) => `<span class="av" style="--tc:${hue(n)}">${n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>`;
+const shell = (w, inner) => `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:${w}px"><div class="ncm-admin-panel">${inner}</div></div>`;
+
+/* ═══════════ 1. DELIVERY LINE ═══════════ */
+const MSGS = {
+  ok: { subject: 'The job', from: 'Rogue', fa: 'rogue@afterlife.nc', to: 'V', ta: 'v@nightcity.net', when: '21:04 · CitiNet 82%', open: false,
+    body: 'Afterlife, midnight. Come alone.' },
+  held: { subject: 'need a ride out', from: 'Rache', fa: 'rache@nightcity.net', to: 'Judy', ta: 'judy@mox.nc', when: '22:10 · The Docks', open: false, delivered: false,
+    body: 'Docks are crawling. Bring the van.' },
+  refused: { subject: 'turning myself in', from: 'V', fa: 'v@nightcity.net', to: 'NetWatch Notice', ta: 'system@netwatch.gov', when: '20:52 · CitiNet 64%', open: false, unlocked: false,
+    body: 'I know what\'s on the shard.' },
+  unread: { subject: 'payment', from: 'Dexter', fa: 'dex@nightcity.net', to: 'V', ta: 'v@nightcity.net', when: '19:30 · CitiNet 82%', open: false, nudged: false,
+    body: 'Half now, half on delivery.' },
+};
+function dlState(k, m) {
+  if (k === 'ok') return { cls: '', ic: 'fa-reply', line: `<b>Answered</b> — V read it at 21:30 and replied at 21:41.`, pips: ['on', 'on', 'on', 'on'],
+    grid: [['What happened', steps([['ok', 'fa-paper-plane', 'Sent', '21:04'], ['ok', 'fa-inbox', 'Delivered', '21:04'], ['ok', 'fa-eye', 'Read', '21:30'], ['ok', 'fa-reply', 'Replied', '21:41']])],
+      ['Their answer', '"On my way." — <a style="color:var(--ncm-act);cursor:pointer">open it</a>']], acts: '' };
+  if (k === 'held') return m.delivered
+    ? { cls: '', ic: 'fa-inbox', line: '<b>Delivered</b> — you sent it on as GM. Judy hasn\'t read it yet.', pips: ['on', 'on', '', ''],
+      grid: [['What happened', steps([['ok', 'fa-paper-plane', 'Sent', '22:10'], ['ok', 'fa-inbox', 'Delivered by you', 'now'], ['no', 'fa-eye', 'Read', ''], ['no', 'fa-reply', 'Replied', '']])]],
+      acts: `<button class="btn q" data-act="held:undo"><i class="fas fa-rotate-left"></i> Put it back in the queue</button>` }
+    : { cls: 'wait', ic: 'fa-hourglass-half', line: '<b>Held on Rache\'s Agent</b> — the Docks are a dead zone, so it hasn\'t gone yet.', pips: ['on', 'wait', '', ''],
+      grid: [['What happened', steps([['ok', 'fa-paper-plane', 'Sent', '22:10'], ['wait', 'fa-hourglass-half', 'Waiting for signal', ''], ['no', 'fa-eye', 'Read', ''], ['no', 'fa-reply', 'Replied', '']])],
+        ['Why', 'No network reaches <b>The Docks</b> (you set it as a dead zone). Mail written there waits on the sender\'s Agent instead of being lost.'],
+        ['Rache saw', '<span class="dl__screen"><span class="e">◷ MESSAGE QUEUED</span> — it sends when you\'re back in range</span>'],
+        ['By itself', 'It goes out the moment Rache has signal — a new scene, or the dead zone off.']],
+      acts: `<button class="btn" data-act="held:deliver"><i class="fas fa-paper-plane"></i> Deliver it now</button><button class="btn q"><i class="fas fa-tower-broadcast"></i> Open this scene's networks</button>` };
+  if (k === 'refused') return m.unlocked
+    ? { cls: '', ic: 'fa-unlock', line: '<b>Players can write to it now</b> — V can send it again from their composer.', pips: ['on', '', '', ''],
+      grid: [['What changed', 'Send-only is off for <b>NetWatch Notice</b>. This message didn\'t go — it was refused at the time — but the next one will.']],
+      acts: `<button class="btn q" data-act="refused:relock"><i class="fas fa-rotate-left"></i> Make it send-only again</button>` }
+    : { cls: 'bad', ic: 'fa-ban', line: '<b>Refused</b> — <span style="font-family:var(--ncm-font-mono);font-size:12px">system@netwatch.gov</span> is a system address; players can\'t write to it.', pips: ['on', 'bad', '', ''],
+      grid: [['What happened', steps([['ok', 'fa-paper-plane', 'Sent', '20:52'], ['bad', 'fa-ban', 'Refused at the door', ''], ['no', 'fa-eye', 'Read', ''], ['no', 'fa-reply', 'Replied', '']])],
+        ['Why', '<b>NetWatch Notice</b> is set to <b>send-only</b> — for addresses that only ever send (alerts, noreply). Players can\'t message, reply to or add them.'],
+        ['V saw', '<span class="dl__screen"><span class="b">✕ TRANSMISSION REFUSED</span> — the message stayed in their composer</span>']],
+      acts: `<button class="btn" data-act="refused:unlock"><i class="fas fa-unlock"></i> Let players write to it</button><button class="btn q"><i class="fas fa-reply"></i> Answer as NetWatch instead</button>` };
+  // unread
+  return { cls: 'wait', ic: 'fa-eye-slash', line: m.nudged ? '<b>Not read yet</b> — you nudged V; Marta gets a toast when she logs in.' : '<b>Not read yet</b> — it\'s in V\'s inbox. Their player (Marta) is offline.', pips: ['on', 'on', 'wait', ''],
+    grid: [['What happened', steps([['ok', 'fa-paper-plane', 'Sent', '19:30'], ['ok', 'fa-inbox', 'Delivered', '19:30'], ['wait', 'fa-eye-slash', 'Not opened', ''], ['no', 'fa-reply', 'Replied', '']])],
+      ['V will see', '<span class="dl__screen">▸ <b style="color:#fff">Dexter</b> — payment &nbsp;19:30 &nbsp;<span class="g">● new</span></span>']],
+    acts: m.nudged ? '' : `<button class="btn" data-act="unread:nudge"><i class="fas fa-bell"></i> Nudge them when they log in</button>` };
+}
+function steps(list) { return `<div class="dl__steps">${list.map(([c, ic, l, t]) => `<span class="${c}"><i class="fas ${ic}"></i>${l}${t ? ` <span class="t">${t}</span>` : ''}</span>`).join('<span class="no">›</span>')}</div>`; }
+function renderDl(flashKey) {
+  document.querySelector('[data-slot="dl"]').innerHTML = Object.entries(MSGS).map(([k, m]) => {
+    const s = dlState(k, m);
+    return `<div><p class="mk-cap">${{ ok: 'All good', held: 'Held — dead zone', refused: 'Refused', unread: 'Not read — player offline' }[k]}</p>${shell(475, `<div class="P">
+      <div class="rd"><h3>${m.subject}</h3><div class="pp"><span class="k">From</span><span class="v">${av(m.from)}${m.from} <span class="a">${m.fa}</span></span><span class="k">To</span><span class="v">${av(m.to)}${m.to} <span class="a">${m.ta}</span></span><span class="k">When</span><span class="v"><span class="t">${m.when}</span></span></div></div>
+      <div class="dl ${s.cls} ${m.open ? 'is-open' : ''} ${flashKey === k ? 'flash' : ''}" data-dl="${k}">
+        <div class="dl__line" data-toggle="${k}"><i class="fas ${s.ic} dl__ic"></i><span class="dl__txt">${s.line}</span><span class="dl__pips">${s.pips.map((p) => `<i class="${p}"></i>`).join('')}</span><i class="fas fa-chevron-down dl__chev"></i></div>
+        <div class="dl__more"><div class="dl__grid">${s.grid.map(([kk, v]) => `<span class="dl__k">${kk}</span><span class="dl__v">${v}</span>`).join('')}</div>${s.acts ? `<div class="dl__acts">${s.acts}</div>` : ''}</div>
+      </div><div class="body">${m.body}</div></div>`)}</div>`;
+  }).join('');
+}
+
+/* ═══════════ 3a. EDITOR ═══════════ */
+const ed = { pw: true, skill: true, key: false, dv: 18, logic: 'any', fail: 'lock', skillName: 'Interface' };
+const PARTY = [{ n: 'V', role: 'Netrunner', interface: 14, tech: 12 }, { n: 'Rache', role: 'Solo', interface: 8, tech: 9 }, { n: 'Judy', role: 'Tech', interface: 0, tech: 15 }];
+const chance = (base, dv) => base <= 0 ? 0 : Math.max(0, Math.min(100, (11 - Math.max(1, dv - base)) * 10));
+function oddsFor(pc) {
+  const base = ed.skillName === 'Interface' ? pc.interface : pc.tech;
+  if (!ed.skill) return { p: null, how: ed.pw || ed.key ? 'no roll — only the password' + (ed.key ? ' or keycard' : '') + ' gets them in' : 'no way in' };
+  if (!base) return { p: 0, how: `no ${ed.skillName} to roll`, no: true };
+  const p = chance(base, ed.dv);
+  const need = Math.max(1, ed.dv - base);
+  return { p, how: `${ed.skillName} ${base} + d10 — needs ${need > 10 ? 'more than a 10' : need + '+'}${ed.logic === 'all' && (ed.pw || ed.key) ? ', <b>and</b> the ' + [ed.pw && 'password', ed.key && 'keycard'].filter(Boolean).join(' + ') : ''}` };
+}
+function verdict() {
+  const ps = PARTY.map((pc) => oddsFor(pc).p ?? 0);
+  const best = Math.max(...ps), able = ps.filter((p) => p >= 40).length;
+  if (!ed.pw && !ed.skill && !ed.key) return ['var(--ncm-bad)', '<b>Sealed.</b> No way in at all — even you would have to force it open.'];
+  if (!ed.skill) return ['var(--ncm-hue-2)', `<b>No roll can open it.</b> Only someone with the ${[ed.pw && 'password', ed.key && 'keycard'].filter(Boolean).join(' or ')} gets in — so make sure it exists somewhere they can find.`];
+  if (best === 0) return ['var(--ncm-attn)', '<b>Nobody in the party can win the roll.</b> Leave the password where they\'ll find it, or bring the DV down.'];
+  if (able === 0) return ['var(--ncm-attn)', `<b>Hard.</b> The best chance is ${best}% — expect a lockout or two.`];
+  if (able === PARTY.length && best >= 90) return ['var(--ncm-hue-2)', '<b>Easy for everyone</b> — more a door than a lock.'];
+  const names = PARTY.filter((pc, i) => ps[i] >= 40).map((pc) => pc.n);
+  return ['var(--ncm-good)', `<b>Fair.</b> ${names.join(' and ')} ${names.length === 1 ? 'is' : 'are'} the one${names.length === 1 ? '' : 's'} to try it (${best}% at best).`];
+}
+function renderEd(flash) {
+  const tone = (p) => p == null ? 'none' : p < 35 ? 'lo' : p < 65 ? 'mid' : 'hi';
+  const [vc, vt] = verdict();
+  document.querySelector('[data-slot="ed"]').innerHTML = shell(668, `<div class="P"><div class="ed"><div class="ed__form">
+    <div class="ed__sec"><i class="fas fa-shield-halved"></i>Login &amp; security — <span style="font-family:var(--ncm-font-mono);text-transform:none;color:var(--ncm-text-addr)">root</span></div>
+    <div class="ed__card ${ed.pw ? 'on' : ''}"><div class="ed__top" data-tog="pw"><span class="sw"></span><i class="fas fa-key" style="color:var(--ncm-secret)"></i>Password</div><div class="ed__body">Password <span class="ed__fake">blackwall-77</span></div></div>
+    <div class="ed__card ${ed.skill ? 'on' : ''}"><div class="ed__top" data-tog="skill"><span class="sw"></span><i class="fas fa-dice-d20" style="color:var(--ncm-secret)"></i>Skill roll</div>
+      <div class="ed__body">Skill <span class="seg">${['Interface', 'Electronics/Security Tech'].map((s) => `<button data-skill="${s}" class="${ed.skillName === s ? 'on' : ''}">${s === 'Interface' ? 'Interface' : 'Elec/Sec Tech'}</button>`).join('')}</span>
+        DV <span class="step"><button data-dv="-1"><i class="fas fa-minus"></i></button><b>${ed.dv}</b><button data-dv="1"><i class="fas fa-plus"></i></button></span></div></div>
+    <div class="ed__card ${ed.key ? 'on' : ''}"><div class="ed__top" data-tog="key"><span class="sw"></span><i class="fas fa-id-card" style="color:var(--ncm-secret)"></i>Key item</div><div class="ed__body">Item <span class="ed__fake">Arasaka keycard</span></div></div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;font:12.5px var(--ncm-font-body);color:var(--ncm-text-label)">
+      <span>Needs <span class="seg">${[['any', 'any one'], ['all', 'all of them']].map(([k, l]) => `<button data-logic="${k}" class="${ed.logic === k ? 'on' : ''}">${l}</button>`).join('')}</span></span>
+      <span>A miss <span class="seg">${[['lock', 'locks out after 3', 'attn'], ['ice', 'Black ICE', 'bad'], ['none', 'costs nothing', '']].map(([k, l, c]) => `<button data-fail="${k}" class="${ed.fail === k ? 'on ' + c : ''}">${l}</button>`).join('')}</span></span></div>
+  </div>
+  <div class="od"><div class="od__h"><i class="fas fa-users"></i>How hard is this for your party<small>from their sheets</small></div>
+    <div class="od__party">${PARTY.map((pc) => { const o = oddsFor(pc); const t = tone(o.p); return `<div class="od__r ${t}">${av(pc.n)}<div class="od__nmrow"><span class="nm">${pc.n} <span style="font:400 11px var(--ncm-font-body);color:var(--ncm-text-hint)">${pc.role}</span></span></div><span class="p">${o.p == null ? '—' : o.p + '%'}</span>
+      <span></span><div class="meter ${t}" style="grid-column:2/3"><i style="--w:${o.p || 0}%"></i></div><span></span><span class="how ${o.no ? 'no' : ''}">${o.how}</span></div>`; }).join('')}</div>
+    <div class="od__v" style="--vc:${vc}">${vt}</div>
+    <div class="od__note">${ed.fail === 'ice' ? '<span style="color:var(--ncm-bad)">A miss here hurts:</span> Black ICE hits the runner for 5d6. ' : ed.fail === 'lock' ? 'Three misses lock that character out for an hour. ' : ''}Odds ignore crits and fumbles.</div>
+  </div></div></div>`);
+}
+
+/* ═══════════ 3b. IN PLAY ═══════════ */
+const acc = { V: { st: 'in', since: '21:04' }, Rache: { st: 'locked', left: 42 * 60 }, Judy: { st: 'tried', tries: 1 }, Brick: { st: 'cant', why: 'on MilNet — this box is on CitiNet' } };
+function whoRow(n) {
+  const a = acc[n];
+  const m = { in: ['in', `<b>logged in</b> <span class="t">since ${a.since}</span>`, `<button class="btn bad" data-acc="${n}:out">Log out</button>`],
+    locked: ['locked', `<b>locked out</b> <span class="clock" data-clock="${n}">${fmt(a.left)}</span> <span class="dim">· 3 wrong passwords</span>`, `<button class="btn" data-acc="${n}:clear">Clear lockout</button>`],
+    tried: ['tried', `<b>tried and missed</b> <span class="tries">${[0, 1, 2].map((i) => `<i class="${i < 3 - a.tries ? '' : 'gone'}"></i>`).join('')}</span> <span class="dim">${3 - a.tries} of 3 tries left</span>`, `<button class="btn q" data-acc="${n}:reset">Reset tries</button>`],
+    cant: ['', `<span class="dim">can't see this account — ${a.why}</span>`, ''],
+    fresh: ['', '<span class="dim">hasn\'t tried</span>', ''] }[a.st];
+  return `<div class="who__r ${m[0]}" data-row="${n}">${av(n)}<span class="nm">${n}</span><span class="st">${m[1]}</span><span>${m[2]}</span></div>`;
+}
+const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+function renderAcc(flashName) {
+  document.querySelector('[data-slot="acc"]').innerHTML = shell(486, `<div class="P" style="padding:10px"><div class="acc">
+    <div class="acc__hd">${av('root')}<div><div class="acc__nm">root <span class="ncm-tagp is-money"><i class="fas fa-crown"></i>Admin</span>${acc.Rache.st === 'locked' ? '<span class="ncm-tagp is-bad"><i class="fas fa-ban"></i>1 locked out</span>' : ''}</div><div class="acc__u">root · WS-7F-12</div></div>
+      <div class="acc__lock">password <b>or</b><br>Interface DV 18 · <a style="color:var(--ncm-act);cursor:pointer">edit the lock</a></div></div>
+    <div class="who">${Object.keys(acc).map(whoRow).join('')}</div>
+    <div class="acc__ft"><i class="fas fa-circle-info" style="color:var(--ncm-hue-2)"></i>Last login: V at 21:04 with the password.<span class="grow"></span><button class="btn q">Force open for everyone</button></div>
+  </div></div>`);
+  if (flashName) document.querySelector(`[data-row="${flashName}"]`)?.classList.add('flash');
+}
+setInterval(() => { if (acc.Rache.st === 'locked' && acc.Rache.left > 0) { acc.Rache.left -= 1; const c = document.querySelector('[data-clock="Rache"]'); if (c) c.textContent = fmt(acc.Rache.left); } }, 1000);
+
+/* ── events ── */
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-toggle],[data-act],[data-tog],[data-skill],[data-dv],[data-logic],[data-fail],[data-acc]');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.toggle) { MSGS[d.toggle].open = !MSGS[d.toggle].open; renderDl(); }
+  else if (d.act) { const [k, a] = d.act.split(':'); const m = MSGS[k];
+    if (a === 'deliver') m.delivered = true; if (a === 'undo') m.delivered = false; if (a === 'unlock') m.unlocked = true; if (a === 'relock') m.unlocked = false; if (a === 'nudge') m.nudged = true;
+    renderDl(k); }
+  else if (d.tog) { ed[d.tog] = !ed[d.tog]; renderEd(); }
+  else if (d.skill) { ed.skillName = d.skill; renderEd(); }
+  else if (d.dv) { ed.dv = Math.max(6, Math.min(30, ed.dv + +d.dv)); renderEd(); }
+  else if (d.logic) { ed.logic = d.logic; renderEd(); }
+  else if (d.fail) { ed.fail = d.fail; renderEd(); }
+  else if (d.acc) { const [n, a] = d.acc.split(':');
+    if (a === 'out') acc[n] = { st: 'fresh' }; if (a === 'clear') acc[n] = { st: 'fresh' }; if (a === 'reset') acc[n] = { st: 'fresh' };
+    renderAcc(n); }
+});
+renderDl(); renderEd(); renderAcc();
+
+/* ?only= */
+(() => { const only = (new URLSearchParams(location.search).get('only') || '').split(',').filter(Boolean); if (!only.length) return;
+  document.querySelectorAll('[data-slot]').forEach((slot) => { if (only.includes(slot.dataset.slot)) return; slot.style.display = 'none';
+    let p = slot.previousElementSibling; while (p && p.matches('p.mk-p, p.mk-h')) { p.style.display = 'none'; p = p.previousElementSibling; } });
+  document.body.style.padding = '8px 4px'; document.querySelectorAll('p.mk-h, p.mk-p').forEach((p) => { if (p.style.display !== 'none') p.style.display = 'none'; });
+})();
+</script>
+</body>
+</html>

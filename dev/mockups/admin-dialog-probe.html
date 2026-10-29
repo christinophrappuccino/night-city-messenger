@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Admin dialog probe</title>
+<!--
+  Foundry v1 Dialog frames carrying ncm-admin-dialog + data-ncm-admin-theme, against the real cascade:
+  the Post to chat dialog (REAL postDialogHtml) plus a plain prompt and a destructive confirm, which is what
+  every adminDialog / adminPrompt / adminConfirm in the module now wears.  ?t=clean-dark|clean-light|high-contrast  ?mode=custom ?who=one
+  Headless: --allow-file-access-from-files.
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 18px; background: #23232a; display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .app.window-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+</style>
+</head>
+<body>
+<script type="module">
+  const A = await import('../../scripts/utils/accessPoints.js');
+  const B = await import('../../scripts/utils/dialogBody.js');
+  const q = new URLSearchParams(location.search);
+  const T = q.get('t') || 'clean-dark';
+  const P = q.get('as') === 'player';
+  const frame = (title, cls, body, buttons, w) => `<div class="app window-app dialog ${P ? 'ncm-player-dialog' : 'ncm-admin-dialog'} ${cls}" ${P ? '' : `data-ncm-admin-theme="${T}"`} style="width:${w}px">
+    <header class="window-header flexrow draggable"><h4 class="window-title">${title}</h4><a class="header-button control close"><i class="fas fa-times"></i>Close</a></header>
+    <section class="window-content"><div class="dialog-content">${body}</div>
+    <div class="dialog-buttons">${buttons.map(([k, ic, l, def]) => `<button class="dialog-button ${k}${def ? ' default' : ''}" data-button="${k}"><i class="fas ${ic}"></i>${l}</button>`).join('')}</div></section></div>`;
+  const ref = A.accessRef('terminal', 'Item.ws');
+  const src = { primary: '#ff2a4f', accent: '#ffb000', bgDeep: '#12060a', textPrimary: '#ffe9ee', textSecondary: '#c99aa5' };
+  const style = { mode: q.get('mode') || 'match', custom: { primary: '#c084fc', accent: '#34d399', bg: '#0d0a14', text: '#efe9ff' } };
+  const info = { name: 'WS-7F-12', sub: 'Arasaka · Tower 7F', tags: ['3 accounts', 'SECRET'] };
+  const html = A.postDialogHtml({ ref, info, style, players: [{ id: 'a', name: 'Rache' }, { id: 'b', name: 'V' }], source: src });
+  document.body.insertAdjacentHTML('beforeend', frame('Post to chat', 'ncm-themed-dialog ncm-ap-dialog', html, [['cancel', 'fa-xmark', 'Cancel'], ['post', 'fa-paper-plane', 'Post to chat', true]], 460));
+  document.body.insertAdjacentHTML('beforeend', `<div style="display:flex;flex-direction:column;gap:18px">${
+    frame('Rename shard', 'ncm-themed-dialog', B.dialogBodyHtml({ icon: 'fas fa-microchip', title: "Ghost's Go-Bag", sub: 'carried by Rache', kind: 'Shard', field: { name: 'n', label: 'New name', value: "Ghost's Go-Bag" }, hint: 'It will be listed in the Items sidebar as "SHARD · …".' }), [['no', 'fa-xmark', 'Cancel'], ['yes', 'fa-i-cursor', 'Rename', true]], 420)}${
+    frame('Remove shard data', 'ncm-themed-dialog ncm-dlg-bad', B.dialogBodyHtml({ tone: 'bad', icon: 'fas fa-microchip', title: "Ghost's Go-Bag", sub: 'carried by Rache', kind: 'Shard', lead: "Strip all shard data from **Ghost's Go-Bag**? This can't be undone.", goes: ['Every file on the shard (its journal)', 'Locks, ICE and the boot screen', "Integrity and anyone's hacking progress"], stays: ['The item itself', 'The name and picture it had before it became a shard'] }), [['no', 'fa-xmark', 'Keep it'], ['yes', 'fa-rotate-left', 'Remove', true]], 440)}</div>`);
+  {
+    const how = q.get('how') || 'both';
+    const place = { how, where: 'click', range: 2, size: 2, hidden: q.get('hid') === '1' };
+    document.body.insertAdjacentHTML('beforeend', frame('Place on a scene', 'ncm-themed-dialog ncm-plc-dialog', A.placementDialogHtml({ ref, info: { name: 'WS-7F-12', sub: 'Arasaka · Tower 7F' }, place, sceneName: 'Arasaka Tower 7F' }), [['cancel', 'fa-xmark', 'Cancel'], ['place', 'fa-map-pin', 'Place', true]], 500));
+    const h = [...document.querySelectorAll('[data-plc-hint]')].pop(); if (h) h.textContent = A.placementHint(place);
+  }
+  if (q.get('pe')) {
+    const P2 = await import('../../scripts/utils/personDialogs.js');
+    document.body.insertAdjacentHTML('afterbegin', `<div style="display:flex;flex-direction:column;gap:18px">${
+      frame('Edit Rache Bartmoss', 'ncm-themed-dialog ncm-pe-dialog', P2.playerEditHtml({ name: 'Rache Bartmoss', email: 'rache@netwatch.nc', img: q.get('noimg') ? '' : 'icons/svg/mystery-man-black.svg', playedBy: ['Sam'], aliases: [{ name: 'Rache', email: 'rache@netwatch.nc', main: true }, { name: 'Bartmoss', email: 'ghost99@darknet.nc', main: false }] }), [['cancel', 'fa-xmark', 'Cancel'], ['save', 'fa-floppy-disk', 'Save', true]], 500)}${
+      frame('Add an alias — Rache', 'ncm-themed-dialog ncm-pe-dialog', P2.aliasDialogHtml({ ofName: 'Rache' }), [['cancel', 'fa-xmark', 'Cancel'], ['add', 'fa-plus', 'Add alias', true]], 460)}</div>`);
+  }
+  if (q.get('nde')) {   // the network-node add / edit dialog (scripts/ui/NetworkNodes/NodeDialogs.js)
+    const ND = await import('../../scripts/ui/NetworkNodes/NodeDialogs.js');
+    document.body.insertAdjacentHTML('afterbegin', frame('Edit node', 'ncm-themed-dialog ncm-plc-dialog ncm-nde-dialog', ND.nodeEditHtml({ id: 'node_kab', networkId: 'NCPD', name: 'Kabuki relay mast', kind: 'mast', sceneId: 'S1', place: 'rooftop, 4th & Kabuki', hidden: true, showTraffic: true, flavour: ['NCPD-07 keepalive'] }, { networkName: 'NCPD Dispatch', networkColor: '#5c9bff', sceneName: 'Kabuki Market' }), [['cancel', 'fa-xmark', 'Cancel'], ['save', 'fa-check', 'Save', true]], 540));
+  }
+  const root = document.querySelector('.ncm-ap-dlg');
+  if (q.get('who') === 'one') { root.querySelectorAll('.ncm-ap-dlg__segb').forEach(b => b.classList.toggle('is-on', b.dataset.who === 'one')); root.querySelector('.ncm-ap-dlg__one').hidden = false; }
+  root.querySelector('.ncm-ap-dlg__prev').innerHTML = A.accessCardHtml(ref, info, A.handoutPalette(style, src));
+  document.title = 'OK';
+</script>
+</body>
+</html>

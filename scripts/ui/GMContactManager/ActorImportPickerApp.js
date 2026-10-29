@@ -3,9 +3,9 @@
  * @file scripts/ui/GMContactManager/ActorImportPickerApp.js
  * @module night-city-messenger
  * @description GM-only searchable list of world actors that can be imported as
- *   master contacts. Picking an actor closes this window and opens the GM
- *   Contact Manager's New-Contact form pre-filled and linked to that actor
- *   (see GMContactManagerApp.startCreateFromActor).
+ *   master contacts. Picking an actor closes this window and opens Admin →
+ *   Contacts on a new contact pre-filled and linked to that actor
+ *   (see ContactsTab.startCreateFromActor).
  *
  *   Importable = NOT player-owned AND not already linked to a master contact.
  *   Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
@@ -140,12 +140,9 @@ export class ActorImportPickerApp extends BaseApplication {
 
     await this.close();
 
-    const gmApp = await game.nightcity?.openGMContacts?.();
-    if (gmApp?.startCreateFromActor) {
-      gmApp.startCreateFromActor(actorId);
-      log.info(`Admin: Importing actor ${actorId} as new contact`);
-    } else {
-      ui.notifications.warn('NCM | Could not open the Contact Manager.');
-    }
+    // Admin → Contacts opens its edit form pre-filled from the actor (ContactsTab.startCreateFromActor).
+    const panel = await game.nightcity?.openAdminTab?.('contacts', { select: { create: 'actor', actorId } });
+    if (panel) log.info(`Admin: Importing actor ${actorId} as new contact`);
+    else ui.notifications.warn('NCM | Could not open Admin → Contacts.');
   }
 }

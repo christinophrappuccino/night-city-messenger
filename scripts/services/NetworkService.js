@@ -13,7 +13,12 @@
  */
 
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, NETWORKS, NETWORK_TYPES, SECURITY_LEVELS, NETWORK_ACCESS_MODES, CONNECTION_MODES } from '../utils/constants.js';
-import { log, isGM, generateId } from '../utils/helpers.js';
+import { log, isGM, generateId, whisperCardHtml } from '../utils/helpers.js';
+import { bypassDCFor } from '../utils/bypassSkills.js';
+import { sourceUuidOf, prewireFlags } from '../utils/scenesAtlas.js';
+import { liveRun, withRun, expiredRuns } from '../utils/networkNodes.js';
+import { sanitizeNode, listNodes, cutNetworks, carriedNetworks, sceneBlocks, expiredJams, statePatch, appendLog, NODE_STATES, NODE_EFFECTS, activeEffects, withEffect, expiredEffects, nodeIsUp,
+  NODE_PROGRAMS, makeInfection, familyNodes, wormTarget } from '../utils/networkNodes.js';
 
 export class NetworkService {
 
@@ -42,9 +47,14 @@ export class NetworkService {
     this._networkCache = new Map();
     /** @type {boolean} */
     this._initialized = false;
+    /** @type {boolean} true while the dead zone was entered because the scene's nodes cut every reachable network */
+    this._nodeDead = false;
+    /** @type {string|null} the network a node cut moved us off (restored when it comes back) */
+    this._preNodeCutNetworkId = null;
 
     this._buildNetworkCache();
     this._registerSceneHook();
+    this._registerNodeHooks();
 
     this._initialized = true;
     log.info('NetworkService initialized');
@@ -93,8 +103,13 @@ export class NetworkService {
 
     const sceneId = game.scenes?.viewed?.id;
     const sceneFlags = this._getSceneNetworkFlags(sceneId);
+    // A network whose every node on this scene is down does not reach it (utils/networkNodes.js, the scene rule).
+    const cut = sceneId ? cutNetworks(this._nodeMap(), sceneId, this._nowMs()) : new Set();
+    const carried = sceneId ? carriedNetworks(this._nodeMap(), sceneId, this._nowMs()) : new Set();
 
     return this.getAllNetworks().filter(net => {
+      if (cut.has(net.id)) return false;
+      if (carried.has(net.id)) return true;
       // Globally available
       if (net.availability.global) return true;
       // Available in current scene
@@ -121,7 +136,7 @@ export class NetworkService {
     if (!available.find(n => n.id === networkId)) return false;
 
     // Check auth requirement
-    if (network.security.requiresAuth && !this._authenticatedNetworks.has(networkId)) {
+    if (network.security.requiresAuth && !this._authOk(networkId)) {
       // GM always has access
       if (isGM()) return true;
       return false;
@@ -155,6 +170,7 @@ export class NetworkService {
         authLogic: network.security?.authLogic ?? 'any',
         bypassSkills: network.security?.bypassSkills ?? [],
         bypassDC: network.security?.bypassDC ?? 15,
+        bypassSkillDCs: network.security?.bypassSkillDCs ?? {},
         allowKeyItem: network.security?.allowKeyItem ?? false,
         keyItemName: network.security?.keyItemName ?? null,
         keyItemId: null,
@@ -239,7 +255,23 @@ export class NetworkService {
    */
   isAuthenticated(networkId) {
     if (isGM()) return true;
-    return this._authenticatedNetworks.has(networkId);
+    return this._authOk(networkId);
+  }
+
+  /** Logged in to a network on this client — by its login, or through a BACKDOOR one of this user's characters left on any of its nodes. @private */
+  _authOk(networkId) {
+    if (this._authenticatedNetworks.has(networkId)) return true;
+    return this.hasBackdoor(networkId);
+  }
+
+  /** A live backdoor on any node of this network for a character this user owns (network nodes, step 4). */
+  hasBackdoor(networkId) {
+    try {
+      const now = this._nowMs();
+      const mine = new Set((game.actors?.filter?.((a) => a.isOwner) ?? []).map((a) => a.id));
+      if (!mine.size) return false;
+      return this.getNodes({ networkId }).some((n) => activeEffects(n, 'backdoors', now).some((e) => mine.has(e.actorId)));
+    } catch { return false; }
   }
 
   /**
@@ -337,7 +369,7 @@ export class NetworkService {
     }
 
     // Check authentication
-    if (network.security.requiresAuth && !this._authenticatedNetworks.has(networkId) && !force) {
+    if (network.security.requiresAuth && !this._authOk(networkId) && !force) {
       if (!isGM()) {
         return { success: false, reason: 'auth_required', network };
       }
@@ -410,22 +442,22 @@ export class NetworkService {
    * @param {string} [skillName] - Which skill was used (for logging)
    * @returns {{ success: boolean, reason?: string }}
    */
-  authenticateSkillCheck(networkId, rollTotal, skillName = 'unknown') {
+  authenticateSkillCheck(networkId, rollTotal, skillName = 'unknown', { silent = false } = {}) {
     const network = this.getNetwork(networkId);
     if (!network) return { success: false, reason: 'unknown_network' };
     if (!network.security.requiresAuth) return { success: true };
 
-    const dc = network.security.bypassDC ?? 15;
+    const dc = bypassDCFor(network.security, skillName);
 
     if (rollTotal >= dc) {
       this._authenticatedNetworks.add(networkId);
-      this.soundService?.play('hack-success');
+      if (!silent) this.soundService?.play('hack-success');
       this.eventBus.emit(EVENTS.NETWORK_AUTH_SUCCESS, { networkId, method: 'skill', skillName, rollTotal, dc });
       log.info(`Authenticated to ${network.name} via ${skillName} (${rollTotal} >= ${dc})`);
       return { success: true };
     }
 
-    this.soundService?.play('hack-fail');
+    if (!silent) this.soundService?.play('hack-fail');
     this.eventBus.emit(EVENTS.NETWORK_AUTH_FAILURE, { networkId, method: 'skill', skillName, rollTotal, dc });
     return { success: false, reason: 'skill_check_failed' };
   }
@@ -573,6 +605,532 @@ export class NetworkService {
   }
 
   // ═══════════════════════════════════════════════════════════
+  //  PUBLIC API — Network nodes (dev/design/NETWORK-NODES.md)
+  // ═══════════════════════════════════════════════════════════
+
+  /** @private the raw { id: node } map */
+  _nodeMap() { try { return this.settingsManager.get('networkNodes') || {}; } catch { return {}; } }
+
+  /** @private game-clock now (nodes keep game time, like every other timer) */
+  _nowMs() { return game.nightcity?.timeService?.getCurrentTimeMs?.() ?? Date.now(); }
+
+  /**
+   * Every node, sanitized, optionally narrowed to a network and/or a scene.
+   * @param {{networkId?: string, sceneId?: string}} [filter]
+   * @returns {object[]}
+   */
+  getNodes(filter = {}) {
+    return listNodes(Object.values(this._nodeMap()).map(sanitizeNode), filter);
+  }
+
+  /**
+   * Networks cut on the viewed scene by their nodes, and why: { [networkId]: { state: 'jammed'|'damaged'|'off', until } }.
+   * The network selector shows these as their own rows.
+   */
+  getSceneBlocks(sceneId = game.scenes?.viewed?.id) {
+    return sceneId ? sceneBlocks(this._nodeMap(), sceneId, this._nowMs()) : {};
+  }
+
+  /** true while this client has no signal because the scene's nodes cut everything (not a dead-zone scene). */
+  get isNodeDead() { return !!this._nodeDead; }
+
+  /** @param {string} nodeId @returns {object|null} */
+  getNode(nodeId) {
+    const raw = this._nodeMap()[nodeId];
+    return raw ? sanitizeNode(raw) : null;
+  }
+
+  /** @private write one node (or delete it with null). GM only. */
+  async _writeNode(nodeId, node) {
+    const map = foundry.utils.deepClone(this._nodeMap());
+    const before = map[nodeId];
+    if (node) map[nodeId] = node; else delete map[nodeId];
+    await this.settingsManager.set('networkNodes', map);
+    if (node) this._logNodeActivity(node, before);
+  }
+
+  /**
+   * @private Every line a write adds to a node's own log also goes to Admin → Networks → Activity log (type 'node'),
+   * stamped with the node's network and scene, so the GM sees who used which node where.
+   */
+  _logNodeActivity(node, before) {
+    const svc = game.nightcity?.accessLogService;
+    if (!svc?._push || !isGM()) return;
+    const seen = new Set((before?.log || []).map((e) => `${e.ts}|${e.who}|${e.what}`));
+    const fresh = (node.log || []).filter((e) => !seen.has(`${e.ts}|${e.who}|${e.what}`));
+    if (!fresh.length || fresh.length > 5) return;
+    const net = this.getNetwork?.(node.networkId);
+    for (const e of fresh) {
+      svc._push({ type: 'node', networkId: node.networkId, networkName: net?.name, actorName: e.who || 'Someone', sceneId: node.sceneId || '',
+        message: `${node.name}: ${e.what}`, extra: { nodeId: node.id } });
+    }
+  }
+
+  /**
+   * Create or update a node. GM only. Unknown fields are dropped by sanitizeNode.
+   * @param {object} data
+   * @returns {Promise<{success: boolean, node?: object, error?: string}>}
+   */
+  async saveNode(data = {}) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const prev = data.id ? this.getNode(data.id) : null;
+    const node = sanitizeNode({ ...(prev || {}), ...data, id: data.id || `node_${generateId()}`, createdAt: prev?.createdAt || this._nowMs() });
+    if (!node.networkId || !this.getNetwork(node.networkId)) return { success: false, error: 'Network not found' };
+    await this._writeNode(node.id, node);
+    log.info(`Network node ${prev ? 'updated' : 'created'}: ${node.name} (${node.id})`);
+    return { success: true, node };
+  }
+
+  /** Delete a node. GM only. */
+  async deleteNode(nodeId) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    if (!this._nodeMap()[nodeId]) return { success: false, error: 'Node not found' };
+    await this._writeNode(nodeId, null);
+    return { success: true };
+  }
+
+  /**
+   * Switch a node on / off, jam it for a while, or mark it damaged. GM writes; a player relays.
+   * @param {string} nodeId
+   * @param {'on'|'off'|'jammed'|'damaged'} state
+   * @param {{minutes?: number, who?: string}} [opts]
+   */
+  async setNodeState(nodeId, state, { minutes = 0, who = '' } = {}) {
+    if (!NODE_STATES[state]) return { success: false, error: 'Unknown state' };
+    if (!isGM()) {
+      if (!game.users?.activeGM) return { success: false, error: 'No GM is connected to make the change.' };
+      this.socketManager.emit(SOCKET_OPS.NETWORK_NODE_REQUEST, { op: 'state', nodeId, state, minutes, who: who || game.user.character?.name || game.user.name, userId: game.user.id });
+      return { success: true, relayed: true };
+    }
+    const node = this.getNode(nodeId);
+    if (!node) return { success: false, error: 'Node not found' };
+    const now = this._nowMs();
+    const patch = statePatch(state, { now, minutes });
+    const what = state === 'jammed' ? 'jammed for ' + Math.round((patch.jammedUntil - now) / 60000) + ' min'
+      : state === 'damaged' ? 'damaged' : 'switched ' + state;
+    await this._writeNode(nodeId, { ...node, ...patch, log: appendLog(node.log, { ts: now, who: who || 'GM', what }) });
+    return { success: true };
+  }
+
+  /** GM side of the player relay. @param {object} data */
+  async handleNodeRequest(data = {}) {
+    if (!isGM()) return;
+    if (data.op === 'state') return this.setNodeState(data.nodeId, data.state, { minutes: data.minutes, who: data.who });
+    if (data.op === 'log') return this.nodeLog(data.nodeId, data.who, data.what);
+    if (data.op === 'alert') return this.bumpNodeAlert(data.nodeId, data.delta);
+    if (data.op === 'wipe') return this.wipeNodeLog(data.nodeId, data.who);
+    if (data.op === 'effect') return this.addNodeEffect(data.nodeId, data.kind, data.effect);
+    if (data.op === 'unEffect') return this.removeNodeEffect(data.nodeId, data.kind, data.effectId, data.who);
+    if (data.op === 'run') return this.saveRun(data.nodeId, data.run);
+    if (data.op === 'unRun') return this.clearRun(data.nodeId, data.actorId);
+    if (data.op === 'infect') return this.insertProgram(data.nodeId, data.kind, data.program);
+    if (data.op === 'clean') return this.cleanInfection(data.nodeId, data.infectionId, data.who);
+    if (data.op === 'recall') return this.recallFamily(data.family, data.actorId);
+    if (data.op === 'collect') return this.collectSniffer(data.nodeId, data.infectionId, data.actorId);
+  }
+
+  // ─── Infections (step 5): a program inserted from a shard lives on the node ───
+
+  /**
+   * Install a network program on a node. Patch cleans the node instead of installing.
+   * @param {string} nodeId @param {'worm'|'tap'|'bomb'|'sniffer'|'patch'} kind
+   * @param {{name, actorId, actorName, quality, stealthDV, params}} program
+   */
+  async insertProgram(nodeId, kind, program = {}) {
+    if (!NODE_PROGRAMS[kind]) return { success: false, error: 'Unknown program' };
+    const relayed = this._nodeRelay('infect', { nodeId, kind, program }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const now = this._nowMs();
+    if (kind === 'patch') {
+      const n = node.infections.length;
+      this._questCleaned(node, node.infections, program.actorName || '');
+      await this._writeNode(nodeId, { ...node, infections: [], log: appendLog(node.log, { ts: now, who: program.actorName || '', what: n ? `patched — ${n} infection${n === 1 ? '' : 's'} cleaned` : 'patched' }) });
+      return { success: true, cleaned: n };
+    }
+    const id = `inf_${generateId()}`;
+    const add = [makeInfection(kind, { ...program, id, now })];
+    const carry = kind === 'worm' ? add[0].carry : '';
+    if (carry) add.push(makeInfection(carry, { ...program, id: `inf_${generateId()}`, family: id, now, name: `${program.name || 'Worm'} → ${NODE_PROGRAMS[carry].label}` }));
+    await this._writeNode(nodeId, { ...node, infections: [...node.infections, ...add].slice(-30) });
+    return { success: true, infection: add[0] };
+  }
+
+  /** Clean one infection off ONE node (a sweep that found it, the GM). Its family elsewhere is untouched. */
+  async cleanInfection(nodeId, infectionId, who = '') {
+    const relayed = this._nodeRelay('clean', { nodeId, infectionId, who }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const gone = node.infections.find((x) => x.id === infectionId);
+    if (!gone) return { success: false, error: 'Already gone' };
+    // cleaning a worm takes what it carried on this node with it
+    const keep = node.infections.filter((x) => x.id !== infectionId && !(gone.kind === 'worm' && x.family === gone.family));
+    this._questCleaned(node, node.infections.filter((x) => !keep.includes(x)), who);
+    await this._writeNode(nodeId, { ...node, infections: keep, log: appendLog(node.log, { ts: this._nowMs(), who, what: `cleaned a ${NODE_PROGRAMS[gone.kind].label.toLowerCase()}` }) });
+    return { success: true };
+  }
+
+  /** The planter pulls their program back — every node of the family. */
+  async recallFamily(family, actorId) {
+    const relayed = this._nodeRelay('recall', { family, actorId }); if (relayed) return relayed;
+    const map = foundry.utils.deepClone(this._nodeMap());
+    let n = 0;
+    for (const [id, raw] of Object.entries(map)) {
+      const node = sanitizeNode(raw);
+      const keep = node.infections.filter((x) => !(x.family === family && (!actorId || x.actorId === actorId)));
+      if (keep.length !== node.infections.length) { n++; map[id] = { ...node, infections: keep }; }
+    }
+    if (n) await this.settingsManager.set('networkNodes', map);
+    return { success: true, nodes: n };
+  }
+
+  /** A sniffer's catch goes to the planter's EXFIL folder and the sniffer starts over. */
+  async collectSniffer(nodeId, infectionId, actorId) {
+    const relayed = this._nodeRelay('collect', { nodeId, infectionId, actorId }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const inf = node.infections.find((x) => x.id === infectionId && x.kind === 'sniffer');
+    if (!inf || (actorId && inf.actorId !== actorId)) return { success: false, error: 'Not yours to collect' };
+    const repo = game.nightcity?.messageRepository;
+    let made = 0;
+    for (const m of inf.loot) {
+      const res = await repo?.createMessage?.(inf.actorId, { ...m, messageId: generateId(), threadId: undefined, eddies: 0, status: { read: false },
+        metadata: { ...(m.metadata || {}), recovered: true, recoveredFrom: `SNIFFER · ${node.name}`, recoveredTo: m.to || '', recoveredAt: new Date(this._nowMs()).toISOString(), recoveredOrigTs: m.timestamp } });
+      if (res?.success) made++;
+    }
+    await this._writeNode(nodeId, { ...node, infections: node.infections.map((x) => (x.id === infectionId ? { ...x, loot: [] } : x)) });
+    return { success: true, collected: made };
+  }
+
+  /**
+   * GM tick (rides the 30 s jam reaper): worms whose time came spread to another node of the network (its carried
+   * program with it), up to their limit; blackout bombs whose time came switch off every node their family reached.
+   * @returns {Promise<{spread:number, fired:number}>}
+   */
+  async tickInfections() {
+    if (!isGM() || (game.users?.activeGM && game.users.activeGM.id !== game.user.id)) return { spread: 0, fired: 0 };
+    const now = this._nowMs();
+    let map = foundry.utils.deepClone(this._nodeMap());
+    const all = () => Object.values(map).map(sanitizeNode);
+    let spread = 0, fired = 0, dirty = false;
+    // worms
+    for (const node of all()) {
+      for (const inf of node.infections.filter((x) => x.kind === 'worm' && x.nextAt && now >= x.nextAt)) {
+        const cur = sanitizeNode(map[node.id]);
+        const target = wormTarget(all(), cur, inf);
+        cur.infections = cur.infections.map((x) => (x.id === inf.id ? { ...x, nextAt: target ? x.nextAt + x.every * 3600000 : 0 } : x));
+        map[node.id] = cur;
+        dirty = true;
+        if (!target) continue;
+        const t = sanitizeNode(map[target.id]);
+        const copies = cur.infections.filter((x) => x.family === inf.family && (x.id === inf.id || x.kind !== 'worm'))
+          .map((x) => ({ ...x, id: `inf_${generateId()}`, at: now, nextAt: x.kind === 'worm' ? now + x.every * 3600000 : 0, loot: [] }));
+        t.infections = [...t.infections, ...copies].slice(-30);
+        map[target.id] = t;
+        spread++;
+      }
+    }
+    // bombs
+    const due = all().flatMap((n) => n.infections.filter((x) => x.kind === 'bomb' && x.fireAt && now >= x.fireAt));
+    for (const fam of new Set(due.map((x) => x.family))) {
+      for (const n of familyNodes(all(), fam)) {
+        const cur = sanitizeNode(map[n.id]);
+        map[n.id] = { ...cur, state: 'off', jammedUntil: 0, infections: cur.infections.filter((x) => !(x.family === fam && x.kind === 'bomb')),
+          log: appendLog(cur.log, { ts: now, who: '', what: 'BLACKOUT — switched off' }) };
+        fired++;
+      }
+      dirty = true;
+    }
+    if (dirty) await this.settingsManager.set('networkNodes', map);
+    return { spread, fired };
+  }
+
+  /**
+   * Leave a tap or a backdoor on a node (a session action). One per runner per node — a second replaces the first.
+   * @param {string} nodeId @param {'taps'|'backdoors'} kind
+   * @param {{actorId:string, actorName:string, minutes?:number}} effect
+   */
+  async addNodeEffect(nodeId, kind, effect = {}) {
+    if (!NODE_EFFECTS[kind] || !effect.actorId) return { success: false, error: 'Bad effect' };
+    const relayed = this._nodeRelay('effect', { nodeId, kind, effect }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const now = this._nowMs();
+    const e = { id: `fx_${generateId()}`, actorId: effect.actorId, actorName: effect.actorName || '', at: now, until: Number(effect.minutes) > 0 ? now + Number(effect.minutes) * 60000 : 0 };
+    await this._writeNode(nodeId, { ...node, [kind]: withEffect(node[kind], e) });
+    return { success: true, effect: e };
+  }
+
+  /**
+   * Save a runner's session on a node (moves spent, still jacked in). A record keeps its `since` / `until`; a new one
+   * starts the window now. `minutes` 0 = sessions are not saved (every jack-in starts fresh).
+   * @param {string} nodeId @param {{actorId, actorName, rank, moves, used, open, minutes?}} run
+   */
+  async saveRun(nodeId, run = {}) {
+    if (!run.actorId) return { success: false, error: 'No runner' };
+    const relayed = this._nodeRelay('run', { nodeId, run }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const now = this._nowMs();
+    const was = liveRun(node, run.actorId, now);
+    const minutes = Number(run.minutes) || 0;
+    if (!was && minutes <= 0) return { success: true, skipped: true };
+    const rec = { actorId: run.actorId, actorName: run.actorName || was?.actorName || '', rank: run.rank ?? was?.rank ?? 0,
+      moves: run.moves ?? was?.moves ?? 0, used: run.used ?? was?.used ?? 0, open: !!run.open, kicks: was?.kicks || 0,
+      since: was?.since || now, until: was?.until || now + minutes * 60000 };
+    await this._writeNode(nodeId, { ...node, runs: withRun(node.runs, rec) });
+    return { success: true, run: rec };
+  }
+
+  /**
+   * GM: throw a runner out of a node. Their console drops the session on its next look (`kicks` goes up); the moves
+   * they spent stay spent. Damage and a lockout are the caller's (the inspector's kick dialog).
+   */
+  async kickRun(nodeId, actorId, who = 'GM') {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const run = (node.runs || []).find((r) => r.actorId === actorId);
+    if (!run) return { success: false, error: 'They are not in this node' };
+    await this._writeNode(nodeId, { ...node, runs: withRun(node.runs, { ...run, open: false, kicks: (run.kicks || 0) + 1 }),
+      log: appendLog(node.log, { ts: this._nowMs(), who: who || 'GM', what: `kicked ${run.actorName || 'a runner'} out` }) });
+    return { success: true };
+  }
+
+  /** GM: change how many moves a runner has spent (give one back, take one). */
+  async setRunUsed(nodeId, actorId, used) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const run = (node.runs || []).find((r) => r.actorId === actorId);
+    if (!run) return { success: false, error: 'No session' };
+    await this._writeNode(nodeId, { ...node, runs: withRun(node.runs, { ...run, used: Math.max(0, Math.min(run.moves, Math.round(Number(used) || 0))) }) });
+    return { success: true };
+  }
+
+  /** GM: edit an infection in place (name, who planted it, the DV a sweep needs, quest, note). */
+  async updateInfection(nodeId, infectionId, patch = {}) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    if (!node.infections.some((x) => x.id === infectionId)) return { success: false, error: 'Already gone' };
+    const ok = ['name', 'actorName', 'stealthDV', 'quest', 'note'];
+    const p = Object.fromEntries(Object.entries(patch).filter(([k]) => ok.includes(k)));
+    await this._writeNode(nodeId, { ...node, infections: node.infections.map((x) => (x.id === infectionId ? { ...x, ...p } : x)) });
+    return { success: true };
+  }
+
+  /** @private A quest infection came off a node — whisper every GM. */
+  _questCleaned(node, infs, who) {
+    const quests = infs.filter((x) => x.quest);
+    if (!quests.length || typeof ChatMessage === 'undefined') return;
+    const gms = (game.users?.filter?.((u) => u.isGM) || []).map((u) => u.id);
+    const html = whisperCardHtml({ tone: 'ok', icon: 'fa-flag-checkered', title: 'Quest — infection cleaned',
+      lines: quests.map((q) => `<b>${q.name}</b> is off <b>${node.name}</b>${who ? ` — cleaned by ${who}` : ''}.${q.note ? ` <i>${q.note}</i>` : ''}`) });
+    ChatMessage.create({ content: html, whisper: gms, speaker: { alias: 'Night City Messenger' } }).catch(() => {});
+  }
+
+  /** End a runner's saved session (the GM's reset) — their next jack-in starts fresh. */
+  async clearRun(nodeId, actorId) {
+    const relayed = this._nodeRelay('unRun', { nodeId, actorId }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    if (!(node.runs || []).some((r) => r.actorId === actorId)) return { success: false, error: 'No session' };
+    await this._writeNode(nodeId, { ...node, runs: node.runs.filter((r) => r.actorId !== actorId) });
+    return { success: true };
+  }
+
+  /** Remove a tap / backdoor (a System sweep that found it, or the GM). */
+  async removeNodeEffect(nodeId, kind, effectId, who = '') {
+    if (!NODE_EFFECTS[kind]) return { success: false, error: 'Bad effect' };
+    const relayed = this._nodeRelay('unEffect', { nodeId, kind, effectId, who }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const gone = (node[kind] || []).find((e) => e.id === effectId);
+    if (!gone) return { success: false, error: 'Already gone' };
+    await this._writeNode(nodeId, { ...node, [kind]: node[kind].filter((e) => e.id !== effectId),
+      log: appendLog(node.log, { ts: this._nowMs(), who, what: `removed a ${NODE_EFFECTS[kind].label.toLowerCase()}` }) });
+    return { success: true };
+  }
+
+  /**
+   * A TAP: after a delivery (GM client — MessageService._deliverMessage), every runner with a live tap on an UP node of
+   * the network the mail went over, standing on the scene the SENDER was on (`sentFromScene`), gets a copy in their
+   * inbox's EXFIL folder — a node hears what passes through it, not the whole city. Mail with no scene is never heard. Never the sender or the recipient
+   * themselves; a fan-out is copied once; money never travels on a copy.
+   * @param {object} data — the recipient-facing message (anonymous mail is already masked)
+   */
+  async tapDelivery(data) {
+    if (!isGM() || !data?.network || !data.sentFromScene) return 0;
+    const now = this._nowMs();
+    const nodes = this.getNodes({ networkId: data.network }).filter((n) => nodeIsUp(n, now) && n.sceneId === data.sentFromScene);
+    const tappers = new Map();
+    for (const n of nodes) for (const e of activeEffects(n, 'taps', now)) if (!tappers.has(e.actorId)) tappers.set(e.actorId, { node: n, sloppy: false });
+    for (const n of nodes) for (const x of n.infections.filter((i) => i.kind === 'tap')) {
+      const was = tappers.get(x.actorId);
+      if (!was || (was.sloppy && !x.sloppy)) tappers.set(x.actorId, { node: n, sloppy: x.sloppy });
+    }
+    // sniffers record (cap) — collected later from a session
+    const sniffers = nodes.flatMap((n) => n.infections.filter((i) => i.kind === 'sniffer').map((i) => ({ n, i })));
+    if (sniffers.length) {
+      const k0 = [data.subject, data.from, data.timestamp].join('|');
+      this._sniffSeen ??= new Set();
+      const fresh = sniffers.filter(({ i }) => !this._sniffSeen.has(`${i.id}|${k0}`) && i.actorId !== data.fromActorId && i.actorId !== data.toActorId);
+      if (fresh.length) {
+        const map = foundry.utils.deepClone(this._nodeMap());
+        for (const { n, i } of fresh) {
+          this._sniffSeen.add(`${i.id}|${k0}`);
+          const cur = sanitizeNode(map[n.id]);
+          const m = { subject: data.subject, from: data.from, to: data.to, body: data.body, timestamp: data.timestamp, network: data.network, fromActorId: data.fromActorId, fromContactId: data.fromContactId };
+          cur.infections = cur.infections.map((x) => (x.id === i.id ? { ...x, loot: [...x.loot, m].slice(-x.cap) } : x));
+          map[n.id] = cur;
+        }
+        if (this._sniffSeen.size > 600) this._sniffSeen = new Set([...this._sniffSeen].slice(-300));
+        await this.settingsManager.set('networkNodes', map);
+      }
+    }
+    if (!tappers.size) return 0;
+    const key = [data.subject, data.from, data.timestamp].join('|');
+    this._tapSeen ??= new Map();
+    let made = 0;
+    for (const [actorId, { node, sloppy }] of tappers) {
+      if (actorId === data.fromActorId || actorId === data.toActorId) continue;
+      const k = `${actorId}|${key}`;
+      if (this._tapSeen.has(k)) continue;
+      this._tapSeen.set(k, now);
+      if (this._tapSeen.size > 300) this._tapSeen.delete(this._tapSeen.keys().next().value);
+      const repo = game.nightcity?.messageRepository;
+      if (!repo || !game.actors?.get(actorId)) continue;
+      const cd = data.contentType === 'eddies' ? { ...(data.contentData || {}), claimed: true } : data.contentData;
+      const res = await repo.createMessage(actorId, {
+        ...data, messageId: generateId(), threadId: undefined, eddies: 0, contentData: cd, status: { read: false },
+        ...(sloppy ? { body: '<p><em>[garbled — a sloppy tap caught the subject line only]</em></p>', contentType: undefined, contentData: undefined } : {}),
+        metadata: { ...(data.metadata || {}), recovered: true, recoveredFrom: `TAP · ${node.name}`, recoveredTo: data.to || '', recoveredAt: new Date(now).toISOString(), recoveredOrigTs: data.timestamp },
+      });
+      if (res?.success) made++;
+    }
+    return made;
+  }
+
+  /** @private GM writes, a player relays; no GM online → false. */
+  _nodeRelay(op, payload) {
+    if (isGM()) return null;
+    if (!game.users?.activeGM) return { success: false, error: 'No GM is connected to make the change.' };
+    this.socketManager.emit(SOCKET_OPS.NETWORK_NODE_REQUEST, { op, ...payload, userId: game.user.id });
+    return { success: true, relayed: true };
+  }
+
+  /** Add a line to a node's log ("Rache jacked in"). */
+  async nodeLog(nodeId, who, what) {
+    const relayed = this._nodeRelay('log', { nodeId, who, what }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    await this._writeNode(nodeId, { ...node, log: appendLog(node.log, { ts: this._nowMs(), who, what }) });
+    return { success: true };
+  }
+
+  /** Raise (or lower) a node's alert level, clamped. */
+  async bumpNodeAlert(nodeId, delta = 1) {
+    const relayed = this._nodeRelay('alert', { nodeId, delta }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const alert = Math.max(0, Math.min(3, (node.alert || 0) + (Number(delta) || 0)));
+    await this._writeNode(nodeId, { ...node, alert, alertAt: this._nowMs() });
+    return { success: true, alert };
+  }
+
+  /** Mark every log line by `who` as wiped (a runner taking their name off the node). */
+  async wipeNodeLog(nodeId, who) {
+    const relayed = this._nodeRelay('wipe', { nodeId, who }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const key = String(who || '').toLowerCase();
+    let n = 0;
+    const log = node.log.map((e) => { if (!e.wiped && String(e.who || '').toLowerCase() === key) { n++; return { ...e, wiped: true }; } return e; });
+    await this._writeNode(nodeId, { ...node, log });
+    return { success: true, wiped: n };
+  }
+
+  /** GM: turn jams whose time has run out back on. Called on a timer. */
+  async reapNodeJams() {
+    if (!isGM() || (game.users?.activeGM && game.users.activeGM.id !== game.user.id)) return;
+    const now = this._nowMs();
+    const all = Object.values(this._nodeMap()).map(sanitizeNode);
+    const done = expiredJams(all, now);
+    const fx = all.map((n) => [n, expiredEffects(n, now)]).filter(([, e]) => Object.keys(e).length);
+    const runs = all.filter((n) => expiredRuns(n, now).length);
+    if (!done.length && !fx.length && !runs.length) return;
+    const map = foundry.utils.deepClone(this._nodeMap());
+    for (const n of done) map[n.id] = { ...sanitizeNode(map[n.id]), state: 'on', jammedUntil: 0, log: appendLog(n.log, { ts: now, who: '', what: 'jam ended — back on' }) };
+    for (const [n, e] of fx) {
+      const cur = sanitizeNode(map[n.id]);
+      for (const [k, gone] of Object.entries(e)) { const ids = new Set(gone.map((x) => x.id)); cur[k] = cur[k].filter((x) => !ids.has(x.id)); }
+      map[n.id] = cur;
+    }
+    for (const n of runs) { const cur = sanitizeNode(map[n.id]); cur.runs = cur.runs.filter((r) => now < r.until); map[n.id] = cur; }
+    await this.settingsManager.set('networkNodes', map);
+  }
+
+  /**
+   * Re-apply the scene rule to THIS client's connection: when the scene's nodes cut the network we are on, move to
+   * another network that still reaches (or to no signal at all, through the dead-zone path so queued mail waits);
+   * when it comes back, return to it.
+   * @private
+   */
+  _reevaluateNodes() {
+    // The GM's connection follows the scene too (dev, 2026-10-29: "I jammed it and I'm still on it"); the GM still
+    // sends from anywhere through the composer's VIA override, and the signature below keeps this from repeating.
+    const scene = game.scenes?.viewed;
+    if (!scene) return;
+    const sceneDead = scene.getFlag(MODULE_ID, 'deadZone') ?? false;
+    const cut = cutNetworks(this._nodeMap(), scene.id, this._nowMs());
+    // Act only when something that matters changed — the world-time hook fires every second on a ticking clock.
+    const carried = carriedNetworks(this._nodeMap(), scene.id, this._nowMs());
+    const sig = [scene.id, [...cut].sort().join(','), [...carried].sort().join(','), this._currentNetworkId, this._nodeDead, this._isDeadZone].join('|');
+    if (sig === this._nodeSig) return;
+    this._nodeSig = sig;
+
+    if (this._nodeDead) {
+      if (sceneDead) { this._nodeDead = false; return; }               // the scene's own dead zone owns it now
+      this._isDeadZone = false;                                        // ask what reaches with the node block lifted
+      const reach = this.getAvailableNetworks();
+      this._isDeadZone = true;
+      if (reach.length) {
+        this._nodeDead = false;
+        this._preDeadZoneNetworkId = this._preNodeCutNetworkId || this._preDeadZoneNetworkId;
+        this._setDeadZone(false);
+        this._preNodeCutNetworkId = null;
+      }
+      return;
+    }
+    if (this._isDeadZone) return;
+
+    const available = this.getAvailableNetworks();
+    const cur = this._currentNetworkId;
+    if (cur && cut.has(cur)) {
+      const net = this.getNetwork(cur);
+      ui.notifications?.warn((net?.name || 'Network') + ' signal lost — its node here is down.');
+      this._preNodeCutNetworkId = cur;
+      if (available.length) {
+        this.soundService?.play('dead-zone');
+        this.switchNetwork(available[0].id, { force: true, silent: true });
+      } else {
+        this._nodeDead = true;
+        this._setDeadZone(true);
+      }
+      return;
+    }
+    // back: the network a node cut moved us off reaches again
+    const back = this._preNodeCutNetworkId;
+    if (back && back !== cur && available.some((n) => n.id === back)) {
+      this._preNodeCutNetworkId = null;
+      ui.notifications?.info((this.getNetwork(back)?.name || 'Network') + ' is back.');
+      this.switchNetwork(back, { force: true, silent: true });
+    }
+  }
+
+  /** @private node-driven updates on every client + the GM's jam reaper */
+  _registerNodeHooks() {
+    Hooks.on('updateSetting', (setting) => {
+      if (setting?.key !== MODULE_ID + '.networkNodes') return;
+      this._reevaluateNodes();
+      this.eventBus.emit(EVENTS.NETWORK_CHANGED, { type: 'nodes', source: 'nodes' });
+    });
+    // a jam runs out on the game clock — readers see it at once, the reaper tidies the record
+    Hooks.on('updateWorldTime', () => { if (Object.values(this._nodeMap()).some((n) => n?.state === 'jammed')) this._reevaluateNodes(); });
+    if (isGM()) this._nodeReaper = setInterval(() => {
+      this.reapNodeJams().then(() => this.tickInfections()).catch((e) => log.warn('Node reaper failed', e));
+    }, 30000);
+  }
+
+  // ═══════════════════════════════════════════════════════════
   //  PUBLIC API — Scene Flag Management
   // ═══════════════════════════════════════════════════════════
 
@@ -588,6 +1146,26 @@ export class NetworkService {
 
     await scene.setFlag(MODULE_ID, 'networkAvailability', availability);
     log.info(`Scene network availability updated for: ${scene.name}`);
+  }
+
+  /**
+   * Apply a compendium scene's pre-wiring (Admin → Networks → Scenes → In compendiums) to the world copy that was just
+   * imported from it. The record is keyed by the pack uuid Foundry stamps on the copy. GM only; never throws.
+   * @param {Scene} scene
+   * @returns {Promise<boolean>} true when something was applied
+   */
+  async applyScenePrewire(scene) {
+    if (!isGM() || !scene) return false;
+    try {
+      const src = sourceUuidOf(scene);
+      if (!src) return false;
+      const map = game.settings.get(MODULE_ID, 'scenePrewire') || {};
+      const flags = prewireFlags(map[src]);
+      if (!flags) return false;
+      await scene.update({ [`flags.${MODULE_ID}`]: flags });
+      log.info(`Scene pre-wiring applied to ${scene.name} (from ${src})`);
+      return true;
+    } catch (e) { log.warn('NetworkService.applyScenePrewire failed', e); return false; }
   }
 
   /**
@@ -718,6 +1296,7 @@ export class NetworkService {
         authLogic: data.security?.authLogic ?? 'any',  // 'any' = OR, 'all' = AND (key item always bypasses)
         bypassSkills: data.security?.bypassSkills ?? [],
         bypassDC: data.security?.bypassDC ?? 15,
+        bypassSkillDCs: data.security?.bypassSkillDCs ?? {},
         allowKeyItem: data.security?.allowKeyItem ?? false,
         keyItemName: data.security?.keyItemName ?? '',
         keyItemTag: data.security?.keyItemTag ?? '',
@@ -725,6 +1304,8 @@ export class NetworkService {
         keyItemConsume: data.security?.keyItemConsume ?? false,
         maxAttempts: data.security?.maxAttempts ?? 3,
         lockoutDuration: data.security?.lockoutDuration ?? 3600000,
+        // Countermeasure visibility override (utils/countermeasures.js) — absent = inherit.
+        ...(data.security?.countermeasures ? { countermeasures: data.security.countermeasures } : {}),
         // ICE configuration (mirrors shard config pattern)
         encryptionType: data.security?.encryptionType ?? 'ICE',
         failureMode: data.security?.failureMode ?? 'lockout',
@@ -793,7 +1374,7 @@ export class NetworkService {
       const net = this.getNetwork(defaultNet);
       if (net) {
         // Only auto-switch if the network doesn't require auth, or we're already authed
-        if (!net.security.requiresAuth || this._authenticatedNetworks.has(defaultNet) || isGM()) {
+        if (!net.security.requiresAuth || this._authOk(defaultNet) || isGM()) {
           this.switchNetwork(defaultNet, { silent: false });
         } else {
           // Fall back to CitiNet
@@ -804,6 +1385,10 @@ export class NetworkService {
 
     // Rebuild available networks for this scene
     this._buildNetworkCache();
+
+    // A new scene, a new set of nodes: a node-made dead zone does not follow us here.
+    if (!isDead) this._nodeDead = false;   // the scene-flag check above already restored the signal
+    this._reevaluateNodes();
 
     log.debug(`Scene changed: ${scene.name}, dead zone: ${isDead}`);
   }
@@ -870,4 +1455,23 @@ export class NetworkService {
       deadZone: scene.getFlag(MODULE_ID, 'deadZone') ?? false,
     };
   }
+}
+
+// ─── One queue for every node write (2026-10-29, dev: "my moves got reset — 3 of 3 after jacking back in") ───
+// Every node write reads the node map, changes it and writes the whole map back. Two writes that overlap (a session
+// action saving the spent move AND writing its log line; two relayed player requests the GM handles at once) both
+// start from the same map, and the later one silently undoes the earlier. These methods now run one at a time.
+// None of them calls another (a nested call would wait on itself) — keep it that way.
+const NODE_WRITERS = ['setNodeState', 'nodeLog', 'bumpNodeAlert', 'wipeNodeLog', 'addNodeEffect', 'removeNodeEffect', 'saveRun', 'clearRun',
+  'kickRun', 'setRunUsed', 'updateInfection', 'insertProgram', 'cleanInfection', 'recallFamily', 'collectSniffer', 'saveNode', 'deleteNode',
+  'reapNodeJams', 'tickInfections', 'tapDelivery'];
+for (const name of NODE_WRITERS) {
+  const orig = NetworkService.prototype[name];
+  if (typeof orig !== 'function') continue;
+  NetworkService.prototype[name] = function nodeQueued(...args) {
+    const run = () => orig.apply(this, args);
+    const p = (this._nodeQueue || Promise.resolve()).then(run, run);
+    this._nodeQueue = p.catch(() => {});
+    return p;
+  };
 }

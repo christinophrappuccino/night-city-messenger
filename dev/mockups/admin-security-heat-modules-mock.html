@@ -1,0 +1,317 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Heat — modules</title>
+<!--
+  Admin → Security → Heat, built as an interactive MODULE (same vocabulary as admin-who-they-know-modules-mock.html).
+  Version A = thermometers (one gauge per character + trace clock rings). Version B = a heat grid (characters × objects) with burning fuses.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-security-heat-modules-mock.html  ?t=clean-light|high-contrast  ?still=1
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/fontawesome/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 0 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px/1.45 sans-serif; margin: 0 0 8px; max-width: 790px; }
+  .mk-v { color: #eee; font: 700 13px sans-serif; margin: 22px 0 4px; letter-spacing: .06em; text-transform: uppercase; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win { width: 790px; }
+
+  .hx-P { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); padding-bottom: 12px; }
+  .hx-band { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-attn);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .hx-band > i { color: var(--ncm-attn); }
+  .hx-band .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+  .hx-band .r b { font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-heading); }
+
+  .hx-mod { margin: 10px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); position: relative; }
+  .hx-mod__k { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .hx-mod__k i { color: var(--ncm-act); font-size: 9px; }
+  .hx-mod__k .hint { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+  .hx-mod::before, .hx-mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid; pointer-events: none; }
+  .hx-mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .hx-mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+  .hx-split { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 10px; margin: 10px 12px 0; }
+  .hx-split > .hx-mod { margin: 0; }
+
+  /* tier colours — one meaning each */
+  .hx-P { --hx-cold: color-mix(in srgb, var(--ncm-act) 55%, var(--ncm-text-hint)); --hx-warm: var(--ncm-attn); --hx-hot: color-mix(in oklab, var(--ncm-bad) 65%, var(--ncm-attn)); --hx-burn: var(--ncm-bad); }
+  .hx-t--cold { --tc: var(--hx-cold); } .hx-t--warm { --tc: var(--hx-warm); } .hx-t--hot { --tc: var(--hx-hot); } .hx-t--burned { --tc: var(--hx-burn); }
+
+  .hx-legend { display: flex; gap: 12px; padding: 6px 10px 8px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); flex-wrap: wrap; align-items: center; }
+  .hx-legend span { display: inline-flex; gap: 5px; align-items: center; }
+  .hx-legend i.sw { width: 10px; height: 10px; border-radius: 1px; display: inline-block; background: color-mix(in srgb, var(--tc) 45%, transparent); border: 1px solid var(--tc); }
+  .hx-legend .dec { margin-left: auto; font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+
+  /* ========== VERSION A — thermometers ========== */
+  .hx-gauges { display: flex; justify-content: space-around; gap: 6px; padding: 12px 10px 4px; }
+  .hx-g { appearance: none; background: none !important; border: 1px solid transparent !important; border-radius: 2px !important; box-shadow: none !important; margin: 0 !important; width: 74px !important; height: auto !important; min-height: 0 !important;
+    padding: 6px 2px 6px !important; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; color: inherit; line-height: 1; }
+  .hx-g:hover { background: var(--ncm-bg-hover) !important; }
+  .hx-g.sel { border-color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 9%, transparent) !important; }
+  .hx-clock { width: 40px; height: 40px; position: relative; display: grid; place-items: center; }
+  .hx-clock svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .hx-clock .trk { fill: none; stroke: color-mix(in srgb, var(--ncm-border-active) 70%, transparent); stroke-width: 3; }
+  .hx-clock .arc { fill: none; stroke: var(--ncm-bad); stroke-width: 3; transition: stroke-dashoffset 1s linear; }
+  .hx-clock .tm { font: 700 8.5px var(--ncm-font-mono); color: var(--ncm-bad); position: relative; }
+  .hx-clock--none .tm { color: var(--ncm-text-hint); font-size: 9px; }
+  .hx-tube { position: relative; width: 16px; height: 168px; }   /* the glass alone is centred under the clock; the ticks hang off its right edge */
+  .hx-tube__glass { position: relative; width: 16px; height: 100%; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); overflow: hidden; }
+  .hx-tube__bands { position: absolute; inset: 0; display: flex; flex-direction: column-reverse; }
+  .hx-tube__bands b { display: block; background: color-mix(in srgb, var(--tc) 9%, transparent); border-top: 1px dashed color-mix(in srgb, var(--tc) 40%, transparent); }
+  .hx-tube__fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, var(--hx-cold) 0, var(--hx-warm) 45%, var(--hx-hot) 70%, var(--hx-burn) 100%); background-size: 100% 168px; background-position: bottom;
+    transition: height .9s cubic-bezier(.22,1,.36,1); box-shadow: 0 0 8px color-mix(in srgb, var(--tc) 60%, transparent); }
+  .hx-tube__fill::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--ncm-text-heading); opacity: .7; }
+  .hx-tube__glass::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 13px, color-mix(in srgb, var(--ncm-bg-pane) 60%, transparent) 13px 14px); pointer-events: none; }
+  .hx-tube__marks { position: absolute; top: 0; left: calc(100% + 4px); width: 6px; height: 100%; }
+  .hx-tube__marks i { position: absolute; left: 0; width: 6px; height: 2px; background: var(--tc); transform: translateY(1px); }
+  .hx-g__n { font: 700 15px var(--ncm-font-mono); color: var(--tc); }
+  .hx-g__nm { font: 700 12px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .hx-g__tier { font: 700 9px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--tc); }
+  .hx-axis { display: flex; justify-content: space-between; padding: 0 12px 6px; }
+
+  .hx-det { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .hx-det__hd { display: flex; align-items: center; gap: 9px; }
+  .hx-av { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 11px var(--ncm-font-display);
+    color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); }
+  .hx-det__nm { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .hx-det__sub { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .hx-obj { display: grid; grid-template-columns: 16px minmax(0,1fr) 34px; gap: 4px 7px; align-items: center; padding: 5px 6px; border: 1px solid transparent; border-radius: 2px; cursor: pointer; }
+  .hx-obj:hover { background: var(--ncm-bg-hover); }
+  .hx-obj.sel { border-color: color-mix(in srgb, var(--ncm-act) 60%, transparent); background: color-mix(in srgb, var(--ncm-act) 8%, transparent); }
+  .hx-obj > i { font-size: 11px; color: var(--ncm-text-label); text-align: center; }
+  .hx-obj .nm { font: 600 12px var(--ncm-font-body); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hx-obj .v { font: 700 12px var(--ncm-font-mono); color: var(--tc); text-align: right; }
+  .hx-obj .bar { grid-column: 2 / 4; height: 4px; background: color-mix(in srgb, var(--ncm-border-active) 50%, transparent); border-radius: 1px; overflow: hidden; }
+  .hx-obj .bar b { display: block; height: 100%; background: var(--tc); transition: width .9s cubic-bezier(.22,1,.36,1); }
+  .hx-cd { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--ncm-bad) 45%, transparent); background: color-mix(in srgb, var(--ncm-bad) 8%, transparent); border-radius: 2px; }
+  .hx-cd > i { color: var(--ncm-bad); }
+  .hx-cd .t { font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); flex: 1; min-width: 0; }
+  .hx-cd .t b { font-family: var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .hx-cd .left { font: 700 13px var(--ncm-font-mono); color: var(--ncm-bad); }
+  .hx-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hx-esc { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+  .hx-esc .hx-btn { justify-content: center; flex-direction: column; gap: 3px !important; padding: 6px 4px !important; }
+  .hx-esc .hx-btn i { font-size: 13px; }
+  .hx-esc__hd { font: 700 9.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .hx-flash { font: italic 11.5px var(--ncm-font-body); color: var(--ncm-good); min-height: 15px; }
+  .hx-flash.bad { color: var(--ncm-bad); }
+
+  .hx-btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; cursor: pointer; box-shadow: none !important; margin: 0 !important; display: inline-flex; gap: 5px; align-items: center; line-height: 1.3; }
+  .hx-btn:hover { background: var(--ncm-bg-hover) !important; }
+  .hx-btn.pri { border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse, #0b0d12) !important; background: var(--ncm-act) !important; }
+  .hx-btn.bad { border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent) !important; color: var(--ncm-bad) !important; }
+  .hx-btn.attn { border-color: color-mix(in srgb, var(--ncm-attn) 60%, transparent) !important; color: var(--ncm-attn) !important; }
+  .hx-btn[disabled] { opacity: .4; cursor: default; }
+  .hx-btn.on { background: color-mix(in srgb, var(--ncm-bad) 18%, transparent) !important; }
+
+  /* ========== VERSION B — heat grid + fuses ========== */
+  .hx-grid { display: grid; gap: 3px; padding: 10px; }
+  .hx-grid__ch { font: 700 9.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); text-align: center; padding: 2px 2px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; line-height: 1.15; }
+  .hx-grid__ch i { font-size: 11px; color: var(--ncm-text-label); }
+  .hx-grid__ch.sel { color: var(--ncm-act); } .hx-grid__ch.sel i { color: var(--ncm-act); }
+  .hx-grid__rh { display: flex; align-items: center; gap: 7px; padding-right: 6px; cursor: pointer; border-radius: 2px; }
+  .hx-grid__rh .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .hx-grid__rh .pk { margin-left: auto; font: 700 11px var(--ncm-font-mono); color: var(--tc); }
+  .hx-grid__rh.sel { box-shadow: inset 3px 0 var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 8%, transparent); }
+  .hx-cell { appearance: none; height: 42px !important; min-height: 0 !important; width: auto !important; margin: 0 !important; padding: 0 !important; border-radius: 2px !important; box-shadow: none !important; cursor: pointer; position: relative;
+    border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent) !important; background: color-mix(in srgb, var(--tc) var(--a), var(--ncm-bg-pane)) !important; display: grid; place-items: center; line-height: 1; }
+  .hx-cell .v { font: 700 14px var(--ncm-font-mono); color: color-mix(in oklab, var(--tc) 60%, var(--ncm-text-heading)); }
+  .hx-cell .tier { position: absolute; left: 4px; bottom: 3px; font: 700 8px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .hx-cell .dr { position: absolute; right: 4px; top: 3px; font-size: 8px; color: var(--ncm-text-hint); }
+  .hx-cell:hover { outline: 1px solid var(--ncm-text-heading); outline-offset: 0; }
+  .hx-cell.sel { outline: 2px solid var(--ncm-act); outline-offset: 1px; }
+  .hx-cell--burned::after { content: ''; position: absolute; inset: 0; border-radius: 1px; box-shadow: inset 0 0 10px color-mix(in srgb, var(--ncm-bad) 55%, transparent); animation: hxPulse 1.8s ease-in-out infinite; pointer-events: none; }
+  .hx-cell.dim { opacity: .35; }
+  .hx-empty { height: 42px; border: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); border-radius: 2px; display: grid; place-items: center; font: 11px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .hx-fuse { position: relative; height: 42px; border: 1px solid color-mix(in srgb, var(--ncm-bad) 45%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--ncm-bad) 6%, var(--ncm-bg-pane)); overflow: hidden; display: flex; align-items: center; padding: 0 8px; gap: 6px; }
+  .hx-fuse__burn { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ncm-bad); transition: width 1s linear; }
+  .hx-fuse__burn::after { content: ''; position: absolute; right: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--ncm-attn); box-shadow: 0 0 8px var(--ncm-attn), 0 0 2px var(--ncm-bad); animation: hxPulse .9s ease-in-out infinite; }
+  .hx-fuse .left { font: 700 13px var(--ncm-font-mono); color: var(--ncm-bad); }
+  .hx-fuse .who { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+  .hx-fuse .who b { color: var(--ncm-text-heading); font-family: var(--ncm-font-display); }
+  .hx-nofuse { height: 42px; display: grid; place-items: center; font: 11px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .hx-strip { margin: 0 10px 2px; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; min-height: 46px; }
+  .hx-strip .sel { display: flex; flex-direction: column; gap: 2px; min-width: 190px; }
+  .hx-strip .sel b { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .hx-strip .sel span { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .hx-strip .sel .mono { font-family: var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .hx-strip .hx-acts { margin-left: auto; }
+  .hx-strip .hx-flash { width: 100%; min-height: 0; }
+  .hx-spark { display: inline-flex; align-items: flex-end; gap: 1px; height: 14px; }
+  .hx-spark i { width: 3px; background: color-mix(in srgb, var(--tc) 70%, transparent); }
+
+  @keyframes hxPulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) {
+    .hx-tube__fill, .hx-obj .bar b, .hx-clock .arc, .hx-fuse__burn { transition: none; }
+    .hx-cell--burned::after, .hx-fuse__burn::after { animation: none; }
+  }
+  .hx-still .hx-cell--burned::after, .hx-still .hx-fuse__burn::after { animation: none; }
+</style>
+</head>
+<body>
+<p class="mk-h">Admin → Security → Heat — two module takes</p>
+<p class="mk-p">Same data in both: heat per character × object (0–100, drains ~5/hour of game time; cold &lt;25 · warm 25–49 · hot 50–79 · burned 80+), plus two running trace countdowns. The demo drains heat a point every few seconds and ticks the clocks so you can see motion. Click things.</p>
+
+<p class="mk-v">Version A — thermometers</p>
+<p class="mk-p">One tall gauge per character showing their hottest object. The tube is banded cold → burned, the fill slowly drops as heat decays, and small ticks on the side mark each object's heat so you can see when one character is warm in several places. A red clock ring above a gauge means a trace is closing in on that character, shrinking as time runs out. Click a gauge to open that character on the right: every object with its own bar, the countdown, and Adjust / Clear / Escalate (Lock out, Black ICE, Countdown).</p>
+<div data-slot="a"></div>
+
+<p class="mk-v">Version B — heat grid</p>
+<p class="mk-p">A table you read at a glance: one row per character, one column per object, each cell shaded by tier with the number in it (a blank dashed cell = no heat there). The last column is the trace fuse — a line burning down from right to left with the time left and who is closing in. Burned cells glow. Click a cell to get one action strip underneath for exactly that character × object; click a column header to highlight one object across everyone, or a name to highlight a row. Best when several characters are hitting the same targets.</p>
+<div data-slot="b"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const still = q.has('still');
+if (still) document.documentElement.classList.add('hx-still');
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const tierOf = (v) => v >= 80 ? 'burned' : v >= 50 ? 'hot' : v >= 25 ? 'warm' : 'cold';
+const TIER_A = { cold: '14%', warm: '22%', hot: '32%', burned: '44%' };
+const OBJ = {
+  ws7: { name: 'WS-7F-12', kind: 'Terminal', icon: 'fa-desktop' },
+  corp: { name: 'CorpNet', kind: 'Network', icon: 'fa-wifi' },
+  mil: { name: 'Militech shard', kind: 'Shard', icon: 'fa-microchip' },
+  arc: { name: 'Arasaka lobby kiosk', kind: 'Terminal', icon: 'fa-desktop' },
+  city: { name: 'CitiNet', kind: 'Network', icon: 'fa-wifi' },
+};
+const CH = [
+  { id: 'v', name: 'V', heat: { ws7: 34, city: 12 } },
+  { id: 'rache', name: 'Rache', heat: { ws7: 86, corp: 61, arc: 22 } },
+  { id: 'judy', name: 'Judy', heat: { mil: 18 } },
+  { id: 'brick', name: 'Brick', heat: { corp: 57, mil: 41 } },
+  { id: 'panam', name: 'Panam', heat: { city: 9, corp: 27 } },
+];
+const CD = [
+  { id: 'cd1', target: 'rache', source: 'Arasaka', obj: 'ws7', total: 600, left: 252 },
+  { id: 'cd2', target: 'brick', source: 'Militech NetSec', obj: 'mil', total: 900, left: 731 },
+];
+const peak = (c) => { let best = null; for (const [k, v] of Object.entries(c.heat)) if (!best || v > best[1]) best = [k, v]; return best || [null, 0]; };
+const cdFor = (id) => CD.find((d) => d.target === id && d.left > 0);
+const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const objCols = Object.keys(OBJ);
+const legend = `<div class="hx-legend"><span class="hx-t--cold"><i class="sw"></i>Cold</span><span class="hx-t--warm"><i class="sw"></i>Warm 25+</span><span class="hx-t--hot"><i class="sw"></i>Hot 50+</span><span class="hx-t--burned"><i class="sw"></i>Burned 80+</span><span class="dec">drains −5 / game hr</span></div>`;
+const frame = (inner, count) => `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}"><div class="ncm-admin-panel"><div class="hx-P">
+  <div class="hx-band"><i class="fas fa-temperature-three-quarters"></i>Heat<span class="r">${count}</span></div>${inner}</div></div></div>`;
+const summary = () => { const hot = CH.filter((c) => peak(c)[1] >= 50).length; const n = CD.filter((d) => d.left > 0).length; return `<b>${hot}</b> running hot · <b>${n}</b> trace${n === 1 ? '' : 's'} running`; };
+
+// ---------- shared actions ----------
+function act(op, chId, objId, flashEl) {
+  const c = CH.find((x) => x.id === chId); let msg = '', bad = false;
+  if (op === 'clear') { if (objId) delete c.heat[objId]; else c.heat = {}; msg = objId ? `Cleared ${OBJ[objId].name} for ${c.name}.` : `Cleared all heat for ${c.name}.`; }
+  if (op === 'adjust') { const k = objId || peak(c)[0]; if (k) { c.heat[k] = Math.min(100, c.heat[k] + 10); msg = `+10 on ${OBJ[k].name} — reason posted to chat.`; } }
+  if (op === 'lock') { msg = `${c.name} locked out of ${objId ? OBJ[objId].name : 'every account'} for 30 min.`; bad = true; }
+  if (op === 'ice') { msg = `Black ICE strikes ${c.name} — 3d6 to HP.`; bad = true; }
+  if (op === 'count') { if (!cdFor(chId)) CD.push({ id: 'cd' + Date.now(), target: chId, source: 'A trace', obj: objId || peak(c)[0], total: 600, left: 600 }); msg = `Countdown started on ${c.name} — 10:00.`; bad = true; }
+  if (op === 'stop') { const d = cdFor(chId); if (d) d.left = 0; msg = `Trace on ${c.name} called off.`; }
+  return { msg, bad };
+}
+
+// ---------- VERSION A ----------
+const A = { sel: 'rache', obj: null, esc: false, flash: null };
+function gauge(c) {
+  const [, v] = peak(c), t = tierOf(v), d = cdFor(c.id), H = 168;
+  const circ = 2 * Math.PI * 17, off = d ? circ * (1 - d.left / d.total) : 0;
+  const clock = d ? `<div class="hx-clock" title="${d.source} closing in — ${mmss(d.left)} left"><svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="17"/><circle class="arc" cx="20" cy="20" r="17" stroke-dasharray="${circ}" stroke-dashoffset="${off}"/></svg><span class="tm">${mmss(d.left)}</span></div>`
+    : `<div class="hx-clock hx-clock--none"><span class="tm">—</span></div>`;
+  const bands = [['cold', 25], ['warm', 25], ['hot', 30], ['burned', 20]].map(([k, h]) => `<b class="hx-t--${k}" style="height:${h}%"></b>`).join('');
+  const marks = Object.entries(c.heat).map(([k, x]) => `<i class="hx-t--${tierOf(x)}" style="bottom:${x}%" title="${OBJ[k].name}: ${x}"></i>`).join('');
+  return `<button type="button" class="hx-g hx-t--${t}${A.sel === c.id ? ' sel' : ''}" data-a-g="${c.id}">${clock}
+    <div class="hx-tube"><div class="hx-tube__glass"><div class="hx-tube__bands">${bands}</div><div class="hx-tube__fill" style="height:${v}%"></div></div><div class="hx-tube__marks">${marks}</div></div>
+    <span class="hx-g__n">${v}</span><span class="hx-g__nm">${c.name}</span><span class="hx-g__tier">${v ? t : 'none'}</span></button>`;
+}
+function detailA() {
+  const c = CH.find((x) => x.id === A.sel), [, v] = peak(c), d = cdFor(c.id);
+  const objs = Object.entries(c.heat).sort((a, b) => b[1] - a[1]).map(([k, x]) => `<div class="hx-obj hx-t--${tierOf(x)}${A.obj === k ? ' sel' : ''}" data-a-o="${k}"><i class="fas ${OBJ[k].icon}"></i><span class="nm">${OBJ[k].name} <span style="color:var(--ncm-text-hint);font-weight:400">· ${OBJ[k].kind}</span></span><span class="v">${x}</span><span class="bar"><b style="width:${x}%"></b></span></div>`).join('')
+    || `<div style="font:italic 12px var(--ncm-font-body);color:var(--ncm-text-hint);padding:4px 6px">No heat anywhere.</div>`;
+  const tgt = A.obj ? OBJ[A.obj].name : 'all objects';
+  const cd = d ? `<div class="hx-cd"><i class="fas fa-stopwatch"></i><span class="t"><b>${d.source}</b> closing in via ${OBJ[d.obj].name}</span><span class="left">${mmss(d.left)}</span><button type="button" class="hx-btn" data-a-op="stop">Call off</button></div>` : '';
+  const esc = A.esc ? `<div class="hx-esc__hd">Escalate on ${tgt}</div><div class="hx-esc">
+      <button type="button" class="hx-btn attn" data-a-op="lock"><i class="fas fa-lock"></i>Lock out</button>
+      <button type="button" class="hx-btn bad" data-a-op="ice"><i class="fas fa-skull"></i>Black ICE</button>
+      <button type="button" class="hx-btn bad" data-a-op="count"${d ? ' disabled' : ''}><i class="fas fa-stopwatch"></i>Countdown</button></div>` : '';
+  return `<div class="hx-det"><div class="hx-det__hd"><span class="hx-av" style="--tc:${hue(c.name)}">${c.name.slice(0, 2).toUpperCase()}</span>
+      <div><div class="hx-det__nm">${c.name}</div><div class="hx-det__sub">${Object.keys(c.heat).length} object${Object.keys(c.heat).length === 1 ? '' : 's'} · peak <b style="font-family:var(--ncm-font-mono)">${v}</b> · acting on <b>${tgt}</b></div></div></div>
+    <div>${objs}</div>${cd}
+    <div class="hx-acts"><button type="button" class="hx-btn" data-a-op="adjust"><i class="fas fa-sliders"></i>Adjust</button><button type="button" class="hx-btn" data-a-op="clear"><i class="fas fa-eraser"></i>Clear</button>
+      <button type="button" class="hx-btn attn${A.esc ? ' on' : ''}" data-a-op="esc"${v < 25 ? ' disabled title="Escalate opens at warm (25+)"' : ''}><i class="fas fa-bolt"></i>Escalate</button></div>
+    ${esc}<div class="hx-flash${A.flash?.bad ? ' bad' : ''}">${A.flash?.msg || ''}</div></div>`;
+}
+function renderA() {
+  document.querySelector('[data-slot="a"]').innerHTML = frame(`<div class="hx-split">
+    <div class="hx-mod"><div class="hx-mod__k"><i class="fas fa-temperature-half"></i>Thermometers<span class="hint">click a gauge</span></div><div class="hx-gauges">${CH.map(gauge).join('')}</div>${legend}</div>
+    <div class="hx-mod"><div class="hx-mod__k"><i class="fas fa-crosshairs"></i>Selected</div>${detailA()}</div></div>`, summary());
+}
+document.addEventListener('click', (e) => {
+  const root = e.target.closest('[data-slot="a"]'); if (!root) return;
+  const g = e.target.closest('[data-a-g]'), o = e.target.closest('[data-a-o]'), b = e.target.closest('[data-a-op]');
+  if (g) { A.sel = g.dataset.aG; A.obj = null; A.esc = false; A.flash = null; }
+  else if (o) { A.obj = A.obj === o.dataset.aO ? null : o.dataset.aO; }
+  else if (b && !b.disabled) { const op = b.dataset.aOp; if (op === 'esc') A.esc = !A.esc; else { A.flash = act(op, A.sel, A.obj, null); if (op === 'clear') A.obj = null; if (['lock', 'ice', 'count'].includes(op)) A.esc = false; renderB(); } }
+  else return;
+  renderA();
+});
+
+// ---------- VERSION B ----------
+const B = { ch: 'rache', obj: 'ws7', col: null, row: null, flash: null };
+function renderB() {
+  const cols = `150px repeat(${objCols.length}, minmax(0,1fr)) 150px`;
+  let html = `<div></div>` + objCols.map((k) => `<div class="hx-grid__ch${B.col === k ? ' sel' : ''}" data-b-col="${k}" style="cursor:pointer"><i class="fas ${OBJ[k].icon}"></i>${OBJ[k].name}</div>`).join('') + `<div class="hx-grid__ch"><i class="fas fa-stopwatch"></i>Trace fuse</div>`;
+  for (const c of CH) {
+    const [, pv] = peak(c), d = cdFor(c.id);
+    html += `<div class="hx-grid__rh hx-t--${tierOf(pv)}${B.row === c.id ? ' sel' : ''}" data-b-row="${c.id}"><span class="hx-av" style="--tc:${hue(c.name)};width:24px;height:24px;font-size:9px">${c.name.slice(0, 2).toUpperCase()}</span><span class="nm">${c.name}</span><span class="pk">${pv || '–'}</span></div>`;
+    for (const k of objCols) {
+      const v = c.heat[k];
+      const dim = (B.col && B.col !== k) || (B.row && B.row !== c.id);
+      if (v == null) { html += `<div class="hx-empty"${dim ? ' style="opacity:.35"' : ''}>·</div>`; continue; }
+      const t = tierOf(v);
+      html += `<button type="button" class="hx-cell hx-t--${t}${t === 'burned' ? ' hx-cell--burned' : ''}${B.ch === c.id && B.obj === k ? ' sel' : ''}${dim ? ' dim' : ''}" style="--a:${TIER_A[t]}" data-b-cell="${c.id}|${k}" title="${c.name} · ${OBJ[k].name}: ${v} (${t})"><span class="v">${v}</span><span class="tier">${t}</span><i class="fas fa-arrow-down dr"></i></button>`;
+    }
+    html += d ? `<div class="hx-fuse" title="${d.source} closing in on ${c.name}"><span class="left">${mmss(d.left)}</span><span class="who"><b>${d.source}</b><br>via ${OBJ[d.obj].name}</span><span class="hx-fuse__burn" style="width:${(d.left / d.total) * 100}%"></span></div>` : `<div class="hx-nofuse">—</div>`;
+  }
+  const c = CH.find((x) => x.id === B.ch), v = c?.heat[B.obj];
+  const t = v != null ? tierOf(v) : 'cold';
+  const spark = v != null ? `<span class="hx-spark hx-t--${t}">${[v + 25, v + 20, v + 14, v + 10, v + 5, v].map((x) => `<i style="height:${Math.max(2, Math.min(100, x)) * 0.14}px"></i>`).join('')}</span>` : '';
+  const strip = v != null ? `<div class="hx-strip hx-t--${t}"><div class="sel"><b>${c.name} · ${OBJ[B.obj].name}</b><span><span class="mono" style="color:var(--tc);font-weight:700">${v}</span> ${t} · back to cold in <span class="mono">~${Math.ceil(Math.max(0, v - 24) / 5)}h</span> ${spark}</span></div>
+      <div class="hx-acts"><button type="button" class="hx-btn" data-b-op="adjust"><i class="fas fa-sliders"></i>Adjust</button><button type="button" class="hx-btn" data-b-op="clear"><i class="fas fa-eraser"></i>Clear</button>
+      <button type="button" class="hx-btn attn" data-b-op="lock"${v < 25 ? ' disabled' : ''}><i class="fas fa-lock"></i>Lock out</button><button type="button" class="hx-btn bad" data-b-op="ice"${v < 25 ? ' disabled' : ''}><i class="fas fa-skull"></i>Black ICE</button>
+      <button type="button" class="hx-btn bad" data-b-op="${cdFor(c.id) ? 'stop' : 'count'}"${v < 25 && !cdFor(c.id) ? ' disabled' : ''}><i class="fas fa-stopwatch"></i>${cdFor(c.id) ? 'Call off trace' : 'Countdown'}</button></div>
+      ${B.flash ? `<div class="hx-flash${B.flash.bad ? ' bad' : ''}">${B.flash.msg}</div>` : ''}</div>`
+    : `<div class="hx-strip"><span style="font:italic 12px var(--ncm-font-body);color:var(--ncm-text-hint)">${B.flash ? B.flash.msg : 'Click a cell to act on that character × object.'}</span></div>`;
+  document.querySelector('[data-slot="b"]').innerHTML = frame(`<div class="hx-mod"><div class="hx-mod__k"><i class="fas fa-table-cells"></i>Heat grid<span class="hint">click a cell · a column · a name</span></div>
+    <div class="hx-grid" style="grid-template-columns:${cols}">${html}</div>${strip}${legend}</div>`, summary());
+}
+document.addEventListener('click', (e) => {
+  const root = e.target.closest('[data-slot="b"]'); if (!root) return;
+  const cell = e.target.closest('[data-b-cell]'), col = e.target.closest('[data-b-col]'), row = e.target.closest('[data-b-row]'), b = e.target.closest('[data-b-op]');
+  if (cell) { [B.ch, B.obj] = cell.dataset.bCell.split('|'); B.flash = null; }
+  else if (col) { B.col = B.col === col.dataset.bCol ? null : col.dataset.bCol; B.row = null; }
+  else if (row) { B.row = B.row === row.dataset.bRow ? null : row.dataset.bRow; B.col = null; }
+  else if (b && !b.disabled) { B.flash = act(b.dataset.bOp, B.ch, B.obj, null); renderA(); }
+  else return;
+  renderB();
+});
+
+renderA(); renderB();
+// demo motion: countdowns tick every second; heat drains a point every 4s (stands in for −5/game hr)
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!still) {
+  setInterval(() => { CD.forEach((d) => { if (d.left > 0) d.left -= 1; }); renderA(); renderB(); }, 1000);
+  if (!reduced) setInterval(() => { CH.forEach((c) => { for (const k in c.heat) c.heat[k] = Math.max(0, c.heat[k] - 1); }); }, 4000);
+}
+</script>
+</body>
+</html>

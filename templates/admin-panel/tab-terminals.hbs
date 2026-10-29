@@ -1,152 +1,230 @@
 {{#if (eq activeTab 'terminals')}}
+{{#with term2}}
+<div class="ncm-term2{{#if isPopout}} ncm-term2--pop{{/if}}" data-owner="terminals">
 
-  <div class="ncm-shard-summary-strip">
-    <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--cyan">{{terminalSummary.total}}</div><div class="ncm-shard-stat__label">Terminals</div></div>
-    <div class="ncm-shard-stat"><div class="ncm-shard-stat__value">{{terminalSummary.accounts}}</div><div class="ncm-shard-stat__label">Accounts</div></div>
-    <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--green">{{terminalSummary.logins}}</div><div class="ncm-shard-stat__label">Active Logins</div></div>
-    <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--red">{{terminalSummary.locked}}</div><div class="ncm-shard-stat__label">Locked</div></div>
+  <header class="ncm-tabhd"><i class="fas fa-terminal"></i><div><h2>Terminals</h2><p>Every computer players can log into: who is on it, what is locked, and what needs you right now.</p></div></header>
+
+  {{!-- toolbar: search + the View menu + select / import / pop out — or the bulk bar --}}
+  <div class="ncm-term2-tb">
+    <span class="ncm-term2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-term2-search placeholder="Search name, organization, location, account…" value="{{search}}">{{#if search}}<button type="button" class="ncm-term2-srch__x" data-action="tabAct" data-op="clearSearch" aria-label="Clear search"><i class="fas fa-xmark"></i></button>{{/if}}</span>
+    {{#if bulk}}
+      <span class="ncm-term2-picked"><b>{{pickedCount}}</b> selected</span>
+      <button type="button" class="ncm-term2-btn" data-action="tabAct" data-op="pickAll" data-tooltip="Tick (or untick) every terminal shown"><i class="fas fa-check-double"></i> All shown</button>
+      <button type="button" class="ncm-term2-btn" data-action="tabAct" data-op="bulkReset" data-tooltip="Log everyone out and clear lockouts on the ticked terminals"><i class="fas fa-rotate-left"></i> Reset</button>
+      <button type="button" class="ncm-term2-btn" data-action="tabAct" data-op="bulkExport" data-tooltip="Download the ticked terminals' settings as one JSON file"><i class="fas fa-file-export"></i> Export</button>
+      <button type="button" class="ncm-term2-btn ncm-term2-btn--danger" data-action="tabAct" data-op="bulkRemove"><i class="fas fa-trash-can"></i> Remove</button>
+      <button type="button" class="ncm-term2-btn ncm-term2-btn--primary" data-action="tabAct" data-op="bulk"><i class="fas fa-check"></i> Done</button>
+    {{else}}
+      <button type="button" class="ncm-term2-btn ncm-term2-view{{#if viewOpen}} is-open{{/if}}" data-action="tabAct" data-op="view" data-term2-viewbtn aria-haspopup="menu" aria-expanded="{{#if viewOpen}}true{{else}}false{{/if}}" data-tooltip="How the list is grouped and ordered"><i class="fas fa-sliders"></i><span class="ncm-term2-view__k">View</span><span class="ncm-term2-view__v">{{viewLabel}}</span><i class="fas fa-chevron-down ncm-term2-view__chev"></i></button>
+      <button type="button" class="ncm-term2-btn" data-action="tabAct" data-op="bulk" data-tooltip="Tick several terminals to reset, export or remove them together"><i class="fas fa-list-check"></i> Select</button>
+      <span class="ncm-term2-new" data-term2-new>
+        <button type="button" class="ncm-term2-btn ncm-term2-btn--primary" data-term2-newbtn aria-haspopup="menu" aria-expanded="false" data-tooltip="A blank terminal, a converted item, or an import"><i class="fas fa-plus"></i> New <i class="fas fa-caret-down"></i></button>
+        <div class="ncm-term2-newmenu" role="menu">
+          <div class="ncm-term2-newmenu__it" role="menuitem" data-action="tabAct" data-op="newBlank"><i class="fas fa-file-circle-plus"></i>Blank terminal<small>new item, opens its config</small></div>
+          <div class="ncm-term2-newmenu__it" role="menuitem" data-action="tabAct" data-op="import"><i class="fas fa-arrow-right-arrow-left"></i>Convert an item…</div>
+          <div class="ncm-term2-newmenu__it" role="menuitem" data-action="tabAct" data-op="importJson"><i class="fas fa-file-import"></i>Import from JSON…<small>a file from Export</small></div>
+        </div>
+      </span>
+      {{#unless isPopout}}<button type="button" class="ncm-term2-btn" data-action="popOutTab" data-tab="terminals" {{#if sel}}data-select="{{sel.id}}"{{/if}} data-tooltip="Open this tab in its own larger window"><i class="fas fa-up-right-from-square"></i> Pop out</button>{{/unless}}
+    {{/if}}
   </div>
 
-  <div class="ncm-term-admin-toolbar">
-    <input type="text" class="ncm-term-admin-search" data-terminal-search placeholder="Search name, org, preset, account…" value="{{terminalSearch}}">
-    <select class="ncm-term-admin-sort" data-terminal-sort data-tooltip="Sort the list">
-      {{#each terminalSortOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
-    </select>
-    <div class="ncm-term-admin-filters">
-      {{#each terminalFilters}}
-        <button type="button" class="ncm-term-admin-filter{{#if active}} is-active{{/if}}" data-action="terminalFilterAdmin" data-filter="{{value}}">{{label}}</button>
+  {{!-- the View menu: rendered here, mounted on document.body by onRender (a portal, so the panel
+        never clips it); closes on an outside click or Esc. Radio sections: Group by · Sort. --}}
+  <div class="ncm-term2-viewpop{{#if viewOpen}} is-open{{/if}}" data-term2-viewpop role="menu" aria-label="View">
+    <div class="ncm-term2-viewpop__k">Group by</div>
+    {{#each groupOptions}}<button type="button" class="ncm-term2-viewpop__opt{{#if selected}} is-on{{/if}}" data-view-kind="group" data-view-value="{{value}}" role="menuitemradio" aria-checked="{{#if selected}}true{{else}}false{{/if}}"><i class="fas {{#if selected}}fa-circle-dot{{else}}fa-circle{{/if}} rd"></i><i class="fas {{icon}} ic"></i>{{label}}</button>{{/each}}
+    <div class="ncm-term2-viewpop__k">Sort</div>
+    {{#each sortOptions}}<button type="button" class="ncm-term2-viewpop__opt{{#if selected}} is-on{{/if}}" data-view-kind="sort" data-view-value="{{value}}" role="menuitemradio" aria-checked="{{#if selected}}true{{else}}false{{/if}}"><i class="fas {{#if selected}}fa-circle-dot{{else}}fa-circle{{/if}} rd"></i><i class="fas {{icon}} ic"></i>{{label}}</button>{{/each}}
+  </div>
+
+  {{!-- filter chips (the tab's sub-tabs) + the scene picker --}}
+  <div class="ncm-term2-chips">
+    {{#each filters}}
+      <span class="ncm-term2-chip{{#if on}} is-on{{/if}}{{#if warn}} is-warn{{/if}}{{#if hot}} is-hot{{/if}}" data-action="tabAct" data-op="filter" data-filter="{{key}}">{{label}}<span class="ncm-term2-n">{{count}}</span></span>
+    {{/each}}
+    {{#if scenePicker}}<span class="ncm-term2-scope">{{{scenePicker}}}</span>{{/if}}
+  </div>
+
+  {{#if total}}
+  <div class="ncm-term2-split{{#if bulk}} is-bulk{{/if}}">
+
+    {{!-- ── LEFT: the server rack — one rack unit per terminal ── --}}
+    <div class="ncm-term2-list">
+      <div class="ncm-term2-legend" data-tooltip="Each machine's four lights, left to right">
+        <span><i class="ncm-term2-led is-good"></i>in <b>{{legend.in}}</b></span>
+        <span><i class="ncm-term2-led is-bad"></i>locked out <b>{{legend.out}}</b></span>
+        <span><i class="ncm-term2-led is-attn"></i>armed <b>{{legend.armed}}</b></span>
+        <span><i class="ncm-term2-led is-secret"></i>all locked <b>{{legend.sealed}}</b></span>
+      </div>
+      {{#each groups}}
+        {{!-- A closed group still shows its count + one chip per light kind that is on (needs-you first: lockout · trace · armed · heat · GM-unlocked). --}}
+        <div class="ncm-term2-grp{{#if shut}} is-shut{{/if}}{{#if forced}} is-forced{{/if}}{{#if head.tone}} is-{{head.tone}}{{/if}}" data-action="tabAct" data-op="group" data-group-key="{{key}}" aria-expanded="{{#if shut}}false{{else}}true{{/if}}"{{#if forced}} data-tooltip="Open while a search or filter is on"{{/if}}>
+          <i class="fas fa-chevron-down ncm-term2-grp__chev"></i><i class="fas {{icon}} ncm-term2-grp__ic"></i><span class="ncm-term2-grp__t"{{#if head.chips.length}} data-tooltip="{{label}}"{{/if}}>{{label}}</span>
+          {{#if head.chips.length}}<span class="ncm-term2-gsum">{{#each head.chips}}<span class="ncm-term2-gsum__c is-{{kind}}" data-tooltip="{{tip}}" aria-label="{{tip}}">{{#if led}}<i class="ncm-term2-led is-{{kind}}"></i>{{else}}<i class="fas {{icon}}"></i>{{/if}}<b>{{count}}</b></span>{{/each}}</span>{{/if}}
+          <span class="ncm-term2-n">{{count}}</span>
+        </div>
+        {{#if rows.length}}
+        <div class="ncm-term2-rack">
+          {{#each rows}}
+            <div class="ncm-term2-ru{{#if isSelected}} is-sel{{/if}}{{#if picked}} is-picked{{/if}}" data-action="tabAct" data-op="select" data-item-id="{{id}}">
+              <span class="ncm-term2-ck">{{#if picked}}<i class="fas fa-check"></i>{{/if}}</span>
+              <span class="ncm-term2-scr"></span>
+              <span class="ncm-term2-ic{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{img}}'){{/if}}" data-tooltip="{{presetLabel}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
+              <div class="ncm-term2-ru__id">
+                <div class="ncm-term2-ru__nm">{{name}}</div>
+                <div class="ncm-term2-ru__sub">{{#if placeReal}}<span class="ncm-tagp ncm-term2-ru__pl" style="--tc:{{ncm-hue place}}" data-tooltip="{{place}}"><i class="fas {{placeIcon}}"></i><span>{{place}}</span></span>{{else}}<span class="ncm-term2-ru__none">{{place}}</span>{{/if}}<span class="ncm-term2-ru__n" data-tooltip="{{acctLabel}}" aria-label="{{acctLabel}}"><i class="fas fa-user"></i><b>{{accountCount}}</b></span></div>
+                <div class="ncm-term2-vent"></div>
+              </div>
+              <div class="ncm-term2-face">
+                <div class="ncm-term2-leds">{{#each leds}}<span class="ncm-term2-led{{#if cls}} is-{{cls}}{{/if}}" data-tooltip="{{tip}}"></span>{{/each}}</div>
+                <div class="ncm-term2-hbar is-{{heatTone}}" data-tooltip="Heat {{maxHeat}}">{{#each heatBars}}<i{{#if on}} class="on"{{/if}}></i>{{/each}}</div>
+              </div>
+              {{#if traceTag}}<span class="ncm-term2-trace" data-tooltip="{{traceTip}}">{{traceTag}}</span>{{/if}}
+            </div>
+          {{/each}}
+        </div>
+        {{/if}}
+      {{else}}
+        <div class="ncm-term2-empty"><i class="fas fa-magnifying-glass"></i> No terminals match.</div>
       {{/each}}
     </div>
-    <button type="button" class="ncm-term-admin-btn" data-action="terminalImport"><i class="fas fa-file-import"></i> Import Item → Terminal</button>
-  </div>
 
-  {{#if terminalCount}}
-    <div class="ncm-term-admin-split">
-
-      {{!-- ── LEFT: terminal list ── --}}
-      <div class="ncm-term-admin-list">
-        {{#each terminals}}
-          <div class="ncm-term-admin-row{{#if isSelected}} is-selected{{/if}}{{#if locked}} is-locked{{/if}}" data-action="terminalSelectAdmin" data-item-id="{{id}}">
-            <img class="ncm-term-admin-row__img" src="{{img}}" alt="">
-            <div class="ncm-term-admin-row__id">
-              <div class="ncm-term-admin-row__name">{{name}}</div>
-              <div class="ncm-term-admin-row__meta">{{preset}}{{#if org}} · {{org}}{{/if}} · {{scope}}</div>
-            </div>
-            <div class="ncm-term-admin-row__tags">
-              <span class="ncm-term-admin-row__accts" data-tooltip="{{accountCount}} accounts"><i class="fas fa-users"></i> {{accountCount}}</span>
-              {{#if loginCount}}<span class="ncm-term-admin-row__online" data-tooltip="{{loginCount}} logged in"><i class="fas fa-circle"></i> {{loginCount}}</span>{{/if}}
-              {{#if gmBypassed}}<span class="ncm-term-admin-row__bypass" data-tooltip="GM force-unlocked"><i class="fas fa-unlock"></i></span>
-              {{else if locked}}<span class="ncm-term-admin-row__lock" data-tooltip="Secured accounts"><i class="fas fa-lock"></i></span>{{/if}}
-            </div>
+    {{!-- ── RIGHT: the selected terminal — information, top to bottom ── --}}
+    <div class="ncm-term2-det" data-sel="{{sel.id}}">
+      {{#with sel}}
+        <div class="ncm-term2-hdr">
+          <span class="ncm-term2-ic ncm-term2-ic--lg{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{img}}'){{/if}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
+          <div class="ncm-term2-hdr__nm" data-tooltip="{{name}}">{{name}}</div>
+          <div class="ncm-term2-hdr__acts">
+            <button type="button" class="ncm-term2-btn ncm-term2-btn--primary" data-action="tabAct" data-op="open" data-item-id="{{id}}"><i class="fas fa-terminal"></i> Open</button>
+            <button type="button" class="ncm-term2-btn ncm-term2-btn--icon" data-action="tabAct" data-op="configure" data-item-id="{{id}}" aria-label="Configure" data-tooltip="Configure"><i class="fas fa-gear"></i></button>
+            <button type="button" class="ncm-term2-btn ncm-term2-btn--icon" data-action="tabAct" data-op="access" data-item-id="{{id}}" aria-label="Access" data-tooltip="Ways in — hotbar, chat card, journal link, map pin (or drag the row onto the hotbar)"><i class="fas fa-door-open"></i></button>
+            <button type="button" class="ncm-term2-btn ncm-term2-btn--icon" data-action="tabAct" data-op="reset" data-item-id="{{id}}" aria-label="Reset" data-tooltip="Reset — log everyone out, clear lockouts"><i class="fas fa-rotate-left"></i></button>
+            <button type="button" class="ncm-term2-btn ncm-term2-btn--icon" data-action="tabAct" data-op="more" aria-label="More actions" data-tooltip="More"><i class="fas fa-ellipsis"></i></button>
           </div>
-        {{else}}
-          <div class="ncm-term-admin-empty ncm-term-admin-empty--list"><i class="fas fa-magnifying-glass"></i> No terminals match.</div>
-        {{/each}}
-        {{#if terminalPagination}}
-          <div class="ncm-term-admin-pager">
-            <button type="button" class="ncm-term-admin-btn ncm-term-admin-btn--icon" data-action="terminalPageAdmin" data-dir="prev" {{#unless terminalPagination.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i></button>
-            <span>{{terminalPagination.page}} / {{terminalPagination.maxPage}}</span>
-            <button type="button" class="ncm-term-admin-btn ncm-term-admin-btn--icon" data-action="terminalPageAdmin" data-dir="next" {{#unless terminalPagination.hasNext}}disabled{{/unless}}><i class="fas fa-chevron-right"></i></button>
+          <div class="ncm-term2-hdr__where">{{#if whereText}}{{whereText}}{{else}}No location set{{/if}}<span class="ncm-term2-hdr__pre">{{presetLabel}}</span>{{#if carriedBy}}<span class="ncm-term2-hdr__pre">carried by {{carriedBy}}</span>{{/if}}{{#if classification}} <span class="ncm-term2-tg {{classTone}}"{{#unless classTone}} style="--tc:{{ncm-hue classification}}"{{/unless}}>{{classification}}</span>{{/if}}</div>
+          <div class="ncm-term2-hdr__st">{{#each statusParts}}{{#unless @first}}<span class="dot">·</span>{{/unless}}<span class="is-{{cls}}">{{text}}</span>{{else}}<span class="is-dim">Quiet</span>{{/each}}</div>
+          <div class="ncm-term2-more{{#if menuOpen}} is-open{{/if}}">
+            {{#unless gmBypassed}}<button type="button" data-action="tabAct" data-op="unlock" data-item-id="{{id}}"><i class="fas fa-unlock-keyhole"></i>Force-unlock<small>skip every login</small></button>{{/unless}}
+            <button type="button" data-action="tabAct" data-op="place" data-item-id="{{id}}"><i class="fas fa-map-pin"></i>Place on this scene<small>a pin players double-click</small></button>
+            <button type="button" data-action="tabAct" data-op="export" data-item-id="{{id}}"><i class="fas fa-file-export"></i>Export settings<small>JSON</small></button>
+            <button type="button" data-action="tabAct" data-op="security"><i class="fas fa-shield-halved"></i>Security tab<small>log, heat, plants</small></button>
+            <hr>
+            <button type="button" class="is-danger" data-action="tabAct" data-op="remove" data-item-id="{{id}}"><i class="fas fa-trash-can"></i>Remove terminal<small>back to a plain item</small></button>
           </div>
-        {{/if}}
-      </div>
+        </div>
 
-      {{!-- ── RIGHT: selected terminal detail ── --}}
-      <div class="ncm-term-admin-detail">
-        {{#with terminalSelected}}
-          <div class="ncm-term-admin-detail__head">
-            <img class="ncm-term-admin-detail__img" src="{{img}}" alt="">
-            <div class="ncm-term-admin-detail__id">
-              <div class="ncm-term-admin-detail__name">{{name}}
-                {{#if gmBypassed}}<span class="ncm-term-admin-tag ncm-term-admin-tag--bypass">UNLOCKED</span>
-                {{else if locked}}<span class="ncm-term-admin-tag ncm-term-admin-tag--locked"><i class="fas fa-lock"></i> LOCKED</span>{{/if}}
-              </div>
-              <div class="ncm-term-admin-detail__meta">
-                {{#if owner}}{{owner}} · {{/if}}{{#if org}}{{org}} · {{/if}}{{scope}}
-                {{#if classification}} · <span class="ncm-term-admin-detail__cls">{{classification}}</span>{{/if}}
-              </div>
-            </div>
-          </div>
-
-          <div class="ncm-term-admin-detail__facts">
-            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-network-wired"></i> Uplink</span><span class="ncm-term-admin-fact__val" data-tooltip="The machine's own connection">{{#if uplinkName}}{{uplinkName}}{{else}}LOCAL ONLY{{/if}}</span></div>
-            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-tower-cell"></i> Reach</span><span class="ncm-term-admin-fact__val" data-tooltip="Network players must be on to see this box">{{#if networkBinding}}{{networkBinding}}{{else}}anywhere{{/if}}</span></div>
-            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-download"></i> Exfil</span><span class="ncm-term-admin-fact__val">{{#if allowExfil}}enabled{{else}}read-only{{/if}}</span></div>
-            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-palette"></i> Preset</span><span class="ncm-term-admin-fact__val">{{preset}}</span></div>
-            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-right-to-bracket"></i> Login</span><span class="ncm-term-admin-fact__val">{{loginStyle}}</span></div>
-            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-table-columns"></i> Mailbox</span><span class="ncm-term-admin-fact__val">{{mailboxStyle}}</span></div>
-            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-volume-high"></i> Sound</span><span class="ncm-term-admin-fact__val">{{soundSet}}</span></div>
-            {{#if location}}<div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-location-dot"></i> Location</span><span class="ncm-term-admin-fact__val">{{location}}</span></div>{{/if}}
-          </div>
-
-          <div class="ncm-term-admin-detail__sec">
-            <div class="ncm-term-admin-detail__label">Accounts ({{accountCount}}{{#if hiddenCount}} · {{hiddenCount}} hidden{{/if}})</div>
-            <div class="ncm-term-admin-detail__accts">
-              {{#each accounts}}
-                <span class="ncm-term-admin-acct{{#if isAdmin}} is-admin{{/if}}">
-                  {{#if open}}<i class="fas fa-unlock" data-tooltip="Open — no auth"></i>{{else}}<i class="fas fa-lock" data-tooltip="Secured"></i>{{/if}}
-                  {{username}}
-                  {{#if isAdmin}}<i class="fas fa-crown" data-tooltip="Admin"></i>{{/if}}
-                  {{#if hidden}}<i class="fas fa-eye-slash" data-tooltip="Hidden — secret login only"></i>{{/if}}
-                  {{#if netGated}}<i class="fas fa-network-wired" data-tooltip="Network-gated"></i>{{/if}}
-                </span>
-              {{else}}
-                <span class="ncm-term-admin-detail__none">No accounts yet — Configure to add some.</span>
+        {{!-- RIGHT NOW: one aligned row per live thing — what · time · the button it needs --}}
+        <div class="ncm-term2-mod">
+          <div class="ncm-term2-mod__k"><i class="fas fa-wave-square"></i>Right now<span class="ncm-term2-mod__hint">{{#if nowCount}}{{nowCount}} live{{/if}}</span></div>
+          {{#if nowRows.length}}
+            <div class="ncm-term2-nows">
+              {{#each nowRows}}
+                <div class="ncm-term2-nr is-{{tone}}" data-kind="{{kind}}">
+                  <i class="fas {{icon}}"></i>
+                  <span class="ncm-term2-nr__m">{{main}}{{#if num}} <b class="ncm-term2-nr__num">{{num}}</b>{{/if}}<small>{{#if meter}}<span class="ncm-term2-hm">{{#each meter}}<i{{#if on}} class="on"{{/if}}></i>{{/each}}</span>{{/if}}{{#if pre}}{{pre}} {{/if}}{{#if acct}}<b>{{acct}}</b>{{/if}}{{#if post}}{{#if acct}} · {{/if}}{{post}}{{/if}}</small>{{#if l2}}<span class="ncm-term2-nr__l2">{{l2}}</span>{{/if}}</span>
+                  <span class="ncm-term2-nr__tm">{{#if time}}<b{{#if lockUntil}} data-lock-until="{{lockUntil}}"{{/if}}>{{time}}</b>{{#if unit}}<span>{{unit}}</span>{{/if}}{{/if}}</span>
+                  <span class="ncm-term2-nr__ac">{{#each btns}}<button type="button" class="ncm-term2-btn ncm-term2-btn--sm{{#if cls}} ncm-term2-btn--{{cls}}{{/if}}" data-action="tabAct" data-op="{{op}}"{{#each attrs}} data-{{@key}}="{{this}}"{{/each}}>{{label}}</button>{{/each}}</span>
+                </div>
               {{/each}}
             </div>
-          </div>
+          {{else}}
+            <div class="ncm-term2-quiet">Nothing happening.</div>
+          {{/if}}
+        </div>
 
-          <div class="ncm-term-admin-detail__sec">
-            <div class="ncm-term-admin-detail__label">Live Sessions ({{loginCount}})</div>
-            {{#if logins.length}}
-              <div class="ncm-term-admin-detail__sessions">
-                {{#each logins}}<span class="ncm-term-admin-login"><i class="fas fa-user"></i> {{actor}} → {{account}}</span>{{/each}}
-              </div>
-            {{else}}
-              <div class="ncm-term-admin-detail__none">Nobody is logged in.</div>
-            {{/if}}
-          </div>
-
-          <div class="ncm-term-admin-detail__sec">
-            <div class="ncm-term-admin-detail__label">Recent Logins</div>
-            {{#if recentLogins.length}}
-              <div class="ncm-term-admin-detail__footprints">
-                {{#each recentLogins}}
-                  <div class="ncm-term-admin-footprint">
-                    <i class="fas fa-right-to-bracket"></i>
-                    <span class="ncm-term-admin-footprint__acct">{{account}}</span>
-                    {{#if operator}}<span class="ncm-term-admin-footprint__op">by {{operator}}</span>{{/if}}
-                    <span class="ncm-term-admin-footprint__when">{{when}}</span>
+        {{!-- ACCOUNTS: a plain table; a row click opens its facts in place --}}
+        <div class="ncm-term2-mod">
+          <div class="ncm-term2-mod__k"><i class="fas fa-users-rectangle"></i>Accounts<span class="ncm-term2-mod__hint">{{accountCount}}{{#if hiddenCount}} · {{hiddenCount}} hidden{{/if}}{{#if accounts.length}} · click one for details{{/if}}</span></div>
+          {{#if accounts.length}}
+            <div class="ncm-term2-at">
+              <div class="ncm-term2-ar ncm-term2-ar--hd"><span class="pad1">Account</span><span class="pad2">Lock</span><span>Status</span><span class="ll">Last</span></div>
+              {{#each accounts}}
+               <div class="ncm-term2-acc{{#if open}} is-open{{/if}}" style="--tc:{{ncm-hue username}}">
+                <div class="ncm-term2-ar{{#if open}} is-open{{/if}}{{#if lock.open}} is-unlocked{{/if}}" data-acct-row="{{foldKey}}" data-item-id="{{itemId}}" data-account-id="{{id}}" role="button" tabindex="0" aria-expanded="{{#if open}}true{{else}}false{{/if}}">
+                  <span class="ncm-term2-an">
+                    <i class="fas fa-chevron-right chev"></i>
+                    <span class="ncm-term2-aav{{#if portrait}} has-img{{/if}}" data-tooltip="{{displayName}}">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{avText}}{{/if}}</span>
+                    <span class="ncm-term2-an__tx">
+                    <span class="l1"><span class="u">{{username}}</span>{{#if isAdmin}}<span class="ncm-term2-tg is-adm">Admin</span>{{/if}}{{#if hidden}}<span class="ncm-term2-tg is-hid" data-tooltip="Secret login only">Hidden</span>{{/if}}{{#if privateFromAdmin}}<span class="ncm-term2-tg is-hid" data-tooltip="Admin accounts cannot view it">Private</span>{{/if}}{{#if netGated}}<span class="ncm-term2-tg" style="--tc:{{ncm-hue netLabel}}" data-tooltip="Only reachable on {{netLabel}}">{{netLabel}}</span>{{/if}}</span>
+                    <span class="own">{{#if owner}}<i class="fas fa-link" data-tooltip="Linked identity"></i>{{owner.name}}{{else}}<span class="dim">no identity linked</span>{{/if}}</span>
+                    </span>
+                  </span>
+                  <span class="ncm-term2-lkw" data-tooltip="{{lock.tip}}"><i class="fas {{#if lock.open}}fa-lock-open{{else}}fa-lock{{/if}} lk"></i><span>{{#if lock.open}}<span class="ok">open</span>{{else}}{{#each lock.parts}}{{t}}{{#if dv}} <b>DV&nbsp;{{dv}}</b>{{/if}}{{#if conj}} <em>{{conj}}</em> {{/if}}{{/each}}{{/if}}</span></span>
+                  <span class="ncm-term2-st is-{{status.cls}}"{{#if status.tip}} data-tooltip="{{status.tip}}"{{/if}}>{{#if status.icon}}<i class="fas {{status.icon}}"></i>{{/if}}{{#if status.tries}}<span class="mono">{{status.tries}}</span> {{/if}}{{status.text}}{{#if status.left}}<span class="st2"><span class="mono"{{#if status.lockUntil}} data-lock-until="{{status.lockUntil}}"{{/if}}>{{status.left}}</span> left</span>{{/if}}</span>
+                  <span class="ncm-term2-ll">{{#if lastWhen}}<span class="lw">{{lastWho}}</span><span class="lt">{{lastWhen}}</span>{{else}}<span class="lt dim">never</span>{{/if}}</span>
+                </div>
+                <div class="ncm-term2-ax" data-acct-facts="{{foldKey}}" data-item-id="{{itemId}}" data-account-id="{{id}}"{{#unless open}} hidden{{/unless}}>
+                  <div class="ncm-term2-kvg">
+                    <span class="k">Belongs to</span><span class="v">{{#if owner}}<b>{{owner.name}}</b>{{#if owner.address}} <span class="ncm-term2-addr">{{owner.address}}</span>{{/if}}{{else}}<span class="dim">no identity linked</span>{{/if}}</span>
+                    <span class="k">Lock</span><span class="v lkf">{{#if lockFull.open}}<span class="ok">open — no login</span>{{else}}{{#each lockFull.parts}}{{t}}{{#if dv}} <b>DV&nbsp;{{dv}}</b>{{/if}}{{#if conj}} <em>{{conj}}</em> {{/if}}{{/each}}{{/if}}</span>
+                    <span class="k">Mailbox</span><span class="v"><span class="mono">{{mail.count}}</span> messages · <span class="mono{{#if mail.unread}} un{{/if}}">{{mail.unread}}</span> unread · <span class="mono">{{mail.files}}</span> files</span>
+                    <span class="k">Lockout rule</span><span class="v">{{#if rule}}<span class="mono">{{rule.max}}</span> tries → <span class="mono">{{rule.lockout}}</span> lockout{{#if rule.used}} <span class="used">· {{rule.used}} used</span>{{/if}}{{else}}<span class="dim">open account — no lockout</span>{{/if}}</span>
+                    <span class="k">Logins here</span><span class="v">{{#if logins.length}}<span class="lg">{{#each logins}}<span class="lgr"><span class="w">{{name}}{{#if player}} <span class="pl">({{player}})</span>{{/if}}</span><span class="t" data-tooltip="{{full}}">{{when}}</span><span class="r {{#if ok}}is-good{{else}}is-bad{{/if}}"><i class="fas {{#if ok}}fa-check{{else}}fa-xmark{{/if}}"></i>{{result}}</span></span>{{/each}}</span>{{else}}<span class="dim">nobody yet</span>{{/if}}</span>
                   </div>
-                {{/each}}
-              </div>
-            {{else}}
-              <div class="ncm-term-admin-detail__none">No logins recorded yet.</div>
-            {{/if}}
-          </div>
+                  <div class="ncm-term2-axb">
+                    <button type="button" class="ncm-term2-btn ncm-term2-btn--sm" data-action="tabAct" data-op="editLock" data-item-id="{{itemId}}" data-account-id="{{id}}"><i class="fas fa-lock"></i>{{#if lock.open}}Add a lock{{else}}Edit the lock{{/if}}</button>
+                    <button type="button" class="ncm-term2-btn ncm-term2-btn--sm" data-action="tabAct" data-op="open" data-item-id="{{itemId}}" data-tooltip="There is no GM view of one account's mailbox here — this opens the terminal itself (Force-unlock in ⋯ skips the login)"><i class="fas fa-terminal"></i>Open terminal</button>
+                    {{#if resetIds}}<button type="button" class="ncm-term2-btn ncm-term2-btn--sm" data-action="tabAct" data-op="acctResetAll" data-item-id="{{itemId}}" data-account-id="{{id}}" data-actor-ids="{{resetIds}}" data-tooltip="Clear every character's tries and lockout on this account"><i class="fas fa-rotate-left"></i>Reset tries</button>{{/if}}
+                  </div>
+                </div>
+               </div>
+              {{/each}}
+            </div>
+          {{else}}
+            <div class="ncm-term2-quiet">No accounts yet — Configure to add some.</div>
+          {{/if}}
+        </div>
 
-          <div class="ncm-term-admin-detail__acts">
-            <button type="button" class="ncm-term-admin-btn ncm-term-admin-btn--primary" data-action="terminalOpen" data-item-id="{{id}}"><i class="fas fa-terminal"></i> Open</button>
-            <button type="button" class="ncm-term-admin-btn" data-action="terminalConfigureAdmin" data-item-id="{{id}}"><i class="fas fa-sliders"></i> Configure</button>
-            {{#unless gmBypassed}}
-              <button type="button" class="ncm-term-admin-btn" data-action="terminalForceUnlockAdmin" data-item-id="{{id}}" data-tooltip="Skip every login gate (until Reset)"><i class="fas fa-unlock-keyhole"></i> Force-unlock</button>
-            {{/unless}}
-            <button type="button" class="ncm-term-admin-btn" data-action="terminalRelock" data-item-id="{{id}}" data-tooltip="Log everyone out; clear lockouts, GM bypass, and the uplink back to defaults"><i class="fas fa-rotate-left"></i> Reset</button>
-            <button type="button" class="ncm-term-admin-btn" data-action="terminalExportAdmin" data-item-id="{{id}}" data-tooltip="Download the full config as JSON"><i class="fas fa-file-export"></i> Export</button>
-            <span class="ncm-term-admin-detail__acts-sp"></span>
-            <button type="button" class="ncm-term-admin-btn ncm-term-admin-btn--danger" data-action="terminalRemove" data-item-id="{{id}}" data-tooltip="Revert to a plain item"><i class="fas fa-trash-can"></i> Remove</button>
-          </div>
-        {{else}}
-          <div class="ncm-term-admin-empty"><i class="fas fa-terminal"></i><p>Select a terminal on the left.</p></div>
-        {{/with}}
-      </div>
+        {{!-- RECENT LOGINS: who played as whom — character (player) → account, result, when --}}
+        <div class="ncm-term2-mod">
+          <div class="ncm-term2-mod__k"><i class="fas fa-clock-rotate-left"></i>Recent logins<span class="ncm-term2-mod__hint">{{recentHint}}</span></div>
+          {{#each recent}}
+            <div class="ncm-term2-lr">
+              <span class="ncm-term2-av" style="--tc:{{ncm-hue name}}">{{initials}}</span>
+              <span class="w">{{name}}{{#if player}} <span class="pl">({{player}})</span>{{/if}}</span>
+              <span class="a"><i class="fas fa-arrow-right"></i>{{account}}</span>
+              <span class="r {{#if ok}}is-good{{else}}is-bad{{/if}}"><i class="fas {{#if ok}}fa-check{{else}}fa-xmark{{/if}}"></i>{{result}}</span>
+              <span class="t" data-tooltip="{{full}}">{{when}}</span>
+            </div>
+          {{else}}
+            <div class="ncm-term2-quiet">Nobody has logged in yet.</div>
+          {{/each}}
+        </div>
 
+        {{!-- SETUP: how the machine is built --}}
+        <div class="ncm-term2-mod">
+          <div class="ncm-term2-mod__k"><i class="fas fa-sliders"></i>Setup</div>
+          <div class="ncm-term2-cols">
+            <div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Uplink</span><span class="ncm-term2-kv__v{{#unless uplinkName}} is-dim{{/unless}}"{{#if uplinkName}} style="--tc:{{ncm-hue uplinkName}}"{{/if}} data-tooltip="The machine's own connection">{{#if uplinkName}}{{uplinkName}}{{else}}Local only{{/if}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Reach</span><span class="ncm-term2-kv__v{{#unless networkBinding}} is-dim{{/unless}}"{{#if networkBinding}} style="--tc:{{ncm-hue networkBinding}}"{{/if}} data-tooltip="Network players must be on to see this box">{{#if networkBinding}}{{networkBinding}} only{{else}}Anywhere{{/if}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Exfil</span><span class="ncm-term2-kv__v" data-tooltip="{{exfil}}">{{exfil}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Pinned</span><span class="ncm-term2-kv__v{{#unless pinLabel}} is-dim{{/unless}}"{{#if pinLabel}} style="--tc:{{ncm-hue pinLabel}}"{{/if}} data-tooltip="{{pinLabel}}">{{#if pinLabel}}{{pinLabel}}{{else}}Not on any scene{{/if}}</span></div>
+            </div>
+            <div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Preset</span><span class="ncm-term2-kv__v" style="--tc:{{ncm-hue presetLabel}}">{{presetLabel}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Login</span><span class="ncm-term2-kv__v">{{loginLabel}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Mailbox</span><span class="ncm-term2-kv__v" data-tooltip="{{mailboxStyle}}">{{mailboxLabel}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Sound</span><span class="ncm-term2-kv__v">{{soundLabel}}</span></div>
+            </div>
+          </div>
+        </div>
+      {{else}}
+        <div class="ncm-term2-empty"><i class="fas fa-terminal"></i> Select a terminal on the left.</div>
+      {{/with}}
     </div>
+
+
+  </div>
   {{else}}
-    <div class="ncm-term-admin-empty">
+    <div class="ncm-term2-empty ncm-term2-empty--big">
       <i class="fas fa-terminal"></i>
-      <p>No terminals yet. Right-click an item → <strong>Convert to Terminal</strong>, or use <strong>Import Item → Terminal</strong> above.</p>
+      <p>No terminals yet. Right-click an item → <strong>Convert to Terminal</strong>, or use <strong>Import</strong> above.</p>
     </div>
   {{/if}}
 
+</div>
+{{/with}}
 {{/if}}

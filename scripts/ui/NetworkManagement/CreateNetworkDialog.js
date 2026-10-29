@@ -125,7 +125,7 @@ export class CreateNetworkDialog extends BaseApplication {
       title: 'NCM.Network.CreateNetwork',
       icon: 'fas fa-plus',
       resizable: false,
-      minimizable: false,
+      minimizable: true,
     },
     position: {
       width: 480,
@@ -590,41 +590,14 @@ export class CreateNetworkDialog extends BaseApplication {
   }
 
   /**
-   * Open the Network Manager and select the newly created network.
+   * Open Admin → Networks (the folded-in Network Manager) on the new network.
    * @param {string} networkId
    */
   _openManagerToNetwork(networkId) {
     try {
-      // Import dynamically to avoid circular deps
-      const managerApp = Object.values(ui.windows).find(
-        w => w.id === 'ncm-network-management'
-      );
-
-      if (managerApp) {
-        // Manager already open — select the new network and bring to front
-        managerApp._selectedNetworkId = networkId;
-        managerApp._activeTab = 'networks';
-        managerApp._isEditMode = false;
-        managerApp._isCreating = false;
-        managerApp.bringToFront();
-        managerApp.render();
-      } else {
-        // Open fresh manager — pass the network to select
-        game.nightcity?.openNetworkManager?.();
-        // After a tick, select the network
-        setTimeout(() => {
-          const mgr = Object.values(ui.windows).find(
-            w => w.id === 'ncm-network-management'
-          );
-          if (mgr) {
-            mgr._selectedNetworkId = networkId;
-            mgr._activeTab = 'networks';
-            mgr.render();
-          }
-        }, 200);
-      }
+      game.nightcity?.openAdminTab?.('networks', { popout: true, select: `show:${networkId}` });
     } catch (err) {
-      log.warn('Could not open Network Manager to new network:', err);
+      log.warn('Could not open Admin → Networks on the new network:', err);
     }
   }
 

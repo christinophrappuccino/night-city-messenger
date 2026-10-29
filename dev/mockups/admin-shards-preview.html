@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Shards tab — REAL template render</title>
+<!--
+  Renders the REAL templates/admin-panel/tab-shards.hbs through Handlebars against
+  the real cascade (Foundry core -> CPR -> module CSS -> admin theme), with the
+  view-model produced by the REAL ShardsTab.prepareContext():
+    NCM_DUMP_CTX=<abs path>/ctx.json node dev/tools/sims/test-admin-shards.mjs
+    chrome --allow-file-access-from-files "admin-shards-preview.html?ctx=file:///<abs path>/ctx.json"
+  ?t=clean-light|high-contrast   admin preset
+  ?pop=1                          the 1120x780 pop-out window
+  ?sel=cache                      the world shard (Permissions, key-item layer) instead of the payroll
+  ?menu=new|more|dmore            open a menu
+  ?bulk=1                         select mode, two rows picked
+  ?auth=off                       the Player Authoring "Off" strip
+  ?sel=filt                       Locked + Unclaimed eddies + Held by: World items (pills, badge)
+  ?fold=N                          fold the Nth bay (0-based)
+  ?audit=1                        worst text contrast in list + detail (in <title>)
+  ?pop=view|filter                open the View / Filter popover (mounted on body like the real portal)
+  ?shut=path,integ,ents           fold those detail sections (the real fold is DOM-only, remembered per session)
+  ?open=path,integ,ents           unfold those (every band STARTS folded and shows its one-line summary)
+  ?bays=all                       unfold every bay (by default only the first bay is open)
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+<style>
+  body { margin: 0; background: #333; padding: 16px; }
+  .app-frame { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important;
+    width: 820px; height: 600px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #555; }
+  .app-frame.pop { width: 1120px; height: 780px; }
+  .window-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0; background: var(--ncm-bg-deep); }
+  .window-content > .ncm-admin-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #status { font: 12px monospace; color: #ccc; margin-bottom: 6px; }
+</style></head>
+<body>
+<div id="status">loading…</div>
+<div class="ncm-app ncm-admin-panel app-frame" id="p" data-ncm-scanlines="false">
+  <section class="window-content">
+    <div class="ncm-admin-panel" id="inner">
+      <nav class="ncm-admin-tabs"><button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-database"></i> Shards</button></nav>
+      <div class="ncm-admin-content" id="out"></div>
+    </div>
+  </section>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const P = document.getElementById('p');
+P.dataset.ncmAdminTheme = q.get('t') || 'clean-dark';
+if (q.get('h')) P.style.height = q.get('h') + 'px';
+if (q.get('pop') === '1') { P.classList.add('pop', 'ncm-admin-panel--pop'); document.getElementById('inner').classList.add('ncm-admin-panel--pop'); document.querySelector('nav').remove(); }
+Handlebars.registerHelper('ncm-hue', (t) => { const s = String(t ?? '').trim().toLowerCase(); if (!s) return 'var(--ncm-text-label)'; let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return 'var(--ncm-hue-' + ((h % 8) + 1) + ')'; }); // mirrors scripts/utils/tagHue.js
+  Handlebars.registerHelper('eq', (a, b) => a === b);
+const face = (c) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="${c}"/><circle cx="20" cy="16" r="7.5" fill="#0d0d14" opacity=".7"/><path d="M5 40c1-9 7-13 15-13s14 4 15 13z" fill="#0d0d14" opacity=".7"/></svg>`);
+(async () => {
+  try {
+    const [tpl, all] = await Promise.all([
+      fetch('../../templates/admin-panel/tab-shards.hbs').then((r) => r.text()),
+      fetch(q.get('ctx')).then((r) => r.json()),
+    ]);
+    const ctx = all[q.get('sel') === 'cache' ? 'cache' : q.get('sel') === 'filt' ? 'filt' : 'pay'];
+    const fix = (o) => { if (!o || typeof o !== 'object') return; for (const k of Object.keys(o)) {
+      if ((k === 'img' || k === 'holderImg') && o[k]) o[k] = face(o[k].length % 2 ? '#b85c7a' : '#5c86b8'); else fix(o[k]); } };
+    fix(ctx);
+    if (q.get('pop') === '1') ctx.isPopout = true;
+    if (q.get('auth') === 'off') ctx.auth = { on: false, facts: [] };
+    if (q.get('bulk')) { ctx.bulk = true; ctx.pickedCount = 2; let n = 0; for (const g of ctx.groups) for (const r of g.rows) { r.isSel = false; r.isPicked = n++ < 2; } }
+    document.getElementById('out').innerHTML = Handlebars.compile(tpl)({ activeTab: 'shards', shards2: ctx });
+    const pk = q.get('pop'); if (pk === 'view' || pk === 'filter') { const btn = document.querySelector('[data-sh2-popbtn="' + pk + '"]'); const pop = document.querySelector('[data-sh2-pop="' + pk + '"]'); btn.classList.add('is-open'); pop.classList.add('ncm-app', 'is-portal'); pop.dataset.ncmAdminTheme = P.dataset.ncmAdminTheme; document.body.appendChild(pop); const r = btn.getBoundingClientRect(); pop.style.top = (r.bottom + 4) + 'px'; pop.style.left = r.left + 'px'; }
+    for (const k of (q.get('shut') || '').split(',').filter(Boolean)) { const k2 = document.querySelector('[data-sec="' + k + '"]'); k2?.closest('.ncm-sh2-sec')?.classList.add('is-shut'); k2?.setAttribute('aria-expanded', 'false'); }
+    for (const k of (q.get('open') || '').split(',').filter(Boolean)) { const k2 = document.querySelector('[data-sec="' + k + '"]'); k2?.closest('.ncm-sh2-sec')?.classList.remove('is-shut'); k2?.setAttribute('aria-expanded', 'true'); }
+    if (q.get('bays') === 'all') document.querySelectorAll('.ncm-sh2-bayw').forEach((b) => b.classList.remove('is-shut'));
+    if (q.get('fold')) document.querySelectorAll('.ncm-sh2-bayw')[+q.get('fold')]?.classList.add('is-shut');
+    if (q.get('menu')) document.querySelector(`.ncm-sh2-menu[data-menu-id="${q.get('menu')}"]`)?.classList.add('is-open');
+
+    // ?audit=1 — worst text contrast in the list and the detail (walks up to the first opaque background)
+    if (q.get('audit')) {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 1; const cx = cv.getContext('2d', { willReadFrequently: true });
+      const rgba = (c) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+      const lum = ([r, g, b]) => { const f = (x) => { x /= 255; return x <= .03928 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4; }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+      const blend = (t, u) => t.map((x, i) => i < 3 ? x * t[3] + u[i] * (1 - t[3]) : 1);
+      const bgOf = (el) => { const L = []; for (let n = el; n; n = n.parentElement) { const v = rgba(getComputedStyle(n).backgroundColor); if (v[3] > 0) { L.push(v); if (v[3] > .95) break; } } let c = [51, 51, 51, 1]; for (let i = L.length - 1; i >= 0; i--) c = blend(L[i], c); return c; };
+      const out = [];
+      for (const [name, sel] of [['list', '.ncm-sh2-list'], ['detail', '.ncm-sh2-det']]) {
+        const rows = [];
+        document.querySelectorAll(sel + ' *').forEach((el) => {
+          const own = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim()).map((n) => n.textContent.trim()).join(' ');
+          if (!own || el.closest('[disabled], .ncm-sh2-ig__dead')) return;
+          const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none' || !el.getClientRects().length || +cs.opacity === 0) return;
+          const bg = bgOf(el), fg = blend(rgba(cs.color), bg), a = lum(fg), b = lum(bg);
+          rows.push([(Math.max(a, b) + .05) / (Math.min(a, b) + .05), own.slice(0, 24), cs.fontSize]);
+        });
+        rows.sort((x, y) => x[0] - y[0]);
+        out.push(name + ' worst ' + rows[0][0].toFixed(2) + ' · ' + rows.filter((x) => x[0] < 4.5).length + '/' + rows.length + ' <4.5 ' + rows.slice(0, 4).map((x) => '[' + x[0].toFixed(2) + ' ' + x[2] + ' ' + x[1] + ']').join(' '));
+      }
+      document.getElementById('status').textContent = out.join(' || '); document.title = out.join(' || ');
+      return;
+    }
+    // report: horizontal overflow anywhere inside the tab
+    const bad = [...document.querySelectorAll('.ncm-sh2 *')].filter((el) => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== 'visible' && !el.matches('.ncm-sh2-row__nm,.ncm-sh2-row__sub,.ncm-sh2-ent__t,.ncm-sh2-grp__nm'));
+    document.getElementById('status').textContent = `rendered · overflow-x: ${bad.length ? bad.map((e) => e.className).join(' | ') : 'none'}`;
+    document.title = 'OK ' + (bad.length ? 'OVERFLOW ' + bad.length : 'clean');
+  } catch (e) { document.getElementById('status').textContent = 'ERROR ' + e.message; document.title = 'ERROR ' + e.message; }
+})();
+</script>
+</body></html>

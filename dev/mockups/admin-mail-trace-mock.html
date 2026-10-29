@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>All mail — the trace</title>
+<!--
+  Admin → Messages → All mail at SCALE (2026-10-28, dev: "we're sifting through tons of messages… all your mockups will be
+  hell to navigate with a lot of messages"). The instrument COUNTS mail into bars; nothing is drawn per message, so it
+  looks the same with 40 messages or 14,000. Time is the axis, state is the colour, people are an optional scope.
+  A = THE TRACE: one histogram over game time, each bar a day (zoom: hours / days / weeks / months), stacked by state
+      (read cyan · unread amber · waiting on an NPC amber-striped · not delivered red · anonymous violet · junk grey).
+      Drag across bars to pick a range; click a bar to pick a day; state chips toggle a colour off (it drops out of the
+      bars AND the list); Who narrows to a person and the trace redraws. "Showing N of M" is always honest.
+  B = STATE LANES: the same counts as one thin lane per state, stacked, so each state has its own shape over time —
+      you SEE the week unread piled up, the day deliveries failed. Click a lane name = only that state; drag across =
+      a range; both at once = "unread, last week". Zoom and Who as in A.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-mail-trace-mock.html  ?t=clean-light|high-contrast  ?only=trace|lanes
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; } .mk-h:first-child { margin-top: 0; }
+  .mk-p { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 12px; max-width: 820px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .P { width: 820px; box-sizing: border-box; padding: 10px 12px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); display: flex; flex-direction: column; gap: 8px; }
+  .mod { position: relative; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); min-width: 0; display: flex; flex-direction: column; }
+  .mod::before, .mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid; pointer-events: none; }
+  .mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; } .mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+  .mod__k { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); flex: none; font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .mod__k i { color: var(--ncm-act); font-size: 9px; }
+  .mod__k .n { font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading)); padding: 0 5px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-act) 18%, transparent); }
+  .zoom { margin-left: auto; display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+  .zoom span { padding: 1px 7px; font: 700 9px var(--ncm-font-mono); color: var(--ncm-text-label); cursor: pointer; border-left: 1px solid var(--ncm-border); } .zoom span:first-child { border-left: 0; }
+  .zoom span.on { color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-act) 18%, transparent); box-shadow: inset 0 -2px var(--ncm-act); }
+  .sel { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane); font: 700 9.5px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); white-space: nowrap; margin-left: 6px; }
+  .sel i { font-size: 9px; color: var(--ncm-act); } .sel .c { font-size: 8px; color: var(--ncm-text-hint); }
+  /* state chips: toggling one drops its colour from the bars and the list */
+  .states { display: flex; gap: 4px; padding: 7px 9px 0; flex-wrap: wrap; }
+  .st { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px 1px 5px; border: 1px solid color-mix(in srgb, var(--c) 55%, var(--ncm-border)); border-radius: 1px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); cursor: pointer; background: color-mix(in srgb, var(--c) 10%, transparent); }
+  .st::before { content: ''; width: 8px; height: 8px; border-radius: 1px; background: var(--c); }
+  .st b { font: 700 9.5px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading)); }
+  .st.off { opacity: .4; background: transparent; } .st.off::before { background: transparent; border: 1px solid var(--c); box-sizing: border-box; }
+  .st.only { box-shadow: inset 0 -2px var(--c); }
+  .states .sp { flex: 1; } .states .nof { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); align-self: center; } .states .nof b { font-family: var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .sum { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-top: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .sum i { color: var(--ncm-act); font-size: 10px; } .sum b { color: var(--ncm-text-heading); } .sum .x { margin-left: auto; color: var(--ncm-act); cursor: pointer; }
+  .t-attn { color: var(--ncm-attn); } .t-bad { color: var(--ncm-bad); }
+  .list { display: flex; flex-direction: column; }
+  .band { display: flex; align-items: center; gap: 6px; padding: 3px 9px; background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border); font: 700 9px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); } .band .n { margin-left: auto; font: 700 9.5px var(--ncm-font-mono); } .band .n b { color: var(--ncm-attn); }
+  .row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 4px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); box-shadow: inset 3px 0 var(--tc); }
+  .row .av { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 7.5px var(--ncm-font-display); color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane)); border: 1px solid var(--tc); }
+  .row .tx { min-width: 0; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .row .tx b { color: var(--ncm-text-heading); font-weight: 600; }
+  .row .f span { padding: 0 5px; border-radius: 1px; font: 700 8.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-inverse); } .row .f .un { background: var(--ncm-attn); } .row .f .nd { background: var(--ncm-bad); }
+  .row .t { font: 10px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .row.more { display: flex; justify-content: center; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-hint); box-shadow: none; }
+
+  /* ════════ A · THE TRACE ════════ */
+  .trace { padding: 10px 10px 4px; position: relative; }
+  .trace svg { width: 100%; height: 150px; display: block; }
+  .trace .grid { stroke: color-mix(in srgb, var(--ncm-border) 80%, transparent); stroke-width: 1; }
+  .trace .gl { font: 8.5px var(--ncm-font-mono); fill: var(--ncm-text-hint); }
+  .trace .al { font: 700 8.5px var(--ncm-font-mono); fill: var(--ncm-text-label); letter-spacing: .04em; }
+  .trace .al.m { fill: var(--ncm-text-heading); }
+  .trace rect.b { stroke: none; } .trace rect.b.rd { fill: color-mix(in srgb, var(--ncm-act) 55%, var(--ncm-bg-card)); } .trace rect.b.un { fill: var(--ncm-attn); } .trace rect.b.nd { fill: var(--ncm-bad); } .trace rect.b.an { fill: var(--ncm-secret); } .trace rect.b.jk { fill: color-mix(in srgb, var(--ncm-text-hint) 60%, transparent); }
+  .trace .dimmed rect.b { opacity: .25; }
+  .trace .brush { fill: color-mix(in srgb, var(--ncm-act) 10%, transparent); stroke: var(--ncm-act); stroke-width: 1; stroke-dasharray: 3 2; }
+  .trace .bh { fill: var(--ncm-act); }
+  .trace .now { stroke: var(--ncm-act); stroke-width: 1.5; }
+  .trace .nowl { font: 700 8px var(--ncm-font-display); fill: var(--ncm-act); letter-spacing: .08em; }
+  .trace .older { font: 700 8.5px var(--ncm-font-mono); fill: var(--ncm-text-label); }
+  .trace .tip { position: absolute; left: 318px; top: 2px; padding: 4px 7px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-raised, var(--ncm-bg-card)); font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); box-shadow: 0 8px 20px -8px rgba(0,0,0,.6); pointer-events: none; }
+  .trace .tip b { display: block; font: 700 11px var(--ncm-font-display); color: var(--ncm-text-heading); } .trace .tip span { display: inline-block; margin-right: 6px; } .trace .tip span::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 1px; background: var(--c); margin-right: 3px; }
+
+  /* ════════ B · STATE LANES ════════ */
+  .lanes { padding: 8px 10px 4px; display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 0; }
+  .lane { display: contents; }
+  .lane .nm { display: flex; align-items: center; gap: 6px; height: 28px; padding-right: 8px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); font: 700 9.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); cursor: pointer; white-space: nowrap; }
+  .lane .nm::before { content: ''; width: 8px; height: 8px; border-radius: 1px; background: var(--c); flex: none; }
+  .lane .nm b { margin-left: auto; font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading)); }
+  .lane .nm.on { color: var(--ncm-text-heading); background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 3px 0 var(--c); padding-left: 6px; }
+  .lane .nm.off { opacity: .4; }
+  .lane svg { width: 100%; height: 28px; display: block; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .lane svg rect { fill: var(--c); } .lane.off svg rect { opacity: .2; }
+  .lane svg .brush { fill: color-mix(in srgb, var(--ncm-act) 10%, transparent); stroke: var(--ncm-act); stroke-width: 1; stroke-dasharray: 3 2; }
+  .lane svg .nowv { stroke: var(--ncm-act); stroke-width: 1.5; }
+  .axis { grid-column: 2; display: flex; justify-content: space-between; padding: 3px 0 0; font: 8.5px var(--ncm-font-mono); color: var(--ncm-text-hint); } .axis b { color: var(--ncm-act); font-weight: 700; }
+  .laneshd { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 0 0 6px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .laneshd .sp { flex: 1; }
+</style>
+</head>
+<body>
+
+<div class="mk-h">A · THE TRACE — one histogram, state is the colour, drag to narrow</div>
+<p class="mk-p">Every bar is a day (zoom to hours, weeks or months — the bars re-count, the picture never gets busier). Each bar is stacked by state: read cyan, unread amber, not delivered red, anonymous violet, junk grey. The state chips above show the counts for what's on screen; click one to drop that colour out of the bars and the list, double-click for only that state. Drag across bars to pick a range; click a bar for a day; the part outside the range dims. Who is a scope picker: pick a person and the trace redraws with only their mail. The list below is the narrowed set, grouped by day as now, paged. 1,412 messages over eight months, and the instrument is the same size it would be with forty.</p>
+<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="clean-dark" data-mk="trace"><div class="ncm-admin-panel"><div class="P">
+  <div class="mod">
+    <div class="mod__k"><i class="fas fa-wave-square"></i>Mail over time <span class="n">1,412</span><span class="zoom"><span>Hours</span><span class="on">Days</span><span>Weeks</span><span>Months</span></span><span class="sel"><i class="fas fa-user-group"></i>Who: everyone <span class="c">▾</span></span><span class="sel"><i class="fas fa-arrows-left-right"></i>Range: drag <span class="c">▾</span></span></div>
+    <div class="states">
+      <span class="st" style="--c:var(--ncm-act)">read <b>1,204</b></span>
+      <span class="st only" style="--c:var(--ncm-attn)">unread <b>38</b></span>
+      <span class="st" style="--c:var(--ncm-bad)">not delivered <b>6</b></span>
+      <span class="st" style="--c:var(--ncm-secret)">anonymous <b>22</b></span>
+      <span class="st off" style="--c:var(--ncm-text-hint)">junk <b>142</b></span>
+      <span class="sp"></span><span class="nof">Showing <b>41</b> of 1,412</span>
+    </div>
+    <div class="trace">
+      <svg viewBox="0 0 800 150" preserveAspectRatio="none">
+        <line class="grid" x1="40" y1="112" x2="800" y2="112"/><line class="grid" x1="40" y1="72" x2="800" y2="72"/><line class="grid" x1="40" y1="32" x2="800" y2="32"/>
+        <text class="gl" x="34" y="115" text-anchor="end">0</text><text class="gl" x="34" y="75" text-anchor="end">20</text><text class="gl" x="34" y="35" text-anchor="end">40</text>
+        <text class="older" x="40" y="138">◂ 1,088 older</text>
+        <!-- bars: days of March, x from 60, 24px pitch; dimmed outside the brush -->
+        <g class="dimmed">
+          <rect class="b rd" x="62" y="88" width="16" height="24"/><rect class="b jk" x="62" y="84" width="16" height="4"/>
+          <rect class="b rd" x="86" y="76" width="16" height="36"/><rect class="b an" x="86" y="72" width="16" height="4"/>
+          <rect class="b rd" x="110" y="96" width="16" height="16"/>
+          <rect class="b rd" x="134" y="66" width="16" height="46"/><rect class="b nd" x="134" y="62" width="16" height="4"/>
+          <rect class="b rd" x="158" y="100" width="16" height="12"/>
+          <rect class="b rd" x="182" y="80" width="16" height="32"/><rect class="b an" x="182" y="76" width="16" height="4"/>
+          <rect class="b rd" x="206" y="92" width="16" height="20"/>
+          <rect class="b rd" x="230" y="70" width="16" height="42"/><rect class="b jk" x="230" y="62" width="16" height="8"/>
+          <rect class="b rd" x="254" y="104" width="16" height="8"/>
+          <rect class="b rd" x="278" y="84" width="16" height="28"/>
+          <rect class="b rd" x="302" y="60" width="16" height="52"/><rect class="b un" x="302" y="54" width="16" height="6"/>
+          <rect class="b rd" x="326" y="78" width="16" height="34"/><rect class="b nd" x="326" y="74" width="16" height="4"/>
+        </g>
+        <!-- the brushed range: Mon 8 – Thu 11 -->
+        <rect class="brush" x="348" y="20" width="98" height="100"/>
+        <rect class="b rd" x="350" y="68" width="16" height="44"/><rect class="b un" x="350" y="56" width="16" height="12"/><rect class="b an" x="350" y="52" width="16" height="4"/>
+        <rect class="b rd" x="374" y="86" width="16" height="26"/><rect class="b un" x="374" y="80" width="16" height="6"/>
+        <rect class="b rd" x="398" y="90" width="16" height="22"/><rect class="b un" x="398" y="84" width="16" height="6"/><rect class="b nd" x="398" y="80" width="16" height="4"/>
+        <rect class="b rd" x="422" y="44" width="16" height="68"/><rect class="b un" x="422" y="26" width="16" height="18"/><rect class="b an" x="422" y="22" width="16" height="4"/>
+        <rect class="bh" x="346" y="20" width="3" height="100"/><rect class="bh" x="444" y="20" width="3" height="100"/>
+        <g class="dimmed"><rect class="b rd" x="446" y="108" width="16" height="4"/></g>
+        <line class="now" x1="470" y1="14" x2="470" y2="118"/><text class="nowl" x="474" y="22">NOW</text>
+        <!-- axis -->
+        <text class="al" x="70" y="130">26</text><text class="al" x="94" y="130">27</text><text class="al" x="118" y="130">28</text><text class="al m" x="142" y="130">MAR 1</text><text class="al" x="166" y="130">2</text><text class="al" x="190" y="130">3</text><text class="al" x="214" y="130">4</text><text class="al" x="238" y="130">5</text><text class="al" x="262" y="130">6</text><text class="al" x="286" y="130">7</text><text class="al" x="310" y="130">8</text><text class="al" x="334" y="130">9</text><text class="al" x="358" y="130">10</text><text class="al" x="382" y="130">11</text><text class="al" x="406" y="130">12</text><text class="al m" x="430" y="130">13</text>
+      </svg>
+      <div class="tip"><b>Thu 11 Mar</b><span style="--c:var(--ncm-act)">17 read</span><span style="--c:var(--ncm-attn)">5 unread</span><span style="--c:var(--ncm-secret)">1 anon</span></div>
+    </div>
+    <div class="sum"><i class="fas fa-filter"></i>Showing <b>Mon 8 – Thu 11 Mar</b> · <b>unread only</b> · junk hidden · 41 messages<span class="x">Clear the range</span></div>
+  </div>
+  <div class="mod"><div class="list">
+    <div class="band">Thu 11 Mar <span class="n">5 unread</span></div>
+    <div class="row" style="--tc:#ff67e4"><span class="av" style="--tc:#ff67e4">V</span><span class="tx"><b>V</b> → Rogue · Rogue. I know you're reading these.</span><span class="f"><span class="un">unread</span></span><span class="t">20:40</span></div>
+    <div class="row" style="--tc:#ff67e4"><span class="av" style="--tc:#ff67e4">V</span><span class="tx"><b>V</b> → Rogue · Booth was empty. Twice. Where's my cut?</span><span class="f"><span class="un">unread</span></span><span class="t">20:12</span></div>
+    <div class="row" style="--tc:#00acf8"><span class="av" style="--tc:#00acf8">RA</span><span class="tx"><b>Rache</b> → Dexter DeShawn · Job offer</span><span class="f"><span class="un">unread</span></span><span class="t">19:58</span></div>
+    <div class="row more">+38 more · paged 50 at a time · the reading pane is unchanged</div>
+  </div></div>
+</div></div></div>
+
+<div class="mk-h">B · STATE LANES — every state gets its own shape</div>
+<p class="mk-p">Same counts, one thin lane per state stacked like the runway. Each lane is its own sparkline over time, so you see the states separately: the unread pile growing all week, the two days deliveries failed, the anonymous mail clustered around one night. Click a lane's name for only that state (click again to let go); click several for a mix; drag across any lane to pick a range, and it applies to every lane. Zoom and Who as in A. Six lanes stay six lanes no matter how much mail there is.</p>
+<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="clean-dark" data-mk="lanes"><div class="ncm-admin-panel"><div class="P">
+  <div class="mod">
+    <div class="mod__k"><i class="fas fa-bars-staggered"></i>Mail by state <span class="n">1,412</span><span class="zoom"><span>Hours</span><span class="on">Days</span><span>Weeks</span><span>Months</span></span><span class="sel"><i class="fas fa-user-group"></i>Who: everyone <span class="c">▾</span></span></div>
+    <div class="lanes">
+      <div class="laneshd"><span>Click a lane = only that state · drag across = a range</span><span class="sp"></span><span>Showing <b style="color:var(--ncm-text-heading);font-family:var(--ncm-font-mono)">41</b> of 1,412</span></div>
+      <div class="lane" style="--c:var(--ncm-attn)"><span class="nm on">unread <b>38</b></span><svg viewBox="0 0 680 28" preserveAspectRatio="none"><rect x="252" y="12" width="12" height="16"/><rect x="280" y="22" width="12" height="6"/><rect x="308" y="6" width="12" height="22"/><rect x="336" y="16" width="12" height="12"/><rect x="364" y="14" width="12" height="14"/><rect x="392" y="2" width="12" height="26"/><rect class="brush" x="302" y="0" width="106" height="28"/><line class="nowv" x1="420" y1="0" x2="420" y2="28"/></svg></div>
+      <div class="lane" style="--c:var(--ncm-attn)"><span class="nm" title="player mail an NPC has not answered">waiting on NPC <b>3</b></span><svg viewBox="0 0 680 28" preserveAspectRatio="none"><rect x="364" y="20" width="12" height="8"/><rect x="392" y="8" width="12" height="20"/><rect class="brush" x="302" y="0" width="106" height="28"/><line class="nowv" x1="420" y1="0" x2="420" y2="28"/></svg></div>
+      <div class="lane" style="--c:var(--ncm-bad)"><span class="nm">not delivered <b>6</b></span><svg viewBox="0 0 680 28" preserveAspectRatio="none"><rect x="112" y="18" width="12" height="10"/><rect x="224" y="22" width="12" height="6"/><rect x="336" y="12" width="12" height="16"/><rect x="364" y="20" width="12" height="8"/><rect class="brush" x="302" y="0" width="106" height="28"/><line class="nowv" x1="420" y1="0" x2="420" y2="28"/></svg></div>
+      <div class="lane" style="--c:var(--ncm-secret)"><span class="nm">anonymous <b>22</b></span><svg viewBox="0 0 680 28" preserveAspectRatio="none"><rect x="28" y="22" width="12" height="6"/><rect x="84" y="20" width="12" height="8"/><rect x="140" y="24" width="12" height="4"/><rect x="196" y="4" width="12" height="24"/><rect x="224" y="14" width="12" height="14"/><rect x="308" y="22" width="12" height="6"/><rect x="392" y="22" width="12" height="6"/><rect class="brush" x="302" y="0" width="106" height="28"/><line class="nowv" x1="420" y1="0" x2="420" y2="28"/></svg></div>
+      <div class="lane" style="--c:var(--ncm-money)"><span class="nm">eddies attached <b>19</b></span><svg viewBox="0 0 680 28" preserveAspectRatio="none"><rect x="56" y="20" width="12" height="8"/><rect x="168" y="22" width="12" height="6"/><rect x="252" y="16" width="12" height="12"/><rect x="336" y="24" width="12" height="4"/><rect class="brush" x="302" y="0" width="106" height="28"/><line class="nowv" x1="420" y1="0" x2="420" y2="28"/></svg></div>
+      <div class="lane" style="--c:var(--ncm-act)"><span class="nm">read <b>1,204</b></span><svg viewBox="0 0 680 28" preserveAspectRatio="none"><rect x="0" y="14" width="12" height="14"/><rect x="28" y="8" width="12" height="20"/><rect x="56" y="18" width="12" height="10"/><rect x="84" y="4" width="12" height="24"/><rect x="112" y="20" width="12" height="8"/><rect x="140" y="10" width="12" height="18"/><rect x="168" y="16" width="12" height="12"/><rect x="196" y="6" width="12" height="22"/><rect x="224" y="22" width="12" height="6"/><rect x="252" y="12" width="12" height="16"/><rect x="280" y="4" width="12" height="24"/><rect x="308" y="10" width="12" height="18"/><rect x="336" y="16" width="12" height="12"/><rect x="364" y="18" width="12" height="10"/><rect x="392" y="2" width="12" height="26"/><rect x="420" y="26" width="12" height="2"/><rect class="brush" x="302" y="0" width="106" height="28"/><line class="nowv" x1="420" y1="0" x2="420" y2="28"/></svg></div>
+      <div class="lane off" style="--c:var(--ncm-text-hint)"><span class="nm off">junk <b>142</b></span><svg viewBox="0 0 680 28" preserveAspectRatio="none"><rect x="0" y="18" width="12" height="10"/><rect x="28" y="20" width="12" height="8"/><rect x="56" y="12" width="12" height="16"/><rect x="84" y="22" width="12" height="6"/><rect x="112" y="16" width="12" height="12"/><rect x="140" y="20" width="12" height="8"/><rect x="168" y="10" width="12" height="18"/><rect x="196" y="22" width="12" height="6"/><rect x="224" y="18" width="12" height="10"/><rect x="252" y="20" width="12" height="8"/><rect x="280" y="14" width="12" height="14"/><rect x="308" y="22" width="12" height="6"/><rect x="336" y="18" width="12" height="10"/><rect x="364" y="20" width="12" height="8"/><rect x="392" y="16" width="12" height="12"/><rect class="brush" x="302" y="0" width="106" height="28"/><line class="nowv" x1="420" y1="0" x2="420" y2="28"/></svg></div>
+      <div class="axis"><span>◂ 1,088 older</span><span>Feb 26</span><span>Mar 1</span><span>Mar 5</span><span>Mar 8</span><span>Mar 11</span><b>NOW</b></div>
+    </div>
+    <div class="sum"><i class="fas fa-filter"></i>Showing <b>unread</b> · <b>Mon 8 – Thu 11 Mar</b> · 41 messages<span class="x">Clear</span></div>
+  </div>
+  <div class="mod"><div class="list">
+    <div class="band">Thu 11 Mar <span class="n">5 unread</span></div>
+    <div class="row" style="--tc:#ff67e4"><span class="av" style="--tc:#ff67e4">V</span><span class="tx"><b>V</b> → Rogue · Rogue. I know you're reading these.</span><span class="f"><span class="un">unread</span></span><span class="t">20:40</span></div>
+    <div class="row" style="--tc:#ff67e4"><span class="av" style="--tc:#ff67e4">V</span><span class="tx"><b>V</b> → Rogue · Booth was empty. Twice. Where's my cut?</span><span class="f"><span class="un">unread</span></span><span class="t">20:12</span></div>
+    <div class="row more">+39 more · paged 50 at a time · the reading pane is unchanged</div>
+  </div></div>
+</div></div></div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const t = q.get('t'); if (t) document.querySelectorAll('[data-ncm-admin-theme]').forEach((e) => e.setAttribute('data-ncm-admin-theme', t));
+  const only = q.get('only'); if (only) document.querySelectorAll('.mk-win').forEach((w) => { const on = w.dataset.mk === only; w.style.display = on ? '' : 'none'; w.previousElementSibling.style.display = on ? '' : 'none'; w.previousElementSibling.previousElementSibling.style.display = on ? '' : 'none'; });
+</script>
+</body>
+</html>

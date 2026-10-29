@@ -1,0 +1,131 @@
+{{!-- Admin → Contacts → Who knows whom: the Map | Table switch, and (Map) the net map + information panel. Rules: contactsMapModel.js; context: contactsMap.js; styles: contacts-map.css --}}
+{{!-- ONE row (2026-10-28): Map | Table · (map) Highlight chips · the role colour legend at the right end --}}
+<div class="ncm-ct2-mode ncm-ct2-mode--one"><span class="ncm-ct2-mode__seg"><span class="{{#if map.on}}on{{/if}}" data-action="tabAct" data-op="mxMode" data-mode="map" data-tooltip="A net map — click a character or a contact to see it in the panel under the map"><i class="fas fa-diagram-project"></i>Map</span><span class="{{#unless map.on}}on{{/unless}}" data-action="tabAct" data-op="mxMode" data-mode="table" data-tooltip="One row per contact, one column per character — click a cell to share or take back"><i class="fas fa-table-cells"></i>Table</span></span>
+  {{#if map.on}}{{#unless map.empty}}
+    <span class="ncm-ct2-map__lbl">Highlight</span>
+    <span class="ncm-ct2-map__seg">{{#each map.chips}}<span class="{{#if on}}on{{/if}}{{#if group}} is-group{{/if}}" data-action="tabAct" data-op="mapHi" data-hi="{{key}}"{{#if group}} style="--gc:{{color}}" data-tooltip="Your contact group {{label}} — light up its {{n}} member(s) on the map"{{/if}}>{{#if group}}<i class="fas fa-users"></i>{{/if}}{{label}}{{#if n}}<b>{{n}}</b>{{/if}}</span>{{/each}}</span>
+    {{#if map.groupPicker}}<span class="ncm-ct2-map__grp{{#if map.groupOn}} is-on{{/if}}"{{#if map.groupOn}} style="--gc:{{map.groupOn.color}}"{{/if}} data-tooltip="Light up the members of one of your contact groups">{{{map.groupPicker}}}</span>{{/if}}
+    {{#if map.roles.length}}<span class="ncm-ct2-mapkey"><button type="button" class="ncm-ct2-mapkey__k" data-mapkey-toggle aria-expanded="false" aria-haspopup="true" data-tooltip="Contacts on the map are drawn in their role colour — click for the key"><i class="fas fa-diamond"></i>Roles<span class="ncm-ct2-mapkey__n">{{map.roles.length}}</span><i class="fas fa-chevron-down caret"></i></button><span class="ncm-ct2-mapkey__pop" role="list" aria-label="Contact colour is their role">{{#each map.roles}}<span class="ncm-ct2-mapkey__it" role="listitem" style="--tc:{{hue}}"><svg viewBox="-6 -6 12 12" aria-hidden="true"><polygon points="0,-5 5,0 0,5 -5,0"/></svg><span class="nm">{{label}}</span><b>{{n}}</b></span>{{/each}}</span></span>{{/if}}
+  {{/unless}}{{else}}<span class="ncm-ct2-mode__hint">One row per contact, one column per character — click a cell to share or take back.</span>{{/if}}
+</div>
+{{#if map.on}}
+<div class="ncm-ct2-map{{#if map.view.idle}} is-idle{{/if}}" data-ct2-scroll="map">
+  {{#if map.empty}}
+    <div class="ncm-ct2-mxempty">No player characters yet — there is nobody on the map.</div>
+  {{else}}
+  <div class="ncm-ct2-map__ro">
+    <span>Nodes <b>{{map.readout.nodes}}</b></span><span>Links <b>{{map.readout.links}}</b></span>
+    <span>{{map.readout.severalLabel}} <b>{{map.readout.several}}</b></span><span>Known by one <b>{{map.readout.one}}</b></span>
+    <span class="{{#if map.readout.dark}}is-attn{{/if}}">Dark <b>{{map.readout.dark}}</b></span>
+    {{#if map.readout.focus}}<span class="is-focus">{{map.readout.focus.label}} <b>{{map.readout.focus.a}}</b> {{map.readout.focus.aL}}{{#if map.readout.focus.b}} · <b>{{map.readout.focus.b}}</b> {{map.readout.focus.bL}}{{/if}}</span>{{/if}}
+  </div>
+  <div class="ncm-ct2-map__stage"><i></i><i></i><i></i><i></i>
+    <div class="ncm-ct2-map__zoom" role="group" aria-label="Map zoom"><button type="button" data-map-zoom="out" aria-label="Zoom out" data-tooltip="Zoom out">−</button><button type="button" data-map-zoom="fit" data-tooltip="Fit the whole map to the width"><span data-map-zoom-label>Fit</span></button><button type="button" data-map-zoom="in" aria-label="Zoom in" data-tooltip="Zoom in">+</button><span class="ncm-ct2-map__help" data-tooltip="Wheel: zoom where the cursor is · Drag: move around · Double-click: zoom in there · Arrows / + / − / 0 with the map focused"><i class="fas fa-hand"></i></span></div>
+    <div class="ncm-ct2-map__scroll" data-ct2-scroll="mapzoom">
+    <svg class="ncm-ct2-map__svg" data-map-uid="{{map.uid}}" viewBox="0 0 {{map.view.w}} {{map.view.h}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Who knows whom — characters and the contacts they know">
+      <defs>
+        <pattern id="{{map.uid}}-g" width="50" height="50" patternUnits="userSpaceOnUse">
+          <path class="gf" d="M 10 0 V 50 M 20 0 V 50 M 30 0 V 50 M 40 0 V 50 M 0 10 H 50 M 0 20 H 50 M 0 30 H 50 M 0 40 H 50"/>
+          <path class="gm" d="M 0 0 V 50 M 0 0 H 50"/>
+        </pattern>
+        <linearGradient id="{{map.uid}}-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--ncm-act)" stop-opacity="0"/><stop offset=".85" stop-color="var(--ncm-act)" stop-opacity=".07"/><stop offset="1" stop-color="var(--ncm-act)" stop-opacity=".18"/></linearGradient>
+      </defs>
+      <rect class="grid" width="{{map.view.w}}" height="{{map.view.h}}" fill="url(#{{map.uid}}-g)"/>
+      <rect class="scan" width="{{map.view.w}}" height="60" fill="url(#{{map.uid}}-s)"/>
+      {{#each map.view.traces}}<path class="tr {{cls}}" data-tr="{{k}}" data-contact="{{contact}}" data-pc="{{pc}}" d="{{d}}"/>{{/each}}
+      {{#each map.view.buses}}<path class="bus {{cls}}" data-bus="{{pc}}" d="{{d}}"/>{{/each}}
+      {{#each map.view.vias}}<rect class="via" x="{{rx}}" y="{{ry}}" width="5" height="5" transform="rotate(45 {{x}} {{y}})"/>{{/each}}
+      {{#each map.view.pins}}<rect class="pin" x="{{x}}" y="{{y}}" width="6" height="6"/>{{/each}}
+      {{#each map.view.nodes}}<g class="nd {{cls}}" data-map-node="{{id}}" data-action="tabAct" data-op="mapPick" data-id="{{id}}" transform="translate({{x}} {{y}})">
+        {{#if framePts}}<polygon class="frame" points="{{framePts}}"/>{{/if}}<polygon class="dm" points="{{pts}}" style="fill:{{hue}}"/><title>{{tip}}</title></g>{{/each}}
+      {{#each map.view.chips}}<g class="nd pc {{cls}}" data-map-node="{{id}}" data-action="tabAct" data-op="mapPick" data-id="{{id}}" transform="translate({{x}} {{y}})">
+        <polygon class="hx2" points="{{hex2}}"/><polygon class="hx" points="{{hex}}"/><text class="ini">{{initials}}</text>
+        <rect class="plate" x="{{px}}" y="{{py}}" width="{{pw}}" height="{{ph}}"/><rect class="plate-bar" x="{{px}}" y="{{py}}" width="3" height="{{ph}}"/>
+        <text class="pn" x="{{nx}}" y="{{ny}}">{{name}}</text><text class="pk" x="{{cx}}" y="{{ny}}" text-anchor="end">{{cnt}}</text><title>{{name}} — click to see who they know</title></g>{{/each}}
+      {{#each map.view.buses}}<g class="busbadge {{cls}}"><rect x="{{bx}}" y="{{by}}" width="22" height="14" rx="1"/><text x="{{tx}}" y="{{ty}}">×{{n}}</text><rect class="pin" x="{{px}}" y="{{py}}" width="8" height="8"/></g>{{/each}}
+      {{#each map.view.labels}}{{#if lead}}<line class="lead" x1="{{lead.x1}}" y1="{{lead.y1}}" x2="{{lead.x2}}" y2="{{lead.y2}}"/>{{/if}}<rect class="lbp{{#if hot}} is-hot{{/if}}" x="{{x}}" y="{{y}}" width="{{w}}" height="{{h}}" rx="1"/><text class="lbt" x="{{tx}}" y="{{ty}}">{{name}}</text>{{/each}}
+    </svg>
+    </div>
+  </div>
+
+  {{!-- the information panel --}}
+  <div class="ncm-ct2-mapp{{#if map.panel.fresh}} is-new{{/if}}"><i></i><i></i><i></i><i></i>
+    {{#if map.panel.legend}}
+      <div class="ncm-ct2-mapp__k"><i class="fas fa-book-open"></i>How to read the map</div>
+      <div class="ncm-ct2-mapp__hint"><i class="fas fa-circle-info"></i>Lines show who knows whom. Click a character to see their contacts, or a contact to share or take them back.</div>
+      <div class="ncm-ct2-mapp__legend">
+        <span><svg viewBox="-15 -11 30 22"><polygon class="lg-hx" points="0,-9 7.8,-4.5 7.8,4.5 0,9 -7.8,4.5 -7.8,-4.5"/></svg>A player character</span>
+        <span><svg viewBox="-15 -11 30 22"><polygon class="lg-dm" points="0,-7 7,0 0,7 -7,0"/></svg>A contact — colour is the role, bigger = known by more</span>
+        <span><svg viewBox="0 0 30 22"><path class="lg-tr" d="M2 18 L10 10 L28 10"/></svg>A trace — this character knows this contact</span>
+        <span><svg viewBox="0 0 30 22"><path class="lg-tr is-hot" d="M2 18 L10 10 L28 10"/></svg>Lit trace — part of what you picked</span>
+        <span><svg viewBox="0 0 30 22"><path class="lg-bus" d="M2 11 L28 11"/></svg>A bus — many traces into one side, the badge counts them</span>
+        <span><svg viewBox="-15 -11 30 22"><polygon class="lg-grp" points="0,-9 9,0 0,9 -9,0"/></svg>Dashed frame — in the highlighted group</span>
+      </div>
+    {{else if map.panel.isPc}}
+      <div class="ncm-ct2-mapp__k"><i class="fas fa-user"></i>Character<span class="x" data-action="tabAct" data-op="mapPick" data-id="">close</span></div>
+      <div class="ncm-ct2-mapp__hint"><i class="fas fa-circle-info"></i>Lit traces are everyone {{map.panel.name}} knows. Click a contact to share them or take them back.</div>
+      <div class="ncm-ct2-mapp__body">
+        <div class="ncm-ct2-mapp__id">
+          <svg viewBox="-20 -20 40 40" class="ncm-ct2-mapp__glyph"><polygon class="lg-hx is-sel" points="0,-18 15.6,-9 15.6,9 0,18 -15.6,9 -15.6,-9"/><text class="lg-ini">{{map.panel.initials}}</text></svg>
+          <div class="who"><div class="nm">{{map.panel.name}}</div>{{#if map.panel.player}}<div class="subline">played by <b>{{map.panel.player}}</b></div>{{/if}}</div>
+          <div class="stat"><b>{{map.panel.known}}</b><span>of {{map.panel.total}} known</span></div>
+          <div class="stat"><b>{{map.panel.onlyN}}</b><span>only them</span></div>
+        </div>
+        <div class="ncm-ct2-mapp__grid">
+          <div class="sec"><div class="h">Who they know</div>
+            {{#each map.panel.byRole}}<div class="rr"><span class="ncm-tagp" style="--tc:{{hue}}"><i class="{{icon}}"></i>{{label}}</span><span class="names">{{#each list}}<a class="lnk" data-action="tabAct" data-op="mapPick" data-id="{{id}}">{{name}}</a>{{/each}}</span></div>{{else}}<div class="dim">Nobody yet.</div>{{/each}}
+          </div>
+          <div class="sec">
+            <div class="h">Only they know</div>
+            {{#each map.panel.only}}<div class="kv"><a class="lnk" data-action="tabAct" data-op="mapPick" data-id="{{id}}">{{name}}</a><span class="dim">nobody else has this contact</span></div>{{else}}<div class="dim">Nobody — everyone they know is shared.</div>{{/each}}
+            <div class="h">Groups they hold</div>
+            {{#each map.panel.held}}<span class="ncm-tagp" style="--tc:{{color}}"><i class="fas fa-users"></i>{{name}}{{#if shared}} · from you{{/if}}</span> {{else}}<div class="dim">No groups.</div>{{/each}}
+            {{#if map.panel.missing.length}}<div class="h">Missing from your groups</div>
+              {{#each map.panel.missing}}<div class="miss"><span class="ncm-tagp" style="--tc:{{color}}">{{name}}</span><span class="dim">{{names}}</span><button type="button" class="ncm-ct2-mapbtn" data-action="tabAct" data-op="pGroupUpdate" data-group-id="{{id}}" data-actor="{{actorId}}"><i class="fas fa-share"></i>Share ({{n}})</button></div>{{/each}}{{/if}}
+          </div>
+        </div>
+        <div class="ncm-ct2-mapp__acts">
+          <button type="button" class="ncm-ct2-mapbtn is-pri" data-action="tabAct" data-op="pContacts" data-actor="{{map.panel.actorId}}"><i class="fas fa-address-book"></i>Their contacts</button>
+          <button type="button" class="ncm-ct2-mapbtn" data-action="tabAct" data-op="pInbox" data-actor="{{map.panel.actorId}}"><i class="fas fa-inbox"></i>Open inbox</button>
+          <button type="button" class="ncm-ct2-mapbtn" data-action="tabAct" data-op="pMessage" data-actor="{{map.panel.actorId}}"><i class="fas fa-pen"></i>Write to {{map.panel.name}}</button>
+        </div>
+      </div>
+    {{else if map.panel.isContact}}
+      <div class="ncm-ct2-mapp__k"><i class="fas fa-id-card"></i>Contact<span class="x" data-action="tabAct" data-op="mapPick" data-id="">close</span></div>
+      <div class="ncm-ct2-mapp__hint"><i class="fas fa-circle-info"></i>Lit traces are the characters who know {{map.panel.name}}. Share or take back below — the map redraws.</div>
+      <div class="ncm-ct2-mapp__body">
+        <div class="ncm-ct2-mapp__id">
+          <svg viewBox="-20 -20 40 40" class="ncm-ct2-mapp__glyph"><polygon class="lg-dm2" style="fill:{{map.panel.hue}}" points="0,-15 15,0 0,15 -15,0"/></svg>
+          <div class="who"><div class="nm">{{map.panel.name}}</div>
+            <div class="tags">{{#if map.panel.role}}<span class="ncm-tagp" style="--tc:{{map.panel.role.hue}}"><i class="{{map.panel.role.icon}}"></i>{{map.panel.role.label}}</span>{{/if}}{{#if map.panel.org}}<span class="ncm-tagp" style="--tc:{{ncm-hue map.panel.org}}">{{map.panel.org}}</span>{{/if}}<span class="ncm-tagp" style="--tc:{{map.panel.trust.color}}">{{map.panel.trust.label}}</span></div></div>
+          <div class="stat"><b>{{map.panel.knownN}}/{{map.panel.pcN}}</b><span>characters know them</span></div>
+        </div>
+        <div class="ncm-ct2-mapp__grid">
+          <div class="sec"><div class="h">Who knows them</div>
+            {{#each map.panel.who}}<div class="pcrow{{#if knows}} is-k{{/if}}"><span class="pi">{{initials}}</span><span class="pn">{{name}}</span>
+              {{#if knows}}<span class="ncm-tagp" style="--tc:{{color}}">{{trust}}{{#if own}} · their own{{/if}}</span>{{else}}<span class="dim">doesn’t know them</span>{{/if}}
+              <button type="button" class="ncm-ct2-mapbtn{{#if knows}} is-bad{{/if}}" data-action="tabAct" data-op="whoToggle" data-id="{{cid}}" data-actor="{{actorId}}">{{#if knows}}<i class="fas fa-xmark"></i>Take back{{else}}<i class="fas fa-share"></i>Share{{/if}}</button></div>{{/each}}
+          </div>
+          <div class="sec">
+            <div class="h">Address</div>{{#if map.panel.email}}<div class="mono">{{map.panel.email}}</div>{{else}}<div class="dim">No address.</div>{{/if}}
+            <div class="h">Groups</div>{{#each map.panel.groups}}<span class="ncm-tagp" style="--tc:{{color}}"><i class="fas fa-users"></i>{{name}}</span> {{else}}<div class="dim">Not in any of your groups.</div>{{/each}}
+            <div class="h">Last mail</div>
+            {{#if map.panel.last}}<div class="mail"><span class="dir{{#if map.panel.last.sent}} is-out{{else}} is-in{{/if}}"><i class="fas {{#if map.panel.last.sent}}fa-arrow-up-right{{else}}fa-arrow-down-left{{/if}}"></i></span><span class="sj">{{map.panel.last.subject}}</span><span class="tm">{{map.panel.last.when}}</span></div>{{else}}<div class="dim">No mail yet.</div>{{/if}}
+            {{#if map.panel.waiting}}<div class="wait">{{map.panel.waiting}} waiting on a reply</div>{{/if}}
+          </div>
+        </div>
+        <div class="ncm-ct2-mapp__acts">
+          {{#if map.panel.waiting}}<button type="button" class="ncm-ct2-mapbtn is-pri" data-action="tabAct" data-op="replyAs" data-id="{{map.panel.id}}"><i class="fas fa-reply"></i>Reply as {{map.panel.first}}</button>{{else}}<button type="button" class="ncm-ct2-mapbtn" data-action="tabAct" data-op="sendAs" data-id="{{map.panel.id}}"><i class="fas fa-pen"></i>Write as {{map.panel.first}}</button>{{/if}}
+          <button type="button" class="ncm-ct2-mapbtn" data-action="tabAct" data-op="pOpenContact" data-id="{{map.panel.id}}"><i class="fas fa-address-card"></i>Open</button>
+          {{#if map.panel.missingN}}<button type="button" class="ncm-ct2-mapbtn{{#unless map.panel.waiting}} is-pri{{/unless}}" data-action="tabAct" data-op="mapShareAll" data-id="{{map.panel.id}}"><i class="fas fa-share-nodes"></i>Share with the other {{map.panel.missingN}}</button>{{/if}}
+        </div>
+      </div>
+    {{/if}}
+  </div>
+
+  <div class="ncm-ct2-map__dock"><span class="ncm-ct2-map__lbl">Dark — nobody knows yet · {{map.dark.length}}</span>
+    {{#each map.dark}}<span class="dc{{#if on}} is-sel{{/if}}" data-action="tabAct" data-op="mapPick" data-id="{{id}}"><span class="ncm-ct2-av" style="--tc:{{hue}}">{{initials}}</span>{{name}}</span>{{else}}<span class="dim">Everyone is known by someone.</span>{{/each}}
+  </div>
+  {{/if}}
+</div>
+{{/if}}

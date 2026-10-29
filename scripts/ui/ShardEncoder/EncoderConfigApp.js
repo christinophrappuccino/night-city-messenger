@@ -272,11 +272,15 @@ export class EncoderConfigApp extends BaseApplication {
       </div>
       <div class="ncm-ecfg__chips">${chipRow(roleChips, 'gateRoleAdd', 'gateRoleDel', FALLBACK_ROLE_IMG, 'role')}</div>`)
 
-    + this._sec('By skill', 'qualify by having at least this much rank in one skill', `
+    + this._sec('By skill', 'qualify by having at least this much rank in ANY one of these skills', `
+      ${(g.skills.length ? g.skills : []).map((s, i) => `
       <div class="ncm-ecfg__row">
-        ${this._field('Skill', this._select('gate.skill.name', g.skill.name, this._skillOptsClearable(g.skill.name), { width: '220px' }), 'Leave it unset and this rule is not used at all.')}
-        ${this._field('at rank', this._num('gate.skill.min', g.skill.min, { max: 10, width: '54px' }))}
-      </div>`)
+        ${this._field(i ? 'or' : 'Skill', this._select(`gate.skills.${i}.name`, s.name, this._skillOptsClearable(s.name), { width: '220px' }))}
+        ${this._field('at rank', this._num(`gate.skills.${i}.min`, s.min, { max: 10, width: '54px' }))}
+        <button type="button" class="ncm-ecfg__mini ncm-ecfg__mini--danger" data-ec="gateSkillDel" data-v="${i}" aria-label="Remove this skill" style="align-self:flex-end"><i class="fas fa-xmark"></i></button>
+      </div>`).join('')}
+      ${g.skills.length ? '' : '<div class="ncm-ecfg__verdict">No skill rule — add one to let a character qualify by rank.</div>'}
+      <div class="ncm-ecfg__chips"><button type="button" class="ncm-ecfg__chip ncm-ecfg__chip--add" data-ec="gateSkillAdd"><i class="fas fa-plus"></i> skill</button></div>`)
 
     + this._sec('By gear', 'qualify by carrying particular items', `
       ${g.itemGroups.map((grp, gi) => `
@@ -495,7 +499,7 @@ export class EncoderConfigApp extends BaseApplication {
       if (!t) return;
       set(t);
       // Structural choices repaint the body so dependent fields follow.
-      if (/^(enabled|gate\.(mode|logic|roleLogic|skill\.name)|optional\.[a-z]+\.(on|stack)|types\..*\.(on|skill|alt)|tiers\..*\.(color|buyable)|programs\.(skill|families))/.test(t.dataset.ecSet)) this._renderBody();
+      if (/^(enabled|gate\.(mode|logic|roleLogic|skills\.\d+\.name)|optional\.[a-z]+\.(on|stack)|types\..*\.(on|skill|alt)|tiers\..*\.(color|buyable)|programs\.(skill|families))/.test(t.dataset.ecSet)) this._renderBody();
       // The time example is patched in place rather than repainted: a number input
       // fires `change` on every arrow-key press, and a repaint would take the focus
       // out from under the GM mid-edit.
@@ -559,6 +563,13 @@ export class EncoderConfigApp extends BaseApplication {
         this.draft.gate.roles.push(pick.name);
         this._markDirty(); this._renderBody(); return;
       }
+      case 'gateSkillAdd':
+        (this.draft.gate.skills ||= []).push({ name: 'Interface', min: 4 });
+        this._markDirty(); this._renderBody(); return;
+      case 'gateSkillDel':
+        this.draft.gate.skills.splice(Number(v), 1);
+        this._markDirty(); this._renderBody(); return;
+
       case 'gateRoleDel':
         this.draft.gate.roles.splice(Number(v), 1);
         this._markDirty(); this._renderBody(); return;

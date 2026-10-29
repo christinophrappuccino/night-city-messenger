@@ -95,6 +95,29 @@ export function aliasLabel(contacts, contactId, primaryName = '') {
 }
 
 /**
+ * VOICE — "how this NPC talks" (2026-10-28), a GM-only master-contact field
+ * (`contact.voice`, never copied to players). An alias speaks like its main
+ * identity unless it has a voice of its own; a contact-only NPC's alias inherits
+ * the root's. Returns the text, and where it came from.
+ * @returns {{text: string, own: boolean, inherited: boolean, from: object|null}}
+ *   `from` = the identity the text was inherited from (null when own / none).
+ */
+export function voiceInfo(contacts, contact) {
+  const own = String(contact?.voice ?? '').trim();
+  if (own) return { text: own, own: true, inherited: false, from: null };
+  const role = identityRole(contacts, contact);
+  const main = role?.isAlias ? role.primary : null;
+  const theirs = String(main?.voice ?? '').trim();
+  if (theirs) return { text: theirs, own: false, inherited: true, from: main };
+  return { text: '', own: false, inherited: false, from: null };
+}
+
+/** The voice to use for this contact: its own, else its main identity's, else ''. */
+export function voiceFor(contacts, contact) {
+  return voiceInfo(contacts, contact).text;
+}
+
+/**
  * How much each identity is used, from the person's own mailbox. A message
  * counts for the identity it names (`toContactId` on mail it received,
  * `fromContactId` on mail it sent); one that names none is the main identity's.

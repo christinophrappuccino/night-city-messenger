@@ -327,6 +327,11 @@ export class MessageService {
     // mail came to) wins over the character's registered address.
     const chosen = data.fromContactId && game.nightcity?.masterContactService?.getContact?.(data.fromContactId);
     if (chosen?.email && chosen.actorId && chosen.actorId === (fromActor?.id || data.fromActorId)) return chosen.email;
+    // A main identity the GM starred speaks for the character, even when the
+    // registered flag still holds an address from before the move. NPCs only —
+    // a player character's address is the player's own Email Setup choice.
+    const starred = game.nightcity?.masterContactService?.getByActorId?.(fromActor?.id || data.fromActorId);
+    if (starred?.primaryIdentity && starred.email && !fromActor?.hasPlayerOwner) return starred.email;
     const flagged = this._contactRepo.getActorEmail(data.fromActorId);
     if (flagged) return flagged;
     const mcs = game.nightcity?.masterContactService;
@@ -357,6 +362,9 @@ export class MessageService {
         }
       }
       if (!data.to) data.to = this._recipientEmailFor(data, toActor, toContact) || undefined;
+      // Where the sender stood — a network node only hears mail sent on its own scene (taps, sniffers).
+      // Delivery-time only: createMessage never persists it.
+      if (data.sentFromScene === undefined) data.sentFromScene = game.scenes?.viewed?.id || game.user?.viewedScene || '';
 
       // ── Auto-register an unregistered NPC sender in the master directory ──
       // Runs BEFORE the display-name resolution so the new entry names the mail.
@@ -453,7 +461,9 @@ export class MessageService {
 
     if (!okList.length) {
       const why = results.map(x => `${x.name}: ${x.error}`).join(' · ');
-      return { success: false, error: `No recipient could be reached — ${why}`, errorCode: 'ALL_RECIPIENTS_FAILED', results, delivered: 0, failed: results };
+      const res = { success: false, error: `No recipient could be reached — ${why}`, errorCode: 'ALL_RECIPIENTS_FAILED', results, delivered: 0, failed: results };
+      if (game.user.isGM) await this.recordDeliveryFailure({ data, result: res, source: 'gm' });
+      return res;
     }
 
     // Stamp the BASE once (ids, thread, network, timestamp…). Its "to" is the
@@ -483,6 +493,8 @@ export class MessageService {
       const res = await this._deliverMany(data, copies);
       res.results = [...results, ...(res.results || [])];
       res.failed = res.results.filter(x => !x.success);
+      // A GM group send with refused recipients: listed in Outbox → Didn't arrive.
+      if (res.failed.length) await this.recordDeliveryFailure({ data, result: res, source: 'gm' });
       return res;
     }
     // Player: ONE relay carrying the copies; the GM fans out and acks once.
@@ -615,6 +627,14 @@ export class MessageService {
         await game.nightcity.terminalService?.mirrorDeliveryToAccounts?.(recipientData);
       } catch (err) {
         console.warn(`${MODULE_ID} | terminal delivery mirror failed:`, err);
+      }
+
+      // Network-node TAPS: a runner who tapped a node of the network this went over gets a copy (EXFIL folder).
+      // Non-fatal; the recipient-facing clone, so anonymous mail stays masked.
+      try {
+        await game.nightcity.networkService?.tapDelivery?.(recipientData);
+      } catch (err) {
+        console.warn(`${MODULE_ID} | node tap failed:`, err);
       }
 
       // Emit events
@@ -879,7 +899,9 @@ export class MessageService {
       // nothing enforced it: the message relayed at once and arrived heavily
       // garbled (signal 0). Honour the label: hold it in the queue, which the
       // NETWORK_CONNECTED listener flushes when the scene gets signal back.
-      if (game.nightcity?.networkService?.isDeadZone) {
+      const forced = !!data._forceRelay;
+      delete data._forceRelay;
+      if (!forced && game.nightcity?.networkService?.isDeadZone) {
         this._queueMessage(data);
         return { success: true, messageId: data.messageId, queued: true, reason: 'dead_zone' };
       }
@@ -1031,6 +1053,14 @@ export class MessageService {
     // `bail` logs the reason (visible with debugMode on) and returns false so a
     // GM can see exactly why a message did or didn't land in Spam.
     const bail = (reason) => { log.debug(`SpamFilter: skip — ${reason}`, { from: data.from, to: data.toActorId }); return false; };
+
+    // The GM's junk list wins over everything below — an address marked junk is junk
+    // for every recipient, whether or not the unknown-sender filter is on.
+    if (!data.anonymous?.enabled && !data.status?.sent && !data.isBroadcast
+        && game.nightcity?.spamService?.isListedJunk?.(data.from)) {
+      log.debug('SpamFilter: route — sender is on the junk list', { from: data.from });
+      return true;
+    }
 
     // Master toggle
     let enabled = false;
@@ -1193,8 +1223,180 @@ export class MessageService {
     this._messageQueue.push({
       ...data,
       _queuedAt: new Date().toISOString(),
+      _queueReason: game.nightcity?.networkService?.isDeadZone ? 'dead_zone' : 'gm_offline',
     });
     console.log(`${MODULE_ID} | Message queued. Queue size: ${this._messageQueue.length}`);
+    this._syncQueueToGm();
+  }
+
+  // ─── Held mail, seen from the GM (Admin → Messages → Outbox) ──
+  //
+  // The queue lives on the client that queued it (a player in a dead zone, or
+  // with no GM online). A player tells the GM what they are holding whenever a
+  // GM is online to hear it; the GM can deliver it now (the GM delivers the
+  // reported, already-stamped data itself and tells the player to drop it) or
+  // cancel it. Mail queued while no GM was online is reported the next time the
+  // queue changes.
+
+  /** One row per held message: local ones, plus (GM) every player's report. */
+  getQueue() {
+    const row = (d, extra = {}) => ({
+      messageId: d.messageId || d.id || '',
+      fromActorId: d.fromActorId || null, toActorId: d.toActorId || null,
+      from: d.fromName || d.from || '', to: d.toName || d.to || '',
+      subject: d.subject || '', eddies: Number(d.eddies) || 0,
+      recipientCount: Array.isArray(d._fanout) ? d._fanout.length : 1,
+      queuedAt: d._queuedAt || null,
+      reason: d._queueReason === 'dead_zone' ? 'Dead zone — no signal' : d._queueReason === 'gm_offline' ? 'No GM was online' : (d._queueReason || 'Held'),
+      ...extra,
+    });
+    const out = this._messageQueue.map((d) => row(d));
+    for (const [userId, rep] of this._remoteQueues || []) {
+      for (const d of rep.entries || []) out.push(row(d, { userId, userName: rep.userName || 'a player', remote: true }));
+    }
+    return out;
+  }
+
+  /** Player → GM: report what this client is holding (no-op for a GM or with no GM online). */
+  _syncQueueToGm() {
+    try {
+      if (game.user?.isGM || !game.users?.find?.(u => u.isGM && u.active)) return;
+      this.socketManager?.emit?.(SOCKET_OPS.MESSAGE_QUEUE_SYNC, { userName: game.user?.name, entries: this._messageQueue });
+    } catch (err) { console.warn(`${MODULE_ID} | queue sync failed:`, err); }
+  }
+
+  /** GM: store a player's report of held mail. */
+  receiveQueueSync(data, senderUserId) {
+    if (!game.user?.isGM || !senderUserId) return;
+    this._remoteQueues ||= new Map();
+    if (!data?.entries?.length) this._remoteQueues.delete(senderUserId);
+    else this._remoteQueues.set(senderUserId, { userName: data.userName || game.users?.get?.(senderUserId)?.name, entries: data.entries });
+    this.eventBus?.emit?.('schedule:updated', { queue: true });
+  }
+
+  /** Player: the GM delivered or cancelled one of my held messages — drop it. */
+  handleQueueCommand(data) {
+    const i = this._messageQueue.findIndex(d => d.messageId === data?.messageId);
+    if (i < 0) return;
+    const [d] = this._messageQueue.splice(i, 1);
+    if (data.op === 'cancel') ui.notifications?.warn?.(`NCM | The GM cancelled your held message "${d.subject || '(no subject)'}".`);
+    this._syncQueueToGm();
+  }
+
+  /** Deliver one held message now. Local: relay it (past the dead zone). GM on a player's: deliver it here. */
+  async forceDeliver(messageId) {
+    const i = this._messageQueue.findIndex(d => d.messageId === messageId);
+    if (i >= 0) {
+      const [d] = this._messageQueue.splice(i, 1);
+      this._syncQueueToGm();
+      if (game.user?.isGM) {
+        const r = Array.isArray(d._fanout) && d._fanout.length ? await this._deliverMany({ ...d }, d._fanout) : await this._deliverMessage(d);
+        return { success: !!r?.success, error: r?.error };
+      }
+      return this._relayMessage({ ...d, _forceRelay: true });
+    }
+    if (!game.user?.isGM) return { success: false, error: 'Not in the queue' };
+    for (const [userId, rep] of this._remoteQueues || []) {
+      const d = (rep.entries || []).find(x => x.messageId === messageId);
+      if (!d) continue;
+      rep.entries = rep.entries.filter(x => x !== d);
+      // handleMessageRelay delivers, records a failure and acks the player (who
+      // is not waiting on it, so they get the late-ack toast).
+      await this.handleMessageRelay({ ...d }, userId);
+      this.socketManager?.emit?.(SOCKET_OPS.MESSAGE_QUEUE_CMD, { forUserId: userId, op: 'delivered', messageId });
+      return { success: true };
+    }
+    return { success: false, error: 'That message is no longer held' };
+  }
+
+  /** Cancel one held message (it is never delivered). */
+  async cancelQueued(messageId) {
+    const i = this._messageQueue.findIndex(d => d.messageId === messageId);
+    if (i >= 0) { this._messageQueue.splice(i, 1); this._syncQueueToGm(); return { success: true }; }
+    for (const [userId, rep] of this._remoteQueues || []) {
+      if (!(rep.entries || []).some(x => x.messageId === messageId)) continue;
+      rep.entries = rep.entries.filter(x => x.messageId !== messageId);
+      this.socketManager?.emit?.(SOCKET_OPS.MESSAGE_QUEUE_CMD, { forUserId: userId, op: 'cancel', messageId });
+      return { success: true };
+    }
+    return { success: false, error: 'That message is no longer held' };
+  }
+
+  // ─── Delivery failures (Admin → Messages → Outbox → Didn't arrive) ──
+  //
+  // A refused or failed send used to be a GM toast and nothing else. Every
+  // place that toasts the GM about one (a player's relay, a GM fan-out with
+  // refused recipients) also writes a row here; Retry re-sends the mail to the
+  // recipients that failed. Retries never carry eddies (the sender was
+  // refunded — re-sending money would mint it).
+
+  static FAILURE_LOG_CAP = 100;
+
+  /** What a retry sends: the message without its stamps, its eddies or its fan-out. */
+  _retryPayload(data, failed = null) {
+    const keep = ['fromActorId', 'fromContactId', 'from', 'subject', 'body', 'priority', 'isBroadcast', 'attachments',
+      'threadId', 'inReplyTo', 'references', 'anonymous', 'anonReply', 'toActorId', 'toContactId', 'to', 'contentType', 'contentData'];
+    const out = {};
+    for (const k of keep) if (data?.[k] !== undefined && data[k] !== null) out[k] = foundry.utils?.deepClone ? foundry.utils.deepClone(data[k]) : data[k];
+    if (failed?.length) {
+      delete out.toActorId; delete out.toContactId; delete out.to;
+      out.recipients = failed.map(x => ({ actorId: x.actorId || null, contactId: x.contactId || null, email: x.email || '', name: x.name || '' }));
+    }
+    return out;
+  }
+
+  /** GM: append a row to the failure log. Never throws. */
+  async recordDeliveryFailure({ data, result, source = 'relay', byUserName = '' }) {
+    try {
+      if (!game.user?.isGM) return null;
+      const failed = result?.failed?.length ? result.failed : null;
+      const row = {
+        id: foundry.utils?.randomID?.() || String(Date.now()),
+        at: new Date().toISOString(),
+        gameAt: this._getTimestamp?.() || null,
+        baseId: String(data?.messageId || '').replace(/-sent$/, ''),
+        source,
+        byUserName,
+        fromName: data?.fromName || data?.from || byUserName || 'Unknown',
+        toName: failed ? failed.map(x => x.name || x.email).join(', ') : (data?.toName || data?.to || 'unknown recipient'),
+        groupSize: Array.isArray(data?._fanout) ? data._fanout.length : (failed ? (result.results?.length || failed.length) : 1),
+        subject: data?.subject || '',
+        why: failed ? failed.map(x => `${x.name || x.email || '?'}: ${x.error || 'unknown error'}`).join(' · ') : (result?.error || 'unknown error'),
+        hadEddies: Number(data?.eddies) > 0,
+        retry: this._retryPayload(data, failed),
+      };
+      const list = [row, ...(game.settings.get(MODULE_ID, 'deliveryFailures') || [])].slice(0, MessageService.FAILURE_LOG_CAP);
+      await game.settings.set(MODULE_ID, 'deliveryFailures', list);
+      return row;
+    } catch (err) {
+      console.warn(`${MODULE_ID} | could not record a delivery failure:`, err);
+      return null;
+    }
+  }
+
+  getDeliveryFailures() {
+    try { return game.settings.get(MODULE_ID, 'deliveryFailures') || []; } catch { return []; }
+  }
+
+  async dismissDeliveryFailure(id) {
+    const list = this.getDeliveryFailures();
+    await game.settings.set(MODULE_ID, 'deliveryFailures', id ? list.filter(r => r.id !== id) : []);
+    return { success: true };
+  }
+
+  /** GM: send a failed message again; a success removes the row, a failure updates its reason. */
+  async retryDeliveryFailure(id) {
+    const row = this.getDeliveryFailures().find(r => r.id === id);
+    if (!row) return { success: false, error: 'That failure is no longer listed' };
+    const result = await this.sendMessage(foundry.utils?.deepClone ? foundry.utils.deepClone(row.retry) : { ...row.retry });
+    const list = this.getDeliveryFailures();
+    if (result?.success && !result.failed?.length) {
+      await game.settings.set(MODULE_ID, 'deliveryFailures', list.filter(r => r.id !== id));
+    } else {
+      const why = result?.failed?.length ? result.failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ') : (result?.error || 'unknown error');
+      await game.settings.set(MODULE_ID, 'deliveryFailures', list.map(r => r.id === id ? { ...r, why, retriedAt: new Date().toISOString() } : r));
+    }
+    return result;
   }
 
   /**
@@ -1211,8 +1413,12 @@ export class MessageService {
 
     for (let i = 0; i < queue.length; i++) {
       if (i > 0) await this._delay(150);
-      await this.sendMessage(queue[i]);
+      // A held fan-out is already stamped and split — relay it as is (re-running
+      // sendMessage on it found no recipient).
+      if (Array.isArray(queue[i]._fanout) && queue[i]._fanout.length) await this._relayMessage(queue[i]);
+      else await this.sendMessage(queue[i]);
     }
+    this._syncQueueToGm();
 
     this.eventBus.emit(EVENTS.QUEUE_FLUSHED, { count: queue.length });
   }
@@ -1386,6 +1592,20 @@ export class MessageService {
       this.socketManager.emit(SOCKET_OPS.MESSAGE_STATUS_UPDATE, {
         actorId, messageId, update: 'read',
       });
+    }
+    return result;
+  }
+
+  /**
+   * Mark a message unread again (the inbox's own button, Admin → All mail).
+   * @param {string} actorId
+   * @param {string} messageId
+   */
+  async markAsUnread(actorId, messageId) {
+    const result = await this._messageRepo.markAsUnread(actorId, messageId);
+    if (result.success) {
+      this.eventBus.emit(EVENTS.MESSAGE_READ, { messageId, actorId, unread: true });
+      this.socketManager.emit(SOCKET_OPS.MESSAGE_STATUS_UPDATE, { actorId, messageId, update: 'unread' });
     }
     return result;
   }
@@ -1607,25 +1827,31 @@ export class MessageService {
       return { success: false, error: 'Skill system not available' };
     }
 
+    // An animated caller (the viewer's cipher grid) passes deferChat: it posts
+    // the chat card and plays the outcome at its own climax, so this service
+    // stays quiet. A caller with a window but no animation passes `reveal`.
+    const quiet = !!options.deferChat;
     const result = await skillSvc.performCheck(actor, skillName, {
       dc,
       luckSpend,
       flavor: `Decrypting ${encryption.type || 'ICE'}-protected message`,
       context: 'ncm-message-decrypt',
+      deferChat: quiet,
+      reveal: options.reveal ? { verdictSound: false, ...options.reveal } : null,
     });
 
     if (result?.success) {
       await this._messageRepo.updateMessageFlags(actorId, messageId, {
         status: { ...flags.status, encrypted: false },
       });
-      this.soundService?.play('hack-success');
+      if (!quiet) this.soundService?.play('hack-success');
       this.eventBus?.emit(EVENTS.MESSAGE_STATUS_CHANGED, { messageId, actorId });
       game.nightcity?.traceService?.logSuccess({ actor, action: 'message-decrypt', objectName: flags?.subject || 'encrypted message', targetKind: 'message', targetMessageId: messageId, severity: 'hostile' });
-      ui.notifications.info('NCM | Message decrypted.');
+      if (!quiet) ui.notifications.info('NCM | Message decrypted.');
       return { success: true, roll: result };
     }
 
-    this.soundService?.play('hack-fail');
+    if (!quiet) this.soundService?.play('hack-fail');
 
     // Trace funnel (§6a) — a failed message decrypt (may carry ICE).
     game.nightcity?.traceService?.fireTrace({
@@ -1645,7 +1871,7 @@ export class MessageService {
       }
     }
 
-    ui.notifications.warn(`NCM | Decryption failed. (${result?.total ?? '?'} vs DV ${dc})`);
+    if (!quiet) ui.notifications.warn(`NCM | Decryption failed. (${result?.total ?? '?'} vs DV ${dc})`);
     return { success: false, roll: result, iceDamage };
   }
 
@@ -1739,6 +1965,8 @@ export class MessageService {
         : (result.error || 'unknown error');
       console.warn(`${MODULE_ID} | Relayed message ${data.messageId} from ${who} to ${to} failed: ${why}`);
       ui.notifications.warn(`NCM | Could not deliver ${who} → ${to}: ${why}`, { permanent: true });
+      // …and it stays listed in Admin → Messages → Outbox → Didn't arrive.
+      await this.recordDeliveryFailure({ data, result, source: 'relay', byUserName: game.users.get(senderUserId)?.name || '' });
     }
 
     // Send delivery confirmation back to the sender. `forUserId` lets every

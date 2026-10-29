@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Overview — the NOW LINE (faithful render)</title>
+<!--
+  Renders the REAL templates/admin-panel/tab-overview.hbs through Handlebars over a context built by the
+  REAL rules (scripts/utils/overviewModel.js: nowLineLayout / rankNeeds / assessPlayer / barList) from the
+  mock's data (dev/mockups/admin-overview-rethink-mock.html, frame B), against the real cascade:
+  Foundry core → CPR → module → admin theme.
+  Off disk: chrome --allow-file-access-from-files; or serve it: node dev/tools/serve-mockups.cjs.
+    ?t=clean-light|high-contrast   ?zoom=60|360|1440   ?open=mail|hot|plant…   ?sel=trace:1   ?off=mail,lockout
+    ?tbl=u3 (open a player's why panel)   ?pop=1   ?empty=1   ?contrast=1 (every text node under 4.5:1 → #status + <title>)
+    ?ctx=<file.json>  — render a context dumped by the sim (NCM_DUMP=<dir> node dev/tools/sims/test-overview.mjs → overview-nowline-ctx.json)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/fa/css/all.min.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<script src="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/node_modules/handlebars/dist/handlebars.min.js"></script>
+<style>
+  body { margin: 0; background: #333; padding: 16px; }
+  .window-content { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: none; padding: 0; }
+  .app-frame { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important;
+    width: 820px; height: 760px; margin: 0 auto; overflow: hidden; border-radius: 4px; }
+  .app-frame.pop { width: 1120px; height: 840px; }
+  .ncm-admin-content { overflow-y: scroll; }
+  #status { font: 12px monospace; color: #ccc; margin-bottom: 8px; white-space: pre-wrap; }
+</style></head>
+<body>
+<div id="status">loading…</div>
+<div class="ncm-app ncm-admin-panel app-frame" id="p" data-ncm-scanlines="false">
+ <section class="window-content">
+  <div class="ncm-admin-panel" id="inner">
+   <nav class="ncm-admin-tabs" id="tabs"><button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-chart-bar"></i> Overview</button><button class="ncm-admin-tab"><i class="fas fa-envelope"></i> Messages</button><button class="ncm-admin-tab"><i class="fas fa-network-wired"></i> Networks</button></nav>
+   <div class="ncm-admin-content" id="out"></div>
+  </div>
+ </section>
+</div>
+<script type="module">
+const Q = new URLSearchParams(location.search);
+const status = (s) => { document.getElementById('status').textContent = s; document.title = s; };
+const P = document.getElementById('p');
+P.dataset.ncmAdminTheme = Q.get('t') || 'clean-dark';
+const pop = Q.get('pop') === '1';
+if (pop) { P.classList.add('pop', 'ncm-admin-panel--pop'); document.getElementById('inner').classList.add('ncm-admin-panel--pop'); document.getElementById('tabs').remove(); }
+try {
+  const M = await import('../../scripts/utils/overviewModel.js');
+  const tpl = await (await fetch('../../templates/admin-panel/tab-overview.hbs')).text();
+  Handlebars.registerHelper('eq', (a, b) => String(a) === String(b));
+  Handlebars.registerHelper('ncm-hue', (t) => { const s = String(t ?? '').trim().toLowerCase(); if (!s) return 'var(--ncm-text-label)'; let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return 'var(--ncm-hue-' + ((h % 8) + 1) + ')'; });
+  const render = Handlebars.compile(tpl);
+  const NOW = Date.UTC(2045, 2, 11, 23, 41), MIN = 60000;
+  const pad = (n) => String(n).padStart(2, '0');
+  const clock = (ms) => { const d = new Date(ms); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
+  const hue = Handlebars.helpers['ncm-hue'];
+  let ov;
+  if (Q.get('ctx')) {
+    const dump = await (await fetch(Q.get('ctx'))).json();
+    ov = dump.ov;
+    ov.nl = { ...M.nowLineLayout({ activity: dump.activity, needs: dump.needs, timers: dump.timers, nowMs: dump.now, zoom: Number(Q.get('zoom')) || ov.nl.zoom, open: Q.get('open') || ov.nl.open, sel: Q.get('sel') || null, off: (Q.get('off') || '').split(',').filter(Boolean), trackPx: pop ? 680 : M.NL_TRACK_PX, clock }), feedFilter: 'all' };
+  } else {
+    const empty = Q.get('empty') === '1';
+    // ── the mock's data, frame B ──
+    const act = (kind, agoMin, icon, html, subline) => ({ kind, ts: NOW - agoMin * MIN, icon, html, subline, group: kind === 'mail' ? 'mail' : 'hack' });
+    const activity = empty ? [] : [
+      act('trace', 4, 'fa-skull', '<b>Hiro</b> login — <b>WS-7F-12</b>', '+10 heat'),
+      act('hack', 11, 'fa-terminal', '<b>V</b> breach — <b>Arasaka payroll</b>', 'DV 18, rolled 22'),
+      act('mail', 180, 'fa-envelope', '<b>V</b> → <b>Rogue</b>', '"Where\'s my cut?"'),
+      act('shard', 300, 'fa-unlock', '<b>Rache</b> encode — <b>Forged chatlog</b>', 'sloppy'),
+      act('other', 360, 'fa-wifi', '<b>Kiri</b> joined <span class="ncm-ov-hl--cyan">CitiNet</span>', ''),
+      act('mail', 1500, 'fa-envelope', '<b>Dexter DeShawn</b> → <b>Rache</b>', '"Job offer"'),
+    ];
+    const A = (label, action, data, extra = {}) => ({ label, action, data, dataAttrs: Object.entries(data).map(([k, v]) => ({ k, v })), ...extra });
+    const needsRaw = empty ? [] : [
+      { kind: 'mail', key: 'mail-rogue', sig: 'm1|2', count: 2, ts: NOW - 180 * MIN, icon: 'fa-reply', html: '<b>V</b> wrote to <b>Rogue</b> — 2 unanswered', subline: '3h ago · "Where\'s my cut?"', actions: [A('Reply', 'tabAct', { owner: 'messages', op: 'openConversation', key: 'rogue|' }, { primary: true }), A('Reply as Rogue', 'ovReplyAs', { 'message-id': 'M1', 'inbox-id': 'rogue' }), A('Open', 'ovOpenInboxOf', { 'inbox-id': 'rogue' })] },
+      { kind: 'mail', key: 'mail-dex', sig: 'm2|1', count: 1, ts: NOW - 41 * MIN, icon: 'fa-reply', html: '<b>Rache</b> wrote to <b>Dexter DeShawn</b> — 1 unanswered', subline: '41m ago · "Job offer"', actions: [A('Reply', 'tabAct', { owner: 'messages', op: 'openConversation', key: 'dex|' }, { primary: true })] },
+      { kind: 'mail', key: 'mail-rogue-q', sig: 'm3|1', count: 1, ts: NOW - 20 * MIN, icon: 'fa-masks-theater', html: '<b>Kiri</b> wrote to <b>queen.h</b> (alias of Rogue) — 1 unanswered', subline: '20m ago · "Favour"', actions: [A('Reply', 'tabAct', { owner: 'messages', op: 'openConversation', key: 'rogue|q' }, { primary: true })] },
+      { kind: 'hot', key: 'heat-ws-rache', sig: 'hot', ts: NOW, icon: 'fa-fire', html: 'Heat <b>HOT</b> — Rache on <b>WS-7F-12</b>', subline: '<span class="ncm-ov2-heat"><span><i style="width:72%"></i></span>72</span>', actions: [A('Escalate', 'securityEscalate', { 'object-id': 'ws', 'actor-id': 'rache' }, { primary: true, danger: true }), A('Security', 'switchTab', { tab: 'security' })] },
+      { kind: 'plant', key: 'plant-1', sig: '', ts: NOW, icon: 'fa-bomb', html: 'Armed <b>keylogger</b> on <b>WS-7F-12</b> fires on next login', subline: 'planted by Rache · sloppy', actions: [A('Fire now', 'securityFireResident', { 'item-id': 'ws', 'resident-id': 'r1' }, { primary: true }), A('Defuse', 'securityDefuse', { 'item-id': 'ws', 'resident-id': 'r1' })] },
+      { kind: 'bricked', key: 'bricked-1', sig: '', ts: NOW, icon: 'fa-heart-crack', html: 'Shard <b>Scorched shard</b> is bricked (integrity 0%)', subline: "in Jo's gear", actions: [A('Open', 'openShardItem', { 'item-id': 's1' }, { primary: true })] },
+      { kind: 'setup', key: 'noemail-jo', sig: '', ts: NOW, icon: 'fa-at', html: '<b>Jo</b> has no email address yet', subline: "they can't send or receive until one is set · played by Alex", actions: [A('Set one', 'ovSetEmail', { 'actor-id': 'jo' }, { primary: true })] },
+    ];
+    const needs = M.rankNeeds(needsRaw).map((n) => ({ ...n, dismissKey: M.dismissKey(n) }));
+    const T = (label, icon, tone, action, data) => ({ label, icon, tone, action, data });
+    const timers = empty ? [] : [
+      { id: 'trace:1', kind: 'trace', at: NOW + 9 * MIN, name: 'Arasaka closing in on Rache', subline: 'Trace · WS-7F-12', lines: [{ k: 'Who', v: 'Arasaka' }, { k: 'Target', v: 'Rache Bartmoss' }, { k: 'From', v: 'WS-7F-12 · heat 72' }], actions: [T('Call off', 'fa-ban', 'pri', 'securityCountdownCancel', { 'countdown-id': 'C1' })] },
+      { id: 'mail:1', kind: 'mail', at: NOW + 25 * MIN, name: '"Meet at the dock"', subline: 'Rogue → Kiri', lines: [{ k: 'From', v: 'Rogue' }, { k: 'To', v: 'Kiri' }, { k: 'Clock', v: 'Game time' }], actions: [T('Send now', 'fa-paper-plane', 'pri', 'tabAct', { owner: 'messages', op: 'schedSendNow', 'schedule-id': 'S1' }), T('Change time', 'fa-clock', '', 'editScheduled', { 'schedule-id': 'S1' }), T('Cancel', 'fa-xmark', 'bad', 'cancelScheduled', { 'schedule-id': 'S1' })] },
+      { id: 'destruct:1', kind: 'destruct', at: NOW + 70 * MIN, name: '"burn after reading"', subline: "In V's inbox", lines: [{ k: 'From', v: 'Anonymous' }, { k: 'To', v: 'V' }], actions: [T('Erase now', 'fa-fire', 'bad', 'hardDeleteMessage', { 'message-id': 'M9', 'inbox-owner': 'v' }), T('Stop', 'fa-hand', '', 'tabAct', { owner: 'messages', op: 'stopTimer', 'journal-id': 'J', 'page-id': 'P' })] },
+      { id: 'backdoor:1', kind: 'backdoor', at: NOW + 6 * 60 * MIN, name: '"ghost@" on WS-7F-12 closes', subline: 'WS-7F-12', lines: [{ k: 'Made by', v: 'Rache' }, { k: 'Login', v: 'ghost', mono: true }], actions: [T('Close now', 'fa-door-closed', 'bad', 'tabAct', { owner: 'overview', op: 'rwClose', 'item-id': 'ws', 'account-id': 'a9' })] },
+      { id: 'lockout:1', kind: 'lockout', at: NOW + 20 * 60 * MIN, name: 'Hiro locked out of WS-7F-12 · v_arasaka', subline: 'Lockout · terminal', lines: [{ k: 'Who', v: 'Hiro' }, { k: 'Why', v: 'Too many failed tries' }], actions: [T('Lift now', 'fa-unlock', 'pri', 'tabAct', { owner: 'overview', op: 'rwLift', 'lock-actor': 'hiro', 'lock-target': 'ws::a1' })] },
+      { id: 'mail:2', kind: 'mail', at: NOW + 3 * 60 * MIN, name: '"Payment received"', subline: 'Bank → V', lines: [], actions: [T('Send now', 'fa-paper-plane', 'pri', 'tabAct', { owner: 'messages', op: 'schedSendNow', 'schedule-id': 'S2' })] },
+    ];
+    const nl = { ...M.nowLineLayout({ activity, needs, timers, nowMs: NOW, zoom: Number(Q.get('zoom')) || 60, open: Q.get('open'), sel: Q.get('sel'), off: (Q.get('off') || '').split(',').filter(Boolean), trackPx: pop ? 680 : M.NL_TRACK_PX, clock }), feedFilter: 'all' };
+    const player = (o) => { const a = M.assessPlayer(o); return { ...o, ...a, bars: M.barList(o.signal), hue: hue(o.name), netHue: hue(o.network), initials: o.name.slice(0, 2).toUpperCase(), isOpen: Q.get('tbl') === o.userId, fixes: a.fixes.map((k) => ({ setEmail: { op: 'tblSetEmail', label: 'Set an address', primary: true }, deliver: { op: 'tblDeliver', label: 'Deliver it now', primary: true }, share: { op: 'tblShareContacts', label: 'Share contacts', primary: true } }[k])) }; };
+    const players = empty ? [] : [
+      player({ userId: 'u1', actorId: 'v', name: 'V', playerName: 'Marta', online: true, sceneName: 'Arasaka Tower', you: true, address: 'v@nightcity.net', network: 'CorpNet', signal: 95, contacts: 9, unread: 0, held: 0 }),
+      player({ userId: 'u2', actorId: 'rache', name: 'Rache', playerName: 'Sam', online: true, sceneName: 'Arasaka Tower', you: true, address: 'rache@darknet.nc', network: 'CorpNet', signal: 95, contacts: 4, unread: 2, held: 0 }),
+      player({ userId: 'u3', actorId: 'kiri', name: 'Kiri', playerName: 'Pat', online: true, sceneName: 'Arasaka Tower', you: true, address: 'kiri@nightcity.net', network: 'CitiNet', signal: 45, contacts: 0, unread: 0, held: 1 }),
+      player({ userId: 'u4', actorId: 'jo', name: 'Jo', playerName: 'Alex', online: true, sceneName: 'The Afterlife', sceneDead: true, deadZone: true, address: '', network: '', signal: 0, contacts: 2, unread: 0, held: 0 }),
+      player({ userId: 'u5', actorId: 'hiro', name: 'Hiro', playerName: 'Dana', online: false, sceneName: '', address: 'hiro@nc.net', network: '', signal: 0, contacts: 3, unread: 4, held: 0 }),
+    ];
+    const table = { players, scenes: [], hasPlayers: players.length > 0, online: players.filter((p) => p.online).length, need: players.filter((p) => p.needsYou).length };
+    const tiles = [
+      { tab: 'messages', icon: 'fa-envelope', color: 'var(--ncm-hue-2)', label: 'Messages', n: 42, lines: ['<b>5</b> unread · <b>3</b> today'], bad: '' },
+      { tab: 'contacts', icon: 'fa-address-book', color: 'var(--ncm-hue-1)', label: 'Contacts', n: 17, lines: ['<b>2</b> aliases · <b>1</b> group'], bad: '' },
+      { tab: 'networks', icon: 'fa-network-wired', color: 'var(--ncm-hue-3)', label: 'Networks', n: 5, lines: ['<b>5</b> live'], bad: '1 dead zone' },
+      { tab: 'shards', icon: 'fa-microchip', color: 'var(--ncm-hue-6)', label: 'Shards', n: 6, lines: ['<b>2</b> locked'], bad: '1 bricked' },
+      { tab: 'terminals', icon: 'fa-terminal', color: 'var(--ncm-hue-8)', label: 'Terminals', n: 4, lines: ['<b>1</b> logged in'], bad: '' },
+      { tab: 'security', icon: 'fa-shield-halved', color: 'var(--ncm-hue-7)', label: 'Security', n: 9, lines: ['events in 24h'], bad: '1 running hot' },
+    ];
+    ov = { clock: '2045-03-11 23:41', time: '23:41', date: 'Thu 11 Mar 2045', sceneName: 'Arasaka Tower — 7th Floor', sceneDead: Q.get('dead') === '1', nl, table, tiles };
+  }
+  document.getElementById('out').innerHTML = render({ activeTab: 'overview', ov });
+  const over = [...document.querySelectorAll('.ncm-ov2 *')].filter((e) => !e.classList.contains('ncm-ov2-nl__tick') && !e.classList.contains('ncm-ov2-pl__face') /* the tick mark / the online dot + badge sit outside on purpose */).filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX === 'visible' && !/ellipsis/.test(getComputedStyle(e).textOverflow) && e.clientWidth > 0).map((e) => String(e.className).split(' ')[0]).slice(0, 6);
+  let line = `OK zoom=${ov.nl.zoom} past=${ov.nl.past.length}(+${ov.nl.pastMore}) chips=${ov.nl.chips.length} future=${ov.nl.future.length}(+${ov.nl.later}) · overflow: ${[...new Set(over)].join(', ') || 'none'}`;
+  if (Q.get('contrast')) {
+    // every visible text node's contrast against the background it really sits on (translucent tints composited down to the first opaque ancestor)
+    const cv = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    const rgba = (c) => { cv.clearRect(0, 0, 1, 1); cv.fillStyle = '#000'; cv.fillStyle = c; cv.fillRect(0, 0, 1, 1); const d = cv.getImageData(0, 0, 1, 1).data; const m = /\/\s*([\d.]+%?)\s*\)|rgba\([^)]*,\s*([\d.]+)\)/.exec(c); let a = 1; if (m) { const v = m[1] ?? m[2]; a = v.endsWith('%') ? parseFloat(v) / 100 : parseFloat(v); } if (c === 'transparent') a = 0; return [d[0], d[1], d[2], a]; };
+    const over2 = (top, base) => [0, 1, 2].map((i) => top[i] * top[3] + base[i] * (1 - top[3]));
+    const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+    const bgOf = (el) => { const layers = []; for (let e = el; e; e = e.parentElement) { const c = rgba(getComputedStyle(e).backgroundColor); if (c[3] > 0) { layers.push(c); if (c[3] >= 0.99) break; } } let base = [0, 0, 0]; for (let i = layers.length - 1; i >= 0; i--) base = i === layers.length - 1 && layers[i][3] >= 0.99 ? layers[i].slice(0, 3) : over2(layers[i], base); return base; };
+    const bad = []; let n = 0;
+    for (const el of document.querySelectorAll('.ncm-ov2 *')) {
+      if (!el.offsetParent || ![...el.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim())) continue;
+      const cs = getComputedStyle(el); if (parseFloat(cs.fontSize) === 0 || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) continue;
+      if (el.closest('.is-far')) continue;   // faded past rows are deliberately dim (they are history, not information to act on)
+      const fg = rgba(cs.color); const bg = bgOf(el); const f = over2(fg, bg);
+      const L1 = lum(f), L2 = lum(bg); const r = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05); n++;
+      if (r < 4.5) bad.push(`${r.toFixed(2)} .${String(el.className).split(' ')[0] || el.tagName} "${[...el.childNodes].filter((t) => t.nodeType === 3).map((t) => t.textContent.trim()).join(' ').slice(0, 24)}"`);
+    }
+    bad.sort();
+    line = `CONTRAST ${bad.length}/${n} under 4.5 :: ${bad.slice(0, 30).join(' | ')}`;
+  }
+  status(line);
+} catch (e) { status('ERROR ' + e.message); console.error(e); }
+</script>
+</body></html>

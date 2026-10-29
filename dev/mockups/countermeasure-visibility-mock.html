@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Countermeasure Visibility — mock</title>
+<!--
+  COUNTERMEASURE VISIBILITY — design mock (2026-10-27).
+
+  "A layperson wouldn't know what's hidden behind it." Everyone sees that a
+  thing is LOCKED and the ways in; only an expert (or a good scan) can tell
+  what is guarding it — ICE, its damage, a trace, the attempt limit, and
+  (separately toggleable) the DV.
+
+  Frames, top to bottom:
+    1. The network login dialog in three states: LAYPERSON / SPOTTED / IDENTIFIED
+    2. The scan itself (the Roll Reveal) and a bypass roll with the DV hidden
+    3. Admin → Security → "Countermeasure Visibility" (world default)
+    4. The per-object override (Network Manager → Security)
+
+  Built from the REAL class vocabulary (.ncm-auth__*, .ncm-sec-admin-*, .ncm-rr*,
+  .cfg-*) against the real cascade; only .ncm-cmv-* is new.
+  ?t=clean-dark|clean-light|high-contrast  admin preset for frames 3–4
+  ?dv=1                                    show the DV (the toggle off)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  /* ── page chrome (not part of the design) ── */
+  html, body { margin: 0; background: #06060a; color: #8fa0b2; font-family: 'Rajdhani', sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; padding: 9px 14px;
+    background: #0b0b12; border-bottom: 1px solid #1b1b28; font: 11px 'Share Tech Mono', monospace; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a; padding: 3px 8px; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+  .bar a.on { color: #07070b; background: #19f3f7; border-color: #19f3f7; }
+  .sec { max-width: 1260px; margin: 0 auto; padding: 26px 16px 8px; }
+  .sec h2 { margin: 0 0 4px; font: 700 13px 'Rajdhani', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #e6edf5; }
+  .sec p.lede { margin: 0 0 16px; font-size: 14px; color: #8e8ea8; max-width: 860px; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .cap { font: 700 11px 'Share Tech Mono', monospace; color: #19f3f7; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 7px; }
+  .cap small { display: block; margin-top: 3px; color: #8e8ea8; font: 12px 'Rajdhani', sans-serif; letter-spacing: 0; text-transform: none; max-width: 390px; }
+
+  /* Every frame is pinned into flow — .ncm-app is position:fixed in the real cascade. */
+  .mk, .mk.ncm-app, .mk .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-dlg.ncm-app { width: 384px; height: auto; overflow: visible; }
+  .mk-dlg .window-content { padding: 0; overflow: visible; height: auto; }
+
+  /* ═════════════════════════════════════════════════════════════
+     NEW: .ncm-cmv-* — the security readout (layperson / spotted)
+     It occupies the SAME slot, size and anatomy as the ICE panel
+     (.ncm-auth__ice): portrait · name · sub — so the three states read
+     as one panel coming into focus, not three different widgets.
+     ═════════════════════════════════════════════════════════════ */
+  .ncm-cmv-sec { --cmv-c: var(--nad-text-muted, #8e8ea8);
+    border-radius: 6px; border: 1px solid color-mix(in srgb, var(--cmv-c) 35%, var(--nad-border, #2a2a45));
+    background: color-mix(in srgb, var(--cmv-c) 5%, var(--nad-bg-base, #12121a)); overflow: hidden; }
+  .ncm-cmv-sec--spotted { --cmv-c: var(--nad-accent, #f7c948); }
+
+  .ncm-cmv-sec__hd { display: flex; align-items: center; gap: 12px; padding: 11px 13px 9px; }
+  /* the portrait slot: static where the ICE's face would be */
+  .ncm-cmv-sec__por { position: relative; width: 42px; height: 42px; flex: none; border-radius: 5px; overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--cmv-c) 40%, transparent); background: var(--nad-bg-deep, #0a0a0f);
+    display: grid; place-items: center; color: color-mix(in srgb, var(--cmv-c) 80%, var(--nad-text-primary, #ededf0)); font-size: 17px; }
+  .ncm-cmv-sec__por::before { content: ''; position: absolute; inset: -50%;
+    background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--cmv-c) 22%, transparent) 0 1px, transparent 1px 3px),
+                repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 2px, transparent 2px 5px);
+    animation: ncm-cmv-static .45s steps(4) infinite; opacity: .9; }
+  .ncm-cmv-sec__por i { position: relative; z-index: 1; text-shadow: 0 0 8px var(--nad-bg-deep, #0a0a0f); }
+  @keyframes ncm-cmv-static { 0% { transform: translate(0,0); } 25% { transform: translate(-6%,4%); } 50% { transform: translate(5%,-3%); } 75% { transform: translate(-3%,-5%); } 100% { transform: translate(0,0); } }
+
+  .ncm-cmv-sec__ttl { font: 700 14px var(--nad-font-title); letter-spacing: .06em; text-transform: uppercase;
+    color: color-mix(in srgb, var(--cmv-c) 75%, var(--nad-text-primary, #ededf0)); }
+  .ncm-cmv-sec__ttl small { font: 700 10px var(--nad-font-display); letter-spacing: .1em; color: var(--nad-text-muted, #8e8ea8); margin-left: 6px; }
+  .ncm-cmv-sec__sub { margin-top: 2px; font: 13px/1.35 var(--nad-font-display); color: var(--nad-text-secondary, #bdbdd0); }
+
+  /* the readout — the four things you could know, redacted until you do */
+  .ncm-cmv-ro { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 0 13px 11px;
+    background: var(--nad-border, #2a2a45); border: 1px solid var(--nad-border, #2a2a45); border-radius: 3px; overflow: hidden; }
+  .ncm-cmv-ro__c { padding: 6px 9px; background: var(--nad-bg-deep, #0a0a0f); min-width: 0; }
+  .ncm-cmv-ro__k { display: flex; align-items: center; gap: 5px; font: 700 9px var(--nad-font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--nad-text-muted, #8e8ea8); }
+  .ncm-cmv-ro__k i { font-size: 9px; }
+  .ncm-cmv-ro__v { margin-top: 3px; font: 13px var(--nad-font-mono); color: var(--nad-text-primary, #ededf0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-cmv-ro__v.is-known { color: color-mix(in srgb, var(--cmv-c) 80%, var(--nad-text-primary, #ededf0)); }
+  .ncm-cmv-ro__v.is-known small { color: var(--nad-text-muted, #8e8ea8); font-size: 11px; }
+  .ncm-cmv-redact { display: inline-block; height: 9px; vertical-align: middle; border-radius: 1px;
+    background: linear-gradient(90deg, var(--nad-border-active, #3a3a5a) 0 40%, color-mix(in srgb, var(--cmv-c) 35%, var(--nad-border-active, #3a3a5a)) 50%, var(--nad-border-active, #3a3a5a) 60% 100%);
+    background-size: 300% 100%; animation: ncm-cmv-shimmer 2.4s linear infinite; }
+  @keyframes ncm-cmv-shimmer { from { background-position: 100% 0; } to { background-position: -200% 0; } }
+
+  /* the scan — same row anatomy as the dialog's skill rows */
+  .ncm-cmv-scan { border-top: 1px solid color-mix(in srgb, var(--cmv-c) 22%, var(--nad-border, #2a2a45));
+    background: color-mix(in srgb, var(--nad-secondary, #19f3f7) 3%, transparent); }
+  /* COLLAPSIBLE: the header is a real button (keyboard + aria-expanded); the
+     body animates its height with the grid 0fr → 1fr trick, no measuring. */
+  .ncm-app.ncm-network-auth-dialog .ncm-auth-dialog button.ncm-cmv-scan__hd { appearance: none; box-sizing: border-box !important; display: flex !important; align-items: center; gap: 8px; width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+    height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 9px 13px !important; border: 0 !important; border-radius: 0 !important;
+    background: transparent !important; box-shadow: none !important; cursor: pointer; text-align: left; line-height: 1.2; }
+  .ncm-app.ncm-network-auth-dialog .ncm-auth-dialog button.ncm-cmv-scan__hd:hover { background: color-mix(in srgb, var(--nad-secondary, #19f3f7) 7%, transparent) !important; }
+  .ncm-app.ncm-network-auth-dialog .ncm-auth-dialog button.ncm-cmv-scan__hd:focus-visible { outline: 1px solid var(--nad-secondary, #19f3f7); outline-offset: -2px; }
+  .ncm-cmv-scan__count { padding: 1px 6px; border-radius: 1px; border: 1px solid color-mix(in srgb, var(--nad-secondary, #19f3f7) 40%, transparent);
+    font: 700 10px var(--nad-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--nad-secondary, #19f3f7); }
+  .ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-cmv-scan__more { margin-left: auto !important; }
+  .ncm-cmv-scan__more { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 2px;
+    border: 1px solid color-mix(in srgb, var(--nad-secondary, #19f3f7) 45%, transparent);
+    font: 700 10px var(--nad-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--nad-secondary, #19f3f7); }
+  .ncm-cmv-scan__more i { font-size: 9px; transition: transform .25s cubic-bezier(.22,1,.36,1); }
+  .ncm-cmv-scan.is-open .ncm-cmv-scan__more i { transform: rotate(180deg); }
+  .ncm-cmv-scan__body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.22,1,.36,1); }
+  .ncm-cmv-scan.is-open .ncm-cmv-scan__body { grid-template-rows: 1fr; }
+  .ncm-cmv-scan__in { overflow: hidden; min-height: 0; }
+  .ncm-cmv-scan__pad { padding: 2px 13px 11px; opacity: 0; transform: translateY(-4px); transition: opacity .2s, transform .3s cubic-bezier(.22,1,.36,1); }
+  .ncm-cmv-scan.is-open .ncm-cmv-scan__pad { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .ncm-cmv-scan__body, .ncm-cmv-scan__pad, .ncm-cmv-scan__more i { transition: none; } }
+  .ncm-cmv-scan__t { font: 700 12px var(--nad-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--nad-secondary, #19f3f7); }
+  .ncm-cmv-scan__t i { margin-right: 5px; }
+  .ncm-cmv-scan__n { flex: 1 1 auto; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; font: 11px var(--nad-font-mono); color: var(--nad-text-muted, #8e8ea8); white-space: nowrap; }
+  .ncm-cmv-scan__t, .ncm-cmv-scan__count, .ncm-cmv-scan__more { flex: none; white-space: nowrap; }
+  .ncm-cmv-scan .ncm-auth__skrow { --accent-c: var(--nad-secondary, #19f3f7); }
+  .ncm-cmv-scan .ncm-auth__skrow + .ncm-auth__skrow { margin-top: 6px; }
+  .ncm-cmv-scan .ncm-auth__skrow-ico { color: var(--nad-secondary, #19f3f7); }
+  .ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-cmv-scan .ncm-auth__skrow-btn {
+    color: var(--nad-secondary, #19f3f7) !important; border-color: color-mix(in srgb, var(--nad-secondary, #19f3f7) 45%, transparent) !important;
+    background: color-mix(in srgb, var(--nad-secondary, #19f3f7) 10%, transparent) !important; }
+  .ncm-cmv-scan__foot { margin-top: 7px; font: 12px var(--nad-font-display); color: var(--nad-text-muted, #8e8ea8); }
+  .ncm-cmv-scan__foot i { margin-right: 5px; }
+
+  /* "how you know" — the credit line on an identified panel */
+  .ncm-cmv-credit { display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; padding: 1px 6px; border-radius: 1px;
+    border: 1px solid color-mix(in srgb, var(--nad-secondary, #19f3f7) 40%, transparent); color: var(--nad-secondary, #19f3f7);
+    font: 700 10px var(--nad-font-display); letter-spacing: .08em; text-transform: uppercase; }
+  .ncm-cmv-qq { font-family: var(--nad-font-mono); color: var(--nad-text-muted, #8e8ea8); }
+  @media (prefers-reduced-motion: reduce) { .ncm-cmv-sec__por::before, .ncm-cmv-redact { animation: none; } }
+
+  /* ═════════════ Admin card (new rows only; the rest is .ncm-sec-admin-*) ═════════════ */
+  .mk-admin.ncm-app { width: 640px; padding: 14px; background: var(--ncm-bg-deep); }
+  .ncm-cmv-modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+  .ncm-cmv-mode { display: flex; flex-direction: column; gap: 3px; padding: 8px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer; background: var(--ncm-bg-base); }
+  .ncm-cmv-mode.on { border-color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-base)); }
+  .ncm-cmv-mode i { color: var(--ncm-secondary); font-size: 13px; }
+  .ncm-cmv-mode .t { font: 700 12px var(--ncm-font-display); text-transform: uppercase; letter-spacing: .04em; color: var(--ncm-text-primary); }
+  .ncm-cmv-mode .d { font: 12px/1.3 var(--ncm-font-display); color: var(--ncm-text-secondary); }
+  .ncm-cmv-block { border: 1px solid var(--ncm-border); border-radius: 2px; margin-bottom: 10px; }
+  .ncm-cmv-block__hd { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-base);
+    font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-cmv-block__hd i { color: var(--ncm-secondary); }
+  .ncm-cmv-block__hd .hint { margin-left: auto; font: italic 500 11px var(--ncm-font-display); text-transform: none; letter-spacing: 0; color: var(--ncm-text-secondary); }
+  .ncm-cmv-block__bd { padding: 9px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .ncm-cmv-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font: 13px var(--ncm-font-display); color: var(--ncm-text-secondary); }
+  .ncm-cmv-line > .k { width: 68px; flex: none; font: 700 10px var(--ncm-font-display); text-transform: uppercase; letter-spacing: .06em; color: var(--ncm-text-secondary); }
+  .ncm-cmv-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 1px;
+    font: 700 11px var(--ncm-font-display); color: var(--ncm-text-primary); background: var(--ncm-bg-surface); }
+  .ncm-cmv-chip .m { font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-secondary); }
+  .ncm-cmv-chip--add { border-style: dashed; color: var(--ncm-secondary); background: transparent; }
+  .ncm-cmv-or { font: 700 10px var(--ncm-font-display); color: var(--ncm-text-muted); letter-spacing: .1em; }
+  .ncm-cmv-num { width: 48px; height: 24px; text-align: center; font-family: var(--ncm-font-mono) !important; }
+  .ncm-cmv-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 14px; }
+  .ncm-cmv-check { display: flex; gap: 7px; align-items: flex-start; font: 13px/1.3 var(--ncm-font-body) !important; text-transform: none !important; color: var(--ncm-text-primary) !important; letter-spacing: 0 !important; }
+  .ncm-cmv-check small { display: block; color: var(--ncm-text-secondary); font-size: 12px; }
+  .ncm-cmv-box { flex: none; width: 13px; height: 13px; margin-top: 2px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; display: grid; place-items: center; font-size: 9px; color: var(--ncm-secondary); }
+  .ncm-cmv-box.on { background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); border-color: var(--ncm-secondary); }
+  .ncm-cmv-verdict { padding: 8px 10px; border-left: 3px solid var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 7%, transparent);
+    font: 13px/1.4 var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-cmv-dvtoggle { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-cmv-knob { flex: none; width: 30px; height: 16px; border-radius: 8px; background: var(--ncm-border); position: relative; }
+  .ncm-cmv-knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-secondary); }
+  .ncm-cmv-knob.on { background: color-mix(in srgb, var(--ncm-secondary) 60%, transparent); }
+  .ncm-cmv-knob.on::after { left: 16px; background: var(--ncm-text-primary); }
+  .ncm-cmv-dvtoggle .t { flex: 1; font: 13px/1.3 var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-cmv-dvtoggle .t small { display: block; color: var(--ncm-text-secondary); font-size: 12px; }
+
+  /* per-object override */
+  .mk-cfg.ncm-app { width: 520px; padding: 12px 14px; background: var(--ncm-bg-deep); }
+  .ncm-cmv-seg { display: inline-flex; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+  .ncm-cmv-seg span { padding: 4px 10px; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); border-right: 1px solid var(--ncm-border); }
+  .ncm-cmv-seg span:last-child { border-right: 0; }
+  .ncm-cmv-seg span.on { background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent); color: var(--ncm-secondary); }
+
+  /* roll reveal frames: shown statically (the real component, frozen) */
+  .mk-rr { position: relative; width: 400px; height: 300px; background: #0a0a12; border: 1px solid #1b1b28; overflow: hidden; }
+  .mk-rr .ncm-rr-scrim { cursor: default; }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+
+<!-- ═══════════ 1 · THE DIALOG, THREE WAYS ═══════════ -->
+<div class="sec">
+  <h2>1 · The network login dialog — what the character can tell</h2>
+  <p class="lede">The same CorpNet node (Black ICE "Hellhound", 3d6 to HP, failures traced, 3 attempts, bypass DV 17). The ways in are always shown — anyone can see there's a password box. What's guarding it is not.</p>
+  <div class="row" id="dialogs"></div>
+</div>
+
+<!-- ═══════════ 2 · THE ROLLS ═══════════ -->
+<div class="sec">
+  <h2>2 · The scan, and a roll with the DV hidden</h2>
+  <p class="lede">The scan is an ordinary roll through the shared Roll Reveal. With "Hide the DV" on, the line on the bar has no number until the verdict lands — then the DV appears, here and on the chat card. You learn how hard it was by trying.</p>
+  <div class="row" id="rolls"></div>
+</div>
+
+<!-- ═══════════ 3 · ADMIN CARD ═══════════ -->
+<div class="sec">
+  <h2>3 · Admin → Security → Countermeasure Visibility (the world default)</h2>
+  <p class="lede">Off by default ("Open" = today). The expert rule is the same builder as Operator Access, so a GM who has written one already knows this one.</p>
+  <div class="row" id="admin"></div>
+</div>
+
+<!-- ═══════════ 4 · PER-OBJECT OVERRIDE ═══════════ -->
+<div class="sec" style="padding-bottom:60px">
+  <h2>4 · Per-object override (Network Manager → Security; the same row on shards, terminal accounts, encrypted contacts and messages)</h2>
+  <p class="lede">"This one hides its Black ICE well" — Concealed with its own scan DV. "The corp wants you to see the dogs" — Always visible.</p>
+  <div class="row" id="cfg"></div>
+</div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const ADMIN_T = Q.get('t') || 'clean-dark';
+const SHOW_DV = Q.get('dv') === '1';
+const DV = SHOW_DV ? '17' : '??';
+const SCAN_OPEN = Q.get('scan') === 'open';   // collapsed by default
+document.addEventListener('click', (e) => {
+  const hd = e.target.closest('.ncm-cmv-scan__hd'); if (!hd) return;
+  const box = hd.closest('.ncm-cmv-scan'); const open = !box.classList.contains('is-open');
+  box.classList.toggle('is-open', open); hd.setAttribute('aria-expanded', String(open));
+  hd.querySelector('[data-more-label]').textContent = open ? 'Hide' : 'Show';
+});
+
+/* ── control bar ── */
+const link = (k, v, label) => {
+  const q = new URLSearchParams(location.search); if (v === null) q.delete(k); else q.set(k, v);
+  const on = (Q.get(k) ?? null) === v; return `<a class="${on ? 'on' : ''}" href="?${q}">${label}</a>`;
+};
+document.getElementById('bar').innerHTML = `<b>COUNTERMEASURE VISIBILITY</b>
+  <span>admin preset</span>${link('t', null, 'clean-dark')}${link('t', 'clean-light', 'clean-light')}${link('t', 'high-contrast', 'high-contrast')}
+  <span>DV</span>${link('dv', null, 'hidden (toggle on)')}${link('dv', '1', 'shown (toggle off)')}
+  <span>scan strip</span>${link('scan', null, 'collapsed')}${link('scan', 'open', 'open')}`;
+
+/* ── dialog pieces ── */
+const identity = `
+  <div class="ncm-auth__identity">
+    <div class="ncm-auth__icon" style="background:#4488ff12;color:#4488ff;border:1px solid #4488ff26;"><i class="fas fa-building"></i></div>
+    <div class="ncm-auth__title-group"><div class="ncm-auth__name">CorpNet — Arasaka Tower</div>
+      <div class="ncm-auth__meta">Corporate <span class="ncm-tag ncm-tag--high"><i class="fas fa-shield-halved"></i> HIGH</span></div></div>
+  </div>`;
+const policy = `<div class="ncm-auth__policy ncm-auth__policy--or"><i class="fas fa-lock-open ncm-auth__policy-icon"></i><span class="ncm-auth__policy-text">Complete <b>ANY ONE</b> method to connect</span></div>`;
+const pw = `
+  <div class="ncm-auth__method" style="--accent-c: var(--nad-accent);">
+    <div class="ncm-auth__mhead"><i class="fas fa-key ncm-auth__micon ncm-auth__micon--pw"></i>
+      <div class="ncm-auth__mlabel"><div class="ncm-auth__mtitle">Password</div><div class="ncm-auth__msub">Network passphrase</div></div></div>
+  </div>`;
+const or = `<div class="ncm-auth__or"><span class="ncm-auth__or-line"></span><span class="ncm-auth__or-text">OR</span><span class="ncm-auth__or-line"></span></div>`;
+const skill = ({ dv, danger }) => `
+  <div class="ncm-auth__method ncm-auth__method--active" style="--accent-c: var(--nad-purple);">
+    <div class="ncm-auth__mhead"><i class="fas fa-dice-d20 ncm-auth__micon ncm-auth__micon--sk"></i>
+      <div class="ncm-auth__mlabel"><div class="ncm-auth__mtitle">Skill Check Bypass</div><div class="ncm-auth__msub">Stat + Skill + d10 · vs DV <span class="${dv === '??' ? 'ncm-cmv-qq' : ''}">${dv}</span></div></div>
+      <span class="ncm-auth__chip ncm-auth__chip--dv">DV ${dv}</span></div>
+    <div class="ncm-auth__mbody">
+      ${[['Interface', 'TECH 6 + Skill 4 → 10'], ['Electronics/Security Tech', 'TECH 6 + Skill 3 → 9']].map(([n, s]) => `
+      <div class="ncm-auth__skrow"><i class="fas fa-dice-d20 ncm-auth__skrow-ico"></i>
+        <div class="ncm-auth__skrow-txt"><div class="ncm-auth__skrow-name">${n}</div>
+          <div class="ncm-auth__skrow-sub">${s} · vs DV <span class="${dv === '??' ? 'ncm-cmv-qq' : ''}">${dv}</span></div>
+          ${danger ? `<div class="ncm-auth__skrow-sub ncm-auth__skrow-sub--danger"><i class="fas fa-triangle-exclamation"></i> fail = ${danger}</div>` : ''}</div>
+        <button type="button" class="ncm-auth__skrow-btn"><i class="fas fa-dice-d20"></i> Roll</button></div>`).join('')}
+    </div>
+  </div>`;
+const footer = (attempts) => `
+  <div class="ncm-auth__footer"><button type="button" class="ncm-auth__btn ncm-auth__btn--ghost">Cancel</button>
+    <div class="ncm-auth__footer-right"><div class="ncm-auth__attempts"><span class="ncm-auth__attempts-label">Attempts</span>
+      ${attempts ? `<div class="ncm-auth__pips">${'<div class="ncm-auth__pip ncm-auth__pip--remaining"></div>'.repeat(3)}</div>` : '<span class="ncm-cmv-qq">?</span>'}</div></div></div>`;
+
+const bar = (w) => '<span class="ncm-cmv-redact" style="width:' + w + 'px"></span>';
+const roCell = (icon, k, v) => '<div class="ncm-cmv-ro__c"><div class="ncm-cmv-ro__k"><i class="fas ' + icon + '"></i>' + k + '</div><div class="ncm-cmv-ro__v' + (v.known ? ' is-known' : '') + '">' + v.html + '</div></div>';
+const R = (w) => ({ known: false, html: bar(w) });
+const K = (html) => ({ known: true, html });
+const readout = (c) => '<div class="ncm-cmv-ro">' + roCell('fa-shield-halved', 'ICE', c.ice) + roCell('fa-skull', 'On failure', c.fail)
+  + roCell('fa-satellite-dish', 'Trace', c.trace) + roCell('fa-lock', 'Attempts', c.att) + '</div>';
+const scanRows = (dv) => [['Interface', 'TECH 6 + Skill 4 → 10'], ['Electronics/Security Tech', 'TECH 6 + Skill 3 → 9']].map(([n, sub]) => `
+  <div class="ncm-auth__skrow"><i class="fas fa-satellite-dish ncm-auth__skrow-ico"></i>
+    <div class="ncm-auth__skrow-txt"><div class="ncm-auth__skrow-name">${n}</div>
+      <div class="ncm-auth__skrow-sub">${sub} · vs DV <span class="${dv === '??' ? 'ncm-cmv-qq' : ''}">${dv}</span></div></div>
+    <button type="button" class="ncm-auth__skrow-btn"><i class="fas fa-satellite-dish"></i> Scan</button></div>`).join('');
+
+const unknownPanel = `
+  <div class="ncm-cmv-sec">
+    <div class="ncm-cmv-sec__hd">
+      <div class="ncm-cmv-sec__por"><i class="fas fa-question"></i></div>
+      <div><div class="ncm-cmv-sec__ttl">Security unreadable</div>
+        <div class="ncm-cmv-sec__sub">You can’t tell what’s guarding this node — or what it does when you get it wrong.</div></div>
+    </div>
+    ${readout({ ice: R(74), fail: R(56), trace: R(38), att: R(22) })}
+    <div class="ncm-cmv-scan${SCAN_OPEN ? ' is-open' : ''}">
+      <button type="button" class="ncm-cmv-scan__hd" aria-expanded="${SCAN_OPEN}">
+        <span class="ncm-cmv-scan__t"><i class="fas fa-satellite-dish"></i>Scan the defences</span>
+        <span class="ncm-cmv-scan__count">2 skills</span>
+        <span class="ncm-cmv-scan__more"><span data-more-label>${SCAN_OPEN ? 'Hide' : 'Show'}</span><i class="fas fa-chevron-down"></i></span>
+      </button>
+      <div class="ncm-cmv-scan__body"><div class="ncm-cmv-scan__in"><div class="ncm-cmv-scan__pad">
+        ${scanRows(DV === '??' ? '??' : '14')}
+        <div class="ncm-cmv-scan__foot"><i class="fas fa-circle-info"></i>Optional, and one try. Beat it well and you’ll know exactly what’s there; miss, and you go in blind.</div>
+      </div></div></div>
+    </div>
+  </div>`;
+const spottedPanel = `
+  <div class="ncm-cmv-sec ncm-cmv-sec--spotted">
+    <div class="ncm-cmv-sec__hd">
+      <div class="ncm-cmv-sec__por"><i class="fas fa-eye"></i></div>
+      <div><div class="ncm-cmv-sec__ttl">Defences detected</div>
+        <div class="ncm-cmv-sec__sub">Your scan${DV === '??' ? '' : ' (15 vs 14)'} found something running — not enough to name it.</div></div>
+    </div>
+    ${readout({ ice: K('Running <small>· type ?</small>'), fail: R(56), trace: K('Yes'), att: K('Limited <small>· count ?</small>') })}
+  </div>`;
+const icePanel = (credit) => `
+  <div class="ncm-auth__ice">
+    <div class="ncm-auth__ice-portrait"><i class="fas fa-radiation"></i></div>
+    <div class="ncm-auth__ice-txt">
+      <div class="ncm-auth__ice-name">Hellhound <span class="ncm-auth__ice-cls">· Lethal Countermeasures · Black ICE</span></div>
+      <div class="ncm-auth__ice-sub">Failed breach deals <b>3d6</b> damage — direct to HP. Failures are traced.</div>
+      <span class="ncm-cmv-credit"><i class="fas fa-eye"></i> ${credit}</span>
+    </div>
+  </div>`;
+
+const dlg = (state, body) => `
+  <div class="mk mk-dlg ncm-app ncm-network-auth-dialog" data-auth-state="${state}">
+    <div class="window-content"><div class="ncm-auth-dialog">${body}</div></div>
+  </div>`;
+const frame = (cap, sub, html) => `<div><div class="cap">${cap}<small>${sub}</small></div>${html}</div>`;
+
+document.getElementById('dialogs').innerHTML = [
+  frame('A · Layperson', 'No expertise, no scan yet. The ways in are all there; the defences read Unknown. Attempts read "?" until the first failure tells you.',
+    dlg('skill', identity + unknownPanel + policy + pw + or + skill({ dv: DV, danger: null }) + footer(false))),
+  frame('B · Spotted', 'Scanned: met the scan DV but by less than 5. You know there is ICE and a trace — not what, not how hard it hits.',
+    dlg('skill', identity + spottedPanel + policy + pw + or + skill({ dv: DV, danger: null }) + footer(false))),
+  frame('C · Identified', 'An expert (passive — e.g. a Netrunner, or Interface 4+), or a scan that beat the DV by 5+. Today\'s full readout, plus how you know.',
+    dlg('ice', identity + icePanel('Identified · Netrunner') + policy + pw + or + skill({ dv: '17', danger: '3d6 to HP' }) + footer(true))),
+].join('');
+
+/* ── roll reveal frames (the real component's markup, frozen) ── */
+const rr = ({ title, ctx, tiles, die, total, dvLabel, dvx, fill, tone, verdict, margin, status, chat }) => `
+  <div class="mk mk-rr ncm-app" style="--ncm-text-scale:1">
+    <div class="ncm-rr-scrim">
+      <div class="ncm-rr" data-tone="${tone}" style="--rr-open:1;--dvx:${dvx};--fill:${fill};--vo:${verdict ? 1 : 0};--co:${chat ? 1 : 0}">
+        <span class="ncm-rr__brk ncm-rr__brk--tl"></span><span class="ncm-rr__brk ncm-rr__brk--tr"></span><span class="ncm-rr__brk ncm-rr__brk--bl"></span><span class="ncm-rr__brk ncm-rr__brk--br"></span>
+        <div class="ncm-rr__top"><span class="ncm-rr__kind">Skill check</span><span class="ncm-rr__ctx">${ctx}</span><span class="ncm-rr__who">V</span></div>
+        <div class="ncm-rr__title">${title}</div>
+        <div class="ncm-rr__eq">
+          ${tiles.map(([v, l]) => `<div class="ncm-rr__tile is-lit" style="--o:1"><span class="ncm-rr__val">${v}</span><span class="ncm-rr__lbl">${l}</span></div><span class="ncm-rr__op" style="--o:1">+</span>`).join('')}
+          <div class="ncm-rr__tile ncm-rr__tile--die" style="--o:1"><span class="ncm-rr__val">${die}</span><span class="ncm-rr__lbl">1d10</span></div>
+          <span class="ncm-rr__op" style="--o:1">=</span>
+          <div class="ncm-rr__tile ncm-rr__tile--total" style="--o:1"><span class="ncm-rr__val">${total}</span><span class="ncm-rr__lbl">Total</span></div>
+        </div>
+        <div class="ncm-rr__meter"><div class="ncm-rr__track"><div class="ncm-rr__fill"></div><div class="ncm-rr__dv"></div></div><span class="ncm-rr__dvtag">${dvLabel}</span></div>
+        <div class="ncm-rr__verdict"><span class="ncm-rr__vtxt">${verdict || ''}</span><span class="ncm-rr__margin">${margin || ''}</span></div>
+        <div class="ncm-rr__foot"><span class="ncm-rr__status">${status}</span>${chat ? '<span class="ncm-rr__chat"><i class="fas fa-check"></i> Posted to chat</span>' : '<span class="ncm-rr__skip">click to skip</span>'}</div>
+      </div>
+    </div>
+  </div>`;
+const hid = !SHOW_DV;
+document.getElementById('rolls').innerHTML = [
+  frame('Scan — identified', 'Interface scan: 19 vs this network’s scan DV 14 — beats it by 5, so the defences are identified (by 0–4 they would only be spotted). A miss means going in blind.',
+    rr({ title: 'Scanning CorpNet\'s defences', ctx: 'Scan · CorpNet', tiles: [['6', 'TECH'], ['4', 'Interface']], die: '9', total: '19',
+      dvLabel: hid ? 'DV ??' : 'DV 14', dvx: .56, fill: .76, tone: 'ok', verdict: 'Defences identified', margin: hid ? '' : '+5 over DV', status: 'Check resolved.', chat: true })),
+  frame(hid ? 'Bypass — DV hidden, mid-roll' : 'Bypass — DV shown', hid ? 'The line is there, the number is not.' : 'With the toggle off the DV shows as today.',
+    rr({ title: 'Bypassing CorpNet', ctx: 'Network bypass · CorpNet', tiles: [['6', 'TECH'], ['4', 'Interface']], die: '7', total: '17',
+      dvLabel: hid ? 'DV ??' : 'DV 17', dvx: .68, fill: .68, tone: 'cyan', verdict: '', margin: '', status: 'Tallying…', chat: false })),
+  frame('Bypass — landed', 'The verdict reveals the DV — here and on the chat card.',
+    rr({ title: 'Bypassing CorpNet', ctx: 'Network bypass · CorpNet', tiles: [['6', 'TECH'], ['4', 'Interface']], die: '7', total: '17',
+      dvLabel: 'DV 17', dvx: .68, fill: .68, tone: 'ok', verdict: 'Access granted', margin: 'exactly DV', status: 'Check resolved.', chat: true })),
+].join('');
+
+/* ── admin card ── */
+const box = (on) => `<span class="ncm-cmv-box ${on ? 'on' : ''}">${on ? '<i class="fas fa-check"></i>' : ''}</span>`;
+document.getElementById('admin').innerHTML = `
+  <div class="mk mk-admin ncm-app ncm-admin-panel" data-ncm-admin-theme="${ADMIN_T}" data-ncm-scanlines="false">
+    <div class="ncm-sec-admin-card" style="margin:0">
+      <div class="ncm-sec-admin-card__hd"><i class="fas fa-eye-slash lead"></i><h3>Countermeasure Visibility</h3>
+        <span class="ncm-sec-admin-info" data-tooltip="Who can tell what is guarding a lock — ICE, damage, traces, attempts, the DV. Objects can override it.">ⓘ</span>
+        <span class="grow"></span><button type="button" class="ncm-sec-admin-btn primary sm">Save</button></div>
+      <div class="ncm-sec-admin-card__bd">
+        <div class="ncm-cmv-modes">
+          <div class="ncm-cmv-mode"><i class="fas fa-lock-open"></i><span class="t">Open</span><span class="d">everyone sees the defences (today)</span></div>
+          <div class="ncm-cmv-mode"><i class="fas fa-user-graduate"></i><span class="t">Experts only</span><span class="d">qualified characters see them; nobody can scan</span></div>
+          <div class="ncm-cmv-mode"><i class="fas fa-satellite-dish"></i><span class="t">Scan</span><span class="d">anyone can roll a scan to find out</span></div>
+          <div class="ncm-cmv-mode on"><i class="fas fa-user-secret"></i><span class="t">Experts + Scan</span><span class="d">experts see them; everyone else can scan</span></div>
+        </div>
+
+        <div class="ncm-cmv-block">
+          <div class="ncm-cmv-block__hd"><i class="fas fa-user-graduate"></i> Who counts as an expert <span class="hint">sees everything, no roll</span></div>
+          <div class="ncm-cmv-block__bd">
+            <div class="ncm-cmv-line"><span class="k">Role</span><span class="ncm-cmv-chip"><i class="fas fa-laptop-code"></i> Netrunner</span><span class="ncm-cmv-chip ncm-cmv-chip--add"><i class="fas fa-plus"></i> role</span></div>
+            <div class="ncm-cmv-line"><span class="k">Skill</span><span class="ncm-cmv-chip">Interface <span class="m">4+</span></span><span class="ncm-cmv-or">OR</span><span class="ncm-cmv-chip">Electronics/Security Tech <span class="m">6+</span></span><span class="ncm-cmv-chip ncm-cmv-chip--add"><i class="fas fa-plus"></i> skill</span></div>
+            <div class="ncm-cmv-line"><span class="k">Gear</span><span class="ncm-cmv-chip"><i class="fas fa-microchip"></i> Cyberdeck</span><span class="ncm-cmv-chip ncm-cmv-chip--add"><i class="fas fa-plus"></i> gear</span></div>
+          </div>
+        </div>
+
+        <div class="ncm-cmv-block">
+          <div class="ncm-cmv-block__hd"><i class="fas fa-satellite-dish"></i> The scan <span class="hint">for everyone else</span></div>
+          <div class="ncm-cmv-block__bd">
+            <div class="ncm-cmv-line"><span class="k">Skills</span><span class="ncm-cmv-chip">Interface</span><span class="ncm-cmv-or">OR</span><span class="ncm-cmv-chip">Electronics/Security Tech</span><span class="ncm-cmv-chip ncm-cmv-chip--add"><i class="fas fa-plus"></i> skill</span></div>
+            <div class="ncm-cmv-line"><span class="k">Scan DV</span><input type="number" class="ncm-cmv-num" value="15"> <span>objects can set their own · beat it by</span><input type="number" class="ncm-cmv-num" value="5"><span>or more to identify, not just spot</span></div>
+            <label class="ncm-cmv-check">${box(false)}<span>A failed scan counts as a traced action<small>Off: a miss just means going in blind.</small></span></label>
+          </div>
+        </div>
+
+        <div class="ncm-cmv-block">
+          <div class="ncm-cmv-block__hd"><i class="fas fa-eye-slash"></i> What a layperson can't see</div>
+          <div class="ncm-cmv-block__bd"><div class="ncm-cmv-checks">
+            <label class="ncm-cmv-check">${box(true)}<span>That ICE is running<small>spotted → "ICE is running"</small></span></label>
+            <label class="ncm-cmv-check">${box(true)}<span>Which ICE, and its damage<small>identified only</small></span></label>
+            <label class="ncm-cmv-check">${box(true)}<span>Attempts left / lockout<small>shown after the first failure</small></span></label>
+            <label class="ncm-cmv-check">${box(true)}<span>That a failure is traced<small>spotted → shown</small></span></label>
+          </div></div>
+        </div>
+
+        <div class="ncm-cmv-dvtoggle" style="margin-bottom:10px">
+          <span class="ncm-cmv-knob ${SHOW_DV ? '' : 'on'}"></span>
+          <span class="t">Hide the DV until the roll lands<small>For laypeople and spotters. The roll animation and chat card show it with the verdict. Experts always see it.</small></span>
+        </div>
+
+        <div class="ncm-cmv-verdict">Right now: <b>Netrunners, Interface 4+, Electronics/Security Tech 6+ or a cyberdeck</b> see every defence. Everyone else sees <b>"Security — unknown"</b> and can scan (Interface or E/ST vs DV 15${SHOW_DV ? '' : '; the DV itself stays hidden'}). The GM always sees everything.</div>
+      </div>
+    </div>
+  </div>`;
+
+/* ── per-object override ── */
+document.getElementById('cfg').innerHTML = `
+  <div class="mk mk-cfg ncm-app" data-ncm-admin-theme="${ADMIN_T}" data-ncm-scanlines="false">
+    <div class="ncm-cmv-block" style="margin:0">
+      <div class="ncm-cmv-block__hd"><i class="fas fa-eye-slash"></i> Countermeasure visibility <span class="hint">this network only</span></div>
+      <div class="ncm-cmv-block__bd">
+        <div class="ncm-cmv-line"><span class="k">Visibility</span><span class="ncm-cmv-seg"><span>Inherit</span><span>Always visible</span><span class="on">Concealed</span></span></div>
+        <div class="ncm-cmv-line"><span class="k">Scan DV</span><input type="number" class="ncm-cmv-num" value="18"><span>harder to read than the world default (15)</span></div>
+        <div class="ncm-cmv-line"><span class="k">DV</span><span class="ncm-cmv-seg"><span class="on">Inherit</span><span>Shown</span><span>Hidden</span></span></div>
+        <div class="ncm-cmv-verdict">Players see this network as <b>"Security — unknown"</b> unless they're an expert or scan it at DV 18.</div>
+      </div>
+    </div>
+  </div>
+  <div class="mk mk-cfg ncm-app" data-ncm-admin-theme="${ADMIN_T}" data-ncm-scanlines="false">
+    <div class="ncm-cmv-block" style="margin:0">
+      <div class="ncm-cmv-block__hd"><i class="fas fa-eye"></i> Countermeasure visibility <span class="hint">this network only</span></div>
+      <div class="ncm-cmv-block__bd">
+        <div class="ncm-cmv-line"><span class="k">Visibility</span><span class="ncm-cmv-seg"><span>Inherit</span><span class="on">Always visible</span><span>Concealed</span></span></div>
+        <div class="ncm-cmv-verdict">A deterrent: everyone sees the Hellhound and its 3d6 — the corp wants them to.</div>
+      </div>
+    </div>
+  </div>`;
+
+/* ?diag=1 — widths of the collapsed scan header, for layout debugging */
+if (Q.get('diag')) setTimeout(() => {
+  const hd = document.querySelector('.ncm-cmv-scan__hd'); const out = [];
+  const w = (el) => el ? Math.round(el.getBoundingClientRect().width) + '/' + el.scrollWidth : '-';
+  out.push('sec ' + w(hd.closest('.ncm-cmv-sec')), 'btn ' + w(hd));
+  for (const c of hd.children) { const cs = getComputedStyle(c); out.push(c.className + ' ' + w(c) + ' x:' + Math.round(c.getBoundingClientRect().left) + ' ml:' + cs.marginLeft + ' flex:' + cs.flex); }
+  const cs = getComputedStyle(hd); out.push('btnX:' + Math.round(hd.getBoundingClientRect().left) + ' jc:' + cs.justifyContent + ' btn minW:' + cs.minWidth + ' w:' + cs.width + ' display:' + cs.display + ' box:' + cs.boxSizing + ' pad:' + cs.paddingLeft + '/' + cs.paddingRight + ' gap:' + cs.gap + ' ws:' + cs.whiteSpace + ' ov:' + cs.overflow);
+  const pre = document.createElement('pre'); pre.id = 'diag'; pre.textContent = out.join(' | '); document.body.appendChild(pre);
+}, 300);
+</script>
+</body>
+</html>

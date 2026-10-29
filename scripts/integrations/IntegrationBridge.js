@@ -69,7 +69,7 @@ export async function initializeIntegrationBridge() {
   let TRUST_LABELS = null;
   try {
     ({ RELATIONSHIP_TYPES, TRUST_LABELS } =
-      await import('../ui/GMContactManager/GMContactManagerApp.js'));
+      await import('../utils/contactVocab.js'));
   } catch (err) {
     log.warn('IntegrationBridge: could not load shared vocabulary', err);
   }

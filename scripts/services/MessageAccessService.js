@@ -19,6 +19,7 @@
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { bypassDCFor } from '../utils/bypassSkills.js';
 import { MessageRepository } from '../data/MessageRepository.js';
 
 /** Default max bypass attempts before lockout */
@@ -213,7 +214,7 @@ export class MessageAccessService {
    * @param {object} accessControl - The message's accessControl block
    * @returns {Promise<{ success: boolean, roll?: object, error?: string, attemptsRemaining?: number, lockedOut?: boolean }>}
    */
-  async attemptSkillBypass(messageId, actor, skillName, accessControl) {
+  async attemptSkillBypass(messageId, actor, skillName, accessControl, { reveal = null } = {}) {
     if (!accessControl?.bypass?.allowSkillCheck) {
       return { success: false, error: 'Skill bypass not available for this message' };
     }
@@ -224,7 +225,7 @@ export class MessageAccessService {
       return { success: false, error: `${skillName} cannot be used to bypass this restriction` };
     }
 
-    const dc = accessControl.bypass.bypassDC ?? 15;
+    const dc = bypassDCFor(accessControl.bypass, skillName);
 
     // Route through SkillService — same path as data shard hacking
     const skillSvc = this.skillService;
@@ -236,6 +237,9 @@ export class MessageAccessService {
       dc,
       flavor: 'Message Access Bypass',
       context: 'ncm-message-bypass',
+      // The caller's window plays the Roll Reveal; this service still plays the
+      // outcome sound, so the reveal only spins.
+      reveal: reveal ? { verdictSound: false, ...reveal } : null,
     });
 
     if (result?.success) {

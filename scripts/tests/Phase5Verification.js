@@ -102,7 +102,7 @@ export class Phase5Verification {
     await this._check('5.08', 'Phase 5 templates loadable', async () => {
       const templatePaths = [
         TEMPLATES.ADMIN_PANEL,
-        TEMPLATES.GM_CONTACT_MANAGER,
+        TEMPLATES.ADMIN_TAB_CONTACTS,
         TEMPLATES.THEME_CUSTOMIZER,
         TEMPLATES.PLAYER_EMAIL_SETUP,
       ];

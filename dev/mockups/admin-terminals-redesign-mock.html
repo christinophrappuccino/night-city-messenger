@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terminals Tab Redesign — mock</title>
+<!--
+  ADMIN → TERMINALS, REORGANISED — design mock (2026-10-27).
+
+  Same content as today, built for a campaign with dozens of terminals:
+    · the list GROUPS (by location, scene pin, organisation, folder, preset)
+      under sticky, collapsible headers — one scroll, no 10-per-page paging;
+    · filters answer the GM's questions: someone logged in? needs me? where?
+    · rows are dense: name, where, accounts, live state — at a glance;
+    · the detail leads with RIGHT NOW (sessions, lockouts, plants, heat on
+      this machine), then setup in two short columns, then the accounts as a
+      table, then recent logins; actions: Open / Configure up top, the rest in
+      a ⋯ menu;
+    · bulk mode for many terminals: tick rows → Reset / Export / Remove.
+
+  Built from the real classes against the real cascade at the panel's 820px.
+  Click rows, group-by, chips, search, ⋯, Select. Or:
+    ?t=clean-dark|clean-light|high-contrast   ?group=location|scene|org|folder|preset|none
+    ?sel=<id>   ?menu=1   ?bulk=1   ?filter=all|online|attention|unplaced|here
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  /* ── page chrome (not part of the design) ── */
+  html, body { margin: 0; background: #06060a; color: #8fa0b2; font-family: 'Rajdhani', sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; padding: 9px 14px;
+    background: #0b0b12; border-bottom: 1px solid #1b1b28; font: 11px 'Share Tech Mono', monospace; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a; padding: 3px 8px; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+  .bar a.on { color: #07070b; background: #19f3f7; border-color: #19f3f7; }
+  .stage { display: flex; gap: 26px; justify-content: center; padding: 24px 16px 60px; flex-wrap: wrap; }
+  .notes { width: 320px; font-size: 14px; line-height: 1.5; color: #9aa6b4; }
+  .notes h3 { margin: 0 0 6px; font: 700 12px 'Rajdhani'; letter-spacing: .14em; text-transform: uppercase; color: #e6edf5; }
+  .notes p { margin: 0 0 12px; } .notes b { color: #d6dee8; }
+  .mk, .mk.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-panel { width: 820px; height: 760px; display: flex; flex-direction: column; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); overflow: hidden; }
+  .mk-panel > .ncm-admin-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 12px 14px 14px; }
+
+  /* ═════════════════════════════════════════════════════════════
+     .ncm-term-admin-* (new pieces only; the rest is the shipped tab CSS)
+     ═════════════════════════════════════════════════════════════ */
+  .ncm-admin-panel .ncm-term-admin-hd { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ncm-admin-panel .ncm-term-admin-hd h2 { margin: 0; border: 0; text-shadow: none !important; font: 700 17px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-term-admin-hd p { margin: 0; font: 14px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-term-admin-hd .grow { flex: 1; }
+
+  /* toolbar: search + group-by + import, then the filter chips */
+  .ncm-admin-panel .ncm-term-admin-tb { display: flex; gap: 6px; align-items: center; margin-bottom: 7px; }
+  .ncm-admin-panel .ncm-term-admin-tb .srch { flex: 1; position: relative; }
+  .ncm-admin-panel .ncm-term-admin-tb .srch i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--ncm-text-muted); font-size: 12px; }
+  .ncm-admin-panel .ncm-term-admin-tb input[type=text] { width: 100%; height: 30px; padding-left: 28px !important; box-sizing: border-box; }
+  .ncm-admin-panel .ncm-term-admin-tb select { height: 30px; width: auto; }
+  .ncm-admin-panel .ncm-term-admin-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .ncm-admin-panel .ncm-term-admin-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer;
+    background: var(--ncm-bg-base); font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); user-select: none; }
+  .ncm-admin-panel .ncm-term-admin-chip .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-term-admin-chip.on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 9%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-term-admin-chip.on .n { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-term-admin-chip.warn .n { color: var(--ncm-warning); }
+
+  /* the split */
+  .ncm-admin-panel .ncm-term-admin-split2 { flex: 1; min-height: 0; display: grid; grid-template-columns: 290px 1fr; gap: 12px; }
+  .ncm-admin-panel .ncm-term-admin-list2 { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-term-admin-grp { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 7px; padding: 6px 10px; cursor: pointer;
+    background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-term-admin-grp i.ic { color: var(--ncm-secondary); font-size: 11px; width: 12px; text-align: center; }
+  .ncm-admin-panel .ncm-term-admin-grp .n { margin-left: auto; font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; }
+  .ncm-admin-panel .ncm-term-admin-grp .chev { color: var(--ncm-text-muted); font-size: 10px; transition: transform .2s; }
+  .ncm-admin-panel .ncm-term-admin-grp.shut .chev { transform: rotate(-90deg); }
+  .ncm-admin-panel .ncm-term-admin-r { display: grid; grid-template-columns: 28px 1fr auto; gap: 9px; align-items: center; padding: 7px 10px; cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); border-left: 2px solid transparent; }
+  .ncm-admin-panel .ncm-term-admin-r:hover { background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); }
+  .ncm-admin-panel .ncm-term-admin-r.sel { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border-left-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-term-admin-r img { width: 28px; height: 28px; border-radius: 2px; object-fit: cover; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); }
+  .ncm-admin-panel .ncm-term-admin-r .ck { width: 13px; height: 13px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; display: none; place-items: center; font-size: 9px; color: var(--ncm-secondary); }
+  .ncm-admin-panel .is-bulk .ncm-term-admin-r .ck { display: grid; }
+  .ncm-admin-panel .ncm-term-admin-r.picked .ck { background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent); border-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-term-admin-r .nm { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-term-admin-r .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-term-admin-r .st { display: flex; gap: 6px; align-items: center; font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-term-admin-r .st .on { color: var(--ncm-success); }
+  .ncm-admin-panel .ncm-term-admin-r .st .att { color: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-term-admin-r .st .unl { color: var(--ncm-accent); }
+  /* select mode: the checkbox gets its own column only when it shows */
+  .ncm-admin-panel .is-bulk .ncm-term-admin-r { grid-template-columns: 13px 28px 1fr auto; }
+  .ncm-admin-panel .ncm-term-admin-tb .picked { padding: 0 4px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; }
+  .ncm-admin-panel .ncm-term-admin-tb .picked b { color: var(--ncm-secondary); }
+
+  /* detail */
+  .ncm-admin-panel .ncm-term-admin-det { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-term-admin-dhead { display: grid; grid-template-columns: 44px 1fr auto; gap: 11px; align-items: center; padding: 12px 13px; border-bottom: 1px solid var(--ncm-border); position: relative; }
+  .ncm-admin-panel .ncm-term-admin-dhead img { width: 44px; height: 44px; border-radius: 2px; object-fit: cover; border: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-term-admin-dhead .nm { font: 700 17px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-term-admin-dhead .sub { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-term-admin-dhead .acts { display: flex; gap: 5px; }
+  .ncm-admin-panel .ncm-term-admin-more { position: absolute; right: 12px; top: 50px; z-index: 6; min-width: 210px; padding: 4px; border: 1px solid var(--ncm-border-active, var(--ncm-border));
+    background: var(--ncm-bg-elevated); border-radius: 2px; box-shadow: 0 10px 30px rgba(0,0,0,.45); display: none; }
+  .ncm-admin-panel .ncm-term-admin-more.open { display: block; }
+  .ncm-admin-panel .ncm-term-admin-more div { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 2px; cursor: pointer; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-term-admin-more div:hover { background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-term-admin-more div i { width: 14px; text-align: center; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-term-admin-more div small { margin-left: auto; color: var(--ncm-text-muted); font-size: 11px; }
+  .ncm-admin-panel .ncm-term-admin-more hr { border: 0; border-top: 1px solid var(--ncm-border); margin: 4px 0; background: none; height: 0; }
+  .ncm-admin-panel .ncm-term-admin-more .danger, .ncm-admin-panel .ncm-term-admin-more .danger i { color: var(--ncm-danger); }
+
+  .ncm-admin-panel .ncm-term-admin-sec2 { padding: 10px 13px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-term-admin-sec2:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-term-admin-sec2 > .k { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-term-admin-sec2 > .k i { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-term-admin-sec2 > .k .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; }
+  .ncm-admin-panel .ncm-term-admin-sec2 > .k a { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-secondary); cursor: pointer; }
+
+  /* right now: live chips */
+  .ncm-admin-panel .ncm-term-admin-now { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ncm-admin-panel .ncm-term-admin-now span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary);
+    border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); background: color-mix(in srgb, var(--c) 9%, transparent); }
+  .ncm-admin-panel .ncm-term-admin-now span i { color: var(--c); }
+  .ncm-admin-panel .ncm-term-admin-now .on { --c: var(--ncm-success); }
+  .ncm-admin-panel .ncm-term-admin-now .lock { --c: var(--ncm-danger); }
+  .ncm-admin-panel .ncm-term-admin-now .plant { --c: var(--ncm-purple); }
+  .ncm-admin-panel .ncm-term-admin-now .hot { --c: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-term-admin-now .unl { --c: var(--ncm-accent); }
+  .ncm-admin-panel .ncm-term-admin-quiet { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+  /* setup: two short columns of key / value */
+  .ncm-admin-panel .ncm-term-admin-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .ncm-admin-panel .ncm-term-admin-kv { display: grid; grid-template-columns: 72px 1fr; gap: 8px; padding: 3px 0; font: 13px var(--ncm-font-body); }
+  .ncm-admin-panel .ncm-term-admin-kv .l { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); padding-top: 2px; }
+  .ncm-admin-panel .ncm-term-admin-kv .v { color: var(--ncm-text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ncm-admin-panel .ncm-term-admin-kv .v.dim { color: var(--ncm-text-muted); }
+
+  /* accounts table */
+  .ncm-admin-panel table.ncm-term-admin-atable { width: 100%; margin: 0; border-collapse: collapse; font: 13px var(--ncm-font-body); }
+  /* the Cyberpunk RED system stripes every table — not this one */
+  .ncm-admin-panel table.ncm-term-admin-atable, .ncm-admin-panel table.ncm-term-admin-atable thead, .ncm-admin-panel table.ncm-term-admin-atable tbody,
+  .ncm-admin-panel table.ncm-term-admin-atable tr, .ncm-admin-panel table.ncm-term-admin-atable th, .ncm-admin-panel table.ncm-term-admin-atable td { background: transparent !important; text-shadow: none; }
+  .ncm-admin-panel table.ncm-term-admin-atable th { text-align: left; padding: 4px 6px; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); border-bottom: 1px solid var(--ncm-border); background: none; }
+  .ncm-admin-panel table.ncm-term-admin-atable td { padding: 5px 6px; color: var(--ncm-text-primary); border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .ncm-admin-panel table.ncm-term-admin-atable tr:last-child td { border-bottom: 0; }
+  .ncm-admin-panel table.ncm-term-admin-atable .u { font-family: var(--ncm-font-mono); }
+  .ncm-admin-panel table.ncm-term-admin-atable .dim { color: var(--ncm-text-secondary); }
+  .ncm-admin-panel table.ncm-term-admin-atable .fl i { margin-right: 5px; color: var(--ncm-text-secondary); font-size: 11px; }
+  .ncm-admin-panel table.ncm-term-admin-atable .fl i.adm { color: var(--ncm-accent); }
+  .ncm-admin-panel table.ncm-term-admin-atable .ago { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); white-space: nowrap; }
+  /* accounts as rows: who it is → how you get in → when */
+  .ncm-admin-panel .ncm-term-admin-accts2 { display: flex; flex-direction: column; border: 1px solid var(--ncm-border); border-radius: 2px; max-height: 236px; overflow-y: auto; overflow-x: hidden; }
+  .ncm-admin-panel .ncm-term-admin-accts2 > .ncm-term-admin-acct2 { flex: 0 0 auto; }
+  .ncm-admin-panel .ncm-term-admin-acct2 { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px 10px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-term-admin-acct2:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-term-admin-acct2.is-on { background: color-mix(in srgb, var(--ncm-success) 5%, transparent); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .avw { position: relative; width: 34px; height: 34px; }
+  .ncm-admin-panel .ncm-term-admin-acct2 .av { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; box-sizing: border-box;
+    border: 1px solid var(--ncm-border-active, var(--ncm-border)); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .av.ini { background: color-mix(in srgb, var(--ncm-secondary) 14%, var(--ncm-bg-surface)); color: var(--ncm-secondary); font: 700 12px var(--ncm-font-display); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .av.mach { border-radius: 6px; background: var(--ncm-bg-deep); color: var(--ncm-text-secondary); font-size: 13px; }
+  .ncm-admin-panel .ncm-term-admin-acct2 .dot { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ncm-success); border: 2px solid var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .nm { display: flex; align-items: center; gap: 6px; font: 700 14px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; }
+  .ncm-admin-panel .ncm-term-admin-acct2 .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-term-admin-acct2 .sub .u { font-family: var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .sub i { font-size: 10px; }
+  .ncm-admin-panel .ncm-term-admin-acct2 .sub .live { color: var(--ncm-success); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; border-radius: 1px; border: 1px solid var(--ncm-border);
+    font: 700 9px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .tag.adm { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 45%, transparent); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .who { min-width: 0; }
+  .ncm-admin-panel .ncm-term-admin-acct2 .ways { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .ncm-admin-panel .ncm-term-admin-acct2 .last { padding-top: 2px; }
+  .ncm-admin-panel .ncm-term-admin-acct2 .how { display: inline-flex; align-items: center; gap: 5px; padding: 2px 6px; border-radius: 2px; white-space: nowrap;
+    background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .how i { font-size: 10px; color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .how.open i { color: var(--ncm-success); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .how.gate i { color: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-term-admin-acct2 .last { text-align: right; font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); white-space: nowrap; }
+  .ncm-admin-panel .ncm-term-admin-acct2 .last .k { display: block; font: 700 9px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-muted); margin-bottom: 1px; }
+
+  .ncm-admin-panel .ncm-term-admin-foot { display: flex; flex-direction: column; gap: 3px; max-height: 110px; overflow-y: auto; overflow-x: hidden; }
+  .ncm-admin-panel .ncm-term-admin-foot div { display: grid; grid-template-columns: 14px auto 1fr auto; gap: 8px; align-items: center; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-term-admin-foot i { color: var(--ncm-text-muted); font-size: 11px; }
+  .ncm-admin-panel .ncm-term-admin-foot .u { font-family: var(--ncm-font-mono); }
+  .ncm-admin-panel .ncm-term-admin-foot .by { color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-term-admin-foot .w { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="stage">
+  <div class="mk mk-panel ncm-app ncm-admin-panel" id="panel" data-ncm-scanlines="false">
+    <nav class="ncm-admin-tabs">
+      <button class="ncm-admin-tab"><i class="fas fa-chart-bar"></i> Overview</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelope"></i> Messages</button>
+      <button class="ncm-admin-tab"><i class="fas fa-address-book"></i> Contacts</button>
+      <button class="ncm-admin-tab"><i class="fas fa-network-wired"></i> Networks</button>
+      <button class="ncm-admin-tab"><i class="fas fa-database"></i> Shards</button>
+      <button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-terminal"></i> Terminals</button>
+      <button class="ncm-admin-tab"><i class="fas fa-shield-halved"></i> Security</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelopes-bulk"></i> Spam</button>
+      <button class="ncm-admin-tab"><i class="fas fa-wrench"></i> Tools</button>
+    </nav>
+    <div class="ncm-admin-content" id="content"></div>
+  </div>
+  <div class="notes">
+    <h3>What changed</h3>
+    <p><b>Built for many terminals.</b> One scrolling list instead of 10 per page, grouped under sticky headers you can fold. Group by <b>location</b> (default), the <b>scene</b> it's pinned on, <b>organisation</b>, the item's <b>folder</b>, or <b>preset</b>.</p>
+    <p><b>Filters answer real questions:</b> who's logged in, which ones need you (a lockout, an armed plant, heat, a GM unlock left on), which aren't pinned anywhere, and which are on the scene you're viewing. Each shows its count.</p>
+    <p><b>Rows are dense:</b> name, where it is, accounts, and live state (● online, ⚠ needs you, 🔓 unlocked).</p>
+    <p><b>The detail leads with what's happening now</b>, then setup in two short columns, the accounts as a table (who can get in and how), and recent logins.</p>
+    <p><b>Open and Configure stay up top</b>; Force-unlock, Reset, Export, Place on scene and Remove go in the ⋯ menu.</p>
+    <p><b>Select</b> ticks rows for Reset, Export or Remove in one go — e.g. reset every terminal in a building before a session.</p>
+  </div>
+</div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+document.getElementById('panel').dataset.ncmAdminTheme = Q.get('t') || 'clean-dark';
+let GROUP = Q.get('group') || 'location';
+let FILTER = Q.get('filter') || 'all';
+let SEL = Q.get('sel') || 'ws7f';
+let MENU = Q.get('menu') === '1';
+let BULK = Q.get('bulk') === '1';
+let SEARCH = '';
+const PICKED = new Set(BULK ? ['ws7f', 'ws7g', 'lobby'] : []);
+const SHUT = new Set();
+const HERE = 'Arasaka Tower — 7th Floor';
+const IMG = '../../../../systems/cyberpunk-red-core/icons/compendium/gear/memory_chip.svg';
+
+/* ── sample: 16 terminals ── */
+const T = [
+  { id: 'ws7f', name: 'WS-7F-12', org: 'Arasaka', loc: 'Arasaka Tower', scene: HERE, folder: 'Arasaka', preset: 'Arasaka Workstation', online: 2, attention: true, unlocked: false,
+    accts: [
+      { u: 'v_arasaka', n: 'Veronica Ames', role: 'Analyst', face: '#b85c7a', link: 'contact', online: 'V', how: [['fa-key', 'Password']], last: 'Mon 21:40' },
+      { u: 'h.tanaka', n: 'Hiro Tanaka', role: 'Floor manager', face: '#5c86b8', link: 'character', how: [['fa-key', 'Password'], ['fa-id-badge', 'Arasaka keycard']], gated: 'CorpNet', last: 'Sun 18:02' },
+      { u: 'root', n: 'sysadmin', machine: 'fa-server', admin: true, online: 'Rache', how: [['fa-key', 'Password'], ['fa-dice-d20', 'Cryptography DV 20']], last: 'Mon 22:05' },
+      { u: 'guest', n: 'Guest', machine: 'fa-user', hidden: true, how: [], last: '' },
+    ],
+    now: [['on', 'fa-circle', 'Rache → root'], ['on', 'fa-circle', 'V → v_arasaka'], ['plant', 'fa-syringe', '1 armed plant'], ['hot', 'fa-fire', 'Rache 72 HOT']],
+    uplink: 'Arasaka CorpNet', reach: 'CorpNet only', exfil: 'Download + burn', loginStyle: 'Cards', mailbox: 'Tabs', sound: 'Corp chime', pins: 'Arasaka Tower — 7th Floor',
+    logins: [['root', 'Rache', 'Mon 22:05'], ['v_arasaka', 'V', 'Mon 21:40'], ['root', 'Rache', 'Sun 19:12']] },
+  { id: 'ws7g', name: 'WS-7F-14', org: 'Arasaka', loc: 'Arasaka Tower', scene: HERE, folder: 'Arasaka', preset: 'Arasaka Workstation', online: 0, attention: false, accts: 2 },
+  { id: 'lobby', name: 'Lobby kiosk', org: 'Arasaka', loc: 'Arasaka Tower', scene: 'Arasaka Tower — Lobby', folder: 'Arasaka', preset: 'Arasaka Workstation', online: 0, attention: false, accts: 1 },
+  { id: 'secdesk', name: 'Security desk', org: 'Arasaka', loc: 'Arasaka Tower', scene: 'Arasaka Tower — Lobby', folder: 'Arasaka', preset: 'NetWatch Field Unit', online: 0, attention: true, accts: 3 },
+  { id: 'cfo', name: 'CFO office', org: 'Arasaka', loc: 'Arasaka Tower', scene: '', folder: 'Arasaka', preset: 'Arasaka Workstation', online: 0, attention: false, unlocked: true, accts: 2 },
+  { id: 'bbs', name: 'Afterlife BBS', org: '', loc: 'The Afterlife', scene: 'The Afterlife', folder: 'Watson', preset: 'Streetkid BBS', online: 1, attention: false, accts: 2 },
+  { id: 'rog', name: 'Rogue’s desk', org: '', loc: 'The Afterlife', scene: 'The Afterlife', folder: 'Watson', preset: 'BD Lounge', online: 0, attention: false, accts: 1 },
+  { id: 'doc', name: 'Ripperdoc terminal', org: '', loc: 'Watson — Kabuki', scene: 'Vik’s clinic', folder: 'Watson', preset: 'Ripperdoc', online: 0, attention: true, accts: 2 },
+  { id: 'fence', name: 'Fence’s ledger', org: '', loc: 'Watson — Kabuki', scene: '', folder: 'Watson', preset: 'Retro DOS', online: 0, attention: false, accts: 1 },
+  { id: 'chop', name: 'Chop shop rig', org: 'Maelstrom', loc: 'Watson — Northside', scene: 'Totentanz', folder: 'Maelstrom', preset: 'Maelstrom Chopshop', online: 0, attention: false, accts: 3 },
+  { id: 'tot', name: 'Totentanz DJ booth', org: 'Maelstrom', loc: 'Watson — Northside', scene: 'Totentanz', folder: 'Maelstrom', preset: 'Maelstrom Chopshop', online: 0, attention: false, accts: 1 },
+  { id: 'ncpd', name: 'NCPD precinct', org: 'NCPD', loc: 'Watson — Northside', scene: '', folder: 'Law', preset: 'NCPD Precinct', online: 0, attention: false, accts: 4 },
+  { id: 'chk', name: 'Militech checkpoint', org: 'Militech', loc: 'Badlands', scene: 'Badlands — Route 66', folder: 'Militech', preset: 'Militech Checkpoint', online: 0, attention: true, accts: 2 },
+  { id: 'rig', name: 'Nomad rig', org: 'Aldecaldos', loc: 'Badlands', scene: 'Badlands — Camp', folder: 'Nomads', preset: 'Nomad Rig', online: 1, attention: false, accts: 2 },
+  { id: 'relay', name: 'Blackwall relay', org: 'NetWatch', loc: '', scene: '', folder: 'NetWatch', preset: 'Blackwall Relay', online: 0, attention: false, accts: 1 },
+  { id: 'trauma', name: 'Trauma Team dispatch', org: 'Trauma Team', loc: '', scene: '', folder: '(no folder)', preset: 'Trauma Team', online: 0, attention: false, accts: 2 },
+];
+
+const FILTERS = [
+  ['all', 'All', () => true],
+  ['online', 'Logged in', (t) => t.online > 0],
+  ['attention', 'Needs you', (t) => t.attention || t.unlocked],
+  ['here', 'This scene', (t) => t.scene === HERE],
+  ['unplaced', 'Not pinned', (t) => !t.scene],
+];
+const GROUPS = {
+  location: ['Location', 'fa-location-dot', (t) => t.loc || 'No location'],
+  scene: ['Pinned on', 'fa-map-pin', (t) => t.scene || 'Not pinned'],
+  org: ['Organisation', 'fa-building', (t) => t.org || 'No organisation'],
+  folder: ['Folder', 'fa-folder', (t) => t.folder],
+  preset: ['Preset', 'fa-palette', (t) => t.preset],
+  none: ['None', 'fa-list', () => 'All terminals'],
+};
+
+const btn = (label, cls = '', icon = '', attrs = '') => `<button type="button" class="ncm-term-admin-btn ${cls}" ${attrs}>${icon ? `<i class="fas ${icon}"></i>` : ''}${label ? ` ${label}` : ''}</button>`;
+
+function list() {
+  const [, , keyOf] = GROUPS[GROUP];
+  const f = FILTERS.find((x) => x[0] === FILTER)[2];
+  const q = SEARCH.toLowerCase();
+  const rows = T.filter(f).filter((t) => !q || `${t.name} ${t.org} ${t.loc} ${t.preset} ${t.scene}`.toLowerCase().includes(q));
+  const groups = new Map();
+  for (const t of rows) { const k = keyOf(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
+  const order = [...groups.keys()].sort((a, b) => (/^(No |Not |\()/.test(a) ? 1 : 0) - (/^(No |Not |\()/.test(b) ? 1 : 0) || a.localeCompare(b));
+  if (!rows.length) return `<div class="ncm-term-admin-empty ncm-term-admin-empty--list"><i class="fas fa-magnifying-glass"></i> No terminals match.</div>`;
+  return order.map((k) => {
+    const items = groups.get(k);
+    const shut = SHUT.has(k);
+    return `<div class="ncm-term-admin-grp ${shut ? 'shut' : ''}" data-grp="${k}"><i class="fas fa-chevron-down chev"></i><i class="fas ${GROUPS[GROUP][1]} ic"></i>${k}<span class="n">${items.length}</span></div>`
+      + (shut ? '' : items.map((t) => `
+      <div class="ncm-term-admin-r ${t.id === SEL ? 'sel' : ''} ${PICKED.has(t.id) ? 'picked' : ''}" data-id="${t.id}">
+        <span class="ck">${PICKED.has(t.id) ? '<i class="fas fa-check"></i>' : ''}</span>
+        <img src="${IMG}" alt="">
+        <div style="min-width:0"><div class="nm">${t.name}</div><div class="sub">${GROUP === 'location' ? (t.scene || 'not pinned') : (t.loc || t.org || t.preset)}</div></div>
+        <div class="st">${t.online ? `<span class="on" title="${t.online} logged in"><i class="fas fa-circle" style="font-size:7px"></i> ${t.online}</span>` : ''}
+          ${t.attention ? '<span class="att" title="Needs you"><i class="fas fa-triangle-exclamation"></i></span>' : ''}
+          ${t.unlocked ? '<span class="unl" title="GM-unlocked"><i class="fas fa-unlock"></i></span>' : ''}
+          <span title="Accounts"><i class="fas fa-users" style="font-size:10px"></i> ${Array.isArray(t.accts) ? t.accts.length : t.accts}</span></div>
+      </div>`).join(''));
+  }).join('');
+}
+
+/* A stand-in portrait: the real tab shows the linked contact's / character's
+   picture. Cyberpunk RED ships no portraits, so the mock draws a silhouette. */
+const face = (c) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}"/><stop offset="1" stop-color="#14141e"/></linearGradient></defs><rect width="40" height="40" fill="url(#g)"/><circle cx="20" cy="16" r="7.5" fill="#0d0d14" opacity=".75"/><path d="M5 40c1-9 7-13 15-13s14 4 15 13z" fill="#0d0d14" opacity=".75"/></svg>`);
+const initials = (n) => n.split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+
+/* One account: who it is → how you get in → flags → when. */
+const acctRow = (a) => {
+  const av = a.machine
+    ? `<span class="av mach"><i class="fas ${a.machine}"></i></span>`
+    : a.face ? `<img class="av" src="${face(a.face)}" alt="">` : `<span class="av ini">${initials(a.n)}</span>`;
+  const how = a.how.length
+    ? a.how.map(([i, l]) => `<span class="how"><i class="fas ${i}"></i>${l}</span>`).join('')
+    : '<span class="how open"><i class="fas fa-lock-open"></i>Open</span>';
+  return `
+  <div class="ncm-term-admin-acct2 ${a.online ? 'is-on' : ''}">
+    <span class="avw">${av}${a.online ? '<span class="dot" title="Logged in now"></span>' : ''}</span>
+    <div class="who">
+      <div class="nm">${a.n}${a.admin ? '<span class="tag adm"><i class="fas fa-crown"></i>Admin</span>' : ''}${a.hidden ? '<span class="tag"><i class="fas fa-eye-slash"></i>Hidden</span>' : ''}</div>
+      <div class="sub"><span class="u">${a.u}</span>${a.role ? ` · ${a.role}` : ''}${a.link ? ` · <i class="fas fa-link"></i> ${a.link}` : ''}${a.online ? ` · <span class="live">${a.online} is in</span>` : ''}</div>
+      <div class="ways">${how}${a.gated ? `<span class="how gate" title="Only reachable on ${a.gated}"><i class="fas fa-network-wired"></i>${a.gated} only</span>` : ''}</div>
+    </div>
+    <span class="last"><span class="k">Last login</span>${a.last || 'never'}</span>
+  </div>`;
+};
+
+function detail() {
+  const t = T.find((x) => x.id === SEL) || T[0];
+  const accts = Array.isArray(t.accts) ? t.accts
+    : Array.from({ length: t.accts }, (_, i) => ({ u: ['admin', 'ops', 'staff', 'night'][i] || 'user' + i, n: ['Admin', 'Operations', 'Staff', 'Night shift'][i] || 'User', machine: i ? 'fa-user' : 'fa-server', admin: !i, how: [['fa-key', 'Password']], last: '' }));
+  const now = t.now || (t.unlocked ? [['unl', 'fa-unlock', 'GM-unlocked — every login skipped']] : []);
+  return `
+    <div class="ncm-term-admin-dhead">
+      <img src="${IMG}" alt="">
+      <div style="min-width:0"><div class="nm">${t.name}</div><div class="sub">${[t.org, t.loc].filter(Boolean).join(' · ') || 'No location set'}</div></div>
+      <div class="acts">${btn('Open', 'ncm-term-admin-btn--primary', 'fa-terminal')}${btn('Configure', '', 'fa-sliders')}${btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'data-more title="More"')}</div>
+      <div class="ncm-term-admin-more ${MENU ? 'open' : ''}">
+        <div><i class="fas fa-unlock-keyhole"></i>Force-unlock<small>skip every login</small></div>
+        <div><i class="fas fa-rotate-left"></i>Reset<small>log all out, clear lockouts</small></div>
+        <div><i class="fas fa-map-pin"></i>Place on this scene</div>
+        <div><i class="fas fa-file-export"></i>Export settings</div>
+        <hr><div class="danger"><i class="fas fa-trash-can"></i>Remove terminal<small>back to a plain item</small></div>
+      </div>
+    </div>
+    <div class="ncm-term-admin-sec2"><div class="k"><i class="fas fa-bolt"></i>Right now${now.length ? '<a>Security tab →</a>' : ''}</div>
+      ${now.length ? `<div class="ncm-term-admin-now">${now.map(([c, i, l]) => `<span class="${c}"><i class="fas ${i}"></i>${l}</span>`).join('')}</div>` : '<div class="ncm-term-admin-quiet">Nobody logged in. Nothing armed, no heat.</div>'}
+    </div>
+    <div class="ncm-term-admin-sec2"><div class="k"><i class="fas fa-sliders"></i>Setup</div>
+      <div class="ncm-term-admin-cols">
+        <div>
+          <div class="ncm-term-admin-kv"><span class="l">Uplink</span><span class="v">${t.uplink || 'Local only'}</span></div>
+          <div class="ncm-term-admin-kv"><span class="l">Reach</span><span class="v">${t.reach || 'Anywhere'}</span></div>
+          <div class="ncm-term-admin-kv"><span class="l">Exfil</span><span class="v">${t.exfil || 'Read-only'}</span></div>
+          <div class="ncm-term-admin-kv"><span class="l">Pinned</span><span class="v ${t.scene ? '' : 'dim'}">${t.scene || 'Not on any scene'}</span></div>
+        </div>
+        <div>
+          <div class="ncm-term-admin-kv"><span class="l">Preset</span><span class="v">${t.preset}</span></div>
+          <div class="ncm-term-admin-kv"><span class="l">Login</span><span class="v">${t.loginStyle || 'Cards'}</span></div>
+          <div class="ncm-term-admin-kv"><span class="l">Mailbox</span><span class="v">${t.mailbox || 'Classic'}</span></div>
+          <div class="ncm-term-admin-kv"><span class="l">Sound</span><span class="v">${t.sound || 'Default'}</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ncm-term-admin-sec2"><div class="k"><i class="fas fa-users"></i>Accounts <span class="n">${accts.length}</span></div>
+      <div class="ncm-term-admin-accts2">${accts.map(acctRow).join('')}</div>
+    </div>
+    <div class="ncm-term-admin-sec2"><div class="k"><i class="fas fa-right-to-bracket"></i>Recent logins</div>
+      ${t.logins ? `<div class="ncm-term-admin-foot">${t.logins.map(([a, by, w]) => `<div><i class="fas fa-right-to-bracket"></i><span class="u">${a}</span><span class="by">by ${by}</span><span class="w">${w}</span></div>`).join('')}</div>` : '<div class="ncm-term-admin-quiet">No logins yet.</div>'}
+    </div>`;
+}
+
+function render() {
+  const counts = Object.fromEntries(FILTERS.map(([k, , f]) => [k, T.filter(f).length]));
+  document.getElementById('content').innerHTML = `
+    <div class="ncm-term-admin-hd"><h2>Terminals</h2><p>${T.length} terminals · ${T.reduce((n, t) => n + t.online, 0)} logged in · ${T.filter((t) => t.attention || t.unlocked).length} need you</p></div>
+    <div class="ncm-term-admin-tb">
+      <span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-search placeholder="Search name, organisation, location, account…" value="${SEARCH}"></span>
+      ${BULK
+        ? `<span class="picked"><b>${PICKED.size}</b> selected</span>${btn('Reset', '', 'fa-rotate-left')}${btn('Export', '', 'fa-file-export')}${btn('Remove', 'ncm-term-admin-btn--danger', 'fa-trash-can')}${btn('Done', 'ncm-term-admin-btn--primary', 'fa-check', 'data-bulk')}`
+        : `<select data-group>${Object.entries(GROUPS).map(([k, [l]]) => `<option value="${k}" ${k === GROUP ? 'selected' : ''}>Group: ${l}</option>`).join('')}</select>${btn('Select', '', 'fa-list-check', 'data-bulk')}${btn('Import', '', 'fa-file-import')}`}
+    </div>
+    <div class="ncm-term-admin-chips">${FILTERS.map(([k, l]) => `<span class="ncm-term-admin-chip ${k === FILTER ? 'on' : ''} ${k === 'attention' ? 'warn' : ''}" data-filter="${k}">${l}<span class="n">${counts[k]}</span></span>`).join('')}</div>
+    <div class="ncm-term-admin-split2 ${BULK ? 'is-bulk' : ''}">
+      <div class="ncm-term-admin-list2">${list()}</div>
+      <div class="ncm-term-admin-det">${detail()}</div>
+    </div>`;
+  const s = document.querySelector('[data-search]');
+  s.addEventListener('input', (e) => { SEARCH = e.target.value; const pos = e.target.selectionStart; render(); const n = document.querySelector('[data-search]'); n.focus(); n.setSelectionRange(pos, pos); });
+  document.querySelector('[data-group]')?.addEventListener('change', (e) => { GROUP = e.target.value; SHUT.clear(); render(); });
+}
+document.addEventListener('click', (e) => {
+  const r = e.target.closest('.ncm-term-admin-r');
+  if (r) { if (BULK) { PICKED.has(r.dataset.id) ? PICKED.delete(r.dataset.id) : PICKED.add(r.dataset.id); } else { SEL = r.dataset.id; MENU = false; } render(); return; }
+  const g = e.target.closest('[data-grp]'); if (g) { const k = g.dataset.grp; SHUT.has(k) ? SHUT.delete(k) : SHUT.add(k); render(); return; }
+  const f = e.target.closest('[data-filter]'); if (f) { FILTER = f.dataset.filter; render(); return; }
+  if (e.target.closest('[data-more]')) { MENU = !MENU; render(); return; }
+  if (e.target.closest('[data-bulk]')) { BULK = !BULK; if (!BULK) PICKED.clear(); render(); return; }
+  if (MENU && !e.target.closest('.ncm-term-admin-more')) { MENU = false; render(); }
+});
+render();
+
+const link = (k, v, label) => { const q = new URLSearchParams(location.search); if (v === null) q.delete(k); else q.set(k, v); const on = (Q.get(k) ?? null) === v; return `<a class="${on ? 'on' : ''}" href="?${q}">${label}</a>`; };
+document.getElementById('bar').innerHTML = `<b>TERMINALS TAB — REDESIGN</b>
+  <span>preset</span>${link('t', null, 'clean-dark')}${link('t', 'clean-light', 'clean-light')}${link('t', 'high-contrast', 'high-contrast')}
+  <span>group</span>${link('group', null, 'location')}${link('group', 'scene', 'scene')}${link('group', 'org', 'org')}
+  <span>state</span>${link('menu', '1', '⋯ open')}${link('bulk', '1', 'select mode')}${link('sel', 'cfo', 'unlocked one')}`;
+</script>
+</body>
+</html>

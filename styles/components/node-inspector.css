@@ -1,0 +1,152 @@
+/* ═══════════════════════════════════════════════════════════════
+   GM node inspector (NodeInspectorApp) — prefix ncm-nin-*.
+   Admin-themed window: --ncm-* admin tokens only, 2px radius, display chrome / mono values.
+   Mock: dev/mockups/node-inspector-mock.html
+   ═══════════════════════════════════════════════════════════════ */
+
+.ncm-app.ncm-node-inspector .window-content { padding: 0; overflow: hidden; display: flex; flex-direction: column; background: var(--ncm-bg-canvas); }
+.ncm-nin { container-type: inline-size; --nc: #19f3f7; --ink: color-mix(in oklab, var(--nc) 70%, var(--ncm-text-heading)); display: flex; flex-direction: column; height: 100%; min-height: 0;
+  color: var(--ncm-text-primary); font-family: var(--ncm-font-body); font-size: 13px; }
+[data-ncm-admin-theme="clean-light"] .ncm-nin { --ink: color-mix(in oklab, var(--nc) 36%, var(--ncm-text-heading)); }
+.ncm-nin__gone { padding: 30px; text-align: center; color: var(--ncm-text-hint); }
+
+/* buttons — the Foundry/CPR reset at 0,2,1 */
+.ncm-nin button.ncm-nin__b, .ncm-nin__seg button, .ncm-nin__step button, .ncm-nin__flags button, .ncm-nin__chips button, .ncm-nin button.ncm-nin__pickbtn {
+  appearance: none !important; width: auto !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; background-image: none !important;
+  line-height: 1 !important; flex: 0 0 auto; cursor: pointer; }
+.ncm-nin button i { margin: 0 !important; }
+.ncm-nin button.ncm-nin__b { display: inline-flex; align-items: center; gap: 6px; height: 28px !important; padding: 0 10px !important; border-radius: 2px !important;
+  background: var(--ncm-bg-card) !important; border: 1px solid var(--ncm-border-active, var(--ncm-border)) !important; color: var(--ncm-text-heading) !important;
+  font: 700 11px var(--ncm-font-display) !important; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.ncm-nin button.ncm-nin__b i { color: var(--ncm-act); }
+.ncm-nin button.ncm-nin__b:hover { border-color: var(--ncm-act) !important; }
+.ncm-nin button.ncm-nin__b.sm { height: 24px !important; padding: 0 8px !important; font-size: 10px !important; }
+.ncm-nin button.ncm-nin__b.ic { width: 28px !important; padding: 0 !important; justify-content: center; }
+.ncm-nin button.ncm-nin__b.sm.ic { width: 24px !important; }
+.ncm-nin button.ncm-nin__b.good i { color: var(--ncm-good); } .ncm-nin button.ncm-nin__b.bad i { color: var(--ncm-bad); }
+.ncm-nin button.ncm-nin__b.pri { background: var(--ncm-act) !important; border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse) !important; }
+.ncm-nin button.ncm-nin__b.pri i { color: inherit; }
+.ncm-nin button.ncm-nin__b.pri.bad { background: var(--ncm-bad) !important; border-color: var(--ncm-bad) !important; }
+.ncm-nin button.ncm-nin__b.is-open { border-color: var(--ncm-act) !important; box-shadow: inset 0 -2px var(--ncm-act) !important; }
+
+/* header */
+.ncm-nin__hd { display: grid; grid-template-columns: 50px 1fr auto; gap: 12px; align-items: center; padding: 12px 16px; background: var(--ncm-bg-pane); border-bottom: 1px solid var(--ncm-border); }
+.ncm-nin__ic { width: 50px; height: 50px; display: grid; place-items: center; font-size: 21px; color: var(--nc);
+  background: color-mix(in srgb, var(--nc) 10%, var(--ncm-bg-card)); border: 1px solid color-mix(in srgb, var(--nc) 50%, transparent); }
+.ncm-nin__name { font: 700 18px var(--ncm-font-display); color: var(--ncm-text-heading); }
+.ncm-nin__sub { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; color: var(--ncm-text-label); align-items: center; }
+.ncm-nin__net { color: var(--ink); font-weight: 700; }
+.ncm-nin__net::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--nc); margin-right: 5px; }
+.ncm-nin__mono { font-family: var(--ncm-font-mono); color: var(--ncm-text-time); }
+.ncm-nin__acts { display: flex; gap: 6px; }
+
+/* controls: State · Alert · Who decides, then the node's switches as ONE joined group */
+.ncm-nin__ctl { display: grid; grid-template-columns: auto auto 1fr; gap: 10px 18px; align-items: end; padding: 11px 16px; background: var(--ncm-bg-pane-alt); border-bottom: 1px solid var(--ncm-border); }
+.ncm-nin__c--wide { grid-column: 1 / -1; }
+.ncm-nin__k { display: block; margin-bottom: 5px; font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); }
+.ncm-nin__seg, .ncm-nin__flags, .ncm-nin__step { display: inline-flex; border: 1px solid var(--ncm-border-active, var(--ncm-border)); background: var(--ncm-bg-card); border-radius: 2px; }
+.ncm-nin__seg button, .ncm-nin__flags button { display: inline-flex !important; align-items: center; gap: 6px; height: 28px !important; padding: 0 11px !important;
+  background: transparent !important; border: 0 !important; border-right: 1px solid var(--ncm-border) !important; border-radius: 0 !important;
+  font: 700 11px var(--ncm-font-display) !important; letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary) !important; }
+.ncm-nin__seg button:last-child, .ncm-nin__flags button:last-child { border-right: 0 !important; }
+.ncm-nin__seg button:hover, .ncm-nin__flags button:hover { color: var(--ncm-text-heading) !important; }
+.ncm-nin__seg button .t { font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-time); text-transform: none; }
+.ncm-nin__seg button.is-on { color: var(--ncm-text-heading) !important; --st: var(--ncm-act); background: color-mix(in srgb, var(--st) 16%, transparent) !important; box-shadow: inset 0 -2px var(--st) !important; }
+.ncm-nin__seg button.is-good { --st: var(--ncm-good); } .ncm-nin__seg button.is-attn { --st: var(--ncm-attn); } .ncm-nin__seg button.is-bad { --st: var(--ncm-bad); } .ncm-nin__seg button.is-plain { --st: var(--ncm-text-label); }
+.ncm-nin__step { align-items: center; height: 30px; }
+.ncm-nin__step button { width: 28px !important; height: 28px !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: var(--ncm-act) !important; display: grid !important; place-items: center; }
+.ncm-nin__step button:disabled { color: var(--ncm-text-hint) !important; cursor: default; }
+.ncm-nin__step .lv { min-width: 104px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font: 700 11px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; }
+.ncm-nin__step .lv.is-good { color: var(--ncm-good); } .ncm-nin__step .lv.is-attn { color: var(--ncm-attn); } .ncm-nin__step .lv.is-bad { color: var(--ncm-bad); }
+.ncm-nin__step .pips { display: inline-flex; gap: 2px; } .ncm-nin__step .pips i { width: 5px; height: 10px; background: var(--ncm-border); }
+.ncm-nin__step .pips i.on { background: currentColor; }
+.ncm-nin__sel { height: 30px; min-width: 170px; border-radius: 2px; background: var(--ncm-bg-card); color: var(--ncm-text-heading); border: 1px solid var(--ncm-border-active, var(--ncm-border)); font-size: 12px; }
+.ncm-nin__sel option { background: var(--ncm-bg-card); color: var(--ncm-text-heading); }
+/* the node's switches: one joined bar, each cell = icon · label · a small switch on the right */
+.ncm-nin__flags { display: flex; width: 100%; }
+.ncm-nin__flags button { flex: 1 1 0 !important; justify-content: flex-start; }
+.ncm-nin__flags button > i { color: var(--ncm-text-label); width: 14px; text-align: center; }
+.ncm-nin__flags .sw { margin-left: auto; width: 26px; height: 14px; border-radius: 7px; background: var(--ncm-border); position: relative; flex: none; transition: background .15s; }
+.ncm-nin__flags .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--ncm-text-secondary); transition: left .15s; }
+.ncm-nin__flags button.is-on { color: var(--ncm-text-heading) !important; background: color-mix(in srgb, var(--ncm-secret) 10%, transparent) !important; }
+.ncm-nin__flags button.is-on > i { color: var(--ncm-secret); }
+.ncm-nin__flags button.is-on .sw { background: color-mix(in srgb, var(--ncm-secret) 60%, var(--ncm-bg-card)); }
+.ncm-nin__flags button.is-on .sw::after { left: 14px; background: var(--ncm-text-heading); }
+
+/* body: what's affecting it | add + log */
+.ncm-nin__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 268px; }
+.ncm-nin__now { overflow-y: auto; overflow-x: hidden; background: var(--ncm-bg-pane); border-right: 1px solid var(--ncm-border); padding-bottom: 12px; }
+.ncm-nin__quiet { margin: 16px; padding: 14px; border: 1px dashed var(--ncm-border); color: var(--ncm-text-secondary); font-size: 12px; }
+.ncm-nin__band { --sk: var(--ncm-act); display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 7px 16px; background: var(--ncm-bg-card-head, var(--ncm-bg-card));
+  border-left: 3px solid var(--sk); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+.ncm-nin__band:first-child { margin-top: 0; }
+.ncm-nin__band i { color: var(--sk); } .ncm-nin__band .n { margin-left: auto; font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-label); }
+.ncm-nin__band.is-bad { --sk: var(--ncm-bad); } .ncm-nin__band.is-attn { --sk: var(--ncm-attn); } .ncm-nin__band.is-secret { --sk: var(--ncm-secret); } .ncm-nin__band.is-plain { --sk: var(--ncm-text-label); }
+.ncm-nin__row { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 8px 16px; border-bottom: 1px dashed var(--ncm-border); }
+.ncm-nin__row > i { color: var(--rc, var(--ncm-text-label)); text-align: center; }
+.ncm-nin__row .t1 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 700; color: var(--ncm-text-heading); }
+.ncm-nin__row .t2 { margin-top: 2px; font-size: 12px; color: var(--ncm-text-secondary); }
+.ncm-nin__row .a { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.ncm-nin__row.is-quest { background: color-mix(in srgb, var(--ncm-attn) 7%, transparent); box-shadow: inset 3px 0 var(--ncm-attn); }
+.ncm-nin__tag { display: inline-flex; align-items: center; gap: 4px; height: 17px; padding: 0 6px; border: 1px solid currentColor; border-radius: 1px;
+  font: 700 9px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+.ncm-nin__tag.is-plain { color: var(--ncm-text-label); } .ncm-nin__tag.is-attn { color: var(--ncm-attn); } .ncm-nin__tag.is-good { color: var(--ncm-good); }
+.ncm-nin__note { margin: 12px 16px 0; font-size: 11px; color: var(--ncm-text-hint); display: flex; gap: 6px; }
+.ncm-nin__note i { color: var(--ncm-text-label); margin-top: 2px; }
+
+.ncm-nin__side { overflow-y: auto; overflow-x: hidden; background: var(--ncm-bg-pane-alt); padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.ncm-nin__adds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ncm-nin__adds button.ncm-nin__b { justify-content: flex-start; }
+.ncm-nin__form { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--ncm-act); background: var(--ncm-bg-card); }
+.ncm-nin__form h4 { margin: 0; border: 0; display: flex; gap: 7px; align-items: center; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+.ncm-nin__form h4 i { color: var(--ncm-act); }
+.ncm-nin__f { display: grid; gap: 3px; text-transform: none !important; }
+.ncm-nin__f > span { font: 700 9px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); }
+.ncm-nin__f input { height: 26px !important; border-radius: 2px; background: var(--ncm-bg-pane) !important; color: var(--ncm-text-heading) !important;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)) !important; padding: 0 7px; font-size: 12px; text-align: left; }
+.ncm-nin__f input[type="number"] { font-family: var(--ncm-font-mono); }
+.ncm-nin__two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ncm-nin__chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-nin__chips button { display: inline-flex !important; align-items: center; gap: 4px; height: 23px !important; padding: 0 7px !important; border-radius: 2px !important;
+  border: 1px solid var(--ncm-border) !important; background: var(--ncm-bg-pane) !important; color: var(--ncm-text-secondary) !important; font: 600 11px var(--ncm-font-body) !important; }
+.ncm-nin__chips button.is-on { border-color: var(--ncm-act) !important; color: var(--ncm-text-heading) !important; background: color-mix(in srgb, var(--ncm-act) 14%, var(--ncm-bg-pane)) !important; }
+.ncm-nin button.ncm-nin__pickbtn { display: flex !important; align-items: center; gap: 7px; height: 26px !important; padding: 0 8px !important; border-radius: 2px !important;
+  border: 1px dashed var(--ncm-border-active, var(--ncm-border)) !important; background: var(--ncm-bg-pane) !important; color: var(--ncm-text-heading) !important; font: 12px var(--ncm-font-body) !important; }
+.ncm-nin button.ncm-nin__pickbtn i { color: var(--ncm-text-label); }
+.ncm-nin__chk { display: flex !important; align-items: center; gap: 7px; font: 12px var(--ncm-font-body) !important; text-transform: none !important; color: var(--ncm-text-primary); cursor: pointer; }
+.ncm-nin__chk input { width: 14px; height: 14px; margin: 0; --checkbox-size: 14px; flex: none; }
+.ncm-nin__hint { margin: 0; font-size: 11px; font-style: italic; color: var(--ncm-text-hint); }
+.ncm-nin__go { display: flex; gap: 6px; justify-content: flex-end; }
+/* the infection form shows only the fields its program uses */
+.ncm-nin__form .ncm-nin__only-worm, .ncm-nin__form .ncm-nin__only-bomb, .ncm-nin__form .ncm-nin__only-sniffer, .ncm-nin__form .ncm-nin__only-catch { display: none; }
+.ncm-nin__form[data-kind="worm"] .ncm-nin__only-worm, .ncm-nin__form[data-kind="bomb"] .ncm-nin__only-bomb,
+.ncm-nin__form[data-kind="sniffer"] .ncm-nin__only-sniffer, .ncm-nin__form[data-kind="sniffer"] .ncm-nin__only-catch, .ncm-nin__form[data-kind="tap"] .ncm-nin__only-catch { display: grid; }
+
+.ncm-nin__logwrap { display: flex; flex-direction: column; min-height: 0; }
+.ncm-nin__log { max-height: 220px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
+.ncm-nin__log > div { display: grid; grid-template-columns: 50px 1fr; gap: 6px; padding: 4px 7px; border-bottom: 1px dashed var(--ncm-border); font-size: 11.5px; }
+.ncm-nin__log .m { font-family: var(--ncm-font-mono); color: var(--ncm-text-time); }
+.ncm-nin__log .is-wiped span:last-child { text-decoration: line-through; color: var(--ncm-text-hint); }
+.ncm-nin__log .is-wiped em { text-decoration: none; display: inline-block; font-style: normal; color: var(--ncm-secret); font-size: 10px; }
+.ncm-nin__log .is-empty { display: block; color: var(--ncm-text-hint); font-style: italic; }
+
+/* its small dialogs (edit an infection, kick, sniffer catch) */
+.ncm-nin-dlg { display: grid; gap: 8px; padding: 4px 0 8px; }
+.ncm-nin-dlg p { margin: 0; color: var(--ncm-text-secondary); font-size: 12px; }
+.ncm-nin-dlg label { display: grid; gap: 3px; text-transform: none !important; font-family: var(--ncm-font-body) !important; }
+.ncm-nin-dlg label > span { font: 700 9px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); }
+.ncm-nin-dlg label.chk { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.ncm-nin-dlg label.chk input { width: 14px; height: 14px; margin: 0; --checkbox-size: 14px; }
+.ncm-nin-loot .row { display: grid; gap: 2px; padding: 5px 0; border-bottom: 1px dashed var(--ncm-border); }
+.ncm-nin-loot .row span { font-size: 11px; color: var(--ncm-text-secondary); font-family: var(--ncm-font-mono); }
+.ncm-nin-loot .none { color: var(--ncm-text-hint); font-style: italic; }
+
+/* pop-out narrow fallback */
+@container (max-width: 640px) { .ncm-nin__body { grid-template-columns: 1fr; } }
+
+/* the CPR system styles h4 and inputs on its own — hold ours */
+.ncm-nin .ncm-nin__form h4 { font: 700 11px var(--ncm-font-display) !important; letter-spacing: .06em !important; text-shadow: none !important; color: var(--ncm-text-heading) !important; padding: 0 !important; }
+.ncm-nin .ncm-nin__f input, .ncm-nin-dlg input[type="text"], .ncm-nin-dlg input[type="number"] { height: 26px !important; min-height: 0 !important; padding: 0 7px !important; box-sizing: border-box; line-height: 24px !important; font-size: 12px !important; }
+
+/* the jam time on the lit State button */
+.ncm-nin__seg button.is-on .t { color: var(--ncm-text-heading); }

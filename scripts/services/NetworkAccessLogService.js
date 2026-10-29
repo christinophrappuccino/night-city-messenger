@@ -326,6 +326,19 @@ export class NetworkAccessLogService {
       }
     });
 
+    // A player moving to another scene (tester 2026-10-29: "what scene they change to, on what network").
+    Hooks.on('updateUser', (user, changes) => {
+      if (!('viewedScene' in (changes || {})) || user?.isGM) return;
+      const sceneId = changes.viewedScene;
+      const scene = game.scenes?.get(sceneId);
+      if (!scene) return;
+      const netId = game.nightcity?.playerNetworks?.[user.id]?.networkId || game.nightcity?.playerNetworks?.get?.(user.id)?.networkId || '';
+      const net = netId ? game.nightcity?.networkService?.getNetwork(netId) : null;
+      this._push({ type: 'scene_move', userId: user.id, userName: user.name, actorId: user.character?.id || null, actorName: user.character?.name || user.name,
+        networkId: netId || 'unknown', networkName: net?.name || (netId ? netId : 'no network'), sceneId, sceneName: scene.name,
+        message: `moved to ${scene.name}` });
+    });
+
     this._sub(EVENTS.NETWORK_CONNECTED, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
@@ -524,6 +537,13 @@ export class NetworkAccessLogService {
       userName: game.user?.name,
       ...data,
     };
+    // Where it happened (tester, 2026-10-29: "the activity log could say the scene"): the scene the
+    // acting user is looking at, else the one this client is on. A caller may pass its own sceneId.
+    if (!entry.sceneId) {
+      const u = game.users?.get(entry.userId);
+      entry.sceneId = u?.viewedScene || game.scenes?.viewed?.id || globalThis.canvas?.scene?.id || '';
+    }
+    if (entry.sceneId && !entry.sceneName) entry.sceneName = game.scenes?.get(entry.sceneId)?.name || '';
 
     this._entries.push(entry);
 

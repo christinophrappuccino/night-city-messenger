@@ -18,6 +18,8 @@
 /* ─── CLEAN DARK (default) ─────────────────────────────────────────────── */
 .ncm-app.ncm-admin-panel,
 :is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme] {
+  --ncm-ink: 63%;
+  --ncm-ink-own: 50%;   /* a user-chosen colour (group, network) can be any shade: keep less of it */   /* NEON tag/value text keeps this much of its colour (the rest is the heading tone) — the most that still reads 4.5:1 */
   /* Text size on a GM tool is the admin Text-size ZOOM (adminTheme.js), so the
      player's --ncm-text-scale (set on :root by the Theme Customizer) must not
      stack on top of it — every calc(Npx * var(--ncm-text-scale)) surface that
@@ -25,32 +27,62 @@
      composer's live preview) reads 1 here. */
   --ncm-text-scale: 1;
   /* Surfaces — neutral slate, darkest → lightest */
-  --ncm-bg-deep:      #0e1117;
-  --ncm-bg-base:      #151a23;
-  --ncm-bg-mid:       #181f2a;
-  --ncm-bg-surface:   #1b2230;
-  --ncm-bg-elevated:  #222b3c;
-  --ncm-bg-overlay:   rgba(6, 9, 14, 0.88);
+  /* ── The colour hierarchy (2026-10-27, dev-approved mock
+     dev/mockups/admin-color-hierarchy-mock.html). One job per shade, four text
+     tiers, ONE meaning per colour — the same in every tab. The --ncm-* names
+     the tabs already read are mapped onto it below. ── */
+  /* Background ladder: canvas → pane (list) → pane-alt (detail) → card → card-head (bands) → hover → raised */
+  --ncm-bg-canvas:    #040507;
+  --ncm-bg-pane:      #131925;
+  --ncm-bg-pane-alt:  #1d2534;
+  --ncm-bg-card:      #252f42;
+  --ncm-bg-card-head: #283349;
+  --ncm-bg-hover:     #2b3751;
+  --ncm-bg-raised:    #34415c;
+  /* Text tiers + text roles */
+  --ncm-text-heading: #f6f8fc;   /* names, subjects, titles */
+  --ncm-text-label:   #a3afc1;   /* field keys, section names, meta */
+  --ncm-text-hint:    #99a2b2;   /* times, metadata */
+  --ncm-text-addr:    #8db7ea;   /* email addresses */
+  --ncm-text-time:    #98a3b5;   /* times + dates */
+  --ncm-text-num:     #c9d2df;   /* counts, amounts */
+  /* Meanings — one each */
+  --ncm-act:    #00e5f7;   /* can click / selected */
+  --ncm-attn:   #ffa658;   /* needs you */
+  --ncm-bad:    #ff767f;   /* wrong / dangerous */
+  --ncm-good:   #00f674;   /* fine / done */
+  --ncm-money:  #fdd500;   /* eddies only */
+  --ncm-secret: #b88bff;   /* anonymous, aliases, encrypted */
+  /* category hues: a tag's NAME picks one (same org = same colour everywhere).
+     They say "which one", never "what's wrong" — that is the meaning set above. */
+  --ncm-hue-1: #ff67e4; --ncm-hue-2: #ff78be; --ncm-hue-3: #00acf8; --ncm-hue-4: #69aeff;
+  --ncm-hue-5: #899cff; --ncm-hue-6: #00b698; --ncm-hue-7: #93b400; --ncm-hue-8: #00cdb4;
 
-  /* Text — high-contrast, calm */
-  --ncm-text-primary:   #e7ecf3;
-  --ncm-text-secondary: #a7b2c2;
-  --ncm-text-muted:     #6e7b8e;
-  --ncm-text-inverse:   #06121a;
+  --ncm-bg-deep:      var(--ncm-bg-canvas);
+  --ncm-bg-base:      var(--ncm-bg-pane);
+  --ncm-bg-mid:       var(--ncm-bg-pane-alt);
+  --ncm-bg-surface:   var(--ncm-bg-card-head);
+  --ncm-bg-elevated:  var(--ncm-bg-raised);
+  --ncm-bg-overlay:   rgba(4, 5, 7, 0.88);
+
+  --ncm-text-primary:   #dce3ee;
+  --ncm-text-secondary: var(--ncm-text-label);
+  --ncm-text-muted:     var(--ncm-text-hint);
+  --ncm-text-inverse:   #04121a;
 
   /* Borders */
-  --ncm-border:        #2b3446;
-  --ncm-border-active: #3a465c;
-  --ncm-border-focus:  #34c5d6;
+  --ncm-border:        #2e3a52;
+  --ncm-border-active: #43516e;
+  --ncm-border-focus:  var(--ncm-act);
 
-  /* Palette — desaturated; one restrained cyan accent does the work */
-  --ncm-primary:   #d46a6a;
-  --ncm-secondary: #34c5d6;
-  --ncm-accent:    #d4a24c;
-  --ncm-success:   #4cae8a;
-  --ncm-warning:   #d4a24c;
-  --ncm-danger:    #d46a6a;
-  --ncm-purple:    #9a86c4;
+  /* Palette mapped onto the meanings */
+  --ncm-primary:   var(--ncm-bad);
+  --ncm-secondary: var(--ncm-act);
+  --ncm-accent:    var(--ncm-attn);
+  --ncm-success:   var(--ncm-good);
+  --ncm-warning:   var(--ncm-attn);
+  --ncm-danger:    var(--ncm-bad);
+  --ncm-purple:    var(--ncm-secret);
 
   /* Kill neon glow inside the GM tool (transparent no-op shadow stays valid in
      any box-shadow/text-shadow list, unlike `none`). */
@@ -70,29 +102,36 @@
 
 /* ─── CLEAN LIGHT ──────────────────────────────────────────────────────── */
 :is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme="clean-light"] {
-  --ncm-bg-deep:      #e7ecf2;
-  --ncm-bg-base:      #f3f6f9;
-  --ncm-bg-mid:       #eaeff5;
-  --ncm-bg-surface:   #ffffff;
-  --ncm-bg-elevated:  #ffffff;
-  --ncm-bg-overlay:   rgba(20, 26, 35, 0.45);
+  --ncm-ink: 72%;
+  --ncm-ink-own: 32%;   /* NEON tag/value text keeps this much of its colour (the rest is the heading tone) — the most that still reads 4.5:1 */
+  --ncm-bg-canvas:    #c5cdd9;
+  --ncm-bg-pane:      #edf0f5;
+  --ncm-bg-pane-alt:  #ffffff;
+  --ncm-bg-card:      #f3f5f9;
+  --ncm-bg-card-head: #dbe2ec;
+  --ncm-bg-hover:     #e3e8f0;
+  --ncm-bg-raised:    #ffffff;
+  --ncm-text-heading: #0d1520;
+  --ncm-text-label:   #485669;
+  --ncm-text-hint:    #566476;
+  --ncm-text-addr:    #285a91;
+  --ncm-text-time:    #566477;
+  --ncm-text-num:     #2b3746;
+  --ncm-act:    #006c7f;
+  --ncm-attn:   #a14900;
+  --ncm-bad:    #bb0028;
+  --ncm-good:   #00723f;
+  --ncm-money:  #7e5e00;
+  --ncm-secret: #6b00d1;
+  --ncm-hue-1: #9b0088; --ncm-hue-2: #b60077; --ncm-hue-3: #005b86; --ncm-hue-4: #0063b8;
+  --ncm-hue-5: #3f00fe; --ncm-hue-6: #006655; --ncm-hue-7: #556a00; --ncm-hue-8: #007062;
 
-  --ncm-text-primary:   #18212e;
-  --ncm-text-secondary: #46515f;
-  --ncm-text-muted:     #788294;
+  --ncm-bg-overlay:   rgba(20, 26, 35, 0.45);
+  --ncm-text-primary:   #1e2937;
   --ncm-text-inverse:   #ffffff;
 
-  --ncm-border:        #d4dbe4;
-  --ncm-border-active: #c0c9d6;
-  --ncm-border-focus:  #0e7c8b;
-
-  --ncm-primary:   #b23b3b;
-  --ncm-secondary: #0e7c8b;
-  --ncm-accent:    #9a6b15;
-  --ncm-success:   #1f8f63;
-  --ncm-warning:   #9a6b15;
-  --ncm-danger:    #b23b3b;
-  --ncm-purple:    #6f5bb0;
+  --ncm-border:        #cfd7e3;
+  --ncm-border-active: #a9b5c6;
 
   --ncm-shadow-card:    0 1px 3px rgba(20, 26, 35, 0.12);
   --ncm-shadow-glow:    0 1px 3px rgba(20, 26, 35, 0.12);
@@ -101,29 +140,36 @@
 
 /* ─── HIGH CONTRAST (dark, accessibility-first) ────────────────────────── */
 :is(.ncm-app, .ncm-admin-dialog)[data-ncm-admin-theme="high-contrast"] {
-  --ncm-bg-deep:      #000000;
-  --ncm-bg-base:      #080b10;
-  --ncm-bg-mid:       #0d1118;
-  --ncm-bg-surface:   #11161e;
-  --ncm-bg-elevated:  #1a212b;
-  --ncm-bg-overlay:   rgba(0, 0, 0, 0.9);
+  --ncm-ink: 76%;
+  --ncm-ink-own: 55%;   /* NEON tag/value text keeps this much of its colour (the rest is the heading tone) — the most that still reads 4.5:1 */
+  --ncm-bg-canvas:    #000000;
+  --ncm-bg-pane:      #0f0f0f;
+  --ncm-bg-pane-alt:  #1a1a1a;
+  --ncm-bg-card:      #222222;
+  --ncm-bg-card-head: #2a2a2a;
+  --ncm-bg-hover:     #303030;
+  --ncm-bg-raised:    #333333;
+  --ncm-text-heading: #ffffff;
+  --ncm-text-label:   #d2d2d2;
+  --ncm-text-hint:    #bdbdbd;
+  --ncm-text-addr:    #a8d4ff;
+  --ncm-text-time:    #c4c4c4;
+  --ncm-text-num:     #eeeeee;
+  --ncm-act:    #5aefff;
+  --ncm-attn:   #ffba7d;
+  --ncm-bad:    #ff6d73;
+  --ncm-good:   #3aff81;
+  --ncm-money:  #ffe47d;
+  --ncm-secret: #b688ff;
+  --ncm-hue-1: #ff73e6; --ncm-hue-2: #ff9ecd; --ncm-hue-3: #1bb3ff; --ncm-hue-4: #8ec2ff;
+  --ncm-hue-5: #98abff; --ncm-hue-6: #00c7a8; --ncm-hue-7: #a4c900; --ncm-hue-8: #00e3c7;
 
-  --ncm-text-primary:   #ffffff;
-  --ncm-text-secondary: #d6dce4;
-  --ncm-text-muted:     #9aa6b6;
+  --ncm-bg-overlay:   rgba(0, 0, 0, 0.9);
+  --ncm-text-primary:   #f4f4f4;
   --ncm-text-inverse:   #000000;
 
-  --ncm-border:        #44506a;
-  --ncm-border-active: #5a6a86;
-  --ncm-border-focus:  #57dcee;
-
-  --ncm-primary:   #ff6b6b;
-  --ncm-secondary: #45d6e8;
-  --ncm-accent:    #f0c25a;
-  --ncm-success:   #57d99b;
-  --ncm-warning:   #f0c25a;
-  --ncm-danger:    #ff6b6b;
-  --ncm-purple:    #c0a8ff;
+  --ncm-border:        #4a4a4a;
+  --ncm-border-active: #8a8a8a;
 }
 
 /* High-contrast: strong, always-visible focus rings on interactive controls. */
@@ -298,6 +344,48 @@
   border-image: none !important;
 }
 
+/* ─── Admin dialogs, round 2 (2026-10-29, dev: "the dialogs could look nicer like our admin panel") ───
+ * The panel's colour hierarchy on every GM dialog: a canvas header with the title in the display face,
+ * the body on a pane, one FILLED primary action (the default button) and quiet secondary ones, a
+ * destructive default in red, 30px controls, icons centred. Applies to every adminDialog/Confirm/Prompt/Wait
+ * EXCEPT the few that already carry bespoke chrome (escalate, the picker, the time config, the role manager…). */
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)) !important; box-shadow: 0 12px 40px rgba(0,0,0,.45) !important; }
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .window-header {
+  background: var(--ncm-bg-canvas, var(--ncm-bg-deep)) !important; height: 32px; min-height: 32px; padding: 0 6px 0 12px !important;
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 55%, transparent) !important; border-bottom: 0 !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .window-header .window-title {
+  font: 700 12px var(--ncm-font-display) !important; letter-spacing: .06em !important; text-transform: uppercase !important; color: var(--ncm-text-heading, var(--ncm-text-primary)) !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .window-content { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)) !important; padding: 12px 14px; }
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .window-content p { margin: 0 0 8px; line-height: 1.45; color: var(--ncm-text-primary); }
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .window-content :is(input[type=text], input[type=number], input[type=search], select) { height: 30px; }
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .window-content :is(input, select, textarea):focus {
+  border-color: var(--ncm-act, var(--ncm-secondary)) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 45%, transparent) !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .dialog-buttons {
+  display: flex !important; justify-content: flex-end; gap: 6px; flex: 0 0 auto;
+  margin: 12px 0 0 !important; padding: 10px 0 0 !important; border-top: 1px solid var(--ncm-border);
+}
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .dialog-buttons button {
+  flex: 0 1 auto !important; width: auto !important; min-width: 96px; height: 30px !important; min-height: 0 !important; margin: 0 !important; padding: 0 14px !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 7px;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface)) !important; color: var(--ncm-text-primary) !important;
+  font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em !important; text-transform: uppercase !important; line-height: 1 !important; white-space: nowrap;
+}
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .dialog-buttons button i { margin: 0 !important; font-size: 11px; color: var(--ncm-text-secondary); }
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .dialog-buttons button:hover { border-color: var(--ncm-act, var(--ncm-secondary)) !important; color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; }
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .dialog-buttons button.default {
+  background: var(--ncm-act, var(--ncm-secondary)) !important; border-color: var(--ncm-act, var(--ncm-secondary)) !important; color: var(--ncm-text-inverse, #06121a) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 30%, transparent) !important;
+}
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .dialog-buttons button.default i { color: inherit; }
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .dialog-buttons button.default:hover { filter: brightness(1.08); color: var(--ncm-text-inverse, #06121a) !important; }
+.ncm-admin-dialog[data-ncm-admin-theme]:not(.ncm-esc-dialog, .ncm-breach-dialog, .ncm-burn-confirm, .ncm-link-actor-dialog, .ncm-pkr-dialog, .ncm-time-config-dialog, .ncm-rmgr-dialog, .ncm-themed-dialog) .dialog-buttons button.default:is([data-button*="delete" i], [data-button*="remove" i], [data-button*="purge" i], [data-button*="wipe" i], [data-button*="reset" i], [data-button*="burn" i]) {
+  background: var(--ncm-bad, var(--ncm-danger)) !important; border-color: var(--ncm-bad, var(--ncm-danger)) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 30%, transparent) !important;
+}
+
 /* ─── GM-view header button (utils/adminTheme.js → syncGmViewControls) ──────
  * A visible toggle beside the close control on the message viewer, composer,
  * contacts and Theme Customizer — the ⋮-menu entry alone was easy to miss.
@@ -311,4 +399,19 @@
 .ncm-app[data-ncm-admin-theme] .window-header .ncm-gmview-btn > i {
   opacity: 1;
   color: var(--ncm-secondary) !important;
+}
+
+/* ── Config sheets (Configure Terminal / Configure Shard, root .ncm-item-inbox-config) — one step lighter
+      (2026-10-28, dev: "Configure Terminal is really dark on clean dark… reads more as high contrast").
+      Their stylesheets paint the window and sections with --ncm-bg-deep / -base, which the admin aliases map
+      to the CANVAS (the panel's near-black gap colour) and the list pane. Here they shift one tier up the
+      ladder, so the sheet sits on the same pane / card tones as the admin panel itself. Per preset, so
+      high-contrast stays near-black and clean-light lifts toward white. The terminal boot/login PREVIEW
+      stages use their own literal darks and are unaffected. ── */
+.ncm-app.ncm-item-inbox-config[data-ncm-admin-theme] {
+  --ncm-bg-deep:     var(--ncm-bg-pane);
+  --ncm-bg-base:     var(--ncm-bg-pane-alt);
+  --ncm-bg-mid:      var(--ncm-bg-card);
+  --ncm-bg-surface:  var(--ncm-bg-card-head);
+  --ncm-bg-elevated: var(--ncm-bg-raised);
 }

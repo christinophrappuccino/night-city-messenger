@@ -1025,6 +1025,17 @@ export class ContactManagerApp extends BaseApplication {
     if (!dropdown) return;
     const isOpen = dropdown.classList.toggle('ncm-tag-dropdown--open');
 
+    // Open toward the side with room (the filter sits at the toolbar's right end, so the panel opens
+    // leftward; a narrow window that wraps it to the left edge flips it back to opening right).
+    if (isOpen) {
+      const panel = dropdown.querySelector('.ncm-tag-dropdown__panel');
+      const box = this.element?.querySelector('.window-content') || this.element;
+      if (panel && box) {
+        panel.classList.remove('is-flip');
+        const pr = panel.getBoundingClientRect(), br = box.getBoundingClientRect();
+        if (pr.left < br.left + 4) panel.classList.add('is-flip');
+      }
+    }
     // Close on click outside
     if (isOpen) {
       const closeHandler = (e) => {
@@ -1118,7 +1129,7 @@ export class ContactManagerApp extends BaseApplication {
     const chip = (g) => {
       const people = g.members.map(person);
       return {
-        id: g.id, name: g.name, color: g.color, count: g.members.length, shared: !!g.sharedFrom,
+        id: g.id, name: g.name, color: g.color, img: g.img || '', count: g.members.length, shared: !!g.sharedFrom,
         isOpen: g.id === this._openGroupId,
         stack: people.slice(0, 3).map(p => ({ img: p.img, initials: p.initials })),
         more: Math.max(0, people.length - 3),
@@ -1127,7 +1138,7 @@ export class ContactManagerApp extends BaseApplication {
     };
     const list = shown.map(chip);
     const openChip = list.find(c => c.isOpen) || null;
-    const open = openChip ? { id: openChip.id, name: openChip.name, color: openChip.color, count: openChip.count, shared: openChip.shared, members: openChip._people } : null;
+    const open = openChip ? { id: openChip.id, name: openChip.name, color: openChip.color, img: openChip.img, count: openChip.count, shared: openChip.shared, members: openChip._people } : null;
     for (const c of list) delete c._people;
     return { total: all.length, expanded: !folded && all.length > limit, hiddenCount: folded ? all.length - shown.length : 0, list, open };
   }
@@ -1401,7 +1412,8 @@ export class ContactManagerApp extends BaseApplication {
 
   static _onOpenGMContacts(event, target) {
     if (!game.user.isGM) return;
-    game.nightcity?.openGMContacts?.();
+    // The GM directory lives in Admin → Contacts (the GM Contact Manager window was folded in).
+    game.nightcity?.openAdminTab?.('contacts');
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1549,8 +1561,9 @@ export class ContactManagerApp extends BaseApplication {
     if (!contact || !contact.encrypted) return;
 
     // ── Lockout check ──
-    if (contact.breachLockoutUntil && Date.now() < contact.breachLockoutUntil) {
-      const remaining = Math.ceil((contact.breachLockoutUntil - Date.now()) / 60000);
+    const nowMs = (Number(game.nightcity?.timeService?.getCurrentTimeMs?.()) || Date.now());   // breachLockoutUntil is game time (ContactBreachService._nowMs)
+    if (contact.breachLockoutUntil && nowMs < contact.breachLockoutUntil) {
+      const remaining = Math.ceil((contact.breachLockoutUntil - nowMs) / 60000);
       ui.notifications.warn(`ICE lockout active — ${remaining} minute${remaining !== 1 ? 's' : ''} remaining.`);
       return;
     }
@@ -1605,12 +1618,13 @@ export class ContactManagerApp extends BaseApplication {
     // Execute breach
     const result = await breachService.attemptBreach(
       this.actorId, contactId, actor,
-      { luckSpend: dialogResult.luck, skillOverride: dialogResult.skill }
+      { luckSpend: dialogResult.luck, skillOverride: dialogResult.skill, deferChat: true }
     );
 
     if (result.success) {
       // ── Phase 2a: SUCCESS — unlock + dissolve ──
       await this._playBreachSuccess(overlayEl);
+      await result.postChat?.();   // the chat card follows the animation
       this._breachInProgress = false;
       this._pendingReveal = true;
       this.render();
@@ -1622,6 +1636,7 @@ export class ContactManagerApp extends BaseApplication {
     } else {
       // ── Phase 2b: FAILURE — corruption + denied ──
       await this._playBreachDenied(overlayEl, result.blackIce);
+      await result.postChat?.();   // the chat card follows the animation
       this._breachInProgress = false;
       this.render();
     }

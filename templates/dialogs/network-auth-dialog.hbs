@@ -19,7 +19,7 @@
       passwordNum / skillNum / keyItemNum                     (AND-mode display numbers)
       passwordCompleted / skillCompleted / keyItemCompleted
       showOrBeforeSkill / showOrBeforeKeyItem                 (OR dividers)
-      bypassSkills [{ name, dc, danger }]   bypassDC   skillBreakdown
+      bypassSkills [{ name, dc, danger }]   bypassDC   bypassDCLabel   skillBreakdown
       keyItemName / keyItemTag / presentedItemName / presentedItemImg / keyItemError
       isLethalICE / iceInfo { name, img, class, formula } / iceDealsDamage
       isLockedOut / lockoutRemaining / attemptPips [{ state }]
@@ -68,6 +68,52 @@
       </div>
     </div>
 
+    {{!-- ═══════════ Countermeasure visibility — what this character can't tell ═══════════
+         cmv from _applyCountermeasures(): unknown / spotted readout + the optional scan.
+         Redacted values are never in the context, so never in the DOM. --}}
+    {{#if cmv.isHidden}}
+      <div class="ncm-cmv-sec {{#if cmv.isSpotted}}ncm-cmv-sec--spotted{{/if}}">
+        <div class="ncm-cmv-sec__hd">
+          <div class="ncm-cmv-sec__por"><i class="fas {{#if cmv.isSpotted}}fa-eye{{else}}fa-question{{/if}}"></i></div>
+          <div>
+            {{#if cmv.isSpotted}}
+              <div class="ncm-cmv-sec__ttl">Defences detected</div>
+              <div class="ncm-cmv-sec__sub">Your scan found something running — not enough to name it.</div>
+            {{else}}
+              <div class="ncm-cmv-sec__ttl">Security unreadable</div>
+              <div class="ncm-cmv-sec__sub">You can’t tell what’s guarding this — or what it does when you get it wrong.</div>
+            {{/if}}
+          </div>
+        </div>
+        <div class="ncm-cmv-ro">
+          {{#each cmv.readout}}
+            <div class="ncm-cmv-ro__c"><div class="ncm-cmv-ro__k"><i class="fas {{this.icon}}"></i>{{this.label}}</div>
+              <div class="ncm-cmv-ro__v {{#if this.known}}is-known{{/if}}">{{#if this.known}}{{this.text}}{{#if this.sub}} <small>· {{this.sub}}</small>{{/if}}{{else}}<span class="ncm-cmv-redact" style="width:{{this.w}}px"></span>{{/if}}</div></div>
+          {{/each}}
+        </div>
+        {{#if cmv.canScan}}
+          <div class="ncm-cmv-scan {{#if cmv.scanOpen}}is-open{{/if}}">
+            <button type="button" class="ncm-cmv-scan__hd" data-action="toggleCmvScan" aria-expanded="{{#if cmv.scanOpen}}true{{else}}false{{/if}}">
+              <span class="ncm-cmv-scan__t"><i class="fas fa-satellite-dish"></i>Scan the defences</span>
+              <span class="ncm-cmv-scan__count">{{cmv.scanCount}} skill{{#unless (eq cmv.scanCount 1)}}s{{/unless}}</span>
+              <span class="ncm-cmv-scan__more"><span data-more-label>{{#if cmv.scanOpen}}Hide{{else}}Show{{/if}}</span><i class="fas fa-chevron-down"></i></span>
+            </button>
+            <div class="ncm-cmv-scan__body"><div class="ncm-cmv-scan__in"><div class="ncm-cmv-scan__pad">
+              {{#each cmv.scanSkills}}
+                <div class="ncm-auth__skrow"><i class="fas fa-satellite-dish ncm-auth__skrow-ico"></i>
+                  <div class="ncm-auth__skrow-txt"><div class="ncm-auth__skrow-name">{{this.name}}</div>
+                    <div class="ncm-auth__skrow-sub">{{#if this.statName}}{{this.statName}} {{this.statValue}} + {{/if}}Skill {{this.skillValue}} &rarr; {{this.total}} · vs DV <span class="{{#unless @root.cmv.showDV}}ncm-cmv-qq{{/unless}}">{{@root.cmv.scanDVLabel}}</span></div></div>
+                  <button type="button" class="ncm-auth__skrow-btn" data-action="scanDefences" data-skill="{{this.name}}"><i class="fas fa-satellite-dish"></i> Scan</button></div>
+              {{/each}}
+              <div class="ncm-cmv-scan__foot"><i class="fas fa-circle-info"></i>Optional, and one try. Beat it well and you’ll know exactly what’s there; miss, and you go in blind.</div>
+            </div></div></div>
+          </div>
+        {{else if cmv.scanFailed}}
+          <div class="ncm-cmv-scanned"><i class="fas fa-satellite-dish"></i>Your scan came back empty. You go in blind.</div>
+        {{/if}}
+      </div>
+    {{/if}}
+
     {{!-- ═══════════ Black ICE danger ═══════════ --}}
     {{#if isLethalICE}}
       <div class="ncm-auth__ice">
@@ -86,6 +132,7 @@
           {{else}}
             <div class="ncm-auth__ice-sub">Active countermeasures — a failed breach triggers lockout.</div>
           {{/if}}
+          {{#if cmv.credit}}<span class="ncm-cmv-credit"><i class="fas fa-eye"></i> {{cmv.credit}}</span>{{/if}}
         </div>
       </div>
     {{/if}}
@@ -164,7 +211,7 @@
           <div class="ncm-auth__mlabel">
             <div class="ncm-auth__mtitle">Skill Check Bypass</div>
             <div class="ncm-auth__msub">
-              {{#if skillBreakdown}}{{skillBreakdown.statName}} {{skillBreakdown.statValue}} + Skill {{skillBreakdown.skillValue}} + d10{{else}}Stat + Skill + d10{{/if}} · vs DV {{bypassDC}}
+              {{#if skillBreakdown}}{{skillBreakdown.statName}} {{skillBreakdown.statValue}} + Skill {{skillBreakdown.skillValue}} + d10{{else}}Stat + Skill + d10{{/if}} · vs DV {{bypassDCLabel}}
             </div>
           </div>
           {{#if skillCompleted}}
@@ -172,7 +219,7 @@
           {{else if isAndMode}}
             <span class="ncm-auth__chip ncm-auth__chip--req">Required</span>
           {{else}}
-            <span class="ncm-auth__chip ncm-auth__chip--dv">DV {{bypassDC}}</span>
+            <span class="ncm-auth__chip ncm-auth__chip--dv">DV {{bypassDCLabel}}</span>
           {{/if}}
         </div>
         {{#unless skillCompleted}}
@@ -278,9 +325,11 @@
         {{/if}}
         <div class="ncm-auth__attempts">
           <span class="ncm-auth__attempts-label">Attempts</span>
+          {{#if cmv.showAttempts}}
           <div class="ncm-auth__pips">
             {{#each attemptPips}}<div class="ncm-auth__pip ncm-auth__pip--{{this.state}}"></div>{{/each}}
           </div>
+          {{else}}<span class="ncm-cmv-qq" data-tooltip="You can't tell how many tries you get">?</span>{{/if}}
         </div>
       </div>
     </div>

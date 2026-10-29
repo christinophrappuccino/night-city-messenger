@@ -16,14 +16,20 @@
 @import url('./admin-panel/tab-overview.css');
 @import url('./admin-panel/tab-messages.css');
 @import url('./admin-panel/tab-contacts.css');
+@import url('./admin-panel/contacts-map.css');
 @import url('./admin-panel/tab-networks.css');
 @import url('./admin-panel/tab-shards.css');
 @import url('./admin-panel/tab-terminals.css');
+@import url('./admin-panel/tab-access.css');
 @import url('./admin-panel/tab-security.css');
 /* Player Authoring — the Shard Encoder's GM config window + its Shards-tab card. */
 @import url('./admin-panel/encoder-config.css');
 @import url('./admin-panel/tab-spam.css');
 @import url('./admin-panel/tab-tools.css');
+/* Popped-out tab window + shared redesign pieces (2026-10-27). */
+@import url('./admin-panel/admin-popout.css');
+/* The colour hierarchy, applied across every tab — LAST so it wins (2026-10-27). */
+@import url('./admin-panel/admin-hierarchy.css');
 
 /* ═══════════════════════════════════════════════════════════
  * Admin Panel Component Styles — Sprint 4 Rewrite

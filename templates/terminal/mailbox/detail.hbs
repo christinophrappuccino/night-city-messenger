@@ -74,9 +74,13 @@
                 {{#if @root.fsBack}}<span class="ncm-term__fs-back" data-action="terminalFsBack" data-tooltip="Back to the folder"><i class="fas fa-arrow-turn-up"></i> FOLDER</span>{{/if}}
                 {{#if isGM}}
                   <span class="ncm-term__file-gm">
-                    <select class="ncm-term__move-select" data-move-message="{{selectedMessage.messageId}}" data-tooltip="Move to folder (GM)">
-                      {{#each selectedMessage.moveOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
-                    </select>
+                    <details class="ncm-term__move" data-move-root data-message-id="{{selectedMessage.messageId}}">
+                      <summary class="ncm-term__move-btn" data-tooltip="Move to another folder (GM) — or drag the row onto a folder"><i class="fas fa-folder-tree"></i> Move <i class="fas fa-caret-down"></i></summary>
+                      <div class="ncm-term__move-menu" role="menu">
+                        <div class="ncm-term__move-k">Move to</div>
+                        {{#each selectedMessage.moveOptions}}<button type="button" class="ncm-term__move-it{{#if selected}} is-cur{{/if}}" data-action="terminalMoveTo" data-folder="{{id}}" role="menuitem"{{#if selected}} aria-current="true"{{/if}}><i class="{{icon}}"></i><span>{{name}}</span>{{#if selected}}<small>here now</small>{{/if}}</button>{{/each}}
+                      </div>
+                    </details>
                     <span class="ncm-term__gm-edit" data-action="terminalEditMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Edit file (GM)"><i class="fas fa-pen"></i></span>
                     <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Permanently delete (GM)"><i class="fas fa-trash-can"></i></span>
                   </span>
@@ -105,9 +109,13 @@
                   <span class="ncm-term__chip" data-action="terminalReplyAgent" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Message this sender from your own Agent"><i class="fas fa-reply"></i> Reply via Agent</span>
                 {{/if}}
                 {{#if isGM}}
-                  <select class="ncm-term__move-select" data-move-message="{{selectedMessage.messageId}}" data-tooltip="Move to folder (GM)">
-                    {{#each selectedMessage.moveOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
-                  </select>
+                  <details class="ncm-term__move" data-move-root data-message-id="{{selectedMessage.messageId}}">
+                  <summary class="ncm-term__move-btn" data-tooltip="Move to another folder (GM) — or drag the row onto a folder"><i class="fas fa-folder-tree"></i> Move <i class="fas fa-caret-down"></i></summary>
+                  <div class="ncm-term__move-menu" role="menu">
+                    <div class="ncm-term__move-k">Move to</div>
+                    {{#each selectedMessage.moveOptions}}<button type="button" class="ncm-term__move-it{{#if selected}} is-cur{{/if}}" data-action="terminalMoveTo" data-folder="{{id}}" role="menuitem"{{#if selected}} aria-current="true"{{/if}}><i class="{{icon}}"></i><span>{{name}}</span>{{#if selected}}<small>here now</small>{{/if}}</button>{{/each}}
+                  </div>
+                    </details>
                   <span class="ncm-term__gm-edit" data-action="terminalEditMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Edit message (GM)"><i class="fas fa-pen"></i></span>
                   <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Permanently delete (GM)"><i class="fas fa-trash-can"></i></span>
                 {{/if}}

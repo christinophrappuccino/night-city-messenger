@@ -3,7 +3,7 @@
 // worlds, the composer/service groupId expansion, and the wiring drift guards.
 // Drives the REAL ContactGroupService + MessageService._normalizeRecipients.
 import { pathToFileURL, fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url)).replace(/\\/g, '/').replace(/\/+$/, '');
 let pass = 0, fail = 0;
@@ -200,17 +200,24 @@ game.nightcity.contactGroupService = svc;
   const ct = r('scripts/ui/AdminPanel/tabs/ContactsTab.js');
   for (const m of ['onGroupNew', 'onGroupEdit', 'onGroupDelete', 'onGroupPush']) ok(new RegExp(`async ${m}\\(`).test(ct), `ContactsTab implements ${m}`);
   ok(/ncmMasterContacts: 1/.test(ct) && /parsed\?\.contacts/.test(ct) && /importMaster/.test(ct), 'admin export writes the envelope; import accepts envelope or bare array and imports groups');
-  ok(/parsed\?\.contacts/.test(r('scripts/ui/GMContactManager/GMContactManagerApp.js')), 'GM Contact Manager import accepts the envelope too');
-  ok(/ncm-cg__list/.test(r('templates/admin-panel/tab-contacts.hbs')), 'admin tab renders the Groups card');
+  // The GM Contact Manager window was folded into Admin → Contacts (2026-10-27) — one importer now.
+  ok(!existsSync(`${ROOT}/scripts/ui/GMContactManager/GMContactManagerApp.js`), 'the GM Contact Manager window (a second importer) is retired');
+  const cth = r('templates/admin-panel/tab-contacts.hbs');
+  ok(/ct2\.groups\.rows/.test(cth) && /data-op="gPush"/.test(cth) && /data-op="gToggle"/.test(cth), 'admin tab renders the Groups view (list, Push, pushed-to toggles)');
   // The panel merges each tab's context into ONE template context. Lifting named
   // keys out of the Contacts tab context dropped `masterGroups` (tester 2026-10-22:
   // "groups save but never appear in the admin UI") — the tab context must be
-  // SPREAD, and every key the tab returns must reach the template.
+  // SPREAD, and the groups must reach the template. The redesign namespaces
+  // everything under `ct2` (test-admin-contacts asserts every ct2 key the
+  // template reads is produced).
   ok(/\.\.\.contactContext,/.test(ap), 'AdminPanelApp spreads the whole Contacts tab context');
-  const ctReturn = ct.match(/prepareContext\(\) \{[\s\S]*?return \{([\s\S]*?)\};/)?.[1] || '';
-  const ctKeys = [...ctReturn.matchAll(/^\s*([A-Za-z]+):/gm)].map(m => m[1]);
-  ok(ctKeys.includes('masterGroups'), 'ContactsTab.prepareContext returns masterGroups');
-  for (const k of ctKeys) ok(new RegExp(`\\{\\{[^}]*\\b${k}\\b`).test(r('templates/admin-panel/tab-contacts.hbs')), `tab-contacts.hbs reads ${k}`);
+  ok(/out\.ct2 = this\._buildContext\(all\)/.test(ct) && /ctx\.groups = this\._groupsContext\(/.test(ct) && /getMasterGroups/.test(ct), 'ContactsTab puts the GM groups into ct2.groups');
+  // The Groups sub-tab wears the Directory's one-row toolbar (2026-10-28): search by group OR member,
+  // Show / out-of-date count / Sort, a fold past GROUPS_RAIL_LIMIT — rules pure in contactsModel.
+  const cmodel = r('scripts/ui/AdminPanel/tabs/contactsModel.js');
+  ok(/export function passesGroupFilter/.test(cmodel) && /export function sortGroups/.test(cmodel) && /export function groupSig/.test(cmodel) && /export function foldTail/.test(cmodel), 'contactsModel: passesGroupFilter / sortGroups / groupSig / foldTail');
+  ok(/data-ct2-q="groups"/.test(cth) && /data-ct2-select="gShow"/.test(cth) && /data-ct2-select="gSort"/.test(cth) && /data-op="gMore"/.test(cth), 'tab-contacts.hbs: the Groups toolbar (search · Show · Sort) and the "+N more" fold');
+  ok(/groupSig\(c\) !== mine/.test(ct) && !/const sig = \(x\) => JSON\.stringify/.test(ct), 'the Groups tab’s "out of date" and the Players rack read ONE signature (groupSig)');
   const comp = r('scripts/ui/MessageComposer/MessageComposerApp.js');
   ok(/_addGroupRecipient\(/.test(comp) && /groupHits/.test(comp) && /r\.isGroup\) \{ hasGroup = true/.test(comp), 'composer searches groups, adds a group chip, and flattens it at send');
   ok(/groupId: options\.groupId \?\? null/.test(r('scripts/init/registerMessagingSystem.js')), 'the compose launcher forwards groupId');

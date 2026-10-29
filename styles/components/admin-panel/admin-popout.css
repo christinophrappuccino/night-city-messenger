@@ -1,0 +1,26 @@
+/* ═══════════════════════════════════════════════════════════
+ * Admin Panel — popped-out single-tab window (AdminTabWindow) + shared
+ * pieces of the 2026-10-27 redesign. Tokens only.
+ * A tab widens its own layout under `.ncm-admin-panel--pop` in its tab CSS.
+ * ═══════════════════════════════════════════════════════════ */
+
+.ncm-admin-panel .ncm-admin-popbar {
+  display: flex; align-items: center; gap: 10px; flex: none;
+  padding: 6px 14px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-surface);
+}
+.ncm-admin-panel .ncm-admin-popbar__t { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-admin-popbar__t i { margin-right: 4px; }
+.ncm-app .ncm-admin-panel button.ncm-admin-popbar__dock {
+  appearance: none; margin-left: auto !important; width: auto !important; height: auto !important; min-height: 0 !important;
+  padding: 2px 6px !important; border: 0 !important; background: none !important; box-shadow: none !important; cursor: pointer;
+  font: 12px var(--ncm-font-body) !important; color: var(--ncm-secondary) !important;
+}
+.ncm-app .ncm-admin-panel button.ncm-admin-popbar__dock:hover { text-decoration: underline; }
+
+/* Tab bar: the shell's only chrome since the header/HUD/footer went (2026-10-27).
+   The keyboard hint sits at the far right as a tooltip. */
+.ncm-admin-panel .ncm-admin-tabs__keys {
+  margin-left: auto; align-self: center; padding: 0 10px; flex: none; cursor: help;
+  color: var(--ncm-text-secondary); font-size: 12px;
+}
+.ncm-admin-panel .ncm-admin-tabs__keys:hover { color: var(--ncm-text-primary); }

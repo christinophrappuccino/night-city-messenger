@@ -1,0 +1,260 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Who they know — three ways through a long list</title>
+<!--
+  Admin → Contacts → Players → a character → "Who they know", with 40 contacts.
+  A — Index: role chips (pick several), sort Recent / Waiting / A–Z, and an A–Z jump rail down the side.
+  B — Activity lanes: Waiting on you · Talking this week · Gone quiet · Never written. Contacts are small chips;
+      click one to open its card under the lane.
+  C — Rolodex: one tile per role (or organization) with faces and counts; click a tile to go into it.
+  Every one keeps the search box. Serve: node dev/tools/serve-mockups.cjs →
+  http://127.0.0.1:8123/dev/mockups/admin-who-they-know-mock.html   ?t=clean-light  ?w=700 (pop-out width)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px/1.45 sans-serif; margin: 0 0 12px; max-width: 980px; }
+  .mk-row { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-row > div { width: var(--mkw, 470px); flex: none; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .P { background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .band { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-act);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .band i { color: var(--ncm-act); }
+  .band .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+  .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); }
+  .srch { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-pane); flex: 1 1 160px; }
+  .srch i { color: var(--ncm-text-label); font-size: 11px; }
+  .P .srch input[data-a-q], .P .srch input[data-b-q], .P .srch input[data-c-q] { flex: 1; outline: none !important; border-radius: 0 !important; min-width: 0; border: 0 !important; background: none !important; height: 24px !important; padding: 0 !important; box-shadow: none !important; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+  .seg { display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+  .seg span { padding: 3px 8px; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); cursor: pointer; }
+  .seg span + span { border-left: 1px solid var(--ncm-border); }
+  .seg span.on { color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 14%, transparent); }
+  .av { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 700 10px var(--ncm-font-display);
+    color: color-mix(in oklab, var(--tc) 80%, white); background: color-mix(in srgb, var(--tc) 25%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); }
+  .av.sm { width: 20px; height: 20px; font-size: 9px; }
+  .tag { display: inline-flex; gap: 4px; align-items: center; padding: 0 6px; border-radius: 1px; font: 600 11px var(--ncm-font-body); white-space: nowrap;
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }
+  .t { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); white-space: nowrap; }
+  .wait { font: 700 11px var(--ncm-font-mono); color: var(--ncm-attn); white-space: nowrap; }
+  .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .empty { padding: 18px; text-align: center; color: var(--ncm-text-hint); font: italic 12.5px var(--ncm-font-body); }
+
+  /* ── A: index ── */
+  .ia-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 12px 8px; border-bottom: 1px solid var(--ncm-border); }
+  .ia-chip { --tc: var(--ncm-text-label); display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 2px; cursor: pointer; user-select: none;
+    border: 1px solid color-mix(in srgb, var(--tc) 40%, var(--ncm-border)); font: 600 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ia-chip i { color: var(--tc); font-size: 10px; }
+  .ia-chip b { font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .ia-chip.on { color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 16%, transparent); border-color: var(--tc); }
+  .ia-chip.dim { opacity: .4; }
+  .ia-body { display: grid; grid-template-columns: minmax(0, 1fr) 20px; height: 380px; }
+  .ia-list { overflow-y: auto; overflow-x: hidden; }
+  .ia-gh { position: sticky; top: 0; z-index: 1; padding: 4px 12px; background: var(--ncm-bg-card-head, var(--ncm-bg-card)); font: 700 10px var(--ncm-font-display); letter-spacing: .07em; color: var(--ncm-text-label); border-bottom: 1px solid var(--ncm-border); }
+  .ia-r { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); cursor: pointer; }
+  .ia-r:hover { background: var(--ncm-bg-hover); }
+  .ia-r .sub { display: flex; gap: 6px; align-items: center; margin-top: 2px; min-width: 0; overflow: hidden; }
+  .ia-r .end { text-align: right; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
+  .ia-rail { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 4px 0; border-left: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
+  .ia-rail span { font: 700 9px var(--ncm-font-display); color: var(--ncm-text-hint); cursor: default; line-height: 1; }
+  .ia-rail span.has { color: var(--ncm-act); cursor: pointer; }
+  .ia-rail span.has:hover { color: var(--ncm-text-heading); transform: scale(1.4); }
+
+  /* ── B: lanes ── */
+  .lb { max-height: 440px; overflow-y: auto; overflow-x: hidden; }
+  .lb-lane { --lc: var(--ncm-text-label); border-bottom: 1px solid var(--ncm-border); }
+  .lb-hd { display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; user-select: none; box-shadow: inset 3px 0 var(--lc); }
+  .lb-hd:hover { background: var(--ncm-bg-hover); }
+  .lb-hd .c { font-size: 9px; color: var(--ncm-text-label); transition: transform .2s; }
+  .lb-lane.shut .lb-hd .c { transform: rotate(-90deg); }
+  .lb-hd .k { font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .lb-hd .n { font: 700 10.5px var(--ncm-font-mono); color: var(--lc); }
+  .lb-hd .h { margin-left: auto; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .lb-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .22s cubic-bezier(.22,1,.36,1); }
+  .lb-lane.shut .lb-body { grid-template-rows: 0fr; }
+  .lb-in { min-height: 0; overflow: hidden; }
+  .lb-chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 12px 10px 15px; }
+  .lb-c { --tc: var(--ncm-text-label); display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 2px; border-radius: 12px; cursor: pointer;
+    border: 1px solid var(--ncm-border-active); background: var(--ncm-bg-pane); font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .lb-c:hover { border-color: var(--tc); }
+  .lb-c.on { border-color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 13%, var(--ncm-bg-pane)); }
+  .lb-c .w { font: 700 10px var(--ncm-font-mono); color: var(--ncm-attn); }
+  .lb-c.hit { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ncm-act) 60%, transparent); }
+  .lb-c.miss { opacity: .25; }
+  .lb-card { margin: 0 12px 12px 15px; padding: 9px 10px; border: 1px solid var(--ncm-border-active); border-left: 3px solid var(--ncm-act); background: var(--ncm-bg-card); display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 4px 10px; }
+  .lb-card .av { width: 30px; height: 30px; }
+  .lb-card .row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .lb-card .mail { grid-column: 2; font: 12px/1.4 var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .lb-card .acts { grid-column: 2; display: flex; gap: 6px; margin-top: 4px; }
+  .btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 4px 9px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; cursor: pointer; box-shadow: none !important; margin: 0 !important; display: inline-flex; gap: 5px; align-items: center; line-height: 1.3; }
+  .btn.pri { border-color: var(--ncm-act) !important; color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 10%, transparent) !important; }
+  .btn.bad { border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent) !important; color: var(--ncm-bad) !important; }
+
+  /* ── C: rolodex ── */
+  .rc { padding: 10px 12px 12px; max-height: 420px; overflow-y: auto; overflow-x: hidden; }
+  .rc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+  .rc-t { --tc: var(--ncm-text-label); position: relative; padding: 9px 10px 8px; border: 1px solid var(--ncm-border); border-top: 3px solid var(--tc); background: var(--ncm-bg-card); cursor: pointer; border-radius: 2px; }
+  .rc-t:hover { border-color: var(--tc); transform: translateY(-1px); }
+  .rc-t .k { display: flex; gap: 6px; align-items: center; font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .rc-t .k i { color: var(--tc); }
+  .rc-t .n { margin-left: auto; font: 700 11px var(--ncm-font-mono); color: var(--ncm-text-label); }
+  .rc-t .stack { display: flex; margin: 8px 0 6px; }
+  .rc-t .stack .av { width: 22px; height: 22px; margin-right: -6px; box-shadow: 0 0 0 2px var(--ncm-bg-card); font-size: 9px; }
+  .rc-t .meta { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .rc-t .meta .wait { font-size: 10.5px; }
+  .rc-crumb { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .rc-crumb a { color: var(--ncm-act); cursor: pointer; }
+  .rc-crumb b { color: var(--ncm-text-heading); }
+</style>
+</head>
+<body>
+<p class="mk-h">Who they know — 40 contacts, three ways through it</p>
+<p class="mk-p">Admin → Contacts → Players → V → <b>Who they know</b>. Each frame is clickable; every one keeps the search box. Try searching "ar", clicking role chips, lanes, tiles and contacts.</p>
+
+<div class="mk-row">
+  <div><p class="mk-p" style="margin:0 0 6px"><b style="color:#eee">A — Index.</b> Pick one or more roles (chips light up), sort by Recent / Waiting / A–Z, and jump with the letter rail. The quickest way to <i>find</i> someone.</p><div data-slot="a"></div></div>
+  <div><p class="mk-p" style="margin:0 0 6px"><b style="color:#eee">B — Activity lanes.</b> Grouped by what's going on: waiting on you, talking this week, gone quiet, never written. Contacts are small chips; click one for its card. Shows 40 people in very little space.</p><div data-slot="b"></div></div>
+  <div><p class="mk-p" style="margin:0 0 6px"><b style="color:#eee">C — Rolodex.</b> A tile per role with faces and counts; click a tile to go into it (Back to return). Switch to Organizations. Searching skips the tiles and shows matches.</p><div data-slot="c"></div></div>
+</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const W = Number(q.get('w') || 470);
+document.documentElement.style.setProperty('--mkw', W + 'px');
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const ini = (n) => n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+const ROLES = { fixer: ['Fixers', 'fa-handshake'], corp: ['Corpos', 'fa-briefcase'], solo: ['Solos', 'fa-crosshairs'], netrunner: ['Netrunners', 'fa-terminal'], medtech: ['Medtechs', 'fa-staff-snake'], tech: ['Techs', 'fa-gear'], nomad: ['Nomads', 'fa-truck-monster'], media: ['Media', 'fa-podcast'], lawman: ['Lawmen', 'fa-shield-halved'], '': ['No role', 'fa-circle-question'] };
+const RAW = [
+  ['Rogue Amendiares', 'fixer', 'Afterlife', 0, 2], ['Dexter DeShawn', 'fixer', '', 3, 0], ['Wakako Okada', 'fixer', 'Tyger Claws', 12, 0], ['Padre', 'fixer', 'Valentinos', 40, 0], ['Regina Jones', 'fixer', '', 1, 1], ['Mr. Hands', 'fixer', '', null, 0],
+  ['Goro Takemura', 'corp', 'Arasaka', 2, 0], ['Meredith Stout', 'corp', 'Militech', 60, 0], ['Anders Hellman', 'corp', 'Kang Tao', null, 0], ['Saul Bright', 'corp', 'Arasaka', 20, 0], ['Yorinobu', 'corp', 'Arasaka', null, 0],
+  ['Jackie Welles', 'solo', 'Valentinos', 0, 1], ['River Ward', 'lawman', 'NCPD', 5, 0], ['Brick Jones', 'solo', 'Maelstrom', 30, 0], ['Royce', 'solo', 'Maelstrom', null, 0], ['Weldon', 'solo', '', 90, 0],
+  ['T-Bug', 'netrunner', '', 1, 0], ['Lizzy Wizzy', 'media', '', 15, 0], ['Song So Mi', 'netrunner', '', null, 0], ['Placide', 'netrunner', 'Voodoo Boys', 8, 3], ['Brigitte', 'netrunner', 'Voodoo Boys', null, 0],
+  ['Viktor Vektor', 'medtech', '', 0, 0], ['Misty Olszewski', '', 'Esoterica', 2, 0], ['Fingers', 'medtech', '', 45, 0], ['Robert Wilson', 'tech', '', 4, 0], ['Judy Alvarez', 'tech', 'Mox', 0, 1],
+  ['Panam Palmer', 'nomad', 'Aldecaldos', 6, 0], ['Saul Panzer', 'nomad', 'Aldecaldos', null, 0], ['Mitch Anderson', 'nomad', 'Aldecaldos', 25, 0], ['Bob', 'nomad', 'Aldecaldos', null, 0],
+  ['Ozob', '', 'Bozos', 70, 0], ['Kerry Eurodyne', 'media', 'Us Cracks', 3, 0], ['Max Jones', 'media', 'N54', null, 0], ['Gloria', 'media', '', 33, 0],
+  ['Joss', 'lawman', 'NCPD', null, 0], ['Officer Hayes', 'lawman', 'NCPD', 11, 0], ['Barry', 'lawman', 'NCPD', 50, 0], ['Claire Russell', 'tech', 'Afterlife', 9, 0], ['Rosalind', '', '', null, 0], ['Hiromi Sato', 'corp', 'Arasaka', 7, 0],
+];
+const C = RAW.map(([name, role, org, days, wait], i) => ({ id: 'c' + i, name, role, org, days, wait, email: name.toLowerCase().replace(/[^a-z]+/g, '.') + '@net.nc' }));
+const ago = (d) => d == null ? 'never written' : d === 0 ? 'today' : d === 1 ? 'yesterday' : d < 30 ? `${d} days ago` : `${Math.round(d / 30)} mo ago`;
+const avatar = (c, sm) => `<span class="av${sm ? ' sm' : ''}" style="--tc:${hue(c.name)}">${ini(c.name)}</span>`;
+const tagR = (c) => c.role ? `<span class="tag" style="--tc:${hue('role:' + c.role)}"><i class="fas ${ROLES[c.role][1]}"></i>${ROLES[c.role][0].replace(/s$|men$/, (m) => m === 'men' ? 'man' : '')}</span>` : '';
+const tagO = (c) => c.org ? `<span class="tag" style="--tc:${hue(c.org)}">${c.org}</span>` : '';
+const win = (inner, title) => `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}" style="width:${W}px"><div class="ncm-admin-panel"><div class="P">
+  <div class="band"><i class="fas fa-address-book"></i>Who they know<span class="r">${C.length} from your directory${title ? ' · ' + title : ''}</span></div>${inner}</div></div></div>`;
+const match = (c, s) => !s || `${c.name} ${c.org} ${c.email} ${c.role}`.toLowerCase().includes(s);
+
+/* ── A ── */
+const A = { roles: new Set(), sort: 'recent', q: '' };
+function renderA() {
+  const counts = {}; for (const c of C) counts[c.role] = (counts[c.role] || 0) + 1;
+  const list = C.filter((c) => match(c, A.q) && (!A.roles.size || A.roles.has(c.role)));
+  const by = A.sort;
+  list.sort(by === 'az' ? (a, b) => a.name.localeCompare(b.name) : by === 'wait' ? (a, b) => b.wait - a.wait || (a.days ?? 999) - (b.days ?? 999) : (a, b) => (a.days ?? 999) - (b.days ?? 999) || a.name.localeCompare(b.name));
+  let groups;
+  if (by === 'az') { groups = {}; for (const c of list) (groups[c.name[0].toUpperCase()] ||= []).push(c); }
+  else if (by === 'wait') groups = { 'Waiting on you': list.filter((c) => c.wait), 'Everyone else': list.filter((c) => !c.wait) };
+  else groups = { 'This week': list.filter((c) => c.days != null && c.days <= 7), 'This month': list.filter((c) => c.days > 7 && c.days <= 30), 'Longer ago': list.filter((c) => c.days > 30), 'Never written': list.filter((c) => c.days == null) };
+  const letters = new Set(list.map((c) => c.name[0].toUpperCase()));
+  const html = `
+    <div class="bar"><span class="srch"><i class="fas fa-magnifying-glass"></i><input data-a-q placeholder="Find a contact…" value="${A.q}"></span>
+      <span class="seg">${[['recent', 'Recent'], ['wait', 'Waiting'], ['az', 'A–Z']].map(([k, l]) => `<span class="${A.sort === k ? 'on' : ''}" data-a-sort="${k}">${l}</span>`).join('')}</span></div>
+    <div class="ia-chips" style="padding-top:8px">${Object.keys(ROLES).filter((k) => counts[k]).map((k) => `<span class="ia-chip${A.roles.has(k) ? ' on' : ''}${A.roles.size && !A.roles.has(k) ? ' dim' : ''}" style="--tc:${k ? hue('role:' + k) : 'var(--ncm-text-hint)'}" data-a-role="${k}"><i class="fas ${ROLES[k][1]}"></i>${ROLES[k][0]}<b>${counts[k]}</b></span>`).join('')}${A.roles.size ? `<span class="ia-chip" data-a-clear style="--tc:var(--ncm-act)">clear</span>` : ''}</div>
+    <div class="ia-body"><div class="ia-list" data-a-list>${Object.entries(groups).filter(([, r]) => r.length).map(([g, rows]) => `<div class="ia-gh" data-a-g="${g}">${g} · ${rows.length}</div>${rows.map((c) => `
+      <div class="ia-r">${avatar(c)}<div style="min-width:0"><div class="nm">${c.name}</div><div class="sub">${tagR(c)}${tagO(c)}</div></div>
+        <div class="end">${c.wait ? `<span class="wait">${c.wait} waiting</span>` : ''}<span class="t">${ago(c.days)}</span></div></div>`).join('')}`).join('') || '<div class="empty">Nobody matches.</div>'}</div>
+      <div class="ia-rail">${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => `<span class="${letters.has(l) && A.sort === 'az' ? 'has' : ''}" data-a-jump="${l}">${l}</span>`).join('')}</div></div>`;
+  document.querySelector('[data-slot="a"]').innerHTML = win(html, `${list.length} shown`);
+}
+
+/* ── B ── */
+const B = { shut: new Set(['never']), open: 'c0', q: '' };
+function renderB() {
+  const lanes = [
+    ['wait', 'Waiting on you', 'var(--ncm-attn)', C.filter((c) => c.wait), 'they wrote, you haven\'t answered'],
+    ['week', 'Talking this week', 'var(--ncm-good)', C.filter((c) => !c.wait && c.days != null && c.days <= 7), ''],
+    ['quiet', 'Gone quiet', 'var(--ncm-text-label)', C.filter((c) => !c.wait && c.days > 7), 'no mail for over a week'],
+    ['never', 'Never written', 'var(--ncm-text-hint)', C.filter((c) => c.days == null), 'known, but no mail yet'],
+  ];
+  const s = B.q;
+  const html = `<div class="bar"><span class="srch"><i class="fas fa-magnifying-glass"></i><input data-b-q placeholder="Find a contact…" value="${B.q}"></span></div>
+    <div class="lb">${lanes.map(([k, label, col, list, hint]) => {
+      const card = list.find((c) => c.id === B.open);
+      const shut = B.shut.has(k) && !(s && list.some((c) => match(c, s)));
+      return `<div class="lb-lane${shut ? ' shut' : ''}" style="--lc:${col}">
+        <div class="lb-hd" data-b-lane="${k}"><i class="fas fa-chevron-down c"></i><span class="k">${label}</span><span class="n">${list.length}</span><span class="h">${hint}</span></div>
+        <div class="lb-body"><div class="lb-in"><div class="lb-chips">${list.map((c) => `<span class="lb-c${c.id === B.open ? ' on' : ''}${s ? (match(c, s) ? ' hit' : ' miss') : ''}" style="--tc:${hue('role:' + c.role)}" data-b-c="${c.id}">${avatar(c, true)}${c.name}${c.wait ? `<span class="w">${c.wait}</span>` : ''}</span>`).join('')}</div>
+        ${card ? `<div class="lb-card">${avatar(card)}<div><div class="row"><span class="nm">${card.name}</span>${tagR(card)}${tagO(card)}</div></div>
+          <div class="mail">${card.wait ? `<b style="color:var(--ncm-attn)">${card.wait} waiting</b> — last: “Need you at the Afterlife tonight.” <span class="t">${ago(card.days)}</span>` : card.days == null ? 'V knows them but has never written.' : `Last mail ${ago(card.days)}: “About that job…”`}</div>
+          <div class="acts">${card.wait ? '<button class="btn pri"><i class="fas fa-reply"></i>Reply as ' + card.name.split(' ')[0] + '</button>' : ''}<button class="btn"><i class="fas fa-address-card"></i>Open contact</button><button class="btn bad"><i class="fas fa-xmark"></i>Take back</button></div></div>` : ''}
+        </div></div></div>`;
+    }).join('')}</div>`;
+  document.querySelector('[data-slot="b"]').innerHTML = win(html, '');
+}
+
+/* ── C ── */
+const Cc = { by: 'role', into: null, q: '' };
+function renderC() {
+  const key = (c) => Cc.by === 'role' ? c.role : (c.org || '');
+  const label = (k) => Cc.by === 'role' ? ROLES[k][0] : (k || 'No organization');
+  const icon = (k) => Cc.by === 'role' ? ROLES[k][1] : (k ? 'fa-building' : 'fa-circle-question');
+  const col = (k) => k ? (Cc.by === 'role' ? hue('role:' + k) : hue(k)) : 'var(--ncm-text-hint)';
+  const bar = `<div class="bar"><span class="srch"><i class="fas fa-magnifying-glass"></i><input data-c-q placeholder="Find a contact…" value="${Cc.q}"></span>
+    <span class="seg">${[['role', 'Roles'], ['org', 'Organizations']].map(([k, l]) => `<span class="${Cc.by === k ? 'on' : ''}" data-c-by="${k}">${l}</span>`).join('')}</span></div>`;
+  const rows = (list) => list.map((c) => `<div class="ia-r">${avatar(c)}<div style="min-width:0"><div class="nm">${c.name}</div><div class="sub">${tagR(c)}${tagO(c)}</div></div><div class="end">${c.wait ? `<span class="wait">${c.wait} waiting</span>` : ''}<span class="t">${ago(c.days)}</span></div></div>`).join('');
+  let inner;
+  if (Cc.q) {
+    const list = C.filter((c) => match(c, Cc.q));
+    inner = `<div class="rc" style="padding:0">${rows(list) || '<div class="empty">Nobody matches.</div>'}</div>`;
+  } else if (Cc.into != null) {
+    const list = C.filter((c) => key(c) === Cc.into).sort((a, b) => b.wait - a.wait || (a.days ?? 999) - (b.days ?? 999));
+    inner = `<div class="rc"><div class="rc-crumb"><a data-c-back><i class="fas fa-arrow-left"></i> All ${Cc.by === 'role' ? 'roles' : 'organizations'}</a> › <b>${label(Cc.into)}</b> · ${list.length}</div></div><div style="margin-top:-6px">${rows(list)}</div>`;
+  } else {
+    const keys = [...new Set(C.map(key))].sort((a, b) => (!a) - (!b) || C.filter((c) => key(c) === b).length - C.filter((c) => key(c) === a).length);
+    inner = `<div class="rc"><div class="rc-grid">${keys.map((k) => {
+      const list = C.filter((c) => key(c) === k); const w = list.reduce((n, c) => n + c.wait, 0); const recent = list.filter((c) => c.days != null && c.days <= 7).length;
+      return `<div class="rc-t" style="--tc:${col(k)}" data-c-into="${k}"><div class="k"><i class="fas ${icon(k)}"></i>${label(k)}<span class="n">${list.length}</span></div>
+        <div class="stack">${list.slice(0, 6).map((c) => avatar(c)).join('')}</div>
+        <div class="meta">${w ? `<span class="wait">${w} waiting</span> · ` : ''}${recent ? `${recent} this week` : 'quiet'}</div></div>`;
+    }).join('')}</div></div>`;
+  }
+  document.querySelector('[data-slot="c"]').innerHTML = win(bar + inner, '');
+}
+
+function all() { renderA(); renderB(); renderC(); }
+all();
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  const s = t.closest('[data-a-sort]'); if (s) { A.sort = s.dataset.aSort; return renderA(); }
+  const r = t.closest('[data-a-role]'); if (r) { const k = r.dataset.aRole; A.roles.has(k) ? A.roles.delete(k) : A.roles.add(k); return renderA(); }
+  if (t.closest('[data-a-clear]')) { A.roles.clear(); return renderA(); }
+  const j = t.closest('.ia-rail span.has'); if (j) { const l = j.dataset.aJump; const g = document.querySelector(`[data-a-list] [data-a-g="${l}"]`); g?.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
+  const lane = t.closest('[data-b-lane]'); if (lane) { const k = lane.dataset.bLane; B.shut.has(k) ? B.shut.delete(k) : B.shut.add(k); return renderB(); }
+  const chip = t.closest('[data-b-c]'); if (chip) { B.open = B.open === chip.dataset.bC ? null : chip.dataset.bC; return renderB(); }
+  const by = t.closest('[data-c-by]'); if (by) { Cc.by = by.dataset.cBy; Cc.into = null; return renderC(); }
+  const into = t.closest('[data-c-into]'); if (into) { Cc.into = into.dataset.cInto; return renderC(); }
+  if (t.closest('[data-c-back]')) { Cc.into = null; return renderC(); }
+});
+document.addEventListener('input', (e) => {
+  const t = e.target; const keep = () => { const i = document.querySelector(`[${[...t.attributes].find((a) => a.name.startsWith('data-'))?.name}]`); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } };
+  if (t.matches('[data-a-q]')) { A.q = t.value.toLowerCase(); renderA(); keep(); }
+  if (t.matches('[data-b-q]')) { B.q = t.value.toLowerCase(); renderB(); keep(); }
+  if (t.matches('[data-c-q]')) { Cc.q = t.value.toLowerCase(); renderC(); keep(); }
+});
+</script>
+</body>
+</html>

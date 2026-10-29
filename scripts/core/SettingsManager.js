@@ -506,6 +506,15 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'accessHandoutStyle', {
+      name: 'Access point handout colours',
+      hint: 'How chat cards, journal links and hotbar handouts for terminals / shards are coloured: match the thing, the module default, or your own colours. Set from the Post to chat dialog.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: { mode: 'match', custom: {} },
+    });
+
     game.settings.register(MODULE_ID, 'terminalPinsAutoShow', {
       name: 'Terminal Pins — Auto-Show Map Notes',
       hint: 'Terminals dragged onto a scene become clickable map pins. Foundry hides map pins until a client enables "Toggle Display of Map Notes" (off by default); this auto-enables that toggle for everyone at login so terminal pins are always visible. Turn off to leave the core toggle alone.',
@@ -545,6 +554,15 @@ export class SettingsManager {
     game.settings.register(MODULE_ID, 'entryTemplates', {
       name: 'Entry Templates',
       hint: 'GM-saved content-entry templates ([{ id, name, type, entry }]) — reusable typed files for shards/terminals, loadable in the composer.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
+    game.settings.register(MODULE_ID, 'messageTemplates', {
+      name: 'Message Templates (GM)',
+      hint: 'GM-saved mail the composer can insert ([{ id, name, subject, body, priority, encryption, selfDestruct, createdAt }]) — the composer\'s Templates menu.',
       scope: 'world',
       config: false,
       type: Array,
@@ -652,6 +670,29 @@ export class SettingsManager {
       default: 'auto',
     });
 
+    // Countermeasure visibility (2026-10-27) — who can tell what is guarding a
+    // lock (ICE, its damage, a trace, the attempt limit) and whether the DV
+    // shows. Edited in Admin → Security → Hacking rules; rules in
+    // utils/countermeasures.js. Default mode 'open' = the old behaviour.
+    game.settings.register(MODULE_ID, 'countermeasureVisibility', {
+      name: 'Countermeasure Visibility',
+      hint: 'Who can tell what is guarding a lock — ICE, its damage, traces, the attempt limit — and whether the DV shows before a roll. Edited in Admin → Security.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: { mode: 'open' },
+    });
+
+    game.settings.register(MODULE_ID, 'roleAbilityRoll', {
+      name: 'Role Ability Rolls (Interface)',
+      hint: 'How a role ability such as Interface is rolled anywhere the module asks for it (network and terminal logins, shard breaches, hacks). "Stat + rank" adds TECH, the module’s long-standing default; "Rank only" is the rulebook’s rank + 1d10.',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: { stat: 'Stat + rank + 1d10 (TECH for Interface)', rank: 'Rank only + 1d10 (rulebook)' },
+      default: 'stat',
+    });
+
     game.settings.register(MODULE_ID, 'securityLogSeen', {
       name: 'Security Log Last Seen',
       hint: 'Client timestamp of the last time this GM opened the Admin Security tab — drives the NEW markers.',
@@ -710,6 +751,69 @@ export class SettingsManager {
       config: false,
       type: String,
       default: 'serious',
+    });
+
+    // Admin → Messages (2026-10-27): the "answered" marker for Needs a reply
+    // ({ [baseMessageId]: isoTimestamp }) and the persistent delivery-failure
+    // log behind Outbox → Didn't arrive (MessageService.recordDeliveryFailure).
+    // Networks → Scenes → In compendiums: coverage for scenes still in a pack, keyed by the PACK uuid and applied
+    // when the scene is imported (NetworkService.applyScenePrewire, the createScene hook in registerNetworkSystem).
+    game.settings.register(MODULE_ID, 'scenePrewire', {
+      name: 'Scene Pre-wiring',
+      hint: 'Networks for compendium scenes, applied when one is imported ({ [packUuid]: { nets, start, dead } }). Admin → Networks → Scenes.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
+    // Network nodes (dev/design/NETWORK-NODES.md): the physical things that carry a network into a scene.
+    // { [nodeId]: node } — rules in utils/networkNodes.js, writes through NetworkService (GM; players relay).
+    game.settings.register(MODULE_ID, 'soundOverrides', {
+      name: 'Sound Replacements',
+      hint: 'The GM\'s own files for NCM sounds ({ [soundId]: { src, volume, off } }). Admin → Tools → Sounds.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
+    game.settings.register(MODULE_ID, 'networkNodes', {
+      name: 'Network Nodes',
+      hint: 'Routers, relays and masts that carry a network into a scene ({ [nodeId]: node }). Admin → Networks → a network → Nodes.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
+    // Jacking into a network node (utils/jackIn.js): ONLY what the GM changed; resolveJackIn layers it over the defaults.
+    // Admin → Security → Hacking rules → Jacking in.
+    game.settings.register(MODULE_ID, 'jackInRules', {
+      name: 'Jacking In Rules',
+      hint: 'How a character jacks into a network node and what they can do inside. Admin → Security → Hacking rules → Jacking in.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
+    game.settings.register(MODULE_ID, 'npcMailAnswered', {
+      name: 'NPC Mail Answered',
+      hint: 'Player mail the GM marked answered without replying ({ [messageId]: timestamp }). Admin → Messages → Needs a reply.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
+    game.settings.register(MODULE_ID, 'deliveryFailures', {
+      name: 'Delivery Failures',
+      hint: 'Mail that was refused or failed to deliver (newest first, capped). Admin → Messages → Outbox → Didn\'t arrive.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
     });
 
     game.settings.register(MODULE_ID, 'traceHeat', {

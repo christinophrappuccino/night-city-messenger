@@ -18,6 +18,7 @@ import { ContactRepository } from '../data/ContactRepository.js';
 import { MessageService } from '../services/MessageService.js';
 import { NotificationService } from '../services/NotificationService.js';
 import { SpamService } from '../services/SpamService.js';
+import { MessageTemplateService } from '../services/MessageTemplateService.js';
 
 // Integrations
 import { SocketHandlers } from '../integrations/SocketHandlers.js';
@@ -99,6 +100,15 @@ export function registerMessagingSystem(initializer) {
     spamService.load();
     game.nightcity.spamService = spamService;
     log.info('SpamService initialized');
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  READY PHASE — Priority 55: MessageTemplateService (GM mail templates)
+  // ═══════════════════════════════════════════════════════════════
+
+  initializer.register('ready', 55, 'MessageTemplateService', () => {
+    game.nightcity.messageTemplateService = new MessageTemplateService();
+    log.info('MessageTemplateService initialized');
   });
 
   // ═══════════════════════════════════════════════════════════════
@@ -305,6 +315,9 @@ export function registerMessagingSystem(initializer) {
         inReplyTo: options.inReplyTo ?? null,
         terminalSend: options.terminalSend ?? null,
         addressBook: options.addressBook ?? null,
+        // A draft opened on purpose (the Agent's Drafts tab / the footer link) —
+        // a fresh composer never restores one by itself.
+        draftId: options.draftId ?? null,
       });
 
       // Track and clean up

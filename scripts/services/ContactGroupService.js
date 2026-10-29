@@ -31,6 +31,18 @@ const now = () => new Date().toISOString();
 const uid = () => (globalThis.foundry?.utils?.randomID?.() || Math.random().toString(36).slice(2, 12));
 
 /** Normalize anything group-shaped into a stored group. Members de-duped. */
+/**
+ * A group's picture (2026-10-29): an image path or URL, shown on the group's chips, its tray, the composer chip and
+ * the admin lists. Anything that is not a plain path / http(s) / data:image is dropped.
+ */
+export function sanitizeGroupImg(v) {
+  const s = String(v ?? '').trim().slice(0, 1000);
+  if (!s) return '';
+  if (/^\s*(javascript|vbscript|data:(?!image\/))/i.test(s)) return '';
+  if (/["<>]/.test(s)) return '';
+  return s;
+}
+
 export function sanitizeGroup(raw = {}) {
   const members = dedupeMembers(Array.isArray(raw.members) ? raw.members : []);
   const color = GROUP_COLORS.includes(raw.color) || /^#[0-9a-f]{6}$/i.test(raw.color || '') ? raw.color : GROUP_COLORS[0];
@@ -38,6 +50,7 @@ export function sanitizeGroup(raw = {}) {
     id: String(raw.id || uid()),
     name: String(raw.name || '').trim().slice(0, 60) || 'Untitled group',
     color,
+    img: sanitizeGroupImg(raw.img),
     members,
     note: String(raw.note || '').slice(0, 400),
     createdAt: raw.createdAt || now(),

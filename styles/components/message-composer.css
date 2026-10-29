@@ -1,383 +1,274 @@
 /* ═══════════════════════════════════════════════════════════
- * Message Composer v3
+ * Message Composer — the clean revision (2026-10-28)
  * @file styles/components/message-composer.css
  * @module night-city-messenger
- * @description Conversation-first composer. Single compressed header,
- *   full message card for reply/forward, compact options, send animation.
- *   Replaces both message-composer.css and composer-atmosphere.css.
- *
+ * @description Built from dev/mockups/composer-clean-mock.html. One header
+ *   line · one alert line · quote card · address block · delivery chips +
+ *   ONE drawer · editor (format | insert) · attachment chips · footer.
+ *   TOKENS ONLY — every colour is var(--ncm-X, var(--ncm-fallback)) so the
+ *   same rules wear the admin preset (GM view, data-ncm-admin-theme) and any
+ *   player theme. Meaning colours: act (cyan) · attn (amber) · bad (red) ·
+ *   secret (violet) · money. Every font-size / control height is
+ *   calc(Npx * var(--ncm-text-scale, 1)).
+ *   The app root is .ncm-app.ncm-message-composer (SAME element); the
+ *   template root is .ncm-composer.
  * BEM: ncm-composer__*
  * ═══════════════════════════════════════════════════════════ */
 
+/* ─── Tones (set --tc on a subtree) ─── */
+.ncm-composer [data-tone="act"]    { --tc: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-composer [data-tone="attn"]   { --tc: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer [data-tone="bad"]    { --tc: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer [data-tone="secret"] { --tc: var(--ncm-secret, var(--ncm-purple)); }
+.ncm-composer [data-tone="good"]   { --tc: var(--ncm-good, var(--ncm-success)); }
+.ncm-composer [data-tone="money"]  { --tc: var(--ncm-money, var(--ncm-accent)); }
+.ncm-composer [data-tone="hint"]   { --tc: var(--ncm-text-label, var(--ncm-text-muted)); }
 
-/* ─── ROOT ─── */
-
+/* ─── Root ─── */
 .ncm-app .ncm-composer .ncm-hidden { display: none !important; }
 
-/* ─── FOUNDRY BUTTON OVERRIDE ───
-   Foundry's blanket button rule has specificity 0,2,1 and sets
-   display, background, border, padding, font, height, etc.
-   We must override with element+class selectors and !important. */
-
-.ncm-composer button.ncm-composer__opt-pill,
-.ncm-composer button.ncm-composer__enc-opt,
-.ncm-composer button.ncm-composer__toggle,
-.ncm-composer button.ncm-composer__destruct-pill,
-.ncm-composer button.ncm-composer__anon-pill,
-.ncm-composer button.ncm-composer__anon-reply,
-.ncm-composer button.ncm-composer__field-action,
-.ncm-composer button.ncm-composer__alert-action,
-.ncm-composer button.ncm-composer__tool,
-.ncm-composer button.ncm-composer__btn,
-.ncm-composer button.ncm-composer__strip-close {
-  display: inline-flex !important;
-  height: auto !important;
-  min-height: 0 !important;
-  min-width: 0 !important;
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
-  appearance: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  cursor: pointer !important;
-  text-transform: none !important;
-  margin: 0 !important;
-  background-image: none !important;
-}
-/* Width auto for all EXCEPT tool buttons (which need explicit 26px) */
-.ncm-composer button.ncm-composer__opt-pill,
-.ncm-composer button.ncm-composer__enc-opt,
-.ncm-composer button.ncm-composer__toggle,
-.ncm-composer button.ncm-composer__destruct-pill,
-.ncm-composer button.ncm-composer__anon-pill,
-.ncm-composer button.ncm-composer__anon-reply,
-.ncm-composer button.ncm-composer__field-action,
-.ncm-composer button.ncm-composer__alert-action,
-.ncm-composer button.ncm-composer__btn,
-.ncm-composer button.ncm-composer__strip-close {
-  width: auto !important;
-}
-.ncm-composer button.ncm-composer__opt-pill i,
-.ncm-composer button.ncm-composer .ncm-composer__enc-opt i,
-.ncm-composer button.ncm-composer .ncm-composer__toggle i,
-.ncm-composer button.ncm-composer__destruct-pill i,
-.ncm-composer button.ncm-composer__field-action i,
-.ncm-composer button.ncm-composer__alert-action i,
-.ncm-composer button.ncm-composer__tool i,
-.ncm-composer button.ncm-composer .ncm-composer__btn i {
-  margin: 0 !important;
-  padding: 0 !important;
-  margin-right: 0 !important;
-}
-
-
-/* Send button explicit override — must beat the reset block */
-.ncm-composer button.ncm-composer .ncm-composer__btn--send {
-  color: var(--ncm-bg-deep) !important;
-  background: var(--ncm-secondary) !important;
-  background-image: none !important;
-  border-color: var(--ncm-secondary) !important;
-  padding: 5px 18px !important;
-  font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
-  font-weight: 700 !important;
-}
-.ncm-composer button.ncm-composer .ncm-composer__btn--send:hover {
-  background: var(--ncm-secondary) !important;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ncm-secondary) 25%, transparent) !important;
-}
-.ncm-composer button.ncm-composer .ncm-composer__btn--schedule {
-  color: var(--ncm-accent) !important;
-  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent) !important;
-  border-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent) !important;
-  padding: 5px 18px !important;
-  font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
-  font-weight: 700 !important;
-}
-.ncm-composer button.ncm-composer .ncm-composer__btn--queue {
-  color: var(--ncm-primary) !important;
-  background: color-mix(in srgb, var(--ncm-danger) 6%, transparent) !important;
-  border-color: color-mix(in srgb, var(--ncm-danger) 25%, transparent) !important;
-  padding: 5px 14px !important;
-  font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
-  font-weight: 700 !important;
-}
-.ncm-composer button.ncm-composer .ncm-composer__btn--draft {
-  color: var(--ncm-text-muted) !important;
-  background: none !important;
-  border-color: var(--ncm-border) !important;
-  padding: 5px 14px !important;
-  font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
-  font-weight: 700 !important;
-}
-.ncm-composer button.ncm-composer .ncm-composer__btn--draft:hover {
-  color: var(--ncm-text-secondary) !important;
-  border-color: var(--ncm-border-active) !important;
-}
-
 .ncm-app .ncm-composer {
+  --tc: var(--ncm-act, var(--ncm-secondary));
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
   position: relative;
-  background: var(--ncm-bg-deep);
-  font-family: var(--ncm-font-display);
+  background: var(--ncm-bg-pane, var(--ncm-bg-base));
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-body);
+  font-size: calc(13px * var(--ncm-text-scale, 1));
 }
+.ncm-app .ncm-composer * { box-sizing: border-box; }
 
-
-/* ═══════════════════════════════════════════════════════════
-   §1 HEADER — single compressed row
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-composer__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
-  background: linear-gradient(180deg, var(--ncm-bg-deep), var(--ncm-bg-deep));
-  border-bottom: 1px solid var(--ncm-bg-surface);
-  flex-shrink: 0;
-  min-height: 44px;
-}
-
-/* Identity */
-.ncm-composer__identity {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-.ncm-composer__identity--clickable {
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.ncm-composer__identity--clickable:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
-}
-
-.ncm-composer__avatar {
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  background: var(--ncm-bg-surface);
-  border: 1.5px solid var(--ncm-border);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; overflow: hidden;
-}
-.ncm-composer__avatar img {
-  width: 100%; height: 100%;
-  object-fit: cover; border-radius: 50%;
-}
-.ncm-composer__avatar-initials {
-  font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-secondary);
-}
-.ncm-composer__avatar--gm {
-  border-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent);
-}
-.ncm-composer__avatar--gm .ncm-composer__avatar-initials {
-  color: var(--ncm-accent);
-}
-
-.ncm-composer__id-info {
-  display: flex; flex-direction: column;
-  min-width: 0;
-}
-.ncm-composer__id-name {
-  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  line-height: 1.1;
-}
-.ncm-composer__id-email {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); line-height: 1.1;
-}
-.ncm-composer__gm-tag.ncm-composer__term-tag { color: var(--ncm-accent, #f7c948); border-color: color-mix(in srgb, var(--ncm-accent, #f7c948) 45%, transparent); }
-.ncm-composer__gm-tag {
-  font-family: var(--ncm-font-title);
-  font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-accent);
-  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-accent) 20%, transparent);
-  border-radius: 2px; padding: 0 3px;
-  margin-left: 3px; letter-spacing: 0.06em;
-  vertical-align: middle;
-}
-.ncm-composer__id-caret {
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); margin-left: 2px;
-}
-
-.ncm-composer__header-divider {
-  width: 1px; height: 20px;
-  background: var(--ncm-bg-surface); flex-shrink: 0;
-}
-
-/* Network pill */
-.ncm-composer__net-pill {
-  display: flex; align-items: center; gap: 4px;
-  padding: 2px 7px;
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
-  border-radius: 10px; flex-shrink: 0;
-}
-.ncm-composer__net-pill--dead { border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent); }
-.ncm-composer__net-pill--darknet { border-color: color-mix(in srgb, var(--ncm-purple) 20%, transparent); }
-
-.ncm-composer__net-dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--ncm-secondary); box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
-  flex-shrink: 0;
-}
-.ncm-composer__net-dot--dead { background: var(--ncm-danger); box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-danger) 40%, transparent); }
-.ncm-composer__net-dot--darknet { background: var(--ncm-purple); box-shadow: 0 0 4px color-mix(in srgb, var(--ncm-purple) 40%, transparent); }
-
-.ncm-composer__net-name {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--net-c, var(--ncm-secondary));
-  text-transform: uppercase; letter-spacing: 0.04em;
-}
-
-.ncm-composer__net-bars {
-  display: flex; gap: 1px; align-items: flex-end; height: 9px;
-}
-.ncm-composer__net-bar {
-  width: 2px; background: var(--ncm-bg-surface); border-radius: 1px;
-}
-.ncm-composer__net-bar--active { background: var(--net-c, var(--ncm-secondary)); }
-/* A network colour is picked for a dark screen (CitiNet is #19f3f7). On the
-   light admin preset it is pulled toward the text colour so it stays the
-   network hue but reads on white. */
-[data-ncm-admin-theme="clean-light"] .ncm-composer__net-name,
-[data-ncm-admin-theme="clean-light"] .ncm-composer__net-bar--active {
-  --net-ink: color-mix(in oklab, var(--net-c, var(--ncm-secondary)) 45%, var(--ncm-text-primary));
-}
-[data-ncm-admin-theme="clean-light"] .ncm-composer__net-name { color: var(--net-ink); font-weight: 700; }
-[data-ncm-admin-theme="clean-light"] .ncm-composer__net-bar--active { background: var(--net-ink); }
-.ncm-composer__net-bar:nth-child(1) { height: 3px; }
-.ncm-composer__net-bar:nth-child(2) { height: 5px; }
-.ncm-composer__net-bar:nth-child(3) { height: 7px; }
-.ncm-composer__net-bar:nth-child(4) { height: 9px; }
-
-/* Pill is a button now (network picker). Reset Foundry's button defaults. */
+/* ─── FOUNDRY / CPR BUTTON RESET ───
+   Foundry's blanket button rule is 0,2,1 and sets display, width:100%,
+   background, border, padding, font, height. Element + two classes beats it;
+   structural props carry !important, visual props are set per component. */
+.ncm-composer button.ncm-composer__opt,
+.ncm-composer button.ncm-composer__btn,
+.ncm-composer button.ncm-composer__tool,
+.ncm-composer button.ncm-composer__row-e,
+.ncm-composer button.ncm-composer__alert-action,
+.ncm-composer button.ncm-composer__drawer-x,
+.ncm-composer button.ncm-composer__quote-more,
+.ncm-composer button.ncm-composer__dlink,
+.ncm-composer button.ncm-composer__ice-actor,
+.ncm-composer button.ncm-composer__sched-trigger,
 .ncm-composer button.ncm-composer__net-pill,
-.ncm-composer button.ncm-composer__time-chip {
+.ncm-composer button.ncm-composer__time-chip,
+.ncm-composer button.ncm-composer__net-fchip,
+.ncm-composer .ncm-composer__seg > button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px;
   width: auto !important;
   height: auto !important;
   min-height: 0 !important;
+  min-width: 0 !important;
   flex: 0 0 auto !important;
   margin: 0 !important;
   appearance: none !important;
   box-shadow: none !important;
-  background: transparent;
+  outline: none !important;
   background-image: none !important;
-  cursor: pointer !important;
-  line-height: 1 !important;
-  font-family: inherit;
   text-transform: none !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  white-space: nowrap;
+  font-family: var(--ncm-font-display);
 }
-/* Foundry's button rule (0,2,1) outranks the base .ncm-composer__net-pill /
-   __time-chip visuals, so they are restated at button specificity. */
+.ncm-composer button.ncm-composer__opt i,
+.ncm-composer button.ncm-composer__btn i,
+.ncm-composer button.ncm-composer__tool i,
+.ncm-composer button.ncm-composer__row-e i,
+.ncm-composer button.ncm-composer__drawer-x i,
+.ncm-composer button.ncm-composer__quote-more i,
+.ncm-composer button.ncm-composer__dlink i,
+.ncm-composer button.ncm-composer__time-chip i,
+.ncm-composer .ncm-composer__seg > button i { margin: 0 !important; padding: 0 !important; }
+.ncm-composer button:focus-visible { outline: 1px solid var(--ncm-act, var(--ncm-secondary)) !important; outline-offset: 1px; }
+
+/* ═══════════════════════════════════════════════════════════
+   HEADER — who · network · date
+   ═══════════════════════════════════════════════════════════ */
+.ncm-composer__header {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: calc(46px * var(--ncm-text-scale, 1));
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ncm-border);
+  background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface));
+}
+
+.ncm-composer__identity {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 9px;
+  padding: 4px 6px 4px 4px; margin-left: -4px;
+  border-radius: 2px;
+}
+.ncm-composer__identity--clickable { cursor: pointer; }
+.ncm-composer__identity--clickable:hover { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 8%, transparent); }
+.ncm-composer__identity--anon { --tc: var(--ncm-secret, var(--ncm-purple)); }
+
+/* The round avatar — initials in the name's hue; a portrait when there is one;
+   the anon mask (anon-mask.css, fills inset:0) when masked. */
+.ncm-composer__avatar {
+  position: relative; flex: none;
+  width: calc(30px * var(--ncm-text-scale, 1)); height: calc(30px * var(--ncm-text-scale, 1));
+  border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center;
+  border: 1px solid var(--tc);
+  background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane, var(--ncm-bg-base)));
+  color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading, var(--ncm-text-primary)));
+  font-family: var(--ncm-font-display);
+  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700;
+}
+.ncm-composer__avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 0; }
+.ncm-composer__avatar--sm { width: calc(22px * var(--ncm-text-scale, 1)); height: calc(22px * var(--ncm-text-scale, 1)); font-size: calc(8.5px * var(--ncm-text-scale, 1)); }
+.ncm-composer__avatar--anon {
+  border-color: var(--ncm-secret, var(--ncm-purple));
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 35%, transparent) 0 2px, transparent 2px 4px);
+}
+
+.ncm-composer__id-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ncm-composer__id-name {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--ncm-font-display);
+  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 600;
+  color: var(--ncm-text-heading, var(--ncm-text-primary));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ncm-composer__id-email {
+  font-family: var(--ncm-font-mono);
+  font-size: calc(11px * var(--ncm-text-scale, 1));
+  color: var(--ncm-text-addr, var(--ncm-text-muted));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ncm-composer__id-caret { color: var(--ncm-text-hint, var(--ncm-text-muted)); font-size: calc(9px * var(--ncm-text-scale, 1)); flex: none; }
+
+/* Small tag — GM / VIA / ANON */
+.ncm-composer__tag {
+  --tc: var(--ncm-act, var(--ncm-secondary));
+  display: inline-grid; place-items: center; flex: none;
+  height: calc(14px * var(--ncm-text-scale, 1)); padding: 0 5px;
+  border-radius: 1px;
+  border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent);
+  background: color-mix(in srgb, var(--tc) 14%, transparent);
+  color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading, var(--ncm-text-primary)));
+  font-family: var(--ncm-font-display);
+  font-size: calc(8.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .06em;
+  white-space: nowrap;
+}
+.ncm-composer__tag--attn { --tc: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer__tag--secret { --tc: var(--ncm-secret, var(--ncm-purple)); }
+
+/* Network pill — a button; carries the network colour as --net-c */
 .ncm-composer button.ncm-composer__net-pill {
-  display: flex !important; align-items: center; gap: 4px;
-  padding: 2px 7px !important;
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
-  border-radius: 10px !important;
-  font-size: inherit;
-}
-.ncm-composer button.ncm-composer__net-pill--dead { border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent); }
-.ncm-composer button.ncm-composer__net-pill--darknet { border-color: color-mix(in srgb, var(--ncm-purple) 20%, transparent); }
-.ncm-composer button.ncm-composer__time-chip {
-  display: flex !important; flex-direction: column; align-items: center;
-  padding: 1px 6px !important;
-  color: inherit;
-  font-size: inherit;
+  --net-c: var(--ncm-act, var(--ncm-secondary));
+  gap: 7px;
+  height: calc(28px * var(--ncm-text-scale, 1)) !important;
+  padding: 0 9px !important;
+  border: 1px solid color-mix(in srgb, var(--net-c) 45%, var(--ncm-border)) !important;
+  border-radius: 2px !important;
+  background: color-mix(in srgb, var(--net-c) 8%, transparent) !important;
+  color: var(--ncm-text-heading, var(--ncm-text-primary)) !important;
+  font-size: calc(12px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
 }
 .ncm-composer button.ncm-composer__net-pill:hover,
-.ncm-composer button.ncm-composer__net-pill--open {
-  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
-  background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent);
-}
-.ncm-composer__net-caret {
-  font-size: calc(8px * var(--ncm-text-scale, 1)) !important;
-  color: var(--ncm-text-muted);
-  margin: 0 0 0 1px !important;
-}
-/* GM override — this message goes out on a network that isn't the GM's own. */
-.ncm-composer button.ncm-composer__net-pill--override {
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--ncm-accent) 55%, transparent);
-}
-.ncm-composer__net-via,
-.ncm-composer__time-tag {
+.ncm-composer button.ncm-composer__net-pill--open { border-color: var(--net-c) !important; background: color-mix(in srgb, var(--net-c) 14%, transparent) !important; }
+.ncm-composer button.ncm-composer__net-pill--dead { --net-c: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer button.ncm-composer__net-pill--darknet { --net-c: var(--ncm-secret, var(--ncm-purple)); }
+.ncm-composer button.ncm-composer__net-pill--override { border-style: dashed !important; border-color: var(--ncm-attn, var(--ncm-accent)) !important; }
+.ncm-composer__net-via { font-size: calc(8.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .08em; color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer__net-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--net-c); box-shadow: 0 0 5px var(--net-c); flex: none; }
+.ncm-composer__net-name { max-width: calc(140px * var(--ncm-text-scale, 1)); overflow: hidden; text-overflow: ellipsis; }
+.ncm-composer__net-bars { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; }
+.ncm-composer__net-bars b { width: 3px; background: color-mix(in srgb, var(--net-c) 30%, transparent); }
+.ncm-composer__net-bars b.is-on { background: var(--net-c); }
+.ncm-composer__net-bars b:nth-child(1) { height: 4px; } .ncm-composer__net-bars b:nth-child(2) { height: 6px; }
+.ncm-composer__net-bars b:nth-child(3) { height: 8px; } .ncm-composer__net-bars b:nth-child(4) { height: 10px; }
+.ncm-composer__net-caret { color: var(--ncm-text-hint, var(--ncm-text-muted)); font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-composer__fx-tag {
   font-family: var(--ncm-font-display);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--ncm-accent);
+  font-size: calc(8.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .05em;
+  padding: 1px 4px; border-radius: 1px;
 }
-.ncm-composer__net-via {
-  border: 1px solid color-mix(in srgb, var(--ncm-accent) 35%, transparent);
-  border-radius: 1px; padding: 0 3px;
+.ncm-composer__fx-tag--warn { color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer__fx-tag--danger { color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer__fx-tag--info { color: color-mix(in oklab, var(--ncm-secret, var(--ncm-purple)) 75%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+/* A network colour is picked for a dark screen (CitiNet is #19f3f7); on the
+   light preset the NAME and the lit bars are pulled toward the text colour so
+   they keep the hue but read on white (the pill's --net-c is inline, so the
+   ink is a second variable). */
+[data-ncm-admin-theme="clean-light"] .ncm-composer__net-name,
+[data-ncm-admin-theme="clean-light"] .ncm-composer__net-bars b.is-on,
+[data-ncm-admin-theme="clean-light"] .ncm-composer__quote-when b {
+  --net-ink: color-mix(in oklab, var(--net-c, var(--ncm-act, var(--ncm-secondary))) 38%, var(--ncm-text-primary));
 }
+[data-ncm-admin-theme="clean-light"] .ncm-composer__net-name,
+[data-ncm-admin-theme="clean-light"] .ncm-composer__quote-when b { color: var(--net-ink); font-weight: 700; }
+[data-ncm-admin-theme="clean-light"] .ncm-composer__net-bars b.is-on { background: var(--net-ink); }
 
-/* GM date chip — clickable; a backdated message wears the same amber as VIA. */
-.ncm-composer button.ncm-composer__time-chip--gm {
-  border: 1px solid transparent;
-  border-radius: 2px;
-  gap: 1px;
+/* Date chip */
+.ncm-composer button.ncm-composer__time-chip,
+.ncm-composer div.ncm-composer__time-chip {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  height: calc(28px * var(--ncm-text-scale, 1)) !important; padding: 0 9px !important;
+  border: 1px solid var(--ncm-border) !important; border-radius: 2px !important;
+  background: transparent !important;
+  color: var(--ncm-text-time, var(--ncm-text-secondary)) !important;
+  font-family: var(--ncm-font-mono) !important;
+  font-size: calc(12px * var(--ncm-text-scale, 1)) !important; font-weight: 400 !important;
 }
-.ncm-composer button.ncm-composer__time-chip--gm:hover {
-  border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
-}
-.ncm-composer button.ncm-composer__time-chip--dated {
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--ncm-accent) 55%, transparent);
-}
-.ncm-composer__time-chip--dated .ncm-composer__time-val { color: var(--ncm-accent); }
+.ncm-composer .ncm-composer__time-chip > i:first-child { color: var(--ncm-text-label, var(--ncm-text-muted)); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-composer__time-caret { color: var(--ncm-text-hint, var(--ncm-text-muted)); font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-composer button.ncm-composer__time-chip:hover { border-color: var(--ncm-border-active, var(--ncm-border)) !important; color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; }
+.ncm-composer button.ncm-composer__time-chip--dated { border-color: var(--ncm-attn, var(--ncm-accent)) !important; color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; }
+.ncm-composer button.ncm-composer__time-chip--dated > i:first-child { color: var(--ncm-attn, var(--ncm-accent)); }
 
-/* Network picker dropdown — the inbox selector (network-selector.css),
-   anchored under the pill. `left` is set in JS from the pill's offset. */
-.ncm-composer__header { position: relative; }
+/* ─── Network picker dropdown — the inbox selector (network-selector.css),
+   anchored under the pill. `left` is set in JS from the pill's offset. ─── */
 .ncm-app .ncm-composer .ncm-net-selector.ncm-composer__net-picker {
+  position: absolute;
   top: calc(100% - 2px);
   width: 300px;
   z-index: 60;
 }
 .ncm-app .ncm-composer .ncm-net-selector.ncm-composer__net-picker:has(.ncm-composer__net-filters) { width: 330px; }
-.ncm-app .ncm-composer .ncm-composer__net-list {
-  max-height: 260px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
+.ncm-app .ncm-composer .ncm-composer__net-list { max-height: 260px; overflow-y: auto; overflow-x: hidden; }
 .ncm-app .ncm-composer .ncm-net-option { cursor: pointer; }
+.ncm-app .ncm-composer .ncm-net-option__icon { background: color-mix(in srgb, var(--net-c) 12%, transparent); color: var(--net-c); border: 1px solid color-mix(in srgb, var(--net-c) 30%, transparent); }
 .ncm-app .ncm-composer .ncm-composer__net-row--pinned { border-bottom: 1px solid var(--ncm-border); }
-.ncm-app .ncm-composer .ncm-composer__net-row--oor .ncm-net-option__name { opacity: 0.7; }
+.ncm-app .ncm-composer .ncm-composer__net-row--oor .ncm-net-option__name { opacity: .7; }
 .ncm-app .ncm-net-option__chip--via {
-  color: var(--ncm-accent);
-  border: 1px solid color-mix(in srgb, var(--ncm-accent) 40%, transparent);
-  background: color-mix(in srgb, var(--ncm-accent) 8%, transparent);
+  color: var(--ncm-attn, var(--ncm-accent));
+  border: 1px solid color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 8%, transparent);
 }
-.ncm-app .ncm-composer .ncm-composer__net-foot--gm { color: var(--ncm-accent); }
-.ncm-composer__net-empty {
-  padding: 14px;
-  text-align: center;
-  font-size: calc(12px * var(--ncm-text-scale, 1));
-  color: var(--ncm-text-muted);
-}
-
-/* GM search + filter chips (pinned above the scrolling list) */
+.ncm-app .ncm-composer .ncm-composer__net-foot--gm { color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer__net-empty { padding: 14px; text-align: center; font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); }
 .ncm-composer__net-filters {
   padding: 8px 10px 6px;
   border-bottom: 1px solid var(--ncm-border);
-  background: var(--ncm-bg-base);
+  background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface));
   display: flex; flex-direction: column; gap: 6px;
 }
-.ncm-composer__net-search {
+.ncm-composer__net-search, .ncm-composer__sendas-search {
   display: flex; align-items: center; gap: 6px;
-  padding: 0 8px; height: 26px;
-  border: 1px solid var(--ncm-border); border-radius: 2px;
-  background: var(--ncm-bg-deep);
+  padding: 0 8px; height: calc(26px * var(--ncm-text-scale, 1));
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px;
+  background: var(--ncm-bg-pane, var(--ncm-bg-base));
 }
-.ncm-composer__net-search:focus-within { border-color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent); }
-.ncm-composer__net-search i { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
-.ncm-app .ncm-composer .ncm-composer__net-search input {
+.ncm-composer__net-search:focus-within, .ncm-composer__sendas-search:focus-within { border-color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-composer__net-search i, .ncm-composer__sendas-search i { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-app .ncm-composer .ncm-composer__net-search input,
+.ncm-app .ncm-composer .ncm-composer__sendas-search input {
   flex: 1; min-width: 0;
   height: calc(24px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important;
   border: 0 !important; padding: 0 !important; margin: 0 !important;
@@ -389,1037 +280,440 @@
 }
 .ncm-composer__net-fchips { display: flex; flex-wrap: wrap; gap: 4px; }
 .ncm-composer button.ncm-composer__net-fchip {
-  display: inline-flex !important; align-items: center; gap: 4px;
-  width: auto !important; height: auto !important; min-height: 0 !important;
-  flex: 0 0 auto !important; margin: 0 !important;
-  appearance: none !important; box-shadow: none !important; background-image: none !important;
-  padding: 3px 6px; line-height: 1;
-  font-family: var(--ncm-font-display);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 700;
-  letter-spacing: 0.04em; text-transform: uppercase;
-  color: var(--ncm-text-secondary);
-  background: transparent;
-  border: 1px solid var(--ncm-border); border-radius: 2px;
-  cursor: pointer;
+  gap: 4px; padding: 0 6px !important; height: calc(18px * var(--ncm-text-scale, 1)) !important;
+  font-size: calc(9.5px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
+  color: var(--ncm-text-secondary) !important;
+  background: transparent !important;
+  border: 1px solid var(--ncm-border) !important; border-radius: 2px !important;
 }
-.ncm-composer button.ncm-composer__net-fchip span {
-  font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-muted);
-}
-.ncm-composer button.ncm-composer__net-fchip:hover { border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
-.ncm-composer button.ncm-composer__net-fchip--on {
-  color: var(--ncm-secondary);
-  border-color: color-mix(in srgb, var(--ncm-secondary) 55%, transparent);
-  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
-}
+.ncm-composer button.ncm-composer__net-fchip span { font-family: var(--ncm-font-mono); font-weight: 400; font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-composer button.ncm-composer__net-fchip:hover { border-color: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 40%, transparent) !important; }
+.ncm-composer button.ncm-composer__net-fchip--on { color: var(--ncm-act, var(--ncm-secondary)) !important; border-color: var(--ncm-act, var(--ncm-secondary)) !important; }
 
-.ncm-composer__fx-tag {
-  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.04em;
-  padding: 1px 4px; border-radius: 2px;
-}
-.ncm-composer__fx-tag--warn { color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 6%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 12%, transparent); }
-.ncm-composer__fx-tag--danger { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 4%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-danger) 12%, transparent); }
-.ncm-composer__fx-tag--info { color: var(--ncm-purple); background: color-mix(in srgb, var(--ncm-purple) 4%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-purple) 12%, transparent); }
-
-/* Time chip */
-.ncm-composer__time-chip {
-  display: flex; flex-direction: column;
-  align-items: center; padding: 1px 6px; flex-shrink: 0;
-}
-.ncm-composer__time-label {
-  font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-muted);
-  text-transform: uppercase; letter-spacing: 0.06em; line-height: 1;
-}
-.ncm-composer__time-val {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); line-height: 1.2;
-  white-space: nowrap;
-}
-
-/* Mode badge */
-.ncm-composer__mode {
-  margin-left: auto;
-  font-family: var(--ncm-font-title);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.08em;
-  padding: 2px 8px; border-radius: 2px;
-  flex-shrink: 0;
-}
-.ncm-composer__mode i { font-size: calc(8px * var(--ncm-text-scale, 1)); margin-right: 3px; }
-.ncm-composer__mode--compose, .ncm-composer__mode--new {
-  color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
-}
-.ncm-composer__mode--reply {
-  color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
-}
-.ncm-composer__mode--forward {
-  color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 5%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 12%, transparent);
-}
-.ncm-composer__mode--sendas {
-  color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 5%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 12%, transparent);
-}
-
-/* Close */
-.ncm-composer__close {
-  width: 22px; height: 22px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid transparent; border-radius: 3px;
-  background: none; color: var(--ncm-text-muted); font-size: calc(10px * var(--ncm-text-scale, 1));
-  cursor: pointer; transition: all 0.15s; flex-shrink: 0;
-}
-.ncm-composer__close:hover { color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent); }
-
-
-/* ═══════════════════════════════════════════════════════════
-   §2 GM SEND-AS DROPDOWN
-   ═══════════════════════════════════════════════════════════ */
-
+/* ─── Send-as dropdown (GM) ─── */
 .ncm-composer__sendas-dropdown {
-  border-bottom: 1px solid var(--ncm-bg-surface);
-  background: var(--ncm-bg-deep);
-  max-height: 260px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
-  position: relative;
-}
-.ncm-composer__sendas-dropdown::before {
-  content: '';
-  position: sticky;
-  top: 0; left: 0; right: 0; height: 1px;
-  display: block;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ncm-accent) 20%, transparent) 30%, color-mix(in srgb, var(--ncm-accent) 20%, transparent) 70%, transparent);
+  position: absolute; left: 12px; top: calc(44px * var(--ncm-text-scale, 1));
+  width: 320px; z-index: 61;
+  display: flex; flex-direction: column;
+  max-height: 360px;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px;
+  background: var(--ncm-bg-raised, var(--ncm-bg-elevated, var(--ncm-bg-surface)));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
 }
 .ncm-composer__sendas-header {
-  padding: 8px 14px;
-  font-family: var(--ncm-font-title);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 600;
-  color: var(--ncm-accent); text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border-bottom: 1px solid var(--ncm-bg-base);
-  display: flex; align-items: center; gap: 6px;
-  background: color-mix(in srgb, var(--ncm-accent) 2%, transparent);
+  display: flex; align-items: center; gap: 6px; padding: 7px 10px;
+  font-family: var(--ncm-font-display);
+  font-size: calc(10.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .04em;
+  color: var(--ncm-text-label, var(--ncm-text-muted));
+  border-bottom: 1px solid var(--ncm-border);
 }
-.ncm-composer__sendas-header i { font-size: calc(10px * var(--ncm-text-scale, 1)); opacity: 0.6; }
-.ncm-composer__sendas-search {
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--ncm-bg-base);
-  position: relative;
+.ncm-composer__sendas-header i { color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-composer__sendas-search { margin: 7px 8px 5px; }
+.ncm-composer__sendas-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 2px 0; }
+.ncm-composer__sendas-foot { padding: 6px 10px; font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); border-top: 1px solid var(--ncm-border); }
+.ncm-sendas-item {
+  display: grid; grid-template-columns: calc(26px * var(--ncm-text-scale, 1)) minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  padding: 6px 10px; cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent);
 }
-.ncm-composer__sendas-search input {
-  width: 100%;
-  background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important;
-  border-radius: 4px !important; padding: 7px 10px !important;
-  font-family: var(--ncm-font-display) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
-  color: var(--ncm-text-primary) !important; outline: none !important;
-  box-shadow: none !important; height: auto !important;
+.ncm-sendas-item:hover { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 8%, transparent); }
+.ncm-sendas-item--active { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, transparent); box-shadow: inset 3px 0 var(--ncm-act, var(--ncm-secondary)); }
+.ncm-sendas-item__avatar {
+  width: calc(26px * var(--ncm-text-scale, 1)); height: calc(26px * var(--ncm-text-scale, 1)); border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1px solid var(--tc); background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane, var(--ncm-bg-base)));
+  color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading, var(--ncm-text-primary)));
+  font-family: var(--ncm-font-display); font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 700;
 }
-.ncm-composer__sendas-search input:focus { border-color: var(--ncm-accent) !important; }
-.ncm-composer__sendas-search input::placeholder { color: var(--ncm-text-muted); }
-.ncm-composer__sendas-list {
-  padding: 4px 0;
-}
-
+.ncm-sendas-item__info { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ncm-sendas-item__name { font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-sendas-item__name span { font-family: var(--ncm-font-display); font-weight: 500; color: var(--ncm-text-secondary); }
+.ncm-sendas-item__email { font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-addr, var(--ncm-text-muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-sendas-item__type { font-family: var(--ncm-font-display); font-size: calc(9.5px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-label, var(--ncm-text-muted)); letter-spacing: .04em; }
+.ncm-sendas-item__type.is-alias { color: color-mix(in oklab, var(--ncm-secret, var(--ncm-purple)) 75%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-sendas-item--active .ncm-sendas-item__type { color: var(--ncm-act, var(--ncm-secondary)); }
 
 /* ═══════════════════════════════════════════════════════════
-   §3 ALERTS
+   ALERT — one slim line
    ═══════════════════════════════════════════════════════════ */
-
 .ncm-composer__alert {
-  display: flex; align-items: center;
-  gap: 8px; padding: 5px 14px;
-  font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 600;
-  border-bottom: 1px solid;
+  flex: none; display: flex; align-items: center; gap: 8px;
+  min-height: calc(28px * var(--ncm-text-scale, 1)); padding: 4px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--tc) 40%, var(--ncm-border));
+  background: color-mix(in srgb, var(--tc) 10%, var(--ncm-bg-pane, var(--ncm-bg-base)));
+  font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary);
 }
-.ncm-composer__alert--danger {
-  background: color-mix(in srgb, var(--ncm-danger) 3%, transparent); border-color: color-mix(in srgb, var(--ncm-danger) 8%, transparent); color: var(--ncm-primary);
+.ncm-composer__alert--bad { --tc: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer__alert--secret { --tc: var(--ncm-secret, var(--ncm-purple)); }
+.ncm-composer__alert > i { color: var(--tc); font-size: calc(11px * var(--ncm-text-scale, 1)); }
+.ncm-composer__alert b { color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading, var(--ncm-text-primary))); font-weight: 700; }
+.ncm-composer__alert > span { flex: 1; min-width: 0; }
+.ncm-composer button.ncm-composer__alert-action {
+  height: calc(20px * var(--ncm-text-scale, 1)) !important; padding: 0 8px !important;
+  border: 1px solid var(--tc) !important; border-radius: 2px !important;
+  background: transparent !important; color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading, var(--ncm-text-primary))) !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; font-weight: 700 !important;
 }
-.ncm-composer__alert--warn {
-  background: color-mix(in srgb, var(--ncm-purple) 3%, transparent); border-color: color-mix(in srgb, var(--ncm-purple) 8%, transparent); color: var(--ncm-purple);
-}
-.ncm-composer__alert i { font-size: calc(9px * var(--ncm-text-scale, 1)); flex-shrink: 0; }
-.ncm-composer__alert-text { flex: 1; }
-.ncm-composer .ncm-composer__alert-action {
-  font-family: var(--ncm-font-display) !important;
-  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; font-weight: 700 !important;
-  text-transform: uppercase !important; letter-spacing: 0.06em !important;
-  padding: 2px 8px !important; border-radius: 2px !important;
-  cursor: pointer !important; background: none !important;
-  color: var(--ncm-primary) !important; border: 1px solid color-mix(in srgb, var(--ncm-danger) 20%, transparent) !important;
-  transition: all 0.12s !important;
-}
-.ncm-composer .ncm-composer__alert-action:hover { background: color-mix(in srgb, var(--ncm-danger) 6%, transparent) !important; }
-
+.ncm-composer button.ncm-composer__alert-action:hover { background: color-mix(in srgb, var(--tc) 14%, transparent) !important; }
 
 /* ═══════════════════════════════════════════════════════════
-   §4 CONVERSATION CONTEXT — Original message card
+   BODY — the scroller
    ═══════════════════════════════════════════════════════════ */
+.ncm-composer__body {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;
+  padding-bottom: 8px;
+}
+.ncm-composer__body > * { flex: 0 0 auto; }
 
-.ncm-composer__context {
-  flex: 0 0 auto;
-  max-height: 240px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
+/* ─── Quote card (reply / forward) ─── */
+.ncm-composer__quote {
+  --tc: var(--ncm-act, var(--ncm-secondary));
+  margin: 10px 12px 0;
+  border: 1px solid var(--ncm-border); border-left: 3px solid var(--tc); border-radius: 2px;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface));
+  padding: 7px 10px 6px;
 }
-
-.ncm-composer__msg-card {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--ncm-bg-base);
+.ncm-composer__quote--forward { --tc: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer__quote-lbl {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+  font-family: var(--ncm-font-display);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .04em;
+  color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading, var(--ncm-text-primary)));
 }
-.ncm-composer__msg-card--reply { border-left: 3px solid var(--ncm-secondary); }
-.ncm-composer__msg-card--forward { border-left: 3px solid var(--ncm-accent); }
-
-.ncm-composer__context-label {
-  display: flex; align-items: center; gap: 5px;
-  font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.06em;
-  margin-bottom: 10px; padding-bottom: 6px;
-  border-bottom: 1px solid var(--ncm-bg-base);
-}
-.ncm-composer__context-label i { opacity: 0.5; }
-.ncm-composer__context-label--reply { color: var(--ncm-secondary); }
-.ncm-composer__context-label--forward { color: var(--ncm-accent); }
-
-.ncm-composer__msg-header {
-  display: flex; align-items: flex-start;
-  gap: 8px; margin-bottom: 8px;
-}
-.ncm-composer__msg-avatar {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: var(--ncm-bg-base); border: 1.5px solid var(--ncm-border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-secondary);
-  flex-shrink: 0; overflow: hidden;
-}
-.ncm-composer__msg-avatar img {
-  width: 100%; height: 100%;
-  object-fit: cover; border-radius: 50%;
-}
-.ncm-composer__msg-meta { flex: 1; min-width: 0; }
-.ncm-composer__msg-sender {
-  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary); line-height: 1.2;
-}
-.ncm-composer__msg-detail-row {
-  display: flex; align-items: center; gap: 6px; margin-top: 2px;
-}
-.ncm-composer__msg-email {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-}
-.ncm-composer__msg-time {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-}
-.ncm-composer__msg-net-tag {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); padding: 0 5px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
-  color: var(--ncm-secondary);
-  background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent);
-}
-.ncm-composer__msg-subject {
-  font-family: var(--ncm-font-title);
-  font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 600;
-  color: var(--ncm-text-muted); margin-bottom: 6px;
-  letter-spacing: 0.02em;
-}
+.ncm-composer__quote-ice { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0; font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: color-mix(in oklab, var(--ncm-secret, var(--ncm-purple)) 75%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-composer__quote-ice i { color: var(--ncm-secret, var(--ncm-purple)); }
+.ncm-composer__quote-hd { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 7px; align-items: center; }
+.ncm-composer__quote-sender { font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-composer__quote-sender span { margin-left: 6px; font-family: var(--ncm-font-mono); font-weight: 400; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-addr, var(--ncm-text-muted)); }
+.ncm-composer__quote-when { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); white-space: nowrap; }
+.ncm-composer__quote-when b { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--net-c, var(--ncm-text-secondary)); }
+.ncm-composer__quote-subject { margin: 6px 0 2px; font-family: var(--ncm-font-display); font-size: calc(12.5px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
 .ncm-composer__msg-body {
-  font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  line-height: 1.5;
-  max-height: 80px; overflow: hidden;
   position: relative;
+  font-family: var(--ncm-font-body);
+  font-size: calc(12px * var(--ncm-text-scale, 1)); line-height: 1.45;
+  color: var(--ncm-text-primary);
+  max-height: calc(36px * var(--ncm-text-scale, 1)); overflow: hidden;
+  user-select: text;
 }
-.ncm-composer__msg-body--expanded { max-height: none; }
-.ncm-composer__msg-body-fade {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  height: 30px;
-  background: linear-gradient(transparent, var(--ncm-bg-deep));
-  pointer-events: none;
+.ncm-composer__msg-body--expanded { max-height: calc(220px * var(--ncm-text-scale, 1)); overflow-y: auto; overflow-x: hidden; }
+.ncm-composer__msg-body-fade { position: absolute; left: 0; right: 0; bottom: 0; height: calc(16px * var(--ncm-text-scale, 1)); background: linear-gradient(transparent, var(--ncm-bg-card, var(--ncm-bg-surface))); pointer-events: none; }
+.ncm-composer__msg-body p { margin: 0 0 .4em; }
+.ncm-composer button.ncm-composer__quote-more {
+  margin-top: 4px !important; padding: 0 !important; height: auto !important;
+  background: transparent !important; border: 0 !important;
+  color: var(--ncm-act, var(--ncm-secondary)) !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important; font-weight: 500 !important;
 }
-.ncm-composer__msg-body--expanded + .ncm-composer__msg-body-fade,
-.ncm-composer__msg-body--expanded .ncm-composer__msg-body-fade { display: none; }
+.ncm-composer button.ncm-composer__quote-more i { font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-composer button.ncm-composer__quote-more:hover { text-decoration: underline; }
+.ncm-composer__quote-att { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.ncm-composer__quote-att span {
+  display: inline-flex; gap: 4px; align-items: center;
+  height: calc(18px * var(--ncm-text-scale, 1)); padding: 0 6px;
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary);
+}
+.ncm-composer__quote-att span.is-money { color: var(--ncm-money, var(--ncm-accent)); border-color: color-mix(in srgb, var(--ncm-money, var(--ncm-accent)) 50%, transparent); }
 
-.ncm-composer__msg-expand {
-  display: flex; align-items: center; gap: 4px;
-  font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-muted);
-  cursor: pointer; margin-top: 6px; transition: color 0.12s;
+/* ─── Address block ─── */
+.ncm-composer__addr {
+  margin: 10px 12px 0;
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface));
 }
-.ncm-composer__msg-expand:hover { color: var(--ncm-secondary); }
-.ncm-composer__msg-expand i { font-size: calc(7px * var(--ncm-text-scale, 1)); transition: transform 0.15s; }
+.ncm-composer__row {
+  position: relative;
+  display: grid; grid-template-columns: calc(58px * var(--ncm-text-scale, 1)) minmax(0, 1fr) auto;
+  align-items: center; gap: 8px;
+  min-height: calc(32px * var(--ncm-text-scale, 1)); padding: 0 8px 0 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+}
+.ncm-composer__row:last-child { border-bottom: 0; }
+.ncm-composer__row-k { font-family: var(--ncm-font-display); font-size: calc(11.5px * var(--ncm-text-scale, 1)); font-weight: 500; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-composer__row.is-err { box-shadow: inset 3px 0 var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer__row.is-err .ncm-composer__row-k { color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer__row-err {
+  grid-column: 1 / -1; display: flex; gap: 5px; align-items: center;
+  margin-top: -3px; padding: 0 0 5px;
+  font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-bad, var(--ncm-danger));
+}
+.ncm-composer__row-err--general { padding: 6px 10px; margin: 0; border-top: 1px solid color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 30%, var(--ncm-border)); }
+.ncm-composer button.ncm-composer__row-e {
+  height: calc(20px * var(--ncm-text-scale, 1)) !important; padding: 0 4px !important;
+  background: transparent !important; border: 0 !important;
+  color: var(--ncm-text-label, var(--ncm-text-muted)) !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important; font-weight: 500 !important;
+}
+.ncm-composer button.ncm-composer__row-e:hover { color: var(--ncm-act, var(--ncm-secondary)) !important; }
+.ncm-composer__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-width: 0; padding: 4px 0; }
+.ncm-app .ncm-composer .ncm-composer__field-input {
+  flex: 1 1 120px; min-width: 100px;
+  height: calc(22px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important;
+  border: 0 !important; padding: 0 !important; margin: 0 !important;
+  background: transparent !important; box-shadow: none !important; outline: none !important;
+  color: var(--ncm-text-heading, var(--ncm-text-primary));
+  font-family: var(--ncm-font-body);
+  font-size: calc(12.5px * var(--ncm-text-scale, 1));
+  text-align: left;
+}
+.ncm-app .ncm-composer .ncm-composer__field-input::placeholder { color: var(--ncm-text-hint, var(--ncm-text-muted)); opacity: 1; }
+.ncm-app .ncm-composer .ncm-composer__field-input--subject { flex: 1 1 100%; }
 
-.ncm-composer__msg-enc-badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: color-mix(in srgb, var(--ncm-success) 40%, transparent); margin-top: 6px;
-}
-.ncm-composer__msg-attachments {
-  display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap;
-}
-.ncm-composer__msg-attach {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  padding: 2px 6px;
-  background: color-mix(in srgb, var(--ncm-secondary) 2%, transparent);
-  border: 1px solid var(--ncm-bg-surface); border-radius: 3px;
-}
-.ncm-composer__msg-attach i { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
-.ncm-composer__msg-attach--eddies i { color: var(--ncm-accent); }
-
-/* Reply/Forward divider */
-.ncm-composer__reply-divider {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 14px; background: var(--ncm-bg-deep);
-}
-.ncm-composer__reply-divider-line {
-  flex: 1; height: 1px;
-  background: linear-gradient(90deg, var(--ncm-bg-surface), transparent);
-}
-.ncm-composer__reply-divider-line--right {
-  background: linear-gradient(90deg, transparent, var(--ncm-bg-surface));
-}
-.ncm-composer__reply-divider-label {
-  font-family: var(--ncm-font-title);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  flex-shrink: 0;
-}
-.ncm-composer__reply-divider-label i { font-size: calc(8px * var(--ncm-text-scale, 1)); margin-right: 3px; }
-.ncm-composer__reply-divider-label--reply { color: var(--ncm-secondary); }
-.ncm-composer__reply-divider-label--forward { color: var(--ncm-accent); }
-
-
-/* ═══════════════════════════════════════════════════════════
-   §5 FORM FIELDS — TO / CC / SUBJECT
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-composer__field {
-  display: flex; align-items: center;
-  gap: 0; padding: 0 14px;
-  border-bottom: 1px solid var(--ncm-bg-base);
-  min-height: 38px;
-}
-.ncm-composer__field--subj {
-  min-height: 36px;
-}
-.ncm-composer__field--error {
-  background: color-mix(in srgb, var(--ncm-danger) 2%, transparent);
-  border-bottom-color: color-mix(in srgb, var(--ncm-danger) 15%, transparent);
-}
-
-.ncm-composer__field-label {
-  font-family: var(--ncm-font-title);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-muted);
-  text-transform: uppercase; letter-spacing: 0.08em;
-  width: 44px; flex-shrink: 0;
-  padding: 0 6px 0 0;
-}
-.ncm-composer__field-label--error { color: var(--ncm-danger); }
-
-.ncm-composer__chips {
-  display: flex; flex-wrap: wrap;
-  align-items: center; gap: 4px;
-  flex: 1; min-width: 0;
-  padding: 4px 0;
-}
-
+/* Recipient chip — person / group ×N / locked / unreachable / anon */
 .ncm-composer__chip {
-  display: inline-flex; align-items: center;
-  gap: 4px; padding: 3px 8px 3px 3px;
-  background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 10%, transparent);
-  border-radius: 14px;
-  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-secondary);
+  display: inline-flex; align-items: center; gap: 5px;
+  height: calc(22px * var(--ncm-text-scale, 1)); padding: 0 7px 0 3px;
+  border: 1px solid color-mix(in srgb, var(--tc) 50%, var(--ncm-border)); border-radius: 11px;
+  background: color-mix(in srgb, var(--tc) 9%, var(--ncm-bg-pane, var(--ncm-bg-base)));
+  font-family: var(--ncm-font-display);
+  font-size: calc(11.5px * var(--ncm-text-scale, 1)); font-weight: 600;
+  color: var(--ncm-text-heading, var(--ncm-text-primary));
   white-space: nowrap;
 }
-.ncm-composer__chip--mismatch {
-  border-color: color-mix(in srgb, var(--ncm-accent) 20%, transparent);
-  background: color-mix(in srgb, var(--ncm-accent) 3%, transparent);
+.ncm-composer__chip-av {
+  width: calc(16px * var(--ncm-text-scale, 1)); height: calc(16px * var(--ncm-text-scale, 1)); border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1px solid var(--tc); background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane, var(--ncm-bg-base)));
+  color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading, var(--ncm-text-primary)));
+  font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 700;
 }
-.ncm-composer__chip--unreachable {
-  border-color: color-mix(in srgb, var(--ncm-danger) 15%, transparent);
-  background: color-mix(in srgb, var(--ncm-danger) 2%, transparent);
-  opacity: 0.6;
-}
-.ncm-composer__chip--locked {
-  background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent);
-  border-color: color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
-}
+.ncm-composer__chip--group .ncm-composer__chip-av { border-radius: 3px; }
+.ncm-composer__chip-count { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-composer__chip-ic { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); margin-left: 4px; }
+.ncm-composer__chip--locked { padding-left: 7px; }
+.ncm-composer__chip--anon { --tc: var(--ncm-secret, var(--ncm-purple)); padding-left: 7px; }
+.ncm-composer__chip--anon .ncm-composer__chip-ic { color: var(--ncm-secret, var(--ncm-purple)); font-size: calc(9px * var(--ncm-text-scale, 1)); margin-left: 0; }
+.ncm-composer__chip--warn { border-color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer__chip--unreachable { border-color: var(--ncm-bad, var(--ncm-danger)); opacity: .8; }
+.ncm-composer__chip-warn { font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer__chip--unreachable .ncm-composer__chip-warn { color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer__chip-remove { font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-hint, var(--ncm-text-muted)); margin-left: 1px; cursor: pointer; }
+.ncm-composer__chip-remove:hover { color: var(--ncm-bad, var(--ncm-danger)); }
 
-.ncm-composer__chip-avatar {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--ncm-bg-base);
-  display: flex; align-items: center; justify-content: center;
-  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-secondary);
-  flex-shrink: 0;
-}
-.ncm-composer__chip-remove {
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  cursor: pointer; margin-left: 2px;
-  transition: color 0.1s;
-}
-.ncm-composer__chip-remove:hover { color: var(--ncm-danger); }
-.ncm-composer__chip-warn {
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-accent);
-}
-
-.ncm-composer__field-input {
-  flex: 1; min-width: 60px;
-  background: none !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  font-family: var(--ncm-font-display);
-  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 400; color: var(--ncm-text-primary);
-  padding: 5px 0;
-  height: auto !important;
-  line-height: 1.3;
-}
-.ncm-composer__field-input::placeholder { color: var(--ncm-border-active); font-weight: 400; font-size: calc(10px * var(--ncm-text-scale, 1)); font-style: italic; }
-.ncm-composer__field-input--full { flex: 1; width: 100%; }
-
-.ncm-composer .ncm-composer__field-action {
-  font-family: var(--ncm-font-display) !important;
-  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; font-weight: 700 !important;
-  color: var(--ncm-text-muted) !important;
-  background: color-mix(in srgb, var(--ncm-text-muted) 4%, transparent) !important; border: 1px solid var(--ncm-border) !important;
-  border-radius: 3px !important; padding: 3px 10px !important;
-  cursor: pointer !important; transition: all 0.12s !important;
-  flex-shrink: 0 !important; text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-}
-.ncm-composer .ncm-composer__field-action:hover {
-  color: var(--ncm-secondary) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 25%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent) !important;
-}
-
-.ncm-composer__field-error {
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-danger); margin-left: 8px; flex-shrink: 0;
-}
-.ncm-composer__field-error i { margin-right: 2px; }
-/* Block-level variant under the SUBJ row — the inline span above lives inside
-   the TO row's flex line and has nowhere to sit for a message-wide error. */
-.ncm-composer__field-error--general {
-  display: block; margin: 0 0 6px 0; padding: 4px 8px;
-  font-family: var(--ncm-font-body);
-  font-size: calc(10px * var(--ncm-text-scale, 1));
-  border-left: 2px solid var(--ncm-danger);
-  background: color-mix(in srgb, var(--ncm-danger) 10%, transparent);
-}
-
-/* Autocomplete */
+/* Autocomplete dropdown */
 .ncm-composer__autocomplete {
-  position: absolute;
-  top: 100%; left: 44px; right: 12px;
-  background: var(--ncm-bg-deep);
-  border: 1px solid var(--ncm-border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 1px color-mix(in srgb, var(--ncm-secondary) 10%, transparent);
-  z-index: 10; max-height: 260px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
-  padding: 4px 0;
+  position: absolute; left: calc(58px * var(--ncm-text-scale, 1)); right: 8px; top: 100%;
+  z-index: 40; max-height: 240px; overflow-y: auto; overflow-x: hidden;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px;
+  background: var(--ncm-bg-raised, var(--ncm-bg-elevated, var(--ncm-bg-surface)));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
 }
-/* Top accent line on dropdown */
-.ncm-composer__autocomplete::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ncm-secondary) 20%, transparent) 30%, color-mix(in srgb, var(--ncm-secondary) 20%, transparent) 70%, transparent);
-  border-radius: 6px 6px 0 0;
-}
-
-/* Autocomplete items */
 .ncm-autocomplete-item {
-  display: flex; align-items: center;
-  gap: 10px; padding: 8px 12px;
-  cursor: pointer; transition: all 0.1s;
-  border-left: 2px solid transparent;
-  margin: 0 4px;
-  border-radius: 4px;
+  display: grid; grid-template-columns: calc(26px * var(--ncm-text-scale, 1)) minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  padding: 6px 10px; cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent);
 }
-.ncm-autocomplete-item:hover {
-  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
-  border-left-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
-}
-.ncm-autocomplete-item--selected {
-  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent);
-  border-left-color: var(--ncm-secondary);
-}
-.ncm-autocomplete-item--selected .ncm-autocomplete__avatar {
-  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
-}
-.ncm-autocomplete-item--greyed {
-  opacity: 0.4;
-}
-.ncm-autocomplete-item--greyed:hover {
-  opacity: 0.6;
-  border-left-color: var(--ncm-danger);
-  background: color-mix(in srgb, var(--ncm-danger) 2%, transparent);
-}
-.ncm-autocomplete-item--fallback {
-  border-top: 1px solid var(--ncm-bg-surface);
-  margin-top: 4px;
-  padding-top: 10px;
-  border-radius: 0 0 4px 4px;
-}
-
-/* Avatar circle — picks up inline color from JS */
+.ncm-autocomplete-item:hover { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 8%, transparent); }
+.ncm-autocomplete-item--selected { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, transparent); box-shadow: inset 3px 0 var(--ncm-act, var(--ncm-secondary)); }
+.ncm-autocomplete-item--greyed { opacity: .45; }
+.ncm-autocomplete-item--fallback .ncm-autocomplete__name { color: var(--ncm-text-secondary); }
 .ncm-autocomplete__avatar {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: var(--ncm-bg-base);
-  border: 1.5px solid var(--ncm-border);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--ncm-font-display);
-  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700;
-  flex-shrink: 0;
-  transition: border-color 0.1s;
+  width: calc(26px * var(--ncm-text-scale, 1)); height: calc(26px * var(--ncm-text-scale, 1)); border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1px solid var(--tc, var(--ncm-border)); background: color-mix(in srgb, var(--tc, var(--ncm-text-muted)) 22%, var(--ncm-bg-pane, var(--ncm-bg-base)));
+  color: color-mix(in oklab, var(--tc, var(--ncm-text-muted)) 72%, var(--ncm-text-heading, var(--ncm-text-primary)));
+  font-family: var(--ncm-font-display); font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 700;
 }
-
-/* Name + email column */
-.ncm-autocomplete__info {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column;
-  gap: 1px;
-}
-.ncm-autocomplete__name {
-  font-family: var(--ncm-font-display);
-  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  line-height: 1.2;
-}
-.ncm-autocomplete-item--selected .ncm-autocomplete__name {
-  color: var(--ncm-secondary);
-}
-.ncm-autocomplete__email {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  line-height: 1.2;
-}
-.ncm-autocomplete__sub {
-  font-family: var(--ncm-font-display);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  line-height: 1.2; margin-top: 1px;
-}
-
-/* Unreachable badge */
-.ncm-autocomplete__unreachable {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-primary);
-  display: flex; align-items: center; gap: 3px;
-  flex-shrink: 0;
-  padding: 2px 7px;
-  background: color-mix(in srgb, var(--ncm-danger) 4%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-danger) 15%, transparent);
-  border-radius: 10px;
-}
-
-/* Send-As dropdown items */
-.ncm-sendas-item {
-  display: flex; align-items: center;
-  gap: 10px; padding: 8px 14px;
-  cursor: pointer; transition: all 0.1s;
-  border-left: 2px solid transparent;
-  margin: 0 4px;
-  border-radius: 4px;
-}
-.ncm-sendas-item:hover {
-  background: color-mix(in srgb, var(--ncm-accent) 3%, transparent);
-  border-left-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent);
-}
-.ncm-sendas-item--active {
-  background: color-mix(in srgb, var(--ncm-accent) 5%, transparent);
-  border-left-color: var(--ncm-accent);
-}
-
-.ncm-sendas-item__avatar {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: var(--ncm-bg-base);
-  border: 1.5px solid var(--ncm-border);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--ncm-font-display);
-  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700;
-  flex-shrink: 0;
-  transition: border-color 0.1s;
-}
-.ncm-sendas-item--active .ncm-sendas-item__avatar {
-  border-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent);
-}
-.ncm-sendas-item:hover .ncm-sendas-item__avatar {
-  border-color: color-mix(in srgb, var(--ncm-accent) 20%, transparent);
-}
-
-.ncm-sendas-item__info {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column;
-  gap: 1px;
-}
-.ncm-sendas-item__name {
-  font-family: var(--ncm-font-display);
-  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  line-height: 1.2;
-}
-.ncm-sendas-item--active .ncm-sendas-item__name { color: var(--ncm-accent); }
-.ncm-sendas-item__email {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  line-height: 1.2;
-}
-
-.ncm-sendas-item__type {
-  font-family: var(--ncm-font-title);
-  font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 600;
-  color: var(--ncm-text-muted); text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px 7px;
-  background: color-mix(in srgb, var(--ncm-text-muted) 6%, transparent);
-  border: 1px solid var(--ncm-bg-surface);
-  border-radius: 10px;
-  flex-shrink: 0;
-}
-.ncm-sendas-item--active .ncm-sendas-item__type {
-  color: var(--ncm-accent);
-  border-color: color-mix(in srgb, var(--ncm-accent) 20%, transparent);
-  background: color-mix(in srgb, var(--ncm-accent) 4%, transparent);
-}
-
+.ncm-autocomplete-item--group .ncm-autocomplete__avatar { border-radius: 3px; }
+.ncm-autocomplete__info { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ncm-autocomplete__name { font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-autocomplete__email, .ncm-autocomplete__sub { font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-addr, var(--ncm-text-muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-autocomplete__sub { font-family: var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-autocomplete__sub i { color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-autocomplete__unreachable { display: inline-flex; align-items: center; gap: 3px; font-family: var(--ncm-font-display); font-size: calc(9.5px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-bad, var(--ncm-danger)); }
 
 /* ═══════════════════════════════════════════════════════════
-   §6 OPTIONS BAR
+   DELIVERY — chips + ONE drawer
    ═══════════════════════════════════════════════════════════ */
-
-.ncm-composer__options {
-  display: flex; align-items: center;
-  gap: 3px; padding: 5px 14px;
-  background: var(--ncm-bg-deep);
-  border-bottom: 1px solid var(--ncm-bg-deep);
-  flex-wrap: wrap;
-}
-
-.ncm-composer__opt-label {
-  font-family: var(--ncm-font-title);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-muted);
-  text-transform: uppercase; letter-spacing: 0.06em;
-  margin-right: 2px;
-}
-
-.ncm-composer .ncm-composer__opt-pill {
-  font-family: var(--ncm-font-display) !important;
-  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important; color: var(--ncm-text-muted) !important;
-  background: transparent !important; border: 1px solid var(--ncm-border) !important;
-  border-radius: 3px !important; padding: 2px 8px !important;
-  cursor: pointer !important; transition: all 0.1s !important;
-  display: inline-flex !important; align-items: center !important;
-  line-height: 1.2 !important; flex-shrink: 0 !important;
-}
-.ncm-composer .ncm-composer__opt-pill:hover { color: var(--ncm-text-muted) !important; border-color: var(--ncm-border) !important; }
-.ncm-composer .ncm-composer__opt-pill--active-normal,
-.ncm-composer .ncm-composer__opt-pill--active-low {
-  color: var(--ncm-secondary) !important; border-color: color-mix(in srgb, var(--ncm-secondary) 25%, transparent) !important; background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent) !important;
-}
-.ncm-composer .ncm-composer__opt-pill--active-urgent,
-.ncm-composer .ncm-composer__opt-pill--active-high {
-  color: var(--ncm-accent) !important; border-color: color-mix(in srgb, var(--ncm-accent) 25%, transparent) !important; background: color-mix(in srgb, var(--ncm-accent) 4%, transparent) !important;
-}
-.ncm-composer .ncm-composer__opt-pill--active-critical {
-  color: var(--ncm-danger) !important; border-color: color-mix(in srgb, var(--ncm-danger) 25%, transparent) !important; background: color-mix(in srgb, var(--ncm-danger) 4%, transparent) !important;
-}
-
-.ncm-composer__opt-sep {
-  width: 1px; height: 16px; background: var(--ncm-border);
-  margin: 0 8px; flex-shrink: 0;
-}
-
-/* Encryption switch */
-.ncm-composer .ncm-composer__enc-switch {
-  display: inline-flex !important; border: 1px solid var(--ncm-border) !important;
-  border-radius: 3px !important; overflow: hidden !important;
-  background: none !important; flex-shrink: 0 !important;
-}
-.ncm-composer .ncm-composer__enc-opt {
-  font-family: var(--ncm-font-display) !important;
-  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
-  padding: 2px 8px !important; cursor: pointer !important;
-  background: none !important; border: none !important;
-  color: var(--ncm-text-muted) !important;
-  display: inline-flex !important; align-items: center !important; gap: 3px !important;
-  transition: all 0.1s !important; line-height: 1.2 !important;
-}
-.ncm-composer .ncm-composer__enc-opt i { font-size: calc(8px * var(--ncm-text-scale, 1)) !important; }
-.ncm-composer .ncm-composer__enc-opt--open-active { color: var(--ncm-text-muted) !important; background: color-mix(in srgb, var(--ncm-text-muted) 5%, transparent) !important; }
-.ncm-composer .ncm-composer__enc-opt--ice-active { color: var(--ncm-success) !important; background: color-mix(in srgb, var(--ncm-success) 4%, transparent) !important; }
-
-.ncm-composer__enc-dv {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-success);
-  display: flex; align-items: center; gap: 3px;
-  margin-left: 4px;
-}
-.ncm-composer .ncm-composer__enc-dv-input {
-  width: 36px !important;
-  height: calc(20px * var(--ncm-text-scale, 1)) !important;
-  min-height: 0 !important;
-  max-height: calc(20px * var(--ncm-text-scale, 1)) !important;
-  line-height: 1 !important;
-  background: var(--ncm-bg-deep) !important;
-  border: 1px solid color-mix(in srgb, var(--ncm-success) 15%, transparent) !important;
-  border-radius: 2px !important;
-  color: var(--ncm-success) !important;
-  font-family: var(--ncm-font-mono) !important;
-  font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
-  text-align: center !important;
-  padding: 2px 3px !important;
-  outline: none !important;
-  box-shadow: none !important;
-  margin: 0 !important;
-  -moz-appearance: textfield !important;
-}
-.ncm-composer .ncm-composer__enc-dv-input::-webkit-inner-spin-button,
-.ncm-composer .ncm-composer__enc-dv-input::-webkit-outer-spin-button {
-  -webkit-appearance: none !important;
-  margin: 0 !important;
-}
-.ncm-composer__enc-type {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-success);
-  cursor: pointer; padding: 2px 6px;
-  border: 1px solid color-mix(in srgb, var(--ncm-success) 12%, transparent);
-  border-radius: 3px; margin-left: 3px;
-  transition: all 0.12s;
-}
-.ncm-composer__enc-type:hover { border-color: color-mix(in srgb, var(--ncm-success) 30%, transparent); }
-.ncm-composer__enc-type--lethal {
-  color: var(--ncm-primary) !important; border-color: color-mix(in srgb, var(--ncm-danger) 25%, transparent) !important;
-}
-.ncm-composer__enc-type--lethal:hover { border-color: color-mix(in srgb, var(--ncm-danger) 40%, transparent) !important; }
-
-/* ── ICE Config Strip — compact row below options bar ── */
-.ncm-composer__strip--ice {
-  background: color-mix(in srgb, var(--ncm-danger) 3%, transparent); border-color: color-mix(in srgb, var(--ncm-danger) 12%, transparent);
-  gap: 6px;
-}
-.ncm-composer__strip--ice-actors {
-  background: color-mix(in srgb, var(--ncm-danger) 2%, transparent); border-color: color-mix(in srgb, var(--ncm-danger) 8%, transparent);
-  gap: 4px; padding: 4px 14px;
-}
-.ncm-composer__ice-badge {
-  font-family: var(--ncm-font-title); font-size: calc(8px * var(--ncm-text-scale, 1));
-  color: var(--ncm-primary); letter-spacing: 0.12em; text-transform: uppercase;
-  flex-shrink: 0;
-}
-.ncm-composer__ice-badge i { font-size: calc(8px * var(--ncm-text-scale, 1)); margin-right: 3px; }
-.ncm-composer__ice-sep {
-  width: 1px; height: 12px; background: color-mix(in srgb, var(--ncm-danger) 15%, transparent); flex-shrink: 0;
-}
-.ncm-composer__ice-lbl {
-  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
-  color: var(--ncm-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
-}
-
-/* ICE pill buttons — inline toggle pills */
-.ncm-composer__ice-pills { display: flex; gap: 2px; }
-.ncm-composer button.ncm-composer__ice-pill,
-.ncm-composer .ncm-composer__ice-pill {
-  display: inline-flex !important; align-items: center !important; gap: 3px !important;
-  padding: 2px 7px !important; border-radius: 3px !important;
-  font-family: var(--ncm-font-mono) !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important;
-  cursor: pointer !important; border: 1px solid color-mix(in srgb, var(--ncm-text-muted) 15%, transparent) !important;
-  background: transparent !important; color: var(--ncm-text-muted) !important;
-  height: auto !important; min-height: 0 !important; width: auto !important;
-  flex-shrink: 0 !important; flex-grow: 0 !important;
-  appearance: none !important; box-shadow: none !important; outline: none !important;
-  transition: all 0.12s !important;
-}
-.ncm-composer .ncm-composer__ice-pill i { font-size: calc(7px * var(--ncm-text-scale, 1)) !important; margin: 0 !important; padding: 0 !important; }
-.ncm-composer .ncm-composer__ice-pill:hover { color: var(--ncm-text-secondary) !important; border-color: color-mix(in srgb, var(--ncm-text-muted) 30%, transparent) !important; }
-.ncm-composer .ncm-composer__ice-pill--red {
-  color: var(--ncm-primary) !important; border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-danger) 8%, transparent) !important;
-}
-.ncm-composer .ncm-composer__ice-pill--amber {
-  color: var(--ncm-warning) !important; border-color: color-mix(in srgb, var(--ncm-warning) 30%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-warning) 8%, transparent) !important;
-}
-.ncm-composer .ncm-composer__ice-pill--dim {
-  color: var(--ncm-text-muted) !important; border-color: color-mix(in srgb, var(--ncm-text-secondary) 20%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-text-secondary) 6%, transparent) !important;
-}
-
-/* ICE Actor picker — compact cards */
-.ncm-composer button.ncm-composer__ice-actor,
-.ncm-composer .ncm-composer__ice-actor {
-  display: inline-flex !important; align-items: center !important; gap: 6px !important;
-  padding: 3px 8px !important; border-radius: 4px !important;
-  border: 1px solid color-mix(in srgb, var(--ncm-border) 40%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-bg-base) 50%, transparent) !important;
-  cursor: pointer !important; transition: all 0.12s !important;
-  height: auto !important; min-height: 0 !important; width: auto !important;
-  flex-shrink: 0 !important; flex-grow: 0 !important;
-  appearance: none !important; box-shadow: none !important; outline: none !important;
-}
-.ncm-composer .ncm-composer__ice-actor:hover {
-  border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-danger) 4%, transparent) !important;
-}
-.ncm-composer .ncm-composer__ice-actor img {
-  width: 22px; height: 22px; border-radius: 2px;
-  border: 1px solid color-mix(in srgb, var(--ncm-danger) 20%, transparent); object-fit: cover;
-}
-.ncm-composer__ice-actor-ph {
-  width: 22px; height: 22px; border-radius: 2px;
-  border: 1px solid color-mix(in srgb, var(--ncm-danger) 12%, transparent); background: color-mix(in srgb, var(--ncm-danger) 3%, transparent);
-  display: inline-flex; align-items: center; justify-content: center;
-  color: color-mix(in srgb, var(--ncm-danger) 35%, transparent); font-size: calc(10px * var(--ncm-text-scale, 1));
-}
-.ncm-composer__ice-actor-name {
-  font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1));
-  color: var(--ncm-text-primary); font-weight: 600;
-}
-.ncm-composer__ice-actor-atk {
-  font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1));
-  color: var(--ncm-primary); margin-left: auto;
-}
-.ncm-composer .ncm-composer__ice-actor--sel {
-  border-color: color-mix(in srgb, var(--ncm-danger) 50%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-danger) 8%, transparent) !important;
-}
-.ncm-composer .ncm-composer__ice-actor--sel .ncm-composer__ice-actor-name { color: var(--ncm-primary); }
-.ncm-composer__ice-no-actors {
-  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
-  color: var(--ncm-text-muted); font-style: italic;
-}
-.ncm-composer__ice-no-actors i { margin-right: 4px; color: var(--ncm-warning); }
-
-/* Feature toggles */
-.ncm-composer .ncm-composer__toggle {
-  font-family: var(--ncm-font-display) !important;
-  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
-  color: var(--ncm-text-muted) !important;
-  background: none !important; border: 1px solid var(--ncm-border) !important;
-  border-radius: 3px !important; padding: 2px 8px !important;
-  cursor: pointer !important; display: inline-flex !important;
-  align-items: center !important; gap: 3px !important;
-  transition: all 0.1s !important; flex-shrink: 0 !important;
-  line-height: 1.2 !important;
-}
-.ncm-composer .ncm-composer__toggle i { font-size: calc(8px * var(--ncm-text-scale, 1)) !important; }
-.ncm-composer .ncm-composer__toggle:hover { color: var(--ncm-text-muted) !important; border-color: var(--ncm-border) !important; }
-.ncm-composer .ncm-composer__toggle--on-gold { color: var(--ncm-accent) !important; border-color: color-mix(in srgb, var(--ncm-accent) 20%, transparent) !important; background: color-mix(in srgb, var(--ncm-accent) 3%, transparent) !important; }
-.ncm-composer .ncm-composer__toggle--on-red { color: var(--ncm-danger) !important; border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent) !important; background: color-mix(in srgb, var(--ncm-danger) 3%, transparent) !important; }
-
-/* Expansion strips */
-.ncm-composer__strip {
-  display: flex; align-items: center;
-  gap: 5px; padding: 4px 14px;
-  font-size: calc(10px * var(--ncm-text-scale, 1));
-  border-bottom: 1px solid var(--ncm-bg-deep);
-}
-.ncm-composer__strip i { font-size: calc(9px * var(--ncm-text-scale, 1)); }
-.ncm-composer__strip-label { font-weight: 700; margin-right: 2px; }
-.ncm-composer__strip-close {
-  margin-left: auto; color: var(--ncm-text-muted);
-  cursor: pointer; font-size: calc(9px * var(--ncm-text-scale, 1));
-  transition: color 0.1s;
-}
-.ncm-composer__strip-close:hover { color: var(--ncm-danger); }
-.ncm-composer__strip--destruct { background: color-mix(in srgb, var(--ncm-danger) 2%, transparent); color: var(--ncm-primary); }
-.ncm-composer__strip--schedule { background: color-mix(in srgb, var(--ncm-accent) 2%, transparent); color: var(--ncm-accent); }
-
-.ncm-composer .ncm-composer__destruct-pill {
-  font-family: var(--ncm-font-display) !important;
-  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
-  padding: 1px 5px !important; border: 1px solid color-mix(in srgb, var(--ncm-danger) 12%, transparent) !important;
-  border-radius: 2px !important; background: none !important;
-  color: #aa6666 !important; cursor: pointer !important;
-  transition: all 0.1s !important;
-}
-.ncm-composer .ncm-composer__destruct-pill:hover { color: var(--ncm-primary) !important; border-color: color-mix(in srgb, var(--ncm-danger) 25%, transparent) !important; }
-.ncm-composer .ncm-composer__destruct-pill--active {
-  color: var(--ncm-primary) !important; border-color: color-mix(in srgb, var(--ncm-danger) 30%, transparent) !important; background: color-mix(in srgb, var(--ncm-danger) 4%, transparent) !important;
-}
-
-/* ── Anonymous Send (GM) ── */
-.ncm-composer .ncm-composer__toggle--on-anon {
-  color: var(--ncm-warning) !important;
-  border-color: color-mix(in srgb, var(--ncm-warning) 35%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-warning) 8%, transparent) !important;
-}
-/* Host box for the masked avatar — the .ncm-anon-av fills it (inset:0). */
-.ncm-composer__avatar--anon {
+.ncm-composer__delivery { margin: 8px 12px 0; }
+.ncm-composer__chips-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.ncm-composer button.ncm-composer__opt {
+  height: calc(24px * var(--ncm-text-scale, 1)) !important; padding: 0 8px !important;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)) !important;
+  color: var(--ncm-text-primary) !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
   position: relative;
-  border-color: color-mix(in srgb, var(--ncm-warning) 40%, transparent);
 }
-.ncm-composer__identity--anon { box-shadow: 0 0 12px color-mix(in srgb, var(--ncm-warning) 10%, transparent); }
-.ncm-composer__anon-tag {
-  font-family: var(--ncm-font-title);
-  font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 1px;
-  color: var(--ncm-bg-deep);
-  background: var(--ncm-warning);
-  border-radius: 2px; padding: 0 4px; margin-left: 5px;
+.ncm-composer button.ncm-composer__opt > i:first-child { color: var(--ncm-text-label, var(--ncm-text-muted)); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-composer__opt-c { font-size: calc(8px * var(--ncm-text-scale, 1)) !important; color: var(--ncm-text-hint, var(--ncm-text-muted)); margin-left: 1px; }
+.ncm-composer__opt-v { font-family: var(--ncm-font-mono); font-weight: 400; font-size: calc(11px * var(--ncm-text-scale, 1)); }
+.ncm-composer button.ncm-composer__opt.is-off {
+  border-color: color-mix(in srgb, var(--ncm-border-active, var(--ncm-border)) 70%, transparent) !important;
+  color: var(--ncm-text-label, var(--ncm-text-muted)) !important;
+  background: transparent !important;
 }
-.ncm-composer__strip--anon { background: color-mix(in srgb, var(--ncm-warning) 4%, transparent); color: var(--ncm-warning); }
-.ncm-composer__anon-sublabel { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: 1px; }
-.ncm-composer .ncm-composer__anon-pill {
-  font-family: var(--ncm-font-display) !important;
-  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
-  padding: 1px 6px !important; border: 1px solid color-mix(in srgb, var(--ncm-warning) 14%, transparent) !important;
-  border-radius: 2px !important; background: none !important;
-  color: var(--ncm-text-secondary) !important; cursor: pointer !important;
-  transition: all 0.1s !important;
+.ncm-composer button.ncm-composer__opt.is-off > i:first-child { color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-composer button.ncm-composer__opt:hover { border-color: var(--tc) !important; }
+.ncm-composer button.ncm-composer__opt.is-on {
+  border-color: var(--tc) !important;
+  background: color-mix(in srgb, var(--tc) 16%, var(--ncm-bg-pane, var(--ncm-bg-base))) !important;
+  color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading, var(--ncm-text-primary))) !important;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--tc) 25%, transparent) !important;
 }
-.ncm-composer .ncm-composer__anon-pill:hover { color: var(--ncm-warning) !important; border-color: color-mix(in srgb, var(--ncm-warning) 30%, transparent) !important; }
-.ncm-composer .ncm-composer__anon-pill--active {
-  color: var(--ncm-bg-deep) !important; border-color: var(--ncm-warning) !important; background: var(--ncm-warning) !important;
-}
-.ncm-composer__anon-field { display: inline-flex; align-items: center; gap: 4px; }
-.ncm-composer__anon-field label { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: 0.5px; }
-.ncm-composer .ncm-composer__anon-field input {
-  background: var(--ncm-bg-deep) !important;
-  border: 1px solid var(--ncm-border) !important; border-radius: 3px !important;
-  color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-mono) !important;
-  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; padding: 2px 6px !important;
-  height: auto !important; min-height: 0 !important; line-height: 1.4 !important;
-  appearance: none !important; box-shadow: none !important; flex: 0 0 auto !important;
-}
-.ncm-composer .ncm-composer__anon-field input[data-id="anon-alias"] { width: 110px !important; }
-.ncm-composer .ncm-composer__anon-field input[data-id="anon-trace-dv"] { width: 46px !important; text-align: center !important; }
-.ncm-composer .ncm-composer__anon-reply {
-  font-family: var(--ncm-font-display) !important;
-  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
-  padding: 1px 7px !important; border: 1px solid var(--ncm-border) !important;
-  border-radius: 2px !important; background: none !important;
-  color: var(--ncm-text-muted) !important; cursor: pointer !important; transition: all 0.1s !important;
-}
-.ncm-composer .ncm-composer__anon-reply--on {
-  color: var(--ncm-warning) !important; border-color: color-mix(in srgb, var(--ncm-warning) 30%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-warning) 6%, transparent) !important;
-}
+.ncm-composer button.ncm-composer__opt.is-on > i:first-child,
+.ncm-composer button.ncm-composer__opt.is-on .ncm-composer__opt-c { color: var(--tc); }
+.ncm-composer button.ncm-composer__opt.is-open { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+.ncm-composer button.ncm-composer__opt.is-open::after { content: ''; position: absolute; left: -1px; right: -1px; bottom: -6px; height: 6px; border-left: 1px solid var(--tc); border-right: 1px solid var(--tc); background: color-mix(in srgb, var(--tc) 5%, var(--ncm-bg-card, var(--ncm-bg-surface))); }
+.ncm-composer button.ncm-composer__opt.is-off.is-open::after { border-color: color-mix(in srgb, var(--ncm-border-active, var(--ncm-border)) 70%, transparent); }
 
-/* Schedule trigger — reuses CyberTimePicker trigger styles from cyber-time-picker.css */
-.ncm-composer__sched-trigger {
-  max-width: 200px;
+.ncm-composer__drawer {
+  position: relative;
+  margin-top: 5px; padding: 8px 28px 8px 10px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 7px 12px; align-items: center;
+  border: 1px solid var(--tc); border-radius: 2px;
+  background: color-mix(in srgb, var(--tc) 5%, var(--ncm-bg-card, var(--ncm-bg-surface)));
 }
+.ncm-composer__drawer-k { font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 500; color: var(--ncm-text-label, var(--ncm-text-muted)); white-space: nowrap; }
+.ncm-composer__drawer-g { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 0; }
+.ncm-composer__drawer-hint { grid-column: 1 / -1; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-composer__drawer-note { display: inline-flex; gap: 5px; align-items: center; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer button.ncm-composer__drawer-x {
+  position: absolute; top: 5px; right: 6px;
+  width: calc(18px * var(--ncm-text-scale, 1)) !important; height: calc(18px * var(--ncm-text-scale, 1)) !important; padding: 0 !important;
+  background: transparent !important; border: 0 !important;
+  color: var(--ncm-text-hint, var(--ncm-text-muted)) !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
+}
+.ncm-composer button.ncm-composer__drawer-x:hover { color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; }
 
+/* Segmented control */
+.ncm-composer__seg { display: inline-flex; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; overflow: hidden; }
+.ncm-composer .ncm-composer__seg > button {
+  height: calc(22px * var(--ncm-text-scale, 1)) !important; padding: 0 8px !important;
+  border: 0 !important; border-right: 1px solid var(--ncm-border) !important; border-radius: 0 !important;
+  background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)) !important;
+  color: var(--ncm-text-secondary) !important;
+  font-size: calc(10.5px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
+  gap: 4px;
+}
+.ncm-composer .ncm-composer__seg > button:last-child { border-right: 0 !important; }
+.ncm-composer .ncm-composer__seg > button:hover { color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; }
+.ncm-composer .ncm-composer__seg > button.is-on {
+  background: color-mix(in srgb, var(--tc) 20%, var(--ncm-bg-pane, var(--ncm-bg-base))) !important;
+  color: color-mix(in oklab, var(--tc) 75%, var(--ncm-text-heading, var(--ncm-text-primary))) !important;
+}
+.ncm-composer .ncm-composer__seg > button i { font-size: calc(9px * var(--ncm-text-scale, 1)); }
+
+/* Small numeric / text box inside a drawer */
+.ncm-composer__num {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: calc(22px * var(--ncm-text-scale, 1)); padding: 0 6px;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px;
+  background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface));
+}
+.ncm-composer__num:focus-within { border-color: var(--tc); }
+.ncm-composer__num-k { font-family: var(--ncm-font-display); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 500; color: var(--ncm-text-label, var(--ncm-text-muted)); white-space: nowrap; }
+.ncm-app .ncm-composer .ncm-composer__num input {
+  width: calc(36px * var(--ncm-text-scale, 1)); height: calc(20px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; min-width: 0 !important;
+  border: 0 !important; padding: 0 !important; margin: 0 !important;
+  background: transparent !important; box-shadow: none !important; outline: none !important;
+  color: var(--ncm-text-num, var(--ncm-text-primary));
+  font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1));
+  text-align: left; appearance: textfield; -moz-appearance: textfield;
+}
+.ncm-app .ncm-composer .ncm-composer__num input::-webkit-outer-spin-button,
+.ncm-app .ncm-composer .ncm-composer__num input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ncm-app .ncm-composer .ncm-composer__num--wide input { width: calc(120px * var(--ncm-text-scale, 1)); font-family: var(--ncm-font-body); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-app .ncm-composer .ncm-composer__num input::placeholder { color: var(--ncm-text-hint, var(--ncm-text-muted)); opacity: 1; }
+
+/* ICE actor cards */
+.ncm-composer button.ncm-composer__ice-actor {
+  gap: 6px; height: calc(26px * var(--ncm-text-scale, 1)) !important; padding: 0 8px 0 3px !important;
+  border: 1px solid var(--ncm-border) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)) !important;
+  color: var(--ncm-text-primary) !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
+}
+.ncm-composer button.ncm-composer__ice-actor img, .ncm-composer__ice-actor-ph {
+  width: calc(20px * var(--ncm-text-scale, 1)); height: calc(20px * var(--ncm-text-scale, 1)); border-radius: 2px; object-fit: cover; border: 0;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 25%, transparent); color: var(--ncm-bad, var(--ncm-danger)); font-size: calc(10px * var(--ncm-text-scale, 1));
+}
+.ncm-composer__ice-actor-atk { font-family: var(--ncm-font-mono); font-weight: 400; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-composer button.ncm-composer__ice-actor:hover { border-color: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 60%, transparent) !important; }
+.ncm-composer button.ncm-composer__ice-actor.is-sel { border-color: var(--ncm-bad, var(--ncm-danger)) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 40%, transparent) !important; }
+
+/* Schedule picker trigger (cyber-time-picker.css styles the inside) */
+.ncm-composer button.ncm-composer__sched-trigger {
+  gap: 6px; height: calc(24px * var(--ncm-text-scale, 1)) !important; padding: 0 9px !important;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)) !important;
+  color: var(--ncm-text-heading, var(--ncm-text-primary)) !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; font-weight: 400 !important;
+  max-width: 100%;
+}
+.ncm-composer button.ncm-composer__sched-trigger .ncm-ctp-trigger__icon { color: var(--tc); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-composer button.ncm-composer__sched-trigger .ncm-ctp-trigger__chevron { color: var(--ncm-text-hint, var(--ncm-text-muted)); font-size: calc(8px * var(--ncm-text-scale, 1)); }
+.ncm-composer button.ncm-composer__sched-trigger .ncm-ctp-trigger__value--empty { color: var(--ncm-text-hint, var(--ncm-text-muted)); font-family: var(--ncm-font-body); }
 
 /* ═══════════════════════════════════════════════════════════
-   §7 EDITOR
+   EDITOR — toolbar: format | insert
    ═══════════════════════════════════════════════════════════ */
-
 .ncm-composer__editor-wrap {
-  flex: 1; display: flex;
-  flex-direction: column;
-  min-height: 0; position: relative;
-  border-bottom: 1px solid var(--ncm-bg-base);
+  position: relative;
+  flex: 1 1 auto !important; min-height: calc(140px * var(--ncm-text-scale, 1));
+  display: flex; flex-direction: column;
+  margin: 8px 12px 0;
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface));
 }
-.ncm-composer__editor-wrap--encrypted {
-  border-left: 2px solid color-mix(in srgb, var(--ncm-success) 15%, transparent);
-}
-
+.ncm-composer__editor-wrap--encrypted { border-color: color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 55%, var(--ncm-border)); }
 .ncm-composer__toolbar {
-  display: flex; align-items: center;
-  gap: 2px; padding: 4px 10px;
-  background: var(--ncm-bg-deep);
-  border-bottom: 1px solid var(--ncm-bg-deep);
-  flex-shrink: 0;
+  flex: none; display: flex; align-items: center; gap: 2px;
+  height: calc(30px * var(--ncm-text-scale, 1)); padding: 0 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
 }
-
+.ncm-composer__tool-grp { display: inline-flex; align-items: center; gap: 2px; }
+.ncm-composer__tool-sp { flex: 1; }
+.ncm-composer__tool-sep { width: 1px; height: calc(14px * var(--ncm-text-scale, 1)); background: var(--ncm-border); margin: 0 5px; }
+.ncm-composer__tool-lbl { font-family: var(--ncm-font-display); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 500; color: var(--ncm-text-label, var(--ncm-text-muted)); margin: 0 4px 0 2px; }
 .ncm-composer button.ncm-composer__tool {
-  width: 26px !important; height: 24px !important;
-  display: inline-flex !important; align-items: center !important; justify-content: center !important;
-  background: none !important;
-  border: 1px solid transparent !important;
-  border-radius: 2px !important;
-  color: var(--ncm-text-muted) !important;
-  font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
-  cursor: pointer !important;
-  transition: all 0.08s !important;
-  flex-shrink: 0 !important;
-  padding: 0 !important;
+  width: calc(24px * var(--ncm-text-scale, 1)) !important; height: calc(22px * var(--ncm-text-scale, 1)) !important; padding: 0 !important;
+  border: 0 !important; border-radius: 2px !important; background: transparent !important;
+  color: var(--ncm-text-secondary) !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
 }
-.ncm-composer button.ncm-composer__tool:hover {
-  color: var(--ncm-secondary) !important;
-  border-color: color-mix(in srgb, var(--ncm-secondary) 15%, transparent) !important;
-  background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent) !important;
-}
-.ncm-composer button.ncm-composer__tool.ncm-composer__tool--active {
-  color: var(--ncm-secondary) !important;
-  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
-  border-color: color-mix(in srgb, var(--ncm-secondary) 20%, transparent) !important;
-}
-.ncm-composer button.ncm-composer__tool.ncm-composer__tool--eddies:hover {
-  color: var(--ncm-accent) !important;
-  border-color: color-mix(in srgb, var(--ncm-accent) 15%, transparent) !important;
-}
-.ncm-composer button.ncm-composer__tool i { margin: 0 !important; padding: 0 !important; }
+.ncm-composer button.ncm-composer__tool:hover { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, transparent) !important; color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; }
+.ncm-composer button.ncm-composer__tool--active, .ncm-composer button.ncm-composer__tool.is-on { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 16%, transparent) !important; color: var(--ncm-act, var(--ncm-secondary)) !important; }
+.ncm-composer button.ncm-composer__tool--eddies { color: var(--ncm-money, var(--ncm-accent)) !important; }
+.ncm-composer button.ncm-composer__tool--more { font-size: calc(13px * var(--ncm-text-scale, 1)) !important; }
 
-.ncm-composer__tool-sep {
-  width: 1px; height: 14px;
-  background: var(--ncm-border); margin: 0 3px; flex-shrink: 0;
+/* Menus — the overflow (format) and templates (GM) menus */
+.ncm-composer__menu {
+  position: absolute; z-index: 30; top: calc(32px * var(--ncm-text-scale, 1)); left: 6px;
+  min-width: 190px; padding: 4px 0;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px;
+  background: var(--ncm-bg-raised, var(--ncm-bg-elevated, var(--ncm-bg-surface)));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
 }
-
-.ncm-composer button.ncm-composer__tool--more {
-  margin-left: auto !important;
-  font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
-  letter-spacing: 2px !important;
-  color: var(--ncm-text-muted) !important;
-  width: auto !important;
-}
-.ncm-composer button.ncm-composer__tool--more:hover { color: var(--ncm-text-secondary) !important; }
-
-/* Overflow menu */
-.ncm-composer__overflow {
-  position: absolute;
-  top: 30px; right: 8px;
-  background: var(--ncm-bg-deep);
-  border: 1px solid var(--ncm-border);
-  border-radius: 4px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-  z-index: 10; padding: 4px 0;
-  min-width: 160px;
-}
+.ncm-composer__tpl-menu { left: auto; right: 6px; min-width: 230px; }
+.ncm-composer__menu-h { display: flex; align-items: center; gap: 6px; padding: 5px 10px 6px; font-family: var(--ncm-font-display); font-size: calc(10.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .04em; color: var(--ncm-text-label, var(--ncm-text-muted)); border-bottom: 1px solid var(--ncm-border); margin-bottom: 3px; }
+.ncm-composer__menu-h i { color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-composer__menu-h b { margin-left: auto; font-family: var(--ncm-font-mono); font-weight: 400; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
 .ncm-composer__overflow-item {
-  display: flex; align-items: center;
-  gap: 8px; padding: 5px 12px;
-  font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  cursor: pointer; transition: all 0.1s;
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px; cursor: pointer;
+  font-family: var(--ncm-font-display); font-size: calc(11.5px * var(--ncm-text-scale, 1)); font-weight: 500;
+  color: var(--ncm-text-primary);
 }
-.ncm-composer__overflow-item:hover {
-  color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 3%, transparent);
-}
-.ncm-composer__overflow-item--active {
-  color: var(--ncm-secondary);
-}
-.ncm-composer__overflow-item--active i { color: var(--ncm-secondary); }
-.ncm-composer__overflow-item i { width: 12px; text-align: center; font-size: calc(9px * var(--ncm-text-scale, 1)); }
-.ncm-composer__overflow-sep {
-  height: 1px; background: var(--ncm-bg-surface); margin: 3px 8px;
-}
+.ncm-composer__overflow-item i { width: 14px; text-align: center; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-composer__overflow-item:hover { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 8%, transparent); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-composer__overflow-item--active { color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-composer__menu-sep { height: 1px; margin: 3px 0; background: var(--ncm-border); }
 
 /* Editor content */
-.ncm-composer__editor {
-  flex: 1;
-  /* min-height:0 (not a hard 120px) so the editor shrinks with its flex:1 wrap when
-     the composer is short instead of forcing its 120px box to paint down over the top
-     of the footer's Send button (which, being cursor:text, then swallows clicks on
-     that strip). flex:1 still fills the available space when there's room. */
-  min-height: 0;
-  max-height: 280px;
-  overflow-y: auto;
-  padding: 10px 14px;
-  font-family: var(--ncm-font-display);
-  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 400 !important; color: var(--ncm-text-secondary);
-  line-height: 1.5; outline: none;
-  scrollbar-width: thin;
-  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
-  /* Ensure Foundry doesn't kill contenteditable */
+.ncm-app .ncm-composer .ncm-composer__editor {
+  flex: 1 1 auto; min-height: calc(80px * var(--ncm-text-scale, 1));
+  overflow-y: auto; overflow-x: hidden;
+  padding: 9px 11px;
+  font-family: var(--ncm-font-body);
+  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 400; line-height: 1.5;
+  color: var(--ncm-text-primary);
+  outline: none;
   -webkit-user-modify: read-write !important;
   user-select: text !important;
   white-space: pre-wrap !important;
@@ -1428,422 +722,275 @@
   background: transparent !important;
   border: none !important;
 }
-.ncm-composer__editor:focus {
-  background: color-mix(in srgb, var(--ncm-secondary) 1%, transparent) !important;
-}
-.ncm-composer__editor:empty::before {
+.ncm-app .ncm-composer .ncm-composer__editor * { user-select: text; }
+.ncm-app .ncm-composer .ncm-composer__editor:empty::before {
   content: attr(data-placeholder);
-  color: var(--ncm-text-muted); font-style: italic;
+  color: var(--ncm-text-hint, var(--ncm-text-muted));
 }
+.ncm-app .ncm-composer .ncm-composer__editor:empty::after { content: ''; }
 
-/* Rich text styling inside the editor */
-.ncm-composer__editor b, .ncm-composer__editor strong { font-weight: 700 !important; color: var(--ncm-text-primary) !important; }
+/* Rich text inside the editor */
+.ncm-composer__editor b, .ncm-composer__editor strong { font-weight: 700; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
 .ncm-composer__editor i, .ncm-composer__editor em { font-style: italic; }
-.ncm-composer__editor u { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); }
+.ncm-composer__editor u { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 40%, transparent); }
 .ncm-composer__editor s, .ncm-composer__editor strike { text-decoration: line-through; color: var(--ncm-text-muted); }
 .ncm-composer__editor code {
   font-family: var(--ncm-font-mono);
-  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent);
+  background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 8%, transparent);
   padding: 1px 4px; border-radius: 2px;
-  color: var(--ncm-secondary); font-size: 0.9em;
+  color: color-mix(in oklab, var(--ncm-act, var(--ncm-secondary)) 75%, var(--ncm-text-heading, var(--ncm-text-primary))); font-size: .9em;
 }
 .ncm-composer__editor pre {
   font-family: var(--ncm-font-mono);
-  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
-  border: 1px solid var(--ncm-bg-surface); border-radius: 3px;
+  background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 5%, transparent);
+  border: 1px solid var(--ncm-border); border-radius: 2px;
   padding: 6px 10px; margin: 4px 0;
-  color: var(--ncm-secondary); font-size: 0.9em;
-  white-space: pre-wrap;
+  color: var(--ncm-text-primary); font-size: .9em; white-space: pre-wrap;
 }
 .ncm-composer__editor blockquote {
-  border-left: 2px solid color-mix(in srgb, var(--ncm-secondary) 20%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 40%, transparent);
   padding-left: 10px; margin: 4px 0;
-  color: var(--ncm-text-muted); font-style: italic;
+  color: var(--ncm-text-secondary); font-style: italic;
 }
-.ncm-composer__editor a {
-  color: var(--ncm-secondary); text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
-}
-.ncm-composer__editor a:hover { text-decoration-color: var(--ncm-secondary); }
-.ncm-composer__editor ul, .ncm-composer__editor ol {
-  padding-left: 20px; margin: 4px 0;
-}
+.ncm-composer__editor a { color: var(--ncm-act, var(--ncm-secondary)); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 40%, transparent); }
+.ncm-composer__editor a:hover { text-decoration-color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-composer__editor ul, .ncm-composer__editor ol { padding-left: 20px; margin: 4px 0; }
 .ncm-composer__editor li { margin-bottom: 2px; }
-.ncm-composer__editor hr {
-  border: none; border-top: 1px solid var(--ncm-border);
-  margin: 8px 0;
-}
-
-/* Encrypted text block inserted by ICE command */
+.ncm-composer__editor hr { border: none; border-top: 1px solid var(--ncm-border); margin: 8px 0; }
+.ncm-composer__editor h1, .ncm-composer__editor h2, .ncm-composer__editor h3 { font-family: var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); margin: 6px 0 4px; border: 0; }
+/* Encrypted text block inserted by the ICE command */
 .ncm-composer__editor .ncm-encrypted-text-block {
-  background: color-mix(in srgb, var(--ncm-success) 3%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ncm-success) 12%, transparent);
-  border-left: 2px solid color-mix(in srgb, var(--ncm-success) 20%, transparent);
-  border-radius: 3px;
-  padding: 6px 10px;
-  margin: 4px 0;
   position: relative;
+  background: color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-secret, var(--ncm-purple)) 30%, transparent);
+  border-left: 2px solid var(--ncm-secret, var(--ncm-purple));
+  border-radius: 2px; padding: 6px 10px; margin: 4px 0;
 }
 .ncm-composer__editor .ncm-encrypted-text-block::before {
   content: attr(data-label);
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: color-mix(in srgb, var(--ncm-success) 30%, transparent);
   position: absolute; top: 2px; right: 6px;
-  letter-spacing: 0.06em;
+  font-family: var(--ncm-font-display); font-size: calc(8.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .06em;
+  color: var(--ncm-secret, var(--ncm-purple));
 }
+/* Timestamp / location tags, and the signature old bodies may still carry */
+.ncm-composer__editor .ncm-timestamp-tag { color: var(--ncm-act, var(--ncm-secondary)); font-family: var(--ncm-font-mono); font-size: .9em; }
+.ncm-composer__editor .ncm-location-tag { color: var(--ncm-attn, var(--ncm-accent)); font-family: var(--ncm-font-mono); font-size: .9em; }
+.ncm-composer__editor .ncm-signature { border-top: 1px solid var(--ncm-border); padding-top: 6px; margin-top: 8px; color: var(--ncm-text-muted); font-family: var(--ncm-font-mono); font-size: .85em; font-style: italic; }
 
-/* Timestamp and location tags */
-.ncm-composer__editor .ncm-timestamp-tag {
-  color: var(--ncm-secondary);
-  font-family: var(--ncm-font-mono);
-  font-size: 0.9em;
+/* Editor foot line: ICE tag + count */
+.ncm-composer__edfoot {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  height: calc(22px * var(--ncm-text-scale, 1)); padding: 0 10px;
+  border-top: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
+  font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-hint, var(--ncm-text-muted));
 }
-.ncm-composer__editor .ncm-location-tag {
-  color: var(--ncm-accent);
-  font-family: var(--ncm-font-mono);
-  font-size: 0.9em;
-}
+.ncm-composer__edfoot-sp { flex: 1; }
+.ncm-composer__ice-badge { display: inline-flex; align-items: center; gap: 4px; font-family: var(--ncm-font-display); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; color: color-mix(in oklab, var(--ncm-secret, var(--ncm-purple)) 75%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-composer__ice-badge i { color: var(--ncm-secret, var(--ncm-purple)); }
+.ncm-composer__char-count { font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); }
 
-/* Signature */
-.ncm-composer__editor .ncm-signature {
-  border-top: 1px solid var(--ncm-bg-surface);
-  padding-top: 6px; margin-top: 8px;
-  color: var(--ncm-text-muted);
-  font-family: var(--ncm-font-mono);
-  font-size: 0.85em; font-style: italic;
-}
-
-.ncm-composer__char-count {
-  position: absolute; bottom: 4px; right: 10px;
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-}
-.ncm-composer__ice-badge {
-  position: absolute; bottom: 4px; left: 10px;
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: color-mix(in srgb, var(--ncm-success) 30%, transparent);
-  display: flex; align-items: center; gap: 2px;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   §8 ATTACHMENTS
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-composer__attachments {
-  display: flex; flex-wrap: wrap;
-  align-items: center; gap: 4px;
-  padding: 5px 14px;
-  border-top: 1px solid var(--ncm-bg-deep);
-}
-
+/* ─── Attachment chips ─── */
+.ncm-composer__attachments { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 12px 0; }
 .ncm-composer__attach {
-  display: inline-flex; align-items: center;
-  gap: 3px; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  padding: 2px 6px;
-  border: 1px solid var(--ncm-bg-surface); border-radius: 3px;
+  --tc: var(--ncm-act, var(--ncm-secondary));
+  display: inline-flex; align-items: center; gap: 6px;
+  height: calc(24px * var(--ncm-text-scale, 1)); padding: 0 8px;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface));
+  font-family: var(--ncm-font-body); font-size: calc(11.5px * var(--ncm-text-scale, 1));
+  color: var(--ncm-text-heading, var(--ncm-text-primary));
+  white-space: nowrap;
 }
-.ncm-composer__attach i { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
-.ncm-composer__attach--eddies i { color: var(--ncm-accent); }
-.ncm-composer__attach-amount { color: var(--ncm-accent); font-weight: 700; }
-.ncm-composer__attach-size { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
-.ncm-composer__attach-remove {
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  cursor: pointer; margin-left: 2px;
-}
-.ncm-composer__attach-remove:hover { color: var(--ncm-danger); }
-
+.ncm-composer__attach > i:first-child { color: var(--tc); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-composer__attach-size { font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); }
+.ncm-composer__attach--eddies { --tc: var(--ncm-money, var(--ncm-accent)); border-color: color-mix(in srgb, var(--ncm-money, var(--ncm-accent)) 55%, transparent); }
+.ncm-composer__attach--eddies b { font-family: var(--ncm-font-mono); font-weight: 700; color: color-mix(in oklab, var(--ncm-money, var(--ncm-accent)) 80%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-composer__attach--encrypted { border-style: dashed; }
+.ncm-composer__attach-remove { font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-hint, var(--ncm-text-muted)); margin-left: 2px; cursor: pointer; }
+.ncm-composer__attach-remove:hover { color: var(--ncm-bad, var(--ncm-danger)); }
 
 /* ═══════════════════════════════════════════════════════════
-   §9 FOOTER
+   PREVIEW AS RECIPIENT (GM)
    ═══════════════════════════════════════════════════════════ */
+.ncm-composer__preview { flex: 1; min-height: 0; margin: 10px 12px 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.ncm-composer__preview-lbl { flex: none; display: flex; align-items: center; gap: 6px; font-family: var(--ncm-font-display); font-size: calc(10.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .04em; color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-composer__preview-card {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 14px; margin-bottom: 8px;
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface));
+}
+.ncm-composer__preview-card > * { flex: 0 0 auto; }
+.ncm-composer__preview-hd { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; align-items: center; }
+.ncm-composer__preview-who { min-width: 0; }
+.ncm-composer__preview-name { display: flex; align-items: center; gap: 6px; font-family: var(--ncm-font-display); font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-composer__preview-meta { font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-addr, var(--ncm-text-muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-composer__preview-pri { display: inline-flex; align-items: center; gap: 4px; font-family: var(--ncm-font-display); font-size: calc(10.5px * var(--ncm-text-scale, 1)); font-weight: 700; }
+.ncm-composer__preview-pri.is-attn { color: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer__preview-pri.is-bad { color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer__preview-to { font-size: calc(11.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-composer__preview-to span { font-family: var(--ncm-font-display); color: var(--ncm-text-label, var(--ncm-text-muted)); margin-right: 4px; }
+.ncm-composer__preview-subject { font-family: var(--ncm-font-display); font-size: calc(15px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-composer__preview-body { font-size: calc(13px * var(--ncm-text-scale, 1)); line-height: 1.5; color: var(--ncm-text-primary); user-select: text; }
+.ncm-composer__preview-body * { user-select: text; }
+.ncm-composer__preview-body p { margin: 0 0 .5em; }
+.ncm-composer__preview-body blockquote { border-left: 2px solid var(--ncm-border-active, var(--ncm-border)); padding-left: 10px; margin: 4px 0; color: var(--ncm-text-secondary); }
+.ncm-composer__preview-body code { font-family: var(--ncm-font-mono); font-size: .9em; }
+.ncm-composer__preview-empty { color: var(--ncm-text-hint, var(--ncm-text-muted)); font-style: italic; }
+.ncm-composer__preview-lock {
+  --tc: var(--ncm-secret, var(--ncm-purple));
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); border-radius: 2px;
+  background: color-mix(in srgb, var(--tc) 8%, transparent);
+}
+.ncm-composer__preview-lock.is-bad { --tc: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer__preview-lock > i { font-size: calc(22px * var(--ncm-text-scale, 1)); color: var(--tc); }
+.ncm-composer__preview-lock b { display: block; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 700; color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-composer__preview-lock span { font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-composer__preview-go { display: inline-grid; place-items: center; height: calc(28px * var(--ncm-text-scale, 1)); padding: 0 12px; border: 1px solid var(--tc); border-radius: 2px; font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700; color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-composer__preview-att { display: flex; flex-wrap: wrap; gap: 5px; }
+.ncm-composer__preview-att span { display: inline-flex; gap: 5px; align-items: center; height: calc(22px * var(--ncm-text-scale, 1)); padding: 0 8px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-composer__preview-att span i { color: var(--ncm-act, var(--ncm-secondary)); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-composer__preview-att span.is-money { color: var(--ncm-money, var(--ncm-accent)); border-color: color-mix(in srgb, var(--ncm-money, var(--ncm-accent)) 55%, transparent); font-family: var(--ncm-font-mono); font-weight: 700; }
+.ncm-composer__preview-att span.is-money i { color: var(--ncm-money, var(--ncm-accent)); }
+.ncm-composer__preview-foot { margin-top: auto; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-composer__preview-foot i { color: var(--ncm-text-label, var(--ncm-text-muted)); font-size: calc(10px * var(--ncm-text-scale, 1)); }
 
+/* ═══════════════════════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════════════════════ */
 .ncm-composer__footer {
-  display: flex; align-items: center;
-  gap: 6px; padding: 6px 12px;
-  background: var(--ncm-bg-deep);
-  border-top: 1px solid var(--ncm-bg-base);
-  flex-shrink: 0;
+  flex: none; display: flex; align-items: center; gap: 8px;
+  height: calc(46px * var(--ncm-text-scale, 1)); padding: 0 12px;
+  border-top: 1px solid var(--ncm-border);
+  background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface));
 }
-
-.ncm-composer .ncm-composer__btn {
-  font-family: var(--ncm-font-display) !important;
-  font-size: calc(11px * var(--ncm-text-scale, 1)) !important; font-weight: 700 !important;
-  padding: 4px 14px !important;
-  border-radius: 3px !important;
-  cursor: pointer !important;
-  display: flex !important; align-items: center !important; gap: 4px !important;
-  border: 1px solid !important;
-  transition: all 0.12s !important;
-  height: auto !important; min-height: 0 !important;
-  background: none !important;
-  appearance: none !important; box-shadow: none !important;
+.ncm-composer button.ncm-composer__btn {
+  height: calc(30px * var(--ncm-text-scale, 1)) !important; padding: 0 14px !important;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)) !important; border-radius: 2px !important;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface)) !important;
+  color: var(--ncm-text-primary) !important;
+  font-size: calc(12px * var(--ncm-text-scale, 1)) !important; font-weight: 700 !important;
 }
-.ncm-composer .ncm-composer__btn i { margin: 0 !important; padding: 0 !important; }
-
-.ncm-composer .ncm-composer__btn--send {
-  color: var(--ncm-bg-deep) !important;
-  background: var(--ncm-secondary) !important;
-  border-color: var(--ncm-secondary) !important;
+.ncm-composer button.ncm-composer__btn i { font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-composer button.ncm-composer__btn:hover { border-color: var(--ncm-act, var(--ncm-secondary)) !important; }
+.ncm-composer button.ncm-composer__btn--primary {
+  --tc: var(--ncm-act, var(--ncm-secondary));
+  border-color: var(--tc) !important;
+  background: var(--tc) !important;
+  color: var(--ncm-text-inverse) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tc) 35%, transparent) !important;
 }
-.ncm-composer .ncm-composer__btn--send:hover {
-  background: var(--ncm-secondary) !important;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--ncm-secondary) 20%, transparent) !important;
+.ncm-composer button.ncm-composer__btn--primary i { color: var(--ncm-text-inverse); }
+.ncm-composer button.ncm-composer__btn--primary:hover { filter: brightness(1.08); }
+.ncm-composer button.ncm-composer__btn--queue, .ncm-composer button.ncm-composer__btn--schedule { --tc: var(--ncm-attn, var(--ncm-accent)); }
+.ncm-composer button.ncm-composer__btn--disabled,
+.ncm-composer button.ncm-composer__btn:disabled { opacity: .4 !important; cursor: default !important; pointer-events: none; }
+.ncm-composer button.ncm-composer__btn--draft, .ncm-composer button.ncm-composer__btn--preview { padding: 0 12px !important; }
+.ncm-composer button.ncm-composer__btn--preview.is-on { border-color: var(--ncm-act, var(--ncm-secondary)) !important; background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 14%, var(--ncm-bg-card, var(--ncm-bg-surface))) !important; }
+.ncm-composer__footer-meta { margin-left: auto; display: flex; align-items: center; gap: 12px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); white-space: nowrap; }
+.ncm-composer button.ncm-composer__dlink {
+  height: auto !important; padding: 0 !important; background: transparent !important; border: 0 !important;
+  color: var(--ncm-act, var(--ncm-secondary)) !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
 }
-.ncm-composer .ncm-composer__btn--disabled {
-  opacity: 0.3 !important; pointer-events: none !important;
+.ncm-composer button.ncm-composer__dlink:hover { text-decoration: underline; }
+.ncm-composer__autosave { display: inline-flex; align-items: center; gap: 4px; color: var(--ncm-good, var(--ncm-success)); }
+.ncm-composer__shortcut { display: inline-flex; align-items: center; gap: 3px; }
+.ncm-composer kbd {
+  display: inline-grid; place-items: center;
+  min-width: calc(16px * var(--ncm-text-scale, 1)); height: calc(15px * var(--ncm-text-scale, 1)); padding: 0 3px;
+  border: 1px solid var(--ncm-border); border-bottom-width: 2px; border-radius: 2px;
+  font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary);
+  background: transparent;
 }
-.ncm-composer .ncm-composer__btn--schedule {
-  color: var(--ncm-accent) !important;
-  background: color-mix(in srgb, var(--ncm-accent) 6%, transparent) !important;
-  border-color: color-mix(in srgb, var(--ncm-accent) 25%, transparent) !important;
-}
-.ncm-composer .ncm-composer__btn--queue {
-  color: var(--ncm-primary) !important;
-  background: color-mix(in srgb, var(--ncm-danger) 4%, transparent) !important;
-  border-color: color-mix(in srgb, var(--ncm-danger) 20%, transparent) !important;
-}
-.ncm-composer .ncm-composer__btn--draft {
-  color: var(--ncm-text-muted) !important;
-  background: none !important;
-  border-color: var(--ncm-border) !important;
-}
-.ncm-composer .ncm-composer__btn--draft:hover {
-  color: var(--ncm-text-muted) !important;
-  border-color: var(--ncm-border) !important;
-}
-
-.ncm-composer__footer-spacer { flex: 1; }
-
-.ncm-composer__autosave {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  display: flex; align-items: center; gap: 2px;
-}
-.ncm-composer__autosave i { color: color-mix(in srgb, var(--ncm-success) 30%, transparent); font-size: calc(8px * var(--ncm-text-scale, 1)); }
-
-.ncm-composer__shortcuts { display: flex; gap: 6px; }
-.ncm-composer__shortcut {
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-}
-.ncm-composer__shortcut kbd {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-deep);
-  border: 1px solid var(--ncm-bg-surface); border-radius: 2px;
-  padding: 0 2px; color: var(--ncm-text-muted);
-}
-
 
 /* ═══════════════════════════════════════════════════════════
-   §10 SEND ANIMATION OVERLAY
+   SEND OVERLAY (toggled by JS) — transmit / success / queued / failure
    ═══════════════════════════════════════════════════════════ */
-
 .ncm-composer__send-overlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(6, 6, 10, 0.92);
-  z-index: 20;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  position: absolute; inset: 0; z-index: 90;
+  background: color-mix(in srgb, var(--ncm-bg-pane, var(--ncm-bg-base)) 92%, transparent);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-
-/* Transmitting */
-.ncm-composer__send-transmit,
-.ncm-composer__send-success,
-.ncm-composer__send-failure {
-  display: flex; flex-direction: column;
-  align-items: center; gap: 16px;
-}
-
+.ncm-composer__send-transmit, .ncm-composer__send-success, .ncm-composer__send-failure { display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .ncm-composer__send-ring {
-  width: 64px; height: 64px;
-  border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
-  display: flex; align-items: center; justify-content: center;
-  position: relative;
-  animation: ncm-send-ring-pulse 1.2s ease-in-out infinite;
+  width: calc(64px * var(--ncm-text-scale, 1)); height: calc(64px * var(--ncm-text-scale, 1)); border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 30%, transparent);
+  border-top-color: var(--ncm-act, var(--ncm-secondary));
+  display: grid; place-items: center;
+  animation: ncm-send-spin 1.2s linear infinite;
 }
-.ncm-composer__send-ring::before {
-  content: '';
-  position: absolute; width: 100%; height: 100%;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
-  animation: ncm-send-ring-expand 1.2s ease-out infinite;
-}
-.ncm-composer__send-ring i {
-  font-size: calc(20px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary);
-  animation: ncm-send-icon-pulse 1.2s ease-in-out infinite;
-}
+.ncm-composer__send-ring i { font-size: calc(20px * var(--ncm-text-scale, 1)); color: var(--ncm-act, var(--ncm-secondary)); animation: ncm-send-spin 1.2s linear infinite reverse; }
+.ncm-composer__send-status { font-family: var(--ncm-font-display); font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .06em; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-composer__send-route { display: flex; align-items: center; gap: 8px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-composer__send-route-label, .ncm-composer__send-route-target { color: var(--ncm-text-label, var(--ncm-text-muted)); transition: color .3s; }
+.ncm-composer__send-route-target { font-weight: 700; }
+.ncm-composer__send-route-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ncm-border-active, var(--ncm-border)); flex: none; transition: background .3s, box-shadow .3s; }
+.ncm-composer__send-route-line { position: relative; width: 60px; height: 1px; background: var(--ncm-border-active, var(--ncm-border)); overflow: hidden; flex: none; }
+.ncm-composer__send-route-line::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, var(--ncm-act, var(--ncm-secondary)), transparent); opacity: 0; }
+.ncm-composer__send-route-label--active, .ncm-composer__send-route-target--active { color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; }
+.ncm-composer__send-route-dot--active { background: var(--ncm-act, var(--ncm-secondary)) !important; box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 50%, transparent) !important; }
+.ncm-composer__send-route-line--active { background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 35%, transparent); }
+.ncm-composer__send-route-line--active::after { opacity: 1; animation: ncm-send-line-sweep .6s ease-out forwards; }
+.ncm-composer__send-progress { width: 240px; height: 3px; background: var(--ncm-border); border-radius: 2px; overflow: hidden; }
+.ncm-composer__send-progress-bar { height: 100%; width: 0; background: var(--ncm-act, var(--ncm-secondary)); border-radius: 2px; }
+.ncm-composer__send-progress-bar--animating { animation: ncm-send-progress-fill 1.8s ease-in-out forwards; }
+.ncm-composer__send-stream { font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-label, var(--ncm-text-muted)); text-align: center; line-height: 1.6; max-width: 280px; }
 
-.ncm-composer__send-progress {
-  width: 160px; height: 3px;
-  background: var(--ncm-bg-surface); border-radius: 2px;
-  overflow: hidden;
-}
-.ncm-composer__send-progress-bar {
-  height: 100%; width: 0;
-  background: linear-gradient(90deg, var(--ncm-secondary), var(--ncm-secondary));
-  border-radius: 2px;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
-}
-.ncm-composer__send-progress-bar--animating {
-  animation: ncm-send-progress-fill 1.8s ease-in-out forwards;
-}
-
-.ncm-composer__send-status {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary);
-  letter-spacing: 0.06em; text-transform: uppercase;
-}
-
-.ncm-composer__send-route {
-  display: flex; align-items: center; gap: 6px;
-  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
-}
-/* All route children start dim */
-.ncm-composer__send-route-label {
-  color: var(--ncm-bg-elevated);
-  transition: color 0.3s, text-shadow 0.3s;
-}
-.ncm-composer__send-route-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--ncm-bg-surface); box-shadow: none;
-  flex-shrink: 0;
-  transition: background 0.3s, box-shadow 0.3s, transform 0.3s;
-}
-.ncm-composer__send-route-line {
-  width: 50px; height: 2px;
-  background: var(--ncm-bg-surface);
-  border-radius: 1px;
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.ncm-composer__send-route-line::after {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%; width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, var(--ncm-secondary), transparent);
-  border-radius: 1px;
-  opacity: 0;
-}
-.ncm-composer__send-route-target {
-  color: var(--ncm-bg-elevated);
-  font-weight: 600;
-  transition: color 0.3s, text-shadow 0.3s;
-}
-
-/* ─── Active states applied by JS in sequence ─── */
-.ncm-composer__send-route-label--active {
-  color: var(--ncm-secondary) !important;
-  text-shadow: 0 0 8px color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
-}
-.ncm-composer__send-route-dot--active {
-  background: var(--ncm-secondary) !important;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-secondary) 50%, transparent) !important;
-  transform: scale(1.3);
-}
-.ncm-composer__send-route-line--active {
-  background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
-}
-.ncm-composer__send-route-line--active::after {
-  opacity: 1;
-  animation: ncm-send-line-sweep 0.6s ease-out forwards;
-}
-.ncm-composer__send-route-target--active {
-  color: var(--ncm-secondary) !important;
-  text-shadow: 0 0 8px color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
-}
-
-.ncm-composer__send-stream {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-border-active);
-  text-align: center; line-height: 1.6;
-  max-width: 240px;
-}
-
-/* Success */
 .ncm-composer__send-success-icon {
-  width: 56px; height: 56px; border-radius: 50%;
-  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
-  border: 2px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent);
-  display: flex; align-items: center; justify-content: center;
-  animation: ncm-send-success-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
-  transform: scale(0);
+  width: calc(56px * var(--ncm-text-scale, 1)); height: calc(56px * var(--ncm-text-scale, 1)); border-radius: 50%;
+  display: grid; place-items: center;
+  border: 2px solid color-mix(in srgb, var(--ncm-good, var(--ncm-success)) 50%, transparent);
+  background: color-mix(in srgb, var(--ncm-good, var(--ncm-success)) 10%, transparent);
+  animation: ncm-send-success-pop .4s cubic-bezier(.34, 1.56, .64, 1) forwards; transform: scale(0);
 }
-.ncm-composer__send-success-icon i { font-size: calc(22px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
-/* A QUEUED send (GM offline / dead zone) reuses the success panel but is held,
-   not delivered — amber so it never reads as "done". */
+.ncm-composer__send-success-icon i { font-size: calc(22px * var(--ncm-text-scale, 1)); color: var(--ncm-good, var(--ncm-success)); }
+.ncm-composer__send-success-text { font-family: var(--ncm-font-display); font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .06em; color: var(--ncm-good, var(--ncm-success)); opacity: 0; animation: ncm-send-text-fade .3s .3s ease forwards; }
+.ncm-composer__send-success-detail { font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); text-align: center; max-width: 320px; line-height: 1.45; opacity: 0; animation: ncm-send-text-fade .3s .5s ease forwards; }
+/* A QUEUED send (GM offline / dead zone) is held, not delivered — amber, never green. */
+.ncm-composer__send-success--queued { padding: 12px 18px; border: 1px solid var(--ncm-attn, var(--ncm-accent)); border-radius: 2px; background: color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 10%, transparent); }
+.ncm-composer__send-success--queued .ncm-composer__send-success-icon { border-color: color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 50%, transparent); background: color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 10%, transparent); }
 .ncm-composer__send-success--queued .ncm-composer__send-success-icon i,
-.ncm-composer__send-success--queued .ncm-composer__send-success-text { color: var(--ncm-warning, #fbbf24); }
-.ncm-composer__send-success-text {
-  font-family: var(--ncm-font-title);
-  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 600;
-  color: var(--ncm-secondary); text-transform: uppercase;
-  letter-spacing: 0.12em;
-  opacity: 0; animation: ncm-send-text-fade 0.3s 0.3s ease forwards;
-}
-.ncm-composer__send-success-detail {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
-  opacity: 0; animation: ncm-send-text-fade 0.3s 0.5s ease forwards;
-}
+.ncm-composer__send-success--queued .ncm-composer__send-success-text { color: var(--ncm-attn, var(--ncm-accent)); }
 
-/* Failure */
 .ncm-composer__send-fail-icon {
-  width: 56px; height: 56px; border-radius: 50%;
-  background: color-mix(in srgb, var(--ncm-danger) 6%, transparent);
-  border: 2px solid color-mix(in srgb, var(--ncm-danger) 30%, transparent);
-  display: flex; align-items: center; justify-content: center;
+  width: calc(56px * var(--ncm-text-scale, 1)); height: calc(56px * var(--ncm-text-scale, 1)); border-radius: 50%;
+  display: grid; place-items: center;
+  border: 2px solid color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 50%, transparent);
+  background: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 8%, transparent);
 }
-.ncm-composer__send-fail-icon i { font-size: calc(22px * var(--ncm-text-scale, 1)); color: var(--ncm-danger); }
-.ncm-composer__send-fail-text {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-danger);
-  text-transform: uppercase; letter-spacing: 0.06em;
-}
-.ncm-composer__send-fail-detail {
-  font-family: var(--ncm-font-mono);
-  font-size: calc(8px * var(--ncm-text-scale, 1)); color: #774444;
-  text-align: center; line-height: 1.6; max-width: 240px;
-}
-.ncm-composer__send-fail-actions {
-  display: flex; gap: 8px; margin-top: 4px;
-}
+.ncm-composer__send-fail-icon i { font-size: calc(22px * var(--ncm-text-scale, 1)); color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer__send-fail-text { font-family: var(--ncm-font-display); font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .06em; color: var(--ncm-bad, var(--ncm-danger)); }
+.ncm-composer__send-fail-detail { font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); text-align: center; line-height: 1.45; max-width: 320px; }
+.ncm-composer__send-fail-actions { display: flex; gap: 8px; margin-top: 4px; }
 
+@keyframes ncm-send-spin { to { transform: rotate(360deg); } }
+@keyframes ncm-send-progress-fill { 0% { width: 0; } 20% { width: 30%; } 50% { width: 55%; } 80% { width: 85%; } 100% { width: 100%; } }
+@keyframes ncm-send-line-sweep { 0% { left: -100%; } 100% { left: 100%; } }
+@keyframes ncm-send-success-pop { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes ncm-send-text-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ═══════════════════════════════════════════════════════════
-   KEYFRAMES
-   ═══════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .ncm-composer__send-ring, .ncm-composer__send-ring i, .ncm-composer__send-route-line--active::after { animation: none; }
+  .ncm-composer__send-success-icon { animation: none; transform: none; }
+  .ncm-composer__send-success-text, .ncm-composer__send-success-detail { animation: none; opacity: 1; }
+  .ncm-composer__send-progress-bar--animating { animation: none; width: 100%; }
+}
+.ncm-app[data-ncm-animation-level="none"] .ncm-composer__send-ring,
+.ncm-app[data-ncm-animation-level="none"] .ncm-composer__send-ring i { animation: none; }
 
-@keyframes ncm-send-ring-pulse {
-  0%, 100% { border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent); transform: scale(1); }
-  50% { border-color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent); transform: scale(1.05); }
-}
-@keyframes ncm-send-ring-expand {
-  0% { transform: scale(1); opacity: 0.5; }
-  100% { transform: scale(1.8); opacity: 0; }
-}
-@keyframes ncm-send-icon-pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
-}
-@keyframes ncm-send-progress-fill {
-  0% { width: 0; }
-  20% { width: 30%; }
-  50% { width: 55%; }
-  80% { width: 85%; }
-  100% { width: 100%; }
-}
-@keyframes ncm-send-line-sweep {
-  0% { left: -100%; }
-  100% { left: 100%; }
-}
-@keyframes ncm-send-success-pop {
-  from { transform: scale(0); }
-  to { transform: scale(1); }
-}
-@keyframes ncm-send-text-fade {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* The network picker borrows network-selector.css, whose rows paint on a
+   translucent film and type their meta in the muted token — inside the composer
+   it sits on an opaque raised surface and the meta reads in the secondary tone,
+   so it clears 4.5:1 on the light preset too. */
+.ncm-app .ncm-composer .ncm-net-selector.ncm-composer__net-picker { background: var(--ncm-bg-raised, var(--ncm-bg-elevated, var(--ncm-bg-surface))); }
+.ncm-app .ncm-composer .ncm-composer__net-picker .ncm-net-option__type { color: var(--ncm-text-secondary); }
+.ncm-app .ncm-composer .ncm-composer__net-picker .ncm-net-option__chip { color: var(--ncm-text-secondary); }
+.ncm-app .ncm-composer .ncm-composer__net-picker .ncm-net-option__chip--on { color: color-mix(in oklab, var(--net-c, var(--ncm-act, var(--ncm-secondary))) 60%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-app .ncm-composer .ncm-composer__net-picker .ncm-net-option__chip--go { color: var(--ncm-act, var(--ncm-secondary)); }
+.ncm-app .ncm-composer .ncm-composer__net-picker .ncm-net-option__chip--locked { color: var(--ncm-text-primary); }
+.ncm-app[data-ncm-admin-theme="clean-light"] .ncm-composer .ncm-composer__net-picker .ncm-net-option__chip--go { color: color-mix(in oklab, var(--ncm-act, var(--ncm-secondary)) 55%, var(--ncm-text-primary)); }
+.ncm-app[data-ncm-admin-theme="clean-light"] .ncm-composer .ncm-composer__net-picker .ncm-net-option__chip--on { color: color-mix(in oklab, var(--net-c, var(--ncm-act, var(--ncm-secondary))) 35%, var(--ncm-text-primary)); }

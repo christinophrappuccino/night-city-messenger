@@ -1,0 +1,380 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>This scene — network modules</title>
+<!--
+  Admin → Networks → This scene, as one interactive MODULE, two different takes.
+  Version A = the radio dial (signal meters per network, drag to set strength, players as faces on the meter).
+  Version B = the coverage map (networks as signal bubbles over the scene, drag a bubble's edge to set strength).
+  Both versions share one set of data, so a change in one shows in the other.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-networks-scene-modules-mock.html  ?t=clean-light|high-contrast  ?dead=1
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/fontawesome/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 0 0 4px; letter-spacing: .04em; }
+  .mk-p { color: #aaa; font: 13px/1.45 sans-serif; margin: 0 0 18px; max-width: 790px; }
+  .mk-v { color: #eee; font: 700 13px sans-serif; margin: 26px 0 4px; letter-spacing: .05em; text-transform: uppercase; }
+  .mk-win { width: 790px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+
+  /* shared frame (the reference vocabulary) */
+  .rd-P { width: 790px; box-sizing: border-box; background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); padding-bottom: 12px; }
+  .rd-band { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ncm-bg-card); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 var(--ncm-act);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .rd-band > i { color: var(--ncm-act); }
+  .rd-band .r { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-label); font-weight: 400; }
+  .rd-band .r b { color: var(--ncm-text-heading); font-weight: 600; }
+  .rd-mod { margin: 10px 12px 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); position: relative; }
+  .rd-mod__k { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .rd-mod__k i { color: var(--ncm-act); font-size: 9px; }
+  .rd-mod__k .hint { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+  .rd-mod::before, .rd-mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid; pointer-events: none; z-index: 2; }
+  .rd-mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .rd-mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+  .rd-mod.is-dead::before, .rd-mod.is-dead::after { border-color: var(--ncm-bad); }
+
+  /* a network's own colour: --nc is the configured hex; --ncv is what text/strokes use */
+  .rd-net { --ncv: var(--nc); }
+  [data-ncm-admin-theme="clean-light"] .rd-net { --ncv: color-mix(in oklab, var(--nc) 55%, var(--ncm-text-primary)); }
+
+  .rd-av { flex: none; width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 8.5px var(--ncm-font-display);
+    color: color-mix(in oklab, var(--tc) 80%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 28%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--tc) 65%, transparent); box-sizing: border-box; }
+  .rd-av.off { filter: grayscale(1); opacity: .55; border-style: dashed; }
+  .rd-btn { appearance: none; font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px !important; border-radius: 2px !important; height: auto !important; min-height: 0 !important; width: auto !important; flex: 0 0 auto !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: none !important; cursor: pointer; box-shadow: none !important; margin: 0 !important; display: inline-flex; gap: 5px; align-items: center; line-height: 1.3; }
+  .rd-btn:hover { border-color: var(--ncm-act) !important; }
+  .rd-btn i { margin: 0 !important; }
+  .rd-tog { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); user-select: none; }
+  .rd-tog .kn { width: 24px; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--ncm-border-active) 80%, transparent); position: relative; transition: background .15s; }
+  .rd-tog .kn::after { content: ''; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--ncm-text-label); transition: left .15s, background .15s; }
+  .rd-tog.on { color: var(--ncm-good); } .rd-tog.on .kn { background: color-mix(in srgb, var(--ncm-good) 35%, transparent); } .rd-tog.on .kn::after { left: 14px; background: var(--ncm-good); }
+  .rd-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 12px 0; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .rd-foot .p { display: inline-flex; align-items: center; gap: 5px; }
+  .rd-foot .p b { color: var(--ncm-text-heading); font: 600 12px var(--ncm-font-display); }
+
+  /* ============ VERSION A — the dial ============ */
+  .rda { display: grid; grid-template-columns: minmax(0,1fr) 196px; }
+  .rda__meters { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border-right: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .rda__col { display: flex; flex-direction: column; align-items: stretch; padding: 9px 10px 10px; border-right: 1px solid color-mix(in srgb, var(--ncm-border) 45%, transparent); min-width: 0; position: relative; }
+  .rda__col:last-child { border-right: 0; }
+  .rda__col.sel { background: color-mix(in srgb, var(--nc) 6%, transparent); box-shadow: inset 0 2px var(--ncv); }
+  .rda__hd { display: flex; align-items: center; gap: 6px; min-width: 0; cursor: pointer; padding-right: 14px; }
+  .rda__ic { width: 22px; height: 22px; flex: none; border-radius: 2px; display: grid; place-items: center; font-size: 10px; color: var(--ncv); background: color-mix(in srgb, var(--nc) 16%, transparent); border: 1px solid color-mix(in srgb, var(--nc) 50%, transparent); }
+  .rda__nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rda__ty { font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 4px; align-items: center; }
+  .rda__ty .lk { color: var(--ncm-secret); font-size: 9px; }
+  .rda__start { position: absolute; top: 6px; right: 6px; font-size: 10px; color: var(--ncm-text-hint); cursor: pointer; padding: 2px; }
+  .rda__start:hover { color: var(--ncm-act); }
+  .rda__start.on { color: var(--ncm-attn); }
+  .rda__body { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 8px; margin-top: 10px; }
+  .rda__meter { position: relative; height: 158px; cursor: ns-resize; touch-action: none; outline: none; border-radius: 2px; }
+  .rda__meter:focus-visible { box-shadow: 0 0 0 1px var(--ncm-act); }
+  .rda__seg { position: absolute; left: 0; right: 0; height: 5px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-border-active) 55%, transparent); transition: background .12s; }
+  .rda__seg.lit { background: color-mix(in srgb, var(--nc) 70%, transparent); box-shadow: 0 0 5px color-mix(in srgb, var(--nc) 45%, transparent); }
+  .rda__seg.lit.top { background: var(--ncv); }
+  .rda__thumb { position: absolute; left: -4px; right: -4px; height: 2px; background: var(--ncm-text-heading); pointer-events: none; transition: bottom .12s; }
+  .rda__thumb::before, .rda__thumb::after { content: ''; position: absolute; top: -3px; border: 4px solid transparent; }
+  .rda__thumb::before { left: -4px; border-left-color: var(--ncm-text-heading); }
+  .rda__thumb::after { right: -4px; border-right-color: var(--ncm-text-heading); }
+  .rda__meter.drag .rda__seg, .rda__meter.drag .rda__thumb, .rda__crowd.drag { transition: none; }
+  .rda__side { position: relative; height: 158px; }
+  .rda__pct { font: 700 22px/1 var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .rda__pct small { font-size: 12px; color: var(--ncm-text-label); margin-left: 1px; }
+  .rda__q { font: 700 9.5px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncv); margin-top: 3px; }
+  .rda__crowd { position: absolute; left: 0; display: flex; align-items: center; gap: 2px; transform: translateY(50%); transition: bottom .12s; }
+  .rda__crowd::before { content: ''; width: 8px; height: 1px; background: var(--ncm-text-label); margin-right: 2px; }
+  .rda__crowd .rd-av { margin-left: -5px; box-shadow: 0 0 0 2px var(--ncm-bg-pane); } .rda__crowd .rd-av:first-of-type { margin-left: 0; }
+  .rda__crowd.nobody::before { display: none; }
+  .rda__crowd .none { font: italic 10.5px var(--ncm-font-body); color: var(--ncm-text-hint); }
+  .rda__ft { display: flex; align-items: center; justify-content: space-between; margin-top: 9px; gap: 4px; }
+  .rda__ft .who { font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .rda__col.off .rda__meter, .rda__col.off .rda__side { opacity: .35; }
+  .rda__col.off .rda__nm { color: var(--ncm-text-label); }
+  .rda__col.off::after { content: 'off air'; position: absolute; left: 50%; top: 96px; transform: translateX(-50%) rotate(-8deg); font: 700 10px var(--ncm-font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-label); border: 1px solid var(--ncm-border-active); padding: 1px 6px; background: var(--ncm-bg-pane); pointer-events: none; }
+  /* dead zone */
+  .rda.dead .rda__meter, .rda.dead .rda__side { opacity: .25; pointer-events: none; }
+  .rda.dead .rda__meters { position: relative; }
+  .rda__jam { display: none; position: absolute; top: 52px; left: 10px; right: 10px; height: 166px; align-items: center; justify-content: center; text-align: center; flex-direction: column; gap: 4px; pointer-events: none;
+    background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--ncm-bad) 10%, transparent) 0 6px, transparent 6px 12px); border: 1px dashed color-mix(in srgb, var(--ncm-bad) 60%, transparent); }
+  .rda.dead .rda__jam { display: flex; }
+  .rda__jam b { font: 700 15px var(--ncm-font-display); letter-spacing: .14em; color: var(--ncm-bad); text-transform: uppercase; background: var(--ncm-bg-pane); padding: 2px 10px; }
+  .rda__jam span { font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); background: var(--ncm-bg-pane); padding: 1px 8px; }
+  /* right rail */
+  .rda__rail { display: flex; flex-direction: column; padding: 10px; gap: 10px; min-width: 0; }
+  .rda__k { font: 700 9.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); margin-bottom: 4px; }
+  .rda__kill { display: grid; grid-template-columns: 46px minmax(0,1fr); gap: 9px; align-items: center; padding: 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); cursor: pointer; user-select: none; }
+  .rda__kill:hover { border-color: color-mix(in srgb, var(--ncm-bad) 50%, var(--ncm-border)); }
+  .rda__lever { width: 46px; height: 46px; border-radius: 2px; position: relative; border: 1px solid var(--ncm-border-active); background: var(--ncm-bg-pane); }
+  .rda__lever::before { content: ''; position: absolute; left: 50%; top: 7px; bottom: 7px; width: 6px; margin-left: -3px; border-radius: 3px; background: color-mix(in srgb, var(--ncm-border-active) 80%, transparent); }
+  .rda__lever i { position: absolute; left: 50%; width: 22px; height: 12px; margin-left: -11px; border-radius: 2px; background: var(--ncm-text-label); top: 6px; transition: top .18s cubic-bezier(.22,1,.36,1), background .18s; }
+  .rda__kill.on { border-color: var(--ncm-bad); background: color-mix(in srgb, var(--ncm-bad) 10%, var(--ncm-bg-card)); }
+  .rda__kill.on .rda__lever i { top: 27px; background: var(--ncm-bad); box-shadow: 0 0 8px var(--ncm-bad); }
+  .rda__kill .t { font: 700 12px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .rda__kill .s { font: 11px/1.35 var(--ncm-font-body); color: var(--ncm-text-label); }
+  .rda__kill.on .t { color: var(--ncm-bad); }
+  .rda__read { padding: 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); box-shadow: inset 3px 0 var(--ncv); }
+  .rda__read .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .rda__kv { display: grid; grid-template-columns: 58px minmax(0,1fr); gap: 3px 6px; margin-top: 6px; font: 11.5px var(--ncm-font-body); }
+  .rda__kv .k { font: 700 9px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); padding-top: 2px; }
+  .rda__kv .v { color: var(--ncm-text-primary); min-width: 0; }
+  .rda__kv .v.mono { font: 11.5px var(--ncm-font-mono); }
+  .rda__kv .v.sec { color: var(--ncm-secret); }
+  .rda__kv .v.attn { color: var(--ncm-attn); }
+  .rda__read .acts { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+
+  /* ============ VERSION B — coverage map ============ */
+  .rdb { display: grid; grid-template-columns: 470px minmax(0,1fr); }
+  .rdb__map { position: relative; border-right: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .rdb__map svg { display: block; width: 470px; height: 382px; touch-action: none; }
+  .rdb .grid { stroke: color-mix(in srgb, var(--ncm-border) 55%, transparent); stroke-width: 1; }
+  .rdb .scene { fill: color-mix(in srgb, var(--ncm-bg-card) 60%, transparent); stroke: var(--ncm-border-active); stroke-width: 1; stroke-dasharray: 4 3; }
+  .rdb .scene-l { font: 700 9.5px var(--ncm-font-display); letter-spacing: .1em; fill: var(--ncm-text-label); text-transform: uppercase; }
+  .rdb .bub { fill: color-mix(in srgb, var(--nc) 11%, transparent); stroke: var(--ncv); stroke-width: 1.25; transition: fill .15s; }
+  .rdb .bub.sec { stroke-dasharray: 5 3; }
+  .rdb .bub-g:hover .bub, .rdb .bub-g.sel .bub { fill: color-mix(in srgb, var(--nc) 20%, transparent); }
+  .rdb .bub-g.sel .bub { stroke-width: 2; }
+  .rdb .bub-g.off .bub { fill: none; stroke: var(--ncm-text-hint); stroke-dasharray: 2 4; }
+  .rdb .bub-g.off .tower, .rdb .bub-g.off .nlbl { opacity: .45; }
+  .rdb .edge { fill: transparent; stroke: transparent; stroke-width: 12; cursor: ew-resize; }
+  .rdb .handle { fill: var(--ncm-bg-pane); stroke: var(--ncv); stroke-width: 1.5; cursor: ew-resize; outline: none; }
+  .rdb .handle:hover, .rdb .handle:focus-visible, .rdb .handle.drag { fill: var(--ncv); }
+  .rdb .tower { fill: var(--ncv); }
+  .rdb .nlbl { font: 700 11px var(--ncm-font-display); fill: var(--ncm-text-heading); paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 3px; pointer-events: none; }
+  .rdb .npct { font: 700 10.5px var(--ncm-font-mono); fill: var(--ncv); paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 3px; pointer-events: none; }
+  .rdb .lockg { pointer-events: none; }
+  .rdb .pd { stroke: var(--ncm-bg-pane); stroke-width: 1.5; }
+  .rdb .pdt { font: 700 8px var(--ncm-font-display); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .rdb .pdn { font: 600 10px var(--ncm-font-display); fill: var(--ncm-text-heading); paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 3px; pointer-events: none; }
+  .rdb .flag { fill: var(--ncm-attn); }
+  .rdb .flag-t { font: 700 8.5px var(--ncm-font-display); letter-spacing: .08em; fill: var(--ncm-attn); paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 3px; }
+  .rdb .ping { fill: none; stroke: var(--ncv); stroke-width: 1; opacity: 0; transform-box: fill-box; transform-origin: center; animation: rdb-ping 3.2s ease-out infinite; pointer-events: none; }
+  @keyframes rdb-ping { 0% { opacity: .55; transform: scale(.2); } 100% { opacity: 0; transform: scale(1); } }
+  .rdb .jam { fill: url(#rdb-hatch); }
+  .rdb .jam-b { fill: var(--ncm-bad); font: 700 16px var(--ncm-font-display); letter-spacing: .16em; text-anchor: middle; paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 4px; }
+  .rdb .jam-s { fill: var(--ncm-text-primary); font: 12px var(--ncm-font-body); text-anchor: middle; paint-order: stroke; stroke: var(--ncm-bg-pane); stroke-width: 4px; }
+  .rdb.dead .bub-g { opacity: .22; pointer-events: none; }
+  .rdb__legend { position: absolute; left: 8px; bottom: 6px; display: flex; gap: 10px; font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); pointer-events: none; }
+  .rdb__legend span { display: inline-flex; gap: 4px; align-items: center; }
+  .rdb__legend i.c { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--ncm-text-label); }
+  .rdb__legend i.c.d { border-style: dashed; border-color: var(--ncm-secret); }
+  /* side list */
+  .rdb__side { display: flex; flex-direction: column; min-width: 0; }
+  .rdb__row { display: grid; grid-template-columns: 4px minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 7px 10px 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); cursor: pointer; }
+  .rdb__row:hover { background: var(--ncm-bg-hover); }
+  .rdb__row.sel { background: color-mix(in srgb, var(--nc) 8%, transparent); }
+  .rdb__row .bar { align-self: stretch; background: var(--ncv); }
+  .rdb__row.off .bar { background: var(--ncm-text-hint); }
+  .rdb__row .nm { font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading); display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; }
+  .rdb__row .nm .lk { color: var(--ncm-secret); font-size: 9.5px; }
+  .rdb__row .nm .st { color: var(--ncm-attn); font-size: 9.5px; }
+  .rdb__row .sb { font: 10.5px var(--ncm-font-body); color: var(--ncm-text-label); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .rdb__row .sb .rd-av { width: 16px; height: 16px; font-size: 7px; margin-left: -4px; box-shadow: 0 0 0 1.5px var(--ncm-bg-pane); } .rdb__row .sb .fs { display: inline-flex; padding-left: 4px; }
+  .rdb__row .pc { font: 700 14px var(--ncm-font-mono); color: var(--ncm-text-heading); text-align: right; }
+  .rdb__row .pc small { font-size: 10px; color: var(--ncm-text-label); }
+  .rdb__row.off .pc { color: var(--ncm-text-hint); }
+  .rdb__mini { height: 3px; background: color-mix(in srgb, var(--ncm-border-active) 60%, transparent); margin-top: 4px; border-radius: 1px; overflow: hidden; }
+  .rdb__mini i { display: block; height: 100%; background: var(--ncv); }
+  .rdb__det { padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .rdb__det .ln { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .rdb__det .ln b { font: 700 9px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .rdb__step { display: inline-flex; align-items: center; gap: 6px; }
+  .rdb__step .rd-btn { padding: 3px 6px !important; }
+  .rdb__det .v { font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-heading); width: 36px; text-align: right; }
+  .rdb__det .sec { color: var(--ncm-secret); }
+  .rdb__kill { margin: 9px 10px 0; display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 1px dashed color-mix(in srgb, var(--ncm-bad) 45%, var(--ncm-border)); border-radius: 2px; cursor: pointer; user-select: none; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .rdb__kill i { color: var(--ncm-bad); }
+  .rdb__kill b { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .rdb__kill.on { border-style: solid; border-color: var(--ncm-bad); background: color-mix(in srgb, var(--ncm-bad) 12%, transparent); }
+  .rdb__kill.on b { color: var(--ncm-bad); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rdb .ping { animation: none; opacity: 0; }
+    .rda__seg, .rda__thumb, .rda__crowd, .rda__lever i, .rd-tog .kn::after { transition: none; }
+  }
+</style>
+</head>
+<body>
+<p class="mk-h">Networks → This scene — two takes on one interactive module</p>
+<p class="mk-p">Scene "Night Market". Four networks reach it. Both versions share the same data, so dragging in one moves the other. Try: drag a meter or a bubble's edge handle, click a network to pick it, flip the dead zone switch, set where players start, turn a network off.</p>
+
+<p class="mk-v">Version A — the radio dial</p>
+<p class="mk-p">Each network that reaches this scene is a signal meter in its own colour. Drag a meter up or down to set its strength (or click it and use the arrow keys). The players on that network sit on the meter as small faces, at the level they're getting. The flag at a meter's corner marks where players start on this scene; click another flag to move it. The lever on the right turns the scene into a dead zone: every meter goes dark, but the strengths you set are kept for when you turn it back.</p>
+<div data-slot="a"></div>
+
+<p class="mk-v">Version B — the coverage map</p>
+<p class="mk-p">A top-down view of the scene. Each network is a signal bubble, centred on its tower; the stronger the signal, the bigger the bubble. Drag the round handle on a bubble's edge to grow or shrink it. Players are dots inside the bubble of the network they're on. A dashed edge means the network is secured. Off networks become a faint outline. The list on the right gives the exact numbers and holds the switches; the dead zone hatches over the whole map.</p>
+<div data-slot="b"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const theme = q.get('t') || 'clean-dark';
+const hue = (s) => { s = String(s || '').trim().toLowerCase(); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return `var(--ncm-hue-${(h % 8) + 1})`; };
+const ini = (n) => n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+
+const NETS = [
+  { id: 'citi', name: 'CitiNet', type: 'Public · CitiNet', icon: 'fa-tower-broadcast', nc: '#19f3f7', sig: 82, on: true, secured: null, scope: 'global' },
+  { id: 'watson', name: 'Watson Free', type: 'Public · community mesh', icon: 'fa-wifi', nc: '#f5a623', sig: 55, on: true, secured: null, scope: 'this scene' },
+  { id: 'arasaka', name: 'Arasaka CorpNet', type: 'CorpNet', icon: 'fa-building', nc: '#4a8ab5', sig: 30, on: true, secured: 'Password or Interface DV 15', scope: 'this scene' },
+  { id: 'dark', name: 'Darknet node', type: 'Darknet', icon: 'fa-user-secret', nc: '#b87aff', sig: 12, on: true, secured: 'Skill · Interface DV 17', scope: 'this scene' },
+];
+const PLAYERS = [
+  { name: 'V', net: 'citi', online: true }, { name: 'Judy', net: 'citi', online: true },
+  { name: 'Rache', net: 'watson', online: true }, { name: 'Panam', net: null, online: false },
+];
+const S = { start: 'citi', dead: q.get('dead') === '1', sel: 'citi', drag: null };
+const net = (id) => NETS.find((n) => n.id === id);
+const on = (id) => PLAYERS.filter((p) => p.online && p.net === id);
+const quality = (v) => v >= 80 ? 'Strong' : v >= 50 ? 'Good' : v >= 25 ? 'Weak' : v > 0 ? 'Faint' : 'None';
+const face = (p, extra = '') => `<span class="rd-av${p.online ? '' : ' off'}${extra}" style="--tc:${hue(p.name)}" title="${p.name}${p.online ? '' : ' (offline)'}">${ini(p.name)}</span>`;
+const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
+const frame = (inner) => `<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="${theme}"><div class="ncm-admin-panel"><div class="rd-P">${inner}</div></div></div>`;
+const bandHtml = () => `<div class="rd-band"><i class="fas fa-location-dot"></i>Night Market<span class="r">${S.dead ? '<b style="color:var(--ncm-bad)">Dead zone</b> · no signal' : `${NETS.filter((n) => n.on).length} networks reach it · players start on <b>${net(S.start).name}</b>`}</span></div>`;
+const footHtml = () => `<div class="rd-foot"><span>Players:</span>${PLAYERS.map((p) => `<span class="p">${face(p)}<b>${p.name}</b>${p.online ? (S.dead ? '<span style="color:var(--ncm-bad)">no signal</span>' : `<span>${net(p.net).name}</span>`) : '<span style="color:var(--ncm-text-hint)">offline</span>'}</span>`).join('')}</div>`;
+
+/* ---------- Version A ---------- */
+const SEGS = 20, MH = 158;
+function colA(n) {
+  const lit = Math.round(n.sig / 100 * SEGS), segH = MH / SEGS;
+  const segs = Array.from({ length: SEGS }, (_, i) => `<span class="rda__seg${i < lit ? ' lit' : ''}${i >= lit - 2 && i < lit ? ' top' : ''}" style="bottom:${i * segH + 1}px"></span>`).join('');
+  const ps = on(n.id), y = n.sig / 100 * MH;
+  return `<div class="rda__col rd-net${S.sel === n.id ? ' sel' : ''}${n.on ? '' : ' off'}" style="--nc:${n.nc}" data-a-sel="${n.id}">
+    <span class="rda__start${S.start === n.id ? ' on' : ''}" data-start="${n.id}" title="${S.start === n.id ? 'Players start on this network' : 'Make players start here'}"><i class="fa${S.start === n.id ? 's' : 'r'} fa-flag"></i></span>
+    <div class="rda__hd"><span class="rda__ic"><i class="fas ${n.icon}"></i></span><div style="min-width:0"><div class="rda__nm">${n.name}</div><div class="rda__ty">${n.secured ? '<i class="fas fa-lock lk"></i>' : ''}${n.type.split(' · ')[0]}</div></div></div>
+    <div class="rda__body">
+      <div class="rda__meter" data-meter="${n.id}" role="slider" tabindex="0" aria-label="${n.name} signal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${n.sig}">${segs}<span class="rda__thumb" style="bottom:${y - 1}px"></span></div>
+      <div class="rda__side"><div class="rda__pct">${S.dead ? '—' : n.sig}<small>${S.dead ? '' : '%'}</small></div><div class="rda__q">${S.dead ? 'Jammed' : quality(n.sig)}</div>
+        <div class="rda__crowd${ps.length ? '' : ' nobody'}" style="bottom:${Math.max(10, Math.min(MH - 54, y))}px">${ps.length ? ps.map((p) => face(p)).join('') : '<span class="none">nobody</span>'}</div></div>
+    </div>
+    <div class="rda__ft"><span class="rd-tog${n.on ? ' on' : ''}" data-onoff="${n.id}"><span class="kn"></span>${n.on ? 'On' : 'Off'}</span><span class="who">${ps.length} on</span></div>
+  </div>`;
+}
+function readA() {
+  const n = net(S.sel), ps = on(n.id);
+  return `<div class="rda__read rd-net" style="--nc:${n.nc}"><div class="nm">${n.name}</div>
+    <div class="rda__kv"><span class="k">Type</span><span class="v">${n.type}</span>
+      <span class="k">Reaches</span><span class="v">${n.scope === 'global' ? 'Every scene' : 'This scene'}</span>
+      <span class="k">Access</span><span class="v${n.secured ? ' sec' : ''}">${n.secured ? `<i class="fas fa-lock"></i> ${n.secured}` : 'Open'}</span>
+      <span class="k">Signal</span><span class="v mono">${n.sig}% · ${quality(n.sig)}</span>
+      <span class="k">On it</span><span class="v">${ps.length ? ps.map((p) => p.name).join(', ') : '<i style="color:var(--ncm-text-hint)">nobody</i>'}</span></div>
+    <div class="acts"><button class="rd-btn"><i class="fas fa-pen"></i>Edit</button><button class="rd-btn"><i class="fas fa-bullhorn"></i>Broadcast</button></div></div>`;
+}
+function renderA() {
+  document.querySelector('[data-slot="a"]').innerHTML = frame(`${bandHtml()}
+    <div class="rd-mod${S.dead ? ' is-dead' : ''}"><div class="rd-mod__k"><i class="fas fa-sliders"></i>Signal on this scene<span class="hint">drag a meter · flag = where players start</span></div>
+      <div class="rda${S.dead ? ' dead' : ''}"><div class="rda__meters">${NETS.map(colA).join('')}<div class="rda__jam"><b>Dead zone</b><span>No network reaches Night Market. Strengths are kept.</span></div></div>
+        <div class="rda__rail"><div><div class="rda__k">Dead zone</div>
+          <div class="rda__kill${S.dead ? ' on' : ''}" data-dead role="switch" aria-checked="${S.dead}" tabindex="0"><span class="rda__lever"><i></i></span><div><div class="t">${S.dead ? 'Dead zone on' : 'Signal live'}</div><div class="s">${S.dead ? 'Pull up to bring the networks back.' : 'Pull down to kill all signal here.'}</div></div></div></div>
+          <div><div class="rda__k">Picked</div>${readA()}</div></div></div></div>
+    ${footHtml()}`);
+}
+
+/* ---------- Version B ---------- */
+const MAP = { w: 470, h: 382, sx: 30, sy: 30, sw: 410, sh: 318 };
+const TOWERS = { citi: [165, 175, -20], watson: [335, 232, 15], arasaka: [310, 100, -40], dark: [112, 290, 35] };
+const radius = (n) => 14 + n.sig * 1.5;
+const sigFromR = (r) => clamp((r - 14) / 1.5);
+const PPOS = [[-0.38, -0.25], [0.3, 0.28], [-0.1, 0.42]];
+function bubbleB(n) {
+  const [x, y, ang] = TOWERS[n.id], r = radius(n), a = ang * Math.PI / 180, hx = x + Math.cos(a) * r, hy = y + Math.sin(a) * r;
+  const ps = on(n.id), pr = Math.min(r * 0.62, 46);
+  const dots = ps.map((p, i) => { const [dx, dy] = PPOS[i % 3]; const px = x + dx * pr * 1.6, py = y + dy * pr * 1.6;
+    return `<circle class="pd" cx="${px}" cy="${py}" r="8" style="fill:color-mix(in srgb, ${hue(p.name)} 40%, var(--ncm-bg-pane))"/><text class="pdt" x="${px}" y="${py}" style="fill:color-mix(in oklab, ${hue(p.name)} 80%, var(--ncm-text-heading))">${ini(p.name)}</text><text class="pdn" x="${px + 11}" y="${py + 3.5}">${p.name}</text>`; }).join('');
+  return `<g class="bub-g rd-net${S.sel === n.id ? ' sel' : ''}${n.on ? '' : ' off'}" style="--nc:${n.nc}" data-b-sel="${n.id}">
+    <circle class="bub${n.secured ? ' sec' : ''}" cx="${x}" cy="${y}" r="${r}"/>
+    ${n.on ? `<circle class="ping" cx="${x}" cy="${y}" r="${r}"/>` : ''}
+    <circle class="edge" cx="${x}" cy="${y}" r="${r}" data-edge="${n.id}"/>
+    <path class="tower" d="M${x - 5} ${y + 7} L${x} ${y - 7} L${x + 5} ${y + 7} Z"/>
+    <text class="nlbl" x="${x + 9}" y="${y - 2}">${n.name}</text>
+    <text class="npct" x="${x + 9}" y="${y + 11}">${n.on ? n.sig + '%' : 'off'}</text>
+    ${n.secured ? `<g class="lockg" transform="translate(${x - 19} ${y - 13})"><path d="M2.5 5 V3.5 a2.5 2.5 0 0 1 5 0 V5" fill="none" stroke="var(--ncm-secret)" stroke-width="1.4"/><rect x="1" y="5" width="8" height="6" rx="1" fill="var(--ncm-secret)"/></g>` : ''}
+    ${S.start === n.id ? `<path class="flag" d="M${x - 1} ${y - 8} v-16 l11 4 l-11 4 Z"/><text class="flag-t" x="${x + 12}" y="${y - 18}">START</text>` : ''}
+    ${dots}
+    <circle class="handle${S.drag?.id === n.id ? ' drag' : ''}" cx="${hx}" cy="${hy}" r="5.5" data-edge="${n.id}" tabindex="0" role="slider" aria-label="${n.name} signal" aria-valuenow="${n.sig}"/>
+  </g>`;
+}
+function mapB() {
+  const g = []; for (let x = MAP.sx; x <= MAP.sx + MAP.sw; x += 33) g.push(`<line class="grid" x1="${x}" y1="${MAP.sy}" x2="${x}" y2="${MAP.sy + MAP.sh}"/>`);
+  for (let y = MAP.sy; y <= MAP.sy + MAP.sh; y += 33) g.push(`<line class="grid" x1="${MAP.sx}" y1="${y}" x2="${MAP.sx + MAP.sw}" y2="${y}"/>`);
+  const order = [...NETS].sort((a, b) => radius(b) - radius(a) || (a.id === S.sel) - (b.id === S.sel));
+  return `<svg viewBox="0 0 ${MAP.w} ${MAP.h}" data-map>
+    <defs><clipPath id="rdb-clip"><rect x="${MAP.sx}" y="${MAP.sy}" width="${MAP.sw}" height="${MAP.sh}"/></clipPath>
+      <pattern id="rdb-hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" fill="color-mix(in srgb, var(--ncm-bad) 6%, transparent)"/><rect width="4" height="10" fill="color-mix(in srgb, var(--ncm-bad) 22%, transparent)"/></pattern></defs>
+    <rect class="scene" x="${MAP.sx}" y="${MAP.sy}" width="${MAP.sw}" height="${MAP.sh}"/>
+    <g>${g.join('')}</g>
+    <text class="scene-l" x="${MAP.sx}" y="${MAP.sy - 8}">Night Market · scene edge</text>
+    <g clip-path="url(#rdb-clip)">${order.map(bubbleB).join('')}</g>
+    ${S.dead ? `<rect class="jam" x="${MAP.sx}" y="${MAP.sy}" width="${MAP.sw}" height="${MAP.sh}"/><text class="jam-b" x="${MAP.sx + MAP.sw / 2}" y="${MAP.sy + MAP.sh / 2 - 4}">DEAD ZONE</text><text class="jam-s" x="${MAP.sx + MAP.sw / 2}" y="${MAP.sy + MAP.sh / 2 + 16}">No signal on this scene. Your settings are kept.</text>` : ''}
+  </svg>`;
+}
+function sideB() {
+  const n = net(S.sel);
+  return `${NETS.map((x) => { const ps = on(x.id); return `<div class="rdb__row rd-net${S.sel === x.id ? ' sel' : ''}${x.on ? '' : ' off'}" style="--nc:${x.nc}" data-b-sel="${x.id}"><span class="bar"></span>
+      <div style="min-width:0"><div class="nm">${x.name}${x.secured ? '<i class="fas fa-lock lk" title="Secured"></i>' : ''}${S.start === x.id ? '<i class="fas fa-flag st" title="Players start here"></i>' : ''}</div>
+        <div class="sb"><span>${x.type.split(' · ')[0]}</span>${ps.length ? `<span class="fs">${ps.map((p) => face(p)).join('')}</span>` : ''}</div>
+        <div class="rdb__mini"><i style="width:${x.on ? x.sig : 0}%"></i></div></div>
+      <div class="pc">${x.on ? x.sig : '—'}<small>${x.on ? '%' : ''}</small></div></div>`; }).join('')}
+    <div class="rdb__det rd-net" style="--nc:${n.nc}">
+      <div class="ln"><b>${n.name}</b><span class="rd-tog${n.on ? ' on' : ''}" data-onoff="${n.id}"><span class="kn"></span>${n.on ? 'On' : 'Off'}</span></div>
+      <div class="ln"><b>Signal</b><span class="rdb__step"><button class="rd-btn" data-step="-5" aria-label="Weaker"><i class="fas fa-minus"></i></button><span class="v">${n.sig}%</span><button class="rd-btn" data-step="5" aria-label="Stronger"><i class="fas fa-plus"></i></button></span></div>
+      <div class="ln"><span class="${n.secured ? 'sec' : ''}">${n.secured ? `<i class="fas fa-lock"></i> ${n.secured}` : 'Open — anyone in range joins'}</span></div>
+      <div class="ln">${S.start === n.id ? '<span style="color:var(--ncm-attn)"><i class="fas fa-flag"></i> Players start here</span>' : `<button class="rd-btn" data-start="${n.id}"><i class="fas fa-flag"></i>Start players here</button>`}<button class="rd-btn"><i class="fas fa-pen"></i>Edit</button></div>
+    </div>
+    <div class="rdb__kill${S.dead ? ' on' : ''}" data-dead role="switch" aria-checked="${S.dead}" tabindex="0"><i class="fas fa-${S.dead ? 'ban' : 'power-off'}"></i><div><b>${S.dead ? 'Dead zone on' : 'Make a dead zone'}</b><div>${S.dead ? 'Click to bring signal back.' : 'Kill all signal on this scene.'}</div></div></div>`;
+}
+function renderB() {
+  document.querySelector('[data-slot="b"]').innerHTML = frame(`${bandHtml()}
+    <div class="rd-mod${S.dead ? ' is-dead' : ''}"><div class="rd-mod__k"><i class="fas fa-satellite-dish"></i>Coverage<span class="hint">drag a bubble's edge handle · click a bubble to pick it</span></div>
+      <div class="rdb${S.dead ? ' dead' : ''}"><div class="rdb__map">${mapB()}<div class="rdb__legend"><span><i class="c"></i>open</span><span><i class="c d"></i>secured</span><span>size = signal</span><span>dots = players</span></div></div>
+        <div class="rdb__side">${sideB()}</div></div></div>
+    ${footHtml()}`);
+}
+function render() { renderA(); renderB(); }
+render();
+
+/* ---------- interaction ---------- */
+function setSig(id, v) { const n = net(id); if (!n || n.sig === v) return; n.sig = v; render(); }
+document.addEventListener('pointerdown', (e) => {
+  if (S.dead) return;
+  const m = e.target.closest('[data-meter]');
+  if (m) { e.preventDefault(); const r = m.getBoundingClientRect(); S.drag = { kind: 'a', id: m.dataset.meter, bottom: r.bottom, h: r.height }; S.sel = m.dataset.meter; setSig(S.drag.id, clamp((S.drag.bottom - e.clientY) / S.drag.h * 100)); render(); return; }
+  const ed = e.target.closest('[data-edge]');
+  if (ed) { e.preventDefault(); const svg = ed.ownerSVGElement; S.drag = { kind: 'b', id: ed.dataset.edge, ctm: svg.getScreenCTM().inverse(), svg }; S.sel = ed.dataset.edge; render(); }
+});
+document.addEventListener('pointermove', (e) => {
+  const d = S.drag; if (!d) return;
+  if (d.kind === 'a') return setSig(d.id, clamp((d.bottom - e.clientY) / d.h * 100));
+  const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(d.ctm), [x, y] = TOWERS[d.id];
+  setSig(d.id, sigFromR(Math.hypot(pt.x - x, pt.y - y)));
+});
+document.addEventListener('pointerup', () => { if (S.drag) { S.drag = null; render(); } });
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  const st = t.closest('[data-start]'); if (st) { S.start = st.dataset.start; return render(); }
+  const sp = t.closest('[data-step]'); if (sp && !S.dead) { setSig(S.sel, clamp(net(S.sel).sig + Number(sp.dataset.step))); return; }
+  const oo = t.closest('[data-onoff]'); if (oo) { const n = net(oo.dataset.onoff); n.on = !n.on; return render(); }
+  if (t.closest('[data-dead]')) { S.dead = !S.dead; return render(); }
+  const sel = t.closest('[data-a-sel],[data-b-sel]'); if (sel) { S.sel = sel.dataset.aSel || sel.dataset.bSel; return render(); }
+});
+document.addEventListener('keydown', (e) => {
+  const k = e.target.closest?.('[data-meter],[data-edge]');
+  if (k && !S.dead) { const id = k.dataset.meter || k.dataset.edge, step = e.shiftKey ? 10 : 1;
+    const dv = { ArrowUp: step, ArrowRight: step, ArrowDown: -step, ArrowLeft: -step }[e.key];
+    if (dv) { e.preventDefault(); S.sel = id; setSig(id, clamp(net(id).sig + dv)); const sel = `[data-${k.dataset.meter ? 'meter' : 'edge'}="${id}"][tabindex]`; document.querySelector(sel)?.focus(); } return; }
+  if (e.target.closest?.('[data-dead]') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); S.dead = !S.dead; render(); document.querySelector('[data-dead]')?.focus(); }
+});
+</script>
+</body>
+</html>

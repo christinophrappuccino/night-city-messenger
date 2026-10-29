@@ -175,3 +175,21 @@
 .ncm-app .ncm-composer__chip--group .ncm-composer__chip-avatar { color: var(--g, var(--ncm-secondary)); }
 .ncm-app .ncm-composer__chip-count { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); margin-left: 2px; }
 .ncm-app .ncm-autocomplete-item--group .ncm-autocomplete__avatar { border-radius: 2px; }
+
+/* ─── group pictures (2026-10-29) — the chip, the tray, the composer, the editor ─── */
+.ncm-app .ncm-cgr__chip-img { flex: 0 0 auto; align-self: center; width: calc(22px * var(--ncm-text-scale, 1)); height: calc(22px * var(--ncm-text-scale, 1));
+  object-fit: cover; border: 0; border-radius: 2px; box-shadow: -3px 0 0 var(--g, var(--ncm-secondary)); margin-left: 3px; }
+.ncm-app .ncm-cgr__tray-img { flex: 0 0 auto; width: calc(32px * var(--ncm-text-scale, 1)); height: calc(32px * var(--ncm-text-scale, 1));
+  object-fit: cover; border: 1px solid color-mix(in srgb, var(--g, var(--ncm-secondary)) 60%, transparent); border-radius: 2px; }
+.ncm-composer__chip-av.has-img { overflow: hidden; padding: 0; }
+.ncm-composer__chip-av img, .ncm-autocomplete__avatar img { width: 100%; height: 100%; object-fit: cover; border: 0; border-radius: inherit; }
+.ncm-autocomplete-item--group .ncm-autocomplete__avatar { overflow: hidden; }
+.ncm-cge-dialog .ncm-cge__pic { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.ncm-cge-dialog .ncm-cge__face { flex: none; width: 40px; height: 40px; display: grid; place-items: center; overflow: hidden; border-radius: 2px;
+  border: 1px solid var(--c, var(--ncm-secondary)); background: color-mix(in srgb, var(--c, var(--ncm-secondary)) 16%, transparent); color: var(--c, var(--ncm-secondary)); }
+.ncm-cge-dialog .ncm-cge__face img { width: 100%; height: 100%; object-fit: cover; border: 0; }
+.ncm-cge-dialog .ncm-cge__face i { margin: 0 !important; font-size: 16px; }
+.ncm-cge-dialog .ncm-cge__pic input.ncm-cge__img { flex: 1; min-width: 0; }
+.ncm-cge-dialog button.ncm-cge__clear { padding: 0 9px !important; }
+.ncm-cge-dialog button.ncm-cge__clear[hidden] { display: none !important; }
+.ncm-cge-dialog button.ncm-cge__clear i { margin: 0 !important; }

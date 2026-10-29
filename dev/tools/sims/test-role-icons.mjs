@@ -35,8 +35,11 @@ ok(formRoles.length >= 10, `form offers ${formRoles.length} roles`);
 for (const r of formRoles) ok(H.getRoleIcon(r) !== 'fas fa-user', `form role "${r}" has its own icon (${H.getRoleIcon(r)})`);
 
 // ── matches the GM's table ──
+// The Role Manager (rebuilt 2026-10-27) reads contactVocab.BUILT_IN_ROLES — one table, no private copy.
 const rm = readFileSync(`${ROOT}/scripts/ui/GMContactManager/RoleManagerDialog.js`, 'utf8');
-const gmTable = [...rm.matchAll(/\{ id: '([a-z]+)',\s+label: '[^']*',\s+icon: '([a-z-]+)'/g)].map(m => [m[1], m[2]]);
+ok(rm.includes("import { BUILT_IN_ROLES } from '../../utils/contactVocab.js'") && !/const BUILT_IN_ROLES/.test(rm), 'Role Manager uses the shared role table, no private copy');
+const { BUILT_IN_ROLES } = await import(pathToFileURL(`${ROOT}/scripts/utils/contactVocab.js`).href);
+const gmTable = Object.entries(BUILT_IN_ROLES).map(([id, r]) => [id, r.icon]);
 ok(gmTable.length >= 10, `GM role table read (${gmTable.length} roles)`);
 for (const [id, icon] of gmTable) ok(H.getRoleIcon(id) === `fas fa-${icon}`, `player + GM agree on ${id} → ${icon}`);
 
@@ -52,11 +55,12 @@ for (const t of ['templates/contact-manager/partials/contact-card.hbs', 'templat
   ok(/class="\{\{roleIcon\}\}"/.test(src) && !/class="fas \{\{roleIcon\}\}"/.test(src), `${t.split('/').pop()} renders <i class="{{roleIcon}}">`);
 }
 ok(!/const roleIcons = \{/.test(readFileSync(`${ROOT}/scripts/ui/ContactManager/ContactManagerApp.js`, 'utf8')), 'Contact Manager has no private role-icon map (reads getRoleIcon)');
-// GM Contact Manager: group headers print `fas {{icon}}` with icon = `fa-name`; a ROLE group
-// takes its role's glyph from the role table rather than the generic user-tag.
-const gmHbs = readFileSync(`${ROOT}/templates/gm-contact-manager/gm-contact-manager.hbs`, 'utf8');
-const gmJs = readFileSync(`${ROOT}/scripts/ui/GMContactManager/GMContactManagerApp.js`, 'utf8');
-ok(/ncm-gm-group-header__icon fas \{\{icon\}\}/.test(gmHbs) && /this\._groupBy === 'role'\s*\?\s*\('fa-' \+ \(Object\.values\(allRoles\)/.test(gmJs), 'GM Contact Manager role groups wear the role glyph');
+// Admin → Contacts (the GM Contact Manager window folded in, 2026-10-27): group headers,
+// role chips and meta icons print a FULL class; a ROLE group wears its role's glyph.
+const ctHbs = readFileSync(`${ROOT}/templates/admin-panel/tab-contacts.hbs`, 'utf8');
+const ctJs = readFileSync(`${ROOT}/scripts/ui/AdminPanel/tabs/ContactsTab.js`, 'utf8');
+ok(/<div class="ncm-ct2-grp[^"]*"[^>]*>(<i class="[^"]*ncm-ct2-grp__chev"><\/i>)?<i class="\{\{icon\}\}">/.test(ctHbs) && /data-role="\{\{id\}\}"><i class="\{\{icon\}\}">/.test(ctHbs), 'Admin Contacts prints the whole icon class');
+ok(/icon: `fas fa-\$\{r\.icon\}`/.test(ctJs) && /mode === 'role' \? roleIconFor\(g\.label\)/.test(ctJs) && /icon: getRoleIcon\(c\.role\)/.test(ctJs), 'Admin Contacts role groups/chips/meta wear the role glyph (full class)');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

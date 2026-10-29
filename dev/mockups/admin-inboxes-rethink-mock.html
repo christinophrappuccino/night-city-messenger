@@ -1,0 +1,337 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Inboxes — rethink</title>
+<!--
+  Admin → Messages → Inboxes, back to the drawing board (2026-10-29). The Mailroom wall + belt read as messy:
+  five stacked layers, two filter vocabularies, decoration over information, content moving under the cursor.
+  The dev uses Inboxes for ALL FOUR jobs: open someone's inbox · see who has unread · housekeeping · activity.
+  Rules for both frames: one question per screen, ONE way to filter, ONE way to sort, a dense scannable row per
+  mailbox, details open BESIDE the list (nothing pushes, nothing pops over).
+    A · LIST + DESK     — the Contacts-Directory shape: a grouped list on the left (face · name · unread · last mail),
+                          the picked mailbox on the right: Open inbox first, then Latest mail, Activity (14 days,
+                          networks as postmarks, who it talks to), Housekeeping. With nothing picked the right side is
+                          a "Needs a look" summary: most unread, gone quiet, owner gone.
+    B · SORTABLE TABLE  — one full-width table you sort by clicking a column (Mailbox · Unread · Last mail · 14 days ·
+                          Networks); a row opens in place under itself with the same detail; housekeeping in a ⋯ per row
+                          and a bulk bar when rows are ticked.
+  Both are live: search, the Show select, sorting, picking. Serve: node dev/tools/serve-mockups.cjs →
+  http://127.0.0.1:8123/dev/mockups/admin-inboxes-rethink-mock.html   ?t=clean-light|high-contrast  ?only=a|b  ?sel=<id>
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { width: 820px; margin: 26px auto 4px; color: #eee; font: 700 15px sans-serif; letter-spacing: .04em; }
+  .mk-h:first-child { margin-top: 0; }
+  .mk-p { width: 820px; margin: 0 auto 12px; color: #aaa; font: 13px/1.5 sans-serif; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important;
+    width: 820px; height: 600px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #555; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); }
+  .mk-win .ncm-msg2-nav { margin: 0 !important; padding: 8px 10px 0; }
+
+  .ib { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 10px 10px; color: var(--ncm-text-primary); }
+  .ib-hd { display: flex; align-items: center; gap: 8px; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ib-hd b.t { font: 700 12px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .ib-hd i { color: var(--ncm-act); }
+  /* ONE toolbar row: search · Show · Sort · ⋯ */
+  .ib-tb { display: flex; align-items: center; gap: 6px; }
+  .ib-srch { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .ib-srch i { font-size: 11px; color: var(--ncm-text-label); }
+  .ncm-app .ib-srch input { flex: 1; height: 26px !important; border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; color: var(--ncm-text-primary) !important; font: 12px var(--ncm-font-body) !important; }
+  .ib-sel { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); }
+  .ib-sel span { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .ncm-app .ib-sel select { height: 24px !important; border: 0 !important; background: transparent !important; color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; font: 600 12px var(--ncm-font-display) !important; padding: 0 2px !important; box-shadow: none !important; }
+  .ncm-app .ib-sel select option { background: var(--ncm-bg-card); color: var(--ncm-text-primary); }
+  .ib-btn { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 28px; padding: 0 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card);
+    font: 700 10.5px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); cursor: pointer; white-space: nowrap; }
+  .ib-btn:hover { border-color: var(--ncm-act); }
+  .ib-btn.pri { background: var(--ncm-act); border-color: var(--ncm-act); color: var(--ncm-text-inverse); }
+  .ib-btn.ic { width: 28px; padding: 0; }
+  .ib-btn.bad { color: var(--ncm-bad); }
+  .ib-btn i { font-size: 10px; }
+  .ib-n { font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; }
+
+  .ib-av { flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--tc, var(--ncm-act)); box-sizing: border-box;
+    background: color-mix(in srgb, var(--tc, var(--ncm-act)) 18%, var(--ncm-bg-card)); color: var(--ncm-text-heading, var(--ncm-text-primary)); font: 700 10px var(--ncm-font-display); }
+  .ib-av.sm { width: 18px; height: 18px; font-size: 7.5px; border-width: 1px; }
+  .ib-av.lg { width: 40px; height: 40px; font-size: 14px; }
+  .ib-av.gone { --tc: var(--ncm-bad); }
+  .ib-u { display: inline-grid; place-items: center; min-width: 20px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 1px; background: var(--ncm-attn); color: var(--ncm-text-inverse); font: 700 10.5px var(--ncm-font-mono); }
+  .ib-t { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); white-space: nowrap; }
+  .ib-tag { display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; height: 16px; border-radius: 1px; font: 700 8.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; border: 1px solid; }
+  .ib-tag.quiet { color: var(--ncm-text-secondary); border-color: var(--ncm-border); }
+  .ib-tag.gone { color: var(--ncm-bad); border-color: color-mix(in srgb, var(--ncm-bad) 60%, transparent); }
+  .ib-tag.alias { color: color-mix(in srgb, var(--ncm-secret) 70%, var(--ncm-text-heading, #fff)); border-color: color-mix(in srgb, var(--ncm-secret) 55%, transparent); }
+  .ib-tag.none { color: var(--ncm-text-secondary); border-color: var(--ncm-border); border-style: dashed; }
+  /* a mini 14-day line (a strip of 14 cells) */
+  .ib-spark { display: inline-flex; align-items: flex-end; gap: 1px; height: 14px; width: 56px; }
+  .ib-spark i { flex: 1; background: color-mix(in srgb, var(--ncm-act) 65%, transparent); min-height: 1px; }
+  .ib-spark i.z { background: var(--ncm-border); } .ib-spark i.u { background: var(--ncm-attn); }
+  /* postmark (kept small, detail only) */
+  .ib-pm { --n: var(--ncm-act); display: inline-flex; align-items: stretch; height: 18px; border: 1px solid color-mix(in srgb, var(--n) 70%, transparent); clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%); background: color-mix(in srgb, var(--n) 10%, var(--ncm-bg-card)); }
+  .ib-pm i { width: 8px; background: repeating-linear-gradient(90deg, var(--n) 0 1px, transparent 1px 2px, var(--n) 2px 4px, transparent 4px 5px); }
+  .ib-pm b { display: flex; align-items: center; padding: 0 4px; font: 700 9.5px var(--ncm-font-mono); color: color-mix(in srgb, var(--n) 40%, var(--ncm-text-heading, #fff)); }
+  .ib-pm span { display: flex; align-items: center; padding: 0 6px 0 4px; border-left: 1px dashed color-mix(in srgb, var(--n) 50%, transparent); font: 9.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ib-k { display: flex; align-items: center; gap: 6px; margin: 0 0 5px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .ib-k i { color: var(--ncm-act); font-size: 9px; } .ib-k .x { margin-left: auto; font: 10px var(--ncm-font-mono); letter-spacing: 0; text-transform: none; color: var(--ncm-text-secondary); }
+  .ib-sec { padding: 9px 12px; border-bottom: 1px solid var(--ncm-border); }
+  .ib-mail { display: grid; grid-template-columns: 3px 18px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); cursor: pointer; }
+  .ib-mail:hover { background: var(--ncm-bg-hover, var(--ncm-bg-card)); }
+  .ib-mail .e { align-self: stretch; background: var(--ncm-text-label); } .ib-mail.unread .e { background: var(--ncm-attn); }
+  .ib-mail .tx { min-width: 0; display: flex; gap: 6px; align-items: baseline; }
+  .ib-mail .tx b { font: 600 11.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; }
+  .ib-mail .tx span { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ib-mail.unread .tx span { color: var(--ncm-text-primary); }
+  .ib-bars { display: flex; align-items: flex-end; gap: 2px; height: 34px; }
+  .ib-bars i { flex: 1; background: color-mix(in srgb, var(--ncm-act) 65%, transparent); min-height: 2px; } .ib-bars i.z { background: var(--ncm-border); } .ib-bars i.u { background: var(--ncm-attn); }
+  .ib-nums { display: flex; gap: 14px; margin-top: 6px; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ib-nums b { font: 700 13px var(--ncm-font-mono); color: var(--ncm-text-heading, var(--ncm-text-primary)); margin-right: 3px; }
+  .ib-nums .attn b { color: var(--ncm-attn); }
+  .ib-row2 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .ib-who { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 1px; border: 1px solid var(--ncm-border); border-radius: 10px; font: 11px var(--ncm-font-display); color: var(--ncm-text-primary); cursor: pointer; }
+  .ib-who:hover { border-color: var(--ncm-act); } .ib-who em { font: normal 10px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+
+  /* ═══ A · LIST + DESK ═══ */
+  .a-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 8px; }
+  .a-list { min-height: 0; overflow-y: auto; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .a-g { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 7px; padding: 5px 9px; cursor: pointer; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface));
+    font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .a-g .ch { font-size: 9px; color: var(--ncm-text-label); transition: transform .15s; } .a-g.shut .ch { transform: rotate(-90deg); }
+  .a-g .n { font-family: var(--ncm-font-mono); color: var(--ncm-text-secondary); } .a-g .u { margin-left: auto; }
+  .a-r { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 6px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); cursor: pointer; }
+  .a-r:hover { background: var(--ncm-bg-hover, var(--ncm-bg-card)); }
+  .a-r.sel { background: color-mix(in srgb, var(--ncm-act) 11%, var(--ncm-bg-card)); box-shadow: inset 3px 0 var(--ncm-act); }
+  .a-r.unread { box-shadow: inset 3px 0 var(--ncm-attn); } .a-r.unread.sel { box-shadow: inset 3px 0 var(--ncm-act); }
+  .a-r.quiet { opacity: .72; }
+  .a-r .tx { min-width: 0; }
+  .a-r .nm { display: flex; align-items: center; gap: 6px; font: 600 12.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; }
+  .a-r .nm span { overflow: hidden; text-overflow: ellipsis; }
+  .a-r .sl { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .a-r .end { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .a-desk { min-height: 0; overflow-y: auto; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); }
+  .a-dhd { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); }
+  .a-dhd .tx { min-width: 0; flex: 1; }
+  .a-dhd .nm { display: flex; align-items: center; gap: 7px; font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .a-dhd .ad { font: 11px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-secondary)); }
+  .a-acts { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); }
+  .a-house { display: flex; flex-wrap: wrap; gap: 6px; }
+  .a-look { padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .a-card { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); padding: 8px 10px; }
+  .a-card.wide { grid-column: 1 / -1; }
+  .a-li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .a-li:last-child { border-bottom: 0; } .a-li:hover .nm { color: var(--ncm-act); }
+  .a-li .nm { font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .a-li .nm small { display: block; font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+
+  /* ═══ B · SORTABLE TABLE ═══ */
+  .b-tbl { flex: 1; min-height: 0; overflow-y: auto; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane); }
+  .b-head, .b-r { display: grid; grid-template-columns: 22px minmax(0, 1fr) 70px 92px 74px 96px 30px; align-items: center; gap: 8px; padding: 0 10px; }
+  .b-head { position: sticky; top: 0; z-index: 2; height: 28px; background: var(--ncm-bg-card-head, var(--ncm-bg-surface)); border-bottom: 1px solid var(--ncm-border); }
+  .b-head > span { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; }
+  .b-head > span:hover { color: var(--ncm-text-primary); }
+  .b-head > span.on { color: var(--ncm-act); }
+  .b-head > span i { font-size: 9px; } .b-head > span.r { justify-content: flex-end; }
+  .b-g { display: flex; align-items: center; gap: 7px; padding: 4px 10px; border-bottom: 1px solid var(--ncm-border); background: color-mix(in srgb, var(--ncm-bg-card-head, var(--ncm-bg-surface)) 60%, transparent);
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .b-g .n { font-family: var(--ncm-font-mono); }
+  .b-r { min-height: 38px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); cursor: pointer; }
+  .b-r:hover { background: var(--ncm-bg-hover, var(--ncm-bg-card)); }
+  .b-r.open { background: color-mix(in srgb, var(--ncm-act) 9%, var(--ncm-bg-card)); box-shadow: inset 3px 0 var(--ncm-act); }
+  .b-r.unread:not(.open) { box-shadow: inset 3px 0 var(--ncm-attn); }
+  .b-r.quiet { opacity: .72; } .b-r.open.quiet { opacity: 1; }
+  .ncm-app .b-r input[type=checkbox] { width: 13px; height: 13px; margin: 0; --checkbox-size: 13px; }
+  .b-r .who { min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .b-r .who .nm { min-width: 0; font: 600 12.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .b-r .who .nm small { display: block; font: 10px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .b-r .c { text-align: right; } .b-r .c0 { color: var(--ncm-text-secondary); font: 11px var(--ncm-font-mono); }
+  .b-r .nets { display: flex; gap: 3px; justify-content: flex-end; }
+  .b-r .nets i { width: 9px; height: 14px; background: var(--n); clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); opacity: .85; }
+  .b-open { border-bottom: 1px solid var(--ncm-act); background: var(--ncm-bg-pane-alt, var(--ncm-bg-pane)); display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+  .b-open > div { min-width: 0; }
+  .b-open .ib-sec { border-bottom: 0; }
+  .b-open .l { border-right: 1px solid var(--ncm-border); }
+  .b-bulk { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--ncm-act); border-radius: 2px; background: color-mix(in srgb, var(--ncm-act) 10%, var(--ncm-bg-pane)); font: 12px var(--ncm-font-body); }
+  .b-bulk b { font-family: var(--ncm-font-mono); }
+</style>
+</head>
+<body>
+<div class="mk-h" data-only="a">A · LIST + DESK — pick a mailbox on the left, everything about it on the right</div>
+<div class="mk-p" data-only="a">The Contacts-Directory shape. One toolbar row (search · Show · Sort · ⋯). Rows: face, name, the line the sort uses, unread count. The right side with nothing picked is a <b>Needs a look</b> summary (most unread · gone quiet · owner gone); pick a mailbox and it shows Open inbox first, then Latest mail, Activity, Housekeeping. Click around — it’s live.</div>
+<div class="ncm-app ncm-admin-panel mk-win" id="A" data-only="a"></div>
+
+<div class="mk-h" data-only="b">B · SORTABLE TABLE — sort by clicking a column, a row opens in place</div>
+<div class="mk-p" data-only="b">Everything on one sheet. Click a column header to sort by it (again to flip). A row opens under itself with the same detail as A. Tick rows for bulk Mark read / Export / Purge. Click around — it’s live.</div>
+<div class="ncm-app ncm-admin-panel mk-win" id="B" data-only="b"></div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const T = Q.get('t') || 'clean-dark';
+if (Q.get('only')) document.querySelectorAll('[data-only]').forEach(el => { if (el.dataset.only !== Q.get('only')) el.remove(); });
+const NETS = { CTN: ['CitiNet', '#19f3f7'], DKN: ['DarkNet relay', '#c86bff'], ACN: ['Arasaka CorpNet', '#ff5a6e'], NCP: ['NCPD Dispatch', '#4f8dff'], AFL: ['Afterlife LAN', '#ffb347'] };
+const HUE = (n) => `var(--ncm-hue-${(([...n].reduce((h, c) => (h * 33 + c.charCodeAt(0)) >>> 0, 5381)) % 8) + 1})`;
+const ini = (n) => n.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+const av = (n, c = '') => `<span class="ib-av ${c}" style="--tc:${HUE(n)}">${ini(n)}</span>`;
+const M = (from, subj, net, unread, ageH) => ({ from, subj, net, unread, ageH });
+const ago = (h) => h < 1 ? 'now' : h < 24 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
+const BOXES = [
+  { id: 'v', name: 'V', kind: 'Players', addr: 'v@nightcity.net · Sam', sent: 9, mail: [M('Rogue', 'The job in Watson', 'AFL', 1, 1), M('Queen of Hearts', 'Who is this', 'DKN', 0, 7), M('Hana Ito', 'Drinks?', 'CTN', 0, 20), M('Dexter DeShawn', 'Payment', 'CTN', 0, 30), M('NCPD', 'Citation 4471', 'NCP', 0, 50)], spark: [0,1,0,2,1,0,3,1,0,2,4,1,2,3] },
+  { id: 'rache', name: 'Rache', kind: 'Players', addr: 'rache@nightcity.net · Lou', sent: 4, mail: [M('Rogue', 'RE: Meet', 'AFL', 1, 2), M('Judy', 'BD files', 'CTN', 1, 5), M('Brick Jones', 'Parts', 'CTN', 0, 40)], spark: [0,0,1,0,0,1,0,0,1,0,0,2,1,1] },
+  { id: 'kiri', name: 'Kiri', kind: 'Players', addr: 'kiri@nightcity.net · Ana', sent: 2, mail: [M('Dexter DeShawn', 'Gig', 'CTN', 0, 26)], spark: [0,1,0,0,0,0,1,0,0,0,0,0,1,0] },
+  { id: 'jo', name: 'Jo', kind: 'Players', addr: 'no address yet · Ben', sent: 0, mail: [], spark: Array(14).fill(0), noInbox: true },
+  { id: 'rogue', name: 'Rogue', kind: 'Fixers', addr: 'rogue@afterlife.nc', alias: 1, sent: 11, mail: [M('V', 'Name a price', 'AFL', 1, 1), M('Rache', 'RE: Meet', 'AFL', 1, 3), M('Hana Ito', 'RE: Meet', 'AFL', 1, 8), M('V', 'Who is this', 'DKN', 0, 24), M('Kiri', 'Intro', 'CTN', 0, 80)], spark: [1,0,2,1,0,1,3,2,1,0,2,3,4,3] },
+  { id: 'dex', name: 'Dexter DeShawn', kind: 'Fixers', addr: 'dex@afterlife.nc', sent: 6, mail: [M('Kiri', 'RE: Gig', 'CTN', 1, 4), M('V', 'RE: Payment', 'CTN', 0, 28)], spark: [0,0,1,0,1,0,0,1,0,0,1,0,1,0] },
+  { id: 'wak', name: 'Wakako Okada', kind: 'Fixers', addr: 'wakako@tygerclaws.nc', sent: 3, mail: [M('V', 'Old favour', 'CTN', 0, 200)], spark: Array(14).fill(0), quiet: 8 },
+  { id: 'judy', name: 'Judy', kind: 'Techs', addr: 'judy@lizzies.nc', sent: 3, mail: [M('Rache', 'RE: BD files', 'CTN', 1, 6)], spark: [0,0,0,0,0,1,0,0,0,0,0,1,0,1] },
+  { id: 'brick', name: 'Brick Jones', kind: 'Techs', addr: 'brick@kabuki.nc', sent: 1, mail: [M('Rache', 'Parts', 'CTN', 0, 230)], spark: Array(14).fill(0), quiet: 9 },
+  { id: 'hr', name: 'Arasaka HR', kind: 'Corporate', addr: 'hr@arasaka.co', sent: 5, mail: [M('V', 'RE: Offer', 'ACN', 0, 88)], spark: [0,0,0,0,0,0,0,0,0,0,1,0,0,0] },
+  { id: 'yuki', name: 'Yuki Mori', kind: 'Corporate', addr: 'y.mori@militech.co', sent: 0, mail: [M('Hana Ito', 'Contract', 'ACN', 0, 400)], spark: Array(14).fill(0), quiet: 16 },
+  { id: 'ncpd', name: 'NCPD', kind: 'Corporate', addr: 'dispatch@ncpd.gov', sent: 14, mail: [M('V', 'RE: Citation', 'NCP', 0, 48)], spark: [0,0,2,0,1,0,0,0,1,0,0,1,0,0] },
+  { id: 'kow', name: 'Kowalski', kind: 'Owner gone', addr: 'the owner was deleted', sent: 0, gone: true, mail: [M('V', 'Old job', 'CTN', 0, 900), M('Rache', 'Ping', 'CTN', 0, 1000)], spark: Array(14).fill(0) },
+];
+BOXES.forEach(b => { b.unread = b.mail.filter(m => m.unread).length; b.last = b.mail[0]?.ageH ?? Infinity; b.busy = b.spark.reduce((n, x) => n + x, 0); b.nets = [...new Set(b.mail.map(m => m.net))]; });
+const SHOW = [['all', 'Everyone'], ['unread', 'Has unread'], ['quiet', 'Gone quiet (7d+)'], ['empty', 'Empty'], ['gone', 'Owner gone']];
+const SORT = [['last', 'Latest mail'], ['unread', 'Most unread'], ['busy', 'Busiest (14 days)'], ['quiet', 'Quietest'], ['name', 'A–Z']];
+const passes = (b, f) => f === 'unread' ? b.unread > 0 : f === 'quiet' ? !!b.quiet : f === 'empty' ? !b.mail.length : f === 'gone' ? !!b.gone : true;
+const cmp = (s) => ({ last: (a, b) => a.last - b.last, unread: (a, b) => b.unread - a.unread || a.last - b.last, busy: (a, b) => b.busy - a.busy || a.last - b.last,
+  quiet: (a, b) => (a.last === Infinity) - (b.last === Infinity) || b.last - a.last, name: (a, b) => a.name.localeCompare(b.name) })[s];
+const metric = (b, s) => b.gone ? 'owner deleted' : b.noInbox ? 'no inbox yet' : !b.mail.length ? 'empty' :
+  s === 'unread' ? (b.unread ? `${b.unread} unread` : 'all read') : s === 'busy' ? `${b.busy} in 14 days` : s === 'quiet' ? `quiet ${ago(b.last)}` : s === 'name' ? `${b.mail.length} mail` : `last mail ${ago(b.last)} ago`;
+const spark = (b, big) => `<span class="${big ? 'ib-bars' : 'ib-spark'}">${b.spark.map((v, i) => `<i class="${!v ? 'z' : (i > 11 && b.unread ? 'u' : '')}" style="height:${v ? Math.max(15, v / Math.max(1, ...b.spark) * 100) : 8}%"></i>`).join('')}</span>`;
+const pm = (code, ageH) => `<span class="ib-pm" style="--n:${NETS[code][1]}" title="Routed over ${NETS[code][0]}"><i></i><b>${code}</b>${ageH != null ? `<span>${ago(ageH)}</span>` : ''}</span>`;
+const shell = (id, inner) => {
+  const el = document.getElementById(id); if (!el) return null;
+  el.dataset.ncmAdminTheme = T; el.dataset.ncmScanlines = 'false';
+  el.innerHTML = `<div class="ncm-msg2-nav">
+    <button type="button" class="ncm-msg2-navbtn"><i class="fas fa-reply"></i>Needs a reply<span class="ncm-msg2-ct hot">2</span></button>
+    <button type="button" class="ncm-msg2-navbtn"><i class="fas fa-envelopes-bulk"></i>All mail<span class="ncm-msg2-ct">14</span></button>
+    <button type="button" class="ncm-msg2-navbtn"><i class="fas fa-paper-plane"></i>Outbox<span class="ncm-msg2-ct bad">3</span></button>
+    <button type="button" class="ncm-msg2-navbtn on"><i class="fas fa-inbox"></i>Inboxes<span class="ncm-msg2-ct">${BOXES.length}</span></button></div>
+    <div class="ib">${inner}</div>`;
+  return el;
+};
+const toolbar = (prefix) => `<div class="ib-tb">
+  <label class="ib-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-q placeholder="Find a mailbox — name, address, role…"></label>
+  <label class="ib-sel"><span>Show</span><select data-show>${SHOW.map(([k, l]) => `<option value="${k}">${l} (${BOXES.filter(b => passes(b, k)).length})</option>`).join('')}</select></label>
+  ${prefix === 'a' ? `<label class="ib-sel"><span>Sort</span><select data-sort>${SORT.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></label>` : ''}
+  <button class="ib-btn ic" type="button" title="Mark everything read · Export all · Purge old mail"><i class="fas fa-ellipsis"></i></button></div>`;
+const detailBody = (b, compact) => {
+  const nets = {}; b.mail.forEach(m => { nets[m.net] = (nets[m.net] || 0) + 1; });
+  const who = {}; b.mail.forEach(m => { who[m.from] = (who[m.from] || 0) + 1; });
+  const latest = `<div class="ib-sec"><div class="ib-k"><i class="fas fa-envelopes-bulk"></i>Latest mail<span class="x">${b.mail.length} in the box</span></div>
+    ${b.mail.slice(0, compact ? 4 : 6).map(m => `<div class="ib-mail ${m.unread ? 'unread' : ''}" title="Open “${m.subj}”"><i class="e"></i>${av(m.from, 'sm')}<span class="tx"><b>${m.from}</b><span>${m.subj}</span></span>${pm(m.net)}<span class="ib-t">${ago(m.ageH)}</span></div>`).join('')
+      || `<div class="ib-n">${b.noInbox ? 'No inbox yet — it is made the first time mail arrives.' : 'Nothing in this box.'}</div>`}</div>`;
+  const activity = `<div class="ib-sec"><div class="ib-k"><i class="fas fa-chart-column"></i>Last 14 days<span class="x">amber = unread</span></div>${spark(b, true)}
+    <div class="ib-nums"><span><b>${b.mail.length}</b>received</span><span><b>${b.sent}</b>sent</span><span class="attn"><b>${b.unread}</b>unread</span></div></div>
+    ${Object.keys(nets).length ? `<div class="ib-sec"><div class="ib-k"><i class="fas fa-route"></i>Networks it gets mail over</div><div class="ib-row2">${Object.entries(nets).map(([c, n]) => `${pm(c)}<span class="ib-t" style="margin-right:6px">×${n}</span>`).join('')}</div></div>` : ''}
+    ${Object.keys(who).length ? `<div class="ib-sec"><div class="ib-k"><i class="fas fa-user-group"></i>Talks to</div><div class="ib-row2">${Object.entries(who).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([n, k]) => `<span class="ib-who">${av(n, 'sm')}${n}<em>${k}</em></span>`).join('')}</div></div>` : ''}`;
+  const house = `<div class="ib-sec"><div class="ib-k"><i class="fas fa-broom"></i>Housekeeping</div><div class="a-house">
+    ${b.gone ? '<button class="ib-btn" type="button"><i class="fas fa-screwdriver-wrench"></i>Fix in Orphan Audit</button>' : ''}
+    ${b.unread ? '<button class="ib-btn" type="button"><i class="fas fa-envelope-open"></i>Mark read</button>' : ''}
+    <button class="ib-btn" type="button"><i class="fas fa-file-export"></i>Export</button><button class="ib-btn" type="button"><i class="fas fa-broom"></i>Purge old…</button><button class="ib-btn bad" type="button"><i class="fas fa-trash"></i>Delete inbox</button></div></div>`;
+  return { latest, activity, house };
+};
+
+// ═════ A · LIST + DESK ═════
+(function a() {
+  const root = shell('A', `<div class="ib-hd"><i class="fas fa-inbox"></i><b class="t">Inboxes</b>Every mailbox: who has unread, what it’s been doing, open it or clean it up.</div>
+    ${toolbar('a')}<div class="a-split"><div class="a-list" data-list></div><div class="a-desk" data-desk></div></div>`);
+  if (!root) return;
+  let sel = Q.get('sel') || null, show = 'all', sort = 'last', q = '', shut = new Set();
+  const render = () => {
+    const rows = BOXES.filter(b => passes(b, show) && (!q || `${b.name} ${b.addr} ${b.kind}`.toLowerCase().includes(q)));
+    const groups = ['Players', 'Fixers', 'Techs', 'Corporate', 'Owner gone'];
+    root.querySelector('[data-list]').innerHTML = groups.map(g => {
+      const list = rows.filter(b => b.kind === g).sort(cmp(sort)); if (!list.length) return '';
+      const u = list.reduce((n, b) => n + b.unread, 0), isShut = shut.has(g) && !q;
+      return `<div class="a-g ${isShut ? 'shut' : ''}" data-g="${g}"><i class="fas fa-chevron-down ch"></i>${g}<span class="n">${list.length}</span>${u ? `<span class="u ib-u">${u}</span>` : ''}</div>
+        ${isShut ? '' : list.map(b => `<div class="a-r ${sel === b.id ? 'sel' : ''} ${b.unread ? 'unread' : ''} ${b.quiet ? 'quiet' : ''}" data-id="${b.id}">
+          ${b.gone ? '<span class="ib-av gone"><i class="fas fa-ghost" style="font-size:10px"></i></span>' : av(b.name)}
+          <div class="tx"><div class="nm"><span>${b.name}</span>${b.alias ? '<span class="ib-tag alias"><i class="fas fa-mask"></i>+1</span>' : ''}</div><div class="sl">${metric(b, sort)}</div></div>
+          <div class="end">${b.unread ? `<span class="ib-u">${b.unread}</span>` : b.quiet ? `<span class="ib-tag quiet">quiet</span>` : b.gone ? '<span class="ib-tag gone">gone</span>' : b.noInbox ? '<span class="ib-tag none">none</span>' : ''}</div></div>`).join('')}`;
+    }).join('') || '<div class="ib-n" style="padding:16px">No mailboxes match.</div>';
+    const b = BOXES.find(x => x.id === sel);
+    const desk = root.querySelector('[data-desk]');
+    if (!b) {
+      const top = [...BOXES].filter(x => x.unread).sort((x, y) => y.unread - x.unread).slice(0, 5);
+      const quiet = BOXES.filter(x => x.quiet).sort((x, y) => y.quiet - x.quiet);
+      const gone = BOXES.filter(x => x.gone);
+      const li = (x, sub, end) => `<div class="a-li" data-id="${x.id}">${x.gone ? '<span class="ib-av sm gone"><i class="fas fa-ghost" style="font-size:7px"></i></span>' : av(x.name, 'sm')}<div class="nm">${x.name}<small>${sub}</small></div>${end}</div>`;
+      desk.innerHTML = `<div class="a-dhd"><div class="tx"><div class="nm">Needs a look</div><div class="ad">${BOXES.reduce((n, x) => n + x.unread, 0)} unread across ${top.length} mailboxes · ${quiet.length} gone quiet · ${gone.length} without an owner</div></div></div>
+        <div class="a-look">
+          <div class="a-card"><div class="ib-k"><i class="fas fa-envelope"></i>Most unread</div>${top.map(x => li(x, `waiting ${ago(Math.max(...x.mail.filter(m => m.unread).map(m => m.ageH)))}`, `<span class="ib-u">${x.unread}</span>`)).join('')}</div>
+          <div class="a-card"><div class="ib-k"><i class="fas fa-moon"></i>Gone quiet</div>${quiet.map(x => li(x, `nothing for ${x.quiet}d`, '')).join('') || '<div class="ib-n">Nobody.</div>'}
+            <div class="ib-k" style="margin-top:10px"><i class="fas fa-triangle-exclamation" style="color:var(--ncm-bad)"></i>Owner gone</div>${gone.map(x => li(x, `${x.mail.length} mail left behind`, '<button class="ib-btn" type="button" style="height:22px">Fix</button>')).join('') || '<div class="ib-n">None.</div>'}</div>
+        </div>`;
+      return;
+    }
+    const d = detailBody(b);
+    desk.innerHTML = `<div class="a-dhd">${b.gone ? '<span class="ib-av lg gone"><i class="fas fa-ghost"></i></span>' : av(b.name, 'lg')}<div class="tx"><div class="nm">${b.name}${b.alias ? '<span class="ib-tag alias"><i class="fas fa-mask"></i>+1 alias</span>' : ''}${b.quiet ? `<span class="ib-tag quiet">quiet ${b.quiet}d</span>` : ''}</div><div class="ad">${b.addr}</div></div>
+      <button class="ib-btn ic" type="button" title="Back to Needs a look" data-back><i class="fas fa-xmark"></i></button></div>
+      <div class="a-acts">${b.gone ? '' : `<button class="ib-btn pri" type="button"><i class="fas fa-inbox"></i>Open inbox</button><button class="ib-btn" type="button"><i class="fas fa-pen"></i>${b.kind === 'Players' ? 'Write to' : 'Write as'}</button>`}</div>
+      ${d.latest}${d.activity}${d.house}`;
+  };
+  root.addEventListener('click', (e) => {
+    const r = e.target.closest('[data-id]'); if (r) { sel = sel === r.dataset.id ? null : r.dataset.id; return render(); }
+    const g = e.target.closest('[data-g]'); if (g) { shut.has(g.dataset.g) ? shut.delete(g.dataset.g) : shut.add(g.dataset.g); return render(); }
+    if (e.target.closest('[data-back]')) { sel = null; render(); }
+  });
+  root.querySelector('[data-q]').addEventListener('input', (e) => { q = e.target.value.trim().toLowerCase(); render(); });
+  root.querySelector('[data-show]').addEventListener('change', (e) => { show = e.target.value; render(); });
+  root.querySelector('[data-sort]').addEventListener('change', (e) => { sort = e.target.value; render(); });
+  render();
+}());
+
+// ═════ B · SORTABLE TABLE ═════
+(function b() {
+  const root = shell('B', `<div class="ib-hd"><i class="fas fa-inbox"></i><b class="t">Inboxes</b>Every mailbox on one sheet — click a column to sort, a row to open it.</div>
+    ${toolbar('b')}<div data-bulk></div><div class="b-tbl" data-tbl></div>`);
+  if (!root) return;
+  let open = Q.get('sel') || null, show = 'all', sort = 'last', dir = 1, q = '', ticked = new Set();
+  const COLS = [['', ''], ['name', 'Mailbox'], ['unread', 'Unread', 'r'], ['last', 'Last mail', 'r'], ['busy', '14 days', 'r'], ['nets', 'Networks', 'r'], ['', '']];
+  const render = () => {
+    const rows = BOXES.filter(b => passes(b, show) && (!q || `${b.name} ${b.addr} ${b.kind}`.toLowerCase().includes(q)));
+    const c = cmp(sort === 'nets' ? 'busy' : sort);
+    const groups = ['Players', 'Fixers', 'Techs', 'Corporate', 'Owner gone'];
+    const head = `<div class="b-head">${COLS.map(([k, l, r]) => k ? `<span class="${r || ''} ${sort === k ? 'on' : ''}" data-sort="${k}" title="Sort by ${l}">${l}${sort === k ? `<i class="fas fa-caret-${dir > 0 ? 'down' : 'up'}"></i>` : ''}</span>` : '<span></span>').join('')}</div>`;
+    const body = groups.map(g => {
+      const list = rows.filter(b => b.kind === g).sort((x, y) => dir * c(x, y)); if (!list.length) return '';
+      return `<div class="b-g">${g}<span class="n">${list.length}</span></div>` + list.map(b => {
+        const d = open === b.id ? detailBody(b, true) : null;
+        return `<div class="b-r ${open === b.id ? 'open' : ''} ${b.unread ? 'unread' : ''} ${b.quiet ? 'quiet' : ''}" data-id="${b.id}">
+          <input type="checkbox" data-tick="${b.id}" ${ticked.has(b.id) ? 'checked' : ''}>
+          <div class="who">${b.gone ? '<span class="ib-av gone"><i class="fas fa-ghost" style="font-size:10px"></i></span>' : av(b.name)}<div class="nm">${b.name}${b.alias ? ' <span class="ib-tag alias"><i class="fas fa-mask"></i>+1</span>' : ''}<small>${b.addr}</small></div></div>
+          <span class="c">${b.unread ? `<span class="ib-u">${b.unread}</span>` : '<span class="c0">—</span>'}</span>
+          <span class="c ib-t">${b.gone ? '<span class="ib-tag gone">owner gone</span>' : b.noInbox ? '<span class="ib-tag none">no inbox</span>' : b.mail.length ? (b.quiet ? `<span class="ib-tag quiet">quiet ${ago(b.last)}</span>` : `${ago(b.last)} ago`) : 'empty'}</span>
+          <span class="c">${spark(b)}</span>
+          <span class="c nets">${b.nets.map(n => `<i style="--n:${NETS[n][1]}" title="${NETS[n][0]}"></i>`).join('')}</span>
+          <button class="ib-btn ic" type="button" title="Mark read · Export · Purge · Delete" style="height:24px;width:24px"><i class="fas fa-ellipsis"></i></button></div>
+          ${d ? `<div class="b-open"><div class="l">${d.latest}<div class="a-acts" style="border:0">${b.gone ? '<button class="ib-btn" type="button"><i class="fas fa-screwdriver-wrench"></i>Fix in Orphan Audit</button>' : `<button class="ib-btn pri" type="button"><i class="fas fa-inbox"></i>Open inbox</button><button class="ib-btn" type="button"><i class="fas fa-pen"></i>${b.kind === 'Players' ? 'Write to' : 'Write as'}</button>`}</div></div><div>${d.activity}</div></div>` : ''}`;
+      }).join('');
+    }).join('') || '<div class="ib-n" style="padding:16px">No mailboxes match.</div>';
+    root.querySelector('[data-tbl]').innerHTML = head + body;
+    root.querySelector('[data-bulk]').innerHTML = ticked.size ? `<div class="b-bulk"><b>${ticked.size}</b> picked<span style="flex:1"></span><button class="ib-btn" type="button"><i class="fas fa-envelope-open"></i>Mark read</button><button class="ib-btn" type="button"><i class="fas fa-file-export"></i>Export</button><button class="ib-btn" type="button"><i class="fas fa-broom"></i>Purge old…</button><button class="ib-btn ic" type="button" data-untick title="Clear"><i class="fas fa-xmark"></i></button></div>` : '';
+  };
+  root.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-tick]'); if (t) { t.checked ? ticked.add(t.dataset.tick) : ticked.delete(t.dataset.tick); return render(); }
+    if (e.target.closest('[data-untick]')) { ticked.clear(); return render(); }
+    const s = e.target.closest('[data-sort]'); if (s && s.closest('.b-head')) { if (sort === s.dataset.sort) dir = -dir; else { sort = s.dataset.sort; dir = 1; } return render(); }
+    if (e.target.closest('button, .b-open')) return;
+    const r = e.target.closest('.b-r'); if (r) { open = open === r.dataset.id ? null : r.dataset.id; render(); }
+  });
+  root.querySelector('[data-q]').addEventListener('input', (e) => { q = e.target.value.trim().toLowerCase(); render(); });
+  root.querySelector('[data-show]').addEventListener('change', (e) => { show = e.target.value; render(); });
+  render();
+}());
+</script>
+</body>
+</html>

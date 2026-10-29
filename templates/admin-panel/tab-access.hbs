@@ -1,0 +1,164 @@
+{{!-- Admin → Access points (WORLD) — every way players can open a terminal, shard, inbox or message.
+      Mock: dev/mockups/access-points-v2-mock.html. Context: acc2 (AccessTab.js + accessModel.js). --}}
+{{#if (eq activeTab 'access')}}
+{{#with acc2}}
+<div class="ncm-acc2{{#if isPopout}} ncm-acc2--pop{{/if}}" data-owner="access">
+
+  <header class="ncm-tabhd"><i class="fas fa-location-crosshairs"></i><div><h2>Access points</h2><p>Every way players can open a terminal, shard, inbox or message — map pins, step-on areas, the hotbar, chat cards and journal links.</p></div>
+    <div class="ncm-tabhd__end">
+      <span class="ncm-acc2-sw" role="tablist">
+        <button type="button" class="{{#if isMap}}is-on{{/if}}" data-action="tabAct" data-op="view" data-view="map" aria-pressed="{{isMap}}"><i class="fas fa-map"></i>Map</button>
+        <button type="button" class="{{#if isThing}}is-on{{/if}}" data-action="tabAct" data-op="view" data-view="thing" aria-pressed="{{isThing}}"><i class="fas fa-list"></i>By thing</button>
+      </span>
+      {{#unless isPopout}}<button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic" data-action="popOutTab" data-tab="access" aria-label="Pop out" data-tooltip="Pop out — a bigger window"><i class="fas fa-up-right-from-square"></i></button>{{/unless}}
+    </div>
+  </header>
+
+  {{#if error}}<div class="ncm-acc2-err"><i class="fas fa-triangle-exclamation"></i>Could not read the world: {{error}}</div>{{/if}}
+
+  <div class="ncm-acc2-tb">
+    <span class="ncm-acc2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-acc-q placeholder="Find a scene, a terminal, a shard, a journal page…" value="{{q}}">{{#if q}}<button type="button" class="ncm-acc2-srch__x" data-action="tabAct" data-op="clearQ" aria-label="Clear search"><i class="fas fa-xmark"></i></button>{{/if}}</span>
+    <label class="ncm-acc2-sel"><span>Show</span><select data-acc-sel="show">{{#each showOpts}}<option value="{{k}}"{{#if on}} selected{{/if}}>{{l}}</option>{{/each}}</select></label>
+    <label class="ncm-acc2-sel"><span>Group</span><select data-acc-sel="group"{{#if isMap}} data-tooltip="On the map, scenes are grouped by their Foundry folders"{{/if}}>{{#each groupOpts}}<option value="{{k}}"{{#if on}} selected{{/if}}>{{l}}</option>{{/each}}</select></label>
+    <label class="ncm-acc2-sel"><span>Sort</span><select data-acc-sel="sort">{{#each sortOpts}}<option value="{{k}}"{{#if on}} selected{{/if}}>{{l}}</option>{{/each}}</select></label>
+    <button type="button" class="ncm-acc2-btn ncm-acc2-btn--pri" data-action="tabAct" data-op="new" data-tooltip="Pick a terminal or shard, then choose how players reach it"><i class="fas fa-plus"></i>New</button>
+  </div>
+
+  <div class="ncm-acc2-stats">
+    {{#each stats}}<button type="button" class="ncm-acc2-stat{{#if tone}} is-{{tone}}{{/if}}{{#if on}} is-on{{/if}}" data-action="tabAct" data-op="stat" data-stat="{{k}}" aria-pressed="{{on}}" data-tooltip="{{tip}}"><b>{{n}}</b><span>{{l}}</span></button>{{/each}}
+  </div>
+  {{#if narrowed}}<div class="ncm-acc2-narrow"><i class="fas fa-filter"></i>Narrowed by your search or filters.<button type="button" data-action="tabAct" data-op="clearAll">Show everything</button></div>{{/if}}
+
+  <div class="ncm-acc2-split">
+  {{#if isMap}}
+    {{!-- ═══ MAP: scene shelves ═══ --}}
+    <div class="ncm-acc2-pane">
+      {{#each map.shelves}}
+      <section class="ncm-acc2-shelf{{#if shut}} is-shut{{/if}}">
+        <button type="button" class="ncm-acc2-shelf__hd" data-action="tabAct" data-op="fold" data-key="{{key}}" data-shut="{{#if shut}}1{{else}}0{{/if}}" aria-expanded="{{#unless shut}}true{{/unless}}">
+          <i class="fas fa-chevron-right ncm-acc2-ch"></i><i class="fas fa-folder ncm-acc2-fo"></i><span class="nm">{{name}}</span>
+          <span class="n">{{sceneCount}} scene{{#unless (eq sceneCount 1)}}s{{/unless}} · {{count}} point{{#unless (eq count 1)}}s{{/unless}}</span>
+          <span class="dots">{{#each dots}}<i style="--kc:var(--ncm-hue-{{this}})"></i>{{/each}}</span>
+        </button>
+        {{#unless shut}}
+        <div class="ncm-acc2-shelf__row">
+          {{#each scenes}}
+          <button type="button" class="ncm-acc2-sc{{#if on}} is-on{{/if}}" data-action="tabAct" data-op="scene" data-scene-id="{{id}}">
+            <span class="ncm-acc2-mm" style="aspect-ratio:{{aspect}};--tc:{{ncm-hue name}}{{#if thumb}};background-image:url('{{thumb}}'){{/if}}">
+              {{#each points}}<i class="pt{{#if isArea}} is-area{{/if}}{{#if hidden}} is-hid{{/if}}{{#if broken}} is-bad{{/if}}" style="left:{{x}}%;top:{{y}}%;--kc:var(--ncm-hue-{{hue}}){{#if isArea}};width:{{aw}}%;height:{{ah}}%{{/if}}" data-pt-id="{{id}}"></i>{{/each}}
+            </span>
+            <span class="ncm-acc2-sc__f"><b>{{name}}</b>{{#if viewed}}<i class="fas fa-eye v" data-tooltip="You are looking at this scene"></i>{{/if}}{{#if hasHidden}}<i class="fas fa-eye-slash h" data-tooltip="Something here is hidden from players"></i>{{/if}}{{#if hasBad}}<i class="fas fa-triangle-exclamation x" data-tooltip="Something here points at a deleted terminal or shard"></i>{{/if}}<span class="c">{{count}}</span></span>
+          </button>
+          {{/each}}
+        </div>
+        {{/unless}}
+      </section>
+      {{/each}}
+
+      <section class="ncm-acc2-shelf">
+        <div class="ncm-acc2-shelf__hd is-static"><i class="fas fa-bolt ncm-acc2-fo is-act"></i><span class="nm">Off the map</span><span class="n">hotbar · chat cards · journal links</span></div>
+        {{#each map.off}}
+        <div class="ncm-acc2-pl{{#if broken}} is-bad{{/if}}" data-pt-id="{{id}}" style="--kc:var(--ncm-hue-{{hue}})">
+          <span class="num is-how"><i class="fas {{icon}}"></i></span>
+          <span class="tx"><b>{{name}}</b><small>{{howLabel}}{{#if (eq how 'journal')}} · {{where}}{{/if}} · {{detail}}{{#if broken}} · <em class="bad">points at nothing</em>{{/if}}</small></span>
+          <span class="acts">
+            <button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic" data-action="tabAct" data-op="ptOpen" data-pt-id="{{id}}" data-doc-uuid="{{docUuid}}" aria-label="Open" data-tooltip="{{#if (eq how 'hotbar')}}Run the macro{{else if (eq how 'journal')}}Open the journal page{{else}}Show the chat log{{/if}}"><i class="fas fa-play"></i></button>
+            <button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic" data-action="tabAct" data-op="ptRemove" data-pt-id="{{id}}" data-doc-uuid="{{docUuid}}" aria-label="Remove" data-tooltip="Remove this way in"><i class="fas fa-trash"></i></button>
+          </span>
+        </div>
+        {{else}}
+        <div class="ncm-acc2-none">No hotbar macros, chat cards or journal links yet — right-click a terminal or shard → <b>… options ▸</b>, or <b>New</b> above.</div>
+        {{/each}}
+      </section>
+    </div>
+
+    <div class="ncm-acc2-desk">
+      {{#with desk}}
+      <div class="ncm-acc2-dhd" style="--tc:{{ncm-hue name}}">
+        <i class="fas fa-map ncm-acc2-dhd__ic"></i>
+        <div class="g"><b>{{name}}</b><small>{{#if folderPath}}{{folderPath}} · {{/if}}{{count}} access point{{#unless (eq count 1)}}s{{/unless}}</small></div>
+        {{#unless viewed}}<button type="button" class="ncm-acc2-btn" data-action="tabAct" data-op="viewScene" data-scene-id="{{id}}" data-tooltip="Switch your view to this scene"><i class="fas fa-eye"></i>View scene</button>{{/unless}}
+        <button type="button" class="ncm-acc2-btn ncm-acc2-btn--pri" data-action="tabAct" data-op="place" data-scene-id="{{id}}" data-tooltip="Pick a terminal or shard, then where and how players get in"><i class="fas fa-map-pin"></i>Place…</button>
+      </div>
+      <div class="ncm-acc2-big" style="aspect-ratio:{{aspect}}{{#if thumb}};background-image:url('{{thumb}}'){{/if}};--tc:{{ncm-hue name}}">
+        {{#each points}}
+          {{#if ring}}<span class="ring" style="left:{{x}}%;top:{{y}}%;width:{{ring}}%"></span>{{/if}}
+          <span class="pt{{#if isArea}} is-area{{/if}}{{#if hidden}} is-hid{{/if}}{{#if broken}} is-bad{{/if}}" style="left:{{x}}%;top:{{y}}%;--kc:var(--ncm-hue-{{hue}}){{#if isArea}};width:{{aw}}%;height:{{ah}}%{{/if}}" data-pt-id="{{id}}">{{n}}</span>
+        {{/each}}
+        {{#unless thumb}}<span class="nothumb">no scene image</span>{{/unless}}
+      </div>
+      <div class="ncm-acc2-k"><i class="fas fa-list"></i>On this scene</div>
+      {{#each points}}
+      <div class="ncm-acc2-pl{{#if broken}} is-bad{{/if}}" data-pt-id="{{id}}" style="--kc:var(--ncm-hue-{{hue}})">
+        <span class="num{{#if isArea}} is-area{{/if}}{{#if hidden}} is-hid{{/if}}">{{n}}</span>
+        <span class="ic"><i class="fas {{icon}}"></i></span>
+        <span class="tx"><b>{{name}}</b><small><i class="fas {{howIcon}}"></i> {{howLabel}} · {{detail}}{{#if hidden}} · <em class="hid">hidden</em>{{/if}}{{#if broken}} · <em class="bad">points at something deleted</em>{{/if}}</small></span>
+        <span class="acts">
+          <button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic" data-action="tabAct" data-op="ptGo" data-pt-id="{{id}}" aria-label="Go to it" data-tooltip="Show it on the map"><i class="fas fa-crosshairs"></i></button>
+          <button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic{{#if hidden}} is-secret{{/if}}" data-action="tabAct" data-op="ptHide" data-doc-uuid="{{docUuid}}" data-hidden="{{#if hidden}}1{{else}}0{{/if}}" aria-label="{{#if hidden}}Reveal{{else}}Hide{{/if}}" data-tooltip="{{#if hidden}}Reveal it to players{{else}}Hide it from players{{/if}}"><i class="fas {{#if hidden}}fa-eye{{else}}fa-eye-slash{{/if}}"></i></button>
+          {{#unless broken}}<button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic" data-action="tabAct" data-op="ptOpen" data-pt-id="{{id}}" data-doc-uuid="{{docUuid}}" aria-label="Open it" data-tooltip="Open what it opens"><i class="fas fa-up-right-from-square"></i></button>{{/unless}}
+          <button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic" data-action="tabAct" data-op="ptEdit" data-pt-id="{{id}}" data-doc-uuid="{{docUuid}}" aria-label="Edit" data-tooltip="{{#if isArea}}Edit the area (Foundry's Region sheet){{else}}Edit the pin (label, icon, size){{/if}}"><i class="fas fa-pen"></i></button>
+          <button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic is-bad" data-action="tabAct" data-op="ptRemove" data-pt-id="{{id}}" data-doc-uuid="{{docUuid}}" aria-label="Remove" data-tooltip="Remove it"><i class="fas fa-trash"></i></button>
+        </span>
+      </div>
+      {{else}}
+      <div class="ncm-acc2-none">Nothing on this scene yet. <b>Place…</b> puts a pin or a step-on area here — or drag a terminal from the Items sidebar onto the map.</div>
+      {{/each}}
+      {{else}}
+      <div class="ncm-acc2-none ncm-acc2-none--big"><i class="fas fa-map"></i>No scenes with access points yet. Drag a terminal from the Items sidebar onto a scene, or use <b>New</b>.</div>
+      {{/with}}
+    </div>
+
+  {{else}}
+    {{!-- ═══ BY THING ═══ --}}
+    <div class="ncm-acc2-pane">
+      {{#each byThing.groups}}
+      <div class="ncm-acc2-grp" style="--kc:var(--ncm-hue-{{hue}})"><i class="fas {{icon}}"></i>{{name}}<span class="n">{{count}}</span></div>
+      {{#each rows}}
+      <div class="ncm-acc2-th{{#if on}} is-on{{/if}}{{#unless found}} is-gone{{/unless}}" data-action="tabAct" data-op="thing" data-key="{{key}}" style="--kc:var(--ncm-hue-{{hue}})" role="button" tabindex="0">
+        <span class="ic"><i class="fas {{icon}}"></i></span>
+        <span class="tx"><b>{{name}}</b><small>{{#if holder}}carried by {{holder}}{{else}}{{#if found}}world item{{else}}deleted{{/if}}{{/if}}{{#if subline}} · {{subline}}{{/if}}</small></span>
+        <span class="reach">
+          {{#each chips}}<span class="rc{{#if broken}} is-bad{{/if}}{{#if hidden}} is-hid{{/if}}" data-pt-id="{{id}}"{{#if hidden}} data-tooltip="Hidden from players"{{/if}}><i class="fas {{#if hidden}}fa-eye-slash{{else}}{{icon}}{{/if}}"></i>{{label}}</span>{{/each}}
+          {{#if playerHeld}}<span class="rc is-held"><i class="fas fa-user"></i>in {{holder}}'s gear</span>{{/if}}
+          {{#unless reachable}}{{#if found}}<span class="rc is-none"><i class="fas fa-circle-exclamation"></i>not reachable anywhere</span>{{/if}}{{/unless}}
+        </span>
+      </div>
+      {{/each}}
+      {{else}}
+      <div class="ncm-acc2-none ncm-acc2-none--big"><i class="fas fa-magnifying-glass"></i>Nothing matches.</div>
+      {{/each}}
+    </div>
+
+    <div class="ncm-acc2-desk">
+      {{#with tdesk}}
+      <div class="ncm-acc2-dhd" style="--kc:var(--ncm-hue-{{hue}})">
+        <span class="ncm-acc2-dhd__img">{{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fas {{icon}}"></i>{{/if}}</span>
+        <div class="g"><b>{{name}}</b><small>{{#if holder}}carried by {{holder}} · {{/if}}{{#if reachable}}reachable {{wayCount}} way{{#unless (eq wayCount 1)}}s{{/unless}}{{#if playerHeld}} + in their gear{{/if}}{{else}}<em class="attn">players can't reach it yet</em>{{/if}}</small></div>
+        {{#if found}}<button type="button" class="ncm-acc2-btn" data-action="tabAct" data-op="openThing" data-key="{{key}}" data-tooltip="Open it"><i class="fas fa-up-right-from-square"></i>Open</button>{{/if}}
+        {{#if canMake}}<button type="button" class="ncm-acc2-btn ncm-acc2-btn--pri" data-action="tabAct" data-op="make" data-uuid="{{itemUuid}}" data-tooltip="Place on a scene, hotbar, chat card, journal link"><i class="fas fa-location-crosshairs"></i>Make access</button>{{/if}}
+      </div>
+      <div class="ncm-acc2-k"><i class="fas fa-route"></i>Where players can reach it</div>
+      {{#each ways}}
+      <div class="ncm-acc2-pl{{#if broken}} is-bad{{/if}}" data-pt-id="{{id}}" style="--kc:var(--ncm-hue-{{../hue}})">
+        <span class="num is-how"><i class="fas {{howIcon}}"></i></span>
+        <span class="tx"><b>{{where}}</b><small>{{howLabel}} · {{detail}}{{#if hidden}} · <em class="hid">hidden</em>{{/if}}{{#if broken}} · <em class="bad">points at nothing</em>{{/if}}</small></span>
+        <span class="acts">
+          {{#if onMap}}<button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic{{#if hidden}} is-secret{{/if}}" data-action="tabAct" data-op="ptHide" data-doc-uuid="{{docUuid}}" data-hidden="{{#if hidden}}1{{else}}0{{/if}}" aria-label="{{#if hidden}}Reveal{{else}}Hide{{/if}}" data-tooltip="{{#if hidden}}Reveal it to players{{else}}Hide it from players{{/if}}"><i class="fas {{#if hidden}}fa-eye{{else}}fa-eye-slash{{/if}}"></i></button>{{/if}}
+          {{#if sceneId}}<button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic" data-action="tabAct" data-op="ptGo" data-pt-id="{{id}}" aria-label="Go to it" data-tooltip="Show it on the map"><i class="fas fa-crosshairs"></i></button>{{else}}<button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic" data-action="tabAct" data-op="ptOpen" data-pt-id="{{id}}" data-doc-uuid="{{docUuid}}" aria-label="Open" data-tooltip="Open it"><i class="fas fa-play"></i></button>{{/if}}
+          {{#if sceneId}}<button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic" data-action="tabAct" data-op="ptEdit" data-pt-id="{{id}}" data-doc-uuid="{{docUuid}}" aria-label="Edit" data-tooltip="Edit it"><i class="fas fa-pen"></i></button>{{/if}}
+          <button type="button" class="ncm-acc2-btn ncm-acc2-btn--ic is-bad" data-action="tabAct" data-op="ptRemove" data-pt-id="{{id}}" data-doc-uuid="{{docUuid}}" aria-label="Remove" data-tooltip="Remove this way in"><i class="fas fa-trash"></i></button>
+        </span>
+      </div>
+      {{else}}
+      <div class="ncm-acc2-none is-attn">{{#if playerHeld}}It is in {{holder}}'s gear, so they can open it — nothing else points at it.{{else}}Players can't reach this anywhere yet. <b>Make access</b> places it.{{/if}}</div>
+      {{/each}}
+      {{else}}
+      <div class="ncm-acc2-none ncm-acc2-none--big"><i class="fas fa-location-crosshairs"></i>Pick something on the left.</div>
+      {{/with}}
+    </div>
+  {{/if}}
+  </div>
+</div>
+{{/with}}
+{{/if}}

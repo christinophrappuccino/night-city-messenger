@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Networks Tab Redesign — mock</title>
+<!--
+  ADMIN → NETWORKS, REORGANISED — design mock (2026-10-27).
+
+  The tab mixed "this scene, right now" with "everything in the world": the
+  mixer showed every network (even ones that don't exist on the scene you are
+  running), Broadcast sat at the bottom, and the catalogue + scene list were
+  long scrolls. Split by the question the GM is asking:
+
+    THIS SCENE     the command centre: the scene, its jam switch + default,
+                   Broadcast, then ONLY the networks reachable here — each with
+                   a horizontal signal slider, who is on it, and on/off.
+    ALL NETWORKS   the catalogue: grouped list + detail (where it exists, how
+                   you get in, how it behaves, who is on it).
+    SCENES         every scene: jammed?, default network, what it carries.
+    ACTIVITY LOG   the existing log view, now a sub-tab.
+
+  Click the sub-tabs, rows, chips, toggles. Or:
+    ?view=scene|all|scenes|log   ?t=clean-dark|clean-light|high-contrast   ?jam=1   ?sel=<id>
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  /* ── page chrome (not part of the design) ── */
+  html, body { margin: 0; background: #06060a; color: #8fa0b2; font-family: 'Rajdhani', sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; padding: 9px 14px;
+    background: #0b0b12; border-bottom: 1px solid #1b1b28; font: 11px 'Share Tech Mono', monospace; }
+  .bar b { color: #e6edf5; letter-spacing: .16em; }
+  .bar a { color: #9fb0c2; border: 1px solid #23233a; background: #12121a; padding: 3px 8px; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+  .bar a.on { color: #07070b; background: #19f3f7; border-color: #19f3f7; }
+  .stage { display: flex; gap: 26px; justify-content: center; padding: 24px 16px 60px; flex-wrap: wrap; }
+  .notes { width: 320px; font-size: 14px; line-height: 1.5; color: #9aa6b4; }
+  .notes h3 { margin: 0 0 6px; font: 700 12px 'Rajdhani'; letter-spacing: .14em; text-transform: uppercase; color: #e6edf5; }
+  .notes p { margin: 0 0 12px; } .notes b { color: #d6dee8; }
+  .mk, .mk.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-panel { width: 820px; height: 760px; display: flex; flex-direction: column; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); overflow: hidden; }
+  .mk-panel > .ncm-admin-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0 14px 14px; }
+
+  /* ═════════════════════════ .ncm-net-admin-* ═════════════════════════ */
+  .ncm-admin-panel .ncm-net-admin-nav { display: flex; align-items: center; gap: 4px; margin: 0 -14px 12px; padding: 8px 14px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel button.ncm-net-admin-navbtn { appearance: none; width: auto !important; height: 30px !important; min-height: 0 !important; margin: 0 !important; white-space: nowrap;
+    display: inline-flex !important; align-items: center; gap: 6px; padding: 0 10px !important; border-radius: 2px !important; cursor: pointer;
+    background: transparent !important; border: 1px solid transparent !important; box-shadow: none !important;
+    font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary) !important; }
+  .ncm-admin-panel button.ncm-net-admin-navbtn:hover { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-surface) !important; }
+  .ncm-admin-panel button.ncm-net-admin-navbtn.on { color: var(--ncm-text-primary) !important; background: var(--ncm-bg-surface) !important; border-color: var(--ncm-border) !important; box-shadow: inset 0 -2px 0 var(--ncm-secondary) !important; }
+  .ncm-admin-panel .ncm-net-admin-navbtn i { color: var(--ncm-secondary); font-size: 11px; }
+  .ncm-admin-panel .ncm-net-admin-navct { min-width: 16px; padding: 0 4px; height: 15px; display: inline-grid; place-items: center; border-radius: 1px; font: 700 10px var(--ncm-font-mono); background: var(--ncm-bg-elevated); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-nav .grow { flex: 1; }
+  .ncm-admin-panel .ncm-net-admin-view { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+  .ncm-admin-panel .ncm-net-admin-view.split { overflow: hidden; }
+  .ncm-admin-panel .ncm-net-admin-viewhd { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 2px 0 10px; }
+  .ncm-admin-panel .ncm-net-admin-viewhd h2 { margin: 0; border: 0; text-shadow: none !important; font: 700 17px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-net-admin-viewhd p { margin: 0; font: 14px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+  /* shared bits */
+  .ncm-admin-panel .ncm-net-admin-card { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); margin-bottom: 12px; flex: none; }
+  .ncm-admin-panel .ncm-net-admin-card > .hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-surface);
+    font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-net-admin-card > .hd i.lead { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-net-admin-card > .hd .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; }
+  .ncm-admin-panel .ncm-net-admin-card > .hd .grow { flex: 1; }
+  .ncm-admin-panel .ncm-net-admin-card > .hd .hint { font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-secondary); font-weight: 400; }
+  .ncm-admin-panel .ncm-net-admin-ic { width: 28px; height: 28px; flex: none; border-radius: 2px; display: grid; place-items: center; font-size: 12px;
+    background: color-mix(in srgb, var(--c) 14%, var(--ncm-bg-deep)); color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-sw { width: 30px; height: 16px; flex: none; border-radius: 8px; position: relative; cursor: pointer; background: var(--ncm-border); }
+  .ncm-admin-panel .ncm-net-admin-sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-secondary); transition: left .15s; }
+  .ncm-admin-panel .ncm-net-admin-sw.on { background: color-mix(in srgb, var(--ncm-success) 55%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-sw.on::after { left: 16px; background: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-net-admin-sw.lock { opacity: .55; cursor: default; }
+  .ncm-admin-panel .ncm-net-admin-auth { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 1px; border: 1px solid var(--ncm-border);
+    font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary); white-space: nowrap; }
+  .ncm-admin-panel .ncm-net-admin-auth.sec { color: var(--ncm-accent); border-color: color-mix(in srgb, var(--ncm-accent) 45%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-auth.ice { color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-faces { display: inline-flex; }
+  .ncm-admin-panel .ncm-net-admin-faces img { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--ncm-bg-base); margin-left: -6px; cursor: pointer; }
+  .ncm-admin-panel .ncm-net-admin-faces img:first-child { margin-left: 0; }
+
+  /* ── THIS SCENE: scene bar ── */
+  .ncm-admin-panel .ncm-net-admin-scene { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 10px; flex: none;
+    border: 1px solid var(--ncm-border); border-left: 3px solid var(--ncm-secondary); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-net-admin-scene.jam { border-left-color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 6%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-net-admin-scene .mapic { width: 36px; height: 36px; flex: none; border-radius: 2px; display: grid; place-items: center; font-size: 15px; color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-scene.jam .mapic { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 12%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-scene .k { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-scene select { height: 28px; font: 700 15px var(--ncm-font-display); max-width: 290px; }
+  .ncm-admin-panel .ncm-net-admin-scene .grow { flex: 1; }
+  .ncm-admin-panel .ncm-net-admin-scene .def { display: flex; flex-direction: column; gap: 2px; }
+  .ncm-admin-panel .ncm-net-admin-scene .def select { font: 13px var(--ncm-font-body); height: 26px; }
+  .ncm-admin-panel .ncm-net-admin-jamsw { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer;
+    font: 700 11px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); background: var(--ncm-bg-surface); }
+  .ncm-admin-panel .ncm-net-admin-jamsw i { color: var(--ncm-danger); }
+  .ncm-admin-panel .jam .ncm-net-admin-jamsw { border-color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 14%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-jamnote { margin: -4px 0 10px; padding: 8px 12px; border-radius: 2px; flex: none; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary);
+    background: color-mix(in srgb, var(--ncm-danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-danger) 40%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-jamnote i { color: var(--ncm-danger); margin-right: 6px; }
+
+  /* broadcast */
+  .ncm-admin-panel .ncm-net-admin-bc { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 12px; flex: none; border: 1px solid color-mix(in srgb, var(--ncm-primary) 40%, var(--ncm-border)); border-radius: 2px;
+    background: color-mix(in srgb, var(--ncm-primary) 5%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-net-admin-bc > i { color: var(--ncm-primary); font-size: 14px; width: 18px; text-align: center; }
+  .ncm-admin-panel .ncm-net-admin-bc select { width: auto; height: 30px; }
+  .ncm-admin-panel .ncm-net-admin-bc input { flex: 1; height: 30px; }
+
+  /* networks here */
+  .ncm-admin-panel .ncm-net-admin-here { display: grid; grid-template-columns: 28px minmax(0, 1fr) 200px auto 30px; gap: 12px; align-items: center; padding: 9px 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-here:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-net-admin-here.off .nm, .ncm-admin-panel .ncm-net-admin-here.off .ncm-net-admin-sig { opacity: .45; }
+  .ncm-admin-panel .ncm-net-admin-here .nm { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-primary); display: flex; align-items: center; gap: 7px; }
+  .ncm-admin-panel .ncm-net-admin-here .nm .def { font: 700 9px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-secondary); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent); padding: 0 5px; border-radius: 1px; }
+  .ncm-admin-panel .ncm-net-admin-here .sub { display: flex; align-items: center; gap: 6px; margin-top: 2px; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-sig { display: grid; grid-template-columns: 1fr 34px; gap: 8px; align-items: center; }
+  .ncm-admin-panel .ncm-net-admin-sig .tr { position: relative; height: 6px; border-radius: 3px; background: var(--ncm-bg-elevated); cursor: pointer; }
+  .ncm-admin-panel .ncm-net-admin-sig .tr span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--sc); }
+  .ncm-admin-panel .ncm-net-admin-sig .tr b { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--ncm-text-primary); box-shadow: 0 0 0 2px var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-net-admin-sig .p { font: 12px var(--ncm-font-mono); color: var(--ncm-text-primary); text-align: right; }
+  .ncm-admin-panel .ncm-net-admin-who { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 70px; font: 12px var(--ncm-font-body); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-net-admin-addrow { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px dashed var(--ncm-border); font: 13px var(--ncm-font-body); color: var(--ncm-secondary); cursor: pointer; }
+  .ncm-admin-panel .ncm-net-admin-off { display: flex; align-items: center; gap: 10px; padding: 8px 12px; font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-off b { color: var(--ncm-text-primary); }
+
+  /* ── ALL NETWORKS: split ── */
+  .ncm-admin-panel .ncm-net-admin-tb { display: flex; gap: 6px; align-items: center; margin-bottom: 7px; flex: none; }
+  .ncm-admin-panel .ncm-net-admin-tb .srch { flex: 1; position: relative; }
+  .ncm-admin-panel .ncm-net-admin-tb .srch i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--ncm-text-muted); font-size: 12px; }
+  .ncm-admin-panel .ncm-net-admin-tb input[type=text] { width: 100%; height: 30px; padding-left: 28px !important; box-sizing: border-box; }
+  .ncm-admin-panel .ncm-net-admin-tb select { height: 30px; width: auto; }
+  .ncm-admin-panel .ncm-net-admin-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; flex: none; }
+  .ncm-admin-panel .ncm-net-admin-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; cursor: pointer;
+    background: var(--ncm-bg-base); font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); user-select: none; }
+  .ncm-admin-panel .ncm-net-admin-chip .n { font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-net-admin-chip.on { border-color: var(--ncm-secondary); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 9%, var(--ncm-bg-base)); }
+  .ncm-admin-panel .ncm-net-admin-chip.on .n { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-net-admin-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 270px 1fr; gap: 12px; }
+  .ncm-admin-panel .ncm-net-admin-list { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-net-admin-grp { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 7px; padding: 6px 10px;
+    background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border); font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-net-admin-grp .n { margin-left: auto; font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); letter-spacing: 0; }
+  .ncm-admin-panel .ncm-net-admin-r { display: grid; grid-template-columns: 28px 1fr auto; gap: 9px; align-items: center; padding: 7px 10px; cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); border-left: 2px solid transparent; }
+  .ncm-admin-panel .ncm-net-admin-r:hover { background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-r.sel { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border-left-color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-net-admin-r.off .nm { color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-net-admin-r .nm { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-net-admin-r .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-net-admin-r .st { display: flex; gap: 6px; align-items: center; font: 11px var(--ncm-font-mono); color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-net-admin-r .st .here { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-net-admin-r .st .on { color: var(--ncm-success); }
+  .ncm-admin-panel .ncm-net-admin-det { min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-net-admin-dhead { display: grid; grid-template-columns: 40px 1fr auto; gap: 11px; align-items: center; padding: 12px 13px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-net-admin-dhead .ncm-net-admin-ic { width: 40px; height: 40px; font-size: 17px; }
+  .ncm-admin-panel .ncm-net-admin-dhead .nm { font: 700 17px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-net-admin-dhead .sub { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-dhead .acts { display: flex; gap: 5px; align-items: center; }
+  .ncm-admin-panel .ncm-net-admin-sec { padding: 10px 13px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-admin-panel .ncm-net-admin-sec:last-child { border-bottom: 0; }
+  .ncm-admin-panel .ncm-net-admin-sec > .k { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-net-admin-sec > .k i { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-net-admin-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-admin-panel .ncm-net-admin-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 2px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-net-admin-tag i { font-size: 11px; color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-net-admin-tag .m { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-tag.warn i { color: var(--ncm-warning); }
+  .ncm-admin-panel .ncm-net-admin-tag.bad i { color: var(--ncm-danger); }
+  .ncm-admin-panel .ncm-net-admin-quiet { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+  /* ── SCENES ── */
+  .ncm-admin-panel .ncm-net-admin-scenes { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); flex: 1; min-height: 0; overflow-y: auto; }
+  .ncm-admin-panel .ncm-net-admin-srow { display: grid; grid-template-columns: 22px minmax(0, 1.1fr) minmax(0, 1.8fr) 120px auto; gap: 10px; align-items: center; padding: 8px 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-srow.hd { position: sticky; top: 0; z-index: 2; background: var(--ncm-bg-surface); padding: 5px 12px; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-srow.cur { background: color-mix(in srgb, var(--ncm-secondary) 7%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-srow.jam .nm { color: var(--ncm-danger); }
+  .ncm-admin-panel .ncm-net-admin-srow > i { color: var(--ncm-text-muted); text-align: center; }
+  .ncm-admin-panel .ncm-net-admin-srow.cur > i { color: var(--ncm-secondary); }
+  .ncm-admin-panel .ncm-net-admin-srow .nm { font: 700 14px var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-admin-panel .ncm-net-admin-srow .nm small { display: block; font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-srow .nets { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ncm-admin-panel .ncm-net-admin-srow .nets span { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 1px; font: 12px var(--ncm-font-body); color: var(--ncm-text-primary);
+    border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); background: color-mix(in srgb, var(--c) 9%, transparent); }
+  .ncm-admin-panel .ncm-net-admin-srow .nets span i { color: var(--c); font-size: 10px; }
+  .ncm-admin-panel .ncm-net-admin-srow .nets .g { opacity: .7; }
+  .ncm-admin-panel .ncm-net-admin-srow .nets .none { border: 0; background: none; color: var(--ncm-text-muted); }
+  .ncm-admin-panel .ncm-net-admin-srow select { height: 26px; width: 100%; font: 13px var(--ncm-font-body); }
+
+  /* ── LOG ── */
+  .ncm-admin-panel .ncm-net-admin-log { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-admin-panel .ncm-net-admin-logrow { display: grid; grid-template-columns: 60px 18px 1fr auto; gap: 10px; align-items: center; padding: 7px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-admin-panel .ncm-net-admin-logrow .w { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-logrow i { color: var(--c); text-align: center; }
+  .ncm-admin-panel .ncm-net-admin-logrow .net { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  /* ── the Network Manager's editor, folded in (same classes as its mock) ── */
+  .ncm-app .ncm-nm2-ic { width: 26px; height: 26px; flex: none; border-radius: 2px; display: grid; place-items: center; font-size: 11px;
+    background: color-mix(in srgb, var(--c) 14%, var(--ncm-bg-deep)); color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+
+  /* right pane */
+  .ncm-app .ncm-nm2-pane { min-height: 0; display: flex; flex-direction: column; background: var(--ncm-bg-deep); }
+  .ncm-app .ncm-nm2-phead { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); flex: none; }
+  .ncm-app .ncm-nm2-phead .ncm-nm2-ic { width: 36px; height: 36px; font-size: 15px; }
+  .ncm-app .ncm-nm2-phead .nm { font: 700 16px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-phead .sub { font: 12px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-phead .acts { display: flex; gap: 5px; }
+  .ncm-app .ncm-nm2-pscroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  .ncm-app .ncm-nm2-sec { padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-nm2-sec > .k { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-sec > .k i { color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-sec > .k a { margin-left: auto; font: 12px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-secondary); cursor: pointer; font-weight: 400; }
+  .ncm-app .ncm-nm2-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-app .ncm-nm2-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 2px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-tag i { font-size: 11px; color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-tag .m { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-tag.bad i { color: var(--ncm-danger); } .ncm-app .ncm-nm2-tag.warn i { color: var(--ncm-warning); }
+  .ncm-app .ncm-nm2-kv { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .ncm-app .ncm-nm2-kv div { padding: 6px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-app .ncm-nm2-kv .l { display: block; font: 700 9px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-kv .v { font: 15px var(--ncm-font-mono); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-quiet { font: 13px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+
+  /* editor */
+  .ncm-app .ncm-nm2-steps { display: flex; gap: 3px; padding: 7px 14px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-base); flex: none; flex-wrap: wrap; }
+  .ncm-app .ncm-nm2-step { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 2px; cursor: pointer; border: 1px solid transparent;
+    font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-step i { font-size: 11px; }
+  .ncm-app .ncm-nm2-step.on { color: var(--ncm-text-primary); background: var(--ncm-bg-surface); border-color: var(--ncm-border); box-shadow: inset 0 -2px 0 var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-step.on i { color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-form { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .ncm-app .ncm-nm2-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ncm-app .ncm-nm2-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .ncm-app .ncm-nm2-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .ncm-app .ncm-nm2-f > span { font: 700 10px var(--ncm-font-display); letter-spacing: .07em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-f input, .ncm-app .ncm-nm2-f select, .ncm-app .ncm-nm2-f textarea { width: 100%; box-sizing: border-box; }
+  .ncm-app .ncm-nm2-f input, .ncm-app .ncm-nm2-f select { height: 28px; }
+  .ncm-app .ncm-nm2-f textarea { min-height: 54px; resize: vertical; }
+  .ncm-app .ncm-nm2-f small { font: 12px var(--ncm-font-body); color: var(--ncm-text-muted); text-transform: none; letter-spacing: 0; }
+  .ncm-app .ncm-nm2-f input[type=range] { height: 18px; padding: 0; background: none; border: 0; accent-color: var(--ncm-secondary); }
+  .ncm-app button.ncm-nm2-btn { appearance: none; width: auto !important; height: 28px !important; min-height: 0 !important; margin: 0 !important; white-space: nowrap;
+    display: inline-flex !important; align-items: center; justify-content: center; gap: 6px; padding: 0 11px !important; border-radius: 2px !important; cursor: pointer;
+    background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border-active, var(--ncm-border)) !important; box-shadow: none !important;
+    font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary) !important; }
+  .ncm-app button.ncm-nm2-btn:hover { border-color: var(--ncm-secondary) !important; }
+  .ncm-app button.ncm-nm2-btn i { margin: 0 !important; font-size: 11px; }
+  .ncm-app button.ncm-nm2-btn--primary { background: color-mix(in srgb, var(--ncm-secondary) 14%, var(--ncm-bg-surface)) !important; border-color: var(--ncm-secondary) !important; color: var(--ncm-secondary) !important; }
+  .ncm-app button.ncm-nm2-btn--icon { width: 28px !important; padding: 0 !important; }
+  .ncm-app .ncm-nm2-seg { display: inline-flex; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+  .ncm-app .ncm-nm2-seg span { padding: 5px 11px; font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-secondary); border-right: 1px solid var(--ncm-border); cursor: pointer; }
+  .ncm-app .ncm-nm2-seg span:last-child { border-right: 0; }
+  .ncm-app .ncm-nm2-seg span.on { background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent); color: var(--ncm-secondary); }
+  .ncm-app .ncm-nm2-method { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); }
+  .ncm-app .ncm-nm2-method.on { border-color: color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border)); }
+  .ncm-app .ncm-nm2-method > .h { display: flex; align-items: center; gap: 9px; padding: 8px 10px; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-method > .h i { color: var(--ncm-secondary); width: 14px; text-align: center; }
+  .ncm-app .ncm-nm2-method > .h small { font: 12px var(--ncm-font-body); font-weight: 400; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-method > .h .tg { margin-left: auto; display: inline-flex; }
+  .ncm-app .ncm-nm2-method > .b { padding: 0 10px 10px 33px; display: flex; flex-direction: column; gap: 8px; }
+  .ncm-app .ncm-nm2-method:not(.on) > .b { display: none; }
+  .ncm-app .ncm-nm2-sw { width: 30px; height: 16px; flex: none; border-radius: 8px; position: relative; cursor: pointer; background: var(--ncm-border); }
+  .ncm-app .ncm-nm2-sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-secondary); }
+  .ncm-app .ncm-nm2-sw.on { background: color-mix(in srgb, var(--ncm-success) 55%, transparent); }
+  .ncm-app .ncm-nm2-sw.on::after { left: 16px; background: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-chiprow { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-app .ncm-nm2-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 2px; border: 1px solid var(--ncm-border); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); background: var(--ncm-bg-surface); }
+  .ncm-app .ncm-nm2-chip i { font-size: 10px; color: var(--c, var(--ncm-secondary)); }
+  .ncm-app .ncm-nm2-chip .x { color: var(--ncm-text-muted); margin-left: 2px; }
+  .ncm-app .ncm-nm2-chip.add { border-style: dashed; color: var(--ncm-secondary); background: transparent; }
+  .ncm-app .ncm-nm2-check { display: flex; align-items: center; gap: 9px; padding: 6px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-check small { color: var(--ncm-text-secondary); margin-left: auto; font-size: 12px; }
+  .ncm-app .ncm-nm2-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .ncm-app .ncm-nm2-foot { display: flex; gap: 6px; align-items: center; padding: 9px 14px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-base); flex: none; }
+  .ncm-app .ncm-nm2-foot .grow { flex: 1; }
+  .ncm-app .ncm-nm2-foot .note { font: 12px var(--ncm-font-body); color: var(--ncm-text-muted); }
+  .ncm-app .ncm-nm2-presets { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ncm-app .ncm-nm2-icons { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+  .ncm-app .ncm-nm2-icons span { aspect-ratio: 1; display: grid; place-items: center; border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-secondary); cursor: pointer; }
+  .ncm-app .ncm-nm2-icons span.on { border-color: var(--ncm-secondary); color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); }
+  .ncm-app .ncm-nm2-sw8 { display: flex; gap: 5px; align-items: center; }
+  .ncm-app .ncm-nm2-sw8 span { width: 22px; height: 22px; border-radius: 2px; cursor: pointer; border: 2px solid transparent; }
+  .ncm-app .ncm-nm2-sw8 span.on { border-color: var(--ncm-text-primary); }
+  .ncm-app .ncm-nm2-preview { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px dashed var(--ncm-border); border-radius: 2px; }
+  .ncm-app .ncm-nm2-preview .pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 12px; border: 1px solid #4488ff; color: #4488ff; font: 700 12px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; }
+
+  .ncm-admin-panel .ncm-net-admin-det.editing { display: flex; flex-direction: column; overflow: hidden; }
+  .ncm-admin-panel .ncm-net-admin-det.editing .ncm-net-admin-dhead { flex: none; }
+  .ncm-admin-panel .ncm-net-admin-stepn { font: 11px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-start { display: flex; flex-wrap: wrap; gap: 5px; padding: 9px 10px; border: 1px dashed var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; }
+  .ncm-admin-panel .ncm-net-admin-start .k { width: 100%; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-net-admin-srow .nets span.x { cursor: pointer; }
+  .ncm-admin-panel .ncm-net-admin-srow .nets span .rm { margin-left: 3px; color: var(--ncm-text-muted); font-size: 9px; cursor: pointer; }
+  .ncm-admin-panel .ncm-net-admin-srow .nets span .rm:hover { color: var(--ncm-danger); }
+  .ncm-admin-panel .ncm-net-admin-srow .nets .ncm-scope-btn { height: 22px !important; padding: 0 7px !important; font-size: 11px !important; border-style: dashed !important; }
+  .ncm-admin-panel .ncm-net-admin-srow .nets .ncm-scope-btn .caret { display: none; }
+  .ncm-admin-panel .ncm-nm2-icons { grid-template-columns: repeat(auto-fill, 34px); }
+  /* pop-out window */
+  .mk-panel.pop { width: 1120px; height: 780px; }
+  .mk-panel.pop .ncm-admin-tabs { display: none; }
+  .mk-panel .ncm-net-admin-winhd { display: none; }
+  .mk-panel.pop .ncm-net-admin-winhd { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; flex: none; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border);
+    font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .mk-panel.pop .ncm-net-admin-winhd i { color: var(--ncm-text-secondary); }
+  .mk-panel.pop .ncm-net-admin-winhd .grow { flex: 1; }
+  .mk-panel.pop .ncm-net-admin-winhd .dock { font: 12px var(--ncm-font-body); color: var(--ncm-secondary); cursor: pointer; font-weight: 400; }
+  .ncm-admin-panel.pop .ncm-net-admin-split { grid-template-columns: 320px 1fr; }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="stage">
+  <div class="mk mk-panel ncm-app ncm-admin-panel" id="panel" data-ncm-scanlines="false">
+    <div class="ncm-net-admin-winhd"><i class="fas fa-network-wired"></i>Networks<span class="grow"></span><span class="dock" data-dock><i class="fas fa-down-left-and-up-right-to-center"></i> Back to the admin panel</span><i class="fas fa-xmark"></i></div>
+    <nav class="ncm-admin-tabs">
+      <button class="ncm-admin-tab"><i class="fas fa-chart-bar"></i> Overview</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelope"></i> Messages</button>
+      <button class="ncm-admin-tab"><i class="fas fa-address-book"></i> Contacts</button>
+      <button class="ncm-admin-tab ncm-admin-tab--active"><i class="fas fa-network-wired"></i> Networks</button>
+      <button class="ncm-admin-tab"><i class="fas fa-database"></i> Shards</button>
+      <button class="ncm-admin-tab"><i class="fas fa-terminal"></i> Terminals</button>
+      <button class="ncm-admin-tab"><i class="fas fa-shield-halved"></i> Security</button>
+      <button class="ncm-admin-tab"><i class="fas fa-envelopes-bulk"></i> Spam</button>
+      <button class="ncm-admin-tab"><i class="fas fa-wrench"></i> Tools</button>
+    </nav>
+    <div class="ncm-admin-content" id="content"></div>
+  </div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<script src="scope-picker.js"></script>
+<script>
+const Q = new URLSearchParams(location.search);
+document.getElementById('panel').dataset.ncmAdminTheme = Q.get('t') || 'clean-dark';
+let VIEW = Q.get('view') || 'scene';
+let SEL = Q.get('sel') || 'corpnet';
+let JAM = Q.get('jam') === '1';
+let FILTER = 'all';
+const FACE = (c) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="${c}"/><circle cx="20" cy="16" r="7.5" fill="#0d0d14" opacity=".75"/><path d="M5 40c1-9 7-13 15-13s14 4 15 13z" fill="#0d0d14" opacity=".75"/></svg>`);
+const PL = { V: '#b85c7a', Rache: '#5c86b8', Kiri: '#7ab85c', Jo: '#b8995c' };
+const SCENE = 'Arasaka Tower — 7th Floor';
+
+/* networks — the five core ones plus a campaign's worth of custom subnets */
+const N = [
+  { id: 'citinet', name: 'CitiNet', type: 'Public', c: '#19f3f7', ic: 'fa-wifi', sig: 75, rel: 90, auth: 'open', global: true, on: true, here: true, players: ['Kiri'] },
+  { id: 'datapool', name: 'Data Pool', type: 'Public', c: '#f7c948', ic: 'fa-database', sig: 60, rel: 80, auth: 'open', global: true, on: true, here: true, delay: true },
+  { id: 'corpnet', name: 'CorpNet', type: 'Corporate', c: '#4488ff', ic: 'fa-building', sig: 95, rel: 99, auth: 'secured', global: false, on: true, here: true, def: true, players: ['V', 'Rache'], traced: true,
+    scenes: ['Arasaka Tower — 7th Floor', 'Arasaka Tower — Lobby', 'Biotechnica HQ'], ways: [['fa-key', 'Password'], ['fa-dice-d20', 'Interface', 'DV 15'], ['fa-dice-d20', 'Electronics/Security Tech', 'DV 17'], ['fa-id-badge', 'Corporate ID']] },
+  { id: 'arasaka-sec', name: 'Arasaka SecNet', type: 'Corporate', c: '#ff3355', ic: 'fa-shield-halved', sig: 88, rel: 99, auth: 'ice', global: false, on: true, here: true, traced: true },
+  { id: 'darknet', name: 'DarkNet', type: 'Underground', c: '#00ff41', ic: 'fa-mask', sig: 50, rel: 70, auth: 'open', global: false, on: false, here: true, anon: true, delay: true },
+  { id: 'govnet', name: 'GovNet', type: 'Government', c: '#ff6600', ic: 'fa-landmark', sig: 100, rel: 99, auth: 'secured', global: false, on: true, here: false, traced: true },
+  { id: 'ncpd', name: 'NCPD Dispatch', type: 'Government', c: '#5c9bff', ic: 'fa-handcuffs', sig: 90, rel: 95, auth: 'secured', global: false, on: true, here: false, traced: true },
+  { id: 'afterlife', name: 'Afterlife mesh', type: 'Underground', c: '#c76bff', ic: 'fa-skull', sig: 64, rel: 75, auth: 'secured', global: false, on: true, here: false, anon: true },
+  { id: 'maelstrom', name: 'Maelstrom relay', type: 'Underground', c: '#ff4d4d', ic: 'fa-radiation', sig: 40, rel: 55, auth: 'ice', global: false, on: true, here: false, players: ['Jo'] },
+  { id: 'nomad', name: 'Aldecaldo band', type: 'Custom', c: '#d4a35c', ic: 'fa-tower-broadcast', sig: 35, rel: 60, auth: 'secured', global: false, on: true, here: false },
+  { id: 'trauma', name: 'Trauma Team', type: 'Custom', c: '#ff5577', ic: 'fa-truck-medical', sig: 99, rel: 99, auth: 'secured', global: false, on: true, here: false },
+  { id: 'militech', name: 'Militech tactical', type: 'Corporate', c: '#7fbf3f', ic: 'fa-crosshairs', sig: 92, rel: 98, auth: 'ice', global: false, on: false, here: false },
+];
+const SCENES = [
+  { n: SCENE, cur: true, def: 'CorpNet', nets: ['corpnet', 'arasaka-sec', 'darknet'] },
+  { n: 'Arasaka Tower — Lobby', def: 'CorpNet', nets: ['corpnet'] },
+  { n: 'The Afterlife', def: 'Afterlife mesh', nets: ['afterlife', 'darknet'] },
+  { n: 'Vik’s clinic', def: 'CitiNet', nets: [] },
+  { n: 'Totentanz', def: 'Maelstrom relay', nets: ['maelstrom', 'darknet'] },
+  { n: 'NCPD Precinct 7', def: 'NCPD Dispatch', nets: ['ncpd', 'govnet'] },
+  { n: 'Badlands — Route 66', jam: true, def: '—', nets: ['nomad'] },
+  { n: 'Badlands — Camp', def: 'Aldecaldo band', nets: ['nomad'] },
+  { n: 'Biotechnica HQ', def: 'CorpNet', nets: ['corpnet'] },
+  { n: 'Watson — Kabuki market', def: 'CitiNet', nets: [] },
+  { n: 'Militech checkpoint', def: 'Militech tactical', nets: ['militech'] },
+];
+const net = (id) => N.find((x) => x.id === id);
+let EDIT = Q.get('edit') === '1' || Q.get('new') === '1';
+let NEWNET = Q.get('new') === '1';
+let POP = Q.get('pop') === '1';
+const SC = SCENES.map((x) => x.n);
+const STEPS = [['identity', 'fa-id-card', 'Identity'], ['signal', 'fa-signal', 'Signal'], ['access', 'fa-lock', 'Access'], ['behaviour', 'fa-sliders', 'Behaviour'], ['where', 'fa-location-dot', 'Where'], ['look', 'fa-palette', 'Look']];
+const sw = (on) => `<span class="ncm-nm2-sw ${on ? 'on' : ''}"></span>`;
+const bypassRow = (n, dv) => `<div class="ncm-bypass__row"><select class="ncm-bypass__skill"><option>${n}</option></select><span class="ncm-bypass__dvl">DV</span><input type="number" class="ncm-bypass__dv" value="${dv}"><button type="button" class="ncm-bypass__rm"><i class="fas fa-xmark"></i></button></div>`;
+const FORM = {
+  identity: `<div class="ncm-nm2-row"><label class="ncm-nm2-f"><span>Name</span><input type="text" value="CorpNet"></label><label class="ncm-nm2-f"><span>Type</span><select><option>Corporate</option></select></label></div>
+    <label class="ncm-nm2-f"><span>Description</span><input type="text" value="Corporate communications"><small>Players see this when they pick the network.</small></label>
+    <label class="ncm-nm2-f"><span>GM notes</span><textarea>Arasaka runs its own SecNet inside the tower — CorpNet is the lobby-level layer.</textarea><small>Only you see these.</small></label>
+    <label class="ncm-nm2-f"><span>Group</span><input type="text" value="Corporate"><small>Groups networks in the lists.</small></label>`,
+  signal: `<div class="ncm-nm2-row three"><label class="ncm-nm2-f"><span>Signal %</span><input type="number" value="95"></label><label class="ncm-nm2-f"><span>Reliability %</span><input type="number" value="99"></label><label class="ncm-nm2-f"><span>Delay (ms)</span><input type="number" value="0"></label></div>
+    <div class="ncm-nm2-quiet">Signal sets how garbled messages get. Reliability is how often a send drops. Delay holds each message before it arrives.</div>`,
+  access: `<div class="ncm-nm2-row"><label class="ncm-nm2-f"><span>Needs a login</span><span class="ncm-nm2-seg"><span>Open</span><span class="on">Secured</span></span></label>
+      <label class="ncm-nm2-f"><span>Players need</span><span class="ncm-nm2-seg"><span class="on">Any one method</span><span>All of them</span></span></label></div>
+    <div class="ncm-nm2-method on"><div class="h"><i class="fas fa-key"></i>Password <small>a passphrase they’re given or find</small><span class="tg">${sw(1)}</span></div>
+      <div class="b"><div class="ncm-nm2-row"><label class="ncm-nm2-f"><span>Password</span><input type="text" value="kiroshi-blue"></label><label class="ncm-nm2-f"><span>Attempts, then lock out for</span><div style="display:flex;gap:6px"><input type="number" value="3" style="width:60px"><input type="number" value="60" style="width:70px"><small style="align-self:center">min</small></div></label></div></div></div>
+    <div class="ncm-nm2-method on"><div class="h"><i class="fas fa-dice-d20"></i>Skill bypass <small>hack in with a roll — each skill has its own DV</small><span class="tg">${sw(1)}</span></div>
+      <div class="b"><div class="ncm-bypass">${bypassRow('Interface', 15)}${bypassRow('Electronics/Security Tech', 17)}<button type="button" class="ncm-bypass__add"><i class="fas fa-plus"></i> Add skill</button></div></div></div>
+    <div class="ncm-nm2-method on"><div class="h"><i class="fas fa-id-badge"></i>Key item <small>carrying the right item opens it</small><span class="tg">${sw(1)}</span></div>
+      <div class="b"><div class="ncm-nm2-chiprow"><span class="ncm-nm2-chip"><i class="fas fa-id-badge"></i>Corporate ID<span class="x">✕</span></span><span class="ncm-nm2-chip add"><i class="fas fa-magnifying-glass"></i>Pick an item…</span></div></div></div>
+    <div class="ncm-nm2-method on"><div class="h"><i class="fas fa-skull" style="color:var(--ncm-danger)"></i>When they fail <small>after the last attempt</small></div>
+      <div class="b"><span class="ncm-nm2-seg"><span class="on">Lock out</span><span>Black ICE</span><span>Nothing</span></span></div></div>`,
+  behaviour: `<div class="ncm-nm2-check"><i class="fas fa-satellite-dish" style="color:var(--ncm-danger)"></i>Traffic is traced<small>sends show up in the Security log</small>${sw(1)}</div>
+    <div class="ncm-nm2-check"><i class="fas fa-user-secret" style="color:var(--ncm-secondary)"></i>Anonymous<small>the sender's name is hidden</small>${sw(0)}</div>
+    <div class="ncm-nm2-check"><i class="fas fa-route" style="color:var(--ncm-secondary)"></i>Can reach other networks<small>off: only people on this network</small>${sw(1)}</div>
+    <label class="ncm-nm2-f"><span>Can send messages to</span><div class="ncm-nm2-chiprow"><span class="ncm-nm2-chip" style="--c:#4488ff"><i class="fas fa-building"></i>CorpNet<span class="x">✕</span></span><span class="ncm-nm2-chip" style="--c:#19f3f7"><i class="fas fa-wifi"></i>CitiNet<span class="x">✕</span></span><span class="ncm-nm2-chip add"><i class="fas fa-plus"></i>network</span></div><small>Empty means every network.</small></label>`,
+  where: `<div class="ncm-nm2-check"><i class="fas fa-globe" style="color:var(--ncm-secondary)"></i>Everywhere<small>every scene, always</small>${sw(0)}</div>
+    <label class="ncm-nm2-f"><span>Or on these scenes</span><input type="text" placeholder="Search scenes…"></label>
+    <div class="ncm-nm2-grid2">${SC.map((s) => `<div class="ncm-nm2-check" style="padding:5px 8px">${s}<small></small>${sw(/Arasaka|Biotech/.test(s))}</div>`).join('')}</div>`,
+  look: `<div class="ncm-nm2-preview"><span class="pill"><i class="fas fa-building"></i>CorpNet</span><span class="ncm-nm2-quiet">how players see it</span></div>
+    <label class="ncm-nm2-f"><span>Icon</span><span class="ncm-nm2-seg" style="align-self:flex-start;margin-bottom:6px"><span class="on">Symbol</span><span>Image</span></span>
+      <div class="ncm-nm2-icons">${['fa-building', 'fa-wifi', 'fa-mask', 'fa-landmark', 'fa-shield-halved', 'fa-database', 'fa-skull', 'fa-tower-broadcast', 'fa-satellite-dish', 'fa-crosshairs'].map((i, k) => `<span class="${k ? '' : 'on'}"><i class="fas ${i}"></i></span>`).join('')}</div></label>
+    <label class="ncm-nm2-f"><span>Colour</span><div class="ncm-nm2-sw8">${['#4488ff', '#19f3f7', '#00ff41', '#f7c948', '#ff6600', '#ff3355', '#c76bff', '#d4a35c'].map((c, k) => `<span class="${k ? '' : 'on'}" style="background:${c}"></span>`).join('')}<input type="text" value="#4488ff" style="width:90px;height:26px"></div></label>
+    <label class="ncm-nm2-f"><span>Glitch on the player's screen</span><input type="range" min="0" max="100" value="0"><small>How much the network's name and pill flicker. 0 = steady.</small></label>`,
+};
+
+let STEP = Q.get('step') || (NEWNET ? 'identity' : 'access');
+function netEditor(n) {
+  const i = STEPS.findIndex((x) => x[0] === STEP), prev = STEPS[i - 1], next = STEPS[i + 1];
+  const start = NEWNET && STEP === 'identity' ? `<div class="ncm-net-admin-start"><span class="k">Start from</span>${[['fa-file', 'Blank'], ['fa-building', 'Corporate'], ['fa-wifi', 'Public'], ['fa-mask', 'Underground'], ['fa-landmark', 'Government'], ['fa-tower-broadcast', 'Custom']].map(([ic2, l], k) => `<span class="ncm-nm2-chip ${k === 1 ? 'on' : ''}" style="${k === 1 ? 'border-color:var(--ncm-secondary)' : ''}"><i class="fas ${ic2}"></i>${l}</span>`).join('')}</div>` : '';
+  return `
+    <div class="ncm-net-admin-dhead">${NEWNET ? '<span class="ncm-net-admin-ic" style="--c:var(--ncm-secondary)"><i class="fas fa-plus"></i></span>' : ic(n)}
+      <div><div class="nm">${NEWNET ? 'New network' : 'Editing ' + n.name}</div><div class="sub ncm-net-admin-stepn">step ${i + 1} of ${STEPS.length} · ${STEPS[i][2]}</div></div>
+      <div class="acts">${POP ? '' : btn('Pop out', '', 'fa-up-right-from-square', 'data-pop title="Keep editing in a larger window"')}</div></div>
+    <div class="ncm-nm2-steps">${STEPS.map(([k, ic2, l]) => `<span class="ncm-nm2-step ${k === STEP ? 'on' : ''}" data-step="${k}"><i class="fas ${ic2}"></i>${l}</span>`).join('')}</div>
+    <div class="ncm-nm2-pscroll"><div class="ncm-nm2-form">${start}${FORM[STEP]}</div></div>
+    <div class="ncm-nm2-foot">${prev ? btn(prev[2], '', 'fa-arrow-left', 'data-step="' + prev[0] + '"') : ''}${next ? btn(next[2], '', 'fa-arrow-right', 'data-step="' + next[0] + '"') : ''}<span class="grow"></span>
+      ${btn('Cancel', '', '', 'data-editx')}${btn(NEWNET ? 'Create network' : 'Save', 'ncm-term-admin-btn--primary', 'fa-check', 'data-editx')}</div>`;
+}
+const btn = (label, cls = '', icon = '', attrs = '') => `<button type="button" class="ncm-term-admin-btn ${cls}" ${attrs}>${icon ? `<i class="fas ${icon}"></i>` : ''}${label ? ` ${label}` : ''}</button>`;
+const ic = (n) => `<span class="ncm-net-admin-ic" style="--c:${n.c}"><i class="fas ${n.ic}"></i></span>`;
+const auth = (n) => n.auth === 'open' ? '<span class="ncm-net-admin-auth">Open</span>' : n.auth === 'ice' ? '<span class="ncm-net-admin-auth ice"><i class="fas fa-skull"></i>Black ICE</span>' : '<span class="ncm-net-admin-auth sec"><i class="fas fa-lock"></i>Secured</span>';
+const faces = (ps = []) => ps.length ? `<span class="ncm-net-admin-faces">${ps.map((p) => `<img src="${FACE(PL[p])}" title="${p} — click to move them">`).join('')}</span>` : '';
+const sigTier = (s) => s >= 80 ? 'var(--ncm-success)' : s >= 50 ? 'var(--ncm-secondary)' : s >= 25 ? 'var(--ncm-warning)' : 'var(--ncm-danger)';
+const viewHd = (h, p) => `<div class="ncm-net-admin-viewhd"><h2>${h}</h2><p>${p}</p></div>`;
+
+/* ── scope pickers ── */
+const LOGROWS = [
+  ['22:05', '#4488ff', 'fa-right-to-bracket', 'Rache bypassed CorpNet with Interface (19 vs 15)', 'CorpNet'],
+  ['21:58', '#ff3355', 'fa-skull', 'Black ICE struck Rache on Arasaka SecNet — 9 HP', 'Arasaka SecNet'],
+  ['21:52', '#ff4fd8', 'fa-right-to-bracket', 'Jo joined Tyger Claws mesh', 'Tyger Claws mesh'],
+  ['21:40', '#4488ff', 'fa-right-to-bracket', 'V joined CorpNet with the password', 'CorpNet'],
+  ['21:31', '#c76bff', 'fa-lock', 'Kiri locked out of Afterlife mesh for 60 min', 'Afterlife mesh'],
+  ['21:12', '#00ff41', 'fa-mask', 'DarkNet switched off by the GM', 'DarkNet'],
+  ['20:58', '#ff4d4d', 'fa-right-to-bracket', 'Jo connected to Maelstrom relay', 'Maelstrom relay'],
+  ['20:47', '#19f3f7', 'fa-tower-broadcast', 'Broadcast to everyone online: “Curfew in Watson”', 'CitiNet'],
+  ['20:40', '#19f3f7', 'fa-plug-circle-xmark', 'Kiri dropped off CitiNet — dead zone', 'CitiNet'],
+];
+const ALLNETS = [...N.map((n) => ({ id: n.name, name: n.name, group: n.type, color: n.c, icon: n.ic, meta: n.global ? 'Everywhere' : (n.here ? 'On this scene' : 'Elsewhere') })),
+  ...SCOPE_DEMO_EXTRA.map(([name, group, color, icon]) => ({ id: name, name, group, color, icon, meta: 'Elsewhere' }))]
+  .map((n) => ({ ...n, count: LOGROWS.filter((r) => r[4] === n.id).length }));
+ScopePicker.on('netlog', () => render());
+SCENES.forEach((x, i) => ScopePicker.on('sc' + i, (v) => { x.nets = v; render(); })); ScopePicker.on('bcast', () => render()); ScopePicker.on('scene', () => render());
+if (Q.get('pick') === 'log') { VIEW = 'log'; ScopePicker.open('netlog'); }
+if (Q.get('pick') === 'scene') ScopePicker.open('scene');
+if (Q.get('pick') === 'bcast') ScopePicker.open('bcast');
+
+/* ── views ── */
+const VIEWS = {
+  scene: () => {
+    const here = N.filter((n) => n.global || n.here);
+    return `
+    <div class="ncm-net-admin-scene ${JAM ? 'jam' : ''}">
+      <span class="mapic"><i class="fas ${JAM ? 'fa-ban' : 'fa-map-location-dot'}"></i></span>
+      <div><div class="k">Scene</div>${ScopePicker.html('scene', { noun: 'scene', nouns: 'scenes', icon: 'fa-map', allLabel: SCENE, pinned: [{ id: SCENE, name: SCENE, icon: 'fa-location-crosshairs', meta: 'Viewed now' }], items: SCENES.slice(1).map((x) => ({ id: x.n, name: x.n, group: x.n.includes('Badlands') ? 'Badlands' : x.n.includes('Arasaka') ? 'Arasaka Tower' : 'Night City', icon: 'fa-map', meta: (x.nets.length ? x.nets.length + ' networks' : 'Global networks only') + ' · starts on ' + x.def })) })}</div>
+      <span class="grow"></span>
+      <div class="def"><span class="k">Players start on</span><select ${JAM ? 'disabled' : ''}>${here.map((n) => `<option ${n.def ? 'selected' : ''}>${n.name}</option>`).join('')}</select></div>
+      <span class="ncm-net-admin-jamsw" data-jam><i class="fas fa-ban"></i>${JAM ? 'Dead zone — on' : 'Dead zone'}<span class="ncm-net-admin-sw ${JAM ? 'on' : ''}" style="${JAM ? 'background:color-mix(in srgb,var(--ncm-danger) 60%,transparent)' : ''}"></span></span>
+    </div>
+    ${JAM ? '<div class="ncm-net-admin-jamnote"><i class="fas fa-ban"></i>No signal anywhere on this scene. Messages players send queue until they leave or you lift it.</div>' : ''}
+    <div class="ncm-net-admin-bc"><i class="fas fa-tower-broadcast"></i>
+      ${ScopePicker.html('bcast', { noun: 'network', nouns: 'networks', icon: 'fa-users', label: 'To', allLabel: 'Everyone online', pinned: [{ id: 'all', name: 'Everyone online', icon: 'fa-users', meta: 'Every player client' }, { id: 'scene', name: 'Everyone on this scene', icon: 'fa-location-crosshairs', meta: 'Players viewing ' + SCENE }], items: ALLNETS.map((n) => ({ ...n, name: 'On ' + n.name, count: 0 })) })}
+      <input type="text" placeholder="Broadcast a system message…">${btn('Send', 'ncm-term-admin-btn--primary', 'fa-paper-plane')}</div>
+    <div class="ncm-net-admin-card">
+      <div class="hd"><i class="fas fa-signal lead"></i>Networks on this scene <span class="n">${here.length}</span><span class="grow"></span><span class="hint">signal, who’s on it, on/off</span></div>
+      ${here.map((n) => `
+      <div class="ncm-net-admin-here ${n.on && !JAM ? '' : 'off'}">
+        ${ic(n)}
+        <div style="min-width:0"><div class="nm">${n.name}${n.def ? '<span class="def">Default</span>' : ''}</div>
+          <div class="sub">${auth(n)}<span>${n.global ? 'Everywhere' : 'This scene'}</span>${n.traced ? '<span title="Traffic is traced">· traced</span>' : ''}</div></div>
+        <div class="ncm-net-admin-sig" style="--sc:${sigTier(n.sig)}"><span class="tr"><span style="width:${JAM ? 0 : n.sig}%"></span><b style="left:${JAM ? 0 : n.sig}%"></b></span><span class="p">${JAM ? '0' : n.sig}%</span></div>
+        <div class="ncm-net-admin-who">${faces(n.players) || 'nobody'}</div>
+        <span class="ncm-net-admin-sw ${n.on ? 'on' : ''} ${n.global ? 'lock' : ''}" title="${n.global ? 'Global networks stay on' : 'Switch this network on or off'}"></span>
+      </div>`).join('')}
+      <div class="ncm-net-admin-addrow"><i class="fas fa-pen-to-square"></i>Change which networks reach this scene<span style="flex:1"></span><span style="color:var(--ncm-text-secondary)">Network Manager <i class="fas fa-up-right-from-square" style="font-size:10px"></i></span></div>
+    </div>
+    <div class="ncm-net-admin-card">
+      <div class="ncm-net-admin-off"><i class="fas fa-plug-circle-xmark" style="color:var(--ncm-text-muted)"></i>
+        <span><b>Jo</b> is on Maelstrom relay — not reachable on this scene.</span><span style="flex:1"></span>${faces(['Jo'])}</div>
+    </div>`;
+  },
+
+  all: () => {
+    const f = { all: () => true, here: (n) => n.global || n.here, sec: (n) => n.auth !== 'open', global: (n) => n.global, off: (n) => !n.on, use: (n) => (n.players || []).length };
+    const counts = Object.fromEntries(Object.entries(f).map(([k, fn]) => [k, N.filter(fn).length]));
+    const rows = N.filter(f[FILTER]);
+    const groups = [...new Set(rows.map((n) => n.type))];
+    const n = net(SEL) || N[0];
+    const ways = n.ways || (n.auth === 'open' ? [] : [['fa-key', 'Password']]);
+    return `
+    <div class="ncm-net-admin-tb"><span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search networks…"></span>
+      <select><option>Group: Type</option><option>Group: Access</option><option>Group: None</option></select></div>
+    <div class="ncm-net-admin-chips">${[['all', 'All'], ['here', 'On this scene'], ['sec', 'Secured'], ['global', 'Everywhere'], ['use', 'In use'], ['off', 'Switched off']]
+      .map(([k, l]) => `<span class="ncm-net-admin-chip ${k === FILTER ? 'on' : ''}" data-filter="${k}">${l}<span class="n">${counts[k]}</span></span>`).join('')}</div>
+    <div class="ncm-net-admin-split">
+      <div class="ncm-net-admin-list">${groups.map((g) => `<div class="ncm-net-admin-grp">${g}<span class="n">${rows.filter((x) => x.type === g).length}</span></div>`
+        + rows.filter((x) => x.type === g).map((x) => `
+        <div class="ncm-net-admin-r ${x.id === SEL ? 'sel' : ''} ${x.on ? '' : 'off'}" data-id="${x.id}">${ic(x)}
+          <div style="min-width:0"><div class="nm">${x.name}</div><div class="sub">${x.global ? 'Everywhere' : ((k) => k + (k === 1 ? ' scene' : ' scenes'))(x.scenes ? x.scenes.length : SCENES.filter((s) => s.nets.includes(x.id)).length)} · ${x.auth === 'open' ? 'open' : x.auth === 'ice' ? 'Black ICE' : 'secured'}</div></div>
+          <div class="st">${x.global || x.here ? '<span class="here" title="Reachable on this scene"><i class="fas fa-location-dot"></i></span>' : ''}${(x.players || []).length ? `<span class="on"><i class="fas fa-circle" style="font-size:7px"></i> ${x.players.length}</span>` : ''}${x.on ? '' : '<span>off</span>'}</div>
+        </div>`).join('')).join('')}</div>
+      <div class="ncm-net-admin-det ${EDIT ? 'editing' : ''}">${EDIT ? netEditor(n) : `
+        <div class="ncm-net-admin-dhead">${ic(n)}
+          <div><div class="nm">${n.name}</div><div class="sub">${n.type} · signal ${n.sig}% · reliability ${n.rel}%</div></div>
+          <div class="acts">${btn('Edit', 'ncm-term-admin-btn--primary', 'fa-pen', 'data-edit')}${btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'title="Reset logins · Duplicate · Delete"')}</div></div>
+        <div class="ncm-net-admin-sec"><div class="k"><i class="fas fa-location-dot"></i>Where it exists</div>
+          ${n.global ? '<div class="ncm-net-admin-quiet">Everywhere — every scene, always.</div>' : `<div class="ncm-net-admin-tags">${(n.scenes || SCENES.filter((s) => s.nets.includes(n.id)).map((s) => s.n)).map((s) => `<span class="ncm-net-admin-tag"><i class="fas fa-map"></i>${s}</span>`).join('') || '<span class="ncm-net-admin-quiet">No scenes yet.</span>'}</div>`}</div>
+        <div class="ncm-net-admin-sec"><div class="k"><i class="fas fa-lock"></i>Getting in</div>
+          ${ways.length ? `<div class="ncm-net-admin-tags">${ways.map(([i, l, m]) => `<span class="ncm-net-admin-tag"><i class="fas ${i}"></i>${l}${m ? ` <span class="m">${m}</span>` : ''}</span>`).join('')}</div>
+            <div class="ncm-net-admin-quiet" style="margin-top:6px">Any one of these · 3 attempts, then a 1-hour lockout${n.auth === 'ice' ? ' · Black ICE bites on failure' : ''}</div>` : '<div class="ncm-net-admin-quiet">Open — anyone in range connects.</div>'}</div>
+        <div class="ncm-net-admin-sec"><div class="k"><i class="fas fa-sliders"></i>Behaviour</div>
+          <div class="ncm-net-admin-tags">
+            ${n.traced ? '<span class="ncm-net-admin-tag bad"><i class="fas fa-satellite-dish"></i>Traffic is traced</span>' : ''}
+            ${n.anon ? '<span class="ncm-net-admin-tag"><i class="fas fa-user-secret"></i>Anonymous</span>' : ''}
+            ${n.delay ? '<span class="ncm-net-admin-tag warn"><i class="fas fa-hourglass-half"></i>Messages delayed</span>' : ''}
+            ${!n.traced && !n.anon && !n.delay ? '<span class="ncm-net-admin-quiet">Ordinary — nothing special.</span>' : ''}
+          </div></div>
+        <div class="ncm-net-admin-sec"><div class="k"><i class="fas fa-users"></i>On it now</div>
+          ${(n.players || []).length ? `<div class="ncm-net-admin-tags">${n.players.map((p) => `<span class="ncm-net-admin-tag"><img src="${FACE(PL[p])}" style="width:16px;height:16px;border-radius:50%">${p}</span>`).join('')}</div>` : '<div class="ncm-net-admin-quiet">Nobody.</div>'}</div>`}
+      </div>
+    </div>`;
+  },
+
+  scenes: () => {
+    SCENES.forEach((x, i) => ScopePicker.set('sc' + i, x.nets));
+    return `
+    <div class="ncm-net-admin-tb"><span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search scenes…"></span>
+      ${btn('Hide imported (14)', '', 'fa-eye-slash')}</div>
+    <div class="ncm-net-admin-chips">${[['All', SCENES.length, 1], ['Has networks', SCENES.filter((x) => x.nets.length).length], ['Dead zones', 1], ['Players here', 3]].map(([l, k, on]) => `<span class="ncm-net-admin-chip ${on ? 'on' : ''}">${l}<span class="n">${k}</span></span>`).join('')}</div>
+    <div class="ncm-net-admin-scenes">
+      <div class="ncm-net-admin-srow hd"><span></span><span>Scene</span><span>Networks here — plus CitiNet and Data Pool everywhere</span><span>Players start on</span><span>Dead zone</span></div>
+      ${SCENES.map((x, i) => `<div class="ncm-net-admin-srow ${x.cur ? 'cur' : ''} ${x.jam ? 'jam' : ''}">
+        <i class="fas ${x.cur ? 'fa-location-crosshairs' : x.jam ? 'fa-ban' : 'fa-map'}"></i>
+        <div class="nm">${x.n}${x.cur ? '<small>the scene you are viewing</small>' : ''}</div>
+        <div class="nets">${x.nets.map((id) => `<span style="--c:${net(id).c}"><i class="fas ${net(id).ic}"></i>${net(id).name}<i class="fas fa-xmark rm" data-scrm="${i}:${id}" title="Take ${net(id).name} off this scene"></i></span>`).join('')}
+          ${ScopePicker.html('sc' + i, { noun: 'network', nouns: 'networks', icon: 'fa-plus', fixedLabel: x.nets.length ? 'Add' : 'Add networks', multi: true, items: N.filter((y) => !y.global).map((y) => ({ id: y.id, name: y.name, group: y.type, color: y.c, icon: y.ic, meta: y.auth === 'open' ? 'open' : 'secured' })) })}</div>
+        <select ${x.jam ? 'disabled' : ''}><option>${x.def}</option></select>
+        <span class="ncm-net-admin-sw ${x.jam ? 'on' : ''}" style="${x.jam ? 'background:color-mix(in srgb,var(--ncm-danger) 60%,transparent)' : ''}"></span>
+      </div>`).join('')}
+    </div>`;
+  },
+
+  log: () => `
+    <div class="ncm-net-admin-tb"><span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search the log…"></span>
+      ${ScopePicker.html('netlog', { noun: 'network', nouns: 'networks', icon: 'fa-network-wired', multi: true, items: ALLNETS, countLabel: 'entries', activeLabel: 'In the log' })}${btn('Add entry', '', 'fa-plus')}${btn('', 'ncm-term-admin-btn--icon', 'fa-ellipsis', 'title="Import · Export · Clear"')}</div>
+    <div class="ncm-net-admin-log">${(() => { const v = ScopePicker.value('netlog'); return LOGROWS.filter((r) => !v.length || v.includes(r[4])); })()
+      .map(([w, c, i, t, n]) => `<div class="ncm-net-admin-logrow" style="--c:${c}"><span class="w">${w}</span><i class="fas ${i}"></i><span>${t}</span><span class="net" data-lognet="${n}" title="Show only ${n}" style="cursor:pointer">${n}</span></div>`).join('')}</div>`,
+};
+const HEAD = {
+  scene: ['This scene', 'The scene you’re running: its signal, its networks, and who’s on them.'],
+  all: ['All networks', 'Every network in the world, where it exists, and how you get in.'],
+  scenes: ['Scenes', 'Which networks each scene carries, where players start, and which are dead zones.'],
+  log: ['Activity log', 'Connections, bypasses, ICE strikes and broadcasts, newest first.'],
+};
+const NOTES = {
+  scene: '<h3>This scene</h3><p>The command centre, and the default view. Everything here is about the scene you are running: pick another scene from its name.</p><p><b>Broadcast sits right under the scene</b>, and can go to everyone online, everyone on this scene, or one network.</p><p><b>Only the networks reachable here</b> are listed — global ones plus the ones this scene carries. Each has a horizontal signal slider (scales to any number of networks, unlike the side-scrolling mixer), its players as avatars (click to move one), and an on/off switch. Global networks are always on.</p><p>Players on a network this scene can\'t reach show in one line at the bottom.</p>',
+  get all() { return (EDIT ? '<h3>Editing in place</h3><p><b>The Network Manager is folded into this tab.</b> Edit turns the detail pane into its six-step editor — Identity · Signal · Access · Behaviour · Where · Look — with the list still on the left. Back / Next walk the steps; any step is one click; everything saves together.</p><p><b>New network</b> opens the same editor on Identity with <b>Start from</b>: blank or a type preset (this replaces the old quick-create buttons).</p><p><b>Pop out</b> opens the same view in a larger window (<b>?pop=1</b>) — the scene-controls button and any macro that opened the Network Manager open this instead, so nobody loses their way in.</p>' : '') + '<h3>All networks</h3><p>The full catalogue, list + detail like Terminals and Shards. Grouped by type; filters answer "what\'s on this scene", "what\'s secured", "what\'s everywhere", "who\'s in use", "what\'s switched off".</p><p>The detail says where a network exists, how you get in (per-skill DVs included), how it behaves (traced, anonymous, delayed) and who is on it.</p>'; },
+  scenes: '<h3>Scenes</h3><p>Every scene on one screen: what it carries, where players start, and a dead-zone switch — and now <b>the networks are edited right on the row</b>: ✕ takes one off, <b>Add</b> opens the scope picker to put several on. The Network Manager’s Scenes tab is no longer needed.</p>',
+  log: '<h3>Activity log</h3><p>The existing log, promoted from a button to a sub-tab. Import, export and clear move into ⋯.</p><p><b>Network filter = the scope picker</b>, not a dropdown: search, a chip per network type, an "In the log" chip, the busiest networks first with their entry count, and pick several at once. Click a network name on any row to filter to it.</p><p>The same picker is used for the scene name, the broadcast target, and the Network Manager\'s log and note target.</p>',
+};
+
+function render() {
+  document.getElementById('panel').classList.toggle('pop', POP);
+  const nav = [['scene', 'fa-location-crosshairs', 'This scene', N.filter((n) => n.global || n.here).length], ['all', 'fa-network-wired', 'All networks', N.length], ['scenes', 'fa-map', 'Scenes', SCENES.length], ['log', 'fa-scroll', 'Activity log', 0]];
+  document.getElementById('content').innerHTML = `
+    <div class="ncm-net-admin-nav">${nav.map(([k, i, l, n]) => `<button type="button" class="ncm-net-admin-navbtn ${VIEW === k ? 'on' : ''}" data-view="${k}"><i class="fas ${i}"></i>${l}${n ? `<span class="ncm-net-admin-navct">${n}</span>` : ''}</button>`).join('')}
+      <span class="grow"></span>${btn('New network', 'ncm-term-admin-btn--primary', 'fa-plus', 'data-newnet')}${POP ? '' : btn('', 'ncm-term-admin-btn--icon', 'fa-up-right-from-square', 'data-pop title="Pop out: open Networks in its own larger window — the scene-controls button opens this too"')}</div>
+    <div class="ncm-net-admin-view ${VIEW === 'all' ? 'split' : ''}">${viewHd(...HEAD[VIEW])}${VIEWS[VIEW]()}</div>`;
+  document.getElementById('notes').innerHTML = NOTES[VIEW];
+  ScopePicker.after();
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-newnet]')) { VIEW = 'all'; EDIT = true; NEWNET = true; STEP = 'identity'; render(); return; }
+  if (e.target.closest('[data-edit]')) { EDIT = true; NEWNET = false; STEP = 'identity'; render(); return; }
+  if (e.target.closest('[data-editx]')) { EDIT = false; NEWNET = false; render(); return; }
+  const stp = e.target.closest('[data-step]'); if (stp) { STEP = stp.dataset.step; render(); return; }
+  if (e.target.closest('[data-pop]')) { POP = true; render(); return; }
+  if (e.target.closest('[data-dock]')) { POP = false; render(); return; }
+  const rm = e.target.closest('[data-scrm]'); if (rm) { const [i, id] = rm.dataset.scrm.split(':'); SCENES[+i].nets = SCENES[+i].nets.filter((x) => x !== id); render(); return; }
+  const v = e.target.closest('[data-view]'); if (v) { VIEW = v.dataset.view; render(); return; }
+  const r = e.target.closest('.ncm-net-admin-r'); if (r) { SEL = r.dataset.id; EDIT = false; NEWNET = false; render(); return; }
+  const f = e.target.closest('[data-filter]'); if (f) { FILTER = f.dataset.filter; render(); return; }
+  const ln = e.target.closest('[data-lognet]'); if (ln) { ScopePicker.set('netlog', [ln.dataset.lognet]); render(); return; }
+  if (e.target.closest('[data-jam]')) { JAM = !JAM; render(); }
+});
+render();
+
+const link = (k, v, label) => { const q = new URLSearchParams(location.search); if (v === null) q.delete(k); else q.set(k, v); const on = (Q.get(k) ?? null) === v; return `<a class="${on ? 'on' : ''}" href="?${q}">${label}</a>`; };
+document.getElementById('bar').innerHTML = `<b>NETWORKS TAB — REDESIGN</b>
+  <span>view</span>${link('view', null, 'this scene')}${link('view', 'all', 'all networks')}${link('view', 'scenes', 'scenes')}${link('view', 'log', 'log')}
+  <span>preset</span>${link('t', null, 'clean-dark')}${link('t', 'clean-light', 'clean-light')}${link('t', 'high-contrast', 'high-contrast')}
+  <span>state</span>${link('jam', '1', 'dead zone')}${link('edit', '1', 'editing')}${link('new', '1', 'new network')}${link('pop', '1', 'pop-out')}${link('pick', 'log', 'log picker')}${link('pick', 'scene', 'scene picker')}${link('pick', 'bcast', 'broadcast picker')}`;
+</script>
+</body>
+</html>

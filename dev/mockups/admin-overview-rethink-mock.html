@@ -1,0 +1,328 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Overview — rethink</title>
+<!--
+  Admin → Overview, rethought as INSTRUMENTS instead of a stack of six sections (2026-10-28, dev: "I think we need
+  to rethink Overview… more interactive-like modules that sit within the admin panel").
+  Version A = CONTROL ROOM: one screen, no page scroll. The table as a live board (players sit on the network lanes
+              that reach their scene), the needs-you queue as a priority stack (top item big), next-up + just-happened rails.
+  Version B = THE NOW LINE: one vertical timeline owns the tab. Past above the fixed NOW line (what just happened, newest
+              nearest), what is waiting ON the line, the future below (every timer placed by time-to-go, 1h/6h/24h zoom),
+              and a compact table dock on the right.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/admin-overview-rethink-mock.html  ?t=clean-light|high-contrast  ?v=a|b
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 22px; background: #1b1b22; font-family: sans-serif; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 26px 0 4px; letter-spacing: .04em; }
+  .mk-h:first-child { margin-top: 0; }
+  .mk-p { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 12px; max-width: 820px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .ov-P { width: 820px; box-sizing: border-box; padding: 10px 12px; background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-primary); font: 13px var(--ncm-font-body); }
+
+  /* ── shared instrument frame ── */
+  .mod { position: relative; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); min-width: 0; }
+  .mod::before, .mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: color-mix(in srgb, var(--ncm-act) 70%, transparent); border-style: solid; pointer-events: none; }
+  .mod::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; } .mod::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+  .mod__k { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent);
+    font: 700 9.5px var(--ncm-font-display); letter-spacing: .09em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .mod__k i { color: var(--ncm-act); font-size: 9px; } .mod__k.attn i { color: var(--ncm-attn); }
+  .mod__k .n { font: 700 10px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading)); padding: 0 5px; border-radius: 1px; background: color-mix(in srgb, var(--ncm-act) 18%, transparent); }
+  .mod__k .n.attn { background: var(--ncm-attn); color: var(--ncm-text-inverse); }
+  .mod__k .hint { margin-left: auto; font: 11px var(--ncm-font-body); text-transform: none; letter-spacing: 0; color: var(--ncm-text-hint); }
+  .mod__k .zoom { margin-left: 10px; display: inline-flex; border: 1px solid var(--ncm-border-active); border-radius: 2px; overflow: hidden; }
+  .mod__k .zoom span { padding: 1px 7px; font: 700 9px var(--ncm-font-mono); color: var(--ncm-text-label); cursor: pointer; border-left: 1px solid var(--ncm-border); } .mod__k .zoom span:first-child { border-left: 0; }
+  .mod__k .zoom span.on { color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-act) 18%, transparent); box-shadow: inset 0 -2px var(--ncm-act); }
+
+  .av { flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 9px var(--ncm-font-display); box-sizing: border-box;
+    color: color-mix(in oklab, var(--tc) 72%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 22%, var(--ncm-bg-pane)); border: 1.5px solid var(--tc); box-shadow: 0 0 6px -2px var(--tc); }
+  .av.lg { width: 30px; height: 30px; font-size: 11px; }
+  .btn { appearance: none; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; padding: 0 9px !important; height: 24px !important; min-height: 0 !important; margin: 0 !important; width: auto !important;
+    font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; border-radius: 2px !important; cursor: pointer; box-shadow: none !important; background-image: none !important;
+    border: 1px solid var(--ncm-border-active) !important; color: var(--ncm-text-primary) !important; background: var(--ncm-bg-card) !important; }
+  .btn.pri { border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse) !important; background: var(--ncm-act) !important; }
+  .btn.quiet { background: transparent !important; color: var(--ncm-text-label) !important; }
+  .btn i { margin: 0 !important; font-size: 10px; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; height: 17px; border-radius: 1px; font: 600 10.5px var(--ncm-font-body); white-space: nowrap;
+    color: color-mix(in oklab, var(--tc) 63%, var(--ncm-text-heading)); background: color-mix(in srgb, var(--tc) 18%, var(--ncm-bg-card-head)); border: 1px solid var(--tc); }
+  .pill i { font-size: 9px; color: var(--tc); }
+  .mono { font-family: var(--ncm-font-mono); }
+  .dim { color: var(--ncm-text-hint); } .lab { color: var(--ncm-text-label); } .num { color: var(--ncm-text-num, var(--ncm-text-heading)); font-family: var(--ncm-font-mono); font-weight: 700; }
+  .t-attn { color: var(--ncm-attn); } .t-bad { color: var(--ncm-bad); } .t-good { color: var(--ncm-good); } .t-secret { color: var(--ncm-secret); } .t-act { color: var(--ncm-act); } .t-money { color: var(--ncm-money); }
+
+  /* ════════ A · CONTROL ROOM ════════ */
+  .A { display: grid; grid-template-columns: minmax(0, 1fr) 236px; grid-template-rows: auto auto 1fr; gap: 10px; height: 640px; }
+  .A-top { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 8px 12px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .A-clock { display: flex; align-items: baseline; gap: 8px; }
+  .A-clock b { font: 700 22px/1 var(--ncm-font-mono); color: var(--ncm-text-heading); letter-spacing: .02em; }
+  .A-clock small { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .A-scene { display: flex; align-items: center; gap: 8px; padding-left: 14px; border-left: 1px solid var(--ncm-border); font: 600 13px var(--ncm-font-body); color: var(--ncm-text-heading); white-space: nowrap; min-width: 0; overflow: hidden; }
+  .A-top .acts .btn { white-space: nowrap; }
+  .A-scene .tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .A-scene .pill { flex: none; }
+  .tl > .mod__k .hint { margin-left: 8px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .A-scene i { color: var(--ncm-act); }
+  .A-top .acts { margin-left: auto; display: flex; gap: 5px; }
+  .A-table { grid-row: 2; }
+  .A-needs { grid-row: 3; display: flex; flex-direction: column; min-height: 0; }
+  .A-right { grid-row: 2 / 4; grid-column: 2; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  /* the board: one row per scene, lanes = networks, faces sit on their lane */
+  .board { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .scn { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 10px; align-items: stretch; }
+  .scn__nm { display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 4px 8px; border-left: 3px solid var(--ncm-act); background: var(--ncm-bg-card-head); border-radius: 1px; }
+  .scn__nm b { font: 700 11px var(--ncm-font-display); color: var(--ncm-text-heading); letter-spacing: .03em; }
+  .scn__nm small { font: 10px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .scn__nm.you { border-left-color: var(--ncm-good); } .scn__nm.you small { color: var(--ncm-good); }
+  .scn__nm.dead { border-left-color: var(--ncm-bad); } .scn__nm.dead small { color: var(--ncm-bad); }
+  .lanes { display: flex; flex-direction: column; gap: 4px; }
+  .lane { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 8px; height: 26px; }
+  .lane__net { display: flex; align-items: center; gap: 5px; font: 700 10px var(--ncm-font-display); letter-spacing: .04em; color: var(--nc); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lane__net i { font-size: 9px; }
+  .lane__bar { position: relative; height: 22px; border-radius: 2px; background: color-mix(in srgb, var(--nc) 9%, var(--ncm-bg-card)); border: 1px solid color-mix(in srgb, var(--nc) 35%, transparent); overflow: visible; }
+  .lane__bar::before { content: ''; position: absolute; inset: 0; width: var(--sig); background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 30%, transparent), color-mix(in srgb, var(--nc) 8%, transparent)); border-radius: 2px; }
+  .lane__sig { position: absolute; right: 6px; top: 4px; font: 700 10px var(--ncm-font-mono); color: var(--nc); }
+  .lane__ppl { position: absolute; left: 8px; top: -1px; display: flex; gap: 4px; }
+  .lane.nosig .lane__bar { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ncm-bad) 12%, transparent) 0 6px, transparent 6px 12px), var(--ncm-bg-card); border-color: color-mix(in srgb, var(--ncm-bad) 45%, transparent); }
+  .lane.nosig .lane__net { color: var(--ncm-bad); }
+  .lane.nosig .lane__bar::before { display: none; }
+  .av .dot { position: absolute; right: -2px; bottom: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--ncm-good); border: 1.5px solid var(--ncm-bg-pane); }
+  .av { position: relative; }
+  .av .bad { position: absolute; top: -5px; right: -6px; min-width: 12px; height: 12px; padding: 0 3px; border-radius: 6px; background: var(--ncm-attn); color: var(--ncm-text-inverse); font: 700 8px/12px var(--ncm-font-mono); text-align: center; }
+  /* needs-you stack */
+  .stack { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  .top { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 10px; background: var(--ncm-bg-card); border: 1px solid color-mix(in srgb, var(--ncm-attn) 50%, var(--ncm-border)); border-radius: 2px; box-shadow: inset 3px 0 var(--ncm-attn); }
+  .top__ic { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 2px; background: color-mix(in srgb, var(--ncm-attn) 16%, transparent); color: var(--ncm-attn); font-size: 14px; }
+  .top__tx b { display: block; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading); }
+  .top__tx span { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .top__acts { display: flex; gap: 5px; }
+  .queue { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; overflow-x: hidden; min-height: 0; }
+  .q { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 2px; background: var(--ncm-bg-card); border: 1px solid transparent; }
+  .q:hover { border-color: var(--ncm-border-active); }
+  .q i.k { font-size: 11px; text-align: center; }
+  .q .tx { font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .q .tx b { color: var(--ncm-text-heading); font-weight: 600; }
+  .q .age { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .q .x { color: var(--ncm-text-hint); font-size: 10px; cursor: pointer; }
+  .q.mail i.k { color: var(--ncm-attn); } .q.sec i.k { color: var(--ncm-bad); } .q.shard i.k { color: var(--ncm-hue-2); } .q.setup i.k { color: var(--ncm-hue-7); }
+  .filt { display: flex; gap: 4px; }
+  .filt span { padding: 1px 7px; border-radius: 1px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); border: 1px solid var(--ncm-border); cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+  .filt span b { font: 700 9.5px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading)); }
+  .filt span.on { color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-act) 18%, transparent); border-color: color-mix(in srgb, var(--ncm-act) 60%, transparent); }
+  /* right rails */
+  .next { display: flex; flex-direction: column; }
+  .nx { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 7px; align-items: center; padding: 6px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); position: relative; }
+  .nx::after { content: ''; position: absolute; left: 0; bottom: -1px; height: 2px; width: var(--p); background: var(--tc); opacity: .7; }
+  .nx i { font-size: 10px; color: var(--tc); text-align: center; }
+  .nx .tx { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nx .tx small { display: block; font: 10px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .nx .in { font: 700 11px var(--ncm-font-mono); color: var(--tc); }
+  .feed { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .fe { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 6px; padding: 4px 9px; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent); }
+  .fe i { font-size: 9px; color: var(--tc); margin-top: 3px; }
+  .fe b { color: var(--ncm-text-primary); font-weight: 600; } .fe .t { font: 10px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-hint)); margin-left: 4px; }
+  .tiles { display: flex; gap: 5px; padding: 8px 10px; flex-wrap: wrap; }
+  .tile { flex: 1 1 60px; display: flex; flex-direction: column; align-items: center; padding: 5px 4px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); cursor: pointer; }
+  .tile b { font: 700 15px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-heading)); } .tile b.bad { color: var(--ncm-bad); }
+  .tile span { font: 700 8.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+
+  /* ════════ B · THE NOW LINE ════════ */
+  .B { display: grid; grid-template-columns: minmax(0, 1fr) 232px; gap: 10px; height: 700px; }
+  .tl { position: relative; display: flex; flex-direction: column; }
+  .tl__body { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: 56px minmax(0, 1fr); }
+  .axis { position: relative; border-right: 1px solid var(--ncm-border); }
+  .axis span { position: absolute; right: 6px; transform: translateY(-50%); font: 10px var(--ncm-font-mono); color: var(--ncm-text-hint); }
+  .axis span.now { color: var(--ncm-act); font-weight: 700; }
+  .axis span::after { content: ''; position: absolute; right: -7px; top: 50%; width: 5px; height: 1px; background: var(--ncm-border-active); }
+  .track { position: relative; }
+  .nowline { position: absolute; left: 0; right: 0; top: 38%; height: 0; border-top: 2px solid var(--ncm-act); box-shadow: 0 0 10px -2px var(--ncm-act); z-index: 2; }
+  .nowline b { position: absolute; left: 8px; top: -9px; padding: 0 6px; background: var(--ncm-act); color: var(--ncm-text-inverse); font: 700 9px/16px var(--ncm-font-display); letter-spacing: .1em; border-radius: 1px; }
+  .pastzone { position: absolute; left: 0; right: 0; top: 0; height: 38%; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--ncm-act) 3%, transparent)); }
+  .future { position: absolute; left: 0; right: 0; top: 38%; bottom: 0; }
+  .future .zone { position: absolute; left: 0; right: 0; }
+  .future .zone.red { top: 0; height: 12%; background: color-mix(in srgb, var(--ncm-bad) 7%, transparent); border-bottom: 1px dashed color-mix(in srgb, var(--ncm-bad) 40%, transparent); }
+  .future .zone.amb { top: 12%; height: 30%; background: color-mix(in srgb, var(--ncm-attn) 5%, transparent); border-bottom: 1px dashed color-mix(in srgb, var(--ncm-attn) 35%, transparent); }
+  .ev { position: absolute; left: 12px; right: 12px; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 8px; border-radius: 2px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); transform: translateY(-50%); }
+  .ev::before { content: ''; position: absolute; left: -12px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--tc); box-shadow: 0 0 6px var(--tc); }
+  .ev i { font-size: 10px; color: var(--tc); text-align: center; }
+  .ev .tx { font: 11.5px var(--ncm-font-body); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ev .tx b { font-weight: 600; color: var(--ncm-text-heading); }
+  .ev .t { font: 700 10.5px var(--ncm-font-mono); color: var(--tc); }
+  .ev.past { position: absolute; opacity: .92; background: color-mix(in srgb, var(--ncm-bg-card) 70%, transparent); }
+  .ev.past.far { opacity: .7; }
+  .ev .acts { display: flex; gap: 4px; }
+  .ev .acts .btn { height: 20px !important; padding: 0 7px !important; font-size: 9px !important; }
+  /* what is waiting sits ON the line */
+  .onnow { position: absolute; left: 12px; right: 12px; top: 38%; transform: translateY(-50%); display: flex; gap: 6px; justify-content: flex-end; z-index: 3; }
+  .wait { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px 2px 5px; white-space: nowrap; border-radius: 2px; background: var(--ncm-bg-card-head); border: 1px solid var(--ncm-attn); box-shadow: 0 0 10px -3px var(--ncm-attn); font: 600 11px var(--ncm-font-body); color: var(--ncm-text-heading); cursor: pointer; }
+  .wait .n { font: 700 10px var(--ncm-font-mono); padding: 0 5px; border-radius: 1px; background: var(--ncm-attn); color: var(--ncm-text-inverse); }
+  .wait.bad { border-color: var(--ncm-bad); box-shadow: 0 0 10px -3px var(--ncm-bad); } .wait.bad .n { background: var(--ncm-bad); }
+  .wait i { font-size: 10px; color: var(--ncm-attn); } .wait.bad i { color: var(--ncm-bad); }
+  /* right dock */
+  .dock { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .clockcard { padding: 10px 12px; text-align: center; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .clockcard b { display: block; font: 700 26px/1 var(--ncm-font-mono); color: var(--ncm-text-heading); }
+  .clockcard small { display: block; margin-top: 3px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .clockcard .scn2 { margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; font: 600 12px var(--ncm-font-body); color: var(--ncm-text-heading); } .clockcard .scn2 i { color: var(--ncm-act); }
+  .ppl { display: flex; flex-direction: column; }
+  .pp { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 7px; align-items: center; padding: 5px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .pp .nm { font: 600 12px var(--ncm-font-body); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pp .nm small { display: block; font: 10px var(--ncm-font-body); color: var(--ncm-text-label); font-weight: 400; }
+  .pp .net { display: inline-flex; align-items: center; gap: 4px; font: 700 9.5px var(--ncm-font-display); color: var(--nc); letter-spacing: .03em; }
+  .pp .net .bars { display: inline-flex; gap: 1px; align-items: flex-end; } .pp .net .bars i { width: 3px; background: var(--nc); display: block; } .pp .net .bars i.off { opacity: .25; }
+  .pp.nosig .net { color: var(--ncm-bad); }
+  .quick { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 8px 10px; }
+  .quick .btn { justify-content: center; }
+</style>
+</head>
+<body>
+
+<div class="mk-h">A · CONTROL ROOM — one screen, nothing scrolls</div>
+<p class="mk-p">The table is a live board: every scene is a row, every network that reaches it is a lane in its own colour with its signal, and each player's face sits on the lane they are on (a hatched red lane = no signal). Needs-you is a priority stack: the top item is big with its action; the rest are one line each behind filter chips. Next-up and just-happened are two rails on the right; the tiles stay as a strip at the bottom of the rail.</p>
+<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="clean-dark" data-mk="a"><div class="ncm-admin-panel"><div class="ov-P">
+  <div class="A">
+    <div class="A-top">
+      <div class="A-clock"><b>23:41</b><small>Thu 11 Mar 2045</small></div>
+      <div class="A-scene"><i class="fas fa-map"></i><span class="tx">Arasaka Tower — 7th Floor</span><span class="pill" style="--tc:var(--ncm-good)"><i class="fas fa-location-crosshairs"></i>you are here</span></div>
+      <div class="acts"><button class="btn pri"><i class="fas fa-pen"></i>Write</button><button class="btn"><i class="fas fa-user-plus"></i>Contact</button><button class="btn"><i class="fas fa-tower-broadcast"></i>Broadcast</button><button class="btn quiet"><i class="fas fa-clock"></i>Set time</button></div>
+    </div>
+
+    <div class="mod A-table">
+      <div class="mod__k"><i class="fas fa-users"></i>At the table <span class="n">4</span><span class="hint">faces sit on the network they are on · click a face for fixes</span></div>
+      <div class="board">
+        <div class="scn">
+          <div class="scn__nm you"><b>ARASAKA TOWER</b><small>you are here · 3 players</small></div>
+          <div class="lanes">
+            <div class="lane" style="--nc:#69aeff;--sig:95%"><span class="lane__net"><i class="fas fa-building"></i>CorpNet</span><div class="lane__bar"><div class="lane__ppl"><span class="av" style="--tc:#ff67e4">V<i class="dot"></i></span><span class="av" style="--tc:#00acf8">RA<i class="dot"></i><i class="bad">2</i></span></div><span class="lane__sig">95%</span></div></div>
+            <div class="lane" style="--nc:#00e5f7;--sig:75%"><span class="lane__net"><i class="fas fa-wifi"></i>CitiNet</span><div class="lane__bar"><div class="lane__ppl"><span class="av" style="--tc:#a0d157">KI<i class="dot"></i></span></div><span class="lane__sig">75%</span></div></div>
+            <div class="lane" style="--nc:#ff767f;--sig:88%"><span class="lane__net"><i class="fas fa-shield"></i>Arasaka Sec</span><div class="lane__bar"><span class="lane__sig">88%</span></div></div>
+          </div>
+        </div>
+        <div class="scn">
+          <div class="scn__nm"><b>THE AFTERLIFE</b><small>1 player</small></div>
+          <div class="lanes">
+            <div class="lane nosig" style="--nc:var(--ncm-bad)"><span class="lane__net"><i class="fas fa-ban"></i>No signal</span><div class="lane__bar"><div class="lane__ppl"><span class="av" style="--tc:#dab78f">JO<i class="dot"></i></span></div><span class="lane__sig">Maelstrom relay — not reachable here</span></div></div>
+            <div class="lane" style="--nc:#00e5f7;--sig:60%"><span class="lane__net"><i class="fas fa-wifi"></i>CitiNet</span><div class="lane__bar"><span class="lane__sig">60%</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mod A-needs">
+      <div class="mod__k attn"><i class="fas fa-bell"></i>Needs you <span class="n attn">7</span>
+        <span class="filt" style="margin-left:auto"><span class="on">All <b>7</b></span><span>Mail <b>3</b></span><span>Security <b>2</b></span><span>Shards <b>1</b></span><span>Setup <b>1</b></span></span></div>
+      <div class="stack">
+        <div class="top">
+          <div class="top__ic"><i class="fas fa-envelope"></i></div>
+          <div class="top__tx"><b>Rogue has 2 unanswered messages from V</b><span>newest "Where's my cut?" · 3h ago · written to <span class="t-secret">queen.h@darknet</span></span></div>
+          <div class="top__acts"><button class="btn pri"><i class="fas fa-reply"></i>Reply as Rogue</button><button class="btn quiet"><i class="fas fa-xmark"></i></button></div>
+        </div>
+        <div class="queue">
+          <div class="q mail"><i class="fas fa-envelope k"></i><span class="tx"><b>Dexter DeShawn</b> — 1 waiting from Rache · "Job offer"</span><span class="age">41m</span><i class="fas fa-xmark x"></i></div>
+          <div class="q sec"><i class="fas fa-temperature-three-quarters k"></i><span class="tx"><b>Rache</b> is running hot on <b>WS-7F-12</b> · heat 72</span><span class="age">now</span><i class="fas fa-xmark x"></i></div>
+          <div class="q sec"><i class="fas fa-bug k"></i><span class="tx">A <b>keylogger</b> is armed on <b>WS-7F-12</b> — fires on next login</span><span class="age">12m</span><i class="fas fa-xmark x"></i></div>
+          <div class="q shard"><i class="fas fa-microchip k"></i><span class="tx"><b>Scorched shard</b> is bricked — salvage or purge</span><span class="age">2h</span><i class="fas fa-xmark x"></i></div>
+          <div class="q setup"><i class="fas fa-at k"></i><span class="tx"><b>Jo</b> has no address yet — they can't be mailed</span><span class="age">—</span><i class="fas fa-xmark x"></i></div>
+          <div class="q mail"><i class="fas fa-paper-plane k"></i><span class="tx">Scheduled mail to <b>Kiri</b> is due in 25 min</span><span class="age">25m</span><i class="fas fa-xmark x"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="A-right">
+      <div class="mod next">
+        <div class="mod__k"><i class="fas fa-hourglass-half"></i>Next up <span class="hint">soonest first</span></div>
+        <div class="nx" style="--tc:var(--ncm-bad);--p:85%"><i class="fas fa-crosshairs"></i><span class="tx">Trace on Rache<small>Arasaka closing in</small></span><span class="in">9m</span></div>
+        <div class="nx" style="--tc:var(--ncm-attn);--p:60%"><i class="fas fa-paper-plane"></i><span class="tx">Mail to Kiri<small>"Meet at the dock"</small></span><span class="in">25m</span></div>
+        <div class="nx" style="--tc:var(--ncm-secret);--p:35%"><i class="fas fa-fire"></i><span class="tx">Self-destruct<small>V · "burn after reading"</small></span><span class="in">1h 10m</span></div>
+        <div class="nx" style="--tc:var(--ncm-hue-2);--p:12%"><i class="fas fa-door-open"></i><span class="tx">Backdoor closes<small>ghost@ on WS-7F-12</small></span><span class="in">6h</span></div>
+      </div>
+      <div class="mod feed">
+        <div class="mod__k"><i class="fas fa-wave-square"></i>Just happened</div>
+        <div class="fe" style="--tc:var(--ncm-bad)"><i class="fas fa-xmark"></i><span><b>Hiro</b> failed a login on <b>WS-7F-12</b><span class="t">4m</span></span></div>
+        <div class="fe" style="--tc:var(--ncm-good)"><i class="fas fa-check"></i><span><b>V</b> breached <b>Arasaka payroll</b><span class="t">11m</span></span></div>
+        <div class="fe" style="--tc:var(--ncm-attn)"><i class="fas fa-envelope"></i><span><b>V</b> → Rogue "Where's my cut?"<span class="t">3h</span></span></div>
+        <div class="fe" style="--tc:var(--ncm-hue-2)"><i class="fas fa-microchip"></i><span><b>Rache</b> encoded <b>Forged chatlog</b><span class="t">5h</span></span></div>
+        <div class="fe" style="--tc:var(--ncm-act)"><i class="fas fa-right-to-bracket"></i><span><b>Kiri</b> joined CitiNet<span class="t">6h</span></span></div>
+      </div>
+      <div class="mod"><div class="tiles">
+        <div class="tile"><b>42</b><span>Mail</span></div><div class="tile"><b>17</b><span>Contacts</span></div><div class="tile"><b>5</b><span>Nets</span></div><div class="tile"><b class="bad">6</b><span>Shards</span></div><div class="tile"><b>4</b><span>Terms</span></div><div class="tile"><b class="bad">2</b><span>Security</span></div>
+      </div></div>
+    </div>
+  </div>
+</div></div></div>
+
+<div class="mk-h">B · THE NOW LINE — one instrument owns the tab</div>
+<p class="mk-p">Past above the line, future below, you in the middle. Above NOW: what just happened, newest nearest the line and fading as it ages. ON the line: what is waiting on you, as lit jacks (click one to act). Below: every timer placed by how long until it lands — the first 10 minutes tinted red, the first hour amber — with 1h/6h/24h zoom; each timer carries its own buttons. The clock, the scene, the players (with the network they are on) and the quick actions sit in a dock on the right.</p>
+<div class="mk-win ncm-app ncm-admin-panel" data-ncm-admin-theme="clean-dark" data-mk="b"><div class="ncm-admin-panel"><div class="ov-P">
+  <div class="B">
+    <div class="mod tl">
+      <div class="mod__k"><i class="fas fa-timeline"></i>Session line <span class="hint">past above · now · future below</span><span class="zoom"><span class="on">1h</span><span>6h</span><span>24h</span></span></div>
+      <div class="tl__body">
+        <div class="axis">
+          <span style="top:6%">−3h</span><span style="top:18%">−1h</span><span style="top:28%">−15m</span><span class="now" style="top:38%">NOW</span><span style="top:48%">+10m</span><span style="top:62%">+30m</span><span style="top:80%">+1h</span><span style="top:95%">+6h</span>
+        </div>
+        <div class="track">
+          <div class="pastzone"></div>
+          <div class="ev past far" style="--tc:var(--ncm-act);top:7%"><i class="fas fa-right-to-bracket"></i><span class="tx"><b>Kiri</b> joined CitiNet</span><span class="t">6h</span></div>
+          <div class="ev past far" style="--tc:var(--ncm-hue-2);top:13%"><i class="fas fa-microchip"></i><span class="tx"><b>Rache</b> encoded <b>Forged chatlog</b> — sloppy</span><span class="t">5h</span></div>
+          <div class="ev past" style="--tc:var(--ncm-attn);top:20%"><i class="fas fa-envelope"></i><span class="tx"><b>V</b> → Rogue "Where's my cut?"</span><span class="t">3h</span></div>
+          <div class="ev past" style="--tc:var(--ncm-good);top:27%"><i class="fas fa-check"></i><span class="tx"><b>V</b> breached <b>Arasaka payroll</b> (DV 18, rolled 22)</span><span class="t">11m</span></div>
+          <div class="ev past" style="--tc:var(--ncm-bad);top:33%"><i class="fas fa-xmark"></i><span class="tx"><b>Hiro</b> failed a login on <b>WS-7F-12</b> · +10 heat</span><span class="t">4m</span></div>
+
+          <div class="nowline"><b>NOW · 23:41</b></div>
+          <div class="onnow">
+            <span class="wait"><i class="fas fa-envelope"></i>Mail waiting <span class="n">3</span></span>
+            <span class="wait bad"><i class="fas fa-temperature-three-quarters"></i>Running hot <span class="n">1</span></span>
+            <span class="wait bad"><i class="fas fa-bug"></i>Armed <span class="n">1</span></span>
+            <span class="wait"><i class="fas fa-microchip"></i>Bricked <span class="n">1</span></span>
+            <span class="wait"><i class="fas fa-at"></i>No address <span class="n">1</span></span>
+          </div>
+
+          <div class="future">
+            <div class="zone red"></div><div class="zone amb"></div>
+            <div class="ev" style="--tc:var(--ncm-bad);top:14%"><i class="fas fa-crosshairs"></i><span class="tx"><b>Trace</b> lands on Rache — Arasaka closing in</span><span class="acts"><button class="btn quiet">Call off</button></span></div>
+            <div class="ev" style="--tc:var(--ncm-attn);top:30%"><i class="fas fa-paper-plane"></i><span class="tx"><b>Mail</b> to Kiri "Meet at the dock"</span><span class="acts"><button class="btn quiet">Send now</button><button class="btn quiet">Change</button></span></div>
+            <div class="ev" style="--tc:var(--ncm-secret);top:55%"><i class="fas fa-fire"></i><span class="tx"><b>Self-destruct</b> — V's "burn after reading"</span><span class="acts"><button class="btn quiet">Erase now</button><button class="btn quiet">Stop</button></span></div>
+            <div class="ev" style="--tc:var(--ncm-hue-2);top:82%"><i class="fas fa-door-open"></i><span class="tx"><b>Backdoor</b> ghost@ on WS-7F-12 closes</span><span class="acts"><button class="btn quiet">Close now</button></span></div>
+            <div class="ev" style="--tc:var(--ncm-hue-6);top:96%"><i class="fas fa-lock-open"></i><span class="tx"><b>Lockout</b> on Hiro lifts (WS-7F-12 · v_arasaka)</span><span class="acts"><button class="btn quiet">Lift</button></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="dock">
+      <div class="clockcard"><b>23:41</b><small>Thu 11 Mar 2045</small><div class="scn2"><i class="fas fa-map"></i>Arasaka Tower — 7th Floor</div></div>
+      <div class="mod">
+        <div class="mod__k"><i class="fas fa-users"></i>At the table <span class="n">4</span></div>
+        <div class="ppl">
+          <div class="pp" style="--nc:#69aeff"><span class="av" style="--tc:#ff67e4">V</span><span class="nm">V<small>Marta · 7th Floor</small></span><span class="net"><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span>CorpNet</span></div>
+          <div class="pp" style="--nc:#69aeff"><span class="av" style="--tc:#00acf8">RA<i class="bad">2</i></span><span class="nm">Rache<small>Sam · 7th Floor · 2 unread</small></span><span class="net"><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span>CorpNet</span></div>
+          <div class="pp" style="--nc:#00e5f7"><span class="av" style="--tc:#a0d157">KI</span><span class="nm">Kiri<small>Pat · 7th Floor</small></span><span class="net"><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i class="off" style="height:10px"></i></span>CitiNet</span></div>
+          <div class="pp nosig"><span class="av" style="--tc:#dab78f">JO</span><span class="nm">Jo<small>Alex · The Afterlife</small></span><span class="net"><i class="fas fa-ban"></i>no signal</span></div>
+        </div>
+      </div>
+      <div class="mod"><div class="mod__k"><i class="fas fa-bolt"></i>Quick</div><div class="quick"><button class="btn pri"><i class="fas fa-pen"></i>Write</button><button class="btn"><i class="fas fa-user-plus"></i>Contact</button><button class="btn"><i class="fas fa-tower-broadcast"></i>Broadcast</button><button class="btn"><i class="fas fa-clock"></i>Set time</button></div></div>
+      <div class="mod"><div class="tiles">
+        <div class="tile"><b>42</b><span>Mail</span></div><div class="tile"><b>17</b><span>Contacts</span></div><div class="tile"><b class="bad">6</b><span>Shards</span></div><div class="tile"><b class="bad">2</b><span>Security</span></div>
+      </div></div>
+    </div>
+  </div>
+</div></div></div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const t = q.get('t'); if (t) document.querySelectorAll('[data-ncm-admin-theme]').forEach((e) => e.setAttribute('data-ncm-admin-theme', t));
+  const v = q.get('v'); if (v) document.querySelectorAll('.mk-h, .mk-p, .mk-win').forEach((e, i) => { const idx = Math.floor(i / 3); if ((v === 'a') !== (idx === 0)) e.style.display = 'none'; });
+</script>
+</body>
+</html>

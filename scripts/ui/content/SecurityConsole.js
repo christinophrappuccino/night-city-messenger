@@ -80,7 +80,7 @@ export async function runSecurityConsole(opts = {}) {
     </div>` : '';
   const gateHtml = gated ? `
     <div class="ncm-seccon__gate">
-      <i class="fas fa-dice-d10"></i>
+      <i class="fas fa-dice-d20"></i>
       <span>Security check — <b>${esc(gate.skill || 'Interface')}</b> vs <b>DV ${Number(gate.dv) || 15}</b></span>
       <span class="ncm-seccon__gate-warn">fail trips a trace</span>
     </div>` : '';
@@ -173,7 +173,7 @@ export async function runSecurityConsole(opts = {}) {
       const verdict = el.querySelector('.ncm-seccon__verdict');
       stage.classList.add('is-active');
 
-      let ok, total, verdictOverride = null;
+      let ok, total, verdictOverride = null, rolled = null;
       if (mode === 'gm') {
         // ── Tier C — no roll; the table runs the NET and the GM calls it ──
         stage.classList.add('is-await');
@@ -241,9 +241,11 @@ export async function runSecurityConsole(opts = {}) {
         try {
           roll = await skillSvc?.performCheck(gate.actor, gate.skill || 'Interface', {
             dc: dvNum, showChat: true,
+            deferChat: true,   // posted when the verdict lands, below
             context: gate.context || title, flavor: gate.flavor || `${title} // DV ${dvNum}`,
           });
         } catch (err) { log.error(`SecurityConsole roll failed: ${err.message}`); }
+        rolled = roll;
         ok = !!roll?.success;
         total = roll?.total ?? null;
         // Tier B — same roll, but announce the NET-action shape to the GM.
@@ -268,6 +270,8 @@ export async function runSecurityConsole(opts = {}) {
       const displayTotal = mode === 'gm' ? null : total;
       if (verdict) verdict.innerHTML = `<i class="fas ${glyph}"></i> ${esc(label)}${displayTotal != null ? ` <span class="ncm-seccon__rolled">(${displayTotal} vs ${dvNum})</span>` : ''}`;
       sound?.play?.(tone === 'ok' ? 'hack-success' : 'hack-fail');
+      // The verdict is on screen — now the chat card.
+      await rolled?.postChat?.();
       await wait(reduced() ? 250 : 1150);
       finish({ ok, amount: amt, total, cancelled: false });
     }
