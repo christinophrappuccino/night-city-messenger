@@ -777,6 +777,17 @@ export class AdminPanelApp extends BaseApplication {
    * @param {boolean} force
    * @private
    */
+  /**
+   * Background repaints (events, settings, the game clock) go through this. A tab can hold them off while it
+   * has edits on screen that a repaint would lose — Security's Hacking rules (tester 2026-10-29).
+   * @override
+   */
+  _debouncedRender = foundry.utils.debounce(() => {
+    if (!this.rendered || this._animationActive) return;
+    try { if (this.tabs?.[this._activeTab]?.holdsRender?.()) return; } catch { /* a tab that throws never blocks */ }
+    this.render();
+  }, 150);
+
   _onGameClock(force) {
     if (!AdminPanelApp.CLOCK_TABS.has(this._activeTab)) return;
     let now = NaN;
@@ -794,24 +805,62 @@ export class AdminPanelApp extends BaseApplication {
    * become icon-only first, then the rest of the open group; the open tab always keeps its label. Every
    * tab already names itself on hover (data-tooltip), so a folded icon is never a mystery. Re-measured
    * when the window resizes (one ResizeObserver per rendered bar).
+   *
+   * A tab switch re-renders the whole panel, so the new bar used to appear already in its new fold state —
+   * the labels "snapped" (dev, 2026-10-29). Now the bar is measured with transitions off, put back exactly as
+   * the previous render left it (`_tabFoldPrev`, the folded tab keys), and then moved to the new state on
+   * the next frame, so the labels slide (CSS: .ncm-admin-tab__lb max-width / opacity).
    * @private
    */
   _wireTabFold() {
     const nav = this.element?.querySelector('.ncm-admin-tabs--grouped');
     this._tabFoldObs?.disconnect();
     if (!nav) return;
-    const fold = () => {
+    const keyOf = (t) => t.dataset.tab;
+    const fold = ({ resized = false } = {}) => {
+      // the observer also fires once when it starts watching, and while labels slide: only a real width change re-folds
+      if (resized && nav.clientWidth === this._tabFoldW) return;
+      this._tabFoldW = nav.clientWidth;
       const tabs = [...nav.querySelectorAll('.ncm-admin-tab')];
+      // a slide still running would be measured as the bar's size — land it first
+      for (const lb of nav.querySelectorAll('.ncm-admin-tab__lb')) for (const an of lb.getAnimations?.() ?? []) an.cancel();
       const openGroup = nav.querySelector('.ncm-admin-tab--active')?.closest('[data-tab-group]');
       nav.querySelectorAll('[data-tab-group]').forEach(g => g.classList.toggle('is-open', g === openGroup));
+      // 1. measure the target state with transitions off
+      nav.classList.add('is-measuring');
       tabs.forEach(t => t.classList.remove('is-fold'));
       const over = () => nav.scrollWidth > nav.clientWidth + 1;
       if (over()) tabs.filter(t => t.closest('[data-tab-group]') !== openGroup).forEach(t => t.classList.add('is-fold'));
       if (over()) tabs.filter(t => !t.classList.contains('ncm-admin-tab--active')).forEach(t => t.classList.add('is-fold'));
+      const target = new Set(tabs.filter(t => t.classList.contains('is-fold')).map(keyOf));
+      const prev = this._tabFoldPrev;
+      this._tabFoldPrev = target;
+      const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+      const same = prev && prev.size === target.size && [...prev].every(k => target.has(k));
+      if (!prev || same || reduced) { nav.classList.remove('is-measuring'); return; }
+      // 2. read each changing label's width as the last render left it, then its width in the new state …
+      const lbOf = (t) => t.querySelector('.ncm-admin-tab__lb');
+      const moving = tabs.filter(t => prev.has(keyOf(t)) !== target.has(keyOf(t)) && lbOf(t));
+      tabs.forEach(t => t.classList.toggle('is-fold', prev.has(keyOf(t))));
+      const from = new Map(moving.map(t => [t, lbOf(t).getBoundingClientRect().width]));
+      tabs.forEach(t => t.classList.toggle('is-fold', target.has(keyOf(t))));
+      nav.classList.remove('is-measuring');
+      // 3. … and slide each one between the two (Web Animations: it starts on this frame, so nothing flashes)
+      const ease = 'cubic-bezier(.22,1,.36,1)';
+      for (const t of moving) {
+        const lb = lbOf(t);
+        const a = from.get(t), b = lb.getBoundingClientRect().width;
+        try {
+          lb.animate([
+            { maxWidth: `${a}px`, marginLeft: a ? '5px' : '0px', opacity: a ? 1 : 0 },
+            { maxWidth: `${b}px`, marginLeft: b ? '5px' : '0px', opacity: b ? 1 : 0 },
+          ], { duration: 280, easing: ease });
+        } catch { /* no Web Animations: it simply lands */ }
+      }
     };
     fold();
     if (typeof ResizeObserver !== 'undefined') {
-      this._tabFoldObs = new ResizeObserver(() => fold());
+      this._tabFoldObs = new ResizeObserver(() => fold({ resized: true }));
       this._tabFoldObs.observe(nav);
     }
   }

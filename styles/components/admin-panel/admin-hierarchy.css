@@ -295,3 +295,13 @@
 .ncm-admin-panel .ncm-acc2-big .pt.is-bad { color: color-mix(in oklab, var(--ncm-bad) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
 /* tags whose colour is the user's own (a group's colour, a network's colour) may be any shade — mix further */
 .ncm-admin-panel .ncm-tagp[style*="--tc:#"], .ncm-admin-panel .ncm-tagp[style*="--tc: #"] { color: color-mix(in oklab, var(--tc) var(--ncm-ink-own, 50%), var(--ncm-text-heading)) !important; }
+
+/* The tab bar SLIDES between fold states (dev 2026-10-29: "the nav snaps from tab to tab"). The label
+   collapses through max-width + margin + opacity instead of display:none, and the button keeps one
+   padding in both states, so a fold is a smooth width change. AdminPanelApp._wireTabFold replays the
+   width each label had and animates it to its new width (Web Animations, so it starts on the same
+   frame). The bar is overflow:hidden, so a moment of overlap mid-slide never shows a scrollbar. */
+.ncm-app .ncm-admin-tabs.ncm-admin-tabs--grouped button.ncm-admin-tab.ncm-admin-tab { gap: 0 !important; padding: 7px 8px !important; }
+.ncm-admin-panel .ncm-admin-tabs--grouped .ncm-admin-tab .ncm-admin-tab__lb { display: inline-block; flex: none; max-width: 9em; margin-left: 5px;
+  overflow: hidden; white-space: nowrap; vertical-align: bottom; opacity: 1; }
+.ncm-admin-panel .ncm-admin-tabs--grouped .ncm-admin-tab.is-fold .ncm-admin-tab__lb { display: inline-block; max-width: 0; margin-left: 0; opacity: 0; }

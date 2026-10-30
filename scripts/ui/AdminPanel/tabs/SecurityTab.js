@@ -96,6 +96,17 @@ export class SecurityTab extends BaseTab {
   _lookFrom = null;  // the "last look" snapshot, taken when Activity opens (the stamp moves on while it is open)
   _sgLast = {};      // picker id → last value JSON (a popover opening or closing is not a change)
   _folds = new Set(); // open rule cards (Hacking rules) — DOM-toggled, remembered here
+  // Rule cards with edits not saved yet (keys = data-fold). Every edit on these cards is DOM-only until its
+  // Save, so a re-render throws it away — tester 2026-10-29: "add a Role, add another, it glitches back to
+  // Anyone"; a background 30 s repaint was rebuilding the page from the saved settings mid-edit.
+  _dirty = new Set();
+  _flash = null;      // { key, ok, text, at } — the "Saved" line shown on a rule card after its Save
+
+  /**
+   * The Hacking rules view shows no live data (no heat, log or countdowns), so a background repaint there can
+   * only lose unsaved edits. AdminPanelApp asks this before every background render (clock, settings, events).
+   */
+  holdsRender() { return this._view === 'rules'; }
 
   /** openAdminTab('security', { select }) — a sub-tab key opens that view. */
   openTo(select) { if (VIEWS.some(v => v.key === select)) this._view = select; }
@@ -438,18 +449,20 @@ export class SecurityTab extends BaseTab {
     });
     try {
       await game.settings.set('night-city-messenger', 'jackInRules', rules);
-      ui.notifications.info('NCM | Jacking in rules saved.');
-    } catch (err) { ui.notifications.error(`NCM | Could not save: ${err.message}`); }
-    this.app.render(false);
+      this._rulesSaved('jack', true, 'Jacking in rules saved.');
+    } catch (err) { this._rulesSaved('jack', false, `Could not save: ${err.message}`); }
   }
 
   async _saveSetting(key, value, msg) {
     if (!value) return;
+    const card = key === 'hackResolution' ? 'res' : key === 'roleAbilityRoll' ? 'role' : null;
     try {
       await game.settings.set('night-city-messenger', key, value);
-      ui.notifications.info(`NCM | ${msg}`);
-    } catch (err) { ui.notifications.error(`NCM | Could not save: ${err.message}`); }
-    this.app.render(false);
+      if (card) this._rulesSaved(card, true, msg); else { ui.notifications.info(`NCM | ${msg}`); this.app.render(false); }
+    } catch (err) {
+      if (card) this._rulesSaved(card, false, `Could not save: ${err.message}`);
+      else { ui.notifications.error(`NCM | Could not save: ${err.message}`); this.app.render(false); }
+    }
   }
 
   /** Expert role / gear chooser (shared world picker), appended DOM-only. */
@@ -499,9 +512,8 @@ export class SecurityTab extends BaseTab {
     });
     try {
       await game.settings.set('night-city-messenger', 'countermeasureVisibility', cfg);
-      ui.notifications.info('NCM | Countermeasure visibility saved.');
-    } catch (err) { ui.notifications.error(`NCM | Could not save: ${err.message}`); }
-    this.app.render(false);
+      this._rulesSaved('cmv', true, 'Countermeasure visibility saved.');
+    } catch (err) { this._rulesSaved('cmv', false, `Could not save: ${err.message}`); }
   }
 
   /** Netrunning Resolution (design §5) — HOW gated hacks resolve, table-wide. */
@@ -816,6 +828,7 @@ export class SecurityTab extends BaseTab {
   onRender() {
     const el = this.app.element;
     if (!el) return;
+    this._wireRuleEdits(el);
     // Mark the log seen only when the full log is on screen — the Activity
     // sub-tab's "N new" count would otherwise clear the moment Live renders.
     // Stamped on the GAME clock: trace rows are game-time, so a real-time stamp could never compare.
@@ -885,7 +898,7 @@ export class SecurityTab extends BaseTab {
     // on screen (cheap: render only when Security is the active tab).
     if (!this._liveTick) {
       this._liveTick = setInterval(() => {
-        if (this.app?._activeTab === 'security' && this.app?.rendered && !this.app.minimized) this.app.render(false);
+        if (this.app?._activeTab === 'security' && this.app?.rendered && !this.app.minimized && !this.holdsRender()) this.app.render(false);
       }, 30000);
     }
 
@@ -1351,9 +1364,64 @@ export class SecurityTab extends BaseTab {
       itemGroups: groups,
       actors: [], allowGM: el.querySelector('[name="gateAllowGM"]')?.checked !== false,
     };
-    try { await game.settings.set('night-city-messenger', 'operatorGate', gate); ui.notifications.info('NCM | Terminal operator access saved.'); }
-    catch (err) { log.error(`Gate save failed: ${err.message}`); }
-    this.app.render(false);
+    // A failed save used to go to the console only — the GM saw nothing at all (tester 2026-10-29).
+    try { await game.settings.set('night-city-messenger', 'operatorGate', gate); this._rulesSaved('op', true, 'Terminal operator access saved.'); }
+    catch (err) { log.error(`Gate save failed: ${err.message}`); this._rulesSaved('op', false, `Could not save: ${err.message}`); }
+  }
+
+  /**
+   * After a rule card's Save: say so ON the card (a toast can wait behind permanent warnings in Foundry's
+   * three-slot queue, so it is not proof), and repaint only when no OTHER card has unsaved edits — a repaint
+   * would throw those away.
+   */
+  _rulesSaved(key, ok, text) {
+    if (ok) this._dirty.delete(key);
+    this._flash = { key, ok, text, at: Date.now() };
+    if (ok) ui.notifications.info(`NCM | ${text}`); else ui.notifications.error(`NCM | ${text}`);
+    if (ok && !this._dirty.size) return this.app.render(false);
+    const el = this.app.element;
+    if (el) { this._paintDirty(el); this._paintFlash(el); }
+  }
+
+  /** Rule cards: mark a card edited the moment anything in it changes; show the marks and the saved line. */
+  _wireRuleEdits(el) {
+    const cards = el.querySelectorAll('.ncm-sec-admin-fold[data-fold]');
+    if (!cards.length) { this._dirty.clear(); return; }
+    const SAVES = '[data-action="securitySaveGate"], [data-op="cmvSave"], [data-op="jackSave"], [data-op="jackReset"], [data-op="hackres"], [data-op="roleRoll"], [data-op="fold"]';
+    for (const card of cards) {
+      const key = card.dataset.fold;
+      const body = card.querySelector('.ncm-sec-admin-card__bd');
+      if (!body || body.dataset.dirtyWired) continue;
+      body.dataset.dirtyWired = '1';
+      const mark = () => { this._dirty.add(key); card.classList.add('is-dirty'); };
+      body.addEventListener('input', mark);
+      body.addEventListener('change', mark);
+      // adding / removing a role, gear, skill or option — clicks that change the card without an input event
+      body.addEventListener('click', (e) => {
+        const b = e.target.closest('button, [data-action], [data-op]');
+        if (b && !b.matches(SAVES)) mark();
+      }, true);
+    }
+    this._paintDirty(el);
+    this._paintFlash(el);
+  }
+
+  _paintDirty(el) {
+    for (const card of el.querySelectorAll('.ncm-sec-admin-fold[data-fold]')) card.classList.toggle('is-dirty', this._dirty.has(card.dataset.fold));
+  }
+
+  _paintFlash(el) {
+    el.querySelectorAll('.ncm-sec-admin-savedmsg').forEach((n) => n.remove());
+    const f = this._flash;
+    if (!f || Date.now() - f.at > 6000) return;
+    const hd = el.querySelector(`.ncm-sec-admin-fold[data-fold="${f.key}"] .ncm-sec-admin-card__hd`);
+    if (!hd) return;
+    const span = document.createElement('span');
+    span.className = `ncm-sec-admin-savedmsg ${f.ok ? 'ok' : 'bad'}`;
+    span.innerHTML = `<i class="fas ${f.ok ? 'fa-check' : 'fa-triangle-exclamation'}"></i> ${Handlebars.escapeExpression(f.ok ? 'Saved' : f.text)}`;
+    const chev = hd.querySelector('.chev');
+    if (chev) chev.before(span); else hd.appendChild(span);
+    if (f.ok) setTimeout(() => { if (this._flash === f) span.remove(); }, Math.max(0, 6000 - (Date.now() - f.at)));
   }
   onGateAddGroup() {
     const wrap = this.app.element?.querySelector('[data-gate-groups]');

@@ -3,6 +3,13 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.0.2] — 2026-10-29
+
+### Fixed
+- **Security → Hacking rules lost unsaved edits.** The page repainted itself in the background every 30 seconds (and on clock and log changes), which put every card back to its saved state: adding a second role snapped Terminal operator access back to Anyone, and new skill rows or DVs on the other cards vanished. The rules page no longer repaints by itself, saving one card no longer wipes edits on another, and a card with unsaved changes says "not saved" in its header.
+- **Saving a rule card now says so on the card** ("Saved", or the reason it failed). A failed save of Terminal operator access used to show nothing at all; the usual notification can also wait behind permanent warnings, so it was not proof.
+- **The Admin Panel tab bar slides instead of jumping when you switch tabs.** When the bar is too narrow for every label, the tabs outside your current group fold to icons; moving to another group used to snap the bar into its new shape. The labels now slide closed and open.
+
 ## [2.0.1] — 2026-10-29
 
 ### Fixed

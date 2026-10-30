@@ -28,8 +28,8 @@
   {{!-- The GM Dashboard header, HUD strip and footer were removed 2026-10-27 (dev: they 'don't play a role in anything' and cost the tabs their room). Counts live on the tabs themselves. --}}
   {{!-- Grouped tab bar (2026-10-29, dev-picked "clustered tab bar", dev/mockups/admin-nav-groups-mock.html):
         ONE row, one click per tab, the tabs in labelled clusters. When the row runs out of room the labels
-        fold (AdminPanelApp._foldTabs): other groups' tabs first, then the rest of the open group — the open
-        tab always keeps its label. Every tab names itself on hover (data-tooltip). --}}
+        fold (AdminPanelApp._wireTabFold): other groups' tabs first, then the rest of the open group — the open
+        tab always keeps its label. A switch slides the labels to their new state instead of snapping. Every tab names itself on hover (data-tooltip). --}}
   <nav class="ncm-admin-tabs ncm-admin-tabs--grouped">
     <div class="ncm-admin-tabgrp" data-tab-group="home">
       <span class="ncm-admin-tabgrp__cap">&nbsp;</span>

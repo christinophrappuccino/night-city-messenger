@@ -1087,3 +1087,14 @@
 .ncm-admin-panel .ncm-jkr-who__skills input { width: 44px !important; height: 26px !important; text-align: center; }
 .ncm-admin-panel .ncm-jkr-who__skills em { font-style: normal; color: var(--ncm-text-label); }
 .ncm-admin-panel .ncm-jkr-who__hint { margin: 0; font-size: 11px; font-style: italic; color: var(--ncm-text-hint); }
+
+/* Hacking rules — unsaved edits + the saved line (tester 2026-10-29: edits vanished, Save gave no sign).
+   A card with unsaved edits says so in its header; after Save the header says Saved (or why not). */
+.ncm-app.ncm-admin-panel .ncm-sec-admin-fold.is-dirty .ncm-sec-admin-card__hd { box-shadow: inset 3px 0 0 var(--ncm-attn) !important; }
+.ncm-app.ncm-admin-panel .ncm-sec-admin-fold.is-dirty .ncm-sec-admin-card__hd .sum::after { content: ' · not saved'; color: color-mix(in oklab, var(--ncm-attn) var(--ncm-ink, 63%), var(--ncm-text-heading)); }
+.ncm-app.ncm-admin-panel .ncm-sec-admin-savedmsg { display: inline-flex; align-items: center; gap: 5px; margin: 0 8px; padding: 2px 7px; border-radius: 1px;
+  font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+.ncm-app.ncm-admin-panel .ncm-sec-admin-savedmsg i { margin: 0 !important; }
+.ncm-app.ncm-admin-panel .ncm-sec-admin-savedmsg.ok { color: color-mix(in oklab, var(--ncm-good) var(--ncm-ink, 63%), var(--ncm-text-heading)); background: color-mix(in srgb, var(--ncm-good) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-good) 50%, transparent); }
+.ncm-app.ncm-admin-panel .ncm-sec-admin-savedmsg.bad { color: color-mix(in oklab, var(--ncm-bad) var(--ncm-ink, 63%), var(--ncm-text-heading)); background: color-mix(in srgb, var(--ncm-bad) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-bad) 50%, transparent);
+  white-space: normal; text-transform: none; font: 12px var(--ncm-font-body); }
