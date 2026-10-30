@@ -27,7 +27,12 @@ const rache = mkActor('rache', 'Rache', ['u2']);
 const van = mkActor('van', 'Combat Van', ['u1']);
 const fixer = mkActor('fixer', 'Rogue');
 const ice = mkActor('ice', 'Hellhound', ['u1'], 'blackIce');
-const actors = [vee, rache, van, fixer, ice];
+const chest = mkActor('chest', 'Party Stash', ['u1'], 'container');
+const shop = mkActor('shop', 'Ripperdoc Shop', ['u2'], 'container');
+const demon = mkActor('demon', 'Imp', ['u1'], 'demon');
+const iceDash = mkActor('ice2', 'Raven', ['u2'], 'black-ice');
+const flagged = mkActor('ice3', 'Wisp', ['u2']); flagged.getFlag = (m, k) => k === 'isBlackICE';
+const actors = [chest, vee, rache, van, fixer, ice, shop, demon, iceDash, flagged];
 
 const store = { hiddenCharacters: [], operatorActorId: '' };
 const toasts = [];
@@ -74,6 +79,31 @@ store.operatorActorId = 'van';
 ok(h.resolveOperator()?.id === 'vee', 'a remembered hidden pick is ignored');
 store.operatorActorId = '';
 game.user = game.users[0];
+
+// ── Containers, demons and ICE are never characters, whoever owns them ──
+const NOT_PEOPLE = ['chest', 'shop', 'demon', 'ice', 'ice2', 'ice3'];
+store.hiddenCharacters = [];
+ok(NOT_PEOPLE.every((id) => !h.isPersonActor(game.actors.get(id))), 'isPersonActor refuses every non-person');
+ok(h.isPersonActor(vee) && h.isPersonActor(fixer), 'isPersonActor takes PCs and NPCs');
+ok(!h.isPersonActor(null), 'no actor is not a person');
+ok(!h.getOperatorActors().some((a) => NOT_PEOPLE.includes(a.id)), 'GM biometric handoff lists no container, demon or ICE');
+ok(!h.getPlayerCharacters({ includeHidden: true }).some((p) => NOT_PEOPLE.includes(p.actorId)), 'the hide picker lists none either');
+game.user = { id: 'u1', isGM: false, character: null };
+chest.isOwner = demon.isOwner = true;
+ok(h.getOperatorActors().map((a) => a.id).join() === 'vee,van', 'player handoff: their person actors only, no owned chest or demon');
+store.hiddenCharacters = ['van'];
+store.operatorActorId = 'chest';
+ok(h.resolveOperator()?.id === 'vee', 'a remembered container pick is ignored');
+store.operatorActorId = '';
+game.user = { id: 'u1', isGM: false, character: chest };
+ok(h.resolveOperator()?.id === 'vee', 'an assigned container is not an operator');
+game.users[1].character = chest;
+ok(!h.getPlayerCharacters().some((p) => p.actorId === 'chest'), 'a user assigned a container does not list it');
+game.users[1].character = vee;
+game.user = { id: 'gm', isGM: true, character: chest };
+ok(!h.getOperatorActors().some((a) => a.id === 'chest'), "a GM's assigned container is not added");
+game.user = game.users[0];
+store.hiddenCharacters = ['van'];
 
 // ── A missing setting never throws ──
 const saved = store.hiddenCharacters; delete store.hiddenCharacters;
@@ -123,15 +153,27 @@ ok(hbs.includes('{{hiddenCharacterCount}}') && tools.includes('hiddenCharacterCo
 const app = read('scripts/ui/AdminPanel/AdminPanelApp.js');
 ok(app.includes('manageHiddenCharacters: AdminPanelApp._onManageHiddenCharacters') && app.includes('static async _onManageHiddenCharacters'), 'action + delegator');
 ok(read('templates/admin-panel/tab-contacts.hbs').includes('data-op="pHide"') && read('scripts/ui/AdminPanel/tabs/ContactsTab.js').includes("case 'pHide'"), 'Players → Hide');
+for (const [file, needle] of [
+  ['scripts/services/ContactShareService.js', '!isSelectableCharacter(actor)'],
+  ['scripts/init/registerGMTools.js', 'isSelectableCharacter(a)'],
+  ['scripts/init/registerMessagingSystem.js', 'contents.find(isSelectableCharacter)'],
+  ['scripts/ui/NetworkNodes/NodeInspectorApp.js', 'filter(isSelectableCharacter)'],
+  ['scripts/ui/AdminPanel/tabs/ContactsTab.js', 'filter(isPersonActor)'],
+  ['scripts/ui/ContactManager/ContactManagerApp.js', 'filter(isPersonActor)'],
+  ['scripts/ui/Terminal/TerminalConfigApp.js', '!isPersonActor(a)'],
+  ['scripts/ui/GMContactManager/ActorImportPickerApp.js', 'isPersonActor(a)'],
+  ['scripts/ui/AdminPanel/tabs/MessagesTab.js', '!isPersonActor(actor)'],
+  ['scripts/ui/MessageComposer/MessageComposerApp.js', 'a.isOwner && isSelectableCharacter(a)'],
+]) ok(read(file).includes(needle), `${file} guards non-persons`);
 for (const [file, n] of [
   ['scripts/services/SpamService.js', 1], ['scripts/ui/CharacterSelect/CharacterSelectApp.js', 2],
   ['scripts/ui/Terminal/TerminalViewerApp.js', 2], ['scripts/ui/ShardEncoder/EncoderConfigApp.js', 1],
   ['scripts/ui/AdminPanel/tabs/OverviewTab.js', 1], ['scripts/ui/MessageComposer/MessageComposerApp.js', 3],
   ['scripts/ui/MessageViewer/MessageViewerApp.js', 2], ['scripts/data/ContactRepository.js', 1],
 ]) {
-  const uses = (read(file).match(/isHiddenCharacter\(/g) || []).length;
+  const uses = (read(file).match(/(isHiddenCharacter|isSelectableCharacter)\(/g) || []).length;
   ok(uses >= n, `${file} checks it (${uses}/${n})`);
-  ok(read(file).includes('isHiddenCharacter') && /import \{[^}]*isHiddenCharacter[^}]*\} from '[^']*helpers\.js'/.test(read(file)), `${file} imports it`);
+  ok(/import \{[^}]*(isHiddenCharacter|isSelectableCharacter)[^}]*\} from '[^']*helpers\.js'/.test(read(file)), `${file} imports it`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

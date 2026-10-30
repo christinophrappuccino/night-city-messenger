@@ -13,7 +13,7 @@
  */
 
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
-import { isGM, formatCyberDate } from '../../utils/helpers.js';
+import { isGM, formatCyberDate, isSelectableCharacter } from '../../utils/helpers.js';
 import { adminWait } from '../../utils/adminTheme.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -224,7 +224,7 @@ export class NodeInspectorApp extends BaseApplication {
         return;
       }
       case 'pickActor': {
-        const pick = await showNamePicker({ title: 'Pick a character', entries: documentEntries(game.actors?.contents || [], { group: 'folder' }), placeholder: 'Search characters…' });
+        const pick = await showNamePicker({ title: 'Pick a character', entries: documentEntries((game.actors?.contents || []).filter(isSelectableCharacter), { group: 'folder' }), placeholder: 'Search characters…' });
         if (!pick || pick.none) return;
         const actor = game.actors?.get(pick.id);
         this._pickedActor = actor ? { id: actor.id, name: actor.name } : null;

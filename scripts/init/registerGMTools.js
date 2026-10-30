@@ -16,7 +16,7 @@
  */
 
 import { MODULE_ID, TEMPLATES } from '../utils/constants.js';
-import { log, isGM } from '../utils/helpers.js';
+import { log, isGM, isSelectableCharacter } from '../utils/helpers.js';
 import { registerAdminDialogHook } from '../utils/adminTheme.js';
 import { SchedulingService } from '../services/SchedulingService.js';
 import { MasterContactService } from '../services/MasterContactService.js';
@@ -165,7 +165,7 @@ export function registerGMTools(initializer) {
     // ── openContacts (updated to accept gmInspectMode) ──
     ns.openContacts = (actorId, options = {}) => {
       if (!actorId) {
-        const owned = game.actors.find(a => a.isOwner && a.getFlag(MODULE_ID, 'email'));
+        const owned = game.actors.find(a => a.isOwner && isSelectableCharacter(a) && a.getFlag(MODULE_ID, 'email'));
         actorId = owned?.id;
       }
       if (!actorId) {

@@ -25,7 +25,7 @@
 import { domainOf } from '../../../utils/junkSenders.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../../../utils/constants.js';
 import {
-  log, formatCyberDate, getPlayerCharacters, resolveDisplayPortrait, resolveDisplayName,
+  log, formatCyberDate, getPlayerCharacters, isPersonActor, resolveDisplayPortrait, resolveDisplayName,
   ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, normalizeAnonStyle,
 } from '../../../utils/helpers.js';
 import { getInitials, getRoleIcon } from '../../../utils/designHelpers.js';
@@ -958,7 +958,7 @@ export class MessagesTab extends BaseTab {
       if (c.actorId) seen.add(c.actorId);
     }
     for (const a of game.actors ?? []) {
-      if (a.hasPlayerOwner || seen.has(a.id) || !a.getFlag?.(MODULE_ID, 'email')) continue;
+      if (a.hasPlayerOwner || seen.has(a.id) || !isPersonActor(a) || !a.getFlag?.(MODULE_ID, 'email')) continue;
       items.push({ id: `a:${a.id}`, name: a.name, group: 'NPCs & aliases', icon: 'fa-user-tie', meta: a.getFlag(MODULE_ID, 'email'), img: imgOk(a.img) || undefined, count: counts.get(`a:${a.id}`) || 0 });
     }
     for (const gr of game.nightcity?.contactGroupService?.getMasterGroups?.() || []) {
@@ -2730,7 +2730,7 @@ export class MessagesTab extends BaseTab {
 
     // ── Pass 2: NPC actors with emails NOT already in master contacts ──
     for (const actor of game.actors ?? []) {
-      if (actor.hasPlayerOwner) continue;
+      if (actor.hasPlayerOwner || !isPersonActor(actor)) continue;
       if (seenIds.has(actor.id)) continue;
       const email = actor.getFlag(MODULE_ID, 'email');
       if (!email) continue;

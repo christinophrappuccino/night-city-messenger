@@ -6,6 +6,7 @@
  */
 
 import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, SHARD_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS, CONTRAST_SPREAD } from './constants.js';
+import { NON_PERSON_ACTOR_TYPES } from './emailDirectory.js';
 import { resolveShardEditing } from '../ui/content/EncoderModel.js';
 import { identityRole } from './identities.js';
 
@@ -101,17 +102,16 @@ export function getPlayerActor() {
 export function getPlayerCharacters({ includeHidden = false } = {}) {
   const out = [];
   const seen = new Set(includeHidden ? [] : hiddenCharacterIds());
-  const NON_PERSON = new Set(['blackIce', 'black-ice', 'demon', 'container']);
   for (const user of game.users ?? []) {
     if (user.isGM || !user.character) continue;
     const actor = user.character;
-    if (seen.has(actor.id)) continue;
+    if (seen.has(actor.id) || !isPersonActor(actor)) continue;
     seen.add(actor.id);
     out.push({ actorId: actor.id, actorName: actor.name, playerName: user.name, actor, assigned: true });
   }
   for (const actor of game.actors ?? []) {
     if (seen.has(actor.id) || !actor.hasPlayerOwner) continue;
-    if (NON_PERSON.has(actor.type)) continue;
+    if (!isPersonActor(actor)) continue;
     const owner = (game.users ?? []).find(u => !u.isGM && actor.testUserPermission?.(u, 'OWNER'));
     seen.add(actor.id);
     out.push({ actorId: actor.id, actorName: actor.name, playerName: owner?.name || 'Player', actor, assigned: false });
@@ -134,6 +134,22 @@ export function hiddenCharacterIds() {
 /** @param {string} actorId @returns {boolean} */
 export function isHiddenCharacter(actorId) {
   return !!actorId && hiddenCharacterIds().has(actorId);
+}
+
+/**
+ * Could this actor be somebody? Containers, demons and Black ICE are actors in
+ * Cyberpunk RED, and a shop or loot chest is often owned by the players, so
+ * ownership alone never makes a character.
+ * @param {Actor} actor
+ * @returns {boolean}
+ */
+export function isPersonActor(actor) {
+  return !!actor && !NON_PERSON_ACTOR_TYPES.has(actor.type) && !actor.getFlag?.(MODULE_ID, 'isBlackICE');
+}
+
+/** A character a list may offer: a person the GM has not hidden. @param {Actor} actor @returns {boolean} */
+export function isSelectableCharacter(actor) {
+  return isPersonActor(actor) && !isHiddenCharacter(actor.id);
 }
 
 /**
@@ -668,11 +684,11 @@ export function resolveAnonRecipient(message) {
  * @returns {Actor[]}
  */
 export function getOperatorActors() {
-  const all = (game.actors?.contents ?? []).filter(a => a.type !== 'blackIce' && !isHiddenCharacter(a.id));
+  const all = (game.actors?.contents ?? []).filter(isSelectableCharacter);
   if (game.user?.isGM) {
     const pcs = all.filter(a => a.hasPlayerOwner);
     const assigned = game.user.character;
-    if (assigned && !pcs.includes(assigned)) pcs.unshift(assigned);
+    if (isPersonActor(assigned) && !pcs.includes(assigned)) pcs.unshift(assigned);
     return pcs;
   }
   return all.filter(a => a.isOwner);
@@ -691,11 +707,11 @@ export function resolveOperator() {
     const id = game.settings?.get(MODULE_ID, 'operatorActorId');
     if (id) {
       const a = game.actors?.get(id);
-      if (a?.isOwner && !isHiddenCharacter(a.id)) return a;
+      if (a?.isOwner && isSelectableCharacter(a)) return a;
     }
   } catch { /* setting not registered yet */ }
   const assigned = game.user?.character ?? null;
-  if (assigned) return assigned;
+  if (isPersonActor(assigned)) return assigned;
   const owned = getOperatorActors();
   return owned.length === 1 ? owned[0] : null;
 }

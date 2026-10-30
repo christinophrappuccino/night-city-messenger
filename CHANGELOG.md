@@ -3,6 +3,12 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.0.6] — 2026-10-30
+
+### Fixed
+- **Containers, demons and Black ICE could be picked as a character.** Biometric Handoff offered any of them a player owned, and they could also appear in the viewer's character list, the composer's To search and Send as, Spam recipients, the contact share list, the GM's link pickers and the default actor when nobody is selected. They no longer appear in any of these.
+- **Hidden characters still showed in a few places.** The contact share list, the node inspector's Pick a character and the default actor now leave them out too.
+
 ## [2.0.5] — 2026-10-30
 
 ### Added

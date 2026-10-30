@@ -8,7 +8,7 @@
  */
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, getPlayerActor } from '../utils/helpers.js';
+import { log, isGM, getPlayerActor, isSelectableCharacter } from '../utils/helpers.js';
 
 // Data layer
 import { MessageRepository } from '../data/MessageRepository.js';
@@ -686,7 +686,7 @@ function _resolveActorId(actorId) {
 
   // GM with no selected character — show a picker or use first available
   if (isGM()) {
-    const firstActor = game.actors.contents[0];
+    const firstActor = game.actors.contents.find(isSelectableCharacter);
     if (firstActor) {
       log.debug('GM defaulting to first actor:', firstActor.name);
       return firstActor.id;

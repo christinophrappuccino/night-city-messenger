@@ -19,7 +19,7 @@
  */
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { isSelectableCharacter, log } from '../utils/helpers.js';
 
 export class ContactShareService {
 
@@ -116,8 +116,8 @@ export class ContactShareService {
     const recipients = [];
 
     for (const actor of game.actors) {
-      // Skip the sender
-      if (actor.id === senderActorId) continue;
+      // Skip the sender, and anything that isn't a character on offer
+      if (actor.id === senderActorId || !isSelectableCharacter(actor)) continue;
 
       // Only actors with player ownership (not just observer)
       const owners = Object.entries(actor.ownership || {})

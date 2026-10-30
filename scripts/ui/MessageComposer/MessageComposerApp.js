@@ -17,7 +17,7 @@
 
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
-import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator, isHiddenCharacter } from '../../utils/helpers.js';
+import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { applyGmView, applyAdminZoom, toggleGmView, playerDialog, adminPrompt, adminConfirm } from '../../utils/adminTheme.js';
 import { pasteToHtml } from '../../utils/richText.js';
@@ -2002,7 +2002,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     // Also include any actors with emails not in master (fallback)
     const masterActorIds = new Set(masterContacts.filter(c => c.actorId).map(c => c.actorId));
     const extraActors = game.actors.filter(a => {
-      if (masterActorIds.has(a.id) || isHiddenCharacter(a.id)) return false;
+      if (masterActorIds.has(a.id) || !isSelectableCharacter(a)) return false;
       return this.contactRepo?.getActorEmail(a.id);
     });
 
@@ -3382,7 +3382,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   _getDefaultFromActor() {
     if (game.user.character) return game.user.character.id;
-    const owned = game.actors?.find(a => a.isOwner);
+    const owned = game.actors?.find(a => a.isOwner && isSelectableCharacter(a));
     return owned?.id || null;
   }
 

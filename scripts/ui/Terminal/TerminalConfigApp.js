@@ -12,7 +12,7 @@
 
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_MAILBOX_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveDisplayName, getPlayerCharacters } from '../../utils/helpers.js';
+import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveDisplayName, getPlayerCharacters, isPersonActor } from '../../utils/helpers.js';
 import { lockOdds, lockOddsHtml } from '../../utils/lockOdds.js';
 import { tagHue } from '../../utils/tagHue.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
@@ -1362,7 +1362,7 @@ export class TerminalConfigApp extends BaseApplication {
     }
     const linkedActors = new Set(out.map(x => x.actorId).filter(Boolean));
     for (const a of game.actors || []) {
-      if (linkedActors.has(a.id)) continue; // already reachable via its contact
+      if (linkedActors.has(a.id) || !isPersonActor(a)) continue; // already reachable via its contact
       out.push({ kind: 'actor', id: a.id, name: a.name || '', email: a.getFlag(MODULE_ID, 'email') || '', portrait: a.img || null, actorId: a.id });
     }
     return out;

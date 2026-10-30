@@ -12,7 +12,7 @@
  */
 
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
-import { log } from '../../utils/helpers.js';
+import { log, isPersonActor } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 
 export class ActorImportPickerApp extends BaseApplication {
@@ -57,7 +57,7 @@ export class ActorImportPickerApp extends BaseApplication {
     );
 
     const actors = (game.actors?.contents ?? [])
-      .filter(a => !a.hasPlayerOwner && !linkedActorIds.has(a.id))
+      .filter(a => !a.hasPlayerOwner && isPersonActor(a) && !linkedActorIds.has(a.id))
       .map(a => {
         // CPR roles are actor items (type 'role'), not actor.system.role.
         const roleItem = a.items?.find(i => i.type === 'role');

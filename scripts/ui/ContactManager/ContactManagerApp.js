@@ -18,7 +18,7 @@
  */
 
 import { MODULE_ID, TEMPLATES, EVENTS } from '../../utils/constants.js';
-import { log } from '../../utils/helpers.js';
+import { log, isPersonActor } from '../../utils/helpers.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
 import { editGroupDialog } from '../ContactGroups/GroupEditorDialog.js';
 import { memberFromPlayerContact } from '../../services/ContactGroupService.js';
@@ -1790,7 +1790,7 @@ export class ContactManagerApp extends BaseApplication {
     const pick = await showNamePicker({
       title: 'Link an Actor',
       hint: "The contact takes this actor's portrait and messages route to its inbox.",
-      entries: documentEntries(game.actors?.contents ?? [], {
+      entries: documentEntries((game.actors?.contents ?? []).filter(isPersonActor), {
         note: (a) => a.hasPlayerOwner ? 'player' : a.type,
       }),
       allowNone: '— None —',

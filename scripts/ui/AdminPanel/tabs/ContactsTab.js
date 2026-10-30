@@ -20,7 +20,7 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
-import { log, getPlayerCharacters, hiddenCharacterIds } from '../../../utils/helpers.js';
+import { log, getPlayerCharacters, hiddenCharacterIds, isPersonActor } from '../../../utils/helpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
@@ -1677,7 +1677,7 @@ export class ContactsTab extends BaseTab {
     const pick = await showNamePicker({
       title: 'Link a character',
       hint: "Mail to this contact lands in that character's inbox, and it takes the character's portrait when it has none.",
-      entries: documentEntries(game.actors?.contents ?? [], { note: (a) => (a.hasPlayerOwner ? 'player' : a.type) }),
+      entries: documentEntries((game.actors?.contents ?? []).filter(isPersonActor), { note: (a) => (a.hasPlayerOwner ? 'player' : a.type) }),
       allowNone: '— None —', selected: this._draft?.actorId || '', placeholder: 'search actors or folders…',
     });
     if (!pick) return;
