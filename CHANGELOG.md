@@ -3,6 +3,11 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.0.1] — 2026-10-29
+
+### Fixed
+- The first v2.0.0 download contained the 1.6.0 code. 2.0.1 is the real 2.0 release — everything listed under 2.0.0 below.
+
 ## [2.0.0] — 2026-10-29
 
 A big one. Nothing in an existing world breaks: no settings are lost and no data is rewritten.
