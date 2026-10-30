@@ -9,7 +9,7 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
-import { log, formatCyberDate } from '../../../utils/helpers.js';
+import { log, formatCyberDate, getPlayerCharacters, hiddenCharacterIds } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { resolveMember, worldAdapter } from '../../../utils/participants.js';
@@ -42,6 +42,7 @@ export class ToolsTab extends BaseTab {
     return {
       adminThemePresets: ToolsTab.ADMIN_PRESETS.map(p => ({ ...p, active: p.key === current })),
       adminTextScales: ToolsTab.ADMIN_TEXT_SCALES.map(v => ({ value: v, label: `${v}%`, active: v === scale })),
+      hiddenCharacterCount: hiddenCharacterIds().size,
     };
   }
 
@@ -469,6 +470,40 @@ export class ToolsTab extends BaseTab {
   }
 
   /** The Sound board: every NCM sound, where it plays, and the GM's own file for it (volume lives per player in Themes → Effects). */
+  /**
+   * Pick the actors to leave out of every character list: the vehicles, drones and
+   * spare bodies a player owns that aren't people. There's no actor type to detect
+   * them by, so the GM names them. Their mail and contacts are untouched.
+   */
+  async onManageHiddenCharacters() {
+    const current = hiddenCharacterIds();
+    const entries = getPlayerCharacters({ includeHidden: true }).map((pc) => ({
+      id: pc.actorId,
+      name: pc.actorName,
+      img: pc.actor?.img || '',
+      sub: pc.assigned ? `${pc.playerName}'s assigned character` : `owned by ${pc.playerName}`,
+      group: pc.playerName,
+    }));
+    const picks = await showNamePicker({
+      title: 'Hidden characters',
+      hint: "Ticked characters drop out of every character list: Who knows whom, Players, broadcasts, recipient pickers and the players' own character pickers. They keep their sheet, mail and contacts.",
+      entries,
+      multi: true,
+      preselected: current,
+      doneLabel: 'Save',
+      placeholder: 'Search characters…',
+      emptyText: 'No player-owned characters in this world yet',
+    });
+    if (!picks) return;
+    // An actor that lost its player owner isn't in this list, and it stays hidden.
+    const listed = new Set(entries.map((e) => e.id));
+    const kept = [...current].filter((id) => !listed.has(id) && game.actors?.has?.(id));
+    const next = [...kept, ...picks.map((p) => p.id)];
+    await game.settings.set(MODULE_ID, 'hiddenCharacters', next);
+    ui.notifications.info(next.length ? `${next.length} character${next.length === 1 ? '' : 's'} hidden from character lists.` : 'No characters hidden.');
+    this.render(true);
+  }
+
   async onOpenSoundSettings(event, target) {
     const { SoundBoardApp } = await import('../../Sounds/SoundBoardApp.js');
     SoundBoardApp.open();

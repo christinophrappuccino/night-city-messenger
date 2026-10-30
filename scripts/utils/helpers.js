@@ -92,13 +92,15 @@ export function getPlayerActor() {
  * never assigned on the user sheet was invisible to every one of those tools
  * (2026-09 tester: "share with every player but Known by doesn't change",
  * "broadcast doesn't work", "can't open the player's inbox from the panel").
- * Non-person actor types (Black ICE, demons, containers) are skipped.
+ * Non-person actor types (Black ICE, demons, containers) are skipped, and so is
+ * anything the GM hid (`hiddenCharacters`: a vehicle or drone a player owns).
  *
+ * @param {{includeHidden?: boolean}} [options] includeHidden = the list the hide picker itself needs
  * @returns {Array<{actorId: string, actorName: string, playerName: string, actor: Actor, assigned: boolean}>}
  */
-export function getPlayerCharacters() {
+export function getPlayerCharacters({ includeHidden = false } = {}) {
   const out = [];
-  const seen = new Set();
+  const seen = new Set(includeHidden ? [] : hiddenCharacterIds());
   const NON_PERSON = new Set(['blackIce', 'black-ice', 'demon', 'container']);
   for (const user of game.users ?? []) {
     if (user.isGM || !user.character) continue;
@@ -115,6 +117,23 @@ export function getPlayerCharacters() {
     out.push({ actorId: actor.id, actorName: actor.name, playerName: owner?.name || 'Player', actor, assigned: false });
   }
   return out;
+}
+
+/**
+ * Actors the GM hid from every character list (Admin → Tools → Hidden Characters).
+ * Hidden means not listed: the actor keeps its sheet, its mail and its contacts.
+ * @returns {Set<string>}
+ */
+export function hiddenCharacterIds() {
+  try {
+    const ids = game.settings?.get(MODULE_ID, 'hiddenCharacters');
+    return new Set(Array.isArray(ids) ? ids : []);
+  } catch { return new Set(); } // setting not registered yet
+}
+
+/** @param {string} actorId @returns {boolean} */
+export function isHiddenCharacter(actorId) {
+  return !!actorId && hiddenCharacterIds().has(actorId);
 }
 
 /**
@@ -649,7 +668,7 @@ export function resolveAnonRecipient(message) {
  * @returns {Actor[]}
  */
 export function getOperatorActors() {
-  const all = (game.actors?.contents ?? []).filter(a => a.type !== 'blackIce');
+  const all = (game.actors?.contents ?? []).filter(a => a.type !== 'blackIce' && !isHiddenCharacter(a.id));
   if (game.user?.isGM) {
     const pcs = all.filter(a => a.hasPlayerOwner);
     const assigned = game.user.character;
@@ -672,7 +691,7 @@ export function resolveOperator() {
     const id = game.settings?.get(MODULE_ID, 'operatorActorId');
     if (id) {
       const a = game.actors?.get(id);
-      if (a?.isOwner) return a;
+      if (a?.isOwner && !isHiddenCharacter(a.id)) return a;
     }
   } catch { /* setting not registered yet */ }
   const assigned = game.user?.character ?? null;

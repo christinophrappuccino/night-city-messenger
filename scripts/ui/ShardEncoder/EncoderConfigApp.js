@@ -22,7 +22,7 @@
  */
 
 import { MODULE_ID, TEMPLATES, SKILL_MAP } from '../../utils/constants.js';
-import { log, isGM } from '../../utils/helpers.js';
+import { log, isGM, isHiddenCharacter } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { adminConfirm } from '../../utils/adminTheme.js';
 import { abilityInfo } from '../content/ProgramModel.js';
@@ -604,7 +604,7 @@ export class EncoderConfigApp extends BaseApplication {
         // Characters, not every actor in the world — this is an allowlist of
         // people at the table, and an NPC on it would never reach a door anyway.
         const chars = (game.actors?.contents ?? [])
-          .filter((a) => a.hasPlayerOwner && !['blackIce', 'black-ice', 'demon', 'container'].includes(a.type))
+          .filter((a) => a.hasPlayerOwner && !isHiddenCharacter(a.id) && !['blackIce', 'black-ice', 'demon', 'container'].includes(a.type))
           .map((a) => ({ id: a.id, name: a.name, img: a.img || FALLBACK_ITEM_IMG }))
           .sort((x, y) => x.name.localeCompare(y.name));
         const pick = await showNamePicker({

@@ -362,6 +362,7 @@ export class AdminPanelApp extends BaseApplication {
       healthCheck: AdminPanelApp._onHealthCheck,
       openTimeSettings: AdminPanelApp._onOpenTimeSettings,
       openSoundSettings: AdminPanelApp._onOpenSoundSettings,
+      manageHiddenCharacters: AdminPanelApp._onManageHiddenCharacters,
       manageDomains: AdminPanelApp._onManageDomains,
       reorganizeJournals: AdminPanelApp._onReorganizeJournals,
       importNCMMacros: AdminPanelApp._onImportNCMMacros,
@@ -1494,6 +1495,7 @@ export class AdminPanelApp extends BaseApplication {
   static async _onHealthCheck(event, target) { return this.tabs.tools.onHealthCheck(event, target); }
   static _onOpenTimeSettings(event, target) { this.tabs.tools.onOpenTimeSettings(event, target); }
   static _onOpenSoundSettings(event, target) { this.tabs.tools.onOpenSoundSettings(event, target); }
+  static async _onManageHiddenCharacters(event, target) { return this.tabs.tools.onManageHiddenCharacters(event, target); }
   static async _onManageDomains(event, target) { return this.tabs.tools.onManageDomains(event, target); }
   static async _onReorganizeJournals(event, target) { return this.tabs.tools.onReorganizeJournals(event, target); }
   static async _onImportNCMMacros(event, target) { return this.tabs.tools.onImportMacros(event, target); }

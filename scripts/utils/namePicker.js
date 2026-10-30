@@ -197,6 +197,9 @@ export function matchesPicker(e, q, group) {
  * @param {string|false} [o.allowNone=false]          label of a leading "none" row (resolves `{none:true, id:''}`)
  * @param {string} [o.selected]                       id of the current choice — highlighted + scrolled to
  * @param {boolean} [o.multi=false]                   checkbox rows + a Done button; resolves an ARRAY of picks (empty = cancelled)
+ * @param {Set<string>|Array<string>} [o.preselected] multi: ids that start ticked, for editing a saved list. Done may then
+ *   resolve an empty array (nothing ticked), and dismissing resolves null
+ * @param {string} [o.doneLabel='Add selected']       multi: the Done button's words
  * @param {string} [o.placeholder='search…']
  * @param {Set<string>|Array<string>} [o.taken]       ids (or names, when an entry has no id)
  *   already chosen — rendered greyed with the click refused
@@ -210,10 +213,11 @@ export function matchesPicker(e, q, group) {
  */
 export function showNamePicker({
   title, hint = '', entries = [], chips = true, chipAll = 'All', allowNone = false, selected = '',
-  placeholder = 'search…', taken, takenLabel = 'added', multi = false,
+  placeholder = 'search…', taken, takenLabel = 'added', multi = false, preselected = null, doneLabel = 'Add selected',
   emptyText = 'nothing found in this world', closeLabel = 'Cancel', onPick, admin = true, width = 440,
 } = {}) {
   const takenSet = taken instanceof Set ? taken : new Set(taken || []);
+  const startTicked = new Set(preselected || []);
   const open = admin ? adminDialog : playerDialog;
 
   // `taken` is matched on the id when an entry has one (two characters can share
@@ -240,7 +244,7 @@ export function showNamePicker({
 
   const selIc = multi ? '' : '<i class="fas fa-check ncm-pkr__sel-ic"></i>';
   const rowHtml = (e) => `
-    <div class="ncm-pkr__row${isTaken(e) ? ' is-taken' : ''}${selected && e.id === selected ? ' is-selected' : ''}" data-name="${esc(e.name)}" data-sub="${esc(e.sub || '')}" data-group="${esc(e.group || '')}" data-img="${esc(e.img || '')}"${e.id ? ` data-id="${esc(e.id)}"` : ''}>
+    <div class="ncm-pkr__row${isTaken(e) ? ' is-taken' : ''}${selected && e.id === selected ? ' is-selected' : ''}${multi && e.id && startTicked.has(e.id) ? ' is-picked' : ''}" data-name="${esc(e.name)}" data-sub="${esc(e.sub || '')}" data-group="${esc(e.group || '')}" data-img="${esc(e.img || '')}"${e.id ? ` data-id="${esc(e.id)}"` : ''}>
       ${multi ? '<span class="ncm-pkr__check"><i class="fas fa-check"></i></span>' : ''}${(!e.img && e.icon) ? `<span class="ncm-pkr__art ncm-pkr__art--ic" style="--c:${esc(e.color || 'var(--ncm-secondary)')}"><i class="${esc(e.icon)}"></i></span>` : `<img class="ncm-pkr__art" src="${esc(e.img || FALLBACK_ITEM_IMG)}" alt="">`}
       <span class="ncm-pkr__main">
         <span class="ncm-pkr__name">${esc(e.name)}</span>
@@ -282,7 +286,7 @@ export function showNamePicker({
         </div>`,
       buttons: multi
         ? {
-          done: { label: '<i class="fas fa-check"></i> Add selected', callback: (html) => {
+          done: { label: `<i class="fas fa-check"></i> ${esc(doneLabel)}`, callback: (html) => {
             const root = html[0] ?? html;
             picked = [...root.querySelectorAll('.ncm-pkr__row.is-picked')]
               .map((row) => ({ name: row.dataset.name, img: row.dataset.img || '', id: row.dataset.id || '' }));
@@ -402,7 +406,7 @@ export function showNamePicker({
           list?.querySelector('.ncm-pkr__row.is-selected')?.scrollIntoView?.({ block: 'center' });
         }, 30);
       },
-      close: () => resolve(multi ? (Array.isArray(picked) ? picked : []) : picked),
+      close: () => resolve(multi ? (Array.isArray(picked) ? picked : (preselected ? null : [])) : picked),
     }, { classes: ['ncm-pkr-dialog'], width });
     dlg.render(true);
   });

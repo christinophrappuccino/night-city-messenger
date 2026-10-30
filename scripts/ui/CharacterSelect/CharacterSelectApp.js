@@ -9,7 +9,7 @@
 
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID } from '../../utils/constants.js';
-import { log, isGM } from '../../utils/helpers.js';
+import { log, isGM, isHiddenCharacter } from '../../utils/helpers.js';
 import { MessageRepository } from '../../data/MessageRepository.js';
 
 const CONNECT_STEP_DELAY_MS = 400;
@@ -114,7 +114,7 @@ export class CharacterSelectApp extends BaseApplication {
 
     for (const actor of actors) {
       if (!isGM() && !actor.isOwner) continue;
-      if (actor.type !== 'character') continue;
+      if (actor.type !== 'character' || isHiddenCharacter(actor.id)) continue;
 
       const email = game.nightcity?.contactRepository?.getActorEmail?.(actor.id)
         || actor.getFlag?.(MODULE_ID, 'emailHandle')
@@ -206,7 +206,7 @@ export class CharacterSelectApp extends BaseApplication {
     const alertCount = 0;
 
     for (const actor of (game.actors?.contents || [])) {
-      if (actor.type !== 'character') continue;
+      if (actor.type !== 'character' || isHiddenCharacter(actor.id)) continue;
       actorCount++;
       const stats = this._getCharacterStats(actor.id);
       totalUnread += stats.unread;

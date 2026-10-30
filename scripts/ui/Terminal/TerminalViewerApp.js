@@ -25,7 +25,7 @@
 
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS, EVENTS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, canOperate, guardSecretInputs, terminalReachRule } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, isHiddenCharacter, canOperate, guardSecretInputs, terminalReachRule } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { getInitials } from '../../utils/designHelpers.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
@@ -2804,7 +2804,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Pick which owned character's Agent inbox to download into. */
   async _pickOwnedCharacter() {
     const owned = (game.actors?.contents ?? []).filter(a =>
-      a.type === 'character' && (a.isOwner || a.hasPlayerOwner));
+      a.type === 'character' && (a.isOwner || a.hasPlayerOwner) && !isHiddenCharacter(a.id));
     if (!owned.length) { ui.notifications.warn('No owned character to download into.'); return null; }
     if (owned.length === 1) return owned[0].id;
     const pick = await showNamePicker({
@@ -2974,7 +2974,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Pick a messageable character (contacts) to forward to. */
   async _pickMessageableActor(title = 'Send To') {
     const actors = (game.actors?.contents ?? []).filter(a =>
-      a.type === 'character' && (a.hasPlayerOwner || a.getFlag?.(MODULE_ID, 'email')));
+      a.type === 'character' && (a.hasPlayerOwner || a.getFlag?.(MODULE_ID, 'email')) && !isHiddenCharacter(a.id));
     if (!actors.length) { ui.notifications.warn('No contacts to send to.'); return null; }
     const pick = await showNamePicker({
       title,

@@ -486,6 +486,7 @@
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="pContacts" data-actor="{{actorId}}"><i class="fas fa-address-book"></i> Their contacts</button>
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="pEdit" data-actor="{{actorId}}" data-tooltip="Name, address and picture"><i class="fas fa-pen"></i> Edit</button>
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="pShareSelf" data-actor="{{actorId}}" data-tooltip="Give this character to other players as a contact"><i class="fas fa-share-nodes"></i> Share them</button>
+            <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="pHide" data-actor="{{actorId}}" data-tooltip="For a vehicle or anything else that isn't a person. Leaves every character list; its mail stays. Undo in Tools → Hidden Characters."><i class="fas fa-eye-slash"></i> Hide</button>
           </div>
         </div>
         {{#if ptabs}}<div class="ncm-ct2-itabs" role="tablist" aria-label="{{name}}">{{#each ptabs}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ct2-itab{{#if on}} on{{/if}}" data-action="tabAct" data-op="pTab" data-tab="{{key}}"{{#if tip}} data-tooltip="{{tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}{{#if count}}<span class="ncm-ct2-itab__n{{#if attn}} is-attn{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}</div>{{/if}}

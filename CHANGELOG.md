@@ -3,6 +3,11 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.0.5] — 2026-10-30
+
+### Added
+- **Hidden Characters.** Admin → Tools → Hidden Characters (or Hide on a character in Contacts → Players) keeps vehicles and other player-owned actors that aren't people out of the character lists: Who knows whom, Players, broadcasts, recipient pickers, and the players' own character pickers. Their sheet, mail and contacts are untouched, and you can untick them any time.
+
 ## [2.0.4] — 2026-10-30
 
 ### Fixed

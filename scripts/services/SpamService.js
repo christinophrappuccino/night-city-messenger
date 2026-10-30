@@ -8,7 +8,7 @@
  */
 
 import { MODULE_ID } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { log, isHiddenCharacter } from '../utils/helpers.js';
 import {
   BUILTIN_SPAM_TEMPLATES,
   SPAM_CATEGORIES,
@@ -712,7 +712,7 @@ export class SpamService {
     for (const actor of game.actors ?? []) {
       const hasEmail = !!actor.getFlag?.(MODULE_ID, 'email');
       // Reachable = player-owned (any non-GM owner, incl. default ownership) or NCM-registered.
-      if (!actor.hasPlayerOwner && !hasEmail) continue;
+      if ((!actor.hasPlayerOwner && !hasEmail) || isHiddenCharacter(actor.id)) continue;
 
       // Resolve an explicit non-GM owner only to pick a chip color; optional.
       const ownerEntry = Object.entries(actor.ownership || {})

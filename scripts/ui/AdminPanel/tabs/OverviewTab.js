@@ -21,7 +21,7 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
-import { log, getPlayerCharacters, resolveDisplayName, formatCyberDate } from '../../../utils/helpers.js';
+import { log, getPlayerCharacters, isHiddenCharacter, resolveDisplayName, formatCyberDate } from '../../../utils/helpers.js';
 import { adminConfirm } from '../../../utils/adminTheme.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
@@ -338,7 +338,7 @@ export class OverviewTab extends BaseTab {
     const scenes = new Map();
     for (const user of game.users ?? []) {
       if (user.isGM) continue;
-      const actor = user.character || game.actors?.find?.(a => a.hasPlayerOwner && a.ownership?.[user.id] >= 3) || null;
+      const actor = user.character || game.actors?.find?.(a => a.hasPlayerOwner && !isHiddenCharacter(a.id) && a.ownership?.[user.id] >= 3) || null;
       if (!actor && !user.active) continue;
       const online = !!user.active;
       const sceneId = online ? (user.viewedScene || '') : '';

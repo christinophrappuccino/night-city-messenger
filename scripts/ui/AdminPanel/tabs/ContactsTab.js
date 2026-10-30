@@ -20,7 +20,7 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
-import { log, getPlayerCharacters } from '../../../utils/helpers.js';
+import { log, getPlayerCharacters, hiddenCharacterIds } from '../../../utils/helpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
@@ -1420,6 +1420,7 @@ export class ContactsTab extends BaseTab {
       case 'pAddIdentity': return this._addIdentityForActor(d.actor);
       case 'pSetEmail': await game.nightcity?.openEmailSetup?.(game.actors?.get(d.actor)); return this.render(true);
       case 'pEdit': return this._editPlayer(d.actor);
+      case 'pHide': return this._hideCharacter(d.actor);
       case 'pSheet': return game.actors?.get(d.actor)?.sheet?.render(true);
       case 'pShareSelf': return this._shareDialog([`pc-${d.actor}`]);
       case 'pOpenContact': this._view = 'directory'; this._selectContact(id, { force: true }); return this.render(true);
@@ -1957,6 +1958,13 @@ export class ContactsTab extends BaseTab {
    * through EmailService.forceSetEmail (the one writer), and the character's directory
    * entry that carried the old address follows it. Mail already sent keeps its address.
    */
+  /** Drop one character out of the character lists; Tools → Hidden Characters brings it back. */
+  async _hideCharacter(actorId) {
+    await game.settings.set(MODULE_ID, 'hiddenCharacters', [...new Set([...hiddenCharacterIds(), actorId])]);
+    ui.notifications.info(`${game.actors?.get(actorId)?.name || 'Character'} hidden. Bring them back in Tools → Hidden Characters.`);
+    return this.render(true);
+  }
+
   async _editPlayer(actorId) {
     const actor = game.actors?.get(actorId);
     if (!actor) return;

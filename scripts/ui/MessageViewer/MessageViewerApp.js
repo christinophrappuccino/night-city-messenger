@@ -40,7 +40,7 @@ import {
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { getThreadMessages } from '../../utils/threading.js';
 import { cleanHtml } from '../../utils/richText.js';
-import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, canEncode as canEncodeShard, chatCardTime } from '../../utils/helpers.js';
+import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, canEncode as canEncodeShard, chatCardTime, isHiddenCharacter } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { selfKeys } from '../../utils/participants.js';
 import { showNamePicker } from '../../utils/namePicker.js';
@@ -5395,6 +5395,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // Collect actors this user owns
     for (const actor of game.actors) {
+      if (isHiddenCharacter(actor.id)) continue;
       const isOwner = actor.isOwner && actor.hasPlayerOwner;
       const isGMAll = currentUser.isGM; // GM can see all
       if (!isOwner && !isGMAll) continue;
@@ -5444,7 +5445,7 @@ export class MessageViewerApp extends BaseApplication {
     if (game.user.isGM) {
       // GMs see all player characters
       for (const user of game.users) {
-        if (user.isGM || !user.character) continue;
+        if (user.isGM || !user.character || isHiddenCharacter(user.character.id)) continue;
         const actor = user.character;
         if (!seenIds.has(actor.id)) {
           seenIds.add(actor.id);

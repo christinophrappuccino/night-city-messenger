@@ -13,6 +13,7 @@
  */
 
 import { MODULE_ID } from '../utils/constants.js';
+import { isHiddenCharacter } from '../utils/helpers.js';
 
 /**
  * Default contact shape — ensures all fields exist even on legacy data.
@@ -534,7 +535,7 @@ export class ContactRepository {
     const directory = [];
     for (const actor of game.actors) {
       const email = actor.getFlag(MODULE_ID, 'email');
-      if (email) {
+      if (email && !isHiddenCharacter(actor.id)) {
         directory.push({
           actorId: actor.id,
           name: actor.name,

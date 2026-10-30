@@ -17,7 +17,7 @@
 
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
-import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator } from '../../utils/helpers.js';
+import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator, isHiddenCharacter } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { applyGmView, applyAdminZoom, toggleGmView, playerDialog, adminPrompt, adminConfirm } from '../../utils/adminTheme.js';
 import { pasteToHtml } from '../../utils/richText.js';
@@ -1361,6 +1361,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (game.user.isGM) {
       const masterContacts = game.nightcity?.masterContactService?.search?.(query) || [];
       for (const mc of masterContacts) {
+        if (isHiddenCharacter(mc.actorId)) continue;
         if (mc.actorId) {
           const mcEmail = (mc.email || '').toLowerCase();
           if (!existingIds.has(mc.actorId) && !results.find(r => r.contactId === mc.id || (mcEmail && (r.email || '').toLowerCase() === mcEmail))) {
@@ -1996,12 +1997,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     // Pull from GM Master Contact Directory (the authoritative NPC list)
     const masterService = game.nightcity?.masterContactService;
-    const masterContacts = masterService?.getAll?.() || [];
+    const masterContacts = (masterService?.getAll?.() || []).filter(c => !isHiddenCharacter(c.actorId));
 
     // Also include any actors with emails not in master (fallback)
     const masterActorIds = new Set(masterContacts.filter(c => c.actorId).map(c => c.actorId));
     const extraActors = game.actors.filter(a => {
-      if (masterActorIds.has(a.id)) return false;
+      if (masterActorIds.has(a.id) || isHiddenCharacter(a.id)) return false;
       return this.contactRepo?.getActorEmail(a.id);
     });
 

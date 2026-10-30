@@ -479,6 +479,15 @@ export class SettingsManager {
     // (rolls, siphon/claim target, skill + stat reads). Defaults to the user's
     // assigned character; the OPERATOR chip switches it. Client-scoped — it's
     // a per-player view choice, not world state.
+    game.settings.register(MODULE_ID, 'hiddenCharacters', {
+      name: 'Hidden Characters',
+      hint: 'Actor ids left out of every character list. Edited in Admin → Tools.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     game.settings.register(MODULE_ID, 'operatorActorId', {
       name: 'Operator Character',
       hint: 'The character this client acts as in terminals and data shards.',
