@@ -253,7 +253,6 @@ export class DataShardComposer extends BaseApplication {
       dossPickActor: DataShardComposer._onDossPickActor,
       plPickMacro: DataShardComposer._onPlPickMacro,
       browseListImage: DataShardComposer._onBrowseListImage,
-      addEntryNetworkTag: DataShardComposer._onAddEntryNetworkTag,
       removeEntryNetworkTag: DataShardComposer._onRemoveEntryNetworkTag,
       openTimePicker: DataShardComposer._onOpenTimePicker,
       loadExample: DataShardComposer._onLoadExample,
@@ -376,6 +375,7 @@ export class DataShardComposer extends BaseApplication {
     // and the GM-only apparatus (security, network visibility, templates) is not
     // rendered. Entered only through PlayerEntryComposer, never by a GM flow.
     this._playerMode = !!options.playerMode;
+    this._netDraft = null;
     this.onCollect = options.onCollect ?? null;
     this._allowedTypes = Array.isArray(options.allowedTypes) && options.allowedTypes.length
       ? new Set(options.allowedTypes) : null;
@@ -483,7 +483,7 @@ export class DataShardComposer extends BaseApplication {
       editTimestampFormatted: this.editData?.timestamp ? formatCyberDate(this.editData.timestamp) : '',
       editContentData: this.editData?.contentData ?? {},
       editEncrypted: this.editData?.encrypted ?? false,
-      editNetworkRestricted: this.editData?.networkVisibility?.restricted ?? false,
+      editNetworkRestricted: this._netState().restricted,
 
       // Uploadable (design §4) — a program a runner can push onto a terminal.
       editUploadable: this.editData?.contentData?.uploadable ?? false,
@@ -615,9 +615,6 @@ export class DataShardComposer extends BaseApplication {
         }
         return formatCyberDate(new Date().toISOString());
       })(),
-
-      // Networks (for visibility restriction)
-      networkOptions: (this.networkService?.getAllNetworks() ?? []).map(n => ({ value: n.id, label: n.name })),
     };
   }
 
@@ -689,6 +686,13 @@ export class DataShardComposer extends BaseApplication {
         el.querySelector('.ncm-notepaper')?.setAttribute('data-paper', e.target.value || 'gold');
       });
     }
+    // Network visibility (③): picking a network adds it and switches Restrict on.
+    this._paintNetworkTags();
+    el.querySelector('#ncm-add-entry-network-select')?.addEventListener('change', (e) => {
+      const id = e.target.value;
+      if (id) this._setNetDraft({ restricted: true, ids: [...this._netState().ids, id] });
+    });
+    el.querySelector('[name="networkRestricted"]')?.addEventListener('change', (e) => this._setNetDraft({ restricted: e.target.checked }));
     this._syncCmpChips();
 
     // ─── Entry Header: live From ↔ Master List status chip ───
@@ -931,28 +935,73 @@ export class DataShardComposer extends BaseApplication {
     }
     DataShardComposer._paintPickerLabels(el);
 
-    // ─── Pre-populate network visibility tags ───
-    const nv = this.editData.networkVisibility;
-    if (nv?.restricted && nv.allowedNetworks?.length) {
-      const container = el.querySelector('#ncm-entry-network-tags');
-      const dropdown = el.querySelector('#ncm-add-entry-network-select');
-      if (container && dropdown) {
-        for (const netId of nv.allowedNetworks) {
-          const opt = dropdown.querySelector(`option[value="${netId}"]`);
-          if (!opt) continue;
-          const label = opt.textContent;
+  }
 
-          const tag = document.createElement('div');
-          tag.classList.add('ncm-tag');
-          tag.dataset.value = netId;
-          tag.innerHTML = `<span>${label}</span>
-            <button type="button" class="ncm-tag__remove" data-action="removeEntryNetworkTag" data-value="${netId}"><i class="fas fa-times"></i></button>
-            <input type="hidden" name="entryAllowedNetwork" value="${netId}" />`;
-          container.appendChild(tag);
-          opt.remove();
-        }
-      }
+  // ═══════════════════════════════════════════════════════════
+  //  NETWORK VISIBILITY (③) — the picks live in _netDraft, not the DOM, so
+  //  a re-render (Change type, a template action) can't lose them.
+  // ═══════════════════════════════════════════════════════════
+
+  /** The entry's restriction: the unsaved draft, else what the entry holds. */
+  _netState() {
+    if (this._netDraft) return this._netDraft;
+    const nv = this.editData?.networkVisibility;
+    return { restricted: !!nv?.restricted, ids: [...(nv?.allowedNetworks ?? [])] };
+  }
+
+  _setNetDraft(patch) {
+    this._netDraft = { ...this._netState(), ...patch };
+    this._paintNetworkTags();
+    this._syncCmpChips();
+  }
+
+  /** Tags + the "add" select + the warning line, all from _netState. */
+  _paintNetworkTags() {
+    const el = this.element;
+    const box = el?.querySelector('#ncm-entry-network-tags');
+    const select = el?.querySelector('#ncm-add-entry-network-select');
+    if (!box || !select) return;
+    const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
+    const { restricted, ids } = this._netState();
+    const all = this.networkService?.getAllNetworks() ?? [];
+    const nameOf = (id) => all.find(n => n.id === id)?.name ?? 'Deleted network';
+
+    box.classList.toggle('is-off', !restricted);
+    box.innerHTML = ids.map(id => `<div class="ncm-tag" data-value="${esc(id)}"><span>${esc(nameOf(id))}</span>`
+      + `<button type="button" class="ncm-tag__remove" data-action="removeEntryNetworkTag" data-value="${esc(id)}" data-tooltip="Remove" aria-label="Remove ${esc(nameOf(id))}"><i class="fas fa-times"></i></button>`
+      + `<input type="hidden" name="entryAllowedNetwork" value="${esc(id)}" /></div>`).join('');
+    select.innerHTML = '<option value="">— Add Network —</option>'
+      + all.filter(n => !ids.includes(n.id)).map(n => `<option value="${esc(n.id)}">${esc(n.name)}</option>`).join('');
+    const check = el.querySelector('[name="networkRestricted"]');
+    if (check) check.checked = restricted;
+
+    const note = el.querySelector('[data-net-note]');
+    if (!note) return;
+    let text = '';
+    if (restricted && !ids.length) text = 'Pick a network. As it stands, only you can see this.';
+    else if (!restricted && ids.length) text = 'Restrict is off, so these networks are ignored.';
+    else if (restricted && this._isTerminal) {
+      const ifaces = this.terminalService?.getConfig?.(this._item)?.connection?.interfaces ?? [];
+      const missing = ids.filter(id => !ifaces.some(i => i.networkId === id)).map(nameOf);
+      if (missing.length) text = `This terminal has no ${missing.join(' or ')} connection, so players can never reach this. Add it under Configure Terminal → Network → Machine Uplink.`;
     }
+    note.textContent = text;
+    note.hidden = !text;
+  }
+
+  /**
+   * The composer's edit data for a stored terminal entry. Every terminal edit door uses this: the edit path
+   * writes entryData straight to flags, so a field left out here is reset on save (a network restriction was).
+   */
+  static terminalEditData(raw) {
+    return {
+      entryId: raw.messageId, contentType: raw.contentType || 'message',
+      from: raw.from || '', subject: raw.subject || '', body: raw.body || '',
+      timestamp: raw.timestamp || '', contentData: raw.contentData ?? {},
+      envelope: raw.envelope || 'mail', file: raw.file || null, exfil: raw.exfil || null,
+      folder: raw.folder || '', status: raw.status || {},
+      networkVisibility: raw.networkVisibility ?? null,
+    };
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -3502,6 +3551,7 @@ export class DataShardComposer extends BaseApplication {
   _loadEntrySeed(seed, msg) {
     this.editData = foundry.utils.deepClone(seed);
     delete this.editData.entryId;
+    this._netDraft = null;
     this._selectedType = this.editData.contentType || CONTENT_TYPES.MESSAGE;
     this.render();
     if (msg) ui.notifications.info(`NCM | ${msg}`);
@@ -5673,46 +5723,10 @@ export class DataShardComposer extends BaseApplication {
     }).render(true);
   }
 
-  static _onAddEntryNetworkTag(event, target) {
-    const select = this.element?.querySelector('#ncm-add-entry-network-select');
-    const value = select?.value;
-    if (!value) return;
-    const label = select.options[select.selectedIndex]?.text || value;
-    const container = this.element?.querySelector('#ncm-entry-network-tags');
-    if (!container) return;
-
-    // Don't add duplicates
-    if (container.querySelector(`[data-value="${value}"]`)) return;
-
-    const tag = document.createElement('div');
-    tag.classList.add('ncm-tag');
-    tag.dataset.value = value;
-    tag.innerHTML = `<span>${label}</span>
-      <button type="button" class="ncm-tag__remove" data-action="removeEntryNetworkTag" data-value="${value}"><i class="fas fa-times"></i></button>
-      <input type="hidden" name="entryAllowedNetwork" value="${value}" />`;
-    container.appendChild(tag);
-
-    // Remove from dropdown
-    const opt = select.querySelector(`option[value="${value}"]`);
-    if (opt) opt.remove();
-    select.value = '';
-  }
-
   static _onRemoveEntryNetworkTag(event, target) {
-    const value = target.dataset.value || target.closest('[data-value]')?.dataset.value;
+    const value = target.dataset.value;
     if (!value) return;
-    const tag = this.element?.querySelector(`#ncm-entry-network-tags [data-value="${value}"]`);
-    if (tag) {
-      const label = tag.querySelector('span')?.textContent || value;
-      tag.remove();
-      // Re-add to dropdown
-      const select = this.element?.querySelector('#ncm-add-entry-network-select');
-      if (select) {
-        const opt = document.createElement('option');
-        opt.value = value;
-        opt.textContent = label;
-        select.appendChild(opt);
-      }
-    }
+    const ids = this._netState().ids.filter(id => id !== value);
+    this._setNetDraft({ ids, restricted: ids.length ? this._netState().restricted : false });
   }
 }

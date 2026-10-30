@@ -559,12 +559,12 @@
     <div class="ncm-cfg-panel {{#if tabs.network}}ncm-cfg-panel--active{{/if}}" data-panel="network">
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-network-wired ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Network Reachability</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="networkRequired" {{#if networkRequired}}checked{{/if}}></label></div>
-        <div class="ncm-cfg-desc">When ON, this terminal is only reachable while the player is connected to an allowed network (Layer 0 gate). OFF = reachable anywhere.</div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Access mode</span><select name="accessMode" class="ncm-cfg-select ncm-cfg-flex">{{#each accessModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select></div>
-        <div class="ncm-cfg-row ncm-cfg-row--col"><span class="ncm-cfg-label" style="margin-bottom:4px">Allowed networks</span>
+        <div class="ncm-cfg-desc">When ON, a player has to be on an allowed network to open this terminal. It is checked when they open it; leaving that network later does not log them out. OFF = it opens anywhere.</div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Reachable from</span><select name="accessMode" class="ncm-cfg-select ncm-cfg-flex">{{#each accessModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
+        <div class="ncm-cfg-row ncm-cfg-row--col" data-reach-list{{#unless reachOnlyThese}} style="display:none"{{/unless}}><span class="ncm-cfg-label" style="margin-bottom:4px">Allowed networks</span>
           <div>{{#each allNetworks}}<label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 6px 0;font-family:var(--ncm-font-mono);font-size:12px"><input type="checkbox" name="netAllowed" value="{{id}}" {{#if checked}}checked{{/if}}> {{name}}</label>{{/each}}</div>
         </div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Signal threshold</span><input type="number" name="signalThreshold" class="ncm-cfg-input ncm-cfg-input--short" value="{{signalThreshold}}" min="0" max="100"> %</div>
+        <div class="ncm-netnote" data-reach-note hidden></div>
       </div>
 
       {{!-- SCENE ACCESS POINT — drag-to-scene pin + proximity gate --}}

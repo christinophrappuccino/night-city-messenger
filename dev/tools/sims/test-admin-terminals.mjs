@@ -39,7 +39,7 @@ const cfgs = {
   ws: {
     terminalName: 'WS-7F-12', metadata: { org: 'Arasaka', location: 'Arasaka Tower', classification: 'SECRET' },
     theme: { preset: 'arasaka-workstation' }, loginStyle: 'cards', mailboxStyle: 'tabs', soundSet: 'corp-chime',
-    network: { required: true, allowedNetworks: ['corp'] },
+    network: { required: true, accessMode: 'whitelist', allowedNetworks: ['corp'] },
     accounts: [
       { id: 'a1', username: 'v_arasaka', displayName: 'Veronica Ames', role: 'Analyst', masterContactId: 'c1', security: { requiresAuth: true, allowPassword: true } },
       { id: 'a2', username: 'h.tanaka', displayName: 'Hiro Tanaka', actorId: 'aH', security: { requiresAuth: true, allowPassword: true, allowKeyItem: true, keyItemName: 'Arasaka keycard', authLogic: 'all' }, network: { restricted: true, allowedNetworks: ['corp'] } },

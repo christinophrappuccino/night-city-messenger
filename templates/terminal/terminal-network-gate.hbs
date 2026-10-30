@@ -14,8 +14,8 @@
     <div class="ncm-term__netgrid-label"><i class="fas fa-satellite-dish"></i> NETWORKS IN RANGE</div>
     <div class="ncm-term__netgrid">
       {{#each networks}}
-        <div class="ncm-term__netcard{{#if isRequired}} is-required{{/if}}" style="--nc:{{color}}"
-             data-action="terminalSwitchNetwork" data-network-id="{{id}}">
+        <div class="ncm-term__netcard{{#if isRequired}} is-required{{/if}}{{#unless canClick}} is-dead{{/unless}}" style="--nc:{{color}}"
+             {{#if canClick}}data-action="terminalSwitchNetwork" data-network-id="{{id}}"{{/if}}>
           <div class="ncm-term__netcard-ic">{{{ncm-net-icon theme}}}</div>
           <div class="ncm-term__netcard-body">
             <div class="ncm-term__netcard-nm">{{name}}</div>

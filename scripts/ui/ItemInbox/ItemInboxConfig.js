@@ -1412,7 +1412,7 @@ export class ItemInboxConfig extends BaseApplication {
         allowedNetworks,
         allowedTypes,
         connectionMode: val('connectionMode', 'offline'),
-        signalThreshold: parseInt(val('signalThreshold')) || 40,
+        signalThreshold: (t => Number.isNaN(t) ? 40 : t)(parseInt(val('signalThreshold'), 10)),
         signalDVModifier: checked('signalDVModifier'),
         signalDegradation: checked('signalDegradation'),
         tracing: {

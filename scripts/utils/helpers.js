@@ -1094,3 +1094,15 @@ export function shadowLoginInput(el) {
   if (el.autofocus) ce.focus?.();
   return ce;
 }
+
+/**
+ * A terminal's reachability rule as it is enforced. The terminal sheet can't set network types, so a saved
+ * 'type' mode with none has always let nobody in; it follows the ticked networks, as the sheet now shows it.
+ * @param {object} [network] - config.network
+ * @returns {object}
+ */
+export function terminalReachRule(network = {}) {
+  return network.accessMode === 'type' && !network.allowedTypes?.length
+    ? { ...network, accessMode: 'whitelist' }
+    : network;
+}

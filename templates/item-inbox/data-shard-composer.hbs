@@ -1071,17 +1071,12 @@
       <div class="ncm-config-row ncm-config-row--col">
         <div class="ncm-tag-list" id="ncm-entry-network-tags"></div>
         <div class="ncm-config-row" style="margin-top:4px;">
-          <select class="ncm-config-select ncm-config-flex" id="ncm-add-entry-network-select">
-            <option value="">— Add Network —</option>
-            {{#each networkOptions}}
-              <option value="{{value}}">{{label}}</option>
-            {{/each}}
-          </select>
-          <button type="button" data-action="addEntryNetworkTag" class="ncm-shard-hdr-btn" title="Add network"><i class="fas fa-plus"></i></button>
+          <select class="ncm-config-select ncm-config-flex" id="ncm-add-entry-network-select"></select>
         </div>
+        <div class="ncm-netnote" data-net-note hidden></div>
       </div>
       {{#if isTerminalTarget}}
-        <div class="ncm-config-hint">When restricted, this message only appears while the TERMINAL's uplink is one of these networks — switch the machine's connection to reveal it. (The player's own network doesn't matter.)</div>
+        <div class="ncm-config-hint">When restricted, players only see this while the TERMINAL's uplink is one of these networks; the player's own network doesn't matter. You always see it as GM, tagged OFF-NET while the uplink is elsewhere.</div>
       {{else}}
         <div class="ncm-config-hint">When restricted, this entry only appears on selected networks.</div>
       {{/if}}

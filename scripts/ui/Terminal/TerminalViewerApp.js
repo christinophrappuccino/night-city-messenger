@@ -24,8 +24,8 @@
  */
 
 import { BaseApplication } from '../BaseApplication.js';
-import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, canOperate, guardSecretInputs } from '../../utils/helpers.js';
+import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS, EVENTS } from '../../utils/constants.js';
+import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, canOperate, guardSecretInputs, terminalReachRule } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { getInitials } from '../../utils/designHelpers.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
@@ -235,6 +235,7 @@ export class TerminalViewerApp extends BaseApplication {
         return;
       }
       if (this._state === 'boot' || this._state === 'granted') return;
+      this._recheckGate();   // the GM may have just opened it up
       this._debouncedRender();
     };
     Hooks.on('updateItem', this._onItemUpdate);
@@ -588,14 +589,14 @@ export class TerminalViewerApp extends BaseApplication {
   }
 
   _gateContext(cfg) {
-    const net = cfg.network || {};
-    const required = (net.allowedNetworks || [])[0] || '';
-    const reqName = this.networkService?.getNetwork?.(required)?.name || required || 'an authorized network';
+    const net = terminalReachRule(cfg.network || {});
+    const isAny = (net.accessMode ?? 'any') === 'any';
+    const named = isAny ? [] : (net.allowedNetworks || []).map(id => this.networkService?.getNetwork?.(id)).filter(Boolean);
+    const reqName = named.map(n => n.name).join(' or ') || (isAny ? 'any network' : 'an authorized network');
     const currentId = this.networkService?.currentNetworkId;
-    const allowedSet = new Set(net.allowedNetworks || []);
     const networks = (this.networkService?.getAvailableNetworks?.() || []).map(n => {
       const isCurrent = n.id === currentId;
-      const isAllowed = allowedSet.size === 0 || allowedSet.has(n.id) || (net.allowedTypes || []).includes(n.type);
+      const isAllowed = this.networkService.networkPasses(net, n);
       const requiresAuth = n.security?.requiresAuth && !this.networkService?.isAuthenticated?.(n.id);
       let statusClass = 'deny', statusLabel = 'DENIED';
       if (isCurrent) { statusClass = 'conn'; statusLabel = 'CONNECTED'; }
@@ -605,16 +606,18 @@ export class TerminalViewerApp extends BaseApplication {
       return {
         id: n.id, name: n.name, typeLabel: n.type || 'Subnet', signal,
         color: n.theme?.color || '#19f3f7', icon: `fas ${n.theme?.icon || 'fa-wifi'}`, theme: n.theme || null,
-        isCurrent, isRequired: n.id === required, weak: signal < 50,
+        isCurrent, isRequired: named.some(r => r.id === n.id), weak: signal < 50,
+        // Only a network that would let them in can be clicked; a denied one would just move their connection.
+        canClick: isAllowed && !isCurrent,
         statusClass, statusLabel,
       };
     });
     const skill = (cfg.network?.bypassSkills || [])[0];
     return {
       requiredNetwork: reqName,
-      requiredSecured: true,
+      requiredSecured: named.some(n => n.security?.requiresAuth),
       networks,
-      spoof: skill ? { skill, dv: cfg.network?.bypassDV ?? cfg.network?.signalThreshold ?? 18 } : null,
+      spoof: skill ? { skill, dv: cfg.network?.bypassDV ?? 18 } : null,
       isGM: isGM(),
     };
   }
@@ -1732,8 +1735,26 @@ export class TerminalViewerApp extends BaseApplication {
   async _onSwitchNetwork(event, target) {
     const id = target?.dataset?.networkId;
     if (!id) return;
-    await this.networkService?.switchNetwork?.(id);
-    this._enterState(this._resolveEntryState());
+    // The normal connect path: a secured network opens its login dialog. A refused login explains itself.
+    const res = await game.nightcity?.connectToNetwork?.(id);
+    if (res && !res.success && res.reason !== 'auth_failed') {
+      const name = this.networkService?.getNetwork?.(id)?.name || 'that network';
+      const why = { dead_zone: 'There is no signal here.', not_available: `${name} doesn't reach this scene.` }[res.reason] || `Couldn't connect to ${name}.`;
+      ui.notifications.warn(`NCM | ${why}`);
+    }
+    this._recheckGate();
+  }
+
+  /** On the gate, let the player through as soon as they qualify. Leaving a network later never logs anyone out. */
+  _recheckGate() {
+    if (this._state !== 'gate') return;
+    const next = this._resolveEntryState();
+    if (next !== 'gate') this._enterState(next);
+  }
+
+  /** The player can change network from the Agent while the gate is up. */
+  _setupEventSubscriptions() {
+    this.subscribe(EVENTS.NETWORK_CHANGED, () => this._recheckGate());
   }
 
   async _onSpoofNetwork() {
@@ -2425,20 +2446,11 @@ export class TerminalViewerApp extends BaseApplication {
     const id = target?.dataset?.messageId || this._selectedMessageId;
     const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw) return;
-    const editData = {
-      entryId: id, contentType: raw.contentType || 'message',
-      from: raw.from || '', subject: raw.subject || '', body: raw.body || '',
-      timestamp: raw.timestamp || '', contentData: raw.contentData ?? {},
-      // Envelope + per-entry exfil override (#37) — without these the composer
-      // would silently reset a FILE back to mail (and wipe its override) on
-      // every edit-save, since the edit path writes entryData straight to flags.
-      envelope: raw.envelope || 'mail', file: raw.file || null, exfil: raw.exfil || null,
-    };
     import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
       new DataShardComposer({
         // The entry's OWN scope (a shared file stays shared when edited).
         target: { kind: 'terminal', item: this.item, accountId: raw.accountId || this._boxId(), homeAccountId: this._boxId(), folderPath: raw.file?.path || '' },
-        editData, onSave: () => this.render(false),
+        editData: DataShardComposer.terminalEditData(raw), onSave: () => this.render(false),
       }).render(true);
     });
   }

@@ -3,6 +3,20 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.0.4] — 2026-10-30
+
+### Fixed
+- **Restricting a terminal entry to specific networks did not stick.** Editing the entry again showed no restriction, and saving it wiped the restriction. It now stays, from both the terminal and Configure Terminal → Accounts.
+- **Editing a terminal message from the terminal moved it back to the Inbox.** It now stays in its folder.
+- **The network tag in Security & Access looked broken.** It was a bare name over a default button; it is now a compact tag with a small ✕. Picking a network adds it and switches Restrict on, removing the last one switches Restrict off, and your picks survive changing the entry type.
+- **Network Reachability on terminals did not do what it appeared to.** With the access mode on `any`, ticked networks were ignored; on `type`, nobody could get in. The choices are now **Any network** and **Only these networks**, and the list only shows when it applies. A terminal saved as `type` now follows its ticked networks. A terminal saved as `any` stays open to every network until you change it to Only these networks, so no one is locked out mid-campaign.
+- **The terminal's network gate.** Clicking a secured network now opens its login (it did nothing); denied networks can't be clicked; it lists every allowed network and only says "secured" when one is; and it lifts by itself when the player switches to an allowed network from their Agent. It is only checked on the way in: leaving the network later does not log anyone out.
+- **A shard's Min Signal of 0 saved as 40.** It now stays 0.
+
+### Changed
+- **New warnings** when a terminal entry or network-gated account is set to a network the terminal has no Machine Uplink for, or to no network at all. Players could never have seen it, and nothing said so. Configure Terminal → Network warns when Only these networks has nothing ticked.
+- **Signal threshold is gone from Configure Terminal.** It never did anything on a terminal.
+
 ## [2.0.3] — 2026-10-30
 
 ### Fixed

@@ -430,10 +430,12 @@ export class TerminalConfigApp extends BaseApplication {
 
       // Network
       networkRequired: !!cfg.network?.required,
-      accessMode: cfg.network?.accessMode || 'any',
-      accessModes: ['any', 'whitelist', 'type'].map(v => ({ value: v, selected: v === (cfg.network?.accessMode || 'any') })),
+      // A stored 'type' / 'both' has no editor here and lets nobody in, so it reads as "only these".
+      reachOnlyThese: (cfg.network?.accessMode || 'any') !== 'any',
+      accessModes: [['any', 'Any network'], ['whitelist', 'Only these networks']].map(([value, label]) => ({
+        value, label, selected: (value === 'any') === ((cfg.network?.accessMode || 'any') === 'any'),
+      })),
       allNetworks,
-      signalThreshold: cfg.network?.signalThreshold ?? 40,
       scenePinRange: cfg.scenePin?.range ?? 0,
       // Netrunning resolution override (design §5) — 'inherit' follows the world.
       hackResolutionModes: ['inherit', 'auto', 'flagged', 'gm'].map(v => ({
@@ -627,6 +629,7 @@ export class TerminalConfigApp extends BaseApplication {
     el.querySelectorAll('.ncm-cfg-tab').forEach(t => t.classList.toggle('ncm-cfg-tab--active', t.dataset.tab === this._activeTab));
     el.querySelectorAll('.ncm-cfg-panel').forEach(p => p.classList.toggle('ncm-cfg-panel--active', p.dataset.panel === this._activeTab));
 
+    this._wireReachability(el);
     this._wireBootTab(el, context);
     this._foldOpenAfterRender();   // accordion: grow a just-opened fold from 0
     this._wireAccountsTab(el);
@@ -635,6 +638,45 @@ export class TerminalConfigApp extends BaseApplication {
     this._wireThemeTab(el);
     // Paint the in-sheet theme preview (draft or saved) on every render.
     this._applyThemeLive();
+  }
+
+  /** Account editor: a gated account vanishes for players when no ticked network is one this machine can connect to. */
+  _syncAcctNetNote(el) {
+    const note = el.querySelector('[data-acct-net-note]');
+    if (!note) return;
+    const allowed = [...el.querySelectorAll('[name="acctNetAllowed"]:checked')].map(c => c.value);
+    // The Network tab's unsaved ticks are in this same form, so read those rather than the saved config.
+    const ifaces = [...el.querySelectorAll('[name="uplinkIface"]:checked')].map(c => c.value);
+    const missing = allowed.filter(id => !ifaces.includes(id)).map(id => this.networkService?.getNetwork?.(id)?.name || id);
+    let text = '';
+    if (el.querySelector('[name="acctNetRestricted"]')?.checked) {
+      if (!allowed.length) text = 'No network is ticked, so no player can see this account.';
+      else if (missing.length === allowed.length) text = `This terminal has no ${missing.join(' or ')} connection, so players can never see this account. Add it under the Network tab → Machine Uplink.`;
+      else if (missing.length) text = `This terminal has no ${missing.join(' or ')} connection, so the account only shows on the others. Add it under the Network tab → Machine Uplink.`;
+    }
+    note.textContent = text;
+    note.hidden = !text;
+  }
+
+  /** Network tab: the network list only matters under "Only these networks", and an empty one locks everyone out. */
+  _wireReachability(el) {
+    const mode = el.querySelector('[name="accessMode"]');
+    if (!mode) return;
+    const sync = () => {
+      const only = mode.value !== 'any';
+      const list = el.querySelector('[data-reach-list]');
+      if (list) list.style.display = only ? '' : 'none';
+      const note = el.querySelector('[data-reach-note]');
+      if (!note) return;
+      const on = el.querySelector('[name="networkRequired"]')?.checked;
+      const empty = !el.querySelector('[name="netAllowed"]:checked');
+      note.textContent = on && only && empty ? 'No network is ticked, so no player can open this terminal.' : '';
+      note.hidden = !note.textContent;
+    };
+    mode.addEventListener('change', sync);
+    el.querySelector('[name="networkRequired"]')?.addEventListener('change', sync);
+    el.querySelectorAll('[name="netAllowed"]').forEach(c => c.addEventListener('change', sync));
+    sync();
   }
 
   /**
@@ -1212,7 +1254,10 @@ export class TerminalConfigApp extends BaseApplication {
     netToggle?.addEventListener('change', () => {
       const row = el.querySelector('[data-acct-net-row]');
       if (row) row.hidden = !netToggle.checked;
+      this._syncAcctNetNote(el);
     });
+    el.querySelectorAll('[name="acctNetAllowed"], [name="uplinkIface"]').forEach(c => c.addEventListener('change', () => this._syncAcctNetNote(el)));
+    this._syncAcctNetNote(el);
 
     // ── B · Portrait tile: live preview ──
     const syncPortrait = () => {
@@ -1488,7 +1533,6 @@ export class TerminalConfigApp extends BaseApplication {
         required: chk('networkRequired'),
         accessMode: val('accessMode'),
         allowedNetworks: [...el.querySelectorAll('[name="netAllowed"]:checked')].map(i => i.value),
-        signalThreshold: parseInt(val('signalThreshold', '40'), 10) || 40,
       },
       scenePin: { range: Math.max(0, parseInt(val('scenePinRange', '0'), 10) || 0) },
       hackResolution: ['inherit', 'auto', 'flagged', 'gm'].includes(val('hackResolution')) ? val('hackResolution') : 'inherit',
@@ -2377,13 +2421,7 @@ export class TerminalConfigApp extends BaseApplication {
     const { DataShardComposer } = await import('../ItemInbox/DataShardComposer.js');
     new DataShardComposer({
       target: { kind: 'terminal', item: this.item, accountId: raw.accountId, homeAccountId: raw.shared ? null : raw.accountId, folderPath: raw.file?.path || '' },
-      editData: {
-        entryId: id, contentType: raw.contentType || 'message',
-        from: raw.from || '', subject: raw.subject || '', body: raw.body || '',
-        timestamp: raw.timestamp || '', contentData: raw.contentData ?? {},
-        envelope: raw.envelope || 'mail', file: raw.file || null, exfil: raw.exfil || null,
-        folder: raw.folder || '', status: raw.status || {},
-      },
+      editData: DataShardComposer.terminalEditData(raw),
       onSave: () => this.render(false),
     }).render(true);
   }

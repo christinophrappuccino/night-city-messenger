@@ -26,7 +26,7 @@
  */
 
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate } from '../utils/helpers.js';
+import { log, isGM, generateId, formatCyberDate, terminalReachRule } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
 import { suggestFilename } from '../ui/content/ContentRenderers.js';
 import { adminViewVerdict as _adminVerdict, adminViewTargets as _adminTargets } from '../utils/terminalAdmin.js';
@@ -890,7 +890,7 @@ export class TerminalService {
     // forceDecrypt — so a GM can still experience/test the gate until they bypass.
     if (this.getState(item).gmBypassed) return { allowed: true };
     if (!this.networkService) return { allowed: false, reason: 'No network connection' };
-    return this.networkService.checkAccess(config.network);
+    return this.networkService.checkAccess(terminalReachRule(config.network));
   }
 
   // ═══════════════════════════════════════════════════════════

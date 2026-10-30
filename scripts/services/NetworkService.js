@@ -286,32 +286,13 @@ export class NetworkService {
    */
   checkAccess(netConfig = {}) {
     const currentNetworkId = this.currentNetworkId;
-    const currentNetworkType = this.currentNetwork?.type ?? null;
 
     // No network connected at all.
     if (!currentNetworkId) {
       return { allowed: false, reason: 'No network connection' };
     }
 
-    const mode = netConfig.accessMode ?? NETWORK_ACCESS_MODES.ANY;
-    let accessGranted;
-    switch (mode) {
-      case NETWORK_ACCESS_MODES.WHITELIST:
-        accessGranted = (netConfig.allowedNetworks ?? []).includes(currentNetworkId);
-        break;
-      case NETWORK_ACCESS_MODES.TYPE:
-        accessGranted = (netConfig.allowedTypes ?? []).includes(currentNetworkType);
-        break;
-      case NETWORK_ACCESS_MODES.BOTH:
-        accessGranted = (netConfig.allowedNetworks ?? []).includes(currentNetworkId)
-          || (netConfig.allowedTypes ?? []).includes(currentNetworkType);
-        break;
-      case NETWORK_ACCESS_MODES.ANY:
-      default:
-        accessGranted = true;
-    }
-
-    if (!accessGranted) {
+    if (!this.networkPasses(netConfig, this.currentNetwork ?? { id: currentNetworkId })) {
       const requirements = [];
       if (netConfig.allowedTypes?.length) requirements.push(`Type: ${netConfig.allowedTypes.join(', ')}`);
       if (netConfig.allowedNetworks?.length) requirements.push(`Networks: ${netConfig.allowedNetworks.join(', ')}`);
@@ -336,6 +317,24 @@ export class NetworkService {
     }
 
     return { allowed: true };
+  }
+
+  /**
+   * Does this network satisfy an access block's mode? The one rule behind checkAccess
+   * and the terminal gate's per-network status, so the two can't disagree.
+   * @param {object} netConfig - { accessMode, allowedNetworks[], allowedTypes[] }
+   * @param {{ id: string, type?: string }} network
+   * @returns {boolean}
+   */
+  networkPasses(netConfig = {}, network) {
+    const byId = (netConfig.allowedNetworks ?? []).includes(network?.id);
+    const byType = (netConfig.allowedTypes ?? []).includes(network?.type ?? null);
+    switch (netConfig.accessMode ?? NETWORK_ACCESS_MODES.ANY) {
+      case NETWORK_ACCESS_MODES.WHITELIST: return byId;
+      case NETWORK_ACCESS_MODES.TYPE: return byType;
+      case NETWORK_ACCESS_MODES.BOTH: return byId || byType;
+      default: return true;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════

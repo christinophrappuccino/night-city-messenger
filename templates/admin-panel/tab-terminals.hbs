@@ -199,7 +199,7 @@
           <div class="ncm-term2-cols">
             <div>
               <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Uplink</span><span class="ncm-term2-kv__v{{#unless uplinkName}} is-dim{{/unless}}"{{#if uplinkName}} style="--tc:{{ncm-hue uplinkName}}"{{/if}} data-tooltip="The machine's own connection">{{#if uplinkName}}{{uplinkName}}{{else}}Local only{{/if}}</span></div>
-              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Reach</span><span class="ncm-term2-kv__v{{#unless networkBinding}} is-dim{{/unless}}"{{#if networkBinding}} style="--tc:{{ncm-hue networkBinding}}"{{/if}} data-tooltip="Network players must be on to see this box">{{#if networkBinding}}{{networkBinding}} only{{else}}Anywhere{{/if}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Reach</span><span class="ncm-term2-kv__v{{#unless networkBinding}} is-dim{{/unless}}"{{#if networkBinding}} style="--tc:{{ncm-hue networkBinding}}"{{/if}} data-tooltip="Network players must be on to see this box">{{#if networkBinding}}{{networkBinding}}{{#if reachListed}} only{{/if}}{{else}}Anywhere{{/if}}</span></div>
               <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Exfil</span><span class="ncm-term2-kv__v" data-tooltip="{{exfil}}">{{exfil}}</span></div>
               <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Pinned</span><span class="ncm-term2-kv__v{{#unless pinLabel}} is-dim{{/unless}}"{{#if pinLabel}} style="--tc:{{ncm-hue pinLabel}}"{{/if}} data-tooltip="{{pinLabel}}">{{#if pinLabel}}{{pinLabel}}{{else}}Not on any scene{{/if}}</span></div>
             </div>

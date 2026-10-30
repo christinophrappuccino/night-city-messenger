@@ -919,6 +919,7 @@
 .ncm-term__netgrid-label { align-self: flex-start; font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); letter-spacing: 2px; color: var(--ncm-text-muted); margin-top: 8px; display: flex; align-items: center; gap: 7px; }
 .ncm-term__netgrid { width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 4px; }
 .ncm-term__netcard { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border-radius: 9px; cursor: pointer; text-align: left; position: relative; background: linear-gradient(150deg, color-mix(in srgb, var(--nc, var(--ncm-primary)) 8%, var(--ncm-bg-surface)), var(--ncm-bg-base)); border: 1px solid color-mix(in srgb, var(--nc, var(--ncm-primary)) 28%, transparent); }
+.ncm-term__netcard.is-dead { cursor: default; }
 .ncm-term__netcard::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 9px 0 0 9px; background: var(--nc, var(--ncm-primary)); }
 .ncm-term__netcard.is-required { box-shadow: 0 0 18px color-mix(in srgb, var(--nc, var(--ncm-primary)) 30%, transparent); border-color: var(--nc, var(--ncm-primary)); }
 .ncm-term__netcard-ic { width: 32px; height: 32px; border-radius: 7px; display: grid; place-items: center; font-size: calc(14px * var(--ncm-text-scale, 1)); color: var(--nc, var(--ncm-primary)); background: color-mix(in srgb, var(--nc, var(--ncm-primary)) 12%, transparent); }

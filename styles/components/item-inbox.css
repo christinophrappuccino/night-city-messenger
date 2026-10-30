@@ -1530,6 +1530,40 @@
   opacity: 0.7;
 }
 
+/* Network tags in the composer's Security & Access section. The remove button needs Foundry's
+   full-width button default undone, or it stretches into a long empty bar beside the name. */
+.ncm-app .ncm-tag-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-app .ncm-tag-list:empty { display: none; }
+.ncm-app .ncm-tag-list.is-off { opacity: .55; }
+.ncm-app .ncm-tag-list .ncm-tag {
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; max-width: 100%;
+  padding: 2px 3px 2px 8px; border-radius: 2px;
+  font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 600;
+  color: var(--ncm-text-primary);
+  background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 45%, transparent);
+}
+.ncm-app .ncm-tag-list button.ncm-tag__remove {
+  appearance: none; flex: 0 0 auto;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  width: calc(16px * var(--ncm-text-scale, 1)) !important; height: calc(16px * var(--ncm-text-scale, 1)) !important;
+  min-height: 0 !important; margin: 0 !important; padding: 0 !important;
+  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; line-height: 1 !important;
+  color: var(--ncm-text-secondary) !important;
+  background: transparent !important; border: 0 !important; border-radius: 2px !important; box-shadow: none !important;
+  cursor: pointer;
+}
+.ncm-app .ncm-tag-list button.ncm-tag__remove:hover { color: var(--ncm-text-primary) !important; background: color-mix(in srgb, var(--ncm-secondary) 22%, transparent) !important; }
+.ncm-app .ncm-tag-list button.ncm-tag__remove i { margin: 0 !important; }
+.ncm-app .ncm-netnote {
+  margin-top: 4px; padding: 3px 7px;
+  font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); line-height: 1.35;
+  color: color-mix(in oklab, var(--ncm-attn, var(--ncm-accent)) 72%, var(--ncm-text-primary));
+  border-left: 2px solid var(--ncm-attn, var(--ncm-accent));
+  background: color-mix(in srgb, var(--ncm-attn, var(--ncm-accent)) 8%, transparent);
+}
+.ncm-app .ncm-netnote[hidden] { display: none; }
+
 /* Config actions footer */
 .ncm-app .ncm-config-actions {
   display: flex; align-items: center; justify-content: flex-end;

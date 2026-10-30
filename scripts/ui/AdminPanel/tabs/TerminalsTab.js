@@ -633,7 +633,10 @@ export class TerminalsTab extends BaseTab {
           account: e.username || e.accountId,
           operator: e.operatorName || '',
         })),
-        networkBinding: cfg.network?.required ? this._netName((cfg.network.allowedNetworks || [])[0] || '') || 'any network' : null,
+        networkBinding: !cfg.network?.required ? null
+          : (cfg.network.accessMode || 'any') === 'any' ? 'Any network'
+          : (cfg.network.allowedNetworks || []).map(n => this._netName(n)).join(', ') || 'No network ticked',
+        reachListed: !!cfg.network?.required && (cfg.network.accessMode || 'any') !== 'any' && !!cfg.network.allowedNetworks?.length,
         uplinkName,
         allowExfil: cfg.allowExfil !== false,
         exfil,
