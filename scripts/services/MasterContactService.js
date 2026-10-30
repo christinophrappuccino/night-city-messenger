@@ -9,7 +9,7 @@
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
-import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf } from '../utils/identities.js';
+import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf, entryStandsFor } from '../utils/identities.js';
 
 export class MasterContactService {
 
@@ -472,15 +472,12 @@ export class MasterContactService {
         }
       }
 
-      // Re-sharing is safe: a player who already holds this entry (linked by
-      // master id, by email, or by the linked actor) isn't given a duplicate.
+      // Re-sharing is safe: a player who already holds THIS identity (its master id or its address) isn't given a
+      // duplicate. Another identity of the same character is a different contact — sharing an alias to someone
+      // who holds the main address adds it.
       const existing = await contactRepo.getContacts(actorId);
-      const emailLc = (contact.email || '').toLowerCase().trim();
-      const dupe = existing.find(pc =>
-        pc.masterContactId === contact.id ||
-        (emailLc && (pc.email || '').toLowerCase().trim() === emailLc) ||
-        (contact.actorId && (pc.actorId === contact.actorId || pc.linkedActorId === contact.actorId))
-      );
+      const isAlias = !!identityRole(this.getAll(), contact)?.isAlias;
+      const dupe = existing.find(pc => entryStandsFor(pc, contact, { isAlias }));
       if (dupe) {
         log.debug(`pushToPlayer: actor ${actorId} already has ${contact.name} — skipped`);
         return { success: true, existing: true, contact: dupe };

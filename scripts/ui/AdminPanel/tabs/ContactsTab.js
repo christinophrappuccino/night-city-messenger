@@ -369,7 +369,7 @@ export class ContactsTab extends BaseTab {
     }
     const pcs = this._pcs();
     const lists = Object.fromEntries(pcs.map((p) => [p.actorId, p.list]));
-    const kx = knowIndex(lists);
+    const kx = knowIndex(lists, { contacts: all });
     const mail = this._mail(all);
     const npcs = all.filter((c) => !this._isPcContact(c));
     const actorsWithMail = (game.actors?.contents ?? [])
@@ -616,7 +616,8 @@ export class ContactsTab extends BaseTab {
       needs: f.issues.map((i) => ({ kind: i.kind, text: i.text, isAuto: i.kind === 'auto', isDup: i.kind === 'dup' })),
       mail: m?.waiting ? { count: m.waiting, label: `${m.waiting} message${m.waiting === 1 ? '' : 's'} from players waiting for ${c.name}` } : null,
       recent: (m?.recent || []).slice(0, 3).map((r) => ({ ...r, when: r.ts ? this.app._relativeTime?.(r.ts) || '' : '' })),
-      who: pcs.map((p) => ({ actorId: p.actorId, name: p.name, img: p.img, initials: p.initials, on: kx.knows(c, p.actorId) })),
+      who: pcs.map((p) => ({ actorId: p.actorId, name: p.name, img: p.img, initials: p.initials, on: kx.knows(c, p.actorId),
+        held: [...new Set(kx.entriesFor(c, p.actorId).map((e) => e.email).filter(Boolean))].join(', ') })),
       whoLabel: role?.isAlias ? 'this alias' : 'them',
       hasPcs: pcs.length > 0,
       trust: {
@@ -2176,7 +2177,7 @@ export class ContactsTab extends BaseTab {
     const repo = this.contactRepository || game.nightcity?.contactRepository;
     let list = [];
     try { list = game.actors?.get(actorId)?.getFlag?.(FLAG, 'contacts') ?? []; } catch { list = []; }
-    const hits = knowIndex({ [actorId]: list }).entriesFor(c, actorId);
+    const hits = knowIndex({ [actorId]: list }, { contacts: svc.getAll?.() || [] }).entriesFor(c, actorId);
     for (const e of hits) await repo?.removeContact?.(actorId, e.id);
     return { success: true, removed: hits.length };
   }
@@ -2185,7 +2186,7 @@ export class ContactsTab extends BaseTab {
     const c = this._contact(cid);
     let list = [];
     try { list = game.actors?.get(actorId)?.getFlag?.(FLAG, 'contacts') ?? []; } catch { list = []; }
-    return knowIndex({ [actorId]: list }).knows(c, actorId);
+    return knowIndex({ [actorId]: list }, { contacts: this.masterContactService?.getAll?.() || [] }).knows(c, actorId);
   }
 
   async _toggleKnows(cid, actorId, { record = true } = {}) {

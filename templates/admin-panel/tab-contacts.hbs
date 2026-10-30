@@ -370,7 +370,7 @@
         <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-users"></i>Who knows {{whoLabel}}<span class="r">click to share or take back</span></div>
           {{#if hasPcs}}
             <div class="ncm-ct2-who">
-              {{#each who}}<span class="ncm-ct2-pc {{#if on}}on{{/if}}" data-action="tabAct" data-op="whoToggle" data-id="{{../id}}" data-actor="{{actorId}}" data-tooltip="{{#if on}}Take back from {{name}}{{else}}Share with {{name}}{{/if}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if on}}<span class="s">✓</span>{{/if}}</span>{{/each}}
+              {{#each who}}<span class="ncm-ct2-pc {{#if on}}on{{/if}}" data-action="tabAct" data-op="whoToggle" data-id="{{../id}}" data-actor="{{actorId}}" data-tooltip="{{#if on}}{{name}} has {{#if held}}{{held}}{{else}}this contact{{/if}} — click to take it back{{else}}Share with {{name}}{{/if}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if on}}<span class="s">✓</span>{{/if}}</span>{{/each}}
             </div>
           {{else}}<div class="ncm-ct2-quiet">No player characters yet.</div>{{/if}}
         </div>

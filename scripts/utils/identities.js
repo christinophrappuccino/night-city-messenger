@@ -77,6 +77,26 @@ export function identityRole(contacts, contact) {
 }
 
 /**
+ * Does a player's own contact entry stand for this directory contact? An entry is ONE identity: matched by its
+ * directory id, else by its address. Only an entry with neither (a hand-made link) falls back to the linked
+ * character — and then only for the MAIN identity. Matching every identity by the shared character (the old rule)
+ * made sharing a main address mark each alias as known, and refused sharing an alias to someone who held the main.
+ * @param {object} entry   — a player's contact (masterContactId?, email?, actorId?, linkedActorId?)
+ * @param {object} contact — a directory contact
+ * @param {{isAlias?: boolean}} [o] — whether the contact is an alias (not the main identity) of its character
+ */
+export function entryStandsFor(entry, contact, { isAlias = false } = {}) {
+  if (!entry || !contact) return false;
+  if (entry.masterContactId && entry.masterContactId === contact.id) return true;
+  const a = String(contact.email || '').trim().toLowerCase();
+  const b = String(entry.email || '').trim().toLowerCase();
+  if (a && b) return a === b;
+  if (entry.masterContactId) return false;   // it names another directory entry
+  if (isAlias || !contact.actorId) return false;
+  return entry.actorId === contact.actorId || entry.linkedActorId === contact.actorId;
+}
+
+/**
  * The CONTACT INBOX an alias's mail belongs in — the root NPC contact of a
  * contact-only group. Null for a character's identities (they use the
  * character's inbox) and for a contact in no group (its own inbox, as ever).

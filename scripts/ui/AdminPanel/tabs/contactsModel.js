@@ -7,7 +7,7 @@
  * player characters, their contact lists, the mail) and hands plain objects in.
  */
 
-import { groupKeyOf, identitiesOfKey } from '../../../utils/identities.js';
+import { groupKeyOf, identitiesOfKey, identityRole, entryStandsFor } from '../../../utils/identities.js';
 
 /** Trust scale (the stored 0–5) with a token colour per level. */
 export const TRUST_LEVELS = [
@@ -59,28 +59,26 @@ export function isAutoAdded(c) {
 }
 
 /**
- * Does a player's own contact entry stand for this master contact?
- * Matches by master id, address, or the linked character (the ContactsTab
- * "Known by" rule since 2026-09).
+ * Does a player's own contact entry stand for this master contact? One identity per entry: its master id, else its
+ * address; the linked character only for an entry with neither, and only for the main identity (utils/identities.js).
+ * @param {{contacts?: object[]}} [o] — every master contact, so an alias is known as one
  */
-export function playerEntryMatches(entry, contact) {
-  if (!entry || !contact) return false;
-  if (entry.masterContactId && entry.masterContactId === contact.id) return true;
-  const e = lc(contact.email);
-  if (e && lc(entry.email) === e) return true;
-  if (contact.actorId && (entry.actorId === contact.actorId || entry.linkedActorId === contact.actorId)) return true;
-  return false;
+export function playerEntryMatches(entry, contact, { contacts = null } = {}) {
+  const isAlias = contacts ? !!identityRole(contacts, contact)?.isAlias : !!contact?.identityOf;
+  return entryStandsFor(entry, contact, { isAlias });
 }
 
 /**
  * Index of who knows whom: { knows(contact, actorId), entriesFor(contact, actorId) }.
  * @param {Object<string, object[]>} listsByActor — each PC's `contacts` flag
+ * @param {{contacts?: object[]}} [o] — every master contact (to tell an alias from its main)
  */
-export function knowIndex(listsByActor) {
+export function knowIndex(listsByActor, { contacts = null } = {}) {
   const lists = listsByActor || {};
+  const match = (e, c) => playerEntryMatches(e, c, { contacts });
   return {
-    entriesFor: (c, actorId) => (lists[actorId] || []).filter((e) => playerEntryMatches(e, c)),
-    knows: (c, actorId) => (lists[actorId] || []).some((e) => playerEntryMatches(e, c)),
+    entriesFor: (c, actorId) => (lists[actorId] || []).filter((e) => match(e, c)),
+    knows: (c, actorId) => (lists[actorId] || []).some((e) => match(e, c)),
   };
 }
 

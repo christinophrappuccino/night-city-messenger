@@ -3,6 +3,12 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.0.3] — 2026-10-30
+
+### Fixed
+- **Sharing one address of a character marked all of their aliases as shared.** Every alias of a character is linked to that character, and "who knows this contact" matched by the character — so after sharing the main address, Admin → Contacts showed the player as knowing every alias (Who knows them, Players → Who they know, the map and the table). A player's contact now stands for the one address they were given. Hovering a player in Who knows them says which address they have.
+- **Sharing an alias with a player who already had the main address did nothing.** It was treated as a duplicate of the main. It is now added as its own contact, and taking an alias back leaves the main address alone.
+
 ## [2.0.2] — 2026-10-29
 
 ### Fixed
