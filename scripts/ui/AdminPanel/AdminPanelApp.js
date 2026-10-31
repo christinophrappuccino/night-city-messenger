@@ -17,6 +17,7 @@ import { ToolsTab } from './tabs/ToolsTab.js';
 import { SpamTab } from './tabs/SpamTab.js';
 import { ShardsTab } from './tabs/ShardsTab.js';
 import { AccessTab } from './tabs/AccessTab.js';
+import { PhoneTab } from './tabs/PhoneTab.js';
 import { TerminalsTab } from './tabs/TerminalsTab.js';
 import { SecurityTab } from './tabs/SecurityTab.js';
 import { ContactsTab } from './tabs/ContactsTab.js';
@@ -127,6 +128,7 @@ export class AdminPanelApp extends BaseApplication {
         shards: new ShardsTab(this),
         terminals: new TerminalsTab(this),
         access: new AccessTab(this),
+        phone: new PhoneTab(this),
         security: new SecurityTab(this),
         spam: new SpamTab(this),
         tools: new ToolsTab(this),
@@ -479,6 +481,9 @@ export class AdminPanelApp extends BaseApplication {
       // Access points tab
       ...this.tabs.access.prepareContext(),
 
+      // Phone tab
+      ...this.tabs.phone.prepareContext(),
+
       // Security tab
       ...this.tabs.security.prepareContext(),
 
@@ -510,6 +515,8 @@ export class AdminPanelApp extends BaseApplication {
       messagesByPriority: { normal: 0, urgent: 0, critical: 0 },
       scheduledPending: this.schedulingService?.getPending()?.length ?? 0,
     };
+    // NPC lines ringing for the GM right now (the Phone tab badge)
+    try { const cs = game.nightcity?.callService; stats.callsRinging = cs ? cs.allCalls().filter((c) => c.state === 'ringing' && cs._ringsHere(c)).length : 0; } catch { stats.callsRinging = 0; }
 
     try {
       for (const actor of game.actors) {
@@ -1117,6 +1124,11 @@ export class AdminPanelApp extends BaseApplication {
       this._refreshIfTab('overview', 'contacts');
     });
     this.subscribe(EVENTS.CONTACT_UPDATED, () => this._debouncedRender());
+
+    // Calls — the Phone tab's switchboard + numbers follow every call event and line change
+    for (const ev of [EVENTS.CALL_RINGING, EVENTS.CALL_STARTED, EVENTS.CALL_ENDED, EVENTS.CALL_MISSED, EVENTS.LINE_UPDATED, EVENTS.CALL_LINE, EVENTS.VOICEMAIL_LEFT, EVENTS.CALL_LOGGED]) {
+      this.subscribe(ev, () => { if (this._activeTab === 'phone') this._debouncedRender(); });
+    }
 
     // Networks — with overview activity logging
     this.subscribe(EVENTS.NETWORK_CHANGED, (data) => {

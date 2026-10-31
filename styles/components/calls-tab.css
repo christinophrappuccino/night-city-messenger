@@ -1,0 +1,251 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Agent → Calls (templates/message-viewer/partials/calls-tab.hbs; mock dev/mockups/calls-tab-mock.html)
+   + the Messages chip row's Drafts / Scheduled chips. The player's theme throughout; fixed by MEANING in every
+   theme: Call green, missed red, voicemail amber. Every size follows the player's Text Size.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ncm-app .ncm-viewer { --calls-ok: #4be38a; --calls-miss: #ff5468; --calls-vm: #f7c948; }
+.ncm-app .ncm-viewer .ncm-viewer__primary-badge--alert { background: var(--calls-miss) !important; color: #000 !important; }
+/* Drafts + Scheduled at the end of the Messages chips: dashed — mail you have not sent, not mail you received */
+.ncm-app .ncm-viewer .ncm-pill--out { border-style: dashed; }
+.ncm-app .ncm-viewer .ncm-pill--out.ncm-pill--active { border-style: solid; }
+.ncm-app .ncm-viewer .ncm-viewer__pills-div { flex: none; width: 1px; height: 16px; margin: 0 3px; background: var(--ncm-border); }
+
+.ncm-app .ncm-calls { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); border-top: 1px solid var(--ncm-border); color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls.is-picker, .ncm-app .ncm-calls.is-off { grid-template-columns: 1fr; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-calls :where(button) { appearance: none !important; width: auto !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; line-height: 1 !important;
+  font-family: inherit; cursor: pointer; }
+.ncm-app .ncm-calls :where(button) i { margin: 0 !important; }
+.ncm-app .ncm-calls .dim { opacity: .55; }
+
+/* the signal line (the call screen's) */
+.ncm-app .ncm-calls-sig { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--ncm-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 6px color-mix(in srgb, var(--ncm-secondary) 45%, transparent); }
+.ncm-app .ncm-calls-sig.is-warn { color: var(--calls-miss); }
+
+/* ═══ left: the dialer ═══ */
+.ncm-app .ncm-calls-dl { display: flex; flex-direction: column; gap: 9px; padding: 12px 14px 14px; background: var(--ncm-bg-surface); border-right: 1px solid var(--ncm-border); min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-calls-as { display: flex; align-items: center; gap: 7px; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-as select { flex: 1; min-width: 0; height: calc(26px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); border: 1px dashed color-mix(in srgb, var(--ncm-secondary) 55%, transparent); font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-app .ncm-calls-chip { flex: 1; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px dashed color-mix(in srgb, var(--ncm-secondary) 55%, transparent); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; }
+.ncm-app .ncm-calls-mini { flex: none; width: calc(26px * var(--ncm-text-scale, 1)) !important; height: calc(26px * var(--ncm-text-scale, 1)) !important; padding: 0 !important; display: grid !important; place-items: center;
+  background: var(--ncm-bg-elevated) !important; color: var(--ncm-text-secondary) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; font-size: calc(11px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app .ncm-calls-mini:hover { color: var(--ncm-text-primary) !important; border-color: var(--ncm-border-active) !important; }
+.ncm-app .ncm-calls-mini.go { color: var(--calls-ok) !important; border-color: color-mix(in srgb, var(--calls-ok) 50%, transparent) !important; }
+/* the number box: the call screen's cut-corner name box */
+.ncm-app .ncm-calls-num, .ncm-app .ncm-calls-num .in { clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+.ncm-app .ncm-calls-num { padding: 1.5px; background: var(--ncm-secondary); }
+.ncm-app .ncm-calls-num .in { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: color-mix(in srgb, var(--ncm-secondary) 9%, var(--ncm-bg-elevated)); }
+.ncm-app .ncm-calls-num input { flex: 1; min-width: 0; height: calc(30px * var(--ncm-text-scale, 1)) !important; border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important;
+  font: 600 calc(19px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; letter-spacing: .06em; color: var(--ncm-text-primary) !important; text-align: left !important; }
+.ncm-app .ncm-calls-num input::placeholder { color: var(--ncm-text-muted); font-size: calc(14px * var(--ncm-text-scale, 1)); letter-spacing: .04em; }
+.ncm-app .ncm-calls-del { width: auto !important; padding: 4px !important; background: none !important; border: 0 !important; color: var(--ncm-text-secondary) !important; font-size: calc(14px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app .ncm-calls-match { min-height: calc(16px * var(--ncm-text-scale, 1)); display: flex; align-items: center; gap: 7px; font: 600 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-secondary); }
+/* keypad: the Agent's own straight-edged keys */
+.ncm-app .ncm-calls-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.ncm-app .ncm-calls-keys button { height: calc(36px * var(--ncm-text-scale, 1)) !important; padding: 0 !important; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important;
+  font: 600 calc(15px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; transition: background .12s, border-color .12s; }
+.ncm-app .ncm-calls-keys button small { font: calc(7.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .12em; color: var(--ncm-text-muted); min-height: 8px; }
+.ncm-app .ncm-calls-keys button:hover { border-color: var(--ncm-border-active) !important; }
+.ncm-app .ncm-calls-keys button.hit { background: color-mix(in srgb, var(--ncm-secondary) 26%, var(--ncm-bg-elevated)) !important; border-color: var(--ncm-secondary) !important; }
+
+/* ═══ the Call button (one button: the ring dial, who you're calling, the Enter key) ═══ */
+.ncm-app .ncm-calls-cb { --cbc: var(--calls-ok); margin-top: auto !important; width: 100% !important; display: block !important; padding: 1.5px !important; position: relative;
+  background: color-mix(in srgb, var(--cbc) 85%, #0b2015) !important; border: 0 !important; border-radius: 0 !important;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+.ncm-app .ncm-calls-cb__in { position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; padding: 7px 12px 7px 8px; text-align: left;
+  background: color-mix(in srgb, var(--cbc) 72%, #0b2015); transition: background .25s;
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 11px 100%, 0 calc(100% - 11px)); }
+.ncm-app .ncm-calls-cb__in > * { position: relative; z-index: 1; }
+.ncm-app .ncm-calls-cb__dial { --bc: #062614; position: relative; flex: none; width: 44px; height: 44px; display: grid; place-items: center; color: #062614; }
+.ncm-app .ncm-calls-cb__dial svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ncm-app .ncm-calls-cb__dial .ncm-ch-seg { opacity: 1; }
+.ncm-app .ncm-calls-cb__dial > i { position: relative; font-size: calc(14px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-calls-cb__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ncm-app .ncm-calls-cb__tx b { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .22em; text-transform: uppercase; color: #062614; }
+.ncm-app .ncm-calls-cb__tx .who { max-width: 100%; font: 800 calc(18px * var(--ncm-text-scale, 1))/1.05 var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: #02150a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-calls-cb__tx small { font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: #062614; }
+.ncm-app .ncm-calls-cb kbd { flex: none; display: grid; place-items: center; width: 26px; height: 26px; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none;
+  font: 700 calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--cbc); background: #062614; clip-path: polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%); }
+.ncm-app .ncm-calls-cb:hover:not(:disabled) .ncm-calls-cb__in { background: var(--cbc); }
+.ncm-app .ncm-calls-cb:hover:not(:disabled) { background: color-mix(in srgb, var(--cbc) 60%, #fff) !important; }
+/* can't call: an outline that says why */
+.ncm-app .ncm-calls-cb:disabled { --cbc: var(--ncm-border-active, #4a5263); cursor: default; background: var(--cbc) !important; opacity: 1 !important; }
+.ncm-app .ncm-calls-cb:disabled .ncm-calls-cb__in { background: var(--ncm-bg-elevated); }
+.ncm-app .ncm-calls-cb:disabled :is(.ncm-calls-cb__tx b, .ncm-calls-cb__tx small) { color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-cb:disabled .ncm-calls-cb__tx .who { color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-cb:disabled .ncm-calls-cb__dial { --bc: var(--ncm-text-muted); color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-cb:disabled .ncm-calls-cb__dial .ncm-ch-seg { opacity: .15; }
+.ncm-app .ncm-calls-cb:disabled kbd { display: none; }
+.ncm-app .ncm-calls-cb[data-nosig="1"] { --cbc: var(--calls-miss); }
+.ncm-app .ncm-calls-cb[data-nosig="1"] .ncm-calls-cb__tx b, .ncm-app .ncm-calls-cb[data-nosig="1"] .ncm-calls-cb__dial { color: var(--calls-miss); --bc: var(--calls-miss); }
+/* arming: the fill wipes in from the left behind a white edge as a number appears; drains as it is deleted */
+.ncm-app .ncm-calls-cb__in::before { content: ''; position: absolute; inset: 0; z-index: 0; background: color-mix(in srgb, var(--calls-ok) 72%, #0b2015); transform: scaleX(0); transform-origin: left; }
+.ncm-app .ncm-calls-cb.arming .ncm-calls-cb__in::before { animation: ncm-calls-arm .42s cubic-bezier(.2,.8,.2,1) both; }
+.ncm-app .ncm-calls-cb.arming .ncm-calls-cb__in::after { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; left: 0; z-index: 2; background: #fff; box-shadow: 0 0 10px #fff; animation: ncm-calls-edge .42s cubic-bezier(.2,.8,.2,1) both; }
+.ncm-app .ncm-calls-cb.disarming .ncm-calls-cb__in::before { transform-origin: right; animation: ncm-calls-disarm .3s ease-in both; }
+.ncm-app .ncm-calls-cb.arming kbd { animation: ncm-calls-keyin .3s .3s cubic-bezier(.2,1.5,.4,1) both; }
+@keyframes ncm-calls-arm { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes ncm-calls-edge { 0% { left: 0; opacity: 1; } 90% { left: calc(100% - 2px); opacity: 1; } 100% { left: calc(100% - 2px); opacity: 0; } }
+@keyframes ncm-calls-disarm { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes ncm-calls-keyin { from { transform: scale(0); opacity: 0; } }
+
+/* ═══ right: speed dial + the log ═══ */
+.ncm-app .ncm-calls-lg { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.ncm-app .ncm-calls-sd { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--ncm-border); overflow-x: auto; overflow-y: hidden; }
+.ncm-app .ncm-calls-sd .k { flex: none; font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-text-muted); writing-mode: vertical-rl; transform: rotate(180deg); }
+.ncm-app .ncm-calls-sdp { flex: none; display: flex !important; flex-direction: column; align-items: center; gap: 4px; width: 58px !important; padding: 0 !important; background: none !important; border: 0 !important; }
+.ncm-app .ncm-calls-sdp .face { width: 38px; height: 38px; border-radius: 50%; background: var(--ncm-bg-elevated) center/cover; border: 1.5px solid var(--ncm-secondary); display: grid; place-items: center;
+  font: 700 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); color: var(--ncm-secondary); }
+.ncm-app .ncm-calls-sdp .nm { max-width: 58px; font: 600 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-calls-sdp:hover .face { border-color: var(--calls-ok); }
+.ncm-app .ncm-calls-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-calls-day { position: sticky; top: 0; z-index: 1; padding: 5px 12px; font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ncm-text-muted); background: color-mix(in srgb, var(--ncm-bg-base) 94%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+.ncm-app .ncm-calls-rowc { --dc: var(--ncm-secondary); display: grid; grid-template-columns: 24px 32px minmax(0, 1fr) auto auto; gap: 9px; align-items: center; padding: 7px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); border-left: 3px solid transparent; }
+.ncm-app .ncm-calls-rowc:hover { background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); }
+.ncm-app .ncm-calls-rowc.is-in { --dc: var(--calls-ok); } .ncm-app .ncm-calls-rowc.is-miss { --dc: var(--calls-miss); border-left-color: var(--calls-miss); }
+.ncm-app .ncm-calls-rowc .dir { width: 22px; height: 22px; display: grid; place-items: center; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--dc); background: color-mix(in srgb, var(--dc) 14%, transparent); border-radius: 2px; }
+.ncm-app .ncm-calls-rowc .face { width: 32px; height: 32px; border-radius: 50%; background: var(--ncm-bg-elevated) center/cover; border: 1.5px solid var(--ncm-border-active, var(--ncm-border)); display: grid; place-items: center;
+  font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-rowc .face.unknown { border-style: dashed; }
+.ncm-app .ncm-calls-rowc .tx { min-width: 0; }
+.ncm-app .ncm-calls-rowc .nm { display: flex; align-items: center; gap: 6px; font: 700 calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-calls-rowc.is-miss .nm { color: color-mix(in srgb, var(--calls-miss) 75%, var(--ncm-text-primary)); }
+.ncm-app .ncm-calls-rowc .tag { font: 700 calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .1em; padding: 1px 5px; color: #000; background: var(--calls-miss); }
+.ncm-app .ncm-calls-rowc .sub { display: flex; align-items: center; gap: 7px; margin-top: 2px; font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-rowc .sub .k { color: var(--dc); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.ncm-app .ncm-calls-rowc .sub .net { color: var(--ncm-text-muted); text-transform: uppercase; }
+.ncm-app .ncm-calls-rowc .tm { font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-none { padding: 30px 12px; text-align: center; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-pg { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-surface);
+  font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-pg b { color: var(--ncm-text-primary); } .ncm-app .ncm-calls-pg .sp { flex: 1; } .ncm-app .ncm-calls-pg .pgn { color: var(--ncm-text-primary); }
+
+/* ═══ the number picker ═══ */
+.ncm-app .ncm-calls-gn { width: min(540px, 100%); margin: 0 auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.ncm-app .ncm-calls-gn h3 { margin: 0; border: 0; font: 800 calc(17px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-gn p { margin: 0; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-row { display: flex; align-items: center; gap: 8px; }
+.ncm-app .ncm-calls-row .lbl { font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-row .ln { flex: 1; height: 1px; background: var(--ncm-border); }
+.ncm-app .ncm-calls-shuf { display: inline-flex !important; align-items: center; gap: 6px; padding: 4px 9px !important; background: none !important; border: 1px dashed color-mix(in srgb, var(--ncm-secondary) 55%, transparent) !important;
+  color: var(--ncm-secondary) !important; font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; letter-spacing: .1em; text-transform: uppercase; }
+.ncm-app .ncm-calls-reg { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.ncm-app .ncm-calls-reg select { height: calc(28px * var(--ncm-text-scale, 1)); width: auto; background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); border: 1px solid var(--ncm-border); font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+.ncm-app .ncm-calls-codes { display: flex; flex-wrap: wrap; gap: 5px; }
+.ncm-app .ncm-calls-codes button { padding: 4px 8px !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-secondary) !important;
+  font: 700 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; }
+.ncm-app .ncm-calls-codes button small { margin-left: 4px; font-weight: 400; font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-codes button.on { background: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; color: var(--ncm-text-inverse, #04161a) !important; }
+.ncm-app .ncm-calls-codes button.on small { color: inherit; }
+.ncm-app .ncm-calls-hint { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--calls-vm); }
+.ncm-app .ncm-calls-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.ncm-app .ncm-calls-opt, .ncm-app .ncm-calls-opt .in { clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+.ncm-app .ncm-calls-opt { display: block !important; width: 100% !important; height: auto !important; padding: 1.5px !important; background: var(--ncm-border) !important; border: 0 !important; border-radius: 0 !important; text-align: left; }
+.ncm-app .ncm-calls-opt .in { width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; background: var(--ncm-bg-surface); }
+.ncm-app .ncm-calls-opt .num { font: 600 calc(16px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .05em; color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-opt small { font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-opt.on { background: var(--ncm-secondary) !important; } .ncm-app .ncm-calls-opt.on .in { background: color-mix(in srgb, var(--ncm-secondary) 12%, var(--ncm-bg-elevated)); }
+.ncm-app .ncm-calls-opt.on small { color: var(--ncm-secondary); }
+.ncm-app .ncm-calls-own { display: flex; gap: 7px; }
+.ncm-app .ncm-calls-own .cc { flex: none; display: grid; place-items: center; padding: 0 10px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); font: 600 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-own input { flex: 1; height: calc(34px * var(--ncm-text-scale, 1)) !important; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important; color: var(--ncm-text-primary) !important;
+  font: 600 calc(15px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; text-align: left !important; padding: 0 10px !important; }
+.ncm-app .ncm-calls-ft { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.ncm-app .ncm-calls-ft small { flex: 1; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-btn { display: inline-flex !important; align-items: center; gap: 7px; padding: 8px 14px !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px;
+  color: var(--ncm-text-secondary) !important; font: 700 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; letter-spacing: .1em; text-transform: uppercase; }
+.ncm-app .ncm-calls-btn.go { color: #04130b !important; background: color-mix(in srgb, var(--calls-ok) 80%, #0b2015) !important; border-color: var(--calls-ok) !important; }
+/* off / empty */
+.ncm-app .ncm-calls-empty { margin: auto; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.ncm-app .ncm-calls-empty h3 { margin: 0; border: 0; font: 800 calc(16px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .14em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-empty p { margin: 0; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-bigdial { --bc: var(--ncm-text-muted); position: relative; width: 80px; height: 80px; display: grid; place-items: center; color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-bigdial svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ncm-app .ncm-calls-bigdial > i { position: relative; font-size: 24px; }
+
+/* narrow Agent: one column */
+@container (max-width: 560px) {
+  .ncm-app .ncm-calls { grid-template-columns: 1fr; overflow-y: auto; }
+  .ncm-app .ncm-calls-dl { border-right: 0; border-bottom: 1px solid var(--ncm-border); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ncm-app .ncm-calls *, .ncm-app .ncm-calls *::before, .ncm-app .ncm-calls *::after { animation: none !important; }
+}
+
+/* Call buttons elsewhere: contacts (card, list row, detail) — the call green in every theme */
+.ncm-app .ncm-action-btn--call { background: color-mix(in srgb, #4be38a 10%, transparent) !important; border-color: color-mix(in srgb, #4be38a 40%, transparent) !important; color: #4be38a !important; }
+.ncm-app .ncm-action-btn--call:hover { background: color-mix(in srgb, #4be38a 20%, transparent) !important; }
+.ncm-app :is(.ncm-card__action, .ncm-list-item__action)[data-action="callContact"] { color: #4be38a !important; }
+.ncm-app .ncm-btn.ncm-btn--call { color: #4be38a !important; border-color: color-mix(in srgb, #4be38a 40%, transparent) !important; }
+.ncm-app .ncm-btn.ncm-btn--call:hover { background: color-mix(in srgb, #4be38a 14%, transparent) !important; }
+
+/* Theme Customizer → Effects → Calls (the player's call-screen colours + silent mode; saved as you pick) */
+.ncm-app .ncm-tc__callschemes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 0 16px 8px; }
+.ncm-tc button.ncm-tc__callscheme { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important;
+  display: flex !important; flex-direction: column; align-items: flex-start; gap: 4px; padding: 8px !important; text-align: left; cursor: pointer;
+  background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-secondary) !important; line-height: 1.2 !important; }
+.ncm-tc button.ncm-tc__callscheme b { font: 700 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-tc button.ncm-tc__callscheme small { font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-tc button.ncm-tc__callscheme .sw { display: flex; gap: 3px; }
+.ncm-tc button.ncm-tc__callscheme .sw i { width: 18px; height: 8px; border-radius: 1px; }
+.ncm-tc button.ncm-tc__callscheme:hover { border-color: var(--ncm-border-active, var(--ncm-text-muted)) !important; }
+.ncm-tc button.ncm-tc__callscheme.is-on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 10%, var(--ncm-bg-surface)) !important; }
+.ncm-app .ncm-tc__callcustom.is-off { display: none; }
+.ncm-app .ncm-tc__callcustom input[type=color] { width: 40px; height: calc(24px * var(--ncm-text-scale, 1)); padding: 0; border: 1px solid var(--ncm-border); background: none; cursor: pointer; }
+
+/* phase 2: a typed call's transcript in the log (a fold — the row stays one line until opened) */
+.ncm-app .ncm-calls-tr { margin-top: 4px; }
+.ncm-app .ncm-calls-tr summary { cursor: pointer; width: max-content; font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-secondary); }
+.ncm-app .ncm-calls-tr summary i { margin-right: 4px; }
+.ncm-app .ncm-calls-tr[open] { padding: 6px 8px; border-left: 2px solid var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); }
+.ncm-app .ncm-calls-tr .l { font: calc(12.5px * var(--ncm-text-scale, 1))/1.45 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); white-space: normal; }
+.ncm-app .ncm-calls-tr .l b { font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-tr .l.mine b { color: var(--ncm-secondary); }
+
+/* phase 3a — the voicemail list (amber, fixed by meaning) and My line */
+.ncm-app .ncm-viewer .ncm-pill__badge--vm { background: var(--calls-vm) !important; color: #000 !important; }
+.ncm-app .ncm-calls-vm { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 9px; align-items: start; padding: 9px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); border-left: 3px solid transparent; }
+.ncm-app .ncm-calls-vm.is-new { border-left-color: var(--calls-vm); background: color-mix(in srgb, var(--calls-vm) 5%, transparent); }
+.ncm-app .ncm-calls-vm .dir { width: 22px; height: 22px; display: grid; place-items: center; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--calls-vm); background: color-mix(in srgb, var(--calls-vm) 14%, transparent); border-radius: 2px; }
+.ncm-app .ncm-calls-vm .tx { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ncm-app .ncm-calls-vm .nm { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font: 700 calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-vm .tag.vm { background: var(--calls-vm); color: #000; }
+.ncm-app .ncm-calls-vm .for { font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); text-transform: none; letter-spacing: 0; }
+.ncm-app .ncm-calls-vm .msg { font: calc(13px * var(--ncm-text-scale, 1))/1.45 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); white-space: normal; overflow-wrap: anywhere; }
+.ncm-app .ncm-calls-vm .sub { font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-vm .acts { display: flex; gap: 4px; }
+.ncm-app .ncm-calls-seg { display: inline-flex; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; align-self: flex-start; }
+.ncm-app .ncm-calls-seg button { padding: 6px 12px !important; border: 0 !important; border-right: 1px solid var(--ncm-border) !important; background: var(--ncm-bg-elevated) !important; color: var(--ncm-text-secondary) !important;
+  font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; letter-spacing: .1em; text-transform: uppercase; }
+.ncm-app .ncm-calls-seg button:last-child { border-right: 0 !important; }
+.ncm-app .ncm-calls-seg button.on { background: var(--ncm-secondary) !important; color: var(--ncm-text-inverse, #04161a) !important; }
+.ncm-app .ncm-calls-mltext { width: 100%; min-height: calc(54px * var(--ncm-text-scale, 1)); resize: vertical; padding: 7px 9px; background: var(--ncm-bg-surface); color: var(--ncm-text-primary);
+  border: 1px solid var(--ncm-border); border-radius: 2px; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+.ncm-app .ncm-calls-ml[data-kind="default"] .ncm-calls-mltext { opacity: .55; }
+.ncm-app .ncm-calls-ml:not([data-kind="tts"]) .ncm-calls-mlvoice { display: none; }
+.ncm-app .ncm-calls-mlvoice { display: flex; align-items: center; gap: 8px; margin: 0; }
+.ncm-app .ncm-calls-mlvoice select { flex: 1; height: calc(28px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); border: 1px solid var(--ncm-border); font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+.ncm-app .ncm-calls-mlprev { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px dashed color-mix(in srgb, var(--calls-vm) 50%, var(--ncm-border)); }
+.ncm-app .ncm-calls-mlprev .strip { flex: 1; min-width: 0; font: italic calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-mlchk { display: flex; align-items: flex-start; gap: 9px; margin: 0; text-transform: none; cursor: pointer; }
+.ncm-app .ncm-calls-mlchk input { margin: 3px 0 0; flex: none; }
+.ncm-app .ncm-calls-mlchk span { display: flex; flex-direction: column; gap: 1px; }
+.ncm-app .ncm-calls-mlchk b { font: 700 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-mlchk small { font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+
+/* phase 3b: voice messages + a recorded greeting */
+.ncm-app .ncm-calls-audio { width: 100%; max-width: 360px; height: calc(30px * var(--ncm-text-scale, 1)); color-scheme: dark; }
+.ncm-app .ncm-calls-vm .msg.dim { font-style: italic; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-mlrec { display: none; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ncm-app .ncm-calls-ml[data-kind="recorded"] .ncm-calls-mlrec { display: flex; }
+.ncm-app .ncm-calls-mlrec .t { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-ml.is-recording [data-calls-ml-rec] { color: #fff !important; background: #ff4b4b !important; border-color: #ff4b4b !important; }
+.ncm-app .ncm-calls-ml[data-kind="recorded"] .ncm-calls-mltext { opacity: .8; }
+
+/* phase 4: a withheld caller, why a call dropped */
+.ncm-calls-rowc .sub .anon { color: var(--ncm-purple, var(--ncm-secondary)); text-transform: uppercase; letter-spacing: .04em; font-family: var(--ncm-font-mono); font-size: .9em; }
+.ncm-calls-rowc .why { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-size: calc(11.5px * var(--ncm-text-scale, 1)); color: var(--ncm-danger, var(--ncm-primary)); }

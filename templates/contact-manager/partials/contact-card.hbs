@@ -39,6 +39,11 @@
         <i class="fas fa-share-nodes"></i>
       </button>
 
+      {{#if _callNumber}}
+        <button class="ncm-card__action" title="Call {{_callNumber}}" data-action="callContact" data-number="{{_callNumber}}" data-contact-id="{{id}}">
+          <i class="fas fa-phone"></i>
+        </button>
+      {{/if}}
       {{!-- Message button: disabled if unverified --}}
       {{#if _canMessage}}
         <button class="ncm-card__action"

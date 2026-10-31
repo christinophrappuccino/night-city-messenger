@@ -273,6 +273,7 @@
           <div class="ncm-ct2-acts">
             <button type="button" class="ncm-ct2-btn ncm-ct2-btn--primary" data-action="tabAct" data-op="sendAs" data-id="{{id}}"><i class="fas fa-paper-plane"></i> Send as</button>
             {{#unless sys}}<button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="message" data-id="{{id}}"><i class="fas fa-envelope"></i> Message</button>{{/unless}}
+            {{#if callNumber}}<button type="button" class="ncm-ct2-btn ncm-ct2-btn--call" data-action="tabAct" data-op="callAs" data-id="{{id}}" data-tooltip="Ring a player's character as {{name}} · {{callNumber}}"><i class="fas fa-phone"></i> Call as</button>{{/if}}
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="inbox" data-id="{{id}}"><i class="fas fa-inbox"></i> Inbox</button>
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="edit" data-id="{{id}}"><i class="fas fa-pen"></i> Edit</button>
             <span class="ncm-ct2-morewrap">
@@ -373,6 +374,18 @@
               {{#each who}}<span class="ncm-ct2-pc {{#if on}}on{{/if}}" data-action="tabAct" data-op="whoToggle" data-id="{{../id}}" data-actor="{{actorId}}" data-tooltip="{{#if on}}{{name}} has {{#if held}}{{held}}{{else}}this contact{{/if}} — click to take it back{{else}}Share with {{name}}{{/if}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if on}}<span class="s">✓</span>{{/if}}</span>{{/each}}
             </div>
           {{else}}<div class="ncm-ct2-quiet">No player characters yet.</div>{{/if}}
+          <div class="ncm-ct2-whonpc"><span class="lb">NPCs</span>
+            {{#each npcWho}}<span class="ncm-ct2-pc on" data-action="tabAct" data-op="npcWhoDel" data-id="{{tid}}" data-npc="{{npcId}}" data-tooltip="Take back from {{name}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}<span class="s">✓</span></span>{{/each}}
+            <button type="button" class="ncm-ct2-btn ncm-ct2-btn--sm" data-action="tabAct" data-op="npcWhoAdd" data-id="{{id}}"><i class="fas fa-share-nodes"></i> Share with an NPC…</button>
+          </div>
+        </div>
+
+        <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-address-book"></i>Who {{name}} knows<span class="r">their own contacts — used when you write or call as them</span></div>
+          <div class="ncm-ct2-who">
+            {{#each knows}}<span class="ncm-ct2-pc on" data-action="tabAct" data-op="knowsDel" data-id="{{npcId}}" data-target="{{id}}" data-tooltip="Take {{name}} off the list">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if alias}} <span class="ncm-tagp is-secret">alias</span>{{/if}}{{#if pc}} <span class="ncm-tagp is-plain">player</span>{{/if}}<span class="s">✓</span></span>{{/each}}
+            <button type="button" class="ncm-ct2-btn ncm-ct2-btn--sm" data-action="tabAct" data-op="knowsAdd" data-id="{{id}}"><i class="fas fa-plus"></i> Add contacts…</button>
+          </div>
+          {{#unless knows.length}}<div class="ncm-ct2-quiet">{{name}} doesn't know anyone yet. The list is theirs alone — players never see it.</div>{{/unless}}
         </div>
 
         <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-handshake"></i>Trust<span class="r">how {{name}} sees each of them</span></div>

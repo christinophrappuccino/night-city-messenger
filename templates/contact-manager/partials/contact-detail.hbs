@@ -64,6 +64,12 @@
                   data-action="sendMessage" data-contact-id="{{id}}">
             <i class="fas fa-envelope"></i> Message
           </button>
+          {{#if _callNumber}}
+          <button class="ncm-action-btn ncm-action-btn--call" data-action="callContact" data-number="{{_callNumber}}" data-contact-id="{{id}}"
+                  data-tooltip="Call {{_callNumber}}" data-tooltip-direction="UP">
+            <i class="fas fa-phone"></i> Call
+          </button>
+          {{/if}}
           <button class="ncm-action-btn ncm-action-btn--ghost"
                   data-action="editContact" data-contact-id="{{id}}">
             <i class="fas fa-pen"></i> Edit

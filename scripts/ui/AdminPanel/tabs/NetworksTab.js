@@ -65,6 +65,7 @@ const LOG_KINDS = [
   { value: 'lockout', label: 'Lockouts', types: ['lockout'] },
   { value: 'node', label: 'Nodes', types: ['node'] },
   { value: 'scene', label: 'Scene moves', types: ['scene_move'] },
+  { value: 'call', label: 'Calls', types: ['call'] },
   { value: 'trace', label: 'Traces', types: ['trace', 'message_trace', 'shard_trace'] },
   { value: 'manual', label: 'Notes' },
 ];
@@ -1009,19 +1010,19 @@ export class NetworksTab extends BaseTab {
       network_switch: ['fa-arrows-rotate', 'info'], hack: ['fa-skull-crossbones', 'bad'], manual: ['fa-pen', 'note'],
       malware: ['fa-virus', 'bad'], system: ['fa-tower-broadcast', 'info'], trace: ['fa-eye', 'warn'],
       message_trace: ['fa-eye', 'warn'], shard_trace: ['fa-satellite-dish', 'warn'],
-      node: ['fa-tower-cell', 'warn'], scene_move: ['fa-person-walking', 'info'],
+      node: ['fa-tower-cell', 'warn'], scene_move: ['fa-person-walking', 'info'], call: ['fa-phone', 'info'],
     };
     const VERBS = {
       connect: 'connected to', disconnect: 'disconnected from', auth_success: 'logged in to', auth_failure: 'failed to log in to',
       auth_fail: 'failed to log in to', lockout: 'was locked out of', dead_zone: 'lost signal on', network_switch: 'switched to',
       hack: 'attempted a hack on', manual: 'note on', malware: 'malware found on', system: 'system event on',
       trace: 'was traced on', message_trace: 'sent a traced message on', shard_trace: 'triggered a shard trace on',
-      node: 'at a node of', scene_move: 'moved scene, on',
+      node: 'at a node of', scene_move: 'moved scene, on', call: 'made a call on',
     };
     const TAG = {
       connect: 'Connect', disconnect: 'Disconnect', auth_success: 'Login', auth_failure: 'Failed login', auth_fail: 'Failed login',
       lockout: 'Lockout', dead_zone: 'Dead zone', network_switch: 'Switch', hack: 'Hack', manual: 'Note', malware: 'Malware',
-      system: 'System', trace: 'Trace', message_trace: 'Trace', shard_trace: 'Shard trace', node: 'Node', scene_move: 'Moved',
+      system: 'System', trace: 'Trace', message_trace: 'Trace', shard_trace: 'Shard trace', node: 'Node', scene_move: 'Moved', call: 'Call',
     };
     const [icon, tone] = BADGE[type] ?? ['fa-circle-info', 'muted'];
     const extra = e.extra ?? {};

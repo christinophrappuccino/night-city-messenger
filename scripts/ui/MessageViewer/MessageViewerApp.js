@@ -46,6 +46,7 @@ import { selfKeys } from '../../utils/participants.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
 import { DRAFTS_FLAG, readDrafts, draftRecipientName, draftLabel, draftKind, relativeAge } from '../../utils/drafts.js';
+import { buildCallsContext, wireCallsTab, handleCallsAction, missedCount } from './callsTab.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
 
@@ -92,8 +93,8 @@ const MESSAGE_FILTERS = new Set(['inbox', 'unread', 'sent', 'saved', 'trash', 's
 function getPrimaryTab(filter) {
   if (MESSAGE_FILTERS.has(filter)) return 'messages';
   if (filter === 'shards') return 'shards';
-  if (filter === 'scheduled') return 'scheduled';
-  if (filter === 'drafts') return 'drafts';
+  if (filter === 'calls') return 'calls';
+  // Scheduled and Drafts are chips inside Messages (2026-10-29, dev: "three tabs — Messages · Calls · Shards")
   return 'messages';
 }
 
@@ -641,6 +642,13 @@ export class MessageViewerApp extends BaseApplication {
     const draftItems = this._buildDraftItems();
     counts.drafts = draftItems.length;
 
+    // ── Calls (the tab is built only while it is open; the badge = unseen missed calls) ──
+    let calls = null;
+    try {
+      counts.callsMissed = await missedCount(this);
+      if (getPrimaryTab(this.currentFilter) === 'calls') calls = await buildCallsContext(this);
+    } catch (err) { console.warn('NCM | Calls tab failed:', err); calls = { off: true, reason: 'The phone could not load.' }; }
+
     // ── Selected message enrichment ──
     let selectedMessage = null;
     if (this.selectedMessageId) {
@@ -843,6 +851,8 @@ export class MessageViewerApp extends BaseApplication {
       // that is who the Encoder will act as when it opens from here.
       canEncode: canEncodeShard(game.actors?.get(this.actorId) || null).ok,
       draftItems,
+      calls,
+      callsEnabled: !!game.nightcity?.callService?.enabled,
 
       // Layout
       density: this.density,
@@ -878,6 +888,11 @@ export class MessageViewerApp extends BaseApplication {
     // only run when the LIST ITSELF changed (folder / filter / sort / search /
     // page / character), never when you merely select a message inside it.
     this._stampMotion(context);
+    if (context.calls) {
+      wireCallsTab(this, html);
+      // opening the tab clears the "new" missed calls (after the list has shown them once)
+      if (context.counts?.callsMissed) game.nightcity?.callService?.markSeen?.(this.actorId);
+    }
 
     // Keep the frame title in sync with the active character — the window frame
     // builds once, but the singleton viewer switches actors, so refresh it here.
@@ -1362,6 +1377,7 @@ export class MessageViewerApp extends BaseApplication {
 
     const action = target.dataset.action;
     const messageId = target.closest('[data-message-id]')?.dataset.messageId;
+    if (action.startsWith('calls-')) { await handleCallsAction(this, action, target); return; }
 
     switch (action) {
       // ── Navigation ──
@@ -1411,6 +1427,9 @@ export class MessageViewerApp extends BaseApplication {
       // ── Message Actions ──
       case 'reply-message':
         this._replyToMessage(messageId);
+        break;
+      case 'call-sender':
+        if (target.dataset.number) game.nightcity?.placeCall?.(target.dataset.number, { actorId: this.actorId });
         break;
       case 'reply-all-message':
         this._replyToMessage(messageId, { all: true });
@@ -1681,11 +1700,11 @@ export class MessageViewerApp extends BaseApplication {
       // ── v3.2: Primary Tab Navigation ──
       case 'set-primary-tab': {
         const tab = target.dataset.tab;
-        const tabFilterMap = { messages: 'inbox', shards: 'shards', scheduled: 'scheduled', drafts: 'drafts' };
+        const tabFilterMap = { messages: 'inbox', calls: 'calls', shards: 'shards' };
         const newFilter = tabFilterMap[tab] || 'inbox';
 
         // Determine slide direction based on tab order
-        const TAB_ORDER = ['messages', 'shards', 'scheduled', 'drafts'];
+        const TAB_ORDER = ['messages', 'calls', 'shards'];
         const oldTab = getPrimaryTab(this.currentFilter);
         const oldIndex = TAB_ORDER.indexOf(oldTab);
         const newIndex = TAB_ORDER.indexOf(tab);
@@ -2086,6 +2105,7 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'scheduled':
       case 'shards':
+      case 'calls':
       case 'drafts':
         // These tabs have their own content — return empty message list
         result = [];
@@ -4374,6 +4394,9 @@ export class MessageViewerApp extends BaseApplication {
     this.subscribe?.(EVENTS.MESSAGE_RECEIVED, () => this._debouncedRender());
     this.subscribe?.(EVENTS.MESSAGE_SENT, () => this._debouncedRender());
     this.subscribe?.(EVENTS.MESSAGE_READ, () => this._debouncedRender());
+    // calls: a new log page / voicemail (the missed badge and the Calls tab), a number changing
+    this.subscribe?.(EVENTS.CALL_LOGGED, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.LINE_UPDATED, () => this._debouncedRender());
     this.subscribe?.(EVENTS.MESSAGE_DELETED, () => this._debouncedRender());
     this.subscribe?.(EVENTS.MESSAGE_STATUS_CHANGED, () => this._debouncedRender());
     this.subscribe?.(EVENTS.INBOX_REFRESH, () => this._debouncedRender());
@@ -4872,6 +4895,14 @@ export class MessageViewerApp extends BaseApplication {
     // traceable, and it hasn't been traced yet. `isAnonTraced` flags a revealed one.
     const isAnonTraced = !!(msg.anonymous?.enabled && msg.anonymous?.traced && msg.fromActorId);
     const canTraceAnon = isAnonMasked && !!msg.anonymous?.traceable && !msg.anonymous?.traced;
+    // Call the sender back — only a number this character knows (its own contact, or the directory/line behind it);
+    // never a masked sender, a system address, a file, or our own sent copy.
+    const calls = game.nightcity?.callService;
+    let callNumber = '';
+    if (calls?.enabled && !isAnonMasked && !senderSendOnly && !msg.status?.sent) {
+      if (game.user.isGM) callNumber = (msg.fromContactId && calls.numberOfContact(msg.fromContactId)) || (msg.fromActorId && calls.numberOf(msg.fromActorId)) || '';
+      else callNumber = calls.numberForContact(this._findSenderContact(msg));
+    }
 
     // ── Priority badge variant for tag-badge partial ──
     const priorityVariant = getPriorityBadgeVariant(msg.priority || 'normal');
@@ -4980,6 +5011,7 @@ export class MessageViewerApp extends BaseApplication {
       anonStyle,
       isAnonToMasked,
       anonRepliesBlocked,
+      callNumber,
       // Multi-recipient mail: everyone on it (address-keyed members), and
       // whether Reply All makes sense — 2+ others, not masked, not a system address.
       participantCount: Array.isArray(msg.participants) ? msg.participants.length : 0,

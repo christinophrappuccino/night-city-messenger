@@ -539,6 +539,10 @@ else {
   H.registerHelper('eq', (a, b) => a === b);
   const render = H.compile(tpl);
   const html = [];
+  // NPC ↔ NPC (2026-10-30): Rogue knows Brick; Brick knows Rogue — both directions on Rogue's detail
+  mcs.getContact('c-rogue').knows = ['c-brick']; mcs.getContact('c-brick').knows = ['c-rogue'];
+  { tab._view = 'directory'; tab._selId = 'c-rogue'; const o = render({ activeTab: 'contacts', ...tab.prepareContext() });
+    ok(/Who Rogue knows/.test(o) && /data-op="knowsDel" data-id="c-rogue" data-target="c-brick"/.test(o) && /data-op="npcWhoDel" data-id="c-rogue" data-npc="c-brick"/.test(o), 'NPC ↔ NPC: the detail shows who Rogue knows and which NPCs know Rogue'); }
   const views = [['directory', () => { tab._selId = 'c-rogue'; }], ['directory', () => { tab._startEdit('c-brick'); }], ['directory', () => { tab._cancelEdit(); tab._selId = 'c-queen'; tab._moreOpen = true; tab._newOpen = true; }], ['players', () => { tab._pSel = 'v'; }], ['players', () => { tab._pSel = 'v'; tab._pTabFor = 'v'; tab._pTab = 'glance'; }], ['directory', () => { tab._selId = 'c-rogue'; tab._dTabFor = 'c-rogue'; tab._dTab = 'corr'; }], ['groups', () => {}], ['matrix', () => { tab._mxOpen.add('Fixers'); }], ['matrix', () => { tab._mxMode = 'table'; }]];
   for (const [view, setup] of views) {
     tab._view = view; setup();

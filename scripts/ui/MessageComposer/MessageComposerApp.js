@@ -1446,9 +1446,28 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       results = results.filter(r => !r.email || !mcs?.isSendOnly?.(r.email));
     }
 
+    // Writing AS an NPC (GM): the people that NPC knows come first, marked (utils/npcKnows.js)
+    const npcId = game.user.isGM ? this._sendingNpcId() : null;
+    if (npcId) {
+      const knows = game.nightcity?.masterContactService?.npcKnows?.(npcId) || [];
+      const ids = new Set(knows.map((k) => k.id));
+      const mails = new Set(knows.map((k) => (k.email || '').toLowerCase()).filter(Boolean));
+      results = results.map((r) => ({ ...r, known: (r.contactId && ids.has(r.contactId)) || (!!r.email && mails.has(r.email.toLowerCase())) }));
+      results.sort((a, b) => Number(!!b.known) - Number(!!a.known));
+    }
+
     this._searchResults = [...groupHits, ...results];
     this._selectedResultIndex = this._searchResults.length > 0 ? 0 : -1;
     this._renderAutocomplete(query);
+  }
+
+  /** The NPC this message is written as, when it is one (a directory identity, or an NPC actor's directory entry). */
+  _sendingNpcId() {
+    const mcs = game.nightcity?.masterContactService;
+    if (this.fromContact?.id) return this.fromContact.id;
+    const actor = this.fromActorId ? game.actors?.get(this.fromActorId) : null;
+    if (!actor || actor.hasPlayerOwner) return null;
+    return mcs?.getByActorId?.(actor.id)?.id || null;
   }
 
   _renderAutocomplete(query) {
@@ -1479,6 +1498,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           <div class="ncm-autocomplete__name">${r.name}</div>
           <div class="ncm-autocomplete__email">${r.email || ''}</div>
         </div>
+        ${r.known ? `<span class="ncm-autocomplete__known" data-tooltip="In ${this.fromContact?.name || 'their'}'s contacts"><i class="fas fa-address-book"></i></span>` : ''}
         ${r.unreachableLabel ? `<span class="ncm-autocomplete__unreachable"><i class="fas fa-ban"></i> ${r.unreachableLabel}</span>` : ''}
       </div>
     `).join('');

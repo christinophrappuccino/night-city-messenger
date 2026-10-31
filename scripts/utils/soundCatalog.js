@@ -16,6 +16,7 @@ export const SOUND_GROUPS = Object.freeze([
   ['net', 'Networks', 'fa-wifi'],
   ['sec', 'Logins & hacking', 'fa-user-secret'],
   ['shard', 'Data shards & terminals', 'fa-microchip'],
+  ['calls', 'Calls', 'fa-phone'],
   ['other', 'Not used yet', 'fa-ellipsis'],
 ]);
 
@@ -52,6 +53,13 @@ export const SOUND_INFO = Object.freeze({
   'shard-brick': { label: 'Shard bricked', group: 'shard', where: 'A shard destroyed (integrity at zero, or a botched encode).' },
   'shard-expire': { label: 'Shard expires', group: 'shard', where: 'A shard that self-destructs on a timer.' },
   'eddies-claim': { label: 'Eddies claimed', group: 'shard', where: 'Claiming eddies from a message, shard or terminal file.' },
+  'call-ring': { label: 'Ringing', group: 'calls', where: 'A call coming in — plays once per ring. Silent mode mutes it.' },
+  'call-ringback': { label: 'Ringing out', group: 'calls', where: 'What the caller hears while the other phone rings.' },
+  'call-connect': { label: 'Call connects', group: 'calls', where: 'A call is answered.' },
+  'call-end': { label: 'Call ends', group: 'calls', where: 'Someone hangs up, or a call ends for any normal reason.' },
+  'call-drop': { label: 'Call dropped', group: 'calls', where: 'A call cut off: no signal, a node going down, the GM dropping the line.' },
+  'call-waiting': { label: 'Call waiting', group: 'calls', where: 'A second call coming in while you are already on one.' },
+  'voicemail-beep': { label: 'Voicemail tone', group: 'calls', where: 'The tone after a voicemail greeting.' },
   'keystroke': { label: 'Keystroke', group: 'other', where: 'Not played anywhere yet.' },
   'queue-flush': { label: 'Queued mail sent', group: 'other', where: 'Not played anywhere yet.' },
   'terminal-hum': { label: 'Terminal hum', group: 'other', where: 'Not played anywhere yet.' },

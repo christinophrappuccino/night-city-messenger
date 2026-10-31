@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Call HUD — probe</title>
+<!--
+  Renders the REAL scripts/ui/Calls/CallHud.js + styles/components/call-hud.css over a stand-in scene.
+  ?s=ringing|dialing|live|typed|hangup|vm-greet|vm-leave|vm-rec|vm-sent|voicemail-note|held|ended|waiting|gm|missed|drop-why|anon|glitch|dictate|dictate-off|dictate-err   ?still=1   ?scheme=ncm|2077|theme
+  Open with --allow-file-access-from-files, or through node dev/tools/serve-mockups.cjs.
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body { margin: 0; width: 1240px; height: 620px; overflow: hidden; background: #111 url('../../../../systems/cyberpunk-red-core/maps/S0L-DCStreets-NOGRID1080.jpg') center / cover; }
+  .still *, .still *::before, .still *::after { animation: none !important; transition: none !important; }
+  #sidebar-stub { position: fixed; right: 0; top: 0; bottom: 0; width: 300px; background: rgba(12,12,14,.92); border-left: 1px solid #333; }
+</style>
+</head>
+<body>
+<div id="sidebar-stub"></div>
+<script type="module">
+  const Q = new URLSearchParams(location.search);
+  if (Q.get('still') === '1') document.body.classList.add('still');
+  const IMG = '../../../../worlds/ncmessenger/thephanthasy_An_illustrative_portrait_of_Kai_Meng_known_as_Verd_fdcb5e3a-adc5-4dc8-8720-e7f92f008405.png';
+  const listeners = {};
+  const isGM = Q.get('s') === 'gm';
+  globalThis.game = {
+    user: { id: isGM ? 'gm' : 'u1', isGM },
+    users: { activeGM: { id: 'gm' } },
+    actors: { get: () => ({ isOwner: true, hasPlayerOwner: true, getFlag: () => [{ name: 'Rogue', phone: '+1 (555) 0119-07', portrait: IMG }] }) },
+    nightcity: {
+      eventBus: { on: (e, cb) => { (listeners[e] ||= []).push(cb); }, emit: (e, d) => (listeners[e] || []).forEach((cb) => cb(d)) },
+      themeService: { getAnimationLevel: () => (Q.get('still') === '1' ? 'off' : 'full') },
+      masterContactService: { getAll: () => [{ id: 'queen', name: 'Queen of Hearts', identityOf: 'rogue', voice: '' }, { id: 'rogue', name: 'Rogue', voice: 'Clipped, never says goodbye. Calls everyone "kid".' }],
+        getContact: (id) => ({ queen: { id: 'queen', name: 'Queen of Hearts', identityOf: 'rogue' }, rogue: { id: 'rogue', name: 'Rogue', voice: 'Clipped, never says goodbye. Calls everyone "kid".' } }[id]), getByActorId: () => null },
+    },
+  };
+  // Dictate: a fake speech engine (headless has no mic) — it hears a phrase in progress; dictate-err refuses the mic
+  if (/^dictate/.test(Q.get('s') || '')) {
+    window.SpeechRecognition = window.webkitSpeechRecognition = class { start() { setTimeout(() => { if (Q.get('s') === 'dictate-err') { this.onerror?.({ error: 'not-allowed' }); return; } this.onstart?.(); this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: 'tell Rogue the shipment moved to pier four' }], { isFinal: false })] }); }, 50); } stop() {} };
+  }
+  const { CallHud } = await import('../../scripts/ui/Calls/CallHud.js');
+  const calls = new Map();
+  const service = { calls, homeCode: '+1', _get: (k, d) => (k === 'callScheme' ? { scheme: Q.get('scheme') || 'ncm' } : d), answer() {}, decline() {}, cancel() {}, hangup() {}, resume() {}, placeCall: async () => ({ ok: true }),
+    usableModes: Q.get('s') === 'dictate-off' ? ['loud', 'type'] : ['loud', 'type', 'dictate'], offeredModes: ['loud', 'type', 'dictate'], dictateBlock: Q.get('s') === 'dictate-off' ? 'Firefox cannot turn speech into text. Use Type, or join in Chrome, Edge or Safari.' : '', dictateConsent: true,
+    transcriptNotice: true, modeFor: () => (['typed', 'hangup'].includes(Q.get('s')) ? 'type' : ['dictate', 'dictate-err'].includes(Q.get('s')) ? 'dictate' : 'loud'), setMode() {}, sendLine: () => null, sendTyping() {}, skipGreeting() {}, leaveVoicemail: async () => ({ ok: true }), recordingOn: true, maxRecordMs: 60000 };
+  const hud = new CallHud(service); hud.init();
+  const net = { id: 'CITINET', name: 'CitiNet', type: 'PUBLIC', strength: 78, color: '#19f3f7' };
+  const now = Date.now();
+  const rogue = { actorId: null, contactId: 'rogue', number: '+1 (555) 0119-07', name: 'Rogue', img: IMG };
+  const v = { userId: 'u1', actorId: 'v', number: '+1 (555) 0177-42', name: 'V', img: '' };
+  const mk = (o) => { const c = { id: 'c1', from: rogue, to: { ...v, kind: 'player' }, net, mode: 'loud', state: 'ringing', startedAt: now - 2300, answeredAt: null, endedAt: null, outcome: null, ...o }; calls.set(c.id, c); return c; };
+  const emit = (e, d) => game.nightcity.eventBus.emit(e, d);
+  const s = Q.get('s') || 'ringing';
+  if (s === 'ringing') emit('call:ringing', { call: mk({}), role: 'callee' });
+  if (s === 'dialing') emit('call:ringing', { call: mk({ from: v, to: { ...rogue, kind: 'npc' }, state: 'dialing' }), role: 'caller' });
+  if (s === 'live') emit('call:started', { call: mk({ state: 'live', answeredAt: now - 128000 }), role: 'callee' });
+  if (s === 'typed') {
+    const c = mk({ state: 'live', answeredAt: now - 128000, answeredBy: 'u1', lines: [
+      { id: 'l1', side: 'caller', text: 'You took your time.', at: now - 40000 },
+      { id: 'l2', side: 'callee', text: 'Traffic on the 101. What have you got?', at: now - 30000 },
+      { id: 'l3', side: 'caller', text: 'Arasaka moved the shipment to Pier 4. Midnight.', at: now - 9000 }] });
+    emit('call:started', { call: c, role: 'callee' });
+    emit('call:typing', { callId: 'c1', side: 'caller', on: true });
+  }
+  if (s === 'hangup') {
+    const c = mk({ state: 'live', answeredAt: now - 128000, answeredBy: 'u1', lines: [{ id: 'l1', side: 'caller', text: 'Pier 4. Midnight. Come alone.', at: now - 4000 }] });
+    emit('call:started', { call: c, role: 'callee' });
+    setTimeout(() => { const e = { ...c, state: 'ended', endedAt: Date.now(), outcome: 'answered' }; calls.set('c1', e); emit('call:ended', { call: e, role: 'callee' }); }, 1500);
+  }
+  if (s === 'vm-rec') hud._vmKind.set('c1', 'audio');
+  if (s === 'vm-greet' || s === 'vm-leave' || s === 'vm-sent' || s === 'vm-rec') {
+    const c = mk({ from: v, to: { ...rogue, kind: 'npc' }, state: 'voicemail', vmStep: s === 'vm-greet' ? 'greet' : 'leave', greeting: { kind: 'typed', text: "You've reached Rogue. Leave it short.", readOut: false } });
+    emit('call:started', { call: c, role: 'caller' });
+    if (s === 'vm-leave') setTimeout(() => { const i = document.querySelector('.ncm-ch-say input'); if (i) { i.value = 'Rogue, it is V. The Pier 4 job — call me.'; i.dispatchEvent(new Event('input')); } }, 100);
+    if (s === 'vm-sent') setTimeout(() => { const e = { ...c, state: 'ended', endedAt: Date.now(), outcome: 'voicemail' }; calls.set('c1', e); emit('call:ended', { call: e, role: 'caller' }); }, 600);
+  }
+  if (s === 'voicemail-note') game.nightcity.eventBus.emit('call:voicemail', { vm: { vmId: 'x', from: { name: 'Judy', number: '+1 (555) 0131-88' }, to: { actorId: 'v', name: 'V' }, text: 'Evelyn is gone. Call me the second you get this.', kind: 'tts' } });
+  if (s === 'held') emit('call:started', { call: mk({ state: 'held', answeredAt: now - 40000 }), role: 'callee' });
+  if (s === 'drop-why') emit('call:ended', { call: mk({ state: 'ended', answeredAt: now - 252000, endedAt: now, outcome: 'dropped', dropReason: 'Their end: Watson relay is jammed' }), role: 'callee' });
+  if (s === 'anon') emit('call:started', { call: mk({ state: 'live', answeredAt: now - 41000, from: { userId: 'gm', anon: true, name: 'Unknown caller', number: '', img: '' } }), role: 'callee' });
+  if (s === 'glitch') { const c = mk({ state: 'live', answeredAt: now - 90000 }); emit('call:started', { call: c, role: 'callee' }); setTimeout(() => emit('call:glitch', { callId: c.id }), 900); }
+  if (/^dictate/.test(s)) emit('call:started', { call: mk({ state: 'live', answeredAt: now - 64000, answeredBy: 'u1', lines: [{ id: 'l1', side: 'caller', text: 'You there, kid?', at: now - 9000 }] }), role: 'callee' });
+  if (s === 'ended') emit('call:ended', { call: mk({ state: 'ended', answeredAt: now - 252000, endedAt: now, outcome: 'dropped' }), role: 'callee' });
+  if (s === 'waiting') {
+    emit('call:started', { call: mk({ state: 'live', answeredAt: now - 151000 }), role: 'callee' });
+    const w = { id: 'c2', from: { ...rogue, name: 'Judy', number: '+1 (555) 0131-88', contactId: null, img: '' }, to: { ...v, kind: 'player' }, net, mode: 'loud', state: 'ringing', startedAt: now - 1000 };
+    calls.set('c2', w); emit('call:ringing', { call: w, role: 'callee', waiting: true });
+  }
+  if (s === 'gm') emit('call:ringing', { call: mk({ from: { ...v, name: 'Rache', number: '+1 (555) 0118-60' }, to: { contactId: 'queen', name: 'Queen of Hearts', number: '+1 (555) 0342-90', kind: 'npc', img: IMG }, net: { ...net, name: 'CorpNet', type: 'CORPORATE', color: '#4488ff', strength: 96 } }), role: 'callee' });
+  if (s === 'missed') { hud._missed(mk({ state: 'ended', outcome: 'missed' })); hud._missed({ ...mk({ state: 'ended', outcome: 'missed' }), from: { number: '+1 (555) 0000-01', name: '' } }); }
+  document.title = 'OK ' + s;
+</script>
+</body>
+</html>

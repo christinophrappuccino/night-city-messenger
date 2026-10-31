@@ -21,6 +21,7 @@
 @import url('./admin-panel/tab-shards.css');
 @import url('./admin-panel/tab-terminals.css');
 @import url('./admin-panel/tab-access.css');
+@import url('./admin-panel/tab-phone.css');
 @import url('./admin-panel/tab-security.css');
 /* Player Authoring — the Shard Encoder's GM config window + its Shards-tab card. */
 @import url('./admin-panel/encoder-config.css');

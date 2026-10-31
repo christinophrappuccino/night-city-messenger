@@ -85,6 +85,17 @@ export const EVENTS = Object.freeze({
   GROUP_CREATED: 'groups:created',   // { scope:'actor'|'master', actorId?, group }
   GROUP_UPDATED: 'groups:updated',   // { scope, actorId?, group }
   GROUP_DELETED: 'groups:deleted',   // { scope, actorId?, groupId }
+  CALL_RINGING: 'call:ringing',     // { call } — a call rings on this client (in or out)
+  CALL_STARTED: 'call:started',     // { call } — answered
+  CALL_ENDED:   'call:ended',       // { call } — any outcome
+  CALL_MISSED:  'call:missed',      // { call } — rang here, nobody answered
+  VOICEMAIL_LEFT: 'call:voicemail', // { vm } — a voicemail was left for a line this client follows (its owner, or a GM)
+  CALL_LOGGED: 'call:logged',       // { kind: 'log'|'voicemail' } — a call-log or voicemail page appeared / changed / went
+  CALL_GLITCH: 'call:glitch',       // { callId } — the GM made the line stutter
+  CALL_TRACED: 'call:traced',       // { callId, from } — a withheld caller was revealed to this client
+  LINE_UPDATED: 'call:lineUpdated', // { number } — a number / line setting changed
+  CALL_LINE: 'call:line',           // { callId, line, mine } — a typed line arrived on a call (or was sent from here)
+  CALL_TYPING: 'call:typing',       // { callId, side, on } — the other side started / stopped typing
   GROUP_PUSHED:  'groups:pushed',    // { groupId, targetActorId, shared, failed }
   SCHEDULE_UPDATED: 'schedule:updated',
 
@@ -175,6 +186,14 @@ export const SOCKET_OPS = Object.freeze({
   // for events applied on another client. { userIds[], kind, data } — the
   // receiving client renders via NotificationService.
   SECURITY_NOTIFY: 'security:notify',
+  // Calls (dev/design/CALLS.md §11.3). ONE op with a `type` (ring / ringCancel / answer / decline / busy / hangup /
+  // drop / hold / resume / mode), routed to the call's users by `userIds`. LOG: each side's summary at the end → the
+  // active GM writes the call-log pages. LINE: a player's own number / line-settings edit → the GM writes it.
+  CALL: 'call:event',
+  CALL_LOG_REQUEST: 'call:logRequest',
+  CALL_LINE_REQUEST: 'call:lineRequest',
+  CALL_VM_REQUEST: 'call:vmRequest',          // a player leaves / marks heard / deletes a voicemail → the GM writes
+  CALL_AUDIO: 'call:audio',                   // a recording in pieces (player → GM), the GM saves it as a file
   // Player→GM: this client's attempt / lockout state on a compound key (a
   // terminal account `termId::acctId`) — SecurityService state is client-local,
   // so the GM's Terminals tab never saw a player's failed tries or an EARNED
@@ -1052,6 +1071,10 @@ export const SOUND_PATHS = Object.freeze({
   'shard-expire': 'shard/expire.ogg', 'eddies-claim': 'shard/eddies-claim.ogg',
   'trace-fire': 'shard/trace-fire.ogg',
   'terminal-hum': 'ambient/terminal-hum.ogg',
+  // Calls (2026-10-29) — our own synthesised tones (dev/tools/gen-call-sounds.cjs); the GM can replace them.
+  'call-ring': 'calls/ring.wav', 'call-ringback': 'calls/ringback.wav', 'call-connect': 'calls/connect.wav',
+  'call-end': 'calls/end.wav', 'call-drop': 'calls/drop.wav', 'call-waiting': 'calls/waiting.wav',
+  'voicemail-beep': 'calls/voicemail-beep.wav',
 });
 
 export const ESSENTIAL_EFFECTS = Object.freeze(['ncm-fade-in', 'ncm-fade-out']);
@@ -1063,6 +1086,7 @@ export const TEMPLATES = Object.freeze({
   MESSAGE_VIEWER: `${T}/message-viewer/message-viewer.hbs`,
   MESSAGE_LIST_ITEM: `${T}/message-viewer/partials/message-list-item.hbs`,
   MESSAGE_DETAIL: `${T}/message-viewer/partials/message-detail.hbs`,
+  VIEWER_CALLS: `${T}/message-viewer/partials/calls-tab.hbs`,
   EMPTY_STATE_LIST: `${T}/message-viewer/partials/empty-state-list.hbs`,
   EMPTY_STATE_DETAIL: `${T}/message-viewer/partials/empty-state-detail.hbs`,
   IDENTITY_DRAWER: `${T}/message-viewer/partials/identity-drawer.hbs`,
@@ -1096,6 +1120,7 @@ export const TEMPLATES = Object.freeze({
   ADMIN_TAB_SHARDS: `${T}/admin-panel/tab-shards.hbs`,
   ADMIN_TAB_TERMINALS: `${T}/admin-panel/tab-terminals.hbs`,
   ADMIN_TAB_ACCESS: `${T}/admin-panel/tab-access.hbs`,
+  ADMIN_TAB_PHONE: `${T}/admin-panel/tab-phone.hbs`,
   ADMIN_TAB_SECURITY: `${T}/admin-panel/tab-security.hbs`,
   ADMIN_TAB_SPAM: `${T}/admin-panel/tab-spam.hbs`,
   ADMIN_TAB_TOOLS: `${T}/admin-panel/tab-tools.hbs`,

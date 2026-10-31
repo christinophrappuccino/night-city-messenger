@@ -51,6 +51,9 @@
       <button class="ncm-admin-tab {{#if (eq activeTab 'spam')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="spam" data-tooltip="Spam · junk-mail templates, blasts and auto-spam by network" aria-label="Spam">
         <i class="fas fa-envelopes-bulk"></i><span class="ncm-admin-tab__lb">Spam</span>
       </button>
+      <button class="ncm-admin-tab {{#if (eq activeTab 'phone')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="phone" data-tooltip="Phone · live calls, NPC lines ringing for you, every number, the call log and call settings" aria-label="Phone">
+        <i class="fas fa-phone"></i><span class="ncm-admin-tab__lb">Phone</span>{{#if stats.callsRinging}}<span class="ncm-admin-tab__count ncm-admin-tab__count--hot">{{stats.callsRinging}}</span>{{/if}}
+      </button>
       </div>
     </div>
     <div class="ncm-admin-tabgrp" data-tab-group="net">
@@ -107,6 +110,8 @@
     {{> "modules/night-city-messenger/templates/admin-panel/tab-terminals.hbs"}}
 
     {{> "modules/night-city-messenger/templates/admin-panel/tab-access.hbs"}}
+
+    {{> "modules/night-city-messenger/templates/admin-panel/tab-phone.hbs"}}
 
     {{> "modules/night-city-messenger/templates/admin-panel/tab-security.hbs"}}
 

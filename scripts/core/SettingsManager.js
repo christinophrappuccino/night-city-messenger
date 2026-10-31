@@ -569,6 +569,70 @@ export class SettingsManager {
       default: [],
     });
 
+    // ─── Calls (dev/design/CALLS.md; edited in Admin → Phone → Settings) ───
+    game.settings.register(MODULE_ID, 'callsEnabled', {
+      name: 'Calls',
+      hint: 'Players can call each other and your NPCs from the Agent\'s Calls tab. Off hides calling everywhere.',
+      scope: 'world', config: true, type: Boolean, default: true,
+    });
+    // calls phase 5: this browser's yes to the Dictate notice (the voice goes to the browser's speech service)
+    game.settings.register(MODULE_ID, 'callDictateConsent', {
+      name: 'Calls — Dictate notice accepted', scope: 'client', config: false, type: Boolean, default: false,
+    });
+    game.settings.register(MODULE_ID, 'callModes', {
+      name: 'Calls — ways to talk', hint: 'Which of Out loud / Type / Dictate players may use (Admin → Phone → Settings).',
+      scope: 'world', config: false, type: Array, default: ['loud', 'type', 'dictate'],
+    });
+    game.settings.register(MODULE_ID, 'callDefaultMode', {
+      name: 'Calls — a call starts in', hint: 'The mode a call opens in (Admin → Phone → Settings).',
+      scope: 'world', config: false, type: String, default: 'loud',
+    });
+    game.settings.register(MODULE_ID, 'callHomeCode', {
+      name: 'Calls — home country code', hint: 'A number typed without a country code gets this one.',
+      scope: 'world', config: false, type: String, default: '+1',
+    });
+    game.settings.register(MODULE_ID, 'callDefaultRegion', {
+      name: 'Calls — default region', hint: 'The country, region and area code the number picker starts on.',
+      scope: 'world', config: false, type: Object, default: { country: '1', region: 'Night City', code: '555' },
+    });
+    game.settings.register(MODULE_ID, 'callRingSeconds', {
+      name: 'Calls — ring time', hint: 'How long a call rings before it counts as missed.',
+      scope: 'world', config: false, type: Number, default: 30,
+    });
+    game.settings.register(MODULE_ID, 'callUnknownNumbers', {
+      name: 'Calls — a number nobody owns', hint: 'not-in-service: the caller hears that. gm: it rings the GM, who can answer as anyone.',
+      scope: 'world', config: false, type: String, default: 'not-in-service',
+    });
+    game.settings.register(MODULE_ID, 'phoneLines', {
+      name: 'Calls — line settings', hint: 'Per number: greeting and voicemail ({ [number]: { owner, greeting, voicemail } }). Written by the GM.',
+      scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'voicemailRecording', {
+      name: 'Calls — recorded voicemail', hint: 'Players and NPCs can leave a voice message (needs a microphone and a secure connection). Off: typed and read-out only.',
+      scope: 'world', config: false, type: Boolean, default: true,
+    });
+    game.settings.register(MODULE_ID, 'voicemailMaxSeconds', {
+      name: 'Calls — longest voice message (seconds)', hint: 'A recording stops at this length.',
+      scope: 'world', config: false, type: Number, default: 60,
+    });
+    game.settings.register(MODULE_ID, 'voicemailKeepDays', {
+      name: 'Calls — keep recordings for (days)', hint: 'Older recordings are cleared from voicemails (their words stay). 0 = keep forever.',
+      scope: 'world', config: false, type: Number, default: 30,
+    });
+    game.settings.register(MODULE_ID, 'callTranscriptNotice', {
+      name: 'Calls — tell players the GM can read typed calls',
+      hint: 'A line under the type bar on a call: the GM can read what is typed (it is kept in the call log).',
+      scope: 'world', config: false, type: Boolean, default: true,
+    });
+    game.settings.register(MODULE_ID, 'callSilent', {
+      name: 'Calls — silent mode', hint: 'Calls ring without a sound on this computer; the call screen still shows.',
+      scope: 'client', config: false, type: Boolean, default: false,
+    });
+    game.settings.register(MODULE_ID, 'callScheme', {
+      name: 'Calls — colours', hint: 'The call screen\'s colours on this computer: { scheme: ncm | 2077 | theme | custom, ring, live }.',
+      scope: 'client', config: false, type: Object, default: { scheme: 'ncm', ring: '#ff9d00', live: '#7cff4f' },
+    });
+
     game.settings.register(MODULE_ID, 'messageTemplates', {
       name: 'Message Templates (GM)',
       hint: 'GM-saved mail the composer can insert ([{ id, name, subject, body, priority, encryption, selfDestruct, createdAt }]) — the composer\'s Templates menu.',

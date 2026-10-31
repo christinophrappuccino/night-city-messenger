@@ -61,7 +61,7 @@ const src = C.soundSource('receive', S);
 ok(src.custom && src.src === 'worlds/w/sfx/ping.mp3' && src.volume === 0.5 && !src.off, 'what plays: the GM file at half volume');
 ok(C.soundSource('switch', S).src === 'modules/night-city-messenger/assets/sounds/network/switch.ogg' && !C.soundSource('switch', S).custom, 'an unchanged sound plays the module’s own file');
 const board = C.soundBoard(S);
-ok(board.map((g) => g.key).join() === 'ui,mail,net,sec,shard,other' && board.reduce((n, g) => n + g.rows.length, 0) === Object.keys(SOUND_PATHS).length, 'the board lists every sound, in groups');
+ok(board.map((g) => g.key).join() === 'ui,mail,net,sec,shard,calls,other' && board.reduce((n, g) => n + g.rows.length, 0) === Object.keys(SOUND_PATHS).length, 'the board lists every sound, in groups');
 ok(board.find((g) => g.key === 'mail').rows.find((r) => r.id === 'receive').file === 'ping.mp3', 'a replaced sound shows its file name');
 
 // ═══ 3. The REAL SoundService ═══

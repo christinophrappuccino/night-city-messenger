@@ -196,6 +196,28 @@
         </div>
       </div>
 
+      {{#if calls}}
+      {{!-- Calls: this computer's call screen. Client settings, saved as you pick (not part of the theme's Save). --}}
+      <div class="ncm-tc__slabel">Calls</div>
+      <div class="ncm-tc__fx ncm-tc__calls">
+        <div class="ncm-tc__trow">
+          <div><div class="ncm-tc__trow-label">Call screen colours</div><div class="ncm-tc__trow-desc">How a ringing and a live call look on this computer. Saved as you pick.</div></div>
+        </div>
+        <div class="ncm-tc__callschemes">
+          {{#each calls.schemes}}<button type="button" class="ncm-tc__callscheme{{#if on}} is-on{{/if}}" data-call-scheme="{{key}}" aria-pressed="{{#if on}}true{{else}}false{{/if}}">
+            <span class="sw"><i style="background:{{ring}}"></i><i style="background:{{live}}"></i></span><b>{{label}}</b><small>{{hint}}</small></button>{{/each}}
+        </div>
+        <div class="ncm-tc__srow ncm-tc__callcustom{{#unless calls.custom}} is-off{{/unless}}">
+          <span class="ncm-tc__srow-label">Ringing</span><input type="color" data-call-color="ring" value="{{calls.ring}}">
+          <span class="ncm-tc__srow-label">On the line</span><input type="color" data-call-color="live" value="{{calls.live}}">
+        </div>
+        <div class="ncm-tc__trow">
+          <div><div class="ncm-tc__trow-label">Silent calls</div><div class="ncm-tc__trow-desc">Calls ring without a sound; the call screen still shows.</div></div>
+          <div class="ncm-tc__switch {{#if calls.silent}}ncm-tc__switch--on{{/if}}" data-call-silent role="switch" aria-checked="{{#if calls.silent}}true{{else}}false{{/if}}" tabindex="0"></div>
+        </div>
+      </div>
+      {{/if}}
+
       <div class="ncm-tc__slabel">Sound</div>
       <div class="ncm-tc__fx">
         <div class="ncm-tc__srow">

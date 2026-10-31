@@ -949,7 +949,7 @@ export class NetworkService {
    * themselves; a fan-out is copied once; money never travels on a copy.
    * @param {object} data — the recipient-facing message (anonymous mail is already masked)
    */
-  async tapDelivery(data) {
+  async tapDelivery(data, heard = null) {
     if (!isGM() || !data?.network || !data.sentFromScene) return 0;
     const now = this._nowMs();
     const nodes = this.getNodes({ networkId: data.network }).filter((n) => nodeIsUp(n, now) && n.sceneId === data.sentFromScene);
@@ -996,7 +996,7 @@ export class NetworkService {
         ...(sloppy ? { body: '<p><em>[garbled — a sloppy tap caught the subject line only]</em></p>', contentType: undefined, contentData: undefined } : {}),
         metadata: { ...(data.metadata || {}), recovered: true, recoveredFrom: `TAP · ${node.name}`, recoveredTo: data.to || '', recoveredAt: new Date(now).toISOString(), recoveredOrigTs: data.timestamp },
       });
-      if (res?.success) made++;
+      if (res?.success) { made++; heard?.push?.({ actorId, name: game.actors.get(actorId)?.name || '', node: node.name }); }
     }
     return made;
   }

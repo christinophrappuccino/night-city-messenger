@@ -1,0 +1,196 @@
+{{!-- Admin → Phone (COMMS) — the GM's side of calls. Mock: dev/mockups/admin-phone-mock.html, design dev/design/CALLS.md §10.
+      Context: phone2 (PhoneTab.js + phoneModel.js). Buttons: data-action="tabAct" data-owner="phone" data-op=… --}}
+{{#if (eq activeTab 'phone')}}
+{{#with phone2}}
+<div class="ncm-ph2{{#if isPopout}} ncm-ph2--pop{{/if}}" data-owner="phone">
+{{#if missing}}
+  <div class="ncm-ph2-none"><i class="fas fa-phone-slash"></i> Calls did not load. Reload the world.</div>
+{{else}}
+  <nav class="ncm-ph2-nav" role="tablist">
+    {{#each nav}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ph2-navbtn{{#if on}} on{{/if}}" data-action="tabAct" data-owner="phone" data-op="view" data-view="{{key}}"><i class="fas {{icon}}"></i>{{label}}{{#if count}}<span class="ncm-ph2-navct{{#if hot}} hot{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}
+    <span class="grow"></span>
+    {{#unless enabled}}<span class="ncm-tagp is-bad"><i class="fas fa-power-off"></i> Calls are off</span>{{/unless}}
+    {{#unless isPopout}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="popOutTab" data-tab="phone" aria-label="Pop out" data-tooltip="Pop out — a bigger window"><i class="fas fa-up-right-from-square"></i></button>{{/unless}}
+  </nav>
+  {{#if error}}<div class="ncm-ph2-err"><i class="fas fa-triangle-exclamation"></i> {{error}}</div>{{/if}}
+
+{{!-- ═══ LIVE ═══ --}}
+{{#if (eq view 'live')}}
+  <header class="ncm-tabhd"><i class="fas fa-tower-broadcast"></i><div><h2>Live</h2><p>Every call happening now, and the NPC lines ringing for you.</p></div>
+    <div class="ncm-tabhd__end"><button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="callAs"><i class="fas fa-phone"></i> Call a player as…</button></div></header>
+
+  <section class="ncm-ph2-mod ncm-ph2-mod--ring">
+    <div class="ncm-ph2-mh"><i class="fas fa-phone-volume"></i><b>Ringing for you</b><small>NPC lines and numbers nobody owns</small></div>
+    {{#each live.ringing}}
+    <div class="ncm-ph2-ring">
+      <span class="ncm-ph2-face"{{#if to.img}} style="background-image:url('{{to.img}}')"{{/if}}>{{#unless to.img}}{{to.initials}}{{/unless}}</span>
+      <div class="ncm-ph2-ring__bd">
+        <div class="who"><b>{{from.name}}</b> is calling {{#if unowned}}<b class="mono">{{to.number}}</b> <span class="ncm-tagp is-plain">nobody owns it</span>{{else}}<b>{{to.name}}</b>{{/if}}</div>
+        {{#if voice}}<div class="voice"><i class="fas fa-comment-dots"></i> {{voice}}</div>{{/if}}
+        <div class="clock"><i data-ph-ring="{{startedAt}}" style="--p:{{pct}}%"></i><span class="ncm-ph2-tm" data-ph-left>{{left}} s</span></div>
+        <small>{{from.number}}{{#if net}} · {{net}}{{/if}}</small>
+        <div class="acts">
+          <button type="button" class="ncm-ph2-btn ncm-ph2-btn--go" data-action="tabAct" data-owner="phone" data-op="answer" data-id="{{id}}"><i class="fas fa-phone"></i> {{#if unowned}}Answer{{else}}Answer as {{to.name}}{{/if}}</button>
+          <button type="button" class="ncm-ph2-btn ncm-ph2-btn--bad" data-action="tabAct" data-owner="phone" data-op="decline" data-id="{{id}}"><i class="fas fa-phone-slash"></i> {{#if unowned}}Not in service{{else}}Decline{{/if}}</button>
+        </div>
+      </div>
+    </div>
+    {{else}}<div class="ncm-ph2-none">Nothing is ringing.</div>{{/each}}
+  </section>
+
+  <section class="ncm-ph2-mod">
+    <div class="ncm-ph2-mh"><i class="fas fa-shuffle"></i><b>Switchboard</b><small>every call in the world right now</small><span class="grow"></span>
+      {{#if live.modes.loud}}<span class="ncm-tagp is-plain">Out loud {{live.modes.loud}}</span>{{/if}}{{#if live.modes.type}}<span class="ncm-tagp is-act">Typed {{live.modes.type}}</span>{{/if}}{{#if live.modes.dictate}}<span class="ncm-tagp is-plain">Dictated {{live.modes.dictate}}</span>{{/if}}</div>
+    {{#each live.lines}}
+    <div class="ncm-ph2-line is-{{state}}">
+      <span class="end"><span class="ncm-ph2-face"{{#if from.img}} style="background-image:url('{{from.img}}')"{{/if}}>{{#unless from.img}}{{from.initials}}{{/unless}}</span><span class="t"><span class="nm">{{from.name}}{{#if anon}} <span class="ncm-tagp is-secret" data-tooltip="The other end sees Unknown caller"><i class="fas fa-user-secret"></i> withheld</span>{{/if}}</span><span class="ncm-ph2-num">{{from.number}}</span></span></span>
+      <span class="cord"><span class="w"></span><span class="mid"><span class="ncm-tagp is-{{#if (eq state 'live')}}good{{else if (eq state 'held')}}attn{{else}}plain{{/if}}">{{stateWord}}</span>{{#if timer}}<span class="ncm-ph2-tm" data-ph-since="{{answeredAt}}">{{timer}}</span>{{/if}}{{#if net}}<span class="net">{{net}}</span>{{/if}}</span></span>
+      <span class="end r"><span class="t"><span class="nm">{{to.name}}{{#if mine}} <span class="ncm-tagp is-secret">you</span>{{/if}}</span><span class="ncm-ph2-num">{{to.number}}</span></span><span class="ncm-ph2-face"{{#if to.img}} style="background-image:url('{{to.img}}')"{{/if}}>{{#unless to.img}}{{to.initials}}{{/unless}}</span></span>
+      <span class="acts">
+        {{#unless mine}}<button type="button" class="ncm-ph2-btn{{#if listening}} ncm-ph2-btn--on{{/if}}" data-action="tabAct" data-owner="phone" data-op="listen" data-id="{{id}}" aria-pressed="{{#if listening}}true{{else}}false{{/if}}" data-tooltip="Follow what they type on this call"><i class="fas fa-ear-listen"></i> {{#if listening}}Listening{{else}}Listen{{/if}}{{#if lineCount}} <span class="ncm-ph2-c">{{lineCount}}</span>{{/if}}</button>{{/unless}}
+        {{#if (or (eq state 'live') (eq state 'held'))}}<button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="glitch" data-id="{{id}}" data-tooltip="Make the line stutter for a few seconds on both ends"><i class="fas fa-wave-square"></i> Glitch</button>{{/if}}
+        {{#if mine}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--bad" data-action="tabAct" data-owner="phone" data-op="hangup" data-id="{{id}}"><i class="fas fa-phone-slash"></i> Hang up</button>
+        {{else}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--bad" data-action="tabAct" data-owner="phone" data-op="drop" data-id="{{id}}" data-tooltip="Cut it off — both sides see Call dropped, and why"><i class="fas fa-plug-circle-xmark"></i> Drop</button>{{/if}}
+      </span>
+      {{#if listening}}<div class="ncm-ph2-listen"><div class="k"><i class="fas fa-ear-listen"></i> What they type — only you see this</div>
+        {{#each heard}}<div class="l"><b class="is-{{side}}">{{name}}:</b> {{text}}</div>{{else}}<div class="l none">Nothing typed yet — they may be talking out loud.</div>{{/each}}</div>{{/if}}
+    </div>
+    {{else}}<div class="ncm-ph2-none">No calls on the line.</div>{{/each}}
+  </section>
+
+  <section class="ncm-ph2-mod">
+    <div class="ncm-ph2-mh"><i class="fas fa-tower-cell"></i><b>Network load</b><small>calls on each network — now, and today on the game clock</small><span class="grow"></span>
+      <span class="ncm-tagp is-plain">{{load.now}} now</span><span class="ncm-tagp is-plain">{{load.today}} today</span></div>
+    {{#each load.rows}}
+    <div class="ncm-ph2-load"{{#if color}} style="--nc:{{color}}"{{/if}}>
+      <span class="nm">{{name}}</span>
+      <span class="bar"><i style="width:{{pct}}%"></i></span>
+      <span class="n">{{#if now}}<b>{{now}}</b> now · {{/if}}{{today}} today</span>
+      {{#if cut}}<span class="ncm-tagp is-bad" data-tooltip="A node is {{cut}} on the scene you are viewing — calls over it there drop">{{cut}} here</span>{{/if}}
+    </div>
+    {{else}}<div class="ncm-ph2-none">No calls today.</div>{{/each}}
+  </section>
+{{/if}}
+
+{{!-- ═══ NUMBERS ═══ --}}
+{{#if (eq view 'numbers')}}
+  <header class="ncm-tabhd"><i class="fas fa-sim-card"></i><div><h2>Numbers</h2><p>Every number in the world and who answers it.</p></div>
+    <div class="ncm-tabhd__end"><button type="button" class="ncm-ph2-btn ncm-ph2-btn--pri" data-action="tabAct" data-owner="phone" data-op="give"><i class="fas fa-plus"></i> Give a number</button></div></header>
+  <div class="ncm-ph2-tb">
+    <span class="ncm-ph2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-ph-q="numbers" placeholder="Name or number…" value="{{numbers.q}}">{{#if numbers.q}}<button type="button" data-action="tabAct" data-owner="phone" data-op="clearQ" aria-label="Clear search"><i class="fas fa-xmark"></i></button>{{/if}}</span>
+    <label class="ncm-ph2-sel"><span>Show</span><select data-ph-sel="show">{{#each numbers.show}}<option value="{{k}}"{{#if on}} selected{{/if}}>{{l}}</option>{{/each}}</select></label>
+    <span class="grow"></span>
+    {{#if numbers.noNumber}}<span class="ncm-tagp is-attn">{{numbers.noNumber}} {{#if (eq numbers.noNumber 1)}}character has{{else}}characters have{{/if}} no number</span>{{/if}}
+    <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="foldAll" data-open="1" data-tooltip="Open every group"><i class="fas fa-angles-down"></i></button>
+    <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="foldAll" data-open="0" data-tooltip="Fold every group"><i class="fas fa-angles-up"></i></button>
+  </div>
+  {{#each numbers.groups}}
+  <section class="ncm-ph2-grp{{#if shut}} is-shut{{/if}}" data-ph-group="{{key}}" style="--sk:{{hue}}">
+    <div class="ncm-ph2-gh" data-ph-fold role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}"><i class="fas fa-chevron-down ch"></i><i class="fas {{icon}}"></i><b>{{label}}</b><span class="ncm-ph2-c">{{count}}</span>{{#if noNumber}}<span class="ncm-tagp is-attn">{{noNumber}} without</span>{{/if}}</div>
+    <div class="ncm-ph2-gb"><div>
+      {{#each rows}}
+      <div class="ncm-ph2-nrow{{#if (eq kind 'none')}} is-none{{/if}}">
+        <span class="ncm-ph2-face"{{#if img}} style="background-image:url('{{img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span>
+        <span class="t"><span class="nm">{{name}}{{#if (eq kind 'burner')}} <span class="ncm-tagp is-secret">burner</span>{{/if}}{{#if alias}}{{#unless (eq kind 'burner')}} <span class="ncm-tagp is-secret">alias</span>{{/unless}}{{/if}}</span>{{#if subline}}<span class="sub">{{subline}}</span>{{/if}}</span>
+        <span class="ncm-ph2-num">{{#if number}}{{number}}{{else}}<span class="ncm-tagp is-attn">no number</span>{{/if}}</span>
+        <span class="acts">
+          {{#if (eq kind 'none')}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--pri" data-action="tabAct" data-owner="phone" data-op="change" data-actor-id="{{actorId}}" data-name="{{name}}"><i class="fas fa-sim-card"></i> Give one</button>
+          {{else}}
+            {{#if contactId}}{{#unless player}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic ncm-ph2-btn--go" data-action="tabAct" data-owner="phone" data-op="callAs" data-contact-id="{{contactId}}" data-tooltip="Call a player as {{name}}"><i class="fas fa-phone"></i></button>{{/unless}}{{/if}}
+            {{#unless (eq kind 'orphan')}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="greeting" data-number="{{number}}" data-name="{{name}}" data-tooltip="Greeting &amp; voicemail"><i class="fas fa-voicemail"></i></button>{{/unless}}
+            {{#unless (eq kind 'orphan')}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="change" data-actor-id="{{actorId}}" data-contact-id="{{contactId}}" data-name="{{name}}" data-number="{{number}}" data-tooltip="Change the number"><i class="fas fa-pen"></i></button>{{/unless}}
+            {{#unless fromDirectory}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic ncm-ph2-btn--bad" data-action="tabAct" data-owner="phone" data-op="release" data-number="{{number}}" data-name="{{name}}" data-tooltip="Take the number away"><i class="fas fa-fire"></i></button>{{/unless}}
+          {{/if}}
+        </span>
+      </div>
+      {{/each}}
+    </div></div>
+  </section>
+  {{else}}<div class="ncm-ph2-none">{{#if numbers.forced}}Nothing matches.{{else}}No numbers yet — players pick theirs in their Agent's Calls tab, or Give a number.{{/if}}</div>{{/each}}
+{{/if}}
+
+{{!-- ═══ CALL LOG ═══ --}}
+{{#if (eq view 'log')}}
+  <header class="ncm-tabhd"><i class="fas fa-list"></i><div><h2>Call log</h2><p>Every call in the world, newest first.</p></div></header>
+  <div class="ncm-ph2-tb">
+    <span class="ncm-ph2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-ph-q="log" placeholder="Name, number, network, scene…" value="{{log.q}}">{{#if log.q}}<button type="button" data-action="tabAct" data-owner="phone" data-op="clearQ" data-which="log" aria-label="Clear search"><i class="fas fa-xmark"></i></button>{{/if}}</span>
+    <span class="ncm-ph2-chips">{{#each log.filters}}<button type="button" class="{{#if on}}on{{/if}}" data-action="tabAct" data-owner="phone" data-op="logFilter" data-f="{{k}}">{{l}}<span>{{n}}</span></button>{{/each}}</span>
+  </div>
+  <section class="ncm-ph2-mod ncm-ph2-log">
+    {{#each log.days}}
+      <div class="ncm-ph2-day">{{label}}<span class="ncm-ph2-c">{{rows.length}}</span>{{#if bad}}<span class="ncm-tagp is-bad">{{bad}} missed or dropped</span>{{/if}}</div>
+      {{#each rows}}
+      <div class="ncm-ph2-lrow" style="--dc:var(--ncm-{{info.tone}}, var(--ncm-text-label))">
+        <span class="d"><i class="fas {{info.icon}}"></i></span>
+        <span class="t"><span class="pair">{{from.name}}<i class="fas fa-arrow-right"></i>{{to.name}}</span>
+          <span class="meta"><span class="ncm-tagp is-{{info.tone}}">{{info.word}}</span>{{#if detail}}<span class="ncm-ph2-tm">{{detail}}</span>{{/if}}{{#if net}}<span class="net">{{net}}</span>{{/if}}{{#if scene}}<span class="sub">{{scene}}</span>{{/if}}{{#if anon}}<span class="ncm-tagp is-secret"><i class="fas fa-user-secret"></i> withheld</span>{{/if}}{{#if heardBy.length}}<span class="ncm-tagp is-secret" data-tooltip="Caught by a tap or sniffer: {{join heardBy ', '}}"><i class="fas fa-ear-listen"></i> heard by {{heardBy.length}}</span>{{/if}}</span>
+          {{#if why}}<span class="why"><i class="fas fa-tower-broadcast"></i> {{why}}</span>{{/if}}
+          {{#if transcript.length}}<details class="ncm-ph2-tr"><summary><i class="fas fa-closed-captioning"></i> Transcript · {{transcript.length}} {{#if (eq transcript.length 1)}}line{{else}}lines{{/if}}</summary>
+            {{#each transcript}}<div class="l"><b class="is-{{side}}">{{name}}:</b> {{text}}</div>{{/each}}</details>{{/if}}</span>
+        <span class="ncm-ph2-tm">{{time}}</span>
+      </div>
+      {{/each}}
+    {{else}}<div class="ncm-ph2-none">No calls yet.</div>{{/each}}
+  </section>
+  {{#if (gt log.pages 1)}}
+  <div class="ncm-ph2-pg"><span><b>{{log.from}}–{{log.to}}</b> of {{log.total}}</span><span class="grow"></span>
+    <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="logPage" data-d="-1" aria-label="Newer"><i class="fas fa-chevron-left"></i></button>
+    <span>{{log.page}} / {{log.pages}}</span>
+    <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="logPage" data-d="1" aria-label="Older"><i class="fas fa-chevron-right"></i></button>
+  </div>
+  {{/if}}
+{{/if}}
+
+{{!-- ═══ VOICEMAIL ═══ --}}
+{{#if (eq view 'vm')}}
+  <header class="ncm-tabhd"><i class="fas fa-voicemail"></i><div><h2>Voicemail</h2><p>What players left for your NPCs — play it, answer it as them, or call back. Players' own boxes are below.</p></div></header>
+  {{#each vm.boxes}}
+  <section class="ncm-ph2-grp{{#if shut}} is-shut{{/if}}" data-ph-group="vm:{{ownerId}}" style="--sk:{{#if npc}}var(--ncm-attn){{else}}var(--ncm-hue-3){{/if}}">
+    <div class="ncm-ph2-gh" data-ph-fold role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}"><i class="fas fa-chevron-down ch"></i><i class="fas {{#if npc}}fa-inbox{{else}}fa-user{{/if}}"></i><b>{{name}}</b><span class="ncm-ph2-c">{{count}}</span>{{#if unheard}}<span class="ncm-tagp is-attn">{{unheard}} new</span>{{/if}}{{#unless npc}}<span class="ncm-tagp is-plain">player</span>{{/unless}}</div>
+    <div class="ncm-ph2-gb"><div>
+      {{#each rows}}
+      <div class="ncm-ph2-vm{{#unless heard}} is-new{{/unless}}">
+        <span class="d"><i class="fas fa-voicemail"></i></span>
+        <span class="t"><span class="pair">{{from.name}}<i class="fas fa-arrow-right"></i>{{toName}}{{#unless heard}} <span class="ncm-tagp is-attn">new</span>{{/unless}}{{#if tts}} <span class="ncm-tagp is-plain">read out</span>{{/if}}</span>
+          {{#if isAudio}}{{#if audio}}<audio class="ncm-ph2-audio" controls preload="none" src="{{audio}}"></audio>{{else}}<span class="msg dim">Recording cleared.</span>{{/if}}{{/if}}
+          {{#if text}}<span class="msg">{{text}}</span>{{/if}}
+          <span class="meta"><span class="ncm-ph2-num">{{from.number}}</span><span class="ncm-ph2-tm">{{when}}</span>{{#if length}}<span class="ncm-ph2-tm">♪ {{length}}</span>{{/if}}</span></span>
+        <span class="acts">
+          {{#if tts}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="vmPlay" data-vm="{{vmId}}" data-owner-id="{{ownerId}}" data-text="{{text}}" data-voice="{{voice}}" data-heard="{{#if heard}}1{{else}}0{{/if}}" data-tooltip="Play"><i class="fas fa-play"></i></button>{{/if}}
+          {{#if from.number}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic ncm-ph2-btn--go" data-action="tabAct" data-owner="phone" data-op="vmCallBack" data-number="{{from.number}}" data-to-contact="{{toContactId}}" data-to-actor="{{toActorId}}" data-tooltip="Call back as {{toName}}"><i class="fas fa-phone"></i></button>{{/if}}
+          <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="vmReply" data-to-contact="{{toContactId}}" data-to-actor="{{toActorId}}" data-from-actor="{{from.actorId}}" data-from-contact="{{from.contactId}}" data-tooltip="Reply by mail as {{toName}}"><i class="fas fa-envelope"></i></button>
+          <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="vmHeard" data-vm="{{vmId}}" data-owner-id="{{ownerId}}" data-heard="{{#if heard}}0{{else}}1{{/if}}" data-tooltip="{{#if heard}}Mark as new{{else}}Mark heard{{/if}}"><i class="fas {{#if heard}}fa-rotate-left{{else}}fa-check{{/if}}"></i></button>
+          <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic ncm-ph2-btn--bad" data-action="tabAct" data-owner="phone" data-op="vmDel" data-vm="{{vmId}}" data-owner-id="{{ownerId}}" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+        </span>
+      </div>
+      {{/each}}
+    </div></div>
+  </section>
+  {{else}}<div class="ncm-ph2-none">No voicemail yet. Messages left on any line show up here.</div>{{/each}}
+{{/if}}
+
+{{!-- ═══ SETTINGS ═══ --}}
+{{#if (eq view 'settings')}}
+  <header class="ncm-tabhd"><i class="fas fa-sliders"></i><div><h2>Settings</h2><p>How calls work at this table. Changes save as you make them.</p></div></header>
+  <section class="ncm-ph2-mod ncm-ph2-set">
+    <label class="ncm-ph2-srow"><span><b>Calls on</b><small>Players can call each other and your NPCs.</small></span><input type="checkbox" class="ncm-ph2-check" data-ph-set="callsEnabled"{{#if settings.enabled}} checked{{/if}}></label>
+    <div class="ncm-ph2-srow"><span><b>Ways to talk</b><small>A way switched off disappears from the call screen.</small></span>
+      <span class="ncm-ph2-opts">{{#each settings.modes}}<label><input type="checkbox" class="ncm-ph2-check" data-ph-set="callModes" value="{{key}}"{{#if on}} checked{{/if}}> {{label}}</label>{{/each}}</span></div>
+    <label class="ncm-ph2-srow"><span><b>A call starts in</b><small>The way a call opens; players can switch.</small></span>
+      <select data-ph-set="callDefaultMode">{{#each settings.startModes}}<option value="{{key}}"{{#if on}} selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+    <label class="ncm-ph2-srow"><span><b>Home country code</b><small>A number typed without a country code gets this one.</small></span><input type="text" class="mono" data-ph-set="callHomeCode" value="{{settings.homeCode}}" size="5"></label>
+    <label class="ncm-ph2-srow"><span><b>Rings before it gives up</b><small>Seconds a call rings before it counts as missed.</small></span><input type="number" class="mono" min="5" max="120" data-ph-set="callRingSeconds" value="{{settings.ringSeconds}}"></label>
+    <label class="ncm-ph2-srow"><span><b>A number nobody owns</b><small>What happens when a player dials a number no one has.</small></span>
+      <select data-ph-set="callUnknownNumbers">{{#each settings.unknown}}<option value="{{key}}"{{#if on}} selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+    <label class="ncm-ph2-srow"><span><b>Recorded voicemail</b><small>Voice messages and recorded greetings (needs a microphone and a secure connection). Off: typed and read-out only.</small></span><input type="checkbox" class="ncm-ph2-check" data-ph-set="voicemailRecording"{{#if settings.recording}} checked{{/if}}></label>
+    <label class="ncm-ph2-srow"><span><b>Longest voice message</b><small>Seconds. A recording stops at this length.</small></span><input type="number" class="mono" min="10" max="180" data-ph-set="voicemailMaxSeconds" value="{{settings.maxSeconds}}"></label>
+    <label class="ncm-ph2-srow"><span><b>Keep recordings for</b><small>Days. Older recordings are cleared from voicemails (their words stay). 0 = forever.</small></span><input type="number" class="mono" min="0" max="3650" data-ph-set="voicemailKeepDays" value="{{settings.keepDays}}"></label>
+    <div class="ncm-ph2-srow"><span><b>Recordings stored</b><small>{{settings.recordings}} voice message{{#unless (eq settings.recordings 1)}}s{{/unless}}{{#if settings.recordingsInline}} · {{settings.recordingsInline}} kept inside the message (uploads were not possible){{/if}}. Files live in the world's ncm-voicemail folder.</small></span><button type="button" class="ncm-ph2-btn ncm-ph2-btn--bad" data-action="tabAct" data-owner="phone" data-op="purge"><i class="fas fa-broom"></i> Purge old…</button></div>
+    <label class="ncm-ph2-srow"><span><b>Tell players you can read typed calls</b><small>A line under the type bar: what is typed on a call is kept in the call log and you can listen in.</small></span><input type="checkbox" class="ncm-ph2-check" data-ph-set="callTranscriptNotice"{{#if settings.notice}} checked{{/if}}></label>
+  </section>
+  <p class="ncm-ph2-hint"><i class="fas fa-circle-info"></i> Each player picks their own ring colours and silent mode in their Theme Customizer.</p>
+{{/if}}
+{{/if}}
+</div>
+{{/with}}
+{{/if}}

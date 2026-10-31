@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calls tab — mock</title>
+<!--
+  Agent → Calls, redesigned in the call HUD's language (calls-overlay-mock.html): cut-corner chips, the ring dial, the
+  signal line, networks in their own colour, the decode reveal. Player theme tokens (the Agent is immersive).
+  ?f=tab|match|vm|transcript|empty   ?still=1 freezes motion. Design: dev/design/CALLS.md §4.
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body { background: #07080c; margin: 0; padding: 26px; color: #c9d3e0; font-family: var(--ncm-font-body, sans-serif); }
+  .mk-frame { margin-bottom: 34px; }
+  .mk-cap { font: 12px/1.5 monospace; color: #8b94a8; max-width: 900px; margin: 0 0 8px; }
+  .mk-cap b { color: #e6edf6; }
+  .still * { animation: none !important; transition: none !important; }
+
+  /* ═══ the call vocabulary, player theme ═══ */
+  .ct { --hc: var(--ncm-primary, #f65261); --hs: var(--ncm-secondary, #19f3f7); --hy: var(--ncm-accent, #f7c948); --hv: var(--ncm-purple, #b87aff);
+    --ok: #4be38a; --miss: #ff5468; --vmc: #f7c948; --bg: var(--ncm-bg-base, #0d0d16); --bg2: var(--ncm-bg-surface, #12121c); --bg3: var(--ncm-bg-elevated, #1a1a2a); --ln: var(--ncm-border, #2a2a45);
+    --t1: var(--ncm-text-primary, #e8e8f0); --t2: var(--ncm-text-secondary, #a8a8c0); --t3: #8e8ea8;
+    width: 820px; height: 560px; background: var(--bg); border: 1px solid var(--ln); display: flex; flex-direction: column; overflow: hidden; color: var(--t1); position: relative; }
+  .ct * { box-sizing: border-box; }
+  .ct button { appearance: none !important; width: auto !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; cursor: pointer; line-height: 1 !important;
+    background: none; border: 0; color: inherit; padding: 0; font: inherit; }
+  .ct button i { margin: 0 !important; }
+  .mono { font-family: var(--ncm-font-mono, monospace); }
+  .cut { clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+
+  /* the Agent frame: header + primary tabs (a slice of the real viewer) */
+  .ag__hd { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--ln); background: var(--ncm-bg-deep, #08080e); }
+  .ag__hd .av { width: 30px; height: 30px; border-radius: 50%; background: #333 url('../../../../systems/cyberpunk-red-core/icons/compendium/default/Default_Mook.svg') center/cover; border: 1px solid var(--hs); }
+  .ag__hd .who { font: 700 13px var(--ncm-font-display, sans-serif); } .ag__hd .who small { display: block; font: 11px var(--ncm-font-mono, monospace); color: var(--t2); }
+  .ag__hd .sp { flex: 1; }
+  .ag__tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--ln); background: var(--ncm-bg-deep, #08080e); }
+  .ag__tab { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; font: 600 12px var(--ncm-font-display, sans-serif); text-transform: uppercase; letter-spacing: .05em; color: var(--t2); border-bottom: 2px solid transparent; }
+  .ag__tab.on { color: var(--t1); border-bottom-color: var(--hs); }
+  .ag__tab .b { font: 700 10px var(--ncm-font-mono, monospace); background: var(--hc); color: #000; padding: 1px 5px; }
+  .ag__body { flex: 1; min-height: 0; display: grid; grid-template-columns: 286px minmax(0, 1fr); }
+
+  /* network in its own colour (the HUD's .mnet) */
+  .net { display: inline-flex; align-items: center; gap: 5px; font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .1em; text-transform: uppercase; color: var(--nc); }
+  .net i { font-size: 10px; }
+  .net .bars { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 9px; }
+  .net .bars b { width: 2.5px; background: var(--nc); opacity: .25; } .net .bars b.on { opacity: 1; }
+  .net .bars b:nth-child(1) { height: 3px; } .net .bars b:nth-child(2) { height: 5px; } .net .bars b:nth-child(3) { height: 7px; } .net .bars b:nth-child(4) { height: 9px; }
+
+  /* ═══ LEFT: the dialer module ═══ */
+  .dl { border-right: 1px solid var(--ln); background: var(--bg2); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  /* the signal line, as in the HUD */
+  .dl__sig { font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--hs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-shadow: 0 0 6px color-mix(in srgb, var(--hs) 50%, transparent); }
+  .dl__sig .dim { opacity: .55; }
+  /* "call as": which of my numbers/identities the call comes from */
+  .dl__as { display: flex; align-items: center; gap: 8px; font: 11px var(--ncm-font-mono, monospace); color: var(--t2); }
+  .dl__as .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px dashed color-mix(in srgb, var(--hs) 60%, transparent); color: var(--t1); }
+  .dl__as .chip.alias { border-color: color-mix(in srgb, var(--hv) 70%, transparent); color: var(--hv); }
+  /* the number readout: the HUD's name box, cut corners, the border drawn as a layer */
+  .dl__num { position: relative; padding: 1.5px; background: var(--hs); }
+  .dl__num .in { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: color-mix(in srgb, var(--hs) 9%, var(--bg3)); }
+  .dl__num .val { flex: 1; font: 600 21px var(--ncm-font-mono, monospace); letter-spacing: .08em; color: #fff; white-space: nowrap; overflow: hidden; }
+  .dl__num .val .car { display: inline-block; width: 9px; height: 19px; background: var(--hs); vertical-align: -3px; margin-left: 2px; animation: blink .9s steps(2) infinite; }
+  .dl__num .del { color: var(--t2); font-size: 15px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .dl__match { min-height: 18px; display: flex; align-items: center; gap: 7px; font: 600 12px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--hs); }
+  .dl__match .face { width: 18px; height: 18px; border-radius: 50%; background: center/cover; border: 1px solid var(--hs); }
+  /* keypad: cut-corner keys */
+  .dl__keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .dl__keys button { height: 38px; background: var(--bg3) !important; border: 1px solid var(--ln) !important; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font: 600 16px var(--ncm-font-mono, monospace) !important; color: var(--t1) !important; clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); transition: background .12s; }
+  .dl__keys button small { font: 8px var(--ncm-font-mono, monospace); color: var(--t3); letter-spacing: .12em; }
+  .dl__keys button:hover { background: color-mix(in srgb, var(--hs) 14%, var(--bg3)) !important; }
+  .dl__keys button.hit { background: color-mix(in srgb, var(--hs) 30%, var(--bg3)) !important; border-color: var(--hs) !important; }
+  /* the call button: the HUD's ring dial + a wide chip */
+  .dl__go { display: none; }
+  .cb { --cbc: var(--ok); margin-top: auto !important; width: 100% !important; display: block !important; padding: 1.5px !important; background: var(--cbc) !important; position: relative;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); transition: filter .15s; }
+  .cb__in { position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; padding: 7px 12px 7px 8px;
+    background: color-mix(in srgb, var(--cbc) 8%, var(--bg3));
+    clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 11px 100%, 0 calc(100% - 11px)); }
+  .cb .dial { flex: none; width: 46px; height: 46px; color: var(--cbc) !important; }
+  .cb .dial { position: relative !important; display: block !important; }
+  .cb .dial svg { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
+  .cb .dial .seg { fill: var(--cbc) !important; } .cb .dial .brk path { stroke: var(--cbc) !important; fill: none !important; }
+  .cb .dial > i { position: absolute !important; inset: 0 !important; display: grid !important; place-items: center; font-size: 15px !important; line-height: 1 !important; color: var(--cbc) !important; }
+  .cb__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; }
+  .cb__tx b { font: 700 9.5px var(--ncm-font-mono, monospace); letter-spacing: .22em; text-transform: uppercase; color: var(--cbc); }
+  .cb__tx .who { max-width: 100%; font: 800 19px/1.05 var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cb__tx small { font: 10px var(--ncm-font-mono, monospace); color: var(--t2); letter-spacing: .04em; }
+  .cb kbd { flex: none; display: grid; place-items: center; width: 28px; height: 28px; font: 700 14px var(--ncm-font-mono, monospace); color: #04130b; background: var(--cbc); border: 0;
+    clip-path: polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%); }
+  /* round 23 (dev: "not sure about the gradient… a cool animation on hover"): flat fill at rest. On hover, in one go:
+     a charge WIPES across the button behind a bright edge the name glitches (a red/cyan split
+     for a beat), the dial spins up and refills segment by segment, the Enter key flashes. Leaving fades the fill. */
+  .cb__in > * { position: relative; z-index: 1; }
+  .cb__scan { position: absolute !important; z-index: 0 !important; inset: 0; pointer-events: none; transform: scaleX(0); transform-origin: left;
+    background: color-mix(in srgb, var(--cbc) 14%, transparent); transition: transform .38s cubic-bezier(.2,.8,.2,1), opacity .25s; opacity: 0; }
+  .cb__scan::after { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 2px; background: #fff; box-shadow: 0 0 10px var(--cbc), 0 0 2px #fff; opacity: 0; }
+  .cb:is(:hover, .hov):not([disabled]) .cb__scan { transform: scaleX(1); opacity: 1; }
+  .cb:is(:hover, .hov):not([disabled]) .cb__scan::after { animation: cbEdge .38s ease-out; }
+  @keyframes cbEdge { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+  /* round 28: the chosen hover is DECODE (option 3) — the glitch, stripes and charge line are off */
+  @keyframes cbGlitch { 0% { text-shadow: -3px 0 #ff2a4f, 3px 0 #19f3f7; transform: translateX(2px); } 35% { text-shadow: 2px 0 #ff2a4f, -2px 0 #19f3f7; transform: translateX(-1px); clip-path: inset(0 0 45% 0); }
+    70% { text-shadow: -1px 0 #ff2a4f, 1px 0 #19f3f7; transform: none; clip-path: none; } 100% { text-shadow: none; } }
+  .cb:is(:hover, .hov):not([disabled]) .dial .brk { animation-duration: 1.4s; }
+  .cb:is(:hover, .hov):not([disabled]) kbd { animation: cbKey .5s ease-out; }
+  @keyframes cbKey { 0% { filter: brightness(2.2); box-shadow: 0 0 14px var(--cbc); } 100% { filter: none; } }
+  .cb:is(:hover, .hov):not([disabled]) { filter: brightness(1.12); }
+  .cb[disabled] .cb__scan { display: none; }
+  /* round 25 (dev: "it's just not obvious on the fill"): a callable button is FILLED — solid green, dark text, the one
+     filled action on the screen (the module's rule for a primary action). Nothing-typed and no-signal stay outlined. */
+  .cb:not([disabled]) .cb__in { background: var(--cbc); }
+  .cb:not([disabled]) .cb__tx b, .cb:not([disabled]) .cb__tx small { color: #062614; }
+  .cb:not([disabled]) .cb__tx .who { color: #02150a; }
+  .cb:not([disabled]) .dial, .cb:not([disabled]) .dial > i { color: #062614 !important; }
+  .cb:not([disabled]) .dial .seg { fill: #062614 !important; } .cb:not([disabled]) .dial .brk path { stroke: #062614 !important; }
+  .cb:not([disabled]) .dial .seg.on { filter: none; }
+  .cb:not([disabled]) kbd { background: #062614; color: var(--cbc); }
+  .cb:not([disabled]) .cb__scan { background: rgba(255,255,255,.22); }
+  .cb:not([disabled]) .cb__scan::after { background: #fff; box-shadow: 0 0 12px #fff; }
+  .cb:not([disabled]) { box-shadow: 0 0 18px color-mix(in srgb, var(--cbc) 35%, transparent) !important; }
+
+  /* round 26 (dev: "the animation needs to change with the solid green, and it's a bit bright"): a deeper green at rest
+     (no glow); on hover the fill comes up to full green, a band of fine diagonal stripes SWEEPS across once (it passes,
+     it does not stay), a charge line runs along the bottom edge, the name glitches, the dial refills. */
+  .cb:not([disabled]) .cb__in { background: color-mix(in srgb, var(--cbc) 72%, #0b2015); transition: background .25s; }
+  .cb:not([disabled]) { box-shadow: none !important; background: color-mix(in srgb, var(--cbc) 85%, #0b2015) !important; }
+  .cb:is(:hover, .hov):not([disabled]) .cb__in { background: var(--cbc); }
+  .cb:is(:hover, .hov):not([disabled]) { background: color-mix(in srgb, var(--cbc) 60%, #fff) !important; filter: none; }
+  .cb:not([disabled]) .cb__scan { transform: none !important; opacity: 0 !important; left: -60%; width: 55%; inset: 0 auto 0 -60%;
+    background: repeating-linear-gradient(115deg, rgba(4,30,14,.32) 0 2px, transparent 2px 7px) !important; transition: none !important;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent); }
+  .cb:not([disabled]) .cb__scan::after { display: none; }
+
+  @keyframes cbSweep { 0% { left: -60%; opacity: 1; } 100% { left: 110%; opacity: 1; } }
+  .cb:not([disabled]) .cb__in::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: #04170b; transform: scaleX(0); transform-origin: left; z-index: 2; }
+
+  @keyframes cbCharge { 0% { transform: scaleX(0); opacity: 1; } 80% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+
+  @keyframes cbGlitchDark { 0% { text-shadow: -2px 0 #c4002f, 2px 0 #0077aa; transform: translateX(2px); } 35% { text-shadow: 2px 0 #c4002f, -2px 0 #0077aa; transform: translateX(-1px); clip-path: inset(0 0 45% 0); }
+    70% { text-shadow: -1px 0 #c4002f, 1px 0 #0077aa; transform: none; clip-path: none; } 100% { text-shadow: none; } }
+  .cb:active .cb__in { transform: translateY(1px); }
+  .cb--number .cb__tx .who { font-family: var(--ncm-font-mono, monospace); font-weight: 600; letter-spacing: .08em; }
+  .cb--empty { --cbc: #4a5263; cursor: default !important; } .cb--empty .cb__tx .who { color: var(--t3); font-weight: 700; } 
+  .cb--nosig { --cbc: #ff4b4b; cursor: not-allowed !important; } .cb--nosig .cb__scan { display: none; } .cb--nosig .dial .brk { animation: none; opacity: .5; }
+  /* the state comparison strip */
+  .cbrow { display: grid; grid-template-columns: repeat(5, 258px); gap: 14px; padding: 16px; background: var(--ncm-bg-surface, #12121c); border: 1px solid var(--ncm-border, #2a2a45); width: max-content; }
+  .cbrow > div { display: flex; flex-direction: column; gap: 6px; } .cbrow > div > span { font: 11px monospace; color: #8b94a8; }
+
+  /* ═══ RIGHT: speed dial + the log ═══ */
+  .lg { display: flex; flex-direction: column; min-height: 0; }
+  /* speed dial: the people you call most, as faces */
+  .sd { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--ln); }
+  .sd__k { font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--t3); writing-mode: vertical-rl; transform: rotate(180deg); }
+  .sd__p { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 58px; cursor: pointer; }
+  .sd__p .face { width: 40px; height: 40px; border-radius: 50%; background: var(--bg3) center/cover; border: 1.5px solid var(--tc, var(--hs)); display: grid; place-items: center;
+    font: 700 13px var(--ncm-font-display, sans-serif); color: var(--tc, var(--hs)); position: relative; }
+  .sd__p .face .dot { position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bg); background: var(--ok); }
+  .sd__p .face .dot.off { background: #555; }
+  .sd__p span { font: 600 10px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--t2); white-space: nowrap; max-width: 58px; overflow: hidden; text-overflow: ellipsis; }
+  .sd__add { width: 40px; height: 40px; border-radius: 50%; border: 1.5px dashed var(--ln); display: grid; place-items: center; color: var(--t3); }
+  /* filters */
+  .fl { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--ln); }
+  .fl button { padding: 5px 10px !important; font: 700 10px var(--ncm-font-mono, monospace) !important; letter-spacing: .12em; text-transform: uppercase; color: var(--t2) !important; border: 1px solid var(--ln) !important; }
+  .fl button.on { color: #04161a !important; background: var(--hs) !important; border-color: var(--hs) !important; }
+  .fl button .n { margin-left: 5px; padding: 0 4px; }
+  .fl button.r .n { background: var(--miss); color: #000; } .fl button.y .n { background: var(--vmc); color: #000; }
+  .fl .sp { flex: 1; }
+  .fl .dd { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--ln); font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--t2); cursor: pointer; white-space: nowrap; }
+  .fl .dd i:first-child { color: var(--hs); }
+  .fl .qb { width: 28px !important; height: 26px !important; display: grid !important; place-items: center; color: var(--t2) !important; border: 1px solid var(--ln) !important; }
+  .fl { flex-wrap: nowrap; } .fl .dd { padding: 4px 7px; }
+  .pg { display: flex; align-items: center; gap: 4px; padding: 7px 14px; border-top: 1px solid var(--ln); background: var(--bg2); }
+  .pg__n { font: 700 11px var(--ncm-font-mono, monospace); color: var(--t1); letter-spacing: .06em; } .pg__n small { font-weight: 400; color: var(--t3); }
+  .pg .sp { flex: 1; }
+  .pg button { min-width: 26px !important; height: 26px !important; padding: 0 6px !important; display: grid !important; place-items: center; font: 700 11px var(--ncm-font-mono, monospace) !important; color: var(--t2) !important; border: 1px solid var(--ln) !important; }
+  .pg button.on { color: #04161a !important; background: var(--hs) !important; border-color: var(--hs) !important; }
+  .pg .gap { color: var(--t3); padding: 0 2px; }
+  .pg .dd { margin-left: 8px; display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--ln); font: 10px var(--ncm-font-mono, monospace); color: var(--t2); }
+  .fl .q { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--ln); color: var(--t3); font: 11px var(--ncm-font-mono, monospace); width: 150px; }
+  /* the list */
+  .ls { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 8px; }
+  .day { position: sticky; top: 0; z-index: 2; padding: 6px 14px; font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .2em; text-transform: uppercase; color: var(--t3);
+    background: color-mix(in srgb, var(--bg) 92%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ln) 60%, transparent); }
+  .row { display: grid; grid-template-columns: 26px 36px 1fr auto auto; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid color-mix(in srgb, var(--ln) 55%, transparent);
+    border-left: 3px solid transparent; position: relative; }
+  .row:hover { background: color-mix(in srgb, var(--hs) 5%, transparent); }
+  .row .dir { width: 24px; height: 24px; display: grid; place-items: center; font-size: 11px; color: var(--dc); background: color-mix(in srgb, var(--dc) 14%, transparent);
+    clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%); }
+  .row .face { width: 34px; height: 34px; border-radius: 50%; background: var(--bg3) center/cover; border: 1.5px solid var(--tc, var(--ln)); display: grid; place-items: center;
+    font: 700 12px var(--ncm-font-display, sans-serif); color: var(--tc, var(--t2)); }
+  .row .face.anon { border-style: dashed; border-color: var(--hv); color: var(--hv); }
+  .row .nm { font: 700 14px var(--ncm-font-display, sans-serif); letter-spacing: .04em; text-transform: uppercase; color: var(--t1); display: flex; align-items: center; gap: 7px; }
+  .row .nm .tag { font: 600 9px var(--ncm-font-mono, monospace); letter-spacing: .1em; padding: 1px 5px; text-transform: uppercase; }
+  .row .nm .tag.alias { color: var(--hv); border: 1px solid color-mix(in srgb, var(--hv) 60%, transparent); }
+  .row .nm .tag.new { color: #000; background: var(--vmc); }
+  .row .sub { display: flex; align-items: center; gap: 7px; margin-top: 3px; font: 11px var(--ncm-font-mono, monospace); color: var(--t2); }
+  .row .sub .k { color: var(--dc); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .row .sub .md { color: var(--t3); }
+  .row .when { font: 11px var(--ncm-font-mono, monospace); color: var(--t3); text-align: right; }
+  .row .acts { display: flex; gap: 4px; opacity: .55; transition: opacity .15s; }
+  .row:hover .acts, .row.open .acts { opacity: 1; }
+  .row .acts button { width: 28px !important; height: 28px !important; display: grid !important; place-items: center; color: var(--t2) !important; border: 1px solid var(--ln) !important; }
+  .row .acts button.go { color: var(--ok) !important; border-color: color-mix(in srgb, var(--ok) 60%, transparent) !important; }
+  .row .acts button.vm { color: #000 !important; background: var(--vmc) !important; border-color: var(--vmc) !important; }
+  .row.miss { border-left-color: var(--miss); } .row.miss .nm { color: color-mix(in srgb, var(--miss) 75%, #fff); }
+  .row.vmail { border-left-color: var(--vmc); }
+  .row.open { background: color-mix(in srgb, var(--hs) 6%, var(--bg2)); border-left-color: var(--hs); }
+  /* the opened row's drawer */
+  .drw { grid-column: 2 / -1; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+  .play { display: flex; align-items: center; gap: 10px; }
+  .play .pb { flex: none; width: 32px !important; height: 32px !important; display: grid !important; place-items: center; color: #000 !important; background: var(--vmc) !important; clip-path: polygon(0 0, 100% 0, 100% 72%, 76% 100%, 0 100%); }
+  .play canvas { flex: 1; height: 34px; width: 100%; }
+  .play .t { font: 11px var(--ncm-font-mono, monospace); color: var(--t2); white-space: nowrap; }
+  .trn { font: 13px/1.5 var(--ncm-font-body, sans-serif); color: var(--t1); padding: 8px 10px; border-left: 2px solid var(--vmc); background: rgba(0,0,0,.25); }
+  .trn small { display: block; font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--t3); margin-bottom: 3px; }
+  /* a typed call's transcript: the subtitles, kept */
+  .subs { display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; background: rgba(0,0,0,.28); border-left: 2px solid var(--hs); max-height: 150px; overflow-y: auto; }
+  .subs .l { font: 13px/1.4 var(--ncm-font-body, sans-serif); color: var(--t1); }
+  .subs .l b { font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; margin-right: 6px; }
+  .subs .l time { float: right; font: 10px var(--ncm-font-mono, monospace); color: var(--t3); }
+  .drw__acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .drw__acts button { display: inline-flex !important; align-items: center; gap: 6px; padding: 6px 10px !important; font: 700 10px var(--ncm-font-mono, monospace) !important; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--t2) !important; border: 1px solid var(--ln) !important; }
+  .drw__acts button.go { color: #04130b !important; background: var(--ok) !important; border-color: var(--ok) !important; }
+  .drw__acts button.bad { color: var(--hc) !important; }
+  /* matches while typing a name */
+  .mt { position: absolute; z-index: 5; left: 14px; right: 14px; top: 196px; background: var(--bg); border: 1px solid var(--hs); box-shadow: 0 10px 26px rgba(0,0,0,.6); }
+  .mt__r { display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; padding: 7px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ln) 60%, transparent); }
+  .mt__r.on { background: color-mix(in srgb, var(--hs) 14%, transparent); }
+  .mt__r .face { width: 28px; height: 28px; border-radius: 50%; background: var(--bg3) center/cover; border: 1px solid var(--tc, var(--hs)); display: grid; place-items: center; font: 700 10px var(--ncm-font-display, sans-serif); color: var(--tc, var(--hs)); }
+  .mt__r .n { font: 700 12px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; } .mt__r .n mark { background: none; color: var(--hs); }
+  .mt__r .n small { display: block; font: 10px var(--ncm-font-mono, monospace); color: var(--t2); text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .mt__r .tag { font: 600 9px var(--ncm-font-mono, monospace); color: var(--hv); border: 1px solid color-mix(in srgb, var(--hv) 60%, transparent); padding: 1px 5px; text-transform: uppercase; letter-spacing: .1em; }
+  /* empty / no number yet */
+  .empty { grid-column: 1 / -1; display: grid; place-items: center; text-align: center; }
+  .empty .box { max-width: 380px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .empty h3 { margin: 0; font: 800 20px var(--ncm-font-display, sans-serif); letter-spacing: .14em; text-transform: uppercase; color: var(--t1); border: 0; }
+  .empty p { margin: 0; font: 13px/1.5 var(--ncm-font-body, sans-serif); color: var(--t2); }
+  .empty .dial { width: 86px; height: 86px; color: var(--hs); } .empty .dial i { font-size: 26px; }
+
+  /* ── My line (the number's greeting + voicemail settings) ── */
+  .ct.tall { height: 740px; }
+  .dl__gear { margin-left: auto !important; width: 26px !important; height: 26px !important; display: grid !important; place-items: center; color: var(--t2) !important; border: 1px solid var(--ln) !important; }
+  .dl__gear.on { color: #04161a !important; background: var(--hs) !important; border-color: var(--hs) !important; }
+  .ml { display: flex; flex-direction: column; min-height: 0; --mc: var(--hs); }
+  .ml.alias { --mc: var(--hv); }
+  .ml__hd { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--ln); }
+  .ml__hd h4 { margin: 0; border: 0; font: 800 14px var(--ncm-font-display, sans-serif); letter-spacing: .16em; text-transform: uppercase; color: var(--t1); }
+  .ml__hd .x { margin-left: auto; color: var(--t2); }
+  .ml__lines { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--ln); }
+  .ml__line { flex: 1; padding: 1.5px; background: var(--ln); }
+  .ml__line .in { display: flex; align-items: center; gap: 9px; padding: 7px 10px; background: var(--bg2); }
+  .ml__line .in i { color: var(--t2); } .ml__line b { display: block; font: 700 12px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--t1); }
+  .ml__line small { font: 11px var(--ncm-font-mono, monospace); color: var(--t2); }
+  .ml__line.on { background: var(--hs); } .ml__line.on .in { background: color-mix(in srgb, var(--hs) 12%, var(--bg3)); } .ml__line.on .in i { color: var(--hs); }
+  .ml__line.al.on { background: var(--hv); } .ml__line.al.on .in { background: color-mix(in srgb, var(--hv) 12%, var(--bg3)); } .ml__line.al .in i { color: var(--hv); }
+  .ml__bd { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 12px; }
+  .ml__sec { margin-top: 12px; }
+  .ml__k { display: flex; align-items: center; gap: 8px; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .18em; text-transform: uppercase; color: var(--t3); margin-bottom: 7px; }
+  .ml__k::after { content: ''; flex: 1; height: 1px; background: var(--ln); }
+  .ways { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .way { padding: 8px 9px; border: 1px solid var(--ln); background: var(--bg2); cursor: pointer; }
+  .way b { display: flex; align-items: center; gap: 6px; font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--t1); }
+  .way small { display: block; margin-top: 3px; font: 10.5px/1.35 var(--ncm-font-body, sans-serif); color: var(--t2); }
+  .way.on { border-color: var(--mc); background: color-mix(in srgb, var(--mc) 12%, var(--bg2)); box-shadow: inset 3px 0 0 var(--mc); }
+  .way.on b { color: var(--mc); }
+  .way.dim { opacity: .45; cursor: not-allowed; }
+  .rec { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .rec .rb { flex: none; width: 34px !important; height: 34px !important; border-radius: 50%; display: grid !important; place-items: center; background: #ff4b4b !important; color: #fff !important; }
+  .rec canvas { flex: 1; width: 100%; height: 34px; }
+  .rec .t { font: 11px var(--ncm-font-mono, monospace); color: var(--t2); white-space: nowrap; }
+  .fld { margin-top: 10px; }
+  .fld label { display: block; font: 600 10px var(--ncm-font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--t3); margin-bottom: 4px; }
+  .fld .ta { padding: 8px 10px; background: rgba(0,0,0,.3); border: 1px solid var(--ln); font: 13px/1.45 var(--ncm-font-body, sans-serif); color: var(--t1); min-height: 38px; }
+  .fld .sel { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--ln); background: rgba(0,0,0,.3); font: 12px var(--ncm-font-mono, monospace); color: var(--t1); }
+  /* the preview: the greeting exactly as a caller sees it, the HUD's subtitle on a sliver of map */
+  .pv { margin-top: 10px; position: relative; padding: 12px 14px 12px; border: 1px solid var(--ln); background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.55)), url('../../../../systems/cyberpunk-red-core/maps/S0L-DCStreets-NOGRID1080.jpg') 40% 60% / 900px auto; text-align: center; }
+  .pv small { position: absolute; left: 8px; top: 6px; font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--t3); }
+  .pv .s { font: 600 15px var(--ncm-font-body, sans-serif); color: #fff; text-shadow: 0 0 2px #000, 0 2px 4px #000; margin-top: 8px; }
+  .pv .s b { font: 700 13px var(--ncm-font-display, sans-serif); text-transform: uppercase; letter-spacing: .06em; color: var(--hy); margin-right: 6px; }
+  .pv .tone { margin-top: 6px; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .22em; text-transform: uppercase; color: var(--hy); }
+  .pv .play { position: absolute; right: 8px; top: 6px; display: inline-flex !important; align-items: center; gap: 5px; padding: 4px 8px !important; font: 700 10px var(--ncm-font-mono, monospace) !important;
+    letter-spacing: .1em; text-transform: uppercase; color: #1a1400 !important; background: var(--hy) !important; }
+  .sw { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed color-mix(in srgb, var(--ln) 70%, transparent); }
+  .sw:last-child { border-bottom: 0; }
+  .sw .tx { flex: 1; } .sw .tx b { display: block; font: 700 12px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--t1); }
+  .sw .tx small { font: 11.5px var(--ncm-font-body, sans-serif); color: var(--t2); }
+  .tg { width: 34px; height: 18px; border-radius: 9px; background: #333a48; position: relative; flex: none; }
+  .tg::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #9aa4b6; transition: left .15s; }
+  .tg.on { background: color-mix(in srgb, var(--mc) 70%, #000); } .tg.on::after { left: 18px; background: #fff; }
+  .ml__ft { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--ln); }
+  .ml__ft small { flex: 1; font: 11px var(--ncm-font-body, sans-serif); color: var(--t3); }
+  .ml__ft button { padding: 7px 14px !important; font: 700 11px var(--ncm-font-mono, monospace) !important; letter-spacing: .12em; text-transform: uppercase; border: 1px solid var(--ln) !important; color: var(--t2) !important; }
+  .ml__ft button.go { color: #04161a !important; background: var(--mc) !important; border-color: var(--mc) !important; }
+  .mk-theme { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 10px; margin: -26px -26px 18px; padding: 10px 26px; background: #0c0e13; border-bottom: 1px solid #262b36; font: 12px monospace; color: #cfd8e3; }
+  .mk-theme b { color: #fff; letter-spacing: .08em; text-transform: uppercase; font-size: 11px; }
+  .mk-theme select { background: #151821; color: #e6edf6; border: 1px solid #333a48; padding: 2px 4px; font: 12px monospace; }
+  .mk-theme small { color: #7d8799; }
+
+  /* ── hover animation options (?f=hovers): each loops so it can be watched; the real one plays once per hover ── */
+  @property --trace { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  .cb__ping, .cb__roll { position: absolute !important; z-index: 0 !important; pointer-events: none; opacity: 0; }
+  /* 1 stripes — the current one */
+  .cb.hv1 .cb__in { background: var(--cbc); } .cb.hv1 .cb__scan { animation: cbSweep 1.1s cubic-bezier(.3,.6,.3,1) infinite !important; opacity: 1 !important; }
+  /* 2 ping — signal rings go out from the dial across the button */
+  .cb__ping { left: 31px; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid rgba(4,30,14,.55); }
+  .cb.hv2 .cb__ping { animation: cbPing 1.4s ease-out infinite; }
+  @keyframes cbPing { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(26); opacity: 0; } }
+  /* 3 decode — the label re-decodes: CALL → DIALING ROGUE, letters churning (JS) */
+  /* 4 roll — a CRT roll: a darker band rolls down through fine scanlines */
+  .cb__roll { inset: 0; background: linear-gradient(180deg, transparent 0 40%, rgba(4,30,14,.28) 40% 60%, transparent 60%) 0 0 / 100% 200%, repeating-linear-gradient(0deg, rgba(4,30,14,.16) 0 1px, transparent 1px 3px); }
+  .cb.hv4 .cb__roll { opacity: 1; animation: cbRoll 1.2s linear infinite; }
+  @keyframes cbRoll { from { background-position: 0 -100%, 0 0; } to { background-position: 0 100%, 0 0; } }
+  /* 5 trace — a bright segment chases round the border */
+  .cb.hv5 { background: conic-gradient(from var(--trace), #eafff2 0 14%, color-mix(in srgb, var(--cbc) 85%, #0b2015) 14% 100%) !important; animation: cbTrace 1.1s linear infinite; }
+  @keyframes cbTrace { to { --trace: 360deg; } }
+  /* 6 punch — it leans in: the label slides right, the Enter key presses, the dial turns a quarter */
+  .cb.hv6 .cb__tx { animation: cbLean 1.4s ease-in-out infinite; } .cb.hv6 kbd { animation: cbKey2 1.4s ease-in-out infinite; }
+  .cb.hv6 .dial svg { animation: cbTurn 1.4s ease-in-out infinite; }
+  @keyframes cbLean { 0%, 100% { transform: none; } 40%, 60% { transform: translateX(5px); } }
+  @keyframes cbKey2 { 0%, 100% { transform: none; } 45% { transform: scale(.82); } 60% { transform: scale(1.08); } }
+  @keyframes cbTurn { 0%, 100% { transform: none; } 50% { transform: rotate(90deg); } }
+  .hvgrid { display: grid; grid-template-columns: repeat(3, 268px); gap: 16px 18px; padding: 16px; background: var(--ncm-bg-surface, #12121c); border: 1px solid var(--ncm-border, #2a2a45); width: max-content; }
+  .hvgrid > div { display: flex; flex-direction: column; gap: 6px; } .hvgrid > div > span { font: 11px/1.4 monospace; color: #8b94a8; } .hvgrid > div > span b { color: #e6edf6; }
+
+  /* ── ARMING (round 29, dev: "as you enter the number, will it animate to the first stage?"): the button changes state
+     IN PLACE as you type. Empty → a number: the fill wipes in from the left behind a white edge, the label decodes from
+     "Type a number" to the digits, the dial fills, the Enter key pops in. A number → a contact: only the name decodes
+     (the fill is already on). Deleting back to nothing drains the fill the other way. ── */
+  .cb[disabled] kbd { display: none; }
+  .cb__in::before { content: ''; position: absolute; inset: 0; z-index: 0; background: color-mix(in srgb, var(--cbc) 72%, #0b2015); transform: scaleX(0); transform-origin: left; pointer-events: none; }
+  .cb.arming .cb__in::before { animation: cbArm .42s cubic-bezier(.2,.8,.2,1) both; }
+  .cb.arming .cb__in::after { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; left: 0; z-index: 2; background: #fff; box-shadow: 0 0 10px #fff; animation: cbArmEdge .42s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes cbArm { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes cbArmEdge { 0% { left: 0; opacity: 1; } 90% { left: calc(100% - 2px); opacity: 1; } 100% { left: calc(100% - 2px); opacity: 0; } }
+  .cb.disarming .cb__in::before { transform-origin: right; animation: cbDisarm .3s ease-in both; }
+  @keyframes cbDisarm { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+  .cb.arming kbd { animation: cbKeyIn .3s .3s cubic-bezier(.2,1.5,.4,1) both; }
+  @keyframes cbKeyIn { from { transform: scale(0); opacity: 0; } }
+  .cb.matched .cb__tx .who { animation: cbMatch .5s ease-out; }
+  @keyframes cbMatch { 0% { text-shadow: 0 0 12px #fff; } 100% { text-shadow: none; } }
+  .dl__match.pop { animation: rowIn2 .3s ease-out both; }
+  @keyframes rowIn2 { from { opacity: 0; transform: translateY(-4px); } }
+
+  /* ── Messages with Drafts + Scheduled folded in as chips (round 31) ── */
+  .ag__body.one { grid-template-columns: 1fr; }
+  .mv { display: flex; flex-direction: column; min-height: 0; }
+  .pills { display: flex; align-items: center; gap: 5px; padding: 8px 12px; border-bottom: 1px solid var(--ln); overflow-x: auto; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; flex: none; font: 600 11px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase;
+    color: var(--t2); border: 1px solid var(--ln); border-radius: 12px; }
+  .pill i { font-size: 10px; }
+  .pill.on { color: #04161a; background: var(--hs); border-color: var(--hs); }
+  .pill .bd { font: 700 9.5px var(--ncm-font-mono, monospace); padding: 0 5px; border-radius: 6px; background: color-mix(in srgb, var(--t2) 22%, transparent); color: var(--t1); }
+  .pill.on .bd { background: rgba(0,0,0,.25); color: #04161a; }
+  .pill .bd.al { background: var(--hc); color: #000; }
+  .pill.out { border-style: dashed; }                    /* the outgoing pair: dashed — not received mail */
+  .pill.out.on { border-style: solid; }
+  .pdiv { width: 1px; height: 18px; background: var(--ln); flex: none; margin: 0 4px; }
+  .pill.act { margin-left: auto; border-style: dashed; color: var(--hs); }
+  .mrow .face { width: 34px; height: 34px; border-radius: 50%; background: var(--bg3) center/cover; border: 1.5px solid var(--tc, var(--ln)); display: grid; place-items: center; font: 700 12px var(--ncm-font-display, sans-serif); color: var(--tc, var(--t2)); }
+  .pill.act.ic { padding: 5px 9px; }
+  .mvl { flex: 1; min-height: 0; overflow-y: auto; }
+  .mrow { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 9px 14px; border-bottom: 1px solid color-mix(in srgb, var(--ln) 55%, transparent); border-left: 3px solid transparent; }
+  .mrow.unread { border-left-color: var(--hs); } .mrow.unread .su { color: var(--t1); font-weight: 700; }
+  .mrow .fr { font: 700 13px var(--ncm-font-display, sans-serif); letter-spacing: .04em; text-transform: uppercase; color: var(--t1); }
+  .mrow .su { font: 13px var(--ncm-font-body, sans-serif); color: var(--t2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mrow .rt { display: flex; align-items: center; gap: 8px; }
+  .mrow .rt .tm2 { font: 11px var(--ncm-font-mono, monospace); color: var(--t3); }
+  .mrow .rt button { width: 28px !important; height: 28px !important; display: grid !important; place-items: center; color: var(--t2) !important; border: 1px solid var(--ln) !important; }
+  .mrow .rt button.go { color: var(--ok) !important; border-color: color-mix(in srgb, var(--ok) 55%, transparent) !important; }
+  .mrow .rt button.bad { color: var(--miss) !important; }
+  .mrow .kind { display: inline-flex; align-items: center; gap: 4px; font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .1em; text-transform: uppercase; padding: 1px 6px; border: 1px solid var(--ln); color: var(--t2); margin-left: 6px; vertical-align: 2px; }
+  .mrow .when { font: 700 12px var(--ncm-font-mono, monospace); color: var(--hy); }
+  .mrow .when small { display: block; font: 10.5px var(--ncm-font-mono, monospace); color: var(--t3); font-weight: 400; }
+  .mvhint { padding: 10px 14px; font: 12px var(--ncm-font-body, sans-serif); color: var(--t3); }
+
+  /* ── round 33: the number picker · Call buttons on contacts · a message's sender ── */
+  .gn { margin: auto; width: 520px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .gn h3 { margin: 0; border: 0; font: 800 18px var(--ncm-font-display, sans-serif); letter-spacing: .16em; text-transform: uppercase; color: var(--t1); }
+  .gn .sig { font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--hs); }
+  .gn .sig .dim { opacity: .55; }
+  .gn p { margin: 0; font: 13px var(--ncm-font-body, sans-serif); color: var(--t2); }
+  .gn__opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .gn__o { padding: 1.5px; background: var(--ln); cursor: pointer; }
+  .gn__o .in { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; background: var(--bg2); }
+  .gn__o .num { font: 600 18px var(--ncm-font-mono, monospace); letter-spacing: .06em; color: var(--t1); }
+  .gn__o small { font: 10.5px var(--ncm-font-mono, monospace); color: var(--t3); letter-spacing: .06em; }
+  .gn__o.on { background: var(--hs); } .gn__o.on .in { background: color-mix(in srgb, var(--hs) 12%, var(--bg3)); } .gn__o.on .num { color: #fff; }
+  .gn__o.on small { color: var(--hs); }
+  .gn__row { display: flex; align-items: center; gap: 8px; }
+  .gn__row .lbl { font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--t3); }
+  .gn__row .ln { flex: 1; height: 1px; background: var(--ln); }
+  .gn__own { display: flex; align-items: center; gap: 8px; }
+  .gn__own .cc { padding: 8px 10px; border: 1px solid var(--ln); background: var(--bg2); font: 600 15px var(--ncm-font-mono, monospace); color: var(--t2); }
+  .gn__own .box { flex: 1; padding: 8px 10px; border: 1px solid var(--ln); background: var(--bg2); font: 600 15px var(--ncm-font-mono, monospace); color: var(--t1); letter-spacing: .06em; }
+  .gn__own .box .ph { color: var(--t3); }
+  .gn__st { font: 11.5px var(--ncm-font-mono, monospace); } .gn__st.ok { color: var(--ok); } .gn__st.bad { color: var(--miss); }
+  .gn__ft { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .gn__ft small { flex: 1; font: 11.5px var(--ncm-font-body, sans-serif); color: var(--t3); }
+  .gn__ft button { padding: 8px 14px !important; font: 700 11px var(--ncm-font-mono, monospace) !important; letter-spacing: .1em; text-transform: uppercase; border: 1px solid var(--ln) !important; color: var(--t2) !important; }
+  .gn__ft button.go { color: #04130b !important; background: color-mix(in srgb, var(--ok) 80%, #0b2015) !important; border-color: var(--ok) !important; }
+  .gn__shuf { margin-left: auto; display: inline-flex !important; align-items: center; gap: 6px; padding: 4px 9px !important; font: 700 10px var(--ncm-font-mono, monospace) !important; letter-spacing: .1em; text-transform: uppercase; color: var(--hs) !important; border: 1px dashed color-mix(in srgb, var(--hs) 60%, transparent) !important; }
+  /* the player's Contact Manager (concept: the real cards + detail, with a Call button where there is a number) */
+  .cm { display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
+  .cm__grid { padding: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-content: start; overflow: auto; }
+  .cm__card { position: relative; padding: 12px; background: var(--bg2); border: 1px solid var(--ln); display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .cm__card.sel { border-color: var(--hs); box-shadow: inset 0 0 0 1px var(--hs); }
+  .cm__card .face { width: 48px; height: 48px; border-radius: 50%; background: var(--bg3) center/cover; border: 1.5px solid var(--tc, var(--ln)); display: grid; place-items: center; font: 700 15px var(--ncm-font-display, sans-serif); color: var(--tc, var(--t2)); }
+  .cm__card b { font: 700 13px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--t1); }
+  .cm__card small { font: 10.5px var(--ncm-font-mono, monospace); color: var(--t2); }
+  .cm__card small.no { color: var(--t3); font-style: italic; }
+  .cm__card .qa { position: absolute; top: 7px; right: 7px; display: flex; gap: 4px; }
+  .cm__card .qa button { width: 26px !important; height: 26px !important; display: grid !important; place-items: center; color: var(--t2) !important; border: 1px solid var(--ln) !important; background: var(--bg) !important; }
+  .cm__card .qa button.call { color: #04130b !important; background: color-mix(in srgb, var(--ok) 80%, #0b2015) !important; border-color: var(--ok) !important; }
+  .cm__det { border-left: 1px solid var(--ln); padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--bg2); }
+  .cm__det .face { width: 72px; height: 72px; border-radius: 50%; background: var(--bg3) center/cover; border: 2px solid var(--tc); align-self: center; }
+  .cm__det h3 { margin: 0; text-align: center; border: 0; font: 800 18px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--t1); }
+  .cm__det .lines { display: flex; flex-direction: column; gap: 4px; font: 12px var(--ncm-font-mono, monospace); color: var(--t2); }
+  .cm__det .lines i { width: 16px; color: var(--t3); }
+  .cm__det .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .cm__det .acts button { display: inline-flex !important; align-items: center; justify-content: center; gap: 7px; padding: 9px !important; font: 700 11px var(--ncm-font-display, sans-serif) !important; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--ln) !important; color: var(--t1) !important; background: var(--bg3) !important; }
+  .cm__det .acts button.call { color: #04130b !important; background: color-mix(in srgb, var(--ok) 80%, #0b2015) !important; border-color: var(--ok) !important; }
+  /* a message's sender row (concept: the real detail header, with a Call chip) */
+  .md { padding: 16px; }
+  .md__hd { display: grid; grid-template-columns: 46px 1fr; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--ln); }
+  .md__hd .face { width: 46px; height: 46px; border-radius: 50%; background: var(--bg3) center/cover; border: 1.5px solid var(--tc); }
+  .md__hd b { font: 700 15px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--t1); }
+  .md__hd .ad { font: 11.5px var(--ncm-font-mono, monospace); color: var(--t2); }
+  .md__chips { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+  .md__chips span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--t2); border: 1px solid var(--ln); }
+  .md__chips span.call { color: #04130b; background: color-mix(in srgb, var(--ok) 80%, #0b2015); border-color: var(--ok); }
+  .md__sub { margin: 14px 0 6px; font: 700 17px var(--ncm-font-display, sans-serif); color: var(--t1); }
+  .md__body { font: 14px/1.55 var(--ncm-font-body, sans-serif); color: var(--t2); }
+
+  /* round 34: the region / area-code row in the number picker */
+  .gn__reg { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .gn__reg .sel { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; border: 1px solid var(--ln); background: var(--bg2); font: 600 12px var(--ncm-font-body, sans-serif); color: var(--t1); }
+  .gn__reg .sel i.fa-caret-down { color: var(--t3); }
+  .gn__codes { display: flex; gap: 5px; flex-wrap: wrap; }
+  .gn__codes span { padding: 4px 8px; font: 700 11px var(--ncm-font-mono, monospace); color: var(--t2); border: 1px solid var(--ln); cursor: pointer; }
+  .gn__codes span small { font-weight: 400; color: var(--t3); margin-left: 4px; font-size: 9.5px; }
+  .gn__codes span.on { color: #04161a; background: var(--hs); border-color: var(--hs); } .gn__codes span.on small { color: #04161a; }
+</style>
+</head>
+<body>
+<div class="mk-theme"><b>Player theme</b> <select id="th"></select> <small>the Calls tab follows the player's Agent theme. Fixed on purpose: Call = green, No signal / missed = red, a network = its own colour.</small></div>
+<div id="frames"></div>
+<script>
+  const Q = new URLSearchParams(location.search);
+  if (Q.get('still') === '1') document.body.classList.add('still');
+  const IMG = '../../../../worlds/ncmessenger/thephanthasy_An_illustrative_portrait_of_Kai_Meng_known_as_Verd_fdcb5e3a-adc5-4dc8-8720-e7f92f008405.png';
+
+  // the HUD's dial, small
+  const pt = (rr, deg) => { const t = (deg - 90) * Math.PI / 180; return [(30 + rr * Math.cos(t)).toFixed(2), (30 + rr * Math.sin(t)).toFixed(2)]; };
+  const arc = (rr, a0, a1) => { const [x0, y0] = pt(rr, a0), [x1, y1] = pt(rr, a1); return `M${x0} ${y0} A${rr} ${rr} 0 0 1 ${x1} ${y1}`; };
+  const sector = (r1, r2, a0, a1) => { const [x0, y0] = pt(r2, a0), [x1, y1] = pt(r2, a1), [x2, y2] = pt(r1, a1), [x3, y3] = pt(r1, a0);
+    return `M${x0} ${y0} A${r2} ${r2} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${r1} ${r1} 0 0 0 ${x3} ${y3} Z`; };
+  const DIAL = (lit = 12, icon = 'fa-phone') => `<span class="dial"><svg viewBox="0 0 60 60"><g class="brk">${[8, 98, 188, 278].map((d) => `<path d="${arc(28, d, d + 64)}"/>`).join('')}</g>
+    <g>${Array.from({ length: 12 }, (_, i) => `<path class="seg${i < lit ? ' on' : ''}" d="${sector(18.5, 21.5, i * 30 + 4, i * 30 + 26)}"/>`).join('')}</g></svg><i class="fas ${icon}"></i></span>`;
+  const NETS = { CitiNet: ['#3ad0ff', 'fa-tower-broadcast'], 'Arasaka CorpNet': ['#ff5468', 'fa-building'], 'The Deep': ['#a77bff', 'fa-mask'] };
+  const NET = (n, s = 78) => { const [c, ic] = NETS[n]; const on = s >= 80 ? 4 : s >= 50 ? 3 : s >= 25 ? 2 : 1;
+    return `<span class="net" style="--nc:${c}"><i class="fas ${ic}"></i>${n}<span class="bars">${[1, 2, 3, 4].map((i) => `<b class="${i <= on ? 'on' : ''}"></b>`).join('')}</span></span>`; };
+  const HUE = { Rogue: '#ff7ab8', Judy: '#4fd1ff', Rache: '#b6ff5c', Jackie: '#ffb84d', Delamain: '#7cf0d0', 'Queen of Hearts': '#ff7ab8' };
+  const face = (name, img, anon) => anon ? '<span class="face anon"><i class="fas fa-user-secret"></i></span>'
+    : `<span class="face" style="--tc:${HUE[name] || '#9aa'};${img ? `background-image:url('${img}')` : ''}">${img ? '' : name.slice(0, 2).toUpperCase()}</span>`;
+
+  // the Agent shell
+  const shell = (body, badge = 3, on = 'calls') => `<div class="ct"><div class="ag__hd"><span class="av"></span><span class="who">V<small>v@nightcity.net · +1 (555) 0177-42</small></span><span class="sp"></span>${NET('CitiNet', 78)}</div>
+    <div class="ag__tabs"><span class="ag__tab${on === 'msg' ? ' on' : ''}"><i class="fas fa-inbox"></i> Messages <span class="b cy">3</span></span>
+      <span class="ag__tab${on === 'msg' ? '' : ' on'}"><i class="fas fa-phone"></i> Calls${badge ? ` <span class="b">${badge}</span>` : ''}</span><span class="ag__tab"><i class="fas fa-microchip"></i> Shards</span></div>
+    <div class="ag__body">${body}</div></div>`;
+
+  // the dialer module
+  const KEYS = [['1', ''], ['2', 'ABC'], ['3', 'DEF'], ['4', 'GHI'], ['5', 'JKL'], ['6', 'MNO'], ['7', 'PQRS'], ['8', 'TUV'], ['9', 'WXYZ'], ['*', ''], ['0', '+'], ['#', '']];
+  // round 22 (dev: "the call button could be better"): one button, three things in it — the ring dial (it spins up and
+  // its segments sweep on hover, the beat the call screen will take over), WHO you are about to call (the name when the
+  // number matches a contact, else the number, else "type a number"), and the Enter key. States: ready (green), a number
+  // with no contact (green, the number as the label), nothing typed (dim, not clickable), no signal (red, says why).
+  const CALLBTN = (state, num = '', who = 'Rogue') => {
+    const label = { ready: ['Call', who, 'CitiNet · ENC-128'], number: ['Call', num, 'not in your contacts'], empty: ['Call', 'Type a number', 'or a name'], nosig: ['No signal', 'Dead zone', 'move somewhere with a network'] }[state];
+    return `<button class="cb cb--${state}"${state === 'empty' || state === 'nosig' ? ' disabled' : ''}><span class="cb__in">
+      ${DIAL(state === 'empty' ? 0 : state === 'nosig' ? 2 : 12, state === 'nosig' ? 'fa-phone-slash' : 'fa-phone')}
+      <span class="cb__tx"><b>${label[0]}</b><span class="who">${label[1]}</span><small>${label[2]}</small></span>
+      <kbd>⏎</kbd><span class="cb__scan"></span><span class="cb__ping"></span><span class="cb__roll"></span></span></button>`; };
+  const dialer = ({ num = '', match = '', as = 'V', alias = false, hit = '', gear = false } = {}) => `<div class="dl">
+    <div class="dl__sig">▸ Line ready <span class="dim">//</span> CitiNet <span class="dim">·</span> ch36 <span class="dim">·</span> ENC-128 <span class="dim">· open band</span></div>
+    <div class="dl__as">Call as <span class="chip${alias ? ' alias' : ''}">${alias ? '<i class="fas fa-mask"></i>' : '<i class="fas fa-id-badge"></i>'} ${as} <i class="fas fa-caret-down"></i></span><button class="dl__gear${gear ? ' on' : ''}" title="My line: greeting and voicemail"><i class="fas fa-gear"></i></button></div>
+    <div class="dl__num cut"><div class="in cut"><span class="val">${num}<span class="car"></span></span><button class="del" title="Delete"><i class="fas fa-delete-left"></i></button></div></div>
+    <div class="dl__match">${match}</div>
+    <div class="dl__keys">${KEYS.map(([k, s]) => `<button class="${k === hit ? 'hit' : ''}">${k}<small>${s || '&nbsp;'}</small></button>`).join('')}</div>
+    ${CALLBTN(num ? (match || /[a-z]/i.test(num) ? 'ready' : 'number') : 'empty', num)}
+  </div>`;
+
+  // speed dial + filters + the log
+  const SPEED = `<div class="sd"><span class="sd__k">Speed dial</span>
+    <span class="sd__p" title="Rogue · Afterlife">${face('Rogue', IMG).replace('</span>', '<i class="dot"></i></span>')}<span>Rogue</span></span>
+    <span class="sd__p">${face('Judy').replace('</span>', '<i class="dot"></i></span>')}<span>Judy</span></span>
+    <span class="sd__p">${face('Rache').replace('</span>', '<i class="dot off"></i></span>')}<span>Rache</span></span>
+    <span class="sd__p">${face('Jackie').replace('</span>', '<i class="dot off"></i></span>')}<span>Jackie</span></span>
+    <span class="sd__p">${face('Delamain')}<span>Delamain</span></span>
+    <span class="sd__p"><span class="sd__add"><i class="fas fa-plus"></i></span><span>Add</span></span></div>`;
+  // round 27 (dev: "pagination and better sorting"): ONE toolbar row — quick chips for what needs you (missed,
+  // voicemail), a Show menu for the rest (incoming / outgoing / with a transcript / one person), Sort, and search.
+  // Under the list a page bar: 25 a page, "1–25 of 132", page numbers, the page size.
+  const FILTERS = (on = 'all') => `<div class="fl">${[['all', 'All', ''], ['missed', 'Missed', '<span class="n">1</span>', 'r'], ['vm', 'Voicemail', '<span class="n">1</span>', 'y']].map(([k, l, n, c]) =>
+    `<button class="${k === on ? 'on' : ''} ${c || ''}">${l}${n}</button>`).join('')}
+    <span class="dd" title="Show: everything · incoming · outgoing · missed · voicemail · with a transcript · one person"><i class="fas fa-filter"></i> Show <i class="fas fa-caret-down"></i></span>
+    <span class="dd" title="Sort: newest · oldest · longest · by person (grouped) · most called"><i class="fas fa-arrow-down-wide-short"></i> Newest <i class="fas fa-caret-down"></i></span>
+    <span class="sp"></span><button class="qb" title="Search calls (name, number, transcript)"><i class="fas fa-magnifying-glass"></i></button></div>`;
+  const PAGER = `<div class="pg"><span class="pg__n">1–25 <small>of 132 calls</small></span><span class="sp"></span>
+    <button class="ar" title="Newer"><i class="fas fa-chevron-left"></i></button><button class="on">1</button><button>2</button><button>3</button><span class="gap">…</span><button>6</button><button class="ar" title="Older"><i class="fas fa-chevron-right"></i></button></div>`;
+  const DIR = { in: ['fa-arrow-down', '#4be38a', 'In'], out: ['fa-arrow-up', 'var(--hs)', 'Out'], miss: ['fa-phone-slash', 'var(--miss)', 'Missed'], vm: ['fa-voicemail', 'var(--vmc)', 'Voicemail'] };
+  const MODE = { loud: ['fa-users', 'out loud'], type: ['fa-keyboard', 'typed'], dict: ['fa-microphone', 'dictated'] };
+  const row = (o) => { const [ic, col, word] = DIR[o.dir];
+    return `<div class="row ${o.dir === 'miss' ? 'miss' : ''}${o.dir === 'vm' ? ' vmail' : ''}${o.open ? ' open' : ''}" style="--dc:${col}">
+      <span class="dir"><i class="fas ${ic}"></i></span>${face(o.name, o.img, o.anon)}
+      <div><div class="nm">${o.anon ? 'Number withheld' : o.name}${o.alias ? ` <span class="tag alias">${o.alias}</span>` : ''}${o.isNew ? ' <span class="tag new">New</span>' : ''}</div>
+        <div class="sub"><span class="k">${word}</span>${o.dur ? `<span>${o.dur}</span>` : ''}${o.mode ? `<span class="md" title="${MODE[o.mode][1]}"><i class="fas ${MODE[o.mode][0]}"></i></span>` : ''}${o.net ? NET(o.net, o.sig) : ''}</div></div>
+      <span class="when">${o.when}</span>
+      <span class="acts">${o.dir === 'vm' ? '<button class="vm" title="Play"><i class="fas fa-play"></i></button>' : ''}${o.mode === 'type' || o.mode === 'dict' ? '<button title="Transcript"><i class="fas fa-closed-captioning"></i></button>' : ''}${o.anon ? '' : '<button class="go" title="Call back"><i class="fas fa-phone"></i></button>'}</span>
+      ${o.drawer || ''}</div>`; };
+
+  const VM_DRAWER = `<div class="drw"><div class="play"><button class="pb"><i class="fas fa-pause"></i></button><canvas data-wave width="600" height="68"></canvas><span class="t">0:09 / 0:24</span></div>
+    <div class="trn"><small>Transcript</small>V. The Pier 4 thing is off — Arasaka's got a Trauma Team contract on that dock now. Call me before you do anything stupid.</div>
+    <div class="drw__acts"><button class="go"><i class="fas fa-phone"></i> Call back</button><button><i class="fas fa-reply"></i> Reply by message</button><button><i class="fas fa-microchip"></i> Save to shard</button><button><i class="fas fa-comment"></i> Share to chat</button><button class="bad"><i class="fas fa-trash"></i></button></div></div>`;
+  const TR_DRAWER = `<div class="drw"><div class="subs">
+      <div class="l"><b style="color:var(--hc)">Judy:</b>You at the Afterlife? <time>20:11</time></div>
+      <div class="l"><b style="color:var(--hs)">V:</b>Close. What's wrong? <time>20:11</time></div>
+      <div class="l"><b style="color:var(--hc)">Judy:</b>Evelyn's gone dark. Last ping was Jig-Jig Street. <time>20:12</time></div>
+      <div class="l"><b style="color:var(--hs)">V:</b>On my way. Keep your line open. <time>20:13</time></div></div>
+    <div class="drw__acts"><button class="go"><i class="fas fa-phone"></i> Call back</button><button><i class="fas fa-microchip"></i> Save to shard</button><button><i class="fas fa-comment"></i> Share to chat</button><button><i class="fas fa-copy"></i> Copy</button></div></div>`;
+
+  const LOG = (filter, opts = {}) => `<div class="lg">${SPEED}${FILTERS(filter)}<div class="ls">
+    <div class="day">Tonight · 15 Aug 2045</div>
+    ${row({ dir: 'vm', name: 'Rogue', img: IMG, dur: '0:24', net: 'CitiNet', sig: 78, when: '22:41', isNew: !opts.vm, open: opts.vm, drawer: opts.vm ? VM_DRAWER : '' })}
+    ${row({ dir: 'miss', anon: true, net: 'The Deep', sig: 52, when: '21:58' })}
+    ${row({ dir: 'out', name: 'Judy', dur: '4:12', mode: 'type', net: 'CitiNet', sig: 78, when: '20:15', open: opts.tr, drawer: opts.tr ? TR_DRAWER : '' })}
+    <div class="day">Yesterday</div>
+    ${row({ dir: 'in', name: 'Queen of Hearts', img: IMG, alias: 'alias of Rogue', dur: '1:03', mode: 'loud', net: 'Arasaka CorpNet', sig: 96, when: '23:20' })}
+    ${row({ dir: 'out', name: 'Delamain', net: 'CitiNet', sig: 78, when: '19:02', dur: 'no answer' })}
+    ${row({ dir: 'in', name: 'Rache', dur: '0:41', mode: 'dict', net: 'CitiNet', sig: 22, when: '14:47' })}
+  </div>${PAGER}</div>`;
+
+  const MATCH = `<div class="mt">
+    <div class="mt__r on">${face('Rogue', IMG)}<span class="n"><mark>Ro</mark>gue<small>+1 (555) 0119-07 · Afterlife</small></span><i class="fas fa-turn-down fa-rotate-90" style="color:var(--hs)"></i></div>
+    <div class="mt__r">${face('Queen of Hearts', IMG)}<span class="n">Queen of Hearts<small>+1 (555) 0342-90</small></span><span class="tag">alias of <mark style="background:none;color:var(--hs)">Ro</mark>gue</span></div>
+    <div class="mt__r">${face('Rache')}<span class="n"><mark>R</mark>ache<small>+1 (555) 0118-60</small></span><span></span></div></div>`;
+
+  // ── My line: the selected number's greeting + voicemail settings (round 21, dev: "do players set their own voicemail?") ──
+  const LINES = (on) => `<div class="ml__lines">
+      <div class="ml__line cut${on === 'v' ? ' on' : ''}"><div class="in cut"><i class="fas fa-id-badge"></i><span><b>V</b><small>+1 (555) 0177-42 · main</small></span></div></div>
+      <div class="ml__line al cut${on === 'nix' ? ' on' : ''}"><div class="in cut"><i class="fas fa-mask"></i><span><b>Nix</b><small>+1 (555) 0612-08 · burner</small></span></div></div></div>`;
+  const WAYS = (on) => `<div class="ways">${[['typed', 'fa-keyboard', 'Typed', 'Your words as a subtitle.'], ['rec', 'fa-microphone', 'Recorded', 'Your own voice.'],
+      ['tts', 'fa-robot', 'Read out', 'A synthetic voice reads your words.'], ['def', 'fa-tower-broadcast', 'Default', '"The person you are calling is not available."']]
+      .map(([k, ic, b, sm]) => `<div class="way${k === on ? ' on' : ''}"><b><i class="fas ${ic}"></i> ${b}</b><small>${sm}</small></div>`).join('')}</div>`;
+  const MYLINE = (alias) => `<div class="ml${alias ? ' alias' : ''}">
+    <div class="ml__hd"><i class="fas fa-sim-card" style="color:var(--mc)"></i><h4>My line</h4><span class="mono" style="font-size:11px;color:var(--t2)">greeting and voicemail, per number</span><button class="x"><i class="fas fa-xmark"></i></button></div>
+    ${LINES(alias ? 'nix' : 'v')}
+    <div class="ml__bd">
+      <div class="ml__sec"><div class="ml__k">Greeting</div>${WAYS(alias ? 'tts' : 'rec')}
+        ${alias ? `<div class="fld"><label>What it says</label><div class="ta">Yeah. Leave it.</div></div>
+          <div class="fld"><label>Voice</label><span class="sel"><i class="fas fa-robot"></i> Microsoft Guy — English (US) <i class="fas fa-caret-down"></i></span> <span class="mono" style="font-size:10.5px;color:var(--t3);margin-left:6px">the voices this browser has</span></div>`
+        : `<div class="rec"><button class="rb" title="Record again"><i class="fas fa-microphone"></i></button><canvas data-wave width="600" height="68"></canvas><span class="t">0:04</span></div>
+          <div class="fld"><label>Words under it <span style="text-transform:none;letter-spacing:0">(optional — shown as the subtitle)</span></label><div class="ta">You've reached V. You know what to do.</div></div>`}
+        <div class="pv"><small>As a caller sees it</small><button class="play"><i class="fas fa-play"></i> Preview</button>
+          <div class="s"><b>${alias ? 'Nix' : 'V'} · greeting:</b>${alias ? 'Yeah. Leave it.' : 'You\'ve reached V. You know what to do.'}</div><div class="tone">── leave a message after the tone ──</div></div></div>
+      <div class="ml__sec"><div class="ml__k">Voicemail</div>
+        <div class="sw"><span class="tx"><b>Take voicemail</b><small>Callers can leave a message when you don\'t pick up. Off: they just get "No answer", and no greeting plays.</small></span><span class="tg on"></span></div>
+        <div class="sw"><span class="tx"><b>Send calls straight to voicemail</b><small>Do not disturb: your phone does not ring, callers go to the greeting.</small></span><span class="tg"></span></div>
+        <div class="sw"><span class="tx"><b>Longest message</b><small>The GM allows up to 2:00.</small></span><span class="sel" style="display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--ln);font:12px var(--ncm-font-mono,monospace)">1:00 <i class="fas fa-caret-down"></i></span></div>
+      </div>
+    </div>
+    <div class="ml__ft"><small>Only you and the GM can change this.</small><button>Cancel</button><button class="go"><i class="fas fa-check"></i> Save</button></div></div>`;
+  const PILLS = (on) => `<div class="pills">
+      <span class="pill${on === 'inbox' ? ' on' : ''}"><i class="fas fa-inbox"></i> All <span class="bd">12</span></span><span class="pill"><i class="fas fa-envelope"></i> Unread <span class="bd al">3</span></span>
+      <span class="pill"><i class="fas fa-paper-plane"></i> Sent</span><span class="pill"><i class="fas fa-bookmark"></i> Saved</span><span class="pill"><i class="fas fa-trash"></i> Trash</span><span class="pill"><i class="fas fa-ban"></i> Spam</span>
+      <span class="pdiv"></span>
+      <span class="pill out${on === 'drafts' ? ' on' : ''}"><i class="fas fa-file-pen"></i> Drafts <span class="bd">2</span></span><span class="pill out${on === 'sched' ? ' on' : ''}"><i class="fas fa-clock"></i> Scheduled <span class="bd">1</span></span>
+      ${on === 'inbox' ? '<span class="pill act ic" title="Mark all read"><i class="fas fa-envelope-open"></i></span>' : ''}</div>`;
+  const MROW = (n, img, sub, when, unread) => `<div class="mrow${unread ? ' unread' : ''}">${face(n, img)}<div><div class="fr">${n}</div><div class="su">${sub}</div></div><div class="rt"><span class="tm2">${when}</span></div></div>`;
+  const FRAMES = {
+    tab: ['<b>1 · Agent → Calls.</b> Left: the <b>dialer</b> in the HUD\'s language — the signal line on top (your network, its channel and cipher), <b>Call as</b> (your own number, or one of your aliases\' numbers, in violet), the number in the cut-corner box, a keypad of cut-corner keys, and the <b>Call</b> button with the same ring dial. Right: <b>speed dial</b> (the people you call most, faces with an online dot), then the log grouped by day — direction in a coloured corner tile (in green · out cyan · missed red · voicemail amber), face, name (aliases in violet), how it went (duration, the mode used, the network in its own colour with its signal), the time, and the actions that apply. Missed = red edge, a new voicemail = amber NEW.',
+      shell(dialer({ num: '555 0119-07', match: `${face('Rogue', IMG)} Rogue · Afterlife` }) + LOG('all'))],
+    match: ['<b>2 · Typing a name.</b> The number box takes a name too: matches drop under it — your contacts by name and by any of their aliases (an alias match says whose alias), ↑↓ and Enter to pick. Here V is calling as a burner alias ("Call as" in violet), so the other side sees that number, not V\'s.',
+      shell(dialer({ num: 'Ro', as: 'Nix (burner)', alias: true, hit: '7' }) + LOG('all')).replace('<div class="dl__match"></div>', '<div class="dl__match"></div>' + MATCH)],
+    vm: ['<b>3 · A voicemail, opened in place.</b> The row unfolds: play / pause, a scrubbable waveform, the transcript (typed voicemail, a Dictated one, or the GM\'s typed text), and what to do with it — Call back, Reply by message, Save to shard (it becomes an AV log file), Share to chat, Delete. Opening it clears NEW.',
+      shell(dialer() + LOG('vm', { vm: true }), 2)],
+    transcript: ['<b>4 · A typed call, kept.</b> Typed and dictated calls keep their subtitles as a transcript, with times. The same actions — save it to a shard as evidence, share it to chat, copy it.',
+      shell(dialer() + LOG('all', { tr: true }))],
+    myline: ['<b>6 · My line — your own greeting.</b> The gear beside <b>Call as</b> opens My line in the right pane, for the number picked on top (your main line, or a burner). <b>Greeting</b>: Typed (a subtitle), <b>Recorded</b> (your voice — here 4 seconds, with optional words shown under it), Read out (a synthetic voice), or Default. Recorded is greyed with the reason where the browser can\'t use a mic. The strip under it is <b>exactly what a caller sees</b>, with Preview to hear it. <b>Voicemail</b>: take messages or not, send calls straight to voicemail (do not disturb), the longest message within the GM\'s limit.',
+      shell(dialer({ gear: true }) + MYLINE(false)).replace('<div class="ct">', '<div class="ct tall">')],
+    'myline-burner': ['<b>7 · My line — a burner.</b> Each number has its own settings. The burner Nix (violet, the alias colour) uses <b>Read out</b>: a synthetic voice from the voices this browser has, so the greeting does not sound like the player. Its voicemail is separate from V\'s: a message left for Nix lands under Nix in the log.',
+      shell(dialer({ gear: true, as: 'Nix (burner)', alias: true }) + MYLINE(true)).replace('<div class="ct">', '<div class="ct tall">')],
+    arm: ['<b>The Call button arming as you type.</b> Live: digits go in (keys flash). Nothing typed — the button is an outline that says "Type a number". The third digit <b>arms</b> it: the green wipes in from the left behind a white edge, the label decodes from "Type a number" into the digits, the dial fills, the Enter key pops in. When the number <b>matches someone</b>, only the name decodes over the digits (a flash on it) and their face + name appear under the box — the fill is already on. Typing a name works the same way. Deleting back to nothing drains it. Then <b>hover</b> brightens it and decodes CALL into DIAL ▸. (Loops.)',
+      shell(dialer({}) + LOG('all')).replace('<div class="ct">', '<div class="ct" data-armdemo>')],
+    hovers: ['<b>Hover animations to choose from.</b> Each one loops here so you can watch it; the real one plays once per hover (and the dial refill + the name glitch can ride along with any of them).',
+      `<div class="ct" style="width:auto;height:auto;border:0;background:none"><div class="hvgrid">
+        <div><span><b>1 · Stripes</b> — a band of fine diagonal stripes sweeps across (the current one).</span>${CALLBTN('ready').replace('class="cb ', 'class="cb hv1 ')}</div>
+        <div><span><b>2 · Ping</b> — signal rings go out from the dial across the button.</span>${CALLBTN('ready').replace('class="cb ', 'class="cb hv2 ')}</div>
+        <div><span><b>3 · Decode</b> — CALL turns into DIALING and the name re-decodes, letters churning.</span>${CALLBTN('ready').replace('class="cb ', 'class="cb hv3 ')}</div>
+        <div><span><b>4 · Roll</b> — a CRT roll: a darker band rolls down through fine scanlines.</span>${CALLBTN('ready').replace('class="cb ', 'class="cb hv4 ')}</div>
+        <div><span><b>5 · Trace</b> — a bright segment chases round the border.</span>${CALLBTN('ready').replace('class="cb ', 'class="cb hv5 ')}</div>
+        <div><span><b>6 · Lean in</b> — the label slides right, the Enter key presses, the dial turns.</span>${CALLBTN('ready').replace('class="cb ', 'class="cb hv6 ')}</div>
+      </div></div>`],
+    callbtn: ['<b>The Call button, its states.</b> A callable button is <b>filled</b> in a deep green with dark text — the one filled action on the screen; nothing-typed and no-signal stay outlined. <b>Hover (Decode, picked)</b>: the fill comes up to full green, CALL decodes into DIAL ▸ and the name re-decodes, letters churning; the dial spins up and refills segment by segment; the Enter key flashes. Moving away decodes it back to CALL. One button: the ring dial inside it (it spins up and its segments sweep on hover — the same beat the call screen takes over with), the label says <b>who</b> you are about to call, and the Enter key. <b>Ready</b>: a contact matched — their name, the network and cipher. <b>A number</b>: no contact — the number itself, "not in your contacts". <b>Nothing typed</b>: dim, not clickable. <b>No signal</b>: red, says why, not clickable.',
+      `<div class="ct" style="width:auto;height:auto;border:0;background:none"><div class="cbrow">
+        <div><span>ready</span>${CALLBTN('ready')}</div><div><span>ready, hovered</span>${CALLBTN('ready').replace('class="cb ', 'class="cb hov ')}</div><div><span>a number, no contact</span>${CALLBTN('number', '555 0342-90')}</div>
+        <div><span>nothing typed</span>${CALLBTN('empty')}</div><div><span>no signal</span>${CALLBTN('nosig')}</div></div></div>`],
+    msg: ['<b>Messages — three tabs, Drafts and Scheduled folded in.</b> The Agent is <b>Messages · Calls · Shards</b> (talking first, files last). The old Scheduled and Drafts tabs are now two <b>chips</b> at the end of the Messages row, after a divider and drawn dashed (they are outgoing, not mail you received). They only appear when something is in them. The Messages badge still counts unread mail only.',
+      shell(`<div class="mv">${PILLS('inbox')}<div class="mvl">
+        ${MROW('Rogue', IMG, 'Pier 4 — who else is on it?', '22:44', true)}${MROW('Judy', '', 'Evelyn\'s last ping', '20:31', true)}${MROW('Arasaka Security', '', 'Your access badge has been revoked', '18:02', true)}
+        ${MROW('Rache', '', 'Re: Kabuki thing', 'yesterday')}${MROW('Delamain', '', 'Your ride receipt', 'yesterday')}</div></div>`, 3, 'msg').replace('class="ag__body"', 'class="ag__body one"')],
+    'msg-drafts': ['<b>Drafts chip.</b> Every draft for this character: who it is to, the subject, how old, and whether it is a reply (it comes back with the message it answers). Open continues it in the composer; × deletes. The composer\'s "2 drafts" link lands here.',
+      shell(`<div class="mv">${PILLS('drafts')}<div class="mvl">
+        <div class="mrow">${face('Rogue', IMG)}<div><div class="fr">To Rogue <span class="kind"><i class="fas fa-reply"></i> reply</span></div><div class="su">Re: Pier 4 — I'm in, but I want the floor plan first…</div></div><div class="rt"><span class="tm2">saved 4 min ago</span><button class="go" title="Open"><i class="fas fa-pen"></i></button><button class="bad" title="Delete"><i class="fas fa-xmark"></i></button></div></div>
+        <div class="mrow">${face('Judy')}<div><div class="fr">To Judy <span class="kind"><i class="fas fa-file-pen"></i> new</span></div><div class="su">(no subject) — found something on Evelyn's…</div></div><div class="rt"><span class="tm2">saved 2 h ago</span><button class="go" title="Open"><i class="fas fa-pen"></i></button><button class="bad" title="Delete"><i class="fas fa-xmark"></i></button></div></div>
+        <div class="mvhint">Drafts save every 30 seconds while you write. Up to 20 per character.</div></div></div>`, 3, 'msg').replace('class="ag__body"', 'class="ag__body one"')],
+    'msg-sched': ['<b>Scheduled chip.</b> Mail waiting to go out at a set game time: when (in amber, with how long until), to whom, the subject. Edit · Send now · Cancel.',
+      shell(`<div class="mv">${PILLS('sched')}<div class="mvl">
+        <div class="mrow">${face('Rache')}<div><div class="fr">To Rache</div><div class="su">Meet at the Afterlife — bring the chip</div></div><div class="rt"><span class="when">23:30<small>in 47 min</small></span><button title="Edit"><i class="fas fa-pen"></i></button><button class="go" title="Send now"><i class="fas fa-paper-plane"></i></button><button class="bad" title="Cancel"><i class="fas fa-xmark"></i></button></div></div>
+        <div class="mvhint">Times are on the game clock — they move when the GM advances time.</div></div></div>`, 3, 'msg').replace('class="ag__body"', 'class="ag__body one"')],
+    getnum: ['<b>Getting a number.</b> "Get a number" on the No-line screen opens this, in the Calls pane: <b>where it is from</b> — a country (its code) and, for the US, a state with its real area codes (+ the fictional 555 "Night City"); then four numbers made up for you with that area code (each with what makes it memorable). The local part always comes from <b>555-0100…0199</b>, the block reserved for fiction, so a made-up number is never a real person\'s. Real states and codes are public facts; the GM sets the default region in Admin → Phone → Settings, <b>New numbers</b> to shuffle, or <b>type your own</b> — checked live: free, or taken by someone (never says who). Use it, and the line is yours; the GM can change or hand out numbers any time in Admin → Phone.',
+      shell(`<div class="gn"><div class="sig">▸ Allocating <span class="dim">//</span> CitiNet exchange <span class="dim">·</span> home code +1</div><h3>Pick your number</h3>
+        <p>This is the number people call you on. You can keep it, change it later, or get burners for your aliases.</p>
+        <div class="gn__row"><span class="lbl">Where is it from</span><span class="ln"></span></div>
+        <div class="gn__reg"><span class="sel"><span class="mono" style="color:var(--hs)">+1</span> United States <i class="fas fa-caret-down"></i></span><span class="sel">California <i class="fas fa-caret-down"></i></span>
+          <span class="gn__codes"><span class="on">415<small>SF</small></span><span>510<small>Oakland</small></span><span>213<small>LA</small></span><span>916<small>Sacramento</small></span><span>555<small>Night City</small></span></span></div>
+        <div class="gn__row"><span class="lbl">Made for you</span><span class="ln"></span><button class="gn__shuf"><i class="fas fa-shuffle"></i> New numbers</button></div>
+        <div class="gn__opts"><div class="gn__o cut on"><div class="in cut"><span class="num">+1 (415) 555-0142</span><small>✓ selected</small></div></div><div class="gn__o cut"><div class="in cut"><span class="num">+1 (415) 555-0177</span><small>repeating — easy to remember</small></div></div>
+          <div class="gn__o cut"><div class="in cut"><span class="num">+1 (415) 555-0123</span><small>a run — easy to remember</small></div></div><div class="gn__o cut"><div class="in cut"><span class="num">+1 (415) 555-0186</span><small>random</small></div></div></div>
+        <div class="gn__row"><span class="lbl">Or type your own</span><span class="ln"></span></div>
+        <div class="gn__own"><span class="cc">+1 415</span><span class="box">555 0119</span></div><div class="gn__st bad"><i class="fas fa-xmark"></i> Taken — that number already belongs to someone.</div>
+        <div class="gn__ft"><small>Your GM can also hand you a number.</small><button>Cancel</button><button class="go"><i class="fas fa-sim-card"></i> Use +1 (415) 555-0142</button></div></div>`, 0).replace('class="ag__body"', 'class="ag__body one"').replace(' · +1 (555) 0177-42', ' · no number').replace('<div class="ct">', '<div class="ct tall">')],
+    contacts: ['<b>Calling from your contacts.</b> (Concept for placement — built on the real Contact Manager.) A card whose contact has a number gets a green <b>phone</b> beside its message button; one without a number shows "no number" and no phone (no dead button). The detail panel\'s actions gain <b>Call</b> next to Message. Clicking either opens the call screen straight away — no trip through the Calls tab.',
+      `<div class="ct" style="height:440px"><div class="ag__hd"><span class="av"></span><span class="who">Contacts<small>V · 6 contacts</small></span><span class="sp"></span></div><div class="cm">
+        <div class="cm__grid">
+          <div class="cm__card sel"><span class="qa"><button title="Message"><i class="fas fa-envelope"></i></button><button class="call" title="Call"><i class="fas fa-phone"></i></button></span>${face('Rogue', IMG).replace('class="face"', 'class="face"')}<b>Rogue</b><small>+1 (555) 0119-07</small></div>
+          <div class="cm__card"><span class="qa"><button title="Message"><i class="fas fa-envelope"></i></button><button class="call" title="Call"><i class="fas fa-phone"></i></button></span>${face('Judy')}<b>Judy</b><small>+1 (555) 0131-88</small></div>
+          <div class="cm__card"><span class="qa"><button title="Message"><i class="fas fa-envelope"></i></button></span>${face('Rache')}<b>Rache</b><small class="no">no number</small></div>
+          <div class="cm__card"><span class="qa"><button title="Message"><i class="fas fa-envelope"></i></button><button class="call" title="Call"><i class="fas fa-phone"></i></button></span>${face('Delamain')}<b>Delamain</b><small>TRAUMA</small></div>
+          <div class="cm__card"><span class="qa"><button title="Message"><i class="fas fa-envelope"></i></button></span>${face('Jackie')}<b>Jackie</b><small class="no">no number</small></div></div>
+        <div class="cm__det"><span class="face" style="--tc:#ff7ab8;background-image:url('${IMG}')"></span><h3>Rogue</h3>
+          <div class="lines"><span><i class="fas fa-at"></i>rogue@afterlife.nc</span><span><i class="fas fa-phone"></i>+1 (555) 0119-07</span><span><i class="fas fa-location-dot"></i>Afterlife</span></div>
+          <div class="acts"><button><i class="fas fa-envelope"></i> Message</button><button class="call"><i class="fas fa-phone"></i> Call</button></div></div></div></div>`],
+    sender: ['<b>Calling a message\'s sender.</b> (Concept for placement — built on the real message detail.) Beside Add to contacts and Reply, a green <b>Call</b> chip when you know the sender\'s number (they are in your contacts with one). No number known, no chip. Anonymous / send-only senders never get one.',
+      `<div class="ct" style="height:300px"><div class="md"><div class="md__hd"><span class="face" style="--tc:#ff7ab8;background-image:url('${IMG}')"></span><div><b>Rogue</b><div class="ad">rogue@afterlife.nc · 22:44</div>
+        <div class="md__chips"><span><i class="fas fa-reply"></i> Reply</span><span class="call"><i class="fas fa-phone"></i> Call</span><span><i class="fas fa-share"></i> Forward</span></div></div></div>
+        <div class="md__sub">Pier 4 — who else is on it?</div><div class="md__body">I hear Arasaka moved the shipment. Call me before you do anything stupid.</div></div></div>`],
+    empty: ['<b>5 · No number yet.</b> A character gets a number the first time they open Calls (like Email Setup gets an address): pick from a few generated ones or type your own. The GM can hand out numbers instead.',
+      shell(`<div class="empty"><div class="box">${DIAL(5, 'fa-sim-card')}<h3>No line yet</h3><p>Your Agent needs a number before it can call or be called. Pick one — you can keep it or burn it later.</p>
+        <div class="drw__acts" style="justify-content:center"><button class="go"><i class="fas fa-sim-card"></i> Get a number</button><button><i class="fas fa-keyboard"></i> Type my own</button></div></div></div>`, 0).replace(' · +1 (555) 0177-42', ' · no number')],
+  };
+  const THEMES = {"classic":{"primary":"#F65261","secondary":"#19f3f7","accent":"#f7c948","bgDeep":"#0a0a0f","bgBase":"#12121a","bgSurface":"#1a1a2e","bgElevated":"#252540","textPrimary":"#e0e0e8","textSecondary":"#8e8ea5","name":"Night City Standard"},"netrunner":{"primary":"#00ff41","secondary":"#40e8d0","accent":"#88ff88","bgDeep":"#030d03","bgBase":"#0a1a0a","bgSurface":"#0f2a12","bgElevated":"#183a1c","textPrimary":"#b8ffb8","textSecondary":"#6eaa71","textMuted":"#80a784","name":"Netrunner"},"arasaka":{"primary":"#e82030","secondary":"#f0f0f0","accent":"#ff4444","bgDeep":"#080000","bgBase":"#140404","bgSurface":"#220a0a","bgElevated":"#301010","textPrimary":"#f0d8d8","textSecondary":"#aa7878","name":"Arasaka"},"militech":{"primary":"#c8a832","secondary":"#88aa66","accent":"#e8c840","bgDeep":"#080a04","bgBase":"#101408","bgSurface":"#1a2010","bgElevated":"#242c18","textPrimary":"#d8dcc0","textSecondary":"#8f956d","name":"Militech"},"afterlife":{"primary":"#e040ff","secondary":"#00e5ff","accent":"#ff66cc","bgDeep":"#08001a","bgBase":"#120030","bgSurface":"#1c0048","bgElevated":"#280060","textPrimary":"#e8d0ff","textSecondary":"#9f76c9","name":"Afterlife"},"traumaTeam":{"primary":"#ff2255","secondary":"#ffffff","accent":"#ff6690","bgDeep":"#0a0004","bgBase":"#180810","bgSurface":"#281018","bgElevated":"#381820","textPrimary":"#f8e0e8","textSecondary":"#b57a89","name":"Trauma Team"},"combatZone":{"primary":"#ff6a00","secondary":"#ffcc00","accent":"#ff9933","bgDeep":"#0c0804","bgBase":"#1a1208","bgSurface":"#281c0c","bgElevated":"#382814","textPrimary":"#e8d8c0","textSecondary":"#a99263","textMuted":"#a49077","name":"Combat Zone"},"chrome":{"primary":"#c0c0c0","secondary":"#e8e8e8","accent":"#ffffff","bgDeep":"#060606","bgBase":"#0e0e0e","bgSurface":"#181818","bgElevated":"#242424","textPrimary":"#e0e0e0","textSecondary":"#8d8d8d","name":"Chrome"},"blackwall":{"primary":"#cc2200","secondary":"#ff4433","accent":"#ff6644","bgDeep":"#0a0200","bgBase":"#140600","bgSurface":"#200c04","bgElevated":"#2c1408","textPrimary":"#f0d8cc","textSecondary":"#b27754","name":"Blackwall"},"kiroshi":{"primary":"#2E90FA","secondary":"#F0C55B","accent":"#60b0ff","bgDeep":"#040810","bgBase":"#0a1020","bgSurface":"#101830","bgElevated":"#182240","textPrimary":"#d0e0f8","textSecondary":"#7290b5","name":"Kiroshi"},"kawaii":{"primary":"#ff88b4","secondary":"#b8a0ff","accent":"#80e8c8","bgDeep":"#0a0610","bgBase":"#140e1c","bgSurface":"#1e1628","bgElevated":"#2a2036","textPrimary":"#f0e0f0","textSecondary":"#a088b0","name":"Kawaii"},"tygerClaws":{"primary":"#e8a820","secondary":"#cc2244","accent":"#ffcc44","bgDeep":"#0a0804","bgBase":"#141008","bgSurface":"#201a0c","bgElevated":"#2c2414","textPrimary":"#f0e0c8","textSecondary":"#a89060","name":"Tyger Claws"}};
+  const VARS = { primary: '--ncm-primary', secondary: '--ncm-secondary', accent: '--ncm-accent', bgDeep: '--ncm-bg-deep', bgBase: '--ncm-bg-base', bgSurface: '--ncm-bg-surface',
+    bgElevated: '--ncm-bg-elevated', textPrimary: '--ncm-text-primary', textSecondary: '--ncm-text-secondary', textMuted: '--ncm-text-muted', border: '--ncm-border' };
+  function applyTheme() {
+    const t = THEMES[document.getElementById('th').value] || THEMES.classic;
+    document.querySelectorAll('.ct').forEach((el) => { for (const [k, v] of Object.entries(VARS)) { if (t[k]) el.style.setProperty(v, t[k]); else el.style.removeProperty(v); }
+      if (!t.border && t.bgElevated) el.style.setProperty('--ncm-border', 'color-mix(in srgb, ' + t.primary + ' 22%, ' + t.bgElevated + ')'); });
+    document.querySelectorAll('[data-wave]').forEach((cv) => cv.dispatchEvent(new Event('repaint')));
+  }
+  {
+    const sel = document.getElementById('th');
+    sel.innerHTML = Object.entries(THEMES).map(([k, t]) => `<option value="${k}">${t.name}</option>`).join('');
+    sel.value = THEMES[Q.get('theme')] ? Q.get('theme') : 'classic';
+    sel.addEventListener('change', applyTheme);
+  }
+  const host = document.getElementById('frames');
+  for (const [id, [cap, html]] of Object.entries(FRAMES)) {
+    if (Q.get('f') && Q.get('f') !== id) continue;
+    host.insertAdjacentHTML('beforeend', `<div class="mk-frame"><p class="mk-cap">${cap}</p>${html}</div>`);
+  }
+  applyTheme();
+  // hover option 3: the label decodes CALL ↔ DIALING and the name churns
+  if (Q.get('still') !== '1') document.querySelectorAll('.cb.hv3').forEach((b) => {
+    const k = b.querySelector('.cb__tx b'), w = b.querySelector('.cb__tx .who'); const G = '!<>-_/[]{}=+*^?#01ABCDEFXZ';
+    const dec = (el, to, ms) => { const n = to.length, t0 = performance.now(); const tick = (now) => { const pp = (now - t0) / ms, set = Math.floor(pp * n);
+      el.textContent = [...to].map((c, i) => i < set || c === ' ' ? c : G[Math.floor(Math.random() * G.length)]).join(''); if (pp < 1) requestAnimationFrame(tick); else el.textContent = to; }; requestAnimationFrame(tick); };
+    let on = false; setInterval(() => { on = !on; dec(k, on ? 'Dialing' : 'Call', 300); dec(w, 'Rogue', 420); }, 1400);
+  });
+  // the voicemail waveform (played part amber, the rest dim)
+  addEventListener('load', () => document.querySelectorAll('[data-wave]').forEach((cv) => {
+    const g = cv.getContext('2d'); const W = cv.width, H = cv.height; const col = cv.closest('.ml') ? (getComputedStyle(cv.closest('.ml')).getPropertyValue('--mc').trim() || '#19f3f7') : (getComputedStyle(cv.closest('.ct')).getPropertyValue('--vmc').trim() || '#f7c948');
+    let s = 7; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+    for (let x = 0; x < W; x += 6) { const h = (0.15 + rnd() * 0.85) * H * (0.4 + 0.6 * Math.abs(Math.sin(x / 70))); g.fillStyle = x < W * 0.38 ? col : 'rgba(255,255,255,.22)'; g.fillRect(x, (H - h) / 2, 3, h); }
+  }));
+  // the call button's dial fills when a number is ready (the HUD's beat)
+  // hover: the dial empties and refills segment by segment (the call screen's beat), once per hover
+  const G = '!<>-_/[]{}=+*^?#01ABCDEFXZ';
+  const decodeTo = (el, to, ms) => { if (!el) return; const n = to.length, t0 = performance.now(); el._dec = t0;
+    const tick = (now) => { if (el._dec !== t0) return; const pp = (now - t0) / ms, set = Math.floor(pp * n);
+      el.textContent = [...to].map((c, i) => i < set || c === ' ' ? c : G[Math.floor(Math.random() * G.length)]).join(''); if (pp < 1) requestAnimationFrame(tick); else el.textContent = to; };
+    requestAnimationFrame(tick); };
+  document.querySelectorAll('.cb:not([disabled]):not([class*="hv"])').forEach((b) => {
+    const k = b.querySelector('.cb__tx b'), w = b.querySelector('.cb__tx .who'); const name = w.textContent;
+    b.addEventListener('mouseenter', () => { decodeTo(k, 'Dial ▸', 260); decodeTo(w, name, 380); });
+    b.addEventListener('mouseleave', () => { decodeTo(k, 'Call', 200); });
+  });
+  document.querySelectorAll('.cb.hov .cb__tx b').forEach((k) => { k.textContent = 'Dial ▸'; });
+  // ── the button's state machine (what the build does on every keystroke in the number box) ──
+  const BOOK = { '555011907': { name: 'Rogue', where: 'Afterlife', sub: 'CitiNet · ENC-128', img: IMG } };
+  const fmt = (d) => d.slice(0, 3) + (d.length > 3 ? ' ' + d.slice(3, 7) : '') + (d.length > 7 ? '-' + d.slice(7) : '');
+  function refill(b) { const segs = [...b.querySelectorAll('.seg')]; clearInterval(b._ref); let n = 0; segs.forEach((g) => g.classList.remove('on'));
+    b._ref = setInterval(() => { segs.forEach((g, i) => g.classList.toggle('on', i < n)); if (++n > 12) clearInterval(b._ref); }, 26); }
+  function setCallState(b, digits) {
+    const k = b.querySelector('.cb__tx b'), w = b.querySelector('.cb__tx .who'), sm = b.querySelector('.cb__tx small');
+    const hit = BOOK[digits]; const next = digits.length >= 3 ? (hit ? 'ready' : 'number') : 'empty';
+    const prev = b.dataset.state || (b.classList.contains('cb--empty') ? 'empty' : 'ready');
+    b.dataset.state = next;
+    b.classList.remove('cb--empty', 'cb--number', 'cb--ready', 'arming', 'disarming', 'matched'); void b.offsetWidth;
+    b.classList.add('cb--' + next); b.disabled = next === 'empty';
+    if (prev === 'empty' && next !== 'empty') { b.classList.add('arming'); refill(b); decodeTo(k, 'Call', 240); decodeTo(w, hit ? hit.name : fmt(digits), 360); decodeTo(sm, hit ? hit.sub : 'not in your contacts', 360); }
+    else if (prev !== 'empty' && next === 'empty') { b.classList.add('disarming'); decodeTo(w, 'Type a number', 300); decodeTo(sm, 'or a name', 300); b.querySelectorAll('.seg').forEach((g) => g.classList.remove('on')); }
+    else if (next === 'ready' && prev !== 'ready') { b.classList.add('matched'); decodeTo(w, hit.name, 420); decodeTo(sm, hit.sub, 360); }
+    else if (next === 'number') w.textContent = fmt(digits);
+    const box = b.closest('.dl'); const m = box.querySelector('.dl__match');
+    if (hit && !m.innerHTML) { m.innerHTML = `<span class="face" style="background-image:url('${hit.img}')"></span> ${hit.name} · ${hit.where}`; m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); }
+    if (!hit) m.innerHTML = '';
+  }
+  document.querySelectorAll('[data-armdemo]').forEach((ct) => {
+    const b = ct.querySelector('.cb'), val = ct.querySelector('.dl__num .val'), keys = [...ct.querySelectorAll('.dl__keys button')];
+    let d = ''; const show = () => { val.innerHTML = fmt(d) + '<span class="car"></span>'; setCallState(b, d); };
+    const press = (ch) => { const kb = keys.find((x) => x.firstChild.textContent === ch); kb?.classList.add('hit'); setTimeout(() => kb?.classList.remove('hit'), 160); d += ch; show(); };
+    keys.forEach((kb) => kb.addEventListener('click', () => press(kb.firstChild.textContent)));
+    ct.querySelector('.dl__num .del').addEventListener('click', () => { d = d.slice(0, -1); show(); });
+    if (Q.get('still') === '1') { d = '555011907'; show(); return; }
+    const NUM = '555011907';
+    const loop = () => { d = ''; show(); let i = 0;
+      const t = setInterval(() => { press(NUM[i++]); if (i >= NUM.length) { clearInterval(t);
+        setTimeout(() => b.classList.add('hov'), 1200); setTimeout(() => { decodeTo(b.querySelector('.cb__tx b'), 'Dial ▸', 260); refill(b); }, 1200);
+        setTimeout(() => { b.classList.remove('hov'); decodeTo(b.querySelector('.cb__tx b'), 'Call', 200); }, 3000);
+        setTimeout(() => { const back = setInterval(() => { d = d.slice(0, -1); show(); if (!d) { clearInterval(back); setTimeout(loop, 1400); } }, 70); }, 4200); } }, 330); };
+    setTimeout(loop, 700);
+  });
+  document.querySelectorAll('.cb:not([disabled])').forEach((b) => { let t; b.addEventListener('mouseenter', () => {
+    const segs = [...b.querySelectorAll('.seg')]; clearInterval(t); let n = 0; segs.forEach((g) => g.classList.remove('on'));
+    t = setInterval(() => { segs.forEach((g, i) => g.classList.toggle('on', i < n)); if (++n > 12) clearInterval(t); }, 28); }); });
+  if (Q.get('hover') === '1') document.querySelectorAll('.cb--ready').forEach((b) => b.classList.add('hov'));
+  if (false) document.querySelectorAll('.cb--ready .dial, .cb--number .dial').forEach((d) => { const segs = [...d.querySelectorAll('.seg')]; let n = 0;
+    setInterval(() => { segs.forEach((g, i) => g.classList.toggle('on', i < n)); n = n >= 13 ? 0 : n + 1; }, 2200 / 14); });
+</script>
+</body>
+</html>

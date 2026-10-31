@@ -120,20 +120,17 @@
       <i class="fas fa-inbox"></i> Messages
       {{#if counts.total}}<span class="ncm-viewer__primary-badge">{{counts.total}}</span>{{/if}}
     </div>
+    {{#if callsEnabled}}
+    <div class="ncm-viewer__primary-tab {{#if (eq primaryTab 'calls')}}ncm-viewer__primary-tab--active{{/if}}"
+         data-action="set-primary-tab" data-tab="calls">
+      <i class="fas fa-phone"></i> Calls
+      {{#if counts.callsMissed}}<span class="ncm-viewer__primary-badge ncm-viewer__primary-badge--alert">{{counts.callsMissed}}</span>{{/if}}
+    </div>
+    {{/if}}
     <div class="ncm-viewer__primary-tab {{#if (eq primaryTab 'shards')}}ncm-viewer__primary-tab--active{{/if}}"
          data-action="set-primary-tab" data-tab="shards">
       <i class="fas fa-microchip"></i> {{ncm-term "shortMany"}}
       {{#if counts.shards}}<span class="ncm-viewer__primary-badge">{{counts.shards}}</span>{{/if}}
-    </div>
-    <div class="ncm-viewer__primary-tab {{#if (eq primaryTab 'scheduled')}}ncm-viewer__primary-tab--active{{/if}}"
-         data-action="set-primary-tab" data-tab="scheduled">
-      <i class="fas fa-clock"></i> Scheduled
-      {{#if counts.scheduled}}<span class="ncm-viewer__primary-badge">{{counts.scheduled}}</span>{{/if}}
-    </div>
-    <div class="ncm-viewer__primary-tab {{#if (eq primaryTab 'drafts')}}ncm-viewer__primary-tab--active{{/if}}"
-         data-action="set-primary-tab" data-tab="drafts">
-      <i class="fas fa-file-pen"></i> Drafts
-      {{#if counts.drafts}}<span class="ncm-viewer__primary-badge">{{counts.drafts}}</span>{{/if}}
     </div>
     {{!-- Compact search (right-aligned in nav row) --}}
     <div class="ncm-viewer__nav-search">
@@ -190,11 +187,37 @@
         <span class="ncm-pill__badge">{{counts.recovered}}</span>
       </span>
       {{/if}}
+      {{#if (or counts.drafts counts.scheduled (eq currentFilter 'drafts') (eq currentFilter 'scheduled'))}}<span class="ncm-viewer__pills-div"></span>{{/if}}
+      {{#if (or counts.drafts (eq currentFilter 'drafts'))}}
+      <span class="ncm-pill ncm-pill--out {{#if (eq currentFilter 'drafts')}}ncm-pill--active{{/if}}" data-action="set-filter" data-filter="drafts"
+            data-tooltip="Mail you have not sent yet" data-tooltip-direction="DOWN">
+        <i class="fas fa-file-pen"></i> Drafts
+        {{#if counts.drafts}}<span class="ncm-pill__badge">{{counts.drafts}}</span>{{/if}}
+      </span>
+      {{/if}}
+      {{#if (or counts.scheduled (eq currentFilter 'scheduled'))}}
+      <span class="ncm-pill ncm-pill--out {{#if (eq currentFilter 'scheduled')}}ncm-pill--active{{/if}}" data-action="set-filter" data-filter="scheduled"
+            data-tooltip="Mail waiting to go out at a set time" data-tooltip-direction="DOWN">
+        <i class="fas fa-clock"></i> Scheduled
+        {{#if counts.scheduled}}<span class="ncm-pill__badge">{{counts.scheduled}}</span>{{/if}}
+      </span>
+      {{/if}}
       {{#if counts.unread}}
       <span class="ncm-pill ncm-pill--action" data-action="mark-all-read"
             data-tooltip="Mark every message as read" data-tooltip-direction="DOWN">
         <i class="fas fa-envelope-open"></i> Mark all read
       </span>
+      {{/if}}
+    {{else if (eq primaryTab 'calls')}}
+      {{#if calls.main}}
+      <span class="ncm-pill {{#if (eq calls.filter 'all')}}ncm-pill--active{{/if}}" data-action="calls-filter" data-f="all"><i class="fas fa-phone"></i> All
+        {{#if calls.list.counts.all}}<span class="ncm-pill__badge">{{calls.list.counts.all}}</span>{{/if}}</span>
+      <span class="ncm-pill {{#if (eq calls.filter 'missed')}}ncm-pill--active{{/if}}" data-action="calls-filter" data-f="missed"><i class="fas fa-phone-slash"></i> Missed
+        {{#if calls.list.counts.missed}}<span class="ncm-pill__badge ncm-pill__badge--alert">{{calls.list.counts.missed}}</span>{{/if}}</span>
+      <span class="ncm-pill {{#if (eq calls.filter 'vm')}}ncm-pill--active{{/if}}" data-action="calls-filter" data-f="vm"><i class="fas fa-voicemail"></i> Voicemail
+        {{#if calls.vm.unheard}}<span class="ncm-pill__badge ncm-pill__badge--vm">{{calls.vm.unheard}}</span>{{/if}}</span>
+      <span class="ncm-pill {{#if (eq calls.filter 'in')}}ncm-pill--active{{/if}}" data-action="calls-filter" data-f="in"><i class="fas fa-arrow-down"></i> Incoming</span>
+      <span class="ncm-pill {{#if (eq calls.filter 'out')}}ncm-pill--active{{/if}}" data-action="calls-filter" data-f="out"><i class="fas fa-arrow-up"></i> Outgoing</span>
       {{/if}}
     {{else if (eq primaryTab 'shards')}}
       <span class="ncm-pill ncm-pill--active" data-action="filter-shards" data-shard-filter="all">
@@ -252,7 +275,10 @@
 
   {{!-- ═══════ §6 CONTENT AREA ═══════ --}}
 
-  {{#if (eq primaryTab 'scheduled')}}
+  {{#if (eq primaryTab 'calls')}}
+    {{> "modules/night-city-messenger/templates/message-viewer/partials/calls-tab.hbs" calls}}
+
+  {{else if (eq currentFilter 'scheduled')}}
     <div class="ncm-viewer__tab-list ncm-scrollbar">
       {{#if scheduledMessages.length}}
         {{#each scheduledMessages}}
@@ -276,7 +302,7 @@
       {{/if}}
     </div>
 
-  {{else if (eq primaryTab 'drafts')}}
+  {{else if (eq currentFilter 'drafts')}}
     <div class="ncm-viewer__tab-list ncm-scrollbar">
       {{#if draftItems.length}}
         {{#each draftItems}}

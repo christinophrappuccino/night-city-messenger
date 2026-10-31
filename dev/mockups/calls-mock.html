@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calls — mock</title>
+<!--
+  Calls on the Agent (design: dev/design/CALLS.md). Every frame is a proposal, built on the real cascade in the
+  PLAYER theme (the Agent is immersive), prefix ncm-call-*.
+  ?f=<frame id> shows one frame (tab, dial, ring, voice, typed, speak, vm-leave, vm-play, gm, end) · ?still=1 freezes motion
+  Open through `node dev/tools/serve-mockups.cjs` or off disk (no module imports here).
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body { background: #07080c; margin: 0; padding: 26px; color: #c9d3e0; font-family: var(--ncm-font-body, sans-serif); }
+  .mk-grid { display: flex; flex-wrap: wrap; gap: 30px; align-items: flex-start; }
+  .mk-frame { display: flex; flex-direction: column; gap: 8px; }
+  .mk-cap { font: 12px/1.45 monospace; color: #8b94a8; max-width: 560px; }
+  .mk-cap b { color: #e6edf6; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .still * { animation: none !important; transition: none !important; }
+
+  /* ═══ shared call vocabulary (ncm-call-*) — player theme tokens only ═══ */
+  .ncm-call { --cc: var(--ncm-secondary, #19f3f7); --cp: var(--ncm-primary, #f65261); --ca: var(--ncm-accent, #f7c948);
+    color: var(--ncm-text-primary, #e0e0e8); font-family: var(--ncm-font-body, sans-serif); }
+  .ncm-call .mono { font-family: var(--ncm-font-mono, monospace); }
+  .ncm-call .disp { font-family: var(--ncm-font-display, sans-serif); }
+  .ncm-call button { appearance: none !important; width: auto !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; cursor: pointer; line-height: 1 !important; }
+  .ncm-call button i { margin: 0 !important; }
+
+  /* the Agent frame (a slice of the real viewer: header + primary tabs) */
+  .agent { width: 720px; height: 520px; background: var(--ncm-bg-base, #0d0d16); border: 1px solid var(--ncm-border, #2a2a45); display: flex; flex-direction: column; overflow: hidden; }
+  .agent__hd { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--ncm-border, #2a2a45); background: var(--ncm-bg-deep, #08080e); }
+  .agent__hd .av { width: 30px; height: 30px; border-radius: 50%; background: #333 url('../../../../systems/cyberpunk-red-core/icons/compendium/default/Default_Mook.svg') center/cover; border: 1px solid var(--cc); }
+  .agent__hd .who { font: 700 13px var(--ncm-font-display, sans-serif); }
+  .agent__hd .who small { display: block; font: 11px var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary, #a8a8c0); }
+  .agent__hd .sp { flex: 1; }
+  .agent__hd .net { font: 11px var(--ncm-font-mono, monospace); color: var(--cc); display: flex; align-items: center; gap: 5px; }
+  .agent__tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--ncm-border, #2a2a45); }
+  .agent__tab { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; font: 600 12px var(--ncm-font-display, sans-serif); text-transform: uppercase; letter-spacing: .05em; color: var(--ncm-text-secondary, #a8a8c0); border-bottom: 2px solid transparent; }
+  .agent__tab.on { color: var(--ncm-text-primary, #fff); border-bottom-color: var(--cc); }
+  .agent__tab .b { font: 700 10px var(--ncm-font-mono, monospace); background: var(--cp); color: #000; padding: 1px 5px; border-radius: 2px; }
+  .agent__tab .b.cy { background: var(--cc); }
+  .agent__body { flex: 1; min-height: 0; display: grid; grid-template-columns: 250px 1fr; }
+
+  /* Calls tab: dial pad on the left, log on the right */
+  .pad { border-right: 1px solid var(--ncm-border, #2a2a45); padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--ncm-bg-surface, #12121c); }
+  .pad__num { font: 22px var(--ncm-font-mono, monospace); letter-spacing: .08em; color: var(--ncm-text-primary, #fff); text-align: center; padding: 8px 0; border-bottom: 1px solid var(--ncm-border, #2a2a45); min-height: 30px; }
+  .pad__who { text-align: center; font-size: 12px; color: var(--cc); margin-top: -4px; min-height: 16px; }
+  .pad__keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .pad__keys button { height: 40px !important; border: 1px solid var(--ncm-border, #2a2a45) !important; background: var(--ncm-bg-elevated, #1a1a2a) !important; color: var(--ncm-text-primary, #fff) !important;
+    font: 600 17px var(--ncm-font-mono, monospace) !important; border-radius: 2px !important; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .pad__keys button small { font: 8px var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #77779a); letter-spacing: .1em; }
+  .pad__go { display: flex; gap: 7px; }
+  .pad__call { flex: 1; height: 40px !important; background: color-mix(in srgb, var(--ncm-success, #2ecc71) 22%, transparent) !important; border: 1px solid var(--ncm-success, #2ecc71) !important; color: var(--ncm-success, #2ecc71) !important;
+    font: 700 13px var(--ncm-font-display, sans-serif) !important; letter-spacing: .1em; text-transform: uppercase; border-radius: 2px !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; }
+  .pad__del { width: 44px !important; height: 40px !important; border: 1px solid var(--ncm-border, #2a2a45) !important; background: transparent !important; color: var(--ncm-text-secondary, #aaa) !important; border-radius: 2px !important; }
+  .log { display: flex; flex-direction: column; min-height: 0; }
+  .log__seg { display: flex; gap: 2px; padding: 10px 12px 0; }
+  .log__seg span { padding: 6px 10px; font: 600 11px var(--ncm-font-display, sans-serif); text-transform: uppercase; letter-spacing: .05em; color: var(--ncm-text-secondary, #aaa); border: 1px solid var(--ncm-border, #2a2a45); }
+  .log__seg span.on { color: var(--ncm-text-primary, #fff); border-color: var(--cc); background: color-mix(in srgb, var(--cc) 12%, transparent); }
+  .log__seg .r { color: var(--cp); }
+  .log__list { overflow: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .row { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; background: var(--ncm-bg-surface, #12121c); border: 1px solid var(--ncm-border, #2a2a45); }
+  .row .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 12px var(--ncm-font-display, sans-serif); background: color-mix(in srgb, var(--cc) 18%, #111); color: var(--cc); }
+  .row .nm { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .row .nm i { font-size: 11px; }
+  .row .sub { font-size: 12px; color: var(--ncm-text-secondary, #aaa); display: flex; gap: 6px; align-items: center; }
+  .row .sub .mono { color: var(--ncm-text-muted, #888); }
+  .row.miss .nm { color: var(--cp); }
+  .row .acts { display: flex; gap: 5px; }
+  .row .acts button { width: 30px !important; height: 30px !important; border-radius: 2px !important; border: 1px solid var(--ncm-border, #2a2a45) !important; background: transparent !important; color: var(--ncm-success, #2ecc71) !important; }
+  .row .acts button.vm { color: var(--ca) !important; }
+  .row.vmrow { border-left: 3px solid var(--ca); }
+  .row.vmrow.unread .nm::after { content: 'NEW'; font: 700 9px var(--ncm-font-mono, monospace); color: #000; background: var(--ca); padding: 1px 4px; border-radius: 2px; }
+  .tag { font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; padding: 1px 5px; border: 1px solid currentColor; border-radius: 1px; }
+
+  /* ═══ THE CALL WINDOW — a small window, never full-screen (the map stays usable) ═══ */
+  .callwin { width: 520px; background: color-mix(in srgb, var(--ncm-bg-deep, #05050a) 94%, transparent); border: 1px solid color-mix(in srgb, var(--cc) 45%, transparent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--cc) 18%, transparent), inset 0 0 0 1px rgba(255,255,255,.02); position: relative; overflow: hidden; }
+  .callwin::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px); }
+  .callwin__bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font: 600 10px var(--ncm-font-mono, monospace); letter-spacing: .14em; color: var(--cc); border-bottom: 1px solid color-mix(in srgb, var(--cc) 25%, transparent); text-transform: uppercase; }
+  .callwin__bar .sp { flex: 1; }
+  .callwin__bar .sig { display: inline-flex; gap: 2px; align-items: flex-end; height: 10px; }
+  .callwin__bar .sig i { width: 3px; background: var(--cc); display: block; }
+  .callwin__bar .rec { color: var(--cp); }
+  .callwin__body { display: grid; grid-template-columns: 150px 1fr; gap: 14px; padding: 14px; }
+
+  /* the holo frame: portrait in a cut-corner frame, scan + glitch */
+  .holo { position: relative; width: 150px; height: 180px; clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+    background: color-mix(in srgb, var(--cc) 10%, #04060a); border: 0; }
+  .holo::after { content: ''; position: absolute; inset: 0; border: 1px solid var(--cc); clip-path: inherit; pointer-events: none; }
+  .holo img, .holo .face { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); object-fit: cover; filter: saturate(.6) contrast(1.1);
+    mix-blend-mode: screen; opacity: .9; }
+  .holo .face { display: grid; place-items: center; font: 800 46px var(--ncm-font-display, sans-serif); color: var(--cc); background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--cc) 30%, transparent), transparent 70%); }
+  .holo .scan { position: absolute; left: 0; right: 0; height: 30%; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--cc) 25%, transparent), transparent); animation: scan 2.6s linear infinite; }
+  @keyframes scan { from { top: -30%; } to { top: 100%; } }
+  .holo .glitch { position: absolute; inset: 0; background: inherit; animation: gl 4s steps(1) infinite; mix-blend-mode: screen; }
+  @keyframes gl { 0%, 92%, 100% { clip-path: inset(0 0 100% 0); } 93% { clip-path: inset(30% 0 55% 0); transform: translateX(-4px); } 95% { clip-path: inset(70% 0 10% 0); transform: translateX(3px); } }
+  .holo.masked .face { color: var(--ncm-purple, #b87aff); filter: blur(1px); }
+  .holo.masked { background: repeating-linear-gradient(90deg, #120a1c 0 3px, #1b0f2a 3px 6px); }
+  .holo.masked::after { border-color: var(--ncm-purple, #b87aff); }
+
+  .callwin__who { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .callwin__state { font: 700 11px var(--ncm-font-mono, monospace); letter-spacing: .2em; text-transform: uppercase; color: var(--cc); }
+  .callwin__state.ring { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .callwin__name { font: 800 24px var(--ncm-font-display, sans-serif); color: #fff; letter-spacing: .02em; line-height: 1.1; }
+  .callwin__alias { font-size: 12px; color: var(--ncm-purple, #b87aff); }
+  .callwin__num { font: 13px var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary, #aab); }
+  .callwin__time { font: 600 18px var(--ncm-font-mono, monospace); color: var(--ncm-text-primary, #fff); margin-top: 6px; }
+  .callwin__note { margin-top: 8px; font-size: 12px; color: var(--ncm-text-secondary, #aab); display: flex; gap: 6px; align-items: center; }
+  .callwin__foot { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid color-mix(in srgb, var(--cc) 20%, transparent); }
+  .callwin__foot .sp { flex: 1; }
+  .mode { display: inline-flex; border: 1px solid var(--ncm-border, #2a2a45); border-radius: 2px; overflow: hidden; }
+  .mode span { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; font: 600 10px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary, #aab); border-right: 1px solid var(--ncm-border, #2a2a45); }
+  .mode span:last-child { border-right: 0; }
+  .mode span.on { color: #fff; background: color-mix(in srgb, var(--cc) 18%, transparent); box-shadow: inset 0 -2px var(--cc); }
+  .mode span.off { opacity: .4; }
+  .btn { display: inline-flex !important; align-items: center; gap: 7px; height: 34px !important; padding: 0 14px !important; border-radius: 2px !important; font: 700 12px var(--ncm-font-display, sans-serif) !important; letter-spacing: .08em; text-transform: uppercase;
+    background: var(--ncm-bg-elevated, #1a1a2a) !important; border: 1px solid var(--ncm-border, #2a2a45) !important; color: var(--ncm-text-primary, #fff) !important; }
+  .btn.ok { background: color-mix(in srgb, var(--ncm-success, #2ecc71) 22%, transparent) !important; border-color: var(--ncm-success, #2ecc71) !important; color: var(--ncm-success, #2ecc71) !important; }
+  .btn.bad { background: color-mix(in srgb, var(--cp) 22%, transparent) !important; border-color: var(--cp) !important; color: var(--cp) !important; }
+  .btn.warn { border-color: var(--ca) !important; color: var(--ca) !important; background: transparent !important; }
+  .btn.round { width: 46px !important; height: 46px !important; padding: 0 !important; justify-content: center; border-radius: 50% !important; font-size: 16px !important; }
+  .btn.round.bad { animation: none; }
+  .btn.round.ok { animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--ncm-success, #2ecc71) 15%, transparent) !important; } }
+
+  /* ringing rings around the holo */
+  .rings { position: absolute; left: 89px; top: 104px; width: 0; height: 0; }
+  .rings i { position: absolute; left: -60px; top: -60px; width: 120px; height: 120px; border-radius: 50%; border: 1px solid var(--cc); opacity: 0; animation: ring 1.8s ease-out infinite; }
+  .rings i:nth-child(2) { animation-delay: .6s; } .rings i:nth-child(3) { animation-delay: 1.2s; }
+  @keyframes ring { 0% { transform: scale(.5); opacity: .8; } 100% { transform: scale(1.6); opacity: 0; } }
+
+  /* incoming: the small window that pops even when the Agent is closed */
+  .incoming { width: 380px; }
+  .incoming .callwin__body { grid-template-columns: 96px 1fr; }
+  .incoming .holo { width: 96px; height: 116px; }
+  .incoming .rings { left: 62px; top: 92px; }
+  .incoming .acts { display: flex; gap: 10px; justify-content: center; padding: 4px 14px 14px; }
+  .incoming .acts .lbl { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 10px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary, #aab); }
+
+  /* ═══ subtitles (typed + spoken) — the 2077 / Edgerunners line ═══ */
+  .subs { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 7px; min-height: 150px; max-height: 190px; overflow: hidden; justify-content: flex-end; padding: 6px 2px; }
+  .sub { font: 500 15px var(--ncm-font-body, sans-serif); line-height: 1.35; color: #e8eef6; text-shadow: 0 1px 2px #000; opacity: .45; }
+  .sub:last-child, .sub.now { opacity: 1; }
+  .sub b { font-family: var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; font-size: 12px; margin-right: 6px; }
+  .sub .caret { display: inline-block; width: 7px; height: 14px; background: var(--cc); vertical-align: -2px; animation: blink .8s steps(2) infinite; margin-left: 2px; }
+  .sub.typing { opacity: .7; font-style: italic; font-size: 13px; }
+  .sub.interim { opacity: .65; font-style: italic; }
+  .compose { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; border: 1px solid color-mix(in srgb, var(--cc) 35%, transparent); padding: 6px 8px; background: rgba(0,0,0,.35); }
+  .compose .in { flex: 1; font: 14px var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary, #fff); }
+  .compose .in.ph { color: var(--ncm-text-muted, #77779a); }
+  .compose .hint { font: 10px var(--ncm-font-mono, monospace); color: var(--ncm-text-muted, #77779a); }
+  .compose .send { width: 34px !important; height: 30px !important; border-radius: 2px !important; border: 1px solid var(--cc) !important; background: color-mix(in srgb, var(--cc) 18%, transparent) !important; color: var(--cc) !important; }
+  .typed .callwin__body { grid-template-columns: 110px 1fr; }
+  .typed .holo { width: 110px; height: 130px; }
+  .typed .holo.me { position: absolute; right: 14px; top: 44px; width: 64px; height: 76px; }
+
+  /* speaking: a live waveform + "listening" */
+  .wave { display: flex; align-items: center; gap: 3px; height: 26px; }
+  .wave i { width: 3px; background: var(--cc); border-radius: 1px; animation: wv 0.9s ease-in-out infinite; }
+  @keyframes wv { 0%, 100% { height: 4px; } 50% { height: 24px; } }
+  .listen { display: flex; align-items: center; gap: 10px; font: 600 11px var(--ncm-font-mono, monospace); letter-spacing: .14em; color: var(--cc); text-transform: uppercase; }
+  .avail { font-size: 11px; color: var(--ncm-text-muted, #77779a); }
+
+  /* voicemail */
+  .vm { width: 520px; }
+  .vm .meter { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px solid color-mix(in srgb, var(--cp) 40%, transparent); background: color-mix(in srgb, var(--cp) 8%, transparent); }
+  .vm .meter .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--cp); animation: blink 1s steps(2) infinite; }
+  .vm .meter .t { font: 600 16px var(--ncm-font-mono, monospace); color: #fff; }
+  .vm .meter .wave i { background: var(--cp); }
+  .vm .ways { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .vm .way { border: 1px solid var(--ncm-border, #2a2a45); padding: 9px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ncm-text-secondary, #aab); }
+  .vm .way b { font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: #fff; display: flex; align-items: center; gap: 6px; }
+  .vm .way.on { border-color: var(--cp); background: color-mix(in srgb, var(--cp) 8%, transparent); }
+  .vm .way.dim { opacity: .45; }
+  .play { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px solid color-mix(in srgb, var(--ca) 40%, transparent); }
+  .play .bar { flex: 1; height: 26px; display: flex; align-items: center; gap: 2px; }
+  .play .bar i { flex: 1; background: color-mix(in srgb, var(--ca) 40%, transparent); }
+  .play .bar i.done { background: var(--ca); }
+  .transcript { grid-column: 1 / -1; font-size: 13px; line-height: 1.5; color: var(--ncm-text-primary, #e8e8f0); padding: 8px 10px; border-left: 2px solid var(--ca); background: rgba(255,255,255,.02); }
+  .transcript small { display: block; color: var(--ncm-text-muted, #888); font: 10px var(--ncm-font-mono, monospace); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+
+  /* the GM ringing as an NPC (admin look) */
+  .gm { width: 460px; background: #10151f; border: 1px solid #3a4660; font-family: var(--ncm-font-body, sans-serif); color: #e9eef6; }
+  .gm__hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1a2232; border-bottom: 1px solid #3a4660; font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: #ffb066; }
+  .gm__bd { display: grid; grid-template-columns: 70px 1fr; gap: 12px; padding: 12px; }
+  .gm__face { width: 70px; height: 70px; border-radius: 50%; background: #2a3350; display: grid; place-items: center; font: 800 22px var(--ncm-font-display, sans-serif); color: #8db7ea; border: 2px solid #ffb066; animation: pulse2 1.2s infinite; }
+  @keyframes pulse2 { 50% { box-shadow: 0 0 0 7px rgba(255,176,102,.15); } }
+  .gm__line { font-size: 14px; } .gm__line b { color: #fff; }
+  .gm__meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .gm__meta span { font-size: 11px; border: 1px solid #4a5878; padding: 1px 6px; border-radius: 1px; color: #c3cddb; }
+  .gm__meta span.al { color: #c9a3ff; border-color: #8b6bd6; }
+  .gm__voice { grid-column: 1 / -1; font-size: 12px; color: #c3cddb; border-left: 3px solid #8b6bd6; padding: 6px 9px; background: #161d2b; }
+  .gm__voice b { display: block; font: 700 10px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: #a3afc1; margin-bottom: 2px; }
+  .gm__acts { display: flex; gap: 6px; padding: 0 12px 12px; flex-wrap: wrap; }
+  .gm__acts button { height: 30px !important; padding: 0 12px !important; border-radius: 2px !important; font: 700 11px var(--ncm-font-display, sans-serif) !important; letter-spacing: .05em; text-transform: uppercase; border: 1px solid #4a5878 !important; background: #252f42 !important; color: #f6f8fc !important; display: inline-flex !important; align-items: center; gap: 6px; }
+  .gm__acts button.pri { background: #00e5f7 !important; color: #04121a !important; border-color: #00e5f7 !important; }
+
+  /* ended / failed strips */
+  .endrow { display: flex; flex-direction: column; gap: 10px; }
+  .end { width: 380px; }
+  .end .callwin__body { grid-template-columns: 1fr; text-align: center; padding: 18px 14px; }
+  .end .big { font: 800 20px var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase; }
+  .end .small { font-size: 12px; color: var(--ncm-text-secondary, #aab); margin-top: 4px; }
+  .end.bad { border-color: color-mix(in srgb, var(--cp) 55%, transparent); } .end.bad .big { color: var(--cp); }
+  .end.dim .big { color: var(--ncm-text-secondary, #aab); }
+  .end.ok .big { color: var(--cc); }
+  .end.drop .callwin__body { background: repeating-linear-gradient(0deg, rgba(246,82,97,.08) 0 2px, transparent 2px 5px); }
+</style>
+</head>
+<body>
+<div class="mk-grid" id="grid">
+
+<!-- ═══ 1. the Calls tab ═══ -->
+<div class="mk-frame" data-f="tab">
+  <div class="mk-cap"><b>1 · Agent → Calls.</b> A tab right after Shards. Dial pad on the left (type a number, or start typing a name — it matches your contacts), the log on the right: All / Missed / Voicemail. A missed call is red; a voicemail is amber with NEW until you play it. Every row calls back in one click.</div>
+  <div class="mk-win ncm-app ncm-call agent">
+    <div class="agent__hd"><span class="av"></span><span class="who">V<small>v@nightcity.net · +1 (555) 0177-42</small></span><span class="sp"></span><span class="net"><i class="fas fa-wifi"></i> CITINET · 78%</span></div>
+    <div class="agent__tabs">
+      <span class="agent__tab"><i class="fas fa-inbox"></i> Messages <span class="b cy">3</span></span>
+      <span class="agent__tab"><i class="fas fa-microchip"></i> Shards</span>
+      <span class="agent__tab on"><i class="fas fa-phone"></i> Calls <span class="b">2</span></span>
+      <span class="agent__tab"><i class="fas fa-clock"></i> Scheduled</span>
+      <span class="agent__tab"><i class="fas fa-file-pen"></i> Drafts</span>
+    </div>
+    <div class="agent__body">
+      <div class="pad">
+        <div class="pad__num">555 0119-07</div>
+        <div class="pad__who"><i class="fas fa-address-book"></i> Rogue — Afterlife</div>
+        <div class="pad__keys">
+          <button>1<small>&nbsp;</small></button><button>2<small>ABC</small></button><button>3<small>DEF</small></button>
+          <button>4<small>GHI</small></button><button>5<small>JKL</small></button><button>6<small>MNO</small></button>
+          <button>7<small>PQRS</small></button><button>8<small>TUV</small></button><button>9<small>WXYZ</small></button>
+          <button>*<small>&nbsp;</small></button><button>0<small>+</small></button><button>#<small>&nbsp;</small></button>
+        </div>
+        <div class="pad__go"><button class="pad__call"><i class="fas fa-phone"></i> Call</button><button class="pad__del"><i class="fas fa-delete-left"></i></button></div>
+      </div>
+      <div class="log">
+        <div class="log__seg"><span class="on">All</span><span class="r">Missed 1</span><span>Voicemail 1</span></div>
+        <div class="log__list">
+          <div class="row vmrow unread"><span class="av">RO</span><div><div class="nm">Rogue <i class="fas fa-voicemail" style="color:var(--ca)"></i></div><div class="sub">Voicemail · 0:24 · <span class="mono">22:41</span></div></div><div class="acts"><button class="vm" title="Play"><i class="fas fa-play"></i></button><button title="Call back"><i class="fas fa-phone"></i></button></div></div>
+          <div class="row miss"><span class="av" style="color:var(--cp);background:color-mix(in srgb,var(--cp) 15%,#111)">??</span><div><div class="nm"><i class="fas fa-phone-slash"></i> Unknown caller</div><div class="sub">Missed · <span class="mono">21:58</span></div></div><div class="acts"></div></div>
+          <div class="row"><span class="av">JU</span><div><div class="nm">Judy Alvarez</div><div class="sub"><i class="fas fa-arrow-up-right-from-square" style="font-size:9px;color:var(--cc)"></i> Outgoing · 4:12 · typed <span class="mono">20:15</span></div></div><div class="acts"><button title="Transcript" style="color:var(--cc)!important"><i class="fas fa-closed-captioning"></i></button><button title="Call"><i class="fas fa-phone"></i></button></div></div>
+          <div class="row"><span class="av">RA</span><div><div class="nm">Rache</div><div class="sub"><i class="fas fa-arrow-down-left" style="font-size:9px;color:var(--ncm-success,#2ecc71)"></i> Incoming · 1:03 <span class="mono">Yesterday</span></div></div><div class="acts"><button title="Call"><i class="fas fa-phone"></i></button></div></div>
+          <div class="row"><span class="av">DE</span><div><div class="nm">Delamain Cab</div><div class="sub">Outgoing · no answer <span class="mono">Yesterday</span></div></div><div class="acts"><button title="Call"><i class="fas fa-phone"></i></button></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 2. dialing ═══ -->
+<div class="mk-frame" data-f="dial">
+  <div class="mk-cap"><b>2 · Calling.</b> The call window opens small and stays put on the map. Rings pulse around the frame while it rings; the state blinks CALLING. If nobody answers in 30 s → voicemail.</div>
+  <div class="mk-win ncm-app ncm-call callwin">
+    <div class="callwin__bar"><i class="fas fa-phone"></i> Outgoing call<span class="sp"></span><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px;opacity:.3"></i></span> CITINET</div>
+    <div class="callwin__body">
+      <div style="position:relative"><div class="holo"><div class="face">RO</div><div class="scan"></div></div><div class="rings"><i></i><i></i><i></i></div></div>
+      <div class="callwin__who"><span class="callwin__state ring">Calling…</span><span class="callwin__name">ROGUE</span><span class="callwin__num">+1 (555) 0119-07</span><span class="callwin__note"><i class="fas fa-location-dot"></i> Afterlife</span></div>
+    </div>
+    <div class="callwin__foot"><span class="sp"></span><button class="btn bad"><i class="fas fa-phone-slash"></i> Cancel</button></div>
+  </div>
+</div>
+
+<!-- ═══ 3. incoming ═══ -->
+<div class="mk-frame" data-f="ring">
+  <div class="mk-cap"><b>3 · Incoming.</b> Pops in a corner even with the Agent closed, with the ringtone (the Sound board can change it). Accept · Decline · Voicemail. An anonymous caller wears the masked avatar.</div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap">
+    <div class="mk-win ncm-app ncm-call callwin incoming">
+      <div class="callwin__bar"><i class="fas fa-phone-volume"></i> Incoming call<span class="sp"></span>CITINET</div>
+      <div class="callwin__body">
+        <div style="position:relative"><div class="holo"><div class="face">RO</div><div class="scan"></div><div class="glitch"></div></div><div class="rings"><i></i><i></i><i></i></div></div>
+        <div class="callwin__who"><span class="callwin__state ring">Incoming</span><span class="callwin__name">ROGUE</span><span class="callwin__num">+1 (555) 0119-07</span></div>
+      </div>
+      <div class="acts"><span class="lbl"><button class="btn round bad"><i class="fas fa-phone-slash"></i></button>Decline</span><span class="lbl"><button class="btn round warn" style="width:46px!important;height:46px!important;border-radius:50%!important;padding:0!important;justify-content:center"><i class="fas fa-voicemail"></i></button>Voicemail</span><span class="lbl"><button class="btn round ok"><i class="fas fa-phone"></i></button>Accept</span></div>
+    </div>
+    <div class="mk-win ncm-app ncm-call callwin incoming">
+      <div class="callwin__bar" style="color:var(--ncm-purple,#b87aff)"><i class="fas fa-user-secret"></i> Unknown caller<span class="sp"></span>NO ID</div>
+      <div class="callwin__body">
+        <div style="position:relative"><div class="holo masked"><div class="face">?</div><div class="scan"></div></div><div class="rings"><i></i><i></i><i></i></div></div>
+        <div class="callwin__who"><span class="callwin__state ring" style="color:var(--ncm-purple,#b87aff)">Incoming</span><span class="callwin__name">UNKNOWN</span><span class="callwin__num">number withheld</span></div>
+      </div>
+      <div class="acts"><span class="lbl"><button class="btn round bad"><i class="fas fa-phone-slash"></i></button>Decline</span><span class="lbl"><button class="btn round ok"><i class="fas fa-phone"></i></button>Accept</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 4. on the call — voice elsewhere ═══ -->
+<div class="mk-frame" data-f="voice">
+  <div class="mk-cap"><b>4 · On the call — you talk on Discord or at the table.</b> Nothing to type: the window says who is on the line, for how long, and how good the signal is. Either side hangs up. The bottom switch is how words get in: <b>Voice elsewhere · Type · Speak</b> (Speak greys out where the browser can't).</div>
+  <div class="mk-win ncm-app ncm-call callwin">
+    <div class="callwin__bar"><i class="fas fa-phone"></i> On call<span class="sp"></span><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px;opacity:.3"></i></span> CITINET</div>
+    <div class="callwin__body">
+      <div class="holo"><div class="face">RO</div><div class="scan"></div><div class="glitch"></div></div>
+      <div class="callwin__who"><span class="callwin__state">Connected</span><span class="callwin__name">ROGUE</span><span class="callwin__num">+1 (555) 0119-07</span><span class="callwin__time" data-timer="34">00:34</span>
+        <span class="callwin__note"><i class="fas fa-headset"></i> Talking on your table's voice — this window just keeps the line.</span></div>
+    </div>
+    <div class="callwin__foot"><span class="mode"><span class="on"><i class="fas fa-headset"></i> Voice elsewhere</span><span><i class="fas fa-keyboard"></i> Type</span><span><i class="fas fa-microphone"></i> Speak</span></span><span class="sp"></span><button class="btn round bad" style="width:40px!important;height:40px!important"><i class="fas fa-phone-slash"></i></button></div>
+  </div>
+</div>
+
+<!-- ═══ 5. typed — the subtitle line ═══ -->
+<div class="mk-frame" data-f="typed">
+  <div class="mk-cap"><b>5 · Typed — the 2077 / Edgerunners line.</b> Each line plays in as the other side sends it, the speaker's name in their colour, older lines fading up. "Rogue is typing…" while they write. Enter sends. The whole conversation is kept in the call log as a transcript.</div>
+  <div class="mk-win ncm-app ncm-call callwin typed">
+    <div class="callwin__bar"><i class="fas fa-phone"></i> On call · typed<span class="sp"></span><span class="rec"><i class="fas fa-circle" style="font-size:7px"></i> LOG</span> <span data-timer="128">02:08</span></div>
+    <div class="callwin__body">
+      <div class="holo"><div class="face">RO</div><div class="scan"></div><div class="glitch"></div></div>
+      <div class="callwin__who"><span class="callwin__state">Connected</span><span class="callwin__name">ROGUE</span><span class="callwin__num">+1 (555) 0119-07</span></div>
+      <div class="subs" id="subs">
+        <div class="sub"><b style="color:var(--cp)">Rogue</b>You took your time.</div>
+        <div class="sub"><b style="color:var(--cc)">V</b>Traffic on the 101. What've you got?</div>
+      </div>
+      <div class="compose"><span class="in ph">Say something…</span><span class="hint">ENTER</span><button class="send"><i class="fas fa-paper-plane"></i></button></div>
+    </div>
+    <div class="callwin__foot"><span class="mode"><span><i class="fas fa-headset"></i> Voice elsewhere</span><span class="on"><i class="fas fa-keyboard"></i> Type</span><span><i class="fas fa-microphone"></i> Speak</span></span><span class="sp"></span><button class="btn round bad" style="width:40px!important;height:40px!important"><i class="fas fa-phone-slash"></i></button></div>
+  </div>
+</div>
+
+<!-- ═══ 6. speak ═══ -->
+<div class="mk-frame" data-f="speak">
+  <div class="mk-cap"><b>6 · Speak.</b> Your mic becomes the same subtitle line: what you say appears in grey as it's heard, then settles. Only where the browser can do it (Chrome / Edge / Safari); elsewhere the switch says why and offers Type. Never on by default.</div>
+  <div class="mk-win ncm-app ncm-call callwin typed">
+    <div class="callwin__bar"><i class="fas fa-phone"></i> On call · speaking<span class="sp"></span><span class="rec"><i class="fas fa-circle" style="font-size:7px"></i> LOG</span> 03:41</div>
+    <div class="callwin__body">
+      <div class="holo"><div class="face">RO</div><div class="scan"></div></div>
+      <div class="callwin__who"><span class="callwin__state">Connected</span><span class="callwin__name">ROGUE</span><span class="callwin__num">+1 (555) 0119-07</span></div>
+      <div class="subs">
+        <div class="sub"><b style="color:var(--cp)">Rogue</b>Arasaka moved the shipment to Pier 4.</div>
+        <div class="sub"><b style="color:var(--cc)">V</b>Then we hit it before they unload.</div>
+        <div class="sub interim"><b style="color:var(--cc)">V</b>how many guards are on the</div>
+      </div>
+      <div class="compose" style="border-color:color-mix(in srgb,var(--cc) 55%,transparent)"><span class="listen"><span class="wave"><i style="animation-delay:0s"></i><i style="animation-delay:.1s"></i><i style="animation-delay:.25s"></i><i style="animation-delay:.05s"></i><i style="animation-delay:.3s"></i><i style="animation-delay:.15s"></i><i style="animation-delay:.2s"></i></span>Listening</span><span class="sp" style="flex:1"></span><span class="avail">Chrome · speech goes to Google</span><button class="send"><i class="fas fa-microphone-slash"></i></button></div>
+    </div>
+    <div class="callwin__foot"><span class="mode"><span><i class="fas fa-headset"></i> Voice elsewhere</span><span><i class="fas fa-keyboard"></i> Type</span><span class="on"><i class="fas fa-microphone"></i> Speak</span></span><span class="sp"></span><button class="btn round bad" style="width:40px!important;height:40px!important"><i class="fas fa-phone-slash"></i></button></div>
+  </div>
+</div>
+
+<!-- ═══ 7. voicemail — leave ═══ -->
+<div class="mk-frame" data-f="vm-leave">
+  <div class="mk-cap"><b>7 · No answer → voicemail.</b> "Rogue can't take your call." Three ways to leave one: <b>Type it</b> (always), <b>Record</b> (needs a mic and a secure connection — greyed with the reason when not), or for the GM, <b>Speak it for me</b> (typed, played in a synthetic voice).</div>
+  <div class="mk-win ncm-app ncm-call callwin vm">
+    <div class="callwin__bar" style="color:var(--cp)"><i class="fas fa-voicemail"></i> Voicemail<span class="sp"></span><span class="rec"><i class="fas fa-circle" style="font-size:7px"></i> REC</span></div>
+    <div class="callwin__body">
+      <div class="holo"><div class="face">RO</div><div class="scan"></div></div>
+      <div class="callwin__who"><span class="callwin__state" style="color:var(--cp)">No answer</span><span class="callwin__name">ROGUE</span><span class="callwin__note" style="font-style:italic">"You've reached Rogue. Leave it short."</span></div>
+      <div class="meter"><span class="dot"></span><span class="t">0:12</span><span class="wave"><i></i><i style="animation-delay:.1s"></i><i style="animation-delay:.2s"></i><i style="animation-delay:.05s"></i><i style="animation-delay:.3s"></i><i style="animation-delay:.15s"></i><i style="animation-delay:.25s"></i><i style="animation-delay:.12s"></i></span><span style="flex:1"></span><span class="mono" style="font-size:11px;color:var(--ncm-text-muted,#888)">max 1:00</span></div>
+      <div class="ways"><div class="way"><b><i class="fas fa-keyboard"></i> Type it</b>A written message.</div><div class="way on"><b><i class="fas fa-microphone"></i> Record</b>Your voice, up to a minute.</div><div class="way dim"><b><i class="fas fa-robot"></i> Speak it for me</b>GM: typed, read out.</div></div>
+    </div>
+    <div class="callwin__foot"><button class="btn"><i class="fas fa-rotate-left"></i> Redo</button><span class="sp"></span><button class="btn">Cancel</button><button class="btn ok"><i class="fas fa-paper-plane"></i> Send</button></div>
+  </div>
+</div>
+
+<!-- ═══ 8. voicemail — play ═══ -->
+<div class="mk-frame" data-f="vm-play">
+  <div class="mk-cap"><b>8 · Playing a voicemail.</b> From the Calls tab. A waveform you can scrub, the transcript under it when there is one. Call back / Delete.</div>
+  <div class="mk-win ncm-app ncm-call callwin vm">
+    <div class="callwin__bar" style="color:var(--ca)"><i class="fas fa-voicemail"></i> Voicemail · 22:41<span class="sp"></span>0:24</div>
+    <div class="callwin__body">
+      <div class="holo"><div class="face" style="color:var(--ca)">RO</div></div>
+      <div class="callwin__who"><span class="callwin__state" style="color:var(--ca)">From</span><span class="callwin__name">ROGUE</span><span class="callwin__num">+1 (555) 0119-07</span></div>
+      <div class="play"><button class="btn round" style="width:38px!important;height:38px!important;border-color:var(--ca)!important;color:var(--ca)!important"><i class="fas fa-pause"></i></button><div class="bar" id="vmbar"></div><span class="mono" style="font-size:12px">0:09 / 0:24</span></div>
+      <div class="transcript"><small>Transcript</small>V. The Pier 4 thing is off — Arasaka's got a Trauma Team contract on that dock now. Call me before you do anything stupid.</div>
+    </div>
+    <div class="callwin__foot"><button class="btn bad"><i class="fas fa-trash"></i></button><span class="sp"></span><button class="btn ok"><i class="fas fa-phone"></i> Call back</button></div>
+  </div>
+</div>
+
+<!-- ═══ 9. the GM, ringing as an NPC ═══ -->
+<div class="mk-frame" data-f="gm">
+  <div class="mk-cap"><b>9 · The GM's side.</b> A player calls an NPC → the GM's screen rings, in the admin look: who is calling which identity (alias in violet), from where, and the NPC's <b>voice note</b> so you answer in character. Answer as Rogue · Voicemail (her greeting plays) · Decline. No GM online or no answer → voicemail by itself.</div>
+  <div class="mk-win gm">
+    <div class="gm__hd"><i class="fas fa-phone-volume"></i> Incoming — a player is calling an NPC<span style="flex:1"></span>0:07</div>
+    <div class="gm__bd">
+      <div class="gm__face">RO</div>
+      <div><div class="gm__line"><b>Rache</b> (Kiri) is calling <b>Queen of Hearts</b></div>
+        <div class="gm__meta"><span class="al">alias of Rogue</span><span>from Arasaka Tower</span><span>on CorpNet</span><span>last call 2 days ago</span></div></div>
+      <div class="gm__voice"><b>How she talks</b>Clipped, never says goodbye. Calls everyone "kid".</div>
+    </div>
+    <div class="gm__acts"><button class="pri"><i class="fas fa-phone"></i> Answer as Queen of Hearts</button><button><i class="fas fa-voicemail"></i> Voicemail</button><button><i class="fas fa-phone-slash"></i> Decline</button></div>
+  </div>
+</div>
+
+<!-- ═══ 10. ends ═══ -->
+<div class="mk-frame" data-f="end">
+  <div class="mk-cap"><b>10 · How calls end.</b> Each ending says what happened, then folds away after a few seconds. A node going down mid-call drops it; a dead zone never connects; a number nobody owns plays the operator line (and can quietly ring the GM).</div>
+  <div class="endrow">
+    <div class="mk-win ncm-app ncm-call callwin end ok"><div class="callwin__body"><div class="big">Call ended</div><div class="small">Rogue · 4:12 · transcript saved to Calls</div></div></div>
+    <div class="mk-win ncm-app ncm-call callwin end bad drop"><div class="callwin__body"><div class="big">Call dropped</div><div class="small">CitiNet went down here — the node at Watson Docks is jammed</div></div></div>
+    <div class="mk-win ncm-app ncm-call callwin end bad"><div class="callwin__body"><div class="big">No signal</div><div class="small">You're in a dead zone. Try again somewhere else.</div></div></div>
+    <div class="mk-win ncm-app ncm-call callwin end dim"><div class="callwin__body"><div class="big">Not in service</div><div class="small">"The number you have dialed is not in service."</div></div></div>
+  </div>
+</div>
+
+</div>
+<script>
+  const Q = new URLSearchParams(location.search);
+  if (Q.get('f')) document.querySelectorAll('.mk-frame').forEach((f) => { if (f.dataset.f !== Q.get('f')) f.style.display = 'none'; });
+  if (Q.get('still') === '1') document.body.classList.add('still');
+  // the voicemail waveform
+  const bar = document.getElementById('vmbar');
+  if (bar) for (let i = 0; i < 48; i++) { const s = document.createElement('i'); s.style.height = (6 + Math.abs(Math.sin(i * 1.7) * 18 + Math.sin(i * .4) * 6)) + 'px'; if (i < 18) s.className = 'done'; bar.appendChild(s); }
+  // call timers
+  document.querySelectorAll('[data-timer]').forEach((el) => { let t = +el.dataset.timer; if (Q.get('still') === '1') return; setInterval(() => { t++; el.textContent = String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }, 1000); });
+  // the typed line: lines arrive and type out, "is typing…" in between
+  const subs = document.getElementById('subs');
+  const script = [
+    ['Rogue', 'var(--cp)', 'Got a job. Arasaka shipment, Pier 4, tonight.'],
+    ['V', 'var(--cc)', 'How many guards?'],
+    ['Rogue', 'var(--cp)', 'Enough that I called you instead of Jackie.'],
+  ];
+  if (subs && Q.get('still') !== '1') {
+    let i = 0;
+    const next = () => {
+      if (i >= script.length) { i = 0; subs.querySelectorAll('.sub:not(:nth-child(-n+2))').forEach((s) => s.remove()); }
+      const [who, col, text] = script[i++];
+      const typing = document.createElement('div'); typing.className = 'sub typing'; typing.innerHTML = `<b style="color:${col}">${who}</b>is typing…`; subs.appendChild(typing);
+      setTimeout(() => {
+        typing.remove();
+        const line = document.createElement('div'); line.className = 'sub now'; line.innerHTML = `<b style="color:${col}">${who}</b><span></span><span class="caret"></span>`; subs.appendChild(line);
+        const span = line.querySelector('span'); let k = 0;
+        const t = setInterval(() => { span.textContent = text.slice(0, ++k); if (k >= text.length) { clearInterval(t); line.querySelector('.caret').remove(); line.classList.remove('now'); setTimeout(next, 1400); } }, 32);
+        while (subs.children.length > 5) subs.firstElementChild.remove();
+      }, 1100);
+    };
+    setTimeout(next, 700);
+  } else if (subs) {
+    subs.insertAdjacentHTML('beforeend', '<div class="sub"><b style="color:var(--cp)">Rogue</b>Got a job. Arasaka shipment, Pier 4, tonight.</div><div class="sub typing"><b style="color:var(--cc)">V</b>is typing…</div>');
+  }
+</script>
+</body>
+</html>

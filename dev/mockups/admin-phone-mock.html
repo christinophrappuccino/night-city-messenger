@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin Phone — mock</title>
+<!--
+  Admin → COMMS → Phone: the GM's side of calls (design: dev/design/CALLS.md §10). Built in the admin vocabulary (display
+  chrome, mono values, 2px radius, banded section heads, one meaning per colour) on the real admin presets.
+  ?f=live|numbers|log|vm|settings|contacts   ?t=clean-dark|clean-light|high-contrast   ?still=1
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<style>
+  body { background: #050608; margin: 0; padding: 24px; font-family: sans-serif; }
+  .mk-frame { margin-bottom: 34px; }
+  .mk-cap { font: 12px/1.5 monospace; color: #8b94a8; max-width: 1080px; margin: 0 0 8px; }
+  .mk-cap b { color: #e6edf6; }
+  .still * { animation: none !important; transition: none !important; }
+
+  /* the admin window */
+  .win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important;
+    width: 1060px; height: 720px; display: flex; flex-direction: column; overflow: hidden; background: var(--ncm-bg-canvas); border: 1px solid var(--ncm-border); color: var(--ncm-text-primary); }
+  .win * { box-sizing: border-box; }
+  .win button { appearance: none !important; width: auto !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; line-height: 1 !important; cursor: pointer;
+    background: none; border: 0; color: inherit; font: inherit; padding: 0; text-shadow: none !important; }
+  .win button i { margin: 0 !important; }
+  .mono { font-family: var(--ncm-font-mono, monospace); }
+  /* the grouped tab bar, Phone lit inside COMMS */
+  .tb { display: flex; align-items: flex-end; gap: 6px; overflow: hidden; padding: 6px 12px 0; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-canvas); }
+  .tg { display: flex; flex-direction: column; gap: 2px; }
+  .tg > small { font: 700 8.5px var(--ncm-font-display, sans-serif); letter-spacing: .14em; text-transform: uppercase; color: var(--ncm-text-hint); padding-left: 4px; }
+  .tg.on > small { color: var(--ncm-act); }
+  .tg > div { display: flex; }
+  .tt { display: inline-flex; align-items: center; gap: 5px; padding: 7px 8px; font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); border-bottom: 2px solid transparent; }
+  .tt.on { color: var(--ncm-text-heading); border-bottom-color: var(--ncm-act); }
+  .tt .n { font: 700 9.5px var(--ncm-font-mono, monospace); padding: 1px 5px; background: var(--ncm-attn); color: #000; border-radius: 1px; }
+  .tt .n.bad { background: var(--ncm-bad); }
+  /* sub-tabs */
+  .st { display: flex; align-items: center; gap: 2px; padding: 6px 12px; background: var(--ncm-bg-pane); border-bottom: 1px solid var(--ncm-border); }
+  .st span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); border-radius: 2px; }
+  .st span.on { background: color-mix(in srgb, var(--ncm-act) 16%, transparent); color: var(--ncm-text-heading); box-shadow: inset 0 -2px 0 var(--ncm-act); }
+  .st span .n { font: 700 9.5px var(--ncm-font-mono, monospace); padding: 1px 5px; border-radius: 1px; background: var(--ncm-bg-card); color: var(--ncm-text-label); }
+  .st span .n.attn { background: var(--ncm-attn); color: #000; } .st span .n.bad { background: var(--ncm-bad); color: #000; }
+  .st .sp { flex: 1; }
+  .st .pop { color: var(--ncm-text-label); font-size: 12px; }
+  .body { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px 14px; }
+  /* page head (the shared .ncm-tabhd look) */
+  .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .hd > i { color: var(--ncm-act); font-size: 12px; }
+  .hd h2 { margin: 0; border: 0; font: 700 13px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .hd p { margin: 0; font: 12px var(--ncm-font-body, sans-serif); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hd .end { margin-left: auto; display: flex; gap: 6px; }
+  /* modules: framed with corner ticks, a banded head */
+  .mod { position: relative; background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border); }
+  .mod::before, .mod::after { content: ''; position: absolute; width: 7px; height: 7px; border-color: var(--ncm-act); border-style: solid; pointer-events: none; }
+  .mod::before { left: -1px; top: -1px; border-width: 1.5px 0 0 1.5px; } .mod::after { right: -1px; bottom: -1px; border-width: 0 1.5px 1.5px 0; }
+  .mh { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 0 var(--sk, var(--ncm-act)); }
+  .mh i { color: var(--sk, var(--ncm-act)); font-size: 11px; }
+  .mh b { font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-text-heading); }
+  .mh small { font: 11px var(--ncm-font-body, sans-serif); color: var(--ncm-text-label); }
+  .mh .sp { flex: 1; }
+  .mb { padding: 10px; }
+  /* buttons (the admin vocabulary) */
+  .btn { display: inline-flex !important; align-items: center; gap: 6px; padding: 5px 9px !important; font: 700 10.5px var(--ncm-font-display, sans-serif) !important; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--ncm-text-primary) !important; background: var(--ncm-bg-card) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; white-space: nowrap; }
+  .btn i { font-size: 10px; }
+  .btn.pri { background: var(--ncm-act) !important; color: var(--ncm-text-inverse, #000) !important; border-color: var(--ncm-act) !important; }
+  .btn.good { color: var(--ncm-good) !important; border-color: color-mix(in srgb, var(--ncm-good) 55%, transparent) !important; }
+  .btn.bad { color: var(--ncm-bad) !important; border-color: color-mix(in srgb, var(--ncm-bad) 55%, transparent) !important; }
+  .btn.secret { color: var(--ncm-secret) !important; border-color: color-mix(in srgb, var(--ncm-secret) 55%, transparent) !important; }
+  .btn.ic { padding: 5px 7px !important; }
+  /* tags */
+  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; border-radius: 1px;
+    color: color-mix(in oklab, var(--tc) var(--ncm-ink, 63%), var(--ncm-text-heading)); border: 1px solid color-mix(in srgb, var(--tc) 70%, transparent); background: color-mix(in srgb, var(--tc) 12%, transparent); }
+  .tag.secret { --tc: var(--ncm-secret); } .tag.attn { --tc: var(--ncm-attn); } .tag.bad { --tc: var(--ncm-bad); } .tag.good { --tc: var(--ncm-good); } .tag.act { --tc: var(--ncm-act); } .tag.plain { --tc: var(--ncm-text-label); }
+  .face { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--ncm-bg-card) center/cover; border: 1.5px solid var(--tc, var(--ncm-border)); display: grid; place-items: center;
+    font: 700 11px var(--ncm-font-display, sans-serif); color: color-mix(in oklab, var(--tc) var(--ncm-ink, 63%), var(--ncm-text-heading)); }
+  .face.anon { border-style: dashed; --tc: var(--ncm-secret); }
+  .nm { font: 700 13px var(--ncm-font-display, sans-serif); letter-spacing: .04em; color: var(--ncm-text-heading); }
+  .addr { font: 11.5px var(--ncm-font-mono, monospace); color: var(--ncm-text-addr, var(--ncm-text-label)); }
+  .tm { font: 11px var(--ncm-font-mono, monospace); color: var(--ncm-text-time, var(--ncm-text-label)); }
+  .hint { font: 11.5px var(--ncm-font-body, sans-serif); color: var(--ncm-text-hint); }
+  .net { display: inline-flex; align-items: center; gap: 5px; font: 700 10.5px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase;
+    color: color-mix(in oklab, var(--nc) var(--ncm-ink-own, 55%), var(--ncm-text-heading)); }
+  .net::before { content: ''; width: 8px; height: 8px; background: var(--nc); }
+
+  /* ═══ LIVE: the switchboard ═══ */
+  .live { display: grid; grid-template-columns: 1fr 300px; gap: 12px; }
+  .live > .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  /* one live line: caller ─ patch cord ─ callee */
+  .line { display: grid; grid-template-columns: 190px 1fr 190px; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .line:last-child { border-bottom: 0; }
+  .line.sel { background: color-mix(in srgb, var(--ncm-act) 8%, transparent); box-shadow: inset 4px 0 0 var(--ncm-act); }
+  .end { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .end.r { flex-direction: row-reverse; text-align: right; }
+  .end .t { min-width: 0; } .end .t .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; } .end .t .addr { display: block; white-space: nowrap; }
+  .cord { position: relative; height: 34px; }
+  .cord svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .cord .w { fill: none; stroke: var(--nc); stroke-width: 2; opacity: .85; }
+  .cord .w.drop { stroke-dasharray: 3 4; opacity: .5; }
+  .cord .pk { fill: var(--nc); filter: drop-shadow(0 0 3px var(--nc)); }
+  .cord .mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; padding: 2px 7px; background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border); white-space: nowrap; }
+  .cord .mid .tm { color: var(--ncm-text-heading); font-weight: 700; }
+  .cord .mid i { font-size: 10px; color: var(--ncm-text-label); }
+  .lineacts { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: -2px; }
+  .lineacts .sp { flex: 1; }
+  /* the listen-in panel: a typed call's subtitles as they happen */
+  .listen { margin: 0 10px 10px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--ncm-act) 45%, transparent); background: var(--ncm-bg-pane-alt); }
+  .listen .l { font: 12.5px/1.45 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+  .listen .l b { font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; margin-right: 6px; }
+  .listen .l.typing { color: var(--ncm-text-hint); font-style: italic; }
+  .listen .k { font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-act); margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
+  .listen .k::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--ncm-bad); animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+  /* ringing NPC lines: the GM's queue */
+  .ring { display: grid; grid-template-columns: 34px 1fr; gap: 9px; padding: 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .ring:last-child { border-bottom: 0; }
+  .ring .face { width: 34px; height: 34px; animation: ringPulse 1.1s ease-in-out infinite; }
+  @keyframes ringPulse { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ncm-attn) 35%, transparent); } }
+  .ring .who { font: 12.5px var(--ncm-font-body, sans-serif); color: var(--ncm-text-label); }
+  .ring .who b { color: var(--ncm-text-heading); font-family: var(--ncm-font-display, sans-serif); }
+  .ring .voice { margin-top: 5px; padding-left: 7px; border-left: 2px solid var(--ncm-secret); font: 11.5px var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+  .ring .clock { margin-top: 7px; height: 4px; background: var(--ncm-bg-card); position: relative; overflow: hidden; }
+  .ring .clock i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ncm-attn); width: var(--p); }
+  .ring .clock + small { display: block; margin-top: 3px; font: 10.5px var(--ncm-font-mono, monospace); color: var(--ncm-text-hint); }
+  .ring .acts { margin-top: 7px; display: flex; gap: 5px; flex-wrap: wrap; }
+  /* the network load module: calls per network as bars in each network's colour */
+  .load { display: flex; flex-direction: column; gap: 8px; }
+  .load .r { display: grid; grid-template-columns: 110px 1fr 54px; gap: 8px; align-items: center; }
+  .load .bar { height: 10px; background: var(--ncm-bg-card); position: relative; }
+  .load .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w); background: var(--nc); }
+  .load .bar b { position: absolute; left: var(--w); top: -2px; bottom: -2px; width: 2px; background: var(--ncm-text-heading); opacity: .5; }
+  .load .v { font: 11px var(--ncm-font-mono, monospace); color: var(--ncm-text-num, var(--ncm-text-primary)); text-align: right; }
+  .load .r.cut .bar { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ncm-bad) 30%, transparent) 0 4px, transparent 4px 8px); }
+  .load .r.cut .v { color: var(--ncm-bad); }
+  /* the "not in service" catch: numbers players dialled that nobody owns */
+  .nis .r { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; padding: 7px 0; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .nis .r:last-child { border-bottom: 0; }
+  .nis .r .addr { color: var(--ncm-text-heading); }
+
+  /* ═══ NUMBERS: the exchange ═══ */
+  .tbl { width: 100%; border-collapse: collapse; margin: 0; }
+  .tbl th { text-align: left; padding: 6px 10px; font: 700 9.5px var(--ncm-font-display, sans-serif); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-text-label); background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border); }
+  .tbl td { padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); vertical-align: middle; font: 12px var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+  .tbl tr.grp td { padding: 6px 10px; background: var(--ncm-bg-card-head); font: 700 10px var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-label); box-shadow: inset 3px 0 0 var(--sk, var(--ncm-act)); }
+  .tbl tr.grp td .c { margin-left: 6px; color: var(--ncm-text-hint); font-family: var(--ncm-font-mono, monospace); }
+  .tbl .who { display: flex; align-items: center; gap: 8px; }
+  .tbl .num { font: 600 12.5px var(--ncm-font-mono, monospace); color: var(--ncm-text-heading); letter-spacing: .04em; }
+  .tbl .acts { display: flex; gap: 4px; justify-content: flex-end; }
+  .tb2 { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tb2 .q { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); font: 12px var(--ncm-font-body, sans-serif); color: var(--ncm-text-hint); width: 240px; }
+  .tb2 .sel { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); font: 700 10.5px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .tb2 .sp { flex: 1; }
+  .gr { font: 10.5px var(--ncm-font-mono, monospace); color: var(--ncm-text-label); display: inline-flex; align-items: center; gap: 5px; }
+  .gr i { width: 16px; text-align: center; color: var(--ncm-text-label); }
+
+  /* ═══ LOG: the day strip + list + detail ═══ */
+  .daystrip { position: relative; height: 54px; margin: 2px 0 12px; background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border); }
+  .daystrip .h { position: absolute; bottom: 2px; font: 9.5px var(--ncm-font-mono, monospace); color: var(--ncm-text-hint); transform: translateX(-50%); }
+  .daystrip .tick { position: absolute; top: 0; bottom: 14px; width: 1px; background: color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .daystrip .c { position: absolute; top: calc(8px + var(--y)); height: 6px; border-radius: 1px; background: var(--cc); }
+  .daystrip .now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ncm-act); box-shadow: 0 0 6px var(--ncm-act); }
+  .split { display: grid; grid-template-columns: 1fr 380px; gap: 12px; }
+  .lrow { display: grid; grid-template-columns: 24px 30px 1fr auto; gap: 9px; align-items: center; padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); box-shadow: inset 3px 0 0 transparent; }
+  .lrow.sel { background: color-mix(in srgb, var(--ncm-act) 9%, transparent); box-shadow: inset 4px 0 0 var(--ncm-act); }
+  .lrow .d { width: 22px; height: 22px; display: grid; place-items: center; font-size: 10px; color: var(--dc); background: color-mix(in srgb, var(--dc) 14%, transparent); border-radius: 2px; }
+  .lrow .pair { font: 700 12.5px var(--ncm-font-display, sans-serif); color: var(--ncm-text-heading); letter-spacing: .03em; }
+  .lrow .pair i { font-size: 9px; color: var(--ncm-text-hint); margin: 0 5px; }
+  .lrow .meta { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+  .det .row2 { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 70%, transparent); font: 12px var(--ncm-font-body, sans-serif); }
+  .det .row2 span:first-child { color: var(--ncm-text-label); } .det .row2 span:last-child { color: var(--ncm-text-heading); font-weight: 600; }
+  .det .subs { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; background: var(--ncm-bg-pane-alt); border-left: 2px solid var(--ncm-act); }
+  .det .subs .l { font: 12.5px/1.4 var(--ncm-font-body, sans-serif); } .det .subs .l b { font: 700 11px var(--ncm-font-display, sans-serif); text-transform: uppercase; letter-spacing: .06em; margin-right: 6px; }
+  .det .subs .l time { float: right; font: 10px var(--ncm-font-mono, monospace); color: var(--ncm-text-hint); }
+
+  /* ═══ VOICEMAIL: the boxes ═══ */
+  .boxes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+  .box { display: flex; align-items: center; gap: 8px; padding: 8px 9px; background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border); box-shadow: inset 3px 0 0 transparent; }
+  .box.has { box-shadow: inset 3px 0 0 var(--ncm-attn); } .box.sel { background: color-mix(in srgb, var(--ncm-act) 9%, var(--ncm-bg-pane)); box-shadow: inset 4px 0 0 var(--ncm-act); }
+  .box .t { flex: 1; min-width: 0; } .box .nm { font-size: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .box .c { font: 700 11px var(--ncm-font-mono, monospace); padding: 2px 6px; border-radius: 1px; background: var(--ncm-attn); color: #000; }
+  .box .c.z { background: var(--ncm-bg-card); color: var(--ncm-text-hint); }
+  .vm { display: grid; grid-template-columns: 30px 1fr auto; gap: 9px; padding: 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .vm.new { box-shadow: inset 3px 0 0 var(--ncm-attn); }
+  .vm .play { display: flex; align-items: center; gap: 9px; margin-top: 7px; }
+  .vm .play .pb { width: 28px !important; height: 28px !important; display: grid !important; place-items: center; background: var(--ncm-attn) !important; color: #000 !important; border-radius: 2px; }
+  .vm .play canvas { flex: 1; height: 26px; width: 100%; }
+  .vm .tr { margin-top: 7px; padding: 6px 9px; background: var(--ncm-bg-pane-alt); border-left: 2px solid var(--ncm-attn); font: 12.5px/1.45 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+  .vm .acts { display: flex; flex-direction: column; gap: 5px; }
+
+  /* ═══ SETTINGS ═══ */
+  .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .srow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px dashed color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+  .srow:last-child { border-bottom: 0; }
+  .srow b { display: block; font: 700 12px var(--ncm-font-display, sans-serif); letter-spacing: .04em; color: var(--ncm-text-heading); }
+  .srow small { font: 11.5px/1.4 var(--ncm-font-body, sans-serif); color: var(--ncm-text-label); }
+  .seg { display: inline-flex; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+  .seg span { padding: 5px 9px; font: 700 10.5px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); border-right: 1px solid var(--ncm-border); }
+  .seg span:last-child { border-right: 0; } .seg span.on { background: var(--ncm-act); color: var(--ncm-text-inverse, #000); }
+  .chk { display: inline-flex; gap: 6px; } .chk span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid var(--ncm-border); font: 700 10.5px var(--ncm-font-display, sans-serif); text-transform: uppercase; color: var(--ncm-text-label); border-radius: 2px; }
+  .chk span.on { color: var(--ncm-text-heading); border-color: var(--ncm-act); background: color-mix(in srgb, var(--ncm-act) 12%, transparent); }
+  .chk span.on::before { content: '\f00c'; font: 900 9px 'Font Awesome 6 Pro', 'Font Awesome 6 Free'; color: var(--ncm-act); }
+  .val { font: 600 12px var(--ncm-font-mono, monospace); padding: 4px 9px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane-alt); color: var(--ncm-text-heading); }
+  .tog { width: 34px; height: 18px; border-radius: 9px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); position: relative; }
+  .tog::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-label); }
+  .tog.on { background: color-mix(in srgb, var(--ncm-act) 60%, transparent); border-color: var(--ncm-act); } .tog.on::after { left: 18px; background: #fff; }
+
+  /* ═══ CONTACTS detail with Call as ═══ */
+  .ct-d { display: grid; grid-template-columns: 300px 1fr; gap: 12px; }
+  .ct-list .r { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ct-list .r.sel { background: color-mix(in srgb, var(--ncm-act) 9%, transparent); box-shadow: inset 4px 0 0 var(--ncm-act); }
+  .ct-head { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 12px; }
+  .ct-head .face { width: 64px; height: 64px; }
+  .ct-head h3 { margin: 0; border: 0; font: 800 18px var(--ncm-font-display, sans-serif); letter-spacing: .04em; color: var(--ncm-text-heading); }
+  .ct-head .tags { display: flex; gap: 5px; flex-wrap: wrap; margin: 5px 0; }
+  .ct-head .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .callas { position: relative; display: inline-flex !important; align-items: stretch; padding: 0 !important; border: 1px solid var(--ncm-good) !important; background: color-mix(in srgb, var(--ncm-good) 14%, var(--ncm-bg-card)) !important; border-radius: 2px; }
+  .callas > span { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; font: 700 10.5px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-good); }
+  .callas > span + span { border-left: 1px solid color-mix(in srgb, var(--ncm-good) 50%, transparent); padding: 5px 7px; }
+  .menu { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; width: 270px; background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active, var(--ncm-border)); box-shadow: 0 10px 24px rgba(0,0,0,.45); }
+  .menu .k { padding: 6px 10px 4px; font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .14em; text-transform: uppercase; color: var(--ncm-text-hint); }
+  .menu .it { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: center; padding: 6px 10px; }
+  .menu .it.on { background: color-mix(in srgb, var(--ncm-act) 12%, transparent); }
+  .menu .it .face { width: 24px; height: 24px; font-size: 9px; }
+  .menu .it b { display: block; font: 700 12px var(--ncm-font-display, sans-serif); color: var(--ncm-text-heading); } .menu .it small { font: 10.5px var(--ncm-font-mono, monospace); color: var(--ncm-text-label); }
+  .menu hr { border: 0; border-top: 1px solid var(--ncm-border); margin: 4px 0; background: none; height: 0; }
+
+  /* ── FOLDS (round 30, dev: "be able to collapse things… less clutter"). The module's standing fold rule: the first group
+     open, the rest closed; a closed head keeps its count + anything that needs you (amber / red); a search or filter
+     opens everything; the GM's own fold wins for the session. A chevron on every foldable head. ── */
+  .fold-ch { width: 14px; text-align: center; color: var(--ncm-text-label); font-size: 10px; transition: transform .2s; }
+  .shut > .mh .fold-ch, tr.grp.shut .fold-ch { transform: rotate(-90deg); }
+  .mh { cursor: pointer; }
+  .mod.shut > :not(.mh) { display: none; }
+  .mh .sum { display: none; margin-left: 4px; gap: 6px; align-items: center; }
+  .mod.shut > .mh .sum { display: inline-flex; }
+  .mod.shut > .mh small.desc { display: none; }
+  .tbl tr.grp td { cursor: pointer; } .tbl tr.grp td .fold-ch { margin-right: 6px; }
+  .tbl tr.hid { display: none; }
+  .tbl tr.grp .badges { float: right; display: inline-flex; gap: 5px; }
+  /* a folded call: one line — the two names, the timer, the network */
+  .line.fold { grid-template-columns: 14px 1fr auto; padding: 7px 10px; cursor: pointer; }
+  .line.fold .one { display: flex; align-items: center; gap: 8px; min-width: 0; font: 700 12px var(--ncm-font-display, sans-serif); color: var(--ncm-text-heading); }
+  .line.fold .one .face { width: 22px; height: 22px; font-size: 8.5px; }
+  .line.fold .one i.fa-arrow-right-arrow-left { font-size: 9px; color: var(--ncm-text-hint); }
+  .line.fold .r2 { display: flex; align-items: center; gap: 8px; }
+  .line .fold-ch { align-self: start; margin-top: 9px; }
+  .line:not(.fold) { grid-template-columns: 14px 190px 1fr 190px; }
+  .line:not(.fold) .lineacts { grid-column: 2 / -1; }
+  .lg-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font: 700 9.5px var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-label);
+    background: var(--ncm-bg-card-head); border-bottom: 1px solid var(--ncm-border); cursor: pointer; }
+  .lg-head .c { font-family: var(--ncm-font-mono, monospace); color: var(--ncm-text-hint); }
+  .lg-head.shut .fold-ch { transform: rotate(-90deg); }
+  .foldall { margin-left: auto; font: 700 9.5px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label); display: inline-flex; gap: 5px; align-items: center; }
+</style>
+</head>
+<body>
+<div id="frames"></div>
+<script>
+  const Q = new URLSearchParams(location.search);
+  if (Q.get('still') === '1') document.body.classList.add('still');
+  const THEME = ['clean-dark', 'clean-light', 'high-contrast'].includes(Q.get('t')) ? Q.get('t') : 'clean-dark';
+  const IMG = '../../../../worlds/ncmessenger/thephanthasy_An_illustrative_portrait_of_Kai_Meng_known_as_Verd_fdcb5e3a-adc5-4dc8-8720-e7f92f008405.png';
+  const NETC = { CitiNet: '#3ad0ff', 'Arasaka CorpNet': '#ff5468', 'The Deep': '#a77bff' };
+  const HUE = { Rogue: 'var(--ncm-hue-1)', 'Queen of Hearts': 'var(--ncm-hue-1)', V: 'var(--ncm-hue-3)', Judy: 'var(--ncm-hue-5)', Rache: 'var(--ncm-hue-7)', Jackie: 'var(--ncm-hue-6)', 'Takemura': 'var(--ncm-hue-2)', 'Delamain': 'var(--ncm-hue-4)', 'NCPD': 'var(--ncm-hue-8)' };
+  const face = (n, img, anon) => anon ? '<span class="face anon"><i class="fas fa-user-secret"></i></span>' : `<span class="face" style="--tc:${HUE[n] || 'var(--ncm-text-label)'};${img ? `background-image:url('${img}')` : ''}">${img ? '' : n.slice(0, 2).toUpperCase()}</span>`;
+  const net = (n) => `<span class="net" style="--nc:${NETC[n]}">${n}</span>`;
+
+  const TABS = (n) => `<div class="tb">
+    <div class="tg"><small>&nbsp;</small><div><span class="tt"><i class="fas fa-gauge"></i>Overview</span></div></div>
+    <div class="tg on"><small>Comms</small><div><span class="tt"><i class="fas fa-envelope"></i>Messages <span class="n">3</span></span><span class="tt${n === 'contacts' ? ' on' : ''}"><i class="fas fa-address-book"></i>Contacts</span><span class="tt"><i class="fas fa-ban"></i>Spam</span><span class="tt${n === 'contacts' ? '' : ' on'}"><i class="fas fa-phone"></i>Phone <span class="n bad">2</span></span></div></div>
+    <div class="tg"><small>Net</small><div><span class="tt"><i class="fas fa-wifi"></i>Networks</span><span class="tt"><i class="fas fa-shield-halved"></i>Security</span></div></div>
+    <div class="tg"><small>World</small><div><span class="tt"><i class="fas fa-desktop"></i>Terminals</span><span class="tt"><i class="fas fa-microchip"></i>Shards</span><span class="tt"><i class="fas fa-location-dot"></i>Access</span></div></div>
+    <div class="tg"><small>&nbsp;</small><div><span class="tt"><i class="fas fa-toolbox"></i>Tools</span></div></div></div>`;
+  const SUB = (on) => `<div class="st">${[['live', 'fa-tower-broadcast', 'Live', '<span class="n attn">2 ringing</span>'], ['numbers', 'fa-sim-card', 'Numbers', '<span class="n">14</span>'], ['log', 'fa-list', 'Call log', ''],
+      ['vm', 'fa-voicemail', 'Voicemail', '<span class="n attn">3</span>'], ['settings', 'fa-sliders', 'Settings', '']].map(([k, ic, l, n]) => `<span class="${k === on ? 'on' : ''}"><i class="fas ${ic}"></i>${l} ${n}</span>`).join('')}
+    <span class="sp"></span><span class="pop" title="Pop out"><i class="fas fa-up-right-from-square"></i></span></div>`;
+  const WIN = (on, body) => `<div class="win ncm-app ncm-admin-panel" data-ncm-admin-theme="${THEME}">${TABS(on)}${on === 'contacts' ? '' : SUB(on)}<div class="body ncm-admin-panel">${body}</div></div>`;
+  const HEAD = (ic, t, p, end = '') => `<div class="hd"><i class="fas ${ic}"></i><h2>${t}</h2><p>${p}</p>${end ? `<div class="end">${end}</div>` : ''}</div>`;
+
+  // a patch cord between two people, the packet riding it
+  const CORD = (n, time, mode, drop) => `<div class="cord" style="--nc:${NETC[n]}"><svg viewBox="0 0 100 34" preserveAspectRatio="none"><path class="w${drop ? ' drop' : ''}" d="M0 17 C 30 2, 70 32, 100 17"/>${drop ? '' : '<circle class="pk" r="2.6"><animateMotion dur="1.8s" repeatCount="indefinite" path="M0 17 C 30 2, 70 32, 100 17"/></circle>'}</svg>
+    <span class="mid"><i class="fas ${mode}"></i><span class="tm">${time}</span>${net(n)}</span></div>`;
+
+  const LIVE = WIN('live', HEAD('fa-tower-broadcast', 'Live', 'Every call happening now, and the NPC lines ringing for you.', '<button class="btn"><i class="fas fa-phone"></i> Call a player as…</button><button class="btn"><i class="fas fa-bell"></i> Make a phone ring…</button>') + `
+    <div class="live"><div class="col">
+      <div class="mod" style="--sk:var(--ncm-act)"><div class="mh"><i class="fas fa-chevron-down fold-ch"></i><i class="fas fa-shuffle"></i><b>Switchboard</b><small>3 calls on the line · the one you are listening to stays open</small><span class="sp"></span><span class="tag plain">Out loud 1</span><span class="tag act">Typed 1</span><span class="tag plain">Dictated 1</span></div>
+        <div class="line sel"><i class="fas fa-chevron-down fold-ch"></i><div class="end">${face('V')}<span class="t"><span class="nm">V</span><span class="addr">+1 (555) 0177-42</span></span></div>${CORD('CitiNet', '02:08', 'fa-keyboard')}<div class="end r">${face('Judy')}<span class="t"><span class="nm">Judy Alvarez</span><span class="addr">+1 (555) 0131-88</span></span></div>
+          <div class="lineacts"><span class="tag act"><i class="fas fa-ear-listen"></i> Listening</span><span class="hint">player ↔ player · Watson Docks ↔ Lizzie's</span><span class="sp"></span><button class="btn"><i class="fas fa-ear-listen"></i> Stop listening</button><button class="btn"><i class="fas fa-wave-square"></i> Glitch the line</button><button class="btn bad"><i class="fas fa-plug-circle-xmark"></i> Drop the call</button></div></div>
+        <div class="listen"><div class="k">Live transcript — only you can see this</div>
+          <div class="l"><b style="color:var(--ncm-hue-5)">Judy:</b>Evelyn's gone dark. Last ping was Jig-Jig Street.</div>
+          <div class="l"><b style="color:var(--ncm-hue-3)">V:</b>On my way. Keep your line open.</div>
+          <div class="l typing">Judy is typing…</div></div>
+        <div class="line"><i class="fas fa-chevron-down fold-ch"></i><div class="end">${face('Rache')}<span class="t"><span class="nm">Rache</span><span class="addr">+1 (555) 0118-60</span></span></div>${CORD('Arasaka CorpNet', '00:41', 'fa-users')}<div class="end r">${face('Takemura')}<span class="t"><span class="nm">Takemura <span class="tag secret">you</span></span><span class="addr">+81 3-5544-0091</span></span></div>
+          <div class="lineacts"><span class="hint">you are Takemura on this call — out loud, at the table</span><span class="sp"></span><button class="btn"><i class="fas fa-mask"></i> Switch identity</button><button class="btn bad"><i class="fas fa-phone-slash"></i> Hang up</button></div></div>
+        <div class="line fold"><i class="fas fa-chevron-down fold-ch" style="transform:rotate(-90deg)"></i>
+          <span class="one">${face('Jackie')}Jackie <i class="fas fa-arrow-right-arrow-left"></i> ${face('Delamain')}Delamain Cab</span>
+          <span class="r2"><span class="tag attn"><i class="fas fa-triangle-exclamation"></i> weak</span><i class="fas fa-microphone" style="font-size:10px;color:var(--ncm-text-label)"></i><span class="tm">05:12</span>${net('CitiNet')}</span></div>
+      </div>
+      <div class="mod shut" style="--sk:var(--ncm-hue-2)"><div class="mh"><i class="fas fa-chevron-down fold-ch"></i><i class="fas fa-chart-simple"></i><b>Network load</b><small class="desc">calls on each network right now · today</small><span class="sum"><span class="tm">3 calls now · 23 today</span><span class="tag bad">The Deep jammed</span></span></div>
+        <div class="mb load">
+          <div class="r"><span>${net('CitiNet')}</span><span class="bar" style="--nc:${NETC.CitiNet};--w:66%"><i></i><b></b></span><span class="v">2 · 19</span></div>
+          <div class="r"><span>${net('Arasaka CorpNet')}</span><span class="bar" style="--nc:${NETC['Arasaka CorpNet']};--w:33%"><i></i><b></b></span><span class="v">1 · 4</span></div>
+          <div class="r cut"><span>${net('The Deep')}</span><span class="bar" style="--nc:${NETC['The Deep']};--w:0%"><i></i></span><span class="v">jammed</span></div>
+          <div class="hint">A node jam on a network drops its calls on that scene. Every bar opens the network in Networks.</div></div></div>
+    </div><div class="col">
+      <div class="mod" style="--sk:var(--ncm-attn)"><div class="mh"><i class="fas fa-phone-volume"></i><b>Ringing for you</b><small>NPC lines · never folds while something rings</small></div>
+        <div class="ring">${face('Queen of Hearts', IMG)}<div><div class="who"><b>Rache</b> is calling <b>Queen of Hearts</b> <span class="tag secret">alias of Rogue</span></div>
+          <div class="voice">Clipped, never says goodbye. Calls everyone "kid".</div>
+          <div class="clock" style="--p:62%"><i></i></div><small>to voicemail in 0:11 · from Arasaka Tower · CorpNet</small>
+          <div class="acts"><button class="btn pri"><i class="fas fa-phone"></i> Answer as Queen</button><button class="btn"><i class="fas fa-voicemail"></i> Voicemail</button><button class="btn bad"><i class="fas fa-phone-slash"></i></button></div></div></div>
+        <div class="ring">${face('', '', true)}<div><div class="who"><b>V</b> dialled <b class="mono">+81 3-1234-5678</b> <span class="tag plain">nobody owns it</span></div>
+          <div class="clock" style="--p:20%"><i></i></div><small>"not in service" in 0:24 unless you pick up</small>
+          <div class="acts"><button class="btn pri"><i class="fas fa-phone"></i> Answer as…</button><button class="btn"><i class="fas fa-user-plus"></i> Make it a contact</button><button class="btn"><i class="fas fa-ban"></i> Not in service</button></div></div></div>
+      </div>
+      <div class="mod nis shut" style="--sk:var(--ncm-text-label)"><div class="mh"><i class="fas fa-chevron-down fold-ch"></i><i class="fas fa-circle-question"></i><b>Dialled, not in service</b><small class="desc">this session</small><span class="sum"><span class="tag plain">2 numbers</span></span></div>
+        <div class="mb"><div class="r"><span><span class="addr">+1 (555) 0000-00</span> <span class="hint">· Jackie, 3×</span></span><button class="btn ic" title="Make it a contact"><i class="fas fa-user-plus"></i></button></div>
+          <div class="r"><span><span class="addr">1-800-MILITECH</span> <span class="hint">· Rache</span></span><button class="btn ic" title="Make it a contact"><i class="fas fa-user-plus"></i></button></div>
+          <div class="hint" style="margin-top:6px">Players fishing for numbers — give one to someone and it works next time.</div></div></div>
+    </div></div>`);
+
+  const NROW = (n, img, num, kind, greet, vm, last, tags = '') => `<tr><td><span class="who">${face(n, img)}<span><span class="nm">${n}</span> ${tags}</span></span></td><td class="num">${num}</td><td>${kind}</td><td><span class="gr">${greet}</span></td><td>${vm}</td><td class="tm">${last}</td>
+    <td><span class="acts"><button class="btn ic good" title="Call as / call"><i class="fas fa-phone"></i></button><button class="btn ic" title="Edit greeting"><i class="fas fa-comment-dots"></i></button><button class="btn ic" title="Burn this number"><i class="fas fa-fire"></i></button></span></td></tr>`;
+  const NUMBERS = WIN('numbers', HEAD('fa-sim-card', 'Numbers', 'Every number in the world, who owns it, and how its voicemail answers.', '<button class="btn pri"><i class="fas fa-plus"></i> Give a number</button><button class="btn"><i class="fas fa-file-import"></i></button><button class="btn"><i class="fas fa-file-export"></i></button>') + `
+    <div class="tb2"><span class="q"><i class="fas fa-magnifying-glass"></i> Name, number, alias…</span><span class="sel"><i class="fas fa-filter"></i> Show: everyone <i class="fas fa-caret-down"></i></span><span class="sel">Group: owner type <i class="fas fa-caret-down"></i></span><span class="sp"></span><span class="tag attn">2 characters have no number</span><span class="foldall"><i class="fas fa-angles-down"></i> Open all</span></div>
+    <div class="mod"><table class="tbl"><thead><tr><th>Owner</th><th>Number</th><th>Type</th><th>Greeting</th><th>Voicemail</th><th>Last call</th><th></th></tr></thead><tbody>
+      <tr class="grp" style="--sk:var(--ncm-hue-3)"><td colspan="7"><i class="fas fa-chevron-down fold-ch"></i>Players' characters <span class="c">4</span></td></tr>
+      ${NROW('V', '', '+1 (555) 0177-42', 'main', '<i class="fas fa-microphone"></i>recorded · 0:04', '<span class="tag good">on</span>', '2 min ago')}
+      ${NROW('V', '', '+1 (555) 0612-08', 'burner', '<i class="fas fa-robot"></i>read out', '<span class="tag good">on</span>', 'never', '<span class="tag secret">Nix</span>')}
+      ${NROW('Rache', '', '+1 (555) 0118-60', 'main', '<i class="fas fa-keyboard"></i>typed', '<span class="tag good">on</span>', '41 s ago')}
+      <tr><td><span class="who">${face('Jackie')}<span class="nm">Jackie</span></span></td><td><span class="tag attn">no number</span></td><td></td><td></td><td></td><td></td><td><span class="acts"><button class="btn pri"><i class="fas fa-sim-card"></i> Give one</button></span></td></tr>
+      <tr class="grp shut" style="--sk:var(--ncm-hue-1)"><td colspan="7"><i class="fas fa-chevron-down fold-ch"></i>NPCs <span class="c">7</span><span class="badges"><span class="tag attn">3 new voicemail</span><span class="tag act">1 ringing</span></span></td></tr>
+      <tr class="grp shut" style="--sk:var(--ncm-hue-8)"><td colspan="7"><i class="fas fa-chevron-down fold-ch"></i>Services <span class="c">3</span></td></tr>
+    </tbody></table></div>`);
+
+  const DAY = () => { const calls = [[3, 0, 'var(--ncm-good)', 6], [6, 1, 'var(--ncm-act)', 3], [9.5, 0, 'var(--ncm-bad)', 1], [12, 2, 'var(--ncm-attn)', 2], [14.8, 0, 'var(--ncm-good)', 4], [18.2, 1, 'var(--ncm-act)', 9], [20.1, 2, 'var(--ncm-bad)', 1], [21.6, 0, 'var(--ncm-act)', 5], [22.7, 1, 'var(--ncm-attn)', 2]];
+    return `<div class="daystrip">${[0, 6, 12, 18, 24].map((h) => `<span class="tick" style="left:${h / 24 * 100}%"></span><span class="h" style="left:${Math.min(97, Math.max(3, h / 24 * 100))}%">${String(h).padStart(2, '0')}:00</span>`).join('')}
+      ${calls.map(([h, lane, c, len]) => `<span class="c" style="left:${h / 24 * 100}%;width:${len * 0.35}%;--y:${lane * 9}px;--cc:${c}"></span>`).join('')}<span class="now" style="left:${22.9 / 24 * 100}%"></span></div>`; };
+  const LROW = (dir, a, b, info, when, sel) => { const D = { in: ['fa-arrow-down', 'var(--ncm-good)'], out: ['fa-arrow-up', 'var(--ncm-act)'], miss: ['fa-phone-slash', 'var(--ncm-bad)'], vm: ['fa-voicemail', 'var(--ncm-attn)'] }[dir];
+    return `<div class="lrow${sel ? ' sel' : ''}" style="--dc:${D[1]}"><span class="d"><i class="fas ${D[0]}"></i></span>${face(a)}<div><div class="pair">${a}<i class="fas fa-arrow-right"></i>${b}</div><div class="meta">${info}</div></div><span class="tm">${when}</span></div>`; };
+  const LOG = WIN('log', HEAD('fa-list', 'Call log', 'Every call in the world, newest first — with the transcript when there is one.') + DAY() + `
+    <div class="tb2"><span class="q"><i class="fas fa-magnifying-glass"></i> Name, number, transcript…</span><span class="sel">Who: anyone <i class="fas fa-caret-down"></i></span><span class="sel">Show: all <i class="fas fa-caret-down"></i></span><span class="sel">Network: any <i class="fas fa-caret-down"></i></span><span class="sp"></span><span class="hint">1–25 of 208</span></div>
+    <div class="split"><div class="mod">
+      <div class="lg-head"><i class="fas fa-chevron-down fold-ch"></i>Tonight <span class="c">3</span></div>
+      ${LROW('out', 'V', 'Judy', `<span class="tag act">typed</span><span class="tm">4:12</span>${net('CitiNet')}`, '20:15', true)}
+      ${LROW('vm', 'V', 'Rogue', `<span class="tag attn">voicemail 0:24</span>${net('CitiNet')}`, '22:41')}
+      ${LROW('miss', 'Rache', 'Queen of Hearts', `<span class="tag bad">missed</span><span class="tag secret">alias</span>${net('Arasaka CorpNet')}`, '21:58')}
+      <div class="lg-head shut"><i class="fas fa-chevron-down fold-ch"></i>Yesterday <span class="c">2</span><span class="foldall"><span class="tag bad">1 dropped</span></span></div>
+      <div class="lg-head shut"><i class="fas fa-chevron-down fold-ch"></i>15 Aug <span class="c">1</span></div>
+      <div class="lg-head shut"><i class="fas fa-chevron-down fold-ch"></i>Earlier this week <span class="c">202</span><span class="foldall"><span class="tag bad">9 missed</span><span class="tag attn">2 voicemail</span></span></div>
+    </div><div class="mod det" style="--sk:var(--ncm-act)"><div class="mh"><i class="fas fa-closed-captioning"></i><b>V → Judy</b><span class="sp"></span><span class="tm">20:15 · 4:12</span></div><div class="mb">
+      <div class="row2"><span>From</span><span>V · +1 (555) 0177-42</span></div><div class="row2"><span>To</span><span>Judy Alvarez · +1 (555) 0131-88</span></div>
+      <div class="row2"><span>Network</span><span>${net('CitiNet')} · ch36 · ENC-128</span></div><div class="row2"><span>Scenes</span><span>Watson Docks ↔ Lizzie's Bar</span></div>
+      <div class="row2"><span>How</span><span>Typed (both sides)</span></div><div class="row2"><span>Heard by</span><span><span class="tag secret"><i class="fas fa-ear-listen"></i> a tap — Rache's</span></span></div>
+      <div class="subs"><div class="l"><b style="color:var(--ncm-hue-5)">Judy:</b>You at the Afterlife? <time>20:11</time></div><div class="l"><b style="color:var(--ncm-hue-3)">V:</b>Close. What's wrong? <time>20:11</time></div><div class="l"><b style="color:var(--ncm-hue-5)">Judy:</b>Evelyn's gone dark. Last ping was Jig-Jig Street. <time>20:12</time></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn"><i class="fas fa-comment"></i> Share to chat</button><button class="btn"><i class="fas fa-microchip"></i> Save to a shard</button><button class="btn"><i class="fas fa-envelope"></i> Open V's inbox</button><button class="btn bad"><i class="fas fa-trash"></i></button></div></div></div></div>`);
+
+  const BOX = (n, img, c, sel, alias) => `<div class="box${c ? ' has' : ''}${sel ? ' sel' : ''}">${face(n, img)}<span class="t"><span class="nm">${n}</span>${alias ? `<span class="tag secret" style="margin-top:2px">${alias}</span>` : '<span class="hint">NPC</span>'}</span><span class="c${c ? '' : ' z'}">${c}</span></div>`;
+  const VM = WIN('vm', HEAD('fa-voicemail', 'Voicemail', 'What players left for your NPCs. Play it, answer it as them, or call back.', '<button class="btn"><i class="fas fa-check-double"></i> Mark all heard</button>') + `
+    <div class="boxes">${BOX('Rogue', IMG, 2, true)}${BOX('Queen of Hearts', IMG, 1, false, 'alias of Rogue')}${BOX('Takemura', '', 0)}${BOX('Delamain', '', 0)}</div>
+    <div class="mod" style="--sk:var(--ncm-attn)"><div class="mh"><i class="fas fa-inbox"></i><b>Rogue's box</b><small>+1 (555) 0119-07 · greeting "Leave it short."</small><span class="sp"></span><button class="btn"><i class="fas fa-comment-dots"></i> Edit greeting</button></div>
+      <div class="vm new">${face('V')}<div><div><span class="nm">V</span> <span class="tag attn">new</span> <span class="tm">22:41 · 0:24</span> ${net('CitiNet')}</div>
+        <div class="play"><button class="pb"><i class="fas fa-play"></i></button><canvas data-wave width="600" height="52"></canvas><span class="tm">0:00 / 0:24</span></div>
+        <div class="tr">Rogue, it's V. The Pier 4 job — I need to know who else is on it before I walk in. Call me.</div></div>
+        <div class="acts"><button class="btn good"><i class="fas fa-phone"></i> Call back as Rogue</button><button class="btn"><i class="fas fa-envelope"></i> Reply as Rogue</button><button class="btn"><i class="fas fa-check"></i> Heard</button></div></div>
+      <div class="vm new">${face('Rache')}<div><div><span class="nm">Rache</span> <span class="tag attn">new</span> <span class="tm">21:02 · typed</span> ${net('Arasaka CorpNet')}</div>
+        <div class="tr">You owe me for the Kabuki thing. Don't make me come find you.</div></div>
+        <div class="acts"><button class="btn good"><i class="fas fa-phone"></i> Call back as Rogue</button><button class="btn"><i class="fas fa-envelope"></i> Reply as Rogue</button><button class="btn"><i class="fas fa-check"></i> Heard</button></div></div>
+      <div class="lg-head shut"><i class="fas fa-chevron-down fold-ch"></i>Heard <span class="c">14</span></div>
+    </div>`);
+
+  const SETTINGS = WIN('settings', HEAD('fa-sliders', 'Settings', 'How calls work at this table.') + `<div class="sgrid">
+    <div class="mod" style="--sk:var(--ncm-hue-7)"><div class="mh"><i class="fas fa-chevron-down fold-ch"></i><i class="fas fa-sliders"></i><b>Calls</b></div><div class="mb">
+      <div class="srow"><span><b>Calls on</b><small>Players can call, ring and leave voicemail.</small></span><span class="tog on"></span></div>
+      <div class="srow"><span><b>Ways to talk</b><small>A mode switched off disappears; with one left the choice is not shown.</small></span><span class="chk"><span class="on">Out loud</span><span class="on">Type</span><span>Dictate</span></span></div>
+      <div class="srow"><span><b>A call starts in</b><small>The mode a call opens in.</small></span><span class="seg"><span class="on">Out loud</span><span>Type</span></span></div>
+      <div class="srow"><span><b>Home country code</b><small>A number typed without one gets this.</small></span><span class="val">+1</span></div>
+      <div class="srow"><span><b>Rings before voicemail</b><small>How long a call rings before it goes to voicemail.</small></span><span class="val">30 s</span></div>
+      <div class="srow"><span><b>A number nobody owns</b><small>What a player hears when the number is unused.</small></span><span class="seg"><span>Not in service</span><span class="on">Ring me</span></span></div>
+    </div></div>
+    <div class="mod" style="--sk:var(--ncm-attn)"><div class="mh"><i class="fas fa-chevron-down fold-ch"></i><i class="fas fa-voicemail"></i><b>Voicemail &amp; privacy</b></div><div class="mb">
+      <div class="srow"><span><b>Recorded voicemail</b><small>Needs a mic and https. Off = typed and read-out only.</small></span><span class="tog on"></span></div>
+      <div class="srow"><span><b>Longest message</b><small>Players can choose less for their own box.</small></span><span class="val">2:00</span></div>
+      <div class="srow"><span><b>Keep recordings for</b><small>Older recordings are deleted; their transcripts stay.</small></span><span class="val">30 days</span></div>
+      <div class="srow"><span><b>Tell players the GM can read transcripts</b><small>A line on the call screen: "the GM can see typed calls".</small></span><span class="tog on"></span></div>
+      <div class="srow"><span><b>Dictate engine</b><small>Chrome / Edge send speech to their maker; offline is private but heavier.</small></span><span class="seg"><span class="on">Browser</span><span>Offline</span></span></div>
+      <div class="srow"><span><b>Recordings stored</b><small>12 recordings · 3.1 MB</small></span><button class="btn bad"><i class="fas fa-trash"></i> Purge old…</button></div>
+    </div></div></div>`);
+
+  // Admin → Contacts with the Call as button
+  const CONTACTS = WIN('contacts', HEAD('fa-address-book', 'Contacts', 'The directory: everyone your NPCs are, and who knows them.') + `<div class="ct-d">
+    <div class="mod ct-list">
+      <div class="r sel">${face('Rogue', IMG)}<span><span class="nm">Rogue</span><br><span class="addr">rogue@afterlife.nc · +1 (555) 0119-07</span></span></div>
+      <div class="r" style="padding-left:28px">${face('Queen of Hearts', IMG)}<span><span class="nm">Queen of Hearts</span> <span class="tag secret">alias</span><br><span class="addr">+1 (555) 0342-90</span></span></div>
+      <div class="r">${face('Takemura')}<span><span class="nm">Takemura</span><br><span class="addr">+81 3-5544-0091</span></span></div>
+      <div class="r">${face('Delamain')}<span><span class="nm">Delamain</span><br><span class="addr">TRAUMA · 555-DELA</span></span></div>
+    </div>
+    <div class="mod"><div class="ct-head">${face('Rogue', IMG)}<div><h3>Rogue</h3>
+      <div class="tags"><span class="tag" style="--tc:var(--ncm-hue-1)">Fixer</span><span class="tag" style="--tc:var(--ncm-hue-4)">Afterlife</span><span class="tag secret">2 identities</span></div>
+      <div class="addr">rogue@afterlife.nc · +1 (555) 0119-07</div>
+      <div class="acts" style="position:relative">
+        <button class="callas"><span><i class="fas fa-phone"></i> Call as Rogue</span><span><i class="fas fa-caret-down"></i></span></button>
+        <button class="btn"><i class="fas fa-pen-to-square"></i> Write as</button><button class="btn"><i class="fas fa-inbox"></i> Inbox</button><button class="btn"><i class="fas fa-share-nodes"></i> Share</button><button class="btn"><i class="fas fa-pen"></i> Edit</button>
+        <div class="menu"><div class="k">Call from</div>
+          <div class="it on">${face('Rogue', IMG)}<span><b>Rogue</b><small>+1 (555) 0119-07 · main</small></span></div>
+          <div class="it">${face('Queen of Hearts', IMG)}<span><b>Queen of Hearts</b><small>+1 (555) 0342-90 · alias</small></span></div>
+          <hr><div class="k">Who to call</div>
+          <div class="it">${face('V')}<span><b>V</b><small>+1 (555) 0177-42 · knows Rogue</small></span></div>
+          <div class="it">${face('Rache')}<span><b>Rache</b><small>+1 (555) 0118-60 · knows Rogue</small></span></div>
+          <div class="it">${face('Jackie')}<span><b>Jackie</b><small style="color:var(--ncm-attn)">no number — give one</small></span></div>
+          <hr><div class="it"><span style="text-align:center"><i class="fas fa-keyboard" style="color:var(--ncm-text-label)"></i></span><span><b>Dial a number…</b><small>call anyone as Rogue</small></span></div></div>
+      </div></div></div>
+      <div class="hint" style="padding:120px 12px 12px">(the rest of the detail — Who knows them, trust, identities, Voice — as today)</div></div></div>`);
+
+  const FRAMES = {
+    live: ['<b>1 · Live — the switchboard.</b> <b>Folds:</b> a call you are not watching folds to one line (names · timer · network, a weak-signal flag kept); the one you listen to and the ones you are on stay open; ringing lines never fold; Network load and Not-in-service fold to a one-line summary (the jam stays visible in red). Every call happening now as a patch cord between two people, in the network\'s colour with the packet riding it, the timer and the mode. <b>Listen</b> to a typed or dictated call (a private live transcript only you see), <b>Glitch the line</b> (garble a few lines — interference), or <b>Drop the call</b> (it ends as "Call dropped"). Calls you are on as an NPC show "you" with Switch identity / Hang up. A weak signal is flagged. Right: <b>Ringing for you</b> — NPC lines with the caller, the alias (violet), the NPC\'s voice note and a clock to voicemail; Answer as / Voicemail / Decline. A dialled number nobody owns can ring you too: answer as anyone, or make it a contact on the spot. <b>Network load</b> bars every network\'s calls (jammed ones hatched red); <b>Dialled, not in service</b> lists numbers players fished for. Top: <b>Call a player as…</b> and <b>Make a phone ring…</b> (an NPC calls a player now).', LIVE],
+    numbers: ['<b>2 · Numbers — the exchange.</b> <b>Folds:</b> Players open, NPCs and Services closed — a closed head keeps its count and what needs you (3 new voicemail, 1 ringing); Open all, or a search, opens everything. Every number and its owner, grouped: players\' characters (main + burners, violet alias tag), NPCs (aliases nested), services (short numbers like 911 or TRAUMA). Each row: the greeting (recorded / typed / read out / default), voicemail on and how many are new, the last call, and Call · Edit greeting · Burn (the number stops working — "not in service"). A character with no number says so in amber with <b>Give one</b>. Import / export with the address directory.', NUMBERS],
+    log: ['<b>3 · Call log.</b> <b>Folds:</b> grouped by day, Tonight open, older days closed with their counts and what went wrong (dropped, missed, voicemail). A 24-hour strip on the game clock with every call as a mark (green in · cyan out · red missed/dropped · amber voicemail), then the list filtered by who / kind / network with search over transcripts, 25 a page. The detail: from / to with numbers, the network and cipher, the two scenes, how they talked, <b>who else heard it</b> (a node tap, in violet), the transcript, Share / Save to a shard / Open the inbox.', LOG],
+    vm: ['<b>4 · Voicemail — the NPCs\' boxes.</b> <b>Folds:</b> heard messages fold under one Heard head. One box per NPC identity with its unheard count (amber). Open one: each message with a player, a waveform and the transcript, and <b>Call back as Rogue</b> / <b>Reply as Rogue</b> (a message) / Heard. Edit the box\'s greeting from its head.', VM],
+    settings: ['<b>5 · Settings.</b> Calls on, the ways to talk (a switched-off mode disappears), the default mode, the home country code, rings before voicemail, what an unowned number does (not in service, or ring the GM). Voicemail & privacy: recorded voicemail, the longest message, how long recordings are kept (transcripts stay), the "the GM can see typed calls" notice, the dictate engine, storage with a purge.', SETTINGS],
+    contacts: ['<b>6 · Admin → Contacts gets "Call as".</b> Beside Write as / Inbox on the contact detail, a green split button <b>Call as Rogue ▾</b>: the menu picks the identity to call FROM (main or an alias — each has its own number), then WHO (the characters who know them, with their numbers; one with no number says so and offers Give one), or Dial a number. The same Call buttons sit on the directory rows, Players → a character, and the NPC Switchboard\'s correspondent card.', CONTACTS],
+  };
+  const host = document.getElementById('frames');
+  for (const [id, [cap, html]] of Object.entries(FRAMES)) {
+    if (Q.get('f') && Q.get('f') !== id) continue;
+    host.insertAdjacentHTML('beforeend', `<div class="mk-frame"><p class="mk-cap">${cap}</p>${html}</div>`);
+  }
+  document.addEventListener('click', (e) => { const h = e.target.closest('.mh, .lg-head'); if (!h) return; (h.classList.contains('lg-head') ? h : h.parentElement).classList.toggle('shut'); });
+  addEventListener('load', () => document.querySelectorAll('[data-wave]').forEach((cv) => {
+    const g = cv.getContext('2d'); const W = cv.width, H = cv.height; const col = getComputedStyle(cv.closest('.win')).getPropertyValue('--ncm-attn').trim() || '#f7c948';
+    let sd = 3; const rnd = () => (sd = (sd * 9301 + 49297) % 233280) / 233280;
+    for (let x = 0; x < W; x += 6) { const h = (0.15 + rnd() * 0.85) * H * (0.4 + 0.6 * Math.abs(Math.sin(x / 60))); g.fillStyle = 'rgba(160,170,190,.45)'; g.fillRect(x, (H - h) / 2, 3, h); }
+  }));
+</script>
+</body>
+</html>

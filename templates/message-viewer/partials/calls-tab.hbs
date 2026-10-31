@@ -1,0 +1,161 @@
+{{!--
+  Agent → Calls (mock dev/mockups/calls-tab-mock.html). Context = the viewer's `calls` (callsTab.js buildCallsContext).
+  Three faces: off (calls switched off / no character), the number picker (no line yet, or "Get a number"), and the
+  main tab (the dialer on the left, speed dial + the log on the right). Typing in the dialer never re-renders —
+  callsTab.wireCallsTab does it on the live DOM.
+--}}
+<div class="ncm-calls{{#if picker}} is-picker{{/if}}{{#if myline}} is-picker{{/if}}{{#if off}} is-off{{/if}}"{{#if main}} data-book="{{bookJson}}"{{/if}}>
+{{#if off}}
+  <div class="ncm-calls-empty">
+    <span class="ncm-calls-bigdial">{{{dialSvg}}}<i class="fas fa-phone-slash"></i></span>
+    <h3>No calls here</h3><p>{{reason}}</p>
+  </div>
+{{else if picker}}
+  <div class="ncm-calls-gn">
+    <div class="ncm-calls-sig">▸ Allocating <span class="dim">//</span> {{homeCode}} exchange</div>
+    <h3>{{#if firstTime}}Pick your number{{else}}A new number{{/if}}</h3>
+    <p>This is the number people call {{name}} on. You can keep it, change it later, or get burners for your aliases.</p>
+
+    <div class="ncm-calls-row"><span class="lbl">Where is it from</span><span class="ln"></span></div>
+    <div class="ncm-calls-reg">
+      <select data-calls-region="country" aria-label="Country">{{#each countries}}<option value="{{code}}"{{#if on}} selected{{/if}}>+{{code}} {{label}}</option>{{/each}}</select>
+      <select data-calls-region="region" aria-label="Region">{{#each regions}}<option value="{{name}}"{{#if on}} selected{{/if}}>{{name}}</option>{{/each}}</select>
+      <span class="ncm-calls-codes">{{#each codes}}<button type="button" class="{{#if on}}on{{/if}}" data-action="calls-code" data-code="{{code}}">{{code}}<small>{{label}}</small></button>{{/each}}</span>
+    </div>
+    {{#unless fiction}}<div class="ncm-calls-hint"><i class="fas fa-circle-info"></i> This country has no range set aside for fiction, so these are made-up patterns.</div>{{/unless}}
+
+    <div class="ncm-calls-row"><span class="lbl">Made for you</span><span class="ln"></span>
+      <button type="button" class="ncm-calls-shuf" data-action="calls-shuffle"><i class="fas fa-shuffle"></i> New numbers</button></div>
+    <div class="ncm-calls-opts">
+      {{#each suggestions}}<button type="button" class="ncm-calls-opt{{#if on}} on{{/if}}" data-action="calls-pick" data-number="{{number}}">
+        <span class="in"><span class="num">{{number}}</span><small>{{#if on}}✓ selected{{else}}{{label}}{{/if}}</small></span></button>{{/each}}
+    </div>
+
+    <div class="ncm-calls-row"><span class="lbl">Or type your own</span><span class="ln"></span></div>
+    <div class="ncm-calls-own"><span class="cc">+{{region.country}}{{#if (eq region.country "1")}} {{region.code}}{{/if}}</span>
+      <input type="text" data-calls-own value="{{typed}}" placeholder="555 0119" autocomplete="off" spellcheck="false" aria-label="Your own number"></div>
+
+    <div class="ncm-calls-ft">
+      <small>Your GM can also hand you a number.</small>
+      {{#unless firstTime}}<button type="button" class="ncm-calls-btn" data-action="calls-back">Cancel</button>{{/unless}}
+      <button type="button" class="ncm-calls-btn go" data-action="calls-use"><i class="fas fa-sim-card"></i> Use this number</button>
+    </div>
+  </div>
+{{else if myline}}
+  {{!-- ═══ My line: how this number answers when you can't ═══ --}}
+  <div class="ncm-calls-gn ncm-calls-ml" data-kind="{{myline.kind}}">
+    <div class="ncm-calls-sig">▸ Line settings <span class="dim">//</span> {{myline.number}}</div>
+    <h3>My line{{#if myline.burner}} · {{myline.label}}{{/if}}</h3>
+    <p>How {{myline.number}} answers when you can't. Each of your numbers has its own.</p>
+
+    <div class="ncm-calls-row"><span class="lbl">Greeting</span><span class="ln"></span></div>
+    <div class="ncm-calls-seg">{{#each myline.kinds}}<button type="button" class="{{#if on}}on{{/if}}" data-calls-mlk="{{k}}">{{label}}</button>{{/each}}</div>
+    <div class="ncm-calls-mlrec">
+      {{#if myline.canRecord}}<button type="button" class="ncm-calls-btn" data-calls-ml-rec><i class="fas fa-circle"></i> {{#if myline.audio}}Record again{{else}}Record{{/if}}</button>
+      {{else}}<span class="ncm-calls-hint"><i class="fas fa-microphone-slash"></i> {{myline.recReason}}</span>{{/if}}
+      <button type="button" class="ncm-calls-btn" data-calls-ml-play data-src="{{myline.audio}}"><i class="fas fa-play"></i> Play</button>
+      <span class="t" data-calls-ml-rect>{{#if myline.audio}}Your greeting · {{myline.length}}{{else}}Up to 20 seconds.{{/if}}</span>
+    </div>
+    <textarea class="ncm-calls-mltext" data-calls-ml-text maxlength="{{myline.max}}" rows="2" placeholder="{{myline.defaultText}}">{{myline.text}}</textarea>
+    {{#if myline.canSpeak}}<label class="ncm-calls-mlvoice"><span class="lbl">Voice</span><select data-calls-ml-voice data-current="{{myline.voice}}"><option value="">This browser's default voice</option></select></label>
+    {{else}}<div class="ncm-calls-hint"><i class="fas fa-circle-info"></i> This browser can't read text out — a read-out greeting shows as words.</div>{{/if}}
+    <div class="ncm-calls-mlprev"><button type="button" class="ncm-calls-btn" data-action="calls-ml-preview"><i class="fas fa-play"></i> Preview</button><span class="strip" data-calls-ml-strip>What a caller sees and hears.</span></div>
+
+    <div class="ncm-calls-row"><span class="lbl">Voicemail</span><span class="ln"></span></div>
+    <label class="ncm-calls-mlchk"><input type="checkbox" data-calls-ml-on{{#if myline.on}} checked{{/if}}> <span><b>Take messages</b><small>Off: callers just get no answer.</small></span></label>
+    <label class="ncm-calls-mlchk"><input type="checkbox" data-calls-ml-dnd{{#if myline.dnd}} checked{{/if}}> <span><b>Do not disturb</b><small>Calls don't ring — they go straight to voicemail.</small></span></label>
+
+    <div class="ncm-calls-ft"><small>Only you and the GM can change this.</small>
+      <button type="button" class="ncm-calls-btn" data-action="calls-back">Cancel</button>
+      <button type="button" class="ncm-calls-btn go" data-action="calls-ml-save" data-number="{{myline.number}}"><i class="fas fa-check"></i> Save</button></div>
+  </div>
+{{else}}
+  {{!-- ═══ left: the dialer ═══ --}}
+  <div class="ncm-calls-dl">
+    <div class="ncm-calls-sig{{#if sig.warn}} is-warn{{/if}}">▸ {{sig.lead}} <span class="dim">//</span> {{#each sig.parts}}<span class="{{#if (eq tone 'dim')}}dim{{/if}}">{{text}}</span>{{#unless @last}} <span class="dim">·</span> {{/unless}}{{/each}}</div>
+    <div class="ncm-calls-as">
+      <span>Call as</span>
+      {{#if multiLine}}
+        <select data-calls-as aria-label="Call as">{{#each lines}}<option value="{{value}}"{{#if on}} selected{{/if}}>{{label}} · {{number}}</option>{{/each}}</select>
+      {{else}}<span class="ncm-calls-chip"><i class="fas fa-id-badge"></i> {{fromNumber}}</span>{{/if}}
+      <button type="button" class="ncm-calls-mini" data-action="calls-myline" data-tooltip="My line — greeting, voicemail, do not disturb" data-tooltip-direction="UP"><i class="fas fa-voicemail"></i></button>
+      <button type="button" class="ncm-calls-mini" data-action="calls-getnum" data-tooltip="Change my number" data-tooltip-direction="UP"><i class="fas fa-sim-card"></i></button>
+    </div>
+    <div class="ncm-calls-num"><div class="in">
+      <input type="text" data-calls-num placeholder="Number or name" autocomplete="off" spellcheck="false" aria-label="Number or name">
+      <button type="button" class="ncm-calls-del" data-calls-del aria-label="Delete a digit"><i class="fas fa-delete-left"></i></button>
+    </div></div>
+    <div class="ncm-calls-match" data-calls-match></div>
+    <div class="ncm-calls-keys">
+      {{#each keypad}}<button type="button" data-calls-key="{{k}}">{{k}}<small>{{l}}</small></button>{{/each}}
+    </div>
+    <button type="button" class="ncm-calls-cb is-empty" data-calls-btn data-nosig="{{#if noSignal}}1{{else}}0{{/if}}" disabled>
+      <span class="ncm-calls-cb__in">
+        <span class="ncm-calls-cb__dial">{{{dialSvg}}}<i class="fas {{#if noSignal}}fa-phone-slash{{else}}fa-phone{{/if}}"></i></span>
+        <span class="ncm-calls-cb__tx"><b>{{#if noSignal}}No signal{{else}}Call{{/if}}</b><span class="who">{{#if noSignal}}Dead zone{{else}}Type a number{{/if}}</span><small>{{#if noSignal}}move somewhere with a network{{else}}or a name{{/if}}</small></span>
+        <kbd>⏎</kbd>
+      </span>
+    </button>
+  </div>
+
+  {{!-- ═══ right: speed dial + the log ═══ --}}
+  <div class="ncm-calls-lg">
+    {{#if speed.length}}
+    <div class="ncm-calls-sd"><span class="k">Speed dial</span>
+      {{#each speed}}<button type="button" class="ncm-calls-sdp" data-action="calls-dial" data-number="{{number}}" data-tooltip="Call {{name}} · {{number}}" data-tooltip-direction="UP">
+        <span class="face"{{#if img}} style="background-image:url('{{img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span><span class="nm">{{name}}</span></button>{{/each}}
+    </div>
+    {{/if}}
+    {{#if vmView}}
+    <div class="ncm-calls-list ncm-scrollbar">
+      {{#each vm.rows}}
+        <div class="ncm-calls-vm{{#unless heard}} is-new{{/unless}}">
+          <span class="dir"><i class="fas fa-voicemail"></i></span>
+          <span class="tx"><span class="nm">{{who}}{{#unless heard}} <span class="tag vm">New</span>{{/unless}}{{#if forLine}} <span class="for">for {{forLine}}</span>{{/if}}</span>
+            {{#if isAudio}}{{#if audio}}<audio class="ncm-calls-audio" controls preload="none" src="{{audio}}" data-vm-audio="{{vmId}}" data-owner="{{ownerId}}" data-heard="{{#if heard}}1{{else}}0{{/if}}"></audio>{{else}}<span class="msg dim">The recording was cleared (older than the GM keeps them).</span>{{/if}}{{/if}}
+            {{#if text}}<span class="msg">{{text}}</span>{{/if}}
+            <span class="sub">{{when}}{{#if tts}} · read out{{/if}}{{#if isAudio}} · voice{{#if length}} {{length}}{{/if}}{{/if}}</span></span>
+          <span class="acts">
+            {{#if tts}}<button type="button" class="ncm-calls-mini" data-action="calls-vm-play" data-vm="{{vmId}}" data-owner="{{ownerId}}" data-voice="{{voice}}" data-text="{{text}}" data-heard="{{#if heard}}1{{else}}0{{/if}}" data-tooltip="Play" data-tooltip-direction="LEFT"><i class="fas fa-play"></i></button>{{/if}}
+            {{#if number}}<button type="button" class="ncm-calls-mini go" data-action="calls-dial" data-number="{{number}}" data-tooltip="Call back" data-tooltip-direction="LEFT"><i class="fas fa-phone"></i></button>{{/if}}
+            <button type="button" class="ncm-calls-mini" data-action="calls-vm-heard" data-vm="{{vmId}}" data-owner="{{ownerId}}" data-heard="{{#if heard}}0{{else}}1{{/if}}" data-tooltip="{{#if heard}}Mark as new{{else}}Mark heard{{/if}}" data-tooltip-direction="LEFT"><i class="fas {{#if heard}}fa-rotate-left{{else}}fa-check{{/if}}"></i></button>
+            <button type="button" class="ncm-calls-mini" data-action="calls-vm-del" data-vm="{{vmId}}" data-owner="{{ownerId}}" data-tooltip="Delete" data-tooltip-direction="LEFT"><i class="fas fa-trash"></i></button>
+          </span>
+        </div>
+      {{else}}
+        <div class="ncm-calls-none"><i class="fas fa-voicemail"></i> No voicemail.</div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-calls-list ncm-scrollbar">
+      {{#each list.days}}
+        <div class="ncm-calls-day">{{label}}</div>
+        {{#each rows}}
+          <div class="ncm-calls-rowc is-{{dirInfo.cls}}{{#if unseen}} is-new{{/if}}">
+            <span class="dir"><i class="fas {{dirInfo.icon}}"></i></span>
+            <span class="face{{#unless other.known}} unknown{{/unless}}"{{#if other.img}} style="background-image:url('{{other.img}}')"{{/if}}>{{#unless other.img}}<i class="fas {{#if other.known}}fa-user{{else}}fa-hashtag{{/if}}"></i>{{/unless}}</span>
+            <span class="tx"><span class="nm">{{other.name}}{{#if unseen}} <span class="tag">New</span>{{/if}}</span>
+              <span class="sub"><span class="k">{{dirInfo.word}}</span>{{#if detail}}<span>{{detail}}</span>{{/if}}{{#if net}}<span class="net">{{net.name}}</span>{{/if}}{{#if withheld}}<span class="anon"><i class="fas fa-user-secret"></i> withheld</span>{{/if}}</span>
+              {{#if why}}<span class="why"><i class="fas fa-tower-broadcast"></i> {{why}}</span>{{/if}}
+              {{#if transcript.length}}<details class="ncm-calls-tr"><summary><i class="fas fa-closed-captioning"></i> Transcript</summary>
+                {{#each transcript}}<div class="l{{#if mine}} mine{{/if}}"><b>{{who}}:</b> {{text}}</div>{{/each}}</details>{{/if}}</span>
+            <span class="tm">{{time}}</span>
+            {{#if withheld}}<button type="button" class="ncm-calls-mini" data-action="calls-trace" data-call="{{callId}}" data-tooltip="Trace the withheld number (a skill check)" data-tooltip-direction="LEFT"><i class="fas fa-crosshairs"></i></button>{{/if}}
+            {{#if other.number}}<button type="button" class="ncm-calls-mini go" data-action="calls-dial" data-number="{{other.number}}" data-tooltip="Call back" data-tooltip-direction="LEFT"><i class="fas fa-phone"></i></button>{{/if}}
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="ncm-calls-none"><i class="fas fa-phone"></i> No calls yet.</div>
+      {{/each}}
+    </div>
+    {{#if (gt list.pages 1)}}
+    <div class="ncm-calls-pg"><span><b>{{list.from}}–{{list.to}}</b> of {{list.total}} calls</span><span class="sp"></span>
+      <button type="button" class="ncm-calls-mini" data-action="calls-page" data-d="-1" aria-label="Newer"><i class="fas fa-chevron-left"></i></button>
+      <span class="pgn">{{list.page}} / {{list.pages}}</span>
+      <button type="button" class="ncm-calls-mini" data-action="calls-page" data-d="1" aria-label="Older"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    {{/if}}
+    {{/if}}
+  </div>
+{{/if}}
+</div>

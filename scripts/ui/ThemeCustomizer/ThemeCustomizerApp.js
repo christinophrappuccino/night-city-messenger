@@ -161,6 +161,7 @@ export class ThemeCustomizerApp extends BaseApplication {
       soundEnabled: prefs.soundEnabled !== false,
       soundVolume: Math.round((prefs.soundVolume ?? 0.5) * 100),
       isDirty: this._isDirty,
+      calls: this._callsContext(),
       currentPresetLabel: currentPreset.label || prefs.preset,
       fontSelectors,
       MODULE_ID,
@@ -336,6 +337,36 @@ export class ThemeCustomizerApp extends BaseApplication {
 
   // ─── Render Callback — Wire Inputs ───
 
+  /** The Calls section (client settings: callScheme, callSilent). Null when calls are switched off. */
+  _callsContext() {
+    if (!game.nightcity?.callService?.enabled) return null;
+    let s = {}; let silent = false;
+    try { s = game.settings.get(MODULE_ID, 'callScheme') || {}; silent = !!game.settings.get(MODULE_ID, 'callSilent'); } catch { /* not registered */ }
+    const cur = ['ncm', '2077', 'theme', 'custom'].includes(s.scheme) ? s.scheme : 'ncm';
+    const ring = /^#[0-9a-f]{6}$/i.test(s.ring || '') ? s.ring : '#ff9d00';
+    const live = /^#[0-9a-f]{6}$/i.test(s.live || '') ? s.live : '#7cff4f';
+    return {
+      schemes: [
+        { key: 'ncm', label: 'NCM', hint: 'amber ringing, green live', ring: '#ff9d00', live: '#7cff4f' },
+        { key: '2077', label: '2077', hint: 'cyan ringing, red live', ring: '#5ef6ff', live: '#ff4b4b' },
+        { key: 'theme', label: 'My theme', hint: "your theme's colours", ring: 'var(--ncm-primary)', live: 'var(--ncm-secondary)' },
+        { key: 'custom', label: 'Custom', hint: 'pick both', ring, live },
+      ].map((x) => ({ ...x, on: x.key === cur })),
+      custom: cur === 'custom', ring, live, silent,
+    };
+  }
+
+  async _saveCallPrefs(patch) {
+    try {
+      if ('silent' in patch) await game.settings.set(MODULE_ID, 'callSilent', !!patch.silent);
+      else {
+        const cur = game.settings.get(MODULE_ID, 'callScheme') || {};
+        await game.settings.set(MODULE_ID, 'callScheme', { ...cur, ...patch });
+      }
+      game.nightcity?.callHud?.render?.();
+    } catch (err) { log.warn(`Calls prefs: ${err.message}`); }
+  }
+
   _onRender(context, options) {
     super._onRender(context, options);
     // GM view: keep the preview strip on the player palette (see method).
@@ -360,6 +391,30 @@ export class ThemeCustomizerApp extends BaseApplication {
       this._markDirty();
       this._applyLive();
     });
+
+    // ── Calls: saved straight to this computer's settings, DOM-only (never a re-render, never the theme draft) ──
+    const calls = this.element.querySelector('.ncm-tc__calls');
+    if (calls) {
+      calls.querySelectorAll('[data-call-scheme]').forEach((b) => b.addEventListener('click', () => {
+        const scheme = b.dataset.callScheme;
+        calls.querySelectorAll('[data-call-scheme]').forEach((x) => { x.classList.toggle('is-on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+        calls.querySelector('.ncm-tc__callcustom')?.classList.toggle('is-off', scheme !== 'custom');
+        this._saveCallPrefs({ scheme });
+      }));
+      calls.querySelectorAll('[data-call-color]').forEach((inp) => inp.addEventListener('change', () => {
+        const sw = calls.querySelector('[data-call-scheme="custom"] .sw i:' + (inp.dataset.callColor === 'ring' ? 'first-child' : 'last-child'));
+        if (sw) sw.style.background = inp.value;
+        this._saveCallPrefs({ [inp.dataset.callColor]: inp.value });
+      }));
+      const sil = calls.querySelector('[data-call-silent]');
+      const flip = () => {
+        const on = !sil.classList.contains('ncm-tc__switch--on');
+        sil.classList.toggle('ncm-tc__switch--on', on); sil.setAttribute('aria-checked', String(on));
+        this._saveCallPrefs({ silent: on });
+      };
+      sil?.addEventListener('click', flip);
+      sil?.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); } });
+    }
 
     // ── Tab switching (DOM-based, not data-action) ──
     this.element.querySelectorAll('[data-tc-tab]').forEach(tab => {

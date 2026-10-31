@@ -151,6 +151,7 @@ export class ContactManagerApp extends BaseApplication {
 
       // ─── Contact actions ───
       sendMessage:    ContactManagerApp._onSendMessage,
+      callContact:    ContactManagerApp._onCallContact,
       shareContact:   ContactManagerApp._onShareContact,
       uploadPortrait: ContactManagerApp._onUploadPortrait,
       removePortrait: ContactManagerApp._onRemovePortrait,
@@ -218,7 +219,10 @@ export class ContactManagerApp extends BaseApplication {
 
     // ── Verification stamping ──
     const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
+    const calls = game.nightcity?.callService;
     for (const contact of this._contacts) {
+      // a Call button only for someone with a number (calls switched on)
+      contact._callNumber = calls?.enabled ? calls.numberForContact(contact) : '';
       if (contact.verifiedOverride) {
         contact._verifyClass = 'gm-verified';
         contact._verifyLabel = 'GM VERIFIED';
@@ -1484,6 +1488,13 @@ export class ContactManagerApp extends BaseApplication {
         toName: contact.name,
       });
     }
+  }
+
+  /** Ring a contact from this character's line (only offered when the contact has a number). */
+  static async _onCallContact(event, target) {
+    event.stopPropagation();
+    const number = target.dataset.number;
+    if (number) await game.nightcity?.placeCall?.(number, { actorId: this.actorId });
   }
 
   static async _onShareContact(event, target) {

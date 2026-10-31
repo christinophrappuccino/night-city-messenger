@@ -10,6 +10,7 @@
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf, entryStandsFor } from '../utils/identities.js';
+import { sanitizeKnows, knowsHolder, knowsOf, knownByNpcs, withKnows, ownIds } from '../utils/npcKnows.js';
 
 export class MasterContactService {
 
@@ -177,6 +178,37 @@ export class MasterContactService {
    * @param {string} email
    * @returns {boolean}
    */
+  // ═══ An NPC's own contact list (utils/npcKnows.js) ═══
+
+  /** The directory contacts an NPC knows (an alias answers with its main identity's list). */
+  npcKnows(contactId) {
+    const c = this.getContact(contactId);
+    return c ? knowsOf(this._contacts, c).map((id) => this.getContact(id)).filter(Boolean) : [];
+  }
+
+  /** The NPCs (main identities) that know a contact. `isNpc` filters out players' characters. */
+  knownByNpcs(contactId, isNpc) {
+    const c = this.getContact(contactId);
+    return c ? knownByNpcs(this._contacts, c, isNpc) : [];
+  }
+
+  /**
+   * Share a contact with an NPC, or take it back (GM). Written on the NPC's main identity, so all its aliases
+   * share the list. An NPC never knows its own identities.
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async setNpcKnows(npcId, targetId, on) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const npc = this.getContact(npcId);
+    const target = this.getContact(targetId);
+    if (!npc || !target) return { success: false, error: 'Contact not found' };
+    if (ownIds(this._contacts, npc).has(targetId)) return { success: false, error: `${target.name} is one of ${npc.name}'s own identities.` };
+    const holder = knowsHolder(this._contacts, npc);
+    const next = withKnows(holder.knows, targetId, !!on);
+    if (next.length === sanitizeKnows(holder.knows).length && sanitizeKnows(holder.knows).includes(targetId) === !!on) return { success: true, unchanged: true };
+    return this.updateContact(holder.id, { knows: next });
+  }
+
   isSendOnly(email) {
     return !!this.getByEmail(email)?.sendOnly;
   }
@@ -291,6 +323,8 @@ export class MasterContactService {
       // VOICE — how this NPC talks (GM only, never pushed to players; an alias
       // without one inherits its main identity's — utils/identities.js voiceFor).
       voice: data.voice?.trim?.() || '',
+      // KNOWS — the directory contacts this NPC knows (its own contact list; on the main identity — utils/npcKnows.js)
+      knows: sanitizeKnows(data.knows),
       actorId: data.actorId || null,
       type: data.type || 'npc',
       role: data.role?.trim() || '',
@@ -348,13 +382,15 @@ export class MasterContactService {
       'trust', 'relationships', 'burned', 'sendOnly',
       'encrypted', 'encryptionDV', 'encryptionSkill', 'blackIce', 'blackIceDamage',
       'iceSource', 'iceCustomName', 'iceCustomPortrait', 'iceActorId', 'maxBreachAttempts',
-      'revealTrust', 'primaryIdentity', 'identityOf',
+      'revealTrust', 'primaryIdentity', 'identityOf', 'knows',
       'reviewed',   // Admin → Contacts "Looks right" on an auto-added NPC sender
     ];
     for (const key of allowed) {
       if (key in updates) {
         if (key === 'tags' && Array.isArray(updates.tags)) {
           contact.tags = updates.tags.map(t => t.trim()).filter(Boolean);
+        } else if (key === 'knows') {
+          contact.knows = sanitizeKnows(updates.knows);
         } else if (key === 'relationships' && typeof updates.relationships === 'object') {
           // Deep-merge relationships (don't trim — it's an object)
           contact.relationships = updates.relationships;

@@ -112,6 +112,7 @@ export class NetworkAccessLogService {
       reason: data.reason,
       message: data.message,
       extra: data.extra,
+      ...(data.sceneId ? { sceneId: data.sceneId, sceneName: data.sceneName } : {}),
     });
   }
 

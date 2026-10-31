@@ -646,6 +646,7 @@
         <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="reply-message"><i class="fas fa-reply"></i> Reply</button>
         {{#if message.canReplyAll}}<button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="reply-all-message" data-tooltip="{{message.participantNames}}"><i class="fas fa-reply-all"></i> Reply All</button>{{/if}}
         {{/if}}
+        {{#if message.callNumber}}<button class="ncm-btn ncm-btn--ghost ncm-btn--sm ncm-btn--call" data-action="call-sender" data-number="{{message.callNumber}}" data-tooltip="Call {{message.callNumber}}"><i class="fas fa-phone"></i> Call</button>{{/if}}
         {{#if message.canTraceAnon}}
         <button class="ncm-btn ncm-btn--ghost ncm-btn--sm ncm-btn--trace" data-action="trace-anon" data-message-id="{{message.messageId}}"><i class="fas fa-satellite-dish"></i> Trace</button>
         {{/if}}

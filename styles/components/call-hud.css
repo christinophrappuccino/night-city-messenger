@@ -1,0 +1,304 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   The call over the scene — scripts/ui/Calls/CallHud.js (mock dev/mockups/calls-overlay-mock.html).
+   Body-mounted, so every colour carries a fallback. --ch-ring / --ch-live / --ch-key are the call colour scheme
+   (NCM default, 2077, from my theme, custom — set on the root by the HUD). Fixed by meaning: decline / hang up red,
+   ended grey, aliases violet, a network its own colour.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ncm-call-hud {
+  --ch-ring: var(--ncm-primary, #f65261);
+  --ch-live: var(--ncm-secondary, #19f3f7);
+  --ch-key: var(--ncm-accent, #f7c948);
+  --ch-bad: #ff4b4b;
+  --ch-vio: var(--ncm-purple, #b87aff);
+  --ch-grey: #8a8f99;
+  position: fixed; inset: 0; z-index: 60; pointer-events: none;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+}
+.ncm-call-hud * { box-sizing: border-box; }
+.ncm-ch-stage { position: absolute; left: var(--ncm-ch-left, 76px); top: var(--ncm-ch-top, 74px); }
+
+/* ── the call: portrait (when live) + the text column ── */
+.ncm-ch-call { display: flex; gap: 16px; align-items: flex-start; }
+.ncm-ch-txt { display: flex; flex-direction: column; gap: 3px; padding-top: 2px; max-width: 420px; text-shadow: 0 1px 3px #000, 0 0 10px rgba(0,0,0,.8); }
+
+/* ── the portrait: the real image in a notched frame, faint scanlines + one sweep, all clipped inside ── */
+.ncm-ch-pic { position: relative; width: 132px; height: 146px; flex: none; }
+.ncm-ch-feed { position: absolute; inset: 0; overflow: hidden; background: #0b0709;
+  clip-path: polygon(11% 0, 100% 0, 100% 72%, 94% 77%, 94% 100%, 15% 100%, 0 87%, 0 10%); }
+.ncm-ch-feed img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; border: 0; }
+.ncm-ch-feed::before { content: ''; position: absolute; inset: 0; z-index: 1; mix-blend-mode: soft-light; background: linear-gradient(180deg, color-mix(in srgb, var(--ch-live) 30%, transparent), transparent 60%); }
+.ncm-ch-feed::after { content: ''; position: absolute; inset: 0; z-index: 2; background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); }
+.ncm-ch-sweep { position: absolute; left: 0; right: 0; top: 0; height: 22%; z-index: 2; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--ch-live) 18%, transparent), transparent); animation: ncm-ch-sweep 4s linear infinite; }
+@keyframes ncm-ch-sweep { from { transform: translateY(-100%); } to { transform: translateY(560%); } }
+.ncm-ch-frm { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: 3; }
+.ncm-ch-ol { fill: none; stroke: var(--ch-live); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.ncm-ch-acc { fill: var(--ch-live); }
+.ncm-ch-frm text { font: 700 7px var(--ncm-font-mono, monospace); letter-spacing: .14em; fill: #0b0709; }
+.ncm-ch-call.is-end .ncm-ch-feed img { filter: grayscale(1) brightness(.55); }
+.ncm-ch-call.is-end .ncm-ch-ol { stroke: var(--ch-grey); } .ncm-ch-call.is-end .ncm-ch-acc { fill: var(--ch-grey); }
+.ncm-ch-call.is-held .ncm-ch-feed img { filter: grayscale(.7) brightness(.7); }
+
+/* ── the badge: signal line · dial + arcs · the call word over the name box ── */
+.ncm-ch-badge { --bc: var(--ch-live); position: relative; display: flex; align-items: stretch; gap: 6px; margin: 16px 0 4px; }
+.ncm-ch-badge.is-ring { --bc: var(--ch-ring); }
+.ncm-ch-badge.is-held { --bc: var(--ch-key); }
+.ncm-ch-badge.is-end { --bc: var(--ch-grey); }
+.ncm-ch-sig { position: absolute; left: 0; bottom: calc(100% + 4px); display: flex; align-items: center; white-space: nowrap;
+  font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--bc);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--bc) 60%, transparent), 0 1px 2px #000; }
+.ncm-ch-sig .dim { opacity: .55; white-space: pre; }
+.ncm-ch-sig .ar { animation: ncm-ch-blink .5s steps(2) infinite; margin-right: 4px; }
+.ncm-ch-sig .warn { color: var(--ch-key); }
+.ncm-ch-sig .ci { color: inherit; }
+@keyframes ncm-ch-blink { 50% { opacity: .2; } }
+
+.ncm-ch-dialarcs { flex: none; display: flex; align-items: center; }
+.ncm-ch-dial { position: relative; flex: none; width: 58px; height: 58px; display: grid; place-items: center; color: var(--bc); }
+.ncm-ch-dial svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ncm-ch-brk { transform-origin: 30px 30px; animation: ncm-ch-spin 12s linear infinite; }
+.ncm-ch-brk path { fill: none; stroke: var(--bc); stroke-width: 1.6; stroke-linecap: square; stroke-dasharray: 100; }
+.ncm-ch-badge.is-ring .ncm-ch-brk { animation-duration: 3.3s; }
+.ncm-ch-seg { fill: var(--bc); opacity: .14; transition: opacity .08s; }
+.ncm-ch-seg.on { opacity: 1; filter: drop-shadow(0 0 2.5px var(--bc)); }
+.ncm-ch-dial > i { position: relative; font-size: 17px; text-shadow: 0 0 10px var(--bc); }
+.ncm-ch-badge.is-ring .ncm-ch-dial > i { animation: ncm-ch-shake 1.1s ease-in-out infinite; }
+.ncm-ch-badge.is-end .ncm-ch-brk { animation: none; opacity: .5; }
+@keyframes ncm-ch-spin { to { transform: rotate(360deg); } }
+@keyframes ncm-ch-shake { 0%, 50%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(-14deg); } 20%, 40% { transform: rotate(14deg); } }
+
+.ncm-ch-arcs { position: relative; width: 34px; height: 58px; margin-left: -6px; }
+.ncm-ch-arcs .a { position: absolute; left: -18px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%;
+  border: 3.2px solid transparent; border-right-color: var(--bc); filter: drop-shadow(0 0 4px var(--bc)); opacity: 0; animation: ncm-ch-arc 2s ease-out infinite; }
+.ncm-ch-arcs .a:nth-child(2) { animation-delay: .66s; } .ncm-ch-arcs .a:nth-child(3) { animation-delay: 1.33s; }
+.ncm-ch-badge.is-ring .ncm-ch-arcs .a { animation-duration: 1.1s; }
+.ncm-ch-badge.is-ring .ncm-ch-arcs .a:nth-child(2) { animation-delay: .37s; } .ncm-ch-badge.is-ring .ncm-ch-arcs .a:nth-child(3) { animation-delay: .73s; }
+.ncm-ch-badge.is-end .ncm-ch-arcs, .ncm-ch-badge.is-held .ncm-ch-arcs { display: none; }
+@keyframes ncm-ch-arc { 0% { transform: translateX(4px) scale(.5); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateX(26px) scale(1.5); opacity: 0; } }
+
+.ncm-ch-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ncm-ch-kind { font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .26em; text-transform: uppercase; color: var(--bc); }
+.ncm-ch-chip, .ncm-ch-chip .in { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+.ncm-ch-chip { position: relative; align-self: flex-start; padding: 1.5px; background: var(--bc); }
+.ncm-ch-chip .in { display: inline-flex; align-items: center; gap: 9px; padding: 5px 14px 5px 11px; background: linear-gradient(90deg, color-mix(in srgb, var(--bc) 30%, #0b0709), #0b0709 85%); }
+.ncm-ch-chip b { font: 800 22px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: #fff; line-height: 1; white-space: nowrap; }
+.ncm-ch-badge.is-end .ncm-ch-chip b { color: #c9ccd2; }
+
+/* ── meta: the number (a value) · the network in its own colour with its bars · the timer ── */
+.ncm-ch-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ncm-ch-num { font: 600 13px var(--ncm-font-mono, monospace); color: #fff; letter-spacing: .08em; }
+.ncm-ch-sep { color: rgba(255,255,255,.35); }
+.ncm-ch-time { font: 700 14px var(--ncm-font-mono, monospace); color: var(--ch-live); letter-spacing: .1em; }
+.ncm-ch-net { display: inline-flex; align-items: center; gap: 6px; font: 700 12px var(--ncm-font-display, sans-serif); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--nc); text-shadow: 0 0 8px color-mix(in srgb, var(--nc) 55%, transparent), 0 1px 3px #000; }
+.ncm-ch-net i { font-size: 11px; }
+.ncm-ch-bars { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; margin-left: 2px; }
+.ncm-ch-bars b { width: 3px; background: var(--nc); opacity: .25; }
+.ncm-ch-bars b:nth-child(1) { height: 4px; } .ncm-ch-bars b:nth-child(2) { height: 6px; } .ncm-ch-bars b:nth-child(3) { height: 8px; } .ncm-ch-bars b:nth-child(4) { height: 10px; }
+.ncm-ch-bars b.on { opacity: 1; } .ncm-ch-net.is-weak .ncm-ch-bars b.on { background: var(--ch-key); }
+.ncm-ch-alias { font: 600 12px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ch-vio); }
+.ncm-ch-voice { margin-top: 6px; max-width: 320px; padding-left: 8px; border-left: 2px solid var(--ch-vio); font: 12px var(--ncm-font-body, sans-serif); color: #e8e3f5; }
+.ncm-ch-voice small { display: block; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--ch-vio); }
+
+/* ── the prompts: key caps; the only clickable part ── */
+.ncm-ch-keys { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 8px; pointer-events: auto; }
+.ncm-ch-key { display: inline-flex; align-items: center; gap: 7px; font: 700 12px var(--ncm-font-display, sans-serif); letter-spacing: .1em; text-transform: uppercase; color: #fff; cursor: pointer; }
+.ncm-ch-key kbd { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; margin: 0; border: 0; border-radius: 0; box-shadow: none;
+  font: 700 12px var(--ncm-font-mono, monospace); color: #000; background: var(--ch-key); text-shadow: none;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%); }
+.ncm-ch-key.bad kbd { background: var(--ch-bad); color: #fff; }
+.ncm-ch-key:hover { filter: brightness(1.2); }
+
+/* ── call waiting / a held call ── */
+.ncm-ch-wait { margin-top: 12px; padding: 8px 10px 9px; width: 330px; pointer-events: auto; background: linear-gradient(90deg, rgba(0,0,0,.62), rgba(0,0,0,.25)); border-left: 2px solid var(--ch-ring); animation: ncm-ch-waitin .45s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ncm-ch-waitin { from { opacity: 0; transform: translateX(-14px); } }
+.ncm-ch-wait .ncm-ch-badge { transform: scale(.82); transform-origin: left top; margin-bottom: -10px; }
+.ncm-ch-note { font: 11px var(--ncm-font-mono, monospace); color: rgba(255,255,255,.7); margin-top: 4px; }
+.ncm-ch-heldnote { margin-top: 10px; padding: 6px 10px; pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ch-key); background: linear-gradient(90deg, rgba(0,0,0,.6), transparent); border-left: 2px solid var(--ch-key); }
+.ncm-ch-heldnote .ncm-ch-keys { margin: 0; }
+
+/* ── missed calls: top-right of the scene, fold away by themselves ── */
+.ncm-ch-missedwrap { position: absolute; right: calc(var(--sidebar-width, 300px) + 16px); top: 52px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.ncm-ch-missed { --bc: var(--ch-bad); position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 12px 9px 9px; pointer-events: auto;
+  background: linear-gradient(270deg, rgba(0,0,0,.72), rgba(0,0,0,.35)); border-right: 2px solid var(--ch-bad); animation: ncm-ch-missin .5s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ncm-ch-missin { from { opacity: 0; transform: translateX(20px); } }
+.ncm-ch-missed .ncm-ch-dial { width: 44px; height: 44px; } .ncm-ch-missed .ncm-ch-dial > i { font-size: 13px; }
+.ncm-ch-missed .t b { display: block; font: 700 9.5px var(--ncm-font-mono, monospace); letter-spacing: .22em; text-transform: uppercase; color: var(--ch-bad); }
+.ncm-ch-missed .t span { display: block; font: 800 17px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 3px #000; }
+.ncm-ch-missed .t small { display: block; font: 10.5px var(--ncm-font-mono, monospace); color: rgba(255,255,255,.65); }
+.ncm-ch-missed .acts span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; cursor: pointer; font: 700 9.5px var(--ncm-font-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: #04130b; background: #4be38a; }
+.ncm-ch-x { position: absolute; top: 3px; right: 5px; font-size: 9px; color: rgba(255,255,255,.45); cursor: pointer; }
+
+/* ═══ IN / OUT ═══ */
+.ncm-ch-badge.is-in .ncm-ch-dial { animation: ncm-ch-dialin .6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ncm-ch-dialin { 0% { transform: scale(.2) rotate(-140deg); opacity: 0; filter: brightness(2.6); } 60% { transform: scale(1.08) rotate(10deg); opacity: 1; } 100% { transform: none; filter: none; } }
+.ncm-ch-badge.is-in .ncm-ch-brk path { animation: ncm-ch-draw .55s .1s ease-out both; }
+@keyframes ncm-ch-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+.ncm-ch-badge.is-in .ncm-ch-dial > i { animation: ncm-ch-pop .35s .3s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes ncm-ch-pop { from { transform: scale(0); opacity: 0; } }
+.ncm-ch-badge.is-in .ncm-ch-arcs { animation: ncm-ch-rowin .3s .5s ease-out both; }
+.ncm-ch-badge.is-in .ncm-ch-chip { animation: ncm-ch-chipin .45s .22s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ncm-ch-chipin { from { clip-path: polygon(0 0, 0 0, 0 10px, 0 100%, 0 100%, 0 calc(100% - 10px)); } to { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); } }
+.ncm-ch-chip::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #fff; box-shadow: 0 0 10px var(--bc); opacity: 0; }
+.ncm-ch-badge.is-in .ncm-ch-chip::after { animation: ncm-ch-edge .45s .22s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ncm-ch-edge { 0% { left: 0; opacity: 1; } 90% { left: calc(100% - 3px); opacity: 1; } 100% { left: calc(100% - 3px); opacity: 0; } }
+.ncm-ch-badge.is-in .ncm-ch-sig { animation: ncm-ch-rowin .3s ease-out both; }
+.ncm-ch-txt.is-in > :not(.ncm-ch-badge) { animation: ncm-ch-rowin .35s .5s ease-out both; }
+@keyframes ncm-ch-rowin { from { opacity: 0; transform: translateX(-10px); } }
+.ncm-ch-pic.is-in { animation: ncm-ch-picin .62s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ncm-ch-picin { 0% { clip-path: inset(49% 50% 49% 50%); } 35% { clip-path: inset(49% -10px 49% -10px); } 100% { clip-path: inset(-14px -10px -10px -10px); } }
+.ncm-ch-pic.is-in .ncm-ch-feed img { animation: ncm-ch-imgin .9s .3s ease-out both; }
+@keyframes ncm-ch-imgin { 0% { opacity: 0; filter: brightness(2.6) saturate(0); } 40% { opacity: 1; } 100% { opacity: 1; filter: none; } }
+/* out */
+.ncm-ch-call.is-out .ncm-ch-txt > :not(.ncm-ch-badge) { animation: ncm-ch-rowout .2s ease-in both; }
+.ncm-ch-call.is-out .ncm-ch-chip { animation: ncm-ch-chipout .32s .3s cubic-bezier(.6,0,.8,.2) both; }
+@keyframes ncm-ch-chipout { from { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); } to { clip-path: polygon(0 0, 0 0, 0 10px, 0 100%, 0 100%, 0 calc(100% - 10px)); } }
+.ncm-ch-call.is-out .ncm-ch-dial { animation: ncm-ch-dialout .45s .2s cubic-bezier(.6,0,.8,.2) both; }
+@keyframes ncm-ch-dialout { 0% { filter: brightness(2.2); } 100% { transform: scale(.15) rotate(150deg); opacity: 0; filter: brightness(2.6); } }
+.ncm-ch-call.is-out .ncm-ch-sig, .ncm-ch-call.is-out .ncm-ch-kind { animation: ncm-ch-rowout .2s .35s ease-in both; }
+.ncm-ch-call.is-out .ncm-ch-pic { animation: ncm-ch-picout .55s .15s cubic-bezier(.6,0,.8,.2) both; }
+@keyframes ncm-ch-picout { 0% { clip-path: inset(-14px -10px -10px -10px); } 55% { clip-path: inset(49% -10px 49% -10px); } 100% { clip-path: inset(49% 50% 49% 50%); } }
+@keyframes ncm-ch-rowout { to { opacity: 0; transform: translateX(-10px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ncm-call-hud *, .ncm-call-hud *::before, .ncm-call-hud *::after { animation: none !important; transition: none !important; }
+}
+
+/* ── phase 2 (Type): the mode chips under a live call — only the modes the GM allows and that are built ── */
+.ncm-ch-modes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; pointer-events: auto; }
+.ncm-ch-mode { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; cursor: pointer;
+  font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .12em; text-transform: uppercase; color: #c9ccd2;
+  background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.14); text-shadow: none; }
+.ncm-ch-mode:hover { border-color: var(--ch-live); color: #fff; }
+.ncm-ch-mode.on { color: #000; background: var(--ch-live); border-color: var(--ch-live); }
+.ncm-ch-mode i { margin: 0; }
+
+/* ── the subtitles: bottom-centre over the scene, above the hotbar; white with a heavy shadow (readable on any map) ── */
+.ncm-ch-subs { position: absolute; left: 50%; bottom: var(--ncm-ch-subs-bottom, 92px); transform: translateX(-50%); width: min(660px, 72vw);
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.ncm-ch-subs[hidden] { display: none; }
+.ncm-ch-sublines { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.ncm-ch-sub { font: 600 19px/1.3 var(--ncm-font-body, 'Rajdhani', sans-serif); color: #fff; letter-spacing: .01em; overflow-wrap: anywhere;
+  text-shadow: 0 0 2px #000, 0 2px 4px #000, 0 0 14px rgba(0,0,0,.9); opacity: .55; transition: opacity .3s; }
+.ncm-ch-sub.now { opacity: 1; animation: ncm-ch-subin .25s ease-out; }
+.ncm-ch-sub b { font-family: var(--ncm-font-display, sans-serif); text-transform: uppercase; letter-spacing: .06em; margin-right: 6px; color: var(--ch-ring); }
+.ncm-ch-sub.mine b { color: var(--ch-live); }
+.ncm-ch-sub.typing { font-size: 14px; font-style: italic; opacity: .8; }
+.ncm-ch-sub.typing b { color: inherit; margin-right: 3px; }
+.ncm-ch-sub .caret { display: inline-block; width: 9px; height: 17px; margin-left: 2px; vertical-align: -2px; background: var(--ch-ring); animation: ncm-ch-blink .8s steps(2) infinite; }
+@keyframes ncm-ch-subin { from { opacity: 0; transform: translateY(6px); } }
+@keyframes ncm-ch-blink { 50% { opacity: .15; } }
+/* the type line: a thin bar, not a box */
+.ncm-ch-say { pointer-events: auto; margin-top: 6px; width: min(540px, 66vw); display: flex; flex-direction: column; gap: 4px; }
+.ncm-ch-say .bar { display: flex; align-items: center; gap: 10px; padding: 6px 2px; border-bottom: 1px solid color-mix(in srgb, var(--ch-live) 70%, transparent); }
+.ncm-ch-say .who { font: 700 12px var(--ncm-font-display, sans-serif); letter-spacing: .1em; text-transform: uppercase; color: var(--ch-live); text-shadow: 0 1px 3px #000; }
+.ncm-ch-say input.in { flex: 1; min-width: 120px; height: auto; margin: 0; padding: 2px 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none;
+  font: 500 16px var(--ncm-font-body, sans-serif); color: #fff; text-shadow: 0 1px 3px #000; }
+.ncm-ch-say input.in::placeholder { color: rgba(255,255,255,.5); }
+.ncm-ch-say kbd { font: 700 10px var(--ncm-font-mono, monospace); color: #000; background: #c9ccd2; padding: 2px 5px; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.ncm-ch-say .note { text-align: left; font: 11px var(--ncm-font-body, sans-serif); color: rgba(255,255,255,.72); text-shadow: 0 1px 3px #000; }
+.ncm-ch-say .note i { margin-right: 4px; color: var(--ch-key); }
+@media (prefers-reduced-motion: reduce) { .ncm-ch-sub.now, .ncm-ch-sub .caret { animation: none; } }
+
+/* ── the hang-up morph: the call on screen changes into its ended state in place (CallHud._morphEnd) ── */
+.ncm-ch-call.is-ending .ncm-ch-feed img { transition: filter .6s ease; }
+.ncm-ch-call.is-ending :is(.ncm-ch-ol, .ncm-ch-brk path) { transition: stroke .5s ease; }
+.ncm-ch-call.is-ending :is(.ncm-ch-acc, .ncm-ch-seg) { transition: fill .5s ease, opacity .5s ease; }
+.ncm-ch-call.is-ending :is(.ncm-ch-chip, .ncm-ch-kind, .ncm-ch-sig, .ncm-ch-dial) { transition: background-color .5s ease, color .5s ease; }
+.ncm-ch-call.is-ending .ncm-ch-chip .in { transition: background .5s ease; }
+.ncm-ch-call.is-ending .ncm-ch-sweep { animation: none; opacity: 0; transition: opacity .4s; }
+.ncm-ch-txt > .ncm-ch-fadeaway, .ncm-ch-txt.is-in > .ncm-ch-fadeaway { animation: ncm-ch-fadeaway .35s ease-in both; pointer-events: none !important; }
+.ncm-ch-call.is-end .ncm-ch-time { color: var(--ch-grey); transition: color .5s ease; }
+@keyframes ncm-ch-fadeaway { to { opacity: 0; transform: translateX(-8px); } }
+.ncm-ch-subs.is-leaving { animation: ncm-ch-subsout .4s ease-in both; pointer-events: none; }
+@keyframes ncm-ch-subsout { to { opacity: 0; transform: translate(-50%, 10px); } }
+
+/* ── phase 3a: voicemail — the same badge in the voicemail amber (fixed by meaning), no arcs (nothing is ringing) ── */
+.ncm-call-hud { --ch-vm: var(--ncm-vm, #f7c948); }
+.ncm-ch-badge.is-vm { --bc: var(--ch-vm); }
+.ncm-ch-badge.is-vm .ncm-ch-arcs { display: none; }
+.ncm-ch-badge.is-vm .ncm-ch-brk { animation-duration: 6s; }
+.ncm-ch-sig .rec { color: var(--ch-bad); margin-right: 4px; animation: ncm-ch-blink 1s steps(2) infinite; }
+.ncm-ch-sub.greet b { color: var(--ch-vm); }
+.ncm-ch-sub.greet b small { font-size: .7em; letter-spacing: .1em; opacity: .85; }
+.ncm-ch-sub.tone { font: 700 13px var(--ncm-font-mono, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--ch-vm); }
+.ncm-ch-say.is-vm .bar { border-bottom-color: color-mix(in srgb, var(--ch-vm) 75%, transparent); }
+.ncm-ch-say.is-vm .who { color: var(--ch-vm); }
+.ncm-ch-vmkind { display: flex; gap: 6px; }
+.ncm-ch-vmkind span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; cursor: pointer; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .12em;
+  text-transform: uppercase; color: #c9ccd2; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.14); text-shadow: none; }
+.ncm-ch-vmkind span.on { color: #000; background: var(--ch-vm); border-color: var(--ch-vm); }
+/* the recipient's notice: the missed-call badge in amber */
+.ncm-ch-missed.ncm-ch-vmnote { --bc: var(--ch-vm); border-right-color: var(--ch-vm); max-width: 380px; }
+.ncm-ch-vmnote .t b { color: var(--ch-vm); }
+.ncm-ch-vmnote .t small { white-space: normal; }
+.ncm-ch-vmnote .acts { display: flex; flex-direction: column; gap: 4px; }
+.ncm-ch-vmnote .acts .play { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; cursor: pointer; font: 700 9.5px var(--ncm-font-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: #000; background: var(--ch-vm); }
+.ncm-ch-badge.is-sent { --bc: #4be38a; }
+.ncm-ch-badge.is-sent .ncm-ch-arcs { display: none; }
+.ncm-ch-badge.is-sent .ncm-ch-brk { animation: none; }
+.ncm-ch-vmnote .acts span { white-space: nowrap; }
+
+/* ── phase 3b: recording a voice message on the HUD ── */
+.ncm-ch-vmbody { display: flex; flex-direction: column; gap: 4px; }
+.ncm-ch-vmkind span.is-off { opacity: .45; cursor: not-allowed; }
+.ncm-ch-say.is-vm:focus { outline: none; }
+.ncm-ch-say .bar.rec { gap: 12px; }
+.ncm-ch-recbtn { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; cursor: pointer; font: 700 11px var(--ncm-font-mono, monospace); letter-spacing: .12em; text-transform: uppercase;
+  color: #fff; background: var(--ch-bad); text-shadow: none; }
+.ncm-ch-recbtn i { font-size: 9px; margin: 0; }
+.ncm-ch-say.is-recording .ncm-ch-recbtn { animation: ncm-ch-blink 1.2s steps(2) infinite; }
+.ncm-ch-lvl { flex: 1; display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
+.ncm-ch-lvl i { flex: 1; max-width: 8px; height: 30%; background: rgba(255,255,255,.18); }
+.ncm-ch-lvl i:nth-child(2n) { height: 55%; } .ncm-ch-lvl i:nth-child(3n) { height: 80%; } .ncm-ch-lvl i:nth-child(5n) { height: 100%; }
+.ncm-ch-lvl i.on { background: var(--ch-vm); box-shadow: 0 0 6px var(--ch-vm); }
+.ncm-ch-rectime { font: 700 13px var(--ncm-font-mono, monospace); color: #fff; text-shadow: 0 1px 3px #000; white-space: nowrap; }
+
+/* ── phase 4: the network ─────────────────────────────────────────────── */
+/* why a call dropped (dead zone, a jammed node, changed network…) */
+.ncm-ch-why {
+  display: flex; align-items: center; gap: 6px; margin-top: 4px;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif); font-weight: 600;
+  font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ch-bad);
+}
+.ncm-ch-why i { font-size: .9em; }
+.ncm-ch-fadein { animation: ncm-ch-fadein .4s ease-out both; }
+@keyframes ncm-ch-fadein { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+/* a withheld number */
+.ncm-ch-anon {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 2px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace); letter-spacing: .04em; text-transform: uppercase;
+  font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ch-vio);
+}
+/* the GM glitched the line */
+.ncm-ch-call.is-glitch .ncm-ch-badge, .ncm-ch-call.is-glitch .ncm-ch-pic { animation: ncm-ch-glitch .18s steps(2) 12; }
+.ncm-ch-call.is-glitch .ncm-ch-kind { color: var(--ch-bad); }
+@keyframes ncm-ch-glitch {
+  0% { transform: translate(0, 0); filter: none; }
+  25% { transform: translate(-2px, 1px); filter: hue-rotate(40deg) saturate(1.6); }
+  50% { transform: translate(2px, -1px); clip-path: inset(18% 0 30% 0); }
+  75% { transform: translate(-1px, 0); filter: contrast(1.6); }
+  100% { transform: translate(0, 0); clip-path: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) { .ncm-ch-call.is-glitch .ncm-ch-badge, .ncm-ch-call.is-glitch .ncm-ch-pic, .ncm-ch-fadein { animation: none; } }
+
+/* ── phase 5: Dictate ─────────────────────────────────────────────────── */
+.ncm-ch-mode.is-off { opacity: .45; border-style: dashed; }
+.ncm-ch-say.is-dict .bar { gap: 10px; }
+.ncm-ch-say button.ncm-ch-mic {
+  all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto;
+  min-width: 30px; height: 30px; padding: 0 8px; border-radius: 2px; cursor: pointer; pointer-events: auto;
+  border: 1px solid color-mix(in srgb, var(--ch-live) 55%, transparent); color: var(--ch-live);
+  font: 700 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-display, 'Rajdhani', sans-serif); letter-spacing: .06em; text-transform: uppercase;
+}
+.ncm-ch-say button.ncm-ch-mic i { margin: 0; font-size: 13px; }
+.ncm-ch-say button.ncm-ch-mic:focus-visible { outline: 2px solid var(--ch-live); outline-offset: 2px; }
+.ncm-ch-say button.ncm-ch-mic[hidden] { display: none; }
+.ncm-ch-say.is-dict.is-on button.ncm-ch-mic:not(.is-type) { background: color-mix(in srgb, var(--ch-live) 22%, transparent); animation: ncm-ch-mic 1.6s ease-in-out infinite; }
+.ncm-ch-say.is-dict:not(.is-on) button.ncm-ch-mic:not(.is-type) { color: var(--ch-grey); border-color: var(--ch-grey); }
+@keyframes ncm-ch-mic { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ch-live) 45%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+.ncm-ch-say.is-dict .heard { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; align-items: baseline; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ncm-ch-say.is-dict .state { color: var(--ch-grey); font-style: italic; }
+.ncm-ch-say.is-dict.is-err .state { color: var(--ch-bad); font-style: normal; white-space: normal; }
+.ncm-ch-say.is-dict .interim { color: #c9ccd2; opacity: .8; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .ncm-ch-say.is-dict.is-on button.ncm-ch-mic:not(.is-type) { animation: none; } }

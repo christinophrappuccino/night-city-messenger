@@ -994,3 +994,6 @@
 .ncm-app .ncm-composer .ncm-composer__net-picker .ncm-net-option__chip--locked { color: var(--ncm-text-primary); }
 .ncm-app[data-ncm-admin-theme="clean-light"] .ncm-composer .ncm-composer__net-picker .ncm-net-option__chip--go { color: color-mix(in oklab, var(--ncm-act, var(--ncm-secondary)) 55%, var(--ncm-text-primary)); }
 .ncm-app[data-ncm-admin-theme="clean-light"] .ncm-composer .ncm-composer__net-picker .ncm-net-option__chip--on { color: color-mix(in oklab, var(--net-c, var(--ncm-act, var(--ncm-secondary))) 35%, var(--ncm-text-primary)); }
+
+/* writing as an NPC: a person on that NPC's own list (utils/npcKnows.js) */
+.ncm-app .ncm-autocomplete__known { flex: none; margin-left: auto; color: var(--ncm-secondary, var(--ncm-act)); font-size: calc(11px * var(--ncm-text-scale, 1)); }

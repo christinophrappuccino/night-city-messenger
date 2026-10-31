@@ -19,6 +19,7 @@ import { registerTerminalSystem } from './init/registerTerminalSystem.js';
 import { registerIntegrations } from './init/registerIntegrations.js';
 import { registerGMTools } from './init/registerGMTools.js';
 import { registerReadyServices } from './init/registerReadyServices.js';
+import { registerCallSystem } from './init/registerCallSystem.js';
 import { SystemVerification } from './tests/SystemVerification.js';
 
 const initializer = new ModuleInitializer();
@@ -31,6 +32,7 @@ registerMessagingSystem(initializer);      // Phase 2: Messaging
 registerNetworkSystem(initializer);
 registerDataShardSystem(initializer);
 registerTerminalSystem(initializer);
+registerCallSystem(initializer);
 registerIntegrations(initializer);
 registerReadyServices(initializer);
 registerGMTools(initializer);  

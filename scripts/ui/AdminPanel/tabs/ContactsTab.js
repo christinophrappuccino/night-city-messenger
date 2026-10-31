@@ -167,6 +167,15 @@ export class ContactsTab extends BaseTab {
   onRender() {
     const root = this.element?.querySelector('.ncm-ct2');
     if (!root) return;
+    // The ⋯ menu opens toward the side of the detail pane that has room (2026-10-30: since the actions moved under
+    // the name it sat near the pane's left edge, and opening leftward put it under the directory column).
+    const more = root.querySelector('.ncm-ct2-menu--more');
+    if (more) {
+      const pane = more.closest('.ncm-ct2-split > *') || root;
+      const btn = more.parentElement?.getBoundingClientRect(); const box = pane.getBoundingClientRect();
+      const w = more.getBoundingClientRect().width;
+      if (btn && (btn.right - box.left) < w + 4 && (box.right - btn.left) > (btn.right - box.left)) more.classList.add('is-right');
+    }
     // Scroll memo: every [data-ct2-scroll] box keeps its place across re-renders.
     for (const box of root.querySelectorAll('[data-ct2-scroll]')) {
       const k = box.dataset.ct2Scroll;
@@ -612,12 +621,19 @@ export class ContactsTab extends BaseTab {
     return {
       id: c.id, name: c.name, img: this._portraitOf(all, c), initials: getInitials(c.name), sys: !!c.sendOnly, ice: !!c.encrypted,
       address: c.email || 'No address', tags, meta, moreOpen: this._moreOpen,
+      // Call as: only an NPC with a line (calls switched on)
+      callNumber: (!c.sendOnly && game.nightcity?.callService?.enabled) ? (game.nightcity.callService.numberOfContact(c.id) || '') : '',
       inboxId: c.actorId || c.identityOf || c.id,
       needs: f.issues.map((i) => ({ kind: i.kind, text: i.text, isAuto: i.kind === 'auto', isDup: i.kind === 'dup' })),
       mail: m?.waiting ? { count: m.waiting, label: `${m.waiting} message${m.waiting === 1 ? '' : 's'} from players waiting for ${c.name}` } : null,
       recent: (m?.recent || []).slice(0, 3).map((r) => ({ ...r, when: r.ts ? this.app._relativeTime?.(r.ts) || '' : '' })),
       who: pcs.map((p) => ({ actorId: p.actorId, name: p.name, img: p.img, initials: p.initials, on: kx.knows(c, p.actorId),
         held: [...new Set(kx.entriesFor(c, p.actorId).map((e) => e.email).filter(Boolean))].join(', ') })),
+      // NPC ↔ NPC (utils/npcKnows.js): the NPCs that know this contact, and this NPC's own list
+      npcWho: (this.masterContactService?.knownByNpcs?.(c.id, (x) => !this._isPcContact(x)) || [])
+        .map((n) => ({ npcId: n.id, tid: c.id, name: n.name, img: this._portraitOf(all, n), initials: getInitials(n.name) })),
+      knows: (this.masterContactService?.npcKnows?.(c.id) || [])
+        .map((k) => ({ npcId: c.id, id: k.id, name: k.name, img: this._portraitOf(all, k), initials: getInitials(k.name), alias: !!k.identityOf, pc: this._isPcContact(k) })),
       whoLabel: role?.isAlias ? 'this alias' : 'them',
       hasPcs: pcs.length > 0,
       trust: {
@@ -1335,6 +1351,7 @@ export class ContactsTab extends BaseTab {
       case 'renameFolder': return this._renameFolder(d.folder);
       case 'guard': return this._resolveGuard(d.choice);
       case 'sendAs': return this._sendAs(id);
+      case 'callAs': return this.app.tabs.phone?._callAs(id);
 
       // ── directory detail ──
       case 'message': return this._composeTo(id);
@@ -1355,6 +1372,11 @@ export class ContactsTab extends BaseTab {
       case 'sbWrite': return this._sbWrite(d.as, d.actor, d.email);
       case 'replyAs': return this._replyAs(id);
       case 'whoToggle': return this._toggleKnows(id, d.actor, { record: false });
+      // NPC ↔ NPC: share this contact with NPCs / take back; add to / take off this NPC's own list
+      case 'npcWhoAdd': return this._npcWhoAdd(id);
+      case 'npcWhoDel': return this._npcKnowsSet(d.npc, id, false);
+      case 'knowsAdd': return this._knowsAdd(id);
+      case 'knowsDel': return this._npcKnowsSet(id, d.target, false);
       case 'trustDefault': return this._setTrust(id, null, Number(d.v));
       case 'trustPlayer': return this._setTrust(id, d.actor, Number(d.v));
       case 'star': return this._setPrimary(id);
@@ -2133,6 +2155,74 @@ export class ContactsTab extends BaseTab {
    * Ask before taking anything back from a character. Taking back removes it from their own
    * list, so it always confirms — names are escaped, a long list is shortened.
    */
+  // ═══ NPC ↔ NPC sharing (utils/npcKnows.js, MasterContactService.setNpcKnows) ═══
+
+  /** Every NPC that can hold a list: main identities that are not players' characters. */
+  _npcHolders() {
+    const all = this.masterContactService?.getAll?.() || [];
+    return all.filter((c) => !this._isPcContact(c) && (identitiesOfContact(all, c)[0]?.id ?? c.id) === c.id);
+  }
+
+  /** Picker rows for contacts, NPCs and players' characters as two chips. */
+  _knowsEntries(list) {
+    const all = this.masterContactService?.getAll?.() || [];
+    return list.map((x) => ({ id: x.id, name: x.name, img: this._portraitOf(all, x) || 'icons/svg/mystery-man.svg',
+      sub: [x.identityOf ? 'alias' : '', x.role, x.email].filter(Boolean).join(' · '), group: this._isPcContact(x) ? "Players' characters" : 'NPCs' }));
+  }
+
+  /** Share this contact with one or more NPCs. */
+  async _npcWhoAdd(cid) {
+    const c = this._contact(cid);
+    const svc = this.masterContactService;
+    if (!c || !svc) return;
+    const all = svc.getAll();
+    const own = new Set(identitiesOfContact(all, c).map((x) => x.id));
+    const already = new Set(svc.knownByNpcs(c.id).map((n) => n.id));
+    const list = this._npcHolders().filter((n) => !own.has(n.id));
+    const picks = await showNamePicker({
+      title: `Share ${c.name} with NPCs`, hint: 'Each NPC you pick gets this contact on its own list.', placeholder: 'search NPCs…',
+      multi: true, entries: this._knowsEntries(list), taken: already, takenLabel: 'knows them',
+    });
+    if (!Array.isArray(picks) || !picks.length) return;
+    for (const p of picks) await svc.setNpcKnows(p.id, c.id, true);
+    ui.notifications?.info(`${c.name} shared with ${picks.length} NPC${picks.length === 1 ? '' : 's'}.`);
+    return this.app.render();
+  }
+
+  /** Add contacts to this NPC's own list. */
+  async _knowsAdd(npcId) {
+    const npc = this._contact(npcId);
+    const svc = this.masterContactService;
+    if (!npc || !svc) return;
+    const all = svc.getAll();
+    const own = new Set(identitiesOfContact(all, npc).map((x) => x.id));
+    const already = new Set(svc.npcKnows(npc.id).map((k) => k.id));
+    const list = all.filter((x) => !own.has(x.id));
+    const picks = await showNamePicker({
+      title: `Who does ${npc.name} know?`, hint: `Pick everyone ${npc.name} should have on their own list.`, placeholder: 'search contacts…',
+      multi: true, entries: this._knowsEntries(list), taken: already, takenLabel: 'on the list',
+    });
+    if (!Array.isArray(picks) || !picks.length) return;
+    for (const p of picks) await svc.setNpcKnows(npc.id, p.id, true);
+    ui.notifications?.info(`Added ${picks.length} to ${npc.name}'s contacts.`);
+    return this.app.render();
+  }
+
+  /** Take one contact off an NPC's list (asks first, like every take back). */
+  async _npcKnowsSet(npcId, targetId, on) {
+    const svc = this.masterContactService;
+    const npc = this._contact(npcId); const t = this._contact(targetId);
+    if (!svc || !npc || !t) return;
+    if (!on) {
+      const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+      const ok = await adminConfirm({ title: 'Take back?', content: `<p>Take <b>${esc(t.name)}</b> off <b>${esc(npc.name)}</b>'s contacts?</p><p>You can share again later.</p>` });
+      if (!ok) return;
+    }
+    const r = await svc.setNpcKnows(npcId, targetId, on);
+    if (r && r.success === false && r.error) ui.notifications?.warn(r.error);
+    return this.app.render();
+  }
+
   async _confirmTakeBack(names, actorId, { what = 'contact', note = '' } = {}) {
     const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
     const list = [].concat(names).filter(Boolean);
@@ -2406,14 +2496,27 @@ export class ContactsTab extends BaseTab {
   async _shareDialog(contactIds) {
     if (!contactIds?.length) return;
     const playerActors = getPlayerCharacters();
-    if (!playerActors.length) return ui.notifications.warn('NCM | No player-owned characters found.');
+    const mcs = this.masterContactService;
+    const all = mcs?.getAll?.() || [];
+    // the directory entry behind each item (a player's character row "pc-<actorId>" shares through its directory twin)
+    const entryOf = (id) => (id.startsWith('pc-') ? mcs?.getByActorId?.(id.slice(3)) : this._contact(id)) || null;
+    const own = new Set(contactIds.flatMap((id) => { const e = entryOf(id); return e ? identitiesOfContact(all, e).map((x) => x.id) : []; }));
+    // NPCs (2026-10-30, "share with only shows player characters"): each NPC gets the contact on its own list
+    const npcs = this._npcHolders().filter((n) => !own.has(n.id));
+    const single = contactIds.length === 1 ? entryOf(contactIds[0]) : null;
+    const knowsAlready = new Set(single ? (mcs?.knownByNpcs?.(single.id) || []).map((n) => `npc:${n.id}`) : []);
+    if (!playerActors.length && !npcs.length) return ui.notifications.warn('NCM | Nobody to share with yet.');
     const names = contactIds.map((id) => (id.startsWith('pc-') ? game.actors?.get(id.slice(3))?.name : this._contact(id)?.name)).filter(Boolean);
     if (!names.length) return ui.notifications.warn('NCM | Nothing to share — the selected contacts no longer exist.');
     const picks = await showNamePicker({
       title: names.length === 1 ? `Share ${names[0]} with…` : `Share ${names.length} contacts with…`,
-      hint: "Each lands in that character's own contact list. Re-sharing never duplicates.",
-      entries: playerActors.filter((pa) => !contactIds.includes(`pc-${pa.actorId}`)).map((pa) => ({ id: pa.actorId, name: pa.actorName, img: okImg(pa.actor?.img), sub: pa.playerName || '', group: 'Players', note: 'player' })),
-      multi: true, placeholder: 'search characters…',
+      hint: "Each lands in that character's or NPC's own contact list. Re-sharing never duplicates.",
+      entries: [
+        ...playerActors.filter((pa) => !contactIds.includes(`pc-${pa.actorId}`)).map((pa) => ({ id: pa.actorId, name: pa.actorName, img: okImg(pa.actor?.img), sub: pa.playerName || '', group: 'Players', note: 'player' })),
+        ...npcs.map((n) => ({ id: `npc:${n.id}`, name: n.name, img: okImg(this._portraitOf(all, n)), sub: [n.role, n.email].filter(Boolean).join(' · '), group: 'NPCs', note: 'NPC' })),
+      ],
+      taken: knowsAlready, takenLabel: 'knows them',
+      multi: true, placeholder: 'search characters and NPCs…',
     });
     if (!Array.isArray(picks) || !picks.length) return;
     let shared = 0, firstError = null;
@@ -2421,12 +2524,19 @@ export class ContactsTab extends BaseTab {
       const isPc = contactId.startsWith('pc-');
       const pcActorId = isPc ? contactId.slice(3) : null;
       for (const p of picks) {
+        if (p.id.startsWith('npc:')) {
+          const e = entryOf(contactId);
+          if (!e) { firstError = firstError || 'a player character with no directory entry cannot go on an NPC list'; continue; }
+          const r = await mcs?.setNpcKnows?.(p.id.slice(4), e.id, true);
+          if (r?.success !== false) shared++; else firstError = firstError || r?.error || 'unknown error';
+          continue;
+        }
         if (isPc && p.id === pcActorId) continue;
         const r = isPc ? await this.masterContactService?.pushActorToPlayer(pcActorId, p.id) : await this.masterContactService?.pushToPlayer(contactId, p.id);
         if (r?.success) shared++; else firstError = firstError || r?.error || 'unknown error';
       }
     }
-    if (shared) ui.notifications.info(`NCM | Shared ${names.length === 1 ? names[0] : `${names.length} contacts`} with ${picks.length} character${picks.length === 1 ? '' : 's'}.`);
+    if (shared) ui.notifications.info(`NCM | Shared ${names.length === 1 ? names[0] : `${names.length} contacts`} with ${picks.length} ${picks.length === 1 ? 'character or NPC' : 'characters and NPCs'}.`);
     if (firstError) ui.notifications.warn(`NCM | Some shares failed: ${firstError}`);
     this.render(true);
   }

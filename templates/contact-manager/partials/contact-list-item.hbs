@@ -118,6 +118,12 @@
               data-action="shareContact" data-contact-id="{{id}}">
         <i class="fas fa-share-nodes"></i>
       </button>
+      {{#if _callNumber}}
+      <button class="ncm-list-item__action" title="Call {{_callNumber}}"
+              data-action="callContact" data-number="{{_callNumber}}" data-contact-id="{{id}}">
+        <i class="fas fa-phone"></i>
+      </button>
+      {{/if}}
       <button class="ncm-list-item__action" title="Message"
               data-action="sendMessage" data-contact-id="{{id}}">
         <i class="fas fa-envelope"></i>

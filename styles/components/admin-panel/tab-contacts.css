@@ -50,6 +50,7 @@
 .ncm-admin-panel .ncm-ct2-menu hr { border: 0; border-top: 1px solid var(--ncm-border); margin: 4px 0; background: none; height: 0; border-image: none; }
 .ncm-admin-panel .ncm-ct2-morewrap { position: relative; }
 .ncm-admin-panel .ncm-ct2-menu--more { right: 0; top: calc(100% + 4px); }
+.ncm-admin-panel .ncm-ct2-menu--more.is-right { right: auto; left: 0; }   /* opened toward the side with room (ContactsTab.onRender) */
 
 
 /* ── toolbar + chips ── */
@@ -959,3 +960,8 @@
 .ncm-admin-panel .ncm-ct2-kn__jump.is-on b { color: inherit; }
 .ncm-admin-panel .ncm-ct2-kn__gh.is-solo { cursor: default; }
 .ncm-admin-panel .ncm-ct2-kn__gh.is-solo .c { visibility: hidden; }
+
+/* NPC ↔ NPC sharing (2026-10-30): the NPCs row under Who knows them, the small Share / Add buttons */
+.ncm-admin-panel .ncm-ct2-whonpc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--ncm-border); }
+.ncm-admin-panel .ncm-ct2-whonpc .lb { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); margin-right: 2px; }
+.ncm-app.ncm-admin-panel .ncm-ct2-btn.ncm-ct2-btn--sm.ncm-ct2-btn--sm { height: 26px !important; padding: 0 9px !important; font-size: 10px !important; }

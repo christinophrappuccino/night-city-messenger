@@ -1,0 +1,227 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Admin → Phone (templates/admin-panel/tab-phone.hbs; mock dev/mockups/admin-phone-mock.html). Prefix ncm-ph2-*.
+   The admin vocabulary: display-face chrome, mono for values (numbers, timers), 2px radius, banded section heads,
+   one meaning per colour (act = click/selected · attn = needs you · bad = wrong · good = fine · secret = alias/you).
+   Tokens only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ncm-admin-panel .ncm-ph2 { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ncm-admin-panel .ncm-ph2 .grow { flex: 1; }
+.ncm-admin-panel .ncm-ph2 .mono { font-family: var(--ncm-font-mono); }
+.ncm-admin-panel .ncm-ph2-none { padding: 14px 12px; font: 13px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-admin-panel .ncm-ph2-err { padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--ncm-bad) 50%, transparent); background: color-mix(in srgb, var(--ncm-bad) 10%, transparent);
+  color: color-mix(in oklab, var(--ncm-bad) var(--ncm-ink, 63%), var(--ncm-text-heading)); font: 12px var(--ncm-font-body); }
+.ncm-admin-panel .ncm-ph2-hint { margin: 0; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+
+/* sub-tabs (the Security nav's look) */
+.ncm-admin-panel .ncm-ph2-nav { position: sticky; top: -12px; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+  margin: -12px -16px 0; padding: 8px 16px; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-ph2-nav > * { flex: none; }
+.ncm-admin-panel .ncm-ph2-nav .grow { flex: 1; }
+.ncm-admin-panel button.ncm-ph2-navbtn { appearance: none; width: auto !important; height: 30px !important; min-height: 0 !important; margin: 0 !important;
+  display: inline-flex !important; align-items: center; gap: 6px; padding: 0 10px !important; border-radius: 2px !important; cursor: pointer; white-space: nowrap;
+  background: transparent !important; border: 1px solid transparent !important; box-shadow: none !important; line-height: 1 !important;
+  font: 700 11px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary) !important; }
+.ncm-admin-panel button.ncm-ph2-navbtn i { margin: 0 !important; font-size: 11px; color: color-mix(in srgb, var(--ncm-act) 75%, var(--ncm-text-secondary)); }
+.ncm-admin-panel button.ncm-ph2-navbtn:hover { background: var(--ncm-bg-hover, var(--ncm-bg-surface)) !important; }
+.ncm-admin-panel button.ncm-ph2-navbtn.on { background: color-mix(in srgb, var(--ncm-act) 12%, var(--ncm-bg-card, var(--ncm-bg-surface))) !important;
+  border-color: color-mix(in srgb, var(--ncm-act) 40%, var(--ncm-border)) !important; box-shadow: inset 0 -2px 0 var(--ncm-act) !important; }
+.ncm-admin-panel .ncm-ph2-navct { min-width: 16px; height: 15px; padding: 0 4px; display: inline-grid; place-items: center; border-radius: 1px;
+  font: 700 10px var(--ncm-font-mono); background: color-mix(in srgb, var(--ncm-act) 18%, transparent); color: var(--ncm-text-heading); }
+.ncm-admin-panel .ncm-ph2-navct.hot { background: var(--ncm-attn); color: var(--ncm-text-inverse); }
+
+/* buttons: .ncm-spam-send-btn's shape */
+.ncm-admin-panel button.ncm-ph2-btn { flex: none !important; appearance: none !important; width: auto !important; height: 28px !important; min-height: 0 !important; margin: 0 !important;
+  display: inline-flex !important; align-items: center; justify-content: center; gap: 6px; padding: 0 10px !important; border-radius: 2px !important; cursor: pointer; white-space: nowrap;
+  background: var(--ncm-bg-card, var(--ncm-bg-surface)) !important; border: 1px solid var(--ncm-border) !important; box-shadow: none !important; line-height: 1 !important;
+  font: 700 11px var(--ncm-font-display) !important; letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)) !important; }
+.ncm-admin-panel button.ncm-ph2-btn i { margin: 0 !important; color: var(--ncm-act); }
+.ncm-admin-panel button.ncm-ph2-btn:hover { border-color: var(--ncm-border-active, var(--ncm-act)) !important; background: var(--ncm-bg-hover, var(--ncm-bg-card)) !important; }
+.ncm-app .ncm-admin-panel button.ncm-ph2-btn.ncm-ph2-btn--ic { flex: none !important; width: 28px !important; min-width: 28px !important; padding: 0 !important; }
+.ncm-admin-panel button.ncm-ph2-btn--pri { background: var(--ncm-act) !important; border-color: var(--ncm-act) !important; color: var(--ncm-text-inverse) !important; }
+.ncm-admin-panel button.ncm-ph2-btn--pri i { color: inherit; }
+.ncm-admin-panel button.ncm-ph2-btn--go { border-color: color-mix(in srgb, var(--ncm-good) 55%, var(--ncm-border)) !important; }
+.ncm-admin-panel button.ncm-ph2-btn--go i { color: var(--ncm-good); }
+.ncm-admin-panel button.ncm-ph2-btn--bad i { color: var(--ncm-bad); }
+.ncm-admin-panel button.ncm-ph2-btn--bad:hover { border-color: var(--ncm-bad) !important; }
+
+/* faces, numbers, timers */
+.ncm-admin-panel .ncm-ph2-face { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--ncm-bg-raised, var(--ncm-bg-elevated)) center/cover;
+  border: 1.5px solid var(--ncm-border-active, var(--ncm-border)); font: 700 11px var(--ncm-font-display); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ph2-num { font: 12px var(--ncm-font-mono); color: var(--ncm-text-addr, var(--ncm-text-secondary)); white-space: nowrap; }
+.ncm-admin-panel .ncm-ph2-tm { font: 11px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-secondary)); white-space: nowrap; }
+.ncm-admin-panel .ncm-ph2-c { padding: 0 5px; border-radius: 1px; font: 700 10px var(--ncm-font-mono); background: var(--ncm-bg-raised, var(--ncm-bg-elevated)); color: var(--ncm-text-num, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ph2 .net { font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ph2 .nm { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-ph2 .sub { font: 11px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+
+/* a module: a pane with a banded head */
+.ncm-admin-panel .ncm-ph2-mod { background: var(--ncm-bg-pane, var(--ncm-bg-surface)); border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+.ncm-admin-panel .ncm-ph2-mh { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; padding: 7px 10px; background: var(--ncm-bg-card-head, var(--ncm-bg-elevated));
+  border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 0 var(--sk, var(--ncm-act)); }
+.ncm-admin-panel .ncm-ph2-mh > i { color: var(--sk, var(--ncm-act)); font-size: 12px; }
+.ncm-admin-panel .ncm-ph2-mh b { font: 700 12px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ph2-mh small { font: 12px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ph2-mod--ring { --sk: var(--ncm-attn); }
+
+/* LIVE: ringing for you */
+.ncm-admin-panel .ncm-ph2-ring { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid var(--ncm-border); box-shadow: inset 3px 0 0 var(--ncm-attn);
+  background: color-mix(in srgb, var(--ncm-attn) 6%, transparent); }
+.ncm-admin-panel .ncm-ph2-ring .ncm-ph2-face { width: 44px; height: 44px; border-color: var(--ncm-attn); animation: ncm-ph2-pulse 1.4s ease-in-out infinite; }
+.ncm-admin-panel .ncm-ph2-ring__bd { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ncm-admin-panel .ncm-ph2-ring .who { font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-ph2-ring .who b { font-family: var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ph2-ring .voice { font: italic 12px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ph2-ring .voice i { color: var(--ncm-secret); }
+.ncm-admin-panel .ncm-ph2-ring small { font: 11px var(--ncm-font-mono); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ph2-ring .clock { display: flex; align-items: center; gap: 8px; }
+.ncm-admin-panel .ncm-ph2-ring .clock i { flex: 1; height: 4px; border-radius: 1px; background: linear-gradient(90deg, var(--ncm-attn) var(--p, 0%), color-mix(in srgb, var(--ncm-attn) 18%, transparent) var(--p, 0%)); }
+.ncm-admin-panel .ncm-ph2-ring .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+@keyframes ncm-ph2-pulse { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ncm-attn) 28%, transparent); } }
+
+/* LIVE: the switchboard — two ends joined by a cord */
+.ncm-admin-panel .ncm-ph2-line { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, auto) minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); }
+.ncm-admin-panel .ncm-ph2-line:last-child { border-bottom: 0; }
+.ncm-admin-panel .ncm-ph2-line .end { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ncm-admin-panel .ncm-ph2-line .end.r { justify-content: flex-end; text-align: right; }
+.ncm-admin-panel .ncm-ph2-line .t { display: flex; flex-direction: column; min-width: 0; }
+.ncm-admin-panel .ncm-ph2-line .cord { position: relative; display: grid; place-items: center; min-height: 34px; }
+.ncm-admin-panel .ncm-ph2-line .cord .w { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: color-mix(in srgb, var(--cc, var(--ncm-good)) 70%, transparent); }
+.ncm-admin-panel .ncm-ph2-line.is-held .cord .w { --cc: var(--ncm-attn); background: repeating-linear-gradient(90deg, var(--cc) 0 6px, transparent 6px 10px); }
+.ncm-admin-panel .ncm-ph2-line:is(.is-ringing, .is-dialing) .cord .w { --cc: var(--ncm-text-label); background: repeating-linear-gradient(90deg, var(--cc) 0 3px, transparent 3px 7px); }
+.ncm-admin-panel .ncm-ph2-line .cord .mid { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; background: var(--ncm-bg-pane, var(--ncm-bg-surface)); }
+.ncm-admin-panel .ncm-ph2-line .acts { display: flex; gap: 6px; }
+
+/* NUMBERS + the log: toolbar */
+.ncm-admin-panel .ncm-ph2-tb { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ncm-admin-panel .ncm-ph2-srch { flex: 1 1 220px; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-surface)); }
+.ncm-admin-panel .ncm-ph2-srch > i { color: var(--ncm-text-label, var(--ncm-text-muted)); font-size: 11px; }
+.ncm-admin-panel .ncm-ph2-srch input { flex: 1; min-width: 0; height: 28px !important; border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important;
+  font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-ph2-srch button { appearance: none; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2px !important; border: 0 !important; background: none !important; color: var(--ncm-text-label) !important; box-shadow: none !important; }
+.ncm-admin-panel .ncm-ph2-srch button i { margin: 0 !important; }
+.ncm-admin-panel .ncm-ph2-sel { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ph2 select { height: 28px; width: auto; border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-surface)); color: var(--ncm-text-primary); border: 1px solid var(--ncm-border); font: 12px var(--ncm-font-body); text-transform: none; }
+.ncm-admin-panel .ncm-ph2-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.ncm-admin-panel .ncm-ph2-chips button { appearance: none; width: auto !important; height: 26px !important; min-height: 0 !important; margin: 0 !important; display: inline-flex !important; align-items: center; gap: 5px;
+  padding: 0 8px !important; border-radius: 2px !important; border: 1px solid var(--ncm-border) !important; background: var(--ncm-bg-pane, var(--ncm-bg-surface)) !important; box-shadow: none !important;
+  font: 700 10px var(--ncm-font-display) !important; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-primary) !important; line-height: 1 !important; }
+.ncm-admin-panel .ncm-ph2-chips button span { font: 10px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ph2-chips button.on { border-color: var(--ncm-act) !important; background: color-mix(in srgb, var(--ncm-act) 14%, var(--ncm-bg-pane, var(--ncm-bg-surface))) !important; }
+
+/* NUMBERS: foldable groups */
+.ncm-admin-panel .ncm-ph2-grp { border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-surface)); overflow: hidden; }
+.ncm-admin-panel .ncm-ph2-gh { display: flex; align-items: center; gap: 8px; padding: 7px 10px; cursor: pointer; user-select: none;
+  background: var(--ncm-bg-card-head, var(--ncm-bg-elevated)); box-shadow: inset 3px 0 0 var(--sk, var(--ncm-act)); }
+.ncm-admin-panel .ncm-ph2-gh > i:not(.ch) { color: var(--sk, var(--ncm-act)); font-size: 11px; }
+.ncm-admin-panel .ncm-ph2-gh .ch { font-size: 10px; color: var(--ncm-text-label); transition: transform .18s; }
+.ncm-admin-panel .ncm-ph2-gh b { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ph2-grp.is-shut .ncm-ph2-gh .ch { transform: rotate(-90deg); }
+.ncm-admin-panel .ncm-ph2-gb { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .2s ease; }
+.ncm-admin-panel .ncm-ph2-gb > div { min-height: 0; overflow: hidden; }
+.ncm-admin-panel .ncm-ph2-grp.is-shut .ncm-ph2-gb { grid-template-rows: 0fr; }
+.ncm-admin-panel .ncm-ph2-nrow { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 6px 10px;
+  border-top: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+.ncm-admin-panel .ncm-ph2-nrow:hover { background: var(--ncm-bg-hover, transparent); }
+.ncm-admin-panel .ncm-ph2-nrow .t { display: flex; flex-direction: column; min-width: 0; }
+.ncm-admin-panel .ncm-ph2-nrow .acts { display: flex; gap: 4px; }
+.ncm-admin-panel .ncm-ph2-nrow.is-none { box-shadow: inset 3px 0 0 var(--ncm-attn); }
+
+/* CALL LOG */
+.ncm-admin-panel .ncm-ph2-day { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  background: var(--ncm-bg-card-head, var(--ncm-bg-elevated)); border-bottom: 1px solid var(--ncm-border);
+  font: 700 10.5px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ph2-lrow { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+.ncm-admin-panel .ncm-ph2-lrow .d { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 2px; font-size: 10px; color: var(--dc); background: color-mix(in srgb, var(--dc) 14%, transparent); }
+.ncm-admin-panel .ncm-ph2-lrow .t { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ncm-admin-panel .ncm-ph2-lrow .pair { display: flex; align-items: center; gap: 6px; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ph2-lrow .pair i { font-size: 9px; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-ph2-lrow .meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.ncm-admin-panel .ncm-ph2-pg { display: flex; align-items: center; gap: 8px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ph2-pg b { color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+
+/* SETTINGS */
+.ncm-admin-panel .ncm-ph2-srow { display: flex; align-items: center; gap: 14px; margin: 0; padding: 10px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent);
+  text-transform: none; font: inherit; }
+.ncm-admin-panel .ncm-ph2-srow:last-child { border-bottom: 0; }
+.ncm-admin-panel .ncm-ph2-srow > span:first-child { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.ncm-admin-panel .ncm-ph2-srow b { font: 700 12px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ph2-srow small { font: 12px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-admin-panel .ncm-ph2-srow input[type=text], .ncm-admin-panel .ncm-ph2-srow input[type=number] { width: 80px; height: 28px; border-radius: 2px; text-align: center;
+  background: var(--ncm-bg-pane, var(--ncm-bg-surface)); color: var(--ncm-text-primary); border: 1px solid var(--ncm-border); font: 13px var(--ncm-font-mono); }
+.ncm-admin-panel .ncm-ph2-opts { display: inline-flex; flex-wrap: wrap; gap: 12px; }
+.ncm-admin-panel .ncm-ph2-opts label { display: inline-flex; align-items: center; gap: 6px; margin: 0; text-transform: none; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+/* checkbox = .ncm-ct-row__check: an outlined box, a cyan tick */
+.ncm-admin-panel input[type=checkbox].ncm-ph2-check { appearance: none !important; -webkit-appearance: none !important; flex: none; width: 16px !important; height: 16px !important; margin: 0 !important;
+  border: 1px solid var(--ncm-border-active, var(--ncm-border)) !important; border-radius: 2px !important; background: var(--ncm-bg-pane, transparent) !important; position: relative; cursor: pointer; }
+.ncm-admin-panel input[type=checkbox].ncm-ph2-check::before, .ncm-admin-panel input[type=checkbox].ncm-ph2-check::after { content: none !important; }
+.ncm-admin-panel input[type=checkbox].ncm-ph2-check:checked { background: color-mix(in srgb, var(--ncm-act) 18%, transparent) !important; border-color: var(--ncm-act) !important; }
+.ncm-admin-panel input[type=checkbox].ncm-ph2-check:checked::after { content: '' !important; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px;
+  border: solid var(--ncm-act); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+/* a pop-out has room for the switchboard ends to breathe */
+.ncm-admin-panel--pop .ncm-ph2-line { grid-template-columns: minmax(0, 1fr) minmax(200px, auto) minmax(0, 1fr) auto; }
+@media (prefers-reduced-motion: reduce) { .ncm-admin-panel .ncm-ph2 * { animation: none !important; transition: none !important; } }
+
+/* Admin → Contacts: Call as (the call green on the icon only — the button stays a secondary) */
+.ncm-app.ncm-admin-panel .ncm-ct2-btn.ncm-ct2-btn--call i { color: var(--ncm-good) !important; }
+/* the log scrolls in its own box (the day heads stick); settings rows breathe a little more */
+.ncm-admin-panel .ncm-ph2-log { max-height: min(62vh, 560px); overflow-y: auto; overflow-x: hidden; }
+.ncm-admin-panel .ncm-ph2-set { --sk: var(--ncm-hue-7); }
+
+/* phase 2 (Type): Listen in on the switchboard + transcripts in the log. A caller speaks in the call colour act,
+   the callee in hue-1 — names, not meanings. */
+.ncm-app .ncm-admin-panel button.ncm-ph2-btn.ncm-ph2-btn--on { border-color: var(--ncm-secret) !important; background: color-mix(in srgb, var(--ncm-secret) 14%, var(--ncm-bg-card, var(--ncm-bg-surface))) !important; }
+.ncm-admin-panel button.ncm-ph2-btn--on i { color: var(--ncm-secret); }
+.ncm-admin-panel .ncm-ph2-line { grid-template-areas: "a b c d" "e e e e"; }
+.ncm-admin-panel .ncm-ph2-listen { grid-column: 1 / -1; margin-top: 4px; padding: 8px 10px; border-left: 2px solid var(--ncm-secret);
+  background: color-mix(in srgb, var(--ncm-secret) 6%, var(--ncm-bg-pane-alt, var(--ncm-bg-surface))); }
+.ncm-admin-panel .ncm-ph2-listen .k { margin-bottom: 4px; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--ncm-secret) var(--ncm-ink, 63%), var(--ncm-text-heading)); }
+.ncm-admin-panel :is(.ncm-ph2-listen, .ncm-ph2-tr) .l { font: 13px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel :is(.ncm-ph2-listen, .ncm-ph2-tr) .l.none { font-style: italic; color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+.ncm-admin-panel :is(.ncm-ph2-listen, .ncm-ph2-tr) .l b { font: 700 11px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--ncm-act) var(--ncm-ink, 63%), var(--ncm-text-heading)); }
+.ncm-admin-panel :is(.ncm-ph2-listen, .ncm-ph2-tr) .l b.is-callee { color: color-mix(in oklab, var(--ncm-hue-1) var(--ncm-ink, 63%), var(--ncm-text-heading)); }
+.ncm-admin-panel .ncm-ph2-tr { margin-top: 4px; }
+.ncm-admin-panel .ncm-ph2-tr summary { cursor: pointer; width: max-content; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--ncm-act) var(--ncm-ink, 63%), var(--ncm-text-heading)); }
+.ncm-admin-panel .ncm-ph2-tr summary i { margin-right: 4px; }
+.ncm-admin-panel .ncm-ph2-tr[open] { padding: 6px 8px; border-left: 2px solid var(--ncm-act); background: var(--ncm-bg-pane-alt, var(--ncm-bg-surface)); }
+
+/* phase 3a: Voicemail (amber = needs you) + the greeting dialog */
+.ncm-admin-panel .ncm-ph2-vm { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px 10px; border-top: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+.ncm-admin-panel .ncm-ph2-vm.is-new { box-shadow: inset 3px 0 0 var(--ncm-attn); background: color-mix(in srgb, var(--ncm-attn) 5%, transparent); }
+.ncm-admin-panel .ncm-ph2-vm .d { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 2px; font-size: 10px; color: var(--ncm-attn); background: color-mix(in srgb, var(--ncm-attn) 14%, transparent); }
+.ncm-admin-panel .ncm-ph2-vm .t { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ncm-admin-panel .ncm-ph2-vm .pair { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+.ncm-admin-panel .ncm-ph2-vm .pair i { font-size: 9px; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-ph2-vm .msg { font: 13px/1.45 var(--ncm-font-body); color: var(--ncm-text-primary); overflow-wrap: anywhere; }
+.ncm-admin-panel .ncm-ph2-vm .meta { display: flex; gap: 8px; }
+.ncm-admin-panel .ncm-ph2-vm .acts { display: flex; gap: 4px; }
+.ncm-ph2-gr { display: flex; flex-direction: column; gap: 8px; }
+.ncm-ph2-gr__row { display: flex; align-items: center; gap: 8px; margin: 0; }
+.ncm-ph2-gr__row > span:first-child { min-width: 64px; font: 700 10px var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; }
+.ncm-ph2-gr__row select { flex: 1; }
+.ncm-ph2-gr__row .hint { font: italic 11px var(--ncm-font-body, sans-serif); opacity: .75; }
+.ncm-ph2-gr textarea { width: 100%; resize: vertical; }
+.ncm-ph2-gr[data-kind="default"] textarea { opacity: .55; }
+.ncm-ph2-gr:not([data-kind="tts"]) .ncm-ph2-gr__voice { display: none; }
+.ncm-ph2-gr__chk { display: flex; align-items: center; gap: 8px; margin: 0; text-transform: none; }
+
+/* phase 3b: the voice-message player + the greeting dialog's recorder */
+.ncm-admin-panel .ncm-ph2-audio { width: 100%; max-width: 380px; height: 30px; }
+.ncm-admin-panel :is([data-ncm-admin-theme="clean-dark"], [data-ncm-admin-theme="high-contrast"]) .ncm-ph2-audio, .ncm-admin-panel:not([data-ncm-admin-theme]) .ncm-ph2-audio { color-scheme: dark; }
+.ncm-admin-panel .ncm-ph2-vm .msg.dim { font-style: italic; color: var(--ncm-text-hint, var(--ncm-text-secondary)); }
+.ncm-ph2-gr__rec { display: none; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ncm-ph2-gr[data-kind="recorded"] .ncm-ph2-gr__rec { display: flex; }
+.ncm-ph2-gr__rec .hint { font: italic 11px var(--ncm-font-body, sans-serif); opacity: .8; }
+
+/* ── phase 4: the network ── */
+.ncm-ph2-load { display: grid; grid-template-columns: minmax(110px, 180px) 1fr auto auto; align-items: center; gap: 10px; padding: 6px 12px; border-top: 1px dashed var(--ncm-border); }
+.ncm-ph2-load .nm { font-family: var(--ncm-font-display); font-weight: 700; font-size: 12.5px; color: color-mix(in oklab, var(--nc, var(--ncm-act)) var(--ncm-ink-own, 50%), var(--ncm-text-heading)); }
+.ncm-ph2-load .bar { height: 6px; border-radius: 2px; background: var(--ncm-bg-card); overflow: hidden; }
+.ncm-ph2-load .bar i { display: block; height: 100%; background: var(--nc, var(--ncm-act)); }
+.ncm-ph2-load .n { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-num); white-space: nowrap; }
+.ncm-ph2-lrow .why { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 11.5px; color: color-mix(in oklab, var(--ncm-bad) var(--ncm-ink, 63%), var(--ncm-text-heading)); }
