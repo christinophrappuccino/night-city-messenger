@@ -4,7 +4,7 @@ Night City Messenger (NCM) is a big module, but you don't need to learn all of i
 
 **If you're the GM:** read Part 1 to set up (about 15 minutes). Come back to the later parts when you want them.
 
-**If you're a player:** Part 2 is all you need.
+**If you're a player:** use the Player Guide instead. It opens from the **?** button at the top of your inbox.
 
 ---
 
@@ -130,48 +130,12 @@ That's it. Tell your players to click **Open Inbox**. The module walks them thro
 
 <!-- fig: Inbox.png | The Agent, your in-game phone | 85 -->
 
-### First time
+Players have their own short, spoiler-free guide: **docs/NCM-Player-Guide.pdf**. It opens from the **?** button at the top of a player's inbox, or **Player Guide** in the panel behind their portrait. You can open it from that panel too. It covers first-time setup, mail, aliases, contacts, shards, terminals, nodes and themes, and it leaves out what your traps do.
 
-Click **Open Inbox** (the envelope icon under the satellite dish). The module will ask you to:
+Point your players at it on the first night. Two things are worth knowing as the GM:
 
-1. **Pick your character**, if you own more than one.
-2. **Pick your email address** — a name plus a domain, like `v.wraith@nightcity.net`. It suggests names based on your character. The GM decides which domains exist.
-
-Done. NPCs and other players can now message you at that address.
-
-### Using your inbox
-
-- **Folders** — Inbox, Sent, Saved, Trash, and Spam. There's a "Mark all read" button at the end of the filter row, and **Unread** on an open message marks it unread again.
-- **Networks** — at the top of the window. You only see networks that reach the scene you're on. A padlock means the network needs a password or a skill check. A network shown as **Jammed** or **Node down** is out on this scene for now. Some messages only open on certain networks.
-- **Threads** — click the **Thread** button on a message to see the whole conversation in one view.
-- **Reply All** — a message sent to several people shows a party chip next to the To line and a **Reply All** button beside Reply.
-- **Share to chat** — posts a message as a chat card. Anyone reading the card who doesn't have the sender in their contacts gets an **Add contact** button right on it.
-- **Money** — a message can have eddies attached. Click **Claim** and the money goes straight to your character sheet. It can only be claimed once.
-- **Self-destructing messages** exist. If you get one, read it carefully. It won't be there later.
-
-### Writing a message
-
-The composer is one window: who you are, your network and the date on the top line; To / Cc / Subject; a row of chips for the delivery options (priority, scheduling — the GM gets more); the editor with its toolbar; and Send. Click a chip to open its panel under the row — only one panel opens at a time. Type a contact's name in To and pick from the list; a group's name adds everyone in it as one chip. The toolbar can attach a shard, a file, a picture or video, or eddies.
-
-**Drafts.** The composer saves what you are writing every half-minute, and **Draft** saves it and closes the window. A character can hold up to twenty drafts, and a new composer always opens empty — your drafts are on the Agent's **Drafts** tab, or behind the **N drafts** link at the bottom of the composer. A reply draft comes back with the message it answers. Sending deletes that draft.
-
-**If a message doesn't go through,** the composer tells you why and stays open with **Retry**, **Queue** and **Save Draft**. With no signal, Send turns into **Queue**: the message waits and goes out when you're back in range.
-
-### Contacts
-
-The **Contacts** button opens your personal contact book. You can set trust levels, write notes, and mark favorites. When a stranger messages you, use **Add to Contacts** right from the message. Some contacts are protected by ICE and need a skill check to unlock.
-
-**Groups** sit in a row of chips under the search bar. A group is a named list of your contacts — make one with **New**, or the GM can hand you one (it shows a shield). Each chip shows a few member faces; click it to see everyone in it, message them all at once, or edit the list. The groups you message most stay at the front.
-
-### Make it yours
-
-Open the **Theme Customizer** from your inbox. You can change colors, fonts, text size, contrast, wallpaper, and effects, and give your Agent a custom name. Only you see your theme. The **Text Size** slider also makes the module's pop-up dialogs bigger.
-
-Under **Effects**, **CRT Film** puts a screen film over your windows: Off, Glass, Tube or Arcade, with an intensity slider. Terminals and shards have their own film set by the GM; **Film on terminals & shards** lets you dim it or turn it off on your screen without changing it for anyone else. Sound volume (and turning sounds off) is here too.
-
-### If you own more than one character
-
-Terminals, shards and network nodes act as your **operator** — the character who rolls the dice, pays, and gets paid. If you own several characters, an **OPERATOR chip** shows up on those screens. **Check it before you roll.** If the wrong character is picked, the wrong character gets the money.
+- **First time.** A player clicks **Open Inbox**, picks a character if they own several, and picks an address. **Require Email Setup** in Module Settings controls whether that step is forced. An address you give a character yourself counts, so they aren't asked again.
+- **Aliases.** You create them (Part 1); players choose between them. A player with an alias gets **Sending as** behind their portrait, which sets the address new mail goes out from until they change it, and a picker on the composer's From line for one message. Replies go out from the address the mail reached.
 
 ---
 

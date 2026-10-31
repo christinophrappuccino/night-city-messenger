@@ -3,6 +3,19 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.0.7] — 2026-10-31
+
+### Added
+- **Players can send from their aliases.** If your GM has given your character an alias, click your portrait in the inbox and pick the address under **Sending as**. New messages go out from it until you change it, and an **ALIAS** tag shows on the composer's From line. To change it for one message, click your name at the top of the composer. Replies still go out from the address the mail reached. Players pick between aliases; the GM still creates them.
+- **A Player Guide.** A short, spoiler-free PDF covering mail, aliases, contacts, shards, terminals, nodes and themes. It opens from the **?** button at the top of a player's inbox and from **Player Guide** in the panel behind their portrait. The GM guide's player section now points to it.
+
+### Fixed
+- **Open Mailbox asked a GM to set up email.** Picking a character on the Character Select screen asked for email setup even though the same inbox opened fine from the Admin Panel. A GM is no longer asked, and **Require Email Setup** now applies on that screen.
+- **Players were asked to register an address they already had.** An address the GM gave a character could still trigger the setup screen. Any address on the character, or on its linked directory contact, now counts. A burned address doesn't.
+
+### Changed
+- **The button beside your address is now a flame.** It always burned the address permanently, but a pencil made it look like an ordinary edit. If you have aliases, its warning now also points you to **Sending as**.
+
 ## [2.0.6] — 2026-10-30
 
 ### Fixed

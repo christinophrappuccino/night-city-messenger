@@ -55,7 +55,13 @@ export class EmailService {
    * @returns {boolean}
    */
   hasEmail(actor) {
-    return !!(actor?.getFlag(MODULE_ID, 'emailSetupComplete'));
+    if (!actor) return false;
+    if (actor.getFlag(MODULE_ID, 'emailSetupComplete') || actor.getFlag(MODULE_ID, 'email')) return true;
+    // The GM can give a character its address through a linked directory contact,
+    // which never touches these flags. A burned address doesn't count.
+    const entry = game.nightcity?.masterContactService?.getByActorId?.(actor.id);
+    const burned = actor.getFlag(MODULE_ID, 'emailHistory') ?? [];
+    return !!entry?.email && !burned.some(h => h.email === entry.email);
   }
 
   /**

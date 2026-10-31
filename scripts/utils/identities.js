@@ -162,6 +162,32 @@ export function identityUsage(messages, identities) {
 }
 
 /**
+ * The addresses a PLAYER can send from: the character's registered address first
+ * (the main one), then every other identity the GM linked to the character. A
+ * burned address is never offered (a burned main contact can keep its old email
+ * until the player re-registers). A row with no `id` has no directory entry.
+ * @param {object[]} contacts
+ * @param {{actorId: string, actorName?: string, portrait?: string, registered?: string, burned?: string[]}} o
+ * @returns {Array<{id: string|null, name: string, email: string, portrait: string|null, isMain: boolean}>}
+ */
+export function senderChoices(contacts, { actorId, actorName = '', portrait = null, registered = '', burned = [] } = {}) {
+  const lc = (v) => String(v || '').trim().toLowerCase();
+  const gone = new Set((burned || []).map(lc));
+  const ids = identitiesOf(contacts, actorId).filter((c) => lc(c.email) && !gone.has(lc(c.email)));
+  const reg = lc(registered);
+  const main = reg ? ids.find((c) => lc(c.email) === reg) : ids[0];
+  const row = (c, isMain) => ({ id: c.id, name: c.name || actorName, email: c.email, portrait: c.portrait || null, isMain });
+  const rest = ids.filter((c) => c !== main).map((c) => row(c, false));
+  if (main) return [row(main, true), ...rest];
+  return reg ? [{ id: null, name: actorName, email: registered, portrait, isMain: true }, ...rest] : rest;
+}
+
+/** The address new mail goes out from: the stored pick while it still exists, else the main one. */
+export function pickSenderChoice(choices, storedId) {
+  return (choices || []).find((c) => storedId && c.id === storedId) || (choices || [])[0] || null;
+}
+
+/**
  * The contact a reply should be SENT AS: the identity the original was addressed
  * to, when it belongs to the replier — a character (`replier` = actor id, or
  * `{actorId}`) or a contact-only NPC (`{contactId}`). Otherwise null.

@@ -60,8 +60,9 @@
         <i class="fas fa-envelope ncm-viewer__drawer-field-icon ncm-viewer__drawer-field-icon--email"></i>
         <span class="ncm-viewer__drawer-field-input" style="flex:1;font-family:var(--ncm-font-mono,'Share Tech Mono',monospace);font-size:12px;color:var(--ncm-secondary,#00D4E6);">{{viewingAsEmail}}</span>
         {{#if canChangeIdentity}}
-        <button class="ncm-viewer__drawer-field-btn" data-action="change-identity" title="Change NET identity">
-          <i class="fas fa-pen"></i>
+        <button class="ncm-viewer__drawer-field-btn" data-action="change-identity"
+                data-tooltip="Burn this address and register a new one" aria-label="Burn this address and register a new one">
+          <i class="fas fa-fire"></i>
         </button>
         {{/if}}
       </div>
@@ -74,6 +75,31 @@
       </div>
     </div>
   </div>
+
+  {{!-- Sending as: a player with an alias picks the address new mail goes out from --}}
+  {{#if sendAsChoices}}
+    <div class="ncm-viewer__drawer-section ncm-viewer__drawer-sendas">
+      <div class="ncm-viewer__drawer-section-title">Sending as</div>
+      <div class="ncm-viewer__drawer-char-list">
+        {{#each sendAsChoices}}
+          <div class="ncm-viewer__drawer-char {{#if this.isActive}}ncm-viewer__drawer-char--active{{/if}}"
+               data-action="set-send-identity" data-contact-id="{{this.pickId}}" data-email="{{this.email}}"
+               role="button" tabindex="0">
+            <div class="ncm-viewer__drawer-char-avatar">
+              {{#if this.portrait}}<img src="{{this.portrait}}" alt="" />{{else}}{{this.initials}}{{/if}}
+            </div>
+            <div class="ncm-viewer__drawer-char-info">
+              <span class="ncm-viewer__drawer-char-name">{{this.name}}</span>
+              <span class="ncm-viewer__drawer-char-email">{{this.email}}</span>
+            </div>
+            <span class="ncm-viewer__drawer-sendas-tag {{#unless this.isMain}}is-alias{{/unless}}">{{#if this.isMain}}main{{else}}alias{{/if}}</span>
+            <i class="fas fa-check ncm-viewer__drawer-char-check"></i>
+          </div>
+        {{/each}}
+      </div>
+      <p class="ncm-viewer__drawer-sendas-hint">New messages go out from this address. Replies go out from the address the mail reached. You can change it for one message in the composer.</p>
+    </div>
+  {{/if}}
 
   {{!-- Network Status --}}
   <div class="ncm-viewer__drawer-section">
@@ -150,6 +176,9 @@
     </button>
     <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="re-login">
       <i class="fas fa-right-from-bracket"></i> Log Out
+    </button>
+    <button class="ncm-btn ncm-btn--ghost ncm-btn--sm ncm-viewer__drawer-guide" data-action="open-player-guide">
+      <i class="fas fa-circle-question"></i> Player Guide (PDF)
     </button>
   </div>
 </div>

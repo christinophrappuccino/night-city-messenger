@@ -17,7 +17,7 @@
     ?drawer=pri|enc|sd|anon|sched   the open drawer     ?preview=1 (GM preview as recipient)
     ?drafts=3   the footer link     ?att=1 (attachments)   ?err=1 (validation errors)
     ?open=1 (network picker open) ?via=1 (GM override) ?dated=1 ?q=ara&f=corporate
-    ?sendas=1 (the send-as dropdown open)   ?tpl=1 (the templates menu open)
+    ?sendas=1 (the send-as dropdown open; with ?as=player, a player's own addresses)   ?alias=1 (player sending from an alias)   ?tpl=1 (the templates menu open)
     ?contrast=1   walk every text node and count the ones under 4.5:1 (in <title>)
   On disk it loads Handlebars + Font Awesome from the Foundry install; over
   dev/tools/serve-mockups.cjs it uses the vendor mirror + a CDN for Handlebars.
@@ -155,7 +155,7 @@ window.addEventListener('load', async () => {
   const errors = sp.get('err') === '1' ? { to: 'Pick at least one recipient.', general: 'Message must have a subject or body.' } : {};
 
   const ctx = {
-    mode, isReply: mode === 'reply', isForward: mode === 'forward', isGM, isGMSendAs: isGM, canSwitchFrom: isGM, terminalSend: null,
+    mode, isReply: mode === 'reply', isForward: mode === 'forward', isGM, isGMSendAs: isGM, canSwitchFrom: isGM || sp.has('sendas') || sp.has('alias'), fromIsAlias: !isGM && sp.has('alias'), terminalSend: null,
     fromName: me.name, fromEmail: me.email, fromInitials: me.name[0], fromImg: null, fromHue: hue(me.name),
     anonFeatureEnabled: isGM, anonActive: anon, anonymousEnabled: anon, anonStyle: 'scrambled', anonStyleLabel: 'Scrambled',
     anonStyleList: ['filtered', 'scrambled', 'ghost', 'monolith'].map(id => ({ id, label: id[0].toUpperCase() + id.slice(1), active: id === 'scrambled' })),
@@ -215,6 +215,11 @@ window.addEventListener('load', async () => {
       const okF = f === 'all' || (f === 'range' ? r.dataset.range === '1' : r.dataset.kind === f);
       r.classList.toggle('ncm-hidden', !(okF && (!q || (r.dataset.search || '').includes(q))));
     });
+  }
+  if (sp.get('sendas') === '1' && !isGM) {
+    const dd = document.querySelector('[data-id="sendas-dropdown"]'); dd.classList.remove('ncm-hidden');
+    dd.querySelector('[data-id="sendas-list"]').innerHTML = [['Vee Wraith', 'v.wraith@nightcity.net', 'main', false], ['Mr. Blue', 'blue@fixers.nc', 'alias', true], ['Ghost', 'ghost99@darknet.net', 'alias', false]]
+      .map(([n, e, t, on]) => `<div class="ncm-sendas-item ${on ? 'ncm-sendas-item--active' : ''}" style="--tc:${hue(n)}"><div class="ncm-sendas-item__avatar">${n[0]}</div><div class="ncm-sendas-item__info"><div class="ncm-sendas-item__name">${n}</div><div class="ncm-sendas-item__email">${e}</div></div><span class="ncm-sendas-item__type ${t === 'alias' ? 'is-alias' : ''}">${t}</span></div>`).join('');
   }
   if (sp.get('sendas') === '1' && isGM) {
     const dd = document.querySelector('[data-id="sendas-dropdown"]'); dd.classList.remove('ncm-hidden');

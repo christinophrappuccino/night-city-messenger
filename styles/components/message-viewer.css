@@ -1545,6 +1545,20 @@
 /* Footer */
 .ncm-app .ncm-viewer__drawer-footer { margin-top: auto; padding: 12px 16px; border-top: 1px solid var(--ncm-border); display: flex; gap: 6px; flex-shrink: 0; }
 .ncm-app .ncm-viewer__drawer-footer .ncm-btn { flex: 1; justify-content: center; }
+.ncm-app .ncm-viewer__drawer-footer { flex-wrap: wrap; }
+.ncm-app .ncm-viewer__drawer-footer .ncm-viewer__drawer-guide { flex: 1 0 100%; }
+
+/* Sending as: a player's addresses */
+.ncm-app .ncm-viewer__drawer-sendas .ncm-viewer__drawer-char { flex-shrink: 0; }
+.ncm-app .ncm-viewer__drawer-sendas .ncm-viewer__drawer-char-info { display: flex; flex-direction: column; }
+.ncm-app .ncm-viewer__drawer-sendas .ncm-viewer__drawer-char-name,
+.ncm-app .ncm-viewer__drawer-sendas .ncm-viewer__drawer-char-email { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-viewer__drawer-sendas .ncm-viewer__drawer-char-email { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); opacity: 1; }
+.ncm-app .ncm-viewer__drawer-sendas .ncm-viewer__drawer-char-check { visibility: hidden; }
+.ncm-app .ncm-viewer__drawer-sendas .ncm-viewer__drawer-char--active .ncm-viewer__drawer-char-check { visibility: visible; }
+.ncm-app .ncm-viewer__drawer-sendas-tag { flex-shrink: 0; font-family: var(--ncm-font-display); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-viewer__drawer-sendas-tag.is-alias { color: color-mix(in oklab, var(--ncm-purple) 70%, var(--ncm-text-primary)); }
+.ncm-app .ncm-viewer__drawer-sendas-hint { margin: 8px 0 0; font-family: var(--ncm-font-body); font-size: calc(11px * var(--ncm-text-scale, 1)); line-height: 1.35; color: var(--ncm-text-secondary); }
 
 
 /* ═══════════════════════════════════════════════════════════

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sending As Probe</title>
+<!--
+  Renders the REAL identity-drawer.hbs against the real Foundry core + CPR + module cascade, for a player with
+  aliases. ?none=1 = no aliases. ?crop=1 = only the drawer's top half, for the guide figure (img/sending-as.png).
+  On disk (needs allow-file-access-from-files) it loads from the Foundry install; over dev/tools/serve-mockups.cjs
+  it uses the vendor mirror + a CDN for Handlebars.
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css',
+         '../../../../systems/cyberpunk-red-core/main.css',
+         'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet'; l.href = href;
+      document.head.appendChild(l);
+    }
+    const hb = document.createElement('script');
+    hb.src = onDisk
+      ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/node_modules/handlebars/dist/handlebars.min.js'
+      : 'https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js';
+    document.head.appendChild(hb);
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  html, body { margin: 0; background: #0a0a12; height: 100%; overflow: hidden; }
+  .probe-win, .probe-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; width: 320px; height: 760px; max-height: none !important; padding: 0 !important; margin: 0 !important; }
+  .probe-win .ncm-viewer { position: relative; width: 320px; height: 100%; }
+</style>
+</head>
+<body>
+<div class="probe-win ncm-app"><div class="ncm-viewer ncm-viewer--drawer-open" id="host"></div></div>
+<script type="module">
+  const sp = new URLSearchParams(location.search);
+  const src = await (await fetch('../../templates/message-viewer/partials/identity-drawer.hbs')).text();
+  Handlebars.registerHelper('eq', (a, b) => a === b);
+  document.getElementById('host').innerHTML = Handlebars.compile(src)({
+    viewingAsName: 'Vee Wraith', viewingAsInitial: 'V', viewingAsEmail: 'v.wraith@nightcity.net', viewingAsHandle: 'v.wraith',
+    viewingAsRole: 'Solo 4', canChangeIdentity: true, netPillState: 'strong', currentNetwork: { name: 'CitiNet' }, signalStrength: 75,
+    connectionStatus: 'CONNECTED', latencyMs: 40, encryptionCipher: 'AES', queuedMessageCount: 0,
+    sendAsChoices: sp.get('none') ? [] : [
+      { name: 'Vee Wraith', initials: 'VW', email: 'v.wraith@nightcity.net', isMain: true, pickId: '', isActive: false },
+      { name: 'Mr. Blue', initials: 'MB', email: 'blue@fixers.nc', isMain: false, pickId: 'a', isActive: true },
+      { name: 'Ghost', initials: 'G', email: 'ghost99@darknet.net', isMain: false, pickId: 'b', isActive: false },
+    ],
+  });
+  const d = document.querySelector('.ncm-viewer__drawer');
+  // The cascade insets the drawer; pull it back so the figure has no empty band.
+  document.getElementById('host').style.transform = `translateX(${-d.getBoundingClientRect().left}px)`;
+  if (sp.get('crop')) for (const el of d.children) if (!el.classList.contains('ncm-viewer__drawer-sendas')) el.style.display = 'none';
+  document.title = `OK drawer ${d.scrollWidth}x${d.scrollHeight} client ${d.clientWidth}`;
+</script>
+</body>
+</html>
