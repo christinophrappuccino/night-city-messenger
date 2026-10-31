@@ -1,0 +1,455 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Conversations</title>
+<!--
+  Conversations as their own thing beside mail (design: dev/design/CONVERSATIONS.md, 2026-10-30).
+  The header, tabs, pills, list and paging are the real inbox markup. New: a Conversation button, a Conversations pill,
+  the conversation row, and in the center pane the chat, the bar, the members panel and the two dialogs.
+  All interaction here is mock state: sending, images, add and remove, rename, mute, Send as mail, opening rows.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/conversations-mock.html
+    ?state=chat|pill|mail|members|add|new|removed|nogm|gm|admin   ?t=clean-dark|clean-light|high-contrast   ?w=   ?h=   ?scale=   ?contrast=1
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  /* ── Mock page only ── */
+  html, body { background: #15181a !important; margin: 0; height: auto; overflow: auto; }
+  .mk-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; font: 13px/1.3 system-ui, sans-serif; color: #cfd8e3; }
+  .mk-bar a { color: #cfd8e3; padding: 4px 10px; border: 1px solid #3a4148; border-radius: 2px; text-decoration: none; }
+  .mk-bar a.on { background: #cfd8e3; color: #15181a; }
+  .mk-win { margin: 0 14px 14px; height: 720px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win .ncm-app { width: 100%; height: 100%; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+  #mk-report { font: 12px/1.5 monospace; color: #cfd8e3; padding: 0 14px 14px; white-space: pre-wrap; }
+
+  /* ═══ NEW CSS: what the build would add. Tokens only. ═══ */
+  .ncm-app button.ncm-conv__base, .ncm-app button.ncm-conv__btn, .ncm-app button.ncm-conv__link, .ncm-app button.ncm-conv__icon, .ncm-app button.ncm-conv__rowbtn { appearance: none; width: auto !important; flex: none; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; cursor: pointer; line-height: 1 !important; }
+  .ncm-app .ncm-conv__base i, .ncm-app .ncm-conv__btn i, .ncm-app .ncm-conv__icon i, .ncm-app .ncm-conv__rowbtn i { margin: 0 !important; }
+
+  /* List: the conversation row */
+  .ncm-app .ncm-conv__stack { position: relative; flex: none; width: 38px; height: 36px; margin-right: 10px; }
+  .ncm-app .ncm-conv__stack .ncm-conv__av { position: absolute; width: 21px; height: 21px; font-size: calc(9px * var(--ncm-text-scale, 1)); box-shadow: 0 0 0 2px var(--ncm-bg-base); }
+  .ncm-app .ncm-conv__stack .ncm-conv__av:nth-child(1) { left: 0; top: 0; }
+  .ncm-app .ncm-conv__stack .ncm-conv__av:nth-child(2) { left: 17px; top: 0; }
+  .ncm-app .ncm-conv__stack .ncm-conv__av:nth-child(3) { left: 4px; top: 15px; }
+  .ncm-app .ncm-conv__stack .ncm-conv__glyph { position: absolute; right: -3px; bottom: -3px; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--ncm-secondary); color: var(--ncm-text-inverse, #06080a); font-size: calc(8px * var(--ncm-text-scale, 1)); box-shadow: 0 0 0 2px var(--ncm-bg-base); }
+  .ncm-app .ncm-conv__count { flex: none; min-width: 16px; height: 16px; margin-left: 6px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; border-radius: 2px; background: var(--ncm-secondary); color: var(--ncm-text-inverse, #06080a); font-family: var(--ncm-font-mono); font-weight: 700; font-size: calc(10px * var(--ncm-text-scale, 1)); box-sizing: border-box; }
+  .ncm-app .ncm-conv__rowsub { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+
+  /* The pane */
+  .ncm-app .ncm-conv { flex: 1; min-height: 0; display: flex; position: relative; }
+  .ncm-app .ncm-conv__main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+  .ncm-app .ncm-conv__head { flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-conv__titles { flex: 1; min-width: 0; }
+  .ncm-app .ncm-conv__title { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(16px * var(--ncm-text-scale, 1)); line-height: 1.2; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-conv__sub { display: flex; align-items: center; gap: 7px; margin-top: 3px; font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; }
+  .ncm-app .ncm-conv__faces { display: flex; flex: none; }
+  .ncm-app .ncm-conv__faces .ncm-conv__av { width: calc(18px * var(--ncm-text-scale, 1)); height: calc(18px * var(--ncm-text-scale, 1)); font-size: calc(8.5px * var(--ncm-text-scale, 1)); margin-left: -4px; box-shadow: 0 0 0 2px var(--ncm-bg-base); }
+  .ncm-app .ncm-conv__faces .ncm-conv__av:first-child { margin-left: 0; }
+  .ncm-app .ncm-conv__av { width: calc(30px * var(--ncm-text-scale, 1)); height: calc(30px * var(--ncm-text-scale, 1)); border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--c, var(--ncm-secondary)) 22%, var(--ncm-bg-surface)); border: 1px solid var(--c, var(--ncm-secondary)); color: var(--ncm-text-primary); font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(12px * var(--ncm-text-scale, 1)); line-height: 1; box-sizing: border-box; }
+
+  .ncm-app button.ncm-conv__btn { height: calc(26px * var(--ncm-text-scale, 1)) !important; padding: 0 10px !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; background: var(--ncm-bg-surface) !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important; font-weight: 600; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; white-space: nowrap; }
+  .ncm-app button.ncm-conv__btn:hover { border-color: var(--ncm-secondary) !important; }
+  .ncm-app button.ncm-conv__btn.is-on { background: color-mix(in srgb, var(--ncm-secondary) 16%, transparent) !important; border-color: var(--ncm-secondary) !important; }
+  .ncm-app button.ncm-conv__btn--go { background: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; color: var(--ncm-text-inverse, #06080a) !important; font-weight: 700; }
+  .ncm-app button.ncm-conv__btn--go:hover { filter: brightness(1.12); }
+  .ncm-app button.ncm-conv__btn--bad { color: var(--ncm-text-primary) !important; border-color: var(--ncm-danger) !important; }
+  .ncm-app button.ncm-conv__btn--bad i { color: var(--ncm-danger); }
+  .ncm-app button.ncm-conv__icon { width: calc(26px * var(--ncm-text-scale, 1)) !important; height: calc(26px * var(--ncm-text-scale, 1)) !important; padding: 0 !important; display: inline-flex !important; align-items: center; justify-content: center; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; background: var(--ncm-bg-surface) !important; color: var(--ncm-text-primary) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; }
+  .ncm-app button.ncm-conv__icon:hover { border-color: var(--ncm-secondary) !important; }
+
+  .ncm-app .ncm-conv__scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 16px 12px; display: flex; flex-direction: column; }
+  .ncm-app .ncm-conv__rule { flex: none; display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__rule::before, .ncm-app .ncm-conv__rule::after { content: ''; flex: 1; height: 1px; background: var(--ncm-border); }
+  .ncm-app .ncm-conv__rule--new { color: var(--ncm-text-primary); font-family: var(--ncm-font-display); font-weight: 700; }
+  .ncm-app .ncm-conv__rule--new::before, .ncm-app .ncm-conv__rule--new::after { background: var(--ncm-secondary); }
+  .ncm-app .ncm-conv__rule--sys { font-family: var(--ncm-font-display); }
+  .ncm-app .ncm-conv__rule--sys i { margin: 0; }
+  .ncm-app button.ncm-conv__link { align-self: center; height: auto !important; padding: 3px 12px !important; border: 1px dashed var(--ncm-border) !important; border-radius: 2px !important; background: transparent !important; color: var(--ncm-text-secondary) !important; font-family: var(--ncm-font-display) !important; font-size: calc(11.5px * var(--ncm-text-scale, 1)) !important; }
+  .ncm-app button.ncm-conv__link:hover { color: var(--ncm-text-primary) !important; border-color: var(--ncm-secondary) !important; }
+  .ncm-app button.ncm-conv__link i { margin: 0 4px 0 0 !important; }
+
+  .ncm-app .ncm-conv__m { flex: none; display: grid; grid-template-columns: calc(30px * var(--ncm-text-scale, 1)) minmax(0, 1fr); gap: 0 9px; max-width: 84%; align-self: flex-start; margin-top: 8px; }
+  .ncm-app .ncm-conv__m.is-cont { margin-top: 2px; }
+  .ncm-app .ncm-conv__m.is-mine { align-self: flex-end; grid-template-columns: minmax(0, 1fr); }
+  .ncm-app .ncm-conv__m.is-mine .ncm-conv__who { justify-content: flex-end; }
+  .ncm-app .ncm-conv__who { display: flex; align-items: baseline; gap: 8px; margin: 0 0 2px; }
+  .ncm-app .ncm-conv__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__alias { font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__time { flex: none; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__bubble { padding: 6px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-surface); color: var(--ncm-text-primary); font-family: var(--ncm-font-body); font-size: calc(13.5px * var(--ncm-text-scale, 1)); line-height: 1.4; overflow-wrap: anywhere; user-select: text; }
+  .ncm-app .ncm-conv__m.is-mine .ncm-conv__bubble { background: color-mix(in srgb, var(--ncm-secondary) 13%, var(--ncm-bg-surface)); border-color: color-mix(in srgb, var(--ncm-secondary) 38%, var(--ncm-border)); }
+  .ncm-app .ncm-conv__state { margin-top: 2px; text-align: right; font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__state i { margin: 0 3px 0 0; }
+  .ncm-app .ncm-conv__pic { display: block; width: 260px; max-width: 100%; height: 130px; border: 1px solid var(--ncm-border); border-radius: 2px; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ncm-secondary) 18%, var(--ncm-bg-surface)) 0 10px, var(--ncm-bg-surface) 10px 20px); }
+  .ncm-app .ncm-conv__mailnote { display: flex; align-items: center; gap: 7px; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+
+  /* The bar */
+  .ncm-app .ncm-conv__bar { flex: none; border-top: 1px solid var(--ncm-border); padding: 7px 16px 9px; background: var(--ncm-bg-surface); }
+  .ncm-app .ncm-conv__alert { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; padding: 4px 8px; border-left: 3px solid var(--ncm-warning); background: color-mix(in srgb, var(--ncm-warning) 10%, transparent); font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__alert i { margin: 0; color: var(--ncm-warning); }
+  .ncm-app .ncm-conv__as { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__write { display: flex; align-items: flex-end; gap: 5px; }
+  .ncm-app textarea.ncm-conv__input { flex: 1; min-width: 0; display: block; resize: none !important; overflow-y: auto; min-height: calc(28px * var(--ncm-text-scale, 1)) !important; height: calc(28px * var(--ncm-text-scale, 1)); max-height: calc(130px * var(--ncm-text-scale, 1)); margin: 0 !important; padding: 5px 8px !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; box-shadow: none !important; outline: none !important; background: var(--ncm-bg-base) !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-body) !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; line-height: 1.35 !important; text-align: left !important; }
+  .ncm-app textarea.ncm-conv__input:focus { border-color: var(--ncm-secondary) !important; }
+  .ncm-app textarea.ncm-conv__input::placeholder { color: var(--ncm-text-secondary); opacity: 1; }
+  .ncm-app .ncm-conv__write button.ncm-conv__icon, .ncm-app .ncm-conv__write button.ncm-conv__btn { height: calc(28px * var(--ncm-text-scale, 1)) !important; }
+  .ncm-app .ncm-conv__write button.ncm-conv__icon { width: calc(28px * var(--ncm-text-scale, 1)) !important; }
+  .ncm-app .ncm-conv__gone { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); font-family: var(--ncm-font-display); font-size: calc(12.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__gone i { margin: 0; color: var(--ncm-text-secondary); }
+
+  /* Members panel */
+  .ncm-app .ncm-conv__panel { flex: none; width: 236px; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); }
+  .ncm-app .ncm-conv__panelhd { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-bottom: 1px solid var(--ncm-border); font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__panelbody { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 8px; }
+  .ncm-app .ncm-conv__member { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+  .ncm-app .ncm-conv__member > div:nth-child(2) { flex: 1; min-width: 0; }
+  .ncm-app .ncm-conv__mname { display: block; font-family: var(--ncm-font-display); font-weight: 600; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-conv__maddr { display: block; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-conv__panelfoot { flex: none; display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; border-top: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-conv__panelfoot button.ncm-conv__btn { width: 100% !important; }
+  .ncm-app .ncm-conv__panelnote { font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); line-height: 1.3; color: var(--ncm-text-secondary); }
+
+  /* Dialogs (the real ones would use the themed dialog wrappers; drawn here over the window) */
+  .ncm-app .ncm-conv__scrim { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.45); }
+  .ncm-app .ncm-conv__dlg { width: 420px; max-width: 92%; max-height: 92%; display: flex; flex-direction: column; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-surface); box-shadow: 0 10px 40px rgba(0,0,0,.55); }
+  .ncm-app .ncm-conv__dlghd { flex: none; padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(14px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__dlgbody { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .ncm-app .ncm-conv__dlgft { flex: none; display: flex; justify-content: flex-end; gap: 6px; padding: 9px 14px; border-top: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-conv__dlg label.ncm-conv__fl { display: block; margin: 0; text-transform: none; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__dlg input[type=text] { display: block; width: 100% !important; box-sizing: border-box; height: calc(28px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 3px 0 0 !important; padding: 0 8px !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; box-shadow: none !important; background: var(--ncm-bg-base) !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-body) !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; text-align: left !important; }
+  .ncm-app .ncm-conv__dlg input[type=text]::placeholder { color: var(--ncm-text-secondary); opacity: 1; }
+  .ncm-app .ncm-conv__chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ncm-app .ncm-conv__chip { display: inline-flex; align-items: center; gap: 5px; height: calc(22px * var(--ncm-text-scale, 1)); padding: 0 7px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); font-family: var(--ncm-font-display); font-weight: 600; font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--c, var(--ncm-secondary)); }
+  .ncm-app .ncm-conv__chip i { margin: 0; font-size: .85em; color: var(--ncm-text-secondary); }
+  .ncm-app button.ncm-conv__rowbtn { display: flex !important; align-items: center; gap: 8px; width: 100% !important; height: auto !important; padding: 5px 6px !important; border: 0 !important; border-radius: 2px !important; background: none !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; text-align: left !important; }
+  .ncm-app button.ncm-conv__rowbtn:hover { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent) !important; }
+  .ncm-app button.ncm-conv__rowbtn small { margin-left: auto; font-family: var(--ncm-font-mono); font-size: .8em; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__check { display: flex !important; align-items: flex-start; gap: 8px; margin: 0; text-transform: none !important; font-family: var(--ncm-font-body) !important; font-weight: 400 !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; line-height: 1.3; color: var(--ncm-text-primary) !important; cursor: pointer; }
+  .ncm-app .ncm-conv__check input { --checkbox-size: 14px; flex: none; width: 14px !important; height: 14px !important; margin: 2px 0 0 !important; }
+  .ncm-app .ncm-conv__check small { display: block; font-size: .88em; color: var(--ncm-text-secondary); }
+
+  /* Admin → Messages → Conversations */
+  .ncm-app .ncm-conv__admin { position: absolute; inset: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); background: var(--ncm-bg-canvas, var(--ncm-bg-base)); }
+  .ncm-app .ncm-conv__adminnav { display: flex; gap: 2px; padding: 8px 12px 0; border-bottom: 1px solid var(--ncm-border); font-family: var(--ncm-font-display); font-weight: 600; font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__adminnav span { padding: 6px 12px; border-bottom: 2px solid transparent; }
+  .ncm-app .ncm-conv__adminnav span.on { color: var(--ncm-text-primary); border-bottom-color: var(--ncm-secondary); }
+  .ncm-app .ncm-conv__adminhd { padding: 8px 14px; border-bottom: 1px solid var(--ncm-border); font-family: var(--ncm-font-display); font-size: calc(12.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__adminhd b { margin-right: 8px; text-transform: uppercase; letter-spacing: .05em; color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__adminsplit { min-height: 0; display: grid; grid-template-columns: 320px minmax(0, 1fr); }
+  .ncm-app .ncm-conv__adminlist { min-height: 0; overflow-y: auto; border-right: 1px solid var(--ncm-border); background: var(--ncm-bg-pane, var(--ncm-bg-surface)); }
+  .ncm-app .ncm-conv__adminrow { display: flex; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-conv__adminrow.is-on { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); box-shadow: inset 4px 0 0 var(--ncm-secondary); }
+  .ncm-app .ncm-conv__adminrow > div:nth-child(2) { flex: 1; min-width: 0; }
+  .ncm-app .ncm-conv__adminname { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__adminsub { font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-conv__tag { display: inline-block; margin-top: 3px; padding: 1px 5px; border: 1px solid var(--ncm-warning); border-radius: 1px; font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__adminpane { min-height: 0; display: flex; flex-direction: column; }
+
+  @container (max-width: 700px) { .ncm-app .ncm-conv__panel { position: absolute; inset: 0 0 0 auto; z-index: 4; box-shadow: -8px 0 24px rgba(0,0,0,.4); } }
+</style>
+</head>
+<body>
+<div class="mk-bar" id="mk-bar"></div>
+<div class="mk-win" id="mk-win"></div>
+<div id="mk-report"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const STATE = q.get('state') || 'chat';
+const STATES = [['chat', 'Conversation open'], ['pill', 'Conversations pill'], ['mail', 'Mail open (unchanged)'], ['members', 'Members'], ['add', 'Add someone'], ['new', 'New conversation'], ['removed', 'You were removed'], ['nogm', 'No GM online'], ['gm', 'GM speaking as an NPC'], ['admin', 'Admin view']];
+document.getElementById('mk-bar').innerHTML = STATES.map(([k, l]) => { const p = new URLSearchParams(location.search); p.set('state', k); return `<a href="?${p}" class="${k === STATE ? 'on' : ''}">${l}</a>`; }).join('');
+
+const PEOPLE = {
+  me: { name: 'V', i: 'V', c: '#19f3f7', addr: 'v@nightcity.net' },
+  rache: { name: 'Rache', i: 'R', c: '#ff5fa2', addr: 'rache@nightcity.net' },
+  nix: { name: 'Nix', i: 'N', c: '#5ad1ff', addr: 'nix@darknet.nc' },
+  kestrel: { name: 'Kestrel', i: 'K', c: '#b4e05a', addr: 'kestrel@nightcity.net' },
+  mox: { name: 'Mox', i: 'M', c: '#ffb347', addr: 'mox@afterdark.nc' },
+  hask: { name: 'Hask', i: 'H', c: '#c9a0ff', addr: 'hask@nightcity.net' },
+  hr: { name: 'Arasaka HR', i: 'A', c: '#9aa7b5', addr: 'hr@arasaka.corp' },
+  v: { name: 'V', i: 'V', c: '#19f3f7', addr: 'v@nightcity.net' },
+};
+const av = (id) => { const p = PEOPLE[id]; return `<div class="ncm-conv__av" style="--c:${p.c}">${p.i}</div>`; };
+
+let conv = {
+  title: 'Dockside crew', starter: 'rache', members: ['me', 'rache', 'nix', 'kestrel'],
+  lines: [
+    { day: 'Tue 14 Aug 2045' },
+    { from: 'rache', time: '21:12', text: 'Client moved the meet up. Thursday, not Friday. Everyone still in?' },
+    { from: 'me', time: '21:15', text: 'In. Need the dock layout before then.' },
+    { from: 'nix', time: '21:31', text: 'I can pull the camera map off the harbour authority box.' },
+    { from: 'nix', time: '21:31', text: 'Give me a night.' },
+    { from: 'kestrel', time: '21:40', text: 'I have a van. Do we need more than a van?' },
+    { from: 'me', time: '21:44', text: 'Depends what comes out of the container.' },
+    { day: 'Wed 15 Aug 2045' },
+    { sys: 'Rache added Kestrel', icon: 'fa-user-plus' },
+    { fresh: '3 new' },
+    { from: 'kestrel', time: '08:04', text: 'Plates are clean until Friday noon, after that I make no promises.' },
+    { from: 'nix', time: '09:47', text: 'Got the map. Two blind spots on the east side.' },
+    { from: 'nix', time: '09:47', img: true },
+    { from: 'nix', time: '09:47', text: 'The second one moves with the patrol.' },
+    { from: 'rache', time: '10:02', text: 'Which side do you want the van?' },
+    { from: 'rache', time: '10:02', mail: 'Rache sent mail to the group: "Payment split"' },
+  ],
+};
+
+function linesHtml(lines) {
+  let prev = null;
+  return lines.map((l) => {
+    if (l.day) { prev = null; return `<div class="ncm-conv__rule">${l.day}</div>`; }
+    if (l.fresh) { prev = null; return `<div class="ncm-conv__rule ncm-conv__rule--new" data-fresh>${l.fresh}</div>`; }
+    if (l.sys) { prev = null; return `<div class="ncm-conv__rule ncm-conv__rule--sys"><i class="fas ${l.icon}"></i> ${l.sys}</div>`; }
+    if (l.mail) { prev = null; return `<div class="ncm-conv__rule ncm-conv__rule--sys"><i class="fas fa-envelope"></i> ${l.mail}</div>`; }
+    const p = PEOPLE[l.from]; const mine = l.from === 'me'; const cont = prev === l.from; prev = l.from;
+    const head = cont ? '' : `<div class="ncm-conv__who"><span class="ncm-conv__name">${mine ? 'You' : p.name}</span>${l.alias ? `<span class="ncm-conv__alias">as ${l.alias}</span>` : ''}<span class="ncm-conv__time">${l.time}</span></div>`;
+    const body = l.img ? '<div class="ncm-conv__pic" role="img" aria-label="A shared image"></div>' : `<div class="ncm-conv__bubble"></div>`;
+    const st = l.state ? `<div class="ncm-conv__state"><i class="fas ${l.state === 'Queued' ? 'fa-clock' : 'fa-check'}"></i>${l.state}</div>` : '';
+    return `<article class="ncm-conv__m${mine ? ' is-mine' : ''}${cont ? ' is-cont' : ''}" data-text="${(l.text || '').replace(/"/g, '&quot;')}">${mine ? '' : (cont ? '<div></div>' : av(l.from))}<div style="min-width:0">${head}${body}${st}</div></article>`;
+  }).join('');
+}
+const fillText = (root) => root.querySelectorAll('[data-text]').forEach((a) => { const b = a.querySelector('.ncm-conv__bubble'); if (b) b.textContent = a.dataset.text; });
+
+const names = () => conv.members.map((m) => (m === 'me' ? 'You' : PEOPLE[m].name)).join(', ');
+let panelOpen = STATE === 'members' || STATE === 'add';
+let muted = false;
+
+function barHtml() {
+  if (STATE === 'removed') return `<div class="ncm-conv__gone"><i class="fas fa-user-minus"></i> Rache removed you on 15 Aug. You can still read what you had, but nothing new will reach you.</div>`;
+  const nogm = STATE === 'nogm';
+  return `<div class="ncm-conv__bar">
+    ${nogm ? '<div class="ncm-conv__alert"><i class="fas fa-triangle-exclamation"></i> No GM is online. Your lines wait here and send when one connects.</div>' : ''}
+    ${STATE === 'gm' || STATE === 'admin' ? `<div class="ncm-conv__as"><span>Speaking as</span><button type="button" class="ncm-conv__btn"><i class="fas fa-masks-theater"></i> Mox <i class="fas fa-caret-down"></i></button></div>` : ''}
+    <div class="ncm-conv__write">
+      <textarea class="ncm-conv__input" rows="1" placeholder="${nogm ? 'Write a line, it sends when a GM connects…' : 'Write a line…  Ctrl+Enter sends'}"></textarea>
+      <button type="button" class="ncm-conv__icon" data-act="img" data-tooltip="Add an image" aria-label="Add an image"><i class="fas fa-image"></i></button>
+      <button type="button" class="ncm-conv__btn" data-act="asmail" data-tooltip="For encryption, self-destruct, eddies or a shard: opens the composer addressed to everyone here"><i class="fas fa-envelope"></i> Send as mail</button>
+      <button type="button" class="ncm-conv__btn ncm-conv__btn--go" data-act="send" aria-label="Send"><i class="fas ${nogm ? 'fa-clock' : 'fa-paper-plane'}"></i> ${nogm ? 'Queue' : 'Send'}</button>
+    </div>
+  </div>`;
+}
+
+function panelHtml() {
+  const list = conv.members.map((m) => { const p = PEOPLE[m]; const you = m === 'me'; return `<div class="ncm-conv__member">${av(m)}<div><span class="ncm-conv__mname">${you ? 'You' : p.name}${m === conv.starter ? ' · started it' : ''}</span><span class="ncm-conv__maddr">${p.addr}</span></div>${you ? '' : `<button type="button" class="ncm-conv__icon" data-remove="${m}" aria-label="Remove ${p.name}" data-tooltip="Remove ${p.name}. They keep what they could see and get nothing new."><i class="fas fa-user-minus"></i></button>`}</div>`; }).join('');
+  return `<aside class="ncm-conv__panel"><div class="ncm-conv__panelhd"><span>Members · ${conv.members.length}</span><button type="button" class="ncm-conv__icon" data-act="panel" aria-label="Close members"><i class="fas fa-xmark"></i></button></div>
+    <div class="ncm-conv__panelbody">${list}</div>
+    <div class="ncm-conv__panelfoot">
+      <button type="button" class="ncm-conv__btn" data-act="add"><i class="fas fa-user-plus"></i> Add someone</button>
+      <button type="button" class="ncm-conv__btn" data-act="rename"><i class="fas fa-pen"></i> Rename</button>
+      <button type="button" class="ncm-conv__btn" data-act="mute"><i class="fas ${muted ? 'fa-bell' : 'fa-bell-slash'}"></i> ${muted ? 'Unmute' : 'Mute'}</button>
+      <button type="button" class="ncm-conv__btn ncm-conv__btn--bad" data-act="leave"><i class="fas fa-right-from-bracket"></i> Leave</button>
+    </div></aside>`;
+}
+
+function chatHtml() {
+  const lines = STATE === 'removed' ? conv.lines.slice(0, 9) : conv.lines;
+  return `<div class="ncm-conv"><div class="ncm-conv__main">
+    <div class="ncm-conv__head"><div class="ncm-conv__titles"><div class="ncm-conv__title">${conv.title}</div><div class="ncm-conv__sub"><div class="ncm-conv__faces">${conv.members.map(av).join('')}</div><span>${names()}${muted ? ' · muted' : ''}</span></div></div>
+      ${STATE === 'removed' ? '' : `<button type="button" class="ncm-conv__btn${panelOpen ? ' is-on' : ''}" data-act="panel"><i class="fas fa-users"></i> Members</button>`}
+    </div>
+    <div class="ncm-conv__scroll ncm-scrollbar" data-scroll>
+      ${STATE === 'removed' ? '' : '<button type="button" class="ncm-conv__link" data-act="earlier"><i class="fas fa-chevron-up"></i>Show earlier</button>'}
+      <div style="display:flex;flex-direction:column" data-lines>${linesHtml(lines)}</div>
+    </div>${barHtml()}</div>${panelOpen ? panelHtml() : ''}</div>`;
+}
+
+const mailHtml = () => `<div class="ncm-viewer__detail-head"><div class="ncm-viewer__detail-head-top">
+    <div class="ncm-viewer__detail-avatar" style="color:${PEOPLE.mox.c};border-color:${PEOPLE.mox.c}">M</div>
+    <div class="ncm-viewer__detail-info"><div class="ncm-viewer__detail-sender-row"><span class="ncm-viewer__detail-sender-name">Mox</span><span class="ncm-viewer__detail-time">09:40</span></div>
+    <div class="ncm-viewer__detail-to-summary"><span class="ncm-viewer__detail-to-label">to</span><span class="ncm-viewer__detail-to-val">V</span></div></div></div>
+    <div class="ncm-viewer__subject-strip ncm-viewer__subject-strip--default"><span class="ncm-viewer__subject-micro">Subject</span><div class="ncm-viewer__subject-row"><span class="ncm-viewer__subject-text">That favour you owe me</span><button type="button" class="ncm-viewer__detail-thread"><i class="fas fa-code-branch"></i> Thread · 9</button></div><div class="ncm-viewer__subject-rule"></div></div></div>
+  <div class="ncm-viewer__detail-body ncm-scrollbar"><p>Read those somewhere quiet.</p></div>
+  <div class="ncm-viewer__detail-actions"><button class="ncm-btn ncm-btn--primary ncm-btn--sm"><i class="fas fa-reply"></i> Reply</button><button class="ncm-btn ncm-btn--ghost ncm-btn--sm"><i class="fas fa-share"></i> Forward</button><button class="ncm-btn ncm-btn--ghost ncm-btn--sm"><i class="fas fa-bookmark"></i> Save</button><button class="ncm-btn ncm-btn--danger ncm-btn--sm"><i class="fas fa-trash"></i> Delete</button></div>
+  <div class="ncm-viewer__quick-reply"><div class="ncm-viewer__quick-reply-row"><input type="text" class="ncm-viewer__quick-reply-input" placeholder="Quick reply..." /><button class="ncm-viewer__quick-reply-send"><i class="fas fa-paper-plane"></i></button></div></div>`;
+
+const newDlg = () => `<div class="ncm-conv__scrim"><div class="ncm-conv__dlg" role="dialog" aria-label="New conversation"><div class="ncm-conv__dlghd">New conversation</div><div class="ncm-conv__dlgbody">
+    <label class="ncm-conv__fl">Who's in it<input type="text" placeholder="Search contacts or groups…"></label>
+    <div class="ncm-conv__chips"><span class="ncm-conv__chip" style="--c:${PEOPLE.rache.c}">Rache <i class="fas fa-xmark"></i></span><span class="ncm-conv__chip" style="--c:${PEOPLE.mox.c}">Mox <i class="fas fa-xmark"></i></span></div>
+    <button type="button" class="ncm-conv__rowbtn"><i class="fas fa-users"></i> Dockside crew <small>group · 3 people</small></button>
+    <button type="button" class="ncm-conv__rowbtn">Nix <small>${PEOPLE.nix.addr}</small></button>
+    <button type="button" class="ncm-conv__rowbtn">Kestrel <small>${PEOPLE.kestrel.addr}</small></button>
+    <label class="ncm-conv__fl">Name (optional)<input type="text" placeholder="Rache, Mox"></label>
+  </div><div class="ncm-conv__dlgft"><button type="button" class="ncm-conv__btn" data-act="close">Cancel</button><button type="button" class="ncm-conv__btn ncm-conv__btn--go" data-act="close"><i class="fas fa-comments"></i> Start</button></div></div></div>`;
+
+const addDlg = () => `<div class="ncm-conv__scrim"><div class="ncm-conv__dlg" role="dialog" aria-label="Add someone"><div class="ncm-conv__dlghd">Add to ${conv.title}</div><div class="ncm-conv__dlgbody">
+    <label class="ncm-conv__fl">Search your contacts<input type="text" placeholder="Name or address…"></label>
+    <button type="button" class="ncm-conv__rowbtn" data-add="mox">Mox <small>${PEOPLE.mox.addr}</small></button>
+    <button type="button" class="ncm-conv__rowbtn" data-add="hask">Hask <small>${PEOPLE.hask.addr}</small></button>
+    <label class="ncm-conv__check"><input type="checkbox"><span>Show earlier messages<small>Off, they only see lines from now on.</small></span></label>
+  </div><div class="ncm-conv__dlgft"><button type="button" class="ncm-conv__btn" data-act="close">Cancel</button></div></div></div>`;
+
+const LIST = [
+  { conv: true, sel: true, date: '15 Aug', rel: '10:02', unread: 3 },
+  { from: 'mox', subject: 'That favour you owe me', prev: 'Read those somewhere quiet.', date: '14 Aug', rel: '09:40', mail: true },
+  { from: 'kestrel', subject: 'Van invoice', prev: 'Paid in full, thanks.', date: '13 Aug', rel: '18:21' },
+  { from: 'hr', subject: 'Your employee record', prev: 'Second notice. Failure to report will…', date: '13 Aug', rel: '06:05' },
+  { from: 'rache', subject: 'Old favour', prev: 'We are square now.', date: '11 Aug', rel: '22:40' },
+];
+const CONV2 = { conv: true, date: '12 Aug', rel: '23:15', title2: 'Mox, Hask', prev2: 'Hask: Tell them Thursday.', faces: ['mox', 'hask'] };
+
+const rowHtml = (r) => {
+  const selMail = STATE === 'mail' && r.mail; const selConv = STATE !== 'mail' && r.conv && r.sel;
+  if (r.conv) {
+    const faces = (r.faces || conv.members.filter((m) => m !== 'me')).slice(0, 3);
+    const last = conv.lines.filter((l) => l.text).slice(-1)[0];
+    const prev = r.prev2 || `${PEOPLE[last.from].name}: ${last.text}`;
+    const unread = STATE === 'mail' || STATE === 'chat' ? r.unread : r.unread;
+    return `<div class="ncm-viewer__msg${unread ? ' ncm-viewer__msg--unread' : ''}${selConv ? ' ncm-viewer__msg--selected' : ''}" data-priority="normal" data-open="conv">
+      <div class="ncm-conv__stack">${faces.map(av).join('')}<span class="ncm-conv__glyph"><i class="fas fa-comments" style="margin:0"></i></span></div>
+      <div class="ncm-viewer__msg-content">
+        <div class="ncm-viewer__msg-top"><span class="ncm-viewer__msg-sender">${r.title2 || conv.title}</span>${unread ? `<span class="ncm-conv__count">${unread}</span>` : ''}<span class="ncm-viewer__msg-time"><span class="ncm-viewer__msg-time-date">${r.date}</span><span class="ncm-viewer__msg-time-rel">${r.rel}</span></span></div>
+        <div class="ncm-viewer__msg-subject"><span class="ncm-conv__rowsub">Conversation · ${faces.length + 1} people</span></div>
+        <div class="ncm-viewer__msg-preview">${prev}</div>
+      </div></div>`;
+  }
+  const p = PEOPLE[r.from];
+  return `<div class="ncm-viewer__msg${selMail ? ' ncm-viewer__msg--selected' : ''}" data-priority="normal" data-open="${r.mail ? 'mail' : ''}">
+    <div class="ncm-viewer__msg-avatar" style="color:${p.c};border-color:${p.c}">${p.i}</div>
+    <div class="ncm-viewer__msg-content"><div class="ncm-viewer__msg-top"><span class="ncm-viewer__msg-sender">${p.name}</span><span class="ncm-viewer__msg-time"><span class="ncm-viewer__msg-time-date">${r.date}</span><span class="ncm-viewer__msg-time-rel">${r.rel}</span></span></div>
+    <div class="ncm-viewer__msg-subject"><span class="ncm-viewer__msg-subject-text">${r.subject}</span></div><div class="ncm-viewer__msg-preview">${r.prev}</div></div></div>`;
+};
+const listRows = () => (STATE === 'pill' ? [LIST[0], CONV2] : [LIST[0], LIST[1], CONV2, LIST[2], LIST[3], LIST[4]]).map(rowHtml).join('');
+
+const adminHtml = () => `<div class="ncm-conv__admin">
+  <div class="ncm-conv__adminnav"><span>Needs a reply</span><span>All mail</span><span>Inboxes</span><span class="on">Conversations</span><span>Outbox</span></div>
+  <div class="ncm-conv__adminhd"><b>Conversations</b>Every group chat in the world. Read them, or speak as any NPC in them.</div>
+  <div class="ncm-conv__adminsplit">
+    <div class="ncm-conv__adminlist">
+      <div class="ncm-conv__adminrow is-on"><div class="ncm-conv__stack">${['mox', 'hask'].map(av).join('')}</div><div><div class="ncm-conv__adminname">Mox, Hask, V</div><div class="ncm-conv__adminsub">V: Who else is in on this?</div><span class="ncm-conv__tag">Mox has 2 unread</span></div><span class="ncm-conv__time">10:30</span></div>
+      <div class="ncm-conv__adminrow"><div class="ncm-conv__stack">${['rache', 'nix', 'kestrel'].map(av).join('')}</div><div><div class="ncm-conv__adminname">Dockside crew</div><div class="ncm-conv__adminsub">Players only · 16 lines</div></div><span class="ncm-conv__time">10:02</span></div>
+    </div>
+    <div class="ncm-conv__adminpane" id="adminpane"></div>
+  </div></div>`;
+
+const win = document.getElementById('mk-win');
+if (q.get('w')) win.style.width = `${q.get('w')}px`;
+if (q.get('h')) win.style.height = `${q.get('h')}px`;
+const bars = [1, 1, 1, 0].map((a) => `<span class="ncm-viewer__net-bar${a ? ' ncm-viewer__net-bar--active' : ''}"></span>`).join('');
+const inner = STATE === 'admin' ? adminHtml() : `<div class="ncm-viewer" data-pane="detail">
+  <header class="ncm-viewer__header">
+    <div class="ncm-viewer__identity"><div class="ncm-viewer__avatar ncm-viewer__avatar--initials">V</div><div class="ncm-viewer__identity-info"><span class="ncm-viewer__identity-name">V</span><span class="ncm-viewer__identity-email">v@nightcity.net</span></div><i class="fas fa-chevron-right ncm-viewer__identity-expand"></i></div>
+    <div class="ncm-viewer__header-divider"></div>
+    <div class="ncm-viewer__net-pill ncm-viewer__net-pill--connected"><span class="ncm-viewer__net-dot"></span><span class="ncm-viewer__net-name">Darknet</span><span class="ncm-viewer__net-bars">${bars}</span><span class="ncm-viewer__net-pct">75%</span><i class="fas fa-caret-down ncm-viewer__net-caret"></i></div>
+    <div class="ncm-viewer__hud-strip"><span class="ncm-viewer__hud-seg ncm-viewer__hud-seg--time"><i class="fas fa-clock ncm-viewer__hud-seg-icon"></i><span class="ncm-viewer__hud-time-val">2045.08.15 // 10:04</span></span></div>
+    <div class="ncm-viewer__header-spacer"></div>
+    <div class="ncm-viewer__header-actions"><button class="ncm-btn ncm-btn--secondary ncm-btn--sm"><i class="fas fa-address-book"></i> <span>Contacts</span></button><button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-act="new"><i class="fas fa-comments"></i> <span>Conversation</span></button><button class="ncm-btn ncm-btn--primary ncm-btn--sm"><i class="fas fa-pen-to-square"></i> <span>Compose</span></button><button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm"><i class="fas fa-gear"></i></button></div>
+  </header>
+  <nav class="ncm-viewer__primary-nav">
+    <div class="ncm-viewer__primary-tab ncm-viewer__primary-tab--active"><i class="fas fa-inbox"></i> Messages <span class="ncm-viewer__primary-badge">6</span></div>
+    <div class="ncm-viewer__primary-tab"><i class="fas fa-phone"></i> Calls</div>
+    <div class="ncm-viewer__primary-tab"><i class="fas fa-microchip"></i> Shards</div>
+    <div class="ncm-viewer__nav-search"><i class="fas fa-search"></i><input type="text" class="ncm-viewer__search-input" placeholder="Search messages…"><span class="ncm-viewer__search-count">6</span></div>
+  </nav>
+  <div class="ncm-viewer__category-pills"><div class="ncm-viewer__pills-track">
+    <span class="ncm-pill${STATE === 'pill' ? '' : ' ncm-pill--active'}"><i class="fas fa-inbox"></i> All <span class="ncm-pill__badge">6</span></span>
+    <span class="ncm-pill${STATE === 'pill' ? ' ncm-pill--active' : ''}"><i class="fas fa-comments"></i> Conversations <span class="ncm-pill__badge ncm-pill__badge--alert">1</span></span>
+    <span class="ncm-pill"><i class="fas fa-envelope"></i> Unread <span class="ncm-pill__badge ncm-pill__badge--alert">1</span></span>
+    <span class="ncm-pill"><i class="fas fa-paper-plane"></i> Sent</span>
+    <span class="ncm-pill"><i class="fas fa-bookmark"></i> Saved</span>
+    <span class="ncm-pill"><i class="fas fa-trash"></i> Trash</span>
+    <span class="ncm-pill"><i class="fas fa-ban"></i> Spam</span>
+  </div></div>
+  <div class="ncm-viewer__split">
+    <div class="ncm-viewer__list-panel" style="width:300px">
+      <div class="ncm-viewer__refine-bar"><div class="ncm-viewer__refine-controls"><span class="ncm-viewer__date-filter"><i class="fas fa-calendar-days"></i> Dates <i class="fas fa-caret-down"></i></span><span class="ncm-viewer__sort-btn"><i class="fas fa-arrow-down-short-wide"></i> Newest <i class="fas fa-caret-down"></i></span><span class="ncm-viewer__filter-trigger"><i class="fas fa-filter"></i> Filters <i class="fas fa-caret-down"></i></span></div></div>
+      <div class="ncm-viewer__msg-list ncm-scrollbar" id="list"></div>
+      <div class="ncm-viewer__pagination"><button class="ncm-viewer__page-btn" disabled><i class="fas fa-chevron-left"></i></button><span class="ncm-viewer__page-info">Page 1 of 1</span><button class="ncm-viewer__page-btn" disabled><i class="fas fa-chevron-right"></i></button></div>
+    </div>
+    <div class="ncm-viewer__divider"><button class="ncm-viewer__collapse-toggle"><i class="fas fa-chevron-left"></i></button><div class="ncm-viewer__divider-grip"><span></span><span></span><span></span></div></div>
+    <div class="ncm-viewer__detail-panel" id="pane"></div>
+  </div>
+</div>`;
+win.innerHTML = `<div class="ncm-app ncm-message-viewer-window"${q.get('t') ? ` data-ncm-admin-theme="${q.get('t')}"` : ''}${q.get('scale') ? ` style="--ncm-text-scale:${q.get('scale')}"` : ''}>${inner}<div id="dlg"></div></div>`;
+
+const pane = document.getElementById('pane') || document.getElementById('adminpane');
+const dlg = document.getElementById('dlg');
+let view = STATE === 'mail' ? 'mail' : 'chat';
+if (STATE === 'admin') { conv = { ...conv, title: 'Mox, Hask, V', members: ['v', 'mox', 'hask'], starter: 'mox', lines: [{ day: 'Wed 15 Aug 2045' }, { from: 'mox', time: '10:12', text: 'Half up front, as always.' }, { fresh: '2 new for Mox' }, { from: 'hask', time: '10:21', text: 'Tell them Thursday.' }, { from: 'v', time: '10:30', text: 'Who else is in on this?' }] }; }
+
+function settle() {
+  const s = pane.querySelector('[data-scroll]'); if (!s) return;
+  fillText(s);
+  const f = s.querySelector('[data-fresh]');
+  s.scrollTop = f ? f.offsetTop - s.offsetTop - 6 : s.scrollHeight;
+}
+function paint() {
+  pane.innerHTML = view === 'mail' ? mailHtml() : chatHtml();
+  const list = document.getElementById('list'); if (list) list.innerHTML = listRows();
+  settle();
+}
+paint();
+if (STATE === 'new') dlg.innerHTML = newDlg();
+if (STATE === 'add') dlg.innerHTML = addDlg();
+if (STATE === 'gm') { conv.lines.push({ from: 'mox', time: '10:31', text: 'Half up front, as always.', alias: 'GM' }); paint(); }
+if (STATE === 'nogm') { conv.lines.push({ from: 'me', time: '10:05', text: 'East side. Bring the van round by the crane.', state: 'Queued' }); paint(); }
+
+function addSys(text, icon) { conv.lines.push({ sys: text, icon }); }
+win.addEventListener('click', (ev) => {
+  const t = ev.target.closest('[data-act],[data-remove],[data-add],[data-open]');
+  if (!t) return;
+  if (t.dataset.open) { view = t.dataset.open === 'mail' ? 'mail' : 'chat'; const lst = document.getElementById('list'); pane.innerHTML = view === 'mail' ? mailHtml() : chatHtml(); lst.querySelectorAll('.ncm-viewer__msg').forEach((r) => r.classList.toggle('ncm-viewer__msg--selected', r === t)); settle(); return; }
+  if (t.dataset.remove) { const n = PEOPLE[t.dataset.remove].name; conv.members = conv.members.filter((m) => m !== t.dataset.remove); addSys(`You removed ${n}`, 'fa-user-minus'); paint(); return; }
+  if (t.dataset.add) { conv.members.push(t.dataset.add); addSys(`You added ${PEOPLE[t.dataset.add].name}`, 'fa-user-plus'); dlg.innerHTML = ''; paint(); return; }
+  const scroll = pane.querySelector('[data-scroll]');
+  switch (t.dataset.act) {
+    case 'panel': panelOpen = !panelOpen; paint(); break;
+    case 'add': dlg.innerHTML = addDlg(); break;
+    case 'new': dlg.innerHTML = newDlg(); break;
+    case 'close': dlg.innerHTML = ''; break;
+    case 'mute': muted = !muted; paint(); break;
+    case 'rename': conv.title = conv.title === 'Dockside crew' ? 'The Thursday job' : 'Dockside crew'; addSys(`You renamed this to ${conv.title}`, 'fa-pen'); paint(); break;
+    case 'leave': conv.members = conv.members.filter((m) => m !== 'me'); addSys('You left', 'fa-right-from-bracket'); panelOpen = false; paint(); break;
+    case 'earlier': t.textContent = 'Older lines load here'; break;
+    case 'img': conv.lines.push({ from: 'me', time: 'now', img: true }); paint(); break;
+    case 'asmail': conv.lines.push({ mail: 'You sent mail to the group' }); paint(); break;
+    case 'send': {
+      const box = pane.querySelector('.ncm-conv__input'); const text = box.value.trim(); if (!text) return;
+      conv.lines.push({ from: 'me', time: 'now', text, state: STATE === 'nogm' ? 'Queued' : '' });
+      paint(); const s = pane.querySelector('[data-scroll]'); s.scrollTop = s.scrollHeight;
+      break;
+    }
+  }
+});
+win.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.ctrlKey && ev.target.matches('textarea')) pane.querySelector('[data-act="send"]')?.click(); });
+win.addEventListener('input', (ev) => { if (!ev.target.matches('.ncm-conv__input')) return; const el = ev.target; el.style.height = 'auto'; el.style.height = `${el.scrollHeight + 2}px`; });
+
+// ── ?contrast=1: every text node in the window against what is really behind it ──
+if (q.get('contrast')) {
+  const run = () => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 1;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    const rgba = (c) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+    const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+    const over = (t, u) => [0, 1, 2].map((i) => t[i] * t[3] + u[i] * (1 - t[3])).concat(1);
+    const bgOf = (el) => { const st = []; for (let e = el; e; e = e.parentElement) { const c = rgba(getComputedStyle(e).backgroundColor); if (c[3] > 0) st.push(c); if (c[3] === 1) break; } let b = [21, 24, 26, 1]; for (const c of st.reverse()) b = over(c, b); return b; };
+    const bad = new Map(); let n = 0;
+    const w = document.createTreeWalker(win, NodeFilter.SHOW_TEXT);
+    while (w.nextNode()) {
+      const t = w.currentNode; if (!t.textContent.trim()) continue;
+      const el = t.parentElement; if (!el.offsetParent) continue; n++;
+      const bg = bgOf(el); const fg = over(rgba(getComputedStyle(el).color), bg);
+      const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x); const r = (a + .05) / (b + .05);
+      if (r < 4.5) { const k = String(el.className || el.tagName).split(' ')[0]; if (!bad.has(k) || bad.get(k) > r) bad.set(k, r); }
+    }
+    const list = [...bad].map(([k, r]) => `${r.toFixed(2)} ${k}`);
+    const fresh = list.filter((l) => l.includes('ncm-conv'));
+    document.title = `${n} nodes; new parts under 4.5: ${fresh.length}; shipped: ${list.length - fresh.length}`;
+    document.getElementById('mk-report').textContent = `${document.title}\n${list.join('\n')}`;
+  };
+  document.fonts.ready.then(() => setTimeout(run, 300));
+}
+</script>
+</body>
+</html>

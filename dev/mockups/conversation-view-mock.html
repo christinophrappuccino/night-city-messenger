@@ -1,0 +1,449 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Conversation view</title>
+<!--
+  The inbox's middle pane as a CONVERSATION (2026-10-30, tester: "get the email threads to be an option for a default
+  view… difficult to have a group chat and keep switching between the thread and back to send messages").
+    · Conversation | Message is a switch in the pane's own head. The last choice is remembered per player, so the
+      switch IS the setting. Only shows when a message belongs to a thread; a lone message looks as it does today.
+    · It opens where you left off: on the "new" line when something is unread, else at the newest message.
+    · The reply box is pinned under the scroll. On a group it goes to everyone unless you pick the last sender only.
+    · Plain mail is shown in place and marked read as it scrolls into view. Anything where OPENING does something stays
+      a closed card with its reason (after-read self-destruct, traced network, encrypted), so nothing fires by accident.
+    · Rows in the list that belong to this conversation carry an edge, and clicking one jumps to it.
+  Tokens only (--ncm-*), so it wears the player theme or the GM view. All interaction here is mock state.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/conversation-view-mock.html
+    ?state=group|special|oneway|deadzone|single   ?t=clean-dark|clean-light|high-contrast (GM view)   ?w=<window px>   ?scale=1.3   ?contrast=1
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  /* ── Mock page only ── */
+  html, body { background: #15181a !important; margin: 0; height: auto; overflow: auto; }
+  .mk-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; font: 13px/1.3 system-ui, sans-serif; color: #cfd8e3; }
+  .mk-bar b { margin-right: 8px; }
+  .mk-bar a { color: #cfd8e3; padding: 4px 10px; border: 1px solid #3a4148; border-radius: 2px; text-decoration: none; }
+  .mk-bar a.on { background: #cfd8e3; color: #15181a; }
+  .mk-win { margin: 0 14px 14px; height: 700px; }
+  .mk-win, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; }
+  .mk-win .ncm-app { width: 100%; height: 100%; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+  #mk-report { font: 12px/1.5 monospace; color: #cfd8e3; padding: 0 14px 14px; white-space: pre-wrap; }
+
+  /* ── List: the rows of the open conversation ── */
+  .ncm-app .ncm-viewer__msg.ncm-conv-inthread { box-shadow: inset 2px 0 0 color-mix(in srgb, var(--ncm-secondary) 55%, transparent); }
+
+  /* ── The pane ── */
+  .ncm-app .ncm-conv { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+
+  .ncm-app .ncm-conv__head { flex: none; padding: 10px 16px 9px; border-bottom: 1px solid var(--ncm-border); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px; align-items: center; }
+  .ncm-app .ncm-conv__subject { margin: 0; border: 0; padding: 0; font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(16px * var(--ncm-text-scale, 1)); line-height: 1.2; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-conv__party { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; min-width: 0; font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__party > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-conv__faces { display: flex; flex: none; }
+  .ncm-app .ncm-conv__faces .ncm-conv__av { width: calc(20px * var(--ncm-text-scale, 1)); height: calc(20px * var(--ncm-text-scale, 1)); font-size: calc(9px * var(--ncm-text-scale, 1)); margin-left: -5px; box-shadow: 0 0 0 2px var(--ncm-bg-base); }
+  .ncm-app .ncm-conv__faces .ncm-conv__av:first-child { margin-left: 0; }
+
+  .ncm-app .ncm-conv__switch { display: inline-flex; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+  .ncm-app button.ncm-conv__sw { appearance: none; width: auto !important; flex: none; min-height: 0 !important; height: calc(24px * var(--ncm-text-scale, 1)) !important; margin: 0 !important; padding: 0 9px !important; display: inline-flex !important; align-items: center; gap: 5px; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; color: var(--ncm-text-secondary) !important; font-family: var(--ncm-font-display) !important; font-weight: 600; font-size: calc(11px * var(--ncm-text-scale, 1)) !important; line-height: 1 !important; cursor: pointer; }
+  .ncm-app button.ncm-conv__sw + button.ncm-conv__sw { border-left: 1px solid var(--ncm-border) !important; }
+  .ncm-app button.ncm-conv__sw i { margin: 0 !important; font-size: .9em; }
+  .ncm-app button.ncm-conv__sw:hover { color: var(--ncm-text-primary) !important; }
+  .ncm-app button.ncm-conv__sw.is-on { background: color-mix(in srgb, var(--ncm-secondary) 16%, transparent) !important; color: var(--ncm-text-primary) !important; }
+  .ncm-app button.ncm-conv__sw.is-on i { color: var(--ncm-secondary); }
+
+  .ncm-app .ncm-conv__scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 4px; }
+
+  .ncm-app .ncm-conv__rule { flex: none; display: flex; align-items: center; gap: 10px; margin: 8px 0 6px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__rule::before, .ncm-app .ncm-conv__rule::after { content: ''; flex: 1; height: 1px; background: var(--ncm-border); }
+  .ncm-app .ncm-conv__rule--new { color: var(--ncm-text-primary); font-family: var(--ncm-font-display); font-weight: 700; }
+  .ncm-app .ncm-conv__rule--new::before, .ncm-app .ncm-conv__rule--new::after { background: var(--ncm-secondary); }
+
+  .ncm-app button.ncm-conv__earlier { appearance: none; align-self: center; width: auto !important; flex: none; height: auto !important; min-height: 0 !important; margin: 0 0 6px !important; padding: 4px 12px !important; border: 1px dashed var(--ncm-border) !important; border-radius: 2px !important; box-shadow: none !important; background: transparent !important; color: var(--ncm-text-secondary) !important; font-family: var(--ncm-font-display) !important; font-size: calc(11.5px * var(--ncm-text-scale, 1)) !important; line-height: 1.2 !important; cursor: pointer; }
+  .ncm-app button.ncm-conv__earlier:hover { color: var(--ncm-text-primary) !important; border-color: var(--ncm-secondary) !important; }
+
+  /* One message. Theirs sit left with a face, yours sit right and tinted. */
+  .ncm-app .ncm-conv__m { flex: none; display: grid; grid-template-columns: calc(30px * var(--ncm-text-scale, 1)) minmax(0, 1fr); gap: 0 9px; max-width: 86%; align-self: flex-start; margin-top: 8px; border-radius: 2px; }
+  .ncm-app .ncm-conv__m.is-cont { margin-top: 2px; }
+  .ncm-app .ncm-conv__m.is-mine { align-self: flex-end; grid-template-columns: minmax(0, 1fr); }
+  .ncm-app .ncm-conv__m.is-mine .ncm-conv__who { justify-content: flex-end; }
+  .ncm-app .ncm-conv__av { width: calc(30px * var(--ncm-text-scale, 1)); height: calc(30px * var(--ncm-text-scale, 1)); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; background: color-mix(in srgb, var(--c, var(--ncm-secondary)) 22%, var(--ncm-bg-surface)); border: 1px solid var(--c, var(--ncm-secondary)); color: var(--ncm-text-primary); font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(12px * var(--ncm-text-scale, 1)); line-height: 1; }
+  .ncm-app .ncm-conv__who { display: flex; align-items: baseline; gap: 8px; margin: 0 0 3px; min-width: 0; }
+  .ncm-app .ncm-conv__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-conv__time { flex: none; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__bubble { min-width: 0; padding: 7px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-surface); color: var(--ncm-text-primary); font-family: var(--ncm-font-body); font-size: calc(13.5px * var(--ncm-text-scale, 1)); line-height: 1.42; user-select: text; overflow-wrap: anywhere; }
+  .ncm-app .ncm-conv__bubble * { user-select: text; }
+  .ncm-app .ncm-conv__bubble p { margin: 0 0 6px; }
+  .ncm-app .ncm-conv__bubble p:last-child { margin: 0; }
+  .ncm-app .ncm-conv__m.is-mine .ncm-conv__bubble { background: color-mix(in srgb, var(--ncm-secondary) 13%, var(--ncm-bg-surface)); border-color: color-mix(in srgb, var(--ncm-secondary) 38%, var(--ncm-border)); }
+  .ncm-app .ncm-conv__m.is-flash .ncm-conv__bubble, .ncm-app .ncm-conv__m.is-flash .ncm-conv__closed { outline: 2px solid var(--ncm-secondary); outline-offset: 1px; }
+  .ncm-app .ncm-conv__bubble.is-clamped { max-height: calc(9.2em * var(--ncm-text-scale, 1)); overflow: hidden; position: relative; }
+  .ncm-app .ncm-conv__bubble.is-clamped::after { content: ''; position: absolute; inset: auto 0 0 0; height: 2.6em; background: linear-gradient(transparent, var(--ncm-bg-surface)); }
+  .ncm-app button.ncm-conv__more { appearance: none; width: auto !important; height: auto !important; min-height: 0 !important; margin: 3px 0 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; background: none !important; color: var(--ncm-text-secondary) !important; font-family: var(--ncm-font-display) !important; font-size: calc(11.5px * var(--ncm-text-scale, 1)) !important; line-height: 1.2 !important; text-decoration: underline; cursor: pointer; }
+  .ncm-app button.ncm-conv__more:hover { color: var(--ncm-text-primary) !important; }
+
+  /* What rode along with a message, inside its bubble */
+  .ncm-app .ncm-conv__rider { display: flex; align-items: center; gap: 9px; margin-top: 7px; padding: 6px 8px; border: 1px solid var(--t, var(--ncm-border)); border-radius: 2px; background: color-mix(in srgb, var(--t, var(--ncm-border)) 9%, transparent); font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__rider > i { flex: none; color: var(--ri, var(--ncm-text-secondary)); margin: 0; }
+  .ncm-app .ncm-conv__rider > span { flex: 1; min-width: 0; }
+
+  /* Closed card: opening it does something, so it waits to be opened */
+  .ncm-app .ncm-conv__closed { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--t, var(--ncm-border)); border-left-width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--t, var(--ncm-border)) 9%, var(--ncm-bg-surface)); }
+  .ncm-app .ncm-conv__closed > i { grid-row: 1 / 3; color: var(--t, var(--ncm-text-secondary)); margin: 0; font-size: calc(15px * var(--ncm-text-scale, 1)); }
+  .ncm-app .ncm-conv__closed b { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__closed span { grid-column: 2; font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); line-height: 1.3; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__closed .ncm-conv__btn { grid-column: 3; grid-row: 1 / 3; }
+
+  .ncm-app button.ncm-conv__btn { appearance: none; width: auto !important; flex: none; height: calc(26px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 0 !important; padding: 0 10px !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; box-shadow: none !important; background: var(--ncm-bg-elevated, var(--ncm-bg-surface)) !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important; font-weight: 600; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; line-height: 1 !important; white-space: nowrap; cursor: pointer; }
+  .ncm-app button.ncm-conv__btn i { margin: 0 !important; }
+  .ncm-app button.ncm-conv__btn:hover { border-color: var(--ncm-secondary) !important; }
+
+  .ncm-app button.ncm-conv__jump { appearance: none; position: absolute; left: 50%; transform: translateX(-50%); bottom: var(--jump-at, 100px); z-index: 3; width: auto !important; height: calc(26px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 0 !important; padding: 0 12px !important; display: inline-flex !important; align-items: center; gap: 6px; border: 1px solid var(--ncm-secondary) !important; border-radius: 2px !important; box-shadow: 0 2px 10px rgba(0,0,0,.45) !important; background: var(--ncm-bg-surface) !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important; font-weight: 600; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; line-height: 1 !important; cursor: pointer; }
+  .ncm-app button.ncm-conv__jump i { margin: 0 !important; color: var(--ncm-secondary); }
+  .ncm-app button.ncm-conv__jump[hidden] { display: none !important; }
+
+  /* ── The reply box ── */
+  .ncm-app .ncm-conv__reply { flex: none; border-top: 1px solid var(--ncm-border); padding: 8px 16px 9px; background: var(--ncm-bg-surface); }
+  .ncm-app .ncm-conv__to { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__tonote { margin-left: auto; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .ncm-conv__write { display: flex; align-items: flex-end; gap: 6px; }
+  .ncm-app textarea.ncm-conv__input { flex: 1; min-width: 0; display: block; resize: none !important; overflow-y: auto; min-height: calc(54px * var(--ncm-text-scale, 1)) !important; height: calc(54px * var(--ncm-text-scale, 1)); max-height: calc(150px * var(--ncm-text-scale, 1)); margin: 0 !important; padding: 7px 9px !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; box-shadow: none !important; outline: none !important; background: var(--ncm-bg-base) !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-body) !important; font-size: calc(13.5px * var(--ncm-text-scale, 1)) !important; line-height: 1.35 !important; text-align: left !important; }
+  .ncm-app textarea.ncm-conv__input:focus { border-color: var(--ncm-secondary) !important; }
+  .ncm-app textarea.ncm-conv__input::placeholder { color: var(--ncm-text-secondary); opacity: 1; }
+  .ncm-app .ncm-conv__sendcol { display: flex; flex-direction: column; gap: 4px; }
+  .ncm-app button.ncm-conv__send { background: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; color: var(--ncm-text-inverse, #06080a) !important; font-weight: 700; }
+  .ncm-app button.ncm-conv__send:hover { filter: brightness(1.12); }
+  .ncm-app .ncm-conv__alert { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; padding: 4px 8px; border-left: 3px solid var(--ncm-warning); background: color-mix(in srgb, var(--ncm-warning) 10%, transparent); font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__alert i { color: var(--ncm-warning); margin: 0; }
+  .ncm-app .ncm-conv__noreply { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 16px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); font-family: var(--ncm-font-display); font-size: calc(12.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-conv__noreply i { margin: 0; }
+
+  /* The single-message view with the switch on it */
+  .ncm-app .ncm-conv__single { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 18px; font-family: var(--ncm-font-body); font-size: calc(14px * var(--ncm-text-scale, 1)); line-height: 1.5; color: var(--ncm-text-primary); }
+  .ncm-app .ncm-conv__single .ncm-conv__who { margin-bottom: 10px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .ncm-app .ncm-conv__m.is-fresh { animation: ncm-conv-in .22s cubic-bezier(.22,1,.36,1); }
+    @keyframes ncm-conv-in { from { opacity: 0; transform: translateY(6px); } }
+  }
+  /* Narrow window: the same container band the viewer already uses */
+  @container (max-width: 620px) {
+    .ncm-app .ncm-conv__m { max-width: 96%; }
+    .ncm-app button.ncm-conv__sw span { display: none; }
+    .ncm-app .ncm-conv__tonote { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="mk-bar" id="mk-bar"></div>
+<div class="mk-win" id="mk-win"></div>
+<div id="mk-report"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const STATE = q.get('state') || 'group';
+const THEME = q.get('t');
+const W = q.get('w');
+const STATES = [['group', 'Group chat'], ['special', 'Mail that does something'], ['oneway', 'One-way sender'], ['deadzone', 'Dead zone'], ['single', 'Switched to Message']];
+
+document.getElementById('mk-bar').innerHTML = '<b>Conversation view</b>' + STATES.map(([k, l]) => {
+  const p = new URLSearchParams(location.search); p.set('state', k);
+  return `<a href="?${p}" class="${k === STATE ? 'on' : ''}">${l}</a>`;
+}).join('');
+
+const PEOPLE = {
+  rache: { name: 'Rache', initial: 'R', c: '#ff5fa2' },
+  nix: { name: 'Nix', initial: 'N', c: '#5ad1ff' },
+  kestrel: { name: 'Kestrel', initial: 'K', c: '#b4e05a' },
+  mox: { name: 'Mox', initial: 'M', c: '#ffb347' },
+  system: { name: 'Arasaka HR', initial: 'A', c: '#9aa7b5' },
+};
+
+const P = (...lines) => lines.map((l) => `<p>${l}</p>`).join('');
+
+const GROUP = {
+  subject: 'Dockside job, Thursday',
+  people: ['rache', 'nix', 'kestrel'],
+  party: 'You, Rache, Nix, Kestrel',
+  earlier: 8,
+  lastFrom: 'kestrel',
+  unreadFrom: 'g5',
+  items: [
+    { day: 'Tue 14 Aug 2045' },
+    { id: 'g1', from: 'rache', time: '21:12', body: P('Client moved the meet up. Thursday, not Friday. Everyone still in?') },
+    { id: 'g2', mine: true, time: '21:15', body: P('In. Need the dock layout before then.') },
+    { id: 'g3', from: 'nix', time: '21:31', body: P('I can pull the camera map off the harbour authority box. Give me a night.') },
+    { id: 'g4', from: 'nix', time: '21:33', cont: true, body: P('Also, nobody use CitiNet for this. Darknet or nothing.') },
+    { day: 'Wed 15 Aug 2045' },
+    { newLine: '3 new' },
+    { id: 'g5', from: 'kestrel', time: '08:04', body: P('Van is sorted. Plates are clean until Friday noon, after that I make no promises.') },
+    { id: 'g6', from: 'nix', time: '09:47', body: P('Got the map. Two blind spots on the east side, one of them moves with the patrol.'), rider: { icon: 'fa-paperclip', text: 'harbour-cams.pdf', btn: 'Open' } },
+    { id: 'g7', from: 'kestrel', time: '10:02', body: P('Which side do you want the van?') },
+  ],
+};
+
+const SPECIAL = {
+  subject: 'That favour you owe me',
+  people: ['mox'],
+  party: 'You, Mox',
+  earlier: 0,
+  lastFrom: 'mox',
+  items: [
+    { day: 'Mon 13 Aug 2045' },
+    { id: 's1', from: 'mox', time: '17:20', long: true, body: P('Here is the short version, and I know you hate the long one. The Tyger crew have been leaning on the clinic on 5th for a month, and the ripperdoc who runs it is somebody I owe. I need the name of whoever signed off on the protection money. It will be in their books, and their books are on a machine in the back of the noodle bar they use as a front.', 'I am not asking you to burn anybody. Get in, get the ledger, get out. If it goes loud, you never heard of me and I never heard of you. I will make it worth your time, and I will clear what you owe me on top of that.', 'Bring someone who knows what they are doing with a terminal. The last person I sent lost two fingers and a very nice jacket.') },
+    { id: 's2', mine: true, time: '17:48', body: P('Half up front.') },
+    { id: 's3', from: 'mox', time: '18:02', body: P('Fine. Here.'), rider: { icon: 'fa-coins', tone: 'var(--ncm-accent)', text: '1,500 eb attached', btn: 'Claim' } },
+    { id: 's4', from: 'mox', time: '18:05', body: P('Layout from the last crew. It is what they had before the fingers.'), rider: { icon: 'fa-table', tone: 'var(--ncm-secondary)', text: 'Spreadsheet: noodle-bar-shifts.xls', btn: 'Open' } },
+    { day: 'Tue 14 Aug 2045' },
+    { id: 's5', from: 'mox', time: '09:10', closed: { icon: 'fa-bomb', tone: 'var(--ncm-danger)', title: 'Erases after reading', text: 'Stays closed so it does not burn by accident. It erases when you leave it.', btn: 'Open' } },
+    { id: 's6', from: 'mox', time: '09:12', closed: { icon: 'fa-satellite-dish', tone: 'var(--ncm-warning)', title: 'Sent over a traced network', text: 'Opening it starts a 3:00 trace on you.', btn: 'Open' } },
+    { id: 's7', from: 'mox', time: '09:15', closed: { icon: 'fa-shield-halved', tone: 'var(--ncm-purple, #a78bfa)', title: 'Encrypted', text: 'Red ICE, DV 15. You will have to breach it.', btn: 'Breach' } },
+    { id: 's8', from: 'mox', time: '09:16', closed: { icon: 'fa-lock', tone: 'var(--ncm-text-muted)', title: 'Locked', text: 'Sent on Darknet. Connect to it to read this.', btn: null } },
+    { id: 's9', from: 'mox', time: '09:40', body: P('Read those somewhere quiet.') },
+  ],
+};
+
+const ONEWAY = {
+  subject: 'Your employee record',
+  people: ['system'],
+  party: 'You, Arasaka HR',
+  earlier: 0,
+  noReply: 'This is a one-way address. It can\'t receive replies.',
+  items: [
+    { day: 'Mon 13 Aug 2045' },
+    { id: 'o1', from: 'system', time: '06:00', body: P('Your annual loyalty review is overdue. Please report to your supervisor.') },
+    { id: 'o2', from: 'system', time: '06:00', cont: true, body: P('Second notice. Failure to report will be noted on your record.') },
+  ],
+};
+
+const DATA = { group: GROUP, special: SPECIAL, oneway: ONEWAY, deadzone: GROUP, single: GROUP }[STATE];
+
+const av = (id) => { const p = PEOPLE[id]; return `<div class="ncm-conv__av" style="--c:${p.c}">${p.initial}</div>`; };
+
+function msgHtml(m, fresh) {
+  const who = m.mine ? 'You' : PEOPLE[m.from].name;
+  const head = (m.cont && !m.mine) ? '' : `<div class="ncm-conv__who"><span class="ncm-conv__name">${who}</span><span class="ncm-conv__time">${m.time}</span></div>`;
+  let inner;
+  if (m.closed) {
+    inner = `<div class="ncm-conv__closed" style="--t:${m.closed.tone}"><i class="fas ${m.closed.icon}"></i><b>${m.closed.title}</b><span>${m.closed.text}</span>${m.closed.btn ? `<button type="button" class="ncm-conv__btn" data-act="open">${m.closed.btn}</button>` : ''}</div>`;
+  } else {
+    const rider = m.rider ? `<div class="ncm-conv__rider" style="--t:${m.rider.tone || 'var(--ncm-border)'};${m.rider.tone ? `--ri:${m.rider.tone}` : ''}"><i class="fas ${m.rider.icon}"></i><span>${m.rider.text}</span><button type="button" class="ncm-conv__btn">${m.rider.btn}</button></div>` : '';
+    inner = `<div class="ncm-conv__bubble${m.long ? ' is-clamped' : ''}">${m.body}${rider}</div>${m.long ? '<button type="button" class="ncm-conv__more" data-act="more">Show all of it</button>' : ''}`;
+  }
+  const face = m.mine ? '' : (m.cont ? '<div></div>' : av(m.from));
+  return `<article class="ncm-conv__m${m.mine ? ' is-mine' : ''}${m.cont ? ' is-cont' : ''}${fresh ? ' is-fresh' : ''}" data-mid="${m.id}">${face}<div style="min-width:0">${head}${inner}</div></article>`;
+}
+
+function itemsHtml(d) {
+  return d.items.map((it) => {
+    if (it.day) return `<div class="ncm-conv__rule">${it.day}</div>`;
+    if (it.newLine) return `<div class="ncm-conv__rule ncm-conv__rule--new" data-new-line>${it.newLine}</div>`;
+    return msgHtml(it);
+  }).join('');
+}
+
+function replyHtml(d) {
+  if (d.noReply) return `<div class="ncm-conv__noreply"><i class="fas fa-ban"></i> ${d.noReply}</div>`;
+  const group = d.people.length > 1;
+  const last = PEOPLE[d.lastFrom]?.name;
+  const dead = STATE === 'deadzone';
+  return `<div class="ncm-conv__reply">
+    ${dead ? '<div class="ncm-conv__alert"><i class="fas fa-triangle-exclamation"></i> No signal here. Your reply waits and sends when you are back on a network.</div>' : ''}
+    <div class="ncm-conv__to">
+      <span>Reply to</span>
+      ${group ? `<span class="ncm-conv__switch"><button type="button" class="ncm-conv__sw is-on" data-scope="all"><i class="fas fa-users"></i><span>Everyone (${d.people.length})</span></button><button type="button" class="ncm-conv__sw" data-scope="one"><i class="fas fa-user"></i><span>Only ${last}</span></button></span>` : `<b style="color:var(--ncm-text-primary)">${last}</b>`}
+      <span class="ncm-conv__tonote">${dead ? 'no signal' : 'via Darknet'} · Ctrl+Enter sends</span>
+    </div>
+    <div class="ncm-conv__write">
+      <textarea class="ncm-conv__input" placeholder="Write a reply…"></textarea>
+      <div class="ncm-conv__sendcol">
+        <button type="button" class="ncm-conv__btn" data-act="full" data-tooltip="Open in the full composer: attachments, encryption, eddies"><i class="fas fa-up-right-and-down-left-from-center"></i></button>
+        <button type="button" class="ncm-conv__btn ncm-conv__send" data-act="send"><i class="fas ${dead ? 'fa-clock' : 'fa-paper-plane'}"></i> ${dead ? 'Queue' : 'Send'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+const switchHtml = (mode) => `<div class="ncm-conv__switch" role="group" aria-label="How to read this thread">
+  <button type="button" class="ncm-conv__sw ${mode === 'conv' ? 'is-on' : ''}" data-mode="conv" data-tooltip="Show the whole thread. Remembered for next time."><i class="fas fa-comments"></i><span>Conversation</span></button>
+  <button type="button" class="ncm-conv__sw ${mode === 'msg' ? 'is-on' : ''}" data-mode="msg" data-tooltip="Show one message at a time. Remembered for next time."><i class="fas fa-envelope-open"></i><span>Message</span></button>
+</div>`;
+
+const headHtml = (d, mode) => `<div class="ncm-conv__head">
+  <div class="ncm-conv__subject">${d.subject}</div>
+  ${switchHtml(mode)}
+  <div class="ncm-conv__party"><div class="ncm-conv__faces">${d.people.map(av).join('')}</div><span>${d.party}${mode === 'conv' ? ` · ${d.items.filter((i) => i.id).length + (d.earlier || 0)} messages` : ''}</span></div>
+</div>`;
+
+function paneHtml(mode) {
+  const d = DATA;
+  if (mode === 'msg') {
+    const m = d.items.filter((i) => i.id && i.body).slice(-1)[0];
+    return `<div class="ncm-conv">${headHtml(d, 'msg')}
+      <div class="ncm-conv__single"><div class="ncm-conv__who"><span class="ncm-conv__name">${PEOPLE[m.from]?.name || 'You'}</span><span class="ncm-conv__time">${m.time}</span></div>${m.body}</div>
+      ${replyHtml(d)}</div>`;
+  }
+  return `<div class="ncm-conv">${headHtml(d, 'conv')}
+    <div class="ncm-conv__scroll ncm-scrollbar" data-scroll>
+      ${d.earlier ? `<button type="button" class="ncm-conv__earlier" data-act="earlier"><i class="fas fa-chevron-up"></i> Show ${d.earlier} earlier</button>` : ''}
+      ${itemsHtml(d)}
+    </div>
+    <button type="button" class="ncm-conv__jump" data-act="bottom" hidden><i class="fas fa-arrow-down"></i> Newest</button>
+    ${replyHtml(d)}</div>`;
+}
+
+const LIST = [
+  { thread: true, from: 'kestrel', subject: 'Re: Dockside job, Thursday', prev: 'Which side do you want the van?', time: '10:02', unread: true, mid: 'g7', selected: true },
+  { thread: true, from: 'nix', subject: 'Re: Dockside job, Thursday', prev: 'Got the map. Two blind spots on the east…', time: '09:47', unread: true, mid: 'g6' },
+  { thread: true, from: 'kestrel', subject: 'Re: Dockside job, Thursday', prev: 'Van is sorted. Plates are clean until…', time: '08:04', unread: true, mid: 'g5' },
+  { from: 'mox', subject: 'That favour you owe me', prev: 'Read those somewhere quiet.', time: 'Tue' },
+  { thread: true, from: 'nix', subject: 'Re: Dockside job, Thursday', prev: 'Also, nobody use CitiNet for this.', time: 'Tue', mid: 'g4' },
+  { thread: true, from: 'rache', subject: 'Dockside job, Thursday', prev: 'Client moved the meet up. Thursday, not…', time: 'Tue', mid: 'g1' },
+  { from: 'system', subject: 'Your employee record', prev: 'Second notice. Failure to report will…', time: 'Mon' },
+];
+
+const rowHtml = (r) => {
+  const p = PEOPLE[r.from];
+  const inThread = r.thread && DATA === GROUP;
+  const sel = DATA === GROUP ? r.selected : (DATA.people[0] === r.from);
+  return `<div class="ncm-viewer__msg${r.unread && inThread ? ' ncm-viewer__msg--unread' : ''}${sel ? ' ncm-viewer__msg--selected' : ''}${inThread ? ' ncm-conv-inthread' : ''}" data-priority="normal" data-jump="${inThread ? r.mid : ''}">
+    ${r.unread && inThread ? '<div class="ncm-viewer__msg-unread-dot"></div>' : ''}
+    <div class="ncm-viewer__msg-avatar" style="color:${p.c};border-color:${p.c}">${p.initial}</div>
+    <div class="ncm-viewer__msg-content">
+      <div class="ncm-viewer__msg-top"><span class="ncm-viewer__msg-sender">${p.name}</span><span class="ncm-viewer__msg-time">${r.time}</span></div>
+      <div class="ncm-viewer__msg-subject">${r.subject}</div>
+      <div class="ncm-viewer__msg-preview">${r.prev}</div>
+    </div>
+  </div>`;
+};
+
+const win = document.getElementById('mk-win');
+if (W) { win.style.width = `${W}px`; }
+if (q.get('h')) win.style.height = `${q.get('h')}px`;
+win.innerHTML = `<div class="ncm-app ncm-message-viewer-window"${THEME ? ` data-ncm-admin-theme="${THEME}"` : ''}${q.get('scale') ? ` style="--ncm-text-scale:${q.get('scale')}"` : ''}>
+  <div class="ncm-viewer" data-pane="detail">
+    <header class="ncm-viewer__header">
+      <div class="ncm-viewer__identity"><div class="ncm-viewer__avatar ncm-viewer__avatar--initials">V</div><div class="ncm-viewer__identity-info"><span class="ncm-viewer__identity-name">V</span><span class="ncm-viewer__identity-email">v@nightcity.net</span></div></div>
+      <div class="ncm-viewer__header-divider"></div>
+      <div class="ncm-viewer__header-spacer"></div>
+      <div class="ncm-viewer__header-actions"><button class="ncm-btn ncm-btn--secondary ncm-btn--sm"><i class="fas fa-address-book"></i> <span>Contacts</span></button><button class="ncm-btn ncm-btn--primary ncm-btn--sm"><i class="fas fa-pen-to-square"></i> <span>Compose</span></button></div>
+    </header>
+    <nav class="ncm-viewer__primary-nav">
+      <div class="ncm-viewer__primary-tab ncm-viewer__primary-tab--active"><i class="fas fa-inbox"></i> Messages <span class="ncm-viewer__primary-badge">7</span></div>
+      <div class="ncm-viewer__primary-tab"><i class="fas fa-phone"></i> Calls</div>
+      <div class="ncm-viewer__primary-tab"><i class="fas fa-microchip"></i> Shards</div>
+    </nav>
+    <div class="ncm-viewer__split">
+      <div class="ncm-viewer__list-panel" style="width:290px"><div class="ncm-viewer__msg-list ncm-scrollbar">${LIST.map(rowHtml).join('')}</div></div>
+      <div class="ncm-viewer__divider"><div class="ncm-viewer__divider-grip"><span></span><span></span><span></span></div></div>
+      <div class="ncm-viewer__detail-panel" id="pane"></div>
+    </div>
+  </div>
+</div>`;
+
+let mode = STATE === 'single' ? 'msg' : 'conv';
+const pane = document.getElementById('pane');
+
+function settle() {
+  const scroll = pane.querySelector('[data-scroll]');
+  if (!scroll) return;
+  const line = scroll.querySelector('[data-new-line]');
+  scroll.scrollTop = line ? line.offsetTop - scroll.offsetTop - 8 : scroll.scrollHeight;
+  const jump = pane.querySelector('.ncm-conv__jump');
+  const reply = pane.querySelector('.ncm-conv__reply, .ncm-conv__noreply');
+  const place = () => {
+    jump.style.setProperty('--jump-at', `${(reply?.offsetHeight || 0) + 10}px`);
+    jump.hidden = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 40;
+  };
+  scroll.addEventListener('scroll', place);
+  place();
+}
+function paint() { pane.innerHTML = paneHtml(mode); settle(); }
+paint();
+
+win.addEventListener('click', (ev) => {
+  const t = ev.target.closest('[data-mode],[data-scope],[data-act],[data-jump]');
+  if (!t) return;
+  if (t.dataset.mode) { mode = t.dataset.mode; paint(); return; }
+  if (t.dataset.scope) {
+    t.parentElement.querySelectorAll('[data-scope]').forEach((b) => b.classList.toggle('is-on', b === t));
+    return;
+  }
+  if (t.dataset.jump) {
+    if (mode !== 'conv') { mode = 'conv'; paint(); }
+    const m = pane.querySelector(`[data-mid="${t.dataset.jump}"]`);
+    if (!m) return;
+    m.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    m.classList.add('is-flash'); setTimeout(() => m.classList.remove('is-flash'), 1200);
+    return;
+  }
+  const scroll = pane.querySelector('[data-scroll]');
+  switch (t.dataset.act) {
+    case 'more': t.previousElementSibling.classList.remove('is-clamped'); t.remove(); break;
+    case 'bottom': scroll.scrollTo({ top: scroll.scrollHeight, behavior: 'smooth' }); break;
+    case 'earlier': t.textContent = 'Older messages load here'; t.disabled = true; break;
+    case 'open': {
+      const card = t.closest('.ncm-conv__closed');
+      card.outerHTML = `<div class="ncm-conv__bubble"><p>(The message opens here. In the real thing this is where its self-destruct, trace or breach starts.)</p></div>`;
+      break;
+    }
+    case 'send': {
+      const box = pane.querySelector('.ncm-conv__input');
+      const text = box.value.trim();
+      if (!text || !scroll) return;
+      const holder = document.createElement('div');
+      holder.innerHTML = msgHtml({ id: `new${Date.now()}`, mine: true, time: 'now', body: '<p></p>' }, true);
+      holder.querySelector('p').textContent = text;
+      scroll.appendChild(holder.firstElementChild);
+      box.value = '';
+      scroll.scrollTo({ top: scroll.scrollHeight, behavior: 'smooth' });
+      break;
+    }
+  }
+});
+win.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' && ev.ctrlKey && ev.target.matches('.ncm-conv__input')) pane.querySelector('[data-act="send"]')?.click();
+});
+win.addEventListener('input', (ev) => {
+  if (!ev.target.matches('.ncm-conv__input')) return;
+  ev.target.style.height = 'auto';
+  ev.target.style.height = `${ev.target.scrollHeight + 2}px`;
+});
+
+// ── ?contrast=1: every text node against what is really behind it, read through a canvas so color-mix() counts ──
+if (q.get('contrast')) {
+  const run = () => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 1;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    const rgba = (c) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+    const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+    const over = (t, u) => [0, 1, 2].map((i) => t[i] * t[3] + u[i] * (1 - t[3])).concat(1);
+    const bgOf = (el) => { const st = []; for (let e = el; e; e = e.parentElement) { const c = rgba(getComputedStyle(e).backgroundColor); if (c[3] > 0) st.push(c); if (c[3] === 1) break; } let b = [21, 24, 26, 1]; for (const c of st.reverse()) b = over(c, b); return b; };
+    const bad = []; let n = 0;
+    const walk = document.createTreeWalker(pane, NodeFilter.SHOW_TEXT);
+    while (walk.nextNode()) {
+      const t = walk.currentNode; if (!t.textContent.trim()) continue;
+      const el = t.parentElement; if (!el.offsetParent) continue;
+      n++;
+      const bg = bgOf(el); const fg = over(rgba(getComputedStyle(el).color), bg);
+      const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x); const r = (a + .05) / (b + .05);
+      if (r < 4.5) bad.push(`${r.toFixed(2)}  ${el.className || el.tagName}: ${t.textContent.trim().slice(0, 40)}`);
+    }
+    document.title = `${n} nodes, ${bad.length} under 4.5`;
+    document.getElementById('mk-report').textContent = `${document.title}\n${bad.join('\n')}`;
+  };
+  document.fonts.ready.then(() => setTimeout(run, 300));
+}
+</script>
+</body>
+</html>
