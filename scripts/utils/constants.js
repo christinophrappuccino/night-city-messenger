@@ -6,6 +6,9 @@
  */
 
 export const MODULE_ID = 'night-city-messenger';
+
+/** Actor flag: the alias (master contact id) a player's new mail goes out from. Absent = the main address. */
+export const SEND_AS_FLAG = 'sendAsContactId';
 /**
  * The module's ORIGINAL id (v1.0 shipped as `cyberpunkred-messenger`). Exists
  * solely so NamespaceMigration can find and move a world's old flags/settings.

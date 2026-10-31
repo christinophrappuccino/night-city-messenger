@@ -37,7 +37,9 @@ import {
   getNetworkAccentColor,
   getThreatBadgeData,
 } from '../../utils/designHelpers.js';
-import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
+import { EVENTS, SOCKET_OPS, SEND_AS_FLAG } from '../../utils/constants.js';
+import { pickSenderChoice } from '../../utils/identities.js';
+import { openGuide } from '../../utils/guides.js';
 import { getThreadMessages } from '../../utils/threading.js';
 import { cleanHtml } from '../../utils/richText.js';
 import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, canEncode as canEncodeShard, chatCardTime, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
@@ -589,7 +591,8 @@ export class MessageViewerApp extends BaseApplication {
       viewingAsName = viewingActor.name;
       viewingAsPortrait = viewingActor.img || null;
       viewingAsInitial = getInitials(viewingActor.name || 'Unknown');
-      viewingAsEmail = this.contactRepository?.getActorEmail?.(this.actorId) || '';
+      viewingAsEmail = this.contactRepository?.getActorEmail?.(this.actorId)
+        || game.nightcity?.masterContactService?.getByActorId?.(this.actorId)?.email || '';
       viewingAsHandle = viewingActor.getFlag?.('night-city-messenger', 'emailHandle') || viewingAsName;
     } else {
       // Virtual inbox — resolve from master contact
@@ -603,6 +606,9 @@ export class MessageViewerApp extends BaseApplication {
 
     // Can this user change their identity?
     const canChangeIdentity = game.user.isGM || (game.nightcity?.emailService?.canPlayerBurn?.() ?? false);
+
+    // The addresses this player can send from (the GM has Send-as in the composer instead).
+    const sendAsChoices = this._sendAsChoices();
 
     // ── Sort options for dropdown template ──
     const sortOptions = Object.entries(SORT_LABELS).map(([id, label]) => ({
@@ -758,6 +764,7 @@ export class MessageViewerApp extends BaseApplication {
       viewingAsHandle,
       viewingAsRole,
       canChangeIdentity,
+      sendAsChoices,
       isGM: game.user.isGM,
 
       // v3.2 Navigation
@@ -1677,6 +1684,12 @@ export class MessageViewerApp extends BaseApplication {
       case 're-login':
         game.nightcity?.reLogin?.();
         break;
+      case 'set-send-identity':
+        await this._setSendIdentity(target.dataset.contactId || '');
+        break;
+      case 'open-player-guide':
+        openGuide('player');
+        break;
 
       // ── v3.2: Primary Tab Navigation ──
       case 'set-primary-tab': {
@@ -1765,8 +1778,8 @@ export class MessageViewerApp extends BaseApplication {
         if (!emailService) break;
 
         // If actor has an email, warn about burn first
-        if (emailService.hasEmail(actor)) {
-          const currentEmail = emailService.getEmail(actor);
+        const currentEmail = emailService.getEmail(actor);
+        if (currentEmail) {
           const confirmed = await new Promise(resolve => {
             playerDialog({
               title: 'Edit NET Identity',
@@ -1777,6 +1790,7 @@ export class MessageViewerApp extends BaseApplication {
                   <i class="fas fa-triangle-exclamation ncm-burn-dialog__warning-icon"></i>
                   <div class="ncm-burn-dialog__warning-text">Your current identity <strong>${currentEmail}</strong> will be permanently burned. This cannot be undone.</div>
                 </div>
+                ${this._sendAsChoices().length ? '<div class="ncm-burn-dialog__sub">Only want to send from one of your other addresses? Cancel, and pick it under Sending as.</div>' : ''}
                 <div class="ncm-burn-dialog__current">
                   <div class="ncm-burn-dialog__current-label">Current Identity (will be burned)</div>
                   <div class="ncm-burn-dialog__current-email">${currentEmail}</div>
@@ -2035,6 +2049,37 @@ export class MessageViewerApp extends BaseApplication {
     const viewer = this.element?.querySelector('.ncm-viewer');
     if (!viewer) return;
     viewer.classList.remove('ncm-viewer--drawer-open');
+  }
+
+  /** The drawer's Sending as rows: only for a player with more than one address. */
+  _sendAsChoices() {
+    if (game.user.isGM) return [];
+    const actor = game.actors.get(this.actorId);
+    const choices = game.nightcity?.masterContactService?.senderChoicesFor?.(actor) || [];
+    if (choices.length < 2) return [];
+    const picked = pickSenderChoice(choices, actor.getFlag(MODULE_ID, SEND_AS_FLAG));
+    return choices.map(c => ({
+      ...c,
+      initials: getInitials(c.name),
+      pickId: c.isMain ? '' : c.id,
+      isActive: c === picked,
+    }));
+  }
+
+  /** Make an address this character's default for new mail. Blank = the main address. */
+  async _setSendIdentity(contactId) {
+    const actor = game.actors.get(this.actorId);
+    if (!actor?.isOwner) return;
+    if (contactId) await actor.setFlag(MODULE_ID, SEND_AS_FLAG, contactId);
+    else await actor.unsetFlag(MODULE_ID, SEND_AS_FLAG);
+    // DOM only: a re-render would close the drawer.
+    let email = '';
+    for (const row of this.element?.querySelectorAll('.ncm-viewer__drawer-sendas [data-action="set-send-identity"]') ?? []) {
+      const on = (row.dataset.contactId || '') === contactId;
+      row.classList.toggle('ncm-viewer__drawer-char--active', on);
+      if (on) email = row.dataset.email || '';
+    }
+    if (email) ui.notifications.info(`NCM | New messages now go out from ${email}`);
   }
 
   // ═══════════════════════════════════════════════════════════

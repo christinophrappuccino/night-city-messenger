@@ -17,7 +17,7 @@
   <header class="ncm-composer__header">
 
     <div class="ncm-composer__identity {{#if canSwitchFrom}}ncm-composer__identity--clickable{{/if}} {{#if anonActive}}ncm-composer__identity--anon{{/if}}"
-         {{#if canSwitchFrom}}data-action="toggleSendAs" data-tooltip="Send as someone else"{{/if}}
+         {{#if canSwitchFrom}}data-action="toggleSendAs" data-tooltip="{{#if isGM}}Send as someone else{{else}}Choose which of your addresses this goes out from{{/if}}"{{/if}}
          style="--tc:{{fromHue}}">
       <div class="ncm-composer__avatar {{#if anonActive}}ncm-composer__avatar--anon{{/if}}">
         {{#if anonActive}}
@@ -34,7 +34,7 @@
             {{anonAliasDisplay}}<span class="ncm-composer__tag ncm-composer__tag--secret">ANON</span>
           {{else}}
             {{fromName}}
-            {{#if terminalSend}}<span class="ncm-composer__tag ncm-composer__tag--attn" data-tooltip="Sent from {{terminalSend.machine}} as this account">VIA {{terminalSend.machine}}</span>{{else if isGMSendAs}}<span class="ncm-composer__tag ncm-composer__tag--attn">GM</span>{{/if}}
+            {{#if terminalSend}}<span class="ncm-composer__tag ncm-composer__tag--attn" data-tooltip="Sent from {{terminalSend.machine}} as this account">VIA {{terminalSend.machine}}</span>{{else if isGMSendAs}}<span class="ncm-composer__tag ncm-composer__tag--attn">GM</span>{{else if fromIsAlias}}<span class="ncm-composer__tag ncm-composer__tag--secret" data-tooltip="Sending from an alias">ALIAS</span>{{/if}}
           {{/if}}
         </span>
         <span class="ncm-composer__id-email">{{#if anonActive}}{{anonMaskedEmail}}{{else}}{{fromEmail}}{{/if}}</span>
@@ -133,16 +133,18 @@
     </div>
   </header>
 
-  {{!-- ═══ GM SEND-AS DROPDOWN (toggled + filled by JS) ═══ --}}
-  {{#if isGM}}
+  {{!-- ═══ SEND-AS DROPDOWN (toggled + filled by JS): the GM's directory, or a player's own addresses ═══ --}}
+  {{#if canSwitchFrom}}
   <div class="ncm-composer__sendas-dropdown ncm-hidden" data-id="sendas-dropdown">
-    <div class="ncm-composer__sendas-header"><i class="fas fa-masks-theater"></i> Send as</div>
+    <div class="ncm-composer__sendas-header"><i class="fas fa-masks-theater"></i> {{#if isGM}}Send as{{else}}Send from{{/if}}</div>
+    {{#if isGM}}
     <div class="ncm-composer__sendas-search">
       <i class="fas fa-magnifying-glass"></i>
       <input type="text" placeholder="Search the directory…" data-id="sendas-search" autocomplete="off" />
     </div>
+    {{/if}}
     <div class="ncm-composer__sendas-list" data-id="sendas-list"></div>
-    <div class="ncm-composer__sendas-foot">The directory, recents first · the GM writes as anyone</div>
+    <div class="ncm-composer__sendas-foot">{{#if isGM}}The directory, recents first · the GM writes as anyone{{else}}For this message only. Your default is under Sending as, behind your portrait in the inbox.{{/if}}</div>
   </div>
   {{/if}}
 

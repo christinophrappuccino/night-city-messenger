@@ -9,7 +9,7 @@
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
-import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf, entryStandsFor } from '../utils/identities.js';
+import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf, entryStandsFor, senderChoices } from '../utils/identities.js';
 
 export class MasterContactService {
 
@@ -80,6 +80,16 @@ export class MasterContactService {
 
   /** Every contact linked to this character, main first. */
   identitiesFor(actorId) { return identitiesOf(this._contacts, actorId); }
+
+  /** The addresses this character's player can send from, main first (utils/identities.js). */
+  senderChoicesFor(actor) {
+    if (!actor) return [];
+    return senderChoices(this._contacts, {
+      actorId: actor.id, actorName: actor.name, portrait: actor.img,
+      registered: actor.getFlag?.(MODULE_ID, 'email') || '',
+      burned: (actor.getFlag?.(MODULE_ID, 'emailHistory') || []).map((h) => h.email),
+    });
+  }
 
   /** Every identity in this contact's group (a character's, or a contact-only NPC's), main first. */
   identitiesForContact(contactOrId) {

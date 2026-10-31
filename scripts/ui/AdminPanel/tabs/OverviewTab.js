@@ -21,6 +21,7 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
+import { openGuide } from '../../../utils/guides.js';
 import { log, getPlayerCharacters, isSelectableCharacter, resolveDisplayName, formatCyberDate } from '../../../utils/helpers.js';
 import { adminConfirm } from '../../../utils/adminTheme.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
@@ -602,9 +603,6 @@ export class OverviewTab extends BaseTab {
   /** The dock's Quick verbs beyond the plain launchers (2026-10-28): a player's inbox, push a contact, a blank shard, the clock. */
   static QUICK_OPS = Object.freeze(['qInbox', 'qPush', 'qShard', 'qClock', 'qGuide']);
 
-  /** The shipped Getting Started guide (docs/, in the module zip since 2026-10-29). */
-  static GUIDE_PATH = 'modules/night-city-messenger/docs/NCM-Getting-Started.pdf';
-
   onAct(op, event, target) {
     const d = target?.closest?.('[data-user-id]')?.dataset || {};
     const userId = target?.dataset?.userId || d.userId || '';
@@ -626,11 +624,7 @@ export class OverviewTab extends BaseTab {
       // ── The line's future half ──
       // ── Quick ──
       case 'qInbox': return this._quickInbox();
-      case 'qGuide': {
-        const route = (typeof foundry !== 'undefined' && foundry.utils?.getRoute) ? foundry.utils.getRoute(OverviewTab.GUIDE_PATH) : `/${OverviewTab.GUIDE_PATH}`;
-        window.open(route, '_blank', 'noopener');
-        return;
-      }
+      case 'qGuide': return openGuide('gm');
       case 'qPush': return this._quickPush();
       case 'qShard': return this.app.tabs?.shards?._createBlankShard?.();
       case 'qClock': return this._quickClock(Number(target?.dataset?.add) || 0);

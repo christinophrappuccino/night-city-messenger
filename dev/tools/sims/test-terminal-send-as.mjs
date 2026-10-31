@@ -130,7 +130,7 @@ const cmp = read('scripts/ui/MessageComposer/MessageComposerApp.js');
 ok(/if \(this\.terminalSend\) \{\s*\/\/ The account's own address book/.test(cmp), 'composer To search = the address book');
 ok(/their money isn't yours/.test(cmp), 'writing as someone else explains why there are no eddies');
 ok(/messageData\.terminalSend = \{ itemUuid/.test(cmp) && /_logTerminalSend\(\)/.test(cmp), 'composer sends the terminal marker + logs');
-ok(/canSwitchFrom: isGM && !this\.terminalSend/.test(cmp) && /canSwitchFrom/.test(read('templates/message-composer/message-composer.hbs')), 'sender locked (no Send-as switcher)');
+ok(/canSwitchFrom: \(isGM \|\| sendChoices\.length > 1\) && !this\.terminalSend/.test(cmp) && /canSwitchFrom/.test(read('templates/message-composer/message-composer.hbs')), 'sender locked (no Send-as switcher)');
 const cfgHbs = read('templates/terminal/terminal-config.hbs');
 ok(/name="acctMailCompose"/.test(cfgHbs) && /v\('acctMailCompose'\) \? \{ accountMail:/.test(read('scripts/ui/Terminal/TerminalConfigApp.js')), 'GM switch saves (only when on screen)');
 // Your OWN account (you own its character) is your own mail, not an impersonation.

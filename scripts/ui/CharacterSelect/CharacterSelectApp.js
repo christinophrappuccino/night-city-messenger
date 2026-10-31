@@ -359,7 +359,7 @@ export class CharacterSelectApp extends BaseApplication {
 
     // Email setup intercept
     const emailService = game.nightcity?.emailService;
-    if (actor && emailService && !emailService.hasEmail(actor)) {
+    if (!isGM() && actor && emailService?.isSetupRequired() && !emailService.hasEmail(actor)) {
       try {
         const email = await game.nightcity.openEmailSetup?.(actor);
         if (!email) {

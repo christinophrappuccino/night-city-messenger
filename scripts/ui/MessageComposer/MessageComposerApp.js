@@ -15,7 +15,8 @@
  *  WP-4.5.7 — Validation + send flow + animation
  */
 
-import { MODULE_ID, EVENTS } from '../../utils/constants.js';
+import { MODULE_ID, EVENTS, SEND_AS_FLAG } from '../../utils/constants.js';
+import { pickSenderChoice } from '../../utils/identities.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
 import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
@@ -309,6 +310,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     else if (this.mode === 'forward' && this.originalMessage) this._initForward();
     else this._initCompose(options);
 
+    // A reply keeps the address the mail reached; a draft brings back its own.
+    if (this.mode !== 'reply' && !this._pendingDraftId) this._applyDefaultSender();
+
     // Priority applies to all modes
     if (options.priority) this.priority = options.priority;
 
@@ -521,11 +525,14 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const fromEmail = this._fromEmail();
     // Explicit master-contact pick → its name; else directory-by-actor → actor label.
     const fromName = this.fromContact?.name
+      || this._mainSenderName()
       || (fromActor ? resolveDisplayName({ actorId: this.fromActorId, email: fromEmail }, fromActor.name) : 'Unknown');
     const fromAvatarColor = getAvatarColor(fromName);
 
     const isGM = game.user.isGM;
     const isGMSendAs = isGM && (this.fromContact || this.fromActorId !== this._getDefaultFromActor());
+    const sendChoices = this._senderChoices();
+    const fromIsAlias = sendChoices.some(c => !c.isMain && c.id === this.fromContact?.id);
 
     // Network pill state
     const netPillState = isDeadZone ? 'dead'
@@ -629,8 +636,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       isForward: this.mode === 'forward',
       isGM,
       isGMSendAs,
-      // The From switcher is GM Send-as — never while sending as a terminal account.
-      canSwitchFrom: isGM && !this.terminalSend,
+      // The From switcher: GM Send-as, or a player's own addresses. Never while
+      // sending as a terminal account.
+      canSwitchFrom: (isGM || sendChoices.length > 1) && !this.terminalSend,
+      fromIsAlias,
       terminalSend: this.terminalSend ? { ...this.terminalSend, impersonating: !this.terminalSend.own } : null,
 
       // Header
@@ -1909,7 +1918,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       this.sendNetworkId = draft.sendNetworkId || null;
       this.sendTimestamp = draft.sendTimestamp || '';
     }
-    if (draft.fromContactId && !this.fromContact) {
+    if (!game.user.isGM && !this.terminalSend) {
+      // A player's draft goes out from the address it was written from, if it still exists.
+      const row = this._senderChoices().find(c => !c.isMain && c.id === draft.fromContactId);
+      this.fromContact = row ? { id: row.id, name: row.name, email: row.email, portrait: row.portrait } : null;
+    } else if (draft.fromContactId && !this.fromContact) {
       const mc = game.nightcity?.masterContactService?.getContact?.(draft.fromContactId);
       if (mc) this.fromContact = { id: mc.id, name: mc.name, email: mc.email, portrait: mc.portrait };
     }
@@ -1991,9 +2004,48 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   // ─── GM Send-As (WP-4.5.6) ───────────────────────────────
 
+  /** The addresses a player can send from (empty for a GM, or a terminal account). */
+  _senderChoices() {
+    if (game.user.isGM || this.terminalSend || !this.fromActorId) return [];
+    return game.nightcity?.masterContactService?.senderChoicesFor?.(game.actors.get(this.fromActorId)) || [];
+  }
+
+  /** Start on the address the player picked in the Identity drawer. */
+  _applyDefaultSender() {
+    if (this.fromContact) return;
+    const choices = this._senderChoices();
+    const pick = pickSenderChoice(choices, game.actors.get(this.fromActorId)?.getFlag?.(MODULE_ID, SEND_AS_FLAG));
+    if (pick && !pick.isMain) this.fromContact = { id: pick.id, name: pick.name, email: pick.email, portrait: pick.portrait };
+  }
+
+  /** A player on their main address, once they have aliases: that row's name, never an alias's. */
+  _mainSenderName() {
+    if (this.fromContact) return null;
+    const choices = this._senderChoices();
+    return choices.length > 1 ? choices[0].name : null;
+  }
+
   _renderSendAsList(filter = '') {
     const list = this.element?.querySelector('[data-id="sendas-list"]');
     if (!list) return;
+
+    if (!game.user.isGM) {
+      const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+      list.innerHTML = this._senderChoices().map(c => {
+        const on = this.fromContact?.id ? c.id === this.fromContact.id : c.isMain;
+        return `
+        <div class="ncm-sendas-item ${on ? 'ncm-sendas-item--active' : ''}" style="--tc:${hueVar(c.name)}"
+             data-ncm-sendas-pick="${this.fromActorId}" data-ncm-contact-id="${c.isMain ? '' : esc(c.id)}">
+          <div class="ncm-sendas-item__avatar">${esc(getInitials(c.name))}</div>
+          <div class="ncm-sendas-item__info">
+            <div class="ncm-sendas-item__name">${esc(c.name)}</div>
+            <div class="ncm-sendas-item__email">${esc(c.email)}</div>
+          </div>
+          <span class="ncm-sendas-item__type ${c.isMain ? '' : 'is-alias'}">${c.isMain ? 'main' : 'alias'}</span>
+        </div>`;
+      }).join('');
+      return;
+    }
 
     // Pull from GM Master Contact Directory (the authoritative NPC list)
     const masterService = game.nightcity?.masterContactService;
@@ -2135,7 +2187,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         fromActorId: this.fromActorId || null,
         fromContactId: this.fromContact?.id || null,
         from: this.fromContact?.email || undefined,
-        fromName: this.fromContact?.name || undefined,
+        fromName: this.fromContact?.name || this._mainSenderName() || undefined,
         subject: this.subject,
         body: this.body,
         priority: this.priority,
@@ -2499,7 +2551,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   // ── GM Send-As (WP-4.5.6) ──
 
   static _onToggleSendAs(event, target) {
-    if (!game.user.isGM) return;
+    if (!game.user.isGM && this._senderChoices().length < 2) return;
     this.sendAsDropdownOpen = !this.sendAsDropdownOpen;
 
     const dropdown = this.element?.querySelector('[data-id="sendas-dropdown"]');

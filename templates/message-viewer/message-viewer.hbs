@@ -106,6 +106,12 @@
           <i class="fas fa-shield-halved"></i>
         </button>
       {{/if}}
+      {{#unless isGM}}
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm" data-action="open-player-guide"
+                data-tooltip="Player guide (PDF)" data-tooltip-direction="DOWN" aria-label="Player guide">
+          <i class="fas fa-circle-question"></i>
+        </button>
+      {{/unless}}
       <button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm" data-action="open-settings"
               data-tooltip="Settings &amp; Theme" data-tooltip-direction="DOWN">
         <i class="fas fa-gear"></i>
