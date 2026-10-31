@@ -1,0 +1,87 @@
+# Builds a test install of the dev branch on every push to dev (or by hand from the Actions tab).
+#
+# It overwrites ONE prerelease, tagged dev-build, so the manifest URL never changes:
+#   https://github.com/<repo>/releases/download/dev-build/module.json
+# Each build gets a four-part version (2.0.6.42) so Foundry always sees it as newer, and "(dev)" in its title.
+#
+# This cannot reach regular users: their manifest is releases/latest, which skips prereleases, and the tag
+# does not start with v, so release.yml never runs for it. A real release is still only a v* tag on main.
+#
+# Never install this over the git checkout you develop in: Foundry would replace the folder when it updates.
+
+name: Dev build
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# A newer push replaces a build still running.
+concurrency:
+  group: dev-build
+  cancel-in-progress: true
+
+jobs:
+  dev-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp the dev version, title and URLs into module.json
+        run: |
+          BASE="$(jq -r .version module.json)"
+          VERSION="${BASE}.${GITHUB_RUN_NUMBER}"
+          BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/dev-build"
+          jq --arg version "$VERSION" \
+             --arg manifest "${BASE_URL}/module.json" \
+             --arg download "${BASE_URL}/module.zip" \
+             '.version = $version | .title = (.title + " (dev)") | .manifest = $manifest | .download = $download' \
+             module.json > module.json.tmp
+          mv module.json.tmp module.json
+          jq -r '"version=\(.version)  title=\(.title)  manifest=\(.manifest)  download=\(.download)"' module.json
+          echo "DEV_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build the macro packs (LevelDB, with Foundry's own LevelDB library)
+        run: |
+          npm install --no-save --no-package-lock classic-level@1.4.1
+          node dev/tools/gen-macros.cjs --require-ldb
+          rm -f packs/ncm-macros-player/LOCK packs/ncm-macros-gm/LOCK
+
+      # Same list as release.yml. dev/tools/build-zip.cjs refuses to run if any of the three differ.
+      - name: Build module.zip
+        run: |
+          zip -r module.zip \
+            module.json \
+            LICENSE \
+            README.md \
+            docs \
+            scripts \
+            styles \
+            templates \
+            assets \
+            languages \
+            packs/ncm-macros-player \
+            packs/ncm-macros-gm
+
+      - name: Move the dev-build tag to this commit
+        run: |
+          git tag -f dev-build "$GITHUB_SHA"
+          git push -f origin refs/tags/dev-build
+
+      - name: Publish over the dev-build prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev-build
+          name: Dev build
+          prerelease: true
+          make_latest: false
+          body: |
+            Test build of the dev branch, for testing only. Not for campaign worlds.
+            Version ${{ env.DEV_VERSION }}, commit ${{ github.sha }}.
+          files: |
+            module.json
+            module.zip

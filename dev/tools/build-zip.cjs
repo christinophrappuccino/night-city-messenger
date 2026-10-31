@@ -50,16 +50,17 @@ for (const p of ['packs/ncm-macros-player', 'packs/ncm-macros-gm']) {
 
 function die(msg) { console.error(`build-zip: ${msg}`); process.exit(1); }
 
-// ── 1. Drift guard: the workflow's zip list must equal ours ──
-const wf = path.join(ROOT, '.github/workflows/release.yml');
-if (fs.existsSync(wf)) {
+// ── 1. Drift guard: each workflow's zip list must equal ours ──
+for (const wfName of ['release.yml', 'dev-build.yml']) {
+  const wf = path.join(ROOT, '.github/workflows', wfName);
+  if (!fs.existsSync(wf)) continue;
   // Normalised to LF: a CRLF checkout (core.autocrlf) must not read as a missing block.
   const text = fs.readFileSync(wf, 'utf8').replace(/\r\n/g, '\n');
   const m = text.match(/zip -r module\.zip \\\n([\s\S]*?)\n\n/);
-  if (!m) die('could not find the `zip -r module.zip` block in release.yml');
+  if (!m) die(`could not find the \`zip -r module.zip\` block in ${wfName}`);
   const wfList = m[1].split('\n').map(l => l.trim().replace(/\s*\\$/, '')).filter(Boolean);
   const a = [...wfList].sort().join('\n'), b = [...SHIP].sort().join('\n');
-  if (a !== b) die(`allowlist drift between dev/tools/build-zip.cjs and release.yml:\n  workflow: ${wfList.join(', ')}\n  script:   ${SHIP.join(', ')}`);
+  if (a !== b) die(`allowlist drift between dev/tools/build-zip.cjs and ${wfName}:\n  workflow: ${wfList.join(', ')}\n  script:   ${SHIP.join(', ')}`);
 }
 
 // ── 2. Every listed path must exist ──
