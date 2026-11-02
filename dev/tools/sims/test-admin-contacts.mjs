@@ -607,7 +607,7 @@ else {
   ok(/data-op="sel" data-id="c-queen"/.test(all) && /class="ncm-ct2-r alias/.test(all), 'rows render with their id and the alias class');
   ok(/data-op="whoToggle" data-id="c-rogue" data-actor="v"/.test(all), 'who-knows chips carry the contact id from the parent frame');
   ok(/data-op="trustPlayer" data-id="c-rogue" data-actor="v"/.test(all), 'trust segments carry contact + character (two frames up)');
-  ok(/data-op="mxCell" data-cid="c-rogue" data-actor="v" data-mx-grp="Fixers"/.test(all), 'matrix cells carry contact, character and group');
+  ok(all.includes('data-op="mxCell" data-part="mail" data-cid="c-rogue" data-actor="v" data-mx-grp="Fixers"'), 'matrix cells carry the half, contact, character and group');
   ok(/name="encryptionSkill"/.test(all) && /name="rel:v:trust"/.test(all) && /name="iceSource"/.test(all), 'the edit form renders its named fields');
   ok(/data-ct2-scroll="dirlist"/.test(all) && /data-ct2-q="dir"/.test(all) && /data-field="contactSearch"/.test(all), 'scroll memo, search box, "/" shortcut hook');
   // Every data-op the template uses is a case in onAct.

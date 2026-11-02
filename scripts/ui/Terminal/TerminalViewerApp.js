@@ -24,6 +24,7 @@
  */
 
 import { BaseApplication } from '../BaseApplication.js';
+import { isNodeVerb } from '../content/ProgramModel.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS, EVENTS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, isHiddenCharacter, canOperate, guardSecretInputs, terminalReachRule } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
@@ -34,6 +35,7 @@ import { SHARED_SCOPE, listingFor, formatSize, gateLabel, parentPath } from '../
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType, programEffectInfo } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
 import { runSecurityConsole } from '../content/SecurityConsole.js';
+import { rolledNote } from '../content/NetResolve.js';
 import { resolveEncoderConfig, isEligibleBlank, blankRuleRefusal } from '../content/EncoderModel.js';
 import { adminLabelFor, resolveAdminAccess, adminReadOnlyBlocks } from '../../utils/terminalAdmin.js';
 import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
@@ -82,6 +84,9 @@ function action(method) {
 }
 
 export class TerminalViewerApp extends BaseApplication {
+
+  /** The table can watch this window (services/WatchService.js). */
+  static WATCHABLE = true;
 
   static DEFAULT_OPTIONS = {
     id: 'ncm-terminal-viewer',
@@ -1661,10 +1666,11 @@ export class TerminalViewerApp extends BaseApplication {
     try {
       const who = account.displayName || account.username || 'account';
       const result = await this.skillService.performCheck(this.actor, skill, {
-        dc, flavor: 'Terminal Bypass', context: `Terminal login: ${this._terminalName()} · ${who}`,
+        dc, flavor: 'Terminal Bypass', context: `Terminal login: ${this._terminalName()} · ${who}`, ask: { title: `Forcing the ${who} login` },
         // The login's own sound set plays the outcome; the reveal only spins.
         reveal: { host: this.element, title: `Forcing the ${who} login`, ctx: `Terminal login · ${this._terminalName()}`, ok: 'Access granted', no: 'Access denied', verdictSound: false },
       });
+      if (result?.cancelled) return;
       if (result?.success) return this._loginSuccess(account.id);
     } catch (err) { log.error(`Terminal skill bypass failed: ${err.message}`); }
     this._failAuth(account);
@@ -1764,9 +1770,10 @@ export class TerminalViewerApp extends BaseApplication {
     const dc = cfg.network?.bypassDV ?? 18;
     try {
       const result = await this.skillService.performCheck(this.actor, skill, {
-        dc, flavor: 'Network Spoof', context: `Network spoof: ${this._terminalName()}`,
+        dc, flavor: 'Network Spoof', context: `Network spoof: ${this._terminalName()}`, ask: { title: 'Spoofing the network check' },
         reveal: { host: this.element, title: 'Spoofing the network check', ctx: `Network spoof · ${this._terminalName()}`, ok: 'Spoof accepted', no: 'Spoof rejected' },
       });
+      if (result?.cancelled) return;
       if (result?.success) { this._networkSpoofed = true; this._enterState('login'); return; }
       ui.notifications.warn('Network spoof failed.');
     } catch (err) { log.error(`Network spoof failed: ${err.message}`); }
@@ -1861,9 +1868,10 @@ export class TerminalViewerApp extends BaseApplication {
     const dc = bypassDCFor(network.security, skill);
     try {
       const result = await this.skillService.performCheck(this.actor, skill, {
-        dc, flavor: 'Network Join', context: `Network join: ${network.name || networkId}`,
+        dc, flavor: 'Network Join', context: `Network join: ${network.name || networkId}`, ask: { title: `Joining ${network.name || 'the network'}` },
         reveal: { host: this.element, title: `Joining ${network.name || 'the network'}`, ctx: `Uplink · ${this._terminalName()}`, ok: 'Uplink established', no: 'Join refused', verdictSound: false },
       });
+      if (result?.cancelled) return;
       if (result?.success) return this._netJoinSuccess(networkId);
     } catch (err) { log.error(`Uplink skill bypass failed: ${err.message}`); }
     this._failNetAuth(network);
@@ -2051,32 +2059,39 @@ export class TerminalViewerApp extends BaseApplication {
         // A malware/payload entry with an `uploadEffect` verb is an EXECUTE program
         // (installs a keylog/backdoor/Black-ICE resident); everything else — incl.
         // a malware file with no verb — uploads as a PLANT of the file itself.
-        const uploadVerb = (e.contentType === 'malware' || e.contentType === 'payload') ? (cd.uploadEffect || '') : '';
+        // A custom routine saved before 2.1 lost its verb; its payloadType still says what it was.
+        const uploadVerb = (e.contentType === 'malware' || e.contentType === 'payload')
+          ? (cd.uploadEffect || (e.contentType === 'malware' && cd.payloadType === 'program' ? 'adjudicate' : '')) : '';
+        // A network program runs on a node (the node console's Insert a shard), never here.
+        if (isNodeVerb(uploadVerb)) continue;
         // RUN verbs are instant utilities that operate on the whole box (scanner reveals
         // hidden accounts, icebreaker unseals, skeleton-key clears locks, jammer drops the
         // uplink). Uploading one RUNS it against this terminal now — it doesn't plant.
         const RUN_VERBS = ['scanner', 'skeletonKey', 'jammer'];
+        // Every payload is a tool you run on the box you reached: pushing one runs it now.
         const runVerb = RUN_VERBS.includes(uploadVerb) ? uploadVerb
-          : (e.contentType === 'payload' && RUN_VERBS.includes(cd.effect?.type)) ? cd.effect.type : '';
+          : (e.contentType === 'payload' && cd.effect?.type) ? cd.effect.type : '';
         const execVerb = runVerb ? '' : uploadVerb;
         const info = CONTENT_TYPE_INFO[e.contentType];
         const base = {
           name: e.subject || cd.name || 'file',
           sourceLabel: `${T('short', 'lower')}: "${shard.name}"`,
-          uploadDV: Number(cd.uploadDV) || 15,
+          uploadDV: Number(cd.uploadDV) || 9,
           uploadSkill: cd.uploadSkill || 'Interface',
           stealthDV: cd.uploadStealthDV || undefined,
           traceOnFail: !!cd.uploadTraceOnFail,
         };
         if (runVerb) {
-          out.push({ ...base, effectType: runVerb, family: 'run',
-            description: programEffectInfo(runVerb).blurb || 'runs against this box' });
+          out.push({ ...base, effectType: runVerb, family: 'run', params: cd.effect?.params || {}, macroId: cd.effect?.macroId || '',
+            programDescription: cd.description || '',
+            description: cd.description || programEffectInfo(runVerb).blurb || 'runs against this box' });
         } else if (execVerb) {
-          const params = {};
+          const params = { ...(cd.uploadParams || {}) };
           if (execVerb === 'deployICE' && cd.iceActorId) params.iceActorId = cd.iceActorId;
+          if (execVerb === 'adjudicate') { params.description = cd.description || ''; params.macroId = cd.effect?.macroId || ''; }
           out.push({ ...base, effectType: execVerb, family: 'execute', params,
             trigger: cd.uploadTrigger || undefined,   // honor the authored trigger (kind + detail)
-            description: programEffectInfo(execVerb).blurb || 'installs a program' });
+            description: cd.description || programEffectInfo(execVerb).blurb || 'installs a program' });
         } else {
           // The planted copy must NOT carry the upload-config keys forward.
           const plantCd = { ...cd };
@@ -2675,7 +2690,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (res.cancelled) return;
     if (gated && !res.ok) {
       game.nightcity?.traceService?.fireTrace({ actor, action: 'exfil', source: meta.label, hostItem: this.item, dv: p.dv, margin: (res.total ?? p.dv) - p.dv, severity: 'hostile' });
-      ui.notifications.warn(`NCM | ${meta.label} traced — the attempt was logged (rolled ${res.total ?? '?'} vs DV ${p.dv}).`);
+      ui.notifications.warn(`NCM | ${meta.label} traced — the attempt was logged${rolledNote(res, p.dv)}.`);
       return;
     }
 

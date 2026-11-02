@@ -69,6 +69,28 @@ const SOUNDS = {
   }),
   // A second call while you are on one: two soft short beeps.
   'waiting': render(0.42, (t) => 0.2 * (env(t, 0, 0.07) + env(t, 0.16, 0.07)) * sin(1040, t)),
+  // Trauma Team opens: two rising alarm tones over a low pulse. No siren, it should feel medical and expensive.
+  'em-sting-trauma': render(1.25, (t) => {
+    const rise = env(t, 0, 0.5, 0.01, 0.1) * Math.sin(2 * Math.PI * (520 * t + 340 * t * t)) + env(t, 0.55, 0.6, 0.01, 0.25) * Math.sin(2 * Math.PI * (700 * (t - 0.55) + 300 * (t - 0.55) * (t - 0.55)));
+    return 0.2 * rise + 0.3 * env(t, 0, 1.2, 0.02, 0.5) * sin(62, t);
+  }),
+  // One beep of a heart monitor. The HUD plays it with the heart.
+  'em-monitor': render(0.11, (t) => 0.3 * env(t, 0, 0.1, 0.003, 0.03) * sin(1180, t)),
+  // Dispatch confirms: three steps up.
+  'em-sting-backup': render(1.1, (t) => 0.26 * env(t, 0, 0.012, 0.001, 0.008) + 0.1 * env(t, 0.02, 0.2, 0.006, 0.1) * noise() + 0.34 * env(t, 0.1, 0.24, 0.006, 0.05) * sin(587, t) + 0.34 * env(t, 0.34, 0.24, 0.006, 0.05) * sin(784, t) + 0.34 * env(t, 0.58, 0.5, 0.006, 0.34) * (0.6 * sin(1175, t) + 0.4 * sin(587, t))),
+  'em-alert': render(0.62, (t) => 0.22 * (env(t, 0, 0.17) * sin(880, t) + env(t, 0.21, 0.17) * sin(660, t) + env(t, 0.42, 0.18, 0.006, 0.08) * sin(880, t))),
+  'em-dispatch': render(0.56, (t) => 0.24 * (env(t, 0, 0.13) * sin(740, t) + env(t, 0.17, 0.13) * sin(988, t) + env(t, 0.34, 0.2, 0.006, 0.08) * sin(1318, t))),
+  // Keying the radio: a click, then a breath of static.
+  'em-radio-in': render(0.42, (t) => 0.45 * env(t, 0, 0.012, 0.001, 0.008) + 0.2 * env(t, 0.03, 0.36, 0.01, 0.14) * noise() + 0.24 * env(t, 0.05, 0.16, 0.004, 0.04) * sin(1450, t)),
+  // Releasing it: the squelch tail.
+  'em-radio-out': render(0.3, (t) => 0.32 * env(t, 0, 0.1, 0.002, 0.08) * noise() + 0.26 * env(t, 0.08, 0.14, 0.004, 0.06) * sin(980, t)),
+  // Trauma Team lands: rotors winding down over a low hit.
+  'em-arrive-trauma': render(1.9, (t) => {
+    const chop = 0.5 + 0.5 * Math.sign(sin(13 - 4 * t, t));
+    return 0.3 * env(t, 0, 1.8, 0.2, 0.8) * chop * noise() * 0.6 + 0.3 * env(t, 0, 0.6, 0.01, 0.5) * sin(70, t);
+  }),
+  // Backup rolls in: one soft siren yelp.
+  'em-arrive-backup': render(1.2, (t) => 0.2 * env(t, 0, 1.15, 0.05, 0.3) * Math.sin(2 * Math.PI * (620 * t + 260 * Math.sin(2 * Math.PI * 1.6 * t) / (2 * Math.PI * 1.6)))),
   // The voicemail tone.
   'voicemail-beep': render(0.42, (t) => 0.28 * env(t, 0, 0.38, 0.006, 0.05) * sin(1000, t)),
 };

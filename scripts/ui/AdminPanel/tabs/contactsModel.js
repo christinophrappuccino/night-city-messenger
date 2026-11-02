@@ -606,7 +606,7 @@ export function groupPlayers(rows = [], mode = 'none') {
 }
 
 /** Text the Players search box matches: character, player, address, scene. */
-export function playerHaystack(r) { return [r?.name, r?.player, r?.email, r?.sceneName].map(lc).join(' '); }
+export function playerHaystack(r) { return [r?.name, r?.player, r?.email, r?.sceneName, r?.phones].map(lc).join(' '); }
 
 /** The content signature a pushed copy is compared against: name, colour, members by address/id/name. */
 export function groupSig(g) {

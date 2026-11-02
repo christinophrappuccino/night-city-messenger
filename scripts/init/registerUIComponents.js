@@ -19,6 +19,8 @@ export function registerUIComponents(initializer) {
     Hooks.on('getSceneControlButtons', (controls) => {
       if (!game.nightcity) return;
 
+      let callsOn = true;
+      try { callsOn = game.settings.get(MODULE_ID, 'callsEnabled') !== false; } catch { /* registered later: show it */ }
       const tools = [
         {
           name: 'ncm-inbox',
@@ -27,6 +29,13 @@ export function registerUIComponents(initializer) {
           button: true,
           onClick: () => game.nightcity.openNCM?.(),
         },
+        ...(callsOn ? [{
+          name: 'ncm-phone',
+          title: game.i18n.localize('NCM.SceneControls.Phone'),
+          icon: 'fas fa-phone',
+          button: true,
+          onClick: () => game.nightcity.openPhone?.(),
+        }] : []),
         {
           name: 'ncm-compose',
           title: game.i18n.localize('NCM.SceneControls.ComposeMessage'),

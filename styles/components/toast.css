@@ -52,6 +52,23 @@
   animation: ncm-toast-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* clip-path cuts the border off along with the corner, so the cut gets its own line. It inherits the border's
+   colour, including a variant's and its pulse. Its thickness falls inside the cut, so the clip can't shave it. */
+.ncm-toast::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: calc(100% - 9px);
+  width: 14.15px;
+  height: 0;
+  border-top: 1px solid;
+  border-top-color: inherit;
+  transform-origin: 0 0;
+  transform: rotate(45deg);
+  pointer-events: none;
+  z-index: 3;
+}
+
 /* Scanline texture overlay */
 .ncm-toast::after {
   content: '';

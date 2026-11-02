@@ -140,7 +140,8 @@ check('the band matches UploadFlow — ONE ladder for the module', () => {
 });
 
 check('rungs fall where the design says', () => {
-  assert.equal(M.encodeOutcome(18, 18), 'clean', 'meeting the DV is clean');
+  assert.equal(M.encodeOutcome(18, 18), 'sloppy', 'a tie does not beat the DV');
+  assert.equal(M.encodeOutcome(19, 18), 'clean', 'beating it is clean');
   assert.equal(M.encodeOutcome(25, 18), 'clean');
   assert.equal(M.encodeOutcome(17, 18), 'sloppy', 'missing by 1 still lands');
   assert.equal(M.encodeOutcome(14, 18), 'sloppy', 'missing by the band still lands');
@@ -156,9 +157,9 @@ check('odds are a real d10 distribution and always total 100', () => {
 });
 
 check('a specific spread is exactly right', () => {
-  // base 12 vs DV 18: needs 6+ to be clean (5 faces), 2-5 sloppy (4), 1 rejected (1)
+  // base 12 vs DV 18: needs 7+ to be clean (4 faces), 2-6 sloppy (5), 1 rejected (1)
   const o = M.ladderOdds(12, 18);
-  assert.deepEqual([o.clean, o.sloppy, o.rejected], [50, 40, 10]);
+  assert.deepEqual([o.clean, o.sloppy, o.rejected], [40, 50, 10]);
 });
 
 check('an impossible DV is honestly 100% rejected', () => {
@@ -228,9 +229,9 @@ check('an alt skill limited to some verbs says so', () => {
 
 check('the DV adds up: ability + craft penalty + trojan cover', () => {
   const plain = M.programDV(cfg, { ability: 'keylog', craft: 'Interface' });
-  assert.equal(plain, 15);
+  assert.equal(plain, 9);
   assert.equal(M.programDV(cfg, { ability: 'keylog', craft: 'Electronics/Security Tech' }), 18);
-  assert.equal(M.programDV(cfg, { ability: 'keylog', craft: 'Interface', disguised: true }), 17);
+  assert.equal(M.programDV(cfg, { ability: 'keylog', craft: 'Interface', disguised: true }), 11);
   assert.equal(M.programDV(cfg, { ability: 'keylog', craft: 'Cryptography', disguised: true }), 22);
 });
 

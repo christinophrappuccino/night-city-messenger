@@ -11,7 +11,7 @@
 
 import { MODULE_ID } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
-import { defaultProgram, programGroup, abilityInfo } from './ProgramModel.js';
+import { defaultProgram, programGroup, abilityInfo, normalizeProgram } from './ProgramModel.js';
 
 const SETTING = 'programLibrary';
 
@@ -23,7 +23,7 @@ export function getPrograms() {
 
 /** Build the display-meta wrapper around a program definition. */
 function record(name, program, id) {
-  const p = program || defaultProgram();
+  const p = normalizeProgram(program || defaultProgram());
   return {
     id: id || `prog-${foundry.utils.randomID(8)}`,
     name: String(name || p.progName || 'Untitled').trim() || 'Untitled',

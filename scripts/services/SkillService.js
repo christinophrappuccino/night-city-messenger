@@ -11,6 +11,8 @@
 import { MODULE_ID, SKILL_MAP } from '../utils/constants.js';
 import { log, chatCardTime } from '../utils/helpers.js';
 import { playRollReveal } from '../ui/content/RollReveal.js';
+import { askRoll } from '../ui/content/RollPanel.js';
+import { beatsDV } from '../utils/rolls.js';
 
 export class SkillService {
 
@@ -38,7 +40,8 @@ export class SkillService {
    * @returns {Promise<SkillCheckResult>}
    *
    * @typedef {object} SkillCheckResult
-   * @property {boolean} success - Whether the total meets or exceeds the DC
+   * @property {boolean} success - Whether the total BEAT the DC (a tie fails: utils/rolls.js)
+   * @property {boolean} [cancelled] - The player backed out of the roll panel: nothing was rolled (only with options.ask)
    * @property {number} total - Final total (stat + skill + roll + luck)
    * @property {number} rollValue - Raw d10 result (before crit/fumble processing)
    * @property {number} processedRoll - Roll after crit explosion or fumble subtraction
@@ -57,7 +60,7 @@ export class SkillService {
     if (!skillName) throw new Error('SkillService.performCheck: skillName is required');
 
     const dc = options.dc ?? 0;
-    const luckSpend = options.luckSpend ?? 0;
+    let luckSpend = options.luckSpend ?? 0;
     const showChat = options.showChat !== false;
     // TIMING (2026-10-27): the chat card must not land before the player has
     // SEEN the result. `reveal` plays the shared Roll Reveal in that window and
@@ -68,7 +71,20 @@ export class SkillService {
     const flavor = options.flavor ?? '';
     const context = options.context ?? '';
     // Flat situational bonus/penalty (e.g. a premium blank's "+1 craft roll" perk).
-    const modifier = Number(options.modifier) || 0;
+    let modifier = Number(options.modifier) || 0;
+
+    // The roll panel (RollPanel.js): formula, chance, Luck, a modifier — before the die moves.
+    if (options.ask) {
+      const a = options.ask === true ? {} : options.ask;
+      const choice = await askRoll({
+        actor, skill: skillName, dv: dc, modifier,
+        title: a.title || context || `${skillName} check`, sub: a.sub || '', host: a.host || options.reveal?.host || null,
+        hideDV: !!(a.hideDV ?? options.reveal?.hideDV), goLabel: a.goLabel,
+      });
+      if (!choice) return { cancelled: true, success: false, total: null, margin: null, dc, postChat: () => Promise.resolve() };
+      luckSpend += choice.luck;
+      modifier += choice.modifier;
+    }
 
     // ─── Read Skill from Actor ───
     const { skillLevel, statName, statValue } = this._readSkillData(actor, skillName);
@@ -86,7 +102,7 @@ export class SkillService {
 
     // ─── Calculate Total ───
     const total = statValue + skillLevel + rollResult.processedRoll + actualLuckSpend + modifier;
-    const success = total >= dc;
+    const success = beatsDV(total, dc);
     const margin = total - dc;
 
     // ─── Spend Luck (if any) ───
@@ -195,7 +211,7 @@ export class SkillService {
 
   /**
    * Is a Role Ability (Interface and kin) rolled as rank + d10, with no stat?
-   * World setting `roleAbilityRoll` — 'rank' (rulebook) or 'stat' (default).
+   * World setting `roleAbilityRoll` — 'rank' (rulebook, the default) or 'stat'.
    * @returns {boolean}
    */
   static roleAbilityRankOnly() {
@@ -258,8 +274,8 @@ export class SkillService {
       }
 
       // World setting `roleAbilityRoll`: 'rank' = the rulebook's Role Ability
-      // check (Interface = rank + d10, no stat). The default 'stat' keeps the
-      // module's long-standing TECH + rank + d10.
+      // check (Interface = rank + d10, no stat), the default. 'stat' keeps the
+      // older TECH + rank + d10.
       if (isRoleAbility && SkillService.roleAbilityRankOnly()) {
         statName = 'none';
         statValue = 0;

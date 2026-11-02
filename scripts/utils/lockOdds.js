@@ -7,9 +7,11 @@
  * stat + rank performCheck adds before the d10, honouring roleAbilityRoll —
  * and hands this module plain numbers.
  *
- * The chance is a plain d10 needing (DV − base): no crits, no fumbles, no
- * Luck. That is deliberate and the panel's note says so.
+ * The chance is the real die's (utils/rolls.js): beat the DV, a 10 explodes, a 1
+ * subtracts. No Luck.
  */
+
+import { d10Odds } from './rolls.js';
 
 /** Tone thresholds (percent). */
 export const ODDS_LIKELY = 65;
@@ -18,17 +20,13 @@ export const ODDS_MAYBE = 35;
 export const ODDS_CARD_LIMIT = 4;
 
 /**
- * Chance (0–100) that base + d10 ≥ dv. A d10 shows 1..10, so the roll needs
- * at least (dv − base); needing 1 or less always succeeds, needing 11+ never.
+ * Chance (0–100) that base + the die beats dv.
  * @param {number} base stat + rank
  * @param {number} dv
- * @returns {{ pct: number, need: number }}
+ * @returns {{ pct: number, need: number }} need = the die must show at least this
  */
 export function d10Chance(base, dv) {
-  const need = Math.round(Number(dv) || 0) - Math.round(Number(base) || 0);
-  if (need <= 1) return { pct: 100, need: Math.max(1, need) };
-  if (need > 10) return { pct: 0, need };
-  return { pct: (11 - need) * 10, need };
+  return d10Odds(base, dv);
 }
 
 /** likely / maybe / long shot / can't — as CSS tone keys. */
@@ -98,7 +96,7 @@ export function lockVerdict(lock, rows) {
   if (!rows.length) return { tone: 'info', title: 'No characters yet.', text: 'Assign or give players a character and their odds show here.' };
   const sorted = [...rows].sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
   const top = sorted[0];
-  if (!top || !top.pct) return { tone: 'attn', title: 'Nobody can win the roll.', text: 'Leave the password where they\'ll find it, or bring a DV down.' };
+  if (!top || (top.pct || 0) <= 1) return { tone: 'attn', title: 'Nobody can win the roll.', text: 'Leave the password where they\'ll find it, or bring a DV down.' };
   const able = sorted.filter((r) => (r.pct || 0) >= ODDS_MAYBE);
   if (!able.length) return { tone: 'attn', title: 'Hard.', text: `The best chance is ${top.name} at ${top.pct}% — expect a lockout or two.` };
   if (sorted.every((r) => (r.pct || 0) >= ODDS_LIKELY) && top.pct >= 90) return { tone: 'info', title: 'Easy for everyone', text: '— more a door than a lock.' };
@@ -115,7 +113,7 @@ export function lockNote(lock) {
   else if (lock.failureMode === 'permanent') rule = `${tries} lock them out for good. `;
   else if (lock.failureMode === 'nothing') rule = 'A miss costs nothing — they can keep trying. ';
   else rule = `${tries} lock that character out${m ? ` for ${m} min` : ''}. `;
-  return `${rule}Their best skill on the list is used. Odds are a plain d10 — no crits or fumbles.`;
+  return `${rule}Their best skill on the list is used. Odds count exploding 10s and fumbled 1s, not Luck.`;
 }
 
 /**

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone numbers: Round 2 mock</title>
+<!--
+  Round 2 of the phone revision: the GM's tools. NOT YET approved. Nothing here is wired to the module.
+  Frames: ?f=numbers|bulk|board|requests|retired|learn|rules|places|share|player   &t=clean-dark|clean-light|high-contrast   &w=panel|pop   &sel=<person>   &sh=share|who|form
+  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/phone-numbers-round2-mock.html
+  Real cascade (core, CPR, module, real tab-phone.css + admin tokens). New rules: phone-numbers-round2.css. Table + number rules: phone-numbers-data.js.
+-->
+<script>
+  (() => {
+    const off = location.protocol === 'file:';
+    const fa = off ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css' : '/_vendor/fa/css/all.min.css';
+    const core = off ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css' : '/_vendor/foundry2.css';
+    const cpr = off ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+    for (const href of [core, cpr, fa, '../../styles/night-city-messenger.css', 'phone-numbers-round2.css']) document.write(`<link rel="stylesheet" href="${href}">`);
+  })();
+</script>
+<style>
+  /* the player frame wears the player tokens under the same names */
+  .mk-win.mk-player { --ncm-bg-canvas: var(--ncm-bg-deep); --ncm-bg-pane: var(--ncm-bg-base); --ncm-bg-pane-alt: var(--ncm-bg-base); --ncm-bg-card: var(--ncm-bg-surface); --ncm-bg-card-head: var(--ncm-bg-elevated); --ncm-bg-hover: var(--ncm-bg-elevated); --ncm-text-heading: var(--ncm-text-primary); --ncm-text-label: var(--ncm-text-secondary); --ncm-text-hint: var(--ncm-text-secondary); --ncm-text-addr: var(--ncm-secondary); --ncm-act: var(--ncm-secondary); --ncm-attn: var(--ncm-accent); --ncm-good: var(--ncm-success, #4be38a); --ncm-bad: var(--ncm-danger); --ncm-secret: var(--ncm-purple, #b87aff); --ncm-ink: 63%; --ncm-hue-1: var(--ncm-accent); --ncm-hue-2: var(--ncm-secondary); --ncm-hue-3: var(--ncm-secondary); --ncm-hue-4: var(--ncm-secondary); --ncm-hue-5: var(--ncm-purple, #b87aff); --ncm-hue-6: var(--ncm-secondary); --ncm-hue-7: var(--ncm-secondary); --ncm-hue-8: var(--ncm-accent); }
+  #mk-toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 99; padding: 7px 12px; background: #000; color: #fff; border: 1px solid #19f3f7; border-radius: 2px; font: 13px sans-serif; }
+</style>
+</head>
+<body>
+<div class="mk-bar">
+  <b>Round 2</b>
+  <button data-f="numbers">People</button><button data-f="bulk">Give numbers</button><button data-f="board">Districts</button><button data-f="requests">Requests</button><button data-f="retired">Retired</button><button data-f="learn">How it works</button><button data-f="rules">Rules</button><button data-f="places">Places</button><button data-f="special">Special numbers</button><button data-f="share">Sharing</button><button data-f="player">Player side</button>
+  <span class="sp"></span>
+  <button data-w="panel">Panel</button><button data-w="pop">Pop out</button>
+  <button data-t="clean-dark">Dark</button><button data-t="clean-light">Light</button><button data-t="high-contrast">Contrast</button>
+</div>
+<p class="mk-note" id="note"></p>
+<div class="mk-win ncm-app ncm-admin-panel" id="win" data-ncm-admin-theme="clean-dark"><div class="ncm-admin-panel" id="stage"></div></div>
+<div id="mk-tip" hidden></div>
+<div id="mk-toast" hidden></div>
+<script src="phone-numbers-data.js"></script>
+<script src="phone-numbers-round2.js"></script>
+</body>
+</html>

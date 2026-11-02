@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calls picker probe</title>
+<!--
+  The REAL Calls tab picker: the real partial, the real buildCallsContext over the real number rules, the real stylesheet.
+  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/calls-picker-probe.html?level=rc|area|code&s=130&view=main&lines=2
+-->
+<link rel="stylesheet" href="/_vendor/foundry2.css">
+<link rel="stylesheet" href="/_vendor/cpr.css">
+<link rel="stylesheet" href="/_vendor/fa/css/all.min.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  html, body { height: auto !important; overflow: auto !important; }
+  body { margin: 0; padding: 18px; background: #07080c !important; display: block !important; }
+  #win { position: relative !important; inset: auto !important; transform: none !important; width: 760px; height: 700px; max-height: none !important; overflow: auto; background: var(--ncm-bg-deep, #0a0a12); }
+</style>
+</head>
+<body>
+<div class="ncm-app" id="win"><div class="ncm-viewer" id="stage"></div></div>
+<script src="/_vendor/handlebars.js"></script>
+<script type="module">
+  addEventListener('unhandledrejection', (e) => { document.title = 'ERR ' + (e.reason?.stack || e.reason); });
+  if (new URLSearchParams(location.search).get('p')) {
+    const { THEME_PRESETS, COLOR_VAR_MAP } = await import('../../scripts/utils/constants.js');
+    const t = THEME_PRESETS[new URLSearchParams(location.search).get('p')];
+    if (t) for (const [k, v] of Object.entries(COLOR_VAR_MAP)) if (t[k]) document.documentElement.style.setProperty(v, t[k]);
+  }
+  const q = new URLSearchParams(location.search);
+  document.documentElement.style.setProperty('--ncm-text-scale', (Number(q.get('s')) || 100) / 100);
+  globalThis.game = { user: { id: 'u1', isGM: false }, users: { activeGM: { id: 'gm' } }, actors: { get: (id) => ({ id, name: 'Veronica A.', hasPlayerOwner: true, getFlag: () => [] }) }, settings: { get: () => { throw new Error('none'); } }, nightcity: { masterContactService: { getContact: () => null }, timeService: { getCurrentTime: () => '2045-03-03T18:00:00.000Z' } } };
+  globalThis.foundry = { utils: { mergeObject: (a, b) => ({ ...a, ...b }), randomID: () => 'x' } };
+  globalThis.Hooks = { on() {}, once() {}, call() {}, callAll() {} };
+  globalThis.ui = { notifications: { warn() {}, info() {} } };
+  Handlebars.registerHelper({ eq: (a, b) => a === b, gt: (a, b) => a > b, lt: (a, b) => a < b, or: (...x) => x.slice(0, -1).some(Boolean), and: (...x) => x.slice(0, -1).every(Boolean), not: (a) => !a, add: (a, b) => a + b });
+  const PN = await import('../../scripts/utils/phoneNumbering.js');
+  const T = await import('../../scripts/ui/MessageViewer/callsTab.js');
+  const ctx = PN.defaultNumberContext();
+  const svc = { enabled: true, homeCode: ctx, numberContext: ctx, rules: PN.sanitizeRules({}), linesFor: () => (q.get('view') === 'main' ? [{ normal: PN.normaliseNumber('WAT-4471', ctx), number: '+72 NC WAT-4471', name: 'Veronica A.', kind: 'main', main: true, label: '' }, ...(q.get('lines') === '2' ? [{ normal: PN.normaliseNumber('+10 DC CAP-8812', ctx), number: '+10 DC CAP-8812', name: 'Veronica A.', kind: 'extra', label: 'Old D.C. line', main: false }] : [])] : []), lineSettings: () => ({ greeting: { kind: 'default', text: '', voice: '' }, voicemail: { on: true, dnd: false } }), extraLeft: () => 1, pendingFor: () => (q.get('pending') ? { to: '+72 NC KAB-7777' } : null), getLog: async () => [], getVoicemails: async () => [], _net: () => ({ name: 'CitiNet', type: 'PUBLIC', strength: 78 }), _noSignal: () => false, recordingOn: true, numberOfContact: () => '', pickRows: () => PN.pickableRows(ctx.rows, {}), startRow() { return this.pickRows().find((r) => r.Code === 'WAT'); }, suggestNumbers: ({ row, count }) => PN.freeLines(row, { count, seed: 4471 }).map((line) => ({ line, number: PN.numberAt(row, line) })) };
+  game.nightcity.callService = svc;
+  const tpl = Handlebars.compile(await (await fetch('../../templates/message-viewer/partials/calls-tab.hbs')).text());
+  const v = { actorId: 'v', render() {} };
+  await T.buildCallsContext(v);
+  const st = T.callsState(v);
+  if (q.get('level')) st.level = q.get('level');
+  if (q.get('filter')) st.filter = q.get('filter');
+  if (q.get('audit')) { svc.getVoicemails = async () => [{ vmId: 'v1', from: { number: '+72 NC WAT-2210', name: '' }, text: 'Bring the shard and come alone.', gameTime: '2045-03-03T12:00:00Z', heard: false, kind: 'typed' }, { vmId: 'v2', from: { number: '+72 NC WAT-3313' }, text: 'Older one', gameTime: '2045-01-03T12:00:00Z', heard: true, kind: 'tts' }]; }
+  if (q.get('log')) svc.getLog = async () => [{ callId: 'c', direction: 'in', outcome: 'answered', seconds: 75, gameTime: '2045-03-03T12:00:00Z', other: { number: '+72 NC WAT-3313' }, net: { name: 'CitiNet' }, lines: [{ side: 'callee', text: 'Hello' }] }, { callId: 'd', direction: 'out', outcome: 'dropped', dropReason: 'Lost signal', gameTime: '2045-01-02T09:00:00Z', other: { number: '+72 NC WAT-2210' }, anonCall: false }, { callId: 'a', direction: 'in', outcome: 'missed', gameTime: '2045-03-02T12:00:00Z', other: { number: '+72 NC WAT-2210', name: '' } }, { callId: 'b', direction: 'out', outcome: 'answered', seconds: 90, gameTime: '2045-03-02T11:00:00Z', other: { number: '+72 NC WAT-3313', name: 'Rogue', known: true } }];
+  if (q.get('book')) { const list = [{ name: 'Rogue', phone: '+72 NC WAT-3313' }, { name: 'Judy Alvarez', phone: 'LEU-2208' }, { name: 'Mail Only', email: 'x@y.net' }]; game.actors = { get: () => ({ id: 'v', getFlag: () => list, items: { contents: [] } }), contents: [] }; }
+  document.getElementById('stage').innerHTML = tpl(await T.buildCallsContext(v));
+  T.wireCallsTab(v, document.getElementById('stage'));
+  if (q.get('nointro') || q.get('audit')) document.querySelector('.ncm-calls-intro')?.remove();
+  if (q.get('audit')) {
+    // every text node against what is really behind it: colours go through a canvas so oklab() reads as sRGB
+    const cv = document.createElement('canvas'); cv.width = cv.height = 1; const cx = cv.getContext('2d', { willReadFrequently: true });
+    const chan = (c) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+    const over = (t, b) => { const a = t[3]; return [t[0] * a + b[0] * (1 - a), t[1] * a + b[1] * (1 - a), t[2] * a + b[2] * (1 - a), 1]; };
+    const bgOf = (el) => { const chain = []; for (let e = el; e; e = e.parentElement) chain.push(chan(getComputedStyle(e).backgroundColor)); let b = [10, 10, 18, 1]; for (const c of chain.reverse()) if (c[3] > 0) b = over(c, b); return b; };
+    const lum = (c) => { const [r, g, b] = c.slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+    const bad = [], clip = [];
+    const w = document.createTreeWalker(document.getElementById('stage'), NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) {
+      if (!n.textContent.trim()) continue;
+      const el = n.parentElement, r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+      if (!r.width || !r.height || cs.visibility === 'hidden' || cs.display === 'none' || el.closest('.is-shut .ncm-calls-band__b') || el.closest('.ncm-calls-line')) continue; // the My line card's ground is a pseudo-element the walk can't read: it was checked by eye
+      const bg = bgOf(el), fg = over(chan(cs.color), bg), a = lum(fg), b = lum(bg), ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      if (ratio < 4.5) bad.push(ratio.toFixed(2) + ' ' + (el.className || el.tagName) + ' "' + n.textContent.trim().slice(0, 24) + '"');
+      if (el.scrollWidth > el.clientWidth + 1 && cs.overflow !== 'visible' && cs.textOverflow !== 'ellipsis') clip.push((el.className || el.tagName) + ' "' + n.textContent.trim().slice(0, 24) + '"');
+    }
+    document.title = 'AUDIT bad=' + bad.length + ' clip=' + clip.length + ' :: ' + [...new Set(bad)].slice(0, 14).join(' | ') + ' ## ' + [...new Set(clip)].slice(0, 6).join(' | ');
+  }
+  if (!q.get('audit')) document.title = 'ready';
+</script>
+</body>
+</html>

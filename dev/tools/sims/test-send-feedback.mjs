@@ -34,6 +34,7 @@ globalThis.game = {
 };
 globalThis.foundry = { utils: { deepClone: (o) => JSON.parse(JSON.stringify(o)), mergeObject: (a, b) => ({ ...a, ...b }), randomID: () => 'rnd' } };
 globalThis.Hooks = { on: () => {}, once: () => {}, off: () => {} };
+globalThis.localStorage = (() => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; })();
 globalThis.ui = { notifications: { info: (m) => toasts.push(['info', m]), warn: (m) => toasts.push(['warn', m]), error: (m) => toasts.push(['error', m]) } };
 
 const { MessageService } = await import(pathToFileURL(`${ROOT}/scripts/services/MessageService.js`).href);

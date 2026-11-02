@@ -177,7 +177,7 @@ export class MasterContactService {
     const root = this.getContact(rootId) || base;
     const res = await this.addContact({
       name: data.name || root.name, email: data.email || '', portrait: data.portrait || null,
-      type: root.type || 'npc', organization: root.organization || '', role: root.role || '',
+      type: root.type || 'npc',
       identityOf: rootId, notes: `Another identity of ${root.name}.`,
     });
     return res;
@@ -348,7 +348,7 @@ export class MasterContactService {
       // add/reply affordance (viewer, shard/terminal sender chips).
       sendOnly: !!data.sendOnly,
       encrypted: !!data.encrypted,
-      encryptionDV: data.encryptionDV || 15,
+      encryptionDV: data.encryptionDV || 9,
       encryptionSkill: data.encryptionSkill?.trim() || 'Interface',
       blackIce: !!data.blackIce,
       blackIceDamage: data.blackIceDamage?.trim?.() || '3d6',
@@ -433,6 +433,7 @@ export class MasterContactService {
 
     const removed = this._contacts.splice(idx, 1)[0];
     await this._persistContacts();
+    await game.nightcity?.callService?.retireOwner?.({ contactId });
 
     this.eventBus?.emit('contacts:masterUpdated', { action: 'remove', contactId });
     log.info(`Master contact removed: ${removed.name} (${contactId})`);
@@ -469,7 +470,7 @@ export class MasterContactService {
    * @param {string} actorId - Target player actor ID
    * @returns {{ success: boolean, error?: string }}
    */
-  async pushToPlayer(contactId, actorId) {
+  async pushToPlayer(contactId, actorId, { what = 'both' } = {}) {
     if (!isGM()) return { success: false, error: 'GM only' };
 
     const contact = this.getContact(contactId);
@@ -479,25 +480,29 @@ export class MasterContactService {
     if (!contactRepo) return { success: false, error: 'ContactRepository not available' };
 
     try {
+      // an alias copy holds only the alias: its contact id, name, picture and what was shared. Mail and calls route through the contact id.
+      const aliasCopy = !!identityRole(this.getAll(), contact)?.isAlias;
+      const givesMail = what !== 'number', givesNumber = what !== 'email';
+      const number = givesNumber ? (game.nightcity?.callService?.numberOfContact?.(contact.id) || contact.phone || '') : '';
       const playerContact = {
         name: contact.name,
-        email: contact.email,
+        email: givesMail ? contact.email : '',
         alias: contact.alias,
-        organization: contact.organization,
-        phone: contact.phone,
+        organization: aliasCopy ? '' : contact.organization,
+        phone: number,
         location: contact.location || '',
         customImg: contact.portrait,
         tags: [...(contact.tags || [])],
         notes: '', // Don't copy GM notes to players
         voice: '', // …nor the GM's voice note (ContactRepository drops it anyway — this says so on purpose)
-        actorId: contact.actorId,
+        actorId: aliasCopy ? null : contact.actorId,
         type: contact.type,
         role: contact.role || '',
         folder: contact.folder || '',
 
         // ICE fields — always transfer so player sees encryption state
         encrypted: !!contact.encrypted,
-        encryptionDV: contact.encryptionDV || 15,
+        encryptionDV: contact.encryptionDV || 9,
         encryptionSkill: contact.encryptionSkill || 'Interface',
         blackIce: !!contact.blackIce,
         blackIceDamage: contact.blackIceDamage || '3d6',
@@ -524,6 +529,8 @@ export class MasterContactService {
       const existing = await contactRepo.getContacts(actorId);
       const isAlias = !!identityRole(this.getAll(), contact)?.isAlias;
       const dupe = existing.find(pc => entryStandsFor(pc, contact, { isAlias }));
+      if (dupe && number && !dupe.phone) await contactRepo.updateContact?.(actorId, dupe.id, { phone: number });
+      if (dupe && givesMail && contact.email && !dupe.email) await contactRepo.updateContact?.(actorId, dupe.id, { email: contact.email });
       if (dupe) {
         log.debug(`pushToPlayer: actor ${actorId} already has ${contact.name} — skipped`);
         return { success: true, existing: true, contact: dupe };

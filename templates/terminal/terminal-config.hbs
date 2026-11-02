@@ -558,6 +558,15 @@
     {{!-- NETWORK --}}
     <div class="ncm-cfg-panel {{#if tabs.network}}ncm-cfg-panel--active{{/if}}" data-panel="network">
       <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-phone ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">The machine's number</div></div>
+        <div class="ncm-cfg-desc">Dialling it never logs anyone in. A netrunner still has to reach the machine the usual way.</div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Number</span><span class="ncm-cfg-flex" style="font-family:var(--ncm-font-mono)">{{#if phone.number}}{{phone.number}}{{else}}no number{{/if}}</span>
+          <button type="button" class="ncm-cfg-btn-sm" data-action="termNumberGive" data-tooltip="A free number from the home city. A number it drops retires"><i class="fas fa-dice"></i> {{#if phone.number}}New number{{else}}Give it a number{{/if}}</button>
+          {{#if phone.number}}<button type="button" class="ncm-cfg-btn-sm" data-action="termNumberDrop" data-tooltip="Take the number away. It retires"><i class="fas fa-xmark"></i></button>{{/if}}</div>
+        {{#if phone.number}}<div class="ncm-cfg-row"><span class="ncm-cfg-label">When dialled</span><select class="ncm-cfg-select ncm-cfg-flex" data-term-when>{{#each phone.whens}}<option value="{{key}}"{{#if on}} selected{{/if}}>{{label}}</option>{{/each}}</select></div>
+        <div class="ncm-cfg-row"{{#unless phone.isRecording}} style="display:none"{{/unless}} data-term-rec><span class="ncm-cfg-label">What it says</span><input type="text" class="ncm-cfg-input ncm-cfg-flex" data-term-text value="{{phone.text}}"></div>{{/if}}
+      </div>
+      <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-network-wired ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Network Reachability</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="networkRequired" {{#if networkRequired}}checked{{/if}}></label></div>
         <div class="ncm-cfg-desc">When ON, a player has to be on an allowed network to open this terminal. It is checked when they open it; leaving that network later does not log them out. OFF = it opens anywhere.</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Reachable from</span><select name="accessMode" class="ncm-cfg-select ncm-cfg-flex">{{#each accessModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>

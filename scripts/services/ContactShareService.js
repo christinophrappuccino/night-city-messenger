@@ -20,6 +20,7 @@
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { isSelectableCharacter, log } from '../utils/helpers.js';
+import { normaliseNumber } from '../utils/phoneNumbering.js';
 
 export class ContactShareService {
 
@@ -50,6 +51,7 @@ export class ContactShareService {
    * @param {boolean} [params.options.includePortrait=true]
    * @param {boolean} [params.options.includeNotes=false]
    * @param {boolean} [params.options.includeTags=true]
+   * @param {'both'|'email'|'number'} [params.options.send='both'] which of the two the recipient gets
    * @returns {Promise<{success: boolean, delivered?: number, errors?: string[]}>}
    */
   async initiateShare(params) {
@@ -84,6 +86,7 @@ export class ContactShareService {
     const payload = {
       shareId: foundry.utils.randomID(),
       senderActorId,
+      senderUserId: game.user.id,
       senderName,
       contact: preparedContact,
       recipientActorIds,
@@ -193,8 +196,8 @@ export class ContactShareService {
 
     for (const recipientActorId of recipientActorIds) {
       try {
-        // Write contact to recipient's address book
-        const result = await this.contactRepo.addContact(recipientActorId, contact);
+        // Write contact to recipient's address book. Someone who has this contact gets the missing part added.
+        const result = await this._mergeExisting(recipientActorId, contact) || await this.contactRepo.addContact(recipientActorId, contact);
 
         if (result.success) {
           delivered++;
@@ -203,6 +206,7 @@ export class ContactShareService {
           this.socketManager?.emit(SOCKET_OPS.CONTACT_SHARE_NOTIFY, {
             shareId,
             recipientActorId,
+            senderUserId: payload.senderUserId,
             senderName,
             contact,
             network,
@@ -231,6 +235,29 @@ export class ContactShareService {
   }
 
   /**
+   * Re-sharing adds what they lack: a number to an email they had, or the reverse. Nothing they have is overwritten.
+   * @returns {Promise<{success: boolean}|null>} null when they don't have this contact yet
+   */
+  async _mergeExisting(actorId, contact) {
+    const actor = game.actors?.get(actorId);
+    const list = await this.contactRepo.getContacts(actorId);
+    if (!actor || !Array.isArray(list)) return null;
+    const home = game.nightcity?.callService?.homeCode;
+    const num = (n) => normaliseNumber(n, home);
+    const mail = (m) => String(m || '').trim().toLowerCase();
+    const same = (c) => (contact.masterContactId && c.masterContactId === contact.masterContactId)
+      || (contact.email && mail(c.email) === mail(contact.email))
+      || (contact.phone && c.phone && num(c.phone) === num(contact.phone));
+    const had = list.find(same);
+    if (!had) return null;
+    const patch = {};
+    if (contact.email && !had.email) patch.email = contact.email;
+    if (contact.phone && !had.phone) patch.phone = contact.phone;
+    if (Object.keys(patch).length) await actor.setFlag(MODULE_ID, 'contacts', list.map((c) => (c === had ? { ...c, ...patch } : c)));
+    return { success: true, merged: true };
+  }
+
+  /**
    * Handle incoming share relay from a player (GM-side handler).
    * Registered as a socket handler in SocketHandlers.
    *
@@ -238,6 +265,8 @@ export class ContactShareService {
    */
   async handleShareRelay(payload) {
     if (!game.user.isGM) return;
+    // two GMs online would each deliver it
+    if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
 
     log.debug('ContactShareService: Processing share relay', payload.shareId);
     const result = await this._deliverToRecipients(payload);
@@ -250,6 +279,18 @@ export class ContactShareService {
       total: payload.recipientActorIds.length,
       errors: result.errors,
     });
+  }
+
+  /**
+   * One animation per drop on any screen. The sender already played theirs, a GM owns every actor but is not receiving
+   * anything, and a share to several characters notifies once per character.
+   */
+  _wantsShareFx({ shareId, senderUserId }) {
+    if (game.user.isGM || senderUserId === game.user.id) return false;
+    this._sharesSeen ??= new Set();
+    if (shareId && this._sharesSeen.has(shareId)) return false;
+    if (shareId) this._sharesSeen.add(shareId);
+    return true;
   }
 
   /**
@@ -274,26 +315,30 @@ export class ContactShareService {
     log.info(`Received shared contact: "${displayName}" from ${senderName}`);
 
     // Play the Data Drop overlay animation
-    try {
-      const { DataDropOverlay } = await import('../ui/DataDropOverlay/DataDropOverlay.js');
-      await DataDropOverlay.play({
-        senderName,
-        recipientName: actor.name,
-        contact: displayContact,
-        network,
-      });
-    } catch (error) {
-      log.warn('DataDropOverlay failed, showing toast only:', error.message);
+    if (this._wantsShareFx(data)) {
+      try {
+        const { DataDropOverlay } = await import('../ui/DataDropOverlay/DataDropOverlay.js');
+        await DataDropOverlay.play({
+          senderName,
+          recipientName: actor.name,
+          contact: displayContact,
+          network,
+        });
+      } catch (error) {
+        log.warn('DataDropOverlay failed, showing toast only:', error.message);
+      }
     }
 
-    // Fire the contact-acquired toast
-    this.notificationService?.showContactAcquired({
-      contactName: displayName,
-      senderName,
-      network,
-      actorId: recipientActorId,
-      contactId: contact.id,
-    });
+    // Fire the contact-acquired toast: for the player receiving it, not the GM or the one who sent it
+    if (!game.user.isGM && data.senderUserId !== game.user.id) {
+      this.notificationService?.showContactAcquired({
+        contactName: displayName,
+        senderName,
+        network,
+        actorId: recipientActorId,
+        contactId: contact.id,
+      });
+    }
 
     // Emit event for UI refresh
     this.eventBus?.emit(EVENTS.CONTACT_SHARED, {
@@ -357,12 +402,17 @@ export class ContactShareService {
       includePortrait = true,
       includeNotes = false,
       includeTags = true,
+      send = 'both',
     } = options;
 
     // Use PortraitService for data preparation
     const prepared = this.portraitService
       ? this.portraitService.prepareForShare(contact, { includePortrait, includeNotes, includeTags })
       : { ...contact, id: foundry.utils.randomID() };
+
+    // Email, number or both. Only what is sent exists on their copy.
+    if (send === 'email') prepared.phone = '';
+    if (send === 'number') { prepared.email = ''; delete prepared.actorId; delete prepared.linkedActorId; }
 
     // If including portrait, ensure it's base64 for cross-client transfer
     if (includePortrait && prepared.portrait && this.portraitService) {

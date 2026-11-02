@@ -256,6 +256,18 @@ export class OverviewTab extends BaseTab {
       });
     }
 
+    // ── Phone: what players asked for ──
+    const phoneAsks = game.nightcity?.callService?.requests?.() || [];
+    if (phoneAsks.length) {
+      out.push({
+        kind: 'phone', key: 'phone-requests', sig: String(phoneAsks.length), ts: now,
+        icon: 'fa-sim-card',
+        html: `<b>${phoneAsks.length}</b> number request${phoneAsks.length === 1 ? '' : 's'} waiting`,
+        subline: 'nothing changes until you answer',
+        actions: [{ label: 'Answer', action: 'switchTab', primary: true, data: { tab: 'phone' } }],
+      });
+    }
+
     // ── Setup: players with no address ──
     const emailSvc = game.nightcity?.emailService;
     for (const pc of getPlayerCharacters()) {

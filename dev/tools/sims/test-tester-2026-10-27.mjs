@@ -119,7 +119,7 @@ globalThis.ui = { notifications: { info: () => {}, warn: () => {}, error: () => 
   ok(B.bypassDCFor(per, 'electronics/securitytech') === 17, 'names compare space/punctuation-insensitive');
   ok(B.bypassDCFor(per, 'Cryptography') === 15, 'an unlisted skill falls back to bypassDC');
   ok(B.bypassDCFor({ bypassSkillDCs: { Interface: 0 } }, 'Interface') === 0, 'DV 0 is a real DV, not a fallback');
-  ok(B.bypassDCFor(null, 'Interface') === 15, 'no block → 15');
+  ok(B.bypassDCFor(null, 'Interface') === 9, 'no block → 9');
   const f = B.bypassFieldsFrom([{ name: 'Interface', dv: '13' }, { name: 'Electronics/Security Tech', dv: 17 }, { name: 'interface', dv: 9 }, { name: '', dv: 4 }]);
   ok(f.bypassSkills.join('|') === 'Interface|Electronics/Security Tech', 'rows → skills, duplicates and blanks dropped');
   ok(f.bypassDC === 13 && f.bypassSkillDCs.Interface === 13 && f.bypassSkillDCs['Electronics/Security Tech'] === 17, 'bypassDC = the first row, map carries each');
@@ -201,7 +201,7 @@ globalThis.ui = { notifications: { info: () => {}, warn: () => {}, error: () => 
   delete settings.roleAbilityRoll;
   const sm = read('scripts/core/SettingsManager.js');
   const reg = sm.slice(sm.indexOf("'roleAbilityRoll'"), sm.indexOf("'roleAbilityRoll'") + 900);
-  ok(/config: true/.test(reg) && /default: 'stat'/.test(reg) && /name: 'Role Ability/.test(reg), 'setting registered, literal name, default unchanged');
+  ok(/config: true/.test(reg) && /default: 'rank'/.test(reg) && /name: 'Role Ability/.test(reg), 'setting registered, literal name, rank + d10 by default');
 }
 
 console.log(`test-tester-2026-10-27: ${pass} passed, ${fail} failed`);

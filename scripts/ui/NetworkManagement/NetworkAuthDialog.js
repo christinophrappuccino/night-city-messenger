@@ -634,6 +634,7 @@ export class NetworkAuthDialog extends BaseApplication {
       const rollResult = await svc.performCheck(actor, skillName, {
         dc,
         showChat: true,
+        ask: { title: isAccount ? `Forcing the ${name} login` : `Bypassing ${name}` },
         context: `${isAccount ? 'Account Login' : 'Network Bypass'}: ${name}`,
         // A layperson's chat card must not name the ICE they could not see.
         flavor: `${(this._cmv && !['identified', 'open'].includes(this._cmv.state)) ? 'Security' : (this.network.security.encryptionType || 'ICE')} // DV ${dc}`,
@@ -645,6 +646,7 @@ export class NetworkAuthDialog extends BaseApplication {
           ok: 'Access granted', no: 'Access denied',
         },
       });
+      if (rollResult.cancelled) return;
       total = rollResult.total;
       this._revealPlayed = true;
     } else {
@@ -796,6 +798,7 @@ export class NetworkAuthDialog extends BaseApplication {
     const by = view.identifyBy;
     const res = await svc.performCheck(actor, skillName, {
       dc, showChat: true,
+      ask: { title: `Scanning ${name}'s defences` },
       context: `Countermeasure scan: ${name}`, flavor: `Scan // DV ${dc}`,
       reveal: {
         host: this.element,
@@ -804,6 +807,7 @@ export class NetworkAuthDialog extends BaseApplication {
         no: 'Nothing readable', hideDV: !view.showDV,
       },
     });
+    if (res.cancelled) return;
     rememberScan(actor.id, this.networkId, res.total);
     const ts = game.nightcity?.traceService;
     const payload = { actor, action: 'cmv-scan', objectName: name, targetKind: this._adapter instanceof TerminalAuthAdapter ? 'terminal' : 'network', targetNetworkId: this.networkId, dv: dc, margin: res.total - dc, severity: 'minor' };

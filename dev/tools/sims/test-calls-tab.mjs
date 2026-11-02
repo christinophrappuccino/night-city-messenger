@@ -20,8 +20,8 @@ globalThis.game = {
   user: { get isGM() { return isGM; }, id: 'u1' },
   settings: { get: (_m, k) => settings[k] },
   actors: { get: (id) => (id === 'v' ? { id: 'v', name: 'V', getFlag: () => [
-    { name: 'Judy Alvarez', phone: '+1 (555) 555-0142', portrait: 'judy.webp' },
-    { name: 'Rogue', phone: '+1 (555) 555-0111' },
+    { name: 'Judy Alvarez', phone: '+72 NC WAT-0142', portrait: 'judy.webp' },
+    { name: 'Rogue', phone: '+72 NC WAT-0111' },
     { name: 'No Phone', phone: '' },
   ] } : null) },
   nightcity: {},
@@ -29,19 +29,23 @@ globalThis.game = {
 globalThis.ui = { notifications: { warn() {}, info() {} } };
 
 const LOG = [
-  { id: 'c1', direction: 'in', outcome: 'missed', seen: false, gameTime: '2045-08-14T21:10:00.000Z', other: { number: '+1 (555) 555-0142' } },
-  { id: 'c2', direction: 'out', outcome: 'answered', seconds: 125, gameTime: '2045-08-14T19:02:00.000Z', other: { number: '+1 (555) 555-0111' }, net: { name: 'CitiNet' } },
-  { id: 'c3', direction: 'in', outcome: 'answered', seconds: 40, gameTime: '2045-08-13T09:00:00.000Z', other: { number: '+1 (555) 555-0199', name: 'Secret NPC' } },
-  { id: 'c4', direction: 'out', outcome: 'declined', gameTime: '2045-08-13T08:00:00.000Z', other: { number: '+1 (555) 555-0142' } },
+  { id: 'c1', direction: 'in', outcome: 'missed', seen: false, gameTime: '2045-08-14T21:10:00.000Z', other: { number: '+72 NC WAT-0142' } },
+  { id: 'c2', direction: 'out', outcome: 'answered', seconds: 125, gameTime: '2045-08-14T19:02:00.000Z', other: { number: '+72 NC WAT-0111' }, net: { name: 'CitiNet' } },
+  { id: 'c3', direction: 'in', outcome: 'answered', seconds: 40, gameTime: '2045-08-13T09:00:00.000Z', other: { number: '+72 NC WAT-0199', name: 'Secret NPC' } },
+  { id: 'c4', direction: 'out', outcome: 'declined', gameTime: '2045-08-13T08:00:00.000Z', other: { number: '+72 NC WAT-0142' } },
 ];
-let lines = [{ number: '+1 (555) 555-0101', actorId: 'v', name: 'V', burner: false }, { number: '+1 (555) 555-0612', actorId: 'v', contactId: 'nix', name: 'Nix', burner: true }];
+let lines = [{ number: '+72 NC WAT-0101', actorId: 'v', name: 'V', burner: false }, { number: '+72 NC WAT-0612', actorId: 'v', contactId: 'nix', name: 'Nix', burner: true }];
+const PN = await import(new URL('../../../scripts/utils/phoneNumbering.js', import.meta.url).href);
 const svc = {
-  enabled: true, homeCode: '+1', region: { country: '1', region: 'Night City', code: '555' },
-  linesFor: () => lines, numberOfContact: () => null, lines: () => ({ a: { number: '+1 (555) 555-0199', owner: { name: 'Secret NPC' } } }),
-  suggestNumbers: ({ count }) => Array.from({ length: count }, (_, i) => ({ number: `+1 (555) 555-01${20 + i}`, kind: i ? 'random' : 'repeat' })),
+  enabled: true,
+  linesFor: () => lines, numberOfContact: () => null, lines: () => ({ a: { number: '+72 NC WAT-0199', owner: { name: 'Secret NPC' } } }),
+  extraLeft: () => 1, pendingFor: () => null,
+  get numberContext() { return PN.defaultNumberContext(); }, get homeCode() { return PN.defaultNumberContext(); }, rules: PN.sanitizeRules({}),
+  pickRows() { return PN.pickableRows(PN.defaultNumberContext().rows, {}); }, startRow() { return this.pickRows().find((r) => r.Code === 'WAT'); },
+  suggestNumbers: ({ row, count }) => PN.freeLines(row || svc.startRow(), { count, seed: 5 }).map((line) => ({ line, number: PN.numberAt(row || svc.startRow(), line) })),
   getLog: async () => LOG, _net: () => ({ name: 'CitiNet', type: 'PUBLIC', strength: 80 }), _noSignal: () => false,
   markSeen() {}, assignNumber: async () => ({ ok: true }), placeCall: async () => ({ ok: true }),
-  getVoicemails: async () => [{ vmId: 'v1', from: { number: '+1 (555) 555-0142', name: 'Judy' }, to: { actorId: 'v' }, text: 'Call me.', kind: 'tts', heard: false, gameTime: '2045-08-14T21:00:00.000Z' }, { vmId: 'v2', from: { number: '+1 (555) 555-0199', name: 'Secret NPC' }, to: { actorId: 'v', contactId: 'nix' }, text: 'Stop digging.', kind: 'typed', heard: true, gameTime: '2045-08-13T21:00:00.000Z' }],
+  getVoicemails: async () => [{ vmId: 'v1', from: { number: '+72 NC WAT-0142', name: 'Judy' }, to: { actorId: 'v' }, text: 'Call me.', kind: 'tts', heard: false, gameTime: '2045-08-14T21:00:00.000Z' }, { vmId: 'v2', from: { number: '+72 NC WAT-0199', name: 'Secret NPC' }, to: { actorId: 'v', contactId: 'nix' }, text: 'Stop digging.', kind: 'typed', heard: true, gameTime: '2045-08-13T21:00:00.000Z' }],
   lineSettings: () => ({ greeting: { kind: 'tts', text: 'Leave it short.', voice: '' }, voicemail: { on: true, dnd: true } }),
   setVoicemailHeard: async () => ({ ok: true }), deleteVoicemail: async () => ({ ok: true }), saveLineSettings: async () => ({ ok: true }),
 };
@@ -53,30 +57,34 @@ const viewer = { actorId: 'v', render() {} };
 // ═══ 1. pure rules ═══
 const book = T.phoneBook(viewer);
 ok(book.length === 2 && !book.some((b) => b.name === 'No Phone'), 'phone book = contacts WITH a number only');
-const rows = T.buildLogRows(LOG, { book, home: '+1' });
+const dayRows = (r) => r.bands.flatMap((x) => x.days);
+const rows = T.buildLogRows(LOG, { book, home: '+1', now: LOG[0].gameTime });
 ok(rows.counts.all === 4 && rows.counts.missed === 1 && rows.counts.unseen === 1 && rows.counts.out === 2, 'counts');
-ok(rows.days.length === 2 && rows.days[0].rows.length === 2, 'grouped by day, newest first as given');
-const r3 = rows.days[1].rows[0];
-ok(r3.other.name === '+1 (555) 555-0199' && !r3.other.known, 'a caller not in your contacts shows the number, never the name');
-ok(rows.days[0].rows[0].other.name === 'Judy Alvarez' && rows.days[0].rows[0].unseen, 'a contact shows by name; unseen missed marked');
-ok(rows.days[0].rows[1].detail === '2:05' || /2.?0?5/.test(rows.days[0].rows[1].detail), 'talk time printed');
+ok(dayRows(rows).length === 2 && dayRows(rows)[0].rows.length === 2, 'grouped by day, newest first');
+const r3 = dayRows(rows)[1].rows[0];
+ok(r3.other.name === 'WAT-0199' && !r3.other.known, 'a caller not in your contacts shows the number, never the name');
+ok(dayRows(rows)[0].rows[0].other.name === 'Judy Alvarez' && dayRows(rows)[0].rows[0].unseen, 'a contact shows by name; unseen missed marked');
+ok(dayRows(rows)[0].rows[1].detail === '2:05' || /2.?0?5/.test(dayRows(rows)[0].rows[1].detail), 'talk time printed');
 ok(T.buildLogRows(LOG, { book, filter: 'missed' }).total === 1 && T.buildLogRows(LOG, { book, filter: 'out' }).total === 2, 'filters');
-const many = Array.from({ length: 60 }, (_, i) => ({ ...LOG[1], id: 'm' + i }));
-const pg = T.buildLogRows(many, { book, page: 9 });
-ok(pg.pages === 3 && pg.page === 3 && pg.from === 51 && pg.to === 60, 'paging clamps to the last page');
 const sd = T.speedDial(LOG, book, '+1');
 ok(sd[0].name === 'Judy Alvarez' && sd.every((x) => x.number), 'speed dial: most called first, numbers only');
 isGM = true; ok(T.phoneBook(viewer).some((b) => b.name === 'Secret NPC'), 'the GM knows every number'); isGM = false;
 
 // ═══ 2. the context's three faces ═══
 const main = await T.buildCallsContext(viewer);
-ok(main.main && main.fromNumber === '+1 (555) 555-0101' && main.keypad.length === 12 && main.dialSvg.includes('<svg'), 'main face');
-ok(main.list.days.every((d) => d.label && d.rows.every((r) => r.time)), 'day labels + times formatted');
+ok(main.main && main.fromNumber === '+72 NC WAT-0101' && main.keypad.length === 12 && main.dialSvg.includes('<svg'), 'main face');
+ok(main.list.bands.every((b) => b.label && b.days.every((d) => d.label && d.rows.every((r) => r.time))), 'band + day labels, times formatted');
 lines = [];
 const pick = await T.buildCallsContext({ actorId: 'v', render() {} });
 ok(pick.picker && pick.firstTime && pick.suggestions.length === 4 && pick.suggestions[0].on, 'no number → the picker, first suggestion picked');
-ok(pick.codes.some((c) => c.on) && pick.countries.some((c) => c.on), 'region selects + codes carry the current pick');
-lines = [{ number: '+1 (555) 555-0101', actorId: 'v', name: 'V', burner: false }];
+ok(pick.trail.length === 5 && pick.trail.at(-1).label === 'District' && !pick.step, 'all five steps show, numbers ready at the home district');
+ok(pick.result?.full?.startsWith('+72 NC ') && pick.prefix.endsWith('-'), 'it shows the result and the prefix for own digits');
+{ const v = { actorId: 'v', render() {} }; const st = T.callsState(v); await T.buildCallsContext(v);
+  st.level = 'rc'; const c1 = await T.buildCallsContext(v); ok(c1.step?.n === 1 && c1.step.opts.some((o) => o.code === '+83' && o.name === 'Japan') && c1.trail.length === 1, 'step one offers regions');
+  st.path = { ...st.path, rc: '72', state: 'Northern California', city: 'NC' }; st.level = 'code'; const c5 = await T.buildCallsContext(v); ok(c5.step?.n === 5 && c5.step.back === 'area', 'the last step goes back one');
+  const hidden = ['HOT', 'NCM', 'EXZ']; const all = T.callsState(v); all.path = { ...all.path, rc: '72', state: 'Northern California', city: 'NC', area: '' }; all.level = 'area'; const a = await T.buildCallsContext(v); ok(a.step.opts.length > 1, 'areas listed');
+  ok(!svc.pickRows().some((r) => hidden.includes(r.Code)), 'players never get the GM-only districts'); }
+lines = [{ number: '+72 NC WAT-0101', actorId: 'v', name: 'V', burner: false }];
 svc.enabled = false; const off = await T.buildCallsContext(viewer); svc.enabled = true;
 ok(off.off && /switched off/.test(off.reason), 'off face says why');
 
@@ -90,13 +98,14 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!Handlebars) { try { Handlebars = createRequire(import.meta.url)('handlebars'); } catch { /* none */ } }
 if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars — render checks did not run'); }
 else {
+  Handlebars.registerHelper('not', (a) => !a); Handlebars.registerHelper('and', (...a) => a.slice(0, -1).every(Boolean));
   Handlebars.registerHelper('eq', (a, b) => String(a) === String(b));
   Handlebars.registerHelper('gt', (a, b) => Number(a) > Number(b));
   Handlebars.registerHelper('or', (...a) => a.slice(0, -1).some(Boolean));
   const render = Handlebars.compile(tpl);
   const mainHtml = render(main), pickHtml = render(pick), offHtml = render(off);
   ok(mainHtml.includes('data-calls-num') && (mainHtml.match(/data-calls-key=/g) || []).length === 12, 'main: number box + 12 keys');
-  ok(mainHtml.includes('Judy Alvarez') && mainHtml.includes('+1 (555) 555-0199') && !mainHtml.includes('Secret NPC'), 'main: names only for contacts');
+  ok(mainHtml.includes('Judy Alvarez') && mainHtml.includes('+72 NC WAT-0199') && !mainHtml.includes('Secret NPC'), 'main: names only for contacts');
   ok(mainHtml.includes('ncm-calls-sdp') && mainHtml.includes('is-miss') && mainHtml.includes('>New<'), 'main: speed dial, missed row, New tag');
   ok(pickHtml.includes('Pick your number') && (pickHtml.match(/ncm-calls-opt/g) || []).length >= 4 && !pickHtml.includes('data-action="calls-back"'), 'picker: first time, no Cancel');
   ok(offHtml.includes('No calls here') && offHtml.includes('switched off'), 'off render');
@@ -128,11 +137,11 @@ ok(/calls-tab\.css/.test(read('styles/night-city-messenger.css')), 'css imported
 // ═══ 5. Call buttons on contacts + message senders ═══
 const { CallService } = await imp('scripts/services/CallService.js');
 const cs = Object.create(CallService.prototype);
-cs.lines = () => ({ a: { number: '+1 555 555 0150', owner: { contactId: 'm1', name: 'Rogue' } }, b: { number: '+1 555 555 0160', owner: { actorId: 'judy', name: 'Judy' } } });
+cs.lines = () => ({ a: { number: '+72 NC WAT-0150', owner: { contactId: 'm1', name: 'Rogue' } }, b: { number: '+72 NC WAT-0160', owner: { actorId: 'judy', name: 'Judy' } } });
 game.nightcity.masterContactService = { isSendOnly: (e) => e === 'system@localhost', getContact: () => null };
-ok(cs.numberForContact({ phone: '+1 555 555 0101' }) === '+1 555 555 0101', 'a contact with its own phone');
-ok(cs.numberForContact({ masterContactId: 'm1' }) === '+1 555 555 0150', 'a copy of a directory entry rings its line');
-ok(cs.numberForContact({ actorId: 'judy' }) === '+1 555 555 0160', 'a linked character rings its line');
+ok(cs.numberForContact({ phone: '+72 NC WAT-0101' }) === '+72 NC WAT-0101', 'a contact with its own phone');
+ok(cs.numberForContact({ masterContactId: 'm1' }) === '', 'a contact shared by email only has no number');
+ok(cs.numberForContact({ actorId: 'judy' }) === '', 'a linked character does not give away their line');
 ok(cs.numberForContact({ email: 'system@localhost', phone: '1' }) === '' && cs.numberForContact({ sendOnly: true, phone: '1' }) === '', 'never a send-only address');
 ok(cs.numberForContact({ name: 'nobody' }) === '' && cs.numberForContact(null) === '', 'no number → no button');
 const cm = read('scripts/ui/ContactManager/ContactManagerApp.js');
@@ -153,13 +162,13 @@ ok(['ncm', '2077', 'theme', 'custom'].every((k) => tcj.includes(`key: '${k}'`)) 
     { ...LOG[1], id: 'k1', direction: 'out', lines: [{ side: 'caller', name: 'V', text: 'On my way.' }, { side: 'callee', name: 'Rogue', text: 'Pier 4.' }] },
     { ...LOG[2], id: 'k2', direction: 'in', lines: [{ side: 'caller', name: 'Secret NPC', text: 'Stop asking questions.' }, { side: 'callee', name: 'V', text: 'Who is this?' }] },
   ];
-  const rows = T.buildLogRows(typed, { book, home: '+1' }).days.flatMap((d) => d.rows);
+  const rows = T.buildLogRows(typed, { book, home: '+1' }).bands.flatMap((b) => b.days).flatMap((d) => d.rows);
   const out = rows.find((r) => r.id === 'k1'), inc = rows.find((r) => r.id === 'k2');
   ok(out.transcript[0].who === 'You' && out.transcript[0].mine && out.transcript[1].who === 'Rogue', 'an outgoing call: my lines are "You", theirs by the contact name');
-  ok(inc.transcript[0].who === '+1 (555) 555-0199' && inc.transcript[1].who === 'You', 'an unknown caller stays a number in the transcript too — never the stored name');
+  ok(inc.transcript[0].who === 'WAT-0199' && inc.transcript[1].who === 'You', 'an unknown caller stays a number in the transcript too — never the stored name');
   ok(!JSON.stringify(inc.transcript).includes('Secret NPC'), 'the hidden name is not in the view at all');
   if (Handlebars) {
-    const html = Handlebars.compile(tpl)({ ...main, list: { ...main.list, days: [{ day: 'x', label: 'Today', rows: [out] }] } });
+    const html = Handlebars.compile(tpl)({ ...main, list: { ...main.list, bands: [{ key: 'today', label: 'Today', total: 1, days: [{ day: 'x', label: 'Today', divider: false, rows: [out] }] }] } });
     ok(html.includes('ncm-calls-tr') && html.includes('On my way.') && html.includes('class="l mine"'), 'render: the transcript fold');
   }
   ok(read('styles/components/calls-tab.css').includes('.ncm-calls-tr'), '.ncm-calls-tr styled');
@@ -167,11 +176,11 @@ ok(['ncm', '2077', 'theme', 'custom'].every((k) => tcj.includes(`key: '${k}'`)) 
 
 // ═══ 8. Phase 3a — the Voicemail list, My line, the badge ═══
 {
-  if (!lines.some((l) => l.contactId === 'nix')) lines = [...lines, { number: '+1 (555) 555-0612', actorId: 'v', contactId: 'nix', name: 'Nix', burner: true }];
+  if (!lines.some((l) => l.contactId === 'nix')) lines = [...lines, { number: '+72 NC WAT-0612', actorId: 'v', contactId: 'nix', name: 'Nix', burner: true }];
   const vmView = await (async () => { T.callsState(viewer).filter = 'vm'; const c = await T.buildCallsContext(viewer); T.callsState(viewer).filter = 'all'; return c; })();
   ok(vmView.vmView && vmView.vm.rows.length === 2 && vmView.vm.unheard === 1, 'the Voicemail pill: every message, the unheard count');
   const r1 = vmView.vm.rows.find((r) => r.vmId === 'v1'), r2 = vmView.vm.rows.find((r) => r.vmId === 'v2');
-  ok(r1.who === 'Judy Alvarez' && r1.tts && r2.who === '+1 (555) 555-0199' && !r2.known, 'names by the contacts rule (a stranger is a number)');
+  ok(r1.who === 'Judy Alvarez' && r1.tts && r2.who === 'WAT-0199' && !r2.known, 'names by the contacts rule (a stranger is a number)');
   ok(r2.forLine === 'Nix', 'a message left on a burner says which line');
   ok(await T.missedCount(viewer) === 1 + 1, 'the tab badge: unseen missed calls + unheard voicemail');
   T.callsState(viewer).view = 'myline';

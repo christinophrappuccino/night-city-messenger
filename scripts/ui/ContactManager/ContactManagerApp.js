@@ -18,6 +18,7 @@
  */
 
 import { MODULE_ID, TEMPLATES, EVENTS } from '../../utils/constants.js';
+import { d10Odds } from '../../utils/rolls.js';
 import { log, isPersonActor } from '../../utils/helpers.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
 import { editGroupDialog } from '../ContactGroups/GroupEditorDialog.js';
@@ -1334,7 +1335,7 @@ export class ContactManagerApp extends BaseApplication {
       }
       const encryptionDV = formData.get('encryptionDV');
       if (encryptionDV !== null) {
-        data.encryptionDV = parseInt(encryptionDV, 10) || 15;
+        data.encryptionDV = parseInt(encryptionDV, 10) || 9;
       }
       const encryptionSkill = formData.get('encryptionSkill');
       if (encryptionSkill) {
@@ -1580,7 +1581,7 @@ export class ContactManagerApp extends BaseApplication {
     }
 
     const skillName = contact.encryptionSkill || 'Interface';
-    const dc = contact.encryptionDV || 15;
+    const dc = contact.encryptionDV || 9;
     const maxAttempts = contact.maxBreachAttempts || 3;
     const currentAttempts = contact.breachAttempts || 0;
 
@@ -1860,12 +1861,7 @@ export class ContactManagerApp extends BaseApplication {
     let luckSpend = 0;
     let cancelled = true;
 
-    const calcOdds = (total, luck, dc) => {
-      const needed = dc - total - luck;
-      if (needed <= 1) return 100;
-      if (needed > 10) return 0;
-      return Math.round(((10 - needed + 1) / 10) * 100);
-    };
+    const calcOdds = (total, luck, dc) => d10Odds(total + luck, dc).pct;
 
     const initOdds = calcOdds(opts.skillTotal, 0, opts.dc);
     const oddsClass = initOdds >= 60 ? 'high' : initOdds >= 30 ? 'mid' : 'low';

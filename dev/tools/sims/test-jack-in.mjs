@@ -36,35 +36,38 @@ const N = await imp('scripts/utils/networkNodes.js');
 // ═══ 1. The rules ═══
 {
   const d = J.resolveJackIn({});
-  ok(d.skill === 'Interface' && d.dv === 15 && d.resolution === 'inherit', 'defaults: Interface vs DV 15, decided like Netrunning resolution');
-  ok(d.dials.unlocks && d.dials.edge && d.dials.moves && d.dials.edgeCap === 3 && d.dials.movesTable.length === 4, 'all three skill dials on by default');
-  ok(Object.keys(d.actions).length === J.JACK_ACTIONS.length && d.actions.switch.dv === null && d.actions.jam.dv === 13, 'every action has a row; Switch has no roll, Jam is DV 13');
+  ok(d.skill === 'Interface' && d.dv === 9 && d.resolution === 'inherit', 'defaults: Interface vs DV 9, decided like Netrunning resolution');
+  ok(d.dials.unlocks && !d.dials.edge && d.dials.moves && d.dials.edgeCap === 3 && d.dials.movesTable.length === 4 && d.dials.movesMargin === 0, 'rank unlocks and gives moves by default; the sliding DV and the margin move are opt-in');
+ok(d.dials.movesTable.map((r) => `${r.rank}:${r.moves}`).join() === '1:2,4:3,7:4,10:5', 'moves follow the rulebook table');
+  ok(Object.keys(d.actions).length === J.JACK_ACTIONS.length && d.actions.switch.dv === null && d.actions.jam.dv === 7, 'every action has a row; Switch has no roll, Jam is DV 7');
   const j = J.resolveJackIn({ dv: 'x', resolution: 'nope', skill: '', dials: { edgeCap: 99, movesTable: [] }, failure: { severity: 'huge', maxAttempts: -4 }, actions: { jam: { dv: 99, min: -2 }, switch: { dv: 12 } } });
-  ok(j.dv === 15 && j.resolution === 'inherit' && j.skill === 'Interface', 'junk falls back (dv, resolution, skill)');
+  ok(j.dv === 9 && j.resolution === 'inherit' && j.skill === 'Interface', 'junk falls back (dv, resolution, skill)');
   ok(j.dials.edgeCap === 10 && j.dials.movesTable.length === 4 && j.failure.severity === 'major' && j.failure.maxAttempts === 0, 'clamps: edge cap, empty table → defaults, severity, attempts');
   ok(j.actions.jam.dv === 40 && j.actions.jam.min === 0 && j.actions.switch.dv === 12, 'action DVs clamp; the GM can give Switch a roll');
   ok(J.resolveJackIn({ actions: { tap: { dv: null } } }).actions.tap.dv === null && J.resolveJackIn({ actions: { tap: { dv: '' } } }).actions.tap.dv === null, 'a blank DV = no roll');
   ok(J.resolveJackIn({ dials: { edge: false } }).dials.moves === true, 'a stored diff only changes what it names (objects merge)');
 
-  ok(J.jackInDV(d, { override: { dv: 19 } }) === 19 && J.jackInDV(d, { override: { dv: null } }) === 15 && J.jackInDV(d, {}) === 15, 'a node may override the jack-in DV');
+  ok(J.jackInDV(d, { override: { dv: 19 } }) === 19 && J.jackInDV(d, { override: { dv: null } }) === 9 && J.jackInDV(d, {}) === 9, 'a node may override the jack-in DV');
   ok(J.movesFor(d, 1) === 2 && J.movesFor(d, 4) === 3 && J.movesFor(d, 7) === 4 && J.movesFor(d, 12) === 5, 'moves from the rank table');
-  ok(J.movesFor(d, 4, 5) === 4 && J.movesFor(d, 4, 4) === 3, '+1 move for beating the DV by the margin');
+  const dm = J.resolveJackIn({ dials: { movesMargin: 5 } });
+ok(J.movesFor(d, 4, 9) === 3 && J.movesFor(dm, 4, 5) === 4 && J.movesFor(dm, 4, 4) === 3, 'a margin move only when the GM turns it on');
   ok(J.movesFor(J.resolveJackIn({ dials: { moves: false } }), 9, 10) === 3, 'moves dial off → 3 flat');
 
   const tap = J.actionView(d, 'tap', 2);
   ok(!tap.unlocked && tap.need === 4, 'Unlocks: Tap needs rank 4 — shown locked with what it needs');
   ok(J.actionView(J.resolveJackIn({ dials: { unlocks: false } }), 'tap', 0).unlocked, 'unlocks dial off → everything open');
-  const jam = J.actionView(d, 'jam', 4);
-  ok(jam.edge === 2 && jam.dv === 11 && jam.baseDv === 13, 'Edge: 2 ranks above the minimum → DV −2');
-  ok(J.actionView(d, 'jam', 10).edge === 3, 'edge is capped');
-  ok(J.actionView(J.resolveJackIn({ dials: { edge: false } }), 'jam', 10).dv === 13, 'edge dial off → base DV');
+  const de = J.resolveJackIn({ dials: { edge: true } });
+  const jam = J.actionView(de, 'jam', 4);
+  ok(jam.edge === 2 && jam.dv === 5 && jam.baseDv === 7, 'Edge on: 2 ranks above the minimum → DV −2');
+  ok(J.actionView(de, 'jam', 10).edge === 3, 'edge is capped');
+  ok(J.actionView(d, 'jam', 10).dv === 7, 'edge off (the default) → base DV');
   ok(J.actionView(d, 'switch', 9).dv === null && J.actionView(d, 'switch', 9).edge === 0, 'no-roll actions take no edge');
   ok(J.actionView(d, 'nope', 1) === null, 'an unknown action is refused');
-  ok(J.JACK_BUILT.join() === 'switch,jam,tap,backdoor,insert,sweep,wipe' && J.actionView(d, 'insert', 9).built === true, 'every action runs since step 5');
+  ok(J.JACK_BUILT.join() === 'switch,jam,tap,backdoor,insert,sweep,listen,wipe' && J.actionView(d, 'insert', 9).built === true, 'every action runs since step 5');
 
   ok(J.lockLayers({ security: { requiresAuth: true } }, { name: 'NCPD' }).map((l) => l.key).join() === 'box,firmware,network', 'a locked box adds the box ring');
   ok(J.lockLayers({}, { name: 'NCPD' }).length === 2 && J.lockLayers({}, { name: 'NCPD' })[1].label === 'NCPD', 'an open box: two rings, the last named for the network');
-  ok(J.rulesSummary(d).startsWith('Interface vs DV 15') && J.jackKey({ id: 'n1', networkId: 'NET' }) === 'NET', 'summary + the lockout key');
+  ok(J.rulesSummary(d).startsWith('Interface vs DV 9') && J.jackKey({ id: 'n1', networkId: 'NET' }) === 'NET', 'summary + the lockout key');
 }
 
 // ═══ 2. The lock's plans (pure parts of JackInLock.js) ═══
@@ -114,17 +117,30 @@ const N = await imp('scripts/utils/networkNodes.js');
   const svc = { getNode: () => N.sanitizeNode(node), getNetwork: () => net, _nowMs: () => 1, getAvailableNetworks: () => [net], currentNetworkId: 'NCPD', isDeadZone: false, getNodes: () => [node] };
   const ctx = (session, gm = true) => { asGM = gm; return NodeConsoleApp.prototype._prepareContext.call(mkThis(NodeConsoleApp, { nodeId: 'n1', networkService: svc, _session: session }), {}); };
   const out = await ctx(null);
-  ok(out.canJack && /Interface 10 vs DV 15 · 5 moves/.test(out.jackHint) && out.session === null, 'GM with no character: can jack in, top rank, the hint names skill / DV / moves');
+  ok(out.canJack && /GM · no roll · 5 moves/.test(out.jackHint) && out.session === null, 'GM with no character: can jack in, top rank, the hint names skill / DV / moves');
   const away = await (async () => { game.scenes.viewed = { id: 'S9' }; const c = await ctx(null, false); game.scenes.viewed = { id: 'S1' }; return c; })();
   ok(!away.canJack && /Pick a character|where it is/.test(away.jackHint), 'a player not on the scene (or with no character) cannot jack in, and is told why');
   const s = await ctx({ actorId: null, rank: 3, moves: 3, used: 1, margin: 0 });
   ok(s.session && s.session.left === 2 && s.session.pips.filter((p) => p.on).length === 2, 'the session: moves left as pips');
-  ok(s.session.actions.map((a) => a.key).join() === 'switch,jam,tap,backdoor,insert,sweep,wipe' && s.session.actions.find((a) => a.key === 'insert').dvText === 'its own DV', 'every action is listed; Insert says it rolls the program’s own DV');
+  ok(s.session.actions.map((a) => a.key).join() === 'switch,jam,tap,backdoor,insert,sweep,listen,wipe' && s.session.actions.find((a) => a.key === 'insert').dvText === 'its own DV', 'every action is listed; Insert says it rolls the program’s own DV');
   const sw = s.session.actions.find((a) => a.key === 'switch'), jm = s.session.actions.find((a) => a.key === 'jam');
   ok(sw.label === 'Switch off' && sw.run && sw.dvText === 'no roll', 'Switch reads the node’s state, no roll');
-  ok(jm.dvText === 'DV 12' && jm.baseText === '13' && jm.note === '−1 for your rank' && jm.noteTone === 'good', 'Jam shows its DV after edge, the base struck through');
+  ok(jm.dvText === 'DV 7' && jm.baseText === '' && jm.note === 'costs a move', 'Jam shows its plain DV');
   const low = await ctx({ actorId: null, rank: 1, moves: 2, used: 0, margin: 0 });
   ok(!low.session.actions.find((a) => a.key === 'jam').run && /needs Interface 2/.test(low.session.actions.find((a) => a.key === 'jam').note), 'a locked action shows the rank it needs and does not run');
+  // The GM decides: nothing the player reads names a DV or a chance.
+  {
+    const realGet = game.settings.get;
+    game.settings.get = (m, k) => (k === 'hackResolution' ? 'gm' : realGet(m, k));
+    const rows = (await ctx({ actorId: null, rank: 5, moves: 3, used: 0, margin: 0 })).session.actions;
+    const row = (k) => rows.find((a) => a.key === k);
+    ok(row('jam').dvText === 'GM decides' && row('jam').pct === null && !row('jam').baseText, 'GM decides: a rolled action shows no DV, no chance, no struck-out DV');
+    ok(row('insert').dvText === 'GM decides', 'and neither does Insert');
+    ok(/^DV \d+$/.test(row('sweep').dvText), 'a sweep still rolls: it needs a number to compare with what is hiding');
+    ok(row('switch').dvText === 'no roll', 'a free action is unchanged');
+    ok(!rows.some((a) => a.key !== 'sweep' && /for your rank/.test(a.note)), 'and the rank bonus is not mentioned');
+    game.settings.get = realGet;
+  }
   const spent = await ctx({ actorId: null, rank: 5, moves: 2, used: 2, margin: 0 });
   ok(!spent.session.actions.find((a) => a.key === 'switch').run && spent.session.actions.find((a) => a.key === 'wipe').run, 'out of moves: move actions stop, free ones (wipe) still run');
 
@@ -392,6 +408,23 @@ const N = await imp('scripts/utils/networkNodes.js');
   ok(con.includes('jackGate(rules, actor, canOperate)') && con.includes("!gate.ok ? (gate.reason || 'Not someone who can jack in')"), 'the console checks it on the click AND shows why on the dead Jack in button');
   ok(hb.includes('name="jk-gatefrom"') && hb.includes('name="jk-grole"') && hb.includes('name="jk-gs-{{i}}"') && hb.includes('name="jk-glogic"'), 'the card has the three choices, role chips, skill rows, or/and');
   ok(sec.includes('[name="jk-gatefrom"]:checked') && sec.includes('[name="jk-grole"]:checked') && sec.includes("jk-gs-${i}"), 'the card saves them');
+}
+
+// ═══ The GM decides: no invented numbers anywhere ═══
+{
+  const src = read;
+  const { rolledNote } = await imp('scripts/ui/content/NetResolve.js');
+  ok(rolledNote({ total: 12 }, 15) === ' (rolled 12 vs DV 15)' && rolledNote({ total: 12 }) === ' (rolled 12)', 'a real roll is reported');
+  ok(rolledNote({ total: 6, adjudicated: true }, 9) === '', 'a verdict\'s made-up total never is');
+  for (const f of ['scripts/ui/content/SiphonFlow.js', 'scripts/ui/Terminal/TerminalViewerApp.js']) ok(!/rolled \$\{res\.total/.test(src(f)), `${f.split('/').pop()}: every toast goes through rolledNote`);
+  const sc = src('scripts/ui/content/SecurityConsole.js');
+  ok(sc.includes("adjudicated: mode === 'gm'") && sc.includes('Your GM decides this one at the table') && sc.includes('introGm'), 'the console says so and reports it');
+  ok(src('scripts/ui/content/BankHeist.js').includes('YOUR GM DECIDES AT THE TABLE'), 'the siphon says so');
+  ok(src('scripts/ui/content/UploadFlow.js').includes('introGm') && src('scripts/ui/NetworkNodes/NodeConsoleApp.js').includes('introGm'), 'the ladder is explained without a DV');
+  const con = src('scripts/ui/NetworkNodes/NodeConsoleApp.js');
+  ok((con.match(/decided: true/g) || []).length === 2, 'the lock shows no die when the GM decides, or for a GM with no character');
+  ok(src('styles/components/jack-in.css').includes('.ncm-jk.is-decided .ncm-jk__roll { display: none; }'), 'the roll strip is gone from it');
+  ok(/mode === 'gm'[\s\S]{0,200}runSecurityConsole/.test(con) && con.includes('mode: this._jackMode(rules, node)'), 'node actions wait for the GM, and follow the node\'s own override');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

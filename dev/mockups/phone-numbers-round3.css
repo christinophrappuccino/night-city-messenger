@@ -1,0 +1,190 @@
+/* Round 3 mock: new rules on top of phone-numbers-round2.css. Tokens only; prefix ncm-r3-. */
+
+
+/* the real call screen, held still in a little scene instead of fixed over the canvas */
+.ncm-r3-scene { padding: 8px 10px; background: #08090d; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+.ncm-call-hud.ncm-r3-hud { position: relative; inset: auto; z-index: 0; pointer-events: auto; }
+.ncm-r3-hud .ncm-ch-feed img { object-fit: contain; padding: 8px; }
+.ncm-r3-sub { font: 13px var(--ncm-font-body); color: #d7dee9; }
+.ncm-r3-sub .ncm-pnum { font-size: 13px; }
+.ncm-r3-from { color: #d7dee9; }
+.ncm-r3-gallery { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+/* on the dark scene a number's parts stay bright whichever admin theme is on */
+.ncm-r3-scene .ncm-pnum .r, .ncm-r3-scene .ncm-pnum .c, .ncm-r3-scene .ncm-pnum .x, .ncm-r3-scene .ncm-pnum .l { color: #e8f0fa; }
+
+.ncm-r3-log { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; padding: 5px 7px; background: var(--ncm-bg-pane); border: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r3-log .ty { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+.ncm-r3-log .nm { display: flex; flex-direction: column; min-width: 0; }
+.ncm-r3-log .st { font-size: 12px; color: var(--ncm-text-label); }
+
+/* corporations */
+.ncm-r3-ext { display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: var(--ncm-bg-pane); border: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r3-board { display: flex; flex-direction: column; gap: 7px; }
+.ncm-r3-say { display: flex; gap: 6px; padding: 6px 8px; background: var(--ncm-bg-pane); border-radius: 2px; font: italic 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r3-say i { color: var(--ncm-hue-5); font-size: 11px; margin-top: 3px; }
+.ncm-admin-panel .ncm-pn .ncm-r3-keys { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-admin-panel .ncm-pn .ncm-r3-keys button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-pn .ncm-r3-keys button:hover { border-color: var(--ncm-act); }
+.ncm-pn-face.xl { width: 64px; height: 64px; font-size: 20px; border-radius: 4px; }
+.ncm-pn-face.has-img { background-color: #08090d; background-size: contain; background-repeat: no-repeat; background-position: center; }
+
+/* shared lines */
+.ncm-pn-lhead-n .ncm-pnum { font-size: 17px; }
+.ncm-r3-mem { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px 2px 2px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); border-radius: 2px; font: 13px var(--ncm-font-body); }
+.ncm-r3-mem .ncm-pn-face { width: 22px; height: 22px; font-size: 8px; }
+.ncm-r3-mem i { font-size: 10px; color: var(--ncm-text-label); }
+.ncm-r3-ringk { display: block; font-weight: 700; }
+.ncm-r3-ringk i { color: var(--ncm-attn); }
+
+/* the terminal's own palette, shown inside the config sheet */
+.ncm-terminal-viewer.ncm-r3-term { position: relative; flex: none; width: auto; height: auto; display: block; container-type: normal; border: 1px solid var(--ncm-primary); background: var(--ncm-bg-deep); color: var(--ncm-text-primary); font: 13px var(--ncm-font-mono, monospace); }
+.ncm-r3-tbar { display: flex; align-items: center; gap: 7px; padding: 5px 9px; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-primary); color: var(--ncm-text-primary); font-weight: 700; }
+.ncm-r3-tbar i { color: var(--ncm-primary); }
+.ncm-r3-tbar .grow { flex: 1; }
+.ncm-r3-tbody { display: grid; grid-template-columns: 130px minmax(0, 1fr); }
+.ncm-r3-tfold { display: flex; flex-direction: column; border-right: 1px solid var(--ncm-border); padding: 5px; gap: 2px; }
+.ncm-r3-tfold span { display: flex; align-items: center; gap: 5px; padding: 3px 6px; color: var(--ncm-text-secondary); }
+.ncm-r3-tfold span b { margin-left: auto; color: var(--ncm-text-primary); }
+.ncm-r3-tfold span.on { background: color-mix(in srgb, var(--ncm-primary) 18%, transparent); color: var(--ncm-text-primary); }
+.ncm-r3-tlist { padding: 6px 8px; display: flex; flex-direction: column; gap: 3px; min-height: 104px; }
+.ncm-r3-tlist .r { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 3px 5px; border-bottom: 1px solid var(--ncm-border); color: var(--ncm-text-primary); }
+.ncm-r3-tlist .r i { font-size: 10px; color: var(--ncm-primary); }
+.ncm-r3-tlist .r span:nth-child(n+3) { color: var(--ncm-text-secondary); }
+.ncm-r3-tlist p { margin: 2px 0 0 22px; color: var(--ncm-text-secondary); font-style: italic; }
+
+
+/* the scene is always dark, whichever admin theme is on, so colour on it is pulled toward white */
+.ncm-terminal-viewer.ncm-r3-term b { color: var(--ncm-text-primary); }
+.ncm-r3-hud .ncm-ch-txt { min-width: 0; }
+.ncm-r3-mem { text-transform: none; letter-spacing: 0; }
+
+/* a line type shows through its word and its dial, never a fixed colour or its own icon */
+.ncm-admin-panel .ncm-pn button.ncm-pn-prow.ncm-r3-nofc { grid-template-columns: minmax(0, 1fr); }
+.ncm-r3-dialw { margin-left: auto; font: 11px var(--ncm-font-body); letter-spacing: 0; text-transform: none; color: var(--ncm-text-label); }
+.ncm-pn-ph > h5:has(.ncm-r3-dialw) { display: flex; align-items: center; }
+.ncm-r3-hud[data-ring="slow"] .ncm-ch-brk { animation-duration: 7s; }
+.ncm-r3-hud[data-ring="slow"] .ncm-ch-arcs .a { animation-duration: 2.2s; }
+.ncm-r3-hud[data-ring="fast"] .ncm-ch-brk { animation-duration: 1.5s; }
+.ncm-r3-hud[data-ring="fast"] .ncm-ch-arcs .a { animation-duration: .7s; }
+.ncm-r3-hud[data-ring="flicker"] .ncm-ch-dial { animation: ncm-r3-flicker 2.6s steps(1) infinite; }
+@keyframes ncm-r3-flicker { 0%, 100% { opacity: 1; } 9% { opacity: .35; } 12% { opacity: 1; } 47% { opacity: .55; } 50% { opacity: 1; } 53% { opacity: .3; } 56% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ncm-r3-hud .ncm-ch-brk, .ncm-r3-hud .ncm-ch-arcs .a, .ncm-r3-hud[data-ring="flicker"] .ncm-ch-dial { animation: none; } }
+.ncm-pn-ph > h5 .ncm-r3-dialw { color: var(--ncm-text-primary); }
+
+/* where they work, under their name */
+.ncm-r3-org { display: inline-flex; align-items: center; gap: 6px; font: 700 13px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: #e8f0fa; }
+.ncm-r3-org img { width: 16px; height: 16px; border: 0; object-fit: contain; }
+.ncm-r3-logorg { font-size: 12px; color: var(--ncm-text-label); }
+
+/* the whole rule in one row of steps */
+.ncm-r3-flow { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.ncm-r3-flow .st { position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 5px; align-items: center; padding: 6px 8px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r3-flow .n { grid-row: 1 / 3; align-self: start; width: 18px; height: 18px; display: grid; place-items: center; background: color-mix(in srgb, var(--ncm-act) 24%, var(--ncm-bg-card)); color: var(--ncm-text-heading); font: 700 11px var(--ncm-font-mono); border-radius: 2px; }
+.ncm-r3-flow .st > i { display: none; }
+.ncm-r3-flow b { font: 700 12px var(--ncm-font-display); }
+.ncm-r3-flow small { grid-column: 2; font-size: 11px; line-height: 1.25; }
+.ncm-admin-panel .ncm-pn .ncm-pn-split.ncm-r3-half { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+
+/* a logo slot */
+.ncm-r3-logo { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ncm-r3-logo > img, .ncm-r3-logo > i { width: 52px; height: 52px; display: grid; place-items: center; object-fit: contain; background: var(--ncm-bg-pane); border: 1px dashed var(--ncm-border); border-radius: 2px; color: var(--ncm-text-label); font-size: 18px; }
+.ncm-admin-panel .ncm-pn button.ncm-r3-logob { flex: none; width: 28px !important; height: 28px; display: grid; place-items: center; background: var(--ncm-bg-pane); border: 1px dashed var(--ncm-border); border-radius: 2px; color: var(--ncm-text-label); font-size: 11px; }
+.ncm-r3-logob img { width: 100%; height: 100%; object-fit: contain; border: 0; }
+.ncm-r3-bkrow { display: flex; align-items: center; gap: 6px; }
+.ncm-admin-panel .ncm-pn .ncm-r3-bkrow input[type="text"] { flex: 1; min-width: 0; }
+.ncm-r3-rank { flex: none; width: 42px; text-align: center; font: 700 12px var(--ncm-font-mono); color: var(--ncm-text-heading); background: color-mix(in srgb, var(--ncm-hue-5) 18%, var(--ncm-bg-card)); border-radius: 2px; padding: 5px 0; cursor: help; }
+
+/* the "try it" panes */
+.ncm-r3-pscreen { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--ncm-bg-pane); border: 1px solid var(--ncm-border); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r3-pscreen > small:first-child { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; }
+.ncm-r3-alert { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: color-mix(in srgb, var(--ncm-attn) 9%, var(--ncm-bg-pane)); border: 1px solid color-mix(in srgb, var(--ncm-attn) 55%, var(--ncm-border)); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r3-alert > b { font: 700 12px var(--ncm-font-display); }
+.ncm-r3-alert > b i { color: var(--ncm-attn); font-size: 11px; }
+.ncm-admin-panel .ncm-pn input[type="range"] { height: 18px; padding: 0; background: none; border: 0; accent-color: var(--ncm-act); }
+
+/* call log editor */
+.ncm-r3-lrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 6px 9px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r3-lrow.on { background: color-mix(in srgb, var(--ncm-act) 13%, transparent); }
+.ncm-r3-lrow > i { font-size: 11px; }
+.ncm-r3-lrow .nm { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 7px; order: -1; }
+.ncm-r3-lrow .nm em { flex-basis: 100%; color: var(--ncm-text-label); }
+.ncm-r3-lrow .st { font-size: 12px; color: var(--ncm-text-label); }
+.ncm-r3-lrow .ncm-tagp { font-size: 10px; margin-left: auto; }
+.ncm-admin-panel .ncm-pn .ncm-r3-lrow button.ncm-ph2-btn--ic { width: 22px !important; height: 22px !important; min-width: 22px; }
+.ncm-admin-panel .ncm-pn .ncm-r3-ext select { flex: 0 1 136px; min-width: 0; width: 136px; }
+.ncm-r3-ext .grow { min-width: 0; }
+
+/* room for the real signal line above the dial; it may run off the scene's edge */
+.ncm-r3-scene { padding: 12px 10px; }
+
+/* No portrait: the initials, with two dots swirling round them. In the player's theme, like everything on this screen. */
+.ncm-ch-ini { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--ch-live) 16%, #0b0709), #0b0709 68%); }
+.ncm-ch-ini b { position: relative; z-index: 1; font: 800 30px var(--ncm-font-display, sans-serif); letter-spacing: .04em; color: #fff; text-shadow: 0 0 12px var(--ch-live); }
+.ncm-ch-ini .sw { position: absolute; left: 50%; top: 48%; width: 78%; aspect-ratio: 1; margin: 0; translate: -50% -50%; animation: ncm-ch-breathe 3.4s ease-in-out infinite alternate; }
+.ncm-ch-ini .tr, .ncm-ch-ini .dot { position: absolute; inset: 0; animation: ncm-ch-swirl 1.9s cubic-bezier(.45, .05, .55, .95) infinite; }
+.ncm-ch-ini .tr { border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 22%, color-mix(in srgb, var(--ch-live) 75%, transparent) 50%, transparent 50% 72%, color-mix(in srgb, var(--ch-live) 75%, transparent) 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); }
+.ncm-ch-ini .dot::before { content: ''; position: absolute; left: 50%; top: 0; width: 7px; height: 7px; margin: -2px 0 0 -3.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px 2px var(--ch-live); }
+.ncm-ch-ini .dot.b::before { top: auto; bottom: 0; margin: 0 0 -2px -3.5px; }
+@keyframes ncm-ch-swirl { to { transform: rotate(360deg); } }
+@keyframes ncm-ch-breathe { from { scale: .84; } to { scale: 1.04; } }
+@media (prefers-reduced-motion: reduce) { .ncm-ch-ini .sw, .ncm-ch-ini .tr, .ncm-ch-ini .dot { animation: none; } }
+
+/* the phone in the name box */
+/* the previews are narrow, so scale the whole real card down rather than cutting it */
+.ncm-r3-hud .ncm-ch-call, .ncm-r3-hud .ncm-ch-txt, .ncm-r3-hud .ncm-ch-body { min-width: 0; }
+.ncm-r3-hud .ncm-ch-chip { max-width: 100%; }
+
+/* a type's marking colour, for logs and lists only */
+.ncm-r3-ty { display: inline-flex; align-items: center; gap: 5px; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: color-mix(in oklab, var(--tc) var(--ncm-ink), var(--ncm-text-heading)); white-space: nowrap; }
+.ncm-r3-ty::before { content: ''; width: 8px; height: 8px; background: var(--tc); }
+.ncm-r3-swatch { width: 14px; height: 28px; background: var(--tc); border-radius: 2px; }
+.ncm-admin-panel .ncm-pn button.ncm-pn-prow:has(.ncm-r3-swatch) { grid-template-columns: 14px minmax(0, 1fr); }
+.ncm-admin-panel .ncm-pn .ncm-r3-swatches { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-admin-panel .ncm-pn .ncm-r3-swatches button { width: 24px !important; height: 24px; background: var(--tc); border-radius: 2px; border: 2px solid transparent; }
+.ncm-admin-panel .ncm-pn .ncm-r3-swatches button.on { border-color: var(--ncm-text-heading); }
+
+/* long lists inside a section */
+.ncm-r3-scrollbox { display: flex; flex-direction: column; gap: 3px; max-height: 188px; overflow-y: auto; overflow-x: hidden; }
+.ncm-r3-scrollbox > .ncm-r3-ext { flex: none; }
+.ncm-r3-itemrow { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 5px 7px; background: var(--ncm-bg-pane); border: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r3-itemrow .k { font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); }
+.ncm-r3-itemrow .grow { flex: 1; }
+
+/* the real card at its real size. It needs the width of one full column, and room for the signal line above the dial. */
+.ncm-r3-scene { padding: 26px 14px 14px; overflow: hidden; }
+.ncm-call-hud.ncm-r3-hud { pointer-events: none; }
+.ncm-r3-hud .ncm-ch-txt { max-width: none; }
+/* inside a narrow settings column the same card is scaled as a whole, never rearranged */
+.ncm-pn-sect .ncm-r3-scene { zoom: .68; }
+.mk-win.is-wide .ncm-pn-sect .ncm-r3-scene { zoom: .9; }
+.mk-win.is-wide .ncm-r3-gallery { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.mk-win.is-wide .ncm-r3-gallery .ncm-r3-scene { zoom: .8; }
+.ncm-r3-org { margin: 2px 0; }
+
+/* a search box inside a stacked section must not stretch */
+.ncm-pn-sect .in > .ncm-pn-tb { flex: none; flex-wrap: nowrap; }
+.ncm-pn-sect .in > .ncm-pn-tb .ncm-pn-srch { flex: 1 1 auto; height: 28px; }
+.ncm-pn-sect .ncm-scope { display: block; }
+.ncm-r3-bkrow { flex: none; }
+.ncm-admin-panel .ncm-pn .ncm-r3-bkrow button.ncm-ph2-btn--ic { width: 24px !important; height: 24px !important; min-width: 24px; }
+
+/* ═══ the digestible pass ═══ */
+.ncm-r3-subt { flex: none; display: flex; flex-wrap: wrap; gap: 2px; padding-bottom: 5px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-pn .ncm-r3-subt button { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 2px; font: 700 11px var(--ncm-font-display); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-pn .ncm-r3-subt button.on { background: color-mix(in srgb, var(--ncm-act) 15%, transparent); color: var(--ncm-text-heading); }
+.ncm-r3-swatch.lg { flex: none; width: 22px; height: 44px; }
+.ncm-pn-ph .ncm-r3-log { margin-top: 2px; }
+.ncm-pn-detail > .ncm-pn-ph .ncm-r3-scene { zoom: .68; }
+.mk-win.is-wide .ncm-pn-detail > .ncm-pn-ph .ncm-r3-scene { zoom: .9; }
+
+.ncm-r3-itemrow .col { display: flex; flex-direction: column; min-width: 0; }
+.ncm-r3-itemrow .grow { flex: 1; }
+
+/* a Who has cover row: face, then name with its Biomonitor under it, then the plan */
+.ncm-admin-panel .ncm-pn .ncm-r3-cover { display: grid; grid-template-columns: auto minmax(0, 1fr) 112px; align-items: center; gap: 8px; }
+.ncm-r3-cover .who { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.ncm-r3-cover .who b { max-width: 100%; overflow-wrap: anywhere; }
+.ncm-r3-cover .ncm-item-chip { max-width: 100%; flex-wrap: wrap; font-size: 11px; }
+.ncm-r3-cover .ncm-item-chip .ncm-item-art { width: 16px; height: 16px; padding: 1px; }
+.ncm-admin-panel .ncm-pn .ncm-r3-cover select { width: 100%; min-width: 0; }
+.ncm-r3-cover > .ncm-tagp { justify-self: end; }

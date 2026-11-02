@@ -1126,6 +1126,7 @@ export class AdminPanelApp extends BaseApplication {
     this.subscribe(EVENTS.CONTACT_UPDATED, () => this._debouncedRender());
 
     // Calls — the Phone tab's switchboard + numbers follow every call event and line change
+    this.subscribe?.('call:overheard', () => { if (this._activeTab === 'phone') this._debouncedRender?.(); });
     for (const ev of [EVENTS.CALL_RINGING, EVENTS.CALL_STARTED, EVENTS.CALL_ENDED, EVENTS.CALL_MISSED, EVENTS.LINE_UPDATED, EVENTS.CALL_LINE, EVENTS.VOICEMAIL_LEFT, EVENTS.CALL_LOGGED]) {
       this.subscribe(ev, () => { if (this._activeTab === 'phone') this._debouncedRender(); });
     }

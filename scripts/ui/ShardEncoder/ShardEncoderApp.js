@@ -2504,8 +2504,10 @@ export class ShardEncoderApp extends BaseApplication {
         res = await game.nightcity?.skillService?.performCheck(this.actor, S.craft, {
           dc: dv, modifier: bonuses.total, showChat: true,
           context: `${T('short')} Encoder`, flavor: `Encoding ${this._artName()}`,
+          ask: { host: this.element?.querySelector('.window-content'), title: `Encoding ${this._artName()}`, goLabel: 'Encode' },
         });
         if (!res) throw new Error('The skill check could not be rolled.');
+        if (res.cancelled) throw Object.assign(new Error('cancelled'), { encodeCancelled: true });
       }
       const outcome = needsRoll ? encodeOutcome(res.total, dv) : 'clean';
       const eff = this._isProgram()
@@ -2569,6 +2571,13 @@ export class ShardEncoderApp extends BaseApplication {
       S.result = { outcome, eff, botch, total: res.total, dv, margin: res.margin, saved, rolled: needsRoll };
       this._seal(S.result);
     } catch (err) {
+      if (err?.encodeCancelled) {
+        this.g('encDie')?.classList.remove('rolling', 'show');
+        this.g('encCore')?.classList.remove('saving');
+        this.g('encCoreLbl').textContent = 'READY';
+        this._status('Encoder armed · nothing rolled.');
+        return;
+      }
       log.error('Encoder: encode failed', err);
       ui.notifications?.error(`NCM | The encode failed: ${err.message}`);
       this._status(`<span style="color:var(--ncm-danger)">The encode failed.</span> ${esc(err.message)}`);

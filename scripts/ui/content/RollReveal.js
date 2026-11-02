@@ -182,7 +182,7 @@ export function playRollReveal(o = {}) {
         tone = success ? (isCrit ? 'crit' : 'ok') : 'fail';
         const word = (w, d) => (typeof w === 'function' ? w(r) : w) || d;   // a verdict may depend on the margin (a scan: identified vs detected)
         els.vtxt.textContent = success ? word(o.ok, 'Success') : word(o.no, 'Failed');
-        els.vmargin.textContent = margin === 0 ? 'exactly DV' : (margin > 0 ? `+${margin} over DV` : `${margin} under DV`);
+        els.vmargin.textContent = margin === 0 ? 'tied the DV' : (margin > 0 ? `+${margin} over DV` : `${margin} under DV`);
         once('verdict', () => {
           if (o.hideDV && els.dvtag) els.dvtag.textContent = `DV ${dv}`;
           if (!success) rr.classList.add('is-shake');

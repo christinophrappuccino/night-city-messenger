@@ -1,7 +1,58 @@
 # Conversations
 
-Status: **design agreed 2026-10-30, not built.** Target 2.1. Mockup: `dev/mockups/conversations-mock.html`
+Status: **design agreed 2026-10-30, revised 2026-11-02, not built.** Target 2.1. Mockup: `dev/mockups/conversations-mock.html`
 (`node dev/tools/serve-mockups.cjs`, then `http://127.0.0.1:8123/dev/mockups/conversations-mock.html`).
+
+## Revision, 2026-11-02 (these win over anything below)
+
+- **It stays apart from the rest of the module.** Keep: names, portraits and aliases; its own badge; an off switch (world setting); Purge and Factory Reset; Send as mail, which only opens the composer and leaves no line behind. Cut from the first version: the Call button and clickable numbers, Desk, Voice notes, Overview, trace, sniffers, terminal mirrors, Contact Manager's Last Interaction and Recent sort.
+- **Shard and terminal chat logs are left alone.** They are files, and stay that way. No shared code or look is required for this release.
+- **Privacy is the same standard as mail.** Foundry's server appears to check permissions on writes only, so page ownership hides lines in the UI, and a player could read them from the browser console. Accepted by the dev. Removing someone still means they see nothing new and get no notification.
+- **Notifications:** the badge counts conversations, never lines. One toast per conversation, updated in place ("Dockside crew: 6 new"), leaving by itself. One sound on the first new line, then silence until it is read. Nothing while it is open. Muted = no toast, no sound, no badge, one click from the head. The GM gets ONE combined toast ("NPC conversations: 3 waiting") under its own setting, and only for conversations with an NPC, unless they switch one on. Its own event, never mail's toast or sound. Needs a two-client burst test.
+- **You are one identity per conversation, fixed when you join** (agreed by the dev; the admin view is approved too). Switching mid-chat would show that two names are one person. The player picks **Join as** when starting one; if added, they are in as the identity they were added by. Each identity is its own member, so an NPC's alias is a separate member, and the GM's Speaking as switches between the NPC members.
+- **No owner link on an alias.** An alias member or line carries the alias's contact id and no `actorId`; the GM side works out the owner. Same rule as phone aliases.
+- **Why you would use each (agreed):** a message is something you send, a conversation is something you are in. Mail has a subject, carries things (eddies, shards, files, encryption, self-destruct, scheduling, anonymity), and gives each person a copy. A conversation is short lines and pictures in one shared chat, with no subject. Mail keeps every feature it has.
+- **Stripped from conversations (agreed):** plain text only; about 500 characters a line, pointing longer text at Send as mail; no Show earlier messages when adding; no Hide; only the starter or a GM renames. Kept: pictures, add / remove / leave, Send as mail, search inside the open conversation.
+- **Sharing in the chat (agreed, mocked):** the + in the bar offers Picture, My number and A contact. A contact shows as a Data Drop card in the line: address, number or both, only what the sharer has. It plays a small animation once, when it arrives while the chat is open, never the full-screen overlay. Nothing is added by itself: each person clicks Save contact, which follows the Data Drop merge rule (adds what they lack, overwrites nothing). A card carries no owner link. A contact locked with ICE can't be shared and never appears in the picker (dev). The animation is approved. The inbox list mixes conversations and mail by latest activity (dev confirmed).
+- **Taps (agreed, mocked):** a tap on an up node logs lines sent from that node's scene over its network, simply. One running log per conversation per tapper, in their Exfil folder, updated in place with a cap, and no toast or sound. A picture reads [picture], a card reads [shared a contact: name]. Speakers show as the identity they are in the chat as. Sniffers ignore conversations. The GM sees a Tapped tag on the conversation in Admin.
+- **Speaking as (agreed):** defaults to the last NPC who spoke in that conversation, and the box names them ("Write as Mox…"). One NPC per line.
+- **The NPC tag is GM-only:** it shows in Admin and in a GM's own view, never to a player, who must not be able to tell an NPC from a player by the line.
+- **Fallback for one-line writes:** a key by dot path, then pages of about 25 lines, then one page per line.
+
+## Gap tracker
+
+Every known risk, how it is fixed, and what proves it. A row closes only when the check named here passes. A new gap goes here as soon as it is found.
+
+| Risk | Fix | Proven by | Status |
+|---|---|---|---|
+| A sent line redraws everyone's Journal sidebar | Summary update passes `render: false`. The probe counted 0 redraws either way, so it proved nothing (a normal save should redraw, per Foundry's source). Measure in the stress test with the tab open | Stress test | Open |
+| Read position writes the actor per line and can redraw sheets | Hold in memory; write after a pause and on leaving | Sim + two-client | Open |
+| A new line wipes what you are typing and the scroll | Patch the chat in place; no `MESSAGE_*` or `INBOX_REFRESH` per line; a draft per conversation | Sim + two-client | Open |
+| Removed then added back cannot be stored | A list of membership spans | Sim | Open |
+| A forged relay: another member's name, or after removal | GM checks owner, membership and rights on every write; a late queued line is refused and says so | Sim | Open |
+| Two GMs for a moment, or a retry, fork the order | Sort by `seq` then `lineId`; `lineId` makes a retry a no-op | Sim + stress test | Open |
+| Queued lines lost on reload | localStorage per character, like mail now | Sim | Open |
+| Base64 pictures bloat pages | A card keeps a path; line pictures are paths or http(s), never `data:` | Sim | Open |
+| A short number means something else to someone elsewhere | Cards store the full form; Save goes through `normaliseNumber` | Sim | Open |
+| A saved address fails with Contact Not Found when mailed | Check the send gate with a player-added address; fix or explain | Two-client | Open |
+| Send as mail shows the real address behind an alias | The composer starts as the identity you are in the chat as | Sim | Open |
+| An alias member or line reveals its owner | Contact id only, no `actorId`; the GM side works out the owner | Sim | Open |
+| A tap log marks itself unread or toasts | Written read; an update never notifies; a tapper who is a member logs nothing for that chat | Sim | Open |
+| Notifications flood | One toast per conversation, one sound until read, badge counts conversations, one GM toast | Two-client burst | Open |
+| Two of your characters in one chat | One toast; the viewer filters by the open character; your own line never notifies you | Two-client | Open |
+| A row moves while you read it | Selection follows the id; a selected row on another page stays open | Sim | Open |
+| Oldest sort, date range, From filter, Mark all read | Use `lastAt`; From does not apply; Mark all read includes conversations | Sim | Open |
+| A burned or deleted member | Keeps `fromName`, can't receive, listed by Orphan Audit; a chat with nobody left is offered for deletion | Sim | Open |
+| Page ownership or the one-key write do not behave as assumed | **Ownership answered by the probe, 2026-11-02, player fresh load:** a page or journal the player has no access to is still ON their client with its text readable, and only hidden in the UI. So a removed member, or anyone with a console, can read everything. Accepted by the dev as the same level as mail. A conversation never holds a real secret; that is what mail is for. Burst: 20 of 20 lines survived twenty writes at once, and each client held all 175. That also shows each write carried only its own line: a whole-page write would have overwritten the others. Removing a line by key works. Measured 33,896 characters for 175 lines, about 194 a line, so 1,000 lines is about 190 KB. The player's wire-size report never arrived, so the stress test still measures it | Two-client probe, 2026-11-02 | **Answered**, plan stands |
+| Switching it off mid-game | Rows and buttons hide, data stays, relayed writes refuse with a reason | Sim | Open |
+| ICE-locked contact shared in a chat | Never appears in the picker; the GM refuses one in a relay | Sim | Open |
+| A removed line stays readable in the data | The GM write replaces the line with a marker, so the text is gone, not hidden | Sim | Open |
+| Mail: queued mail lost on reload, with its eddies | Saved per user in the browser; a refused flush is named | `test-mail-queue-persist.mjs` | **Fixed**, not live-tested |
+| Mail: a held message refused at flush keeps the eddies taken for it | The player is told to ask the GM. No automatic refund yet |  | Open, mail |
+
+**Decided by the dev, 2026-11-02:** no chat with no GM online (lines queue, as mail does). Enter sends, Shift+Enter makes a new line. The GM can remove a line for everyone, leaving "Line removed by the GM" in its place.
+
+**Admin → Messages → Conversations, observing:** every conversation in the world, with search, Show, Who and Sort. Reading is invisible: no member is added, nobody is told, and no read state changes. A **Watching** tag says so. New lines appear live. Members shows who plays each one, how far each has read, and the truth behind an alias, none of which players see. In a conversation with an NPC the GM writes through **Speaking as**; in a players-only one there is no reply box, only **Join as an NPC…**, which adds a visible "joined" line. A bell per conversation decides whether it counts in the GM's toast (on for NPC conversations, off for players-only).
 
 ## Why
 
@@ -131,7 +182,7 @@ Replaces the center pane only. The header, tabs, pills and list stay the same.
 - **Lines:** others on the left with a face, your own on the right and tinted, same-sender runs grouped, day lines, a "new"
   line, and system lines such as "Rache added Mox".
 - **Loading:** the newest page or two; Show earlier loads back. It opens at the "new" line, else the newest line.
-- **Bar:** grows as you type, with Add image, **Send as mail** and Send. Ctrl+Enter sends. A GM also gets a Speaking as
+- **Bar:** grows as you type, with Add image, **Send as mail** and Send. Enter sends. A GM also gets a Speaking as
   picker with the Send as list.
 - **Send as mail** opens the composer with the members as recipients and the typed text as the body. A single line in the
   conversation can then say "Rache sent mail to the group" without carrying the mail's content.

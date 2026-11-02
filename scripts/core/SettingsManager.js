@@ -167,6 +167,24 @@ export class SettingsManager {
       default: '',
     });
 
+    game.settings.register(MODULE_ID, 'emergencyChatCard', {
+      name: 'Chat Card for Trauma Team and Backup Calls',
+      hint: 'Post one chat card when someone calls Trauma Team or Lawman Backup, so the table knows. It follows the caller\'s roll mode, so a whispered call stays whispered.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    game.settings.register(MODULE_ID, 'notifyGmEmergency', {
+      name: 'GM Alert — Trauma Team and Backup Calls',
+      hint: 'Show the GM a toast and play a short tone whenever someone calls Trauma Team or Lawman Backup, even if their dice are hidden.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
     game.settings.register(MODULE_ID, 'notifyGmNpcMail', {
       name: 'GM Alert — Player Mail to NPCs',
       hint: 'Show the GM a toast notification whenever a player sends a message to an NPC. The NPC Inbox section in Admin → Messages is always available regardless of this setting.',
@@ -284,8 +302,8 @@ export class SettingsManager {
       scope: 'world',
       config: true,
       type: Number,
-      range: { min: 6, max: 30, step: 1 },
-      default: 15,
+      range: { min: 4, max: 30, step: 1 },
+      default: 9,
     });
 
     game.settings.register(MODULE_ID, 'anonTraceSkill', {
@@ -587,13 +605,49 @@ export class SettingsManager {
       name: 'Calls — a call starts in', hint: 'The mode a call opens in (Admin → Phone → Settings).',
       scope: 'world', config: false, type: String, default: 'loud',
     });
-    game.settings.register(MODULE_ID, 'callHomeCode', {
-      name: 'Calls — home country code', hint: 'A number typed without a country code gets this one.',
-      scope: 'world', config: false, type: String, default: '+1',
+    game.settings.register(MODULE_ID, 'phonePlaces', {
+      name: 'Calls — places', hint: 'The starting list and what the GM changed in the place table (dev/design/PHONE-REVISION.md §18).',
+      scope: 'world', config: false, type: Object, default: { list: '2045', changed: {}, added: [] },
     });
-    game.settings.register(MODULE_ID, 'callDefaultRegion', {
-      name: 'Calls — default region', hint: 'The country, region and area code the number picker starts on.',
-      scope: 'world', config: false, type: Object, default: { country: '1', region: 'Night City', code: '555' },
+    game.settings.register(MODULE_ID, 'phoneRules', {
+      name: 'Calls — number rules', hint: 'Campaign home, how far players can reach, own digits, extra lines, approval for changes.',
+      scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'phoneRetired', {
+      name: 'Calls — retired numbers', hint: 'Numbers that were changed, burned or deleted. Never handed out again.',
+      scope: 'world', config: false, type: Array, default: [],
+    });
+    game.settings.register(MODULE_ID, 'phoneRequests', {
+      name: 'Calls — number requests', hint: 'Players asking for a different number, waiting on the GM.',
+      scope: 'world', config: false, type: Array, default: [],
+    });
+    game.settings.register(MODULE_ID, 'phoneLineTypes', {
+      name: 'Line types', hint: 'Changes to the shipped line types, and the GM\'s own.', scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'phoneOffices', {
+      name: 'Corporate offices', hint: 'Who answers each office, its art and its extensions.', scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'phoneWrittenLogs', {
+      name: 'Written call logs', hint: 'Calls the GM wrote into a log by hand.', scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'phoneEmergency', {
+      name: 'Trauma Team and Backup', hint: 'Plans, items, organizations and their groups.', scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'phoneEmergencyActive', {
+      name: 'Emergencies on their way', hint: 'Teams that have been called and have not arrived.', scope: 'world', config: false, type: Array, default: [],
+    });
+    game.settings.register(MODULE_ID, 'overheardCalls', {
+      name: 'Overheard calls', hint: 'Conversations between NPCs that players can listen in on.', scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'phoneEavesdrop', {
+      name: 'Eavesdropping rules', hint: 'Who counts as in the room, which gear matters, what the rolls need.', scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'phoneOrgNames', {
+      name: 'Organization names and their offices', hint: 'What the GM decided for an Organization that did not match an office.', scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'phoneSpecial', {
+      name: 'Calls — special numbers', hint: 'Numbers with their own rules, added to the ones every world starts with.',
+      scope: 'world', config: false, type: Object, default: {},
     });
     game.settings.register(MODULE_ID, 'callRingSeconds', {
       name: 'Calls — ring time', hint: 'How long a call rings before it counts as missed.',
@@ -758,12 +812,34 @@ export class SettingsManager {
 
     game.settings.register(MODULE_ID, 'roleAbilityRoll', {
       name: 'Role Ability Rolls (Interface)',
-      hint: 'How a role ability such as Interface is rolled anywhere the module asks for it (network and terminal logins, shard breaches, hacks). "Stat + rank" adds TECH, the module’s long-standing default; "Rank only" is the rulebook’s rank + 1d10.',
+      hint: 'How a role ability such as Interface is rolled anywhere the module asks for it (network and terminal logins, shard breaches, hacks). "Rank only" is the rulebook’s rank + 1d10, the default; "Stat + rank" also adds TECH. DVs for Interface are set for rank + 1d10, so switching to stat + rank makes them much easier.',
       scope: 'world',
       config: true,
       type: String,
-      choices: { stat: 'Stat + rank + 1d10 (TECH for Interface)', rank: 'Rank only + 1d10 (rulebook)' },
-      default: 'stat',
+      choices: { rank: 'Rank only + 1d10 (rulebook)', stat: 'Stat + rank + 1d10 (TECH for Interface)' },
+      default: 'rank',
+    });
+
+    // Which saved records the Interface DV upgrade (MigrationRunner v3) has already moved: a crash must not move one twice.
+    game.settings.register(MODULE_ID, 'ifaceShiftDone', { scope: 'world', config: false, type: Object, default: {} });
+
+    game.settings.register(MODULE_ID, 'watchMode', {
+      name: 'Watching Other Players',
+      hint: 'Whether the rest of the table can watch a player work a terminal, shard or network node, as a read-only copy of their screen. "Players choose" gives them an eye button on the window.',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: { player: 'Players choose', always: 'Every session can be watched', off: 'Off' },
+      default: 'player',
+    });
+
+    game.settings.register(MODULE_ID, 'askBeforeRoll', {
+      name: 'Ask Before Rolling',
+      hint: 'Show the roll panel (the formula, your chance, Luck and a modifier) before a skill check. Off: checks roll straight away, with no Luck or modifier.',
+      scope: 'client',
+      config: true,
+      type: Boolean,
+      default: true,
     });
 
     game.settings.register(MODULE_ID, 'securityLogSeen', {

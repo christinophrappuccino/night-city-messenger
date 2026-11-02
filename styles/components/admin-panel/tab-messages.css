@@ -860,6 +860,8 @@
   background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .ncm-admin-panel .ncm-msg2-dd__menu--wide { min-width: 270px; }
 .ncm-admin-panel .ncm-msg2-dd--down .ncm-msg2-dd__menu { top: calc(100% + 4px); left: 0; }
+.ncm-admin-panel .ncm-msg2-newmenu { flex: none; }
+.ncm-admin-panel .ncm-msg2-dd--downr .ncm-msg2-dd__menu { top: calc(100% + 4px); right: 0; }
 .ncm-admin-panel .ncm-msg2-dd--up .ncm-msg2-dd__menu { bottom: calc(100% + 4px); right: 0; }
 .ncm-admin-panel .ncm-msg2-dd__k { padding: 6px 8px 3px; font: 700 9.5px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-muted)); }
 .ncm-admin-panel .ncm-msg2-dd__sep { flex: none; height: 1px; margin: 4px 2px; background: var(--ncm-border); }
@@ -1061,6 +1063,8 @@
 /* the postmark: a small routing tag — the network's own colour as an edge + barcode, its 3-letter code */
 .ncm-admin-panel .ncm-ib-pm { --n: var(--ncm-act, var(--ncm-secondary)); flex: none; display: inline-flex; align-items: stretch; height: 18px; box-sizing: border-box;
   border: 1px solid color-mix(in srgb, var(--n) 70%, transparent); clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%); background: color-mix(in srgb, var(--n) 10%, var(--ncm-bg-card)); }
+.ncm-admin-panel .ncm-ib-pm { position: relative; }
+.ncm-admin-panel .ncm-ib-pm::before { content: ''; position: absolute; top: -1px; left: calc(100% - 4px); width: 7.08px; height: 0; border-top: 1px solid; border-top-color: inherit; transform-origin: 0 0; transform: rotate(45deg); pointer-events: none; }
 .ncm-admin-panel .ncm-ib-pm i.bc { width: 8px; background: repeating-linear-gradient(90deg, var(--n) 0 1px, transparent 1px 2px, var(--n) 2px 4px, transparent 4px 5px); }
 .ncm-admin-panel .ncm-ib-pm > b { display: flex; align-items: center; padding: 0 5px 0 4px; font: 700 9.5px var(--ncm-font-mono); letter-spacing: .05em; color: color-mix(in srgb, var(--n) 40%, var(--ncm-text-heading, var(--ncm-text-primary))); }
 .ncm-admin-panel .ncm-ib-pm > span { display: flex; align-items: center; padding: 0 7px 0 5px; border-left: 1px dashed color-mix(in srgb, var(--n) 50%, transparent); font: 10.5px var(--ncm-font-body); color: var(--ncm-text-primary); }

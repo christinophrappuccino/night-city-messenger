@@ -82,6 +82,9 @@
 .ncm-jk.is-miss .ncm-jk__res .sub { color: #ffb3ba; }
 
 .ncm-jk__wait { position: absolute; left: 50%; width: 340px; margin-left: -170px; bottom: 104px; z-index: 7; padding: 6px 0; text-align: center; background: rgba(3,5,11,.85); opacity: 0; pointer-events: none; }
+/* The GM calls it: there is no roll to show, so the rings and the verdict carry it. */
+.ncm-jk.is-decided .ncm-jk__roll { display: none; }
+.ncm-jk.is-decided .ncm-jk__wait { bottom: 40px; }
 .ncm-jk__wait b { display: block; font: 700 15px var(--ncm-font-display, sans-serif); letter-spacing: .24em; color: #f7c948; }
 .ncm-jk__wait small { color: #bbb; }
 .ncm-jk__slices { position: absolute; inset: 34px 0 0 0; z-index: 12; pointer-events: none; }

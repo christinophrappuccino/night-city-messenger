@@ -321,7 +321,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       try {
         this.anonStyle = game.settings.get(MODULE_ID, 'anonDefaultStyle') || 'scrambled';
         this.anonAllowReplies = game.settings.get(MODULE_ID, 'anonAllowRepliesDefault') ?? true;
-        this.anonTraceDV = Number(game.settings.get(MODULE_ID, 'anonTraceDV')) || 15;
+        this.anonTraceDV = Number(game.settings.get(MODULE_ID, 'anonTraceDV')) || 9;
       } catch { /* settings not ready — keep field defaults */ }
     }
 
@@ -330,6 +330,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     // conversation stays anonymous by default. Left toggleable: the GM can turn it
     // off for any given reply via the composer toggle.
     this._preTickAnonThread();
+
+    // After the defaults above, so a reopened scheduled message keeps its own settings.
+    if (options.scheduled) this._applyScheduled(options.scheduled);
 
     // Keep the network pill honest when the connection changes elsewhere (the
     // inbox selector, a scene change). Only THIS client's switches — socket
@@ -474,6 +477,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   _initCompose(options = {}) {
     {
       if (options.groupId) this._addGroupById(options.groupId);
+      // Several prepared recipients, e.g. a scheduled message reopened for editing.
+      for (const r of (options.recipients || [])) {
+        if (r.actorId) this._addRecipient(r.actorId, false, r.contactId ? { contactId: r.contactId, email: r.email, name: r.name } : null);
+        else if (r.name && (r.contactId || r.email)) this._addContactRecipient(r);
+        else if (r.email) this._addRawRecipient(r.email);
+      }
       if (options.toActorId) this._addRecipient(options.toActorId, false);
       // Fallback: if actor-based add failed or no actorId, try raw email
       if (this.recipients.length === 0 && options.to) {
@@ -1251,6 +1260,53 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (this._errors.to) delete this._errors.to;
   }
 
+  /** Reopen a scheduled message as it was (SchedulingService.scheduledComposerState). */
+  _applyScheduled(s) {
+    this.threadId = s.threadId;
+    this.inReplyTo = s.inReplyTo;
+    this.attachments = [...s.attachments];
+    if (s.eddiesAmount > 0) {
+      this.eddiesAmount = s.eddiesAmount;
+      this.attachments.push({ name: 'Eddies', size: '', icon: 'fa-coins', isEddies: true, eddiesAmount: s.eddiesAmount, eddiesFormatted: `${s.eddiesAmount.toLocaleString()} eb`, encrypted: false });
+    }
+    if (s.encryption) {
+      this.encryptionEnabled = true;
+      this.encryptionType = s.encryption.type || this.encryptionType;
+      this.encryptionDV = s.encryption.dv || this.encryptionDV;
+      this.encryptionFailureMode = s.encryption.failureMode;
+      this.encryptionMaxAttempts = s.encryption.maxAttempts;
+      this.encryptionBypassSkills = s.encryption.bypassSkills;
+      this.iceSource = s.encryption.iceSource;
+      this.iceActorId = s.encryption.iceActorId;
+    }
+    if (s.selfDestructMode) {
+      this.selfDestructEnabled = true;
+      this.selfDestructMode = s.selfDestructMode;
+    }
+    if (s.anonymous) {
+      this.anonymousEnabled = true;
+      if (s.anonymous.style) this.anonStyle = s.anonymous.style;
+      this.anonAlias = s.anonymous.alias;
+      this.anonAllowReplies = s.anonymous.allowReplies;
+      if (s.anonymous.traceDV) this.anonTraceDV = s.anonymous.traceDV;
+    }
+    if (s.anonReply) {
+      this.anonReplyTo = s.anonReply;
+      const alias = s.anonReply.alias || 'UNKNOWN';
+      this.recipients.push({
+        actorId: null, contactId: null, name: alias, email: s.anonReply.maskedEmail || '',
+        avatarColor: getAvatarColor(alias), initials: '?', mismatch: false, mismatchTooltip: '', unreachable: false,
+        locked: true, isRaw: false, isAnonTarget: true,
+      });
+    }
+    if (s.sendNetworkId) this.sendNetworkId = s.sendNetworkId;
+    if (s.scheduledTime) {
+      this.scheduleEnabled = true;
+      this.scheduledTime = s.scheduledTime;
+      this.scheduleGameTime = s.scheduleGameTime;
+    }
+  }
+
   /** The identity a recipient chip is removed by: actor id → master id → email. */
   static recipientKey(r) {
     return r?.groupId || r?.actorId || r?.contactId || r?.email || '';
@@ -1346,7 +1402,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       this._renderAutocomplete(query);
       return;
     }
-    const directory = this.contactRepo?.getGlobalActorDirectory() || [];
+    const directory = this.contactRepo?.getRecipientDirectory({ isGM: game.user.isGM }) || [];
     const existingIds = new Set(this.recipients.map(r => r.actorId).filter(Boolean));
     const existingEmails = new Set(this.recipients.map(r => (r.email || '').toLowerCase()).filter(Boolean));
     const reachableIds = this.networkService?.getReachableNetworkIds() || [];
@@ -2293,7 +2349,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           maskedEmail: ANON_MASKED_EMAIL,
           allowReplies: !!this.anonAllowReplies,
           traceable: !!traceEnabled,
-          traceDV: Number(this.anonTraceDV) || 15,
+          traceDV: Number(this.anonTraceDV) || 9,
           traced: false,
         };
       }
@@ -2323,7 +2379,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         result = await this.schedulingService?.scheduleMessage(
           messageData,
           deliveryTime,
-          { useGameTime: this.scheduleGameTime }
+          { useGameTime: this.scheduleGameTime, eddiesHeld: this.fromActorId ? this.eddiesAmount * Math.max(1, sendList.length) : 0 }
         );
 
         if (result?.success) {

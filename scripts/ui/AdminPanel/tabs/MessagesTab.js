@@ -30,6 +30,7 @@ import {
 } from '../../../utils/helpers.js';
 import { getInitials, getRoleIcon } from '../../../utils/designHelpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
+import { scheduledRecipientLabel } from '../../../services/SchedulingService.js';
 import { DateRangePicker } from '../../components/DateRangePicker.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
@@ -206,7 +207,6 @@ export class MessagesTab extends BaseTab {
         { key: 'outbox', icon: 'fa-paper-plane', label: 'Outbox', count: outboxN, tone: failures.length ? 'bad' : '' },
         { key: 'inboxes', icon: 'fa-inbox', label: 'Inboxes', count: scan.inboxes.length, tone: '' },
       ].map(n => ({ ...n, on: n.key === this._view })),
-      sendAsPicker: this._sendAsPicker(),
       bcOpen: this._bcOpen,
       bc: this._bcOpen ? this._broadcastContext() : null,
       head: {
@@ -433,10 +433,7 @@ export class MessagesTab extends BaseTab {
   formatScheduledEntry(entry) {
     const d = entry.messageData || {};
     const fromName = resolveDisplayName({ contactId: d.fromContactId, actorId: d.fromActorId, email: d.from }, d.fromName || d.from || 'Unknown');
-    const recips = Array.isArray(d.recipients) ? d.recipients : null;
-    const toName = recips?.length > 1
-      ? `${recips.length} recipients`
-      : resolveDisplayName({ contactId: d.toContactId, actorId: d.toActorId, email: d.to }, d.toName || d.to || 'Unknown');
+    const toName = scheduledRecipientLabel(d);
     const now = entry.useGameTime ? this._nowMs() : Date.now();
     const diffMs = Math.max(0, new Date(entry.deliveryTime).getTime() - now);
     const priority = d.priority || 'normal';
@@ -911,7 +908,7 @@ export class MessagesTab extends BaseTab {
       maskedEmail: ANON_MASKED_EMAIL,
       allowReplies: prior?.allowReplies ?? !!g('anonAllowRepliesDefault', true),
       traceable: !!g('anonTraceEnabled', true),
-      traceDV: Number(prior?.traceDV || g('anonTraceDV', 15)) || 15,
+      traceDV: Number(prior?.traceDV || g('anonTraceDV', 9)) || 9,
       traced: false,
     };
   }
@@ -2107,6 +2104,7 @@ export class MessagesTab extends BaseTab {
     if (!entry) return ui.notifications.warn('NCM | Scheduled entry not found.');
     const r = await svc._deliverScheduled(entry);
     if (r?.success) { await svc._persistScheduled?.(); ui.notifications.info('NCM | Sent.'); }
+    else if (r?.refused) await svc._persistScheduled?.();   // already reported, and listed under Didn't arrive
     else ui.notifications.error('NCM | Could not send it now — see the console.');
     this.render(true);
   }
@@ -2426,18 +2424,12 @@ export class MessagesTab extends BaseTab {
     });
   }
 
-  _sendAsPicker() {
-    const id = this.scopeId('sendas');
-    ScopePicker.on(id, (v) => {
-      if (v?.length) {
-        const [npcId, contactId] = v[0].split('|');
-        ScopePicker.set(id, []);
-        ScopePicker.close(id);
-        MessagesTab.prototype.onNpcQuickSend.call(this, null, { closest: () => ({ dataset: { npcId, contactId } }) });
-      }
-      this.render(true);
-    });
-    return ScopePicker.html(id, { noun: 'identity', nouns: 'identities', icon: 'fa-paper-plane', label: 'Send as', allLabel: 'an NPC…', items: this._sendAsItems() });
+  /** New → Message as an NPC: pick who, then the composer opens as them. */
+  async _sendAsPick() {
+    const pick = await showNamePicker({ title: 'Message as who?', hint: 'Any NPC, alias or system address.', placeholder: 'search names and addresses…', entries: this._sendAsItems().map((i) => ({ id: i.id, name: i.name, group: i.group, sub: i.meta, img: i.img })) });
+    if (!pick?.id) return;
+    const [npcId, contactId] = pick.id.split('|');
+    MessagesTab.prototype.onNpcQuickSend.call(this, null, { closest: () => ({ dataset: { npcId, contactId } }) });
   }
 
   _broadcastContext() {
@@ -2672,6 +2664,7 @@ export class MessagesTab extends BaseTab {
       }
       case 'ibPurgeAll': return this._ibPurge(this._allInboxJournalIds(), 'every inbox');
       // Header
+      case 'sendAsPick': target.closest('details')?.removeAttribute('open'); return this._sendAsPick();
       case 'bcToggle': this._bcOpen = !this._bcOpen; return this.render(true);
       case 'bcPrio': this._bc.priority = d.p || 'normal'; return this.render(true);
       case 'bcLater': this._bc.later = !this._bc.later; if (this._bc.later && !this._bc.when) this._bc.when = new Date(this._nowMs() + 3600000).toISOString().slice(0, 16); return this.render(true);
@@ -2944,7 +2937,7 @@ export class MessagesTab extends BaseTab {
     const confirmed = await adminConfirm({ title: 'Cancel Scheduled Message', content: '<p>Cancel this scheduled message? It will not be delivered.</p>' });
     if (!confirmed) return;
     const result = await this.schedulingService?.cancelScheduled(scheduleId);
-    if (result?.success) { ui.notifications.info('Scheduled message cancelled.'); this.render(true); }
+    if (result?.success) { ui.notifications.info(result.refunded ? `Scheduled message cancelled. ${result.refunded.toLocaleString()} eb refunded.` : 'Scheduled message cancelled.'); this.render(true); }
     else ui.notifications.error(result?.error || 'Failed to cancel.');
   }
 
@@ -2962,7 +2955,7 @@ export class MessagesTab extends BaseTab {
       <div class="ncm-msg2-dlg">
         <div class="ncm-msg2-dlg__box">
           <div class="ncm-msg2-dlg__k">Message</div>
-          <div><b>${esc(data.fromName || data.from || 'Unknown')}</b> → <b>${esc(data.toName || data.to || 'Unknown')}</b></div>
+          <div><b>${esc(data.fromName || data.from || 'Unknown')}</b> → <b>${esc(scheduledRecipientLabel(data))}</b></div>
           <div class="ncm-msg2-dlg__s">“${esc(data.subject || '(no subject)')}”</div>
         </div>
         <div class="ncm-msg2-dlg__box">

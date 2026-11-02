@@ -13,6 +13,7 @@
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES } from '../../utils/constants.js';
+import { d10Odds, formulaText, rollParts } from '../../utils/rolls.js';
 import { log, isGM, formatCyberDate, resolveOperator, resolveHackResolution, canOperate, openOperatorPicker, getOperatorActors } from '../../utils/helpers.js';
 import { JACK_ACTIONS, JACK_BUILT, resolveJackIn, jackInDV, movesFor, actionView, lockLayers, jackKey, jackLock, jackResolution, jackGate } from '../../utils/jackIn.js';
 import { runJackIn } from './JackInLock.js';
@@ -36,6 +37,9 @@ export class NodeConsoleApp extends BaseApplication {
   }
 
   get networkService() { return game.nightcity?.networkService; }
+
+  /** The table can watch this window (services/WatchService.js). */
+  static WATCHABLE = true;
 
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
     classes: ['ncm-app', 'ncm-node-console'],
@@ -244,7 +248,7 @@ export class NodeConsoleApp extends BaseApplication {
 
   _jackContext(node, net, st, sameScene) {
     const rules = this._rules();
-    const { actor, rank } = this._runner(rules);
+    const { actor, rank, stat } = this._runner(rules);
     if (!this._session && actor && !this._jackedOut) {
       const run = liveRun(node, actor.id, this.networkService?._nowMs?.() ?? 0);
       if (run?.open) this._session = { actorId: actor.id, rank: run.rank, moves: run.moves, used: run.used, margin: 0, resumed: true, kicks: run.kicks || 0 };
@@ -258,18 +262,23 @@ export class NodeConsoleApp extends BaseApplication {
       }
     }
     const dv = jackInDV(rules, node);
+    const gmDecides = this._jackMode(rules, node) === 'gm';
     const sess = this._session;
     if (sess) {
       const left = Math.max(0, sess.moves - sess.used);
+      const statBonus = this._runner(rules).stat?.value || 0;
       const actions = JACK_ACTIONS.filter((a) => rules.actions[a.key].on && JACK_BUILT.includes(a.key)).map((a) => {
         const v = actionView(rules, a.key, sess.rank);
         const label = a.key === 'switch' ? (st === 'on' ? 'Switch off' : 'Switch on') : v.label;
         const out = v.move && left <= 0;
+        // A sweep still rolls when the GM decides: its total is measured against each hidden program's own DV.
+        const decided = gmDecides && a.key !== 'sweep' && (v.dv !== null || a.key === 'insert');
+        const pct = v.dv !== null && sess.actorId && !decided ? d10Odds(sess.rank + statBonus, v.dv).pct : null;
         return {
-          ...v, label, run: v.unlocked && !out && !(a.key === 'jam' && st !== 'on'),
-          dvText: a.key === 'insert' ? 'its own DV' : v.dv === null ? 'no roll' : `DV ${v.dv}`, baseText: v.edge ? String(v.baseDv) : '',
-          note: !v.unlocked ? `needs ${rules.skill} ${v.need}` : v.edge ? `−${v.edge} for your rank` : v.move ? 'costs a move' : 'free',
-          noteTone: !v.unlocked ? 'attn' : v.edge ? 'good' : 'plain',
+          ...v, label, pct, oddsTone: pct === null ? '' : pct >= 65 ? 'good' : pct >= 35 ? 'attn' : 'bad', run: v.unlocked && !out && !(a.key === 'jam' && st !== 'on'),
+          dvText: decided ? 'GM decides' : a.key === 'insert' ? 'its own DV' : v.dv === null ? 'no roll' : `DV ${v.dv}`, baseText: v.edge && !decided ? String(v.baseDv) : '',
+          note: !v.unlocked ? `needs ${rules.skill} ${v.need}` : [v.edge && !decided ? `−${v.edge} for your rank` : '', v.move ? 'costs a move' : 'free'].filter(Boolean).join(' · '),
+          noteTone: !v.unlocked ? 'attn' : 'plain',
         };
       });
       const now = this.networkService?._nowMs?.() ?? Date.now();
@@ -285,6 +294,7 @@ export class NodeConsoleApp extends BaseApplication {
       return {
         session: {
           actions, left, total: sess.moves, who: game.actors?.get(sess.actorId)?.name || 'GM', rank: sess.rank, skill: rules.skill,
+          formula: formulaText(rollParts({ statName: statBonus ? this._runner(rules).stat?.label : 'none', statValue: statBonus, skillName: rules.skill, skillLevel: sess.rank })),
           pips: Array.from({ length: sess.moves }, (_, i) => ({ on: i < left })),
           swept: Array.isArray(sess.found), found: found || [], foundNone: Array.isArray(sess.found) && !(found || []).length,
           mine: sess.actorId ? node.infections.filter((x) => x.actorId === sess.actorId).map((x) => ({
@@ -303,8 +313,16 @@ export class NodeConsoleApp extends BaseApplication {
     return {
       session: null,
       canJack: !reason,
-      jackHint: reason || `${rules.skill} ${rank} vs DV ${dv} · ${movesFor(rules, rank, 0)} moves`,
+      jackHint: reason || (actor && gmDecides ? `The GM decides · ${movesFor(rules, rank, 0)} moves` : actor
+        ? `${formulaText(rollParts({ statName: stat?.label || 'none', statValue: stat?.value, skillName: rules.skill, skillLevel: rank }))} vs DV ${dv} · ${d10Odds(rank + (stat?.value || 0), dv).pct}% · ${movesFor(rules, rank, 0)} moves`
+        : `GM · no roll · ${movesFor(rules, rank, 0)} moves`),
     };
+  }
+
+  /** How this node's rolls resolve: its own override, else the world's Netrunning resolution. */
+  _jackMode(rules, node) {
+    const res = jackResolution(rules, node);
+    return res === 'inherit' ? resolveHackResolution() : res;
   }
 
   /** Make room for the lock (it covers the console); restored after. */
@@ -349,8 +367,7 @@ export class NodeConsoleApp extends BaseApplication {
       if (lk.maxAttempts > 0) sec.initTracking(actor.id, key, { maxAttempts: lk.maxAttempts, lockoutDuration: lk.lockoutDuration });
     }
     const dv = jackInDV(rules, node);
-    const res = jackResolution(rules, node);
-    const mode = res === 'inherit' ? resolveHackResolution() : res;
+    const mode = this._jackMode(rules, node);
     const layers = lockLayers(node, net).map((l) => ({ ...l, text: l.key === 'box' ? `${node.name} // BOX LOCK` : l.key === 'firmware' ? `FIRMWARE ${nodeFirmware(node)} // ${nodeHex(node.id)}` : `${net?.name || 'NETWORK'} // HANDSHAKE` }));
     const parts = [stat, { label: rules.skill.slice(0, 10), value: rank }].filter(Boolean);
     const anim = {
@@ -366,20 +383,22 @@ export class NodeConsoleApp extends BaseApplication {
       if (!actor) {
         // a GM with no character: no roll, straight in
         ok = true; total = dv; d10 = Math.max(1, dv - parts.reduce((x, p) => x + p.value, 0));
-        const play = runJackIn(host, { ...anim, kind: 'in', result: { d10, total, dv, moves: movesFor(rules, rank, 0) } });
+        const play = runJackIn(host, { ...anim, decided: true, dvLabel: 'GM · no roll', kind: 'in', result: { d10, total, dv, moves: movesFor(rules, rank, 0), sub: `ACCESS GRANTED · NODE ${anim.hex}` } });
         await play.finished;
       } else if (mode === 'gm') {
-        const play = runJackIn(host, { ...anim, kind: 'wait' });
+        const play = runJackIn(host, { ...anim, decided: true, dvLabel: 'The GM decides', kind: 'wait' });
         const req = requestNetAdjudication({ actor, verb: 'Backdoor', action: 'jack-in', title: `Jack into ${node.name}`, skill: rules.skill, dv, hostName: node.name });
         const v = await req.promise;
         if (v.cancelled) { play.destroy(); return; }
         ok = !!v.ok; total = ok ? dv : dv - 3;
         d10 = Math.max(1, Math.min(10, total - parts.reduce((x, p) => x + p.value, 0)));
-        play.setVerdict(ok ? 'in' : 'miss', { d10, total, dv, moves: movesFor(rules, rank, ok ? 0 : 0), sub: ok ? undefined : `THE GM CALLED IT · ${node.name.toUpperCase()}` });
+        play.setVerdict(ok ? 'in' : 'miss', { d10, total, dv, moves: movesFor(rules, rank, 0), sub: ok ? `ACCESS GRANTED · THE GM CALLED IT · NODE ${anim.hex}` : `THE GM CALLED IT · ${node.name.toUpperCase()}` });
         setTimeout(() => snd?.play?.(ok ? 'hack-success' : 'hack-fail'), 1000);
         await play.finished;
       } else {
-        const res = await game.nightcity.skillService.performCheck(actor, rules.skill, { dc: dv, deferChat: true, context: `Jack in: ${node.name}`, flavor: `Jacking into ${node.name}` });
+        const res = await game.nightcity.skillService.performCheck(actor, rules.skill, { dc: dv, deferChat: true, context: `Jack in: ${node.name}`, flavor: `Jacking into ${node.name}`,
+          ask: { host, title: `Jack into ${node.name}`, goLabel: 'Jack in' } });
+        if (res.cancelled) return;
         ok = !!res.success; total = res.total; d10 = res.processedRoll ?? res.rollValue;
         post = res.postChat;
         const margin = total - dv;
@@ -448,14 +467,31 @@ export class NodeConsoleApp extends BaseApplication {
     let ok = true;
     if (v.dv !== null && actor) {
       this._busy = true;
+      const mode = this._jackMode(rules, node);
+      const verb = { listen: 'Eye-Dee', jam: 'Control', tap: 'Eye-Dee', backdoor: 'Backdoor', wipe: 'Control' }[key] || 'Control';
+      const title = `${v.label}: ${node.name}`;
       try {
-        const res = await game.nightcity.skillService.performCheck(actor, rules.skill, { dc: v.dv, context: `${v.label}: ${node.name}`,
-          reveal: { host: this.element?.querySelector('.window-content'), title: `${v.label} — ${node.name}` } });
-        ok = !!res.success;
-        sess.lastTotal = res.total;
+        if (mode === 'gm') {
+          const host = this._lockHost();
+          try {
+            const { runSecurityConsole } = await import('../content/SecurityConsole.js');
+            const res = await runSecurityConsole({ title, icon: 'fas fa-network-wired', accent: 'cyan', host: host || this.element, successLabel: `${v.label.toUpperCase()} — DONE`, failLabel: `${v.label.toUpperCase()} FAILED`,
+              gate: { require: true, skill: rules.skill, dv: v.dv, actor, context: title, net: { verb, action: `node-${key}`, hostName: node.name, mode } } });
+            if (res.cancelled) return;
+            ok = !!res.ok;
+          } finally { this._releaseHost(host); }
+        } else {
+          const res = await game.nightcity.skillService.performCheck(actor, rules.skill, { dc: v.dv, context: title, ask: { title },
+            reveal: { host: this.element?.querySelector('.window-content'), title: `${v.label} — ${node.name}` } });
+          if (res.cancelled) return;
+          ok = !!res.success;
+          sess.lastTotal = res.total;
+          if (mode === 'flagged') postNetActionCard({ ok, total: res.total, dv: v.dv, skill: rules.skill, verb, action: `node-${key}`, actorName: actor.name, hostName: node.name, title });
+        }
       } finally { this._busy = false; }
     }
     if (v.move) { sess.used += 1; this._saveRun(true); }
+    if (ok && key === 'listen' && actor) { this._saveRun(true); await game.nightcity?.overheardService?.listenFromNode(actor); return this.render(); }
     if (!ok) {
       if (rules.failure.alert) await ns.bumpNodeAlert(node.id, 1);
       if (rules.failure.trace && actor) game.nightcity?.traceService?.fireTrace?.({ actor, action: `node-${key}`, targetKind: 'network', targetNetworkId: node.networkId, objectId: `node:${node.id}`, objectName: node.name, dv: v.dv, severity: 'minor' });
@@ -602,10 +638,24 @@ export class NodeConsoleApp extends BaseApplication {
         const cd = e.contentData || {};
         const kind = cd.uploadable ? nodeProgramKind(cd.uploadEffect) : null;
         if (!kind) continue;
-        out.push({ id: `${shard.id}:${e.messageId}`, kind, name: e.subject || cd.name || NODE_PROGRAMS[kind].label, shard, entry: e, cd });
+        out.push({ id: `${shard.id}:${e.messageId}`, kind, name: cd.program || e.subject || cd.name || NODE_PROGRAMS[kind].label, shard, entry: e, cd });
       }
     }
     return out;
+  }
+
+  /** Why nothing can be inserted: what they do carry, and why it won't run here. */
+  _noProgramsMessage(actor) {
+    const svc = game.nightcity?.dataShardService;
+    const elsewhere = [];
+    for (const shard of (actor.items ?? []).filter((i) => svc?.isDataShard?.(i))) {
+      for (const e of (svc.getShardMessages(shard) || [])) {
+        if (['malware', 'payload'].includes(e.contentType)) elsewhere.push(e.contentData?.program || e.contentData?.name || e.subject || 'a program');
+      }
+    }
+    if (!elsewhere.length) return `${actor.name} carries no network program. The GM builds them in the Malware Workshop (Malware → Network).`;
+    const names = elsewhere.slice(0, 3).join(', ') + (elsewhere.length > 3 ? ` and ${elsewhere.length - 3} more` : '');
+    return `${names} won't run on a node: ${elsewhere.length === 1 ? 'it runs' : 'they run'} on a terminal. A network program comes from the Malware Workshop (Malware → Network).`;
   }
 
   /**
@@ -617,14 +667,14 @@ export class NodeConsoleApp extends BaseApplication {
     const ns = this.networkService;
     if (!actor) return void ui.notifications.warn('A program needs a character to run it — pick one first.');
     const progs = this._carriedNodePrograms(actor);
-    if (!progs.length) return void ui.notifications.info(`${actor.name} carries no network program. Build one in the shard composer: Uploadable → "Network node · …".`);
+    if (!progs.length) return void ui.notifications.info(this._noProgramsMessage(actor));
     const host = this._lockHost();
     try {
       const { runUploadConsole } = await import('../content/UploadConsole.js');
       const picked = await runUploadConsole({
         host: host || this.element, terminalName: node.name, tag: 'INSERT A SHARD', sub: `plant a network program in ${node.name}`,
         goLabel: 'INSERT', delivery: false, deliveryHint: 'what it does on this network',
-        programs: progs.map((p) => ({ name: p.name, description: NODE_PROGRAMS[p.kind].blurb, sourceLabel: `on "${p.shard.name}"`, uploadDV: Number(p.cd.uploadDV) || 15,
+        programs: progs.map((p) => ({ name: p.name, description: p.cd.description || NODE_PROGRAMS[p.kind].blurb, sourceLabel: `on "${p.shard.name}"`, uploadDV: Number(p.cd.uploadDV) || 15,
           family: 'execute', effectType: `node${p.kind}`, _p: p })),
         outcomeFor: (prog) => ({ what: `<b>${prog.name}</b> — ${NODE_PROGRAMS[prog._p.kind].blurb}`,
           when: prog._p.kind === 'worm' ? `spreads every ${prog._p.cd.uploadParams?.every ?? 3} h, up to ${prog._p.cd.uploadParams?.maxNodes ?? 6} nodes${prog._p.cd.uploadParams?.carry ? `, carrying a ${NODE_PROGRAMS[prog._p.cd.uploadParams.carry]?.label}` : ''}`
@@ -638,23 +688,24 @@ export class NodeConsoleApp extends BaseApplication {
       const skill = pick.cd.uploadSkill || rules.skill;
       const res = await runSecurityConsole({
         title: 'Insert', icon: 'fas fa-microchip', accent: 'purple', host: host || this.element,
+        introGm: `Insert ${pick.name} into ${node.name}?\nYour GM decides how it goes. A clean install runs unnoticed. A glitchy one still runs, but a sweep will find it easily. If the node rejects it, nothing lands.`,
         intro: `Insert ${pick.name} into ${node.name}?\nBeat DV ${dv} for a clean install. Miss by up to ${FORGE_SLOPPY_BAND} and it still runs — but it's glitchy, and a sweep will find it easily. Miss by more and the node rejects it.`,
         gate: {
           require: true, skill, dv, actor, context: `Insert: ${pick.name}`, flavor: `RUN // DV ${dv}`,
-          net: { verb: 'Virus', action: 'node-insert', hostName: node.name, choices: [
+          net: { verb: 'Virus', action: 'node-insert', hostName: node.name, mode: this._jackMode(rules, node), choices: [
             { id: 'clean', label: 'CLEAN INSTALL', tone: 'ok', ok: true, total: dv + 4 },
             { id: 'sloppy', label: 'GLITCHY — IT RUNS', tone: 'warn', ok: true, total: dv - 2 },
             { id: 'reject', label: 'REJECTED', tone: 'fail', ok: false, total: dv - FORGE_SLOPPY_BAND - 2 },
           ] },
         },
         verdictFor: ({ total, dv: gdv }) => {
-          const o = forgeOutcome(total ?? gdv, gdv);
+          const o = forgeOutcome(total ?? gdv + 1, gdv);
           return o === 'clean' ? { label: 'INSTALL CLEAN', tone: 'ok' } : o === 'sloppy' ? { label: 'GLITCHY — IT RUNS', tone: 'warn' } : { label: 'REJECTED', tone: 'fail' };
         },
       });
       if (res.cancelled) return;
       if (v.move) { sess.used += 1; this._saveRun(true); }
-      const total = res.total ?? dv;
+      const total = res.total ?? dv + 1;
       const rung = forgeOutcome(total, dv);
       if (rung === 'rejected') {
         if (rules.failure.alert) await ns.bumpNodeAlert(node.id, 1);
@@ -723,6 +774,7 @@ export class NodeConsoleApp extends BaseApplication {
     root.querySelectorAll(':scope > .ncm-ndc-flash').forEach((x) => x.remove());
     const el = document.createElement('div');
     el.className = `ncm-ndc-flash is-${kind}`;
+    el.setAttribute('data-watch-overlay', '');
     const net = this.networkService?.getNetwork?.(this.networkService?.getNode?.(this.nodeId)?.networkId);
     if (net?.theme?.color) el.style.setProperty('--nc', net.theme.color);
     // Tap = the terminal download's packet stream, node → your Agent; Jam = a spectrum that saturates into noise.

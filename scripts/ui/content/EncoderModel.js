@@ -12,7 +12,7 @@
  *   reaches existing worlds without a migration.
  *
  *   The ENCODE roll is the upload arc's three-rung LADDER, not pass/fail:
- *     margin >= 0 → clean · -1…-band → sloppy (it lands, with a tell) · worse → rejected.
+ *     margin > 0 → clean · 0…-band → sloppy (a tie or near miss: it lands, with a tell) · worse → rejected.
  *   `SLOPPY_BAND` mirrors `FORGE_SLOPPY_BAND` in UploadFlow.js (the sim asserts they match).
  */
 
@@ -169,7 +169,7 @@ export const ENCODER_DEFAULTS = Object.freeze({
     location:    { on: true,  skill: 'Library Search', dv: 12, alt: '',               altDV: 0 },
     schematic:   { on: false, skill: 'Basic Tech',     dv: 15, alt: '',               altDV: 0 },
     calendar:    { on: false, skill: 'Bureaucracy',    dv: 12, alt: '',               altDV: 0 },
-    syslog:      { on: false, skill: 'Interface',      dv: 15, alt: '',               altDV: 0 },
+    syslog:      { on: false, skill: 'Interface',      dv: 9, alt: '',               altDV: 0 },
     payload:     { on: true,  skill: 'Interface',      dv: 0,  alt: '',               altDV: 0 },
     malware:     { on: true,  skill: 'Interface',      dv: 0,  alt: '',               altDV: 0 },
   },
@@ -178,17 +178,17 @@ export const ENCODER_DEFAULTS = Object.freeze({
     families: { utility: true, execute: true },
     skill: 'Interface',
     alts: [
-      { skill: 'Electronics/Security Tech', dv: 3, only: [] },
-      { skill: 'Cryptography',              dv: 5, only: ['keylog', 'forgeAccount'] },
+      { skill: 'Electronics/Security Tech', dv: 9, only: [] },
+      { skill: 'Cryptography',              dv: 11, only: ['keylog', 'forgeAccount'] },
     ],
     abilities: {
-      scanner:      { dv: 12, rank: 0 },
-      skeletonKey:  { dv: 15, rank: 4 },
-      jammer:       { dv: 15, rank: 4 },
-      icebreaker:   { dv: 18, rank: 7 },
-      keylog:       { dv: 15, rank: 4 },
-      forgeAccount: { dv: 18, rank: 7 },
-      deployICE:    { dv: 18, rank: 7 },
+      scanner:      { dv: 6, rank: 0 },
+      skeletonKey:  { dv: 9, rank: 4 },
+      jammer:       { dv: 9, rank: 4 },
+      icebreaker:   { dv: 12, rank: 7 },
+      keylog:       { dv: 9, rank: 4 },
+      forgeAccount: { dv: 12, rank: 7 },
+      deployICE:    { dv: 12, rank: 7 },
     },
     chargesBase: 1, chargesPer: 3,      // charges = base + floor(rank / per)
     disguiseRank: 4, disguiseDV: 2,     // trojan cover: rank gate + DV penalty
@@ -458,7 +458,7 @@ export function botchFor(tier, { nat1 = false } = {}) {
 /** The ladder rung for a roll. */
 export function encodeOutcome(total, dv) {
   const margin = num(total) - num(dv);
-  if (margin >= 0) return 'clean';
+  if (margin > 0) return 'clean';
   if (margin >= -SLOPPY_BAND) return 'sloppy';
   return 'rejected';
 }
@@ -488,8 +488,8 @@ export function programAbilities(cfg, family, rank = 0) {
   const p = cfg?.programs || {};
   if (p.families && p.families[family] === false) return [];
   return (FAMILY_ABILITIES[family] || []).map((key) => {
-    const a = p.abilities?.[key] || { dv: 15, rank: 0 };
-    return { key, dv: num(a.dv, 15), needRank: num(a.rank), locked: num(rank) < num(a.rank) };
+    const a = p.abilities?.[key] || { dv: 9, rank: 0 };
+    return { key, dv: num(a.dv, 9), needRank: num(a.rank), locked: num(rank) < num(a.rank) };
   });
 }
 
@@ -508,7 +508,7 @@ export function craftChoices(cfg, abilityKey) {
 /** The encode DV for a program: ability DV + craft-skill penalty + trojan penalty. */
 export function programDV(cfg, { ability, craft, disguised = false }) {
   const p = cfg?.programs || {};
-  const base = num(p.abilities?.[ability]?.dv, 15);
+  const base = num(p.abilities?.[ability]?.dv, 9);
   const pen = craftChoices(cfg, ability).find((c) => c.skill === craft)?.penalty ?? 0;
   return base + pen + (disguised ? num(p.disguiseDV, 2) : 0);
 }

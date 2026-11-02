@@ -326,6 +326,21 @@ export class Phase6Verification {
       return { passed: true, detail: '4 styles, 6 partials load, tty prompt, 5 shared actions, CRT film helpers' };
     });
 
+    // ─── 6.21: Rolls + watching (2.1) ───
+    await this._check('6.21', 'One roll rule, the roll panel, watching', async () => {
+      const R = await import('../utils/rolls.js');
+      const M = await import('../ui/content/ProgramModel.js');
+      const problems = [];
+      if (R.beatsDV(12, 12) || !R.beatsDV(13, 12)) problems.push('a tie must fail');
+      if (R.d10Odds(11, 15).pct !== 60) problems.push('odds are not the real die');
+      for (const v of ['nodeWorm', 'nodeTap', 'nodeBomb', 'nodeSniffer', 'nodePatch']) if (!M.abilitiesFor('malware').some((a) => a.key === v)) problems.push(`the Workshop cannot build ${v}`);
+      if (!game.nightcity?.watchService) problems.push('watchService missing');
+      if (!TEMPLATES.WATCH_WINDOW) problems.push('TEMPLATES.WATCH_WINDOW missing');
+      else { try { await getTemplate(TEMPLATES.WATCH_WINDOW); } catch { problems.push('the watch window template fails to load'); } }
+      for (const s of ['watchMode', 'askBeforeRoll', 'ifaceShiftDone']) { try { game.settings.get('night-city-messenger', s); } catch { problems.push(`setting ${s} not registered`); } }
+      return problems.length ? { passed: false, detail: problems.join('; ') } : { passed: true, detail: 'beat the DV · real odds · network programs · watch service' };
+    });
+
     // ─── 6.20: Admin access — an admin account views another account ───
     await this._check('6.20', 'Admin access — rules, label, service + viewer, partials', async () => {
       const C = await import('../utils/constants.js');

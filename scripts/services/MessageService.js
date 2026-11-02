@@ -9,7 +9,7 @@
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
-import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, chatCardTime } from '../utils/helpers.js';
+import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime } from '../utils/helpers.js';
 import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
 import { replyIdentity, groupKeyOf } from '../utils/identities.js';
 
@@ -780,7 +780,7 @@ export class MessageService {
       style: a.style || 'scrambled',
       alias: a.alias || ANON_DEFAULT_ALIAS,
       allowReplies: a.allowReplies !== false,
-      traceDV: Number(a.traceDV) || 15,
+      traceDV: Number(a.traceDV) || 9,
       maskedEmail: a.maskedEmail || ANON_MASKED_EMAIL,
     };
   }
@@ -1135,7 +1135,9 @@ export class MessageService {
 
       const byActor = mcs.getByActorId?.(fromActor.id);
       if (byActor) {
-        if (!data.fromContactId) data.fromContactId = byActor.id;
+        // Written from an alias's address: record the alias, not the main identity.
+        const byAddress = data.from && mcs.getByEmail?.(data.from);
+        if (!data.fromContactId) data.fromContactId = (byAddress?.actorId === fromActor.id ? byAddress : byActor).id;
         return null;
       }
       if (data.from && mcs.getByEmail?.(data.from)) return null;
@@ -1257,8 +1259,55 @@ export class MessageService {
     return out;
   }
 
+  /** Where this user's held mail is kept in this browser, so a reload can't lose it (or the eddies already taken for it). */
+  get _queueStoreKey() { return `ncm.mailQueue.${game.world?.id || 'world'}.${game.user?.id || 'user'}`; }
+
+  /** Everything still held: the queue, plus what a running flush has not reached yet. */
+  _saveQueue() {
+    try {
+      const held = [...(this._flushing || []), ...this._messageQueue];
+      if (held.length) localStorage.setItem(this._queueStoreKey, JSON.stringify(held));
+      else localStorage.removeItem(this._queueStoreKey);
+    } catch (err) {
+      console.warn(`${MODULE_ID} | could not save held mail:`, err);
+      if (!this._queueSaveWarned) { this._queueSaveWarned = true; ui.notifications?.warn?.('NCM | Your browser would not save your held mail. Keep this page open until it sends.'); }
+    }
+  }
+
+  /**
+   * Give back the eddies taken for held mail that will never arrive. The composer took them per recipient when it was written.
+   * @param {object} d - the held message @param {number} [copies] - how many copies failed; every copy by default
+   * @returns {Promise<number>} how much went back
+   */
+  async _refundHeld(d, copies = null) {
+    const each = Number(d?.eddies) || 0;
+    const actor = d?.fromActorId ? game.actors?.get?.(d.fromActorId) : null;
+    if (!each || !actor || !(actor.isOwner || game.user?.isGM)) return 0;
+    const amount = each * (copies ?? (Array.isArray(d._fanout) && d._fanout.length ? d._fanout.length : 1));
+    try {
+      const wealth = foundry.utils.deepClone(actor.system.wealth);
+      wealth.value += amount;
+      wealth.transactions.push([`Increased by ${amount} to ${wealth.value}`, `NCM: Refund for a message that was not delivered`]);
+      await actor.update({ 'system.wealth': wealth });
+      return amount;
+    } catch (err) { console.error(`${MODULE_ID} | Refund failed:`, err); return 0; }
+  }
+
+  /** Bring back what was held before a reload. Runs once, before the first flush. */
+  _restoreQueue() {
+    if (this._queueRestored) return;
+    this._queueRestored = true;
+    try {
+      const saved = JSON.parse(localStorage.getItem(this._queueStoreKey) || '[]');
+      if (!Array.isArray(saved) || !saved.length) return;
+      const have = new Set(this._messageQueue.map((d) => d.messageId));
+      this._messageQueue.push(...saved.filter((d) => d && !have.has(d.messageId)));
+    } catch (err) { console.warn(`${MODULE_ID} | could not read held mail:`, err); }
+  }
+
   /** Player → GM: report what this client is holding (no-op for a GM or with no GM online). */
   _syncQueueToGm() {
+    this._saveQueue();
     try {
       if (game.user?.isGM || !game.users?.find?.(u => u.isGM && u.active)) return;
       this.socketManager?.emit?.(SOCKET_OPS.MESSAGE_QUEUE_SYNC, { userName: game.user?.name, entries: this._messageQueue });
@@ -1279,7 +1328,10 @@ export class MessageService {
     const i = this._messageQueue.findIndex(d => d.messageId === data?.messageId);
     if (i < 0) return;
     const [d] = this._messageQueue.splice(i, 1);
-    if (data.op === 'cancel') ui.notifications?.warn?.(`NCM | The GM cancelled your held message "${d.subject || '(no subject)'}".`);
+    if (data.op === 'cancel') {
+      ui.notifications?.warn?.(`NCM | The GM cancelled your held message "${d.subject || '(no subject)'}".`);
+      this._refundHeld(d);
+    }
     this._syncQueueToGm();
   }
 
@@ -1312,7 +1364,7 @@ export class MessageService {
   /** Cancel one held message (it is never delivered). */
   async cancelQueued(messageId) {
     const i = this._messageQueue.findIndex(d => d.messageId === messageId);
-    if (i >= 0) { this._messageQueue.splice(i, 1); this._syncQueueToGm(); return { success: true }; }
+    if (i >= 0) { const [d] = this._messageQueue.splice(i, 1); this._syncQueueToGm(); await this._refundHeld(d); return { success: true }; }
     for (const [userId, rep] of this._remoteQueues || []) {
       if (!(rep.entries || []).some(x => x.messageId === messageId)) continue;
       rep.entries = rep.entries.filter(x => x.messageId !== messageId);
@@ -1404,10 +1456,13 @@ export class MessageService {
    * Messages are sent with 150ms stagger for the arrival animation.
    */
   async flushQueue() {
-    if (this._messageQueue.length === 0) return;
+    this._restoreQueue();
+    if (this._messageQueue.length === 0) { this._syncQueueToGm(); return; }
 
     const queue = [...this._messageQueue];
     this._messageQueue = [];
+    // Stays saved until each one is handled, so a reload mid-flush loses nothing.
+    this._flushing = [...queue];
 
     console.log(`${MODULE_ID} | Flushing ${queue.length} queued messages`);
 
@@ -1415,9 +1470,21 @@ export class MessageService {
       if (i > 0) await this._delay(150);
       // A held fan-out is already stamped and split — relay it as is (re-running
       // sendMessage on it found no recipient).
-      if (Array.isArray(queue[i]._fanout) && queue[i]._fanout.length) await this._relayMessage(queue[i]);
-      else await this.sendMessage(queue[i]);
+      this._flushing = queue.slice(i + 1);
+      let res = null;
+      try {
+        res = Array.isArray(queue[i]._fanout) && queue[i]._fanout.length ? await this._relayMessage(queue[i]) : await this.sendMessage(queue[i]);
+      } catch (err) { res = { success: false, error: err.message }; }
+      this._saveQueue();
+      // Nobody is watching a composer now, so a refusal has to be said out loud.
+      if (res && res.success === false) {
+        const back = await this._refundHeld(queue[i]);
+        ui.notifications?.warn?.(`NCM | Your held message "${queue[i].subject || '(no subject)'}" could not be sent: ${res.error || 'unknown error'}.${back ? ` ${back} eb went back to your account.` : ''}`, { permanent: !!back });
+      } else if (res?.failed?.length) {
+        await this._refundHeld(queue[i], res.failed.length);
+      }
     }
+    this._flushing = null;
     this._syncQueueToGm();
 
     this.eventBus.emit(EVENTS.QUEUE_FLUSHED, { count: queue.length });
@@ -1466,9 +1533,12 @@ export class MessageService {
     // Resolve reply target — actor or contact
     if (originalMessage.fromActorId) {
       reply.toActorId = originalMessage.fromActorId;
-      // Sent from one of that character's identities → answer THAT identity.
-      if (originalMessage.fromContactId) {
-        reply.toContactId = originalMessage.fromContactId;
+      // Sent from one of that character's identities → answer THAT identity (the address decides, helpers.directoryEntryFor).
+      const sender = directoryEntryFor({ contactId: originalMessage.fromContactId, actorId: originalMessage.fromActorId, email: originalMessage.from });
+      const addressMatches = sender?.email?.toLowerCase() === String(originalMessage.from || '').toLowerCase();
+      const senderId = originalMessage.fromContactId ? (sender?.id || originalMessage.fromContactId) : (addressMatches ? sender.id : null);
+      if (senderId) {
+        reply.toContactId = senderId;
         if (originalMessage.from) reply.to = originalMessage.from;
       }
     } else if (originalMessage.fromContactId) {

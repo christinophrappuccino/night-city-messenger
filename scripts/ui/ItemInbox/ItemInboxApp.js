@@ -8,6 +8,7 @@
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
+import { d10Odds } from '../../utils/rolls.js';
 import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker, applyContrastToElement, buildShardThemePrefs, guardSecretInputs, canEditShard } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -64,6 +65,9 @@ export class ItemInboxApp extends BaseApplication {
   get securityService() { return game.nightcity?.securityService; }
 
   // ─── ApplicationV2 Configuration ───
+
+  /** The table can watch this window (services/WatchService.js). */
+  static WATCHABLE = true;
 
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
     id: 'ncm-item-inbox',
@@ -2833,13 +2837,8 @@ export class ItemInboxApp extends BaseApplication {
     const cmvHidden = !!opts.cmv && !(opts.cmv.state === 'identified' || opts.cmv.state === 'open');
     const dvTxt = (n) => (hideDV ? '??' : n);
 
-    // Compute odds: P(total + 1d10 + luck >= DC) where 1d10 is [1..10]
-    const calcOdds = (total, luck, dc) => {
-      const needed = dc - total - luck;
-      if (needed <= 1) return 100;
-      if (needed > 10) return 0;
-      return Math.round(((10 - needed + 1) / 10) * 100);
-    };
+    // The chance of beating the DC, with the real die (a 10 explodes, a 1 subtracts).
+    const calcOdds = (total, luck, dc) => d10Odds(total + luck, dc).pct;
 
     // ─── Skill list ───
     let skillListHTML = '';

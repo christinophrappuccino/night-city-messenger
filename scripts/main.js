@@ -20,6 +20,7 @@ import { registerIntegrations } from './init/registerIntegrations.js';
 import { registerGMTools } from './init/registerGMTools.js';
 import { registerReadyServices } from './init/registerReadyServices.js';
 import { registerCallSystem } from './init/registerCallSystem.js';
+import { registerWatchSystem } from './init/registerWatchSystem.js';
 import { SystemVerification } from './tests/SystemVerification.js';
 
 const initializer = new ModuleInitializer();
@@ -33,6 +34,7 @@ registerNetworkSystem(initializer);
 registerDataShardSystem(initializer);
 registerTerminalSystem(initializer);
 registerCallSystem(initializer);
+registerWatchSystem(initializer);
 registerIntegrations(initializer);
 registerReadyServices(initializer);
 registerGMTools(initializer);  

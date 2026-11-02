@@ -41,7 +41,7 @@ function _normalizeContact(data) {
     trust: typeof data.trust === 'number' ? Math.max(0, Math.min(5, data.trust)) : 0,
     burned: !!data.burned,
     encrypted: !!data.encrypted,
-    encryptionDV: data.encryptionDV || 15,
+    encryptionDV: data.encryptionDV || 9,
     encryptionSkill: data.encryptionSkill || 'Interface',
     blackIce: !!data.blackIce,
     blackIceDamage: data.blackIceDamage || '3d6',
@@ -117,7 +117,7 @@ export class ContactRepository {
         ...contactData,
         id: foundry.utils.randomID(),
         verified: verification.verified,
-        masterContactId: verification.masterContactId || null,
+        masterContactId: verification.masterContactId || contactData.masterContactId || null,
         linkedActorId: verification.actorId || contactData.actorId || null,
       });
 
@@ -378,7 +378,7 @@ export class ContactRepository {
   async setEncryption(actorId, contactId, encryptionData) {
     return this.updateContact(actorId, contactId, {
       encrypted: encryptionData.encrypted ?? true,
-      encryptionDV: encryptionData.encryptionDV ?? 15,
+      encryptionDV: encryptionData.encryptionDV ?? 9,
       encryptionSkill: encryptionData.encryptionSkill ?? 'Interface',
     });
   }
@@ -547,6 +547,16 @@ export class ContactRepository {
       }
     }
     return directory;
+  }
+
+  /**
+   * The characters offered in the composer's To search before a character's own contacts. A GM gets everyone. A player gets
+   * only other players' characters: an NPC's address has to be given to them, or the search hands them a main address
+   * they were never told (a player holding only an alias saw the main one here).
+   */
+  getRecipientDirectory({ isGM = false } = {}) {
+    const all = this.getGlobalActorDirectory();
+    return isGM ? all : all.filter((a) => a.isPlayerOwned);
   }
 
   getOwnedActorsWithEmail() {

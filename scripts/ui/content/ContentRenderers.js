@@ -307,7 +307,7 @@ export const PROGRAM_EFFECTS = Object.freeze({
     params: [{ f: 'messageIds', type: 'files', label: 'Files to wipe', hint: 'Nothing selected = no-op. The program never wipes itself.' }] },
   corrupt:     { label: 'Corrupt',      icon: 'fas fa-file-circle-xmark', blurb: 'redacts chosen files, reversible by DECLASSIFY', modes: ['instant'],              host: 'any',      group: 'Sabotage',
     params: [{ f: 'messageIds', type: 'files', label: 'Files to corrupt', hint: 'Only documents and dossiers can be redacted; other types are skipped.' },
-             { f: 'declassifyDV', type: 'number', label: 'Restore DV', def: 15, hint: 'What it takes to undo the damage.' }] },
+             { f: 'declassifyDV', type: 'number', label: 'Restore DV', def: 9, hint: 'What it takes to undo the damage.' }] },
 
   // ── Persistence: it stays behind and fires on a trigger ──
   plant:        { label: 'Plant a file', icon: 'fas fa-file-arrow-up',   blurb: 'leaves a forged file for whoever looks next',     modes: ['triggered'],            host: 'terminal', group: 'Persistence' },
@@ -325,7 +325,7 @@ export const PROGRAM_EFFECTS = Object.freeze({
   // ── Network: inserted into a network NODE from a jack-in session (dev/design/NETWORK-NODES.md, step 5). Mode 'node'
   //    keeps them out of every terminal / payload picker; the applier is NetworkService.insertProgram. ──
   nodeWorm:     { label: 'Worm',          icon: 'fas fa-bug',              blurb: 'copies itself to another node of the network every few hours', modes: ['node'], host: 'node', group: 'Network',
-    params: [{ f: 'every', type: 'number', label: 'Spreads every (h)', def: 3 }, { f: 'maxNodes', type: 'number', label: 'Most nodes', def: 6 }, { f: 'carry', type: 'text', label: 'Carries', hint: 'tap / bomb / sniffer, or blank' }] },
+    params: [{ f: 'every', type: 'number', label: 'Spreads every (h)', def: 3 }, { f: 'maxNodes', type: 'number', label: 'Most nodes', def: 6 }, { f: 'carry', type: 'select', label: 'Carries', options: [['', 'Nothing'], ['tap', 'A tap'], ['bomb', 'A blackout bomb'], ['sniffer', 'A sniffer']] }] },
   nodeTap:      { label: 'Tap',           icon: 'fas fa-ear-listen',       blurb: 'mail sent over the network is copied to you',       modes: ['node'], host: 'node', group: 'Network' },
   nodeBomb:     { label: 'Blackout bomb', icon: 'fas fa-bomb',             blurb: 'after a delay every node it reached goes dark',     modes: ['node'], host: 'node', group: 'Network',
     params: [{ f: 'delay', type: 'number', label: 'Goes off after (h)', def: 2 }] },
@@ -664,7 +664,7 @@ const ENRICHERS = {
       displayName: masked ? '██████ ██████' : (cd.targetName || 'Unknown'),
       identityMasked: masked,
       gmMasked: !!cd.faceLocked && isGM,
-      faceUnlockDV: Number(cd.faceUnlockDV) || 15,
+      faceUnlockDV: Number(cd.faceUnlockDV) || 9,
       // Delegated [data-doss-sheet] listener works in every viewer — no
       // interactive gate needed (the terminal passes interactive:false).
       canOpenSheet: isGM && !!cd.linkedActorId && !!game.actors?.get(cd.linkedActorId),
@@ -673,7 +673,7 @@ const ENRICHERS = {
       fileRef: 'NC-DB-' + String(entry?.messageId || entry?.id || '0000').replace(/[^a-z0-9]/gi, '').slice(-4).toUpperCase(),
       // DECLASSIFY affordance (contentUnlock kind 'dossier').
       canDeclassify: !!cd.declassify && (cd.sections || []).some(s => s.redacted),
-      declassifyDV: cd.declassifyDV || 15,
+      declassifyDV: cd.declassifyDV || 9,
     };
   },
 
@@ -740,7 +740,7 @@ const ENRICHERS = {
       // Execute affordance: runnable when not spent and (charges left OR untracked).
       canRun: !cd.executed || (isActive === false && cd.charges > 1),
       gated: !!cd.executeRequire,
-      executeDV: Number(cd.executeDV) || 15,
+      executeDV: Number(cd.executeDV) || 9,
       hasMacro: !!cd.effect?.macroId,
       // GM-only disguise tag (players never reach this enricher for a live
       // disguise — enrichContent swaps them to the cover type first).
@@ -761,7 +761,7 @@ const ENRICHERS = {
         ...cd, locked: true, mediaUrl: '',
         isVideo: false, embedSrc: '', hasMedia: false, isEmbed: false, isNativeMedia: false,
         transcript: [], canPlayback: false,
-        unlockDV: cd.unlockDV || 15,
+        unlockDV: cd.unlockDV || 9,
       };
     }
     const media = resolveMediaEmbed(cd.mediaUrl, cd.mediaType);
@@ -814,7 +814,7 @@ const ENRICHERS = {
         locationName: cd.locationName || 'Unknown',
         linkedSceneId: null,
         locked: true,
-        unlockDV: Number(cd.unlockDV) || 15,
+        unlockDV: Number(cd.unlockDV) || 9,
         securityLevel: 0, securitySegs: [], hasStrip: false,
         intel: [], hasIntel: false,
       };
@@ -918,7 +918,7 @@ const ENRICHERS = {
       // DECLASSIFY affordance (contentUnlock kind 'spreadsheet') — clears the
       // `redacted` coordinate list; the underlying values were always in rows.
       canDeclassify: !!cd.declassify && redactedCount > 0,
-      declassifyDV: cd.declassifyDV || 15,
+      declassifyDV: cd.declassifyDV || 9,
     };
   },
 
@@ -983,7 +983,7 @@ const ENRICHERS = {
         chips, timeStr,
         isFog: fog,
         lockedGm: !!ev.locked && isGM,
-        effDV: Number(ev.unlockDV ?? cd.unlockDV) || 15,
+        effDV: Number(ev.unlockDV ?? cd.unlockDV) || 9,
         sceneId: fog ? '' : (ev.sceneId || ''),
         hasScene: !fog && !!ev.sceneId,
         location: fog ? '' : (ev.location || ''),
@@ -1197,7 +1197,7 @@ const ENRICHERS = {
         // (contentUnlock kind 'gallery'; per-image unlockSkill/unlockDV
         // beat the vault-level pair — effDV feeds the tooltip).
         hasImage: !!img.url && !offline && !locked,
-        effDV: Number(img.unlockDV ?? cd.unlockDV) || 15,
+        effDV: Number(img.unlockDV ?? cd.unlockDV) || 9,
         color: _colorName(img.color || (img.flagged ? 'amber' : 'muted')),
         label: img.label || (isFeed ? `CAM_${String(i + 1).padStart(2, '0')}` : `IMG_${String(i + 1).padStart(3, '0')}`),
         isHero,
@@ -1221,7 +1221,7 @@ const ENRICHERS = {
     return {
       ...cd, images, count: images.length,
       flaggedCount, corruptedCount, lockedCount, loopedCount,
-      unlockDV: cd.unlockDV || 15,
+      unlockDV: cd.unlockDV || 9,
       camSkill: cd.camSkill || 'Electronics/Security Tech',
       isStrip: !isFeed && cd.layout === 'strip',
       isFeed,
@@ -1283,7 +1283,7 @@ const ENRICHERS = {
       // DECLASSIFY affordance (contentUnlock kind 'document') — GM arms it via
       // `declassify: true` + declassifySkill/declassifyDV.
       canDeclassify: !!cd.declassify && paragraphs.some(p => p.redacted),
-      declassifyDV: cd.declassifyDV || 15,
+      declassifyDV: cd.declassifyDV || 9,
     };
   },
 
@@ -1450,7 +1450,7 @@ const ENRICHERS = {
         hasScene: !fog && !!a.sceneId,
         isFog: fog,
         locked: !!a.locked,
-        effDV: Number(a.unlockDV) || 15,
+        effDV: Number(a.unlockDV) || 9,
       };
     });
     // Routes → resolved endpoint coords (skip any whose pins are gone).

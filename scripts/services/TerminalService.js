@@ -410,6 +410,30 @@ export class TerminalService {
   }
 
   /**
+   * Reopen a scheduled "send as" in the composer: the same locked sender, address book and machine record. Refuses, with the
+   * reason, when the machine or account can no longer send.
+   * @param {object} data - the scheduled entry's messageData
+   * @returns {{ok: boolean, reason?: string, terminalSend?: object, addressBook?: Array<object>}}
+   */
+  reopenScheduledSend(data) {
+    const check = this.verifyAccountSend(data);
+    if (!check.ok) return check;
+    const { itemUuid, accountId } = data.terminalSend;
+    const via = data.sentVia || {};
+    return {
+      ok: true,
+      terminalSend: {
+        itemUuid, accountId,
+        username: via.account || this.accountSendIdentity(check.item, accountId)?.username || 'account',
+        machine: via.machine || check.item.name,
+        own: via.impersonated === false,
+        operatorId: via.operatorId || '', operatorName: via.operatorName || '',
+      },
+      addressBook: this.accountAddressBook(check.item, accountId),
+    };
+  }
+
+  /**
    * GM-side check of a relayed "send as" (MessageService.handleMessageRelay):
    * the machine allows it, the account exists, and the message really is FROM
    * that account's identity. Blocks a tampered relay from sending as anyone.
@@ -707,6 +731,56 @@ export class TerminalService {
     }
     if (mirrored) log.debug(`Sent copy ${sentCopy.messageId} mirrored to ${mirrored} terminal account(s)`);
     return { success: true, mirrored };
+  }
+
+  /** @private The mailbox's Calls folder id. */
+  async _ensureCallsFolder(item) {
+    const cfg = this.getConfig(item);
+    const custom = [...(cfg.folders?.custom || [])];
+    const found = custom.find((c) => c?.id === 'calls' || String(c?.name || '').trim().toLowerCase() === 'calls');
+    if (found) return found.id;
+    custom.push({ id: 'calls', name: 'Calls', icon: 'fas fa-phone' });
+    await this.updateConfig(item, { folders: { ...(cfg.folders || {}), custom } });
+    return 'calls';
+  }
+
+  /**
+   * Add a call to an account's Calls folder. A call is an ordinary message there, so every mailbox layout, the
+   * exfil actions and the GM's own tools all work on it.
+   * @param {Item} item @param {string} accountId
+   * @param {{id?: string, dir: 'in'|'out', who: string, n: string, out: string, when: string, len: string, vm: string, ty?: string, written?: boolean}} e
+   */
+  async addCallEntry(item, accountId, e) {
+    const folder = await this._ensureCallsFolder(item);
+    const id = e.id || foundry.utils.randomID();
+    return this.addAccountMessage(item, accountId, {
+      messageId: `call-${id}`, subject: `${e.out}${e.len ? ` · ${e.len}` : ''}`, from: e.who || e.n || 'Unknown caller', to: '', body: e.vm ? `<p>"${foundry.utils.escapeHTML?.(e.vm) ?? e.vm}"</p>` : '',
+      timestamp: e.when || this._nowIso(), folder, status: { read: true }, envelope: 'mail', metadata: { callEntry: { ...e, id } },
+    });
+  }
+
+  /** What an account's Calls folder holds. */
+  callEntries(item, accountId) {
+    return this.getAccountMessages(item, accountId, { includeShared: false, enforceGates: false }).map((m) => m.metadata?.callEntry).filter(Boolean);
+  }
+
+  /** A real call reaches the accounts linked to either side, under the same switch as the mail mirror. */
+  async mirrorCallToAccounts(summary) {
+    if (!isGM() || !summary?.callId) return;
+    const sides = [['out', summary.from, summary.to], ['in', summary.to, summary.from]];
+    const words = { answered: 'Answered', missed: 'Missed', declined: 'Declined', busy: 'Missed', dropped: 'Dropped', voicemail: 'Voicemail' };
+    for (const item of this.collectTerminals()) {
+      for (const acct of (this.getConfig(item).accounts || [])) {
+        if (acct.mirrorAgentMail === false) continue;
+        for (const [dir, me, other] of sides) {
+          const hit = (me?.contactId && acct.masterContactId === me.contactId) || (me?.actorId && !me?.contactId && acct.actorId === me.actorId);
+          if (!hit) continue;
+          const hide = dir === 'in' && summary.from?.anon && !summary.traced;
+          const secs = Number(summary.seconds) || 0;
+          await this.addCallEntry(item, acct.id, { id: `${summary.callId}-${acct.id}`, dir, who: hide ? 'Unknown caller' : (other?.name || ''), n: hide ? '' : (other?.number || ''), out: words[summary.outcome] || 'Answered', when: summary.gameTime, len: secs ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : '', vm: '', real: true });
+        }
+      }
+    }
   }
 
   /** The copy id an Agent message gets on an account — the mirror's id, so a copy is never made twice. */
@@ -1477,7 +1551,7 @@ export class TerminalService {
         allow: master && (c.allow ?? d.allow),
         require: !!(c.require ?? d.require),
         skill: c.skill || d.skill,
-        dv: Number(c.dv ?? d.dv) || 15,
+        dv: Number(c.dv ?? d.dv) || 9,
       };
       if (key === 'sell') out[key].price = Math.max(0, Number(c.price ?? d.price) || 0);
     }
@@ -1757,6 +1831,15 @@ export class TerminalService {
       });
       return;
     }
+    // One at a time: each write reads the whole state and writes it back, so two players logging in together
+    // could otherwise lose one's session and footprint.
+    const run = () => this._writeSession(item, actorId, updates);
+    this._sessionWrites = (this._sessionWrites || Promise.resolve()).then(run, run);
+    return this._sessionWrites;
+  }
+
+  /** @private */
+  async _writeSession(item, actorId, updates) {
     const state = this.getState(item);
     if (!state.sessions) state.sessions = {};
     state.sessions[actorId] = { ...this.getSession(item, actorId), ...updates };
@@ -2049,6 +2132,15 @@ export class TerminalService {
         if (inner.effectType === 'logicBomb') return 'logic bomb refused to nest another logic bomb';
         const innerReport = await this._fireResidentEffect(item, inner.effectType, inner.params || {}, ctx);
         return `logic bomb detonated → ${innerReport}`;
+      }
+
+      case 'adjudicate': {
+        // A custom routine: the GM's own words, the GM's macro. The fire report carries the words.
+        if (params.macroId) {
+          try { await game.macros?.get(params.macroId)?.execute?.({ item }); }
+          catch (err) { log.error(`Resident macro failed: ${err.message}`); }
+        }
+        return `${params.name || 'A custom routine'} fired — ${params.description || 'GM to adjudicate'}`;
       }
 
       default:

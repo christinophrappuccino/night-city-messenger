@@ -9,7 +9,7 @@
  * (`resolveCallee`'s `world`), so the sims drive the real rules with no Foundry.
  */
 
-import { normaliseNumber, isShortNumber, DEFAULT_HOME_CODE } from './phoneNumbers.js';
+import { normaliseNumber, parseNumber } from './phoneNumbering.js';
 
 /** Every state a call can be in. */
 export const CALL_STATES = Object.freeze(['dialing', 'ringing', 'live', 'held', 'voicemail', 'ended']);
@@ -111,10 +111,13 @@ export function formatDuration(sec) {
  * @returns {{kind: 'player'|'npc'|'unowned', number: string, normal: string, actorId?, contactId?, name?, userIds?: string[], sendOnly?: boolean}}
  */
 export function resolveCallee(raw, world = {}) {
-  const home = world.homeCode || DEFAULT_HOME_CODE;
+  const home = world.homeCode;
   const normal = normaliseNumber(raw, home);
   const base = { number: String(raw ?? '').trim(), normal };
   if (!normal) return { ...base, kind: 'unowned' };
+  // a special number has no owner: the GM speaks for it
+  const sp = parseNumber(raw, home);
+  if (sp.service) return { ...base, kind: 'unowned', special: true, name: sp.entry?.name || sp.service };
   const actors = world.actors || [];
   const actor = actors.find((a) => a.phone && normaliseNumber(a.phone, home) === normal);
   if (actor) return { ...base, kind: actor.playerOwned ? 'player' : 'npc', actorId: actor.id, name: actor.name, userIds: actor.userIds || [] };
@@ -140,13 +143,14 @@ export function resolveCallee(raw, world = {}) {
  * @param {string} [o.unknownNumbers='not-in-service'] — 'not-in-service' | 'gm'
  * @returns {{ok: boolean, outcome?: string, reason?: string, toGm?: boolean}}
  */
-export function canCall({ enabled = true, fromNumber, callee, noSignal = false, homeCode = DEFAULT_HOME_CODE, unknownNumbers = 'not-in-service' }) {
+export function canCall({ enabled = true, fromNumber, callee, noSignal = false, homeCode, unknownNumbers = 'not-in-service' }) {
   if (!enabled) return { ok: false, reason: 'Calls are switched off at this table.' };
   if (!fromNumber) return { ok: false, reason: 'You need a number first.' };
   if (!callee?.normal) return { ok: false, reason: 'Type a number.' };
   if (normaliseNumber(fromNumber, homeCode) === callee.normal) return { ok: false, reason: 'That is your own number.' };
   if (noSignal) return { ok: false, outcome: 'no-signal', reason: 'No signal here.' };
-  if (callee.sendOnly) return { ok: false, outcome: 'not-in-service', reason: 'That line does not take calls.' };
+  if (callee.sendOnly || callee.lineOff) return { ok: false, outcome: 'not-in-service', reason: 'That line does not take calls.' };
+  if (callee.special) return { ok: true, toGm: true };
   if (callee.kind === 'unowned') {
     if (unknownNumbers === 'gm') return { ok: true, toGm: true };
     return { ok: false, outcome: 'not-in-service', reason: 'The number you have dialled is not in service.' };
@@ -216,5 +220,3 @@ export function transcriptOf(call) {
   return (call?.lines || []).map((l) => ({ side: l.side, name: (l.side === 'caller' ? call.from?.name : call.to?.name) || '', text: l.text, at: l.at }));
 }
 
-/** Is a number a short service number? (re-export for callers that only import the model) */
-export { isShortNumber };

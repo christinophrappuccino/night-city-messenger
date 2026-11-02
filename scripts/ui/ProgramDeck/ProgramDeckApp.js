@@ -77,7 +77,7 @@ export class ProgramDeckApp extends BaseApplication {
     return {
       name: cd.name || 'file', icon: cd.coverIcon || 'fas fa-note-sticky', fam: 'Utility', famWord: 'Unidentified',
       blurb: `looks like ${passLabel}. A scan reports nothing.`, real: false, passLabel,
-      detectDV: Number(cd.sniffDV) || 15, type: 'Unknown',
+      detectDV: Number(cd.sniffDV) || 9, type: 'Unknown',
     };
   }
 

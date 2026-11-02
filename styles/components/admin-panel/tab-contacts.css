@@ -607,7 +607,7 @@
   color: color-mix(in oklab, var(--tc, var(--ncm-act)) 80%, white); background: color-mix(in srgb, var(--tc, var(--ncm-act)) 22%, var(--ncm-bg-pane, var(--ncm-bg-base))); border: 1px solid color-mix(in srgb, var(--tc, var(--ncm-act)) 60%, transparent); }
 .ncm-admin-panel .ncm-ct2-km__cd .who { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .ncm-admin-panel .ncm-ct2-km__cd .nm { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading); }
-.ncm-admin-panel .ncm-ct2-km__cd .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.ncm-admin-panel .ncm-ct2-km__cd .tags { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 5px; }
 .ncm-admin-panel .ncm-ct2-km__cd .sum { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
 .ncm-admin-panel .ncm-ct2-km__cd .sum b { color: var(--ncm-attn); }
 .ncm-admin-panel .ncm-ct2-km__cd .kv { grid-column: 1 / -1; display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 4px 10px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--ncm-border) 80%, transparent); }
@@ -791,7 +791,7 @@
   background: var(--ncm-bg-card, var(--ncm-bg-surface)); border: 1px solid var(--ncm-border-active); }
 .ncm-admin-panel .ncm-ct2-sb__cd .hd { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .ncm-admin-panel .ncm-ct2-sb__cd .hd .nm { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading); }
-.ncm-admin-panel .ncm-ct2-sb__cd .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.ncm-admin-panel .ncm-ct2-sb__cd .tags { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 5px; }
 .ncm-admin-panel .ncm-ct2-sb__cd .meta { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
 .ncm-admin-panel .ncm-ct2-sb__cd .meta b { color: var(--sb-attn-text); }
 .ncm-admin-panel .ncm-ct2-sb__cd .meta .num { font: 11.5px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-primary)); }
@@ -965,3 +965,16 @@
 .ncm-admin-panel .ncm-ct2-whonpc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--ncm-border); }
 .ncm-admin-panel .ncm-ct2-whonpc .lb { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); margin-right: 2px; }
 .ncm-app.ncm-admin-panel .ncm-ct2-btn.ncm-ct2-btn--sm.ncm-ct2-btn--sm { height: 26px !important; padding: 0 9px !important; font-size: 10px !important; }
+
+/* ═══ Players: their phone lines ═══ */
+.ncm-admin-panel button.ncm-ct2-pphone { appearance: none; width: auto !important; height: auto !important; min-height: 0 !important; margin: 2px 0 0 !important; padding: 0 !important; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; background: none !important; border: 0 !important; box-shadow: none !important; font: 13px var(--ncm-font-mono); color: var(--ncm-text-num, var(--ncm-text-primary)); text-align: left; cursor: pointer; }
+.ncm-admin-panel button.ncm-ct2-pphone i { margin: 0; font-size: 11px; color: var(--ncm-text-label); }
+.ncm-admin-panel button.ncm-ct2-pphone:hover .n, .ncm-admin-panel button.ncm-ct2-pphone:hover .none { text-decoration: underline; }
+.ncm-admin-panel button.ncm-ct2-pphone small { font: 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+.ncm-admin-panel button.ncm-ct2-pphone .none { font-family: var(--ncm-font-body); color: var(--ncm-text-label); font-style: italic; }
+
+
+/* Who knows whom: the address and the number are separate */
+.ncm-ct2-cellpair { display: inline-flex; gap: 3px; }
+.ncm-admin-panel .ncm-ct2-cell.ncm-ct2-cell--half i { display: block; font-size: 10px; opacity: 1; }
+.ncm-admin-panel .ncm-ct2-cell.ncm-ct2-cell--half:not(.on) i { color: var(--ncm-text-hint); }

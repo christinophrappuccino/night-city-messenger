@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone numbers probe</title>
+<!--
+  The REAL Numbers and Number setup screens over the REAL CallService, on an in-memory world. Writes are real writes.
+  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/admin-phone-numbers-probe.html?f=numbers&t=clean-dark&pop=1
+  f = numbers | bulk | board | requests | retired | learn | rules | places | special
+-->
+<link rel="stylesheet" href="/_vendor/foundry2.css">
+<link rel="stylesheet" href="/_vendor/cpr.css">
+<link rel="stylesheet" href="/_vendor/fa/css/all.min.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  html, body { height: auto !important; overflow: auto !important; }
+  body { margin: 0; padding: 14px; background: #07080c !important; display: block !important; }
+  #win { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; display: flex; flex-direction: column; overflow: hidden; }
+</style>
+</head>
+<body>
+<div class="ncm-app ncm-admin-panel" id="win"><div class="ncm-admin-content" id="content" style="flex:1;min-height:0"><div class="ncm-ph2 ncm-admin-panel" id="ph2" data-owner="phone"></div></div></div>
+<script type="module">
+  addEventListener('unhandledrejection', (e) => { window.__errs = [...(window.__errs || []), String(e.reason?.stack || e.reason)]; });
+  addEventListener('error', (e) => { window.__errs = [...(window.__errs || []), String(e.error?.stack || e.message)]; });
+  const q = new URLSearchParams(location.search);
+  const win = document.getElementById('win');
+  win.dataset.ncmAdminTheme = q.get('t') || 'clean-dark';
+  const pop = q.get('pop') === '1';
+  win.style.width = pop ? '1120px' : '820px'; win.style.height = (Number(q.get('h')) || (pop ? 780 : 760)) + 'px';
+  const settings = { phoneLines: {}, phoneRetired: [], phoneRequests: [], phonePlaces: {}, phoneRules: {}, phoneSpecial: {}, phoneOrgNames: {}, callsEnabled: true };
+  const mk = (id, name, owned, extra = {}) => { const flags = {}; return { id, name, img: '', hasPlayerOwner: owned, items: [], system: { derivedStats: { hp: { value: 4, max: 38 } }, stats: { body: { value: 6 } } }, getFlag: (_, k) => flags[k], setFlag: async (_, k, v) => { flags[k] = v; }, unsetFlag: async (_, k) => { delete flags[k]; }, testUserPermission: () => owned, ...extra }; };
+  const actors = [mk('v', 'Veronica A.', true), mk('ra', 'Rache', true), mk('ks', 'Kid Static', true), mk('dx', 'Dex Moreno', true)];
+  for (const a of actors) a.items = Object.assign([], { contents: [] }); actors[0].items.contents.push({ type: 'role', name: 'Netrunner' }); actors[1].items.contents.push({ type: 'role', name: 'Lawman', system: { rank: 5 } });
+  const contacts = [
+    ['ju', 'Judy Alvarez', 'techie', '', 'Watson'], ['ro', 'Rogue', 'fixer', '', 'North Heywood'], ['si', 'Silver', 'fixer', '', '', { identityOf: 'ro' }], ['mv', 'Marcus Vance', 'corporate', 'Petrochem', 'Dallas'],
+    ['hm', 'Haruka Mori', 'corporate', 'Arasaka', 'Tokyo'], ['lr', 'Lena Ruiz', 'ripperdoc', '', 'Watson, Night City'], ['mo', 'Mama Okoye', 'fixer', '', 'Kabuki district'], ['tv', 'Tess Valdez', 'corporate', 'Militech', 'Night City'],
+    ['wt', 'Wes Tanaka', 'corporate', 'Milltech', 'Night City'], ['pd', 'Priya Das', 'corporate', 'Militech Security', 'Night City'], ['br', 'Brick', 'solo', 'Maelstrom', ''], ['nx', 'Nix', 'netrunner', '', ''],
+  ].map(([id, name, role, organization, location, x]) => ({ id, name, role, organization, location, email: name.split(' ')[0].toLowerCase() + '@nc.net', ...x }));
+  const coll = (list) => Object.assign([...list], { get: (id) => list.find((x) => x.id === id), contents: list });
+  const users = [{ id: 'gm', isGM: true, name: 'GM', active: true }, { id: 'u1', isGM: false, name: 'Alex', character: actors[0], active: true }, { id: 'u2', isGM: false, name: 'Sam', character: actors[1], active: true }];
+  const ev = { emit() {}, on() {}, off() {} };
+  globalThis.game = {
+    user: users[0], users: Object.assign(coll(users), { activeGM: users[0], filter: (f) => users.filter(f) }), actors: coll(actors), scenes: Object.assign(coll([{ id: 'sc1', name: 'Pier 4', grid: { size: 100 }, tokens: [] }]), { viewed: null }), macros: coll([{ id: 'm1', name: 'Open the Blackwall handout' }]), modules: { get: () => null }, journal: coll([]),
+    settings: { get: (_, k) => { if (k in settings) return settings[k]; throw new Error('not registered ' + k); }, set: async (_, k, v) => { settings[k] = JSON.parse(JSON.stringify(v)); return v; } },
+    nightcity: { eventBus: ev, socketManager: { emit() {}, on() {}, register() {} }, timeService: { getCurrentTime: () => '2045-03-14T12:00:00.000Z' },
+      masterContactService: { getAll: () => contacts, getContact: (id) => contacts.find((c) => c.id === id), updateContact: async (id, p) => { Object.assign(contacts.find((c) => c.id === id), p); return { success: true }; }, isSendOnly: () => false, getCustomRoles: () => [] },
+      contactRepository: { addContact: async (id, c) => { const a = actors.find((x) => x.id === id); await a.setFlag('', 'contacts', [...(a.getFlag('', 'contacts') || []), c]); return { success: true }; } } },
+  };
+  globalThis.foundry = { utils: { mergeObject: (a, b) => ({ ...a, ...b }), randomID: () => Math.random().toString(36).slice(2, 12), deepClone: (x) => JSON.parse(JSON.stringify(x)) } };
+  globalThis.Hooks = { on() {}, once() {}, off() {}, call() {}, callAll() {} };
+  globalThis.ui = { notifications: { warn: (m) => (window.__notes = [...(window.__notes || []), 'warn: ' + m]), info: (m) => (window.__notes = [...(window.__notes || []), m]), error: (m) => (window.__errs = [...(window.__errs || []), m]) } };
+  globalThis.ChatMessage = { create: async () => {} };
+  const { CallService } = await import('../../scripts/services/CallService.js');
+  const V = await import('../../scripts/ui/AdminPanel/tabs/phoneNumbersView.js');
+  const { tagHue } = await import('../../scripts/utils/tagHue.js'); void tagHue;
+  const s = new CallService();
+  game.nightcity.callService = s;
+  const { EmergencyService } = await import('../../scripts/services/EmergencyService.js');
+  const { EmergencyHud } = await import('../../scripts/ui/Calls/EmergencyHud.js');
+  settings.phoneEmergency = {}; settings.phoneEmergencyActive = [];
+  game.nightcity.emergencyService = new EmergencyService();
+  game.nightcity.emergencyHud = new EmergencyHud(game.nightcity.emergencyService, s);
+  const { OverheardService } = await import('../../scripts/services/OverheardService.js');
+  const { OverheardHud } = await import('../../scripts/ui/Calls/OverheardHud.js');
+  settings.overheardCalls = {}; settings.phoneEavesdrop = {};
+  game.nightcity.overheardService = new OverheardService();
+  game.nightcity.overheardHud = new OverheardHud(game.nightcity.overheardService, s);
+  game.nightcity.networkService = { getAllNetworks: () => [{ id: 'cn', name: 'CitiNet' }], getNodes: () => [], _nowMs: () => Date.now() };
+  await game.nightcity.overheardService.saveScript({ id: 'pier', name: 'The Pier 4 shipment', net: 'cn', a: { contactId: 'ro', name: 'Rogue', sceneId: 'sc1', anchor: 'token' }, b: { contactId: 'mv', name: 'Marcus Vance', shows: 'number' }, lines: [{ side: 'a', text: 'The shipment moved. Pier 4, midnight.', marks: ['clue'] }, { side: 'b', text: 'Who else knows about this?' }, { side: 'a', text: 'Nobody. You have my word.', marks: ['lie'] }] });
+  // a world part-way through
+  await s.assignNumber({ actorId: 'v', number: 'WAT-4471', why: 'They picked this themselves in the Calls tab.' });
+  await s.addLine({ actorId: 'v', number: '+10 DC CAP-8812', kind: 'extra', label: 'Old D.C. line', why: 'They added this line themselves.' });
+  await s.assignNumber({ actorId: 'ra', number: 'KAB-3301', why: 'They picked this themselves in the Calls tab.' });
+  await s.assignNumber({ contactId: 'ju', number: 'WAT-2208', why: 'Lives in Watson, so a Watson number.' });
+  await s.assignNumber({ contactId: 'ro', number: 'NHW-2087', why: 'Works out of North Heywood.' });
+  await s.assignNumber({ contactId: 'si', number: 'NHW-2090', why: 'You typed this one.' });
+  await s.assignNumber({ actorId: 'ra', number: 'KAB-3310', why: 'Changed.' });
+  await s.requestChange({ actorId: 'ra', number: 'SDO-4410' });
+  await s.createSharedLine({ name: 'Kabuki crew line', number: 'KAB-7001', members: [{ actorId: 'v', contactId: null, name: 'Veronica A.' }, { actorId: 'ra', contactId: null, name: 'Rache' }, { actorId: null, contactId: 'mo', name: 'Mama Okoye' }] });
+  await actors[0].setFlag('', 'contacts', [{ name: 'Judy', phone: '+72 NC WAT-2208', masterContactId: 'ju' }]);
+  const tab = { calls: s, _pn: V.newNumberState(), _view: 'numbers', app: { isPopout: pop, render: () => draw() }, _callAs: () => {}, _editGreeting: () => {}, _shareLine: () => {} };
+  tab._pn.f = q.get('f') || 'numbers';
+  tab._pn.sel = q.get('sel') || 'ro';
+  if (tab._pn.f === 'editlog') tab._pn.lgT = 'o:v';
+  const root = document.getElementById('ph2');
+  function draw() {
+    root.innerHTML = V.numbersHtml(tab);
+    V.wireNumbers(tab, root);
+    window.__settings = settings;
+  }
+  window.__tab = tab; window.__s = s; window.__draw = draw;
+  draw();
+  document.title = 'ready';
+</script>
+</body>
+</html>

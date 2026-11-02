@@ -19,7 +19,7 @@ import { OUTCOMES, MODE_INFO, formatDuration, callSeconds, sideOf, typeOutMs } f
 import { Dictation, dictateStatus } from './dictation.js';
 import { themedConfirm } from '../../utils/adminTheme.js';
 import { dialogBodyHtml } from '../../utils/dialogBody.js';
-import { normaliseNumber } from '../../utils/phoneNumbers.js';
+import { normaliseNumber } from '../../utils/phoneNumbering.js';
 import { voiceInfo } from '../../utils/identities.js';
 import { TONE_LINE, VOICEMAIL_MAX } from '../../utils/voicemail.js';
 import { speak, stopSpeaking } from './speech.js';
@@ -184,13 +184,16 @@ export class CallHud {
   /** The other party as this client may see them: a name only when they are in my contacts (the GM always sees it). */
   _other(call, role) {
     const o = role === 'caller' ? call.to : call.from;
+    // what the line's type decides is the same for everyone: a name it shows, or only the number
+    if (o.showOnly === 'name') return { name: o.name || o.number || 'Unknown', img: o.img || '', number: o.number || '', org: o.org || '', orgArt: o.orgArt || '', known: true };
+    if (o.showOnly === 'number' && !game.user.isGM) return { name: o.number || 'Unknown number', img: '', number: o.number || '', known: false };
     if (game.user.isGM) return { name: o.name || o.number || 'Unknown', img: o.img || '', number: o.number || '', known: true };
     const actor = game.actors?.get(role === 'caller' ? call.from?.actorId : call.to?.actorId);
     const contacts = actor?.getFlag?.(MODULE_ID, 'contacts') || [];
     const home = this.service.homeCode;
     const n = normaliseNumber(o.number, home);
     const hit = contacts.find((c) => (n && c.phone && normaliseNumber(c.phone, home) === n)
-      || (o.contactId && c.masterContactId === o.contactId) || (o.actorId && c.actorId === o.actorId));
+      || (o.contactId && c.masterContactId === o.contactId) || (!o.asLine && !o.contactId && o.actorId && c.actorId === o.actorId));
     return hit ? { name: hit.name || o.name || o.number, img: o.img || hit.portrait || '', number: o.number, known: true }
       : { name: o.number || 'Unknown number', img: '', number: o.number, known: false };
   }
@@ -218,10 +221,10 @@ export class CallHud {
     const gmCallee = game.user.isGM && role === 'callee';
     let kind, tone, sigState, keys = [];
     if (st === 'ringing' && role === 'callee') {
-      kind = gmCallee ? `${call.from?.name || 'Someone'} is calling` : 'Incoming call'; tone = 'ring'; sigState = 'ring';
+      kind = gmCallee ? `${call.from?.name || 'Someone'} is calling` : call.from?.word ? `Incoming · ${call.from.word}` : 'Incoming call'; tone = 'ring'; sigState = 'ring';
       keys = [['answer', 'Y', gmCallee ? `Answer as ${call.to?.name || 'them'}` : 'Answer', ''], ['decline', 'N', 'Decline', 'bad']];
     } else if (st === 'dialing' || (st === 'ringing' && role === 'caller')) {
-      kind = 'Calling…'; tone = 'ring'; sigState = 'ring'; keys = [['cancel', 'N', 'Cancel', 'bad']];
+      kind = call.queueHold ? 'On hold' : 'Calling…'; tone = 'ring'; sigState = 'ring'; keys = [['cancel', 'N', 'Cancel', 'bad']];
     } else if (st === 'live') {
       kind = call.remoteHeld ? 'On hold' : 'Holocall'; tone = 'live'; sigState = 'live'; keys = [['hangup', 'N', 'Hang up', 'bad']];
       // a withheld caller can be traced from the other end (a skill check; the GM reveals it on a success)
@@ -239,8 +242,12 @@ export class CallHud {
     const chipName = gmCallee ? (call.to?.name || call.to?.number || 'Unknown') : other.name;
     const net = call.net;
     const profile = callProfile({ name: role === 'caller' ? call.to?.name : call.from?.name, number: other.number, net: { name: net?.name, type: net?.type, strength: net?.strength } });
-    const showPic = (st === 'live' || st === 'held' || (st === 'ended' && call.answeredAt)) && other.img;
-    const pic = showPic ? `<div class="ncm-ch-pic"><div class="ncm-ch-feed"><img src="${esc(other.img)}" alt=""><span class="ncm-ch-sweep"></span></div>${FRAME(st === 'ended' ? 'ENDED' : st === 'held' ? 'HOLD' : '● LIVE')}</div>` : '';
+    const showPic = st === 'live' || st === 'held' || (st === 'ended' && call.answeredAt);
+    // no portrait: the initials and the swirl, in the same frame
+    const iniOf = (n) => (other.known === false || !n ? '?' : String(n).split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase());
+    const face = other.img ? `<img src="${esc(other.img)}" alt="">` : `<span class="ncm-ch-ini" aria-hidden="true"><span class="sw"><span class="tr"></span><span class="dot"></span><span class="dot b"></span></span><b>${esc(iniOf(other.name))}</b></span>`;
+    const pic = showPic ? `<div class="ncm-ch-pic"><div class="ncm-ch-feed">${face}<span class="ncm-ch-sweep"></span></div>${FRAME(st === 'ended' ? 'ENDED' : st === 'held' ? 'HOLD' : '● LIVE')}</div>` : '';
+    const orgHtml = other.org ? `<span class="ncm-ch-org">${other.orgArt ? `<img src="${esc(other.orgArt)}" alt="">` : ''}${esc(other.org)}</span>` : '';
     const voice = gmCallee ? this._voiceNote(call.to?.contactId) : '';
     const alias = gmCallee && call.to?.contactId ? this._aliasNote(call.to.contactId) : '';
     const meta = st === 'live' || st === 'held'
@@ -263,9 +270,9 @@ export class CallHud {
       return `<span class="ncm-ch-mode${m === myMode ? ' on' : ''}${off ? ' is-off' : ''}" data-mode="${esc(m)}" data-id="${esc(call.id)}" data-tooltip="${esc(tip)}" data-tooltip-direction="DOWN"><i class="fas ${esc(info.icon)}"></i> ${esc(info.label)}</span>`;
     }).join('')}</div>` : '';
     const keysHtml = keys.length ? `<div class="ncm-ch-keys">${keys.map(([act, k, label, cls]) => `<span class="ncm-ch-key ${cls}" data-act="${act}" data-id="${esc(call.id)}"><kbd>${k}</kbd>${esc(label)}</span>`).join('')}</div>` : '';
-    return `<div class="ncm-ch-call is-${tone}" data-call="${esc(call.id)}">${pic}<div class="ncm-ch-txt">
+    return `<div class="ncm-ch-call is-${tone}" data-call="${esc(call.id)}"${st === 'ringing' && role === 'callee' && call.from?.ring ? ` data-ring="${esc(call.from.ring)}"` : ''}>${pic}<div class="ncm-ch-txt">
       ${this._badgeHtml({ kind, name: chipName, tone, sigState, profile, callId: call.id, icon: st === 'voicemail' ? (call.vmStep === 'leave' ? 'fa-keyboard' : 'fa-voicemail') : undefined })}
-      ${alias}${anonHtml}<span class="ncm-ch-meta">${meta}</span>${whyHtml}${voice}${modesHtml}${keysHtml}${heldHtml}${waitHtml}</div></div>`;
+      ${alias}${anonHtml}${orgHtml}<span class="ncm-ch-meta">${meta}</span>${whyHtml}${voice}${modesHtml}${keysHtml}${heldHtml}${waitHtml}</div></div>`;
   }
 
   _waitingHtml(w) {

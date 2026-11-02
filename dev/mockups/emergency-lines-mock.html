@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Emergency lines mock</title>
+<!--
+  MOCK of the editor, over the REAL rules and the REAL call. Typing here changes what Play shows.
+  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/emergency-lines-mock.html
+  ?f=person|org|trauma  &tab=words|people|look  &t=clean-dark|clean-light|high-contrast  &pop=1
+  &play=backup|busy|trauma|arrive  &beat=0..4 (freeze a step of the played call)
+-->
+<link rel="stylesheet" href="/_vendor/foundry2.css">
+<link rel="stylesheet" href="/_vendor/cpr.css">
+<link rel="stylesheet" href="/_vendor/fa/css/all.min.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  html, body { height: auto !important; overflow: auto !important; }
+  body { margin: 0; padding: 14px; background: #07080c !important; display: block !important; }
+  #win { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; display: block; overflow: visible; background: var(--ncm-bg-canvas); }
+  #nav { display: flex; gap: 6px; margin: 0 0 10px; }
+  .mk-pad { padding: 10px 12px 14px; }
+
+  /* NEW: the editor. Tokens only; would move to tab-phone.css at build. */
+  .ncm-emv { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 6px; padding: 8px 10px 10px; background: var(--ncm-bg-pane-alt); border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .ncm-emv__top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ncm-emv__top .sp { flex: 1; }
+  .ncm-emv__note { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ncm-emv__tokens { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-pn button.ncm-emv__tok { all: unset; cursor: pointer; padding: 1px 6px; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; font: 12px var(--ncm-font-mono, monospace); color: var(--ncm-text-addr, var(--ncm-text-primary)); background: var(--ncm-bg-card); text-transform: none; letter-spacing: 0; }
+  .ncm-admin-panel .ncm-pn button.ncm-emv__tok:is(:hover, :focus-visible) { color: var(--ncm-text-heading); border-color: var(--ncm-act); }
+  .ncm-emv__group { font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); margin-top: 2px; }
+  .ncm-emv__slots { display: flex; flex-direction: column; gap: 3px; }
+  .ncm-emv__slot { display: grid; grid-template-columns: 136px minmax(0, 1fr) 92px 22px; gap: 8px; align-items: start; padding: 3px 0; }
+  .ncm-emv__slot > .l { padding-top: 5px; font: 600 12px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-emv__slot > .l small { display: block; font: 400 11px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-pn .ncm-emv__slot textarea { width: 100%; min-height: 28px; height: auto; padding: 4px 6px; resize: vertical; box-sizing: border-box; font: 13px/1.35 var(--ncm-font-body) !important; color: var(--ncm-text-heading); background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); border-radius: 2px; }
+  .ncm-admin-panel .ncm-pn .ncm-emv__slot textarea::placeholder { color: var(--ncm-text-hint); opacity: 1; }
+  .ncm-admin-panel .ncm-pn .ncm-emv__slot.is-title textarea { text-transform: uppercase; letter-spacing: .04em; }
+  .ncm-emv__slot.is-own textarea { border-color: color-mix(in srgb, var(--ncm-act) 60%, var(--ncm-border)) !important; }
+  .ncm-emv__src { padding-top: 6px; font: 11px var(--ncm-font-body); color: var(--ncm-text-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ncm-emv__slot.is-own .ncm-emv__src { color: color-mix(in oklab, var(--ncm-act) var(--ncm-ink, 65%), var(--ncm-text-heading)); font-weight: 600; }
+  .ncm-emv__bad { grid-column: 2 / -1; font: 12px var(--ncm-font-body); color: color-mix(in oklab, var(--ncm-attn) var(--ncm-ink, 65%), var(--ncm-text-heading)); }
+  .ncm-emv__rows { display: flex; flex-direction: column; gap: 3px; }
+  .ncm-emv__grp { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 3px 6px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-emv__grp .r { font: 12px var(--ncm-font-mono, monospace); color: var(--ncm-text-num, var(--ncm-text-primary)); }
+  .ncm-emv__grp.is-org { background: transparent; color: var(--ncm-text-label); }
+  .ncm-emv__look { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 8px 8px; align-items: center; }
+  .ncm-emv__look > .l { font: 600 12px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-emv__look .v { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-pn .ncm-emv__look input[type=color] { appearance: auto !important; -webkit-appearance: auto !important; width: 44px !important; height: 26px !important; min-height: 0 !important; padding: 1px !important; background: var(--ncm-bg-card) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; }
+  .ncm-emv .ncm-pn-seg button { display: inline-flex; align-items: center; gap: 6px; }
+  .ncm-emv .ncm-pn-seg button i { margin: 0 !important; }
+  .ncm-admin-panel .ncm-pn .ncm-emv__look select { width: 210px; height: 26px; }
+  .ncm-admin-panel .ncm-pn button.ncm-emv__x { all: unset; cursor: pointer; width: 22px; height: 26px; display: inline-flex; align-items: center; justify-content: center; color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-pn button.ncm-emv__x:is(:hover, :focus-visible) { color: var(--ncm-text-heading); }
+  .ncm-emv__change { font: 11px var(--ncm-font-body); color: color-mix(in oklab, var(--ncm-act) var(--ncm-ink, 65%), var(--ncm-text-heading)); }
+</style>
+</head>
+<body>
+<div id="nav"></div>
+<div class="ncm-app ncm-admin-panel" id="win"><div class="ncm-ph2 ncm-admin-panel"><div class="ncm-pn mk-pad" id="box"></div></div></div>
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  const box = document.getElementById('box'), win = document.getElementById('win');
+  win.dataset.ncmAdminTheme = q.get('t') || 'clean-dark';
+  win.style.width = q.get('pop') === '1' ? '1120px' : '820px';
+  const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const role = (rank) => ({ type: 'role', name: 'Lawman', system: { rank } });
+  const mk = (id, name, rank) => ({ id, name, img: '', isOwner: true, system: { derivedStats: { hp: { value: 14, max: 40 } }, stats: { body: { value: 7 } } }, items: { contents: [role(rank), { type: 'role', name: 'Exec', system: { rank: 8 } }] }, testUserPermission: () => true });
+  const actors = [mk('ra', 'Mara Reyes', 5), mk('dx', 'Dex Moreno', 3), mk('kd', 'Kade Holloway', 8)];
+
+  const settings = { phoneEmergency: {}, phoneEmergencyActive: [] };
+  globalThis.game = {
+    user: { id: 'u1', isGM: false }, users: { activeGM: { id: 'gm' }, filter: () => [] }, combat: null,
+    actors: { get: (id) => actors.find((a) => a.id === id), contents: actors }, scenes: { viewed: { id: 's1', name: 'Pacifica Docks' } },
+    settings: { get: (m, k) => { if (k in settings) return settings[k]; throw new Error('none'); } },
+    nightcity: { socketManager: { emit() {}, register() {} }, masterContactService: { getContact: () => null, getAll: () => [] }, skillService: {}, timeService: { getCurrentTime: () => '2045-08-14T15:00:00.000Z' },
+      soundService: { play: (id) => { if (String(id).startsWith('em-')) new Audio(`../../assets/sounds/calls/${id}.wav`).play().catch(() => {}); } } },
+  };
+  globalThis.foundry = { utils: { mergeObject: (a, b) => ({ ...a, ...b }), randomID: () => 'x' + Math.random().toString(36).slice(2, 8) } };
+  globalThis.Hooks = { on() { return 1; }, off() {}, once() {}, call() {}, callAll() {} };
+  globalThis.ui = { notifications: { warn() {}, info() {}, error() {} } };
+  globalThis.Roll = class { constructor() { this.total = 3; } async evaluate() { return this; } };
+  globalThis.ChatMessage = { create: async () => ({}), getSpeaker: () => ({}) };
+
+  let E, Svc, Hud;
+  try {
+    E = await import('../../scripts/utils/phoneEmergency.js');
+    Svc = (await import('../../scripts/services/EmergencyService.js')).EmergencyService;
+    Hud = (await import('../../scripts/ui/Calls/EmergencyHud.js')).EmergencyHud;
+  } catch (err) { box.innerHTML = '<p style="color:#fff">Serve this page: node dev/tools/serve-mockups.cjs, then open it from http://127.0.0.1:8123/. ' + esc(err.message) + '</p>'; throw err; }
+
+  const svc = new Svc(); game.nightcity.emergencyService = svc;
+  const hud = new Hud(svc, { _net: () => ({ name: 'CitiNet', type: 'PUBLIC', strength: 78 }), _noSignal: () => false, homeCode: null }); game.nightcity.emergencyHud = hud;
+
+  // A world with some of it filled in, so the layers show.
+  const cfg = E.sanitizeEmergency({});
+  cfg.backup.chars = { ra: 'ncpd', dx: 'ncpd', kd: 'mil' };
+  cfg.backup.orgs.ncpd.voice = { speaker: ['NCPD Dispatch'], answer: ['10-4. Units rolling.', 'Copy that. Rolling now.'], inbound: ['Units to {place}. {rounds} out.'] };
+  cfg.backup.people.ra = { voice: { channel: ['UNIT-7'], ask: ['Reyes here. Shots fired, {place}. Send everyone.'] }, look: {}, img: '', groups: [{ r1: 3, r2: 4, name: 'Det. Okafor, partner', logo: '' }] };
+  cfg.trauma.voice = {};
+  settings.phoneEmergency = cfg;
+
+  const S = { f: q.get('f') || 'person', tab: q.get('tab') || 'words', open: 'ra', lastBox: null };
+  const SOUNDS = [['em-radio-in', 'Radio keyed'], ['em-radio-out', 'Radio released'], ['em-dispatch', 'Dispatch confirms'], ['em-arrive-backup', 'Siren'], ['em-arrive-trauma', 'Trauma Team arrives']];
+  const LIGHT = [['', 'As set above'], ['on', 'On'], ['off', 'Off']];
+  const btn = (label, icon, tip, attrs = '', mod = '') => `<button type="button" class="ncm-ph2-btn${mod ? ' ncm-ph2-btn--' + mod : ''}" data-tooltip="${esc(tip)}" ${attrs}>${icon ? `<i class="fas ${icon}"></i>` : ''}${label ? ' ' + esc(label) : ''}</button>`;
+  const sect = (ic, title, tone, answer, body) => `<div class="ncm-pn-sect ncm-pn-q is-open"><button type="button" class="ncm-pn-band ncm-pn-qh" style="--sk:${tone}"><i class="fas fa-chevron-down ch"></i><i class="fas ${ic}"></i> ${esc(title)}<small>${esc(answer)}</small></button><div class="in">${body}</div></div>`;
+  const initials = (n) => n.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  const face = (n) => `<span class="ncm-pn-face" style="--tc:var(--ncm-hue-3)">${esc(initials(n))}</span>`;
+
+  /** The ONE editor: slots from the real rules; a blank box inherits from the layer behind it. */
+  function slotsHtml({ slots, own, layersBehind, tokens, scope }) {
+    const inherited = E.voiceSources(slots, layersBehind);
+    const row = (s) => {
+      const mine = own?.[s.key] || [], inh = inherited[s.key];
+      const n = mine.length || inh.lines.length;
+      const src = mine.length ? (mine.length > 1 ? `${mine.length} lines, 1 per call` : 'Changed here') : (inh.from === 'Built in' ? 'Built in' : `From ${inh.from}`);
+      const bad = tokens ? [...new Set((mine.join(' ').match(/\{(\w+)\}/g) || []).filter((t) => !tokens.includes(t.slice(1, -1))))] : [];
+      const ph = inh.lines.join('\n') || 'Blank: gets a channel number';
+      return `<div class="ncm-emv__slot${mine.length ? ' is-own' : ''}${s.title ? ' is-title' : ''}" data-slot="${s.key}"><span class="l" data-tooltip="${esc(s.hint)}">${esc(s.label)}<small>${esc(s.hint)}</small></span>
+        <textarea rows="${Math.max(1, Math.min(4, n))}" data-sl="${s.key}" data-scope="${scope}" aria-label="${esc(s.label)}" placeholder="${esc(ph)}">${esc(mine.join('\n'))}</textarea>
+        <span class="ncm-emv__src">${esc(src)}</span>${mine.length ? `<button type="button" class="ncm-emv__x" data-clear="${s.key}" data-scope="${scope}" aria-label="Use the inherited words" data-tooltip="Use the inherited words"><i class="fas fa-rotate-left"></i></button>` : '<span></span>'}
+        ${bad.length ? `<div class="ncm-emv__bad"><i class="fas fa-triangle-exclamation"></i> ${esc(bad.join(', '))} is not a fill-in, so it shows as typed.</div>` : ''}</div>`;
+    };
+    const words = slots.filter((s) => !s.title), titles = slots.filter((s) => s.title);
+    return (tokens ? `<div class="ncm-emv__tokens">Fill-ins ${tokens.map((t) => `<button type="button" class="ncm-emv__tok" data-tok="{${t}}" data-tooltip="Puts {${t}} where you are typing">{${t}}</button>`).join('')}</div>` : '')
+      + `<div class="ncm-emv__note">Leave a box blank to inherit. Several lines in a box: one is picked each call.</div>`
+      + `<div class="ncm-emv__group">Lines</div><div class="ncm-emv__slots">${words.map(row).join('')}</div>`
+      + `<div class="ncm-emv__group">Titles</div><div class="ncm-emv__slots">${titles.map(row).join('')}</div>`;
+  }
+
+  const lookHtml = (scope, look, behindLabel, behind) => {
+    const light = look.lights === true ? 'on' : look.lights === false ? 'off' : '';
+    const seg = `<div class="ncm-pn-seg" role="group">${(scope === 'org' ? [['', 'By kind'], ['on', 'On'], ['off', 'Off']] : LIGHT.map(([v, t]) => [v, v === '' ? 'From ' + behindLabel : t])).map(([v, t]) => `<button type="button" class="${light === v ? 'on' : ''}" data-light="${v}" data-scope="${scope}" data-tooltip="Red and blue at the edges of the screen">${esc(t)}</button>`).join('')}</div>`;
+    const snd = (k, label) => `<span class="l" data-tooltip="Replacing the file itself is on the Sound Board">${label}</span><span class="v"><select data-snd="${k}" data-scope="${scope}" aria-label="${label}"><option value="">${scope === 'org' ? 'By kind' : 'From ' + esc(behindLabel)} (${esc((SOUNDS.find(([v]) => v === behind[k]) || [0, behind[k]])[1])})</option>${SOUNDS.map(([v, t]) => `<option value="${v}"${look[k] === v ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></span>`;
+    return `<div class="ncm-emv__look"><span class="l" data-tooltip="The rings, the sweep, the tracker and the arrival banner">Colour</span><span class="v"><input type="color" data-col data-scope="${scope}" value="${esc(look.color || behind.color)}" aria-label="Colour">${look.color ? `<button type="button" class="ncm-emv__x" data-colclear data-scope="${scope}" aria-label="Use the inherited colour" data-tooltip="Use the inherited colour"><i class="fas fa-rotate-left"></i></button>` : `<span>${scope === 'org' ? 'By kind' : 'From ' + esc(behindLabel)}</span>`}</span>
+      <span class="l">Lights</span><span class="v">${seg}</span>${snd('openSound', 'Opening sound')}${snd('arriveSound', 'Arrival sound')}
+      <span class="l" data-tooltip="A group's own picture still wins">Picture</span><span class="v">${btn('Add a picture', 'fa-image', 'Mock only: opens the file picker in Foundry')}<span>${scope === 'org' ? 'Shows on their calls' : 'Beats ' + esc(behindLabel) + '\'s, not a group\'s own'}</span></span></div>`;
+  };
+
+  const countChanges = (p) => Object.keys(p?.voice || {}).length + (p?.groups?.length || 0) + Object.keys(p?.look || {}).length + (p?.img ? 1 : 0);
+
+  function personEditor(actor) {
+    const c = settings.phoneEmergency, orgId = c.backup.chars[actor.id] || 'book', o = c.backup.orgs[orgId];
+    const p = c.backup.people[actor.id] || (c.backup.people[actor.id] = { voice: {}, look: {}, img: '', groups: [] });
+    const tabs = [['words', 'What they say', 'fa-comment'], ['people', 'Their people', 'fa-people-group'], ['look', 'How it looks', 'fa-palette']];
+    const top = `<div class="ncm-emv__top"><div class="ncm-pn-seg" role="tablist">${tabs.map(([k, l, ic]) => `<button type="button" class="${S.tab === k ? 'on' : ''}" data-tab="${k}"><i class="fas ${ic}"></i> ${esc(l)}</button>`).join('')}</div><span class="sp"></span>${btn('Play', 'fa-play', 'Plays this person\'s call on your screen. Nothing is rolled or saved', `data-play="backup" data-a="${actor.id}"`)}${btn('Nobody free', 'fa-play', 'The same call when the roll fails', `data-play="busy" data-a="${actor.id}"`)}${btn('Arrival', 'fa-play', 'The on scene banner', `data-play="arrive" data-a="${actor.id}"`)}</div>`;
+    let body = '';
+    if (S.tab === 'words') body = slotsHtml({ slots: E.BACKUP_SLOTS, own: p.voice, layersBehind: [{ label: o.name, voice: o.voice }], tokens: E.LINE_TOKENS.backup, scope: 'person' });
+    if (S.tab === 'people') {
+      const orgRows = [...o.rows].sort((a, b) => a.r1 - b.r1);
+      const word = (r) => (r.r1 === r.r2 ? r.r1 : r.r1 + '-' + r.r2);
+      body = `<div class="ncm-emv__note">Added to ${esc(o.name)}'s list for this person only. The same rank rule applies, and at the same rank theirs come first.</div>
+        <div class="ncm-emv__group">Theirs</div><div class="ncm-emv__rows">${p.groups.map((r, i) => `<div class="ncm-emv__grp"><span class="r" data-tooltip="Rank needed to call them">${word(r)}</span><span>${esc(r.name)}</span><span>${btn('', 'fa-image', 'Give this group its own picture', '', 'ic')}${btn('', 'fa-trash', 'Remove', `data-delg="${i}"`, 'ic')}</span></div>`).join('') || '<small>None yet.</small>'}</div>
+        <div class="ncm-pn-fr"><label class="ncm-pn-f" data-tooltip="Lowest Backup rank that can call them">From rank<input type="number" id="ng1" min="1" max="10" value="3" style="width:64px"></label><label class="ncm-pn-f" data-tooltip="Highest rank in this band">To<input type="number" id="ng2" min="1" max="10" value="4" style="width:64px"></label><label class="ncm-pn-f grow" data-tooltip="Any name">New group<input type="text" id="ngn" placeholder="A partner, a favour, an old squad"></label>${btn('Add', 'fa-plus', 'Add this group', 'data-addg')}</div>
+        <div class="ncm-emv__group">From ${esc(o.name)}</div><div class="ncm-emv__rows">${orgRows.map((r) => `<div class="ncm-emv__grp is-org"><span class="r">${word(r)}</span><span>${esc(r.name)}</span><span></span></div>`).join('')}</div>`;
+    }
+    if (S.tab === 'look') body = lookHtml('person', p.look, o.name, E.backupLook(o.kind, o.look));
+    return `<div class="ncm-emv">${top}${body}</div>`;
+  }
+
+  function render() {
+    const c = settings.phoneEmergency;
+    document.getElementById('nav').innerHTML = [['person', 'A Lawman'], ['org', 'An organization'], ['trauma', 'Trauma Team']].map(([f, l]) => `<a style="color:#9fd;font:13px sans-serif;margin-right:10px;${S.f === f ? 'font-weight:700;text-decoration:underline' : ''}" href="?f=${f}&t=${win.dataset.ncmAdminTheme}">${esc(l)}</a>`).join('');
+    if (S.f === 'person') {
+      const rows = actors.map((a) => {
+        const on = S.open === a.id, n = countChanges(c.backup.people[a.id]), rank = a.items.contents[0].system.rank;
+        return `<div class="ncm-r3-ext">${face(a.name)}<span class="grow"><b>${esc(a.name)}</b> <small>Rank ${rank}</small>${n ? ` <span class="ncm-emv__change">${n} change${n === 1 ? '' : 's'}</span>` : ''}</span><select data-orgof="${a.id}" aria-label="Organization for ${esc(a.name)}">${Object.entries(c.backup.orgs).map(([id, o]) => `<option value="${id}"${(c.backup.chars[a.id] || 'book') === id ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}</select>${btn(on ? 'Close' : 'Customize', on ? 'fa-chevron-up' : 'fa-pen', 'What this person\'s calls say and look like', `data-open="${a.id}"`)}</div>${on ? personEditor(a) : ''}`;
+      }).join('');
+      box.innerHTML = `<header class="ncm-tabhd"><i class="fas fa-shield-halved"></i><div><h2>Lawman Backup</h2><p>The Lawman role ability, on their phone.</p></div></header>` + sect('fa-shield-halved', 'Who are your Lawmen?', 'var(--ncm-hue-5)', actors.length + ' Lawmen', `<small>Anyone with the Lawman role. Pick who each one calls, and change anything about their call.</small><div style="display:flex;flex-direction:column;gap:3px">${rows}</div>`);
+    }
+    if (S.f === 'org') {
+      const o = c.backup.orgs.ncpd;
+      box.innerHTML = `<header class="ncm-tabhd"><i class="fas fa-shield-halved"></i><div><h2>Lawman Backup</h2><p>The Lawman role ability, on their phone.</p></div></header>`
+        + sect('fa-comment', 'What do their calls say?', 'var(--ncm-act)', 'NCPD · ' + Object.keys(o.voice).length + ' changed', `<div class="ncm-emv"><div class="ncm-emv__top"><span class="ncm-emv__note">Every NCPD Lawman gets these unless you change them on the person.</span><span class="sp"></span>${btn('Play', 'fa-play', 'Plays with a Lawman from this organization', 'data-play="backup" data-a="dx"')}</div>${slotsHtml({ slots: E.BACKUP_SLOTS, own: o.voice, layersBehind: [], tokens: E.LINE_TOKENS.backup, scope: 'org' })}</div>`)
+        + sect('fa-palette', 'How do their calls look?', 'var(--ncm-hue-7)', o.kind + ' · ' + (E.backupLook(o.kind, o.look).lights ? 'lights on' : 'no lights'), `<div class="ncm-emv">${lookHtml('org', o.look, 'kind', E.backupLook(o.kind))}</div>`);
+    }
+    if (S.f === 'trauma') {
+      box.innerHTML = `<header class="ncm-tabhd"><i class="fas fa-truck-medical"></i><div><h2>Trauma Team</h2><p>A monthly plan, not gear.</p></div></header>`
+        + sect('fa-comment', 'What does dispatch say?', 'var(--ncm-bad)', Object.keys(c.trauma.voice).length + ' changed', `<div class="ncm-emv"><div class="ncm-emv__top"><span class="ncm-emv__note">One set of words for the whole service.</span><span class="sp"></span>${btn('Play', 'fa-play', 'Plays it on your screen. Nothing is rolled or saved', 'data-play="trauma" data-a="ra"')}${btn('Arrival', 'fa-play', 'The on scene banner', 'data-play="arrive-tt" data-a="ra"')}</div>${slotsHtml({ slots: E.TRAUMA_SLOTS, own: c.trauma.voice, layersBehind: [], tokens: E.LINE_TOKENS.trauma, scope: 'trauma' })}</div>`);
+    }
+  }
+
+  const voiceOf = (scope) => { const c = settings.phoneEmergency; return scope === 'trauma' ? c.trauma.voice : scope === 'org' ? c.backup.orgs.ncpd.voice : c.backup.people[S.open].voice; };
+  const lookOf = (scope) => { const c = settings.phoneEmergency; return scope === 'org' ? c.backup.orgs.ncpd.look : c.backup.people[S.open].look; };
+
+  function play(kind, id) {
+    const a = actors.find((x) => x.id === id);
+    if (kind === 'backup') return hud.backup(a, null, { preview: true });
+    if (kind === 'busy') return hud.backup(a, null, { preview: true, previewBusy: true });
+    if (kind === 'trauma') return hud.trauma(a, a, { preview: true });
+    if (kind === 'arrive-tt') { const i = svc.traumaInfo(a); return hud.arrival({ kind: 'trauma', place: i.place, sceneId: '', img: '', name: i.name, plan: 'Silver', arriveTitle: i.arriveTitle }); }
+    const i = svc.backupInfo(a);
+    return hud.arrival({ kind: 'backup', place: i.place, org: i.org, group: i.group, sceneId: '', img: i.img, lights: i.lights, color: i.color, arriveSound: i.arriveSound, arriveTitle: i.arriveTitle, name: i.name });
+  }
+
+  box.addEventListener('click', (e) => {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.open) { S.open = S.open === t.dataset.open ? null : t.dataset.open; render(); }
+    else if (t.dataset.tab) { S.tab = t.dataset.tab; render(); }
+    else if (t.dataset.play) play(t.dataset.play, t.dataset.a);
+    else if (t.dataset.tok) { const b = S.lastBox?.isConnected ? S.lastBox : box.querySelector('textarea'); if (b) { const at = b.selectionStart ?? b.value.length; b.value = b.value.slice(0, at) + t.dataset.tok + b.value.slice(b.selectionEnd ?? at); b.focus(); b.dispatchEvent(new Event('input', { bubbles: true })); } }
+    else if (t.dataset.clear) { delete voiceOf(t.dataset.scope)[t.dataset.clear]; render(); }
+    else if ('colclear' in t.dataset) { delete lookOf(t.dataset.scope).color; render(); }
+    else if ('light' in t.dataset) { const l = lookOf(t.dataset.scope); if (t.dataset.light === '') delete l.lights; else l.lights = t.dataset.light === 'on'; render(); }
+    else if ('delg' in t.dataset) { settings.phoneEmergency.backup.people[S.open].groups.splice(Number(t.dataset.delg), 1); render(); }
+    else if ('addg' in t.dataset) { const name = box.querySelector('#ngn').value.trim(); if (!name) return; const r1 = Number(box.querySelector('#ng1').value) || 1; settings.phoneEmergency.backup.people[S.open].groups.push({ r1, r2: Math.max(r1, Number(box.querySelector('#ng2').value) || r1), name, logo: '' }); render(); }
+  });
+  box.addEventListener('focusin', (e) => { if (e.target.matches('textarea')) S.lastBox = e.target; });
+  box.addEventListener('input', (e) => {
+    const b = e.target;
+    if (b.dataset.sl) { const v = voiceOf(b.dataset.scope), lines = b.value.split('\n').map((l) => l.trim()).filter(Boolean); if (lines.length) v[b.dataset.sl] = lines; else delete v[b.dataset.sl]; }
+    if ('col' in b.dataset) lookOf(b.dataset.scope).color = b.value;
+  });
+  box.addEventListener('focusout', (e) => { if (e.target.dataset.sl) { const k = e.target.dataset.sl, s = e.target.dataset.scope; setTimeout(() => { if (!box.contains(document.activeElement) || document.activeElement?.tagName !== 'BUTTON') { render(); box.querySelector(`textarea[data-sl="${k}"][data-scope="${s}"]`); } }, 0); } });
+  box.addEventListener('change', (e) => {
+    const b = e.target;
+    if (b.dataset.snd) { const l = lookOf(b.dataset.scope); if (b.value) l[b.dataset.snd] = b.value; else delete l[b.dataset.snd]; render(); }
+    if (b.dataset.orgof) { settings.phoneEmergency.backup.chars[b.dataset.orgof] = b.value; render(); }
+    if ('col' in b.dataset) render();
+  });
+
+  render();
+  const beat = q.has('beat') ? Number(q.get('beat')) : null;
+  if (beat !== null) hud._beats = (list, on, jump) => { for (let i = 0; i <= Math.min(beat, jump); i++) on(i); };
+  if (q.get('play')) play(q.get('play'), q.get('a') || 'ra');
+  if (q.get('still')) { const st = document.createElement('style'); st.textContent = '*, *::before, *::after { animation: none !important; transition: none !important; }'; document.head.appendChild(st); }
+  document.title = 'ready';
+</script>
+</body>
+</html>

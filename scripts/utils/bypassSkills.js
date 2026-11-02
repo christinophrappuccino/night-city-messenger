@@ -27,7 +27,7 @@ const norm = (s) => String(s ?? '').toLowerCase().replace(/[\s_/\\&.-]+/g, '');
  * @returns {number}
  */
 export function bypassDCFor(sec, skill) {
-  const base = Number(sec?.bypassDC ?? 15) || 15;
+  const base = Number(sec?.bypassDC ?? 9) || 9;
   const map = sec?.bypassSkillDCs;
   if (!map || typeof map !== 'object' || !skill) return base;
   const want = norm(skill);
@@ -101,8 +101,8 @@ function rowHtml({ name, dv }, cls) {
  */
 export function bypassRowsHtml(sec, opts = {}) {
   let rows = bypassRowsOf(sec);
-  if (!rows.length) rows = [{ name: opts.defaultSkill || 'Interface', dv: Number(sec?.bypassDC ?? opts.defaultDV ?? 15) || 15 }];
-  return `<div class="ncm-bypass" data-bypass-rows data-default-dv="${Number(opts.defaultDV ?? sec?.bypassDC ?? 15) || 15}"
+  if (!rows.length) rows = [{ name: opts.defaultSkill || 'Interface', dv: Number(sec?.bypassDC ?? opts.defaultDV ?? 9) || 9 }];
+  return `<div class="ncm-bypass" data-bypass-rows data-default-dv="${Number(opts.defaultDV ?? sec?.bypassDC ?? 9) || 9}"
       data-cls-select="${esc(opts.select || '')}" data-cls-input="${esc(opts.input || '')}">
     <div class="ncm-bypass__list" data-bypass-list>${rows.map((r) => rowHtml(r, opts)).join('')}</div>
     <button type="button" class="ncm-bypass__add" data-bypass-add><i class="fas fa-plus"></i> Add skill</button>
@@ -125,7 +125,7 @@ export function wireBypassRows(root) {
       const taken = new Set(readBypassRows(box).map((r) => norm(r.name)));
       const next = Object.keys(SKILL_MAP).find((s) => !taken.has(norm(s))) || 'Interface';
       list.insertAdjacentHTML('beforeend', rowHtml(
-        { name: next, dv: Number(box.dataset.defaultDv) || 15 },
+        { name: next, dv: Number(box.dataset.defaultDv) || 9 },
         { select: box.dataset.clsSelect, input: box.dataset.clsInput },
       ));
     } else {

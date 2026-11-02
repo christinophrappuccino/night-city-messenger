@@ -21,8 +21,8 @@
  */
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, resolveOperator, resolveDisplayPortrait } from '../utils/helpers.js';
-import { normaliseNumber, displayNumber, generateNumbers, sanitizeRegion, DEFAULT_HOME_CODE } from '../utils/phoneNumbers.js';
+import { log, isGM, resolveOperator, resolveDisplayPortrait, whisperCardHtml } from '../utils/helpers.js';
+import { normaliseNumber, displayNumber, parseNumber, rowOf, fullForm, freeLines, numberAt, buildNumberContext, placeRows, sanitizeRules, pickableRows, sanitizeSpecial, specialKey, specialList, specialMap, specialOutcome, writtenToLog, lineTypes, lineTypeFor, lineShown, traceFinds, officeRowOf, officeKey, sanitizeOffice, splitExtension, placeOf } from '../utils/phoneNumbering.js';
 import { createCall, createEndedCall, transition, resolveCallee, canCall, allowedModes, defaultMode, callSeconds, formatDuration, OUTCOMES,
   BUILT_MODES, makeLine, addLine, sideOf, transcriptOf } from '../utils/callModel.js';
 import { dropReason, maskCaller, callerFor, interceptMail } from '../utils/callNet.js';
@@ -60,7 +60,17 @@ export class CallService {
 
   _get(key, fallback) { try { return game.settings.get(MODULE_ID, key); } catch { return fallback; } }
   get enabled() { return !!this._get('callsEnabled', true); }
-  get homeCode() { return this._get('callHomeCode', DEFAULT_HOME_CODE) || DEFAULT_HOME_CODE; }
+  /** The number rules, defaults filled in. */
+  get rules() { return sanitizeRules(this._get('phoneRules', {})); }
+  /** The table, home and special numbers every reader uses. Rebuilt only when one of them changes. */
+  get numberContext() {
+    const places = this._get('phonePlaces', {}), rules = this._get('phoneRules', {}), special = this._get('phoneSpecial', {});
+    const sig = JSON.stringify([places, rules, special]);
+    if (this._ctxSig !== sig) { this._ctx = buildNumberContext({ rows: placeRows(places), home: sanitizeRules(rules).home, service: specialMap(specialList(special)) }); this._ctxSig = sig; }
+    return this._ctx;
+  }
+  /** What every number reader takes. The name stays because it is passed around unopened. */
+  get homeCode() { return this.numberContext; }
   get ringMs() { return Math.max(5, Number(this._get('callRingSeconds', 30)) || 30) * 1000; }
   get silent() { return !!this._get('callSilent', false); }
   get modes() { return allowedModes(this._get('callModes', ['loud', 'type', 'dictate']), { dictate: dictateStatus().ok }); }
@@ -78,7 +88,6 @@ export class CallService {
   get recordingOn() { return this._get('voicemailRecording', true) !== false; }
   get maxRecordMs() { return Math.min(180, Math.max(10, Number(this._get('voicemailMaxSeconds', 60)) || 60)) * 1000; }
   get keepDays() { return Math.max(0, Number(this._get('voicemailKeepDays', 30)) || 0); }
-  get region() { return sanitizeRegion(this._get('callDefaultRegion', {})); }
 
   // ═══════════════════════════════════════════════════════════
   //  Numbers
@@ -90,41 +99,47 @@ export class CallService {
   /** One line by any spelling of its number. */
   line(number) { return this.lines()[normaliseNumber(number, this.homeCode)] || null; }
 
-  /** Every number that reaches a character: its own, then its burners (aliases linked to it). */
+  /** Every number that reaches a character: its main line first, then extra lines, burners and aliases linked to it. */
   linesFor(actorId) {
     if (!actorId) return [];
+    const kindOf = (l) => l.kind || (l.owner?.contactId ? 'alias' : 'main');
+    const rank = { main: 0, extra: 1, burner: 2, alias: 3 };
     return Object.entries(this.lines()).filter(([, l]) => l.owner?.actorId === actorId)
-      .map(([normal, l]) => ({ normal, number: l.number, name: l.owner.name, contactId: l.owner.contactId || null, burner: !!l.owner.contactId }))
-      .sort((a, b) => Number(a.burner) - Number(b.burner));
+      .map(([normal, l]) => { const kind = kindOf(l); return { normal, number: l.number, name: l.owner.name, contactId: l.owner.contactId || null, kind, label: l.label || '', main: kind === 'main', burner: kind !== 'main' && kind !== 'extra' }; })
+      .concat(Object.entries(this.lines()).filter(([, l]) => (l.members || []).some((m) => m.actorId === actorId)).map(([normal, l]) => ({ normal, number: l.number, name: l.label, contactId: null, kind: 'shared', label: l.label || '', main: false, burner: false, shared: true })))
+      .sort((a, b) => (rank[a.kind] ?? 4) - (rank[b.kind] ?? 4));
   }
 
   /** The number a character is called on (its own line, not a burner). */
-  numberOf(actorId) { return this.linesFor(actorId).find((l) => !l.burner)?.number || ''; }
+  numberOf(actorId) { return this.linesFor(actorId).find((l) => l.main)?.number || ''; }
 
   /** The line a directory contact (NPC identity) answers on. */
   numberOfContact(contactId) {
-    const hit = Object.values(this.lines()).find((l) => l.owner?.contactId === contactId);
+    const all = Object.values(this.lines()).filter((l) => l.owner?.contactId === contactId);
+    const hit = all.find((l) => !['extra', 'burner'].includes(l.kind)) || all[0];
     if (hit) return hit.number;
     return game.nightcity?.masterContactService?.getContact?.(contactId)?.phone || '';
   }
 
   /**
-   * The number to ring a contact on, or '' when there is none: the contact's own phone, else the line of the directory
-   * entry it copies, else the line of the character it is linked to. Never a send-only (system) address.
+   * The number to ring a contact on, or '' when there is none. Only what the holder was given: never a fallback to the
+   * directory or a linked character, because an email share must not bring a Call button, and an alias must never
+   * reach its character's main line. Never a send-only (system) address.
    */
   numberForContact(c) {
     if (!c) return '';
     const mcs = game.nightcity?.masterContactService;
     if (c.sendOnly || (c.email && mcs?.isSendOnly?.(c.email))) return '';
-    if (c.phone) return c.phone;
-    const mid = c.masterContactId || (c.type === 'master' ? c.id : null);
-    if (mid) { const n = this.numberOfContact(mid); if (n) return n; }
-    return c.actorId ? this.numberOf(c.actorId) : '';
+    return c.phone || '';
   }
 
-  /** Every number already in use (lines + directory contacts' phones), normalised. */
+  /** Numbers that were changed, burned or deleted. Never handed out again. */
+  retired() { const r = this._get('phoneRetired', []); return Array.isArray(r) ? r : []; }
+
+  /** Every number already in use or retired, as keys. */
   takenNumbers() {
     const out = new Set(Object.keys(this.lines()));
+    for (const r of this.retired()) if (r?.key) out.add(r.key);
     for (const c of game.nightcity?.masterContactService?.getAll?.() || []) if (c.phone) out.add(normaliseNumber(c.phone, this.homeCode));
     return out;
   }
@@ -133,16 +148,28 @@ export class CallService {
   isFree(number, owner = {}) {
     const normal = normaliseNumber(number, this.homeCode);
     if (!normal) return false;
+    if (this.retired().some((r) => r?.key === normal)) return false;
     const existing = this.lines()[normal];
     if (existing) return (owner.contactId && existing.owner?.contactId === owner.contactId) || (!owner.contactId && owner.actorId && existing.owner?.actorId === owner.actorId && !existing.owner?.contactId);
     const contact = (game.nightcity?.masterContactService?.getAll?.() || []).find((c) => c.phone && normaliseNumber(c.phone, this.homeCode) === normal);
     return !contact || contact.id === owner.contactId;
   }
 
-  /** Numbers for the picker, never one already taken. */
-  suggestNumbers({ country, region, code, count = 4, seed } = {}) {
-    const r = sanitizeRegion({ ...this.region, ...(country ? { country } : {}), ...(region ? { region } : {}), ...(code ? { code } : {}) });
-    return generateNumbers({ country: r.country, code: r.code, count, taken: this.takenNumbers(), seed: seed ?? Date.now(), homeCode: this.homeCode });
+  /** The rows this client may take a number from. */
+  pickRows() { return pickableRows(this.numberContext.rows, this.rules, { gm: isGM() }); }
+
+  /** Where a picker starts and a blank "Give a number" lands: a district in the home city, else the first row there is. */
+  startRow() {
+    const rows = this.pickRows(), h = this.numberContext.home;
+    const here = rows.filter((r) => r['Region code'] === h.rc && r['City code'] === h.city);
+    return here.find((r) => r.Code && r.Category === 'District') || here[0] || rows[0] || null;
+  }
+
+  /** Free numbers on a row (default: the start row), never one taken or retired. */
+  suggestNumbers({ row = null, count = 4, seed, near = null } = {}) {
+    const r = row || this.startRow();
+    if (!r) return [];
+    return freeLines(r, { taken: this.takenNumbers(), count, seed: seed ?? Date.now(), near }).map((line) => ({ number: numberAt(r, line), line }));
   }
 
   /**
@@ -151,12 +178,15 @@ export class CallService {
    * @param {{actorId?: string, contactId?: string, number: string}} o
    * @returns {Promise<{ok: boolean, error?: string}>}
    */
-  async assignNumber({ actorId = null, contactId = null, number }) {
-    const shown = displayNumber(number);
-    if (!normaliseNumber(shown, this.homeCode)) return { ok: false, error: 'Type a number.' };
+  async assignNumber({ actorId = null, contactId = null, number, why = '' }) {
+    const ctx = this.homeCode, parsed = parseNumber(number, ctx);
+    if (!parsed.done || parsed.service) return { ok: false, error: parsed.hint || 'Type a whole number.' };
+    if (!rowOf(parsed, ctx)) return { ok: false, error: 'That place is not in the table.' };
+    const shown = fullForm(parsed);
+    if (this.retired().some((r) => r?.key === parsed.key)) return { ok: false, error: 'That number is retired. Pick another.' };
     if (!this.isFree(shown, { actorId, contactId })) return { ok: false, error: 'That number already belongs to someone.' };
-    if (!isGM()) return this._relayLine({ op: 'assign', actorId, contactId, number: shown });
-    return this._assignAsGm({ actorId, contactId, number: shown });
+    if (!isGM()) return this._relayLine({ op: 'assign', actorId, contactId, number: shown, why: 'They picked this themselves in the Calls tab.' });
+    return this._assignAsGm({ actorId, contactId, number: shown, why });
   }
 
   // ─── line settings: the greeting + the voicemail switches of ONE number (utils/voicemail.js) ───
@@ -185,27 +215,38 @@ export class CallService {
     const l = lines[normal];
     if (!l) return { ok: true };
     delete lines[normal];
+    await this._retire([{ key: normal, line: l, why: 'Released' }]);
     await game.settings.set(MODULE_ID, 'phoneLines', lines);
     await this._mirror(l.owner, '');
     this.eventBus.emit(EVENTS.LINE_UPDATED, { number: normal });
     return { ok: true };
   }
 
-  async _assignAsGm({ actorId, contactId, number }) {
+  async _assignAsGm({ actorId, contactId, number, why = '' }) {
     const lines = this.lines();
     const normal = normaliseNumber(number, this.homeCode);
-    // the owner's previous line goes
+    // the owner's previous line goes, and it retires: numbers are never reused
+    const gone = [];
     for (const [k, l] of Object.entries(lines)) {
-      const same = contactId ? l.owner?.contactId === contactId : (l.owner?.actorId === actorId && !l.owner?.contactId);
-      if (same && k !== normal) delete lines[k];
+      const own = !['extra', 'burner'].includes(l.kind);
+      const same = own && (contactId ? l.owner?.contactId === contactId : (l.owner?.actorId === actorId && !l.owner?.contactId));
+      if (same && k !== normal) { gone.push({ key: k, line: l, why: 'Changed' }); delete lines[k]; }
     }
+    if (gone.length) await this._retire(gone);
     const owner = this._ownerRecord({ actorId, contactId });
     if (!owner) return { ok: false, error: 'Nobody to give it to.' };
-    lines[normal] = { ...(lines[normal] || {}), number, owner };
+    lines[normal] = { ...(lines[normal] || {}), number, owner, kind: contactId ? 'alias' : 'main', ...(why ? { why } : {}) };
     await game.settings.set(MODULE_ID, 'phoneLines', lines);
     await this._mirror(owner, number);
     this.eventBus.emit(EVENTS.LINE_UPDATED, { number: normal });
     return { ok: true, number };
+  }
+
+  /** Add numbers to the retired list (GM). */
+  async _retire(items) {
+    const at = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
+    const add = items.map(({ key, line, why }) => ({ key, number: line?.number || '', was: line?.owner?.name || '', why, at }));
+    await game.settings.set(MODULE_ID, 'phoneRetired', [...this.retired().filter((r) => !add.some((x) => x.key === r?.key)), ...add]);
   }
 
   /** Who owns a line, as stored in phoneLines (the GM computes the player users once, at write time). */
@@ -231,6 +272,403 @@ export class CallService {
     } catch (err) { log.warn(`Calls: could not mirror the number: ${err.message}`); }
   }
 
+  /** Extra lines this character may still add. A GM's are not limited. */
+  extraLeft(actorId) {
+    if (isGM()) return Infinity;
+    const used = this.linesFor(actorId).filter((l) => l.kind === 'extra' || l.kind === 'burner').length;
+    return Math.max(0, this.rules.extraLines - used);
+  }
+
+  /**
+   * Add a second number to a character: one they keep, or a burner. GM writes; a player relays, inside the GM's limit.
+   * @param {{actorId: string, number: string, kind?: 'extra'|'burner', label?: string}} o
+   */
+  async addLine({ actorId = null, contactId = null, number, kind = 'extra', label = '', why = '' }) {
+    const ctx = this.homeCode, parsed = parseNumber(number, ctx);
+    if (!parsed.done || parsed.service || !rowOf(parsed, ctx)) return { ok: false, error: parsed.hint || 'Type a whole number.' };
+    if (!this.isFree(fullForm(parsed))) return { ok: false, error: 'That number is taken or retired. Pick another.' };
+    if (!isGM() && this.extraLeft(actorId) < 1) return { ok: false, error: 'You have used your extra lines. Your GM can give you more.' };
+    const clean = { actorId, contactId: isGM() ? contactId : null, number: fullForm(parsed), kind: kind === 'burner' ? 'burner' : 'extra', label: String(label || '').trim().slice(0, 24), why: isGM() ? why : 'They added this line themselves.' };
+    if (!isGM()) return this._relayLine({ op: 'addLine', ...clean });
+    return this._addLineAsGm(clean);
+  }
+
+  async _addLineAsGm({ actorId, contactId = null, number, kind, label, why = '' }) {
+    const owner = this._ownerRecord({ actorId, contactId });
+    if (!owner) return { ok: false, error: 'Nobody to give it to.' };
+    const normal = normaliseNumber(number, this.homeCode);
+    if (!this.isFree(number)) return { ok: false, error: 'That number is taken or retired. Pick another.' };
+    const lines = this.lines();
+    lines[normal] = { number, owner, kind, label, ...(why ? { why } : {}) };
+    await game.settings.set(MODULE_ID, 'phoneLines', lines);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: normal });
+    return { ok: true, number };
+  }
+
+  /** Stop using an extra line or burner. The number retires for good. A main line changes instead, so it can't be retired here. */
+  async retireLine(number) {
+    if (!isGM()) return this._relayLine({ op: 'retire', number });
+    const lines = this.lines(), normal = normaliseNumber(number, this.homeCode), l = lines[normal];
+    if (!l) return { ok: true };
+    if (!['extra', 'burner', 'shared'].includes(l.kind)) return { ok: false, error: 'A main line can be changed, not retired.' };
+    delete lines[normal];
+    await this._retire([{ key: normal, line: l, why: l.kind === 'burner' ? 'Burned' : 'Retired' }]);
+    await game.settings.set(MODULE_ID, 'phoneLines', lines);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: normal });
+    return { ok: true };
+  }
+
+  /** Requests for a different number, waiting on the GM. */
+  requests() { const r = this._get('phoneRequests', []); return Array.isArray(r) ? r : []; }
+  /** What this character has asked for, if anything. */
+  pendingFor(actorId) { return this.requests().find((r) => r.actorId === actorId) || null; }
+
+  /** Ask for a different number. The old one stays until the GM answers. */
+  async requestChange({ actorId, number }) {
+    const parsed = parseNumber(number, this.homeCode);
+    if (!parsed.done || parsed.service) return { ok: false, error: parsed.hint || 'Type a whole number.' };
+    if (!this.isFree(fullForm(parsed), { actorId })) return { ok: false, error: 'That number is taken or retired. Pick another.' };
+    if (!isGM()) return this._relayLine({ op: 'request', actorId, number: fullForm(parsed) });
+    return this._requestAsGm({ actorId, number: fullForm(parsed) });
+  }
+
+  async _requestAsGm({ actorId, number }) {
+    const id = (foundry.utils.randomID?.() || Math.random().toString(36).slice(2, 12));
+    const rest = this.requests().filter((r) => r.actorId !== actorId);
+    await game.settings.set(MODULE_ID, 'phoneRequests', [...rest, { id, actorId, kind: 'change', to: number, at: game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString() }]);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true, id };
+  }
+
+  /** Ask for one more line than the GM's limit allows. */
+  async requestLine({ actorId, number, kind = 'extra', label = '' }) {
+    const parsed = parseNumber(number, this.homeCode);
+    if (!parsed.done || parsed.service) return { ok: false, error: parsed.hint || 'Type a whole number.' };
+    if (!this.isFree(fullForm(parsed))) return { ok: false, error: 'That number is taken or retired. Pick another.' };
+    const clean = { actorId, number: fullForm(parsed), lineKind: kind === 'burner' ? 'burner' : 'extra', label: String(label || '').trim().slice(0, 24) };
+    if (!isGM()) return this._relayLine({ op: 'requestLine', ...clean });
+    return this._requestLineAsGm(clean);
+  }
+
+  async _requestLineAsGm({ actorId, number, lineKind, label }) {
+    const id = (foundry.utils.randomID?.() || Math.random().toString(36).slice(2, 12));
+    await game.settings.set(MODULE_ID, 'phoneRequests', [...this.requests(), { id, actorId, kind: 'line', lineKind, label, to: number, at: game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString() }]);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true, id };
+  }
+
+  /** Withdraw a request. A player only withdraws their own. */
+  async cancelRequest(actorId) {
+    if (!isGM()) return this._relayLine({ op: 'unrequest', actorId });
+    await game.settings.set(MODULE_ID, 'phoneRequests', this.requests().filter((r) => r.actorId !== actorId));
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true };
+  }
+
+  /** GM: approve (the old number retires) or deny a request. */
+  async answerRequest(id, approve) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const req = this.requests().find((r) => r.id === id);
+    if (!req) return { ok: true };
+    const res = !approve ? { ok: true }
+      : req.kind === 'line' ? await this.addLine({ actorId: req.actorId, number: req.to, kind: req.lineKind, label: req.label, why: 'They asked for this and you approved it.' })
+      : await this.assignNumber({ actorId: req.actorId, number: req.to, why: 'They asked for this and you approved it.' });
+    if (!res.ok) return res;
+    await game.settings.set(MODULE_ID, 'phoneRequests', this.requests().filter((r) => r.id !== id));
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    if (!approve) this._tellOwners(req.actorId, `Your GM said no to ${req.to}. You keep what you have.`);
+    return res;
+  }
+
+  // ─── GM tools: switching a line off, the retired list, the setup settings, undo ───
+
+  /** Switch a line off (a lost phone, an unpaid bill) or back on. Same number. Callers hear not in service meanwhile. */
+  async setLineOff(number, off) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const lines = this.lines(), normal = normaliseNumber(number, this.homeCode), l = lines[normal];
+    if (!l) return { ok: false, error: 'That number has no owner.' };
+    lines[normal] = { ...l, off: !!off };
+    await game.settings.set(MODULE_ID, 'phoneLines', lines);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: normal });
+    if (l.owner?.actorId) this._tellOwners(l.owner.actorId, off ? `${l.number} has been switched off. Callers hear not in service.` : `${l.number} is back in service.`);
+    return { ok: true };
+  }
+
+  /** A character or contact is gone: their lines retire with them. Lines of an alias survive the character only if the alias does. */
+  async retireOwner({ actorId = null, contactId = null, why = 'Contact deleted' }) {
+    if (!isGM() || game.users.activeGM?.id !== game.user.id) return;
+    const lines = this.lines(), gone = [];
+    let membersChanged = false;
+    for (const [k, l] of Object.entries(lines)) {
+      if (l.members) {
+        const left = l.members.filter((m) => !(contactId ? m.contactId === contactId : m.actorId === actorId));
+        if (left.length !== l.members.length) { lines[k] = { ...l, members: left, owner: this._sharedOwner(l.label, left) }; membersChanged = true; }
+        continue;
+      }
+      const hit = contactId ? l.owner?.contactId === contactId : (l.owner?.actorId === actorId && !l.owner?.contactId);
+      if (hit) { gone.push({ key: k, line: l, why }); delete lines[k]; }
+    }
+    if (!gone.length && !membersChanged) return;
+    if (gone.length) await this._retire(gone);
+    await game.settings.set(MODULE_ID, 'phoneLines', lines);
+    await game.settings.set(MODULE_ID, 'phoneRequests', this.requests().filter((r) => r.actorId !== actorId || !actorId));
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+  }
+
+  /** The line types in play. */
+  get lineTypes() { return lineTypes(this._get('phoneLineTypes', {})); }
+  /** An office's settings by its table row. */
+  office(row) { return sanitizeOffice((this._get('phoneOffices', {}) || {})[officeKey(row)]); }
+  /** Set a line's type and its own name. */
+  async setLineType(number, { type = null, label = null } = {}) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const lines = this.lines(), normal = normaliseNumber(number, this.homeCode), l = lines[normal];
+    if (!l) return { ok: false, error: 'That number has no owner.' };
+    lines[normal] = { ...l, ...(type !== null ? { type } : {}), ...(label !== null ? { label: String(label).slice(0, 24) } : {}) };
+    await game.settings.set(MODULE_ID, 'phoneLines', lines);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: normal });
+    return { ok: true };
+  }
+
+  /** How a caller reads on the other end: what the line's type shows. Only called for a real line. */
+  _dressCaller(from) {
+    const ctx = this.numberContext, p = parseNumber(from.number, ctx);
+    if (!p.done || p.service) return from;
+    const line = this.lines()[p.key], row = rowOf(p, ctx), type = lineTypeFor(line, row, this.lineTypes);
+    const contact = from.contactId ? game.nightcity?.masterContactService?.getContact?.(from.contactId) : null;
+    const office = row?.Category === 'Corporate' ? this.office(row) : null;
+    const shown = lineShown(type, { name: from.name, img: from.img, org: contact?.organization || row?.District || '', orgArt: office?.art || '', label: line?.label || '', place: row?.District || row?.City || '' });
+    const { anon, ...rest } = shown;
+    return { ...from, ...rest, realName: from.name, anon: from.anon || anon, asLine: from.asLine || rest.asLine, typeId: type.id };
+  }
+
+  // ─── shared lines: one number, several people (§7) ───
+
+  /** Who rings on a shared line: player users, and whether a GM answers for an NPC on it. */
+  _sharedOwner(name, members) {
+    const userIds = new Set(); let npc = false;
+    for (const m of members) {
+      const c = m.contactId ? game.nightcity?.masterContactService?.getContact?.(m.contactId) : null;
+      const actor = game.actors?.get(m.actorId || c?.actorId);
+      if (actor?.hasPlayerOwner) for (const u of game.users.filter((x) => !x.isGM && actor.testUserPermission(x, 'OWNER'))) userIds.add(u.id);
+      else npc = true;
+    }
+    return { actorId: null, contactId: null, name, kind: userIds.size ? 'player' : 'npc', userIds: [...userIds], gmMember: npc };
+  }
+
+  /** Make a shared line. Nobody owns it; everyone on it answers, calls out and hears its voicemail. */
+  async createSharedLine({ name, number, members = [], why = 'You made this a shared line.' }) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const parsed = parseNumber(number, this.homeCode);
+    if (!parsed.done || parsed.service || !rowOf(parsed, this.homeCode)) return { ok: false, error: parsed.hint || 'Type a whole number.' };
+    if (!this.isFree(fullForm(parsed))) return { ok: false, error: 'That number is taken or retired. Pick another.' };
+    const lines = this.lines();
+    const label = String(name || '').trim().slice(0, 40) || 'Shared line';
+    lines[parsed.key] = { number: fullForm(parsed), kind: 'shared', label, why, members, owner: this._sharedOwner(label, members) };
+    await game.settings.set(MODULE_ID, 'phoneLines', lines);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: parsed.key });
+    return { ok: true, number: fullForm(parsed) };
+  }
+
+  /** Change who is on a shared line. The number stays with the others. */
+  async setSharedMembers(number, members) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const lines = this.lines(), normal = normaliseNumber(number, this.homeCode), l = lines[normal];
+    if (!l?.members) return { ok: false, error: 'That is not a shared line.' };
+    lines[normal] = { ...l, members, owner: this._sharedOwner(l.label, members) };
+    await game.settings.set(MODULE_ID, 'phoneLines', lines);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: normal });
+    return { ok: true };
+  }
+
+  /** A new number for everyone on a shared line. The old one retires. */
+  async changeSharedNumber(oldNumber, number) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const old = normaliseNumber(oldNumber, this.homeCode), parsed = parseNumber(number, this.homeCode);
+    const lines = this.lines(), l = lines[old];
+    if (!l?.members) return { ok: false, error: 'That is not a shared line.' };
+    if (!parsed.done || parsed.service || !rowOf(parsed, this.homeCode)) return { ok: false, error: parsed.hint || 'Type a whole number.' };
+    if (!this.isFree(fullForm(parsed))) return { ok: false, error: 'That number is taken or retired. Pick another.' };
+    delete lines[old];
+    lines[parsed.key] = { ...l, number: fullForm(parsed) };
+    await this._retire([{ key: old, line: l, why: 'Changed' }]);
+    await game.settings.set(MODULE_ID, 'phoneLines', lines);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: parsed.key });
+    return { ok: true, number: fullForm(parsed) };
+  }
+
+  /** Everyone whose inbox holds a line's log and voicemail. Empty for an ordinary line. */
+  _sharedInboxes(number) {
+    return (this.line(number)?.members || []).map((m) => m.actorId || m.contactId).filter(Boolean);
+  }
+
+  // ─── calls the GM wrote by hand (§9) ───
+
+  /** The calls written into a character's or contact's log. */
+  writtenLog(ownerId) { const all = this._get('phoneWrittenLogs', {}) || {}; return Array.isArray(all[ownerId]) ? all[ownerId] : []; }
+
+  /** Replace them. */
+  async saveWrittenLog(ownerId, list) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    await game.settings.set(MODULE_ID, 'phoneWrittenLogs', { ...(this._get('phoneWrittenLogs', {}) || {}), [ownerId]: list });
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true };
+  }
+
+  // ─── a terminal's number (§9): dialling it never logs anyone in ───
+
+  /** The line a terminal holds. */
+  lineOfItem(uuid) { return Object.values(this.lines()).find((l) => l.kind === 'terminal' && l.itemUuid === uuid) || null; }
+
+  /** Give a terminal a number, or change what a caller hears. A number it drops retires. */
+  async setTerminalNumber(item, { number = undefined, when, text } = {}) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const lines = this.lines(), cur = this.lineOfItem(item.uuid), curKey = cur ? normaliseNumber(cur.number, this.homeCode) : null;
+    if (number === null) {
+      if (!cur) return { ok: true };
+      delete lines[curKey];
+      await this._retire([{ key: curKey, line: cur, why: 'Retired' }]);
+    } else if (number !== undefined) {
+      const p = parseNumber(number, this.homeCode);
+      if (!p.done || p.service || !rowOf(p, this.homeCode)) return { ok: false, error: p.hint || 'Type a whole number.' };
+      if (!this.isFree(fullForm(p))) return { ok: false, error: 'That number is taken or retired. Pick another.' };
+      if (cur) { delete lines[curKey]; await this._retire([{ key: curKey, line: cur, why: 'Changed' }]); }
+      lines[p.key] = { kind: 'terminal', itemUuid: item.uuid, label: item.name, when: cur?.when || 'modem', text: cur?.text || '', owner: { actorId: null, contactId: null, name: item.name, kind: 'npc', userIds: [] }, number: fullForm(p) };
+    } else if (cur) {
+      lines[curKey] = { ...cur, ...(when ? { when } : {}), ...(text !== undefined ? { text: String(text).slice(0, 300) } : {}) };
+    }
+    await game.settings.set(MODULE_ID, 'phoneLines', lines);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true };
+  }
+
+  /** Trauma Team and Backup setup. */
+  async _saveEmergency(cfg) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    await game.settings.set(MODULE_ID, 'phoneEmergency', cfg);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true };
+  }
+
+  /** Let a retired number be handed out again. */
+  async releaseRetired(number) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const key = normaliseNumber(number, this.homeCode);
+    await game.settings.set(MODULE_ID, 'phoneRetired', this.retired().filter((r) => r?.key !== key));
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true };
+  }
+
+  /** Write any number setting from the GM's setup screens. */
+  async saveNumberSetting(key, value) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    if (!['phoneRules', 'phonePlaces', 'phoneSpecial', 'phoneOrgNames'].includes(key)) return { ok: false, error: 'Not a number setting.' };
+    await game.settings.set(MODULE_ID, key, value);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true };
+  }
+
+  /** Which characters have each number saved: number key → character ids. Read once per render. */
+  savedNumbers() {
+    const out = new Map();
+    for (const a of game.actors?.contents || []) {
+      if (!a.hasPlayerOwner) continue;
+      const list = a.getFlag?.(MODULE_ID, 'contacts');
+      if (!Array.isArray(list)) continue;
+      for (const c of list) { const k = normaliseNumber(this.numberForContact(c), this.homeCode); if (k) { if (!out.has(k)) out.set(k, []); if (!out.get(k).includes(a.id)) out.get(k).push(a.id); } }
+    }
+    return out;
+  }
+
+  /**
+   * Hand a number to characters. A contact they already hold for that person gets the number; otherwise a new contact
+   * with only the number and the name. Taking it away from someone no longer in the list clears the number, not the contact.
+   */
+  async shareNumber({ number, name = '', ownerContactId = null, ownerActorId = null, actorIds = [] }) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const normal = normaliseNumber(number, this.homeCode);
+    if (!normal) return { ok: false, error: 'Not a whole number.' };
+    const mcs = game.nightcity?.masterContactService, master = ownerContactId ? mcs?.getContact?.(ownerContactId) : null;
+    const isTheirs = (c) => (ownerContactId && c.masterContactId === ownerContactId) || (ownerActorId && c.actorId === ownerActorId) || (c.phone && normaliseNumber(c.phone, this.homeCode) === normal);
+    for (const a of game.actors?.contents || []) {
+      if (!a.hasPlayerOwner || a.id === ownerActorId) continue;
+      const list = a.getFlag(MODULE_ID, 'contacts');
+      const cur = Array.isArray(list) ? list : [];
+      const wants = actorIds.includes(a.id);
+      const has = cur.find(isTheirs);
+      if (wants && has) { if (normaliseNumber(has.phone, this.homeCode) !== normal) await a.setFlag(MODULE_ID, 'contacts', cur.map((c) => (c === has ? { ...c, phone: number } : c))); }
+      else if (wants) {
+        const label = name || game.actors.get(ownerActorId)?.name || number;
+        const res = await game.nightcity?.contactRepository?.addContact?.(a.id, { name: label, email: '', phone: number, customImg: master?.portrait || '', masterContactId: ownerContactId || '', tags: [] });
+        if (res && !res.success) return { ok: false, error: res.error || 'Could not add the contact.' };
+      } else if (has && normaliseNumber(has.phone, this.homeCode) === normal) {
+        await a.setFlag(MODULE_ID, 'contacts', cur.map((c) => (c === has ? { ...c, phone: '' } : c)));
+      }
+    }
+    return { ok: true };
+  }
+
+  /** A player hands out one of their own lines. A second line stays anonymous. */
+  async shareMine({ actorId, number, actorIds = [] }) {
+    const l = this.line(number);
+    if (!l || l.owner?.actorId !== actorId) return { ok: false, error: 'That is not your line.' };
+    if (!isGM()) return this._relayLine({ op: 'shareMine', actorId, number, actorIds });
+    const second = ['extra', 'burner'].includes(l.kind), alias = !!l.owner?.contactId;
+    const holders = this.savedNumbers().get(normaliseNumber(number, this.homeCode)) || [];
+    return this.shareNumber({ number: l.number, name: second ? (l.label || l.number) : l.owner.name, ownerContactId: alias ? l.owner.contactId : null, ownerActorId: second || alias ? null : actorId, actorIds: [...new Set([...holders, ...actorIds])] });
+  }
+
+  /** Point the saved contacts of these characters at a new number, and tell them. */
+  async pushNewNumber(oldNumber, newNumber, actorIds = []) {
+    if (!isGM()) return;
+    const old = normaliseNumber(oldNumber, this.homeCode);
+    for (const id of actorIds) {
+      const a = game.actors?.get(id), list = a?.getFlag?.(MODULE_ID, 'contacts');
+      if (!Array.isArray(list)) continue;
+      const next = list.map((c) => (c.phone && normaliseNumber(c.phone, this.homeCode) === old ? { ...c, phone: newNumber } : c));
+      await a.setFlag(MODULE_ID, 'contacts', next);
+      this._tellOwners(id, `${oldNumber} changed to ${newNumber}. Your contact is updated.`);
+    }
+  }
+
+  /** A short note to the players of a character. Never throws. */
+  _tellOwners(actorId, text) {
+    try {
+      const actor = game.actors?.get(actorId);
+      const ids = (game.users?.contents || []).filter((u) => !u.isGM && actor?.testUserPermission?.(u, 'OWNER')).map((u) => u.id);
+      if (ids.length) ChatMessage.create({ content: whisperCardHtml({ tone: 'info', icon: 'fa-sim-card', title: 'Phone', lines: [text] }), whisper: ids });
+    } catch (err) { log.warn(`Calls: could not tell the player: ${err.message}`); }
+  }
+
+  /** Everything the number screens can change, for an honest undo. */
+  phoneSnapshot() {
+    return Object.fromEntries(['phoneLines', 'phoneRetired', 'phoneRequests', 'phonePlaces', 'phoneRules', 'phoneSpecial', 'phoneOrgNames', 'phoneLineTypes', 'phoneOffices', 'phoneWrittenLogs', 'phoneEmergency'].map((k) => [k, foundry.utils.deepClone ? foundry.utils.deepClone(this._get(k, null)) : JSON.parse(JSON.stringify(this._get(k, null)))]));
+  }
+
+  /** Put a snapshot back, unless the world moved on after `after` was taken. */
+  async restorePhoneSnapshot(snap, after) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    if (after && JSON.stringify(this.phoneSnapshot()) !== JSON.stringify(after)) return { ok: false, error: 'Something else changed since, so this can no longer be undone.' };
+    const was = this.lines();
+    for (const [k, v] of Object.entries(snap)) if (v !== null) await game.settings.set(MODULE_ID, k, v);
+    // saved flags and contact fields follow the lines
+    const now = this.lines();
+    for (const key of new Set([...Object.keys(was), ...Object.keys(now)])) {
+      if (was[key]?.number === now[key]?.number) continue;
+      const o = (now[key] || was[key]).owner;
+      if (['extra', 'burner'].includes((now[key] || was[key]).kind)) continue;
+      await this._mirror(o, o?.contactId ? this.numberOfContactLine(o.contactId) : this.numberOf(o?.actorId));
+    }
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true };
+  }
+
+  /** A contact's own line in phoneLines, ignoring the contact's stored field. */
+  numberOfContactLine(contactId) {
+    const all = Object.values(this.lines()).filter((l) => l.owner?.contactId === contactId && !['extra', 'burner'].includes(l.kind));
+    return all[0]?.number || '';
+  }
+
   /** A player's line edit goes to the active GM. */
   _relayLine(payload) {
     if (!game.users.activeGM) return { ok: false, error: 'No GM is online to register the number.' };
@@ -246,7 +684,29 @@ export class CallService {
     const contact = data.contactId ? game.nightcity?.masterContactService?.getContact?.(data.contactId) : null;
     const actor = game.actors?.get(data.actorId || contact?.actorId);
     if (data.op === 'assign' && !(actor && actor.testUserPermission(sender, 'OWNER'))) return;
-    if (data.op === 'assign') await this._assignAsGm(data);
+    const ownsActor = (id) => !!game.actors?.get(id)?.testUserPermission(sender, 'OWNER');
+    if (data.op === 'addLine') {
+      if (!ownsActor(data.actorId)) return;
+      const used = this.linesFor(data.actorId).filter((l) => l.kind === 'extra' || l.kind === 'burner').length;
+      if (used >= this.rules.extraLines) return;
+      await this._addLineAsGm(data);
+      return;
+    }
+    if (data.op === 'request') { if (ownsActor(data.actorId)) await this._requestAsGm(data); return; }
+    if (data.op === 'requestLine') { if (ownsActor(data.actorId)) await this._requestLineAsGm(data); return; }
+    if (data.op === 'shareMine') { if (ownsActor(data.actorId)) await this.shareMine(data); return; }
+    if (data.op === 'unrequest') { if (ownsActor(data.actorId)) await this.cancelRequest(data.actorId); return; }
+    if (data.op === 'retire') {
+      const l = this.line(data.number);
+      if (l?.owner?.actorId && ownsActor(l.owner.actorId)) await this.retireLine(data.number);
+      return;
+    }
+    if (data.op === 'assign') {
+      // a player changing their own number under "needs the GM's OK" can't skip the question
+      const had = this.numberOf(data.actorId);
+      if (had && !data.contactId && this.rules.changeNeedsGm) { await this._requestAsGm(data); return; }
+      await this._assignAsGm(data);
+    }
     else if (data.op === 'settings') {
       const l = this.line(data.number);
       const owned = l?.owner?.actorId && game.actors?.get(l.owner.actorId)?.testUserPermission(sender, 'OWNER');
@@ -293,6 +753,12 @@ export class CallService {
    * GM: an NPC — `as.contactId` / `as.actorId`.
    */
   _caller(as = {}) {
+    // a special number has no NPC behind it: the GM speaks for it
+    if (as.special && isGM()) {
+      const x = specialList(this._get('phoneSpecial', null)).find((y) => y.id === as.special);
+      if (!x) return null;
+      return { userId: game.user.id, actorId: null, contactId: null, name: x.show === 'name' ? (x.name || x.num) : '', number: x.num, img: x.show === 'name' ? x.img : '', anon: x.show !== 'name', asLine: true, special: true };
+    }
     if (as.contactId) {
       const c = game.nightcity?.masterContactService?.getContact?.(as.contactId);
       if (!c) return null;
@@ -300,6 +766,10 @@ export class CallService {
     }
     const actor = as.actorId ? game.actors?.get(as.actorId) : resolveOperator();
     if (!actor) return null;
+    // a second line: whoever you call sees that number, not who is behind it
+    const second = as.line ? this.lines()[as.line] : null;
+    if (second?.members?.some((m) => m.actorId === actor.id)) return { userId: game.user.id, actorId: actor.id, contactId: null, name: second.label || second.number, number: second.number, img: '', asLine: true };
+    if (second?.owner?.actorId === actor.id && ['extra', 'burner'].includes(second.kind)) return { userId: game.user.id, actorId: actor.id, contactId: null, name: second.label || second.number, number: second.number, img: '', asLine: true };
     return { userId: game.user.id, actorId: actor.id, contactId: null, name: actor.name, number: this.numberOf(actor.id), img: resolveDisplayPortrait({ actorId: actor.id }) };
   }
 
@@ -342,6 +812,7 @@ export class CallService {
   /** Would this ring reach this client? */
   _ringsHere(call) {
     const to = call.to || {};
+    if (to.shared) return game.user.isGM ? (!!to.gmMember && game.users.activeGM?.id === game.user.id) : (to.userIds || []).includes(game.user.id);
     if (to.kind === 'player') {
       if (game.user.isGM) return false;
       const actor = game.actors?.get(to.actorId);
@@ -424,16 +895,55 @@ export class CallService {
    * @returns {Promise<{ok: boolean, call?: object, error?: string}>}
    */
   async placeCall(number, as = {}) {
-    const from = this._caller(as);
+    let from = this._caller(as);
     if (!from) return { ok: false, error: 'Pick a character first.' };
+    if (!from.special) from = this._dressCaller(from);
     // a withheld number: the callee never learns who it is (only the GM holds it) until a trace
     if (as.anon && isGM()) from.anon = true;
     if (this.myCalls().some((c) => c.state === 'ringing' && this._role(c) === 'caller')) return { ok: false, error: 'You are already calling someone.' };
+    const { number: dialledNumber, ext } = splitExtension(number);
+    number = dialledNumber;
     const callee = this.resolve(number);
+    const special = this.numberContext.service[specialKey(number)];
+    // Trauma Team: someone with a plan starts the real call; someone with none is refused, or rings the GM, as the GM set it
+    if (from.actorId && !isGM() && game.nightcity?.emergencyService && specialKey(number) === game.nightcity.emergencyService.traumaLine().key) {
+      const em = game.nightcity.emergencyService, actor = game.actors?.get(from.actorId);
+      if (em.planFor(actor) !== 'none') {
+        if (em.planInUse(from.actorId)) return { ok: false, error: 'Your plan is in use. Your GM clears it when the job is over.' };
+        game.nightcity.emergencyHud?.trauma(actor);
+        return { ok: true, emergency: true };
+      }
+      if (em.config.trauma.noPlan === 'refuse') return this._dialSpecial(number, sanitizeSpecial({ ...special, act: 'recording', text: 'This number is for subscribers.' }), 'recording', from);
+    }
+    const dialled = special ? specialOutcome(special, from.actorId) : null;
+    if (dialled?.alert) this._alertSpecial(special, from);
+    if (dialled && dialled.outcome !== 'ring') return this._dialSpecial(number, special, dialled.outcome, from);
+    // a line switched off answers like a number nobody has
+    if (this.line(number)?.off) callee.lineOff = true;
+    // a machine answers its own number, and a caller only ever hears it
+    const machine = this.line(number);
+    if (machine?.kind === 'terminal') {
+      const said = machine.when === 'modem' ? 'Connected, then a screech of modem tone. Then nothing.' : machine.when === 'recording' ? machine.text : machine.when === 'vm' ? 'Leave a message after the tone.' : '';
+      return this._dialSpecial(number, sanitizeSpecial({ num: machine.number, show: 'none', act: said ? 'recording' : 'dead', text: said }), said ? 'recording' : 'missed', from);
+    }
+    // a shared line: nobody owns it, and it rings everyone on it
+    const sharedLine = this.line(number);
+    if (sharedLine?.members) { if (!sharedLine.members.length) callee.lineOff = true; Object.assign(callee, { kind: sharedLine.owner.kind, actorId: null, contactId: null, name: sharedLine.label, userIds: sharedLine.owner.userIds || [], shared: true, gmMember: !!sharedLine.owner.gmMember }); }
+    // a corporate main number: the switchboard, then an extension if one was dialled
+    const officeRow = callee.kind === 'unowned' && !callee.special ? officeRowOf(parseNumber(number, this.homeCode), this.numberContext) : null;
+    if (officeRow) {
+      const o = this.office(officeRow), hit = ext ? o.exts.find((e) => e.x === ext) : null;
+      if (ext && !hit) return { ok: false, error: 'No such extension.' };
+      if (hit?.contactId && this.numberOfContact(hit.contactId)) return this.placeCall(this.numberOfContact(hit.contactId), as);
+      callee.special = true; callee.name = hit ? hit.who : officeRow.District;
+      // voicemail takes a real message; keeping one needs a GM's client, so with none online it plays as a recording
+      if (!hit && o.answers === 'vm' && game.users?.activeGM) { callee.kind = 'npc'; callee.office = officeKey(officeRow); callee.greet = o.greet; callee.goVm = true; if (o.mailbox) callee.contactId = o.mailbox; }
+      else if (!hit && o.answers !== 'gm') return this._dialSpecial(number, sanitizeSpecial({ num: displayNumber(number, this.homeCode), name: officeRow.District, img: o.art, act: o.answers === 'recording' ? 'recording' : 'voicemail', text: o.greet }), o.answers === 'recording' ? 'recording' : 'voicemail', from);
+    }
     // an NPC caller (GM) is wherever the NPC is — the GM's own connection does not matter
     const verdict = canCall({ enabled: this.enabled, fromNumber: from.number, callee, noSignal: !isGM() && this._noSignal(), homeCode: this.homeCode, unknownNumbers: this._get('callUnknownNumbers', 'not-in-service') });
     const to = { kind: verdict.toGm && callee.kind === 'unowned' ? 'unowned' : callee.kind, actorId: callee.actorId || null, contactId: callee.contactId || null,
-      number: displayNumber(number), name: callee.name || '', userIds: callee.userIds || [],
+      number: displayNumber(number, this.homeCode), name: callee.name || '', userIds: callee.userIds || [], ...(callee.shared ? { shared: true, gmMember: callee.gmMember } : {}), ...(callee.office ? { office: callee.office, greet: callee.greet || '' } : {}),
       img: callee.contactId || callee.actorId ? resolveDisplayPortrait({ contactId: callee.contactId, actorId: callee.actorId }) : '' };
     const net = this._net();
     if (!verdict.ok) {
@@ -446,13 +956,13 @@ export class CallService {
       return { ok: true, call: ended };
     }
     // nobody there to pick up: the player is offline, or no GM for an NPC line
-    const reachable = to.kind === 'player' ? (to.userIds || []).some((id) => game.users.get(id)?.active) : !!game.users.activeGM;
+    const reachable = (to.kind === 'player' && (to.userIds || []).some((id) => game.users.get(id)?.active)) || ((to.kind !== 'player' || to.gmMember) && !!game.users.activeGM);
     const call = createCall({ from, to, net, mode: this.startMode });
     call.state = 'dialing';
     this._store(call);
     if (!isGM()) this._myNet.set(call.id, net?.id || '');
     // do not disturb: no ring at all — straight to their voicemail (or no answer when they take no messages)
-    if (this.lineSettings(to.number).voicemail.dnd && ['player', 'npc'].includes(to.kind)) {
+    if (callee.goVm || (this.lineSettings(to.number).voicemail.dnd && ['player', 'npc'].includes(to.kind))) {
       if (!this._toVoicemail(call.id, 'dnd')) this._endLocal(call.id, 'missed', { notify: false });
       return { ok: true, call: this.calls.get(call.id) };
     }
@@ -465,6 +975,28 @@ export class CallService {
     this._startRingback(call.id);
     this._timers.set(call.id, setTimeout(() => this.cancel(call.id, 'timeout'), this.ringMs));
     return { ok: true, call };
+  }
+
+  /** The GM is told someone dialled a special number. */
+  _alertSpecial(x, from) {
+    const text = `${from.name} dialled ${x.num}.`;
+    if (isGM()) { ui.notifications?.info(text); return; }
+    try { ChatMessage.create({ content: whisperCardHtml({ tone: 'warn', icon: 'fa-bell', title: 'Special number', lines: [text] }), whisper: game.users.filter((u) => u.isGM).map((u) => u.id) }); } catch (err) { log.warn(err.message); }
+  }
+
+  /** A special number that does not ring: say what happened and end the call. It works with no GM online. */
+  _dialSpecial(number, x, outcome, from) {
+    const shows = x.show === 'name';
+    const to = { kind: 'unowned', actorId: null, contactId: null, number: x.num, name: shows ? x.name : '', userIds: [], img: shows ? x.img : '' };
+    const net = this._net();
+    if (outcome === 'macro') { try { game.macros?.get?.(x.macro)?.execute?.(); } catch (err) { log.warn(`Calls: special number macro: ${err.message}`); } }
+    if (outcome === 'recording' && x.text) ui.notifications?.info(`${shows && x.name ? x.name : x.num}: ${x.text}`);
+    const ended = createEndedCall({ from, to, net }, outcome === 'nis' ? 'not-in-service' : outcome === 'missed' ? 'missed' : 'answered');
+    this._store(ended);
+    this.eventBus.emit(EVENTS.CALL_ENDED, { call: ended, role: 'caller' });
+    this._sound('call-end');
+    this._log(ended);
+    return { ok: true, call: ended };
   }
 
   /** Answer a ringing call (optionally as an NPC identity — GM). */
@@ -483,11 +1015,43 @@ export class CallService {
     this.eventBus.emit(EVENTS.CALL_STARTED, { call: answered, role: 'callee' });
   }
 
-  decline(callId) {
+  /** Decline. With ringOut the caller just hears it ring out, no voicemail. */
+  decline(callId, { ringOut = false } = {}) {
     const call = this.calls.get(callId);
     if (!call || call.state !== 'ringing') return;
-    this._send('decline', call);
+    this._send(ringOut ? 'ringOut' : 'decline', call);
     this._endLocal(callId, 'declined', { notify: false });
+  }
+
+  /**
+   * GM: hold a call in the queue. The caller sees On hold and their ring clock stops, so they don't drop to voicemail.
+   * @param {string} callId @param {boolean} on
+   */
+  queueHold(callId, on = true) {
+    const call = this.calls.get(callId);
+    if (!isGM() || !call || call.state !== 'ringing') return;
+    const next = { ...call, queueHold: !!on };
+    this._store(next);
+    clearTimeout(this._timers.get(callId)); this._timers.delete(callId);
+    if (!on) this._timers.set(callId, setTimeout(() => { if (this.calls.get(callId)?.state === 'ringing') this._endLocal(callId, 'missed', { notify: false }); }, this.ringMs + 5000));
+    this._send('queueHold', next, { on: !!on });
+    this.eventBus.emit(EVENTS.CALL_RINGING, { call: next, role: 'watch' });
+  }
+
+  /** GM: the call stays up and someone else speaks. The caller's screen follows, and they are told to wait a moment. */
+  passTo(callId, as) {
+    const call = this.calls.get(callId);
+    if (!isGM() || !call || !['live', 'held'].includes(call.state)) return;
+    const next = { ...call, to: { ...call.to, ...as } };
+    this._store(next);
+    this._send('pass', next);
+    this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role: this._role(next) });
+  }
+
+  /** What the caller sees when the GM speaks as this directory contact. */
+  answerAs(contact) {
+    if (!contact) return null;
+    return { name: contact.name, contactId: contact.id, actorId: contact.actorId || null, img: resolveDisplayPortrait({ contactId: contact.id }) || '', showOnly: 'name', org: contact.organization || '' };
   }
 
   /** The caller hangs up before an answer (or the ring timed out). */
@@ -636,12 +1200,30 @@ export class CallService {
           this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role });
         } else if (wasRingingHere && !game.user.isGM) {
           // another of this character's players picked up: the ring here just goes away
+          if (cur.to?.shared) ui.notifications?.info(`${cur.to.name}: picked up by ${game.users.get(next.answeredBy)?.character?.name || game.users.get(next.answeredBy)?.name || 'someone else'}.`);
           this.calls.delete(callId);
           this.eventBus.emit(EVENTS.CALL_ENDED, { call: { ...next, state: 'ended', outcome: 'answered' }, role: 'watch', quiet: true });
         } else {
           // a GM: another GM answered (the ring stops) or someone else's call went live (the switchboard updates)
           this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role });
         }
+        break;
+      }
+      case 'ringOut': this._endLocal(callId, 'missed', { notify: false }); break;
+      case 'queueHold': {
+        const next = { ...cur, queueHold: !!data.on };
+        this._store(next);
+        clearTimeout(this._timers.get(callId)); this._timers.delete(callId);
+        // the ring clock starts again from the top when they come off hold
+        if (!data.on && this._role(next) === 'caller') this._timers.set(callId, setTimeout(() => this.cancel(callId, 'timeout'), this.ringMs));
+        this.eventBus.emit(EVENTS.CALL_RINGING, { call: next, role: this._role(next) });
+        break;
+      }
+      case 'pass': {
+        const next = { ...cur, to: { ...(call?.to || cur.to) } };
+        this._store(next);
+        if (this._role(next) === 'caller') ui.notifications?.info('One moment.');
+        this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role: this._role(next) });
         break;
       }
       case 'decline': if (!this._toVoicemail(callId, 'declined')) this._endLocal(callId, 'declined', { notify: false }); break;
@@ -677,7 +1259,8 @@ export class CallService {
     if (!goesToVoicemail({ toKind: call.to?.kind, settings, why })) return false;
     this._stopRing(callId);
     clearTimeout(this._timers.get(callId));
-    const vm = { ...call, state: 'voicemail', vmStep: 'greet', vmWhy: why, greeting: greetingFor(settings) };
+    const greeting = call.to?.office && call.to.greet ? { ...greetingFor(settings), kind: 'typed', text: call.to.greet } : greetingFor(settings);
+    const vm = { ...call, state: 'voicemail', vmStep: 'greet', vmWhy: why, greeting };
     this._store(vm);
     this.eventBus.emit(EVENTS.CALL_STARTED, { call: vm, role: 'caller' });
     this._timers.set(callId, setTimeout(() => this._vmTone(callId), greetMs(vm.greeting.text, { duration: vm.greeting.kind === 'recorded' ? vm.greeting.duration : 0 })));
@@ -731,21 +1314,41 @@ export class CallService {
   /** GM: write a voicemail page into the line owner's inbox and tell the owner's players (and every GM). */
   async writeVoicemail(vm) {
     if (!isGM()) return null;
-    const owner = voicemailOwner(vm?.to);
-    const journal = owner ? await game.nightcity?.messageRepository?.getInboxJournal?.(owner) : null;
-    if (!journal) { log.warn('Calls: a voicemail had no inbox to land in.'); return null; }
+    const shared = this._sharedInboxes(vm?.to?.number);
+    const officeBox = vm?.to?.office && !voicemailOwner(vm.to) ? await this._officeMailbox(vm.to.office, vm.to.name) : null;
+    if (officeBox) vm = { ...vm, to: { ...vm.to, contactId: officeBox } };
+    const boxes = shared.length ? shared : [voicemailOwner(vm?.to)].filter(Boolean);
+    const journals = (await Promise.all(boxes.map((o) => game.nightcity?.messageRepository?.getInboxJournal?.(o)))).filter(Boolean);
+    if (!journals.length) { log.warn('Calls: a voicemail had no inbox to land in.'); return null; }
     try {
-      await journal.createEmbeddedDocuments('JournalEntryPage', [{
+      for (const journal of journals) await journal.createEmbeddedDocuments('JournalEntryPage', [{
         name: `[VOICEMAIL] from ${vm.from?.name || vm.from?.number || 'unknown'}`, type: 'text', text: { content: '' },
         flags: { [MODULE_ID]: { voicemail: { ...vm, heard: false } } },
       }]);
     } catch (err) { log.warn(`Calls: could not write a voicemail: ${err.message}`); return null; }
     const actor = vm.to?.actorId ? game.actors?.get(vm.to.actorId) : null;
-    const owners = actor ? game.users.filter((u) => !u.isGM && actor.testUserPermission(u, 'OWNER')).map((u) => u.id) : [];
+    const owners = shared.length ? (this.line(vm.to.number)?.owner?.userIds || []) : actor ? game.users.filter((u) => !u.isGM && actor.testUserPermission(u, 'OWNER')).map((u) => u.id) : [];
     const gms = game.users.filter((u) => u.isGM && u.active && u.id !== game.user.id).map((u) => u.id);
     this.socket.emit(SOCKET_OPS.CALL, { type: 'voicemail', callId: vm.vmId, vm, userIds: [...owners, ...gms] });
     this.eventBus.emit(EVENTS.VOICEMAIL_LEFT, { vm });
     return vm;
+  }
+
+  /**
+   * The directory contact an office's messages land with: the one the GM picked, else one made for it the first time
+   * someone leaves a message. It is send-only, so players can't add it or write to it.
+   * @param {string} key - officeKey @param {string} name @returns {Promise<string|null>} contact id
+   */
+  async _officeMailbox(key, name = 'Office') {
+    const mcs = game.nightcity?.masterContactService;
+    const all = { ...(this._get('phoneOffices', {}) || {}) };
+    const o = sanitizeOffice(all[key]);
+    if (o.mailbox && mcs?.getContact?.(o.mailbox)) return o.mailbox;
+    const made = await mcs?.addContact?.({ name: `${name} switchboard`, email: `switchboard-${String(key).replace(/[^a-z0-9]+/gi, '-').toLowerCase()}@local`, type: 'npc', sendOnly: true, notes: `Holds voicemail left for ${name}. Made automatically.` });
+    if (!made?.success || !made.contact?.id) { log.warn(`Calls: could not make a mailbox for ${name}: ${made?.error || 'unknown'}`); return null; }
+    all[key] = { ...o, mailbox: made.contact.id };
+    await game.settings.set(MODULE_ID, 'phoneOffices', all);
+    return made.contact.id;
   }
 
   /** A line owner's voicemails, newest first (`ownerId` = the actor or the directory identity). */
@@ -967,12 +1570,19 @@ export class CallService {
     const skillSvc = game.nightcity?.skillService;
     const who = actor || resolveOperator();
     if (!who || !skillSvc) return { ok: false, error: 'Pick a character first.' };
-    let dv = 15, skill = 'interface';
-    try { dv = Number(game.settings.get(MODULE_ID, 'anonTraceDV')) || 15; skill = game.settings.get(MODULE_ID, 'anonTraceSkill') || 'interface'; } catch { /* defaults */ }
-    const r = await skillSvc.performCheck(who, skill, { dc: dv, showChat: true, context: 'Tracing a withheld number', flavor: `Trace // DV ${dv}`,
+    let dv = 9, skill = 'interface';
+    try { dv = Number(game.settings.get(MODULE_ID, 'anonTraceDV')) || 9; skill = game.settings.get(MODULE_ID, 'anonTraceSkill') || 'interface'; } catch { /* defaults */ }
+    const r = await skillSvc.performCheck(who, skill, { dc: dv, showChat: true, ask: { title: 'Tracing a withheld number' }, context: 'Tracing a withheld number', flavor: `Trace // DV ${dv}`,
       reveal: { title: 'Triangulating the call', ctx: 'Trace a withheld number', ok: 'Caller traced', no: 'Trace lost' } });
+    if (r?.cancelled) return { ok: true, traced: false, cancelled: true };
+    const ts = game.nightcity?.traceService;
+    try {
+      if (r?.success) ts?.logSuccess?.({ actor: who, action: 'call-trace', source: 'A withheld call', severity: 'minor' });
+      else ts?.fireTrace?.({ actor: who, action: 'call-trace', source: 'A withheld call', severity: 'minor' });
+    } catch (err) { log.warn(`Calls: trace log: ${err.message}`); }
     if (!r?.success) return { ok: true, traced: false };
     if (!game.users.activeGM) return { ok: false, error: 'No GM is online to reveal the caller.' };
+    if (game.user.isGM) { await this._revealTo(callId, game.user.id); return { ok: true, traced: true }; }
     this.socket.emit(SOCKET_OPS.CALL, { type: 'traceRequest', callId, userIds: [game.users.activeGM.id] });
     return { ok: true, traced: true };
   }
@@ -985,7 +1595,16 @@ export class CallService {
     const out = logs.find((l) => l.callId === callId);   // allLogs prefers the caller's own (unmasked) page
     const from = live?.from || out?.from;
     if (!from || (!from.actorId && !from.contactId && !from.number)) return;   // only a mask is left: nothing to reveal
-    const real = { ...from, anon: false };
+    const sp = from.special ? specialMap(specialList(this._get('phoneSpecial', null)))[specialKey(from.number)] : null;
+    if (sp?.trace === 'dead') return;
+    let real = { ...from, anon: false, ...(sp ? { name: sp.trace === 'false' ? (sp.falseName || sp.name || sp.num) : (sp.name || sp.num) } : {}) };
+    if (!sp && !from.special) {
+      const ctx = this.numberContext, p = parseNumber(from.number, ctx), line = this.lines()[p.key], row = rowOf(p, ctx), type = lineTypeFor(line, row, this.lineTypes);
+      const found = traceFinds(type, { name: from.realName || from.name, label: line?.label || '', place: row?.District || row?.City || '' });
+      if (!found) return;
+      if (!found.owner) real = { number: from.number, name: found.name, img: '', anon: false, asLine: true, showOnly: 'name' };
+      else real = { ...real, name: found.name, showOnly: 'name' };
+    }
     if (live) this.calls.set(callId, { ...live, traced: true });   // the GM's own copy: a later log page shows the caller
     this.socket.emit(SOCKET_OPS.CALL, { type: 'reveal', callId, from: real, userIds: [userId] });
     // the callee's own log page: show the real caller from now on
@@ -1090,11 +1709,13 @@ export class CallService {
     if (!repo?.getInboxJournal) return;
     summary = { ...summary, heardBy: await this._intercept(summary) };
     this._activityRow(summary);
+    try { await game.nightcity?.terminalService?.mirrorCallToAccounts?.(summary); } catch (err) { log.warn(`Calls: terminal mirror: ${err.message}`); }
     const hide = !!summary.from?.anon && !summary.traced;   // a withheld caller stays hidden on the callee's page until traced
     const sides = [['out', summary.from, summary.to], ['in', summary.to, summary.from]];
     const done = new Set();
     for (const [direction, me, other] of sides) {
-      const ownerId = me?.actorId || me?.contactId;
+      const inboxes = this._sharedInboxes(me?.number);
+      for (const ownerId of inboxes.length ? inboxes : [me?.actorId || me?.contactId]) {
       if (!ownerId || done.has(ownerId)) continue;
       done.add(ownerId);
       try {
@@ -1111,6 +1732,7 @@ export class CallService {
             heardBy: game.actors?.get(me?.actorId)?.hasPlayerOwner ? [] : summary.heardBy } } },
         }]);
       } catch (err) { log.warn(`Calls: could not write a log page: ${err.message}`); }
+      }
     }
   }
 
@@ -1120,9 +1742,10 @@ export class CallService {
    */
   async getLog(ownerId) {
     const journal = await game.nightcity?.messageRepository?.getInboxJournal?.(ownerId);
-    if (!journal) return [];
-    return journal.pages.contents.map((p) => ({ pageId: p.id, journalId: journal.id, ...(p.flags?.[MODULE_ID]?.callLog || {}) }))
-      .filter((l) => l.callId).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    const written = this.writtenLog(ownerId).map((e) => writtenToLog(e));
+    if (!journal) return written.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    return [...journal.pages.contents.map((p) => ({ pageId: p.id, journalId: journal.id, ...(p.flags?.[MODULE_ID]?.callLog || {}) })).filter((l) => l.callId), ...written]
+      .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
   }
 
   /**
@@ -1144,7 +1767,9 @@ export class CallService {
       }
     }
     for (const [id, h] of heard) { const l = byCall.get(id); if (l && !l.heardBy?.length) l.heardBy = h; }
-    return [...byCall.values()].sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    const nameOf = (id) => game.actors?.get(id)?.name || game.nightcity?.masterContactService?.getContact?.(id)?.name || '';
+    const written = Object.entries(this._get('phoneWrittenLogs', {}) || {}).flatMap(([id, list]) => (Array.isArray(list) ? list : []).map((e) => writtenToLog(e, { name: nameOf(id), number: '' })));
+    return [...byCall.values(), ...written].sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
   }
 
   /** Mark a character's missed calls as seen (the Calls tab opens). */

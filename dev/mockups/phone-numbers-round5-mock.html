@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone numbers: Round 5 mock</title>
+<!--
+  Round 5 of the phone revision: the screens no earlier round showed. NOT YET approved. Nothing here is wired to the module.
+  Frames: ?f=trauma|backup|live|typelive|prompts|range|pay   &o=<case>   &t=clean-dark|clean-light|high-contrast   &still=1
+  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/phone-numbers-round5-mock.html
+  The call screen and node console are real. New rules: phone-numbers-round5.css.
+-->
+<script>
+  (() => {
+    const off = location.protocol === 'file:';
+    const fa = off ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css' : '/_vendor/fa/css/all.min.css';
+    const core = off ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css' : '/_vendor/foundry2.css';
+    const cpr = off ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+    for (const href of [core, cpr, fa, '../../styles/night-city-messenger.css', 'phone-numbers-round2.css', 'phone-numbers-round3.css', 'phone-numbers-round5.css']) document.write(`<link rel="stylesheet" href="${href}">`);
+  })();
+</script>
+<style>
+  .mk-dialog { position: fixed; left: 50%; top: 90px; transform: translateX(-50%); z-index: 120; max-height: 76vh; display: flex; flex-direction: column; }
+  .mk-dialog .window-content { min-height: 0; overflow: auto; }
+  #mk-toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 99; padding: 7px 12px; background: #000; color: #fff; border: 1px solid #19f3f7; border-radius: 2px; font: 13px sans-serif; }
+</style>
+</head>
+<body>
+<div class="mk-bar">
+  <b>Round 5</b>
+  <button data-f="trauma">Trauma Team</button><button data-f="backup">Lawman Backup</button><button data-f="live">Live</button><button data-f="typelive">I type it live</button><button data-f="prompts">Player prompts</button><button data-f="range">In range</button><button data-f="pay">Payphones</button>
+  <span class="sp"></span>
+  <button data-t="clean-dark">Dark</button><button data-t="clean-light">Light</button><button data-t="high-contrast">Contrast</button>
+</div>
+<p class="mk-note" id="note"></p>
+<div class="mk-win ncm-app ncm-admin-panel" id="win" data-ncm-admin-theme="clean-dark"><div class="ncm-admin-panel" id="stage"></div></div>
+<div id="mk-tip" hidden></div>
+<div id="mk-toast" hidden></div>
+<script src="phone-numbers-data.js"></script>
+<script type="module">
+  // Just enough Foundry for the REAL scope picker and name picker (scripts/utils/). Serve this page: a file:// page cannot import a module.
+  globalThis.foundry = { utils: { mergeObject: (a, b) => ({ ...a, ...b }), randomID: () => Math.random().toString(36).slice(2, 10) } };
+  globalThis.game = { items: [], actors: { get: () => null }, users: { activeGM: { id: 'gm' } }, nightcity: { themeService: { getAnimationLevel: () => 'full' } }, user: { id: 'u1', isGM: false }, settings: { get: () => ({ preset: 'clean-dark', textScale: 100 }) } };
+  globalThis.ui = { notifications: { warn: (m) => console.warn(m), info: () => {}, error: (m) => console.error(m) } };
+  globalThis.Hooks = { on: () => {}, once: () => {}, call: () => {}, callAll: () => {} };
+  globalThis.Dialog = class {
+    constructor(data, options = {}) { this.data = data; this.options = options; }
+    render() {
+      const el = document.createElement('div');
+      el.className = `app window-app dialog ${(this.options.classes || []).join(' ')} ncm-admin-dialog mk-dialog`;
+      el.style.width = `${this.options.width || 440}px`;
+      el.setAttribute('data-ncm-admin-theme', document.getElementById('win').getAttribute('data-ncm-admin-theme') || 'clean-dark');
+      const btns = Object.entries(this.data.buttons || {}).map(([k, b]) => `<button type="button" data-button="${k}">${b.label}</button>`).join('');
+      el.innerHTML = `<header class="window-header flexrow"><h4 class="window-title">${this.data.title}</h4></header><section class="window-content"><div class="dialog-content">${this.data.content}</div><div class="dialog-buttons">${btns}</div></section>`;
+      document.body.appendChild(el); this.element = el;
+      el.querySelectorAll('[data-button]').forEach((b) => b.addEventListener('click', () => { this.data.buttons[b.dataset.button].callback?.(el.querySelector('.window-content')); this.close(); }));
+      this.data.render?.(el.querySelector('.window-content'));
+      return this;
+    }
+    close() { this.data.close?.(); this.element?.remove(); }
+  };
+  const [{ ScopePicker }, { showNamePicker }, { CallHud }, { formatDuration, callSeconds, typeOutMs }] = await Promise.all([import('../../scripts/utils/scopePicker.js'), import('../../scripts/utils/namePicker.js'), import('../../scripts/ui/Calls/CallHud.js'), import('../../scripts/utils/callModel.js')]);
+  await new Promise((res, rej) => { const s = document.createElement('script'); s.src = '/_vendor/handlebars.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  const nodeTpl = Handlebars.compile(await (await fetch('../../templates/network-nodes/node-console.hbs')).text());
+  window.NCM_PICK = { ScopePicker, showNamePicker, CallHud, formatDuration, callSeconds, typeOutMs, nodeTpl };
+  const sc = document.createElement('script'); sc.src = 'phone-numbers-round5.js'; document.body.appendChild(sc);
+</script>
+</body>
+</html>

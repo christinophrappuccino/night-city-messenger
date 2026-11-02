@@ -14,16 +14,21 @@ import { BaseTab } from '../BaseTab.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { getPlayerCharacters, formatCyberDate, resolveDisplayPortrait } from '../../../utils/helpers.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
-import { themedConfirm, themedPrompt } from '../../../utils/adminTheme.js';
+import { themedConfirm } from '../../../utils/adminTheme.js';
 import { dialogBodyHtml } from '../../../utils/dialogBody.js';
 import { formatDuration } from '../../../utils/callModel.js';
-import { PHONE_VIEWS, LOG_FILTERS, NUMBER_SHOW, liveBoard, numberGroups, logView, settingsView, voicemailBoxes } from './phoneModel.js';
+import { parseNumber, rowOf, orgKey } from '../../../utils/phoneNumbering.js';
+import { ScopePicker } from '../../../utils/scopePicker.js';
+import { DateRangePicker } from '../../components/DateRangePicker.js';
+import { PHONE_VIEWS, NAV_PARENT, logLanding, LOG_FILTERS, LOG_GROUPS, VM_SHOW, VM_GROUPS, QUEUE_SHOW, callQueue, liveBoard, logView, settingsView, voicemailBoxes } from './phoneModel.js';
+import { PLAN_NAMES } from '../../../utils/phoneEmergency.js';
+import { numbersHtml, wireNumbers, closeNumbers, newNumberState, syncFrame, requestCount } from './phoneNumbersView.js';
 import { GREETING_KINDS, GREETING_LABELS, DEFAULT_GREETING, GREETING_MAX } from '../../../utils/voicemail.js';
 import { speak, voices, canSpeak } from '../../Calls/speech.js';
 import { VoiceRecorder, micStatus, blobToBase64, playAudio } from '../../Calls/recorder.js';
 import { adminDialog } from '../../../utils/adminTheme.js';
 
-const SETTING_KEYS = ['callsEnabled', 'callModes', 'callDefaultMode', 'callHomeCode', 'callRingSeconds', 'callUnknownNumbers', 'callTranscriptNotice',
+const SETTING_KEYS = ['callsEnabled', 'callModes', 'callDefaultMode', 'callRingSeconds', 'callUnknownNumbers', 'callTranscriptNotice',
   'voicemailRecording', 'voicemailMaxSeconds', 'voicemailKeepDays'];
 
 /** Why the GM dropped a call — shown on both ends under "Call dropped". */
@@ -35,29 +40,44 @@ const DROP_REASONS = [
   ['traced', 'Someone traced the call', 'fas fa-crosshairs'],
 ];
 
+const nowIso = () => { try { return game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString(); } catch { return new Date().toISOString(); } };
+const dayText = (d) => formatCyberDate(`${d}T12:00:00.000Z`, { dateOnly: true });
+
 export class PhoneTab extends BaseTab {
   get key() { return 'phone'; }
 
   constructor(app) {
     super(app);
     this._view = 'live';
-    this._q = '';
-    this._show = 'all';
     this._logQ = '';
     this._logFilter = 'all';
-    this._logPage = 1;
+    this._logGroup = 'date';
+    this._logFrom = '';
+    this._logTo = '';
+    this._logMenu = false;
+    this._limits = {};
+    this._vmQ = '';
+    this._vmShow = 'all';
+    this._vmGroup = 'box';
     this._shut = new Set();
     this._open = new Set();
     this._tick = null;
     /** calls whose typed lines the GM is following on the switchboard */
     this._listen = new Set();
+    /** the number screens' own state (phoneNumbersView.js) */
+    this._pn = newNumberState();
+    this._qFilt = 'all';
+    this._qOpen = null;
   }
 
   get calls() { return game.nightcity?.callService; }
 
-  /** Open on a view from openAdminTab('phone', { select: 'numbers' | 'log' | 'settings' | 'live' }). */
+  /** Open on a view from openAdminTab('phone', { select: 'numbers' | 'log' | 'vm' | 'settings' | 'live' | { log: target } | { person: id } }). */
   openTo(select) {
-    if (PHONE_VIEWS.some(([k]) => k === select)) this._view = select;
+    if (select === 'vm') this._view = 'vm';
+    else if (PHONE_VIEWS.some(([k]) => k === select)) { this._view = select; syncFrame(this, select); }
+    else if (select?.person) { this._view = 'numbers'; this._pn.f = 'numbers'; this._pn.sel = select.person; this._pn.show = 'all'; this._pn.q = ''; }
+    else if (select?.log) { this._view = 'logedit'; this._pn.f = 'editlog'; this._pn.lgT = select.log; this._pn.lgE = null; }
   }
 
   // ═══════════════════════════════ context ═══════════════════════════════
@@ -68,7 +88,7 @@ export class PhoneTab extends BaseTab {
     if (!s) return { phone2: { missing: true } };
     const ctx = {
       view: this._view, enabled: s.enabled, isPopout: !!this.app.isPopout,
-      nav: PHONE_VIEWS.map(([key, label, icon]) => ({ key, label, icon, on: key === this._view })),
+      nav: PHONE_VIEWS.map(([key, label, icon]) => ({ key, label, icon, on: key === (NAV_PARENT[this._view] || this._view) })),
     };
     const mcs = game.nightcity?.masterContactService;
     try {
@@ -85,26 +105,46 @@ export class PhoneTab extends BaseTab {
         ownerName: (v) => (v.ownerIsContact ? mcs?.getContact?.(v.ownerId)?.name : game.actors?.get(v.ownerId)?.name) || v.to?.name || 'Unknown',
         isNpc: (v) => v.ownerIsContact || !game.actors?.get(v.ownerId)?.hasPlayerOwner,
         fmt: (t) => formatCyberDate(t), shut: this._shut, open: this._open,
+        q: this._vmQ, show: this._vmShow, group: this._vmGroup, limits: this._limits, now: nowIso(),
+        fmtDay: dayText, fmtTime: (t) => formatCyberDate(t, { timeOnly: true }),
       });
-      const vmNav = ctx.nav.find((n) => n.key === 'vm');
+      // voicemail lives inside the Call log, so its waiting count rides that button
+      const vmNav = ctx.nav.find((n) => n.key === 'log');
       if (vmNav) { vmNav.count = vmb.npcUnheard; vmNav.hot = vmb.npcUnheard > 0; }
-      if (this._view === 'vm') ctx.vm = vmb;
-      if (this._view === 'live') { ctx.live = live; ctx.load = this._load(s); }
-
-      if (this._view === 'numbers') {
-        const pcs = getPlayerCharacters().map((p) => ({ ...p, img: p.actor?.img || '' }));
-        const contacts = (mcs?.getAll?.() || []).map((c) => ({ ...c, img: c.portrait || '' }));
-        const n = numberGroups({ lines: s.lines(), pcs, contacts, q: this._q, show: this._show, shut: this._shut, open: this._open });
-        ctx.numbers = { ...n, q: this._q, show: NUMBER_SHOW.map(([k, l]) => ({ k, l, on: k === this._show })) };
+      this._unheard = vmb.npcUnheard;
+      ctx.logTabs = [['log', 'Calls', 'fa-list'], ['vm', 'Voicemail', 'fa-voicemail']].map(([key, label, icon]) => ({ key, label, icon, on: key === this._view, count: key === 'vm' ? vmb.npcUnheard : 0 }));
+      if (this._view === 'vm') {
+        ctx.vm = { ...vmb, q: this._vmQ, showing: this._vmShow !== 'all', found: `${vmb.shownCount} of ${vmb.total} messages`,
+          showOptions: VM_SHOW.map(([k, l]) => ({ k, l, on: k === this._vmShow })), groupOptions: VM_GROUPS.map(([k, l]) => ({ k, l, on: k === this._vmGroup })) };
       }
+      if (this._view === 'live') {
+        ctx.live = { ...live, emergencies: (game.nightcity?.emergencyService?.active?.() || []).map((e) => ({ ...e, isTrauma: e.kind === 'trauma', who: e.kind === 'trauma' ? e.patient : e.name, word: e.kind === 'trauma' ? `${PLAN_NAMES[e.plan] || ''} plan` : e.org,
+          detail: e.kind === 'trauma' ? `HP ${e.hp}/${e.max} · ${e.place}${e.onPlanOf ? ` · on ${e.onPlanOf}'s plan` : ''}` : `${e.group} · ${e.place}` })) };
+        ctx.load = this._load(s);
+        ctx.queue = callQueue(live.ringing, { filter: this._qFilt, open: this._qOpen, kindOf: (c) => this._queueKind(c) });
+        ctx.queueShow = QUEUE_SHOW.map(([k, l]) => ({ k, l, on: k === this._qFilt }));
+        ctx.active = live.lines.find((c) => c.mine && c.state === 'live') || null;
+        ctx.overheard = [...(game.nightcity?.overheardService?.runs?.values() || [])].filter((r) => !r.ended).map((r) => ({ id: r.id, name: r.script.name, a: r.script.a.name, b: r.script.b.name, line: r.idx + 1, of: r.script.lines.length, listening: r.listeners.size, faces: [...r.listeners.values()].map((l) => ({ name: l.name, ini: String(l.name).split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() })) }));
+      }
+
+      const numNav = ctx.nav.find((n) => n.key === 'numbers');
+      if (numNav) { numNav.count = requestCount(this); numNav.hot = numNav.count > 0; }
+      if (this._view === 'numbers' || this._view === 'setup' || this._view === 'overheard' || this._view === 'logedit') { syncFrame(this, this._view); ctx.numbersHtml = numbersHtml(this); }
       if (this._view === 'log') {
+        const whoId = this.scopeId('logwho'), netId = this.scopeId('lognet');
+        const who = ScopePicker.value(whoId)[0] || '', net = ScopePicker.value(netId)[0] || '';
         const v = logView(s.allLogs(), {
-          q: this._logQ, filter: this._logFilter, page: this._logPage,
-          fmtDay: (d) => formatCyberDate(`${d}T12:00:00.000Z`, { dateOnly: true }),
-          fmtTime: (t) => formatCyberDate(t, { timeOnly: true }),
+          q: this._logQ, filter: this._logFilter, who, net, from: this._logFrom, to: this._logTo, group: this._logGroup,
+          now: nowIso(), shut: this._shut, open: this._open, limits: this._limits,
+          fmtDay: dayText,
+          fmtTime: (t) => formatCyberDate(t, { timeOnly: true }), fmtWhen: (t) => formatCyberDate(t),
         });
-        this._logPage = v.page;
-        ctx.log = { ...v, q: this._logQ, filters: LOG_FILTERS.map(([k, l]) => ({ k, l, n: v.counts[k] || 0, on: k === this._logFilter })) };
+        const pills = [who && { k: 'who', text: who }, net && { k: 'net', text: net }, (this._logFrom || this._logTo) && { k: 'dates', text: `${this._logFrom || '…'} to ${this._logTo || '…'}` }].filter(Boolean);
+        ctx.log = { ...v, q: this._logQ, menu: this._logMenu, pills, filterCount: pills.length, found: `${v.total} of ${v.of} calls`,
+          resultOptions: LOG_FILTERS.map(([k, l]) => ({ k, l: `${l} (${v.counts[k] || 0})`, on: k === this._logFilter })),
+          groupOptions: LOG_GROUPS.map(([k, l]) => ({ k, l, on: k === this._logGroup })),
+          whoPicker: ScopePicker.html(whoId, { noun: 'person', nouns: 'people', icon: 'fa-user', allLabel: 'Anyone', items: v.people.map((name) => ({ id: name, name })) }),
+          netPicker: ScopePicker.html(netId, { noun: 'network', nouns: 'networks', icon: 'fa-wifi', allLabel: 'Any network', items: v.networks.map((name) => ({ id: name, name })) }) };
       }
       if (this._view === 'settings') {
         const vals = Object.fromEntries(SETTING_KEYS.map((k) => { try { return [k, game.settings.get(MODULE_ID, k)]; } catch { return [k, undefined]; } }));
@@ -125,19 +165,31 @@ export class PhoneTab extends BaseTab {
   onRender() {
     const root = this.element?.querySelector('.ncm-ph2');
     if (!root) return;
+    wireNumbers(this, root);
     // searches re-render after a pause (never per key)
+    root.querySelectorAll('select[data-ph-qfilt]').forEach((sel) => sel.addEventListener('change', () => { this._qFilt = sel.value; this.app.render(); }));
     root.querySelectorAll('[data-ph-q]').forEach((q) => q.addEventListener('input', () => {
       clearTimeout(this._qT);
       this._qT = setTimeout(() => {
-        if (q.dataset.phQ === 'log') { this._logQ = q.value; this._logPage = 1; } else this._q = q.value;
+        if (q.dataset.phQ === 'vm') this._vmQ = q.value; else this._logQ = q.value;
         this.app.render();
       }, 220);
     }));
-    // selects (a <select> with data-action fires on click, not change)
-    root.querySelectorAll('select[data-ph-sel]').forEach((sel) => sel.addEventListener('change', () => {
-      if (sel.dataset.phSel === 'show') this._show = sel.value;
-      this.app.render();
-    }));
+    // the log + voicemail controls
+    root.querySelector('select[data-ph-logresult]')?.addEventListener('change', (e) => { this._logFilter = e.target.value; this.app.render(); });
+    root.querySelector('select[data-ph-loggroup]')?.addEventListener('change', (e) => { this._logGroup = e.target.value; this.app.render(); });
+    root.querySelector('select[data-ph-vmshow]')?.addEventListener('change', (e) => { this._vmShow = e.target.value; this.app.render(); });
+    root.querySelector('select[data-ph-vmgroup]')?.addEventListener('change', (e) => { this._vmGroup = e.target.value; this.app.render(); });
+    const menu = root.querySelector('details[data-ph-logmenu]');
+    menu?.addEventListener('toggle', () => { this._logMenu = menu.open; });
+    for (const name of ['logwho', 'lognet']) {
+      const id = this.scopeId(name);
+      // it also fires when the list opens: only a real change re-renders
+      this._pickWas ??= {};
+      this._pickWas[id] = ScopePicker.value(id)[0] || '';
+      ScopePicker.on(id, (v) => { const now = v?.[0] || ''; if (now !== this._pickWas[id]) { this._pickWas[id] = now; this.app.render(); } });
+    }
+    ScopePicker.after();
     // settings write as they change
     root.querySelectorAll('[data-ph-set]').forEach((el) => el.addEventListener('change', () => this._saveSetting(el)));
     // folds: DOM only
@@ -173,6 +225,7 @@ export class PhoneTab extends BaseTab {
   onClose() {
     clearInterval(this._tick);
     clearTimeout(this._qT);
+    closeNumbers(this);
   }
 
   // ═══════════════════════════════ actions ═══════════════════════════════
@@ -181,19 +234,52 @@ export class PhoneTab extends BaseTab {
     const d = target.dataset;
     const s = this.calls;
     switch (op) {
-      case 'view': this._view = d.view; return this.app.render();
-      case 'clearQ': if (d.which === 'log') this._logQ = ''; else this._q = ''; return this.app.render();
+      case 'view': this._view = d.view === 'log' ? logLanding(this._view, this._unheard || 0) : d.view; return this.app.render();
+      case 'logTab': this._view = d.view; return this.app.render();
+      case 'logEdit': this._view = 'logedit'; this._pn.f = 'editlog'; return this.app.render();
+      case 'clearQ': if (d.which === 'vm') this._vmQ = ''; else this._logQ = ''; return this.app.render();
+      case 'more': { const k = d.band; this._limits[k] = (this._limits[k] || 30) + 30; return this.app.render(); }
+      case 'foldToggle': {
+        const secs = [...(this.element?.querySelectorAll('.ncm-ph2 [data-ph-group]') ?? [])];
+        const close = secs.some((x) => !x.classList.contains('is-shut'));
+        for (const x of secs) { const k = x.dataset.phGroup; (close ? this._shut : this._open).add(k); (close ? this._open : this._shut).delete(k); }
+        return this.app.render();
+      }
+      case 'logDates': DateRangePicker.open({ from: this._logFrom, to: this._logTo, title: 'Calls between', onApply: (from, to) => { this._logFrom = from; this._logTo = to; this.app.render(); }, onClear: () => { this._logFrom = ''; this._logTo = ''; this.app.render(); } }); return;
+      case 'logUnfilter':
+        if (d.k === 'dates') { this._logFrom = ''; this._logTo = ''; }
+        else ScopePicker.set(this.scopeId(d.k === 'who' ? 'logwho' : 'lognet'), []);
+        return this.app.render();
+      case 'logClear':
+        this._logQ = ''; this._logFilter = 'all'; this._logFrom = ''; this._logTo = '';
+        ScopePicker.set(this.scopeId('logwho'), []); ScopePicker.set(this.scopeId('lognet'), []);
+        return this.app.render();
+      case 'vmClear': this._vmQ = ''; this._vmShow = 'all'; return this.app.render();
       case 'foldAll': {
         const open = d.open === '1';
         this._shut.clear(); this._open.clear();
         for (const g of this.element?.querySelectorAll('.ncm-ph2 [data-ph-group]') ?? []) (open ? this._open : this._shut).add(g.dataset.phGroup);
         return this.app.render();
       }
-      case 'logFilter': this._logFilter = d.f || 'all'; this._logPage = 1; return this.app.render();
-      case 'logPage': this._logPage = Math.max(1, this._logPage + Number(d.d || 0)); return this.app.render();
       // live
       case 'answer': s?.answer(d.id); return this.app.render();
       case 'decline': s?.decline(d.id); return this.app.render();
+      case 'qOpen': this._qOpen = this._qOpen === d.id ? '' : d.id; return this.app.render();
+      case 'qAsWho': {
+        const call = s?.calls.get(d.id), who = await this._pickSpeaker(call, 'Answer as…');
+        if (!who) return;
+        s.answer(d.id, who);
+        return this.app.render();
+      }
+      case 'qPass': {
+        const call = s?.calls.get(d.id), who = await this._pickSpeaker(call, 'Pass to…');
+        if (who) s.passTo(d.id, who);
+        return this.app.render();
+      }
+      case 'qHold': s?.queueHold(d.id, d.on !== '0'); return this.app.render();
+      case 'qRingOut': s?.decline(d.id, { ringOut: true }); return this.app.render();
+      case 'qHoldAll': for (const c of s?.allCalls?.() || []) if (c.state === 'ringing' && s._ringsHere(c) && !c.queueHold) s.queueHold(c.id, true); return this.app.render();
+      case 'qVmAll': for (const c of s?.allCalls?.() || []) if (c.state === 'ringing' && s._ringsHere(c)) s.decline(c.id); return this.app.render();
       case 'hangup': s?.hangup(d.id); return this.app.render();
       case 'drop': {
         const why = await showNamePicker({ title: 'Drop the call', hint: 'Both sides see the call drop, and this reason under it.', placeholder: 'search reasons…',
@@ -236,12 +322,12 @@ export class PhoneTab extends BaseTab {
         ui.notifications?.info(`Cleared ${r.count} recording${r.count === 1 ? '' : 's'}.`);
         return this.app.render();
       }
+      case 'ovOpenRun': this._pn.ovRun = d.id; this._pn.f = 'ovrun'; this._view = 'overheard'; return this.app.render();
+      case 'emHold': await game.nightcity?.emergencyService?.toggleHold(d.id); return this.app.render();
+      case 'emMinus': await game.nightcity?.emergencyService?.minusRound(d.id); return this.app.render();
+      case 'emArrive': await game.nightcity?.emergencyService?.arrive(d.id); return this.app.render();
+      case 'emOff': await game.nightcity?.emergencyService?.remove(d.id); return this.app.render();
       case 'listen': if (this._listen.has(d.id)) this._listen.delete(d.id); else this._listen.add(d.id); return this.app.render();
-      // numbers
-      case 'give': return this._give();
-      case 'change': return this._change({ actorId: d.actorId || null, contactId: d.contactId || null, name: d.name, number: d.number });
-      case 'release': return this._release(d.number, d.name);
-      case 'openContact': return game.nightcity?.openAdminTab?.('contacts', { select: d.contactId });
       default: return false;
     }
   }
@@ -316,6 +402,30 @@ export class PhoneTab extends BaseTab {
     return this.app.render();
   }
 
+  /** What kind of call is in the queue. */
+  _queueKind(c) {
+    const s = this.calls, ctx = s.numberContext, p = parseNumber(c.to?.number || '', ctx);
+    if (c.to?.shared) return 'shared';
+    if (p.service) return 'special';
+    if (rowOf(p, ctx)?.Category === 'Corporate') return 'corp';
+    return 'npc';
+  }
+
+  /** Who picks up: who they asked for, then that company, then anyone else. Search and filter. */
+  async _pickSpeaker(call, title) {
+    const s = this.calls, mcs = game.nightcity?.masterContactService;
+    const all = (mcs?.getAll?.() || []).filter((c) => !c.sendOnly);
+    const asked = call?.to?.contactId ? mcs?.getContact?.(call.to.contactId) : null;
+    const ctx = s.numberContext, row = rowOf(parseNumber(call?.to?.number || '', ctx), ctx);
+    const orgName = asked?.organization || (row?.Category === 'Corporate' ? row.District : '');
+    const entries = all.map((c) => {
+      const inOrg = !!orgName && orgKey(c.organization || '') === orgKey(orgName);
+      return { id: c.id, name: c.name, img: resolveDisplayPortrait({ contactId: c.id }) || '', sub: c.organization || c.role || '', group: c.id === asked?.id ? 'Asked for' : inOrg ? orgName : 'Anyone else' };
+    }).sort((a, b) => (['Asked for', orgName].indexOf(b.group) - ['Asked for', orgName].indexOf(a.group)) || 0);
+    const pick = await showNamePicker({ title, hint: 'Who picks up? Search, or filter by company.', placeholder: 'search people…', entries });
+    return pick?.id ? s.answerAs(mcs.getContact(pick.id)) : null;
+  }
+
   /** NETWORK LOAD: calls on each network right now and today, and the networks a node is cutting on the viewed scene. */
   _load(s) {
     const ns = game.nightcity?.networkService;
@@ -356,44 +466,19 @@ export class PhoneTab extends BaseTab {
     return this.app.render();
   }
 
-  /** Give a number: pick a character (players first) or a directory contact, then the number. */
-  async _give() {
-    const s = this.calls; const mcs = game.nightcity?.masterContactService;
-    const entries = [
-      ...getPlayerCharacters().map((p) => ({ id: `a:${p.actorId}`, name: p.actorName, img: p.actor?.img || '', sub: s.numberOf(p.actorId) || 'no number yet', group: "Players' characters" })),
-      ...(mcs?.getAll?.() || []).filter((c) => !c.sendOnly).map((c) => ({ id: `c:${c.id}`, name: c.name, img: resolveDisplayPortrait({ contactId: c.id }) || 'icons/svg/mystery-man.svg',
-        sub: s.numberOfContact(c.id) || (c.identityOf ? 'alias · no number' : 'no number yet'), group: 'Directory' })),
-    ];
-    const pick = await showNamePicker({ title: 'Give a number', hint: 'Who gets it? Someone who already has one gets a new one.', placeholder: 'search…', entries });
-    if (!pick?.id) return;
-    const [k, id] = [pick.id.slice(0, 1), pick.id.slice(2)];
-    return this._change({ actorId: k === 'a' ? id : null, contactId: k === 'c' ? id : null, name: pick.name, number: '' });
-  }
-
-  async _change({ actorId, contactId, name, number }) {
-    const s = this.calls;
-    const fresh = s.suggestNumbers({ count: 1 })[0]?.number || '';
-    const value = await themedPrompt({
-      title: number ? 'Change the number' : 'Give a number', label: 'Use this number', icon: 'fas fa-sim-card',
-      content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-sim-card', title: name || 'Number', sub: number ? `now ${number}` : 'no number yet',
-        lead: 'A made-up number from the fiction range is filled in. Type any number you like instead.',
-        field: { label: 'Number', name: 'number', value: fresh, placeholder: '+1 (555) 555-0123' },
-        hint: number ? 'The old number stops working: calling it gives **not in service**.' : '' }),
-      read: (root) => root.querySelector('input[name=number]')?.value?.trim() || null,
-    });
-    if (!value) return;
-    const r = await s.assignNumber({ actorId, contactId, number: value });
-    if (!r.ok) ui.notifications?.warn(r.error);
-    else ui.notifications?.info(`${name || 'They'} now answer on ${r.number || value}.`);
-    return this.app.render();
-  }
-
-  async _release(number, name) {
-    const ok = await themedConfirm({ title: 'Take the number away', bad: true, yes: 'Take it away', yesIcon: 'fas fa-fire',
-      content: dialogBodyHtml({ tone: 'bad', icon: 'fas fa-fire', title: number, sub: name || '',
-        lead: 'Anyone who calls it hears **not in service**.', goes: ['the number'], stays: ['the call log', 'their contacts and mail'] }) });
-    if (!ok) return;
-    await this.calls?.releaseNumber(number);
+  /** Hand a number to characters: it lands on their saved contact for that person, or a new contact if they have none. */
+  async _shareLine(person, line) {
+    if (!person || !line) return;
+    const pcs = getPlayerCharacters().filter((p) => p.actorId !== person.id);
+    const pick = await showNamePicker({ title: `Share ${line.n}`, hint: 'Who gets this number? Nothing else about them is shared.', placeholder: 'search characters…', multi: true,
+      preselected: pcs.filter((p) => line.holders.includes(p.actorId)).map((p) => p.actorId), doneLabel: 'Share',
+      entries: pcs.map((p) => ({ id: p.actorId, name: p.actorName, img: p.actor?.img || '', sub: p.playerName || '' })) });
+    if (!pick) return;
+    const ids = pick.map((x) => x.id ?? x);
+    // a second line never names who holds it
+    const second = ['extra', 'burner', 'shared'].includes(line.kind);
+    const r = await this.calls?.shareNumber?.({ number: line.n, name: second ? (line.label || line.n) : person.kind === 'pc' ? '' : person.name, ownerContactId: !second && person.kind === 'npc' ? person.id : null, ownerActorId: !second && person.kind === 'pc' ? person.id : null, actorIds: ids });
+    if (r && !r.ok) ui.notifications?.warn(r.error);
     return this.app.render();
   }
 
@@ -407,7 +492,6 @@ export class PhoneTab extends BaseTab {
     else if (key === 'callRingSeconds') val = Math.min(120, Math.max(5, Number(el.value) || 30));
     else if (key === 'voicemailMaxSeconds') val = Math.min(180, Math.max(10, Number(el.value) || 60));
     else if (key === 'voicemailKeepDays') val = Math.min(3650, Math.max(0, Math.round(Number(el.value) || 0)));
-    else if (key === 'callHomeCode') { const d = String(el.value).replace(/\D/g, ''); val = d ? `+${d}` : '+1'; }
     else val = el.value;
     if (!SETTING_KEYS.includes(key)) return;
     try {

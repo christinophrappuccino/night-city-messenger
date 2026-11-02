@@ -23,6 +23,7 @@ export const NEED_KINDS = Object.freeze({
   bricked:  { weight: 50,  group: 'money' },  // a shard died
   sched:    { weight: 45,  group: 'setup' },  // scheduled mail about to fire
   setup:    { weight: 30,  group: 'setup' },  // a player with no address, etc.
+  phone:    { weight: 31, group: 'setup' },    // players asked for a number
   deadzone: { weight: 20,  group: 'setup' },  // the current scene is a dead zone
 });
 
@@ -269,6 +270,7 @@ export const NEED_CHIPS = Object.freeze({
   bricked:   { label: 'Bricked',        icon: 'fa-heart-crack',                   tone: 'attn' },
   sched:     { label: 'Scheduled due',  icon: 'fa-clock',                         tone: 'attn' },
   setup:     { label: 'No address',     icon: 'fa-at',                            tone: 'attn' },
+  phone:     { label: 'Number requests', icon: 'fa-sim-card',                     tone: 'attn' },
   deadzone:  { label: 'Dead zone',      icon: 'fa-ban',                           tone: 'bad' },
 });
 

@@ -13,6 +13,7 @@
  */
 
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, NETWORKS, NETWORK_TYPES, SECURITY_LEVELS, NETWORK_ACCESS_MODES, CONNECTION_MODES } from '../utils/constants.js';
+import { beatsDV } from '../utils/rolls.js';
 import { log, isGM, generateId, whisperCardHtml } from '../utils/helpers.js';
 import { bypassDCFor } from '../utils/bypassSkills.js';
 import { sourceUuidOf, prewireFlags } from '../utils/scenesAtlas.js';
@@ -169,7 +170,7 @@ export class NetworkService {
         allowSkillCheck: network.security?.allowSkillCheck ?? (network.security?.bypassSkills?.length > 0),
         authLogic: network.security?.authLogic ?? 'any',
         bypassSkills: network.security?.bypassSkills ?? [],
-        bypassDC: network.security?.bypassDC ?? 15,
+        bypassDC: network.security?.bypassDC ?? 9,
         bypassSkillDCs: network.security?.bypassSkillDCs ?? {},
         allowKeyItem: network.security?.allowKeyItem ?? false,
         keyItemName: network.security?.keyItemName ?? null,
@@ -434,7 +435,7 @@ export class NetworkService {
 
   /**
    * Attempt skill-based authentication bypass for a network.
-   * This checks if the result meets the DC — the actual roll is done elsewhere
+   * This checks if the result beats the DC — the actual roll is done elsewhere
    * (or in Phase 4 SkillService). For Phase 3 we accept a pre-rolled total.
    * @param {string} networkId
    * @param {number} rollTotal - The total of the skill check
@@ -448,11 +449,11 @@ export class NetworkService {
 
     const dc = bypassDCFor(network.security, skillName);
 
-    if (rollTotal >= dc) {
+    if (beatsDV(rollTotal, dc)) {
       this._authenticatedNetworks.add(networkId);
       if (!silent) this.soundService?.play('hack-success');
       this.eventBus.emit(EVENTS.NETWORK_AUTH_SUCCESS, { networkId, method: 'skill', skillName, rollTotal, dc });
-      log.info(`Authenticated to ${network.name} via ${skillName} (${rollTotal} >= ${dc})`);
+      log.info(`Authenticated to ${network.name} via ${skillName} (${rollTotal} over ${dc})`);
       return { success: true };
     }
 
@@ -1294,7 +1295,7 @@ export class NetworkService {
         allowSkillCheck: data.security?.allowSkillCheck ?? (data.security?.bypassSkills?.length > 0),
         authLogic: data.security?.authLogic ?? 'any',  // 'any' = OR, 'all' = AND (key item always bypasses)
         bypassSkills: data.security?.bypassSkills ?? [],
-        bypassDC: data.security?.bypassDC ?? 15,
+        bypassDC: data.security?.bypassDC ?? 9,
         bypassSkillDCs: data.security?.bypassSkillDCs ?? {},
         allowKeyItem: data.security?.allowKeyItem ?? false,
         keyItemName: data.security?.keyItemName ?? '',

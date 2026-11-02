@@ -59,9 +59,9 @@ export const BUILTIN_EXAMPLES = Object.freeze({
         { heading: 'Current operation', body: 'Details sealed pending director approval.', redacted: true },
       ],
       stats: { threat: 'HIGH', affiliation: 'Arasaka (former)', lastKnownLocation: 'Japantown, mega-building H4' },
-      declassify: true, declassifySkill: 'Interface', declassifyDV: 15, traceOnFail: false,
+      declassify: true, declassifySkill: 'Interface', declassifyDV: 9, traceOnFail: false,
       // Masked identity — the face + real name hide for players until a roll.
-      faceLocked: true, faceUnlockSkill: 'Interface', faceUnlockDV: 15, faceTraceOnFail: true,
+      faceLocked: true, faceUnlockSkill: 'Interface', faceUnlockDV: 9, faceTraceOnFail: true,
       // Combat profile — link a world actor and these read LIVE from the sheet.
       profile: { enabled: true, title: 'COMBAT PROFILE', visibility: 'encrypted', skill: 'Interface', dv: 13, stats: ['body', 'ref', 'cool', 'tech'], skills: ['Handgun', 'Stealth'], decrypted: false },
     },
@@ -169,7 +169,7 @@ export const BUILTIN_EXAMPLES = Object.freeze({
       entries: [
         { host: 'netwatch-relay.ncpd.gov', user: 'v.arasaka', secret: 'Hx9$kRel-2077', strength: 3, note: 'reused on tower mainframe → pivot' },
         { host: 'tower-mainframe.arasaka', user: 'v.arasaka', secret: 'Hx9$kRel-2077', strength: 3 },
-        { host: 'cold-wallet.militech', user: 'treasury_07', secret: 'MTech-C0ldSt0re#7', encrypted: true, cracked: false, crackSkill: 'Interface', crackDV: 15 },
+        { host: 'cold-wallet.militech', user: 'treasury_07', secret: 'MTech-C0ldSt0re#7', encrypted: true, cracked: false, crackSkill: 'Interface', crackDV: 9 },
         { host: 'legacy-bbs.watson.nc', user: 'vee_2020', secret: 'password1', strength: 1 },
       ],
     },
@@ -180,7 +180,7 @@ export const BUILTIN_EXAMPLES = Object.freeze({
       bankName: 'Night City Trust', bankLogo: '', bankLocation: 'City Center · Corpo Plaza',
       bankCode: 'SWIFT NCTBNCNX', bankTagline: 'Your eddies. Our silence.', bankColor: '#7a2f2f',
       status: 'active',
-      allowSiphon: true, siphonSkill: 'Interface', siphonDV: 15, siphonMode: 'cap', siphonCap: 500000,
+      allowSiphon: true, siphonSkill: 'Interface', siphonDV: 9, siphonMode: 'cap', siphonCap: 500000,
       siphonDVScale: true, siphonDVPer: 100000, siphonLockout: true, siphonMaxAttempts: 3, siphonLockoutMin: 30,
       owner: 'V. Arasaka', accountType: 'Checking',
       accountName: 'Arasaka Holdings — Ops', accountNumber: 'NC-8841-A-0007',
@@ -197,7 +197,7 @@ export const BUILTIN_EXAMPLES = Object.freeze({
     contentType: 'gallery', from: 'seccam@arasaka.net', subject: 'cam-04 export — loading dock',
     contentData: {
       title: 'Loading dock — night shift', source: 'SECCAM-B2',
-      unlockSkill: 'Interface', unlockDV: 15,
+      unlockSkill: 'Interface', unlockDV: 9,
       images: [
         { url: 'icons/environment/settlement/building-rubble.webp', label: 'IMG_014', time: '03:41', caption: 'Truck arrives, plates covered' },
         { url: 'icons/environment/people/cleric-grey.webp', label: 'IMG_015', time: '03:44', caption: 'Unidentified handler', flagged: true },
@@ -213,7 +213,7 @@ export const BUILTIN_EXAMPLES = Object.freeze({
       author: 'K. Okada', org: 'Arasaka Logistics', date: '2077-06-12T00:00:00Z', revision: '3',
       classification: 'SECRET', watermark: 'ARASAKA',
       signed: 'K. Okada — Logistics Director, NC Branch',
-      declassify: true, declassifySkill: 'Interface', declassifyDV: 15,
+      declassify: true, declassifySkill: 'Interface', declassifyDV: 9,
       paragraphs: [
         { heading: 'Summary', text: 'Q2 reconciliation shows a <b>512,000 eddie variance</b> in Warehouse 7 outbound manifests. Internal audit is <i>not</i> to be looped in until legal reviews exposure.' },
         { kind: 'list', ordered: true, heading: 'Findings', items: ['Manifests W7-0388 through W7-0441 falsified', 'Cold-storage counts off by 14 crates', 'Badge W7-0441 active during every camera gap'] },
@@ -303,7 +303,7 @@ export const BUILTIN_EXAMPLES = Object.freeze({
       name: 'HELLHOUND.exe', payloadType: 'daemon', threat: 3, sizeLabel: '4.7 MB',
       description: 'Scanner flags outbound C2 traffic and credential scraping. Origin unknown. Do NOT execute outside a sandbox.',
       deployable: true, honeypot: false,
-      deployRequire: false, deploySkill: 'Interface', deployDV: 15, iceActorId: null,
+      deployRequire: false, deploySkill: 'Interface', deployDV: 9, iceActorId: null,
       deployed: false, deployedBy: null, tripped: false,
     },
   },

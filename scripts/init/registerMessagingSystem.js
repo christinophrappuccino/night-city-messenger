@@ -144,6 +144,9 @@ export function registerMessagingSystem(initializer) {
      * @param {string} [options.filter] — Force a specific filter tab ('inbox' | 'sent' | etc.)
      */
     ns.openInbox = (actorId, messageId, options = {}) => {
+      // Asked for before a character was picked (the phone button, through Character Select)
+      if (ns._openFilter && !options.filter) options = { ...options, filter: ns._openFilter };
+      ns._openFilter = null;
       const resolvedActorId = _resolveActorId(actorId);
       if (!resolvedActorId) return;
 
@@ -192,6 +195,11 @@ export function registerMessagingSystem(initializer) {
             viewer.currentPage = 1;
             viewer.selectedMessageId = messageId;
             viewer._cachedMessages = null; // force reload to pick up filter change
+            viewer.render(true);
+          } else if (options.filter) {
+            viewer.currentFilter = options.filter;
+            viewer.currentPage = 1;
+            viewer.selectedMessageId = null;
             viewer.render(true);
           }
           return viewer;
@@ -305,6 +313,8 @@ export function registerMessagingSystem(initializer) {
         toActorId: options.toActorId ?? null,
         toContactId: options.toContactId ?? null,
         to: options.to ?? null,
+        recipients: options.recipients ?? null,
+        scheduled: options.scheduled ?? null,
         subject: options.subject ?? '',
         body: options.body ?? '',
         priority: options.priority ?? 'normal',
@@ -440,6 +450,12 @@ export function registerMessagingSystem(initializer) {
         console.error('NCM | Failed to open character select:', err);
         ui.notifications.error('NCM | Failed to open character select. Check console.');
       }
+    };
+
+    /** The scene-control phone button: the same way in as the inbox, landing on the Calls tab. */
+    ns.openPhone = async () => {
+      ns._openFilter = 'calls';
+      await ns.openNCM();
     };
 
     /**

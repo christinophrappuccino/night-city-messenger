@@ -44,6 +44,7 @@ export class ContactShareDialog extends BaseApplication {
     includePortrait: true,
     includeNotes: false,
     includeTags: true,
+    send: 'both',
   };
 
   /** @type {boolean} Whether a share operation is in progress */
@@ -76,6 +77,7 @@ export class ContactShareDialog extends BaseApplication {
     actions: {
       toggleRecipient:  ContactShareDialog._onToggleRecipient,
       toggleOption:     ContactShareDialog._onToggleOption,
+      setSend:          ContactShareDialog._onSetSend,
       sendDataDrop:     ContactShareDialog._onSendDataDrop,
       cancelShare:      ContactShareDialog._onCancelShare,
     },
@@ -116,6 +118,7 @@ export class ContactShareDialog extends BaseApplication {
       ? 'Encrypted · ICE active'
       : [
           this.contact.email,
+          this.contact.phone,
           this.contact.role?.toUpperCase(),
           this.contact.organization,
         ].filter(Boolean).join(' · ');
@@ -152,6 +155,12 @@ export class ContactShareDialog extends BaseApplication {
       sending: this._sending,
       selectedCount: this.selectedRecipients.size,
       options: this.shareOptions,
+      // the choice only exists when the contact has both
+      sendChoices: !isEncrypted && this.contact.email && this.contact.phone ? [
+        { k: 'both', label: 'Email and number', icon: 'fa-address-card', help: 'They get both' },
+        { k: 'email', label: 'Just the email', icon: 'fa-envelope', help: 'They can write, but have no number to call' },
+        { k: 'number', label: 'Just the number', icon: 'fa-phone', help: 'They can call, but have no address to write to' },
+      ].map((c) => ({ ...c, on: this.shareOptions.send === c.k })) : null,
     };
   }
 
@@ -183,6 +192,12 @@ export class ContactShareDialog extends BaseApplication {
     if (!option || !(option in this.shareOptions)) return;
 
     this.shareOptions[option] = !this.shareOptions[option];
+    this.render();
+  }
+
+  /** Email, number or both. */
+  static _onSetSend(event, target) {
+    this.shareOptions.send = target.dataset.send || 'both';
     this.render();
   }
 

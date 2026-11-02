@@ -60,6 +60,15 @@ const _openPrompts = new Map();
  *   (the "GM stepped into the run" indicator). Player path only.
  * @returns {{ promise: Promise<{choiceId:string,label:string,tone:string,ok:boolean,total:number|null}|{cancelled:true}>, withdraw: () => void }}
  */
+/**
+ * What a toast says about the roll. When the GM called it there was no roll: a verdict's total exists only so the
+ * ladder maths works, and must never be shown as one.
+ */
+export function rolledNote(res, dv = null) {
+  if (res?.adjudicated) return '';
+  return ` (rolled ${res?.total ?? '?'}${dv != null ? ` vs DV ${dv}` : ''})`;
+}
+
 export function requestNetAdjudication(o = {}) {
   const choices = (Array.isArray(o.choices) && o.choices.length ? o.choices : DEFAULT_NET_CHOICES)
     .map(c => ({ ...c }));

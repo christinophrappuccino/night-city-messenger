@@ -8,6 +8,10 @@
  *   ready/126  → game.nightcity launchers (placeCall, openCalls)
  */
 
+import { OverheardService } from '../services/OverheardService.js';
+import { OverheardHud } from '../ui/Calls/OverheardHud.js';
+import { EmergencyService, wireEmergency } from '../services/EmergencyService.js';
+import { EmergencyHud } from '../ui/Calls/EmergencyHud.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 import { CallService } from '../services/CallService.js';
@@ -35,6 +39,19 @@ export function registerCallSystem(initializer) {
     const hud = new CallHud(service);
     hud.init();
     game.nightcity.callHud = hud;
+    const emergency = new EmergencyService();
+    game.nightcity.emergencyService = emergency;
+    game.nightcity.emergencyHud = new EmergencyHud(emergency, service);
+    wireEmergency(emergency);
+    const overheard = new OverheardService();
+    game.nightcity.overheardService = overheard;
+    game.nightcity.overheardHud = new OverheardHud(overheard, service);
+    overheard.wire();
+    game.nightcity.socketManager.register(SOCKET_OPS.CALL_OVERHEARD, (data, sender) => overheard.handleSocket(data, sender));
+    game.nightcity.socketManager.register(SOCKET_OPS.CALL_EMERGENCY, (data, sender) => emergency.handleSocket(data, sender).catch((e) => log.warn(`Emergency: ${e.message}`)));
+    Hooks.on('deleteActor', (actor) => service.retireOwner({ actorId: actor.id, why: 'Character deleted' }));
+    // a terminal that is deleted gives its number back to the retired list
+    Hooks.on('deleteItem', (item) => { if (game.users.activeGM?.id === game.user.id && service.lineOfItem(item.uuid)) service.setTerminalNumber(item, { number: null }); });
 
     const sm = game.nightcity.socketManager;
     sm.register(SOCKET_OPS.CALL, (data, sender) => service.handleSocket(data, sender));

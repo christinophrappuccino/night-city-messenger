@@ -55,7 +55,7 @@ export function runUploadConsole({ programs = [], accounts = [], terminalName = 
     const rows = programs.map((p, i) => {
       const fam = famOf(p);
       const soon = !!p.disabled;
-      const dvLabel = `${fam.dv} ${Number(p.uploadDV) || 15}`;
+      const dvLabel = `${fam.dv} ${Number(p.uploadDV) || 9}`;
       return `
         <button type="button" class="ncm-upcon__item${soon ? ' is-soon' : ''}" data-up-idx="${i}" style="--i:${i}"${soon ? ' disabled' : ''}>
           <span class="ncm-upcon__ico ncm-upcon__ico--${fam.cls}"><i class="fas ${fam.icon}"></i></span>

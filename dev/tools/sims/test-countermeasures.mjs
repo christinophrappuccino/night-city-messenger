@@ -19,7 +19,7 @@ const imp = (p) => import(pathToFileURL(`${ROOT}/${p}`).href);
 // ═══ 1. Pure rules ═══
 const C = await imp('scripts/utils/countermeasures.js');
 const d = C.sanitizeCmvConfig(undefined);
-ok(d.mode === 'open' && d.hideDV === true && d.scan.dv === 15 && d.scan.identifyBy === 5, 'defaults: open, scan DV 15, identify by 5, hide DV on');
+ok(d.mode === 'open' && d.hideDV === true && d.scan.dv === 9 && d.scan.identifyBy === 5, 'defaults: open, scan DV 9, identify by 5, hide DV on');
 ok(C.sanitizeCmvConfig({ mode: 'nonsense' }).mode === 'open', 'unknown mode → open');
 const s = C.sanitizeCmvConfig({ mode: 'both', scan: { skills: ['Interface', 'Interface', ''], dv: 99, identifyBy: -3 }, expert: { skills: [{ name: 'Interface', min: 40 }, { name: '' }], roles: ['Netrunner'] } });
 ok(s.scan.skills.length === 1 && s.scan.dv === 40 && s.scan.identifyBy === 0, 'scan skills de-duped, DVs clamped');

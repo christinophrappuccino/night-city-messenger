@@ -26,6 +26,9 @@
 .ncm-tmtabs__out:hover { color: var(--ncm-primary); }
 .ncm-tmtty__lnk { color: var(--ncm-primary); cursor: pointer; text-decoration: underline dotted; }
 .ncm-tmtabs__tab { position: relative; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); letter-spacing: 2px; text-transform: uppercase; color: var(--ncm-text-secondary); padding: 8px 16px 7px; cursor: pointer; white-space: nowrap; clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); background: color-mix(in srgb, var(--ncm-text-primary) 4%, transparent); border-top: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); transition: background var(--ncm-term-fast) ease, color var(--ncm-term-fast) ease; }
+/* clip-path takes the border with the corner, so each cut draws its own line, in the border's colour and inside the cut. */
+.ncm-tmtabs__tab::before { content: ''; position: absolute; top: 7px; left: 0; width: 11.32px; height: 0; border-top: 1px solid; border-top-color: inherit; transform-origin: 0 0; transform: rotate(-45deg); pointer-events: none; }
+.ncm-tmtabs__tab.is-on::before { display: none; }
 .ncm-tmtabs__tab:hover { color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-text-primary) 8%, transparent); }
 .ncm-tmtabs__tab i { margin-right: 6px; }
 .ncm-tmtabs__tab b { font-weight: 400; opacity: .7; margin-left: 6px; }
@@ -38,6 +41,7 @@
 .ncm-tmtabs__rows { flex: 1; min-height: 0; }
 /* the row skeleton from terminal.css applies; the tabs skin cuts its corner */
 .ncm-tmtabs__rows .ncm-term__row { clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); border-radius: 0; }
+.ncm-tmtabs__rows .ncm-term__row::before { content: ''; position: absolute; right: -1px; bottom: 7px; width: 11.32px; height: 0; border-bottom: 1px solid; border-bottom-color: inherit; transform-origin: 100% 100%; transform: rotate(-45deg); pointer-events: none; }
 .ncm-tmtabs__detail { min-width: 0; }
 @container (max-width: 640px) { .ncm-tmtabs__panes { grid-template-columns: 1fr; } .ncm-tmtabs__list { display: none; } }
 

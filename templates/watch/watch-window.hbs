@@ -1,0 +1,16 @@
+<div class="ncm-watch">
+  <div class="ncm-watch__bar">
+    <i class="fas fa-eye" aria-hidden="true"></i>
+    <span>Watching <b>{{who}}</b> on <b>{{what}}</b></span>
+    <div class="ncm-watch__zoom" role="group" aria-label="Text size">
+      <button type="button" data-watch-zoom="out" aria-label="Smaller text" data-tooltip="Smaller text"><i class="fas fa-minus" aria-hidden="true"></i></button>
+      <button type="button" data-watch-zoom="fit" class="ncm-watch__zoomv">100%</button>
+      <button type="button" data-watch-zoom="in" aria-label="Bigger text" data-tooltip="Bigger text"><i class="fas fa-plus" aria-hidden="true"></i></button>
+    </div>
+    <em>read-only</em>
+  </div>
+  <div class="ncm-watch__note" data-watch-note hidden></div>
+  <div class="ncm-watch__fit" data-watch-fit>
+    <div class="ncm-watch__wait"><i class="fas fa-satellite-dish" aria-hidden="true"></i> Waiting for their screen…</div>
+  </div>
+</div>

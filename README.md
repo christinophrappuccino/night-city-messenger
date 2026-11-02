@@ -26,6 +26,7 @@ Every PC gets a diegetic **Agent** — a themed in-fiction phone/inbox — and t
 ### Networks
 - Scene-based network availability, dead zones, signal strength — the Agent only sees what's reachable.
 - Secured networks with password / skill-check / key-item auth (AND/OR logic), lockouts, and Black ICE that bites on failure.
+- **Phone calls**: numbers built on the setting's own format, a dial pad, voicemail and call logs. Corporations with switchboards, special numbers, Trauma Team and Lawman Backup calls, and overheard calls players can catch.
 - **Network nodes**: routers, relays and masts on the map carry a network into a scene. Switch one off, jam it, or let a netrunner **jack in** (a skill roll, then moves by rank): tap the traffic, open a backdoor, plant a worm, a blackout bomb or a sniffer, sweep for what others left. The GM's node inspector shows everything on a node and plants quest infections of their own.
 
 ### Data Shards

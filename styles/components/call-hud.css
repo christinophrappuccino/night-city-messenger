@@ -69,9 +69,10 @@
 .ncm-ch-arcs { position: relative; width: 34px; height: 58px; margin-left: -6px; }
 .ncm-ch-arcs .a { position: absolute; left: -18px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%;
   border: 3.2px solid transparent; border-right-color: var(--bc); filter: drop-shadow(0 0 4px var(--bc)); opacity: 0; animation: ncm-ch-arc 2s ease-out infinite; }
-.ncm-ch-arcs .a:nth-child(2) { animation-delay: .66s; } .ncm-ch-arcs .a:nth-child(3) { animation-delay: 1.33s; }
+/* Negative delays: the pulses are already spread out when the arcs appear, so none of them arrives late. */
+.ncm-ch-arcs .a:nth-child(2) { animation-delay: -1.34s; } .ncm-ch-arcs .a:nth-child(3) { animation-delay: -.67s; }
 .ncm-ch-badge.is-ring .ncm-ch-arcs .a { animation-duration: 1.1s; }
-.ncm-ch-badge.is-ring .ncm-ch-arcs .a:nth-child(2) { animation-delay: .37s; } .ncm-ch-badge.is-ring .ncm-ch-arcs .a:nth-child(3) { animation-delay: .73s; }
+.ncm-ch-badge.is-ring .ncm-ch-arcs .a:nth-child(2) { animation-delay: -.73s; } .ncm-ch-badge.is-ring .ncm-ch-arcs .a:nth-child(3) { animation-delay: -.37s; }
 .ncm-ch-badge.is-end .ncm-ch-arcs, .ncm-ch-badge.is-held .ncm-ch-arcs { display: none; }
 @keyframes ncm-ch-arc { 0% { transform: translateX(4px) scale(.5); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateX(26px) scale(1.5); opacity: 0; } }
 
@@ -136,7 +137,7 @@
 @keyframes ncm-ch-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
 .ncm-ch-badge.is-in .ncm-ch-dial > i { animation: ncm-ch-pop .35s .3s cubic-bezier(.2,1.4,.4,1) both; }
 @keyframes ncm-ch-pop { from { transform: scale(0); opacity: 0; } }
-.ncm-ch-badge.is-in .ncm-ch-arcs { animation: ncm-ch-rowin .3s .5s ease-out both; }
+.ncm-ch-badge.is-in .ncm-ch-arcs { animation: ncm-ch-rowin .3s .15s ease-out both; }
 .ncm-ch-badge.is-in .ncm-ch-chip { animation: ncm-ch-chipin .45s .22s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes ncm-ch-chipin { from { clip-path: polygon(0 0, 0 0, 0 10px, 0 100%, 0 100%, 0 calc(100% - 10px)); } to { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); } }
 .ncm-ch-chip::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #fff; box-shadow: 0 0 10px var(--bc); opacity: 0; }
@@ -151,6 +152,7 @@
 @keyframes ncm-ch-imgin { 0% { opacity: 0; filter: brightness(2.6) saturate(0); } 40% { opacity: 1; } 100% { opacity: 1; filter: none; } }
 /* out */
 .ncm-ch-call.is-out .ncm-ch-txt > :not(.ncm-ch-badge) { animation: ncm-ch-rowout .2s ease-in both; }
+.ncm-ch-call.is-out .ncm-ch-arcs { animation: ncm-ch-rowout .15s ease-in both; }
 .ncm-ch-call.is-out .ncm-ch-chip { animation: ncm-ch-chipout .32s .3s cubic-bezier(.6,0,.8,.2) both; }
 @keyframes ncm-ch-chipout { from { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); } to { clip-path: polygon(0 0, 0 0, 0 10px, 0 100%, 0 100%, 0 calc(100% - 10px)); } }
 .ncm-ch-call.is-out .ncm-ch-dial { animation: ncm-ch-dialout .45s .2s cubic-bezier(.6,0,.8,.2) both; }
@@ -302,3 +304,24 @@
 .ncm-ch-say.is-dict.is-err .state { color: var(--ch-bad); font-style: normal; white-space: normal; }
 .ncm-ch-say.is-dict .interim { color: #c9ccd2; opacity: .8; overflow: hidden; text-overflow: ellipsis; }
 @media (prefers-reduced-motion: reduce) { .ncm-ch-say.is-dict.is-on button.ncm-ch-mic:not(.is-type) { animation: none; } }
+
+/* Line types (PHONE-REVISION.md §6): the dial's timing, the company under the name, initials when there is no portrait. Nothing else changes per type. */
+.ncm-ch-call[data-ring="slow"] .ncm-ch-brk { animation-duration: 7s; }
+.ncm-ch-call[data-ring="slow"] .ncm-ch-arcs .a { animation-duration: 2.2s; }
+.ncm-ch-call[data-ring="fast"] .ncm-ch-brk { animation-duration: 1.5s; }
+.ncm-ch-call[data-ring="fast"] .ncm-ch-arcs .a { animation-duration: .7s; }
+.ncm-ch-call[data-ring="flicker"] .ncm-ch-dial { animation: ncm-ch-flicker 2.6s steps(1) infinite; }
+@keyframes ncm-ch-flicker { 0%, 100% { opacity: 1; } 9% { opacity: .35; } 12% { opacity: 1; } 47% { opacity: .55; } 50% { opacity: 1; } 53% { opacity: .3; } 56% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ncm-ch-call[data-ring] .ncm-ch-brk, .ncm-ch-call[data-ring] .ncm-ch-arcs .a, .ncm-ch-call[data-ring="flicker"] .ncm-ch-dial { animation: none; } }
+.ncm-ch-org { display: inline-flex; align-items: center; gap: 6px; font: 700 13px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-ch-org img { width: 16px; height: 16px; border: 0; object-fit: contain; }
+.ncm-ch-ini { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--ch-live) 16%, var(--ch-ground, var(--ncm-bg-deep))), var(--ch-ground, var(--ncm-bg-deep)) 68%); }
+.ncm-ch-ini b { position: relative; z-index: 1; font: 800 30px var(--ncm-font-display, sans-serif); letter-spacing: .04em; color: var(--ncm-text-heading); text-shadow: 0 0 12px var(--ch-live); }
+.ncm-ch-ini .sw { position: absolute; left: 50%; top: 48%; width: 78%; aspect-ratio: 1; margin: 0; translate: -50% -50%; animation: ncm-ch-breathe 3.4s ease-in-out infinite alternate; }
+.ncm-ch-ini .tr, .ncm-ch-ini .dot { position: absolute; inset: 0; animation: ncm-ch-swirl 1.9s cubic-bezier(.45, .05, .55, .95) infinite; }
+.ncm-ch-ini .tr { border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 22%, color-mix(in srgb, var(--ch-live) 75%, transparent) 50%, transparent 50% 72%, color-mix(in srgb, var(--ch-live) 75%, transparent) 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); }
+.ncm-ch-ini .dot::before { content: ''; position: absolute; left: 50%; top: 0; width: 7px; height: 7px; margin: -2px 0 0 -3.5px; border-radius: 50%; background: var(--ch-live); box-shadow: 0 0 8px 2px var(--ch-live); }
+.ncm-ch-ini .dot.b::before { top: auto; bottom: 0; margin: 0 0 -2px -3.5px; }
+@keyframes ncm-ch-swirl { to { transform: rotate(360deg); } }
+@keyframes ncm-ch-breathe { from { scale: .84; } to { scale: 1.04; } }
+@media (prefers-reduced-motion: reduce) { .ncm-ch-ini .sw, .ncm-ch-ini .tr, .ncm-ch-ini .dot { animation: none; } }

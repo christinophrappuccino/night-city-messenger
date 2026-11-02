@@ -297,3 +297,10 @@
   font-size: 14px;
   color: var(--ncm-text-muted, #555570);
 }
+
+/* ═══ What to send: email, number or both ═══ */
+.ncm-app .ncm-share__send { display: flex; gap: 4px; padding: 8px 0 0; }
+.ncm-app .ncm-share__send button { appearance: none; flex: 1 1 0; min-width: 0; width: auto !important; height: calc(28px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 0 !important; padding: 0 6px !important; display: inline-flex; align-items: center; justify-content: center; gap: 5px; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; box-shadow: none !important; font: 600 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); color: var(--ncm-text-secondary); white-space: nowrap; cursor: pointer; }
+.ncm-app .ncm-share__send button i { margin: 0; font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-share__send button:hover { border-color: var(--ncm-border-active, var(--ncm-secondary)) !important; color: var(--ncm-text-primary); }
+.ncm-app .ncm-share__send button.is-on { background: color-mix(in srgb, var(--ncm-secondary) 16%, var(--ncm-bg-elevated)) !important; border-color: var(--ncm-secondary) !important; color: var(--ncm-text-primary); }

@@ -163,7 +163,7 @@ export class MessageAccessService {
         keyItem: !!(ac.bypassable && ac.bypass?.allowKeyItem),
       },
       bypassSkills: ac.bypass?.bypassSkills ?? [],
-      bypassDC: ac.bypass?.bypassDC ?? 15,
+      bypassDC: ac.bypass?.bypassDC ?? 9,
       keyItemName: ac.bypass?.keyItemName ?? null,
       hackAttempts: session?.hackAttempts ?? 0,
       maxAttempts: DEFAULT_MAX_ATTEMPTS,
@@ -237,11 +237,13 @@ export class MessageAccessService {
       dc,
       flavor: 'Message Access Bypass',
       context: 'ncm-message-bypass',
+      ask: { title: 'Bypassing the network lock', host: reveal?.host || null },
       // The caller's window plays the Roll Reveal; this service still plays the
       // outcome sound, so the reveal only spins.
       reveal: reveal ? { verdictSound: false, ...reveal } : null,
     });
 
+    if (result?.cancelled) return { success: false, cancelled: true };
     if (result?.success) {
       await this._recordBypass(actor.id, messageId, 'skill');
       this.soundService?.play('hack-success');

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Emergency probe</title>
+<!--
+  The REAL Trauma Team and Backup screens: real EmergencyHud + CallHud over the real stylesheets, body-mounted as in Foundry.
+  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/emergency-probe.html
+  ?k=trauma|backup|arrive-tt|arrive-bk|normal  &beat=0..4  &art=<image path>  &auto=1  &w=<px>
+-->
+<link rel="stylesheet" href="/_vendor/foundry2.css">
+<link rel="stylesheet" href="/_vendor/cpr.css">
+<link rel="stylesheet" href="/_vendor/fa/css/all.min.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  html, body { height: 100% !important; overflow: hidden !important; }
+  body { margin: 0; background: #2a2d33 linear-gradient(135deg, #2c3038, #1d1f24) !important; }
+  #board { position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 99px, rgba(255,255,255,.05) 99px 100px), repeating-linear-gradient(90deg, transparent 0 99px, rgba(255,255,255,.05) 99px 100px); }
+  #side { position: fixed; top: 0; right: 0; bottom: 0; width: 300px; background: rgba(12, 13, 18, .9); }
+</style>
+</head>
+<body>
+<div id="board"></div><div id="side"></div>
+<script type="module">
+  addEventListener('unhandledrejection', (e) => { document.title = 'ERR ' + (e.reason?.stack || e.reason); });
+  addEventListener('error', (e) => { document.title = 'ERR ' + e.message; });
+  const q = new URLSearchParams(location.search);
+  const art = q.get('art') || '';
+  const actor = { id: 'v1', name: 'Veronica', img: '', isOwner: true, system: { derivedStats: { hp: { value: 14, max: 40 } }, stats: { body: { value: 7 } } }, items: { contents: [{ type: 'role', name: 'Lawman', system: { rank: 5 } }, { type: 'role', name: 'Exec', system: { rank: 8 } }] }, testUserPermission: () => true };
+  const settings = { phoneEmergency: { trauma: { logo: art }, backup: { orgs: { ncpd: { name: 'NCPD', kind: 'Police', logo: art, rows: [{ r1: 1, r2: 7, name: 'NCPD Patrol Officers', logo: '' }] } }, chars: { v1: 'ncpd' } } }, phoneEmergencyActive: [], phoneSpecial: art ? [{ id: 'TRAUMA', num: 'TRAUMA', name: 'Trauma Team', img: art }] : undefined };
+  globalThis.game = {
+    user: { id: 'u1', isGM: false }, users: { activeGM: { id: 'gm' }, filter: () => [] }, combat: null,
+    actors: { get: () => actor, contents: [actor] }, scenes: { viewed: { id: 's1', name: 'Pacifica Docks' } },
+    settings: { get: (m, k) => { if (k in settings && settings[k] !== undefined) return settings[k]; throw new Error('none'); } },
+    nightcity: { socketManager: { emit() {}, register() {} }, masterContactService: { getContact: () => null, getAll: () => [] }, skillService: {}, timeService: { getCurrentTime: () => '2045-08-14T15:00:00.000Z' } },
+  };
+  globalThis.foundry = { utils: { mergeObject: (a, b) => ({ ...a, ...b }), randomID: () => 'x' + Math.random().toString(36).slice(2, 8) } };
+  globalThis.Hooks = { on() { return 1; }, off() {}, once() {}, call() {}, callAll() {} };
+  globalThis.ui = { notifications: { warn() {}, info() {}, error() {} } };
+  globalThis.Roll = class { constructor() { this.total = 3; } async evaluate() { return this; } };
+  globalThis.ChatMessage = { create: async () => ({}), getSpeaker: () => ({}) };
+
+  const { EmergencyService } = await import('../../scripts/services/EmergencyService.js');
+  const { EmergencyHud } = await import('../../scripts/ui/Calls/EmergencyHud.js');
+  const { CallHud } = await import('../../scripts/ui/Calls/CallHud.js');
+  const calls = { _net: () => ({ name: 'CitiNet', type: 'PUBLIC', strength: 78 }), _noSignal: () => false, homeCode: null };
+  const svc = new EmergencyService(); game.nightcity.emergencyService = svc;
+  const hud = new EmergencyHud(svc, calls); game.nightcity.emergencyHud = hud;
+  const beat = q.has('beat') ? Number(q.get('beat')) : null;
+  if (beat !== null) hud._beats = (list, on, jump) => { for (let i = 0; i <= Math.min(beat, jump); i++) on(i); };
+  const k = q.get('k') || 'trauma';
+  if (k === 'trauma') await hud.trauma(actor, actor, { preview: true, auto: !!q.get('auto') });
+  else if (k === 'backup') await hud.backup(actor, null, { preview: true });
+  else if (k === 'arrive-tt') hud.arrival({ kind: 'trauma', place: 'Pacifica Docks', sceneId: '' , img: art });
+  else if (k === 'arrive-bk') hud.arrival({ kind: 'backup', place: 'Pacifica Docks', org: 'NCPD', group: 'NCPD Patrol Officers', sceneId: '', img: art });
+  else if (k === 'normal') {
+    const fake = { calls: new Map(), usableModes: [], offeredModes: [], modeFor: () => 'loud', _get: (x, d) => d };
+    const h = new CallHud(fake); h._other = (c) => c.from;
+    const now = Date.now(), call = { id: 'n', from: { name: 'Rogue', number: 'WAT-3313', img: '', known: true }, to: { name: '', number: '' }, net: calls._net(), mode: 'loud', state: 'live', startedAt: now - 9000, answeredAt: now - 8000 };
+    const box = document.createElement('div'); box.className = 'ncm-call-hud'; box.innerHTML = `<div class="ncm-ch-stage">${h._callHtml({ call, role: 'caller' }, {})}</div>`; document.body.appendChild(box);
+  }
+  if (q.get('still')) { const st = document.createElement('style'); st.textContent = '*, *::before, *::after { animation: none !important; transition: none !important; }'; document.head.appendChild(st); }
+  document.title = 'ready';
+</script>
+</body>
+</html>

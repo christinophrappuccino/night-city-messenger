@@ -313,6 +313,38 @@ export class MacroAPI {
     };
 
     // ── Contact groups ──
+    /** The number a character (by id or name) answers on, or ''. */
+    ns.messenger.getNumber = (actorIdOrName) => {
+      const a = game.actors?.get(actorIdOrName) || game.actors?.getName?.(actorIdOrName);
+      return a ? (game.nightcity?.callService?.numberOf(a.id) || '') : '';
+    };
+    /** GM: give a character (by id or name) a number. The old one retires. */
+    ns.messenger.giveNumber = async (actorIdOrName, number) => {
+      const a = game.actors?.get(actorIdOrName) || game.actors?.getName?.(actorIdOrName);
+      if (!a) return { ok: false, error: 'No such character.' };
+      return game.nightcity?.callService?.assignNumber({ actorId: a.id, number, why: 'Given by a macro.' });
+    };
+
+    /**
+     * Place a call. As the user's character by default; a GM can call as anyone with { actorId } or { contactId }.
+     * @returns {Promise<{ok: boolean, error?: string}>}
+     */
+    ns.messenger.placeCall = async (number, as = {}) => {
+      if (!game.nightcity?.placeCall) return { ok: false, error: 'Calls are not available.' };
+      return game.nightcity.placeCall(number, as) ?? { ok: false };
+    };
+    /** GM: the written overheard calls, for a macro to pick from. */
+    ns.messenger.getOverheardCalls = () => (isGM() ? (game.nightcity?.overheardService?.scripts?.() || []).map((c) => ({ id: c.id, name: c.name })) : []);
+    /** GM: start a written overheard call, by id or name. */
+    ns.messenger.startOverheardCall = (idOrName) => {
+      if (!isGM()) return { ok: false, error: 'GM only' };
+      const svc = game.nightcity?.overheardService, list = svc?.scripts?.() || [];
+      const script = list.find((c) => c.id === idOrName) || list.find((c) => String(c.name).toLowerCase() === String(idOrName).toLowerCase());
+      if (!script) return { ok: false, error: 'No overheard call by that name.' };
+      const run = svc.start(script);
+      return run ? { ok: true, runId: run.id } : { ok: false, error: 'It could not start.' };
+    };
+
     /** Groups a character can send to (its own + the GM's when called by the GM). */
     ns.messenger.getContactGroups = (actorIdOrName = null) => {
       const actorId = actorIdOrName ? MacroAPI._resolveActorId(actorIdOrName) : null;

@@ -17,8 +17,10 @@
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, netVerbFor } from '../../utils/helpers.js';
 import { runSecurityConsole } from './SecurityConsole.js';
+import { rolledNote } from './NetResolve.js';
 import { runBankHeist } from './BankHeist.js';
 import { grantPtzControl } from './ContentRenderers.js';
+import { showNamePicker } from '../../utils/namePicker.js';
 
 const DEFAULT_SIPHON_SKILL = 'Interface';
 const DEFAULT_SIPHON_DV = 15;
@@ -117,7 +119,7 @@ export async function runSiphon({ actor, raw, itemUuid, messageId, host = null }
       }
     }
     await _persistSiphon({ outcome: 'fail', itemUuid, messageId, amount, currency, actorName: who, accountLabel });
-    ui.notifications.warn(`NCM | Siphon failed — trace fired (rolled ${res.total ?? '?'} vs DV ${usedDV}).${frozen ? ' The account is now FROZEN.' : ''}`);
+    ui.notifications.warn(`NCM | Siphon failed — trace fired${rolledNote(res, usedDV)}.${frozen ? ' The account is now FROZEN.' : ''}`);
   }
 }
 
@@ -271,11 +273,11 @@ export async function runEddiesClaim({ actor, raw, messageId, sourceLabel = 'dat
     title: 'Claim Eddies', icon: 'fas fa-sack-dollar', accent: 'gold', host,
     intro: `Transfer ${amount.toLocaleString()} eddies from ${sourceLabel} into your account? This can't be undone.`,
     confirmLabel: 'Claim',
-    gate: gated ? { require: true, skill: cd.claimSkill || 'Interface', dv: Number(cd.claimDV) || 15, actor, context: `Claim: ${sourceLabel}`, flavor: `Eddies Claim // DV ${Number(cd.claimDV) || 15}`, net: { verb: 'Control', action: 'claim' } } : null,
+    gate: gated ? { require: true, skill: cd.claimSkill || 'Interface', dv: Number(cd.claimDV) || 9, actor, context: `Claim: ${sourceLabel}`, flavor: `Eddies Claim // DV ${Number(cd.claimDV) || 9}`, net: { verb: 'Control', action: 'claim' } } : null,
     successLabel: 'FUNDS RELEASED', failLabel: 'CLAIM BLOCKED',
   });
   if (res.cancelled) return null;
-  if (gated && !res.ok) { ui.notifications.warn(`NCM | Claim failed (rolled ${res.total ?? '?'}).`); return null; }
+  if (gated && !res.ok) { ui.notifications.warn(`NCM | Claim failed${rolledNote(res)}.`); return null; }
 
   await _creditWealth(actor, amount, `NCM: Claimed ${amount.toLocaleString()} eb from ${sourceLabel}`);
   const iso = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
@@ -327,7 +329,7 @@ export async function runCrack({ actor, raw, entryIndex, messageId, force = fals
       successLabel: 'KEY EXPOSED', failLabel: 'CRACK FAILED',
     });
     if (res.cancelled) return false;
-    if (!res.ok) { ui.notifications.warn(`NCM | Crack failed (rolled ${res.total ?? '?'} vs DV ${dv}).`); return false; }
+    if (!res.ok) { ui.notifications.warn(`NCM | Crack failed${rolledNote(res, dv)}.`); return false; }
   }
 
   const newEntries = entries.map((x, i) => (i === entryIndex ? { ...x, cracked: true } : x));
@@ -470,7 +472,7 @@ export async function runContentUnlock({ actor, raw, kind, index = -1, messageId
     });
     if (res.cancelled) return false;
     if (!res.ok) {
-      ui.notifications.warn(`NCM | The seal held (rolled ${res.total ?? '?'} vs DV ${dv}).`);
+      ui.notifications.warn(`NCM | The seal held${rolledNote(res, dv)}.`);
       // Optional consequence: the seal is booby-trapped (`traceOnFail`).
       if (traceFlag ?? cd.traceOnFail) _fireUnlockTrace(actor, label, messageId);
       return false;
@@ -533,7 +535,7 @@ export async function runCamAction({ actor, raw, index, act, messageId, host = n
   // ── TAKE CONTROL — PTZ head hijack, session-only (no persistence). ──
   if (act === 'control') {
     if (gm) { grantPtzControl(messageId, index); return true; }
-    const dv = Number(img.controlDV) || 15;
+    const dv = Number(img.controlDV) || 9;
     if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return false; }
     const res = await runSecurityConsole({
       title: 'Take Control', icon: 'fas fa-satellite-dish', accent: 'amber', host,
@@ -543,7 +545,7 @@ export async function runCamAction({ actor, raw, index, act, messageId, host = n
     });
     if (res.cancelled) return false;
     if (!res.ok) {
-      ui.notifications.warn(`NCM | The camera head refused (rolled ${res.total ?? '?'} vs DV ${dv}).`);
+      ui.notifications.warn(`NCM | The camera head refused${rolledNote(res, dv)}.`);
       if (cd.traceOnFail) _fireUnlockTrace(actor, `the ${label} camera`, messageId);
       return false;
     }
@@ -588,7 +590,7 @@ export async function runCamAction({ actor, raw, index, act, messageId, host = n
   if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return false; }
   if (!game.nightcity?.skillService) { ui.notifications.error('NCM | Skill service unavailable.'); return false; }
   const isLoop = act === 'loop';
-  const dv = isLoop ? (Number(img.loopDV) || 15) : (Number(img.cutDV) || 18);
+  const dv = isLoop ? (Number(img.loopDV) || 9) : (Number(img.cutDV) || 12);
   const res = await runSecurityConsole({
     title: isLoop ? 'Loop Camera' : 'Cut Feed',
     icon: isLoop ? 'fas fa-rotate' : 'fas fa-scissors', accent: isLoop ? 'amber' : 'red', host,
@@ -600,7 +602,7 @@ export async function runCamAction({ actor, raw, index, act, messageId, host = n
   });
   if (res.cancelled) return false;
   if (!res.ok) {
-    ui.notifications.warn(`NCM | The intrusion was flagged (rolled ${res.total ?? '?'} vs DV ${dv}).`);
+    ui.notifications.warn(`NCM | The intrusion was flagged${rolledNote(res, dv)}.`);
     if (cd.traceOnFail) _fireUnlockTrace(actor, `the ${label} camera`, messageId);
     return false;
   }
@@ -652,7 +654,7 @@ export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 't
   const gated = !!cd.deployRequire && !!actor;
   // A program on a damaged shard runs UNSTABLE (IntegrityModel.unstableFor):
   // a gated run is harder, and any run may misfire.
-  const deployDV = (Number(cd.deployDV) || 15) + (unstable?.dvPenalty || 0);
+  const deployDV = (Number(cd.deployDV) || 9) + (unstable?.dvPenalty || 0);
   const unstableNote = unstable ? ` The file is damaged — ${unstable.misfire}% chance it misfires.` : '';
   const res = await runSecurityConsole({
     title: 'Deploy Malware', icon: 'fas fa-biohazard', accent: 'red', host,
@@ -696,7 +698,7 @@ export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 't
   // with no effect (or `adjudicate`) keeps the GM-adjudicate alert exactly as
   // before, so nothing existing changes behavior.
   const effectType = cd.effect?.type;
-  const hasEffect = !!effectType && effectType !== 'adjudicate';
+  const hasEffect = !!effectType && (effectType !== 'adjudicate' || !!cd.effect?.macroId);
   if (hasEffect) {
     if (isGM()) {
       await applyMalwareEffect({ messageId, actorId: actor?.id || null });
@@ -708,7 +710,7 @@ export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 't
   } else {
     await persistContentData(messageId,
       { ...cd, deployed: true, deployedBy: actor?.id || null, deployedAt: iso },
-      `NCM | ${actor?.name || 'Someone'} deployed "${name}" (${sourceLabel}) — adjudicate its effect.`);
+      `NCM | ${actor?.name || 'Someone'} deployed "${name}" (${sourceLabel}) — adjudicate its effect.${cd.description ? ` ${cd.description}` : ''}`);
   }
   game.nightcity?.soundService?.play('hack-success');
   game.nightcity?.traceService?.logSuccess({ actor, action: 'malware', source: name, objectName: sourceLabel, targetMessageId: messageId, severity: 'hostile' });
@@ -735,7 +737,7 @@ export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 't
 //      them to done at expiry and restores reversible ones (jammer → uplink).
 
 const DEFAULT_EXEC_SKILL = 'Interface';
-const DEFAULT_EXEC_DV = 15;
+const DEFAULT_EXEC_DV = 9;
 
 /**
  * Execute a PAYLOAD (client entry point). Rolls the optional gate, then applies
@@ -754,6 +756,16 @@ export async function runPayloadExecute({ actor, raw, messageId, sourceLabel = '
   const dv = (Number(cd.executeDV) || DEFAULT_EXEC_DV) + (unstable?.dvPenalty || 0);
   const fxLabel = _payloadEffectName(cd.effect?.type);
   const unstableNote = unstable && !force ? ` The file is damaged — ${unstable.misfire}% chance it misfires.` : '';
+
+  // Wipe / Corrupt go after files chosen now, on the host they are running on.
+  let targets = null;
+  if (TARGETED_VERBS.includes(cd.effect?.type) && !cd.effect?.params?.messageIds?.length) {
+    const page = _findPayloadPage(messageId)?.page;
+    const hostItem = page ? _resolvePayloadHost(page) : null;
+    if (!hostItem) { ui.notifications.warn('NCM | This program has nothing to run on.'); return null; }
+    targets = await pickHostFiles(hostItem, { verb: cd.effect.type, accountId: page.flags?.[MODULE_ID]?.accountId || null, excludeId: messageId });
+    if (!targets) return null;
+  }
 
   let outcome = 'success';
   if (force || (!gated)) {
@@ -783,10 +795,10 @@ export async function runPayloadExecute({ actor, raw, messageId, sourceLabel = '
 
   // GM applies directly; a player relays the outcome (GM owns the host + journal).
   if (isGM()) {
-    await applyPayloadEffect({ messageId, actorId: actor?.id || null, outcome });
+    await applyPayloadEffect({ messageId, actorId: actor?.id || null, outcome, targets });
   } else {
     game.nightcity?.socketManager?.emit(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, {
-      messageId, actorId: actor?.id || null, outcome, userId: game.user.id,
+      messageId, actorId: actor?.id || null, outcome, targets, userId: game.user.id,
     });
     ui.notifications.info(outcome === 'success' ? `NCM | ${name} sent to the host…` : `NCM | ${name} misfired…`);
   }
@@ -805,7 +817,7 @@ function _payloadEffectName(type) {
  * PAYLOAD_EFFECT_REQUEST socket handler for player runs.
  * @param {object} a { messageId, actorId, outcome:'success'|'fail' }
  */
-export async function applyPayloadEffect({ messageId, actorId, outcome }) {
+export async function applyPayloadEffect({ messageId, actorId, outcome, targets = null }) {
   if (!isGM() || !messageId) return;
   const found = _findPayloadPage(messageId);
   if (!found) { log.warn(`Payload: no journal page for ${messageId}`); return; }
@@ -827,7 +839,8 @@ export async function applyPayloadEffect({ messageId, actorId, outcome }) {
   const hostItem = _resolvePayloadHost(page);
   let report = '';
   try {
-    report = await _applyNativeEffect(effectType, { page, hostItem, actor, cd });
+    const runCd = targets?.length ? { ...cd, effect: { ...cd.effect, params: { ...cd.effect?.params, messageIds: targets } } } : cd;
+    report = await _applyNativeEffect(effectType, { page, hostItem, actor, cd: runCd });
   } catch (err) { log.error(`Payload effect "${effectType}" failed: ${err.message}`); }
 
   // Linked Macro (GM-run).
@@ -862,7 +875,32 @@ export async function applyPayloadEffect({ messageId, actorId, outcome }) {
 export async function handlePayloadEffectRequest(data) {
   if (!isGM()) return;
   if (data.kind === 'malware') { await applyMalwareEffect({ messageId: data.messageId, actorId: data.actorId }); return; }
-  await applyPayloadEffect({ messageId: data.messageId, actorId: data.actorId, outcome: data.outcome });
+  if (data.kind === 'uploadRun') { await applyUploadRun(data); return; }
+  await applyPayloadEffect({ messageId: data.messageId, actorId: data.actorId, outcome: data.outcome, targets: data.targets || null });
+}
+
+/**
+ * GM-side: a player pushed a program that changes the host (Icebreaker, Wipe, Corrupt, Backdoor, a custom routine).
+ * The host's journal and config are the GM's to write; the report goes back to the player as a whisper.
+ */
+export async function applyUploadRun({ itemUuid, effectType, params = {}, actorId, name = 'program', description = '', macroId = '', userId }) {
+  if (!isGM()) return '';
+  const hostItem = itemUuid ? await fromUuid(itemUuid) : null;
+  if (!hostItem) return '';
+  const actor = actorId ? game.actors?.get(actorId) : null;
+  let report = '';
+  try { report = await _applyNativeEffect(effectType, { page: null, hostItem, actor, cd: { description, effect: { type: effectType, params } } }); }
+  catch (err) { log.error(`Upload run "${effectType}" failed: ${err.message}`); }
+  if (macroId) {
+    try { await game.macros?.get(macroId)?.execute?.({ actor, item: hostItem }); }
+    catch (err) { log.error(`Upload run macro failed: ${err.message}`); }
+  }
+  _payloadGmAlert(`${actor?.name || 'Someone'} ran "${name}" on ${hostItem.name}${report ? ` — ${_stripTags(report)}` : ''}.`);
+  if (userId && !game.users?.get(userId)?.isGM) {
+    const safe = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    try { await ChatMessage.create({ whisper: [userId], speaker: { alias: name }, content: `<b>${safe(name)}</b> ran on <b>${safe(hostItem.name)}</b><br>${safe(_stripTags(report) || 'It ran. Nothing comes back.')}` }); } catch { /* the whisper is a bonus */ }
+  }
+  return report;
 }
 
 /**
@@ -990,8 +1028,8 @@ export async function runAnalyze({ actor, raw, contentType, messageId, host = nu
   // Reveals a secret before persisting  — pointless (and misleading)
   // if the write can't land.
   if (!canPersistContent()) return false;
-  const isDisguised = contentType === 'payload' && cd.disguised && !cd.sniffed;
-  const dv = Number(cd.sniffDV) || 15;
+  const isDisguised = (contentType === 'payload' || contentType === 'malware') && cd.disguised && !cd.sniffed;
+  const dv = Number(cd.sniffDV) || 9;
   const skill = cd.sniffSkill || DEFAULT_EXEC_SKILL;
 
   // GM with no character: force-reveal a disguise, else just report.
@@ -1009,7 +1047,8 @@ export async function runAnalyze({ actor, raw, contentType, messageId, host = nu
   });
   if (res.cancelled) return false;
   if (!res.ok) {
-    ui.notifications.info('NCM | The scan comes back inconclusive.');
+    // A disguised file shows what its cover says a scan should find.
+    ui.notifications.info(isDisguised && cd.coverScan ? `NCM | Scan: ${cd.coverScan}` : 'NCM | The scan comes back inconclusive.');
     // A booby-trapped disguise can bite a failed probe.
     if (isDisguised && cd.traceOnFail) _fireUnlockTrace(actor, 'a suspicious file', messageId);
     return false;
@@ -1030,7 +1069,7 @@ export async function runAnalyze({ actor, raw, contentType, messageId, host = nu
 export async function runPayloadSniff({ actor, raw, messageId, force = false, host = null }) {
   const cd = raw || {};
   if (!cd.disguised || cd.sniffed) { ui.notifications.info('NCM | Nothing unusual about this file.'); return false; }
-  const dv = Number(cd.sniffDV) || 15;
+  const dv = Number(cd.sniffDV) || 9;
   const skill = cd.sniffSkill || DEFAULT_EXEC_SKILL;
   if (force) {
     const res = await runSecurityConsole({ title: 'Force Reveal', icon: 'fas fa-mask', accent: 'purple', host, intro: 'Strip this file’s disguise without a roll?', confirmLabel: 'Reveal' });
@@ -1113,14 +1152,15 @@ function _resolvePayloadHost(page) {
  * still fires).
  */
 export async function _applyNativeEffect(type, { page, hostItem, actor, cd }) {
-  const journal = page?.parent;
+  // A run from an upload has no page of its own: it works on the host's journal.
+  const journal = page?.parent ?? (hostItem ? game.journal?.get(hostItem.getFlag?.(MODULE_ID, 'journalId')) : null);
   switch (type) {
     case 'icebreaker': {
       // Unseal every sibling typed entry in the same journal.
       if (!journal) return '';
       let unsealed = 0;
       for (const p of journal.pages.contents) {
-        if (p.id === page.id) continue;
+        if (p.id === page?.id) continue;
         const f = p.flags?.[MODULE_ID];
         const c = f?.contentData;
         if (!c || !f.contentType) continue;
@@ -1177,7 +1217,7 @@ export async function _applyNativeEffect(type, { page, hostItem, actor, cd }) {
       let wiped = 0;
       for (const id of ids) {
         const target = journal.pages.find(pg => pg.flags?.[MODULE_ID]?.messageId === id);
-        if (!target || target.id === page.id) continue; // never wipe the program itself
+        if (!target || target.id === page?.id) continue; // never wipe the program itself
         if (await _quarantinePage(target, { host: hostItem, actor })) wiped++;
       }
       return wiped ? `${wiped} file${wiped === 1 ? '' : 's'} wiped — recoverable from the recycle bin` : 'targets not found';
@@ -1190,11 +1230,11 @@ export async function _applyNativeEffect(type, { page, hostItem, actor, cd }) {
       if (!journal) return '';
       const ids = Array.isArray(cd.effect?.params?.messageIds) ? cd.effect.params.messageIds : [];
       if (!ids.length) return 'nothing targeted to corrupt';
-      const dv = Number(cd.effect?.params?.declassifyDV) || 15;
+      const dv = Number(cd.effect?.params?.declassifyDV) || 9;
       let done = 0, skipped = 0;
       for (const id of ids) {
         const target = journal.pages.find(pg => pg.flags?.[MODULE_ID]?.messageId === id);
-        if (!target || target.id === page.id) continue;   // never corrupt the program itself
+        if (!target || target.id === page?.id) continue;   // never corrupt the program itself
         const f = target.flags?.[MODULE_ID];
         const next = _corruptContentData(f?.contentType, f?.contentData, dv);
         if (next) { await target.update({ [`flags.${MODULE_ID}.contentData`]: next }); done++; }
@@ -1214,8 +1254,31 @@ export async function _applyNativeEffect(type, { page, hostItem, actor, cd }) {
       const res = await term.forgeBackdoorAccount(hostItem, { actor, params: cd.effect?.params || {} });
       return res?.success ? `forged backdoor "${res.username}" (${res.expiresLabel})` : `backdoor forge failed: ${res?.error || 'unknown'}`;
     }
-    default: return ''; // adjudicate — GM handles it via the alert
+    default: return cd?.description || ''; // adjudicate — GM handles it via the alert, with the GM's own words
   }
+}
+
+/** Verbs that need files picked on the target when they run. */
+export const TARGETED_VERBS = Object.freeze(['wipe', 'corrupt']);
+
+/**
+ * Pick the files a Wipe or Corrupt goes after, on the host, when it runs. Lists what this operator can reach on that
+ * host and never the program itself. @returns {Promise<string[]|null>} message ids; null = backed out
+ */
+export async function pickHostFiles(hostItem, { verb = 'wipe', accountId = null, excludeId = null } = {}) {
+  const term = game.nightcity?.terminalService;
+  const isTerm = term?.isTerminal?.(hostItem);
+  const list = isTerm
+    ? (accountId ? term.getAccountMessages(hostItem, accountId) : term.getAllMessages?.(hostItem)) || []
+    : (game.nightcity?.dataShardService?.getShardMessages?.(hostItem) || []);
+  const entries = list.filter((m) => (m.messageId ?? m.id) !== excludeId).map((m) => ({
+    id: m.messageId ?? m.id, name: m.file?.name || m.subject || m.contentData?.name || 'file',
+    img: 'icons/svg/book.svg', sub: m.contentType || 'message', group: m.envelope === 'file' ? 'Files' : 'Mail',
+  }));
+  if (!entries.length) { ui.notifications.warn('NCM | There is nothing here to go after.'); return null; }
+  const picked = await showNamePicker({ title: verb === 'wipe' ? 'What should it wipe?' : 'What should it corrupt?', entries, multi: true, admin: false, doneLabel: verb === 'wipe' ? 'Wipe these' : 'Corrupt these', placeholder: 'search files…' });
+  const ids = (Array.isArray(picked) ? picked : []).map((p) => p?.id ?? p).filter(Boolean);
+  return ids.length ? ids : null;
 }
 
 /**
@@ -1240,7 +1303,7 @@ function _corruptContentData(type, c, dv) {
   if (!changed) return null;
   out.declassify = true;
   out.declassified = false;
-  if (!Number(out.declassifyDV)) out.declassifyDV = Number(dv) || 15;
+  if (!Number(out.declassifyDV)) out.declassifyDV = Number(dv) || 9;
   return out;
 }
 

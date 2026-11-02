@@ -82,7 +82,7 @@ export function blankNetwork() {
     signalStrength: 75, reliability: 85,
     security: {
       level: 'NONE', requiresAuth: false, password: '', allowPassword: false, allowSkillCheck: false, authLogic: 'any',
-      bypassSkills: [], bypassDC: 15, bypassSkillDCs: {},
+      bypassSkills: [], bypassDC: 9, bypassSkillDCs: {},
       allowKeyItem: false, keyItemName: '', keyItemTag: '', keyItemImg: '', keyItemConsume: false,
       maxAttempts: 3, lockoutDuration: 3600000, encryptionType: 'ICE', failureMode: 'lockout',
       ice: { source: 'default', actorId: null, customName: '', customPortrait: '', customDamage: '' },
@@ -129,7 +129,7 @@ export function readEditorForm(root, extra = {}) {
   const val = (n) => String(q(n)?.value ?? '').trim();
   const chk = (n) => !!q(n)?.checked;
   const rows = readBypassRows(root);
-  const bypass = rows ? bypassFieldsFrom(rows, 15) : { bypassSkills: [], bypassDC: 15, bypassSkillDCs: {} };
+  const bypass = rows ? bypassFieldsFrom(rows, 9) : { bypassSkills: [], bypassDC: 9, bypassSkillDCs: {} };
   const where = [...root.querySelectorAll('[data-where-scene]')].filter((cb) => cb.checked).map((cb) => cb.dataset.whereScene);
   return {
     name: val('name'),

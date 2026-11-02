@@ -9,37 +9,41 @@
  *
  * Skill matters three ways, each a switch the GM can turn off:
  *   Unlocks — every action has a minimum rank; below it the action is listed, locked, with the rank it needs.
- *   Edge    — every rank above an action's minimum takes 1 off its DV, up to a cap.
- *   Moves   — how many actions a session holds, from a rank table, +1 for beating the jack-in DV by a margin.
+ *   Edge    — every rank above an action's minimum takes 1 off its DV, up to a cap. OFF by default: Interface already
+ *             adds to the roll, and a moving DV made the odds hard to read.
+ *   Moves   — how many actions a session holds, from a rank table (the rulebook's NET Actions); optionally +1 for
+ *             beating the jack-in DV by a margin (off by default).
+ * DVs here are on the NET scale: Interface + d10, no stat.
  * A node may override the jack-in DV (node.override.dv); everything else is world-wide for now.
  */
 
 /** The session actions, in the order the session lists them. dv null = no roll. */
 export const JACK_ACTIONS = Object.freeze([
   { key: 'switch', label: 'Switch off / on', icon: 'fa-power-off', blurb: 'The network goes dark on this scene (or comes back)', dv: null, min: 1, minutes: 0, move: true },
-  { key: 'jam', label: 'Jam', icon: 'fa-wave-square', blurb: 'Off for a while, then back by itself', dv: 13, min: 2, minutes: 30, move: true },
-  { key: 'tap', label: 'Tap', icon: 'fa-ear-listen', blurb: 'A copy of mail sent over the network comes to you', dv: 17, min: 4, minutes: 0, move: true },
-  { key: 'backdoor', label: 'Backdoor', icon: 'fa-door-open', blurb: "Skip the network's login for a day", dv: 15, min: 6, minutes: 1440, move: true },
+  { key: 'jam', label: 'Jam', icon: 'fa-wave-square', blurb: 'Off for a while, then back by itself', dv: 7, min: 2, minutes: 30, move: true },
+  { key: 'tap', label: 'Tap', icon: 'fa-ear-listen', blurb: 'A copy of mail sent over the network comes to you', dv: 11, min: 4, minutes: 0, move: true },
+  { key: 'backdoor', label: 'Backdoor', icon: 'fa-door-open', blurb: "Skip the network's login for a day", dv: 9, min: 6, minutes: 1440, move: true },
   { key: 'insert', label: 'Insert a shard', icon: 'fa-microchip', blurb: 'Plant a network program you carry (its own DV)', dv: null, min: 3, minutes: 0, move: true },
-  { key: 'sweep', label: 'System sweep', icon: 'fa-satellite-dish', blurb: 'Look for anything planted here', dv: 15, min: 1, minutes: 10, move: false },
-  { key: 'wipe', label: 'Wipe your log line', icon: 'fa-eraser', blurb: 'Take your name off the node log', dv: 13, min: 1, minutes: 0, move: false },
+  { key: 'sweep', label: 'System sweep', icon: 'fa-satellite-dish', blurb: 'Look for anything planted here', dv: 9, min: 1, minutes: 10, move: false },
+  { key: 'listen', label: 'Listen to traffic', icon: 'fa-headphones', blurb: 'Pick up a call going over this node, live', dv: 11, min: 1, minutes: 0, move: true },
+  { key: 'wipe', label: 'Wipe your log line', icon: 'fa-eraser', blurb: 'Take your name off the node log', dv: 7, min: 1, minutes: 0, move: false },
 ]);
 
 /** The actions a session can run (all of them since step 5). */
-export const JACK_BUILT = Object.freeze(['switch', 'jam', 'tap', 'backdoor', 'insert', 'sweep', 'wipe']);
+export const JACK_BUILT = Object.freeze(['switch', 'jam', 'tap', 'backdoor', 'insert', 'sweep', 'listen', 'wipe']);
 
 export const JACK_DEFAULTS = Object.freeze({
   skill: 'Interface',
-  dv: 15,
+  dv: 9,
   gate: { mode: 'anyone' },
   // who may jack in: 'anyone' | 'operator' (the Terminal operator access rule) | 'own' (`gate` below)
   gateFrom: 'anyone',
   resolution: 'inherit',
   dials: {
     unlocks: true,
-    edge: true, edgeCap: 3,
-    moves: true, movesMargin: 5,
-    movesTable: [{ rank: 1, moves: 2 }, { rank: 3, moves: 3 }, { rank: 6, moves: 4 }, { rank: 9, moves: 5 }],
+    edge: false, edgeCap: 3,
+    moves: true, movesMargin: 0,
+    movesTable: [{ rank: 1, moves: 2 }, { rank: 4, moves: 3 }, { rank: 7, moves: 4 }, { rank: 10, moves: 5 }],
   },
   failure: { trace: true, severity: 'major', alert: true, maxAttempts: 3, lockoutMinutes: 60 },
   actions: Object.fromEntries(JACK_ACTIONS.map((a) => [a.key, { dv: a.dv, min: a.min, minutes: a.minutes, move: a.move, on: true }])),
@@ -82,7 +86,7 @@ export function resolveJackIn(stored = {}) {
   const d = r.dials;
   d.unlocks = !!d.unlocks; d.edge = !!d.edge; d.moves = !!d.moves;
   d.edgeCap = int(d.edgeCap, 0, 10, 3);
-  d.movesMargin = int(d.movesMargin, 0, 20, 5);
+  d.movesMargin = int(d.movesMargin, 0, 20, 0);
   d.movesTable = (Array.isArray(d.movesTable) ? d.movesTable : [])
     .map((row) => ({ rank: int(row?.rank, 0, 20, 1), moves: int(row?.moves, 1, 12, 2) }))
     .sort((a, b) => a.rank - b.rank);
@@ -97,7 +101,7 @@ export function resolveJackIn(stored = {}) {
   for (const a of JACK_ACTIONS) {
     const x = isObj(r.actions[a.key]) ? r.actions[a.key] : {};
     r.actions[a.key] = {
-      dv: (x.dv === null || x.dv === '' || (x.dv === undefined && a.dv === null)) ? null : int(x.dv ?? a.dv, 1, 40, a.dv ?? 15),
+      dv: (x.dv === null || x.dv === '' || (x.dv === undefined && a.dv === null)) ? null : int(x.dv ?? a.dv, 1, 40, a.dv ?? 9),
       min: int(x.min, 0, 20, a.min),
       minutes: int(x.minutes, 0, 1440 * 7, a.minutes),
       move: x.move === undefined ? a.move : !!x.move,

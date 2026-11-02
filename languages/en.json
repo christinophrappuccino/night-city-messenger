@@ -8,6 +8,7 @@
 
     "SceneControls": {
       "OpenInbox": "Open Inbox",
+      "Phone": "Phone",
       "ComposeMessage": "Compose Message",
       "Contacts": "Contacts",
       "NetworkManagement": "Network Management",

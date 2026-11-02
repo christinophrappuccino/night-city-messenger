@@ -17,7 +17,7 @@ const M = await import('../../../scripts/ui/AdminPanel/tabs/phoneModel.js');
 // ═══ 1. pure rules ═══
 const now = 1_000_000;
 const calls = [
-  { id: 'r1', state: 'ringing', startedAt: now - 10000, from: { name: 'V', number: '+1 555 0101' }, to: { kind: 'npc', name: 'Rogue', contactId: 'rogue', number: '+1 555 0150' }, net: { name: 'CitiNet' } },
+  { id: 'r1', state: 'ringing', startedAt: now - 10000, from: { name: 'V', number: '+72 NC WAT-0101' }, to: { kind: 'npc', name: 'Rogue', contactId: 'rogue', number: '+72 NC WAT-0150' }, net: { name: 'CitiNet' } },
   { id: 'l1', state: 'live', startedAt: now - 90000, answeredAt: now - 65000, mode: 'type', from: { name: 'V' }, to: { kind: 'player', name: 'Judy' } },
   { id: 'h1', state: 'held', startedAt: now - 9000, answeredAt: now - 8000, mode: 'loud', from: { name: 'Rache' }, to: { kind: 'player', name: 'Judy' } },
   { id: 'e1', state: 'ended', startedAt: 1, from: {}, to: {} },
@@ -29,38 +29,29 @@ ok(live.modes.type === 1 && live.modes.loud === 1 && !live.quiet, 'mode tallies'
 ok(M.liveBoard([], {}).quiet, 'quiet board');
 
 const lines = {
-  '+15550101': { number: '+1 555 0101', owner: { actorId: 'v', name: 'V', kind: 'player' } },
-  '+15550612': { number: '+1 555 0612', owner: { actorId: 'v', contactId: 'nix', name: 'Nix', kind: 'player' } },
-  '+15550150': { number: '+1 555 0150', owner: { contactId: 'rogue', name: 'Rogue', kind: 'npc' } },
-  '+15550999': { number: '+1 555 0999', owner: { contactId: 'gone', name: 'Ghost', kind: 'npc' } },
+  '+15550101': { number: '+72 NC WAT-0101', owner: { actorId: 'v', name: 'V', kind: 'player' } },
+  '+15550612': { number: '+72 NC WAT-0612', owner: { actorId: 'v', contactId: 'nix', name: 'Nix', kind: 'player' } },
+  '+15550150': { number: '+72 NC WAT-0150', owner: { contactId: 'rogue', name: 'Rogue', kind: 'npc' } },
+  '+15550999': { number: '+72 NC WAT-0999', owner: { contactId: 'gone', name: 'Ghost', kind: 'npc' } },
 };
 const pcs = [{ actorId: 'v', actorName: 'V', playerName: 'Kiri' }, { actorId: 'jackie', actorName: 'Jackie', playerName: 'Sam' }];
-const contacts = [{ id: 'rogue', name: 'Rogue', voice: 'Clipped. Calls everyone kid.' }, { id: 'queen', name: 'Queen of Hearts', identityOf: 'rogue', phone: '+1 555 0342' }, { id: 'nix', name: 'Nix', actorId: 'v' },
+const contacts = [{ id: 'rogue', name: 'Rogue', voice: 'Clipped. Calls everyone kid.' }, { id: 'queen', name: 'Queen of Hearts', identityOf: 'rogue', phone: '+72 NC WAT-0342' }, { id: 'nix', name: 'Nix', actorId: 'v' },
   { id: 'sys', name: 'System', sendOnly: true, phone: '1' }, { id: 'quiet', name: 'No Phone' }];
-const ng = M.numberGroups({ lines, pcs, contacts });
-const g = Object.fromEntries(ng.groups.map((x) => [x.key, x]));
-ok(g.players.rows.map((r) => r.name).join(',') === 'V,Nix,Jackie' && g.players.rows[1].kind === 'burner' && g.players.rows[2].kind === 'none', 'players: main, burner under it, no number');
-ok(g.npcs.rows.some((r) => r.name === 'Queen of Hearts' && r.alias && r.fromDirectory) && !g.npcs.rows.some((r) => r.name === 'System' || r.name === 'No Phone'), 'NPCs: lines + directory phones; never send-only or numberless');
-ok(g.unowned?.rows.length === 1 && g.unowned.rows[0].kind === 'orphan', 'a line whose owner is gone');
-ok(ng.noNumber === 1 && !g.players.shut && g.npcs.shut, 'counts + default folds (first open)');
-ok(M.numberGroups({ lines, pcs, contacts, q: 'queen' }).groups.every((x) => !x.shut) && M.numberGroups({ lines, pcs, contacts, q: 'queen' }).shown === 1, 'a search opens and narrows');
-ok(M.numberGroups({ lines, pcs, contacts, show: 'none' }).shown === 1 && M.numberGroups({ lines, pcs, contacts, show: 'burner' }).shown === 1, 'Show filters');
-ok(!M.numberGroups({ lines, pcs, contacts, shut: new Set(['players']) }).groups[0].shut === false, 'the GM fold wins');
 
 const logs = [
   { callId: 'a', outcome: 'answered', seconds: 125, gameTime: '2045-08-14T20:15:00Z', from: { name: 'V' }, to: { name: 'Judy' }, net: { name: 'CitiNet' } },
   { callId: 'b', outcome: 'missed', gameTime: '2045-08-14T19:00:00Z', from: { name: 'Rache' }, to: { name: 'Queen' } },
   { callId: 'c', outcome: 'dropped', gameTime: '2045-08-13T10:00:00Z', from: { name: 'Jackie' }, to: { name: 'Delamain' } },
 ];
-const lv = M.logView(logs, { fmtTime: () => '20:15' });
-ok(lv.days.length === 2 && lv.days[0].rows[0].detail === '2:05' && lv.days[0].bad === 1 && lv.days[1].bad === 1, 'log: by day, talk time, bad counts');
+const lv = M.logView(logs, { fmtTime: () => '20:15', now: '2045-08-14T23:00:00Z' });
+const lvDays = lv.bands.flatMap((b) => b.days);
+ok(lvDays.length === 2 && lvDays[0].rows[0].detail === '2:05' && lv.bands[0].hot === 1 && lv.bands[1].hot === 1, 'log: by date, talk time, bad counts');
 ok(lv.counts.missed === 1 && M.logView(logs, { filter: 'dropped' }).total === 1 && M.logView(logs, { q: 'delamain' }).total === 1, 'log filters + search');
-ok(M.logView(Array.from({ length: 90 }, (_, i) => ({ ...logs[0], callId: 'x' + i })), { page: 9 }).page === 3, 'paging clamps');
 const sv = M.settingsView({ callsEnabled: true, callModes: ['loud', 'type'], callDefaultMode: 'type', callHomeCode: '+44', callRingSeconds: 20, callUnknownNumbers: 'gm' });
 ok(sv.modes.filter((m) => m.on).length === 2 && sv.startModes.length === 2 && sv.startModes.find((m) => m.on).key === 'type' && sv.unknown.find((u) => u.on).key === 'gm', 'settings rows');
 
 // ═══ 2. the REAL tab over a mocked world ═══
-const settings = { callsEnabled: true, callModes: ['loud', 'type', 'dictate'], callDefaultMode: 'loud', callHomeCode: '+1', callRingSeconds: 30, callUnknownNumbers: 'not-in-service',
+const settings = { callsEnabled: true, callModes: ['loud', 'type', 'dictate'], callDefaultMode: 'loud', callRingSeconds: 30, callUnknownNumbers: 'not-in-service',
   dateFormat: 'YMD', dateMonthStyle: 'short', timeFormat: '24h' };
 const users = [{ id: 'u1', isGM: false, name: 'Kiri', character: null }];
 const actorV = { id: 'v', name: 'V', img: 'v.webp', hasPlayerOwner: true, type: 'character', testUserPermission: () => true };
@@ -73,20 +64,19 @@ globalThis.game = {
     callService: {
       enabled: true, ringMs: 30000, homeCode: '+1',
       allCalls: () => calls.filter((c) => c.state !== 'ended'), _ringsHere: (c) => c.id === 'r1', _role: () => 'watch',
-      lines: () => lines, allLogs: () => logs, numberOf: (id) => (id === 'v' ? '+1 555 0101' : ''), numberOfContact: (id) => (id === 'rogue' ? '+1 555 0150' : ''),
+      lines: () => lines, allLogs: () => logs, numberOf: (id) => (id === 'v' ? '+72 NC WAT-0101' : ''), numberOfContact: (id) => (id === 'rogue' ? '+72 NC WAT-0150' : ''),
     },
   },
 };
 globalThis.Hooks = { on: () => 1, off: () => {} };
 const { PhoneTab } = await import('../../../scripts/ui/AdminPanel/tabs/PhoneTab.js');
-const app = { _activeTab: 'phone', isPopout: false, render() {}, element: null };
+const app = { id: 'ncm-admin',  _activeTab: 'phone', isPopout: false, render() {}, element: null };
 const tab = new PhoneTab(app);
 const ctxs = {};
-for (const v of ['live', 'numbers', 'log', 'settings']) { tab._view = v; ctxs[v] = tab.prepareContext().phone2; }
+for (const v of ['live', 'log', 'settings']) { tab._view = v; ctxs[v] = tab.prepareContext().phone2; }
 ok(ctxs.live.live.ringing.length === 1 && ctxs.live.nav.find((n) => n.key === 'live').hot, 'tab: live + a hot nav count');
-ok(ctxs.numbers.numbers.groups.length === 3 && ctxs.numbers.numbers.show.length === 4, 'tab: numbers');
-ok(ctxs.log.log.days.length === 2 && ctxs.log.log.filters.length === 5, 'tab: log');
-ok(ctxs.settings.settings.enabled && !ctxs.live.error && !ctxs.numbers.error && !ctxs.log.error, 'tab: settings, no errors');
+ok(ctxs.log.log.bands.length >= 1 && ctxs.log.log.resultOptions.length === 7, 'tab: log');
+ok(ctxs.settings.settings.enabled && !ctxs.live.error && !ctxs.log.error, 'tab: settings, no errors');
 app._activeTab = 'messages'; ok(tab.prepareContext().phone2 === null, 'built only while the tab is open'); app._activeTab = 'phone';
 tab.openTo('numbers'); ok(tab._view === 'numbers', 'openTo picks a view'); tab.openTo('nope'); ok(tab._view === 'numbers', 'openTo ignores junk');
 
@@ -106,9 +96,8 @@ else {
   const render = Handlebars.compile(tpl);
   const html = Object.fromEntries(Object.entries(ctxs).map(([v, c]) => [v, render({ activeTab: 'phone', phone2: c })]));
   ok(html.live.includes('Answer as Rogue') && html.live.includes('Clipped') && html.live.includes('data-ph-since') && html.live.includes('data-op="drop"'), 'live render');
-  ok(html.numbers.includes('Give one') && html.numbers.includes('burner') && html.numbers.includes('no longer exists') && html.numbers.includes('is-shut'), 'numbers render');
-  ok(html.log.includes('Judy') && html.log.includes('2:05') && html.log.includes('1 missed or dropped'), 'log render');
-  ok(html.settings.includes('data-ph-set="callModes"') && html.settings.includes('value="+1"'), 'settings render');
+  ok(html.log.includes('Judy') && html.log.includes('2:05') && html.log.includes('missed or dropped'), 'log render');
+  ok(html.settings.includes('data-ph-set="callModes"') && !html.settings.includes('callHomeCode'), 'settings render');
   ok(!/NaN|undefined|\[object Object\]/.test(Object.values(html).join('')), 'nothing prints NaN / undefined');
   if (process.env.NCM_DUMP) for (const [v, h] of Object.entries(html)) fs.writeFileSync(path.join(process.env.NCM_DUMP, `phone-${v}.html`), h);
 }
@@ -135,14 +124,14 @@ ok(cs.includes('allCalls()') && cs.includes('allLogs()') && cs.includes('noSigna
   const lb = M.liveBoard([typedCall], { now, listening: new Set(['t1']) });
   ok(lb.lines[0].listening && lb.lines[0].lineCount === 2 && lb.lines[0].heard[0].name === 'V' && lb.lines[0].heard[1].name === 'Judy', 'Listen in: the switchboard row carries the lines, named');
   const lv2 = M.logView([{ ...logs[0], lines: [{ side: 'caller', name: 'V', text: 'Pier 4 at midnight' }] }]);
-  ok(lv2.days[0].rows[0].transcript.length === 1 && M.logView([{ ...logs[0], lines: [{ side: 'caller', name: 'V', text: 'Pier 4 at midnight' }] }], { q: 'pier 4' }).total === 1, 'the log row carries its transcript, and search reads it');
+  ok(lv2.bands[0].days[0].rows[0].transcript.length === 1 && M.logView([{ ...logs[0], lines: [{ side: 'caller', name: 'V', text: 'Pier 4 at midnight' }] }], { q: 'pier 4' }).total === 1, 'the log row carries its transcript, and search reads it');
   ok(M.settingsView({ callTranscriptNotice: false }).notice === false && M.settingsView({}).notice === true, 'the notice setting row (on by default)');
   ok(M.settingsView({ callModes: ['loud', 'type', 'dictate'] }, { modesAvailable: ['loud', 'type'] }).modes.length === 2, 'the settings card offers only the built modes');
   if (Handlebars) {
     const render = Handlebars.compile(tpl);
     const html = render({ activeTab: 'phone', phone2: { ...ctxs.live, live: lb } });
     ok(html.includes('data-op="listen"') && html.includes('Listening') && html.includes('Evelyn is gone.') && html.includes('only you see this'), 'render: Listen + the heard lines');
-    const lh = render({ activeTab: 'phone', phone2: { ...ctxs.log, log: { ...ctxs.log.log, days: lv2.days } } });
+    const lh = render({ activeTab: 'phone', phone2: { ...ctxs.log, log: { ...ctxs.log.log, bands: lv2.bands } } });
     ok(lh.includes('ncm-ph2-tr') && lh.includes('Transcript · 1 line') && lh.includes('Pier 4 at midnight'), 'render: the transcript fold in the log');
     const sh = render({ activeTab: 'phone', phone2: ctxs.settings });
     ok(sh.includes('data-ph-set="callTranscriptNotice"'), 'render: the notice switch');
@@ -155,8 +144,8 @@ ok(cs.includes('allCalls()') && cs.includes('allLogs()') && cs.includes('noSigna
 // ═══ 6. Phase 3a — Voicemail boxes, the greeting button ═══
 {
   const vms = [
-    { vmId: 'a', ownerId: 'rogue', ownerIsContact: true, from: { name: 'V', number: '+1 555 0101', actorId: 'v' }, to: { contactId: 'rogue', name: 'Rogue' }, text: 'Pier 4 job — call me.', kind: 'typed', heard: false, gameTime: '2045-08-14T22:41:00Z' },
-    { vmId: 'b', ownerId: 'rogue', ownerIsContact: true, from: { name: 'Rache', number: '+1 555 0118' }, to: { contactId: 'queen', name: 'Queen of Hearts' }, text: 'You owe me.', kind: 'tts', heard: true },
+    { vmId: 'a', ownerId: 'rogue', ownerIsContact: true, from: { name: 'V', number: '+72 NC WAT-0101', actorId: 'v' }, to: { contactId: 'rogue', name: 'Rogue' }, text: 'Pier 4 job — call me.', kind: 'typed', heard: false, gameTime: '2045-08-14T22:41:00Z' },
+    { vmId: 'b', ownerId: 'rogue', ownerIsContact: true, from: { name: 'Rache', number: '+72 NC WAT-0118' }, to: { contactId: 'queen', name: 'Queen of Hearts' }, text: 'You owe me.', kind: 'tts', heard: true },
     { vmId: 'c', ownerId: 'v', ownerIsContact: false, from: { name: 'Judy' }, to: { actorId: 'v', name: 'V' }, text: 'Evelyn is gone.', kind: 'typed', heard: false },
   ];
   const vb = M.voicemailBoxes(vms, { ownerName: (v) => (v.ownerIsContact ? 'Rogue' : 'V'), isNpc: (v) => v.ownerIsContact, fmt: () => '22:41' });
@@ -169,8 +158,35 @@ ok(cs.includes('allCalls()') && cs.includes('allLogs()') && cs.includes('noSigna
     ok(!/data-owner="rogue"/.test(html), 'the owner id never reuses data-owner (that is the tab routing key)');
     if (process.env.NCM_DUMP) fs.writeFileSync(path.join(process.env.NCM_DUMP, 'phone-vm.html'), html);
   }
-  ok(js.includes("case 'greeting'") && tpl.includes('data-op="greeting"') && js.includes('saveLineSettings(number, out)'), 'Numbers: the greeting & voicemail button');
+  ok(js.includes("case 'greeting'") && read('scripts/ui/AdminPanel/tabs/phoneNumbersView.js').includes('data-do="lineGreeting"') && js.includes('saveLineSettings(number, out)'), 'Numbers: the greeting & voicemail button');
   ok(/setVoicemailHeard\(d\.ownerId/.test(js) && /deleteVoicemail\(d\.ownerId/.test(js), 'the handlers read the owner id');
+}
+
+// the Call log holds Voicemail and the editor
+{
+  ok(!M.PHONE_VIEWS.some(([k]) => k === 'vm') && M.PHONE_VIEWS.some(([k]) => k === 'log'), 'Voicemail has no nav button of its own');
+  ok(M.logLanding('live', 2) === 'vm' && M.logLanding('live', 0) === 'log', 'the button opens voicemail when some is waiting, else calls');
+  ok(M.logLanding('log', 2) === 'log' && M.logLanding('vm', 0) === 'vm' && M.logLanding('logedit', 2) === 'logedit', 'a click from inside stays put');
+  tab._view = 'vm'; tab.calls.allVoicemails = () => [{ vmId: 'x', ownerId: 'rogue', ownerIsContact: true, heard: false, from: {}, to: {} }];
+  const c = tab.prepareContext().phone2;
+  ok(c.nav.find((n) => n.key === 'log').on && c.nav.find((n) => n.key === 'log').count === 1 && c.nav.find((n) => n.key === 'log').hot, 'the count rides the Call log button, lit while inside it');
+  ok(c.logTabs.find((t) => t.key === 'vm').on && c.logTabs.find((t) => t.key === 'vm').count === 1, 'and the Voicemail tab');
+  tab.openTo('vm'); ok(tab._view === 'vm', 'openTo still reaches voicemail');
+  tab.openTo('log'); ok(tab._view === 'log', 'and calls');
+  tab.openTo({ log: 'o:v' }); ok(tab._view === 'logedit' && tab._pn.f === 'editlog' && tab._pn.lgT === 'o:v', 'and the editor');
+  tab._view = 'live'; ok(!tab.prepareContext().phone2.nav.find((n) => n.key === 'log').on, 'unlit elsewhere');
+  tab.calls.allVoicemails = undefined;
+}
+
+// the call queue
+{
+  const q = M.callQueue([{ id: 'b', startedAt: 2000, to: { name: 'Judy' } }, { id: 'a', startedAt: 1000, queueHold: true, to: { name: 'Rogue' } }, { id: 'c', startedAt: 3000, to: { shared: true, name: 'Crew' } }], { now: 4000, kindOf: (c) => (c.to.shared ? 'shared' : 'npc') });
+  ok(q.rows.map((r) => r.id).join() === 'a,b,c' && q.rows[0].pos === 1, 'the queue: longest wait first, numbered');
+  ok(q.rows.find((r) => r.id === 'b').open && !q.rows.find((r) => r.id === 'a').open, 'the first not on hold opens, and only one');
+  ok(q.rows[0].held && q.rows[0].waitS === 3, 'a held call says so');
+  ok(M.callQueue(q.rows, { filter: 'hold' }).rows.length === 1 && M.callQueue(q.rows, { filter: 'shared', kindOf: (c) => c.kind }).rows.length === 1 && M.callQueue(q.rows, { filter: 'hold' }).count === 3, 'a filter narrows the list, not the count');
+  ok(M.callQueue(q.rows, { open: 'c', kindOf: (c) => c.kind }).rows.find((r) => r.id === 'c').open, 'opening another moves the one open call');
+  ok(M.callQueue(q.rows, { open: '', kindOf: (c) => c.kind }).rows.every((r) => !r.open), 'folding it leaves none open');
 }
 
 console.log(`test-admin-phone: ${pass} passed, ${fail} failed`);

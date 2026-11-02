@@ -1144,7 +1144,7 @@ export class ToolsTab extends BaseTab {
    */
   async onOrphanAudit(event, target) {
     const found = this._gatherOrphans();
-    const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length;
+    const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length + found.phoneOwners.length;
 
     if (total === 0) {
       ui.notifications.info('NCM | Orphan audit clean — nothing to remove.');
@@ -1167,6 +1167,11 @@ export class ToolsTab extends BaseTab {
     if (found.groupMembers.length) {
       lines.push(`<p><strong>${found.groupMembers.length}</strong> contact-group member(s) that resolve to nothing (no address, no living actor or directory entry):</p><ul>` +
         found.groupMembers.map(g => li(`${g.memberName || '(unnamed)'} in <em>${g.groupName}</em> (${g.scope === 'master' ? 'GM group' : `${g.actorName}'s group`})`)).join('') + '</ul>');
+    }
+
+    if (found.phoneOwners.length) {
+      lines.push(`<p><strong>${found.phoneOwners.length}</strong> phone line(s) whose owner no longer exists. Their numbers retire and are never given out again:</p><ul>` +
+        found.phoneOwners.map(o => li(`${o.number} <em>(${o.name || 'unnamed'})</em>`)).join('') + '</ul>');
     }
 
     let doClean = false;
@@ -1201,6 +1206,11 @@ export class ToolsTab extends BaseTab {
       }
       if (found.groupMembers.length) {
         removed += await this._pruneGroupMembers(found.groupMembers);
+      }
+      const calls = game.nightcity?.callService;
+      for (const owner of new Map(found.phoneOwners.map((o) => [o.contactId || o.actorId, o])).values()) {
+        await calls?.retireOwner?.({ actorId: owner.contactId ? null : owner.actorId, contactId: owner.contactId || null, why: 'Owner gone' });
+        removed++;
       }
       log.info(`Orphan audit removed ${removed} orphaned record(s)`);
       ui.notifications.info(`NCM | Orphan audit removed ${removed} orphaned record(s).`);
@@ -1344,7 +1354,17 @@ export class ToolsTab extends BaseTab {
       }
     }
 
-    return { inboxes, pins, heatActors, groupMembers };
+    // Phone lines whose owner is gone. Deleting one retires its numbers as it happens; this catches what was missed,
+    // such as a character deleted while no GM was online. Shared lines and machines have no single owner.
+    const phoneOwners = [];
+    for (const l of Object.values(game.nightcity?.callService?.lines?.() || {})) {
+      const o = l?.owner;
+      if (!o || l.members || l.kind === 'terminal') continue;
+      const gone = o.contactId ? !this.masterContactService?.getContact?.(o.contactId) : (o.actorId ? !game.actors?.get(o.actorId) : false);
+      if (gone) phoneOwners.push({ number: l.number, name: o.name || '', contactId: o.contactId || null, actorId: o.actorId || null });
+    }
+
+    return { inboxes, pins, heatActors, groupMembers, phoneOwners };
   }
 
   /**

@@ -90,7 +90,7 @@ export class ContactBreachService {
     }
 
     const skillName = options.skillOverride || contact.encryptionSkill || 'Interface';
-    const dc = contact.encryptionDV || 15;
+    const dc = contact.encryptionDV || 9;
 
     log.info(`ContactBreachService: ${actor.name} attempting breach on "${contact.name}" ` +
       `(${skillName} vs DV ${dc}, attempt ${currentAttempts + 1}/${maxAttempts})`);

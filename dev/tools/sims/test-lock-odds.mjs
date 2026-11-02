@@ -31,21 +31,21 @@ const L = await imp('scripts/utils/lockOdds.js');
 const { SkillService } = await imp('scripts/services/SkillService.js');
 
 // ═══ 1. the d10 ═══
-ok(L.d10Chance(14, 18).pct === 70 && L.d10Chance(14, 18).need === 4, 'Interface 14 vs 18 → needs 4+ → 70%');
-ok(L.d10Chance(17, 18).pct === 100, 'needs 1 → always');
-ok(L.d10Chance(20, 18).pct === 100, 'base above the DV → always');
-ok(L.d10Chance(8, 18).pct === 10 && L.d10Chance(7, 18).pct === 0, 'needs 10 → 10%, needs 11 → never');
+ok(L.d10Chance(14, 18).pct === 60 && L.d10Chance(14, 18).need === 5, 'Interface 14 vs 18 → must beat it → needs 5+ → 60%');
+ok(L.d10Chance(17, 18).pct === 90, 'needs 2: a natural 1 still fails');
+ok(L.d10Chance(20, 18).pct === 92, 'base above the DV: only a fumble can lose it');
+ok(L.d10Chance(8, 18).pct === 10 && L.d10Chance(7, 18).pct === 9, 'needs 11 is still possible: a 10 explodes');
 ok(L.oddsTone(70) === 'hi' && L.oddsTone(40) === 'mid' && L.oddsTone(10) === 'lo' && L.oddsTone(0) === 'none' && L.oddsTone(null) === 'none', 'tones: likely ≥65 / maybe ≥35 / long shot >0 / can\'t');
 
 // ═══ 2. best skill, each row its own DV ═══
 const lock = { requiresAuth: true, password: true, skill: true, keyItem: false, rows: [{ name: 'Interface', dv: 18 }, { name: 'Electronics/Security Tech', dv: 21 }], logic: 'any', failureMode: 'lockout', maxAttempts: 3, lockoutMin: 60 };
 const pc = (name, skills, role = '') => ({ name, role, skills: Object.fromEntries(Object.entries(skills).map(([k, v]) => [k, { base: v, found: v != null }])) });
 const V = L.characterOdds(pc('V', { Interface: 14, 'Electronics/Security Tech': 9 }), lock);
-ok(V.pct === 70 && V.skill === 'Interface' && /Interface 14 \+ d10 vs 18/.test(V.how), 'V: best = Interface vs 18, reads "Interface 14 + d10 vs 18"');
+ok(V.pct === 60 && V.skill === 'Interface' && /Interface 14 \+ d10 vs 18/.test(V.how), 'V: best = Interface vs 18, reads "Interface 14 + d10 vs 18"');
 const J = L.characterOdds(pc('Judy', { 'Electronics/Security Tech': 15 }), lock);
-ok(J.pct === 50 && J.skill === 'Electronics/Security Tech' && /Elec\/Sec Tech 15 \+ d10 vs 21/.test(J.how), 'Judy: Elec/Sec Tech vs its OWN DV 21 → 50%');
+ok(J.pct === 40 && J.skill === 'Electronics/Security Tech' && /Elec\/Sec Tech 15 \+ d10 vs 21/.test(J.how), 'Judy: Elec/Sec Tech vs its OWN DV 21 → 40%');
 const both = L.characterOdds(pc('Both', { Interface: 9, 'Electronics/Security Tech': 18 }), lock);
-ok(both.skill === 'Electronics/Security Tech' && both.pct === 80, 'the better of two skills wins even at a higher DV');
+ok(both.skill === 'Electronics/Security Tech' && both.pct === 70, 'the better of two skills wins even at a higher DV');
 const K = L.characterOdds(pc('Kerry', {}), lock);
 ok(K.pct === 0 && K.none && /no skill on the list/.test(K.how) && /only the password/.test(K.how), 'no listed skill → can\'t roll, the password is named');
 
@@ -82,10 +82,10 @@ ok(noRoll.verdict.title === 'No roll can open it.' && /password or key item/.tes
 const party3 = [pc('V', { Interface: 14 }, 'Netrunner'), pc('Rache', { Interface: 8 }, 'Solo'), pc('Judy', { 'Electronics/Security Tech': 15 }, 'Tech')];
 const v3 = L.lockOdds(lock, party3);
 ok(v3.layout === 'cards' && v3.rows[0].name === 'V', '≤4 characters → cards, best first');
-ok(v3.verdict.title === 'Fair.' && /V, Judy are the ones to try it \(70% at best\)/.test(v3.verdict.text), 'Fair names the ones who can (best first)');
+ok(v3.verdict.title === 'Fair.' && /V, Judy are the ones to try it \(60% at best\)/.test(v3.verdict.text), 'Fair names the ones who can (best first)');
 const hard = L.lockOdds({ ...lock, rows: [{ name: 'Interface', dv: 22 }] }, party3);
-ok(hard.verdict.title === 'Hard.' && /V at 30%/.test(hard.verdict.text), 'Hard names the best chance');
-const nobody = L.lockOdds({ ...lock, rows: [{ name: 'Interface', dv: 30 }] }, party3);
+ok(hard.verdict.title === 'Hard.' && /V at 20%/.test(hard.verdict.text), 'Hard names the best chance');
+const nobody = L.lockOdds({ ...lock, rows: [{ name: 'Interface', dv: 40 }] }, party3);
 ok(nobody.verdict.title === 'Nobody can win the roll.', 'Nobody can win the roll');
 const easy = L.lockOdds({ ...lock, rows: [{ name: 'Interface', dv: 5 }, { name: 'Electronics/Security Tech', dv: 5 }] }, party3);
 ok(easy.verdict.title === 'Easy for everyone', 'Easy for everyone');
@@ -97,7 +97,7 @@ ok(/P0, P1, P2 and 3 more are the ones/.test(fair6.verdict.text), 'names at most
 const p12 = [...many, ...Array.from({ length: 4 }, (_, i) => pc(`Z${i}`, {})), pc('Lo', { Interface: 8 }), pc('Mid', { Interface: 12 })];
 const big = L.lockOdds(lock, p12);
 ok(big.layout === 'list' && big.total === 12, '5+ → compact rows');
-ok(big.counts.hi === 6 && big.counts.mid === 1 && big.counts.lo === 1 && big.counts.none === 4 && big.realistic === 7, 'tallies: likely / maybe / long shot / can\'t');
+ok(big.counts.hi === 0 && big.counts.mid === 7 && big.counts.lo === 1 && big.counts.none === 4 && big.realistic === 7, 'tallies: likely / maybe / long shot / can\'t');
 ok(Math.round(big.spread.reduce((n, s) => n + s.w, 0)) === 100, 'the spread bar adds up to 100%');
 ok(big.shown.length === 8 && big.hiddenCount === 4 && big.canFold, "characters who can't roll fold away");
 const bigHtml = L.lockOddsHtml(big);
@@ -110,7 +110,7 @@ ok(!/ncm-lodds__sum/.test(L.lockOddsHtml(v3)), 'small party: no summary bar');
 ok(/3 misses lock that character out for 60 min/.test(L.lockNote(lock)), 'note: lockout after N for M min');
 ok(/Black ICE hits the runner/.test(L.lockNote({ ...lock, failureMode: 'damage' })), 'note: Black ICE');
 ok(/lock them out for good/.test(L.lockNote({ ...lock, failureMode: 'permanent' })), 'note: permanent');
-ok(/no crits or fumbles/.test(L.lockNote(lock)), 'note says the odds ignore crits and fumbles');
+ok(/exploding 10s and fumbled 1s/.test(L.lockNote(lock)), 'note says the odds count the real die');
 ok(!/<img src=x/.test(L.lockOddsHtml(L.lockOdds(lock, [pc('<img src=x onerror=1>', { Interface: 14 })]))), 'names are escaped');
 
 // ═══ 8. the REAL editor readers (TerminalConfigApp via prototype.call) ═══

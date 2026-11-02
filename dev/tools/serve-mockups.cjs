@@ -62,6 +62,7 @@ const TYPES = {
   '.ttf': 'font/ttf',
 };
 
+VENDOR['/_vendor/handlebars.js'] = [path.join(process.env.ProgramFiles || 'C:/Program Files', 'Foundry Virtual Tabletop/resources/app/node_modules/handlebars/dist/handlebars.js')];
 VENDOR['/_vendor/cpr-main.css'] = VENDOR['/_vendor/cpr.css']; // name-picker-probe.html asks by this name
 
 /** Font Awesome ships inside the Foundry install (fonts/fontawesome/). A page
@@ -95,6 +96,13 @@ const server = http.createServer((req, res) => {
     const hit = firstThatExists(VENDOR[url]);
     if (!hit) return send(res, 404, `${url}: not installed on this machine`);
     return serveFile(res, hit);
+  }
+
+  if (url.startsWith('/_vendor/cpr-icons/')) {
+    const dir = path.resolve(ROOT, '../../systems/cyberpunk-red-core/icons');
+    const file = path.normalize(path.join(dir, decodeURIComponent(url.slice('/_vendor/cpr-icons/'.length))));
+    if (!file.startsWith(dir)) return send(res, 403, 'outside the icons directory');
+    return serveFile(res, file);
   }
 
   if (url.startsWith(FA_PREFIX)) {

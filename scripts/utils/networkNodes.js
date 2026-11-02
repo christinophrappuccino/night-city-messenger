@@ -312,9 +312,9 @@ export function wormTarget(all, node, inf) {
   return cands[0];
 }
 
-/** Infections a sweep with this total uncovers (stealth DV ≤ total; force = all). Never the runner's own. */
+/** Infections a sweep with this total uncovers (it has to beat the stealth DV; force = all). Never the runner's own. */
 export function sweepFinds(node, total, { actorId = '', force = false } = {}) {
-  return (node?.infections || []).filter((x) => x.actorId !== actorId && (force || total >= x.stealthDV));
+  return (node?.infections || []).filter((x) => x.actorId !== actorId && (force || total > x.stealthDV));
 }
 
 /** A line for the ticker when a node is infected and symptoms show: a stray retry / garbled packet, never the name. */

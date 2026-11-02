@@ -23,7 +23,7 @@ const users = [
   { id: 'u3', name: 'Off', isGM: false, active: false },
 ];
 const owners = { v: ['u1'], judy: ['u2'], rache: ['u1'], ghost: ['u3'] };
-const worldSettings = { phoneLines: {}, callsEnabled: true, callHomeCode: '+1', callRingSeconds: 30, callModes: ['loud', 'type', 'dictate'], callDefaultMode: 'loud', callUnknownNumbers: 'not-in-service' };
+const worldSettings = { phoneLines: {}, callsEnabled: true, callRingSeconds: 30, callModes: ['loud', 'type', 'dictate'], callDefaultMode: 'loud', callUnknownNumbers: 'not-in-service' };
 const contacts = [{ id: 'rogue', name: 'Rogue', phone: '' }, { id: 'queen', name: 'Queen of Hearts', phone: '', identityOf: 'rogue' }];
 const journals = new Map();
 const pagesOf = (owner) => journals.get(owner)?.pages.contents || [];
@@ -104,37 +104,37 @@ const evts = (uid, name) => clients[uid].events.filter(([e]) => e === name).map(
 
 // ═══ 1. Numbers ═══
 {
-  await as('gm', (s) => s.assignNumber({ actorId: 'v', number: '+1 (555) 0177-42' }));
-  ok(worldSettings.phoneLines['+1555017742']?.owner.actorId === 'v' && worldSettings.phoneLines['+1555017742'].owner.kind === 'player', 'the GM gives V a number (a player line)');
-  ok(worldSettings.phoneLines['+1555017742'].owner.userIds.join() === 'u1', 'the line remembers V’s players');
-  ok(clients.gm.actors.get('v').getFlag(MODULE_ID, 'phone') === '+1 (555) 0177-42', 'mirrored to the actor flag');
+  await as('gm', (s) => s.assignNumber({ actorId: 'v', number: '+72 NC WAT-7742' }));
+  ok(worldSettings.phoneLines['+72-NC-WAT-7742']?.owner.actorId === 'v' && worldSettings.phoneLines['+72-NC-WAT-7742'].owner.kind === 'player', 'the GM gives V a number (a player line)');
+  ok(worldSettings.phoneLines['+72-NC-WAT-7742'].owner.userIds.join() === 'u1', 'the line remembers V’s players');
+  ok(clients.gm.actors.get('v').getFlag(MODULE_ID, 'phone') === '+72 NC WAT-7742', 'mirrored to the actor flag');
   // a player picks their own: relayed
-  const r = await as('u2', (s) => s.assignNumber({ actorId: 'judy', number: '555 0131-88' }));
-  ok(r.ok && r.relayed && !worldSettings.phoneLines['+1555013188'], 'a player’s pick relays to the GM');
+  const r = await as('u2', (s) => s.assignNumber({ actorId: 'judy', number: '+72 NC WAT-3188' }));
+  ok(r.ok && r.relayed && !worldSettings.phoneLines['+72-NC-WAT-3188'], 'a player’s pick relays to the GM');
   await flush();
-  ok(worldSettings.phoneLines['+1555013188']?.owner.actorId === 'judy', 'the GM wrote it');
-  const taken = await as('u1', (s) => s.assignNumber({ actorId: 'v', number: '+1 555 0131 88' }));
+  ok(worldSettings.phoneLines['+72-NC-WAT-3188']?.owner.actorId === 'judy', 'the GM wrote it');
+  const taken = await as('u1', (s) => s.assignNumber({ actorId: 'v', number: '+72 NC WAT-3188' }));
   ok(!taken.ok && taken.error.includes('belongs'), 'a taken number is refused (any spelling)');
   // a player cannot give a number to someone else's character
-  await as('u1', (s) => s._relayLine({ op: 'assign', actorId: 'judy', number: '555 0999 99' })); await flush();
-  ok(!worldSettings.phoneLines['+1555099999'], 'the GM refuses a player changing a character they do not own');
-  await as('gm', (s) => s.assignNumber({ actorId: 'rache', number: '555 0118-60' }));
-  await as('gm', (s) => s.assignNumber({ contactId: 'rogue', number: '555 0119-07' }));
-  await as('gm', (s) => s.assignNumber({ contactId: 'queen', number: '555 0342-90' }));
-  await as('gm', (s) => s.assignNumber({ actorId: 'ghost', number: '555 0666-66' }));
-  ok(contacts[0].phone === '555 0119-07' && worldSettings.phoneLines['+1555011907'].owner.kind === 'npc', 'an NPC line, mirrored to the contact');
-  ok(await as('u1', (s) => s.numberOf('v')) === '+1 (555) 0177-42' && (await as('u1', (s) => s.linesFor('v'))).length === 1, 'numberOf / linesFor');
+  await as('u1', (s) => s._relayLine({ op: 'assign', actorId: 'judy', number: '+72 NC WAT-9999' })); await flush();
+  ok(!worldSettings.phoneLines['+72-NC-WAT-9999'], 'the GM refuses a player changing a character they do not own');
+  await as('gm', (s) => s.assignNumber({ actorId: 'rache', number: '+72 NC WAT-1860' }));
+  await as('gm', (s) => s.assignNumber({ contactId: 'rogue', number: '+72 NC WAT-1907' }));
+  await as('gm', (s) => s.assignNumber({ contactId: 'queen', number: '+72 NC WAT-4290' }));
+  await as('gm', (s) => s.assignNumber({ actorId: 'ghost', number: '+72 NC WAT-6666' }));
+  ok(contacts[0].phone === '+72 NC WAT-1907' && worldSettings.phoneLines['+72-NC-WAT-1907'].owner.kind === 'npc', 'an NPC line, mirrored to the contact');
+  ok(await as('u1', (s) => s.numberOf('v')) === '+72 NC WAT-7742' && (await as('u1', (s) => s.linesFor('v'))).length === 1, 'numberOf / linesFor');
   const sugg = await as('u1', (s) => s.suggestNumbers({ count: 6, seed: 4 }));
-  ok(sugg.length === 6 && sugg.every((x) => /^\+1 \(555\) 555-01\d\d$/.test(x.number)), 'suggestions: the default Night City region, fiction-safe');
+  ok(sugg.length === 6 && sugg.every((x) => /^\+72 NC [A-Z]{3}-\d{4}$/.test(x.number)), 'suggestions: a district in the home city');
   // re-assigning moves the line
-  await as('gm', (s) => s.assignNumber({ actorId: 'rache', number: '555 0118-61' }));
-  ok(!worldSettings.phoneLines['+1555011860'] && worldSettings.phoneLines['+1555011861'], 'a new number replaces the old one');
+  await as('gm', (s) => s.assignNumber({ actorId: 'rache', number: '+72 NC WAT-1861' }));
+  ok(!worldSettings.phoneLines['+72-NC-WAT-1860'] && worldSettings.phoneLines['+72-NC-WAT-1861'], 'a new number replaces the old one');
 }
 
 // ═══ 2. Player → player: ring, answer, hang up, logs ═══
 let callId;
 {
-  const r = await as('u1', (s) => s.placeCall('555 0131 88'));
+  const r = await as('u1', (s) => s.placeCall('+72 NC WAT-3188'));
   ok(r.ok && r.call.state === 'dialing' && r.call.to.kind === 'player', 'V dials Judy');
   callId = r.call.id;
   ok(bus.some((m) => m.op === 'call:event' && m.data.type === 'ring'), 'a ring goes out');
@@ -158,22 +158,22 @@ let callId;
 
 // ═══ 3. Decline, cancel, offline ═══
 {
-  const r = await as('u1', (s) => s.placeCall('555 0131 88')); await flush();
+  const r = await as('u1', (s) => s.placeCall('+72 NC WAT-3188')); await flush();
   await as('u2', (s) => s.decline(r.call.id)); await flush();
   ok(clients.u1.svc.calls.get(r.call.id).state === 'voicemail' && clients.u1.svc.calls.get(r.call.id).vmWhy === 'declined', 'declined: the caller goes to her voicemail (her line takes messages)');
   await as('u1', (s) => s.hangup(r.call.id)); await flush();
   ok(clients.u1.svc.calls.get(r.call.id).outcome === 'missed', 'hanging up on the voicemail screen leaves nothing (no answer)');
-  const c = await as('u1', (s) => s.placeCall('555 0131 88')); await flush();
+  const c = await as('u1', (s) => s.placeCall('+72 NC WAT-3188')); await flush();
   await as('u1', (s) => s.cancel(c.call.id)); await flush();
   ok(clients.u2.svc.calls.get(c.call.id).outcome === 'missed' && evts('u2', 'call:missed').some((e) => e.call.id === c.call.id), 'the caller hangs up first: Judy has a missed call');
   const before = bus.length;
-  const off = await as('u1', (s) => s.placeCall('555 0666 66'));
+  const off = await as('u1', (s) => s.placeCall('+72 NC WAT-6666'));
   ok(off.ok && bus.length === before, 'an offline player: no ring is sent');
 }
 
 // ═══ 4. A player calls an NPC: the GM answers as the identity ═══
 {
-  const r = await as('u1', (s) => s.placeCall('555 0342 90'));
+  const r = await as('u1', (s) => s.placeCall('+72 NC WAT-4290'));
   ok(r.call.to.kind === 'npc' && r.call.to.contactId === 'queen', 'calling an alias number reaches that identity');
   await flush();
   ok(evts('gm', 'call:ringing').at(-1)?.role === 'callee', 'the GM’s phone rings for the NPC');
@@ -187,10 +187,10 @@ let callId;
 
 // ═══ 5. Call waiting + hold ═══
 {
-  const a = await as('u1', (s) => s.placeCall('555 0131 88')); await flush();
+  const a = await as('u1', (s) => s.placeCall('+72 NC WAT-3188')); await flush();
   await as('u2', (s) => s.answer(a.call.id)); await flush();
   // Rache (u1's other character) calls Judy while she's on with V — use the GM calling as Rogue instead (u1 is busy)
-  const b = await as('gm', (s) => s.placeCall('555 0131 88', { contactId: 'rogue' })); await flush();
+  const b = await as('gm', (s) => s.placeCall('+72 NC WAT-3188', { contactId: 'rogue' })); await flush();
   const w = evts('u2', 'call:ringing').at(-1);
   ok(w.call.id === b.call.id && w.waiting === true, 'Judy gets a waiting ring');
   ok(clients.u2.events.some(([e, d]) => e === 'sound' && d === 'call-waiting'), 'with the call-waiting tone');
@@ -206,20 +206,20 @@ let callId;
 // ═══ 6. No signal; the GM drops a call ═══
 {
   clients.u1.g.nightcity.networkService.isDeadZone = true;
-  const r = await as('u1', (s) => s.placeCall('555 0131 88'));
+  const r = await as('u1', (s) => s.placeCall('+72 NC WAT-3188'));
   ok(r.ok && r.call.state === 'ended' && r.call.outcome === 'no-signal', 'no signal: the call ends at once');
   clients.u1.g.nightcity.networkService.isDeadZone = false;
-  const nis = await as('u1', (s) => s.placeCall('555 4040 40'));
+  const nis = await as('u1', (s) => s.placeCall('+72 NC WAT-4040'));
   ok(nis.call.outcome === 'not-in-service', 'an unowned number: not in service');
-  const own = await as('u1', (s) => s.placeCall('555 0177 42'));
+  const own = await as('u1', (s) => s.placeCall('+72 NC WAT-7742'));
   ok(!own.ok && own.error.includes('own'), 'your own number');
-  const c = await as('u1', (s) => s.placeCall('555 0131 88')); await flush();
+  const c = await as('u1', (s) => s.placeCall('+72 NC WAT-3188')); await flush();
   await as('u2', (s) => s.answer(c.call.id)); await flush();
   await as('gm', (s) => s.drop(c.call.id)); await flush();
   ok(clients.u1.svc.calls.get(c.call.id).outcome === 'dropped' && clients.u2.svc.calls.get(c.call.id).outcome === 'dropped', 'the GM drops the line for both');
   ok(clients.u1.events.some(([e, d]) => e === 'sound' && d === 'call-drop'), 'with the drop sound');
   // losing signal mid-call
-  const d = await as('u1', (s) => s.placeCall('555 0131 88')); await flush();
+  const d = await as('u1', (s) => s.placeCall('+72 NC WAT-3188')); await flush();
   await as('u2', (s) => s.answer(d.call.id)); await flush();
   clients.u2.g.nightcity.networkService.isNodeDead = true;
   await as('u2', (s) => s.checkSignal()); await flush();
@@ -238,7 +238,7 @@ let callId;
   ok(M.BUILT_MODES.join() === 'loud,type,dictate', 'built modes: Out loud, Type, Dictate (phase 5)');
   ok(clients.u1.svc.usableModes.join() === 'loud,type' && clients.u1.svc.offeredModes.join() === 'loud,type,dictate' && /speech/.test(clients.u1.svc.dictateBlock), 'a browser that cannot dictate: the chip shows, greyed, with the reason; it is not usable');
 
-  const r = await as('u1', (s) => s.placeCall('555 0131 88')); await flush();
+  const r = await as('u1', (s) => s.placeCall('+72 NC WAT-3188')); await flush();
   const id = r.call.id;
   await as('u2', (s) => s.answer(id)); await flush();
   ok(clients.u1.svc.modeFor(id) === 'loud', 'a call starts in the GM default mode');
@@ -285,7 +285,7 @@ let callId;
   ok(V.makeVoicemail({ text: '   ' }) === null && V.makeVoicemail({ text: 'x'.repeat(2000) }).text.length === V.VOICEMAIL_MAX, 'makeVoicemail: never empty, capped');
 
   // V calls Judy, nobody answers → her voicemail
-  const r = await as('u1', (s) => s.placeCall('555 0131 88')); await flush();
+  const r = await as('u1', (s) => s.placeCall('+72 NC WAT-3188')); await flush();
   const id = r.call.id;
   await as('u1', (s) => s.cancel(id, 'timeout')); await flush();
   const c1 = clients.u1.svc.calls.get(id);
@@ -312,27 +312,27 @@ let callId;
   ok(!pagesOf('v').some((p) => p.flags[MODULE_ID].voicemail?.vmId === 'forged'), 'a message "from" a character the sender does not own is refused');
 
   // do not disturb: no ring, straight to voicemail (Judy sets it herself, relayed)
-  await as('u2', (s) => s.saveLineSettings('555 0131 88', { greeting: { kind: 'typed', text: 'Busy. Talk later.' }, voicemail: { on: true, dnd: true } })); await flush();
-  ok(clients.gm.svc.lineSettings('555 0131 88').voicemail.dnd, 'Judy’s My line reaches the GM');
+  await as('u2', (s) => s.saveLineSettings('+72 NC WAT-3188', { greeting: { kind: 'typed', text: 'Busy. Talk later.' }, voicemail: { on: true, dnd: true } })); await flush();
+  ok(clients.gm.svc.lineSettings('+72 NC WAT-3188').voicemail.dnd, 'Judy’s My line reaches the GM');
   const before = bus.length;
-  const d = await as('u1', (s) => s.placeCall('555 0131 88'));
+  const d = await as('u1', (s) => s.placeCall('+72 NC WAT-3188'));
   ok(!bus.slice(before).some((m) => m.data?.type === 'ring') && clients.u1.svc.calls.get(d.call.id).state === 'voicemail' && clients.u1.svc.calls.get(d.call.id).greeting.text === 'Busy. Talk later.', 'do not disturb: no ring, her own greeting');
   await as('u1', (s) => s.hangup(d.call.id));
   // a line that takes no messages: declined just ends
-  await as('gm', (s) => s.saveLineSettings('555 0131 88', { voicemail: { on: false } }));
-  const n = await as('u1', (s) => s.placeCall('555 0131 88')); await flush();
+  await as('gm', (s) => s.saveLineSettings('+72 NC WAT-3188', { voicemail: { on: false } }));
+  const n = await as('u1', (s) => s.placeCall('+72 NC WAT-3188')); await flush();
   await as('u2', (s) => s.decline(n.call.id)); await flush();
   ok(clients.u1.svc.calls.get(n.call.id).outcome === 'declined', 'messages off: declined is just declined');
-  await as('gm', (s) => s.saveLineSettings('555 0131 88', {}));
+  await as('gm', (s) => s.saveLineSettings('+72 NC WAT-3188', {}));
   // a player calls an NPC; the GM declines → the NPC's voicemail, written into the identity's inbox
-  const q = await as('u1', (s) => s.placeCall('555 0119 07')); await flush();
+  const q = await as('u1', (s) => s.placeCall('+72 NC WAT-1907')); await flush();
   await as('gm', (s) => s.decline(q.call.id)); await flush();
   ok(clients.u1.svc.calls.get(q.call.id).state === 'voicemail', 'an NPC that does not pick up has voicemail too');
   await as('u1', (s) => s.skipGreeting(q.call.id));
   await as('u1', (s) => s.leaveVoicemail(q.call.id, 'Rogue, it is V.')); await flush();
   ok((await as('gm', (s) => s.getVoicemails('rogue'))).length === 1, 'the GM finds it in Rogue’s inbox');
   // a number nobody owns never goes to voicemail
-  const u = await as('u1', (s) => s.placeCall('555 0999 00'));
+  const u = await as('u1', (s) => s.placeCall('+72 NC WAT-9900'));
   ok(u.call?.outcome === 'not-in-service', 'a number nobody owns: not in service, no voicemail');
   ok((await import('node:fs')).readFileSync(`${ROOT}/scripts/init/registerCallSystem.js`, 'utf8').includes('SOCKET_OPS.CALL_VM_REQUEST'), 'the voicemail request is registered');
 }
@@ -352,7 +352,7 @@ let callId;
     upload: async (source, dir, file) => { if (uploadFails) throw new Error('no uploads here'); uploads.push({ source, dir, name: file.name, size: file.size }); return { path: `${dir}/${file.name}` }; },
   };
   for (const uid of Object.keys(clients)) clients[uid].g.world = { id: 'nc' };
-  const judyNo = '555 0131 88';
+  const judyNo = '+72 NC WAT-3188';
   await as('gm', (s) => s.saveLineSettings(judyNo, {}));
   const ringOut = async () => { const r = await as('u1', (s) => s.placeCall(judyNo)); await flush(); await as('u1', (s) => s.cancel(r.call.id, 'timeout')); await flush(); await as('u1', (s) => s.skipGreeting(r.call.id)); return r.call.id; };
 
@@ -409,7 +409,7 @@ let callId;
 
 // ═══ 6e. The network (phase 4): drops with a reason, no signal on the ring, the glitch, a withheld number + trace, taps, the log ═══
 {
-  const judyNo = '555 0131 88';
+  const judyNo = '+72 NC WAT-3188';
   for (const uid of Object.keys(clients)) {
     const n = clients[uid].g.nightcity.networkService;
     clients[uid].g.scenes.viewed = { id: 'watson', name: 'Watson' };
@@ -538,7 +538,7 @@ let callId;
   const app = { _activeTab: 'phone', isPopout: false, render() {}, element: null };
   const tab = new PhoneTab(app);
   const view = (v) => { globalThis.game = clients.gm.g; tab._view = v; return tab.prepareContext().phone2; };
-  const r = await as('u1', (s) => s.placeCall('555 0131 88')); await flush();
+  const r = await as('u1', (s) => s.placeCall('+72 NC WAT-3188')); await flush();
   let ctx = view('live');
   ok(!ctx.error && (ctx.live.lines.some((l) => l.id === r.call.id) || ctx.live.ringing.some((l) => l.id === r.call.id)), 'Live shows a player↔player call while it rings');
   await as('u2', (s) => s.answer(r.call.id)); await flush();
@@ -550,7 +550,7 @@ let callId;
   ctx = view('live');
   ok(!ctx.live.lines.some((l) => l.id === r.call.id), 'an ended call leaves Live');
   ctx = view('log');
-  ok(!ctx.error && ctx.log.total > 0 && ctx.log.days.some((d) => d.rows.some((x) => x.id === r.call.id)), 'Call log lists it (identifyInbox through the class)');
+  ok(!ctx.error && ctx.log.total > 0 && ctx.log.bands.some((b) => b.days.some((d) => d.rows.some((x) => x.id === r.call.id))), 'Call log lists it (identifyInbox through the class)');
   ctx = view('vm');
   ok(!ctx.error && (ctx.vm.boxes || ctx.vm.groups || []).length > 0, 'Voicemail lists the messages left earlier');
 }
@@ -565,9 +565,111 @@ let callId;
   ok(["CALL: 'call:event'", "CALL_LOG_REQUEST", "CALL_LINE_REQUEST", "'call-ring': 'calls/ring.wav'"].every((k) => consts.includes(k)), 'socket ops + sounds declared');
   ok(['ring', 'ringback', 'connect', 'end', 'drop', 'waiting', 'voicemail-beep'].every((n) => fs.existsSync(`${ROOT}/assets/sounds/calls/${n}.wav`)), 'every call sound file exists');
   const sm = read('scripts/core/SettingsManager.js');
-  ok(['callsEnabled', 'callModes', 'callDefaultMode', 'callHomeCode', 'callDefaultRegion', 'callRingSeconds', 'callUnknownNumbers', 'phoneLines', 'callSilent', 'callScheme'].every((k) => sm.includes(`'${k}'`)), 'every call setting is registered');
+  ok(['callsEnabled', 'callModes', 'callDefaultMode', 'callRingSeconds', 'callUnknownNumbers', 'phoneLines', 'callSilent', 'callScheme'].every((k) => sm.includes(`'${k}'`)), 'every call setting is registered');
   const css = read('styles/components/call-hud.css');
   ok(!/#[0-9a-f]{3,6}\b/i.test(css.replace(/var\([^)]*\)/g, '').replace(/#fff\b|#000\b|#0b0709|#c9ccd2|#e8e3f5|#04130b|#ff4b4b|#8a8f99|#4be38a/gi, '')), 'the HUD stylesheet has no stray literal colours');
+}
+
+// ═══ extra lines, retiring, requests (PHONE-REVISION.md §4) ═══
+{
+  worldSettings.phoneLines = {}; worldSettings.phoneRetired = []; worldSettings.phoneRequests = []; worldSettings.phoneRules = {};
+  await as('gm', (s) => s.assignNumber({ actorId: 'v', number: 'WAT-1111' }));
+  ok(await as('u1', (s) => s.numberOf('v')) === '+72 NC WAT-1111', 'stored in full form, whatever was typed');
+  ok(clients.gm.actors.get('v').getFlag(MODULE_ID, 'phone') === '+72 NC WAT-1111', 'mirrored in full form');
+  const typed = await as('gm', (s) => s.assignNumber({ actorId: 'v', number: 'WAT-11' })); ok(!typed.ok && typed.error, 'a part number is refused with a reason');
+  const bad = await as('gm', (s) => s.assignNumber({ actorId: 'v', number: 'QQQ-1111' })); ok(!bad.ok, 'a place not in the table is refused');
+  const r1 = await as('gm', (s) => s.addLine({ actorId: 'v', number: 'KAB-2222', label: 'Old line' }));
+  ok(r1.ok && worldSettings.phoneLines['+72-NC-KAB-2222'].kind === 'extra' && worldSettings.phoneLines['+72-NC-KAB-2222'].label === 'Old line', 'the GM adds an extra line');
+  const lines = await as('u1', (s) => s.linesFor('v')); ok(lines.length === 2 && lines[0].main && lines[1].kind === 'extra' && !lines[1].burner, 'main first, then the extra line');
+  ok(await as('u1', (s) => s.numberOf('v')) === '+72 NC WAT-1111', 'an extra line never replaces the main number');
+  const r2 = await as('gm', (s) => s.assignNumber({ actorId: 'v', number: 'WAT-3333' }));
+  ok(r2.ok && worldSettings.phoneLines['+72-NC-KAB-2222'], 'changing the main number leaves extra lines alone');
+  ok(worldSettings.phoneRetired.some((x) => x.key === '+72-NC-WAT-1111' && x.why === 'Changed'), 'the old main number retires');
+  ok(!(await as('gm', (s) => s.assignNumber({ actorId: 'rache', number: 'WAT-1111' }))).ok, 'a retired number can never be given out');
+  ok(!(await as('gm', (s) => s.takenNumbers())).has('+72-NC-WAT-9998'), 'a free number is free');
+  ok((await as('gm', (s) => s.takenNumbers())).has('+72-NC-WAT-1111'), 'a retired number counts as taken, so the generator skips it');
+  // the limit, as a player
+  ok(await as('u1', (s) => s.extraLeft('v')) === 0, 'the default limit is one extra line');
+  const over = await as('u1', (s) => s.addLine({ actorId: 'v', number: 'KAB-5555' })); ok(!over.ok, 'a player over the limit is refused');
+  await as('u1', (s) => s._relayLine({ op: 'addLine', actorId: 'v', number: '+72 NC KAB-5555', kind: 'extra', label: '' })); await flush(); ok(!worldSettings.phoneLines['+72-NC-KAB-5555'], 'and the GM side enforces it too');
+  await as('u1', (s) => s._relayLine({ op: 'addLine', actorId: 'judy', number: '+72 NC KAB-5556', kind: 'extra', label: '' })); await flush(); ok(!worldSettings.phoneLines['+72-NC-KAB-5556'], 'nobody adds a line to a character they do not own');
+  // a second line hides who is behind it
+  const sec = await as('u1', (s) => s._caller({ actorId: 'v', line: '+72-NC-KAB-2222' })); ok(sec.asLine && sec.number === '+72 NC KAB-2222' && sec.name === 'Old line' && !sec.img, 'calling from a second line shows that line, not the character');
+  const other = await as('u1', (s) => s._caller({ actorId: 'v', line: '+72-NC-WAT-0000' })); ok(!other.asLine && other.number === '+72 NC WAT-3333', 'a line that is not theirs falls back to the main number');
+  // retiring
+  ok(!(await as('gm', (s) => s.retireLine('WAT-3333'))).ok, 'a main line can be changed, not retired');
+  await as('u1', (s) => s.retireLine('KAB-2222')); await flush(); ok(!worldSettings.phoneLines['+72-NC-KAB-2222'] && worldSettings.phoneRetired.some((x) => x.key === '+72-NC-KAB-2222'), 'a player retires their own extra line');
+  // requests
+  const rq = await as('u1', (s) => s.requestChange({ actorId: 'v', number: 'KAB-7777' })); await flush();
+  ok(rq.ok && worldSettings.phoneRequests.length === 1 && worldSettings.phoneRequests[0].to === '+72 NC KAB-7777', 'a change waits for the GM');
+  ok(await as('u1', (s) => s.numberOf('v')) === '+72 NC WAT-3333', 'and they keep their number until then');
+  await as('u1', (s) => s._relayLine({ op: 'assign', actorId: 'v', number: '+72 NC KAB-8888' })); await flush(); ok(!worldSettings.phoneLines['+72-NC-KAB-8888'], 'a forged assign cannot skip the question');
+  const id = worldSettings.phoneRequests[0].id; await as('gm', (s) => s.answerRequest(id, false)); ok(!worldSettings.phoneRequests.length && await as('u1', (s) => s.numberOf('v')) === '+72 NC WAT-3333', 'denying changes nothing');
+  await as('u1', (s) => s.requestChange({ actorId: 'v', number: 'KAB-7777' })); await flush(); const id2 = worldSettings.phoneRequests[0].id;
+  const yes = await as('gm', (s) => s.answerRequest(id2, true)); ok(yes.ok && await as('u1', (s) => s.numberOf('v')) === '+72 NC KAB-7777' && worldSettings.phoneRetired.some((x) => x.key === '+72-NC-WAT-3333'), 'approving moves them and retires the old number');
+  // special numbers
+  const sp = await as('u1', (s) => s.resolve('trauma')); ok(sp.special && sp.name === 'Trauma Team', 'TRAUMA is a special number');
+  worldSettings.phoneRules = { home: { rc: '14', city: 'DAL' } }; ok((await as('gm', (s) => s.numberContext)).home.city === 'DAL', 'the context follows the rules at once'); worldSettings.phoneRules = {};
+  ok((await as('gm', (s) => s.numberContext)).home.city === 'NC', 'and back');
+}
+
+// ═══ shared lines (PHONE-REVISION.md §7) ═══
+{
+  worldSettings.phoneLines = {}; worldSettings.phoneRetired = []; worldSettings.phoneRequests = [];
+  const made = await as('gm', (s) => s.createSharedLine({ name: 'Crew', number: 'KAB-7001', members: [{ actorId: 'v', contactId: null, name: 'V' }] }));
+  ok(made.ok && worldSettings.phoneLines['+72-NC-KAB-7001'].kind === 'shared' && worldSettings.phoneLines['+72-NC-KAB-7001'].owner.actorId === null, 'a shared line has no owner');
+  ok((await as('u1', (s) => s.linesFor('v'))).some((l) => l.shared), 'it is one of the member\'s lines');
+  ok(await as('u1', (s) => s.numberOf('v')) === '', 'and never their own number');
+  const out = await as('u1', (s) => s._caller({ actorId: 'v', line: '+72-NC-KAB-7001' }));
+  ok(out.asLine && out.name === 'Crew' && !out.img, 'calling out shows the line, not who dialled');
+  ok(await as('u1', (s) => s._ringsHere({ to: { shared: true, userIds: ['u1'] } })) === true, 'it rings a member');
+  ok(await as('u1', (s) => s._ringsHere({ to: { shared: true, userIds: ['nobody'] } })) === false, 'and nobody else');
+  ok(await as('gm', (s) => s._ringsHere({ to: { shared: true, userIds: ['u1'], gmMember: false } })) === false, 'a GM only with an NPC on it');
+  ok(await as('gm', (s) => s._ringsHere({ to: { shared: true, userIds: [], gmMember: true } })) === true, 'the active GM with one');
+  ok((await as('gm', (s) => s._sharedInboxes('KAB-7001'))).join() === 'v', 'logs and voicemail reach the members');
+  const ch = await as('gm', (s) => s.changeSharedNumber('KAB-7001', 'KAB-7002'));
+  ok(ch.ok && worldSettings.phoneLines['+72-NC-KAB-7002'] && worldSettings.phoneRetired.some((r) => r.key === '+72-NC-KAB-7001'), 'a new number retires the old one');
+  await as('gm', (s) => s.retireOwner({ actorId: 'v', why: 'gone' }));
+  ok(worldSettings.phoneLines['+72-NC-KAB-7002'].members.length === 0, 'a deleted character comes off the line; the number stays');
+  ok((await as('gm', (s) => s.retireLine('KAB-7002'))).ok && !worldSettings.phoneLines['+72-NC-KAB-7002'], 'a shared line can retire');
+}
+
+// ═══ terminal numbers + written logs (§9) ═══
+{
+  worldSettings.phoneLines = {}; worldSettings.phoneRetired = []; worldSettings.phoneWrittenLogs = {};
+  const item = { uuid: 'Item.t1', name: 'WS-7F-12' };
+  ok((await as('gm', (s) => s.setTerminalNumber(item, { number: 'EXZ-0712' }))).ok && worldSettings.phoneLines['+72-NC-EXZ-0712'].kind === 'terminal', 'a terminal gets a number from the same table');
+  ok(await as('gm', (s) => s.lineOfItem('Item.t1'))?.number === '+72 NC EXZ-0712' || (await as('gm', (s) => s.lineOfItem('Item.t1'))).number === '+72 NC EXZ-0712', 'and it can be found');
+  await as('gm', (s) => s.setTerminalNumber(item, { when: 'recording', text: 'Locked.' }));
+  ok(worldSettings.phoneLines['+72-NC-EXZ-0712'].when === 'recording' && worldSettings.phoneLines['+72-NC-EXZ-0712'].text === 'Locked.', 'what a caller hears');
+  await as('gm', (s) => s.setTerminalNumber(item, { number: 'EXZ-0713' }));
+  ok(!worldSettings.phoneLines['+72-NC-EXZ-0712'] && worldSettings.phoneRetired.some((r) => r.key === '+72-NC-EXZ-0712') && worldSettings.phoneLines['+72-NC-EXZ-0713'].when === 'recording', 'a new number retires the old and keeps the setting');
+  await as('gm', (s) => s.setTerminalNumber(item, { number: null }));
+  ok(!worldSettings.phoneLines['+72-NC-EXZ-0713'], 'dropping it retires it too');
+  await as('gm', (s) => s.saveWrittenLog('v', [{ id: 'e1', dir: 'in', who: 'Marcus', n: '+14 DAL CEN-3345', out: 'Voicemail', when: '2045-03-14T21:40:00.000Z', len: '0:18', vm: 'Do not use this line.' }]));
+  ok(worldSettings.phoneWrittenLogs.v.length === 1 && (await as('gm', (s) => s.writtenLog('v'))).length === 1, 'a written call is stored');
+  const row = (await as('gm', (s) => s.allLogs())).find((l) => l.callId === 'w:e1');
+  ok(row && row.outcome === 'voicemail' && row.seconds === 18 && row.seen && row.dropReason.includes('Do not use'), 'and reads like any other call');
+}
+
+// ═══ the queue: hold + pass ═══
+{
+  const svc = clients.gm.svc;
+  globalThis.game = clients.gm.g;
+  const call = { id: 'qq1', state: 'ringing', from: { userId: 'u1', number: 'WAT-1', name: 'V' }, to: { kind: 'npc', name: 'Judy', number: 'WAT-2' }, startedAt: Date.now() };
+  svc.calls.set('qq1', call);
+  svc.queueHold('qq1', true);
+  ok(svc.calls.get('qq1').queueHold, 'a held call stays ringing, marked');
+  ok(!svc._timers.has('qq1'), 'and its clock stops');
+  svc.queueHold('qq1', false);
+  ok(!svc.calls.get('qq1').queueHold && svc._timers.has('qq1'), 'back to ringing starts the clock again');
+  clearTimeout(svc._timers.get('qq1')); svc._timers.delete('qq1');
+  const as = svc.answerAs({ id: 'c9', name: 'Tess', organization: 'Militech' });
+  ok(as.name === 'Tess' && as.org === 'Militech' && as.showOnly === 'name', 'answering as someone shows them, and their company');
+  svc.calls.set('qq2', { ...call, id: 'qq2', state: 'live' });
+  svc.passTo('qq2', as);
+  ok(svc.calls.get('qq2').to.name === 'Tess' && svc.calls.get('qq2').to.number === 'WAT-2', 'passing keeps the number and changes who speaks');
+  svc.calls.delete('qq1'); svc.calls.delete('qq2');
 }
 
 console.log(`test-call-service: ${pass} passed, ${fail} failed`);

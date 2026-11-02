@@ -170,6 +170,7 @@
 .ncm-app .ncm-ov2-k--mail { --k: var(--ncm-hue-2); }
 .ncm-app .ncm-ov2-k--sched { --k: var(--ncm-text-time, var(--ncm-text-secondary)); }
 .ncm-app .ncm-ov2-k--setup { --k: var(--ncm-hue-7); }
+.ncm-app .ncm-ov2-k--phone { --k: var(--ncm-hue-5); }
 .ncm-app .ncm-ov2-k--other { --k: var(--ncm-text-label, var(--ncm-text-secondary)); }
 .ncm-app .ncm-ov2-need { display: flex; align-items: center; gap: 9px; padding: 7px 9px 7px 11px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); border-left: 3px solid var(--k, var(--ncm-border)); background: color-mix(in srgb, var(--k, transparent) 5%, transparent); }
 .ncm-app .ncm-ov2-need.is-top { background: color-mix(in srgb, var(--k, transparent) 11%, transparent); border-left-width: 4px; }

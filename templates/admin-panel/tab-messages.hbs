@@ -54,10 +54,15 @@
     </button>
     {{/each}}
     <span class="ncm-msg2-grow"></span>
-    {{{sendAsPicker}}}
     <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon {{#if bcOpen}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="bcToggle" title="Broadcast — one message to many" aria-label="Broadcast"><i class="fas fa-bullhorn"></i></button>
     {{#unless isPopout}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="popOutTab" data-tab="messages" title="Pop out into its own window" aria-label="Pop out"><i class="fas fa-up-right-from-square"></i></button>{{/unless}}
-    <button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary" data-action="openComposer"><i class="fas fa-pen"></i> New</button>
+    <details class="ncm-msg2-dd ncm-msg2-dd--downr ncm-msg2-newmenu">
+      <summary class="ncm-msg2-btn ncm-msg2-btn--primary" aria-label="New"><i class="fas fa-pen"></i> New <i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+      <div class="ncm-msg2-dd__menu">
+        <button type="button" class="ncm-msg2-dd__item" data-action="openComposer"><i class="fas fa-envelope"></i> Message</button>
+        <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="sendAsPick"><i class="fas fa-masks-theater"></i> Message as an NPC…</button>
+      </div>
+    </details>
   </div>
 
   {{!-- ═══ Broadcast (inline) ═══ --}}

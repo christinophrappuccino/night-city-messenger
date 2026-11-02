@@ -31,10 +31,11 @@ try {
   const layers = [...(box ? [{ label: 'Box lock', icon: 'fa-lock', text: 'Kabuki relay mast // BOX LOCK' }] : []),
     { label: 'Firmware', icon: 'fa-microchip', text: 'FIRMWARE MAST-CTRL 2.1 // 0xBCB4·87' }, { label: 'NCPD Dispatch', icon: 'fa-tower-broadcast', text: 'NCPD Dispatch // HANDSHAKE' }];
   const at = q.get('at');
+  const decided = q.get('decided') === '1';
   runJackIn(document.getElementById('host'), {
-    color: '#5c9bff', title: 'Jacking in // Kabuki relay mast', dvLabel: 'Interface · DV 15', layers, dv: 15,
+    color: '#5c9bff', title: 'Jacking in // Kabuki relay mast', decided, dvLabel: decided ? 'The GM decides' : 'Interface · DV 15', layers, dv: 15,
     parts: [{ label: 'TECH', value: 7 }, { label: 'Interface', value: 4 }], bloom: 9, netName: 'NCPD Dispatch', hex: '0xBCB4·87', kind,
-    result: kind === 'wait' ? null : { d10: kind === 'in' ? 6 : 1, total: kind === 'in' ? 17 : 12, dv: 15, moves: 3, sub: kind === 'miss' ? '12 VS DV 15 · TRACE FIRED · ALERT ▲' : undefined },
+    result: kind === 'wait' ? null : { d10: kind === 'in' ? 6 : 1, total: kind === 'in' ? 17 : 12, dv: 15, moves: 3, sub: decided ? undefined : kind === 'miss' ? '12 VS DV 15 · TRACE FIRED · ALERT ▲' : undefined },
     freezeAt: at != null ? parseFloat(at) : undefined,
   });
   document.title = 'OK';

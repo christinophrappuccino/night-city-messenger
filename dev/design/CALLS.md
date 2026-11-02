@@ -38,6 +38,9 @@ Non-goals for the first versions: live voice audio through NCM, video, group cal
 
 ## 2. Numbers
 
+> **Replaced 2026-11-01 by `dev/design/PHONE-REVISION.md`.** Below is the old format, which is what the code still runs until the revision is built.
+
+
 - Contacts already carry a free-text `phone` (master contacts and players' own copies).
 - **Player characters have no number today** (Email Setup gives an address only). **(proposal)** Email Setup also offers
   a number in a Night City format (`+1 (555) 0177-42`), editable; stored as an actor flag `phone`, beside `email`.
@@ -530,7 +533,10 @@ Rules = the pure `scripts/utils/callNet.js` (`dropReason`, `maskCaller`, `caller
 - Sim `test-call-service.mjs` §6e (142 total); probe `call-hud-probe.html?s=drop-why|anon|glitch`.
 
 
-## 19. Staged calls and eavesdropping (phase 6 — design, 2026-10-30, not built, no mock yet)
+## 19. Staged calls and eavesdropping (phase 6 — design, 2026-10-30, not built)
+
+> **Replaced 2026-11-01 by `dev/design/PHONE-REVISION.md` §12, Overheard calls.** Mocked and approved there. Read that first; this section is the earlier thinking.
+
 
 The GM runs a call between two NPCs; the players are never on it, they listen in — and how much they hear depends on
 how they got in. Dev decisions: all three voices are offered and **interchangeable**; whether "in the room" needs
@@ -624,3 +630,17 @@ Answered by the dev (2026-10-30):
 
 - **Admin → Phone → Call log and Voicemail were always empty**: `MessageRepository.identifyInbox` is STATIC, and `allLogs` / `allVoicemails` called it on the instance (`repo?.identifyInbox?.(j)` → undefined → every journal skipped). The sims mocked it as an instance method, which hid it. Now `CallService._inboxOf(repo, journal)` asks the class (an instance method still works for mocks); `test-call-service` §6f asserts no call site asks the instance, §6g drives the REAL PhoneTab over the REAL service with the real repository shape (Live during ring / connected, gone after, the log and voicemail after).
 - **Nothing refreshed when a log page or voicemail was written** (the call ends first, the GM writes the pages a moment later). `registerCallSystem` hooks create/update/delete of any page carrying `callLog` / `voicemail` → `EVENTS.CALL_LOGGED`; Admin → Phone (plus `CALL_MISSED`) and the Agent viewer (its missed badge + Calls tab, also on `LINE_UPDATED`) re-render on it. The Agent viewer had no call subscription at all before.
+
+## 21. As built for 2.1 (2026-11-02)
+
+The numbers, GM tools, line types, corporations, emergency calls and overheard calls follow `PHONE-REVISION.md`, which replaces §12's number formats and §19's staged calls. What differs from the plans above:
+
+- **Numbers** are `utils/phoneNumbering.js` + `data/phonePlaces.js`. A setting stores only what the GM changed.
+- **Delayed long distance and call charges were dropped.** Calls connect live at any distance, and the module charges nothing.
+- **Overheard calls** are `utils/overheard.js` + `services/OverheardService.js`. A running call lives on the GM's client and ends on reload. Not built: recorded voice lines, walls blocking sound, a live preview of the call screen.
+- **Corporate voicemail** is a real call: `to.office` carries the office, and the GM's client finds its mailbox (`CallService._officeMailbox`), making a send-only directory contact the first time. With no GM online it plays as a recording, because nobody could keep the message.
+- **Emergency calls** (`ui/Calls/EmergencyHud.js`) keep one scene for the whole call: an opening sting, a tracker, and an exit, at a slow pace with some give (`organicBeats`). Backup is whoever a Lawman can call, so only Police and Government organizations get lights and a siren (`backupLook`). Only the card's panel is redrawn at each step.
+- **Long logs** fold through `utils/logFolds.js`.
+- **Sharing:** `pushToPlayer(id, actor, { what })`. Who knows whom has separate address and number buttons.
+- **Macros:** `messenger.placeCall`, `getNumber`, `giveNumber`, `getOverheardCalls`, `startOverheardCall`.
+- **Not built:** payphones, Hold to speak (dropped), conference calls.

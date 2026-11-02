@@ -105,10 +105,10 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
     };
     const onKey = (e) => { if (e.key === 'Escape' && !scanning) { e.preventDefault(); cleanup(); } };
 
-    // Reveal the residents whose stealthDV <= total (force = all).
+    // Reveal the residents the roll beat (force = all).
     const reveal = (total) => {
       const armed = src.list() || [];
-      const found = forceReveal ? armed : armed.filter(r => (Number(r.stealthDV) || 0) <= total);
+      const found = forceReveal ? armed : armed.filter(r => (Number(r.stealthDV) || 0) < total);
       foundCount = found.length;
       const p = panel();
       if (!found.length) {
@@ -138,7 +138,12 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
         if (!svc || !actor) { ui.notifications?.warn('NCM | No operator to roll the sweep.'); scanning = false; return cleanup(); }
         try {
           // The number and the chat card wait for the sweep to finish.
-          rolled = await svc.performCheck(actor, sweepSkill, { dc: sweepDV, deferChat: true, context: 'System Sweep', flavor: `SWEEP // ${src.name}` });
+          rolled = await svc.performCheck(actor, sweepSkill, { dc: sweepDV, deferChat: true, context: 'System Sweep', flavor: `SWEEP // ${src.name}`,
+            ask: { host: wrap, title: 'System sweep', sub: 'The higher you roll, the more it finds.', hideDV: true, goLabel: 'Sweep' } });
+          if (rolled?.cancelled) {
+            scanning = false; p.classList.remove('is-scanning'); if (big) big.textContent = 'RUN SWEEP';
+            return;
+          }
           total = Number(rolled?.total) || 0;
         } catch (err) { log.error(`Sweep roll failed: ${err.message}`); total = 0; }
       }

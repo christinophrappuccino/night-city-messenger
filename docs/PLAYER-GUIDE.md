@@ -16,8 +16,9 @@ Open this guide again any time with the **?** button at the top of your inbox.
 6. [Shards](#part-6--shards)
 7. [Terminals](#part-7--terminals)
 8. [Network nodes](#part-8--network-nodes)
-9. [Make it yours](#part-9--make-it-yours)
-10. [If something seems broken](#if-something-seems-broken)
+9. [Calls](#part-9--calls)
+10. [Make it yours](#part-10--make-it-yours)
+11. [If something seems broken](#if-something-seems-broken)
 
 ---
 
@@ -144,7 +145,33 @@ Moves stay spent. Jacking out and back in resumes the same session until it runs
 
 ---
 
-## Part 9 — Make it yours
+## Part 9 — Calls
+
+Open **Calls** in your inbox. The dialer is on the left, and your calls are on the right. If you have no number yet, Calls walks you through getting one.
+
+**Your number.** A number says where it was issued, not where you are now, and it stays with you when you move. Hover any number to see what it means.
+
+| You dial | When |
+|---|---|
+| `WAT-4471` | Same city: the district and four digits |
+| `SF NFF-2210` | A nearby city: add the city |
+| `+14 DAL CEN-3345` | Far away: add a + code for the region |
+
+**Your line.** The My line card shows your full number, and whether your voicemail, greeting and ringer are on. If your GM lets you, you can add a second line or a burner there. Retiring a line ends that number for good.
+
+**Making a call.** Type a number or a contact's name, or tap the pad, then press Call. Letters work on the keypad, so 9-2-8 spells WAT. Calling a company's main number reaches its switchboard. To reach a desk, add the extension: `MIL-0100 x17`.
+
+**During a call.** You can talk out loud at the table, type, or dictate if your browser allows it. Your GM chooses which of these are available. Calls need signal, so a dead zone or a downed node can cut you off.
+
+**Finding old calls.** The tabs are **Calls**, **Missed**, **Voicemail** and **Contacts**. Calls are folded by date, with today open. Search finds names, numbers, networks and words said on a call, and **Show** narrows the list to one kind. The up-and-down arrow opens or closes every date.
+
+**Sharing your number.** Use the share button on My line to give your number to another character. A contact shows only what you were given, so you might have someone's address and not their number.
+
+**Emergency calls.** If your character has a Trauma Team plan, dialling Trauma Team calls them out. A Lawman can also call Backup from Calls. Help arrives in a few rounds, and a small strip at the top of the screen counts down.
+
+---
+
+## Part 10 — Make it yours
 
 <!-- fig: ThemeCustomizer.png | The Theme Customizer | 75 -->
 
@@ -154,6 +181,10 @@ The **gear** button in your inbox opens the Theme Customizer. Only you see your 
 - **Text Size** also makes the pop-up dialogs bigger. **Contrast** helps on a bright screen.
 - **CRT Film** puts a screen film over your windows. **Film on terminals & shards** dims it or turns it off on machines the GM has styled, on your screen only.
 - **Sound** volume, or turn sounds off.
+
+**Before a roll,** a small panel shows what you're adding up, what you have to beat, your chance, and steppers to spend **Luck** or add a modifier your GM gave you. A tie fails: you have to beat the number. **Ask Before Rolling** in Module Settings turns the panel off.
+
+**Showing the table.** On a terminal, shard or node, the **eye** on the window's title bar lets the other players watch a read-only copy of your screen. Click it again to stop. Passwords stay hidden. When someone else shares, a **Watch** chip appears at the top of your screen. Your GM decides whether this is available.
 
 **More than one character?** Terminals, shards and nodes act as your **operator**: the character who rolls, pays and gets paid. An **operator chip** shows up on those screens when you own several. Check it before you roll. If the wrong character is picked, the wrong character gets the money.
 

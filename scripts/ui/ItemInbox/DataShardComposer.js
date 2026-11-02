@@ -142,7 +142,7 @@ const GAL_IMG_FIELDS = [
   { f: 'flagged', type: 'checkbox', lbl: 'flag' },
   { f: 'corrupted', type: 'checkbox', lbl: 'dead' },
   { f: 'locked', type: 'checkbox', lbl: 'lock' },
-  { f: 'unlockDV', ph: '15', lbl: 'DV', w: '48px' }, // per-frame override (blank = vault DV)
+  { f: 'unlockDV', ph: '9', lbl: 'DV', w: '48px' }, // per-frame override (blank = vault DV)
   // Feed-mode extras (LIVE FEED cards show these; stills ignore them).
   { f: 'ptz', type: 'checkbox', lbl: 'PTZ (steerable)' },
   { f: 'controlDV', ph: '—', lbl: 'Ctl DV', w: '48px' },  // TAKE CONTROL gate (blank = free)
@@ -487,7 +487,7 @@ export class DataShardComposer extends BaseApplication {
 
       // Uploadable (design §4) — a program a runner can push onto a terminal.
       editUploadable: this.editData?.contentData?.uploadable ?? false,
-      uploadDV: this.editData?.contentData?.uploadDV ?? 15,
+      uploadDV: this.editData?.contentData?.uploadDV ?? 9,
       uploadStealthDV: this.editData?.contentData?.uploadStealthDV ?? '',
       editUploadTraceOnFail: this.editData?.contentData?.uploadTraceOnFail ?? false,
       uploadSkillOptions: this._skillOptions(this.editData?.contentData?.uploadSkill || 'Interface'),
@@ -568,7 +568,7 @@ export class DataShardComposer extends BaseApplication {
         return {
           locked: !!cd.locked,
           skills: this._skillOptions(cd.unlockSkill || 'Interface'),
-          dv: cd.unlockDV ?? 15,
+          dv: cd.unlockDV ?? 9,
           trace: !!cd.traceOnFail,
         };
       })(),
@@ -587,7 +587,7 @@ export class DataShardComposer extends BaseApplication {
 
       // Per-entry encryption
       isPerMessageEncryption: config.encryptionMode === 'message',
-      defaultDC: config.encryptionDC ?? 15,
+      defaultDC: config.encryptionDC ?? 9,
 
 
       // Shared — default timestamp is game time
@@ -1112,7 +1112,7 @@ export class DataShardComposer extends BaseApplication {
     const encBox = el.querySelector('[name="encrypted"]');
     const enc = !!encBox?.checked;
     const encChip = set('enc', enc
-      ? `<i class="fas fa-lock"></i> ENCRYPTED DV ${esc(el.querySelector('[name="encryptionDC"]')?.value || '15')}`
+      ? `<i class="fas fa-lock"></i> ENCRYPTED DV ${esc(el.querySelector('[name="encryptionDC"]')?.value || '9')}`
       : '<i class="fas fa-lock-open"></i> OPEN ACCESS');
     encChip?.classList.toggle('ncm-cmp-chip--warn', enc);
     encChip?.classList.toggle('ncm-cmp-chip--ok', !enc);
@@ -2052,7 +2052,7 @@ export class DataShardComposer extends BaseApplication {
           `</div>` +
           `<div class="ncm-calev__lockrow"${locked ? '' : ' hidden'}>` +
             `<label>DECRYPT</label><select class="ncm-calev__skill ncm-config-input">${skillOpts}</select>` +
-            `<label>DV</label><input type="number" class="ncm-calev__dv ncm-config-input" value="${Number(ev.unlockDV) || 15}" min="1">` +
+            `<label>DV</label><input type="number" class="ncm-calev__dv ncm-config-input" value="${Number(ev.unlockDV) || 9}" min="1">` +
             `<label class="ncm-calev__trace"><input type="checkbox" class="ncm-calev__tracechk"${ev.traceOnFail ? ' checked' : ''}> fail fires a trace</label>` +
           `</div>` +
         `</div>` +
@@ -2189,7 +2189,7 @@ export class DataShardComposer extends BaseApplication {
     if (card.classList.contains('is-locked')) {
       ev.locked = true;
       ev.unlockSkill = card.querySelector('.ncm-calev__skill')?.value || 'Interface';
-      ev.unlockDV = parseInt(card.querySelector('.ncm-calev__dv')?.value) || 15;
+      ev.unlockDV = parseInt(card.querySelector('.ncm-calev__dv')?.value) || 9;
       if (card.querySelector('.ncm-calev__tracechk')?.checked) ev.traceOnFail = true;
     }
     if (card.dataset.sceneId) ev.sceneId = card.dataset.sceneId;
@@ -2251,7 +2251,7 @@ export class DataShardComposer extends BaseApplication {
       if (/^(1|y|yes|true)/i.test(get('locked'))) {
         ev.locked = true;
         ev.unlockSkill = get('unlockskill', 'skill') || 'Interface';
-        ev.unlockDV = parseInt(get('unlockdv', 'dv')) || 15;
+        ev.unlockDV = parseInt(get('unlockdv', 'dv')) || 9;
         if (/^(1|y|yes|true)/i.test(get('traceonfail', 'trace'))) ev.traceOnFail = true;
       }
       const sc = get('sceneid', 'scene');
@@ -3427,7 +3427,7 @@ export class DataShardComposer extends BaseApplication {
       `<label class="ncm-schem-pop__chk"><input type="checkbox" data-pop="locked"${locked ? ' checked' : ''}> Locked — hidden until scouted (roll to reveal)</label>` +
       `<div class="ncm-schem-pop__lock" ${locked ? '' : 'hidden'}>` +
         `<label class="ncm-schem-pop__f"><span>Skill</span><input data-pop="uskill" value="${esc(d.unlockSkill)}" placeholder="Interface"></label>` +
-        `<label class="ncm-schem-pop__f"><span>DV</span><input type="number" data-pop="udv" value="${esc(d.unlockDv)}" placeholder="15"></label>` +
+        `<label class="ncm-schem-pop__f"><span>DV</span><input type="number" data-pop="udv" value="${esc(d.unlockDv)}" placeholder="9"></label>` +
       `</div>` +
       `<div class="ncm-schem-pop__ft">` +
         `<button type="button" class="ncm-schem-pop__del" data-pop-act="del"><i class="fas fa-trash"></i> Delete</button>` +
@@ -3874,10 +3874,10 @@ export class DataShardComposer extends BaseApplication {
           classification: data.dossierClassification || '', sections: this._collectDossierSections(),
           stats: { threat: data.dossierThreat || '', affiliation: data.dossierAffiliation || '', lastKnownLocation: data.dossierLastKnown || '' },
           declassify: !!data.dossierDeclassify, declassifySkill: data.dossierDeclassifySkill || 'Interface',
-          declassifyDV: parseInt(data.dossierDeclassifyDV) || 15, traceOnFail: !!data.dossierDeclassifyTrace,
+          declassifyDV: parseInt(data.dossierDeclassifyDV) || 9, traceOnFail: !!data.dossierDeclassifyTrace,
           // Masked identity (kind 'dossier-face').
           faceLocked, faceUnlockSkill: data.dossierFaceSkill || 'Interface',
-          faceUnlockDV: parseInt(data.dossierFaceDV) || 15, faceTraceOnFail: !!data.dossierFaceTrace,
+          faceUnlockDV: parseInt(data.dossierFaceDV) || 9, faceTraceOnFail: !!data.dossierFaceTrace,
           // Combat profile — stat/skill PICKS are stored; values are read live
           // from the linked actor at render time.
           profile: {
@@ -3914,11 +3914,11 @@ export class DataShardComposer extends BaseApplication {
           output: this._collectList('plOutput', PL_OUTPUT_FIELDS),
           executeRequire: !!data.payloadExecuteRequire,
           executeSkill: data.payloadExecuteSkill || 'Interface',
-          executeDV: parseInt(data.payloadExecuteDV) || 15,
+          executeDV: parseInt(data.payloadExecuteDV) || 9,
           traceOnFail: !!data.payloadExecuteTrace,
           disguised: !!data.payloadDisguised,
           disguiseType: data.payloadDisguiseType || 'note',
-          sniffDV: parseInt(data.payloadSniffDV) || 15,
+          sniffDV: parseInt(data.payloadSniffDV) || 9,
           sniffed: false,
           // Runtime state (fresh entry).
           executed: false, executedBy: null, executedAt: null,
@@ -3928,7 +3928,7 @@ export class DataShardComposer extends BaseApplication {
       }
       case CONTENT_TYPES.AVLOG:
         entryData.subject = data.avlogTitle || 'Recording';
-        entryData.contentData = { mediaType: data.avlogMediaType || 'audio', mediaUrl: data.avlogMediaUrl || '', duration: data.avlogDuration || '00:00', source: data.avlogSource || '', transcript: this._collectTranscriptLines(), corrupted: false, corruptionLevel: 0, locked: !!data.avlogLocked, unlockSkill: data.avlogUnlockSkill || 'Interface', unlockDV: parseInt(data.avlogUnlockDV) || 15, traceOnFail: !!data.avlogUnlockTrace };
+        entryData.contentData = { mediaType: data.avlogMediaType || 'audio', mediaUrl: data.avlogMediaUrl || '', duration: data.avlogDuration || '00:00', source: data.avlogSource || '', transcript: this._collectTranscriptLines(), corrupted: false, corruptionLevel: 0, locked: !!data.avlogLocked, unlockSkill: data.avlogUnlockSkill || 'Interface', unlockDV: parseInt(data.avlogUnlockDV) || 9, traceOnFail: !!data.avlogUnlockTrace };
         break;
       case CONTENT_TYPES.LOCATION:
         entryData.subject = data.locationName || 'Unknown Location';
@@ -3943,7 +3943,7 @@ export class DataShardComposer extends BaseApplication {
           approach: data.locationApproach || '', contact: data.locationContact || '',
           // Encrypted pin (contentUnlock kind 'location').
           locked: !!data.locationLocked, unlockSkill: data.locationUnlockSkill || 'Interface',
-          unlockDV: parseInt(data.locationUnlockDV) || 15, traceOnFail: !!data.locationUnlockTrace,
+          unlockDV: parseInt(data.locationUnlockDV) || 9, traceOnFail: !!data.locationUnlockTrace,
         };
         break;
       case CONTENT_TYPES.BANKING:
@@ -3982,7 +3982,7 @@ export class DataShardComposer extends BaseApplication {
         entryData.contentData = this._collectSpreadsheet(data);
         entryData.contentData.declassify = !!data.ssDeclassify;
         entryData.contentData.declassifySkill = data.ssDeclassifySkill || 'Interface';
-        entryData.contentData.declassifyDV = parseInt(data.ssDeclassifyDV) || 15;
+        entryData.contentData.declassifyDV = parseInt(data.ssDeclassifyDV) || 9;
         entryData.contentData.traceOnFail = !!data.ssDeclassifyTrace;
         if (validate && !entryData.contentData.columns.some(c => c.label.trim())) {
           ui.notifications.warn('NCM | Give at least one column a label.'); return null;
@@ -4010,7 +4010,7 @@ export class DataShardComposer extends BaseApplication {
           // Clock source (feed only) — 'game' is the default, so it drops out.
           clock: (data.galMode === 'feed' && data.galClock && data.galClock !== 'game') ? data.galClock : undefined,
           unlockSkill: data.galUnlockSkill || 'Interface',
-          unlockDV: parseInt(data.galUnlockDV) || 15,
+          unlockDV: parseInt(data.galUnlockDV) || 9,
           traceOnFail: !!data.galUnlockTrace,
           images,
         };
@@ -4027,7 +4027,7 @@ export class DataShardComposer extends BaseApplication {
           watermark: data.docWatermark || '', signed: data.docSigned || '', signedImage: data.docSignedImage || '',
           declassify: !!data.docDeclassify,
           declassifySkill: data.docDeclassifySkill || 'Interface',
-          declassifyDV: parseInt(data.docDeclassifyDV) || 15,
+          declassifyDV: parseInt(data.docDeclassifyDV) || 9,
           traceOnFail: !!data.docDeclassifyTrace,
           paragraphs,
         };
@@ -4092,7 +4092,7 @@ export class DataShardComposer extends BaseApplication {
           honeypot: !!data.malHoneypot,
           deployRequire: !!data.malDeployRequire,
           deploySkill: data.malDeploySkill || 'Interface',
-          deployDV: parseInt(data.malDeployDV) || 15,
+          deployDV: parseInt(data.malDeployDV) || 9,
           iceActorId: data.malIceActorId || null,
           deployed: false, deployedBy: null, tripped: false,
         };
@@ -4112,7 +4112,7 @@ export class DataShardComposer extends BaseApplication {
         ? (data.uploadEffect || '') : '';
       Object.assign(entryData.contentData, {
         uploadable: true,
-        uploadDV: parseInt(data.uploadDV) || 15,
+        uploadDV: parseInt(data.uploadDV) || 9,
         uploadSkill: data.uploadSkill || 'Interface',
         uploadTraceOnFail: !!data.uploadTraceOnFail,
         ...(stealth > 0 ? { uploadStealthDV: stealth } : {}),
@@ -4147,7 +4147,7 @@ export class DataShardComposer extends BaseApplication {
     const held = num(data.bankHeld); if (held != null) cd.held = held;
     if (cd.allowSiphon) {
       cd.siphonSkill = data.bankSiphonSkill || 'Interface';
-      cd.siphonDV = num(data.bankSiphonDV) || 15;
+      cd.siphonDV = num(data.bankSiphonDV) || 9;
       cd.siphonMode = data.bankSiphonMode || 'cap';
       if (cd.siphonMode === 'cap') cd.siphonCap = num(data.bankSiphonCap) || 0;
       if (cd.siphonMode === 'percent') cd.siphonPercent = num(data.bankSiphonPercent) || 25;
@@ -4572,7 +4572,7 @@ export class DataShardComposer extends BaseApplication {
     return {
       declassify: !!cd.declassify,
       declassifySkills: this._skillOptions(cd.declassifySkill || 'Interface'),
-      declassifyDV: cd.declassifyDV ?? 15,
+      declassifyDV: cd.declassifyDV ?? 9,
       declassifyTrace: !!cd.traceOnFail,
     };
   }
@@ -4593,7 +4593,7 @@ export class DataShardComposer extends BaseApplication {
       face: {
         locked: !!cd.faceLocked,
         skills: this._skillOptions(cd.faceUnlockSkill || 'Interface'),
-        dv: cd.faceUnlockDV ?? 15,
+        dv: cd.faceUnlockDV ?? 9,
         trace: !!cd.faceTraceOnFail,
       },
       profile: {
@@ -4639,7 +4639,7 @@ export class DataShardComposer extends BaseApplication {
       lock: {
         locked: !!cd.locked,
         skills: this._skillOptions(cd.unlockSkill || 'Interface'),
-        dv: cd.unlockDV ?? 15,
+        dv: cd.unlockDV ?? 9,
         trace: !!cd.traceOnFail,
       },
     };
@@ -4657,7 +4657,7 @@ export class DataShardComposer extends BaseApplication {
       owner: cd.owner || cd.accountName || '', accountName: cd.accountName || '', accountNumber: cd.accountNumber || '',
       accountType: cd.accountType || '', currency: cd.currency || '€$', status: cd.status || '',
       balance: cd.balance ?? '', cleared: cd.cleared ?? '', held: cd.held ?? '',
-      allowSiphon: !!cd.allowSiphon, siphonSkill, siphonDV: cd.siphonDV ?? 15,
+      allowSiphon: !!cd.allowSiphon, siphonSkill, siphonDV: cd.siphonDV ?? 9,
       siphonSkills: skills.map(s => ({ name: s, selected: s === siphonSkill })),
       siphonMode: cd.siphonMode || 'cap', siphonCap: cd.siphonCap ?? '', siphonPercent: cd.siphonPercent ?? 25,
       siphonDVScale: !!cd.siphonDVScale, siphonDVPer: cd.siphonDVPer ?? 50000,
@@ -4743,7 +4743,7 @@ export class DataShardComposer extends BaseApplication {
           isInherit: state === 'inherit', isAllow: state === 'allow', isDeny: state === 'deny',
           inheritLabel: base[m.key]?.allow ? 'allowed' : 'off',
           dv: o.dv ?? '',
-          dvPlaceholder: String(base[m.key]?.dv ?? 15),
+          dvPlaceholder: String(base[m.key]?.dv ?? 9),
         };
       }),
     };
@@ -4762,7 +4762,7 @@ export class DataShardComposer extends BaseApplication {
         { value: 'authored', label: 'Frozen — each cam’s Time' },
         { value: 'off', label: 'No timestamps' },
       ].map(o => ({ ...o, selected: o.value === clock })),
-      unlockDV: cd.unlockDV ?? 15,
+      unlockDV: cd.unlockDV ?? 9,
       unlockTrace: !!cd.traceOnFail,
     };
   }
@@ -4838,7 +4838,7 @@ export class DataShardComposer extends BaseApplication {
       deployable: cd.deployable !== false, honeypot: !!cd.honeypot,
       deployRequire: !!cd.deployRequire,
       deploySkills: skills.map(s => ({ name: s, selected: s === deploySkill })),
-      deployDV: cd.deployDV ?? 15,
+      deployDV: cd.deployDV ?? 9,
       iceOptions, hasIceActors: iceOptions.length > 0,
     };
   }
@@ -4866,11 +4866,11 @@ export class DataShardComposer extends BaseApplication {
       hasMacros: (game.macros?.size || 0) > 0,
       executeRequire: !!cd.executeRequire,
       executeSkills: this._skillOptions(cd.executeSkill || 'Interface'),
-      executeDV: cd.executeDV ?? 15,
+      executeDV: cd.executeDV ?? 9,
       executeTrace: !!cd.traceOnFail,
       disguised: !!cd.disguised,
       disguiseOptions: DISGUISES.map(([v, l]) => ({ value: v, label: l, selected: v === (cd.disguiseType || 'note') })),
-      sniffDV: cd.sniffDV ?? 15,
+      sniffDV: cd.sniffDV ?? 9,
     };
   }
 

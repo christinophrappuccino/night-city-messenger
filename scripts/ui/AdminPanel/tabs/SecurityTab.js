@@ -46,8 +46,8 @@ const HACK_RES = [
   { value: 'gm', label: 'GM adjudicates', blurb: 'No auto-roll: the player waits while you call pass or fail.' },
 ];
 const ROLE_ROLL = [
-  { value: 'stat', label: 'Stat + rank', blurb: 'TECH + Interface rank + 1d10 (the module default).' },
-  { value: 'rank', label: 'Rank only', blurb: 'Interface rank + 1d10 (the rulebook).' },
+  { value: 'rank', label: 'Rank only', blurb: 'Interface rank + 1d10 (the rulebook, the default). Interface DVs are set for this.' },
+  { value: 'stat', label: 'Stat + rank', blurb: 'TECH + Interface rank + 1d10. Interface DVs become much easier.' },
 ];
 
 /** slug → plain-language phrase (someone who forgot the jargon still gets it). */
@@ -210,8 +210,8 @@ export class SecurityTab extends BaseTab {
 
   /** Role ability rolls (the `roleAbilityRoll` world setting, also in Module Settings). */
   _roleRollContext() {
-    let mode = 'stat';
-    try { mode = game.settings.get('night-city-messenger', 'roleAbilityRoll') || 'stat'; } catch { /* not registered */ }
+    let mode = 'rank';
+    try { mode = game.settings.get('night-city-messenger', 'roleAbilityRoll') || 'rank'; } catch { /* not registered */ }
     return { opts: ROLE_ROLL.map(o => ({ ...o, on: o.value === mode })), label: (ROLE_ROLL.find(o => o.value === mode) || ROLE_ROLL[0]).label };
   }
 
@@ -430,10 +430,10 @@ export class SecurityTab extends BaseTab {
       };
     }
     const rules = resolveJackIn({
-      skill: q('jk-skill')?.value, dv: num('jk-dv', 15), resolution: q('jk-res')?.value,
+      skill: q('jk-skill')?.value, dv: num('jk-dv', 9), resolution: q('jk-res')?.value,
       dials: {
         unlocks: chk('jk-unlocks'), edge: chk('jk-edge'), edgeCap: num('jk-edgecap', 3),
-        moves: chk('jk-moves'), movesMargin: num('jk-margin', 5),
+        moves: chk('jk-moves'), movesMargin: num('jk-margin', 0),
         movesTable: [0, 1, 2, 3].map(i => ({ rank: num(`jk-mr-${i}`, 1), moves: num(`jk-mm-${i}`, 2) })),
       },
       failure: { trace: chk('jk-trace'), severity: q('jk-sev')?.value, alert: chk('jk-alert'), maxAttempts: num('jk-tries', 3), lockoutMinutes: num('jk-lock', 60) },

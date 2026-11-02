@@ -49,7 +49,7 @@ export const CMV_DEFAULTS = Object.freeze({
   // An expert rule with no qualifiers names nobody (unlike an operator gate,
   // which is inert = everyone) — "nobody counts" is the safe reading here.
   expert: { roles: [], roleLogic: 'any', skills: [], itemGroups: [], logic: 'any', actors: [] },
-  scan: { skills: ['Interface', 'Electronics/Security Tech'], dv: 15, identifyBy: 5, failTraced: false },
+  scan: { skills: ['Interface', 'Electronics/Security Tech'], dv: 9, identifyBy: 5, failTraced: false },
   // What a layperson cannot see (true = hidden from them).
   hide: { ice: true, iceDetail: true, attempts: true, trace: true },
   hideDV: true,
@@ -199,7 +199,7 @@ export function resolveCountermeasures(worldCfg, override, facts = {}) {
     if (margin >= cfg.scan.identifyBy) {
       return { ...base, state: 'identified', scanned: true, credit: 'Identified · your scan', showDV: dvFor(false), show: all };
     }
-    if (margin >= 0) {
+    if (margin > 0) {
       return {
         ...base, state: 'spotted', scanned: true, showDV: dvFor(true),
         show: { ...lay, ice: true, attempts: true, trace: true },

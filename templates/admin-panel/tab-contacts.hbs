@@ -492,6 +492,7 @@
           {{#if img}}<img class="ncm-ct2-av" src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}
           <div class="ncm-ct2-r__txt"><div class="nm">{{name}}</div>
             <div class="addr">{{#if noEmail}}No address yet{{else}}{{email}}{{/if}}</div>
+            <button type="button" class="ncm-ct2-pphone" data-action="tabAct" data-op="pPhone" data-actor="{{actorId}}" data-tooltip="Open this character in Phone → Numbers"><i class="fas fa-phone"></i>{{#each phoneLines}}<span class="n{{#unless main}} is-extra{{/unless}}">{{number}}{{#if word}} <small>{{word}}</small>{{/if}}</span>{{else}}<span class="none">No number yet</span>{{/each}}</button>
             <div class="meta">{{#if player}}<span class="ncm-tagp" style="--tc:{{ncm-hue player}}"><i class="fas fa-user"></i>played by {{player}}</span>{{/if}}{{#if unread}}<span class="ncm-tagp is-attn"><i class="fas fa-envelope"></i>{{unread}} unread</span>{{/if}}{{#if lastMail}}<span class="ncm-tagp is-time"><i class="fas fa-clock"></i>last mail {{lastMail}}</span>{{/if}}</div></div>
           <div class="ncm-ct2-acts">
             <button type="button" class="ncm-ct2-btn ncm-ct2-btn--primary" data-action="tabAct" data-op="pInbox" data-actor="{{actorId}}"><i class="fas fa-inbox"></i> Open their inbox</button>
@@ -741,7 +742,7 @@
                 {{#each tallies}}<td><span class="ncm-ct2-tally {{#if cls}}{{cls}}{{else}}none{{/if}}" data-action="tabAct" data-op="mxTally" data-grp="{{../label}}" data-actor="{{actorId}}" data-tooltip="{{title}}">{{k}}/{{n}}</span></td>{{/each}}</tr>
               {{#each rows}}
                 <tr{{#if nobody}} class="nobody"{{/if}}><th>{{#if alias}}<span class="ncm-ct2-mxalias">└</span>{{/if}}{{name}}<small>{{addr}}</small></th>
-                  {{#each cells}}<td><span class="ncm-ct2-cell {{#if on}}on{{/if}} {{#if chg}}chg{{/if}}" data-action="tabAct" data-op="mxCell" data-cid="{{../id}}" data-actor="{{actorId}}" data-mx-grp="{{../../label}}"><i class="fas fa-check"></i></span></td>{{/each}}</tr>
+                  {{#each cells}}<td><span class="ncm-ct2-cellpair">{{#if canMail}}<span class="ncm-ct2-cell ncm-ct2-cell--half {{#if mail}}on{{/if}} {{#if chgMail}}chg{{/if}}" data-action="tabAct" data-op="mxCell" data-part="mail" data-cid="{{../id}}" data-actor="{{actorId}}" data-mx-grp="{{../../label}}" data-tooltip="{{#if mail}}Has the address. Click to take it back{{else}}Give them the address{{/if}}"><i class="fas fa-envelope"></i></span>{{/if}}{{#if canNum}}<span class="ncm-ct2-cell ncm-ct2-cell--half {{#if num}}on{{/if}} {{#if chgNum}}chg{{/if}}" data-action="tabAct" data-op="mxCell" data-part="num" data-cid="{{../id}}" data-actor="{{actorId}}" data-mx-grp="{{../../label}}" data-tooltip="{{#if num}}Has the number. Click to take it back{{else}}Give them the number{{/if}}"><i class="fas fa-phone"></i></span>{{/if}}{{#unless canMail}}{{#unless canNum}}<span class="ncm-ct2-cell {{#if on}}on{{/if}} {{#if chg}}chg{{/if}}" data-action="tabAct" data-op="mxCell" data-cid="{{../id}}" data-actor="{{actorId}}" data-mx-grp="{{../../label}}"><i class="fas fa-check"></i></span>{{/unless}}{{/unless}}</span></td>{{/each}}</tr>
               {{/each}}
             {{/each}}
           </tbody>

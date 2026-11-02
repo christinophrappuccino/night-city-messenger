@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Watch + roll panel probe</title>
+<!-- Serve it: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/watch-probe.html
+     Left: a stand-in for the operator's terminal, with the REAL roll panel open in it. Right: the REAL snapshot + mirror.
+     ?t=clean-dark|clean-light&hidedv=1&w=<watcher width>&h=<watcher height>. The title reports OK/FAIL: secrets, the fit
+     at several window shapes, and that an update keeps the existing nodes. -->
+<link rel="stylesheet" href="/_vendor/foundry2.css">
+<link rel="stylesheet" href="/_vendor/cpr.css">
+<link rel="stylesheet" href="/_vendor/fa/css/all.min.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  body { margin: 0; padding: 14px; background: #20222a; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; overflow: auto; height: auto !important; }
+  .col { display: flex; flex-direction: column; gap: 6px; color: #ccd; font: 12px sans-serif; }
+  .box { width: 620px; height: 430px; position: relative; }
+  .box > .application, .box > .application.ncm-app { position: relative !important; inset: auto !important; width: 620px !important; height: 430px !important; max-height: none !important; }
+  .watchbox { position: relative; border: 1px solid #445; }
+  .watchbox.ncm-app { position: relative !important; inset: auto !important; transform: none !important; }
+</style>
+</head>
+<body>
+<div class="col">Operator
+  <div class="box"><div class="application themed ncm-app ncm-terminal-app" id="op" data-terminal-state="manual">
+    <header class="window-header"><h1 class="window-title">WS-7F</h1></header>
+    <section class="window-content"><div class="ncm-terminal-viewer" data-terminal-preset="arasaka-workstation" style="position:relative;height:100%;">
+      <div style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+        <input type="text" value="kowalski" aria-label="user" id="typed">
+        <input type="password" value="hunter2-secret" aria-label="pass">
+        <input type="hidden" value="hidden-secret">
+        <div style="height:80px;overflow:auto" id="scroller"><div style="height:400px">Top of the list<br><br><br><br><br><br>Scrolled to here</div></div>
+        <button onclick="alert(1)">a button with a handler</button>
+        <iframe src="about:blank" title="player" style="height:40px"></iframe>
+      </div>
+    </div></section>
+  </div></div>
+</div>
+<div class="col">Watcher (the real mirror)
+  <div class="watchbox ncm-app ncm-watch-window" id="wbox"><div class="ncm-watch" style="height:100%">
+    <div class="ncm-watch__bar"><i class="fas fa-eye"></i><span>Watching <b>Rache</b> on <b>WS-7F</b></span><em>read-only</em></div>
+    <div class="ncm-watch__fit" data-watch-fit></div>
+  </div></div>
+  <div id="report"></div>
+</div>
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  const t = q.get('t');
+  if (t) document.getElementById('op').setAttribute('data-ncm-admin-theme', t);
+  globalThis.game = { settings: { get: () => true }, nightcity: { skillService: { getSkillData: () => ({ statName: 'none', statValue: 0, skillLevel: 5 }), getAvailableLuck: () => 3 } } };
+  const { snapshotWindow, mountMirror, refit, diffText, applyText } = await import('../../scripts/utils/watchMirror.js');
+  const { askRoll } = await import('../../scripts/ui/content/RollPanel.js');
+  const op = document.getElementById('op');
+  const wbox = document.getElementById('wbox');
+  const size = (w, h) => { wbox.style.setProperty('width', `${w}px`, 'important'); wbox.style.setProperty('height', `${h}px`, 'important'); };
+  size(Number(q.get('w')) || 470, Number(q.get('h')) || 340);
+  op.querySelector('#scroller').scrollTop = 120;
+  askRoll({ actor: { name: 'Rache' }, skill: 'Interface', dv: 9, title: 'Jack into Relay 7', sub: 'NCPD', host: op.querySelector('.window-content'), hideDV: q.get('hidedv') === '1', goLabel: 'Jack in' });
+  await new Promise((r) => setTimeout(r, 200));
+  const snap = snapshotWindow(op);
+  const fit = document.querySelector('[data-watch-fit]');
+  mountMirror(fit, snap);
+  const body = JSON.stringify(snap);
+  const fails = [];
+  if (body.includes('hunter2-secret')) fails.push('password travelled');
+  if (body.includes('hidden-secret')) fails.push('hidden value travelled');
+  if (/onclick/i.test(body)) fails.push('handler travelled');
+  if (/<iframe/i.test(body)) fails.push('iframe travelled');
+  if (fit.querySelector('[id]')) fails.push('an id survived');
+  const copied = fit.querySelector('[data-rollp]');
+  if (!copied) fails.push('the panel did not mirror');
+  const sc = fit.querySelector('[data-watch-top="120"]');
+  if (!sc || Math.abs(sc.scrollTop - 120) > 2) fails.push(`scroll not carried (${sc?.scrollTop})`);
+
+  // An update keeps the nodes that did not change: that is what stops the flicker.
+  const keep = fit.querySelector('.ncm-terminal-viewer');
+  const typed = op.querySelector('#typed');
+  typed.value = 'kowalski-typed';
+  const snap2 = snapshotWindow(op);
+  if (applyText(snap.html, diffText(snap.html, snap2.html)) !== snap2.html) fails.push('edit did not round-trip');
+  mountMirror(fit, snap2);
+  if (fit.querySelector('.ncm-terminal-viewer') !== keep) fails.push('an update rebuilt the copy');
+  if (fit.querySelector('input[type="text"]')?.value !== 'kowalski-typed') fails.push('typing did not reach the copy');
+  op.querySelector('#scroller').scrollTop = 40;
+  mountMirror(fit, snapshotWindow(op));
+  for (let i = 0; i < 120 && Math.abs(sc.scrollTop - 40) > 2; i += 1) await new Promise((r) => requestAnimationFrame(r));
+  if (Math.abs(sc.scrollTop - 40) > 2) fails.push(`scroll did not ease to 40 (${sc.scrollTop})`);
+  op.querySelector('#scroller').scrollTop = 0;
+  mountMirror(fit, snapshotWindow(op));
+  if (sc.scrollTop !== 0) fails.push(`scrolling back to the top did not reach the copy (${sc.scrollTop})`);
+
+  // An effect mounted on the window, outside its content, reaches the copy and leaves with it (the node console's flash).
+  const fx = document.createElement('div');
+  fx.className = 'ncm-ndc-flash is-jam';
+  fx.setAttribute('data-watch-overlay', '');
+  fx.innerHTML = '<div class="ncm-ndc-flash__box" id="fx-id" onclick="alert(1)">JAMMED</div>';
+  op.appendChild(fx);
+  const fxSnap = snapshotWindow(op);
+  if (/onclick|fx-id/.test(fxSnap.overlay)) fails.push('an overlay carried a handler or an id');
+  if (fxSnap.html.includes('JAMMED')) fails.push('the overlay landed in the content');
+  mountMirror(fit, fxSnap);
+  const fxCopy = fit.querySelector('.ncm-watch__overlay > .ncm-ndc-flash');
+  if (!fxCopy) fails.push('the overlay did not reach the copy');
+  else {
+    const a = fxCopy.getBoundingClientRect(), b = fit.querySelector('.ncm-watch__mirror').getBoundingClientRect();
+    if (Math.abs(a.width - b.width) > 2.5 || Math.abs(a.height - b.height) > 2.5) fails.push(`the overlay does not cover the copy (${a.width}x${a.height} of ${b.width}x${b.height})`);
+  }
+  if (fit.querySelector('.ncm-terminal-viewer') !== keep) fails.push('the overlay rebuilt the copy');
+  fx.remove();
+  mountMirror(fit, snapshotWindow(op));
+  if (fit.querySelector('.ncm-ndc-flash')) fails.push('the overlay stayed after it ended');
+
+  // The fit: the copy's content reaches every edge of the watcher's window, at every shape.
+  const stage = fit.querySelector('.ncm-watch__mirror');
+  const inner = stage.querySelector('.ncm-terminal-viewer');
+  const shapes = [[470, 340], [1500, 500], [1500, 900], [700, 900], [640, 470]];
+  const measured = [];
+  for (const [w, h] of shapes) {
+    size(w, h);
+    refit(fit, snap2);
+    const f = fit.getBoundingClientRect(), s = inner.getBoundingClientRect();
+    const gapR = Math.round(f.left + fit.clientWidth - s.right), gapB = Math.round(f.top + fit.clientHeight - s.bottom);
+    measured.push(`${w}x${h} gap ${gapR},${gapB}`);
+    // 1px: the operator's own window-content border, which the copy keeps.
+    // A copy taller than the window scrolls, so only empty space below it counts.
+    if (Math.abs(gapR) > 2 || gapB > 2 || Math.abs(s.left - f.left) > 2) fails.push(`${w}x${h}: gap right ${gapR}, bottom ${gapB}, left ${s.left - f.left}`);
+  }
+  // Legibility: a short window scrolls instead of shrinking the text, and the watcher can pick a size.
+  const zoomOf = () => Number(getComputedStyle(stage).zoom);
+  size(900, 200);
+  refit(fit, snap2);
+  if (zoomOf() !== 1) fails.push(`a short window shrank the copy (${zoomOf()})`);
+  if (fit.scrollHeight <= fit.clientHeight) fails.push('a short window does not scroll');
+  if (stage.style.transform) fails.push('the copy is scaled with a transform');
+  size(400, 340);
+  refit(fit, snap2);
+  if (!(zoomOf() < 1)) fails.push('a narrow window should fit the width');
+  fit.dataset.watchZoom = '1.5';
+  size(1100, 500);
+  refit(fit, snap2);
+  if (zoomOf() !== 1.5) fails.push(`the watcher's size was ignored (${zoomOf()})`);
+  const zr = inner.getBoundingClientRect(), zf = fit.getBoundingClientRect();
+  if (Math.abs(zf.left + fit.clientWidth - zr.right) > 3) fails.push('zoomed in, the copy leaves a gap');
+  op.querySelector('#scroller').scrollTop = 120;
+  mountMirror(fit, snapshotWindow(op));
+  for (let i = 0; i < 120 && Math.abs(sc.scrollTop - 120) > 2; i += 1) await new Promise((r) => requestAnimationFrame(r));
+  if (Math.abs(sc.scrollTop - 120) > 2) fails.push(`zoomed in, scroll is off (${sc.scrollTop})`);
+  if (q.get('z')) fit.dataset.watchZoom = q.get('z'); else delete fit.dataset.watchZoom;
+  size(Number(q.get('w')) || 1100, Number(q.get('h')) || 500);
+  refit(fit, snap2);
+  document.title = fails.length ? `FAIL: ${fails.join('; ')}` : `OK ${body.length} bytes; ${measured.join('; ')}`;
+  document.getElementById('report').textContent = document.title;
+</script>
+</body>
+</html>

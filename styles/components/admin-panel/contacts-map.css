@@ -149,7 +149,7 @@
 .ncm-admin-panel .ncm-ct2-mapp__id .nm { font: 700 15px var(--ncm-font-display); color: var(--ncm-text-heading); }
 .ncm-admin-panel .ncm-ct2-mapp__id .subline { font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
 .ncm-admin-panel .ncm-ct2-mapp__id .subline b { color: var(--ncm-text-heading); font-weight: 600; }
-.ncm-admin-panel .ncm-ct2-mapp__id .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 3px; }
+.ncm-admin-panel .ncm-ct2-mapp__id .tags { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-start; margin-top: 3px; }
 .ncm-admin-panel .ncm-ct2-mapp__id .stat { display: flex; flex-direction: column; align-items: flex-end; padding-left: 14px; border-left: 1px solid var(--ncm-border); }
 .ncm-admin-panel .ncm-ct2-mapp__id .who + .stat { margin-left: auto; }
 .ncm-admin-panel .ncm-ct2-mapp__id .stat b { font: 700 18px var(--ncm-font-mono); color: var(--ncm-text-heading); line-height: 1.1; }

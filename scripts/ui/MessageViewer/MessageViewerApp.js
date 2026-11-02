@@ -24,6 +24,7 @@
  */
 
 import { BaseApplication } from '../BaseApplication.js';
+import { d10Odds } from '../../utils/rolls.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import {
   computeSignalBar,
@@ -42,13 +43,15 @@ import { pickSenderChoice } from '../../utils/identities.js';
 import { openGuide } from '../../utils/guides.js';
 import { getThreadMessages } from '../../utils/threading.js';
 import { cleanHtml } from '../../utils/richText.js';
-import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, canEncode as canEncodeShard, chatCardTime, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
+import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, canEncode as canEncodeShard, chatCardTime, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { selfKeys } from '../../utils/participants.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
 import { DRAFTS_FLAG, readDrafts, draftRecipientName, draftLabel, draftKind, relativeAge } from '../../utils/drafts.js';
-import { buildCallsContext, wireCallsTab, handleCallsAction, missedCount } from './callsTab.js';
+import { linkNumbers } from '../../utils/phoneNumbering.js';
+import { scheduledRecipientLabel, scheduledRecipients, scheduledComposerState } from '../../services/SchedulingService.js';
+import { callsState, buildCallsContext, wireCallsTab, handleCallsAction, missedCount } from './callsTab.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
 
@@ -328,17 +331,37 @@ export class MessageViewerApp extends BaseApplication {
     const byAddress = this._findContact(msg.from);
     if (byAddress) return byAddress;
     const mcs = game.nightcity?.masterContactService;
-    const entry = (msg.fromContactId && mcs?.getContact?.(msg.fromContactId))
-      || (msg.fromActorId && mcs?.getByActorId?.(msg.fromActorId))
-      || null;
+    const entry = directoryEntryFor({ contactId: msg.fromContactId, actorId: msg.fromActorId, email: msg.from });
     if (entry?.email && entry.email.toLowerCase() !== (msg.from || '').toLowerCase()) {
       const byDirectory = this._findContact(entry.email);
       if (byDirectory) return byDirectory;
     }
+    if (entry?.id) {
+      const byId = this._cachedContacts.find(c => c.masterContactId === entry.id);
+      if (byId) return byId;
+    }
+    // Each identity is its own contact: holding the main does not make an alias's mail "from a contact".
+    if (entry && mcs?.identityRoleOf?.(entry)?.isAlias) return null;
     return this._cachedContacts.find(c =>
-      (msg.fromActorId && c.actorId && c.actorId === msg.fromActorId)
-      || (entry?.id && c.masterContactId && c.masterContactId === entry.id)
+      msg.fromActorId && c.actorId === msg.fromActorId && (!c.masterContactId || !entry || c.masterContactId === entry.id)
     ) || null;
+  }
+
+  /**
+   * What Add saves for a message's sender: the identity the mail came from, at the address it came from. The directory's
+   * address only replaces one nobody holds (old mail stamped with a synthesized name@nightcity.net).
+   * @param {Object} msg
+   * @returns {{entry: object|null, email: string, isAlias: boolean}}
+   */
+  _senderToAdd(msg) {
+    const mcs = game.nightcity?.masterContactService;
+    const entry = directoryEntryFor({ contactId: msg.fromContactId, actorId: msg.fromActorId, email: msg.from });
+    const real = this.contactRepository?.verifyContact?.(msg.from)?.verified;
+    return {
+      entry,
+      email: real ? msg.from : (entry?.email || msg.from),
+      isAlias: !!(entry && mcs?.identityRoleOf?.(entry)?.isAlias),
+    };
   }
 
   /**
@@ -627,7 +650,7 @@ export class MessageViewerApp extends BaseApplication {
       .filter(e => e.messageData?.fromActorId === this.actorId)
       .map(e => ({
         scheduleId: e.scheduleId,
-        toName: game.actors.get(e.messageData.toActorId)?.name || e.messageData.to || 'Unknown',
+        toName: scheduledRecipientLabel(e.messageData),
         subject: e.messageData.subject || '(no subject)',
         deliveryTime: e.deliveryTime || '',
         useGameTime: e.useGameTime || false,
@@ -1435,6 +1458,12 @@ export class MessageViewerApp extends BaseApplication {
       case 'reply-message':
         this._replyToMessage(messageId);
         break;
+      case 'dial-number': {
+        const st = callsState(this);
+        st.view = 'main'; st.dial = target.dataset.number || '';
+        this.currentFilter = 'calls';
+        return this.render();
+      }
       case 'call-sender':
         if (target.dataset.number) game.nightcity?.placeCall?.(target.dataset.number, { actorId: this.actorId });
         break;
@@ -3074,7 +3103,7 @@ export class MessageViewerApp extends BaseApplication {
 
     const result = await game.nightcity?.schedulingService?.cancelScheduled?.(scheduleId);
     if (result?.success) {
-      ui.notifications.info('Scheduled message cancelled.');
+      ui.notifications.info(result.refunded ? `Scheduled message cancelled. ${result.refunded.toLocaleString()} eb refunded.` : 'Scheduled message cancelled.');
     } else {
       ui.notifications.error(`Failed to cancel: ${result?.error || 'Unknown error'}`);
     }
@@ -3089,22 +3118,44 @@ export class MessageViewerApp extends BaseApplication {
       return;
     }
 
+    // Sent as a terminal account: check it can still send BEFORE anything is cancelled.
+    let viaTerminal = null;
+    if (entry.messageData?.terminalSend) {
+      viaTerminal = game.nightcity?.terminalService?.reopenScheduledSend?.(entry.messageData) || { ok: false, reason: 'the terminal system is unavailable' };
+      if (!viaTerminal.ok) {
+        ui.notifications.warn(`NCM | This message can't be edited: ${viaTerminal.reason}. It stays scheduled; you can still cancel it.`);
+        return;
+      }
+    }
+
     // Warn user — cancelling is permanent, they need to re-schedule after editing
     const confirm = await playerConfirm({
       title: 'Edit Scheduled Message',
       content: `<p>This will <strong>cancel the scheduled delivery</strong> and open the message in the composer for editing.</p>
-        <p>You'll need to re-send or re-schedule after making changes.</p>`,
+        <p>Press Schedule again to put it back. Any eddies on it are returned now and charged again when you do.</p>`,
     });
     if (!confirm) return;
 
-    // Cancel the pending scheduled message
-    await game.nightcity?.schedulingService?.cancelScheduled?.(scheduleId);
+    // Cancel the pending scheduled message (refunds what it holds; Schedule charges it again)
+    const cancelled = await game.nightcity?.schedulingService?.cancelScheduled?.(scheduleId);
+    if (!cancelled?.success) {
+      ui.notifications.error(`Failed to cancel: ${cancelled?.error || 'Unknown error'}`);
+      return;
+    }
 
     // Open composer pre-filled with the message data
     const msgData = entry.messageData || {};
+    const scheduled = scheduledComposerState(entry, { isGM: game.user.isGM });
+    if (scheduled.eddiesNotRestored > 0) {
+      ui.notifications.warn(`NCM | This message's ${scheduled.eddiesNotRestored.toLocaleString()} eb could not be restored: it has no record of being paid. Ask your GM if it was.`, { permanent: true });
+    }
     game.nightcity?.composeMessage?.({
       fromActorId: msgData.fromActorId || this.actorId,
-      toActorId: msgData.toActorId,
+      fromContactId: msgData.fromContactId || null,
+      recipients: msgData.anonReply ? [] : scheduledRecipients(msgData),
+      scheduled,
+      ...(viaTerminal ? { terminalSend: viaTerminal.terminalSend, addressBook: viaTerminal.addressBook } : {}),
+      groupId: msgData.groupId || null,
       subject: msgData.subject || '',
       body: msgData.body || '',
       priority: msgData.priority || 'normal',
@@ -3277,15 +3328,9 @@ export class MessageViewerApp extends BaseApplication {
     // message is what lands in their contact list.
     const ids = { contactId: msg.fromContactId, actorId: msg.fromActorId, email: msg.from, storedName: msg.fromName };
     const displayName = displayNameOverride || resolveDisplayName(ids);
-    const masterContact = (msg.fromContactId && game.nightcity?.masterContactService?.getContact(msg.fromContactId))
-      || (msg.fromActorId && game.nightcity?.masterContactService?.getByActorId?.(msg.fromActorId))
-      || null;
-    // The directory's address beats the stored one. Mail sent before 2026-10-24
-    // from an actor-backed NPC carries a synthesized name@nightcity.net even when
-    // the GM had typed a real address into the directory; adding THAT would put
-    // a dead address in the player's list. Masked anonymous mail never reaches
-    // here (the Add button is hidden), so this can't leak a real sender.
-    const contactEmail = masterContact?.email || msg.from;
+    // Masked anonymous mail never reaches here (the Add button is hidden), so
+    // this can't leak a real sender.
+    const { entry: masterContact, email: contactEmail, isAlias } = this._senderToAdd(msg);
     if (contactEmail !== msg.from && this._findContact(contactEmail)) {
       ui.notifications.info(`NCM | ${contactEmail} is already in your contacts.`);
       return;
@@ -3303,7 +3348,8 @@ export class MessageViewerApp extends BaseApplication {
         name: displayName,
         email: contactEmail,
         network: msg.network || 'CITINET',
-        actorId: msg.fromActorId || masterContact?.actorId || null,
+        // An alias carries no link to its character, the same as one the GM shares (MasterContactService.pushToPlayer).
+        actorId: isAlias ? null : (msg.fromActorId || masterContact?.actorId || null),
         masterContactId: masterContact?.id || null,
         portrait: resolveDisplayPortrait(ids),
         trust: 'neutral',
@@ -3387,7 +3433,7 @@ export class MessageViewerApp extends BaseApplication {
     const actor = game.actors?.get(this.actorId);
     if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
 
-    const dv = Number(anon.traceDV) || 15;
+    const dv = Number(anon.traceDV) || 9;
     let traceSkill = 'interface';
     try { traceSkill = game.settings.get(MODULE_ID, 'anonTraceSkill') || 'interface'; } catch { /* default */ }
 
@@ -4655,6 +4701,7 @@ export class MessageViewerApp extends BaseApplication {
       msg.decryptedBlocks.forEach(key => this._decryptedBlocks.add(key));
     }
     let bodyRendered = this._renderMessageBody(msg.body, msg.messageId);
+    { const ctx = game.nightcity?.callService?.enabled ? game.nightcity.callService.numberContext : null; if (ctx) bodyRendered = linkNumbers(bodyRendered, ctx); }
 
     // WP-5 — Signal degradation: corrupt body text if not reconstructed (GM sees clean)
     if (msg.signalDegradation && !msg.signalDegradation.reconstructed && !game.user?.isGM) {
@@ -4867,7 +4914,7 @@ export class MessageViewerApp extends BaseApplication {
     // actor image, and not via a player contact that saved that face before
     // this was fixed (2026-10-27).
     const mcsvc = game.nightcity?.masterContactService;
-    const senderMc = msg.fromContactId ? mcsvc?.getContact?.(msg.fromContactId) : null;
+    const senderMc = directoryEntryFor(fromIds);
     const senderIsAlias = !!(senderMc && mcsvc?.identityRoleOf?.(senderMc)?.isAlias);
     const ownSaved = (senderIsAlias && contact?.portrait && contact.portrait === fromActor?.img && !senderMc.portrait) ? null : contact?.portrait;
     let fromPortrait = ownSaved || resolveDisplayPortrait(fromIds) || (senderIsAlias ? null : fromActor?.img) || null;
@@ -5822,12 +5869,7 @@ export class MessageViewerApp extends BaseApplication {
     let luckSpend = 0;
     let cancelled = true;
 
-    const calcOdds = (total, luck, dc) => {
-      const needed = dc - total - luck;
-      if (needed <= 1) return 100;
-      if (needed > 10) return 0;
-      return Math.round(((10 - needed + 1) / 10) * 100);
-    };
+    const calcOdds = (total, luck, dc) => d10Odds(total + luck, dc).pct;
 
     // Skill list
     const skillRows = (opts.skills || []).map(s => {

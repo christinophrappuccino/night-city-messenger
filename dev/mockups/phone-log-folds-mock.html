@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone log folds</title>
+<!--
+  Search, filters and date folds for the phone logs. Real stylesheets, real band rules (scripts/utils/logFolds.js), sample data.
+  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/phone-log-folds-mock.html
+  ?f=player|playervm|admin|adminperson|adminvm  &q=<search>  &t=clean-dark|clean-light|high-contrast  &p=<player preset, unused>  &s=130
+-->
+<link rel="stylesheet" href="/_vendor/foundry2.css">
+<link rel="stylesheet" href="/_vendor/cpr.css">
+<link rel="stylesheet" href="/_vendor/fa/css/all.min.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  html, body { height: auto !important; overflow: auto !important; }
+  body { margin: 0; padding: 18px; background: #07080c !important; display: block !important; color: #cdd; font: 13px sans-serif; }
+  .mk-nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; align-items: center; }
+  .mk-nav a { padding: 4px 9px; border: 1px solid #334; color: #cde; text-decoration: none; border-radius: 2px; }
+  .mk-nav a.on { border-color: #19f3f7; color: #fff; }
+  .mk-note { max-width: 880px; margin: 0 0 12px; color: #9ab; line-height: 1.45; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; overflow: hidden; background: var(--ncm-bg-deep, #0a0a12); }
+  #playerWin { width: 880px; height: 660px; display: flex; flex-direction: column; }
+  #adminWin { width: 820px; height: 720px; padding: 12px; overflow-y: auto; background: var(--ncm-bg-canvas, #111); }
+  .mk-dl { display: grid; place-items: center; color: var(--ncm-text-muted); border-right: 1px solid var(--ncm-border); font: 11px var(--ncm-font-mono, monospace); text-transform: uppercase; letter-spacing: .1em; }
+
+  /* ═══ NEW: player toolbar + bands ═══ */
+  .ncm-app .ncm-calls-tools { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-calls-find { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; height: calc(28px * var(--ncm-text-scale, 1)); padding: 0 7px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-elevated); border-radius: 2px; }
+  .ncm-app .ncm-calls-find:focus-within { border-color: var(--ncm-secondary); }
+  .ncm-app .ncm-calls-find > i { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+  .ncm-app .ncm-calls-find input { flex: 1; min-width: 0; height: 100% !important; border: 0 !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--ncm-text-primary) !important; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important; }
+  .ncm-app select.ncm-calls-show { flex: 0 0 auto; width: auto !important; max-width: 128px; height: calc(28px * var(--ncm-text-scale, 1)) !important; padding: 0 4px !important; margin: 0; border: 1px solid var(--ncm-border) !important; border-radius: 2px; background-color: var(--ncm-bg-elevated) !important; color: var(--ncm-text-primary) !important; font: 600 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important; }
+  .ncm-app select.ncm-calls-show.is-on { border-color: var(--ncm-secondary) !important; }
+  .ncm-app select.ncm-calls-show option { background: var(--ncm-bg-surface); color: var(--ncm-text-primary); }
+  .ncm-app button.ncm-calls-foldall { flex: 0 0 auto; appearance: none; width: calc(28px * var(--ncm-text-scale, 1)) !important; height: calc(28px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; display: grid !important; place-items: center; border: 1px solid var(--ncm-border) !important; border-radius: 2px; background: var(--ncm-bg-elevated) !important; color: var(--ncm-text-secondary) !important; box-shadow: none !important; }
+  .ncm-app button.ncm-calls-foldall i { margin: 0 !important; font-size: calc(11px * var(--ncm-text-scale, 1)); }
+  .ncm-app .ncm-calls-found { padding: 4px 12px; font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); border-bottom: 1px solid var(--ncm-border); display: flex; gap: 8px; }
+  .ncm-app .ncm-calls-found button { all: unset; margin-left: auto; cursor: pointer; color: var(--ncm-secondary); }
+  .ncm-app .ncm-calls-band__h { position: sticky; top: 0; z-index: 2; width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border); user-select: none; }
+  .ncm-app .ncm-calls-band__h:hover { background: var(--ncm-bg-elevated); }
+  .ncm-app .ncm-calls-band__h .ch { font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); transition: transform .18s cubic-bezier(.22,1,.36,1); }
+  .ncm-app .ncm-calls-band.is-shut .ch { transform: rotate(-90deg); }
+  .ncm-app .ncm-calls-band__h b { font: 700 calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-app .ncm-calls-band__h .n { font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-calls-band__h .cnt { color: var(--ncm-text-num, var(--ncm-text-secondary)); font-weight: 700; }
+  .ncm-app .ncm-calls-band__h .hot { margin-left: auto; padding: 1px 6px; font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: #000; background: var(--calls-miss, var(--ncm-danger)); }
+  .ncm-app .ncm-calls-band__b { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .22s cubic-bezier(.22,1,.36,1); }
+  .ncm-app .ncm-calls-band__b > div { overflow: hidden; min-height: 0; }
+  .ncm-app .ncm-calls-band.is-shut .ncm-calls-band__b { grid-template-rows: 0fr; }
+  .ncm-app .ncm-calls-band .ncm-calls-day { position: static; }
+  .ncm-app .ncm-calls-more { display: block; width: 100%; padding: 8px; text-align: center; cursor: pointer; font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-secondary); border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .ncm-calls-hit { display: block; margin-top: 3px; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .ncm-calls-hit mark, .ncm-ph2-hit mark { background: color-mix(in srgb, var(--ncm-accent, #fc0) 35%, transparent); color: inherit; }
+
+  /* ═══ NEW: admin ═══ */
+  .ncm-admin-panel .ncm-ph2-bands { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .ncm-admin-panel .ncm-ph2-grp .ncm-ph2-gb { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .22s cubic-bezier(.22,1,.36,1); }
+  .ncm-admin-panel .ncm-ph2-grp.is-shut .ncm-ph2-gb { grid-template-rows: 0fr; }
+  .ncm-admin-panel .ncm-ph2-grp .ncm-ph2-gb > div { overflow: hidden; min-height: 0; }
+  .ncm-admin-panel .ncm-ph2-grp.is-shut .ch { transform: rotate(-90deg); }
+  .ncm-admin-panel .ncm-ph2-gh .ch { font-size: 9px; transition: transform .18s; }
+  .ncm-admin-panel .ncm-ph2-tb select { height: 28px !important; }
+  .ncm-admin-panel .ncm-ph2-more { padding: 8px; text-align: center; cursor: pointer; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-act); }
+  .ncm-admin-panel .ncm-ph2-hit { display: block; margin-top: 2px; font-size: 11px; color: var(--ncm-text-secondary); }
+  .ncm-admin-panel .ncm-ph2-count { font: 10px var(--ncm-font-mono); color: var(--ncm-text-secondary); margin: 6px 0 0; display: flex; gap: 8px; }
+  .ncm-admin-panel .ncm-ph2-count button { all: unset; cursor: pointer; color: var(--ncm-act); }
+  .ncm-admin-panel .ncm-ph2-dd { position: relative; }
+  .ncm-admin-panel .ncm-ph2-dd > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .ncm-admin-panel .ncm-ph2-dd > summary::-webkit-details-marker { display: none; }
+  .ncm-admin-panel .ncm-ph2-ddp { position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; width: 240px; display: grid; gap: 6px; padding: 10px; background: var(--ncm-bg-raised, var(--ncm-bg-card)); border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; }
+  .ncm-admin-panel .ncm-ph2-ddp label { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 6px; margin: 0; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+  .ncm-admin-panel .ncm-ph2-ddp select, .ncm-admin-panel .ncm-ph2-ddp input { width: 100%; height: 26px !important; }
+  .ncm-admin-panel .ncm-ph2-count { align-items: center; flex-wrap: wrap; }
+  .ncm-admin-panel .ncm-ph2-count button.ncm-tagp { all: unset; cursor: pointer; padding: 1px 6px; border: 1px solid var(--ncm-act); color: var(--ncm-text-heading); font-size: 10px; }
+  .ncm-admin-panel button.ncm-ph2-ic { appearance: none; width: 28px !important; height: 28px !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; display: grid !important; place-items: center; border: 1px solid var(--ncm-border) !important; border-radius: 2px; background: var(--ncm-bg-pane) !important; color: var(--ncm-text-secondary) !important; box-shadow: none !important; }
+  .ncm-admin-panel button.ncm-ph2-ic i { margin: 0 !important; font-size: 11px; }
+</style>
+</head>
+<body>
+<nav class="mk-nav" id="nav"></nav>
+<p class="mk-note" id="note"></p>
+<div id="host"></div>
+<script type="module">
+  addEventListener('unhandledrejection', (e) => { document.title = 'ERR ' + (e.reason?.stack || e.reason); });
+  const { dateBands, searchSnippet } = await import('../../scripts/utils/logFolds.js');
+  const P = new URLSearchParams(location.search);
+  const FRAMES = {
+    player: ['Agent: Calls', 'Search reaches names, numbers, networks and words said on a call. Show narrows by kind. The newest band is open, and every closed head still shows its count and anything missed. The ⇕ button folds or opens everything.'],
+    playervm: ['Agent: Voicemail', 'The same bands, search and folds. A closed band shows how many messages are new.'],
+    admin: ['Admin: Call log', 'One row of controls. Chips became a Result dropdown so they stop wrapping. Filter holds Who, Network and Dates, and what is on shows as removable pills. The Who and Network lists become searchable pickers in the build. A band shows 30 rows, then Show more, in place of pages.'],
+    adminperson: ['Admin: Call log, by person', 'Group by person answers "show me everything with Rogue", with each person folded and missed counts on the head.'],
+    adminvm: ['Admin: Voicemail', 'Group by mailbox (today) or by date. New messages count on every closed head, and NPC mailboxes come first.'],
+  };
+  const f = FRAMES[P.get('f')] ? P.get('f') : 'player';
+  document.getElementById('nav').innerHTML = Object.entries(FRAMES).map(([k, v]) => `<a class="${k === f ? 'on' : ''}" href="?f=${k}${P.get('t') ? `&t=${P.get('t')}` : ''}">${v[0]}</a>`).join('');
+  document.getElementById('note').textContent = FRAMES[f][1];
+
+  // ── sample data: about 420 calls over three years, deterministic ──
+  const NOW = Date.parse('2045-08-14T15:00:00Z');
+  const PEOPLE = [['Rogue', 'WAT-3313'], ['Judy Alvarez', 'LEU-2208'], ['Mr Grey', 'KAB-7711'], ['Padre', 'HDK-4410'], ['Dakota', 'SDO-1190'], ['Wakako', 'OJT-5521'], [null, 'NWB-8802'], [null, 'PPG-2071']];
+  const SAID = ['Meet me at the Afterlife at nine.', 'The shipment moved to Pier 7 last night.', 'Arasaka knows you were there.', 'Bring the shard and come alone.', 'I need that eddies transfer by morning.', 'Tell Rogue the deal is off.'];
+  const NETS = ['CitiNet', 'DarkNet', 'CorpNet'];
+  let seed = 7; const rnd = (n) => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed >>> 16) % n; };
+  const fmtTime = (ms) => new Date(ms).toISOString().slice(11, 16);
+  const calls = [], vms = [];
+  for (let i = 0; i < 420; i++) {
+    const ago = i < 8 ? rnd(30) * 3600000 : Math.pow(i / 420, 2.1) * 1040 * 86400000 + rnd(24) * 3600000;
+    const ms = NOW - ago, [name, number] = PEOPLE[rnd(PEOPLE.length)];
+    const dir = rnd(2) ? 'in' : 'out', roll = rnd(10);
+    const outcome = roll < 6 ? 'answered' : roll < 8 ? 'missed' : roll < 9 ? 'declined' : 'dropped';
+    const said = outcome === 'answered' && rnd(3) === 0 ? [SAID[rnd(SAID.length)], SAID[rnd(SAID.length)]] : [];
+    calls.push({ id: i, ms, stamp: new Date(ms).toISOString(), name, number, dir, outcome, secs: 20 + rnd(400), net: NETS[rnd(3)], said, withheld: dir === 'in' && rnd(14) === 0, unseen: outcome === 'missed' && dir === 'in' && ago < 3 * 86400000, npc: PEOPLE[rnd(4)][0] });
+    if (outcome === 'missed' && rnd(2) === 0) vms.push({ id: i, ms, stamp: new Date(ms).toISOString(), name, number, text: SAID[rnd(SAID.length)], heard: ago > 2 * 86400000, box: PEOPLE[rnd(3)][0], npc: true });
+  }
+  const pcBox = ['V', 'Rache'];
+  vms.forEach((v, i) => { if (i % 4 === 0) { v.box = pcBox[i % 8 === 0 ? 0 : 1]; v.npc = false; } });
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const mark = (s, q) => { const e = esc(s); if (!q) return e; const at = e.toLowerCase().indexOf(q.toLowerCase()); return at < 0 ? e : `${e.slice(0, at)}<mark>${e.slice(at, at + q.length)}</mark>${e.slice(at + q.length)}`; };
+  const fullStamp = (ms) => `${new Date(ms).toUTCString().slice(5, 11)} ${new Date(ms).getUTCFullYear()} ${fmtTime(ms)}`;
+  const dayLabel = (d) => new Date(`${d}T12:00:00Z`).toUTCString().slice(0, 11);
+  const S = { who: P.get('who') || '', net: '', from: '', to: '', menu: !!P.get('menu'), q: P.get('q') || '', show: P.get('show') || 'all', group: f === 'adminperson' ? 'person' : 'date', vmGroup: 'box', shut: new Set(), open: new Set(), limits: {} };
+  const dur = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const matchCall = (c, q) => !q || [c.name, c.number, c.net, c.npc, ...c.said].join(' ').toLowerCase().includes(q.toLowerCase());
+  const SHOW = [['all', 'Everything'], ['in', 'Incoming'], ['out', 'Outgoing'], ['answered', 'Answered'], ['noanswer', 'No answer'], ['dropped', 'Dropped'], ['words', 'Has a transcript'], ['withheld', 'Withheld number']];
+  const showCall = (c, k) => ({ all: true, in: c.dir === 'in', out: c.dir === 'out', answered: c.outcome === 'answered', noanswer: c.outcome === 'missed' || c.outcome === 'declined', dropped: c.outcome === 'dropped', words: c.said.length > 0, withheld: c.withheld }[k]);
+  const opts = (list, on, count) => list.map(([k, l]) => `<option value="${k}"${k === on ? ' selected' : ''}>${l}${count ? ` (${count(k)})` : ''}</option>`).join('');
+
+  function bandsHtml(bands, rowFn, cls) {
+    return bands.map((b) => `<section class="${cls.band}${b.shut ? ' is-shut' : ''}" data-band="${esc(b.key)}" data-shut="${b.shut ? 1 : 0}">
+      ${cls.head(b)}
+      <div class="${cls.body}"><div>${b.days.map((d) => `${d.divider === false || b.flat ? '' : cls.day(d)}${d.rows.map(rowFn).join('')}`).join('')}${b.hidden ? cls.more(b) : ''}</div></div></section>`).join('') || cls.none;
+  }
+
+  function playerCalls() {
+    const q = S.q, list = calls.filter((c) => showCall(c, S.show) && matchCall(c, q));
+    const forced = !!q || S.show !== 'all';
+    const bands = dateBands(list, { now: NOW, dateOf: (c) => c.stamp, dayLabel, isHot: (c) => c.unseen, shut: S.shut, open: S.open, forced, limits: S.limits });
+    const row = (c) => {
+      const miss = c.dir === 'in' && c.outcome === 'missed', cl = miss ? 'miss' : c.dir, hit = searchSnippet(q, c.said);
+      return `<div class="ncm-calls-rowc is-${cl}${c.unseen ? ' is-new' : ''}"><span class="dir"><i class="fas ${miss ? 'fa-phone-slash' : c.dir === 'in' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i></span>
+        <span class="face${c.name ? '' : ' unknown'}"><i class="fas ${c.name ? 'fa-user' : 'fa-hashtag'}"></i></span>
+        <span class="tx"><span class="nm">${mark(c.name || c.number, q)}${c.unseen ? ' <span class="tag">New</span>' : ''}</span>
+          <span class="sub"><span class="k">${miss ? 'Missed' : c.dir === 'in' ? 'In' : 'Out'}</span><span>${c.outcome === 'answered' ? dur(c.secs) : c.outcome === 'missed' ? 'no answer' : c.outcome}</span><span class="net">${mark(c.net, q)}</span></span>
+          ${hit ? `<span class="ncm-calls-hit"><i class="fas fa-closed-captioning"></i> ${mark(hit, q)}</span>` : ''}</span>
+        <span class="tm">${fmtTime(c.ms)}</span><span class="acts"><button type="button" class="ncm-calls-mini go" aria-label="Call back"><i class="fas fa-phone"></i></button></span></div>`;
+    };
+    const shown = `<div class="ncm-calls-tools"><label class="ncm-calls-find"><i class="fas fa-magnifying-glass"></i><input data-q value="${esc(q)}" placeholder="Name, number, words said…"></label>
+      <select class="ncm-calls-show${S.show !== 'all' ? ' is-on' : ''}" data-show aria-label="Show">${opts(SHOW, S.show)}</select>
+      <button type="button" class="ncm-calls-foldall" data-foldall data-tooltip="Open or close every date"><i class="fas fa-up-down"></i></button></div>
+      ${forced ? `<div class="ncm-calls-found"><span>${list.length} of ${calls.length} calls</span><button data-clear>Clear</button></div>` : ''}`;
+    return shown + `<div class="ncm-calls-list ncm-scrollbar">${bandsHtml(bands, row, PCLS(' calls', 'missed'))}</div>`;
+  }
+  const PCLS = (noun, hotWord) => ({ band: 'ncm-calls-band', body: 'ncm-calls-band__b',
+    head: (b) => `<div class="ncm-calls-band__h" data-fold role="button" tabindex="0" aria-expanded="${!b.shut}"><i class="fas fa-chevron-down ch"></i><b>${esc(b.label)}</b>${b.dateText ? `<span class="n">${esc(b.dateText)}</span>` : ''}<span class="n cnt">${b.total}</span>${b.hot ? `<span class="hot">${b.hot} ${hotWord}</span>` : ''}</div>`,
+    day: (d) => `<div class="ncm-calls-day">${esc(d.label)}</div>`,
+    more: (b) => `<div class="ncm-calls-more" data-more="${esc(b.key)}" role="button" tabindex="0">Show more · ${b.hidden} left</div>`,
+    none: `<div class="ncm-calls-none"><i class="fas fa-magnifying-glass"></i> Nothing matches.</div>` });
+
+  function playerVm() {
+    const q = S.q, VS = [['all', 'Everything'], ['new', 'New'], ['heard', 'Heard']];
+    const list = vms.filter((v) => !v.npc || v.box === 'V' || true).filter((v) => (S.show === 'all' || (S.show === 'new' ? !v.heard : v.heard)) && (!q || [v.name, v.number, v.text].join(' ').toLowerCase().includes(q.toLowerCase())));
+    const forced = !!q || S.show !== 'all';
+    const bands = dateBands(list, { now: NOW, dateOf: (v) => v.stamp, dayLabel, isHot: (v) => !v.heard, shut: S.shut, open: S.open, forced, limits: S.limits });
+    const row = (v) => `<div class="ncm-calls-vm${v.heard ? '' : ' is-new'}"><span class="dir"><i class="fas fa-voicemail"></i></span>
+      <span class="tx"><span class="nm">${mark(v.name || v.number, q)}${v.heard ? '' : ' <span class="tag vm">New</span>'}</span><span class="msg">${mark(v.text, q)}</span><span class="sub">${fmtTime(v.ms)}</span></span>
+      <span class="acts"><button type="button" class="ncm-calls-mini go" aria-label="Call back"><i class="fas fa-phone"></i></button></span></div>`;
+    return `<div class="ncm-calls-tools"><label class="ncm-calls-find"><i class="fas fa-magnifying-glass"></i><input data-q value="${esc(q)}" placeholder="Name, number, words left…"></label>
+      <select class="ncm-calls-show${S.show !== 'all' ? ' is-on' : ''}" data-show aria-label="Show">${opts(VS, S.show)}</select><button type="button" class="ncm-calls-foldall" data-foldall><i class="fas fa-up-down"></i></button></div>
+      ${forced ? `<div class="ncm-calls-found"><span>${list.length} of ${vms.length} messages</span><button data-clear>Clear</button></div>` : ''}
+      <div class="ncm-calls-list ncm-scrollbar">${bandsHtml(bands, row, PCLS('', 'new'))}</div>`;
+  }
+
+  const ACLS = (hotTag) => ({ band: 'ncm-ph2-grp', body: 'ncm-ph2-gb',
+    head: (b) => `<div class="ncm-ph2-gh" data-fold role="button" tabindex="0" aria-expanded="${!b.shut}"><i class="fas fa-chevron-down ch"></i><b>${esc(b.label)}</b>${b.dateText ? `<span class="ncm-ph2-tm">${esc(b.dateText)}</span>` : ''}<span class="ncm-ph2-c">${b.total}</span>${b.hot ? `<span class="ncm-tagp is-bad">${b.hot} ${hotTag}</span>` : ''}</div>`,
+    day: (d) => `<div class="ncm-ph2-day">${esc(d.label)}<span class="ncm-ph2-c">${d.rows.length}</span></div>`,
+    more: (b) => `<div class="ncm-ph2-more" data-more="${esc(b.key)}" role="button" tabindex="0">Show more · ${b.hidden} left</div>`,
+    none: '<div class="ncm-ph2-none">Nothing matches.</div>' });
+  const TONE = { answered: ['good', 'fa-phone', 'Answered'], missed: ['bad', 'fa-phone-slash', 'Missed'], declined: ['attn', 'fa-phone-slash', 'Declined'], dropped: ['bad', 'fa-plug-circle-xmark', 'Dropped'] };
+  const RESULTS = [['all', 'All results'], ['answered', 'Answered'], ['missed', 'Missed'], ['declined', 'Declined'], ['dropped', 'Dropped'], ['words', 'Has a transcript'], ['heard', 'Caught by a tap']];
+  const resultOf = (c, k) => k === 'all' || (k === 'words' ? c.said.length > 0 : k === 'heard' ? c.id % 23 === 0 : c.outcome === k);
+
+  const filterCount = () => [S.who, S.net, S.from || S.to].filter(Boolean).length;
+  const passFilters = (c) => (!S.who || (c.name || c.number) === S.who || c.npc === S.who) && (!S.net || c.net === S.net)
+    && (!S.from || c.stamp.slice(0, 10) >= S.from) && (!S.to || c.stamp.slice(0, 10) <= S.to);
+  const pills = () => [S.who && ['who', S.who], S.net && ['net', S.net], (S.from || S.to) && ['dates', `${S.from || '…'} to ${S.to || '…'}`]].filter(Boolean)
+    .map(([k, l]) => `<button class="ncm-tagp is-act" data-unfilter="${k}">${esc(l)} ✕</button>`).join('');
+
+  function adminLog() {
+    const q = S.q, list = calls.filter((c) => resultOf(c, S.show) && matchCall(c, q) && passFilters(c)), forced = !!q || S.show !== 'all' || filterCount() > 0;
+    const row = (c) => { const [tone, icon, word] = TONE[c.outcome], hit = searchSnippet(q, c.said); const a = c.dir === 'out' ? (c.npc || 'V') : (c.name || c.number), b = c.dir === 'out' ? (c.name || c.number) : (c.npc || 'V');
+      return `<div class="ncm-ph2-lrow" style="--dc:var(--ncm-${tone}, var(--ncm-text-label))"><span class="d"><i class="fas ${icon}"></i></span><span class="t"><span class="pair">${mark(a, q)}<i class="fas fa-arrow-right"></i>${mark(b, q)}</span>
+        <span class="meta"><span class="ncm-tagp is-${tone}">${word}</span>${c.outcome === 'answered' ? `<span class="ncm-ph2-tm">${dur(c.secs)}</span>` : ''}<span class="net">${mark(c.net, q)}</span></span>${hit ? `<span class="ncm-ph2-hit"><i class="fas fa-closed-captioning"></i> ${mark(hit, q)}</span>` : ''}</span><span class="ncm-ph2-tm">${S.group === 'person' ? fullStamp(c.ms) : fmtTime(c.ms)}</span></div>`; };
+    let bands;
+    if (S.group === 'person') {
+      const by = new Map(); for (const c of list) { const k = c.name || c.number; if (!by.has(k)) by.set(k, []); by.get(k).push(c); }
+      bands = [...by.entries()].sort((x, y) => y[1].length - x[1].length).map(([k, rows], i) => { const key = `p:${k}`; const shutNow = S.shut.has(key) || (!S.open.has(key) && !forced && i > 0); const part = dateBands(rows, { now: NOW, dateOf: (c) => c.stamp, dayLabel, page: 1e9 })[0]; const sorted = [...rows].sort((a, b) => b.ms - a.ms), limit = S.limits[key] || 30, vis = sorted.slice(0, limit), days = []; for (const c of vis) { const d = c.stamp.slice(0, 10); if (days.at(-1)?.day !== d) days.push({ day: d, label: dayLabel(d), rows: [] }); days.at(-1).rows.push(c); } return { key, label: k, total: rows.length, hot: rows.filter((c) => c.outcome === 'missed' || c.outcome === 'dropped').length, shut: shutNow, hidden: sorted.length - vis.length, days, flat: true }; });
+    } else bands = dateBands(list, { now: NOW, dateOf: (c) => c.stamp, dayLabel, isHot: (c) => c.outcome === 'missed' || c.outcome === 'dropped', shut: S.shut, open: S.open, forced, limits: S.limits });
+    return `<header class="ncm-tabhd"><i class="fas fa-list"></i><div><h2>Call log</h2><p>Every call in the world, newest first.</p></div></header>
+      <div class="ncm-ph2-tb"><span class="ncm-ph2-srch"><i class="fas fa-magnifying-glass"></i><input data-q value="${esc(q)}" placeholder="Name, number, network, scene, words said…"></span>
+      <label class="ncm-ph2-sel"><span>Result</span><select data-show>${opts(RESULTS, S.show, (k) => calls.filter((c) => resultOf(c, k)).length)}</select></label>
+      <label class="ncm-ph2-sel"><span>Group</span><select data-group>${opts([['date', 'By date'], ['person', 'By person']], S.group)}</select></label>
+      <details class="ncm-ph2-dd" data-filtermenu${S.menu ? ' open' : ''}><summary class="ncm-ph2-btn" data-tooltip="Narrow by who, network or dates"><i class="fas fa-filter"></i> Filter${filterCount() ? ` <span class="ncm-ph2-c">${filterCount()}</span>` : ''}</summary>
+        <div class="ncm-ph2-ddp">
+          <label><span>Who</span><select data-fwho><option value="">Anyone</option>${PEOPLE.map(([n, num]) => `<option value="${esc(n || num)}"${S.who === (n || num) ? ' selected' : ''}>${esc(n || num)}</option>`).join('')}</select></label>
+          <label><span>Network</span><select data-fnet><option value="">Any</option>${NETS.map((n) => `<option${S.net === n ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+          <label><span>From</span><input type="date" data-ffrom value="${S.from}"></label>
+          <label><span>To</span><input type="date" data-fto value="${S.to}"></label>
+        </div></details>
+      <button type="button" class="ncm-ph2-ic" data-foldall aria-label="Open or close every group"><i class="fas fa-up-down"></i></button></div>
+      ${forced ? `<div class="ncm-ph2-count"><span>${list.length} of ${calls.length} calls</span>${pills()}<button data-clear>Clear all</button></div>` : ''}
+      <div class="ncm-ph2-bands">${bandsHtml(bands, row, ACLS('missed or dropped'))}</div>`;
+  }
+
+  function adminVm() {
+    const q = S.q, VS = [['all', 'All messages'], ['new', 'New'], ['heard', 'Heard'], ['npc', 'NPC mailboxes'], ['pc', 'Player mailboxes']];
+    const list = vms.filter((v) => ({ all: true, new: !v.heard, heard: v.heard, npc: v.npc, pc: !v.npc }[S.show]) && (!q || [v.name, v.number, v.text, v.box].join(' ').toLowerCase().includes(q.toLowerCase())));
+    const forced = !!q || S.show !== 'all';
+    const row = (v) => `<div class="ncm-ph2-vm${v.heard ? '' : ' is-new'}"><span class="d"><i class="fas fa-voicemail"></i></span><span class="t"><span class="pair">${mark(v.name || v.number, q)}<i class="fas fa-arrow-right"></i>${mark(v.box, q)}${v.heard ? '' : ' <span class="ncm-tagp is-attn">new</span>'}</span><span class="msg">${mark(v.text, q)}</span><span class="meta"><span class="ncm-ph2-num">${esc(v.number)}</span><span class="ncm-ph2-tm">${S.vmGroup === 'box' ? fullStamp(v.ms) : fmtTime(v.ms)}</span></span></span></div>`;
+    let bands;
+    if (S.vmGroup === 'date') bands = dateBands(list, { now: NOW, dateOf: (v) => v.stamp, dayLabel, isHot: (v) => !v.heard, shut: S.shut, open: S.open, forced, limits: S.limits });
+    else {
+      const by = new Map(); for (const v of list) { if (!by.has(v.box)) by.set(v.box, { npc: v.npc, rows: [] }); by.get(v.box).rows.push(v); }
+      bands = [...by.entries()].sort((x, y) => Number(y[1].npc) - Number(x[1].npc) || y[1].rows.filter((v) => !v.heard).length - x[1].rows.filter((v) => !v.heard).length).map(([k, b], i) => { const key = `b:${k}`, sorted = [...b.rows].sort((x, y) => y.ms - x.ms), limit = S.limits[key] || 30, vis = sorted.slice(0, limit), days = []; for (const v of vis) { const d = v.stamp.slice(0, 10); if (days.at(-1)?.day !== d) days.push({ day: d, label: dayLabel(d), rows: [] }); days.at(-1).rows.push(v); } return { key, label: k + (b.npc ? '' : ' (player)'), total: b.rows.length, hot: b.rows.filter((v) => !v.heard).length, shut: S.shut.has(key) || (!S.open.has(key) && !forced && i > 0), hidden: sorted.length - vis.length, days, flat: true }; });
+    }
+    return `<header class="ncm-tabhd"><i class="fas fa-voicemail"></i><div><h2>Voicemail</h2><p>What players left for your NPCs: play it, answer it as them, or call back.</p></div></header>
+      <div class="ncm-ph2-tb"><span class="ncm-ph2-srch"><i class="fas fa-magnifying-glass"></i><input data-q value="${esc(q)}" placeholder="Name, number, mailbox, words left…"></span>
+      <label class="ncm-ph2-sel"><span>Show</span><select data-show>${opts(VS, S.show)}</select></label>
+      <label class="ncm-ph2-sel"><span>Group</span><select data-vmgroup>${opts([['box', 'By mailbox'], ['date', 'By date']], S.vmGroup)}</select></label>
+      <button type="button" class="ncm-ph2-ic" data-foldall aria-label="Open or close every group"><i class="fas fa-up-down"></i></button></div>
+      ${forced ? `<div class="ncm-ph2-count"><span>${list.length} of ${vms.length} messages</span><button data-clear>Clear</button></div>` : ''}
+      <div class="ncm-ph2-bands">${bandsHtml(bands, row, ACLS('new'))}</div>`;
+  }
+
+  const host = document.getElementById('host');
+  const isPlayer = f.startsWith('player');
+  const adminTheme = P.get('t') || 'clean-dark';
+  const tabs = (on) => `<div class="ncm-calls-lgt" role="tablist">${[['all', 'Calls', 'fa-phone', 0], ['missed', 'Missed', 'fa-phone-slash', 4], ['vm', 'Voicemail', 'fa-voicemail', 3], ['book', 'Contacts', 'fa-address-book', 0]].map(([k, l, ic, n]) => `<button type="button" class="${k === on ? 'on' : ''}"><i class="fas ${ic}"></i> ${l}${n ? `<span class="ct hot">${n}</span>` : ''}</button>`).join('')}</div>`;
+  function draw(keepFocus) {
+    const sel = keepFocus ? host.querySelector('[data-q]')?.selectionStart : null;
+    const scrollEl = host.querySelector('.ncm-calls-list') || host.querySelector('#adminWin');
+    const top = scrollEl?.scrollTop || 0;
+    if (isPlayer) {
+      host.innerHTML = `<div class="ncm-app mk-win" id="playerWin"><div class="ncm-viewer" style="display:flex;flex-direction:column;height:100%"><div class="ncm-calls"><div class="mk-dl">the dialer stays here</div><div class="ncm-calls-lg">${tabs(f === 'playervm' ? 'vm' : 'all')}${f === 'playervm' ? playerVm() : playerCalls()}</div></div></div></div>`;
+    } else {
+      host.innerHTML = `<div class="ncm-app ncm-admin-panel mk-win" id="adminWin" data-ncm-admin-theme="${adminTheme}"><div class="ncm-admin-panel"><div class="ncm-ph2">${f === 'adminvm' ? adminVm() : adminLog()}</div></div></div>`;
+    }
+    const again = host.querySelector('.ncm-calls-list') || host.querySelector('#adminWin');
+    if (again) again.scrollTop = top;
+    if (keepFocus) { const i = host.querySelector('[data-q]'); i?.focus(); i?.setSelectionRange(sel, sel); }
+    host.querySelector('[data-q]')?.addEventListener('input', (e) => { S.q = e.target.value; clearTimeout(S.t); S.t = setTimeout(() => draw(true), 180); });
+    host.querySelector('[data-show]')?.addEventListener('change', (e) => { S.show = e.target.value; draw(); });
+    const fm = host.querySelector('[data-filtermenu]');
+    fm?.addEventListener('toggle', () => { S.menu = fm.open; });
+    for (const [sel, key] of [['[data-fwho]', 'who'], ['[data-fnet]', 'net'], ['[data-ffrom]', 'from'], ['[data-fto]', 'to']]) host.querySelector(sel)?.addEventListener('change', (e) => { S[key] = e.target.value; draw(); });
+    host.querySelector('[data-group]')?.addEventListener('change', (e) => { S.group = e.target.value; S.shut.clear(); S.open.clear(); draw(); });
+    host.querySelector('[data-vmgroup]')?.addEventListener('change', (e) => { S.vmGroup = e.target.value; S.shut.clear(); S.open.clear(); draw(); });
+  }
+  host.addEventListener('click', (e) => {
+    const fold = e.target.closest('[data-fold]');
+    if (fold) { const sec = fold.closest('[data-band]'), key = sec.dataset.band, shut = !sec.classList.contains('is-shut'); sec.classList.toggle('is-shut', shut); fold.setAttribute('aria-expanded', String(!shut)); (shut ? S.shut : S.open).add(key); (shut ? S.open : S.shut).delete(key); return; }
+    const more = e.target.closest('[data-more]');
+    if (more) { S.limits[more.dataset.more] = (S.limits[more.dataset.more] || 30) + 30; return draw(); }
+    if (e.target.closest('[data-clear]')) { S.q = ''; S.show = 'all'; S.who = S.net = S.from = S.to = ''; return draw(); }
+    const un = e.target.closest('[data-unfilter]');
+    if (un) { if (un.dataset.unfilter === 'dates') S.from = S.to = ''; else S[un.dataset.unfilter] = ''; return draw(); }
+    if (e.target.closest('[data-foldall]')) { const secs = [...host.querySelectorAll('[data-band]')], anyOpen = secs.some((x) => !x.classList.contains('is-shut')); for (const x of secs) { (anyOpen ? S.shut : S.open).add(x.dataset.band); (anyOpen ? S.open : S.shut).delete(x.dataset.band); } return draw(); }
+  });
+  if (P.get('s')) document.documentElement.style.setProperty('--ncm-text-scale', Number(P.get('s')) / 100);
+  if (P.get('allshut')) { draw(); document.querySelector('[data-foldall]').click(); }
+  else draw();
+  document.title = 'ready';
+</script>
+</body>
+</html>

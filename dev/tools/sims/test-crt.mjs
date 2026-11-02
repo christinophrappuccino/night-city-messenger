@@ -143,7 +143,7 @@ ok(C.tameCrtBlock({ style: 'off', intensity: 0, vignette: false, roll: false }) 
 const lib = [{ name: 'a', theme: { crt: { style: 'tube', intensity: 55 } } }, { name: 'b', config: { theme: { crt: { style: 'glass', intensity: 20, roll: true, vignette: true } } } }];
 ok(C.tameCrtDeep(lib) === 1 && lib[0].theme.crt.intensity === 30, 'tameCrtDeep walks saved themes / libraries and counts only real changes');
 const mr = read('scripts/core/MigrationRunner.js');
-ok(/DATA_SCHEMA_VERSION = 2;/.test(mr) && mr.includes('to: 2,') && mr.includes('tameCrtDeep(copy)') && ['terminalThemePresets', 'terminalPresetLibrary', 'shardThemePresets', 'shardPresetLibrary'].every(k => mr.includes(`'${k}'`)), 'migration v2 tames stored films on items (world + actor) and in all four libraries');
+ok(Number(mr.match(/DATA_SCHEMA_VERSION = (\d+);/)?.[1]) >= 2 && mr.includes('to: 2,') && mr.includes('tameCrtDeep(copy)') && ['terminalThemePresets', 'terminalPresetLibrary', 'shardThemePresets', 'shardPresetLibrary'].every(k => mr.includes(`'${k}'`)), 'migration v2 tames stored films on items (world + actor) and in all four libraries');
 const termCss = read('styles/components/terminal.css');
 ok(!/\.ncm-term__hero::after \{[^}]*repeating-linear-gradient/.test(termCss) && !/\.ncm-term__console::after \{[^}]*repeating-linear-gradient/.test(termCss) && !/\.ncm-term__crt::after \{[^}]*repeating-linear-gradient/.test(termCss), 'terminal.css: the hero, console and CRT-login baked line films are gone');
 ok(/\.ncm-crt__light \{[\s\S]*?var\(--ncm-primary/.test(css), 'the light line takes the machine colour — it vanishes on primary fills (active tab, selected row)');

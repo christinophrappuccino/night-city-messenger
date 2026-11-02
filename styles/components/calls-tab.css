@@ -249,3 +249,365 @@
 /* phase 4: a withheld caller, why a call dropped */
 .ncm-calls-rowc .sub .anon { color: var(--ncm-purple, var(--ncm-secondary)); text-transform: uppercase; letter-spacing: .04em; font-family: var(--ncm-font-mono); font-size: .9em; }
 .ncm-calls-rowc .why { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-size: calc(11.5px * var(--ncm-text-scale, 1)); color: var(--ncm-danger, var(--ncm-primary)); }
+
+/* ═══ phone revision, Round 1 (dev-approved mock phone-numbers-round1-mock.html). Spec: dev/design/PHONE-REVISION.md §4 ═══ */
+/* a number you can hover: each part keeps one colour everywhere */
+.ncm-num { --r: var(--ncm-accent); --c: color-mix(in oklab, var(--ncm-purple, #b87aff) 62%, var(--ncm-text-primary)); --x: color-mix(in oklab, var(--ncm-secondary) 82%, var(--ncm-text-primary)); --l: var(--ncm-text-primary); font-family: var(--ncm-font-mono, monospace); letter-spacing: .03em; white-space: nowrap; cursor: help; border-bottom: 1px dotted color-mix(in srgb, var(--ncm-text-secondary) 50%, transparent); }
+.ncm-num .r { color: var(--r); } .ncm-num .c { color: var(--c); } .ncm-num .x { color: var(--x); } .ncm-num .l { color: var(--l); }
+
+/* the My line card: your number in full, your settings in words */
+/* Shaped like the thing it is: a SIM, the corner cut, a contact pad beside the number. A hairline frame in the same cut, drawn by two layers, because clip-path eats a real border. */
+.ncm-app .ncm-calls-line, .ncm-app .ncm-calls-res { --cut: 16px; --cut2: 7px; position: relative; isolation: isolate; flex: none;
+  background: color-mix(in srgb, var(--ncm-secondary) 60%, var(--ncm-border));
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut2) 100%, 0 calc(100% - var(--cut2))); }
+.ncm-app .ncm-calls-line::before, .ncm-app .ncm-calls-res::before { content: ''; position: absolute; inset: 1px; z-index: -1;
+  background: linear-gradient(150deg, color-mix(in srgb, var(--ncm-secondary) 11%, var(--ncm-bg-elevated)), var(--ncm-bg-elevated) 55%);
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut2) 100%, 0 calc(100% - var(--cut2))); }
+.ncm-app .ncm-calls-line { padding: 9px 11px 10px; display: flex; flex-direction: column; gap: 5px; }
+.ncm-app .ncm-calls-line__hd { padding-right: 8px; flex-wrap: wrap; row-gap: 3px; }
+.ncm-app .ncm-calls-line__hd > span:first-child { white-space: nowrap; }
+/* The SIM's contacts. A pulse walks round the four pads while the line is live; a key press makes them all flicker; ringer off turns it amber and slows it. One animation per pad, offset by a quarter, so they stay in step. */
+.ncm-calls-sim { --simc: var(--ncm-secondary); --simd: 2.8s; position: absolute; top: calc(35px * var(--ncm-text-scale, 1)); right: 12px; width: calc(32px * var(--ncm-text-scale, 1)); height: calc(24px * var(--ncm-text-scale, 1));
+  display: grid; grid-template: 1fr 1fr / 1fr 1fr; gap: 1px; padding: 1px; cursor: help;
+  background: color-mix(in srgb, var(--simc) 40%, transparent); border: 1px solid color-mix(in srgb, var(--simc) 60%, transparent); border-radius: 3px; }
+.ncm-calls-sim.is-quiet { --simc: var(--calls-vm); --simd: 5.6s; }
+.ncm-calls-sim b { display: block; background: color-mix(in srgb, var(--simc) 12%, var(--ncm-bg-elevated)); animation: ncm-sim-walk var(--simd) linear infinite; }
+/* clockwise: top left, top right, bottom right, bottom left */
+.ncm-calls-sim b:nth-child(1) { border-radius: 2px 0 0 0; animation-delay: 0s; }
+.ncm-calls-sim b:nth-child(2) { border-radius: 0 2px 0 0; animation-delay: calc(var(--simd) / 4); }
+.ncm-calls-sim b:nth-child(4) { border-radius: 0 0 2px 0; animation-delay: calc(var(--simd) / 2); }
+.ncm-calls-sim b:nth-child(3) { border-radius: 0 0 0 2px; animation-delay: calc(var(--simd) * 3 / 4); }
+@keyframes ncm-sim-walk {
+  0%, 28%, 100% { background: color-mix(in srgb, var(--simc) 12%, var(--ncm-bg-elevated)); box-shadow: none; }
+  6% { background: color-mix(in srgb, var(--simc) 85%, #fff); box-shadow: 0 0 6px var(--simc); }
+}
+/* a key press: every pad flashes at once, over the walk */
+.ncm-calls-sim.is-ping::after { content: ''; grid-area: 1 / 1 / 3 / 3; position: absolute; inset: 1px; border-radius: 2px; background: color-mix(in srgb, var(--simc) 80%, #fff); box-shadow: 0 0 8px var(--simc); opacity: 0; animation: ncm-sim-ping .24s ease-out; pointer-events: none; }
+@keyframes ncm-sim-ping { 0% { opacity: .9; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ncm-calls-sim b { animation: none; background: color-mix(in srgb, var(--simc) 35%, var(--ncm-bg-elevated)); }
+  .ncm-calls-sim.is-ping::after { animation: none; }
+}
+.ncm-app .ncm-calls-line__num { padding-right: calc(40px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-calls-line.is-multi .ncm-calls-line__num { padding-right: 0; }
+.ncm-app .ncm-calls-line__hd { display: flex; align-items: center; gap: 4px; font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-line__hd .sp { flex: 1; }
+.ncm-app .ncm-calls-line__num { font-size: calc(21px * var(--ncm-text-scale, 1)); font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; white-space: normal; }
+.ncm-app .ncm-calls-line__num .ncm-num { white-space: normal; border-bottom: 0; }
+.ncm-app .ncm-calls-line__where { font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-sets { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-top: 2px; }
+.ncm-app .ncm-calls-sets button { display: flex !important; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; padding: 4px 6px !important; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; text-align: left; }
+.ncm-app .ncm-calls-sets button:hover, .ncm-app .ncm-calls-sets button:focus-visible { border-color: var(--ncm-secondary) !important; }
+.ncm-app .ncm-calls-sets small { font: calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-sets b { font: 700 calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
+.ncm-app .ncm-calls-sets button.is-off b { color: var(--calls-vm); }
+.ncm-app .ncm-calls-sets button.is-off { border-color: color-mix(in srgb, var(--calls-vm) 55%, transparent) !important; }
+.ncm-app .ncm-calls-mini.txt { width: auto !important; padding: 0 6px !important; gap: 4px; display: inline-flex !important; align-items: center; font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; letter-spacing: .06em; text-transform: uppercase; height: calc(22px * var(--ncm-text-scale, 1)) !important; }
+
+/* the number row: with several lines it is the dropdown */
+.ncm-app .ncm-calls-line__row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ncm-app .ncm-calls-line__row .t { flex: 1; min-width: 0; display: block; }
+.ncm-app button.ncm-calls-line__row { width: 100% !important; padding: 2px 4px !important; margin: 0 -4px !important; width: calc(100% + 8px) !important; background: none !important; border: 0 !important; border-radius: 2px; color: inherit !important; text-align: left; cursor: pointer; }
+.ncm-app button.ncm-calls-line__row:hover, .ncm-app button.ncm-calls-line__row:focus-visible { background: color-mix(in srgb, var(--ncm-secondary) 9%, transparent) !important; }
+/* the chevron sits under the chip, so the chip never moves between one line and several */
+.ncm-app button.ncm-calls-line__row > i { flex: none; align-self: flex-end; margin: 0 6px 3px 0 !important; font-size: calc(11px * var(--ncm-text-scale, 1)); color: color-mix(in oklab, var(--ncm-secondary) 62%, var(--ncm-text-primary)); transition: transform .24s cubic-bezier(.22, 1, .36, 1); }
+.ncm-app .ncm-calls-line.is-open button.ncm-calls-line__row > i { transform: rotate(180deg); }
+.ncm-app .ncm-calls-line__row.is-swap .t { animation: ncm-line-swap .26s cubic-bezier(.22, 1, .36, 1); }
+@keyframes ncm-line-swap { from { opacity: 0; transform: translateY(6px); } }
+/* the list opens downward and pushes the rest of the card along */
+.ncm-app .ncm-calls-line__drop { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .24s cubic-bezier(.22, 1, .36, 1); }
+.ncm-app .ncm-calls-line.is-open .ncm-calls-line__drop { grid-template-rows: 1fr; }
+.ncm-app .ncm-calls-line__drop > .in { min-height: 0; overflow: hidden; }
+.ncm-app .ncm-calls-line__drop .ncm-calls-pick { padding: 3px 0 2px; max-height: calc(150px * var(--ncm-text-scale, 1)); overflow-y: auto; overflow-x: hidden; }
+@media (prefers-reduced-motion: reduce) { .ncm-app .ncm-calls-line__drop, .ncm-app button.ncm-calls-line__row > i { transition: none; } .ncm-app .ncm-calls-line__row.is-swap .t { animation: none; } }
+.ncm-app .ncm-calls-pick { display: flex; flex-direction: column; gap: 3px; }
+.ncm-app .ncm-calls-pick button { display: grid !important; grid-template-columns: 14px minmax(0, 1fr); align-items: center; gap: 6px; padding: 5px 6px !important; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; text-align: left; }
+.ncm-app .ncm-calls-pick button.on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 10%, var(--ncm-bg-surface)) !important; }
+.ncm-app .ncm-calls-pick i { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
+.ncm-app .ncm-calls-pick .t { min-width: 0; display: block; font-size: calc(13px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-calls-pick small { display: block; margin-top: 2px; font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+
+/* the live explanation under the dial box */
+.ncm-app .ncm-calls-xp { flex: none; min-height: calc(32px * var(--ncm-text-scale, 1)); font: calc(11.5px * var(--ncm-text-scale, 1))/1.3 var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-xp b { color: var(--ncm-text-primary); font-weight: 700; }
+.ncm-app .ncm-calls-xp .ok { color: var(--calls-ok); font-weight: 700; } .ncm-app .ncm-calls-xp .warn { color: var(--calls-vm); font-weight: 700; } .ncm-app .ncm-calls-xp .bad { color: var(--calls-miss); font-weight: 700; }
+.ncm-app .ncm-calls-xp button { display: inline !important; padding: 0 !important; background: none !important; border: 0 !important; color: var(--ncm-secondary) !important; text-decoration: underline; font: inherit !important; }
+
+/* a key being pressed, by mouse or keyboard: the same press */
+.ncm-app .ncm-calls-keys button { position: relative; }
+/* It lights while the key is held, then fades: the light is what you catch while watching the number box. */
+.ncm-app .ncm-calls-keys button { --key-lit: color-mix(in srgb, var(--ncm-secondary) 62%, var(--ncm-bg-elevated)); --key-glow: color-mix(in srgb, var(--ncm-secondary) 70%, transparent); }
+.ncm-app .ncm-calls-keys button.held {
+  transform: translateY(2px) scale(.96);
+  background: var(--key-lit) !important; border-color: var(--ncm-secondary) !important; color: #fff !important;
+  box-shadow: 0 0 14px var(--key-glow), inset 0 0 10px var(--key-glow) !important; text-shadow: 0 0 8px #fff;
+}
+.ncm-app .ncm-calls-keys button.held small { color: #fff; }
+.ncm-app .ncm-calls-keys button.press:not(.held) { animation: ncm-calls-press .34s ease-out; }
+@keyframes ncm-calls-press {
+  0% { transform: translateY(2px) scale(.96); background: var(--key-lit); border-color: var(--ncm-secondary); color: #fff; box-shadow: 0 0 14px var(--key-glow), inset 0 0 10px var(--key-glow); text-shadow: 0 0 8px #fff; }
+  100% { transform: none; }
+}
+.ncm-app .ncm-calls-del.press { color: var(--ncm-secondary) !important; transform: translateX(-2px); transition: transform .1s; }
+@media (prefers-reduced-motion: reduce) { .ncm-app .ncm-calls-keys button.held { transform: none; } .ncm-app .ncm-calls-keys button.press:not(.held) { animation: none; } }
+
+.ncm-app .ncm-calls-dl .ncm-calls-sig { flex: none; }
+/* the Call button stays on screen however tall the column gets */
+.ncm-app .ncm-calls-dl .ncm-calls-cb { position: sticky; bottom: 0; flex: none; z-index: 2; }
+.ncm-app .ncm-calls-keys button { height: calc(31px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app .ncm-calls-keys { flex: none; }
+
+/* the intro card */
+.ncm-calls-intro { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: color-mix(in srgb, var(--ncm-bg-deep) 82%, transparent); }
+.ncm-calls-intro__box { width: min(480px, 92%); padding: 16px 18px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-secondary); box-shadow: 0 8px 30px rgba(0, 0, 0, .6); }
+.ncm-calls-intro h3 { margin: 0 0 8px; border: 0; font: 800 calc(16px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-calls-intro__big { display: flex; justify-content: center; gap: 2px; margin: 10px 0 12px; }
+.ncm-calls-intro__part { text-align: center; }
+.ncm-calls-intro__part b { display: block; font: 700 calc(30px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-calls-intro__part small { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-calls-intro ul { margin: 0 0 12px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font: calc(13px * var(--ncm-text-scale, 1))/1.35 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+.ncm-calls-intro li { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.ncm-calls-intro li .ncm-num { cursor: inherit; border: 0; white-space: normal; }
+.ncm-calls-intro__ft { display: flex; align-items: center; gap: 8px; }
+.ncm-calls-intro__ft small { flex: 1; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+
+/* the number breakdown */
+.ncm-numpop { position: fixed; z-index: 1000; width: 280px; padding: 9px 11px; background: var(--ncm-bg-elevated, #161622); color: var(--ncm-text-primary, #e0e0e8); border: 1px solid var(--ncm-secondary, #19f3f7); box-shadow: 0 6px 22px rgba(0, 0, 0, .6); font: 12.5px/1.35 var(--ncm-font-body, sans-serif); pointer-events: auto; }
+.ncm-numpop__n { font-size: calc(17px * var(--ncm-text-scale, 1)); font-weight: 700; margin-bottom: 6px; }
+.ncm-numpop__n .ncm-num { border: 0; cursor: inherit; }
+.ncm-numpop__row { display: grid; grid-template-columns: 48px 66px minmax(0, 1fr); gap: 6px; padding: 2px 0; align-items: baseline; font-size: calc(12px * var(--ncm-text-scale, 1)); }
+.ncm-numpop__row code { background: none; border: 0; padding: 0; font: 700 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-numpop__row small { font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); text-transform: uppercase; letter-spacing: .06em; color: var(--ncm-text-secondary); }
+.ncm-numpop__ft { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--ncm-border, #2a2a45); color: var(--ncm-text-secondary, #a8a8bc); font-size: calc(11.5px * var(--ncm-text-scale, 1)); }
+
+/* hover help (Foundry draws these from data-tooltip; the mock draws its own) */
+.mk-tip { position: fixed; z-index: 1100; max-width: 260px; padding: 5px 8px; background: #000; color: #fff; border: 1px solid #555; border-radius: 3px; font: 12px/1.35 sans-serif; pointer-events: none; }
+
+/* the exchange list */
+.ncm-calls-xlist { position: absolute; inset: 0; z-index: 15; display: flex; flex-direction: column; background: var(--ncm-bg-surface); padding: 14px 18px; overflow-y: auto; overflow-x: hidden; gap: 8px; }
+.ncm-calls-xlist { padding: 12px 16px 14px !important; gap: 8px !important; overflow: hidden !important; }
+.ncm-calls-xlist > * { flex: none; }
+.ncm-calls-xhd { display: flex; align-items: center; gap: 10px; }
+.ncm-calls-xlist h3 { margin: 0; border: 0; font: 800 calc(15px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-xlist #xfind { flex: 1; min-width: 0; height: calc(30px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); color: var(--ncm-text-primary); font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); text-align: left; box-shadow: none; }
+.ncm-app .ncm-calls-xlist #xfind:focus { border-color: var(--ncm-secondary); }
+.ncm-calls-xtabs { display: flex; gap: 2px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-calls-xtabs button { appearance: none; width: auto; height: auto; min-height: 0; margin: 0 0 -1px; padding: 7px 11px; display: inline-flex; align-items: baseline; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; color: var(--ncm-text-secondary); font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); cursor: pointer; line-height: 1.1; }
+.ncm-calls-xtabs button:hover, .ncm-calls-xtabs button:focus-visible { color: var(--ncm-text-primary); }
+.ncm-calls-xtabs button.on { color: var(--ncm-text-primary); border-bottom-color: var(--ncm-secondary); }
+.ncm-calls-xtabs.is-searching button.on { border-bottom-color: transparent; color: var(--ncm-text-secondary); }
+.ncm-calls-xtabs small { font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-calls-xlist .ncm-calls-xpanel { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 7px; padding-right: 4px; }
+.ncm-calls-xpanel > * { flex: none; }
+.ncm-calls-xgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px 14px; }
+.ncm-calls-xgrid--one { grid-template-columns: minmax(0, 1fr); }
+.ncm-calls-xrow { appearance: none; width: 100%; justify-content: flex-start; height: auto; min-height: 0; margin: 0; padding: 4px 5px; display: flex; align-items: baseline; gap: 8px; min-width: 0; background: none; border: 0; border-radius: 2px; box-shadow: none; color: var(--ncm-text-primary); text-align: left; cursor: pointer; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); line-height: 1.25; }
+.ncm-calls-xrow:hover, .ncm-calls-xrow:focus-visible { background: color-mix(in srgb, var(--ncm-secondary) 11%, transparent); color: var(--ncm-text-primary); }
+.ncm-calls-xrow code { flex: none; min-width: calc(34px * var(--ncm-text-scale, 1)); background: none; border: 0; padding: 0; font: 700 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: color-mix(in oklab, var(--ncm-secondary) 78%, var(--ncm-text-primary)); }
+.ncm-calls-xrow .nm { min-width: 0; }
+.ncm-calls-xrow small { margin-left: auto; padding-left: 10px; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-calls-xhint { margin: 0; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-calls-xhint .ncm-num { font-size: calc(13px * var(--ncm-text-scale, 1)); white-space: nowrap; }
+.ncm-calls-xreg { border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+.ncm-calls-xreg summary { display: flex; align-items: baseline; gap: 8px; padding: 5px 2px; cursor: pointer; font: 600 calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); color: var(--ncm-text-primary); }
+.ncm-calls-xreg summary:hover, .ncm-calls-xreg summary:focus-visible { background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
+.ncm-calls-xreg summary code { display: inline-block; min-width: calc(48px * var(--ncm-text-scale, 1)); background: none; border: 0; padding: 0; font: 700 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-accent); }
+.ncm-calls-xreg summary small { margin-left: auto; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-calls-xreg .ncm-calls-xgrid { padding: 1px 2px 7px calc(52px * var(--ncm-text-scale, 1)); }
+.ncm-calls-xreg summary em { font: 600 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); font-style: normal; color: var(--calls-ok); }
+.ncm-calls-xrow .hq { font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); font-style: normal; padding: 0 3px; border: 1px solid var(--ncm-accent); color: var(--ncm-accent); }
+.ncm-tb-find { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ncm-tb-find #tbq { flex: 1; min-width: 180px; height: calc(28px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); color: var(--ncm-text-primary); font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); text-align: left; box-shadow: none; }
+.ncm-tb-find span { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-tb tr.is-hidden td { color: var(--ncm-text-secondary); font-style: italic; }
+
+/* the picker's new parts */
+.ncm-app .ncm-calls-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-app .ncm-calls-tabs button, .ncm-app .ncm-calls-dist button { padding: 5px 9px !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; font: 600 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important; }
+.ncm-app .ncm-calls-tabs button:hover, .ncm-app .ncm-calls-dist button:hover { border-color: var(--ncm-border-active) !important; }
+.ncm-app .ncm-calls-tabs button.on, .ncm-app .ncm-calls-dist button.on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 16%, var(--ncm-bg-elevated)) !important; }
+.ncm-app .ncm-calls-dist { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-app .ncm-calls-dist code { background: none; border: 0; padding: 0; margin-right: 5px; font: 700 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: color-mix(in oklab, var(--ncm-secondary) 60%, var(--ncm-text-primary)); }
+.ncm-app .ncm-calls-opt.on small { color: color-mix(in oklab, var(--ncm-secondary) 72%, var(--ncm-text-primary)); }
+.ncm-app .ncm-calls-own2 { display: flex; align-items: center; gap: 2px; font: 700 calc(16px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-secondary); }
+.ncm-app .ncm-calls-own2 input { width: calc(84px * var(--ncm-text-scale, 1)) !important; height: calc(30px * var(--ncm-text-scale, 1)) !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; color: var(--ncm-text-primary) !important; font: 700 calc(16px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; text-align: left !important; letter-spacing: .1em; box-shadow: none !important; }
+.ncm-app .ncm-calls-own2 span.msg { margin-left: 8px; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-own2 span.msg.bad { color: var(--calls-miss); } .ncm-app .ncm-calls-own2 span.msg.ok { color: var(--calls-ok); }
+.ncm-app .ncm-calls-res { padding: 10px 12px; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-res .ncm-num { font-size: calc(17px * var(--ncm-text-scale, 1)); font-weight: 700; border: 0; }
+.ncm-app .ncm-calls-res small { display: block; margin-top: 2px; color: var(--ncm-text-secondary); font-size: calc(12px * var(--ncm-text-scale, 1)); }
+
+.ncm-app .ncm-calls-wait { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; font: calc(11px * var(--ncm-text-scale, 1))/1.3 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-wait i { color: var(--calls-vm); }
+.ncm-app .ncm-calls-wait button { padding: 0 !important; background: none !important; border: 0 !important; color: var(--ncm-text-primary) !important; text-decoration: underline; font: inherit !important; }
+.ncm-app .ncm-calls-mini.press { animation: ncm-calls-nudge .3s ease-out; }
+@keyframes ncm-calls-nudge { 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+.ncm-app .ncm-calls-addf { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; }
+.ncm-app .ncm-calls-addf .f { display: flex; flex-direction: column; gap: 3px; margin: 0; }
+.ncm-app .ncm-calls-addf .f > span:first-child { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-addf input { width: calc(170px * var(--ncm-text-scale, 1)) !important; height: calc(30px * var(--ncm-text-scale, 1)) !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; color: var(--ncm-text-primary) !important; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important; text-align: left !important; box-shadow: none !important; }
+.ncm-app .ncm-calls-addf input[type="number"] { width: calc(56px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app .ncm-calls-addf .inl { display: inline-flex; align-items: center; gap: 6px; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+.ncm-tb-req { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 10px; background: color-mix(in srgb, var(--calls-vm) 14%, var(--ncm-bg-elevated)); border: 1px solid var(--calls-vm); font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+.ncm-tb-req i { color: var(--calls-vm); margin: 0 !important; }
+.ncm-tb-req span { flex: 1; min-width: 200px; }
+
+/* the trail: where you are, one click back to any step */
+.ncm-app .ncm-calls-trail { display: flex; flex-wrap: wrap; align-items: stretch; gap: 3px 4px; }
+.ncm-app .ncm-calls-trail > i { align-self: center; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-trail .st { display: inline-flex !important; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 4px 8px !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; font: 600 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important; text-align: left; }
+.ncm-app .ncm-calls-arrived { padding: 6px 9px; font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--calls-ok) 12%, var(--ncm-bg-elevated)); border: 1px solid color-mix(in srgb, var(--calls-ok) 50%, transparent); }
+.ncm-app .ncm-calls-arrived i { margin-right: 5px; color: var(--calls-ok); }
+.ncm-app .ncm-calls-trail button.st:hover, .ncm-app .ncm-calls-trail button.st:focus-visible { border-color: var(--ncm-secondary) !important; }
+.ncm-app .ncm-calls-trail button.st.on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 16%, var(--ncm-bg-elevated)) !important; }
+.ncm-app .ncm-calls-trail small { font: calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-dist--big button { padding: 9px 12px !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; }
+.ncm-tb-setup { flex: none; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; padding: 8px 10px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); }
+.ncm-tb-setup .f { display: flex; flex-direction: column; gap: 3px; margin: 0; text-transform: none; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+.ncm-tb-setup .f > span { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-tb-setup .f.chk { flex-direction: row; align-items: center; gap: 6px; }
+.ncm-tb-setup .f.chk > span { font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); letter-spacing: 0; text-transform: none; color: var(--ncm-text-primary); }
+.ncm-tb-setup select { width: auto; height: calc(26px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); border: 1px solid var(--ncm-border); font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+.ncm-tb-setup select option { background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); }
+.ncm-tb-setup input[type="checkbox"] { --checkbox-size: 14px; width: 14px; height: 14px; margin: 0; }
+.ncm-tb-setup .seg { display: flex; gap: 2px; }
+.ncm-tb-setup .seg button { height: calc(26px * var(--ncm-text-scale, 1)); padding: 0 8px !important; display: inline-flex; align-items: center; gap: 5px; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; font: 600 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important; }
+.ncm-tb-setup .seg button:hover { border-color: var(--ncm-border-active) !important; }
+.ncm-tb-setup .seg button.on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 18%, var(--ncm-bg-elevated)) !important; }
+.ncm-tb .tick { display: inline-flex; align-items: center; gap: 5px; margin: 0; text-transform: none; font: inherit; color: inherit; }
+.ncm-tb .tick input { --checkbox-size: 13px; width: 13px; height: 13px; margin: 0; }
+.ncm-tb tr.is-home td:first-child { box-shadow: inset 2px 0 0 var(--ncm-secondary); }
+.ncm-app .ncm-calls-crumb { padding: 6px 9px; background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); font: 600 calc(12.5px * var(--ncm-text-scale, 1))/1.3 var(--ncm-font-display, sans-serif); color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-crumb i { margin-right: 4px; color: color-mix(in oklab, var(--ncm-secondary) 72%, var(--ncm-text-primary)); }
+.ncm-app .ncm-calls-use { font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); white-space: nowrap; cursor: help; }
+.ncm-app .ncm-calls-row .lbl[data-tooltip] { cursor: help; }
+.ncm-app .ncm-calls-row .lbl { color: var(--ncm-text-secondary); }
+
+/* the GM spreadsheet */
+.ncm-tb { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; color: var(--ncm-text-primary); }
+.ncm-tb-acts { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ncm-tb-acts .sp { flex: 1; }
+.ncm-tb-acts small { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-tb .ncm-calls-btn { padding: 6px 10px !important; }
+.ncm-tb :where(button) { appearance: none !important; width: auto !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; line-height: 1 !important; cursor: pointer; }
+.ncm-tb button i { margin: 0 !important; }
+.ncm-tb-scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--ncm-border); }
+.ncm-tb table { margin: 0; width: 100%; border-collapse: collapse; background: none; border: 0; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+.ncm-tb th { position: sticky; top: 0; z-index: 1; padding: 5px 8px; text-align: left; white-space: nowrap; background: var(--ncm-bg-elevated); color: var(--ncm-text-secondary); font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid var(--ncm-border); }
+.ncm-tb td { padding: 3px 8px; white-space: nowrap; color: var(--ncm-text-primary); border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); background: none; }
+.ncm-tb tr.is-dead td { color: color-mix(in oklab, var(--calls-miss) 75%, var(--ncm-text-primary)); }
+.ncm-tb-plan { flex: none; max-height: 190px; overflow-y: auto; padding: 8px 10px; background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-secondary); font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+.ncm-tb-plan.bad { border-color: var(--calls-miss); color: var(--calls-miss); }
+.ncm-tb-plan ul { margin: 5px 0 7px; padding: 0; list-style: none; }
+.ncm-tb-plan li.ok { color: var(--calls-ok); } .ncm-tb-plan li.warn { color: var(--calls-vm); }
+.ncm-tb-note { flex: none; margin: 0; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-tb-note b { color: var(--ncm-text-primary); }
+
+/* numbers in place */
+.mk-place { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; align-content: start; color: var(--ncm-text-primary); }
+.mk-place h4 { margin: 0 0 6px; border: 0; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.mk-place .full { grid-column: 1 / -1; }
+.mk-card { display: flex; gap: 10px; padding: 10px; background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); }
+.mk-card .face { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--ncm-bg-surface); border: 1.5px solid var(--ncm-secondary); color: var(--ncm-secondary); font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
+.mk-card b { display: block; font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
+.mk-card .ncm-num { font-size: calc(14px * var(--ncm-text-scale, 1)); }
+.mk-card small { display: block; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.mk-ring { --rc: var(--ncm-secondary); padding: 10px 12px; background: var(--ncm-bg-deep); border: 1.5px solid var(--rc); clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+.mk-ring { position: relative; } .mk-ring::after { content: ""; position: absolute; top: -1.5px; right: -1.5px; width: 12px; height: 12px; pointer-events: none; background: linear-gradient(to top right, transparent calc(50% - 1.8px), var(--rc) calc(50% - 1.8px), var(--rc) 50%, transparent 50%); }
+.mk-ring .k { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .2em; text-transform: uppercase; color: var(--rc); }
+.mk-ring b { display: block; margin: 3px 0 1px; font: 800 calc(17px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; }
+.mk-ring .ncm-num { font-size: calc(16px * var(--ncm-text-scale, 1)); font-weight: 700; }
+.mk-ring small { display: block; margin-top: 2px; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.mk-ring .far { display: inline-block; margin-top: 5px; padding: 1px 6px; border: 1px solid var(--ncm-accent); color: var(--ncm-accent); font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; }
+.mk-seen { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr); gap: 4px 12px; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+.mk-seen .ncm-num { font-size: calc(15px * var(--ncm-text-scale, 1)); }
+.ncm-calls-rowc .ncm-num { font-size: calc(10.5px * var(--ncm-text-scale, 1)); }
+
+/* the hidden attribute loses to any author display rule (the settings row is a grid) */
+.ncm-calls [hidden] { display: none !important; }
+.ncm-calls-intro__p { margin: 0 0 12px; font: calc(12.5px * var(--ncm-text-scale, 1))/1.35 var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls button[hidden], .ncm-app .ncm-calls .ncm-calls-sets[hidden] { display: none !important; }
+
+/* a number in a mail body */
+.ncm-app a.ncm-phone-link { color: var(--ncm-secondary); text-decoration: underline dotted; cursor: pointer; font-family: var(--ncm-font-mono); }
+
+/* Trauma Team and Backup buttons. Only someone who has them sees them */
+.ncm-calls-em { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.ncm-app button.ncm-calls-embtn { appearance: none; flex: 1 1 auto; width: auto; height: auto; min-height: 0; margin: 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; background: color-mix(in srgb, var(--ncm-danger, #ff5a66) 18%, transparent); border: 1px solid var(--ncm-danger, #ff5a66); color: var(--ncm-text-primary); font: 700 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); text-transform: uppercase; cursor: pointer; }
+.ncm-app button.ncm-calls-embtn.is-bk { background: color-mix(in srgb, var(--ncm-secondary, #6db3ff) 16%, transparent); border-color: var(--ncm-secondary, #6db3ff); }
+.ncm-app button.ncm-calls-embtn small { margin-left: auto; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); text-transform: none; color: var(--ncm-text-secondary); }
+.ncm-app button.ncm-calls-emfor { appearance: none; flex: none; width: 30px; height: auto; min-height: 0; margin: 0; background: none; border: 1px solid var(--ncm-danger, #ff5a66); color: var(--ncm-text-primary); cursor: pointer; }
+.ncm-app .ncm-calls-em button:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Scan: only while their sheet has a scanner */
+.ncm-calls-scan { display: flex; align-items: center; gap: 8px; margin: 6px 0; padding: 4px 6px; border: 1px solid var(--ncm-border); }
+.ncm-calls-scan .t { flex: 1; display: inline-flex; align-items: center; gap: 6px; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-calls-scan img { width: 20px; height: 20px; border: 0; background: rgb(10 13 18); }
+
+/* ═══ The dial column: no reserved gaps, and the pad takes the spare height ═══ */
+.ncm-app .ncm-calls-xp { min-height: 0; }
+.ncm-app .ncm-calls-xp:empty, .ncm-app .ncm-calls-match:empty { display: none; }
+.ncm-app .ncm-calls-keys { flex: 1 1 auto; grid-auto-rows: minmax(calc(36px * var(--ncm-text-scale, 1)), 1fr); max-height: calc(232px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-calls-keys button { height: auto !important; min-height: 0 !important; }
+
+/* ═══ The log's tabs + the phone contact list ═══ */
+.ncm-app .ncm-calls-lgt { flex: none; display: flex; gap: 2px; padding: 6px 10px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); overflow-x: auto; }
+.ncm-app .ncm-calls-lgt button { appearance: none; flex: none; width: auto !important; height: calc(26px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 0 !important; display: inline-flex; align-items: center; gap: 5px; padding: 0 9px !important; background: none !important; border: 0 !important; border-radius: 2px; box-shadow: none !important; font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary); cursor: pointer; }
+.ncm-app .ncm-calls-lgt button i { margin: 0; font-size: calc(10px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-calls-lgt button:hover { color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-lgt button.on { background: color-mix(in srgb, var(--ncm-secondary) 16%, var(--ncm-bg-elevated)) !important; color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-lgt .ct { padding: 0 5px; border-radius: 2px; background: var(--ncm-bg-elevated); font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-lgt .ct.hot { background: var(--ncm-accent); color: var(--ncm-bg-deep); }
+.ncm-app .ncm-calls-bkh { flex: none; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-app .ncm-calls-bkh input { width: 100%; height: calc(28px * var(--ncm-text-scale, 1)) !important; padding: 0 8px; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; box-shadow: none !important; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-bk { display: flex; align-items: center; gap: 9px; padding: 7px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+.ncm-app .ncm-calls-bk:hover { background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); }
+.ncm-app .ncm-calls-bk .face { flex: none; width: calc(30px * var(--ncm-text-scale, 1)); height: calc(30px * var(--ncm-text-scale, 1)); display: grid; place-items: center; border-radius: 50%; background: var(--ncm-bg-elevated) center / cover no-repeat; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-bk .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ncm-app .ncm-calls-bk .nm { font: 600 calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-app .ncm-calls-bk .sub { font-size: calc(12px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-calls-bkn { padding: 10px 12px; font: calc(11.5px * var(--ncm-text-scale, 1))/1.35 var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+
+/* the row's buttons share one grid cell */
+.ncm-app .ncm-calls-rowc .acts { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.ncm-app .ncm-calls-rowc .acts:empty { display: none; }
+/* the pad fills the column; My line's tools stay on one row */
+.ncm-app .ncm-calls-keys { max-height: calc(300px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-calls-line__hd { flex-wrap: nowrap; gap: 3px; }
+.ncm-app .ncm-calls-line__hd .ncm-calls-mini.txt { padding-left: 5px !important; padding-right: 5px !important; }
+
+
+/* ═══ The log at scale: search, Show, date folds (mock dev/mockups/phone-log-folds-mock.html) ═══ */
+.ncm-app .ncm-calls-tools { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-app .ncm-calls-find { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; height: calc(28px * var(--ncm-text-scale, 1)); margin: 0; padding: 0 7px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-elevated); border-radius: 2px; text-transform: none; }
+.ncm-app .ncm-calls-find:focus-within { border-color: var(--ncm-secondary); }
+.ncm-app .ncm-calls-find > i { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+.ncm-app .ncm-calls-find input { flex: 1; min-width: 0; height: 100% !important; border: 0 !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--ncm-text-primary) !important; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important; }
+.ncm-app select.ncm-calls-show { flex: 0 0 auto; width: auto !important; max-width: 128px; height: calc(28px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; padding: 0 4px !important; margin: 0; border: 1px solid var(--ncm-border) !important; border-radius: 2px; background-color: var(--ncm-bg-elevated) !important; color: var(--ncm-text-primary) !important; font: 600 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important; }
+.ncm-app select.ncm-calls-show.is-on { border-color: var(--ncm-secondary) !important; }
+.ncm-app select.ncm-calls-show option { background: var(--ncm-bg-surface); color: var(--ncm-text-primary); }
+.ncm-app button.ncm-calls-foldall { flex: 0 0 auto; appearance: none; width: calc(28px * var(--ncm-text-scale, 1)) !important; height: calc(28px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; display: grid !important; place-items: center; border: 1px solid var(--ncm-border) !important; border-radius: 2px; background: var(--ncm-bg-elevated) !important; color: var(--ncm-text-secondary) !important; box-shadow: none !important; }
+.ncm-app button.ncm-calls-foldall i { margin: 0 !important; font-size: calc(11px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-calls-found { display: flex; gap: 8px; padding: 4px 12px; font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); border-bottom: 1px solid var(--ncm-border); }
+.ncm-app .ncm-calls-found button { all: unset; margin-left: auto; cursor: pointer; color: var(--ncm-secondary); }
+.ncm-app .ncm-calls-band__h { position: sticky; top: 0; z-index: 2; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; background: var(--ncm-bg-surface); border-bottom: 1px solid var(--ncm-border); user-select: none; }
+.ncm-app .ncm-calls-band__h:hover { background: var(--ncm-bg-elevated); }
+.ncm-app .ncm-calls-band__h .ch { font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); transition: transform .18s cubic-bezier(.22,1,.36,1); }
+.ncm-app .ncm-calls-band.is-shut .ch { transform: rotate(-90deg); }
+.ncm-app .ncm-calls-band__h b { font: 700 calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-band__h .n { font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-band__h .cnt { font-weight: 700; }
+.ncm-app .ncm-calls-band__h .hot { margin-left: auto; padding: 1px 6px; font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: #000; background: var(--calls-miss, var(--ncm-danger)); }
+.ncm-app .ncm-calls-band__b { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .22s cubic-bezier(.22,1,.36,1); }
+.ncm-app .ncm-calls-band__b > div { overflow: hidden; min-height: 0; }
+.ncm-app .ncm-calls-band.is-shut .ncm-calls-band__b { grid-template-rows: 0fr; }
+.ncm-app .ncm-calls-band .ncm-calls-day { position: static; }
+.ncm-app .ncm-calls-more { padding: 8px; text-align: center; cursor: pointer; font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-secondary); border-bottom: 1px solid var(--ncm-border); }
+.ncm-app .ncm-calls-hit { display: block; margin-top: 3px; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+.ncm-calls-list mark { background: color-mix(in srgb, var(--ncm-accent, #fc0) 35%, transparent); color: inherit; }
+@media (prefers-reduced-motion: reduce) { .ncm-app .ncm-calls-band__b, .ncm-app .ncm-calls-band__h .ch { transition: none; } }
+
+/* A theme's accent is chosen for edges and fills. Small text in it comes off a little lighter so it holds 4.5:1 on every theme. */
+.ncm-app .ncm-calls { --calls-acc: color-mix(in oklab, var(--ncm-secondary) 72%, var(--ncm-text-primary)); }
+.ncm-app .ncm-calls-sig:not(.is-warn), .ncm-app .ncm-calls-sig:not(.is-warn) .dim, .ncm-app .ncm-calls-sdp .face, .ncm-app .ncm-calls-tr summary, .ncm-app .ncm-calls-rowc .face, .ncm-app .ncm-calls-hint button, .ncm-app button.ncm-calls-more, .ncm-app .ncm-calls-more, .ncm-app .ncm-calls-found button, .ncm-app button[data-calls-xopen], .ncm-app .ncm-calls-tr .l.mine b { color: var(--calls-acc); }
+.ncm-app button[data-calls-xopen] { color: var(--calls-acc) !important; }

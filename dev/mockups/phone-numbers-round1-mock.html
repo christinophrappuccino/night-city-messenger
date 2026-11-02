@@ -1,0 +1,1304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone numbers: Round 1 mock</title>
+<!--
+  Round 1 of the phone revision: what PLAYERS see. dev-approved? NOT YET. Nothing here is wired to the module.
+  Frames: ?f=calls | intro | lines | picker | numbers. Also &t=arasaka and &s=130 (text size).
+  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/phone-numbers-round1-mock.html
+  It also opens off disk. The window frame + tab strip are simplified; everything below them is the real calls-tab.css
+  plus the new rules marked NEW, which would move into that file. Design notes: the `phone-calls` memory + CALLS.md.
+-->
+<script>
+  (() => {
+    const off = location.protocol === 'file:';
+    const fa = off ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css' : '/_vendor/fa/css/all.min.css';
+    const core = off ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css' : '/_vendor/foundry2.css';
+    const cpr = off ? '../../../../systems/cyberpunk-red-core/main.css' : '/_vendor/cpr.css';
+    for (const href of [core, cpr, '../../styles/night-city-messenger.css', fa]) document.write(`<link rel="stylesheet" href="${href}">`);
+  })();
+</script>
+<style>
+  /* ─── the page around the mock ─── */
+  html, body { height: auto !important; overflow: auto !important; }
+  body { margin: 0; padding: 18px; background: #07080c !important; color: #c9d3e0; font: 13px/1.5 sans-serif; display: block !important; }
+  .mk-bar { width: 860px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .mk-bar b { color: #fff; margin-right: 6px; font-size: 14px; }
+  .mk-bar .sp { flex: 1; }
+  .mk-bar button { appearance: none; width: auto; height: 26px; min-height: 0; margin: 0; padding: 0 10px; line-height: 1; background: #171a24; color: #c9d3e0; border: 1px solid #333a4d; border-radius: 2px; font: 12px sans-serif; cursor: pointer; box-shadow: none; }
+  .mk-bar button.on { background: #19f3f7; color: #06121a; border-color: #19f3f7; font-weight: 700; }
+  .mk-note { width: 860px; margin: 0 0 10px; color: #9aa6ba; min-height: 40px; }
+  .mk-note b { color: #e6edf6; }
+  .mk-note code { padding: 0 4px; background: #171a24; border: 1px solid #333a4d; border-radius: 2px; color: #e6edf6; font: 12px monospace; }
+
+  /* A window root is position: fixed in the real cascade: pin it back into the page. */
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; width: 860px; height: 660px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--ncm-border); background: var(--ncm-bg-base); }
+  .mk-win .ncm-viewer { flex: 1; min-height: 0; display: flex; flex-direction: column; height: auto; }
+  .mk-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--ncm-bg-deep); border-bottom: 1px solid var(--ncm-border); }
+  .mk-head .av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--ncm-bg-elevated); color: var(--ncm-secondary); border: 1px solid var(--ncm-secondary); font: 700 11px var(--ncm-font-display, sans-serif); }
+  .mk-head b { font: 700 calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); color: var(--ncm-text-primary); }
+  .mk-head small { display: block; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+  .mk-tabs { flex: none; display: flex; gap: 2px; padding: 0 10px; background: var(--ncm-bg-deep); }
+  .mk-tabs span { padding: 8px 12px; font: 600 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); border-bottom: 2px solid transparent; }
+  .mk-tabs span.on { color: var(--ncm-text-primary); border-bottom-color: var(--ncm-secondary); }
+  #stage { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+
+  /* ═══ NEW: would move into calls-tab.css ═══ */
+  /* a number you can hover: each part keeps one colour everywhere */
+  .ncm-num { --r: var(--ncm-accent); --c: color-mix(in oklab, var(--ncm-purple, #b87aff) 62%, var(--ncm-text-primary)); --x: color-mix(in oklab, var(--ncm-secondary) 82%, var(--ncm-text-primary)); --l: var(--ncm-text-primary); font-family: var(--ncm-font-mono, monospace); letter-spacing: .03em; white-space: nowrap; cursor: help; border-bottom: 1px dotted color-mix(in srgb, var(--ncm-text-secondary) 50%, transparent); }
+  .ncm-num .r { color: var(--r); } .ncm-num .c { color: var(--c); } .ncm-num .x { color: var(--x); } .ncm-num .l { color: var(--l); }
+
+  /* the My line card: your number in full, your settings in words */
+  /* Shaped like the thing it is: a SIM, the corner cut, a contact pad beside the number. A hairline frame in the same cut, drawn by two layers, because clip-path eats a real border. */
+  .ncm-app .ncm-calls-line, .ncm-app .ncm-calls-res { --cut: 16px; --cut2: 7px; position: relative; isolation: isolate; flex: none;
+    background: color-mix(in srgb, var(--ncm-secondary) 60%, var(--ncm-border));
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut2) 100%, 0 calc(100% - var(--cut2))); }
+  .ncm-app .ncm-calls-line::before, .ncm-app .ncm-calls-res::before { content: ''; position: absolute; inset: 1px; z-index: -1;
+    background: linear-gradient(150deg, color-mix(in srgb, var(--ncm-secondary) 11%, var(--ncm-bg-elevated)), var(--ncm-bg-elevated) 55%);
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut2) 100%, 0 calc(100% - var(--cut2))); }
+  .ncm-app .ncm-calls-line { padding: 9px 11px 10px; display: flex; flex-direction: column; gap: 5px; }
+  .ncm-app .ncm-calls-line__hd { padding-right: 8px; flex-wrap: wrap; row-gap: 3px; }
+  .ncm-app .ncm-calls-line__hd > span:first-child { white-space: nowrap; }
+  /* The SIM's contacts. A pulse walks round the four pads while the line is live; a key press makes them all flicker; ringer off turns it amber and slows it. One animation per pad, offset by a quarter, so they stay in step. */
+  .ncm-calls-sim { --simc: var(--ncm-secondary); --simd: 2.8s; position: absolute; top: calc(35px * var(--ncm-text-scale, 1)); right: 12px; width: calc(32px * var(--ncm-text-scale, 1)); height: calc(24px * var(--ncm-text-scale, 1));
+    display: grid; grid-template: 1fr 1fr / 1fr 1fr; gap: 1px; padding: 1px; cursor: help;
+    background: color-mix(in srgb, var(--simc) 40%, transparent); border: 1px solid color-mix(in srgb, var(--simc) 60%, transparent); border-radius: 3px; }
+  .ncm-calls-sim.is-quiet { --simc: var(--calls-vm); --simd: 5.6s; }
+  .ncm-calls-sim b { display: block; background: color-mix(in srgb, var(--simc) 12%, var(--ncm-bg-elevated)); animation: ncm-sim-walk var(--simd) linear infinite; }
+  /* clockwise: top left, top right, bottom right, bottom left */
+  .ncm-calls-sim b:nth-child(1) { border-radius: 2px 0 0 0; animation-delay: 0s; }
+  .ncm-calls-sim b:nth-child(2) { border-radius: 0 2px 0 0; animation-delay: calc(var(--simd) / 4); }
+  .ncm-calls-sim b:nth-child(4) { border-radius: 0 0 2px 0; animation-delay: calc(var(--simd) / 2); }
+  .ncm-calls-sim b:nth-child(3) { border-radius: 0 0 0 2px; animation-delay: calc(var(--simd) * 3 / 4); }
+  @keyframes ncm-sim-walk {
+    0%, 28%, 100% { background: color-mix(in srgb, var(--simc) 12%, var(--ncm-bg-elevated)); box-shadow: none; }
+    6% { background: color-mix(in srgb, var(--simc) 85%, #fff); box-shadow: 0 0 6px var(--simc); }
+  }
+  /* a key press: every pad flashes at once, over the walk */
+  .ncm-calls-sim.is-ping::after { content: ''; grid-area: 1 / 1 / 3 / 3; position: absolute; inset: 1px; border-radius: 2px; background: color-mix(in srgb, var(--simc) 80%, #fff); box-shadow: 0 0 8px var(--simc); opacity: 0; animation: ncm-sim-ping .24s ease-out; pointer-events: none; }
+  @keyframes ncm-sim-ping { 0% { opacity: .9; } 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .ncm-calls-sim b { animation: none; background: color-mix(in srgb, var(--simc) 35%, var(--ncm-bg-elevated)); }
+    .ncm-calls-sim.is-ping::after { animation: none; }
+  }
+  .ncm-app .ncm-calls-line__num { padding-right: calc(40px * var(--ncm-text-scale, 1)); }
+  .ncm-app .ncm-calls-line.is-multi .ncm-calls-line__num { padding-right: 0; }
+  .ncm-app .ncm-calls-line__hd { display: flex; align-items: center; gap: 4px; font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-calls-line__hd .sp { flex: 1; }
+  .ncm-app .ncm-calls-line__num { font-size: calc(21px * var(--ncm-text-scale, 1)); font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; white-space: normal; }
+  .ncm-app .ncm-calls-line__num .ncm-num { white-space: normal; border-bottom: 0; }
+  .ncm-app .ncm-calls-line__where { font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-calls-sets { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-top: 2px; }
+  .ncm-app .ncm-calls-sets button { display: flex !important; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; padding: 4px 6px !important; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; text-align: left; }
+  .ncm-app .ncm-calls-sets button:hover, .ncm-app .ncm-calls-sets button:focus-visible { border-color: var(--ncm-secondary) !important; }
+  .ncm-app .ncm-calls-sets small { font: calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-calls-sets b { font: 700 calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
+  .ncm-app .ncm-calls-sets button.is-off b { color: var(--calls-vm); }
+  .ncm-app .ncm-calls-sets button.is-off { border-color: color-mix(in srgb, var(--calls-vm) 55%, transparent) !important; }
+  .ncm-app .ncm-calls-mini.txt { width: auto !important; padding: 0 6px !important; gap: 4px; display: inline-flex !important; align-items: center; font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; letter-spacing: .06em; text-transform: uppercase; height: calc(22px * var(--ncm-text-scale, 1)) !important; }
+
+  /* the number row: with several lines it is the dropdown */
+  .ncm-app .ncm-calls-line__row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .ncm-app .ncm-calls-line__row .t { flex: 1; min-width: 0; display: block; }
+  .ncm-app button.ncm-calls-line__row { width: 100% !important; padding: 2px 4px !important; margin: 0 -4px !important; width: calc(100% + 8px) !important; background: none !important; border: 0 !important; border-radius: 2px; color: inherit !important; text-align: left; cursor: pointer; }
+  .ncm-app button.ncm-calls-line__row:hover, .ncm-app button.ncm-calls-line__row:focus-visible { background: color-mix(in srgb, var(--ncm-secondary) 9%, transparent) !important; }
+  /* the chevron sits under the chip, so the chip never moves between one line and several */
+  .ncm-app button.ncm-calls-line__row > i { flex: none; align-self: flex-end; margin: 0 6px 3px 0 !important; font-size: calc(11px * var(--ncm-text-scale, 1)); color: color-mix(in oklab, var(--ncm-secondary) 72%, var(--ncm-text-primary)); transition: transform .24s cubic-bezier(.22, 1, .36, 1); }
+  .ncm-app .ncm-calls-line.is-open button.ncm-calls-line__row > i { transform: rotate(180deg); }
+  .ncm-app .ncm-calls-line__row.is-swap .t { animation: ncm-line-swap .26s cubic-bezier(.22, 1, .36, 1); }
+  @keyframes ncm-line-swap { from { opacity: 0; transform: translateY(6px); } }
+  /* the list opens downward and pushes the rest of the card along */
+  .ncm-app .ncm-calls-line__drop { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .24s cubic-bezier(.22, 1, .36, 1); }
+  .ncm-app .ncm-calls-line.is-open .ncm-calls-line__drop { grid-template-rows: 1fr; }
+  .ncm-app .ncm-calls-line__drop > .in { min-height: 0; overflow: hidden; }
+  .ncm-app .ncm-calls-line__drop .ncm-calls-pick { padding: 3px 0 2px; max-height: calc(150px * var(--ncm-text-scale, 1)); overflow-y: auto; overflow-x: hidden; }
+  @media (prefers-reduced-motion: reduce) { .ncm-app .ncm-calls-line__drop, .ncm-app button.ncm-calls-line__row > i { transition: none; } .ncm-app .ncm-calls-line__row.is-swap .t { animation: none; } }
+  .ncm-app .ncm-calls-pick { display: flex; flex-direction: column; gap: 3px; }
+  .ncm-app .ncm-calls-pick button { display: grid !important; grid-template-columns: 14px minmax(0, 1fr); align-items: center; gap: 6px; padding: 5px 6px !important; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; text-align: left; }
+  .ncm-app .ncm-calls-pick button.on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 10%, var(--ncm-bg-surface)) !important; }
+  .ncm-app .ncm-calls-pick i { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
+  .ncm-app .ncm-calls-pick .t { min-width: 0; display: block; font-size: calc(13px * var(--ncm-text-scale, 1)); }
+  .ncm-app .ncm-calls-pick small { display: block; margin-top: 2px; font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+
+  /* the live explanation under the dial box */
+  .ncm-app .ncm-calls-xp { flex: none; min-height: calc(32px * var(--ncm-text-scale, 1)); font: calc(11.5px * var(--ncm-text-scale, 1))/1.3 var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-calls-xp b { color: var(--ncm-text-primary); font-weight: 700; }
+  .ncm-app .ncm-calls-xp .ok { color: var(--calls-ok); font-weight: 700; } .ncm-app .ncm-calls-xp .warn { color: var(--calls-vm); font-weight: 700; } .ncm-app .ncm-calls-xp .bad { color: var(--calls-miss); font-weight: 700; }
+  .ncm-app .ncm-calls-xp button { display: inline !important; padding: 0 !important; background: none !important; border: 0 !important; color: var(--ncm-secondary) !important; text-decoration: underline; font: inherit !important; }
+
+  /* a key being pressed, by mouse or keyboard: the same press */
+  .ncm-app .ncm-calls-keys button { position: relative; }
+  /* It lights while the key is held, then fades: the light is what you catch while watching the number box. */
+  .ncm-app .ncm-calls-keys button { --key-lit: color-mix(in srgb, var(--ncm-secondary) 62%, var(--ncm-bg-elevated)); --key-glow: color-mix(in srgb, var(--ncm-secondary) 70%, transparent); }
+  .ncm-app .ncm-calls-keys button.held {
+    transform: translateY(2px) scale(.96);
+    background: var(--key-lit) !important; border-color: var(--ncm-secondary) !important; color: #fff !important;
+    box-shadow: 0 0 14px var(--key-glow), inset 0 0 10px var(--key-glow) !important; text-shadow: 0 0 8px #fff;
+  }
+  .ncm-app .ncm-calls-keys button.held small { color: #fff; }
+  .ncm-app .ncm-calls-keys button.press:not(.held) { animation: ncm-calls-press .34s ease-out; }
+  @keyframes ncm-calls-press {
+    0% { transform: translateY(2px) scale(.96); background: var(--key-lit); border-color: var(--ncm-secondary); color: #fff; box-shadow: 0 0 14px var(--key-glow), inset 0 0 10px var(--key-glow); text-shadow: 0 0 8px #fff; }
+    100% { transform: none; }
+  }
+  .ncm-app .ncm-calls-del.press { color: var(--ncm-secondary) !important; transform: translateX(-2px); transition: transform .1s; }
+  @media (prefers-reduced-motion: reduce) { .ncm-app .ncm-calls-keys button.held { transform: none; } .ncm-app .ncm-calls-keys button.press:not(.held) { animation: none; } }
+
+  .ncm-app .ncm-calls-dl .ncm-calls-sig { flex: none; }
+  /* the Call button stays on screen however tall the column gets */
+  .ncm-app .ncm-calls-dl .ncm-calls-cb { position: sticky; bottom: 0; flex: none; z-index: 2; }
+  .ncm-app .ncm-calls-keys button { height: calc(31px * var(--ncm-text-scale, 1)) !important; }
+  .ncm-app .ncm-calls-keys { flex: none; }
+
+  /* the intro card */
+  .ncm-calls-intro { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: color-mix(in srgb, var(--ncm-bg-deep) 82%, transparent); }
+  .ncm-calls-intro__box { width: min(480px, 92%); padding: 16px 18px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-secondary); box-shadow: 0 8px 30px rgba(0, 0, 0, .6); }
+  .ncm-calls-intro h3 { margin: 0 0 8px; border: 0; font: 800 calc(16px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-calls-intro__big { display: flex; justify-content: center; gap: 2px; margin: 10px 0 12px; }
+  .ncm-calls-intro__part { text-align: center; }
+  .ncm-calls-intro__part b { display: block; font: 700 calc(30px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+  .ncm-calls-intro__part small { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .ncm-calls-intro ul { margin: 0 0 12px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font: calc(13px * var(--ncm-text-scale, 1))/1.35 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+  .ncm-calls-intro li { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 10px; align-items: baseline; }
+  .ncm-calls-intro li .ncm-num { cursor: inherit; border: 0; white-space: normal; }
+  .ncm-calls-intro__ft { display: flex; align-items: center; gap: 8px; }
+  .ncm-calls-intro__ft small { flex: 1; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+
+  /* the number breakdown */
+  .ncm-numpop { position: fixed; z-index: 1000; width: 280px; padding: 9px 11px; background: var(--ncm-bg-elevated, #161622); color: var(--ncm-text-primary, #e0e0e8); border: 1px solid var(--ncm-secondary, #19f3f7); box-shadow: 0 6px 22px rgba(0, 0, 0, .6); font: 12.5px/1.35 var(--ncm-font-body, sans-serif); pointer-events: auto; }
+  .ncm-numpop__n { font-size: calc(17px * var(--ncm-text-scale, 1)); font-weight: 700; margin-bottom: 6px; }
+  .ncm-numpop__n .ncm-num { border: 0; cursor: inherit; }
+  .ncm-numpop__row { display: grid; grid-template-columns: 48px 66px minmax(0, 1fr); gap: 6px; padding: 2px 0; align-items: baseline; font-size: calc(12px * var(--ncm-text-scale, 1)); }
+  .ncm-numpop__row code { background: none; border: 0; padding: 0; font: 700 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+  .ncm-numpop__row small { font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); text-transform: uppercase; letter-spacing: .06em; color: var(--ncm-text-secondary); }
+  .ncm-numpop__ft { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--ncm-border, #2a2a45); color: var(--ncm-text-secondary, #a8a8bc); font-size: calc(11.5px * var(--ncm-text-scale, 1)); }
+
+  /* hover help (Foundry draws these from data-tooltip; the mock draws its own) */
+  .mk-tip { position: fixed; z-index: 1100; max-width: 260px; padding: 5px 8px; background: #000; color: #fff; border: 1px solid #555; border-radius: 3px; font: 12px/1.35 sans-serif; pointer-events: none; }
+
+  /* the exchange list */
+  .ncm-calls-xlist { position: absolute; inset: 0; z-index: 15; display: flex; flex-direction: column; background: var(--ncm-bg-surface); padding: 14px 18px; overflow-y: auto; overflow-x: hidden; gap: 8px; }
+  .ncm-calls-xlist { padding: 12px 16px 14px !important; gap: 8px !important; overflow: hidden !important; }
+  .ncm-calls-xlist > * { flex: none; }
+  .ncm-calls-xhd { display: flex; align-items: center; gap: 10px; }
+  .ncm-calls-xlist h3 { margin: 0; border: 0; font: 800 calc(15px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-primary); }
+  .ncm-app .ncm-calls-xlist #xfind { flex: 1; min-width: 0; height: calc(30px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); color: var(--ncm-text-primary); font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); text-align: left; box-shadow: none; }
+  .ncm-app .ncm-calls-xlist #xfind:focus { border-color: var(--ncm-secondary); }
+  .ncm-calls-xtabs { display: flex; gap: 2px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-calls-xtabs button { appearance: none; width: auto; height: auto; min-height: 0; margin: 0 0 -1px; padding: 7px 11px; display: inline-flex; align-items: baseline; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; color: var(--ncm-text-secondary); font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); cursor: pointer; line-height: 1.1; }
+  .ncm-calls-xtabs button:hover, .ncm-calls-xtabs button:focus-visible { color: var(--ncm-text-primary); }
+  .ncm-calls-xtabs button.on { color: var(--ncm-text-primary); border-bottom-color: var(--ncm-secondary); }
+  .ncm-calls-xtabs.is-searching button.on { border-bottom-color: transparent; color: var(--ncm-text-secondary); }
+  .ncm-calls-xtabs small { font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+  .ncm-calls-xlist .ncm-calls-xpanel { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 7px; padding-right: 4px; }
+  .ncm-calls-xpanel > * { flex: none; }
+  .ncm-calls-xgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px 14px; }
+  .ncm-calls-xgrid--one { grid-template-columns: minmax(0, 1fr); }
+  .ncm-calls-xrow { appearance: none; width: 100%; justify-content: flex-start; height: auto; min-height: 0; margin: 0; padding: 4px 5px; display: flex; align-items: baseline; gap: 8px; min-width: 0; background: none; border: 0; border-radius: 2px; box-shadow: none; color: var(--ncm-text-primary); text-align: left; cursor: pointer; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); line-height: 1.25; }
+  .ncm-calls-xrow:hover, .ncm-calls-xrow:focus-visible { background: color-mix(in srgb, var(--ncm-secondary) 11%, transparent); color: var(--ncm-text-primary); }
+  .ncm-calls-xrow code { flex: none; min-width: calc(34px * var(--ncm-text-scale, 1)); background: none; border: 0; padding: 0; font: 700 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: color-mix(in oklab, var(--ncm-secondary) 78%, var(--ncm-text-primary)); }
+  .ncm-calls-xrow .nm { min-width: 0; }
+  .ncm-calls-xrow small { margin-left: auto; padding-left: 10px; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .ncm-calls-xhint { margin: 0; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .ncm-calls-xhint .ncm-num { font-size: calc(13px * var(--ncm-text-scale, 1)); white-space: nowrap; }
+  .ncm-calls-xreg { border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-calls-xreg summary { display: flex; align-items: baseline; gap: 8px; padding: 5px 2px; cursor: pointer; font: 600 calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); color: var(--ncm-text-primary); }
+  .ncm-calls-xreg summary:hover, .ncm-calls-xreg summary:focus-visible { background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent); }
+  .ncm-calls-xreg summary code { display: inline-block; min-width: calc(48px * var(--ncm-text-scale, 1)); background: none; border: 0; padding: 0; font: 700 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-accent); }
+  .ncm-calls-xreg summary small { margin-left: auto; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+  .ncm-calls-xreg .ncm-calls-xgrid { padding: 1px 2px 7px calc(52px * var(--ncm-text-scale, 1)); }
+  .ncm-calls-xreg summary em { font: 600 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); font-style: normal; color: var(--calls-ok); }
+  .ncm-calls-xrow .hq { font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); font-style: normal; padding: 0 3px; border: 1px solid var(--ncm-accent); color: var(--ncm-accent); }
+  .ncm-tb-find { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .ncm-tb-find #tbq { flex: 1; min-width: 180px; height: calc(28px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); color: var(--ncm-text-primary); font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); text-align: left; box-shadow: none; }
+  .ncm-tb-find span { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+  .ncm-tb tr.is-hidden td { color: var(--ncm-text-secondary); font-style: italic; }
+
+  /* the picker's new parts */
+  .ncm-app .ncm-calls-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ncm-app .ncm-calls-tabs button, .ncm-app .ncm-calls-dist button { padding: 5px 9px !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; font: 600 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important; }
+  .ncm-app .ncm-calls-tabs button:hover, .ncm-app .ncm-calls-dist button:hover { border-color: var(--ncm-border-active) !important; }
+  .ncm-app .ncm-calls-tabs button.on, .ncm-app .ncm-calls-dist button.on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 16%, var(--ncm-bg-elevated)) !important; }
+  .ncm-app .ncm-calls-dist { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ncm-app .ncm-calls-dist code { background: none; border: 0; padding: 0; margin-right: 5px; font: 700 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: color-mix(in oklab, var(--ncm-secondary) 72%, var(--ncm-text-primary)); }
+  .ncm-app .ncm-calls-opt.on small { color: color-mix(in oklab, var(--ncm-secondary) 72%, var(--ncm-text-primary)); }
+  .ncm-app .ncm-calls-own2 { display: flex; align-items: center; gap: 2px; font: 700 calc(16px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-secondary); }
+  .ncm-app .ncm-calls-own2 input { width: calc(84px * var(--ncm-text-scale, 1)) !important; height: calc(30px * var(--ncm-text-scale, 1)) !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; color: var(--ncm-text-primary) !important; font: 700 calc(16px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace) !important; text-align: left !important; letter-spacing: .1em; box-shadow: none !important; }
+  .ncm-app .ncm-calls-own2 span.msg { margin-left: 8px; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-calls-own2 span.msg.bad { color: var(--calls-miss); } .ncm-app .ncm-calls-own2 span.msg.ok { color: var(--calls-ok); }
+  .ncm-app .ncm-calls-res { padding: 10px 12px; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-calls-res .ncm-num { font-size: calc(17px * var(--ncm-text-scale, 1)); font-weight: 700; border: 0; }
+  .ncm-app .ncm-calls-res small { display: block; margin-top: 2px; color: var(--ncm-text-secondary); font-size: calc(12px * var(--ncm-text-scale, 1)); }
+
+  .ncm-app .ncm-calls-wait { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; font: calc(11px * var(--ncm-text-scale, 1))/1.3 var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-calls-wait i { color: var(--calls-vm); }
+  .ncm-app .ncm-calls-wait button { padding: 0 !important; background: none !important; border: 0 !important; color: var(--ncm-text-primary) !important; text-decoration: underline; font: inherit !important; }
+  .ncm-app .ncm-calls-mini.press { animation: ncm-calls-nudge .3s ease-out; }
+  @keyframes ncm-calls-nudge { 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+  .ncm-app .ncm-calls-addf { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; }
+  .ncm-app .ncm-calls-addf .f { display: flex; flex-direction: column; gap: 3px; margin: 0; }
+  .ncm-app .ncm-calls-addf .f > span:first-child { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-calls-addf input { width: calc(170px * var(--ncm-text-scale, 1)) !important; height: calc(30px * var(--ncm-text-scale, 1)) !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; color: var(--ncm-text-primary) !important; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important; text-align: left !important; box-shadow: none !important; }
+  .ncm-app .ncm-calls-addf input[type="number"] { width: calc(56px * var(--ncm-text-scale, 1)) !important; }
+  .ncm-app .ncm-calls-addf .inl { display: inline-flex; align-items: center; gap: 6px; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+  .ncm-tb-req { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 10px; background: color-mix(in srgb, var(--calls-vm) 14%, var(--ncm-bg-elevated)); border: 1px solid var(--calls-vm); font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+  .ncm-tb-req i { color: var(--calls-vm); margin: 0 !important; }
+  .ncm-tb-req span { flex: 1; min-width: 200px; }
+
+  /* the trail: where you are, one click back to any step */
+  .ncm-app .ncm-calls-trail { display: flex; flex-wrap: wrap; align-items: stretch; gap: 3px 4px; }
+  .ncm-app .ncm-calls-trail > i { align-self: center; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-calls-trail .st { display: inline-flex !important; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 4px 8px !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; font: 600 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important; text-align: left; }
+  .ncm-app .ncm-calls-arrived { padding: 6px 9px; font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); background: color-mix(in srgb, var(--calls-ok) 12%, var(--ncm-bg-elevated)); border: 1px solid color-mix(in srgb, var(--calls-ok) 50%, transparent); }
+  .ncm-app .ncm-calls-arrived i { margin-right: 5px; color: var(--calls-ok); }
+  .ncm-app .ncm-calls-trail button.st:hover, .ncm-app .ncm-calls-trail button.st:focus-visible { border-color: var(--ncm-secondary) !important; }
+  .ncm-app .ncm-calls-trail button.st.on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 16%, var(--ncm-bg-elevated)) !important; }
+  .ncm-app .ncm-calls-trail small { font: calc(8.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-app .ncm-calls-dist--big button { padding: 9px 12px !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; }
+  .ncm-tb-setup { flex: none; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; padding: 8px 10px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); }
+  .ncm-tb-setup .f { display: flex; flex-direction: column; gap: 3px; margin: 0; text-transform: none; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-primary); }
+  .ncm-tb-setup .f > span { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .ncm-tb-setup .f.chk { flex-direction: row; align-items: center; gap: 6px; }
+  .ncm-tb-setup .f.chk > span { font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); letter-spacing: 0; text-transform: none; color: var(--ncm-text-primary); }
+  .ncm-tb-setup select { width: auto; height: calc(26px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); border: 1px solid var(--ncm-border); font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+  .ncm-tb-setup select option { background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); }
+  .ncm-tb-setup input[type="checkbox"] { --checkbox-size: 14px; width: 14px; height: 14px; margin: 0; }
+  .ncm-tb-setup .seg { display: flex; gap: 2px; }
+  .ncm-tb-setup .seg button { height: calc(26px * var(--ncm-text-scale, 1)); padding: 0 8px !important; display: inline-flex; align-items: center; gap: 5px; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; font: 600 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important; }
+  .ncm-tb-setup .seg button:hover { border-color: var(--ncm-border-active) !important; }
+  .ncm-tb-setup .seg button.on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 18%, var(--ncm-bg-elevated)) !important; }
+  .ncm-tb .tick { display: inline-flex; align-items: center; gap: 5px; margin: 0; text-transform: none; font: inherit; color: inherit; }
+  .ncm-tb .tick input { --checkbox-size: 13px; width: 13px; height: 13px; margin: 0; }
+  .ncm-tb tr.is-home td:first-child { box-shadow: inset 2px 0 0 var(--ncm-secondary); }
+  .ncm-app .ncm-calls-crumb { padding: 6px 9px; background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); font: 600 calc(12.5px * var(--ncm-text-scale, 1))/1.3 var(--ncm-font-display, sans-serif); color: var(--ncm-text-primary); }
+  .ncm-app .ncm-calls-crumb i { margin-right: 4px; color: color-mix(in oklab, var(--ncm-secondary) 72%, var(--ncm-text-primary)); }
+  .ncm-app .ncm-calls-use { font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); white-space: nowrap; cursor: help; }
+  .ncm-app .ncm-calls-row .lbl[data-tooltip] { cursor: help; }
+  .ncm-app .ncm-calls-row .lbl { color: var(--ncm-text-secondary); }
+
+  /* the GM spreadsheet */
+  .ncm-tb { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; color: var(--ncm-text-primary); }
+  .ncm-tb-acts { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .ncm-tb-acts .sp { flex: 1; }
+  .ncm-tb-acts small { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+  .ncm-tb .ncm-calls-btn { padding: 6px 10px !important; }
+  .ncm-tb :where(button) { appearance: none !important; width: auto !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; line-height: 1 !important; cursor: pointer; }
+  .ncm-tb button i { margin: 0 !important; }
+  .ncm-tb-scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--ncm-border); }
+  .ncm-tb table { margin: 0; width: 100%; border-collapse: collapse; background: none; border: 0; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+  .ncm-tb th { position: sticky; top: 0; z-index: 1; padding: 5px 8px; text-align: left; white-space: nowrap; background: var(--ncm-bg-elevated); color: var(--ncm-text-secondary); font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-tb td { padding: 3px 8px; white-space: nowrap; color: var(--ncm-text-primary); border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); background: none; }
+  .ncm-tb tr.is-dead td { color: color-mix(in oklab, var(--calls-miss) 75%, var(--ncm-text-primary)); }
+  .ncm-tb-plan { flex: none; max-height: 190px; overflow-y: auto; padding: 8px 10px; background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-secondary); font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+  .ncm-tb-plan.bad { border-color: var(--calls-miss); color: var(--calls-miss); }
+  .ncm-tb-plan ul { margin: 5px 0 7px; padding: 0; list-style: none; }
+  .ncm-tb-plan li.ok { color: var(--calls-ok); } .ncm-tb-plan li.warn { color: var(--calls-vm); }
+  .ncm-tb-note { flex: none; margin: 0; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .ncm-tb-note b { color: var(--ncm-text-primary); }
+
+  /* numbers in place */
+  .mk-place { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; align-content: start; color: var(--ncm-text-primary); }
+  .mk-place h4 { margin: 0 0 6px; border: 0; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+  .mk-place .full { grid-column: 1 / -1; }
+  .mk-card { display: flex; gap: 10px; padding: 10px; background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); }
+  .mk-card .face { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--ncm-bg-surface); border: 1.5px solid var(--ncm-secondary); color: var(--ncm-secondary); font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
+  .mk-card b { display: block; font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
+  .mk-card .ncm-num { font-size: calc(14px * var(--ncm-text-scale, 1)); }
+  .mk-card small { display: block; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .mk-ring { --rc: var(--ncm-secondary); padding: 10px 12px; background: var(--ncm-bg-deep); border: 1.5px solid var(--rc); clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+  .mk-ring { position: relative; } .mk-ring::after { content: ""; position: absolute; top: -1.5px; right: -1.5px; width: 12px; height: 12px; pointer-events: none; background: linear-gradient(to top right, transparent calc(50% - 1.8px), var(--rc) calc(50% - 1.8px), var(--rc) 50%, transparent 50%); }
+  .mk-ring .k { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .2em; text-transform: uppercase; color: var(--rc); }
+  .mk-ring b { display: block; margin: 3px 0 1px; font: 800 calc(17px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; }
+  .mk-ring .ncm-num { font-size: calc(16px * var(--ncm-text-scale, 1)); font-weight: 700; }
+  .mk-ring small { display: block; margin-top: 2px; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+  .mk-ring .far { display: inline-block; margin-top: 5px; padding: 1px 6px; border: 1px solid var(--ncm-accent); color: var(--ncm-accent); font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; }
+  .mk-seen { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr); gap: 4px 12px; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+  .mk-seen .ncm-num { font-size: calc(15px * var(--ncm-text-scale, 1)); }
+  .ncm-calls-rowc .ncm-num { font-size: calc(10.5px * var(--ncm-text-scale, 1)); }
+</style>
+</head>
+<body>
+<div class="mk-bar">
+  <b>Round 1</b>
+  <button data-f="calls">Calls tab</button><button data-f="intro">First open</button><button data-f="lines">Several numbers</button><button data-f="picker">Get a number</button><button data-f="numbers">Numbers in place</button><button data-f="table">GM setup</button>
+  <span class="sp"></span>
+  <button data-s="100">100%</button><button data-s="130">130%</button>
+  <button data-t="">Default</button><button data-t="arasaka">Arasaka</button>
+</div>
+<p class="mk-note" id="note"></p>
+<div class="mk-win ncm-app" id="win"><div class="ncm-viewer">
+  <div class="mk-head"><span class="av">VA</span><div style="flex:1"><b>Veronica A.</b><small>v_arasaka@nightcity.net</small></div></div>
+  <div class="mk-tabs"><span>Messages</span><span>Shards</span><span class="on">Calls</span></div>
+  <div id="stage"></div>
+</div></div>
+
+<script>
+/* ─── THE TABLE. One row per exchange; the GM's spreadsheet is exactly this. The Source column says where each place came from.
+   All codes are ours. Region codes are invented on purpose: none is the real dialling code of that country. ─── */
+const COLS = ['Region code', 'Region', 'State', 'City code', 'City', 'Area', 'Code', 'District', 'Category', 'Players can pick', 'Status', 'Source', 'Listed'];
+const row = (l) => { const v = l.split('|'); const r = Object.fromEntries(COLS.map((c, i) => [c, v[i] ?? ''])); r.Listed = r.Listed || 'yes'; return r; };
+const unlisted = (r) => ({ ...r, Listed: 'no' });
+const NC = (area, code, name, cat = 'District', pick = 'yes', st = 'live', src = 'Night City 2045') => row('72|Pacifica Confederation|Northern California|NC|Night City|' + [area, code, name, cat, pick, st, src].join('|'));
+/** A place with no book districts: the number is just the city and four digits, so nothing is invented. */
+const P = (rc, region, state, code, city, src) => row([rc, region, state, code, city, '', '', '', 'City', 'yes', 'live', src].join('|'));
+/** One district in a city outside Night City. */
+const D = (rc, region, state, code, city, area, ex, name, src) => row([rc, region, state, code, city, area, ex, name, 'District', 'yes', 'live', src].join('|'));
+const WHERE = {
+  NC: ['72', 'Pacifica Confederation', 'Northern California', 'Night City'], SF: ['72', 'Pacifica Confederation', 'Northern California', 'San Francisco'], SEA: ['72', 'Pacifica Confederation', 'Washington', 'Seattle'], POR: ['72', 'Pacifica Confederation', 'Oregon', 'Portland'],
+  DC: ['10', 'NUSA', 'District of Columbia', 'Washington D.C.'], NYC: ['10', 'NUSA', 'New York', 'New York'], CHI: ['10', 'NUSA', 'Illinois', 'Chicago'], ATL: ['10', 'NUSA', 'Georgia', 'Atlanta'], MIA: ['10', 'NUSA', 'Florida', 'Miami'], NOL: ['10', 'NUSA', 'Louisiana', 'New Orleans'], DEN: ['10', 'NUSA', 'Colorado', 'Denver'], BAL: ['10', 'NUSA', 'Maryland', 'Baltimore'], TUL: ['10', 'NUSA', 'Oklahoma', 'Tulsa'], SFE: ['10', 'NUSA', 'New Mexico', 'Santa Fe'],
+  DAL: ['14', 'Free State of Texas', 'Texas', 'Dallas'], AUS: ['14', 'Free State of Texas', 'Texas', 'Austin'], LA: ['15', 'Free State of Southern California', 'Southern California', 'Los Angeles'], LJA: ['15', 'Free State of Southern California', 'Southern California', 'La Jolla'],
+  MTL: ['12', 'Canada', 'Quebec', 'Montreal'], TOR: ['12', 'Canada', 'Ontario', 'Toronto'], HAV: ['54', 'Cuba', '', 'Havana'], RIO: ['58', 'Brazil', '', 'Rio de Janeiro'],
+  LON: ['40', 'EuroTheatre', 'United Kingdom', 'London'], PAR: ['40', 'EuroTheatre', 'France', 'Paris'], BON: ['40', 'EuroTheatre', 'Germany', 'Bonn'], HAM: ['40', 'EuroTheatre', 'Germany', 'Hamburg'], ZRH: ['40', 'EuroTheatre', 'Switzerland', 'Zurich'], ROM: ['41', 'Southern Europe', 'Italy', 'Rome'],
+  MOS: ['47', 'Neo-Soviet Russia', 'Russia', 'Moscow'], STP: ['47', 'Neo-Soviet Russia', 'Russia', 'St. Petersburg'], VVO: ['47', 'Neo-Soviet Russia', 'Russia', 'Vladivostok'], TAS: ['48', 'Uzbekistan', '', 'Toshkent'], TLV: ['49', 'Israel', '', 'Tel Aviv'],
+  TKY: ['83', 'Japan', 'Kanto', 'Tokyo'], BJG: ['88', 'China', 'Beijing and Tianjin', 'Beijing'], HKG: ['88', 'China', '', 'Hong Kong'], SEL: ['84', 'Korea', '', 'Seoul'], SIN: ['66', 'Singapore', '', 'Singapore'], MNL: ['69', 'The Philippines', '', 'Manila'], HCM: ['68', 'Vietnam', '', 'Ho Chi Minh City'], MUM: ['93', 'India', 'Maharashtra', 'Mumbai'], SYD: ['63', 'Australia', 'New South Wales', 'Sydney'],
+};
+/** One corp in many cities: the same three letters, a row per office. The first city is the headquarters. */
+const branches = (ex, name, hq, cities, src) => [...(hq ? [hq] : []), ...cities].map((c, i) => { const [rc, region, state, city] = WHERE[c]; return row([rc, region, state, c, city, hq && i === 0 ? 'Headquarters' : 'Office', ex, name, 'Corporate', 'no', 'live', src].join('|')); });
+const PAC = 'Pacifica Confederation', NUS = 'NUSA', JP = 'Japan', EU = 'EuroTheatre', HR = 'Highrider Confederation', CORE = 'CORE', N45 = 'Night City 2045', RIM = 'Pacific Rim (2020)', EUS = 'Eurosource Plus (2020)', PH = 'Placeholder district';
+const BOOK_ROWS = [
+  NC('The Island', 'LEU', 'Little Europe'), NC('The Island', 'UMR', 'Upper Marina'), NC('The Island', 'DTN', 'Downtown'), unlisted(NC('The Island', 'HOT', 'The Hot Zone', 'Dead zone', 'no', 'dead')),
+  NC('The Island', 'LCH', 'Little China'), NC('The Island', 'UNI', 'University District'), NC('The Island', 'GLN', 'The Glen'), NC('The Island', 'OJT', 'Old Japantown'),
+  NC('The Island', 'SNC', 'South Night City'), NC('The Island', 'PRT', 'Port of Night City'), NC('The Island', 'REC', 'Reclamation Zone'), NC('The Island', 'OCZ', 'Old Combat Zone'),
+  unlisted(NC('Northside', 'NCM', 'NorCal Military Base', 'Military', 'no')), NC('Northside', 'WAT', 'Watson Development'), NC('Northside', 'KAB', 'Kabuki'),
+  NC('The Mainland', 'NWB', 'New Westbrook'), NC('The Mainland', 'CHH', 'Charter Hill'), NC('The Mainland', 'EXZ', 'Executive Zone', 'District', 'no'), NC('The Mainland', 'HDK', 'Heywood Docks'),
+  NC('The Mainland', 'NHW', 'North Heywood'), NC('The Mainland', 'HIZ', 'Heywood Industrial Zone'), NC('The Mainland', 'SDO', 'Santo Domingo'),
+  NC('Southside', 'PPG', 'Pacifica Playground'), NC('Southside', 'RCO', 'Rancho Coronado'),
+  NC('Outside the city', 'OUT', 'Outskirts'), NC('Outside the city', 'PLY', 'Playland by the Sea'),
+  unlisted(NC('Private lines', 'BRN', 'Burner', 'Burner', 'no', 'live', 'Ours')),
+  // The Pacifica Confederation (CORE: Washington, Oregon, Idaho, Northern California, British Columbia)
+  P('72', PAC, 'Northern California', 'SF', 'San Francisco', N45), P('72', PAC, 'Northern California', 'SAC', 'Sacramento', N45),
+  D('72', PAC, 'Washington', 'SEA', 'Seattle', '', 'DWN', 'Downtown', PH),
+  P('72', PAC, 'Oregon', 'POR', 'Portland', N45), P('72', PAC, 'Oregon', 'COO', 'Coos Bay', N45),
+  P('72', PAC, 'Idaho', 'BOI', 'Boise', 'Idaho: CORE. City: RED DLC'),
+  D('72', PAC, 'British Columbia', 'VAN', 'Vancouver', '', 'GAS', 'Gastown', PH), P('72', PAC, 'British Columbia', 'VIC', 'Victoria', CORE), P('72', PAC, 'British Columbia', 'PRU', 'Prince Rupert', N45),
+  // The New United States
+  D('10', NUS, 'District of Columbia', 'DC', 'Washington D.C.', '', 'CAP', 'Capitol', PH),
+  P('10', NUS, 'New York', 'NYC', 'New York', CORE), P('10', NUS, 'Massachusetts', 'BOS', 'Boston', CORE), P('10', NUS, 'Illinois', 'CHI', 'Chicago', CORE),
+  P('10', NUS, 'Georgia', 'ATL', 'Atlanta', CORE), P('10', NUS, 'Florida', 'MIA', 'Miami', CORE), P('10', NUS, 'Louisiana', 'NOL', 'New Orleans', CORE),
+  P('10', NUS, 'Colorado', 'DEN', 'Denver', N45), P('10', NUS, 'New Mexico', 'ABQ', 'Albuquerque', N45), P('10', NUS, 'Arizona', 'PHX', 'Phoenix', N45), P('10', NUS, 'Missouri', 'JEF', 'Jefferson City', N45),
+  // The Free States
+  D('14', 'Free State of Texas', 'Texas', 'DAL', 'Dallas', '', 'CEN', 'Central', PH), D('14', 'Free State of Texas', 'Texas', 'AUS', 'Austin', '', 'CEN', 'Central', PH), P('14', 'Free State of Texas', 'Texas', 'HOU', 'Houston', CORE),
+  D('15', 'Free State of Southern California', 'Southern California', 'LA', 'Los Angeles', '', 'HWD', 'Hollywood', PH), P('15', 'Free State of Southern California', 'Southern California', 'SD', 'San Diego', CORE),
+  P('16', 'Free State of Nevada', 'Nevada', 'LV', 'Las Vegas', 'City: Night City 2045. Free State: Land of the Free (2020)'),
+  // North and Central America
+  P('12', 'Canada', 'Ontario', 'TOR', 'Toronto', CORE), P('12', 'Canada', 'Quebec', 'MTL', 'Montreal', CORE),
+  P('53', 'Mexico', 'Federal District', 'MEX', 'Mexico City', N45), P('53', 'Mexico', 'Chihuahua', 'CHU', 'Chihuahua', N45), P('53', 'Mexico', 'Sinaloa', 'MZT', 'Mazatlán', N45), P('53', 'Mexico', 'Guerrero', 'ACA', 'Acapulco', N45),
+  // Europe. CORE: most nations are in the Common Market; Italy, Spain and Greece are not.
+  D('40', EU, 'United Kingdom', 'LON', 'London', '', 'CTY', 'The City', PH),
+  P('40', EU, 'France', 'PAR', 'Paris', CORE), P('40', EU, 'France', 'MRS', 'Marseille', EUS),
+  P('40', EU, 'Germany', 'BER', 'Berlin', EUS), P('40', EU, 'Germany', 'HAM', 'Hamburg', CORE), P('40', EU, 'Germany', 'FRA', 'Frankfurt', EUS), P('40', EU, 'Germany', 'MUC', 'Munich', 'RED DLC'),
+  P('40', EU, 'Belgium', 'BRU', 'Brussels', EUS), P('40', EU, 'Netherlands', 'AMS', 'Amsterdam', EUS), P('40', EU, 'Czech Republic', 'PRG', 'Prague', EUS), P('40', EU, 'Hungary', 'BUD', 'Budapest', EUS), P('40', EU, 'Poland', 'WAW', 'Warsaw', EUS), P('40', EU, 'Sweden', 'STO', 'Stockholm', EUS),
+  P('41', 'Southern Europe', 'Italy', 'ROM', 'Rome', CORE), P('41', 'Southern Europe', 'Italy', 'MIL', 'Milan', EUS), P('41', 'Southern Europe', 'Spain', 'MAD', 'Madrid', EUS), P('41', 'Southern Europe', 'Spain', 'BCN', 'Barcelona', 'RED DLC'), P('41', 'Southern Europe', 'Greece', 'ATH', 'Athens', EUS),
+  P('47', 'Neo-Soviet Russia', 'Russia', 'MOS', 'Moscow', CORE), P('47', 'Neo-Soviet Russia', 'Russia', 'STP', 'St. Petersburg', CORE),
+  // Japan: Tokyo's districts are from the Pacific Rim sourcebook's sprawl map
+  D('83', JP, 'Kanto', 'TKY', 'Tokyo', 'West Tokyo', 'SJK', 'Shinjuku', RIM), D('83', JP, 'Kanto', 'TKY', 'Tokyo', 'West Tokyo', 'SHB', 'Shibuya', RIM), D('83', JP, 'Kanto', 'TKY', 'Tokyo', 'West Tokyo', 'MGR', 'Meguro', RIM),
+  D('83', JP, 'Kanto', 'TKY', 'Tokyo', 'Central Tokyo', 'CHY', 'Chiyoda', RIM), D('83', JP, 'Kanto', 'TKY', 'Tokyo', 'Central Tokyo', 'NHB', 'Nihombashi', RIM), D('83', JP, 'Kanto', 'TKY', 'Tokyo', 'Central Tokyo', 'GIN', 'Ginza', RIM), D('83', JP, 'Kanto', 'TKY', 'Tokyo', 'Central Tokyo', 'AKB', 'Akihabara', RIM),
+  D('83', JP, 'Kanto', 'TKY', 'Tokyo', 'Tokyo Bay', 'HRM', 'Harumi', RIM),
+  P('83', JP, 'Kanto', 'CHB', 'Chiba', RIM), P('83', JP, 'Kanto', 'YOK', 'Yokohama', RIM),
+  P('83', JP, 'Kansai', 'OSK', 'Osaka', RIM), P('83', JP, 'Kansai', 'KYO', 'Kyoto', RIM), P('83', JP, 'Kansai', 'KOB', 'Kobe', RIM),
+  P('83', JP, 'Chubu', 'NGY', 'Nagoya', RIM), P('83', JP, 'Chugoku', 'HIR', 'Hiroshima', RIM), P('83', JP, 'Okinawa', 'OKI', 'Okinawa', RIM),
+  // The rest of the Pacific Rim
+  P('88', 'China', 'Beijing and Tianjin', 'BJG', 'Beijing', CORE), P('88', 'China', '', 'SHA', 'Shanghai', CORE), P('88', 'China', '', 'HKG', 'Hong Kong', CORE),
+  P('84', 'Korea', '', 'SEL', 'Seoul', CORE), P('84', 'Korea', '', 'PUS', 'Pusan', RIM), P('89', 'Taiwan', '', 'TPE', 'Taipei', RIM),
+  P('66', 'Singapore', '', 'SIN', 'Singapore', CORE), P('67', 'Thailand', '', 'BKK', 'Bangkok', RIM), P('68', 'Vietnam', '', 'HAN', 'Hanoi', RIM), P('68', 'Vietnam', '', 'SGN', 'Saigon', RIM),
+  P('69', 'The Philippines', '', 'MNL', 'Manila', CORE), P('70', 'Indonesia', '', 'JKT', 'Jakarta', RIM), P('71', 'Malaysia', '', 'KUL', 'Kuala Lumpur', RIM),
+  P('63', 'Australia', 'New South Wales', 'SYD', 'Sydney', CORE), P('63', 'Australia', 'Victoria', 'MEL', 'Melbourne', CORE), P('63', 'Australia', 'Northern Territory', 'DRW', 'Darwin', RIM), P('64', 'West Australia', 'West Australia', 'PER', 'Perth', RIM), P('62', 'New Zealand', '', 'AKL', 'Auckland', RIM),
+  P('93', 'India', 'Maharashtra', 'MUM', 'Mumbai', 'RED DLC'),
+  // Elsewhere
+  P('58', 'Brazil', '', 'RIO', 'Rio de Janeiro', 'RED DLC'), P('56', 'Colombia', '', 'BOG', 'Bogota', CORE), P('27', 'Africa', 'Egypt', 'CAI', 'Cairo', 'RED DLC'),
+  P('30', 'Drift Nations', '', 'DFT', 'Drift city', 'CORE (cities are unnamed)'), P('31', 'The Deepdown', '', 'DOM', 'Subsurface dome', 'CORE (domes are unnamed)'),
+  // Corporate lines: each corp's headquarters and regional offices, as CORE lists them. GM-held: a player can ring one, not hold one.
+  ...branches('ARA', 'Arasaka', 'TKY', ['HKG', 'LON', 'PAR', 'SIN'], 'CORE: HQ, and "offices throughout the world". Cities ours'),
+  // Banned from the continental U.S. after the War (CORE). The lines exist; the directory doesn't show them. 2045 mentions rumours of agents in the city.
+  ...branches('ARA', 'Arasaka', null, ['NC', 'DC', 'NYC', 'CHI', 'LA'], 'Banned in North America (CORE). Hidden').map(unlisted),
+  ...branches('BIO', 'Biotechnica', 'LJA', ['LON', 'BON', 'PAR', 'SEA', 'DAL', 'NC', 'SYD', 'RIO'], 'CORE'),
+  ...branches('CBR', 'Continental Brands', 'TUL', ['CHI', 'ATL', 'BAL', 'SEA', 'DAL', 'NC'], 'CORE'),
+  ...branches('DGL', 'Danger Gal', 'NC', ['NYC', 'MIA', 'MTL', 'LON', 'ROM', 'ZRH', 'DC', 'LA', 'TOR'], 'CORE'),
+  ...branches('MIL', 'Militech International', 'DC', ['NYC', 'MIA', 'CHI', 'MTL', 'LON', 'ROM', 'ZRH', 'NC', 'LA', 'TOR', 'TKY', 'BJG'], 'CORE'),
+  ...branches('NFF', 'Network 54', 'SFE', ['ATL', 'CHI', 'NOL', 'DAL', 'DEN', 'POR', 'SEA', 'LA', 'SF', 'NC'], 'CORE. Night City: Night City 2045'),
+  ...branches('PCH', 'Petrochem', 'DAL', ['NYC', 'DC', 'MIA', 'CHI', 'SF', 'TKY', 'LON', 'HAM', 'PAR', 'ROM', 'NC'], 'CORE. Night City: Night City 2045'),
+  ...branches('RKL', 'Rocklin Augmentics', 'AUS', ['DC', 'CHI', 'DEN', 'ATL', 'BAL', 'SEA', 'DAL', 'NC'], 'CORE'),
+  ...branches('SOV', 'SovOil', 'MOS', ['TAS', 'STP', 'TKY', 'SEL', 'BJG', 'MNL', 'HCM', 'HAV', 'NC'], 'CORE'),
+  ...branches('TTI', 'Trauma Team', 'SEA', ['NC', 'LA', 'SF', 'CHI', 'NYC', 'DC', 'DAL', 'TOR'], 'CORE: "most major North American cities". Cities ours'),
+  ...branches('ZIG', 'Ziggurat', 'NC', ['SEA', 'LA', 'SF', 'CHI', 'NYC', 'DC', 'DAL', 'TOR'], 'CORE: "most North American cities". Cities ours'),
+  ...branches('ZTM', 'Zhirafa Technical Manufacturing', 'VVO', ['LON', 'PAR', 'TLV', 'MUM', 'SIN', 'NC'], 'CORE'),
+  // Space: CORE places the Highriders in the L points and on Luna and Mars
+  P('90', HR, 'Earth orbit', 'PAL', 'Crystal Palace', CORE), P('90', HR, 'Earth orbit', 'ONE', "O'Neill One Habitat (L-5)", CORE), P('90', HR, 'Earth orbit', 'TWO', "O'Neill Two", CORE), P('90', HR, 'Earth orbit', 'PDS', 'Paradise Station (L-4)', CORE), P('90', HR, 'Earth orbit', 'GAL', 'Galileo Cylinder (L-3)', CORE),
+  P('90', HR, 'Luna', 'TYC', 'Tycho', CORE), P('90', HR, 'Luna', 'COP', 'Copernicus', CORE), P('90', HR, 'Mars', 'MRC', 'Mars colonies', 'CORE (colonies are unnamed)'),
+];
+/* 2077 names checked against the Edgerunners Mission Kit handbook, except Little China. A place in both eras keeps its code. */
+const ERA_2077 = [
+  ['Watson', 'WAT', 'Watson'], ['Watson', 'KAB', 'Kabuki'], ['Watson', 'NSD', 'Northside'], ['Watson', 'LCH', 'Little China'],
+  ['Westbrook', 'JPT', 'Japantown'], ['Westbrook', 'CHH', 'Charter Hill'], ['Westbrook', 'NOK', 'North Oak'],
+  ['City Center', 'CPL', 'Corpo Plaza'], ['City Center', 'DTN', 'Downtown'],
+  ['Heywood', 'HEY', 'Heywood'], ['Heywood', 'GLN', 'The Glen'], ['Heywood', 'VDR', 'Vista del Rey'], ['Heywood', 'WSP', 'Wellsprings'],
+  ['Santo Domingo', 'SDO', 'Santo Domingo'], ['Santo Domingo', 'ARR', 'Arroyo'], ['Santo Domingo', 'RCO', 'Rancho Coronado'],
+  ['Pacifica', 'CVW', 'Coastview'], ['Pacifica', 'WWE', 'West Wind Estates'], ['Outside the city', 'DOG', 'Dogtown'], ['Outside the city', 'BAD', 'Badlands'],
+].map(([a, c, n]) => NC(a, c, n)).concat(NC('Office', 'ARA', 'Arasaka', 'Corporate', 'no', 'live', 'Back in the city by 2077'));
+const isNcDistrict = (r) => r['City code'] === 'NC' && (!['Corporate', 'Burner'].includes(r.Category) || r.Code === 'ARA');
+const CAMPAIGNS = {
+  dallas: { home: { rc: '14', city: 'DAL' }, label: 'a Texas campaign', rows: [['Downtown', 'CEN', 'Central'], ['Downtown', 'DEL', 'Deep Ellum'], ['North Dallas', 'UPT', 'Uptown'], ['North Dallas', 'PLN', 'Plano'], ['South Dallas', 'OAK', 'Oak Cliff'], ['South Dallas', 'FAI', 'Fair Park']].map(([a, c, n]) => row('14|Free State of Texas|Texas|DAL|Dallas|' + [a, c, n].join('|') + '|District|yes|live|Sample')) },
+  tokyo: { home: { rc: '83', city: 'TKY' }, label: 'an overseas campaign', rows: [] },
+};
+let ROWS = BOOK_ROWS.map((r) => ({ ...r }));
+let EXTRA_COLS = [];
+/* World settings in the real thing, not columns: the campaign's home city, and how far players may reach. */
+let HOME = { rc: '72', city: 'NC' };
+const LIMITS = { scope: 'all', ownDigits: true, extra: 1, changeNeedsGm: true };
+let AREAS = {}, NC_EX = {}, REGIONS = {};   // AREAS and NC_EX describe the HOME city, whatever it is
+function buildTables() {
+  AREAS = {}; NC_EX = {}; REGIONS = {};
+  for (const r of ROWS) {
+    const rc = r['Region code'], city = r['City code'], code = r.Code;
+    const R = (REGIONS[rc] ??= { name: r.Region, cities: {} });
+    const C = (R.cities[city] ??= { name: r.City, state: r.State, ex: {} });
+    if (!code) { C.noEx = true; continue; }
+    C.ex[code] = r.District;
+    if (city === HOME.city && rc === HOME.rc) { NC_EX[code] = r.District; if (r['Players can pick'] === 'yes') (AREAS[r.Area || r.City] ??= {})[code] = r.District; }
+  }
+}
+buildTables();
+const OWNERS = { WAT4471: 'Veronica A. (you)', WAT2208: 'Judy Alvarez', NHW2087: 'Rogue', LCH6130: 'Kid Static', TKYARA0042: 'Arasaka switchboard', DCMIL0100: 'Militech switchboard', ZIG0100: 'Ziggurat switchboard', BRN7719: 'Unknown burner', 'SEADWN2210': 'Marcus Vance', 'DCCAP8812': 'NUSA liaison', 'DALCEN3345': 'Militech procurement', 'PAL0316': 'Angels relay', 'TKYSHB5021': 'Haruka Mori' };
+/* Numbers that belonged to someone and were changed, burned or deleted. Never handed out again. */
+const RETIRED = { WAT5150: 'Changed by Rache, 2045-03-02', WAT1234: 'Burned', WAT7000: 'Contact deleted', NHW3000: 'Burned' };
+const SERVICE = { TRAUMA: 'Trauma Team', NCPD: 'Night City Police' };
+const KEYS = [['1', ''], ['2', 'ABC'], ['3', 'DEF'], ['4', 'GHI'], ['5', 'JKL'], ['6', 'MNO'], ['7', 'PQRS'], ['8', 'TUV'], ['9', 'WXYZ'], ['+', ''], ['0', ''], ['#', '']];
+const keyOf = (ch) => { const u = ch.toUpperCase(); return (KEYS.find(([k, l]) => k === u || l.includes(u)) || [])[0] || null; };
+const asKeys = (code) => [...code].map(keyOf).join('');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ─── read any number. The one rule the explainer, picker and dial box all share. ─── */
+function parse(raw) {
+  const s = String(raw || '').toUpperCase().replace(/[\s-]/g, '');
+  if (!s) return { empty: true };
+  if (SERVICE[s]) return { service: s, name: SERVICE[s], done: true };
+  let rest = s, rc = HOME.rc, city = HOME.city, far = false;
+  const plus = rest.match(/^\+(\d{0,2})/);
+  if (plus) {
+    rc = plus[1]; rest = rest.slice(plus[0].length); far = true;
+    if (rc.length < 2 || !REGIONS[rc]) return { partial: true, hint: rc.length < 2 ? 'A + starts a region code, two digits.' : `No region uses +${rc}.`, bad: rc.length === 2 };
+    const m = rest.match(/^[A-Z]{2,3}/); const code = m && Object.keys(REGIONS[rc].cities).find((c) => rest.startsWith(c));
+    if (!code) return { rc, partial: true, hint: `${REGIONS[rc].name}. Next, the city: ${Object.keys(REGIONS[rc].cities).join(', ')}.` };
+    city = code; rest = rest.slice(code.length);
+  } else {
+    const code = Object.keys(REGIONS[rc].cities).find((c) => c !== city && rest.startsWith(c) && rest.length > c.length && !NC_EX[rest.slice(0, 3)]);
+    if (code) { city = code; rest = rest.slice(code.length); far = true; }
+  }
+  const C = REGIONS[rc].cities[city];
+  if (C.noEx) {
+    const line = rest.replace(/\D/g, '').slice(0, 4);
+    return { rc, city, line, done: line.length === 4, key: city + line };
+  }
+  const table = C.ex;
+  const m = rest.match(/^[A-Z]{1,3}/);
+  if (!m) return { rc, city, partial: true, far, hint: `${C.name}. Next, the district.` };
+  const ex = m[0];
+  if (ex.length < 3) return { rc, city, partial: true, far, hint: `Could be: ${Object.keys(table).filter((x) => x.startsWith(ex)).slice(0, 6).join(', ') || 'no district starts like that'}.` };
+  if (!table[ex]) return { rc, city, ex, partial: true, far, bad: true, hint: `${ex} isn't a district in ${C.name}.` };
+  const line = rest.slice(3).replace(/\D/g, '').slice(0, 4);
+  return { rc, city, ex, line, far, done: line.length === 4, key: (city === 'NC' ? '' : city) + ex + line };
+}
+const stateOf = (p) => REGIONS[p.rc]?.cities[p.city]?.state || '';
+const fullForm = (p) => `+${p.rc} ${p.city}${p.ex ? ` ${p.ex}-` : '-'}${p.line ?? ''}`;
+/** What a number looks like from where YOUR number is from. */
+function seenFrom(p, myRc = HOME.rc, myCity = HOME.city) {
+  if (p.service) return p.service;
+  const tail = p.ex ? `${p.ex}-${p.line}` : `${p.line}`;
+  if (p.rc === myRc && p.city === myCity) return tail;
+  if (p.rc === myRc) return `${p.city}${p.ex ? ' ' : '-'}${tail}`;
+  return `+${p.rc} ${p.city}${p.ex ? ' ' : '-'}${tail}`;
+}
+function placeOf(p) {
+  if (p.service) return p.name;
+  if (isUnlisted(p)) return 'Unlisted number';
+  const C = REGIONS[p.rc]?.cities[p.city];
+  const ex = p.ex ? C.ex[p.ex] : null;
+  return [ex, C?.name, p.rc === HOME.rc ? null : REGIONS[p.rc]?.name].filter(Boolean).join(', ');
+}
+/** A number as coloured, hoverable text. */
+function numHtml(raw, opts = {}) {
+  const p = parse(raw);
+  if (p.service) return `<span class="ncm-num" data-num="${esc(raw)}"><span class="x">${esc(p.service)}</span></span>`;
+  const shown = opts.full ? fullForm(p) : seenFrom(p);
+  const parts = [];
+  let rest = shown;
+  const take = (cls, re) => { const m = rest.match(re); if (m) { parts.push(`<span class="${cls}">${esc(m[0])}</span>`); rest = rest.slice(m[0].length); } };
+  take('r', /^\+\d+\s/); if (p.city !== HOME.city || /^\+/.test(shown)) take('c', /^[A-Z]{2,3}[\s-]/);
+  take('x', /^[A-Z]{3}-/); parts.push(`<span class="l">${esc(rest)}</span>`);
+  return `<span class="ncm-num" data-num="${esc(raw)}" tabindex="0">${parts.join('')}</span>`;
+}
+/* The real rule: a player sees a name only for a number in their own contacts. An unknown number shows its place and just rings. */
+const MY_CONTACTS = new Set(['WAT4471', 'WAT2208', 'SEADWN2210', 'LCH6130', 'TKYSHB5021']);
+function ownerOf(p) { return p.key && !isUnlisted(p) && MY_CONTACTS.has(p.key) ? (OWNERS[p.key] ?? null) : null; }
+/** The player's view: the number can exist and even answer, but the directory won't say whose it is. */
+function isUnlisted(p) { if (!p?.city) return false; const r = ROWS.find((x) => x['Region code'] === p.rc && x['City code'] === p.city && (x.Code || '') === (p.ex || '')); return !!r && r.Listed === 'no'; }
+
+/* ─── state ─── */
+const q = new URLSearchParams(location.search);
+const S = { f: q.get('f') || 'calls', intro: false, dial: '', vm: true, greet: 'Read out', ring: true, line: 0, path: { region: '72', state: 'Northern California', city: 'NC', area: 'Northside', ex: 'WAT' }, tbq: '', xtab: 'home', level: null, levelFrom: null, walking: false, justArrived: false, mode: 'first', myNum: null, pending: null, addLabel: '', addKind: 'extra', addCalls: '5', sugg: [], picked: null, own: '', used: false, xlist: false };
+const LINES = [
+  { get n() { return myNumber(); }, label: 'Your number', main: true, vm: true, greet: 'Read out', ring: true },
+];
+const GIVEN = [
+  { n: '+10 DC CAP-8812', label: 'Your old D.C. line', vm: true, greet: 'Default', ring: true },
+  { n: '+72 NC BRN-7719', label: 'Burner: "Silver"', vm: false, greet: 'None', ring: false, burner: true },
+];
+const allLines = () => (S.f === 'lines' ? [LINES[0], ...GIVEN, ...LINES.slice(1)] : LINES);
+const curLine = () => allLines()[S.line] || allLines()[0];
+/** The sample player's number: in whatever city this campaign is home to. */
+function homeCity() { return REGIONS[HOME.rc].cities[HOME.city]; }
+function homeCode() { const c = Object.keys(homeCity().ex); return c.includes('WAT') ? 'WAT' : (c[0] || ''); }
+function myNumber() { if (S.myNum) return S.myNum; return homeCity().noEx ? '+' + HOME.rc + ' ' + HOME.city + '-4471' : homeCode() + '-4471'; }
+const NOTES = {
+  calls: '<b>See the directory</b> has search on top and one tab per list; picking a row starts dialling it. <b>Change</b> asks your GM by default (approve it in GM setup, or switch that off there). <b>+</b> adds a line. <b>Try:</b> just start typing <code>wat4471</code>, or <code>9 2 8</code> on the pad. Your keyboard presses the on-screen keys. Hover any number or button. The My line card keeps your full number and settings in view; click a setting to change it. Press Enter on a typed number, and try <code>+14 dal cen 3345</code>, <code>trauma</code>, <code>hot1111</code>.',
+  intro: '<b>First open:</b> shown once, the first time someone opens Calls. The <b>?</b> on the My line card brings it back.',
+  lines: '<b>Several numbers:</b> the same card. Click your number and it opens downward with all your lines, every number in full. Pick one and it closes with that number in place, with its own settings, and it is who you call as. Copy, Change and the chip stay where they are. Extra lines get <b>Retire</b> instead of Change. These two samples were given by the GM, so they don\'t count towards your limit of added lines.',
+  picker: '<b>Get a number:</b> it opens on the campaign\'s home city with the numbers ready. Click any step in the trail to change it: one list at a time, all five steps always show, even with one option, and the numbers only come after the last step. Try Region, then Free State of Texas. Type <code>2208</code> for a taken number and <code>5150</code> for a retired one.',
+  table: '<b>Hiding:</b> type <code>arasaka</code> in Find rows, then Hide these or Show these. Hidden numbers still exist and can be dialled; they just leave the directory. <b>GM setup:</b> pick the campaign home and how far players may reach, tick or untick rows, or try the Texas and Tokyo campaigns, then look at Get a number and the Calls tab. This one table builds the creator. <b>Export</b> downloads a real CSV. Edit it in Excel: add rows, regions or your own columns, then <b>Import</b>. You see every change before it applies. Try <b>Import a sample edit</b>, then look at Get a number.',
+  numbers: '<b>Numbers in place:</b> a contact, incoming calls, and the same number from different places. Hover any of them.',
+};
+
+/* ─── the dialer ─── */
+/* One card for everyone. With more than one line the number opens downward into the list, and picking one closes it with
+   that number in place. Everything else on the card, chip included, stays put and is never redrawn. */
+function lineWhere(L) { const p = parse(L.n); return L.main ? placeOf(p) : L.label + ' · ' + placeOf(p); }
+function lineHead(L) {
+  return '<div class="ncm-calls-line__hd" data-part="hd"><span>My line</span><span class="sp"></span>'
+    + '<button type="button" class="ncm-calls-mini txt" data-addline data-tooltip="' + esc(addHelp()) + '" aria-label="Add a line"><i class="fas fa-plus"></i></button>'
+    + '<button type="button" class="ncm-calls-mini txt" data-copy="' + esc(L.n) + '" data-tooltip="Copy this number to give to someone"><i class="fas fa-copy"></i> Copy</button>'
+    + (L.main
+      ? '<button type="button" class="ncm-calls-mini txt" data-mode="change" data-tooltip="' + esc(LIMITS.changeNeedsGm ? 'Ask your GM for a different number. If they agree, people who have your old one will no longer reach you.' : 'Pick a different number. People who have your old one will no longer reach you.') + '"><i class="fas fa-sim-card"></i> Change</button>'
+      : '<button type="button" class="ncm-calls-mini txt" data-retire data-tooltip="Stop using this line. The number retires for good, and it can never be given to anyone else."><i class="fas fa-ban"></i> Retire</button>')
+    + '<button type="button" class="ncm-calls-mini txt" data-go="intro" data-tooltip="How numbers work" aria-label="How numbers work"><i class="fas fa-circle-question"></i></button></div>';
+}
+function lineRow(L) {
+  const many = allLines().length > 1;
+  const inner = '<div class="ncm-calls-line__num">' + numHtml(L.n) + '</div><div class="ncm-calls-line__where">' + esc(lineWhere(L)) + '</div>';
+  return many
+    ? '<button type="button" class="ncm-calls-line__row is-many" data-part="row" data-linetoggle aria-expanded="false" aria-controls="linedrop" data-tooltip="Calling as this number. Click to switch to another of your lines."><span class="t">' + inner + '</span><i class="fas fa-chevron-down" aria-hidden="true"></i></button>'
+    : '<div class="ncm-calls-line__row" data-part="row"><span class="t">' + inner + '</span></div>';
+}
+function lineDrop() {
+  const lines = allLines();
+  if (lines.length < 2) return '<div class="ncm-calls-line__drop" data-part="drop" id="linedrop"></div>';
+  return '<div class="ncm-calls-line__drop" data-part="drop" id="linedrop"><div class="in"><div class="ncm-calls-pick" role="listbox" aria-label="Your lines">'
+    + lines.map((x, i) => '<button type="button" role="option" aria-selected="' + (i === S.line) + '" class="' + (i === S.line ? 'on' : '') + '" data-line="' + i + '" tabindex="-1" data-tooltip="Call as this number. People you call see it."><i class="' + (i === S.line ? 'fas fa-circle-dot' : 'far fa-circle') + '"></i><span class="t">' + numHtml(x.n) + '<small>' + esc(x.label) + '</small></span></button>').join('')
+    + '</div></div></div>';
+}
+function lineWait() {
+  return '<div data-part="wait">' + (S.pending ? '<div class="ncm-calls-wait" role="status"><i class="fas fa-hourglass-half"></i> <span>Asked your GM for ' + esc(S.pending) + '. You keep this number until they answer.</span> <button type="button" data-req="cancel" data-tooltip="Withdraw the request">Cancel</button></div>' : '') + '</div>';
+}
+function lineSets(L) {
+  return '<div class="ncm-calls-sets" data-part="sets">'
+    + '<button type="button" data-set="vm" class="' + (L.vm ? '' : 'is-off') + '" data-tooltip="' + esc(L.vm ? 'Callers who get no answer can leave you a message. Click to turn it off.' : 'Callers who get no answer can\'t leave a message. Click to turn it on.') + '"><small>Voicemail</small><b>' + (L.vm ? 'On' : 'Off') + '</b></button>'
+    + '<button type="button" data-set="greet" data-tooltip="' + esc('What callers hear before leaving a message: ' + (L.greet === 'None' ? 'nothing' : L.greet.toLowerCase()) + '. Click to change it.') + '"><small>Greeting</small><b>' + esc(L.greet) + '</b></button>'
+    + '<button type="button" data-set="ring" class="' + (L.ring ? '' : 'is-off') + '" data-tooltip="' + esc(L.ring ? 'Calls ring out loud. Click to send them straight to voicemail instead.' : 'Do not disturb: calls don\'t ring, they go straight to voicemail. Click to turn the ringer on.') + '"><small>Ringer</small><b>' + (L.ring ? 'On' : 'Off') + '</b></button></div>';
+}
+function myLine() {
+  const L = curLine();
+  return '<div class="ncm-calls-line" id="linecard">' + lineHead(L)
+    + '<span class="ncm-calls-sim' + (L.ring ? '' : ' is-quiet') + '" id="sim" data-tooltip="' + (L.ring ? 'Your line is live.' : 'Your line is live, but the ringer is off.') + '" aria-hidden="true"><b></b><b></b><b></b><b></b></span>'
+    + lineRow(L) + lineDrop() + lineWait() + lineSets(L) + '</div>';
+}
+/** Swap what changed on the live card. The chip keeps running, and the list can animate because it is never replaced. */
+function paintLine({ keepDrop = false } = {}) {
+  const card = document.getElementById('linecard'); if (!card) return;
+  const L = curLine();
+  const swap = (part, html) => { const el = card.querySelector('[data-part="' + part + '"]'); if (el) el.outerHTML = html; };
+  swap('hd', lineHead(L)); swap('row', lineRow(L)); swap('wait', lineWait()); swap('sets', lineSets(L));
+  if (!keepDrop) swap('drop', lineDrop());
+  const sim = document.getElementById('sim');
+  sim.classList.toggle('is-quiet', !L.ring);
+  sim.dataset.tooltip = L.ring ? 'Your line is live.' : 'Your line is live, but the ringer is off.';
+}
+function toggleLines(open) {
+  const card = document.getElementById('linecard'); if (!card) return false;
+  const on = open ?? !card.classList.contains('is-open');
+  card.classList.toggle('is-open', on);
+  card.querySelector('[data-linetoggle]')?.setAttribute('aria-expanded', String(on));
+  card.querySelectorAll('[data-line]').forEach((b) => { b.tabIndex = on ? 0 : -1; });
+  closePop(true); tip.hidden = true;
+  return on;
+}
+/** Close the list, and only then lift the new number into place. */
+function pickLine(i) {
+  S.line = i;
+  const card = document.getElementById('linecard');
+  toggleLines(false);
+  const after = () => {
+    paintLine({ keepDrop: false });
+    const row = card.querySelector('[data-part="row"]');
+    row.classList.remove('is-swap'); void row.offsetWidth; row.classList.add('is-swap');
+    simPing();
+    card.querySelector('[data-linetoggle]')?.focus();
+  };
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return after();
+  setTimeout(after, 230);
+}
+const extraUsed = () => LINES.filter((l) => l.mine).length;
+const extraLeft = () => Math.max(0, LIMITS.extra - extraUsed());
+function addHelp() { return LIMITS.extra === 0 ? 'Your GM has switched extra lines off. They can still give you one.' : extraLeft() ? 'Add a line: a second number with a label, or a burner. You can add ' + extraLeft() + ' more.' : 'You have used your ' + LIMITS.extra + ' extra line' + (LIMITS.extra === 1 ? '' : 's') + '. Your GM can give you more.'; }
+function dialer() {
+  const keys = KEYS.map(([k, l]) => `<button type="button" data-key="${k}" data-tooltip="${k === '+' ? 'Starts a long-distance number, like +14 DAL CEN-3345' : k === '#' ? 'Used by some service lines' : l ? `Types ${k}, or any of ${l}. Three keys in a row become a district.` : `Types ${k}`}">${k}<small>${l}</small></button>`).join('');
+  return `<div class="ncm-calls-dl">
+    <div class="ncm-calls-sig">▸ On CitiNet <span class="dim">//</span> signal good</div>
+    ${myLine()}
+    <div class="ncm-calls-num"><div class="in">
+      <input type="text" id="dial" placeholder="Number or name" autocomplete="off" spellcheck="false" aria-label="Number or name" value="${esc(S.dial)}">
+      <button type="button" class="ncm-calls-del" data-xlist="1" aria-label="Open the directory" data-tooltip="Open the directory: every district, city, corporation and service line"><i class="fas fa-address-book"></i></button>
+      <button type="button" class="ncm-calls-del" id="del" aria-label="Delete a character" data-tooltip="Delete the last character (Backspace)"><i class="fas fa-delete-left"></i></button>
+    </div></div>
+    <div class="ncm-calls-xp" id="xp" aria-live="polite"></div>
+    <div class="ncm-calls-keys">${keys}</div>
+    <button type="button" class="ncm-calls-cb is-empty" id="cb" disabled data-tooltip="Type a number first">
+      <span class="ncm-calls-cb__in"><span class="ncm-calls-cb__dial"><i class="fas fa-phone"></i></span>
+      <span class="ncm-calls-cb__tx"><b>Call</b><span class="who" id="cbw">Type a number</span><small id="cbs">or a name</small></span><kbd>⏎</kbd></span>
+    </button>
+  </div>`;
+}
+function logRows() {
+  const rows = [
+    ['Judy Alvarez', '+72 NC WAT-2208', 'in', 'fa-arrow-down-long', 'Answered', '2 min', '23:41', 'is-in'],
+    ['Marcus Vance', '+72 SEA DWN-2210', 'miss', 'fa-phone-slash', 'Missed', '', '22:10', 'is-miss'],
+    ['Rogue', '+72 NC NHW-2087', 'out', 'fa-arrow-up-long', 'Called', '5 min', '21:02', 'is-out'],
+    ['Unknown', '+14 DAL CEN-3345', 'in', 'fa-arrow-down-long', 'Answered', '40 s', '19:48', 'is-in'],
+    ['Trauma Team', 'TRAUMA', 'out', 'fa-arrow-up-long', 'Called', '1 min', '18:30', 'is-out'],
+  ];
+  return rows.map(([nm, n, , ic, word, dur, tm, cls]) => `<div class="ncm-calls-rowc ${cls}">
+    <span class="dir" data-tooltip="${esc(word)} call"><i class="fas ${ic}"></i></span>
+    <span class="face"><i class="fas fa-user"></i></span>
+    <span class="tx"><span class="nm">${esc(nm)}</span><span class="sub">${numHtml(n)}<span class="k">${esc(word)}</span>${dur ? `<span>${esc(dur)}</span>` : ''}</span></span>
+    <span class="tm">${esc(tm)}</span>
+    <button type="button" class="ncm-calls-mini go" data-dial="${esc(n)}" data-tooltip="Put this number in the dial box" aria-label="Call back"><i class="fas fa-phone"></i></button>
+  </div>`).join('');
+}
+function callsMain() {
+  return `<div class="ncm-calls" style="grid-template-columns:minmax(300px,320px) minmax(0,1fr)">${dialer()}
+    <div class="ncm-calls-lg">
+      <div class="ncm-calls-list"><div class="ncm-calls-day">Today</div>${logRows()}</div>
+    </div>
+    ${S.xlist ? xlist() : ''}
+  </div>${S.intro ? intro() : ''}`;
+}
+/* The directory. Search sits on top and covers every tab; each tab is one short list instead of one long scroll.
+   Only what the GM has left open (corporate lines are GM-held but public: anyone can ring a switchboard). Picking a row starts dialling it. */
+function dirEntries() {
+  const out = [];
+  for (const r of ROWS) {
+    if (r.Listed === 'no' || r.Status !== 'live') continue;
+    const home = r['Region code'] === HOME.rc && r['City code'] === HOME.city;
+    const near = r['Region code'] === HOME.rc;
+    const dial = (near ? '' : '+' + r['Region code'] + ' ') + (home ? '' : r['City code'] + (r.Code ? ' ' : '-')) + (r.Code ? r.Code + '-' : '');
+    if (r.Category === 'Corporate') out.push({ tab: 'corps', corp: r.District, code: r.Code, name: r.District, sub: r.City, hq: r.Area === 'Headquarters', city: r['City code'], cityName: r.City, near, dial });
+    else if (home) out.push({ tab: 'home', group: r.Area || r.City, code: r.Code, name: r.District || r.City, sub: r.Area, dial });
+    else if (!out.some((e) => e.tab === 'other' && e.rc === r['Region code'] && e.code === r['City code'])) out.push({ tab: 'other', rc: r['Region code'], region: r.Region, near, code: r['City code'], name: r.City, sub: r.Region, dial: (near ? '' : '+' + r['Region code'] + ' ') + r['City code'] + ' ' });
+  }
+  for (const [c, n] of Object.entries(SERVICE)) out.push({ tab: 'service', code: c, name: n, sub: 'Works from anywhere', dial: c });
+  return out;
+}
+const rowBtn = (e, showSub) => '<button type="button" class="ncm-calls-xrow" data-xpick="' + esc(e.dial) + '" data-tooltip="Start dialling ' + esc(e.dial.trim()) + '"><code>' + esc(e.code) + '</code><span class="nm">' + esc(e.name) + '</span>' + (showSub && e.sub ? '<small>' + esc(e.sub) + '</small>' : '') + '</button>';
+function xpanelFor(tab) {
+  const all = dirEntries().filter((e) => e.tab === tab);
+  if (tab === 'home') {
+    const groups = [...new Set(all.map((e) => e.group))];
+    return groups.map((g) => '<div class="ncm-calls-row"><span class="lbl">' + esc(g) + '</span><span class="ln"></span></div><div class="ncm-calls-xgrid">' + all.filter((e) => e.group === g).map((e) => rowBtn(e)).join('') + '</div>').join('');
+  }
+  if (tab === 'other') {
+    const regions = [...new Set(all.map((e) => e.rc))].sort((a, b) => Number(b === HOME.rc) - Number(a === HOME.rc));
+    return '<p class="ncm-calls-xhint">Long-distance numbers start with the region\'s + code, then the city: <span class="ncm-num" style="cursor:inherit;border:0"><span class="r">+14 </span><span class="c">DAL </span><span class="x">CEN-</span><span class="l">3345</span></span></p>'
+      + regions.map((rc) => { const rows = all.filter((e) => e.rc === rc); const near = rc === HOME.rc;
+        return '<details class="ncm-calls-xreg"' + (near ? ' open' : '') + '><summary data-tooltip="' + esc(near ? 'The same region as ' + homeCity().name + '. Dial the city code, then the number.' : 'Dial +' + rc + ', then the city code, then the number.') + '"><code>' + (near ? 'Nearby' : '+' + rc) + '</code>' + esc(rows[0].region) + '<small>' + rows.length + (rows.length === 1 ? ' city' : ' cities') + '</small></summary><div class="ncm-calls-xgrid">' + rows.map((e) => rowBtn(e)).join('') + '</div></details>'; }).join('');
+  }
+  if (tab === 'corps') {
+    const corps = [...new Set(all.map((e) => e.corp))].sort((a, b) => a.localeCompare(b));
+    return '<p class="ncm-calls-xhint">Main numbers ring a switchboard. Add an extension to reach a desk: <span class="ncm-num" style="cursor:inherit;border:0"><span class="r">+83 </span><span class="c">TKY </span><span class="x">ARA-</span><span class="l">0042 x17</span></span></p>'
+      + corps.map((name) => {
+        const rows = all.filter((e) => e.corp === name).sort((a, b) => Number(b.hq) - Number(a.hq) || Number(b.dial.length < a.dial.length) - Number(a.dial.length < b.dial.length));
+        const here = rows.find((e) => e.city === HOME.city);
+        return '<details class="ncm-calls-xreg"><summary data-tooltip="' + esc(name + ': the offices listed in this directory') + '"><code>' + esc(rows[0].code) + '</code>' + esc(name) + (here ? '<em>In ' + esc(homeCity().name) + '</em>' : '') + '<small>' + rows.length + (rows.length === 1 ? ' office' : ' offices') + '</small></summary><div class="ncm-calls-xgrid">'
+          + rows.map((e) => '<button type="button" class="ncm-calls-xrow" data-xpick="' + esc(e.dial) + '" data-tooltip="Start dialling ' + esc(e.dial.trim()) + '"><code>' + esc(e.city) + '</code><span class="nm">' + esc(e.cityName) + (e.hq ? ' <i class="hq">HQ</i>' : '') + '</span></button>').join('') + '</div></details>';
+      }).join('');
+  }
+  return '<div class="ncm-calls-xgrid ncm-calls-xgrid--one">' + all.map((e) => rowBtn(e, true)).join('') + '</div>';
+}
+function xtabs() {
+  const all = dirEntries();
+  const n = (t) => all.filter((e) => e.tab === t).length;
+  const tab = (k, text, help) => '<button type="button" role="tab" aria-selected="' + (S.xtab === k) + '" class="' + (S.xtab === k ? 'on' : '') + '" data-xtab="' + k + '" data-tooltip="' + esc(help) + '">' + esc(text) + '<small>' + n(k) + '</small></button>';
+  return tab('home', homeCity().name, 'Districts in ' + homeCity().name) + tab('other', 'Other places', 'Regions and cities, with their codes') + tab('corps', 'Corporations', 'Main numbers at each headquarters') + tab('service', 'Service', 'Words you can dial from anywhere');
+}
+function xlist() {
+  return '<div class="ncm-calls-xlist"><div class="ncm-calls-xhd"><h3>Directory</h3><input type="text" id="xfind" placeholder="Find a place, code or corp" aria-label="Find a place, code or corp" autocomplete="off" spellcheck="false" data-tooltip="Searches every tab, by name or code"><button type="button" class="ncm-calls-btn" data-xlist="0" data-tooltip="Back to the dial pad">Close</button></div>'
+    + '<div class="ncm-calls-xtabs" role="tablist" aria-label="Directory" id="xtabs">' + xtabs() + '</div>'
+    + '<div class="ncm-calls-xpanel" id="xpanel" role="tabpanel">' + xpanelFor(S.xtab) + '</div></div>';
+}
+/** A city in the same region, if this region has another one. */
+function nearLine() {
+  const other = Object.entries(REGIONS[HOME.rc].cities).find(([c, C]) => c !== HOME.city && !C.noEx);
+  if (!other) return '';
+  const [c, C] = other; const x = Object.keys(C.ex)[0];
+  return '<li><span class="ncm-num"><span class="c">' + esc(c) + ' </span><span class="x">' + esc(x) + '-</span><span class="l">2210</span></span><span><b>Nearby city:</b> add the city.</span></li>';
+}
+function intro() {
+  return `<div class="ncm-calls-intro" role="dialog" aria-label="How numbers work"><div class="ncm-calls-intro__box">
+    <h3>How numbers work here</h3>
+    <div class="ncm-calls-intro__big ncm-num" style="border:0;cursor:default">
+      <div class="ncm-calls-intro__part"><b class="x">${esc(homeCode())}-</b><small>District: ${esc(homeCity().ex[homeCode()] || '')}</small></div>
+      <div class="ncm-calls-intro__part"><b class="l">4471</b><small>The person</small></div>
+    </div>
+    <ul>
+      <li><span class="ncm-num"><span class="x">${esc(homeCode())}-</span><span class="l">4471</span></span><span><b>Same city:</b> just the district and four digits.</span></li>
+      ${nearLine()}
+      <li><span class="ncm-num">${HOME.rc === '14' ? '<span class="r">+72 </span><span class="c">NC </span><span class="x">WAT-</span><span class="l">2208</span>' : '<span class="r">+14 </span><span class="c">DAL </span><span class="x">CEN-</span><span class="l">3345</span>'}</span><span><b>Far away:</b> add a + code for the region.</span></li>
+    </ul>
+    <p style="margin:0 0 12px;font:calc(12.5px * var(--ncm-text-scale,1))/1.35 var(--ncm-font-body,sans-serif);color:var(--ncm-text-secondary)">A number says where it was issued, not where someone is now. It stays with them when they move. Hover any number to see what it means.</p>
+    <div class="ncm-calls-intro__ft"><small>Reopen this with the ? on your My line card.</small><button type="button" class="ncm-calls-btn go" data-intro="0"><i class="fas fa-check"></i> Got it</button></div>
+  </div></div>`;
+}
+
+/* ─── the picker: one level on screen at a time, all five levels, always, so the flow never changes shape. A blank in the table is an option too ("Whole city"). Picking moves on; the trail goes back. ─── */
+const TAKEN = new Set(['WAT2208', 'WAT4471', 'NHW2087', 'SEADWN2210', 'DCCAP8812', 'DALCEN3345', 'PAL0316']);
+const uniq = (a) => [...new Set(a)];
+/** What players may pick: the GM's ticks, inside the GM's reach. */
+function pickable() {
+  return ROWS.filter((r) => {
+    if (r['Players can pick'] !== 'yes' || r.Status !== 'live') return false;
+    if (LIMITS.scope === 'city') return r['Region code'] === HOME.rc && r['City code'] === HOME.city;
+    if (LIMITS.scope === 'region') return r['Region code'] === HOME.rc;
+    return true;
+  });
+}
+const LEVELS = [
+  { key: 'region', label: 'Region', ask: 'Which region?', help: 'The nation or confederation. It is the + code on a long-distance number.', valueOf: (r) => r['Region code'], nameOf: (v, rows) => ({ code: '+' + v, text: rows.find((x) => x['Region code'] === v).Region }) },
+  { key: 'state', label: 'State', ask: 'Which state?', help: 'Shown under the number. It does not add anything to dial.', valueOf: (r) => r.State, nameOf: (v) => ({ text: v || 'No state' }) },
+  { key: 'city', label: 'City', ask: 'Which city?', help: 'Added to the number when someone dials from another city.', valueOf: (r) => r['City code'], nameOf: (v, rows) => ({ code: v, text: rows.find((x) => x['City code'] === v).City }) },
+  { key: 'area', label: 'Area', ask: 'Which part of the city?', help: 'Keeps the list short. Not part of the number.', valueOf: (r) => r.Area, nameOf: (v) => ({ text: v || 'Whole city' }) },
+  { key: 'ex', label: 'District', ask: 'Which district?', help: 'The three letters at the start of your number.', valueOf: (r) => r.Code, nameOf: (v, rows) => (v ? { code: v, text: rows.find((x) => x.Code === v).District } : { text: 'No district' }) },
+];
+/** Every level given the choices above it. A stale choice falls to the first option, so the path is always valid. */
+function steps() {
+  const P = S.path; let rows = pickable(); const out = [];
+  for (const L of LEVELS) {
+    const vals = uniq(rows.map(L.valueOf));
+    if (!vals.includes(P[L.key])) P[L.key] = vals[0];
+    const opts = vals.map((v) => ({ v, name: L.nameOf(v, rows) }));
+    rows = rows.filter((r) => L.valueOf(r) === P[L.key]);
+    out.push({ ...L, cur: P[L.key], opts });
+  }
+  return { out, row: rows[0] };
+}
+/** The next level after this one. */
+function nextLevel(key) {
+  const { out } = steps();
+  const i = out.findIndex((x) => x.key === key);
+  return out[i + 1]?.key || null;
+}
+/** Start each campaign on its own home city. */
+function homePath() {
+  const rows = pickable();
+  const here = rows.filter((r) => r['Region code'] === HOME.rc && r['City code'] === HOME.city);
+  const r = here.find((x) => x.Code === 'WAT') || here[0] || rows[0];
+  return r ? { region: r['Region code'], state: r.State, city: r['City code'], area: r.Area, ex: r.Code } : {};
+}
+function keyFor(row, d) { return (row['City code'] === 'NC' ? '' : row['City code'] + '') + (row.Code || '') + d; }
+function newSugg() {
+  const { row } = steps(); const out = new Set(); let guard = 0;
+  while (out.size < 4 && guard++ < 5000) { const d = String(Math.floor(1000 + Math.random() * 9000)); const k = keyFor(row, d); if (!TAKEN.has(k) && !RETIRED[k]) out.add(d); }
+  S.sugg = [...out]; S.picked = S.sugg[0]; S.own = '';
+}
+function prefix() {
+  const { row } = steps();
+  const tail = row.Code ? row.Code + '-' : '-';
+  if (row['Region code'] === HOME.rc && row['City code'] === HOME.city) return tail;
+  if (row['Region code'] === HOME.rc) return row['City code'] + (row.Code ? ' ' + tail : tail);
+  return '+' + row['Region code'] + ' ' + row['City code'] + (row.Code ? ' ' + tail : tail);
+}
+function usage(row) {
+  const pre = keyFor(row, '');
+  const inUse = [...TAKEN].filter((k) => k.startsWith(pre) && /\d{4}$/.test(k) && k.length === pre.length + 4).length;
+  const gone = Object.keys(RETIRED).filter((k) => k.startsWith(pre) && k.length === pre.length + 4).length;
+  return { inUse, gone, free: 10000 - inUse - gone };
+}
+function addForm() {
+  return '<div class="ncm-calls-addf"><label class="f" data-tooltip="Only you see this. It tells your lines apart in Calling as."><span>Name it</span><input type="text" id="addlabel" maxlength="24" placeholder="Old D.C. line" value="' + esc(S.addLabel) + '" autocomplete="off" spellcheck="false"></label>'
+    + '<div class="f"><span>Kind</span><div class="ncm-calls-tabs"><button type="button" class="' + (S.addKind === 'extra' ? 'on' : '') + '" data-addkind="extra" data-tooltip="A number you keep until you remove it">Keep it</button><button type="button" class="' + (S.addKind === 'burner' ? 'on' : '') + '" data-addkind="burner" data-tooltip="A throwaway. It stops working by itself, then retires for good.">Burner</button></div></div>'
+    + (S.addKind === 'burner' ? '<label class="f" data-tooltip="How many calls before it burns out. Your GM can set a different rule."><span>Burns out after</span><span class="inl"><input type="number" id="addcalls" min="1" max="99" value="' + esc(S.addCalls) + '"> calls</span></label>' : '') + '</div>';
+}
+function trailHtml(out) {
+  return '<nav class="ncm-calls-trail" id="trail" aria-label="Where your number came from">' + out.map((x) => {
+    if (S.level && out.findIndex((y) => y.key === S.level) < out.findIndex((y) => y.key === x.key)) return '';
+    const o = x.opts.find((y) => y.v === x.cur), here = S.level === x.key;
+    return '<button type="button" class="st ' + (here ? 'on' : '') + '" data-crumb="' + x.key + '" data-tooltip="Change the ' + esc(x.label.toLowerCase()) + '">'
+      + '<small>' + esc(x.label) + '</small>' + esc(here ? 'Choosing…' : o.name.text) + '</button>';
+  }).join('<i class="fas fa-angle-right" aria-hidden="true"></i>') + '</nav>';
+}
+function picker() {
+  const { out, row } = steps();
+  const isAdd = S.mode === 'add', isChange = S.mode === 'change';
+  const title = isAdd ? 'Add a line' : isChange ? 'A different number' : 'Pick your number';
+  if (!row) return '<div class="ncm-calls is-picker"><div class="ncm-calls-gn"><h3>Pick your number</h3><p>Your GM hasn\'t opened any numbers for players yet. They can hand you one.</p></div></div>';
+  if (!S.sugg.length) newSugg();
+  const cur = S.level && out.find((x) => x.key === S.level);
+  let body;
+  if (cur) {
+    const i = out.indexOf(cur); const back = out[i - 1];
+    body = '<div class="ncm-calls-row"><span class="lbl" data-tooltip="' + esc(cur.help) + '">Step ' + (i + 1) + ' of ' + out.length + ': ' + esc(cur.ask) + '</span><span class="ln"></span>'
+      + (back ? '<button type="button" class="ncm-calls-shuf" data-crumb="' + back.key + '" data-tooltip="Go back one step"><i class="fas fa-arrow-left"></i> Back</button>' : '')
+      + '<button type="button" class="ncm-calls-shuf" data-level-done data-tooltip="Keep what you had and go back to the numbers"><i class="fas fa-xmark"></i> Cancel</button></div>'
+      + '<div class="ncm-calls-dist ncm-calls-dist--big">' + cur.opts.map((o) => '<button type="button" class="' + (o.v === cur.cur && !S.walking ? 'on' : '') + '" data-step="' + cur.key + '" data-v="' + esc(o.v) + '" data-tooltip="' + esc(cur.help) + '">' + (o.name.code ? '<code>' + esc(o.name.code) + '</code>' : '') + esc(o.name.text) + '</button>').join('') + '</div>';
+  } else {
+    const pre = prefix();
+    const final = S.own.length === 4 ? S.own : S.picked;
+    const u = usage(row);
+    body = (S.justArrived ? '<div class="ncm-calls-arrived"><i class="fas fa-circle-check"></i> Done. Now pick a number from ' + esc(row.District || row.City) + '.</div>' : '') + '<div class="ncm-calls-row"><span class="lbl">Made for you</span><span class="ln"></span><span class="ncm-calls-use" id="use" data-tooltip="Retired numbers belonged to someone once. They are never handed out again, so an old contact can\'t reach a stranger.">' + u.free.toLocaleString() + ' free · ' + u.inUse + ' in use · ' + u.gone + ' retired</span><button type="button" class="ncm-calls-shuf" id="shuf" data-tooltip="Show four more free numbers. Taken and retired numbers never appear."><i class="fas fa-shuffle"></i> New numbers</button></div>'
+      + '<div class="ncm-calls-opts" id="opts">' + sugg(pre) + '</div>'
+      + (LIMITS.ownDigits ? '<div class="ncm-calls-row"><span class="lbl">Or choose your own digits</span><span class="ln"></span></div><div class="ncm-calls-own2"><span id="ownpre">' + esc(pre) + '</span><input type="text" id="own" inputmode="numeric" maxlength="4" value="' + esc(S.own) + '" placeholder="0000" aria-label="Your own four digits" autocomplete="off" spellcheck="false"><span class="msg" id="ownmsg"></span></div>' : '')
+      + '<div class="ncm-calls-row"><span class="lbl">Your number</span><span class="ln"></span></div>'
+      + '<div class="ncm-calls-res" id="res">' + resultHtml(pre, final) + '</div>'
+      + '<div class="ncm-calls-ft"><small>' + (isChange ? 'Your old number retires. It can never be given to anyone else, and people who saved it will hear not in service.' : isAdd ? 'People you call from this line see the number, not your name.' : 'Your GM can also hand you a number.') + '</small><button type="button" class="ncm-calls-btn" data-go="calls" data-tooltip="Keep things as they are">Cancel</button>'
+      + (isAdd ? '<button type="button" class="ncm-calls-btn go" data-take="add" data-tooltip="Add this line to your Agent"><i class="fas fa-plus"></i> Add this line</button>'
+        : isChange && LIMITS.changeNeedsGm ? '<button type="button" class="ncm-calls-btn go" data-take="ask" data-tooltip="Send this to your GM. You keep your number until they answer."><i class="fas fa-paper-plane"></i> Ask your GM</button>'
+          : '<button type="button" class="ncm-calls-btn go" data-take="use" data-tooltip="Make this your number"><i class="fas fa-sim-card"></i> Use this number</button>') + '</div>';
+  }
+  return '<div class="ncm-calls is-picker" id="pickscroll"><div class="ncm-calls-gn" style="width:min(680px,100%)">'
+    + '<h3>' + title + '</h3>' + (cur ? '' : '<p>' + (isAdd ? 'A second number, with a name only you see. Handy for a line you kept from somewhere else, or one you can throw away.' : 'It says where your number came from, and it stays with you if you move. Click any step to change it.') + '</p>')
+    + (isAdd ? addForm() : '') + trailHtml(out) + body + '</div></div>';
+}
+function sugg(pre) { return S.sugg.map((d) => '<button type="button" class="ncm-calls-opt ' + (d === S.picked && S.own.length !== 4 ? 'on' : '') + '" data-pick="' + d + '" data-tooltip="Pick ' + esc(pre + d) + '"><span class="in"><span class="num">' + esc(pre + d) + '</span><small>' + (d === S.picked && S.own.length !== 4 ? '✓ selected' : 'free') + '</small></span></button>').join(''); }
+function resultHtml(pre, d) {
+  const raw = pre + d; const p = parse(raw);
+  return numHtml(raw) + '<small>' + esc([placeOf(p), stateOf(p) && !placeOf(p).includes(stateOf(p)) ? stateOf(p) : ''].filter(Boolean).join(', ')) + '.<br>From ' + esc(homeCity().name) + ', people dial ' + esc(seenFrom(p)) + '. From far away, ' + esc(fullForm(p)) + '.</small>';
+}
+
+/* ─── the GM spreadsheet ─── */
+const csvCell = (v) => (/[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v ?? ''));
+function toCsv() { const cols = [...COLS, ...EXTRA_COLS]; return [cols, ...ROWS.map((r) => cols.map((c) => r[c] ?? ''))].map((l) => l.map(csvCell).join(',')).join('\n'); }
+function parseCsv(text) {
+  const out = []; let f = '', r = [], q = false;
+  for (let i = 0; i < text.length; i++) { const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { f += '"'; i++; } else if (c === '"') q = false; else f += c; }
+    else if (c === '"') q = true; else if (c === ',') { r.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; r.push(f); f = ''; if (r.some((x) => x.trim())) out.push(r); r = []; } else f += c; }
+  r.push(f); if (r.some((x) => x.trim())) out.push(r);
+  return out;
+}
+const rowKey = (r) => r['City code'] + '/' + (r.Code || '-');
+/** Read a CSV into a plan. Nothing changes until the GM applies it. */
+function planImport(text) {
+  const grid = parseCsv(text.replace(/^﻿/, ''));
+  const head = (grid.shift() || []).map((h) => h.trim());
+  const missing = ['Region code', 'Region', 'City code', 'City'].filter((c) => !head.includes(c));
+  if (missing.length) return { error: 'This file is missing the column' + (missing.length > 1 ? 's' : '') + ': ' + missing.join(', ') + '.' };
+  const extra = head.filter((h) => h && !COLS.includes(h));
+  const rows = [], problems = [];
+  grid.forEach((cells, i) => {
+    const r = Object.fromEntries(head.map((h, j) => [h, (cells[j] ?? '').trim()]));
+    r.Code = (r.Code || '').toUpperCase(); r['City code'] = (r['City code'] || '').toUpperCase();
+    r['Players can pick'] = /^(no|n|false|0)$/i.test(r['Players can pick'] || '') ? 'no' : 'yes';
+    r.Status = /^dead$/i.test(r.Status || '') ? 'dead' : 'live';
+    r.Category = r.Category || 'District';
+    r.Listed = /^(no|n|false|0|hidden)$/i.test(r.Listed || '') ? 'no' : 'yes';
+    if (r.Code && !/^[A-Z]{3}$/.test(r.Code)) problems.push('Row ' + (i + 2) + ': ' + r.Code + ' needs to be three letters. Skipped.');
+    else if (!r['Region code'] || !r['City code']) problems.push('Row ' + (i + 2) + ': needs a region code and a city code. Skipped.');
+    else if (rows.some((x) => rowKey(x) === rowKey(r))) problems.push('Row ' + (i + 2) + ': ' + rowKey(r) + ' appears twice. Skipped the second.');
+    else rows.push(r);
+  });
+  const clash = {};
+  for (const r of rows) if (r.Code) { const k = r['City code'] + asKeys(r.Code); if (clash[k] && clash[k] !== r.Code) problems.push(r.Code + ' and ' + clash[k] + ' use the same dial pad keys in ' + r.City + '. Letters still work; the pad can\'t tell them apart.'); else clash[k] = r.Code; }
+  const was = new Map(ROWS.map((r) => [rowKey(r), r]));
+  const now = new Map(rows.map((r) => [rowKey(r), r]));
+  const added = rows.filter((r) => !was.has(rowKey(r)));
+  const changed = rows.filter((r) => was.has(rowKey(r)) && [...COLS, ...extra].some((c) => (was.get(rowKey(r))[c] ?? '') !== (r[c] ?? '')));
+  const removedAll = ROWS.filter((r) => !now.has(rowKey(r)));
+  const held = (r) => [...TAKEN].some((k) => r.Code && k.startsWith((r['City code'] === 'NC' ? '' : r['City code']) + r.Code));
+  const kept = removedAll.filter(held), removed = removedAll.filter((r) => !held(r));
+  return { rows: [...rows, ...kept], extra, added, changed, removed, kept, problems };
+}
+function applyPlan(p) { ROWS = p.rows; EXTRA_COLS = p.extra; S.plan = null; S.sugg = []; buildTables(); if (!REGIONS[HOME.rc]?.cities[HOME.city]) { const r = ROWS[0]; HOME = { rc: r['Region code'], city: r['City code'] }; buildTables(); } S.path = homePath(); S.level = null; }
+function setHome(rc, city) { HOME = { rc, city }; buildTables(); S.path = homePath(); S.level = null; S.levelFrom = null; S.walking = false; S.justArrived = false; S.sugg = []; S.dial = ''; }
+function setEra(era) {
+  const next = era === '2077' ? ERA_2077 : BOOK_ROWS.filter(isNcDistrict);
+  const held = (r) => [...TAKEN].some((k) => r.Code && k.startsWith(r.Code) && k.length === 7);
+  const kept = ROWS.filter((r) => isNcDistrict(r) && !next.some((n) => n.Code === r.Code) && held(r));
+  ROWS = [...next.map((r) => ({ ...r })), ...kept, ...ROWS.filter((r) => !isNcDistrict(r))];
+  buildTables(); S.path = homePath(); S.level = null; S.sugg = [];
+}
+const SAMPLE_EDIT = () => {
+  const cols = [...COLS, 'Gang turf'];
+  const lines = ROWS.filter((r) => r.Code !== 'OUT').map((r) => cols.map((c) => (c === 'Gang turf' ? (r.Code === 'KAB' ? 'Tyger Claws' : '') : r[c] ?? '')));
+  lines.push(['72', 'Pacifica Confederation', 'Northern California', 'NC', 'Night City', 'Northside', 'NOR', 'Northside Industrial', 'District', 'yes', 'live', 'Homebrew', 'yes', 'Maelstrom']);
+  lines.push(['19', 'The Republic of Cascadia', '', 'CAS', 'New Cascadia', '', '', '', 'City', 'yes', 'live', 'Homebrew', 'yes', '']);
+  return [cols, ...lines].map((l) => l.map(csvCell).join(',')).join('\n');
+};
+/** Words all have to appear somewhere in the row, so "arasaka night" narrows to one office. */
+function tbMatches(r) { const q = (S.tbq || '').trim().toLowerCase(); if (!q) return true; const hay = Object.values(r).join(' ').toLowerCase(); return q.split(/\s+/).every((w) => hay.includes(w)); }
+function tableView() {
+  const cols = [...COLS, ...EXTRA_COLS];
+  const plan = S.plan;
+  const planHtml = !plan ? '' : plan.error ? '<div class="ncm-tb-plan bad">' + esc(plan.error) + '</div>'
+    : '<div class="ncm-tb-plan" id="plan"><b>This import would change:</b> ' + plan.added.length + ' added · ' + plan.changed.length + ' changed · ' + plan.removed.length + ' removed'
+      + (plan.extra.length ? ' · new column' + (plan.extra.length > 1 ? 's' : '') + ': ' + esc(plan.extra.join(', ')) : '')
+      + '<ul>' + plan.added.slice(0, 6).map((r) => '<li class="ok">+ ' + esc(r.Code || r.City) + ' ' + esc(r.District || r.City) + ', ' + esc(r.City) + '</li>').join('')
+      + plan.removed.slice(0, 4).map((r) => '<li>− ' + esc(r.Code) + ' ' + esc(r.District) + '</li>').join('')
+      + plan.kept.map((r) => '<li class="warn">Kept ' + esc(r.Code) + ' ' + esc(r.District) + ': people hold numbers on it.</li>').join('')
+      + plan.problems.map((t) => '<li class="warn">' + esc(t) + '</li>').join('') + '</ul>'
+      + '<div class="ncm-tb-acts"><button type="button" class="ncm-calls-btn go" data-plan="apply" data-tooltip="Replace the table with this file"><i class="fas fa-check"></i> Apply</button><button type="button" class="ncm-calls-btn" data-plan="cancel" data-tooltip="Leave the table as it is">Cancel</button></div></div>';
+  const cities = uniq(ROWS.filter((r) => r['City code']).map((r) => r['Region code'] + ':' + r['City code']));
+  const homeRows = (r) => r['Region code'] === HOME.rc && r['City code'] === HOME.city;
+  const sorted = [...ROWS.map((r, i) => ({ r, i }))].sort((a, b) => Number(homeRows(b.r)) - Number(homeRows(a.r)));
+  const scopeBtn = (k, text, help) => '<button type="button" class="' + (LIMITS.scope === k ? 'on' : '') + '" data-scope="' + k + '" data-tooltip="' + esc(help) + '">' + esc(text) + '</button>';
+  const setup = '<div class="ncm-tb-setup">'
+    + '<label class="f" data-tooltip="Where this campaign is set. People here dial the short form, and the picker starts here."><span>Campaign home</span><select id="tbhome">' + cities.map((c) => { const [rc, code] = c.split(':'); const r = ROWS.find((x) => x['Region code'] === rc && x['City code'] === code); return '<option value="' + c + '"' + (rc === HOME.rc && code === HOME.city ? ' selected' : '') + '>' + esc(r.City) + ', ' + esc(r.Region) + '</option>'; }).join('') + '</select></label>'
+    + '<label class="f" data-tooltip="Replace the home city\'s districts with a ready-made list. Numbers people hold are not touched."><span>Night City list</span><select id="tbera"><option value="">Keep as is</option><option value="2045">Night City 2045 (book)</option><option value="2077">Night City 2077</option></select></label>'
+    + '<div class="f"><span>Try a campaign</span><div class="seg"><button type="button" data-camp="dallas" data-tooltip="Adds sample Dallas districts and makes Dallas home"><i class="fas fa-hat-cowboy"></i> Texas</button><button type="button" data-camp="tokyo" data-tooltip="Makes Tokyo home. Its districts come from the Pacific Rim sourcebook"><i class="fas fa-torii-gate"></i> Tokyo</button></div></div>'
+    + '<div class="f"><span>Players can pick from</span><div class="seg">' + scopeBtn('city', homeCity().name, 'Only districts in the campaign\'s home city') + scopeBtn('region', REGIONS[HOME.rc].name, 'Anywhere in the home city\'s region') + scopeBtn('all', 'Anywhere', 'Every ticked row, like a D.C. line someone kept') + '</div></div>'
+    + '<label class="f chk" data-tooltip="Off: players only choose from the numbers made for them."><input type="checkbox" id="tbown"' + (LIMITS.ownDigits ? ' checked' : '') + '><span>Players may type their own digits</span></label>'
+    + '<label class="f chk" data-tooltip="On: changing a number waits for you, because it retires the old one and everyone who saved it loses them. Off: players change it themselves."><input type="checkbox" id="tbappr"' + (LIMITS.changeNeedsGm ? ' checked' : '') + '><span>Changing a number needs my approval</span></label>'
+    + '<label class="f" data-tooltip="How many extra lines and burners a player can add themselves. 0 turns it off. You can always give them more."><span>Extra lines per player</span><select id="tbextra">' + [0, 1, 2, 3, 5].map((n) => '<option value="' + n + '"' + (LIMITS.extra === n ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>'
+    + '</div>';
+  const pendingHtml = S.pending ? '<div class="ncm-tb-req"><i class="fas fa-bell"></i> <span><b>Veronica A.</b> wants to change ' + esc(myNumber()) + ' to <b>' + esc(S.pending) + '</b>. The old number retires for good.</span><button type="button" class="ncm-calls-btn go" data-req="yes" data-tooltip="Change it now and retire the old number"><i class="fas fa-check"></i> Approve</button><button type="button" class="ncm-calls-btn" data-req="no" data-tooltip="They keep the number they have">Decline</button></div>' : '';
+  return '<div class="ncm-tb">' + pendingHtml + setup + '<div class="ncm-tb-acts">'
+    + '<button type="button" class="ncm-calls-btn" data-tb="export" data-tooltip="Download this table as a CSV that opens in Excel or Sheets"><i class="fas fa-file-export"></i> Export CSV</button>'
+    + '<button type="button" class="ncm-calls-btn" data-tb="import" data-tooltip="Load an edited CSV. You see every change before it applies."><i class="fas fa-file-import"></i> Import CSV</button>'
+    + '<button type="button" class="ncm-calls-btn" data-tb="sample" data-tooltip="Try an import: adds a district and a place, removes Outskirts, and adds a Gang turf column"><i class="fas fa-flask"></i> Import a sample edit</button>'
+    + '<button type="button" class="ncm-calls-btn" data-tb="blank" data-tooltip="Download an empty CSV with the right columns and one example row, to fill in from scratch"><i class="fas fa-file-circle-plus"></i> Blank template</button>'
+    + '<button type="button" class="ncm-calls-btn" data-tb="reset" data-tooltip="Go back to the shipped table. Numbers people hold are not touched."><i class="fas fa-rotate-left"></i> Reset</button>'
+    + '<span class="sp"></span><small>' + ROWS.length + ' rows · ' + Object.keys(RETIRED).length + ' retired numbers</small><input type="file" id="tbfile" accept=".csv,text/csv" hidden></div>'
+    + planHtml
+    + '<div class="ncm-tb-find"><input type="text" id="tbq" value="' + esc(S.tbq) + '" placeholder="Find rows: Arasaka, Night City, Corporate…" aria-label="Find rows" autocomplete="off" spellcheck="false" data-tooltip="Narrow the table, then hide or show everything it matches"><span id="tbn">' + ROWS.filter(tbMatches).length + ' of ' + ROWS.length + '</span>'
+    + '<button type="button" class="ncm-calls-btn" data-tbhide="no" data-tooltip="Keep every row showing here out of the directory. The numbers still exist."><i class="fas fa-eye-slash"></i> Hide these</button><button type="button" class="ncm-calls-btn" data-tbhide="yes" data-tooltip="List every row showing here in the directory"><i class="fas fa-eye"></i> Show these</button></div>'
+    + '<div class="ncm-tb-scroll"><table><thead><tr>' + cols.map((c) => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>'
+    + sorted.filter(({ r }) => tbMatches(r)).map(({ r, i }) => '<tr class="' + (r.Status === 'dead' ? 'is-dead' : '') + (r.Listed === 'no' ? ' is-hidden' : '') + (homeRows(r) ? ' is-home' : '') + '">' + cols.map((c) => '<td>' + (c === 'Listed' ? '<label class="tick" data-tooltip="Untick to keep this out of the directory. The number still exists and can be dialled, but nothing says whose it is."><input type="checkbox" data-rowlist="' + i + '"' + (r.Listed === 'yes' ? ' checked' : '') + '> ' + (r.Listed === 'yes' ? 'yes' : 'hidden') + '</label>' : c === 'Players can pick' ? '<label class="tick" data-tooltip="Tick to let players pick this. Untick to keep it GM-only."><input type="checkbox" data-rowpick="' + i + '"' + (r[c] === 'yes' ? ' checked' : '') + '> ' + esc(r[c]) + '</label>' : esc(r[c] ?? '')) + '</td>').join('') + '</tr>').join('')
+    + '</tbody></table></div>'
+    + '<p class="ncm-tb-note"><b>Your own columns are kept</b> through export and import, like Gang turf. Any region, state or city works, so a campaign can be set anywhere. Changing the table never changes a number someone already holds, and retired numbers are stored separately so an import can\'t bring one back.</p></div>';
+}
+
+/* ─── numbers in place ─── */
+function numbers() {
+  const one = parse('WAT-2208');
+  return `<div class="mk-place">
+    <div><h4>A contact</h4><div class="mk-card"><span class="face">JA</span><div><b>Judy Alvarez</b>${numHtml('+72 NC WAT-2208')}<small>Watson Development, Night City</small></div></div></div>
+    <div><h4>A far-away contact</h4><div class="mk-card"><span class="face">MV</span><div><b>Marcus Vance</b>${numHtml('+14 DAL CEN-3345')}<small>Central, Dallas, Free State of Texas</small></div></div></div>
+    <div><h4>Incoming, same city</h4><div class="mk-ring"><span class="k">Incoming call</span><b>Judy Alvarez</b>${numHtml('+72 NC WAT-2208')}<small>Watson Development</small></div></div>
+    <div><h4>Incoming, far away, unknown caller</h4><div class="mk-ring" style="--rc:var(--ncm-accent)"><span class="k">Incoming call</span><b>Unknown caller</b>${numHtml('+14 DAL CEN-3345')}<small>Central, Dallas, Free State of Texas</small><span class="far">Long distance</span></div></div>
+    <div><h4>Orbital (no district)</h4><div class="mk-ring" style="--rc:var(--ncm-purple,#b87aff)"><span class="k">Incoming call</span><b>Angels relay</b>${numHtml('+90 PAL-0316')}<small>Crystal Palace, Highrider Confederation</small></div></div>
+    <div><h4>A service line</h4><div class="mk-ring" style="--rc:var(--calls-ok,#4be38a)"><span class="k">Calling</span><b>Trauma Team</b>${numHtml('TRAUMA')}<small>A word, not a number. Works from anywhere.</small></div></div>
+    <div class="full"><h4>Judy's one number, from different places</h4><div class="mk-seen">
+      <span>From Night City</span><span class="ncm-num" style="cursor:default;border:0"><span class="x">WAT-</span><span class="l">2208</span></span>
+      <span>From Seattle</span><span class="ncm-num" style="cursor:default;border:0"><span class="c">NC </span><span class="x">WAT-</span><span class="l">2208</span></span>
+      <span>From Dallas</span><span class="ncm-num" style="cursor:default;border:0"><span class="r">+72 </span><span class="c">NC </span><span class="x">WAT-</span><span class="l">2208</span></span>
+    </div></div>
+  </div>`;
+}
+
+/* ─── draw ─── */
+const stage = document.getElementById('stage');
+function draw() {
+  document.querySelectorAll('[data-f]').forEach((b) => b.classList.toggle('on', b.dataset.f === S.f));
+  document.getElementById('note').innerHTML = NOTES[S.f];
+  S.intro = S.f === 'intro';
+  stage.innerHTML = S.f === 'picker' ? picker() : S.f === 'numbers' ? numbers() : S.f === 'table' ? tableView() : callsMain();
+  if (S.f === 'calls' || S.f === 'lines' || S.f === 'intro') { paintDial(); if (S.f !== 'intro') document.getElementById('dial')?.focus(); }
+  closePop(true);
+}
+function setFrame(f) { const was = S.f; S.f = f; if ((was === 'lines') !== (f === 'lines')) S.line = 0; draw(); }
+
+/* ─── the dial box ─── */
+function simPing() { const c = document.getElementById('sim'); if (!c) return; c.classList.remove('is-ping'); void c.offsetWidth; c.classList.add('is-ping'); }
+function press(k) {
+  simPing();
+  const b = k === 'del' ? document.getElementById('del') : stage.querySelector(`[data-key="${CSS.escape(k)}"]`);
+  if (!b) return;
+  b.classList.remove('press'); void b.offsetWidth; b.classList.add('press');
+  if (k === 'del') setTimeout(() => b.classList.remove('press'), 120);
+}
+/** Keys pressed on the pad: three digits that spell a district become that district. */
+function tidy(v) {
+  let s = v.toUpperCase().replace(/[^A-Z0-9+# -]/g, '');
+  const bare = s.replace(/[\s-]/g, '');
+  if (/^\d{3}/.test(bare)) {
+    const hit = Object.keys(NC_EX).find((x) => asKeys(x) === bare.slice(0, 3));
+    if (hit) s = hit + bare.slice(3);
+  }
+  const p = parse(s);
+  if (p.service) return s;
+  if (!/^\+/.test(s)) {
+    const b = s.replace(/[\s-]/g, '');
+    const m = b.match(/^([A-Z]{3})(\d{0,4})/);
+    if (m && NC_EX[m[1]]) return m[2] ? `${m[1]}-${m[2]}` : m[1];
+    const m2 = b.match(/^([A-Z]{2,3})([A-Z]{3})(\d{0,4})$/);
+    if (m2 && REGIONS[HOME.rc].cities[m2[1]]) return `${m2[1]} ${m2[2]}${m2[3] ? `-${m2[3]}` : ''}`;
+  }
+  return s;
+}
+function paintDial() {
+  const input = document.getElementById('dial'); if (!input) return;
+  const xp = document.getElementById('xp'), cb = document.getElementById('cb'), who = document.getElementById('cbw'), sub = document.getElementById('cbs');
+  const p = parse(input.value);
+  let html = '', can = false, callTo = 'Type a number', callSub = 'or a name', tip = 'Type a number first';
+  if (p.empty) html = `Type a number, or use the pad. <button type="button" data-xlist="1" data-tooltip="Every district, city, corporation and service line">See the directory</button>`;
+  else if (p.service) { html = `<span class="ok">${esc(p.name)}.</span> A service line, works from anywhere.`; can = true; callTo = p.name; callSub = p.service; tip = `Call ${p.name}`; }
+  else if (p.partial) html = p.bad ? `<span class="bad">${esc(p.hint)}</span>` : esc(p.hint);
+  else {
+    const where = placeOf(p);
+    if (!p.done) { html = `<b>${esc(where)}.</b> ${4 - (p.line || '').length} more digit${4 - (p.line || '').length === 1 ? '' : 's'}.`; callTo = where; }
+    else if (isUnlisted(p) && p.ex !== 'HOT') { html = '<b>Unlisted number.</b> The directory has nothing on it. You can still try it.'; can = true; callTo = input.value; callSub = 'unlisted'; tip = 'Call it anyway'; }
+    else if (p.ex === 'HOT') { html = `<b>${esc(where)}.</b> <span class="bad">This exchange is dead. Nothing should answer.</span>`; can = true; callTo = 'Dead exchange'; callSub = input.value; tip = 'Call it anyway'; }
+    else {
+      const o = ownerOf(p);
+      html = o ? `<b>${esc(where)}.</b> <span class="ok">${esc(o)}.</span>` : `<b>${esc(where)}.</b> Not in your contacts.`;
+      can = true; callTo = o || input.value; callSub = o ? input.value : 'not in your contacts'; tip = o ? `Call ${o}` : 'Call this number. You find out who answers when they do.';
+    }
+  }
+  xp.innerHTML = html;
+  who.textContent = callTo; sub.textContent = callSub;
+  cb.disabled = !can; cb.dataset.tooltip = tip;
+  cb.classList.toggle('is-empty', !can);
+  S.dial = input.value;
+}
+function type(ch) {
+  const input = document.getElementById('dial'); if (!input) return;
+  input.value = tidy(input.value + ch); paintDial();
+  const k = keyOf(ch); if (k) press(k);
+  input.focus();
+}
+
+/* keyboard: every character typed presses its key on the pad */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { if (document.getElementById('linecard')?.classList.contains('is-open')) { toggleLines(false); document.querySelector('[data-linetoggle]')?.focus(); return; } closePop(true); if (S.intro) setFrame('calls'); if (S.xlist) { S.xlist = false; draw(); } return; }
+  if (S.xlist && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && document.activeElement?.dataset?.xtab) {
+    const order = ['home', 'other', 'corps', 'service']; const i = order.indexOf(S.xtab);
+    document.querySelector('[data-xtab="' + order[(i + (e.key === 'ArrowRight' ? 1 : 3)) % 4] + '"]').click(); e.preventDefault(); return;
+  }
+  const input = document.getElementById('dial');
+  if (!input || S.intro || S.xlist || e.ctrlKey || e.metaKey || e.altKey) return;
+  const a = document.activeElement;
+  if (a && a !== input && a !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+  if (e.key === 'Backspace') { if (a !== input) { input.value = input.value.slice(0, -1); paintDial(); e.preventDefault(); input.focus(); } press('del'); return; }
+  if (e.key === 'Enter') { if (a?.closest?.('#linecard')) return; if (!document.getElementById('cb').disabled) doCall(); return; }
+  if (e.key.length !== 1) return;
+  const k = keyOf(e.key);
+  if (k) { press(k); hold(k, e.code); }
+  if (a !== input) { input.focus(); }
+});
+/* A key stays lit while it is held down. Keyed by the physical key, so letters that share a pad key let go properly. */
+const heldBy = new Map();
+function hold(k, code) {
+  const b = stage.querySelector(`[data-key="${CSS.escape(k)}"]`); if (!b) return;
+  b.classList.add('held'); heldBy.set(code, b);
+}
+function release(code) {
+  const b = heldBy.get(code); if (!b) return;
+  heldBy.delete(code);
+  if (![...heldBy.values()].includes(b)) { b.classList.remove('held'); b.classList.remove('press'); void b.offsetWidth; b.classList.add('press'); }
+}
+document.addEventListener('keyup', (e) => release(e.code));
+window.addEventListener('blur', () => { for (const c of [...heldBy.keys()]) release(c); });
+document.addEventListener('pointerdown', (e) => { const b = e.target.closest?.('[data-key]'); if (b) hold(b.dataset.key, 'pointer'); });
+document.addEventListener('pointerup', () => release('pointer'));
+document.addEventListener('pointercancel', () => release('pointer'));
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'tbhome') { const [rc, c] = e.target.value.split(':'); setHome(rc, c); return draw(); }
+  if (e.target.id === 'tbera' && e.target.value) { setEra(e.target.value); return draw(); }
+  if (e.target.id === 'tbown') { LIMITS.ownDigits = e.target.checked; return; }
+  if (e.target.id === 'tbextra') { LIMITS.extra = Number(e.target.value) || 0; return; }
+  if (e.target.id === 'tbappr') { LIMITS.changeNeedsGm = e.target.checked; return; }
+  if (e.target.dataset?.rowlist !== undefined) { const r = ROWS[Number(e.target.dataset.rowlist)]; r.Listed = e.target.checked ? 'yes' : 'no'; e.target.parentElement.lastChild.textContent = ' ' + (e.target.checked ? 'yes' : 'hidden'); e.target.closest('tr').classList.toggle('is-hidden', !e.target.checked); return; }
+  if (e.target.dataset?.rowpick !== undefined) { ROWS[Number(e.target.dataset.rowpick)]['Players can pick'] = e.target.checked ? 'yes' : 'no'; S.path = homePath(); S.sugg = []; S.level = null; buildTables(); e.target.parentElement.lastChild.textContent = ' ' + (e.target.checked ? 'yes' : 'no'); return; }
+  if (e.target.id !== 'tbfile' || !e.target.files?.[0]) return;
+  e.target.files[0].text().then((t) => { S.plan = planImport(t); draw(); });
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'tbq') { S.tbq = e.target.value; const at = e.target.selectionStart; draw(); const q = document.getElementById('tbq'); q.focus(); q.setSelectionRange(at, at); return; }
+  if (e.target.id === 'xfind') {
+    // One tab at a time normally; a search shows every match together, grouped by tab, and clearing it puts you back.
+    const q = e.target.value.trim().toLowerCase();
+    const panel = document.getElementById('xpanel'), tabs = document.getElementById('xtabs');
+    if (!q) { tabs.classList.remove('is-searching'); panel.innerHTML = xpanelFor(S.xtab); return; }
+    tabs.classList.add('is-searching');
+    const names = { home: homeCity().name, other: 'Other places', corps: 'Corporations', service: 'Service' };
+    const hits = dirEntries().filter((x) => [x.code, x.name, x.sub, x.region, x.group].filter(Boolean).join(' ').toLowerCase().includes(q));
+    panel.innerHTML = hits.length ? Object.keys(names).filter((t) => hits.some((h) => h.tab === t)).map((t) => '<div class="ncm-calls-row"><span class="lbl">' + esc(names[t]) + '</span><span class="ln"></span></div><div class="ncm-calls-xgrid ncm-calls-xgrid--one">' + hits.filter((h) => h.tab === t).map((h) => rowBtn(h, true)).join('') + '</div>').join('') : '<p class="ncm-calls-none">Nothing by that name.</p>';
+    return;
+  }
+  if (e.target.id === 'addlabel') { S.addLabel = e.target.value; return; }
+  if (e.target.id === 'addcalls') { S.addCalls = e.target.value; return; }
+  if (e.target.id === 'dial') { e.target.value = tidy(e.target.value); paintDial(); }
+  if (e.target.id === 'own') {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4); S.own = e.target.value;
+    const pre = prefix(), { row: cur } = steps(), msg = document.getElementById('ownmsg');
+    const retired = RETIRED[keyFor(cur, S.own)], taken = TAKEN.has(keyFor(cur, S.own));
+    if (!S.own) { msg.textContent = ''; msg.className = 'msg'; }
+    else if (S.own.length < 4) { msg.textContent = `${4 - S.own.length} more`; msg.className = 'msg'; }
+    else if (taken) { msg.textContent = 'Someone already has this.'; msg.className = 'msg bad'; }
+    else if (retired) { msg.textContent = 'Retired: it belonged to someone. Ask your GM.'; msg.className = 'msg bad'; }
+    else { msg.textContent = 'Free.'; msg.className = 'msg ok'; }
+    document.getElementById('res').innerHTML = resultHtml(pre, S.own.length === 4 && !taken && !retired ? S.own : S.picked);
+    document.getElementById('opts').innerHTML = sugg(pre);
+  }
+});
+function doCall() {
+  const w = document.getElementById('cbw'); const s = document.getElementById('cbs');
+  s.textContent = 'dialling... (the mock stops here)';
+  void w;
+}
+
+/* what taking a number does */
+function fullOf(num) { const p = parse(num); return p.done ? fullForm(p) : num; }
+function keyOfNum(num) { return parse(num).key; }
+function claim(num) { const k = keyOfNum(num); if (k) TAKEN.add(k); }
+/** A change retires the old number for good. */
+function swapNumber(num) { const old = keyOfNum(myNumber()); if (old) { TAKEN.delete(old); RETIRED[old] = 'Changed by Veronica A.'; } claim(num); S.myNum = fullOf(num); S.sugg = []; }
+function flash(el) { el.classList.remove('press'); void el.offsetWidth; el.classList.add('press'); }
+/* clicks */
+document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('[data-linetoggle]');
+  if (toggle) { toggleLines(); return; }
+  // a click outside the card closes the list
+  if (!e.target.closest('#linecard')) toggleLines(false);
+  const t = e.target.closest('button, [data-num]'); if (!t) return;
+  const d = t.dataset;
+  if (d.f !== undefined) return setFrame(d.f);
+  if (d.s) { document.documentElement.style.setProperty('--ncm-text-scale', String(Number(d.s) / 100)); document.querySelectorAll('[data-s]').forEach((b) => b.classList.toggle('on', b === t)); return; }
+  if (d.t !== undefined) return applyTheme(d.t);
+  if (d.mode) { S.mode = d.mode; S.sugg = []; S.path = homePath(); S.level = null; return setFrame('picker'); }
+  if (d.addline !== undefined) { if (!extraLeft()) { flash(t); return; } S.mode = 'add'; S.addLabel = ''; S.addKind = 'extra'; S.sugg = []; S.path = homePath(); S.level = null; return setFrame('picker'); }
+  if (d.addkind) { S.addLabel = document.getElementById('addlabel')?.value ?? S.addLabel; S.addKind = d.addkind; return redrawPicker(); }
+  if (d.take) {
+    const num = prefix() + (S.own.length === 4 && document.getElementById('ownmsg')?.classList.contains('ok') ? S.own : S.picked);
+    if (d.take === 'add') {
+      const label = (document.getElementById('addlabel')?.value || '').trim() || (S.addKind === 'burner' ? 'Burner' : 'Extra line');
+      const calls = Number(document.getElementById('addcalls')?.value) || 5;
+      LINES.push({ n: fullOf(num), label: S.addKind === 'burner' ? label + ' · burns out after ' + calls + ' calls' : label, vm: true, greet: 'Default', ring: true, mine: true, burner: S.addKind === 'burner' });
+      claim(num); S.mode = 'first';
+      setFrame('calls'); S.line = LINES.length - 1; paintLine();
+      return;
+    }
+    if (d.take === 'ask') { S.pending = num; S.mode = 'first'; return setFrame('calls'); }
+    swapNumber(num); S.mode = 'first';
+    return setFrame('calls');
+  }
+  if (d.req === 'cancel') { S.pending = null; return draw(); }
+  if (d.req === 'yes') { swapNumber(S.pending); S.pending = null; return draw(); }
+  if (d.req === 'no') { S.pending = null; return draw(); }
+  if (d.go) { if (d.go === 'calls') S.mode = 'first'; return setFrame(d.go); }
+  if (d.intro) return setFrame('calls');
+  if (d.xlist) { S.xlist = d.xlist === '1'; if (S.xlist) S.xtab = 'home'; draw(); if (S.xlist) document.getElementById('xfind')?.focus(); return; }
+  if (d.xtab) { S.xtab = d.xtab; document.getElementById('xfind').value = ''; document.getElementById('xtabs').classList.remove('is-searching'); document.getElementById('xtabs').innerHTML = xtabs(); document.getElementById('xpanel').innerHTML = xpanelFor(S.xtab); document.getElementById('xpanel').scrollTop = 0; document.querySelector('[data-xtab="' + S.xtab + '"]').focus(); return; }
+  if (d.xpick !== undefined) { S.xlist = false; S.dial = d.xpick; draw(); const inp = document.getElementById('dial'); if (inp) { inp.value = d.xpick; paintDial(); inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } return; }
+  if (d.key) { const inp = document.getElementById('dial'); inp.value = tidy(inp.value + d.key); paintDial(); press(d.key); inp.focus(); return; }
+  if (t.id === 'del') { const inp = document.getElementById('dial'); let v = inp.value.replace(/[-\s]$/, ''); inp.value = v.slice(0, -1); paintDial(); press('del'); inp.focus(); return; }
+  if (t.id === 'cb') return doCall();
+  if (d.dial) { const inp = document.getElementById('dial'); inp.value = d.dial; paintDial(); inp.focus(); return; }
+  if (d.copy) { try { navigator.clipboard?.writeText(d.copy); } catch { /* the mock */ } const was = t.innerHTML; t.innerHTML = '<i class="fas fa-check"></i> Copied'; setTimeout(() => { t.innerHTML = was; }, 1100); return; }
+  if (d.line !== undefined) { pickLine(Number(d.line)); return; }
+  if (d.retire !== undefined) {
+    const L = curLine(); const key = keyOfNum(L.n);
+    if (key) { TAKEN.delete(key); RETIRED[key] = 'Retired by Veronica A.'; }
+    const a = LINES.indexOf(L); if (a > 0) LINES.splice(a, 1); else { const g = GIVEN.indexOf(L); if (g >= 0) GIVEN.splice(g, 1); }
+    S.line = 0; return draw();
+  }
+  if (d.set) {
+    const L = curLine();
+    if (d.set === 'vm') L.vm = !L.vm;
+    if (d.set === 'ring') L.ring = !L.ring;
+    if (d.set === 'greet') { const seq = ['Default', 'Read out', 'Recorded', 'None']; L.greet = seq[(seq.indexOf(L.greet) + 1) % seq.length]; }
+    paintLine({ keepDrop: true });
+    return;
+  }
+  if (d.crumb) { if (!S.level) S.levelFrom = { ...S.path }; S.walking = false; S.justArrived = false; S.level = d.crumb; return redrawPicker(); }
+  if (d.levelDone !== undefined) { if (S.levelFrom) S.path = { ...S.levelFrom }; S.level = null; S.levelFrom = null; S.walking = false; S.justArrived = false; return redrawPicker(); }
+  if (d.step) {
+    // Every pick moves to the next step. Re-picking what you had keeps the choices below it, lit, for a quick walk down.
+    const changed = S.walking || S.path[d.step] !== d.v;
+    S.path[d.step] = d.v;
+    if (changed) { const i = LEVELS.findIndex((L) => L.key === d.step); for (const L of LEVELS.slice(i + 1)) S.path[L.key] = null; S.walking = true; }
+    S.level = nextLevel(d.step);
+    if (!S.level) { S.levelFrom = null; S.justArrived = true; S.walking = false; if (changed) newSugg(); }
+    return redrawPicker();
+  }
+  if (d.scope) { LIMITS.scope = d.scope; S.path = homePath(); S.level = null; S.sugg = []; return draw(); }
+  if (d.camp) { const C = CAMPAIGNS[d.camp]; ROWS = [...ROWS.filter((r) => !C.rows.some((n) => rowKey(n) === rowKey(r))), ...C.rows.map((r) => ({ ...r }))]; setHome(C.home.rc, C.home.city); return draw(); }
+  if (d.tb === 'blank') { const ex = [...COLS].map((c) => ({ 'Region code': '14', Region: 'Free State of Texas', State: 'Texas', 'City code': 'DAL', City: 'Dallas', Area: 'Downtown', Code: 'CEN', District: 'Central', Category: 'District', 'Players can pick': 'yes', Status: 'live', Source: 'Homebrew', Listed: 'yes' }[c])); const url = URL.createObjectURL(new Blob(['\uFEFF' + [COLS, ex].map((l) => l.map(csvCell).join(',')).join('\n')], { type: 'text/csv' })); const a = document.createElement('a'); a.href = url; a.download = 'ncm-phone-numbers-template.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000); return; }
+  if (d.tb === 'export') { const url = URL.createObjectURL(new Blob(['\uFEFF' + toCsv()], { type: 'text/csv' })); const a = document.createElement('a'); a.href = url; a.download = 'ncm-phone-numbers.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000); return; }
+  if (d.tb === 'import') return document.getElementById('tbfile').click();
+  if (d.tb === 'sample') { S.plan = planImport(SAMPLE_EDIT()); return draw(); }
+  if (d.tb === 'reset') { ROWS = BOOK_ROWS.map((r) => ({ ...r })); EXTRA_COLS = []; S.plan = null; setHome('72', 'NC'); return draw(); }
+  if (d.tbhide) { for (const r of ROWS) if (tbMatches(r)) r.Listed = d.tbhide; return draw(); }
+  if (d.plan === 'apply') { applyPlan(S.plan); return draw(); }
+  if (d.plan === 'cancel') { S.plan = null; return draw(); }
+  if (t.id === 'shuf') { newSugg(); return paintPickNumbers(); }
+  if (d.pick) { S.picked = d.pick; S.own = ''; const own = document.getElementById('own'); own.value = ''; document.getElementById('ownmsg').textContent = ''; return paintPickNumbers(); }
+});
+/** Picking redraws only what changed, on the live page. That is the scroll fix: nothing replaces the scroller. */
+function paintPickNumbers() {
+  const pre = prefix();
+  document.getElementById('opts').innerHTML = sugg(pre);
+  document.getElementById('res').innerHTML = resultHtml(pre, S.picked);
+}
+function redrawPicker() {
+  const sc = document.getElementById('pickscroll'); const top = sc?.scrollTop || 0;
+  stage.innerHTML = picker();
+  const sc2 = document.getElementById('pickscroll'); if (sc2) sc2.scrollTop = top;
+}
+
+/* hover help + number breakdown */
+const tip = document.createElement('div'); tip.className = 'mk-tip'; tip.hidden = true; document.body.appendChild(tip);
+let pop = null, popFor = null, pinned = false;
+function closePop(force) { if (pinned && !force) return; pop?.remove(); pop = null; popFor = null; pinned = false; }
+function openPop(el) {
+  if (popFor === el) return;
+  closePop(true);
+  const raw = el.dataset.num, p = parse(raw);
+  const rows = [];
+  if (p.service) rows.push([p.service, 'Service', p.name, 'x']);
+  else if (isUnlisted(p)) rows.push([p.ex || p.city, 'Unlisted', 'The directory has nothing on this number.', 'x']);
+  else {
+    rows.push([`+${p.rc}`, 'Region', REGIONS[p.rc].name, 'r']);
+    if (stateOf(p)) rows.push(['', 'State', stateOf(p), 'c']);
+    rows.push([p.city, 'City', REGIONS[p.rc].cities[p.city].name, 'c']);
+    if (p.ex) rows.push([p.ex, 'District', REGIONS[p.rc].cities[p.city].ex[p.ex], 'x']);
+    rows.push([p.line, 'Line', ownerOf(p) || 'Not in your contacts', 'l']);
+  }
+  pop = document.createElement('div'); pop.className = 'ncm-numpop ncm-num'; pop.style.cursor = 'default'; pop.style.whiteSpace = 'normal'; pop.style.borderBottom = '';
+  pop.innerHTML = `<div class="ncm-numpop__n">${p.service ? esc(p.service) : isUnlisted(p) ? esc(raw) : esc(fullForm(p))}</div>${rows.map(([c, k, v, cls]) => `<div class="ncm-numpop__row"><code class="${cls}">${esc(c)}</code><small>${k}</small><span>${esc(v)}</span></div>`).join('')}<div class="ncm-numpop__ft">${p.service ? 'A word you can dial from anywhere.' : isUnlisted(p) ? 'It may still connect, if you dare.' : 'Where this number was issued. They may be somewhere else now.'}</div>`;
+  document.body.appendChild(pop); popFor = el;
+  const r = el.getBoundingClientRect(), pr = pop.getBoundingClientRect();
+  pop.style.left = `${Math.max(8, Math.min(r.left, innerWidth - pr.width - 8))}px`;
+  pop.style.top = `${r.bottom + pr.height + 8 > innerHeight ? Math.max(8, r.top - pr.height - 6) : r.bottom + 6}px`;
+}
+document.addEventListener('mouseover', (e) => {
+  const n = e.target.closest?.('[data-num]');
+  if (n) { tip.hidden = true; if (!pinned) openPop(n); return; }
+  if (pop && !e.target.closest?.('.ncm-numpop') && !pinned) closePop();
+  const t = e.target.closest?.('[data-tooltip]');
+  if (!t) { tip.hidden = true; return; }
+  tip.textContent = t.dataset.tooltip; tip.hidden = false;
+  const r = t.getBoundingClientRect(), pr = tip.getBoundingClientRect();
+  tip.style.left = `${Math.max(6, Math.min(r.left + r.width / 2 - pr.width / 2, innerWidth - pr.width - 6))}px`;
+  tip.style.top = `${r.top - pr.height - 6 < 4 ? r.bottom + 6 : r.top - pr.height - 6}px`;
+});
+document.addEventListener('click', (e) => { if (e.target.closest?.('[data-linetoggle], [data-line]')) return; const n = e.target.closest?.('[data-num]'); if (n) { openPop(n); pinned = true; return; } if (!e.target.closest?.('.ncm-numpop')) closePop(true); });
+document.addEventListener('focusin', (e) => { if (e.target.matches?.('[data-num]') && !pinned) openPop(e.target); });
+document.addEventListener('focusout', (e) => { if (e.target.matches?.('[data-num]') && !pinned) closePop(); });
+
+/* the two looks */
+function applyTheme(t) {
+  const R = document.documentElement.style;
+  const on = t === 'arasaka';
+  const set = { '--ncm-primary': '#ff2d3f', '--ncm-secondary': '#ff2d3f', '--ncm-accent': '#ffb347', '--ncm-bg-deep': '#0a0406', '--ncm-bg-base': '#100608', '--ncm-bg-surface': '#190a0d', '--ncm-bg-elevated': '#241014', '--ncm-border': '#4a2028', '--ncm-text-primary': '#f4e9ea', '--ncm-text-secondary': '#c9b4b7' };
+  for (const [k, v] of Object.entries(set)) { if (on) R.setProperty(k, v); else R.removeProperty(k); }
+  document.querySelectorAll('[data-t]').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+}
+
+/* start */
+const startS = q.get('s'); document.documentElement.style.setProperty('--ncm-text-scale', String((Number(startS) || 100) / 100));
+document.querySelector(`[data-s="${startS === '130' ? 130 : 100}"]`).classList.add('on');
+applyTheme(q.get('t') || '');
+if (q.get('dial')) S.dial = q.get('dial');
+draw();
+window.NCM_MOCK = { parse, tidy, seenFrom, placeOf, fullForm, keyOf, asKeys, S, planImport, applyPlan, toCsv, steps, newSugg, parseCsv, get ROWS() { return ROWS; }, RETIRED, TAKEN, LIMITS, setHome, setEra, pickable, get HOME() { return HOME; }, LINES, GIVEN, allLines, curLine, extraLeft, myNumber };
+</script>
+</body>
+</html>

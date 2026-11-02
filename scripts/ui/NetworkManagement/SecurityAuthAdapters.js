@@ -15,6 +15,7 @@
  */
 
 import { resolveTerminalSound } from '../../utils/helpers.js';
+import { beatsDV } from '../../utils/rolls.js';
 import { bypassDCFor } from '../../utils/bypassSkills.js';
 
 /**
@@ -112,7 +113,7 @@ export class TerminalAuthAdapter {
     const sec = this._svc?.getAccount(this.item, this.accountId)?.security || {};
     if (!sec.requiresAuth) return { success: true };
     const dc = bypassDCFor(sec, skillName);
-    if (total >= dc) {
+    if (beatsDV(total, dc)) {
       if (!silent) this._play('hack-success');
       return { success: true };
     }

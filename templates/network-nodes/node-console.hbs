@@ -44,13 +44,13 @@
   <div class="ncm-ndc__sess">
     <div class="ncm-ndc__sess-top">
       <span class="ncm-ndc__moves">Moves<span class="ncm-ndc__pips">{{#each session.pips}}<span class="ncm-ndc__pip{{#if on}} is-on{{/if}}"></span>{{/each}}</span>{{session.left}} of {{session.total}} left</span>
-      <span class="ncm-ndc__who">{{session.who}} · <b>{{session.skill}} {{session.rank}}</b></span>
+      <span class="ncm-ndc__who">{{session.who}} · <b>{{session.formula}}</b></span>
     </div>
     <div class="ncm-ndc__sacts">
       {{#each session.actions}}
       {{#if run}}<button type="button" class="ncm-ndc__sa" data-action="sessAct" data-key="{{key}}">{{else}}<div class="ncm-ndc__sa is-locked">{{/if}}
         <i class="fas {{icon}}"></i><b>{{label}}</b><small>{{#if have}}<span class="ncm-ndc__have">{{have}}</span> — {{/if}}{{blurb}}</small>
-        <span class="ncm-ndc__sadv">{{#if baseText}}<s>{{baseText}}</s>{{/if}}{{dvText}}<em class="is-{{noteTone}}">{{note}}</em></span>
+        <span class="ncm-ndc__sadv">{{#if baseText}}<s>{{baseText}}</s>{{/if}}{{dvText}}{{#if pct}} <span class="ncm-ndc__odds is-{{oddsTone}}">{{pct}}%</span>{{/if}}<em class="is-{{noteTone}}">{{note}}</em></span>
       {{#if run}}</button>{{else}}</div>{{/if}}
       {{/each}}
     </div>

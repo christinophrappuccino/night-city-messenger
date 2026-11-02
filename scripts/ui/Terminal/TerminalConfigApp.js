@@ -87,6 +87,9 @@ export class TerminalConfigApp extends BaseApplication {
     actions: {
       switchTab: TerminalConfigApp._onSwitchTab,
       saveConfig: TerminalConfigApp._onSaveConfig,
+      termNumberGive: TerminalConfigApp._onTermNumberGive,
+      termNumberDrop: TerminalConfigApp._onTermNumberDrop,
+      termCallLog: TerminalConfigApp._onTermCallLog,
       clearPresetKit: TerminalConfigApp._onClearPresetKit,
       selectTermPreset: TerminalConfigApp._onSelectTermPreset,
       resetTermColors: TerminalConfigApp._onResetTermColors,
@@ -431,6 +434,11 @@ export class TerminalConfigApp extends BaseApplication {
       // Network
       networkRequired: !!cfg.network?.required,
       // A stored 'type' / 'both' has no editor here and lets nobody in, so it reads as "only these".
+      phone: (() => {
+        const l = game.nightcity?.callService?.lineOfItem?.(this.item.uuid);
+        if (!l) return { number: '' };
+        return { number: l.number, text: l.text || '', isRecording: l.when === 'recording', whens: [['recording', 'A recording'], ['modem', 'Modem tone'], ['vm', 'Voicemail'], ['none', 'Rings out']].map(([key, label]) => ({ key, label, on: l.when === key })) };
+      })(),
       reachOnlyThese: (cfg.network?.accessMode || 'any') !== 'any',
       accessModes: [['any', 'Any network'], ['whitelist', 'Only these networks']].map(([value, label]) => ({
         value, label, selected: (value === 'any') === ((cfg.network?.accessMode || 'any') === 'any'),
@@ -491,7 +499,7 @@ export class TerminalConfigApp extends BaseApplication {
         require: !!(c.require ?? d.require),
         skill,
         skillOptions: skills.map(s => ({ name: s, selected: s === skill })),
-        dv: Number(c.dv ?? d.dv) || 15,
+        dv: Number(c.dv ?? d.dv) || 9,
         isSell: key === 'sell',
       };
     });
@@ -503,7 +511,7 @@ export class TerminalConfigApp extends BaseApplication {
     if (s.allowPassword ?? s.password) out.push({ label: 'Password', cls: 'on' });
     if (s.allowSkillCheck) {
       const rows = bypassRowsOf(s);
-      if (!rows.length) out.push({ label: `Skill DV ${s.bypassDC ?? 15}`, cls: 'on' });
+      if (!rows.length) out.push({ label: `Skill DV ${s.bypassDC ?? 9}`, cls: 'on' });
       for (const r of rows) out.push({ label: `${r.name} DV ${r.dv}`, cls: 'on' });
     }
     if (s.allowKeyItem) out.push({ label: `Key: ${s.keyItemName || '?'}`, cls: 'on' });
@@ -570,9 +578,9 @@ export class TerminalConfigApp extends BaseApplication {
       password: s.password || '',
       allowSkillCheck: !!s.allowSkillCheck,
       skillOpts: skills.map(v => ({ value: v, selected: v === curSkill })),
-      bypassDC: s.bypassDC ?? 15,
+      bypassDC: s.bypassDC ?? 9,
       // One row per bypass skill, each with its own DV.
-      bypassRowsHtml: bypassRowsHtml(s, { select: 'ncm-cfg-select', input: 'ncm-cfg-input ncm-cfg-input--short', defaultDV: 15 }),
+      bypassRowsHtml: bypassRowsHtml(s, { select: 'ncm-cfg-select', input: 'ncm-cfg-input ncm-cfg-input--short', defaultDV: 9 }),
       allowKeyItem: !!s.allowKeyItem,
       keyItemName: s.keyItemName || '',
       // Network visibility — the account only exists on these uplinks.
@@ -634,6 +642,8 @@ export class TerminalConfigApp extends BaseApplication {
     this._foldOpenAfterRender();   // accordion: grow a just-opened fold from 0
     this._wireAccountsTab(el);
     this._wireContentTab(el);
+    el.querySelector('[data-term-when]')?.addEventListener('change', async (e) => { await game.nightcity?.callService?.setTerminalNumber(this.item, { when: e.target.value }); const row = el.querySelector('[data-term-rec]'); if (row) row.style.display = e.target.value === 'recording' ? '' : 'none'; });
+    el.querySelector('[data-term-text]')?.addEventListener('change', (e) => game.nightcity?.callService?.setTerminalNumber(this.item, { text: e.target.value }));
     this._wireAccountEditor(el);
     this._wireThemeTab(el);
     // Paint the in-sheet theme preview (draft or saved) on every render.
@@ -1468,6 +1478,24 @@ export class TerminalConfigApp extends BaseApplication {
     return { ...a, readOnly: a.rights === 'read', label, labelColor: TERMINAL_PRESETS[theme?.preset]?.theme?.accent || '#f7c948', verdict };
   }
 
+  static async _onTermNumberGive() {
+    const s = game.nightcity?.callService;
+    const number = s?.suggestNumbers?.({ count: 1 })[0]?.number;
+    if (!number) { ui.notifications?.warn('The place table is empty.'); return; }
+    const r = await s.setTerminalNumber(this.item, { number });
+    if (!r.ok) ui.notifications?.warn(r.error);
+    this.render();
+  }
+
+  static async _onTermNumberDrop() {
+    await game.nightcity?.callService?.setTerminalNumber(this.item, { number: null });
+    this.render();
+  }
+
+  static _onTermCallLog(event, target) {
+    game.nightcity?.openAdminTab?.('phone', { popout: true, select: { log: `a:${this.item.uuid}:${target.dataset.account || ''}` } });
+  }
+
   static async _onSaveConfig() {
     const el = this.element;
     const v = (name) => el.querySelector(`[name="${name}"]`);
@@ -1555,7 +1583,7 @@ export class TerminalConfigApp extends BaseApplication {
           allow: chk(`exfil${cap}Allow`),
           require: chk(`exfil${cap}Require`),
           skill: val(`exfil${cap}Skill`, 'Interface') || 'Interface',
-          dv: parseInt(val(`exfil${cap}Dv`, '15'), 10) || 15,
+          dv: parseInt(val(`exfil${cap}Dv`, '9'), 10) || 9,
         };
         if (key === 'sell') acc[key].price = Math.max(0, parseInt(val('exfilSellPrice', '0'), 10) || 0);
         return acc;
@@ -2162,7 +2190,7 @@ export class TerminalConfigApp extends BaseApplication {
         ...(() => {
           const rows = readBypassRows(el.querySelector('.ncm-acct-editor'));
           if (rows) return bypassFieldsFrom(rows, 15);
-          return { bypassSkills: [val('secSkill', 'Interface')], bypassDC: parseInt(val('secDV', '15'), 10) || 15 };
+          return { bypassSkills: [val('secSkill', 'Interface')], bypassDC: parseInt(val('secDV', '9'), 10) || 9 };
         })(),
         allowKeyItem: chk('secAllowKeyItem'),
         keyItemName: val('secKeyItemName'),

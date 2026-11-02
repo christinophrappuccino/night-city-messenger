@@ -10,18 +10,44 @@
  */
 
 import { formatDuration } from '../../../utils/callModel.js';
+import { dateBands, namedGroups, searchSnippet, markHit } from '../../../utils/logFolds.js';
 
 export const PHONE_VIEWS = [
   ['live', 'Live', 'fa-tower-broadcast'],
   ['numbers', 'Numbers', 'fa-sim-card'],
+  ['overheard', 'Overheard calls', 'fa-ear-listen'],
+  ['setup', 'Number setup', 'fa-sliders'],
   ['log', 'Call log', 'fa-list'],
-  ['vm', 'Voicemail', 'fa-voicemail'],
-  ['settings', 'Settings', 'fa-sliders'],
+  ['settings', 'Settings', 'fa-gear'],
 ];
 
-export const LOG_FILTERS = [['all', 'All calls'], ['answered', 'Answered'], ['missed', 'Missed'], ['declined', 'Declined'], ['dropped', 'Dropped']];
-export const NUMBER_SHOW = [['all', 'Everyone'], ['has', 'Has a number'], ['none', 'No number'], ['burner', 'Burners']];
-export const LOG_PER_PAGE = 40;
+/** Views that live under another's nav button: the Call log holds its Calls tab, Voicemail and the log editor. */
+export const NAV_PARENT = Object.freeze({ vm: 'log', logedit: 'log' });
+
+/** Where the Call log button lands: voicemail waiting comes first, and a click from inside it stays put. */
+export const logLanding = (view, unheard) => (NAV_PARENT[view] === 'log' || view === 'log' ? view : unheard > 0 ? 'vm' : 'log');
+
+export const QUEUE_KINDS = Object.freeze({ corp: ['Company', 'fa-building'], shared: ['Shared line', 'fa-users'], special: ['Special', 'fa-star-of-life'], npc: ['NPC', 'fa-user'] });
+export const QUEUE_SHOW = [['all', 'All calls'], ['corp', 'Companies'], ['npc', 'NPCs'], ['shared', 'Shared lines'], ['special', 'Special numbers'], ['hold', 'On hold']];
+
+/**
+ * The call queue: longest wait first, numbered, one call open at a time.
+ * @param {object[]} ringing — liveBoard ringing rows
+ * @param {{filter?: string, open?: string|null, now?: number, kindOf?: Function}} o
+ */
+export function callQueue(ringing, { filter = 'all', open = null, now = Date.now(), kindOf = () => 'npc' } = {}) {
+  const all = [...ringing].sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0)).map((c, i) => {
+    const kind = kindOf(c), [word, icon] = QUEUE_KINDS[kind] || QUEUE_KINDS.npc;
+    return { ...c, pos: i + 1, kind, word, icon, held: !!c.queueHold, waitS: Math.max(0, Math.round((now - (c.startedAt || now)) / 1000)), asks: c.to?.name || c.to?.number || 'them', isSpecial: kind === 'special' };
+  });
+  const openId = open ?? all.find((c) => !c.held)?.id ?? all[0]?.id ?? null;
+  return { count: all.length, rows: all.filter((c) => filter === 'all' || (filter === 'hold' ? c.held : c.kind === filter)).map((c) => ({ ...c, open: c.id === openId })), allHeld: all.length > 0 && all.every((c) => c.held) };
+}
+
+export const LOG_FILTERS = [['all', 'All results'], ['answered', 'Answered'], ['missed', 'Missed'], ['declined', 'Declined'], ['dropped', 'Dropped'], ['words', 'Has a transcript'], ['heard', 'Caught by a tap']];
+export const LOG_GROUPS = [['date', 'By date'], ['person', 'By person']];
+export const VM_SHOW = [['all', 'All messages'], ['new', 'New'], ['heard', 'Heard'], ['npc', 'NPC mailboxes'], ['pc', 'Player mailboxes']];
+export const VM_GROUPS = [['box', 'By mailbox'], ['date', 'By date']];
 
 const STATE_WORDS = { dialing: 'Dialling', ringing: 'Ringing', live: 'On the line', held: 'On hold' };
 const OUTCOME = {
@@ -83,74 +109,11 @@ export function liveBoard(calls, { now = Date.now(), ringMs = 30000, ringsForMe 
 }
 
 /**
- * NUMBERS: every owner and their lines, grouped Players' characters / NPCs / Unowned lines.
- * @param {{lines:object, pcs:{actorId,actorName,playerName,img?}[], contacts:{id,name,phone?,actorId?,identityOf?,sendOnly?,img?}[], q?:string, show?:string, shut?:Set, open?:Set}} o
+ * CALL LOG: search, filters, then groups: date bands, or one group per person on the call.
+ * @param {object[]} entries
+ * @param {{q?: string, filter?: string, who?: string, net?: string, from?: string, to?: string, group?: 'date'|'person', now?: string, shut?: Set, open?: Set, limits?: object, fmtDay?: Function, fmtTime?: Function, fmtWhen?: Function}} o
  */
-export function numberGroups({ lines = {}, pcs = [], contacts = [], q = '', show = 'all', shut = new Set(), open = new Set() } = {}) {
-  const byActor = new Map(), byContact = new Map(), used = new Set();
-  for (const [normal, l] of Object.entries(lines)) {
-    const o = l.owner || {};
-    if (o.contactId) byContact.set(o.contactId, { normal, number: l.number, owner: o });
-    else if (o.actorId) byActor.set(o.actorId, { normal, number: l.number, owner: o });
-  }
-  const contactById = new Map(contacts.map((c) => [c.id, c]));
-  const players = [], npcs = [], unowned = [];
-  const pcIds = new Set(pcs.map((p) => p.actorId));
-  for (const p of pcs) {
-    const main = byActor.get(p.actorId);
-    if (main) used.add(main.normal);
-    players.push({ key: `a:${p.actorId}`, name: p.actorName, subline: p.playerName, img: p.img || '', initials: initials(p.actorName), number: main?.number || '',
-      kind: main ? 'main' : 'none', actorId: p.actorId, contactId: null, player: true });
-    // a player character's burners (aliases with a line)
-    for (const [cid, b] of byContact) {
-      if (b.owner.actorId !== p.actorId) continue;
-      used.add(b.normal);
-      const c = contactById.get(cid);
-      players.push({ key: `c:${cid}`, name: c?.name || b.owner.name, subline: `burner · ${p.actorName}`, img: c?.img || '', initials: initials(c?.name || b.owner.name),
-        number: b.number, kind: 'burner', actorId: p.actorId, contactId: cid, player: true, alias: true });
-    }
-  }
-  for (const c of contacts) {
-    if (c.sendOnly || (c.actorId && pcIds.has(c.actorId))) continue;
-    const line = byContact.get(c.id);
-    if (line) used.add(line.normal);
-    const number = line?.number || c.phone || '';
-    if (!number) continue;                        // NPCs are listed when they have a line; Give a number adds one
-    npcs.push({ key: `c:${c.id}`, name: c.name, subline: c.identityOf ? `alias of ${contactById.get(c.identityOf)?.name || 'someone'}` : '', img: c.img || '',
-      initials: initials(c.name), number, kind: 'main', actorId: c.actorId || null, contactId: c.id, alias: !!c.identityOf, fromDirectory: !line });
-  }
-  for (const [normal, l] of Object.entries(lines)) {
-    if (used.has(normal)) continue;
-    const o = l.owner || {};
-    if (o.actorId && !o.contactId && !pcIds.has(o.actorId)) {
-      npcs.push({ key: `a:${o.actorId}`, name: o.name || l.number, subline: 'character', img: '', initials: initials(o.name), number: l.number, kind: 'main', actorId: o.actorId, contactId: null });
-      continue;
-    }
-    unowned.push({ key: `n:${normal}`, name: o.name || 'Owner gone', subline: 'the owner no longer exists', img: '', initials: '?', number: l.number, kind: 'orphan', actorId: null, contactId: null });
-  }
-  const pass = (r) => matches(q, r.name, r.subline, r.number) && (show === 'all' || (show === 'has' ? r.kind !== 'none' : show === 'none' ? r.kind === 'none' : r.kind === 'burner'));
-  const forced = !!q || show !== 'all';
-  const raw = [
-    { key: 'players', label: "Players' characters", icon: 'fa-user', hue: 'var(--ncm-hue-3)', rows: players },
-    { key: 'npcs', label: 'NPCs', icon: 'fa-user-secret', hue: 'var(--ncm-hue-1)', rows: npcs.sort((a, b) => a.name.localeCompare(b.name)) },
-    { key: 'unowned', label: 'Lines with no owner', icon: 'fa-circle-question', hue: 'var(--ncm-bad)', rows: unowned },
-  ];
-  const groups = [];
-  for (const g of raw) {
-    const rows = g.rows.filter(pass);
-    if (!rows.length) continue;
-    groups.push({ ...g, rows, count: rows.length, noNumber: rows.filter((r) => r.kind === 'none').length,
-      shut: foldShut(g.key, { index: groups.length, shut, open, forced }) });
-  }
-  return { groups, total: players.length + npcs.length + unowned.length, noNumber: players.filter((r) => r.kind === 'none').length,
-    shown: groups.reduce((n, g) => n + g.count, 0), empty: !groups.length, forced };
-}
-
-/**
- * CALL LOG: every call, newest first, by day, filtered and paged.
- * @param {object[]} entries — CallService.allLogs()
- */
-export function logView(entries, { q = '', filter = 'all', page = 1, per = LOG_PER_PAGE, fmtDay = (d) => d, fmtTime = () => '' } = {}) {
+export function logView(entries, { q = '', filter = 'all', who = '', net = '', from = '', to = '', group = 'date', now, shut, open, limits = {}, fmtDay = (d) => d, fmtTime = () => '', fmtWhen = fmtTime } = {}) {
   const all = (entries || []).map((l) => {
     const info = outcomeInfo(l.outcome);
     const talked = l.outcome === 'answered' && l.seconds;
@@ -161,19 +124,25 @@ export function logView(entries, { q = '', filter = 'all', page = 1, per = LOG_P
       heardBy: (l.heardBy || []).map((h) => h?.name).filter(Boolean),
       journalId: l.journalId, pageId: l.pageId };
   });
-  const counts = Object.fromEntries(LOG_FILTERS.map(([k]) => [k, k === 'all' ? all.length : all.filter((r) => r.outcome === k).length]));
-  const shown = all.filter((r) => (filter === 'all' || r.outcome === filter) && matches(q, r.from.name, r.from.number, r.to.name, r.to.number, r.net, r.scene, ...r.transcript.map((x) => x.text)));
-  const pages = Math.max(1, Math.ceil(shown.length / per));
-  const p = Math.min(Math.max(1, page), pages);
-  const slice = shown.slice((p - 1) * per, p * per);
-  const days = [];
-  for (const r of slice) {
-    r.time = r.gameTime ? fmtTime(r.gameTime) : '';
-    const last = days.at(-1);
-    if (last && last.day === r.day) last.rows.push(r); else days.push({ day: r.day, label: r.day ? fmtDay(r.day) : 'Earlier', rows: [r] });
+  const passes = (r, k) => k === 'all' || (k === 'words' ? r.transcript.length > 0 : k === 'heard' ? r.heardBy.length > 0 : r.outcome === k);
+  const counts = Object.fromEntries(LOG_FILTERS.map(([k]) => [k, all.filter((r) => passes(r, k)).length]));
+  const lower = from ? String(from).slice(0, 10) : '', upper = to ? String(to).slice(0, 10) : '';
+  const shown = all.filter((r) => passes(r, filter) && (!who || r.from.name === who || r.to.name === who) && (!net || r.net === net)
+    && (!lower || r.day >= lower) && (!upper || r.day <= upper)
+    && matches(q, r.from.name, r.from.number, r.to.name, r.to.number, r.net, r.scene, r.why, ...r.transcript.map((x) => x.text)));
+  const hasQ = !!String(q || '').trim();
+  for (const r of shown) {
+    r.fromHtml = markHit(r.from.name, q); r.toHtml = markHit(r.to.name, q);
+    r.hitHtml = hasQ ? markHit(searchSnippet(q, r.transcript.map((x) => x.text)), q) : '';
+    r.time = !r.gameTime ? '' : group === 'person' ? fmtWhen(r.gameTime) : fmtTime(r.gameTime);
   }
-  for (const d of days) d.bad = d.rows.filter((r) => r.info.tone === 'bad').length;
-  return { days, counts, page: p, pages, total: shown.length, from: shown.length ? (p - 1) * per + 1 : 0, to: (p - 1) * per + slice.length };
+  const forced = hasQ || filter !== 'all' || !!who || !!net || !!lower || !!upper;
+  const common = { dateOf: (r) => r.gameTime, isHot: (r) => r.info.tone === 'bad', shut, open, forced, limits, prefix: 'log:' };
+  const bands = group === 'person'
+    ? namedGroups(shown, { ...common, prefix: 'log:p:', keysOf: (r) => [r.from.name, r.to.name].filter(Boolean), head: (k) => ({ label: k }) })
+    : dateBands(shown, { ...common, now, dayLabel: fmtDay });
+  const uniq = (list) => [...new Set(list.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  return { bands, counts, total: shown.length, of: all.length, forced, people: uniq(all.flatMap((r) => [r.from.name, r.to.name])), networks: uniq(all.map((r) => r.net)) };
 }
 
 /**
@@ -182,20 +151,35 @@ export function logView(entries, { q = '', filter = 'all', page = 1, per = LOG_P
  * @param {object[]} vms — CallService.allVoicemails() rows with {ownerId, ownerIsContact}
  * @param {{ownerName:(v)=>string, isNpc:(v)=>boolean, fmt:(iso)=>string, shut?:Set, open?:Set}} o
  */
-export function voicemailBoxes(vms, { ownerName = () => '', isNpc = () => true, fmt = (x) => x, shut = new Set(), open = new Set() } = {}) {
+export function voicemailBoxes(vms, { ownerName = () => '', isNpc = () => true, fmt = (x) => x, shut = new Set(), open = new Set(), q = '', show = 'all', group = 'box', now, limits = {}, fmtDay = (d) => d, fmtTime = fmt } = {}) {
   const by = new Map();
   for (const v of vms || []) {
     const key = v.ownerId;
     if (!by.has(key)) by.set(key, { ownerId: key, name: ownerName(v), npc: !!isNpc(v), rows: [] });
-    by.get(key).rows.push({ vmId: v.vmId, ownerId: key, from: party(v.from), toName: v.to?.name || '', toContactId: v.to?.contactId || '', toActorId: v.to?.actorId || '',
+    by.get(key).rows.push({ vmId: v.vmId, ownerId: key, boxName: by.get(key).name, npc: by.get(key).npc, stamp: v.gameTime || '', from: party(v.from), toName: v.to?.name || '', toContactId: v.to?.contactId || '', toActorId: v.to?.actorId || '',
       text: v.text || '', tts: v.kind === 'tts', voice: v.voice || '', heard: !!v.heard, when: v.gameTime ? fmt(v.gameTime) : '',
       isAudio: v.kind === 'audio', audio: v.audio || '', length: v.duration ? formatDuration(v.duration) : '' });
   }
   const boxes = [...by.values()].map((b) => ({ ...b, count: b.rows.length, unheard: b.rows.filter((r) => !r.heard).length }));
-  boxes.sort((a, b) => Number(b.npc) - Number(a.npc) || b.unheard - a.unheard || a.name.localeCompare(b.name));
+  const boxOrder = (a, b) => Number(b.npc) - Number(a.npc) || b.unheard - a.unheard || a.name.localeCompare(b.name);
+  boxes.sort(boxOrder);
   boxes.forEach((b, i) => { b.shut = foldShut(`vm:${b.ownerId}`, { index: i, shut, open }); });
   const npcUnheard = boxes.filter((b) => b.npc).reduce((n, b) => n + b.unheard, 0);
-  return { boxes, total: (vms || []).length, npcUnheard, empty: !boxes.length };
+
+  // what the screen lists: search, Show, then a mailbox or date grouping
+  const passes = (r) => ({ all: true, new: !r.heard, heard: r.heard, npc: r.npc, pc: !r.npc }[show] ?? true);
+  const shown = boxes.flatMap((b) => b.rows).filter((r) => passes(r) && matches(q, r.from.name, r.from.number, r.toName, r.boxName, r.text));
+  for (const r of shown) {
+    r.fromHtml = markHit(r.from.name, q); r.toHtml = markHit(r.toName, q); r.textHtml = markHit(r.text, q);
+    if (group === 'date') r.when = r.stamp ? fmtTime(r.stamp) : '';
+  }
+  const forced = !!String(q || '').trim() || show !== 'all';
+  const common = { dateOf: (r) => r.stamp, isHot: (r) => !r.heard, shut, open, forced, limits };
+  const groups = group === 'date'
+    ? dateBands(shown, { ...common, now, dayLabel: fmtDay, prefix: 'vm:d:' })
+    : namedGroups(shown, { ...common, prefix: 'vm:', keysOf: (r) => [r.ownerId], order: boxOrder,
+      head: (k, rows) => ({ name: rows[0].boxName, label: rows[0].boxName, npc: rows[0].npc, player: !rows[0].npc, unheard: rows.filter((r) => !r.heard).length }) });
+  return { boxes, groups, total: (vms || []).length, shownCount: shown.length, forced, npcUnheard, empty: !boxes.length };
 }
 
 /** SETTINGS: the rows, read from the current values. Pure so the sim can check every key reaches a control. */
@@ -206,7 +190,6 @@ export function settingsView(v = {}, { modesAvailable = ['loud', 'type', 'dictat
     enabled: !!v.callsEnabled,
     modes: modesAvailable.map((m) => ({ key: m, label: modeNames[m] || m, on: modes.includes(m) })),
     startModes: modesAvailable.filter((m) => modes.includes(m)).map((m) => ({ key: m, label: modeNames[m] || m, on: v.callDefaultMode === m })),
-    homeCode: v.callHomeCode || '+1',
     ringSeconds: Number(v.callRingSeconds) || 30,
     unknown: [['not-in-service', 'Not in service'], ['gm', 'Ring me (the GM)']].map(([k, l]) => ({ key: k, label: l, on: (v.callUnknownNumbers || 'not-in-service') === k })),
     notice: v.callTranscriptNotice !== false,

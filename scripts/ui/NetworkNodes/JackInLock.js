@@ -68,6 +68,7 @@ export function bloomPlan(count = 8) {
  * @param {{label:string, value:number}[]} o.parts — the fixed parts of the roll (stat, rank, gear…)
  * @param {number} o.bloom — how many nodes the network has (the bloom)
  * @param {string} o.netName @param {string} o.hex
+ * @param {boolean} [o.decided] — nobody rolled (the GM calls it): no die, no total, no DV anywhere
  * @param {'in'|'miss'|'wait'} o.kind
  * @param {{d10:number,total:number,dv:number,moves:number,sub?:string}} [o.result] — known now (auto), or via setVerdict
  * @returns {{ setVerdict:(kind:'in'|'miss', result:object)=>void, finished:Promise<void>, destroy:()=>void }}
@@ -81,7 +82,7 @@ export function runJackIn(host, o = {}) {
   const OPEN = JACK_TIMING.OPEN;
 
   const root = document.createElement('div');
-  root.className = 'ncm-jk';
+  root.className = o.decided ? 'ncm-jk is-decided' : 'ncm-jk';
   root.style.setProperty('--nc', o.color || '#19f3f7');
   root.innerHTML = `
     <div class="ncm-jk__rain"></div><div class="ncm-jk__sweep"></div><div class="ncm-jk__vig"></div>
@@ -284,13 +285,13 @@ export function runJackIn(host, o = {}) {
     RES.style.transform = `translateY(${(10 * (1 - eOut(prog(t, OPEN + 0.45, OPEN + 0.8)))).toFixed(1)}px)`;
     if (isIn && R) {
       $('[data-nm]').textContent = scramble(String(o.netName || 'ACCESS').toUpperCase(), prog(t, OPEN + 0.5, OPEN + 1.3), Math.floor(t * 30));
-      $('[data-sub]').textContent = R.sub || `ACCESS GRANTED · ${R.total} VS DV ${dv} · NODE ${o.hex || ''}`;
+      $('[data-sub]').textContent = R.sub || `ACCESS GRANTED · ${o.decided ? '' : `${R.total} VS DV ${dv} · `}NODE ${o.hex || ''}`;
       const P = $('[data-pips]');
       if (P.dataset.n !== String(R.moves)) { P.dataset.n = String(R.moves); P.innerHTML = `<span>MOVES</span>${'<span class="pip"></span>'.repeat(R.moves || 0)}`; }
       P.querySelectorAll('.pip').forEach((pp, i) => { const s0 = 5.4 + i * 0.22, u = prog(t, s0, s0 + 0.18); pp.style.opacity = u; pp.style.transform = `rotate(45deg) translateY(${(-14 * (1 - eOut(u))).toFixed(1)}px)`; });
     } else if (isMiss && R) {
       $('[data-nm]').textContent = scramble('REJECTED', prog(t, OPEN + 0.6, OPEN + 1.1), Math.floor(t * 30));
-      $('[data-sub]').textContent = R.sub || `${R.total} VS DV ${dv}`;
+      $('[data-sub]').textContent = R.sub || (o.decided ? 'THE GM CALLED IT' : `${R.total} VS DV ${dv}`);
       $('[data-pips]').innerHTML = '';
     }
     CRACK.setAttribute('opacity', isMiss && t > OPEN + 0.25 ? 1 - prog(t, OPEN + 1.0, OPEN + 1.4) * 0.6 : 0);

@@ -68,6 +68,7 @@ export async function runBankHeist(opts = {}) {
   const fmtCur = (v) => v.toLocaleString();
   // Effective DV grows with greed: base + 1 per `dvPer` eddies transferred.
   const effDV = (amt) => (dvScale && dvPer > 0) ? (Number(dv) || 0) + Math.floor((Number(amt) || 0) / dvPer) : (Number(dv) || 0);
+  const gmDecides = !force && resolveHackResolution(hostItem) === 'gm';
 
   const el = document.createElement('div');
   el.className = 'ncm-heist-backdrop';
@@ -100,7 +101,7 @@ export async function runBankHeist(opts = {}) {
       </div>
       <div class="ncm-heist__bar" data-bar hidden><i></i></div>
       <div class="ncm-heist__verdict" data-verdict hidden></div>
-      <div class="ncm-heist__status"><span data-status>${force ? 'GM OVERRIDE — NO ROLL' : `SECURITY: ${esc(skill)} vs DV <b data-dv>${effDV(Number(max) || 1)}</b>${dvScale ? ' · scales with amount' : ''} · a miss trips a TRACE`}</span></div>
+      <div class="ncm-heist__status"><span data-status>${force ? 'GM OVERRIDE — NO ROLL' : gmDecides ? 'SECURITY: YOUR GM DECIDES AT THE TABLE · a miss trips a TRACE' : `SECURITY: ${esc(skill)} vs DV <b data-dv>${effDV(Number(max) || 1)}</b>${dvScale ? ' · scales with amount' : ''} · a miss trips a TRACE`}</span></div>
       <div class="ncm-heist__actions" data-actions>
         <button type="button" class="ncm-heist__btn ncm-heist__btn--ghost" data-h="cancel"><i class="fas fa-plug-circle-xmark"></i> DISCONNECT</button>
         <button type="button" class="ncm-heist__btn ncm-heist__btn--go" data-h="go"><i class="fas fa-bolt"></i> ${force ? 'FORCE TRANSFER' : 'JACK IN'}</button>
@@ -124,6 +125,7 @@ export async function runBankHeist(opts = {}) {
   return new Promise((resolve) => {
     let settled = false;
     let withdrawFn = null;              // Tier C: an ESC while AWAITING GM must also withdraw the request
+    let adjudicated = false;
     const finish = (r) => {
       if (settled) return; settled = true;
       el.classList.remove('is-open'); el.classList.add('is-closing');
@@ -178,6 +180,7 @@ export async function runBankHeist(opts = {}) {
       // Phase 2 — the roll, the GM's call (Tier C), or force.
       let ok = true, total = null, rolled = null;
       const mode = force ? 'auto' : resolveHackResolution(hostItem);
+      adjudicated = mode === 'gm';
       if (!force && mode === 'gm') {
         // hackResolution: 'gm' — no roll; the table runs the NET and the GM calls it.
         if (sub) sub.textContent = 'TABLE ADJUDICATION · RUN THE NET';
@@ -230,10 +233,11 @@ export async function runBankHeist(opts = {}) {
       } else if (!force) {
         try {
           const roll = await skillSvc?.performCheck(actor, skill || 'Interface', {
-            dc: useDV, showChat: true,
+            dc: useDV, showChat: true, ask: { host: el, title: `Siphon: ${accountLabel}`, goLabel: 'Jack in' },
             deferChat: true,   // posted when the transfer / trace verdict lands
             context: `Siphon: ${accountLabel}`, flavor: `Account Siphon // DV ${useDV}`,
           });
+          if (roll?.cancelled) return finish({ ok: false, amount: null, total: null, cancelled: true });
           rolled = roll;
           ok = !!roll?.success; total = roll?.total ?? null;
         } catch (err) { log.error(`BankHeist roll failed: ${err.message}`); ok = false; }
@@ -261,7 +265,7 @@ export async function runBankHeist(opts = {}) {
         sound?.play?.('hack-success');
         await rolled?.postChat?.();
         await wait(reduced() ? 300 : 1300);
-        finish({ ok: true, amount, total, dv: useDV, cancelled: false });
+        finish({ ok: true, amount, total, dv: useDV, cancelled: false, adjudicated });
       } else {
         // Trace fired — sever the connection.
         if (sub) sub.textContent = 'INTRUSION DETECTED';
@@ -273,7 +277,7 @@ export async function runBankHeist(opts = {}) {
         sound?.play?.('trace-fire');
         await rolled?.postChat?.();
         await wait(reduced() ? 300 : 1300);
-        finish({ ok: false, amount, total, dv: useDV, cancelled: false });
+        finish({ ok: false, amount, total, dv: useDV, cancelled: false, adjudicated });
       }
     }
   });

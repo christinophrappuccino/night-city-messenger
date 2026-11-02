@@ -21,6 +21,7 @@
 
 import { log, resolveHackResolution } from '../../utils/helpers.js';
 import { requestNetAdjudication, postNetActionCard, netadjDock } from './NetResolve.js';
+import { rollPanelData, rollControlsHtml, wireRollControls, shouldAskRoll } from './RollPanel.js';
 
 const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
 const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
@@ -43,6 +44,9 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
  *   adjudicates (NetResolve round-trip; the GM's verdict synthesizes {ok,total}
  *   so callers are unchanged). `choices` customizes the GM's verdict rungs
  *   (the upload forge ladder). No `net` = plain Tier A behavior, always.
+ *   `net.mode` forces the tier (a node has its own override). When the GM decides, nothing on screen names a DV or a
+ *   number, and the result carries `adjudicated: true`.
+ * @param {string} [opts.introGm]             the intro when the GM decides, for an intro that talks about the DV
  * @param {string} [opts.confirmLabel='Confirm']
  * @param {string} [opts.cancelLabel='Cancel']
  * @param {string} [opts.successLabel='ACCESS GRANTED']
@@ -60,7 +64,7 @@ export async function runSecurityConsole(opts = {}) {
     host = null, amount = null, gate = null,
     confirmLabel = 'Confirm', cancelLabel = 'Cancel',
     successLabel = 'ACCESS GRANTED', failLabel = 'TRACE DETECTED',
-    verdictFor = null,
+    verdictFor = null, introGm = null,
   } = opts;
 
   const gated = !!(gate && gate.require && gate.actor);
@@ -78,12 +82,16 @@ export async function runSecurityConsole(opts = {}) {
       </div>
       <div class="ncm-seccon__amtmax">max ${(Number(amount.max) || 0).toLocaleString()}${amount.unit ? ' ' + esc(amount.unit) : ''}</div>
     </div>` : '';
+  // The roll panel, unless the GM is deciding this one (no roll, nothing to spend) or the player turned it off.
+  const gateMode = gated && gate.net ? (gate.net.mode || resolveHackResolution(gate.net.hostItem || null)) : 'auto';
+  const gmDecides = gateMode === 'gm';
+  const panelData = gated && gateMode !== 'gm' && shouldAskRoll() ? rollPanelData(gate.actor, gate.skill || 'Interface', Number(gate.dv) || 9, { hideDV: !!gate.hideDV }) : null;
   const gateHtml = gated ? `
     <div class="ncm-seccon__gate">
       <i class="fas fa-dice-d20"></i>
-      <span>Security check — <b>${esc(gate.skill || 'Interface')}</b> vs <b>DV ${Number(gate.dv) || 15}</b></span>
+      <span>${gmDecides ? 'Your GM decides this one at the table' : `Security check — <b>${esc(gate.skill || 'Interface')}</b>${gate.hideDV ? '' : ` vs <b>DV ${Number(gate.dv) || 9}</b>`}`}</span>
       <span class="ncm-seccon__gate-warn">fail trips a trace</span>
-    </div>` : '';
+    </div>${panelData ? `<div class="ncm-seccon__roll">${rollControlsHtml(panelData)}</div>` : ''}` : '';
   const primaryLabel = gated ? 'ATTEMPT' : confirmLabel;
   const primaryIcon = gated ? 'fas fa-fingerprint' : 'fas fa-check';
 
@@ -93,7 +101,7 @@ export async function runSecurityConsole(opts = {}) {
     <div class="ncm-seccon" data-ct-color="${esc(accent)}" role="dialog" aria-modal="true">
       <div class="ncm-seccon__bar"></div>
       <div class="ncm-seccon__hd"><span class="ncm-seccon__ico"><i class="${esc(iconClass)}"></i></span><span class="ncm-seccon__ttl">${esc(title)}</span></div>
-      ${intro ? `<div class="ncm-seccon__intro">${esc(intro)}</div>` : ''}
+      ${(gmDecides && introGm) || intro ? `<div class="ncm-seccon__intro">${esc((gmDecides && introGm) || intro)}</div>` : ''}
       ${amtHtml}
       ${gateHtml}
       <div class="ncm-seccon__stage" aria-hidden="true">
@@ -108,6 +116,7 @@ export async function runSecurityConsole(opts = {}) {
   mount.appendChild(el);
   requestAnimationFrame(() => el.classList.add('is-open'));
 
+  const readRoll = panelData ? wireRollControls(el, panelData) : () => ({ luck: 0, modifier: 0 });
   const amtInput = el.querySelector('input[name="amt"]');
   amtInput?.focus();
   amtInput?.select?.();
@@ -157,10 +166,11 @@ export async function runSecurityConsole(opts = {}) {
 
       // ── Gated: lock the controls, resolve (roll or GM verdict), animate ──
       const net = gate.net || null;
-      const mode = net ? resolveHackResolution(net.hostItem || null) : 'auto';
-      const dvNum = Number(gate.dv) || 15;
+      const mode = gateMode;
+      const dvNum = Number(gate.dv) || 9;
 
       const buttons = el.querySelectorAll('.ncm-seccon__btn');
+      el.querySelectorAll('[data-rollp-step]').forEach((b) => { b.disabled = true; });
       buttons.forEach(b => {
         // Tier C: the CANCEL button stays live — the player can withdraw while
         // the table adjudicates (cancel() also fires the socket withdraw).
@@ -239,8 +249,9 @@ export async function runSecurityConsole(opts = {}) {
         sound?.play?.('hack-progress');
         let roll = null;
         try {
+          const spend = readRoll();
           roll = await skillSvc?.performCheck(gate.actor, gate.skill || 'Interface', {
-            dc: dvNum, showChat: true,
+            dc: dvNum, showChat: true, luckSpend: spend.luck, modifier: spend.modifier,
             deferChat: true,   // posted when the verdict lands, below
             context: gate.context || title, flavor: gate.flavor || `${title} // DV ${dvNum}`,
           });
@@ -273,7 +284,7 @@ export async function runSecurityConsole(opts = {}) {
       // The verdict is on screen — now the chat card.
       await rolled?.postChat?.();
       await wait(reduced() ? 250 : 1150);
-      finish({ ok, amount: amt, total, cancelled: false });
+      finish({ ok, amount: amt, total, cancelled: false, adjudicated: mode === 'gm' });
     }
   });
 }

@@ -543,19 +543,36 @@ export function resolveMediaEmbed(rawUrl, mediaType = 'video') {
 // ═══════════════════════════════════════════════════════════
 
 /**
+ * The master contact one side of a message really is. The ADDRESS decides: a character can have several identities, and
+ * mail can carry the character (or its main contact id) beside an alias's address. Falling back to the character
+ * first showed the main identity's name and picture on mail sent from an alias, and Add saved the main address
+ * (tester 2026-11-02). An address the directory does not know (an old synthesized one) falls back to the contact id, then
+ * the character's main identity.
+ * @param {{contactId?: string, actorId?: string, email?: string}} ids
+ * @returns {object|null}
+ */
+export function directoryEntryFor({ contactId, actorId, email } = {}) {
+  const master = globalThis.game?.nightcity?.masterContactService;
+  const byId = (contactId && master?.getContact?.(contactId)) || null;
+  const byAddress = (email && master?.getByEmail?.(email)) || null;
+  const same = byId && byAddress && String(byId.email || '').trim().toLowerCase() === String(email).trim().toLowerCase();
+  return (same ? byId : byAddress) || byId || (actorId && master?.getByActorId?.(actorId)) || null;
+}
+
+/**
  * Resolve the DISPLAY name for one side of a message (sender or recipient).
  *
  * The GM's Master Contact Directory is the curated identity, so it beats the
  * raw actor name: an actor may be labeled "Rogue-Fixer" for GM bookkeeping
  * while the directory entry the players know is just "Rogue". Order:
- *   1. master contact by `contactId`
- *   2. master contact linked to `actorId`
- *   3. master contact by `email`
+ *   1. master contact for the address, else by `contactId`, else linked to `actorId`
  *   4. the name stored on the message (`storedName`)
  *   5. the actor's name
  *   6. the email's local part, else `fallback`
  * Callers that also know the viewing player's OWN contact list should check
  * that first — a player's private label wins over the directory.
+ *
+ * The directory entry is found by {@link directoryEntryFor}.
  *
  * @param {object} ids
  * @param {string} [ids.contactId]  — master contact id
@@ -566,11 +583,7 @@ export function resolveMediaEmbed(rawUrl, mediaType = 'video') {
  * @returns {string}
  */
 export function resolveDisplayName({ contactId, actorId, email, storedName } = {}, fallback = 'Unknown') {
-  const master = globalThis.game?.nightcity?.masterContactService;
-  const mc = (contactId && master?.getContact?.(contactId))
-    || (actorId && master?.getByActorId?.(actorId))
-    || (email && master?.getByEmail?.(email))
-    || null;
+  const mc = directoryEntryFor({ contactId, actorId, email });
   if (mc?.name) return mc.name;
   if (storedName) return storedName;
   const actor = actorId ? globalThis.game?.actors?.get?.(actorId) : null;
@@ -587,10 +600,7 @@ export function resolveDisplayName({ contactId, actorId, email, storedName } = {
  */
 export function resolveDisplayPortrait({ contactId, actorId, email } = {}) {
   const master = globalThis.game?.nightcity?.masterContactService;
-  const mc = (contactId && master?.getContact?.(contactId))
-    || (actorId && master?.getByActorId?.(actorId))
-    || (email && master?.getByEmail?.(email))
-    || null;
+  const mc = directoryEntryFor({ contactId, actorId, email });
   if (mc?.portrait) return mc.portrait;
   // An ALIAS never borrows its character's face — a burner identity that showed
   // Lucky Lin's portrait would give the game away (utils/identities.js).

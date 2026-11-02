@@ -1,0 +1,77 @@
+/* Watching another player's window (services/WatchService.js, utils/watchMirror.js). ncm-watch-*.
+   The dock and chip are body-mounted, so every value carries a hard fallback. */
+
+/* the operator's eye button */
+.window-header .ncm-watchbtn {
+  appearance: none; flex: none !important; width: auto !important; min-width: 22px; height: 22px !important; min-height: 0 !important;
+  margin: 0 2px !important; padding: 0 4px !important; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  background: transparent !important; border: 1px solid transparent !important; border-radius: 2px !important; box-shadow: none !important;
+  color: var(--ncm-text-secondary, #a8a8bc) !important; cursor: pointer;
+}
+.window-header .ncm-watchbtn > i { margin: 0 !important; font-size: 11px; line-height: 1; color: inherit !important; }
+.window-header .ncm-watchbtn span { font-family: var(--ncm-font-mono, monospace); font-size: 11px; line-height: 1; }
+.window-header .ncm-watchbtn:hover, .window-header .ncm-watchbtn:focus-visible { color: var(--ncm-text-primary, #e0e0e8) !important; border-color: var(--ncm-border, #2a2a45) !important; }
+.window-header .ncm-watchbtn.is-on { color: var(--ncm-secondary, #19f3f7) !important; border-color: var(--ncm-secondary, #19f3f7) !important; }
+
+/* the offer */
+#ncm-watch-dock { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; gap: 4px; max-width: min(520px, 92vw); }
+.ncm-watch-chip {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 10px;
+  background: var(--ncm-bg-elevated, #161622); color: var(--ncm-text-primary, #e0e0e8);
+  border: 1px solid var(--ncm-secondary, #19f3f7); border-radius: 2px; box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif); font-size: calc(13px * var(--ncm-text-scale, 1));
+}
+.ncm-watch-chip > i { margin: 0; color: var(--ncm-secondary, #19f3f7); }
+.ncm-watch-chip > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-watch-chip button {
+  appearance: none; flex: none !important; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2px 9px !important;
+  font-family: inherit; font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--ncm-secondary, #19f3f7) !important; color: var(--ncm-text-inverse, #0a0a12) !important; border: 0 !important; border-radius: 2px !important; box-shadow: none !important; cursor: pointer;
+}
+.ncm-watch-chip button[data-w="no"] { background: transparent !important; color: var(--ncm-text-secondary, #a8a8bc) !important; padding: 2px 5px !important; }
+.ncm-watch-chip button i { margin: 0 !important; }
+
+/* the watcher's window */
+/* > on purpose: without it this also hits the copy's own .window-content and changes the operator's layout. */
+.ncm-app.ncm-watch-window > .window-content { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.ncm-watch { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; height: 100%; }
+.ncm-watch__bar {
+  flex: none; display: flex; align-items: center; gap: 8px; padding: 4px 10px;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif); font-size: calc(12px * var(--ncm-text-scale, 1));
+  color: var(--ncm-text-primary, #e0e0e8); background: var(--ncm-bg-surface, #1a1a2e); border-bottom: 1px solid var(--ncm-border, #2a2a45);
+}
+.ncm-watch__bar > i { margin: 0; color: var(--ncm-secondary, #19f3f7); }
+.ncm-watch__bar > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-watch__bar em { font-style: normal; font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-secondary, #a8a8bc); }
+.ncm-watch__note { flex: none; padding: 4px 10px; font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary, #e0e0e8); background: color-mix(in srgb, var(--ncm-warning, #ffab00) 18%, var(--ncm-bg-surface, #1a1a2e)); }
+.ncm-watch__note[hidden] { display: none !important; }
+/* The one thing in this window the watcher scrolls: a copy taller than the window scrolls here rather than shrinking. */
+.ncm-watch__fit { flex: 1 1 auto; min-height: 0; position: relative; overflow: auto; background: var(--ncm-bg-deep, #0a0a12); }
+.ncm-watch__zoom { flex: none; display: flex; align-items: center; gap: 1px; }
+.ncm-watch__bar .ncm-watch__zoom button {
+  appearance: none; flex: none !important; width: auto !important; min-width: calc(22px * var(--ncm-text-scale, 1)); height: calc(20px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important;
+  margin: 0 !important; padding: 0 5px !important; display: inline-flex; align-items: center; justify-content: center; box-shadow: none !important; cursor: pointer;
+  font-family: var(--ncm-font-mono, monospace); font-size: calc(11px * var(--ncm-text-scale, 1)); line-height: 1;
+  background: var(--ncm-bg-elevated, #161622) !important; color: var(--ncm-text-primary, #e0e0e8) !important; border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 2px !important;
+}
+.ncm-watch__bar .ncm-watch__zoom button i { margin: 0 !important; font-size: calc(10px * var(--ncm-text-scale, 1)); line-height: 1; }
+.ncm-watch__bar .ncm-watch__zoom button:hover, .ncm-watch__bar .ncm-watch__zoom button:focus-visible { border-color: var(--ncm-secondary, #19f3f7) !important; }
+.ncm-watch__bar .ncm-watch__zoom button.is-set { color: var(--ncm-secondary, #19f3f7) !important; border-color: var(--ncm-secondary, #19f3f7) !important; }
+.ncm-watch__wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ncm-text-secondary, #a8a8bc); font-size: calc(13px * var(--ncm-text-scale, 1)); }
+.ncm-watch__wait i { margin: 0; }
+
+/* The copy: it wears the operator's window classes, so every rule that makes .ncm-app float has to be pinned back. */
+.ncm-watch__fit > .ncm-watch__mirror {
+  position: absolute !important; inset: 0 auto auto 0 !important; margin: 0 !important; max-width: none !important; max-height: none !important; min-width: 0 !important; min-height: 0 !important;
+  transform: none !important; z-index: 0 !important; pointer-events: none !important; user-select: none !important; box-shadow: none !important;
+  display: flex; flex-direction: column; animation: none !important;
+}
+.ncm-watch__mirror > .window-content { flex: 1 1 auto; min-height: 0; width: 100%; height: 100%; max-height: none !important; }
+/* Pictures update the copy in place, so the operator's own animations and transitions run here too. The copy is look-only:
+   many rules set pointer-events back on, and a stray click must not reach a handler that delegates from the document. */
+.ncm-watch__mirror * { pointer-events: none !important; caret-color: transparent !important; }
+/* Effects the operator's window mounts outside its content. The copy has no title bar, so they cover all of it. */
+.ncm-watch__overlay { position: absolute; inset: 0; z-index: 60; overflow: hidden; }
+.ncm-watch__overlay > .ncm-ndc-flash { inset: 0; }
+.ncm-watch__media { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 90px; padding: 12px; color: var(--ncm-text-secondary, #a8a8bc); background: color-mix(in srgb, var(--ncm-text-primary, #e0e0e8) 6%, transparent); border: 1px dashed var(--ncm-border, #2a2a45); }
+.ncm-watch__media i { margin: 0; }

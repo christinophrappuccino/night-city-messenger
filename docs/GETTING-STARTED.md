@@ -19,9 +19,10 @@ Night City Messenger (NCM) is a big module, but you don't need to learn all of i
 7. [Part 6 — Ways in: putting things in the world](#part-6--ways-in-putting-things-in-the-world)
 8. [Part 7 — Network nodes](#part-7--network-nodes)
 9. [Part 8 — Hacking and consequences](#part-8--hacking-and-consequences)
-10. [Three rules to remember](#three-rules-to-remember)
-11. [Settings that matter](#settings-that-matter)
-12. [How to run your first sessions](#how-to-run-your-first-sessions)
+10. [Part 9 — Phone calls](#part-9--phone-calls)
+11. [Three rules to remember](#three-rules-to-remember)
+12. [Settings that matter](#settings-that-matter)
+13. [How to run your first sessions](#how-to-run-your-first-sessions)
 
 ---
 
@@ -310,7 +311,13 @@ This is the deep end. Skip it until your table wants it.
 
 ### Rolls on screen
 
-Every skill check plays a short roll on screen — the stat, the skill, the die, the total against the DV — and posts its chat card when the result lands. If you use **Dice So Nice**, the 3D dice roll first.
+Before a roll, a small panel shows what is about to be added up, the DV, the chance of beating it, and steppers for **Luck** and a **modifier**. (A locked DV the player can't read stays hidden, chance included. Each player can turn the panel off with **Ask Before Rolling**.)
+
+Then the roll plays on screen — the stat, the skill, the die, the total against the DV — and posts its chat card when the result lands. If you use **Dice So Nice**, the 3D dice roll first.
+
+**A roll has to beat the DV.** A tie fails, as in the rulebook. On a forge or an encode, a tie lands on the sloppy rung.
+
+**Interface rolls Rank + 1d10**, also the rulebook's way, and has no stat in it. Interface DVs in the module are set for that: about 9 for a fair lock, up to 15 or so for a nasty one. If your world has DVs from before version 2.1, you are asked once what to do with them. To go back to adding TECH, change **Role Ability Rolls** (Admin → Security → Hacking rules).
 
 ### Trace & heat
 
@@ -328,7 +335,22 @@ Players can also put things ON a machine. They carry a forged file (a fake chat 
 
 ### The Malware Workshop
 
-Admin → Security → **Programs** opens the **Malware Workshop**. Build programs with real effects: keyloggers, secret backdoor accounts, ICE traps, logic bombs, file wipers. You can disguise them as harmless files. Give them to players as Items; they carry and use them through the **Program Deck**.
+Admin → Security → **Programs** opens the **Malware Workshop**. Build programs with real effects: keyloggers, secret backdoor accounts, ICE traps, file wipers, and network programs for nodes (worm, tap, blackout bomb, sniffer, patch). You can disguise them as harmless files.
+
+The usual route:
+
+1. **Build it.** Pick Payload or Malware, then the ability. Each ability says what it **runs on**: a terminal, or a network node. Write what it does, and set the skill and DV for pushing it onto a machine.
+2. **Save it** to your library, then click **Install on a shard** (the chip icon on its card) and pick a shard. Or right-click a shard → **Build a program** to compile straight onto it.
+3. **Hand over the shard.** The character needs it on their sheet.
+4. **They use it.** A terminal program goes through **OPS → Upload** when they are logged in. A network program goes through **Insert a shard** when they are jacked into a node. A payload can also be run from the shard through the **Program Deck**.
+
+A **Custom** program is yours to adjudicate: when it runs, you get an alert with what you wrote, and it can run a macro. **Wipe** and **Corrupt** ask which files when they run.
+
+### Letting the table watch
+
+When one player is on a terminal, shard or node, the others can watch. The player clicks the **eye** on the window's title bar, and everyone else gets a small chip at the top of the screen with a **Watch** button. It opens a read-only copy of that player's window, updated as they work, consoles and rolls included. Passwords show as bullets, and a playing video stays on their screen. The eye shows how many are watching.
+
+**Watching Other Players** sets the rule: players choose (the default), every session can be watched, or off. A GM's own windows are never shared, because they show hidden accounts and answers.
 
 ### Fighting back
 
@@ -347,6 +369,38 @@ A single terminal or node can override this for itself.
 ### Who can hack at all
 
 Security → Hacking rules → **Terminal operator access** limits who can use terminal tools (upload, sweep): by role, by skill level, by gear they need to own, or by naming specific characters. **Jacking in** has its own rule (Part 7). **Countermeasure visibility** decides whether players see what guards a lock (the ICE, the DV) or only that it's locked.
+
+---
+
+## Part 9 — Phone calls
+
+Admin → **Phone** is everything about calls. Players call from the **Calls** tab in their inbox. Players pick their own number, or you hand them out.
+
+**Numbers.** A number says where it was issued: `WAT-4471` in the same city, `SF NFF-2210` in a nearby city, `+14 DAL CEN-3345` far away. It stays with the person when they move. The **Numbers** tab lists everyone and can give numbers in bulk, with a reason beside each one. **Number setup** holds the place table, the rules for players, line types and special numbers.
+
+**Answering.** When someone calls an NPC, it rings for you on the **Live** tab, longest wait first. Answer as who they asked for, or as someone else, or send it to voicemail. A call nobody answers goes to voicemail by itself.
+
+**Corporations.** An office has a main number with a switchboard, and extensions (`MIL-0100 x17`). Choose whether you answer, a recording plays, or it goes to voicemail. Voicemail lands with a mailbox made for that office the first time someone leaves a message, or with a contact you pick.
+
+**Special numbers.** A number that follows its own rules: a hidden line, a hotline, a recording, a macro. Each can have a name and a picture.
+
+**Trauma Team.** Under Number setup → Emergency calls, set who has a plan. Dialling the Trauma Team number with a plan starts the call: real dice, chat cards, and a countdown for the player. The call uses that special number's name, number and picture, so you can rename it or point it at another one. **See the call** plays it for you with nothing rolled or saved.
+
+**Lawman Backup.** Same place. Backup is whoever this Lawman can call, not only the police: a corp's security, a gang, a nomad pack. Pick each Lawman's organization, rename its groups, and set its **Kind**. By default only Police and Government get red and blue lights and a siren. An organization can have a picture, and a group can have its own, which wins.
+
+**You hear about it.** When someone calls Trauma Team or Backup, the table gets one chat card saying who is calling and where (a whispered call stays whispered), and every GM gets a toast and a short tone, even if the dice are whispered. Its button opens Admin → Phone → Live. Turn it off with **GM Alert — Trauma Team and Backup Calls** in Module Settings.
+
+**The team arrives by itself.** Rounds count down with combat, or at about 6 seconds each outside it, and stop while the game is paused. On Live you can **Hold** a team, take a round off, bring them in now, or call them off.
+
+**Changing what a call says.** An organization has **What do their calls say?** and **How do their calls look?**. A Lawman has **Customize**, for their own words, callsign, extra groups, colour, lights, sounds and picture. A blank box inherits: the person from their organization, the organization from the built-in words. Put several lines in a box and one is picked each call. Trauma Team has **What does dispatch say?**, one set for the whole service. **Play** shows the call on your screen. The dice are only for show, and nothing is saved or posted.
+
+**Call log and Voicemail.** Both fold by date, or group by person or mailbox. Search reads names, numbers and transcripts. Filter narrows by who, network and dates. **Edit a log** writes history for a person or a machine: a missed call for players to find.
+
+**Overheard calls.** Write a conversation between two NPCs, then start it. Players can catch it in range, through a tap, from a node session or with a scanner. A running call lives on your client and ends if you reload.
+
+**Sharing.** Sharing a contact asks whether to give the address, the number or both. In **Who knows whom**, each contact has separate address and number buttons. A contact only shows what was given.
+
+Tip: open **Number setup → How it works** first. It explains the format and has a box to try a number.
 
 ---
 
@@ -375,7 +429,8 @@ All in Module Settings unless noted. The important ones:
 | **Spam Filter — Unknown Senders** | chance for mail from strangers to land in Spam |
 | **Auto-Register NPC Senders** | an NPC actor you send from gets a directory entry |
 | **Planted Programs — When They Fire** | fire on their own, or ask you first |
-| **Role Ability Rolls (Interface)** | Interface rolls as stat + rank, or rank only |
+| **Role Ability Rolls (Interface)** | Interface rolls as rank only (the rulebook), or stat + rank |
+| **Watching Other Players** | whether the table can watch a player work a terminal, shard or node |
 | **Exfil Folder Name** | what the players' stolen-files folder is called |
 | **What Players Call a Shard** | Data Shard, Memory Chip, Data Chip, or your own |
 | **Shard Name Prefix** | a tag added to the front of every shard's item name |

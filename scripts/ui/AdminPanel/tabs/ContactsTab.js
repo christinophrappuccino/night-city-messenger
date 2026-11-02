@@ -19,11 +19,12 @@
  * existing static delegators and keyboard shortcuts.
  */
 
+import { proposeFor, readNumber, officeNames } from './phoneNumbersView.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log, getPlayerCharacters, hiddenCharacterIds, isPersonActor } from '../../../utils/helpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { BaseTab } from '../BaseTab.js';
-import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
+import { adminDialog, adminConfirm, adminPrompt, adminWait } from '../../../utils/adminTheme.js';
 import { THEMED_DIALOG_CLASSES } from '../../../utils/dialogBody.js';
 import { playerEditHtml, aliasDialogHtml, looksLikeAddress } from '../../../utils/personDialogs.js';
 import { editGroupDialog } from '../../ContactGroups/GroupEditorDialog.js';
@@ -164,6 +165,35 @@ export class ContactsTab extends BaseTab {
     return out;
   }
 
+  /** The edit form's Phone box: a live reading, Generate from the contact's details, and office names for Organization. */
+  _wirePhoneField(root) {
+    const form = root.querySelector('.ncm-ct2-edbody');
+    const box = form?.querySelector('input[name="phone"]');
+    const phoneTab = this.app.tabs?.phone;
+    if (!box || !phoneTab?.calls || box.dataset.wired) return;
+    box.dataset.wired = '1';
+    const read = () => { const r = readNumber(phoneTab, box.value, this._selId); note.textContent = r.text; note.classList.toggle('is-bad', !r.ok); };
+    const note = document.createElement('small'); note.className = 'ncm-ct2-phonenote';
+    const gen = document.createElement('button'); gen.type = 'button'; gen.className = 'ncm-ct2-btn'; gen.innerHTML = '<i class="fas fa-dice"></i> Generate';
+    gen.dataset.tooltip = 'Propose a free number from their Organization and Location, and say why';
+    gen.addEventListener('click', () => {
+      const v = (n) => form.querySelector(`[name="${n}"]`)?.value || '';
+      const pr = proposeFor(phoneTab, { id: this._selId, name: v('name'), organization: v('organization'), location: v('location') });
+      if (!pr.number) { ui.notifications?.warn('The place table is empty.'); return; }
+      box.value = pr.number; box.dispatchEvent(new Event('input', { bubbles: true })); read(); note.textContent = `${note.textContent} ${pr.why}`;
+    });
+    box.insertAdjacentElement('afterend', note);
+    box.insertAdjacentElement('afterend', gen);
+    box.addEventListener('input', read);
+    read();
+    const org = form.querySelector('input[name="organization"]');
+    if (org && !org.getAttribute('list')) {
+      const dl = document.createElement('datalist'); dl.id = `ncm-ct2-offices-${this.app.id || 'x'}`;
+      dl.innerHTML = officeNames(phoneTab).map((n) => `<option value="${n.replace(/"/g, '&quot;')}"></option>`).join('');
+      org.after(dl); org.setAttribute('list', dl.id);
+    }
+  }
+
   onRender() {
     const root = this.element?.querySelector('.ncm-ct2');
     if (!root) return;
@@ -176,6 +206,7 @@ export class ContactsTab extends BaseTab {
       const w = more.getBoundingClientRect().width;
       if (btn && (btn.right - box.left) < w + 4 && (box.right - btn.left) > (btn.right - box.left)) more.classList.add('is-right');
     }
+    this._wirePhoneField(root);
     // Scroll memo: every [data-ct2-scroll] box keeps its place across re-renders.
     for (const box of root.querySelectorAll('[data-ct2-scroll]')) {
       const k = box.dataset.ct2Scroll;
@@ -656,7 +687,7 @@ export class ContactsTab extends BaseTab {
       kv: [
         { l: 'Phone', v: c.phone || '—', cls: c.phone ? 'is-mono' : '' },
         { l: 'Messages', v: c.sendOnly ? 'Send-only' : 'Two-way', cls: c.sendOnly ? 'is-attn' : '' },
-        { l: 'Security', v: c.encrypted ? `ICE · ${c.encryptionSkill || 'Interface'} DV ${c.encryptionDV || 15}${c.blackIce ? ' · Black ICE' : ''}` : 'Open', cls: c.encrypted ? (c.blackIce ? 'is-bad' : 'is-secret') : 'is-good' },
+        { l: 'Security', v: c.encrypted ? `ICE · ${c.encryptionSkill || 'Interface'} DV ${c.encryptionDV || 9}${c.blackIce ? ' · Black ICE' : ''}` : 'Open', cls: c.encrypted ? (c.blackIce ? 'is-bad' : 'is-secret') : 'is-good' },
         { l: 'Character', v: linked ? linked.name : '—', hue: linked?.name },
         { l: 'Folder', v: c.folder || '—', hue: c.folder },
         { l: 'Tags', v: (c.tags || []).length ? '' : '—', tags: c.tags || [] },
@@ -805,7 +836,7 @@ export class ContactsTab extends BaseTab {
       organization: c?.organization || '', location: c?.location || '', tags: (c?.tags || []).join(', '),
       actorId: c?.actorId || '', folder: c?.folder || '', email: c?.email || '', phone: c?.phone || '',
       sendOnly: c?.sendOnly ? 'true' : 'false', encrypted: c?.encrypted ? 'true' : 'false',
-      encryptionDV: String(c?.encryptionDV ?? 15), encryptionSkill: c?.encryptionSkill || 'Interface',
+      encryptionDV: String(c?.encryptionDV ?? 9), encryptionSkill: c?.encryptionSkill || 'Interface',
       maxBreachAttempts: String(c?.maxBreachAttempts ?? 3), blackIce: c?.blackIce ? 'true' : 'false',
       blackIceDamage: c?.blackIceDamage || '3d6', iceSource: c?.iceSource || 'default',
       iceCustomName: c?.iceCustomName || '', iceCustomPortrait: c?.iceCustomPortrait || '',
@@ -879,6 +910,11 @@ export class ContactsTab extends BaseTab {
     };
   }
 
+  /** A character's phone lines, for the Players tab. Main first. */
+  _phonesOf(actorId) {
+    return (game.nightcity?.callService?.linesFor?.(actorId) ?? []).map((l) => ({ number: l.number, main: !!l.main, word: l.main ? '' : (l.label || (l.kind === 'alias' ? l.name : l.kind)) }));
+  }
+
   _playersContext(all, pcs, kx, mail, groups) {
     if (!pcs.some((p) => p.actorId === this._pSel)) this._pSel = pcs[0]?.actorId || null;
     const svc = game.nightcity?.contactGroupService;
@@ -887,7 +923,8 @@ export class ContactsTab extends BaseTab {
       const box = mail.byActor.get(p.actorId);
       return {
         actorId: p.actorId, name: p.name, img: p.img, initials: p.initials, color: p.color, player: p.player, email: p.email,
-        subline: [p.player, p.email || 'no address yet'].filter(Boolean).join(' · '), noEmail: !p.email,
+        subline: [p.player, p.email || 'no address yet', this._phonesOf(p.actorId)[0]?.number].filter(Boolean).join(' · '), noEmail: !p.email,
+        phones: this._phonesOf(p.actorId).map((l) => l.number).join(' '),
         known: all.filter((c) => kx.knows(c, p.actorId)).length, sel: p.actorId === this._pSel,
         unread: box?.unread || 0, lastTs: box?.lastTs || '',
         online: !!p.online, sceneName: p.sceneName || '', groupsN: (svc?.getActorGroups?.(p.actorId) ?? []).length,
@@ -932,7 +969,7 @@ export class ContactsTab extends BaseTab {
       const box = mail.byActor.get(p.actorId);
       sel = {
         actorId: p.actorId, name: p.name, img: p.img, initials: p.initials, player: p.player,
-        email: p.email, noEmail: !p.email,
+        email: p.email, noEmail: !p.email, phoneLines: this._phonesOf(p.actorId),
         unread: box?.unread || 0, lastMail: box?.lastTs ? this.app._relativeTime?.(box.lastTs) || '' : '',
         knownN: known.length,
         kn: this._knownContext(all, known, p.actorId, mail),
@@ -1293,7 +1330,11 @@ export class ContactsTab extends BaseTab {
         }),
         rows: open ? g.rows.map((r) => ({
           id: r.c.id, name: r.c.name, addr: r.c.email || '', alias: r.alias,
-          cells: cols.map((p) => ({ actorId: p.actorId, on: kx.knows(r.c, p.actorId), chg: this._mxChanges.some((x) => x.cid === r.c.id && x.aid === p.actorId) })),
+          cells: cols.map((p) => {
+            const held = kx.entriesFor(r.c, p.actorId), changed = (part) => this._mxChanges.some((x) => x.cid === r.c.id && x.aid === p.actorId && (x.part || null) === part);
+            return { actorId: p.actorId, on: held.length > 0, chg: changed(null),
+              canMail: !!r.c.email, canNum: !!game.nightcity?.callService?.numberOfContact?.(r.c.id), mail: held.some((e) => !!e.email), num: held.some((e) => !!e.phone), chgMail: changed('mail'), chgNum: changed('num') };
+          }),
           nobody: !cols.some((p) => kx.knows(r.c, p.actorId)),
         })) : [],
       };
@@ -1442,6 +1483,7 @@ export class ContactsTab extends BaseTab {
       case 'pAddIdentity': return this._addIdentityForActor(d.actor);
       case 'pSetEmail': await game.nightcity?.openEmailSetup?.(game.actors?.get(d.actor)); return this.render(true);
       case 'pEdit': return this._editPlayer(d.actor);
+      case 'pPhone': return game.nightcity?.openAdminTab?.('phone', { select: { person: d.actor } });
       case 'pHide': return this._hideCharacter(d.actor);
       case 'pSheet': return game.actors?.get(d.actor)?.sheet?.render(true);
       case 'pShareSelf': return this._shareDialog([`pc-${d.actor}`]);
@@ -1462,7 +1504,7 @@ export class ContactsTab extends BaseTab {
       case 'mxFilter': this._mxFilter = d.filter || 'all'; return this.render(true);
       case 'mxGrp': if (this._mxOpen.has(d.grp)) this._mxOpen.delete(d.grp); else this._mxOpen.add(d.grp); return this.render(true);
       case 'mxAll': if (this._mxOpen.size) this._mxOpen.clear(); else this._mxAllGroups().forEach((g) => this._mxOpen.add(g)); return this.render(true);
-      case 'mxCell': return this._mxCell(d.cid, d.actor, event?.shiftKey);
+      case 'mxCell': return this._mxCell(d.cid, d.actor, event?.shiftKey, d.part || null);
       case 'mxTally': return this._mxTally(d.grp, d.actor);
       case 'mxUndo': return this._mxUndo();
       case 'mxReset': this._mxSearch = ''; this._mxFilter = 'all'; return this.render(true);
@@ -1767,7 +1809,7 @@ export class ContactsTab extends BaseTab {
       portrait: s('portrait'), notes: String(d.notes ?? '').trim(), voice: String(d.voice ?? '').trim(), actorId: s('actorId') || null,
       role: s('role'), location: s('location'), trust: parseInt(s('trust'), 10) || 0,
       sendOnly: s('sendOnly') === 'true', encrypted: s('encrypted') === 'true',
-      encryptionDV: parseInt(s('encryptionDV'), 10) || 15, encryptionSkill: s('encryptionSkill') || 'Interface',
+      encryptionDV: parseInt(s('encryptionDV'), 10) || 9, encryptionSkill: s('encryptionSkill') || 'Interface',
       maxBreachAttempts: parseInt(s('maxBreachAttempts'), 10) || 3,
       blackIce: s('blackIce') === 'true', iceSource,
       blackIceDamage: (iceSource === 'custom' ? s('iceCustomDamage') : s('blackIceDamage')) || '3d6',
@@ -1796,6 +1838,9 @@ export class ContactsTab extends BaseTab {
     this._busy = true;
     try {
       let res;
+      // the number goes through the rules, never straight onto the contact
+      const typedPhone = data.phone; delete data.phone;
+      const wasPhone = this._creating ? '' : (svc.getContact(this._selId)?.phone || '');
       if (this._creating) {
         res = await svc.addContact(data);
         if (res?.success) { this._selId = res.contact.id; ui.notifications.info(`Contact "${data.name}" created.`); }
@@ -1805,6 +1850,11 @@ export class ContactsTab extends BaseTab {
         if (res?.success) ui.notifications.info(`Contact "${data.name}" updated.`);
       }
       if (!res?.success) { ui.notifications.error(res?.error || 'Failed to save contact.'); return false; }
+      const calls = game.nightcity?.callService;
+      if (calls && typedPhone !== wasPhone) {
+        const r = typedPhone ? await calls.assignNumber({ contactId: this._selId, number: typedPhone, why: 'You typed this one.' }) : await calls.releaseNumber(wasPhone);
+        if (r && !r.ok) ui.notifications.warn(`Saved, but the number was not: ${r.error}`);
+      }
       this._editing = false; this._creating = false; this._draft = null; this._dirty.clear();
       if (!keepOpen) this.render(true);
       return true;
@@ -2267,17 +2317,51 @@ export class ContactsTab extends BaseTab {
   }
 
   /** Share (pushToPlayer) or take back (remove the matching entries) one contact for one character. */
-  async _setKnows(cid, actorId, on) {
+  async _setKnows(cid, actorId, on, { part = null, what = 'both' } = {}) {
     const svc = this.masterContactService;
     const c = this._contact(cid);
     if (!svc || !c || !actorId) return { success: false };
-    if (on) return svc.pushToPlayer(cid, actorId);
+    if (on) return svc.pushToPlayer(cid, actorId, { what: part === 'mail' ? 'email' : part === 'num' ? 'number' : what });
     const repo = this.contactRepository || game.nightcity?.contactRepository;
+    if (part) {
+      // taking back one half: their copy stays while it still holds the other half
+      let entries = [];
+      try { entries = knowIndex({ [actorId]: game.actors?.get(actorId)?.getFlag?.(FLAG, 'contacts') ?? [] }, { contacts: svc.getAll?.() || [] }).entriesFor(c, actorId); } catch { entries = []; }
+      const field = part === 'mail' ? 'email' : 'phone', other = part === 'mail' ? 'phone' : 'email';
+      for (const e of entries) { if (e[other]) await repo?.updateContact?.(actorId, e.id, { [field]: '' }); else await repo?.removeContact?.(actorId, e.id); }
+      return { success: true, removed: entries.length };
+    }
     let list = [];
     try { list = game.actors?.get(actorId)?.getFlag?.(FLAG, 'contacts') ?? []; } catch { list = []; }
     const hits = knowIndex({ [actorId]: list }, { contacts: svc.getAll?.() || [] }).entriesFor(c, actorId);
     for (const e of hits) await repo?.removeContact?.(actorId, e.id);
     return { success: true, removed: hits.length };
+  }
+
+  /** Do they hold this half of the contact: 'mail' or 'num'? */
+  _partNow(cid, actorId, part) {
+    const c = this._contact(cid);
+    let list = [];
+    try { list = game.actors?.get(actorId)?.getFlag?.(FLAG, 'contacts') ?? []; } catch { list = []; }
+    const field = part === 'mail' ? 'email' : 'phone';
+    return knowIndex({ [actorId]: list }, { contacts: this.masterContactService?.getAll?.() || [] }).entriesFor(c, actorId).some((e) => !!e[field]);
+  }
+
+  /** Ask what a share should hand over, when there is a choice. Null means cancelled. */
+  async _askShareWhat(contacts, label) {
+    const calls = game.nightcity?.callService;
+    if (!(contacts || []).some((c) => c?.email && calls?.numberOfContact?.(c.id))) return 'both';
+    return adminWait({
+      title: 'What do they get?',
+      content: `<p>${esc(label)}: their address, their number, or both?</p><p>A contact only shows what you gave. You can share the rest later.</p>`,
+      buttons: {
+        both: { icon: '<i class="fas fa-address-card"></i>', label: 'Both', callback: () => 'both' },
+        email: { icon: '<i class="fas fa-envelope"></i>', label: 'Address', callback: () => 'email' },
+        number: { icon: '<i class="fas fa-phone"></i>', label: 'Number', callback: () => 'number' },
+      },
+      default: 'both',
+      close: () => null,
+    }).catch(() => null);
   }
 
   _knowsNow(cid, actorId) {
@@ -2309,26 +2393,43 @@ export class ContactsTab extends BaseTab {
       : (this._roleLabel(c.role) ? pluralRole(this._roleLabel(c.role)) : 'No role')))];
   }
 
-  async _mxCell(cid, actorId, shift) {
-    if (shift && this._mxLast && this._mxLast.aid === actorId && this._mxLast.cid !== cid) {
-      const col = [...(this.element?.querySelectorAll(`[data-op="mxCell"][data-actor="${CSS.escape(actorId)}"]`) ?? [])].map((x) => x.dataset.cid);
-      const on = this._knowsNow(this._mxLast.cid, actorId);
+  async _mxCell(cid, actorId, shift, part = null) {
+    const now = (id) => (part ? this._partNow(id, actorId, part) : this._knowsNow(id, actorId));
+    const opts = part ? { part } : {};
+    const halfWord = part === 'mail' ? 'address' : part === 'num' ? 'number' : null;
+    const confirmIt = (names) => this._confirmTakeBack(names, actorId, halfWord ? { what: halfWord } : {});
+    if (shift && this._mxLast && this._mxLast.aid === actorId && this._mxLast.part === part && this._mxLast.cid !== cid) {
+      const sel = part ? `[data-op="mxCell"][data-part="${part}"][data-actor="${CSS.escape(actorId)}"]` : `[data-op="mxCell"][data-actor="${CSS.escape(actorId)}"]`;
+      const col = [...(this.element?.querySelectorAll(sel) ?? [])].map((x) => x.dataset.cid);
+      const on = now(this._mxLast.cid);
       if (!on) {
-        const ids = rangeIds(col, this._mxLast.cid, cid).filter((id) => this._knowsNow(id, actorId));
-        if (ids.length && !(await this._confirmTakeBack(ids.map((id) => this._contact(id)?.name), actorId))) return;
+        const ids = rangeIds(col, this._mxLast.cid, cid).filter((id) => now(id));
+        if (ids.length && !(await confirmIt(ids.map((id) => this._contact(id)?.name)))) return;
       }
       this._busy = true;
       try {
         for (const id of rangeIds(col, this._mxLast.cid, cid)) {
-          if (this._knowsNow(id, actorId) === on) continue;
-          const r = await this._setKnows(id, actorId, on);
-          if (r?.success) this._mxChanges.push({ cid: id, aid: actorId, on });
+          if (now(id) === on) continue;
+          const r = await this._setKnows(id, actorId, on, opts);
+          if (r?.success) this._mxChanges.push({ cid: id, aid: actorId, on, part });
         }
       } finally { this._busy = false; }
-      this._mxLast = { cid, aid: actorId };
+      this._mxLast = { cid, aid: actorId, part };
       return this.render(true);
     }
-    this._mxLast = { cid, aid: actorId };
+    this._mxLast = { cid, aid: actorId, part };
+    if (part) {
+      if (this._busy) return;
+      this._busy = true;
+      try {
+        const on = !now(cid);
+        if (!on && !(await confirmIt(this._contact(cid)?.name))) return;
+        const res = await this._setKnows(cid, actorId, on, opts);
+        if (!res?.success) ui.notifications.warn(res?.error || 'Could not change that.');
+        else this._mxChanges.push({ cid, aid: actorId, on, part });
+      } finally { this._busy = false; }
+      return this.render(true);
+    }
     return this._toggleKnows(cid, actorId);
   }
 
@@ -2355,7 +2456,7 @@ export class ContactsTab extends BaseTab {
   async _mxUndo() {
     const x = this._mxChanges.pop();
     if (!x) return;
-    await this._setKnows(x.cid, x.aid, !x.on);
+    await this._setKnows(x.cid, x.aid, !x.on, x.part ? { part: x.part } : {});
     this.render(true);
   }
 
@@ -2374,8 +2475,10 @@ export class ContactsTab extends BaseTab {
       multi: true, placeholder: 'search contacts…',
     });
     if (!Array.isArray(picks) || !picks.length) return;
+    const what = await this._askShareWhat(picks.map((p) => this._contact(p.id)), `Sharing ${picks.length === 1 ? picks[0].name : `${picks.length} contacts`} with ${actor.name}`);
+    if (!what) return;
     let n = 0, bad = null;
-    for (const p of picks) { const r = await svc.pushToPlayer(p.id, actorId); if (r?.success) n++; else bad = bad || r?.error; }
+    for (const p of picks) { const r = await svc.pushToPlayer(p.id, actorId, { what }); if (r?.success) n++; else bad = bad || r?.error; }
     ui.notifications.info(`NCM | Shared ${n} contact${n === 1 ? '' : 's'} with ${actor.name}.`);
     if (bad) ui.notifications.warn(`NCM | Some shares failed: ${bad}`);
     this.render(true);
@@ -2519,6 +2622,8 @@ export class ContactsTab extends BaseTab {
       multi: true, placeholder: 'search characters and NPCs…',
     });
     if (!Array.isArray(picks) || !picks.length) return;
+    const what = picks.some((p) => !p.id.startsWith('npc:')) ? await this._askShareWhat(contactIds.filter((id) => !id.startsWith('pc-')).map((id) => this._contact(id)), `Sharing ${names.length === 1 ? names[0] : `${names.length} contacts`}`) : 'both';
+    if (!what) return;
     let shared = 0, firstError = null;
     for (const contactId of contactIds) {
       const isPc = contactId.startsWith('pc-');
@@ -2532,7 +2637,7 @@ export class ContactsTab extends BaseTab {
           continue;
         }
         if (isPc && p.id === pcActorId) continue;
-        const r = isPc ? await this.masterContactService?.pushActorToPlayer(pcActorId, p.id) : await this.masterContactService?.pushToPlayer(contactId, p.id);
+        const r = isPc ? await this.masterContactService?.pushActorToPlayer(pcActorId, p.id) : await this.masterContactService?.pushToPlayer(contactId, p.id, { what });
         if (r?.success) shared++; else firstError = firstError || r?.error || 'unknown error';
       }
     }

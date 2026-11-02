@@ -451,8 +451,6 @@ app.tabs.messages = tab;
   const items = tab._sendAsItems();
   ok(items.some(i => i.id === 'rogue|mc-queen' && i.meta.startsWith('alias of')) && items.some(i => i.group === 'System addresses' && i.name === 'NetWatch notice'), 'Send as lists every identity, aliases and system addresses');
   let composed = null; game.nightcity.composeMessage = (o) => { composed = o; };
-  tab._sendAsPicker();
-  ScopePicker.set(tab.scopeId('sendas'), ['rogue|mc-queen']);
   MessagesTab.prototype.onNpcQuickSend.call(tab, null, { closest: () => ({ dataset: { npcId: 'rogue', contactId: 'mc-queen' } }) });
   ok(composed?.fromContactId === 'mc-queen', 'Send as an alias opens the composer AS the alias');
 

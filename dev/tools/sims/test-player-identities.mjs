@@ -191,7 +191,7 @@ ok(fs.existsSync(`${ROOT}/docs/PLAYER-GUIDE.md`), 'the source exists');
 ok(fs.existsSync(`${ROOT}/docs/NCM-Player-Guide.pdf`), 'the PDF is built (node dev/tools/build-guide.cjs)');
 const pg = read('docs/PLAYER-GUIDE.md');
 for (const m of pg.matchAll(/<!-- fig:\s*([^|]+?)\s*\|/g)) ok(fs.existsSync(`${ROOT}/dev/guide-export/img/${m[1]}`), `figure ${m[1]} exists`);
-for (const spoiler of [/honeypot/i, /trojan/i, /disguis/i, /Admin Panel/, /Malware Workshop/, /phone call/i]) ok(!spoiler.test(pg), `the player guide doesn't say ${spoiler}`);
+for (const spoiler of [/honeypot/i, /trojan/i, /disguis/i, /Admin Panel/, /Malware Workshop/]) ok(!spoiler.test(pg), `the player guide doesn't say ${spoiler}`);
 ok(/\bdocs\b/.test(read('.github/workflows/release.yml')), 'docs/ ships in the release zip');
 
 console.log(`test-player-identities: ${pass} passed, ${fail} failed`);

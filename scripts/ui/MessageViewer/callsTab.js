@@ -13,25 +13,34 @@
  */
 
 import { MODULE_ID } from '../../utils/constants.js';
-import { formatCyberDate } from '../../utils/helpers.js';
-import { normaliseNumber, displayNumber, AREA_CODES, sanitizeRegion, kindLabel } from '../../utils/phoneNumbers.js';
+import { formatCyberDate, getPlayerCharacters } from '../../utils/helpers.js';
+import { showNamePicker } from '../../utils/namePicker.js';
+import { PLAN_NAMES, holdsItem } from '../../utils/phoneEmergency.js';
+import { splitExtension, officeRowOf, normaliseNumber, parseNumber, seenFrom, fullForm, placeOf, isUnlisted, rowOf, numberAt, asKeys, PICK_STEPS, rowsAtStep, pathOf } from '../../utils/phoneNumbering.js';
 import { callProfile, signalLine } from '../../utils/callProfile.js';
 import { formatDuration } from '../../utils/callModel.js';
 import { DIAL_SVG } from '../Calls/CallHud.js';
+import { dateBands, searchSnippet, markHit, BAND_PAGE } from '../../utils/logFolds.js';
 import { GREETING_KINDS, GREETING_LABELS, DEFAULT_GREETING, GREETING_MAX, greetingFor } from '../../utils/voicemail.js';
 import { speak, voices, canSpeak } from '../Calls/speech.js';
 import { VoiceRecorder, micStatus, blobToBase64, playAudio } from '../Calls/recorder.js';
-import { themedConfirm } from '../../utils/adminTheme.js';
+import { themedConfirm, themedPrompt } from '../../utils/adminTheme.js';
+import { dialogBodyHtml } from '../../utils/dialogBody.js';
 
-const KEYPAD = [['1', ''], ['2', 'ABC'], ['3', 'DEF'], ['4', 'GHI'], ['5', 'JKL'], ['6', 'MNO'], ['7', 'PQRS'], ['8', 'TUV'], ['9', 'WXYZ'], ['*', ''], ['0', '+'], ['#', '']]
+const KEYPAD = [['1', ''], ['2', 'ABC'], ['3', 'DEF'], ['4', 'GHI'], ['5', 'JKL'], ['6', 'MNO'], ['7', 'PQRS'], ['8', 'TUV'], ['9', 'WXYZ'], ['+', ''], ['0', '+'], ['#', '']]
   .map(([k, l]) => ({ k, l }));
 
-export const CALLS_PER_PAGE = 25;
+/** What a list can be narrowed to. */
+export const CALL_SHOW = [['all', 'Everything'], ['in', 'Incoming'], ['out', 'Outgoing'], ['answered', 'Answered'], ['noanswer', 'No answer'], ['dropped', 'Dropped'], ['words', 'Has a transcript'], ['withheld', 'Withheld number']];
+export const VM_SHOW = [['all', 'Everything'], ['new', 'New'], ['heard', 'Heard']];
+const showsCall = (r, k) => ({ all: true, in: r.dir !== 'out', out: r.dir === 'out', answered: r.outcome === 'answered', noanswer: ['missed', 'declined', 'busy'].includes(r.outcome), dropped: ['dropped', 'no-signal'].includes(r.outcome), words: r.transcript.length > 0, withheld: r.withheld }[k] ?? true);
+const dayText = (d) => formatCyberDate(`${d}T12:00:00.000Z`, { dateOnly: true });
+const gameNow = () => { try { return game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString(); } catch { return new Date().toISOString(); } };
 const GLYPHS = '!<>-_/[]{}=+*^?#01ABCDEFXZ';
 
 /** The viewer's calls state, created on first use. */
 export function callsState(viewer) {
-  viewer._calls ??= { view: 'main', filter: 'all', page: 1, seed: Date.now(), region: null, picked: null, typed: '', as: null };
+  viewer._calls ??= { view: 'main', filter: 'all', q: '', show: 'all', folds: {}, limits: {}, seed: Date.now(), path: null, level: null, picked: null, typed: '', as: null, mode: null, addKind: 'extra', addLabel: '', scroll: {} };
   return viewer._calls;
 }
 
@@ -71,23 +80,45 @@ export function phoneBook(viewer) {
 }
 
 /** A log row as this character may see it: a name only for someone in its contacts. */
+/** A number the way this table reads it: short from home, as stored when it isn't a whole number. */
+function shortNumber(raw, ctx) { const p = parseNumber(raw, ctx); return p.done ? seenFrom(p, ctx?.regions ? ctx : game.nightcity?.callService?.numberContext) || String(raw ?? '') : String(raw ?? ''); }
+
 function shownOther(row, book, home) {
   const n = normaliseNumber(row.other?.number, home);
   const hit = n ? book.find((b) => b.normal === n) : null;
   if (hit) return { name: hit.name, img: hit.img, number: row.other.number, known: true };
-  if (game.user.isGM) return { name: row.other?.name || row.other?.number || 'Unknown', img: '', number: row.other?.number || '', known: true };
-  return { name: row.other?.number || 'Unknown number', img: '', number: row.other?.number || '', known: false };
+  if (game.user.isGM) return { name: row.other?.name || shortNumber(row.other?.number, home) || 'Unknown', img: '', number: row.other?.number || '', known: true };
+  return { name: shortNumber(row.other?.number, home) || 'Unknown number', img: '', number: row.other?.number || '', known: false };
 }
+
+/** A number as coloured parts, with its place in words on hover. Escaped here, so templates print it raw. */
+export function numHtml(raw, ctx, { full = false } = {}) {
+  const p = parseNumber(raw, ctx);
+  if (p.service) return `<span class="ncm-num" data-tooltip="${esc(p.entry?.name || p.service)}"><span class="x">${esc(p.service)}</span></span>`;
+  if (!p.done) return `<span class="ncm-num"><span class="l">${esc(raw)}</span></span>`;
+  let rest = full ? fullForm(p) : seenFrom(p, ctx);
+  const parts = [];
+  const take = (cls, re) => { const m = rest.match(re); if (m) { parts.push(`<span class="${cls}">${esc(m[0])}</span>`); rest = rest.slice(m[0].length); } };
+  take('r', /^\+\d+\s/);
+  if (p.ex) { take('c', /^[A-Z]{2,3}\s(?=[A-Z]{3}-)/); take('x', /^[A-Z]{3}-/); } else take('c', /^[A-Z]{2,3}-/);
+  parts.push(`<span class="l">${esc(rest)}</span>`);
+  return `<span class="ncm-num" data-tooltip="${esc(placeOf(p, ctx))}">${parts.join('')}</span>`;
+}
+
+const lineValue = (l, home) => l.normal || normaliseNumber(l.number, home);
 
 const DIRS = {
   out: { icon: 'fa-arrow-up', word: 'Out', cls: 'out' },
   in: { icon: 'fa-arrow-down', word: 'In', cls: 'in' },
   missed: { icon: 'fa-phone-slash', word: 'Missed', cls: 'miss' },
 };
-const OUTCOME_WORDS = { missed: 'no answer', declined: 'declined', busy: 'busy', dropped: 'dropped', 'no-signal': 'no signal', 'not-in-service': 'not in service' };
+const OUTCOME_WORDS = { voicemail: 'voicemail', missed: 'no answer', declined: 'declined', busy: 'busy', dropped: 'dropped', 'no-signal': 'no signal', 'not-in-service': 'not in service' };
 
-/** Pure: turn log entries into the tab's rows, grouped by day, with counts. */
-export function buildLogRows(log, { book = [], home = '+1', filter = 'all', page = 1 } = {}) {
+/**
+ * Pure: turn log entries into the tab's rows, in date bands, with counts. Search reads only what this character may see:
+ * a name from their own contacts, the number, the network, the reason, the words on their own calls.
+ */
+export function buildLogRows(log, { book = [], home = '+1', filter = 'all', show = 'all', q = '', now, shut, open, limits = {}, dayLabel = (d) => d } = {}) {
   const rows = log.map((l) => {
     const missed = l.direction === 'in' && l.outcome === 'missed';
     const dir = missed ? 'missed' : l.direction === 'out' ? 'out' : 'in';
@@ -103,16 +134,13 @@ export function buildLogRows(log, { book = [], home = '+1', filter = 'all', page
   });
   const counts = { all: rows.length, missed: rows.filter((r) => r.missed).length, unseen: rows.filter((r) => r.unseen).length,
     in: rows.filter((r) => r.dir === 'in').length, out: rows.filter((r) => r.dir === 'out').length };
-  const shown = rows.filter((r) => filter === 'all' || (filter === 'missed' ? r.missed : r.dir === filter));
-  const pages = Math.max(1, Math.ceil(shown.length / CALLS_PER_PAGE));
-  const p = Math.min(Math.max(1, page), pages);
-  const slice = shown.slice((p - 1) * CALLS_PER_PAGE, p * CALLS_PER_PAGE);
-  const days = [];
-  for (const r of slice) {
-    const last = days.at(-1);
-    if (last && last.day === r.day) last.rows.push(r); else days.push({ day: r.day, rows: [r] });
-  }
-  return { days, counts, page: p, pages, total: shown.length, from: shown.length ? (p - 1) * CALLS_PER_PAGE + 1 : 0, to: (p - 1) * CALLS_PER_PAGE + slice.length };
+  const needle = String(q || '').trim().toLowerCase();
+  const inTab = rows.filter((r) => filter === 'all' || (filter === 'missed' ? r.missed : r.dir === filter));
+  const shown = inTab.filter((r) => showsCall(r, show) && (!needle || [r.other.name, r.other.number, r.net?.name, r.why, ...r.transcript.map((x) => x.text)].join(' ').toLowerCase().includes(needle)));
+  for (const r of shown) { r.nameHtml = markHit(r.other.name, q); r.hitHtml = needle ? markHit(searchSnippet(q, r.transcript.map((x) => x.text)), q) : ''; }
+  const forced = !!needle || show !== 'all';
+  const bands = dateBands(shown, { now, dateOf: (r) => r.gameTime || '', dayLabel, isHot: (r) => r.unseen, shut, open, forced, limits });
+  return { bands, counts, total: shown.length, of: inTab.length, forced };
 }
 
 /** Pure: speed dial — the numbers called most (known contacts only), then other contacts with a number. Max 6. */
@@ -127,6 +155,36 @@ export function speedDial(log, book, home) {
 }
 
 /** The context for the Calls tab (built only while it is open). */
+/** The picker: one step on screen at a time, all five always, numbers only after the last. */
+function pickerContext(s, st) {
+  const rows = s.pickRows();
+  if (!rows.length) return { picker: true, noRows: true };
+  const start = s.startRow();
+  // a path that no longer reaches a row (the table changed, or a step was re-picked) goes back to the start row
+  if (!st.path || (!st.level && !rowsAtStep(rows, st.path, PICK_STEPS.length).length)) { st.path = pathOf(start); st.level = null; }
+  const cur = PICK_STEPS.findIndex((x) => x.key === st.level);
+  const trail = PICK_STEPS.map((x, i) => {
+    const r = rowsAtStep(rows, st.path, i + 1)[0];
+    return { key: x.key, label: x.label, here: st.level === x.key, reached: cur < 0 || i <= cur, value: st.level === x.key ? 'Choosing…' : r ? (x.name(r) || x.blank || '—') : '—' };
+  }).filter((x) => x.reached);
+  const mode = st.mode || 'first';
+  const base = { picker: true, trail, ownDigits: s.rules.ownDigits, addMode: mode === 'add', changeMode: mode === 'change', asksGm: mode === 'add' ? (!!own?.actorId && s.extraLeft(own.actorId) < 1) : mode === 'change' && s.rules.changeNeedsGm && !game.user?.isGM, addLabel: st.addLabel || '', addBurner: st.addKind === 'burner' };
+  if (cur >= 0) {
+    const step = PICK_STEPS[cur], seen = new Map();
+    for (const r of rowsAtStep(rows, st.path, cur)) { const v = r[step.col] || ''; if (!seen.has(v)) seen.set(v, r); }
+    return { ...base, step: { n: cur + 1, of: PICK_STEPS.length, label: step.label, back: cur ? PICK_STEPS[cur - 1].key : '', opts: [...seen.entries()].map(([v, r]) => ({ v, name: step.name(r) || step.blank || v, code: step.key === 'rc' ? '+' + v : step.key === 'city' || step.key === 'code' ? v : '', on: st.path[step.key] === v })) } };
+  }
+  const row = rowsAtStep(rows, st.path, PICK_STEPS.length)[0];
+  const ctx = s.numberContext, sugg = s.suggestNumbers({ row, count: 4, seed: st.seed });
+  if (!st.picked || !sugg.some((x) => x.line === st.picked)) st.picked = sugg[0]?.line || null;
+  const typed = /^\d{4}$/.test(st.typed || '') ? st.typed : '';
+  const show = (line) => { const p = parseNumber(numberAt(row, line), ctx); return { line, number: fullForm(p), seen: seenFrom(p, ctx) }; };
+  const final = typed || st.picked; const fp = final ? parseNumber(numberAt(row, final), ctx) : null;
+  return { ...base, place: row.District || row.City, prefix: seenFrom(parseNumber(numberAt(row, '0000'), ctx), ctx).replace(/0000$/, ''), typed: st.typed || '',
+    suggestions: sugg.map((x) => ({ ...show(x.line), on: !typed && x.line === st.picked })),
+    result: fp ? { seen: seenFrom(fp, ctx), full: fullForm(fp), where: placeOf(fp, ctx), home: ctx.regions[ctx.home.rc]?.cities?.[ctx.home.city]?.name || '' } : null };
+}
+
 export async function buildCallsContext(viewer) {
   const s = game.nightcity?.callService;
   const st = callsState(viewer);
@@ -139,23 +197,14 @@ export async function buildCallsContext(viewer) {
   const name = own.actorId ? game.actors.get(own.actorId)?.name : game.nightcity.masterContactService.getContact(own.contactId)?.name;
 
   // no number yet → the picker (or its first screen)
+  if (!lines.length) st.mode = null;
   if (!lines.length || st.view === 'getnum') {
-    const region = sanitizeRegion(st.region || s.region);
-    st.region = region;
-    const sugg = s.suggestNumbers({ ...region, count: 4, seed: st.seed });
-    if (!st.picked || !sugg.some((x) => x.number === st.picked)) st.picked = sugg[0]?.number || null;
-    const countries = Object.entries(AREA_CODES).map(([code, c]) => ({ code, label: c.label, on: code === region.country }));
-    const regions = Object.keys(AREA_CODES[region.country].regions).map((r) => ({ name: r, on: r === region.region }));
-    const codes = AREA_CODES[region.country].regions[region.region].map(([code, label]) => ({ code, label, on: code === region.code }));
-    return { picker: true, firstTime: !lines.length, name, homeCode: home, region, countries, regions, codes,
-      suggestions: sugg.map((x) => ({ ...x, label: kindLabel(x.kind), on: x.number === st.picked })), picked: st.picked,
-      fiction: !!AREA_CODES[region.country].fiction, typed: st.typed || '' };
+    return { ...pickerContext(s, st), firstTime: !lines.length, name };
   }
 
   // My line — the greeting + voicemail switches of the number picked in Call as
   if (st.view === 'myline') {
-    const as0 = st.as && lines.some((l) => (l.contactId || '') === st.as) ? st.as : (lines[0].contactId || '');
-    const line = lines.find((l) => (l.contactId || '') === as0) || lines[0];
+    const line = lines.find((l) => lineValue(l, home) === st.as) || lines[0];
     const set = s.lineSettings(line.number);
     const g = set.greeting;
     return { myline: { number: line.number, label: line.burner ? line.name : name, burner: !!line.burner,
@@ -167,16 +216,12 @@ export async function buildCallsContext(viewer) {
 
   const book = phoneBook(viewer);
   const log = await s.getLog(ownerId);
-  const list = buildLogRows(log, { book, home, filter: st.filter, page: st.page });
-  st.page = list.page;
-  for (const d of list.days) {
-    d.label = d.day ? formatCyberDate(`${d.day}T12:00:00.000Z`, { dateOnly: true }) : 'Earlier';
-    for (const r of d.rows) r.time = r.gameTime ? formatCyberDate(r.gameTime, { timeOnly: true }) : '';
-  }
-  // Call as: this character's own line, then its burners
-  const as = st.as && lines.some((l) => (l.contactId || '') === st.as) ? st.as : (lines[0].contactId || '');
-  st.as = as;
-  const fromLine = lines.find((l) => (l.contactId || '') === as) || lines[0];
+  const foldsOf = (k) => (st.folds[k] ??= { shut: new Set(), open: new Set() });
+  const list = buildLogRows(log, { book, home, filter: st.filter, show: st.filter === 'vm' ? 'all' : st.show, q: st.filter === 'vm' ? '' : st.q, now: gameNow(), ...foldsOf(st.filter), limits: st.limits, dayLabel: dayText });
+  for (const b of list.bands) for (const d of b.days) for (const r of d.rows) r.time = r.gameTime ? formatCyberDate(r.gameTime, { timeOnly: true }) : '';
+  // the card: one line after another, the one calling first in the list only by choice
+  if (!st.as || !lines.some((l) => lineValue(l, home) === st.as)) st.as = lineValue(lines[0], home);
+  const fromLine = lines.find((l) => lineValue(l, home) === st.as) || lines[0];
   const net = s._net();
   const prof = callProfile({ name, number: fromLine.number, net: { name: net?.name, type: net?.type, strength: net?.strength } });
   const sig = s._noSignal() ? { lead: 'No signal', warn: true, parts: [{ text: 'dead zone', tone: 'dim' }] } : signalLine(prof, 'live');
@@ -188,15 +233,48 @@ export async function buildCallsContext(viewer) {
     const o = shownOther({ other: v.from }, book, home);
     return { vmId: v.vmId, ownerId, who: o.name, known: o.known, number: v.from?.number || '', text: v.text, tts: v.kind === 'tts', voice: v.voice || '',
       isAudio: v.kind === 'audio', audio: v.audio || '', purged: !!v.purged, length: v.duration ? formatDuration(v.duration) : '',
-      heard: !!v.heard, when: v.gameTime ? formatCyberDate(v.gameTime) : '', forLine: v.to?.contactId ? burnerName(v.to.contactId) : '' };
+      heard: !!v.heard, stamp: v.gameTime || '', when: v.gameTime ? formatCyberDate(v.gameTime, { timeOnly: true }) : '', forLine: v.to?.contactId ? burnerName(v.to.contactId) : '' };
   });
+  const vmNeedle = String(st.q || '').trim().toLowerCase();
+  const vmShown = vmRows.filter((r) => (st.show === 'all' || (st.show === 'new' ? !r.heard : st.show === 'heard' ? r.heard : true))
+    && (!vmNeedle || [r.who, r.number, r.text].join(' ').toLowerCase().includes(vmNeedle)));
+  for (const r of vmShown) { r.whoHtml = markHit(r.who, st.q); r.textHtml = markHit(r.text, st.q); }
+  const vmBands = dateBands(vmShown, { now: gameNow(), dateOf: (r) => r.stamp, dayLabel: dayText, isHot: (r) => !r.heard, ...foldsOf('vm'), forced: !!vmNeedle || st.show !== 'all', limits: st.limits, prefix: 'vm:' });
+  const isVm = st.filter === 'vm';
   return {
-    vmView: st.filter === 'vm', vm: { rows: vmRows, unheard: vmRows.filter((r) => !r.heard).length },
+    vmView: isVm, vm: { rows: vmRows, bands: vmBands, unheard: vmRows.filter((r) => !r.heard).length },
+    tools: {
+      q: st.q, showing: st.show !== 'all', forced: isVm ? (!!vmNeedle || st.show !== 'all') : list.forced,
+      placeholder: isVm ? 'Name, number, words left…' : 'Name, number, words said…',
+      options: (isVm ? VM_SHOW : CALL_SHOW).map(([k, label]) => ({ k, label, on: k === st.show })),
+      found: isVm ? `${vmShown.length} of ${vmRows.length} ${vmRows.length === 1 ? 'message' : 'messages'}` : `${list.total} of ${list.of} ${list.of === 1 ? 'call' : 'calls'}`,
+    },
+    scanner: (() => { const a = own.actorId ? game.actors?.get(own.actorId) : null, o = game.nightcity?.overheardService; if (!a || !o) return null; const h = holdsItem(a.items?.contents || [], o.rules.scanner); return h?.counts ? { name: h.item.name, img: h.item.img || '' } : null; })(),
+    emergency: (() => {
+      const em = game.nightcity?.emergencyService, actor = own.actorId ? game.actors?.get(own.actorId) : null;
+      if (!em || !actor) return null;
+      const plan = em.planFor(actor), rank = em.rankOf(actor);
+      if (plan === 'none' && !rank) return null;
+      const busy = em.planInUse(actor.id);
+      return { trauma: plan !== 'none', traumaPlan: PLAN_NAMES[plan], traumaBusy: busy, traumaHelp: busy ? 'Your plan is in use. Your GM clears it when the job is over.' : 'Takes your Action. Any injury can justify a call.', backup: rank > 0, backupOrg: em.config.backup.orgs[em.orgOf(actor)]?.name || '' };
+    })(),
     main: true, name, homeCode: home, noSignal: s._noSignal(), dialSvg: DIAL_SVG, keypad: KEYPAD,
-    lines: lines.map((l) => ({ ...l, value: l.contactId || '', label: l.burner ? `${l.name} (burner)` : name, on: (l.contactId || '') === as })),
-    multiLine: lines.length > 1, fromNumber: fromLine.number, burner: !!fromLine.burner,
+    lines: lines.map((l) => { const set = s.lineSettings(l.number), p = parseNumber(l.number, home), g = set.greeting; return { ...l, value: lineValue(l, home), numHtml: numHtml(l.number, home), label: l.label || (l.kind === 'alias' ? l.name : l.kind === 'burner' ? 'Burner' : l.kind === 'extra' ? 'Extra line' : name), where: placeOf(p, home) + (l.main ? '' : ` · ${l.label || l.name}`), vmOn: !!set.voicemail.on, ringOn: !set.voicemail.dnd, greet: GREETING_LABELS[g.kind] || 'Default', retirable: l.kind === 'extra' || l.kind === 'burner', on: lineValue(l, home) === st.as }; }),
+    multiLine: lines.length > 1, fromNumber: fromLine.number, burner: !!fromLine.burner, canAdd: !!own.actorId,
+    addHelp: !own.actorId ? '' : s.extraLeft(own.actorId) === Infinity ? 'Add a line: a second number with a label, or a burner.' : s.rules.extraLines === 0 ? 'Your GM has switched extra lines off. They can still give you one.' : s.extraLeft(own.actorId) ? `Add a line: a second number with a label, or a burner. You can add ${s.extraLeft(own.actorId)} more.` : `You have used your ${s.rules.extraLines} extra line${s.rules.extraLines === 1 ? '' : 's'}. Your GM can give you more.`,
+    changeHelp: s.rules.changeNeedsGm && !game.user?.isGM ? 'Ask your GM for a different number. If they agree, people who have your old one will no longer reach you.' : 'Pick a different number. People who have your old one will no longer reach you.',
+    pending: own.actorId ? (s.pendingFor?.(own.actorId)?.to || '') : '',
     sig, net, speed: speedDial(log, book, home), bookJson: JSON.stringify(book.map(({ name: n, number, normal, img }) => ({ n, number, normal, img }))),
     filter: st.filter, list, missedUnseen: list.counts.unseen,
+    bookView: st.filter === 'book',
+    bookRows: [...book].sort((a, b) => a.name.localeCompare(b.name)).map((b) => ({ name: b.name, number: b.number, img: b.img, numHtml: numHtml(b.number, home), initials: b.name.split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase(), hay: (b.name + ' ' + b.number).toLowerCase() })),
+    ...(() => { const held = viewer.actorId ? game.actors?.get(viewer.actorId)?.getFlag?.(MODULE_ID, 'contacts')?.length || 0 : 0, n = Math.max(0, held - book.length); return { noNumber: n, noNumberOne: n === 1 }; })(),
+    logTabs: [
+      { k: 'all', label: 'Calls', icon: 'fa-list', help: 'Every call on your lines', n: 0 },
+      { k: 'missed', label: 'Missed', icon: 'fa-phone-slash', help: 'Calls you did not pick up', n: list.counts.unseen, hot: list.counts.unseen > 0 },
+      { k: 'vm', label: 'Voicemail', icon: 'fa-voicemail', help: 'Messages left for you', n: vmRows.filter((v) => !v.heard).length, hot: vmRows.some((v) => !v.heard) },
+      { k: 'book', label: 'Contacts', icon: 'fa-address-book', help: 'Everyone you have a number for', n: book.length },
+    ].map((t) => ({ ...t, on: t.k === st.filter })),
   };
 }
 
@@ -221,24 +299,103 @@ export async function handleCallsAction(viewer, action, target) {
   const own = owner(viewer);
   const rerender = () => viewer.render();
   switch (action) {
-    case 'calls-filter': st.filter = target.dataset.f || 'all'; st.page = 1; return rerender();
-    case 'calls-page': st.page = Math.max(1, st.page + Number(target.dataset.d || 0)); return rerender();
-    case 'calls-page-to': st.page = Number(target.dataset.p) || 1; return rerender();
-    case 'calls-getnum': st.view = 'getnum'; st.seed = Date.now(); return rerender();
+    case 'calls-filter': st.filter = target.dataset.f || 'all'; st.q = ''; st.show = 'all'; return rerender();
+    case 'calls-more': { const k = target.dataset.band; st.limits[k] = (st.limits[k] || BAND_PAGE) + BAND_PAGE; return rerender(); }
+    case 'calls-clear': st.q = ''; st.show = 'all'; return rerender();
+    case 'calls-foldall': {
+      const f = (st.folds[st.filter] ??= { shut: new Set(), open: new Set() });
+      const secs = [...(viewer.element?.querySelectorAll('[data-calls-band]') ?? [])];
+      const close = secs.some((x) => !x.classList.contains('is-shut'));
+      for (const x of secs) { const k = x.dataset.callsBand; (close ? f.shut : f.open).add(k); (close ? f.open : f.shut).delete(k); }
+      return rerender();
+    }
+    case 'calls-getnum': st.view = 'getnum'; st.mode = 'change'; st.seed = Date.now(); st.path = null; st.level = null; return rerender();
+    case 'calls-addline': st.view = 'getnum'; st.mode = 'add'; st.addKind = 'extra'; st.addLabel = ''; st.seed = Date.now(); st.path = null; st.level = null; return rerender();
+    case 'calls-scan': { const a = game.actors?.get(own?.actorId); if (a) game.nightcity?.overheardService?.scan(a); return; }
+    case 'calls-trauma': { const a = game.actors?.get(own?.actorId); if (a) game.nightcity?.emergencyHud?.trauma(a); return; }
+    case 'calls-traumafor': {
+      const a = game.actors?.get(own?.actorId); if (!a) return;
+      const pick = await showNamePicker({ admin: false, title: 'Who is it for?', hint: 'One person at a time.', placeholder: 'search characters…', entries: getPlayerCharacters().map((p) => ({ id: p.actorId, name: p.actorName, img: p.actor?.img || '' })) });
+      const who = pick?.id ? game.actors.get(pick.id) : null;
+      if (who) game.nightcity?.emergencyHud?.trauma(a, who);
+      return;
+    }
+    case 'calls-backup': {
+      const a = game.actors?.get(own?.actorId), em = game.nightcity?.emergencyService; if (!a || !em) return;
+      const list = em.optionsFor(a);
+      if (!list.length) { ui.notifications?.warn('Your GM has given your organization nobody you can call.'); return; }
+      const pick = list.length === 1 ? { id: list[0].name } : await showNamePicker({ admin: false, title: 'Call who?', hint: 'Your rank, or any group below it.', placeholder: 'search groups…', selected: em.defaultGroup(a)?.name, entries: list.map((r) => ({ id: r.name, name: r.name, sub: r.r1 === r.r2 ? `Rank ${r.r1}` : `Rank ${r.r1}-${r.r2}`, icon: 'fas fa-people-group' })) });
+      if (pick?.id) game.nightcity?.emergencyHud?.backup(a, pick.id);
+      return;
+    }
+    case 'calls-sharemine': {
+      const num = target.dataset.number; if (!num || !own?.actorId) return;
+      const pcs = getPlayerCharacters().filter((p) => p.actorId !== own.actorId);
+      if (!pcs.length) { ui.notifications?.info('There is nobody to share it with yet.'); return; }
+      const pick = await showNamePicker({ admin: false, title: 'Share this number', hint: 'They get the number on a contact. A second line does not say it is yours.', placeholder: 'search characters…', multi: true, doneLabel: 'Share',
+        entries: pcs.map((p) => ({ id: p.actorId, name: p.actorName, img: p.actor?.img || '', sub: p.playerName || '' })) });
+      if (!pick?.length) return;
+      const r = await s.shareMine({ actorId: own.actorId, number: num, actorIds: pick.map((x) => x.id ?? x) });
+      if (!r.ok) ui.notifications?.warn(r.error); else ui.notifications?.info('Number shared.');
+      return;
+    }
+    case 'calls-savenum': {
+      const num = target.dataset.number; if (!num || !own?.actorId) return;
+      const name = await themedPrompt({ title: 'Save this number', label: 'Save', icon: 'fas fa-address-book', content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-address-book', title: num, field: { label: 'Name', name: 'name', value: '', placeholder: 'What to call them' } }), read: (root) => root.querySelector('input[name=name]')?.value?.trim() || null });
+      if (!name) return;
+      const r = await game.nightcity?.contactRepository?.addContact?.(own.actorId, { name, email: '', phone: num, tags: [] });
+      if (r && !r.success) ui.notifications?.warn(r.error || 'Could not save it.'); else ui.notifications?.info(`${name} saved.`);
+      return rerender();
+    }
+    case 'calls-addkind': st.addKind = target.dataset.k === 'burner' ? 'burner' : 'extra'; return rerender();
+    case 'calls-retire': {
+      const yes = await themedConfirm({ title: 'Retire this line?', yes: 'Retire it', yesIcon: 'fas fa-ban', content: dialogBodyHtml({ tone: 'bad', icon: 'fas fa-ban', title: target.dataset.number, lead: 'The number retires for good, and it can never be given to anyone else. People who saved it will hear not in service.' }) });
+      if (!yes) return;
+      const r = await s.retireLine(target.dataset.number);
+      if (r && !r.ok) ui.notifications?.warn(r.error);
+      st.as = null; setTimeout(rerender, r?.relayed ? 600 : 0);
+      return;
+    }
+    case 'calls-unrequest': await s.cancelRequest(own?.actorId); setTimeout(rerender, 300); return;
+    case 'calls-copy': try { await navigator.clipboard.writeText(target.dataset.number); ui.notifications?.info('Number copied.'); } catch { ui.notifications?.info(target.dataset.number); } return;
+    case 'calls-set': {
+      const number = target.dataset.number, cur = s.lineSettings(number);
+      const next = target.dataset.k === 'vm' ? { ...cur, voicemail: { ...cur.voicemail, on: !cur.voicemail.on } } : { ...cur, voicemail: { ...cur.voicemail, dnd: !cur.voicemail.dnd } };
+      const r = await s.saveLineSettings(number, next);
+      if (r && !r.ok) ui.notifications?.warn(r.error);
+      setTimeout(rerender, r?.relayed ? 400 : 0);
+      return;
+    }
+    case 'calls-level': st.level = target.dataset.k; return rerender();
+    case 'calls-level-done': st.level = null; return rerender();
+    case 'calls-step': {
+      const i = PICK_STEPS.findIndex((x) => x.key === st.level);
+      st.path = { ...st.path, [st.level]: target.dataset.v };
+      PICK_STEPS.slice(i + 1).forEach((x) => { st.path[x.key] = null; });
+      st.level = i + 1 < PICK_STEPS.length ? PICK_STEPS[i + 1].key : null;
+      st.picked = null; st.typed = ''; st.seed = Date.now();
+      return rerender();
+    }
     case 'calls-back': st.view = 'main'; return rerender();
     case 'calls-shuffle': st.seed = Date.now(); st.picked = null; return rerender();
-    case 'calls-pick': st.picked = target.dataset.number; st.typed = ''; return rerender();
-    case 'calls-code': st.region = { ...st.region, code: target.dataset.code }; st.picked = null; return rerender();
+    case 'calls-pick': st.picked = target.dataset.line; st.typed = ''; return rerender();
     case 'calls-use': {
-      const root = viewer.element;
-      const typed = root?.querySelector('[data-calls-own]')?.value?.trim();
-      const code = st.region?.code;
-      const number = typed ? (typed.startsWith('+') ? typed : `+${st.region?.country || '1'} ${code && st.region?.country === '1' && !/^\(?\d{3}\)?\s/.test(typed) ? `(${code}) ` : ''}${typed}`) : st.picked;
+      const rows = s.pickRows(), row = st.path ? rowsAtStep(rows, st.path, PICK_STEPS.length)[0] : null;
+      const typed = /^\d{4}$/.test(st.typed || '') ? st.typed : '';
+      const number = row && (typed || st.picked) ? numberAt(row, typed || st.picked) : '';
       if (!number) return;
-      const r = await s.assignNumber({ actorId: own?.actorId, contactId: own?.contactId, number });
+      const mode = st.mode;
+      const overLimit = mode === 'add' && !!own?.actorId && s.extraLeft(own.actorId) < 1;
+      const asks = overLimit || (mode === 'change' && s.rules.changeNeedsGm && !game.user?.isGM && !!own?.actorId);
+      const r = overLimit ? await s.requestLine({ actorId: own.actorId, number, kind: st.addKind, label: st.addLabel })
+        : mode === 'add' ? await s.addLine({ actorId: own?.actorId, number, kind: st.addKind, label: st.addLabel })
+        : asks ? await s.requestChange({ actorId: own.actorId, number })
+          : await s.assignNumber({ actorId: own?.actorId, contactId: own?.contactId, number });
       if (!r.ok) { ui.notifications?.warn(r.error); return; }
-      if (r.relayed) ui.notifications?.info(`Number requested: ${number}. It is yours as soon as the GM's screen confirms it.`);
-      st.view = 'main'; st.typed = '';
+      if (asks) ui.notifications?.info(overLimit ? `Asked your GM for ${number}.` : `Asked your GM for ${number}. You keep this number until they answer.`);
+      else if (r.relayed) ui.notifications?.info(`Number requested: ${number}. It is yours as soon as the GM's screen confirms it.`);
+      if (mode === 'add' && !overLimit) st.as = normaliseNumber(number, s.homeCode);
+      st.view = 'main'; st.mode = null; st.typed = ''; st.path = null; st.level = null;
       setTimeout(rerender, r.relayed ? 600 : 0);
       return;
     }
@@ -312,7 +469,8 @@ async function dial(viewer, raw) {
     const hit = phoneBook(viewer).find((b) => b.name.toLowerCase().includes(number.toLowerCase()));
     if (hit) number = hit.number;
   }
-  const as = st.as ? { contactId: st.as } : own.actorId ? { actorId: own.actorId } : { contactId: own.contactId };
+  const line = s.linesFor?.(own.actorId)?.find((l) => l.normal === st.as);
+  const as = line?.contactId ? { contactId: line.contactId } : own.actorId ? { actorId: own.actorId, line: line && !line.main ? line.normal : null } : { contactId: own.contactId };
   const r = await s.placeCall(number, as);
   if (!r.ok && r.error) ui.notifications?.warn(r.error);
 }
@@ -328,14 +486,98 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 function armState(value, book, home) {
   const v = String(value || '').trim();
   if (!v) return { state: 'empty' };
-  const n = normaliseNumber(v, home);
-  const byNumber = n && n.replace(/\D/g, '').length >= 5 ? book.find((b) => b.normal === n) : null;
-  if (byNumber) return { state: 'ready', name: byNumber.name, img: byNumber.img };
+  const p = parseNumber(v, home);
+  if (p.service) return { state: 'ready', name: p.entry?.name || p.service, number: v };
+  if (p.done) {
+    const hit = book.find((b) => b.normal === p.key);
+    return hit ? { state: 'ready', name: hit.name, img: hit.img } : { state: 'number' };
+  }
   if (/[a-z]{2,}/i.test(v)) {
     const byName = book.find((b) => b.name.toLowerCase().includes(v.toLowerCase()));
     if (byName) return { state: 'ready', name: byName.name, img: byName.img, number: byName.number };
   }
-  return v.replace(/\D/g, '').length >= 3 ? { state: 'number' } : { state: 'empty' };
+  return { state: 'empty' };
+}
+
+/** The line under the dial box. It explains a number as it is typed, and never names an owner who isn't in your contacts. */
+function dialHint(value, book, ctx) {
+  const { number: bare, ext } = splitExtension(value);
+  const p = parseNumber(bare, ctx);
+  const officeRow = officeRowOf(p, ctx);
+  if (officeRow && !book.find((b) => b.normal === p.key)) {
+    const o = game.nightcity?.callService?.office?.(officeRow), listed = (o?.exts || []).filter((e) => e.listed);
+    const menu = listed.length ? ` Extensions: ${listed.map((e) => `x${esc(e.x)} ${esc(e.who)}`).join(', ')}.` : '';
+    return `<b>${esc(placeOf(p, ctx))}.</b> ${ext ? `Extension ${esc(ext)}.` : `A switchboard.${menu}`} Add x and digits for an extension.`;
+  }
+  if (p.empty) return 'Type a number, or use the pad. <button type="button" data-calls-xopen data-tooltip="Every district, city, corporation and service line">See the directory</button>';
+  if (p.service) return `<span class="ok">${esc(p.entry?.name || p.service)}.</span> A service line, works from anywhere.`;
+  if (!p.done) {
+    if (p.ex && !p.bad && p.line !== undefined) { const left = 4 - (p.line || '').length; return `<b>${esc(placeOf(p, ctx))}.</b> ${left} more digit${left === 1 ? '' : 's'}.`; }
+    return p.bad ? `<span class="bad">${esc(p.hint)}</span>` : esc(p.hint || '');
+  }
+  if (isUnlisted(p, ctx) && rowOf(p, ctx)?.Status !== 'dead') return '<b>Unlisted number.</b> The directory has nothing on it. You can still try it.';
+  if (rowOf(p, ctx)?.Status === 'dead') return `<b>${esc(placeOf(p, ctx))}.</b> <span class="bad">This exchange is dead. Nothing should answer.</span>`;
+  const who = book.find((b) => b.normal === p.key)?.name;
+  return who ? `<b>${esc(placeOf(p, ctx))}.</b> <span class="ok">${esc(who)}.</span>` : `<b>${esc(placeOf(p, ctx))}.</b> Not in your contacts.`;
+}
+
+/** Keys on the pad: three digits that spell a district become that district, and a local number gets its dash. */
+function tidyDial(v, ctx) {
+  const split = splitExtension(v);
+  if (split.ext) return `${tidyDial(split.number, ctx)} x${split.ext}`;
+  let s = String(v).toUpperCase().replace(/[^A-Z0-9+# -]/g, '');
+  const here = ctx.regions[ctx.home.rc]?.cities?.[ctx.home.city]?.ex || {};
+  const bare = s.replace(/[\s-]/g, '');
+  if (/^\d{3}/.test(bare)) { const hit = Object.keys(here).find((x) => asKeys(x) === bare.slice(0, 3)); if (hit) s = hit + bare.slice(3); }
+  if (parseNumber(s, ctx).service || s.startsWith('+')) return s;
+  const b = s.replace(/[\s-]/g, '');
+  const m = b.match(/^([A-Z]{3})(\d{0,4})$/);
+  if (m && here[m[1]]) return m[2] ? `${m[1]}-${m[2]}` : m[1];
+  const m2 = b.match(/^([A-Z]{2,3})([A-Z]{3})(\d{0,4})$/);
+  if (m2 && ctx.regions[ctx.home.rc]?.cities?.[m2[1]]) return `${m2[1]} ${m2[2]}${m2[3] ? `-${m2[3]}` : ''}`;
+  return s;
+}
+
+/* ─── the directory. Only what the GM has left listed. A row starts dialling it. ─── */
+function dirEntries(ctx) {
+  const out = [];
+  for (const r of ctx.rows) {
+    if (r.Listed === 'no' || r.Status === 'dead') continue;
+    const home = r['Region code'] === ctx.home.rc && r['City code'] === ctx.home.city, near = r['Region code'] === ctx.home.rc;
+    const dial = (near ? '' : '+' + r['Region code'] + ' ') + (home ? '' : r['City code'] + (r.Code ? ' ' : '-')) + (r.Code ? r.Code + '-' : '');
+    if (r.Category === 'Corporate') out.push({ tab: 'corps', corp: r.District, code: r.Code, name: r.District, hq: r.Area === 'Headquarters', city: r['City code'], cityName: r.City, dial });
+    else if (home) out.push({ tab: 'home', group: r.Area || r.City, code: r.Code, name: r.District || r.City, dial });
+    else if (!out.some((e) => e.tab === 'other' && e.rc === r['Region code'] && e.code === r['City code'])) out.push({ tab: 'other', rc: r['Region code'], region: r.Region, near, code: r['City code'], name: r.City, dial: (near ? '' : '+' + r['Region code'] + ' ') + r['City code'] + ' ' });
+  }
+  for (const [c, e] of Object.entries(ctx.service)) if (e?.seen !== 'hidden' && e?.listed !== false) out.push({ tab: 'service', code: c, name: e?.name || c, sub: 'Works from anywhere', dial: c });
+  return out;
+}
+const dirRow = (e, sub) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${esc(e.dial.trim())}"><code>${esc(e.code)}</code><span class="nm">${esc(e.name)}</span>${sub && e.sub ? `<small>${esc(e.sub)}</small>` : ''}</button>`;
+function dirPanel(ctx, tab, entries = dirEntries(ctx)) {
+  const all = entries.filter((e) => e.tab === tab);
+  if (tab === 'home') return [...new Set(all.map((e) => e.group))].map((g) => `<div class="ncm-calls-row"><span class="lbl">${esc(g)}</span><span class="ln"></span></div><div class="ncm-calls-xgrid">${all.filter((e) => e.group === g).map((e) => dirRow(e)).join('')}</div>`).join('');
+  if (tab === 'other') return '<p class="ncm-calls-xhint">Long-distance numbers start with the region\'s + code, then the city.</p>' + [...new Set(all.map((e) => e.rc))].sort((a, b) => Number(b === ctx.home.rc) - Number(a === ctx.home.rc)).map((rc) => { const rows = all.filter((e) => e.rc === rc), near = rc === ctx.home.rc; return `<details class="ncm-calls-xreg"${near ? ' open' : ''}><summary><code>${near ? 'Nearby' : '+' + esc(rc)}</code>${esc(rows[0].region)}<small>${rows.length}${rows.length === 1 ? ' city' : ' cities'}</small></summary><div class="ncm-calls-xgrid">${rows.map((e) => dirRow(e)).join('')}</div></details>`; }).join('');
+  if (tab === 'corps') return '<p class="ncm-calls-xhint">Main numbers ring a switchboard. Add an extension to reach a desk.</p>' + [...new Set(all.map((e) => e.corp))].sort((a, b) => a.localeCompare(b)).map((c) => { const rows = all.filter((e) => e.corp === c).sort((a, b) => Number(b.hq) - Number(a.hq)); const here = rows.find((e) => e.city === ctx.home.city); return `<details class="ncm-calls-xreg"><summary><code>${esc(rows[0].code)}</code>${esc(c)}${here ? `<em>In ${esc(here.cityName)}</em>` : ''}<small>${rows.length}${rows.length === 1 ? ' office' : ' offices'}</small></summary><div class="ncm-calls-xgrid">${rows.map((e) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${esc(e.dial.trim())}"><code>${esc(e.city)}</code><span class="nm">${esc(e.cityName)}${e.hq ? ' <i class="hq">HQ</i>' : ''}</span></button>`).join('')}</div></details>`; }).join('');
+  return `<div class="ncm-calls-xgrid ncm-calls-xgrid--one">${all.map((e) => dirRow(e, true)).join('')}</div>`;
+}
+function dirHtml(ctx) {
+  const all = dirEntries(ctx), n = (t) => all.filter((e) => e.tab === t).length, homeName = ctx.regions[ctx.home.rc]?.cities?.[ctx.home.city]?.name || 'Home';
+  const tab = (k, t, h, on) => `<button type="button" role="tab" aria-selected="${!!on}" class="${on ? 'on' : ''}" data-xtab="${k}" data-tooltip="${esc(h)}">${esc(t)}<small>${n(k)}</small></button>`;
+  return `<div class="ncm-calls-xlist"><div class="ncm-calls-xhd"><h3>Directory</h3><input type="text" data-xfind placeholder="Find a place, code or corp" aria-label="Find a place, code or corp" autocomplete="off" spellcheck="false" data-tooltip="Searches every tab, by name or code"><button type="button" class="ncm-calls-btn" data-xclose data-tooltip="Back to the dial pad">Close</button></div><div class="ncm-calls-xtabs" role="tablist" aria-label="Directory">${tab('home', homeName, 'Districts in ' + homeName, true)}${tab('other', 'Other places', 'Regions and cities, with their codes')}${tab('corps', 'Corporations', 'Main numbers at each office')}${tab('service', 'Service', 'Words you can dial from anywhere')}</div><div class="ncm-calls-xpanel" role="tabpanel">${dirPanel(ctx, 'home', all)}</div></div>`;
+}
+
+/* ─── the first-open card, reopened from the ? on My line ─── */
+function introHtml(ctx, number) {
+  const p = parseNumber(number, ctx), ex = p.ex || Object.keys(ctx.regions[ctx.home.rc]?.cities?.[ctx.home.city]?.ex || {})[0] || 'WAT';
+  const where = ctx.regions[ctx.home.rc]?.cities?.[ctx.home.city];
+  const near = Object.entries(ctx.regions[ctx.home.rc]?.cities || {}).find(([c, C]) => c !== ctx.home.city && Object.keys(C.ex).length);
+  return `<div class="ncm-calls-intro" role="dialog" aria-label="How numbers work"><div class="ncm-calls-intro__box"><h3>How numbers work here</h3>
+    <div class="ncm-calls-intro__big ncm-num" style="border:0;cursor:default"><div class="ncm-calls-intro__part"><b class="x">${esc(ex)}-</b><small>District: ${esc(where?.ex?.[ex]?.District || '')}</small></div><div class="ncm-calls-intro__part"><b class="l">4471</b><small>The person</small></div></div>
+    <ul><li><span class="ncm-num"><span class="x">${esc(ex)}-</span><span class="l">4471</span></span><span><b>Same city:</b> just the district and four digits.</span></li>
+    ${near ? `<li><span class="ncm-num"><span class="c">${esc(near[0])} </span><span class="x">${esc(Object.keys(near[1].ex)[0])}-</span><span class="l">2210</span></span><span><b>Nearby city:</b> add the city.</span></li>` : ''}
+    <li><span class="ncm-num"><span class="r">+${esc(ctx.home.rc === '14' ? '72' : '14')} </span><span class="c">${esc(ctx.home.rc === '14' ? 'NC' : 'DAL')} </span><span class="x">${esc(ctx.home.rc === '14' ? 'WAT' : 'CEN')}-</span><span class="l">3345</span></span><span><b>Far away:</b> add a + code for the region.</span></li></ul>
+    <p class="ncm-calls-intro__p">A number says where it was issued, not where someone is now. It stays with them when they move. Hover any number to see what it means.</p>
+    <div class="ncm-calls-intro__ft"><small>Reopen this with the ? on your My line card.</small><button type="button" class="ncm-calls-btn go" data-intro-done data-tooltip="Close this"><i class="fas fa-check"></i> Got it</button></div></div></div>`;
 }
 
 function decodeTo(el, to, ms) {
@@ -358,19 +600,93 @@ export function wireCallsTab(viewer, html) {
   if (!root || root._wired) return;
   root._wired = true;
   const st = callsState(viewer);
-  const home = game.nightcity?.callService?.homeCode || '+1';
+  const home = game.nightcity?.callService?.homeCode;
 
-  // the picker's selects (country / region) — a <select> fires on change, never as a data-action
-  root.querySelectorAll('[data-calls-region]').forEach((sel) => sel.addEventListener('change', () => {
-    const key = sel.dataset.callsRegion;
-    st.region = { ...st.region, [key]: sel.value, ...(key === 'country' ? { region: null, code: null } : { code: null }) };
-    st.picked = null; viewer.render();
-  }));
+  // every button here re-renders the viewer: each scroller keeps its place across it
+  const SCROLLERS = ['.ncm-calls', '.ncm-calls-gn', '.ncm-calls-list', '.ncm-calls-dl', '.ncm-calls-dist'];
+  const scrollerKey = (el) => SCROLLERS.find((s) => el.matches?.(s));
+  for (const s of SCROLLERS) { const el = root.matches(s) ? root : root.querySelector(s); if (el && st.scroll[s]) el.scrollTop = st.scroll[s]; }
+  root.addEventListener('scroll', (e) => { const k = scrollerKey(e.target); if (k) st.scroll[k] = e.target.scrollTop; }, { capture: true, passive: true });
+
+  // the log: search after a pause, keeping the cursor; the Show dropdown; folds on the live DOM so they animate
+  const find = root.querySelector('[data-calls-q]');
+  if (find) {
+    if (st.qFocus) { st.qFocus = false; find.focus(); const at = Math.min(st.qCaret ?? find.value.length, find.value.length); find.setSelectionRange(at, at); }
+    find.addEventListener('input', () => {
+      clearTimeout(st.qT);
+      st.qT = setTimeout(() => { st.q = find.value; st.qFocus = document.activeElement === find; st.qCaret = find.selectionStart; viewer.render(); }, 220);
+    });
+  }
+  root.querySelector('[data-calls-show]')?.addEventListener('change', (e) => { st.show = e.target.value; viewer.render(); });
+  const foldBand = (h) => {
+    const sec = h.closest('[data-calls-band]');
+    if (!sec) return;
+    const f = (st.folds[st.filter] ??= { shut: new Set(), open: new Set() }), key = sec.dataset.callsBand, shut = !sec.classList.contains('is-shut');
+    sec.classList.toggle('is-shut', shut);
+    h.setAttribute('aria-expanded', String(!shut));
+    (shut ? f.shut : f.open).add(key); (shut ? f.open : f.shut).delete(key);
+  };
+  root.querySelectorAll('[data-calls-fold]').forEach((h) => {
+    h.addEventListener('click', () => foldBand(h));
+    h.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); foldBand(h); } });
+  });
+
+  // add a line: what it is called
+  const addLabel = root.querySelector('[data-calls-addlabel]');
+  addLabel?.addEventListener('input', () => { st.addLabel = addLabel.value; });
+
+  // My line: the number opens into the list, and picking one patches the card so the chip keeps running
+  const card = root.querySelector('.ncm-calls-line');
+  if (card) {
+    const toggle = (open) => { const on = open ?? !card.classList.contains('is-open'); card.classList.toggle('is-open', on); card.querySelector('[data-linetoggle]')?.setAttribute('aria-expanded', String(on)); card.querySelectorAll('[data-linepick]').forEach((b) => { b.tabIndex = on ? 0 : -1; }); };
+    card.querySelector('[data-linetoggle]')?.addEventListener('click', () => toggle());
+    const after = (b) => {
+      st.as = b.dataset.linepick;
+      card.querySelectorAll('[data-linepick]').forEach((x) => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', String(on)); x.querySelector('i').className = on ? 'fas fa-circle-dot' : 'far fa-circle'; });
+      card.querySelector('[data-show="num"]').innerHTML = b.querySelector('.t .ncm-num').outerHTML;
+      card.querySelector('[data-show="where"]').textContent = b.dataset.where;
+      card.querySelectorAll('[data-lineonly]').forEach((el) => { el.hidden = el.dataset.lineonly !== b.dataset.linepick; });
+      const row = card.querySelector('.ncm-calls-line__row'); row.classList.remove('is-swap'); void row.offsetWidth; row.classList.add('is-swap');
+      const sim = card.querySelector('.ncm-calls-sim'); sim?.classList.toggle('is-quiet', b.dataset.ring !== '1');
+    };
+    card.querySelectorAll('[data-linepick]').forEach((b) => b.addEventListener('click', () => { toggle(false); if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) after(b); else setTimeout(() => after(b), 230); }));
+    root.addEventListener('keydown', (e) => { if (e.key === 'Escape' && card.classList.contains('is-open')) { toggle(false); card.querySelector('[data-linetoggle]')?.focus(); } });
+  }
+
+  // first open, and the ? on the card
+  const showIntro = () => { if (root.querySelector('.ncm-calls-intro')) return; const s = game.nightcity?.callService; root.insertAdjacentHTML('beforeend', introHtml(s?.numberContext, root.querySelector('[data-show="num"]')?.textContent || '')); root.querySelector('[data-intro-done]')?.addEventListener('click', () => { root.querySelector('.ncm-calls-intro')?.remove(); try { localStorage.setItem('ncm.calls.intro', '1'); } catch { /* private window */ } }); };
+  root.querySelector('[data-calls-intro]')?.addEventListener('click', showIntro);
+  if (card) { let seen = '1'; try { seen = localStorage.getItem('ncm.calls.intro') || ''; } catch { /* private window */ } if (!seen) showIntro(); }
+
+  // the phone contact list narrows without a re-render
+  root.addEventListener('input', (e) => {
+    if (!e.target.matches?.('[data-calls-bookq]')) return;
+    const q = e.target.value.trim().toLowerCase();
+    root.querySelectorAll('[data-bk]').forEach((row) => { row.style.display = !q || row.dataset.bk.includes(q) ? '' : 'none'; });
+  });
+
+  // the directory opens over the pad without a re-render, so what you typed stays
+  root.addEventListener('click', (e) => {
+    const s = game.nightcity?.callService, ctx = s?.numberContext; if (!ctx) return;
+    if (e.target.closest('[data-calls-xopen]')) { if (!root.querySelector('.ncm-calls-xlist')) root.insertAdjacentHTML('beforeend', dirHtml(ctx)); root.querySelector('[data-xfind]')?.focus(); return; }
+    if (e.target.closest('[data-xclose]')) { root.querySelector('.ncm-calls-xlist')?.remove(); root.querySelector('[data-calls-num]')?.focus(); return; }
+    const tab = e.target.closest('[data-xtab]');
+    if (tab) { root.querySelectorAll('[data-xtab]').forEach((b) => { const on = b === tab; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); root.querySelector('.ncm-calls-xpanel').innerHTML = dirPanel(ctx, tab.dataset.xtab); return; }
+    const pick = e.target.closest('[data-xpick]');
+    if (pick) { root.querySelector('.ncm-calls-xlist')?.remove(); const i = root.querySelector('[data-calls-num]'); if (i) { i.value = pick.dataset.xpick; i.dispatchEvent(new Event('input')); i.focus(); } }
+  });
+  root.addEventListener('input', (e) => {
+    if (!e.target.matches?.('[data-xfind]')) return;
+    const s = game.nightcity?.callService, ctx = s?.numberContext; const q = e.target.value.trim().toLowerCase();
+    const panel = root.querySelector('.ncm-calls-xpanel'), tabs = root.querySelector('.ncm-calls-xtabs'); if (!panel) return;
+    tabs.classList.toggle('is-searching', !!q);
+    if (!q) { panel.innerHTML = dirPanel(ctx, root.querySelector('[data-xtab].on')?.dataset.xtab || 'home'); return; }
+    const hits = dirEntries(ctx).filter((x) => [x.name, x.code, x.cityName, x.region, x.corp].filter(Boolean).join(' ').toLowerCase().includes(q)).slice(0, 80);
+    panel.innerHTML = hits.length ? `<div class="ncm-calls-xgrid">${hits.map((x) => dirRow({ ...x, sub: x.cityName || x.region || x.group }, true)).join('')}</div>` : '<p class="ncm-calls-xhint">Nothing matches.</p>';
+  });
+
   const own = root.querySelector('[data-calls-own]');
-  own?.addEventListener('input', () => { st.typed = own.value; root.querySelectorAll('.ncm-calls-opt.on').forEach((o) => o.classList.toggle('on', !own.value)); });
-
-  // Call as
-  root.querySelector('[data-calls-as]')?.addEventListener('change', (e) => { st.as = e.target.value; viewer.render(); });
+  own?.addEventListener('input', () => { own.value = own.value.replace(/\D/g, '').slice(0, 4); st.typed = own.value; root.querySelectorAll('.ncm-calls-opt.on').forEach((o) => o.classList.toggle('on', own.value.length !== 4)); });
 
   // My line: the greeting kind (DOM only — the form survives until Save), the voices this browser has
   const ml = root.querySelector('.ncm-calls-ml');
@@ -436,18 +752,40 @@ export function wireCallsTab(viewer, html) {
     else if (prev !== 'empty' && a.state === 'empty') { btn.classList.add('disarming'); decodeTo(label, 'Type a number', 300); decodeTo(sub, 'or a name', 300); }
     else if (a.state === 'ready' && prev !== 'ready') decodeTo(label, a.name, 420);
     else if (a.state === 'number') label.textContent = input.value.trim();
-    if (a.state !== 'ready' && prev === 'ready') decodeTo(sub, 'not in your contacts', 300);
+    if (a.state === 'number' && prev === 'ready') decodeTo(sub, 'not in your contacts', 300);
     if (match) match.innerHTML = a.state === 'ready' ? `<i class="fas fa-address-book"></i> ${esc(a.name)}${a.number ? ` · ${esc(a.number)}` : ''}` : '';
     btn.dataset.number = a.number || input.value.trim();
     prev = a.state;
   };
-  input.addEventListener('input', update);
+  const hintEl = root.querySelector('[data-calls-hint]');
+  const ctxNow = () => game.nightcity?.callService?.numberContext;
+  input.addEventListener('input', () => {
+    // pad digits become the district they spell; never fight the caret when it is mid-number
+    const atEnd = input.selectionStart === input.value.length;
+    if (atEnd) { const t = tidyDial(input.value, ctxNow()); if (t !== input.value) input.value = t; }
+    update();
+    if (hintEl) hintEl.innerHTML = dialHint(input.value, book, ctxNow());
+  });
+  if (hintEl) hintEl.innerHTML = dialHint(input.value, book, ctxNow());
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!btn.disabled) dial(viewer, btn.dataset.number); } });
-  root.querySelectorAll('[data-calls-key]').forEach((k) => k.addEventListener('click', () => {
-    input.value += k.dataset.callsKey; input.dispatchEvent(new Event('input')); input.focus();
-    k.classList.add('hit'); setTimeout(() => k.classList.remove('hit'), 140);
-  }));
-  root.querySelector('[data-calls-del]')?.addEventListener('click', () => { input.value = input.value.slice(0, -1); input.dispatchEvent(new Event('input')); input.focus(); });
+
+  // a key stays lit while it is held, and typing presses the key that letter is on. Inside this tab only.
+  const simPing = () => { const c = root.querySelector('.ncm-calls-sim'); if (!c) return; c.classList.remove('is-ping'); void c.offsetWidth; c.classList.add('is-ping'); };
+  const keyFor = (ch) => { const u = String(ch).toUpperCase(); const k = KEYPAD.find((x) => x.k === u || x.l.includes(u)); return k ? root.querySelector(`[data-calls-key="${CSS.escape(k.k)}"]`) : null; };
+  const held = new Map();
+  const letGo = (code) => { const b = held.get(code); if (!b) return; held.delete(code); if (![...held.values()].includes(b)) { b.classList.remove('held'); b.classList.remove('press'); void b.offsetWidth; b.classList.add('press'); } };
+  root.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || e.target !== input) return;
+    const b = keyFor(e.key); if (b) { b.classList.add('held'); held.set(e.code, b); simPing(); }
+  });
+  root.addEventListener('keyup', (e) => letGo(e.code));
+  input.addEventListener('blur', () => { for (const c of [...held.keys()]) letGo(c); });
+  root.querySelectorAll('[data-calls-key]').forEach((k) => {
+    k.addEventListener('pointerdown', () => { k.classList.add('held'); held.set('pointer', k); simPing(); });
+    k.addEventListener('pointerup', () => letGo('pointer')); k.addEventListener('pointerleave', () => letGo('pointer'));
+    k.addEventListener('click', () => { input.value += k.dataset.callsKey; input.dispatchEvent(new Event('input')); input.focus(); });
+  });
+  root.querySelector('[data-calls-del]')?.addEventListener('click', () => { input.value = input.value.slice(0, -1).replace(/[\s-]$/, ''); input.dispatchEvent(new Event('input')); input.focus(); });
   btn.addEventListener('click', () => { if (!btn.disabled) dial(viewer, btn.dataset.number); });
   // hover: CALL decodes into DIAL ▸ (and back)
   btn.addEventListener('mouseenter', () => { if (!btn.disabled) decodeTo(kind, 'Dial ▸', 260); });

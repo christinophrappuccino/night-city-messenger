@@ -19,16 +19,16 @@
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 import { runSecurityConsole } from './SecurityConsole.js';
-import { canPersistContent, _applyNativeEffect } from './SiphonFlow.js';
+import { canPersistContent, _applyNativeEffect, applyUploadRun, pickHostFiles, TARGETED_VERBS } from './SiphonFlow.js';
 
 const DEFAULT_UPLOAD_SKILL = 'Interface';
-const DEFAULT_UPLOAD_DV = 15;
+const DEFAULT_UPLOAD_DV = 9;
 
 /**
  * How far BELOW the DV a forge can land and still install (sloppily).
  * The FORGE check is a LADDER, not a coin flip:
- *   margin >= 0        → CLEAN     — a good forgery; high quality, high stealthDV
- *   margin -1..-BAND   → SLOPPY    — it lands, but it's junk; ANALYZE will flag it
+ *   margin > 0         → CLEAN     — beat the DV: a good forgery; high quality, high stealthDV
+ *   margin 0..-BAND    → SLOPPY    — a tie or a near miss: it lands, but it's junk; ANALYZE will flag it
  *   margin < -BAND     → REJECTED  — the box refuses the file; nothing installs
  * The old model installed on ANY committed roll, so a botch was indistinguishable
  * from a near miss and there was no floor — you could fail by 12 and still plant.
@@ -38,7 +38,7 @@ export const FORGE_SLOPPY_BAND = 4;
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
-/** Roll margin → forge quality (0–100). Hitting the DV exactly = 50 (mediocre). */
+/** Roll margin → forge quality (0–100). A tie with the DV = 50 (mediocre, and on the sloppy rung). */
 export function forgeQualityFromMargin(total, dv) {
   const margin = (Number(total) || 0) - (Number(dv) || 0);
   return clamp(Math.round(50 + margin * 8), 5, 100);
@@ -51,7 +51,7 @@ export function forgeQualityFromMargin(total, dv) {
  */
 export function forgeOutcome(total, dv) {
   const margin = (Number(total) || 0) - (Number(dv) || 0);
-  if (margin >= 0) return 'clean';
+  if (margin > 0) return 'clean';
   if (margin >= -FORGE_SLOPPY_BAND) return 'sloppy';
   return 'rejected';
 }
@@ -125,6 +125,9 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
         + `Beat DV ${dv} and the forgery is clean. `
         + `Miss by up to ${FORGE_SLOPPY_BAND} and it still lands — but it's sloppy, and a scan will flag it as FORGED. `
         + `Miss by more and the box refuses the file.`,
+    introGm: isExecute
+      ? `Push ${name} onto ${targetItem.name}?\nYour GM decides how it goes. A clean install runs unnoticed. A glitchy one still runs, but a SWEEP will flag it. If the box rejects it, nothing lands.`
+      : `Push ${name} onto ${targetItem.name}?\nYour GM decides how it goes. A clean forgery passes. A sloppy one still lands, but a scan will flag it as FORGED. If the box refuses it, nothing lands.`,
     gate: {
       require: true, skill, dv, actor, context: `Upload: ${name}`, flavor: `${isExecute ? 'RUN' : 'FORGE'} // DV ${dv}`,
       // Netrunning tiers (design §5): 'gm' hands the GM the LADDER, not pass/fail —
@@ -144,7 +147,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
       },
     },
     verdictFor: ({ total, dv: gateDv }) => {
-      const o = forgeOutcome(total ?? gateDv, gateDv);
+      const o = forgeOutcome(total ?? gateDv + 1, gateDv);
       if (o === 'clean') return { label: isExecute ? 'INSTALL CLEAN' : 'FORGE CLEAN', tone: 'ok' };
       if (o === 'sloppy') return { label: isExecute ? 'GLITCHY — IT RUNS' : 'SLOPPY — IT LANDS', tone: 'warn' };
       return { label: isExecute ? 'REJECTED — REFUSED' : 'REJECTED — FILE REFUSED', tone: 'fail' };
@@ -152,9 +155,9 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
   });
   if (res.cancelled) return null;
 
-  const outcome = forgeOutcome(res.total ?? dv, dv);
-  const forgeQuality = forgeQualityFromMargin(res.total ?? dv, dv);
-  const margin = (res.total ?? dv) - dv;
+  const outcome = forgeOutcome(res.total ?? dv + 1, dv);
+  const forgeQuality = forgeQualityFromMargin(res.total ?? dv + 1, dv);
+  const margin = (res.total ?? dv + 1) - dv;
 
   // A missed push can trip an alarm whether or not it landed — the trace funnel
   // owns the drama + log + heat.
@@ -165,7 +168,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
   // REJECTED — nothing installs, so there's nothing for the GM to fire later.
   // (The console already played the fail sound.)
   if (outcome === 'rejected') {
-    ui.notifications.warn(`NCM | ${targetItem.name} refused ${name} — the ${isExecute ? 'push' : 'forge'} was too far off (missed DV ${dv} by ${Math.abs(margin)}).`);
+    ui.notifications.warn(`NCM | ${targetItem.name} refused ${name} — the ${isExecute ? 'push' : 'forge'} was too far off${res.adjudicated ? '' : ` (missed DV ${dv} by ${Math.abs(margin)})`}.`);
     return { success: false, outcome, forgeQuality };
   }
 
@@ -173,8 +176,26 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
   // accounts, skeleton-key clears locks, jammer drops the uplink). It runs NOW against
   // this terminal and leaves nothing behind (no resident to sweep).
   if (p.family === 'run') {
+    let params = p.params || {};
+    if (TARGETED_VERBS.includes(p.effectType) && !params.messageIds?.length) {
+      const ids = await pickHostFiles(targetItem, { verb: p.effectType, accountId: tgtAcct });
+      if (!ids) return null;
+      params = { ...params, messageIds: ids };
+    }
+    // A verb that changes the box is the GM's to write: a player's client hands it over.
+    const WRITES = ['icebreaker', 'wipe', 'corrupt', 'forgeAccount', 'adjudicate'];
+    if (WRITES.includes(p.effectType) && !isGM()) {
+      game.nightcity?.socketManager?.emit(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, { kind: 'uploadRun', itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', macroId: p.macroId || '', userId: game.user.id });
+      if (outcome === 'clean') game.nightcity?.traceService?.logSuccess({ actor, action: 'upload', source: name, hostItem: targetItem, severity: 'hostile' });
+      ui.notifications.info(`NCM | ${name} sent to ${targetItem.name}…`);
+      return { success: true, outcome, ran: true, report: '' };
+    }
     let report = '';
-    try { report = await _applyNativeEffect(p.effectType, { hostItem: targetItem, page: null, actor, cd: {} }); }
+    try {
+      report = WRITES.includes(p.effectType)
+        ? await applyUploadRun({ itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', macroId: p.macroId || '', userId: game.user.id })
+        : await _applyNativeEffect(p.effectType, { hostItem: targetItem, page: null, actor, cd: { effect: { type: p.effectType, params } } });
+    }
     catch (e) { log.warn('Upload run-effect failed', e); }
     const result = report || `${name} ran, but found nothing.`;
     try {

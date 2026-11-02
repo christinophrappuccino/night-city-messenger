@@ -193,8 +193,11 @@ export const SOCKET_OPS = Object.freeze({
   // drop / hold / resume / mode), routed to the call's users by `userIds`. LOG: each side's summary at the end → the
   // active GM writes the call-log pages. LINE: a player's own number / line-settings edit → the GM writes it.
   CALL: 'call:event',
+  WATCH: 'watch:event',
   CALL_LOG_REQUEST: 'call:logRequest',
   CALL_LINE_REQUEST: 'call:lineRequest',
+  CALL_EMERGENCY: 'call:emergency',
+  CALL_OVERHEARD: 'call:overheard',
   CALL_VM_REQUEST: 'call:vmRequest',          // a player leaves / marks heard / deletes a voicemail → the GM writes
   CALL_AUDIO: 'call:audio',                   // a recording in pieces (player → GM), the GM saves it as a file
   // Player→GM: this client's attempt / lockout state on a compound key (a
@@ -414,7 +417,7 @@ export const SHARD_PRESETS = Object.freeze({
       watermarkIcon: 'fas fa-building', footerText: 'CORPORATE // CLASSIFIED',
       colorTemp: 'cold',
     },
-    security: { encrypted: true, encryptionType: 'BLACK_ICE', encryptionDC: 20, failureMode: 'damage', maxHackAttempts: 3 },
+    security: { encrypted: true, encryptionType: 'BLACK_ICE', encryptionDC: 14, failureMode: 'damage', maxHackAttempts: 3 },
     boot: {
       enabled: true, iconMode: 'fa', faIcon: 'fas fa-building',
       title: 'Arasaka Corporation', subtitle: 'Secure Data Terminal // Access Level: Restricted',
@@ -435,7 +438,7 @@ export const SHARD_PRESETS = Object.freeze({
       watermarkIcon: 'fas fa-skull-crossbones', footerText: 'UNTRACEABLE // NO REFUNDS',
       colorTemp: 'cold',
     },
-    security: { encrypted: true, encryptionType: 'ICE', encryptionDC: 15, failureMode: 'lockout', maxHackAttempts: 3 },
+    security: { encrypted: true, encryptionType: 'ICE', encryptionDC: 9, failureMode: 'lockout', maxHackAttempts: 3 },
     boot: {
       enabled: true, iconMode: 'fa', faIcon: 'fas fa-skull-crossbones',
       title: 'DATA DUMP', subtitle: 'Origin: UNKNOWN // Seller: ANONYMOUS',
@@ -456,7 +459,7 @@ export const SHARD_PRESETS = Object.freeze({
       watermarkIcon: 'fas fa-brain', footerText: 'PERSONAL // MEMORY ENGRAM',
       colorTemp: 'warm',
     },
-    security: { encrypted: false, encryptionType: 'ICE', encryptionDC: 10, failureMode: 'nothing', maxHackAttempts: 5 },
+    security: { encrypted: false, encryptionType: 'ICE', encryptionDC: 4, failureMode: 'nothing', maxHackAttempts: 5 },
     boot: {
       enabled: true, iconMode: 'fa', faIcon: 'fas fa-brain',
       title: 'MEMORY CHIP', subtitle: 'Neural Recording // Personal Archive',
@@ -477,7 +480,7 @@ export const SHARD_PRESETS = Object.freeze({
       watermarkIcon: 'fas fa-crosshairs', footerText: 'CLASSIFIED // NUSA MILINET',
       colorTemp: 'cold',
     },
-    security: { encrypted: true, encryptionType: 'RED_ICE', encryptionDC: 25, failureMode: 'destroy', maxHackAttempts: 2 },
+    security: { encrypted: true, encryptionType: 'RED_ICE', encryptionDC: 19, failureMode: 'destroy', maxHackAttempts: 2 },
     boot: {
       enabled: true, iconMode: 'fa', faIcon: 'fas fa-crosshairs',
       title: 'MILINET TERMINAL', subtitle: 'Military Intelligence Network // TOP SECRET',
@@ -498,7 +501,7 @@ export const SHARD_PRESETS = Object.freeze({
       watermarkIcon: 'fas fa-tower-broadcast', footerText: 'LEAKED // SOURCE PROTECTED',
       colorTemp: 'neutral',
     },
-    security: { encrypted: true, encryptionType: 'ICE', encryptionDC: 15, failureMode: 'lockout', maxHackAttempts: 3 },
+    security: { encrypted: true, encryptionType: 'ICE', encryptionDC: 9, failureMode: 'lockout', maxHackAttempts: 3 },
     boot: {
       enabled: true, iconMode: 'fa', faIcon: 'fas fa-tower-broadcast',
       title: 'MEDIA LEAK', subtitle: 'Unverified Source // Handle With Care',
@@ -519,7 +522,7 @@ export const SHARD_PRESETS = Object.freeze({
       watermarkIcon: 'fas fa-handshake-angle', footerText: 'DEAD DROP // ONE-TIME ACCESS',
       colorTemp: 'warm',
     },
-    security: { encrypted: true, encryptionType: 'ICE', encryptionDC: 12, failureMode: 'lockout', maxHackAttempts: 3 },
+    security: { encrypted: true, encryptionType: 'ICE', encryptionDC: 6, failureMode: 'lockout', maxHackAttempts: 3 },
     boot: {
       enabled: true, iconMode: 'fa', faIcon: 'fas fa-handshake-angle',
       title: 'DEAD DROP', subtitle: 'Encrypted Payload // Time Sensitive',
@@ -540,7 +543,7 @@ export const SHARD_PRESETS = Object.freeze({
       watermarkIcon: 'fas fa-microchip', footerText: 'UNBRANDED // RAW DATA',
       colorTemp: 'neutral',
     },
-    security: { encrypted: false, encryptionType: 'ICE', encryptionDC: 10, failureMode: 'nothing', maxHackAttempts: 5 },
+    security: { encrypted: false, encryptionType: 'ICE', encryptionDC: 4, failureMode: 'nothing', maxHackAttempts: 5 },
     boot: {
       enabled: true, iconMode: 'fa', faIcon: 'fas fa-microchip',
       title: 'DATA SHARD', subtitle: 'Generic Storage // No Authentication',
@@ -561,7 +564,7 @@ export const SHARD_PRESETS = Object.freeze({
       watermarkIcon: 'fas fa-eye', footerText: 'NETWATCH // EVIDENCE LOCKER',
       colorTemp: 'cold',
     },
-    security: { encrypted: true, encryptionType: 'BLACK_ICE', encryptionDC: 22, failureMode: 'permanent', maxHackAttempts: 2 },
+    security: { encrypted: true, encryptionType: 'BLACK_ICE', encryptionDC: 16, failureMode: 'permanent', maxHackAttempts: 2 },
     boot: {
       enabled: true, iconMode: 'fa', faIcon: 'fas fa-eye',
       title: 'NETWATCH', subtitle: 'Evidence Archive // Tampering Will Be Prosecuted',
@@ -581,7 +584,7 @@ export const SHARD_PRESETS = Object.freeze({
       watermarkIcon: 'fas fa-microchip', footerText: 'DATA SHARD',
       colorTemp: 'neutral',
     },
-    security: { encrypted: false, encryptionType: 'ICE', encryptionDC: 15, failureMode: 'lockout', maxHackAttempts: 3 },
+    security: { encrypted: false, encryptionType: 'ICE', encryptionDC: 9, failureMode: 'lockout', maxHackAttempts: 3 },
     boot: {
       enabled: true, iconMode: 'fa', faIcon: 'fas fa-microchip',
       title: 'DATA SHARD', subtitle: 'Reading chip contents...',
@@ -609,7 +612,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     screensaver: {enabled: true,idleSeconds: 180,text: 'ARASAKA',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Correspondence',saved: 'Flagged',trash: 'Shredder'},
     theme: { primary: '#ff0033', secondary: '#19f3f7', accent: '#ffcc00', bgDeep: '#0a0006', bgBase: '#160008', bgSurface: '#22060e', bgElevated: '#2c0a14', textPrimary: '#f4e6ea', textSecondary: '#c79aa6', textMuted: '#9f7883', crt: { style: 'glass', intensity: 25, vignette: true, roll: true }, fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
-    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 18, encryptionType: 'BLACK_ICE', failureMode: 'damage', maxAttempts: 3, lockoutDuration: 3600000 },
+    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 12, encryptionType: 'BLACK_ICE', failureMode: 'damage', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'ARASAKA NET', subtitle: 'Secure Workstation // Access Level: Restricted', banner: 'ARASAKA NET · WORKSTATION 7F-12', animationStyle: 'holographic-snap', speed: 'normal', logLines: ['ARASAKA-NET handshake ........ VERIFIED', 'Credential gateway .......... ONLINE', 'BLACK_ICE countermeasure .... ARMED', 'Mounting user volumes ....... OK'] },
     accounts: [
       { username: 'v_arasaka', displayName: 'Veronica A.', isAdmin: false, security: { requiresAuth: true, allowPassword: true } },
@@ -634,7 +637,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     screensaver: {enabled: true,idleSeconds: 150,text: 'AFTERLIFE BBS',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Posts',saved: 'Pinned',trash: 'Burned'},
     theme: { primary: '#00ff41', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#040a06', bgBase: '#07120a', bgSurface: '#0c1a0f', bgElevated: '#102414', textPrimary: '#daffe4', textSecondary: '#7fae8d', textMuted: '#689275', crt: { style: 'tube', intensity: 30, vignette: true, roll: true }, fontDisplay: 'chakrapetch', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
-    security: { requiresAuth: false, allowPassword: false, allowSkillCheck: true, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 13, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 5, lockoutDuration: 1800000 },
+    security: { requiresAuth: false, allowPassword: false, allowSkillCheck: true, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 7, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 5, lockoutDuration: 1800000 },
     boot: { enabled: true, title: 'AFTERLIFE BBS', subtitle: 'no narcs // no cops // no mercy', banner: 'AFTERLIFE BBS · NODE 7', animationStyle: 'glitch-flood', speed: 'dramatic', logLines: ['Dialing node ................ CARRIER', 'Trackers .................... NONE', 'Welcome back, choom.'] },
     accounts: [
       { username: 'guest', displayName: 'guest', isAdmin: false, security: { requiresAuth: false } },
@@ -648,7 +651,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     screensaver: {enabled: true,idleSeconds: 90,text: 'INSERT CREDCHIP',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Mail',saved: 'Archive',trash: 'Deleted'},
     theme: { primary: '#ffb000', secondary: '#ffd070', accent: '#ff8a00', bgDeep: '#0a0700', bgBase: '#140d00', bgSurface: '#1c1300', bgElevated: '#261a00', textPrimary: '#ffe6b0', textSecondary: '#b89250', textMuted: '#a18045', crt: { style: 'tube', intensity: 30, vignette: true, roll: true }, fontDisplay: 'jura', fontMono: 'spacemono', fontTitle: 'michroma' },
-    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 15, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 3600000 },
+    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 9, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'NCDOS', subtitle: 'Night City DOS v3.30', banner: 'NCDOS · DRIVE C:', animationStyle: 'crt-power-on', speed: 'fast', logLines: ['POST ........................ OK', 'Loading COMMAND.COM ......... DONE', 'C:\\>'] },
     accounts: [{ username: 'user', displayName: 'user', isAdmin: false, security: { requiresAuth: true, allowPassword: true } }],
   },
@@ -659,7 +662,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     screensaver: {enabled: true,idleSeconds: 200,text: 'CLINIC — RING BELL',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Patients',saved: 'Charts',trash: 'Disposal'},
     theme: { primary: '#e8a0ff', secondary: '#ffddaa', accent: '#ff9ecb', bgDeep: '#0c0410', bgBase: '#160a1c', bgSurface: '#200f28', bgElevated: '#2a1634', textPrimary: '#f4e2fb', textSecondary: '#b890c8', textMuted: '#9b7ca8', crt: { style: 'off', intensity: 0, vignette: false, roll: false }, fontDisplay: 'rajdhani', fontMono: 'sourcecodepro', fontTitle: 'orbitron' },
-    security: { requiresAuth: true, allowPassword: false, allowSkillCheck: false, allowKeyItem: true, authLogic: 'any', keyItemName: 'Clinic Keycard', bypassSkills: ['Interface'], bypassDC: 14, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 1800000 },
+    security: { requiresAuth: true, allowPassword: false, allowSkillCheck: false, allowKeyItem: true, authLogic: 'any', keyItemName: 'Clinic Keycard', bypassSkills: ['Interface'], bypassDC: 8, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 1800000 },
     boot: { enabled: true, title: 'RIPPERDOC OS', subtitle: 'Cyberware Clinic // Patient Records', banner: 'CLINIC TERMINAL · FRONT DESK', animationStyle: 'warm-dissolve', speed: 'normal', logLines: ['Clinic uplink ............... OK', 'Patient DB .................. MOUNTED', 'Insurance relay ............. STANDBY'] },
     accounts: [{ username: 'frontdesk', displayName: 'Front Desk', isAdmin: false, security: { requiresAuth: true, allowKeyItem: true, keyItemName: 'Clinic Keycard' } }],
   },
@@ -695,7 +698,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     screensaver: {enabled: true,idleSeconds: 150,text: 'NCPD',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Case Files',saved: 'Evidence',trash: 'Purged'},
     theme: { primary: '#4aa3ff', secondary: '#ffd257', accent: '#ff5f5f', bgDeep: '#05070d', bgBase: '#0a0f1a', bgSurface: '#111a2b', bgElevated: '#1a2740', textPrimary: '#e9eefb', textSecondary: '#94a5c6', textMuted: '#8591aa', crt: { style: 'tube', intensity: 30, vignette: true, roll: true }, fontDisplay: 'rajdhani', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
-    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 17, authLogic: 'any', failureMode: 'lockout', maxAttempts: 4, lockoutDuration: 1800000 },
+    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 11, authLogic: 'any', failureMode: 'lockout', maxAttempts: 4, lockoutDuration: 1800000 },
     boot: { enabled: true, title: 'NCPD', subtitle: 'Evidence & Records // Precinct Net', banner: 'PRECINCT TERMINAL · ALL ACCESS LOGGED', animationStyle: 'standard-fade', speed: 'normal', logLines: ['Precinct net ................ SECURE', 'Evidence locker index ....... MOUNTED', 'Warrant sync ................ CURRENT', 'Bodycam archive ............. ONLINE'] },
     accounts: [
       { username: 'desk_sgt', displayName: 'Desk Sergeant', role: 'DUTY SERGEANT', security: { requiresAuth: true, allowPassword: true } },
@@ -734,7 +737,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     screensaver: {enabled: true,idleSeconds: 100,text: 'MAELSTROM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Jobs',saved: 'Parts',trash: 'Scrap'},
     theme: { primary: '#ff2222', secondary: '#8d99ae', accent: '#ff7a2f', bgDeep: '#070404', bgBase: '#0e0707', bgSurface: '#180d0d', bgElevated: '#241313', textPrimary: '#f1e6e6', textSecondary: '#a88c8c', textMuted: '#947c7c', crt: { style: 'tube', intensity: 30, vignette: true, roll: true }, fontDisplay: 'sharetechmono', fontMono: 'vt323', fontTitle: 'orbitron' },
-    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 15, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 3, lockoutDuration: 3600000 },
+    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 9, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'MEAT-GRID', subtitle: 'chopshop node // no questions', banner: 'DUM DUM SAYS HI', animationStyle: 'glitch-flood', speed: 'fast', logLines: ['rippers online .............. yeah', 'parts inventory ............. dont ask', 'ice ......................... HUNGRY'] },
     accounts: [{ username: 'wrench', displayName: 'Wrench', role: 'CHOP LEAD', security: { requiresAuth: true, allowPassword: true } }],
   },
@@ -745,9 +748,9 @@ export const TERMINAL_PRESETS = Object.freeze({
     screensaver: {enabled: true,idleSeconds: 60,text: '██████',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Signals',saved: 'Kept',trash: 'Devoured'},
     theme: { primary: '#ff1a1a', secondary: '#6b6b7a', accent: '#ff5252', bgDeep: '#030303', bgBase: '#080607', bgSurface: '#100a0c', bgElevated: '#180f12', textPrimary: '#e8dede', textSecondary: '#8d7a7e', textMuted: '#8d7a7e', crt: { style: 'arcade', intensity: 30, vignette: true, roll: true }, fontDisplay: 'sharetechmono', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
-    security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 22, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 2, lockoutDuration: 7200000 },
+    security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 16, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 2, lockoutDuration: 7200000 },
     boot: { enabled: true, title: 'RELAY-0', subtitle: '?????? // DO NOT ANSWER', banner: 'SIGNAL ORIGIN: BEYOND', animationStyle: 'crt-power-on', speed: 'dramatic', logLines: ['handshake ................... [no carrier]', 'handshake ................... [no carrier]', 'handshake ................... ACCEPTED', 'something is listening ......'] },
-    accounts: [{ username: 'null', displayName: '▓▓▓▓▓', role: 'UNKNOWN', hidden: false, security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 22 } }],
+    accounts: [{ username: 'null', displayName: '▓▓▓▓▓', role: 'UNKNOWN', hidden: false, security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 16 } }],
   },
 });
 
@@ -1078,6 +1081,8 @@ export const SOUND_PATHS = Object.freeze({
   'call-ring': 'calls/ring.wav', 'call-ringback': 'calls/ringback.wav', 'call-connect': 'calls/connect.wav',
   'call-end': 'calls/end.wav', 'call-drop': 'calls/drop.wav', 'call-waiting': 'calls/waiting.wav',
   'voicemail-beep': 'calls/voicemail-beep.wav',
+  'em-alert': 'calls/em-alert.wav', 'em-sting-backup': 'calls/em-sting-backup.wav', 'em-sting-trauma': 'calls/em-sting-trauma.wav', 'em-monitor': 'calls/em-monitor.wav', 'em-dispatch': 'calls/em-dispatch.wav',
+  'em-radio-in': 'calls/em-radio-in.wav', 'em-radio-out': 'calls/em-radio-out.wav', 'em-arrive-trauma': 'calls/em-arrive-trauma.wav', 'em-arrive-backup': 'calls/em-arrive-backup.wav',
 });
 
 export const ESSENTIAL_EFFECTS = Object.freeze(['ncm-fade-in', 'ncm-fade-out']);
@@ -1134,6 +1139,7 @@ export const TEMPLATES = Object.freeze({
   NODE_CONSOLE: `${T}/network-nodes/node-console.hbs`,
   NODE_INSPECTOR: `${T}/network-nodes/node-inspector.hbs`,
   SOUND_BOARD: `${T}/sounds/sound-board.hbs`,
+  WATCH_WINDOW: `${T}/watch/watch-window.hbs`,
   NETWORK_SELECTOR: `${T}/message-viewer/partials/network-selector.hbs`,
   PLAYER_EMAIL_SETUP: `${T}/dialogs/player-email-setup.hbs`,
   EMAIL_SETUP_FLOW: `${T}/dialogs/email-setup.hbs`,
@@ -1325,7 +1331,7 @@ export const DEFAULTS = Object.freeze({
     // ─── Security (existing v4.1 fields — preserved for backward compat) ───
     encrypted: false,
     encryptionType: 'ICE',
-    encryptionDC: 15,
+    encryptionDC: 9,
     encryptionMode: 'shard',
     allowedSkills: ['Interface'],
     skillDCs: {},
@@ -1426,7 +1432,7 @@ export const DEFAULTS = Object.freeze({
       allowSkillCheck: false,
       authLogic: 'any',           // 'any' = OR (any one method), 'all' = AND (every method)
       bypassSkills: [],
-      bypassDC: 15,
+      bypassDC: 9,
       allowKeyItem: false,
       keyItemName: '',
       keyItemTag: '',
@@ -1556,12 +1562,12 @@ export const DEFAULTS = Object.freeze({
     // (TerminalService.getExfilPolicy) defaults agent+shard ON/ungated, the
     // four new actions OFF — i.e. today's behavior. All still gated by allowExfil.
     exfil: {
-      agent:   { allow: true,  require: false, skill: 'Interface', dv: 15 },
-      shard:   { allow: true,  require: false, skill: 'Interface', dv: 15 },
-      leak:    { allow: false, require: false, skill: 'Interface', dv: 15 },
+      agent:   { allow: true,  require: false, skill: 'Interface', dv: 9 },
+      shard:   { allow: true,  require: false, skill: 'Interface', dv: 9 },
+      leak:    { allow: false, require: false, skill: 'Interface', dv: 9 },
       sell:    { allow: false, require: false, skill: 'Trading',   dv: 15, price: 500 },
-      forward: { allow: false, require: false, skill: 'Interface', dv: 15 },
-      wipe:    { allow: false, require: false, skill: 'Interface', dv: 15 },
+      forward: { allow: true,  require: false, skill: 'Interface', dv: 9 },
+      wipe:    { allow: false, require: false, skill: 'Interface', dv: 9 },
       // SAVE FRAME (#37) — the camera-feed escape hatch: a live stream can't be
       // copied, but a single FRAME can. Only ever offered on a feed gallery
       // (resolveEntryExfil hides it everywhere else), so defaulting it ON is safe.

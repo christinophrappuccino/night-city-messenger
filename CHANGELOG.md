@@ -3,6 +3,35 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [Unreleased] — 2.1.0
+
+### Added
+- **Phone calls.** Numbers, a dial pad, voicemail, call logs, and calls over the scene. Talk out loud, type, or dictate. Calls follow the networks: a dead zone or a downed node drops them, and taps can catch them.
+- **Our own number system.** A number says where it was issued. The GM edits the place table, sets what players can pick, and can give numbers in bulk.
+- **Corporations and shared lines.** Switchboards, extensions, and voicemail with a real mailbox.
+- **Special numbers and line types.** Hidden lines, hotlines, recordings, burners and business lines.
+- **Trauma Team and Lawman Backup calls,** with real dice and a countdown. Each has an opening, a tracker, an on-scene banner and an exit. The GM sets their names, pictures, spoken lines and titles. Backup can also change per organization or per Lawman: callsign, extra groups, colour, lights and sounds. The GM gets a toast and a short tone when one is called.
+- **Overheard calls.** Write a conversation between NPCs that players can catch.
+- **Search, filters and date folds on every call log and voicemail list.**
+- **Watching another player.** A player can share a terminal, shard or node window, and others watch a live copy.
+- **A roll panel.** Shows the formula, the DV, your chance, and Luck before the die moves.
+- **Network programs in the Workshop,** with Install on a shard from the library.
+- **Sharing a contact's address, number or both.** Who knows whom shows them separately.
+
+### Changed
+- **A tie now fails.** On forge and encode rolls, a tie lands on the sloppy rung.
+- **Interface rolls Rank + 1d10 by default.** A world with saved Interface DVs is asked once what to do with them.
+- **When the GM decides a roll, players see no DV or chance.**
+
+### Fixed
+- **Held mail survives a reload.** Mail queued in a dead zone or with no GM online used to be lost when the page reloaded, along with any eddies taken for it. If held mail is refused when it finally sends, the player is now told why.
+- **Add on mail from an alias saved the main address.**
+- **Scheduled mail to several people read "Unknown".** Edit also lost its recipients and settings.
+- **Cancelling or editing scheduled mail lost the eddies on it.** It now refunds them.
+- **Refused scheduled mail retried forever without saying so.** It now stops, refunds and shows in Outbox.
+- **A timed self-destruct on scheduled mail could arrive already expired.**
+- **A player's To search showed addresses they had not been given.**
+
 ## [2.0.7] — 2026-10-31
 
 ### Added

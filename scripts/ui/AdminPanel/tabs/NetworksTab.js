@@ -626,7 +626,7 @@ export class NetworksTab extends BaseTab {
       scenes: sortedScenes.map(s => ({ id: s.id, name: s.name, current: s.id === game.scenes?.viewed?.id })),
       iceActors: (game.actors?.filter?.(isIceActor) ?? []).map(a => ({ id: a.id, name: a.name, atk: a.system?.stats?.atk ?? 0 })),
       groups: [...new Set(nets.map(n => n.group).filter(g => g && g.trim()))].sort(),
-      bypassHtml: bypassRowsHtml(d.security, { defaultDV: 15 }),
+      bypassHtml: bypassRowsHtml(d.security, { defaultDV: 9 }),
       recipientPicker,
     });
     ctx.cmvOverride = cmvOverrideContext(d.security?.countermeasures, 'network');

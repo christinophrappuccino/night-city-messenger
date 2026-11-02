@@ -1,0 +1,260 @@
+/* Trauma Team and Backup on the real call screen (PHONE-REVISION.md §17), and the rest of Round 5's screens. Call screen colours come through --ch-*. */
+.ncm-r5-layer { position: fixed; inset: 0; z-index: 200; pointer-events: none; }
+.ncm-r5-layer:empty { display: none; }
+.ncm-r5-layer .ncm-r5-scene, .ncm-r5-landing.ncm-r5-scene { position: fixed; inset: 0; min-height: 0; background: none; border: 0; padding: var(--ncm-ch-top, 74px) 18px 0 var(--ncm-ch-left, 76px); display: flex; flex-direction: column; align-items: flex-start; pointer-events: none; overflow: hidden; z-index: 200; }
+.ncm-r5-layer .ncm-call-hud.ncm-r5-hud { pointer-events: auto; width: auto; max-width: calc(100vw - 110px); cursor: pointer; }
+.ncm-r5-landing.ncm-r5-scene { pointer-events: auto; cursor: pointer; }
+.ncm-r5-retry { appearance: none; width: auto; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: none; border: 1px solid var(--ch-ring); color: #fff; font: 700 11px var(--ncm-font-display, sans-serif); cursor: pointer; }
+.ncm-r5-retry:disabled { opacity: .5; cursor: not-allowed; }
+#ncm-r5-minis { position: fixed; top: 12px; right: 310px; z-index: 190; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+/* Round 5 mock: new rules on top of round2.css + round3.css. Tokens in the admin panel; call screen colours come from the real --ch-* vars. Prefix ncm-r5-. */
+.ncm-r5-ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ncm-r5-ctrl .grow, .ncm-r5-row .grow, .ncm-r5-scanbar .grow, .ncm-r5-over .grow { flex: 1 1 auto; min-width: 0; }
+.ncm-r5-ctrl .ncm-pn-f { flex: none; }
+
+/* the table, darkened: the scene behind the real card */
+.ncm-r5-scene { position: relative; overflow: hidden; min-height: 330px; padding: 20px 18px; background: radial-gradient(120% 90% at 50% 10%, #171b24, #07080c); border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-r5-scene.is-small { min-height: 150px; padding: 14px; }
+.ncm-call-hud.ncm-r5-hud { position: relative; inset: auto; z-index: 2; pointer-events: auto; width: auto; }
+.ncm-r5-hud .ncm-ch-txt { min-width: 0; flex: 1; max-width: 460px; }
+
+/* the real frame's picture slot */
+.ncm-r5-feed { position: absolute; inset: 0; background: #06080b; }
+.ncm-r5-feed canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ncm-r5-feed .rd { position: absolute; left: 8px; bottom: 8px; font: 11px var(--ncm-font-mono, monospace); color: #ffd8dc; }
+.ncm-r5-feed .rd b { font-size: 20px; color: #fff; }
+.ncm-r5-listen { position: absolute; inset: 0; display: grid; place-items: center; font-size: 34px; color: #d9c8ff; }
+.ncm-r5-listen b { position: absolute; right: 18px; bottom: 16px; font: 700 20px var(--ncm-font-mono, monospace); color: #fff; }
+
+/* one panel under the real meta line */
+.ncm-r5-em { display: flex; flex-direction: column; gap: 7px; margin: 8px 0; max-width: 460px; font: 14px var(--ncm-font-body); color: #e8edf5; }
+.ncm-r5-steps { display: flex; gap: 2px; }
+.ncm-r5-steps span { position: relative; flex: 1 1 0; display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px 5px; font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: #9aa2b2; border-bottom: 2px solid #2a2f3a; }
+.ncm-r5-steps span.done { color: #fff; border-color: var(--ch-ring); }
+.ncm-r5-steps span.done i { font-size: 8px; }
+.ncm-r5-steps span.on { color: #fff; border-color: var(--ch-ring); animation: ncm-r5-tick 1s steps(2) infinite; }
+@keyframes ncm-r5-tick { 50% { border-color: #2a2f3a; } }
+.ncm-r5-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ncm-r5-row b { color: inherit; font-weight: 700; }
+.ncm-r5-scan { flex: none; width: 8px; height: 8px; background: var(--ch-ring); animation: ncm-r5-blip 1s ease-in-out infinite; }
+@keyframes ncm-r5-blip { 50% { opacity: .25; } }
+.ncm-r5-die { position: relative; width: 34px; height: 34px; flex: none; display: grid; place-items: center; font-size: 28px; color: var(--ch-ring); }
+.ncm-r5-die b { position: absolute; font: 700 14px var(--ncm-font-mono, monospace); color: #fff; }
+.ncm-r5-die.is-rolling i { animation: ncm-r5-spin .5s linear infinite; }
+@keyframes ncm-r5-spin { to { transform: rotate(360deg); } }
+.ncm-r5-pips { display: inline-flex; gap: 4px; }
+.ncm-r5-pips i { font-size: 13px; color: #4a5160; }
+.ncm-r5-pips i.on { color: var(--ch-ring, var(--ncm-attn)); }
+.ncm-r5-subs.ncm-ch-subs { position: relative; inset: auto; transform: none; width: auto; margin-top: 14px; z-index: 2; }
+.ncm-r5-alert { position: relative; z-index: 2; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 6px 10px; background: #2a0b0f; border: 1px solid #ff5a66; font: 700 14px var(--ncm-font-body); color: #fff; }
+.ncm-r5-alert i { color: #ff8a93; animation: ncm-r5-beat var(--beat, .5s) ease-in-out infinite; }
+.ncm-r5-mini { position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; --ch-ring: #ff5a66; background: #14080a; border: 1px solid #ff5a66; font: 13px var(--ncm-font-body); color: #fff; }
+.ncm-r5-mini small { color: #ffd8dc; }
+#ncm-r5-minis button.ncm-r5-mini { appearance: none; width: auto; height: auto; min-height: 0; margin: 0; line-height: 1.2; border-radius: 0; box-shadow: none; cursor: pointer; pointer-events: auto; align-self: flex-end; }
+#ncm-r5-minis button.ncm-r5-mini:is(:hover, :focus-visible) { background: #2a0b0f; }
+.ncm-r5-mini i { margin: 0; }
+.ncm-r5-miniwhy { pointer-events: auto; align-self: flex-end; max-width: 280px; padding: 6px 10px; background: #14080a; border: 1px solid #ff5a66; font: 13px/1.35 var(--ncm-font-body); color: #fff; }
+
+/* the room reacts. Slow and soft on purpose: nothing flashes faster than about twice a second */
+.ncm-r5-scene.is-trauma::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; box-shadow: inset 0 0 70px rgba(255, 60, 75, .55); animation: ncm-r5-beat var(--beat, .6s) ease-in-out infinite; }
+@keyframes ncm-r5-beat { 0%, 100% { opacity: .35; } 15% { opacity: 1; } }
+.ncm-r5-scene.is-backup::before, .ncm-r5-scene.is-backup::after { content: ''; position: absolute; top: 0; bottom: 0; width: 50%; z-index: 1; pointer-events: none; animation: ncm-r5-bar 1.6s ease-in-out infinite; }
+.ncm-r5-scene.is-backup::before { left: 0; box-shadow: inset 50px 0 60px -30px rgba(255, 60, 75, .55); }
+.ncm-r5-scene.is-backup::after { right: 0; box-shadow: inset -50px 0 60px -30px rgba(70, 150, 255, .6); animation-delay: -.8s; }
+@keyframes ncm-r5-bar { 0%, 100% { opacity: .15; } 50% { opacity: 1; } }
+
+/* they arrive: on every screen looking at that scene */
+.ncm-r5-arrive { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; overflow: hidden; }
+.ncm-r5-arrive .in { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 28px; background: rgba(5, 6, 10, .78); border-block: 2px solid var(--a); color: #fff; animation: ncm-r5-land .55s cubic-bezier(.2,.8,.2,1) both; }
+.ncm-r5-arrive .in i { font-size: 26px; color: var(--a); }
+.ncm-r5-arrive .in b { font: 700 24px var(--ncm-font-title, sans-serif); letter-spacing: .12em; }
+.ncm-r5-arrive .in small { font: 13px var(--ncm-font-body); color: #dfe6f0; }
+@keyframes ncm-r5-land { from { clip-path: inset(49% 0); opacity: .2; } to { clip-path: inset(0); opacity: 1; } }
+.ncm-r5-arrive.is-tt { --a: #ff5a66; --b1: rgba(255, 245, 225, .28); --b2: rgba(255, 245, 225, .18); }
+.ncm-r5-arrive.is-bk { --a: #6db3ff; --b1: rgba(255, 60, 75, .34); --b2: rgba(70, 150, 255, .36); }
+.ncm-r5-arrive .beam { position: absolute; top: -40%; left: 50%; width: 170px; height: 190%; transform-origin: 50% 0; background: linear-gradient(180deg, var(--b1), transparent 85%); clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%); animation: ncm-r5-sweep 3.4s ease-in-out infinite; }
+.ncm-r5-arrive .beam.b { background: linear-gradient(180deg, var(--b2), transparent 85%); animation-delay: -1.7s; }
+@keyframes ncm-r5-sweep { 0%, 100% { transform: translateX(-50%) rotate(-38deg); } 50% { transform: translateX(-50%) rotate(38deg); } }
+
+.ncm-r5-gm { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r5-gm > i { margin-top: 3px; color: var(--ncm-act); }
+.ncm-r5-gm small { display: block; font: 700 10px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); }
+.ncm-r5-gm b { color: var(--ncm-text-heading); }
+.ncm-r5-gm .ncm-ph2-btn { margin-top: 5px; }
+
+/* Live */
+.ncm-r5-admin { display: flex; flex-direction: column; gap: 8px; padding: 10px; }
+.ncm-r5-alarm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px; background: color-mix(in srgb, var(--ncm-bad) 10%, var(--ncm-bg-card)); border: 1px solid color-mix(in srgb, var(--ncm-bad) 60%, var(--ncm-border)); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r5-alarm.is-bk { margin-top: 5px; background: color-mix(in srgb, var(--ncm-act) 8%, var(--ncm-bg-card)); border-color: color-mix(in srgb, var(--ncm-act) 50%, var(--ncm-border)); }
+.ncm-r5-alarm .grow { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ncm-r5-alarm .who b { color: var(--ncm-text-heading); }
+.ncm-r5-alarm .acts { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-ph2-face.ic { display: grid; place-items: center; width: 34px; height: 34px; flex: none; color: var(--ncm-text-heading); }
+.ncm-r5-over { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 8px; background: var(--ncm-bg-pane); font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r5-over .grow { display: flex; flex-direction: column; flex: 1 1 200px; }
+.ncm-r5-over b { color: var(--ncm-text-heading); }
+.ncm-r5-over > i { color: var(--ncm-good); }
+
+/* I type it live */
+.ncm-r5-compose { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-act); border-radius: 2px; }
+.ncm-admin-panel .ncm-r5-compose input[type="text"] { flex: 1 1 260px; min-width: 120px; height: 30px; }
+.ncm-r5-hint { flex: 1 1 100%; font: 12px var(--ncm-font-body); color: var(--ncm-text-label); }
+
+/* prompts */
+.ncm-r5-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.ncm-r5-two > div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ncm-r5-two h4 { margin: 0; padding: 0; border: 0; font: 700 12px var(--ncm-font-display); color: #e8edf5; }
+.ncm-toast.ncm-r5-toast { position: relative; inset: auto; transform: none; opacity: 1; visibility: visible; width: auto; max-width: 100%; z-index: 4; }
+.ncm-r5-tacts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.ncm-r5-note { padding: 8px 10px; font: 13px var(--ncm-font-body); color: #e8edf5; }
+.ncm-r5-agent { display: flex; flex-direction: column; gap: 5px; padding: 8px; background: #0c0f15; border: 1px solid var(--ncm-border); border-radius: 2px; color: #e8edf5; font: 13px var(--ncm-font-body); }
+.ncm-r5-scanbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ncm-r5-scanbar .grow, .ncm-r5-scanres .grow { display: flex; flex-direction: column; }
+.ncm-r5-agent small { color: #aab3c2; }
+.ncm-r5-scanres { padding: 6px 8px; background: #141925; border: 1px solid #2a3040; }
+.ncm-r5-dim { padding: 14px 8px; border: 1px dashed #2a3040; text-align: center; font: 12px var(--ncm-font-body); color: #9aa2b2; }
+.ncm-node-console-wrap { position: relative; max-height: 400px; overflow: auto; }
+.ncm-node-console-wrap .ncm-ndc { position: relative; }
+
+/* payphone */
+.ncm-r5-map { position: relative; overflow: hidden; height: 300px; background: #10141b; border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-r5-map .grid { position: absolute; inset: 0; background: linear-gradient(#1a2029 1px, transparent 1px) 0 0 / 40px 40px, linear-gradient(90deg, #1a2029 1px, transparent 1px) 0 0 / 40px 40px; }
+.ncm-r5-map .ring { position: absolute; left: 300px; top: 150px; width: 200px; height: 200px; margin: -100px; border: 1px dashed #3a4656; border-radius: 50%; }
+.ncm-r5-map .ring.is-ringing { border-color: #ffb454; animation: ncm-r5-pulse 1.3s ease-out infinite; }
+@keyframes ncm-r5-pulse { 0% { transform: scale(.9); opacity: 1; } 100% { transform: scale(1.05); opacity: .35; } }
+.ncm-admin-panel button.pin { position: absolute; left: 280px; top: 130px; width: 40px !important; height: 40px; min-height: 0; margin: 0; padding: 0; display: grid; place-items: center; background: #1c2230; border: 2px solid #8fa3bd; border-radius: 2px; color: #fff; font-size: 16px; }
+.ncm-admin-panel button.pin i { margin: 0; }
+.ncm-admin-panel button.pin:hover, .ncm-admin-panel button.pin:focus-visible { border-color: #19f3f7; }
+.ncm-admin-panel button.pin.is-ringing { border-color: #ffb454; color: #ffb454; animation: ncm-r5-shake .4s linear infinite; }
+@keyframes ncm-r5-shake { 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
+.ncm-r5-map .lab { position: absolute; left: 240px; top: 175px; width: 120px; text-align: center; font: 12px var(--ncm-font-body); color: #dfe6f0; }
+.ncm-r5-map .tok { position: absolute; left: 640px; top: 40px; width: 36px; height: 36px; display: grid; place-items: center; background: #1b3a45; border: 2px solid #19f3f7; border-radius: 50%; font: 700 11px var(--ncm-font-display); color: #fff; transition: left .5s, top .5s; }
+.ncm-r5-map .tok.near { left: 350px; top: 100px; }
+.ncm-r5-map > .ncm-toast { position: absolute; right: 12px; bottom: 12px; width: 300px; }
+.ncm-r5-mapnote { position: absolute; left: 12px; bottom: 12px; background: #1c2230; border: 1px solid #3a4656; }
+@media (prefers-reduced-motion: reduce) { .ncm-r5-scene::before, .ncm-r5-scene::after, .ncm-r5-arrive .beam, .ncm-r5-arrive .in, .ncm-r5-map .ring, .ncm-admin-panel button.pin, .ncm-r5-steps span.on, .ncm-r5-scan, .ncm-r5-die i, .ncm-r5-alert i { animation: none !important; } .ncm-r5-map .tok { transition: none; } }
+
+.ncm-toast.ncm-r5-toast.is-seen { animation: none; }
+.ncm-r5-gm .ncm-ph2-btn { display: inline-flex; }
+
+/* inside .ncm-pn the shared button reset is stronger, so the pin restates itself */
+.ncm-admin-panel .ncm-pn button.pin { position: absolute; width: 40px !important; height: 40px; background: #1c2230; border: 2px solid #8fa3bd; border-radius: 2px; color: #fff; }
+.ncm-admin-panel .ncm-pn button.pin:hover, .ncm-admin-panel .ncm-pn button.pin:focus-visible { background: #1c2230; border-color: #19f3f7; }
+.ncm-admin-panel .ncm-pn button.pin.is-ringing { border-color: #ffb454; color: #ffb454; }
+.ncm-r5-em .ncm-r5-row > span:not(.ncm-r5-die):not(.ncm-r5-pips):not(.ncm-r5-scan) { flex: 1 1 180px; min-width: 0; }
+
+/* under the scene: the chat log + what the GM gets */
+.ncm-r5-under { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 8px; align-items: start; }
+.ncm-r5-chat { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #101319; border: 1px solid var(--ncm-border); border-radius: 2px; color: #e8edf5; font: 13px var(--ncm-font-body); }
+.ncm-r5-chat .hd { font: 700 11px var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: #dfe6f0; }
+.ncm-r5-chat .ncm-cc { margin: 0; }
+.ncm-r5-chat small { color: #aab3c2; font-size: 12px; }
+
+/* the queue */
+
+/* in range */
+.ncm-r5-map.is-range { height: 250px; }
+.ncm-r5-map.is-range .tok { top: 104px; transition: left .25s; }
+.ncm-r5-map.is-range .tok.npc { left: 122px; background: #3b2a12; border-color: #ffb454; }
+.ncm-r5-map.is-range .tok.pc.on { box-shadow: 0 0 0 3px rgba(255, 180, 84, .5); }
+.ncm-r5-map .rng { position: absolute; left: 140px; top: 122px; border: 1px dashed #5b6878; border-radius: 50%; }
+.ncm-r5-map .rng.on { border-color: #ffb454; background: rgba(255, 180, 84, .06); }
+.ncm-r5-map .wall { position: absolute; left: 250px; top: 20px; width: 6px; height: 210px; background: #8fa3bd; }
+.ncm-r5-slide { flex: 1 1 220px; }
+.ncm-r5-slide input { width: 100%; }
+.ncm-r5-chks { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; background: var(--ncm-bg-card); border: 1px solid var(--ncm-border); border-radius: 2px; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-r5-chks > b { color: var(--ncm-text-heading); font-size: 14px; }
+.ncm-r5-chk { display: flex; align-items: flex-start; gap: 7px; }
+.ncm-r5-chk i { margin-top: 3px; width: 13px; font-size: 11px; color: var(--ncm-text-label); }
+.ncm-r5-chk.ok i { color: var(--ncm-good); }
+.ncm-r5-chk.no i { color: var(--ncm-bad); }
+
+/* the room's edges as gradients: inset shadows on two half-width layers showed a seam down the middle */
+.ncm-r5-scene.is-backup::before { box-shadow: none; background: linear-gradient(90deg, rgba(255, 60, 75, .32), transparent 45%); }
+.ncm-r5-scene.is-backup::after { box-shadow: none; background: linear-gradient(270deg, rgba(70, 150, 255, .36), transparent 45%); }
+
+
+/* an intercept + the prompt */
+.ncm-r4-intercept .ncm-r4-tools { pointer-events: auto; display: flex; gap: 6px; margin-top: 8px; }
+.ncm-r4-intercept .ncm-r4-tools button { appearance: none; width: auto; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(8, 9, 13, .85); border: 1px solid var(--ch-live, #b87aff); color: #fff; font: 700 11px var(--ncm-font-display, sans-serif); cursor: pointer; }
+.ncm-r4-gl { color: #b87aff; letter-spacing: .05em; }
+.ncm-r4-stress { margin-left: 6px; font-size: 11px; color: #ffb454; }
+.ncm-r4-none { font-style: italic; opacity: .7; }
+#ncm-r4-prompts { position: fixed; top: 60px; left: 50%; translate: -50% 0; z-index: 195; display: flex; flex-direction: column; gap: 6px; }
+#ncm-r4-prompts .ncm-r5-tacts button { appearance: none; width: auto; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; background: none; border: 1px solid currentColor; color: inherit; cursor: pointer; }
+
+/* On the table, the card sits where every call sits and the words sit where every subtitle sits (2026-11-02). */
+.ncm-r5-layer .ncm-r5-subs.ncm-ch-subs { position: absolute; left: 50%; bottom: var(--ncm-ch-subs-bottom, 92px); transform: translateX(-50%); width: min(660px, 72vw); margin: 0; }
+.ncm-r5-layer .ncm-r5-alert { margin: -46px 0 12px; }
+/* a picture behind the trace */
+.ncm-r5-feed .ncm-r5-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; border: 0; opacity: .62; }
+.ncm-r5-feed canvas { z-index: 1; filter: drop-shadow(0 0 2px #000); }
+.ncm-r5-feed .rd { z-index: 2; text-shadow: 0 1px 2px #000; }
+.ncm-r5-arrive .in img.art { width: 72px; height: 72px; object-fit: contain; border: 0; }
+
+
+/* ═══ The scene: an opening, a tracker, a strip, an exit (2026-11-02). Nothing flashes faster than twice a second. ═══ */
+.ncm-em-row { position: relative; z-index: 3; display: flex; align-items: flex-start; gap: 22px; }
+.ncm-em-row .ncm-call-hud.ncm-r5-hud { flex: 0 1 auto; min-width: min(610px, calc(100vw - 110px)); }
+.ncm-em-alert:empty { display: none; }
+.ncm-em-alert .ncm-r5-alert { margin: -46px 0 12px; }
+
+/* the room: only from the first real step */
+.ncm-r5-scene.ncm-em-scene.is-trauma::before, .ncm-r5-scene.ncm-em-scene.is-backup::before, .ncm-r5-scene.ncm-em-scene.is-backup::after { opacity: 0; animation: none; transition: opacity 1.4s ease; }
+.ncm-r5-scene.ncm-em-scene.is-trauma.is-room::before { opacity: 1; animation: ncm-r5-beat var(--beat, .6s) ease-in-out infinite; }
+.ncm-r5-scene.ncm-em-scene.is-backup.is-room::before, .ncm-r5-scene.ncm-em-scene.is-backup.is-room::after { opacity: 1; animation: ncm-r5-bar 1.6s ease-in-out infinite; }
+.ncm-r5-scene.ncm-em-scene.is-backup.is-room::after { animation-delay: -.8s; }
+
+/* one scan down the screen as the line opens */
+.ncm-em-sweep { position: absolute; left: 0; right: 0; top: 0; height: 26vh; z-index: 1; pointer-events: none; opacity: 0; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--em) 12%, transparent) 94%, color-mix(in srgb, var(--em) 70%, #fff) 99.6%, transparent); animation: ncm-em-sweep 2s cubic-bezier(.4,.1,.6,1) both; }
+@keyframes ncm-em-sweep { 0% { opacity: 1; transform: translateY(-100%); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(400%); } }
+
+/* the sting across the screen: opens from a line, holds, closes to a line */
+.ncm-em-sting { position: absolute; left: 0; right: 0; top: 44vh; z-index: 5; display: grid; place-items: center; pointer-events: none; }
+.ncm-em-sting::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(90deg, transparent, var(--em) 18%, #fff 50%, var(--em) 82%, transparent); box-shadow: 0 0 14px var(--em); animation: ncm-em-line 2.8s ease-in-out both; }
+.ncm-em-sting__in { position: relative; display: flex; align-items: center; gap: 18px; padding: 18px 40px; min-width: min(640px, 80vw); background: linear-gradient(90deg, transparent, rgba(5, 6, 10, .92) 12%, rgba(5, 6, 10, .92) 88%, transparent); border-block: 2px solid var(--em); color: #fff; }
+.ncm-em-sting.is-open .ncm-em-sting__in { animation: ncm-em-stingbox 2.8s cubic-bezier(.3,.7,.3,1) both; }
+.ncm-em-sting.is-close .ncm-em-sting__in { animation: ncm-em-stingbox 2.6s cubic-bezier(.3,.7,.3,1) both; }
+.ncm-em-sting.is-close::before { animation-duration: 2.6s; }
+.ncm-em-sting__in > i { font-size: 44px; color: var(--em); filter: drop-shadow(0 0 10px var(--em)); }
+.ncm-em-sting__in img.art { width: 72px; height: 72px; object-fit: contain; border: 0; filter: drop-shadow(0 0 8px var(--em)); }
+.ncm-em-sting__in .tx { display: flex; flex-direction: column; gap: 3px; }
+.ncm-em-sting__in .tx b { font: 700 34px/1 var(--ncm-font-title, sans-serif); letter-spacing: .12em; color: #fff; text-shadow: 2px 0 0 color-mix(in srgb, var(--em) 70%, transparent), -2px 0 0 rgba(120, 220, 255, .4); }
+.ncm-em-sting__in .tx small { font: 700 12px var(--ncm-font-mono, monospace); letter-spacing: .2em; text-transform: uppercase; color: color-mix(in srgb, var(--em) 40%, #fff); }
+@keyframes ncm-em-stingbox { 0% { clip-path: inset(50% 0); opacity: 0; } 20% { clip-path: inset(0 0); opacity: 1; } 80% { clip-path: inset(0 0); opacity: 1; } 100% { clip-path: inset(50% 0); opacity: 0; } }
+@keyframes ncm-em-line { 0% { transform: scaleX(0); opacity: 1; } 16% { transform: scaleX(1); opacity: 1; } 84% { transform: scaleX(1); opacity: .8; } 100% { transform: scaleX(.2); opacity: 0; } }
+
+/* the tracker */
+.ncm-em-track { flex: none; width: 232px; pointer-events: none; animation: ncm-em-trackin 1.1s .9s cubic-bezier(.2,.8,.2,1) both; }
+.ncm-em-track[hidden] { display: none; }
+.ncm-em-track canvas { display: block; width: 232px; height: 232px; filter: drop-shadow(0 1px 3px #000); }
+.ncm-em-track__w { margin-top: 2px; text-align: center; font: 700 11px var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--em); text-shadow: 0 1px 3px #000, 0 0 8px color-mix(in srgb, var(--em) 50%, transparent); overflow-wrap: anywhere; }
+.ncm-em-track__w.is-bad { color: #ff9a9a; }
+@keyframes ncm-em-trackin { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+@media (max-width: 1040px) { .ncm-em-track { display: none; } }
+
+/* the exit */
+.ncm-em-scene.is-leaving .ncm-em-track { animation: ncm-em-trackout .9s cubic-bezier(.6,0,.8,.2) both; }
+.ncm-em-scene.is-leaving .ncm-em-alert { animation: ncm-ch-rowout .2s ease-in both; }
+.ncm-r5-scene.ncm-em-scene.is-leaving::before, .ncm-r5-scene.ncm-em-scene.is-leaving::after { opacity: 0 !important; animation: none !important; }
+@keyframes ncm-em-trackout { 0% { clip-path: inset(0 0); opacity: 1; } 60% { clip-path: inset(49% 0); opacity: 1; } 100% { clip-path: inset(49% 50%); opacity: 0; } }
+
+/* the team's strip arrives where the tracker went */
+.ncm-r5-mini { animation: ncm-em-minin .35s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ncm-em-minin { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: none; } }
+
+/* they arrive, and they leave */
+.ncm-r5-landing.is-out .ncm-r5-arrive .in { animation: ncm-em-arriveout .8s cubic-bezier(.6,0,.8,.2) both; }
+.ncm-r5-landing.is-out .ncm-r5-arrive .beam { opacity: 0; transition: opacity .7s ease; }
+@keyframes ncm-em-arriveout { from { clip-path: inset(0); opacity: 1; } to { clip-path: inset(49% 0); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) { .ncm-em-sweep, .ncm-em-sting, .ncm-em-track, .ncm-r5-em .ncm-r5-row, .ncm-r5-mini { animation: none !important; } .ncm-em-sweep { display: none; } }
+
+/* each step's words settle in instead of snapping */
+.ncm-r5-em .ncm-r5-row { animation: ncm-em-rowin .7s ease both; }
+@keyframes ncm-em-rowin { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+/* Backup that is not the law: no red and blue, no searchlight colours */
+.ncm-r5-scene.ncm-em-scene.is-backup.no-lights::before { background: linear-gradient(90deg, color-mix(in srgb, var(--em) 30%, transparent), transparent 40%); }
+.ncm-r5-scene.ncm-em-scene.is-backup.no-lights::after { background: linear-gradient(270deg, color-mix(in srgb, var(--em) 30%, transparent), transparent 40%); }
+.ncm-r5-arrive.is-ally { --a: #ffb454; --b1: rgba(255, 215, 150, .26); --b2: rgba(255, 215, 150, .16); }
