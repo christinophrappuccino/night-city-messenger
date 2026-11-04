@@ -7,7 +7,7 @@
   <div class="ncm-ph2-none"><i class="fas fa-phone-slash"></i> Calls did not load. Reload the world.</div>
 {{else}}
   <nav class="ncm-ph2-nav" role="tablist">
-    {{#each nav}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ph2-navbtn{{#if on}} on{{/if}}" data-action="tabAct" data-owner="phone" data-op="view" data-view="{{key}}"><i class="fas {{icon}}"></i>{{label}}{{#if count}}<span class="ncm-ph2-navct{{#if hot}} hot{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}
+    {{#each nav}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ph2-navbtn{{#if on}} on{{/if}}" data-action="tabAct" data-owner="phone" data-op="view" data-view="{{key}}" data-tooltip="{{label}}" aria-label="{{label}}"><i class="fas {{icon}}"></i><span class="lb">{{label}}</span>{{#if count}}<span class="ncm-ph2-navct{{#if hot}} hot{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}
     <span class="grow"></span>
     {{#unless enabled}}<span class="ncm-tagp is-bad"><i class="fas fa-power-off"></i> Calls are off</span>{{/unless}}
     {{#unless isPopout}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="popOutTab" data-tab="phone" aria-label="Pop out" data-tooltip="Pop out — a bigger window"><i class="fas fa-up-right-from-square"></i></button>{{/unless}}
@@ -104,6 +104,9 @@
 
 {{!-- ═══ NUMBERS + NUMBER SETUP ═══ (phoneNumbersView.js) --}}
 {{#if numbersHtml}}{{{numbersHtml}}}{{/if}}
+
+{{!-- ═══ PAYPHONES ═══ (payphonesView.js) --}}
+{{#if payphonesHtml}}{{{payphonesHtml}}}{{/if}}
 
 {{!-- ═══ CALL LOG ═══ --}}
 {{#if (eq view 'log')}}

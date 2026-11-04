@@ -26,10 +26,11 @@ export const ACCESS_KIND_INFO = Object.freeze({
   inbox: { icon: 'fa-inbox', many: 'Inboxes', hue: 5 },
   message: { icon: 'fa-envelope', many: 'Messages', hue: 7 },
   node: { icon: 'fa-tower-broadcast', many: 'Network nodes', hue: 4 },
+  payphone: { icon: 'fa-phone', many: 'Payphones', hue: 6 },
 });
 
 /** Show = which kinds of thing. */
-export const ACCESS_SHOW = Object.freeze([['all', 'All kinds'], ['terminal', 'Terminals'], ['shard', 'Shards'], ['inbox', 'Inboxes'], ['message', 'Messages'], ['node', 'Network nodes']]);
+export const ACCESS_SHOW = Object.freeze([['all', 'All kinds'], ['terminal', 'Terminals'], ['shard', 'Shards'], ['inbox', 'Inboxes'], ['message', 'Messages'], ['node', 'Network nodes'], ['payphone', 'Payphones']]);
 /** Group, per view. Map has one grouping, but the control is still there so the toolbar never changes shape between views. */
 export const ACCESS_GROUPS = Object.freeze({
   map: [['folder', 'Scene folder']],

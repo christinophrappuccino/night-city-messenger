@@ -16,6 +16,7 @@ export const PHONE_VIEWS = [
   ['live', 'Live', 'fa-tower-broadcast'],
   ['numbers', 'Numbers', 'fa-sim-card'],
   ['overheard', 'Overheard calls', 'fa-ear-listen'],
+  ['payphones', 'Payphones', 'fa-phone-volume'],
   ['setup', 'Number setup', 'fa-sliders'],
   ['log', 'Call log', 'fa-list'],
   ['settings', 'Settings', 'fa-gear'],
@@ -27,8 +28,8 @@ export const NAV_PARENT = Object.freeze({ vm: 'log', logedit: 'log' });
 /** Where the Call log button lands: voicemail waiting comes first, and a click from inside it stays put. */
 export const logLanding = (view, unheard) => (NAV_PARENT[view] === 'log' || view === 'log' ? view : unheard > 0 ? 'vm' : 'log');
 
-export const QUEUE_KINDS = Object.freeze({ corp: ['Company', 'fa-building'], shared: ['Shared line', 'fa-users'], special: ['Special', 'fa-star-of-life'], npc: ['NPC', 'fa-user'] });
-export const QUEUE_SHOW = [['all', 'All calls'], ['corp', 'Companies'], ['npc', 'NPCs'], ['shared', 'Shared lines'], ['special', 'Special numbers'], ['hold', 'On hold']];
+export const QUEUE_KINDS = Object.freeze({ corp: ['Company', 'fa-building'], shared: ['Shared line', 'fa-users'], special: ['Special', 'fa-star-of-life'], npc: ['NPC', 'fa-user'], pay: ['Payphone', 'fa-phone'] });
+export const QUEUE_SHOW = [['all', 'All calls'], ['corp', 'Companies'], ['npc', 'NPCs'], ['shared', 'Shared lines'], ['special', 'Special numbers'], ['pay', 'Payphones'], ['hold', 'On hold']];
 
 /**
  * The call queue: longest wait first, numbered, one call open at a time.

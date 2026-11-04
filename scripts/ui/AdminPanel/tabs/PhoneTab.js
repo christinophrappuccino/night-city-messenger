@@ -23,6 +23,7 @@ import { DateRangePicker } from '../../components/DateRangePicker.js';
 import { PHONE_VIEWS, NAV_PARENT, logLanding, LOG_FILTERS, LOG_GROUPS, VM_SHOW, VM_GROUPS, QUEUE_SHOW, callQueue, liveBoard, logView, settingsView, voicemailBoxes } from './phoneModel.js';
 import { PLAN_NAMES } from '../../../utils/phoneEmergency.js';
 import { numbersHtml, wireNumbers, closeNumbers, newNumberState, syncFrame, requestCount } from './phoneNumbersView.js';
+import { payphonesHtml, wirePayphones, newPayphoneState } from './payphonesView.js';
 import { GREETING_KINDS, GREETING_LABELS, DEFAULT_GREETING, GREETING_MAX } from '../../../utils/voicemail.js';
 import { speak, voices, canSpeak } from '../../Calls/speech.js';
 import { VoiceRecorder, micStatus, blobToBase64, playAudio } from '../../Calls/recorder.js';
@@ -77,6 +78,7 @@ export class PhoneTab extends BaseTab {
     if (select === 'vm') this._view = 'vm';
     else if (PHONE_VIEWS.some(([k]) => k === select)) { this._view = select; syncFrame(this, select); }
     else if (select?.person) { this._view = 'numbers'; this._pn.f = 'numbers'; this._pn.sel = select.person; this._pn.show = 'all'; this._pn.q = ''; }
+    else if (typeof select === 'string' && select.startsWith('payphone:')) { this._view = 'payphones'; (this._pp ??= newPayphoneState()).sel = select.slice(9); }
     else if (select?.log) { this._view = 'logedit'; this._pn.f = 'editlog'; this._pn.lgT = select.log; this._pn.lgE = null; }
   }
 
@@ -130,6 +132,7 @@ export class PhoneTab extends BaseTab {
       const numNav = ctx.nav.find((n) => n.key === 'numbers');
       if (numNav) { numNav.count = requestCount(this); numNav.hot = numNav.count > 0; }
       if (this._view === 'numbers' || this._view === 'setup' || this._view === 'overheard' || this._view === 'logedit') { syncFrame(this, this._view); ctx.numbersHtml = numbersHtml(this); }
+      if (this._view === 'payphones') ctx.payphonesHtml = payphonesHtml(this);
       if (this._view === 'log') {
         const whoId = this.scopeId('logwho'), netId = this.scopeId('lognet');
         const who = ScopePicker.value(whoId)[0] || '', net = ScopePicker.value(netId)[0] || '';
@@ -166,6 +169,7 @@ export class PhoneTab extends BaseTab {
     const root = this.element?.querySelector('.ncm-ph2');
     if (!root) return;
     wireNumbers(this, root);
+    wirePayphones(this, root);
     // searches re-render after a pause (never per key)
     root.querySelectorAll('select[data-ph-qfilt]').forEach((sel) => sel.addEventListener('change', () => { this._qFilt = sel.value; this.app.render(); }));
     root.querySelectorAll('[data-ph-q]').forEach((q) => q.addEventListener('input', () => {
@@ -406,6 +410,7 @@ export class PhoneTab extends BaseTab {
   _queueKind(c) {
     const s = this.calls, ctx = s.numberContext, p = parseNumber(c.to?.number || '', ctx);
     if (c.to?.shared) return 'shared';
+    if (c.from?.payphone || c.to?.kind === 'payphone') return 'pay';
     if (p.service) return 'special';
     if (rowOf(p, ctx)?.Category === 'Corporate') return 'corp';
     return 'npc';

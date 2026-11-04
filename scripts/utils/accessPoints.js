@@ -21,6 +21,7 @@ export const ACCESS_KINDS = Object.freeze({
   inbox: { label: 'Inbox', icon: 'fa-inbox', open: 'Open the inbox' },
   message: { label: 'Message', icon: 'fa-envelope', open: 'Read it' },
   node: { label: 'Network node', icon: 'fa-tower-broadcast', open: 'Open the node' },
+  payphone: { label: 'Payphone', icon: 'fa-phone', open: 'Use the payphone' },
 });
 
 export const HANDOUT_STYLES = Object.freeze([['match', 'Match the source'], ['default', 'Module default'], ['custom', 'My colours']]);
@@ -49,7 +50,7 @@ export function accessLinkText(ref, label = '') {
 }
 
 /** The pattern TextEditor's enricher matches (global, for String.replace / matchAll). */
-export const ACCESS_LINK_PATTERN = /@NCM\[(terminal|shard|inbox|message|node):([^\]]+)\](?:\{([^}]*)\})?/g;
+export const ACCESS_LINK_PATTERN = /@NCM\[(terminal|shard|inbox|message|node|payphone):([^\]]+)\](?:\{([^}]*)\})?/g;
 
 /** Parse one match of ACCESS_LINK_PATTERN → { ref, label }. */
 export function parseAccessLink(match) {

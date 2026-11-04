@@ -20,6 +20,7 @@ import {
   ACCESS_KINDS, HANDOUT_STYLES, ACCESS_LINK_PATTERN, accessRef, isAccessRef, parseAccessLink, accessLinkText,
   accessMacroCommand, accessMacroSnippet, sanitizeHandoutStyle, postDialogHtml, placementDialogHtml, placementHint, sanitizePlacement, handoutPalette, paletteStyle, accessCardHtml, accessChipHtml, escHtml,
 } from '../utils/accessPoints.js';
+import { placeLabel } from '../utils/payphones.js';
 
 const MACRO_FOLDER = 'NCM — Access points';
 
@@ -64,6 +65,12 @@ export function describeAccess(ref) {
       Object.assign(out, { found: true, name: node.name, img: `modules/${MODULE_ID}/assets/icons/nodes/${node.kind}.svg`,
         sub: [net?.name, scene?.name].filter(Boolean).join(' · '), tags: [node.hidden ? 'hidden' : ''],
         source: { primary: c, accent: c, bgDeep: '#07070c', textPrimary: '#e6ecf5' } });
+    } else if (ref.kind === 'payphone') {
+      const pp = game.nightcity?.payphoneService?.get?.(ref.id); if (!pp) return out;
+      const scene = pp.sceneId ? game.scenes.get(pp.sceneId) : null;
+      Object.assign(out, { found: true, name: placeLabel(pp), img: `modules/${MODULE_ID}/assets/icons/payphone/payphone.svg`,
+        sub: [pp.number, scene?.name].filter(Boolean).join(' · '), tags: [pp.condition === 'out' ? 'out of order' : ''],
+        source: { primary: pp.look.case, accent: pp.look.ink, bgDeep: '#07070c', textPrimary: '#e6ecf5' } });
     } else if (ref.kind === 'shard') {
       const item = _item(ref.id); if (!item) return out;
       const cfg = game.nightcity?.dataShardService?.getConfig(item) || {};
@@ -96,6 +103,8 @@ export function openAccess(ref) {
     case 'terminal': return ns?.openTerminal?.(ref.id);
     case 'shard': return ns?.openDataShard?.(ref.id);
     case 'node': return ns?.openNode?.(ref.id);
+    // a link, a macro or a chat card: the GM handed it out, so no reach check (a map pin checks reach itself)
+    case 'payphone': return ns?.payphoneService?.open?.(ref.id, { skipReach: true });
     case 'inbox':
     case 'message': {
       const [owner, messageId] = ref.id.split('|');
@@ -351,7 +360,20 @@ export async function openNodePlaceDialog(nodeId) {
   const ref = accessRef('node', nodeId);
   const d = describeAccess(ref);
   let scene = game.scenes.get(node.sceneId) || canvas?.scene || null;
-  const place = sanitizePlacement({ ..._lastPlace, range: _lastPlace.range ?? 1, sceneId: scene?.id, hidden: node.hidden });
+  const p = await askPlacement(ref, d, scene, node.hidden, 'Place a node');
+  if (!p) return null;
+  // a node stands where it is placed; its own Hidden switch follows the placement's
+  if (p.sceneId !== node.sceneId || p.hidden !== node.hidden) await ns.saveNode({ ...node, sceneId: p.sceneId, hidden: p.hidden });
+  return game.nightcity?.terminalScenePins?.placeNode(nodeId, p);
+}
+
+
+/**
+ * The placement dialog for a thing that is not an item (a network node, a payphone): which scene, pin / area / both,
+ * reach, hidden. Resolves the placement, or null when cancelled.
+ */
+async function askPlacement(ref, d, scene, hidden, title) {
+  const place = sanitizePlacement({ ..._lastPlace, range: _lastPlace.range ?? 1, sceneId: scene?.id, hidden });
   const content = placementDialogHtml({ ref, info: d, place, sceneName: scene?.name || '' });
   const p = await new Promise((resolve) => {
     let result = null;
@@ -364,7 +386,7 @@ export async function openNodePlaceDialog(nodeId) {
       sceneId: root.querySelector('[name="sceneId"]')?.value,
     });
     const dlg = adminDialog({
-      title: 'Place a node', content,
+      title, content,
       buttons: {
         cancel: { icon: '<i class="fas fa-xmark"></i>', label: 'Cancel' },
         place: { icon: '<i class="fas fa-map-pin"></i>', label: 'Place', callback: (html) => { result = read(html[0] ?? html); } },
@@ -393,11 +415,42 @@ export async function openNodePlaceDialog(nodeId) {
     }, { width: 500, classes: [...THEMED_DIALOG_CLASSES, 'ncm-plc-dialog'] });
     dlg.render(true);
   });
+  if (p) _lastPlace = { how: p.how, where: p.where, range: p.range, size: p.size, hidden: p.hidden };
+  return p;
+}
+
+/**
+ * The ACCESS entries for a payphone (its admin page, its pin menu). Same choices as an item's.
+ * @param {string} id
+ */
+export function payphoneAccessEntries(id) {
+  const ref = accessRef('payphone', id); if (!ref) return [];
+  const out = [{ head: 'Access' }];
+  if (isGM()) out.push({ label: 'Place on a scene…', icon: 'fas fa-map-pin', fn: () => openPayphonePlaceDialog(id) });
+  out.push({ label: 'Add to hotbar', icon: 'fas fa-bolt', fn: () => createAccessMacro(ref) });
+  if (isGM()) {
+    out.push({ label: 'Post to chat…', icon: 'fas fa-comment', fn: () => postAccessCard(ref) });
+    out.push({ label: 'Copy journal link', icon: 'fas fa-link', fn: () => copyAccessLink(ref) });
+    out.push({ label: 'Copy macro code', icon: 'fas fa-code', fn: () => copyAccessMacro(ref) });
+    out.push({ label: 'Make a macro', icon: 'fas fa-scroll', fn: () => createAccessMacro(ref, { assign: false }) });
+  }
+  return out;
+}
+
+/**
+ * Place a payphone as a pin / step-on area (its own scene preselected). Picking another scene MOVES the payphone.
+ * @param {string} id @param {{sceneId?: string}} [o]
+ */
+export async function openPayphonePlaceDialog(id, { sceneId } = {}) {
+  const svc = game.nightcity?.payphoneService;
+  const pp = svc?.get?.(id);
+  if (!pp) return ui.notifications.warn('That payphone no longer exists.');
+  const ref = accessRef('payphone', id);
+  const scene = game.scenes.get(sceneId) || game.scenes.get(pp.sceneId) || canvas?.scene || null;
+  const p = await askPlacement(ref, describeAccess(ref), scene, false, 'Place a payphone');
   if (!p) return null;
-  _lastPlace = { how: p.how, where: p.where, range: p.range, size: p.size, hidden: p.hidden };
-  // a node stands where it is placed; its own Hidden switch follows the placement's
-  if (p.sceneId !== node.sceneId || p.hidden !== node.hidden) await ns.saveNode({ ...node, sceneId: p.sceneId, hidden: p.hidden });
-  return game.nightcity?.terminalScenePins?.placeNode(nodeId, p);
+  if (p.sceneId !== pp.sceneId || (Number(p.range) || 0) !== pp.range) await svc.save({ ...pp, sceneId: p.sceneId, range: Number(p.range) || 0 });
+  return game.nightcity?.terminalScenePins?.placePayphone(id, p);
 }
 
 /** A small grouped menu of entries anchored under a button (generic — showAccessMenu builds an item's). */
@@ -434,7 +487,7 @@ export function showEntriesMenu(entries, anchor) {
 /** Wire everything that needs `ready`: the click door, the hotbar drop, the API. */
 export function registerAccessPoints() {
   const ns = (game.nightcity ??= {});
-  Object.assign(ns, { openAccess, describeAccess, createAccessMacro, postAccessCard, copyAccessLink, copyAccessMacro, accessRefForItem: refForItem, placeAccess: openPlaceDialog });
+  Object.assign(ns, { openAccess, describeAccess, createAccessMacro, postAccessCard, copyAccessLink, copyAccessMacro, accessRefForItem: refForItem, placeAccess: openPlaceDialog, payphoneAccessEntries, openPayphonePlaceDialog });
 
   // One click door for chat cards + journal chips (anywhere in the document).
   document.addEventListener('click', (ev) => {

@@ -100,6 +100,7 @@ export const EVENTS = Object.freeze({
   CALL_LOGGED: 'call:logged',       // { kind: 'log'|'voicemail' } — a call-log or voicemail page appeared / changed / went
   CALL_GLITCH: 'call:glitch',       // { callId } — the GM made the line stutter
   CALL_TRACED: 'call:traced',       // { callId, from } — a withheld caller was revealed to this client
+  PAYPHONE_STATE: 'call:payphoneState', // { id } — someone lifted or hung up a payphone's handset
   LINE_UPDATED: 'call:lineUpdated', // { number } — a number / line setting changed
   CALL_LINE: 'call:line',           // { callId, line, mine } — a typed line arrived on a call (or was sent from here)
   CALL_TYPING: 'call:typing',       // { callId, side, on } — the other side started / stopped typing
@@ -201,6 +202,7 @@ export const SOCKET_OPS = Object.freeze({
   CALL_LOG_REQUEST: 'call:logRequest',
   CALL_LINE_REQUEST: 'call:lineRequest',
   CALL_EMERGENCY: 'call:emergency',
+  PAYPHONE: 'call:payphone',                 // a booth's state (who is on it, the speaker) and a pick-up race, every client
   CONVERSATION_REQUEST: 'conversation:request',   // a player's write, for the GM to land
   CONVERSATION_RESULT: 'conversation:result',     // how it went, for that player
   CALL_OVERHEARD: 'call:overheard',
@@ -1089,6 +1091,7 @@ export const SOUND_PATHS = Object.freeze({
   'voicemail-beep': 'calls/voicemail-beep.wav',
   'em-alert': 'calls/em-alert.wav', 'em-sting-backup': 'calls/em-sting-backup.wav', 'em-sting-trauma': 'calls/em-sting-trauma.wav', 'em-monitor': 'calls/em-monitor.wav', 'em-dispatch': 'calls/em-dispatch.wav',
   'em-radio-in': 'calls/em-radio-in.wav', 'em-radio-out': 'calls/em-radio-out.wav', 'em-arrive-trauma': 'calls/em-arrive-trauma.wav', 'em-arrive-backup': 'calls/em-arrive-backup.wav',
+  'payphone-ring': 'calls/payphone-ring.wav', 'payphone-hook': 'calls/payphone-hook.wav', 'payphone-chip': 'calls/payphone-chip.wav',
 });
 
 export const ESSENTIAL_EFFECTS = Object.freeze(['ncm-fade-in', 'ncm-fade-out']);

@@ -17,6 +17,8 @@ import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 import { CallService } from '../services/CallService.js';
 import { CallHud } from '../ui/Calls/CallHud.js';
+import { PayphoneService } from '../services/PayphoneService.js';
+import { PayphoneBooth } from '../ui/Calls/PayphoneBooth.js';
 
 export function registerCallSystem(initializer) {
 
@@ -82,6 +84,14 @@ export function registerCallSystem(initializer) {
     };
     for (const h of ['createJournalEntryPage', 'updateJournalEntryPage', 'deleteJournalEntryPage']) Hooks.on(h, pageHook);
 
+    // payphones: a booth is a caller identity on CallService; this owns reach, who is on it, the ring and the speaker
+    const payphones = new PayphoneService();
+    game.nightcity.payphoneService = payphones;
+    game.nightcity.payphoneBooth = new PayphoneBooth(payphones);
+    payphones.init();
+    game.nightcity.payphoneBooth.init();
+    sm.register(SOCKET_OPS.PAYPHONE, (data) => payphones.handleSocket(data));
+
     // losing signal mid-call drops it
     game.nightcity.eventBus.on(EVENTS.NETWORK_CHANGED, () => service.checkSignal());
     log.info('CallService initialized');
@@ -94,5 +104,7 @@ export function registerCallSystem(initializer) {
       if (r && !r.ok && r.error) ui.notifications?.warn(r.error);
       return r;
     };
+    /** Open a payphone's booth (by id), as a link would: no reach check. */
+    game.nightcity.openPayphone = (id) => game.nightcity.payphoneService?.open(id, { skipReach: true });
   });
 }

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Payphone probe</title>
+<!--
+  PROBE: renders the REAL booth (scripts/ui/Calls/boothMarkup.js) and the REAL admin page (payphonesView.js) over a
+  stubbed world, against the real cascade. Serve: node dev/tools/serve-mockups.cjs, then
+  http://127.0.0.1:8123/dev/mockups/payphone-probe.html?view=booth|admin|live&style=street|corp|ncpd|bar&grit=&wire=&out=1&t=clean-dark|clean-light|high-contrast
+  The title says OK, or what failed.
+-->
+<link rel="stylesheet" href="/_vendor/foundry2.css">
+<link rel="stylesheet" href="/_vendor/cpr.css">
+<link rel="stylesheet" href="/_vendor/fa/css/all.min.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  html, body { height: auto !important; overflow: auto !important; }
+  body { margin: 0; padding: 14px; background: #07080c !important; display: block !important; }
+  #win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; width: 1060px; background: var(--ncm-bg-canvas); padding: 10px; }
+  .stage { position: relative; min-height: 940px; display: grid; place-items: start center; padding-top: 30px;
+    background: repeating-linear-gradient(0deg, transparent 0 79px, rgba(0,0,0,.35) 79px 81px), repeating-linear-gradient(90deg, transparent 0 119px, rgba(0,0,0,.3) 119px 121px), radial-gradient(ellipse at 40% 25%, #2a2d2a 0%, #121412 65%); }
+</style>
+</head>
+<body>
+<div id="out"></div>
+<script type="module">
+const P = new URLSearchParams(location.search);
+const view = P.get('view') || 'booth';
+try {
+  const { boothHtml, keypadHtml, speedHtml } = await import('../../scripts/ui/Calls/boothMarkup.js');
+  const { sanitizePayphone, lookFromStyle } = await import('../../scripts/utils/payphones.js');
+  const look = { ...lookFromStyle(P.get('style') || 'street') };
+  if (P.get('grit')) look.grit = +P.get('grit');
+  if (P.get('wire')) look.wire = +P.get('wire');
+  const pp = sanitizePayphone({ id: 'pp1', name: 'Kabuki, Night Market', number: '+72 NC WAT-0412', sceneId: 'S1', look, condition: P.get('out') ? 'out' : 'working' });
+  if (view === 'booth') {
+    document.getElementById('out').innerHTML = `<div class="stage">${boothHtml({ look: pp.look, uid: 'probe', place: pp.name, number: pp.number, condition: pp.condition, helpKey: !!pp.help, helpLabel: pp.help === 'TRAUMA' ? 'Trauma' : 'NCPD' })}</div>`;
+    const r = document.querySelector('.ncm-pb');
+    r.querySelector('[data-pb-tbody]').innerHTML = keypadHtml({ wrecked: pp.look.grit >= 85 });
+    r.querySelector('[data-pb-speed]').innerHTML = speedHtml([{ name: 'Rogue', number: 'WAT-2207' }, { name: 'Dr. Chrome', number: 'HEY-0911' }]);
+    if (P.get('at')) { r.dataset.at = P.get('at'); r.classList.toggle('is-off', P.get('at') !== 'idle'); }
+  } else if (view === 'live') {
+    // the REAL booth controller over a stubbed service: lift, dial, OK, Book, hand-off. Title = OK or what broke.
+    const placed = [], uses = [];
+    const bus = { on() {}, emit() {} };
+    globalThis.Hooks = { on() {} };
+    globalThis.game = { user: { isGM: false, id: 'u1', name: 'Kiri' }, actors: { get: () => ({ id: 'v', name: 'V', getFlag: (_m, k) => (k === 'contacts' ? [{ name: 'Rogue', phone: 'WAT-2207' }] : null) }) },
+      settings: { get: () => undefined },
+      nightcity: { eventBus: bus, soundService: { play() {}, playFile() {} }, settingsManager: { getTheme: () => ({ soundEnabled: false }) },
+        themeService: { getAnimationLevel: () => 'off' },
+        callService: { homeCode: null, lines: () => ({}), placeCall: async (n, as) => { placed.push([n, as]); return { ok: true, call: { id: 'c1' } }; } } } };
+    const svc = { inUse: new Map(), _ringing: new Map(), listening: new Map(), get calls() { return game.nightcity.callService; },
+      operator: () => ({ id: 'v', name: 'V' }), otherOn: () => null, setUse: (id, on) => uses.push(on), setSpeaker() {}, pickUp() {}, get: () => pp };
+    const { PayphoneBooth } = await import('../../scripts/ui/Calls/PayphoneBooth.js');
+    const booth = new PayphoneBooth(svc); booth.open(pp);
+    const r = document.querySelector('.ncm-pb'), click = (s) => r.querySelector(s).click(), errs = [];
+    click('[data-pb="handset"]');
+    if (r.dataset.at !== 'lifted' || uses[0] !== true) errs.push('lift');
+    for (const k of ['2', '2', '0', '7']) click(`[data-k="${k}"]`);
+    if (r.querySelector('[data-pb-tnum]').textContent !== '2207') errs.push('keys ' + r.querySelector('[data-pb-tnum]').textContent);
+    click('[data-k="<"]'); if (r.querySelector('[data-pb-tnum]').textContent !== '220') errs.push('delete');
+    click('[data-k="7"]'); click('[data-k="OK"]');
+    await new Promise((res) => setTimeout(res, 50));
+    if (!placed.length || placed[0][0] !== '2207' || placed[0][1].payphone !== 'pp1') errs.push('call ' + JSON.stringify(placed));
+    booth.open(pp);
+    const r2 = document.querySelector('.ncm-pb');
+    r2.querySelector('[data-fn="book"]').click();
+    if (!r2.querySelector('.ncm-pb__bk[data-dial="WAT-2207"]')) errs.push('book');
+    if (!r2.querySelector('.ncm-pb__speed [data-dial="WAT-2207"]')) errs.push('speed dial');
+    // a very long number must not move the keypad (2026-11-04: it pushed the touchscreen sideways)
+    booth.open(pp);
+    const r3 = document.querySelector('.ncm-pb');
+    r3.querySelector('[data-pb="handset"]').click();
+    const padAt = () => { const b = r3.querySelector('.ncm-pb__touch').getBoundingClientRect(); return `${Math.round(b.left)},${Math.round(b.width)}`; };
+    const before = padAt();
+    for (let i = 0; i < 20; i++) r3.querySelector(`[data-k="${i % 10}"]`).click();
+    if (padAt() !== before) errs.push(`long number moved the pad ${before} → ${padAt()}`);
+    if (!r3.querySelector('[data-pb-tnum]').textContent.endsWith('9')) errs.push('newest digit hidden');
+    // hanging up puts the handset back and keeps the booth
+    booth.st.at = 'oncall'; booth.st.callId = 'c9'; booth._paint();
+    booth._putBack();
+    if (r3.dataset.at !== 'idle' || r3.classList.contains('is-off') || !document.querySelector('.ncm-pb')) errs.push('put back');
+    if (P.get('long')) { r3.querySelector('[data-pb="handset"]').click(); for (let i = 0; i < 20; i++) r3.querySelector(`[data-k="${i % 10}"]`).click(); }
+    document.title = errs.length ? 'FAIL ' + errs.join(', ') : 'OK';
+    throw { probeDone: true };
+  } else {
+    // a stubbed world for the admin page
+    globalThis.game = { user: { isGM: true, id: 'gm' }, scenes: { get: () => ({ id: 'S1', name: 'Kabuki' }) },
+      settings: { get: () => undefined }, i18n: { lang: 'en' },
+      nightcity: { payphoneService: { getAll: () => [pp, { ...pp, id: 'pp2', name: 'Watson, Arroyo', number: '+72 NC WAT-1180', look: lookFromStyle('corp') }],
+        get: (id) => (id === 'pp1' ? pp : null), styles: () => [{ id: 's1', name: 'Watson street booth', look: pp.look }], pinsOf: () => [{ x: 1, y: 1 }], inUse: new Map(), logOf: () => [] } } };
+    const { payphonesHtml } = await import('../../scripts/ui/AdminPanel/tabs/payphonesView.js');
+    const tab = { _pp: { sel: 'pp1', q: '' } };
+    document.getElementById('out').innerHTML = `<div id="win" class="ncm-app ncm-admin-panel" data-ncm-admin-theme="${P.get('t') || 'clean-dark'}"><div class="ncm-admin-panel">${payphonesHtml(tab)}</div></div>`;
+  }
+  document.title = 'OK';
+} catch (err) { if (err?.probeDone) { /* the live run set the title */ } else { document.title = 'FAIL ' + err.message; document.getElementById('out').textContent = err.stack; } }
+</script>
+</body>
+</html>

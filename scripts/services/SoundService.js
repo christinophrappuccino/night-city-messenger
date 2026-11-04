@@ -97,6 +97,17 @@ export class SoundService {
   }
 
   /**
+   * Play a file that is not on the Sound board (a payphone's own ring, say), with the user's sound switch and volume.
+   * @param {string} src @param {{volume?: number}} [o]
+   */
+  async playFile(src, { volume = 1 } = {}) {
+    const prefs = this._settings.getTheme();
+    if (!prefs.soundEnabled || !src) return;
+    try { await getAudioHelper().play({ src, volume: Math.min(1, volume * (prefs.soundVolume ?? 0.5)), loop: false }, false); }
+    catch { log.debug(`Sound file not available: ${src}`); }
+  }
+
+  /**
    * Play a sound with per-play pitch/volume shaping — the public face of the
    * Web Audio path playClick uses. Terminal sound sets route through this so
    * a set can re-pitch existing assets into a different machine personality.

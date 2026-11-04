@@ -16,6 +16,20 @@ export function registerUIComponents(initializer) {
   });
 
   initializer.register('init', 20, 'Scene controls', () => {
+    // The button group needs a canvas layer of its OWN. It used to name core's shared 'controls' layer, and Foundry
+    // picks a group by its layer (SceneControls#initialize: the FIRST group on that layer wins), so a module that
+    // also uses 'controls' — Grid Scaler — opened instead of the messenger (tester 2026-11-03). An empty
+    // interaction layer: nothing is drawn on it, it only gives the group a unique name.
+    const IL = (typeof InteractionLayer !== 'undefined') ? InteractionLayer : foundry.canvas?.layers?.InteractionLayer;
+    let groupLayer = 'controls';
+    if (IL && globalThis.CONFIG?.Canvas?.layers) {
+      class NCMControlsLayer extends IL {
+        static get layerOptions() { return foundry.utils.mergeObject(super.layerOptions, { name: 'ncmControls' }); }
+      }
+      CONFIG.Canvas.layers.ncmControls = { layerClass: NCMControlsLayer, group: 'interface' };
+      groupLayer = 'ncmControls';
+    }
+
     Hooks.on('getSceneControlButtons', (controls) => {
       if (!game.nightcity) return;
 
@@ -76,7 +90,7 @@ export function registerUIComponents(initializer) {
         name: MODULE_ID,
         title: MODULE_TITLE,
         icon: 'fas fa-satellite-dish',
-        layer: 'controls',
+        layer: groupLayer,
         tools,
       });
     });

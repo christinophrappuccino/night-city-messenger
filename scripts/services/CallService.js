@@ -26,6 +26,7 @@ import { normaliseNumber, displayNumber, parseNumber, rowOf, fullForm, freeLines
 import { createCall, createEndedCall, transition, resolveCallee, canCall, allowedModes, defaultMode, callSeconds, formatDuration, OUTCOMES,
   BUILT_MODES, makeLine, addLine, sideOf, transcriptOf } from '../utils/callModel.js';
 import { dropReason, maskCaller, callerFor, interceptMail } from '../utils/callNet.js';
+import { placeLabel, maskPayphoneSide } from '../utils/payphones.js';
 import { dictateStatus } from '../ui/Calls/dictation.js';
 import { sanitizeLineSettings, greetingFor, goesToVoicemail, greetMs, makeVoicemail, voicemailOwner, recordingsToPurge, GREETING_RECORD_MS } from '../utils/voicemail.js';
 
@@ -759,6 +760,14 @@ export class CallService {
       if (!x) return null;
       return { userId: game.user.id, actorId: null, contactId: null, name: x.show === 'name' ? (x.name || x.num) : '', number: x.num, img: x.show === 'name' ? x.img : '', anon: x.show !== 'name', asLine: true, special: true };
     }
+    // a payphone: the PLACE calls; who is really on it stays with the GMs (and this client)
+    if (as.payphone) {
+      const pp = game.nightcity?.payphoneService?.get?.(as.payphone);
+      if (!pp?.number) return null;
+      const actor = as.actorId ? game.actors?.get(as.actorId) : resolveOperator();
+      return { userId: game.user.id, actorId: null, contactId: null, name: placeLabel(pp), number: pp.number, img: '', asLine: true, wired: true,
+        payphone: pp.id, realActorId: actor?.id || null, realName: actor?.name || game.user.name, realUserId: game.user.id };
+    }
     if (as.contactId) {
       const c = game.nightcity?.masterContactService?.getContact?.(as.contactId);
       if (!c) return null;
@@ -812,6 +821,7 @@ export class CallService {
   /** Would this ring reach this client? */
   _ringsHere(call) {
     const to = call.to || {};
+    if (to.kind === 'payphone') return !game.user.isGM && game.user.viewedScene === to.sceneId;
     if (to.shared) return game.user.isGM ? (!!to.gmMember && game.users.activeGM?.id === game.user.id) : (to.userIds || []).includes(game.user.id);
     if (to.kind === 'player') {
       if (game.user.isGM) return false;
@@ -835,6 +845,15 @@ export class CallService {
   _send(type, call, extra = {}) {
     const { lines, ...lite } = call;   // each client keeps its own transcript; lines travel one at a time ('line')
     const ids = this._audience(call);
+    // a payphone: who is really on it goes to the GMs and the person on the handset; everyone else sees the place
+    if (call.from?.payphone || call.to?.kind === 'payphone') {
+      const real = [call.from?.realUserId, call.to?.realUserId, call.answeredBy].filter(Boolean);
+      const open = ids.filter((id) => game.users.get(id)?.isGM || real.includes(id));
+      const masked = ids.filter((id) => !open.includes(id));
+      if (open.length) this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: lite, userIds: open, ...extra });
+      if (masked.length) this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: { ...lite, from: maskPayphoneSide(call.from), to: maskPayphoneSide(call.to) }, userIds: masked, ...extra });
+      return;
+    }
     if (!call.from?.anon || call.traced) { this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: lite, userIds: ids, ...extra }); return; }
     // a withheld number: the real caller goes to the GMs (and the caller's own client); everyone else gets the mask
     const open = ids.filter((id) => game.users.get(id)?.isGM || id === call.from.userId);
@@ -897,7 +916,8 @@ export class CallService {
   async placeCall(number, as = {}) {
     let from = this._caller(as);
     if (!from) return { ok: false, error: 'Pick a character first.' };
-    if (!from.special) from = this._dressCaller(from);
+    if (from.payphone) { const keep = { name: from.name, realName: from.realName, img: '' }; from = { ...this._dressCaller(from), ...keep, anon: false, asLine: true, showOnly: 'name' }; }
+    else if (!from.special) from = this._dressCaller(from);
     // a withheld number: the callee never learns who it is (only the GM holds it) until a trace
     if (as.anon && isGM()) from.anon = true;
     if (this.myCalls().some((c) => c.state === 'ringing' && this._role(c) === 'caller')) return { ok: false, error: 'You are already calling someone.' };
@@ -905,11 +925,20 @@ export class CallService {
     number = dialledNumber;
     const callee = this.resolve(number);
     const special = this.numberContext.service[specialKey(number)];
+    // a payphone: nobody owns it; it rings everyone on its scene, and only someone standing at it can pick up
+    const ppLine = this.line(number);
+    if (ppLine?.kind === 'payphone') {
+      const booth = game.nightcity?.payphoneService?.get?.(ppLine.payphoneId);
+      if (!booth) callee.lineOff = true;
+      else Object.assign(callee, { kind: 'payphone', actorId: null, contactId: null, name: placeLabel(booth), payphoneId: booth.id, sceneId: booth.sceneId,
+        userIds: game.users.filter((u) => !u.isGM && u.active && u.id !== game.user.id).map((u) => u.id), outOfOrder: booth.condition === 'out' });
+    }
     // Trauma Team: someone with a plan starts the real call; someone with none is refused, or rings the GM, as the GM set it
-    if (from.actorId && !isGM() && game.nightcity?.emergencyService && specialKey(number) === game.nightcity.emergencyService.traumaLine().key) {
-      const em = game.nightcity.emergencyService, actor = game.actors?.get(from.actorId);
+    const selfId = from.actorId || from.realActorId;
+    if (selfId && !isGM() && game.nightcity?.emergencyService && specialKey(number) === game.nightcity.emergencyService.traumaLine().key) {
+      const em = game.nightcity.emergencyService, actor = game.actors?.get(selfId);
       if (em.planFor(actor) !== 'none') {
-        if (em.planInUse(from.actorId)) return { ok: false, error: 'Your plan is in use. Your GM clears it when the job is over.' };
+        if (em.planInUse(selfId)) return { ok: false, error: 'Your plan is in use. Your GM clears it when the job is over.' };
         game.nightcity.emergencyHud?.trauma(actor);
         return { ok: true, emergency: true };
       }
@@ -941,11 +970,12 @@ export class CallService {
       else if (!hit && o.answers !== 'gm') return this._dialSpecial(number, sanitizeSpecial({ num: displayNumber(number, this.homeCode), name: officeRow.District, img: o.art, act: o.answers === 'recording' ? 'recording' : 'voicemail', text: o.greet }), o.answers === 'recording' ? 'recording' : 'voicemail', from);
     }
     // an NPC caller (GM) is wherever the NPC is — the GM's own connection does not matter
-    const verdict = canCall({ enabled: this.enabled, fromNumber: from.number, callee, noSignal: !isGM() && this._noSignal(), homeCode: this.homeCode, unknownNumbers: this._get('callUnknownNumbers', 'not-in-service') });
+    const verdict = canCall({ enabled: this.enabled, fromNumber: from.number, callee, noSignal: !isGM() && !from.wired && this._noSignal(), homeCode: this.homeCode, unknownNumbers: this._get('callUnknownNumbers', 'not-in-service') });
     const to = { kind: verdict.toGm && callee.kind === 'unowned' ? 'unowned' : callee.kind, actorId: callee.actorId || null, contactId: callee.contactId || null,
-      number: displayNumber(number, this.homeCode), name: callee.name || '', userIds: callee.userIds || [], ...(callee.shared ? { shared: true, gmMember: callee.gmMember } : {}), ...(callee.office ? { office: callee.office, greet: callee.greet || '' } : {}),
+      number: displayNumber(number, this.homeCode), name: callee.name || '', userIds: callee.userIds || [], ...(callee.shared ? { shared: true, gmMember: callee.gmMember } : {}), ...(callee.office ? { office: callee.office, greet: callee.greet || '' } : {}), ...(callee.kind === 'payphone' ? { payphoneId: callee.payphoneId, sceneId: callee.sceneId } : {}),
       img: callee.contactId || callee.actorId ? resolveDisplayPortrait({ contactId: callee.contactId, actorId: callee.actorId }) : '' };
-    const net = this._net();
+    // a payphone is wired: no network, no signal to lose, nothing for a node tap to hear
+    const net = from.wired ? { id: '', name: 'Payphone line', type: 'wired', strength: 100, color: '' } : this._net();
     if (!verdict.ok) {
       if (!verdict.outcome) return { ok: false, error: verdict.reason };
       const ended = createEndedCall({ from, to, net }, verdict.outcome);
@@ -956,7 +986,9 @@ export class CallService {
       return { ok: true, call: ended };
     }
     // nobody there to pick up: the player is offline, or no GM for an NPC line
-    const reachable = (to.kind === 'player' && (to.userIds || []).some((id) => game.users.get(id)?.active)) || ((to.kind !== 'player' || to.gmMember) && !!game.users.activeGM);
+    const reachable = to.kind === 'payphone'
+      ? (!callee.outOfOrder && game.users.some((u) => !u.isGM && u.active && u.id !== game.user.id && u.viewedScene === to.sceneId))
+      : (to.kind === 'player' && (to.userIds || []).some((id) => game.users.get(id)?.active)) || ((to.kind !== 'player' || to.gmMember) && !!game.users.activeGM);
     const call = createCall({ from, to, net, mode: this.startMode });
     call.state = 'dialing';
     this._store(call);
@@ -1007,10 +1039,17 @@ export class CallService {
     for (const other of this.myCalls()) if (other.id !== callId && other.state === 'live') this.hold(other.id);
     const answered = transition(call, { type: 'answer', by: game.user.id });
     if (as) answered.to = { ...answered.to, ...as };
-    if (!isGM()) this._myNet.set(callId, this._net()?.id || '');
+    // a payphone: who picked up stays with the GMs; everyone else it rang still hears the answer (their ring stops)
+    let rang = null;
+    if (answered.to?.kind === 'payphone') {
+      const op = resolveOperator();
+      rang = answered.to.userIds || [];
+      answered.to = { ...answered.to, userIds: [game.user.id], realActorId: op?.id || null, realName: op?.name || game.user.name, realUserId: game.user.id };
+    }
+    if (!isGM()) this._myNet.set(callId, answered.to?.kind === 'payphone' ? '' : (this._net()?.id || ''));
     this._store(answered);
     this._stopRing(callId);
-    this._send('answer', answered);
+    this._send('answer', rang ? { ...answered, to: { ...answered.to, userIds: [...new Set([...rang, game.user.id])] } } : answered);
     this._sound('call-connect');
     this.eventBus.emit(EVENTS.CALL_STARTED, { call: answered, role: 'callee' });
   }
@@ -1151,7 +1190,7 @@ export class CallService {
       if (!here && !watching) return;
       const ringing = { ...call, state: 'ringing' };
       // no signal here: it never rings — the caller hears why (and may reach voicemail)
-      if (here && !game.user.isGM && this._noSignal()) { this._send('noSignal', ringing); return; }
+      if (here && !game.user.isGM && call.to?.kind !== 'payphone' && this._noSignal()) { this._send('noSignal', ringing); return; }
       this._store(ringing);
       if (!here) { this.eventBus.emit(EVENTS.CALL_RINGING, { call: ringing, role: 'watch' }); return; }
       const busy = this.myCalls().some((c) => c.id !== callId && (c.state === 'live' || c.state === 'held'));
@@ -1190,6 +1229,26 @@ export class CallService {
     const cur = this.calls.get(callId);
     switch (type) {
       case 'answer': {
+        // a payphone picked up twice at once: the first pick-up the caller saw wins. The caller tells the loser and
+        // confirms the winner to the GMs; anyone else keeps the first pick-up it saw until the caller confirms.
+        const by = call?.answeredBy ?? senderId;
+        // a GM remembers each pick-up of a booth as it arrived (only a GM is told who really picked up)
+        if (game.user.isGM && cur.to?.kind === 'payphone' && call?.to && !data.confirmed) (this._ppAnswers ??= new Map()).set(`${callId}:${by}`, call.to);
+        if (cur.to?.kind === 'payphone' && data.confirmed) {
+          const to = this._ppAnswers?.get(`${callId}:${by}`) || cur.to;
+          const next = { ...cur, state: 'live', answeredBy: by, to };
+          this._store(next);
+          this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role: this._role(next) });
+          break;
+        }
+        if (cur.state === 'live' && cur.answeredBy && cur.to?.kind === 'payphone' && by !== cur.answeredBy) {
+          if (this._role(cur) === 'caller') {
+            this.socket.emit(SOCKET_OPS.CALL, { type: 'taken', callId, userIds: [senderId] });
+            this.socket.emit(SOCKET_OPS.CALL, { type: 'answer', callId, call: { answeredBy: cur.answeredBy }, confirmed: true, userIds: game.users.filter((u) => u.isGM && u.active && u.id !== game.user.id).map((u) => u.id) });
+            break;
+          }
+          break;
+        }
         const next = { ...cur, ...call, from: cur.from || call?.from, state: 'live', answeredAt: call?.answeredAt ?? Date.now(), answeredBy: call?.answeredBy ?? senderId };
         this._stopRing(callId); clearTimeout(this._timers.get(callId)); this._timers.delete(callId);
         const wasRingingHere = cur.state === 'ringing' && this._ringsHere(cur);
@@ -1200,7 +1259,7 @@ export class CallService {
           this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role });
         } else if (wasRingingHere && !game.user.isGM) {
           // another of this character's players picked up: the ring here just goes away
-          if (cur.to?.shared) ui.notifications?.info(`${cur.to.name}: picked up by ${game.users.get(next.answeredBy)?.character?.name || game.users.get(next.answeredBy)?.name || 'someone else'}.`);
+          if (cur.to?.shared || cur.to?.kind === 'payphone') ui.notifications?.info(`${cur.to.name}: picked up by ${game.users.get(next.answeredBy)?.character?.name || game.users.get(next.answeredBy)?.name || 'someone else'}.`);
           this.calls.delete(callId);
           this.eventBus.emit(EVENTS.CALL_ENDED, { call: { ...next, state: 'ended', outcome: 'answered' }, role: 'watch', quiet: true });
         } else {
@@ -1210,6 +1269,7 @@ export class CallService {
         break;
       }
       case 'ringOut': this._endLocal(callId, 'missed', { notify: false }); break;
+      case 'taken': ui.notifications?.info('Someone else picked up first.'); this._endLocal(callId, 'answered', { notify: false }); break;
       case 'queueHold': {
         const next = { ...cur, queueHold: !!data.on };
         this._store(next);
@@ -1657,7 +1717,8 @@ export class CallService {
   }
 
   _summary(call) {
-    const pick = (p) => ({ actorId: p?.actorId || null, contactId: p?.contactId || null, number: p?.number || '', name: p?.name || '', ...(p?.anon ? { anon: true } : {}) });
+    const pick = (p) => ({ actorId: p?.actorId || null, contactId: p?.contactId || null, number: p?.number || '', name: p?.name || '', ...(p?.anon ? { anon: true } : {}),
+      ...(p?.payphone || p?.payphoneId ? { payphone: p.payphone || p.payphoneId, realActorId: p.realActorId || null, realName: p.realName || '' } : {}) });
     return { callId: call.id, from: pick(call.from), to: pick(call.to), sceneId: game.scenes?.viewed?.id || '', dropReason: call.dropReason || '', traced: !!call.traced, startedAt: call.startedAt, answeredAt: call.answeredAt, endedAt: call.endedAt,
       outcome: call.outcome, mode: (call.lines?.length ? 'type' : call.mode), seconds: callSeconds(call), net: call.net ? { id: call.net.id, name: call.net.name } : null,
       lines: transcriptOf(call),
@@ -1707,6 +1768,11 @@ export class CallService {
     if (!isGM()) return;
     const repo = game.nightcity?.messageRepository;
     if (!repo?.getInboxJournal) return;
+    // a booth side: the caller never learns who picked up a payphone, the GM does — fill it in from the GM's own copy
+    for (const side of ['from', 'to']) {
+      const p = summary[side], mine = this.calls.get(summary.callId)?.[side];
+      if (p?.payphone && !p.realName && mine?.realName) summary = { ...summary, [side]: { ...p, realActorId: mine.realActorId || null, realName: mine.realName } };
+    }
     summary = { ...summary, heardBy: await this._intercept(summary) };
     this._activityRow(summary);
     try { await game.nightcity?.terminalService?.mirrorCallToAccounts?.(summary); } catch (err) { log.warn(`Calls: terminal mirror: ${err.message}`); }
@@ -1715,18 +1781,21 @@ export class CallService {
     const done = new Set();
     for (const [direction, me, other] of sides) {
       const inboxes = this._sharedInboxes(me?.number);
-      for (const ownerId of inboxes.length ? inboxes : [me?.actorId || me?.contactId]) {
+      // a booth has no inbox: its side goes to the GM-only payphone log, where the real name is kept
+      const booth = me?.payphone ? `pp:${me.payphone}` : null;
+      for (const ownerId of booth ? [booth] : inboxes.length ? inboxes : [me?.actorId || me?.contactId]) {
       if (!ownerId || done.has(ownerId)) continue;
       done.add(ownerId);
       try {
-        const journal = await repo.getInboxJournal(ownerId);
+        const journal = booth ? await this._payphoneLogJournal() : await repo.getInboxJournal(ownerId);
         if (!journal) continue;
         // the callee of a call that only rang sees it as missed
         const outcome = direction === 'in' && ['missed', 'busy'].includes(summary.outcome) ? 'missed' : summary.outcome;
         await journal.createEmbeddedDocuments('JournalEntryPage', [{
           name: `[CALL] ${direction === 'out' ? 'to' : 'from'} ${other?.name || other?.number || 'unknown'}`,
           type: 'text', text: { content: '' },
-          flags: { [MODULE_ID]: { callLog: { ...summary, direction, me, other: direction === 'in' && hide ? maskCaller(other) : other,
+          flags: { [MODULE_ID]: { callLog: { ...summary, direction, me, other: direction === 'in' && hide ? maskCaller(other) : (booth ? other : maskPayphoneSide(other)),
+            ...(booth ? { boothPage: true, from: viaName(summary.from), to: viaName(summary.to) } : { from: maskPayphoneSide(summary.from), to: maskPayphoneSide(summary.to) }),
             ...(direction === 'in' && hide ? { anonCall: true, from: maskCaller(summary.from) } : {}), outcome, seen: direction === 'out',
             // who listened in is the GM's business: the callee's page never says
             heardBy: game.actors?.get(me?.actorId)?.hasPlayerOwner ? [] : summary.heardBy } } },
@@ -1757,19 +1826,34 @@ export class CallService {
     const byCall = new Map();
     const heard = new Map();   // who listened in rides only the non-player side's page
     for (const j of game.journal ?? []) {
-      if (!this._inboxOf(repo, j)) continue;
+      if (!this._inboxOf(repo, j) && !j.getFlag?.(MODULE_ID, 'payphoneLog')) continue;
       for (const p of j.pages?.contents ?? []) {
         const l = p.flags?.[MODULE_ID]?.callLog;
         if (!l?.callId) continue;
         if (l.heardBy?.length) heard.set(l.callId, l.heardBy);
         const prev = byCall.get(l.callId);
-        if (!prev || (prev.direction !== 'out' && l.direction === 'out')) byCall.set(l.callId, { ...l, pageId: p.id, journalId: j.id });
+        // the booth's own page wins: it is the only one that knows who was really on the payphone
+        if (!prev || (l.boothPage && !prev.boothPage) || (!prev.boothPage && prev.direction !== 'out' && l.direction === 'out')) byCall.set(l.callId, { ...l, pageId: p.id, journalId: j.id });
       }
     }
     for (const [id, h] of heard) { const l = byCall.get(id); if (l && !l.heardBy?.length) l.heardBy = h; }
     const nameOf = (id) => game.actors?.get(id)?.name || game.nightcity?.masterContactService?.getContact?.(id)?.name || '';
     const written = Object.entries(this._get('phoneWrittenLogs', {}) || {}).flatMap(([id, list]) => (Array.isArray(list) ? list : []).map((e) => writtenToLog(e, { name: nameOf(id), number: '' })));
     return [...byCall.values(), ...written].sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+  }
+
+  /** The GM-only journal booth call logs live in (a booth has no inbox; who really called is the GM's business). */
+  async _payphoneLogJournal() {
+    let j = game.journal.find((e) => e.getFlag(MODULE_ID, 'payphoneLog'));
+    if (!j && isGM()) j = await JournalEntry.create({ name: 'NCM — Payphone calls', ownership: { default: 0 }, flags: { [MODULE_ID]: { payphoneLog: true } } });
+    return j || null;
+  }
+
+  /** Every booth call page (GM), newest first. */
+  payphoneLog() {
+    const j = game.journal?.find?.((e) => e.getFlag(MODULE_ID, 'payphoneLog'));
+    return (j?.pages?.contents || []).map((p) => ({ pageId: p.id, journalId: j.id, ...(p.flags?.[MODULE_ID]?.callLog || {}) })).filter((l) => l.callId)
+      .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
   }
 
   /** Mark a character's missed calls as seen (the Calls tab opens). */
@@ -1782,5 +1866,8 @@ export class CallService {
     try { await journal.updateEmbeddedDocuments('JournalEntryPage', updates); } catch { /* a player without write access: the GM's view still shows them */ }
   }
 }
+
+/** A booth's side as the GM's log reads it: "Rache via Payphone, Kabuki". */
+function viaName(p) { return p?.payphone && p.realName ? { ...p, name: `${p.realName} via ${p.name}` } : p; }
 
 export { OUTCOMES };

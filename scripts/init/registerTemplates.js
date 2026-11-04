@@ -21,6 +21,11 @@ function _isBlock(options) {
   return options && typeof options === 'object' && typeof options.fn === 'function';
 }
 
+/** Handlebars' trailing options argument (every helper call gets one, block or subexpression). */
+function _isOptions(o) {
+  return !!o && typeof o === 'object' && 'hash' in o && ('data' in o || 'name' in o || 'loc' in o);
+}
+
 export function registerTemplates(initializer) {
   initializer.register('preInit', 20, 'Template preloading', async () => {
     // Collect all template paths that exist
@@ -75,24 +80,22 @@ export function registerTemplates(initializer) {
 
     // ─── Logic Helpers (block + subexpression safe) ───
 
-    Handlebars.registerHelper('and', function () {
-      const args = Array.from(arguments);
-      const last = args[args.length - 1];
-      if (_isBlock(last)) {
-        args.pop();
-        return args.every(Boolean) ? last.fn(this) : last.inverse(this);
-      }
-      return args.every(Boolean);
+    // These REPLACE Foundry's own and/or for every template in the game (Foundry's token HUD among them), so they must
+    // drop Handlebars' trailing options object EVERY time, block or not. The old versions only dropped it for a block, so
+    // a subexpression `(or a b)` also counted the options object, which is always truthy: `(or locked …)` came out true
+    // and the token HUD's elevation box rendered disabled for everyone (testers 2026-11-03, v2.0.7).
+    Handlebars.registerHelper('and', function (...args) {
+      const options = _isOptions(args[args.length - 1]) ? args.pop() : null;
+      const result = args.every(Boolean);
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
     });
 
-    Handlebars.registerHelper('or', function () {
-      const args = Array.from(arguments);
-      const last = args[args.length - 1];
-      if (_isBlock(last)) {
-        args.pop();
-        return args.some(Boolean) ? last.fn(this) : last.inverse(this);
-      }
-      return args.some(Boolean);
+    Handlebars.registerHelper('or', function (...args) {
+      const options = _isOptions(args[args.length - 1]) ? args.pop() : null;
+      const result = args.some(Boolean);
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
     });
 
     Handlebars.registerHelper('not', function (val, options) {

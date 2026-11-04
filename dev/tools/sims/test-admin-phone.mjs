@@ -116,7 +116,7 @@ const ap = read('scripts/ui/AdminPanel/AdminPanelApp.js');
 ok(ap.includes('phone: new PhoneTab(this)') && ap.includes('...this.tabs.phone.prepareContext()') && ap.includes('EVENTS.CALL_RINGING'), 'panel: tab, context spread, live re-render');
 ok(read('templates/admin-panel/tab-contacts.hbs').includes('data-op="callAs"') && read('scripts/ui/AdminPanel/tabs/ContactsTab.js').includes("case 'callAs'"), 'Call as on Admin Contacts');
 const cs = read('scripts/services/CallService.js');
-ok(cs.includes('allCalls()') && cs.includes('allLogs()') && cs.includes('noSignal: !isGM() && this._noSignal()'), 'service: GM readers; an NPC caller ignores the GM\'s own signal');
+ok(cs.includes('allCalls()') && cs.includes('allLogs()') && cs.includes('noSignal: !isGM() && !from.wired && this._noSignal()'), 'service: GM readers; an NPC caller ignores the GM\'s own signal');
 
 // ═══ 5. Phase 2 — Listen in, transcripts, the notice ═══
 {

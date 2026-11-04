@@ -102,6 +102,8 @@ export class CallHud {
 
   _onEvent({ call, role, waiting, quiet }, ended = false) {
     if (!call || role === 'watch') { if (quiet && call) this._drop(call.id); return; }
+    // a payphone ringing on this scene: the booth's own prompt shows it (PayphoneService), not a phone ringing in your pocket
+    if (role === 'callee' && call.state === 'ringing' && call.to?.kind === 'payphone') return;
     const prev = this.shown.get(call.id);
     this.shown.set(call.id, { call, role, waiting: waiting ?? prev?.waiting ?? false, endedAt: ended ? Date.now() : null });
     if (ended) setTimeout(() => this._out(call.id), ENDED_HOLD_MS);

@@ -1346,6 +1346,9 @@ export class ToolsTab extends BaseTab {
       for (const note of scene.notes ?? []) {
         const itemId = note.getFlag?.(MODULE_ID, 'terminalItemId');
         if (itemId && !game.items?.get(itemId)) pins.push({ scene, note });
+        // a payphone pin whose payphone was deleted
+        const ppId = note.getFlag?.(MODULE_ID, 'accessPayphone');
+        if (ppId && !game.nightcity?.payphoneService?.get?.(ppId)) pins.push({ scene, note });
       }
     }
 
