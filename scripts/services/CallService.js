@@ -20,6 +20,7 @@
  * ever shows it as mail).
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, resolveOperator, resolveDisplayPortrait, whisperCardHtml } from '../utils/helpers.js';
 import { normaliseNumber, displayNumber, parseNumber, rowOf, fullForm, freeLines, numberAt, buildNumberContext, placeRows, sanitizeRules, pickableRows, sanitizeSpecial, specialKey, specialList, specialMap, specialOutcome, writtenToLog, lineTypes, lineTypeFor, lineShown, traceFinds, officeRowOf, officeKey, sanitizeOffice, splitExtension, placeOf } from '../utils/phoneNumbering.js';
@@ -1012,7 +1013,7 @@ export class CallService {
   /** The GM is told someone dialled a special number. */
   _alertSpecial(x, from) {
     const text = `${from.name} dialled ${x.num}.`;
-    if (isGM()) { ui.notifications?.info(text); return; }
+    if (isGM()) { ncmNotify.info(text); return; }
     try { ChatMessage.create({ content: whisperCardHtml({ tone: 'warn', icon: 'fa-bell', title: 'Special number', lines: [text] }), whisper: game.users.filter((u) => u.isGM).map((u) => u.id) }); } catch (err) { log.warn(err.message); }
   }
 
@@ -1022,7 +1023,7 @@ export class CallService {
     const to = { kind: 'unowned', actorId: null, contactId: null, number: x.num, name: shows ? x.name : '', userIds: [], img: shows ? x.img : '' };
     const net = this._net();
     if (outcome === 'macro') { try { game.macros?.get?.(x.macro)?.execute?.(); } catch (err) { log.warn(`Calls: special number macro: ${err.message}`); } }
-    if (outcome === 'recording' && x.text) ui.notifications?.info(`${shows && x.name ? x.name : x.num}: ${x.text}`);
+    if (outcome === 'recording' && x.text) ncmNotify.info(`${shows && x.name ? x.name : x.num}: ${x.text}`);
     const ended = createEndedCall({ from, to, net }, outcome === 'nis' ? 'not-in-service' : outcome === 'missed' ? 'missed' : 'answered');
     this._store(ended);
     this.eventBus.emit(EVENTS.CALL_ENDED, { call: ended, role: 'caller' });
@@ -1181,7 +1182,7 @@ export class CallService {
       if (data.vm) this.eventBus.emit(EVENTS.VOICEMAIL_LEFT, { vm: data.vm });
       return;
     }
-    if (type === 'audioFailed') { ui.notifications?.warn('NCM | Your recording could not be saved by the GM (the world may not accept uploads).'); return; }
+    if (type === 'audioFailed') { ncmNotify.warn('NCM | Your recording could not be saved by the GM (the world may not accept uploads).'); return; }
     const mine = this.calls.get(callId);
     if (type === 'ring') {
       if (!call || mine) return;
@@ -1259,7 +1260,7 @@ export class CallService {
           this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role });
         } else if (wasRingingHere && !game.user.isGM) {
           // another of this character's players picked up: the ring here just goes away
-          if (cur.to?.shared || cur.to?.kind === 'payphone') ui.notifications?.info(`${cur.to.name}: picked up by ${game.users.get(next.answeredBy)?.character?.name || game.users.get(next.answeredBy)?.name || 'someone else'}.`);
+          if (cur.to?.shared || cur.to?.kind === 'payphone') ncmNotify.info(`${cur.to.name}: picked up by ${game.users.get(next.answeredBy)?.character?.name || game.users.get(next.answeredBy)?.name || 'someone else'}.`);
           this.calls.delete(callId);
           this.eventBus.emit(EVENTS.CALL_ENDED, { call: { ...next, state: 'ended', outcome: 'answered' }, role: 'watch', quiet: true });
         } else {
@@ -1269,7 +1270,7 @@ export class CallService {
         break;
       }
       case 'ringOut': this._endLocal(callId, 'missed', { notify: false }); break;
-      case 'taken': ui.notifications?.info('Someone else picked up first.'); this._endLocal(callId, 'answered', { notify: false }); break;
+      case 'taken': ncmNotify.info('Someone else picked up first.'); this._endLocal(callId, 'answered', { notify: false }); break;
       case 'queueHold': {
         const next = { ...cur, queueHold: !!data.on };
         this._store(next);
@@ -1282,7 +1283,7 @@ export class CallService {
       case 'pass': {
         const next = { ...cur, to: { ...(call?.to || cur.to) } };
         this._store(next);
-        if (this._role(next) === 'caller') ui.notifications?.info('One moment.');
+        if (this._role(next) === 'caller') ncmNotify.info('One moment.');
         this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role: this._role(next) });
         break;
       }
@@ -1567,7 +1568,7 @@ export class CallService {
   }
 
   _tellUploadFailed(senderId) {
-    ui.notifications?.warn('NCM | A voice recording could not be saved (the world may not accept uploads). It was not delivered.');
+    ncmNotify.warn('NCM | A voice recording could not be saved (the world may not accept uploads). It was not delivered.');
     if (senderId !== game.user.id) this.socket.emit(SOCKET_OPS.CALL, { type: 'audioFailed', callId: 'audio', userIds: [senderId] });
   }
 

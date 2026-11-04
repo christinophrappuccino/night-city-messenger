@@ -9,6 +9,7 @@
  * Context key `acc2`, built only while this tab is on screen.
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { BaseTab } from '../BaseTab.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log } from '../../../utils/helpers.js';
@@ -317,7 +318,7 @@ export class AccessTab extends BaseTab {
   /** Hide / reveal a pin or an area (TerminalScenePins.setHidden). */
   async _setHidden(uuid, hidden) {
     const doc = uuid ? await fromUuid(uuid) : null;
-    if (!doc) return ui.notifications.warn('That access point is gone.');
+    if (!doc) return ncmNotify.warn('That access point is gone.');
     await game.nightcity?.terminalScenePins?.setHidden(doc, hidden);
   }
 
@@ -338,7 +339,7 @@ export class AccessTab extends BaseTab {
 
   async _editPoint(ptId, uuid) {
     const doc = uuid ? await fromUuid(uuid) : null;
-    if (!doc) return ui.notifications.warn('That access point is gone.');
+    if (!doc) return ncmNotify.warn('That access point is gone.');
     if (this._kindOf(ptId) === 'link') return doc.parent?.sheet?.render(true, { pageId: doc.id });
     doc.sheet?.render(true);
   }
@@ -346,10 +347,10 @@ export class AccessTab extends BaseTab {
   async _removePoint(ptId, uuid) {
     const kind = this._kindOf(ptId);
     const doc = uuid ? await fromUuid(uuid) : null;
-    if (!doc) return ui.notifications.warn('That access point is already gone.');
+    if (!doc) return ncmNotify.warn('That access point is already gone.');
     if (kind === 'pin') return game.nightcity?.terminalScenePins?._confirmRemovePin?.(doc, game.nightcity?.terminalScenePins?._resolveItem?.(doc) ?? null);
     if (kind === 'link') {
-      ui.notifications.info('Journal links live in the page text — edit the page to remove it.');
+      ncmNotify.info('Journal links live in the page text — edit the page to remove it.');
       return doc.parent?.sheet?.render(true, { pageId: doc.id });
     }
     const what = kind === 'macro' ? { title: 'Delete macro', kind: 'Hotbar macro', icon: 'fas fa-bolt', goes: ['The macro (and its hotbar slots)'] }

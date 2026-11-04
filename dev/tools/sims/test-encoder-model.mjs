@@ -369,7 +369,7 @@ check('the player composer collects instead of persisting', () => {
 check('the Encoder refuses to encode an empty file', () => {
   const src = fs.readFileSync(path.join(ROOT, 'scripts/ui/ShardEncoder/ShardEncoderApp.js'), 'utf8');
   assert.ok(src.includes("!this._isProgram() && !this._entries().length"), 'nothing written must block the roll');
-  assert.ok(src.includes("ui.notifications?.warn('NCM | Write something first"), 'and Next must say so');
+  assert.ok(src.includes("ncmNotify.warn('NCM | Write something first"), 'and Next must say so');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -724,7 +724,7 @@ check('buying a blank refuses loudly when the actor is not yours', () => {
   const i = ENC.indexOf('async _createBlank(tier) {');
   const fn = ENC.slice(i, i + 400);
   assert.ok(fn.includes("if (!this.actor?.isOwner)"), 'it must check ownership');
-  assert.ok(fn.includes('ui.notifications?.error'), 'and say so rather than returning a silent null');
+  assert.ok(fn.includes('ncmNotify.error'), 'and say so rather than returning a silent null');
 });
 
 check('the cosmetic writes can fail without costing the shard', () => {
@@ -766,7 +766,7 @@ check('a type the GM disallows is refused with a reason', () => {
   const i = ENC.indexOf('_adoptEntryType(entry) {');
   const fn = ENC.slice(i, i + 900);
   assert.ok(fn.includes('const allowed = this._types().some'), 'it must check the allow-list');
-  assert.ok(fn.includes('ui.notifications?.warn'), 'and say why, rather than silently rolling');
+  assert.ok(fn.includes('ncmNotify.warn'), 'and say why, rather than silently rolling');
 });
 
 check('the chip wears the Encoder core silhouette (corners cut in)', () => {
@@ -808,7 +808,7 @@ check('a tainted canvas is reported, not handed back broken', () => {
   const i = IB.indexOf("toDataURL('image/png')");
   const near = IB.slice(i - 120, i + 500);
   assert.ok(near.includes('try {') && near.includes('catch'), 'the export must be guarded');
-  assert.ok(near.includes('ui.notifications?.warn'), 'and the player told why');
+  assert.ok(near.includes('ncmNotify.warn'), 'and the player told why');
 });
 
 check('the Font Awesome glyph is read back, not guessed', () => {
@@ -1170,7 +1170,7 @@ check('capacity is what stops you adding more', () => {
   assert.ok(fn.includes('capacityOf(this._blank().tier)'), 'room comes from the blank tier');
   assert.ok(fn.includes("'config')?.capacity"), 'and on a re-encode from the chip\'s own stamped capacity');
   assert.ok(fn.includes('return Infinity'), 'and 0 means no limit');
-  assert.ok(ENC.includes("if (this._room() <= 0) { ui.notifications?.warn('NCM | That chip is full.'); return; }"),
+  assert.ok(ENC.includes("if (this._room() <= 0) { ncmNotify.warn('NCM | That chip is full.'); return; }"),
     'adding past the limit must be refused with a reason');
 });
 
@@ -1210,7 +1210,7 @@ check('a file lands in the slot the composer OPENED on', () => {
   assert.ok(fn.includes('else this.S.entries.push(entry);'), 'and a new one is added, never replacing');
   assert.ok(!fn.includes('this.S.editIndex >= 0 ? this.S.entries[this.S.editIndex]'),
     'reading the live index at SAVE time let a second composer overwrite another file');
-  assert.ok(fn.includes("ui.notifications?.warn('NCM | Finish the file you are writing first.');"),
+  assert.ok(fn.includes("ncmNotify.warn('NCM | Finish the file you are writing first.');"),
     'the composer owns one window id, so two at once must be refused');
 });
 

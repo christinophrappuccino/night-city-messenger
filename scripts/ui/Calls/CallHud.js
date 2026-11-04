@@ -13,6 +13,7 @@
  *   kept across redraws, so typing is never lost when the call badge redraws.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { callProfile, signalLine } from '../../utils/callProfile.js';
 import { OUTCOMES, MODE_INFO, formatDuration, callSeconds, sideOf, typeOutMs } from '../../utils/callModel.js';
@@ -77,7 +78,7 @@ export class CallHud {
     bus.on(EVENTS.VOICEMAIL_LEFT, (e) => { if (e?.vm) this._voicemailNotice(e.vm); });
     bus.on(EVENTS.CALL_GLITCH, (e) => this._glitch(e?.callId));
     bus.on(EVENTS.CALL_TRACED, (e) => {
-      if (e?.from) ui.notifications?.info(`Trace complete — the withheld number was ${e.from.name || 'someone'}${e.from.number ? ` (${e.from.number})` : ''}.`, { permanent: true });
+      if (e?.from) ncmNotify.info(`Trace complete — the withheld number was ${e.from.name || 'someone'}${e.from.number ? ` (${e.from.number})` : ''}.`, { permanent: true });
     });
     bus.on(EVENTS.CALL_LINE, (e) => {
       if (!e?.line) return;
@@ -322,7 +323,7 @@ export class CallHud {
     if (mode === 'dictate') {
       const block = s.dictateBlock;
       if (block) {
-        ui.notifications?.warn(`NCM | ${block}`);
+        ncmNotify.warn(`NCM | ${block}`);
         if ((s.usableModes || []).includes('type')) s.setMode?.(callId, 'type');
         return;
       }
@@ -728,13 +729,13 @@ export class CallHud {
       const input = body.querySelector('input');
       input.addEventListener('keydown', (e) => {
         e.stopPropagation();
-        if (e.key === 'Enter') { e.preventDefault(); this.service.leaveVoicemail(id, input.value, { kind: this._vmKind.get(id) || 'typed' }).then((r) => { if (!r?.ok && r?.error) ui.notifications?.warn(r.error); }); }
+        if (e.key === 'Enter') { e.preventDefault(); this.service.leaveVoicemail(id, input.value, { kind: this._vmKind.get(id) || 'typed' }).then((r) => { if (!r?.ok && r?.error) ncmNotify.warn(r.error); }); }
         else if (e.key === 'Escape') input.blur();
       });
       setTimeout(() => input.focus({ preventScroll: true }), 0);
     };
     say.querySelectorAll('[data-vmk]').forEach((c) => c.addEventListener('click', () => {
-      if (c.classList.contains('is-off')) { ui.notifications?.warn(c.dataset.tooltip || 'Recording is not available.'); return; }
+      if (c.classList.contains('is-off')) { ncmNotify.warn(c.dataset.tooltip || 'Recording is not available.'); return; }
       this._vmKind.set(id, c.dataset.vmk);
       say.querySelectorAll('[data-vmk]').forEach((x) => x.classList.toggle('on', x === c));
       paint(c.dataset.vmk);
@@ -755,7 +756,7 @@ export class CallHud {
         });
         if (btn) btn.innerHTML = '<i class="fas fa-square"></i> Stop';
         say.classList.add('is-recording');
-      } catch (err) { ui.notifications?.warn(err.message); this._rec.delete(id); }
+      } catch (err) { ncmNotify.warn(err.message); this._rec.delete(id); }
     };
     const stopRec = async () => {
       const slot = this._rec.get(id);
@@ -768,10 +769,10 @@ export class CallHud {
     };
     const sendRec = async () => {
       const clip = await stopRec();
-      if (!clip?.blob?.size) { ui.notifications?.warn('Record a message first.'); return; }
+      if (!clip?.blob?.size) { ncmNotify.warn('Record a message first.'); return; }
       const base64 = await blobToBase64(clip.blob);
       const r = await this.service.leaveVoicemail(id, '', { kind: 'audio', audio: { base64, mime: clip.mime, ms: clip.ms } });
-      if (!r?.ok && r?.error) ui.notifications?.warn(r.error);
+      if (!r?.ok && r?.error) ncmNotify.warn(r.error);
       this._rec.delete(id);
     };
     say.addEventListener('click', (e) => {
@@ -812,7 +813,7 @@ export class CallHud {
       if (e.target.closest('[data-close]')) el.remove();
       if (e.target.closest('[data-play]')) { if (vm.kind === 'audio') playAudio(vm.audio); else speak(vm.text, { voice: vm.voice }); }
       const cb = e.target.closest('[data-callback]');
-      if (cb) { el.remove(); this.service.placeCall(cb.dataset.callback, game.user.isGM && to.contactId ? { contactId: to.contactId } : {}).then((r) => { if (!r.ok && r.error) ui.notifications?.warn(r.error); }); }
+      if (cb) { el.remove(); this.service.placeCall(cb.dataset.callback, game.user.isGM && to.contactId ? { contactId: to.contactId } : {}).then((r) => { if (!r.ok && r.error) ncmNotify.warn(r.error); }); }
     });
     wrap.appendChild(el);
     setTimeout(() => el.remove(), 20000);
@@ -832,7 +833,7 @@ export class CallHud {
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-close]')) el.remove();
       const cb = e.target.closest('[data-callback]');
-      if (cb) { el.remove(); this.service.placeCall(cb.dataset.callback).then((r) => { if (!r.ok && r.error) ui.notifications?.warn(r.error); }); }
+      if (cb) { el.remove(); this.service.placeCall(cb.dataset.callback).then((r) => { if (!r.ok && r.error) ncmNotify.warn(r.error); }); }
     });
     wrap.appendChild(el);
     setTimeout(() => el.remove(), 12000);

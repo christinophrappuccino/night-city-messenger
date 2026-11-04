@@ -8,6 +8,7 @@
  *   PayphoneService (GM-only). Styles: styles/components/payphone-booth.css (ncm-pph-*).
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { formatCyberDate } from '../../../utils/helpers.js';
 import { PP_STYLES, PP_HEAR, PP_HELP, PP_CONDITION, TAG_SPOTS, GRIT_TIERS, WIRE_TIERS, gritTier, wireTier, sanitizeLook, lookFromStyle, placeLabel, safeSound } from '../../../utils/payphones.js';
 import { boothHtml } from '../../Calls/boothMarkup.js';
@@ -181,7 +182,7 @@ export function wirePayphones(tab, root) {
           if (name) { await s.save(draft); await s.saveStyle(name, draft.look); tab.app.render(); }
           return;
         }
-        case 'newNumber': { const n = game.nightcity?.callService?.suggestNumbers?.({ count: 1 })?.[0]?.number; return n ? saveNow({ number: n }) : ui.notifications.warn('No free number.'); }
+        case 'newNumber': { const n = game.nightcity?.callService?.suggestNumbers?.({ count: 1 })?.[0]?.number; return n ? saveNow({ number: n }) : ncmNotify.warn('No free number.'); }
         case 'place': await s.save(draft); return openPayphonePlaceDialog(draft.id);
         case 'open': await s.save(draft); return s.open(draft.id, { skipReach: true });
         case 'scene': return game.scenes.get(draft.sceneId)?.view();
@@ -203,7 +204,7 @@ export function wirePayphones(tab, root) {
         }
         default: return;
       }
-    } catch (err) { console.error('NCM | Payphones:', err); ui.notifications?.error(`Payphones: ${err.message}`); }
+    } catch (err) { console.error('NCM | Payphones:', err); ncmNotify.error(`Payphones: ${err.message}`); }
   });
 }
 
@@ -211,7 +212,7 @@ export function wirePayphones(tab, root) {
 async function ringAs(pp) {
   const cs = game.nightcity?.callService, mcs = game.nightcity?.masterContactService;
   const entries = (mcs?.getAll?.() || []).filter((c) => cs?.numberOfContact?.(c.id)).map((c) => ({ id: c.id, name: c.name, img: c.portrait || 'icons/svg/mystery-man.svg', sub: cs.numberOfContact(c.id) }));
-  if (!entries.length) return ui.notifications.warn('None of your NPCs has a number. Give one a number in Admin → Phone → Numbers.');
+  if (!entries.length) return ncmNotify.warn('None of your NPCs has a number. Give one a number in Admin → Phone → Numbers.');
   const pick = await showNamePicker({ title: `Ring ${placeLabel(pp)} as…`, entries, placeholder: 'find an NPC…' });
   if (pick?.id) await svc()?.ringAs(pp.id, { contactId: pick.id });
 }

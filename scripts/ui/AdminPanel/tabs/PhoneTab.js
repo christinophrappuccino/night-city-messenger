@@ -9,6 +9,7 @@
  *   built only while the tab is on screen. Voicemail and transcripts are phase 2 (CALLS.md §11).
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { networkLoad } from '../../../utils/callNet.js';
 import { BaseTab } from '../BaseTab.js';
 import { MODULE_ID } from '../../../utils/constants.js';
@@ -305,7 +306,7 @@ export class PhoneTab extends BaseTab {
       case 'vmCallBack': {
         const as = d.toContact ? { contactId: d.toContact } : { actorId: d.toActor };
         const r = await s?.placeCall(d.number, as);
-        if (r && !r.ok && r.error) ui.notifications?.warn(r.error);
+        if (r && !r.ok && r.error) ncmNotify.warn(r.error);
         this._view = 'live'; return this.app.render();
       }
       case 'vmReply': {
@@ -316,14 +317,14 @@ export class PhoneTab extends BaseTab {
       case 'greeting': return this._editGreeting(d.number, d.name);
       case 'purge': {
         const days = this.calls?.keepDays || 0;
-        if (!days) { ui.notifications?.info('Keep recordings is set to forever — set a number of days first.'); return; }
+        if (!days) { ncmNotify.info('Keep recordings is set to forever — set a number of days first.'); return; }
         const ok = await themedConfirm({ title: 'Purge old recordings', bad: true, yes: 'Purge', yesIcon: 'fas fa-broom',
           content: dialogBodyHtml({ tone: 'bad', icon: 'fas fa-broom', title: `Recordings older than ${days} days`,
             lead: 'Their recordings are cleared from the voicemails; any words they had stay.',
             hint: 'Files already saved in the world\'s **ncm-voicemail** folder stay on disk — Foundry cannot delete files. Delete them in your file browser if you need the space.' }) });
         if (!ok) return;
         const r = await this.calls.purgeRecordings(days);
-        ui.notifications?.info(`Cleared ${r.count} recording${r.count === 1 ? '' : 's'}.`);
+        ncmNotify.info(`Cleared ${r.count} recording${r.count === 1 ? '' : 's'}.`);
         return this.app.render();
       }
       case 'ovOpenRun': this._pn.ovRun = d.id; this._pn.f = 'ovrun'; this._view = 'overheard'; return this.app.render();
@@ -382,14 +383,14 @@ export class PhoneTab extends BaseTab {
             if (rec?.recording) { clip = await rec.stop(); rec = null; btn.innerHTML = '<i class="fas fa-rotate-left"></i> Again'; if (rect) rect.textContent = `${formatDuration(clip.ms / 1000)} recorded — Save to keep it`; return; }
             rec = new VoiceRecorder();
             try { await rec.start({ maxMs: 20000, onTick: (ms) => { if (rect) rect.textContent = `${formatDuration(ms / 1000)} / 0:20`; }, onLimit: () => btn.click() }); btn.innerHTML = '<i class="fas fa-square"></i> Stop'; }
-            catch (err) { ui.notifications?.warn(err.message); rec = null; }
+            catch (err) { ncmNotify.warn(err.message); rec = null; }
           });
-          root.querySelector('[data-gr-play]')?.addEventListener('click', () => { const src = clip?.blob ? URL.createObjectURL(clip.blob) : g.audio; if (src) playAudio(src); else ui.notifications?.info('Nothing recorded yet.'); });
+          root.querySelector('[data-gr-play]')?.addEventListener('click', () => { const src = clip?.blob ? URL.createObjectURL(clip.blob) : g.audio; if (src) playAudio(src); else ncmNotify.info('Nothing recorded yet.'); });
           root.querySelector('[data-gr-preview]')?.addEventListener('click', () => {
             const kind = root.querySelector('[name=kind]').value;
             const text = kind === 'default' ? DEFAULT_GREETING : (root.querySelector('[name=text]').value || DEFAULT_GREETING);
             if (kind === 'tts' || kind === 'default') speak(text, { voice: sel?.value || '' });
-            else ui.notifications?.info(`Callers will see: “${text}”`);
+            else ncmNotify.info(`Callers will see: “${text}”`);
           });
         },
         close: () => { rec?.cancel?.(); resolve(); },
@@ -400,9 +401,9 @@ export class PhoneTab extends BaseTab {
     if (out.greeting.kind === 'recorded') {
       if (clip?.blob?.size) r = await s.saveRecordedGreeting(number, out, { base64: await blobToBase64(clip.blob), mime: clip.mime, ms: clip.ms });
       else if (g.audio) r = await s.saveLineSettings(number, { ...out, greeting: { ...out.greeting, audio: g.audio, duration: g.duration } });
-      else { ui.notifications?.warn('Record a greeting first.'); return; }
+      else { ncmNotify.warn('Record a greeting first.'); return; }
     } else r = await s.saveLineSettings(number, out);
-    if (!r.ok) ui.notifications?.warn(r.error); else ui.notifications?.info(`${name || number}: greeting saved.`);
+    if (!r.ok) ncmNotify.warn(r.error); else ncmNotify.info(`${name || number}: greeting saved.`);
     return this.app.render();
   }
 
@@ -449,16 +450,16 @@ export class PhoneTab extends BaseTab {
     let id = contactId;
     if (!id) {
       const npcs = (mcs?.getAll?.() || []).filter((c) => !c.sendOnly && s.numberOfContact(c.id));
-      if (!npcs.length) { ui.notifications?.warn('No NPC has a number yet — give one in Phone → Numbers.'); return; }
+      if (!npcs.length) { ncmNotify.warn('No NPC has a number yet — give one in Phone → Numbers.'); return; }
       const pick = await showNamePicker({ title: 'Call as…', hint: 'The NPC (or alias) the call comes from.', placeholder: 'search NPCs…',
         entries: npcs.map((c) => ({ id: c.id, name: c.name, img: resolveDisplayPortrait({ contactId: c.id }) || 'icons/svg/mystery-man.svg', sub: s.numberOfContact(c.id) })) });
       if (!pick?.id) return;
       id = pick.id;
     }
-    if (!s.numberOfContact(id)) { ui.notifications?.warn('That contact has no number — give them one first.'); return; }
+    if (!s.numberOfContact(id)) { ncmNotify.warn('That contact has no number — give them one first.'); return; }
     const targets = getPlayerCharacters().map((p) => ({ id: p.actorId, name: p.actorName, img: p.actor?.img || '', sub: s.numberOf(p.actorId) || 'no number', group: 'Players' }))
       .filter((t) => t.sub !== 'no number');
-    if (!targets.length) { ui.notifications?.warn("No player's character has a number yet."); return; }
+    if (!targets.length) { ncmNotify.warn("No player's character has a number yet."); return; }
     const who = await showNamePicker({ title: `Call as ${mcs?.getContact?.(id)?.name || 'NPC'}…`, hint: 'Who to ring.', placeholder: 'search characters…', entries: targets });
     if (!who?.id) return;
     const how = await showNamePicker({ title: 'Their screen shows…', hint: 'A withheld number shows as Unknown caller; they can try to trace it.',
@@ -466,7 +467,7 @@ export class PhoneTab extends BaseTab {
         { id: 'anon', name: 'Number withheld', icon: 'fas fa-user-secret' }] });
     if (!how?.id) return;
     const r = await s.placeCall(s.numberOf(who.id), { contactId: id, anon: how.id === 'anon' });
-    if (r && !r.ok && r.error) ui.notifications?.warn(r.error);
+    if (r && !r.ok && r.error) ncmNotify.warn(r.error);
     this._view = 'live';
     return this.app.render();
   }
@@ -483,7 +484,7 @@ export class PhoneTab extends BaseTab {
     // a second line never names who holds it
     const second = ['extra', 'burner', 'shared'].includes(line.kind);
     const r = await this.calls?.shareNumber?.({ number: line.n, name: second ? (line.label || line.n) : person.kind === 'pc' ? '' : person.name, ownerContactId: !second && person.kind === 'npc' ? person.id : null, ownerActorId: !second && person.kind === 'pc' ? person.id : null, actorIds: ids });
-    if (r && !r.ok) ui.notifications?.warn(r.error);
+    if (r && !r.ok) ncmNotify.warn(r.error);
     return this.app.render();
   }
 
@@ -492,7 +493,7 @@ export class PhoneTab extends BaseTab {
     let val;
     if (key === 'callModes') {
       val = [...this.element.querySelectorAll('[data-ph-set="callModes"]:checked')].map((c) => c.value);
-      if (!val.length) { ui.notifications?.warn('Leave at least one way to talk.'); el.checked = true; return; }
+      if (!val.length) { ncmNotify.warn('Leave at least one way to talk.'); el.checked = true; return; }
     } else if (el.type === 'checkbox') val = el.checked;
     else if (key === 'callRingSeconds') val = Math.min(120, Math.max(5, Number(el.value) || 30));
     else if (key === 'voicemailMaxSeconds') val = Math.min(180, Math.max(10, Number(el.value) || 60));
@@ -503,7 +504,7 @@ export class PhoneTab extends BaseTab {
       await game.settings.set(MODULE_ID, key, val);
       // a start mode that was just switched off falls back to the first one left
       if (key === 'callModes' && !val.includes(game.settings.get(MODULE_ID, 'callDefaultMode'))) await game.settings.set(MODULE_ID, 'callDefaultMode', val[0]);
-    } catch (err) { ui.notifications?.error(`Could not save: ${err.message}`); }
+    } catch (err) { ncmNotify.error(`Could not save: ${err.message}`); }
     this.app.render();
   }
 }

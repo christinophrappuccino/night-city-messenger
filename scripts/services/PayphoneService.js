@@ -13,6 +13,7 @@
  *   GM-only writes (records, styles, lines); a player never writes a payphone.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, resolveOperator } from '../utils/helpers.js';
 import { sanitizePayphone, sanitizePayphones, sanitizeSavedStyles, sanitizeLook, lookFromStyle, placeLabel, payphoneLine, inReach, bystanders, speakerOn } from '../utils/payphones.js';
@@ -69,7 +70,7 @@ export class PayphoneService {
     if (!isGM()) return null;
     const scene = game.scenes.get(sceneId) || canvas?.scene || game.scenes.viewed;
     const num = this.calls?.suggestNumbers?.({ count: 1 })?.[0]?.number;
-    if (!num) { ui.notifications.warn('No free number to give a payphone. Check Admin → Phone → Number setup.'); return null; }
+    if (!num) { ncmNotify.warn('No free number to give a payphone. Check Admin → Phone → Number setup.'); return null; }
     const pp = sanitizePayphone({ id: foundry.utils.randomID(), name: name || scene?.name || 'Payphone', sceneId: scene?.id || '', number: num, look: look || lookFromStyle(style), createdAt: Date.now() });
     await this.save(pp);
     return pp;
@@ -115,7 +116,7 @@ export class PayphoneService {
       await game.settings.set(MODULE_ID, 'phoneLines', lines);
     }
     await game.nightcity?.terminalScenePins?.removePinsForPayphone?.(id);
-    if (!quiet && pp) ui.notifications.info(`${placeLabel(pp)} removed.`);
+    if (!quiet && pp) ncmNotify.info(`${placeLabel(pp)} removed.`);
     return true;
   }
 
@@ -194,8 +195,8 @@ export class PayphoneService {
    */
   open(id, { skipReach = false } = {}) {
     const pp = this.get(id);
-    if (!pp) return void ui.notifications.warn('That payphone no longer exists.');
-    if (!skipReach) { const r = this.reach(pp); if (!r.ok) { game.nightcity?.soundService?.play('error'); return void ui.notifications.warn(r.reason); } }
+    if (!pp) return void ncmNotify.warn('That payphone no longer exists.');
+    if (!skipReach) { const r = this.reach(pp); if (!r.ok) { game.nightcity?.soundService?.play('error'); return void ncmNotify.warn(r.reason); } }
     return game.nightcity?.payphoneBooth?.open(pp);
   }
 
@@ -260,7 +261,7 @@ export class PayphoneService {
     const pp = call?.to?.kind === 'payphone' ? this.get(call.to.payphoneId) : null;
     if (!call || !pp) return;
     const r = this.reach(pp);
-    if (!r.ok) return void ui.notifications.warn(r.reason);
+    if (!r.ok) return void ncmNotify.warn(r.reason);
     game.nightcity?.soundService?.play('payphone-hook');
     this._stopRing(callId);
     this.calls.answer(callId);
@@ -399,7 +400,7 @@ export class PayphoneService {
     const pp = this.get(id);
     if (!pp) return null;
     const res = await this.calls?.placeCall?.(pp.number, as);
-    if (res && !res.ok) ui.notifications.warn(res.error || 'The call could not be placed.');
+    if (res && !res.ok) ncmNotify.warn(res.error || 'The call could not be placed.');
     return res;
   }
 

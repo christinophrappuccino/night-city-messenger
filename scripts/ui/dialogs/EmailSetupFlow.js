@@ -7,6 +7,7 @@
  *              single adaptive footer button.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 
@@ -323,7 +324,7 @@ export class EmailSetupFlow extends HandlebarsApplicationMixin(ApplicationV2) {
       this.close();
     } catch (err) {
       log.error('Email registration failed:', err);
-      ui.notifications.error(`Registration failed: ${err.message}`);
+      ncmNotify.error(`Registration failed: ${err.message}`);
       this._showStep(2);
     }
   }

@@ -8,6 +8,7 @@
  *              Supports both real-time and in-game-time scheduling.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, resolveDisplayName, whisperCardHtml } from '../utils/helpers.js';
 
@@ -273,7 +274,7 @@ export class SchedulingService {
     if (amount <= 0) return 0;
     const actor = game.actors?.get?.(entry.messageData?.fromActorId);
     const failed = () => {
-      ui.notifications?.error(`NCM | Could not refund ${amount.toLocaleString()} eb (${reason}). Add it back to the sender's sheet by hand.`, { permanent: true });
+      ncmNotify.error(`NCM | Could not refund ${amount.toLocaleString()} eb (${reason}). Add it back to the sender's sheet by hand.`, { permanent: true });
       return 0;
     };
     if (!actor?.system?.wealth || !(actor.isOwner || isGM())) return failed();
@@ -482,7 +483,7 @@ export class SchedulingService {
   async _tellRefused(entry, toLabel, why, refunded) {
     try {
       const paid = refunded ? ` ${refunded.toLocaleString()} eb refunded.` : '';
-      ui.notifications?.warn(`NCM | Scheduled message to ${toLabel} not delivered: ${why}.${paid} See Messages → Outbox.`, { permanent: true });
+      ncmNotify.warn(`NCM | Scheduled message to ${toLabel} not delivered: ${why}.${paid} See Messages → Outbox.`, { permanent: true });
       const by = game.users?.get?.(entry.createdBy);
       if (!by || by.isGM || typeof ChatMessage === 'undefined') return;
       const reason = this.messageService?.constructor?.playerFacingError?.(why) || why;

@@ -12,6 +12,7 @@
  *              Per-message encryption support.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../utils/constants.js';
 import { log, isGM, generateId } from '../utils/helpers.js';
 import { withShardPrefix, restorePatch } from '../utils/shardNaming.js';
@@ -1235,7 +1236,7 @@ export class DataShardService {
   /** @private Player → GM relay. Warns when there is no GM to land the write. */
   _relayIntegrity(op, shardItem, payload = {}) {
     if (!game.users?.activeGM) {
-      ui.notifications?.warn(`NCM | No GM connected — the ${T('short', 'lower')} change could not be saved.`);
+      ncmNotify.warn(`NCM | No GM connected — the ${T('short', 'lower')} change could not be saved.`);
       return false;
     }
     this.socketManager?.emit(SOCKET_OPS.SHARD_INTEGRITY_REQUEST, { op, itemUuid: shardItem.uuid, userId: game.user?.id, ...payload });
@@ -1873,7 +1874,7 @@ export class DataShardService {
   /** @private Player → GM relay for a state write. Warns when there is no GM to land it. */
   _relayState(op, item, payload = {}) {
     if (!game.users?.activeGM) {
-      ui.notifications?.warn(`NCM | No GM connected — the ${T('short', 'lower')} could not record that. Try again when your GM is online.`);
+      ncmNotify.warn(`NCM | No GM connected — the ${T('short', 'lower')} could not record that. Try again when your GM is online.`);
       return false;
     }
     this.socketManager?.emit(SOCKET_OPS.SHARD_STATE_REQUEST, { op, itemUuid: item.uuid, userId: game.user?.id, ...payload });

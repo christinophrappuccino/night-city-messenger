@@ -135,7 +135,7 @@ const cfgHbs = read('templates/terminal/terminal-config.hbs');
 ok(/name="acctMailCompose"/.test(cfgHbs) && /v\('acctMailCompose'\) \? \{ accountMail:/.test(read('scripts/ui/Terminal/TerminalConfigApp.js')), 'GM switch saves (only when on screen)');
 // Your OWN account (you own its character) is your own mail, not an impersonation.
 ok(/const own = !isGM\(\) && !!ownerActor\?\.isOwner;/.test(viewer) && /operatorName: op\?\.name/.test(viewer), 'viewer marks an owned account + who is typing');
-ok(/eddies: \(this\.terminalSend && !this\.terminalSend\.own\) \? 0/.test(cmp) && /this\.terminalSend && !this\.terminalSend\.own\) return ui\.notifications\.warn/.test(cmp), 'eddies work on your own account, never as someone else');
+ok(/eddies: \(this\.terminalSend && !this\.terminalSend\.own\) \? 0/.test(cmp) && /this\.terminalSend && !this\.terminalSend\.own\) return ncmNotify\.warn/.test(cmp), 'eddies work on your own account, never as someone else');
 ok(/if \(this\.terminalSend && !this\.terminalSend\.own\) this\._logTerminalSend\(\)/.test(cmp), 'your own sends are not logged as intrusions');
 ok(/impersonated: !this\.terminalSend\.own/.test(cmp), 'every terminal send records sentVia');
 const repo = read('scripts/data/MessageRepository.js');

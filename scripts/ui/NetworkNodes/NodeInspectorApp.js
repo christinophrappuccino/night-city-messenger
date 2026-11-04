@@ -12,6 +12,7 @@
  * update does not re-render the window (it would wipe what is being typed) — it re-renders when the form closes.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
 import { isGM, formatCyberDate, isSelectableCharacter } from '../../utils/helpers.js';
 import { adminWait } from '../../utils/adminTheme.js';
@@ -58,8 +59,8 @@ export class NodeInspectorApp extends BaseApplication {
 
   /** Open (or raise) the inspector for a node. GM only. */
   static open(nodeId) {
-    if (!isGM()) return void ui.notifications.warn('Only the GM can inspect a node.');
-    if (!game.nightcity?.networkService?.getNode?.(nodeId)) return void ui.notifications.warn('That node no longer exists.');
+    if (!isGM()) return void ncmNotify.warn('Only the GM can inspect a node.');
+    if (!game.nightcity?.networkService?.getNode?.(nodeId)) return void ncmNotify.warn('That node no longer exists.');
     const existing = foundry.applications?.instances?.get?.(`ncm-node-inspect-${nodeId}`);
     if (existing) { existing.render(true); existing.bringToFront?.(); if (existing.minimized) existing.maximize?.(); return existing; }
     const app = new NodeInspectorApp(nodeId);
@@ -187,7 +188,7 @@ export class NodeInspectorApp extends BaseApplication {
   /** One dispatcher for every button (data-action names the op). */
   static async _act(event, target) {
     const op = target?.dataset?.action;
-    try { await this._run(op, target.dataset, target); } catch (e) { console.error('NCM | node inspector', e); ui.notifications.error(`NCM | Node inspector: ${e.message}`); }
+    try { await this._run(op, target.dataset, target); } catch (e) { console.error('NCM | node inspector', e); ncmNotify.error(`NCM | Node inspector: ${e.message}`); }
   }
 
   async _run(op, ds, target) {
@@ -195,7 +196,7 @@ export class NodeInspectorApp extends BaseApplication {
     const node = ns.getNode(this.nodeId); if (!node) return;
     const net = ns.getNetwork(node.networkId);
     const sec = game.nightcity?.securityService;
-    const done = (r, ok) => { if (r && r.success === false) ui.notifications.warn(r.error || 'Nothing changed.'); else if (ok) ui.notifications.info(ok); };
+    const done = (r, ok) => { if (r && r.success === false) ncmNotify.warn(r.error || 'Nothing changed.'); else if (ok) ncmNotify.info(ok); };
     switch (op) {
       case 'state':
         if (ds.v === 'jammed') { this._add = 'jam'; return this.render(); }
@@ -252,7 +253,7 @@ export class NodeInspectorApp extends BaseApplication {
       }
       case 'runKick': return this._kick(node, net, ds.actorId);
       case 'runReset': return done(await ns.clearRun(node.id, ds.actorId), 'Session reset — their next jack-in starts fresh.');
-      case 'lockClear': sec?.clearFor?.(ds.actorId, [jackKey(node)]); ui.notifications.info('Lockout cleared.'); return this.render();
+      case 'lockClear': sec?.clearFor?.(ds.actorId, [jackKey(node)]); ncmNotify.info('Lockout cleared.'); return this.render();
       case 'console': return game.nightcity?.openNode?.(node.id);
       case 'edit': {
         const edited = await editNodeDialog(node, net);
@@ -284,7 +285,7 @@ export class NodeInspectorApp extends BaseApplication {
       case 'infection': {
         const kind = grp('kind') || 'worm';
         const actor = this._pickedActor;
-        if ((kind === 'tap' || kind === 'sniffer') && !actor) return void ui.notifications.warn('A tap or sniffer needs a character to send what it catches to — pick one.');
+        if ((kind === 'tap' || kind === 'sniffer') && !actor) return void ncmNotify.warn('A tap or sniffer needs a character to send what it catches to — pick one.');
         r = await ns.insertProgram(node.id, kind, {
           actorId: actor?.id || '', actorName: val('by') || actor?.name || 'Unknown', name: val('name') || NODE_PROGRAMS[kind].label,
           quality: 70, stealthDV: num('dv', 15), quest: chk('quest'), note: val('note'),
@@ -296,7 +297,7 @@ export class NodeInspectorApp extends BaseApplication {
       }
       case 'taps': case 'backdoors': {
         const actor = this._pickedActor;
-        if (!actor) return void ui.notifications.warn('Pick the character it is for.');
+        if (!actor) return void ncmNotify.warn('Pick the character it is for.');
         r = await ns.addNodeEffect(node.id, this._add, { actorId: actor.id, actorName: actor.name, minutes: Number(grp('dur')) || 0 });
         ok = `${NODE_EFFECTS[this._add].label} added for ${actor.name}.`;
         break;
@@ -309,7 +310,7 @@ export class NodeInspectorApp extends BaseApplication {
         break;
       }
       case 'log':
-        if (!val('what')) return void ui.notifications.warn('Write what happened.');
+        if (!val('what')) return void ncmNotify.warn('Write what happened.');
         r = await ns.nodeLog(node.id, val('who'), val('what'));
         break;
       case 'damage':
@@ -318,8 +319,8 @@ export class NodeInspectorApp extends BaseApplication {
         ok = `${node.name} is damaged — off until repaired.`;
         break;
     }
-    if (r && r.success === false) return void ui.notifications.warn(r.error || 'Nothing changed.');
-    if (ok) ui.notifications.info(ok);
+    if (r && r.success === false) return void ncmNotify.warn(r.error || 'Nothing changed.');
+    if (ok) ncmNotify.info(ok);
     this._add = ''; this._pickedActor = null; this._stale = false;
     this.render();
   }
@@ -344,7 +345,7 @@ export class NodeInspectorApp extends BaseApplication {
       },
       default: 'save',
     }, { classes: ['dialog', 'ncm-nin-dialog'], width: 380 });
-    if (out) { const r = await this.networkService.updateInfection(node.id, id, out); if (r?.success === false) ui.notifications.warn(r.error); }
+    if (out) { const r = await this.networkService.updateInfection(node.id, id, out); if (r?.success === false) ncmNotify.warn(r.error); }
   }
 
   async _showLoot(node, id) {
@@ -382,12 +383,12 @@ export class NodeInspectorApp extends BaseApplication {
     }, { classes: ['dialog', 'ncm-nin-dialog'], width: 380 });
     if (!out) return;
     const r = await this.networkService.kickRun(node.id, actorId, 'GM');
-    if (r?.success === false) return void ui.notifications.warn(r.error);
+    if (r?.success === false) return void ncmNotify.warn(r.error);
     if (out.hit && actor) {
       await game.nightcity?.iceService?.applyDamage?.(actor, { encryptionType: 'BLACK_ICE', ice: { source: 'custom', customDamage: out.formula, customName: `${node.name} countermeasure` } },
         { context: 'network', targetName: node.name });
     }
     if (out.lock && actorId) game.nightcity?.securityService?.forceLockoutMany?.(actorId, [jackKey(node)], { durationMs: out.min * 60000, reason: 'Kicked out of a node', label: net?.name || node.name });
-    ui.notifications.info(`${name} is out of ${node.name}.`);
+    ncmNotify.info(`${name} is out of ${node.name}.`);
   }
 }

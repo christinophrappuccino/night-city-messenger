@@ -7,6 +7,7 @@
  *              One email per actor. Burned emails show as [BURNED] in messages.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 
@@ -312,7 +313,7 @@ export class EmailService {
     if (others.length) {
       const names = others.map(a => a.name).join(', ');
       log.warn(`address ${email} is already held by ${names}; now also on ${actor?.name}`);
-      ui.notifications?.warn?.(`NCM | ${email} is already used by ${names}. Two characters sharing an address makes group members and the directory ambiguous — consider a different handle.`, { permanent: true });
+      ncmNotify.warn?.(`NCM | ${email} is already used by ${names}. Two characters sharing an address makes group members and the directory ambiguous — consider a different handle.`, { permanent: true });
     }
     return others;
   }

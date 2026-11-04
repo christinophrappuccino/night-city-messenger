@@ -6,6 +6,7 @@
  *   already garbled, and type out like a real call; garbled words type as garble. Spec PHONE-REVISION.md §12, §17.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { CallHud } from './CallHud.js';
 import { typeOutMs } from '../../utils/callModel.js';
 import { resolveOperator } from '../../utils/helpers.js';
@@ -27,14 +28,14 @@ export class OverheardHud {
   /** What the GM's client sent. */
   receive(d) {
     if (d.op === 'prompt') return this._prompt(d);
-    if (d.op === 'none') { ui.notifications?.info(d.way === 'scanner' ? 'Nothing on the air here.' : 'You pick up nothing.'); return; }
+    if (d.op === 'none') { ncmNotify.info(d.way === 'scanner' ? 'Nothing on the air here.' : 'You pick up nothing.'); return; }
     if (d.op === 'joined') { this.cur = { runId: d.runId, label: d.label, net: d.net, from: d.from, skill: d.skill, dv: d.dv, lines: new Map(), note: '', enhanced: 0, saved: false }; this._paint(); return; }
-    if (!this.cur || this.cur.runId !== d.runId) { if (d.op === 'saved' && d.ok) ui.notifications?.info('Saved to your EXFIL folder.'); return; }
+    if (!this.cur || this.cur.runId !== d.runId) { if (d.op === 'saved' && d.ok) ncmNotify.info('Saved to your EXFIL folder.'); return; }
     if (d.op === 'line') { const had = this.cur.lines.has(d.line.i); this.cur.lines.set(d.line.i, d.line); this._subs(had || d.again ? null : d.line.id); if (d.line.tts && !d.again) speak(this._spoken(d.line)); return; }
     if (d.op === 'click') { this.cur.note = 'A click on the line.'; this._subs(); return; }
     if (d.op === 'ended') { this.cur.note = 'The call has ended.'; this.cur.over = true; this._paint(); setTimeout(() => this._close(), 5000); return; }
     if (d.op === 'cut') { this.cur.note = 'The line went dead.'; this.cur.over = true; this._paint(); setTimeout(() => this._close(), 4000); return; }
-    if (d.op === 'saved') { this.cur.saved = !!d.ok; ui.notifications?.[d.ok ? 'info' : 'warn'](d.ok ? 'Saved to your EXFIL folder.' : 'It could not be saved.'); }
+    if (d.op === 'saved') { this.cur.saved = !!d.ok; ncmNotify[d.ok ? 'info' : 'warn'](d.ok ? 'Saved to your EXFIL folder.' : 'It could not be saved.'); }
   }
 
   /** Only the words they caught are read out. */

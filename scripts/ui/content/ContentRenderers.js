@@ -19,6 +19,7 @@
  *              `{{else if isX}}` branch in content-body.hbs. Nothing else.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { CONTENT_TYPES } from '../../utils/constants.js';
 import { log, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { cleanHtml } from '../../utils/richText.js';
@@ -2479,14 +2480,14 @@ export function openGalleryImage(target, { host = null } = {}) {
     const caption = frames[idx]?.dataset?.caption || '';
     const label = frames[idx]?.dataset?.label || '';
     const Popout = (typeof ImagePopout !== 'undefined') ? ImagePopout : foundry.applications?.apps?.ImagePopout;
-    if (!Popout) { ui.notifications?.warn('NCM | Image broadcast unavailable.'); return; }
+    if (!Popout) { ncmNotify.warn('NCM | Image broadcast unavailable.'); return; }
     try {
       const p = new Popout(src, { title: caption || label || 'Recovered image', uuid: null });
-      if (typeof p.shareImage === 'function') { p.shareImage(); ui.notifications?.info('NCM | Image shown to players.'); }
+      if (typeof p.shareImage === 'function') { p.shareImage(); ncmNotify.info('NCM | Image shown to players.'); }
       else p.render(true);
     } catch (err) {
       log.error(`Gallery image share failed: ${err.message}`);
-      ui.notifications?.error('NCM | Could not share image.');
+      ncmNotify.error('NCM | Could not share image.');
     }
   }
 }

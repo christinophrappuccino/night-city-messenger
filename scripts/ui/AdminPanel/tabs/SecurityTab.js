@@ -15,6 +15,7 @@
  *   GM-only.
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { BaseTab } from '../BaseTab.js';
 import { log, whisperCardHtml, gateSkillsOf } from '../../../utils/helpers.js';
 import { SKILL_MAP } from '../../../utils/constants.js';
@@ -271,7 +272,7 @@ export class SecurityTab extends BaseTab {
         const ok = await adminConfirm({ title: 'Jacking in — defaults', content: '<p>Put every Jacking in rule back to the module\'s defaults?</p>' });
         if (!ok) return;
         await game.settings.set('night-city-messenger', 'jackInRules', {});
-        ui.notifications.info('NCM | Jacking in rules reset.');
+        ncmNotify.info('NCM | Jacking in rules reset.');
         return this.app.render(false);
       }
       case 'cmvAddRole': return this._cmvPick('role', target);
@@ -458,10 +459,10 @@ export class SecurityTab extends BaseTab {
     const card = key === 'hackResolution' ? 'res' : key === 'roleAbilityRoll' ? 'role' : null;
     try {
       await game.settings.set('night-city-messenger', key, value);
-      if (card) this._rulesSaved(card, true, msg); else { ui.notifications.info(`NCM | ${msg}`); this.app.render(false); }
+      if (card) this._rulesSaved(card, true, msg); else { ncmNotify.info(`NCM | ${msg}`); this.app.render(false); }
     } catch (err) {
       if (card) this._rulesSaved(card, false, `Could not save: ${err.message}`);
-      else { ui.notifications.error(`NCM | Could not save: ${err.message}`); this.app.render(false); }
+      else { ncmNotify.error(`NCM | Could not save: ${err.message}`); this.app.render(false); }
     }
   }
 
@@ -1091,11 +1092,11 @@ export class SecurityTab extends BaseTab {
       buttons: {
         lockout: { label: 'Lock out', icon: '<i class="fas fa-lock"></i>', callback: async (html) => {
           const s = this._lockoutScope(objectId);
-          if (!s.targets.length) { ui.notifications.warn('NCM | Nothing lockable for this heat entry.'); return; }
+          if (!s.targets.length) { ncmNotify.warn('NCM | Nothing lockable for this heat entry.'); return; }
           const minutes = Math.max(1, Number(html.find('[name="lk"]').val()) || 60);
           const sec = this.securityService;
           const reason = String(html.find('[name="rs"]').val() || '');
-          if (!actorId || !sec?.forceLockoutMany) { ui.notifications.warn('NCM | Security service unavailable, or no operator on this heat entry.'); return; }
+          if (!actorId || !sec?.forceLockoutMany) { ncmNotify.warn('NCM | Security service unavailable, or no operator on this heat entry.'); return; }
           // ONE call: applies locally, broadcasts to every client (lockout
           // state is client-local — without the sync the player just logged
           // back in), kicks live sessions, and toasts the operator once.
@@ -1135,7 +1136,7 @@ export class SecurityTab extends BaseTab {
         ice: { label: 'Wake ICE', icon: '<i class="fas fa-skull"></i>', callback: async (html) => {
           const iceId = html.find('[name="ice"]').val();
           const op = actorId ? game.actors?.get(actorId) : null;
-          if (!iceId || !op) { ui.notifications.warn('NCM | Pick a Black ICE actor and a valid operator.'); return; }
+          if (!iceId || !op) { ncmNotify.warn('NCM | Pick a Black ICE actor and a valid operator.'); return; }
           try {
             await game.nightcity?.iceService?.applyDamage?.(op, { encryptionType: 'BLACK_ICE', ice: { source: 'actor', actorId: iceId } }, { context: 'trace', targetName: objectName });
             const reason = String(html.find('[name="rs"]').val() || '');
@@ -1219,7 +1220,7 @@ export class SecurityTab extends BaseTab {
       if (kind === 'message' && msg) return this._openMessage(msg);
       if (kind === 'contact' && contact) return this._openContactManager(contact);
       if (uuid) { const it = fromUuidSync(uuid); if (it?.sheet) return it.sheet.render(true); }
-      ui.notifications.info('NCM | No quick-open for this target — open it manually.');
+      ncmNotify.info('NCM | No quick-open for this target — open it manually.');
     } catch (err) { log.warn(`Security jump failed: ${err.message}`); }
   }
   /** Open the journal page that stores a message (deep-link by messageId). */
@@ -1228,12 +1229,12 @@ export class SecurityTab extends BaseTab {
       const p = j.pages.find(pg => pg.flags?.['night-city-messenger']?.messageId === messageId);
       if (p) { try { j.sheet.render(true, { pageId: p.id }); } catch { j.sheet.render(true); } return; }
     }
-    ui.notifications.info('NCM | That message is no longer stored.');
+    ncmNotify.info('NCM | That message is no longer stored.');
   }
   /** Deep-link a contact into Admin → Contacts (the GM Contact Manager window is folded into that tab). */
   async _openContactManager(contactId) {
     try { await game.nightcity.openAdminTab('contacts', { select: contactId }); }
-    catch { ui.notifications.info('NCM | Open Admin → Contacts to review this contact.'); }
+    catch { ncmNotify.info('NCM | Open Admin → Contacts to review this contact.'); }
   }
 
   // ─── heat actions ───
@@ -1335,7 +1336,7 @@ export class SecurityTab extends BaseTab {
   async onRestore(event, target) {
     const id = target?.dataset?.recId;
     const flow = await import('../../content/SiphonFlow.js');
-    if (await flow.restoreWiped?.(id)) { ui.notifications.info('NCM | Restored.'); this.app.render(false); }
+    if (await flow.restoreWiped?.(id)) { ncmNotify.info('NCM | Restored.'); this.app.render(false); }
   }
   async onPurge(event, target) {
     const id = target?.dataset?.recId;
@@ -1377,7 +1378,7 @@ export class SecurityTab extends BaseTab {
   _rulesSaved(key, ok, text) {
     if (ok) this._dirty.delete(key);
     this._flash = { key, ok, text, at: Date.now() };
-    if (ok) ui.notifications.info(`NCM | ${text}`); else ui.notifications.error(`NCM | ${text}`);
+    if (ok) ncmNotify.info(`NCM | ${text}`); else ncmNotify.error(`NCM | ${text}`);
     if (ok && !this._dirty.size) return this.app.render(false);
     const el = this.app.element;
     if (el) { this._paintDirty(el); this._paintFlash(el); }

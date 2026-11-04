@@ -7,6 +7,7 @@
  *              and wires UI launch functions to real Application classes.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, getPlayerActor, isSelectableCharacter } from '../utils/helpers.js';
 
@@ -450,7 +451,7 @@ export function registerMessagingSystem(initializer) {
         await ns.showCharacterSelect();
       } catch (err) {
         console.error('NCM | Failed to open character select:', err);
-        ui.notifications.error('NCM | Failed to open character select. Check console.');
+        ncmNotify.error('NCM | Failed to open character select. Check console.');
       }
     };
 
@@ -586,7 +587,7 @@ export function registerMessagingSystem(initializer) {
         const stats = await repo.migrateJournalOrganization();
         const total = stats.inboxes + stats.contacts + stats.shards;
         if (total > 0) {
-          ui.notifications.info(
+          ncmNotify.info(
             `NCM | Journals reorganized: ${stats.inboxes} inbox(es), ${stats.contacts} NPC mail, ${stats.shards} shard(s), ${stats.pages} page(s) renamed.`
           );
         }
@@ -594,7 +595,7 @@ export function registerMessagingSystem(initializer) {
       }
     } catch (error) {
       log.error('Journal migration failed:', error);
-      ui.notifications.warn('NCM | Journal migration encountered errors. Check console.');
+      ncmNotify.warn('NCM | Journal migration encountered errors. Check console.');
     }
   });
 
@@ -686,7 +687,7 @@ function _resolveActorId(actorId) {
     if (actor) {
       // Verify ownership (GM can access any actor)
       if (!actor.isOwner && !isGM()) {
-        ui.notifications.warn('NCM | You do not own that character.');
+        ncmNotify.warn('NCM | You do not own that character.');
         return null;
       }
       return actorId;
@@ -701,7 +702,7 @@ function _resolveActorId(actorId) {
       }
     }
 
-    ui.notifications.warn('NCM | Actor or contact not found.');
+    ncmNotify.warn('NCM | Actor or contact not found.');
     return null;
   }
 
@@ -718,6 +719,6 @@ function _resolveActorId(actorId) {
     }
   }
 
-  ui.notifications.warn('NCM | No character assigned. Set your character in User Configuration.');
+  ncmNotify.warn('NCM | No character assigned. Set your character in User Configuration.');
   return null;
 }

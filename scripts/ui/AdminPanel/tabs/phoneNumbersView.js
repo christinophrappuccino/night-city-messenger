@@ -8,6 +8,7 @@
  *   from a snapshot unless the world moved on since. Rules live in utils/phoneNumbering.js.
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { getPlayerCharacters, formatCyberDate } from '../../../utils/helpers.js';
 import { parseNumber, fullForm, seenFrom as seenWith, placeOf as placeWith, isUnlisted as unlistedWith, asKeys, specialKey, specialList, sanitizeSpecial, matchOrganization, orgKey, sanitizeRules, placesDiff, placesEdited, lineTypes, lineTypesDiff, sanitizeLineType, lineTypeFor, officeKey, sanitizeOffice, OFFICE_LINE } from '../../../utils/phoneNumbering.js';
@@ -1082,8 +1083,8 @@ function viewShared() {
 }
 
 /* ─── writes ─── */
-const toast = (msg) => ui.notifications?.info(msg);
-const refuse = (r) => { if (r && r.ok === false) { ui.notifications?.warn(r.error || 'That did not work.'); return true; } return false; };
+const toast = (msg) => ncmNotify.info(msg);
+const refuse = (r) => { if (r && r.ok === false) { ncmNotify.warn(r.error || 'That did not work.'); return true; } return false; };
 const freshBulk = () => { S.bulk = null; };
 const ownerOf = (p) => (p.kind === 'pc' || p.actorOnly ? { actorId: p.id } : { contactId: p.id });
 const download = (name, text) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = name; a.click(); toast('Downloaded ' + name); };
@@ -1200,7 +1201,7 @@ const ACT = {
     if (!name) return false;
     load(TAB);
     const number = SVC.suggestNumbers({ count: 1 })[0]?.number;
-    if (!number) { ui.notifications?.warn('The place table is empty.'); return false; }
+    if (!number) { ncmNotify.warn('The place table is empty.'); return false; }
     const members = await pickMembers(name, []);
     if (!members) return false;
     load(TAB);
@@ -1240,7 +1241,7 @@ const ACT = {
     const e = S.lgE, person = byId(e.pick), t = logParts(S.lgT);
     const who = person ? person.name : e.pick === '__none' ? '' : e.who;
     const n = person ? (person.lines[0]?.n || '') : e.pick === '__none' ? '' : e.n;
-    if (e.pick === '__other' && !who && !n) { ui.notifications?.warn('Give it a name or a number.'); return false; }
+    if (e.pick === '__other' && !who && !n) { ncmNotify.warn('Give it a name or a number.'); return false; }
     const row = { id: e.id || foundry.utils.randomID(), dir: e.dir, who, n, out: e.out, when: e.when || nowIso(), len: e.out === 'Answered' || e.out === 'Voicemail' ? e.len : '', vm: e.out === 'Voicemail' ? e.vm : '', ty: e.ty || 'std' };
     if (t.kind === 'owner') {
       const list = logEntries();
@@ -1259,7 +1260,7 @@ const ACT = {
   },
   lgFill: async () => {
     const pool = PEOPLE.filter((p) => p.lines[0] && p.id !== logParts(S.lgT).id), t = logParts(S.lgT);
-    if (!pool.length) { ui.notifications?.warn('Nobody has a number to fill it with yet.'); return false; }
+    if (!pool.length) { ncmNotify.warn('Nobody has a number to fill it with yet.'); return false; }
     const base = Date.parse(nowIso()) || Date.now();
     const made = Array.from({ length: 5 }, (_, i) => { const p = pool[i % pool.length]; const missed = i === 3; return { id: foundry.utils.randomID(), dir: i % 2 ? 'out' : 'in', who: p.name, n: p.lines[0].n, out: missed ? 'Missed' : 'Answered', when: new Date(base - (i + 1) * 31 * 3600000).toISOString(), len: missed ? '' : `${1 + i}:${String(10 + i * 9).padStart(2, '0')}`, vm: '', ty: 'std' }; });
     if (t.kind === 'owner') { const list = logEntries(); await undoable(`Added ${made.length} calls.`, () => logWrite([...list, ...made])); return; }
@@ -1312,14 +1313,14 @@ const ACT = {
   },
   bkOpen: (el) => { S.bkOpen = S.bkOpen === el.dataset.id ? null : el.dataset.id; S.scroll.bk1 = 0; S.scroll.bkl = 0; },
   bkTabPick: (el) => { S.bkTab = el.dataset.v; },
-  emTok: (el) => { const box = document.activeElement; if (!box?.matches?.('textarea[data-in="emLine"]')) { ui.notifications?.info('Click in a box first, then pick a fill-in.'); return false; } box.setRangeText(el.dataset.t, box.selectionStart, box.selectionEnd, 'end'); box.dispatchEvent(new Event('input', { bubbles: true })); return false; },
+  emTok: (el) => { const box = document.activeElement; if (!box?.matches?.('textarea[data-in="emLine"]')) { ncmNotify.info('Click in a box first, then pick a fill-in.'); return false; } box.setRangeText(el.dataset.t, box.selectionStart, box.selectionEnd, 'end'); box.dispatchEvent(new Event('input', { bubbles: true })); return false; },
   emClear: async (el) => { const c = emCfg(), h = voiceHolder(c, el.dataset.scope); if (h) delete h.voice[el.dataset.k]; await saveEm(c); },
   emLight: async (el) => { const c = emCfg(), h = voiceHolder(c, el.dataset.scope); if (!h) return false; if (el.dataset.v === '') delete h.look.lights; else h.look.lights = el.dataset.v === 'on'; await saveEm(c); },
   emLookOff: async (el) => { const c = emCfg(), h = voiceHolder(c, el.dataset.scope); if (h) delete h.look[el.dataset.k]; await saveEm(c); },
   emHear: (el) => { game.nightcity?.soundService?.play?.(el.dataset.v); return false; },
   emArt: (el) => { const scope = el.dataset.scope, h0 = voiceHolder(emCfg(), scope); new FilePicker({ type: 'image', current: h0?.img || '', callback: async (path) => { const c = emCfg(), h = voiceHolder(c, scope); if (h) { h.img = path; await saveEm(c); TAB.app.render(); } } }).render(true); return false; },
   emArtOff: async (el) => { const c = emCfg(), h = voiceHolder(c, el.dataset.scope); if (h) h.img = ''; await saveEm(c); },
-  emGAdd: async (el) => { const box = el.closest('.ncm-pn'), v = (id) => box.querySelector('#' + id)?.value; const name = String(v('emg-an') || '').trim(); if (!name) { ui.notifications?.warn('Give the group a name.'); return false; } const r1 = Math.min(10, Math.max(1, Number(v('emg-a1')) || 1)); const c = emCfg(), h = voiceHolder(c, 'p:' + el.dataset.id); h.groups.push({ r1, r2: Math.min(10, Math.max(r1, Number(v('emg-a2')) || r1)), name, logo: '' }); await saveEm(c); },
+  emGAdd: async (el) => { const box = el.closest('.ncm-pn'), v = (id) => box.querySelector('#' + id)?.value; const name = String(v('emg-an') || '').trim(); if (!name) { ncmNotify.warn('Give the group a name.'); return false; } const r1 = Math.min(10, Math.max(1, Number(v('emg-a1')) || 1)); const c = emCfg(), h = voiceHolder(c, 'p:' + el.dataset.id); h.groups.push({ r1, r2: Math.min(10, Math.max(r1, Number(v('emg-a2')) || r1)), name, logo: '' }); await saveEm(c); },
   emGDel: async (el) => { const c = emCfg(), h = voiceHolder(c, 'p:' + el.dataset.id); h.groups.splice(Number(el.dataset.i), 1); await saveEm(c); },
   emGArt: (el, e) => {
     const i = Number(el.dataset.i), who = 'p:' + el.dataset.id, g0 = voiceHolder(emCfg(), who).groups[i];
@@ -1331,15 +1332,15 @@ const ACT = {
   emPlay: (el) => {
     const how = el.dataset.how, em = game.nightcity?.emergencyHud, svc = EM();
     const a = actorOf(el.dataset.a || PCS()[0]?.id);
-    if (!a) { ui.notifications?.warn('There is no player character to show it with.'); return false; }
+    if (!a) { ncmNotify.warn('There is no player character to show it with.'); return false; }
     if (how === 'busy') em?.backup(a, null, { preview: true, previewBusy: true });
     else if (how === 'arrive') em?.arrival(svc.arrivalFor(svc.backupInfo(a)));
     else if (how === 'arrive-tt') em?.arrival(svc.arrivalFor(svc.traumaInfo(a)));
     else em?.backup(a, null, { preview: true });
     return false;
   },
-  bkPlay: () => { const a = actorOf((PCS().find((p) => roleRank(itemsOf(p.id), 'Lawman') > 0) || PCS()[0])?.id); if (!a) { ui.notifications?.warn('There is no player character to show it with.'); return false; } game.nightcity?.emergencyHud?.backup(a, null, { preview: true }); return false; },
-  ttPlay: () => { const a = actorOf(PCS()[0]?.id); if (!a) { ui.notifications?.warn('There is no player character to show it with.'); return false; } game.nightcity?.emergencyHud?.trauma(a, a, { preview: true }); return false; },
+  bkPlay: () => { const a = actorOf((PCS().find((p) => roleRank(itemsOf(p.id), 'Lawman') > 0) || PCS()[0])?.id); if (!a) { ncmNotify.warn('There is no player character to show it with.'); return false; } game.nightcity?.emergencyHud?.backup(a, null, { preview: true }); return false; },
+  ttPlay: () => { const a = actorOf(PCS()[0]?.id); if (!a) { ncmNotify.warn('There is no player character to show it with.'); return false; } game.nightcity?.emergencyHud?.trauma(a, a, { preview: true }); return false; },
   bkOrgPick: async () => { const c = emCfg(); const pick = await showNamePicker({ title: 'Which organization?', placeholder: 'search names and groups…', selected: S.bkOrg, entries: Object.entries(c.backup.orgs).map(([id, o]) => ({ id, name: o.name, group: o.kind, sub: o.rows.map((r) => r.name).join(', ') })) }); if (!pick?.id) return false; load(TAB); S.bkOrg = pick.id; S.bkGq = ''; S.bkRank = 'all'; },
   bkNew: async () => { const name = await themedPrompt({ title: 'New organization', label: 'Add it', icon: 'fas fa-shield-halved', content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-shield-halved', title: 'A new organization', lead: 'It starts with placeholder names. Rename any of them.', field: { label: 'Name', name: 'name', value: '', placeholder: 'Harbor Authority' } }), read: (root) => root.querySelector('input[name=name]')?.value?.trim() || null }); if (!name) return false; load(TAB); const c = emCfg(), id = 'o' + foundry.utils.randomID(6); c.backup.orgs[id] = { name, kind: 'Private', rows: DEFAULT_ORGS.book.rows.map((r) => ({ ...r })) }; S.bkOrg = id; await saveEm(c); },
   bkOrgDel: async () => {
@@ -1360,7 +1361,7 @@ const ACT = {
     await saveEm(c);
   },
   bkDelG: async (el) => { const c = emCfg(); if (!c.backup.orgs[S.bkOrg]) return false; c.backup.orgs[S.bkOrg].rows.splice(Number(el.dataset.i), 1); await saveEm(c); },
-  bkAddG: async (el) => { const box = el.closest('.ncm-pn'), v = (id) => box.querySelector('#' + id)?.value; const name = String(v('bk-an') || '').trim(); if (!name) { ui.notifications?.warn('Give the group a name.'); return false; } const r1 = Number(v('bk-a1')) || 1, r2 = Number(v('bk-a2')) || r1; const c = emCfg(); c.backup.orgs[S.bkOrg].rows.push({ r1, r2, name, logo: '' }); await saveEm(c); },
+  bkAddG: async (el) => { const box = el.closest('.ncm-pn'), v = (id) => box.querySelector('#' + id)?.value; const name = String(v('bk-an') || '').trim(); if (!name) { ncmNotify.warn('Give the group a name.'); return false; } const r1 = Number(v('bk-a1')) || 1, r2 = Number(v('bk-a2')) || r1; const c = emCfg(); c.backup.orgs[S.bkOrg].rows.push({ r1, r2, name, logo: '' }); await saveEm(c); },
   hudState: (el) => { S.hudLive = el.dataset.v === 'live'; },
   typ: (el) => { S.typ = el.dataset.id; },
   typNew: async () => { typesNow(); const t = sanitizeLineType({ id: 't' + foundry.utils.randomID(6), name: 'New type', word: 'New' }); S.typ = t.id; await saveTypes([...TYPES, t]); },
@@ -1378,7 +1379,7 @@ const ACT = {
   },
   corpAns: async (el) => { officesNow(); await saveOffice({ answers: el.dataset.v }); },
   corpArt: () => { officesNow(); const o = OFFICES.find((x) => x.id === S.off); new FilePicker({ type: 'image', current: o?.art || '', callback: async (path) => { load(TAB); officesNow(); await saveOffice({ art: path }); TAB.app.render(); } }).render(true); return false; },
-  extAdd: async (el) => { const box = el.closest('.ncm-pn'); const x = box.querySelector('#ex-x')?.value.trim(), who = box.querySelector('#ex-who')?.value.trim(); if (!/^\d+$/.test(x || '') || !who) { ui.notifications?.warn('An extension needs digits and a name.'); return false; } officesNow(); const o = OFFICES.find((y) => y.id === S.off); if (o.ext.some((e) => e.x === x)) { ui.notifications?.warn('That extension is taken.'); return false; } const c = (game.nightcity?.masterContactService?.getAll?.() || []).find((m) => m.name.toLowerCase() === who.toLowerCase()); await saveOffice({ exts: [...o.ext, { x, who, contactId: c?.id || null, listed: true }] }); },
+  extAdd: async (el) => { const box = el.closest('.ncm-pn'); const x = box.querySelector('#ex-x')?.value.trim(), who = box.querySelector('#ex-who')?.value.trim(); if (!/^\d+$/.test(x || '') || !who) { ncmNotify.warn('An extension needs digits and a name.'); return false; } officesNow(); const o = OFFICES.find((y) => y.id === S.off); if (o.ext.some((e) => e.x === x)) { ncmNotify.warn('That extension is taken.'); return false; } const c = (game.nightcity?.masterContactService?.getAll?.() || []).find((m) => m.name.toLowerCase() === who.toLowerCase()); await saveOffice({ exts: [...o.ext, { x, who, contactId: c?.id || null, listed: true }] }); },
   extDel: async (el) => { officesNow(); const o = OFFICES.find((y) => y.id === S.off); await saveOffice({ exts: o.ext.filter((_, i) => i !== Number(el.dataset.i)) }); },
   extDial: (el) => { S.dialExt = el.dataset.x; },
   areaAll: (el) => { const [rc, city] = S.boardCity.split(':'); const shut = el.dataset.v === 'shut'; for (const a of uniq(ROWS.filter((r) => r['Region code'] === rc && r['City code'] === city).map((r) => r.Area || (isCorp(r) ? 'Offices' : 'The city')))) { const k = S.boardCity + '|' + a; (shut ? S.areaShut : S.areaOpen).add(k); (shut ? S.areaOpen : S.areaShut).delete(k); } },
@@ -1417,7 +1418,7 @@ const ACT = {
   shareFrom: async (el) => { await TAB._shareLine(byId(el.dataset.id), byId(el.dataset.id).lines[Number(el.dataset.i)]); },
   addGo: async () => {
     const a = S.addLine, p = byId(a.pid), biz = a.kind === 'biz', name = String(a.label || '').trim();
-    if (biz && !name) { ui.notifications?.warn('Give the business a name.'); return false; }
+    if (biz && !name) { ncmNotify.warn('Give the business a name.'); return false; }
     S.addLine = null;
     await undoable(`Added ${seenFrom(parse(a.n))} to ${p.name}.`, async () => {
       const res = await give(p, a.n, biz ? 'Their business line.' : 'You gave them this one.', biz ? 'extra' : a.kind, name || (a.kind === 'burner' ? 'Burner' : 'Extra line'));
@@ -1430,7 +1431,7 @@ const ACT = {
     const list = Object.entries(S.bulk).filter(([id]) => !S.bulkOff.has(id));
     S.f = 'numbers'; freshBulk(); S.bulkOff.clear();
     let done = 0;
-    await undoable(() => `Gave ${done} number${done === 1 ? '' : 's'}.`, async () => { for (const [id, pr] of list) { const r = await give(byId(id), pr.n, pr.why); if (r.ok) done++; else ui.notifications?.warn(`${byId(id).name}: ${r.error}`); } return { ok: true }; });
+    await undoable(() => `Gave ${done} number${done === 1 ? '' : 's'}.`, async () => { for (const [id, pr] of list) { const r = await give(byId(id), pr.n, pr.why); if (r.ok) done++; else ncmNotify.warn(`${byId(id).name}: ${r.error}`); } return { ok: true }; });
   },
   tile: async (el) => {
     const k = el.dataset.k; const [rc, city] = S.boardCity.split(':');
@@ -1446,16 +1447,16 @@ const ACT = {
   spArt: () => { const x = spOf(); new FilePicker({ type: 'image', current: x.img || '', callback: async (path) => { x.img = path; await saveSpecial(); TAB.app.render(); } }).render(true); return false; },
   spArtClear: async () => { spOf().img = ''; await saveSpecial(); },
   spSet: async (el) => { const x = spOf(); x[el.dataset.k] = el.dataset.v; if (el.dataset.k === 'who' && el.dataset.v === 'all') x.allow = []; await saveSpecial(); },
-  spRing: async () => { const x = spOf(), to = byId(S.spCall?.to || PCS()[0]?.id), num = to?.lines[0]?.n; if (!num) { ui.notifications?.warn('They have no number to ring.'); return false; } refuse(await SVC.placeCall(num, { special: x.id })); return false; },
+  spRing: async () => { const x = spOf(), to = byId(S.spCall?.to || PCS()[0]?.id), num = to?.lines[0]?.n; if (!num) { ncmNotify.warn('They have no number to ring.'); return false; } refuse(await SVC.placeCall(num, { special: x.id })); return false; },
   spTry: () => { S.tryN = spOf().num; S.f = 'learn'; },
   csvSpecial: () => { download('ncm-special-numbers.csv', [['Number', 'Name', 'Seen', 'When dialled', 'Who gets through', 'Screen shows', 'Trace finds', 'Alert'], ...SPECIAL.map((x) => [x.num, x.name, x.seen, x.act, x.who === 'all' ? 'anyone' : x.allow.map((a) => byId(a)?.name || a).join('; '), x.show, x.trace === 'false' ? x.falseName : x.trace, x.alert ? 'yes' : 'no'])].map((l) => l.map(csvCell).join(',')).join('\n')); return false; },
   scope: (el) => saveRules({ reach: el.dataset.v === 'city' ? 'home' : el.dataset.v }),
   own: (el) => saveRules({ ownDigits: el.dataset.v === '1' }),
   appr: (el) => saveRules({ changeNeedsGm: el.dataset.v === '1' }),
   tbHide: async (el) => { const hits = ROWS.filter(tbHit); hits.forEach((r) => { r.Listed = el.dataset.v; }); await savePlaces(); toast(`${hits.length} row${hits.length === 1 ? '' : 's'} ${el.dataset.v === 'no' ? 'hidden from' : 'listed in'} the directory.`); },
-  edSave: async (el) => { const r = ROWS[Number(el.dataset.i)]; const root = el.closest('.ncm-pn'); const v = (id) => root.querySelector('#' + id)?.value.trim() ?? ''; const code = v('ed-code').toUpperCase(); if (code && !/^[A-Z]{3}$/.test(code)) { ui.notifications?.warn('A district code is three letters.'); return false; } r.Code = code; r.District = v('ed-dist'); r.Area = v('ed-area'); r.State = v('ed-state'); r.Category = v('ed-cat'); r.Status = v('ed-status'); r.Source = v('ed-src'); EXTRA_COLS.forEach((c, x) => { r[c] = v('ed-x' + x); }); S.edit = null; await savePlaces(); },
+  edSave: async (el) => { const r = ROWS[Number(el.dataset.i)]; const root = el.closest('.ncm-pn'); const v = (id) => root.querySelector('#' + id)?.value.trim() ?? ''; const code = v('ed-code').toUpperCase(); if (code && !/^[A-Z]{3}$/.test(code)) { ncmNotify.warn('A district code is three letters.'); return false; } r.Code = code; r.District = v('ed-dist'); r.Area = v('ed-area'); r.State = v('ed-state'); r.Category = v('ed-cat'); r.Status = v('ed-status'); r.Source = v('ed-src'); EXTRA_COLS.forEach((c, x) => { r[c] = v('ed-x' + x); }); S.edit = null; await savePlaces(); },
   delRow: async (el) => { const i = Number(el.dataset.i), r = ROWS[i]; await undoable(`Removed ${r.Code || r.City}.`, () => savePlaces(ROWS.filter((x) => x !== r))); },
-  apGo: async () => { const a = S.addPlace; const isNew = a.rc === 'new'; const rc = isNew ? a.nrc : a.rc; if (!rc || !a.city || !a.cc) { ui.notifications?.warn('A place needs a region, a city and a city code.'); return false; } const r = row([rc, isNew ? a.nr || 'New region' : REGIONS[a.rc].name, a.st, a.cc.toUpperCase(), a.city, a.ar, a.ex.toUpperCase(), a.di, a.ex ? 'District' : 'City', 'yes', 'live', 'Homebrew'].join('|')); S.pOpen.add(rc); S.addPlace = null; await undoable(`Added ${a.di || a.city}.`, () => savePlaces([...ROWS, r])); },
+  apGo: async () => { const a = S.addPlace; const isNew = a.rc === 'new'; const rc = isNew ? a.nrc : a.rc; if (!rc || !a.city || !a.cc) { ncmNotify.warn('A place needs a region, a city and a city code.'); return false; } const r = row([rc, isNew ? a.nr || 'New region' : REGIONS[a.rc].name, a.st, a.cc.toUpperCase(), a.city, a.ar, a.ex.toUpperCase(), a.di, a.ex ? 'District' : 'City', 'yes', 'live', 'Homebrew'].join('|')); S.pOpen.add(rc); S.addPlace = null; await undoable(`Added ${a.di || a.city}.`, () => savePlaces([...ROWS, r])); },
   abGo: async () => { const a = S.addBranch; const [code, name] = a.corp.split('|'); const [rc, cc] = a.city.split(':'); const c = ROWS.find((x) => x['Region code'] === rc && x['City code'] === cc); const r = row([rc, c.Region, c.State, cc, c.City, 'Office', code, name, 'Corporate', 'no', 'live', 'Homebrew', a.hide ? 'no' : 'yes'].join('|')); S.pOpen.add(rc); S.addBranch = null; await undoable(`Added ${name} in ${c.City}.`, () => savePlaces([...ROWS, r])); },
   csvPlaces: () => { download('ncm-places.csv', toCsv()); return false; },
   csvBlank: () => { download('ncm-places-template.csv', [COLS, ['99', 'My region', 'My state', 'MC', 'My city', 'Uptown', 'UPT', 'Uptown', 'District', 'yes', 'live', 'Homebrew', 'yes']].map((l) => l.map(csvCell).join(',')).join('\n')); return false; },
@@ -1524,7 +1525,7 @@ const INP = {
   lnMeans: (el) => { S.ovEdit.lines[Number(el.dataset.i)].means = el.value; ovDebounce(); return false; },
   ttQ: (el) => { S.ttQ = el.value; return true; }, bkGq: (el) => { S.bkGq = el.value; return true; }, bkQ: (el) => { S.bkQ = el.value; return true; },
   lineLabel: (el) => { const n = el.dataset.n, v = el.value; clearTimeout(TAB._llT); TAB._llT = setTimeout(() => SVC.setLineType(n, { label: v.trim() }), 400); return false; },
-  emLine: (el) => { emPending.set(el.dataset.scope + '|' + el.dataset.k, el.value); clearTimeout(emTimer); emTimer = setTimeout(() => emFlush().catch((e) => ui.notifications?.error('Phone numbers: ' + e.message)), 500); return false; },
+  emLine: (el) => { emPending.set(el.dataset.scope + '|' + el.dataset.k, el.value); clearTimeout(emTimer); emTimer = setTimeout(() => emFlush().catch((e) => ncmNotify.error('Phone numbers: ' + e.message)), 500); return false; },
   emGName: (el) => { const i = Number(el.dataset.i), who = 'p:' + el.dataset.id, v = el.value; clearTimeout(TAB._spT); TAB._spT = setTimeout(async () => { const c = emCfg(), g = voiceHolder(c, who)?.groups[i]; if (g && v.trim()) { g.name = v.trim().slice(0, 50); await saveEm(c); } }, 400); return false; },
   bkName: (el) => { const i = Number(el.dataset.i), v = el.value; clearTimeout(TAB._spT); TAB._spT = setTimeout(async () => { const c = emCfg(); if (c.backup.orgs[S.bkOrg]?.rows[i]) { c.backup.orgs[S.bkOrg].rows[i].name = v; await saveEm(c); } }, 400); return false; },
   coQ: (el) => { S.coQ = el.value; return true; },
@@ -1593,14 +1594,14 @@ export function wireNumbers(tab, root) {
     if (!el || el.disabled) return;
     hidePop(); remember(); load(tab);
     if (emPending.size && el.dataset.do !== 'emTok') await emFlush();
-    try { after(await ACT[el.dataset.do]?.(el, e)); } catch (err) { console.error('NCM | Phone numbers:', err); ui.notifications?.error(`Phone numbers: ${err.message}`); }
+    try { after(await ACT[el.dataset.do]?.(el, e)); } catch (err) { console.error('NCM | Phone numbers:', err); ncmNotify.error(`Phone numbers: ${err.message}`); }
   });
   box.addEventListener('change', async (e) => {
     if (e.target.id === 'tbfile') { const f = e.target.files?.[0]; if (f) { const t = await f.text(); load(tab); S.plan = planImport(t); tab.app.render(); } return; }
     const h = e.target.dataset?.ch;
     if (!h || !CH[h]) return;
     remember(); load(tab);
-    try { await CH[h](e.target); after(); } catch (err) { console.error('NCM | Phone numbers:', err); ui.notifications?.error(`Phone numbers: ${err.message}`); }
+    try { await CH[h](e.target); after(); } catch (err) { console.error('NCM | Phone numbers:', err); ncmNotify.error(`Phone numbers: ${err.message}`); }
   });
   box.addEventListener('input', (e) => {
     const h = e.target.dataset?.in;

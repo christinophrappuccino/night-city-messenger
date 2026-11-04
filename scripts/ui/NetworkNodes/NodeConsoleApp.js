@@ -12,6 +12,7 @@
  * (a locked box needs a jack-in — step 3). GM: Edit, Jam. One window per node.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS, TEMPLATES } from '../../utils/constants.js';
 import { d10Odds, formulaText, rollParts } from '../../utils/rolls.js';
 import { log, isGM, formatCyberDate, resolveOperator, resolveHackResolution, canOperate, openOperatorPicker, getOperatorActors } from '../../utils/helpers.js';
@@ -70,8 +71,8 @@ export class NodeConsoleApp extends BaseApplication {
   static open(nodeId) {
     const ns = game.nightcity?.networkService;
     const node = ns?.getNode?.(nodeId);
-    if (!node) return void ui.notifications.warn('That node no longer exists.');
-    if (node.hidden && !isGM()) return void ui.notifications.warn('There is nothing there.');
+    if (!node) return void ncmNotify.warn('That node no longer exists.');
+    if (node.hidden && !isGM()) return void ncmNotify.warn('There is nothing there.');
     const existing = foundry.applications?.instances?.get?.(`ncm-node-${nodeId}`);
     if (existing) { existing.render(true); existing.bringToFront?.(); return existing; }
     const app = new NodeConsoleApp(nodeId);
@@ -206,8 +207,8 @@ export class NodeConsoleApp extends BaseApplication {
     const ns = this.networkService;
     const net = ns?.getNetwork?.(node.networkId);
     const left = this._othersHere(node, net, ns?._nowMs?.() ?? Date.now()).othersUp;
-    if (!turnedOff) return ui.notifications.info(`${node.name} is back on.`);
-    ui.notifications.info(left
+    if (!turnedOff) return ncmNotify.info(`${node.name} is back on.`);
+    ncmNotify.info(left
       ? `${node.name} is off — but ${left} other node${left === 1 ? '' : 's'} of ${net?.name || 'the network'} on this scene still carr${left === 1 ? 'ies' : 'y'} it. Switch ${left === 1 ? 'that one' : 'them'} off too to drop it here.`
       : `${node.name} is off — ${net?.name || 'the network'} is dark on this scene.`);
   }
@@ -258,7 +259,7 @@ export class NodeConsoleApp extends BaseApplication {
       const run = liveRun(node, this._session.actorId, this.networkService?._nowMs?.() ?? 0);
       if (run && (run.kicks || 0) > (this._session.kicks || 0)) {
         this._session = null; this._jackedOut = true;
-        setTimeout(() => { this._flash('fail', 'DISCONNECTED'); ui.notifications.warn(`${node.name} threw you out.`); }, 0);
+        setTimeout(() => { this._flash('fail', 'DISCONNECTED'); ncmNotify.warn(`${node.name} threw you out.`); }, 0);
       }
     }
     const dv = jackInDV(rules, node);
@@ -350,17 +351,17 @@ export class NodeConsoleApp extends BaseApplication {
     const net = ns.getNetwork(node.networkId);
     const rules = this._rules();
     const { actor, rank, stat } = this._runner(rules);
-    if (!actor && !isGM()) return void ui.notifications.warn('Pick a character to jack in with.');
+    if (!actor && !isGM()) return void ncmNotify.warn('Pick a character to jack in with.');
     if (actor && !isGM()) {
       const gate = jackGate(rules, actor, canOperate);
-      if (!gate.ok) return void ui.notifications.warn(gate.reason || 'You cannot jack in.');
+      if (!gate.ok) return void ncmNotify.warn(gate.reason || 'You cannot jack in.');
     }
     const sec = game.nightcity?.securityService;
     const key = jackKey(node);
     if (actor && sec) {
       if (sec.isLockedOut(actor.id, key)) {
         const ms = sec.getLockoutRemaining?.(actor.id, key) || 0;
-        return void ui.notifications.warn(`${net?.name || 'The network'} has locked you out${ms ? ` — ${Math.ceil(ms / 60000)} min` : ''}.`);
+        return void ncmNotify.warn(`${net?.name || 'The network'} has locked you out${ms ? ` — ${Math.ceil(ms / 60000)} min` : ''}.`);
       }
       // the network's own login lockout — a failed jack-in counts against its login and the other way round
       const lk = jackLock(rules, net);
@@ -433,8 +434,8 @@ export class NodeConsoleApp extends BaseApplication {
         this._session = { actorId: actor.id, rank: run.rank, moves: run.moves, used: run.used, margin: total - dv, resumed: true, kicks: run.kicks || 0 };
         if (!run.open && rules.session.returnAlert) await ns.bumpNodeAlert(node.id, 1);
         await ns.nodeLog(node.id, who, 'jacked back in');
-        if (run.used >= run.moves) ui.notifications.warn(`${node.name} remembers this session — no moves left until it ends.`);
-        else ui.notifications.info(`Back in the same session — ${run.moves - run.used} of ${run.moves} moves left.`);
+        if (run.used >= run.moves) ncmNotify.warn(`${node.name} remembers this session — no moves left until it ends.`);
+        else ncmNotify.info(`Back in the same session — ${run.moves - run.used} of ${run.moves} moves left.`);
       } else {
         this._session = { actorId: actor?.id || null, rank, moves: movesFor(rules, rank, total - dv), used: 0, margin: total - dv, kicks: 0 };
         await ns.nodeLog(node.id, who, 'jacked in');
@@ -457,8 +458,8 @@ export class NodeConsoleApp extends BaseApplication {
     const node = ns.getNode(this.nodeId); if (!node) return;
     const rules = this._rules();
     const v = actionView(rules, key, sess.rank); if (!v || !v.on || !v.built) return;
-    if (!v.unlocked) return void ui.notifications.warn(`That needs ${rules.skill} ${v.need}.`);
-    if (v.move && sess.used >= sess.moves) return void ui.notifications.warn('No moves left — jack out.');
+    if (!v.unlocked) return void ncmNotify.warn(`That needs ${rules.skill} ${v.need}.`);
+    if (v.move && sess.used >= sess.moves) return void ncmNotify.warn('No moves left — jack out.');
     const actor = sess.actorId ? game.actors?.get(sess.actorId) : null;
     const who = actor?.name || 'GM';
     const st = nodeStateAt(node, ns._nowMs());
@@ -496,28 +497,28 @@ export class NodeConsoleApp extends BaseApplication {
       if (rules.failure.alert) await ns.bumpNodeAlert(node.id, 1);
       if (rules.failure.trace && actor) game.nightcity?.traceService?.fireTrace?.({ actor, action: `node-${key}`, targetKind: 'network', targetNetworkId: node.networkId, objectId: `node:${node.id}`, objectName: node.name, dv: v.dv, severity: 'minor' });
       this._flash('fail', `${v.label.toUpperCase()} FAILED`);
-      ui.notifications.warn(`${v.label} failed — the node noticed.`);
+      ncmNotify.warn(`${v.label} failed — the node noticed.`);
       return this.render();
     }
-    if (key === 'switch') { const r = await ns.setNodeState(node.id, st === 'on' ? 'off' : 'on', { who }); if (r?.success) { this._flash(st === 'on' ? 'off' : 'on', st === 'on' ? 'POWER DOWN' : 'POWER UP'); this._switchToast(node, st === 'on'); } else ui.notifications.warn(r?.error || 'Nothing happened.'); }
+    if (key === 'switch') { const r = await ns.setNodeState(node.id, st === 'on' ? 'off' : 'on', { who }); if (r?.success) { this._flash(st === 'on' ? 'off' : 'on', st === 'on' ? 'POWER DOWN' : 'POWER UP'); this._switchToast(node, st === 'on'); } else ncmNotify.warn(r?.error || 'Nothing happened.'); }
     else if (key === 'jam') {
       const r = await ns.setNodeState(node.id, 'jammed', { minutes: rules.actions.jam.minutes || 30, who });
-      if (r?.success) { this._flash('jam', 'JAMMED'); ui.notifications.info(r.relayed ? `Jamming ${node.name} — waiting on the GM's client.` : `${node.name} jammed for ${rules.actions.jam.minutes || 30} min.`); } else ui.notifications.warn(r?.error || 'The jam did not take.');
+      if (r?.success) { this._flash('jam', 'JAMMED'); ncmNotify.info(r.relayed ? `Jamming ${node.name} — waiting on the GM's client.` : `${node.name} jammed for ${rules.actions.jam.minutes || 30} min.`); } else ncmNotify.warn(r?.error || 'The jam did not take.');
     }
     else if (key === 'tap' || key === 'backdoor') {
-      if (!actor) { ui.notifications.warn(`A ${v.label.toLowerCase()} needs a character to work for — pick one first.`); return this.render(); }
+      if (!actor) { ncmNotify.warn(`A ${v.label.toLowerCase()} needs a character to work for — pick one first.`); return this.render(); }
       const kind = key === 'tap' ? 'taps' : 'backdoors';
       const r = await ns.addNodeEffect(node.id, kind, { actorId: actor.id, actorName: actor.name, minutes: rules.actions[key].minutes });
-      if (!r?.success) ui.notifications.warn(r?.error || 'It did not take.');
+      if (!r?.success) ncmNotify.warn(r?.error || 'It did not take.');
       else this._flash(key, key === 'tap' ? 'LINK ESTABLISHED' : 'BACKDOOR OPEN');
-      if (r?.success) ui.notifications.info(key === 'tap'
+      if (r?.success) ncmNotify.info(key === 'tap'
         ? `Tap set — mail sent over ${ns.getNetwork(node.networkId)?.name || 'the network'} now copies to ${actor.name}'s EXFIL folder${rules.actions.tap.minutes ? ` for ${rules.actions.tap.minutes} min` : ''}.`
         : `Backdoor open — ${actor.name} skips ${ns.getNetwork(node.networkId)?.name || 'the network'}'s login${rules.actions.backdoor.minutes ? ` for ${Math.round(rules.actions.backdoor.minutes / 60)} h` : ''}.`);
     }
     else if (key === 'wipe') {
       const r = await ns.wipeNodeLog(node.id, who);
-      if (r?.success) this._flash('wipe', 'LOG SCRUBBED'); else return void ui.notifications.warn(r?.error || 'The log did not change.');
-      ui.notifications.info(r?.relayed ? 'You scrub your name off the node log.' : `${r?.wiped ?? 0} line${r?.wiped === 1 ? '' : 's'} wiped from the node log.`);
+      if (r?.success) this._flash('wipe', 'LOG SCRUBBED'); else return void ncmNotify.warn(r?.error || 'The log did not change.');
+      ncmNotify.info(r?.relayed ? 'You scrub your name off the node log.' : `${r?.wiped ?? 0} line${r?.wiped === 1 ? '' : 's'} wiped from the node log.`);
     }
     this.render();
   }
@@ -575,7 +576,7 @@ export class NodeConsoleApp extends BaseApplication {
     const node = this.networkService?.getNode(this.nodeId);
     if (!node) return;
     const res = await game.nightcity?.connectToNetwork?.(node.networkId);
-    if (res && res.success === false && res.reason && res.reason !== 'auth_failed') ui.notifications.warn(`Could not connect (${res.reason.replace(/_/g, ' ')}).`);
+    if (res && res.success === false && res.reason && res.reason !== 'auth_failed') ncmNotify.warn(`Could not connect (${res.reason.replace(/_/g, ' ')}).`);
     this.render();
   }
 
@@ -584,10 +585,10 @@ export class NodeConsoleApp extends BaseApplication {
     const node = ns?.getNode(this.nodeId);
     if (!node) return;
     const up = nodeStateAt(node, ns._nowMs()) === 'on';
-    if (!isGM() && node.security?.requiresAuth) return void ui.notifications.warn('The box is locked.');
+    if (!isGM() && node.security?.requiresAuth) return void ncmNotify.warn('The box is locked.');
     const who = isGM() ? 'GM' : (resolveOperator()?.name || game.user.character?.name || game.user.name);
     const res = await ns.setNodeState(this.nodeId, up ? 'off' : 'on', { who });
-    if (!res?.success) return void ui.notifications.warn(res?.error || 'Nothing happened.');
+    if (!res?.success) return void ncmNotify.warn(res?.error || 'Nothing happened.');
     game.nightcity?.soundService?.play(up ? 'disconnect' : 'connect');
     this._flash(up ? 'off' : 'on', up ? 'POWER DOWN' : 'POWER UP');
     this._switchToast(node, up);
@@ -609,7 +610,7 @@ export class NodeConsoleApp extends BaseApplication {
 
   /** OPERATOR chip → the shared FUI picker (the terminal's). Not while jacked in — that session belongs to its runner. */
   static async _onSwitchOperator() {
-    if (this._session) return void ui.notifications.warn('Jack out first — this session belongs to its runner.');
+    if (this._session) return void ncmNotify.warn('Jack out first — this session belongs to its runner.');
     if (!(await openOperatorPicker(this.element))) return;
     this.render();
   }
@@ -665,9 +666,9 @@ export class NodeConsoleApp extends BaseApplication {
    */
   async _insertProgram(node, rules, sess, actor, v) {
     const ns = this.networkService;
-    if (!actor) return void ui.notifications.warn('A program needs a character to run it — pick one first.');
+    if (!actor) return void ncmNotify.warn('A program needs a character to run it — pick one first.');
     const progs = this._carriedNodePrograms(actor);
-    if (!progs.length) return void ui.notifications.info(this._noProgramsMessage(actor));
+    if (!progs.length) return void ncmNotify.info(this._noProgramsMessage(actor));
     const host = this._lockHost();
     try {
       const { runUploadConsole } = await import('../content/UploadConsole.js');
@@ -711,15 +712,15 @@ export class NodeConsoleApp extends BaseApplication {
         if (rules.failure.alert) await ns.bumpNodeAlert(node.id, 1);
         if (rules.failure.trace) game.nightcity?.traceService?.fireTrace?.({ actor, action: 'node-insert', targetKind: 'network', targetNetworkId: node.networkId, objectId: `node:${node.id}`, objectName: node.name, dv, severity: rules.failure.severity });
         this._flash('fail', 'REJECTED');
-        ui.notifications.warn(`${pick.name} was rejected — nothing installed, and the node noticed.`);
+        ncmNotify.warn(`${pick.name} was rejected — nothing installed, and the node noticed.`);
         return;
       }
       const quality = forgeQualityFromMargin(total, dv);
       const r = await ns.insertProgram(node.id, pick.kind, { name: pick.name, actorId: actor.id, actorName: actor.name, quality,
         stealthDV: stealthDVFromQuality(quality, pick.cd.uploadStealthDV), params: pick.cd.uploadParams || {} });
-      if (!r?.success) return void ui.notifications.warn(r?.error || 'It did not install.');
+      if (!r?.success) return void ncmNotify.warn(r?.error || 'It did not install.');
       this._flash('insert', pick.kind === 'patch' ? 'NODE PATCHED' : rung === 'sloppy' ? 'INSTALLED — GLITCHY' : 'INSTALLED');
-      ui.notifications.info(pick.kind === 'patch' ? `Patched — ${r.relayed ? 'the node is being cleaned' : `${r.cleaned} infection(s) cleaned`}.` : `${pick.name} installed${rung === 'sloppy' ? ' — glitchy: a sweep will find it easily' : ''}.`);
+      ncmNotify.info(pick.kind === 'patch' ? `Patched — ${r.relayed ? 'the node is being cleaned' : `${r.cleaned} infection(s) cleaned`}.` : `${pick.name} installed${rung === 'sloppy' ? ' — glitchy: a sweep will find it easily' : ''}.`);
       if (rung === 'clean') game.nightcity?.traceService?.logSuccess?.({ actor, action: 'node-insert', targetKind: 'network', targetNetworkId: node.networkId, objectId: `node:${node.id}`, objectName: node.name, dv, outcome: 'success', severity: 'minor' });
     } finally {
       this._releaseHost(host);
@@ -800,7 +801,7 @@ export class NodeConsoleApp extends BaseApplication {
   static async _onSessionRecall(event, target) {
     const sess = this._session; if (!sess?.actorId) return;
     const r = await this.networkService?.recallFamily(target?.dataset?.family, sess.actorId);
-    ui.notifications.info(r?.relayed ? 'Recall sent.' : `Recalled from ${r?.nodes ?? 0} node(s).`);
+    ncmNotify.info(r?.relayed ? 'Recall sent.' : `Recalled from ${r?.nodes ?? 0} node(s).`);
     this.render();
   }
 
@@ -808,8 +809,8 @@ export class NodeConsoleApp extends BaseApplication {
   static async _onSessionCollect(event, target) {
     const sess = this._session; if (!sess?.actorId) return;
     const r = await this.networkService?.collectSniffer(this.nodeId, target?.dataset?.infId, sess.actorId);
-    if (!r?.success) return void ui.notifications.warn(r?.error || 'Nothing to collect.');
-    ui.notifications.info(r.relayed ? 'Collecting — it lands in your EXFIL folder.' : `${r.collected} message(s) to your EXFIL folder.`);
+    if (!r?.success) return void ncmNotify.warn(r?.error || 'Nothing to collect.');
+    ncmNotify.info(r.relayed ? 'Collecting — it lands in your EXFIL folder.' : `${r.collected} message(s) to your EXFIL folder.`);
     this.render();
   }
 
@@ -819,15 +820,15 @@ export class NodeConsoleApp extends BaseApplication {
     const { kind, fxId } = target?.dataset ?? {};
     const who = sess.actorId ? game.actors?.get(sess.actorId)?.name : 'GM';
     const r = kind === 'inf' ? await this.networkService?.cleanInfection(this.nodeId, fxId, who || 'GM') : await this.networkService?.removeNodeEffect(this.nodeId, kind, fxId, who || 'GM');
-    if (r?.success) { sess.found = (sess.found || []).filter((f) => f.id !== fxId); ui.notifications.info('Removed.'); }
-    else ui.notifications.warn(r?.error || 'Could not remove it.');
+    if (r?.success) { sess.found = (sess.found || []).filter((f) => f.id !== fxId); ncmNotify.info('Removed.'); }
+    else ncmNotify.warn(r?.error || 'Could not remove it.');
     this.render();
   }
 
   static async _onJam() {
     if (!isGM()) return;
     const r = await this.networkService.setNodeState(this.nodeId, 'jammed', { minutes: 30, who: 'GM' });
-    if (r?.success) this._flash('jam', 'JAMMED'); else ui.notifications.warn(r?.error || 'The jam did not take.');
+    if (r?.success) this._flash('jam', 'JAMMED'); else ncmNotify.warn(r?.error || 'The jam did not take.');
   }
 }
 

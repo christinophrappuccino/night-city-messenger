@@ -11,6 +11,7 @@
  * Handout colours: world setting `accessHandoutStyle` { mode: match|default|custom, custom:{…} }.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM, buildTerminalThemePrefs, buildShardThemePrefs } from '../utils/helpers.js';
 import { adminDialog, playerDialog } from '../utils/adminTheme.js';
@@ -97,7 +98,7 @@ export function paletteFor(ref, style = getHandoutStyle()) {
 
 /** Open whatever the ref points at. */
 export function openAccess(ref) {
-  if (!isAccessRef(ref)) return void ui.notifications.warn('Night City Messenger: that access point is broken.');
+  if (!isAccessRef(ref)) return void ncmNotify.warn('Night City Messenger: that access point is broken.');
   const ns = game.nightcity;
   switch (ref.kind) {
     case 'terminal': return ns?.openTerminal?.(ref.id);
@@ -109,7 +110,7 @@ export function openAccess(ref) {
     case 'message': {
       const [owner, messageId] = ref.id.split('|');
       const actor = game.actors.get(owner);
-      if (!isGM() && !actor?.isOwner) return void ui.notifications.warn('That inbox is not yours to open.');
+      if (!isGM() && !actor?.isOwner) return void ncmNotify.warn('That inbox is not yours to open.');
       return ns?.openInbox?.(owner, ref.kind === 'message' ? messageId : undefined);
     }
   }
@@ -137,12 +138,12 @@ export async function createAccessMacro(ref, { slot, assign = true } = {}) {
         flags: { [MODULE_ID]: { access: { kind: ref.kind, id: ref.id } } } });
     }
     if (macro && assign) await game.user.assignHotbarMacro(macro, slot ?? null);
-    if (macro && assign) ui.notifications.info(`"${macro.name}" is on your hotbar.`);
-    else if (macro) ui.notifications.info(`Macro "${macro.name}" is in the "${MACRO_FOLDER}" folder — pick it in any tool that runs a macro (set it to run as the triggering player).`);
+    if (macro && assign) ncmNotify.info(`"${macro.name}" is on your hotbar.`);
+    else if (macro) ncmNotify.info(`Macro "${macro.name}" is in the "${MACRO_FOLDER}" folder — pick it in any tool that runs a macro (set it to run as the triggering player).`);
     return macro;
   } catch (err) {
     log.error(`createAccessMacro: ${err.message}`);
-    ui.notifications.warn(`Could not make the macro — ${err.message}`);
+    ncmNotify.warn(`Could not make the macro — ${err.message}`);
     return null;
   }
 }
@@ -155,7 +156,7 @@ export async function copyAccessMacro(ref) {
   const code = accessMacroSnippet(ref, describeAccess(ref).name);
   try {
     await navigator.clipboard.writeText(code);
-    ui.notifications.info('Macro code copied — paste it into any tool that runs a script. Set it to run as the triggering player.');
+    ncmNotify.info('Macro code copied — paste it into any tool that runs a script. Set it to run as the triggering player.');
   } catch {
     adminDialog({
       title: 'Macro code', default: 'ok',
@@ -170,8 +171,8 @@ export async function copyAccessMacro(ref) {
 /** Copy the journal-link text for the ref. */
 export async function copyAccessLink(ref) {
   const text = accessLinkText(ref, describeAccess(ref).name);
-  try { await navigator.clipboard.writeText(text); ui.notifications.info('Link copied — paste it into any journal page.'); }
-  catch { ui.notifications.info(`Paste this into a journal page: ${text}`); }
+  try { await navigator.clipboard.writeText(text); ncmNotify.info('Link copied — paste it into any journal page.'); }
+  catch { ncmNotify.info(`Paste this into a journal page: ${text}`); }
   return text;
 }
 
@@ -259,7 +260,7 @@ function _postDialog(ref, style) {
 let _lastPlace = { how: 'pin', where: 'view', range: null, size: 2, hidden: false };
 export async function openPlaceDialog(item, { sceneId } = {}) {
   const ref = refForItem(item);
-  if (!ref) return ui.notifications.warn('Only a terminal or a shard can be placed on a scene.');
+  if (!ref) return ncmNotify.warn('Only a terminal or a shard can be placed on a scene.');
   const d = describeAccess(ref);
   const cfgRange = ref.kind === 'terminal' ? Number(game.nightcity?.terminalService?.getConfig(item)?.scenePin?.range) || 0 : 0;
   let scene = game.scenes.get(sceneId) || canvas?.scene || game.scenes.find(s => s.active) || null;
@@ -356,7 +357,7 @@ export function nodeAccessEntries(nodeId) {
 export async function openNodePlaceDialog(nodeId) {
   const ns = game.nightcity?.networkService;
   const node = ns?.getNode?.(nodeId);
-  if (!node) return ui.notifications.warn('That node no longer exists.');
+  if (!node) return ncmNotify.warn('That node no longer exists.');
   const ref = accessRef('node', nodeId);
   const d = describeAccess(ref);
   let scene = game.scenes.get(node.sceneId) || canvas?.scene || null;
@@ -444,7 +445,7 @@ export function payphoneAccessEntries(id) {
 export async function openPayphonePlaceDialog(id, { sceneId } = {}) {
   const svc = game.nightcity?.payphoneService;
   const pp = svc?.get?.(id);
-  if (!pp) return ui.notifications.warn('That payphone no longer exists.');
+  if (!pp) return ncmNotify.warn('That payphone no longer exists.');
   const ref = accessRef('payphone', id);
   const scene = game.scenes.get(sceneId) || game.scenes.get(pp.sceneId) || canvas?.scene || null;
   const p = await askPlacement(ref, describeAccess(ref), scene, false, 'Place a payphone');
@@ -494,7 +495,7 @@ export function registerAccessPoints() {
     const el = ev.target.closest?.('[data-ncm-access]'); if (!el) return;
     ev.preventDefault(); ev.stopPropagation();
     let ref = null; try { ref = JSON.parse(el.dataset.ncmAccess); } catch { /* broken */ }
-    if (el.classList.contains('is-missing')) return void ui.notifications.warn('That access point no longer exists.');
+    if (el.classList.contains('is-missing')) return void ncmNotify.warn('That access point no longer exists.');
     openAccess(ref);
   }, true);
 

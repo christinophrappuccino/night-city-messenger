@@ -8,6 +8,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -69,7 +70,7 @@ export class PlayerEmailSetup extends BaseApplication {
   static async show(actorId) {
     const actor = game.actors.get(actorId);
     if (!actor) {
-      ui.notifications.error('NCM | Actor not found.');
+      ncmNotify.error('NCM | Actor not found.');
       return null;
     }
 
@@ -143,7 +144,7 @@ export class PlayerEmailSetup extends BaseApplication {
       });
 
       log.info(`Email set for ${this.actor.name}: ${email}`);
-      ui.notifications.info(`Email set: ${email}`);
+      ncmNotify.info(`Email set: ${email}`);
 
       this._resolve?.(email);
       this._resolve = null;

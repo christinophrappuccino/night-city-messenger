@@ -8,6 +8,7 @@
  *   ready/126  → game.nightcity launchers (placeCall, openCalls)
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { OverheardService } from '../services/OverheardService.js';
 import { OverheardHud } from '../ui/Calls/OverheardHud.js';
 import { EmergencyService, wireEmergency } from '../services/EmergencyService.js';
@@ -101,7 +102,7 @@ export function registerCallSystem(initializer) {
     /** Place a call from this client (the operator character, or `as` an identity — GM). */
     game.nightcity.placeCall = async (number, as = {}) => {
       const r = await game.nightcity.callService?.placeCall(number, as);
-      if (r && !r.ok && r.error) ui.notifications?.warn(r.error);
+      if (r && !r.ok && r.error) ncmNotify.warn(r.error);
       return r;
     };
     /** Open a payphone's booth (by id), as a link would: no reach check. */

@@ -7,6 +7,7 @@
  *              documents for convenience.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 
@@ -408,12 +409,12 @@ export class MacroAPI {
 
     ns.messenger.openDataShard = (itemOrId) => {
       const item = MacroAPI._resolveItem(itemOrId);
-      if (!item) return ui.notifications.error('Item not found');
+      if (!item) return ncmNotify.error('Item not found');
       return ns.openDataShard?.(item);
     };
 
     ns.messenger.openGMContacts = () => {
-      if (!isGM()) return ui.notifications.warn('GM only');
+      if (!isGM()) return ncmNotify.warn('GM only');
       return ns.openGMContacts?.();
     };
 

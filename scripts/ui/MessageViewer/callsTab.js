@@ -12,6 +12,7 @@
  *   number → a contact) and decodes CALL into DIAL ▸ on hover.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID } from '../../utils/constants.js';
 import { formatCyberDate, getPlayerCharacters } from '../../utils/helpers.js';
 import { showNamePicker } from '../../utils/namePicker.js';
@@ -323,7 +324,7 @@ export async function handleCallsAction(viewer, action, target) {
     case 'calls-backup': {
       const a = game.actors?.get(own?.actorId), em = game.nightcity?.emergencyService; if (!a || !em) return;
       const list = em.optionsFor(a);
-      if (!list.length) { ui.notifications?.warn('Your GM has given your organization nobody you can call.'); return; }
+      if (!list.length) { ncmNotify.warn('Your GM has given your organization nobody you can call.'); return; }
       const pick = list.length === 1 ? { id: list[0].name } : await showNamePicker({ admin: false, title: 'Call who?', hint: 'Your rank, or any group below it.', placeholder: 'search groups…', selected: em.defaultGroup(a)?.name, entries: list.map((r) => ({ id: r.name, name: r.name, sub: r.r1 === r.r2 ? `Rank ${r.r1}` : `Rank ${r.r1}-${r.r2}`, icon: 'fas fa-people-group' })) });
       if (pick?.id) game.nightcity?.emergencyHud?.backup(a, pick.id);
       return;
@@ -331,12 +332,12 @@ export async function handleCallsAction(viewer, action, target) {
     case 'calls-sharemine': {
       const num = target.dataset.number; if (!num || !own?.actorId) return;
       const pcs = getPlayerCharacters().filter((p) => p.actorId !== own.actorId);
-      if (!pcs.length) { ui.notifications?.info('There is nobody to share it with yet.'); return; }
+      if (!pcs.length) { ncmNotify.info('There is nobody to share it with yet.'); return; }
       const pick = await showNamePicker({ admin: false, title: 'Share this number', hint: 'They get the number on a contact. A second line does not say it is yours.', placeholder: 'search characters…', multi: true, doneLabel: 'Share',
         entries: pcs.map((p) => ({ id: p.actorId, name: p.actorName, img: p.actor?.img || '', sub: p.playerName || '' })) });
       if (!pick?.length) return;
       const r = await s.shareMine({ actorId: own.actorId, number: num, actorIds: pick.map((x) => x.id ?? x) });
-      if (!r.ok) ui.notifications?.warn(r.error); else ui.notifications?.info('Number shared.');
+      if (!r.ok) ncmNotify.warn(r.error); else ncmNotify.info('Number shared.');
       return;
     }
     case 'calls-savenum': {
@@ -344,7 +345,7 @@ export async function handleCallsAction(viewer, action, target) {
       const name = await themedPrompt({ title: 'Save this number', label: 'Save', icon: 'fas fa-address-book', content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-address-book', title: num, field: { label: 'Name', name: 'name', value: '', placeholder: 'What to call them' } }), read: (root) => root.querySelector('input[name=name]')?.value?.trim() || null });
       if (!name) return;
       const r = await game.nightcity?.contactRepository?.addContact?.(own.actorId, { name, email: '', phone: num, tags: [] });
-      if (r && !r.success) ui.notifications?.warn(r.error || 'Could not save it.'); else ui.notifications?.info(`${name} saved.`);
+      if (r && !r.success) ncmNotify.warn(r.error || 'Could not save it.'); else ncmNotify.info(`${name} saved.`);
       return rerender();
     }
     case 'calls-addkind': st.addKind = target.dataset.k === 'burner' ? 'burner' : 'extra'; return rerender();
@@ -352,17 +353,17 @@ export async function handleCallsAction(viewer, action, target) {
       const yes = await themedConfirm({ title: 'Retire this line?', yes: 'Retire it', yesIcon: 'fas fa-ban', content: dialogBodyHtml({ tone: 'bad', icon: 'fas fa-ban', title: target.dataset.number, lead: 'The number retires for good, and it can never be given to anyone else. People who saved it will hear not in service.' }) });
       if (!yes) return;
       const r = await s.retireLine(target.dataset.number);
-      if (r && !r.ok) ui.notifications?.warn(r.error);
+      if (r && !r.ok) ncmNotify.warn(r.error);
       st.as = null; setTimeout(rerender, r?.relayed ? 600 : 0);
       return;
     }
     case 'calls-unrequest': await s.cancelRequest(own?.actorId); setTimeout(rerender, 300); return;
-    case 'calls-copy': try { await navigator.clipboard.writeText(target.dataset.number); ui.notifications?.info('Number copied.'); } catch { ui.notifications?.info(target.dataset.number); } return;
+    case 'calls-copy': try { await navigator.clipboard.writeText(target.dataset.number); ncmNotify.info('Number copied.'); } catch { ncmNotify.info(target.dataset.number); } return;
     case 'calls-set': {
       const number = target.dataset.number, cur = s.lineSettings(number);
       const next = target.dataset.k === 'vm' ? { ...cur, voicemail: { ...cur.voicemail, on: !cur.voicemail.on } } : { ...cur, voicemail: { ...cur.voicemail, dnd: !cur.voicemail.dnd } };
       const r = await s.saveLineSettings(number, next);
-      if (r && !r.ok) ui.notifications?.warn(r.error);
+      if (r && !r.ok) ncmNotify.warn(r.error);
       setTimeout(rerender, r?.relayed ? 400 : 0);
       return;
     }
@@ -391,16 +392,16 @@ export async function handleCallsAction(viewer, action, target) {
         : mode === 'add' ? await s.addLine({ actorId: own?.actorId, number, kind: st.addKind, label: st.addLabel })
         : asks ? await s.requestChange({ actorId: own.actorId, number })
           : await s.assignNumber({ actorId: own?.actorId, contactId: own?.contactId, number });
-      if (!r.ok) { ui.notifications?.warn(r.error); return; }
-      if (asks) ui.notifications?.info(overLimit ? `Asked your GM for ${number}.` : `Asked your GM for ${number}. You keep this number until they answer.`);
-      else if (r.relayed) ui.notifications?.info(`Number requested: ${number}. It is yours as soon as the GM's screen confirms it.`);
+      if (!r.ok) { ncmNotify.warn(r.error); return; }
+      if (asks) ncmNotify.info(overLimit ? `Asked your GM for ${number}.` : `Asked your GM for ${number}. You keep this number until they answer.`);
+      else if (r.relayed) ncmNotify.info(`Number requested: ${number}. It is yours as soon as the GM's screen confirms it.`);
       if (mode === 'add' && !overLimit) st.as = normaliseNumber(number, s.homeCode);
       st.view = 'main'; st.mode = null; st.typed = ''; st.path = null; st.level = null;
       setTimeout(rerender, r.relayed ? 600 : 0);
       return;
     }
     case 'calls-dial': return dial(viewer, target.dataset.number);
-    case 'calls-trace': { const r = await s.traceCall(target.dataset.call); if (r && !r.ok && r.error) ui.notifications?.warn(r.error); return setTimeout(rerender, 800); }
+    case 'calls-trace': { const r = await s.traceCall(target.dataset.call); if (r && !r.ok && r.error) ncmNotify.warn(r.error); return setTimeout(rerender, 800); }
     // voicemail
     case 'calls-vm-play': {
       const d = target.dataset;
@@ -440,13 +441,13 @@ export async function handleCallsAction(viewer, action, target) {
         if (clip?.blob?.size) r = await s.saveRecordedGreeting(number, settings, { base64: await blobToBase64(clip.blob), mime: clip.mime, ms: clip.ms });
         else {
           const cur = s.lineSettings(number).greeting;
-          if (!cur.audio) { ui.notifications?.warn('Record a greeting first.'); return; }
+          if (!cur.audio) { ncmNotify.warn('Record a greeting first.'); return; }
           r = await s.saveLineSettings(number, { ...settings, greeting: { ...settings.greeting, audio: cur.audio, duration: cur.duration } });
         }
       } else r = await s.saveLineSettings(number, settings);
       st.mlClip = null;
-      if (!r.ok) { ui.notifications?.warn(r.error); return; }
-      ui.notifications?.info(r.relayed ? 'Saved — it is yours as soon as the GM\'s screen confirms it.' : 'Your line is set.');
+      if (!r.ok) { ncmNotify.warn(r.error); return; }
+      ncmNotify.info(r.relayed ? 'Saved — it is yours as soon as the GM\'s screen confirms it.' : 'Your line is set.');
       st.view = 'main'; return setTimeout(rerender, r.relayed ? 600 : 0);
     }
     case 'calls-go': {
@@ -472,7 +473,7 @@ async function dial(viewer, raw) {
   const line = s.linesFor?.(own.actorId)?.find((l) => l.normal === st.as);
   const as = line?.contactId ? { contactId: line.contactId } : own.actorId ? { actorId: own.actorId, line: line && !line.main ? line.normal : null } : { contactId: own.contactId };
   const r = await s.placeCall(number, as);
-  if (!r.ok && r.error) ui.notifications?.warn(r.error);
+  if (!r.ok && r.error) ncmNotify.warn(r.error);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -713,11 +714,11 @@ export function wireCallsTab(viewer, html) {
         await rec.start({ maxMs: 20000, onTick: (ms) => { if (recTime) recTime.textContent = `${formatDuration(ms / 1000)} / 0:20`; },
           onLimit: () => recBtn.click() });
         recBtn.innerHTML = '<i class="fas fa-square"></i> Stop'; ml.classList.add('is-recording');
-      } catch (err) { ui.notifications?.warn(err.message); rec = null; }
+      } catch (err) { ncmNotify.warn(err.message); rec = null; }
     });
     playBtn?.addEventListener('click', () => {
       const src = st.mlClip?.blob ? URL.createObjectURL(st.mlClip.blob) : playBtn.dataset.src;
-      if (src) playAudio(src); else ui.notifications?.info('Nothing recorded yet.');
+      if (src) playAudio(src); else ncmNotify.info('Nothing recorded yet.');
     });
     const sel = ml.querySelector('[data-calls-ml-voice]');
     if (sel) voices().then((list) => {

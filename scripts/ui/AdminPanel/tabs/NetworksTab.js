@@ -29,6 +29,7 @@
  * still mounted, so it reads the open editor back into `_draft` first.
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { MODULE_ID, NETWORK_TYPES } from '../../../utils/constants.js';
 import { log, chatCardTime } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
@@ -560,13 +561,13 @@ export class NetworksTab extends BaseTab {
     const net = ns?.getNetwork?.(netId || this._selId);
     if (!net) return;
     const base = nodeId ? ns.getNode(nodeId) : { networkId: net.id, sceneId: game.scenes?.viewed?.id || '' };
-    if (nodeId && !base) return ui.notifications.warn('That node no longer exists.');
+    if (nodeId && !base) return ncmNotify.warn('That node no longer exists.');
     const edited = await editNodeDialog(base, net);
     if (!edited) return;
     const res = await ns.saveNode({ ...edited, id: nodeId || undefined, networkId: net.id });
-    if (!res?.success) return ui.notifications.warn(`Could not save the node: ${res?.error || 'unknown error'}`);
+    if (!res?.success) return ncmNotify.warn(`Could not save the node: ${res?.error || 'unknown error'}`);
     if (nodeId && !!base.hidden !== !!res.node.hidden) await game.nightcity?.terminalScenePins?.setNodeHidden?.(nodeId, res.node.hidden);
-    if (!res.node.sceneId) ui.notifications.info(`${res.node.name} has no scene yet — it won't affect anything until it stands on one.`);
+    if (!res.node.sceneId) ncmNotify.info(`${res.node.name} has no scene yet — it won't affect anything until it stands on one.`);
     this.app.render();
   }
 
@@ -586,7 +587,7 @@ export class NetworksTab extends BaseTab {
       minutes = v;
     }
     const res = await ns.setNodeState(nodeId, state, { minutes, who: 'GM' });
-    if (!res?.success) ui.notifications.warn(res?.error || 'Could not change the node.');
+    if (!res?.success) ncmNotify.warn(res?.error || 'Could not change the node.');
   }
 
   async _deleteNode(nodeId) {
@@ -1338,7 +1339,7 @@ export class NetworksTab extends BaseTab {
       case 'scPaint': {
         const n = this.networkService?.getNetwork?.(netId);
         if (!n) return;
-        if (n.availability?.global) { ui.notifications.info(`NCM | ${n.name} reaches every scene. Edit it to put it on chosen scenes instead.`); return; }
+        if (n.availability?.global) { ncmNotify.info(`NCM | ${n.name} reaches every scene. Edit it to put it on chosen scenes instead.`); return; }
         this._scPaint = this._scPaint === n.id ? null : n.id; this._scSel = null;
         if (this._scPaint) this._scPaintRecent = [n.id, ...this._scPaintRecent.filter((x) => x !== n.id)].slice(0, 8);
         return this.app.render();
@@ -1386,7 +1387,7 @@ export class NetworksTab extends BaseTab {
       case 'noteAdd': return this._addNote();
       case 'logEdit': return this._editLogEntry(ds.entryId);
       case 'logDelete':
-        if (this.accessLogService?.deleteEntry(ds.entryId)) ui.notifications.info('NCM | Log entry deleted.');
+        if (this.accessLogService?.deleteEntry(ds.entryId)) ncmNotify.info('NCM | Log entry deleted.');
         return this.app.render();
       case 'logRef': return this._openLogReference(target);
       case 'logImport': this._menu = ''; return this._importLogs();
@@ -1396,7 +1397,7 @@ export class NetworksTab extends BaseTab {
       case 'resetLockouts': this._menu = ''; return this._resetLockouts();
       case 'resetLockout':
         game.nightcity?.securityService?.resetState?.(ds.actorId, ds.targetId);
-        ui.notifications.info('NCM | Lockout lifted.');
+        ncmNotify.info('NCM | Lockout lifted.');
         return this.app.render();
       default: log.warn(`NetworksTab: unknown op ${op}`);
     }
@@ -1442,7 +1443,7 @@ export class NetworksTab extends BaseTab {
     const data = this._readForm(form);
     const where = data.where; delete data.where;
     if (!data.name) {
-      ui.notifications.warn('NCM | A network needs a name.');
+      ncmNotify.warn('NCM | A network needs a name.');
       const nameStep = this.element?.querySelector('[data-net2-step="identity"]'); nameStep?.click();
       return;
     }
@@ -1455,21 +1456,21 @@ export class NetworksTab extends BaseTab {
     } else {
       result = await ns.updateNetwork(id, data);
     }
-    if (!result?.success) { ui.notifications.error(`NCM | ${result?.error || 'Could not save the network.'}`); return; }
+    if (!result?.success) { ncmNotify.error(`NCM | ${result?.error || 'Could not save the network.'}`); return; }
 
     // Where: the scenes' own availability flags (the Scenes view's path).
     const net = ns.getNetwork(id) || { id, name: data.name, availability: data.availability };
     const scenes = (game.scenes?.contents ?? []).map(s => ({ id: s.id, avail: s.getFlag(MODULE_ID, 'networkAvailability') ?? {} }));
     for (const { sceneId, patch } of wherePatches(net, where, scenes)) await ns.setSceneNetworkAvailability(sceneId, patch);
 
-    ui.notifications.info(`NCM | Network "${data.name}" ${this._isNew ? 'created' : 'saved'}.`);
+    ncmNotify.info(`NCM | Network "${data.name}" ${this._isNew ? 'created' : 'saved'}.`);
     this._selId = id; this._edit = false; this._isNew = false; this._draft = null;
     this.app.render();
   }
 
   async _pickKeyItem() {
     const items = (game.items?.contents ?? []).filter(isCarrier);
-    if (!items.length) { ui.notifications.warn('NCM | No items found in the world.'); return; }
+    if (!items.length) { ncmNotify.warn('NCM | No items found in the world.'); return; }
     const pick = await showNamePicker({
       title: 'Pick the key item',
       hint: 'The item a character must carry to get in. Matched by name (and tag, when the item has one).',
@@ -1519,7 +1520,7 @@ export class NetworksTab extends BaseTab {
     if (!networkId) return;
     this.networkService?.revokeAuth?.(networkId);
     game.nightcity?.securityService?.resetAllForTarget?.(networkId);
-    ui.notifications.info(`NCM | Logins and lockouts reset for ${this.networkService?.getNetwork?.(networkId)?.name || networkId}.`);
+    ncmNotify.info(`NCM | Logins and lockouts reset for ${this.networkService?.getNetwork?.(networkId)?.name || networkId}.`);
     this.app.render();
   }
 
@@ -1531,8 +1532,8 @@ export class NetworksTab extends BaseTab {
     delete copy.id; delete copy.isCore; delete copy.createdAt; delete copy.createdBy;
     copy.name = `${n.name} (copy)`;
     const res = await this.networkService.createNetwork(copy);
-    if (!res?.success) { ui.notifications.error(`NCM | ${res?.error || 'Could not duplicate.'}`); return; }
-    ui.notifications.info(`NCM | Duplicated as "${copy.name}". It is on no scene yet.`);
+    if (!res?.success) { ncmNotify.error(`NCM | ${res?.error || 'Could not duplicate.'}`); return; }
+    ncmNotify.info(`NCM | Duplicated as "${copy.name}". It is on no scene yet.`);
     this._startEdit(res.network.id);
     this.app.render();
   }
@@ -1541,12 +1542,12 @@ export class NetworksTab extends BaseTab {
     this._menu = '';
     const n = this.networkService?.getNetwork?.(networkId);
     if (!n) return;
-    if (n.isCore) { ui.notifications.warn('NCM | The core networks can’t be deleted.'); return; }
+    if (n.isCore) { ncmNotify.warn('NCM | The core networks can’t be deleted.'); return; }
     const ok = await adminConfirm({ title: 'Delete network', content: `<p>Delete <strong>${esc(n.name)}</strong>? This can’t be undone.</p>` });
     if (!ok) return this.app.render();
     const res = await this.networkService.deleteNetwork(networkId);
-    if (res?.success) { ui.notifications.info(`NCM | Network "${n.name}" deleted.`); this._selId = null; this._edit = false; }
-    else ui.notifications.error(`NCM | ${res?.error || 'Could not delete.'}`);
+    if (res?.success) { ncmNotify.info(`NCM | Network "${n.name}" deleted.`); this._selId = null; this._edit = false; }
+    else ncmNotify.error(`NCM | ${res?.error || 'Could not delete.'}`);
     this.app.render();
   }
 
@@ -1560,7 +1561,7 @@ export class NetworksTab extends BaseTab {
   async _toggleSceneNet(sceneId, networkId) {
     const scene = game.scenes?.get(sceneId); const n = this.networkService?.getNetwork?.(networkId);
     if (!scene || !n) return;
-    if (n.availability?.global) { ui.notifications.info(`NCM | ${n.name} is everywhere. Edit it to put it on chosen scenes instead.`); return; }
+    if (n.availability?.global) { ncmNotify.info(`NCM | ${n.name} is everywhere. Edit it to put it on chosen scenes instead.`); return; }
     const on = this._sceneState(scene, n) === true;
     const patch = { [n.id]: !on };
     if (on && n.name && (scene.getFlag(MODULE_ID, 'networkAvailability') ?? {})[n.name]) patch[n.name] = false;
@@ -1608,10 +1609,10 @@ export class NetworksTab extends BaseTab {
     const n = this.networkService?.getNetwork?.(netId);
     const ids = this._scShelfIds?.get(key) || [];
     if (!n || !ids.length) return;
-    if (n.availability?.global) { ui.notifications.info(`NCM | ${n.name} reaches every scene.`); return; }
+    if (n.availability?.global) { ncmNotify.info(`NCM | ${n.name} reaches every scene.`); return; }
     const pa = shelfPaint(ids.map((id) => this._scAll?.get(id)).filter(Boolean), n.id);
     for (const id of pa.ids) await this._setSceneNet(game.scenes?.get(id), n, pa.on);
-    if (pa.ids.length) ui.notifications.info(`NCM | ${n.name} ${pa.on ? 'added to' : 'taken off'} ${pa.ids.length} scene${pa.ids.length === 1 ? '' : 's'}.`);
+    if (pa.ids.length) ncmNotify.info(`NCM | ${n.name} ${pa.on ? 'added to' : 'taken off'} ${pa.ids.length} scene${pa.ids.length === 1 ? '' : 's'}.`);
     this.app.render();
   }
 
@@ -1620,7 +1621,7 @@ export class NetworksTab extends BaseTab {
     const n = this.networkService?.getNetwork?.(netId);
     const r = this._scAll?.get(sceneId);
     if (!n || !r) return;
-    if (n.availability?.global) { ui.notifications.info(`NCM | ${n.name} reaches every scene.`); return; }
+    if (n.availability?.global) { ncmNotify.info(`NCM | ${n.name} reaches every scene.`); return; }
     const want = !r.nets.includes(n.id);
     const ids = (event?.shiftKey && this._scLast?.net === n.id) ? rangeIds(this._scGridOrder || [], this._scLast.id, sceneId) : [sceneId];
     for (const id of ids) await this._setSceneNet(game.scenes?.get(id), n, want);
@@ -1641,11 +1642,11 @@ export class NetworksTab extends BaseTab {
     if (at < 0) return;
     const pack = game.packs?.get?.(uuid.slice('Compendium.'.length, at));
     const id = uuid.slice(at + '.Scene.'.length);
-    if (!pack) { ui.notifications.warn('NCM | That compendium is not available.'); return; }
+    if (!pack) { ncmNotify.warn('NCM | That compendium is not available.'); return; }
     try {
       const doc = await game.scenes.importFromCompendium(pack, id);
-      if (doc) { ui.notifications.info(`NCM | ${doc.name} imported${this._prewire()[uuid] ? ' with its networks' : ''}.`); this._scSel = doc.id; }
-    } catch (e) { log.warn('Scenes: import failed', e); ui.notifications.error(`NCM | Could not import that scene: ${e.message}`); }
+      if (doc) { ncmNotify.info(`NCM | ${doc.name} imported${this._prewire()[uuid] ? ' with its networks' : ''}.`); this._scSel = doc.id; }
+    } catch (e) { log.warn('Scenes: import failed', e); ncmNotify.error(`NCM | Could not import that scene: ${e.message}`); }
     this.app.render();
   }
 
@@ -1653,7 +1654,7 @@ export class NetworksTab extends BaseTab {
   async _sendBroadcast() {
     const input = this.element?.querySelector('[data-net2-bcast]');
     const message = input?.value?.trim();
-    if (!message) { ui.notifications.warn('NCM | Type a message to broadcast.'); return; }
+    if (!message) { ncmNotify.warn('NCM | Type a message to broadcast.'); return; }
     const to = ScopePicker.value(this.scopeId('bcast'))[0] || 'all';
     const scene = this._scene();
     const gms = game.users.filter(u => u.active && u.isGM).map(u => u.id);
@@ -1674,8 +1675,8 @@ export class NetworksTab extends BaseTab {
     this.accessLogService?.addManualEntry({ networkId, networkName: label, actorName: 'SYSTEM', type: 'system', message: `Broadcast: ${message}` });
     if (input) input.value = '';
     this._bcastText = '';
-    if (to !== 'all' && !players.length) ui.notifications.warn(`NCM | No player is on ${label} right now — only the GMs got it.`);
-    else ui.notifications.info(`NCM | Broadcast sent to ${players.length} player${players.length === 1 ? '' : 's'}.`);
+    if (to !== 'all' && !players.length) ncmNotify.warn(`NCM | No player is on ${label} right now — only the GMs got it.`);
+    else ncmNotify.info(`NCM | Broadcast sent to ${players.length} player${players.length === 1 ? '' : 's'}.`);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1685,7 +1686,7 @@ export class NetworksTab extends BaseTab {
   _addNote() {
     const row = this.element?.querySelector('[data-net2-note]');
     const message = row?.querySelector('[name="noteMessage"]')?.value?.trim();
-    if (!message) { ui.notifications.warn('NCM | The note needs some text.'); return; }
+    if (!message) { ncmNotify.warn('NCM | The note needs some text.'); return; }
     const networkId = ScopePicker.value(this.scopeId('notenet'))[0] || 'unknown';
     const net = this.networkService?.getNetwork?.(networkId);
     this.accessLogService?.addManualEntry({
@@ -1695,7 +1696,7 @@ export class NetworksTab extends BaseTab {
     });
     this._note = { actor: '', type: this._note.type, message: '' };
     const msg = row.querySelector('[name="noteMessage"]'); if (msg) msg.value = '';
-    ui.notifications.info('NCM | Note added to the log.');
+    ncmNotify.info('NCM | Note added to the log.');
     this.app.render();
   }
 
@@ -1727,7 +1728,7 @@ export class NetworksTab extends BaseTab {
       const item = this.app.constructor._findItem?.(itemId)
         ?? game.items?.get(itemId) ?? Array.from(game.actors ?? []).reduce((f, a) => f ?? a.items?.get(itemId), null);
       if (item) game.nightcity?.messenger?.forceOpenDataShard?.(item);
-      else ui.notifications.warn('NCM | Could not find that data shard.');
+      else ncmNotify.warn('NCM | Could not find that data shard.');
     }
   }
 
@@ -1737,7 +1738,7 @@ export class NetworksTab extends BaseTab {
     const a = document.createElement('a');
     a.href = url; a.download = `ncm-network-log-${Date.now()}.${ext}`; a.click();
     URL.revokeObjectURL(url);
-    ui.notifications.info(`NCM | Network log exported (${ext}).`);
+    ncmNotify.info(`NCM | Network log exported (${ext}).`);
   }
 
   _importLogs() {
@@ -1749,25 +1750,25 @@ export class NetworksTab extends BaseTab {
       if (!file) return;
       try {
         const res = this.accessLogService?.importLog(await file.text());
-        if (res?.success) { ui.notifications.info(`NCM | Imported ${res.imported} log entries.`); this.app.render(); }
-        else ui.notifications.error(`NCM | Import failed: ${res?.error ?? 'unknown error'}`);
-      } catch (err) { ui.notifications.error(`NCM | Import failed: ${err.message}`); }
+        if (res?.success) { ncmNotify.info(`NCM | Imported ${res.imported} log entries.`); this.app.render(); }
+        else ncmNotify.error(`NCM | Import failed: ${res?.error ?? 'unknown error'}`);
+      } catch (err) { ncmNotify.error(`NCM | Import failed: ${err.message}`); }
     });
     input.click();
   }
 
   async _clearLogs() {
     const ok = await adminConfirm({ title: 'Clear the network log', content: '<p>Clear every network log entry? This can’t be undone.</p>' });
-    if (ok) { this.accessLogService?.clearLog(); ui.notifications.info('NCM | Network log cleared.'); }
+    if (ok) { this.accessLogService?.clearLog(); ncmNotify.info('NCM | Network log cleared.'); }
     this.app.render();
   }
 
   async _resetLockouts() {
     const sec = game.nightcity?.securityService;
     const list = sec?.getActiveLockouts?.() ?? [];
-    if (!list.length) { ui.notifications.info('NCM | Nobody is locked out.'); return this.app.render(); }
+    if (!list.length) { ncmNotify.info('NCM | Nobody is locked out.'); return this.app.render(); }
     const ok = await adminConfirm({ title: 'Reset lockouts', content: `<p>Lift all ${list.length} active lockout${list.length === 1 ? '' : 's'}?</p>` });
-    if (ok) { for (const l of list) sec.resetState(l.actorId, l.targetId); ui.notifications.info('NCM | Lockouts lifted.'); }
+    if (ok) { for (const l of list) sec.resetState(l.actorId, l.targetId); ncmNotify.info('NCM | Lockouts lifted.'); }
     this.app.render();
   }
 

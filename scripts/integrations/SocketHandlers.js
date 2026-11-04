@@ -6,6 +6,7 @@
  *              Handles the GM-relayed delivery pipeline, status syncing, and inbox refresh signals.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
@@ -323,8 +324,8 @@ export class SocketHandlers {
         saveFrame: `Frame captured — check your ${folder} folder.`,
         inbox: `Downloaded ${data.count} file(s) to your Agent (${folder}).`,
       };
-      if (data.success) ui.notifications.info(verb[data.dest] || verb.inbox);
-      else ui.notifications.warn('Exfil failed — no GM available or the GM rejected it.');
+      if (data.success) ncmNotify.info(verb[data.dest] || verb.inbox);
+      else ncmNotify.warn('Exfil failed — no GM available or the GM rejected it.');
     });
 
     // ─── Player Banking Siphon Relay (GM persists the drain / alerts) ──

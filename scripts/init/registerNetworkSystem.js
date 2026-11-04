@@ -13,6 +13,7 @@
  *                ready/110 → UI launch function override (openNetworkManagement)
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 
@@ -273,7 +274,7 @@ export function registerNetworkSystem(initializer) {
     // `select` grammar: NetworksTab.openTo — 'view:<v>' | 'new' | 'show:<id>' | 'log:<id>' | '<id>' (edit).
     const openNetworksTab = (select = null) => {
       if (!isGM()) {
-        ui.notifications.warn('NCM | Network Management is GM-only.');
+        ncmNotify.warn('NCM | Network Management is GM-only.');
         return null;
       }
       return ns.openAdminTab?.('networks', { popout: true, select });
@@ -302,7 +303,7 @@ export function registerNetworkSystem(initializer) {
 
     ns.setNetwork = async (networkId) => {
       if (!isGM()) {
-        ui.notifications.warn('NCM | setNetwork is GM-only.');
+        ncmNotify.warn('NCM | setNetwork is GM-only.');
         return { success: false };
       }
       return ns.networkService?.switchNetwork(networkId, { force: true }) ?? { success: false };
@@ -310,7 +311,7 @@ export function registerNetworkSystem(initializer) {
 
     ns.toggleDeadZone = async (sceneId, isDead) => {
       if (!isGM()) {
-        ui.notifications.warn('NCM | toggleDeadZone is GM-only.');
+        ncmNotify.warn('NCM | toggleDeadZone is GM-only.');
         return;
       }
       return ns.networkService?.toggleDeadZone(sceneId, isDead);
@@ -327,7 +328,7 @@ export function registerNetworkSystem(initializer) {
 
       const network = networkService.getNetwork(networkId);
       if (!network) {
-        ui.notifications.warn('NCM | Unknown network.');
+        ncmNotify.warn('NCM | Unknown network.');
         return { success: false };
       }
 

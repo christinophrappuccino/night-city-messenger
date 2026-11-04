@@ -16,6 +16,7 @@
  *   CSS: styles/components/role-manager.css (`ncm-rmgr-*`).
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { log } from '../../utils/helpers.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 import { BUILT_IN_ROLES } from '../../utils/contactVocab.js';
@@ -251,20 +252,20 @@ export class RoleManagerDialog {
   async _save() {
     if (this._busy || !this._draft) return;
     const d = this._draft;
-    if (!d.label.trim()) { ui.notifications.warn('A role needs a name.'); return; }
+    if (!d.label.trim()) { ncmNotify.warn('A role needs a name.'); return; }
     this._busy = true;
     try {
       const res = this._isNew
         ? await this._svc.addCustomRole({ label: d.label, icon: d.icon, color: d.color })
         : await this._svc.updateCustomRole(this._sel, { label: d.label, icon: d.icon, color: d.color });
-      if (!res?.success) { ui.notifications.warn(res?.error || 'Could not save the role.'); return; }
+      if (!res?.success) { ncmNotify.warn(res?.error || 'Could not save the role.'); return; }
       if (this._isNew) this._sel = res.role?.id ?? this._sel;
-      ui.notifications.info(`Role "${d.label.trim()}" ${this._isNew ? 'created' : 'saved'}.`);
+      ncmNotify.info(`Role "${d.label.trim()}" ${this._isNew ? 'created' : 'saved'}.`);
       this._isNew = false; this._draft = null;
       this._paint();
     } catch (err) {
       log.error('RoleManager save failed:', err);
-      ui.notifications.error('Could not save the role — see the console.');
+      ncmNotify.error('Could not save the role — see the console.');
     } finally { this._busy = false; }
   }
 
@@ -277,8 +278,8 @@ export class RoleManagerDialog {
     });
     if (!ok) return;
     const res = await this._svc.deleteCustomRole(cur.id);
-    if (!res?.success) { ui.notifications.warn(res?.error || 'Could not delete the role.'); return; }
-    ui.notifications.info(`Role "${cur.label}" deleted${res.affectedContacts ? ` — cleared from ${res.affectedContacts} contact(s)` : ''}.`);
+    if (!res?.success) { ncmNotify.warn(res?.error || 'Could not delete the role.'); return; }
+    ncmNotify.info(`Role "${cur.label}" deleted${res.affectedContacts ? ` — cleared from ${res.affectedContacts} contact(s)` : ''}.`);
     this._sel = null; this._draft = null;
     this._paint();
   }

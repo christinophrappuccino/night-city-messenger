@@ -25,6 +25,7 @@
  *   online, and it is checked BEFORE the roll — never after something irreversible.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, SOCKET_OPS, ENCRYPTION_TYPES, FAILURE_MODES, SHARD_PRESETS } from '../../utils/constants.js';
 import { log, isGM, resolveOperator, getOperatorActors, openOperatorPicker, canEncode, canEditShard, whisperCardHtml, getPlayerCharacters } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -212,7 +213,7 @@ export class ShardEncoderApp extends BaseApplication {
     const problem = this._permissionProblem();
     if (problem && !this._warnedPermission) {
       this._warnedPermission = true;
-      ui.notifications?.warn(`NCM | ${problem}`);
+      ncmNotify.warn(`NCM | ${problem}`);
       this._status(`<span style="color:var(--ncm-warning)">${esc(problem)}</span>`);
     }
   }
@@ -709,7 +710,7 @@ export class ShardEncoderApp extends BaseApplication {
   _canPersist() {
     if (isGM()) return true;
     if (game.users?.activeGM) return true;
-    ui.notifications?.warn('NCM | No GM is connected — an encode cannot be written. Try again when your GM is online.');
+    ncmNotify.warn('NCM | No GM is connected — an encode cannot be written. Try again when your GM is online.');
     return false;
   }
 
@@ -1032,7 +1033,7 @@ export class ShardEncoderApp extends BaseApplication {
                         this._mountStage({ enter: true }); return;
       case 'write':    return void this._openEditor();
       case 'addwrite': {
-        if (this._room() <= 0) { ui.notifications?.warn('NCM | That chip is full.'); return; }
+        if (this._room() <= 0) { ncmNotify.warn('NCM | That chip is full.'); return; }
         S.editIndex = -1;
         // Choosing what the next file IS comes before writing it — and picking a
         // type while this is set opens the editor for a NEW file, never the last one.
@@ -1145,7 +1146,7 @@ export class ShardEncoderApp extends BaseApplication {
         return void this._openEditor();
       }
       case 'addentry': {
-        if (this._room() <= 0) { ui.notifications?.warn('NCM | That chip is full.'); return; }
+        if (this._room() <= 0) { ncmNotify.warn('NCM | That chip is full.'); return; }
         S.editIndex = -1;
         S.adding = true;
         S.dec = 'type';
@@ -1186,12 +1187,12 @@ export class ShardEncoderApp extends BaseApplication {
     if (dir < 0) { if (i === 0) return void this.close(); return void this._transitionTo(stages[i - 1].key); }
     if (this.S.stage === 'encode') { if (!this.S.result) this._runEncode(); return; }
     if (this.S.stage === 'blank' && !this._blank().tier) {
-      ui.notifications?.warn('NCM | Pick something to write on first.');
+      ncmNotify.warn('NCM | Pick something to write on first.');
       return;
     }
     if (this.S.stage === 'build' && !this._isProgram()) {
-      if (!this._typeRow()) { ui.notifications?.warn('NCM | Pick what goes on the chip first.'); return; }
-      if (!this._entries().length) { ui.notifications?.warn('NCM | Write something first — there is nothing to encode yet.'); return; }
+      if (!this._typeRow()) { ncmNotify.warn('NCM | Pick what goes on the chip first.'); return; }
+      if (!this._entries().length) { ncmNotify.warn('NCM | Write something first — there is nothing to encode yet.'); return; }
     }
     this._transitionTo(stages[i + 1].key);
   }
@@ -1905,11 +1906,11 @@ export class ShardEncoderApp extends BaseApplication {
    */
   async _openEditor() {
     const row = this._typeRow();
-    if (!row) { ui.notifications?.warn('NCM | Pick a file type first.'); return; }
+    if (!row) { ncmNotify.warn('NCM | Pick a file type first.'); return; }
     // The composer owns one window id, so a second one would fight the first for
     // the same slot. Finish the file you are on.
     if (this._composer?.rendered) {
-      ui.notifications?.warn('NCM | Finish the file you are writing first.');
+      ncmNotify.warn('NCM | Finish the file you are writing first.');
       this._composer.bringToFront?.();
       return;
     }
@@ -1968,10 +1969,10 @@ export class ShardEncoderApp extends BaseApplication {
       this.S.img = made;
       this._renderRail({ enter: false });
       this._patch();
-      ui.notifications?.info('NCM | Chip designed — it goes on the item when you encode.');
+      ncmNotify.info('NCM | Chip designed — it goes on the item when you encode.');
     } catch (err) {
       log.error('Encoder: the icon builder failed', err);
-      ui.notifications?.error('NCM | The designer could not open — see the console.');
+      ncmNotify.error('NCM | The designer could not open — see the console.');
     }
   }
 
@@ -1991,7 +1992,7 @@ export class ShardEncoderApp extends BaseApplication {
     const skill = which === 'gate'
       ? (this.cfg.lock?.gateSkill || 'Electronics/Security Tech')
       : (this.cfg.lock?.skill || 'Cryptography');
-    if (!this.actor) { ui.notifications?.warn('NCM | No operator — pick a character first.'); return; }
+    if (!this.actor) { ncmNotify.warn('NCM | No operator — pick a character first.'); return; }
     this.S.busy = true; this._patchFooter();
     try {
       const res = await game.nightcity?.skillService?.performCheck(this.actor, skill, {
@@ -2011,7 +2012,7 @@ export class ShardEncoderApp extends BaseApplication {
       this._patch();
     } catch (err) {
       log.error('Encoder: lock roll failed', err);
-      ui.notifications?.error(`NCM | ${err.message}`);
+      ncmNotify.error(`NCM | ${err.message}`);
     } finally {
       this.S.busy = false; this._patchFooter();
     }
@@ -2025,7 +2026,7 @@ export class ShardEncoderApp extends BaseApplication {
    */
   async _pickKeyItem() {
     const carried = (this.actor?.items?.contents ?? []).filter(isCarrier);
-    if (!carried.length) { ui.notifications?.warn('NCM | You are carrying nothing that could work as a key.'); return; }
+    if (!carried.length) { ncmNotify.warn('NCM | You are carrying nothing that could work as a key.'); return; }
     const pick = await showNamePicker({
       admin: false,
       title: 'Fit a key item',
@@ -2054,13 +2055,13 @@ export class ShardEncoderApp extends BaseApplication {
     const allowed = this._types().some((t) => t.key === next);
     if (!allowed) {
       const label = CONTENT_TYPE_INFO[next]?.label || next;
-      ui.notifications?.warn(`NCM | Your GM does not allow ${label} on a player-made ${T('short', 'lower')} — it stays a ${CONTENT_TYPE_INFO[this.S.type]?.label || this.S.type}.`);
+      ncmNotify.warn(`NCM | Your GM does not allow ${label} on a player-made ${T('short', 'lower')} — it stays a ${CONTENT_TYPE_INFO[this.S.type]?.label || this.S.type}.`);
       entry.contentType = this.S.type;
       return false;
     }
     this.S.type = next;
     const row = this._typeRow();
-    ui.notifications?.info(`NCM | Now forging a ${CONTENT_TYPE_INFO[next]?.label || next}${row?.skill ? ` — ${shortSk(row.skill)} vs DV ${row.dv}` : ' — no roll needed'}.`);
+    ncmNotify.info(`NCM | Now forging a ${CONTENT_TYPE_INFO[next]?.label || next}${row?.skill ? ` — ${shortSk(row.skill)} vs DV ${row.dv}` : ' — no roll needed'}.`);
     return true;
   }
 
@@ -2436,24 +2437,24 @@ export class ShardEncoderApp extends BaseApplication {
     const S = this.S;
     if (S.busy || S.result) return;
     const problem = this._permissionProblem();
-    if (problem) { ui.notifications?.warn(`NCM | ${problem}`); return; }
+    if (problem) { ncmNotify.warn(`NCM | ${problem}`); return; }
     const { item, tier } = this._blank();
     const bonuses = this._bonuses();
-    if (!tier) { ui.notifications?.warn('NCM | Pick something to write on first.'); return; }
+    if (!tier) { ncmNotify.warn('NCM | Pick something to write on first.'); return; }
     // Guard BEFORE anything irreversible: a player needs a GM to land the write.
     if (!this._canPersist()) return;
     const price = S.srcMode === 'buy' ? (tier.price || 0) : 0;
     const load = this._eddiesLoad();
     const wealth = this.actor?.system?.wealth?.value ?? 0;
     if (price + load > wealth) {
-      ui.notifications?.warn(load
+      ncmNotify.warn(load
         ? `NCM | That is ${price + load} eb (${price ? `${price} for the blank plus ` : ''}${load} loaded onto it) and ${this.actor?.name || 'you'} has ${wealth} eb.`
         : `NCM | That blank costs ${price} eb and you have ${wealth} eb.`);
       return;
     }
-    if ((S.srcMode === 'own' || this._isEdit()) && !item) { ui.notifications?.warn('NCM | That blank is gone — pick another.'); return; }
+    if ((S.srcMode === 'own' || this._isEdit()) && !item) { ncmNotify.warn('NCM | That blank is gone — pick another.'); return; }
     if (!this._isProgram() && !this._entries().length) {
-      ui.notifications?.warn(this._isEdit() ? 'NCM | Write something new onto it first — a re-encode with nothing added changes nothing.' : 'NCM | There is nothing written to encode.');
+      ncmNotify.warn(this._isEdit() ? 'NCM | Write something new onto it first — a re-encode with nothing added changes nothing.' : 'NCM | There is nothing written to encode.');
       return;
     }
     // Writing on something you already own renames it and can replace its
@@ -2579,7 +2580,7 @@ export class ShardEncoderApp extends BaseApplication {
         return;
       }
       log.error('Encoder: encode failed', err);
-      ui.notifications?.error(`NCM | The encode failed: ${err.message}`);
+      ncmNotify.error(`NCM | The encode failed: ${err.message}`);
       this._status(`<span style="color:var(--ncm-danger)">The encode failed.</span> ${esc(err.message)}`);
       this.g('encCore').classList.remove('saving');
       this.g('encCoreLbl').textContent = 'READY';
@@ -2734,9 +2735,9 @@ export class ShardEncoderApp extends BaseApplication {
     this.S.priceState = res.decision;
     if (res.decision === 'approved' || res.decision === 'countered') {
       this.S.price = res.price;
-      ui.notifications?.info('NCM | Your GM ' + (res.decision === 'countered' ? 'countered at ' : 'approved ') + res.price + ' eb.');
+      ncmNotify.info('NCM | Your GM ' + (res.decision === 'countered' ? 'countered at ' : 'approved ') + res.price + ' eb.');
     } else if (res.decision === 'denied') {
-      ui.notifications?.warn('NCM | Your GM did not approve that price.');
+      ncmNotify.warn('NCM | Your GM did not approve that price.');
     }
     this._renderMarket(R);
   }
@@ -2860,13 +2861,13 @@ export class ShardEncoderApp extends BaseApplication {
       // that lists one, and remember it so the seal can offer to open it.
       this._madeItemId = item.id;
       this._refreshShardViews();
-      ui.notifications?.info(`NCM | "${S.label || item.name}" is in ${this.actor?.name || 'your'}'s gear.`);
+      ncmNotify.info(`NCM | "${S.label || item.name}" is in ${this.actor?.name || 'your'}'s gear.`);
       return { ok: true, itemId: item.id, where: this.actor?.name || '' };
     } catch (err) {
       log.error('Encoder: the write failed', err);
       if (debited) {
-        try { await this._refundWealth(debited, 'Encode failed'); ui.notifications?.info(`NCM | Refunded ${debited} eb.`); }
-        catch (e2) { log.error('Encoder: refund failed', e2); ui.notifications?.error(`NCM | The write AND the ${debited} eb refund failed — fix your wealth by hand.`); }
+        try { await this._refundWealth(debited, 'Encode failed'); ncmNotify.info(`NCM | Refunded ${debited} eb.`); }
+        catch (e2) { log.error('Encoder: refund failed', e2); ncmNotify.error(`NCM | The write AND the ${debited} eb refund failed — fix your wealth by hand.`); }
       }
       return { ok: false, error: err.message };
     }
@@ -3017,7 +3018,7 @@ export class ShardEncoderApp extends BaseApplication {
     if (isGM()) {
       const r = await svc?.reencodeShard(item, { ...patch, entries: list });
       if (!r?.success) { log.warn('Encoder: re-encode failed', r?.error); return false; }
-      for (const why of (r.failed || [])) ui.notifications?.warn(`NCM | ${why}`);
+      for (const why of (r.failed || [])) ncmNotify.warn(`NCM | ${why}`);
       return true;
     }
     const sm = game.nightcity?.socketManager;
@@ -3042,7 +3043,7 @@ export class ShardEncoderApp extends BaseApplication {
       for (const entry of list) {
         const e = await svc?.addMessage(item, entry);
         // A refusal here is worth hearing — a full chip is the likely reason.
-        if (!e?.success) { log.warn('Encoder: entry failed (non-fatal)', e?.error); ui.notifications?.warn(`NCM | ${e?.error || 'One file could not be written.'}`); }
+        if (!e?.success) { log.warn('Encoder: entry failed (non-fatal)', e?.error); ncmNotify.warn(`NCM | ${e?.error || 'One file could not be written.'}`); }
       }
       return true;
     }
@@ -3084,7 +3085,7 @@ export class ShardEncoderApp extends BaseApplication {
   /** Buy a blank: a real item in the operator's gear, stamped with the tier it was sold as. */
   async _createBlank(tier) {
     if (!this.actor?.isOwner) {
-      ui.notifications?.error(`NCM | You cannot add items to ${this.actor?.name || 'that character'}.`);
+      ncmNotify.error(`NCM | You cannot add items to ${this.actor?.name || 'that character'}.`);
       return null;
     }
     const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter((t) => t !== 'base');

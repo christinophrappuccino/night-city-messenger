@@ -25,6 +25,7 @@
  *   because the rest of the window is full of them.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { TERMINAL_ICON_LIBRARY } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { CT_COLORS, ACCENT_HEX } from '../content/ContentRenderers.js';
@@ -354,7 +355,7 @@ export function runIconBuilder({ host, image = '', colour = 'cyan' } = {}) {
             callback: (p) => {
               const im = new Image();
               im.onload = () => { S.imageEl = im; S.mark = 'image'; syncChips(); paint(); };
-              im.onerror = () => ui.notifications?.warn('NCM | That image could not be loaded.');
+              im.onerror = () => ncmNotify.warn('NCM | That image could not be loaded.');
               im.src = p;
             },
           }).render(true);
@@ -367,7 +368,7 @@ export function runIconBuilder({ host, image = '', colour = 'cyan' } = {}) {
           // A cross-origin image taints the canvas and export throws. Say so
           // instead of handing back a broken icon.
           log.warn('IconBuilder: the canvas could not be exported', err);
-          ui.notifications?.warn('NCM | That image cannot be baked in — pick a symbol, or an image from your world.');
+          ncmNotify.warn('NCM | That image cannot be baked in — pick a symbol, or an image from your world.');
           return;
         }
       }

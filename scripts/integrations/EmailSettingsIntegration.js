@@ -7,6 +7,7 @@
  *              character and NPC sheets. GM can edit any, players can edit their own.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { DataValidator } from '../data/DataValidator.js';
@@ -99,7 +100,7 @@ export class EmailSettingsIntegration {
             const newEmail = e.target.value.trim();
 
             if (newEmail && !DataValidator.isValidEmail(newEmail)) {
-              ui.notifications.warn('NCM: Invalid email format.');
+              ncmNotify.warn('NCM: Invalid email format.');
               e.target.value = currentEmail;
               return;
             }

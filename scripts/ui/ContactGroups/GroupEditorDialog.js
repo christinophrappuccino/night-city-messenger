@@ -14,6 +14,7 @@
  *   Resolves the edited group, or null when cancelled. Nothing is saved here —
  *   the caller owns the write (actor flag vs world setting).
  */
+import { ncmNotify } from '../../utils/notify.js';
 import { adminDialog, playerDialog } from '../../utils/adminTheme.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { GROUP_COLORS, sanitizeGroup } from '../../services/ContactGroupService.js';
@@ -112,7 +113,7 @@ export async function editGroupDialog(group = {}, { memberSource, title, admin =
           const FP = (typeof FilePicker !== 'undefined') ? FilePicker : foundry.applications?.apps?.FilePicker;
           try {
             if (FP) new FP({ type: 'image', current: imgIn?.value || '', callback: (path) => { if (imgIn) { imgIn.value = path; paintFace(); } } }).render(true);
-          } catch (err) { ui.notifications.warn('You can\'t browse files here — paste an image path or URL instead.'); }
+          } catch (err) { ncmNotify.warn('You can\'t browse files here — paste an image path or URL instead.'); }
         });
         list.addEventListener('click', (ev) => {
           const x = ev.target.closest('[data-remove]');

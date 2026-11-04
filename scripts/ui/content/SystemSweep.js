@@ -22,6 +22,7 @@
  * @module night-city-messenger
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 
@@ -80,7 +81,7 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
   return new Promise((resolve) => {
     const term = game.nightcity?.terminalService;
     const src = source || terminalSource(term, item);
-    if (!src) { try { ui.notifications?.warn('NCM | You can only sweep a terminal you are logged into.'); } catch { /* */ } resolve({ swept: false }); return; }
+    if (!src) { try { ncmNotify.warn('NCM | You can only sweep a terminal you are logged into.'); } catch { /* */ } resolve({ swept: false }); return; }
 
     const sweepSkill = skill || DEFAULT_SWEEP_SKILL;
     const sweepDV = Number(dv) || DEFAULT_SWEEP_DV;
@@ -135,7 +136,7 @@ export function runSystemSweep({ item, actor = null, host = null, skill = null, 
       let total = Infinity, rolled = null;
       if (!forceReveal) {
         const svc = game.nightcity?.skillService;
-        if (!svc || !actor) { ui.notifications?.warn('NCM | No operator to roll the sweep.'); scanning = false; return cleanup(); }
+        if (!svc || !actor) { ncmNotify.warn('NCM | No operator to roll the sweep.'); scanning = false; return cleanup(); }
         try {
           // The number and the chat card wait for the sweep to finish.
           rolled = await svc.performCheck(actor, sweepSkill, { dc: sweepDV, deferChat: true, context: 'System Sweep', flavor: `SWEEP // ${src.name}`,

@@ -295,7 +295,7 @@ ok(J.movesFor(d, 4, 9) === 3 && J.movesFor(dm, 4, 5) === 4 && J.movesFor(dm, 4, 
   ok(js.includes('switchOperator: NodeConsoleApp._onSwitchOperator') && hbs.includes('data-action="switchOperator"') && js.includes('openOperatorPicker(this.element)'), 'the console has the terminal’s OPERATOR chip (same picker)');
   ok(js.includes("operator: this._operatorContext()") && /_runner\(rules = this\._rules\(\)\) \{\s*const actor = resolveOperator\(\);/.test(js), 'the chip and the jack-in read the SAME character (resolveOperator)');
   ok(hbs.includes('{{operator.skill}} <b>{{operator.rank}}</b>'), 'the chip shows the rank it reads, so a wrong character / rank is visible before jacking in');
-  ok(js.includes("if (this._session) return void ui.notifications.warn('Jack out first"), 'no switching mid-session');
+  ok(js.includes("if (this._session) return void ncmNotify.warn('Jack out first"), 'no switching mid-session');
 }
 
 // ═══ 9. Switching off a node that is not the last one on its scene says so ═══

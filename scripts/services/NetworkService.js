@@ -12,6 +12,7 @@
  *              Initialization priority: ready/30
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, NETWORKS, NETWORK_TYPES, SECURITY_LEVELS, NETWORK_ACCESS_MODES, CONNECTION_MODES } from '../utils/constants.js';
 import { beatsDV } from '../utils/rolls.js';
 import { log, isGM, generateId, whisperCardHtml } from '../utils/helpers.js';
@@ -1103,7 +1104,7 @@ export class NetworkService {
     const cur = this._currentNetworkId;
     if (cur && cut.has(cur)) {
       const net = this.getNetwork(cur);
-      ui.notifications?.warn((net?.name || 'Network') + ' signal lost — its node here is down.');
+      ncmNotify.warn((net?.name || 'Network') + ' signal lost — its node here is down.');
       this._preNodeCutNetworkId = cur;
       if (available.length) {
         this.soundService?.play('dead-zone');
@@ -1118,7 +1119,7 @@ export class NetworkService {
     const back = this._preNodeCutNetworkId;
     if (back && back !== cur && available.some((n) => n.id === back)) {
       this._preNodeCutNetworkId = null;
-      ui.notifications?.info((this.getNetwork(back)?.name || 'Network') + ' is back.');
+      ncmNotify.info((this.getNetwork(back)?.name || 'Network') + ' is back.');
       this.switchNetwork(back, { force: true, silent: true });
     }
   }

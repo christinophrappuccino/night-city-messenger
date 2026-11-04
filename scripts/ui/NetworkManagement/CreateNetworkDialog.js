@@ -12,6 +12,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, NETWORK_TYPES } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -157,7 +158,7 @@ export class CreateNetworkDialog extends BaseApplication {
    */
   static async show(options = {}) {
     if (!isGM()) {
-      ui.notifications.warn('NCM | Only the GM can create networks.');
+      ncmNotify.warn('NCM | Only the GM can create networks.');
       return null;
     }
 
@@ -510,7 +511,7 @@ export class CreateNetworkDialog extends BaseApplication {
 
     // ─── Validation ───
     if (!data.name?.trim()) {
-      ui.notifications.warn('NCM | Network name is required.');
+      ncmNotify.warn('NCM | Network name is required.');
       const nameInput = this.element?.querySelector('[name="name"]');
       nameInput?.focus();
       nameInput?.classList.add('ncm-create-net__input--error');
@@ -519,7 +520,7 @@ export class CreateNetworkDialog extends BaseApplication {
     }
 
     if (data.security.authType === 'password' && data.security.requiresAuth && !data.security.password?.trim()) {
-      ui.notifications.warn('NCM | Password is required for password-protected networks.');
+      ncmNotify.warn('NCM | Password is required for password-protected networks.');
       this.element?.querySelector('[name="password"]')?.focus();
       return;
     }
@@ -569,11 +570,11 @@ export class CreateNetworkDialog extends BaseApplication {
     const result = await this.networkService?.createNetwork(networkData);
 
     if (!result?.success) {
-      ui.notifications.error(`NCM | Failed to create network: ${result?.error || 'Unknown error'}`);
+      ncmNotify.error(`NCM | Failed to create network: ${result?.error || 'Unknown error'}`);
       return;
     }
 
-    ui.notifications.info(`NCM | Network "${networkData.name}" created.`);
+    ncmNotify.info(`NCM | Network "${networkData.name}" created.`);
     log.info(`Created network: ${result.network.id} — "${networkData.name}"`);
 
     // Resolve the promise with the new network

@@ -26,6 +26,7 @@
  *   one inside an HTML comment silently killed the whole modal).
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, chatCardTime } from '../../utils/helpers.js';
 
@@ -99,7 +100,7 @@ export function requestNetAdjudication(o = {}) {
   }
 
   if (!game.users?.activeGM) {
-    ui.notifications.warn('NCM | No GM connected — this table resolves netrunning at the table, so a GM must be online to call it.');
+    ncmNotify.warn('NCM | No GM connected — this table resolves netrunning at the table, so a GM must be online to call it.');
     return { promise: Promise.resolve({ cancelled: true }), withdraw: () => {} };
   }
 
@@ -151,7 +152,7 @@ export function handleNetResolveResult(data) {
 /** GM-side socket body for NET_RESOLVE_CANCEL — the player stood down. */
 export function handleNetResolveCancel(data) {
   const close = data?.requestId ? _openPrompts.get(data.requestId) : null;
-  if (close) { close(); ui.notifications.info('NCM | The operator withdrew the action.'); }
+  if (close) { close(); ncmNotify.info('NCM | The operator withdrew the action.'); }
 }
 
 /** Player-side socket body for NET_RESOLVE_STATE — the GM docked/restored their

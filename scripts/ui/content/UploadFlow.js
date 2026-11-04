@@ -16,6 +16,7 @@
  * @module night-city-messenger
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 import { runSecurityConsole } from './SecurityConsole.js';
@@ -97,9 +98,9 @@ function _nowIso() {
 export async function runUpload({ actor, program, targetItem, accountId = null, host = null }) {
   const p = program || {};
   const term = game.nightcity?.terminalService;
-  if (!term?.isTerminal?.(targetItem)) { ui.notifications.warn('NCM | You can only upload to a terminal you are logged into.'); return null; }
+  if (!term?.isTerminal?.(targetItem)) { ncmNotify.warn('NCM | You can only upload to a terminal you are logged into.'); return null; }
   if (!canPersistContent()) return null;                    // the install relays — needs a GM online
-  if (!actor) { ui.notifications.warn('NCM | No operator assigned to run the upload.'); return null; }
+  if (!actor) { ncmNotify.warn('NCM | No operator assigned to run the upload.'); return null; }
 
   const skill = p.uploadSkill || DEFAULT_UPLOAD_SKILL;
   const dv = Number(p.uploadDV) || DEFAULT_UPLOAD_DV;
@@ -168,7 +169,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
   // REJECTED — nothing installs, so there's nothing for the GM to fire later.
   // (The console already played the fail sound.)
   if (outcome === 'rejected') {
-    ui.notifications.warn(`NCM | ${targetItem.name} refused ${name} — the ${isExecute ? 'push' : 'forge'} was too far off${res.adjudicated ? '' : ` (missed DV ${dv} by ${Math.abs(margin)})`}.`);
+    ncmNotify.warn(`NCM | ${targetItem.name} refused ${name} — the ${isExecute ? 'push' : 'forge'} was too far off${res.adjudicated ? '' : ` (missed DV ${dv} by ${Math.abs(margin)})`}.`);
     return { success: false, outcome, forgeQuality };
   }
 
@@ -187,7 +188,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
     if (WRITES.includes(p.effectType) && !isGM()) {
       game.nightcity?.socketManager?.emit(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, { kind: 'uploadRun', itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', macroId: p.macroId || '', userId: game.user.id });
       if (outcome === 'clean') game.nightcity?.traceService?.logSuccess({ actor, action: 'upload', source: name, hostItem: targetItem, severity: 'hostile' });
-      ui.notifications.info(`NCM | ${name} sent to ${targetItem.name}…`);
+      ncmNotify.info(`NCM | ${name} sent to ${targetItem.name}…`);
       return { success: true, outcome, ran: true, report: '' };
     }
     let report = '';
@@ -206,7 +207,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
       });
     } catch (e) { /* whisper is a bonus */ }
     if (outcome === 'clean') game.nightcity?.traceService?.logSuccess({ actor, action: 'analyze', source: name, hostItem: targetItem, severity: 'minor' });
-    ui.notifications.info(`NCM | ${name} — ${result}`);
+    ncmNotify.info(`NCM | ${name} — ${result}`);
     return { success: true, outcome, ran: true, report: result };
   }
 
@@ -239,7 +240,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
   // rule; this used to double-play hack-success/hack-fail on top of the console).
   if (outcome === 'clean') game.nightcity?.traceService?.logSuccess({ actor, action: 'upload', source: name, hostItem: targetItem, severity: 'hostile' });
   const sloppyTail = isExecute ? ' — but it\'s glitchy; a sweep will flag it.' : ' — but the forge is sloppy; a scan will flag it.';
-  ui.notifications.info(`NCM | ${name} ${isExecute ? 'installed on' : 'uploaded to'} ${targetItem.name}${outcome === 'clean' ? '.' : sloppyTail}`);
+  ncmNotify.info(`NCM | ${name} ${isExecute ? 'installed on' : 'uploaded to'} ${targetItem.name}${outcome === 'clean' ? '.' : sloppyTail}`);
   return { success: true, outcome, forgeQuality };
 }
 

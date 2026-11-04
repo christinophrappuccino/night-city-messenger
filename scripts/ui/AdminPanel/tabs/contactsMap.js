@@ -12,6 +12,7 @@
  * three map ops (mapPick / mapHi / mapShareAll), which ContactsTab forwards here.
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { formatCyberDate } from '../../../utils/helpers.js';
 import { identityRole } from '../../../utils/identities.js';
 import { getRoleIcon, getInitials } from '../../../utils/designHelpers.js';
@@ -165,7 +166,7 @@ export async function shareWithEveryone(tab, cid) {
     const r = await tab._setKnows(cid, p.actorId, true);
     if (r?.success !== false) n++;
   }
-  ui.notifications.info(n ? `Shared with ${n} more character${n === 1 ? '' : 's'}.` : 'Everyone already knows them.');
+  ncmNotify.info(n ? `Shared with ${n} more character${n === 1 ? '' : 's'}.` : 'Everyone already knows them.');
 }
 
 /**

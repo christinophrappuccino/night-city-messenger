@@ -22,6 +22,7 @@
  * tab's context into one object).
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { domainOf } from '../../../utils/junkSenders.js';
 import { convCount, convWaiting, wireConversations, closeConversations, newConversationAdmin } from './conversationsView.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../../../utils/constants.js';
@@ -836,7 +837,7 @@ export class MessagesTab extends BaseTab {
       game.nightcity?.socketManager?.emit?.(SOCKET_OPS.MESSAGE_STATUS_UPDATE, { actorId: ownerId, messageId, update: read ? 'read' : 'unread' });
       return this.render(true);
     }
-    ui.notifications.warn('NCM | That message is no longer in its inbox.');
+    ncmNotify.warn('NCM | That message is no longer in its inbox.');
   }
 
   _anonEnabled() {
@@ -877,9 +878,9 @@ export class MessagesTab extends BaseTab {
 
   async _onReplySend() {
     const plan = this._replyPlan();
-    if (!plan) return ui.notifications.warn('NCM | Pick a conversation first.');
+    if (!plan) return ncmNotify.warn('NCM | Pick a conversation first.');
     const body = (this._drafts.get(plan.g.key) || this.element?.querySelector('[data-msg2-draft]')?.value || '').trim();
-    if (!body) return ui.notifications.warn('NCM | Write a reply first.');
+    if (!body) return ncmNotify.warn('NCM | Write a reply first.');
     const svc = this.messageService;
     const original = this._toMessage(plan.target);
     const reply = svc.buildReply(original, plan.fromActorId, body.replace(/\n/g, '<br>'), { fromContactId: plan.fromContactId });
@@ -892,11 +893,11 @@ export class MessagesTab extends BaseTab {
     if (this._replyAnon && this._anonEnabled()) reply.anonymous = this._anonBlock(original);
     const result = await svc.sendMessage(reply);
     if (!result?.success) {
-      ui.notifications.error(`NCM | Reply not sent — ${result?.error || 'unknown error'}`);
+      ncmNotify.error(`NCM | Reply not sent — ${result?.error || 'unknown error'}`);
       return;
     }
-    if (result.failed?.length) ui.notifications.warn(`NCM | Not delivered to ${result.failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ')}`);
-    else ui.notifications.info(`NCM | Replied to ${plan.to.map(t => t.name).join(', ')}.`);
+    if (result.failed?.length) ncmNotify.warn(`NCM | Not delivered to ${result.failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ')}`);
+    else ncmNotify.info(`NCM | Replied to ${plan.to.map(t => t.name).join(', ')}.`);
     await this._markAnswered(plan.waiting.map(m => m.messageId));
     await this._markPagesRead(plan.waiting);
     this._drafts.delete(plan.g.key);
@@ -937,10 +938,10 @@ export class MessagesTab extends BaseTab {
     const g = this._convCache?.get(this._convSel);
     if (!g) return;
     const waiting = g.msgs.filter(m => !m._answered);
-    if (!waiting.length) return ui.notifications.info('NCM | Nothing waiting in this conversation.');
+    if (!waiting.length) return ncmNotify.info('NCM | Nothing waiting in this conversation.');
     await this._markAnswered(waiting.map(m => m.messageId));
     await this._markPagesRead(waiting);
-    ui.notifications.info(`NCM | Marked ${waiting.length} message${waiting.length !== 1 ? 's' : ''} answered.`);
+    ncmNotify.info(`NCM | Marked ${waiting.length} message${waiting.length !== 1 ? 's' : ''} answered.`);
     this.render(true);
   }
 
@@ -1855,16 +1856,16 @@ export class MessagesTab extends BaseTab {
       }
       case 'dlDeliver': {
         const r = await this.messageService?.forceDeliver?.(d.id);
-        if (r?.success) ui.notifications.info('NCM | Delivered — you sent it on as GM.');
-        else ui.notifications.warn(`NCM | Could not deliver it — ${r?.error || 'unknown error'}`);
+        if (r?.success) ncmNotify.info('NCM | Delivered — you sent it on as GM.');
+        else ncmNotify.warn(`NCM | Could not deliver it — ${r?.error || 'unknown error'}`);
         return this.render(true);
       }
       case 'dlNetworks': return ns?.openAdminTab?.('networks', { select: 'view:scene' });
       case 'dlContact': return ns?.openAdminTab?.('contacts', { select: d.contact });
       case 'dlUnlock': case 'dlRelock': {
         const r = await this.masterContactService?.updateContact?.(d.contact, { sendOnly: op === 'dlRelock' });
-        if (r?.success === false) ui.notifications.warn(`NCM | Could not change it — ${r.error || 'unknown error'}`);
-        else ui.notifications.info(op === 'dlUnlock' ? 'NCM | Players can write to it now.' : 'NCM | It is send-only again.');
+        if (r?.success === false) ncmNotify.warn(`NCM | Could not change it — ${r.error || 'unknown error'}`);
+        else ncmNotify.info(op === 'dlUnlock' ? 'NCM | Players can write to it now.' : 'NCM | It is send-only again.');
         return this.render(true);
       }
       case 'dlAnswerAs': {
@@ -1875,7 +1876,7 @@ export class MessagesTab extends BaseTab {
       case 'dlNudge': {
         const entry = this._dlEntry(this._sel) || {};
         const ok = await this._nudge(d.id, d.actor, entry);
-        ui.notifications[ok ? 'info' : 'warn'](ok ? 'NCM | Nudged — they get a toast now, or a whisper waiting when they log in.' : 'NCM | Nobody to nudge — no player has that character.');
+        ncmNotify[ok ? 'info' : 'warn'](ok ? 'NCM | Nudged — they get a toast now, or a whisper waiting when they log in.' : 'NCM | Nobody to nudge — no player has that character.');
         return this.render(true);
       }
       case 'dlNudgeAll': {
@@ -1885,15 +1886,15 @@ export class MessagesTab extends BaseTab {
           if (!c.unread || c.isDeleted || !c.toActorId || this._dlNudged.has(`${c.messageId}|${c.toActorId}`)) continue;
           if (await this._nudge(c.messageId, c.toActorId, entry)) n++;
         }
-        ui.notifications.info(`NCM | Nudged ${n} ${n === 1 ? 'person' : 'people'}.`);
+        ncmNotify.info(`NCM | Nudged ${n} ${n === 1 ? 'person' : 'people'}.`);
         return this.render(true);
       }
       case 'dlRemoveMember': {
         const gs = ns?.contactGroupService;
         const g = gs?.getMasterGroup?.(d.group);
-        if (!g) return ui.notifications.warn('NCM | That group is gone.');
+        if (!g) return ncmNotify.warn('NCM | That group is gone.');
         await gs.saveMasterGroup({ ...g, members: (g.members || []).filter(m => m?.hint?.actorId !== d.actor) });
-        ui.notifications.info(`NCM | Removed from ${g.name}.`);
+        ncmNotify.info(`NCM | Removed from ${g.name}.`);
         return this.render(true);
       }
     }
@@ -1998,7 +1999,7 @@ export class MessagesTab extends BaseTab {
     if (!pick) return;
     if (kind === 'reply') {
       const original = await this.messageService?.getMessage(pick.inboxOwner, pick.messageId);
-      if (!original) return ui.notifications.warn('NCM | Message not found.');
+      if (!original) return ncmNotify.warn('NCM | Message not found.');
       const opts = { mode: 'reply', originalMessage: original };
       if (pick.contactId) opts.fromContactId = pick.contactId;
       else if (pick.actorId) opts.fromActorId = pick.actorId;
@@ -2014,7 +2015,7 @@ export class MessagesTab extends BaseTab {
     const messageId = target.dataset.messageId;
     if (!ownerId || !messageId) return;
     const original = await this.messageService?.getMessage(ownerId, messageId);
-    if (!original) return ui.notifications.warn('NCM | Message not found.');
+    if (!original) return ncmNotify.warn('NCM | Message not found.');
     const opts = { mode: 'reply', originalMessage: original };
     if (original.toContactId) opts.fromContactId = original.toContactId;
     else if (game.actors?.get(ownerId)) opts.fromActorId = ownerId;
@@ -2035,7 +2036,7 @@ export class MessagesTab extends BaseTab {
   async _onCopyToTerminal(messageId) {
     const page = this._findPage(messageId);
     const svc = game.nightcity?.terminalService;
-    if (!page || !svc) return ui.notifications.warn('NCM | Message or terminals unavailable.');
+    if (!page || !svc) return ncmNotify.warn('NCM | Message or terminals unavailable.');
     const msg = this.messageRepository?._pageToMessage?.(page) || { ...page.flags[MODULE_ID] };
     const targets = new Map();
     const entries = [];
@@ -2047,7 +2048,7 @@ export class MessagesTab extends BaseTab {
         entries.push({ id, name: acct.displayName || acct.username || acct.id, img: acct.portrait || item.img || 'icons/svg/terminal.svg', sub: `${term}${acct.username ? ` · ${acct.username}` : ''}`, group: term });
       }
     }
-    if (!entries.length) return ui.notifications.warn('There are no terminal accounts to copy to.');
+    if (!entries.length) return ncmNotify.warn('There are no terminal accounts to copy to.');
     const pick = await showNamePicker({
       title: 'Copy to Terminal',
       hint: `Copy "${msg.subject || '(no subject)'}" onto which account? Sent mail lands in the account's Sent folder; money is not copied.`,
@@ -2056,9 +2057,9 @@ export class MessagesTab extends BaseTab {
     const t = pick?.id ? targets.get(pick.id) : null;
     if (!t) return;
     const res = await svc.copyMessagesToAccount(t.item, t.acct.id, [msg]);
-    if (!res.success) return ui.notifications.error(res.error || 'Copy failed.');
+    if (!res.success) return ncmNotify.error(res.error || 'Copy failed.');
     const who = t.acct.displayName || t.acct.username;
-    ui.notifications.info(res.copied ? `Copied to ${who}.` : `${who} already has this message.`);
+    ncmNotify.info(res.copied ? `Copied to ${who}.` : `${who} already has this message.`);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -2110,11 +2111,11 @@ export class MessagesTab extends BaseTab {
   async _onSchedSendNow(scheduleId) {
     const svc = this.schedulingService;
     const entry = svc?.getScheduled?.(scheduleId);
-    if (!entry) return ui.notifications.warn('NCM | Scheduled entry not found.');
+    if (!entry) return ncmNotify.warn('NCM | Scheduled entry not found.');
     const r = await svc._deliverScheduled(entry);
-    if (r?.success) { await svc._persistScheduled?.(); ui.notifications.info('NCM | Sent.'); }
+    if (r?.success) { await svc._persistScheduled?.(); ncmNotify.info('NCM | Sent.'); }
     else if (r?.refused) await svc._persistScheduled?.();   // already reported, and listed under Didn't arrive
-    else ui.notifications.error('NCM | Could not send it now — see the console.');
+    else ncmNotify.error('NCM | Could not send it now — see the console.');
     this.render(true);
   }
 
@@ -2123,7 +2124,7 @@ export class MessagesTab extends BaseTab {
     const page = j?.pages?.get(target.dataset.pageId);
     if (!page) return;
     await page.update({ [`flags.${MODULE_ID}.selfDestruct`]: null });
-    ui.notifications.info('NCM | Self-destruct stopped. The message stays.');
+    ncmNotify.info('NCM | Self-destruct stopped. The message stays.');
     this.render(true);
   }
 
@@ -2366,7 +2367,7 @@ export class MessagesTab extends BaseTab {
       if (ids.length) { await journal.deleteEmbeddedDocuments('JournalEntryPage', ids); n += ids.length; }
     }
     this.messageRepository?.clearCache?.();
-    ui.notifications.info(`NCM | Purged ${n} old message${n !== 1 ? 's' : ''}.`);
+    ncmNotify.info(`NCM | Purged ${n} old message${n !== 1 ? 's' : ''}.`);
     this.render(true);
   }
 
@@ -2395,7 +2396,7 @@ export class MessagesTab extends BaseTab {
     });
     if (choice === 'read') {
       const n = await this._ibMarkRead([journalId]);
-      ui.notifications.info(`NCM | Marked ${n} message${n !== 1 ? 's' : ''} read.`);
+      ncmNotify.info(`NCM | Marked ${n} message${n !== 1 ? 's' : ''} read.`);
       this.render(true);
     } else if (choice === 'export') {
       this._ibExport([journalId], `ncm-inbox-${name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`);
@@ -2406,7 +2407,7 @@ export class MessagesTab extends BaseTab {
       if (!ok) return;
       await game.journal?.get(journalId)?.delete();
       this.messageRepository?.clearCache?.();
-      ui.notifications.info('NCM | Inbox deleted.');
+      ncmNotify.info('NCM | Inbox deleted.');
       this.render(true);
     }
   }
@@ -2493,9 +2494,9 @@ export class MessagesTab extends BaseTab {
   async _onBroadcastSend() {
     const subject = (this._bc.subject || '').trim() || 'Broadcast';
     const body = (this._bc.body || '').trim();
-    if (!body) return ui.notifications.warn('NCM | Write the broadcast first.');
+    if (!body) return ncmNotify.warn('NCM | Write the broadcast first.');
     const recipients = this._bcRecipients();
-    if (!recipients.length) return ui.notifications.warn('NCM | Nobody to send it to.');
+    if (!recipients.length) return ncmNotify.warn('NCM | Nobody to send it to.');
     const data = { subject, body: body.replace(/\n/g, '<br>'), priority: this._bc.priority || 'normal', isBroadcast: true, recipients };
     const fromPick = ScopePicker.value(this.scopeId('bcfrom'))[0];
     if (fromPick) {
@@ -2509,13 +2510,13 @@ export class MessagesTab extends BaseTab {
     }
     if (this._bc.later) {
       const when = this._bc.when ? new Date(`${this._bc.when}:00Z`) : null;
-      if (!when || isNaN(when.getTime())) return ui.notifications.warn('NCM | Pick when it should go out.');
-      if (!data.fromActorId) return ui.notifications.warn('NCM | Send later needs an NPC with a character sheet as the sender — or send it now.');
+      if (!when || isNaN(when.getTime())) return ncmNotify.warn('NCM | Pick when it should go out.');
+      if (!data.fromActorId) return ncmNotify.warn('NCM | Send later needs an NPC with a character sheet as the sender — or send it now.');
       data.toActorId = recipients.find(r => r.actorId)?.actorId || null;
-      if (!data.toActorId) return ui.notifications.warn('NCM | Send later needs at least one character among the recipients.');
+      if (!data.toActorId) return ncmNotify.warn('NCM | Send later needs at least one character among the recipients.');
       const r = await this.schedulingService?.scheduleMessage(data, when.toISOString(), { useGameTime: true });
-      if (r?.success) { ui.notifications.info(`NCM | Broadcast scheduled for ${formatCyberDate(when.toISOString())}.`); this._bcReset(); }
-      else ui.notifications.error(`NCM | Not scheduled — ${r?.error || 'unknown error'}`);
+      if (r?.success) { ncmNotify.info(`NCM | Broadcast scheduled for ${formatCyberDate(when.toISOString())}.`); this._bcReset(); }
+      else ncmNotify.error(`NCM | Not scheduled — ${r?.error || 'unknown error'}`);
       this.render(true);
       return;
     }
@@ -2523,12 +2524,12 @@ export class MessagesTab extends BaseTab {
       const result = await this.messageService?.sendMessage(data);
       const delivered = result?.delivered ?? (result?.success ? recipients.length : 0);
       const failed = result?.failed || [];
-      if (delivered > 0) ui.notifications.info(`NCM | Broadcast delivered to ${delivered} of ${recipients.length}.`);
-      if (failed.length) ui.notifications.warn(`NCM | Not delivered to ${failed.length} — listed in Outbox → Didn't arrive.`);
-      else if (!result?.success) ui.notifications.warn(`NCM | Broadcast failed: ${result?.error || 'unknown error'}`);
+      if (delivered > 0) ncmNotify.info(`NCM | Broadcast delivered to ${delivered} of ${recipients.length}.`);
+      if (failed.length) ncmNotify.warn(`NCM | Not delivered to ${failed.length} — listed in Outbox → Didn't arrive.`);
+      else if (!result?.success) ncmNotify.warn(`NCM | Broadcast failed: ${result?.error || 'unknown error'}`);
       if (result?.success) this._bcReset();
     } catch (err) {
-      ui.notifications.warn(`NCM | Broadcast failed: ${err?.message || 'unknown error'}`);
+      ncmNotify.warn(`NCM | Broadcast failed: ${err?.message || 'unknown error'}`);
     }
     this.render(true);
   }
@@ -2620,7 +2621,7 @@ export class MessagesTab extends BaseTab {
       case 'junkOn': case 'junkOff': {
         const svc = game.nightcity?.spamService;
         await svc?.setJunkSender?.(d.entry, op === 'junkOn');
-        ui.notifications.info(op === 'junkOn'
+        ncmNotify.info(op === 'junkOn'
           ? `${d.entry} is junk now — its mail is hidden here and new mail from it goes to Spam.`
           : `${d.entry} is no longer marked as junk.`);
         return this.render(true);
@@ -2628,8 +2629,8 @@ export class MessagesTab extends BaseTab {
       // Outbox
       case 'failRetry': {
         const r = await this.messageService?.retryDeliveryFailure?.(d.id);
-        if (r?.success && !r.failed?.length) ui.notifications.info('NCM | Delivered.');
-        else ui.notifications.warn(`NCM | Still not delivered — ${r?.error || r?.failed?.map(x => `${x.name}: ${x.error}`).join(' · ') || 'unknown error'}`);
+        if (r?.success && !r.failed?.length) ncmNotify.info('NCM | Delivered.');
+        else ncmNotify.warn(`NCM | Still not delivered — ${r?.error || r?.failed?.map(x => `${x.name}: ${x.error}`).join(' · ') || 'unknown error'}`);
         return this.render(true);
       }
       case 'failDismiss': await this.messageService?.dismissDeliveryFailure?.(d.id); return this.render(true);
@@ -2652,7 +2653,7 @@ export class MessagesTab extends BaseTab {
         await game.journal?.get(d.journalId)?.delete();
         this.messageRepository?.clearCache?.();
         this._ibSel = null;
-        ui.notifications.info('NCM | Inbox deleted.');
+        ncmNotify.info('NCM | Inbox deleted.');
         return this.render(true);
       }
       case 'ibWrite': {
@@ -2661,14 +2662,14 @@ export class MessagesTab extends BaseTab {
       }
       case 'ibRead': {
         const n = await this._ibMarkRead([d.journalId]);
-        ui.notifications.info(`NCM | Marked ${n} message${n !== 1 ? 's' : ''} read.`);
+        ncmNotify.info(`NCM | Marked ${n} message${n !== 1 ? 's' : ''} read.`);
         return this.render(true);
       }
       case 'ibExport': return this._ibExport([d.journalId], `ncm-inbox-${String(d.name || 'inbox').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`);
       case 'ibPurge': return this._ibPurge([d.journalId], d.name || 'this inbox');
       case 'ibMarkAllRead': {
         const n = await this._ibMarkRead(this._allInboxJournalIds());
-        ui.notifications.info(`NCM | Marked ${n} message${n !== 1 ? 's' : ''} read.`);
+        ncmNotify.info(`NCM | Marked ${n} message${n !== 1 ? 's' : ''} read.`);
         return this.render(true);
       }
       case 'ibPurgeAll': return this._ibPurge(this._allInboxJournalIds(), 'every inbox');
@@ -2947,15 +2948,15 @@ export class MessagesTab extends BaseTab {
     const confirmed = await adminConfirm({ title: 'Cancel Scheduled Message', content: '<p>Cancel this scheduled message? It will not be delivered.</p>' });
     if (!confirmed) return;
     const result = await this.schedulingService?.cancelScheduled(scheduleId);
-    if (result?.success) { ui.notifications.info(result.refunded ? `Scheduled message cancelled. ${result.refunded.toLocaleString()} eb refunded.` : 'Scheduled message cancelled.'); this.render(true); }
-    else ui.notifications.error(result?.error || 'Failed to cancel.');
+    if (result?.success) { ncmNotify.info(result.refunded ? `Scheduled message cancelled. ${result.refunded.toLocaleString()} eb refunded.` : 'Scheduled message cancelled.'); this.render(true); }
+    else ncmNotify.error(result?.error || 'Failed to cancel.');
   }
 
   async onEditScheduled(event, target) {
     const scheduleId = target.closest('[data-schedule-id]')?.dataset.scheduleId;
     if (!scheduleId) return;
     const entry = this.schedulingService?.getScheduled?.(scheduleId);
-    if (!entry) { ui.notifications.warn('NCM | Scheduled entry not found.'); return; }
+    if (!entry) { ncmNotify.warn('NCM | Scheduled entry not found.'); return; }
 
     const data = entry.messageData || {};
     const cur = entry.deliveryTime ? new Date(entry.deliveryTime) : new Date();
@@ -2990,7 +2991,7 @@ export class MessagesTab extends BaseTab {
             if (!date || !time) return;
             const newDelivery = new Date(`${date}T${time}:00Z`).toISOString();
             await this.schedulingService?.editScheduled(scheduleId, { deliveryTime: newDelivery });
-            ui.notifications.info('NCM | Scheduled message rescheduled.');
+            ncmNotify.info('NCM | Scheduled message rescheduled.');
             this.render(true);
           },
         },
@@ -3078,7 +3079,7 @@ export class MessagesTab extends BaseTab {
   _warnIfOrphanInbox(ownerId) {
     if (game.actors?.get(ownerId)) return true;
     if (this.masterContactService?.getContact(ownerId)) return true;
-    ui.notifications.warn(
+    ncmNotify.warn(
       'NCM | This inbox belongs to an actor or contact that no longer exists. '
       + 'Tools → Orphan Audit lists it and can remove it.'
     );
@@ -3112,14 +3113,14 @@ export class MessagesTab extends BaseTab {
       }
       if (foundPage) break;
     }
-    if (!foundPage) { ui.notifications.warn('NCM | Message not found.'); return; }
+    if (!foundPage) { ncmNotify.warn('NCM | Message not found.'); return; }
 
     // The same card the player's inbox posts, labelled "via GM" — it used to post
     // a private-looking "GM Intercept" card to a PUBLIC chat message, truncated at
     // 200 characters with the HTML escaped into visible tags.
     const message = this.messageRepository?._pageToMessage?.(foundPage.page) || { ...foundPage.flags };
     await this.messageService?.shareToChat?.(message, null, { sharedBy: 'GM' });
-    ui.notifications.info('NCM | Message shared to chat.');
+    ncmNotify.info('NCM | Message shared to chat.');
   }
 
   async onForceDeliver(event, target) {
@@ -3128,8 +3129,8 @@ export class MessagesTab extends BaseTab {
     const messageId = target.closest('[data-message-id]')?.dataset.messageId || target.dataset.messageId;
     if (!messageId) return;
     const result = await this.messageService?.forceDeliver?.(messageId);
-    if (result?.success) ui.notifications.info('NCM | Message delivered.');
-    else ui.notifications.warn(`NCM | Could not deliver it — ${result?.error || 'unknown error'}`);
+    if (result?.success) ncmNotify.info('NCM | Message delivered.');
+    else ncmNotify.warn(`NCM | Could not deliver it — ${result?.error || 'unknown error'}`);
     this.render(true);
   }
 
@@ -3142,15 +3143,15 @@ export class MessagesTab extends BaseTab {
     const ok = await adminConfirm({ title: 'Cancel Held Message', content: `<p>Cancel this message? It will never be delivered.${held?.eddies ? ` <b>The ${held.eddies} eb it carries are not refunded.</b>` : ''}</p>` });
     if (!ok) return;
     const result = await this.messageService?.cancelQueued?.(messageId);
-    if (result?.success) ui.notifications.info('NCM | Held message cancelled.');
-    else ui.notifications.warn(`NCM | Cancel failed — ${result?.error || 'unknown error'}`);
+    if (result?.success) ncmNotify.info('NCM | Held message cancelled.');
+    else ncmNotify.warn(`NCM | Cancel failed — ${result?.error || 'unknown error'}`);
     this.render(true);
   }
 
   async onFlushQueue(event, target) {
     event?.preventDefault?.();
     const queue = this.messageService?.getQueue?.() ?? [];
-    if (!queue.length) { ui.notifications.info('NCM | Nothing is waiting.'); return; }
+    if (!queue.length) { ncmNotify.info('NCM | Nothing is waiting.'); return; }
     const confirmed = await adminConfirm({
       title: 'Deliver All',
       content: `<p>Deliver <strong>${queue.length}</strong> held message${queue.length > 1 ? 's' : ''} now? This skips the dead zone / offline wait.</p>`,
@@ -3161,7 +3162,7 @@ export class MessagesTab extends BaseTab {
       const result = await this.messageService?.forceDeliver?.(entry.messageId || entry.id);
       if (result?.success) delivered++;
     }
-    ui.notifications.info(`NCM | Delivered ${delivered} message${delivered !== 1 ? 's' : ''}.`);
+    ncmNotify.info(`NCM | Delivered ${delivered} message${delivered !== 1 ? 's' : ''}.`);
     this.render(true);
   }
 
@@ -3172,7 +3173,7 @@ export class MessagesTab extends BaseTab {
     if (!actorId) return;
     const journalIds = (game.journal?.contents || []).filter(j => MessageRepository.identifyInbox(j)?.ownerId === actorId).map(j => j.id);
     const n = await this._ibMarkRead(journalIds);
-    ui.notifications.info(n ? `NCM | Marked ${n} message${n !== 1 ? 's' : ''} as read.` : 'NCM | No unread messages.');
+    ncmNotify.info(n ? `NCM | Marked ${n} message${n !== 1 ? 's' : ''} as read.` : 'NCM | No unread messages.');
     this.render(true);
   }
 
@@ -3189,7 +3190,7 @@ export class MessagesTab extends BaseTab {
   async onBroadcast(event, target) {
     const playerActors = getPlayerCharacters().map(pa => ({ id: pa.actorId, name: pa.actorName }));
     if (!playerActors.length) {
-      ui.notifications.warn('NCM | No player-owned characters found.');
+      ncmNotify.warn('NCM | No player-owned characters found.');
       return;
     }
     // Targets: every player character, or one of the GM's contact groups. Both
@@ -3230,16 +3231,16 @@ export class MessagesTab extends BaseTab {
               ? groupSvc.recipientsFor(group).recipients
               : playerActors.map(pa => ({ actorId: pa.id, name: pa.name }));
             const label = group ? `"${group.name}"` : 'all player characters';
-            if (!recipients.length) { ui.notifications.warn(`NCM | Nobody reachable in ${label}.`); return; }
+            if (!recipients.length) { ncmNotify.warn(`NCM | Nobody reachable in ${label}.`); return; }
             try {
               const result = await this.messageService?.sendMessage({ from, subject, body, isBroadcast: true, recipients });
               const delivered = result?.delivered ?? (result?.success ? recipients.length : 0);
               const failed = result?.failed || [];
-              if (delivered > 0) ui.notifications.info(`NCM | Broadcast to ${label}: delivered to ${delivered} of ${recipients.length}.`);
-              if (failed.length) ui.notifications.warn(`NCM | Not delivered to ${failed.length}: ${failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ')}`, { permanent: true });
-              else if (!result?.success) ui.notifications.warn(`NCM | Broadcast failed: ${result?.error || 'unknown error'}`);
+              if (delivered > 0) ncmNotify.info(`NCM | Broadcast to ${label}: delivered to ${delivered} of ${recipients.length}.`);
+              if (failed.length) ncmNotify.warn(`NCM | Not delivered to ${failed.length}: ${failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ')}`, { permanent: true });
+              else if (!result?.success) ncmNotify.warn(`NCM | Broadcast failed: ${result?.error || 'unknown error'}`);
             } catch (err) {
-              ui.notifications.warn(`NCM | Broadcast failed: ${err?.message || 'unknown error'}`);
+              ncmNotify.warn(`NCM | Broadcast failed: ${err?.message || 'unknown error'}`);
             }
             this.render(true);
           },
@@ -3289,17 +3290,17 @@ export class MessagesTab extends BaseTab {
         }
       }
       if (!deleted) {
-        ui.notifications.error(`NCM | Message not deleted — ${reason || 'no inbox page carries that message id'}.`);
+        ncmNotify.error(`NCM | Message not deleted — ${reason || 'no inbox page carries that message id'}.`);
         this.render(true);
         return;
       }
       this.messageRepository?.clearCache?.();
       if (this._sel === messageId) this._sel = null;
-      ui.notifications.info('NCM | Message permanently deleted.');
+      ncmNotify.info('NCM | Message permanently deleted.');
       this.render(true);
     } catch (err) {
       console.error(`${MODULE_ID} | Hard delete failed:`, err);
-      ui.notifications.error(`NCM | Failed to delete message: ${err?.message || err}`);
+      ncmNotify.error(`NCM | Failed to delete message: ${err?.message || err}`);
     }
   }
 }

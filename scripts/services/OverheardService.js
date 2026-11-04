@@ -8,6 +8,7 @@
  *   by the GM's client and ends if that client reloads.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, getPlayerCharacters, generateId } from '../utils/helpers.js';
 import { typeOutMs } from '../utils/callModel.js';
@@ -228,7 +229,7 @@ export class OverheardService {
 
   _ask(data) {
     if (isGM()) return this.handleSocket(data, game.user.id);
-    if (!game.users.activeGM) { ui.notifications?.warn('No GM is online.'); return false; }
+    if (!game.users.activeGM) { ncmNotify.warn('No GM is online.'); return false; }
     this.socket.emit(SOCKET_OPS.CALL_OVERHEARD, data);
     return true;
   }

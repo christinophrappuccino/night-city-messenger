@@ -17,6 +17,7 @@
  *   past their GM — the mode is enforced where the write happens, not in the UI.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, whisperCardHtml } from '../../utils/helpers.js';
 import { suggestedPrice } from '../content/EncoderModel.js';
@@ -117,7 +118,7 @@ export function requestShardPrice({ item, actor, price, quality, outcome }) {
   const sm = game.nightcity?.socketManager;
   if (!sm) return Promise.resolve({ decision: 'denied', price: 0 });
   if (!game.users?.activeGM) {
-    ui.notifications?.warn('NCM | No GM is connected, so nobody can approve a price yet.');
+    ncmNotify.warn('NCM | No GM is connected, so nobody can approve a price yet.');
     return Promise.resolve({ decision: 'nogm', price: 0 });
   }
   return new Promise((resolve) => {

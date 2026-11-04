@@ -5,6 +5,7 @@
  * @description Shared utility functions used across the module
  */
 
+import { ncmNotify } from './notify.js';
 import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, SHARD_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS, CONTRAST_SPREAD } from './constants.js';
 import { NON_PERSON_ACTOR_TYPES } from './emailDirectory.js';
 import { resolveShardEditing } from '../ui/content/EncoderModel.js';
@@ -1013,7 +1014,7 @@ export async function setOperatorActor(actorId) {
 export async function openOperatorPicker(host = null) {
   const owned = getOperatorActors();
   if (owned.length <= 1) {
-    ui.notifications.info(owned.length
+    ncmNotify.info(owned.length
       ? `NCM | You only control one character (${owned[0].name}).`
       : 'NCM | You have no characters assigned.');
     return false;
@@ -1023,7 +1024,7 @@ export async function openOperatorPicker(host = null) {
   const picked = await runOperatorSelect({ actors: owned, currentId: current, host });
   if (!picked || picked === current) return false;
   await setOperatorActor(picked);
-  ui.notifications.info(`NCM | Now operating as ${game.actors.get(picked)?.name}.`);
+  ncmNotify.info(`NCM | Now operating as ${game.actors.get(picked)?.name}.`);
   return true;
 }
 

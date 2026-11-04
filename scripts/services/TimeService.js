@@ -16,6 +16,7 @@
  * The only thing that changes is where that string comes from.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 
@@ -287,7 +288,7 @@ export class TimeService {
 
     const effective = newMode === 'auto' ? `auto → ${this._autoResolved}` : newMode;
     log.info(`TimeService: Mode changed to ${effective}`);
-    ui.notifications.info(`NCM | Time provider set to: ${effective}`);
+    ncmNotify.info(`NCM | Time provider set to: ${effective}`);
   }
 
   /**
@@ -333,7 +334,7 @@ export class TimeService {
   async advanceManualTime(seconds) {
     if (!isGM()) return;
     if (this._mode !== 'manual') {
-      ui.notifications.warn('NCM | Manual time advance only works in Manual mode.');
+      ncmNotify.warn('NCM | Manual time advance only works in Manual mode.');
       return;
     }
 

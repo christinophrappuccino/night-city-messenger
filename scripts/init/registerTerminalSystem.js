@@ -14,6 +14,7 @@
  *   122  — Terminal macro API (extends game.nightcity.messenger)
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { log, isGM } from '../utils/helpers.js';
 import { EVENTS, MODULE_ID } from '../utils/constants.js';
 import { TerminalService } from '../services/TerminalService.js';
@@ -130,7 +131,7 @@ export function registerTerminalSystem(initializer) {
        */
       game.nightcity.openTerminal = (itemOrId, options = {}) => {
         const svc = game.nightcity?.terminalService;
-        if (!svc) { ui.notifications.error('Night City Messenger: TerminalService not available'); return null; }
+        if (!svc) { ncmNotify.error('Night City Messenger: TerminalService not available'); return null; }
 
         let item = typeof itemOrId === 'string'
           ? (fromUuidSync(itemOrId) ?? game.items.get(itemOrId))
@@ -138,8 +139,8 @@ export function registerTerminalSystem(initializer) {
         if (typeof itemOrId === 'string' && !item) {
           for (const actor of game.actors) { item = actor.items.get(itemOrId); if (item) break; }
         }
-        if (!item) { ui.notifications.warn('Night City Messenger: Item not found'); return null; }
-        if (!svc.isTerminal(item)) { ui.notifications.warn(`"${item.name}" is not a terminal`); return null; }
+        if (!item) { ncmNotify.warn('Night City Messenger: Item not found'); return null; }
+        if (!svc.isTerminal(item)) { ncmNotify.warn(`"${item.name}" is not a terminal`); return null; }
 
         let actor = options.actor;
         if (typeof actor === 'string') actor = game.actors.get(actor);

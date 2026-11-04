@@ -16,6 +16,7 @@
  *   locked.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, netVerbFor, whisperCardHtml } from '../utils/helpers.js';
 
@@ -368,7 +369,7 @@ export class TraceService {
     const tier = TraceService.tierOf(heat);
     const on = p.objectName && p.objectName !== 'unknown' ? ` on ${p.objectName}` : '';
     const msg = `${p.actorName} tripped a trace — ${p.action}${on} (heat ${Math.round(heat)} · ${tier.toUpperCase()}).`;
-    try { ui.notifications.warn(`NCM | ${msg}`); } catch { /* no ui */ }
+    try { ncmNotify.warn(`NCM | ${msg}`); } catch { /* no ui */ }
     try {
       const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
       if (gmIds.length) {

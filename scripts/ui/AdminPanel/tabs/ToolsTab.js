@@ -8,6 +8,7 @@
  * handlers directly via AdminPanelApp's static delegators.
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { isIn, titleFor } from '../../../utils/conversations.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log, formatCyberDate, getPlayerCharacters, hiddenCharacterIds } from '../../../utils/helpers.js';
@@ -75,7 +76,7 @@ export class ToolsTab extends BaseTab {
   }
 
   async onForceRefreshAll(event, target) {
-    ui.notifications.info('Force-refreshing all connected clients...');
+    ncmNotify.info('Force-refreshing all connected clients...');
     game.socket?.emit(`module.${MODULE_ID}`, {
       type: 'forceRefresh',
     });
@@ -103,10 +104,10 @@ export class ToolsTab extends BaseTab {
       a.click();
       URL.revokeObjectURL(url);
 
-      ui.notifications.info(`Exported ${messages.length} messages.`);
+      ncmNotify.info(`Exported ${messages.length} messages.`);
     } catch (error) {
       console.error(`${MODULE_ID} | Export failed:`, error);
-      ui.notifications.error('Export failed. Check console.');
+      ncmNotify.error('Export failed. Check console.');
     }
   }
 
@@ -137,7 +138,7 @@ export class ToolsTab extends BaseTab {
   onOpenTimeSettings(event, target) {
     const ts = game.nightcity?.timeService;
     if (!ts) {
-      ui.notifications.warn('NCM | TimeService not available.');
+      ncmNotify.warn('NCM | TimeService not available.');
       return;
     }
 
@@ -420,13 +421,13 @@ export class ToolsTab extends BaseTab {
           disguisedPanel.show();
           manualPanel.hide();
           hintEl.text(hints['disguised']);
-          ui.notifications.info(`NCM | Disguised time anchored to ${date} ${time}`);
+          ncmNotify.info(`NCM | Disguised time anchored to ${date} ${time}`);
         });
 
         // Disguised: Re-anchor button
         html.find('#ncm-tc-dis-reanchor').on('click', async () => {
           await ts.reanchorDisguisedTime();
-          ui.notifications.info('NCM | Disguised time re-anchored to current displayed time.');
+          ncmNotify.info('NCM | Disguised time re-anchored to current displayed time.');
         });
 
         // Manual: Set button
@@ -440,7 +441,7 @@ export class ToolsTab extends BaseTab {
           manualPanel.show();
           disguisedPanel.hide();
           hintEl.text(hints['manual']);
-          ui.notifications.info(`NCM | Manual time set to ${date} ${time}`);
+          ncmNotify.info(`NCM | Manual time set to ${date} ${time}`);
         });
 
         // Manual: Quick advance buttons
@@ -501,7 +502,7 @@ export class ToolsTab extends BaseTab {
     const kept = [...current].filter((id) => !listed.has(id) && game.actors?.has?.(id));
     const next = [...kept, ...picks.map((p) => p.id)];
     await game.settings.set(MODULE_ID, 'hiddenCharacters', next);
-    ui.notifications.info(next.length ? `${next.length} character${next.length === 1 ? '' : 's'} hidden from character lists.` : 'No characters hidden.');
+    ncmNotify.info(next.length ? `${next.length} character${next.length === 1 ? '' : 's'} hidden from character lists.` : 'No characters hidden.');
     this.render(true);
   }
 
@@ -629,7 +630,7 @@ export class ToolsTab extends BaseTab {
             await game.settings.set(MODULE_ID_LOCAL, 'emailAllowCustomDomains', allowCustom);
 
             const total = domains.length + 1; // +1 for default
-            ui.notifications.info(`NCM | Saved ${total} domain${total !== 1 ? 's' : ''}.`);
+            ncmNotify.info(`NCM | Saved ${total} domain${total !== 1 ? 's' : ''}.`);
           },
         },
         cancel: {
@@ -667,13 +668,13 @@ export class ToolsTab extends BaseTab {
         html.find('#ncm-dom-export').on('click', () => {
           const cfg = readDialogDomains();
           this._downloadText(`ncm-email-domains-${new Date().toISOString().slice(0, 10)}.json`, domainsToJson(cfg), 'application/json');
-          ui.notifications.info(`NCM | Exported ${cfg.domains.length + 1} domain${cfg.domains.length ? 's' : ''}.`);
+          ncmNotify.info(`NCM | Exported ${cfg.domains.length + 1} domain${cfg.domains.length ? 's' : ''}.`);
         });
         html.find('#ncm-dom-import').on('click', async () => {
           const text = await this._pickTextFile('.json,.txt,.csv');
           if (text == null) return;
           const parsed = parseDomainsImport(text);
-          if (parsed.error) return ui.notifications.error(`NCM | ${parsed.error}`);
+          if (parsed.error) return ncmNotify.error(`NCM | ${parsed.error}`);
           if (parsed.defaultDomain) html.find('#ncm-default-domain').val(parsed.defaultDomain);
           if (parsed.allowCustom != null) html.find('#ncm-allow-custom').prop('checked', parsed.allowCustom);
           const current = readDialogDomains().domains.map(d => d.toLowerCase());
@@ -688,7 +689,7 @@ export class ToolsTab extends BaseTab {
             current.push(d);
             added++;
           }
-          ui.notifications.info(`NCM | Loaded ${added} new domain${added !== 1 ? 's' : ''} — press Save to keep them.`);
+          ncmNotify.info(`NCM | Loaded ${added} new domain${added !== 1 ? 's' : ''} — press Save to keep them.`);
         });
 
         // ── Address directory export / import ──
@@ -729,19 +730,19 @@ export class ToolsTab extends BaseTab {
 
   _exportDirectory(format) {
     const rows = buildDirectoryRows(this._directoryWorld());
-    if (!rows.length) return ui.notifications.warn('NCM | No addresses to export yet — nobody has an address.');
+    if (!rows.length) return ncmNotify.warn('NCM | No addresses to export yet — nobody has an address.');
     const stamp = new Date().toISOString().slice(0, 10);
     if (format === 'json') this._downloadText(`ncm-addresses-${stamp}.json`, directoryToJson(rows), 'application/json');
     else this._downloadText(`ncm-addresses-${stamp}.csv`, directoryToCsv(rows), 'text/csv');
-    ui.notifications.info(`NCM | Exported ${rows.length} address${rows.length !== 1 ? 'es' : ''}.`);
+    ncmNotify.info(`NCM | Exported ${rows.length} address${rows.length !== 1 ? 'es' : ''}.`);
   }
 
   async _importDirectory() {
     const text = await this._pickTextFile('.csv,.tsv,.txt,.json');
     if (text == null) return;
     const parsed = parseDirectoryImport(text);
-    if (parsed.error) return ui.notifications.error(`NCM | ${parsed.error}`);
-    if (!parsed.rows.length) return ui.notifications.warn('NCM | The file has no rows with a name or an address.');
+    if (parsed.error) return ncmNotify.error(`NCM | ${parsed.error}`);
+    if (!parsed.rows.length) return ncmNotify.warn('NCM | The file has no rows with a name or an address.');
 
     const { plan, summary } = planDirectoryImport(parsed.rows, this._directoryWorld());
     const writes = summary.updateActor + summary.updateContact + summary.createContact;
@@ -849,8 +850,8 @@ export class ToolsTab extends BaseTab {
     if (res.actors) parts.push(`${res.actors} character${res.actors !== 1 ? 's' : ''}`);
     if (res.contacts) parts.push(`${res.contacts} contact${res.contacts !== 1 ? 's' : ''}`);
     if (res.created) parts.push(`${res.created} new contact${res.created !== 1 ? 's' : ''}`);
-    ui.notifications.info(`NCM | Addresses applied: ${parts.join(', ') || 'nothing'}.`);
-    if (res.failed.length) ui.notifications.warn(`NCM | ${res.failed.length} row${res.failed.length !== 1 ? 's' : ''} failed — ${res.failed.join('; ')}`, { permanent: true });
+    ncmNotify.info(`NCM | Addresses applied: ${parts.join(', ') || 'nothing'}.`);
+    if (res.failed.length) ncmNotify.warn(`NCM | ${res.failed.length} row${res.failed.length !== 1 ? 's' : ''} failed — ${res.failed.join('; ')}`, { permanent: true });
     this.app?.render?.();
   }
 
@@ -879,7 +880,7 @@ export class ToolsTab extends BaseTab {
         const file = e.target.files?.[0];
         if (!file) return done(null);
         try { done(await file.text()); }
-        catch (err) { ui.notifications.error(`NCM | Could not read the file: ${err?.message || err}`); done(null); }
+        catch (err) { ncmNotify.error(`NCM | Could not read the file: ${err?.message || err}`); done(null); }
       });
       // A dismissed picker fires no event; release the promise a beat after focus
       // returns (a chosen file's `change` lands well inside that beat and wins).
@@ -907,16 +908,16 @@ export class ToolsTab extends BaseTab {
     if (!confirmed) return;
 
     const repo = game.nightcity?.messageRepository;
-    if (!repo) return ui.notifications.error('NCM | MessageRepository not available.');
+    if (!repo) return ncmNotify.error('NCM | MessageRepository not available.');
 
     const stats = await repo.migrateJournalOrganization();
     const total = stats.inboxes + stats.contacts + stats.shards;
     if (total > 0 || stats.pages > 0) {
-      ui.notifications.info(
+      ncmNotify.info(
         `NCM | Done: ${stats.inboxes} inbox(es), ${stats.contacts} NPC mail, ${stats.shards} shard(s), ${stats.pages} page(s) renamed.`
       );
     } else {
-      ui.notifications.info('NCM | Journals are already organized — nothing to do.');
+      ncmNotify.info('NCM | Journals are already organized — nothing to do.');
     }
   }
 
@@ -954,7 +955,7 @@ export class ToolsTab extends BaseTab {
       for (const spec of specs) {
         const pack = game.packs.get(spec.pack);
         if (!pack) {
-          ui.notifications.warn(`NCM | Compendium "${spec.pack}" not found — is the module fully loaded?`);
+          ncmNotify.warn(`NCM | Compendium "${spec.pack}" not found — is the module fully loaded?`);
           continue;
         }
 
@@ -990,12 +991,12 @@ export class ToolsTab extends BaseTab {
       }
 
       log.info(`NCM macros: ${created} created, ${updated} reset, ${skipped} preserved`);
-      ui.notifications.info(
+      ncmNotify.info(
         `NCM | Macros installed — ${created} new, ${updated} reset to shipped, ${skipped} preserved.`
       );
     } catch (error) {
       console.error(`${MODULE_ID} | Macro import failed:`, error);
-      ui.notifications.error('NCM | Macro import failed. Check console.');
+      ncmNotify.error('NCM | Macro import failed. Check console.');
     }
   }
 
@@ -1056,7 +1057,7 @@ export class ToolsTab extends BaseTab {
 
     const all = [...inboxTargets, ...shardTargets, ...convTargets];
     if (all.length === 0) {
-      ui.notifications.info('NCM | No messages to purge.');
+      ncmNotify.info('NCM | No messages to purge.');
       return;
     }
 
@@ -1105,11 +1106,11 @@ export class ToolsTab extends BaseTab {
         if (res?.ok) deleted += t.count;
       }
       log.info(`Purged ${deleted} message(s) from ${label}`);
-      ui.notifications.info(`NCM | Purged ${deleted} message(s) from ${label}.`);
+      ncmNotify.info(`NCM | Purged ${deleted} message(s) from ${label}.`);
       this.app?.render?.(false);
     } catch (error) {
       console.error(`${MODULE_ID} | Purge failed:`, error);
-      ui.notifications.error('NCM | Purge failed. Check console.');
+      ncmNotify.error('NCM | Purge failed. Check console.');
     }
   }
 
@@ -1164,7 +1165,7 @@ export class ToolsTab extends BaseTab {
     const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length + found.phoneOwners.length + found.conversations.length;
 
     if (total === 0) {
-      ui.notifications.info('NCM | Orphan audit clean — nothing to remove.');
+      ncmNotify.info('NCM | Orphan audit clean — nothing to remove.');
       return;
     }
 
@@ -1239,11 +1240,11 @@ export class ToolsTab extends BaseTab {
         if (res?.ok) removed++;
       }
       log.info(`Orphan audit removed ${removed} orphaned record(s)`);
-      ui.notifications.info(`NCM | Orphan audit removed ${removed} orphaned record(s).`);
+      ncmNotify.info(`NCM | Orphan audit removed ${removed} orphaned record(s).`);
       this.app?.render?.(false);
     } catch (error) {
       console.error(`${MODULE_ID} | Orphan cleanup failed:`, error);
-      ui.notifications.error('NCM | Orphan cleanup failed. Check console.');
+      ncmNotify.error('NCM | Orphan cleanup failed. Check console.');
     }
   }
 
@@ -1292,7 +1293,7 @@ export class ToolsTab extends BaseTab {
             label: 'Factory Reset',
             callback: (html) => {
               const word = (html.find('[name="confirmWord"]').val() || '').trim().toUpperCase();
-              if (word !== 'RESET') { ui.notifications.warn('NCM | Type RESET to confirm.'); return; }
+              if (word !== 'RESET') { ncmNotify.warn('NCM | Type RESET to confirm.'); return; }
               resetSettings = html.find('[name="resetSettings"]').is(':checked');
               go = true;
             },
@@ -1316,16 +1317,16 @@ export class ToolsTab extends BaseTab {
     if (!go) return;
 
     try {
-      ui.notifications.info('NCM | Factory reset running…');
+      ncmNotify.info('NCM | Factory reset running…');
       const r = await runFactoryReset({ resetSettings, reload: true });
-      ui.notifications.info(
+      ncmNotify.info(
         `NCM | Factory reset done — ${r.journals} journal(s), ${r.pins} pin(s), ${r.macros} macro(s), `
         + `${r.stripped} flag block(s), ${r.settings} setting(s). Reloading.`,
         { permanent: true }
       );
     } catch (error) {
       console.error(`${MODULE_ID} | Factory reset failed:`, error);
-      ui.notifications.error(`NCM | Factory reset failed: ${error?.message || error}. Check the console; the world may be partly reset.`, { permanent: true });
+      ncmNotify.error(`NCM | Factory reset failed: ${error?.message || error}. Check the console; the world may be partly reset.`, { permanent: true });
     }
   }
 

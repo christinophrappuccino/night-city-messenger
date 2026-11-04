@@ -35,6 +35,7 @@
  * plumbing rather than a GM tool.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, LEGACY_MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 
@@ -231,7 +232,7 @@ export async function runNamespaceMigration() {
 
   if (!(await confirmNamespaceMigration(found))) {
     log.warn(`Namespace migration declined — ${LEGACY_MODULE_ID} data left in place; you will be asked again next load.`);
-    ui.notifications?.warn('NCM | Module data was NOT migrated. Reload to be asked again.', { permanent: true });
+    ncmNotify.warn('NCM | Module data was NOT migrated. Reload to be asked again.', { permanent: true });
     return 'declined';
   }
 
@@ -243,9 +244,9 @@ export async function runNamespaceMigration() {
   if (settings.skipped.length) log.warn(`Namespace migration: ${settings.skipped.length} legacy setting(s) no longer registered, left in place: ${settings.skipped.join(', ')}`);
   if (docs.mismatched.length) {
     log.error(`Namespace migration: ${docs.mismatched.length} document(s) did not verify and KEEP their legacy flags: ${docs.mismatched.join('; ')}`);
-    ui.notifications?.error(`NCM | Migrated ${docs.migrated} document(s); ${docs.mismatched.length} did not verify (see console). Their legacy flags were kept.`, { permanent: true });
+    ncmNotify.error(`NCM | Migrated ${docs.migrated} document(s); ${docs.mismatched.length} did not verify (see console). Their legacy flags were kept.`, { permanent: true });
   } else {
-    ui.notifications?.info(`NCM | Module data migrated: ${settings.copied} setting(s), ${docs.migrated} document(s). Reloading…`, { permanent: true });
+    ncmNotify.info(`NCM | Module data migrated: ${settings.copied} setting(s), ${docs.migrated} document(s). Reloading…`, { permanent: true });
   }
   requestWorldReload();
   return 'migrated';

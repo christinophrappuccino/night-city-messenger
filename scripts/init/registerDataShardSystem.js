@@ -12,6 +12,7 @@
  *  115  — ShardSheetOverride  (sheet intercept, inventory badges, context menu)
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { SkillService } from '../services/SkillService.js';
@@ -80,7 +81,7 @@ export function registerDataShardSystem(initializer) {
       game.nightcity.openDataShard = (itemOrId, options = {}) => {
         const dataShardService = game.nightcity?.dataShardService;
         if (!dataShardService) {
-          ui.notifications.error('Night City Messenger: DataShardService not available');
+          ncmNotify.error('Night City Messenger: DataShardService not available');
           return null;
         }
 
@@ -101,12 +102,12 @@ export function registerDataShardSystem(initializer) {
         }
 
         if (!item) {
-          ui.notifications.warn('Night City Messenger: Item not found');
+          ncmNotify.warn('Night City Messenger: Item not found');
           return null;
         }
 
         if (!dataShardService.isDataShard(item)) {
-          ui.notifications.warn(`"${item.name}" is not a data shard`);
+          ncmNotify.warn(`"${item.name}" is not a data shard`);
           return null;
         }
 

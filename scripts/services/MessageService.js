@@ -7,6 +7,7 @@
  * for permission safety.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
 import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime } from '../utils/helpers.js';
@@ -869,7 +870,7 @@ export class MessageService {
         // The roll succeeded but the GM couldn't reveal — surface it so it isn't
         // silently swallowed (the most common cause is a missing/renamed sent copy).
         log.warn(`Anon trace reveal failed: ${result?.error || 'unknown'}`, data);
-        ui.notifications?.warn(`NCM | Trace by ${data.byActorName || 'a player'} succeeded but reveal failed: ${result?.error || 'unknown'}`);
+        ncmNotify.warn(`NCM | Trace by ${data.byActorName || 'a player'} succeeded but reveal failed: ${result?.error || 'unknown'}`);
       }
     } else {
       this.notificationService?.showToastV2?.({
@@ -1158,7 +1159,7 @@ export class MessageService {
         return null;
       }
       data.fromContactId = created.contact.id;
-      ui.notifications?.info(
+      ncmNotify.info(
         `NCM | "${fromActor.name}" wasn't in the Master Contact list — added it (${created.contact.email}). Edit the name/details in Admin → Contacts.`
       );
       log.info(`MessageService: auto-registered NPC sender "${fromActor.name}" as master contact ${created.contact.id}`);
@@ -1270,7 +1271,7 @@ export class MessageService {
       else localStorage.removeItem(this._queueStoreKey);
     } catch (err) {
       console.warn(`${MODULE_ID} | could not save held mail:`, err);
-      if (!this._queueSaveWarned) { this._queueSaveWarned = true; ui.notifications?.warn?.('NCM | Your browser would not save your held mail. Keep this page open until it sends.'); }
+      if (!this._queueSaveWarned) { this._queueSaveWarned = true; ncmNotify.warn?.('NCM | Your browser would not save your held mail. Keep this page open until it sends.'); }
     }
   }
 
@@ -1329,7 +1330,7 @@ export class MessageService {
     if (i < 0) return;
     const [d] = this._messageQueue.splice(i, 1);
     if (data.op === 'cancel') {
-      ui.notifications?.warn?.(`NCM | The GM cancelled your held message "${d.subject || '(no subject)'}".`);
+      ncmNotify.warn?.(`NCM | The GM cancelled your held message "${d.subject || '(no subject)'}".`);
       this._refundHeld(d);
     }
     this._syncQueueToGm();
@@ -1479,7 +1480,7 @@ export class MessageService {
       // Nobody is watching a composer now, so a refusal has to be said out loud.
       if (res && res.success === false) {
         const back = await this._refundHeld(queue[i]);
-        ui.notifications?.warn?.(`NCM | Your held message "${queue[i].subject || '(no subject)'}" could not be sent: ${res.error || 'unknown error'}.${back ? ` ${back} eb went back to your account.` : ''}`, { permanent: !!back });
+        ncmNotify.warn?.(`NCM | Your held message "${queue[i].subject || '(no subject)'}" could not be sent: ${res.error || 'unknown error'}.${back ? ` ${back} eb went back to your account.` : ''}`, { permanent: !!back });
       } else if (res?.failed?.length) {
         await this._refundHeld(queue[i], res.failed.length);
       }
@@ -1866,7 +1867,7 @@ export class MessageService {
   async attemptDecrypt(messageId, actorId, options = {}) {
     const actor = game.actors?.get(actorId);
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return { success: false, error: 'No character assigned' };
     }
 
@@ -1893,7 +1894,7 @@ export class MessageService {
     // Route through SkillService for full CPR roll
     const skillSvc = game.nightcity?.skillService;
     if (!skillSvc) {
-      ui.notifications.warn('NCM | Skill system not available.');
+      ncmNotify.warn('NCM | Skill system not available.');
       return { success: false, error: 'Skill system not available' };
     }
 
@@ -1917,7 +1918,7 @@ export class MessageService {
       if (!quiet) this.soundService?.play('hack-success');
       this.eventBus?.emit(EVENTS.MESSAGE_STATUS_CHANGED, { messageId, actorId });
       game.nightcity?.traceService?.logSuccess({ actor, action: 'message-decrypt', objectName: flags?.subject || 'encrypted message', targetKind: 'message', targetMessageId: messageId, severity: 'hostile' });
-      if (!quiet) ui.notifications.info('NCM | Message decrypted.');
+      if (!quiet) ncmNotify.info('NCM | Message decrypted.');
       return { success: true, roll: result };
     }
 
@@ -1941,7 +1942,7 @@ export class MessageService {
       }
     }
 
-    if (!quiet) ui.notifications.warn(`NCM | Decryption failed. (${result?.total ?? '?'} vs DV ${dc})`);
+    if (!quiet) ncmNotify.warn(`NCM | Decryption failed. (${result?.total ?? '?'} vs DV ${dc})`);
     return { success: false, roll: result, iceDamage };
   }
 
@@ -1974,7 +1975,7 @@ export class MessageService {
     }
 
     this.eventBus?.emit(EVENTS.MESSAGE_STATUS_CHANGED, { messageId });
-    ui.notifications.info('NCM | Message force-decrypted.');
+    ncmNotify.info('NCM | Message force-decrypted.');
   }
 
   /**
@@ -1996,7 +1997,7 @@ export class MessageService {
     });
 
     this.eventBus?.emit(EVENTS.MESSAGE_STATUS_CHANGED, { messageId });
-    ui.notifications.info('NCM | Message encrypted.');
+    ncmNotify.info('NCM | Message encrypted.');
   }
 
   // ─── GM Operations ────────────────────────────────────────
@@ -2034,7 +2035,7 @@ export class MessageService {
         ? result.failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ')
         : (result.error || 'unknown error');
       console.warn(`${MODULE_ID} | Relayed message ${data.messageId} from ${who} to ${to} failed: ${why}`);
-      ui.notifications.warn(`NCM | Could not deliver ${who} → ${to}: ${why}`, { permanent: true });
+      ncmNotify.warn(`NCM | Could not deliver ${who} → ${to}: ${why}`, { permanent: true });
       // …and it stays listed in Admin → Messages → Outbox → Didn't arrive.
       await this.recordDeliveryFailure({ data, result, source: 'relay', byUserName: game.users.get(senderUserId)?.name || '' });
     }
@@ -2157,7 +2158,7 @@ export class MessageService {
       console.log(`${MODULE_ID} | Message ${data.messageId} delivered successfully`);
     } else {
       console.warn(`${MODULE_ID} | Message ${data.messageId} delivery failed: ${data.error}`);
-      ui.notifications.warn(`Message delivery failed: ${MessageService.playerFacingError(data.error)}`);
+      ncmNotify.warn(`Message delivery failed: ${MessageService.playerFacingError(data.error)}`);
     }
   }
 
@@ -2271,7 +2272,7 @@ export class MessageService {
       });
     } catch (error) {
       console.error(`${MODULE_ID} | MessageService.shareToChat:`, error);
-      ui.notifications.error('Failed to share message to chat.');
+      ncmNotify.error('Failed to share message to chat.');
     }
   }
 

@@ -25,6 +25,7 @@
  *   the apps/desktop metaphor are later phases (see dev/design/TERMINAL-EXPANSION.md).
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils/constants.js';
 import { log, isGM, generateId, formatCyberDate, terminalReachRule } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
@@ -1994,7 +1995,7 @@ export class TerminalService {
 
       if (mode === 'manual') {
         // Never prompt: it stays armed until the GM fires it from Admin → Security.
-        ui.notifications.info(`NCM | "${label}" triggered on ${item.name} — armed and waiting (fire it from Admin → Security).`);
+        ncmNotify.info(`NCM | "${label}" triggered on ${item.name} — armed and waiting (fire it from Admin → Security).`);
         return;
       }
       if (mode === 'auto') {
@@ -2017,7 +2018,7 @@ export class TerminalService {
       if (choice === 'fire') await this.fireResident(item, resident, { accountId, actorId });
       else if (choice === 'defuse') {
         await this.updateResident(item, resident.id, { state: 'defused' });
-        ui.notifications.info(`NCM | Resident "${label}" defused.`);
+        ncmNotify.info(`NCM | Resident "${label}" defused.`);
       } else {
         // Later → snooze so a 60s reaper (or a re-login) doesn't re-prompt at once.
         await this.updateResident(item, resident.id, { snoozeUntil: this._nowMs() + 10 * 60 * 1000 });
@@ -2274,7 +2275,7 @@ export class TerminalService {
   /** @private GM-only toast + whisper (the durable trace log lands in thread 4). */
   _residentGmAlert(msg) {
     try {
-      ui.notifications.info(`NCM | ${msg}`);
+      ncmNotify.info(`NCM | ${msg}`);
       const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
       if (gmIds.length) {
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

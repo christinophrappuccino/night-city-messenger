@@ -13,6 +13,7 @@
  *   - Deleted folder for archived/removed journals
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { resolveDisplayName } from '../utils/helpers.js';
 
@@ -348,7 +349,7 @@ export class MessageRepository {
    */
   async repairAllInboxPermissions() {
     if (!game.user.isGM) {
-      ui.notifications.warn('NCM | GM only.');
+      ncmNotify.warn('NCM | GM only.');
       return 0;
     }
 
@@ -378,7 +379,7 @@ export class MessageRepository {
       if (await this._repairPermissions(journal, actor, inboxFolder)) repaired++;
     }
 
-    if (repaired > 0) ui.notifications.info(`NCM | Repaired ${repaired} inbox journal(s).`);
+    if (repaired > 0) ncmNotify.info(`NCM | Repaired ${repaired} inbox journal(s).`);
     return repaired;
   }
 
@@ -994,7 +995,7 @@ export class MessageRepository {
    */
   async migrateJournalOrganization() {
     if (!game.user.isGM) {
-      ui.notifications.warn('NCM | Journal migration is GM-only.');
+      ncmNotify.warn('NCM | Journal migration is GM-only.');
       return { inboxes: 0, contacts: 0, shards: 0, pages: 0 };
     }
 

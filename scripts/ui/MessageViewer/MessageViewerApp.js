@@ -23,6 +23,7 @@
  *     - _enrichMessages() passes currentNetworkName for network badge visibility logic
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { ConversationPane, startConversationDialog } from './conversationPane.js';
 import { gmInboxRoster, pushRecentInbox, ROSTER_GROUPS } from '../../utils/inboxRoster.js';
 import { rowAsMessage } from '../../utils/conversations.js';
@@ -1092,7 +1093,7 @@ export class MessageViewerApp extends BaseApplication {
             await this.messageService?.updateMessageFlags?.(this.actorId, msg.messageId, {
               traceCompleted: true,
             });
-            ui.notifications.error('NCM | TRACE COMPLETE — Your location has been logged.');
+            ncmNotify.error('NCM | TRACE COMPLETE — Your location has been logged.');
           }
           return;
         }
@@ -1369,7 +1370,7 @@ export class MessageViewerApp extends BaseApplication {
     if (msg?.messageId) {
       await this.messageService?.permanentDelete?.(this.actorId, msg.messageId);
       game.nightcity?.notificationService?.refreshBadge?.();
-      ui.notifications.warn('NCM | Self-destruct message expired and erased.');
+      ncmNotify.warn('NCM | Self-destruct message expired and erased.');
     }
 
     this.selectedMessageId = null;
@@ -1398,7 +1399,7 @@ export class MessageViewerApp extends BaseApplication {
     await this.messageService?.permanentDelete?.(this.actorId, messageId);
     this._cachedMessages = null;
     game.nightcity?.notificationService?.refreshBadge?.();
-    ui.notifications.warn('NCM | Self-destruct message erased after reading.');
+    ncmNotify.warn('NCM | Self-destruct message erased after reading.');
   }
 
   /**
@@ -1827,7 +1828,7 @@ export class MessageViewerApp extends BaseApplication {
       case 'open-contacts': {
         const contactActorId = this.actorId || game.user?.character?.id;
         if (!contactActorId) {
-          ui.notifications.warn('NCM | No character assigned. Cannot open contacts.');
+          ncmNotify.warn('NCM | No character assigned. Cannot open contacts.');
           break;
         }
         game.nightcity?.openContacts?.(contactActorId);
@@ -1848,12 +1849,12 @@ export class MessageViewerApp extends BaseApplication {
         const res = await this.messageService?.markAllAsRead?.(this.actorId);
         if (res?.success) {
           if (res.count > 0) {
-            ui.notifications.info(`NCM | Marked ${res.count} message${res.count === 1 ? '' : 's'} as read.`);
+            ncmNotify.info(`NCM | Marked ${res.count} message${res.count === 1 ? '' : 's'} as read.`);
           }
           game.nightcity?.notificationService?.refreshBadge?.();
           this.render(false);
         } else if (res?.error) {
-          ui.notifications.warn(`NCM | Mark all as read failed: ${res.error}`);
+          ncmNotify.warn(`NCM | Mark all as read failed: ${res.error}`);
         }
         break;
       }
@@ -1931,13 +1932,13 @@ export class MessageViewerApp extends BaseApplication {
 
           // Burn current identity
           await emailService.burnEmail(actor, 'manual');
-          ui.notifications.info(`NCM | Identity burned: ${currentEmail}`);
+          ncmNotify.info(`NCM | Identity burned: ${currentEmail}`);
         }
 
         // Launch setup flow for re-registration
         const newEmail = await game.nightcity.openEmailSetup(actor);
         if (newEmail) {
-          ui.notifications.info(`NCM | New identity registered: ${newEmail}`);
+          ncmNotify.info(`NCM | New identity registered: ${newEmail}`);
         }
         this.render();
         break;
@@ -2230,7 +2231,7 @@ export class MessageViewerApp extends BaseApplication {
       row.classList.toggle('ncm-viewer__drawer-char--active', on);
       if (on) email = row.dataset.email || '';
     }
-    if (email) ui.notifications.info(`NCM | New messages now go out from ${email}`);
+    if (email) ncmNotify.info(`NCM | New messages now go out from ${email}`);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -2380,7 +2381,7 @@ export class MessageViewerApp extends BaseApplication {
     const block = this.networkService?.getSceneBlocks?.()?.[networkId];
     if (block) {
       const net = this.networkService.getNetwork(networkId);
-      ui.notifications.warn(`${net?.name || 'That network'} is ${block.state === 'jammed' ? 'jammed' : 'down'} here — its node on this scene is ${block.state === 'jammed' ? 'jammed' : block.state === 'damaged' ? 'damaged' : 'switched off'}.`);
+      ncmNotify.warn(`${net?.name || 'That network'} is ${block.state === 'jammed' ? 'jammed' : 'down'} here — its node on this scene is ${block.state === 'jammed' ? 'jammed' : block.state === 'damaged' ? 'damaged' : 'switched off'}.`);
       return;
     }
     if (!networkId) return;
@@ -2406,7 +2407,7 @@ export class MessageViewerApp extends BaseApplication {
     // Switch to the network
     const switchResult = await networkService.switchNetwork?.(networkId);
     if (switchResult?.success === false) {
-      ui.notifications.warn(`NCM | Could not switch to ${network.name}: ${switchResult.reason || 'unknown error'}`);
+      ncmNotify.warn(`NCM | Could not switch to ${network.name}: ${switchResult.reason || 'unknown error'}`);
     }
 
   }
@@ -2927,7 +2928,7 @@ export class MessageViewerApp extends BaseApplication {
   async _markUnread(messageId) {
     if (!messageId) return;
     const res = await this.messageService?.markAsUnread?.(this.actorId, messageId);
-    if (res && res.success === false) { ui.notifications.warn(`NCM | ${res.error || 'Could not mark it unread.'}`); return; }
+    if (res && res.success === false) { ncmNotify.warn(`NCM | ${res.error || 'Could not mark it unread.'}`); return; }
     this.selectedMessageId = null;
     this.render();
   }
@@ -2974,7 +2975,7 @@ export class MessageViewerApp extends BaseApplication {
     if (!confirm) return;
     const result = await this.messageService?.emptyTrash?.(this.actorId);
     if (result?.count > 0) {
-      ui.notifications.info(`${result.count} message(s) permanently deleted.`);
+      ncmNotify.info(`${result.count} message(s) permanently deleted.`);
     }
     this.selectedMessageId = null;
     this.render();
@@ -2988,7 +2989,7 @@ export class MessageViewerApp extends BaseApplication {
     if (!confirm) return;
     const result = await this.messageService?.emptySpam?.(this.actorId);
     if (result?.count > 0) {
-      ui.notifications.info(`${result.count} spam message(s) permanently deleted.`);
+      ncmNotify.info(`${result.count} spam message(s) permanently deleted.`);
     }
     this.selectedMessageId = null;
     this.render();
@@ -3009,7 +3010,7 @@ export class MessageViewerApp extends BaseApplication {
     const raw = this._typedContentRaw(target);
     if (!raw || raw.contentType !== 'eddies') return;
     const actor = game.actors.get(this.actorId);
-    if (!actor) { ui.notifications.warn('No character assigned.'); return; }
+    if (!actor) { ncmNotify.warn('No character assigned.'); return; }
     const res = await runEddiesClaim({
       actor, raw: raw.contentData, messageId: raw.messageId,
       sourceLabel: raw.metadata?.recoveredFrom || 'recovered file', host: this.element,
@@ -3066,16 +3067,16 @@ export class MessageViewerApp extends BaseApplication {
   _goToTypedScene(target) {
     const sceneId = target?.closest?.('[data-scene-id]')?.dataset.sceneId;
     const scene = sceneId ? game.scenes?.get(sceneId) : null;
-    if (!scene) { ui.notifications.warn('NCM | Scene not found.'); return; }
+    if (!scene) { ncmNotify.warn('NCM | Scene not found.'); return; }
     scene.view();
-    ui.notifications.info(`NCM | Viewing scene: ${scene.name}`);
+    ncmNotify.info(`NCM | Viewing scene: ${scene.name}`);
   }
 
   async _siphonTypedFunds(target) {
     const raw = this._typedContentRaw(target);
     if (!raw || raw.contentType !== 'banking') return;
     const actor = game.actors.get(this.actorId);
-    if (!actor) { ui.notifications.warn('No character assigned.'); return; }
+    if (!actor) { ncmNotify.warn('No character assigned.'); return; }
     await runSiphon({ actor, raw: raw.contentData, messageId: raw.messageId, host: this.element });
     this.render();
   }
@@ -3128,19 +3129,19 @@ export class MessageViewerApp extends BaseApplication {
 
     // Prevent claiming on your own sent messages
     if (msg?.status?.sent) {
-      ui.notifications.warn('Cannot claim eddies from your own sent message.');
+      ncmNotify.warn('Cannot claim eddies from your own sent message.');
       return;
     }
 
     // Prevent re-claiming already-claimed eddies (stale button / double-fire)
     if (msg?.status?.eddiesClaimed) {
-      ui.notifications.warn('These eddies have already been claimed.');
+      ncmNotify.warn('These eddies have already been claimed.');
       return;
     }
 
     const actor = game.actors.get(this.actorId);
     if (!actor) {
-      ui.notifications.warn('No character assigned.');
+      ncmNotify.warn('No character assigned.');
       return;
     }
 
@@ -3178,11 +3179,11 @@ export class MessageViewerApp extends BaseApplication {
         status: { eddiesClaimed: true, eddiesClaimedAt: formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString()) },
       });
 
-      ui.notifications.info(`${amount.toLocaleString()} eb claimed successfully.`);
+      ncmNotify.info(`${amount.toLocaleString()} eb claimed successfully.`);
       this.soundService?.play?.('receive');
     } catch (error) {
       console.error('NCM | Eddies claim failed:', error);
-      ui.notifications.error('Failed to claim eddies.');
+      ncmNotify.error('Failed to claim eddies.');
     } finally {
       this._claimingEddies.delete(messageId);
     }
@@ -3220,7 +3221,7 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     this.soundService?.play?.('hack-success');
-    ui.notifications.info('NCM | Block decrypted.');
+    ncmNotify.info('NCM | Block decrypted.');
     this.render();
   }
 
@@ -3236,9 +3237,9 @@ export class MessageViewerApp extends BaseApplication {
 
     const result = await game.nightcity?.schedulingService?.cancelScheduled?.(scheduleId);
     if (result?.success) {
-      ui.notifications.info(result.refunded ? `Scheduled message cancelled. ${result.refunded.toLocaleString()} eb refunded.` : 'Scheduled message cancelled.');
+      ncmNotify.info(result.refunded ? `Scheduled message cancelled. ${result.refunded.toLocaleString()} eb refunded.` : 'Scheduled message cancelled.');
     } else {
-      ui.notifications.error(`Failed to cancel: ${result?.error || 'Unknown error'}`);
+      ncmNotify.error(`Failed to cancel: ${result?.error || 'Unknown error'}`);
     }
     this.render();
   }
@@ -3247,7 +3248,7 @@ export class MessageViewerApp extends BaseApplication {
     if (!scheduleId) return;
     const entry = game.nightcity?.schedulingService?.getScheduled?.(scheduleId);
     if (!entry) {
-      ui.notifications.warn('Scheduled message not found.');
+      ncmNotify.warn('Scheduled message not found.');
       return;
     }
 
@@ -3256,7 +3257,7 @@ export class MessageViewerApp extends BaseApplication {
     if (entry.messageData?.terminalSend) {
       viaTerminal = game.nightcity?.terminalService?.reopenScheduledSend?.(entry.messageData) || { ok: false, reason: 'the terminal system is unavailable' };
       if (!viaTerminal.ok) {
-        ui.notifications.warn(`NCM | This message can't be edited: ${viaTerminal.reason}. It stays scheduled; you can still cancel it.`);
+        ncmNotify.warn(`NCM | This message can't be edited: ${viaTerminal.reason}. It stays scheduled; you can still cancel it.`);
         return;
       }
     }
@@ -3272,7 +3273,7 @@ export class MessageViewerApp extends BaseApplication {
     // Cancel the pending scheduled message (refunds what it holds; Schedule charges it again)
     const cancelled = await game.nightcity?.schedulingService?.cancelScheduled?.(scheduleId);
     if (!cancelled?.success) {
-      ui.notifications.error(`Failed to cancel: ${cancelled?.error || 'Unknown error'}`);
+      ncmNotify.error(`Failed to cancel: ${cancelled?.error || 'Unknown error'}`);
       return;
     }
 
@@ -3280,7 +3281,7 @@ export class MessageViewerApp extends BaseApplication {
     const msgData = entry.messageData || {};
     const scheduled = scheduledComposerState(entry, { isGM: game.user.isGM });
     if (scheduled.eddiesNotRestored > 0) {
-      ui.notifications.warn(`NCM | This message's ${scheduled.eddiesNotRestored.toLocaleString()} eb could not be restored: it has no record of being paid. Ask your GM if it was.`, { permanent: true });
+      ncmNotify.warn(`NCM | This message's ${scheduled.eddiesNotRestored.toLocaleString()} eb could not be restored: it has no record of being paid. Ask your GM if it was.`, { permanent: true });
     }
     game.nightcity?.composeMessage?.({
       fromActorId: msgData.fromActorId || this.actorId,
@@ -3306,7 +3307,7 @@ export class MessageViewerApp extends BaseApplication {
       const actor = game.actors.get(this.actorId);
       game.nightcity?.openDataShard?.(item, { actor });
     } else {
-      ui.notifications.warn(MessageViewerApp.SHARD_GONE_MSG);
+      ncmNotify.warn(MessageViewerApp.SHARD_GONE_MSG);
     }
   }
 
@@ -3382,7 +3383,7 @@ export class MessageViewerApp extends BaseApplication {
     if (!actor) return;
     const { map } = readDrafts(actor, MODULE_ID);
     if (!map[draftId]) {
-      ui.notifications.warn('That draft is gone.');
+      ncmNotify.warn('That draft is gone.');
       this.render();
       return;
     }
@@ -3394,7 +3395,7 @@ export class MessageViewerApp extends BaseApplication {
     const actor = game.actors.get(actorId);
     if (!actor) return;
     await actor.setFlag(MODULE_ID, DRAFTS_FLAG, { [`-=${draftId}`]: null }).catch(() => {});
-    ui.notifications.info('Draft deleted.');
+    ncmNotify.info('Draft deleted.');
     this.render();
   }
 
@@ -3422,7 +3423,7 @@ export class MessageViewerApp extends BaseApplication {
         });
       }
     }
-    if (!entries.length) return ui.notifications.warn('There are no terminal accounts to copy to.');
+    if (!entries.length) return ncmNotify.warn('There are no terminal accounts to copy to.');
     const pick = await showNamePicker({
       title: 'Copy to Terminal',
       hint: `Copy "${msg.subject || '(no subject)'}" onto which account? Sent mail lands in the account's Sent folder; money is not copied.`,
@@ -3431,9 +3432,9 @@ export class MessageViewerApp extends BaseApplication {
     const t = pick?.id ? targets.get(pick.id) : null;
     if (!t) return;
     const res = await svc.copyMessagesToAccount(t.item, t.acct.id, [msg]);
-    if (!res.success) return ui.notifications.error(res.error || 'Copy failed.');
+    if (!res.success) return ncmNotify.error(res.error || 'Copy failed.');
     const who = t.acct.displayName || t.acct.username;
-    ui.notifications.info(res.copied ? `Copied to ${who}.` : `${who} already has this message.`);
+    ncmNotify.info(res.copied ? `Copied to ${who}.` : `${who} already has this message.`);
   }
 
   async _shareToChat(messageId) {
@@ -3452,7 +3453,7 @@ export class MessageViewerApp extends BaseApplication {
 
     const existing = this._findSenderContact(msg);
     if (existing) {
-      ui.notifications.info(`NCM | ${msg.from} is already in your contacts.`);
+      ncmNotify.info(`NCM | ${msg.from} is already in your contacts.`);
       return;
     }
 
@@ -3465,14 +3466,14 @@ export class MessageViewerApp extends BaseApplication {
     // this can't leak a real sender.
     const { entry: masterContact, email: contactEmail, isAlias } = this._senderToAdd(msg);
     if (contactEmail !== msg.from && this._findContact(contactEmail)) {
-      ui.notifications.info(`NCM | ${contactEmail} is already in your contacts.`);
+      ncmNotify.info(`NCM | ${contactEmail} is already in your contacts.`);
       return;
     }
 
     try {
       const repo = this.contactRepository;
       if (!repo?.addContact) {
-        ui.notifications.warn('NCM | Contact system unavailable.');
+        ncmNotify.warn('NCM | Contact system unavailable.');
         return;
       }
       // Signature is (ownerActorId, contactData) — the contact's OWN linked
@@ -3489,16 +3490,16 @@ export class MessageViewerApp extends BaseApplication {
         notes: `Added from message: "${msg.subject || '(no subject)'}"`,
       });
       if (result?.success) {
-        ui.notifications.info(`NCM | Added "${displayName}" (${contactEmail}) to contacts.`);
+        ncmNotify.info(`NCM | Added "${displayName}" (${contactEmail}) to contacts.`);
         this.soundService?.play?.('receive');
         await this._refreshContactCache();
         this.render(true);
       } else {
-        ui.notifications.warn(`NCM | ${result?.error || 'Could not add contact.'}`);
+        ncmNotify.warn(`NCM | ${result?.error || 'Could not add contact.'}`);
       }
     } catch (error) {
       console.error('NCM | Failed to add contact:', error);
-      ui.notifications.error('NCM | Failed to add contact.');
+      ncmNotify.error('NCM | Failed to add contact.');
     }
   }
 
@@ -3509,7 +3510,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // Verify we have a reply target (actor or contact)
     if (!msg.fromActorId && !msg.fromContactId && !msg.from) {
-      ui.notifications.warn('Cannot reply — no sender identity to reply to.');
+      ncmNotify.warn('Cannot reply — no sender identity to reply to.');
       return;
     }
 
@@ -3517,15 +3518,15 @@ export class MessageViewerApp extends BaseApplication {
       const result = await this.messageService?.sendQuickReply?.(msg, this.actorId, replyText);
       if (result?.success) {
         this.soundService?.play?.('send');
-        ui.notifications.info(`Reply sent: "${replyText}"`);
+        ncmNotify.info(`Reply sent: "${replyText}"`);
         setTimeout(() => this.render(), 300);
       } else {
         this.soundService?.play?.('error');
-        ui.notifications.warn(`Reply failed: ${result?.error || 'Unknown error'}`);
+        ncmNotify.warn(`Reply failed: ${result?.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('NCM | Quick reply failed:', error);
-      ui.notifications.error('Failed to send reply.');
+      ncmNotify.error('Failed to send reply.');
     }
   }
 
@@ -3555,16 +3556,16 @@ export class MessageViewerApp extends BaseApplication {
       const r = await this.messageService?.revealAnonSender?.(messageId, this.actorId);
       if (r?.success) {
         this.soundService?.play?.('shard-decrypt');
-        ui.notifications.info('Anonymous sender revealed.');
+        ncmNotify.info('Anonymous sender revealed.');
         setTimeout(() => this.render(), 200);
       } else {
-        ui.notifications.warn(`Reveal failed: ${r?.error || 'sender could not be resolved'}`);
+        ncmNotify.warn(`Reveal failed: ${r?.error || 'sender could not be resolved'}`);
       }
       return;
     }
 
     const actor = game.actors?.get(this.actorId);
-    if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
+    if (!actor) { ncmNotify.warn('NCM | No character assigned.'); return; }
 
     const dv = Number(anon.traceDV) || 9;
     let traceSkill = 'interface';
@@ -3609,12 +3610,12 @@ export class MessageViewerApp extends BaseApplication {
 
     if (rollResult?.success) {
       this.soundService?.play?.('shard-decrypt');
-      ui.notifications.info('Trace successful — unmasking sender...');
+      ncmNotify.info('Trace successful — unmasking sender...');
       game.nightcity?.socketManager?.emit(SOCKET_OPS.ANON_TRACE_REQUEST, { ...byPayload, success: true });
       // The GM patches this page; DocumentSync re-renders with the real identity.
     } else {
       this.soundService?.play?.('hack-fail');
-      ui.notifications.warn('Trace failed — the signal scrambled before you could lock on.');
+      ncmNotify.warn('Trace failed — the signal scrambled before you could lock on.');
       game.nightcity?.socketManager?.emit(SOCKET_OPS.ANON_TRACE_REQUEST, { ...byPayload, success: false });
     }
   }
@@ -3638,7 +3639,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Skill + Luck Dialog ──
     const actor = game.actors?.get(this.actorId);
-    if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
+    if (!actor) { ncmNotify.warn('NCM | No character assigned.'); return; }
 
     const skillSvc = game.nightcity?.skillService;
     const allowedSkills = encryption.bypassSkills || ['Interface', 'Electronics/Security Tech'];
@@ -3921,7 +3922,7 @@ export class MessageViewerApp extends BaseApplication {
     const input = this.element?.querySelector(`input[name="bypassPassword"][data-message-id="${messageId}"]`);
     const password = input?.value?.trim();
     if (!password) {
-      ui.notifications.warn('NCM | Enter an access code.');
+      ncmNotify.warn('NCM | Enter an access code.');
       return;
     }
 
@@ -3934,14 +3935,14 @@ export class MessageViewerApp extends BaseApplication {
 
     if (result?.success) {
       this.soundService?.play?.('login-success');
-      ui.notifications.info('NCM | Access granted.');
+      ncmNotify.info('NCM | Access granted.');
     } else if (result?.lockedOut) {
       this.soundService?.play?.('lockout');
-      ui.notifications.error('NCM | SYSTEM LOCKED — Too many failed attempts.');
+      ncmNotify.error('NCM | SYSTEM LOCKED — Too many failed attempts.');
     } else {
       this.soundService?.play?.('login-fail');
       const remaining = result?.attemptsRemaining ?? '?';
-      ui.notifications.warn(`NCM | ACCESS DENIED. ${remaining} attempt(s) remaining.`);
+      ncmNotify.warn(`NCM | ACCESS DENIED. ${remaining} attempt(s) remaining.`);
     }
 
     this.render();
@@ -3955,7 +3956,7 @@ export class MessageViewerApp extends BaseApplication {
 
     const actor = game.actors?.get(this.actorId);
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return;
     }
 
@@ -3966,12 +3967,12 @@ export class MessageViewerApp extends BaseApplication {
     );
 
     if (result?.success) {
-      ui.notifications.info('NCM | Access granted — bypass successful.');
+      ncmNotify.info('NCM | Access granted — bypass successful.');
     } else if (result?.lockedOut) {
       this.soundService?.play?.('lockout');
-      ui.notifications.error('NCM | SYSTEM LOCKED — Too many failed attempts.');
+      ncmNotify.error('NCM | SYSTEM LOCKED — Too many failed attempts.');
     } else {
-      ui.notifications.warn('NCM | Bypass failed.');
+      ncmNotify.warn('NCM | Bypass failed.');
     }
 
     this.render();
@@ -3983,7 +3984,7 @@ export class MessageViewerApp extends BaseApplication {
 
     const actor = game.actors?.get(this.actorId);
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return;
     }
 
@@ -3993,9 +3994,9 @@ export class MessageViewerApp extends BaseApplication {
 
     if (result?.success) {
       const consumed = result.consumed ? ' (item consumed)' : '';
-      ui.notifications.info(`NCM | Access granted via ${result.keyItem?.name}${consumed}`);
+      ncmNotify.info(`NCM | Access granted via ${result.keyItem?.name}${consumed}`);
     } else {
-      ui.notifications.warn(`NCM | ${result.error || 'Required access item not found in inventory.'}`);
+      ncmNotify.warn(`NCM | ${result.error || 'Required access item not found in inventory.'}`);
     }
 
     this.render();
@@ -4004,7 +4005,7 @@ export class MessageViewerApp extends BaseApplication {
   async _gmForceReveal(messageId) {
     if (!game.user?.isGM) return;
     await this.messageAccessService?.gmForceReveal(messageId, this.actorId);
-    ui.notifications.info('NCM | Message force-revealed.');
+    ncmNotify.info('NCM | Message force-revealed.');
     this.render();
   }
 
@@ -4026,7 +4027,7 @@ export class MessageViewerApp extends BaseApplication {
 
     const actor = game.actors?.get(this.actorId);
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return;
     }
 
@@ -4037,7 +4038,7 @@ export class MessageViewerApp extends BaseApplication {
 
     const skillSvc = game.nightcity?.skillService;
     if (!skillSvc) {
-      ui.notifications.warn('NCM | Skill system not available.');
+      ncmNotify.warn('NCM | Skill system not available.');
       return;
     }
 
@@ -4294,13 +4295,13 @@ export class MessageViewerApp extends BaseApplication {
 
     const networkService = this.networkService;
     if (!networkService) {
-      ui.notifications.warn('NCM | Network service not available.');
+      ncmNotify.warn('NCM | Network service not available.');
       return;
     }
 
     const network = networkService.getNetwork?.(networkId);
     if (!network) {
-      ui.notifications.warn(`NCM | Network "${networkId}" not found.`);
+      ncmNotify.warn(`NCM | Network "${networkId}" not found.`);
       return;
     }
 
@@ -4312,7 +4313,7 @@ export class MessageViewerApp extends BaseApplication {
       if (result?.success) {
         // Auth succeeded — switch to this network
         await networkService.switchNetwork?.(network.id);
-        ui.notifications.info(`NCM | Connected to ${network.name}.`);
+        ncmNotify.info(`NCM | Connected to ${network.name}.`);
         // Play access granted transition, then re-render to show message
         await this._playAccessGrantedTransition(
           `Connected to ${network.name} — loading message content...`
@@ -4322,7 +4323,7 @@ export class MessageViewerApp extends BaseApplication {
       // If cancelled or failed, the dialog already handles notifications
     } catch (err) {
       console.error('NCM | Failed to open NetworkAuthDialog:', err);
-      ui.notifications.error('NCM | Failed to open network authentication.');
+      ncmNotify.error('NCM | Failed to open network authentication.');
     }
   }
 
@@ -4333,7 +4334,7 @@ export class MessageViewerApp extends BaseApplication {
   async _gmResetLockout(messageId) {
     if (!game.user?.isGM) return;
     await this.messageAccessService?.resetLockout?.(messageId, this.actorId);
-    ui.notifications.info('NCM | Lockout timer reset.');
+    ncmNotify.info('NCM | Lockout timer reset.');
     this.render();
   }
 
@@ -4347,7 +4348,7 @@ export class MessageViewerApp extends BaseApplication {
       status: { quarantined: true },
     });
     this.soundService?.play?.('hack-success');
-    ui.notifications.info('NCM | Malware quarantined.');
+    ncmNotify.info('NCM | Malware quarantined.');
     this.render();
   }
 
@@ -4378,7 +4379,7 @@ export class MessageViewerApp extends BaseApplication {
       speaker: ChatMessage.getSpeaker({ actor }),
       whisper: game.users.filter(u => u.isGM).map(u => u.id),
     });
-    ui.notifications.info('NCM | Malware analysis sent to GM.');
+    ncmNotify.info('NCM | Malware analysis sent to GM.');
   }
 
   _toggleThread() {
@@ -4418,7 +4419,7 @@ export class MessageViewerApp extends BaseApplication {
         const actor = game.actors.get(this.actorId);
         game.nightcity?.openDataShard?.(item, { actor });
       } else {
-        ui.notifications.warn(MessageViewerApp.SHARD_GONE_MSG);
+        ncmNotify.warn(MessageViewerApp.SHARD_GONE_MSG);
       }
       return;
     }

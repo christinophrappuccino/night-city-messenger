@@ -131,7 +131,7 @@ ok(ds.includes('deferChat: !!options.silent && !options.reveal') && (ds.match(/\
 const cb = read('scripts/services/ContactBreachService.js');
 ok(cb.includes('deferChat: !!options.deferChat') && (cb.match(/postChat: rollResult\.postChat/g) || []).length === 2, 'contact breach: postChat on both outcomes');
 const ms = read('scripts/services/MessageService.js');
-ok(ms.includes('if (!quiet) this.soundService?.play(\'hack-success\')') && ms.includes('if (!quiet) ui.notifications.warn(`NCM | Decryption failed.'), 'message decrypt: no early sound or toast while the grid is still rolling');
+ok(ms.includes('if (!quiet) this.soundService?.play(\'hack-success\')') && ms.includes('if (!quiet) ncmNotify.warn(`NCM | Decryption failed.'), 'message decrypt: no early sound or toast while the grid is still rolling');
 
 // 8. no caller left that rolls with an immediate card and then animates
 const callers = ['scripts/ui/content/SecurityConsole.js', 'scripts/ui/content/BankHeist.js', 'scripts/ui/content/SystemSweep.js'];

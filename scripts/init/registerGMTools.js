@@ -15,6 +15,7 @@
  *   32  — Phase 5 verification
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, TEMPLATES } from '../utils/constants.js';
 import { log, isGM, isSelectableCharacter } from '../utils/helpers.js';
 import { registerAdminDialogHook } from '../utils/adminTheme.js';
@@ -132,7 +133,7 @@ export function registerGMTools(initializer) {
 
     // ─── Admin Panel (GM only) ───
     ns.openAdmin = async () => {
-      if (!game.user.isGM) return ui.notifications.warn('GM only');
+      if (!game.user.isGM) return ncmNotify.warn('GM only');
       return _openSingleton('admin-panel', () =>
         import('../ui/AdminPanel/AdminPanelApp.js')
       );
@@ -143,7 +144,7 @@ export function registerGMTools(initializer) {
     // openAdminTab('networks', { popout: true, select: netId })  → its own larger window
     // `select` is handed to the tab's openTo(select) so it can open on that row.
     ns.openAdminTab = async (tab, { popout = false, select = null } = {}) => {
-      if (!game.user.isGM) return ui.notifications.warn('GM only');
+      if (!game.user.isGM) return ncmNotify.warn('GM only');
       const { AdminPanelApp } = await import('../ui/AdminPanel/AdminPanelApp.js');
       if (popout) return AdminPanelApp.openTabWindow(tab, { select });
       const panel = await ns.openAdmin();
@@ -180,7 +181,7 @@ export function registerGMTools(initializer) {
             return;
           }
         }
-        ui.notifications.warn('No actor with email found.');
+        ncmNotify.warn('No actor with email found.');
         return;
       }
 

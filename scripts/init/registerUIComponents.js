@@ -5,6 +5,7 @@
  * @description Registers scene controls, token HUD buttons, and UI launch functions.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, MODULE_TITLE } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { registerMinimizeControls } from '../utils/windowMinimize.js';
@@ -104,30 +105,30 @@ export function registerUIComponents(initializer) {
 
     // Stubs — replaced by actual Application classes in Phase 2+
     ns.openNCM = () => {
-      ui.notifications.info('Night City Messenger: Character Select (Phase 2)');
+      ncmNotify.info('Night City Messenger: Character Select (Phase 2)');
     };
     ns.openInbox = (actorId) => {
-      ui.notifications.info(`Night City Messenger: Inbox (Phase 2) — actorId: ${actorId ?? 'self'}`);
+      ncmNotify.info(`Night City Messenger: Inbox (Phase 2) — actorId: ${actorId ?? 'self'}`);
     };
     ns.composeMessage = (data) => {
-      ui.notifications.info('Night City Messenger: Composer (Phase 2)');
+      ncmNotify.info('Night City Messenger: Composer (Phase 2)');
     };
     ns.openContacts = (actorId) => {
-      ui.notifications.info('Night City Messenger: Contacts (Phase 2)');
+      ncmNotify.info('Night City Messenger: Contacts (Phase 2)');
     };
     ns.openAdmin = () => {
-      if (!game.user.isGM) return ui.notifications.warn('GM only');
-      ui.notifications.info('Night City Messenger: Admin Panel (Phase 5)');
+      if (!game.user.isGM) return ncmNotify.warn('GM only');
+      ncmNotify.info('Night City Messenger: Admin Panel (Phase 5)');
     };
     ns.openDataShard = (item) => {
-      ui.notifications.info('Night City Messenger: Data Shard (Phase 4)');
+      ncmNotify.info('Night City Messenger: Data Shard (Phase 4)');
     };
     ns.openNetworkManagement = () => {
-      if (!game.user.isGM) return ui.notifications.warn('GM only');
-      ui.notifications.info('Night City Messenger: Network Management (Phase 3)');
+      if (!game.user.isGM) return ncmNotify.warn('GM only');
+      ncmNotify.info('Night City Messenger: Network Management (Phase 3)');
     };
     ns.openThemeCustomizer = () => {
-      ui.notifications.info('Night City Messenger: Theme Customizer (Phase 5)');
+      ncmNotify.info('Night City Messenger: Theme Customizer (Phase 5)');
     };
 
     log.info('UI launch stubs registered');

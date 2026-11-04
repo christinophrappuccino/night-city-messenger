@@ -11,6 +11,7 @@
  *   Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
 import { log, isPersonActor } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -143,6 +144,6 @@ export class ActorImportPickerApp extends BaseApplication {
     // Admin → Contacts opens its edit form pre-filled from the actor (ContactsTab.startCreateFromActor).
     const panel = await game.nightcity?.openAdminTab?.('contacts', { select: { create: 'actor', actorId } });
     if (panel) log.info(`Admin: Importing actor ${actorId} as new contact`);
-    else ui.notifications.warn('NCM | Could not open Admin → Contacts.');
+    else ncmNotify.warn('NCM | Could not open Admin → Contacts.');
   }
 }

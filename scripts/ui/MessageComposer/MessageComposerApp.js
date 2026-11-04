@@ -15,6 +15,7 @@
  *  WP-4.5.7 — Validation + send flow + animation
  */
 
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS, SEND_AS_FLAG } from '../../utils/constants.js';
 import { pickSenderChoice } from '../../utils/identities.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
@@ -1047,7 +1048,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
     const res = await ns.switchNetwork?.(networkId);
     if (res?.success === false) {
-      ui.notifications.warn(`NCM | Could not switch to ${network.name}: ${res.reason || 'unknown error'}`);
+      ncmNotify.warn(`NCM | Could not switch to ${network.name}: ${res.reason || 'unknown error'}`);
     }
   }
 
@@ -1072,7 +1073,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           this.scheduleEnabled = true;
           this.scheduledTime = iso;
           this.scheduleGameTime = true;
-          ui.notifications.info('NCM | That date is in the future — the message will be scheduled for it.');
+          ncmNotify.info('NCM | That date is in the future — the message will be scheduled for it.');
         } else {
           this.sendTimestamp = new Date(ms).toISOString();
         }
@@ -1546,34 +1547,41 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     dropdown.classList.remove('ncm-hidden');
 
+    // Names, addresses and group members are player-controlled and this is
+    // assigned to innerHTML, so every value is escaped (audit SEC-12).
+    // data-* values are read back through `dataset`, which decodes them.
+    const h = escapeHtml;
+    // A data-tooltip is rendered by Foundry as HTML after the attribute is
+    // decoded, so text inside one is escaped twice (audit SEC-16).
+    const tip = (s) => h(h(s));
     const items = this._searchResults.map((r, i) => r.isGroup ? `
       <div class="ncm-autocomplete-item ncm-autocomplete-item--group ${i === this._selectedResultIndex ? 'ncm-autocomplete-item--selected' : ''}"
-           data-index="${i}" data-group-id="${r.groupId}" style="--tc:${hueVar(r.name)}">
-        <div class="ncm-autocomplete__avatar">${r.img ? `<img src="${String(r.img).replace(/"/g, '&quot;')}" alt="">` : '<i class="fas fa-users"></i>'}</div>
+           data-index="${i}" data-group-id="${h(r.groupId)}" style="--tc:${hueVar(r.name)}">
+        <div class="ncm-autocomplete__avatar">${r.img ? `<img src="${h(r.img)}" alt="">` : '<i class="fas fa-users"></i>'}</div>
         <div class="ncm-autocomplete__info">
-          <div class="ncm-autocomplete__name">${r.name}</div>
-          <div class="ncm-autocomplete__email">${r.memberCount} ${r.memberCount === 1 ? 'member' : 'members'} · ${r.memberNames}</div>
+          <div class="ncm-autocomplete__name">${h(r.name)}</div>
+          <div class="ncm-autocomplete__email">${h(r.memberCount)} ${r.memberCount === 1 ? 'member' : 'members'} · ${h(r.memberNames)}</div>
         </div>
       </div>
     ` : `
       <div class="ncm-autocomplete-item ${i === this._selectedResultIndex ? 'ncm-autocomplete-item--selected' : ''} ${r.greyed ? 'ncm-autocomplete-item--greyed' : ''}"
-           data-index="${i}" data-actor-id="${r.actorId || ''}" style="--tc:${hueVar(r.name)}">
-        <div class="ncm-autocomplete__avatar">${r.initials}</div>
+           data-index="${i}" data-actor-id="${h(r.actorId || '')}" style="--tc:${hueVar(r.name)}">
+        <div class="ncm-autocomplete__avatar">${h(r.initials)}</div>
         <div class="ncm-autocomplete__info">
-          <div class="ncm-autocomplete__name">${r.name}</div>
-          <div class="ncm-autocomplete__email">${r.email || ''}</div>
+          <div class="ncm-autocomplete__name">${h(r.name)}</div>
+          <div class="ncm-autocomplete__email">${h(r.email || '')}</div>
         </div>
-        ${r.known ? `<span class="ncm-autocomplete__known" data-tooltip="In ${this.fromContact?.name || 'their'}'s contacts"><i class="fas fa-address-book"></i></span>` : ''}
-        ${r.unreachableLabel ? `<span class="ncm-autocomplete__unreachable"><i class="fas fa-ban"></i> ${r.unreachableLabel}</span>` : ''}
+        ${r.known ? `<span class="ncm-autocomplete__known" data-tooltip="In ${tip(this.fromContact?.name || 'their')}'s contacts"><i class="fas fa-address-book"></i></span>` : ''}
+        ${r.unreachableLabel ? `<span class="ncm-autocomplete__unreachable"><i class="fas fa-ban"></i> ${h(r.unreachableLabel)}</span>` : ''}
       </div>
     `).join('');
 
     // Raw address fallback
     const fallback = query ? `
-      <div class="ncm-autocomplete-item ncm-autocomplete-item--fallback" data-index="${this._searchResults.length}" data-raw="${query}">
+      <div class="ncm-autocomplete-item ncm-autocomplete-item--fallback" data-index="${this._searchResults.length}" data-raw="${h(query)}">
         <div class="ncm-autocomplete__avatar" style="color: var(--ncm-text-muted); border-color: var(--ncm-border);"><i class="fas fa-at" style="font-size:9px;"></i></div>
         <div class="ncm-autocomplete__info">
-          <div class="ncm-autocomplete__name" style="color: var(--ncm-text-secondary);">Send to "${query}" as raw address</div>
+          <div class="ncm-autocomplete__name" style="color: var(--ncm-text-secondary);">Send to "${h(query)}" as raw address</div>
           <div class="ncm-autocomplete__sub"><i class="fas fa-triangle-exclamation" style="color:var(--ncm-warning); margin-right:2px;"></i> Unverified — contact not in directory</div>
         </div>
       </div>
@@ -1639,10 +1647,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (!group) return;
     const { recipients, unresolved } = svc.recipientsFor(group);
     if (!recipients.length) {
-      ui.notifications.warn(`NCM | "${group.name}" has no one reachable in it.`);
+      ncmNotify.warn(`NCM | "${group.name}" has no one reachable in it.`);
       return;
     }
-    if (unresolved.length) ui.notifications.warn(`NCM | "${group.name}": ${unresolved.join(', ')} could not be found and will be skipped.`);
+    if (unresolved.length) ncmNotify.warn(`NCM | "${group.name}": ${unresolved.join(', ')} could not be found and will be skipped.`);
     this.recipients.push({
       isGroup: true, groupId: group.id, name: group.name, email: '', actorId: null, contactId: null,
       initials: '', avatarColor: group.color || '#19f3f7', img: group.img || '',
@@ -1953,7 +1961,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         if (draft.mode === 'reply') this._initReply({});
         else this._initForward();
       } else {
-        ui.notifications.warn('NCM | The message this draft answered is gone — opening it as a new message.');
+        ncmNotify.warn('NCM | The message this draft answered is gone — opening it as a new message.');
       }
     }
 
@@ -2028,7 +2036,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (!id) return;
     this._pendingDraftId = null;
     const draft = this._drafts().find(d => d.id === id);
-    if (!draft) { ui.notifications.warn('NCM | That draft is gone.'); return; }
+    if (!draft) { ncmNotify.warn('NCM | That draft is gone.'); return; }
     await this._applyDraft(draft);
   }
 
@@ -2037,7 +2045,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
    *  content), so nothing is lost and nothing has to be asked. */
   async _openDraftInPlace() {
     const list = this._drafts();
-    if (!list.length) return ui.notifications.info('No drafts for this character.');
+    if (!list.length) return ncmNotify.info('No drafts for this character.');
     const now = Date.now();
     const entries = list.map(d => ({
       id: d.id,
@@ -2056,7 +2064,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this._syncFormData();
     if (draftHasContent(this._draftRecord())) this._performAutoSave({ silent: true });
     const draft = this._drafts().find(d => d.id === pick.id);
-    if (!draft) return ui.notifications.warn('NCM | That draft is gone.');
+    if (!draft) return ncmNotify.warn('NCM | That draft is gone.');
     await this._applyDraft(draft);
     this.render(true);
   }
@@ -2359,7 +2367,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Deduct eddies from sender BEFORE sending (skip for contact-only senders)
       if (this.eddiesAmount > 0 && this.fromActorId) {
         if (sendList.length > 1) {
-          ui.notifications.info(`NCM | ${this.eddiesAmount.toLocaleString()} eb × ${sendList.length} recipients = ${eddiesTotal.toLocaleString()} eb.`);
+          ncmNotify.info(`NCM | ${this.eddiesAmount.toLocaleString()} eb × ${sendList.length} recipients = ${eddiesTotal.toLocaleString()} eb.`);
         }
         const deducted = await this._deductEddies(this.fromActorId, eddiesTotal);
         if (!deducted) {
@@ -2383,7 +2391,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         );
 
         if (result?.success) {
-          ui.notifications.info(`Message scheduled for delivery.`);
+          ncmNotify.info(`Message scheduled for delivery.`);
         }
       } else {
         // Immediate send
@@ -2408,7 +2416,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         // send-only, inbox gone). Say who and why, and give their share back.
         if (result.failed?.length) {
           const why = result.failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ');
-          ui.notifications.warn(`NCM | Not delivered to ${result.failed.length} of ${sendList.length} — ${why}`, { permanent: true });
+          ncmNotify.warn(`NCM | Not delivered to ${result.failed.length} of ${sendList.length} — ${why}`, { permanent: true });
           if (this.eddiesAmount > 0 && this.fromActorId) {
             await this._creditEddies(this.fromActorId, this.eddiesAmount * result.failed.length).catch(() => {});
           }
@@ -2464,9 +2472,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   /** Draft = save and CLOSE (autosave keeps writing the same id while open). */
   static async _onSaveDraft(event, target) {
     const saved = this._performAutoSave({ silent: true });
-    if (!saved) { ui.notifications.info('Nothing to save yet.'); return; }
+    if (!saved) { ncmNotify.info('Nothing to save yet.'); return; }
     this._draftDone = true;
-    ui.notifications.info('Draft saved — it is on the Agent\'s Drafts tab.');
+    ncmNotify.info('Draft saved — it is on the Agent\'s Drafts tab.');
     this.close({ noDraft: true });
   }
 
@@ -2934,7 +2942,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     });
 
     if (allShards.length === 0) {
-      ui.notifications.info(isGM
+      ncmNotify.info(isGM
         ? `No ${T('many', 'lower')} found in any inventory or world items.`
         : `No ${T('many', 'lower')} in your inventory.`);
       return;
@@ -2971,7 +2979,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   }
 
   static _onAttachEddies(event, target) {
-    if (this.terminalSend && !this.terminalSend.own) return ui.notifications.warn(`You're writing as ${this.terminalSend.username} — their money isn't yours to send.`);
+    if (this.terminalSend && !this.terminalSend.own) return ncmNotify.warn(`You're writing as ${this.terminalSend.username} — their money isn't yours to send.`);
     const actor = game.actors.get(this.fromActorId);
     const isGM = game.user.isGM;
 
@@ -3000,7 +3008,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
             // Players must have sufficient funds; GM can send any amount
             if (!isGM && amount > currentEddies) {
-              ui.notifications.warn(`Insufficient eddies. You have ${currentEddies.toLocaleString()} eb.`);
+              ncmNotify.warn(`Insufficient eddies. You have ${currentEddies.toLocaleString()} eb.`);
               return;
             }
 
@@ -3294,7 +3302,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this._closeTemplatesMenu();
     const svc = this.messageTemplateService;
     const list = svc?.getAll?.() || [];
-    if (!list.length) return ui.notifications.info('No message templates yet — write one and save it from this menu.');
+    if (!list.length) return ncmNotify.info('No message templates yet — write one and save it from this menu.');
     const Svc = svc.constructor;
     const pick = await showNamePicker({
       title: 'Insert a template', hint: 'Fills an empty subject and the delivery options the template carries.',
@@ -3350,7 +3358,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       this.body = how === 'append' ? `${this.body}<p><br></p>${tplBody}` : tplBody;
     }
     this.render(true);
-    ui.notifications.info(`NCM | Template "${t.name}" inserted.`);
+    ncmNotify.info(`NCM | Template "${t.name}" inserted.`);
   }
 
   /** Save what is in the composer now as a template (a known name asks Overwrite). */
@@ -3383,10 +3391,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         encryption: { enabled: this.encryptionEnabled, dv: this.encryptionDV, type: this.encryptionType, failureMode: this.encryptionFailureMode },
         selfDestruct: { enabled: this.selfDestructEnabled, mode: this.selfDestructMode },
       });
-      ui.notifications.info(`NCM | Template "${name}" ${overwrote ? 'updated' : 'saved'}.`);
+      ncmNotify.info(`NCM | Template "${name}" ${overwrote ? 'updated' : 'saved'}.`);
       this.render(true);
     } catch (e) {
-      ui.notifications.error(e.message || 'Could not save the template.');
+      ncmNotify.error(e.message || 'Could not save the template.');
     }
   }
 
@@ -3407,11 +3415,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       try {
         const payload = JSON.parse(await file.text());
         const { imported, skipped } = await svc.importTemplates(payload);
-        ui.notifications.info(`Imported ${imported} template(s).${skipped ? ` ${skipped} skipped (same name or invalid).` : ''}`);
+        ncmNotify.info(`Imported ${imported} template(s).${skipped ? ` ${skipped} skipped (same name or invalid).` : ''}`);
         this.render(true);
       } catch (err) {
         console.error('NCM | Import message templates failed:', err);
-        ui.notifications.error(err.message || 'Failed to parse JSON file.');
+        ncmNotify.error(err.message || 'Failed to parse JSON file.');
       } finally {
         input.remove();
       }
@@ -3426,7 +3434,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const svc = this.messageTemplateService;
     if (!svc) return;
     const payload = svc.exportTemplates();
-    if (!payload.templates.length) return ui.notifications.warn('No templates to export.');
+    if (!payload.templates.length) return ncmNotify.warn('No templates to export.');
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -3434,7 +3442,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     a.download = `ncm-message-templates-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    ui.notifications.info(`Exported ${payload.templates.length} template(s).`);
+    ncmNotify.info(`Exported ${payload.templates.length} template(s).`);
   }
 
   // ─── Form Data Sync ───────────────────────────────────────
@@ -3526,7 +3534,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   async _deductEddies(actorId, amount) {
     const actor = game.actors.get(actorId);
     if (!actor) {
-      ui.notifications.error('Sender actor not found.');
+      ncmNotify.error('Sender actor not found.');
       return false;
     }
 
@@ -3535,7 +3543,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     // GM bypasses balance check (can send from NPC accounts with 0 balance)
     if (!isGM && amount > currentWealth) {
-      ui.notifications.error(`Insufficient eddies. You have ${currentWealth.toLocaleString()} eb.`);
+      ncmNotify.error(`Insufficient eddies. You have ${currentWealth.toLocaleString()} eb.`);
       return false;
     }
 
@@ -3551,14 +3559,14 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       if (actor.isOwner || isGM) {
         await actor.update({ 'system.wealth': wealth });
       } else {
-        ui.notifications.warn('Cannot update wealth — no permission on actor.');
+        ncmNotify.warn('Cannot update wealth — no permission on actor.');
         return false;
       }
 
       return true;
     } catch (error) {
       console.error(`${MODULE_ID} | Eddies deduction failed:`, error);
-      ui.notifications.error('Failed to deduct eddies from account.');
+      ncmNotify.error('Failed to deduct eddies from account.');
       return false;
     }
   }

@@ -23,6 +23,7 @@
  *   CSS container query.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { isNodeVerb } from '../content/ProgramModel.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS, EVENTS } from '../../utils/constants.js';
@@ -73,7 +74,7 @@ function action(method) {
   return function (event, target) {
     const fail = (err) => {
       log.error(`Terminal action ${method} failed:`, err);
-      ui.notifications?.error?.(`NCM | Terminal: ${method.replace(/^_on/, '')} failed — ${err?.message || err}`);
+      ncmNotify.error?.(`NCM | Terminal: ${method.replace(/^_on/, '')} failed — ${err?.message || err}`);
     };
     if (typeof this[method] !== 'function') { fail(new Error('no handler')); return; }
     try {
@@ -332,7 +333,7 @@ export class TerminalViewerApp extends BaseApplication {
     try { return await this._buildContext(options); } catch (err) {
       // Same reason as action(): a context that throws leaves the window frozen on its last frame.
       log.error('Terminal render failed:', err);
-      ui.notifications?.error?.(`NCM | Terminal could not draw this screen — ${err?.message || err}`);
+      ncmNotify.error?.(`NCM | Terminal could not draw this screen — ${err?.message || err}`);
       throw err;
     }
   }
@@ -379,7 +380,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (this._state === 'mailbox' && this._accountId && this._viewAs
         && !this.terminalService?.adminViewVerdict(this.item, this._accountId, this._viewAs)?.ok) {
       this._viewAs = null; this._selectedMessageId = null; this._fsSel = null;
-      ui.notifications?.warn(`${this._terminalName()}: that account can no longer be viewed.`);
+      ncmNotify.warn(`${this._terminalName()}: that account can no longer be viewed.`);
     }
     if (this._state === 'mailbox' && this._accountId) {
       const acct = this.terminalService?.getAccount(this.item, this._accountId);
@@ -388,7 +389,7 @@ export class TerminalViewerApp extends BaseApplication {
         this._viewAs = null;
         this._selectedMessageId = null;
         this._state = 'login';
-        ui.notifications?.warn('UPLINK LOST — session dropped.');
+        ncmNotify.warn('UPLINK LOST — session dropped.');
       }
     }
 
@@ -987,7 +988,7 @@ export class TerminalViewerApp extends BaseApplication {
   _openComposeAs(extra = {}) {
     const svc = this.terminalService;
     const box = this._boxId();
-    if (!this._composeAsContext()) return ui.notifications.warn(`${this._terminalName()}: this account can't send mail.`);
+    if (!this._composeAsContext()) return ncmNotify.warn(`${this._terminalName()}: this account can't send mail.`);
     const id = svc.accountSendIdentity(this.item, box);
     // The player's OWN account (they own its character) — their own mail, not an
     // impersonation: eddies allowed, no intrusion row in the Activity Log.
@@ -1018,7 +1019,7 @@ export class TerminalViewerApp extends BaseApplication {
   _startAdminView(targetId, { files = false } = {}) {
     const svc = this.terminalService;
     const v = svc?.adminViewVerdict(this.item, this._accountId, targetId);
-    if (!v?.ok) { ui.notifications?.warn(`${this._terminalName()}: ${v?.reason || 'that account cannot be viewed'}.`); return; }
+    if (!v?.ok) { ncmNotify.warn(`${this._terminalName()}: ${v?.reason || 'that account cannot be viewed'}.`); return; }
     this._viewAs = targetId;
     this._switcherOpen = false;
     this._selectedMessageId = null;
@@ -1188,7 +1189,7 @@ export class TerminalViewerApp extends BaseApplication {
   _onRender(context, options) {
     try { this._onRenderInner(context, options); } catch (err) {
       log.error('Terminal post-render wiring failed:', err);
-      ui.notifications?.error?.(`NCM | Terminal: a control failed to wire up — ${err?.message || err}`);
+      ncmNotify.error?.(`NCM | Terminal: a control failed to wire up — ${err?.message || err}`);
     }
   }
 
@@ -1746,7 +1747,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (res && !res.success && res.reason !== 'auth_failed') {
       const name = this.networkService?.getNetwork?.(id)?.name || 'that network';
       const why = { dead_zone: 'There is no signal here.', not_available: `${name} doesn't reach this scene.` }[res.reason] || `Couldn't connect to ${name}.`;
-      ui.notifications.warn(`NCM | ${why}`);
+      ncmNotify.warn(`NCM | ${why}`);
     }
     this._recheckGate();
   }
@@ -1764,7 +1765,7 @@ export class TerminalViewerApp extends BaseApplication {
   }
 
   async _onSpoofNetwork() {
-    if (!this.actor) return ui.notifications.warn('No character to roll with.');
+    if (!this.actor) return ncmNotify.warn('No character to roll with.');
     const cfg = this.terminalService.getConfig(this.item);
     const skill = (cfg.network?.bypassSkills || [])[0] || 'Interface';
     const dc = cfg.network?.bypassDV ?? 18;
@@ -1775,7 +1776,7 @@ export class TerminalViewerApp extends BaseApplication {
       });
       if (result?.cancelled) return;
       if (result?.success) { this._networkSpoofed = true; this._enterState('login'); return; }
-      ui.notifications.warn('Network spoof failed.');
+      ncmNotify.warn('Network spoof failed.');
     } catch (err) { log.error(`Network spoof failed: ${err.message}`); }
   }
 
@@ -1822,7 +1823,7 @@ export class TerminalViewerApp extends BaseApplication {
   async _switchUplink(networkId, { authorized = false } = {}) {
     if (isGM()) {
       const res = await this.terminalService.setUplink(this.item, networkId, { remember: authorized });
-      if (!res?.success) ui.notifications?.warn(res?.error || 'Uplink switch failed.');
+      if (!res?.success) ncmNotify.warn(res?.error || 'Uplink switch failed.');
       this.render(false);
       return;
     }
@@ -1984,7 +1985,7 @@ export class TerminalViewerApp extends BaseApplication {
         this.render(true);
         return;
       }
-      ui.notifications.info('NCM | That program planted a file in another account — log into it to view.');
+      ncmNotify.info('NCM | That program planted a file in another account — log into it to view.');
       return;
     }
     // No planted file (armed, or an execute/run program) → expand to show what it does.
@@ -1996,10 +1997,10 @@ export class TerminalViewerApp extends BaseApplication {
   async _onUpload() {
     this._toolsOpen = false;
     const cap = canOperate(this.actor);
-    if (!cap.ok) { ui.notifications.warn(`NCM | ${cap.reason}`); return this.render(false); }
-    if (!this.actor) { ui.notifications.warn('NCM | No operator assigned to run the upload.'); return this.render(false); }
+    if (!cap.ok) { ncmNotify.warn(`NCM | ${cap.reason}`); return this.render(false); }
+    if (!this.actor) { ncmNotify.warn('NCM | No operator assigned to run the upload.'); return this.render(false); }
     const programs = await this._gatherCarriedPrograms();
-    if (!programs.length) { ui.notifications.info('NCM | You are not carrying anything uploadable.'); return this.render(false); }
+    if (!programs.length) { ncmNotify.info('NCM | You are not carrying anything uploadable.'); return this.render(false); }
     const accounts = this._uploadTargetAccounts();
     const { runUploadConsole } = await import('../content/UploadConsole.js');
     const picked = await runUploadConsole({ programs, accounts, terminalName: this._terminalName(), host: this.element });
@@ -2014,8 +2015,8 @@ export class TerminalViewerApp extends BaseApplication {
   async _onSystemSweep() {
     this._toolsOpen = false;
     const cap = canOperate(this.actor);
-    if (!cap.ok) { ui.notifications.warn(`NCM | ${cap.reason}`); return this.render(false); }
-    if (!this.actor && !isGM()) { ui.notifications.warn('NCM | No operator assigned to run the sweep.'); return this.render(false); }
+    if (!cap.ok) { ncmNotify.warn(`NCM | ${cap.reason}`); return this.render(false); }
+    if (!this.actor && !isGM()) { ncmNotify.warn('NCM | No operator assigned to run the sweep.'); return this.render(false); }
     const { runSystemSweep } = await import('../content/SystemSweep.js');
     await runSystemSweep({ item: this.item, actor: this.actor, host: this.element });
     this.render(false);
@@ -2199,7 +2200,7 @@ export class TerminalViewerApp extends BaseApplication {
     const scope = target?.dataset?.scope;
     if (!scope) return;
     if (target.dataset.locked === '1') {
-      ui.notifications?.warn(`ACCESS DENIED — ${target.dataset.lockLabel || 'restricted folder'}`);
+      ncmNotify.warn(`ACCESS DENIED — ${target.dataset.lockLabel || 'restricted folder'}`);
       this._playTermSound('login-fail');
       return;
     }
@@ -2219,7 +2220,7 @@ export class TerminalViewerApp extends BaseApplication {
     const c = String(raw || '').trim();
     this._ttyFocus = true;
     if (!c) { this.render(false); return; }
-    const say = (m) => ui.notifications?.info(`${this._terminalName()}: ${m}`);
+    const say = (m) => ncmNotify.info(`${this._terminalName()}: ${m}`);
     const lower = c.toLowerCase();
     if (/^\d+$/.test(c)) {
       const m = (this._ttyList || [])[Number(c) - 1];
@@ -2486,7 +2487,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (target.classList.contains('is-cur')) return;
     await this._onMoveMessage(id, folder);
     const name = this.terminalService?.getFolders(this.item)?.find(f => f.id === folder)?.name || folder;
-    ui.notifications.info(`NCM | Moved to ${name}.`);
+    ncmNotify.info(`NCM | Moved to ${name}.`);
   }
 
   /** A clickable TTY hint runs the same command as typing it. */
@@ -2526,7 +2527,7 @@ export class TerminalViewerApp extends BaseApplication {
         ev.preventDefault(); ev.stopPropagation();
         await this._onMoveMessage(id, f.dataset.folder);
         const name = this.terminalService?.getFolders(this.item)?.find(x => x.id === f.dataset.folder)?.name || f.dataset.folder;
-        ui.notifications.info(`NCM | Moved to ${name}.`);
+        ncmNotify.info(`NCM | Moved to ${name}.`);
       });
     }
     // The Move ▾ menu closes on an outside click (it is a <details>).
@@ -2545,7 +2546,7 @@ export class TerminalViewerApp extends BaseApplication {
       folder: system ? '' : loc,
       status: { saved: loc === 'saved', deleted: loc === 'trash' },
     });
-    if (!res?.success) ui.notifications.warn(res?.error || 'Move failed.');
+    if (!res?.success) ncmNotify.warn(res?.error || 'Move failed.');
     this.render(false);
   }
 
@@ -2629,7 +2630,7 @@ export class TerminalViewerApp extends BaseApplication {
     try {
       const existing = (await this.contactRepository?.getContacts(this.actorId)) || [];
       if (msg.from && existing.some(c => (c.email || '').toLowerCase() === msg.from.toLowerCase())) {
-        ui.notifications.info(`${name} is already in your contacts.`);
+        ncmNotify.info(`${name} is already in your contacts.`);
         return;
       }
       await this.contactRepository?.addContact(this.actorId, {
@@ -2638,7 +2639,7 @@ export class TerminalViewerApp extends BaseApplication {
         portrait: portrait || null,
         masterContactId: master?.id || null,
       });
-      ui.notifications.info(`Added ${name} to your contacts.`);
+      ncmNotify.info(`Added ${name} to your contacts.`);
       this.render(false);
     } catch (err) { log.error(`Add-contact from terminal failed: ${err.message}`); }
   }
@@ -2666,13 +2667,13 @@ export class TerminalViewerApp extends BaseApplication {
     // Per-entry policy (#37): the terminal's policy layered with this entry's
     // override. A denied action renders as a dead chip — clicking it just
     // restates the reason rather than doing nothing.
-    if (this._adminReadOnly(action)) { ui.notifications?.warn(`${this._adminLabel()}: read-only — this account can be read, not changed.`); return; }
+    if (this._adminReadOnly(action)) { ncmNotify.warn(`${this._adminLabel()}: read-only — this account can be read, not changed.`); return; }
     const policy = this.terminalService?.resolveEntryExfil?.(this.item, msg);
     const p = policy?.[action];
     if (!p?.allow) {
       if (p?.denied) {
         game.nightcity?.soundService?.play('error');
-        ui.notifications.warn(p.denyReason === 'LIVE STREAM'
+        ncmNotify.warn(p.denyReason === 'LIVE STREAM'
           ? 'NCM | You can’t copy a live stream — capture a frame instead.'
           : `NCM | ${meta.label} is blocked on this file (${p.denyReason.toLowerCase()}).`);
       }
@@ -2690,7 +2691,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (res.cancelled) return;
     if (gated && !res.ok) {
       game.nightcity?.traceService?.fireTrace({ actor, action: 'exfil', source: meta.label, hostItem: this.item, dv: p.dv, margin: (res.total ?? p.dv) - p.dv, severity: 'hostile' });
-      ui.notifications.warn(`NCM | ${meta.label} traced — the attempt was logged${rolledNote(res, p.dv)}.`);
+      ncmNotify.warn(`NCM | ${meta.label} traced — the attempt was logged${rolledNote(res, p.dv)}.`);
       return;
     }
 
@@ -2721,7 +2722,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (!Number.isInteger(index) || index < 0) {
       index = (cd.images || []).findIndex(i => i.url && !i.locked && !i.corrupted && !i.cut);
     }
-    if (index < 0) { ui.notifications.warn('NCM | No channel to capture.'); return; }
+    if (index < 0) { ncmNotify.warn('NCM | No channel to capture.'); return; }
     const targetId = await this._pickOwnedCharacter();
     if (!targetId) return;
     // The PTZ readout, if that channel is a steerable head being driven.
@@ -2731,12 +2732,12 @@ export class TerminalViewerApp extends BaseApplication {
     if (isGM()) {
       const res = await this.terminalService.exfilSaveFrame(this.item, this._boxId(), msg.messageId, index, targetId, aim);
       await fxDone;
-      if (res.success) ui.notifications.info(`NCM | ${res.label} frame saved to ${this._exfilFolder()}.`);
-      else ui.notifications.warn(res.error || 'Capture failed.');
+      if (res.success) ncmNotify.info(`NCM | ${res.label} frame saved to ${this._exfilFolder()}.`);
+      else ncmNotify.warn(res.error || 'Capture failed.');
     } else {
       this._relayExfil({ dest: 'saveFrame', messageIds: [msg.messageId], targetActorId: targetId, frameIndex: index, aim });
       await fxDone;
-      ui.notifications.info(`NCM | Frame captured — check your ${this._exfilFolder()} folder.`);
+      ncmNotify.info(`NCM | Frame captured — check your ${this._exfilFolder()} folder.`);
     }
   }
 
@@ -2748,13 +2749,13 @@ export class TerminalViewerApp extends BaseApplication {
       const res = await this.terminalService.exfilToInbox(this.item, this._boxId(), [msg.messageId], targetId);
       const who = game.actors?.get(targetId)?.name || 'inbox';
       await fxDone;
-      if (res.success) ui.notifications.info(`Copied to ${who}'s Agent (${this._exfilFolder()}).`);
-      else ui.notifications.warn(res.error || 'Exfil failed.');
+      if (res.success) ncmNotify.info(`Copied to ${who}'s Agent (${this._exfilFolder()}).`);
+      else ncmNotify.warn(res.error || 'Exfil failed.');
     } else {
       // Player can't write the GM-owned inbox journal — relay to the GM.
       this._relayExfil({ dest: 'inbox', messageIds: [msg.messageId], targetActorId: targetId });
       await fxDone;
-      ui.notifications.info(`Download requested — check your ${this._exfilFolder()} folder.`);
+      ncmNotify.info(`Download requested — check your ${this._exfilFolder()} folder.`);
     }
   }
 
@@ -2820,7 +2821,7 @@ export class TerminalViewerApp extends BaseApplication {
   async _pickOwnedCharacter() {
     const owned = (game.actors?.contents ?? []).filter(a =>
       a.type === 'character' && (a.isOwner || a.hasPlayerOwner) && !isHiddenCharacter(a.id));
-    if (!owned.length) { ui.notifications.warn('No owned character to download into.'); return null; }
+    if (!owned.length) { ncmNotify.warn('No owned character to download into.'); return null; }
     if (owned.length === 1) return owned[0].id;
     const pick = await showNamePicker({
       title: 'Download to Agent',
@@ -2848,7 +2849,7 @@ export class TerminalViewerApp extends BaseApplication {
     const owned = [...(this.actor?.items ?? [])].filter((i) => carrier(i) && writable(i));
     const world = isGM() ? game.items.contents.filter(carrier) : [];
     const candidates = [...owned, ...world];
-    if (!candidates.length) return ui.notifications.warn(isGM() ? 'No item to burn onto.' : `Nothing you carry can take the file. ${blankRuleRefusal(encCfg)}`);
+    if (!candidates.length) return ncmNotify.warn(isGM() ? 'No item to burn onto.' : `Nothing you carry can take the file. ${blankRuleRefusal(encCfg)}`);
     const pickedId = await this._pickBurnTarget(owned, world);
     if (!pickedId) return;
     const target = candidates.find(i => i.id === pickedId);
@@ -2857,12 +2858,12 @@ export class TerminalViewerApp extends BaseApplication {
       // Player can't convert/write the GM-owned shard journal — relay to the GM.
       this._relayExfil({ dest: 'shard', messageIds: [msg.messageId], targetItemId: pickedId });
       await fxDone;
-      return ui.notifications.info(`Burn requested for "${target.name}".`);
+      return ncmNotify.info(`Burn requested for "${target.name}".`);
     }
     const res = await this.terminalService.exfilToShard(this.item, this._boxId(), [msg.messageId], target);
     await fxDone;
     if (res.success) {
-      ui.notifications.info(`Burned to "${target.name}".`);
+      ncmNotify.info(`Burned to "${target.name}".`);
       // Refresh the directory/sheets so a just-converted shard shows its badge now.
       setTimeout(() => {
         ui.items?.render();
@@ -2871,7 +2872,7 @@ export class TerminalViewerApp extends BaseApplication {
         }
       }, 150);
     } else {
-      ui.notifications.warn(res.error || 'Burn failed.');
+      ncmNotify.warn(res.error || 'Burn failed.');
     }
   }
 
@@ -2917,11 +2918,11 @@ export class TerminalViewerApp extends BaseApplication {
     const forwarder = { email: this.actor?.getFlag?.(MODULE_ID, 'email') || '', actorId: this.actorId || '' };
     if (isGM()) {
       const res = await this.terminalService.exfilForward(this.item, this._boxId(), [msg.messageId], targetId, forwarder);
-      if (res.success) ui.notifications.info(`Forwarded to ${who}.`);
-      else ui.notifications.warn(res.error || 'Forward failed.');
+      if (res.success) ncmNotify.info(`Forwarded to ${who}.`);
+      else ncmNotify.warn(res.error || 'Forward failed.');
     } else {
       this._relayExfil({ dest: 'forward', messageIds: [msg.messageId], targetActorId: targetId, forwarder });
-      ui.notifications.info(`Forward requested to ${who}.`);
+      ncmNotify.info(`Forward requested to ${who}.`);
     }
   }
 
@@ -2938,13 +2939,13 @@ export class TerminalViewerApp extends BaseApplication {
       });
     } catch (err) { log.error(`Leak chat failed: ${err.message}`); }
     this._playTermSound('trace-fire');
-    ui.notifications.info(`Leaked "${subject}" to the Net — it's public now.`);
+    ncmNotify.info(`Leaked "${subject}" to the Net — it's public now.`);
   }
 
   /** Sell a file to a fixer — credits the operator's wealth at the set price. */
   async _doExfilSell(msg, price) {
     const actor = this.actor || resolveOperator();
-    if (!actor) { ui.notifications.warn('No character to bank the eddies.'); return; }
+    if (!actor) { ncmNotify.warn('No character to bank the eddies.'); return; }
     const amount = Math.max(0, Number(price) || 0);
     if (amount > 0) await this._creditActorWealth(actor, amount, `NCM: Sold "${msg.subject || 'file'}" to a fixer`);
     this._playTermSound('eddies-claim');
@@ -2955,7 +2956,7 @@ export class TerminalViewerApp extends BaseApplication {
         content: `${Handlebars.escapeExpression(actor.name)} sold <em>${Handlebars.escapeExpression(msg.subject || 'a file')}</em>${amount > 0 ? ` for <b>${amount.toLocaleString()} eb</b>` : ''} from ${Handlebars.escapeExpression(this._terminalName())}.`,
       });
     } catch (err) { log.error(`Sell alert failed: ${err.message}`); }
-    ui.notifications.info(amount > 0 ? `Sold for ${amount.toLocaleString()} eb — banked to ${actor.name}.` : 'Sold — the fixer sets the price (GM adjudicates).');
+    ncmNotify.info(amount > 0 ? `Sold for ${amount.toLocaleString()} eb — banked to ${actor.name}.` : 'Sold — the fixer sets the price (GM adjudicates).');
   }
 
   /** Wipe a file off the terminal (GM direct / relay). */
@@ -2965,13 +2966,13 @@ export class TerminalViewerApp extends BaseApplication {
       if (res.success) {
         if (this._selectedMessageId === msg.messageId) this._selectedMessageId = null;
         this.render(false);
-        ui.notifications.info('File wiped from the terminal.');
-      } else ui.notifications.warn(res.error || 'Wipe failed.');
+        ncmNotify.info('File wiped from the terminal.');
+      } else ncmNotify.warn(res.error || 'Wipe failed.');
     } else {
       this._relayExfil({ dest: 'wipe', messageIds: [msg.messageId] });
       if (this._selectedMessageId === msg.messageId) this._selectedMessageId = null;
       this.render(false);
-      ui.notifications.info('Wipe requested.');
+      ncmNotify.info('Wipe requested.');
     }
   }
 
@@ -2990,7 +2991,7 @@ export class TerminalViewerApp extends BaseApplication {
   async _pickMessageableActor(title = 'Send To') {
     const actors = (game.actors?.contents ?? []).filter(a =>
       a.type === 'character' && (a.hasPlayerOwner || a.getFlag?.(MODULE_ID, 'email')) && !isHiddenCharacter(a.id));
-    if (!actors.length) { ui.notifications.warn('No contacts to send to.'); return null; }
+    if (!actors.length) { ncmNotify.warn('No contacts to send to.'); return null; }
     const pick = await showNamePicker({
       title,
       hint: 'Forward to which contact?',
@@ -3003,7 +3004,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Banking content — siphon funds (shared flow; see SiphonFlow.js). */
   async _onSiphonFunds(event, target) {
     const actor = resolveOperator();
-    if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
+    if (!actor) { ncmNotify.warn('NCM | No character assigned.'); return; }
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
     const raw = this._boxMessages().find(m => m.messageId === id);
     if (!raw || raw.contentType !== 'banking') return;
@@ -3122,9 +3123,9 @@ export class TerminalViewerApp extends BaseApplication {
   _onGoToScene(event, target) {
     const sceneId = target?.closest?.('[data-scene-id]')?.dataset.sceneId;
     const scene = sceneId ? game.scenes?.get(sceneId) : null;
-    if (!scene) { ui.notifications.warn('NCM | Scene not found.'); return; }
+    if (!scene) { ncmNotify.warn('NCM | Scene not found.'); return; }
     scene.view();
-    ui.notifications.info(`NCM | Viewing scene: ${scene.name}`);
+    ncmNotify.info(`NCM | Viewing scene: ${scene.name}`);
   }
 
   /** Malware — DEPLOY (normal = mark deployed + GM adjudicates; honeypot = trace). */
