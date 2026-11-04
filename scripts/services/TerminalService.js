@@ -27,7 +27,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate, terminalReachRule, runGmMacro } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM, generateId, formatCyberDate, terminalReachRule, runGmMacro } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
 import { suggestFilename } from '../ui/content/ContentRenderers.js';
 import { adminViewVerdict as _adminVerdict, adminViewTargets as _adminTargets } from '../utils/terminalAdmin.js';
@@ -2247,7 +2247,7 @@ export class TerminalService {
    * Honors the time provider, so a paused/rewound clock is respected.
    */
   async reapForgedAccounts() {
-    if (!isGM()) return;
+    if (!isPrimaryGM()) return;   // one GM reaps (INT-01)
     const now = this._nowMs();
     for (const item of game.items) {
       if (!this.isTerminal(item)) continue;
@@ -2293,7 +2293,7 @@ export class TerminalService {
    * doesn't re-prompt).
    */
   async reapResidents() {
-    if (!isGM()) return;
+    if (!isPrimaryGM()) return;   // one GM fires due residents (two GMs fired each twice — INT-01)
     const now = this._nowMs();
     for (const item of game.items) {
       if (!this.isTerminal(item)) continue;

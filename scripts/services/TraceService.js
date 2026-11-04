@@ -18,7 +18,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, netVerbFor, whisperCardHtml } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM, netVerbFor, whisperCardHtml } from '../utils/helpers.js';
 
 const LOG_SETTING = 'traceLog';
 const HEAT_SETTING = 'traceHeat';
@@ -316,7 +316,7 @@ export class TraceService {
 
   /** GM reaper — fire expired countdowns (game time). Registered on an interval. */
   async reapCountdowns() {
-    if (!isGM()) return;
+    if (!isPrimaryGM()) return;   // one GM expires countdowns (two GMs added +35 heat twice — INT-01)
     const now = this._nowMs();
     const due = this.getCountdowns().filter(c => c.expiresAt <= now);
     if (!due.length) return;

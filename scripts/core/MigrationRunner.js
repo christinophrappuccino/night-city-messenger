@@ -25,7 +25,7 @@
  */
 
 import { MODULE_ID } from '../utils/constants.js';
-import { log, isGM } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM } from '../utils/helpers.js';
 import { tameCrtDeep } from '../utils/crt.js';
 import { shiftInterfaceDvs, shiftJackRules, refreshJackDials } from '../utils/interfaceDvShift.js';
 import { adminWait } from '../utils/adminTheme.js';
@@ -203,7 +203,9 @@ const MIGRATIONS = [
  * @returns {Promise<{ran: number, from: number, to: number}>}
  */
 export async function runMigrations() {
-  if (!isGM()) return { ran: 0, from: 0, to: 0 };
+  // One GM migrates: two GMs loading together could each run a step (v3 lowered
+  // Interface DVs by twice the amount — INT-01 / DATA-09).
+  if (!isPrimaryGM()) return { ran: 0, from: 0, to: 0 };
 
   let from = 0;
   try { from = Number(game.settings.get(MODULE_ID, 'dataSchemaVersion')) || 0; }

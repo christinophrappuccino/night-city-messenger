@@ -10,7 +10,7 @@
 import { ncmNotify, escapeHtml } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
-import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime } from '../utils/helpers.js';
+import { log, isPrimaryGM, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime } from '../utils/helpers.js';
 import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
 import { replyIdentity, groupKeyOf } from '../utils/identities.js';
 
@@ -2096,7 +2096,7 @@ export class MessageService {
    * @returns {Promise<number>} Count of messages erased.
    */
   async reapSelfDestruct() {
-    if (!game.user.isGM) return 0;
+    if (!isPrimaryGM()) return 0;   // one GM reaps (two GMs used to delete the same pages twice — INT-01)
     const repo = this._messageRepo;
     if (!repo) return 0;
 

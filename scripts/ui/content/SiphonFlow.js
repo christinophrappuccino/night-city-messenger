@@ -16,7 +16,7 @@
 
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, netVerbFor, runGmMacro, stripMacroRefs } from '../../utils/helpers.js';
+import { log, isGM, isPrimaryGM, formatCyberDate, netVerbFor, runGmMacro, stripMacroRefs } from '../../utils/helpers.js';
 import { runSecurityConsole } from './SecurityConsole.js';
 import { rolledNote } from './NetResolve.js';
 import { runBankHeist } from './BankHeist.js';
@@ -972,7 +972,7 @@ export async function applyMalwareEffect({ messageId, actorId }) {
  * reaper. Idempotent: skips already-inactive/killed payloads.
  */
 export async function reapExpiredPayloads() {
-  if (!isGM()) return;
+  if (!isPrimaryGM()) return;   // one GM reaps (INT-01)
   const now = _nowMs();
   for (const j of game.journal) {
     for (const p of j.pages.contents) {

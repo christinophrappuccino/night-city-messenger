@@ -8,7 +8,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
-import { log, stripMacroRefs } from '../utils/helpers.js';
+import { log, stripMacroRefs, isPrimaryGM } from '../utils/helpers.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
 
 export class SocketHandlers {
@@ -34,7 +34,7 @@ export class SocketHandlers {
     // ─── Message Relay (Player → GM) ──────────────────────
     socketManager.register(SOCKET_OPS.MESSAGE_RELAY, async (data, sender) => {
       // Only GM processes relay requests
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       log.debug('Socket: message:relay received for', data.messageId);
       // `sender` = the relaying user's id (SocketManager passes it) — the
       // delivery confirmation is addressed back to exactly that client.
@@ -43,7 +43,7 @@ export class SocketHandlers {
 
     // ─── Anonymous Trace (Player → GM) ────────────────────
     socketManager.register(SOCKET_OPS.ANON_TRACE_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       log.debug('Socket: anon:traceRequest received for', data?.messageId);
       await messageService.handleAnonTraceRequest(data);
     });
@@ -148,7 +148,7 @@ export class SocketHandlers {
     // Players can't create JournalEntries directly — the GM's client
     // receives the request, performs the conversion, and sends back the result.
     socketManager.register(SOCKET_OPS.SHARD_CONVERT_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
 
       const { requestId, itemId, actorId, config } = data;
       // Entries a player encodes never carry a macro link — only the GM's tools set
@@ -229,7 +229,7 @@ export class SocketHandlers {
     // pricing mode is the authority — so the ask relays and the GM's own client
     // decides and writes. See scripts/ui/ShardEncoder/ShardMarket.js.
     socketManager.register(SOCKET_OPS.SHARD_PRICE_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         const { handleShardPriceRequest } = await import('../ui/ShardEncoder/ShardMarket.js');
         await handleShardPriceRequest(data);
@@ -242,7 +242,7 @@ export class SocketHandlers {
     // Players can't write the GM-owned terminal/inbox/shard journals, so the GM
     // client performs the copy and the result syncs back to the player.
     socketManager.register(SOCKET_OPS.TERMINAL_EXFIL_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       const { requestId, itemUuid, accountId, messageIds, dest, targetActorId, targetItemId, forwarder, frameIndex, aim, userId } = data;
       const svc = game.nightcity?.terminalService;
       let result = { success: false, count: 0 };
@@ -278,7 +278,7 @@ export class SocketHandlers {
     // credential. No RESULT op: the flag write itself syncs to every client and
     // the viewer re-renders off the updateItem hook.
     socketManager.register(SOCKET_OPS.TERMINAL_NET_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       const { itemUuid, networkId, authorized } = data;
       const svc = game.nightcity?.terminalService;
       try {
@@ -301,7 +301,7 @@ export class SocketHandlers {
     // No RESULT op: the flag write syncs back and the viewer re-renders off its
     // updateItem hook.
     socketManager.register(SOCKET_OPS.TERMINAL_SESSION_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       const { itemUuid, actorId, updates } = data;
       const svc = game.nightcity?.terminalService;
       try {
@@ -333,7 +333,7 @@ export class SocketHandlers {
 
     // ─── Player Banking Siphon Relay (GM persists the drain / alerts) ──
     socketManager.register(SOCKET_OPS.BANK_SIPHON_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         const { handleSiphonRequest } = await import('../ui/content/SiphonFlow.js');
         await handleSiphonRequest(data);
@@ -345,7 +345,7 @@ export class SocketHandlers {
     // ─── Player Typed-Content Update Relay (eddies claim / credential crack —
     //     the entry lives in a GM-owned journal, so the GM persists the write) ──
     socketManager.register(SOCKET_OPS.CONTENT_UPDATE_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         const { handleContentUpdateRequest } = await import('../ui/content/SiphonFlow.js');
         await handleContentUpdateRequest(data);
@@ -357,7 +357,7 @@ export class SocketHandlers {
     // ─── Player Payload Execution Relay (roll ran client-side; GM applies the
     //     module-native effect + payload state write on the GM-owned host) ──
     socketManager.register(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         const flow = await import('../ui/content/SiphonFlow.js');
         if (data.outcome === 'kill') await flow.applyPayloadKill({ messageId: data.messageId, actorId: data.actorId });
@@ -370,7 +370,7 @@ export class SocketHandlers {
     // ─── Player Upload/Plant Relay (FORGE roll ran client-side; GM installs the
     //     resident on the GM-owned terminalState) ──────────
     socketManager.register(SOCKET_OPS.TERMINAL_RESIDENT_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         const flow = await import('../ui/content/UploadFlow.js');
         await flow.handleResidentRequest(data);
@@ -382,7 +382,7 @@ export class SocketHandlers {
     // ─── Player Trace Relay (a player tripped a trace; GM records the log + heat
     //     on the GM-owned world settings) ──────────────────
     socketManager.register(SOCKET_OPS.TRACE_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         await game.nightcity?.traceService?.handleTraceRequest(data);
       } catch (err) {
@@ -501,7 +501,7 @@ export class SocketHandlers {
 
     // ─── Player Shard Unconvert Relay ────────────────────
     socketManager.register(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
 
       const { requestId, itemId, actorId } = data;
       log.info(`Socket: shard unconvert request — item ${itemId} from actor ${actorId}`);
