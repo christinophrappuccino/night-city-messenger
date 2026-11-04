@@ -122,6 +122,52 @@ export function userOwnsActor(userId, actorOrId) {
 }
 
 /**
+ * Run a macro that a program, payload or resident links to — on the GM's client,
+ * with GM rights — ONLY when a GM wrote that macro (audit SEC-02).
+ *
+ * The GM's tools (Malware Workshop, the entry composer) are the only places a
+ * program gets a linked macro, so a legitimate link always points at a GM's
+ * macro. Refusing any other author means that even forged program data can never
+ * make the GM's client run a macro a player wrote. A refused macro is reported
+ * to the GM, never silently skipped.
+ * @param {string} macroId
+ * @param {object} [scope] - passed to Macro#execute (e.g. { actor, item })
+ * @param {string} [label] - what linked it, for the GM's warning
+ * @returns {Promise<boolean>} true when the macro ran
+ */
+export async function runGmMacro(macroId, scope = {}, label = 'A program') {
+  if (!macroId || !isGM()) return false;
+  const macro = game.macros?.get(macroId);
+  if (!macro) { log.warn(`${label}: linked macro ${macroId} not found`); return false; }
+  const author = macro.author ?? game.users?.get(macro._source?.author ?? macro.author?.id);
+  if (!author?.isGM) {
+    ncmNotify.warn(`NCM | ${label} links the macro "${macro.name}", which was not run: only a macro written by a GM can run from a program. Its author is ${author?.name || 'unknown'} — recreate it as a GM to use it here.`, { permanent: true });
+    log.warn(`${label}: refused macro "${macro.name}" (${macroId}) — author is not a GM`);
+    return false;
+  }
+  try { await macro.execute(scope); return true; }
+  catch (err) { log.error(`${label}: macro "${macro.name}" failed: ${err.message}`); return false; }
+}
+
+/**
+ * Remove every `macroId` key from data a player sent (an encoded entry, a content
+ * update, a resident). Players never author macro links; only the GM's tools do.
+ * Returns a deep copy; the input is not changed.
+ * @param {*} data
+ * @returns {*}
+ */
+export function stripMacroRefs(data) {
+  if (Array.isArray(data)) return data.map(stripMacroRefs);
+  if (!data || typeof data !== 'object') return data;
+  const out = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (k === 'macroId') continue;
+    out[k] = stripMacroRefs(v);
+  }
+  return out;
+}
+
+/**
  * Get the primary owned actor for the current user
  * @returns {Actor|null}
  */

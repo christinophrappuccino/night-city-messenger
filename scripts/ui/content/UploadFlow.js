@@ -18,9 +18,9 @@
 
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM } from '../../utils/helpers.js';
+import { log, isGM, stripMacroRefs } from '../../utils/helpers.js';
 import { runSecurityConsole } from './SecurityConsole.js';
-import { canPersistContent, _applyNativeEffect, applyUploadRun, pickHostFiles, TARGETED_VERBS } from './SiphonFlow.js';
+import { canPersistContent, _applyNativeEffect, applyUploadRun, pickHostFiles, TARGETED_VERBS, programMacroId } from './SiphonFlow.js';
 
 const DEFAULT_UPLOAD_SKILL = 'Interface';
 const DEFAULT_UPLOAD_DV = 9;
@@ -186,7 +186,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
     // A verb that changes the box is the GM's to write: a player's client hands it over.
     const WRITES = ['icebreaker', 'wipe', 'corrupt', 'forgeAccount', 'adjudicate'];
     if (WRITES.includes(p.effectType) && !isGM()) {
-      game.nightcity?.socketManager?.emit(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, { kind: 'uploadRun', itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', macroId: p.macroId || '', userId: game.user.id });
+      game.nightcity?.socketManager?.emit(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, { kind: 'uploadRun', itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', source: p.source || null, userId: game.user.id });
       if (outcome === 'clean') game.nightcity?.traceService?.logSuccess({ actor, action: 'upload', source: name, hostItem: targetItem, severity: 'hostile' });
       ncmNotify.info(`NCM | ${name} sent to ${targetItem.name}…`);
       return { success: true, outcome, ran: true, report: '' };
@@ -194,7 +194,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
     let report = '';
     try {
       report = WRITES.includes(p.effectType)
-        ? await applyUploadRun({ itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', macroId: p.macroId || '', userId: game.user.id })
+        ? await applyUploadRun({ itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', macroId: p.macroId || '', source: p.source || null, userId: game.user.id })
         : await _applyNativeEffect(p.effectType, { hostItem: targetItem, page: null, actor, cd: { effect: { type: p.effectType, params } } });
     }
     catch (e) { log.warn('Upload run-effect failed', e); }
@@ -225,6 +225,8 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
     // Re-uploading the same program at the same mailbox overwrites that plant
     // rather than stacking another armed copy (see residentSlotKey).
     slotKey: residentSlotKey({ effectType: p.effectType || 'plant', accountId: tgtAcct, name }),
+    // The program's shard entry, so the GM can re-read a linked macro itself (SEC-02).
+    source: p.source || null,
   };
 
   // Install — GM direct; a player relays (terminalState is GM-owned).
@@ -262,6 +264,14 @@ export async function handleResidentRequest(data) {
       await term.updateResident(item, data.residentId, { state: 'defused' });
       return;
     }
-    await term.installResident(item, data.resident || {});
+    // A player's resident never names a macro (SEC-02): drop every macro link it
+    // carries, then — for a custom routine — read the link from the program's own
+    // shard entry, which only the GM's tools write.
+    const resident = stripMacroRefs(data.resident || {});
+    if (resident.effectType === 'adjudicate' && resident.source) {
+      const macroId = await programMacroId(resident.source);
+      if (macroId) resident.params = { ...(resident.params || {}), macroId };
+    }
+    await term.installResident(item, resident);
   } catch (err) { log.error(`Resident relay failed: ${err.message}`); }
 }

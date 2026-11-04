@@ -16,7 +16,7 @@
 
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, netVerbFor } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, netVerbFor, runGmMacro, stripMacroRefs } from '../../utils/helpers.js';
 import { runSecurityConsole } from './SecurityConsole.js';
 import { rolledNote } from './NetResolve.js';
 import { runBankHeist } from './BankHeist.js';
@@ -180,8 +180,15 @@ export async function applySiphonToJournal(messageId, newContentData) {
     if (p) { page = p; break; }
   }
   if (!page) { log.warn(`Siphon: no journal page for messageId ${messageId}`); return false; }
+  // Content actions (claim, crack, siphon, run…) never change which macro an entry
+  // links to — only the GM's authoring tools do, and they write the page directly.
+  // So a write through here keeps the entry's stored link and drops any other
+  // (SEC-02: a relayed update could otherwise plant a macro for the GM to run).
+  const stored = page.flags?.[MODULE_ID]?.contentData?.effect?.macroId || '';
+  const next = stripMacroRefs(newContentData);
+  if (stored) next.effect = { ...(next.effect || {}), macroId: stored };
   try {
-    await page.update({ [`flags.${MODULE_ID}.contentData`]: newContentData });
+    await page.update({ [`flags.${MODULE_ID}.contentData`]: next });
     return true;
   } catch (err) {
     log.error(`Siphon persist failed: ${err.message}`);
@@ -844,14 +851,8 @@ export async function applyPayloadEffect({ messageId, actorId, outcome, targets 
     report = await _applyNativeEffect(effectType, { page, hostItem, actor, cd: runCd });
   } catch (err) { log.error(`Payload effect "${effectType}" failed: ${err.message}`); }
 
-  // Linked Macro (GM-run).
-  if (cd.effect?.macroId) {
-    try {
-      const macro = game.macros?.get(cd.effect.macroId);
-      if (macro) await macro.execute({ actor, item: hostItem });
-      else log.warn(`Payload macro ${cd.effect.macroId} not found`);
-    } catch (err) { log.error(`Payload macro run failed: ${err.message}`); }
-  }
+  // Linked Macro (GM-run) — only a macro a GM wrote (SEC-02).
+  if (cd.effect?.macroId) await runGmMacro(cd.effect.macroId, { actor, item: hostItem }, `Payload "${name}"`);
 
   // Timed effect → active window on the game clock.
   const duration = Number(cd.effect?.duration) || 0;
@@ -876,26 +877,50 @@ export async function applyPayloadEffect({ messageId, actorId, outcome, targets 
 export async function handlePayloadEffectRequest(data) {
   if (!isGM()) return;
   if (data.kind === 'malware') { await applyMalwareEffect({ messageId: data.messageId, actorId: data.actorId }); return; }
-  if (data.kind === 'uploadRun') { await applyUploadRun(data); return; }
+  // A relayed upload never names its own macro: the GM reads it from the program's
+  // shard entry (`source`) inside applyUploadRun (SEC-02).
+  if (data.kind === 'uploadRun') { await applyUploadRun({ ...stripMacroRefs(data), macroId: '' }); return; }
   await applyPayloadEffect({ messageId: data.messageId, actorId: data.actorId, outcome: data.outcome, targets: data.targets || null });
+}
+
+/**
+ * GM-side: the macro a program links to, read from the program's OWN shard entry
+ * (the data the GM's tools wrote), never from a request (audit SEC-02).
+ * @param {{itemUuid: string, entryId: string}} source - the carried shard + the entry's messageId
+ * @returns {Promise<string>} the macro id, or '' when there is none / it can't be found
+ */
+export async function programMacroId(source) {
+  const { itemUuid, entryId } = source || {};
+  if (!itemUuid || !entryId) return '';
+  try {
+    const shard = await fromUuid(itemUuid);
+    if (!shard) return '';
+    const journalId = shard.getFlag?.(MODULE_ID, 'journalId');
+    const journal = journalId ? game.journal?.get(journalId) : null;
+    const page = journal?.pages?.find?.((p) => p.flags?.[MODULE_ID]?.messageId === entryId);
+    return page?.flags?.[MODULE_ID]?.contentData?.effect?.macroId || '';
+  } catch (err) {
+    log.warn(`Program macro lookup failed: ${err.message}`);
+    return '';
+  }
 }
 
 /**
  * GM-side: a player pushed a program that changes the host (Icebreaker, Wipe, Corrupt, Backdoor, a custom routine).
  * The host's journal and config are the GM's to write; the report goes back to the player as a whisper.
  */
-export async function applyUploadRun({ itemUuid, effectType, params = {}, actorId, name = 'program', description = '', macroId = '', userId }) {
+export async function applyUploadRun({ itemUuid, effectType, params = {}, actorId, name = 'program', description = '', macroId = '', source = null, userId }) {
   if (!isGM()) return '';
   const hostItem = itemUuid ? await fromUuid(itemUuid) : null;
   if (!hostItem) return '';
   const actor = actorId ? game.actors?.get(actorId) : null;
   let report = '';
-  try { report = await _applyNativeEffect(effectType, { page: null, hostItem, actor, cd: { description, effect: { type: effectType, params } } }); }
+  try { report = await _applyNativeEffect(effectType, { page: null, hostItem, actor, cd: { description, effect: { type: effectType, params: stripMacroRefs(params) } } }); }
   catch (err) { log.error(`Upload run "${effectType}" failed: ${err.message}`); }
-  if (macroId) {
-    try { await game.macros?.get(macroId)?.execute?.({ actor, item: hostItem }); }
-    catch (err) { log.error(`Upload run macro failed: ${err.message}`); }
-  }
+  // The linked macro comes from the program's own shard entry when we know it,
+  // never from the request (SEC-02); runGmMacro still requires a GM author.
+  const linked = source ? await programMacroId(source) : macroId;
+  if (linked) await runGmMacro(linked, { actor, item: hostItem }, `Program "${name}"`);
   _payloadGmAlert(`${actor?.name || 'Someone'} ran "${name}" on ${hostItem.name}${report ? ` — ${_stripTags(report)}` : ''}.`);
   if (userId && !game.users?.get(userId)?.isGM) {
     const safe = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -931,13 +956,7 @@ export async function applyMalwareEffect({ messageId, actorId }) {
   try { report = await _applyNativeEffect(effectType, { page, hostItem, actor, cd }); }
   catch (err) { log.error(`Malware effect "${effectType}" failed: ${err.message}`); }
 
-  if (cd.effect?.macroId) {
-    try {
-      const macro = game.macros?.get(cd.effect.macroId);
-      if (macro) await macro.execute({ actor, item: hostItem });
-      else log.warn(`Malware macro ${cd.effect.macroId} not found`);
-    } catch (err) { log.error(`Malware macro run failed: ${err.message}`); }
-  }
+  if (cd.effect?.macroId) await runGmMacro(cd.effect.macroId, { actor, item: hostItem }, `Malware "${name}"`);
 
   await _writePayloadContent(page, {
     ...cd, deployed: true, deployedBy: actorId, deployedAt: iso, tripped: false,

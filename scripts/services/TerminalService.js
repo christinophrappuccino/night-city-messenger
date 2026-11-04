@@ -27,7 +27,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate, terminalReachRule } from '../utils/helpers.js';
+import { log, isGM, generateId, formatCyberDate, terminalReachRule, runGmMacro } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
 import { suggestFilename } from '../ui/content/ContentRenderers.js';
 import { adminViewVerdict as _adminVerdict, adminViewTargets as _adminTargets } from '../utils/terminalAdmin.js';
@@ -2137,10 +2137,8 @@ export class TerminalService {
 
       case 'adjudicate': {
         // A custom routine: the GM's own words, the GM's macro. The fire report carries the words.
-        if (params.macroId) {
-          try { await game.macros?.get(params.macroId)?.execute?.({ item }); }
-          catch (err) { log.error(`Resident macro failed: ${err.message}`); }
-        }
+        // Only a macro a GM wrote (SEC-02) — runGmMacro reports a refusal to the GM.
+        if (params.macroId) await runGmMacro(params.macroId, { item }, `Resident "${params.name || 'custom routine'}"`);
         return `${params.name || 'A custom routine'} fired — ${params.description || 'GM to adjudicate'}`;
       }
 

@@ -8,7 +8,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { log, stripMacroRefs } from '../utils/helpers.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
 
 export class SocketHandlers {
@@ -150,7 +150,10 @@ export class SocketHandlers {
     socketManager.register(SOCKET_OPS.SHARD_CONVERT_REQUEST, async (data) => {
       if (!game.user.isGM) return;
 
-      const { requestId, itemId, actorId, config, entryData } = data;
+      const { requestId, itemId, actorId, config } = data;
+      // Entries a player encodes never carry a macro link — only the GM's tools set
+      // one, and a linked macro runs on THIS (the GM's) client later (SEC-02).
+      const entryData = data.entryData == null ? data.entryData : stripMacroRefs(data.entryData);
       log.info(`Socket: shard conversion request — item ${itemId} from actor ${actorId}`);
 
       let success = false;

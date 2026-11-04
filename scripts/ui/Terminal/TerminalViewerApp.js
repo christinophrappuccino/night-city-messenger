@@ -2081,6 +2081,9 @@ export class TerminalViewerApp extends BaseApplication {
           uploadSkill: cd.uploadSkill || 'Interface',
           stealthDV: cd.uploadStealthDV || undefined,
           traceOnFail: !!cd.uploadTraceOnFail,
+          // Where this program lives, so the GM reads its linked macro from the entry
+          // itself instead of trusting a macro id sent over the wire (SEC-02).
+          source: { itemUuid: shard.uuid, entryId: e.messageId },
         };
         if (runVerb) {
           out.push({ ...base, effectType: runVerb, family: 'run', params: cd.effect?.params || {}, macroId: cd.effect?.macroId || '',
