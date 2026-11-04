@@ -762,7 +762,7 @@ export class AdminPanelApp extends BaseApplication {
 
     // ── Page heads are one line; a description cut off by the ellipsis shows in full on hover ──
     for (const p of this.element?.querySelectorAll('.ncm-tabhd p') ?? []) {
-      if (!p.dataset.tooltip) p.dataset.tooltip = p.textContent.trim();
+      if (!p.dataset.tooltip) p.dataset.tooltip = h(p.textContent.trim());
     }
 
     // ── The search box being typed in keeps every key and its caret across the render ──

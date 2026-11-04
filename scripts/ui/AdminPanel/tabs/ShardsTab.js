@@ -450,7 +450,7 @@ export class ShardsTab extends BaseTab {
         if (!res?.success) ncmNotify.warn(`NCM | Repair failed: ${res?.error || 'Unknown'}`);
       } else if (kind === 'brick') {
         this.app._animationActive = false;
-        const ok = await adminConfirm({ title: 'Brick this shard', content: `<p>Take <strong>${item.name}</strong> to 0 integrity? Players will find it dead. Repair or Salvage brings it back.</p>` });
+        const ok = await adminConfirm({ title: 'Brick this shard', content: `<p>Take <strong>${escapeHtml(item.name)}</strong> to 0 integrity? Players will find it dead. Repair or Salvage brings it back.</p>` });
         if (!ok) return;
         this.app._animationActive = true;
         const res = await svc.setIntegrity(item, 0, { uncorrupt: false });
@@ -1069,7 +1069,7 @@ export class ShardsTab extends BaseTab {
     if (!item) return;
     const confirmed = await adminConfirm({
       title: 'Force Decrypt',
-      content: `<p>Force-decrypt <strong>${item.name}</strong>? This bypasses all security.</p>`,
+      content: `<p>Force-decrypt <strong>${escapeHtml(item.name)}</strong>? This bypasses all security.</p>`,
     });
     if (!confirmed) return;
     await item.update({ [`flags.${MODULE_ID}.state.decrypted`]: true });
@@ -1084,7 +1084,7 @@ export class ShardsTab extends BaseTab {
     if (!item) return;
     const confirmed = await adminConfirm({
       title: 'Relock Shard',
-      content: `<p>Relock <strong>${item.name}</strong>? All security state will be fully reset (encryption, login, key item, hack attempts, lockout, boot, expiration).</p>`,
+      content: `<p>Relock <strong>${escapeHtml(item.name)}</strong>? All security state will be fully reset (encryption, login, key item, hack attempts, lockout, boot, expiration).</p>`,
     });
     if (!confirmed) return;
     await this._relock(item);
@@ -1657,7 +1657,7 @@ export class ShardsTab extends BaseTab {
 
     const confirmed = await adminConfirm({
       title: 'Unconvert Data Shard',
-      content: `<p>Turn <strong>${item.name}</strong> back into a plain item? It gets its old name and art back. Its entries stay in the journal, detached.</p>`,
+      content: `<p>Turn <strong>${escapeHtml(item.name)}</strong> back into a plain item? It gets its old name and art back. Its entries stay in the journal, detached.</p>`,
     });
     if (!confirmed) return;
 
@@ -1690,7 +1690,7 @@ export class ShardsTab extends BaseTab {
 
     const confirmed = await adminConfirm({
       title: `${isCleared ? 'Relock' : 'Unlock'} Security Layer`,
-      content: `<p>${isCleared ? 'Relock' : 'Force-clear'} the <strong>${layer}</strong> layer on <strong>${item.name}</strong>?${isCleared ? ' All layers from this point forward will also be relocked.' : ''}</p>`,
+      content: `<p>${isCleared ? 'Relock' : 'Force-clear'} the <strong>${layer}</strong> layer on <strong>${escapeHtml(item.name)}</strong>?${isCleared ? ' All layers from this point forward will also be relocked.' : ''}</p>`,
     });
     if (!confirmed) return;
 

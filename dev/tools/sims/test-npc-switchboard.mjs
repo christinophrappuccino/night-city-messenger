@@ -205,6 +205,7 @@ for (const p of HB) { if (!existsSync(p)) continue; try { Handlebars = createReq
 if (!Handlebars) { fail++; console.error('FAIL: Handlebars not found (Foundry install) — template not rendered'); }
 else {
   const H = Handlebars.create();
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   const render = H.compile(snip);
   tab._sbSel = null; tab._sbIdent = 'all'; tab._sbAs = null;
   const sbc = tab._switchboardContext(all, all[0], pcs, kx, mail);

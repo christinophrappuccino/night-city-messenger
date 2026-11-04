@@ -123,7 +123,7 @@
           <div class="ncm-sec-admin-sg__plotwrap">
             <div class="ncm-sec-admin-sg__yax" style="height:{{security.sg.trace.PH}}px">
               {{#each security.sg.trace.yLabels}}<span class="{{#if this.cap}}cap{{/if}}" style="top:{{this.top}}px">{{this.text}}</span>{{/each}}
-              {{#each security.sg.trace.laneLabels}}<span class="lane" role="button" tabindex="0" style="--hc:{{this.col}};top:{{this.top}}px" data-action="tabAct" data-owner="security" data-op="sgWho" data-who="{{this.who}}" data-tooltip="Show only {{this.name}}"><span class="n">{{this.name}}</span><span class="h{{#if this.zero}} zero{{/if}}">{{this.heatLabel}} heat</span></span>{{/each}}
+              {{#each security.sg.trace.laneLabels}}<span class="lane" role="button" tabindex="0" style="--hc:{{this.col}};top:{{this.top}}px" data-action="tabAct" data-owner="security" data-op="sgWho" data-who="{{this.who}}" data-tooltip="Show only {{ncm-tip this.name}}"><span class="n">{{this.name}}</span><span class="h{{#if this.zero}} zero{{/if}}">{{this.heatLabel}} heat</span></span>{{/each}}
             </div>
             <div class="ncm-sec-admin-sg__plot" data-sg-plot data-w="{{security.sg.trace.W}}" data-gut="{{security.sg.trace.gutter}}" data-t0="{{security.sg.trace.t0}}" data-t1="{{security.sg.trace.t1}}" data-lanes="{{#if security.sg.trace.lanesMode}}1{{else}}0{{/if}}" style="height:{{security.sg.trace.PH}}px;width:{{security.sg.trace.W}}px">
               <svg width="{{security.sg.trace.W}}" height="{{security.sg.trace.PH}}" viewBox="0 0 {{security.sg.trace.W}} {{security.sg.trace.PH}}" aria-hidden="true">
@@ -179,13 +179,13 @@
           {{#each security.sg.log.rows}}
             {{#if this.div}}<div class="ncm-sec-admin-sglog__new{{#if (eq this.div.kind 'old')}} is-old{{/if}}">{{this.div.text}}{{#if this.div.at}} · <b>{{this.div.at}}</b>{{/if}}</div>{{/if}}
             <div class="ncm-sec-admin-sglog__row{{#unless this.ok}} f-{{this.sev}}{{/unless}}{{#if this.sel}} sel{{/if}}{{#if this.isNew}} is-new{{/if}}" role="button" tabindex="0" style="--hc:{{this.hue}}" data-action="tabAct" data-owner="security" data-op="sgSel" data-eid="{{this.eid}}">
-              <span class="tm" data-tooltip="{{this.whenFull}}">{{this.when}}</span>
-              <span class="who"><i class="ncm-sec-admin-sg__sw"></i><span class="nm" data-action="tabAct" data-owner="security" data-op="sgWho" data-who="{{this.whoKey}}" data-tooltip="Only {{this.actorName}}">{{this.actorName}}</span></span>
+              <span class="tm" data-tooltip="{{ncm-tip this.whenFull}}">{{this.when}}</span>
+              <span class="who"><i class="ncm-sec-admin-sg__sw"></i><span class="nm" data-action="tabAct" data-owner="security" data-op="sgWho" data-who="{{this.whoKey}}" data-tooltip="Only {{ncm-tip this.actorName}}">{{this.actorName}}</span></span>
               <span class="act"><span class="lbl">{{this.actionLabel}}</span>{{#if this.netVerb}}<span class="nverb" data-tooltip="The NET-action this abstracts">{{this.netVerb}}</span>{{/if}}</span>
-              <span class="tgt"{{#if this.objectId}} data-action="tabAct" data-owner="security" data-op="sgObj" data-object-id="{{this.objectId}}" data-object-name="{{this.objectName}}" data-tooltip="Only {{this.objectName}}"{{/if}}><i class="fas {{this.targetIcon}} tk {{this.targetCls}}"></i><span>{{this.objectName}}</span></span>
+              <span class="tgt"{{#if this.objectId}} data-action="tabAct" data-owner="security" data-op="sgObj" data-object-id="{{this.objectId}}" data-object-name="{{this.objectName}}" data-tooltip="Only {{ncm-tip this.objectName}}"{{/if}}><i class="fas {{this.targetIcon}} tk {{this.targetCls}}"></i><span>{{this.objectName}}</span></span>
               <span class="roll rt">{{#if this.hasRoll}}{{this.rollTotal}} <em>vs</em> {{this.rollDv}}{{else}}<em>no roll</em>{{/if}}</span>
               <span class="res{{#if this.ok}} ok{{else}} no{{/if}}">{{#if this.ok}}<i class="fas fa-check"></i>OK{{else}}Failed{{/if}}</span>
-              <span class="sev" data-tooltip="{{this.sevLabel}}"><s>{{#each this.pips}}<u class="{{#if this}}on{{/if}}"></u>{{/each}}</s>{{this.sev}}</span>
+              <span class="sev" data-tooltip="{{ncm-tip this.sevLabel}}"><s>{{#each this.pips}}<u class="{{#if this}}on{{/if}}"></u>{{/each}}</s>{{this.sev}}</span>
               <span class="heat rt{{#unless this.hasHeat}} none{{/unless}}">{{this.heatLabel}}</span>
               <span class="jmp">{{#if this.canOpen}}<i class="fas fa-arrow-up-right-from-square jump" role="button" tabindex="0" data-action="securityJump" data-uuid="{{this.targetUuid}}" data-kind="{{this.targetKind}}" data-msg="{{this.targetMessageId}}" data-contact="{{this.targetContactId}}" data-tooltip="Open it"></i>{{/if}}</span>
             </div>
@@ -219,9 +219,9 @@
           <div class="ncm-sec-admin-mod__k"><i class="fas fa-temperature-half"></i>Thermometers<span class="hint">click a gauge</span></div>
           <div class="ncm-sec-admin-hx__gauges">
             {{#each security.thermo.gauges}}
-            <button type="button" class="ncm-sec-admin-hx__g t-{{this.tier}}{{#if this.selected}} sel{{/if}}" data-action="tabAct" data-owner="security" data-op="heatPick" data-actor-id="{{this.actorId}}" aria-pressed="{{#if this.selected}}true{{else}}false{{/if}}" data-tooltip="{{this.title}}">
+            <button type="button" class="ncm-sec-admin-hx__g t-{{this.tier}}{{#if this.selected}} sel{{/if}}" data-action="tabAct" data-owner="security" data-op="heatPick" data-actor-id="{{this.actorId}}" aria-pressed="{{#if this.selected}}true{{else}}false{{/if}}" data-tooltip="{{ncm-tip this.title}}">
               {{#if this.clock.has}}
-              <span class="ncm-sec-admin-hx__clock" data-tooltip="{{this.clock.title}}"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="trk" cx="20" cy="20" r="17"/><circle class="arc" cx="20" cy="20" r="17" transform="rotate(-90 20 20)" stroke-dasharray="{{this.clock.circ}}" stroke-dashoffset="{{this.clock.offset}}"/></svg><span class="tm">{{this.clock.label}}</span></span>
+              <span class="ncm-sec-admin-hx__clock" data-tooltip="{{ncm-tip this.clock.title}}"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="trk" cx="20" cy="20" r="17"/><circle class="arc" cx="20" cy="20" r="17" transform="rotate(-90 20 20)" stroke-dasharray="{{this.clock.circ}}" stroke-dashoffset="{{this.clock.offset}}"/></svg><span class="tm">{{this.clock.label}}</span></span>
               {{else}}<span class="ncm-sec-admin-hx__clock none"><span class="tm">—</span></span>{{/if}}
               <span class="ncm-sec-admin-hx__tube"><span class="glass"><span class="bands">{{#each this.bands}}<b class="t-{{this.tier}}" style="height:{{this.h}}%"></b>{{/each}}</span><span class="fill" style="height:{{this.fillPct}}%"></span></span><span class="marks">{{#each this.marks}}<i class="t-{{this.tier}}" style="bottom:{{this.bottom}}%" title="{{this.title}}"></i>{{/each}}</span></span>
               <span class="n">{{this.peak}}</span><span class="nm">{{this.actorName}}</span><span class="tier">{{this.tierLabel}}</span>
@@ -239,7 +239,7 @@
               <div><div class="nm">{{security.thermo.sel.actorName}}</div><div class="sub">{{security.thermo.sel.objCount}} {{security.thermo.sel.objWord}} · peak <b>{{security.thermo.sel.peak}}</b> · acting on <b>{{security.thermo.sel.actOnLabel}}</b></div></div></div>
             <div class="objs">
               {{#each security.thermo.sel.objects}}
-              <div class="ncm-sec-admin-hx__obj t-{{this.tier}}{{#if this.selected}} sel{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="heatObj" data-object-id="{{this.objectId}}" data-tooltip="{{#if this.selected}}Back to all objects{{else}}Act on {{this.objectName}} only{{/if}}">
+              <div class="ncm-sec-admin-hx__obj t-{{this.tier}}{{#if this.selected}} sel{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="heatObj" data-object-id="{{this.objectId}}" data-tooltip="{{#if this.selected}}Back to all objects{{else}}Act on {{ncm-tip this.objectName}} only{{/if}}">
                 <i class="fas {{this.icon}}"></i><span class="nm">{{this.objectName}}{{#if this.kindLabel}} <span class="kd">· {{this.kindLabel}}</span>{{/if}}</span><span class="v">{{this.value}}</span><span class="bar"><b style="width:{{this.value}}%"></b></span>
               </div>
               {{else}}<div class="ncm-sec-admin-hx__none">No heat anywhere.</div>{{/each}}
@@ -251,9 +251,9 @@
             <div class="acts">
               <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatAdjust" data-object-id="{{security.thermo.sel.actOn.objectId}}" data-actor-id="{{security.thermo.sel.actorId}}" data-object-name="{{security.thermo.sel.actOn.objectName}}" data-actor-name="{{security.thermo.sel.actorName}}" data-value="{{security.thermo.sel.actOn.value}}" {{#unless security.thermo.sel.canAdjust}}disabled{{/unless}} data-tooltip="Set the heat by hand, with a reason posted to chat"><i class="fas fa-sliders"></i> Adjust</button>
               {{#if security.thermo.sel.objectSelected}}
-              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatClear" data-object-id="{{security.thermo.sel.actOn.objectId}}" data-actor-id="{{security.thermo.sel.actorId}}" data-tooltip="Cool {{security.thermo.sel.actOn.objectName}} to zero"><i class="fas fa-eraser"></i> Clear</button>
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="securityHeatClear" data-object-id="{{security.thermo.sel.actOn.objectId}}" data-actor-id="{{security.thermo.sel.actorId}}" data-tooltip="Cool {{ncm-tip security.thermo.sel.actOn.objectName}} to zero"><i class="fas fa-eraser"></i> Clear</button>
               {{else}}
-              <button type="button" class="ncm-sec-admin-btn sm" data-action="tabAct" data-owner="security" data-op="heatClearActor" data-actor-id="{{security.thermo.sel.actorId}}" {{#unless security.thermo.sel.canClear}}disabled{{/unless}} data-tooltip="Cool every object for {{security.thermo.sel.actorName}} to zero"><i class="fas fa-eraser"></i> Clear{{#if security.thermo.sel.clearsAll}} all{{/if}}</button>
+              <button type="button" class="ncm-sec-admin-btn sm" data-action="tabAct" data-owner="security" data-op="heatClearActor" data-actor-id="{{security.thermo.sel.actorId}}" {{#unless security.thermo.sel.canClear}}disabled{{/unless}} data-tooltip="Cool every object for {{ncm-tip security.thermo.sel.actorName}} to zero"><i class="fas fa-eraser"></i> Clear{{#if security.thermo.sel.clearsAll}} all{{/if}}</button>
               {{/if}}
               <button type="button" class="ncm-sec-admin-btn sm attn" data-action="securityEscalate" data-object-id="{{security.thermo.sel.actOn.objectId}}" data-actor-id="{{security.thermo.sel.actorId}}" data-object-name="{{security.thermo.sel.actOn.objectName}}" data-actor-name="{{security.thermo.sel.actorName}}" {{#unless security.thermo.sel.canEscalate}}disabled{{/unless}} data-tooltip="{{#if security.thermo.sel.canEscalate}}Lock them out, wake Black ICE, or start a trace countdown{{else}}Escalate opens at warm (25+){{/if}}"><i class="fas fa-bolt"></i> Escalate</button>
             </div>

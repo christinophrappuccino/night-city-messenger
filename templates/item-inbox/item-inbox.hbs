@@ -156,7 +156,7 @@
       <span class="ncm-shard-integrity-value">{{integrityPercent}}%</span>
       {{#if igStateWord}}<span class="ncm-ig-state ncm-ig-state--{{integrityTier}}">{{igStateWord}}</span>{{/if}}
       {{#if igRepair}}
-        <button type="button" class="ncm-ig-btn" data-action="igRepair" data-tooltip="Roll to patch the damaged sectors (+{{igRepair.pts}} integrity)"><i class="fas fa-screwdriver-wrench"></i>Repair · DV {{igRepair.dv}}</button>
+        <button type="button" class="ncm-ig-btn" data-action="igRepair" data-tooltip="Roll to patch the damaged sectors (+{{ncm-tip igRepair.pts}} integrity)"><i class="fas fa-screwdriver-wrench"></i>Repair · DV {{igRepair.dv}}</button>
       {{/if}}
     </div>
   {{/if}}
@@ -191,7 +191,7 @@
       {{else}}
         {{#each indexChips}}
           <div class="ncm-shard-index-chip {{accentClass}} {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}{{#if ig.damaged}} ncm-ig-chip{{/if}}{{#if ig.gone}} ncm-ig-chip--lost{{/if}}{{#if ig.glitchy}} ncm-ig-chip--glitchy{{/if}}" style="--ncm-chip-i:{{@index}};"
-               data-action="scrollToEntry" data-entry-id="{{id}}"{{#if ig.tooltip}} data-tooltip="{{ig.tooltip}}"{{/if}}>
+               data-action="scrollToEntry" data-entry-id="{{id}}"{{#if ig.tooltip}} data-tooltip="{{ncm-tip ig.tooltip}}"{{/if}}>
             <i class="{{iconClass}} ncm-shard-index-chip-icon" style="color:{{iconColor}};"></i>
             <span class="ncm-shard-index-chip-title">{{#if isHidden}}Hidden{{else}}{{title}}{{/if}}</span>
             {{#if ig.damaged}}<span class="ncm-ig-chipbar" aria-hidden="true">{{#each ig.meter}}<b class="{{#if this}}on{{/if}}"></b>{{/each}}</span>{{/if}}
@@ -348,10 +348,10 @@
                         <span class="ncm-entry-sender__nm">{{sender.name}}</span>
                         {{#if sender.isDirectory}}<span class="ncm-entry-sender__em">{{sender.email}}</span>{{/if}}
                         {{#if sender.canAdd}}
-                          <button type="button" class="ncm-entry-sender__act" data-action="addSenderContact" data-entry-id="{{id}}" data-tooltip="Add {{sender.name}} to my contacts"><i class="fas fa-user-plus"></i></button>
+                          <button type="button" class="ncm-entry-sender__act" data-action="addSenderContact" data-entry-id="{{id}}" data-tooltip="Add {{ncm-tip sender.name}} to my contacts"><i class="fas fa-user-plus"></i></button>
                         {{/if}}
                         {{#if sender.canReply}}
-                          <button type="button" class="ncm-entry-sender__act" data-action="composeToSender" data-entry-id="{{id}}" data-tooltip="Message {{sender.name}} from my Agent"><i class="fas fa-reply"></i></button>
+                          <button type="button" class="ncm-entry-sender__act" data-action="composeToSender" data-entry-id="{{id}}" data-tooltip="Message {{ncm-tip sender.name}} from my Agent"><i class="fas fa-reply"></i></button>
                         {{/if}}
                       </div>
                     {{/if}}

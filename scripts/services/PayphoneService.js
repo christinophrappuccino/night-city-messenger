@@ -13,7 +13,7 @@
  *   GM-only writes (records, styles, lines); a player never writes a payphone.
  */
 
-import { ncmNotify } from '../utils/notify.js';
+import { ncmNotify, tipText } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, resolveOperator } from '../utils/helpers.js';
 import { sanitizePayphone, sanitizePayphones, sanitizeSavedStyles, sanitizeLook, lookFromStyle, placeLabel, payphoneLine, inReach, bystanders, speakerOn } from '../utils/payphones.js';
@@ -247,7 +247,7 @@ export class PayphoneService {
     const el = document.createElement('div');
     el.className = 'ncm-pb-ringnote ncm-app';
     el.innerHTML = `<i class="fas fa-phone-volume"></i><div class="t"><b>A payphone is ringing</b><small>${foundry.utils.escapeHTML?.(placeLabel(pp)) ?? placeLabel(pp)}${near.ok ? ' — right next to you.' : ' — somewhere nearby.'}</small></div>
-      <button type="button" data-pb-up ${near.ok ? '' : 'disabled'} data-tooltip="${near.ok ? 'Answer it. The caller sees the place, not you.' : 'Walk up to it to answer'}"><i class="fas fa-phone"></i> Pick up</button>
+      <button type="button" data-pb-up ${near.ok ? '' : 'disabled'} data-tooltip="${tipText(near.ok ? 'Answer it. The caller sees the place, not you.' : 'Walk up to it to answer')}"><i class="fas fa-phone"></i> Pick up</button>
       <button type="button" data-pb-let data-tooltip="Anyone else near it can still answer">Let it ring</button>`;
     el.querySelector('[data-pb-up]').addEventListener('click', () => this.pickUp(call.id));
     el.querySelector('[data-pb-let]').addEventListener('click', () => el.remove());

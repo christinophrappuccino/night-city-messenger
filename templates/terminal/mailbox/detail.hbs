@@ -103,7 +103,7 @@
                   <span class="ncm-term__chip" data-action="terminalAddContact" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-user-plus"></i> Add to contacts</span>
                 {{/if}}
                 {{#if @root.composeAs}}{{#unless selectedMessage.isFile}}
-                  <span class="ncm-term__chip ncm-term__chip--as" data-action="terminalReplyAs" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Reply as {{@root.composeAs.name}} — the reply goes out from their address"><i class="fas fa-user-secret"></i> Reply as {{@root.composeAs.username}}</span>
+                  <span class="ncm-term__chip ncm-term__chip--as" data-action="terminalReplyAs" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Reply as {{ncm-tip @root.composeAs.name}} — the reply goes out from their address"><i class="fas fa-user-secret"></i> Reply as {{@root.composeAs.username}}</span>
                 {{/unless}}{{/if}}
                 {{#if selectedMessage.canReply}}
                   <span class="ncm-term__chip" data-action="terminalReplyAgent" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Message this sender from your own Agent"><i class="fas fa-reply"></i> Reply via Agent</span>
@@ -122,7 +122,7 @@
               </span>
             </div>
             <div class="ncm-term__metabar">
-              <span class="ncm-term__mpill ncm-term__mpill--time" data-tooltip="{{selectedMessage.timeAgo}}"><i class="fa-regular fa-clock"></i> {{selectedMessage.timeAbs}}</span>
+              <span class="ncm-term__mpill ncm-term__mpill--time" data-tooltip="{{ncm-tip selectedMessage.timeAgo}}"><i class="fa-regular fa-clock"></i> {{selectedMessage.timeAbs}}</span>
               <span class="ncm-term__mpill ncm-term__mpill--{{selectedMessage.priority}}"><i class="fas {{selectedMessage.priorityIcon}}"></i> {{selectedMessage.priorityLabel}}</span>
               <span class="ncm-term__mpill ncm-term__mpill--net"><i class="fas fa-network-wired"></i> {{selectedMessage.network}}</span>
             </div>
@@ -157,11 +157,11 @@
               {{#each exfilActions}}
                 {{#if denied}}
                   <span class="ncm-term__btn ncm-term__exfil-btn is-denied" data-action="terminalExfil" data-exfil="{{action}}" data-message-id="{{../selectedMessage.messageId}}"
-                        data-tooltip="This file can’t leave the machine{{#if denyReason}} — {{denyReason}}{{/if}}"><i class="{{icon}}"></i> {{label}}
+                        data-tooltip="This file can’t leave the machine{{#if denyReason}} — {{ncm-tip denyReason}}{{/if}}"><i class="{{icon}}"></i> {{label}}
                     <span class="ncm-term__exfil-why">{{denyReason}}</span>
                   </span>
                 {{else}}
-                  <span class="ncm-term__btn ncm-term__exfil-btn{{#if gated}} is-gated{{/if}}{{#if (eq action "saveFrame")}} is-frame{{/if}}" data-action="terminalExfil" data-exfil="{{action}}" data-message-id="{{../selectedMessage.messageId}}"{{#if gated}} data-tooltip="Security check — DV {{dv}} (fail trips a trace)"{{/if}}><i class="{{icon}}"></i> {{label}}{{#if gated}} <i class="fas fa-lock ncm-term__exfil-lock"></i>{{/if}}</span>
+                  <span class="ncm-term__btn ncm-term__exfil-btn{{#if gated}} is-gated{{/if}}{{#if (eq action "saveFrame")}} is-frame{{/if}}" data-action="terminalExfil" data-exfil="{{action}}" data-message-id="{{../selectedMessage.messageId}}"{{#if gated}} data-tooltip="Security check — DV {{ncm-tip dv}} (fail trips a trace)"{{/if}}><i class="{{icon}}"></i> {{label}}{{#if gated}} <i class="fas fa-lock ncm-term__exfil-lock"></i>{{/if}}</span>
                 {{/if}}
               {{/each}}
             </div>

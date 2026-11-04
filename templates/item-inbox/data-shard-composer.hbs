@@ -894,13 +894,13 @@
         <span class="ncm-ss-tsep"></span>
         <span class="ncm-ss-tlbl">text</span>
         <span class="ncm-ss-dots">
-          {{#each ssColors}}<button type="button" data-action="ssColor" data-kind="color" data-c="{{this}}" class="ncm-ss-dot ncm-ct-c--{{this}}" data-tooltip="{{this}}"><i class="fas fa-font"></i></button>{{/each}}
+          {{#each ssColors}}<button type="button" data-action="ssColor" data-kind="color" data-c="{{this}}" class="ncm-ss-dot ncm-ct-c--{{this}}" data-tooltip="{{ncm-tip this}}"><i class="fas fa-font"></i></button>{{/each}}
           <button type="button" data-action="ssColor" data-kind="color" data-c="" class="ncm-ss-dot" data-tooltip="no color"><i class="fas fa-ban"></i></button>
         </span>
         <span class="ncm-ss-tsep"></span>
         <span class="ncm-ss-tlbl">fill</span>
         <span class="ncm-ss-dots">
-          {{#each ssColors}}<button type="button" data-action="ssColor" data-kind="bg" data-c="{{this}}" class="ncm-ss-dot ncm-ct-bg--{{this}}" data-tooltip="{{this}}"></button>{{/each}}
+          {{#each ssColors}}<button type="button" data-action="ssColor" data-kind="bg" data-c="{{this}}" class="ncm-ss-dot ncm-ct-bg--{{this}}" data-tooltip="{{ncm-tip this}}"></button>{{/each}}
           <button type="button" data-action="ssColor" data-kind="bg" data-c="" class="ncm-ss-dot" data-tooltip="no fill"><i class="fas fa-ban"></i></button>
         </span>
         <span class="ncm-ss-tsep"></span>
@@ -1145,7 +1145,7 @@
               <i class="{{icon}}"></i>
               <span class="ncm-exf-ovr__nm">{{label}}{{#if note}} <em>{{note}}</em>{{/if}}</span>
               <span class="ncm-tri" data-exf-tri="{{key}}">
-                <button type="button" data-action="exfState" data-val="inherit" class="{{#if isInherit}}is-on{{/if}}" data-tooltip="Untouched — follows the terminal's Exfil tab ({{inheritLabel}}), or is DENIED in “only what I allow” mode">INH</button>
+                <button type="button" data-action="exfState" data-val="inherit" class="{{#if isInherit}}is-on{{/if}}" data-tooltip="Untouched — follows the terminal's Exfil tab ({{ncm-tip inheritLabel}}), or is DENIED in “only what I allow” mode">INH</button>
                 <button type="button" data-action="exfState" data-val="allow" class="{{#if isAllow}}is-on is-allow{{/if}}">ALLOW</button>
                 <button type="button" data-action="exfState" data-val="deny" class="{{#if isDeny}}is-on is-deny{{/if}}">DENY</button>
               </span>

@@ -25,7 +25,7 @@
  *   online, and it is checked BEFORE the roll — never after something irreversible.
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, SOCKET_OPS, ENCRYPTION_TYPES, FAILURE_MODES, SHARD_PRESETS } from '../../utils/constants.js';
 import { log, isGM, resolveOperator, getOperatorActors, openOperatorPicker, canEncode, canEditShard, whisperCardHtml, getPlayerCharacters } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -598,7 +598,7 @@ export class ShardEncoderApp extends BaseApplication {
         <div class="ncm-enc-mixsw">
           ${ENC_LOOK_SWATCHES[key].map((hex) => `
             <span class="ncm-enc-mixdot ${String(cur[key] || '').toLowerCase() === hex ? 'on' : ''}"
-                  style="background:${hex}" data-enc="mix:${key}:${hex}" data-tooltip="${hex}"></span>`).join('')}
+                  style="background:${hex}" data-enc="mix:${key}:${hex}" data-tooltip="${tipText(hex)}"></span>`).join('')}
           <input type="color" class="ncm-enc-mixpick" value="${esc(cur[key] || ENC_LOOK_SWATCHES[key][0])}"
                  data-enc-mix="${key}" data-tooltip="Any colour">
         </div>
@@ -1454,7 +1454,7 @@ export class ShardEncoderApp extends BaseApplication {
         </div>
         <div class="ncm-enc-artopts">
           ${SHARD_ART.map(([file, label]) => `
-            <span class="ncm-enc-artopt ${this._img() === GEAR_ART + file ? 'on' : ''}" data-enc="img:${file}" data-tooltip="${esc(label)}">
+            <span class="ncm-enc-artopt ${this._img() === GEAR_ART + file ? 'on' : ''}" data-enc="img:${file}" data-tooltip="${tipText(label)}">
               <img src="${GEAR_ART + file}" alt="${esc(label)}"></span>`).join('')}
           <span class="ncm-enc-artopt ncm-enc-artopt--make" data-enc="designimg" data-tooltip="Design your own">
             <i class="fas fa-palette"></i></span>
@@ -1772,7 +1772,7 @@ export class ShardEncoderApp extends BaseApplication {
       const useless = a.requireSkill && rank < 1;
       return `<span class="ncm-fw-chip ${this.S.assistId === c.id ? 'on' : ''} ${useless ? 'is-lock' : ''}"
                     data-enc="assist:${esc(c.id)}"
-                    data-tooltip="${esc(useless ? `No rank in ${this.S.craft} — no help on this roll` : `${this.S.craft} ${rank}`)}">
+                    data-tooltip="${tipText(useless ? `No rank in ${this.S.craft} — no help on this roll` : `${this.S.craft} ${rank}`)}">
         ${esc(c.name)}<span class="dv">${useless ? 'no help' : `+${a.bonus}`}</span></span>`;
     }).join('');
 

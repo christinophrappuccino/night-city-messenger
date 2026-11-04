@@ -151,6 +151,7 @@ else {
   const H = Handlebars.create();
   const { registerTagHueHelper } = await imp('scripts/utils/tagHue.js');
   registerTagHueHelper(H);
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   const tpl = H.compile(tplSrc, { strict: false });
   tab._mapSel = 'c0'; tab._mapHi = '';
   const html = tpl({ map: buildMapContext(tab, { all: world, npcs: world, pcs, kx, mail, groups }) });

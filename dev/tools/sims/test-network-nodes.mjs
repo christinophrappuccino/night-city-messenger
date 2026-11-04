@@ -223,6 +223,7 @@ const mkThis = (Cls, props) => { const o = Object.create(Cls.prototype); for (co
   }
   if (!H) { fail++; console.error('FAIL: could not load Handlebars from a Foundry install — render checks did not run'); }
   else {
+    { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
     const tpl = H.compile(read('templates/network-nodes/node-console.hbs'));
     const html = tpl(on), htmlL = tpl(locked), htmlG = tpl(gm), htmlO = tpl(off);
     ok(html.includes('data-action="connect"') && html.includes('data-action="toggle"') && !html.includes('data-action="edit"'), 'player render: Connect + Switch off, no GM buttons');

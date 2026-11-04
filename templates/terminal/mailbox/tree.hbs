@@ -7,7 +7,7 @@
             </div>
             {{#each dirs}}
               <div class="ncm-term__fs-dir{{#if active}} is-active{{/if}}{{#if locked}} is-locked{{/if}}" style="--d:{{depth}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="{{path}}"{{#if locked}} data-locked="1" data-lock-label="{{lockLabel}}"{{/if}}>
-                <i class="fas {{#if locked}}fa-lock{{else if active}}fa-folder-open{{else}}fa-folder{{/if}}"></i>{{name}}<span class="ncm-term__fs-slash">/</span>{{#if locked}}<span class="ncm-term__fs-tag ncm-term__fs-tag--lock">{{lockLabel}}</span>{{else if gated}}<span class="ncm-term__fs-tag ncm-term__fs-tag--gate" data-tooltip="Opens for: {{lockLabel}}"><i class="fas fa-lock-open"></i></span>{{/if}}<span class="ncm-term__fs-ct">{{count}}</span>
+                <i class="fas {{#if locked}}fa-lock{{else if active}}fa-folder-open{{else}}fa-folder{{/if}}"></i>{{name}}<span class="ncm-term__fs-slash">/</span>{{#if locked}}<span class="ncm-term__fs-tag ncm-term__fs-tag--lock">{{lockLabel}}</span>{{else if gated}}<span class="ncm-term__fs-tag ncm-term__fs-tag--gate" data-tooltip="Opens for: {{ncm-tip lockLabel}}"><i class="fas fa-lock-open"></i></span>{{/if}}<span class="ncm-term__fs-ct">{{count}}</span>
               </div>
             {{/each}}
             {{#each files}}
@@ -19,7 +19,7 @@
         {{!-- ADMIN ACCESS: other accounts' homes. Clicking one VIEWS that account
               (banner + its files); "YOU" goes back. A private account is a dead row. --}}
         {{#each fs.otherHomes}}
-          <div class="ncm-term__fs-root ncm-term__fs-home{{#unless ok}} is-locked{{/unless}}" {{#if ok}}data-action="{{#if isBack}}terminalAdminBack{{else}}terminalAdminView{{/if}}" data-account-id="{{id}}" data-files="1"{{/if}} data-tooltip="{{#if ok}}{{#if isBack}}Back to your own account{{else}}View {{username}}'s files as admin{{/if}}{{else}}{{reason}}{{/if}}">
+          <div class="ncm-term__fs-root ncm-term__fs-home{{#unless ok}} is-locked{{/unless}}" {{#if ok}}data-action="{{#if isBack}}terminalAdminBack{{else}}terminalAdminView{{/if}}" data-account-id="{{id}}" data-files="1"{{/if}} data-tooltip="{{#if ok}}{{#if isBack}}Back to your own account{{else}}View {{ncm-tip username}}'s files as admin{{/if}}{{else}}{{ncm-tip reason}}{{/if}}">
             <i class="fas {{#if ok}}fa-house-user{{else}}fa-house-lock{{/if}}"></i><span class="ncm-term__fs-root-nm">home</span><span class="ncm-term__fs-root-sub">{{username}}</span>{{#if tag}}<span class="ncm-term__fs-tag">{{tag}}</span>{{/if}}{{#unless ok}}<span class="ncm-term__fs-tag ncm-term__fs-tag--lock">{{reason}}</span>{{/unless}}
           </div>
         {{/each}}

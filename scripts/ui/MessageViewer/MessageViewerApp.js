@@ -23,7 +23,7 @@
  *     - _enrichMessages() passes currentNetworkName for network badge visibility logic
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { ConversationPane, startConversationDialog } from './conversationPane.js';
 import { gmInboxRoster, pushRecentInbox, ROSTER_GROUPS } from '../../utils/inboxRoster.js';
 import { rowAsMessage } from '../../utils/conversations.js';
@@ -1895,12 +1895,12 @@ export class MessageViewerApp extends BaseApplication {
                 <div class="ncm-burn-dialog__sub">Changing your email will permanently burn your current identity. All past messages from this address will show as [BURNED].</div>
                 <div class="ncm-burn-dialog__warning">
                   <i class="fas fa-triangle-exclamation ncm-burn-dialog__warning-icon"></i>
-                  <div class="ncm-burn-dialog__warning-text">Your current identity <strong>${currentEmail}</strong> will be permanently burned. This cannot be undone.</div>
+                  <div class="ncm-burn-dialog__warning-text">Your current identity <strong>${escapeHtml(currentEmail)}</strong> will be permanently burned. This cannot be undone.</div>
                 </div>
                 ${this._sendAsChoices().length ? '<div class="ncm-burn-dialog__sub">Only want to send from one of your other addresses? Cancel, and pick it under Sending as.</div>' : ''}
                 <div class="ncm-burn-dialog__current">
                   <div class="ncm-burn-dialog__current-label">Current Identity (will be burned)</div>
-                  <div class="ncm-burn-dialog__current-email">${currentEmail}</div>
+                  <div class="ncm-burn-dialog__current-email">${escapeHtml(currentEmail)}</div>
                 </div>
                 <div class="ncm-burn-dialog__consequences">
                   <div class="ncm-burn-dialog__consequence"><i class="fas fa-check ncm-burn-dialog__consequence-ok"></i> Existing messages preserved in all inboxes</div>
@@ -2863,7 +2863,7 @@ export class MessageViewerApp extends BaseApplication {
             <div style="font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:0.12em;color:var(--ncm-primary,#F65261);text-transform:uppercase;">Cannot Route Reply</div>
           </div>
           <div style="font-size:11px;color:var(--ncm-text-secondary,#8888a0);line-height:1.7;margin-bottom:14px;">
-            <strong style="color:var(--ncm-text-primary,#e0e0e8);">${netName}</strong> does not allow outbound routing to external networks.
+            <strong style="color:var(--ncm-text-primary,#e0e0e8);">${escapeHtml(netName)}</strong> does not allow outbound routing to external networks.
             Your reply to <strong style="color:var(--ncm-text-primary,#e0e0e8);">${recipient}</strong> cannot be delivered on this network.
           </div>
           <div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:14px;">
@@ -2878,7 +2878,7 @@ export class MessageViewerApp extends BaseApplication {
             </div>
             <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
               <div style="width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:${netColor};border:1px solid ${netColor}33;background:${netColor}0F;"><i class="fas ${netIcon}"></i></div>
-              <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--ncm-text-muted,#555570);text-transform:uppercase;">${netName}</span>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--ncm-text-muted,#555570);text-transform:uppercase;">${escapeHtml(netName)}</span>
             </div>
             <div style="display:flex;align-items:center;gap:3px;padding:0 8px;">
               <span style="width:20px;height:0;border-top:1px dashed rgba(246,82,97,0.3);"></span>

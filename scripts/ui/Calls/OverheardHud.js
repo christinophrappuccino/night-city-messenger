@@ -6,7 +6,7 @@
  *   already garbled, and type out like a real call; garbled words type as garble. Spec PHONE-REVISION.md §12, §17.
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { CallHud } from './CallHud.js';
 import { typeOutMs } from '../../utils/callModel.js';
 import { resolveOperator } from '../../utils/helpers.js';
@@ -58,7 +58,7 @@ export class OverheardHud {
     let html = this.hud._callHtml({ call, role: 'caller' }, {});
     html = html.replaceAll('Holocall', 'Intercept').replace('Hang up', 'Stop listening');
     html = html.replace('<img src="NOFACE" alt="">', '<span class="ncm-ch-ini" aria-hidden="true"><span class="sw"><span class="tr"></span><span class="dot"></span><span class="dot b"></span></span><b><i class="fas fa-ear-listen"></i></b></span>');
-    this._mount().innerHTML = `<div class="ncm-r5-scene"><div class="ncm-call-hud ncm-r5-hud" style="--ch-ring:#F65261;--ch-live:#b87aff;--ch-key:#f7c948">${html}</div><div class="ncm-ch-subs ncm-r5-subs" data-ov-subs></div><div class="ncm-r4-tools"><button type="button" data-ov="enhance" data-tooltip="${esc(c.skill)} against DV ${esc(c.dv)}. Beat it by more and more words clear"><i class="fas fa-wand-magic-sparkles"></i> Enhance</button><button type="button" data-ov="save" data-tooltip="To your EXFIL folder, as garbled as you heard it, from the line you joined on"><i class="fas fa-floppy-disk"></i> Save</button></div></div>`;
+    this._mount().innerHTML = `<div class="ncm-r5-scene"><div class="ncm-call-hud ncm-r5-hud" style="--ch-ring:#F65261;--ch-live:#b87aff;--ch-key:#f7c948">${html}</div><div class="ncm-ch-subs ncm-r5-subs" data-ov-subs></div><div class="ncm-r4-tools"><button type="button" data-ov="enhance" data-tooltip="${tipText(c.skill)} against DV ${tipText(c.dv)}. Beat it by more and more words clear"><i class="fas fa-wand-magic-sparkles"></i> Enhance</button><button type="button" data-ov="save" data-tooltip="To your EXFIL folder, as garbled as you heard it, from the line you joined on"><i class="fas fa-floppy-disk"></i> Save</button></div></div>`;
     this._subs();
     clearInterval(this._tick);
     const t0 = performance.now();

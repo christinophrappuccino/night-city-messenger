@@ -39,6 +39,7 @@ if (!Handlebars) { console.log('(Handlebars not found — render checks skipped)
 else {
   const H = Handlebars.create();
   H.registerHelper('eq', (a, b) => a === b);
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   { const { registerTagHueHelper } = await import(new URL('scripts/utils/tagHue.js', ROOT)); registerTagHueHelper(H); }
   const { ScopePicker } = await import(new URL('scripts/utils/scopePicker.js', ROOT));
   const picker = (id) => ScopePicker.html(id, { noun: 'player', nouns: 'players', icon: 'fa-user-group', label: 'To', multi: true, allLabel: 'Pick players', pinned: [{ id: '__all', name: 'Every player', icon: 'fa-users' }], items: [{ id: 'v', name: 'V' }, { id: 'r', name: 'Rache' }] });

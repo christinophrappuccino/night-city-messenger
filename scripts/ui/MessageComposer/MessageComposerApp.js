@@ -3225,7 +3225,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       content: `
         <div class="form-group" style="margin-bottom:8px;">
           <label>Location:</label>
-          <input type="text" name="location" value="${sceneName}" style="width:100%;" />
+          <input type="text" name="location" value="${escapeHtml(sceneName)}" style="width:100%;" />
         </div>
         <div class="form-group">
           <label>Grid Reference (optional):</label>

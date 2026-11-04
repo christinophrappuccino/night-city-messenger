@@ -145,6 +145,7 @@ if (!H) { fail++; console.error('FAIL: could not load Handlebars from a Foundry 
 else {
   const { registerTagHueHelper } = await import(pathToFileURL(`${ROOT}/scripts/utils/tagHue.js`).href);
   registerTagHueHelper(H);
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('eq', (a, b) => a === b);
   const shards = [
     row({ itemId: 'a', name: 'Militech Exec Dossier', status: 'blackice', layers: [{ key: 'encryption', ice: true, small: 'DV 20' }] }),

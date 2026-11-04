@@ -45,7 +45,7 @@
     <div class="ncm-ct2-tb ncm-ct2-tb--one">
       <span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-ct2-q="dir" data-field="contactSearch" value="{{ct2.dir.search}}" placeholder="Search name, address, org, tag…"></span>
       <select class="ncm-ct2-show {{#if ct2.dir.showOn}}is-on{{/if}}" data-ct2-select="show" data-tooltip="Which contacts to list">{{#each ct2.dir.chips}}<option value="{{key}}" {{#if on}}selected{{/if}}>Show: {{label}} ({{n}})</option>{{/each}}</select>
-      {{#each ct2.dir.alerts}}<button type="button" class="ncm-ct2-tbalert {{#if on}}on{{/if}}" data-action="tabAct" data-op="filter" data-filter="{{key}}" data-tooltip="{{n}} {{label}} — {{#if on}}click to show all again{{else}}click to show only these{{/if}}" aria-label="{{label}}: {{n}}"><i class="fas {{icon}}"></i>{{n}}</button>{{/each}}
+      {{#each ct2.dir.alerts}}<button type="button" class="ncm-ct2-tbalert {{#if on}}on{{/if}}" data-action="tabAct" data-op="filter" data-filter="{{key}}" data-tooltip="{{ncm-tip n}} {{ncm-tip label}} — {{#if on}}click to show all again{{else}}click to show only these{{/if}}" aria-label="{{label}}: {{n}}"><i class="fas {{icon}}"></i>{{n}}</button>{{/each}}
       {{{ct2.dir.facetPicker}}}
       <select data-ct2-select="groupBy">{{#each ct2.dir.groupOpts}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select>
       <select data-ct2-select="sort">{{#each ct2.dir.sortOpts}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select>
@@ -68,20 +68,20 @@
     <div class="ncm-ct2-split">
       <div class="ncm-ct2-list" data-ct2-scroll="dirlist">
         {{#each ct2.dir.groups}}
-          <div class="ncm-ct2-grp {{#if shut}}is-shut{{/if}}"{{#if hue}} style="--gc:{{ncm-hue hue}}"{{else if tc}} style="--gc:{{tc}}"{{/if}} data-action="tabAct" data-op="dirFold" data-key="{{key}}" data-shut="{{#if shut}}1{{/if}}" role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}" data-tooltip="{{#if shut}}Show{{else}}Hide{{/if}} {{label}}"><i class="fas fa-chevron-{{#if shut}}right{{else}}down{{/if}} ncm-ct2-grp__chev"></i><i class="{{icon}}"></i>{{label}}
+          <div class="ncm-ct2-grp {{#if shut}}is-shut{{/if}}"{{#if hue}} style="--gc:{{ncm-hue hue}}"{{else if tc}} style="--gc:{{tc}}"{{/if}} data-action="tabAct" data-op="dirFold" data-key="{{key}}" data-shut="{{#if shut}}1{{/if}}" role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}" data-tooltip="{{#if shut}}Show{{else}}Hide{{/if}} {{ncm-tip label}}"><i class="fas fa-chevron-{{#if shut}}right{{else}}down{{/if}} ncm-ct2-grp__chev"></i><i class="{{icon}}"></i>{{label}}
             {{#if folder}}<i class="fas fa-pen ncm-ct2-grp__edit" data-action="tabAct" data-op="renameFolder" data-folder="{{folder}}" data-tooltip="Rename this folder"></i>{{/if}}
-            {{#if shut}}{{#if waiting}}<span class="ncm-ct2-grp__w" data-tooltip="{{waiting}} message{{#unless (eq waiting 1)}}s{{/unless}} waiting in {{label}}"><i class="fas fa-envelope"></i>{{waiting}} waiting</span>{{/if}}{{#if checks}}<span class="ncm-ct2-grp__p" data-tooltip="{{checks}} contact{{#unless (eq checks 1)}}s{{/unless}} need a look"><i class="fas fa-triangle-exclamation"></i>{{checks}}</span>{{/if}}{{/if}}
+            {{#if shut}}{{#if waiting}}<span class="ncm-ct2-grp__w" data-tooltip="{{ncm-tip waiting}} message{{#unless (eq waiting 1)}}s{{/unless}} waiting in {{ncm-tip label}}"><i class="fas fa-envelope"></i>{{waiting}} waiting</span>{{/if}}{{#if checks}}<span class="ncm-ct2-grp__p" data-tooltip="{{ncm-tip checks}} contact{{#unless (eq checks 1)}}s{{/unless}} need a look"><i class="fas fa-triangle-exclamation"></i>{{checks}}</span>{{/if}}{{/if}}
             <span class="n">{{n}}</span></div>
           {{#unless shut}}
           {{#each rows}}
             <div class="ncm-ct2-r {{#if alias}}alias{{/if}} {{#if sel}}sel{{/if}}{{#if mail}} is-mail{{else if check}} is-check{{/if}}" data-action="tabAct" data-op="sel" data-id="{{id}}">
               {{#if img}}<img class="ncm-ct2-av {{#if ice}}ice{{/if}}" src="{{img}}" alt="">{{else if sys}}<span class="ncm-ct2-av sys"><i class="fas fa-tower-broadcast"></i></span>{{else}}<span class="ncm-ct2-av {{#if ice}}ice{{/if}}" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}
-              <div class="ncm-ct2-r__txt"><div class="nm">{{name}}</div><div class="sub">{{#if alias}}<span class="ncm-ct2-sub__alias"><i class="fas fa-masks-theater"></i>alias</span> · {{#if email}}{{email}}{{else}}no address{{/if}}{{else}}{{#if role}}<i class="{{role.icon}} ncm-ct2-sub__role" style="--tc:{{ncm-hue role.hue}}" data-tooltip="{{role.label}}"></i>{{/if}}{{#if org}}<span class="ncm-ct2-sub__org" style="--tc:{{ncm-hue org}}">{{org}}</span>{{#if email}} · {{/if}}{{/if}}{{email}}{{#unless org}}{{#unless email}}{{subline}}{{/unless}}{{/unless}}{{/if}}</div></div>
+              <div class="ncm-ct2-r__txt"><div class="nm">{{name}}</div><div class="sub">{{#if alias}}<span class="ncm-ct2-sub__alias"><i class="fas fa-masks-theater"></i>alias</span> · {{#if email}}{{email}}{{else}}no address{{/if}}{{else}}{{#if role}}<i class="{{role.icon}} ncm-ct2-sub__role" style="--tc:{{ncm-hue role.hue}}" data-tooltip="{{ncm-tip role.label}}"></i>{{/if}}{{#if org}}<span class="ncm-ct2-sub__org" style="--tc:{{ncm-hue org}}">{{org}}</span>{{#if email}} · {{/if}}{{/if}}{{email}}{{#unless org}}{{#unless email}}{{subline}}{{/unless}}{{/unless}}{{/if}}</div></div>
               <div class="st">
-                {{#if mail}}<span class="mail" data-tooltip="{{mail}} waiting"><i class="fas fa-envelope"></i>{{mail}}</span>{{/if}}
+                {{#if mail}}<span class="mail" data-tooltip="{{ncm-tip mail}} waiting"><i class="fas fa-envelope"></i>{{mail}}</span>{{/if}}
                 {{#if ice}}<span class="ice" data-tooltip="Encrypted"><i class="fas fa-lock"></i></span>{{/if}}
                 {{#if check}}<span class="warn" data-tooltip="Needs a look"><i class="fas fa-triangle-exclamation"></i></span>{{/if}}
-                {{#if knows.length}}<span class="ncm-ct2-knows" data-tooltip="{{knowsTitle}}">{{#each knows}}<span style="background:{{color}}"></span>{{/each}}</span>{{else}}<span class="nobody" data-tooltip="{{knowsTitle}}">—</span>{{/if}}
+                {{#if knows.length}}<span class="ncm-ct2-knows" data-tooltip="{{ncm-tip knowsTitle}}">{{#each knows}}<span style="background:{{color}}"></span>{{/each}}</span>{{else}}<span class="nobody" data-tooltip="{{ncm-tip knowsTitle}}">—</span>{{/if}}
               </div>
             </div>
           {{/each}}
@@ -233,7 +233,7 @@
               <div class="ncm-ct2-ptrust">
                 {{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}
                 <span class="pn">{{name}}</span>
-                <div class="ncm-ct2-seg trust">{{#each segs}}<span class="{{#if on}}on{{/if}}" style="--tc:{{color}}" data-tooltip="{{title}}" data-action="tabAct" data-op="edSeg" data-key="rel:{{../actorId}}:trust" data-v="{{v}}">{{l}}</span>{{/each}}</div>
+                <div class="ncm-ct2-seg trust">{{#each segs}}<span class="{{#if on}}on{{/if}}" style="--tc:{{color}}" data-tooltip="{{ncm-tip title}}" data-action="tabAct" data-op="edSeg" data-key="rel:{{../actorId}}:trust" data-v="{{v}}">{{l}}</span>{{/each}}</div>
                 <input type="hidden" name="rel:{{actorId}}:trust" value="{{trustValue}}">
                 <select name="rel:{{actorId}}:type">{{#each types}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select>
                 <input type="text" name="rel:{{actorId}}:note" value="{{note}}" placeholder="Note (GM only)">
@@ -273,7 +273,7 @@
           <div class="ncm-ct2-acts">
             <button type="button" class="ncm-ct2-btn ncm-ct2-btn--primary" data-action="tabAct" data-op="sendAs" data-id="{{id}}"><i class="fas fa-paper-plane"></i> Send as</button>
             {{#unless sys}}<button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="message" data-id="{{id}}"><i class="fas fa-envelope"></i> Message</button>{{/unless}}
-            {{#if callNumber}}<button type="button" class="ncm-ct2-btn ncm-ct2-btn--call" data-action="tabAct" data-op="callAs" data-id="{{id}}" data-tooltip="Ring a player's character as {{name}} · {{callNumber}}"><i class="fas fa-phone"></i> Call as</button>{{/if}}
+            {{#if callNumber}}<button type="button" class="ncm-ct2-btn ncm-ct2-btn--call" data-action="tabAct" data-op="callAs" data-id="{{id}}" data-tooltip="Ring a player's character as {{ncm-tip name}} · {{ncm-tip callNumber}}"><i class="fas fa-phone"></i> Call as</button>{{/if}}
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="inbox" data-id="{{id}}"><i class="fas fa-inbox"></i> Inbox</button>
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="edit" data-id="{{id}}"><i class="fas fa-pen"></i> Edit</button>
             <span class="ncm-ct2-morewrap">
@@ -292,7 +292,7 @@
           </div>
         </div>
 
-        {{#if dtabs}}<div class="ncm-ct2-itabs" role="tablist" aria-label="{{name}}">{{#each dtabs}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ct2-itab{{#if on}} on{{/if}}" data-action="tabAct" data-op="dTab" data-tab="{{key}}"{{#if tip}} data-tooltip="{{tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}{{#if count}}<span class="ncm-ct2-itab__n{{#if attn}} is-attn{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}</div>{{/if}}
+        {{#if dtabs}}<div class="ncm-ct2-itabs" role="tablist" aria-label="{{name}}">{{#each dtabs}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ct2-itab{{#if on}} on{{/if}}" data-action="tabAct" data-op="dTab" data-tab="{{key}}"{{#if tip}} data-tooltip="{{ncm-tip tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}{{#if count}}<span class="ncm-ct2-itab__n{{#if attn}} is-attn{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}</div>{{/if}}
 
         {{#if onMain}}
         {{#each needs}}
@@ -324,11 +324,11 @@
                   <circle class="guide owe" cx="0" cy="0" r="{{oweR}}"/>
                   {{#each guides}}<text class="glbl{{#if owe}} owe{{/if}}" x="{{x}}" y="{{y}}">{{text}}</text>{{/each}}
                   {{#each people}}{{#each links}}<path class="link {{tone}}{{#if dim}} dim{{/if}}" d="{{d}}" stroke-width="{{w}}"/>{{/each}}{{/each}}
-                  {{#each wedges}}<path class="wedge {{#if isAlias}}alias{{else}}main{{/if}}{{#if on}} on{{/if}}{{#if dim}} dim{{/if}}" d="{{d}}" data-action="tabAct" data-op="sbIdent" data-ident="{{id}}" data-tooltip="{{name}} — {{count}} message(s) · click to see only this identity"/>{{/each}}
+                  {{#each wedges}}<path class="wedge {{#if isAlias}}alias{{else}}main{{/if}}{{#if on}} on{{/if}}{{#if dim}} dim{{/if}}" d="{{d}}" data-action="tabAct" data-op="sbIdent" data-ident="{{id}}" data-tooltip="{{ncm-tip name}} — {{ncm-tip count}} message(s) · click to see only this identity"/>{{/each}}
                   <circle class="core" cx="0" cy="0" r="{{coreR}}"/>
                   {{#each wedges}}{{#if labelFits}}<text class="wlbl" x="{{lx}}" y="{{ly}}" transform="rotate({{rot}} {{lx}} {{ly}})">{{short}}</text>{{/if}}{{/each}}
-                  {{#each people}}<g class="pp{{#if dim}} dim{{/if}}">{{#if sel}}<circle class="selr" cx="{{x}}" cy="{{y}}" r="{{selR}}"/>{{/if}}{{#if waiting}}<circle class="halo" cx="{{x}}" cy="{{y}}" r="{{haloR}}"/>{{/if}}<circle class="dot {{#if never}}never{{else if isPc}}pc{{else}}npc{{/if}}{{#if sel}} sel{{/if}}" cx="{{x}}" cy="{{y}}" r="{{r}}" style="{{dotStyle}}" data-action="tabAct" data-op="sbPick" data-key="{{key}}" data-tooltip="{{tip}}"/></g>{{/each}}
-                  {{#each people}}{{#if arrow}}<path class="dir {{#if arrow.theirs}}theirs{{else}}yours{{/if}}{{#if dim}} dim{{/if}}" d="M 4.5 0 L -3.5 -4 L -3.5 4 Z" transform="{{arrow.tf}}" data-tooltip="{{arrow.tip}}"/>{{/if}}{{/each}}
+                  {{#each people}}<g class="pp{{#if dim}} dim{{/if}}">{{#if sel}}<circle class="selr" cx="{{x}}" cy="{{y}}" r="{{selR}}"/>{{/if}}{{#if waiting}}<circle class="halo" cx="{{x}}" cy="{{y}}" r="{{haloR}}"/>{{/if}}<circle class="dot {{#if never}}never{{else if isPc}}pc{{else}}npc{{/if}}{{#if sel}} sel{{/if}}" cx="{{x}}" cy="{{y}}" r="{{r}}" style="{{dotStyle}}" data-action="tabAct" data-op="sbPick" data-key="{{key}}" data-tooltip="{{ncm-tip tip}}"/></g>{{/each}}
+                  {{#each people}}{{#if arrow}}<path class="dir {{#if arrow.theirs}}theirs{{else}}yours{{/if}}{{#if dim}} dim{{/if}}" d="M 4.5 0 L -3.5 -4 L -3.5 4 Z" transform="{{arrow.tf}}" data-tooltip="{{ncm-tip arrow.tip}}"/>{{/if}}{{/each}}
                   {{#each people}}{{#if label}}<text class="nm{{#unless isPc}} is-npc{{/unless}}{{#if dim}} dim{{/if}}" x="{{label.x}}" y="{{label.y}}" text-anchor="{{label.anchor}}">{{name}}{{#if waiting}}<tspan class="w" dx="4">{{waiting}}</tspan>{{/if}}</text>{{/if}}{{/each}}
                 </svg>
               </div>
@@ -371,18 +371,18 @@
         <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-users"></i>Who knows {{whoLabel}}<span class="r">click to share or take back</span></div>
           {{#if hasPcs}}
             <div class="ncm-ct2-who">
-              {{#each who}}<span class="ncm-ct2-pc {{#if on}}on{{/if}}" data-action="tabAct" data-op="whoToggle" data-id="{{../id}}" data-actor="{{actorId}}" data-tooltip="{{#if on}}{{name}} has {{#if held}}{{held}}{{else}}this contact{{/if}} — click to take it back{{else}}Share with {{name}}{{/if}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if on}}<span class="s">✓</span>{{/if}}</span>{{/each}}
+              {{#each who}}<span class="ncm-ct2-pc {{#if on}}on{{/if}}" data-action="tabAct" data-op="whoToggle" data-id="{{../id}}" data-actor="{{actorId}}" data-tooltip="{{#if on}}{{ncm-tip name}} has {{#if held}}{{ncm-tip held}}{{else}}this contact{{/if}} — click to take it back{{else}}Share with {{ncm-tip name}}{{/if}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if on}}<span class="s">✓</span>{{/if}}</span>{{/each}}
             </div>
           {{else}}<div class="ncm-ct2-quiet">No player characters yet.</div>{{/if}}
           <div class="ncm-ct2-whonpc"><span class="lb">NPCs</span>
-            {{#each npcWho}}<span class="ncm-ct2-pc on" data-action="tabAct" data-op="npcWhoDel" data-id="{{tid}}" data-npc="{{npcId}}" data-tooltip="Take back from {{name}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}<span class="s">✓</span></span>{{/each}}
+            {{#each npcWho}}<span class="ncm-ct2-pc on" data-action="tabAct" data-op="npcWhoDel" data-id="{{tid}}" data-npc="{{npcId}}" data-tooltip="Take back from {{ncm-tip name}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}<span class="s">✓</span></span>{{/each}}
             <button type="button" class="ncm-ct2-btn ncm-ct2-btn--sm" data-action="tabAct" data-op="npcWhoAdd" data-id="{{id}}"><i class="fas fa-share-nodes"></i> Share with an NPC…</button>
           </div>
         </div>
 
         <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-address-book"></i>Who {{name}} knows<span class="r">their own contacts — used when you write or call as them</span></div>
           <div class="ncm-ct2-who">
-            {{#each knows}}<span class="ncm-ct2-pc on" data-action="tabAct" data-op="knowsDel" data-id="{{npcId}}" data-target="{{id}}" data-tooltip="Take {{name}} off the list">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if alias}} <span class="ncm-tagp is-secret">alias</span>{{/if}}{{#if pc}} <span class="ncm-tagp is-plain">player</span>{{/if}}<span class="s">✓</span></span>{{/each}}
+            {{#each knows}}<span class="ncm-ct2-pc on" data-action="tabAct" data-op="knowsDel" data-id="{{npcId}}" data-target="{{id}}" data-tooltip="Take {{ncm-tip name}} off the list">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if alias}} <span class="ncm-tagp is-secret">alias</span>{{/if}}{{#if pc}} <span class="ncm-tagp is-plain">player</span>{{/if}}<span class="s">✓</span></span>{{/each}}
             <button type="button" class="ncm-ct2-btn ncm-ct2-btn--sm" data-action="tabAct" data-op="knowsAdd" data-id="{{id}}"><i class="fas fa-plus"></i> Add contacts…</button>
           </div>
           {{#unless knows.length}}<div class="ncm-ct2-quiet">{{name}} doesn't know anyone yet. The list is theirs alone — players never see it.</div>{{/unless}}
@@ -456,7 +456,7 @@
     <div class="ncm-ct2-tb ncm-ct2-tb--one">
       <span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-ct2-q="players" value="{{ct2.players.search}}" placeholder="Search character, player, address, scene…"></span>
       <select class="ncm-ct2-show {{#if ct2.players.showOn}}is-on{{/if}}" data-ct2-select="pShow" data-tooltip="Which characters to list">{{#each ct2.players.chips}}<option value="{{key}}" {{#if on}}selected{{/if}}>Show: {{label}} ({{n}})</option>{{/each}}</select>
-      {{#each ct2.players.alerts}}<button type="button" class="ncm-ct2-tbalert is-{{tone}} {{#if on}}on{{/if}}" data-action="tabAct" data-op="pFilter" data-filter="{{key}}" data-tooltip="{{n}} {{label}} — {{#if on}}click to show all again{{else}}click to show only these{{/if}}" aria-label="{{label}}: {{n}}"><i class="fas {{icon}}"></i>{{n}}</button>{{/each}}
+      {{#each ct2.players.alerts}}<button type="button" class="ncm-ct2-tbalert is-{{tone}} {{#if on}}on{{/if}}" data-action="tabAct" data-op="pFilter" data-filter="{{key}}" data-tooltip="{{ncm-tip n}} {{ncm-tip label}} — {{#if on}}click to show all again{{else}}click to show only these{{/if}}" aria-label="{{label}}: {{n}}"><i class="fas {{icon}}"></i>{{n}}</button>{{/each}}
       <select data-ct2-select="pGroup">{{#each ct2.players.groupOpts}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select>
       <select data-ct2-select="pSort">{{#each ct2.players.sortOpts}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select>
       {{#if ct2.players.canFold}}<button type="button" class="ncm-ct2-tbfold" data-action="tabAct" data-op="pFoldAll" data-fold="{{#if ct2.players.allShut}}open{{else}}close{{/if}}" data-tooltip="{{#if ct2.players.allShut}}Expand every group{{else}}Collapse every group{{/if}}" aria-label="{{#if ct2.players.allShut}}Expand all{{else}}Collapse all{{/if}}"><i class="fas fa-{{#if ct2.players.allShut}}expand{{else}}compress{{/if}}"></i></button>{{/if}}
@@ -466,8 +466,8 @@
       <div class="ncm-ct2-list" data-ct2-scroll="plist">
         {{#if ct2.players.nothing}}<div class="ncm-ct2-empty"><p>Nothing matches.</p></div>{{/if}}
         {{#each ct2.players.groups}}
-          <div class="ncm-ct2-grp {{#if shut}}is-shut{{/if}}"{{#if hue}} style="--gc:{{ncm-hue hue}}"{{/if}} data-action="tabAct" data-op="pFold" data-key="{{key}}" data-shut="{{#if shut}}1{{/if}}" role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}" data-tooltip="{{#if shut}}Show{{else}}Hide{{/if}} {{label}}"><i class="fas fa-chevron-{{#if shut}}right{{else}}down{{/if}} ncm-ct2-grp__chev"></i><i class="{{icon}}"></i>{{label}}
-            {{#if shut}}{{#if unread}}<span class="ncm-ct2-grp__w" data-tooltip="{{unread}} unread in {{label}}"><i class="fas fa-envelope"></i>{{unread}} unread</span>{{/if}}{{#if noaddr}}<span class="ncm-ct2-grp__p" data-tooltip="{{noaddr}} with no address"><i class="fas fa-at"></i>{{noaddr}}</span>{{/if}}{{/if}}
+          <div class="ncm-ct2-grp {{#if shut}}is-shut{{/if}}"{{#if hue}} style="--gc:{{ncm-hue hue}}"{{/if}} data-action="tabAct" data-op="pFold" data-key="{{key}}" data-shut="{{#if shut}}1{{/if}}" role="button" tabindex="0" aria-expanded="{{#if shut}}false{{else}}true{{/if}}" data-tooltip="{{#if shut}}Show{{else}}Hide{{/if}} {{ncm-tip label}}"><i class="fas fa-chevron-{{#if shut}}right{{else}}down{{/if}} ncm-ct2-grp__chev"></i><i class="{{icon}}"></i>{{label}}
+            {{#if shut}}{{#if unread}}<span class="ncm-ct2-grp__w" data-tooltip="{{ncm-tip unread}} unread in {{ncm-tip label}}"><i class="fas fa-envelope"></i>{{unread}} unread</span>{{/if}}{{#if noaddr}}<span class="ncm-ct2-grp__p" data-tooltip="{{ncm-tip noaddr}} with no address"><i class="fas fa-at"></i>{{noaddr}}</span>{{/if}}{{/if}}
             <span class="n">{{n}}</span></div>
           {{#unless shut}}
           {{#each rows}}
@@ -481,8 +481,8 @@
         {{#*inline "ncmCt2PlayerRow"}}
           <div class="ncm-ct2-r {{#if sel}}sel{{/if}}{{#if noEmail}} is-check{{/if}}" data-action="tabAct" data-op="pSel" data-actor="{{actorId}}">
             {{#if img}}<img class="ncm-ct2-av" src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}
-            <div class="ncm-ct2-r__txt"><div class="nm">{{name}}{{#if online}}<span class="ncm-ct2-online" data-tooltip="Online{{#if sceneName}} · {{sceneName}}{{/if}}"></span>{{/if}}</div><div class="sub">{{subline}}</div></div>
-            <div class="st">{{#if unread}}<span class="mail" data-tooltip="{{unread}} unread"><i class="fas fa-envelope"></i>{{unread}}</span>{{/if}}{{#if noEmail}}<span class="warn" data-tooltip="No address yet"><i class="fas fa-triangle-exclamation"></i></span>{{/if}}<span class="cnt{{#unless known}} nobody{{/unless}}" data-tooltip="Contacts they know"><i class="fas fa-address-book"></i> {{known}}</span></div>
+            <div class="ncm-ct2-r__txt"><div class="nm">{{name}}{{#if online}}<span class="ncm-ct2-online" data-tooltip="Online{{#if sceneName}} · {{ncm-tip sceneName}}{{/if}}"></span>{{/if}}</div><div class="sub">{{subline}}</div></div>
+            <div class="st">{{#if unread}}<span class="mail" data-tooltip="{{ncm-tip unread}} unread"><i class="fas fa-envelope"></i>{{unread}}</span>{{/if}}{{#if noEmail}}<span class="warn" data-tooltip="No address yet"><i class="fas fa-triangle-exclamation"></i></span>{{/if}}<span class="cnt{{#unless known}} nobody{{/unless}}" data-tooltip="Contacts they know"><i class="fas fa-address-book"></i> {{known}}</span></div>
           </div>
         {{/inline}}
       </div>
@@ -503,7 +503,7 @@
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="pHide" data-actor="{{actorId}}" data-tooltip="For a vehicle or anything else that isn't a person. Leaves every character list; its mail stays. Undo in Tools → Hidden Characters."><i class="fas fa-eye-slash"></i> Hide</button>
           </div>
         </div>
-        {{#if ptabs}}<div class="ncm-ct2-itabs" role="tablist" aria-label="{{name}}">{{#each ptabs}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ct2-itab{{#if on}} on{{/if}}" data-action="tabAct" data-op="pTab" data-tab="{{key}}"{{#if tip}} data-tooltip="{{tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}{{#if count}}<span class="ncm-ct2-itab__n{{#if attn}} is-attn{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}</div>{{/if}}
+        {{#if ptabs}}<div class="ncm-ct2-itabs" role="tablist" aria-label="{{name}}">{{#each ptabs}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ct2-itab{{#if on}} on{{/if}}" data-action="tabAct" data-op="pTab" data-tab="{{key}}"{{#if tip}} data-tooltip="{{ncm-tip tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}{{#if count}}<span class="ncm-ct2-itab__n{{#if attn}} is-attn{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}</div>{{/if}}
         {{#if onMain}}
         {{#if noEmail}}
           <div class="ncm-ct2-sec"><div class="ncm-ct2-mail ncm-ct2-mail--warn"><i class="fas fa-at"></i><span><b>{{name}}</b> has no email address yet — they can't send or receive.</span><span class="grow"></span>
@@ -520,12 +520,12 @@
             <span class="ncm-ct2-kn__seg">{{#each kn.byOpts}}<span class="{{#if on}}on{{/if}}" data-action="tabAct" data-op="knBy" data-by="{{key}}">{{label}}</span>{{/each}}</span>
             <button type="button" class="ncm-ct2-btn ncm-ct2-btn--primary" data-action="tabAct" data-op="pShareContacts" data-actor="{{actorId}}"><i class="fas fa-plus"></i> Share contacts</button>
           </div>
-          {{#if kn.groups.length}}<div class="ncm-ct2-kn__jumps"><span class="ncm-ct2-kn__jump is-every is-on" data-kn-jump="" role="button" tabindex="0" aria-pressed="true" data-tooltip="Show every group"><i class="fas fa-border-all"></i>All<b>{{kn.shown}}</b></span>{{#each kn.groups}}<span class="ncm-ct2-kn__jump" data-kn-jump="{{key}}" role="button" tabindex="0" aria-pressed="false" data-tooltip="Show only {{label}} — click again for everyone"{{#if hue}} style="--gc:{{ncm-hue hue}}"{{/if}}>{{#if icon}}<i class="{{icon}}"></i>{{/if}}{{label}}<b>{{n}}</b></span>{{/each}}<span class="ncm-ct2-kn__jump is-all" data-kn-foldall role="button" tabindex="0" data-tooltip="Fold or open every group"><i class="fas fa-layer-group"></i></span></div>{{/if}}
+          {{#if kn.groups.length}}<div class="ncm-ct2-kn__jumps"><span class="ncm-ct2-kn__jump is-every is-on" data-kn-jump="" role="button" tabindex="0" aria-pressed="true" data-tooltip="Show every group"><i class="fas fa-border-all"></i>All<b>{{kn.shown}}</b></span>{{#each kn.groups}}<span class="ncm-ct2-kn__jump" data-kn-jump="{{key}}" role="button" tabindex="0" aria-pressed="false" data-tooltip="Show only {{ncm-tip label}} — click again for everyone"{{#if hue}} style="--gc:{{ncm-hue hue}}"{{/if}}>{{#if icon}}<i class="{{icon}}"></i>{{/if}}{{label}}<b>{{n}}</b></span>{{/each}}<span class="ncm-ct2-kn__jump is-all" data-kn-foldall role="button" tabindex="0" data-tooltip="Fold or open every group"><i class="fas fa-layer-group"></i></span></div>{{/if}}
           <div class="ncm-ct2-kn__list" data-ct2-scroll="kn"{{#if kn.forced}} data-kn-forced="1"{{/if}}>
             {{#each kn.groups}}
-              <div class="ncm-ct2-kn__gh{{#if shut}} is-shut{{/if}}" data-g="{{key}}"{{#if dshut}} data-dshut="1"{{/if}}{{#if hue}} style="--gc:{{ncm-hue hue}}"{{/if}}><i class="fas fa-chevron-down c"></i>{{#if icon}}<i class="{{icon}} g"></i>{{/if}}{{label}}{{#if waiting}}<span class="wt" data-tooltip="{{waiting}} waiting in {{label}}"><i class="fas fa-envelope"></i>{{waiting}} waiting</span>{{/if}}<span class="n">{{n}}</span></div>
+              <div class="ncm-ct2-kn__gh{{#if shut}} is-shut{{/if}}" data-g="{{key}}"{{#if dshut}} data-dshut="1"{{/if}}{{#if hue}} style="--gc:{{ncm-hue hue}}"{{/if}}><i class="fas fa-chevron-down c"></i>{{#if icon}}<i class="{{icon}} g"></i>{{/if}}{{label}}{{#if waiting}}<span class="wt" data-tooltip="{{ncm-tip waiting}} waiting in {{ncm-tip label}}"><i class="fas fa-envelope"></i>{{waiting}} waiting</span>{{/if}}<span class="n">{{n}}</span></div>
               {{#each rows}}
-                <div class="ncm-ct2-kn__r" data-g="{{../key}}"{{#if ../shut}} style="display:none"{{/if}} data-search="{{search}}" data-action="tabAct" data-op="pOpenContact" data-id="{{id}}" data-tooltip="Open {{name}}">
+                <div class="ncm-ct2-kn__r" data-g="{{../key}}"{{#if ../shut}} style="display:none"{{/if}} data-search="{{search}}" data-action="tabAct" data-op="pOpenContact" data-id="{{id}}" data-tooltip="Open {{ncm-tip name}}">
                   {{#if img}}<img class="ncm-ct2-av" src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}
                   <div class="t"><div class="nm">{{name}}{{#if role}}<span class="ncm-tagp" style="--tc:{{ncm-hue role.hue}}"><i class="{{role.icon}}"></i>{{role.label}}</span>{{/if}}{{#if org}}<span class="ncm-tagp" style="--tc:{{ncm-hue org}}">{{org}}</span>{{/if}}</div><div class="a">{{#if email}}{{email}}{{else}}no address{{/if}}</div></div>
                   <span class="w {{#if waiting}}hot{{/if}}">{{#if waiting}}<i class="fas fa-envelope"></i> {{waiting}} waiting{{else}}{{last}}{{/if}}</span>
@@ -608,10 +608,10 @@
               <div class="ncm-ct2-km__orbit">
                 <svg width="{{size}}" height="{{size}}" viewBox="-{{half}} -{{half}} {{size}} {{size}}" role="img" aria-label="Contacts by how recently they talked">
                   <defs><radialGradient id="ncm-km-sw"><stop offset="0" stop-color="var(--ncm-act)" stop-opacity=".2"/><stop offset="1" stop-color="var(--ncm-act)" stop-opacity="0"/></radialGradient></defs>
-                  {{#each rings}}<path class="band{{#if on}} on{{/if}}" d="{{path}}" fill-rule="evenodd" data-action="tabAct" data-op="knRing" data-ring="{{i}}" data-tooltip="{{label}} · {{n}}"/>{{/each}}
+                  {{#each rings}}<path class="band{{#if on}} on{{/if}}" d="{{path}}" fill-rule="evenodd" data-action="tabAct" data-op="knRing" data-ring="{{i}}" data-tooltip="{{ncm-tip label}} · {{ncm-tip n}}"/>{{/each}}
                   {{#each rings}}<circle class="ring{{#if on}} on{{/if}}" r="{{r}}"/>{{/each}}
                   <g class="sweep-g"><path class="sweep" d="{{sweep}}"/><animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="8s" repeatCount="indefinite"/></g>
-                  {{#each dots}}{{#if waiting}}<circle class="wr" cx="{{x}}" cy="{{y}}" r="{{wr}}"/>{{/if}}<circle class="dot{{#if dim}} dim{{/if}}{{#if sel}} sel{{/if}}" cx="{{x}}" cy="{{y}}" r="{{r}}" style="fill:{{#if hueKey}}{{ncm-hue hueKey}}{{else}}var(--ncm-text-hint){{/if}}" data-action="tabAct" data-op="knPick" data-id="{{id}}" data-tooltip="{{tip}}"/>{{/each}}
+                  {{#each dots}}{{#if waiting}}<circle class="wr" cx="{{x}}" cy="{{y}}" r="{{wr}}"/>{{/if}}<circle class="dot{{#if dim}} dim{{/if}}{{#if sel}} sel{{/if}}" cx="{{x}}" cy="{{y}}" r="{{r}}" style="fill:{{#if hueKey}}{{ncm-hue hueKey}}{{else}}var(--ncm-text-hint){{/if}}" data-action="tabAct" data-op="knPick" data-id="{{id}}" data-tooltip="{{ncm-tip tip}}"/>{{/each}}
                   {{#each rings}}<text class="lbl" x="4" y="{{ly}}">{{label}}</text>{{/each}}
                   <circle class="me" r="{{core}}"/><text class="me-t">{{@root.ct2.players.sel.initials}}</text>
                 </svg>
@@ -621,7 +621,7 @@
             <div class="ncm-ct2-km__side">
               <div class="ncm-ct2-km__mod">
                 <div class="ncm-ct2-km__k"><i class="fas fa-chart-simple"></i>Roles</div>
-                <div class="ncm-ct2-km__eq">{{#each bars}}<div class="c{{#if on}} on{{/if}}{{#if dim}} dim{{/if}}" style="--tc:{{#if hueKey}}{{ncm-hue hueKey}}{{else}}var(--ncm-text-hint){{/if}}" role="button" tabindex="0" data-action="tabAct" data-op="knRole" data-role="{{key}}" data-tooltip="{{label}}: {{n}}{{#if waiting}} · someone waiting{{/if}}"><span class="n">{{n}}</span><span class="b" style="height:{{h}}px">{{#if waiting}}<i class="cap"></i>{{/if}}</span><i class="{{icon}} ic"></i></div>{{/each}}</div>
+                <div class="ncm-ct2-km__eq">{{#each bars}}<div class="c{{#if on}} on{{/if}}{{#if dim}} dim{{/if}}" style="--tc:{{#if hueKey}}{{ncm-hue hueKey}}{{else}}var(--ncm-text-hint){{/if}}" role="button" tabindex="0" data-action="tabAct" data-op="knRole" data-role="{{key}}" data-tooltip="{{ncm-tip label}}: {{ncm-tip n}}{{#if waiting}} · someone waiting{{/if}}"><span class="n">{{n}}</span><span class="b" style="height:{{h}}px">{{#if waiting}}<i class="cap"></i>{{/if}}</span><i class="{{icon}} ic"></i></div>{{/each}}</div>
               </div>
               <div class="ncm-ct2-km__mod">
                 <div class="ncm-ct2-km__k ncm-ct2-km__k--attn"><i class="fas fa-bell"></i>Waiting on you{{#if waitingTotal}}<span class="h is-attn">{{waitingTotal}} message{{#unless (eq waitingTotal 1)}}s{{/unless}}</span>{{/if}}</div>
@@ -664,7 +664,7 @@
     <div class="ncm-ct2-tb ncm-ct2-tb--one">
       <span class="srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-ct2-q="groups" value="{{ct2.groups.search}}" placeholder="Search a group, or a member's name or address…"></span>
       <select class="ncm-ct2-show {{#if ct2.groups.showOn}}is-on{{/if}}" data-ct2-select="gShow" data-tooltip="Which groups to list">{{#each ct2.groups.chips}}<option value="{{key}}" {{#if on}}selected{{/if}}>Show: {{label}} ({{n}})</option>{{/each}}</select>
-      {{#each ct2.groups.alerts}}<button type="button" class="ncm-ct2-tbalert is-{{tone}} {{#if on}}on{{/if}}" data-action="tabAct" data-op="gFilter" data-filter="{{key}}" data-tooltip="{{n}} {{label}} — {{#if on}}click to show all again{{else}}click to show only these{{/if}}" aria-label="{{label}}: {{n}}"><i class="fas {{icon}}"></i>{{n}}</button>{{/each}}
+      {{#each ct2.groups.alerts}}<button type="button" class="ncm-ct2-tbalert is-{{tone}} {{#if on}}on{{/if}}" data-action="tabAct" data-op="gFilter" data-filter="{{key}}" data-tooltip="{{ncm-tip n}} {{ncm-tip label}} — {{#if on}}click to show all again{{else}}click to show only these{{/if}}" aria-label="{{label}}: {{n}}"><i class="fas {{icon}}"></i>{{n}}</button>{{/each}}
       <select data-ct2-select="gSort">{{#each ct2.groups.sortOpts}}<option value="{{v}}" {{#if on}}selected{{/if}}>{{l}}</option>{{/each}}</select>
     </div>
     {{#if ct2.groups.narrowed}}<div class="ncm-ct2-facets"><span class="lab">Showing</span><span class="n">{{ct2.groups.shown}} of {{ct2.groups.total}}</span></div>{{/if}}
@@ -675,7 +675,7 @@
         {{#each ct2.groups.rows}}
           <div class="ncm-ct2-r {{#if sel}}sel{{/if}}{{#if stale}} is-stale{{/if}}" data-action="tabAct" data-op="gSel" data-id="{{id}}">
             {{#if img}}<img class="ncm-ct2-gimg" src="{{img}}" alt="" style="--g:{{color}}">{{else}}<span class="ncm-ct2-gdot" style="--g:{{color}}"></span>{{/if}}
-            <div class="ncm-ct2-r__txt"><div class="nm">{{name}}</div><div class="sub{{#unless pushed}} unpushed{{/unless}}">{{subline}}</div></div><div class="st">{{#if stale}}<span class="mail" data-tooltip="A pushed copy is out of date"><i class="fas fa-rotate"></i></span>{{/if}}{{#if pushed}}<span class="pushed" data-tooltip="Pushed to {{pushed}} character{{#unless (eq pushed 1)}}s{{/unless}}"><i class="fas fa-share-nodes"></i> {{pushed}}</span>{{/if}}</div>
+            <div class="ncm-ct2-r__txt"><div class="nm">{{name}}</div><div class="sub{{#unless pushed}} unpushed{{/unless}}">{{subline}}</div></div><div class="st">{{#if stale}}<span class="mail" data-tooltip="A pushed copy is out of date"><i class="fas fa-rotate"></i></span>{{/if}}{{#if pushed}}<span class="pushed" data-tooltip="Pushed to {{ncm-tip pushed}} character{{#unless (eq pushed 1)}}s{{/unless}}"><i class="fas fa-share-nodes"></i> {{pushed}}</span>{{/if}}</div>
           </div>
         {{/each}}
         {{#if ct2.groups.hidden}}<div class="ncm-ct2-r ncm-ct2-r--more" data-action="tabAct" data-op="gMore" data-tooltip="Show every group"><span></span><span><i class="fas fa-ellipsis"></i> +{{ct2.groups.hidden}} more</span><span></span></div>{{/if}}
@@ -702,7 +702,7 @@
         </div>
         <div class="ncm-ct2-sec"><div class="k"><i class="fas fa-share-nodes"></i>Pushed to<span class="r">click to push or take back</span></div>
           {{#if hasPcs}}
-            <div class="ncm-ct2-who">{{#each to}}<span class="ncm-ct2-pc {{#if on}}on{{/if}}" data-action="tabAct" data-op="gToggle" data-group-id="{{../id}}" data-actor="{{actorId}}" data-tooltip="{{#if on}}Take the group back from {{name}}{{else}}Push to {{name}}{{/if}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if on}}<span class="s">✓</span>{{/if}}</span>{{/each}}</div>
+            <div class="ncm-ct2-who">{{#each to}}<span class="ncm-ct2-pc {{#if on}}on{{/if}}" data-action="tabAct" data-op="gToggle" data-group-id="{{../id}}" data-actor="{{actorId}}" data-tooltip="{{#if on}}Take the group back from {{ncm-tip name}}{{else}}Push to {{ncm-tip name}}{{/if}}">{{#if img}}<img src="{{img}}" alt="">{{else}}<span class="ncm-ct2-av ncm-ct2-av--xs" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{name}}{{#if on}}<span class="s">✓</span>{{/if}}</span>{{/each}}</div>
           {{else}}<div class="ncm-ct2-quiet">No player characters yet.</div>{{/if}}
         </div>
         {{else}}
@@ -739,7 +739,7 @@
           <tbody>
             {{#each ct2.mx.groups}}
               <tr class="grp"><th data-action="tabAct" data-op="mxGrp" data-grp="{{label}}"><i class="fas {{#if open}}fa-chevron-down{{else}}fa-chevron-right{{/if}} chev"></i>{{label}}<span class="n">{{n}}</span></th>
-                {{#each tallies}}<td><span class="ncm-ct2-tally {{#if cls}}{{cls}}{{else}}none{{/if}}" data-action="tabAct" data-op="mxTally" data-grp="{{../label}}" data-actor="{{actorId}}" data-tooltip="{{title}}">{{k}}/{{n}}</span></td>{{/each}}</tr>
+                {{#each tallies}}<td><span class="ncm-ct2-tally {{#if cls}}{{cls}}{{else}}none{{/if}}" data-action="tabAct" data-op="mxTally" data-grp="{{../label}}" data-actor="{{actorId}}" data-tooltip="{{ncm-tip title}}">{{k}}/{{n}}</span></td>{{/each}}</tr>
               {{#each rows}}
                 <tr{{#if nobody}} class="nobody"{{/if}}><th>{{#if alias}}<span class="ncm-ct2-mxalias">└</span>{{/if}}{{name}}<small>{{addr}}</small></th>
                   {{#each cells}}<td><span class="ncm-ct2-cellpair">{{#if canMail}}<span class="ncm-ct2-cell ncm-ct2-cell--half {{#if mail}}on{{/if}} {{#if chgMail}}chg{{/if}}" data-action="tabAct" data-op="mxCell" data-part="mail" data-cid="{{../id}}" data-actor="{{actorId}}" data-mx-grp="{{../../label}}" data-tooltip="{{#if mail}}Has the address. Click to take it back{{else}}Give them the address{{/if}}"><i class="fas fa-envelope"></i></span>{{/if}}{{#if canNum}}<span class="ncm-ct2-cell ncm-ct2-cell--half {{#if num}}on{{/if}} {{#if chgNum}}chg{{/if}}" data-action="tabAct" data-op="mxCell" data-part="num" data-cid="{{../id}}" data-actor="{{actorId}}" data-mx-grp="{{../../label}}" data-tooltip="{{#if num}}Has the number. Click to take it back{{else}}Give them the number{{/if}}"><i class="fas fa-phone"></i></span>{{/if}}{{#unless canMail}}{{#unless canNum}}<span class="ncm-ct2-cell {{#if on}}on{{/if}} {{#if chg}}chg{{/if}}" data-action="tabAct" data-op="mxCell" data-cid="{{../id}}" data-actor="{{actorId}}" data-mx-grp="{{../../label}}"><i class="fas fa-check"></i></span>{{/unless}}{{/unless}}</span></td>{{/each}}</tr>

@@ -192,6 +192,7 @@ if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars from a
 else {
   const H = Handlebars.create();
   H.registerHelper('eq', (a, b) => String(a) === String(b));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('ncm-hue', () => 'var(--ncm-hue-1)');
   const render = H.compile(tpl);
   const base = { clock: 'x', time: '21:10', date: '2045-08-14', sceneName: '', sceneDead: false, table: { players: [], hasPlayers: false, online: 0, need: 0 }, tiles: [] };

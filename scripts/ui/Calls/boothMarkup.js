@@ -7,6 +7,7 @@
  *   live booth — must never share one). Styles: styles/components/payphone-booth.css (ncm-pb-*).
  */
 
+import { tipText } from '../../utils/notify.js';
 import { sanitizeLook, gritTier, wireTier, lookVars } from '../../utils/payphones.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -168,7 +169,7 @@ export function boothHtml({ look, uid = 'x', place = '', number = '', condition 
           <button type="button" class="ncm-pb__sq" data-fn="redial" data-tooltip="Call the last number again"><b>Redial</b></button>
           <button type="button" class="ncm-pb__sq" data-fn="book" data-tooltip="Your Agent's phone contacts, on the screen"><b>Book</b></button>
           <button type="button" class="ncm-pb__sq" data-fn="spk" data-tooltip="Speaker: everyone at the booth can follow the call"><b>Spkr</b></button>
-          ${helpKey ? `<button type="button" class="ncm-pb__sq is-red" data-fn="sos" data-tooltip="${esc(helpLabel)}"><b>${esc(helpLabel)}</b></button>` : ''}
+          ${helpKey ? `<button type="button" class="ncm-pb__sq is-red" data-fn="sos" data-tooltip="${tipText(helpLabel)}"><b>${esc(helpLabel)}</b></button>` : ''}
         </div>
         <div class="ncm-pb__touch">
           <div class="ncm-pb__tnum" data-pb-tnum></div>
@@ -211,7 +212,7 @@ export function bookHtml(book = []) {
 export function speedHtml(book = []) {
   return [0, 1, 2, 3].map((i) => {
     const b = book[i];
-    return b ? `<button type="button" class="ncm-pb__sq" data-dial="${esc(b.number)}" data-tooltip="${esc(b.name)} · ${esc(b.number)}"><b>${i + 1}</b><em>${esc(b.name)}</em></button>`
+    return b ? `<button type="button" class="ncm-pb__sq" data-dial="${esc(b.number)}" data-tooltip="${tipText(b.name)} · ${tipText(b.number)}"><b>${i + 1}</b><em>${esc(b.name)}</em></button>`
       : `<button type="button" class="ncm-pb__sq is-empty" tabindex="-1"><b>${i + 1}</b><em>—</em></button>`;
   }).join('');
 }

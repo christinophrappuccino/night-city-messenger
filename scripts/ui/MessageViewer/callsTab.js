@@ -12,7 +12,7 @@
  *   number → a contact) and decodes CALL into DIAL ▸ on hover.
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID } from '../../utils/constants.js';
 import { formatCyberDate, getPlayerCharacters } from '../../utils/helpers.js';
 import { showNamePicker } from '../../utils/namePicker.js';
@@ -95,7 +95,7 @@ function shownOther(row, book, home) {
 /** A number as coloured parts, with its place in words on hover. Escaped here, so templates print it raw. */
 export function numHtml(raw, ctx, { full = false } = {}) {
   const p = parseNumber(raw, ctx);
-  if (p.service) return `<span class="ncm-num" data-tooltip="${esc(p.entry?.name || p.service)}"><span class="x">${esc(p.service)}</span></span>`;
+  if (p.service) return `<span class="ncm-num" data-tooltip="${tipText(p.entry?.name || p.service)}"><span class="x">${esc(p.service)}</span></span>`;
   if (!p.done) return `<span class="ncm-num"><span class="l">${esc(raw)}</span></span>`;
   let rest = full ? fullForm(p) : seenFrom(p, ctx);
   const parts = [];
@@ -103,7 +103,7 @@ export function numHtml(raw, ctx, { full = false } = {}) {
   take('r', /^\+\d+\s/);
   if (p.ex) { take('c', /^[A-Z]{2,3}\s(?=[A-Z]{3}-)/); take('x', /^[A-Z]{3}-/); } else take('c', /^[A-Z]{2,3}-/);
   parts.push(`<span class="l">${esc(rest)}</span>`);
-  return `<span class="ncm-num" data-tooltip="${esc(placeOf(p, ctx))}">${parts.join('')}</span>`;
+  return `<span class="ncm-num" data-tooltip="${tipText(placeOf(p, ctx))}">${parts.join('')}</span>`;
 }
 
 const lineValue = (l, home) => l.normal || normaliseNumber(l.number, home);
@@ -553,17 +553,17 @@ function dirEntries(ctx) {
   for (const [c, e] of Object.entries(ctx.service)) if (e?.seen !== 'hidden' && e?.listed !== false) out.push({ tab: 'service', code: c, name: e?.name || c, sub: 'Works from anywhere', dial: c });
   return out;
 }
-const dirRow = (e, sub) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${esc(e.dial.trim())}"><code>${esc(e.code)}</code><span class="nm">${esc(e.name)}</span>${sub && e.sub ? `<small>${esc(e.sub)}</small>` : ''}</button>`;
+const dirRow = (e, sub) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${tipText(e.dial.trim())}"><code>${esc(e.code)}</code><span class="nm">${esc(e.name)}</span>${sub && e.sub ? `<small>${esc(e.sub)}</small>` : ''}</button>`;
 function dirPanel(ctx, tab, entries = dirEntries(ctx)) {
   const all = entries.filter((e) => e.tab === tab);
   if (tab === 'home') return [...new Set(all.map((e) => e.group))].map((g) => `<div class="ncm-calls-row"><span class="lbl">${esc(g)}</span><span class="ln"></span></div><div class="ncm-calls-xgrid">${all.filter((e) => e.group === g).map((e) => dirRow(e)).join('')}</div>`).join('');
   if (tab === 'other') return '<p class="ncm-calls-xhint">Long-distance numbers start with the region\'s + code, then the city.</p>' + [...new Set(all.map((e) => e.rc))].sort((a, b) => Number(b === ctx.home.rc) - Number(a === ctx.home.rc)).map((rc) => { const rows = all.filter((e) => e.rc === rc), near = rc === ctx.home.rc; return `<details class="ncm-calls-xreg"${near ? ' open' : ''}><summary><code>${near ? 'Nearby' : '+' + esc(rc)}</code>${esc(rows[0].region)}<small>${rows.length}${rows.length === 1 ? ' city' : ' cities'}</small></summary><div class="ncm-calls-xgrid">${rows.map((e) => dirRow(e)).join('')}</div></details>`; }).join('');
-  if (tab === 'corps') return '<p class="ncm-calls-xhint">Main numbers ring a switchboard. Add an extension to reach a desk.</p>' + [...new Set(all.map((e) => e.corp))].sort((a, b) => a.localeCompare(b)).map((c) => { const rows = all.filter((e) => e.corp === c).sort((a, b) => Number(b.hq) - Number(a.hq)); const here = rows.find((e) => e.city === ctx.home.city); return `<details class="ncm-calls-xreg"><summary><code>${esc(rows[0].code)}</code>${esc(c)}${here ? `<em>In ${esc(here.cityName)}</em>` : ''}<small>${rows.length}${rows.length === 1 ? ' office' : ' offices'}</small></summary><div class="ncm-calls-xgrid">${rows.map((e) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${esc(e.dial.trim())}"><code>${esc(e.city)}</code><span class="nm">${esc(e.cityName)}${e.hq ? ' <i class="hq">HQ</i>' : ''}</span></button>`).join('')}</div></details>`; }).join('');
+  if (tab === 'corps') return '<p class="ncm-calls-xhint">Main numbers ring a switchboard. Add an extension to reach a desk.</p>' + [...new Set(all.map((e) => e.corp))].sort((a, b) => a.localeCompare(b)).map((c) => { const rows = all.filter((e) => e.corp === c).sort((a, b) => Number(b.hq) - Number(a.hq)); const here = rows.find((e) => e.city === ctx.home.city); return `<details class="ncm-calls-xreg"><summary><code>${esc(rows[0].code)}</code>${esc(c)}${here ? `<em>In ${esc(here.cityName)}</em>` : ''}<small>${rows.length}${rows.length === 1 ? ' office' : ' offices'}</small></summary><div class="ncm-calls-xgrid">${rows.map((e) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${tipText(e.dial.trim())}"><code>${esc(e.city)}</code><span class="nm">${esc(e.cityName)}${e.hq ? ' <i class="hq">HQ</i>' : ''}</span></button>`).join('')}</div></details>`; }).join('');
   return `<div class="ncm-calls-xgrid ncm-calls-xgrid--one">${all.map((e) => dirRow(e, true)).join('')}</div>`;
 }
 function dirHtml(ctx) {
   const all = dirEntries(ctx), n = (t) => all.filter((e) => e.tab === t).length, homeName = ctx.regions[ctx.home.rc]?.cities?.[ctx.home.city]?.name || 'Home';
-  const tab = (k, t, h, on) => `<button type="button" role="tab" aria-selected="${!!on}" class="${on ? 'on' : ''}" data-xtab="${k}" data-tooltip="${esc(h)}">${esc(t)}<small>${n(k)}</small></button>`;
+  const tab = (k, t, h, on) => `<button type="button" role="tab" aria-selected="${!!on}" class="${on ? 'on' : ''}" data-xtab="${k}" data-tooltip="${tipText(h)}">${esc(t)}<small>${n(k)}</small></button>`;
   return `<div class="ncm-calls-xlist"><div class="ncm-calls-xhd"><h3>Directory</h3><input type="text" data-xfind placeholder="Find a place, code or corp" aria-label="Find a place, code or corp" autocomplete="off" spellcheck="false" data-tooltip="Searches every tab, by name or code"><button type="button" class="ncm-calls-btn" data-xclose data-tooltip="Back to the dial pad">Close</button></div><div class="ncm-calls-xtabs" role="tablist" aria-label="Directory">${tab('home', homeName, 'Districts in ' + homeName, true)}${tab('other', 'Other places', 'Regions and cities, with their codes')}${tab('corps', 'Corporations', 'Main numbers at each office')}${tab('service', 'Service', 'Words you can dial from anywhere')}</div><div class="ncm-calls-xpanel" role="tabpanel">${dirPanel(ctx, 'home', all)}</div></div>`;
 }
 

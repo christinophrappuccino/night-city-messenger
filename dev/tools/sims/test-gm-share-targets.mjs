@@ -76,6 +76,7 @@ if (!Handlebars) {
   const H = Handlebars.create();
   H.registerPartial('modules/night-city-messenger/templates/admin-panel/partials/contacts-map.hbs', fs.readFileSync(path.join(ROOT, 'templates/admin-panel/partials/contacts-map.hbs'), 'utf8'));   // Who knows whom → Map
   { const { registerTagHueHelper } = await import(new URL('../../../scripts/utils/tagHue.js', import.meta.url).href); registerTagHueHelper(H); }
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('eq', (a, b) => a === b);
   const pcs = [{ actorId: 'v', name: 'V', img: '', initials: 'V', on: true }, { actorId: 'rache', name: 'Rache', img: '', initials: 'R', on: false }];
   const ctx = {

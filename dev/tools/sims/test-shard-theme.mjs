@@ -323,6 +323,7 @@ if (!Handlebars) {
   Handlebars.registerPartial('modules/night-city-messenger/templates/partials/crt-panel.hbs', fs.readFileSync(new URL('../../../templates/partials/crt-panel.hbs', import.meta.url), 'utf8'));
   Handlebars.registerPartial('modules/night-city-messenger/templates/partials/countermeasure-override.hbs', fs.readFileSync(new URL('../../../templates/partials/countermeasure-override.hbs', import.meta.url), 'utf8'));
   Handlebars.registerHelper('helperMissing', () => '');
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
   const out = Handlebars.compile(tpl)(ctx);
   // Handlebars strips {{!-- --}} comments, so slice to the NEXT panel instead.
   const start = out.indexOf('data-panel="theme"');

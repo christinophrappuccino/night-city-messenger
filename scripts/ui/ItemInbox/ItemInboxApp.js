@@ -7,7 +7,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
 import { d10Odds } from '../../utils/rolls.js';
 import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker, applyContrastToElement, buildShardThemePrefs, guardSecretInputs, canEditShard } from '../../utils/helpers.js';
@@ -1560,7 +1560,7 @@ export class ItemInboxApp extends BaseApplication {
     if (config?.keyItemConsumeOnUse) {
       const confirm = await playerConfirm({
         title: 'Consume Access Token',
-        content: `<p>Using <strong>${selectedItem.name}</strong> will <strong>remove it from your inventory</strong> if correct. Continue?</p>`,
+        content: `<p>Using <strong>${escapeHtml(selectedItem.name)}</strong> will <strong>remove it from your inventory</strong> if correct. Continue?</p>`,
       });
       if (!confirm) return;
     }

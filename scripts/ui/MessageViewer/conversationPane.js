@@ -7,7 +7,7 @@
  *   mount() puts everything back. Design dev/design/CONVERSATIONS.md, mock dev/mockups/conversations-mock.html.
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID, CHAT_EMOJI } from '../../utils/constants.js';
 import { formatCyberDate, getPlayerCharacters, isHiddenCharacter, isPersonActor } from '../../utils/helpers.js';
 import { identityRole } from '../../utils/identities.js';
@@ -22,7 +22,7 @@ const HUES = ['#19f3f7', '#ff5fa2', '#5ad1ff', '#b4e05a', '#ffb347', '#c9a0ff', 
 const hueOf = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return HUES[h % HUES.length]; };
 const svc = () => game.nightcity?.conversationService;
 const btn = (label, icon, attrs = '', cls = '') => `<button type="button" class="ncm-conv__btn ${cls}" ${attrs}>${icon ? `<i class="fas ${icon}"></i>` : ''}${label ? ` ${esc(label)}` : ''}</button>`;
-const ic = (icon, tip, attrs = '', cls = '') => `<button type="button" class="ncm-conv__icon ${cls}" aria-label="${esc(tip)}" data-tooltip="${esc(tip)}" ${attrs}><i class="fas ${icon}"></i></button>`;
+const ic = (icon, tip, attrs = '', cls = '') => `<button type="button" class="ncm-conv__icon ${cls}" aria-label="${esc(tip)}" data-tooltip="${tipText(tip)}" ${attrs}><i class="fas ${icon}"></i></button>`;
 const dayOf = (at) => { try { return formatCyberDate(at, { dateOnly: true }); } catch { return ''; } };
 const timeOf = (at) => { try { return formatCyberDate(at, { timeOnly: true }); } catch { return ''; } };
 
@@ -224,7 +224,7 @@ export class ConversationPane {
       const bell = svc().gmWatches(c);
       const tap = this._tapText(c);
       return `<div class="ncm-conv__head"><div class="ncm-conv__titles"><div class="ncm-conv__title">${title}</div><div class="ncm-conv__sub"><div class="ncm-conv__faces">${faces}</div><span>${esc(names)}</span></div></div>
-        ${tap ? `<span class="ncm-tagp is-attn" data-tooltip="${esc(tap)}"><i class="fas fa-ear-listen"></i> Tapped</span>` : ''}<span class="ncm-tagp is-secret" data-tooltip="Nobody is told you are reading, and their read state does not change"><i class="fas fa-eye"></i> Watching</span>
+        ${tap ? `<span class="ncm-tagp is-attn" data-tooltip="${tipText(tap)}"><i class="fas fa-ear-listen"></i> Tapped</span>` : ''}<span class="ncm-tagp is-secret" data-tooltip="Nobody is told you are reading, and their read state does not change"><i class="fas fa-eye"></i> Watching</span>
         ${ic(bell ? 'fa-bell' : 'fa-bell-slash', bell ? 'On: this one counts in your NPC conversations toast. Click to stop' : 'Off: this one never tells you anything. Click to count it in your toast', 'data-cv="bell"', bell ? 'is-on' : '')}
         ${btn('Members', 'fa-users', 'data-cv="panel"', this.panel ? 'is-on' : '')}</div>`;
     }
@@ -329,7 +329,7 @@ export class ConversationPane {
     const offline = !this.admin && !game.users?.activeGM ? 'No GM is online. Your lines wait here and send when one connects.' : !this.admin && net?.isDeadZone ? 'No signal here. Your lines wait and send when you have signal.' : '';
     let top = '';
     if (this.gm) {
-      const chips = this._speakers(c).map((m, i) => { const on = m.key === me.key; return `<button type="button" class="ncm-conv__aspick${on ? ' is-on' : ''}" data-cv="as" data-id="${esc(m.key)}" aria-pressed="${on}"${i < 9 ? ` data-tooltip="Alt+${i + 1}"` : ''}>${avatar(svc()._displayOf(m))}${esc(m.name)}</button>`; }).join('');
+      const chips = this._speakers(c).map((m, i) => { const on = m.key === me.key; return `<button type="button" class="ncm-conv__aspick${on ? ' is-on' : ''}" data-cv="as" data-id="${esc(m.key)}" aria-pressed="${on}"${i < 9 ? ` data-tooltip="Alt+${tipText(i + 1)}"` : ''}>${avatar(svc()._displayOf(m))}${esc(m.name)}</button>`; }).join('');
       top = `<div class="ncm-conv__as"><span class="ncm-conv__aslabel">Speaking as</span><span class="ncm-conv__asrow">${chips}${ic('fa-user-plus', 'Bring in another NPC. Everyone sees a line saying they joined', 'data-cv="join"')}</span></div>`;
     } else if (this._isAlias(me)) top = `<div class="ncm-conv__as"><i class="fas fa-mask"></i><span>You are in this as <b class="ncm-conv__asb">${esc(me.name)}</b>. Everyone here only ever sees ${esc(me.name)}.</span></div>`;
     const place = this.gm ? `Write as ${me.name}…  Enter sends` : offline ? 'Write a line, it sends when it can…' : 'Write a line…  Enter sends';

@@ -260,6 +260,7 @@ if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars from a
 else {
   const H = Handlebars;
   { const { registerTagHueHelper } = await import(new URL('../../../scripts/utils/tagHue.js', import.meta.url)); registerTagHueHelper(H); }
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('eq', (a, b) => String(a) === String(b));
   H.registerHelper('gt', (a, b) => a > b);
   H.registerHelper('lower', (s) => String(s ?? '').toLowerCase());

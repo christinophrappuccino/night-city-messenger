@@ -84,7 +84,10 @@ export function accessMacroCommand(ref) {
  */
 export function accessMacroSnippet(ref, name = '') {
   if (!isAccessRef(ref)) return '';
-  const label = String(name || ACCESS_KINDS[ref.kind].label).replace(/[\r\n]+/g, ' ').slice(0, 80);
+  // The label goes into a `//` comment in generated code. JavaScript ends a line
+  // comment at \r, \n, U+2028 and U+2029, so ALL of them become a space — a shard
+  // named with a U+2028 could otherwise inject code into the macro (audit SEC-18).
+  const label = String(name || ACCESS_KINDS[ref.kind].label).replace(/[\r\n\u2028\u2029]+/g, ' ').slice(0, 80);
   return [
     `// Night City Messenger — opens ${label} (${ACCESS_KINDS[ref.kind].label.toLowerCase()}).`,
     '// It opens for whoever RUNS this. In a tile / trigger module, set it to run as the player who triggered it',
@@ -242,7 +245,9 @@ export function sanitizePlacement(o = {}) {
 export function accessRegionScript(ref, name = '') {
   if (!isAccessRef(ref)) return '';
   const r = JSON.stringify({ kind: ref.kind, id: ref.id });
-  const label = String(name || '').replace(/[\r\n*/]/g, ' ').slice(0, 60);
+  // Same rule as accessMacroCommand's label: every JS line terminator, plus * and /
+  // so the label cannot end the comment it sits in (audit SEC-18).
+  const label = String(name || '').replace(/[\r\n\u2028\u2029*/]/g, ' ').slice(0, 60);
   return [
     `// Night City Messenger access point${label ? ` — ${label}` : ''}. Opens it for the player whose token walks in.`,
     'if (!event.user?.isSelf || game.user.isGM) return;',

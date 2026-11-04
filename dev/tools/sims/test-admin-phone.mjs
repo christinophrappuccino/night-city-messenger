@@ -90,6 +90,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars — render checks did not run'); }
 else {
   Handlebars.registerHelper('eq', (a, b) => String(a) === String(b));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
   Handlebars.registerHelper('gt', (a, b) => Number(a) > Number(b));
   Handlebars.registerHelper('or', (...a) => a.slice(0, -1).some(Boolean));
   Handlebars.registerHelper('join', (arr, sep) => (Array.isArray(arr) ? arr.join(typeof sep === 'string' ? sep : ', ') : ''));

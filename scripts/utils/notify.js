@@ -32,6 +32,39 @@ export function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/**
+ * Text for a `data-tooltip="…"` attribute written into an HTML STRING (audit SEC-16).
+ *
+ * Foundry 12 shows tooltips with `tooltip.innerHTML = element.dataset.tooltip`
+ * (foundry.js, TooltipManager#activate) — there is no plain-text mode. The browser
+ * decodes the attribute once, then Foundry parses the result as HTML. So text
+ * must be escaped TWICE: once for the attribute, once for the tooltip. That shows
+ * every value exactly as written (`R&D`, `<b>` and all), and a name containing
+ * markup appears as text instead of running.
+ *
+ * For a tooltip that is deliberately HTML (built with escapeHtml'd parts), escape
+ * the finished HTML once with escapeHtml instead. For `el.dataset.tooltip = …`
+ * (no attribute decoding), use escapeHtml once. In templates: {{ncm-tip value}}.
+ * @param {*} value
+ * @returns {string}
+ */
+export function tipText(value) {
+  return escapeHtml(escapeHtml(value));
+}
+
+/** Handlebars' trailing options object (every helper call receives one last). */
+const isHbsOptions = (o) => !!o && typeof o === 'object' && 'hash' in o && ('data' in o || 'name' in o || 'loc' in o);
+
+/**
+ * Register {{ncm-tip value}}: escapes once and returns a plain string, which
+ * Handlebars escapes again, so the attribute holds tipText's double escape.
+ * Called by registerTemplates, and by the sims and previews that render real templates.
+ * @param {object} Handlebars
+ */
+export function registerTipHelper(Handlebars) {
+  Handlebars.registerHelper('ncm-tip', (value, options) => (isHbsOptions(value) && options === undefined ? '' : escapeHtml(value)));
+}
+
 /** Text-content escaping for toasts (quotes need no escaping inside an element body). */
 function toastText(value) {
   return String(value ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));

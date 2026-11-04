@@ -14,6 +14,7 @@
  *   animation preference shows still frames and no stings.
  */
 
+import { tipText } from '../../utils/notify.js';
 import { CallHud } from './CallHud.js';
 import { vitals, organicBeats, backupLook, fillLine, miniWhy, BACKUP_SLOTS, TRAUMA_SLOTS, TRAUMA_BEATS, BACKUP_BEATS, TRAUMA_STEPS, BACKUP_STEPS, TRAUMA_HOLD, BACKUP_HOLD, PLAN_NAMES } from '../../utils/phoneEmergency.js';
 
@@ -31,7 +32,7 @@ export const trackWords = (kind, phase, { place = '', busy = false } = {}) => {
 };
 
 const steps = (names, at) => `<div class="ncm-r5-steps">${names.map((n, i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${i < at ? '<i class="fas fa-check"></i>' : ''}${esc(n)}</span>`).join('')}</div>`;
-const die = (n, sides, rolling) => `<span class="ncm-r5-die${rolling ? ' is-rolling' : ''}" data-tooltip="${sides === 10 ? 'd10' : 'd6'}"><i class="fas fa-dice-d20"></i><b>${rolling ? '?' : esc(n)}</b></span>`;
+const die = (n, sides, rolling) => `<span class="ncm-r5-die${rolling ? ' is-rolling' : ''}" data-tooltip="${tipText(sides === 10 ? 'd10' : 'd6')}"><i class="fas fa-dice-d20"></i><b>${rolling ? '?' : esc(n)}</b></span>`;
 const pips = (left, of, ic) => `<span class="ncm-r5-pips" aria-label="${left} rounds left">${Array.from({ length: of }, (_, i) => `<i class="fas ${ic}${i < left ? ' on' : ''}"></i>`).join('')}</span>`;
 const artTag = (img) => (img ? `<img class="ncm-r5-art" src="${esc(img)}" alt="">` : '');
 const ecg = (hp, max, img = '') => `<div class="ncm-r5-feed">${artTag(img)}<canvas data-ecg data-hp="${hp}" data-max="${max}" width="132" height="146" aria-label="Heart trace"></canvas><span class="rd"><b>${hp}</b>/${max} HP</span></div>`;
@@ -392,7 +393,7 @@ export class EmergencyHud {
         let body = '';
         if (beat === 1) body = `<div class="ncm-r5-row"><span class="ncm-r5-scan"></span><span><b>Calling it in.</b> ${esc(info.org)} · ${esc(chan)}</span></div>`;
         else if (beat === 2) body = `<div class="ncm-r5-row">${die('', 10, true)}<span>Rank ${info.rank}: you need ${info.rank} or lower.</span></div>`;
-        else if (busy) body = `<div class="ncm-r5-row">${die(d10, 10)}<span><b>Nobody free.</b> Rolled ${d10}, needed ${info.rank} or lower. Try again next Turn.</span></div><div class="ncm-r5-row"><button type="button" class="ncm-r5-retry"${run.retryOk ? '' : ' disabled'} data-em-retry data-tooltip="${run.retryOk ? 'Another Action, another roll' : 'Available on your next Turn'}"><i class="fas fa-rotate-right"></i> Call again</button></div>`;
+        else if (busy) body = `<div class="ncm-r5-row">${die(d10, 10)}<span><b>Nobody free.</b> Rolled ${d10}, needed ${info.rank} or lower. Try again next Turn.</span></div><div class="ncm-r5-row"><button type="button" class="ncm-r5-retry"${run.retryOk ? '' : ' disabled'} data-em-retry data-tooltip="${tipText(run.retryOk ? 'Another Action, another roll' : 'Available on your next Turn')}"><i class="fas fa-rotate-right"></i> Call again</button></div>`;
         else if (beat === 3) body = `<div class="ncm-r5-row">${die(d10, 10)}<span><b>${esc(info.group)} responding.</b> Rolled ${d10}.</span></div>`;
         else body = `<div class="ncm-r5-row">${die(res.rounds, 6)}<span><b>${esc(res.who)} inbound.</b> ${res.rounds} round${res.rounds === 1 ? '' : 's'} out.${res.up ? ' The d6 came up 6, so the next group up answers.' : ''}</span>${pips(res.rounds, res.rounds, look.icon)}</div>`;
         const signal = busy && beat >= 3 ? 'static' : beat <= 2 ? 'tx' : 'idle';

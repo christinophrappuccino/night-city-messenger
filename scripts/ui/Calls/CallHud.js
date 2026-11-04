@@ -13,7 +13,7 @@
  *   kept across redraws, so typing is never lost when the call badge redraws.
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { callProfile, signalLine } from '../../utils/callProfile.js';
 import { OUTCOMES, MODE_INFO, formatDuration, callSeconds, sideOf, typeOutMs } from '../../utils/callModel.js';
@@ -270,7 +270,7 @@ export class CallHud {
       const info = MODE_INFO[m] || { label: m, icon: 'fa-circle', tip: '' };
       const off = !usable.includes(m);
       const tip = off ? (m === 'dictate' ? this.service.dictateBlock : '') || 'Not available here.' : info.tip;
-      return `<span class="ncm-ch-mode${m === myMode ? ' on' : ''}${off ? ' is-off' : ''}" data-mode="${esc(m)}" data-id="${esc(call.id)}" data-tooltip="${esc(tip)}" data-tooltip-direction="DOWN"><i class="fas ${esc(info.icon)}"></i> ${esc(info.label)}</span>`;
+      return `<span class="ncm-ch-mode${m === myMode ? ' on' : ''}${off ? ' is-off' : ''}" data-mode="${esc(m)}" data-id="${esc(call.id)}" data-tooltip="${tipText(tip)}" data-tooltip-direction="DOWN"><i class="fas ${esc(info.icon)}"></i> ${esc(info.label)}</span>`;
     }).join('')}</div>` : '';
     const keysHtml = keys.length ? `<div class="ncm-ch-keys">${keys.map(([act, k, label, cls]) => `<span class="ncm-ch-key ${cls}" data-act="${act}" data-id="${esc(call.id)}"><kbd>${k}</kbd>${esc(label)}</span>`).join('')}</div>` : '';
     return `<div class="ncm-ch-call is-${tone}" data-call="${esc(call.id)}"${st === 'ringing' && role === 'callee' && call.from?.ring ? ` data-ring="${esc(call.from.ring)}"` : ''}>${pic}<div class="ncm-ch-txt">
@@ -713,7 +713,7 @@ export class CallHud {
     if (this.service.recordingOn) ways.unshift(['audio', 'fa-microphone', 'Record', canRecord ? 'Leave a voice message' : recTip]);
     if (game.user.isGM) ways.push(['tts', 'fa-volume-high', 'Read it out', 'Played in a voice when they listen']);
     const kind = this._vmKind.get(id) || 'typed';
-    say.innerHTML = `<span class="ncm-ch-vmkind">${ways.map(([k, ic, lb, tip]) => `<span data-vmk="${k}" class="${kind === k ? 'on' : ''}${k === 'audio' && !canRecord ? ' is-off' : ''}"${tip ? ` data-tooltip="${esc(tip)}"` : ''}><i class="fas ${ic}"></i> ${lb}</span>`).join('')}</span><span class="ncm-ch-vmbody"></span>`;
+    say.innerHTML = `<span class="ncm-ch-vmkind">${ways.map(([k, ic, lb, tip]) => `<span data-vmk="${k}" class="${kind === k ? 'on' : ''}${k === 'audio' && !canRecord ? ' is-off' : ''}"${tip ? ` data-tooltip="${tipText(tip)}"` : ''}><i class="fas ${ic}"></i> ${lb}</span>`).join('')}</span><span class="ncm-ch-vmbody"></span>`;
     this.subs.appendChild(say);
     const paint = (k) => {
       const body = say.querySelector('.ncm-ch-vmbody');

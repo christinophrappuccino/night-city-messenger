@@ -8,7 +8,7 @@
  *   PayphoneService (GM-only). Styles: styles/components/payphone-booth.css (ncm-pph-*).
  */
 
-import { ncmNotify } from '../../../utils/notify.js';
+import { ncmNotify, tipText } from '../../../utils/notify.js';
 import { formatCyberDate } from '../../../utils/helpers.js';
 import { PP_STYLES, PP_HEAR, PP_HELP, PP_CONDITION, TAG_SPOTS, GRIT_TIERS, WIRE_TIERS, gritTier, wireTier, sanitizeLook, lookFromStyle, placeLabel, safeSound } from '../../../utils/payphones.js';
 import { boothHtml } from '../../Calls/boothMarkup.js';
@@ -24,7 +24,7 @@ const svc = () => game.nightcity?.payphoneService;
 /** This tab's own state for the page (kept on the tab, so a pop-out keeps its own). */
 export const newPayphoneState = () => ({ sel: null, q: '' });
 
-const seg = (key, list, cur) => `<div class="ncm-pph-seg" data-pph-seg="${key}">${list.map(([v, l, tip]) => `<button type="button" data-v="${esc(v)}" class="${v === cur ? 'is-on' : ''}"${tip ? ` data-tooltip="${esc(tip)}"` : ''}>${esc(l)}</button>`).join('')}</div>`;
+const seg = (key, list, cur) => `<div class="ncm-pph-seg" data-pph-seg="${key}">${list.map(([v, l, tip]) => `<button type="button" data-v="${esc(v)}" class="${v === cur ? 'is-on' : ''}"${tip ? ` data-tooltip="${tipText(tip)}"` : ''}>${esc(l)}</button>`).join('')}</div>`;
 const sec = (icon, title, body) => `<section class="ncm-pph-sec"><h5><i class="fas ${icon}"></i>${esc(title)}</h5><div class="ncm-pph-sec__b">${body}</div></section>`;
 const row = (label, body) => `<div class="ncm-pph-row"><label>${esc(label)}</label>${body}</div>`;
 

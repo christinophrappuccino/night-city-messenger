@@ -99,6 +99,7 @@ if (!Handlebars) { try { Handlebars = createRequire(import.meta.url)('handlebars
 if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars — render checks did not run'); }
 else {
   Handlebars.registerHelper('not', (a) => !a); Handlebars.registerHelper('and', (...a) => a.slice(0, -1).every(Boolean));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
   Handlebars.registerHelper('eq', (a, b) => String(a) === String(b));
   Handlebars.registerHelper('gt', (a, b) => Number(a) > Number(b));
   Handlebars.registerHelper('or', (...a) => a.slice(0, -1).some(Boolean));

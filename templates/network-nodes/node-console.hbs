@@ -6,7 +6,7 @@
   {{!-- the state you can see from across the room: jammed (static), off (no carrier), damaged (fault) --}}
   {{#unless isUp}}<div class="ncm-ndc__cover is-{{state}}" aria-hidden="true"><div class="ncm-ndc__cover-fx"></div></div>{{/unless}}
   <div class="ncm-ndc__bar"><i class="fas fa-tower-broadcast"></i>Node<span class="ncm-ndc__hex">{{hex}}</span>// {{networkName}}<span class="ncm-ndc__bar-r">{{firmware}}</span></div>
-  {{#if statusTags.length}}<div class="ncm-ndc__tags">{{#each statusTags}}<span class="ncm-ndc__tag is-{{tone}}" {{#if tip}}data-tooltip="{{tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}</div>{{/if}}
+  {{#if statusTags.length}}<div class="ncm-ndc__tags">{{#each statusTags}}<span class="ncm-ndc__tag is-{{tone}}" {{#if tip}}data-tooltip="{{ncm-tip tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}</div>{{/if}}
 
   <div class="ncm-ndc__hd">
     <div class="ncm-ndc__ico"><i class="{{icon}}"></i></div>
@@ -18,7 +18,7 @@
   <div class="ncm-ndc__op">
     {{#if operator.name}}
     <button type="button" class="ncm-ndc__opchip{{#if operator.canSwitch}} is-switchable{{/if}}" {{#if operator.canSwitch}}{{#unless operator.locked}}data-action="switchOperator"{{/unless}}{{/if}}
-      data-tooltip="Operating as {{operator.name}} — jacking in and every roll here uses this character.{{#if operator.canSwitch}}{{#unless operator.locked}} Click to switch.{{/unless}}{{/if}}">
+      data-tooltip="Operating as {{ncm-tip operator.name}} — jacking in and every roll here uses this character.{{#if operator.canSwitch}}{{#unless operator.locked}} Click to switch.{{/unless}}{{/if}}">
       {{#if operator.img}}<img src="{{operator.img}}" alt="">{{else}}<i class="fas fa-user-gear"></i>{{/if}}<span class="k">Operator</span><b>{{operator.name}}</b>{{#if operator.canSwitch}}{{#unless operator.locked}}<i class="fas fa-chevron-down cv"></i>{{/unless}}{{/if}}
     </button>
     <span class="ncm-ndc__oprank">{{operator.skill}} <b>{{operator.rank}}</b></span>
@@ -36,7 +36,7 @@
   <div class="ncm-ndc__stats">
     <div><span class="ncm-ndc__k">Signal</span><b><span class="ncm-ndc__bars">{{#each bars}}<span class="ncm-ndc__b{{#unless on}} is-off{{/unless}}" style="height:{{h}}px"></span>{{/each}}</span>{{signal}}%</b></div>
     <div><span class="ncm-ndc__k">On this scene</span><b>{{here}}</b></div>
-    <div><span class="ncm-ndc__k">Alert</span><b><span class="ncm-ndc__alert" data-tooltip="{{alertLabel}}">{{#each alertPips}}<span class="ncm-ndc__al {{cls}}"></span>{{/each}}</span></b></div>
+    <div><span class="ncm-ndc__k">Alert</span><b><span class="ncm-ndc__alert" data-tooltip="{{ncm-tip alertLabel}}">{{#each alertPips}}<span class="ncm-ndc__al {{cls}}"></span>{{/each}}</span></b></div>
     <div><span class="ncm-ndc__k">Box</span><b class="ncm-ndc__box {{#if boxLocked}}is-locked{{/if}}"><i class="fas {{#if boxLocked}}fa-lock{{else}}fa-lock-open{{/if}}"></i>{{#if boxLocked}}Locked{{else}}Open{{/if}}</b></div>
   </div>
 

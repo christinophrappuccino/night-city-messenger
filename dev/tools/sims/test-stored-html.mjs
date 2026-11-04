@@ -142,6 +142,7 @@ const liveScheme = (html) => [...html.matchAll(/\b(?:href|src)="([^"]*)"/g)].som
   } else {
     const cmpH = (fn) => function (a, b, o) { const r = fn(a, b); return o?.fn ? (r ? o.fn(this) : o.inverse(this)) : r; };
     for (const [n, f] of [['eq', (a, b) => a === b], ['neq', (a, b) => a !== b], ['gt', (a, b) => a > b], ['lt', (a, b) => a < b], ['gte', (a, b) => a >= b], ['lte', (a, b) => a <= b]]) HB.registerHelper(n, cmpH(f));
+    { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(HB); }
     HB.registerHelper('and', (...a) => a.slice(0, -1).every(Boolean)); HB.registerHelper('or', (...a) => a.slice(0, -1).some(Boolean));
     HB.registerHelper('not', (v) => !v); HB.registerHelper('add', (a, b) => (a || 0) + (b || 0)); HB.registerHelper('helperMissing', () => '');
     const tpl = HB.compile(read('templates/content/content-body.hbs'));

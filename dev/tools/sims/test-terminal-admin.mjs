@@ -125,6 +125,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }
 if (Handlebars) {
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
   const bar = Handlebars.compile(read('templates/terminal/partials/admin-bar.hbs'));
   const h1 = bar({ adminView: { label: 'SYSOP', username: 'mreyes', initials: 'MR', readOnly: true } });
   ok(/SYSOP/.test(h1) && /READ-ONLY/.test(h1) && /terminalAdminBack/.test(h1) && /terminalAdminPick/.test(h1), 'banner renders label, rights and both buttons');

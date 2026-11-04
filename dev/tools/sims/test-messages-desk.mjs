@@ -103,6 +103,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!HB) { fail++; console.error('FAIL: could not load Handlebars from a Foundry install — render checks did not run'); }
 else {
   HB.registerHelper('eq', (a, b) => String(a) === String(b));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(HB); }
   { const { registerTagHueHelper } = await imp('scripts/utils/tagHue.js'); registerTagHueHelper(HB); }
   const render = HB.compile(hbs);
   const face = (n) => ({ name: n, img: '', initials: n.slice(0, 2).toUpperCase() });

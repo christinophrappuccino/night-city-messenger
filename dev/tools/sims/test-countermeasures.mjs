@@ -147,6 +147,7 @@ if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars from a
 else {
   const H = Handlebars;
   H.registerHelper('eq', (a, b) => String(a) === String(b));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('ncm-net-icon', () => new H.SafeString('<i class="fas fa-wifi"></i>'));
   const part = H.compile(read('templates/partials/countermeasure-override.hbs'))({ cmv: ctxO });
   ok(part.includes('data-cmv-ovr') && part.includes('data-value="concealed"') && /class="on" data-value="concealed"/.test(part), 'override partial renders with Concealed on');

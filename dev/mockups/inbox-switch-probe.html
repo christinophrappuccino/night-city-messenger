@@ -73,6 +73,7 @@
     const ctx = await CharacterSelectApp.prototype._prepareContext.call(app, {});
     const H = window.Handlebars;
     for (const [k, f] of Object.entries({ 'ncm-term': () => 'Shard', eq: (a, b) => a === b, gt: (a, b) => a > b, or: (...a) => a.slice(0, -1).some(Boolean), and: (...a) => a.slice(0, -1).every(Boolean), not: (a) => !a })) H.registerHelper(k, f);
+    H.registerHelper('ncm-tip', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]))); // mirrors scripts/utils/notify.js registerTipHelper
     win.innerHTML = H.compile(await (await fetch('../../templates/character-select/character-select.hbs')).text())(ctx);
     app._el = win;
     if (q.get('drive')) {

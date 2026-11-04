@@ -34,6 +34,7 @@
   globalThis.Hooks = { on() {}, once() {}, call() {}, callAll() {} };
   globalThis.ui = { notifications: { warn() {}, info() {} } };
   Handlebars.registerHelper({ eq: (a, b) => a === b, gt: (a, b) => a > b, lt: (a, b) => a < b, or: (...x) => x.slice(0, -1).some(Boolean), and: (...x) => x.slice(0, -1).every(Boolean), not: (a) => !a, add: (a, b) => a + b });
+  Handlebars.registerHelper('ncm-tip', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]))); // mirrors scripts/utils/notify.js registerTipHelper
   const PN = await import('../../scripts/utils/phoneNumbering.js');
   const T = await import('../../scripts/ui/MessageViewer/callsTab.js');
   const ctx = PN.defaultNumberContext();

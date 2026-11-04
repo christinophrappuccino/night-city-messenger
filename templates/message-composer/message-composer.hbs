@@ -34,7 +34,7 @@
             {{anonAliasDisplay}}<span class="ncm-composer__tag ncm-composer__tag--secret">ANON</span>
           {{else}}
             {{fromName}}
-            {{#if terminalSend}}<span class="ncm-composer__tag ncm-composer__tag--attn" data-tooltip="Sent from {{terminalSend.machine}} as this account">VIA {{terminalSend.machine}}</span>{{else if isGMSendAs}}<span class="ncm-composer__tag ncm-composer__tag--attn">GM</span>{{else if fromIsAlias}}<span class="ncm-composer__tag ncm-composer__tag--secret" data-tooltip="Sending from an alias">ALIAS</span>{{/if}}
+            {{#if terminalSend}}<span class="ncm-composer__tag ncm-composer__tag--attn" data-tooltip="Sent from {{ncm-tip terminalSend.machine}} as this account">VIA {{terminalSend.machine}}</span>{{else if isGMSendAs}}<span class="ncm-composer__tag ncm-composer__tag--attn">GM</span>{{else if fromIsAlias}}<span class="ncm-composer__tag ncm-composer__tag--secret" data-tooltip="Sending from an alias">ALIAS</span>{{/if}}
           {{/if}}
         </span>
         <span class="ncm-composer__id-email">{{#if anonActive}}{{anonMaskedEmail}}{{else}}{{fromEmail}}{{/if}}</span>
@@ -242,13 +242,13 @@
         <div class="ncm-composer__chips" data-id="recipient-chips">
           {{#each recipients}}
           <span class="ncm-composer__chip {{#if isGroup}}ncm-composer__chip--group{{/if}} {{#if mismatch}}ncm-composer__chip--warn{{/if}} {{#if unreachable}}ncm-composer__chip--unreachable{{/if}} {{#if locked}}ncm-composer__chip--locked{{/if}} {{#if isAnonTarget}}ncm-composer__chip--anon{{/if}}"
-                data-actor-id="{{actorId}}" style="--tc:{{hue}}" {{#if isGroup}}data-tooltip="{{memberNames}}"{{/if}}>
+                data-actor-id="{{actorId}}" style="--tc:{{hue}}" {{#if isGroup}}data-tooltip="{{ncm-tip memberNames}}"{{/if}}>
             {{#if isAnonTarget}}<i class="fas fa-user-secret ncm-composer__chip-ic"></i>
             {{else if locked}}<i class="fas fa-lock ncm-composer__chip-ic"></i>
             {{else}}<span class="ncm-composer__chip-av{{#if img}} has-img{{/if}}">{{#if isGroup}}{{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fas fa-users"></i>{{/if}}{{else}}{{initials}}{{/if}}</span>{{/if}}
             {{name}}{{#if isGroup}}<span class="ncm-composer__chip-count">×{{memberCount}}</span>{{/if}}
-            {{#if mismatch}}<i class="fas fa-triangle-exclamation ncm-composer__chip-warn" data-tooltip="{{mismatchTooltip}}"></i>{{/if}}
-            {{#if unreachable}}<i class="fas fa-ban ncm-composer__chip-warn" data-tooltip="{{mismatchTooltip}}"></i>{{/if}}
+            {{#if mismatch}}<i class="fas fa-triangle-exclamation ncm-composer__chip-warn" data-tooltip="{{ncm-tip mismatchTooltip}}"></i>{{/if}}
+            {{#if unreachable}}<i class="fas fa-ban ncm-composer__chip-warn" data-tooltip="{{ncm-tip mismatchTooltip}}"></i>{{/if}}
             {{#unless locked}}<i class="fas fa-xmark ncm-composer__chip-remove" data-action="removeRecipient" data-actor-id="{{#if groupId}}{{groupId}}{{else if actorId}}{{actorId}}{{else if contactId}}{{contactId}}{{else}}{{email}}{{/if}}"></i>{{/unless}}
           </span>
           {{/each}}
@@ -469,7 +469,7 @@
         <span class="ncm-composer__tool-sp"></span>
         <span class="ncm-composer__tool-grp">
           <span class="ncm-composer__tool-lbl">Insert</span>
-          <button type="button" class="ncm-composer__tool" data-action="attachShard" data-tooltip="{{ncm-term "one" "lower" pre="Attach " a=true}}"><i class="fas fa-microchip"></i></button>
+          <button type="button" class="ncm-composer__tool" data-action="attachShard" data-tooltip="{{ncm-tip (ncm-term "one" "lower" pre="Attach " a=true)}}"><i class="fas fa-microchip"></i></button>
           <button type="button" class="ncm-composer__tool" data-action="attachFile" data-tooltip="Attach a file"><i class="fas fa-paperclip"></i></button>
           <button type="button" class="ncm-composer__tool" data-action="attachMedia" data-tooltip="Embed audio / video"><i class="fas fa-photo-film"></i></button>
           {{#unless terminalSend.impersonating}}<button type="button" class="ncm-composer__tool ncm-composer__tool--eddies" data-action="attachEddies" data-tooltip="Attach eddies"><i class="fas fa-coins"></i></button>{{/unless}}

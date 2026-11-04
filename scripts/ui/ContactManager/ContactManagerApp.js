@@ -17,7 +17,7 @@
  *     - Context-aware footer shortcuts
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, EVENTS } from '../../utils/constants.js';
 import { d10Odds } from '../../utils/rolls.js';
 import { log, isPersonActor } from '../../utils/helpers.js';
@@ -1211,7 +1211,7 @@ export class ContactManagerApp extends BaseApplication {
     if (!existing) return;
     const yes = await adminConfirm({
       title: 'Delete group',
-      content: `<p>Delete the group <b>${existing.name}</b>? The contacts in it stay in your list.</p>`,
+      content: `<p>Delete the group <b>${escapeHtml(existing.name)}</b>? The contacts in it stay in your list.</p>`,
     });
     if (!yes) return;
     await this.contactGroupService.deleteActorGroup(this.actorId, id);
@@ -1279,7 +1279,7 @@ export class ContactManagerApp extends BaseApplication {
     const contact = this._contacts.find(c => c.id === contactId);
     const confirmed = await playerConfirm({
       title: 'Delete Contact',
-      content: `<p>Remove <strong>${contact?.name || 'this contact'}</strong> from your contacts?</p>`,
+      content: `<p>Remove <strong>${escapeHtml(contact?.name || 'this contact')}</strong> from your contacts?</p>`,
     });
     if (!confirmed) return;
 
@@ -1452,7 +1452,7 @@ export class ContactManagerApp extends BaseApplication {
     const contact = this._contacts.find(c => c.id === contactId);
     const confirmed = await playerConfirm({
       title: 'Revoke Verification',
-      content: `<p>Revoke verification for <strong>${contact?.name || 'this contact'}</strong>?`
+      content: `<p>Revoke verification for <strong>${escapeHtml(contact?.name || 'this contact')}</strong>?`
         + `<br>The player will no longer be able to message them.</p>`,
     });
     if (!confirmed) return;

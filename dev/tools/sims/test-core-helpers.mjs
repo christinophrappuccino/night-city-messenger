@@ -24,6 +24,7 @@ const body = pick(/function _isBlock[\s\S]*?\n}\n/, '_isBlock') + pick(/function
   + pick(/    Handlebars\.registerHelper\('eq'[\s\S]*?Handlebars\.registerHelper\('not'[\s\S]*?\}\);/, 'the comparison + logic helpers');
 new Function('Handlebars', body)(Handlebars);
 Handlebars.registerHelper('disabled', (v) => (v ? 'disabled' : ''));
+{ const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
 
 // Foundry's own token HUD line, read from the install when it is there.
 let hudLine = '<input type="text" name="elevation" {{disabled (or locked (and isGamePaused (not isGM)))}}>';

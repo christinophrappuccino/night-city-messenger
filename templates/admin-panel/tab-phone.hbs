@@ -7,7 +7,7 @@
   <div class="ncm-ph2-none"><i class="fas fa-phone-slash"></i> Calls did not load. Reload the world.</div>
 {{else}}
   <nav class="ncm-ph2-nav" role="tablist">
-    {{#each nav}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ph2-navbtn{{#if on}} on{{/if}}" data-action="tabAct" data-owner="phone" data-op="view" data-view="{{key}}" data-tooltip="{{label}}" aria-label="{{label}}"><i class="fas {{icon}}"></i><span class="lb">{{label}}</span>{{#if count}}<span class="ncm-ph2-navct{{#if hot}} hot{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}
+    {{#each nav}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ph2-navbtn{{#if on}} on{{/if}}" data-action="tabAct" data-owner="phone" data-op="view" data-view="{{key}}" data-tooltip="{{ncm-tip label}}" aria-label="{{label}}"><i class="fas {{icon}}"></i><span class="lb">{{label}}</span>{{#if count}}<span class="ncm-ph2-navct{{#if hot}} hot{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}
     <span class="grow"></span>
     {{#unless enabled}}<span class="ncm-tagp is-bad"><i class="fas fa-power-off"></i> Calls are off</span>{{/unless}}
     {{#unless isPopout}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="popOutTab" data-tab="phone" aria-label="Pop out" data-tooltip="Pop out — a bigger window"><i class="fas fa-up-right-from-square"></i></button>{{/unless}}
@@ -66,7 +66,7 @@
   </section>
 
   {{#if overheard.length}}<section class="ncm-ph2-mod"><div class="ncm-ph2-mh"><i class="fas fa-ear-listen"></i><b>Overheard calls running</b><small>Two NPCs, and who is listening</small></div>
-    {{#each overheard}}<div class="ncm-r5-over"><i class="fas fa-tower-broadcast"></i><div class="grow"><b>{{name}}</b><small>{{a}} and {{b}} · line {{line}} of {{of}} · {{listening}} listening</small></div>{{#each faces}}<span class="ncm-ph2-face" data-tooltip="{{name}}">{{ini}}</span>{{/each}}<button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="ovOpenRun" data-id="{{id}}" data-tooltip="The running screen"><i class="fas fa-up-right-from-square"></i> Open</button></div>{{/each}}</section>{{/if}}
+    {{#each overheard}}<div class="ncm-r5-over"><i class="fas fa-tower-broadcast"></i><div class="grow"><b>{{name}}</b><small>{{a}} and {{b}} · line {{line}} of {{of}} · {{listening}} listening</small></div>{{#each faces}}<span class="ncm-ph2-face" data-tooltip="{{ncm-tip name}}">{{ini}}</span>{{/each}}<button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="ovOpenRun" data-id="{{id}}" data-tooltip="The running screen"><i class="fas fa-up-right-from-square"></i> Open</button></div>{{/each}}</section>{{/if}}
 
   <section class="ncm-ph2-mod">
     <div class="ncm-ph2-mh"><i class="fas fa-shuffle"></i><b>Switchboard</b><small>every call in the world right now</small><span class="grow"></span>
@@ -96,7 +96,7 @@
       <span class="nm">{{name}}</span>
       <span class="bar"><i style="width:{{pct}}%"></i></span>
       <span class="n">{{#if now}}<b>{{now}}</b> now · {{/if}}{{today}} today</span>
-      {{#if cut}}<span class="ncm-tagp is-bad" data-tooltip="A node is {{cut}} on the scene you are viewing — calls over it there drop">{{cut}} here</span>{{/if}}
+      {{#if cut}}<span class="ncm-tagp is-bad" data-tooltip="A node is {{ncm-tip cut}} on the scene you are viewing — calls over it there drop">{{cut}} here</span>{{/if}}
     </div>
     {{else}}<div class="ncm-ph2-none">No calls today.</div>{{/each}}
   </section>
@@ -136,7 +136,7 @@
       <div class="ncm-ph2-lrow" style="--dc:var(--ncm-{{info.tone}}, var(--ncm-text-label))">
         <span class="d"><i class="fas {{info.icon}}"></i></span>
         <span class="t"><span class="pair">{{{fromHtml}}}<i class="fas fa-arrow-right"></i>{{{toHtml}}}</span>
-          <span class="meta"><span class="ncm-tagp is-{{info.tone}}">{{info.word}}</span>{{#if detail}}<span class="ncm-ph2-tm">{{detail}}</span>{{/if}}{{#if net}}<span class="net">{{net}}</span>{{/if}}{{#if scene}}<span class="sub">{{scene}}</span>{{/if}}{{#if anon}}<span class="ncm-tagp is-secret"><i class="fas fa-user-secret"></i> withheld</span>{{/if}}{{#if heardBy.length}}<span class="ncm-tagp is-secret" data-tooltip="Caught by a tap or sniffer: {{join heardBy ', '}}"><i class="fas fa-ear-listen"></i> heard by {{heardBy.length}}</span>{{/if}}</span>
+          <span class="meta"><span class="ncm-tagp is-{{info.tone}}">{{info.word}}</span>{{#if detail}}<span class="ncm-ph2-tm">{{detail}}</span>{{/if}}{{#if net}}<span class="net">{{net}}</span>{{/if}}{{#if scene}}<span class="sub">{{scene}}</span>{{/if}}{{#if anon}}<span class="ncm-tagp is-secret"><i class="fas fa-user-secret"></i> withheld</span>{{/if}}{{#if heardBy.length}}<span class="ncm-tagp is-secret" data-tooltip="Caught by a tap or sniffer: {{ncm-tip (join heardBy ', ')}}"><i class="fas fa-ear-listen"></i> heard by {{heardBy.length}}</span>{{/if}}</span>
           {{#if why}}<span class="why"><i class="fas fa-tower-broadcast"></i> {{why}}</span>{{/if}}
           {{#if hitHtml}}<span class="ncm-ph2-hit"><i class="fas fa-closed-captioning"></i> {{{hitHtml}}}</span>{{/if}}
           {{#if transcript.length}}<details class="ncm-ph2-tr"><summary><i class="fas fa-closed-captioning"></i> Transcript · {{transcript.length}} {{#if (eq transcript.length 1)}}line{{else}}lines{{/if}}</summary>
@@ -177,8 +177,8 @@
           <span class="meta"><span class="ncm-ph2-num">{{from.number}}</span><span class="ncm-ph2-tm">{{when}}</span>{{#if length}}<span class="ncm-ph2-tm">♪ {{length}}</span>{{/if}}</span></span>
         <span class="acts">
           {{#if tts}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="vmPlay" data-vm="{{vmId}}" data-owner-id="{{ownerId}}" data-text="{{text}}" data-voice="{{voice}}" data-heard="{{#if heard}}1{{else}}0{{/if}}" data-tooltip="Play"><i class="fas fa-play"></i></button>{{/if}}
-          {{#if from.number}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic ncm-ph2-btn--go" data-action="tabAct" data-owner="phone" data-op="vmCallBack" data-number="{{from.number}}" data-to-contact="{{toContactId}}" data-to-actor="{{toActorId}}" data-tooltip="Call back as {{toName}}"><i class="fas fa-phone"></i></button>{{/if}}
-          <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="vmReply" data-to-contact="{{toContactId}}" data-to-actor="{{toActorId}}" data-from-actor="{{from.actorId}}" data-from-contact="{{from.contactId}}" data-tooltip="Reply by mail as {{toName}}"><i class="fas fa-envelope"></i></button>
+          {{#if from.number}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic ncm-ph2-btn--go" data-action="tabAct" data-owner="phone" data-op="vmCallBack" data-number="{{from.number}}" data-to-contact="{{toContactId}}" data-to-actor="{{toActorId}}" data-tooltip="Call back as {{ncm-tip toName}}"><i class="fas fa-phone"></i></button>{{/if}}
+          <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="vmReply" data-to-contact="{{toContactId}}" data-to-actor="{{toActorId}}" data-from-actor="{{from.actorId}}" data-from-contact="{{from.contactId}}" data-tooltip="Reply by mail as {{ncm-tip toName}}"><i class="fas fa-envelope"></i></button>
           <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="vmHeard" data-vm="{{vmId}}" data-owner-id="{{ownerId}}" data-heard="{{#if heard}}0{{else}}1{{/if}}" data-tooltip="{{#if heard}}Mark as new{{else}}Mark heard{{/if}}"><i class="fas {{#if heard}}fa-rotate-left{{else}}fa-check{{/if}}"></i></button>
           <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic ncm-ph2-btn--bad" data-action="tabAct" data-owner="phone" data-op="vmDel" data-vm="{{vmId}}" data-owner-id="{{ownerId}}" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
         </span>

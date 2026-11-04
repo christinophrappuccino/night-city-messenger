@@ -6,7 +6,7 @@
  *   5 tabs: Identity, Security, Network, Systems, Boot.
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { resolveIntegrity, garbleString, garbleRate } from '../content/IntegrityModel.js';
 import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES, FAILURE_MODES, ENCRYPTION_TYPES, COLOR_VAR_MAP, FONT_OPTIONS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, applyContrastToElement, buildShardThemePrefs } from '../../utils/helpers.js';
@@ -422,7 +422,7 @@ export class ItemInboxConfig extends BaseApplication {
       }
       case 'themeOverwrite': {
         if (!list[i]) return;
-        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${list[i].name}</b> with this shard's current look?</p>` });
+        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${escapeHtml(list[i].name)}</b> with this shard's current look?</p>` });
         if (!ok) return;
         list[i] = { name: list[i].name, theme: snapshot() };
         await write(list);
@@ -430,7 +430,7 @@ export class ItemInboxConfig extends BaseApplication {
       }
       case 'themeDelete': {
         if (!list[i]) return;
-        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the saved look <b>${list[i].name}</b>?</p>` });
+        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the saved look <b>${escapeHtml(list[i].name)}</b>?</p>` });
         if (!ok) return;
         list.splice(i, 1);
         await write(list);
@@ -498,7 +498,7 @@ export class ItemInboxConfig extends BaseApplication {
         const hasSec = !!entry.config?.security;
         const ok = await adminConfirm({
           title: 'Apply shard preset',
-          content: `<p>Apply <b>${entry.name}</b> to this shard?</p>
+          content: `<p>Apply <b>${escapeHtml(entry.name)}</b> to this shard?</p>
             <p>It overwrites the look, startup and identity${hasSec
               ? ' <b>and its security block</b> — encryption, login and key item.'
               : '. Its security is untouched.'}</p>
@@ -528,7 +528,7 @@ export class ItemInboxConfig extends BaseApplication {
       case 'fullOverwrite': {
         const entry = list[i];
         if (!entry) return;
-        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${entry.name}</b> with this shard's current setup?</p>` });
+        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${escapeHtml(entry.name)}</b> with this shard's current setup?</p>` });
         if (!ok) return;
         // Replace IN PLACE, keeping the name and whatever security choice it was
         // saved with — an overwrite should not quietly re-order the library or
@@ -540,7 +540,7 @@ export class ItemInboxConfig extends BaseApplication {
       }
       case 'fullDelete': {
         if (!list[i]) return;
-        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the shard preset <b>${list[i].name}</b>?</p>` });
+        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the shard preset <b>${escapeHtml(list[i].name)}</b>?</p>` });
         if (!ok) return;
         list.splice(i, 1);
         await write(list);
@@ -610,7 +610,7 @@ export class ItemInboxConfig extends BaseApplication {
       const dlg = adminDialog({
         title: 'Save this shard as a preset',
         content: `
-          <p><input type="text" class="ncm-stc-nameinput" value="${String(placeholder).replace(/"/g, '&quot;')}" style="width:100%"></p>
+          <p><input type="text" class="ncm-stc-nameinput" value="${escapeHtml(placeholder)}" style="width:100%"></p>
           <p style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:400">
             <input type="checkbox" class="ncm-stc-withsec">
             <span>Include this shard's security (encryption, login, key item)</span></label></p>
@@ -701,7 +701,7 @@ export class ItemInboxConfig extends BaseApplication {
       let out = null;
       const dlg = adminDialog({
         title,
-        content: `<p><input type="text" class="ncm-stc-nameinput" value="${String(placeholder).replace(/"/g, '&quot;')}" style="width:100%"></p>`,
+        content: `<p><input type="text" class="ncm-stc-nameinput" value="${escapeHtml(placeholder)}" style="width:100%"></p>`,
         buttons: {
           ok: { label: 'Save', callback: (html) => { out = (html[0] ?? html).querySelector('.ncm-stc-nameinput')?.value?.trim() || null; } },
           cancel: { label: 'Cancel' },

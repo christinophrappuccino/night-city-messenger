@@ -19,7 +19,7 @@
  *              `{{else if isX}}` branch in content-body.hbs. Nothing else.
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { CONTENT_TYPES } from '../../utils/constants.js';
 import { log, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { cleanHtml } from '../../utils/richText.js';
@@ -2427,7 +2427,7 @@ export function openGalleryImage(target, { host = null } = {}) {
         rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--frame" data-action="terminalExfil" data-exfil="saveFrame" data-index="${fIdx}" data-tooltip="You can’t copy a live stream — but you can capture what it’s showing"><i class="fas fa-camera"></i> SAVE FRAME${sdv}</button>`);
       }
       if (d.noCopy) rail.push(`<span class="ncm-imgv__btn ncm-imgv__btn--nocopy" data-tooltip="A live feed isn’t a file — capture a frame instead"><i class="fas fa-ban"></i> CAN’T COPY A STREAM</span>`);
-      if (ptz && !canDrive) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--ctl" data-action="camAction" data-cam-act="control" data-index="${fIdx}" data-entry-id="${_escHtml(entryId)}" data-tooltip="Seize the camera head — DV ${controlDV}"><i class="fas fa-satellite-dish"></i> TAKE CONTROL · DV ${controlDV}</button>`);
+      if (ptz && !canDrive) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--ctl" data-action="camAction" data-cam-act="control" data-index="${fIdx}" data-entry-id="${_escHtml(entryId)}" data-tooltip="Seize the camera head — DV ${tipText(controlDV)}"><i class="fas fa-satellite-dish"></i> TAKE CONTROL · DV ${controlDV}</button>`);
       if (d.loopDv) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--loop" data-action="camAction" data-cam-act="loop" data-index="${fIdx}" data-entry-id="${_escHtml(entryId)}" data-tooltip="Freeze this camera on old footage"><i class="fas fa-rotate"></i> LOOP · DV ${_escHtml(d.loopDv)}</button>`);
       if (d.cutDv) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--cut" data-action="camAction" data-cam-act="cut" data-index="${fIdx}" data-entry-id="${_escHtml(entryId)}" data-tooltip="Kill this channel"><i class="fas fa-scissors"></i> CUT FEED · DV ${_escHtml(d.cutDv)}</button>`);
       if (gm && d.sceneId) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--gm" data-action="goToScene" data-scene-id="${_escHtml(d.sceneId)}" data-tooltip="GM — go to this camera's scene"><i class="fas fa-map"></i> GO TO SCENE</button>`);

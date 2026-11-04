@@ -25,7 +25,7 @@
  *   because the rest of the window is full of them.
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { TERMINAL_ICON_LIBRARY } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { CT_COLORS, ACCENT_HEX } from '../content/ContentRenderers.js';
@@ -256,14 +256,14 @@ export function runIconBuilder({ host, image = '', colour = 'cyan' } = {}) {
             <div class="ncm-iconb__lbl">Shape</div>
             <div class="ncm-iconb__row" data-ib-bases>
               ${Object.entries(BASES).map(([k, v]) => `
-                <span class="ncm-iconb__chip ${k === S.base ? 'on' : ''}" data-ib-base="${k}" data-tooltip="${esc(v.hint)}">${esc(v.label)}</span>`).join('')}
+                <span class="ncm-iconb__chip ${k === S.base ? 'on' : ''}" data-ib-base="${k}" data-tooltip="${tipText(v.hint)}">${esc(v.label)}</span>`).join('')}
             </div>
 
             <div class="ncm-iconb__lbl">Colour</div>
             <div class="ncm-iconb__row" data-ib-colours>
               ${CT_COLORS.map((c) => `
                 <span class="ncm-iconb__sw ${c === S.colour ? 'on' : ''}" data-ib-colour="${c}"
-                      style="--sw:${hexFor(c)}" data-tooltip="${esc(c)}"></span>`).join('')}
+                      style="--sw:${hexFor(c)}" data-tooltip="${tipText(c)}"></span>`).join('')}
               <label class="ncm-iconb__custom ${String(S.colour).startsWith('#') ? 'on' : ''}" data-tooltip="Any colour you like">
                 <input type="color" data-ib-hex value="${hexFor(S.colour)}">
                 <i class="fas fa-eye-dropper"></i>
@@ -309,7 +309,7 @@ export function runIconBuilder({ host, image = '', colour = 'cyan' } = {}) {
       const q = S.search.trim().toLowerCase();
       const list = q ? icons.filter((i) => i.c.includes(q) || i.k.includes(q)) : icons;
       $('[data-ib-grid]').innerHTML = list.slice(0, 120).map((i) => `
-        <span class="ncm-iconb__ic ${i.c === S.iconClass ? 'on' : ''}" data-ib-icon="${esc(i.c)}" data-tooltip="${esc(i.c)}">
+        <span class="ncm-iconb__ic ${i.c === S.iconClass ? 'on' : ''}" data-ib-icon="${esc(i.c)}" data-tooltip="${tipText(i.c)}">
           <i class="${esc(i.c)}"></i></span>`).join('')
         || '<span class="ncm-iconb__none">nothing matches that</span>';
     };

@@ -25,7 +25,7 @@
   </div>
 
   <div class="ncm-acc2-stats">
-    {{#each stats}}<button type="button" class="ncm-acc2-stat{{#if tone}} is-{{tone}}{{/if}}{{#if on}} is-on{{/if}}" data-action="tabAct" data-op="stat" data-stat="{{k}}" aria-pressed="{{on}}" data-tooltip="{{tip}}"><b>{{n}}</b><span>{{l}}</span></button>{{/each}}
+    {{#each stats}}<button type="button" class="ncm-acc2-stat{{#if tone}} is-{{tone}}{{/if}}{{#if on}} is-on{{/if}}" data-action="tabAct" data-op="stat" data-stat="{{k}}" aria-pressed="{{on}}" data-tooltip="{{ncm-tip tip}}"><b>{{n}}</b><span>{{l}}</span></button>{{/each}}
   </div>
   {{#if narrowed}}<div class="ncm-acc2-narrow"><i class="fas fa-filter"></i>Narrowed by your search or filters.<button type="button" data-action="tabAct" data-op="clearAll">Show everything</button></div>{{/if}}
 

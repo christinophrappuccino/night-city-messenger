@@ -125,7 +125,7 @@ check('card click writes the hidden input + toggles is-on (the login-style contr
 check('save reads mailboxStyle', () => cfgJs.includes("mailboxStyle: val('mailboxStyle', 'classic') || 'classic'"));
 check('the full-preset snapshot carries mailboxStyle (and its apply copy names it)', () => cfgJs.includes("mailboxStyle: cfg.mailboxStyle || 'classic'") && cfgJs.includes('login style, mailbox layout, MOTD/welcome'));
 check('card thumbs are styled per style (terminal.css)', () => { const css = read('styles/components/terminal.css'); return ['classic', 'tabs', 'tty', 'desktop'].every(k => css.includes(`.ncm-cfg-mstyle__thumb--${k}`)); });
-check('Admin → Terminals detail shows the Mailbox fact', () => read('scripts/ui/AdminPanel/tabs/TerminalsTab.js').includes("mailboxStyle: cfg.mailboxStyle || 'classic'") && read('templates/admin-panel/tab-terminals.hbs').includes('{{mailboxStyle}}'));
+check('Admin → Terminals detail shows the Mailbox fact', () => read('scripts/ui/AdminPanel/tabs/TerminalsTab.js').includes("mailboxStyle: cfg.mailboxStyle || 'classic'") && read('templates/admin-panel/tab-terminals.hbs').includes('{{ncm-tip mailboxStyle}}'));
 
 console.log('\n[6] stylesheet');
 const entry = read('styles/night-city-messenger.css');
@@ -155,6 +155,7 @@ if (!Handlebars) {
 } else {
   const H = Handlebars;
   for (const h of ['eq', 'neq', 'gt', 'lt', 'gte', 'lte', 'and', 'or', 'not']) H.registerHelper(h, function (...a) { const [x, y] = a; switch (h) { case 'eq': return String(x) === String(y); case 'neq': return String(x) !== String(y); case 'gt': return x > y; case 'lt': return x < y; case 'gte': return x >= y; case 'lte': return x <= y; case 'and': return a.slice(0, -1).every(Boolean); case 'or': return a.slice(0, -1).some(Boolean); case 'not': return !x; } });
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('add', (a, b) => Number(a) + Number(b));
   H.registerHelper('sub', (a, b) => Number(a) - Number(b));
   H.registerHelper('ncm-net-icon', () => new H.SafeString('<i class="fas fa-network-wired"></i>'));

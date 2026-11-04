@@ -9,7 +9,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, THEME_PRESETS, COLOR_VAR_MAP, FONT_OPTIONS, DEFAULTS } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
@@ -678,7 +678,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     if (isNaN(index) || !presets[index]) return;
 
     const name = presets[index].name;
-    const confirmed = await playerConfirm({ title: 'Delete Preset', content: `<p>Delete custom preset "${name}"?</p>` });
+    const confirmed = await playerConfirm({ title: 'Delete Preset', content: `<p>Delete custom preset "${escapeHtml(name)}"?</p>` });
     if (!confirmed) return;
 
     presets.splice(index, 1);

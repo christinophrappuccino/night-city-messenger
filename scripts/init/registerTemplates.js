@@ -10,6 +10,7 @@
 
 import { TEMPLATES, MODULE_ID } from '../utils/constants.js';
 import { log, formatCyberDate, truncate } from '../utils/helpers.js';
+import { registerTipHelper } from '../utils/notify.js';
 import { registerShardTermHelper } from '../utils/shardTerm.js';
 import { registerTagHueHelper, setRoleColorResolver } from '../utils/tagHue.js';
 
@@ -129,6 +130,13 @@ export function registerTemplates(initializer) {
     Handlebars.registerHelper('sub', (a, b) => (a || 0) - (b || 0));
     // 0→A, 1→B … (option labels); wraps past Z back to A.
     Handlebars.registerHelper('letter', (i) => String.fromCharCode(65 + (((i || 0) % 26) + 26) % 26));
+
+    // Tooltip text (audit SEC-16). Foundry renders data-tooltip as HTML after the
+    // browser decodes the attribute, so a value needs escaping twice: this helper
+    // escapes once and returns a plain string, which Handlebars escapes again.
+    // Every {{…}} inside a data-tooltip="…" in the templates goes through it
+    // (sim: test-tooltip-text).
+    registerTipHelper(Handlebars);
     registerTagHueHelper(Handlebars);
     setRoleColorResolver((id) => (game.nightcity?.masterContactService?.getCustomRoles?.() || []).find((r) => r.id === id)?.color || null);
     Handlebars.registerHelper('ncm-json', (context) => JSON.stringify(context, null, 2));

@@ -151,6 +151,7 @@ ok(J.movesFor(d, 4, 9) === 3 && J.movesFor(dm, 4, 5) === 4 && J.movesFor(dm, 4, 
   }
   if (!H) { fail++; console.error('FAIL: no Handlebars — render checks did not run'); }
   else {
+    { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
     const tpl = H.compile(read('templates/network-nodes/node-console.hbs'));
     const a = tpl(out), b = tpl(s), c = tpl(low);
     ok(a.includes('data-action="jack"') && !a.includes('ncm-ndc__sess'), 'not jacked in: the Jack in action, no session');

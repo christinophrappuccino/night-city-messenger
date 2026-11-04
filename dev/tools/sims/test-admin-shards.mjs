@@ -435,6 +435,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!H) { fail++; console.error('FAIL: could not load Handlebars from a Foundry install — render checks did not run'); }
 else {
   { const { registerTagHueHelper } = await import(pathToFileURL(`${ROOT}/scripts/utils/tagHue.js`).href); registerTagHueHelper(H); }
+  { const { registerTipHelper } = await import(pathToFileURL(`${ROOT}/scripts/utils/notify.js`).href); registerTipHelper(H); }
   H.registerHelper('eq', (a, b) => a === b);
   const render = H.compile(tpl);
   const html = render({ activeTab: 'shards', shards2: full });

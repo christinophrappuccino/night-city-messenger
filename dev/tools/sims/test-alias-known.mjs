@@ -76,7 +76,7 @@ const M = await imp('scripts/ui/AdminPanel/tabs/contactsModel.js');
   const tab = read('scripts/ui/AdminPanel/tabs/ContactsTab.js');
   ok(tab.includes('knowIndex(lists, { contacts: all })'),'the tab builds the index with the directory');
   ok(!/knowIndex\(\{ \[actorId\]: list \}\)\./.test(tab), 'take back / knows-now pass the directory too');
-  ok(/held:/.test(tab) && /has \{\{#if held\}\}\{\{held\}\}/.test(read('templates/admin-panel/tab-contacts.hbs')), 'a share chip says which address the player holds');
+  ok(/held:/.test(tab) && /has \{\{#if held\}\}\{\{ncm-tip held\}\}/.test(read('templates/admin-panel/tab-contacts.hbs')), 'a share chip says which address the player holds');
   ok(/entryStandsFor\(pc, contact, \{ isAlias \}\)/.test(read('scripts/services/MasterContactService.js')), 'pushToPlayer’s duplicate check uses the same rule');
 }
 

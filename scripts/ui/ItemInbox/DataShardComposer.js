@@ -10,7 +10,7 @@
  *   Spreadsheet is the one type still without a form (grid editor pending).
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID, DEFAULTS, CONTENT_TYPES, TEMPLATES, SKILL_MAP, CHAT_EMOJI } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -1179,7 +1179,7 @@ export class DataShardComposer extends BaseApplication {
     const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
     const s = Number(c.strength || 0);
     const pips = [1, 2, 3, 4].map(v =>
-      `<button type="button" class="ncm-credcard__pip${v <= s ? ' on' : ''}" data-action="wzPip" data-v="${v}" data-tooltip="Strength ${v}/4"></button>`).join('');
+      `<button type="button" class="ncm-credcard__pip${v <= s ? ' on' : ''}" data-action="wzPip" data-v="${v}" data-tooltip="Strength ${tipText(v)}/4"></button>`).join('');
     return `<div class="ncm-cl-row ncm-credcard${c.encrypted ? ' is-encrypted' : ''}">` +
       `<input type="hidden" name="credEntries__strength-${idx}" value="${esc(c.strength)}">` +
       `<input type="checkbox" name="credEntries__encrypted-${idx}"${c.encrypted ? ' checked' : ''} class="ncm-wz-flag">` +
@@ -1216,7 +1216,7 @@ export class DataShardComposer extends BaseApplication {
       flags +
       `<input type="hidden" name="galImages__loopedTime-${idx}" value="${esc(g.loopedTime)}">` +
       `<input type="hidden" name="galImages__sceneId-${idx}" value="${esc(g.sceneId)}">` +
-      `<div class="ncm-galcard__thumbwrap" data-action="galCardThumb" data-tooltip="${g.url ? 'Click to enlarge' : 'Click to pick an image'}">` +
+      `<div class="ncm-galcard__thumbwrap" data-action="galCardThumb" data-tooltip="${tipText(g.url ? 'Click to enlarge' : 'Click to pick an image')}">` +
         `<img class="ncm-cl-thumb ncm-galcard__thumb" src="${esc(g.url)}" alt=""${g.url ? '' : ' style="display:none"'}>` +
         `<span class="ncm-galcard__empty"${g.url ? ' style="display:none"' : ''}><i class="fas fa-folder-open"></i> PICK IMAGE</span>` +
         `<span class="ncm-galcard__drag" draggable="true" data-tooltip="Drag to reorder — order is display order"><i class="fas fa-grip-vertical"></i></span>` +
@@ -1648,7 +1648,7 @@ export class DataShardComposer extends BaseApplication {
       const kinds = Object.entries(RECORD_FIELD_KINDS).filter(([, v]) => v.group === g);
       if (!kinds.length) continue;
       out += kinds.map(([k, v]) =>
-        `<button type="button" class="ncm-recaddf" data-action="recAddField" data-kind="${k}" data-tooltip="Add ${Handlebars.escapeExpression(v.label)}"><i class="${v.icon}"></i>${Handlebars.escapeExpression(v.label)}</button>`
+        `<button type="button" class="ncm-recaddf" data-action="recAddField" data-kind="${k}" data-tooltip="Add ${tipText(v.label)}"><i class="${v.icon}"></i>${Handlebars.escapeExpression(v.label)}</button>`
       ).join('');
     }
     return out + '</div>';
@@ -3168,7 +3168,7 @@ export class DataShardComposer extends BaseApplication {
     const btn = (tool, icon, title, color) =>
       `<button type="button" class="ncm-schem-tool${this._schemTool === tool ? ' is-active' : ''}" ` +
       `data-schem-tool="${esc(tool)}"${color ? ` data-ct-color="${esc(color)}"` : ''} ` +
-      `data-tooltip="${esc(title)}"><i class="${esc(icon)}"></i></button>`;
+      `data-tooltip="${tipText(title)}"><i class="${esc(icon)}"></i></button>`;
     let html = btn('select', 'fas fa-arrow-pointer', 'Select / move a pin') +
                btn('route', 'fas fa-route', 'Route: click two pins to link');
     html += '<span class="ncm-schem-tool__div"></span>';

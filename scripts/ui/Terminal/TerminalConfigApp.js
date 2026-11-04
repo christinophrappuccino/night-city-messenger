@@ -10,7 +10,7 @@
  *   terminalConfig as a JSON blob (the spam/theme pattern).
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_MAILBOX_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
 import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveDisplayName, getPlayerCharacters, isPersonActor } from '../../utils/helpers.js';
@@ -1095,7 +1095,7 @@ export class TerminalConfigApp extends BaseApplication {
     const presets = this._getFullPresets();
     if (!presets[index]) return;
     const name = presets[index].name;
-    const confirmed = await adminConfirm({ title: 'Delete Terminal Preset', content: `<p>Delete "${name}" from the library?</p>` });
+    const confirmed = await adminConfirm({ title: 'Delete Terminal Preset', content: `<p>Delete "${escapeHtml(name)}" from the library?</p>` });
     if (!confirmed) return;
     presets.splice(index, 1);
     await this._setFullPresets(presets);
@@ -1925,7 +1925,7 @@ export class TerminalConfigApp extends BaseApplication {
     const themes = this._getTermThemes();
     if (!themes[index]) return;
     const name = themes[index].name;
-    const confirmed = await adminConfirm({ title: 'Delete Theme', content: `<p>Delete saved terminal theme "${name}"?</p>` });
+    const confirmed = await adminConfirm({ title: 'Delete Theme', content: `<p>Delete saved terminal theme "${escapeHtml(name)}"?</p>` });
     if (!confirmed) return;
     themes.splice(index, 1);
     await this._setTermThemes(themes);

@@ -19,7 +19,7 @@
  * existing static delegators and keyboard shortcuts.
  */
 
-import { ncmNotify } from '../../../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../../../utils/notify.js';
 import { proposeFor, readNumber, officeNames } from './phoneNumbersView.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log, getPlayerCharacters, hiddenCharacterIds, isPersonActor } from '../../../utils/helpers.js';
@@ -2283,7 +2283,7 @@ export class ContactsTab extends BaseTab {
     const plural = list.length > 1 ? `${list.length} ${what}s` : `this ${what}`;
     return !!(await adminConfirm({
       title: 'Take back?',
-      content: `<p>Take ${shown} back from <b>${who}</b>?</p><p>This removes ${plural} from their own list. ${esc(note) || 'You can share again later.'}</p>`,
+      content: `<p>Take ${shown} back from <b>${escapeHtml(who)}</b>?</p><p>This removes ${plural} from their own list. ${esc(note) || 'You can share again later.'}</p>`,
     }));
   }
 
@@ -2311,7 +2311,7 @@ export class ContactsTab extends BaseTab {
     const svc = game.nightcity?.contactGroupService;
     const g = (svc?.getActorGroups?.(actorId) ?? []).find((x) => x.id === copyId);
     if (!g) return;
-    const ok = await adminConfirm({ title: 'Take the group back', content: `<p>Remove <b>${g.name}</b> from ${game.actors?.get(actorId)?.name || 'their'} groups? The contacts in it stay in their list.</p>` });
+    const ok = await adminConfirm({ title: 'Take the group back', content: `<p>Remove <b>${escapeHtml(g.name)}</b> from ${escapeHtml(game.actors?.get(actorId)?.name || 'their')} groups? The contacts in it stay in their list.</p>` });
     if (!ok) return;
     await svc?.deleteActorGroup?.(actorId, copyId);
     return this.render(true);
