@@ -95,6 +95,10 @@
               data-tooltip="Open contacts" data-tooltip-direction="DOWN">
         <i class="fas fa-address-book"></i> <span>Contacts</span>
       </button>
+      {{#if conversationsOn}}<button class="ncm-btn ncm-btn--secondary ncm-btn--icon-only ncm-btn--sm" data-action="new-conversation"
+              data-tooltip="New conversation" data-tooltip-direction="DOWN" aria-label="New conversation">
+        <i class="fas fa-comments"></i>
+      </button>{{/if}}
       <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="compose-new"
               {{#if isDeadZone}}disabled{{/if}}
               data-tooltip="Compose new message" data-tooltip-direction="DOWN">
@@ -157,6 +161,11 @@
         <i class="fas fa-inbox"></i> All
         {{#if counts.total}}<span class="ncm-pill__badge">{{counts.total}}</span>{{/if}}
       </span>
+      {{#if conversationsOn}}<span class="ncm-pill {{#if (eq currentFilter 'conversations')}}ncm-pill--active{{/if}}"
+            data-action="set-filter" data-filter="conversations">
+        <i class="fas fa-comments"></i> Conversations
+        <span class="ncm-pill__badge ncm-pill__badge--alert"{{#unless counts.conversations}} hidden{{/unless}}>{{counts.conversations}}</span>
+      </span>{{/if}}
       <span class="ncm-pill {{#if (eq currentFilter 'unread')}}ncm-pill--active{{/if}}"
             data-action="set-filter" data-filter="unread">
         <i class="fas fa-envelope"></i> Unread
@@ -534,7 +543,18 @@
         <div class="ncm-viewer__msg-list ncm-scrollbar" data-env-filter="{{activeEnvFilter}}">
           {{#if messages.length}}
             {{#each messages}}
+              {{#if isConversation}}
+              <div class="ncm-viewer__msg ncm-viewer__msg--conv{{#if unread}} ncm-viewer__msg--unread{{/if}}{{#if selected}} ncm-viewer__msg--selected{{/if}}" data-priority="normal" data-action="open-conversation" data-conversation-id="{{id}}">
+                <div class="ncm-conv__stack">{{#each faces}}<div class="ncm-conv__av{{#if img}} has-img{{/if}}" style="--c:{{color}}{{#if img}};background-image:url('{{img}}'){{/if}}">{{#unless img}}{{initial}}{{/unless}}</div>{{/each}}<span class="ncm-conv__glyph"><i class="fas fa-comments" style="margin:0"></i></span></div>
+                <div class="ncm-viewer__msg-content">
+                  <div class="ncm-viewer__msg-top"><span class="ncm-viewer__msg-sender">{{title}}</span>{{#if unread}}<span class="ncm-conv__count">{{unread}}</span>{{/if}}<span class="ncm-viewer__msg-time"><span class="ncm-viewer__msg-time-rel" data-conv-time>{{relTime}}</span></span></div>
+                  <div class="ncm-viewer__msg-subject"><span class="ncm-conv__rowsub">{{#if left}}You left{{else}}Conversation · {{count}} people{{/if}}{{#if muted}} · muted{{/if}}</span></div>
+                  <div class="ncm-viewer__msg-preview">{{preview}}</div>
+                </div>
+              </div>
+              {{else}}
               {{> "modules/night-city-messenger/templates/message-viewer/partials/message-list-item.hbs" }}
+              {{/if}}
             {{/each}}
           {{else}}
             {{> "modules/night-city-messenger/templates/partials/empty-state.hbs"
@@ -572,7 +592,9 @@
         <button class="ncm-viewer__mobile-back" data-action="mobile-back">
           <i class="fas fa-chevron-left"></i> Inbox
         </button>
-        {{#if selectedMessage}}
+        {{#if selectedConversationId}}
+          <div class="ncm-conv-host" data-conv-host></div>
+        {{else if selectedMessage}}
           {{> "modules/night-city-messenger/templates/message-viewer/partials/message-detail.hbs"
               message=selectedMessage quickReplies=quickReplies isGM=isGM currentFilter=currentFilter }}
         {{else}}

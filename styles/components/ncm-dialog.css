@@ -268,3 +268,5 @@ body.ncm-picking-point #board { cursor: crosshair !important; }
 
 .ncm-nde__sws.ncm-nde__sws--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ncm-nde label.ncm-nde__sw:has(> input[name="boxLocked"]:checked) { --d-act: var(--ncm-secret, #c084fc); }
+
+.ncm-dlgb__field select { width: 100% !important; }

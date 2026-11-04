@@ -1,0 +1,248 @@
+/**
+ * Conversations: the chat pane, the inbox row, the shared-contact card, the tap log, and the admin view.
+ * @file styles/components/conversations.css
+ * Mock dev/mockups/conversations-mock.html. Tokens only, so a player's theme and the GM's admin preset both drive it.
+ */
+.ncm-app .ncm-conv-host { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.ncm-app .ncm-conv__lines { display: flex; flex-direction: column; flex: none; }
+.ncm-app .ncm-conv__blank { padding: 24px; text-align: center; font-family: var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__av.has-img { background-size: cover; background-position: center; }
+.ncm-app img.ncm-conv__pic { object-fit: cover; }
+.ncm-app .ncm-conv__m.is-pending { opacity: .85; }
+.ncm-app .ncm-conv__state.is-bad { color: var(--ncm-danger); }
+.ncm-app .ncm-conv__state button.ncm-conv__link { display: inline-block; align-self: auto; margin-left: 6px !important; padding: 1px 6px !important; }
+.ncm-app .ncm-conv__assel { width: auto; height: calc(26px * var(--ncm-text-scale, 1)); }
+.ncm-app button.ncm-conv__chipx { appearance: none; all: unset; cursor: pointer; display: inline-flex; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__dlg input[type=text]:focus, .ncm-app .ncm-conv__dlgsel:focus { border-color: var(--ncm-secondary) !important; }
+.ncm-app .ncm-viewer__msg--conv .ncm-conv__stack { flex: none; }
+.ncm-app button.ncm-conv__base, .ncm-app button.ncm-conv__btn, .ncm-app button.ncm-conv__link, .ncm-app button.ncm-conv__icon, .ncm-app button.ncm-conv__rowbtn { appearance: none; width: auto !important; flex: none; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; cursor: pointer; line-height: 1 !important; }
+.ncm-app .ncm-conv__base i, .ncm-app .ncm-conv__btn i, .ncm-app .ncm-conv__icon i, .ncm-app .ncm-conv__rowbtn i { margin: 0 !important; }
+
+/* List: the conversation row */
+.ncm-app .ncm-conv__stack { position: relative; flex: none; width: 38px; height: 36px; margin-right: 10px; }
+.ncm-app .ncm-conv__stack .ncm-conv__av { position: absolute; width: 21px; height: 21px; font-size: calc(9px * var(--ncm-text-scale, 1)); box-shadow: 0 0 0 2px var(--ncm-bg-base); }
+.ncm-app .ncm-conv__stack .ncm-conv__av:nth-child(1) { left: 0; top: 0; }
+.ncm-app .ncm-conv__stack .ncm-conv__av:nth-child(2) { left: 17px; top: 0; }
+.ncm-app .ncm-conv__stack .ncm-conv__av:nth-child(3) { left: 4px; top: 15px; }
+.ncm-app .ncm-conv__stack .ncm-conv__glyph { position: absolute; right: -3px; bottom: -3px; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--ncm-secondary); color: var(--ncm-text-inverse, #06080a); font-size: calc(8px * var(--ncm-text-scale, 1)); box-shadow: 0 0 0 2px var(--ncm-bg-base); }
+.ncm-app .ncm-conv__count { flex: none; min-width: 16px; height: 16px; margin-left: 6px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; border-radius: 2px; background: var(--ncm-secondary); color: var(--ncm-text-inverse, #06080a); font-family: var(--ncm-font-mono); font-weight: 700; font-size: calc(10px * var(--ncm-text-scale, 1)); box-sizing: border-box; }
+.ncm-app .ncm-conv__rowsub { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+
+/* The pane */
+.ncm-app .ncm-conv { flex: 1; min-height: 0; display: flex; position: relative; container: ncm-conv / inline-size; }
+.ncm-app .ncm-conv__main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.ncm-app .ncm-conv__head { flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-app .ncm-conv__titles { flex: 1; min-width: 0; }
+.ncm-app .ncm-conv__title { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(16px * var(--ncm-text-scale, 1)); line-height: 1.2; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-conv__sub { display: flex; align-items: center; gap: 7px; margin-top: 3px; font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; }
+.ncm-app .ncm-conv__faces { display: flex; flex: none; }
+.ncm-app .ncm-conv__faces .ncm-conv__av { width: calc(18px * var(--ncm-text-scale, 1)); height: calc(18px * var(--ncm-text-scale, 1)); font-size: calc(8.5px * var(--ncm-text-scale, 1)); margin-left: -4px; box-shadow: 0 0 0 2px var(--ncm-bg-base); }
+.ncm-app .ncm-conv__faces .ncm-conv__av:first-child { margin-left: 0; }
+.ncm-app .ncm-conv__av { width: calc(30px * var(--ncm-text-scale, 1)); height: calc(30px * var(--ncm-text-scale, 1)); border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--c, var(--ncm-secondary)) 22%, var(--ncm-bg-surface)); border: 1px solid var(--c, var(--ncm-secondary)); color: var(--ncm-text-primary); font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(12px * var(--ncm-text-scale, 1)); line-height: 1; box-sizing: border-box; }
+
+.ncm-app button.ncm-conv__btn { height: calc(26px * var(--ncm-text-scale, 1)) !important; padding: 0 10px !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; background: var(--ncm-bg-surface) !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important; font-weight: 600; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; white-space: nowrap; }
+.ncm-app button.ncm-conv__btn:hover { border-color: var(--ncm-secondary) !important; }
+.ncm-app button.ncm-conv__btn.is-on { background: color-mix(in srgb, var(--ncm-secondary) 16%, transparent) !important; border-color: var(--ncm-secondary) !important; }
+.ncm-app button.ncm-conv__btn--go { background: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; color: var(--ncm-text-inverse, #06080a) !important; font-weight: 700; }
+.ncm-app button.ncm-conv__btn--go:hover { filter: brightness(1.12); }
+.ncm-app button.ncm-conv__btn--bad { color: var(--ncm-text-primary) !important; border-color: var(--ncm-danger) !important; }
+.ncm-app button.ncm-conv__btn--bad i { color: var(--ncm-danger); }
+.ncm-app button.ncm-conv__icon { width: calc(26px * var(--ncm-text-scale, 1)) !important; height: calc(26px * var(--ncm-text-scale, 1)) !important; padding: 0 !important; display: inline-flex !important; align-items: center; justify-content: center; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; background: var(--ncm-bg-surface) !important; color: var(--ncm-text-primary) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app button.ncm-conv__icon:hover { border-color: var(--ncm-secondary) !important; }
+
+.ncm-app .ncm-conv__scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 16px 12px; display: flex; flex-direction: column; }
+.ncm-app .ncm-conv__rule { flex: none; display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__rule::before, .ncm-app .ncm-conv__rule::after { content: ''; flex: 1; height: 1px; background: var(--ncm-border); }
+.ncm-app .ncm-conv__rule--new { color: var(--ncm-text-primary); font-family: var(--ncm-font-display); font-weight: 700; }
+.ncm-app .ncm-conv__rule--new::before, .ncm-app .ncm-conv__rule--new::after { background: var(--ncm-secondary); }
+.ncm-app .ncm-conv__rule--sys { font-family: var(--ncm-font-display); }
+.ncm-app .ncm-conv__rule--sys i { margin: 0; }
+.ncm-app button.ncm-conv__link { align-self: center; height: auto !important; padding: 3px 12px !important; border: 1px dashed var(--ncm-border) !important; border-radius: 2px !important; background: transparent !important; color: var(--ncm-text-secondary) !important; font-family: var(--ncm-font-display) !important; font-size: calc(11.5px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app button.ncm-conv__link:hover { color: var(--ncm-text-primary) !important; border-color: var(--ncm-secondary) !important; }
+.ncm-app button.ncm-conv__link i { margin: 0 4px 0 0 !important; }
+
+.ncm-app .ncm-conv__m { flex: none; display: grid; grid-template-columns: calc(30px * var(--ncm-text-scale, 1)) minmax(0, 1fr); gap: 0 9px; max-width: 84%; align-self: flex-start; margin-top: 8px; }
+.ncm-app .ncm-conv__m.is-cont { margin-top: 2px; }
+.ncm-app .ncm-conv__m.is-mine { align-self: flex-end; grid-template-columns: minmax(0, 1fr); }
+.ncm-app .ncm-conv__m.is-mine .ncm-conv__who { justify-content: flex-end; }
+.ncm-app .ncm-conv__who { display: flex; align-items: baseline; gap: 8px; margin: 0 0 2px; }
+.ncm-app .ncm-conv__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__alias { font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__time { flex: none; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__bubble { padding: 6px 10px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-surface); color: var(--ncm-text-primary); font-family: var(--ncm-font-body); font-size: calc(13.5px * var(--ncm-text-scale, 1)); line-height: 1.4; overflow-wrap: anywhere; user-select: text; }
+.ncm-app .ncm-conv__m.is-mine .ncm-conv__bubble { background: color-mix(in srgb, var(--ncm-secondary) 13%, var(--ncm-bg-surface)); border-color: color-mix(in srgb, var(--ncm-secondary) 38%, var(--ncm-border)); }
+.ncm-app .ncm-conv__state { margin-top: 2px; text-align: right; font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__state i { margin: 0 3px 0 0; }
+.ncm-app .ncm-conv__pic { display: block; width: 260px; max-width: 100%; height: 130px; border: 1px solid var(--ncm-border); border-radius: 2px; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ncm-secondary) 18%, var(--ncm-bg-surface)) 0 10px, var(--ncm-bg-surface) 10px 20px); }
+.ncm-app .ncm-conv__mailnote { display: flex; align-items: center; gap: 7px; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+
+/* The bar */
+.ncm-app .ncm-conv__bar { flex: none; border-top: 1px solid var(--ncm-border); padding: 7px 16px 9px; background: var(--ncm-bg-surface); }
+.ncm-app .ncm-conv__alert { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; padding: 4px 8px; border: 1px solid color-mix(in srgb, var(--ncm-warning) 45%, var(--ncm-border)); background: color-mix(in srgb, var(--ncm-warning) 10%, transparent); font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__alert i { margin: 0; color: var(--ncm-warning); }
+.ncm-app .ncm-conv__as { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__write { display: flex; align-items: flex-end; gap: 5px; }
+.ncm-app textarea.ncm-conv__input { flex: 1; min-width: 0; display: block; resize: none !important; overflow-y: auto; min-height: calc(28px * var(--ncm-text-scale, 1)) !important; height: calc(28px * var(--ncm-text-scale, 1)); max-height: calc(130px * var(--ncm-text-scale, 1)); margin: 0 !important; padding: 5px 8px !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; box-shadow: none !important; outline: none !important; background: var(--ncm-bg-base) !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-body) !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; line-height: 1.35 !important; text-align: left !important; }
+.ncm-app textarea.ncm-conv__input:focus { border-color: var(--ncm-secondary) !important; }
+.ncm-app textarea.ncm-conv__input::placeholder { color: var(--ncm-text-secondary); opacity: 1; }
+.ncm-app .ncm-conv__write button.ncm-conv__icon, .ncm-app .ncm-conv__write button.ncm-conv__btn { height: calc(28px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app .ncm-conv__write button.ncm-conv__icon { width: calc(28px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app .ncm-conv__gone { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); font-family: var(--ncm-font-display); font-size: calc(12.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__gone i { margin: 0; color: var(--ncm-text-secondary); }
+
+.ncm-app .ncm-conv__m { position: relative; }
+.ncm-app button.ncm-conv__rm { position: absolute; right: -32px; bottom: 0; opacity: 0; }
+.ncm-app .ncm-conv__m:is(:hover, :focus-within) button.ncm-conv__rm { opacity: 1; }
+/* A shared contact: the Data Drop in the line */
+.ncm-app .ncm-conv__drop { width: 300px; max-width: 100%; border: 1px solid color-mix(in srgb, var(--c) 45%, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-surface); overflow: hidden; }
+.ncm-app .ncm-conv__droptop { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--ncm-border); font: 700 calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__droptop > i { margin: 0; color: var(--c); }
+.ncm-app .ncm-conv__droproute { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 5px; font: 400 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); letter-spacing: 0; text-transform: none; color: var(--ncm-text-secondary); white-space: nowrap; }
+.ncm-app .ncm-conv__droproute .wire { flex: 0 1 34px; height: 2px; background: var(--ncm-border); overflow: hidden; }
+.ncm-app .ncm-conv__droproute .fill { display: block; height: 100%; width: 100%; background: var(--c); box-shadow: 0 0 6px var(--c); }
+.ncm-app .ncm-conv__dropbody { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px 8px; overflow: hidden; }
+.ncm-app .ncm-conv__sweep { display: none; position: absolute; inset: 0 auto 0 0; width: 34%; pointer-events: none; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--c) 38%, transparent), transparent); }
+.ncm-app .ncm-conv__dropav { width: calc(38px * var(--ncm-text-scale, 1)); height: calc(38px * var(--ncm-text-scale, 1)); font-size: calc(15px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-conv__dropinfo { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.ncm-app .ncm-conv__dropname { font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; }
+.ncm-app .ncm-conv__droprole { font: 600 calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-display); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__dropv { display: flex; align-items: center; gap: 6px; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--ncm-text-primary); overflow-wrap: anywhere; user-select: text; }
+.ncm-app .ncm-conv__dropv i { margin: 0; width: 12px; text-align: center; color: var(--c); }
+.ncm-app .ncm-conv__dropfoot { display: flex; justify-content: flex-end; padding: 0 10px 8px; }
+.ncm-app .ncm-conv__dropdone { display: inline-flex; align-items: center; gap: 5px; font: 600 calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__dropdone i { margin: 0; }
+.ncm-app .ncm-conv__dropdone.is-saved { color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__dropdone.is-saved i { color: var(--ncm-success, #4be38a); }
+@media (prefers-reduced-motion: no-preference) {
+  .ncm-app .ncm-conv__drop.is-fresh { animation: ncm-conv-dropin .28s ease-out both; }
+  .ncm-app .ncm-conv__drop.is-fresh .fill { animation: ncm-conv-wire .6s .15s ease-out both; }
+  .ncm-app .ncm-conv__drop.is-fresh .ncm-conv__sweep { display: block; animation: ncm-conv-sweep .8s .55s ease-in-out both; }
+  .ncm-app .ncm-conv__drop.is-fresh .ncm-conv__dropav { animation: ncm-conv-avpop .35s .7s cubic-bezier(.2,1.5,.4,1) both; }
+  .ncm-app .ncm-conv__drop.is-fresh .ncm-conv__dropname { animation: ncm-conv-type .55s .85s steps(14) both; }
+  .ncm-app .ncm-conv__drop.is-fresh .ncm-conv__droprole, .ncm-app .ncm-conv__drop.is-fresh .ncm-conv__dropv { animation: ncm-conv-rise .25s 1.3s ease-out both; }
+  .ncm-app .ncm-conv__drop.is-fresh .ncm-conv__dropv:last-child { animation-delay: 1.42s; }
+  .ncm-app .ncm-conv__drop.is-fresh .ncm-conv__dropfoot { animation: ncm-conv-rise .25s 1.6s ease-out both; }
+  .ncm-app .ncm-conv__drop.is-savednow { animation: ncm-conv-saved .7s ease-out both; }
+  .ncm-app .ncm-conv__drop.is-savednow .ncm-conv__dropdone { animation: ncm-conv-rise .25s ease-out both; }
+}
+@keyframes ncm-conv-dropin { from { opacity: 0; transform: translateY(6px); } }
+@keyframes ncm-conv-wire { from { transform: translateX(-100%); } }
+@keyframes ncm-conv-sweep { from { transform: translateX(-110%); } to { transform: translateX(320%); } }
+@keyframes ncm-conv-avpop { from { transform: scale(.2); opacity: 0; filter: brightness(2.2); } }
+@keyframes ncm-conv-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes ncm-conv-rise { from { opacity: 0; transform: translateY(3px); } }
+@keyframes ncm-conv-saved { 0% { box-shadow: 0 0 0 0 var(--ncm-success, #4be38a); } 100% { box-shadow: 0 0 0 10px transparent; } }
+
+/* The + menu */
+.ncm-app .ncm-conv__plus { position: relative; flex: none; display: inline-flex; }
+.ncm-app .ncm-conv__plusmenu { position: absolute; right: 0; bottom: calc(100% + 4px); z-index: 6; width: 210px; padding: 4px; display: flex; flex-direction: column; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-surface); box-shadow: 0 8px 22px rgba(0,0,0,.45); }
+.ncm-app .ncm-conv__plusmenu button.ncm-conv__rowbtn { justify-content: flex-start !important; }
+.ncm-app .ncm-conv__seg { display: flex; gap: 4px; margin-top: 3px; }
+.ncm-app button.ncm-conv__rowbtn.is-on { background: color-mix(in srgb, var(--ncm-secondary) 16%, transparent) !important; }
+.ncm-app button.ncm-conv__btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* A tap log */
+.ncm-viewer__detail-body pre.ncm-conv__taplogp { white-space: pre-wrap; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); color: var(--ncm-text-primary); background: none; border: 0; padding: 0; }
+
+/* Members panel */
+.ncm-app .ncm-conv__panel { flex: none; width: 236px; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); }
+.ncm-app .ncm-conv__panelhd { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-bottom: 1px solid var(--ncm-border); font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__panelbody { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 8px; }
+.ncm-app .ncm-conv__member { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+.ncm-app .ncm-conv__member > div:nth-child(2) { flex: 1; min-width: 0; }
+.ncm-app .ncm-conv__mname { display: block; font-family: var(--ncm-font-display); font-weight: 600; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-conv__maddr { display: block; font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-conv__panelfoot { flex: none; display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; border-top: 1px solid var(--ncm-border); }
+.ncm-app .ncm-conv__panelfoot button.ncm-conv__btn { width: 100% !important; }
+.ncm-app .ncm-conv__panelnote { font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); line-height: 1.3; color: var(--ncm-text-secondary); }
+
+/* Dialogs (the real ones would use the themed dialog wrappers; drawn here over the window) */
+.ncm-app .ncm-conv__scrim { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.45); }
+.ncm-app .ncm-conv__dlg { width: 420px; max-width: 92%; max-height: 92%; display: flex; flex-direction: column; border: 1px solid var(--ncm-border-active, var(--ncm-border)); border-radius: 2px; background: var(--ncm-bg-surface); box-shadow: 0 10px 40px rgba(0,0,0,.55); }
+.ncm-app .ncm-conv__dlghd { flex: none; padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(14px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__dlgbody { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.ncm-app .ncm-conv__dlgft { flex: none; display: flex; justify-content: flex-end; gap: 6px; padding: 9px 14px; border-top: 1px solid var(--ncm-border); }
+.ncm-app .ncm-conv__dlg label.ncm-conv__fl { display: block; margin: 0; text-transform: none; font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__dlg input[type=text] { display: block; width: 100% !important; box-sizing: border-box; height: calc(28px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 3px 0 0 !important; padding: 0 8px !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; box-shadow: none !important; background: var(--ncm-bg-base) !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-body) !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; text-align: left !important; }
+.ncm-app .ncm-conv__dlg input[type=text]::placeholder { color: var(--ncm-text-secondary); opacity: 1; }
+.ncm-app .ncm-conv__chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ncm-app .ncm-conv__chip { display: inline-flex; align-items: center; gap: 5px; height: calc(22px * var(--ncm-text-scale, 1)); padding: 0 7px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); font-family: var(--ncm-font-display); font-weight: 600; font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--c, var(--ncm-secondary)); }
+.ncm-app .ncm-conv__chip i { margin: 0; font-size: .85em; color: var(--ncm-text-secondary); }
+.ncm-app button.ncm-conv__rowbtn { display: flex !important; align-items: center; gap: 8px; width: 100% !important; height: auto !important; padding: 5px 6px !important; border: 0 !important; border-radius: 2px !important; background: none !important; color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; text-align: left !important; }
+.ncm-app button.ncm-conv__rowbtn:hover { background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent) !important; }
+.ncm-app button.ncm-conv__rowbtn small { margin-left: auto; font-family: var(--ncm-font-mono); font-size: .8em; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__check { display: flex !important; align-items: flex-start; gap: 8px; margin: 0; text-transform: none !important; font-family: var(--ncm-font-body) !important; font-weight: 400 !important; font-size: calc(13px * var(--ncm-text-scale, 1)) !important; line-height: 1.3; color: var(--ncm-text-primary) !important; cursor: pointer; }
+.ncm-app .ncm-conv__check input { --checkbox-size: 14px; flex: none; width: 14px !important; height: 14px !important; margin: 2px 0 0 !important; }
+.ncm-app .ncm-conv__check small { display: block; font-size: .88em; color: var(--ncm-text-secondary); }
+
+/* Admin → Messages → Conversations */
+.ncm-app .ncm-conv__atb { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-app label.ncm-conv__asearch { flex: 1 1 160px; min-width: 120px; display: flex; align-items: center; gap: 6px; margin: 0; padding: 0 8px; height: 28px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card); text-transform: none; color: var(--ncm-text-label); }
+.ncm-app label.ncm-conv__asearch input { flex: 1; min-width: 0; height: 26px !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; color: var(--ncm-text-heading) !important; font: 13px var(--ncm-font-body) !important; text-align: left !important; }
+.ncm-app label.ncm-conv__asearch input::placeholder { color: var(--ncm-text-hint); opacity: 1; }
+.ncm-app label.ncm-conv__asel { flex: none; display: inline-flex; align-items: center; gap: 5px; margin: 0; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--ncm-text-label); }
+.ncm-app label.ncm-conv__asel select { width: auto; max-width: 150px; height: 28px !important; min-height: 0 !important; text-transform: none; letter-spacing: 0; }
+.ncm-app .ncm-conv__adminsplit { flex: 1; min-height: 0; display: grid; grid-template-columns: 290px minmax(0, 1fr); }
+.ncm-app .ncm-conv__adminlist { min-height: 0; overflow-y: auto; overflow-x: hidden; border-right: 1px solid var(--ncm-border); background: var(--ncm-bg-pane, var(--ncm-bg-surface)); }
+.ncm-app button.ncm-conv__arow { appearance: none; display: flex; align-items: flex-start; width: 100%; height: auto; min-height: 0; margin: 0; padding: 9px 10px; gap: 2px; border: 0; border-bottom: 1px solid var(--ncm-border); border-radius: 0; background: none; box-shadow: none; color: var(--ncm-text-primary); text-align: left; cursor: pointer; line-height: 1.25; }
+.ncm-app button.ncm-conv__arow:hover { background: var(--ncm-bg-hover, color-mix(in srgb, var(--ncm-secondary) 8%, transparent)); }
+.ncm-app button.ncm-conv__arow.is-on { background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent); box-shadow: inset 4px 0 0 var(--ncm-secondary); }
+.ncm-app .ncm-conv__arowtx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ncm-app .ncm-conv__arowtx b { font: 700 13px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-conv__arowtx small { font: 12px var(--ncm-font-body); color: var(--ncm-text-label, var(--ncm-text-secondary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-conv__atags { display: flex; align-items: center; gap: 6px; margin-top: 2px; flex-wrap: wrap; }
+.ncm-app .ncm-conv__acount { font: 11px var(--ncm-font-mono); color: var(--ncm-text-label, var(--ncm-text-secondary)); }
+.ncm-app .ncm-conv__adminpane { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--ncm-bg-pane-alt, var(--ncm-bg-base)); }
+.ncm-app .ncm-conv__adminpane .ncm-conv__panel { width: 214px; }
+.ncm-app .ncm-conv__npc { padding: 0 4px; border: 1px solid var(--ncm-border); border-radius: 1px; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__alias.is-secret { color: color-mix(in oklab, var(--ncm-secret, var(--ncm-purple, #c9a0ff)) var(--ncm-ink, 65%), var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-app .ncm-conv__asb { color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__asnote { margin-left: auto; font-family: var(--ncm-font-body); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__dlgsel { display: block; width: 100%; margin-top: 3px; height: calc(28px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app button.ncm-conv__icon.is-on { border-color: var(--ncm-secondary) !important; background: color-mix(in srgb, var(--ncm-secondary) 16%, transparent) !important; }
+.ncm-app .ncm-conv__obs { flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-card, var(--ncm-bg-surface)); font: 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+.ncm-app .ncm-conv__obs > span { flex: 1; min-width: 0; }
+.ncm-app .ncm-conv__obs > i { color: var(--ncm-secret, var(--ncm-text-secondary)); }
+
+@container ncm-conv (max-width: 700px) {
+  .ncm-app .ncm-conv__panel, .ncm-app .ncm-conv__adminpane .ncm-conv__panel { position: absolute; inset: 0 0 0 auto; z-index: 4; width: min(236px, 86%); box-shadow: -8px 0 24px rgba(0,0,0,.4); }
+}
+/* A narrow chat: the title keeps the room, the tags and Members shrink to their icons. Their tooltips still say what they mean. */
+@container ncm-conv (max-width: 560px) {
+  .ncm-app .ncm-conv__head { gap: 6px; padding-inline: 10px; }
+  .ncm-app .ncm-conv__head .ncm-tagp { font-size: 0; gap: 0; padding-inline: 5px; }
+  .ncm-app .ncm-conv__head .ncm-tagp i { font-size: calc(11px * var(--ncm-text-scale, 1)); margin: 0; }
+  .ncm-app .ncm-conv__head .ncm-conv__btn { font-size: 0; gap: 0; }
+  .ncm-app .ncm-conv__head .ncm-conv__btn i { font-size: calc(12px * var(--ncm-text-scale, 1)); margin: 0; }
+  .ncm-app .ncm-conv__write .ncm-conv__btn { font-size: 0; }
+  .ncm-app .ncm-conv__write .ncm-conv__btn i { font-size: calc(12px * var(--ncm-text-scale, 1)); margin: 0; }
+}
+
+.ncm-app .ncm-pill__badge[hidden] { display: none; }
+
+/* New conversation, GM: the NPC chips. Same size as the button beside them. */
+.ncm-app button.ncm-conv__aspick { appearance: none; width: auto; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; height: calc(30px * var(--ncm-text-scale, 1)); min-height: 0; margin: 0; padding: 0 9px 0 4px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-surface); box-shadow: none; color: var(--ncm-text-primary); font: 600 calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-display); cursor: pointer; }
+.ncm-app button.ncm-conv__aspick:hover { border-color: var(--ncm-secondary); }
+.ncm-app button.ncm-conv__aspick.is-on { border-color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 16%, var(--ncm-bg-surface)); color: var(--ncm-text-primary); }
+.ncm-app button.ncm-conv__aspick .ncm-conv__av { width: calc(22px * var(--ncm-text-scale, 1)); height: calc(22px * var(--ncm-text-scale, 1)); font-size: calc(10px * var(--ncm-text-scale, 1)); }
+
+/* GM: swap who you are speaking as, one click. Wraps rather than scrolls so every NPC stays in sight. */
+.ncm-app .ncm-conv__as:has(.ncm-conv__asrow) { align-items: flex-start; }
+.ncm-app .ncm-conv__aslabel { flex: none; line-height: calc(26px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__asrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.ncm-app .ncm-conv__asrow button.ncm-conv__aspick { height: calc(26px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-conv__asrow button.ncm-conv__icon { width: calc(26px * var(--ncm-text-scale, 1)) !important; height: calc(26px * var(--ncm-text-scale, 1)) !important; }
+
+/* The emoji button sits inside the box, and the text stops short of it. */
+.ncm-app .ncm-conv__field { flex: 1; min-width: 0; position: relative; display: flex; }
+.ncm-app .ncm-conv__field textarea.ncm-conv__input { padding-right: calc(30px * var(--ncm-text-scale, 1)) !important; }
+.ncm-app button.ncm-conv__emojibtn { appearance: none; position: absolute; right: 2px; bottom: 2px; width: calc(24px * var(--ncm-text-scale, 1)) !important; height: calc(24px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0 !important; border-radius: 2px; background: none !important; box-shadow: none !important; color: var(--ncm-text-secondary); font-size: calc(14px * var(--ncm-text-scale, 1)); cursor: pointer; }
+.ncm-app button.ncm-conv__emojibtn:hover { color: var(--ncm-secondary); }
+.ncm-app button.ncm-conv__emojibtn i { margin: 0 !important; }
+.ncm-app .ncm-conv__emojipop { position: absolute; right: 0; bottom: calc(100% + 4px); z-index: 6; width: min(264px, 100%); padding: 6px 8px 8px; border: 1px solid var(--ncm-border-active); border-radius: 2px; background: var(--ncm-bg-surface); box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+.ncm-app .ncm-conv__emojipop[hidden] { display: none; }
+.ncm-app .ncm-conv__emojihd { margin: 4px 0 3px; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-conv__emojigrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+.ncm-app .ncm-conv__emojigrid button { appearance: none; width: auto !important; height: calc(28px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; margin: 0; padding: 0; border: 0 !important; border-radius: 2px; background: none !important; box-shadow: none !important; font-size: calc(16px * var(--ncm-text-scale, 1)); line-height: 1; cursor: pointer; }
+.ncm-app .ncm-conv__emojigrid button:hover { background: var(--ncm-bg-hover) !important; }

@@ -93,6 +93,10 @@ export const EVENTS = Object.freeze({
   CALL_ENDED:   'call:ended',       // { call } — any outcome
   CALL_MISSED:  'call:missed',      // { call } — rang here, nobody answered
   VOICEMAIL_LEFT: 'call:voicemail', // { vm } — a voicemail was left for a line this client follows (its owner, or a GM)
+  CONVERSATION_LINE: 'conversation:line',         // { id, lines } a line reached this client
+  CONVERSATION_UPDATED: 'conversation:updated',   // { id } started, renamed, members changed, deleted
+  CONVERSATION_READ: 'conversation:read',         // { id } read or muted, on this client
+  CONVERSATION_PENDING: 'conversation:pending',   // { id } a line being sent, held or failed, on this client
   CALL_LOGGED: 'call:logged',       // { kind: 'log'|'voicemail' } — a call-log or voicemail page appeared / changed / went
   CALL_GLITCH: 'call:glitch',       // { callId } — the GM made the line stutter
   CALL_TRACED: 'call:traced',       // { callId, from } — a withheld caller was revealed to this client
@@ -197,6 +201,8 @@ export const SOCKET_OPS = Object.freeze({
   CALL_LOG_REQUEST: 'call:logRequest',
   CALL_LINE_REQUEST: 'call:lineRequest',
   CALL_EMERGENCY: 'call:emergency',
+  CONVERSATION_REQUEST: 'conversation:request',   // a player's write, for the GM to land
+  CONVERSATION_RESULT: 'conversation:result',     // how it went, for that player
   CALL_OVERHEARD: 'call:overheard',
   CALL_VM_REQUEST: 'call:vmRequest',          // a player leaves / marks heard / deletes a voicemail → the GM writes
   CALL_AUDIO: 'call:audio',                   // a recording in pieces (player → GM), the GM saves it as a file
@@ -1711,3 +1717,9 @@ export const FONT_OPTIONS = Object.freeze([
   { key: 'teko', label: 'Teko', family: "'Teko', sans-serif", google: 'Teko:wght@400;500;600;700' },
   { key: 'vt323', label: 'VT323', family: "'VT323', monospace", google: 'VT323' },
 ]);
+
+/** Curated emoji palette for chats, authored and live (native OS emoji — no assets). */
+export const CHAT_EMOJI = {
+  Frequent: ['😂', '❤️', '👍', '🔥', '👀', '💀', '😅', '🙏', '😎', '💯', '😭', '🤔', '👎', '😱', '🥶', '🤝'],
+  'Night City': ['🔫', '💊', '💉', '🤖', '⚡', '💾', '📡', '🩸', '🎭', '🚗', '💣', '🕶️', '📟', '🧠', '⛓️', '☠️'],
+};

@@ -245,7 +245,7 @@ for (const m of ['placeCall', 'getOverheardCalls', 'startOverheardCall']) ok(new
 
 // ═══ 11. The guides ═══
 const PGuide = src('docs/PLAYER-GUIDE.md'), GGuide = src('docs/GETTING-STARTED.md');
-ok(/## Part 9 — Calls/.test(PGuide) && /## Part 10 — Make it yours/.test(PGuide), 'the Player Guide has Calls');
+ok(/## Part 9 — Calls/.test(PGuide) && /## Part 11 — Make it yours/.test(PGuide), 'the Player Guide has Calls');
 ok(/## Part 9 — Phone calls/.test(GGuide), 'the Getting Started guide has Phone calls');
 for (const ex of ['WAT-4471', 'SF NFF-2210', '+14 DAL CEN-3345']) {
   ok(PGuide.includes(ex) && GGuide.includes(ex), `both guides use ${ex}`);

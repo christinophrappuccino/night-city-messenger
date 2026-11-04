@@ -61,6 +61,7 @@
       <div class="ncm-msg2-dd__menu">
         <button type="button" class="ncm-msg2-dd__item" data-action="openComposer"><i class="fas fa-envelope"></i> Message</button>
         <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="sendAsPick"><i class="fas fa-masks-theater"></i> Message as an NPC…</button>
+        {{#if conversationsOn}}<button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="newConversation"><i class="fas fa-comments"></i> Conversation</button>{{/if}}
       </div>
     </details>
   </div>
@@ -204,6 +205,7 @@
     {{/with}}{{/if}}
 
     {{!-- ═══════════════ ALL MAIL ═══════════════ --}}
+    {{#if isConv}}<div class="ncm-msg2-convwrap" data-conv-admin></div>{{/if}}
     {{#if isAll}}
     <div class="ncm-msg2-tb">
       <span class="ncm-msg2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-msg2-search value="{{all.search}}" placeholder="Search subject, body, address…"></span>

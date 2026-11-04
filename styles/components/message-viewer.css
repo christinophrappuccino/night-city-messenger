@@ -1967,3 +1967,18 @@
   color: var(--ncm-text-secondary); border: 1px solid var(--ncm-border); border-radius: 2px;
   vertical-align: middle; cursor: help;
 }
+
+/* GM: Switch inbox, in the identity drawer. Its list scrolls, so the drawer's footer stays reachable however big the world is. */
+.ncm-app .ncm-viewer__gmswitch-search { display: flex; align-items: center; gap: 7px; height: calc(28px * var(--ncm-text-scale, 1)); padding: 0 8px; margin: 0 0 6px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-base); color: var(--ncm-text-secondary); text-transform: none; font-size: calc(12px * var(--ncm-text-scale, 1)); }
+.ncm-app .ncm-viewer__gmswitch-search:focus-within { border-color: var(--ncm-secondary); }
+.ncm-app .ncm-viewer__gmswitch-search input[type=text] { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0 !important; background: none !important; box-shadow: none !important; color: var(--ncm-text-primary); font: inherit; font-family: var(--ncm-font-body); }
+.ncm-app .ncm-viewer__gmswitch-list { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-viewer__gmswitch-list > * { flex: 0 0 auto; }
+.ncm-app .ncm-viewer__gmswitch-head { display: flex; justify-content: space-between; margin-top: 6px; padding: 2px 2px; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-viewer__gmswitch-head:first-child { margin-top: 0; }
+.ncm-app .ncm-viewer__gmswitch-unread { flex: none; min-width: 16px; padding: 0 4px; border-radius: 2px; background: var(--ncm-accent); color: var(--ncm-text-inverse); text-align: center; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); }
+.ncm-app .ncm-viewer__gmswitch-none { padding: 10px 2px; font-family: var(--ncm-font-body); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); }
+.ncm-app .ncm-viewer__gmswitch-none[hidden] { display: none; }
+.ncm-app .ncm-viewer__gmswitch .ncm-viewer__drawer-char-avatar { color: var(--ncm-text-primary); }
+.ncm-app .ncm-viewer__gmswitch .ncm-viewer__drawer-char-name, .ncm-app .ncm-viewer__gmswitch .ncm-viewer__drawer-char-email { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-app .ncm-viewer__gmswitch .ncm-viewer__drawer-char-email { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); opacity: 1; }

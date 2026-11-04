@@ -133,6 +133,11 @@ One journal per conversation, in a **Conversations** folder under "Night City Me
 
 ## Privacy: page ownership does the work
 
+> **Superseded when built (2026-11-02).** The two-client probe showed a page with no access still reaches every client, so page ownership
+> hides nothing. Pages have no ownership maps. The journal is GM-only so it stays out of every sidebar, membership spans decide what a
+> screen draws, and privacy is the same as mail: hidden in the UI, readable from a browser console. Read state lives on a user flag.
+
+
 A member list alone would not hide anything, because lines already on a client can be read from there. So access follows
 Foundry page ownership, set from the users who own each member's character:
 

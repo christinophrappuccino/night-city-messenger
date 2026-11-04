@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inbox switch probe</title>
+<!--
+  The GM's Switch inbox and Character Select NPC list: the REAL viewer method, the REAL Character Select list + template, the real cascade.
+  Serve: node dev/tools/serve-mockups.cjs, then
+  http://127.0.0.1:8123/dev/mockups/inbox-switch-probe.html?view=drawer|select&t=clean-dark|clean-light|high-contrast&q=doc&drive=1&contrast=1&recent=1&many=200
+-->
+<link rel="stylesheet" href="/_vendor/foundry2.css">
+<link rel="stylesheet" href="/_vendor/cpr.css">
+<link rel="stylesheet" href="/_vendor/fa/css/all.min.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  html, body { height: auto !important; overflow: auto !important; }
+  body { margin: 0; padding: 18px; background: #07080c !important; display: block !important; }
+  #win { position: relative !important; inset: auto !important; transform: none !important; width: 860px; height: 660px; max-height: none !important; }
+  #win .ncm-viewer { position: relative; width: 100%; height: 100%; background: var(--ncm-bg-base); overflow: hidden; }
+  #report { color: #9fb; font: 12px monospace; white-space: pre-wrap; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="ncm-app" id="win"></div>
+<div id="report"></div>
+<script src="/_vendor/handlebars.js"></script>
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  addEventListener('unhandledrejection', (e) => { document.title = 'ERR ' + (e.reason?.stack || e.reason); });
+  addEventListener('error', (e) => { document.title = 'ERR ' + e.message; });
+  const view = q.get('view') || 'drawer';
+  const win = document.getElementById('win');
+  if (q.get('t')) win.setAttribute('data-ncm-admin-theme', q.get('t'));
+
+  class ApplicationV2 { constructor(o = {}) { this.options = o; } get element() { return this._el; } set element(v) { this._el = v; } get rendered() { return true; } async render() {} async close() {} _onRender() {} }
+  globalThis.foundry = { utils: { randomID: () => 'x', deepClone: (x) => JSON.parse(JSON.stringify(x)), mergeObject: (a, b) => ({ ...a, ...b }), getRoute: (p) => p }, applications: { api: { ApplicationV2, HandlebarsApplicationMixin: (B) => B }, instances: new Map() } };
+  globalThis.Hooks = { on: () => 1, off() {}, once() {} };
+  globalThis.ui = { notifications: { warn() {}, info() {} }, windows: {} };
+  const M = 'night-city-messenger';
+  const actor = (id, name, owned, email, img = '') => ({ id, name, img, type: 'character', hasPlayerOwner: owned, isOwner: true, items: [], ownership: {}, getFlag: (_, k) => (k === 'email' ? email : undefined), testUserPermission: () => owned });
+  const actors = [actor('v', 'V', true, 'v@nc.net'), actor('ra', 'Rache', true, 'rache@nc.net'), actor('mox', 'Mox', false, 'mox@lizzies.nc'), actor('guard', 'Pier Guard', false, '')];
+  const dir = [
+    { id: 'c-v', name: 'V', email: 'v@nc.net', actorId: 'v', primaryIdentity: true },
+    { id: 'c-silver', name: 'Silver', email: 'silver@burner.nc', actorId: 'v' },
+    { id: 'c-mox', name: 'Mox', email: 'mox@lizzies.nc', actorId: 'mox', primaryIdentity: true, role: 'Fixer' },
+    { id: 'c-dao', name: 'Dao', email: 'dao@watson.nc', role: 'Ripperdoc' },
+    { id: 'c-doc', name: 'The Doctor', email: 'doc@burner.nc', identityOf: 'c-dao' },
+    { id: 'c-lone', name: 'Rogue', email: 'rogue@afterlife.nc', role: 'Fixer' },
+    { id: 'c-sys', name: 'NetWatch', email: 'no-reply@netwatch.nc', sendOnly: true },
+  ];
+  for (let i = 0; i < Number(q.get('many') || 0); i++) dir.push({ id: `c-n${i}`, name: `Extra NPC ${i}`, email: `npc${i}@nc.net` });
+  const users = [{ id: 'gm', isGM: true, name: 'GM', character: null }, { id: 'u1', isGM: false, name: 'Sam', character: actors[0] }, { id: 'u2', isGM: false, name: 'Lee', character: actors[1] }];
+  const page = (read) => ({ flags: { [M]: { messageId: 'm' + Math.random(), status: { read } } } });
+  const journals = [{ id: 'j1', name: 'Dao — Mail', flags: { [M]: { type: 'contactInbox', contactId: 'c-dao' } }, pages: [page(false), page(false), page(true)] }, { id: 'j2', name: 'V — Inbox', flags: { [M]: { type: 'inbox', actorId: 'v' } }, pages: [page(false)] }];
+  globalThis.game = {
+    user: users[0], users: Object.assign(users, { activeGM: users[0], get: (id) => users.find((u) => u.id === id) }), world: { id: 'w' }, journal: Object.assign(journals, { get: (id) => journals.find((j) => j.id === id) }), scenes: { viewed: { id: 's1' } }, combat: null, i18n: { localize: (s) => s },
+    actors: Object.assign(actors, { get: (id) => actors.find((a) => a.id === id), contents: actors }), items: [], modules: new Map(),
+    settings: { get: (_, k) => { if (k === 'hiddenCharacters') return []; if (k === 'debugMode') return false; throw new Error('none ' + k); }, set: async () => {} },
+    nightcity: { masterContactService: { getAll: () => dir, isSendOnly: (e) => e === 'no-reply@netwatch.nc', getContact: (id) => dir.find((c) => c.id === id), getByActorId: (id) => dir.find((c) => c.actorId === id && c.primaryIdentity), getCustomRoles: () => [] }, contactRepository: { getActorEmail: (id) => actors.find((a) => a.id === id)?.getFlag(M, 'email') } },
+  };
+  if (q.get('recent')) localStorage.setItem('ncm.inbox.gmRecent', JSON.stringify(['c-dao', 'mox'])); else localStorage.removeItem('ncm.inbox.gmRecent');
+
+  const report = [];
+  const check = (c, m) => report.push(`${c ? 'ok  ' : 'FAIL'} ${m}`);
+  const wait = (ms = 60) => new Promise((r) => setTimeout(r, ms));
+
+  if (view === 'select') {
+    win.classList.add('ncm-character-select-window');
+    const { CharacterSelectApp } = await import('../../scripts/ui/CharacterSelect/CharacterSelectApp.js');
+    const app = Object.create(CharacterSelectApp.prototype);
+    app._selectedId = q.get('sel') || 'c-dao';
+    const ctx = await CharacterSelectApp.prototype._prepareContext.call(app, {});
+    const H = window.Handlebars;
+    for (const [k, f] of Object.entries({ 'ncm-term': () => 'Shard', eq: (a, b) => a === b, gt: (a, b) => a > b, or: (...a) => a.slice(0, -1).some(Boolean), and: (...a) => a.slice(0, -1).every(Boolean), not: (a) => !a })) H.registerHelper(k, f);
+    win.innerHTML = H.compile(await (await fetch('../../templates/character-select/character-select.hbs')).text())(ctx);
+    app._el = win;
+    if (q.get('drive')) {
+      check(ctx.characters.map((c) => c.id).join() === 'v,ra', 'Characters holds the players');
+      check(ctx.npcs.some((n) => n.id === 'c-lone') && ctx.npcs.some((n) => n.id === 'c-dao') && ctx.npcs.some((n) => n.id === 'guard') && ctx.npcs.some((n) => n.id === 'mox'), 'NPCs holds every NPC, sheet or no sheet');
+      check(!ctx.npcs.some((n) => n.id === 'v'), 'and no player');
+      check(ctx.selectedCharacter?.id === 'c-dao' && ctx.selectedCharacter.unreadCount === 2, 'a sheetless NPC can be selected, with its mail');
+      CharacterSelectApp.prototype._onSearchInput.call(app, { target: { value: 'doctor' } });
+      const vis = [...win.querySelectorAll('.ncm-cs__entry:not(.admin)')].filter((e) => e.style.display !== 'none').map((e) => e.dataset.entryId);
+      check(vis.join() === 'c-dao', 'searching an alias finds its NPC');
+      check(win.querySelector('.ncm-cs__divider[data-section="char"]').style.display === 'none', 'an empty section loses its heading');
+    }
+  } else {
+    const { MessageViewerApp } = await import('../../scripts/ui/MessageViewer/MessageViewerApp.js');
+    win.innerHTML = '<div class="ncm-viewer ncm-viewer--drawer-open"><div class="ncm-viewer__drawer"><div class="ncm-viewer__drawer-header"><span class="ncm-viewer__drawer-title">Identity</span></div><div class="ncm-viewer__drawer-section ncm-viewer__gmswitch"><div class="ncm-viewer__drawer-section-title">Switch inbox</div><div data-gm-switch></div></div></div></div>';
+    const opened = [];
+    win.addEventListener('click', (e) => { const r = e.target.closest('[data-action="switch-character"]'); if (r) opened.push(r.dataset.actorId); });
+    MessageViewerApp.prototype._paintInboxSwitch.call({ element: win, actorId: q.get('inbox') || 'c-dao', _customRoles: [] }, true);
+    const input = win.querySelector('[data-gm-switch-q]');
+    if (q.get('q')) { input.value = q.get('q'); input.dispatchEvent(new Event('input', { bubbles: true })); }
+    if (q.get('drive')) {
+      const rows = () => [...win.querySelectorAll('[data-sw-q]')].filter((e) => e.style.display !== 'none').map((e) => e.dataset.actorId);
+      const heads = () => [...win.querySelectorAll('.ncm-viewer__gmswitch-head')].filter((e) => e.style.display !== 'none').map((e) => e.firstChild.textContent.trim());
+      check(document.activeElement === input, 'the search takes focus');
+      check(rows().includes('c-lone') && rows().includes('c-dao') && rows().includes('guard') && rows().includes('mox') && rows().includes('v'), 'every inbox is listed');
+      check(!rows().includes('c-doc') && !rows().includes('c-silver'), 'an alias has no row of its own');
+      check(win.querySelector('.ncm-viewer__drawer-char--active')?.dataset.actorId === (q.get('inbox') || 'c-dao'), 'the open one is marked');
+      const type = (v) => { input.value = v; input.dispatchEvent(new Event('input', { bubbles: true })); };
+      type('doctor'); check(rows().join() === 'c-dao', 'an alias name finds the NPC');
+      check(heads().join() === 'NPCs', 'empty groups lose their heading');
+      type('burner'); check(rows().sort().join() === 'c-dao,v', 'an alias address finds its owner');
+      type('zzz'); check(!win.querySelector('.ncm-viewer__gmswitch-none').hidden, 'nobody says so');
+      type('rogue'); input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await wait();
+      check(opened.at(-1) === 'c-lone', 'Enter opens the first one left');
+      type('');
+      if (q.get('recent')) { check(heads()[0] === 'Recent', 'Recent comes first'); type('dao'); check(rows().join() === 'c-dao', 'search shows each NPC once, not again under Recent'); type(''); }
+      const list = win.querySelector('.ncm-viewer__gmswitch-list');
+      if (q.get('many')) check(list.scrollHeight > list.clientHeight && list.clientHeight <= 300, 'a big world scrolls inside the list');
+    }
+  }
+  if (q.get('drive')) { const bad = report.filter((r) => r.startsWith('FAIL')); document.getElementById('report').textContent = report.join('\n'); document.title = bad.length ? `FAIL ${bad.length}: ${bad[0]}` : `OK ${report.length}`; } else document.title = 'READY';
+
+  if (q.get('contrast')) {
+    await wait(400);
+    const cv = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    const read = (c) => { cv.clearRect(0, 0, 1, 1); cv.fillStyle = '#000'; cv.fillStyle = c; cv.fillRect(0, 0, 1, 1); const d = cv.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+    const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const over = (t, b) => [0, 1, 2].map((i) => t[i] * t[3] + b[i] * (1 - t[3]));
+    const bgOf = (el) => { const stack = []; for (let e = el; e; e = e.parentElement) { const c = read(getComputedStyle(e).backgroundColor); if (c[3] > 0) { stack.push(c); if (c[3] === 1) break; } } let out = [7, 8, 12]; for (const c of stack.reverse()) out = over(c, out); return out; };
+    const bad = []; let n = 0;
+    const root = win.querySelector('.ncm-viewer__gmswitch') || win;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) { const el = walker.currentNode.parentElement; if (!walker.currentNode.textContent.trim() || !el.offsetParent) continue; const fg = read(getComputedStyle(el).color); const bg = bgOf(el); const c = over(fg, bg); const [a, b] = [lum(c), lum(bg)].sort((x, y) => y - x); const r = (a + 0.05) / (b + 0.05); n++; if (r < 4.5) bad.push(`${r.toFixed(2)} ${el.className || el.tagName}: ${walker.currentNode.textContent.trim().slice(0, 30)}`); }
+    document.getElementById('report').textContent += `\ncontrast: ${n} text nodes, ${bad.length} under 4.5\n${[...new Set(bad)].slice(0, 10).join('\n')}`;
+    document.title += ` · contrast ${bad.length}/${n}`;
+  }
+</script>
+</body>
+</html>

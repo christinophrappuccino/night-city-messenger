@@ -23,6 +23,9 @@
  *     - _enrichMessages() passes currentNetworkName for network badge visibility logic
  */
 
+import { ConversationPane, startConversationDialog } from './conversationPane.js';
+import { gmInboxRoster, pushRecentInbox, ROSTER_GROUPS } from '../../utils/inboxRoster.js';
+import { rowAsMessage } from '../../utils/conversations.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { d10Odds } from '../../utils/rolls.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
@@ -94,7 +97,8 @@ function getNetPillState(signal, isDead) {
  * Message filters (inbox, unread, sent, saved, trash, spam) → 'messages'
  * Everything else maps directly.
  */
-const MESSAGE_FILTERS = new Set(['inbox', 'unread', 'sent', 'saved', 'trash', 'spam']);
+const MESSAGE_FILTERS = new Set(['inbox', 'unread', 'conversations', 'sent', 'saved', 'trash', 'spam']);
+const GM_RECENT_INBOXES = 'ncm.inbox.gmRecent';
 function getPrimaryTab(filter) {
   if (MESSAGE_FILTERS.has(filter)) return 'messages';
   if (filter === 'shards') return 'shards';
@@ -205,6 +209,7 @@ export class MessageViewerApp extends BaseApplication {
 
   /** @type {string|null} Currently selected message ID */
   selectedMessageId = null;
+  selectedConversationId = null;
 
   /** @type {boolean} Whether the selected message's full thread transcript is showing */
   _threadExpanded = false;
@@ -597,7 +602,20 @@ export class MessageViewerApp extends BaseApplication {
     const filtered = activeEnvFilter === 'all'
       ? folderMessages
       : folderMessages.filter(m => (m.envelope === 'file') === (activeEnvFilter === 'file'));
-    const sorted = this._applySorting(filtered);
+    // Conversations sit in the list as one row each, by their latest line. They have no network, attachment or eddies to filter on.
+    const convService = game.nightcity?.conversationService;
+    const conversationsOn = !!convService?.enabled;
+    const convRows = conversationsOn ? convService.rowsFor(this.actorId) : [];
+    if (this.selectedConversationId && !convRows.some((r) => r.id === this.selectedConversationId)) this.selectedConversationId = null;
+    const convShown = !['inbox', 'unread', 'conversations'].includes(this.currentFilter) || this.networkFilter || this._filterTags?.length ? [] : convRows.filter((r) => {
+      if (this.currentFilter === 'unread' && !r.unread) return false;
+      if (this.searchTerm && !`${r.title} ${r.preview}`.toLowerCase().includes(this.searchTerm.toLowerCase())) return false;
+      const at = r.lastAt ? new Date(r.lastAt).getTime() : 0;
+      if (this._dateRangeFrom && at < new Date(this._dateRangeFrom).getTime()) return false;
+      if (this._dateRangeTo && at >= new Date(this._dateRangeTo).getTime() + 86400000) return false;
+      return true;
+    });
+    const sorted = this._applySorting([...filtered, ...convShown.map(rowAsMessage)]);
 
     // Cache the full filtered list BEFORE pagination — _setPage uses this for maxPage
     this._cachedMessages = sorted;
@@ -605,7 +623,7 @@ export class MessageViewerApp extends BaseApplication {
     const paginated = this._applyPagination(sorted);
 
     // Store paginated IDs for keyboard navigation
-    this._lastPaginatedIds = paginated.map(m => m.messageId);
+    this._lastPaginatedIds = paginated.filter(m => !m.isConversation).map(m => m.messageId);
 
     // ── Actor/Contact identity for inbox header ──
     const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
@@ -643,6 +661,9 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Category counts ──
     const counts = this._computeCounts(allMessages);
+    counts.conversations = convRows.filter((r) => r.unread > 0).length;
+    counts.unread += counts.conversations;
+    counts.total += convRows.length;
 
     // ── Feature 6: Scheduled messages ──
     const scheduledRaw = game.nightcity?.schedulingService?.getPending?.() || [];
@@ -686,7 +707,10 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Network state ──
     const currentNetwork = this._getCurrentNetworkData();
-    const enriched = await this._enrichMessages(paginated, currentNetwork?.name);
+    // conversation rows skip the mail enrichment and keep their place in the page
+    const enrichedMail = await this._enrichMessages(paginated.filter(m => !m.isConversation), currentNetwork?.name);
+    const enriched = [];
+    { let i = 0; for (const m of paginated) enriched.push(m.isConversation ? { isConversation: true, ...m.conversation, selected: m.conversation.id === this.selectedConversationId, relTime: computeRelativeTime(m.conversation.lastAt).relativeTime, faces: m.conversation.faces.map((f) => ({ ...f, color: this._convHue(f.name) })) } : enrichedMail[i++]); }
     const availableNetworks = this._getAvailableNetworks();
     const signalStrength = this.networkService?.signalStrength ?? 100;
     const signalLevel = this._signalToLevel(signalStrength);
@@ -735,7 +759,7 @@ export class MessageViewerApp extends BaseApplication {
     const viewingAsRole = viewingActor?.system?.role
       || viewingActor?.system?.lifepath?.role
       || '';
-    const ownedCharacters = this._buildOwnedCharacters();
+    const ownedCharacters = game.user.isGM ? [] : this._buildOwnedCharacters();
 
     // ── Ambient Network State Strips ──
     const netEffects = currentNetwork?.effects || {};
@@ -847,8 +871,10 @@ export class MessageViewerApp extends BaseApplication {
       envFilter: envMixed ? { mail: envMailCount, file: envFileCount } : null,
       activeEnvFilter,
       selectedMessage,
-      totalMessages: filtered.length,
-      totalPages: Math.max(1, Math.ceil(filtered.length / MESSAGES_PER_PAGE)),
+      totalMessages: sorted.length,
+      totalPages: Math.max(1, Math.ceil(sorted.length / MESSAGES_PER_PAGE)),
+      conversationsOn,
+      selectedConversationId: this.selectedConversationId,
       currentPage: this.currentPage,
 
       // Filtering & Sorting
@@ -932,7 +958,11 @@ export class MessageViewerApp extends BaseApplication {
     // Responsive single-column pane state (only consumed by the narrow container
     // query): show the detail when a message is open, else the list.
     const viewerEl = html.querySelector('.ncm-viewer');
-    if (viewerEl) viewerEl.dataset.pane = this.selectedMessageId ? 'detail' : 'list';
+    if (viewerEl) viewerEl.dataset.pane = (this.selectedMessageId || this.selectedConversationId) ? 'detail' : 'list';
+    if (game.user.isGM && viewerEl?.classList.contains('ncm-viewer--drawer-open')) this._paintInboxSwitch();
+    const convHost = html.querySelector('[data-conv-host]');
+    if (convHost && this.selectedConversationId) { this._convPane ??= new ConversationPane({ actorId: () => this.actorId }); this._convPane.mount(convHost, this.selectedConversationId); }
+    else this._convPane?.leave();
 
     // Track current network for change detection
     this._previousNetwork = this._getCurrentNetworkData();
@@ -1414,8 +1444,33 @@ export class MessageViewerApp extends BaseApplication {
       case 'select-message':
         this._selectMessage(messageId);
         break;
+      case 'open-conversation':
+        this.selectedMessageId = null;
+        this.selectedConversationId = target.dataset.conversationId;
+        this.render();
+        break;
+      case 'new-conversation': {
+        const gm = !!game.user?.isGM;
+        const id = await startConversationDialog({ host: this.element.querySelector('.ncm-viewer') || this.element, actorId: this.actorId, gm });
+        if (!id) break;
+        if (gm) {
+          // Follow who the GM joined as, into their inbox.
+          const svc = game.nightcity.conversationService;
+          const conv = svc.get(id);
+          const starter = conv?.members.find((m) => m.key === conv.starterKey);
+          const owner = starter ? svc.inboxOwnerOf(starter) : null;
+          if (!owner) { game.nightcity.openAdminTab?.('messages', { select: `conv:${id}` }); break; }
+          this.actorId = owner;
+          this.currentPage = 1;
+        }
+        this.selectedMessageId = null;
+        this.selectedConversationId = id;
+        this.render();
+        break;
+      }
       case 'mobile-back':
         // Single-column (narrow) mode — return from the open message to the list.
+        this.selectedConversationId = null;
         this.selectedMessageId = null;
         this._threadExpanded = false;
         this.render();
@@ -1789,6 +1844,7 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'mark-all-read': {
         if (!this.actorId) break;
+        { const cs = game.nightcity?.conversationService; if (cs?.enabled) for (const c of cs.all()) { const me = cs.meIn(c, this.actorId); if (me) cs.markRead(c.id, me.key, c.lastSeq); } }
         const res = await this.messageService?.markAllAsRead?.(this.actorId);
         if (res?.success) {
           if (res.count > 0) {
@@ -1808,9 +1864,11 @@ export class MessageViewerApp extends BaseApplication {
       // ── v3.2: Character Switcher ──
       case 'switch-character': {
         const newActorId = target.closest('[data-actor-id]')?.dataset.actorId;
+        if (newActorId && game.user.isGM) this._rememberInbox(newActorId);
         if (newActorId && newActorId !== this.actorId) {
           this.actorId = newActorId;
           this.selectedMessageId = null;
+          this.selectedConversationId = null;
           this.currentPage = 1;
           this._closeIdentityDrawer();
           this.render(true);
@@ -2090,7 +2148,52 @@ export class MessageViewerApp extends BaseApplication {
   _toggleIdentityDrawer() {
     const viewer = this.element?.querySelector('.ncm-viewer');
     if (!viewer) return;
-    viewer.classList.toggle('ncm-viewer--drawer-open');
+    const open = viewer.classList.toggle('ncm-viewer--drawer-open');
+    if (open && game.user.isGM) this._paintInboxSwitch(true);
+  }
+
+  /** The inbox the GM just used moves to the top of Recent. */
+  _rememberInbox(id) {
+    try { localStorage.setItem(GM_RECENT_INBOXES, JSON.stringify(pushRecentInbox(JSON.parse(localStorage.getItem(GM_RECENT_INBOXES)) || [], id))); }
+    catch { /* a convenience, nothing depends on it */ }
+  }
+
+  /**
+   * GM: every inbox in the drawer. Built when the drawer opens, because it reads every journal and the viewer redraws on every click.
+   * Search filters the rows in place. Enter opens the first one left.
+   */
+  _paintInboxSwitch(focus = false) {
+    const box = this.element?.querySelector('[data-gm-switch]');
+    if (!box) return;
+    const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const roster = gmInboxRoster();
+    const row = (r, recent = false) => `<div class="ncm-viewer__drawer-char${r.id === this.actorId ? ' ncm-viewer__drawer-char--active' : ''}" data-action="switch-character" data-actor-id="${esc(r.id)}" data-sw-q="${esc(r.search)}"${recent ? ' data-sw-recent' : ''} role="button" tabindex="0">
+      <div class="ncm-viewer__drawer-char-avatar" style="border-color:${getAvatarColor(r.name, null, this._customRoles)}">${r.img ? `<img src="${esc(r.img)}" alt="">` : esc(getInitials(r.name))}</div>
+      <div class="ncm-viewer__drawer-char-info"><span class="ncm-viewer__drawer-char-name">${esc(r.name)}</span><span class="ncm-viewer__drawer-char-email">${esc(r.email || r.sub || 'no address')}${r.aliases.length ? ` · +${r.aliases.length} alias${r.aliases.length === 1 ? '' : 'es'}` : ''}</span></div>
+      ${r.unread ? `<span class="ncm-viewer__gmswitch-unread">${r.unread}</span>` : ''}${r.id === this.actorId ? '<i class="fas fa-check ncm-viewer__drawer-char-check"></i>' : ''}</div>`;
+    let recent = [];
+    try { recent = JSON.parse(localStorage.getItem(GM_RECENT_INBOXES)) || []; } catch { /* none yet */ }
+    const recentRows = recent.map((id) => roster.find((r) => r.id === id)).filter(Boolean);
+    const group = (label, rows, flag = '') => (rows.length ? `<div class="ncm-viewer__gmswitch-head"${flag}>${esc(label)} <span>${rows.length}</span></div>${rows.map((r) => row(r, !!flag)).join('')}` : '');
+    box.innerHTML = `<label class="ncm-viewer__gmswitch-search"><i class="fas fa-magnifying-glass"></i><input type="text" data-gm-switch-q placeholder="Name, address or alias" aria-label="Find an inbox"></label>
+      <div class="ncm-viewer__gmswitch-list ncm-scrollbar">${group('Recent', recentRows, ' data-sw-recent')}${ROSTER_GROUPS.map(([k, label]) => group(label, roster.filter((r) => r.kind === k))).join('')}<div class="ncm-viewer__gmswitch-none" hidden>Nobody by that name.</div></div>`;
+    const input = box.querySelector('[data-gm-switch-q]');
+    const list = box.querySelector('.ncm-viewer__gmswitch-list');
+    const filter = () => {
+      const q = input.value.trim().toLowerCase();
+      let any = false;
+      list.querySelectorAll('[data-sw-q]').forEach((el) => { const show = q ? !el.hasAttribute('data-sw-recent') && el.dataset.swQ.includes(q) : true; el.style.display = show ? '' : 'none'; any ||= show; });
+      // A group whose rows are all hidden loses its heading too.
+      list.querySelectorAll('.ncm-viewer__gmswitch-head').forEach((h) => { let n = h.nextElementSibling, shown = false; while (n && !n.classList.contains('ncm-viewer__gmswitch-head') && n.hasAttribute('data-sw-q')) { shown ||= n.style.display !== 'none'; n = n.nextElementSibling; } h.style.display = shown ? '' : 'none'; });
+      list.querySelector('.ncm-viewer__gmswitch-none').hidden = any;
+    };
+    input.addEventListener('input', filter);
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      [...list.querySelectorAll('[data-sw-q]')].find((el) => el.style.display !== 'none')?.click();
+    });
+    if (focus) input.focus({ preventScroll: true });
   }
 
   _closeIdentityDrawer() {
@@ -2177,6 +2280,7 @@ export class MessageViewerApp extends BaseApplication {
       case 'trash':
         result = result.filter(m => m.status.deleted);
         break;
+      case 'conversations':
       case 'scheduled':
       case 'shards':
       case 'calls':
@@ -2235,6 +2339,7 @@ export class MessageViewerApp extends BaseApplication {
     this.currentFilter = filter;
     this.currentPage = 1;
     this.selectedMessageId = null;
+    this.selectedConversationId = null;
     this.bulkSelected.clear();
     // Changing folder clears the MAIL/FILES solo — otherwise you'd land in a
     // folder with no files while filtered to FILES and see an empty list with
@@ -2378,6 +2483,33 @@ export class MessageViewerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
   //  Sorting
   // ═══════════════════════════════════════════════════════════
+
+  /** Keep a conversation's row honest without redrawing the window. */
+  _patchConvRow(id) {
+    const list = this.element?.querySelector('.ncm-viewer__msg-list');
+    const svc = game.nightcity?.conversationService;
+    const rows = svc?.rowsFor(this.actorId) || [];
+    const row = rows.find((r) => r.id === id);
+    const unreadN = rows.filter((r) => r.unread > 0).length;
+    const pill = this.element?.querySelector('.ncm-pill[data-filter="conversations"] .ncm-pill__badge');
+    if (pill) { pill.textContent = unreadN; pill.hidden = !unreadN; }
+    const el = list?.querySelector(`[data-conversation-id="${CSS.escape(id)}"]`);
+    if (!row || !el) { if (row && this.currentPage === 1 && ['inbox', 'unread', 'conversations'].includes(this.currentFilter)) { this._convPane?.snapshot(); this._debouncedRender(); } return; }
+    el.classList.toggle('ncm-viewer__msg--unread', row.unread > 0);
+    const prev = el.querySelector('.ncm-viewer__msg-preview'); if (prev) prev.textContent = row.preview;
+    const count = el.querySelector('.ncm-conv__count');
+    if (row.unread > 0) { if (count) count.textContent = row.unread; else el.querySelector('.ncm-viewer__msg-sender')?.insertAdjacentHTML('afterend', `<span class="ncm-conv__count">${row.unread}</span>`); } else count?.remove();
+    const when = el.querySelector('[data-conv-time]'); if (when) when.textContent = computeRelativeTime(row.lastAt).relativeTime;
+    if (this.currentSort === 'newest' && this.currentPage === 1 && list.firstElementChild !== el) list.prepend(el);
+  }
+
+  _convHue(name) { const h = ['#19f3f7', '#ff5fa2', '#5ad1ff', '#b4e05a', '#ffb347', '#c9a0ff', '#7fd8be', '#f7a1c4']; let n = 0; for (const c of String(name)) n = (n * 31 + c.charCodeAt(0)) >>> 0; return h[n % h.length]; }
+
+  /** Remember what a redraw would lose from the chat. */
+  async _preRender(context, options) {
+    await super._preRender?.(context, options);
+    this._convPane?.snapshot();
+  }
 
   _applySorting(messages) {
     const sorted = [...messages];
@@ -2575,6 +2707,7 @@ export class MessageViewerApp extends BaseApplication {
   async _selectMessage(messageId) {
     if (!messageId) return;
     // After-read self-destruct: leaving a previously-opened message erases it.
+    this.selectedConversationId = null;
     const _prevId = this.selectedMessageId;
     if (_prevId && _prevId !== messageId) {
       await this._destroyAfterReadIfNeeded(_prevId);
@@ -2627,7 +2760,7 @@ export class MessageViewerApp extends BaseApplication {
 
   _selectAll() {
     if (!this._cachedMessages) return;
-    const allIds = this._cachedMessages.map(m => m.messageId);
+    const allIds = this._cachedMessages.filter(m => !m.isConversation).map(m => m.messageId);
     const allSelected = allIds.every(id => this.bulkSelected.has(id));
 
     if (allSelected) {
@@ -4481,6 +4614,11 @@ export class MessageViewerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
+    // ── Conversations: a line patches the chat and its row. Nothing else redraws, so typing and scrolling are safe. ──
+    this.subscribe?.(EVENTS.CONVERSATION_LINE, ({ id, lines }) => { if (this._convPane?.id === id) this._convPane.onLines(lines); this._patchConvRow(id); });
+    this.subscribe?.(EVENTS.CONVERSATION_READ, ({ id }) => this._patchConvRow(id));
+    this.subscribe?.(EVENTS.CONVERSATION_PENDING, ({ id }) => { if (this._convPane?.id === id) this._convPane._paintPending(); });
+    this.subscribe?.(EVENTS.CONVERSATION_UPDATED, () => { this._convPane?.snapshot(); this._debouncedRender(); });
     // ── Message events (real-time inbox updates via DocumentSyncBridge) ──
     this.subscribe?.(EVENTS.MESSAGE_RECEIVED, () => this._debouncedRender());
     this.subscribe?.(EVENTS.MESSAGE_SENT, () => this._debouncedRender());

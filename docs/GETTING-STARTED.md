@@ -20,9 +20,10 @@ Night City Messenger (NCM) is a big module, but you don't need to learn all of i
 8. [Part 7 — Network nodes](#part-7--network-nodes)
 9. [Part 8 — Hacking and consequences](#part-8--hacking-and-consequences)
 10. [Part 9 — Phone calls](#part-9--phone-calls)
-11. [Three rules to remember](#three-rules-to-remember)
-12. [Settings that matter](#settings-that-matter)
-13. [How to run your first sessions](#how-to-run-your-first-sessions)
+11. [Part 10 — Conversations](#part-10--conversations)
+12. [Three rules to remember](#three-rules-to-remember)
+13. [Settings that matter](#settings-that-matter)
+14. [How to run your first sessions](#how-to-run-your-first-sessions)
 
 ---
 
@@ -165,6 +166,8 @@ What you can do when you write:
 - **Spam.** The **Spam** tab has ready-made junk mail you can send to players, and can send it automatically when they join certain networks. A "spam" message can carry anything a real message can. Use that. You can also mark any address (or a whole `@domain`) as a **junk sender** from the message itself.
 
 ---
+
+**Switching inboxes.** Every NPC has an inbox, with or without a character sheet. Click the portrait at the top of any inbox and use **Switch inbox** in the drawer: type a name, address or alias, and press Enter. Your last few are under **Recent**. The Character Select screen lists them too, under **NPCs**.
 
 ## Part 4 — Data shards
 
@@ -401,6 +404,30 @@ Admin → **Phone** is everything about calls. Players call from the **Calls** t
 **Sharing.** Sharing a contact asks whether to give the address, the number or both. In **Who knows whom**, each contact has separate address and number buttons. A contact only shows what was given.
 
 Tip: open **Number setup → How it works** first. It explains the format and has a box to try a number.
+
+---
+
+## Part 10 — Conversations
+
+Group chat beside mail. **Turn it on in Module Settings → Conversations.** With it off, nothing about it shows or runs.
+
+**Mail or a conversation?** A message is something you send, and it carries the subject, eddies, encryption and shards. A conversation is something you are in: plain lines, pictures, and shared contacts or numbers. It stays out of the rest of the module on purpose, so it has no trace, sniffers, terminal copies or last-interaction entries.
+
+**Watching.** **Admin → Messages → Conversations** lists every chat in the world. Reading one is invisible: nobody is told and nothing is marked read. **Members** shows who plays each person, how far they have read, and which names are aliases.
+
+**Stepping in.** A chat with an NPC in it shows a **Speaking as** row above the box, with one chip per NPC. Click a chip, or press Alt+1 to Alt+9, to swap. What you typed stays. The **+person** button brings in another NPC and swaps to them, and everyone sees a line saying they joined. It works the same in Admin → Conversations and in any NPC's inbox. In a player's inbox you can also speak as that character or their aliases, because you opened it on purpose. In Admin → Conversations, a players-only chat only offers **Join as an NPC…**. An NPC appears to players as a normal person.
+
+**Starting one as an NPC.** Use **New → Conversation** in Messages, or the chat button at the top of any inbox. **Join as** starts on the NPC whose inbox is open and offers your last few NPCs as one-click chips. **Someone else…** searches everyone. You land in that NPC's inbox with the chat open.
+
+**Removing a line.** Hover over a line and press the eraser. The words are deleted and "Line removed by the GM" stays in their place.
+
+**Telling you about it.** All NPC conversations share one toast. The bell on a chat decides whether it counts: on for chats with an NPC, off for players-only.
+
+**Taps.** A tap on a network node also writes a plain running log of chats sent from that node's scene to the tapper's Exfil folder, with no toast. A chat being tapped shows a **Tapped** tag, to you only.
+
+**Cleaning up.** **Tools → Purge Messages** deletes one conversation for everyone. **Orphan Audit** lists chats where nobody left in them still exists.
+
+Tip: conversations need a GM online to go through. Lines written with no GM online wait on the player's client and send when one connects.
 
 ---
 

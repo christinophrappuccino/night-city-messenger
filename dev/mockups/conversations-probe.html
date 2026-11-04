@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Conversations probe</title>
+<!--
+  The REAL chat: real ConversationService, real pane, real admin view, real stylesheets, over a small in-memory world.
+  Serve: node dev/tools/serve-mockups.cjs, then
+  http://127.0.0.1:8123/dev/mockups/conversations-probe.html?as=player|alias|left|gm|gmwatch&panel=1&plus=1&new=1&t=clean-dark|clean-light|high-contrast&p=<player preset>&drive=1&contrast=1
+  ?drive=1 presses the real buttons and puts the result in the title: OK, or what failed.
+-->
+<link rel="stylesheet" href="/_vendor/foundry2.css">
+<link rel="stylesheet" href="/_vendor/cpr.css">
+<link rel="stylesheet" href="/_vendor/fa/css/all.min.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  html, body { height: auto !important; overflow: auto !important; }
+  body { margin: 0; padding: 18px; background: #07080c !important; display: block !important; }
+  #win { position: relative !important; inset: auto !important; transform: none !important; width: 980px; height: 680px; max-height: none !important; display: flex; }
+  #win.is-gm { display: block; padding: 10px; background: var(--ncm-bg-canvas); }
+  #list { width: 300px; flex: none; overflow: auto; }
+  #host { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+  #report { color: #9fb; font: 12px monospace; white-space: pre-wrap; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="ncm-app ncm-admin-panel" id="win"></div>
+<div id="report"></div>
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  addEventListener('unhandledrejection', (e) => { document.title = 'ERR ' + (e.reason?.stack || e.reason); });
+  addEventListener('error', (e) => { document.title = 'ERR ' + e.message; });
+  const as = q.get('as') || 'player';
+  const asGm = as.startsWith('gm');
+  const gmInbox = as === 'gminbox' || as === 'gmalias';
+  const M = 'night-city-messenger';
+
+  /* ── a small world ── */
+  const hooks = new Map();
+  globalThis.Hooks = { on: (k, f) => { (hooks.has(k) ? hooks.get(k) : hooks.set(k, []).get(k)).push(f); return 1; }, off() {}, once() {} };
+  const fire = (k, ...a) => (hooks.get(k) || []).forEach((f) => f(...a));
+  let rid = 0;
+  globalThis.CONST = { DOCUMENT_OWNERSHIP_LEVELS: { NONE: 0, OBSERVER: 2, OWNER: 3 } };
+  const setPath = (o, path, v) => { const k = path.split('.'); let t = o; for (const p of k.slice(0, -1)) t = (t[p] ??= {}); t[k.at(-1)] = v; };
+  globalThis.foundry = { utils: { randomID: () => `id${++rid}`, deepClone: (x) => JSON.parse(JSON.stringify(x)), mergeObject: (a, b) => ({ ...a, ...b }), getRoute: (p) => p } };
+  class Page { constructor(d, parent) { Object.assign(this, d); this.parent = parent; this.id = `p${++rid}`; }
+    getFlag(_, k) { return this.flags?.[M]?.[k]; }
+    async update(up) { const diff = {}; for (const [p, v] of Object.entries(up)) { setPath(this, p, v); setPath(diff, p, v); } fire('updateJournalEntryPage', this, diff, {}, game.user.id); return this; } }
+  class Journal { constructor(d) { Object.assign(this, d); this.id = `j${++rid}`; const list = (d.pages || []).map((p) => new Page(p, this)); this.pages = { contents: list, slice: (...a) => list.slice(...a), filter: (f) => list.filter(f), find: (f) => list.find(f), get size() { return list.length; }, [Symbol.iterator]: () => list[Symbol.iterator]() }; }
+    getFlag(_, k) { return this.flags?.[M]?.[k]; }
+    async update(up) { for (const [p, v] of Object.entries(up)) setPath(this, p, v); fire('updateJournalEntry', this, Object.fromEntries(Object.keys(up).map((k) => [k, 1])), {}, game.user.id); return this; }
+    async createEmbeddedDocuments(_, list) { const made = list.map((p) => new Page(p, this)); this.pages.contents.push(...made); made.forEach((p) => fire('createJournalEntryPage', p, {}, game.user.id)); return made; }
+    async delete() { journals.splice(journals.indexOf(this), 1); fire('deleteJournalEntry', this); } }
+  const journals = [];
+  globalThis.JournalEntry = { create: async (d) => { const j = new Journal(d); journals.push(j); fire('createJournalEntry', j); return j; } };
+  const contacts = { v: [{ id: 'p1', name: 'Dao', email: 'dao@watson.nc', role: 'Ripperdoc', masterContactId: 'c-dao' }, { id: 'p2', name: 'Locked One', email: 'x@y.nc', encrypted: true }] };
+  const actor = (id, name, owned, email) => ({ id, name, img: '', hasPlayerOwner: owned, isOwner: true, getFlag: (_, k) => (k === 'email' ? email : k === 'contacts' ? contacts[id] : undefined), setFlag: async (_, k, v) => { if (k === 'contacts') contacts[id] = v; }, testUserPermission: (u) => (u.owns || []).includes(id) });
+  const actors = [actor('v', 'V', true, 'v@nc.net'), actor('ra', 'Rache', true, 'rache@nc.net'), actor('mox', 'Mox', false, 'mox@lizzies.nc'), actor('jack', 'Jack', true, 'jack@nc.net')];
+  const dir = [
+    { id: 'c-v', name: 'V', email: 'v@nc.net', actorId: 'v', primaryIdentity: true },
+    { id: 'c-silver', name: 'Silver', email: 'silver@burner.nc', actorId: 'v' },
+    { id: 'c-mox', name: 'Mox', email: 'mox@lizzies.nc', actorId: 'mox', primaryIdentity: true },
+    { id: 'c-dao', name: 'Dao', email: 'dao@watson.nc', role: 'Ripperdoc' },
+    { id: 'c-empty', name: 'Rogue-less', role: 'Nobody' },
+  ];
+  const users = [{ id: 'gm', name: 'GM', isGM: true }, { id: 'u1', name: 'Sam', isGM: false, owns: ['v'] }, { id: 'u2', name: 'Lee', isGM: false, owns: ['ra'] }];
+  const flags = {};
+  const me = asGm ? users[0] : users[1];
+  const listeners = new Map();
+  const bus = { emit: (k, d) => (listeners.get(k) || []).forEach((f) => f(d)), on: (k, f) => { (listeners.has(k) ? listeners.get(k) : listeners.set(k, []).get(k)).push(f); return () => {}; }, off: (k, f) => listeners.set(k, (listeners.get(k) || []).filter((x) => x !== f)) };
+  const toasts = [];
+  let writer = null;
+  globalThis.game = {
+    user: Object.assign(me, { can: () => false, getFlag: (_, k) => flags[k], setFlag: async (_, k, v) => { flags[k] = v; } }),
+    users: Object.assign(users, { activeGM: users[0], get: (id) => users.find((u) => u.id === id) }),
+    world: { id: 'w' }, journal: journals, scenes: { viewed: { id: 's1' } }, combat: null,
+    actors: Object.assign(actors, { get: (id) => actors.find((a) => a.id === id), contents: actors }),
+    settings: { get: (_, k) => { if (k === 'conversationsEnabled') return true; if (k === 'conversationGmBell') return {}; if (k === 'notifyGmConversations') return true; if (k === 'dateFormat') return 'YMD'; if (k === 'dateMonthStyle') return 'short'; if (k === 'timeFormat') return '24h'; if (k === 'hiddenCharacters') return []; throw new Error('none ' + k); }, set: async () => {} },
+    nightcity: {
+      masterContactService: { getAll: () => dir, isSendOnly: () => false, getContact: (id) => dir.find((c) => c.id === id), getByActorId: (id) => dir.find((c) => c.actorId === id && c.primaryIdentity) },
+      socketManager: { emit: (op, d) => { if (/request/i.test(op)) setTimeout(async () => { window.__writing = true; await writer.handleRequest(d, d.userId); window.__writing = false; }, 0); else writer.handleResult(d); } },
+      soundService: { play() {} }, eventBus: bus,
+      notificationService: { upsertToast: (k, t) => toasts.push([k, t]), dismissKeyed() {}, refreshBadge() {} },
+      messageRepository: { getSubfolderPath: async (p) => ({ id: p.join('/') }), getMessage: async () => null, createMessage: async () => ({ success: true }), updateMessageFlags: async () => {} },
+      callService: { homeCode: undefined, lines: () => ({ a: { number: 'WAT-2208', owner: { contactId: 'c-dao', name: 'Dao' } }, b: { number: 'NCX-1000', owner: { actorId: 'ra', name: 'Rache' } } }), numberOf: (id) => (id === 'ra' ? 'NCX-1000' : ''), linesFor: (id) => id === 'v' ? [{ number: 'WAT-1147', main: true, name: 'V', contactId: 'c-v' }, { number: 'KAB-3010', name: 'Silver', contactId: 'c-silver' }] : [], numberForContact: (c) => c.phone || '' },
+      timeService: { getCurrentTime: () => '2045-08-15T10:00:00.000Z', getCurrentTimeMs: () => Date.parse('2045-08-15T10:00:00.000Z') },
+      contactRepository: { addContact: async (a, c) => { contacts[a].push({ id: 'new', ...c }); return { success: true }; } },
+      contactShareService: { _mergeExisting: async (a, c) => { const had = contacts[a].find((x) => x.email === c.email); if (!had) return null; if (!had.phone) had.phone = c.phone; return { success: true }; } },
+      networkService: { getNodes: () => [{ name: 'Dock Relay', taps: asGm ? [{ actorId: 'jack', actorName: 'Jack' }] : [] }] },
+      contactGroupService: { groupsFor: () => [], recipientsFor: () => ({ recipients: [] }) },
+    },
+  };
+  globalThis.ui = { notifications: { warn: (m) => toasts.push(['warn', m]), info() {} }, windows: {} };
+  // Foundry's Dialog, just enough: draws the real content and real buttons, and fires the real callbacks.
+  globalThis.Dialog = class { constructor(d, o) { this.data = d; this.options = o; }
+    render() { const root = document.createElement('div'); root.className = 'stubdlg ncm-app'; root.innerHTML = `<div class="dialog-content">${this.data.content}</div>` + Object.entries(this.data.buttons || {}).map(([k, b]) => `<button type="button" data-button="${k}">${b.label}</button>`).join('');
+      this.root = root; document.body.append(root); root.addEventListener('click', (e) => { const k = e.target.closest('[data-button]')?.dataset.button; if (k) { this.data.buttons[k].callback?.([root]); this.close(); } }); this.data.render?.([root]); return this; }
+    close() { this.root?.remove(); this.data.close?.(); return this; } };
+  globalThis.FilePicker = class {};
+  globalThis.Handlebars = window.Handlebars || { SafeString: class { constructor(s) { this.s = s; } toString() { return this.s; } } };
+  if (q.get('t') && asGm) document.getElementById('win').setAttribute('data-ncm-admin-theme', q.get('t'));
+  if (q.get('p')) { const { THEME_PRESETS, COLOR_VAR_MAP } = await import('../../scripts/utils/constants.js'); const t = THEME_PRESETS[q.get('p')]; if (t) for (const [k, v] of Object.entries(COLOR_VAR_MAP)) if (t[k]) document.documentElement.style.setProperty(v, t[k]); }
+
+  const { ConversationService } = await import('../../scripts/services/ConversationService.js');
+  const { ConversationPane, startConversationDialog } = await import('../../scripts/ui/MessageViewer/conversationPane.js');
+  const { conversationsHtml, wireConversations } = await import('../../scripts/ui/AdminPanel/tabs/conversationsView.js');
+  const { rowAsMessage } = await import('../../scripts/utils/conversations.js');
+  const svc = new ConversationService();
+  game.nightcity.conversationService = svc;
+  writer = svc;
+  svc.wire();
+
+  /* ── seed, as the GM's client would ── */
+  const realUser = game.user;
+  game.user = Object.assign(users[0], { can: () => false, getFlag: (_, k) => flags[k], setFlag: async (_, k, v) => { flags[k] = v; } });
+  Object.defineProperty(svc, '_iAmWriter', { get: () => true, configurable: true });
+  const crew = await svc.start({ as: { actorId: 'v', contactId: 'c-v' }, members: [{ actorId: 'ra' }, { contactId: 'c-mox', actorId: 'mox' }], title: 'Dockside crew' });
+  const vKey = svc.get(crew.id).members[0].key, raKey = svc.get(crew.id).members[1].key, moxKey = svc.get(crew.id).members[2].key;
+  const say = (id, asKey, text) => svc._apply('send', { id, asKey, lineId: `s${++rid}`, kind: 'text', text }, 'gm');
+  await say(crew.id, moxKey, 'Job is on for tonight. Pier 9, after the shift change.');
+  await say(crew.id, vKey, 'Who else is in?');
+  await say(crew.id, raKey, 'Me. I can get us through the gate.');
+  await say(crew.id, raKey, 'The camera on the east side is dead, I checked it this morning.');
+  await svc._apply('send', { id: crew.id, asKey: moxKey, lineId: 's-card', kind: 'card', card: { name: 'Dao', role: 'Ripperdoc', email: 'dao@watson.nc', phone: 'WAT-2208', contactId: 'c-dao' } }, 'gm');
+  await say(crew.id, moxKey, '<b>He owes me.</b> Call him if it goes wrong.');
+  await say(crew.id, moxKey, 'And nobody tells Jack.');
+  const silverChat = await svc.start({ as: { contactId: 'c-silver' }, members: [{ actorId: 'ra' }] });
+  await say(silverChat.id, svc.get(silverChat.id).members[0].key, 'You know who this is?');
+  const playersOnly = await svc.start({ as: { actorId: 'v', contactId: 'c-v' }, members: [{ actorId: 'jack' }], title: '' });
+  await say(playersOnly.id, svc.get(playersOnly.id).members[0].key, 'Beers later?');
+  const leftChat = await svc.start({ as: { actorId: 'ra' }, members: [{ actorId: 'v', contactId: 'c-v' }, { actorId: 'jack' }], title: 'Old job' });
+  const leftConv = svc.get(leftChat.id);
+  await say(leftChat.id, leftConv.members[0].key, 'Last run went badly.');
+  await svc._apply('remove', { id: leftChat.id, key: leftConv.members.find((m) => m.actorId === 'v').key, asKey: leftConv.members[0].key }, 'gm');
+  svc._markForProbe?.();
+  game.user = realUser;
+  if (!asGm) Object.defineProperty(svc, '_iAmWriter', { get: () => !!window.__writing, configurable: true });
+  game.nightcity.conversationService = svc;
+  const win = document.getElementById('win');
+
+  /* ── the screen ── */
+  let pane, host;
+  if (asGm && !gmInbox) {
+    win.classList.add('is-gm');
+    win.innerHTML = '<div class="ncm-msg2-convwrap" data-conv-admin></div>';
+    const tab = { element: win, app: { _relativeTime: () => '2h ago' }, _conv: { sel: as === 'gmwatch' ? playersOnly.id : crew.id, q: '', show: 'all', who: '', sort: 'latest' }, render() {} };
+    wireConversations(tab, win);
+    pane = tab._convPane; host = win.querySelector('[data-conv-pane]');
+    window.__tab = tab;
+  } else {
+    host = document.createElement('div'); host.id = 'host';
+    const list = document.createElement('div'); list.id = 'list'; list.className = 'ncm-viewer__msg-list';
+    win.append(list, host);
+    const rows = svc.rowsFor('v');
+    list.innerHTML = rows.map((r) => `<div class="ncm-viewer__msg ncm-viewer__msg--conv${r.unread ? ' ncm-viewer__msg--unread' : ''}" data-priority="normal" data-conversation-id="${r.id}"><div class="ncm-conv__stack">${r.faces.map((f) => `<div class="ncm-conv__av" style="--c:#19f3f7">${f.initial}</div>`).join('')}<span class="ncm-conv__glyph"><i class="fas fa-comments" style="margin:0"></i></span></div><div class="ncm-viewer__msg-content"><div class="ncm-viewer__msg-top"><span class="ncm-viewer__msg-sender">${r.title}</span>${r.unread ? `<span class="ncm-conv__count">${r.unread}</span>` : ''}</div><div class="ncm-viewer__msg-subject"><span class="ncm-conv__rowsub">Conversation · ${r.count} people</span></div><div class="ncm-viewer__msg-preview">${r.preview}</div></div></div>`).join('');
+    pane = new ConversationPane({ actorId: () => 'v' });
+    pane.mount(host, as === 'alias' || as === 'gmalias' ? silverChat.id : as === 'left' ? leftChat.id : crew.id);
+    bus.on('conversation:line', ({ id, lines }) => { if (pane.id === id) pane.onLines(lines); });
+    bus.on('conversation:pending', ({ id }) => { if (pane.id === id) pane._paintPending(); });
+  }
+  if (q.get('npcs')) { await svc.add(crew.id, null, { contactId: 'c-dao' }); await new Promise((r) => setTimeout(r, 80)); pane.paint(); }
+  if (q.get('panel')) { pane.panel = true; pane.paint(); }
+  if (q.get('emoji')) host.querySelector('[data-emoji-pop]').hidden = false;
+  if (q.get('plus')) { pane.plus = true; pane.paint(); }
+  if (q.get('w')) win.style.width = q.get('w') + 'px';
+  if (q.get('recent')) localStorage.setItem('ncm.conv.gmRecentNpcs', JSON.stringify([{ contactId: 'c-dao', name: 'Dao' }, { contactId: 'c-mox', actorId: 'mox', name: 'Mox' }, { contactId: 'c-silver', name: 'Silver' }]));
+  else localStorage.removeItem('ncm.conv.gmRecentNpcs');
+  if (q.get('new')) startConversationDialog({ host: win, actorId: q.get('inbox') || 'v', gm: asGm });
+
+  /* ── press the real buttons ── */
+  const report = [];
+  const check = (c, m) => report.push(`${c ? 'ok  ' : 'FAIL'} ${m}`);
+  const wait = (ms = 60) => new Promise((r) => setTimeout(r, ms));
+  if (q.get('drive')) {
+    const h = () => pane.host;
+    check(!!h().querySelector('.ncm-conv__bubble'), 'lines draw');
+    check(!h().innerHTML.includes('<b>He owes me') , 'a line with HTML in it stays plain text');
+    if (!asGm && as === 'player') {
+      check(h().querySelector('[data-cv="savecard"]'), 'a shared contact offers Save');
+      h().querySelector('[data-cv="savecard"]').click(); await wait(120);
+      check(contacts.v.find((c) => c.id === 'p1').phone === 'WAT-2208' && contacts.v.filter((c) => c.name === 'Dao').length === 1, 'Save adds only what was missing'); check(h().querySelector('.ncm-conv__dropdone.is-saved'), 'and says so');
+      const box = h().querySelector('.ncm-conv__input');
+      box.value = 'Typing this'; box.dispatchEvent(new Event('input', { bubbles: true })); box.focus();
+      pane.snapshot(); pane.paint();
+      check(h().querySelector('.ncm-conv__input').value === 'Typing this', 'a redraw keeps what you were typing');
+      check(document.activeElement === h().querySelector('.ncm-conv__input'), 'and the focus');
+      h().querySelector('.ncm-conv__input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await wait(200);
+      check(svc.lines(crew.id).some((l) => l.text === 'Typing this'), 'Enter sends, and it really lands, through the GM relay');
+      check(!h().querySelector('[data-pend]'), 'the pending bubble is gone once it lands');
+      check([...h().querySelectorAll('[data-lines] .ncm-conv__bubble')].filter((b) => b.textContent === 'Typing this').length === 1, 'and it is on screen once');
+      check(h().querySelector('.ncm-conv__input').value === '', 'and clears the box');
+      const key = pane.me.key;
+      const before = h().querySelectorAll('[data-line]').length;
+      const sc = h().querySelector('[data-scroll]'); sc.scrollTop = 0; const held = sc.scrollTop;
+      window.__writing = true; await svc._apply('send', { id: crew.id, asKey: moxKey, lineId: 'live1', kind: 'text', text: 'Live line' }, 'gm'); window.__writing = false; await wait(120);
+      check(h().querySelectorAll('[data-line]').length === before + 1, 'a new line appends');
+      check(!!pane.seen, 'pane still alive');
+      const rules = () => [...h().querySelectorAll('[data-lines] .ncm-conv__rule')].map((r) => r.textContent.trim());
+      const dayBefore = rules().filter((t) => /2045/.test(t)).length;
+      window.__writing = true; await svc._apply('add', { id: crew.id, asKey: moxKey, raw: { actorId: 'jack' } }, 'gm'); window.__writing = false; await wait(150);
+      report.push('rules after add: ' + JSON.stringify(rules()));
+      check(rules().filter((t) => /2045/.test(t)).length === dayBefore, 'adding someone shows one line, and no second date');
+      pane.snapshot(); pane.paint();
+      check(rules().filter((t) => /2045/.test(t)).length === dayBefore, 'and still none after a redraw');
+      h().querySelector('[data-cv="panel"]').click(); await wait();
+      check(h().querySelector('.ncm-conv__panel'), 'Members opens');
+      check(!h().querySelector('.ncm-conv__panel').textContent.includes('Played by'), 'a player sees no played-by');
+      const typed = h().querySelector('.ncm-conv__input');
+      typed.value = 'on it'; typed.setSelectionRange(5, 5); typed.dispatchEvent(new Event('input', { bubbles: true }));
+      h().querySelector('[data-cv="emoji"]').click(); await wait();
+      check(!h().querySelector('[data-emoji-pop]').hidden, 'the emoji button opens the palette');
+      h().querySelector('[data-cv="emojipick"]').click(); await wait();
+      check(typed.value === 'on it😂', 'a pick lands at the caret');
+      check(pane.drafts.get(crew.id) === 'on it😂', 'and is kept with the draft');
+      check(!h().querySelector('[data-emoji-pop]').hidden, 'the palette stays open for another');
+      h().querySelector('.ncm-conv__title').click(); await wait();
+      check(h().querySelector('[data-emoji-pop]').hidden, 'a click elsewhere closes it');
+      typed.value = ''; typed.dispatchEvent(new Event('input', { bubbles: true }));
+      check(!h().querySelector('[data-cv="as"]') && !h().querySelector('.ncm-conv__npc'), 'a player gets no NPC swap and no NPC tag');
+      h().querySelector('[data-cv="plus"]').click(); await wait();
+      check(h().querySelector('[data-cv="mynum"]') && h().querySelector('.ncm-conv__plusmenu').textContent.includes('WAT-1147'), 'My number offers the main line');
+      h().querySelector('[data-cv="mynum"]').click(); await wait(200);
+      check(svc.lines(crew.id).some((l) => l.kind === 'card' && String(l.card.phone).includes('1147')), 'sharing my number lands as a card');
+      check(!JSON.stringify(svc.lines(crew.id).at(-1)).includes('c-silver'), 'and carries nobody else');
+    }
+    if (as === 'gminbox') {
+      const chips = () => [...h().querySelectorAll('[data-cv="as"]')].map((x) => x.textContent.trim());
+      check(chips().some((t) => t.endsWith('V')) && chips().some((t) => t.endsWith('Mox')), "in a player's inbox the GM can be that character, or the chat's NPCs");
+      check(h().querySelector('.ncm-conv__input').placeholder.startsWith('Write as V'), 'it starts on whose inbox it is');
+    }
+    if (as === 'gmalias') {
+      const chips = () => [...h().querySelectorAll('[data-cv="as"]')].map((x) => x.textContent.trim());
+      check(chips().some((t) => t.endsWith('Silver')), "a player's alias in the chat is a chip in that player's inbox");
+      check(h().querySelector('.ncm-conv__input').placeholder.startsWith('Write as Silver'), 'and it starts there');
+    }
+    if (asGm && q.get('share')) {
+      const tick = () => wait(60);
+      const openPicker = async (name) => { pane.plus = true; pane.paint(); h().querySelector('[data-cv="pick"]').click(); await tick(); [...document.querySelectorAll('.ncm-pkr__row')].find((r) => r.textContent.includes(name)).click(); await tick(); };
+      await openPicker('Dao');
+      const dlg = document.querySelector('.stubdlg');
+      check(!!dlg?.querySelector('select'), 'with an address and a number, it asks which');
+      dlg.querySelector('select').value = 'email';
+      dlg.querySelector('[data-button="yes"]').click(); await wait(200);
+      const card = svc.lines(crew.id).at(-1).card;
+      check(card?.name === 'Dao' && card.email === 'dao@watson.nc' && !card.phone, 'the pick is what goes, and it lands as a card');
+      await openPicker('Rogue-less');
+      check(toasts.some((t) => t[0] === 'warn' && /no address or number/.test(t[1])), 'someone with nothing to share says so');
+      await openPicker('Rache');
+      document.querySelector('.stubdlg [data-button="yes"]')?.click(); await wait(200);
+      check(svc.lines(crew.id).at(-1).card?.name === 'Rache', "a player's character can be shared");
+      pane.panel = true; pane.paint(); h().querySelector('[data-cv="rename"]').click(); await tick();
+      const ren = document.querySelector('.stubdlg input');
+      check(ren?.value === svc.get(crew.id).title, 'Rename starts on the current name');
+      ren.value = 'New name'; document.querySelector('.stubdlg [data-button="yes"]').click(); await wait(200);
+      check(svc.get(crew.id).title === 'New name', 'and renames');
+    }
+    if (as === 'alias') {
+      check(h().textContent.includes('Silver'), 'the alias shows');
+      check(!/\bV\b/.test(h().querySelector('.ncm-conv__sub').textContent.replace('You', '')), 'V never shows in an alias chat');
+      h().querySelector('[data-cv="plus"]').click(); await wait();
+      check(h().querySelector('.ncm-conv__plusmenu').textContent.includes('KAB-3010'), "My number means the alias's line");
+    }
+    if (as === 'left') {
+      check(h().querySelector('.ncm-conv__gone') && !h().querySelector('.ncm-conv__input'), 'after removal there is nothing to type in');
+      check(h().textContent.includes('Last run went badly'), 'and what they had is still there');
+    }
+    if (as === 'gm') {
+      const seq = flags.conversationState;
+      await svc._apply('rename', { id: crew.id, title: '<img src=x onerror=boom()>Crew' }, 'gm'); await wait(80); pane.paint();
+      check(!h().querySelector('.ncm-conv__title img'), 'a hostile title stays text');
+      check(!!h().querySelector('[data-cv="rmline"]'), 'each line can be removed');
+      check(h().querySelector('.ncm-conv__npc') && h().querySelector('.ncm-tagp.is-secret'), 'the NPC tag and Watching show');
+      check(h().querySelector('.ncm-tagp.is-attn')?.textContent.includes('Tapped'), 'Tapped shows, GM only');
+      const box = h().querySelector('.ncm-conv__input');
+      check(box.placeholder.startsWith('Write as Mox'), 'the box says who you are');
+      box.value = 'GM line'; box.dispatchEvent(new Event('input', { bubbles: true }));
+      box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await wait(200);
+      check(svc.lines(crew.id).at(-1).fromName === 'Mox', 'it goes out as the NPC');
+      const dates = () => [...h().querySelectorAll('[data-lines] [data-day]')].length;
+      const dates0 = dates();
+      const chips = () => [...h().querySelectorAll('[data-cv="as"]')];
+      check(chips().length === 1 && chips()[0].classList.contains('is-on'), 'the NPC in the chat is the chip that is lit');
+      await svc.add(crew.id, null, { contactId: 'c-dao' }); await wait(200);
+      check(svc.lines(crew.id).at(-1).text === 'Dao joined', 'an NPC brought in by the GM joined');
+      check(dates() === dates0, 'someone joining adds no date');
+      pane.snapshot(); pane.paint();
+      check(chips().length === 2, 'and they become a chip');
+      const draft = h().querySelector('.ncm-conv__input'); draft.value = 'half typed'; draft.dispatchEvent(new Event('input', { bubbles: true })); draft.focus();
+      chips()[1].click(); await wait();
+      check(h().querySelector('.ncm-conv__aspick.is-on').textContent.includes('Dao'), 'one click swaps who you are');
+      check(h().querySelector('.ncm-conv__input').value === 'half typed' && document.activeElement === h().querySelector('.ncm-conv__input'), 'what you typed stays, with the focus');
+      const box2 = h().querySelector('.ncm-conv__input'); box2.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await wait(200);
+      check(svc.lines(crew.id).at(-1).fromName === 'Dao' && svc.lines(crew.id).at(-1).text === 'half typed', 'and the line goes out as them');
+      h().querySelector('.ncm-conv__input').dispatchEvent(new KeyboardEvent('keydown', { key: '1', altKey: true, bubbles: true })); await wait();
+      check(h().querySelector('.ncm-conv__aspick.is-on').textContent.includes('Mox'), 'Alt+1 swaps too');
+      const target = svc.lines(crew.id).find((l) => l.text === 'And nobody tells Jack.');
+      h().querySelector(`[data-line="${target.lineId}"] [data-cv="rmline"]`).click(); await wait(200);
+      check(svc.lines(crew.id).find((l) => l.lineId === target.lineId).kind === 'gone', 'removing leaves a marker');
+      check(dates() === dates0, 'removing a line adds no date');
+      check(!JSON.stringify(svc.lines(crew.id)).includes('nobody tells Jack'), 'and the words are gone');
+      check(seq === flags.conversationState, 'watching changed no read state');
+    }
+    if (as === 'gmwatch') {
+      check(h().querySelector('.ncm-conv__obs') && !h().querySelector('.ncm-conv__input'), 'a players-only chat has no box, only Join');
+    }
+    if (q.get('new') && asGm) {
+      const on = () => { const c = win.querySelector('.ncm-conv__aspick.is-on'); return c ? [...c.childNodes].at(-1).textContent.trim() : ''; };
+      check(q.get('inbox') === 'mox' ? on() === 'Mox' : q.get('recent') ? on() === 'Dao' : on() === '', 'it starts on the open NPC, else the most recent, else nobody');
+      if (q.get('recent')) { [...win.querySelectorAll('.ncm-conv__aspick')].find((b) => b.textContent.includes('Silver')).click(); await wait(); check(on() === 'Silver', 'one click on a chip changes who you join as'); check(win.querySelectorAll('.ncm-conv__aspick.is-on').length === 1, 'and only one is lit'); }
+    }
+    const bad = report.filter((r) => r.startsWith('FAIL'));
+    document.getElementById('report').textContent = report.join('\n');
+    document.title = bad.length ? `FAIL ${bad.length}: ${bad[0]}` : `OK ${report.length}`;
+  } else document.title = 'READY';
+
+  /* ── measure every piece of text ── */
+  if (q.get('contrast')) {
+    await wait(400);
+    const cv = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    const read = (c) => { cv.clearRect(0, 0, 1, 1); cv.fillStyle = '#000'; cv.fillStyle = c; cv.fillRect(0, 0, 1, 1); const d = cv.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+    const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const over = (t, b) => [0, 1, 2].map((i) => t[i] * t[3] + b[i] * (1 - t[3]));
+    const bgOf = (el) => { const stack = []; for (let e = el; e; e = e.parentElement) { const c = read(getComputedStyle(e).backgroundColor); if (c[3] > 0) { stack.push(c); if (c[3] === 1) break; } } let out = [7, 8, 12]; for (const c of stack.reverse()) out = over(c, out); return out; };
+    const bad = []; let n = 0;
+    const walker = document.createTreeWalker(win, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) { const el = walker.currentNode.parentElement; if (!walker.currentNode.textContent.trim() || !el.offsetParent) continue; const fg = read(getComputedStyle(el).color); const bg = bgOf(el); const c = over(fg, bg); const [a, b] = [lum(c), lum(bg)].sort((x, y) => y - x); const r = (a + 0.05) / (b + 0.05); n++; if (r < 4.5) bad.push(`${r.toFixed(2)} ${el.className || el.tagName}: ${walker.currentNode.textContent.trim().slice(0, 30)}`); }
+    document.getElementById('report').textContent += `\ncontrast: ${n} text nodes, ${bad.length} under 4.5\n${[...new Set(bad)].join('\n')}`;
+    document.title += ` · contrast ${bad.length}/${n}`;
+  }
+</script>
+</body>
+</html>

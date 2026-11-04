@@ -1087,3 +1087,7 @@
 .ncm-admin-panel .ncm-ib__li .tx span { font: 10.5px var(--ncm-font-mono); color: var(--ncm-text-secondary); }
 /* the panel's red button text sits under 4.5:1 on a dark card — lift it toward the heading tone here */
 .ncm-app .ncm-admin-panel .ncm-ib .ncm-msg2-btn--danger { color: color-mix(in srgb, var(--ncm-bad, var(--ncm-danger)) 70%, var(--ncm-text-heading, var(--ncm-text-primary))) !important; }
+
+/* Conversations sub-tab: the frame. The chat inside it lives in components/conversations.css. */
+.ncm-admin-panel .ncm-msg2-convwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; height: 620px; border: 1px solid var(--ncm-border); }
+.ncm-admin-panel--pop .ncm-msg2-convwrap { height: 660px; }

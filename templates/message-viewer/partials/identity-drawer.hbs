@@ -137,6 +137,14 @@
     </div>
   </div>
 
+  {{!-- GM: every inbox, players and NPCs, with or without a sheet. Filled when the drawer opens. --}}
+  {{#if isGM}}
+    <div class="ncm-viewer__drawer-section ncm-viewer__gmswitch">
+      <div class="ncm-viewer__drawer-section-title">Switch inbox</div>
+      <div data-gm-switch></div>
+    </div>
+  {{/if}}
+
   {{!-- Character Switcher --}}
   {{#if ownedCharacters}}
     <div class="ncm-viewer__drawer-section">

@@ -326,6 +326,25 @@ export class Phase6Verification {
       return { passed: true, detail: '4 styles, 6 partials load, tty prompt, 5 shared actions, CRT film helpers' };
     });
 
+    // ─── 6.22: Conversations (2.1) ───
+    await this._check('6.22', 'Conversations — rules, service contract, sockets, pane', async () => {
+      const C = await import('../utils/constants.js');
+      const R = await import('../utils/conversations.js');
+      const problems = [];
+      for (const k of ['CONVERSATION_REQUEST', 'CONVERSATION_RESULT']) if (!C.SOCKET_OPS[k]) problems.push(`SOCKET_OPS.${k} missing`);
+      for (const k of ['CONVERSATION_LINE', 'CONVERSATION_UPDATED', 'CONVERSATION_READ', 'CONVERSATION_PENDING']) if (!C.EVENTS[k]) problems.push(`EVENTS.${k} missing`);
+      if (R.sanitizeCard({ name: 'x', email: 'a@b', encrypted: true }) !== null) problems.push('a locked contact could be shared');
+      if (R.safeImage('javascript:alert(1)') !== '') problems.push('an unsafe picture was accepted');
+      const svc = game.nightcity?.conversationService;
+      if (!svc) problems.push('conversationService missing');
+      for (const m of ['all', 'get', 'lines', 'rowsFor', 'start', 'send', 'add', 'remove', 'leave', 'rename', 'removeLine', 'destroy', 'markRead', 'setMuted', 'pendingFor']) if (svc && typeof svc[m] !== 'function') problems.push(`service.${m} missing`);
+      await import('../ui/MessageViewer/conversationPane.js');
+      await import('../ui/AdminPanel/tabs/conversationsView.js');
+      if (typeof game.nightcity?.openConversation !== 'function') problems.push('openConversation missing');
+      if (problems.length) throw new Error(problems.join('; '));
+      return svc.enabled ? `${svc.all().length} conversation(s)` : 'switched off in this world';
+    });
+
     // ─── 6.21: Rolls + watching (2.1) ───
     await this._check('6.21', 'One roll rule, the roll panel, watching', async () => {
       const R = await import('../utils/rolls.js');

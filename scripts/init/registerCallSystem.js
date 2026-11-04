@@ -12,6 +12,7 @@ import { OverheardService } from '../services/OverheardService.js';
 import { OverheardHud } from '../ui/Calls/OverheardHud.js';
 import { EmergencyService, wireEmergency } from '../services/EmergencyService.js';
 import { EmergencyHud } from '../ui/Calls/EmergencyHud.js';
+import { ConversationService } from '../services/ConversationService.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 import { CallService } from '../services/CallService.js';
@@ -32,6 +33,17 @@ export function registerCallSystem(initializer) {
     bind('callHold', 'Calls: hold & answer / swap back', 'KeyH', 'hold');
     bind('callDeclineWaiting', 'Calls: decline the waiting call', 'KeyD', 'declineWaiting');
   });
+
+  initializer.register('ready', 124, 'ConversationService', () => {
+    const service = new ConversationService();
+    game.nightcity.conversationService = service;
+    if (!service.enabled) return;
+    service.wire();
+    const sm = game.nightcity.socketManager;
+    sm.register(SOCKET_OPS.CONVERSATION_REQUEST, (data, sender) => service.handleRequest(data, sender).catch((e) => log.warn(`Conversations: a request failed: ${e.message}`)));
+    sm.register(SOCKET_OPS.CONVERSATION_RESULT, (data) => service.handleResult(data));
+  });
+  initializer.register('postReady', 23, 'Conversations: held lines', () => game.nightcity?.conversationService?.enabled && game.nightcity.conversationService.restorePending());
 
   initializer.register('ready', 125, 'CallService', () => {
     const service = new CallService();

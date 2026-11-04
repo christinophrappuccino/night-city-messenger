@@ -167,6 +167,28 @@ export class SettingsManager {
       default: '',
     });
 
+    game.settings.register(MODULE_ID, 'conversationsEnabled', {
+      name: 'Conversations',
+      hint: 'Group chats beside mail, in every Agent and in Admin → Messages. Switching this reloads the world for everyone. Nothing is deleted when it is off.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: false,
+      requiresReload: true,
+    });
+    game.settings.register(MODULE_ID, 'notifyGmConversations', {
+      name: 'GM Alert — Conversations With NPCs',
+      hint: 'One toast when a player writes in a conversation with an NPC, updated in place however many lines arrive.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+    game.settings.register(MODULE_ID, 'conversationGmBell', {
+      name: 'Conversations the GM follows', hint: 'Per conversation: count it in the GM toast or not.',
+      scope: 'client', config: false, type: Object, default: {},
+    });
+
     game.settings.register(MODULE_ID, 'emergencyChatCard', {
       name: 'Chat Card for Trauma Team and Backup Calls',
       hint: 'Post one chat card when someone calls Trauma Team or Lawman Backup, so the table knows. It follows the caller\'s roll mode, so a whispered call stays whispered.',

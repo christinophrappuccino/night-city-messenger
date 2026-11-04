@@ -641,6 +641,30 @@ export class NotificationService {
     }
   }
 
+  /** One toast for one thing: a second call updates it in place and restarts its clock, so a busy source can't stack toasts. */
+  upsertToast(key, data) {
+    const had = this._toasts.find((t) => t.key === key);
+    if (!had) {
+      const id = this.showToastV2(data);
+      const made = this._toasts.find((t) => t.id === id);
+      if (made) made.key = key;
+      return id;
+    }
+    had.title = data.title ?? had.title; had.detail = data.detail ?? had.detail; had.onAction = data.onAction ?? had.onAction;
+    const el = this._container?.querySelector(`[data-toast-id="${had.id}"]`);
+    if (el) {
+      const title = el.querySelector('.ncm-toast__title'), detail = el.querySelector('.ncm-toast__detail');
+      if (title) { const icon = title.querySelector('i'); title.textContent = had.title; if (icon) title.prepend(icon); }
+      if (detail) detail.textContent = had.detail;
+    }
+    if (had._dismissTimer) clearTimeout(had._dismissTimer);
+    if (had.duration > 0) had._dismissTimer = setTimeout(() => this.dismissToast(had.id), had.duration);
+    return had.id;
+  }
+
+  /** Take the keyed toast away, if it is up. */
+  dismissKeyed(key) { const had = this._toasts.find((t) => t.key === key); if (had) this.dismissToast(had.id); }
+
   dismissToast(toastId) {
     const toast = this._toasts.find(t => t.id === toastId);
     if (toast?._dismissTimer) clearTimeout(toast._dismissTimer);
@@ -884,6 +908,8 @@ export class NotificationService {
       const actor = game.actors.get(actorId);
       if (actor?.isOwner) total += count;
     }
+    // a conversation counts once, however many lines it has
+    try { total += game.nightcity?.conversationService?.totalUnread?.() || 0; } catch { /* the badge never fails over this */ }
     return total;
   }
 

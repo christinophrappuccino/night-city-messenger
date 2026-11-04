@@ -8,6 +8,7 @@
  * handlers directly via AdminPanelApp's static delegators.
  */
 
+import { isIn, titleFor } from '../../../utils/conversations.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log, formatCyberDate, getPlayerCharacters, hiddenCharacterIds } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
@@ -1041,7 +1042,19 @@ export class ToolsTab extends BaseTab {
       });
     }
 
-    const all = [...inboxTargets, ...shardTargets];
+    // Conversations are their own journals, one per chat. Purging one deletes the whole chat, for everyone in it.
+    const convSvc = game.nightcity?.conversationService;
+    const convTargets = (convSvc?.all?.() || []).map((c) => ({
+      key: `conv:${c.id}`,
+      group: 'Conversations',
+      name: titleFor(c),
+      img: 'icons/svg/mystery-man.svg',
+      label: `${titleFor(c)} (${c.lastSeq})`,
+      convId: c.id,
+      count: c.lastSeq,
+    }));
+
+    const all = [...inboxTargets, ...shardTargets, ...convTargets];
     if (all.length === 0) {
       ui.notifications.info('NCM | No messages to purge.');
       return;
@@ -1086,6 +1099,10 @@ export class ToolsTab extends BaseTab {
         deleted += await this._purgeInboxJournal(all.find(x => x.key === selected)?.journalId);
       } else if (selected.startsWith('shard:')) {
         deleted += await this._purgeShard(all.find(x => x.key === selected)?.shardUuid);
+      } else if (selected.startsWith('conv:')) {
+        const t = all.find(x => x.key === selected);
+        const res = await convSvc?.destroy?.(t?.convId);
+        if (res?.ok) deleted += t.count;
       }
       log.info(`Purged ${deleted} message(s) from ${label}`);
       ui.notifications.info(`NCM | Purged ${deleted} message(s) from ${label}.`);
@@ -1144,7 +1161,7 @@ export class ToolsTab extends BaseTab {
    */
   async onOrphanAudit(event, target) {
     const found = this._gatherOrphans();
-    const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length + found.phoneOwners.length;
+    const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length + found.phoneOwners.length + found.conversations.length;
 
     if (total === 0) {
       ui.notifications.info('NCM | Orphan audit clean — nothing to remove.');
@@ -1172,6 +1189,11 @@ export class ToolsTab extends BaseTab {
     if (found.phoneOwners.length) {
       lines.push(`<p><strong>${found.phoneOwners.length}</strong> phone line(s) whose owner no longer exists. Their numbers retire and are never given out again:</p><ul>` +
         found.phoneOwners.map(o => li(`${o.number} <em>(${o.name || 'unnamed'})</em>`)).join('') + '</ul>');
+    }
+
+    if (found.conversations.length) {
+      lines.push(`<p><strong>${found.conversations.length}</strong> conversation(s) where nobody left in them still exists:</p><ul>` +
+        found.conversations.map(c => li(titleFor(c))).join('') + '</ul>');
     }
 
     let doClean = false;
@@ -1211,6 +1233,10 @@ export class ToolsTab extends BaseTab {
       for (const owner of new Map(found.phoneOwners.map((o) => [o.contactId || o.actorId, o])).values()) {
         await calls?.retireOwner?.({ actorId: owner.contactId ? null : owner.actorId, contactId: owner.contactId || null, why: 'Owner gone' });
         removed++;
+      }
+      for (const c of found.conversations) {
+        const res = await game.nightcity?.conversationService?.destroy?.(c.id);
+        if (res?.ok) removed++;
       }
       log.info(`Orphan audit removed ${removed} orphaned record(s)`);
       ui.notifications.info(`NCM | Orphan audit removed ${removed} orphaned record(s).`);
@@ -1364,7 +1390,15 @@ export class ToolsTab extends BaseTab {
       if (gone) phoneOwners.push({ number: l.number, name: o.name || '', contactId: o.contactId || null, actorId: o.actorId || null });
     }
 
-    return { inboxes, pins, heatActors, groupMembers, phoneOwners };
+    // A conversation whose remaining members all point at nothing can never be read again.
+    const conversations = [];
+    const convSvc = game.nightcity?.conversationService;
+    for (const c of convSvc?.all?.() || []) {
+      const stillThere = c.members.some((m) => isIn(m) && (m.contactId ? !!this.masterContactService?.getContact?.(m.contactId) : m.actorId ? !!game.actors?.get(m.actorId) : !!m.email));
+      if (!stillThere) conversations.push(c);
+    }
+
+    return { inboxes, pins, heatActors, groupMembers, phoneOwners, conversations };
   }
 
   /**

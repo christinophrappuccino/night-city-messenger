@@ -30,12 +30,37 @@
       {{/if}}
 
       {{#if characters.length}}
-      <div class="ncm-cs__divider">
+      <div class="ncm-cs__divider" data-section="char">
         <i class="fas fa-users"></i> Characters ({{characters.length}})
       </div>
 
       {{#each characters}}
-      <div class="ncm-cs__entry {{#if this.selected}}selected{{/if}}"
+      <div class="ncm-cs__entry {{#if this.selected}}selected{{/if}}" data-section="char"
+           data-action="select-entry" data-entry-id="{{this.id}}">
+        <div class="ncm-cs__entry-portrait {{this.colorClass}}">
+          {{#if this.img}}
+            <img src="{{this.img}}" alt="{{this.name}}">
+          {{else}}
+            <span class="initial">{{this.initial}}</span>
+          {{/if}}
+        </div>
+        <div class="ncm-cs__entry-info">
+          <div class="ncm-cs__entry-name">{{this.name}}</div>
+          <div class="ncm-cs__entry-role">{{this.roleLabel}}</div>
+        </div>
+        {{#if this.unreadCount}}
+        <div class="ncm-cs__entry-unread">{{this.unreadCount}}</div>
+        {{/if}}
+      </div>
+      {{/each}}
+      {{/if}}
+
+      {{#if npcs.length}}
+      <div class="ncm-cs__divider" data-section="npc">
+        <i class="fas fa-masks-theater"></i> NPCs ({{npcs.length}})
+      </div>
+      {{#each npcs}}
+      <div class="ncm-cs__entry {{#if this.selected}}selected{{/if}}" data-section="npc" data-search="{{this.search}}"
            data-action="select-entry" data-entry-id="{{this.id}}">
         <div class="ncm-cs__entry-portrait {{this.colorClass}}">
           {{#if this.img}}

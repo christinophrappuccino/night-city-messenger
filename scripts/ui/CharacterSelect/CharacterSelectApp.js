@@ -11,6 +11,7 @@ import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID } from '../../utils/constants.js';
 import { log, isGM, isHiddenCharacter } from '../../utils/helpers.js';
 import { MessageRepository } from '../../data/MessageRepository.js';
+import { gmInboxRoster } from '../../utils/inboxRoster.js';
 
 const CONNECT_STEP_DELAY_MS = 400;
 const SUCCESS_HOLD_MS = 1000;
@@ -76,6 +77,7 @@ export class CharacterSelectApp extends BaseApplication {
     const signalBars = [1, 2, 3, 4].map(i => ({ on: i <= activeBarCount }));
 
     const characters = this._buildCharacterList();
+    const npcs = isGM() ? this._buildNpcList(characters) : [];
 
     if (!this._selectedId && characters.length) {
       this._selectedId = characters[0].id;
@@ -84,7 +86,7 @@ export class CharacterSelectApp extends BaseApplication {
     const isAdminSelected = this._selectedId === '__admin__';
     const selectedCharacter = isAdminSelected
       ? null
-      : characters.find(c => c.id === this._selectedId) || null;
+      : [...characters, ...npcs].find(c => c.id === this._selectedId) || null;
 
     let adminStats = null;
     if (isAdminSelected) {
@@ -94,6 +96,7 @@ export class CharacterSelectApp extends BaseApplication {
     return {
       isGM: isGM(),
       characters,
+      npcs,
       selectedCharacter,
       isAdminSelected,
       adminStats,
@@ -115,6 +118,8 @@ export class CharacterSelectApp extends BaseApplication {
     for (const actor of actors) {
       if (!isGM() && !actor.isOwner) continue;
       if (actor.type !== 'character' || isHiddenCharacter(actor.id)) continue;
+      // A GM's unowned characters are NPCs, and list with the rest of them.
+      if (isGM() && !actor.hasPlayerOwner && actor.id !== game.user.character?.id) continue;
 
       const email = game.nightcity?.contactRepository?.getActorEmail?.(actor.id)
         || actor.getFlag?.(MODULE_ID, 'emailHandle')
@@ -165,6 +170,20 @@ export class CharacterSelectApp extends BaseApplication {
     return characters;
   }
 
+  /** GM: every NPC inbox, sheet or no sheet. Shard counts are only read for the one on show, since a world can hold hundreds. */
+  _buildNpcList(characters) {
+    const listed = new Set(characters.map((c) => c.id));
+    return gmInboxRoster().filter((r) => r.kind !== 'player' && !listed.has(r.id)).map((r) => {
+      const colorIndex = r.id.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % PORTRAIT_COLORS.length;
+      const selected = r.id === this._selectedId;
+      return {
+        id: r.id, name: r.name, img: r.img || null, initial: (r.name?.[0] || '?').toUpperCase(), colorClass: PORTRAIT_COLORS[colorIndex],
+        roleLabel: r.sub || (r.kind === 'system' ? 'System address' : 'NPC'), email: r.email || null, selected, search: r.search,
+        unreadCount: r.unread, totalMessages: r.total, shardCount: selected ? this._getCharacterStats(r.id).shards : 0, draftCount: 0,
+      };
+    });
+  }
+
   _getCharacterStats(actorId) {
     const stats = { unread: 0, total: 0, shards: 0, drafts: 0 };
     try {
@@ -173,7 +192,7 @@ export class CharacterSelectApp extends BaseApplication {
       // journal names, so a `NCM-Inbox-<id>` name lookup finds nothing.
       const journal = game.journal?.find(j => {
         const inbox = MessageRepository.identifyInbox(j);
-        return inbox && !inbox.isContact && inbox.ownerId === actorId;
+        return inbox && inbox.ownerId === actorId;
       });
       if (journal) {
         for (const page of journal.pages) {
@@ -242,9 +261,14 @@ export class CharacterSelectApp extends BaseApplication {
     for (const entry of entries) {
       const name = entry.querySelector('.ncm-cs__entry-name')?.textContent?.toLowerCase() || '';
       const role = entry.querySelector('.ncm-cs__entry-role')?.textContent?.toLowerCase() || '';
-      const matches = !query || name.includes(query) || role.includes(query);
+      const matches = !query || name.includes(query) || role.includes(query) || (entry.dataset.search || '').includes(query);
       entry.style.display = matches ? '' : 'none';
     }
+    // A section with nobody left in it loses its heading.
+    this.element?.querySelectorAll('.ncm-cs__divider[data-section]').forEach((d) => {
+      const any = [...(this.element.querySelectorAll(`.ncm-cs__entry[data-section="${d.dataset.section}"]`) || [])].some((e) => e.style.display !== 'none');
+      d.style.display = any ? '' : 'none';
+    });
   }
 
   // ═══════════════════════════════════════════════════════
@@ -335,7 +359,7 @@ export class CharacterSelectApp extends BaseApplication {
 
     const successOverlay = el.querySelector('[data-el="success-overlay"]');
     const successName = el.querySelector('[data-el="success-name"]');
-    if (successName) successName.textContent = actor?.name || 'Unknown';
+    if (successName) successName.textContent = actor?.name || game.nightcity?.masterContactService?.getContact?.(actorId)?.name || 'Unknown';
     if (overlay) overlay.classList.remove('active');
     if (successOverlay) successOverlay.classList.add('active');
 

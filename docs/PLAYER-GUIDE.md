@@ -17,8 +17,9 @@ Open this guide again any time with the **?** button at the top of your inbox.
 7. [Terminals](#part-7--terminals)
 8. [Network nodes](#part-8--network-nodes)
 9. [Calls](#part-9--calls)
-10. [Make it yours](#part-10--make-it-yours)
-11. [If something seems broken](#if-something-seems-broken)
+10. [Conversations](#part-10--conversations)
+11. [Make it yours](#part-11--make-it-yours)
+12. [If something seems broken](#if-something-seems-broken)
 
 ---
 
@@ -171,7 +172,25 @@ Open **Calls** in your inbox. The dialer is on the left, and your calls are on t
 
 ---
 
-## Part 10 — Make it yours
+## Part 10 — Conversations
+
+If your GM has them switched on, a conversation is a group chat that sits in your inbox with your mail, by its latest line. **Conversations** in the filter row shows only them.
+
+**Mail or a conversation?** A message is something you send: it has a subject, and it can carry eddies, encryption, a shard or a self-destruct. A conversation is something you are in. It is plain lines, back and forth. **Send as mail** in a chat opens the composer addressed to everyone there, for when you need what mail can do.
+
+**Starting one.** Press the chat button at the top of your inbox, add people from your contacts or a group, and pick who you join as. **That name is fixed for this conversation.** If you join as an alias, everyone there only ever sees the alias.
+
+**Writing.** Enter sends, and Shift+Enter starts a new line. The smiley in the box adds an emoji. The **+** adds a picture, your number or a contact. A contact locked with ICE can't be shared. Someone who receives a contact presses **Save contact**, and it only adds what they were missing.
+
+**People.** **Members** lists who is in it. Anyone can add someone. New people see only what is said after they join. When you leave or are removed, you keep what you had and get nothing new. Only whoever started it can rename it or remove people.
+
+**Notifications.** You get one toast per conversation, which updates as lines arrive, and one sound until you read it. The bell at the top mutes a conversation.
+
+**No connection.** With no GM online or no signal, your lines wait and send when they can. The GM can read conversations, the same as mail.
+
+Tip: conversations don't turn up in the shard, terminal or trace tools. Mail is still what you forward, encrypt or leave on a machine.
+
+## Part 11 — Make it yours
 
 <!-- fig: ThemeCustomizer.png | The Theme Customizer | 75 -->
 

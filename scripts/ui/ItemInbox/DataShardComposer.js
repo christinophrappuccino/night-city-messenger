@@ -10,7 +10,7 @@
  *   Spreadsheet is the one type still without a form (grid editor pending).
  */
 
-import { MODULE_ID, DEFAULTS, CONTENT_TYPES, TEMPLATES, SKILL_MAP } from '../../utils/constants.js';
+import { MODULE_ID, DEFAULTS, CONTENT_TYPES, TEMPLATES, SKILL_MAP, CHAT_EMOJI } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
@@ -159,12 +159,6 @@ const GAL_IMG_FIELDS = [
 // Chat is custom-collected (_collectChat) — bubbles store state in data-attrs.
 // CHAT_MSG_FIELDS only feeds the injection listSpec (the builder ignores it).
 const CHAT_MSG_FIELDS = [{ f: 'text', lbl: 'Message', cls: 'flex' }];
-
-/** Curated emoji palette for the chat composer (native OS emoji — no assets). */
-const CHAT_EMOJI = {
-  Frequent: ['😂', '❤️', '👍', '🔥', '👀', '💀', '😅', '🙏', '😎', '💯', '😭', '🤔', '👎', '😱', '🥶', '🤝'],
-  'Night City': ['🔫', '💊', '💉', '🤖', '⚡', '💾', '📡', '🩸', '🎭', '🚗', '💣', '🕶️', '📟', '🧠', '⛓️', '☠️'],
-};
 
 /** Text colors for the rich-text body editor (message). */
 // The text-colour swatches are the ONE palette the save/render cleaner lets through

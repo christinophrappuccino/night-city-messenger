@@ -23,6 +23,7 @@
  */
 
 import { domainOf } from '../../../utils/junkSenders.js';
+import { convCount, convWaiting, wireConversations, closeConversations, newConversationAdmin } from './conversationsView.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../../../utils/constants.js';
 import {
   log, formatCyberDate, getPlayerCharacters, isPersonActor, resolveDisplayPortrait, resolveDisplayName,
@@ -158,9 +159,10 @@ export class MessagesTab extends BaseTab {
     if (!s) return;
     if (s.startsWith('view:')) {                 // 'view:all' | 'view:reply' | 'view:outbox' | 'view:inboxes' — just the sub-tab
       const v = s.slice(5);
-      if (['reply', 'all', 'outbox', 'inboxes'].includes(v)) this._view = v;
+      if (['reply', 'all', 'outbox', 'inboxes', 'conv'].includes(v)) this._view = v;
       return;
     }
+    if (s.startsWith('conv:')) { this._view = 'conv'; (this._conv ??= { sel: null, q: '', show: 'all', who: '', sort: 'latest' }).sel = s.slice(5); return; }
     if (s.startsWith('npc:')) {
       this._view = 'reply';
       this._convSel = s.slice(4);
@@ -197,13 +199,17 @@ export class MessagesTab extends BaseTab {
     const mailTotal = scan.inboxes.reduce((n, b) => n + b.msgs.filter(m => !m.isSent && !m.deleted).length, 0);
     const outboxN = failures.length + queue.length + scheduled.length + timers.length;
 
+    const conversationsOn = !!game.nightcity?.conversationService?.enabled;
+    if (this._view === 'conv' && !conversationsOn) this._view = 'reply';
     const ctx = {
       view: this._view,
-      isReply: this._view === 'reply', isAll: this._view === 'all', isOutbox: this._view === 'outbox', isInboxes: this._view === 'inboxes',
+      isReply: this._view === 'reply', isAll: this._view === 'all', isOutbox: this._view === 'outbox', isInboxes: this._view === 'inboxes', isConv: this._view === 'conv',
+      conversationsOn,
       isPopout: this.isPopout,
       nav: [
         { key: 'reply', icon: 'fa-reply', label: 'Needs a reply', count: waiting, tone: waiting ? 'hot' : '' },
         { key: 'all', icon: 'fa-envelopes-bulk', label: 'All mail', count: mailTotal, tone: '' },
+        ...(conversationsOn ? [{ key: 'conv', icon: 'fa-comments', label: 'Conversations', count: convCount(), tone: convWaiting() ? 'hot' : '' }] : []),
         { key: 'outbox', icon: 'fa-paper-plane', label: 'Outbox', count: outboxN, tone: failures.length ? 'bad' : '' },
         { key: 'inboxes', icon: 'fa-inbox', label: 'Inboxes', count: scan.inboxes.length, tone: '' },
       ].map(n => ({ ...n, on: n.key === this._view })),
@@ -213,6 +219,7 @@ export class MessagesTab extends BaseTab {
         reply: ['Needs a reply', 'Player mail to your NPCs that nobody has answered yet — pick a line to read it and reply as that NPC.', 'fa-reply'],
         all: ['All mail', 'Every message in the world on a calendar you open — a year, a month, a week, a day — with anything unusual (junk, anonymous, failed) flagged.', 'fa-envelopes-bulk'],
         outbox: ['Outbox', 'Mail that didn’t arrive, mail still waiting to deliver, scheduled mail, and messages set to erase themselves.', 'fa-paper-plane'],
+        conv: ['Conversations', 'Every group chat in the world. Reading one is invisible: nobody is told, and nothing is marked read.', 'fa-comments'],
         inboxes: ['Inboxes', 'Every mailbox in the world with its size and unread count, to open, export or clean up.', 'fa-inbox'],
       }[this._view],
     };
@@ -228,6 +235,7 @@ export class MessagesTab extends BaseTab {
     const root = this.element;
     if (!root) return;
     ScopePicker.after();
+    wireConversations(this, root);
 
     // All mail: the calendar navigator answers the keyboard — Esc / Backspace one level up,
     // ← → a sibling (next day / week / month / year) — when the focus is not in a field.
@@ -400,6 +408,7 @@ export class MessagesTab extends BaseTab {
   }
 
   onClose() {
+    closeConversations(this);
     if (this._schedInterval) { clearInterval(this._schedInterval); this._schedInterval = null; }
     // The two document listeners live as long as the window (they used to be dropped on the render that added them).
     if (this._junkCloser) { document.removeEventListener('pointerdown', this._junkCloser, true); this._junkCloser = null; }
@@ -2665,6 +2674,7 @@ export class MessagesTab extends BaseTab {
       case 'ibPurgeAll': return this._ibPurge(this._allInboxJournalIds(), 'every inbox');
       // Header
       case 'sendAsPick': target.closest('details')?.removeAttribute('open'); return this._sendAsPick();
+      case 'newConversation': target.closest('details')?.removeAttribute('open'); return newConversationAdmin(this, this.element.querySelector('.ncm-msg2') || this.element);
       case 'bcToggle': this._bcOpen = !this._bcOpen; return this.render(true);
       case 'bcPrio': this._bc.priority = d.p || 'normal'; return this.render(true);
       case 'bcLater': this._bc.later = !this._bc.later; if (this._bc.later && !this._bc.when) this._bc.when = new Date(this._nowMs() + 3600000).toISOString().slice(0, 16); return this.render(true);

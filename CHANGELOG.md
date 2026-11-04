@@ -6,6 +6,7 @@ patch = fixes, minor = new features, major = breaking changes.
 ## [Unreleased] — 2.1.0
 
 ### Added
+- **Conversations.** Group chat beside mail: plain lines, pictures, shared contacts and numbers, and members who can be added or removed. A conversation sits in the inbox list with the mail. Switch it on in Module Settings. GMs watch and step in from Admin → Messages → Conversations.
 - **Phone calls.** Numbers, a dial pad, voicemail, call logs, and calls over the scene. Talk out loud, type, or dictate. Calls follow the networks: a dead zone or a downed node drops them, and taps can catch them.
 - **Our own number system.** A number says where it was issued. The GM edits the place table, sets what players can pick, and can give numbers in bulk.
 - **Corporations and shared lines.** Switchboards, extensions, and voicemail with a real mailbox.

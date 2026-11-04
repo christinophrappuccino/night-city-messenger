@@ -950,16 +950,23 @@ export class NetworkService {
    * themselves; a fan-out is copied once; money never travels on a copy.
    * @param {object} data — the recipient-facing message (anonymous mail is already masked)
    */
-  async tapDelivery(data, heard = null) {
-    if (!isGM() || !data?.network || !data.sentFromScene) return 0;
-    const now = this._nowMs();
-    const nodes = this.getNodes({ networkId: data.network }).filter((n) => nodeIsUp(n, now) && n.sceneId === data.sentFromScene);
+  /** Who is listening on this network from this scene: actor id → { node, sloppy }. */
+  tappersAt(network, sceneId, now = this._nowMs()) {
     const tappers = new Map();
+    const nodes = this.getNodes({ networkId: network }).filter((n) => nodeIsUp(n, now) && n.sceneId === sceneId);
     for (const n of nodes) for (const e of activeEffects(n, 'taps', now)) if (!tappers.has(e.actorId)) tappers.set(e.actorId, { node: n, sloppy: false });
     for (const n of nodes) for (const x of n.infections.filter((i) => i.kind === 'tap')) {
       const was = tappers.get(x.actorId);
       if (!was || (was.sloppy && !x.sloppy)) tappers.set(x.actorId, { node: n, sloppy: x.sloppy });
     }
+    return tappers;
+  }
+
+  async tapDelivery(data, heard = null) {
+    if (!isGM() || !data?.network || !data.sentFromScene) return 0;
+    const now = this._nowMs();
+    const nodes = this.getNodes({ networkId: data.network }).filter((n) => nodeIsUp(n, now) && n.sceneId === data.sentFromScene);
+    const tappers = this.tappersAt(data.network, data.sentFromScene, now);
     // sniffers record (cap) — collected later from a session
     const sniffers = nodes.flatMap((n) => n.infections.filter((i) => i.kind === 'sniffer').map((i) => ({ n, i })));
     if (sniffers.length) {

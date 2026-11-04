@@ -282,6 +282,8 @@ export function registerMessagingSystem(initializer) {
       } else if (options.fromActorId || options.actorId) {
         fromActorId = _resolveActorId(options.fromActorId || options.actorId);
         if (!fromActorId && !isGM()) return;
+        // A sheetless NPC's inbox is keyed by its directory id. It sends as that contact, or as the alias the caller already picked.
+        if (fromActorId && !game.actors.get(fromActorId)) { fromContactId ||= fromActorId; fromActorId = null; }
       } else if (options.fromContact) {
         // Direct contact object (from GM Contact Manager "Send As")
         fromContactId = options.fromContact.id;
@@ -450,6 +452,13 @@ export function registerMessagingSystem(initializer) {
         console.error('NCM | Failed to open character select:', err);
         ui.notifications.error('NCM | Failed to open character select. Check console.');
       }
+    };
+
+    /** Open the Agent on a conversation (a toast's button). */
+    ns.openConversation = async (id, actorId) => {
+      const viewer = ns.openInbox(actorId, null, { filter: 'conversations' });
+      const v = viewer?.then ? await viewer : viewer;
+      if (v) { v.selectedMessageId = null; v.selectedConversationId = id; v.render(true); }
     };
 
     /** The scene-control phone button: the same way in as the inbox, landing on the Calls tab. */
