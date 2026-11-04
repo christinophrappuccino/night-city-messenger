@@ -737,7 +737,9 @@ const ENRICHERS = {
       executedAtLabel: cd.executedAt ? (() => { try { return formatCyberDate(cd.executedAt); } catch { return ''; } })() : '',
       isActive, expired, expiresLabel,
       killed: !!cd.killed,
-      scanReport: cd.scanReport || '',
+      // Rendered raw ({{{scanReport}}}); it can carry names a player chose (accounts,
+      // files) and contentData can be written by relays — inline-clean it (SEC-14).
+      scanReport: cleanHtml(cd.scanReport || '', { mode: 'inline' }),
       // Execute affordance: runnable when not spent and (charges left OR untracked).
       canRun: !cd.executed || (isActive === false && cd.charges > 1),
       gated: !!cd.executeRequire,
@@ -1582,7 +1584,10 @@ export function enrichContent(entry, ctx = {}) {
   // A plain message body renders raw ({{{body}}}) — clean it at render so pasted
   // inline colours/backgrounds can't paint black-on-dark, and a tagless body keeps
   // its line breaks. Module tokens (`var(--ncm-*)`) and palette colours survive.
-  if (enriched.isMessage && enriched.body) enriched.body = cleanHtml(enriched.body, { mode: 'rich' });
+  // Every type, not only messages: an entry with an unknown or missing type falls
+  // through to content-body.hbs's FALLBACK branch, which also renders {{{body}}}
+  // raw (audit SEC-14).
+  if (enriched.body) enriched.body = cleanHtml(enriched.body, { mode: 'rich' });
 
   // Per-type contentData processing.
   const enrich = ENRICHERS[type];

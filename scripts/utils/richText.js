@@ -132,11 +132,47 @@ export function parseHtml(html) {
 const esc = (s) => String(s ?? '').replace(/&(?!#?\w+;)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const decodeBasic = (s) => String(s ?? '').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
 
+// URL policy (audit SEC-15). The old check only decoded six named entities, so
+// `javascript&#58;…` (and `java&#9;script:…`) slipped past it, and because the
+// serializer's esc() leaves existing entities alone the browser then decoded it
+// back into a live `javascript:` link. Now: decode EVERY entity form until the
+// string stops changing, judge the scheme on the result with control characters
+// and whitespace removed, allow only these schemes, and return the decoded URL
+// so no entity survives into the output for the browser to decode later.
+const URL_SCHEMES = new Set(['http', 'https', 'mailto', 'tel']);
+const NAMED_ENTITIES = {
+  quot: '"', apos: "'", lt: '<', gt: '>', amp: '&', nbsp: ' ', colon: ':', tab: '\t', newline: '\n',
+  sol: '/', bsol: '\\', lpar: '(', rpar: ')', period: '.', comma: ',', semi: ';', excl: '!', num: '#',
+  percnt: '%', equals: '=', quest: '?', commat: '@', lowbar: '_', hyphen: '-', dash: '-', plus: '+',
+};
+const fromCode = (n) => (Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : '');
+function decodeEntities(s) {
+  let out = String(s ?? '');
+  for (let i = 0; i < 10; i++) {
+    const next = out
+      .replace(/&#x([0-9a-f]+);?/gi, (_, h) => fromCode(parseInt(h, 16)))
+      .replace(/&#(\d+);?/g, (_, d) => fromCode(parseInt(d, 10)))
+      .replace(/&([a-z]+);/gi, (m, name) => NAMED_ENTITIES[name.toLowerCase()] ?? m);
+    if (next === out) return out;
+    out = next;
+  }
+  return null;   // still changing after 10 passes: nested encoding — refuse it
+}
+
 function safeUrl(v) {
-  const u = decodeBasic(v).trim().replace(/[\u0000-\u001f\s]+/g, '');
-  if (!u) return '';
-  if (/^(javascript|data|vbscript|file):/i.test(u)) return '';
-  return String(v).trim();
+  const decoded = decodeEntities(v);
+  if (decoded == null) return '';
+  const url = decoded.trim().replace(/[\u0000-\u001f\u007f]/g, '');
+  // What the browser would act on: no control characters, no whitespace.
+  const probe = url.replace(/[\s\u0000-\u001f\u007f-\u009f]+/g, '');
+  if (!probe) return '';
+  const head = probe.split(/[/?#]/)[0];
+  if (head.includes(':')) {
+    if (!URL_SCHEMES.has(head.slice(0, head.indexOf(':')).toLowerCase())) return '';
+  } else if (head.includes('&')) {
+    return '';   // an entity we could not decode, where a scheme could hide
+  }
+  return url;
 }
 
 const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -204,6 +240,54 @@ function cleanAttrs(tag, attrs, opts) {
 
 const looksLikeHtml = (s) => /<[a-zA-Z/!]/.test(String(s ?? ''));
 const hasBlockChildren = (n) => (n.children || []).some(c => c.tag && BLOCKISH.has(c.tag));
+
+// ─────────────────────────────────────────────────────────────
+//  Strip only what can RUN (audit SEC-13)
+// ─────────────────────────────────────────────────────────────
+
+const STRIP_ALSO = new Set(['base', 'frame', 'frameset', 'applet', 'portal']);
+const ATTR_NAME_OK = /^[a-z][a-z0-9_:.-]*$/;
+const URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 'poster', 'background', 'cite', 'data', 'longdesc', 'lowsrc', 'dynsrc']);
+const DROP_ATTRS = new Set(['srcdoc', 'srcset', 'ping', 'http-equiv']);
+
+/**
+ * Remove ACTIVE content from HTML and keep everything else exactly as written:
+ * formatting, colours, blank lines, the spaces between inline tags. For HTML
+ * the user is going to keep EDITING (a restored draft, a body handed to the
+ * composer) where cleanHtml's whitelist would visibly rewrite their work.
+ *
+ * Dropped: script-like elements with their content (DROP_WITH_CONTENT + base /
+ * frame / applet), every on* handler, srcdoc / srcset / ping / http-equiv, URL
+ * attributes that fail safeUrl, and style attributes that could load or run
+ * something (url(), expression(), javascript:, @import, CSS escapes).
+ * The output is rebuilt from the parsed tree, so only tags written here exist
+ * in it; a stray '<' in text stays escaped (tokenizeHtml).
+ * @param {string} html
+ * @returns {string}
+ */
+export function stripActiveHtml(html) {
+  const src = String(html ?? '');
+  if (!src) return '';
+  if (!looksLikeHtml(src)) return src;   // plain text: nothing can run (the caller escapes or inserts it as before)
+  const walk = (n) => n.children.map((c) => {
+    if (c.text != null) return c.text;
+    if (DROP_WITH_CONTENT.has(c.tag) || STRIP_ALSO.has(c.tag)) return '';
+    if (!ATTR_NAME_OK.test(c.tag)) return walk(c);
+    const attrs = [];
+    for (const [k, v] of c.attrs) {
+      if (!ATTR_NAME_OK.test(k) || k.startsWith('on') || DROP_ATTRS.has(k)) continue;
+      if (URL_ATTRS.has(k)) { const u = safeUrl(v); if (u) attrs.push([k, u]); continue; }
+      if (k === 'style') {
+        const plainStyle = decodeEntities(v);
+        if (plainStyle == null || /url\s*\(|expression\s*\(|javascript:|@import|\\/i.test(plainStyle)) continue;
+      }
+      attrs.push([k, v]);
+    }
+    const open = `<${c.tag}${attrs.map(([k, v]) => ` ${k}="${esc(v)}"`).join('')}>`;
+    return VOID.has(c.tag) ? open : `${open}${walk(c)}</${c.tag}>`;
+  }).join('');
+  return walk(parseHtml(src));
+}
 
 /** Escape plain text into HTML, keeping paragraph/line breaks (the "body with no tags" case). */
 export function textToHtml(text) {

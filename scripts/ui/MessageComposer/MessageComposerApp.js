@@ -22,7 +22,7 @@ import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
 import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { applyGmView, applyAdminZoom, toggleGmView, playerDialog, adminPrompt, adminConfirm } from '../../utils/adminTheme.js';
-import { pasteToHtml } from '../../utils/richText.js';
+import { pasteToHtml, cleanHtml, stripActiveHtml } from '../../utils/richText.js';
 import { shardTerm as T } from '../../utils/shardTerm.js';
 import { tagHueIndex } from '../../utils/tagHue.js';
 import { showNamePicker } from '../../utils/namePicker.js';
@@ -470,7 +470,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const fwd = this.messageService?.buildForward(this.originalMessage, this.fromActorId, '', '');
     if (fwd) {
       this.subject = fwd.subject;
-      this.body = fwd.body;
+      // The forwarded body was written by someone else and goes into the editor
+      // ({{{body}}}): drop anything that could run, keep its formatting (SEC-13).
+      this.body = stripActiveHtml(fwd.body);
     }
   }
 
@@ -507,7 +509,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         }
       }
       this.subject = options.subject || '';
-      this.body = options.body || '';
+      // A body handed in by another window (the GM reopening a player's scheduled
+      // message, the Desk's "open in the full composer", a macro) — SEC-13.
+      this.body = stripActiveHtml(options.body || '');
       this.threadId = options.threadId || null;
       this.inReplyTo = options.inReplyTo || null;
     }
@@ -601,7 +605,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         network: origNetwork.toUpperCase(),
         networkColor: origNetColor,
         subject: orig.subject || '',
-        body: orig.body || '',
+        // Shown raw ({{{originalMessageCard.body}}}); clean it exactly as the
+        // inbox viewer does, so the quote matches what was read (SEC-13).
+        body: cleanHtml(orig.body || '', { mode: 'mail' }),
         encrypted: orig.status?.encrypted || false,
         encDV: orig.encryption?.dc || null,
         attachments: (orig.attachments || []).map(a => ({
@@ -1976,7 +1982,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       }
     }
     this.subject = draft.subject || this.subject || '';
-    this.body = draft.body || '';
+    // Drafts live on the actor flag (anyone who owns the actor can write it) and
+    // a GM can open a player's draft — SEC-13. Formatting kept.
+    this.body = stripActiveHtml(draft.body || '');
     this.threadId = draft.threadId ?? this.threadId;
     this.inReplyTo = draft.inReplyTo ?? this.inReplyTo;
     this.priority = draft.priority || 'normal';

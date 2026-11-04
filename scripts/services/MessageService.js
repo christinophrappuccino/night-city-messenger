@@ -7,7 +7,7 @@
  * for permission safety.
  */
 
-import { ncmNotify } from '../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
 import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime } from '../utils/helpers.js';
@@ -1603,7 +1603,10 @@ export class MessageService {
    */
   buildForward(originalMessage, fromActorId, toActorId, forwardBody = '') {
     const divider = '\n\n--- Forwarded Message ---\n';
-    const header = `From: ${originalMessage.from}\nTo: ${originalMessage.to}\nDate: ${originalMessage.timestamp}\nSubject: ${originalMessage.subject}\n\n`;
+    // The body is HTML (it is loaded into the composer's editor), and these
+    // fields are plain text written by other people — escape them (audit SEC-13).
+    const e = escapeHtml;
+    const header = `From: ${e(originalMessage.from)}\nTo: ${e(originalMessage.to)}\nDate: ${e(originalMessage.timestamp)}\nSubject: ${e(originalMessage.subject)}\n\n`;
 
     return {
       toActorId,
