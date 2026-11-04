@@ -252,7 +252,11 @@ export class WatchService {
 
   // ─── the wire ───
 
-  onSocket(data = {}) {
+  /**
+   * @param {object} data
+   * @param {string|null} [senderId] - server-verified sender (SocketManager). Not used for access yet.
+   */
+  onSocket(data = {}, senderId = null) { // eslint-disable-line no-unused-vars
     const me = game.user.id;
     switch (data.type) {
       case 'offer': {

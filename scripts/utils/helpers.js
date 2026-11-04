@@ -76,6 +76,51 @@ export function isGM() {
 }
 
 /**
+ * Is THIS client the one GM that should handle shared work (relayed requests,
+ * reapers, migrations)? With two GMs connected, `isGM()` is true on both and
+ * the work runs twice; `game.users.activeGM` names exactly one of them (a full
+ * GM before an Assistant). With no active GM recorded, any GM qualifies.
+ * Same rule as SchedulingService._isDeliverer.
+ * @returns {boolean}
+ */
+export function isPrimaryGM() {
+  if (!isGM()) return false;
+  const active = game.users?.activeGM;
+  return !active || active.id === game.user?.id;
+}
+
+/**
+ * Did a socket packet come from a GM? Pass the server-verified sender id the
+ * SocketManager hands to every handler — never an id read from the payload.
+ * @param {string|null|undefined} userId
+ * @returns {boolean}
+ */
+export function isFromGM(userId) {
+  if (!userId) return false;
+  return !!game.users?.get(userId)?.isGM;
+}
+
+/**
+ * Does this user own this actor? A GM owns every actor. Accepts an Actor or an
+ * actor id. Used to check that a relayed request acts for a character the
+ * sender really controls.
+ * @param {string|null|undefined} userId - server-verified sender id
+ * @param {Actor|string|null|undefined} actorOrId
+ * @returns {boolean}
+ */
+export function userOwnsActor(userId, actorOrId) {
+  if (!userId || !actorOrId) return false;
+  const user = game.users?.get(userId);
+  if (!user) return false;
+  if (user.isGM) return true;
+  const actor = typeof actorOrId === 'string' ? game.actors?.get(actorOrId) : actorOrId;
+  if (!actor) return false;
+  const OWNER = globalThis.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+  if (typeof actor.testUserPermission === 'function') return !!actor.testUserPermission(user, OWNER);
+  return (actor.ownership?.[userId] ?? actor.ownership?.default ?? 0) >= OWNER;
+}
+
+/**
  * Get the primary owned actor for the current user
  * @returns {Actor|null}
  */

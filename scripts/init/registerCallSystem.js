@@ -90,7 +90,7 @@ export function registerCallSystem(initializer) {
     game.nightcity.payphoneBooth = new PayphoneBooth(payphones);
     payphones.init();
     game.nightcity.payphoneBooth.init();
-    sm.register(SOCKET_OPS.PAYPHONE, (data) => payphones.handleSocket(data));
+    sm.register(SOCKET_OPS.PAYPHONE, (data, sender) => payphones.handleSocket(data, sender));
 
     // losing signal mid-call drops it
     game.nightcity.eventBus.on(EVENTS.NETWORK_CHANGED, () => service.checkSignal());

@@ -357,7 +357,11 @@ export class PayphoneService {
 
   // ═══════════════════════════════ socket ═══════════════════════════════
 
-  handleSocket(data = {}) {
+  /**
+   * @param {object} data
+   * @param {string|null} [senderId] - server-verified sender (SocketManager). Not used for access yet.
+   */
+  handleSocket(data = {}, senderId = null) { // eslint-disable-line no-unused-vars
     if (Array.isArray(data.userIds) && !data.userIds.includes(game.user.id)) return;
     switch (data.type) {
       case 'use': {

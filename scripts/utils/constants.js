@@ -237,6 +237,78 @@ export const SOCKET_OPS = Object.freeze({
   NETWORK_NODE_REQUEST: 'network:nodeRequest',
 });
 
+/**
+ * Trust class of every socket op (audit remediation, AUDIT-REMEDIATION-PLAN.md §4.1).
+ * The SocketManager hands every handler the SERVER-verified sender id; this table
+ * says what a handler may assume about that sender.
+ *   request — player → active GM. The GM checks the sender may do this.
+ *   result  — GM → player(s). Only meaningful when the sender is a GM.
+ *   peer    — player ↔ player (or broadcast). Each handler checks the sender is
+ *             the party it claims to be.
+ *   unused  — declared, no handler registered.
+ * Every SOCKET_OPS key appears here exactly once (sim: test-socket-identity).
+ * Recorded in batch A1; enforcement is added op by op in later batches.
+ */
+export const SOCKET_TRUST = Object.freeze({
+  MESSAGE_RELAY: 'request',
+  MESSAGE_DELIVERED: 'result',
+  MESSAGE_QUEUE_SYNC: 'request',
+  MESSAGE_QUEUE_CMD: 'result',
+  MESSAGE_NOTIFY: 'result',
+  MESSAGE_STATUS_UPDATE: 'peer',
+  SCHEDULE_SYNC: 'request',
+  INBOX_REFRESH: 'result',
+  NETWORK_STATE_CHANGED: 'peer',
+  SHARD_STATE_CHANGED: 'unused',
+  CONTACT_SHARE_RELAY: 'request',
+  CONTACT_SHARE_NOTIFY: 'result',
+  CONTACT_SHARE_CONFIRM: 'result',
+  TRACE_COMPLETE: 'peer',
+  LOG_RELAY: 'request',
+  SHARD_CONVERT_REQUEST: 'request',
+  SHARD_CONVERT_RESULT: 'result',
+  SHARD_UNCONVERT_REQUEST: 'request',
+  SHARD_UNCONVERT_RESULT: 'result',
+  ANON_TRACE_REQUEST: 'request',
+  TERMINAL_STATE_CHANGED: 'unused',
+  TERMINAL_EXFIL_REQUEST: 'request',
+  TERMINAL_NET_REQUEST: 'request',
+  TERMINAL_SESSION_REQUEST: 'request',
+  TERMINAL_EXFIL_RESULT: 'result',
+  BANK_SIPHON_REQUEST: 'request',
+  CONTENT_UPDATE_REQUEST: 'request',
+  PAYLOAD_EFFECT_REQUEST: 'request',
+  TERMINAL_RESIDENT_REQUEST: 'request',
+  TRACE_REQUEST: 'request',
+  SHARD_PRICE_REQUEST: 'request',
+  SHARD_PRICE_RESULT: 'result',
+  NET_RESOLVE_REQUEST: 'request',
+  NET_RESOLVE_RESULT: 'result',
+  NET_RESOLVE_CANCEL: 'request',
+  NET_RESOLVE_STATE: 'result',
+  SECURITY_LOCKOUT: 'result',
+  SECURITY_NOTIFY: 'peer',
+  CALL: 'peer',
+  WATCH: 'peer',
+  CALL_LOG_REQUEST: 'request',
+  CALL_LINE_REQUEST: 'request',
+  // Mixed op: add/started go to the GM; arrive/auto/round updates are broadcast.
+  CALL_EMERGENCY: 'peer',
+  PAYPHONE: 'peer',
+  CONVERSATION_REQUEST: 'request',
+  CONVERSATION_RESULT: 'result',
+  // Mixed op: join/leave/enhance/save go to the GM; prompt/joined/line/ended come from it.
+  CALL_OVERHEARD: 'peer',
+  CALL_VM_REQUEST: 'request',
+  CALL_AUDIO: 'request',
+  SECURITY_REPORT: 'request',
+  SECURITY_CLEAR: 'result',
+  TERMINAL_KICK: 'result',
+  SHARD_INTEGRITY_REQUEST: 'request',
+  SHARD_STATE_REQUEST: 'request',
+  NETWORK_NODE_REQUEST: 'request',
+});
+
 // ─── Netrunning binding (design §5) ───
 
 /** hackResolution tiers — HOW a gated hack/upload action resolves. */

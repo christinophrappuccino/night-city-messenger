@@ -14,8 +14,8 @@ export function registerWatchSystem(initializer) {
     const service = new WatchService();
     game.nightcity.watchService = service;
     service._openWindow = (offer) => { const win = new WatchWindowApp(offer); win.render(true); return win; };
-    game.nightcity.socketManager?.register(SOCKET_OPS.WATCH, (data) => {
-      try { service.onSocket(data); } catch (err) { log.error(`Watch socket: ${err.message}`); }
+    game.nightcity.socketManager?.register(SOCKET_OPS.WATCH, (data, sender) => {
+      try { service.onSocket(data, sender); } catch (err) { log.error(`Watch socket: ${err.message}`); }
     });
     Hooks.on('renderApplicationV2', (app) => { try { service.onRender(app); } catch (err) { log.debug(`Watch render: ${err.message}`); } });
     Hooks.on('closeApplicationV2', (app) => { try { service.stopShare(app, { closing: true }); } catch (err) { log.debug(`Watch close: ${err.message}`); } });
