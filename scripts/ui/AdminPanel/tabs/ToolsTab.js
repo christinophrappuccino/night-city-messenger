@@ -12,7 +12,7 @@ import { ncmNotify, escapeHtml } from '../../../utils/notify.js';
 import { isIn, titleFor } from '../../../utils/conversations.js';
 import { MODULE_ID, SOCKET_OPS } from '../../../utils/constants.js';
 import { refreshNcmWindows } from '../../../utils/forceRefresh.js';
-import { log, formatCyberDate, getPlayerCharacters, hiddenCharacterIds } from '../../../utils/helpers.js';
+import { log, formatCyberDate, getPlayerCharacters, hiddenCharacterIds, getSetting } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { resolveMember, worldAdapter } from '../../../utils/participants.js';
@@ -149,7 +149,7 @@ export class ToolsTab extends BaseTab {
     let initFormat = '24H';
     try { initFormat = game.settings.get(MODULE_ID, 'timeFormat') === '12h' ? '12H' : '24H'; } catch { /* default */ }
     let initDateFmt = 'YMD';
-    try { initDateFmt = game.settings.get(MODULE_ID, 'dateFormat') || 'YMD'; } catch { /* default */ }
+    initDateFmt = getSetting('dateFormat', 'YMD') || 'YMD';
     const dateFmtLabels = { YMD: 'Y.M.D', DMY: 'D.M.Y', MDY: 'M.D.Y' };
 
     // Pre-fill date/time inputs
@@ -348,7 +348,7 @@ export class ToolsTab extends BaseTab {
         dateFmtBtn.on('click', async (e) => {
           e.preventDefault();
           let current = 'YMD';
-          try { current = game.settings.get(MODULE_ID, 'dateFormat') || 'YMD'; } catch { /* */ }
+          current = getSetting('dateFormat', 'YMD') || 'YMD';
           const next = _dateFmtCycle[current] || 'YMD';
           await game.settings.set(MODULE_ID, 'dateFormat', next);
           dateFmtLabel.text(_dateFmtLabels[next]);
@@ -1388,7 +1388,7 @@ export class ToolsTab extends BaseTab {
 
     const heatActors = [];
     let heatMap = {};
-    try { heatMap = game.settings.get(MODULE_ID, 'traceHeat') ?? {}; } catch { /* setting absent */ }
+    heatMap = getSetting('traceHeat', {}) ?? {};
     for (const [objectId, byActor] of Object.entries(heatMap)) {
       for (const actorId of Object.keys(byActor ?? {})) {
         if (!game.actors?.get(actorId)) heatActors.push({ objectId, actorId });

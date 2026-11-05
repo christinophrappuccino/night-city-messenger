@@ -524,7 +524,7 @@ export class MessagesTab extends BaseTab {
   }
 
   _answeredMap() {
-    try { return game.settings.get(MODULE_ID, 'npcMailAnswered') || {}; } catch { return {}; }
+    return getSetting('npcMailAnswered', {}) || {};
   }
 
   async _markAnswered(baseIds) {

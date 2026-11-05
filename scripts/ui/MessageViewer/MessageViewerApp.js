@@ -47,7 +47,7 @@ import { pickSenderChoice } from '../../utils/identities.js';
 import { openGuide } from '../../utils/guides.js';
 import { getThreadMessages } from '../../utils/threading.js';
 import { cleanHtml } from '../../utils/richText.js';
-import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, canEncode as canEncodeShard, chatCardTime, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
+import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, canEncode as canEncodeShard, chatCardTime, isHiddenCharacter, isSelectableCharacter, getSetting } from '../../utils/helpers.js';
 import { adjustWealth } from '../../utils/wealth.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { selfKeys } from '../../utils/participants.js';
@@ -2869,7 +2869,7 @@ export class MessageViewerApp extends BaseApplication {
 
     const dv = Number(anon.traceDV) || 9;
     let traceSkill = 'interface';
-    try { traceSkill = game.settings.get(MODULE_ID, 'anonTraceSkill') || 'interface'; } catch { /* default */ }
+    traceSkill = getSetting('anonTraceSkill', 'Interface') || 'interface';
 
     const skillSvc = game.nightcity?.skillService;
     const skills = skillSvc?.getAvailableSkills(actor, [traceSkill]) || [];
@@ -4645,7 +4645,7 @@ export class MessageViewerApp extends BaseApplication {
   /** Resolver options shared by the badge count and the transcript. */
   _threadOpts() {
     let subjectThreading = true;
-    try { subjectThreading = game.settings.get(MODULE_ID, 'subjectThreading') ?? true; } catch { /* setting may not be registered yet */ }
+    subjectThreading = getSetting('subjectThreading', true) ?? true;
     // The viewer's own address + directory id too, so a group thread's
     // participants list never counts ME as a shared counterparty.
     const viewingKeys = selfKeys({

@@ -31,7 +31,7 @@
 
 import { ncmNotify } from '../../../utils/notify.js';
 import { MODULE_ID, NETWORK_TYPES } from '../../../utils/constants.js';
-import { log, chatCardTime } from '../../../utils/helpers.js';
+import { log, chatCardTime, getSetting } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { bypassDCFor, bypassRowsHtml, wireBypassRows } from '../../../utils/bypassSkills.js';
 import { adminDialog, adminConfirm, themedConfirm, themedPrompt } from '../../../utils/adminTheme.js';
@@ -705,7 +705,7 @@ export class NetworksTab extends BaseTab {
     };
   }
 
-  _prewire() { try { return game.settings.get(MODULE_ID, 'scenePrewire') || {}; } catch { return {}; } }
+  _prewire() { return getSetting('scenePrewire', {}) || {}; }
   async _setPrewire(uuid, rec) {
     const map = { ...this._prewire() };
     if (rec) map[uuid] = rec; else delete map[uuid];

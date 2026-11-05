@@ -13,7 +13,7 @@
 import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_MAILBOX_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveDisplayName, getPlayerCharacters, isPersonActor } from '../../utils/helpers.js';
+import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveDisplayName, getPlayerCharacters, isPersonActor, getSetting } from '../../utils/helpers.js';
 import { lockOdds, lockOddsHtml } from '../../utils/lockOdds.js';
 import { tagHue } from '../../utils/tagHue.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
@@ -1008,7 +1008,7 @@ export class TerminalConfigApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _getFullPresets() {
-    try { return game.settings.get(MODULE_ID, 'terminalPresetLibrary') ?? []; } catch { return []; }
+    return getSetting('terminalPresetLibrary', []) ?? [];
   }
 
   async _setFullPresets(presets) {
@@ -1872,7 +1872,7 @@ export class TerminalConfigApp extends BaseApplication {
   // ─── Saved terminal themes (world setting, shared across terminals) ───
 
   _getTermThemes() {
-    try { return game.settings.get(MODULE_ID, 'terminalThemePresets') ?? []; } catch { return []; }
+    return getSetting('terminalThemePresets', []) ?? [];
   }
 
   async _setTermThemes(themes) {

@@ -23,7 +23,7 @@
 import { ncmNotify } from '../../../utils/notify.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { openGuide } from '../../../utils/guides.js';
-import { log, getPlayerCharacters, isSelectableCharacter, resolveDisplayName, formatCyberDate } from '../../../utils/helpers.js';
+import { log, getPlayerCharacters, isSelectableCharacter, resolveDisplayName, formatCyberDate, getSetting } from '../../../utils/helpers.js';
 import { adminConfirm } from '../../../utils/adminTheme.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
@@ -307,7 +307,7 @@ export class OverviewTab extends BaseTab {
     // "Waiting" = not answered — the same rule as Messages → Needs a reply
     // (messagesModel.isAnswered: an NPC reply after it, or the GM's ✓ mark).
     let answered = {};
-    try { answered = game.settings.get(MODULE_ID, 'npcMailAnswered') || {}; } catch { /* not registered yet */ }
+    answered = getSetting('npcMailAnswered', {}) || {};
     for (const box of mail.inboxes) {
       if (box.isPlayer) continue;
       const sent = box.msgs.filter(x => x.status?.sent || String(x.messageId || '').endsWith('-sent'));

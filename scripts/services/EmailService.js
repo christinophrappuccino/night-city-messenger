@@ -9,7 +9,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { log, getSetting } from '../utils/helpers.js';
 
 export class EmailService {
   /**
@@ -70,9 +70,7 @@ export class EmailService {
    * @returns {boolean}
    */
   isSetupRequired() {
-    try {
-      return game.settings.get(MODULE_ID, 'emailSetupRequired') ?? true;
-    } catch { return true; }
+    return getSetting('emailSetupRequired', true) ?? true;
   }
 
   /**
@@ -80,9 +78,7 @@ export class EmailService {
    * @returns {boolean}
    */
   canPlayerBurn() {
-    try {
-      return game.settings.get(MODULE_ID, 'emailAllowPlayerBurn') ?? true;
-    } catch { return true; }
+    return getSetting('emailAllowPlayerBurn', true) ?? true;
   }
 
   /**
@@ -90,9 +86,7 @@ export class EmailService {
    * @returns {boolean}
    */
   allowCustomDomains() {
-    try {
-      return game.settings.get(MODULE_ID, 'emailAllowCustomDomains') ?? true;
-    } catch { return true; }
+    return getSetting('emailAllowCustomDomains', true) ?? true;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -158,9 +152,7 @@ export class EmailService {
    * @returns {string}
    */
   _getDefaultDomain() {
-    try {
-      return game.settings.get(MODULE_ID, 'emailDefaultDomain') || 'nightcity.net';
-    } catch { return 'nightcity.net'; }
+    return getSetting('emailDefaultDomain', 'nightcity.net') || 'nightcity.net';
   }
 
   // ═══════════════════════════════════════════════════════════

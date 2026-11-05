@@ -18,7 +18,7 @@
  */
 
 import { MODULE_ID } from '../../utils/constants.js';
-import { formatCyberDate } from '../../utils/helpers.js';
+import { formatCyberDate, getSetting } from '../../utils/helpers.js';
 import { playerDialog } from '../../utils/adminTheme.js';
 
 /** Month names for the written month styles (mirrors formatCyberDate's tables). */
@@ -47,11 +47,11 @@ export class CyberTimePicker {
 
     // ─── Read format settings ───
     try { this._use12h = game.settings.get(MODULE_ID, 'timeFormat') === '12h'; } catch { this._use12h = false; }
-    try { this._dateFmt = game.settings.get(MODULE_ID, 'dateFormat') || 'YMD'; } catch { this._dateFmt = 'YMD'; }
+    this._dateFmt = getSetting('dateFormat', 'YMD') || 'YMD';
     // Month style (number 03 / short Mar / long March) — a written style swaps
     // the month digit-box for a named <select>, so the picker matches what
     // formatCyberDate will render everywhere else.
-    try { this._monthStyle = game.settings.get(MODULE_ID, 'dateMonthStyle') || 'number'; } catch { this._monthStyle = 'number'; }
+    this._monthStyle = getSetting('dateMonthStyle', 'number') || 'number';
 
     // ─── Initialize from value or game time ───
     let initDate;

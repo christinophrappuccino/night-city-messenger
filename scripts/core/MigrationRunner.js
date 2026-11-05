@@ -25,7 +25,7 @@
  */
 
 import { MODULE_ID } from '../utils/constants.js';
-import { log, isGM, isPrimaryGM } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM, getSetting } from '../utils/helpers.js';
 import { tameCrtDeep } from '../utils/crt.js';
 import { shiftInterfaceDvs, shiftJackRules, refreshJackDials } from '../utils/interfaceDvShift.js';
 import { adminWait } from '../utils/adminTheme.js';
@@ -132,7 +132,7 @@ const MIGRATIONS = [
 
       // A GM who already chose stat + rank on the Security tab has said what they want.
       let mode = 'rank';
-      try { mode = game.settings.get(MODULE_ID, 'roleAbilityRoll'); } catch { /* not registered */ }
+      mode = getSetting('roleAbilityRoll', 'rank');
       if (mode === 'stat') return;
 
       const targets = interfaceDvTargets();

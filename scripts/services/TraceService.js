@@ -18,7 +18,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
-import { log, isGM, isPrimaryGM, netVerbFor, whisperCardHtml, userOwnsActor } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM, netVerbFor, whisperCardHtml, userOwnsActor, getSetting } from '../utils/helpers.js';
 import { userCanReachItem } from '../utils/shardAccess.js';
 import { serialize } from '../utils/serialize.js';
 import { isFeatureOn } from '../utils/features.js';
@@ -299,7 +299,7 @@ export class TraceService {
   //  Escalation — trace countdown ("the corp found you", §6b)
   // ═══════════════════════════════════════════════════════════
 
-  getCountdowns() { try { return game.settings.get(MODULE_ID, 'traceCountdowns') || []; } catch { return []; } }
+  getCountdowns() { return getSetting('traceCountdowns', []) || []; }
 
   /**
    * GM starts a trace countdown on a (object × actor). Fires on expiry (game time).
@@ -402,7 +402,7 @@ export class TraceService {
    *  Respects the client `securityAlertLevel` — every | serious (default) | off. */
   _gmAlert(p, heat) {
     let level = 'serious';
-    try { level = game.settings.get(MODULE_ID, 'securityAlertLevel') || 'serious'; } catch { /* not registered */ }
+    level = getSetting('securityAlertLevel', 'serious') || 'serious';
     if (level === 'off') return;
     if (level === 'serious' && p.severity === 'minor') return; // dial down credential fumbles
     const tier = TraceService.tierOf(heat);

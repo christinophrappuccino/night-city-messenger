@@ -18,7 +18,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
-import { log, isGM } from '../utils/helpers.js';
+import { log, isGM, getSetting } from '../utils/helpers.js';
 
 /** @type {string[]} Valid provider mode keys */
 export const TIME_PROVIDER_MODES = ['auto', 'simple-calendar', 'world-time', 'real-time', 'manual', 'disguised'];
@@ -66,11 +66,7 @@ export class TimeService {
     this._hasSmallTime = game.modules.get('smalltime')?.active === true;
 
     // Read configured mode from settings
-    try {
-      this._mode = game.settings.get(MODULE_ID, 'timeProvider') || 'auto';
-    } catch {
-      this._mode = 'auto';
-    }
+    this._mode = getSetting('timeProvider', 'auto') || 'auto';
 
     // Resolve auto mode
     if (this._mode === 'auto') {

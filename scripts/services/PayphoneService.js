@@ -15,7 +15,7 @@
 
 import { ncmNotify, tipText } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, resolveOperator } from '../utils/helpers.js';
+import { log, isGM, resolveOperator, getSetting } from '../utils/helpers.js';
 import { sanitizePayphone, sanitizePayphones, sanitizeSavedStyles, sanitizeLook, lookFromStyle, placeLabel, payphoneLine, inReach, bystanders, speakerOn } from '../utils/payphones.js';
 import { normaliseNumber } from '../utils/phoneNumbering.js';
 import { isFeatureOn } from '../utils/features.js';
@@ -61,7 +61,7 @@ export class PayphoneService {
     const key = normaliseNumber(number, home);
     return this.getAll().find((p) => p.number && normaliseNumber(p.number, home) === key) || null;
   }
-  _read() { try { return game.settings.get(MODULE_ID, 'payphones') || {}; } catch { return {}; } }
+  _read() { return getSetting('payphones', {}) || {}; }
 
   /**
    * GM: a new payphone on a scene, with a free number. It is not on the map yet — place it with openPlaceDialog.

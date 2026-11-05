@@ -11,7 +11,7 @@
 
 import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, THEME_PRESETS, COLOR_VAR_MAP, FONT_OPTIONS, DEFAULTS } from '../../utils/constants.js';
-import { log } from '../../utils/helpers.js';
+import { log, getSetting } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { applyCrt, resolveCrt, CRT_OFF, CRT_CAPS, crtPanelContext, wireCrtPanel } from '../../utils/crt.js';
@@ -600,9 +600,7 @@ export class ThemeCustomizerApp extends BaseApplication {
    * @returns {Array}
    */
   _getCustomPresets() {
-    try {
-      return game.settings.get(MODULE_ID, 'customPresets') ?? [];
-    } catch { return []; }
+    return getSetting('customPresets', []) ?? [];
   }
 
   /**

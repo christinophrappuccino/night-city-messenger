@@ -638,7 +638,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const anonActive = anonFeatureEnabled && this.anonymousEnabled;
     const anonStyleNorm = normalizeAnonStyle(this.anonStyle);
     let anonTraceEnabled = true;
-    try { anonTraceEnabled = game.settings.get(MODULE_ID, 'anonTraceEnabled'); } catch { /* default on */ }
+    anonTraceEnabled = getSetting('anonTraceEnabled', true);
     const anonStyleList = Object.entries(ANON_STYLE_LABELS).map(([id, label]) => ({ id, label, active: id === anonStyleNorm }));
 
     // The picked identity's own face. An alias never borrows its character's
@@ -2371,7 +2371,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // (fromActorId above) rides along only on the GM-owned sent copy.
       if (game.user.isGM && this.anonymousEnabled && this._isAnonFeatureEnabled()) {
         let traceEnabled = true;
-        try { traceEnabled = game.settings.get(MODULE_ID, 'anonTraceEnabled'); } catch { /* default on */ }
+        traceEnabled = getSetting('anonTraceEnabled', true);
         messageData.anonymous = {
           enabled: true,
           style: normalizeAnonStyle(this.anonStyle),

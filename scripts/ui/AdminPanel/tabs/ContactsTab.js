@@ -22,7 +22,7 @@
 import { ncmNotify, escapeHtml } from '../../../utils/notify.js';
 import { proposeFor, readNumber, officeNames } from './phoneNumbersView.js';
 import { MODULE_ID } from '../../../utils/constants.js';
-import { log, getPlayerCharacters, hiddenCharacterIds, isPersonActor } from '../../../utils/helpers.js';
+import { log, getPlayerCharacters, hiddenCharacterIds, isPersonActor, getSetting } from '../../../utils/helpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminDialog, adminConfirm, adminPrompt, adminWait } from '../../../utils/adminTheme.js';
@@ -407,7 +407,7 @@ export class ContactsTab extends BaseTab {
 
   _buildContext(all) {
     if (this._groupBy === null) {
-      try { this._groupBy = game.settings.get(MODULE_ID, 'contactsGroupBy') || 'role'; } catch { this._groupBy = 'role'; }
+      this._groupBy = getSetting('contactsGroupBy', 'role') || 'role';
       if (!GROUP_BY.some(([k]) => k === this._groupBy)) this._groupBy = 'role';
     }
     const pcs = this._pcs();
@@ -780,7 +780,7 @@ export class ContactsTab extends BaseTab {
     if (!rows.length && !knowers.length) return null;
 
     let answered = {};
-    try { answered = game.settings.get(MODULE_ID, 'npcMailAnswered') || {}; } catch { answered = {}; }   // the GM's ✓ in Messages → Needs a reply
+    answered = getSetting('npcMailAnswered', {}) || {};   // the GM's ✓ in Messages → Needs a reply
     const args = { identities: group.map((x) => ({ id: x.id, name: x.name })), rows, knowers, now, ident: this._sbIdent, answered };
     let sb = npcSwitchboard({ ...args, sel: this._sbSel });
     if (!sb.pick) {

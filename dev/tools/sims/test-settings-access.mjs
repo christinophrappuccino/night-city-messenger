@@ -58,6 +58,13 @@ ok(/getSetting\('anonSendEnabled', true\)/.test(src['scripts/ui/AdminPanel/tabs/
 // ═══ 3. one reader, one primary-GM check ═══
 const privateReaders = Object.entries(src).filter(([f, t]) => f !== 'scripts/utils/helpers.js' && /_get\(key, fallback\)\s*\{\s*try\s*\{/.test(t)).map(([f]) => f);
 ok(privateReaders.length === 0, `no private try/catch settings reader left (${privateReaders.join(', ')})`);
+// hand-written try/catch reads of a setting: 35 simple ones became getSetting (2026-11-05). The rest wrap more than
+// the read (an if block, several statements), so their catch also swallows other errors — they convert when their
+// file is next edited. The count may only go down.
+const TRY_READS_MAX = 70;
+const tryReads = Object.entries(src).filter(([f]) => f !== 'scripts/utils/helpers.js').reduce((n, [, t]) => n + (t.match(/try\s*\{[^}]{0,200}?game\.settings\.get\(MODULE_ID/g) || []).length, 0);
+ok(tryReads <= TRY_READS_MAX, `try/catch settings reads: ${tryReads} (may only go down from ${TRY_READS_MAX}; use getSetting(key, registered default))`);
+if (tryReads < TRY_READS_MAX) console.log(`  note: try/catch settings reads are down to ${tryReads} — lower TRY_READS_MAX`);
 const handRolled = Object.entries(src).flatMap(([f, t]) => (t.match(/activeGM\??\.id\s*===\s*game\.user\??\.id|game\.user\??\.id\s*===\s*game\.users\??\.activeGM/g) ? [f] : []));
 ok(handRolled.length === 0, `nobody hand-writes the active-GM comparison; isPrimaryGM() is the answer (${handRolled.join(', ')})`);
 

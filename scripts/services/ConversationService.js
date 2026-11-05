@@ -9,7 +9,7 @@
  */
 
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
-import { log, isGM, formatCyberDate, isPrimaryGM } from '../utils/helpers.js';
+import { log, isGM, formatCyberDate, isPrimaryGM, getSetting } from '../utils/helpers.js';
 import { identitiesOf, identityRole, groupKeyOf, identitiesOfKey, identitiesOfContact, identityInboxId } from '../utils/identities.js';
 import {
   PAGE_LINES, lineText, titleText, safeImage, sanitizeCard, memberKeyOf, sanitizeMember, isIn, canSee, openSpan, closeSpan,
@@ -538,7 +538,7 @@ export class ConversationService {
 
   gmWatches(conv) {
     let map = {};
-    try { map = game.settings.get(MODULE_ID, 'conversationGmBell') || {}; } catch { /* the default */ }
+    map = getSetting('conversationGmBell', {}) || {};
     return map[conv.id] ?? conv.members.some((m) => isIn(m) && this.isNpc(m));
   }
   async setGmWatch(id, on) {

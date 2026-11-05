@@ -36,7 +36,7 @@
 
 import { ncmNotify } from './notify.js';
 import { MODULE_ID } from './constants.js';
-import { log } from './helpers.js';
+import { log, getSetting } from './helpers.js';
 import { NcmDialogClass } from './ncmDialog.js';
 
 /** Class the Dialog wrappers add so the render hook can find admin dialogs. */
@@ -56,7 +56,7 @@ export const ADMIN_TEXT_SCALE_MAX = 150;
  */
 export function getAdminThemePrefs() {
   let theme = {};
-  try { theme = game.settings.get(MODULE_ID, 'adminTheme') || {}; } catch { /* pre-init */ }
+  theme = getSetting('adminTheme', undefined) || {};
   const pct = Number(theme.textScale) || 100;
   return {
     preset: theme.preset || 'clean-dark',

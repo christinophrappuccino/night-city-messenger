@@ -14,7 +14,7 @@
  */
 
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, resolveOperator } from '../utils/helpers.js';
+import { log, isGM, resolveOperator, getSetting } from '../utils/helpers.js';
 import { snapshotWindow, diffText, applyText } from '../utils/watchMirror.js';
 
 const BTN = 'ncm-watchbtn';
@@ -60,7 +60,7 @@ export class WatchService {
 
   /** @returns {'player'|'always'|'off'} */
   mode() {
-    try { return game.settings.get(MODULE_ID, 'watchMode') || 'player'; } catch { return 'player'; }
+    return getSetting('watchMode', 'player') || 'player';
   }
 
   canShare(app) {

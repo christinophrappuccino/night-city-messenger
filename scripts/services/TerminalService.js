@@ -27,7 +27,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils/constants.js';
-import { log, isGM, isPrimaryGM, generateId, formatCyberDate, terminalReachRule, runGmMacro, userOwnsActor } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM, generateId, formatCyberDate, terminalReachRule, runGmMacro, userOwnsActor, getSetting } from '../utils/helpers.js';
 import { userCanReachItem } from '../utils/shardAccess.js';
 import { resolveEncoderConfig, isEligibleBlank } from '../rules/encoder.js';
 import { MessageRepository } from '../data/MessageRepository.js';
@@ -2094,7 +2094,7 @@ export class TerminalService {
       // `residentFireMode` — default 'auto' (fire + tell the GM); a table that
       // wants the pause-for-the-netrun prompt sets it to 'propose'.
       let mode = 'auto';
-      try { mode = game.settings.get(MODULE_ID, 'residentFireMode') || 'auto'; } catch { /* not registered */ }
+      mode = getSetting('residentFireMode', 'auto') || 'auto';
 
       if (mode === 'manual') {
         // Never prompt: it stays armed until the GM fires it from Admin → Security.

@@ -10,7 +10,7 @@
 import { ncmNotify, escapeHtml } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
-import { log, isPrimaryGM, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime, userOwnsActor } from '../utils/helpers.js';
+import { log, isPrimaryGM, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime, userOwnsActor, getSetting } from '../utils/helpers.js';
 import { awaitGmResult, settleGmRequest } from '../utils/gmRequest.js';
 import { adjustWealth } from '../utils/wealth.js';
 import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
@@ -1091,7 +1091,7 @@ export class MessageService {
       if (!game.user.isGM) return;
 
       let enabled = true;
-      try { enabled = game.settings.get(MODULE_ID, 'notifyGmNpcMail'); } catch { enabled = true; }
+      enabled = getSetting('notifyGmNpcMail', true);
       if (!enabled) return;
 
       // Sender must be a player-owned character.
@@ -1164,7 +1164,7 @@ export class MessageService {
     // Optionally never filter messages from other player characters (party comms).
     const fromActor = data.fromActorId ? game.actors.get(data.fromActorId) : null;
     let excludePlayers = true;
-    try { excludePlayers = game.settings.get(MODULE_ID, 'spamUnknownSenderExcludePlayers'); } catch { /* default */ }
+    excludePlayers = getSetting('spamUnknownSenderExcludePlayers', true);
     if (excludePlayers && fromActor?.hasPlayerOwner) return bail('sender is a player character (excludePlayers on)');
 
     // If the recipient has already added this sender, never filter.
@@ -1174,7 +1174,7 @@ export class MessageService {
     // directory entry (by id or email) or a registered character ("a contact
     // exists but isn't added"). 'all' also catches completely unknown addresses.
     let scope = 'known';
-    try { scope = game.settings.get(MODULE_ID, 'spamUnknownSenderScope') || 'known'; } catch { /* default */ }
+    scope = getSetting('spamUnknownSenderScope', 'known') || 'known';
     if (scope === 'known') {
       const knownSender = !!fromActor
         || !!data.fromContactId
@@ -1518,7 +1518,7 @@ export class MessageService {
   }
 
   getDeliveryFailures() {
-    try { return game.settings.get(MODULE_ID, 'deliveryFailures') || []; } catch { return []; }
+    return getSetting('deliveryFailures', []) || [];
   }
 
   async dismissDeliveryFailure(id) {

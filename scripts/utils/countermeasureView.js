@@ -6,7 +6,7 @@
  */
 
 import { MODULE_ID } from './constants.js';
-import { canOperate, resolveOperator } from './helpers.js';
+import { canOperate, resolveOperator, getSetting } from './helpers.js';
 import {
   sanitizeCmvConfig, sanitizeCmvOverride, resolveCountermeasures, expertHasRule, expertGate,
   recallScan, effectiveMode, CMV_VISIBILITY, CMV_DV,
@@ -16,7 +16,7 @@ import { roleItems } from './cpr.js';
 /** The world config, sanitized. */
 export function getCmvConfig() {
   let stored = {};
-  try { stored = game.settings.get(MODULE_ID, 'countermeasureVisibility') || {}; } catch { /* not registered */ }
+  stored = getSetting('countermeasureVisibility', undefined) || {};
   return sanitizeCmvConfig(stored);
 }
 
