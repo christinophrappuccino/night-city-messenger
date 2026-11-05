@@ -23,6 +23,7 @@
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, resolveOperator, resolveDisplayPortrait, whisperCardHtml } from '../utils/helpers.js';
+import { serialize } from '../utils/serialize.js';
 import { normaliseNumber, displayNumber, parseNumber, rowOf, fullForm, freeLines, numberAt, buildNumberContext, placeRows, sanitizeRules, pickableRows, sanitizeSpecial, specialKey, specialList, specialMap, specialOutcome, writtenToLog, lineTypes, lineTypeFor, lineShown, traceFinds, officeRowOf, officeKey, sanitizeOffice, splitExtension, placeOf } from '../utils/phoneNumbering.js';
 import { createCall, createEndedCall, transition, resolveCallee, canCall, allowedModes, defaultMode, callSeconds, formatDuration, OUTCOMES,
   BUILT_MODES, makeLine, addLine, sideOf, transcriptOf, lineFromRightSide } from '../utils/callModel.js';
@@ -598,13 +599,15 @@ export class CallService {
       const cur = Array.isArray(list) ? list : [];
       const wants = actorIds.includes(a.id);
       const has = cur.find(isTheirs);
-      if (wants && has) { if (normaliseNumber(has.phone, this.homeCode) !== normal) await a.setFlag(MODULE_ID, 'contacts', cur.map((c) => (c === has ? { ...c, phone: number } : c))); }
+      if (wants && has) {
+        if (normaliseNumber(has.phone, this.homeCode) !== normal) await this._patchContacts(a, (now) => { const h = now.find(isTheirs); return h && normaliseNumber(h.phone, this.homeCode) !== normal ? now.map((c) => (c === h ? { ...c, phone: number } : c)) : null; });
+      }
       else if (wants) {
         const label = name || game.actors.get(ownerActorId)?.name || number;
         const res = await game.nightcity?.contactRepository?.addContact?.(a.id, { name: label, email: '', phone: number, customImg: master?.portrait || '', masterContactId: ownerContactId || '', tags: [] });
         if (res && !res.success) return { ok: false, error: res.error || 'Could not add the contact.' };
       } else if (has && normaliseNumber(has.phone, this.homeCode) === normal) {
-        await a.setFlag(MODULE_ID, 'contacts', cur.map((c) => (c === has ? { ...c, phone: '' } : c)));
+        await this._patchContacts(a, (now) => { const h = now.find(isTheirs); return h && normaliseNumber(h.phone, this.homeCode) === normal ? now.map((c) => (c === h ? { ...c, phone: '' } : c)) : null; });
       }
     }
     return { ok: true };
@@ -627,10 +630,22 @@ export class CallService {
     for (const id of actorIds) {
       const a = game.actors?.get(id), list = a?.getFlag?.(MODULE_ID, 'contacts');
       if (!Array.isArray(list)) continue;
-      const next = list.map((c) => (c.phone && normaliseNumber(c.phone, this.homeCode) === old ? { ...c, phone: newNumber } : c));
-      await a.setFlag(MODULE_ID, 'contacts', next);
+      await this._patchContacts(a, (now) => now.map((c) => (c.phone && normaliseNumber(c.phone, this.homeCode) === old ? { ...c, phone: newNumber } : c)));
       this._tellOwners(id, `${oldNumber} changed to ${newNumber}. Your contact is updated.`);
     }
+  }
+
+  /**
+   * Change a character's contact list in the same queue as every other contacts write (audit B4 leftover): the list is
+   * read fresh INSIDE the queue, so a contact added a moment earlier is not written over. `fn(list)` returns the new
+   * list, or null for "no change". Never call a contacts writer from inside `fn` (it would wait on itself).
+   */
+  _patchContacts(actor, fn) {
+    return serialize(`contacts:${actor.id}`, async () => {
+      const cur = actor.getFlag(MODULE_ID, 'contacts');
+      const next = fn(Array.isArray(cur) ? cur : []);
+      if (next) await actor.setFlag(MODULE_ID, 'contacts', next);
+    });
   }
 
   /** A short note to the players of a character. Never throws. */

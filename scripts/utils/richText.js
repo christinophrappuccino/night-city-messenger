@@ -380,7 +380,9 @@ export function cleanHtml(html, { mode = 'rich', colors = 'palette', enrichers =
       .replace(/<(ul|ol)(\s[^>]*)?>\s*<\/\1>/g, '');
   }
   out = out.replace(/(?:\s*<br>\s*){3,}/g, '<br><br>');
-  if (!/<pre[\s>]/.test(out)) out = out.replace(/>\s+</g, '><');
+  // Whitespace between two tags goes only next to a BLOCK (or a <br>); between two inline tags it is a real space
+  // between words — "<b>Hello</b> <i>world</i>" used to come out "Helloworld" (audit leftover).
+  if (!/<pre[\s>]/.test(out)) out = out.replace(/(<\/?([a-z][a-z0-9]*)\b[^>]*>)\s+(?=<\/?([a-z][a-z0-9]*)\b)/gi, (m, tagA, a, b) => (BLOCKISH.has(a.toLowerCase()) || BLOCKISH.has(b.toLowerCase()) || /^br$/i.test(a) || /^br$/i.test(b) ? tagA : `${tagA} `));
   out = out.trim();
   if (mode === 'inline') out = out.replace(/\s+/g, ' ').trim();
   // Block mode contract: a ONE-paragraph block is bare inline HTML, a multi-paragraph

@@ -10,7 +10,8 @@
 
 import { ncmNotify, escapeHtml } from '../../../utils/notify.js';
 import { isIn, titleFor } from '../../../utils/conversations.js';
-import { MODULE_ID } from '../../../utils/constants.js';
+import { MODULE_ID, SOCKET_OPS } from '../../../utils/constants.js';
+import { refreshNcmWindows } from '../../../utils/forceRefresh.js';
 import { log, formatCyberDate, getPlayerCharacters, hiddenCharacterIds } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
@@ -77,12 +78,11 @@ export class ToolsTab extends BaseTab {
   }
 
   async onForceRefreshAll(event, target) {
-    ncmNotify.info('Force-refreshing all connected clients...');
-    game.socket?.emit(`module.${MODULE_ID}`, {
-      type: 'forceRefresh',
-    });
-    // Also refresh local
-    this.render(true);
+    // It sent a message nothing listened for (audit leftover). Now every client re-reads NCM's directory and redraws
+    // its open NCM windows — no page reload, nothing typed is lost (dev 2026-11-05).
+    game.nightcity?.socketManager?.emit?.(SOCKET_OPS.ADMIN_FORCE_REFRESH, { at: Date.now() });
+    const n = refreshNcmWindows();
+    ncmNotify.info(`NCM | Refreshed every client. ${n} NCM window${n === 1 ? '' : 's'} redrawn here.`);
   }
 
   onRefreshStats(event, target) {

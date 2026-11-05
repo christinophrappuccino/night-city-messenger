@@ -2264,12 +2264,31 @@ export class MessageService {
       if (!v.ok) result = { success: false, error: `Refused: ${v.reason}.` };
     }
     if (!result && !MessageService.validSendKey(data.messageId)) result = { success: false, error: 'Refused: bad message id.' };
+    // The player's send-only and directory checks, run again here (audit leftover, dev 2026-11-05): the player's own
+    // client ran them, but a modified one could skip them. Same rules, same words; in a group only the refused go.
+    let refused = [];
+    if (!result && !data.anonReply) {
+      if (Array.isArray(data._fanout) && data._fanout.length) {
+        const keep = [];
+        for (const copy of data._fanout) {
+          const g = await this.checkRecipientsAsPlayer({ ...copy, _fanout: undefined, recipients: undefined });
+          if (g.ok) keep.push(copy);
+          else refused.push({ name: copy.toName || copy.to, email: copy.to || '', actorId: copy.toActorId || null, contactId: copy.toContactId || null, success: false, error: g.error, errorCode: g.errorCode });
+        }
+        if (!keep.length) result = { success: false, error: `No recipient could be reached — ${refused.map((x) => `${x.name}: ${x.error}`).join(' · ')}`, errorCode: 'ALL_RECIPIENTS_FAILED', failed: refused, delivered: 0, results: refused };
+        else data._fanout = keep;
+      } else {
+        const g = await this.checkRecipientsAsPlayer(data);
+        if (!g.ok) result = { success: false, error: g.error, errorCode: g.errorCode };
+      }
+    }
     // Delivered before this GM reloaded: the sender's sent copy is already there.
     if (!result && this._hasSentCopy(data)) result = { success: true, duplicate: true };
     if (result) { /* refused or already delivered above */ } else if (Array.isArray(data._fanout) && data._fanout.length) {
       const base = { ...data };
       delete base._fanout;
       result = await this._deliverMany(base, data._fanout);
+      if (refused.length) result = { ...result, failed: [...refused, ...(result.failed || [])], results: [...refused, ...(result.results || [])] };
     } else {
       result = await this._deliverMessage(data);
     }

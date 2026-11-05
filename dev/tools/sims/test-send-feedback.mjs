@@ -43,6 +43,8 @@ const { SOCKET_OPS } = await import(pathToFileURL(`${ROOT}/scripts/utils/constan
 // ── A fake service instance: prototype methods, scripted collaborators ──
 function makeService() {
   const svc = Object.create(MessageService.prototype);
+  // the GM re-check of a player's recipients (audit leftover) has its own sim, test-relay-gates.mjs; this one has no directory
+  svc.checkRecipientsAsPlayer = async () => ({ ok: true });
   svc._messageQueue = [];
   svc.emitted = [];
   svc.sounds = [];

@@ -3023,14 +3023,7 @@ export class ShardEncoderApp extends BaseApplication {
     }
     const sm = game.nightcity?.socketManager;
     if (!sm) return false;
-    return new Promise((resolve) => {
-      const requestId = foundry.utils.randomID(8);
-      let done = false;
-      const handler = (data) => { if (data?.requestId !== requestId || done) return; done = true; resolve(!!data.success); };
-      sm.register(SOCKET_OPS.SHARD_CONVERT_RESULT, handler);
-      sm.emit(SOCKET_OPS.SHARD_CONVERT_REQUEST, { requestId, itemId: item.id, actorId: this.actor?.id, reencode: patch, entryData: list });
-      setTimeout(() => { if (!done) { done = true; resolve(false); } }, 15000);
-    });
+    return awaitConvertResult(sm, (requestId) => sm.emit(SOCKET_OPS.SHARD_CONVERT_REQUEST, { requestId, itemId: item.id, actorId: this.actor?.id, reencode: patch, entryData: list }));
   }
 
   /** GM writes directly; a player relays through the existing shard-conversion socket. */
@@ -3049,14 +3042,7 @@ export class ShardEncoderApp extends BaseApplication {
     }
     const sm = game.nightcity?.socketManager;
     if (!sm) return false;
-    return new Promise((resolve) => {
-      const requestId = foundry.utils.randomID(8);
-      let done = false;
-      const handler = (data) => { if (data?.requestId !== requestId || done) return; done = true; resolve(!!data.success); };
-      sm.register(SOCKET_OPS.SHARD_CONVERT_RESULT, handler);
-      sm.emit(SOCKET_OPS.SHARD_CONVERT_REQUEST, { requestId, itemId: item.id, actorId: this.actor?.id, config, entryData: list });
-      setTimeout(() => { if (!done) { done = true; resolve(false); } }, 15000);
-    });
+    return awaitConvertResult(sm, (requestId) => sm.emit(SOCKET_OPS.SHARD_CONVERT_REQUEST, { requestId, itemId: item.id, actorId: this.actor?.id, config, entryData: list }));
   }
 
   /**
@@ -3247,4 +3233,35 @@ export class ShardEncoderApp extends BaseApplication {
       } else this._flareStart = 0;
     }
   }
+}
+
+// ─── Conversion results (audit leftover) ───
+// SocketManager keeps ONE handler per op, and each request used to register its own, replacing the last — so two
+// requests in flight lost the first one's answer (it timed out as a failure). One handler, a map of waiting requests.
+const _convertWaiting = new Map();
+let _convertHandlerOn = false;
+
+/**
+ * Send a shard-conversion request and wait for the GM's answer for THAT request id.
+ * @param {object} sm the SocketManager @param {(requestId: string) => void} send emits the request
+ * @param {number} [timeoutMs]
+ * @returns {Promise<boolean>}
+ */
+export function awaitConvertResult(sm, send, timeoutMs = 15000) {
+  if (!_convertHandlerOn) {
+    sm.register(SOCKET_OPS.SHARD_CONVERT_RESULT, (data) => {
+      const w = _convertWaiting.get(data?.requestId);
+      if (!w) return;
+      _convertWaiting.delete(data.requestId);
+      clearTimeout(w.timer);
+      w.resolve(!!data.success);
+    });
+    _convertHandlerOn = true;
+  }
+  return new Promise((resolve) => {
+    const requestId = foundry.utils.randomID(8);
+    const timer = setTimeout(() => { if (_convertWaiting.delete(requestId)) resolve(false); }, timeoutMs);
+    _convertWaiting.set(requestId, { resolve, timer });
+    send(requestId);
+  });
 }

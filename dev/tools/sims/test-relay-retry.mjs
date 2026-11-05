@@ -42,6 +42,8 @@ MessageService.RELAY_RETRY_MS = 1e9;   // the sim drives flushes by hand
 function pair({ gmDelay = 0, deliver = null, drop = () => false } = {}) {
   const player = Object.create(MessageService.prototype);
   const gm = Object.create(MessageService.prototype);
+  // the GM re-check of a player's recipients (audit leftover) has its own sim, test-relay-gates.mjs; this one has no directory
+  gm.checkRecipientsAsPlayer = async () => ({ ok: true });
   player._messageQueue = []; gm._messageQueue = [];
   const deliveries = [];
   const refunds = [];

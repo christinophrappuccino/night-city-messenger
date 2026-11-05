@@ -10,6 +10,7 @@ import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
 import { log, stripMacroRefs, isPrimaryGM, isFromGM, userOwnsActor, canEncode, canEditShard } from '../utils/helpers.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
+import { refreshNcmWindows } from '../utils/forceRefresh.js';
 
 export class SocketHandlers {
 
@@ -500,6 +501,17 @@ export class SocketHandlers {
         game.nightcity?.securityService?.receiveReport?.(data, sender);
       } catch (err) {
         log.error('Security report failed:', err);
+      }
+    });
+
+    // ─── Force Refresh (GM → everyone): Admin → Tools ────
+    socketManager.register(SOCKET_OPS.ADMIN_FORCE_REFRESH, (data, sender) => {
+      if (!isFromGM(sender)) return;
+      try {
+        refreshNcmWindows();
+        ncmNotify.info('NCM | Your GM refreshed Night City Messenger.');
+      } catch (err) {
+        log.error('Force refresh failed:', err);
       }
     });
 

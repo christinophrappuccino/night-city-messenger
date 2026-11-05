@@ -30,6 +30,7 @@ import { tameCrtDeep } from '../utils/crt.js';
 import { shiftInterfaceDvs, shiftJackRules, refreshJackDials } from '../utils/interfaceDvShift.js';
 import { adminWait } from '../utils/adminTheme.js';
 import { creditOldScheduled } from '../services/SchedulingService.js';
+import { serialize } from '../utils/serialize.js';
 
 /** The schema version this build of the module writes. */
 export const DATA_SCHEMA_VERSION = 6;
@@ -174,8 +175,11 @@ const MIGRATIONS = [
       await game.settings.set(MODULE_ID, 'phoneLines', {});
       for (const a of game.actors ?? []) {
         if (a.getFlag?.(MODULE_ID, 'phone') !== undefined) await a.unsetFlag(MODULE_ID, 'phone');
-        const contacts = a.getFlag?.(MODULE_ID, 'contacts');
-        if (Array.isArray(contacts) && contacts.some((c) => c?.phone)) await a.setFlag(MODULE_ID, 'contacts', contacts.map((c) => (c?.phone ? { ...c, phone: '' } : c)));
+        // in the contacts queue (audit B4 leftover), read fresh inside it
+        await serialize(`contacts:${a.id}`, async () => {
+          const contacts = a.getFlag?.(MODULE_ID, 'contacts');
+          if (Array.isArray(contacts) && contacts.some((c) => c?.phone)) await a.setFlag(MODULE_ID, 'contacts', contacts.map((c) => (c?.phone ? { ...c, phone: '' } : c)));
+        });
       }
       const mcs = game.nightcity?.masterContactService;
       for (const c of mcs?.getAll?.() || []) if (c.phone) await mcs.updateContact(c.id, { phone: '' });

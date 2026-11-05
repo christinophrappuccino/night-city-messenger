@@ -1360,7 +1360,9 @@
   .ncm-app .ncm-lodds__dist { width: 90px; }
 }
 /* Items-directory terminal badge — recolor the shared shard badge red. */
-.ncm-terminal-img-tag { background: #ff0033 !important; box-shadow: 0 0 8px rgba(255,0,51,.6) !important; }
+/* Terminal = a WHITE terminal glyph on its red badge — fixed, not the player theme (dev 2026-11-05): with the theme
+   colour the glyph went red-on-red on Blackwall and the badge read as a plain red block. */
+.ncm-terminal-img-tag { background: #ff0033 !important; color: #fff !important; border-color: rgba(255, 255, 255, .55) !important; box-shadow: 0 0 8px rgba(255,0,51,.6) !important; filter: none !important; }
 
 /* (The burn-to-shard target picker is the shared name picker now — styles/components/name-picker.css.) */
 

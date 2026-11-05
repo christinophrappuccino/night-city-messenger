@@ -21,6 +21,7 @@
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { isSelectableCharacter, log } from '../utils/helpers.js';
 import { normaliseNumber } from '../utils/phoneNumbering.js';
+import { serialize } from '../utils/serialize.js';
 
 export class ContactShareService {
 
@@ -257,7 +258,15 @@ export class ContactShareService {
     const patch = {};
     if (contact.email && !had.email) patch.email = contact.email;
     if (contact.phone && !had.phone) patch.phone = contact.phone;
-    if (Object.keys(patch).length) await actor.setFlag(MODULE_ID, 'contacts', list.map((c) => (c === had ? { ...c, ...patch } : c)));
+    // written in the contacts queue (audit B4 leftover), against a fresh read so nothing added meanwhile is lost
+    if (Object.keys(patch).length) {
+      await serialize(`contacts:${actorId}`, async () => {
+        const now = actor.getFlag(MODULE_ID, 'contacts');
+        const fresh = Array.isArray(now) ? now : [];
+        const h = fresh.find(same);
+        if (h) await actor.setFlag(MODULE_ID, 'contacts', fresh.map((c) => (c === h ? { ...c, ...Object.fromEntries(Object.entries(patch).filter(([k]) => !c[k])) } : c)));
+      });
+    }
     return { success: true, merged: true };
   }
 

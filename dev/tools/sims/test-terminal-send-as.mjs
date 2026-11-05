@@ -93,6 +93,8 @@ cfg = { ...cfg, accountMail: { compose: true, log: true } };
 game.nightcity.terminalService = svc;
 const { MessageService } = await imp('scripts/services/MessageService.js');
 const ms = Object.create(MessageService.prototype);
+// the GM re-check of a player's recipients (audit leftover) has its own sim, test-relay-gates.mjs; this one has no directory
+ms.checkRecipientsAsPlayer = async () => ({ ok: true });
 let delivered = 0, acked = null;
 ms._deliverMessage = async () => { delivered++; return { success: true }; };
 // who may send is test-mail-relays' job (A3d); this sim is about delivery

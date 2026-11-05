@@ -220,6 +220,8 @@ export const SOCKET_OPS = Object.freeze({
   // GM→everyone: end an actor's live terminal session (Admin → Terminals →
   // Log out) — the open viewer drops to its login screen. { actorId, targets[], message }.
   TERMINAL_KICK: 'terminal:kick',
+  // GM→everyone: Admin → Tools → Force Refresh — re-read NCM's directory and redraw every open NCM window. { at }.
+  ADMIN_FORCE_REFRESH: 'admin:forceRefresh',
   // Player→GM: a shard-integrity write. The integrity number lives on the item
   // and entry damage on the GM-owned shard journal, so a player's failed breach,
   // reconstruct, repair or salvage relays here. { op, itemUuid, ... } — ops:
@@ -304,6 +306,7 @@ export const SOCKET_TRUST = Object.freeze({
   SECURITY_REPORT: 'request',
   SECURITY_CLEAR: 'result',
   TERMINAL_KICK: 'result',
+  ADMIN_FORCE_REFRESH: 'result',
   SHARD_INTEGRITY_REQUEST: 'request',
   SHARD_STATE_REQUEST: 'request',
   NETWORK_NODE_REQUEST: 'request',
