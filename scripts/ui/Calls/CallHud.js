@@ -48,8 +48,13 @@ const FRAME = (label) => `<svg class="ncm-ch-frm" viewBox="0 0 100 110" preserve
   <rect class="ncm-ch-acc" x="98.6" y="30" width="3" height="10"/></svg>`;
 
 export class CallHud {
+  /** Is this screen drawn for a GM? Never true for a preview copy marked asPlayer (audit COMPAT-03: the preview used to overwrite game.user.isGM). */
+  get _gmView() { return !!game.user?.isGM && !this.asPlayer; }
+
   constructor(service) {
     this.service = service;
+    /** Draw the call screen as a PLAYER sees it, even on a GM client (the Admin → Phone previews set this on their own copy). */
+    this.asPlayer = false;
     this.root = null;
     /** @type {Map<string, {call: object, role: string, waiting?: boolean, endedAt?: number}>} */
     this.shown = new Map();
@@ -189,8 +194,8 @@ export class CallHud {
     const o = role === 'caller' ? call.to : call.from;
     // what the line's type decides is the same for everyone: a name it shows, or only the number
     if (o.showOnly === 'name') return { name: o.name || o.number || 'Unknown', img: o.img || '', number: o.number || '', org: o.org || '', orgArt: o.orgArt || '', known: true };
-    if (o.showOnly === 'number' && !game.user.isGM) return { name: o.number || 'Unknown number', img: '', number: o.number || '', known: false };
-    if (game.user.isGM) return { name: o.name || o.number || 'Unknown', img: o.img || '', number: o.number || '', known: true };
+    if (o.showOnly === 'number' && !this._gmView) return { name: o.number || 'Unknown number', img: '', number: o.number || '', known: false };
+    if (this._gmView) return { name: o.name || o.number || 'Unknown', img: o.img || '', number: o.number || '', known: true };
     const actor = game.actors?.get(role === 'caller' ? call.from?.actorId : call.to?.actorId);
     const contacts = actor?.getFlag?.(MODULE_ID, 'contacts') || [];
     const home = this.service.homeCode;
@@ -221,7 +226,7 @@ export class CallHud {
     const { call, role } = v;
     const other = this._other(call, role);
     const st = call.state;
-    const gmCallee = game.user.isGM && role === 'callee';
+    const gmCallee = this._gmView && role === 'callee';
     let kind, tone, sigState, keys = [];
     if (st === 'ringing' && role === 'callee') {
       kind = gmCallee ? `${call.from?.name || 'Someone'} is calling` : call.from?.word ? `Incoming · ${call.from.word}` : 'Incoming call'; tone = 'ring'; sigState = 'ring';
@@ -231,7 +236,7 @@ export class CallHud {
     } else if (st === 'live') {
       kind = call.remoteHeld ? 'On hold' : 'Holocall'; tone = 'live'; sigState = 'live'; keys = [['hangup', 'N', 'Hang up', 'bad']];
       // a withheld caller can be traced from the other end (a skill check; the GM reveals it on a success)
-      if (role === 'callee' && call.from?.anon && !call.traced && !game.user.isGM) keys.unshift(['trace', 'T', 'Trace', '']);
+      if (role === 'callee' && call.from?.anon && !call.traced && !this._gmView) keys.unshift(['trace', 'T', 'Trace', '']);
     } else if (st === 'voicemail') {
       const leaving = call.vmStep === 'leave';
       kind = leaving ? 'Leave a message' : 'Voicemail'; tone = 'vm'; sigState = 'vm';
@@ -259,7 +264,7 @@ export class CallHud {
     const waitHtml = waiting ? this._waitingHtml(waiting) : '';
     const hidden = call.from?.anon && !call.traced;
     const anonHtml = !hidden ? '' : role === 'caller' ? '<span class="ncm-ch-anon"><i class="fas fa-user-secret"></i> Your number is withheld</span>'
-      : `<span class="ncm-ch-anon"><i class="fas fa-user-secret"></i> Number withheld${game.user.isGM ? ' — they cannot see who' : ''}</span>`;
+      : `<span class="ncm-ch-anon"><i class="fas fa-user-secret"></i> Number withheld${this._gmView ? ' — they cannot see who' : ''}</span>`;
     const whyHtml = st === 'ended' && call.dropReason ? `<div class="ncm-ch-why"><i class="fas fa-tower-broadcast"></i> ${esc(call.dropReason)}</div>` : '';
     const heldHtml = heldOther ? `<div class="ncm-ch-heldnote"><i class="fas fa-pause"></i> On hold · ${esc(this._other(heldOther.call, heldOther.role).name)}
       <span class="ncm-ch-keys"><span class="ncm-ch-key" data-act="resume" data-id="${esc(heldOther.call.id)}"><kbd>H</kbd>Swap back</span></span></div>` : '';

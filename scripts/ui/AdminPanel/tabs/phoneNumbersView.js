@@ -733,7 +733,8 @@ const officesNow = () => {
 const NOFACE = 'NOFACE';
 let HUD = null;
 const HUD_SVC = { calls: new Map(), usableModes: ['loud'], offeredModes: ['loud'], modeFor: () => 'loud', homeCode: null, _get: (k, d) => d };
-const hudOf = () => (HUD ??= new CallHud(HUD_SVC));
+// A copy of the call screen of its own, drawn as the PLAYER sees it (asPlayer) — never by overwriting game.user.isGM (COMPAT-03).
+const hudOf = () => (HUD ??= Object.assign(new CallHud(HUD_SVC), { asPlayer: true }));
 const NET = { id: 'CITINET', name: 'CitiNet', type: 'PUBLIC', strength: 78, color: '' };
 let hudN = 0;
 /** The real call screen, in this player's own theme colours. Never a hand copy. */
@@ -743,10 +744,7 @@ function hudCard({ word = 'Incoming call', name, img, number = '', org = null, r
   const call = { id, from: { name, number, img: img || '', contactId: null, anon, word: word.replace(/^Incoming · /, '').replace(/^Incoming call$/, ''), ring, showOnly: 'name', org: org?.name || '', orgArt: org?.art || '' }, to: { userId: 'u', name: 'V', number: 'WAT-4471', kind: 'player' }, net: NET, mode: 'loud', state: live ? 'live' : 'ringing', startedAt: now - 2300, answeredAt: live ? now - 128000 : null, endedAt: null, outcome: null };
   HUD_SVC.calls.set(id, call);
   // a GM client normally sees "X is calling": the preview shows what the player gets
-  const wasGM = game.user.isGM;
-  let html;
-  try { Object.defineProperty(game.user, 'isGM', { value: false, configurable: true }); html = hudOf()._callHtml({ call, role: 'callee' }, {}); }
-  finally { Object.defineProperty(game.user, 'isGM', { value: wasGM, configurable: true }); }
+  const html = hudOf()._callHtml({ call, role: 'callee' }, {});
   return `<div class="ncm-call-hud ncm-r3-hud">${html}</div>`;
 }
 const themeSwitch = () => seg3('hudState', 'live', S.hudLive ? 'live' : 'ring', [['ring', 'Ringing', 'How it looks while it rings. The real screen shows no portrait yet'], ['live', 'Picked up', 'Once they answer, the portrait appears']]);

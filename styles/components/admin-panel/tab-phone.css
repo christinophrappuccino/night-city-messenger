@@ -479,7 +479,8 @@
 .ncm-pn-warnmark { font-size: 10px; color: var(--ncm-attn); }
 .ncm-pn-note { color: var(--ncm-text-label); font-style: italic; }
 .ncm-pnum .sec { color: color-mix(in oklab, var(--ncm-secret) var(--ncm-ink), var(--ncm-text-heading)); }
-.mt, .ncm-pn-prow .mt, .ncm-pn-brow .mt { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+/* scoped to the phone tab (audit COMPAT-04: a bare .mt made every .mt in Foundry, any module, a flex box) */
+.ncm-pn .mt, .ncm-pn-prow .mt, .ncm-pn-brow .mt { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
 
 /* section heads take a tone */
 .ncm-pn-mod { --sk: var(--ncm-act); }
