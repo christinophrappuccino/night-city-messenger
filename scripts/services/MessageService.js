@@ -10,9 +10,9 @@
 import { ncmNotify, escapeHtml } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
-import { log, isPrimaryGM, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime } from '../utils/helpers.js';
+import { log, isPrimaryGM, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime, userOwnsActor } from '../utils/helpers.js';
 import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
-import { replyIdentity, groupKeyOf } from '../utils/identities.js';
+import { replyIdentity, groupKeyOf, identitiesOf } from '../utils/identities.js';
 
 export class MessageService {
   constructor() {
@@ -856,8 +856,19 @@ export class MessageService {
    * On success, reveal the sender; either way, toast the GM with the outcome.
    * @param {object} data — { messageId, inboxActorId, success, byActorName }
    */
-  async handleAnonTraceRequest(data) {
+  async handleAnonTraceRequest(data, senderId = null) {
     if (!game.user.isGM) return;
+    // Only for anonymous mail in an inbox the sender owns, still traceable and not yet traced (audit SEC-07).
+    const user = senderId ? game.users?.get(senderId) : null;
+    if (!user || !data?.messageId || !userOwnsActor(senderId, data.inboxActorId)) { log.warn('Anon trace refused: not the sender\'s own inbox'); return; }
+    let anon = null;
+    try {
+      const msgs = await this._messageRepo.getMessages(data.inboxActorId, { filter: 'all', includeDeleted: true });
+      anon = msgs.find((m) => m.messageId === data.messageId)?.anonymous || null;
+    } catch { /* treated as not found */ }
+    if (!anon?.enabled || anon.traced || anon.role === 'recipient' || !anon.traceable) { log.warn('Anon trace refused: that message is not a traceable anonymous message'); return; }
+    // The name in the GM's toast is read here, never taken from the request.
+    data = { ...data, byActorName: game.actors?.get(data.inboxActorId)?.name || user.name };
     if (data?.success) {
       const result = await this.revealAnonSender(data.messageId, data.inboxActorId);
       if (result?.success) {
@@ -2009,14 +2020,100 @@ export class MessageService {
    * Handle incoming message relay from a player (GM side).
    * @param {Object} data - Message data from player's sendMessage
    */
+  /**
+   * May this player send this relayed message, as this sender? (audit SEC-07, batch A3d)
+   * Mutates `data` (and each fan-out copy) so what gets delivered is what the GM decided:
+   *   - a terminal send: the sender's character is in that account (TerminalService.senderAccountAccess);
+   *   - otherwise: the sending character is the player's own, and an alias they send as is
+   *     one of that character's identities; the `from` address and name are re-derived here;
+   *   - GM-only options (anonymous send, broadcast, network / date overrides) are dropped;
+   *   - eddies: only when the sender's ledger shows the composer's matching charge, which
+   *     is then marked used (verifyEddiesPaid).
+   * A GM's own relay (a forced delivery of their queue) passes untouched.
+   * @param {object} data the relayed message
+   * @param {string|null} senderId the server-verified sender
+   * @returns {Promise<{ok:true}|{ok:false, why:string}>}
+   */
+  async checkRelaySender(data, senderId) {
+    const user = senderId ? game.users?.get(senderId) : null;
+    if (!user) return { ok: false, why: 'unknown sender' };
+    if (user.isGM) return { ok: true };
+    const copies = Array.isArray(data._fanout) ? data._fanout : [];
+    const each = (fn) => { fn(data); for (const c of copies) fn(c); };
+    // Options only the GM's composer offers.
+    each((d) => { delete d.anonymous; delete d.isBroadcast; delete d.networkOverride; delete d.backdated; });
+
+    if (data.terminalSend) {
+      const ts = game.nightcity?.terminalService;
+      const item = data.terminalSend.itemUuid ? fromUuidSync(data.terminalSend.itemUuid) : null;
+      if (!item || !ts?.senderAccountAccess?.(item, senderId, data.terminalSend.accountId)) return { ok: false, why: 'the sender is not in that terminal account' };
+    } else {
+      const actorId = data.fromActorId;
+      if (!actorId || !userOwnsActor(senderId, actorId)) return { ok: false, why: `${user.name} can only send as their own character` };
+      const fromActor = game.actors?.get(actorId);
+      if (data.fromContactId) {
+        const contacts = game.nightcity?.masterContactService?.getAll?.() || [];
+        const mine = identitiesOf(contacts, actorId).some((c) => c.id === data.fromContactId);
+        if (!mine) return { ok: false, why: 'that address is not one of your character\'s' };
+      }
+      const from = this._senderEmailFor(data, fromActor) || `${String(fromActor?.name || 'unknown').toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+      const fromName = resolveDisplayName({ contactId: data.fromContactId, actorId, email: from }, fromActor?.name || 'Unknown');
+      each((d) => { d.from = from; d.fromName = fromName; d.fromActorId = actorId; d.fromContactId = data.fromContactId || ''; });
+    }
+
+    const per = Math.max(0, Number(data.eddies) || 0);
+    if (per > 0) {
+      const payer = data.fromActorId && userOwnsActor(senderId, data.fromActorId) ? game.actors?.get(data.fromActorId) : null;
+      const paid = payer ? await this.verifyEddiesPaid(payer, per, Math.max(1, copies.length)) : false;
+      if (!paid) return { ok: false, why: `the ${per.toLocaleString()} eb attached were never taken from the sender` };
+    }
+    return { ok: true };
+  }
+
+  /**
+   * GM side: does the sender's wealth ledger show the composer's charge for this money?
+   * The composer writes `["Decreased by N to M", "NCM: Sent … eb via message"]`; N must cover
+   * `per × count` (a group send charges every recipient, some of whom may have been refused,
+   * so N may be more) and be a whole multiple of `per`. A matching entry is marked used on the
+   * actor (flag `eddiesPaidIdx`) so the same charge never pays twice.
+   * @param {Actor} actor @param {number} per eddies on each copy @param {number} count copies
+   * @returns {Promise<boolean>}
+   */
+  async verifyEddiesPaid(actor, per, count = 1) {
+    // One at a time: two relays arriving together must not both match the same charge.
+    const run = () => this._verifyEddiesPaid(actor, per, count);
+    this._eddiesCheck = (this._eddiesCheck || Promise.resolve()).then(run, run);
+    return this._eddiesCheck;
+  }
+
+  /** @private The ledger match behind verifyEddiesPaid. */
+  async _verifyEddiesPaid(actor, per, count) {
+    const tx = actor?.system?.wealth?.transactions || [];
+    const used = new Set(actor?.getFlag?.(MODULE_ID, 'eddiesPaidIdx') || []);
+    for (let i = tx.length - 1; i >= 0; i -= 1) {
+      if (used.has(i)) continue;
+      const [what, why] = Array.isArray(tx[i]) ? tx[i] : [];
+      if (!/^NCM: Sent [\d.,\s  ']+ eb via message$/.test(String(why || ''))) continue;
+      const n = Number(/^Decreased by (\d+) to /.exec(String(what || ''))?.[1]);
+      if (!(n >= per * count) || n % per !== 0) continue;
+      try { await actor.setFlag(MODULE_ID, 'eddiesPaidIdx', [...used, i].slice(-200)); } catch (err) { log.warn(`eddies ledger mark failed: ${err.message}`); return false; }
+      return true;
+    }
+    return false;
+  }
+
   async handleMessageRelay(data, senderUserId = null) {
     if (!game.user.isGM) return;
 
     console.log(`${MODULE_ID} | GM handling message relay: ${data.messageId}`);
     let result;
+    // Who is really sending, and as whom (audit SEC-07): checked against the real
+    // sender, the sending fields rebuilt here, eddies only if the sender paid them.
+    const who = await this.checkRelaySender(data, senderUserId);
+    if (!who.ok) result = { success: false, error: `Refused: ${who.why}.` };
     // "Send as the account" from a terminal: the GM verifies the machine allows
     // it and that the sender really is that account (TerminalService.verifyAccountSend).
-    if (data.terminalSend) {
+    if (!result && data.terminalSend) {
       const v = game.nightcity?.terminalService?.verifyAccountSend?.(data) || { ok: false, reason: 'terminals unavailable' };
       if (!v.ok) result = { success: false, error: `Refused: ${v.reason}.` };
     }

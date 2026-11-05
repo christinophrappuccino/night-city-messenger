@@ -88,6 +88,10 @@ export class ContactShareService {
       senderActorId,
       senderUserId: game.user.id,
       senderName,
+      // The GM rebuilds the shared copy from these (audit SEC-07): which of the
+      // sender's contacts, and what of it they chose to send.
+      sourceContactId: contactId,
+      options: { includePortrait: options.includePortrait !== false, includeNotes: !!options.includeNotes, includeTags: options.includeTags !== false, send: options.send || 'both' },
       contact: preparedContact,
       recipientActorIds,
       network: currentNetwork,
@@ -263,12 +267,15 @@ export class ContactShareService {
    *
    * @param {object} payload — Share payload from player
    */
-  async handleShareRelay(payload) {
+  async handleShareRelay(payload, senderId = null) {
     if (!game.user.isGM) return;
     // two GMs online would each deliver it
     if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
 
-    log.debug('ContactShareService: Processing share relay', payload.shareId);
+    log.debug('ContactShareService: Processing share relay', payload?.shareId);
+    const checked = await this.checkShareRelay(payload, senderId);
+    if (!checked.ok) { log.warn(`Contact share refused: ${checked.why}`); return; }
+    payload = checked.payload;
     const result = await this._deliverToRecipients(payload);
 
     // Send confirmation back to sender
@@ -279,6 +286,47 @@ export class ContactShareService {
       total: payload.recipientActorIds.length,
       errors: result.errors,
     });
+  }
+
+  /**
+   * GM side: rebuild a relayed share from the sender's own address book (audit SEC-07).
+   * The sending character must be the player's own; the contact must be one of that
+   * character's contacts, and the copy sent is prepared here from it, with the options
+   * the player chose; recipients are other players' selectable characters. Sender name
+   * and user come from what the GM knows, never from the request.
+   * @returns {Promise<{ok:true, payload:object}|{ok:false, why:string}>}
+   */
+  async checkShareRelay(payload, senderId) {
+    const p = payload && typeof payload === 'object' ? payload : {};
+    const user = senderId ? game.users?.get(senderId) : null;
+    if (!user) return { ok: false, why: 'unknown sender' };
+    const owns = (id) => {
+      const a = id ? game.actors?.get(id) : null;
+      return !!a && (user.isGM || !!a.testUserPermission?.(user, globalThis.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3));
+    };
+    if (!owns(p.senderActorId)) return { ok: false, why: `${user.name} can only share from their own character` };
+    const contacts = (await this.contactRepo?.getContacts(p.senderActorId)) || [];
+    const source = contacts.find((c) => c.id === p.sourceContactId);
+    if (!source) return { ok: false, why: 'that contact is not in the sender\'s address book' };
+    const o = p.options && typeof p.options === 'object' ? p.options : {};
+    const contact = await this._prepareShareData(source, { includePortrait: o.includePortrait !== false, includeNotes: !!o.includeNotes, includeTags: o.includeTags !== false, send: ['email', 'number', 'both'].includes(o.send) ? o.send : 'both' });
+    const recipientActorIds = [...new Set((Array.isArray(p.recipientActorIds) ? p.recipientActorIds : []).map(String))]
+      .filter((id) => id !== p.senderActorId && isSelectableCharacter(game.actors?.get(id)))
+      .slice(0, 50);
+    if (!recipientActorIds.length) return { ok: false, why: 'no one to share with' };
+    return {
+      ok: true,
+      payload: {
+        shareId: String(p.shareId || foundry.utils.randomID()).slice(0, 40),
+        senderActorId: p.senderActorId,
+        senderUserId: senderId,
+        senderName: game.actors.get(p.senderActorId)?.name || user.name,
+        contact,
+        recipientActorIds,
+        network: typeof p.network === 'string' ? p.network.slice(0, 60) : 'CITINET',
+        timestamp: Date.now(),
+      },
+    };
   }
 
   /**

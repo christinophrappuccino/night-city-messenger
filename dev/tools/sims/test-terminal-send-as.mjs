@@ -95,6 +95,8 @@ const { MessageService } = await imp('scripts/services/MessageService.js');
 const ms = Object.create(MessageService.prototype);
 let delivered = 0, acked = null;
 ms._deliverMessage = async () => { delivered++; return { success: true }; };
+// who may send is test-mail-relays' job (A3d); this sim is about delivery
+ms.checkRelaySender = async () => ({ ok: true });
 Object.defineProperty(ms, 'socketManager', { value: { emit: (op, d) => { acked = d; } } });
 globalThis.console.warn = () => {};
 await MessageService.prototype.handleMessageRelay.call(ms, { messageId: 'x1', terminalSend: { itemUuid: 'Item.term', accountId: 'mr' }, fromContactId: 'tk' }, 'u1');

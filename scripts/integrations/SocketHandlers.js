@@ -42,10 +42,10 @@ export class SocketHandlers {
     });
 
     // ─── Anonymous Trace (Player → GM) ────────────────────
-    socketManager.register(SOCKET_OPS.ANON_TRACE_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.ANON_TRACE_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       log.debug('Socket: anon:traceRequest received for', data?.messageId);
-      await messageService.handleAnonTraceRequest(data);
+      await messageService.handleAnonTraceRequest(data, sender);
     });
 
     // ─── Delivery Confirmation (GM → Sender) ──────────────
@@ -92,12 +92,12 @@ export class SocketHandlers {
     });
 
     // ─── Contact Share Relay (Player → GM) ────────────────
-    socketManager.register(SOCKET_OPS.CONTACT_SHARE_RELAY, async (data) => {
-      if (!game.user.isGM) return;
-      log.debug('Socket: contact:shareRelay received', data.shareId);
+    socketManager.register(SOCKET_OPS.CONTACT_SHARE_RELAY, async (data, sender) => {
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
+      log.debug('Socket: contact:shareRelay received', data?.shareId);
       const shareService = game.nightcity?.contactShareService;
       if (shareService) {
-        await shareService.handleShareRelay(data);
+        await shareService.handleShareRelay(data, sender);
       }
     });
 

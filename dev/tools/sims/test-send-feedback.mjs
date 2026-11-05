@@ -135,6 +135,8 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
   game.user = { id: 'u-gm', isGM: true };
   const svc = makeService(); toasts.length = 0;
   svc._deliverMessage = async () => ({ success: false, error: 'Could not access inbox journal' });
+  // who may send is test-mail-relays' job (A3d); this sim is about delivery
+  svc.checkRelaySender = async () => ({ ok: true });
   await svc.handleMessageRelay(msg('m7'), 'u-player');
   const ack = svc.emitted.find(e => e.op === SOCKET_OPS.MESSAGE_DELIVERED);
   ok(ack && ack.data.forUserId === 'u-player' && ack.data.success === false, 'GM emits MESSAGE_DELIVERED addressed to the relaying user');

@@ -541,15 +541,26 @@ export class SchedulingService {
    * @private
    */
   _registerSocketHandlers() {
-    this.socketManager?.register(SOCKET_OPS.SCHEDULE_SYNC, (data) => {
+    this.socketManager?.register(SOCKET_OPS.SCHEDULE_SYNC, async (data, sender) => {
+      // The saved list (a world setting) is what every client reads. Only the GM who saves it acts on a
+      // sync, after checking who sent it (audit SEC-07); every other client follows the setting
+      // (_registerSettingSync). Before this, any client could add, cancel or rewrite anyone's mail here.
+      if (!this._isDeliverer()) return;
+      const user = sender ? game.users?.get(sender) : null;
+      if (!user || !data) return;
       if (data.action === 'add' && data.entry) {
+        const ok = await this.checkScheduledAdd(data.entry, user);
+        if (!ok.ok) { log.warn(`Scheduled message refused: ${ok.why}`); return; }
         // Avoid duplicate from own emit
-        if (!this._scheduled.find(e => e.scheduleId === data.entry.scheduleId)) {
-          this._scheduled.push(data.entry);
-        }
+        if (!this._scheduled.find(e => e.scheduleId === ok.entry.scheduleId)) this._scheduled.push(ok.entry);
       } else if (data.action === 'cancel' && data.scheduleId) {
+        const entry = this._scheduled.find(e => e.scheduleId === data.scheduleId);
+        if (!entry) return;
+        if (!user.isGM && entry.createdBy !== user.id) { log.warn(`Scheduled message cancel refused: ${user.name} did not schedule it`); return; }
         this._scheduled = this._scheduled.filter(e => e.scheduleId !== data.scheduleId);
       } else if (data.action === 'edit' && data.scheduleId && data.updates) {
+        // Only the GM's Outbox edits a scheduled message in place; a player's Edit cancels and schedules again.
+        if (!user.isGM) { log.warn(`Scheduled message edit refused: ${user.name} is not a GM`); return; }
         const entry = this._scheduled.find(e => e.scheduleId === data.scheduleId);
         if (entry) {
           if (data.updates.deliveryTime) entry.deliveryTime = data.updates.deliveryTime;
@@ -557,11 +568,43 @@ export class SchedulingService {
             foundry.utils.mergeObject(entry.messageData, data.updates.messageData);
           }
         }
-      }
+      } else return;
       // A player cannot write the world setting: the active GM saves the change for them (before this, a player's
       // scheduled message lived only in the GM's memory and was lost on a reload).
-      if (this._isDeliverer()) this._persistScheduled();
+      this._persistScheduled();
     });
+  }
+
+  /**
+   * GM side: may this user schedule this message? (audit SEC-07) A GM may schedule anything.
+   * A player's entry gets the same checks as their live mail (MessageService.checkRelaySender:
+   * their own character or one of its identities, or a terminal account they are in; GM-only
+   * options dropped; the sending fields rebuilt), and its eddies must have been taken: the
+   * entry's `eddiesHeld` covers every recipient and the sender's ledger shows that charge.
+   * @returns {Promise<{ok:true, entry:object}|{ok:false, why:string}>}
+   */
+  async checkScheduledAdd(entry, user) {
+    if (user.isGM) return { ok: true, entry };
+    const md = entry?.messageData && typeof entry.messageData === 'object' ? { ...entry.messageData } : null;
+    if (!md) return { ok: false, why: 'no message' };
+    const ms = game.nightcity?.messageService;
+    if (!ms?.checkRelaySender) return { ok: false, why: 'mail service unavailable' };
+    const per = Math.max(0, Number(md.eddies) || 0);
+    // checkRelaySender rebuilds the sending fields on the object it is given (eddies are checked
+    // below against eddiesHeld, so it sees none).
+    const check = { ...md, eddies: 0 };
+    const who = await ms.checkRelaySender(check, user.id);
+    if (!who.ok) return who;
+    const rebuilt = { ...check, eddies: md.eddies };
+    let held = Math.max(0, Number(entry.eddiesHeld) || 0);
+    if (per > 0) {
+      const count = Math.max(1, Array.isArray(md.recipients) ? md.recipients.length : 1);
+      const payer = game.actors?.get(rebuilt.fromActorId);
+      if (held < per * count || !payer || !(await ms.verifyEddiesPaid(payer, per, count))) {
+        return { ok: false, why: `the ${per.toLocaleString()} eb attached were never taken from the sender` };
+      }
+    } else held = 0;
+    return { ok: true, entry: { ...entry, messageData: rebuilt, eddiesHeld: held, createdBy: user.id, status: 'pending' } };
   }
 
   /**
