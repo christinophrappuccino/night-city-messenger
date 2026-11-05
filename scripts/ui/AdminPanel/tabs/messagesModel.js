@@ -815,19 +815,25 @@ export function journeyStatus(track = []) {
   return { tone: 'good', word: done ? done.label : '' };
 }
 
-// ─── Needs a reply: THE DESK (dev/mockups/admin-needs-reply-rethink-mock.html, Version B, 2026-10-28) ───
+// ─── Needs a reply: the list (dev/mockups/inbox-cleanup-mock.html §3, 2026-11-05; it replaced THE DESK) ───
 //
-// A queue of conversations on the left (one per NPC × the alias written to), the
-// conversation as a chat thread in the middle, and the persona of the identity
-// being answered as on the right. The rules below are pure; MessagesTab gathers.
+// One line per conversation (an NPC × the alias written to): who is waiting, on what, for how long. Reading and
+// replying happen in the NPC's own inbox / the composer, so the list only has to scale: search, a sort, groups,
+// a page size, and the answered lines folded away under their own heading. The rules below are pure; MessagesTab gathers.
 
-/** The queue's filter chips: [key, label]. */
+/** The Show menu's filters: [key, label]. */
 export const DESK_FILTERS = [['all', 'All lines'], ['waiting', 'Waiting'], ['answered', 'Answered']];
+/** The Sort menu: [key, label]. */
+export const REPLY_SORTS = [['wait', 'Longest wait'], ['newest', 'Newest first'], ['most', 'Most waiting'], ['npc', 'NPC A–Z']];
+/** The Sort menu's grouping: [key, label]. */
+export const REPLY_GROUPS = [['none', 'No groups'], ['npc', 'By NPC'], ['player', 'By player']];
+/** Lines per page (the waiting list and the answered list each). */
+export const REPLY_PAGE = 40;
 
 /** A wait is "hot" (red) once the oldest unanswered message is this old. */
 export const DESK_HOT_MS = 24 * 3600000;
 
-/** Which queue rows a filter chip shows. Rows: { waiting: <count> }. */
+/** Which lines a filter shows. Rows: { waiting: <count> }. */
 export function deskPasses(row, filter) {
   if (filter === 'waiting') return (row.waiting || 0) > 0;
   if (filter === 'answered') return !(row.waiting || 0);
@@ -835,7 +841,7 @@ export function deskPasses(row, filter) {
 }
 
 /**
- * The wait meter under a queue row: how far along the day the oldest unanswered
+ * The wait meter under a line: how far along the day the oldest unanswered
  * message is. `pct` 0..100 (full at DESK_HOT_MS), `hot` past it, `age` in ms.
  */
 export function waitMeter(oldestWaitTs, nowMs) {
@@ -844,49 +850,64 @@ export function waitMeter(oldestWaitTs, nowMs) {
   return { pct: Math.min(100, Math.round((age / DESK_HOT_MS) * 100)), hot: age >= DESK_HOT_MS, age };
 }
 
+/** Does a line match the search? Every word must appear in its NPC, alias, players, subject or the text they wrote. */
+export function replyMatches(row, q) {
+  const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const hay = [row.name, row.aliasName, row.whoNames, row.subject, row.preview, row.lastFrom].filter(Boolean).join(' ').toLowerCase();
+  return words.every((w) => hay.includes(w));
+}
+
+const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || '')) || String(a.aliasName || '').localeCompare(String(b.aliasName || ''));
+/** Order waiting lines by one of REPLY_SORTS (ties: NPC A–Z). */
+export function sortReplyRows(rows, sort = 'wait') {
+  const cmp = {
+    wait: (a, b) => (a.oldestWaitTs || 0) - (b.oldestWaitTs || 0),
+    newest: (a, b) => (b.newestWaitTs || 0) - (a.newestWaitTs || 0),
+    most: (a, b) => (b.waiting || 0) - (a.waiting || 0) || (a.oldestWaitTs || 0) - (b.oldestWaitTs || 0),
+    npc: () => 0,
+  }[sort] || ((a, b) => (a.oldestWaitTs || 0) - (b.oldestWaitTs || 0));
+  return [...rows].sort((a, b) => cmp(a, b) || byName(a, b));
+}
+
 /**
- * Order the queue. Each row: { key, waiting, oldestWaitTs, newestWaitTs, latestTs, name }.
- * Waiting rows first, the one who has waited LONGEST on top (the mock's "oldest
- * first"); answered rows below, most recent first. Returns new objects carrying
- * `meter` (waitMeter), `done` (answered) and `sel`.
+ * The list. Rows: { key, name, aliasName, waiting, oldestWaitTs, newestWaitTs, latestTs, players:[{key,name}], … }.
+ * Waiting lines (sorted, optionally grouped, one page at a time) and the answered lines below (most recent first,
+ * their own page). A line in several groups (a crowd, grouped by player) is counted once against the page.
+ * `selKey` marks a line and stretches the page until it shows; `shut` = group keys folded by the GM.
+ * Returns { groups:[{ key, label, rows, n, hot, shut }], grouped, answered, counts, shown, more, answeredMore, matched, total }.
  */
-export function deskQueue(rows = [], { filter = 'all', selKey = null, nowMs = 0 } = {}) {
-  const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''));
-  const shown = rows.filter((r) => deskPasses(r, filter));
-  const waiting = shown.filter((r) => (r.waiting || 0) > 0)
-    .sort((a, b) => (a.oldestWaitTs || 0) - (b.oldestWaitTs || 0) || byName(a, b))
-    .map((r) => ({ ...r, done: false, sel: r.key === selKey, meter: waitMeter(r.oldestWaitTs, nowMs) }));
-  const answered = shown.filter((r) => !(r.waiting || 0))
-    .sort((a, b) => (b.latestTs || 0) - (a.latestTs || 0) || byName(a, b))
-    .map((r) => ({ ...r, done: true, sel: r.key === selKey, meter: { pct: 100, hot: false, age: 0 } }));
+export function replyList(rows = [], { filter = 'all', q = '', sort = 'wait', group = 'none', limit = REPLY_PAGE, answeredLimit = REPLY_PAGE, selKey = null, nowMs = 0, shut = new Set() } = {}) {
   const counts = { all: rows.length, waiting: rows.filter((r) => (r.waiting || 0) > 0).length, answered: rows.filter((r) => !(r.waiting || 0)).length };
-  return { waiting, answered, counts, shown: waiting.length + answered.length, selShown: [...waiting, ...answered].some((r) => r.sel) };
-}
-
-/** The queue row the desk opens on when nothing is picked: the longest wait, else the most recent answered. */
-export function deskDefaultKey(queue) {
-  return queue?.waiting?.[0]?.key || queue?.answered?.[0]?.key || null;
-}
-
-/**
- * The thread: messages oldest first with a day separator whenever the UTC day
- * changes. Each item: { ts, ... }. `labelDay(ts)` names a day (default ISO date).
- * Returns [{ kind:'day', label, dayKey } | { kind:'msg', ...item }].
- */
-export function deskThread(items = [], { labelDay = null } = {}) {
-  const DAY = 86400000;
-  const sorted = [...items].sort((a, b) => (a.ts || 0) - (b.ts || 0));
-  const out = [];
-  let lastDay = null;
-  for (const it of sorted) {
-    const dayKey = Math.floor((it.ts || 0) / DAY);
-    if (dayKey !== lastDay) {
-      out.push({ kind: 'day', dayKey, label: labelDay ? labelDay(it.ts || 0) : new Date(dayKey * DAY).toISOString().slice(0, 10) });
-      lastDay = dayKey;
+  const hits = rows.filter((r) => deskPasses(r, filter) && replyMatches(r, q));
+  const mark = (r, done) => ({ ...r, done, sel: r.key === selKey, meter: done ? { pct: 100, hot: false, age: 0 } : waitMeter(r.oldestWaitTs, nowMs) });
+  const waitingAll = sortReplyRows(hits.filter((r) => (r.waiting || 0) > 0), sort).map((r) => mark(r, false));
+  const answeredAll = hits.filter((r) => !(r.waiting || 0)).sort((a, b) => (b.latestTs || 0) - (a.latestTs || 0) || byName(a, b)).map((r) => mark(r, true));
+  const selAt = waitingAll.findIndex((r) => r.sel);
+  const take = Math.max(limit, selAt + 1);
+  const page = waitingAll.slice(0, take);
+  let groups;
+  if (group === 'npc' || group === 'player') {
+    const map = new Map();
+    const add = (k, label, r) => { if (!map.has(k)) map.set(k, { key: k, label, rows: [] }); map.get(k).rows.push(r); };
+    for (const r of page) {
+      if (group === 'npc') add(`npc:${r.ownerId || r.name}`, r.name, r);
+      else for (const p of (r.players?.length ? r.players : [{ key: '?', name: 'Unknown' }])) add(`pl:${p.key}`, p.name, r);
     }
-    out.push({ kind: 'msg', ...it });
-  }
-  return out;
+    groups = [...map.values()];
+    // the groups follow the sort: the first line in each decides where the group sits (NPC A–Z sorts the labels)
+    if (sort === 'npc') groups.sort((a, b) => a.label.localeCompare(b.label));
+  } else groups = [{ key: 'all', label: '', rows: page }];
+  groups = groups.map((g) => ({ ...g, n: g.rows.length, waiting: g.rows.reduce((n, r) => n + (r.waiting || 0), 0), hot: g.rows.some((r) => r.meter.hot), shut: g.key !== 'all' && shut.has(g.key) }));
+  const aSel = answeredAll.findIndex((r) => r.sel);
+  const answered = answeredAll.slice(0, Math.max(answeredLimit, aSel + 1));
+  return {
+    groups, grouped: group === 'npc' || group === 'player', answered, counts,
+    shown: page.length + answered.length, matched: hits.length, total: rows.length,
+    more: Math.max(0, waitingAll.length - page.length), waitingShown: page.length, waitingMatched: waitingAll.length,
+    answeredMore: Math.max(0, answeredAll.length - answered.length), answeredMatched: answeredAll.length,
+    selShown: [...page, ...answered].some((r) => r.sel),
+  };
 }
 
 /**
@@ -897,20 +918,4 @@ export function identityOrder(items = [], firstId = null) {
   const i = firstId ? items.findIndex((x) => x.id === firstId) : -1;
   if (i <= 0) return [...items];
   return [items[i], ...items.slice(0, i), ...items.slice(i + 1)];
-}
-
-/**
- * The persona card's voice line from identities.voiceInfo(): the text, a "from
- * <main>" note when inherited, and `empty` when there is nothing to read.
- */
-export function deskVoice(info) {
-  const text = String(info?.text || '').trim();
-  if (!text) return { text: '', note: '', empty: true, inherited: false };
-  return { text, note: info?.inherited ? `from ${info?.from?.name || 'their main identity'}` : '', empty: false, inherited: !!info?.inherited };
-}
-
-/** "Sent as X to Y" — the line the compose box shows once an inline reply went out. */
-export function deskSentLine(sent) {
-  if (!sent?.as) return '';
-  return `Sent as ${sent.as}${sent.to ? ` to ${sent.to}` : ''}.`;
 }

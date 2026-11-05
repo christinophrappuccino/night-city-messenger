@@ -510,7 +510,7 @@ function dialHint(value, book, ctx) {
     const menu = listed.length ? ` Extensions: ${listed.map((e) => `x${esc(e.x)} ${esc(e.who)}`).join(', ')}.` : '';
     return `<b>${esc(placeOf(p, ctx))}.</b> ${ext ? `Extension ${esc(ext)}.` : `A switchboard.${menu}`} Add x and digits for an extension.`;
   }
-  if (p.empty) return 'Type a number, or use the pad. <button type="button" data-calls-xopen data-tooltip="Every district, city, corporation and service line">See the directory</button>';
+  if (p.empty) return 'Type a number, or use the pad.';
   if (p.service) return `<span class="ok">${esc(p.entry?.name || p.service)}.</span> A service line, works from anywhere.`;
   if (!p.done) {
     if (p.ex && !p.bad && p.line !== undefined) { const left = 4 - (p.line || '').length; return `<b>${esc(placeOf(p, ctx))}.</b> ${left} more digit${left === 1 ? '' : 's'}.`; }
@@ -664,6 +664,14 @@ export function wireCallsTab(viewer, html) {
     if (!e.target.matches?.('[data-calls-bookq]')) return;
     const q = e.target.value.trim().toLowerCase();
     root.querySelectorAll('[data-bk]').forEach((row) => { row.style.display = !q || row.dataset.bk.includes(q) ? '' : 'none'; });
+  });
+
+  // Esc: the directory, then the first-open card — before Foundry's own Esc (which would close the Agent)
+  root.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const x = root.querySelector('.ncm-calls-xlist'), intro = root.querySelector('.ncm-calls-intro');
+    if (x) { e.preventDefault(); e.stopPropagation(); x.remove(); root.querySelector('[data-calls-num]')?.focus(); }
+    else if (intro) { e.preventDefault(); e.stopPropagation(); intro.querySelector('[data-intro-done]')?.click(); }
   });
 
   // the directory opens over the pad without a re-render, so what you typed stays

@@ -33,6 +33,7 @@ import { dictateStatus } from '../utils/dictation.js';
 import { sanitizeLineSettings, greetingFor, goesToVoicemail, greetMs, makeVoicemail, voicemailOwner, recordingsToPurge, GREETING_RECORD_MS } from '../utils/voicemail.js';
 import { FilePickerClass } from '../utils/compat.js';
 import { isFeatureOn } from '../utils/features.js';
+import { payphoneTerm } from '../utils/payphoneTerm.js';
 
 const VOICEMAIL_OPEN_MS = 3 * 60 * 1000;   // a voicemail screen left open this long gives up (nothing is left)
 const AUDIO_CHUNK = 120000;                // base64 characters per socket piece
@@ -995,7 +996,7 @@ export class CallService {
       number: displayNumber(number, this.homeCode), name: callee.name || '', userIds: callee.userIds || [], ...(callee.shared ? { shared: true, gmMember: callee.gmMember } : {}), ...(callee.office ? { office: callee.office, greet: callee.greet || '' } : {}), ...(callee.kind === 'payphone' ? { payphoneId: callee.payphoneId, sceneId: callee.sceneId } : {}),
       img: callee.contactId || callee.actorId ? resolveDisplayPortrait({ contactId: callee.contactId, actorId: callee.actorId }) : '' };
     // a payphone is wired: no network, no signal to lose, nothing for a node tap to hear
-    const net = from.wired ? { id: '', name: 'Payphone line', type: 'wired', strength: 100, color: '' } : this._net();
+    const net = from.wired ? { id: '', name: `${payphoneTerm()} line`, type: 'wired', strength: 100, color: '' } : this._net();
     if (!verdict.ok) {
       if (!verdict.outcome) return { ok: false, error: verdict.reason };
       const ended = createEndedCall({ from, to, net }, verdict.outcome);

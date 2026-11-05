@@ -125,9 +125,9 @@ else {
     ok(html.includes(icon) && (html.match(/<i class="fas /g) || []).length === 1, `empty list "${filter}" shows its one icon${snLoaded ? ' (social-navigator helpers loaded last)' : ''}`);
   }
   ok(/All caught up/.test(empty({ currentFilter: 'unread' })) && /Hit <strong>Compose/.test(empty({ currentFilter: 'sent' })), 'and its words');
-  const line = readFileSync(`${ROOT}/templates/message-viewer/message-viewer.hbs`, 'utf8').split(/\r?\n/).find((l) => /ncm-viewer__pills-div/.test(l));
-  const div = HB.compile(line);
-  ok(!/pills-div/.test(div({ counts: {}, currentFilter: 'inbox' })) && /pills-div/.test(div({ counts: { scheduled: 2 }, currentFilter: 'inbox' })) && /pills-div/.test(div({ counts: {}, currentFilter: 'drafts' })), 'the drafts/scheduled divider shows exactly when it should');
+  const line = readFileSync(`${ROOT}/templates/message-viewer/message-viewer.hbs`, 'utf8').split(/\r?\n/).find((l) => /\(and \(eq currentFilter 'unread'\) counts\.unread\)/.test(l));
+  const div = HB.compile(`${line}STRIP{{/if}}`);
+  ok(!/STRIP/.test(div({ counts: { unread: 2 }, currentFilter: 'inbox' })) && /STRIP/.test(div({ counts: { unread: 2 }, currentFilter: 'unread' })) && !/STRIP/.test(div({ counts: { unread: 0 }, currentFilter: 'unread' })), 'the drafts/scheduled divider shows exactly when it should');
 }
 
 // ═══ 3. Guard: templates use only 2-argument subexpressions ═══

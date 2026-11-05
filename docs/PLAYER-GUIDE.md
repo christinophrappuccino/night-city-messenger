@@ -42,12 +42,13 @@ That's all the setup there is. NPCs and other players can now message you at tha
 
 ## Part 2 — Reading mail
 
-- **Folders:** Inbox, Sent, Saved, Trash and Spam. **Mark all read** sits at the end of the filter row, and **Unread** on an open message marks it unread again.
+- **Folders:** All, Unread, Sent and Saved sit in the filter row; Drafts, Scheduled, Spam and Trash are behind **More ▾** (it shows a count when something new is in there). Pick **Unread** for a **Mark all read** button. **Unread** on an open message marks it unread again.
 - **Threads:** click the **Thread** button on a message to see the whole conversation in one view.
 - **Reply All:** a message sent to several people shows a party chip next to the To line and a **Reply All** button beside Reply.
 - **Share to chat:** posts a message as a chat card. Anyone reading the card who doesn't have the sender in their contacts gets an **Add contact** button on it.
 - **Money:** a message can have eddies attached. Click **Claim** and the money goes to your character sheet. It can only be claimed once.
-- **Attached shards:** open them from the message. They're also listed on the **Shards** tab.
+- **Attached shards:** open them from the message. They're also listed on the **Shards** tab. Its search box finds them by name or by who sent them, and the arrow keys and Enter open one.
+- **Keys:** the bar at the bottom of the inbox lists the keys that work on the tab you are on. On **Calls**, / jumps to the number box and Enter calls.
 - **Self-destructing messages:** if you get one, read it carefully. It won't be there later.
 - **Locked messages:** some are encrypted and take a skill roll to open.
 
@@ -61,7 +62,7 @@ Click **Compose**. The top line shows who you're sending as, your network and th
 
 The chips under the subject are the delivery options, such as priority and scheduling. Click one to open its panel. The toolbar can attach a shard, a file, a picture or video, or eddies.
 
-**Drafts.** The composer saves what you're writing every half-minute, and **Draft** saves it and closes the window. Your character can hold up to twenty drafts. A new composer always opens empty. Your drafts are on the inbox's **Drafts** tab, or behind the **N drafts** link at the bottom of the composer.
+**Drafts.** The composer saves what you're writing every half-minute, and **Draft** saves it and closes the window. Your character can hold up to twenty drafts. A new composer always opens empty. Your drafts are under **More ▾ → Drafts** in your inbox, or behind the **N drafts** link at the bottom of the composer.
 
 **If a message doesn't go through,** the composer tells you why and stays open with **Retry**, **Queue** and **Save Draft**. With no signal, Send turns into **Queue**: the message waits and goes out when you're back in range.
 
@@ -180,7 +181,7 @@ If your GM has them switched on, a conversation is a group chat that sits in you
 
 **Mail or a conversation?** A message is something you send: it has a subject, and it can carry eddies, encryption, a shard or a self-destruct. A conversation is something you are in. It is plain lines, back and forth. **Send as mail** in a chat opens the composer addressed to everyone there, for when you need what mail can do.
 
-**Starting one.** Press the chat button at the top of your inbox, add people from your contacts or a group, and pick who you join as. **That name is fixed for this conversation.** If you join as an alias, everyone there only ever sees the alias.
+**Starting one.** Open the **▾** beside **Compose** at the top of your inbox and pick **New conversation**, add people from your contacts or a group, and pick who you join as. **That name is fixed for this conversation.** If you join as an alias, everyone there only ever sees the alias.
 
 **Writing.** Enter sends, and Shift+Enter starts a new line. The smiley in the box adds an emoji. The **+** adds a picture, your number or a contact. A contact locked with ICE can't be shared. Someone who receives a contact presses **Save contact**, and it only adds what they were missing.
 
@@ -196,7 +197,7 @@ Tip: conversations don't turn up in the shard, terminal or trace tools. Mail is 
 
 <!-- fig: ThemeCustomizer.png | The Theme Customizer | 75 -->
 
-The **gear** button in your inbox opens the Theme Customizer. Only you see your theme.
+The **gear ▾** menu in your inbox opens the Theme Customizer (and this guide). Only you see your theme.
 
 - **Colors, fonts and wallpaper**, and a custom name for your Agent.
 - **Text Size** also makes the pop-up dialogs bigger. **Contrast** helps on a bright screen.

@@ -6,8 +6,10 @@
  *   dev/mockups/payphone-booth-mock.html. A payphone is a world record (the `payphones` setting) with a number, a scene,
  *   a LOOK (what the booth wears) and a few rules (who can hear, the help key, condition). Its map pins and step-on areas
  *   are ordinary access points (kind `payphone`). Everything here is pure so the sims, the admin preview and the booth
- *   read one set of rules.
+ *   read one set of rules. The one outside read is the word itself (`payphoneTerm`, utils/payphoneTerm.js), which falls
+ *   back to "Payphone" where there is no Foundry.
  */
+import { payphonePlace } from './payphoneTerm.js';
 
 export const PP_STYLES = Object.freeze({
   street: { name: 'Street booth', sub: 'Yellow, chipped, stickers', brand: 'PetroChem PubliCom', case: '#d79f1c', panel: '#d6d8d2', hand: '#2b6c83', ink: '#6ff3ff', trim: '#1a1a1a', glass: '#070a0c',
@@ -102,8 +104,8 @@ export function sanitizeSavedStyles(list = []) {
   return (Array.isArray(list) ? list : []).map((s) => ({ id: str(s?.id, 40), name: str(s?.name, 40), look: sanitizeLook(s?.look || {}) })).filter((s) => s.id && s.name).slice(0, 60);
 }
 
-/** What the screen says it calls itself, e.g. "Payphone, Kabuki". */
-export const placeLabel = (pp) => `Payphone, ${pp?.name || 'somewhere'}`;
+/** What the screen says it calls itself, e.g. "Payphone, Kabuki" (the word is the `payphoneTerm` setting). */
+export const placeLabel = (pp) => payphonePlace(pp?.name);
 
 /**
  * May the speaker be on for this call? (the booth's rule wins over the caller's choice)

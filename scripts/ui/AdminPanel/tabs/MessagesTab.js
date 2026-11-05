@@ -29,16 +29,16 @@ import { convCount, convWaiting, wireConversations, closeConversations, newConve
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../../../utils/constants.js';
 import {
   log, formatCyberDate, getPlayerCharacters, isPersonActor, resolveDisplayPortrait, resolveDisplayName,
-  ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, normalizeAnonStyle,
+  ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL,
   getSetting,
 } from '../../../utils/helpers.js';
-import { getInitials, getRoleIcon } from '../../../utils/designHelpers.js';
+import { getInitials } from '../../../utils/designHelpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { scheduledRecipientLabel } from '../../../services/SchedulingService.js';
 import { DateRangePicker } from '../../components/DateRangePicker.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
-import { identityRole, identitiesOfContact, identitiesOf, voiceInfo } from '../../../utils/identities.js';
+import { identityRole, identitiesOfContact, identitiesOf } from '../../../utils/identities.js';
 import { ScopePicker } from '../../../utils/scopePicker.js';
 import { BUILT_IN_ROLES } from '../../../utils/contactVocab.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
@@ -46,14 +46,12 @@ import { cleanHtml } from '../../../utils/richText.js';
 import { htmlOf } from '../../../utils/compat.js';
 import {
   baseIdOf, convKey, senderKeys, targetKeys, isAnswered, pruneAnswered, convPasses, sortConversations,
-  DESK_FILTERS, deskQueue, deskDefaultKey, deskThread, identityOrder, deskVoice, deskSentLine,
+  DESK_FILTERS, REPLY_SORTS, REPLY_GROUPS, REPLY_PAGE, replyList, identityOrder,
   MAIL_FLAGS, journeyTrack, journeySegs, journeyPeople, journeyStatus, INBOX_VIEWS, INBOX_GROUPS, INBOX_SORTS, QUIET_DAYS, BUSY_DAYS, slotMetric, postmarkCode, inboxTraffic, inboxPasses, inboxViewCounts, groupInboxes, applyMailFilters, flagCounts, foldShut, inboxGroupDefaultOpen, recordFold, purgeable, deliveryLine, groupDeliveryLine,
   calendarCounts, yearTiles, monthCells, weekStrip, calRange, inRange, calStateFor, calStep, calUp, calCrumbs, daySplit, orderBands, calHome, isoWeek, dow, WEEKDAYS_SHORT, WEEKDAYS_LONG, MONTHS_LONG,
 } from './messagesModel.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-// The Desk's folds (queue / persona), per window for the session: app id → { q, p } (null = default).
-const DESK_FOLDS = new Map();
 const imgOk = (src) => (src && !String(src).includes('mystery-man') ? src : '');
 const isPlayerActor = (id) => !!(id && game.actors?.get(id)?.hasPlayerOwner);
 
@@ -115,19 +113,23 @@ export class MessagesTab extends BaseTab {
   _dlNudged = new Set();
 
   // ── Needs a reply ──
-  _deskQuiet = false;      // the Desk: show the count of NPC inboxes nobody wrote to
-  _rFilt = 'all';           // the Desk's queue chip: all | waiting | answered
-  _deskSent = null;         // { key, as, to } — the conversation just answered, for the "Sent as …" line
+  _deskQuiet = false;      // show the count of NPC inboxes nobody wrote to
+  _rFilt = 'all';           // the Show menu: all | waiting | answered
+  _rq = '';                 // the search box
+  _rSort = 'wait';          // REPLY_SORTS key
+  _rGroup = 'none';         // REPLY_GROUPS key
+  _rLimit = REPLY_PAGE;     // waiting lines shown (Show more adds a page)
+  _rDoneLimit = REPLY_PAGE; // answered lines shown
+  _rDoneOpen = null;        // the Answered fold: null = automatic (open when nothing is waiting), else the GM's last click
+  _rShut = new Set();       // group keys the GM folded
+  _rqSearchHandler = null;
+  _rqScrollTo = null;       // a line to scroll into view on the next render (openTo from the Overview)
   /** "Include mail I sent" — also list mail the GM sent TO NPCs. */
   _npcInboxIncludeGm = false;
   _npcInboxUnreadOnly = false;   // legacy (old NPC Inbox chip)
   _npcInboxSort = 'recent';      // legacy
   _npcInboxExpanded = new Set(); // legacy
-  _convSel = null;
-  _rpasFor = null;
-  _replyAnon = false;
-  /** Unsent reply text per conversation key — survives re-renders. */
-  _drafts = new Map();
+  _convSel = null;          // the line the Overview / a click pointed at (highlighted, kept on the page)
 
   // ── Inboxes ──
   _ibSearch = '';
@@ -170,7 +172,7 @@ export class MessagesTab extends BaseTab {
     if (s.startsWith('npc:')) {
       this._view = 'reply';
       this._convSel = s.slice(4);
-      this._rFilt = 'all';
+      this._rFilt = 'all'; this._rq = ''; this._rqScrollTo = this._convSel;
       return;
     }
     this._view = 'all';
@@ -220,7 +222,7 @@ export class MessagesTab extends BaseTab {
       bcOpen: this._bcOpen,
       bc: this._bcOpen ? this._broadcastContext() : null,
       head: {
-        reply: ['Needs a reply', 'Player mail to your NPCs that nobody has answered yet — pick a line to read it and reply as that NPC.', 'fa-reply'],
+        reply: ['Needs a reply', 'Player mail to your NPCs that nobody has answered yet. Reply answers as the NPC, or the alias, they wrote to.', 'fa-reply'],
         all: ['All mail', 'Every message in the world on a calendar you open — a year, a month, a week, a day — with anything unusual (junk, anonymous, failed) flagged.', 'fa-envelopes-bulk'],
         outbox: ['Outbox', 'Mail that didn’t arrive, mail still waiting to deliver, scheduled mail, and messages set to erase themselves.', 'fa-paper-plane'],
         conv: ['Conversations', 'Every group chat in the world. Reading one is invisible: nobody is told, and nothing is marked read.', 'fa-comments'],
@@ -351,10 +353,7 @@ export class MessagesTab extends BaseTab {
       const ident = el.dataset.conv ?? el.dataset.sel ?? '';
       const memo = this._scrollMemo[k];
       if (memo && memo.id === ident) el.scrollTop = memo.top;
-      else if (k === 'thread') {
-        const first = el.querySelector('.ncm-msg2-desk__b.is-waiting');
-        el.scrollTop = first ? Math.max(0, first.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 8) : el.scrollHeight;
-      } else el.scrollTop = 0;
+      else el.scrollTop = 0;
       this._scrollMemo[k] = { id: ident, top: el.scrollTop };
       el.addEventListener('scroll', () => { this._scrollMemo[k] = { id: ident, top: el.scrollTop }; }, { passive: true });
     }
@@ -374,19 +373,13 @@ export class MessagesTab extends BaseTab {
     };
     wireSearch('[data-msg2-search]', '_search', '_searchHandler', () => { this._limit = 40; this._calLimit = 50; this._calAuto = true; });
     wireSearch('[data-msg2-ibsearch]', '_ibSearch', '_ibSearchHandler');
+    wireSearch('[data-msg2-rqsearch]', '_rq', '_rqSearchHandler', () => { this._rLimit = REPLY_PAGE; this._rDoneLimit = REPLY_PAGE; });
 
-    // ── The Desk: a queue row answers Enter/Space like a button (every other control is a real button).
-    root.querySelectorAll('.ncm-msg2-desk__qr[data-action]').forEach((row) => {
-      row.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); row.click(); } });
-    });
-
-    // ── Inline reply draft (kept per conversation; Ctrl+Enter sends) ──
-    const draft = root.querySelector('[data-msg2-draft]');
-    if (draft) {
-      draft.addEventListener('input', () => this._drafts.set(draft.dataset.key, draft.value));
-      draft.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this._onReplySend(); }
-      });
+    // ── Needs a reply: the line the Overview pointed at scrolls into view once.
+    if (this._rqScrollTo) {
+      const row = [...root.querySelectorAll('.ncm-msg2-rq__row[data-key]')].find((r) => r.dataset.key === this._rqScrollTo);
+      row?.scrollIntoView?.({ block: 'nearest' });
+      this._rqScrollTo = null;
     }
 
     // ── Broadcast fields (state, so a re-render never loses what was typed) ──
@@ -615,13 +608,10 @@ export class MessagesTab extends BaseTab {
   }
 
   /**
-   * Needs a reply as THE DESK (Version B of dev/mockups/admin-needs-reply-rethink-mock.html,
-   * 2026-10-28): a queue of conversations on the left (the longest wait on top,
-   * answered ones below, dim), the picked conversation as a chat thread in the
-   * middle with the compose box pinned under it, and on the right the PERSONA of
-   * the identity being answered as (portrait, role / org, how they talk = the
-   * contact's Voice, the identities to answer from, what they last said).
-   * Rules: messagesModel.deskQueue / deskThread / deskVoice / identityOrder.
+   * Needs a reply as a LIST (dev/mockups/inbox-cleanup-mock.html §3, 2026-11-05; it replaced the Desk): one line per
+   * conversation with who is waiting, on what, for how long, and the last thing they wrote. Reply opens the composer as
+   * the identity they wrote to (to everyone waiting); the inbox button opens the NPC's inbox at that message; ✓ marks
+   * it answered. Search, Show, Sort / group and a page size keep it usable at any size. Rules: messagesModel.replyList.
    */
   _replyContext(convs, scan = null) {
     this._convCache = new Map(convs.map(c => [c.key, c]));
@@ -636,42 +626,62 @@ export class MessagesTab extends BaseTab {
       for (const m of waitingMsgs) { const k = m.fromActorId || m.fromContactId || m.from; if (k && !who.has(k)) who.set(k, m); }
       const people = who.size ? [...who.values()] : [...c.senders.values()];
       const lastReply = [...(c.replies || [])].sort((a, b) => b._ts - a._ts)[0] || null;
+      const lastIn = newestWait || [...c.msgs].sort((a, b) => b._ts - a._ts)[0] || null;
       const names = [...new Set(people.map(m => this._senderLabel(m)))];
+      const shownFaces = people.slice(0, 4);
       return {
-        key: c.key, name: c.ownerName, aliasName: c.alias?.name || '', contactOnly: !!c.isContact,
+        key: c.key, ownerId: c.ownerId, name: c.ownerName, aliasName: c.alias?.name || '', contactOnly: !!c.isContact,
         waiting: c.waiting, oldestWaitTs: oldestWait?._ts || 0, newestWaitTs: newestWait?._ts || 0, latestTs: c.latestTs || 0,
         whoNames: names.join(', '), playersN: who.size, messages: waitingMsgs.length,
-        faces: people.slice(0, 3).map(m => this._face(this._senderLabel(m), { contactId: m.fromContactId, actorId: m.fromActorId, email: m.from })),
+        players: people.map(m => ({ key: m.fromActorId || m.fromContactId || m.from || '?', name: this._senderLabel(m) })),
+        faces: shownFaces.map(m => this._face(this._senderLabel(m), { contactId: m.fromContactId, actorId: m.fromActorId, email: m.from })),
+        moreFaces: Math.max(0, people.length - shownFaces.length),
         npc: this._convFace(c),
-        subline: newestWait ? (newestWait.subject || this._plain(newestWait.body, 60) || '(no subject)')
-          : (lastReply ? `answered ${this._age(lastReply._ts)} ago` : 'marked answered'),
-        age: newestWait ? this._age(newestWait._ts) : '',
+        subject: lastIn ? (lastIn.subject || '(no subject)') : '',
+        lastFrom: lastIn ? this._senderLabel(lastIn) : '',
+        preview: lastIn ? (this._plain(lastIn.body, 220) || '') : '',
+        // the inbox button opens the NPC's inbox on the message still waiting (else the latest one)
+        openId: lastIn?.messageId || '',
+        doneLine: lastReply ? `answered ${this._age(lastReply._ts)} ago` : 'marked answered',
         waitAge: oldestWait ? this._age(oldestWait._ts) : '',
         typed: waitingMsgs.some(m => m._via?.impersonated),
+        typedNote: [...new Set(waitingMsgs.filter(m => m._via?.impersonated).map(m => `${m._via.typist || 'a player'}${m._via.machine ? ` on ${m._via.machine}` : ''}`))].join(', '),
       };
     });
-    let queue = deskQueue(rows, { filter: this._rFilt, selKey: this._convSel, nowMs: now });
-    // Nothing picked yet: the desk opens on the longest wait (else the latest answered line).
-    if (!this._convSel) {
-      this._convSel = deskDefaultKey(deskQueue(rows, { filter: 'all', nowMs: now }));
-      if (this._convSel) queue = deskQueue(rows, { filter: this._rFilt, selKey: this._convSel, nowMs: now });
-    }
-    const sel = this._convSel ? this._convCache.get(this._convSel) : null;
+    const list = replyList(rows, {
+      filter: this._rFilt, q: this._rq, sort: this._rSort, group: this._rGroup,
+      limit: this._rLimit, answeredLimit: this._rDoneLimit, selKey: this._convSel, nowMs: now, shut: this._rShut,
+    });
 
     const withConv = new Set(convs.map(c => c.ownerId));
     const quietN = (scan?.inboxes || []).filter(b => !b.isPlayer && !b.orphan && !withConv.has(b.ownerId)).length;
-    const playersWaiting = rows.reduce((n, r) => n + (r.waiting ? r.playersN : 0), 0);
-
-    const folds = this._deskFolds();
+    const playersWaiting = new Set(rows.filter(r => r.waiting).flatMap(r => r.players.map(p => p.key))).size;
+    const oldest = rows.filter(r => r.waiting && r.oldestWaitTs).sort((a, b) => a.oldestWaitTs - b.oldestWaitTs)[0];
     const filtLabel = (DESK_FILTERS.find(([k]) => k === this._rFilt) || DESK_FILTERS[0])[1];
+    const sortLabel = (REPLY_SORTS.find(([k]) => k === this._rSort) || REPLY_SORTS[0])[1];
+    const groupLabel = (REPLY_GROUPS.find(([k]) => k === this._rGroup) || REPLY_GROUPS[0])[1];
+    // the GM's click wins; until then it opens by itself when nothing is waiting (or the marked line is answered)
+    const answeredAuto = list.answered.some(r => r.sel) || (!list.waitingMatched && list.answered.length > 0);
+    const answeredOpen = this._rFilt === 'answered' || (this._rDoneOpen ?? answeredAuto);
+    this._rDoneShown = answeredOpen;
+    const searching = !!String(this._rq || '').trim();
     return {
-      filt: this._rFilt, filtLabel, filtCount: queue.counts[this._rFilt] ?? 0, includeGm: this._npcInboxIncludeGm,
-      chips: DESK_FILTERS.map(([key, label]) => ({ key, label, count: queue.counts[key], on: key === this._rFilt })),
-      playersWaiting, linesWaiting: queue.counts.waiting, quietN, showQuiet: this._deskQuiet && quietN > 0, quietOn: this._deskQuiet,
-      qShut: folds.q, pShut: folds.p,
-      queue, hasQueue: queue.shown > 0,
-      emptyText: this._rFilt === 'waiting' ? 'Nothing waiting. Nice.' : (rows.length ? 'No lines here.' : 'No NPC has mail yet.'),
-      desk: sel ? this._deskDetail(sel) : null,
+      filt: this._rFilt, filtLabel, filtCount: list.counts[this._rFilt] ?? 0, includeGm: this._npcInboxIncludeGm,
+      chips: DESK_FILTERS.map(([key, label]) => ({ key, label, count: list.counts[key], on: key === this._rFilt })),
+      sorts: REPLY_SORTS.map(([key, label]) => ({ key, label, on: key === this._rSort })),
+      groupBys: REPLY_GROUPS.map(([key, label]) => ({ key, label, on: key === this._rGroup })),
+      sortLabel, groupLabel, grouped: list.grouped,
+      q: this._rq, searching,
+      playersWaiting, linesWaiting: list.counts.waiting, oldestAge: oldest ? this._age(oldest.oldestWaitTs) : '',
+      quietN, showQuiet: this._deskQuiet && quietN > 0, quietOn: this._deskQuiet,
+      list, groups: list.groups, hasWaiting: list.waitingShown > 0,
+      showWaiting: this._rFilt !== 'answered',
+      answered: list.answered, hasAnswered: list.answeredMatched > 0, answeredOpen, answeredFoldable: this._rFilt !== 'answered', answeredN: list.answeredMatched,
+      more: list.more, moreN: Math.min(REPLY_PAGE, list.more), answeredMore: list.answeredMore,
+      matchLine: searching ? `${list.matched} of ${list.total} ${list.total === 1 ? 'line' : 'lines'} match` : '',
+      emptyText: searching ? 'Nothing matches the search.'
+        : this._rFilt === 'answered' ? 'No answered lines yet.'
+          : (rows.length ? 'Nothing waiting. Nice.' : 'No NPC has mail yet.'),
     };
   }
 
@@ -680,18 +690,6 @@ export class MessagesTab extends BaseTab {
     return t.length > n ? `${t.slice(0, n)}…` : t;
   }
 
-  _roleLabel(role) {
-    const key = String(role || '').toLowerCase().trim();
-    if (!key) return '';
-    const lc = (s) => String(s || '').toLowerCase().trim();
-    const custom = (this.masterContactService?.getCustomRoles?.() || []).find((r) => lc(r.id) === key || lc(r.label) === key);
-    return BUILT_IN_ROLES[key]?.label || custom?.label || (key.charAt(0).toUpperCase() + key.slice(1));
-  }
-
-  /**
-   * The identities the GM can answer as: that NPC's group (or the alias's), the
-   * identity the latest mail reached FIRST, then the rest (main next).
-   */
   _replyIdentities(g) {
     const all = this.masterContactService?.getAll?.() || [];
     let ids = [];
@@ -721,114 +719,6 @@ export class MessagesTab extends BaseTab {
     return { items, def: items.some(i => i.id === def) ? def : (items[0]?.id || ''), wroteTo: wrote || null };
   }
 
-  /** The desk for one conversation: head, thread, compose box, persona. */
-  _deskDetail(g) {
-    const all = this.masterContactService?.getAll?.() || [];
-    const pid = this.scopeId('rpas');
-    const { items, def, wroteTo } = this._replyIdentities(g);
-    if (this._rpasFor !== g.key) { ScopePicker.set(pid, def ? [def] : []); this._rpasFor = g.key; this._replyAnon = false; }
-    const pick = ScopePicker.value(pid)[0] || def;
-    const picked = items.find(i => i.id === pick) || items[0] || null;
-    const pickedContact = picked?.id?.startsWith('c:') ? (all.find(c => c.id === picked.id.slice(2)) || null) : null;
-    const pickedActor = picked?.id?.startsWith('a:') ? game.actors?.get(picked.id.slice(2)) : (pickedContact?.actorId ? game.actors?.get(pickedContact.actorId) : null);
-    const fromAddr = pickedContact?.email || pickedActor?.getFlag?.(MODULE_ID, 'email') || '';
-
-    const senderNames = [...new Set(g.msgs.filter(m => m._fromPlayer).map(m => this._senderLabel(m)))];
-    const waitingMsgs = g.msgs.filter(m => !m._answered).sort((a, b) => b._ts - a._ts);
-    const waitingNames = [...new Set(waitingMsgs.map(m => this._senderLabel(m)))];
-    const toNames = waitingNames.length ? waitingNames : senderNames;
-    const typedNotes = [];
-    for (const m of g.msgs) {
-      if (!m._via?.impersonated) continue;
-      typedNotes.push({ typist: m._via.typist, machine: m._via.machine, asName: this._senderLabel(m) });
-    }
-
-    // The thread: player mail on the left, the NPC's replies on the right, a day line when the day changes.
-    const seenAddr = new Set();
-    const items2 = [...g.msgs, ...(g.replies || [])].map(m => {
-      const who = this._senderLabel(m);
-      const addr = m.from && !seenAddr.has(`${who}|${m.from}`) ? m.from : '';
-      if (m.from) seenAddr.add(`${who}|${m.from}`);
-      return {
-        ts: m._ts, ...this._face(who, { contactId: m.fromContactId, actorId: m.fromActorId, email: m.from }), addr,
-        subject: m.subject || '', bodyHtml: cleanHtml(m.body || '', { mode: 'mail' }),
-        time: m.timestamp ? formatCyberDate(m.timestamp, { timeOnly: true }) : '', when: m.timestamp ? formatCyberDate(m.timestamp) : '', age: this._age(m._ts),
-        mine: m.isSent, waiting: !m.isSent && !m._answered, messageId: m.messageId, ownerId: m.ownerId,
-        typist: m._via?.impersonated ? m._via.typist : '',
-      };
-    });
-    const entries = deskThread(items2, { labelDay: (ts) => formatCyberDate(new Date(ts).toISOString(), { dateOnly: true }) });
-    const msgCount = items2.length;
-    const newest = [...g.msgs, ...(g.replies || [])].sort((a, b) => b._ts - a._ts)[0] || null;
-    const subject = (waitingMsgs[0] || newest)?.subject || '(no subject)';
-
-    // The persona: who you are answering as — the picked identity (an alias inherits its main's voice).
-    const role = pickedContact ? identityRole(all, pickedContact) : null;
-    const main = role?.isAlias ? role.primary : pickedContact;
-    const roleKey = pickedContact?.role || main?.role || '';
-    const org = pickedContact?.organization || main?.organization || '';
-    const voice = deskVoice(pickedContact ? voiceInfo(all, pickedContact) : { text: '' });
-    const face = picked ? { name: picked.name, img: picked.img || '', initials: getInitials(picked.name || '?') } : this._convFace(g);
-    const saidFrom = (g.replies || []).filter(r => !pickedContact || !r.fromContactId || r.fromContactId === pickedContact.id).sort((a, b) => b._ts - a._ts);
-    const said = (saidFrom.length ? saidFrom : [...(g.replies || [])].sort((a, b) => b._ts - a._ts)).slice(0, 3)
-      .map(r => ({ text: this._plain(r.body || '', 90) || r.subject || '(no body)', when: r.timestamp ? formatCyberDate(r.timestamp) : '' }));
-    const persona = {
-      ...face, addr: fromAddr,
-      isAlias: !!role?.isAlias, mainName: role?.isAlias ? (role.primary?.name || '') : '',
-      role: roleKey ? { label: this._roleLabel(roleKey), icon: getRoleIcon(roleKey), hue: `role:${roleKey}` } : null,
-      org,
-      voice, contactId: pickedContact?.id || '', actorId: pickedActor?.id || '', hasVoiceTarget: !!(pickedContact || pickedActor),
-      identities: items.map(i => ({ ...i, on: i.id === picked?.id })), manyIds: items.length > 1,
-      wroteToName: wroteTo?.name || '', wroteToIsPicked: !!wroteTo && wroteTo.id === picked?.id,
-      said, hasSaid: said.length > 0,
-      inboxOwnerId: g.ownerId,
-    };
-
-    const anonOk = this._anonEnabled();
-    return {
-      key: g.key, ownerId: g.ownerId,
-      npcName: g.ownerName, aliasName: g.alias?.name || '',
-      head: {
-        players: senderNames.join(', ') || 'nobody yet',
-        faces: g.msgs.filter(m => m._fromPlayer).filter((m, i, arr) => arr.findIndex(x => this._senderLabel(x) === this._senderLabel(m)) === i).slice(0, 3)
-          .map(m => this._face(this._senderLabel(m), { contactId: m.fromContactId, actorId: m.fromActorId, email: m.from })),
-        subject, msgCount, waiting: g.waiting,
-        subline: `${g.alias ? `Alias of ${g.ownerName} · ` : ''}with ${senderNames.join(' & ') || 'nobody yet'}`,
-      },
-      entries, msgCount,
-      typedNotes: typedNotes.slice(0, 3), hasTyped: typedNotes.length > 0,
-      compose: {
-        replyAsName: picked?.name || g.alias?.name || g.ownerName, fromAddr,
-        toLine: toNames.length > 1 ? `all ${toNames.length} who wrote (one fan-out)` : (toNames[0] || 'nobody'),
-        toMany: toNames.length > 1, toCount: toNames.length,
-        canReply: items.length > 0 && senderNames.length > 0,
-        waiting: g.waiting,
-        draft: this._drafts.get(g.key) || '',
-        anonOk, anon: anonOk && this._replyAnon,
-        identities: items.map(i => ({ ...i, on: i.id === picked?.id, wrote: !!wroteTo && wroteTo.id === i.id })), manyIds: items.length > 1, idCount: items.length,
-        sentLine: deskSentLine(this._deskSent?.key === g.key ? this._deskSent : null),
-      },
-      persona,
-    };
-  }
-
-  /**
-   * The Desk's two folds for this window. The GM's own choice wins for the session;
-   * by default the queue is open and the persona is open only when there is room
-   * (a pop-out, or a panel widened past ~960px).
-   */
-  _deskFolds() {
-    const mem = DESK_FOLDS.get(this.app?.id) || {};
-    const w = this.app?.position?.width || 0;
-    return { q: mem.q ?? false, p: mem.p ?? !(this.isPopout || w >= 960) };
-  }
-
-  _setDeskFold(which) {
-    const id = this.app?.id;
-    const cur = this._deskFolds();
-    DESK_FOLDS.set(id, { ...(DESK_FOLDS.get(id) || {}), [which]: !cur[which] });
-  }
-
   /**
    * Mark one copy read (or back to unread) — written straight onto its page in the owner's inbox
    * (a contact inbox has no actor, so this does not go through the actor-keyed service), then the
@@ -852,24 +742,20 @@ export class MessagesTab extends BaseTab {
     ncmNotify.warn('NCM | That message is no longer in its inbox.');
   }
 
-  _anonEnabled() {
-    return !!getSetting('anonSendEnabled', true);   // the registered default (it fell back to false here, true in the composer)
-  }
-
   /** Full message objects for a conversation's records (what buildReply / the composer want). */
   _toMessage(rec) {
     return this.messageRepository?._pageToMessage?.(rec.page) || { ...rec.page?.flags?.[MODULE_ID] };
   }
 
-  /** What an inline reply / "Open in composer" answers, and as whom. */
-  _replyPlan() {
-    const g = this._convCache?.get(this._convSel);
+  /** What Reply answers, and as whom: the identity they wrote to, to everyone still waiting. */
+  _replyPlan(key = this._convSel) {
+    const g = this._convCache?.get(key);
     if (!g) return null;
     const players = g.msgs.filter(m => m._fromPlayer).sort((a, b) => b._ts - a._ts);
     const waiting = players.filter(m => !m._answered);
     const target = waiting[0] || players[0];
     if (!target) return null;
-    const pick = ScopePicker.value(this.scopeId('rpas'))[0] || this._replyIdentities(g).def;
+    const pick = this._replyIdentities(g).def;
     const all = this.masterContactService?.getAll?.() || [];
     let fromActorId = null, fromContactId = null, fromEmail = null;
     if (pick?.startsWith('c:')) {
@@ -888,71 +774,26 @@ export class MessagesTab extends BaseTab {
     return { g, target, waiting, fromActorId, fromContactId, fromEmail, to };
   }
 
-  async _onReplySend() {
-    const plan = this._replyPlan();
-    if (!plan) return ncmNotify.warn('NCM | Pick a conversation first.');
-    const body = (this._drafts.get(plan.g.key) || this.element?.querySelector('[data-msg2-draft]')?.value || '').trim();
-    if (!body) return ncmNotify.warn('NCM | Write a reply first.');
-    const svc = this.messageService;
-    const original = this._toMessage(plan.target);
-    const reply = svc.buildReply(original, plan.fromActorId, body.replace(/\n/g, '<br>'), { fromContactId: plan.fromContactId });
-    if (plan.fromContactId) { reply.fromContactId = plan.fromContactId; if (plan.fromEmail) reply.from = plan.fromEmail; }
-    if (!plan.fromActorId) delete reply.fromActorId;
-    if (plan.to.length > 1 && !reply.anonReply) {
-      delete reply.toActorId; delete reply.toContactId; delete reply.to;
-      reply.recipients = plan.to;
-    }
-    if (this._replyAnon && this._anonEnabled()) reply.anonymous = this._anonBlock(original);
-    const result = await svc.sendMessage(reply);
-    if (!result?.success) {
-      ncmNotify.error(`NCM | Reply not sent — ${result?.error || 'unknown error'}`);
-      return;
-    }
-    if (result.failed?.length) ncmNotify.warn(`NCM | Not delivered to ${result.failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ')}`);
-    else ncmNotify.info(`NCM | Replied to ${plan.to.map(t => t.name).join(', ')}.`);
-    await this._markAnswered(plan.waiting.map(m => m.messageId));
-    await this._markPagesRead(plan.waiting);
-    this._drafts.delete(plan.g.key);
-    // The desk keeps the conversation open with a "Sent as …" line until another one is picked.
-    const asName = (this._replyIdentities(plan.g).items.find(i => i.id === (ScopePicker.value(this.scopeId('rpas'))[0] || ''))?.name) || plan.g.alias?.name || plan.g.ownerName;
-    this._deskSent = { key: plan.g.key, as: asName, to: plan.to.map(t => t.name).join(', ') };
-    this.render(true);
-  }
-
-  /** The anonymous block for an inline reply — the thread's own config when it was anonymous, else the world defaults. */
-  _anonBlock(original) {
-    const g = (k, d) => { try { return game.settings.get(MODULE_ID, k); } catch { return d; } };
-    const prior = this.messageService?.getThreadAnonConfig?.(original) || null;
-    return {
-      enabled: true,
-      style: normalizeAnonStyle(prior?.style || g('anonDefaultStyle', 'scrambled')),
-      alias: (prior?.alias || '').trim() || ANON_DEFAULT_ALIAS,
-      maskedEmail: ANON_MASKED_EMAIL,
-      allowReplies: prior?.allowReplies ?? !!g('anonAllowRepliesDefault', true),
-      traceable: !!g('anonTraceEnabled', true),
-      traceDV: Number(prior?.traceDV || g('anonTraceDV', 9)) || 9,
-      traced: false,
-    };
-  }
-
-  _onReplyComposer() {
-    const plan = this._replyPlan();
-    if (!plan) return;
-    // The draft rides along as the composer's body (its editor is HTML, so line breaks become <br>).
-    const opts = { mode: 'reply', originalMessage: this._toMessage(plan.target), body: (this._drafts.get(plan.g.key) || '').replace(/\n/g, '<br>') };
+  /** Reply: the composer in reply mode, as the identity they wrote to, to everyone waiting (reply-all for a crowd). */
+  _onReplyComposer(key = this._convSel) {
+    const plan = this._replyPlan(key);
+    if (!plan) return ncmNotify.warn('NCM | That line is gone — it may have been answered.');
+    this._convSel = plan.g.key;
+    const opts = { mode: 'reply', originalMessage: this._toMessage(plan.target) };
     if (plan.fromContactId) opts.fromContactId = plan.fromContactId;
     else if (plan.fromActorId) opts.fromActorId = plan.fromActorId;
     if (plan.to.length > 1) opts.replyAll = true;
     game.nightcity?.openComposer?.(opts);
   }
 
-  async _onMarkAnswered() {
-    const g = this._convCache?.get(this._convSel);
+  async _onMarkAnswered(key = this._convSel) {
+    const g = this._convCache?.get(key);
     if (!g) return;
     const waiting = g.msgs.filter(m => !m._answered);
     if (!waiting.length) return ncmNotify.info('NCM | Nothing waiting in this conversation.');
     await this._markAnswered(waiting.map(m => m.messageId));
     await this._markPagesRead(waiting);
+    if (this._convSel === g.key) this._convSel = null;   // ticked lines do not pull the Answered fold open
     ncmNotify.info(`NCM | Marked ${waiting.length} message${waiting.length !== 1 ? 's' : ''} answered.`);
     this.render(true);
   }
@@ -2575,23 +2416,19 @@ export class MessagesTab extends BaseTab {
     switch (op) {
       case 'view': this._view = d.view || 'reply'; this.app._saveScroll?.(); return this.render(true);
       // Needs a reply
-      case 'rFilt': this._rFilt = ['all', 'waiting', 'answered'].includes(d.f) ? d.f : 'all'; return this.render(true);
+      case 'rFilt': this._rFilt = ['all', 'waiting', 'answered'].includes(d.f) ? d.f : 'all'; this._rLimit = REPLY_PAGE; this._rDoneLimit = REPLY_PAGE; return this.render(true);
       case 'includeGm': this._npcInboxIncludeGm = !this._npcInboxIncludeGm; return this.render(true);
-      case 'convSel': if (this._convSel === d.key) return; this._convSel = d.key; this._deskSent = null; this.app._saveScroll?.(); return this.render(true);
-      case 'deskIdent': { const pid = this.scopeId('rpas'); if (!d.id || ScopePicker.value(pid)[0] === d.id) return; ScopePicker.set(pid, [d.id]); return this.render(true); }
-      case 'deskContact': {
-        // The persona's pencil / Open: the contact in Admin → Contacts (an actor with no entry gets one made from it).
-        const sel = d.contactId ? d.contactId : (d.actorId ? { create: 'actor', actorId: d.actorId } : null);
-        if (sel) game.nightcity?.openAdminTab?.('contacts', { select: sel });
-        return;
-      }
-      case 'replySend': return this._onReplySend();
-      case 'replyComposer': return this._onReplyComposer();
-      case 'replyAnon': this._replyAnon = !this._replyAnon; return this.render(true);
+      case 'rqReply': return this._onReplyComposer(d.key);
+      case 'rqInbox': if (d.key) this._convSel = d.key; return this.onOpenInInbox(null, { dataset: { inboxOwner: d.ownerId, messageId: d.messageId }, closest: () => null });
+      case 'rqSort': if (REPLY_SORTS.some(([k]) => k === d.sort)) { this._rSort = d.sort; this._rLimit = REPLY_PAGE; } return this.render(true);
+      case 'rqGroup': if (REPLY_GROUPS.some(([k]) => k === d.group)) { this._rGroup = d.group; this._rShut.clear(); } return this.render(true);
+      case 'rqFold': if (this._rShut.has(d.key)) this._rShut.delete(d.key); else this._rShut.add(d.key); this.app._saveScroll?.(); return this.render(true);
+      case 'rqMore': this._rLimit += REPLY_PAGE; this.app._saveScroll?.(); return this.render(true);
+      case 'rqDoneMore': this._rDoneLimit += REPLY_PAGE; this.app._saveScroll?.(); return this.render(true);
+      case 'rqDoneFold': if (this._rFilt === 'answered') return; this._rDoneOpen = !this._rDoneShown; this.app._saveScroll?.(); return this.render(true);
+      case 'rqClear': this._rq = ''; this._rLimit = REPLY_PAGE; return this.render(true);
       case 'deskQuiet': this._deskQuiet = !this._deskQuiet; return this.render(true);
-      case 'deskFoldQ': this._setDeskFold('q'); return this.render(true);
-      case 'deskFoldP': this._setDeskFold('p'); return this.render(true);
-      case 'markAnswered': return this._onMarkAnswered();
+      case 'markAnswered': return this._onMarkAnswered(d.key);
       case 'openConversation':
         this.openTo(`npc:${d.key}`);
         this.app._activeTab = 'messages';

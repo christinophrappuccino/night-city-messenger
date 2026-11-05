@@ -22,6 +22,7 @@ import {
   accessMacroCommand, accessMacroSnippet, sanitizeHandoutStyle, postDialogHtml, placementDialogHtml, placementHint, sanitizePlacement, handoutPalette, paletteStyle, accessCardHtml, accessChipHtml, escHtml,
 } from '../utils/accessPoints.js';
 import { placeLabel } from '../utils/payphones.js';
+import { payphoneTerm } from '../utils/payphoneTerm.js';
 
 const MACRO_FOLDER = 'NCM — Access points';
 
@@ -478,7 +479,7 @@ export function payphoneAccessEntries(id) {
 export async function openPayphonePlaceDialog(id, { sceneId } = {}) {
   const svc = game.nightcity?.payphoneService;
   const pp = svc?.get?.(id);
-  if (!pp) return ncmNotify.warn('That payphone no longer exists.');
+  if (!pp) return ncmNotify.warn(`That ${payphoneTerm('lower')} no longer exists.`);
   const ref = accessRef('payphone', id);
   const scene = game.scenes.get(sceneId) || game.scenes.get(pp.sceneId) || canvas?.scene || null;
   const p = await askPlacement(ref, describeAccess(ref), scene, false, 'Place a payphone');

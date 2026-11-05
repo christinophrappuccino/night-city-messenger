@@ -179,59 +179,68 @@ app.tabs.messages = tab;
   ok(!convs.some(c => c.ownerId === 'v' || c.ownerId === 'mc-gone'), 'player and orphan inboxes are not conversations');
 
   const ctx = tab._buildContext({});
-  ok(ctx.isReply && ctx.reply.queue.waiting.length === 2 && ctx.reply.queue.answered.length === 0 && ctx.nav[0].count === 2 && ctx.nav[0].tone === 'hot', 'default view: Needs a reply, both conversations waiting in the queue');
-  ok(ctx.reply.desk && ctx.reply.desk.key === ctx.reply.queue.waiting[0].key && ctx.reply.queue.waiting[0].sel, 'nothing picked: the desk opens on the longest wait, and that row is marked');
-  ok(ctx.reply.queue.waiting.every(r => r.meter && r.meter.pct >= 0 && r.faces.length >= 1 && r.playersN >= 1), 'every waiting row carries its wait meter, faces and a player count');
-  tab._convSel = 'rogue|mc-queen';
-  const c2 = tab._buildContext({}).reply.desk;
-  ok(ScopePicker.value(tab.scopeId('rpas'))[0] === 'c:mc-queen', 'Reply as defaults to the identity they wrote to (the alias)');
-  ok(c2.head.subline.startsWith('Alias of Rogue') && c2.aliasName, 'the alias conversation says whose alias it is');
-  ok(c2.persona.isAlias && c2.persona.name === c2.compose.replyAsName, 'the persona is the identity being answered as (the alias)');
-  tab._convSel = 'rogue|';
-  const c1 = tab._buildContext({}).reply.desk;
-  ok(ScopePicker.value(tab.scopeId('rpas'))[0] === 'c:mc-rogue', 'switching conversation resets Reply as to its own identity');
-  ok(c1.hasTyped && c1.typedNotes[0].typist === 'Rache' && c1.typedNotes[0].machine === 'WS-7F-12', 'terminal-typed mail is flagged and explained');
-  { const msgs = c1.entries.filter(e => e.kind === 'msg');
-    ok(msgs.map(b => b.messageId).join() === 'm1,r1-sent,m2,m6' && msgs[1].mine && msgs[2].waiting && !msgs[0].waiting, 'the thread runs oldest first; the NPC\'s replies on the right; unanswered marked');
-    ok(c1.entries[0].kind === 'day' && c1.entries.filter(e => e.kind === 'day').length >= 1, 'a day line opens the thread'); }
-  ok(typeof c1.persona.voice.text === 'string' && 'empty' in c1.persona.voice && Array.isArray(c1.persona.identities), 'the persona carries the voice (or its empty state) and the identities to answer as');
+  ok(ctx.isReply && ctx.reply.list.waitingShown === 2 && ctx.reply.answered.length === 0 && ctx.nav[0].count === 2 && ctx.nav[0].tone === 'hot', 'default view: Needs a reply, both conversations waiting in the list');
+  ok(ctx.reply.groups.length === 1 && !ctx.reply.grouped && ctx.reply.groups[0].rows.every(r => r.meter && r.meter.pct >= 0 && r.faces.length >= 1 && r.playersN >= 1), 'every waiting line carries its wait meter, faces and a player count');
+  { const rows = ctx.reply.groups[0].rows;
+    const main = rows.find(r => r.key === 'rogue|'), alias = rows.find(r => r.key === 'rogue|mc-queen');
+    ok(alias.aliasName && main.preview && main.lastFrom && main.openId && main.ownerId === 'rogue', 'a line names the alias, shows the last thing written and knows which message the inbox opens on');
+    ok(main.typed && main.players.length >= 2, 'mail typed on a terminal is flagged; the crowd is listed by player'); }
+  ok(!('desk' in ctx.reply) && !ctx.reply.queue, 'no thread, no persona: the list is the whole view');
 
-  // Inline reply → the composer's reply path (buildReply + sendMessage), as the picked identity, to everyone waiting.
-  tab._drafts.set('rogue|', 'Back booth.\nNow.');
-  sent.length = 0;
-  await tab._onReplySend();
-  const r = sent[0];
-  ok(r && r.fromContactId === 'mc-rogue' && r.fromActorId === 'rogue' && r.from === 'rogue@afterlife.nc', 'reply goes out AS the picked identity');
-  ok(r?.recipients?.length === 2 && r.recipients.some(x => x.actorId === 'rache') && r.recipients.some(x => x.contactId === 'mc-hana'), 'two waiting senders → one fan-out to both');
-  ok(r?.inReplyTo && r.subject.startsWith('RE:') && r.body.includes('<br>'), 'threaded like a composer reply');
-  ok(settings.npcMailAnswered.m2 && settings.npcMailAnswered.m6 && !tab._drafts.has('rogue|'), 'sending marks those answered and clears the draft');
-  ok(journals.get('j-rogue').updates.some(u => u._id && u[`flags.${MOD}.status.read`]), 'and marks them read (the Overview agrees)');
-  ok(tab._buildConversations(tab._scanInboxes(), settings.npcMailAnswered).find(c => c.key === 'rogue|').waiting === 0, 'the conversation leaves Waiting');
-
-  // Anonymous inline reply carries a mask block.
-  tab._convSel = 'rogue|mc-queen'; tab._buildContext({});
-  tab._replyAnon = true; tab._drafts.set('rogue|mc-queen', 'Nobody.');
-  svc.getThreadAnonConfig = () => null;
-  sent.length = 0; await tab._onReplySend();
-  ok(sent[0]?.anonymous?.enabled && sent[0].anonymous.alias && sent[0].fromContactId === 'mc-queen', 'the anonymous toggle masks the reply (sent as the alias)');
-
-  // ✓ mark answered without replying
-  settings.npcMailAnswered = {};
-  tab._convSel = 'rogue|'; tab._buildContext({});
-  await tab._onMarkAnswered();
-  ok(settings.npcMailAnswered.m2 && settings.npcMailAnswered.m6, '✓ stores the answered marker for every waiting message');
-
-  // Open in composer hands the reply over.
+  // Reply → the composer, as the identity they wrote to, to everyone waiting
   let opened = null;
   game.nightcity.openComposer = (o) => { opened = o; };
+  await tab.onAct('rqReply', null, { dataset: { key: 'rogue|mc-queen' } });
+  ok(opened?.mode === 'reply' && opened.fromContactId === 'mc-queen' && !opened.replyAll, 'Reply on the alias line: reply mode, as the alias');
+  opened = null;
+  await tab.onAct('rqReply', null, { dataset: { key: 'rogue|' } });
+  ok(opened?.mode === 'reply' && opened.fromContactId === 'mc-rogue' && opened.replyAll && opened.originalMessage, 'Reply on a crowd: as the NPC, reply-all to everyone waiting');
+  ok(tab._convSel === 'rogue|', 'the line you replied on stays marked');
+
+  // the inbox button: the NPC's inbox at the waiting message
+  let inboxed = null; const oi = tab.onOpenInInbox; tab.onOpenInInbox = (e, t) => { inboxed = t.dataset; };
+  await tab.onAct('rqInbox', null, { dataset: { key: 'rogue|', ownerId: 'rogue', messageId: 'm6' } });
+  ok(inboxed?.inboxOwner === 'rogue' && inboxed.messageId === 'm6', 'the inbox button opens the NPC’s inbox at the message');
+  tab.onOpenInInbox = oi;
+
+  // ✓ mark answered without replying, by line
   settings.npcMailAnswered = {};
-  tab._buildContext({}); tab._drafts.set('rogue|', 'draft text');
-  tab._onReplyComposer();
-  ok(opened?.mode === 'reply' && opened.fromContactId === 'mc-rogue' && opened.body === 'draft text' && opened.replyAll, 'Open in composer: reply mode, same identity, the draft, reply-all for a crowd');
+  await tab.onAct('markAnswered', null, { dataset: { key: 'rogue|' } });
+  ok(settings.npcMailAnswered.m2 && settings.npcMailAnswered.m6, '✓ stores the answered marker for every waiting message on that line');
+  ok(journals.get('j-rogue').updates.some(u => u._id && u[`flags.${MOD}.status.read`]), 'and marks them read (the Overview agrees)');
+  { const c = tab._buildContext({}).reply;
+    ok(c.list.waitingShown === 1 && c.answered.length === 1 && c.answeredOpen === false && c.answered[0].done, 'the line leaves Waiting for the Answered fold'); }
+  // the Answered fold: automatic until the GM clicks, then the click wins (it used to be stuck open with nothing waiting)
+  await tab.onAct('markAnswered', null, { dataset: { key: 'rogue|mc-queen' } });
+  { const c = tab._buildContext({}).reply; ok(c.answeredOpen && c.answeredFoldable && !c.hasWaiting, 'nothing waiting: Answered opens by itself'); }
+  await tab.onAct('rqDoneFold', null, { dataset: {} });
+  ok(tab._buildContext({}).reply.answeredOpen === false, '…and its arrow folds it');
+  await tab.onAct('rqDoneFold', null, { dataset: {} });
+  ok(tab._buildContext({}).reply.answeredOpen === true, '…and opens it again');
+  tab._rFilt = 'answered'; { const c = tab._buildContext({}).reply; ok(c.answeredOpen && !c.answeredFoldable, 'under the Answered filter it is always open, with no arrow'); }
+  tab._rFilt = 'all'; tab._rDoneOpen = null;
+  settings.npcMailAnswered = {};
+
+  // search, sort, group, page
+  tab._rq = 'queen'; { const c = tab._buildContext({}).reply; ok(c.list.waitingShown === 1 && c.groups[0].rows[0].key === 'rogue|mc-queen' && /1 of 2/.test(c.matchLine), 'search narrows to the alias line and says how many match'); }
+  tab._rq = 'zzzz'; { const c = tab._buildContext({}).reply; ok(!c.hasWaiting && c.emptyText === 'Nothing matches the search.', 'a search with no hits says so'); }
+  await tab.onAct('rqClear', null, { dataset: {} }); ok(tab._rq === '', 'Clear empties the search');
+  await tab.onAct('rqGroup', null, { dataset: { group: 'player' } });
+  { const c = tab._buildContext({}).reply; ok(c.grouped && c.groups.length >= 2 && c.groups.every(g => g.label && g.n >= 1), 'grouped by player: one heading per player'); }
+  await tab.onAct('rqFold', null, { dataset: { key: tab._buildContext({}).reply.groups[0].key } });
+  ok(tab._buildContext({}).reply.groups[0].shut, 'a group folds');
+  await tab.onAct('rqGroup', null, { dataset: { group: 'nope' } }); ok(tab._rGroup === 'player', 'an unknown group is ignored');
+  await tab.onAct('rqGroup', null, { dataset: { group: 'none' } });
+  await tab.onAct('rqSort', null, { dataset: { sort: 'npc' } }); ok(tab._rSort === 'npc', 'Sort ▾ sets the order');
+  await tab.onAct('rqSort', null, { dataset: { sort: 'wait' } });
+  await tab.onAct('rqMore', null, { dataset: {} }); ok(tab._rLimit === 80, 'Show more adds a page');
+  await tab.onAct('rFilt', null, { dataset: { f: 'waiting' } }); ok(tab._rLimit === 40 && tab._rFilt === 'waiting', 'changing Show resets the page');
+  await tab.onAct('rFilt', null, { dataset: { f: 'all' } });
 
   // openTo from the Overview
   await tab.onAct('openConversation', null, { dataset: { key: 'rogue|mc-queen' } });
-  ok(tab._view === 'reply' && tab._convSel === 'rogue|mc-queen' && app._activeTab === 'messages', 'Overview "Reply" opens THAT conversation');
+  ok(tab._view === 'reply' && tab._convSel === 'rogue|mc-queen' && tab._rqScrollTo === 'rogue|mc-queen' && app._activeTab === 'messages', 'Overview "Reply" opens the list on THAT line');
+  ok(tab._buildContext({}).reply.groups[0].rows.find(r => r.key === 'rogue|mc-queen').sel, 'and marks it');
 }
 
 // ═══ 3. All mail ═══
@@ -675,7 +684,7 @@ else {
     // NCM_DUMP=<dir>: write each rendered view for dev/mockups/admin-messages-preview.html.
     if (process.env.NCM_DUMP) (await import('fs')).writeFileSync(`${process.env.NCM_DUMP}/msg2-${view}.html`, html);
     ok(html.includes('ncm-msg2-nav') && !/undefined|\[object Object\]|NaN/.test(html.replace(/<script[\s\S]*?<\/script>/g, '')), `${view}: renders with no undefined / [object Object] / NaN`);
-    if (view === 'reply') ok(html.includes('data-op="replySend"') && html.includes('ncm-msg2-bc') && html.includes('Reply as'), 'reply: conversation + reply box + the broadcast panel');
+    if (view === 'reply') ok(html.includes('data-op="rqReply"') && html.includes('data-op="markAnswered"') && html.includes('data-msg2-rqsearch') && html.includes('ncm-msg2-bc') && !html.includes('ncm-msg2-desk'), 'reply: the list (Reply · inbox · ✓, search) + the broadcast panel');
     if (view === 'all') {
       ok(html.includes('Each recipient') && html.includes('ncm-msg2-cal__crumb') && html.includes('Filter') && html.includes('data-scope-btn'), 'all: the navigator, the Filter picker, the group send’s recipients');
       const acts = html.slice(html.indexOf('ncm-msg2-acts--line'), html.indexOf('ncm-msg2-body'));

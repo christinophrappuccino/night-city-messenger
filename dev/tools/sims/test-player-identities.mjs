@@ -179,7 +179,7 @@ const cmpHbs = read('templates/message-composer/message-composer.hbs');
 ok(/\{\{#if canSwitchFrom\}\}\s*<div class="ncm-composer__sendas-dropdown/.test(cmpHbs), 'the dropdown exists for a player too');
 ok(/\{\{else if fromIsAlias\}\}/.test(cmpHbs), 'the ALIAS tag');
 const viewerHbs = read('templates/message-viewer/message-viewer.hbs');
-ok(/\{\{#unless isGM\}\}\s*<button[^>]*data-action="open-player-guide"/.test(viewerHbs), 'the header ? is for players (the GM header stays at its measured width)');
+ok(/\{\{#unless isGM\}\}\s*<div class="ncm-viewer__hmenu" data-hmenu="gear"[^]*?data-action="open-player-guide"/.test(viewerHbs), 'the player guide is in the player\'s ⚙ ▾ (the GM header stays at its measured width)');
 const viewerSrc = read('scripts/ui/MessageViewer/MessageViewerApp.js');
 ok(/'set-send-identity': async function/.test(viewerSrc) && /'open-player-guide': async function/.test(viewerSrc) /* VIEWER_ACTIONS entry since step 12 */, 'both actions are routed');
 

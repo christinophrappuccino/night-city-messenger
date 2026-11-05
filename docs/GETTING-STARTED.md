@@ -4,7 +4,7 @@ Night City Messenger (NCM) is a big module, but you don't need to learn all of i
 
 **If you're the GM:** read Part 1 to set up (about 15 minutes). Come back to the later parts when you want them.
 
-**If you're a player:** use the Player Guide instead. It opens from the **?** button at the top of your inbox.
+**If you're a player:** use the Player Guide instead. It opens from the **gear ▾** menu at the top of your inbox.
 
 ---
 
@@ -147,7 +147,7 @@ Point your players at it on the first night. Two things are worth knowing as the
 
 Admin Panel → **Messages** has four views:
 
-- **Needs a reply** — every conversation a player is waiting on, longest wait first, one row per NPC and the identity they wrote to. Open one to see the whole conversation, answer right there **as that NPC** (with their voice note beside you), or mark it answered. **Open in the full composer** carries your draft over.
+- **Needs a reply** — every conversation a player is waiting on, one line per NPC and the identity they wrote to, with who is waiting, for how long, and the last thing they wrote. **Reply** opens the composer as that NPC (or the alias they wrote to), addressed to everyone waiting; the inbox button opens the NPC's inbox at the message; **✓** marks it answered without replying. Search it, sort it (longest wait, newest, most waiting, NPC A–Z), group it by NPC or by player; answered lines fold away at the bottom. A wait past a day turns red.
 - **All mail** — every message in the world on a calendar you click into: year, month, week, day. Search, filter by who, and every count follows your filters. Open a message to see **where it went** (sent, delivered, read, replied — and why not, if it didn't), reply as the identity it reached, open the inbox it's in, share it to chat, mark it read or unread, or delete it.
 - **Inboxes** — every mailbox in the world, sorted how you like, with a **Needs a look** list (most unread, gone quiet, owner gone).
 - **Outbox** — mail that **didn't arrive** (with the reason and a Retry), mail **waiting to deliver** (queued on a player's phone), **scheduled** mail, and running **timers** (self-destructs).
@@ -401,7 +401,7 @@ Admin → **Phone** is everything about calls. Players call from the **Calls** t
 
 **Overheard calls.** Write a conversation between two NPCs, then start it. Players can catch it in range, through a tap, from a node session or with a scanner. A running call lives on your client and ends if you reload.
 
-**Payphones.** Admin → Phone → **Payphones**. **New** makes one with a free number, then **Place on a scene…** puts it on the map as a pin, a step-on area or both, with a reach in squares. A player who double-clicks it in reach gets the booth: they lift the handset, dial, and the normal call screen takes over. Whoever they call, and a trace, see the place ("Payphone, Kabuki"), never the person; you see who really called in the call log. This hiding is on screen: Foundry sends call updates to every connected browser, so a player who digs into the browser's developer tools could still find out who is on a booth, or behind a withheld number. A call from a booth is not in the character's own call log. Payphones are wired, so they work in a dead zone and taps can't hear them. Calling a payphone rings everyone viewing its scene, and the first person standing at it picks up. **Ring it as…** calls it as one of your NPCs. Pick a booth to change how it looks: a style, colours, the brand line, **Grit** and **Wiring** sliders, graffiti, the screen text, out of order, who can hear (the caller's **SPKR** key lets everyone in reach follow the call), a help key, and its own sounds. **Save this look** reuses it on other booths.
+**Payphones.** Admin → Phone → **Payphones**. **New** makes one with a free number, then **Place on a scene…** puts it on the map as a pin, a step-on area or both, with a reach in squares. A player who double-clicks it in reach gets the booth: they lift the handset, dial, and the normal call screen takes over. Whoever they call, and a trace, see the place ("Payphone, Kabuki"), never the person; you see who really called in the call log. This hiding is on screen: Foundry sends call updates to every connected browser, so a player who digs into the browser's developer tools could still find out who is on a booth, or behind a withheld number. A call from a booth is not in the character's own call log. Payphones are wired, so they work in a dead zone and taps can't hear them. Calling a payphone rings everyone viewing its scene, and the first person standing at it picks up. **Ring it as…** calls it as one of your NPCs. Pick a booth to change how it looks: a style, colours, the brand line, **Grit** and **Wiring** sliders, graffiti, the screen text, out of order, who can hear (the caller's **SPKR** key lets everyone in reach follow the call), a help key, and its own sounds. **Save this look** reuses it on other booths. Module Settings → **What Players Call a Payphone** changes the word players see ("Public Comm, Kabuki"); pins already on the map are renamed with it.
 
 **Sharing.** Sharing a contact asks whether to give the address, the number or both. In **Who knows whom**, each contact has separate address and number buttons. A contact only shows what was given.
 
@@ -457,7 +457,7 @@ All in Module Settings unless noted. NCM's settings are grouped there under head
 | **Anonymous send** | **Enable Anonymous Send** (a composer option that hides who you are), its default mask, replies, and the trace mechanic players can use to unmask it |
 | **Spam filter** | **Filter Unknown Senders**: a chance for mail from strangers to land in Spam |
 | **GM alerts** | popups when players message NPCs or write in an NPC conversation, and for Trauma Team / backup calls |
-| **Shards, terminals & hacking** | **What Players Call a Shard** (Data Shard, Memory Chip…), **Shard Name Prefix**, **Terminal Pins — Auto-Show Map Notes**, **Planted Programs — When They Fire**, **Role Ability Rolls (Interface)**, **Ask Before Rolling** (per player) |
+| **Shards, terminals & hacking** | **What Players Call a Shard** (Data Shard, Memory Chip…), **What Players Call a Payphone**, **Shard Name Prefix**, **Terminal Pins — Auto-Show Map Notes**, **Planted Programs — When They Fire**, **Role Ability Rolls (Interface)**, **Ask Before Rolling** (per player) |
 | **Date & time** | **Time Source** (which clock the module uses) and how dates are written |
 | **Advanced** | **Watching Other Players**, **Debug Mode** (the module explains its decisions in the console) |
 | Netrunning resolution, jacking in | Admin → Security → Hacking rules |

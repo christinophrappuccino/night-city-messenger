@@ -37,6 +37,7 @@ import { log, isGM, isPrimaryGM } from '../utils/helpers.js';
 import { themedConfirm } from '../utils/adminTheme.js';
 import { dialogBodyHtml } from '../utils/dialogBody.js';
 import { sanitizePlacement, accessRegionScript, areaRect } from '../utils/accessPoints.js';
+import { payphoneTerm, payphonePlace } from '../utils/payphoneTerm.js';
 
 /** Is this note an NCM access pin? (terminal pins since 2026-07; any kind since 2026-10-29) */
 export function isAccessPin(doc) {
@@ -254,14 +255,38 @@ export class TerminalScenePins {
    * A payphone as a pin / step-on area on a scene (GM). Same placement shape as placeAccess.
    * @param {string} id @param {object} place — sanitizePlacement shape
    */
+  /**
+   * The `payphoneTerm` setting changed: every payphone pin's label ("Payphone, Kabuki") and step-on area name follow.
+   * The primary GM writes once; nothing else on the document changes. Run by the setting's onChange.
+   */
+  async relabelPayphones() {
+    if (!isPrimaryGM()) return;
+    const svc = game.nightcity?.payphoneService;
+    let n = 0;
+    for (const scene of game.scenes ?? []) {
+      const notes = scene.notes.filter((d) => d.getFlag(MODULE_ID, 'accessPayphone'))
+        .map((d) => ({ d, pp: svc?.get?.(d.getFlag(MODULE_ID, 'accessPayphone')) })).filter((x) => x.pp)
+        .map(({ d, pp }) => ({ _id: d.id, text: payphonePlace(pp.name) })).filter((u) => scene.notes.get(u._id)?.text !== u.text);
+      const regions = (scene.regions ?? []).filter((d) => d.getFlag(MODULE_ID, 'access')?.kind === 'payphone')
+        .map((d) => ({ d, pp: svc?.get?.(d.getFlag(MODULE_ID, 'access')?.id) })).filter((x) => x.pp)
+        .map(({ d, pp }) => ({ _id: d.id, name: `${payphonePlace(pp.name)} — payphone` })).filter((u) => scene.regions.get(u._id)?.name !== u.name);
+      try {
+        if (notes.length) await scene.updateEmbeddedDocuments('Note', notes);
+        if (regions.length) await scene.updateEmbeddedDocuments('Region', regions);
+        n += notes.length + regions.length;
+      } catch (err) { log.warn(`payphone relabel on ${scene.name}: ${err.message}`); }
+    }
+    if (n) ncmNotify.info(`Renamed ${n} payphone pin${n === 1 ? '' : 's'} to the new word.`);
+  }
+
   async placePayphone(id, place) {
     const p = sanitizePlacement(place);
     const pp = game.nightcity?.payphoneService?.get?.(id);
-    if (!pp) return ncmNotify.warn('That payphone no longer exists.');
+    if (!pp) return ncmNotify.warn(`That ${payphoneTerm('lower')} no longer exists.`);
     const scene = game.scenes.get(p.sceneId) || canvas?.scene;
     if (!scene) return ncmNotify.warn('Pick a scene first.');
     if (canvas?.scene?.id !== scene.id) await scene.view();
-    const label = `Payphone, ${pp.name}`;
+    const label = payphonePlace(pp.name);
     const at = p.where === 'click' ? await this._pickPoint(label) : { x: canvas.stage.pivot.x, y: canvas.stage.pivot.y };
     if (!at) return null;
     const made = [];
@@ -497,10 +522,10 @@ export class TerminalScenePins {
 
     const ppId = payphonePinOf(doc);
     if (ppId) {
-      if (!game.nightcity?.payphoneService?.get?.(ppId)) { ncmNotify.warn('This access point is dead — the payphone is gone.'); return false; }
+      if (!game.nightcity?.payphoneService?.get?.(ppId)) { ncmNotify.warn(`This access point is dead — the ${payphoneTerm('lower')} is gone.`); return false; }
       if (!isGM()) {
-        const block = this._reachBlock(doc, Number(doc.getFlag(MODULE_ID, 'accessRange')) || 0, 'the payphone');
-        if (block) { game.nightcity?.soundService?.play('error'); ncmNotify.warn(block === 'OUT OF RANGE — move closer.' ? "You're too far from the payphone. Walk up to it first." : block); return false; }
+        const block = this._reachBlock(doc, Number(doc.getFlag(MODULE_ID, 'accessRange')) || 0, `the ${payphoneTerm('lower')}`);
+        if (block) { game.nightcity?.soundService?.play('error'); ncmNotify.warn(block === 'OUT OF RANGE — move closer.' ? `You're too far from the ${payphoneTerm('lower')}. Walk up to it first.` : block); return false; }
       }
       game.nightcity?.payphoneService?.open(ppId, { skipReach: true });
       return false;
@@ -567,7 +592,7 @@ export class TerminalScenePins {
     const node = nodeId ? game.nightcity?.networkService?.getNode?.(nodeId) : null;
     const pp = ppId ? game.nightcity?.payphoneService?.get?.(ppId) : null;
     if (pp) {
-      entries.push({ label: 'Use the payphone', icon: 'fas fa-phone', fn: () => this._onActivateNote(note) });
+      entries.push({ label: `Use the ${payphoneTerm('lower')}`, icon: 'fas fa-phone', fn: () => this._onActivateNote(note) });
       if (isGM()) {
         entries.push({ label: 'Open in Admin → Phone', icon: 'fas fa-sliders', fn: () => game.nightcity?.openAdminTab?.('phone', { select: `payphone:${ppId}` }) });
         const more = (game.nightcity?.payphoneAccessEntries?.(ppId) || []).filter(e => !/^Place on/.test(e.label || ''));
@@ -600,7 +625,7 @@ export class TerminalScenePins {
         { label: 'Remove this pin', icon: 'fas fa-trash', bad: true, fn: () => this._confirmRemovePin(doc, item) });
     }
     // Next tick: this contextmenu event is still dispatching and the menu's own closer listens for it.
-    setTimeout(() => ov._showContextMenu(pos, entries, { title: node?.name || (pp ? `Payphone, ${pp.name}` : '') || item?.name || doc.text || 'Access point', icon: 'fas fa-map-pin' }), 0);
+    setTimeout(() => ov._showContextMenu(pos, entries, { title: node?.name || (pp ? payphonePlace(pp.name) : '') || item?.name || doc.text || 'Access point', icon: 'fas fa-map-pin' }), 0);
   }
 
   /** Delete one pin after a themed confirm. @private */

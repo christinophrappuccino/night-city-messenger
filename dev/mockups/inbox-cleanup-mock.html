@@ -1,0 +1,831 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Inbox cleanup — header, chips, Needs a reply</title>
+<!--
+  Three cleanups, mocked together (dev, 2026-11-05):
+    1. Agent header: 5 buttons → Contacts · Compose ▾ · ⚙ ▾ (player) / Contacts · Compose ▾ · Admin · ⚙ (GM)
+    2. Messages chips: Mark all read leaves the row (a strip under Unread, like Trash's Empty Trash strip);
+       Drafts · Scheduled · Recovered · Spam · Trash go behind More ▾ (the open one shows as a chip while you are in it)
+    3. Admin → Messages → Needs a reply: the Desk (queue + thread + reply) becomes a triage list; Reply opens the
+       NPC's own inbox at that message, as the identity it was written to.
+  Every "Now" panel is REAL markup: the Agent captured from the dev's running world (Player3, 2026-11-05; the chip
+  row filled out to its worst case from message-viewer.hbs), the Desk rendered by test-admin-messages.mjs.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/inbox-cleanup-mock.html
+  ?as=gm  the GM's header (Admin shield, no guide)      ?t=clean-light|high-contrast  the admin theme
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  :root { --ncm-primary: #F65261; --ncm-secondary: #19f3f7; --ncm-accent: #f7c948; --ncm-bg-deep: #0a0a0f; --ncm-bg-base: #12121a; --ncm-bg-surface: #1a1a2e; --ncm-bg-elevated: #252540; --ncm-text-primary: #e0e0e8; --ncm-text-secondary: #8e8ea5; --ncm-glow-primary: 0 0 10px #F6526166; --ncm-glow-secondary: 0 0 10px #19f3f766; --ncm-glow-accent: 0 0 10px #f7c9484d; --ncm-font-display: 'Rajdhani', sans-serif; --ncm-font-body: 'Rajdhani', sans-serif; --ncm-font-mono: 'Share Tech Mono', monospace; --ncm-font-title: 'Orbitron', sans-serif; --ncm-font-ui: 'Orbitron', sans-serif; --ncm-glitch-intensity: 0.5; --ncm-text-scale: 1; --ncm-text-scale-base: 1; }
+  body { margin: 0; padding: 22px 26px 60px; background: #1b1b22; font-family: sans-serif; overflow-y: auto !important; height: auto !important; }
+  .mk-top { color: #eee; font: 700 19px sans-serif; margin: 0 0 4px; }
+  .mk-sw { color: #aaa; font: 12px sans-serif; margin: 0 0 18px; } .mk-sw a { color: #7fe7ff; margin-right: 10px; } .mk-sw a.on { color: #fff; font-weight: 700; text-decoration: none; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 34px 0 4px; letter-spacing: .03em; border-top: 1px solid #333; padding-top: 18px; }
+  .mk-p { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 10px; max-width: 880px; }
+  .mk-p b { color: #ddd; }
+  .mk-lbl { display: flex; gap: 10px; align-items: baseline; color: #ccc; font: 700 11px sans-serif; letter-spacing: .12em; text-transform: uppercase; margin: 16px 0 6px; }
+  .mk-lbl em { font: 400 12px sans-serif; letter-spacing: 0; text-transform: none; color: #999; font-style: normal; }
+  .mk-lbl.now { color: #ff9a9a; } .mk-lbl.new { color: #8ff0b0; }
+  /* every frame back into flow: .ncm-app is position:fixed in the module (window-chrome.css) */
+  .mk-win, .mk-win.ncm-app, .mk-win .ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; z-index: auto !important; }
+  .mk-crop { width: 880px; overflow: hidden; border: 1px solid #444; }
+  .mk-win.ncm-message-viewer-window { width: 880px; height: 600px; }
+
+  /* ═══ proposed: the header's split Compose + the gear menu (viewer dropdown vocabulary: .ncm-sort-dropdown) ═══ */
+  .ncm-app .mk-split { position: relative; display: inline-flex; }
+  .ncm-app .mk-split > .ncm-btn:first-child { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+  .ncm-app .mk-split > .mk-caret { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; border-left: 1px solid color-mix(in srgb, #000 35%, transparent) !important; padding-left: 6px !important; padding-right: 6px !important; }
+  .ncm-app .mk-anchor { position: relative; display: inline-flex; }
+  .ncm-app .mk-gear i + i { margin-left: 3px; font-size: .7em; opacity: .6; }
+  .ncm-app .ncm-viewer .mk-menu { left: auto; right: 0; min-width: 196px; }
+  .ncm-app .ncm-viewer .mk-menu .ncm-sort-option { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+  .ncm-app .ncm-viewer .mk-menu .ncm-sort-option i { width: 14px; text-align: center; color: var(--ncm-text-muted); }
+  .ncm-app .ncm-viewer .mk-menu .ncm-sort-option kbd { margin-left: auto; font: 600 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono); padding: 1px 5px; border: 1px solid var(--ncm-border); border-radius: 2px; color: var(--ncm-text-muted); background: none; box-shadow: none; }
+  .ncm-app .ncm-viewer .mk-menu .mk-sep { height: 1px; margin: 4px 0; background: var(--ncm-border); }
+
+  /* ═══ proposed: More ▾ chip + its menu, the Unread strip ═══ */
+  .ncm-app .ncm-viewer .mk-more { position: relative; }
+  .ncm-app .ncm-viewer .mk-more .fa-caret-down { font-size: .8em; opacity: .7; }
+  .ncm-app .ncm-viewer .mk-more .mk-menu { left: 0; right: auto; min-width: 190px; }
+  .ncm-app .ncm-viewer .mk-more .mk-menu .ncm-pill__badge { margin-left: auto; }
+  .ncm-app .ncm-viewer__pills-track { overflow: visible !important; }
+  .ncm-app .ncm-viewer__category-pills { overflow: visible !important; position: relative; z-index: 6; }
+  .ncm-app .ncm-viewer__filter-bar--info { background: color-mix(in srgb, var(--ncm-secondary) 5%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ncm-secondary) 14%, transparent); color: color-mix(in srgb, var(--ncm-secondary) 75%, var(--ncm-text-primary)); }
+
+  /* ═══ proposed: Needs a reply as a triage list (admin vocabulary: ncm-msg2-*, --ncm-attn = waiting) ═══ */
+  .P { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; width: 820px; height: 600px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #555; }
+  .ncm-app .mk-tq { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); }
+  .ncm-app .mk-tq__bar { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid var(--ncm-border); }
+  .ncm-app .mk-tq__bar .sum { font: 600 12px var(--ncm-font-display); color: var(--ncm-text-secondary); } .ncm-app .mk-tq__bar .sum b { color: var(--ncm-attn, var(--ncm-accent)); }
+  .ncm-app .mk-tq__list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  .ncm-app .mk-tq__row { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 12px 12px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); box-shadow: inset 3px 0 var(--ncm-attn, var(--ncm-accent)); }
+  .ncm-app .mk-tq__row:hover { background: var(--ncm-bg-hover, var(--ncm-bg-surface)); }
+  .ncm-app .mk-tq__row.is-hot { box-shadow: inset 3px 0 var(--ncm-danger); }
+  .ncm-app .mk-tq__row > .ncm-msg2-av { width: 34px; height: 34px; }
+  .ncm-app .mk-tq__tx { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ncm-app .mk-tq__nm { display: flex; align-items: center; gap: 7px; min-width: 0; font: 700 13px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-app .mk-tq__nm .to { font: 600 11px var(--ncm-font-display); color: var(--ncm-text-secondary); }
+  .ncm-app .mk-tq__sj { font: 600 12.5px var(--ncm-font-body); color: var(--ncm-text-primary); }
+  .ncm-app .mk-tq__pv { font: 12px/1.4 var(--ncm-font-body); color: var(--ncm-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ncm-app .mk-tq__pv b { color: var(--ncm-text-primary); font-weight: 600; }
+  .ncm-app .mk-tq__who { display: flex; align-items: center; gap: 6px; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); margin-top: 2px; }
+  .ncm-app .mk-tq__end { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+  .ncm-app .mk-tq__wait { display: flex; align-items: center; gap: 6px; font: 700 11px var(--ncm-font-mono); color: var(--ncm-attn, var(--ncm-accent)); }
+  .ncm-app .mk-tq__row.is-hot .mk-tq__wait { color: var(--ncm-danger); }
+  .ncm-app .mk-tq__wait .ct { min-width: 18px; padding: 1px 5px; text-align: center; border-radius: 2px; background: var(--ncm-attn, var(--ncm-accent)); color: var(--ncm-bg-deep, #000); }
+  .ncm-app .mk-tq__row.is-hot .mk-tq__wait .ct { background: var(--ncm-danger); }
+  .ncm-app .mk-tq__acts { display: flex; gap: 5px; }
+  .ncm-app .mk-tq__meter { position: absolute; left: 12px; right: 12px; bottom: 4px; height: 2px; background: color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-app .mk-tq__meter i { display: block; height: 100%; background: var(--ncm-attn, var(--ncm-accent)); }
+  .ncm-app .mk-tq__row.is-hot .mk-tq__meter i { background: var(--ncm-danger); }
+  .ncm-app .mk-tq__fold { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font: 700 10px var(--ncm-font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); cursor: pointer; }
+  .ncm-app .mk-tq__row.is-done { box-shadow: none; opacity: .62; }
+  .ncm-app .mk-tq__row.is-done .mk-tq__wait { color: var(--ncm-success, #4be38a); }
+</style>
+</head>
+<body>
+<div class="mk-top">Inbox cleanup — three mocks</div>
+<div class="mk-sw" id="sw"></div>
+
+<!-- ═══════════════════════════ 1 · HEADER ═══════════════════════════ -->
+<div class="mk-h">1 · The Agent's header buttons</div>
+<p class="mk-p">Five buttons → three for a player (<b>Contacts · Compose ▾ · ⚙ ▾</b>), four for the GM (<b>Contacts · Compose ▾ · Admin · ⚙</b>).
+Compose stays one click; its ▾ holds <b>New conversation</b>. The gear holds Settings &amp; theme and the Player guide. The GM's gear has only
+Settings, so it stays a plain button. The GM header was already at its 860px budget; this frees about 70px.</p>
+<div class="mk-lbl now">Now</div><div class="mk-crop" style="height:150px" data-frame="now-head"></div>
+<div class="mk-lbl new">Proposed <em>Compose ▾ open</em></div><div class="mk-crop" style="height:190px" data-frame="new-head-compose"></div>
+<div class="mk-lbl new" data-player-only>Proposed <em>⚙ ▾ open</em></div><div class="mk-crop" style="height:190px" data-frame="new-head-gear" data-player-only></div>
+
+<!-- ═══════════════════════════ 2 · CHIPS ═══════════════════════════ -->
+<div class="mk-h">2 · The Messages chip row</div>
+<p class="mk-p">At its worst the row holds 11 chips (Recovered, Drafts and Scheduled only appear once they hold something). Proposed:
+<b>All · Conversations · Unread · Sent · Saved · More ▾</b>. More ▾ holds Drafts, Scheduled, Recovered, Spam and Trash with their counts,
+and carries a badge when one of them holds something new, so Spam mail is never silently out of sight. The folder you open shows as a chip
+while you are in it. <b>Mark all read</b> stops being a chip: picking Unread shows a strip with the button, the same way Trash shows Empty Trash.</p>
+<div class="mk-lbl now">Now <em>every chip showing</em></div><div class="mk-crop" style="height:250px" data-frame="now-chips"></div>
+<div class="mk-lbl new">Proposed <em>More ▾ open</em></div><div class="mk-crop" style="height:345px" data-frame="new-chips-more"></div>
+<div class="mk-lbl new">Proposed <em>Unread picked: the Mark all read strip</em></div><div class="mk-crop" style="height:250px" data-frame="new-chips-unread"></div>
+<div class="mk-lbl new">Proposed <em>Trash picked from More: it shows as a chip while open</em></div><div class="mk-crop" style="height:250px" data-frame="new-chips-trash"></div>
+
+<!-- ═══════════════════════════ 3 · NEEDS A REPLY ═══════════════════════════ -->
+<div class="mk-h">3 · Admin → Messages → Needs a reply</div>
+<p class="mk-p">Now: a queue, a chat thread and a reply box, which is the same shape as a Conversation and a second copy of the NPC's inbox.
+Proposed: keep only the part nothing else shows, <b>what is waiting, from whom, and for how long</b>. Each line shows the last thing the
+player wrote. <b>Reply</b> (a mask on it when the player wrote to an alias) opens that NPC's inbox at the message, already answering as the identity it was written to (alias included).
+<b>✓</b> marks it answered without replying. Lines that have waited past the GM's threshold turn red. Answered lines fold away at the bottom.</p>
+<div class="mk-lbl now">Now <em>the real template, rendered by the sim (Broadcast hidden)</em></div>
+<div class="ncm-app ncm-admin-panel P" data-frame="desk-now" data-ncm-scanlines="false"><div class="ncm-admin-panel" style="flex:1;min-height:0;display:flex;flex-direction:column"><div class="ncm-admin-content" id="desk-now"></div></div></div>
+<div class="mk-lbl new">Proposed</div>
+<div class="ncm-app ncm-admin-panel P" data-frame="desk-new" data-ncm-scanlines="false"><div class="ncm-admin-panel" style="flex:1;min-height:0;display:flex;flex-direction:column"><div class="ncm-admin-content" id="desk-new"></div></div></div>
+
+<template id="viewer-capture"><div class="ncm-viewer" data-density="normal" data-filter="inbox" data-primary-tab="messages" data-network-mode="normal" data-application-part="viewer" data-pane="list">
+  <header class="ncm-viewer__header">
+    <div class="ncm-viewer__identity" data-action="toggle-identity-drawer">
+        <div class="ncm-viewer__avatar">
+          <img src="systems/cyberpunk-red-core/icons/compendium/default/Default_CPR_Mystery_Man.svg" alt="Tim Testerman">
+        </div>
+      <div class="ncm-viewer__identity-info">
+        <span class="ncm-viewer__identity-name">Tim Testerman</span>
+          <span class="ncm-viewer__identity-email">ttesterman82@hacker.nc.net</span>
+      </div>
+      <i class="fas fa-chevron-right ncm-viewer__identity-expand"></i>
+    </div>
+    <div class="ncm-viewer__header-divider"></div>
+    <div class="ncm-viewer__net-pill ncm-viewer__net-pill--good" data-action="toggleNetworkSelector">
+      <span class="ncm-viewer__net-dot"></span>
+      <span class="ncm-viewer__net-name">
+        CitiNet
+      </span>
+      <span class="ncm-viewer__net-bars">
+          <span class="ncm-viewer__net-bar ncm-viewer__net-bar--active"></span>
+          <span class="ncm-viewer__net-bar ncm-viewer__net-bar--active"></span>
+          <span class="ncm-viewer__net-bar ncm-viewer__net-bar--active"></span>
+          <span class="ncm-viewer__net-bar "></span>
+      </span>
+      <span class="ncm-viewer__net-pct">75%</span>
+        <i class="fas fa-caret-down ncm-viewer__net-caret"></i>
+      <div class="ncm-net-selector-wrap ncm-hidden">
+        <div class="ncm-net-selector ">
+          <div class="ncm-net-selector__header ">
+              <span class="ncm-net-selector__header-label">Available Networks</span>
+            <div class="ncm-net-selector__signal">
+              <div class="ncm-net-selector__signal-bar ncm-net-selector__signal-bar--active " style="height:3px"></div>
+              <div class="ncm-net-selector__signal-bar ncm-net-selector__signal-bar--active" style="height:6px"></div>
+              <div class="ncm-net-selector__signal-bar ncm-net-selector__signal-bar--active" style="height:9px"></div>
+              <div class="ncm-net-selector__signal-bar " style="height:12px"></div>
+            </div>
+          </div>
+            <div class="ncm-net-selector__list">
+                <div class="ncm-net-option ncm-net-option--active" data-action="selectNetwork" data-network-id="CITINET" style="--net-c: #19f3f7;" title="CitiNet — Subnet">
+                  <div class="ncm-net-option__icon" style="background: #19f3f714; color: #19f3f7; border: 1px solid #19f3f726;">
+                    <i class="fas fa-wifi"></i>
+                  </div>
+                  <div class="ncm-net-option__info">
+                    <div class="ncm-net-option__name">CitiNet</div>
+                    <div class="ncm-net-option__type">
+                      Subnet · 73%
+                    </div>
+                  </div>
+                  <div class="ncm-net-option__right">
+                      <span class="ncm-net-option__chip ncm-net-option__chip--on">Connected</span>
+                    <div class="ncm-net-option__sig">
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:4px"></span>
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:6px"></span>
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:8px"></span>
+                      <span class="ncm-net-option__sig-bar " style="height:11px"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ncm-net-option ncm-net-option--available" data-action="selectNetwork" data-network-id="DATA_POOL" style="--net-c: #f7c948;" title="Data Pool — Subnet">
+                  <div class="ncm-net-option__icon" style="background: #f7c94814; color: #f7c948; border: 1px solid #f7c94826;">
+                    <i class="fas fa-database"></i>
+                  </div>
+                  <div class="ncm-net-option__info">
+                    <div class="ncm-net-option__name">Data Pool</div>
+                    <div class="ncm-net-option__type">
+                      Subnet · 60%
+                    </div>
+                  </div>
+                  <div class="ncm-net-option__right">
+                      <span class="ncm-net-option__chip ncm-net-option__chip--go">Connect</span>
+                                <div class="ncm-net-option__sig">
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:4px"></span>
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:6px"></span>
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:8px"></span>
+                      <span class="ncm-net-option__sig-bar " style="height:11px"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ncm-net-option ncm-net-option--available" data-action="selectNetwork" data-network-id="net_N7Bgx2NAj7DIRaPL" style="--net-c: #5c9bff;" title="NCM Test Mesh — Subnet">
+                  <div class="ncm-net-option__icon" style="background: #5c9bff14; color: #5c9bff; border: 1px solid #5c9bff26;">
+                    <i class="fas fa-tower-broadcast"></i>
+                  </div>
+                  <div class="ncm-net-option__info">
+                    <div class="ncm-net-option__name">NCM Test Mesh</div>
+                    <div class="ncm-net-option__type">
+                      Subnet · 82%
+                    </div>
+                  </div>
+                  <div class="ncm-net-option__right">
+                      <span class="ncm-net-option__chip ncm-net-option__chip--go">Connect</span>
+                                <div class="ncm-net-option__sig">
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:4px"></span>
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:6px"></span>
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:8px"></span>
+                      <span class="ncm-net-option__sig-bar ncm-net-option__sig-bar--on" style="height:11px"></span>
+                    </div>
+                  </div>
+                </div>
+            </div>
+          <div class="ncm-net-selector__footer ">
+            <i class="fas fa-map-marker-alt "></i>
+              Dystopian City Streets — 3 networks available
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ncm-viewer__hud-strip">
+      <span class="ncm-viewer__hud-seg ncm-viewer__hud-seg--time">
+        <i class="fas fa-clock ncm-viewer__hud-seg-icon"></i>
+        <span class="ncm-viewer__hud-time-val">12 Mar 2026 // 9:29 AM</span>
+      </span>
+      <span class="ncm-viewer__hud-seg-div"></span>
+      <span class="ncm-viewer__hud-seg ncm-viewer__hud-seg--scene">
+        <i class="fas fa-location-dot ncm-viewer__hud-seg-icon"></i>
+        <span class="ncm-viewer__hud-scene">Dystopian City Streets</span>
+      </span>
+    </div>
+    <div class="ncm-viewer__header-spacer"></div>
+    <div class="ncm-viewer__header-actions">
+      <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="open-contacts" data-tooltip="Open contacts" data-tooltip-direction="DOWN">
+        <i class="fas fa-address-book"></i> <span>Contacts</span>
+      </button>
+      <button class="ncm-btn ncm-btn--secondary ncm-btn--icon-only ncm-btn--sm" data-action="new-conversation" data-tooltip="New conversation" data-tooltip-direction="DOWN" aria-label="New conversation">
+        <i class="fas fa-comments"></i>
+      </button>
+      <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="compose-new" data-tooltip="Compose new message" data-tooltip-direction="DOWN">
+        <i class="fas fa-pen-to-square"></i> <span>Compose</span>
+      </button>
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm" data-action="open-player-guide" data-tooltip="Player guide (PDF)" data-tooltip-direction="DOWN" aria-label="Player guide">
+          <i class="fas fa-circle-question"></i>
+        </button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm" data-action="open-settings" data-tooltip="Settings &amp; Theme" data-tooltip-direction="DOWN">
+        <i class="fas fa-gear"></i>
+      </button>
+    </div>
+  </header>
+  <nav class="ncm-viewer__primary-nav">
+    <div class="ncm-viewer__primary-tab ncm-viewer__primary-tab--active" data-action="set-primary-tab" data-tab="messages">
+      <i class="fas fa-inbox"></i> Messages
+      <span class="ncm-viewer__primary-badge">4</span>
+    </div>
+    <div class="ncm-viewer__primary-tab " data-action="set-primary-tab" data-tab="calls">
+      <i class="fas fa-phone"></i> Calls
+    </div>
+    <div class="ncm-viewer__primary-tab " data-action="set-primary-tab" data-tab="shards">
+      <i class="fas fa-microchip"></i> Chips
+    </div>
+    <div class="ncm-viewer__nav-search">
+      <i class="fas fa-search"></i>
+      <input type="text" class="ncm-viewer__search-input" placeholder="Search..." value="">
+      <span class="ncm-viewer__search-count">4</span>
+    </div>
+  </nav>
+  <div class="ncm-viewer__category-pills">
+    <div class="ncm-viewer__pills-track">
+      <span class="ncm-pill ncm-pill--active" data-action="set-filter" data-filter="inbox">
+        <i class="fas fa-inbox"></i> All
+        <span class="ncm-pill__badge">4</span>
+      </span>
+      <span class="ncm-pill " data-action="set-filter" data-filter="conversations">
+        <i class="fas fa-comments"></i> Conversations
+        <span class="ncm-pill__badge ncm-pill__badge--alert" hidden="">0</span>
+      </span>
+      <span class="ncm-pill " data-action="set-filter" data-filter="unread">
+        <i class="fas fa-envelope"></i> Unread
+      </span>
+      <span class="ncm-pill " data-action="set-filter" data-filter="sent">
+        <i class="fas fa-paper-plane"></i> Sent
+        <span class="ncm-pill__badge">1</span>
+      </span>
+      <span class="ncm-pill " data-action="set-filter" data-filter="saved">
+        <i class="fas fa-bookmark"></i> Saved
+      </span>
+      <span class="ncm-pill " data-action="set-filter" data-filter="trash">
+        <i class="fas fa-trash"></i> Trash
+      </span>
+      <span class="ncm-pill " data-action="set-filter" data-filter="spam">
+        <i class="fas fa-ban"></i> Spam
+        <span class="ncm-pill__badge">3</span>
+      </span>
+    </div>
+  </div>
+    <div class="ncm-viewer__split">
+      <div class="ncm-viewer__list-panel" style="width: 300px;">
+        <div class="ncm-viewer__refine-bar">
+          <div class="ncm-viewer__refine-controls">
+            <span class="ncm-viewer__date-filter " data-action="open-date-picker">
+              <i class="fas fa-calendar-days"></i>
+                Dates <i class="fas fa-caret-down"></i>
+            </span>
+            <span class="ncm-viewer__sort-btn" data-action="toggle-sort-dropdown">
+              <i class="fas fa-arrow-down-short-wide"></i> Newest <i class="fas fa-caret-down"></i>
+              <div class="ncm-sort-dropdown ncm-hidden">
+                <div class="ncm-sort-option ncm-sort-option--active" data-action="set-sort" data-sort="newest">Newest</div>
+                <div class="ncm-sort-option " data-action="set-sort" data-sort="oldest">Oldest</div>
+                <div class="ncm-sort-option " data-action="set-sort" data-sort="unread">Unread</div>
+                <div class="ncm-sort-option " data-action="set-sort" data-sort="sender">Sender</div>
+                <div class="ncm-sort-option " data-action="set-sort" data-sort="priority">Priority</div>
+              </div>
+            </span>
+            <span class="ncm-viewer__filter-trigger " data-action="toggle-filter-dropdown">
+              <i class="fas fa-filter"></i> Filters
+              <i class="fas fa-caret-down"></i>
+            </span>
+            <div class="ncm-viewer__density-trigger" data-action="toggle-density-dropdown">
+              <i class="fas fa-list"></i>              <i class="fas fa-caret-down" style="font-size: 7px; opacity: 0.5;"></i>
+              <div class="ncm-density-dropdown ncm-hidden">
+                <div class="ncm-density-option " data-action="set-density" data-density="compact"><i class="fas fa-bars"></i> Compact</div>
+                <div class="ncm-density-option ncm-density-option--active" data-action="set-density" data-density="normal"><i class="fas fa-list"></i> Normal</div>
+                <div class="ncm-density-option " data-action="set-density" data-density="comfortable"><i class="fas fa-th-list"></i> Comfortable</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ncm-viewer__msg-list ncm-scrollbar" data-env-filter="all">
+              <div class="ncm-viewer__msg" data-message-id="TTY6g1aJTICcfr00" data-priority="normal" data-env="mail" data-action="select-message" style="--ncm-i: 0">
+                <div class="ncm-viewer__msg-avatar  " style="color: #19f3f7; border-color: #19f3f7">
+                      J
+                </div>
+                <div class="ncm-viewer__msg-content">
+                  <div class="ncm-viewer__msg-top">
+                    <span class="ncm-viewer__msg-sender ">jobs</span>
+                    <span class="ncm-viewer__msg-time">
+                        <span class="ncm-viewer__msg-time-date">25 Jun 2026</span>
+                        <span class="ncm-viewer__msg-time-rel ">future</span>
+                    </span>
+                  </div>
+                  <div class="ncm-viewer__msg-subject">
+                    <span class="ncm-viewer__msg-subject-text">Bodyguard Work Available — Short Term, Good Pay</span>
+                  </div>
+                    <div class="ncm-viewer__msg-preview">Client needs personal security for a business meeting in Westbrook next Tuesday.Specifics:- Duration: 4-6 hours- Dress c</div>
+                </div>
+              </div>
+              <div class="ncm-viewer__msg" data-message-id="RVkJdAIQWgvst5Jv" data-priority="normal" data-env="mail" data-action="select-message" style="--ncm-i: 1">
+                <div class="ncm-viewer__msg-avatar  " style="color: #F65261; border-color: #F65261">
+                      G
+                </div>
+                <div class="ncm-viewer__msg-content">
+                  <div class="ncm-viewer__msg-top">
+                    <span class="ncm-viewer__msg-sender ">garage</span>
+                    <span class="ncm-viewer__msg-time">
+                        <span class="ncm-viewer__msg-time-date">25 Jun 2026</span>
+                        <span class="ncm-viewer__msg-time-rel ">future</span>
+                    </span>
+                  </div>
+                  <div class="ncm-viewer__msg-subject">
+                    <span class="ncm-viewer__msg-subject-text">Vehicle Mods — No Questions, All Answers</span>
+                  </div>
+                    <div class="ncm-viewer__msg-preview">Your ride is stock. That's embarrassing.What I do:- Armor plating (stops up to .50 cal, looks factory)- Concealed weapon</div>
+                </div>
+              </div>
+              <div class="ncm-viewer__msg" data-message-id="Bsb9bFUksnndCVQe" data-priority="normal" data-env="mail" data-action="select-message" style="--ncm-i: 2">
+                <div class="ncm-viewer__msg-avatar  " style="color: #F65261; border-color: #F65261">
+                      I
+                </div>
+                <div class="ncm-viewer__msg-content">
+                  <div class="ncm-viewer__msg-top">
+                    <span class="ncm-viewer__msg-sender ">invest</span>
+                    <span class="ncm-viewer__msg-time">
+                        <span class="ncm-viewer__msg-time-date">25 Jun 2026</span>
+                        <span class="ncm-viewer__msg-time-rel ">future</span>
+                    </span>
+                  </div>
+                  <div class="ncm-viewer__msg-subject">
+                    <span class="ncm-viewer__msg-subject-text">Own A Piece of the NEW Night City — Pre-Construction Pricing!</span>
+                  </div>
+                    <div class="ncm-viewer__msg-preview">The rebuilding is YOUR opportunity, Tim Testerman!NightCorp is developing luxury residential towers in the former Arasak</div>
+                </div>
+              </div>
+              <div class="ncm-viewer__msg" data-message-id="NelJZn98NY7wQBoF" data-priority="normal" data-env="mail" data-action="select-message" style="--ncm-i: 3">
+                <div class="ncm-viewer__msg-avatar ncm-viewer__msg-avatar--burned " style="color: #00bcd4; border-color: #00bcd4">
+                    <i class="fas fa-user-slash" style="font-size:12px;"></i>
+                </div>
+                <div class="ncm-viewer__msg-content">
+                  <div class="ncm-viewer__msg-top">
+                    <span class="ncm-viewer__msg-sender ncm-viewer__msg-sender--burned">R3gen</span>
+                    <span class="ncm-viewer__msg-burned-tag"><i class="fas fa-fire"></i> Burned</span>
+                    <span class="ncm-viewer__msg-time">
+                        <span class="ncm-viewer__msg-time-date">8 Mar 2026</span>
+                        <span class="ncm-viewer__msg-time-rel ">3d ago</span>
+                    </span>
+                  </div>
+                  <div class="ncm-viewer__msg-subject">
+                    <span class="ncm-viewer__msg-subject-text">spam test</span>
+                  </div>
+                    <div class="ncm-viewer__msg-preview">test this boi</div>
+                </div>
+              </div>
+        </div>
+          <div class="ncm-viewer__pagination">
+            <button class="ncm-viewer__page-btn" data-action="prev-page" disabled="">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="ncm-viewer__page-info">Page 1 of 1</span>
+            <button class="ncm-viewer__page-btn" data-action="next-page" disabled="">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+      </div>
+      <div class="ncm-viewer__divider">
+        <button class="ncm-viewer__collapse-toggle" data-action="toggle-list-panel" data-tooltip="Hide message list" data-tooltip-direction="DOWN">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="ncm-viewer__divider-grip"><span></span><span></span><span></span></div>
+      </div>
+      <div class="ncm-viewer__detail-panel ncm-scrollbar">
+        <button class="ncm-viewer__mobile-back" data-action="mobile-back">
+          <i class="fas fa-chevron-left"></i> Inbox
+        </button>
+          <div class="ncm-viewer__empty-detail">
+              <i class="fas fa-terminal ncm-viewer__empty-icon"></i>
+              <span class="ncm-viewer__empty-text">Select message to read</span>
+              <span class="ncm-viewer__empty-hint">↑↓ to navigate · Enter to select</span>
+                      </div>
+              </div>
+    </div>
+  <footer class="ncm-viewer__footer">
+      <div class="ncm-viewer__footer-shortcuts" style="margin: 0 auto;">
+        <span class="ncm-viewer__shortcut"><kbd>/</kbd> Search</span>
+        <span class="ncm-viewer__shortcut"><kbd>↑↓</kbd> Navigate</span>
+        <span class="ncm-viewer__shortcut"><kbd>Enter</kbd> Select</span>
+        <span class="ncm-viewer__shortcut"><kbd>N</kbd> New message</span>
+      </div>
+  </footer>
+  <div class="ncm-viewer__drawer-overlay" data-action="close-identity-drawer"></div>
+  <div class="ncm-viewer__drawer">
+    <div class="ncm-viewer__drawer-accent"></div>
+    <div class="ncm-viewer__drawer-header">
+      <span class="ncm-viewer__drawer-title">Identity</span>
+      <button class="ncm-viewer__drawer-close" data-action="close-identity-drawer">
+        <i class="fas fa-xmark"></i>
+      </button>
+    </div>
+    <div class="ncm-viewer__drawer-profile">
+      <div class="ncm-viewer__drawer-avatar">
+          <img src="systems/cyberpunk-red-core/icons/compendium/default/Default_CPR_Mystery_Man.svg" alt="Tim Testerman">
+      </div>
+      <div class="ncm-viewer__drawer-name">Tim Testerman</div>
+    </div>
+    <div class="ncm-viewer__drawer-section">
+      <div class="ncm-viewer__drawer-section-title">Contact Info</div>
+      <div class="ncm-viewer__drawer-field">
+        <span class="ncm-viewer__drawer-field-label ncm-viewer__drawer-field-label--email">Email Address</span>
+        <div class="ncm-viewer__drawer-field-value">
+          <i class="fas fa-envelope ncm-viewer__drawer-field-icon ncm-viewer__drawer-field-icon--email"></i>
+          <span class="ncm-viewer__drawer-field-input" style="flex:1;font-family:var(--ncm-font-mono,'Share Tech Mono',monospace);font-size:12px;color:var(--ncm-secondary,#00D4E6);">ttesterman82@hacker.nc.net</span>
+          <button class="ncm-viewer__drawer-field-btn" data-action="change-identity" data-tooltip="Burn this address and register a new one" aria-label="Burn this address and register a new one">
+            <i class="fas fa-fire"></i>
+          </button>
+        </div>
+      </div>
+      <div class="ncm-viewer__drawer-field">
+        <span class="ncm-viewer__drawer-field-label ncm-viewer__drawer-field-label--handle">Handle</span>
+        <div class="ncm-viewer__drawer-field-value">
+          <i class="fas fa-at ncm-viewer__drawer-field-icon ncm-viewer__drawer-field-icon--handle"></i>
+          <span class="ncm-viewer__drawer-field-input" style="flex:1;font-family:var(--ncm-font-mono,'Share Tech Mono',monospace);font-size:12px;">ttesterman82</span>
+        </div>
+      </div>
+    </div>
+    <div class="ncm-viewer__drawer-section">
+      <div class="ncm-viewer__drawer-section-title">Network</div>
+      <div class="ncm-viewer__drawer-net-status ncm-viewer__drawer-net-status--good">
+        <span class="ncm-viewer__drawer-net-dot" style="background: var(--ncm-signal-good);"></span>
+        <span class="ncm-viewer__drawer-net-name" style="color: var(--ncm-signal-good);">
+          CitiNet
+        </span>
+        <span class="ncm-viewer__drawer-net-pct" style="color: var(--ncm-signal-good);">75%</span>
+      </div>
+      <div class="ncm-viewer__drawer-net-row ncm-viewer__drawer-net-row--status">
+        <i class="fas fa-signal"></i>
+        <span>Status</span>
+        <span style="margin-left: auto;">
+          CONNECTED
+        </span>
+      </div>
+      <div class="ncm-viewer__drawer-net-row ncm-viewer__drawer-net-row--latency">
+        <i class="fas fa-gauge-high"></i>
+        <span>Latency</span>
+        <span style="margin-left: auto;">58ms</span>
+      </div>
+      <div class="ncm-viewer__drawer-net-row ncm-viewer__drawer-net-row--enc">
+        <i class="fas fa-shield-halved"></i>
+        <span>Encryption</span>
+        <span style="margin-left: auto;">XOR-128</span>
+      </div>
+      <div class="ncm-viewer__drawer-net-row ncm-viewer__drawer-net-row--queue">
+        <i class="fas fa-layer-group"></i>
+        <span>Queued</span>
+        <span style="margin-left: auto;">0</span>
+      </div>
+    </div>
+      <div class="ncm-viewer__drawer-section">
+        <div class="ncm-viewer__drawer-section-title">Characters</div>
+        <div class="ncm-viewer__drawer-char-list">
+            <div class="ncm-viewer__drawer-char ncm-viewer__drawer-char--active" data-action="switch-character" data-actor-id="S7nBWK4K727NAWnL">
+              <div class="ncm-viewer__drawer-char-avatar" style="color: #ff6a13; border-color: rgba(0,212,230,0.4);">
+                  <img src="systems/cyberpunk-red-core/icons/compendium/default/Default_CPR_Mystery_Man.svg" alt="Tim Testerman">
+              </div>
+              <div class="ncm-viewer__drawer-char-info">
+                <span class="ncm-viewer__drawer-char-name">Tim Testerman</span>
+                <span class="ncm-viewer__drawer-char-email">ttesterman82@hacker.nc.net</span>
+              </div>
+                <i class="fas fa-check ncm-viewer__drawer-char-check"></i>
+            </div>
+        </div>
+      </div>
+    <div class="ncm-viewer__drawer-footer">
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="open-contacts">
+        <i class="fas fa-address-book"></i> Contacts
+      </button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="open-settings">
+        <i class="fas fa-gear"></i> Settings
+      </button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="re-login">
+        <i class="fas fa-right-from-bracket"></i> Log Out
+      </button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm ncm-viewer__drawer-guide" data-action="open-player-guide">
+        <i class="fas fa-circle-question"></i> Player Guide (PDF)
+      </button>
+    </div>
+  </div>
+</div></template>
+<template id="desk-capture">
+<div class="ncm-msg2 " data-owner="messages">
+
+  <div class="ncm-msg2-nav">
+    <button type="button" class="ncm-msg2-navbtn on" data-action="tabAct" data-owner="messages" data-op="view" data-view="reply">
+      <i class="fas fa-reply"></i>Needs a reply<span class="ncm-msg2-ct hot">2</span>
+    </button>
+    <button type="button" class="ncm-msg2-navbtn " data-action="tabAct" data-owner="messages" data-op="view" data-view="all">
+      <i class="fas fa-envelopes-bulk"></i>All mail<span class="ncm-msg2-ct ">14</span>
+    </button>
+    <button type="button" class="ncm-msg2-navbtn " data-action="tabAct" data-owner="messages" data-op="view" data-view="outbox">
+      <i class="fas fa-paper-plane"></i>Outbox<span class="ncm-msg2-ct bad">3</span>
+    </button>
+    <button type="button" class="ncm-msg2-navbtn " data-action="tabAct" data-owner="messages" data-op="view" data-view="inboxes">
+      <i class="fas fa-inbox"></i>Inboxes<span class="ncm-msg2-ct ">5</span>
+    </button>
+    <span class="ncm-msg2-grow"></span>
+    <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon is-on" data-action="tabAct" data-owner="messages" data-op="bcToggle" title="Broadcast — one message to many" aria-label="Broadcast"><i class="fas fa-bullhorn"></i></button>
+    <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="popOutTab" data-tab="messages" title="Pop out into its own window" aria-label="Pop out"><i class="fas fa-up-right-from-square"></i></button>
+    <details class="ncm-msg2-dd ncm-msg2-dd--downr ncm-msg2-newmenu">
+      <summary class="ncm-msg2-btn ncm-msg2-btn--primary" aria-label="New"><i class="fas fa-pen"></i> New <i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+      <div class="ncm-msg2-dd__menu">
+        <button type="button" class="ncm-msg2-dd__item" data-action="openComposer"><i class="fas fa-envelope"></i> Message</button>
+        <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="sendAsPick"><i class="fas fa-masks-theater"></i> Message as an NPC…</button>
+        
+      </div>
+    </details>
+  </div>
+
+  <div class="ncm-msg2-bc">
+    <div class="r"><span class="t"><i class="fas fa-bullhorn"></i> Broadcast</span><span class="h">one message to many — refused recipients are listed in Outbox</span><span class="ncm-msg2-grow"></span>
+      <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="bcToggle" title="Close" aria-label="Close"><i class="fas fa-xmark"></i></button></div>
+    <div class="r"><span class="ncm-scope" data-scope="ncm-admin:messages:bcto"><button type="button" class="ncm-scope-btn  " data-scope-btn="ncm-admin:messages:bcto" aria-haspopup="listbox" aria-expanded="false" title="">
+    <i class="fas fa-users" style="font-size:11px;color:var(--ncm-text-secondary);margin:0"></i><span class="k">To</span><span class="v">Every player character</span><i class="fas fa-chevron-down caret"></i></button></span><span class="ncm-scope" data-scope="ncm-admin:messages:bcfrom"><button type="button" class="ncm-scope-btn  " data-scope-btn="ncm-admin:messages:bcfrom" aria-haspopup="listbox" aria-expanded="false" title="">
+    <i class="fas fa-tower-broadcast" style="font-size:11px;color:var(--ncm-text-secondary);margin:0"></i><span class="k">From</span><span class="v">a name…</span><i class="fas fa-chevron-down caret"></i></button></span>
+      <input type="text" class="ncm-msg2-in ncm-msg2-in--from" data-msg2-bc="from" value="" placeholder="Sender name, e.g. NCPD">
+      <input type="text" class="ncm-msg2-in" data-msg2-bc="subject" value="" placeholder="Subject"></div>
+    <div class="r"><textarea class="ncm-msg2-ta" data-msg2-bc="body" placeholder="Message…"></textarea></div>
+    <div class="r">
+      <span class="ncm-msg2-chip on" data-action="tabAct" data-owner="messages" data-op="bcPrio" data-p="normal">normal</span><span class="ncm-msg2-chip " data-action="tabAct" data-owner="messages" data-op="bcPrio" data-p="urgent">urgent</span><span class="ncm-msg2-chip " data-action="tabAct" data-owner="messages" data-op="bcPrio" data-p="critical">critical</span>
+      <span class="ncm-msg2-chip " data-action="tabAct" data-owner="messages" data-op="bcLater"><i class="fas fa-calendar"></i>Send later</span>
+      
+      <span class="ncm-msg2-grow"></span>
+      <button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary" data-action="tabAct" data-owner="messages" data-op="bcSend"><i class="fas fa-paper-plane"></i> Send to 2</button>
+    </div>
+  </div>
+
+  <div class="ncm-msg2-view">
+    <header class="ncm-tabhd"><i class="fas fa-reply"></i><div><h2>Needs a reply</h2><p>Player mail to your NPCs that nobody has answered yet — pick a line to read it and reply as that NPC.</p></div></header>
+
+    
+    <div class="ncm-msg2-desk  is-pshut">
+
+      <div class="ncm-msg2-desk__q">
+        <div class="ncm-msg2-desk__qhd">
+          <details class="ncm-msg2-dd ncm-msg2-dd--down">
+            <summary class="ncm-msg2-btn" title="Which lines to show"><i class="fas fa-filter"></i><span class="v">All lines</span> <span class="c">2</span><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+            <div class="ncm-msg2-dd__menu">
+              <div class="ncm-msg2-dd__k">Show</div>
+              <button type="button" class="ncm-msg2-dd__item is-on is-cur" data-action="tabAct" data-owner="messages" data-op="rFilt" data-f="all"><i class="fas ck fa-circle-dot"></i><span>All lines</span><span class="n ">2</span></button><button type="button" class="ncm-msg2-dd__item " data-action="tabAct" data-owner="messages" data-op="rFilt" data-f="waiting"><i class="fas ck fa-circle"></i><span>Waiting</span><span class="n attn">2</span></button><button type="button" class="ncm-msg2-dd__item " data-action="tabAct" data-owner="messages" data-op="rFilt" data-f="answered"><i class="fas ck fa-circle"></i><span>Answered</span><span class="n ">0</span></button>
+              <div class="ncm-msg2-dd__sep"></div>
+              <button type="button" class="ncm-msg2-dd__item " data-action="tabAct" data-owner="messages" data-op="includeGm"><i class="far fa-square ck"></i><span>Include mail I sent<small>also list mail you wrote TO an NPC</small></span></button>
+              <button type="button" class="ncm-msg2-dd__item " data-action="tabAct" data-owner="messages" data-op="deskQuiet"><i class="far fa-square ck"></i><span>Show quiet inboxes<small>1 NPC inbox nobody has written to</small></span></button>
+            </div>
+          </details>
+          <span class="sum" title="4 players waiting on 2 lines"><b>4</b> waiting</span>
+          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="deskFoldQ" title="Fold the list" aria-label="Fold the list" aria-expanded="true"><i class="fas fa-angles-left"></i></button>
+        </div>
+        <div class="ncm-msg2-desk__list" data-msg2-scroll="deskq">
+          <div class="ncm-msg2-dq   " data-action="tabAct" data-owner="messages" data-op="convSel" data-key="rogue|" role="button" tabindex="0" aria-pressed="false">
+  <span class="ncm-msg2-av" style="--tc:var(--ncm-hue-8)">R</span>
+  <div class="ncm-msg2-dq__tx">
+    <div class="nm"><span class="n">Rogue</span><i class="fas fa-user-ninja ty" title="Typed by a player on a terminal"></i></div>
+    <div class="sl">RE: Meet</div>
+    <div class="who"><span class="ncm-msg2-stack"><span class="ncm-msg2-av sm" title="V" style="--tc:var(--ncm-hue-4)">V</span><span class="ncm-msg2-av sm" title="Hana Ito" style="--tc:var(--ncm-hue-2)">HI</span><span class="ncm-msg2-av sm" title="Rache" style="--tc:var(--ncm-hue-1)">R</span></span><span class="w">V, Hana Ito, Rache</span></div>
+  </div>
+  <div class="ncm-msg2-dq__end">
+    <span class="ct" title="3 waiting · 3 unanswered">3</span>
+    <span class="t">8h</span>
+  </div>
+  <div class="ncm-msg2-dq__meter" title="waiting 8h"><i style="width:33%"></i></div>
+</div>
+<div class="ncm-msg2-dq is-sel  " data-action="tabAct" data-owner="messages" data-op="convSel" data-key="rogue|mc-queen" role="button" tabindex="0" aria-pressed="true">
+  <span class="ncm-msg2-av" style="--tc:var(--ncm-hue-8)">QH</span>
+  <div class="ncm-msg2-dq__tx">
+    <div class="nm"><span class="n">Rogue</span><span class="ncm-msg2-dq__alias" title="alias of Rogue"><i class="fas fa-mask"></i>Queen of Hearts</span></div>
+    <div class="sl">Who is this</div>
+    <div class="who"><span class="ncm-msg2-stack"><span class="ncm-msg2-av sm" title="V" style="--tc:var(--ncm-hue-4)">V</span></span><span class="w">V</span></div>
+  </div>
+  <div class="ncm-msg2-dq__end">
+    <span class="ct" title="1 waiting · 1 unanswered">1</span>
+    <span class="t">7h</span>
+  </div>
+  <div class="ncm-msg2-dq__meter" title="waiting 7h"><i style="width:29%"></i></div>
+</div>
+
+          
+          
+          
+        </div>
+      </div>
+
+      
+      <div class="ncm-msg2-desk__mid">
+        <div class="ncm-msg2-desk__hd">
+          <span class="ncm-msg2-stack"><span class="ncm-msg2-av sm" title="V" style="--tc:var(--ncm-hue-4)">V</span></span>
+          <div class="tx"><div class="sj">Who is this</div><div class="sl">Alias of Rogue · with V · 1 message</div></div>
+          <button type="button" class="ncm-msg2-desk__wait" data-action="tabAct" data-owner="messages" data-op="markAnswered" title="Mark answered without replying" aria-label="1 waiting — mark answered"><span class="is-w"><i class="fas fa-circle"></i>1 waiting</span><span class="is-h"><i class="fas fa-check"></i>Mark answered</span></button>
+          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="openMsgInInbox" data-inbox-owner="rogue" title="Open Rogue’s inbox" aria-label="Open inbox"><i class="fas fa-inbox"></i></button>
+          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon " data-action="tabAct" data-owner="messages" data-op="deskFoldP" title="Show who you are answering as" aria-label="Who you are answering as" aria-expanded="false"><i class="fas fa-id-card"></i></button>
+        </div>
+        <div class="ncm-msg2-desk__feed" data-msg2-scroll="thread" data-conv="rogue|mc-queen">
+          <div class="ncm-msg2-desk__day"><span>2045.08.14</span></div>          
+          <div class="ncm-msg2-b  new">
+            <div class="m"><span class="ncm-msg2-av sm" style="--tc:var(--ncm-hue-4)">V</span><b style="--tc:var(--ncm-hue-4)">V</b><span class="ncm-addr">v@nightcity.net</span><span class="ncm-msg2-age" title="2045.08.14 // 15:00">15:00 · 7h</span>
+              <span class="ncm-msg2-flag is-accent"><i class="fas fa-circle"></i>waiting</span>
+              </div>
+            <div class="sj">Who is this</div>
+            <div class="ncm-msg2-bbody"><p>body</p></div>
+          </div>
+        </div>
+        <div class="ncm-msg2-desk__box">
+          <div class="ncm-msg2-desk__sent"><i class="fas fa-check"></i>Sent as Queen of Hearts to V.</div>
+          <textarea class="ncm-msg2-ta ncm-msg2-desk__ta" data-msg2-draft data-key="rogue|mc-queen" placeholder="Write to V as Queen of Hearts…  (Ctrl+Enter sends · the draft is kept)"></textarea>
+          <div class="ncm-msg2-desk__bar">
+            <span class="to">as <details class="ncm-msg2-dd ncm-msg2-dd--upl ncm-msg2-desk__as"><summary title="Answer as another identity" aria-label="Answering as Queen of Hearts — change"><b>Queen of Hearts</b><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary><div class="ncm-msg2-dd__menu ncm-msg2-dd__menu--wide">
+  <div class="ncm-msg2-dd__k">Answer as</div>
+  <button type="button" class="ncm-msg2-dd__item is-on is-cur is-alias" data-action="tabAct" data-owner="messages" data-op="deskIdent" data-id="c:mc-queen" aria-pressed="true"><i class="fas id fa-masks-theater"></i><span>Queen of Hearts<small class="addr">queen@void.nc · alias of Rogue</small></span><span class="wrote">they wrote here</span></button><button type="button" class="ncm-msg2-dd__item  " data-action="tabAct" data-owner="messages" data-op="deskIdent" data-id="c:mc-rogue" aria-pressed="false"><i class="fas id fa-user-tie"></i><span>Rogue<small class="addr">rogue@afterlife.nc · main</small></span></button>
+  <div class="ncm-msg2-dd__sep"></div>
+  <button type="button" class="ncm-msg2-dd__item " data-action="tabAct" data-owner="messages" data-op="replyAnon" aria-pressed="false"><i class="far fa-square ck"></i><span>Send anonymously<small>the player sees a mask, not the name</small></span></button>
+  <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="replyComposer"><i class="fas fa-up-right-from-square"></i><span>Open in the full composer<small>attach a shard or eddies, schedule, encrypt</small></span></button>
+</div>
+</details><i class="fas fa-arrow-right-long"></i>to <b>V</b></span>
+            <span class="ncm-msg2-sendbtn ">
+              <button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary" data-action="tabAct" data-owner="messages" data-op="replySend" title="Reply as Queen of Hearts (queen@void.nc)"><i class="fas fa-reply"></i> <span class="lb">Reply as Queen of Hearts</span></button>
+              <details class="ncm-msg2-dd ncm-msg2-dd--up">
+                <summary class="ncm-msg2-btn ncm-msg2-btn--primary" title="More: another identity, send anonymously, the full composer" aria-label="More ways to reply"><span class="nid">2</span><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+                <div class="ncm-msg2-dd__menu ncm-msg2-dd__menu--wide">
+                  <div class="ncm-msg2-dd__k">Answer as</div>
+                  <button type="button" class="ncm-msg2-dd__item is-on is-cur is-alias" data-action="tabAct" data-owner="messages" data-op="deskIdent" data-id="c:mc-queen" aria-pressed="true"><i class="fas id fa-masks-theater"></i><span>Queen of Hearts<small class="addr">queen@void.nc · alias of Rogue</small></span><span class="wrote">they wrote here</span></button><button type="button" class="ncm-msg2-dd__item  " data-action="tabAct" data-owner="messages" data-op="deskIdent" data-id="c:mc-rogue" aria-pressed="false"><i class="fas id fa-user-tie"></i><span>Rogue<small class="addr">rogue@afterlife.nc · main</small></span></button>
+                  <div class="ncm-msg2-dd__sep"></div>
+                  <button type="button" class="ncm-msg2-dd__item " data-action="tabAct" data-owner="messages" data-op="replyAnon" aria-pressed="false"><i class="far fa-square ck"></i><span>Send anonymously<small>the player sees a mask, not the name</small></span></button>
+                  <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="replyComposer"><i class="fas fa-up-right-from-square"></i><span>Open in the full composer<small>attach a shard or eddies, schedule, encrypt</small></span></button>
+                </div>
+              </details>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      
+          </div>
+    
+
+    
+
+
+    
+  </div>
+</div>
+
+</template>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const GM = Q.get('as') === 'gm';
+const ADMIN_THEME = Q.get('t') || 'clean-dark';
+document.getElementById('sw').innerHTML = `Header as: <a href="?" class="${GM ? '' : 'on'}">player</a><a href="?as=gm" class="${GM ? 'on' : ''}">GM</a> &nbsp;·&nbsp; admin theme: `
+  + ['clean-dark', 'clean-light', 'high-contrast'].map((t) => `<a href="?${GM ? 'as=gm&' : ''}t=${t}" class="${t === ADMIN_THEME ? 'on' : ''}">${t}</a>`).join('');
+if (GM) document.querySelectorAll('[data-player-only]').forEach((e) => e.remove());
+
+/* ─── the Agent frame: the captured .ncm-viewer inside the real window root ─── */
+const FACE = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#2a2a3d"/><circle cx="20" cy="15" r="7" fill="#6b6b88"/><path d="M6 38c2-9 8-13 14-13s12 4 14 13z" fill="#6b6b88"/></svg>');
+const CAPTURE = document.getElementById('viewer-capture').innerHTML.replace(/src="systems\/[^"]*"/g, `src="${FACE}"`);
+function agent(host) {
+  host.innerHTML = `<div class="mk-win application ncm-app ncm-message-viewer-window" data-ncm-scanlines="true" data-ncm-neon="true" data-ncm-animation-level="none" data-ncm-crt="glass" data-ncm-crt-grain="true" style="--ncm-crt-intensity:.25;--ncm-crt-vignette:.571;--ncm-crt-light:.03;--ncm-crt-grain:.014">
+    <header class="window-header"><i class="window-icon fas fa-satellite-dish"></i><h1 class="window-title">TTESTERMAN82 // AGENT</h1></header>
+    <section class="window-content">${CAPTURE}</section></div>`;
+  return host.querySelector('.ncm-viewer');
+}
+const $ = (root, sel) => root.querySelector(sel);
+
+/* the header's buttons, now and proposed (markup from message-viewer.hbs) */
+const B = {
+  contacts: `<button class="ncm-btn ncm-btn--secondary ncm-btn--sm"><i class="fas fa-address-book"></i> <span>Contacts</span></button>`,
+  conv: `<button class="ncm-btn ncm-btn--secondary ncm-btn--icon-only ncm-btn--sm" aria-label="New conversation"><i class="fas fa-comments"></i></button>`,
+  compose: `<button class="ncm-btn ncm-btn--primary ncm-btn--sm"><i class="fas fa-pen-to-square"></i> <span>Compose</span></button>`,
+  admin: `<button class="ncm-btn ncm-btn--gm ncm-btn--icon-only ncm-btn--sm"><i class="fas fa-shield-halved"></i></button>`,
+  guide: `<button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm"><i class="fas fa-circle-question"></i></button>`,
+  gear: `<button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm"><i class="fas fa-gear"></i></button>`,
+};
+const composeSplit = (open) => `<div class="mk-split">${B.compose}<button class="ncm-btn ncm-btn--primary ncm-btn--icon-only ncm-btn--sm mk-caret" aria-label="More ways to write"><i class="fas fa-caret-down"></i></button>
+  ${open ? `<div class="ncm-sort-dropdown mk-menu"><div class="ncm-sort-option"><i class="fas fa-envelope"></i> New message</div><div class="ncm-sort-option"><i class="fas fa-comments"></i> New conversation</div>${GM ? '<div class="mk-sep"></div><div class="ncm-sort-option"><i class="fas fa-masks-theater"></i> Message as an NPC…</div>' : ''}</div>` : ''}</div>`;
+const gearMenu = (open) => GM ? B.gear : `<div class="mk-anchor"><button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm mk-gear" aria-label="Settings and help"><i class="fas fa-gear"></i><i class="fas fa-caret-down"></i></button>
+  ${open ? `<div class="ncm-sort-dropdown mk-menu"><div class="ncm-sort-option"><i class="fas fa-palette"></i> Settings &amp; theme</div><div class="ncm-sort-option"><i class="fas fa-circle-question"></i> Player guide (PDF)</div></div>` : ''}</div>`;
+const nowActions = () => B.contacts + B.conv + B.compose + (GM ? B.admin : B.guide) + B.gear;
+const newActions = (menu) => B.contacts + composeSplit(menu === 'compose') + (GM ? B.admin : '') + gearMenu(menu === 'gear');
+
+/* the chip row (markup from message-viewer.hbs §3) */
+const pill = (f, icon, label, badge, alert, active, extra = '') => `<span class="ncm-pill ${active ? 'ncm-pill--active' : ''} ${extra}" data-filter="${f}"><i class="fas ${icon}"></i> ${label}${badge ? ` <span class="ncm-pill__badge ${alert ? 'ncm-pill__badge--alert' : ''}">${badge}</span>` : ''}</span>`;
+const C = { all: 4, unread: 2, sent: 1, spam: 3, recovered: 2, drafts: 1, scheduled: 1 };
+const nowPills = () => pill('inbox', 'fa-inbox', 'All', C.all, 0, 1) + pill('conversations', 'fa-comments', 'Conversations') + pill('unread', 'fa-envelope', 'Unread', C.unread, 1)
+  + pill('sent', 'fa-paper-plane', 'Sent', C.sent) + pill('saved', 'fa-bookmark', 'Saved') + pill('trash', 'fa-trash', 'Trash') + pill('spam', 'fa-ban', 'Spam', C.spam)
+  + pill('recovered', 'fa-download', 'Recovered', C.recovered) + '<span class="ncm-viewer__pills-div"></span>'
+  + pill('drafts', 'fa-file-pen', 'Drafts', C.drafts, 0, 0, 'ncm-pill--out') + pill('scheduled', 'fa-clock', 'Scheduled', C.scheduled, 0, 0, 'ncm-pill--out')
+  + `<span class="ncm-pill ncm-pill--action"><i class="fas fa-envelope-open"></i> Mark all read</span>`;
+const moreMenu = () => `<div class="ncm-sort-dropdown mk-menu">
+  <div class="ncm-sort-option"><i class="fas fa-file-pen"></i> Drafts <span class="ncm-pill__badge">${C.drafts}</span></div>
+  <div class="ncm-sort-option"><i class="fas fa-clock"></i> Scheduled <span class="ncm-pill__badge">${C.scheduled}</span></div>
+  <div class="ncm-sort-option"><i class="fas fa-download"></i> Recovered <span class="ncm-pill__badge">${C.recovered}</span></div>
+  <div class="mk-sep"></div>
+  <div class="ncm-sort-option"><i class="fas fa-ban"></i> Spam <span class="ncm-pill__badge ncm-pill__badge--alert">${C.spam} new</span></div>
+  <div class="ncm-sort-option"><i class="fas fa-trash"></i> Trash</div></div>`;
+const newPills = (active, open) => pill('inbox', 'fa-inbox', 'All', C.all, 0, active === 'inbox') + pill('conversations', 'fa-comments', 'Conversations')
+  + pill('unread', 'fa-envelope', 'Unread', C.unread, 1, active === 'unread') + pill('sent', 'fa-paper-plane', 'Sent', C.sent) + pill('saved', 'fa-bookmark', 'Saved')
+  + (active === 'trash' ? pill('trash', 'fa-trash', 'Trash', 0, 0, 1) : '')
+  + `<span class="ncm-pill mk-more"><i class="fas fa-folder"></i> More <span class="ncm-pill__badge ncm-pill__badge--alert">${C.spam}</span> <i class="fas fa-caret-down"></i>${open ? moreMenu() : ''}</span>`;
+const STRIP = {
+  unread: `<div class="ncm-viewer__filter-bar ncm-viewer__filter-bar--info"><i class="fas fa-envelope"></i><span>${C.unread} unread</span><button class="ncm-btn ncm-btn--secondary ncm-btn--sm"><i class="fas fa-envelope-open"></i> Mark all read</button></div>`,
+  trash: `<div class="ncm-viewer__filter-bar ncm-viewer__filter-bar--danger"><i class="fas fa-trash"></i><span>Trash — messages here will be permanently deleted when emptied</span><button class="ncm-btn ncm-btn--danger ncm-btn--sm"><i class="fas fa-fire"></i> Empty Trash</button></div>`,
+};
+function frame(key, build) { const host = document.querySelector(`[data-frame="${key}"]`); if (!host) return; build(agent(host)); }
+const setActions = (v, html) => { $(v, '.ncm-viewer__header-actions').innerHTML = html; };
+const setPills = (v, html, strip) => { $(v, '.ncm-viewer__pills-track').innerHTML = html; v.querySelectorAll('.ncm-viewer__filter-bar').forEach((e) => e.remove()); if (strip) $(v, '.ncm-viewer__category-pills').insertAdjacentHTML('afterend', STRIP[strip]); };
+
+frame('now-head', (v) => setActions(v, nowActions()));
+frame('new-head-compose', (v) => setActions(v, newActions('compose')));
+frame('new-head-gear', (v) => setActions(v, newActions('gear')));
+frame('now-chips', (v) => { setActions(v, nowActions()); setPills(v, nowPills()); });
+frame('new-chips-more', (v) => { setActions(v, newActions()); setPills(v, newPills('inbox', true)); });
+frame('new-chips-unread', (v) => { setActions(v, newActions()); setPills(v, newPills('unread'), 'unread'); });
+frame('new-chips-trash', (v) => { setActions(v, newActions()); setPills(v, newPills('trash'), 'trash'); });
+
+/* ─── 3 · Needs a reply ─── */
+document.querySelectorAll('.P').forEach((p) => { p.dataset.ncmAdminTheme = ADMIN_THEME; });
+const DESK = document.getElementById('desk-capture').innerHTML;
+const now = document.getElementById('desk-now'); now.innerHTML = DESK; now.querySelector('.ncm-msg2-bc')?.remove();
+
+const tpl = document.createElement('div'); tpl.innerHTML = DESK;
+tpl.querySelector('.ncm-msg2-bc')?.remove();
+const nav = tpl.querySelector('.ncm-msg2-nav').outerHTML;
+const av = (t, hue, sm) => `<span class="ncm-msg2-av ${sm ? 'sm' : ''}" style="--tc:var(--ncm-hue-${hue})">${t}</span>`;
+const stack = (who) => `<span class="ncm-msg2-stack">${who.map(([t, h]) => av(t, h, 1)).join('')}</span>`;
+const row = (r) => `<div class="mk-tq__row ${r.hot ? 'is-hot' : ''} ${r.done ? 'is-done' : ''}">
+  ${av(r.init, r.hue)}
+  <div class="mk-tq__tx">
+    <div class="mk-tq__nm">${r.npc}${r.alias ? `<span class="ncm-msg2-dq__alias"><i class="fas fa-mask"></i>${r.alias}</span>` : ''}</div>
+    <div class="mk-tq__sj">${r.subject}</div>
+    <div class="mk-tq__pv"><b>${r.lastFrom}:</b> ${r.preview}</div>
+    <div class="mk-tq__who">${stack(r.who)} ${r.whoText}</div>
+  </div>
+  <div class="mk-tq__end">
+    <span class="mk-tq__wait">${r.done ? `<i class="fas fa-check"></i> answered ${r.wait}` : `<span class="ct">${r.n}</span> ${r.wait}`}</span>
+    ${r.done ? '' : `<div class="mk-tq__acts"><button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary"><i class="fas ${r.alias ? 'fa-mask' : 'fa-reply'}"></i> Reply</button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Mark answered without replying" aria-label="Mark answered"><i class="fas fa-check"></i></button></div>`}
+  </div>
+  ${r.done ? '' : `<div class="mk-tq__meter"><i style="width:${r.meter}%"></i></div>`}
+</div>`;
+const ROWS = [
+  { npc: 'Mr. Hands', init: 'MH', hue: 3, subject: 'Payment for the Kabuki job', lastFrom: 'Rache', preview: 'It\'s been two days. The eddies never landed. Either you pay or I start asking around about who else you owe.', who: [['R', 1]], whoText: 'Rache', n: 2, wait: '2d', meter: 100, hot: 1 },
+  { npc: 'Rogue', init: 'R', hue: 8, subject: 'RE: Meet', lastFrom: 'Hana Ito', preview: 'Afterlife works. Back booth, midnight. Come alone or don\'t come.', who: [['V', 4], ['HI', 2], ['R', 1]], whoText: 'V, Hana Ito, Rache', n: 3, wait: '8h', meter: 33 },
+  { npc: 'Rogue', alias: 'Queen of Hearts', init: 'QH', hue: 8, subject: 'Who is this', lastFrom: 'V', preview: 'Got this address off a dead courier. Who is this and why does your name keep coming up?', who: [['V', 4]], whoText: 'V', n: 1, wait: '7h', meter: 29 },
+  { npc: 'Regina Jones', init: 'RJ', hue: 5, subject: 'Tip about Maelstrom', lastFrom: 'Hana Ito', preview: 'Saw three of their vans outside the Totentanz. Thought you\'d want to know before NCPD does.', who: [['HI', 2]], whoText: 'Hana Ito', n: 1, wait: '25m', meter: 4 },
+];
+const DONE = [{ npc: 'Padre', init: 'P', hue: 6, subject: 'Favor', lastFrom: 'You (Padre)', preview: 'Come by the church tomorrow. We talk then.', who: [['V', 4]], whoText: 'V', wait: 'yesterday', done: 1 }];
+const filt = tpl.querySelector('.ncm-msg2-desk__qhd .ncm-msg2-dd')?.outerHTML || '';
+document.getElementById('desk-new').innerHTML = `<div class="ncm-msg2" data-owner="messages">${nav}
+  <div class="ncm-msg2-view" style="display:flex;flex-direction:column;min-height:0;flex:1">
+    <header class="ncm-tabhd"><i class="fas fa-reply"></i><div><h2>Needs a reply</h2><p>Player mail to your NPCs that nobody has answered. Reply opens that NPC's inbox at the message.</p></div></header>
+    <div class="mk-tq">
+      <div class="mk-tq__bar">${filt}<span class="sum"><b>5</b> players waiting on 4 lines · oldest 2d</span></div>
+      <div class="mk-tq__list">${ROWS.map(row).join('')}
+        <div class="mk-tq__fold"><i class="fas fa-chevron-down"></i> Answered today · ${DONE.length}</div>${DONE.map(row).join('')}</div>
+    </div>
+  </div></div>`;
+document.title = 'rendered';
+</script>
+</body>
+</html>

@@ -1,34 +1,27 @@
 {{!--
   Admin → Messages (2026-10-27 redesign — dev/mockups/admin-messages-redesign-mock.html)
-  Context: msg2 (MessagesTab._buildContext). Sub-tabs: Needs a reply · All mail · Outbox · Inboxes.
+  Context: msg2 (MessagesTab._buildContext). Sub-tabs: Needs a reply · All mail · Conversations · Outbox · Inboxes.
   New buttons: data-action="tabAct" data-owner="messages" data-op="…" → MessagesTab.onAct.
 --}}
-{{!-- The Desk's queue row: one conversation (an NPC × the alias written to). Context = a deskQueue row. --}}
-{{#*inline "ncmMsg2DeskRow"}}
-<div class="ncm-msg2-dq {{#if sel}}is-sel{{/if}} {{#if done}}is-done{{/if}} {{#if meter.hot}}is-hot{{/if}}" data-action="tabAct" data-owner="messages" data-op="convSel" data-key="{{key}}" role="button" tabindex="0" aria-pressed="{{#if sel}}true{{else}}false{{/if}}">
+{{!-- Needs a reply: one line (an NPC × the alias written to). Context = a replyList row. --}}
+{{#*inline "ncmMsg2RqRow"}}
+<div class="ncm-msg2-rq__row {{#if sel}}is-sel{{/if}} {{#if done}}is-done{{/if}} {{#if meter.hot}}is-hot{{/if}}" data-key="{{key}}">
   {{#if npc.img}}<img class="ncm-msg2-av" src="{{npc.img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av" style="--tc:{{ncm-hue name}}">{{npc.initials}}</span>{{/if}}
-  <div class="ncm-msg2-dq__tx">
-    <div class="nm"><span class="n">{{name}}</span>{{#if aliasName}}<span class="ncm-msg2-dq__alias" title="alias of {{name}}"><i class="fas fa-mask"></i>{{aliasName}}</span>{{/if}}{{#if contactOnly}}<i class="fas fa-address-card co" title="Contact only — no character sheet"></i>{{/if}}{{#if typed}}<i class="fas fa-user-ninja ty" title="Typed by a player on a terminal"></i>{{/if}}</div>
-    <div class="sl">{{subline}}</div>
-    <div class="who">{{#if done}}<i class="fas fa-check"></i>answered{{else}}<span class="ncm-msg2-stack">{{#each faces}}{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" title="{{name}}" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" title="{{name}}" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{/each}}</span><span class="w">{{whoNames}}</span>{{/if}}</div>
+  <div class="ncm-msg2-rq__tx">
+    <div class="nm"><span class="n">{{name}}</span>{{#if aliasName}}<span class="ncm-msg2-rq__alias" data-tooltip="Written to {{ncm-tip aliasName}}, an alias of {{ncm-tip name}}"><i class="fas fa-mask"></i>{{aliasName}}</span>{{/if}}{{#if contactOnly}}<i class="fas fa-address-card co" data-tooltip="A contact with no character sheet"></i>{{/if}}{{#if typed}}<i class="fas fa-user-ninja ty" data-tooltip="Typed on a terminal by {{ncm-tip typedNote}}"></i>{{/if}}</div>
+    <div class="sj">{{subject}}</div>
+    {{#if preview}}<div class="pv"><b>{{lastFrom}}:</b> {{preview}}</div>{{/if}}
+    <div class="who"><span class="ncm-msg2-stack">{{#each faces}}{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" data-tooltip="{{ncm-tip name}}" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" data-tooltip="{{ncm-tip name}}" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{/each}}</span>{{#if moreFaces}}<span class="more">+{{moreFaces}}</span>{{/if}}<span class="w">{{whoNames}}</span></div>
   </div>
-  <div class="ncm-msg2-dq__end">
-    {{#unless done}}<span class="ct" title="{{playersN}} waiting · {{messages}} unanswered">{{playersN}}</span>{{/unless}}
-    <span class="t">{{#if done}}{{age}}{{else}}{{waitAge}}{{/if}}</span>
+  <div class="ncm-msg2-rq__end">
+    <span class="ncm-msg2-rq__wait">{{#if done}}<i class="fas fa-check"></i>{{doneLine}}{{else}}<span class="ct" data-tooltip="{{ncm-tip messages}} unanswered from {{ncm-tip playersN}} {{#if (eq playersN 1)}}player{{else}}players{{/if}}">{{messages}}</span><span class="t" data-tooltip="Waiting since the oldest unanswered message">{{waitAge}}</span>{{/if}}</span>
+    <div class="ncm-msg2-rq__acts">
+      <button type="button" class="ncm-msg2-btn {{#unless done}}ncm-msg2-btn--primary{{/unless}}" data-action="tabAct" data-owner="messages" data-op="rqReply" data-key="{{key}}" data-tooltip="Reply as {{#if aliasName}}{{ncm-tip aliasName}}{{else}}{{ncm-tip name}}{{/if}}, to {{#if (gt playersN 1)}}everyone waiting{{else}}{{ncm-tip whoNames}}{{/if}}, in the composer"><i class="fas {{#if aliasName}}fa-mask{{else}}fa-reply{{/if}}"></i> Reply</button>
+      <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="rqInbox" data-key="{{key}}" data-owner-id="{{ownerId}}" data-message-id="{{openId}}" data-tooltip="Open {{ncm-tip name}}’s inbox at this message" aria-label="Open the inbox"><i class="fas fa-inbox"></i></button>
+      {{#unless done}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="markAnswered" data-key="{{key}}" data-tooltip="Mark answered without replying" aria-label="Mark answered"><i class="fas fa-check"></i></button>{{/unless}}
+    </div>
   </div>
-  {{#unless done}}<div class="ncm-msg2-dq__meter" title="waiting {{waitAge}}"><i style="width:{{meter.pct}}%"></i></div>{{/unless}}
-</div>
-{{/inline}}
-{{!-- The Desk's reply menu, behind both the "as <identity> ▾" chip and the Reply button's ▾. Context = desk.compose. --}}
-{{#*inline "ncmMsg2DeskReplyMenu"}}
-<div class="ncm-msg2-dd__menu ncm-msg2-dd__menu--wide">
-  {{#if manyIds}}
-  <div class="ncm-msg2-dd__k">Answer as</div>
-  {{#each identities}}<button type="button" class="ncm-msg2-dd__item {{#if on}}is-on is-cur{{/if}} {{#if isAlias}}is-alias{{/if}}" data-action="tabAct" data-owner="messages" data-op="deskIdent" data-id="{{id}}" aria-pressed="{{#if on}}true{{else}}false{{/if}}"><i class="fas id {{icon}}"></i><span>{{name}}<small class="addr">{{#if addr}}{{addr}}{{/if}}{{#if meta}}{{#if addr}} · {{/if}}{{meta}}{{/if}}</small></span>{{#if wrote}}<span class="wrote">they wrote here</span>{{/if}}</button>{{/each}}
-  <div class="ncm-msg2-dd__sep"></div>
-  {{/if}}
-  {{#if anonOk}}<button type="button" class="ncm-msg2-dd__item {{#if anon}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="replyAnon" aria-pressed="{{#if anon}}true{{else}}false{{/if}}"><i class="{{#if anon}}fas fa-square-check{{else}}far fa-square{{/if}} ck"></i><span>Send anonymously<small>the player sees a mask, not the name</small></span></button>{{/if}}
-  <button type="button" class="ncm-msg2-dd__item" data-action="tabAct" data-owner="messages" data-op="replyComposer"><i class="fas fa-up-right-from-square"></i><span>Open in the full composer<small>attach a shard or eddies, schedule, encrypt</small></span></button>
+  {{#unless done}}<div class="ncm-msg2-rq__meter"><i style="width:{{meter.pct}}%"></i></div>{{/unless}}
 </div>
 {{/inline}}
 {{!-- All mail: one message row in the calendar navigator's list (month / week / day). --}}
@@ -88,119 +81,55 @@
   <div class="ncm-msg2-view">
     <header class="ncm-tabhd"><i class="fas {{headIcon}}"></i><div><h2>{{headTitle}}</h2><p>{{headText}}</p></div></header>
 
-    {{!-- ═══════════════ NEEDS A REPLY — THE DESK ═══════════════
-         dev/mockups/admin-needs-reply-rethink-mock.html (Version B, 2026-10-28). Left: the
-         queue of conversations (one per NPC × the alias written to; the longest wait on
-         top, answered ones below, dim). Middle: the picked conversation as a chat thread
-         with the reply box under it. Right: the PERSONA of the identity being answered
-         as — portrait, role / org, how they talk (the contact's Voice), the identities to
-         answer from, what they last said. Rules: messagesModel.deskQueue / deskThread. --}}
+    {{!-- ═══════════════ NEEDS A REPLY — THE LIST ═══════════════
+         dev/mockups/inbox-cleanup-mock.html §3 (2026-11-05; it replaced the Desk). One line per
+         conversation (an NPC × the alias written to): who is waiting, on what, for how long, the
+         last thing they wrote. Reply opens the composer as that identity; the inbox button opens the
+         NPC's inbox at the message; ✓ marks it answered. Show ▾ · search · Sort ▾ (sort + groups),
+         a page at a time, the answered lines folded under their own heading. Rules: messagesModel.replyList. --}}
     {{#if isReply}}{{#with reply}}
-    <div class="ncm-msg2-desk {{#if qShut}}is-qshut{{/if}} {{#if pShut}}is-pshut{{/if}}{{#unless desk}} is-pshut{{/unless}}">
-
-      {{#if qShut}}
-      {{!-- The queue folded to a rail of faces (amber = how many are waiting). --}}
-      <div class="ncm-msg2-desk__rail" data-msg2-scroll="deskq">
-        <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="deskFoldQ" title="Open the list" aria-label="Open the list" aria-expanded="false"><i class="fas fa-angles-right"></i></button>
-        <hr>
-        {{#each queue.waiting}}<span class="f {{#if sel}}is-sel{{/if}}" data-action="tabAct" data-owner="messages" data-op="convSel" data-key="{{key}}" role="button" tabindex="0" title="{{#if aliasName}}{{aliasName}} (alias of {{name}}){{else}}{{name}}{{/if}} — {{subline}} · {{whoNames}}">{{#if npc.img}}<img class="ncm-msg2-av" src="{{npc.img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av" style="--tc:{{ncm-hue name}}">{{npc.initials}}</span>{{/if}}<span class="ct {{#if meter.hot}}is-hot{{/if}}">{{playersN}}</span></span>{{/each}}
-        {{#if queue.answered.length}}<hr>{{#each queue.answered}}<span class="f is-done {{#if sel}}is-sel{{/if}}" data-action="tabAct" data-owner="messages" data-op="convSel" data-key="{{key}}" role="button" tabindex="0" title="{{#if aliasName}}{{aliasName}} (alias of {{name}}){{else}}{{name}}{{/if}} — answered">{{#if npc.img}}<img class="ncm-msg2-av" src="{{npc.img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av" style="--tc:{{ncm-hue name}}">{{npc.initials}}</span>{{/if}}</span>{{/each}}{{/if}}
-      </div>
-      {{else}}
-      <div class="ncm-msg2-desk__q">
-        <div class="ncm-msg2-desk__qhd">
-          <details class="ncm-msg2-dd ncm-msg2-dd--down">
-            <summary class="ncm-msg2-btn" title="Which lines to show"><i class="fas fa-filter"></i><span class="v">{{filtLabel}}</span> <span class="c">{{filtCount}}</span><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
-            <div class="ncm-msg2-dd__menu">
-              <div class="ncm-msg2-dd__k">Show</div>
-              {{#each chips}}<button type="button" class="ncm-msg2-dd__item {{#if on}}is-on is-cur{{/if}}" data-action="tabAct" data-owner="messages" data-op="rFilt" data-f="{{key}}"><i class="fas ck {{#if on}}fa-circle-dot{{else}}fa-circle{{/if}}"></i><span>{{label}}</span><span class="n {{#if (eq key 'waiting')}}attn{{/if}}">{{count}}</span></button>{{/each}}
-              <div class="ncm-msg2-dd__sep"></div>
-              <button type="button" class="ncm-msg2-dd__item {{#if includeGm}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="includeGm"><i class="{{#if includeGm}}fas fa-square-check{{else}}far fa-square{{/if}} ck"></i><span>Include mail I sent<small>also list mail you wrote TO an NPC</small></span></button>
-              <button type="button" class="ncm-msg2-dd__item {{#if quietOn}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="deskQuiet"><i class="{{#if quietOn}}fas fa-square-check{{else}}far fa-square{{/if}} ck"></i><span>Show quiet inboxes<small>{{#if quietN}}{{quietN}} NPC {{#if (eq quietN 1)}}inbox{{else}}inboxes{{/if}} nobody has written to{{else}}every NPC inbox has mail{{/if}}</small></span></button>
-            </div>
-          </details>
-          <span class="sum" title="{{playersWaiting}} {{#if (eq playersWaiting 1)}}player{{else}}players{{/if}} waiting on {{linesWaiting}} {{#if (eq linesWaiting 1)}}line{{else}}lines{{/if}}">{{#if linesWaiting}}<b>{{playersWaiting}}</b> waiting{{else}}<i class="fas fa-circle-check"></i>Nobody waiting{{/if}}</span>
-          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="deskFoldQ" title="Fold the list" aria-label="Fold the list" aria-expanded="true"><i class="fas fa-angles-left"></i></button>
-        </div>
-        <div class="ncm-msg2-desk__list" data-msg2-scroll="deskq">
-          {{#each queue.waiting}}{{> ncmMsg2DeskRow}}{{/each}}
-          {{#if queue.answered.length}}<div class="ncm-msg2-desk__sep">Answered</div>{{#each queue.answered}}{{> ncmMsg2DeskRow}}{{/each}}{{/if}}
-          {{#unless hasQueue}}<div class="ncm-msg2-quiet ncm-msg2-desk__empty">{{emptyText}}</div>{{/unless}}
-          {{#if showQuiet}}<div class="ncm-msg2-desk__quiet"><i class="fas fa-inbox"></i>{{quietN}} NPC {{#if (eq quietN 1)}}inbox{{else}}inboxes{{/if}} nobody has written to</div>{{/if}}
-        </div>
-      </div>
-      {{/if}}
-
-      {{#if desk}}{{#with desk}}
-      <div class="ncm-msg2-desk__mid">
-        <div class="ncm-msg2-desk__hd">
-          <span class="ncm-msg2-stack">{{#each head.faces}}{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" title="{{name}}" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" title="{{name}}" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}{{/each}}</span>
-          <div class="tx"><div class="sj">{{head.subject}}</div><div class="sl">{{head.subline}} · {{head.msgCount}} {{#if (eq head.msgCount 1)}}message{{else}}messages{{/if}}</div></div>
-          {{#if head.waiting}}<button type="button" class="ncm-msg2-desk__wait" data-action="tabAct" data-owner="messages" data-op="markAnswered" title="Mark answered without replying" aria-label="{{head.waiting}} waiting — mark answered"><span class="is-w"><i class="fas fa-circle"></i>{{head.waiting}} waiting</span><span class="is-h"><i class="fas fa-check"></i>Mark answered</span></button>{{else}}<span class="ncm-msg2-desk__answered"><i class="fas fa-check"></i>answered</span>{{/if}}
-          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="openMsgInInbox" data-inbox-owner="{{ownerId}}" title="Open {{npcName}}’s inbox" aria-label="Open inbox"><i class="fas fa-inbox"></i></button>
-          <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon {{#unless @root.msg2.reply.pShut}}is-on{{/unless}}" data-action="tabAct" data-owner="messages" data-op="deskFoldP" title="{{#if @root.msg2.reply.pShut}}Show{{else}}Hide{{/if}} who you are answering as" aria-label="Who you are answering as" aria-expanded="{{#if @root.msg2.reply.pShut}}false{{else}}true{{/if}}"><i class="fas fa-id-card"></i></button>
-        </div>
-        {{#if hasTyped}}
-        <div class="ncm-msg2-note">{{#each typedNotes}}<div><span class="ncm-msg2-flag is-danger"><i class="fas fa-user-ninja"></i>typed by {{typist}}</span> This came from {{asName}}’s account on <b>{{machine}}</b> — a player typed it, not {{asName}}.</div>{{/each}}</div>
-        {{/if}}
-        <div class="ncm-msg2-desk__feed" data-msg2-scroll="thread" data-conv="{{key}}">
-          {{#each entries}}
-          {{#if (eq kind 'day')}}<div class="ncm-msg2-desk__day"><span>{{label}}</span></div>{{else}}
-          <div class="ncm-msg2-b {{#if mine}}me{{/if}} {{#if waiting}}new{{/if}}">
-            <div class="m">{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}<b style="--tc:{{ncm-hue name}}">{{name}}</b>{{#if addr}}<span class="ncm-addr">{{addr}}</span>{{/if}}<span class="ncm-msg2-age" title="{{when}}">{{time}} · {{age}}</span>
-              {{#if waiting}}<span class="ncm-msg2-flag is-accent"><i class="fas fa-circle"></i>waiting</span>{{/if}}
-              {{#if typist}}<span class="ncm-msg2-flag is-danger"><i class="fas fa-user-ninja"></i>typed by {{typist}}</span>{{/if}}</div>
-            {{#if subject}}<div class="sj">{{subject}}</div>{{/if}}
-            <div class="ncm-msg2-bbody">{{{bodyHtml}}}</div>
+    <div class="ncm-msg2-rq">
+      <div class="ncm-msg2-rq__bar">
+        <details class="ncm-msg2-dd ncm-msg2-dd--down">
+          <summary class="ncm-msg2-btn" title="Which lines to show"><i class="fas fa-filter"></i><span class="v">{{filtLabel}}</span> <span class="c">{{filtCount}}</span><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+          <div class="ncm-msg2-dd__menu">
+            <div class="ncm-msg2-dd__k">Show</div>
+            {{#each chips}}<button type="button" class="ncm-msg2-dd__item {{#if on}}is-on is-cur{{/if}}" data-action="tabAct" data-owner="messages" data-op="rFilt" data-f="{{key}}"><i class="fas ck {{#if on}}fa-circle-dot{{else}}fa-circle{{/if}}"></i><span>{{label}}</span><span class="n {{#if (eq key 'waiting')}}attn{{/if}}">{{count}}</span></button>{{/each}}
+            <div class="ncm-msg2-dd__sep"></div>
+            <button type="button" class="ncm-msg2-dd__item {{#if includeGm}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="includeGm"><i class="{{#if includeGm}}fas fa-square-check{{else}}far fa-square{{/if}} ck"></i><span>Include mail I sent<small>also list mail you wrote TO an NPC</small></span></button>
+            <button type="button" class="ncm-msg2-dd__item {{#if quietOn}}is-on{{/if}}" data-action="tabAct" data-owner="messages" data-op="deskQuiet"><i class="{{#if quietOn}}fas fa-square-check{{else}}far fa-square{{/if}} ck"></i><span>Show quiet inboxes<small>{{#if quietN}}{{quietN}} NPC {{#if (eq quietN 1)}}inbox{{else}}inboxes{{/if}} nobody has written to{{else}}every NPC inbox has mail{{/if}}</small></span></button>
           </div>
-          {{/if}}
+        </details>
+        <label class="ncm-msg2-rq__find"><i class="fas fa-magnifying-glass"></i><input type="text" data-msg2-rqsearch value="{{q}}" placeholder="Search NPC, player, subject or text" aria-label="Search the lines" autocomplete="off" spellcheck="false">{{#if searching}}<button type="button" class="ncm-msg2-rq__clear" data-action="tabAct" data-owner="messages" data-op="rqClear" data-tooltip="Clear the search" aria-label="Clear the search"><i class="fas fa-xmark"></i></button>{{/if}}</label>
+        <details class="ncm-msg2-dd ncm-msg2-dd--downr">
+          <summary class="ncm-msg2-btn" title="Order and group the lines"><i class="fas fa-arrow-down-wide-short"></i><span class="v">{{sortLabel}}</span>{{#if grouped}}<span class="g">· {{groupLabel}}</span>{{/if}}<i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
+          <div class="ncm-msg2-dd__menu">
+            <div class="ncm-msg2-dd__k">Sort</div>
+            {{#each sorts}}<button type="button" class="ncm-msg2-dd__item {{#if on}}is-on is-cur{{/if}}" data-action="tabAct" data-owner="messages" data-op="rqSort" data-sort="{{key}}"><i class="fas ck {{#if on}}fa-circle-dot{{else}}fa-circle{{/if}}"></i><span>{{label}}</span></button>{{/each}}
+            <div class="ncm-msg2-dd__sep"></div>
+            <div class="ncm-msg2-dd__k">Group</div>
+            {{#each groupBys}}<button type="button" class="ncm-msg2-dd__item {{#if on}}is-on is-cur{{/if}}" data-action="tabAct" data-owner="messages" data-op="rqGroup" data-group="{{key}}"><i class="fas ck {{#if on}}fa-circle-dot{{else}}fa-circle{{/if}}"></i><span>{{label}}</span></button>{{/each}}
+          </div>
+        </details>
+        <span class="sum" title="{{playersWaiting}} {{#if (eq playersWaiting 1)}}player{{else}}players{{/if}} waiting on {{linesWaiting}} {{#if (eq linesWaiting 1)}}line{{else}}lines{{/if}}">{{#if linesWaiting}}<b>{{playersWaiting}}</b>&nbsp;waiting on {{linesWaiting}}{{#if oldestAge}} · oldest {{oldestAge}}{{/if}}{{else}}<i class="fas fa-circle-check"></i>Nobody waiting{{/if}}</span>
+      </div>
+      {{#if matchLine}}<div class="ncm-msg2-rq__match">{{matchLine}}</div>{{/if}}
+      <div class="ncm-msg2-rq__list" data-msg2-scroll="rq">
+        {{#if showWaiting}}
+          {{#each groups}}
+            {{#if label}}<button type="button" class="ncm-msg2-rq__gh {{#if shut}}is-shut{{/if}} {{#if hot}}is-hot{{/if}}" data-action="tabAct" data-owner="messages" data-op="rqFold" data-key="{{key}}" aria-expanded="{{#if shut}}false{{else}}true{{/if}}"><i class="fas fa-chevron-down ch"></i><b>{{label}}</b><span class="n">{{n}} {{#if (eq n 1)}}line{{else}}lines{{/if}} · {{waiting}} waiting</span></button>{{/if}}
+            {{#unless shut}}{{#each rows}}{{> ncmMsg2RqRow}}{{/each}}{{/unless}}
           {{/each}}
-        </div>
-        {{#with compose}}
-        <div class="ncm-msg2-desk__box">
-          {{#if sentLine}}<div class="ncm-msg2-desk__sent"><i class="fas fa-check"></i>{{sentLine}}</div>{{/if}}
-          {{#if canReply}}
-          <textarea class="ncm-msg2-ta ncm-msg2-desk__ta" data-msg2-draft data-key="{{@root.msg2.reply.desk.key}}" placeholder="Write to {{toLine}} as {{replyAsName}}…  (Ctrl+Enter sends · the draft is kept)">{{draft}}</textarea>
-          <div class="ncm-msg2-desk__bar">
-            <span class="to">as {{#if manyIds}}<details class="ncm-msg2-dd ncm-msg2-dd--upl ncm-msg2-desk__as"><summary title="Answer as another identity" aria-label="Answering as {{replyAsName}} — change"><b>{{replyAsName}}</b><i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>{{> ncmMsg2DeskReplyMenu}}</details>{{else}}<b>{{replyAsName}}</b>{{/if}}<i class="fas fa-arrow-right-long"></i>to <b>{{toLine}}</b>{{#if anon}}<span class="anon" title="The player sees a mask, not the name"><i class="fas fa-user-secret"></i>anonymous</span>{{/if}}</span>
-            <span class="ncm-msg2-sendbtn {{#if anon}}is-anon{{/if}}">
-              <button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary" data-action="tabAct" data-owner="messages" data-op="replySend" title="Reply as {{replyAsName}}{{#if fromAddr}} ({{fromAddr}}){{/if}}{{#if anon}} — anonymously{{/if}}"><i class="fas {{#if anon}}fa-user-secret{{else}}fa-reply{{/if}}"></i> <span class="lb">Reply as {{replyAsName}}</span></button>
-              <details class="ncm-msg2-dd ncm-msg2-dd--up">
-                <summary class="ncm-msg2-btn ncm-msg2-btn--primary" title="More: {{#if manyIds}}another identity, {{/if}}{{#if anonOk}}send anonymously, {{/if}}the full composer" aria-label="More ways to reply">{{#if manyIds}}<span class="nid">{{idCount}}</span>{{/if}}<i class="fas fa-caret-down ncm-msg2-dd__caret"></i></summary>
-                {{> ncmMsg2DeskReplyMenu}}
-              </details>
-            </span>
-          </div>
-          {{else}}
-          <div class="ncm-msg2-quiet">Nobody has written to {{@root.msg2.reply.desk.npcName}} yet — there is no one to answer.</div>
-          {{/if}}
-        </div>
-        {{/with}}
+          {{#if more}}<button type="button" class="ncm-msg2-rq__more" data-action="tabAct" data-owner="messages" data-op="rqMore">Show {{moreN}} more · {{more}} left</button>{{/if}}
+          {{#unless hasWaiting}}<div class="ncm-msg2-quiet ncm-msg2-rq__empty">{{emptyText}}</div>{{/unless}}
+        {{/if}}
+        {{#if hasAnswered}}
+          <button type="button" class="ncm-msg2-rq__sep {{#unless answeredOpen}}is-shut{{/unless}}" data-action="tabAct" data-owner="messages" data-op="rqDoneFold" aria-expanded="{{#if answeredOpen}}true{{else}}false{{/if}}">{{#if answeredFoldable}}<i class="fas fa-chevron-down ch"></i>{{/if}}Answered<span class="n">{{answeredN}}</span></button>
+          {{#if answeredOpen}}{{#each answered}}{{> ncmMsg2RqRow}}{{/each}}
+          {{#if answeredMore}}<button type="button" class="ncm-msg2-rq__more" data-action="tabAct" data-owner="messages" data-op="rqDoneMore">Show more answered · {{answeredMore}} left</button>{{/if}}{{/if}}
+        {{else}}{{#unless showWaiting}}<div class="ncm-msg2-quiet ncm-msg2-rq__empty">{{emptyText}}</div>{{/unless}}{{/if}}
+        {{#if showQuiet}}<div class="ncm-msg2-rq__quiet"><i class="fas fa-inbox"></i>{{quietN}} NPC {{#if (eq quietN 1)}}inbox{{else}}inboxes{{/if}} nobody has written to</div>{{/if}}
       </div>
-
-      {{#unless @root.msg2.reply.pShut}}{{#with persona}}
-      <aside class="ncm-msg2-desk__who">
-        <div class="ncm-msg2-desk__pcard">
-          <div class="ncm-msg2-desk__pface">{{#if img}}<img class="ncm-msg2-av lg" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av lg" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}
-            <div class="tx"><div class="nm">{{name}}{{#if isAlias}}<span class="ncm-tagp is-secret" title="alias of {{mainName}}"><i class="fas fa-mask"></i>alias</span>{{/if}}</div>{{#if addr}}<div class="ncm-addr">{{addr}}</div>{{/if}}</div>
-            {{#if hasVoiceTarget}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" data-action="tabAct" data-owner="messages" data-op="deskContact" data-contact-id="{{contactId}}" data-actor-id="{{actorId}}" title="Open in Contacts" aria-label="Open in Contacts"><i class="fas fa-pen"></i></button>{{/if}}
-          </div>
-          {{#if role}}<div class="ncm-msg2-desk__ptags"><span class="ncm-tagp" style="--tc:{{ncm-hue role.hue}}"><i class="fas {{role.icon}}"></i>{{role.label}}</span>{{#if org}}<span class="ncm-tagp" style="--tc:{{ncm-hue org}}">{{org}}</span>{{/if}}</div>{{else if org}}<div class="ncm-msg2-desk__ptags"><span class="ncm-tagp" style="--tc:{{ncm-hue org}}">{{org}}</span></div>{{/if}}
-          <div class="ncm-msg2-desk__pk"><i class="fas fa-comment-dots"></i>How they talk{{#if voice.note}}<span class="n">{{voice.note}}</span>{{/if}}</div>
-          {{#if voice.empty}}
-          <div class="ncm-msg2-desk__pvoice is-empty">{{#if hasVoiceTarget}}<span data-action="tabAct" data-owner="messages" data-op="deskContact" data-contact-id="{{contactId}}" data-actor-id="{{actorId}}" role="button" tabindex="0">No voice yet — add one in Contacts</span>{{else}}No voice to read.{{/if}}</div>
-          {{else}}<div class="ncm-msg2-desk__pvoice">{{voice.text}}</div>{{/if}}
-          {{#if manyIds}}{{#if wroteToName}}{{#unless wroteToIsPicked}}<div class="ncm-msg2-desk__phint">They wrote to <b>{{wroteToName}}</b> — you are answering as someone else. Change it under Reply as ▾.</div>{{/unless}}{{/if}}{{/if}}
-          {{#if hasSaid}}
-          <div class="ncm-msg2-desk__pk"><i class="fas fa-quote-left"></i>What they last said</div>
-          <div class="ncm-msg2-desk__said">{{#each said}}<div><span class="q">{{text}}</span>{{#if when}}<span class="t">{{when}}</span>{{/if}}</div>{{/each}}</div>
-          {{/if}}
-        </div>
-      </aside>
-      {{/with}}{{/unless}}
-      {{/with}}{{else}}
-      <div class="ncm-msg2-desk__mid"><div class="ncm-msg2-quiet ncm-msg2-desk__none"><i class="fas fa-reply"></i>{{#if hasQueue}}Pick a line to answer it.{{else}}When a player writes to an NPC, the conversation lands here.{{/if}}</div></div>
-      {{/if}}
     </div>
     {{/with}}{{/if}}
 

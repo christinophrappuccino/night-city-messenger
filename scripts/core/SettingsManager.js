@@ -145,6 +145,17 @@ export class SettingsManager {
       default: 'shard',
       requiresReload: true,
     });
+    // What players see a payphone called (dev, 2026-11-05: "similar to memory chip"). Read live through
+    // scripts/utils/payphoneTerm.js; the map pins carry it in their label, so a change renames them.
+    game.settings.register(MODULE_ID, 'payphoneTerm', {
+      name: 'What Players Call a Payphone',
+      hint: 'The word players see for a payphone — on the booth, on a call from one, on its map pins and in messages. GM tools keep saying "payphone". Try "Public Comm" or "Pay Terminal". Leave empty for "Payphone".',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'Payphone',
+      onChange: () => { game.nightcity?.terminalScenePins?.relabelPayphones?.(); },
+    });
     game.settings.register(MODULE_ID, 'shardTermCustom', {
       name: 'Custom Shard Name',
       hint: 'Used when the setting above is Custom. Type the name, or "Name / Plural" if the plural is unusual (e.g. "Data Wafer" or "Cyberdeck Cartridge / Cyberdeck Cartridges").',

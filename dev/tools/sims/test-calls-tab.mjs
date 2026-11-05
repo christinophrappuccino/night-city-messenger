@@ -132,7 +132,9 @@ const classes = new Set([...tpl.matchAll(/class="([^"{]+)/g)].flatMap((m) => m[1
 for (const c of classes) ok(css.includes('.' + c), `class .${c} is styled`);
 ok(read('styles/night-city-messenger.css').includes("components/calls-tab.css"), 'stylesheet imported');
 ok(!/data-tab="scheduled"|data-tab="drafts"/.test(vhbs) && vhbs.includes('data-tab="calls"'), 'three tabs: Messages · Calls · Shards');
-ok(vhbs.includes('data-filter="drafts"') && vhbs.includes('data-filter="scheduled"') && vhbs.includes('ncm-pill--out'), 'Drafts + Scheduled are chips in Messages');
+ok((vhbs.match(/class="ncm-viewer__split[s"{]/g) || []).length === 1, 'one .ncm-viewer__split (the message panel) — the Compose wrapper once stole it, and the collapse arrow and the panel height with it');
+ok(/.ncm-viewer__refine-controls {[^}]*flex-wrap: wrap/.test(read('styles/components/message-viewer.css')), 'the Dates / Sort / Filters row wraps instead of overflowing the column');
+ok(vhbs.includes('data-hmenu="folders"') && vhbs.includes('{{#each folderMenu}}') && vhbs.includes('{{#if folderChip.out}}ncm-pill--out{{/if}}'), 'Drafts + Scheduled live behind More ▾ and show as a dashed chip while open');
 ok(read('scripts/utils/constants.js').includes('VIEWER_CALLS'), 'partial is in TEMPLATES (preloaded)');
 ok(/calls-tab\.css/.test(read('styles/night-city-messenger.css')), 'css imported');
 

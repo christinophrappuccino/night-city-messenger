@@ -156,7 +156,7 @@ ok(/terminalSend\.impersonating/.test(read('templates/message-composer/message-c
   ok(mtSrc.includes('const viaByBase = this._sentViaIndex();') && mtSrc.includes('!!fromActor?.hasPlayerOwner || !!via?.impersonated') && mtSrc.includes('sentVia: via,'), 'NPC Inbox: impersonations count as player mail and carry the note');
   ok(mtSrc.includes("senderName: fromActor?.name ||"), 'NPC Inbox: a sender with no visible character no longer throws');
   // The NPC Inbox panel became Messages → Needs a reply (2026-10-27): the conversation flags the typist and explains it.
-  ok(read('templates/admin-panel/tab-messages.hbs').split(String.fromCharCode(10)).some((l) => l.includes('typedNotes') && l.includes('typed by {{typist}}')), 'Needs a reply shows the note'); }
+  ok(read('templates/admin-panel/tab-messages.hbs').includes('{{#if typed}}<i class="fas fa-user-ninja ty" data-tooltip="Typed on a terminal by {{ncm-tip typedNote}}"') && mtSrc.includes('typedNote: [...new Set(waitingMsgs.filter(m => m._via?.impersonated)'), 'Needs a reply says who typed it, on which machine'); }
 
 const C = await imp('scripts/utils/constants.js');
 ok(C.DEFAULTS.TERMINAL_CONFIG.accountMail.compose === false && C.DEFAULTS.TERMINAL_CONFIG.accountMail.log === true, 'defaults: off, logging on');

@@ -228,6 +228,10 @@ export class MessageViewerApp extends BaseApplication {
 
   /** @type {string} Search term */
   searchTerm = '';
+  /** The Chips tab's own search (the same box, its own term) and pill filter + keyboard cursor (2026-11-05). */
+  shardSearch = '';
+  _shardFilter = 'all';
+  _shardCursor = -1;
 
   /** @type {boolean} Whether search bar is expanded */
   searchActive = false;
@@ -690,6 +694,9 @@ export class MessageViewerApp extends BaseApplication {
       inventory: shardItems.filter(s => !s.isReceived).length,
       encrypted: shardItems.filter(s => s.isEncrypted).length,
     };
+    // the list as shown: the pill filter (state now, so a search re-render keeps it) and the search box
+    const shownShards = MessageViewerApp.filterShardItems(shardItems, this._shardFilter, this.shardSearch);
+    if (this._shardCursor >= shownShards.length) this._shardCursor = shownShards.length - 1;
 
     // ── Feature: Drafts ──
     const draftItems = this._buildDraftItems();
@@ -891,6 +898,8 @@ export class MessageViewerApp extends BaseApplication {
       showNetworkFilter: messageNetworks.length > 1,
       messageNetworks,
       counts,
+      // More ▾ (dev/mockups/inbox-cleanup-mock.html §2): the folders behind it, the open one as a chip, the new count
+      ...MessageViewerApp.folderChips(counts, this.currentFilter, this.settingsManager?.getExfilFolderName?.() || 'Exfil'),
 
       // Active filter tags (for refinement bar tag pills)
       hasDateRange: !!(this._dateRangeFrom || this._dateRangeTo),
@@ -901,7 +910,12 @@ export class MessageViewerApp extends BaseApplication {
 
       // Feature 6-7: Special tab data
       scheduledMessages,
-      shardItems,
+      shardItems: shownShards,
+      shardFilter: this._shardFilter,
+      shardSearching: !!this.shardSearch,
+      // the one search box: its value and count follow the tab
+      tabSearchTerm: getPrimaryTab(this.currentFilter) === 'shards' ? this.shardSearch : this.searchTerm,
+      tabSearchCount: getPrimaryTab(this.currentFilter) === 'shards' ? shownShards.length : null,
       shardCounts,
       // The Shard Encoder's primary door. Hidden entirely when the GM has not
       // switched player authoring on OR when this character does not qualify
@@ -941,6 +955,9 @@ export class MessageViewerApp extends BaseApplication {
     super._onRender?.(context, options);
     const html = this.element;
     if (!html) return;
+    // a re-render replaces the menus: drop the open one's document listeners
+    this._hmenuOff?.(); this._hmenuOff = null; this._hmenuTrigger = null;
+    if (this._shardCursor >= 0) queueMicrotask(() => this._paintShardCursor());
 
     // MOTION (#38) — stamp the entrance animations. Same discipline as the
     // terminal: this app re-renders on every click, so the row cascade must
@@ -1466,8 +1483,8 @@ export class MessageViewerApp extends BaseApplication {
     if (this._searchDebounce) clearTimeout(this._searchDebounce);
 
     this._searchDebounce = setTimeout(() => {
-      this.searchTerm = value.trim();
-      this.currentPage = 1;
+      if (getPrimaryTab(this.currentFilter) === 'shards') { this.shardSearch = value.trim(); this._shardCursor = -1; }
+      else { this.searchTerm = value.trim(); this.currentPage = 1; }
       this._restoreSearchFocus = { value, cursorPos: cursorPos ?? value.length };
       this.render();
     }, DEBOUNCE_SEARCH_MS);
@@ -1900,24 +1917,29 @@ export class MessageViewerApp extends BaseApplication {
 
     const key = event.key;
     const hasSelection = !!this.selectedMessageId;
-    const isMessages = getPrimaryTab(this.currentFilter) === 'messages';
+    const tab = getPrimaryTab(this.currentFilter);
+    const isMessages = tab === 'messages';
+    const isShards = tab === 'shards';
 
     switch (key) {
-      // ── Navigation ──
+      // ── Navigation (each tab's own; the arrows scroll normally where they do nothing) ──
       case 'ArrowUp':
-        event.preventDefault();
-        if (isMessages) this._navigateMessages(-1);
+      case 'ArrowDown': {
+        const dir = key === 'ArrowUp' ? -1 : 1;
+        if (isMessages) { event.preventDefault(); this._navigateMessages(dir); }
+        else if (isShards) { event.preventDefault(); this._moveShardCursor(dir); }
         break;
-      case 'ArrowDown':
-        event.preventDefault();
-        if (isMessages) this._navigateMessages(1);
-        break;
+      }
       case 'Enter':
-        event.preventDefault();
         if (isMessages && !hasSelection) {
+          event.preventDefault();
           // Select first message in list
           const firstId = this._lastPaginatedIds?.[0];
           if (firstId) this._selectMessage(firstId);
+        } else if (isShards) {
+          const rows = this.element.querySelectorAll('.ncm-viewer__shard-item');
+          const row = rows[this._shardCursor] || (rows.length === 1 ? rows[0] : null);
+          if (row) { event.preventDefault(); row.click(); }
         }
         break;
 
@@ -1961,7 +1983,8 @@ export class MessageViewerApp extends BaseApplication {
       // ── Global shortcuts ──
       case '/':
         event.preventDefault();
-        this._focusSearch();
+        if (tab === 'calls') this.element.querySelector('[data-calls-num]')?.focus();   // Calls: / dials
+        else this._focusSearch();
         break;
       case 'n':
       case 'N':
@@ -2653,25 +2676,40 @@ export class MessageViewerApp extends BaseApplication {
    * @param {string} filter — 'all' | 'received' | 'inventory' | 'encrypted'
    * @param {HTMLElement} pillEl — The clicked pill element
    */
-  _filterShards(filter, pillEl) {
-    const html = this.element;
-    if (!html) return;
-
-    // Toggle active pill
-    html.querySelectorAll('[data-action="filter-shards"]').forEach(p =>
-      p.classList.toggle('ncm-pill--active', p === pillEl)
-    );
-
-    // Show/hide shard items
-    html.querySelectorAll('.ncm-viewer__shard-item').forEach(item => {
-      const type = item.dataset.shardType;
-      const encrypted = item.dataset.shardEncrypted === 'true';
-      let show = true;
-      if (filter === 'received') show = type === 'received';
-      else if (filter === 'inventory') show = type === 'inventory';
-      else if (filter === 'encrypted') show = encrypted;
-      item.style.display = show ? '' : 'none';
+  /**
+   * The Chips list as shown: the pill (all | received | inventory | encrypted) and the search (name or who sent it).
+   * Pure, static, so the sims drive it.
+   */
+  static filterShardItems(items = [], filter = 'all', q = '') {
+    const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+    return items.filter((s) => {
+      if (filter === 'received' && !s.isReceived) return false;
+      if (filter === 'inventory' && s.isReceived) return false;
+      if (filter === 'encrypted' && !s.isEncrypted) return false;
+      const hay = `${s.name || ''} ${s.fromName || ''}`.toLowerCase();
+      return words.every((w) => hay.includes(w));
     });
+  }
+
+  /** Move the Chips keyboard cursor (↑ / ↓) and show it, without a re-render. */
+  _moveShardCursor(dir) {
+    const rows = [...(this.element?.querySelectorAll('.ncm-viewer__shard-item') || [])];
+    if (!rows.length) return;
+    const at = this._shardCursor < 0 ? (dir > 0 ? 0 : rows.length - 1) : Math.max(0, Math.min(rows.length - 1, this._shardCursor + dir));
+    this._shardCursor = at;
+    this._paintShardCursor();
+  }
+
+  _paintShardCursor() {
+    const rows = [...(this.element?.querySelectorAll('.ncm-viewer__shard-item') || [])];
+    rows.forEach((r, i) => r.classList.toggle('is-cursor', i === this._shardCursor));
+    rows[this._shardCursor]?.scrollIntoView?.({ block: 'nearest' });
+  }
+
+  _filterShards(filter, pillEl) {
+    this._shardFilter = ['all', 'received', 'inventory', 'encrypted'].includes(filter) ? filter : 'all';
+    this._shardCursor = -1;
+    this.render();
   }
 
   // ── Drafts ──
@@ -3687,6 +3725,64 @@ export class MessageViewerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
   //  Dropdown Management
   // ═══════════════════════════════════════════════════════════
+
+  /**
+   * The Messages chip row's More ▾ (dev/mockups/inbox-cleanup-mock.html §2). Drafts · Scheduled · Recovered, then
+   * Spam · Trash, with their counts (Recovered only once it holds something, as before). The folder you are in shows
+   * as a chip beside the menu; `moreNew` = unread mail in Spam + Recovered (Drafts and Scheduled are your own).
+   * @returns {{ folderMenu: object[], folderChip: object|null, moreNew: number }}
+   */
+  static folderChips(counts = {}, currentFilter = 'inbox', exfilName = 'Exfil') {
+    const rows = [
+      { key: 'drafts', icon: 'fa-file-pen', label: 'Drafts', count: counts.drafts || 0, out: true, tip: 'Mail you have not sent yet' },
+      { key: 'scheduled', icon: 'fa-clock', label: 'Scheduled', count: counts.scheduled || 0, out: true, tip: 'Mail waiting to go out at a set time' },
+      ...((counts.recovered || currentFilter === 'recovered') ? [{ key: 'recovered', icon: 'fa-download', label: exfilName, count: counts.recoveredUnread || counts.recovered || 0, hot: !!counts.recoveredUnread, tip: 'Everything pulled off a terminal' }] : []),
+      { sep: true },
+      { key: 'spam', icon: 'fa-ban', label: 'Spam', count: counts.spamUnread || counts.spam || 0, hot: !!counts.spamUnread },
+      { key: 'trash', icon: 'fa-trash', label: 'Trash', count: counts.trash || 0 },
+    ];
+    const folderMenu = rows.map((r) => (r.sep ? r : { ...r, on: r.key === currentFilter }));
+    const open = rows.find((r) => !r.sep && r.key === currentFilter) || null;
+    const folderChip = open ? { key: open.key, icon: open.icon, label: open.label, out: !!open.out, count: open.key === 'spam' ? (counts.spam || 0) : open.key === 'recovered' ? (counts.recovered || 0) : open.count } : null;
+    return { folderMenu, folderChip, moreNew: (counts.spamUnread || 0) + (counts.recoveredUnread || 0) };
+  }
+
+  /**
+   * Open / close one of the header + folder menus (`[data-hmenu]`, direct children of .ncm-viewer). Each is placed
+   * under its button from the two rects (the chip row clips, so a menu cannot live inside it). One open at a time;
+   * a click outside, a pick inside, or Escape closes it.
+   */
+  _toggleHeaderMenu(trigger) {
+    const root = this.element?.querySelector('.ncm-viewer');
+    const key = trigger?.dataset?.menu;
+    const menu = key ? root?.querySelector(`[data-hmenu="${key}"]`) : null;
+    if (!root || !menu) return;
+    const wasOpen = !menu.hidden;
+    this._closeHeaderMenus();
+    if (wasOpen) return;
+    const r = trigger.getBoundingClientRect(), v = root.getBoundingClientRect();
+    menu.hidden = false;
+    menu.style.top = `${Math.round(r.bottom - v.top + 4)}px`;
+    if (menu.dataset.align === 'right') { menu.style.right = `${Math.max(4, Math.round(v.right - r.right))}px`; menu.style.left = 'auto'; }
+    else { menu.style.left = `${Math.max(4, Math.round(r.left - v.left))}px`; menu.style.right = 'auto'; }
+    trigger.setAttribute('aria-expanded', 'true');
+    trigger.classList.add('is-open');
+    this._hmenuTrigger = trigger;
+    const onDown = (e) => { if (!menu.contains(e.target) && !trigger.contains(e.target)) this._closeHeaderMenus(); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); this._closeHeaderMenus(); trigger.focus?.(); } };
+    const onPick = (e) => { if (e.target.closest('.ncm-viewer__hmenu-item')) setTimeout(() => this._closeHeaderMenus(), 0); };
+    document.addEventListener('pointerdown', onDown, true);
+    document.addEventListener('keydown', onKey, true);
+    menu.addEventListener('click', onPick);
+    this._hmenuOff = () => { document.removeEventListener('pointerdown', onDown, true); document.removeEventListener('keydown', onKey, true); menu.removeEventListener('click', onPick); };
+    menu.querySelector('.ncm-viewer__hmenu-item:not([disabled])')?.focus?.({ preventScroll: true });
+  }
+
+  _closeHeaderMenus() {
+    this._hmenuOff?.(); this._hmenuOff = null;
+    this.element?.querySelectorAll('.ncm-viewer__hmenu').forEach((m) => { m.hidden = true; });
+    if (this._hmenuTrigger) { this._hmenuTrigger.setAttribute('aria-expanded', 'false'); this._hmenuTrigger.classList.remove('is-open'); this._hmenuTrigger = null; }
+  }
 
   /**
    * Toggle a dropdown menu.
@@ -4834,6 +4930,8 @@ export class MessageViewerApp extends BaseApplication {
       spam: 0,
       trash: 0,
       recovered: 0,
+      spamUnread: 0,       // More ▾ wears a badge for these: mail the player has not seen
+      recoveredUnread: 0,
     };
 
     for (const m of messages) {
@@ -4843,10 +4941,12 @@ export class MessageViewerApp extends BaseApplication {
       }
       if (m.metadata?.recovered) {
         counts.recovered++;
+        if (!m.status.read) counts.recoveredUnread++;
         continue;
       }
       if (m.status.spam) {
         counts.spam++;
+        if (!m.status.read) counts.spamUnread++;
         continue;
       }
       if (m.status.sent) {
@@ -5388,6 +5488,7 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   async close(options) {
+    this._hmenuOff?.(); this._hmenuOff = null;
     // After-read self-destruct: closing the viewer erases the open message.
     if (this.selectedMessageId) {
       await this._destroyAfterReadIfNeeded(this.selectedMessageId);
@@ -5464,6 +5565,9 @@ const VIEWER_ACTIONS = {
   },
   'set-sort': async function (target, messageId) {
     this._setSort(target.dataset.sort);
+  },
+  'toggle-hmenu': async function (target, messageId) {
+    this._toggleHeaderMenu(target);
   },
   'toggle-sort-dropdown': async function (target, messageId) {
     this._toggleDropdown('.ncm-sort-dropdown', target);

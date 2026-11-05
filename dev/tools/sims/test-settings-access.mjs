@@ -53,7 +53,7 @@ for (const [f, t] of Object.entries(src)) {
 ok(checked.length >= 5, `literal fallbacks found to check (${checked.length})`);
 ok(wrong.length === 0, `every literal fallback is the registered default:\n  ${wrong.join('\n  ')}`);
 ok(defs.anonSendEnabled === true, 'anonSendEnabled is registered on by default');
-ok(/getSetting\('anonSendEnabled', true\)/.test(src['scripts/ui/AdminPanel/tabs/MessagesTab.js'] || '') && /getSetting\('anonSendEnabled', true\)/.test(src['scripts/ui/MessageComposer/MessageComposerApp.js'] || ''), 'the admin panel and the composer read anonymous send the same way');
+ok(!/anonSendEnabled/.test(src['scripts/ui/AdminPanel/tabs/MessagesTab.js'] || '') && /getSetting\('anonSendEnabled', true\)/.test(src['scripts/ui/MessageComposer/MessageComposerApp.js'] || ''), 'anonymous send is read in one place, the composer (Needs a reply opens it to answer)');
 
 // ═══ 3. one reader, one primary-GM check ═══
 const privateReaders = Object.entries(src).filter(([f, t]) => f !== 'scripts/utils/helpers.js' && /_get\(key, fallback\)\s*\{\s*try\s*\{/.test(t)).map(([f]) => f);
@@ -61,7 +61,7 @@ ok(privateReaders.length === 0, `no private try/catch settings reader left (${pr
 // hand-written try/catch reads of a setting: 35 simple ones became getSetting (2026-11-05). The rest wrap more than
 // the read (an if block, several statements), so their catch also swallows other errors — they convert when their
 // file is next edited. The count may only go down.
-const TRY_READS_MAX = 70;
+const TRY_READS_MAX = 69;
 const tryReads = Object.entries(src).filter(([f]) => f !== 'scripts/utils/helpers.js').reduce((n, [, t]) => n + (t.match(/try\s*\{[^}]{0,200}?game\.settings\.get\(MODULE_ID/g) || []).length, 0);
 ok(tryReads <= TRY_READS_MAX, `try/catch settings reads: ${tryReads} (may only go down from ${TRY_READS_MAX}; use getSetting(key, registered default))`);
 if (tryReads < TRY_READS_MAX) console.log(`  note: try/catch settings reads are down to ${tryReads} — lower TRY_READS_MAX`);

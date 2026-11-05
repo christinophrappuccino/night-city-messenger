@@ -233,7 +233,7 @@ for (const uid of Object.keys(clients)) { globalThis.game = clients[uid].g; clie
   const ap = read('scripts/integrations/AccessPoints.js');
   ok(ap.includes('open: (ref, ns) => ns?.payphoneService?.open?.(ref.id, { skipReach: true }),'), 'links, macros and chat cards open a booth without a reach check');
   const pins = read('scripts/integrations/TerminalScenePins.js');
-  ok(/accessPayphone/.test(pins) && /_reachBlock\(doc, Number\(doc\.getFlag\(MODULE_ID, 'accessRange'\)\) \|\| 0, 'the payphone'\)/.test(pins), 'a payphone pin checks reach');
+  ok(/accessPayphone/.test(pins) && /_reachBlock\(doc, Number\(doc\.getFlag\(MODULE_ID, 'accessRange'\)\) \|\| 0, `the \$\{payphoneTerm\('lower'\)\}`\)/.test(pins), 'a payphone pin checks reach');
   ok(/removePinsForPayphone/.test(pins), 'a deleted payphone takes its pins');
   const fr = read('scripts/core/FactoryReset.js');
   ok(/accessPayphone/.test(fr) && /deleteEmbeddedDocuments\('Region', areas\)/.test(fr), 'Factory Reset clears payphone pins and step-on areas');

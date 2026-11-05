@@ -276,7 +276,7 @@
    --ncm-ink of its colour and the rest is the heading tone; the full colour stays on borders, icons and tints. ═══ */
 .ncm-admin-panel .ncm-msg2-flag { color: color-mix(in oklab, var(--fc) var(--ncm-ink-own, 50%), var(--ncm-text-heading)) !important; }   /* flags sit on their own tint: keep less colour */
 .ncm-admin-panel .ncm-msg2-jr__stat { color: color-mix(in oklab, var(--sc) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
-.ncm-admin-panel :is(.ncm-ct2-sub__alias, .ncm-msg2-dq__alias) { color: color-mix(in oklab, var(--ncm-secret) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
+.ncm-admin-panel :is(.ncm-ct2-sub__alias, .ncm-msg2-rq__alias) { color: color-mix(in oklab, var(--ncm-secret) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
 .ncm-admin-panel .ncm-ct2-grp .ncm-ct2-grp__p, .ncm-admin-panel .ncm-ct2-menu .it.danger { color: color-mix(in oklab, var(--ncm-bad) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
 .ncm-admin-panel :is(.ncm-ct2-grp .ncm-ct2-grp__w, .ncm-ct2-r .st .mail, .ncm-ct2-mxbar .chg, .is-w) { color: color-mix(in oklab, var(--ncm-attn) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
 .ncm-admin-panel .ncm-ct2-tally.all { color: color-mix(in oklab, var(--ncm-good) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
@@ -286,10 +286,8 @@
 /* a count badge on a red fill reads in the inverse text (white on the light red of clean-dark was 2.6:1) */
 .ncm-admin-panel .ncm-msg2-ct.bad,
 .ncm-admin-panel :is(.ncm-msg2-nav .ncm-msg2-ct.bad, .ncm-ct2-nav .ncm-ct2-navct.is-bad, .ncm-net2-nav .ncm-net2-navct.is-bad) { color: var(--ncm-text-inverse) !important; }
-/* the send button's identity count: an outline, not a tint that washed the white text out */
-.ncm-app .ncm-msg2-sendbtn .nid { background: none !important; border: 1px solid currentColor; }
-/* the desk queue's wait time sits on selected / hot rows: one tier up */
-.ncm-app .ncm-msg2-dq__end .t { color: var(--ncm-text-label) !important; }
+/* Needs a reply: the wait time sits on selected / hot rows: one tier up */
+.ncm-app .ncm-msg2-rq__row:not(.is-hot) .ncm-msg2-rq__wait .t { color: var(--ncm-text-label) !important; }
 /* access map: a point's number in its kind's colour */
 .ncm-admin-panel .ncm-acc2-big .pt { color: color-mix(in oklab, var(--kc) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }
 .ncm-admin-panel .ncm-acc2-big .pt.is-bad { color: color-mix(in oklab, var(--ncm-bad) var(--ncm-ink, 63%), var(--ncm-text-heading)) !important; }

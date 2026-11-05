@@ -5,12 +5,13 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 .ncm-app .ncm-viewer { --calls-ok: #4be38a; --calls-miss: #ff5468; --calls-vm: #f7c948; }
 .ncm-app .ncm-viewer .ncm-viewer__primary-badge--alert { background: var(--calls-miss) !important; color: #000 !important; }
-/* Drafts + Scheduled at the end of the Messages chips: dashed — mail you have not sent, not mail you received */
+/* Drafts / Scheduled (opened from More ▾, shown as a chip while open): dashed — mail you have not sent, not mail you received */
 .ncm-app .ncm-viewer .ncm-pill--out { border-style: dashed; }
 .ncm-app .ncm-viewer .ncm-pill--out.ncm-pill--active { border-style: solid; }
-.ncm-app .ncm-viewer .ncm-viewer__pills-div { flex: none; width: 1px; height: 16px; margin: 0 3px; background: var(--ncm-border); }
 
-.ncm-app .ncm-calls { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); border-top: 1px solid var(--ncm-border); color: var(--ncm-text-primary); }
+/* position: relative = the frame for the directory and the first-open card (both absolute, inset 0). Without it they
+   sized to .ncm-viewer, covered the Agent header, and the header's buttons sat over the directory's Close. */
+.ncm-app .ncm-calls { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); border-top: 1px solid var(--ncm-border); color: var(--ncm-text-primary); }
 .ncm-app .ncm-calls.is-picker, .ncm-app .ncm-calls.is-off { grid-template-columns: 1fr; overflow-y: auto; overflow-x: hidden; }
 .ncm-app .ncm-calls :where(button) { appearance: none !important; width: auto !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; line-height: 1 !important;
   font-family: inherit; cursor: pointer; }
@@ -390,20 +391,23 @@
 .ncm-calls-xlist > * { flex: none; }
 .ncm-calls-xhd { display: flex; align-items: center; gap: 10px; }
 .ncm-calls-xlist h3 { margin: 0; border: 0; font: 800 calc(15px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--ncm-text-primary); }
-.ncm-app .ncm-calls-xlist #xfind { flex: 1; min-width: 0; height: calc(30px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); color: var(--ncm-text-primary); font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); text-align: left; box-shadow: none; }
-.ncm-app .ncm-calls-xlist #xfind:focus { border-color: var(--ncm-secondary); }
+/* The directory's controls: Cyberpunk RED's `.application .window-content button` (0,2,1) paints every button white,
+   so each rule here is scoped under .ncm-app and its colours are !important (the search field was `#xfind`, an id
+   the markup never had: it is `data-xfind`). */
+.ncm-app .ncm-calls-xlist [data-xfind] { flex: 1; min-width: 0; height: calc(30px * var(--ncm-text-scale, 1)) !important; padding: 0 8px !important; background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary) !important; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important; text-align: left; box-shadow: none !important; }
+.ncm-app .ncm-calls-xlist [data-xfind]:focus { border-color: var(--ncm-secondary) !important; }
 .ncm-calls-xtabs { display: flex; gap: 2px; border-bottom: 1px solid var(--ncm-border); }
-.ncm-calls-xtabs button { appearance: none; width: auto; height: auto; min-height: 0; margin: 0 0 -1px; padding: 7px 11px; display: inline-flex; align-items: baseline; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; color: var(--ncm-text-secondary); font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); cursor: pointer; line-height: 1.1; }
-.ncm-calls-xtabs button:hover, .ncm-calls-xtabs button:focus-visible { color: var(--ncm-text-primary); }
-.ncm-calls-xtabs button.on { color: var(--ncm-text-primary); border-bottom-color: var(--ncm-secondary); }
-.ncm-calls-xtabs.is-searching button.on { border-bottom-color: transparent; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-xtabs button { appearance: none; width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 0 -1px !important; padding: 7px 11px !important; display: inline-flex; align-items: baseline; gap: 6px; background: none !important; border: 0 !important; border-bottom: 2px solid transparent !important; border-radius: 0; box-shadow: none !important; color: var(--ncm-text-secondary) !important; font: 600 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif) !important; cursor: pointer; line-height: 1.1 !important; }
+.ncm-app .ncm-calls-xtabs button:hover, .ncm-app .ncm-calls-xtabs button:focus-visible { color: var(--ncm-text-primary) !important; }
+.ncm-app .ncm-calls-xtabs button.on { color: var(--ncm-text-primary) !important; border-bottom-color: var(--ncm-secondary) !important; }
+.ncm-app .ncm-calls-xtabs.is-searching button.on { border-bottom-color: transparent !important; color: var(--ncm-text-secondary) !important; }
 .ncm-calls-xtabs small { font: calc(10.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
 .ncm-calls-xlist .ncm-calls-xpanel { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 7px; padding-right: 4px; }
 .ncm-calls-xpanel > * { flex: none; }
 .ncm-calls-xgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px 14px; }
 .ncm-calls-xgrid--one { grid-template-columns: minmax(0, 1fr); }
-.ncm-calls-xrow { appearance: none; width: 100%; justify-content: flex-start; height: auto; min-height: 0; margin: 0; padding: 4px 5px; display: flex; align-items: baseline; gap: 8px; min-width: 0; background: none; border: 0; border-radius: 2px; box-shadow: none; color: var(--ncm-text-primary); text-align: left; cursor: pointer; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); line-height: 1.25; }
-.ncm-calls-xrow:hover, .ncm-calls-xrow:focus-visible { background: color-mix(in srgb, var(--ncm-secondary) 11%, transparent); color: var(--ncm-text-primary); }
+.ncm-app .ncm-calls-xrow { appearance: none; width: 100% !important; justify-content: flex-start; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4px 5px !important; display: flex !important; align-items: baseline; gap: 8px; min-width: 0; background: none !important; border: 0 !important; border-radius: 2px; box-shadow: none !important; color: var(--ncm-text-primary) !important; text-align: left; cursor: pointer; font: calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif) !important; line-height: 1.25 !important; }
+.ncm-app .ncm-calls-xrow:hover, .ncm-app .ncm-calls-xrow:focus-visible { background: color-mix(in srgb, var(--ncm-secondary) 11%, transparent) !important; color: var(--ncm-text-primary) !important; }
 .ncm-calls-xrow code { flex: none; min-width: calc(34px * var(--ncm-text-scale, 1)); background: none; border: 0; padding: 0; font: 700 calc(12.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: color-mix(in oklab, var(--ncm-secondary) 78%, var(--ncm-text-primary)); }
 .ncm-calls-xrow .nm { min-width: 0; }
 .ncm-calls-xrow small { margin-left: auto; padding-left: 10px; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
@@ -576,6 +580,10 @@
 .ncm-app .ncm-calls-keys { max-height: calc(300px * var(--ncm-text-scale, 1)); }
 .ncm-app .ncm-calls-line__hd { flex-wrap: nowrap; gap: 3px; }
 .ncm-app .ncm-calls-line__hd .ncm-calls-mini.txt { padding-left: 5px !important; padding-right: 5px !important; }
+/* the ? sits beside the "My line" label as a bare glyph: as the last boxed tool it was pushed into the card's cut corner
+   and clipped once the row ran out of room (Text Size above 100%) */
+.ncm-app .ncm-calls-line__hd .ncm-calls-help { flex: none; width: auto !important; height: auto !important; padding: 0 2px !important; background: none !important; border: 0 !important; color: var(--ncm-text-secondary) !important; font-size: calc(10.5px * var(--ncm-text-scale, 1)) !important; line-height: 1 !important; }
+.ncm-app .ncm-calls-line__hd .ncm-calls-help:hover, .ncm-app .ncm-calls-line__hd .ncm-calls-help:focus-visible { color: var(--ncm-secondary) !important; }
 
 
 /* ═══ The log at scale: search, Show, date folds (mock dev/mockups/phone-log-folds-mock.html) ═══ */

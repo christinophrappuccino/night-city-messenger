@@ -19,6 +19,7 @@ import { log, isGM, resolveOperator, getSetting } from '../utils/helpers.js';
 import { sanitizePayphone, sanitizePayphones, sanitizeSavedStyles, sanitizeLook, lookFromStyle, placeLabel, payphoneLine, inReach, bystanders, speakerOn } from '../utils/payphones.js';
 import { normaliseNumber } from '../utils/phoneNumbering.js';
 import { isFeatureOn } from '../utils/features.js';
+import { payphoneTerm } from '../utils/payphoneTerm.js';
 
 const RING_EVERY_MS = 1700;
 
@@ -168,16 +169,16 @@ export class PayphoneService {
    * @returns {{ok: boolean, reason?: string}}
    */
   reach(pp, user = game.user) {
-    if (!pp) return { ok: false, reason: 'That payphone is gone.' };
+    if (!pp) return { ok: false, reason: `That ${payphoneTerm('lower')} is gone.` };
     if (user.isGM) return { ok: true };
     const pins = this.pinsOf(pp);
     if (!pins.length) return { ok: true };
     const scene = game.scenes.get(pp.sceneId);
-    if (user.viewedScene !== pp.sceneId) return { ok: false, reason: `The payphone is on ${scene?.name || 'another scene'}.` };
+    if (user.viewedScene !== pp.sceneId) return { ok: false, reason: `The ${payphoneTerm('lower')} is on ${scene?.name || 'another scene'}.` };
     const mine = this._tokensOn(scene).filter((t) => t.userId === user.id);
-    if (!mine.length) return { ok: false, reason: 'You need a token on this scene, standing at the payphone.' };
+    if (!mine.length) return { ok: false, reason: `You need a token on this scene, standing at the ${payphoneTerm('lower')}.` };
     const g = scene.grid?.size || 100;
-    return mine.some((t) => pins.some((p) => inReach(t, p, Math.max(p.range, 1), g))) ? { ok: true } : { ok: false, reason: "You're too far from the payphone. Walk up to it first." };
+    return mine.some((t) => pins.some((p) => inReach(t, p, Math.max(p.range, 1), g))) ? { ok: true } : { ok: false, reason: `You're too far from the ${payphoneTerm('lower')}. Walk up to it first.` };
   }
 
   /** Who else is in reach of a booth (for the speaker). */
@@ -199,8 +200,8 @@ export class PayphoneService {
 
   open(id, { skipReach = false } = {}) {
     const pp = this.get(id);
-    if (!pp) return void ncmNotify.warn('That payphone no longer exists.');
-    if (!this.enabled) { game.nightcity?.soundService?.play('error'); return void ncmNotify.warn(`${pp.name || 'This payphone'} is out of order.`); }
+    if (!pp) return void ncmNotify.warn(`That ${payphoneTerm('lower')} no longer exists.`);
+    if (!this.enabled) { game.nightcity?.soundService?.play('error'); return void ncmNotify.warn(`${pp.name || `This ${payphoneTerm('lower')}`} is out of order.`); }
     if (!skipReach) { const r = this.reach(pp); if (!r.ok) { game.nightcity?.soundService?.play('error'); return void ncmNotify.warn(r.reason); } }
     return game.nightcity?.payphoneBooth?.open(pp);
   }
@@ -267,7 +268,7 @@ export class PayphoneService {
     const near = this.reach(pp);
     const el = document.createElement('div');
     el.className = 'ncm-pb-ringnote ncm-app';
-    el.innerHTML = `<i class="fas fa-phone-volume"></i><div class="t"><b>A payphone is ringing</b><small>${foundry.utils.escapeHTML?.(placeLabel(pp)) ?? placeLabel(pp)}${near.ok ? ' — right next to you.' : ' — somewhere nearby.'}</small></div>
+    el.innerHTML = `<i class="fas fa-phone-volume"></i><div class="t"><b>${foundry.utils.escapeHTML?.(payphoneTerm('', { a: true })) ?? payphoneTerm('', { a: true })} is ringing</b><small>${foundry.utils.escapeHTML?.(placeLabel(pp)) ?? placeLabel(pp)}${near.ok ? ' — right next to you.' : ' — somewhere nearby.'}</small></div>
       <button type="button" data-pb-up ${near.ok ? '' : 'disabled'} data-tooltip="${tipText(near.ok ? 'Answer it. The caller sees the place, not you.' : 'Walk up to it to answer')}"><i class="fas fa-phone"></i> Pick up</button>
       <button type="button" data-pb-let data-tooltip="Anyone else near it can still answer">Let it ring</button>`;
     el.querySelector('[data-pb-up]').addEventListener('click', () => this.pickUp(call.id));
