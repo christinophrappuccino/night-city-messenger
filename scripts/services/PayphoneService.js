@@ -210,7 +210,9 @@ export class PayphoneService {
     const name = this.operator()?.name || game.user.name;
     const entry = on ? { userId: game.user.id, name, callId, speaker: !!speaker, at: Date.now() } : null;
     if (entry) this.inUse.set(id, entry); else if (this.inUse.get(id)?.userId === game.user.id) this.inUse.delete(id);
-    this.socket?.emit(SOCKET_OPS.PAYPHONE, { type: 'use', id, entry, userId: game.user.id });
+    // Everyone is told who holds the handset (bystanders see it on the booth) — but not WHICH call: that tied the
+    // masked booth call to the real player for anyone listening (audit PRIV-03). The call stays on this client.
+    this.socket?.emit(SOCKET_OPS.PAYPHONE, { type: 'use', id, entry: entry ? { ...entry, callId: null } : null, userId: game.user.id });
     this.bus?.emit(EVENTS.PAYPHONE_STATE, { id });
   }
 
@@ -385,7 +387,7 @@ export class PayphoneService {
         // hang-up of someone else's handset, is ignored.
         if (data.entry) {
           if (data.entry.userId !== senderId) return;
-          this.inUse.set(data.id, { ...data.entry, userId: senderId });
+          this.inUse.set(data.id, { ...data.entry, userId: senderId, callId: null });
         } else if (this.inUse.get(data.id)?.userId === senderId) this.inUse.delete(data.id);
         this.bus?.emit(EVENTS.PAYPHONE_STATE, { id: data.id });
         return;

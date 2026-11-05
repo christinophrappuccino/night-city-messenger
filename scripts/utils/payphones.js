@@ -145,6 +145,26 @@ export const payphoneLine = (pp) => ({ number: pp.number, kind: 'payphone', type
   owner: { kind: 'payphone', actorId: null, contactId: null, name: placeLabel(pp), userIds: [], payphoneId: pp.id } });
 
 /** A call from a booth as anyone but the GM and the person on the handset sees it: the place, never the person. */
+/**
+ * Who sees each side of a payphone call for real (audit PRIV-02), as send groups `{ userIds, maskFrom, maskTo }`.
+ * A booth side is real only for the GMs and the person on that booth (`realUserId`; for a booth being called, also
+ * whoever answered it). Everyone else gets that side masked. A non-booth side is never masked. Pure.
+ * @param {object} call @param {string[]} ids @param {(id: string) => boolean} isGM
+ */
+export function payphoneSendGroups(call, ids, isGM) {
+  const fromBooth = !!call?.from?.payphone, toBooth = call?.to?.kind === 'payphone';
+  const groups = new Map();
+  for (const id of ids || []) {
+    const gm = isGM(id);
+    const maskFrom = fromBooth && !gm && id !== call.from.realUserId;
+    const maskTo = toBooth && !gm && id !== call.to?.realUserId && id !== call.answeredBy;
+    const k = `${maskFrom ? 1 : 0}${maskTo ? 1 : 0}`;
+    if (!groups.has(k)) groups.set(k, { userIds: [], maskFrom, maskTo });
+    groups.get(k).userIds.push(id);
+  }
+  return [...groups.values()];
+}
+
 export function maskPayphoneSide(side = {}) {
   if (!side?.payphone && side?.kind !== 'payphone') return side;
   const { realActorId, realName, realUserId, ...rest } = side;

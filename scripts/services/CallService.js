@@ -27,7 +27,7 @@ import { normaliseNumber, displayNumber, parseNumber, rowOf, fullForm, freeLines
 import { createCall, createEndedCall, transition, resolveCallee, canCall, allowedModes, defaultMode, callSeconds, formatDuration, OUTCOMES,
   BUILT_MODES, makeLine, addLine, sideOf, transcriptOf, lineFromRightSide } from '../utils/callModel.js';
 import { dropReason, maskCaller, callerFor, interceptMail } from '../utils/callNet.js';
-import { placeLabel, maskPayphoneSide } from '../utils/payphones.js';
+import { placeLabel, maskPayphoneSide, payphoneSendGroups } from '../utils/payphones.js';
 import { dictateStatus } from '../ui/Calls/dictation.js';
 import { sanitizeLineSettings, greetingFor, goesToVoicemail, greetMs, makeVoicemail, voicemailOwner, recordingsToPurge, GREETING_RECORD_MS } from '../utils/voicemail.js';
 
@@ -846,13 +846,14 @@ export class CallService {
   _send(type, call, extra = {}) {
     const { lines, ...lite } = call;   // each client keeps its own transcript; lines travel one at a time ('line')
     const ids = this._audience(call);
-    // a payphone: who is really on it goes to the GMs and the person on the handset; everyone else sees the place
+    // A payphone: each booth side is shown for real only to the GMs and the person on THAT booth; everyone else sees
+    // the place. Judged per side (audit PRIV-02): the person who answered a booth's call is not the booth caller, so
+    // they get the masked caller like everyone else. (Module messages reach every client; this is what each SHOWS.)
     if (call.from?.payphone || call.to?.kind === 'payphone') {
-      const real = [call.from?.realUserId, call.to?.realUserId, call.answeredBy].filter(Boolean);
-      const open = ids.filter((id) => game.users.get(id)?.isGM || real.includes(id));
-      const masked = ids.filter((id) => !open.includes(id));
-      if (open.length) this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: lite, userIds: open, ...extra });
-      if (masked.length) this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: { ...lite, from: maskPayphoneSide(call.from), to: maskPayphoneSide(call.to) }, userIds: masked, ...extra });
+      for (const g of payphoneSendGroups(call, ids, (id) => !!game.users.get(id)?.isGM)) {
+        const shown = { ...lite, from: g.maskFrom ? maskPayphoneSide(call.from) : call.from, to: g.maskTo ? maskPayphoneSide(call.to) : call.to };
+        this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: shown, userIds: g.userIds, ...extra });
+      }
       return;
     }
     if (!call.from?.anon || call.traced) { this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: lite, userIds: ids, ...extra }); return; }
