@@ -103,7 +103,7 @@ This means: **to add a new service or hook, add a `register(phase, priority, nam
 
 ## Architecture: the public API (v2)
 
-`game.modules.get(id).api.v2` (`scripts/integrations/publicApi.js`, documented in **`docs/API.md`**, stage 2 step 18). Every method resolves `{ ok, data }` / `{ ok:false, code, error }` (codes `API_CODES`), never throws or toasts, takes ids and returns plain objects (never a document or a service), and calls the SAME service method the UI does (owner / GM checks for good errors; the relay checks for safety). Events: `events.on` only (no emit), names from `PUBLIC_EVENTS`. A new method: add it there + a row in docs/API.md (`test-public-api` fails on an undocumented method or code); a change of shape is a semver bump. v1 fields (`apiVersion` 1.2.0) stay for existing integrations.
+`game.modules.get(id).api.v2` (`scripts/integrations/publicApi.js`, documented in **`docs/API.md`**, stage 2 step 18; 2.1.0 added the GM writes, calls and networks.set). Every method resolves `{ ok, data }` / `{ ok:false, code, error }` (codes `API_CODES`), never throws or toasts, takes ids and returns plain objects (never a document or a service), and calls the SAME service method the UI does (owner / GM checks for good errors; the relay checks for safety). Events: `events.on` only (no emit), names from `PUBLIC_EVENTS`. A new method: add it there + a row in docs/API.md (`test-public-api` fails on an undocumented method or code); a change of shape is a semver bump. v1 fields (`apiVersion` 1.2.0) stay for existing integrations.
 
 ## Architecture: services
 

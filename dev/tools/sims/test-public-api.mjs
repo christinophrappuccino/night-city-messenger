@@ -35,7 +35,7 @@ const msgs = [
 globalThis.game = {
   get user() { return me; },
   actors, items: { get: (id) => ({ sh1: shard, t1: term }[id] ?? null) },
-  settings: { get: (m, k) => (k === 'networkSimulationEnabled' ? true : k === 'conversationsEnabled' ? false : undefined) },
+  settings: { get: (m, k) => (k === 'networkSimulationEnabled' ? true : k === 'conversationsEnabled' ? false : k === 'callsEnabled' ? true : undefined) },
   nightcity: {
     messageService: {
       sendMessage: async (d) => { calls.push(['send', d]); if (boom) throw new Error('kaboom'); return { success: true, messageId: 'new1' }; },
@@ -43,14 +43,24 @@ globalThis.game = {
       markAsRead: async (a, m) => ({ success: m === 'm1' }),
     },
     contactRepository: { getContacts: async (id) => [{ id: 'c1', name: 'Rogue', email: 'rogue@afterlife', actorId: 'N', trust: 4 }] },
-    masterContactService: { getAll: () => [{ id: 'd1', name: 'Rogue', email: 'rogue@afterlife', notes: 'GM secret' }], getContact: (id) => (id === 'd1' ? { id: 'd1', name: 'Rogue', email: 'rogue@afterlife' } : null) },
+    callService: {
+      placeCall: async (n, as) => { calls.push(['placeCall', n, as]); return n === '555-0000' ? { ok: false, error: 'Not in service.' } : { ok: true, call: { id: 'call-1', secret: 'x' } }; },
+      getLog: async (id) => [{ callId: 'c1', direction: 'out', other: { name: 'Rogue', number: '555-1234' }, outcome: 'answered', seconds: 42, startedAt: 5, gameTime: '2045', seen: true, heardBy: ['GM spy'] }],
+    },
+    masterContactService: {
+      addContact: async (d) => { calls.push(['addContact', d.name]); return { success: true, contact: { id: 'd2', name: d.name } }; },
+      updateContact: async (id, ch) => { calls.push(['updateContact', id, ch]); return { success: true, contact: { id } }; },
+      pushToPlayer: async (id, actorId) => { calls.push(['pushToPlayer', id, actorId]); return { success: true }; }, getAll: () => [{ id: 'd1', name: 'Rogue', email: 'rogue@afterlife', notes: 'GM secret' }], getContact: (id) => (id === 'd1' ? { id: 'd1', name: 'Rogue', email: 'rogue@afterlife' } : null) },
     portraitService: { resolvePortrait: (c) => (c?.id === 'd1' ? 'img/rogue.webp' : null) },
     contactGroupService: {
+      pushGroupToPlayer: async (g, a) => (g === 'gm1' ? { success: true, shared: 2, failed: ['Ghost'], internal: {} } : { success: false, shared: 0, failed: [], error: 'Group not found' }),
       groupsFor: ({ actorId }) => [...(actorId ? [{ id: 'g1', name: 'Crew', scope: 'actor', ownerActorId: actorId, members: [{}, {}] }] : []), ...(me.isGM ? [{ id: 'gm1', name: 'Fixers', scope: 'master', members: [{}] }] : [])],
       findGroup(id, ctx) { return this.groupsFor(ctx).find((g) => g.id === id) || (id === 'gm1' ? { id: 'gm1', name: 'Fixers', members: [] } : null); },
       recipientsFor: (g) => ({ recipients: [{ actorId: 'V', contactId: null, email: 'v@x', name: 'V', secret: 'x' }], unresolved: [] }),
     },
-    networkService: { currentNetwork: { id: 'CITINET', name: 'CitiNet', type: 'public', security: { password: 'hunter2' } }, signalStrength: 80, isDeadZone: false, simple: false, getAvailableNetworks: () => [{ id: 'CITINET', name: 'CitiNet', type: 'public', security: {} }], getNode: (id) => (id === 'n1' ? { id: 'n1' } : null) },
+    networkService: { currentNetwork: { id: 'CITINET', name: 'CitiNet', type: 'public', security: { password: 'hunter2' } }, signalStrength: 80, isDeadZone: false, simple: false, getAvailableNetworks: () => [{ id: 'CITINET', name: 'CitiNet', type: 'public', security: {} }], getNode: (id) => (id === 'n1' ? { id: 'n1' } : null),
+      getNetwork: (id) => (['CITINET', 'DARK'].includes(id) ? { id } : null), simpleMode: false,
+      switchNetwork: async (id) => (id === 'DARK' ? { success: false, reason: 'auth_required' } : { success: true }) },
     timeService: { getCurrentTime: () => '2045-01-05T12:00:00.000Z', getCurrentTimeMs: () => 1, getProviderInfo: () => ({ mode: 'manual' }) },
     dataShardService: { isDataShard: (i) => i === shard }, terminalService: { isTerminal: (i) => i === term },
     openInbox: (a, m) => calls.push(['openInbox', a, m]), composeMessage: (o) => calls.push(['compose', o]),
@@ -133,6 +143,34 @@ ok(r.ok === false && r.code === 'NOT_FOUND', 'open.shard on something that is no
 r = await call('open.node missing', () => api.open.node('zz'));
 ok(r.ok === false && r.code === 'NOT_FOUND', 'open.node on an unknown node: NOT_FOUND');
 
+// ═══ writes (API 2.1.0) — GM ═══
+r = await call('directory.add', () => api.directory.add({ name: 'Kerry' }));
+ok(r.ok && r.data.contactId === 'd2' && calls.at(-1)[0] === 'addContact', 'directory.add: the GM adds through MasterContactService.addContact');
+r = await call('directory.add no name', () => api.directory.add({}));
+ok(r.ok === false && r.code === 'BAD_INPUT', 'directory.add with no name: BAD_INPUT');
+r = await call('directory.update', () => api.directory.update('d1', { notes: 'x' }));
+ok(r.ok && calls.at(-1)[0] === 'updateContact', 'directory.update');
+r = await call('directory.update missing', () => api.directory.update('zz', {}));
+ok(r.ok === false && r.code === 'NOT_FOUND', 'directory.update on an unknown contact: NOT_FOUND');
+r = await call('directory.pushToPlayer', () => api.directory.pushToPlayer('d1', 'V'));
+ok(r.ok && calls.at(-1).join() === 'pushToPlayer,d1,V', 'directory.pushToPlayer');
+r = await call('groups.push', () => api.groups.push('gm1', 'V'));
+ok(r.ok && r.data.shared === 2 && r.data.failed.join() === 'Ghost' && !('internal' in r.data), 'groups.push: plain result (shared / failed)');
+r = await call('groups.push missing', () => api.groups.push('nope', 'V'));
+ok(r.ok === false && r.code === 'NOT_FOUND', 'groups.push on an unknown group: NOT_FOUND');
+r = await call('calls.place as contact', () => api.calls.place('555-1234', { contactId: 'd1' }));
+ok(r.ok && r.data.callId === 'call-1' && calls.at(-1)[2].contactId === 'd1' && !('secret' in r.data), 'calls.place: the GM may call as a directory contact; only the call id comes back');
+r = await call('calls.place refused', () => api.calls.place('555-0000'));
+ok(r.ok === false && r.code === 'FAILED' && /Not in service/.test(r.error), 'calls.place: the call service\'s refusal comes back as FAILED with its words');
+r = await call('calls.logFor', () => api.calls.logFor('V'));
+ok(r.ok && r.data[0].otherName === 'Rogue' && r.data[0].seconds === 42 && !('heardBy' in r.data[0]), 'calls.logFor: plain entries, never who listened in');
+r = await call('networks.set', () => api.networks.set('CITINET'));
+ok(r.ok, 'networks.set: the GM switches this client');
+r = await call('networks.set refused', () => api.networks.set('DARK'));
+ok(r.ok === false && /auth required/.test(r.error), 'networks.set: the network service\'s reason comes back');
+r = await call('networks.set unknown', () => api.networks.set('NOPE'));
+ok(r.ok === false && r.code === 'NOT_FOUND', 'networks.set on an unknown network: NOT_FOUND');
+
 // ═══ player (owns V) ═══
 me = users.p1;
 r = await call('p: send as own', () => api.messages.send({ toActorId: 'N', fromActorId: 'V', subject: 's', body: 'b' }));
@@ -157,6 +195,18 @@ r = await call('p: GM group', () => api.groups.recipientsFor('gm1', { actorId: '
 ok(r.ok === false && r.code === 'NOT_FOUND', "a player cannot resolve the GM's group");
 r = await call('p: open inbox other', () => api.open.inbox('N'));
 ok(r.ok === false && r.code === 'NOT_OWNER', "a player cannot open another character's inbox");
+for (const [label, fn] of [['p: directory.add', () => api.directory.add({ name: 'x' })], ['p: directory.update', () => api.directory.update('d1', {})],
+  ['p: directory.push', () => api.directory.pushToPlayer('d1', 'V')], ['p: groups.push', () => api.groups.push('gm1', 'V')], ['p: networks.set', () => api.networks.set('CITINET')]]) {
+  r = await call(label, fn); ok(r.ok === false && r.code === 'NOT_GM', `${label.slice(3)}: GM only`);
+}
+r = await call('p: calls.place as contact', () => api.calls.place('555-1234', { contactId: 'd1' }));
+ok(r.ok === false && r.code === 'NOT_GM', 'a player cannot call as a directory contact');
+r = await call('p: calls.place as NPC', () => api.calls.place('555-1234', { actorId: 'N' }));
+ok(r.ok === false && r.code === 'NOT_OWNER', "a player cannot call as a character they don't own");
+r = await call('p: calls.logFor other', () => api.calls.logFor('N'));
+ok(r.ok === false && r.code === 'NOT_OWNER', "a player cannot read another character's call log");
+r = await call('p: calls.logFor contact', () => api.calls.logFor('d1'));
+ok(r.ok === false && r.code === 'NOT_GM', "a directory contact's call log is the GM's");
 r = await call('p: unknown actor', () => api.messages.listFor('ghost'));
 ok(r.ok === false && r.code === 'NOT_FOUND', 'an unknown actor: NOT_FOUND');
 
@@ -172,7 +222,7 @@ const bad = shapes.filter(([, good]) => !good);
 ok(bad.length === 0, `every result is { ok, data } or { ok:false, code, error } and nothing threw (${bad.map(([l, , t]) => l + (t ? ': ' + t : '')).join('; ')})`);
 const notPlain = shapes.filter(([, , , res]) => res && !plain(res));
 ok(notPlain.length === 0, `every result is plain data (${notPlain.map(([l]) => l).join(', ')})`);
-ok(shapes.length >= 38, `covered ${shapes.length} calls`);
+ok(shapes.length >= 60, `covered ${shapes.length} calls`);
 
 // ═══ events: listen, never emit ═══
 const heard = [];
@@ -184,7 +234,7 @@ ok(heard.join() === 'e1', 'events.on hears a documented event; the returned func
 ok(api.events.on('network:changed', () => {}) === null && api.events.on('message:sent', 'x') === null, 'only documented names, only functions');
 ok(!('emit' in api.events) && !JSON.stringify(Object.keys(api)).includes('eventBus'), 'no emit, no raw event bus');
 ok(Object.isFrozen(api) && Object.isFrozen(api.messages) && Object.isFrozen(api.open), 'the object and its namespaces are frozen');
-ok(API_V2_VERSION === '2.0.0' && api.version === '2.0.0', 'version 2.0.0');
+ok(API_V2_VERSION === '2.1.0' && api.version === '2.1.0', 'version 2.1.0 (writes added; nothing changed or removed)');
 
 // ═══ wiring + docs ═══
 const B = read('scripts/integrations/IntegrationBridge.js');

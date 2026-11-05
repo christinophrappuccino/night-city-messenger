@@ -24,7 +24,7 @@ import { isFeatureOn, featureList, FEATURES } from '../utils/features.js';
 import { resolveDisplayName } from '../utils/helpers.js';
 import { PUBLIC_EVENTS } from './publicEvents.js';
 
-export const API_V2_VERSION = '2.0.0';
+export const API_V2_VERSION = '2.1.0';   // 2.1.0: directory add/update/pushToPlayer, groups.push, calls, networks.set
 
 /** The error codes a v2 method can return. */
 export const API_CODES = Object.freeze(['BAD_INPUT', 'NOT_GM', 'NOT_OWNER', 'NOT_FOUND', 'FEATURE_OFF', 'UNAVAILABLE', 'FAILED']);
@@ -77,6 +77,12 @@ const contactSummary = (c) => ({
   role: c.role ?? '', portrait: service('portraitService')?.resolvePortrait?.(c) || c.portrait || null,
 });
 const groupSummary = (g) => ({ id: g.id, name: g.name ?? '', scope: g.scope ?? null, ownerActorId: g.ownerActorId ?? null, members: (g.members || []).length });
+/** A service's own answer ({ success | ok, error, … }) → the v2 result. */
+const fromService = (res, data = () => ({})) => (res && (res.success === true || res.ok === true)
+  ? ok(data(res)) : no('FAILED', res?.error || (res?.reason ? `Refused: ${String(res.reason).replace(/_/g, ' ')}.` : 'NCM refused it.')));
+const callSummary = (l) => ({ callId: l.callId, direction: l.direction === 'out' ? 'out' : 'in', outcome: l.outcome ?? null,
+  otherName: l.other?.name ?? '', otherNumber: l.other?.number ?? '', seconds: Number(l.seconds) || 0, startedAt: l.startedAt || 0,
+  gameTime: l.gameTime || '', seen: !!l.seen, written: !!l.written });
 const networkSummary = (n) => (n ? { id: n.id, name: n.name ?? n.id, type: n.type ?? null } : null);
 
 /**
@@ -200,6 +206,28 @@ export function buildApiV2() {
         const c = service('masterContactService')?.getContact?.(str(contactId));
         return c ? ok(contactSummary(c)) : no('NOT_FOUND', 'No such directory contact.');
       }),
+      /** Add a directory contact (GM). @param {object} data { name, email?, role?, notes?, actorId?, portrait? … } — as the GM's form takes */
+      add: guard(async (data = {}) => {
+        if (!gm()) return no('NOT_GM', 'The directory is the GM\'s.');
+        if (needs('masterContactService')) return needs('masterContactService');
+        if (!str(data?.name)) return no('BAD_INPUT', 'A contact needs a name.');
+        return fromService(await service('masterContactService').addContact({ ...data }), (r) => ({ contactId: r.contact?.id ?? null }));
+      }),
+      /** Change a directory contact (GM). @param {string} contactId @param {object} changes */
+      update: guard(async (contactId, changes = {}) => {
+        if (!gm()) return no('NOT_GM', 'The directory is the GM\'s.');
+        if (needs('masterContactService')) return needs('masterContactService');
+        if (!service('masterContactService').getContact?.(str(contactId))) return no('NOT_FOUND', 'No such directory contact.');
+        return fromService(await service('masterContactService').updateContact(str(contactId), { ...changes }), () => ({ contactId: str(contactId) }));
+      }),
+      /** Put a directory contact in a character's own contact list (GM). @param {string} contactId @param {string} actorId */
+      pushToPlayer: guard(async (contactId, actorId) => {
+        if (!gm()) return no('NOT_GM', 'The directory is the GM\'s.');
+        if (needs('masterContactService')) return needs('masterContactService');
+        const r = ownActor(actorId); if (r.err) return r.err;
+        if (!service('masterContactService').getContact?.(str(contactId))) return no('NOT_FOUND', 'No such directory contact.');
+        return fromService(await service('masterContactService').pushToPlayer(str(contactId), r.actor.id), () => ({ contactId: str(contactId), actorId: r.actor.id }));
+      }),
     },
 
     // ───────────────────────── groups ─────────────────────────
@@ -225,6 +253,44 @@ export function buildApiV2() {
         const { recipients = [], unresolved = [] } = svc.recipientsFor(g) || {};
         return ok({ recipients: recipients.map((x) => ({ actorId: x.actorId ?? null, contactId: x.contactId ?? null, email: x.email ?? '', name: x.name ?? '' })), unresolved });
       }),
+      /** Give one of the GM's groups to a character, sharing any member they don't know yet (GM). */
+      push: guard(async (groupId, actorId) => {
+        if (!gm()) return no('NOT_GM', 'Only the GM pushes groups.');
+        if (needs('contactGroupService')) return needs('contactGroupService');
+        const r = ownActor(actorId); if (r.err) return r.err;
+        const res = await service('contactGroupService').pushGroupToPlayer(str(groupId), r.actor.id);
+        if (res?.error === 'Group not found') return no('NOT_FOUND', 'No such GM group.');
+        return fromService(res, (x) => ({ shared: x.shared ?? 0, failed: [...(x.failed || [])] }));
+      }),
+    },
+
+    // ───────────────────────── calls ─────────────────────────
+    calls: {
+      /**
+       * Place a call, as the call screen does. A player calls as their character ({ actorId } one they own, else
+       * their assigned character); a GM may call as any character or directory contact ({ actorId } / { contactId }).
+       * @param {string} number @param {object} [as]
+       */
+      place: guard(async (number, as = {}) => {
+        if (!isFeatureOn('calls')) return no('FEATURE_OFF', 'Calls are switched off in this world.');
+        if (needs('callService')) return needs('callService');
+        if (!str(number)) return no('BAD_INPUT', 'A number is required.');
+        const who = {};
+        if (str(as?.actorId)) { const r = ownActor(as.actorId); if (r.err) return r.err; who.actorId = r.actor.id; }
+        if (str(as?.contactId)) { if (!gm()) return no('NOT_GM', 'Only the GM calls as a directory contact.'); who.contactId = str(as.contactId); }
+        return fromService(await service('callService').placeCall(str(number), who), (x) => ({ callId: x.call?.id ?? null, emergency: !!x.emergency }));
+      }),
+      /** A character's call log, newest first (owner / GM; a directory contact's: GM). @param {string} ownerId */
+      logFor: guard(async (ownerId) => {
+        if (!isFeatureOn('calls')) return no('FEATURE_OFF', 'Calls are switched off in this world.');
+        if (needs('callService')) return needs('callService');
+        const id = str(ownerId);
+        if (!id) return no('BAD_INPUT', 'An actorId or contactId is required.');
+        if (globalThis.game?.actors?.get?.(id)) { const r = ownActor(id); if (r.err) return r.err; }
+        else if (!gm()) return no('NOT_GM', 'A directory contact\'s calls are the GM\'s.');
+        else if (!service('masterContactService')?.getContact?.(id)) return no('NOT_FOUND', 'No such character or directory contact.');
+        return ok(((await service('callService').getLog(id)) || []).map(callSummary));
+      }),
     },
 
     // ───────────────────────── networks (read) ─────────────────────────
@@ -240,6 +306,16 @@ export function buildApiV2() {
         const n = service('networkService');
         if (!n) return needs('networkService');
         return ok((n.getAvailableNetworks() || []).map(networkSummary));
+      }),
+      /** Put THIS client on a network (GM — as the GM's macro does; players switch through their network selector). */
+      set: guard(async (networkId) => {
+        if (!gm()) return no('NOT_GM', 'Only the GM switches by API.');
+        const n = service('networkService');
+        if (!n) return needs('networkService');
+        if (!n.getNetwork?.(str(networkId))) return no('NOT_FOUND', 'No such network.');
+        if (n.simple && str(networkId) !== 'CITINET') return no('FEATURE_OFF', 'Simple network mode is on: everyone is on CitiNet.');
+        const res = await n.switchNetwork(str(networkId), { force: true });
+        return fromService(res, () => networkSummary(n.currentNetwork));
       }),
     },
 

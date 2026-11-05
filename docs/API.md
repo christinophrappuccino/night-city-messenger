@@ -1,6 +1,6 @@
 # Night City Messenger — API v2
 
-For other modules and for macros. Version **2.0.0**.
+For other modules and for macros. Version **2.1.0** (2.1.0 added the writes: directory add / update / pushToPlayer, groups.push, calls, networks.set).
 
 ```js
 const ncm = game.modules.get('night-city-messenger')?.api?.v2;
@@ -126,6 +126,9 @@ The GM's master contact directory. It is GM-only because it holds GM notes. The 
 |---|---|---|
 | `directory.list()` | GM | `[{ id, name, email, actorId, trust, role, portrait }]` |
 | `directory.get(contactId)` | GM | one summary |
+| `directory.add({ name, email?, role?, notes?, actorId?, portrait? … })` | GM | `{ contactId }` — the same fields the GM's contact form takes |
+| `directory.update(contactId, changes)` | GM | `{ contactId }` |
+| `directory.pushToPlayer(contactId, actorId)` | GM | `{ contactId, actorId }` — puts the contact in that character's own list (as the GM's Push does) |
 
 ## groups
 
@@ -133,13 +136,24 @@ The GM's master contact directory. It is GM-only because it holds GM notes. The 
 |---|---|---|
 | `groups.list({ actorId? })` | owner of `actorId` / GM | `[{ id, name, scope, ownerActorId, members }]`, where `members` is a count. The GM's own groups (`scope: 'master'`) are listed only for the GM. |
 | `groups.recipientsFor(groupId, { actorId? })` | the group's owner / GM | `{ recipients: [{ actorId, contactId, email, name }], unresolved: [names] }` |
+| `groups.push(groupId, actorId)` | GM | `{ shared, failed: [names] }` — gives one of the GM's groups to a character, sharing members they don't know yet |
 
-## networks (read)
+## calls
+
+`FEATURE_OFF` when Calls is switched off in the world.
+
+| Method | Who | `data` |
+|---|---|---|
+| `calls.place(number, { actorId?, contactId? })` | a player as their own character (or one they own); the GM as any character or directory contact | `{ callId, emergency }` — rings as the call screen would; a refusal ("Not in service", already calling…) is `FAILED` with its words |
+| `calls.logFor(ownerId)` | owner / GM (a directory contact's log: GM) | `[{ callId, direction, outcome, otherName, otherNumber, seconds, startedAt, gameTime, seen, written }]`, newest first — never who listened in |
+
+## networks
 
 | Method | `data` |
 |---|---|
 | `networks.status()` | `{ network: { id, name, type }, signal, deadZone, simple }` for this client |
 | `networks.available()` | `[{ id, name, type }]`, the networks on offer on this client's scene |
+| `networks.set(networkId)` | GM only: puts THIS client on a network, as the GM's macro does (players switch through their own selector). `FEATURE_OFF` for anything but CitiNet in simple network mode. |
 
 In simple network mode (`features.has('networks') === false`), `status()` always says CitiNet, at full signal, with no dead zone.
 
