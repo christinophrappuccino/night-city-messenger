@@ -240,7 +240,10 @@ export class PayphoneService {
     if (!call || role !== 'callee' || call.to?.kind !== 'payphone' || this._ringing.has(call.id)) return;
     const pp = this.get(call.to.payphoneId);
     if (!pp) return;
+    const started = Date.now();
     const ring = () => {
+      // The bell checks for itself (audit PERF-12): a missed "ended" event used to leave it ringing for good.
+      if (ringShouldStop(this.calls?.calls?.get?.(call.id), started, Date.now(), this.calls?.ringMs)) { this._stopRing(call.id); return; }
       const src = pp.sounds?.ring;
       if (src) game.nightcity?.soundService?.playFile?.(src);
       else game.nightcity?.soundService?.play('payphone-ring');
@@ -422,4 +425,13 @@ export class PayphoneService {
 
   /** The booth's own call log (GM): pages in the payphone log journal for this booth, newest first. */
   logOf(id) { return (this.calls?.payphoneLog?.() || []).filter((l) => l.me?.payphone === id); }
+}
+
+/**
+ * Should a booth's bell stop (audit PERF-12)? When the call is gone or no longer ringing, or it has rung well past
+ * the ring time (the call clears itself then, so this is only a backstop). Pure.
+ */
+export function ringShouldStop(call, startedMs, nowMs, ringMs = 30000) {
+  if (!call || call.state !== 'ringing') return true;
+  return nowMs - startedMs > (Number(ringMs) || 30000) + 10000;
 }

@@ -40,8 +40,20 @@ export class ConversationService {
   // ─── reading ───
 
   _isConv(j) { return j?.getFlag?.(MODULE_ID, 'type') === 'conversation'; }
-  _journals() { return (game.journal?.contents || [...(game.journal || [])]).filter((j) => this._isConv(j)); }
-  _journal(id) { return this._journals().find((j) => j.getFlag(MODULE_ID, 'conversationId') === id) || null; }
+  // Audit PERF-10: every lookup scanned every journal in the world — several times per line on the GM. Once the
+  // journal hooks are wired (`wire`), the list and an id → journal map are kept until a journal is created, changed
+  // or deleted. Before that (or with conversations off) it reads fresh every time, as it always did.
+  _journals() {
+    if (this._jIndex) return this._jIndex.list;
+    const list = (game.journal?.contents || [...(game.journal || [])]).filter((j) => this._isConv(j));
+    if (this._indexWired) this._jIndex = { list, byId: new Map(list.map((j) => [j.getFlag(MODULE_ID, 'conversationId'), j])) };
+    return list;
+  }
+  _journal(id) {
+    const list = this._journals();
+    if (this._jIndex) return this._jIndex.byId.get(id) || null;
+    return list.find((j) => j.getFlag(MODULE_ID, 'conversationId') === id) || null;
+  }
 
   _view(j) {
     const f = j.flags?.[MODULE_ID] || {};
@@ -554,6 +566,13 @@ export class ConversationService {
 
   /** The Journal hooks: lines arriving, and the chat changing. */
   wire() {
+    // the journal index (PERF-10) is dropped on any journal change; registered first so every later hook reads fresh
+    const dropIndex = () => { this._jIndex = null; };
+    Hooks.on('createJournalEntry', dropIndex);
+    Hooks.on('updateJournalEntry', dropIndex);
+    Hooks.on('deleteJournalEntry', dropIndex);
+    this._jIndex = null;
+    this._indexWired = true;
     const bus = () => game.nightcity?.eventBus;
     const seen = (page, lines) => {
       const j = page.parent;

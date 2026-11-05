@@ -1194,7 +1194,15 @@ export class MessageViewerApp extends BaseApplication {
     const wavePath = html.querySelector('.ncm-viewer__signal-wave-path');
     if (wavePath) {
       const isCritical = html.querySelector('.ncm-viewer__signal-strip--critical');
-      const animate = () => {
+      // Audit PERF-08: it redrew every animation frame forever, minimized or not, whatever the motion setting.
+      // Now: ~12 redraws a second (the jitter reads the same), no drawing while minimized, it stops once removed, ONE still
+      // frame when motion is off (OS reduced motion or the module's animation setting) — `waveAnimates` says which.
+      const motion = waveAnimates(this.animationLevel, globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+      let last = 0;
+      const animate = (t = 0) => {
+        if (!wavePath.isConnected) { this._ambientRAF = null; return; }
+        if (motion && (this.minimized || t - last < WAVE_FRAME_MS)) { this._ambientRAF = requestAnimationFrame(animate); return; }
+        last = t;
         const pts = [];
         const w = 200, mid = 6;
         if (isCritical) {
@@ -1219,7 +1227,7 @@ export class MessageViewerApp extends BaseApplication {
           }
         }
         wavePath.setAttribute('d', `M${pts.join(' L')}`);
-        this._ambientRAF = requestAnimationFrame(animate);
+        this._ambientRAF = motion ? requestAnimationFrame(animate) : null;
       };
       this._ambientRAF = requestAnimationFrame(animate);
     }
@@ -6197,4 +6205,12 @@ export class MessageViewerApp extends BaseApplication {
     }
     return super.close(options);
   }
+}
+
+/** How often the weak-signal waveform redraws while it animates (audit PERF-08). */
+export const WAVE_FRAME_MS = 80;
+
+/** Does the weak-signal waveform animate? Not when the module's animation setting is off or the OS asks for less motion. Pure. */
+export function waveAnimates(animationLevel, osReduced) {
+  return animationLevel !== 'off' && !osReduced;
 }
