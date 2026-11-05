@@ -1800,6 +1800,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       }
     };
 
+    // One page-wide listener per composer (PERF-03): each render used to add another and close() removed only
+    // the last, so the rest kept running — and kept closed composers in memory.
+    if (this._editorStateHandler) document.removeEventListener('selectionchange', this._editorStateHandler);
     document.addEventListener('selectionchange', updateActiveStates);
     editor.addEventListener('keyup', updateActiveStates);
     this._editorStateHandler = updateActiveStates;
@@ -1825,6 +1828,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   // ─── Keyboard Shortcuts ───────────────────────────────────
 
   _setupKeyboardShortcuts() {
+    // Bound ONCE: this.element is the window frame, which survives every render (PERF-03: N renders = Escape
+    // closing N times, Ctrl+Enter sending N times).
+    if (this._keysBound) return;
+    this._keysBound = true;
     const handler = (e) => {
       if (e.ctrlKey && e.key === 'Enter') {
         e.preventDefault();

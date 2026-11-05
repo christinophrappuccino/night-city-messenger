@@ -305,12 +305,12 @@
       {{/if}}
     </div>
   </div>
-</div>
 
-{{!-- ═══ Footer Actions ═══ --}}
-<div class="ncm-create-net__footer">
+  {{!-- ═══ Footer Actions ═══ (inside the one root: an AppV2 part must render a single element) --}}
+  <div class="ncm-create-net__footer">
   <button type="button" class="ncm-create-net__btn ncm-create-net__btn--ghost" data-action="cancel">Cancel</button>
   <div class="ncm-create-net__footer-spacer"></div>
   <button type="button" class="ncm-create-net__btn ncm-create-net__btn--ghost" data-action="createAndClose"><i class="fas fa-save"></i> Create &amp; Close</button>
   <button type="button" class="ncm-create-net__btn ncm-create-net__btn--primary" data-action="createAndOpen"><i class="fas fa-save"></i> Create &amp; Open in Manager</button>
+  </div>
 </div>

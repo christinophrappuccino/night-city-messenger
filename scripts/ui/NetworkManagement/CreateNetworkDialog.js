@@ -366,12 +366,17 @@ export class CreateNetworkDialog extends BaseApplication {
     }
 
     // ─── Enter key submits the form ───
-    html.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
-        e.preventDefault();
-        this._doCreate(false);
-      }
-    });
+    // Bound ONCE: `this.element` is the window frame, which survives every re-render, and the dialog re-renders on
+    // most field changes — so it used to gain one more handler each time, and one Enter created N networks (PERF-02).
+    if (!this._enterBound) {
+      this._enterBound = true;
+      html.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          this._doCreate(false);
+        }
+      });
+    }
   }
 
   // ─── Form Sync Helper ───
@@ -505,7 +510,15 @@ export class CreateNetworkDialog extends BaseApplication {
    * Validate form, build network data, call NetworkService.createNetwork().
    * @param {boolean} openInManager - Whether to open the Network Manager after creation
    */
+  /** One create at a time: a double click or Enter + click while the first is still saving makes one network (PERF-02). */
   async _doCreate(openInManager = false) {
+    if (this._creating) return;
+    this._creating = true;
+    try { return await this._doCreateNow(openInManager); } finally { this._creating = false; }
+  }
+
+  /** @private */
+  async _doCreateNow(openInManager = false) {
     this._syncFormToData();
     const data = this._formData;
 
