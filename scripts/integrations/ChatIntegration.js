@@ -15,9 +15,13 @@ export class ChatIntegration {
    * Register chat integration hooks. Called once during init phase.
    */
   static register() {
-    // Delegated event binding — register once when chat log renders
-    Hooks.once('renderChatLog', (app, html) => {
+    // Delegated event binding on EVERY chat log — the sidebar's and a popped-out one (audit COMPAT-10: `once` bound
+    // only the first, so the card buttons were dead in a pop-out). Each element is bound once.
+    const bound = new WeakSet();
+    Hooks.on('renderChatLog', (app, html) => {
       const chatLog = html[0] || html;
+      if (!chatLog?.addEventListener || bound.has(chatLog)) return;
+      bound.add(chatLog);
 
       chatLog.addEventListener('click', (e) => {
         // Handle "View in Inbox" button on shared message cards

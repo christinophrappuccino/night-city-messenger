@@ -73,7 +73,9 @@ export class TerminalScenePins {
     // still claim terminal items before Item Piles / core placement logic.
     Hooks.on('dropCanvasData', (_canvas, data) => {
       if (data?.type !== 'Item' || !data.uuid) return;
-      const item = fromUuidSync(data.uuid);
+      // fromUuidSync throws on an item inside a compendium entry (audit COMPAT-08): that is never a terminal drop
+      let item = null;
+      try { item = fromUuidSync(data.uuid); } catch { return; }
       if (!item?.getFlag?.(MODULE_ID, 'isTerminal')) return;
       this._handleTerminalDrop(item, { x: data.x, y: data.y });
       return false;
@@ -129,7 +131,9 @@ export class TerminalScenePins {
       try { data = JSON.parse(event.dataTransfer?.getData('text/plain') || ''); }
       catch { return; }
       if (data?.type !== 'Item' || !data.uuid) return;
-      const item = fromUuidSync(data.uuid);
+      // fromUuidSync throws on an item inside a compendium entry (audit COMPAT-08): that is never a terminal drop
+      let item = null;
+      try { item = fromUuidSync(data.uuid); } catch { return; }
       if (!item?.getFlag?.(MODULE_ID, 'isTerminal')) return;
 
       // Ours — stop core's #board ondrop (and therefore every dropCanvasData
@@ -673,9 +677,16 @@ export class TerminalScenePins {
   _autoShowMapNotes() {
     try {
       if (!game.settings.get(MODULE_ID, 'terminalPinsAutoShow')) return;
+      // Once per user on this browser (audit COMPAT-07, dev 2026-11-05): switch map notes on the first time, then
+      // leave the user's own choice alone — before, it came back on at every load.
+      const key = `ncm.notesAutoShown.${game.world?.id || 'world'}.${game.user?.id || 'user'}`;
+      let done = false;
+      try { done = localStorage.getItem(key) === '1'; } catch { /* storage blocked: behave as the first time */ }
+      if (done) return;
       if (!game.settings.get('core', 'notesDisplayToggle')) {
         game.settings.set('core', 'notesDisplayToggle', true);
       }
+      try { localStorage.setItem(key, '1'); } catch { /* storage blocked */ }
     } catch (err) {
       log.debug(`terminalPinsAutoShow skipped: ${err.message}`);
     }
