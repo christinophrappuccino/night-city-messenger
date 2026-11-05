@@ -92,6 +92,13 @@ export function registerCallSystem(initializer) {
     payphones.init();
     game.nightcity.payphoneBooth.init();
     sm.register(SOCKET_OPS.PAYPHONE, (data, sender) => payphones.handleSocket(data, sender));
+    // Someone left (closed the tab, lost the connection, reloaded): every client ends the calls they were a
+    // party to and clears their payphone handsets (audit DATA-17, DATA-21). Nothing else would ever end them.
+    Hooks.on('userConnected', (user, connected) => {
+      if (connected || !user?.id) return;
+      service.onUserGone(user.id);
+      payphones.onUserGone(user.id);
+    });
 
     // losing signal mid-call drops it
     game.nightcity.eventBus.on(EVENTS.NETWORK_CHANGED, () => service.checkSignal());

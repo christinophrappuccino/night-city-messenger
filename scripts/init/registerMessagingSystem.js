@@ -33,6 +33,9 @@ import { ContactManagerApp } from '../ui/ContactManager/ContactManagerApp.js';
 // Verification
 import { Phase2Verification } from '../tests/Phase2Verification.js';
 
+/** How long after a GM connects a player sends the mail it was holding (the GM's client loads its handlers first). */
+export const GM_CONNECT_FLUSH_DELAY_MS = 5000;
+
 /**
  * Track open application instances for reuse / singleton-per-actor behavior
  * @type {Map<string, Application>}
@@ -624,6 +627,18 @@ export function registerMessagingSystem(initializer) {
       } catch (error) {
         log.warn('Failed to flush message queue:', error.message);
       }
+    }
+    // Mail held because no GM was online goes out when a GM connects (audit DATA-14) — it used to wait for this
+    // player's next reload or a network change. A short wait lets the GM's client finish loading its handlers.
+    if (!game.user.isGM) {
+      Hooks.on('userConnected', (user, connected) => {
+        if (!connected || !user?.isGM) return;
+        setTimeout(() => {
+          const ms = game.nightcity?.messageService;
+          if (!ms?.queueSize || game.nightcity?.networkService?.isDeadZone) return;
+          ms.flushQueue().catch((error) => log.warn('Failed to flush message queue:', error.message));
+        }, GM_CONNECT_FLUSH_DELAY_MS);
+      });
     }
   });
 

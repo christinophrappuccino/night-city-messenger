@@ -217,6 +217,17 @@ export class PayphoneService {
   /** Someone else on this booth, or null. */
   otherOn(id) { const u = this.inUse.get(id); return u && u.userId !== game.user.id ? u : null; }
 
+  /** A user left: their handsets go back on the hook on this client (audit DATA-21). */
+  onUserGone(userId) {
+    let n = 0;
+    for (const [id, u] of [...this.inUse]) {
+      if (u?.userId !== userId) continue;
+      this.inUse.delete(id); n += 1;
+      this.bus?.emit(EVENTS.PAYPHONE_STATE, { id });
+    }
+    return n;
+  }
+
   // ═══════════════════════════════ the ring ═══════════════════════════════
 
   _boothOfCall(call) {
@@ -360,14 +371,19 @@ export class PayphoneService {
 
   /**
    * @param {object} data
-   * @param {string|null} [senderId] - server-verified sender (SocketManager). Not used for access yet.
+   * @param {string|null} [senderId] - server-verified sender (SocketManager)
    */
-  handleSocket(data = {}, senderId = null) { // eslint-disable-line no-unused-vars
+  handleSocket(data = {}, senderId = null) {
     if (Array.isArray(data.userIds) && !data.userIds.includes(game.user.id)) return;
     switch (data.type) {
       case 'use': {
-        if (!data.id) return;
-        if (data.entry) this.inUse.set(data.id, data.entry); else if (this.inUse.get(data.id)?.userId === data.userId) this.inUse.delete(data.id);
+        if (!data.id || !senderId) return;
+        // A user only says THEY lifted or hung up a handset (audit DATA-21): an entry naming someone else, or a
+        // hang-up of someone else's handset, is ignored.
+        if (data.entry) {
+          if (data.entry.userId !== senderId) return;
+          this.inUse.set(data.id, { ...data.entry, userId: senderId });
+        } else if (this.inUse.get(data.id)?.userId === senderId) this.inUse.delete(data.id);
         this.bus?.emit(EVENTS.PAYPHONE_STATE, { id: data.id });
         return;
       }

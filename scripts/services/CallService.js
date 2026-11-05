@@ -1148,6 +1148,29 @@ export class CallService {
     this.eventBus.emit(EVENTS.CALL_GLITCH, { callId });
   }
 
+  /**
+   * A user left the game (audit DATA-17). Every client runs this for itself — nobody sends it — and ends each call
+   * that user was a party to as "dropped": the caller, the one who answered, or (still ringing) the only one it was
+   * ringing. Before this a call outlived a closed tab: the HUD and the GM's switchboard held it forever.
+   * @param {string} userId
+   * @returns {number} how many calls ended
+   */
+  onUserGone(userId) {
+    if (!userId || userId === game.user?.id) return 0;
+    let ended = 0;
+    for (const call of [...this.calls.values()]) {
+      if (call.state === 'ended') continue;
+      const ringOnlyThem = call.state === 'ringing' && !call.answeredBy && Array.isArray(call.to?.userIds) && call.to.userIds.includes(userId)
+        && !call.to.userIds.some((id) => id !== userId && game.users?.get(id)?.active);
+      const party = call.from?.userId === userId || call.answeredBy === userId || ringOnlyThem;
+      if (!party) continue;
+      const who = game.users?.get(userId)?.name;
+      this._endLocal(call.id, 'dropped', { notify: false, reason: who ? `${who} disconnected` : 'The other end disconnected' });
+      ended += 1;
+    }
+    return ended;
+  }
+
   /** End a call on this client. `notify` false = the other side already knows. */
   _endLocal(callId, outcome, { notify = true, reason = '' } = {}) {
     const call = this.calls.get(callId);
