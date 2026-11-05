@@ -886,9 +886,24 @@ export class NotificationService {
   //  Unread Badge
   // ═══════════════════════════════════════════════════════════
 
-  async refreshBadge() {
-    return this._refreshAllUnreadCounts();
+  /**
+   * Recount every unread badge — once for a burst of calls (audit PERF-01: one delivery fired this two to four
+   * times, and a group send many more, each walking every page of every inbox). Every caller in the burst gets
+   * the same promise, which settles after the one recount.
+   */
+  refreshBadge() {
+    if (this._badgeRefresh) return this._badgeRefresh;
+    this._badgeRefresh = new Promise((resolve) => {
+      setTimeout(() => {
+        this._badgeRefresh = null;
+        this._refreshAllUnreadCounts().finally(resolve);
+      }, NotificationService.BADGE_DEBOUNCE_MS);
+    });
+    return this._badgeRefresh;
   }
+
+  /** How long the badge waits for more mail events before it recounts. */
+  static BADGE_DEBOUNCE_MS = 250;
 
   async _updateUnreadBadge(actorId) {
     try {
@@ -965,7 +980,7 @@ export class NotificationService {
     });
 
     this.eventBus.on(EVENTS.MESSAGE_DELETED, () => {
-      this._refreshAllUnreadCounts();
+      this.refreshBadge();
     });
 
     // ── Network toasts ──

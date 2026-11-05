@@ -529,28 +529,12 @@ export function registerMessagingSystem(initializer) {
     // Shared-message chat cards: the per-client add-contact button + its click.
     registerChatCardHooks();
 
-    // When a message is received, show notification and update badge.
-    // The toast + receive sound (with per-message dedup) live in
-    // showMessageNotification so socket + document-sync don't double-fire.
+    // When a message is received, show the notification. The toast + receive sound (with per-message dedup)
+    // live in showMessageNotification so socket + document-sync don't double-fire. The unread BADGE is kept by
+    // NotificationService's own listeners — a second set here recounted every inbox again on every mail event
+    // (audit PERF-01).
     eventBus.on(EVENTS.MESSAGE_RECEIVED, (data) => {
-      if (notificationService) {
-        notificationService.showMessageNotification(data);
-        notificationService.refreshBadge();
-      }
-    });
-
-    // When a message is read, update the badge count
-    eventBus.on(EVENTS.MESSAGE_READ, () => {
-      if (notificationService) {
-        notificationService.refreshBadge();
-      }
-    });
-
-    // When a message is deleted, update the badge count
-    eventBus.on(EVENTS.MESSAGE_DELETED, () => {
-      if (notificationService) {
-        notificationService.refreshBadge();
-      }
+      if (notificationService) notificationService.showMessageNotification(data);
     });
 
     // Play send sound on message sent

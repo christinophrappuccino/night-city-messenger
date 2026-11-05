@@ -401,7 +401,15 @@ export class MessageRepository {
    * @param {string} ownerId — Actor ID or master contact ID
    * @returns {Promise<JournalEntry|null>}
    */
-  async getInboxJournal(ownerId) {
+  /**
+   * The owner's inbox journal. Only a WRITE of mail may create one (`create`, default true for the writers):
+   * every read, count or change of existing mail passes `{ create: false }` and gets null when there is none
+   * (audit PERF-01 — the GM's unread badge asked for every actor's inbox and so made one per NPC, container
+   * and Black ICE in the world).
+   * @param {string} ownerId
+   * @param {{create?: boolean}} [opts]
+   */
+  async getInboxJournal(ownerId, { create = true } = {}) {
     if (!ownerId) return null;
 
     // ── Cache check ──
@@ -412,11 +420,11 @@ export class MessageRepository {
     }
     // Find-then-create, one at a time per owner: two first deliveries at once made
     // two inbox journals and the second one's mail was never seen (DATA-15).
-    return game.user?.isGM ? serialize(`inbox:${ownerId}`, () => this._findOrCreateInbox(ownerId)) : this._findOrCreateInbox(ownerId);
+    return game.user?.isGM ? serialize(`inbox:${ownerId}`, () => this._findOrCreateInbox(ownerId, create)) : this._findOrCreateInbox(ownerId, create);
   }
 
   /** @private */
-  async _findOrCreateInbox(ownerId) {
+  async _findOrCreateInbox(ownerId, create = true) {
     if (this._inboxCache.has(ownerId) && game.journal.get(this._inboxCache.get(ownerId).id)) return this._inboxCache.get(ownerId);
 
     // ── Determine inbox type ──
@@ -451,7 +459,8 @@ export class MessageRepository {
       journal = game.journal.find(j => j.name === legacyName);
     }
 
-    // ── 3. Create new if not found ──
+    // ── 3. Create new if not found (only when writing mail) ──
+    if (!journal && !create) return null;
     if (!journal) {
       if (!game.user.isGM) {
         console.warn(`${MODULE_ID} | Non-GM cannot create inbox for ${ownerLabel}`);
@@ -672,7 +681,7 @@ export class MessageRepository {
    */
   async getMessages(actorId, options = {}) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return [];
 
       const filter = options.filter || 'inbox';
@@ -727,7 +736,7 @@ export class MessageRepository {
 
   async getMessage(actorId, messageId) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return null;
       const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === messageId);
       return page ? this._pageToMessage(page) : null;
@@ -812,7 +821,7 @@ export class MessageRepository {
 
   async updateMessage(actorId, messageId, updates) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return { success: false, error: 'Inbox not found' };
 
       const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === messageId);
@@ -832,7 +841,7 @@ export class MessageRepository {
 
   async updateMessageFlags(actorId, messageId, flagUpdates) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return { success: false, error: 'Inbox not found' };
 
       const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === messageId);
@@ -889,7 +898,7 @@ export class MessageRepository {
    */
   async markAllAsRead(actorId) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return { success: false, count: 0, error: 'Inbox not found' };
 
       const readAt = new Date().toISOString();
@@ -921,7 +930,7 @@ export class MessageRepository {
 
   async hardDeleteMessage(actorId, messageId) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return { success: false, error: 'Inbox not found' };
 
       if (!game.user.isGM && !journal.isOwner) {
@@ -948,7 +957,7 @@ export class MessageRepository {
   }
 
   async getUnreadCount(actorId) {
-    const messages = await this.getMessages(actorId, { filter: 'inbox' });
+    const messages = await this.getMessages(actorId, { filter: 'inbox' });   // getMessages never creates an inbox
     return messages.filter(m => !m.status.read).length;
   }
 

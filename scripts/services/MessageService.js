@@ -1994,7 +1994,7 @@ export class MessageService {
     }
 
     // Find the message in inbox
-    const inbox = await this._messageRepo.getInboxJournal(actorId);
+    const inbox = await this._messageRepo.getInboxJournal(actorId, { create: false });
     if (!inbox) return { success: false, error: 'Inbox not found' };
 
     const page = inbox.pages.find(p =>

@@ -8,7 +8,7 @@
  * handlers directly via AdminPanelApp's static delegators.
  */
 
-import { ncmNotify } from '../../../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../../../utils/notify.js';
 import { isIn, titleFor } from '../../../utils/conversations.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log, formatCyberDate, getPlayerCharacters, hiddenCharacterIds } from '../../../utils/helpers.js';
@@ -1164,7 +1164,7 @@ export class ToolsTab extends BaseTab {
     const found = this._gatherOrphans();
     const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length + found.phoneOwners.length + found.conversations.length;
 
-    if (total === 0) {
+    if (total === 0 && !found.emptyInboxes.length) {
       ncmNotify.info('NCM | Orphan audit clean — nothing to remove.');
       return;
     }
@@ -1173,37 +1173,46 @@ export class ToolsTab extends BaseTab {
     const lines = [];
     if (found.inboxes.length) {
       lines.push(`<p><strong>${found.inboxes.length}</strong> inbox journal(s) whose owner no longer exists:</p><ul>` +
-        found.inboxes.map(o => li(`${o.journal.name} <em>(${o.isContact ? 'contact' : 'actor'} ${o.ownerId})</em>`)).join('') + '</ul>');
+        found.inboxes.map(o => li(`${escapeHtml(o.journal.name)} <em>(${o.isContact ? 'contact' : 'actor'} ${escapeHtml(o.ownerId)})</em>`)).join('') + '</ul>');
     }
     if (found.pins.length) {
       lines.push(`<p><strong>${found.pins.length}</strong> scene pin(s) pointing at deleted terminals:</p><ul>` +
-        found.pins.map(p => li(`"${p.note.label || p.note.text || 'unnamed pin'}" on ${p.scene.name}`)).join('') + '</ul>');
+        found.pins.map(p => li(`"${escapeHtml(p.note.label || p.note.text || 'unnamed pin')}" on ${escapeHtml(p.scene.name)}`)).join('') + '</ul>');
     }
     if (found.heatActors.length) {
       lines.push(`<p><strong>${found.heatActors.length}</strong> heat entr(ies) keyed to deleted actors.</p>`);
     }
     if (found.groupMembers.length) {
       lines.push(`<p><strong>${found.groupMembers.length}</strong> contact-group member(s) that resolve to nothing (no address, no living actor or directory entry):</p><ul>` +
-        found.groupMembers.map(g => li(`${g.memberName || '(unnamed)'} in <em>${g.groupName}</em> (${g.scope === 'master' ? 'GM group' : `${g.actorName}'s group`})`)).join('') + '</ul>');
+        found.groupMembers.map(g => li(`${escapeHtml(g.memberName || '(unnamed)')} in <em>${escapeHtml(g.groupName)}</em> (${g.scope === 'master' ? 'GM group' : `${escapeHtml(g.actorName)}'s group`})`)).join('') + '</ul>');
     }
 
     if (found.phoneOwners.length) {
       lines.push(`<p><strong>${found.phoneOwners.length}</strong> phone line(s) whose owner no longer exists. Their numbers retire and are never given out again:</p><ul>` +
-        found.phoneOwners.map(o => li(`${o.number} <em>(${o.name || 'unnamed'})</em>`)).join('') + '</ul>');
+        found.phoneOwners.map(o => li(`${escapeHtml(o.number)} <em>(${escapeHtml(o.name || 'unnamed')})</em>`)).join('') + '</ul>');
     }
 
     if (found.conversations.length) {
       lines.push(`<p><strong>${found.conversations.length}</strong> conversation(s) where nobody left in them still exists:</p><ul>` +
-        found.conversations.map(c => li(titleFor(c))).join('') + '</ul>');
+        found.conversations.map(c => li(escapeHtml(titleFor(c)))).join('') + '</ul>');
     }
 
+    // Empty inboxes: a separate, opt-in list — never removed unless the box is ticked.
+    let emptyBlock = '';
+    if (found.emptyInboxes.length) {
+      const owner = (o) => { const a = o.isContact ? null : game.actors?.get(o.ownerId); return a ? (a.hasPlayerOwner ? 'player character' : a.type) : 'contact'; };
+      emptyBlock = `<hr><p><strong>${found.emptyInboxes.length}</strong> empty inbox journal(s) — no mail, no call logs. Most were made by an older version's unread badge. An inbox comes back by itself with its first mail.</p><ul>`
+        + found.emptyInboxes.map((o) => li(`${escapeHtml(o.journal.name)} <em>(${escapeHtml(owner(o))})</em>`)).join('') + '</ul>'
+        + '<label style="display:flex;gap:6px;align-items:center;text-transform:none;font-weight:400;cursor:pointer"><input type="checkbox" name="ncm-orphan-empty"> Delete these empty inboxes too</label>';
+    }
     let doClean = false;
+    let delEmpty = false;
     await new Promise((resolve) => {
       adminDialog({
         title: 'Orphan Audit',
-        content: `<div style="max-height:320px;overflow-y:auto;overflow-x:hidden">${lines.join('')}<p>Remove all of the above? Message pages inside a removed inbox are deleted with it.</p></div>`,
+        content: `<div style="max-height:320px;overflow-y:auto;overflow-x:hidden">${lines.join('')}${total ? '<p>Remove all of the above? Message pages inside a removed inbox are deleted with it.</p>' : ''}${emptyBlock}</div>`,
         buttons: {
-          clean:  { icon: '<i class="fas fa-broom"></i>', label: 'Clean Up', callback: () => { doClean = true; } },
+          clean:  { icon: '<i class="fas fa-broom"></i>', label: 'Clean Up', callback: (html) => { doClean = true; const root = html?.[0] ?? html; delEmpty = !!root?.querySelector?.('[name="ncm-orphan-empty"]')?.checked; } },
           cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
         },
         default: 'cancel',
@@ -1215,6 +1224,10 @@ export class ToolsTab extends BaseTab {
     try {
       let removed = 0;
       for (const o of found.inboxes) { await o.journal.delete(); removed++; }
+      if (delEmpty) {
+        // still empty right now? (mail may have arrived while the dialog was open)
+        for (const o of found.emptyInboxes) { if (!(o.journal.pages?.size ?? 0) && game.journal?.get(o.journal.id)) { await o.journal.delete(); removed++; } }
+      }
       for (const p of found.pins)    { await p.note.delete();    removed++; }
       if (found.heatActors.length) {
         const map = foundry.utils.deepClone(game.settings.get(MODULE_ID, 'traceHeat') ?? {});
@@ -1333,6 +1346,10 @@ export class ToolsTab extends BaseTab {
   /** Collect every orphaned inbox journal, stale terminal scene pin, and dead-actor heat entry. */
   _gatherOrphans() {
     const inboxes = [];
+    // Inboxes with no pages at all, for an owner who still exists — mostly made by the old unread badge (audit
+    // PERF-01) for every NPC, vehicle and Black ICE. Listed, deleted only if the GM ticks the box: an inbox comes
+    // back by itself with the first mail.
+    const emptyInboxes = [];
     for (const journal of game.journal ?? []) {
       const info = MessageRepository.identifyInbox(journal);
       if (!info) continue;
@@ -1340,6 +1357,7 @@ export class ToolsTab extends BaseTab {
         ? !!this.masterContactService?.getContact?.(info.ownerId)
         : !!game.actors?.get(info.ownerId);
       if (!exists) inboxes.push({ journal, ...info });
+      else if (!(journal.pages?.size ?? journal.pages?.length ?? 0)) emptyInboxes.push({ journal, ...info });
     }
 
     const pins = [];
@@ -1402,7 +1420,7 @@ export class ToolsTab extends BaseTab {
       if (!stillThere) conversations.push(c);
     }
 
-    return { inboxes, pins, heatActors, groupMembers, phoneOwners, conversations };
+    return { inboxes, pins, heatActors, groupMembers, phoneOwners, conversations, emptyInboxes };
   }
 
   /**
