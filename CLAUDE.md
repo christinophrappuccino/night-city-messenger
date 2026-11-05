@@ -147,7 +147,9 @@ review is `ARCHITECTURE-HEALTH-REPORT.md` in the repo root.
   dedups by `messageId`). Eddies transfer once, at the recipient's Claim; never credit in the composer. Never add a
   second sent-copy writer (`_createSentCopy`). The composer's `_onSend` re-enables Send in `finally`. Anonymous
   masking lives in `MessageService` (`_maskAnonForRecipient`); the real sender exists only on the GM's `-sent` copy.
-  Self-destruct always hard-deletes, and a GM never triggers it. `status.spam` must survive `createMessage`.
+  Self-destruct always hard-deletes, and a GM never triggers it. `status.spam` must survive `createMessage`. Something to do with every delivered
+  message registers with `messageService.onDelivered(name, fn, { order })` from its own system's register file (it gets the
+  recipient-facing clone; a throw is logged, never fatal) — never a new call inside `_deliverMessage`.
 - **Contacts** — Members are keyed by ADDRESS, ids are hints (`participants.js`). `getPlayerCharacters()` is the one
   "players' characters" list; don't write another `user.character` loop. The directory beats the actor label
   (`resolveDisplayName`); the address decides which identity sent a message (`directoryEntryFor`). An alias never
@@ -190,7 +192,9 @@ review is `ARCHITECTURE-HEALTH-REPORT.md` in the repo root.
   the host, never the host. Off = no hooks, no sockets, no UI.
 - **Watch** — A window opts in with `static WATCHABLE`; `mountMirror` morphs in place; decorative animation carries
   `data-watch-ignore`.
-- **UI shell** — UI sounds are centralised in `BaseApplication` (no hover sound, no manual `play('click')`).
+- **UI shell** — UI sounds are centralised in `BaseApplication` (no hover sound, no manual `play('click')`). A framework-free
+  pop-up (not a Foundry window) mounts through `mountOverlay` (`scripts/ui/overlay.js`: backdrop, Escape, backdrop
+  click, one close, reduced motion), not a hand-written keydown listener.
 
 ## Architecture: UI apps
 

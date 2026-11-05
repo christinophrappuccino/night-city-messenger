@@ -617,6 +617,25 @@ export class MessageService {
    * @param {Object} data
    * @returns {Promise<{success: boolean, messageId?: string}>}
    */
+  /**
+   * Register something to do after every delivered message (R19, after stage 2). Owners register their own: the
+   * terminal system its mirror (registerTerminalSystem), the network system its taps (registerNetworkSystem).
+   * `fn(recipientData, { data, recipientInboxId, spamFiltered })` is awaited in `order`; a throw is logged, never
+   * fatal. Registering the same name again replaces it.
+   * @param {string} name @param {Function} fn @param {{order?: number}} [opts]
+   */
+  onDelivered(name, fn, { order = 100 } = {}) {
+    if (typeof fn !== 'function') return;
+    this._afterDelivery = [...(this._afterDelivery || []).filter((h) => h.name !== name), { name, fn, order }].sort((a, b) => a.order - b.order);
+  }
+
+  /** @private Run the after-delivery list (see onDelivered). */
+  async _runAfterDelivery(recipientData, ctx) {
+    for (const h of this._afterDelivery || []) {
+      try { await h.fn(recipientData, ctx); } catch (err) { console.warn(`${MODULE_ID} | after delivery, "${h.name}" failed:`, err); }
+    }
+  }
+
   async _deliverMessage(data, { sentCopy = true } = {}) {
     try {
       // Anonymous reply — the player couldn't know the real recipient. Resolve it
@@ -685,23 +704,10 @@ export class MessageService {
         }
       }
 
-      // Terminal mirror — an account linked to this recipient (by contact,
-      // actor, or email) is that character's inbox on the machine, so the
-      // delivery shows up there too. Uses the recipient-facing clone so
-      // anonymous mail stays masked. Non-fatal: the inbox delivery succeeded.
-      try {
-        await game.nightcity.terminalService?.mirrorDeliveryToAccounts?.(recipientData);
-      } catch (err) {
-        console.warn(`${MODULE_ID} | terminal delivery mirror failed:`, err);
-      }
-
-      // Network-node TAPS: a runner who tapped a node of the network this went over gets a copy (EXFIL folder).
-      // Non-fatal; the recipient-facing clone, so anonymous mail stays masked.
-      try {
-        await game.nightcity.networkService?.tapDelivery?.(recipientData);
-      } catch (err) {
-        console.warn(`${MODULE_ID} | node tap failed:`, err);
-      }
+      // Features that act on every delivered message (R19): the terminal mirror, network-node taps… They register
+      // themselves (onDelivered) and get the RECIPIENT-facing clone, so anonymous mail stays masked. Each runs in
+      // order and is non-fatal: the inbox delivery already succeeded.
+      await this._runAfterDelivery(recipientData, { data, recipientInboxId, spamFiltered });
 
       // Emit events
       this.eventBus.emit(EVENTS.MESSAGE_SENT, {

@@ -42,6 +42,11 @@ export function registerTerminalSystem(initializer) {
   // Drag a terminal item onto the canvas → a clickable map-note access point.
   // Registered on every client (players need the activateNote intercept + the
   // notes-display auto-show; drop/cleanup paths self-gate on GM).
+  // A delivered message also lands in any terminal account linked to its recipient (MessageService.onDelivered, R19).
+  initializer.register('ready', 63, 'Terminal mirror of delivered mail', () => {
+    game.nightcity.messageService?.onDelivered('terminal-mirror', (recipientData) => game.nightcity.terminalService?.mirrorDeliveryToAccounts?.(recipientData), { order: 10 });
+  });
+
   initializer.register('ready', 64, 'TerminalScenePins', () => {
     try {
       game.nightcity.terminalScenePins = new TerminalScenePins();

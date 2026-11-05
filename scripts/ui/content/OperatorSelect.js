@@ -19,6 +19,7 @@
 import { log, getOperatorActors, resolveOperator, setOperatorActor } from '../../utils/helpers.js';
 import { ncmNotify } from '../../utils/notify.js';
 import { firstRole } from '../../utils/cpr.js';
+import { mountOverlay } from '../overlay.js';
 
 /** Minimal HTML escaper. */
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
@@ -61,13 +62,6 @@ export function runOperatorSelect({ actors = [], currentId = '', host = null } =
   return new Promise((resolve) => {
     if (!actors.length) { resolve(null); return; }
 
-    let reduced = false;
-    try { reduced = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { /* no */ }
-
-    const mount = host || document.body;
-    const wrap = document.createElement('div');
-    wrap.className = 'ncm-opsel-backdrop';
-
     const cards = actors.map((a, i) => {
       const isCur = a.id === currentId;
       const vitals = _vitalsOf(a).map(v => `<span class="ncm-opsel__vit"><b>${esc(v.k)}</b>${esc(v.v)}</span>`).join('');
@@ -87,7 +81,8 @@ export function runOperatorSelect({ actors = [], currentId = '', host = null } =
         </button>`;
     }).join('');
 
-    wrap.innerHTML = `
+    // the shared overlay frame (ui/overlay.js): backdrop in the host, Escape / backdrop click close with null
+    const o = mountOverlay({ host, className: 'ncm-opsel-backdrop', onClose: resolve, html: `
       <div class="ncm-opsel" role="dialog" aria-modal="true">
         <div class="ncm-opsel__bar"></div>
         <div class="ncm-opsel__hd">
@@ -103,19 +98,11 @@ export function runOperatorSelect({ actors = [], currentId = '', host = null } =
         <div class="ncm-opsel__ft">
           <button type="button" class="ncm-opsel__cancel">CANCEL</button>
         </div>
-      </div>`;
-
-    const cleanup = (val) => {
-      document.removeEventListener('keydown', onKey, true);
-      wrap.remove();
-      resolve(val);
-    };
-    const onKey = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); cleanup(null); }
-    };
+      </div>` });
+    const wrap = o.root, cleanup = o.close, reduced = !o.motion;
 
     wrap.addEventListener('click', (e) => {
-      if (e.target === wrap) { cleanup(null); return; }                    // backdrop
+      if (o.closed) return;
       if (e.target.closest('.ncm-opsel__cancel')) { cleanup(null); return; }
       const card = e.target.closest('.ncm-opsel__card');
       if (!card) return;
@@ -140,8 +127,6 @@ export function runOperatorSelect({ actors = [], currentId = '', host = null } =
       setTimeout(() => cleanup(id), 1650);
     });
 
-    document.addEventListener('keydown', onKey, true);
-    mount.appendChild(wrap);
     try { game.nightcity?.soundService?.play('click'); } catch { /* no sound */ }
     log.debug(`OperatorSelect: ${actors.length} candidate(s), current=${currentId || 'none'}.`);
   });

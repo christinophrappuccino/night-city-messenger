@@ -195,6 +195,12 @@ export function registerNetworkSystem(initializer) {
     if (networkId) ns?.socketManager?.emit?.(SOCKET_OPS.NETWORK_STATE_CHANGED, { type: 'hello', networkId, isGMAction: false });
   });
 
+  // Network-node TAPS: a runner who tapped a node of the network a message went over gets a copy in their EXFIL
+  // folder (MessageService.onDelivered, R19).
+  initializer.register('ready', 107, 'Network taps on delivered mail', () => {
+    game.nightcity.messageService?.onDelivered('node-taps', (recipientData) => game.nightcity.networkService?.tapDelivery?.(recipientData), { order: 20 });
+  });
+
   initializer.register('ready', 108, 'Network ↔ MessageService integration', () => {
     const eventBus = game.nightcity.eventBus;
     const messageService = game.nightcity.messageService;

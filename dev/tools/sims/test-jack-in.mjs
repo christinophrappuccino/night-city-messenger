@@ -254,7 +254,8 @@ ok(J.movesFor(d, 4, 9) === 3 && J.movesFor(dm, 4, 5) === 4 && J.movesFor(dm, 4, 
 
   // wiring
   const ms = read('scripts/services/MessageService.js');
-  ok(ms.includes('networkService?.tapDelivery?.(recipientData)'), 'every delivery passes through tapDelivery (the recipient-facing clone — anonymous stays masked)');
+  // since R19 the taps register on MessageService's after-delivery list, which hands every entry the recipient-facing clone
+  ok(ms.includes('await this._runAfterDelivery(recipientData,') && read('scripts/init/registerNetworkSystem.js').includes("onDelivered('node-taps', (recipientData) => game.nightcity.networkService?.tapDelivery?.(recipientData)"), 'every delivery passes through tapDelivery (the recipient-facing clone — anonymous stays masked)');
   const ns = read('scripts/services/NetworkService.js');
   ok(!/_authenticatedNetworks\.has\((networkId|defaultNet)\)\s*(&&|\|\|)/.test(ns) && ns.includes('!this._authOk(networkId) && !force'), 'every auth check goes through _authOk (backdoors count)');
   const js = read('scripts/ui/NetworkNodes/NodeConsoleApp.js'), hbs = read('templates/network-nodes/node-console.hbs');
