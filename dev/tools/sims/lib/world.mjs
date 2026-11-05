@@ -25,6 +25,7 @@
 // Not modelled: permissions on the server side (a mock update never refuses unless `refuse` is set on the doc).
 
 import { pathToFileURL, fileURLToPath } from 'url';
+import { applyFoundryProfile, SIM_FOUNDRY_VERSION } from './foundryVersion.mjs';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url)).replace(/\\/g, '/').replace(/\/+$/, '');
 const MODULE_ID = 'night-city-messenger';
@@ -135,7 +136,7 @@ function withEmbedded(doc, collName, Cls, list = []) {
  * Build a mock world and install the Foundry globals. Returns handles to inspect what happened.
  * @returns {Promise<object>}
  */
-export async function createMockWorld({ users = [{ id: 'gm1', name: 'GM', isGM: true }], user = null, actors = [], items = [], journals = [], scenes = [], settings = {}, realSettings = false } = {}) {
+export async function createMockWorld({ users = [{ id: 'gm1', name: 'GM', isGM: true }], user = null, actors = [], items = [], journals = [], scenes = [], settings = {}, realSettings = false, foundryVersion = SIM_FOUNDRY_VERSION } = {}) {
   const world = { writes: [], toasts: [], chat: [], collections: {} };
 
   // hooks
@@ -197,6 +198,8 @@ export async function createMockWorld({ users = [{ id: 'gm1', name: 'GM', isGM: 
     settings: gameSettings, i18n: { localize: (s) => s, format: (s) => s }, modules: new Map([[MODULE_ID, { id: MODULE_ID, active: true, version: 'sim' }]]),
     keybindings: { register() {} }, socket: { on() {}, emit() {} }, nightcity: {}, ready: true,
   };
+  globalThis.game.release = undefined;                    // the world's own version wins over the preload's stamp
+  applyFoundryProfile(globalThis.game, foundryVersion);   // game.release from the version profile (lib/foundryVersion.mjs)
   globalThis.foundry = { utils: { deepClone, mergeObject, getProperty, setProperty, expandObject, randomID, isEmpty: (o) => !o || !Object.keys(o).length } };
   globalThis.ui = { notifications: Object.fromEntries(['info', 'warn', 'error', 'notify'].map((lvl) => [lvl, (msg) => { world.toasts.push({ level: lvl, msg: String(msg) }); return { id: world.toasts.length }; }])) };
   globalThis.Hooks = world.hooks;

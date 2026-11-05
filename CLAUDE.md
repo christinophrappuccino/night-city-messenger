@@ -38,6 +38,13 @@ that needs Foundry's Handlebars finds it through `dev/tools/sims/lib/foundryApp.
 (`dev/tools/check-paths.mjs` — Windows forgives a wrong case, The Forge's Linux servers do not). To run the sims the
 way CI does: `NCM_FOUNDRY_APP=<folder with node_modules/handlebars@4.7.8> NCM_NO_LOCAL_FOUNDRY=1 node dev/tools/run-checks.mjs`.
 
+**The sims run once per Foundry version** (step 10 part 4): `run-checks.mjs --foundry 12|13|all` (default 12), and CI
+has one leg per version. `dev/tools/sims/lib/foundryVersion.mjs` is the one table of what differs (release, chat hook,
+directory-menu hook, scene-controls shape, token-HUD file, where that version's install lives); `lib/profilePreload.mjs`
+(loaded with `--import`) stamps the version's `game.release` onto any mocked `game` that has none, so compat.js takes
+that version's branch in every sim. A sim that tests both versions on purpose sets `game.release` itself. A new v12/v13
+difference goes in the table (`test-foundry-profiles` checks it against the real compat.js).
+
 **Live checks in a real Foundry — `node dev/tools/live-smoke.mjs --url <server> --user <offline user>`.** Joins a running world headless as an offline user (never one someone is logged in as), checks the startup report and the compat.js lookups, opens every admin tab / the composer / sound board / theme customizer / a v1 dialog / the name picker, and lists the warnings and errors NCM causes apart from everyone else's. **A Foundry v13 test install** (2026-11-05): the Node build in `dev/FoundryVTT-Node-13.351/` (gitignored, never committed), data in `%LOCALAPPDATA%/FoundryVTT-v13`, run with `node dev/FoundryVTT-Node-13.351/main.js --dataPath=<that> --port=30001`; world `ncm-v13-test` on Simple Worldbuilding (Cyberpunk RED has no v13 release yet). Put NCM in it with `node dev/tools/sync-test-install.cjs --data <v13 Data> --any-system` (a COPY, never a link; `--any-system` lifts the CPR requirement in the copy only). Re-run the sync after a change.
 
 > **`node --check path/to/file.js` IS NOT ENOUGH — it passes files Foundry cannot load.**

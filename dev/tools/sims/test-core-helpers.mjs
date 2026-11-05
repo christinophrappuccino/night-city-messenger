@@ -4,6 +4,7 @@
 // Runs the REAL helper source through the REAL Handlebars from the Foundry install, on Foundry's real token HUD template.
 // Usage: node dev/tools/sims/test-core-helpers.mjs
 import { FOUNDRY_APP_DIRS } from './lib/foundryApp.mjs';
+import { foundryProfile } from './lib/foundryVersion.mjs';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
@@ -27,9 +28,13 @@ new Function('Handlebars', body)(Handlebars);
 Handlebars.registerHelper('disabled', (v) => (v ? 'disabled' : ''));
 { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
 
-// Foundry's own token HUD line, read from the install when it is there.
+// Foundry's own token HUD line, read from the install when it is there. The file is named per version (v12
+// token-hud.html, v13 token-hud.hbs: lib/foundryVersion.mjs). A real install (it has templates/) WITHOUT that file is a
+// failure, not a quiet fall back to the copy below — the copy would keep passing after Foundry changed the line.
+// CI's Handlebars-only folder has no templates/, so the copy is used there.
 let hudLine = '<input type="text" name="elevation" {{disabled (or locked (and isGamePaused (not isGM)))}}>';
-const hudPath = `${APP}/templates/hud/token-hud.html`;
+const hudPath = `${APP}/${foundryProfile().tokenHud}`;
+if (existsSync(`${APP}/templates`)) ok(existsSync(hudPath), `the Foundry install at ${APP} has ${foundryProfile().tokenHud} (v${foundryProfile().generation})`);
 if (existsSync(hudPath)) { const m = readFileSync(hudPath, 'utf8').match(/<input[^>]*name="elevation"[^>]*>/); ok(!!m, 'Foundry token HUD has an elevation input'); if (m) hudLine = m[0]; }
 const hud = Handlebars.compile(hudLine);
 const dis = (ctx) => /disabled/.test(hud({ elevation: 0, ...ctx }));

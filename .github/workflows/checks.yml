@@ -5,7 +5,7 @@
 # - dev-build.yml and release.yml call this workflow first and only build when it passes, so a failing sim stops a
 #   dev build or a release from being published.
 #
-# The sims that render templates need Foundry's own Handlebars (4.7.8 in Foundry v12). On the developer's machine they
+# The sims that render templates need Foundry's own Handlebars (4.7.8 in Foundry v12 and v13). On the developer's machine they
 # find the Foundry install; here a copy is installed into the runner's temp folder and NCM_FOUNDRY_APP points at it.
 # Nothing here is a build step: the repo stays directly loadable by Foundry.
 
@@ -24,8 +24,16 @@ permissions:
 
 jobs:
   checks:
+    # The sims run once per Foundry version NCM supports (dev/tools/sims/lib/foundryVersion.mjs holds the profiles;
+    # each stamps that version's game.release onto the mocked game, so compat.js takes that version's branch).
+    # A build that `needs: checks` waits for every leg.
+    name: checks (Foundry v${{ matrix.foundry }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        foundry: [12, 13]
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +41,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Foundry v12's Handlebars for the template sims
+      - name: Install Foundry's Handlebars for the template sims (4.7.8 in v12 and v13)
         run: |
           APP="$RUNNER_TEMP/foundry-app"
           mkdir -p "$APP"
@@ -42,4 +50,4 @@ jobs:
           echo "NCM_FOUNDRY_APP=$APP" >> "$GITHUB_ENV"
 
       - name: Syntax, paths and sims
-        run: node dev/tools/run-checks.mjs --jobs 4
+        run: node dev/tools/run-checks.mjs --jobs 4 --foundry ${{ matrix.foundry }}

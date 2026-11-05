@@ -27,6 +27,23 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/node_m
   ok(v === hbPin, `CI's Handlebars ${hbPin} is the version Foundry ships (${v})`);
 }
 
+// 1b. one leg per Foundry version profile (lib/foundryVersion.mjs), every profile on CI's Handlebars
+{
+  const { FOUNDRY_PROFILES } = await import(new URL('./lib/foundryVersion.mjs', import.meta.url).href);
+  const legs = ((checks.match(/foundry: \[([^\]]*)\]/) || [])[1] || '').split(',').map((s) => s.trim()).filter(Boolean).sort();
+  ok(legs.join() === Object.keys(FOUNDRY_PROFILES).sort().join(), `checks.yml runs a leg per Foundry profile (${legs.join() || 'none'} vs ${Object.keys(FOUNDRY_PROFILES).join()})`);
+  ok(/run-checks\.mjs[^\n]*--foundry \$\{\{ matrix\.foundry \}\}/.test(checks), 'each leg runs the checks as its version');
+  for (const [v, p] of Object.entries(FOUNDRY_PROFILES)) {
+    ok(p.handlebars === hbPin, `the v${v} profile's Handlebars (${p.handlebars}) is CI's pin (${hbPin})`);
+    for (const dir of p.appDirs) {
+      const pkg = `${dir}/node_modules/handlebars/package.json`;
+      if (existsSync(pkg)) ok(JSON.parse(readFileSync(pkg, 'utf8')).version === p.handlebars, `the local v${v} install ships Handlebars ${p.handlebars}`);
+    }
+  }
+  const rc = read('dev/tools/run-checks.mjs');
+  ok(/'--import', PRELOAD/.test(rc) && /NCM_FOUNDRY_VERSION: version/.test(rc), 'run-checks loads the profile preload and passes the version to each sim');
+}
+
 // 2. both publishing workflows wait for it
 for (const [file, job] of [['release.yml', 'release'], ['dev-build.yml', 'dev-build']]) {
   const t = read(`.github/workflows/${file}`);
