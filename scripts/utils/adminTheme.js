@@ -37,6 +37,7 @@
 import { ncmNotify } from './notify.js';
 import { MODULE_ID } from './constants.js';
 import { log } from './helpers.js';
+import { NcmDialogClass } from './ncmDialog.js';
 
 /** Class the Dialog wrappers add so the render hook can find admin dialogs. */
 export const ADMIN_DIALOG_CLASS = 'ncm-admin-dialog';
@@ -203,9 +204,9 @@ export function applyAdminZoom(contentEl, pct) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  Foundry v1 Dialog wrappers
-//  GM-tool code calls these instead of `new Dialog` / `Dialog.confirm` /
-//  `Dialog.prompt` so the dialog is tagged for the admin theme.
+//  Dialog wrappers — GM-tool code calls these instead of `new Dialog` / `Dialog.confirm` / `Dialog.prompt`, so the
+//  dialog is tagged for the admin theme. They take the v1 Dialog's settings and build an NcmDialog (utils/ncmDialog.js):
+//  Foundry's DialogV2 frame, v1 behaviour (stage 2 — the v1 Dialog is removed in v16).
 // ═══════════════════════════════════════════════════════════
 
 function _withAdminClass(options = {}) {
@@ -216,22 +217,22 @@ function _withAdminClass(options = {}) {
 
 /** `new Dialog(data, options)` tagged for the admin theme. */
 export function adminDialog(data, options = {}) {
-  return new Dialog(data, _withAdminClass(options));
+  return new (NcmDialogClass())(data, _withAdminClass(options));
 }
 
 /** `Dialog.confirm(config)` tagged for the admin theme (config.options merged). */
 export function adminConfirm(config = {}) {
-  return Dialog.confirm({ ...config, options: _withAdminClass(config.options) });
+  return NcmDialogClass().confirm({ ...config, options: _withAdminClass(config.options) });
 }
 
 /** `Dialog.prompt(config)` tagged for the admin theme (config.options merged). */
 export function adminPrompt(config = {}) {
-  return Dialog.prompt({ ...config, options: _withAdminClass(config.options) });
+  return NcmDialogClass().prompt({ ...config, options: _withAdminClass(config.options) });
 }
 
 /** `Dialog.wait(data, options)` tagged for the admin theme. */
 export function adminWait(data, options = {}) {
-  return Dialog.wait(data, _withAdminClass(options));
+  return NcmDialogClass().wait(data, _withAdminClass(options));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -284,22 +285,22 @@ function _withPlayerClass(options = {}) {
 
 /** `new Dialog(data, options)` from a player-facing window — zoomed by the player's Text Size. */
 export function playerDialog(data, options = {}) {
-  return new Dialog(data, _withPlayerClass(options));
+  return new (NcmDialogClass())(data, _withPlayerClass(options));
 }
 
 /** `Dialog.confirm(config)` from a player-facing window (config.options merged). */
 export function playerConfirm(config = {}) {
-  return Dialog.confirm({ ...config, options: _withPlayerClass(config.options) });
+  return NcmDialogClass().confirm({ ...config, options: _withPlayerClass(config.options) });
 }
 
 /** `Dialog.prompt(config)` from a player-facing window (config.options merged). */
 export function playerPrompt(config = {}) {
-  return Dialog.prompt({ ...config, options: _withPlayerClass(config.options) });
+  return NcmDialogClass().prompt({ ...config, options: _withPlayerClass(config.options) });
 }
 
 /** `Dialog.wait(data, options)` from a player-facing window. */
 export function playerWait(data, options = {}) {
-  return Dialog.wait(data, _withPlayerClass(options));
+  return NcmDialogClass().wait(data, _withPlayerClass(options));
 }
 
 /**
@@ -359,7 +360,8 @@ export function themeAdminDialog(app) {
  * own dialogs).
  */
 export function registerAdminDialogHook() {
-  Hooks.on('renderDialog', (app) => {
+  // NcmDialog fires renderNcmDialog (AppV2 hooks name the class); renderDialog stays for any v1 Dialog left anywhere
+  for (const hook of ['renderNcmDialog', 'renderDialog']) Hooks.on(hook, (app) => {
     try {
       const classes = app?.options?.classes;
       if (classes?.includes?.(ADMIN_DIALOG_CLASS)) themeAdminDialog(app);

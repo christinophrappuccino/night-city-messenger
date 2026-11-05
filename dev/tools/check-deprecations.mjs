@@ -52,7 +52,6 @@ for (const [f, t] of src) for (const fn of ['renderTemplate', 'loadTemplates', '
 
 // 2. ratchet — counts as of 2026-11-05 (stage 2, step 10a). Lower a number when you migrate some; never raise it.
 const RATCHET = [
-  ['v1 Dialog (new Dialog / Dialog.confirm|prompt|wait)', /(?<![\w$.])(?:new\s+Dialog\(|Dialog\.(?:confirm|prompt|wait)\()/g, 9],
   ['jQuery html.find(', /\bhtml\.find\(/g, 110],
   ['jQuery $(', /(?<![\w$.])\$\(/g, 39],
 ];
@@ -61,6 +60,8 @@ const RATCHET = [
 const BANNED = [
   [/['"]renderChatMessage['"]/g, "the 'renderChatMessage' hook (deprecated in v13, removed in v15) — use compat.onRenderChatMessage"],
   [/\bcontrols\.push\(/g, 'pushing onto the scene controls (an array on v12, a record on v13) — use compat.addSceneControlGroup'],
+  // since the DialogV2 switch (stage 2): every dialog is an NcmDialog (utils/ncmDialog.js) through the adminTheme.js wrappers
+  [/(?<![\w$.])(?:new\s+Dialog\(|Dialog\.(?:confirm|prompt|wait)\()/g, 'the v1 Dialog (deprecated in v13, removed in v16) — use adminDialog / adminConfirm / playerDialog … (utils/adminTheme.js), which build an NcmDialog'],
 ];
 for (const [f, t] of src) for (const [re, why] of BANNED) for (const m of t.matchAll(re)) problems.push(`${f}:${t.slice(0, m.index).split('\n').length} uses ${why}`);
 const counts = [];

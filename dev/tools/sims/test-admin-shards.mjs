@@ -111,7 +111,7 @@ globalThis.ui = { notifications: { info: () => {}, warn: () => {}, error: () => 
 globalThis.Hooks = { on: () => {}, once: () => {}, off: () => {}, call: () => true, callAll: () => {} };
 globalThis.Handlebars = { escapeExpression: (s) => String(s ?? '') };
 globalThis.fromUuidSync = (u) => [...worldItems, ...vItems, ...racheItems].find(i => i.uuid === u) || null;
-globalThis.Dialog = { confirm: async () => true };  // confirm dialogs answer yes
+(await import('./lib/dialogMock.mjs')).installDialogV2({ answer: () => 'yes' });  // confirm dialogs answer yes (the REAL NcmDialog on a stand-in DialogV2)
 globalThis.Item = { create: async (d) => { const it = mkItem('new' + calls.created.length, d.name, {}); it.type = d.type; calls.created.push(d); return it; } };
 
 const { ShardsTab, SHARD_FILTERS } = await import(pathToFileURL(`${ROOT}/scripts/ui/AdminPanel/tabs/ShardsTab.js`).href);

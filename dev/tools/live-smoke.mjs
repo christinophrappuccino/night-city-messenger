@@ -54,10 +54,17 @@ if (joined !== 'ok') { console.error(`live-smoke: ${joined}`); done(1); }
 for (let i = 0; i < 90; i++) { await sleep(1000); if (await ev('!!(window.game && game.ready && game.nightcity?.startupReport)')) break; }
 await sleep(2000);
 
-// --eval <file>: run that file's expression in the joined world (an async IIFE returning a JSON-able value), print
+// --eval <file> [--shot <png>]: run that file's expression in the joined world (an async IIFE returning a JSON-able value), print
 // the result and stop — a probe against the real DOM / API, without the rest of the smoke.
 const EVAL = arg('--eval', null);
-if (EVAL) { const out = await ev(fs.readFileSync(EVAL, 'utf8')); console.log(typeof out === 'string' ? out : JSON.stringify(out, null, 2)); done(0); }
+// --shot <png> with --eval: a screenshot of the page after the expression ran (leave what you want seen on screen)
+const SHOT = arg('--shot', null);
+if (EVAL) {
+  const out = await ev(fs.readFileSync(EVAL, 'utf8'));
+  console.log(typeof out === 'string' ? out : JSON.stringify(out, null, 2));
+  if (SHOT) { await sleep(600); const r = await send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(SHOT, Buffer.from(r.result.data, 'base64')); console.log(`screenshot: ${SHOT}`); }
+  done(0);
+}
 
 const facts = await ev(`(async () => {
   const C = await import('/modules/night-city-messenger/scripts/utils/compat.js');
@@ -77,8 +84,10 @@ if (UI && facts?.isGM) {
     await step('composer', () => ns.composeMessage());
     await step('sound board', () => ns.openSoundBoard());
     await step('theme customizer', () => ns.openThemeCustomizer());
-    await step('v1 dialog (adminConfirm)', async () => { const { adminConfirm } = await import('/modules/night-city-messenger/scripts/utils/adminTheme.js'); adminConfirm({ title: 'NCM smoke', content: '<p>smoke</p>' }); await sleep(700); for (const w of Object.values(ui.windows)) if (w.title === 'NCM smoke') await w.close(); });
-    await step('name picker', async () => { const { showNamePicker } = await import('/modules/night-city-messenger/scripts/utils/namePicker.js'); showNamePicker({ title: 'NCM smoke picker', entries: [{ id: 'a', name: 'A' }] }); await sleep(700); for (const w of Object.values(ui.windows)) if (/NCM smoke picker/.test(w.title)) await w.close(); });
+    // every NCM dialog is an NcmDialog (DialogV2 frame): close the test ones through the V2 instance list, and any v1 window left
+    const closeTitled = async (re) => { for (const a of [...foundry.applications.instances.values()]) if (re.test(a.title || a.options?.window?.title || '')) await a.close(); for (const w of Object.values(ui.windows)) if (re.test(w.title)) await w.close(); };
+    await step('dialog (adminConfirm)', async () => { const { adminConfirm } = await import('/modules/night-city-messenger/scripts/utils/adminTheme.js'); adminConfirm({ title: 'NCM smoke', content: '<p>smoke</p>' }); await sleep(700); if (!document.querySelector('dialog.ncm-dialog-v2')) throw new Error('no NcmDialog on screen'); await closeTitled(/^NCM smoke$/); });
+    await step('name picker', async () => { const { showNamePicker } = await import('/modules/night-city-messenger/scripts/utils/namePicker.js'); showNamePicker({ title: 'NCM smoke picker', entries: [{ id: 'a', name: 'A' }] }); await sleep(700); await closeTitled(/NCM smoke picker/); });
     // Module Settings in sections (scripts/ui/settingsLayout.js): every NCM row sits under an NCM heading
     await step('module settings (sections)', async () => {
       const C = await import('/modules/night-city-messenger/scripts/utils/compat.js');

@@ -24,7 +24,8 @@ globalThis.ui = { notifications: { info: (m) => notices.push(['info', m]), warn:
 globalThis.window = { location: { reload: () => { reloads++; } } };
 let reloads = 0;
 let confirmAnswer = true, confirmCalls = 0;
-globalThis.Dialog = { confirm: async () => { confirmCalls++; return confirmAnswer; } };
+// the REAL NcmDialog (utils/ncmDialog.js) on a stand-in DialogV2; the answer presses Yes / No
+(await import('./lib/dialogMock.mjs')).installDialogV2({ answer: () => { confirmCalls++; return confirmAnswer ? 'yes' : 'no'; } });
 
 /** Apply a Foundry-style flag update to a fake doc (flags.<ns> merge, flags.-=<ns> delete). */
 function applyFlagUpdate(doc, update, { corrupt } = {}) {

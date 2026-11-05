@@ -1,0 +1,34 @@
+/* NCM dialogs on Foundry's DialogV2 frame (scripts/utils/ncmDialog.js, stage 2 — the v1 Dialog is removed in v16).
+   NcmDialog renders the v1 inner markup (.dialog-content / .dialog-buttons / button.dialog-button[data-button]) in a
+   plain div — not a <form>, so Foundry's and the system's form rules never reach dialog bodies — which keeps every
+   existing dialog rule working. This file holds only what the V2 FRAME changes. Mock: dev/mockups/dialog-v2-mock.html. */
+
+/* the body wrapper: the old .window-content was the flex column the content and buttons sat in */
+dialog.application.ncm-dialog-v2 .ncm-dialog-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* the close control: v1 drew "× Close" as quiet header text; V2 draws a filled square button */
+dialog.application.ncm-dialog-v2 .window-header .header-control {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  opacity: 0.7;
+}
+dialog.application.ncm-dialog-v2 .window-header .header-control:hover,
+dialog.application.ncm-dialog-v2 .window-header .header-control:focus-visible { opacity: 1; }
+
+/* the breach dialog zeroes its close button's font-size and sizes the v1 child <i>; V2's icon is the button's own
+   ::before glyph, so it needs the size itself (security-overlays.css, the hack dialog header) */
+dialog.application.ncm-dialog-v2.ncm-hack-dialog .window-header .header-control::before {
+  font-size: 10px;
+  color: #555570;
+}
+dialog.application.ncm-dialog-v2.ncm-hack-dialog .window-header .header-control:hover::before { color: #ff0033; }
+
+/* a v1 dialog with no buttons: DialogV2 needs one, NcmDialog keeps it out of sight */
+dialog.application.ncm-dialog-v2 .dialog-buttons:has(> .ncm-dialog-nobutton:only-child) { display: none; }

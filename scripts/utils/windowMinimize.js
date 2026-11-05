@@ -70,7 +70,10 @@ export function registerMinimizeControls() {
     try {
       const frame = app?.element;
       if (!frame || !app.hasFrame) return;
-      if (!wantsMinimize({ classes: [...frame.classList], minimizable: app.options?.window?.minimizable })) return;
+      // an NCM dialog (utils/ncmDialog.js) is a DialogV2 that follows the v1 dialog rule: big ones get the button,
+      // small yes/no confirms do not
+      const ncmDialog = frame.classList.contains('ncm-dialog-v2');
+      if (!wantsMinimize({ classes: [...frame.classList], minimizable: app.options?.window?.minimizable, v1: ncmDialog })) return;
       attach(frame, { tag: 'button', v1: false, closeSel: '[data-action="close"]', isMin: () => !!app.minimized,
         toggle: () => (app.minimized ? app.maximize() : app.minimize()) });
     } catch (err) { console.warn('NCM | minimize button', err); }

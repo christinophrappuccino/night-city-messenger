@@ -39,6 +39,7 @@ import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, LEGACY_MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { SettingsConfigClass } from '../utils/compat.js';
+import { NcmDialogClass } from '../utils/ncmDialog.js';
 
 /** Hidden world setting stamped once the world has been checked/migrated. */
 export const NAMESPACE_MIGRATION_SETTING = 'namespaceMigrationDone';
@@ -212,7 +213,8 @@ export async function confirmNamespaceMigration(found) {
     <p>Move it to <code>${MODULE_ID}</code> now? This rewrites flags in place and cannot be
     undone — <b>back up the world first</b>. The world reloads afterwards.</p>
     <p>Choosing <i>Not now</i> leaves the world untouched; NCM runs empty until you migrate.</p>`;
-  return Dialog.confirm({
+  // NcmDialog (DialogV2 frame, v1 semantics); plain Foundry chrome — this runs before the admin theme hook exists
+  return NcmDialogClass().confirm({
     title: 'Night City Messenger — migrate module data',
     content,
     yes: () => true,

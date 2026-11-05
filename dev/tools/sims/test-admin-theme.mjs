@@ -13,14 +13,10 @@ globalThis.game = { settings: { get: (m, k) => settings[k] }, user: { isGM: true
 const hooks = {};
 globalThis.Hooks = { on: (n, fn) => { (hooks[n] ??= []).push(fn); }, once() {}, off() {} };
 globalThis.ui = { notifications: { info() {}, warn() {}, error() {} } };
-class FakeDialog {
-  constructor(data, options = {}) { this.data = data; this.options = { classes: ['dialog'], ...options }; FakeDialog.made.push(this); }
-  static confirm(cfg) { return new FakeDialog(cfg, cfg.options); }
-  static prompt(cfg) { return new FakeDialog(cfg, cfg.options); }
-  static wait(data, options) { return new FakeDialog(data, options); }
-}
-FakeDialog.made = [];
-globalThis.Dialog = FakeDialog;
+// the wrappers build the REAL NcmDialog (utils/ncmDialog.js) on a stand-in DialogV2 (no answer: dialogs stay open)
+const D = (await import('./lib/dialogMock.mjs')).installDialogV2();
+const last = () => D.made.at(-1);
+const cls = (d) => d.options.classes.join(' ');
 // A bare-bones element double (no jsdom): dataset + style + querySelector.
 class El {
   constructor() { this.dataset = {}; this.style = {}; this.content = { style: {} }; this.offsetWidth = 400; }
@@ -54,23 +50,27 @@ ok(true, 'null content is a no-op');
 
 // ═══ Dialog wrappers ═══
 const d1 = M.adminDialog({ title: 'x' });
-ok(d1.options.classes.join(' ') === 'dialog ncm-admin-dialog', 'adminDialog: default classes + admin tag');
+ok(cls(d1) === 'dialog ncm-admin-dialog ncm-dialog-v2', 'adminDialog: default classes + admin tag (+ the V2 frame class)');
 const d2 = M.adminDialog({ title: 'x' }, { classes: ['ncm-pick-dialog'], width: 300 });
-ok(d2.options.classes.join(' ') === 'ncm-pick-dialog ncm-admin-dialog' && d2.options.width === 300, 'adminDialog: existing classes kept, options preserved');
+ok(cls(d2) === 'dialog ncm-pick-dialog ncm-admin-dialog ncm-dialog-v2' && d2.options.position.width === 300, 'adminDialog: existing classes kept, width kept');
 const d3 = M.adminDialog({}, { classes: ['dialog', 'ncm-admin-dialog'] });
 ok(d3.options.classes.filter(c => c === 'ncm-admin-dialog').length === 1, 'tag not duplicated');
-const d4 = M.adminConfirm({ title: 'c', content: '<p/>', options: { classes: ['ncm-burn-dialog'] } });
+M.adminConfirm({ title: 'c', content: '<p/>', options: { classes: ['ncm-burn-dialog'] } });
+const d4 = last();
 ok(d4.options.classes.includes('ncm-admin-dialog') && d4.options.classes.includes('ncm-burn-dialog'), 'adminConfirm merges cfg.options.classes');
-const d5 = M.adminConfirm({ title: 'c' });
-ok(d5.options.classes.join(' ') === 'dialog ncm-admin-dialog', 'adminConfirm without options');
-const d6 = M.adminPrompt({ title: 'p', options: { width: 500 } });
-ok(d6.options.width === 500 && d6.options.classes.includes('ncm-admin-dialog'), 'adminPrompt keeps width');
-const d7 = M.adminWait({}, {});
+M.adminConfirm({ title: 'c' });
+const d5 = last();
+ok(cls(d5) === 'dialog ncm-admin-dialog ncm-dialog-v2', 'adminConfirm without options');
+M.adminPrompt({ title: 'p', options: { width: 500 } }).catch(() => {});
+const d6 = last();
+ok(d6.options.position.width === 500 && d6.options.classes.includes('ncm-admin-dialog'), 'adminPrompt keeps width');
+M.adminWait({}, {}).catch(() => {});
+const d7 = last();
 ok(d7.options.classes.includes('ncm-admin-dialog'), 'adminWait tags');
 
 // ═══ renderDialog hook ═══
 M.registerAdminDialogHook();
-ok(hooks.renderDialog?.length === 1, 'hook registered');
+ok(hooks.renderDialog?.length === 1 && hooks.renderNcmDialog?.length === 1, 'hook registered (renderNcmDialog for the V2 frame, renderDialog for any v1 left)');
 const fire = (app) => hooks.renderDialog[0](app);
 const tagged = { options: { classes: ['dialog', 'ncm-admin-dialog'] }, element: [new El()], position: { width: 400 }, setPosition(p) { this.position = { ...this.position, ...p }; } };
 fire(tagged);
@@ -96,12 +96,15 @@ delete settings.playerTheme;
 ok(M.getPlayerTextScale() === 100, 'defaults to 100');
 rootStyle.vars['--ncm-text-scale-base'] = '1.2';
 const p1 = M.playerDialog({ title: 'x' });
-ok(p1.options.classes.join(' ') === 'dialog ncm-player-dialog', 'playerDialog: default classes + player tag');
-const p2 = M.playerConfirm({ title: 'c', options: { classes: ['ncm-time-config-dialog'], width: 320 } });
-ok(p2.options.classes.includes('ncm-player-dialog') && p2.options.classes.includes('ncm-time-config-dialog') && p2.options.width === 320, 'playerConfirm merges cfg.options');
-const p3 = M.playerPrompt({ title: 'p' });
+ok(cls(p1) === 'dialog ncm-player-dialog ncm-dialog-v2', 'playerDialog: default classes + player tag');
+M.playerConfirm({ title: 'c', options: { classes: ['ncm-time-config-dialog'], width: 320 } });
+const p2 = last();
+ok(p2.options.classes.includes('ncm-player-dialog') && p2.options.classes.includes('ncm-time-config-dialog') && p2.options.position.width === 320, 'playerConfirm merges cfg.options');
+M.playerPrompt({ title: 'p' }).catch(() => {});
+const p3 = last();
 ok(p3.options.classes.includes('ncm-player-dialog'), 'playerPrompt tags');
-const p4 = M.playerWait({}, { classes: ['dialog', 'ncm-admin-dialog'] });
+M.playerWait({}, { classes: ['dialog', 'ncm-admin-dialog'] }).catch(() => {});
+const p4 = last();
 ok(p4.options.classes.includes('ncm-admin-dialog') && !p4.options.classes.includes('ncm-player-dialog'), 'an explicit admin class wins over the player tag');
 globalThis.document.activeElement = { closest: (sel) => sel === '[data-ncm-admin-theme]' ? {} : null };
 const p5 = M.playerDialog({ title: 'from a GM-view window' });

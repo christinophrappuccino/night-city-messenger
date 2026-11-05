@@ -56,7 +56,8 @@ globalThis.Hooks = { on: () => {}, once: () => {}, off: () => {}, callAll: () =>
 globalThis.ui = { notifications: { info: (m) => toasts.push(['info', m]), warn: (m) => toasts.push(['warn', m]), error: (m) => toasts.push(['error', m]) } };
 globalThis.CSS = { escape: (s) => String(s) };
 const confirms = []; let confirmAnswer = true;
-globalThis.Dialog = { confirm: async (cfg) => { confirms.push(cfg); return confirmAnswer; } };
+// the REAL NcmDialog (utils/ncmDialog.js) on a stand-in DialogV2; the answer presses Yes / No
+(await import('./lib/dialogMock.mjs')).installDialogV2({ answer: (dlg) => { confirms.push(dlg.data); return confirmAnswer ? 'yes' : 'no'; } });
 globalThis.__ncmScopePickerWired = true;   // the scope picker's document listeners are a browser concern
 
 const { MasterContactService } = await import(pathToFileURL(`${ROOT}/scripts/services/MasterContactService.js`).href);

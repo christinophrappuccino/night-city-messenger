@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Dialogs: v1 today vs DialogV2</title>
+<!--
+  Every NCM dialog family, TODAY (Foundry's v1 Dialog) beside the NEW frame (NCM's DialogV2 subclass), against the
+  real cascade (Foundry core → CPR → night-city-messenger.css → admin-theme.css). The new frame is Foundry's DialogV2
+  window (<dialog class="application dialog ncm-dialog-v2 …">, header with h1 + header-control close) with NCM's own inner markup in a plain div (not a <form>: the system styles form labels)
+  — the v1 class names .dialog-content / .dialog-buttons / button.dialog-button[data-button] — so the existing CSS
+  and the code that reaches into a dialog keep working. The two columns should look the same; a difference is a CSS
+  rule still to port.
+  ?t=clean-dark|clean-light|high-contrast   admin preset      ?as=player     player dialogs (Text Size zoom)
+  ?zoom=120     player Text Size              ?core=13   Foundry v13's core stylesheet instead of v12's
+  ?only=a,b,c   rows to show (ap, rename, bad, plain, hack, form)
+  Serve it: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/dialog-v2-mock.html
+-->
+<script>
+  (function () {
+    const q = new URLSearchParams(location.search);
+    const v13 = q.get('core') === '13';
+    const onDisk = location.protocol === 'file:';
+    const core = v13 ? (onDisk ? '../FoundryVTT-Node-13.351/public/css/foundry2.css' : '/dev/FoundryVTT-Node-13.351/public/css/foundry2.css')
+      : (onDisk ? 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css' : '/_vendor/foundry2.css');
+    const vendor = [core].concat(onDisk
+      ? ['../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/cpr.css', '/_vendor/fa/css/all.min.css']);
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+    if (v13) document.documentElement.classList.add('theme-dark');
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 18px 18px 40px; background: #23232a; color: #ddd; font: 13px system-ui, sans-serif; }
+  .mk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; margin: 0 0 30px; max-width: 1100px; }
+  .mk-cap { grid-column: 1 / -1; display: flex; gap: 12px; align-items: baseline; border-bottom: 1px solid #444; padding-bottom: 4px; }
+  .mk-cap b { font-size: 14px; color: #fff; } .mk-cap span { color: #9a9aa6; }
+  .mk-col > .mk-tag { font: 600 11px/1 system-ui; letter-spacing: .08em; text-transform: uppercase; color: #9a9aa6; margin: 0 0 6px; }
+  /* frames sit in flow (the real ones are fixed / absolute) */
+  .mk-col .app.window-app, .mk-col dialog.application { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; margin: 0; z-index: auto !important; }
+  .mk-col dialog.application { display: flex; }
+</style>
+</head>
+<body>
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  const T = q.get('t') || 'clean-dark';
+  const P = q.get('as') === 'player';
+  const ZOOM = Number(q.get('zoom')) || 100;
+  const only = q.get('only') ? q.get('only').split(',') : null;
+  let A, B;
+  try { A = await import('../../scripts/utils/accessPoints.js'); B = await import('../../scripts/utils/dialogBody.js'); }
+  catch (e) { document.body.innerHTML = `<p style="color:#f88">This mock imports real module code — serve it: <code>node dev/tools/serve-mockups.cjs</code> (${e.message})</p>`; throw e; }
+
+  const roleCls = (forcePlayer) => (P || forcePlayer) ? 'ncm-player-dialog' : 'ncm-admin-dialog';
+  const themeAttr = (forcePlayer) => (P || forcePlayer) ? '' : `data-ncm-admin-theme="${T}"`;
+  const zoomStyle = (forcePlayer) => ((P || forcePlayer) && ZOOM !== 100 ? `zoom:${ZOOM / 100}` : '');
+  const btnsV1 = (buttons) => buttons.map(([k, ic, l, def]) => `<button class="dialog-button ${k}${def ? ' default' : ''}" data-button="${k}"><i class="fas ${ic}"></i>${l}</button>`).join('');
+
+  // TODAY: Foundry v1 Dialog (templates/hud/dialog.html)
+  const v1 = ({ title, cls, body, buttons, w, player }) => `<div class="app window-app dialog ${roleCls(player)} ${cls}" ${themeAttr(player)} style="width:${w}px">
+    <header class="window-header flexrow draggable"><h4 class="window-title">${title}</h4><a class="header-button control close"><i class="fa-solid fa-xmark"></i>Close</a></header>
+    <section class="window-content" style="${zoomStyle(player)}"><div class="dialog-content">${body}</div><div class="dialog-buttons">${btnsV1(buttons)}</div></section></div>`;
+
+  // NEW: Foundry's DialogV2 frame + NCM's inner markup (the v1 class names, inside the V2 form)
+  const v2 = ({ title, cls, body, buttons, w, player }) => `<dialog open class="application dialog ncm-dialog-v2 ${roleCls(player)} ${cls}" ${themeAttr(player)} style="width:${w}px">
+    <header class="window-header"><i class="window-icon fa-fw hidden" inert></i><h1 class="window-title">${title}</h1>
+      <button type="button" class="header-control icon fa-solid fa-xmark" data-tooltip="Close Window" aria-label="Close Window" data-action="close"></button></header>
+    <section class="window-content" style="${zoomStyle(player)}"><div class="ncm-dialog-body">
+      <div class="dialog-content">${body}</div>
+      <div class="dialog-buttons">${buttons.map(([k, ic, l, def]) => `<button type="${def ? 'submit' : 'button'}" class="dialog-button ${k}${def ? ' default' : ''}" data-button="${k}" data-action="${k}"${def ? ' autofocus' : ''}><i class="fas ${ic}"></i>${l}</button>`).join('')}</div>
+    </div></section></dialog>`;
+
+  const row = (id, caption, note, spec) => {
+    if (only && !only.includes(id)) return;
+    document.body.insertAdjacentHTML('beforeend', `<div class="mk-row" data-row="${id}"><div class="mk-cap"><b>${caption}</b><span>${note}</span></div>
+      <div class="mk-col"><div class="mk-tag">Today — v1 Dialog</div>${v1(spec)}</div>
+      <div class="mk-col"><div class="mk-tag">New — DialogV2</div>${v2(spec)}</div></div>`);
+  };
+
+  // 1. the access-point "Post to chat" (themed, the richest themed body)
+  const ref = A.accessRef('terminal', 'Item.ws');
+  const src = { primary: '#ff2a4f', accent: '#ffb000', bgDeep: '#12060a', textPrimary: '#ffe9ee', textSecondary: '#c99aa5' };
+  const apBody = A.postDialogHtml({ ref, info: { name: 'WS-7F-12', sub: 'Arasaka · Tower 7F', tags: ['3 accounts', 'SECRET'] }, style: { mode: 'match' }, players: [{ id: 'a', name: 'Rache' }, { id: 'b', name: 'V' }], source: src });
+  row('ap', 'Themed — Post to chat', 'ncm-themed-dialog ncm-ap-dialog · AccessPoints (adminDialog / playerDialog)', { title: 'Post to chat', cls: 'ncm-themed-dialog ncm-ap-dialog', body: apBody, buttons: [['cancel', 'fa-xmark', 'Cancel'], ['post', 'fa-paper-plane', 'Post to chat', true]], w: 460 });
+  // 2. themedPrompt (rename)
+  row('rename', 'Themed prompt — Rename', 'themedPrompt · 16 uses', { title: 'Rename shard', cls: 'ncm-themed-dialog', w: 420,
+    body: B.dialogBodyHtml({ icon: 'fas fa-microchip', title: "Ghost's Go-Bag", sub: 'carried by Rache', kind: 'Shard', field: { name: 'n', label: 'New name', value: "Ghost's Go-Bag" }, hint: 'It will be listed in the Items directory under this name.' }),
+    buttons: [['no', 'fa-xmark', 'Cancel'], ['yes', 'fa-check', 'Save', true]] });
+  // 3. themedConfirm, destructive
+  row('bad', 'Themed confirm — destructive', 'themedConfirm with bad · ncm-dlg-confirm ncm-dlg-bad', { title: 'Remove shard data', cls: 'ncm-themed-dialog ncm-dlg-confirm ncm-dlg-bad', w: 440,
+    body: B.dialogBodyHtml({ tone: 'bad', icon: 'fas fa-microchip', title: "Ghost's Go-Bag", sub: 'carried by Rache', kind: 'Shard', lead: "Strip all shard data from **Ghost's Go-Bag**? This can't be undone." }),
+    buttons: [['no', 'fa-xmark', 'Cancel'], ['yes', 'fa-trash', 'Remove data', true]] });
+  // 4. the plain adminConfirm (66 uses): Foundry's own chrome + the admin theme
+  row('plain', 'Plain confirm', 'adminConfirm · 66 uses (Yes is the default, as v1 confirm)', { title: 'Delete network', cls: '', w: 400,
+    body: '<p>Delete <b>CorpNet</b>? Mail sent on it keeps its stamp; players lose it from their network list.</p>',
+    buttons: [['yes', 'fa-check', 'Yes', true], ['no', 'fa-times', 'No']] });
+  // 5. a plain form dialog (adminDialog with inputs)
+  row('form', 'Form dialog', 'adminDialog with inputs · 32 uses', { title: 'New contact group', cls: '', w: 420,
+    body: `<div class="form-group"><label>Name</label><input type="text" name="name" value="Afterlife regulars"></div>
+      <div class="form-group"><label>Shared with</label><select name="scope"><option>Only me</option><option selected>Every player</option></select></div>
+      <p class="notes">Members are added from the contact list.</p>`,
+    buttons: [['cancel', 'fa-xmark', 'Cancel'], ['save', 'fa-check', 'Create', true]] });
+  // 6. the breach dialog (player, ncm-hack-dialog) — the real body pieces from ItemInboxApp
+  const skill = (n, stat, t, sel) => `<button type="button" class="ncm-hd-skill-btn${sel ? ' ncm-hd-skill-btn--selected' : ''}" data-skill="${n}" data-total="${t}"><div class="ncm-hd-skill-check"><i class="fas fa-check"></i></div><span class="ncm-hd-skill-name">${n}</span><span class="ncm-hd-skill-detail">${stat} ${t} + 1d10</span><span class="ncm-hd-skill-total">${t}</span></button>`;
+  const hackBody = `<div class="ncm-hd-body">
+      <div class="ncm-hd-header"><div class="ncm-hd-icon" style="color:var(--sp-accent)"><i class="fas fa-bolt"></i></div><div class="ncm-hd-subtitle">Breach the shard's ICE</div></div>
+      <div class="ncm-hd-section-label"><i class="fas fa-crosshairs"></i> SELECT SKILL</div>
+      <div class="ncm-hd-skill-list">${skill('Interface', 'INT', 12, true)}${skill('Electronics/Security Tech', 'TECH', 9)}${skill('Basic Tech', 'TECH', 7)}</div>
+      <div class="ncm-hd-section-label"><i class="fas fa-clover"></i> LUCK BOOST <span class="ncm-hd-luck-avail">Available: 4</span></div>
+      <div class="ncm-hd-luck-row"><button type="button" class="ncm-hd-luck-adj" data-adj="-1">&minus;</button><div class="ncm-hd-luck-gauge">${'<div class="ncm-hd-luck-seg ncm-hd-luck-seg--filled"></div>'.repeat(1)}${'<div class="ncm-hd-luck-seg"></div>'.repeat(3)}</div><button type="button" class="ncm-hd-luck-adj" data-adj="+1">+</button><span class="ncm-hd-luck-val">1</span></div>
+      <div class="ncm-hd-odds"><div class="ncm-hd-odds-header"><span class="ncm-hd-odds-label">Success Probability</span><span class="ncm-hd-odds-pct high" data-odds-pct>70%</span></div><div class="ncm-hd-odds-track"><div class="ncm-hd-odds-fill high" style="width:70%"></div></div></div>
+      <div class="ncm-hd-breakdown"><span class="ncm-hd-val">12</span> <span class="ncm-hd-op">+</span> <span class="ncm-hd-die">1d10</span> <span class="ncm-hd-op">+</span> <span class="ncm-hd-luck-color">1 LUCK</span> <span class="ncm-hd-op" style="margin:0 4px;">vs</span> <span class="ncm-hd-vs">DV 15</span></div>
+      <div class="ncm-hd-attempts"><span class="ncm-hd-attempts-label">Attempt</span><div class="ncm-hd-attempt-dot ncm-hd-attempt-dot--used"></div><div class="ncm-hd-attempt-dot ncm-hd-attempt-dot--current"></div><div class="ncm-hd-attempt-dot"></div></div>
+    </div>`;
+  row('hack', 'Breach dialog (player)', 'playerDialog · ncm-hack-dialog ncm-hd-theme-cyan · its own frame', { title: 'Breach Attempt', cls: 'ncm-hack-dialog ncm-hd-theme-cyan', w: 360, player: true, body: hackBody,
+    buttons: [['execute', 'fa-bolt', 'Execute'], ['cancel', 'fa-times', 'Abort', true]] });
+
+  document.title = 'OK';
+</script>
+</body>
+</html>

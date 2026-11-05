@@ -80,7 +80,8 @@ const accounts = [
 ];
 const cleared = []; const removed = []; let confirmed = 0;
 globalThis.ui = { notifications: { info() {}, warn() {}, error() {} } };
-globalThis.Dialog = { confirm: async () => { confirmed++; return true; } };
+// the REAL NcmDialog (utils/ncmDialog.js) on a stand-in DialogV2; the answer presses Yes
+(await import('./lib/dialogMock.mjs')).installDialogV2({ answer: () => { confirmed++; return 'yes'; } });
 globalThis.game = {
   settings: { get: () => undefined },
   actors: Object.assign([...Object.values(actors)], { get: (id) => actors[id] }),

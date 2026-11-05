@@ -75,10 +75,11 @@ ok(matchesPicker({ name: 'X' }, '', ''), 'entries without sub/group are safe');
   const adminTheme = await import(pathToFileURL(`${ROOT}/scripts/utils/adminTheme.js`).href);
   let captured = null;
   const origDialog = globalThis.Dialog;
-  globalThis.Dialog = class { constructor(data) { captured = data; } render() {} close() {} };
   globalThis.foundry = { utils: { mergeObject: (a, b) => ({ ...a, ...b }) } };
+  // the REAL NcmDialog on a stand-in DialogV2: what it was opened with is its v1 data
+  const D = (await import('./lib/dialogMock.mjs')).installDialogV2();
   showNamePicker({ title: 'T', entries, allowNone: '— none —', selected: 'a2' });
-  globalThis.Dialog = origDialog;
+  captured = D.made.at(-1)?.data;
   const html = captured?.content || '';
   ok(html.includes('ncm-pkr__chips'), 'chips render when entries carry ≥2 groups');
   ok((html.match(/class="ncm-pkr__chip"/g) || []).length === 2 && html.includes('data-group="NPCs"') && html.includes(`data-group="${UNFILED_GROUP}"`), 'one chip per group plus the All chip');
@@ -92,13 +93,11 @@ ok(matchesPicker({ name: 'X' }, '', ''), 'entries without sub/group are safe');
   ok(html.includes('ncm-pkr__foot') && html.includes('<kbd>↑↓</kbd>'), 'the status strip states the keys');
   ok(!html.includes('<select') && !html.includes('ncm-burn-'), 'the picker itself has no native select and no legacy class');
   const one = documentEntries([docs[1], docs[3]].map(d => ({ ...d, folder: fNpcs })));
-  captured = null; globalThis.Dialog = class { constructor(data) { captured = data; } render() {} close() {} };
   showNamePicker({ title: 'T', entries: one });
-  globalThis.Dialog = origDialog;
+  captured = D.made.at(-1)?.data;
   ok(!(captured?.content || '').includes('ncm-pkr__chips') && !(captured?.content || '').includes('ncm-pkr__group'), 'a single group renders no chips and no headers (nothing to choose between)');
-  captured = null; globalThis.Dialog = class { constructor(data) { captured = data; } render() {} close() {} };
   showNamePicker({ title: 'T', entries, multi: true });
-  globalThis.Dialog = origDialog;
+  captured = D.made.at(-1)?.data;
   ok((captured?.content || '').includes('ncm-pkr__check') && !(captured?.content || '').includes('ncm-pkr__sel-ic') && captured?.buttons?.done, 'multi mode renders check squares, no single-pick check, and a Done button');
   // 2026-10-21 (dev): admin-theme.css forces `color: inherit` on every span in an admin
   // dialog, which beat the check square's `color: transparent` — every box showed a tick
@@ -208,16 +207,14 @@ const files = [...walk(`${ROOT}/scripts`), ...walk(`${ROOT}/templates`)];
   }
   // 6. admin:false really is a plain Dialog (no admin-theme class), the default really is tagged.
   {
-    const origDialog = globalThis.Dialog;
-    let opts = null;
-    globalThis.Dialog = class { constructor(data, o) { opts = o; } render() {} close() {} };
+    // the REAL NcmDialog on the stand-in DialogV2 (installed above): read the options it was built with
+    const D = (await import('./lib/dialogMock.mjs')).installDialogV2();
     showNamePicker({ title: 'T', entries, admin: false });
-    const plain = opts;
+    const plain = D.made.at(-1)?.options;
     showNamePicker({ title: 'T', entries });
-    const tagged = opts;
-    globalThis.Dialog = origDialog;
+    const tagged = D.made.at(-1)?.options;
     ok(Array.isArray(plain?.classes) && plain.classes.includes('ncm-pkr-dialog') && !plain.classes.includes('ncm-admin-dialog'), 'admin:false → .ncm-pkr-dialog without the admin-theme class');
-    ok(plain?.width === 440 && tagged?.width === 440, 'the dialog opens at the designed width');
+    ok(plain?.position?.width === 440 && tagged?.position?.width === 440, 'the dialog opens at the designed width');
     ok(Array.isArray(tagged?.classes) && tagged.classes.includes('ncm-admin-dialog'), 'default → tagged for the admin theme');
   }
   // 7. The network-auth dialog resolves its operator the one sanctioned way.
