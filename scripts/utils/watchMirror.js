@@ -38,26 +38,113 @@ function carryState(from, to) {
   }
 }
 
-/** Strip what must not run or take focus in a copy. Run on the way out AND on the way in. */
+// ─── What a copy may hold (audit SEC-09 / SEC-20) ───
+// The copy arrives over the socket from another client, so the WATCHER cleans it too and trusts nothing in it.
+// Elements are an allowlist: what NCM windows are built from. An element not on it is unwrapped (its text stays);
+// the ones that could load or run something are removed outright.
+
+const MIRROR_HTML = 'a abbr article aside b bdi bdo blockquote br button caption code col colgroup dd del details dfn div dl dt em fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 header hr i img input ins kbd label legend li main mark meter nav ol optgroup option output p pre progress q s samp section select small span strong sub summary sup table tbody td textarea tfoot th thead time tr u ul var wbr canvas datalist';
+const MIRROR_SVG = 'svg g path rect circle ellipse line polyline polygon text tspan textpath defs use lineargradient radialgradient stop clippath mask pattern filter symbol marker title desc image animatetransform animate fegaussianblur feturbulence fedisplacementmap feoffset feblend fecolormatrix fecomposite feflood femerge femergenode femorphology fedropshadow fecomponenttransfer fefunca fefuncr fefuncg fefuncb feimage fetile';
+const MIRROR_TAGS = new Set(`${MIRROR_HTML} ${MIRROR_SVG}`.split(/\s+/));
+/** Removed with their contents: they could run, load, restyle the whole page, or navigate. */
+const MIRROR_DROP = new Set(['script', 'style', 'link', 'meta', 'base', 'template', 'noscript', 'set', 'animatemotion', 'mpath', 'foreignobject', 'frame', 'frameset', 'applet', 'portal', 'slot', 'dialog']);
+/** A panel stands in for these: a live player would restart on every picture, and a frame could be anything. */
+const MIRROR_MEDIA = new Set(['iframe', 'video', 'audio', 'object', 'embed']);
+/** Attributes that hold a URL. Anything else that could load something (srcset, ping…) is dropped. */
+const MIRROR_URL_ATTRS = new Set(['href', 'xlink:href', 'src', 'poster', 'action', 'formaction', 'cite']);
+const MIRROR_DROP_ATTRS = new Set(['srcset', 'ping', 'background', 'lowsrc', 'dynsrc', 'codebase', 'data', 'manifest', 'formtarget', 'target', 'http-equiv', 'srcdoc', 'is']);
+
+/**
+ * May a copy keep this URL? A relative path, http(s), blob, mailto/tel, or a data:image URI. The value is what the
+ * DOM holds (entities already decoded); control characters and whitespace are taken out before the scheme test,
+ * because the browser ignores them (`java\tscript:`).
+ * @param {*} value
+ * @returns {boolean}
+ */
+export function mirrorUrlOk(value) {
+  const probe = String(value ?? '').replace(/[\s\u0000-\u001f\u007f-\u009f]+/g, '');
+  if (!probe) return true;
+  const head = probe.split(/[/?#]/)[0];
+  if (!head.includes(':')) return true;
+  const scheme = head.slice(0, head.indexOf(':')).toLowerCase();
+  if (['http', 'https', 'blob', 'mailto', 'tel'].includes(scheme)) return true;
+  return scheme === 'data' && /^data:image\/(png|jpe?g|gif|webp|avif|bmp|svg\+xml)[;,]/i.test(probe);
+}
+
+/** An inline style with nothing that could load an unsafe URL or run (the old IE `expression`). */
+export function mirrorStyle(style) {
+  const out = [];
+  for (const decl of String(style ?? '').split(';')) {
+    if (!decl.trim()) continue;
+    if (/expression\s*\(|javascript:|@import|behavior\s*:|-moz-binding/i.test(decl)) continue;
+    const urls = [...decl.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/gi)];
+    if (urls.some((m) => !mirrorUrlOk(m[2]))) continue;
+    out.push(decl.trim());
+  }
+  return out.join(';');
+}
+
+/** "--a:b;--c:d" with only custom-property pairs whose value is safe. Anything else is dropped. */
+export function mirrorVars(str) {
+  const out = [];
+  for (const decl of String(str ?? '').split(';')) {
+    const m = /^\s*(--[\w-]+)\s*:([\s\S]*)$/.exec(decl);
+    if (!m) continue;
+    const val = m[2].trim();
+    if (/[{}<>]|expression\s*\(|javascript:|@import/i.test(val)) continue;
+    if ([...val.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/gi)].some((u) => !mirrorUrlOk(u[2]))) continue;
+    out.push(`${m[1]}:${val}`);
+  }
+  return out.join(';');
+}
+
+/** Class tokens made only of word characters and dashes. */
+export function mirrorClasses(str) {
+  return String(str ?? '').split(/\s+/).filter((c) => /^[\w-]+$/.test(c)).join(' ');
+}
+
+/** Only `data-*` attributes, by name. A copy once carried `onanimationstart` here (SEC-09). */
+export function mirrorData(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj && typeof obj === 'object' ? obj : {})) {
+    if (/^data-[\w-]+$/i.test(k)) out[k.toLowerCase()] = String(v ?? '');
+  }
+  return out;
+}
+
+/** Strip what must not run, load or take focus in a copy. Run on the way out AND on the way in. */
 export function cleanMirror(root) {
-  root.querySelectorAll('script, link, style[data-ncm-no-watch], [data-ncm-no-watch]').forEach((n) => n.remove());
-  // A live player would restart on every picture, and a frame could be anything: a plain panel stands in for it.
-  root.querySelectorAll('iframe, video, audio, object, embed').forEach((n) => {
-    const box = n.ownerDocument.createElement('div');
-    box.className = 'ncm-watch__media';
-    box.innerHTML = '<i class="fas fa-photo-film"></i> Playing on their screen';
-    n.replaceWith(box);
-  });
-  root.querySelectorAll('*').forEach((n) => {
+  root.querySelectorAll('[data-ncm-no-watch]').forEach((n) => n.remove());
+  // Deepest first, so an unwrapped element's children have already been judged.
+  for (const n of [...root.querySelectorAll('*')].reverse()) {
+    const tag = String(n.localName || n.tagName || '').toLowerCase();
+    if (MIRROR_DROP.has(tag)) { n.remove(); continue; }
+    if (MIRROR_MEDIA.has(tag)) {
+      const box = n.ownerDocument.createElement('div');
+      box.className = 'ncm-watch__media';
+      box.innerHTML = '<i class="fas fa-photo-film"></i> Playing on their screen';
+      n.replaceWith(box);
+      continue;
+    }
+    if (!MIRROR_TAGS.has(tag)) { n.replaceWith(...n.childNodes); continue; }
+    // An SVG animation may not change a link or a handler.
+    if ((tag === 'animate' || tag === 'animatetransform') && /href|^on|^style$/i.test(n.getAttribute('attributeName') || '')) { n.remove(); continue; }
     n.removeAttribute('id');
     n.removeAttribute('autofocus');
     n.removeAttribute('contenteditable');
     n.setAttribute('tabindex', '-1');
     for (const a of [...n.attributes]) {
-      if (/^on/i.test(a.name)) n.removeAttribute(a.name);
-      else if (['href', 'src', 'action', 'formaction'].includes(a.name) && /^\s*javascript:/i.test(a.value)) n.removeAttribute(a.name);
+      const name = a.name.toLowerCase();
+      if (name.startsWith('on') || MIRROR_DROP_ATTRS.has(name)) n.removeAttribute(a.name);
+      else if (MIRROR_URL_ATTRS.has(name)) {
+        // <use> may only point inside the copy.
+        if (!mirrorUrlOk(a.value) || (tag === 'use' && !/^\s*#/.test(a.value))) n.removeAttribute(a.name);
+      } else if (name === 'style') {
+        const s = mirrorStyle(a.value);
+        if (s) n.setAttribute('style', s); else n.removeAttribute('style');
+      }
     }
-  });
+  }
   return root;
 }
 
@@ -230,16 +317,17 @@ export function mountMirror(fit, snap) {
   const look = JSON.stringify([snap.cls, snap.data, snap.rootVars, snap.vars]);
   if (stage.__ncmWatchLook !== look) {
     stage.__ncmWatchLook = look;
-    stage.className = `${snap.cls} ncm-watch__mirror`;
+    // The picture came from another client: only data-* keys, plain class names and custom properties are applied.
+    stage.className = `${mirrorClasses(snap.cls)} ncm-watch__mirror`;
     for (const at of [...stage.attributes]) if (at.name.startsWith('data-')) stage.removeAttribute(at.name);
-    for (const [k, v] of Object.entries(snap.data || {})) stage.setAttribute(k, v);
-    stage.setAttribute('style', `${snap.rootVars || ''};${snap.vars || ''}`);
+    for (const [k, v] of Object.entries(mirrorData(snap.data))) stage.setAttribute(k, v);
+    stage.setAttribute('style', `${mirrorVars(snap.rootVars)};${mirrorVars(snap.vars)}`);
   }
   let wc = stage.firstElementChild;
   if (!wc) { wc = document.createElement('div'); stage.appendChild(wc); }
-  const wcClass = snap.wcClass || 'window-content';
+  const wcClass = mirrorClasses(snap.wcClass) || 'window-content';
   if (wc.className !== wcClass) wc.className = wcClass;
-  const wcVars = snap.wcVars || '';
+  const wcVars = mirrorVars(snap.wcVars);
   if ((wc.getAttribute('style') || '') !== wcVars) wc.setAttribute('style', wcVars);
   refit(fit, snap);
   const html = String(snap.html ?? '');

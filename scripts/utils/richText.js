@@ -55,6 +55,9 @@ const MODES = {
 MODES.mail = MODES.rich;
 
 /** Inline-style properties kept regardless of value (they carry no colour or font identity). */
+/** Properties that may take a module token (`var(--ncm-x)`) in stored text. */
+const TOKEN_PROPS = new Set(['color', 'background-color', 'border-color', 'font-family']);
+const BORDER_PROPS = new Set(['border', 'border-top', 'border-bottom', 'border-left', 'border-right']);
 const KEEP_PROPS = new Set(['font-weight', 'font-style', 'text-decoration', 'text-decoration-line', 'margin', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right', 'padding', 'padding-top', 'padding-bottom', 'padding-left', 'padding-right']);
 
 // ─────────────────────────────────────────────────────────────
@@ -186,7 +189,8 @@ const PALETTE_SET = new Set(RICH_TEXT_PALETTE.map(normHex));
 export const isPaletteColor = (v) => PALETTE_SET.has(normHex(v));
 
 /**
- * Filter an inline style. Keeps: anything token-based (`var(--ncm-…)`), the
+ * Filter an inline style. Keeps: a bare module token (`color:var(--ncm-x)`,
+ * colour and font properties only, no fallback), the
  * identity-free props in KEEP_PROPS, a palette `color` (unless colors:'none'),
  * and a relative font-size (em/% ≤ 2em).
  */
@@ -199,7 +203,14 @@ export function cleanStyle(style, { colors = 'palette' } = {}) {
     const val = decl.slice(i + 1).trim().replace(/\s*!important\s*$/i, '');
     if (!prop || !val) continue;
     if (/url\(|expression\(|javascript:/i.test(val)) continue;
-    if (/var\(\s*--ncm-/.test(val)) { kept.push(`${prop}:${val}`); continue; }
+    // A module token is kept only as the WHOLE value, with no fallback, on a colour or font property.
+    // `position:var(--ncm-x,fixed)` + `inset:var(--ncm-x,0)` was a full-screen overlay (audit FBL-04 / SEC-23).
+    // A thin border line in a module colour is also kept (the old Agent signature block: `1px solid var(--ncm-border)`).
+    if (/var\(/i.test(val)) {
+      if (TOKEN_PROPS.has(prop) && /^var\(\s*--ncm-[a-z0-9-]+\s*\)$/i.test(val)) kept.push(`${prop}:${val}`);
+      else if (BORDER_PROPS.has(prop) && /^[0-4](\.\d+)?px\s+(solid|dashed|dotted|double)\s+var\(\s*--ncm-[a-z0-9-]+\s*\)$/i.test(val)) kept.push(`${prop}:${val}`);
+      continue;
+    }
     if (KEEP_PROPS.has(prop)) { kept.push(`${prop}:${val}`); continue; }
     if (prop === 'color' && colors === 'palette' && isPaletteColor(val)) { kept.push(`${prop}:${normHex(val)}`); continue; }
     if (prop === 'font-size') {

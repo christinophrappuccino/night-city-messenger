@@ -385,6 +385,7 @@ const H = Handlebars;
 const cmp = (fn) => function (a, b, opt) { const r = fn(a, b); return opt?.fn ? (r ? opt.fn(this) : opt.inverse(this)) : r; };
 H.registerHelper('eq', cmp((a, b) => a === b)); H.registerHelper('neq', cmp((a, b) => a !== b));
 H.registerHelper('ncm-tip', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]))); // mirrors scripts/utils/notify.js registerTipHelper
+H.registerHelper('ncm-css-url', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[\\'"()]/g, (c) => '\\' + c.charCodeAt(0).toString(16) + ' '))); // preview twin of notify.js cssUrl (no scheme check)
 H.registerHelper('gt', cmp((a, b) => a > b)); H.registerHelper('lt', cmp((a, b) => a < b));
 H.registerHelper('gte', cmp((a, b) => a >= b)); H.registerHelper('lte', cmp((a, b) => a <= b));
 H.registerHelper('and', (...a) => a.slice(0, -1).every(Boolean)); H.registerHelper('or', (...a) => a.slice(0, -1).some(Boolean));

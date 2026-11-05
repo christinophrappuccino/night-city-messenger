@@ -545,7 +545,7 @@
             {{#each messages}}
               {{#if isConversation}}
               <div class="ncm-viewer__msg ncm-viewer__msg--conv{{#if unread}} ncm-viewer__msg--unread{{/if}}{{#if selected}} ncm-viewer__msg--selected{{/if}}" data-priority="normal" data-action="open-conversation" data-conversation-id="{{id}}">
-                <div class="ncm-conv__stack">{{#each faces}}<div class="ncm-conv__av{{#if img}} has-img{{/if}}" style="--c:{{color}}{{#if img}};background-image:url('{{img}}'){{/if}}">{{#unless img}}{{initial}}{{/unless}}</div>{{/each}}<span class="ncm-conv__glyph"><i class="fas fa-comments" style="margin:0"></i></span></div>
+                <div class="ncm-conv__stack">{{#each faces}}<div class="ncm-conv__av{{#if img}} has-img{{/if}}" style="--c:{{color}}{{#if img}};background-image:url('{{ncm-css-url img}}'){{/if}}">{{#unless img}}{{initial}}{{/unless}}</div>{{/each}}<span class="ncm-conv__glyph"><i class="fas fa-comments" style="margin:0"></i></span></div>
                 <div class="ncm-viewer__msg-content">
                   <div class="ncm-viewer__msg-top"><span class="ncm-viewer__msg-sender">{{title}}</span>{{#if unread}}<span class="ncm-conv__count">{{unread}}</span>{{/if}}<span class="ncm-viewer__msg-time"><span class="ncm-viewer__msg-time-rel" data-conv-time>{{relTime}}</span></span></div>
                   <div class="ncm-viewer__msg-subject"><span class="ncm-conv__rowsub">{{#if left}}You left{{else}}Conversation · {{count}} people{{/if}}{{#if muted}} · muted{{/if}}</span></div>

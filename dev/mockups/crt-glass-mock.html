@@ -189,6 +189,7 @@ const ONLYP = q.get('p');
 const H = Handlebars;
 for (const h of ['eq','neq','gt','lt','gte','lte','and','or','not']) H.registerHelper(h, function (...a) { const [x, y] = a; switch (h) { case 'eq': return String(x) === String(y); case 'neq': return String(x) !== String(y); case 'gt': return x > y; case 'lt': return x < y; case 'gte': return x >= y; case 'lte': return x <= y; case 'and': return a.slice(0, -1).every(Boolean); case 'or': return a.slice(0, -1).some(Boolean); case 'not': return !x; } });
 H.registerHelper('ncm-tip', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]))); // mirrors scripts/utils/notify.js registerTipHelper
+H.registerHelper('ncm-css-url', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[\\'"()]/g, (c) => '\\' + c.charCodeAt(0).toString(16) + ' '))); // preview twin of notify.js cssUrl (no scheme check)
 H.registerHelper('add', (a, b) => Number(a) + Number(b));
 H.registerHelper('ncm-net-icon', () => new H.SafeString('<i class="fas fa-network-wired"></i>'));
 H.registerHelper('helperMissing', () => '');

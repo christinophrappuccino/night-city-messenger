@@ -10,7 +10,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, getPlayerCharacters, generateId } from '../utils/helpers.js';
+import { log, isGM, isFromGM, getPlayerCharacters, generateId } from '../utils/helpers.js';
 import { typeOutMs } from '../utils/callModel.js';
 import { holdsItem } from '../utils/phoneEmergency.js';
 import { activeEffects, nodeIsUp } from '../utils/networkNodes.js';
@@ -239,7 +239,8 @@ export class OverheardService {
     if (Array.isArray(data.userIds) && !data.userIds.includes(game.user.id)) return;
     const hud = game.nightcity?.overheardHud;
     switch (data.op) {
-      case 'prompt': case 'joined': case 'line': case 'ended': case 'click': case 'cut': case 'none': case 'saved': return hud?.receive(data);
+      // What a listener's screen shows only ever comes from a GM (audit SEC-10).
+      case 'prompt': case 'joined': case 'line': case 'ended': case 'click': case 'cut': case 'none': case 'saved': return isFromGM(senderId) ? hud?.receive(data) : undefined;
       default: break;
     }
     if (!isGM() || game.users.activeGM?.id !== game.user.id) return;

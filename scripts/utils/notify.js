@@ -55,14 +55,46 @@ export function tipText(value) {
 /** Handlebars' trailing options object (every helper call receives one last). */
 const isHbsOptions = (o) => !!o && typeof o === 'object' && 'hash' in o && ('data' in o || 'name' in o || 'loc' in o);
 
+/** Schemes a CSS background image may use. A data URI must be an image. */
+const CSS_URL_SCHEMES = new Set(['http', 'https', 'blob']);
+
 /**
- * Register {{ncm-tip value}}: escapes once and returns a plain string, which
- * Handlebars escapes again, so the attribute holds tipText's double escape.
+ * A picture path for the inside of a quoted CSS `url('…')` (audit SEC-23).
+ *
+ * Handlebars turns `'` into `&#x27;`, but the browser decodes that back before
+ * the CSS is read, so `url('{{img}}')` with `x');position:fixed;…` in the path
+ * closed the string and added rules. This returns '' for anything that is not a
+ * relative path, an http(s)/blob URL or a data:image URI, and CSS-escapes the
+ * characters that end a string or a url() (quotes, backslash, brackets, line
+ * breaks). The result has no HTML-special characters of its own; HTML-escape it
+ * as usual where it goes into an attribute (templates do that by themselves).
+ * In templates: url('{{ncm-css-url img}}').
+ * @param {*} value
+ * @returns {string}
+ */
+export function cssUrl(value) {
+  const raw = String(value ?? '').trim();
+  const probe = raw.replace(/[\s\u0000-\u001f\u007f-\u009f]+/g, '');
+  if (!probe) return '';
+  const head = probe.split(/[/?#]/)[0];
+  if (head.includes(':')) {
+    const scheme = head.slice(0, head.indexOf(':')).toLowerCase();
+    if (!CSS_URL_SCHEMES.has(scheme) && !(scheme === 'data' && /^data:image\//i.test(probe))) return '';
+  }
+  return raw.replace(/[\\'"()\u0000-\u001f\u007f]/g, (c) => `\\${c.charCodeAt(0).toString(16)} `);
+}
+
+/**
+ * Register the escaping helpers every NCM template uses:
+ *   {{ncm-tip value}}     — escapes once and returns a plain string, which Handlebars
+ *                           escapes again, so the attribute holds tipText's double escape.
+ *   {{ncm-css-url value}} — cssUrl(), for url('…') inside a style attribute.
  * Called by registerTemplates, and by the sims and previews that render real templates.
  * @param {object} Handlebars
  */
 export function registerTipHelper(Handlebars) {
   Handlebars.registerHelper('ncm-tip', (value, options) => (isHbsOptions(value) && options === undefined ? '' : escapeHtml(value)));
+  Handlebars.registerHelper('ncm-css-url', (value, options) => (isHbsOptions(value) && options === undefined ? '' : cssUrl(value)));
 }
 
 /** Text-content escaping for toasts (quotes need no escaping inside an element body). */

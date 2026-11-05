@@ -70,7 +70,7 @@
             <div class="ncm-term2-ru{{#if isSelected}} is-sel{{/if}}{{#if picked}} is-picked{{/if}}" data-action="tabAct" data-op="select" data-item-id="{{id}}">
               <span class="ncm-term2-ck">{{#if picked}}<i class="fas fa-check"></i>{{/if}}</span>
               <span class="ncm-term2-scr"></span>
-              <span class="ncm-term2-ic{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{img}}'){{/if}}" data-tooltip="{{ncm-tip presetLabel}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
+              <span class="ncm-term2-ic{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{ncm-css-url img}}'){{/if}}" data-tooltip="{{ncm-tip presetLabel}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
               <div class="ncm-term2-ru__id">
                 <div class="ncm-term2-ru__nm">{{name}}</div>
                 <div class="ncm-term2-ru__sub">{{#if placeReal}}<span class="ncm-tagp ncm-term2-ru__pl" style="--tc:{{ncm-hue place}}" data-tooltip="{{ncm-tip place}}"><i class="fas {{placeIcon}}"></i><span>{{place}}</span></span>{{else}}<span class="ncm-term2-ru__none">{{place}}</span>{{/if}}<span class="ncm-term2-ru__n" data-tooltip="{{ncm-tip acctLabel}}" aria-label="{{acctLabel}}"><i class="fas fa-user"></i><b>{{accountCount}}</b></span></div>
@@ -94,7 +94,7 @@
     <div class="ncm-term2-det" data-sel="{{sel.id}}">
       {{#with sel}}
         <div class="ncm-term2-hdr">
-          <span class="ncm-term2-ic ncm-term2-ic--lg{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{img}}'){{/if}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
+          <span class="ncm-term2-ic ncm-term2-ic--lg{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{ncm-css-url img}}'){{/if}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
           <div class="ncm-term2-hdr__nm" data-tooltip="{{ncm-tip name}}">{{name}}</div>
           <div class="ncm-term2-hdr__acts">
             <button type="button" class="ncm-term2-btn ncm-term2-btn--primary" data-action="tabAct" data-op="open" data-item-id="{{id}}"><i class="fas fa-terminal"></i> Open</button>

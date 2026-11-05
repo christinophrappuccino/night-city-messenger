@@ -5,7 +5,7 @@
 {{!-- Scenes → the Atlas: one scene card (a world scene, or a pack scene when `pack`). --}}
 {{#*inline "ncmNet2Card"}}
 <div class="ncm-net2-atcard {{#if cur}}is-cur{{/if}} {{#if dead}}is-dead{{/if}} {{#if has}}is-has{{/if}} {{#if sel}}is-sel{{/if}} {{#if pack}}is-pack{{/if}}" data-action="tabAct" data-op="scCard" {{#if pack}}data-uuid="{{uuid}}"{{else}}data-scene-id="{{id}}"{{/if}} data-nets="{{netsAttr}}" role="button" tabindex="0" aria-pressed="{{#if sel}}true{{else}}false{{/if}}" style="--tc:{{hue}}" title="{{name}}">
-  <div class="ncm-net2-atcard__th"{{#if thumb}} style="background-image:url('{{thumb}}')"{{/if}}>
+  <div class="ncm-net2-atcard__th"{{#if thumb}} style="background-image:url('{{ncm-css-url thumb}}')"{{/if}}>
     {{#if start}}<span class="ncm-net2-atcard__flag" style="--c:{{start.color}}" title="Players start on {{start.name}}"><i class="fas fa-flag"></i>{{start.name}}</span>{{/if}}
     {{#if faces.length}}<span class="ncm-net2-atcard__faces">{{#each faces}}<span class="ncm-net2-atface" style="--fc:{{color}}" title="{{name}} is looking at this scene">{{#if img}}<img src="{{img}}" alt="">{{else}}{{initial}}{{/if}}</span>{{/each}}{{#if moreFaces}}<span class="ncm-net2-atface is-more">+{{moreFaces}}</span>{{/if}}</span>{{/if}}
     {{#if nav}}<i class="fas fa-thumbtack ncm-net2-atcard__pin" title="On the navigation bar"></i>{{/if}}
@@ -513,7 +513,7 @@
 
     {{#with sel}}
     <div class="ncm-net2-atinsp {{#if dead}}is-dead{{/if}}">
-      <div class="ncm-net2-atinsp__th" style="--tc:{{hue}};{{#if thumb}}background-image:url('{{thumb}}'){{/if}}"></div>
+      <div class="ncm-net2-atinsp__th" style="--tc:{{hue}};{{#if thumb}}background-image:url('{{ncm-css-url thumb}}'){{/if}}"></div>
       <div class="ncm-net2-atinsp__main">
         <div class="ncm-net2-atinsp__hd"><b>{{name}}</b><span class="ncm-net2-atinsp__where"><i class="fas {{#if isPack}}fa-book{{else}}fa-folder{{/if}}"></i>{{where}}</span>{{#if cur}}<span class="ncm-tagp is-act">viewing</span>{{/if}}{{#if inWorld}}<span class="ncm-tagp is-good">in the world</span>{{/if}}
           <span class="ncm-net2-grow"></span>

@@ -111,3 +111,22 @@ export function cluesHeard(listener, lines, idx) {
 
 /** A garbled line with no markup, for a saved transcript. */
 export const plainHeard = (html) => String(html).replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+
+/** The only markup a line may carry: a garbled word. */
+const GARBLE_SPAN = /<span class="ncm-r4-gl">([▒░▓]{1,40})<\/span>/g;
+
+/**
+ * A line as received over the socket, made safe to show (audit SEC-10). garbleLine's output is escaped text plus
+ * `<span class="ncm-r4-gl">▒░…</span>` for each lost word; this keeps exactly that and escapes every other
+ * angle bracket, so a line that did not come from garbleLine can only ever show as text.
+ * @param {*} html
+ * @returns {string|null} null stays null ("can't hear this side")
+ */
+export function safeHeardHtml(html) {
+  if (html === null || html === undefined) return null;
+  const keep = [];
+  const marked = String(html).slice(0, 4000).replace(GARBLE_SPAN, (m, g) => { keep.push(g); return `\u0000${keep.length - 1}\u0000`; });
+  return marked
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    .replace(/\u0000(\d+)\u0000/g, (m, i) => `<span class="ncm-r4-gl">${keep[Number(i)]}</span>`);
+}

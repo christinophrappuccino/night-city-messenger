@@ -8,7 +8,7 @@
  *   from a snapshot unless the world moved on since. Rules live in utils/phoneNumbering.js.
  */
 
-import { ncmNotify, tipText } from '../../../utils/notify.js';
+import { ncmNotify, tipText, cssUrl } from '../../../utils/notify.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { getPlayerCharacters, formatCyberDate } from '../../../utils/helpers.js';
 import { parseNumber, fullForm, seenFrom as seenWith, placeOf as placeWith, isUnlisted as unlistedWith, asKeys, specialKey, specialList, sanitizeSpecial, matchOrganization, orgKey, sanitizeRules, placesDiff, placesEdited, lineTypes, lineTypesDiff, sanitizeLineType, lineTypeFor, officeKey, sanitizeOffice, OFFICE_LINE } from '../../../utils/phoneNumbering.js';
@@ -233,7 +233,7 @@ function suggest(p, planned = {}, force = null) {
 }
 /** The full written form, each part in its colour. */
 function fullHtml(n) { const m = fullForm(parse(n)).match(/^(\+\d+\s)([A-Z]{2,3}[\s-])([A-Z]{3}-)?(\d+)$/); if (!m) return esc(fullForm(parse(n))); return `<span class="ncm-pnum is-plain"><span class="r">${esc(m[1])}</span><span class="c">${esc(m[2])}</span>${m[3] ? `<span class="x">${esc(m[3])}</span>` : ''}<span class="l">${esc(m[4])}</span></span>`; }
-const portrait = (o, cls = '') => (o.img ? `<span class="ncm-pn-face has-img ${cls}" style="background-image:url('${esc(o.img)}')" role="img" aria-label="${esc(o.name || 'Portrait')}"></span>` : `<span class="ncm-pn-face ${cls}" style="--tc:${hueOf(o.name || o.num || '?')}">${o.name ? esc(initials(o.name)) : '<i class="fas fa-star-of-life" aria-hidden="true"></i>'}</span>`);
+const portrait = (o, cls = '') => (o.img ? `<span class="ncm-pn-face has-img ${cls}" style="background-image:url('${esc(cssUrl(o.img))}')" role="img" aria-label="${esc(o.name || 'Portrait')}"></span>` : `<span class="ncm-pn-face ${cls}" style="--tc:${hueOf(o.name || o.num || '?')}">${o.name ? esc(initials(o.name)) : '<i class="fas fa-star-of-life" aria-hidden="true"></i>'}</span>`);
 const SRC = { org: ['Organization', 'fa-building', 'var(--ncm-hue-5)'], loc: ['Location', 'fa-location-dot', 'var(--ncm-hue-3)'], alias: ['Alias', 'fa-mask', 'var(--ncm-secret)'], rand: ['Random', 'fa-dice', 'var(--ncm-text-label)'], you: ['Your pick', 'fa-hand-pointer', 'var(--ncm-act)'] };
 const srcChip = (pr) => { const [t, ic, c] = SRC[pr.src] || SRC.rand; return `<span class="ncm-tagp" style="--tc:${c}" data-tooltip="What this proposal was based on"><i class="fas ${ic}"></i> ${t}</span>`; };
 /** Sense-checks. They warn and never block. */
@@ -753,7 +753,7 @@ const themeSwitch = () => seg3('hudState', 'live', S.hudLive ? 'live' : 'ring', 
 const seg3 = (act, k, cur, opts) => `<div class="ncm-pn-seg" role="group">${opts.map(([v, t, h]) => `<button type="button" class="${cur === v ? 'on' : ''}" data-do="${act}" data-k="${k}" data-v="${esc(v)}" data-tooltip="${tipText(h)}">${esc(t)}</button>`).join('')}</div>`;
 const band = (ic, t, tone, sub = '') => `<div class="ncm-pn-band" style="--sk:${tone}"><i class="fas ${ic}"></i> ${esc(t)}${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
 const sect = (ic, t, tone, body, sub) => `<div class="ncm-pn-sect">${band(ic, t, tone, sub)}<div class="in">${body}</div></div>`;
-const faceOf = (name, cls = '', img = '') => (img ? `<span class="ncm-pn-face has-img ${cls}" style="background-image:url('${esc(img)}')" role="img" aria-label="${esc(name)}"></span>` : `<span class="ncm-pn-face ${cls}" style="--tc:${hueOf(name)}">${esc(initials(name))}</span>`);
+const faceOf = (name, cls = '', img = '') => (img ? `<span class="ncm-pn-face has-img ${cls}" style="background-image:url('${esc(cssUrl(img))}')" role="img" aria-label="${esc(name)}"></span>` : `<span class="ncm-pn-face ${cls}" style="--tc:${hueOf(name)}">${esc(initials(name))}</span>`);
 const pane = (cur, k, h) => (S.allOpen || cur === k ? h : '');
 const subTabs = (act, cur, tabs) => `<div class="ncm-r3-subt" role="tablist">${tabs.map(([k, t, ic, tip]) => `<button type="button" role="tab" aria-selected="${cur === k}" class="${cur === k ? 'on' : ''}" data-do="${act}" data-k="${k}" data-tooltip="${tipText(tip)}"><i class="fas ${ic}"></i> ${esc(t)}</button>`).join('')}</div>`;
 const COLORS = [['var(--ncm-act)', 'Cyan'], ['var(--ncm-hue-5)', 'Periwinkle'], ['var(--ncm-attn)', 'Amber'], ['var(--ncm-hue-3)', 'Blue'], ['var(--ncm-hue-1)', 'Pink'], ['var(--ncm-good)', 'Green'], ['var(--ncm-secret)', 'Violet'], ['var(--ncm-money)', 'Gold']];

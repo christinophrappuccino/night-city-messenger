@@ -10,7 +10,7 @@
  *   Spreadsheet is the one type still without a form (grid editor pending).
  */
 
-import { ncmNotify, tipText } from '../../utils/notify.js';
+import { ncmNotify, tipText, cssUrl } from '../../utils/notify.js';
 import { MODULE_ID, DEFAULTS, CONTENT_TYPES, TEMPLATES, SKILL_MAP, CHAT_EMOJI } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -5307,7 +5307,7 @@ export class DataShardComposer extends BaseApplication {
     const stage = el.querySelector('[data-loc-stage]'); if (!stage) return;
     const src = (el.querySelector('[name="locationImage"]')?.value || '').trim();
     stage.classList.toggle('has-img', !!src);
-    stage.style.backgroundImage = src ? `url('${src.replace(/'/g, "\\'")}')` : '';
+    stage.style.backgroundImage = src ? `url('${cssUrl(src)}')` : '';
   }
 
   _locPaintScene() {

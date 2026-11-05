@@ -254,10 +254,19 @@ export class WatchService {
 
   /**
    * @param {object} data
-   * @param {string|null} [senderId] - server-verified sender (SocketManager). Not used for access yet.
+   * @param {string|null} [senderId] - server-verified sender (SocketManager).
+   *
+   * Who may send what (audit SEC-09): a share id is "<operator's user id>:<app id>", so an offer, a picture, an
+   * edit, a too-big note and the end of a share are only taken from that operator; join / leave / resync / ask are
+   * only taken for the user who sent them. Anything else is dropped. A picture is still cleaned on mount.
    */
-  onSocket(data = {}, senderId = null) { // eslint-disable-line no-unused-vars
+  onSocket(data = {}, senderId = null) {
     const me = game.user.id;
+    if (!data || typeof data !== 'object' || !senderId) return;
+    const owns = () => typeof data.shareId === 'string' && data.shareId.startsWith(`${senderId}:`);
+    const self = () => data.userId === senderId;
+    if (['offer', 'end', 'snap', 'edit', 'tooBig'].includes(data.type) && !owns()) return;
+    if (['offer', 'join', 'leave', 'resync', 'ask'].includes(data.type) && !self()) return;
     switch (data.type) {
       case 'offer': {
         if (data.userId === me) return;
@@ -344,7 +353,7 @@ export class WatchService {
       if (rec.watchers.delete(userId)) { this._syncObserver(rec); this._paintButton(rec.app); }
     }
     for (const offer of [...this.offers.values()]) {
-      if (offer.userId === userId) this.onSocket({ type: 'end', shareId: offer.shareId });
+      if (offer.userId === userId) this.onSocket({ type: 'end', shareId: offer.shareId }, userId);
     }
   }
 

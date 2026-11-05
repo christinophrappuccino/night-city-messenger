@@ -132,7 +132,7 @@
     <div class="ncm-calls-list ncm-scrollbar">
       {{#each bookRows}}
       <div class="ncm-calls-bk" data-bk="{{hay}}">
-        <span class="face"{{#if img}} style="background-image:url('{{img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span>
+        <span class="face"{{#if img}} style="background-image:url('{{ncm-css-url img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span>
         <span class="tx"><span class="nm">{{name}}</span><span class="sub">{{{numHtml}}}</span></span>
         <button type="button" class="ncm-calls-mini go" data-action="calls-dial" data-number="{{number}}" data-tooltip="Call {{ncm-tip name}}" data-tooltip-direction="LEFT" aria-label="Call {{name}}"><i class="fas fa-phone"></i></button>
       </div>
@@ -145,7 +145,7 @@
     {{#if speed.length}}
     <div class="ncm-calls-sd"><span class="k">Speed dial</span>
       {{#each speed}}<button type="button" class="ncm-calls-sdp" data-action="calls-dial" data-number="{{number}}" data-tooltip="Call {{ncm-tip name}} · {{ncm-tip number}}" data-tooltip-direction="UP">
-        <span class="face"{{#if img}} style="background-image:url('{{img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span><span class="nm">{{name}}</span></button>{{/each}}
+        <span class="face"{{#if img}} style="background-image:url('{{ncm-css-url img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span><span class="nm">{{name}}</span></button>{{/each}}
     </div>
     {{/if}}
     <div class="ncm-calls-tools">
@@ -187,7 +187,7 @@
           <div class="ncm-calls-band__b"><div>{{#each days}}{{#if divider}}<div class="ncm-calls-day">{{label}}</div>{{/if}}{{#each rows}}
           <div class="ncm-calls-rowc is-{{dirInfo.cls}}{{#if unseen}} is-new{{/if}}">
             <span class="dir"><i class="fas {{dirInfo.icon}}"></i></span>
-            <span class="face{{#unless other.known}} unknown{{/unless}}"{{#if other.img}} style="background-image:url('{{other.img}}')"{{/if}}>{{#unless other.img}}<i class="fas {{#if other.known}}fa-user{{else}}fa-hashtag{{/if}}"></i>{{/unless}}</span>
+            <span class="face{{#unless other.known}} unknown{{/unless}}"{{#if other.img}} style="background-image:url('{{ncm-css-url other.img}}')"{{/if}}>{{#unless other.img}}<i class="fas {{#if other.known}}fa-user{{else}}fa-hashtag{{/if}}"></i>{{/unless}}</span>
             <span class="tx"><span class="nm">{{{nameHtml}}}{{#if unseen}} <span class="tag">New</span>{{/if}}</span>
               <span class="sub"><span class="k">{{dirInfo.word}}</span>{{#if detail}}<span>{{detail}}</span>{{/if}}{{#if net}}<span class="net">{{net.name}}</span>{{/if}}{{#if withheld}}<span class="anon"><i class="fas fa-user-secret"></i> withheld</span>{{/if}}</span>
               {{#if why}}<span class="why"><i class="fas fa-tower-broadcast"></i> {{why}}</span>{{/if}}

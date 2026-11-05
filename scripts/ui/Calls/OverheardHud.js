@@ -10,7 +10,7 @@ import { ncmNotify, tipText } from '../../utils/notify.js';
 import { CallHud } from './CallHud.js';
 import { typeOutMs } from '../../utils/callModel.js';
 import { resolveOperator } from '../../utils/helpers.js';
-import { OVERHEARD_WAYS } from '../../utils/overheard.js';
+import { OVERHEARD_WAYS, safeHeardHtml } from '../../utils/overheard.js';
 import { speak } from './speech.js';
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -31,7 +31,7 @@ export class OverheardHud {
     if (d.op === 'none') { ncmNotify.info(d.way === 'scanner' ? 'Nothing on the air here.' : 'You pick up nothing.'); return; }
     if (d.op === 'joined') { this.cur = { runId: d.runId, label: d.label, net: d.net, from: d.from, skill: d.skill, dv: d.dv, lines: new Map(), note: '', enhanced: 0, saved: false }; this._paint(); return; }
     if (!this.cur || this.cur.runId !== d.runId) { if (d.op === 'saved' && d.ok) ncmNotify.info('Saved to your EXFIL folder.'); return; }
-    if (d.op === 'line') { const had = this.cur.lines.has(d.line.i); this.cur.lines.set(d.line.i, d.line); this._subs(had || d.again ? null : d.line.id); if (d.line.tts && !d.again) speak(this._spoken(d.line)); return; }
+    if (d.op === 'line') { if (!d.line || typeof d.line !== 'object') return; d.line = { ...d.line, html: safeHeardHtml(d.line.html) }; const had = this.cur.lines.has(d.line.i); this.cur.lines.set(d.line.i, d.line); this._subs(had || d.again ? null : d.line.id); if (d.line.tts && !d.again) speak(this._spoken(d.line)); return; }
     if (d.op === 'click') { this.cur.note = 'A click on the line.'; this._subs(); return; }
     if (d.op === 'ended') { this.cur.note = 'The call has ended.'; this.cur.over = true; this._paint(); setTimeout(() => this._close(), 5000); return; }
     if (d.op === 'cut') { this.cur.note = 'The line went dead.'; this.cur.over = true; this._paint(); setTimeout(() => this._close(), 4000); return; }

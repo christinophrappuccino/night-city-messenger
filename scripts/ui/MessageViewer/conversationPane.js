@@ -7,7 +7,7 @@
  *   mount() puts everything back. Design dev/design/CONVERSATIONS.md, mock dev/mockups/conversations-mock.html.
  */
 
-import { ncmNotify, tipText } from '../../utils/notify.js';
+import { ncmNotify, tipText, cssUrl } from '../../utils/notify.js';
 import { MODULE_ID, CHAT_EMOJI } from '../../utils/constants.js';
 import { formatCyberDate, getPlayerCharacters, isHiddenCharacter, isPersonActor } from '../../utils/helpers.js';
 import { identityRole } from '../../utils/identities.js';
@@ -28,7 +28,7 @@ const timeOf = (at) => { try { return formatCyberDate(at, { timeOnly: true }); }
 
 export function avatar(person) {
   const name = person?.name || '?';
-  return person?.img ? `<div class="ncm-conv__av has-img" style="--c:${hueOf(name)};background-image:url('${esc(person.img)}')" role="img" aria-label="${esc(name)}"></div>` : `<div class="ncm-conv__av" style="--c:${hueOf(name)}">${esc(name[0].toUpperCase())}</div>`;
+  return person?.img ? `<div class="ncm-conv__av has-img" style="--c:${hueOf(name)};background-image:url('${esc(cssUrl(person.img))}')" role="img" aria-label="${esc(name)}"></div>` : `<div class="ncm-conv__av" style="--c:${hueOf(name)}">${esc(name[0].toUpperCase())}</div>`;
 }
 
 /** Who a character can write to: their own contacts, minus locked and one-way. The GM: the directory and the players' characters. */
