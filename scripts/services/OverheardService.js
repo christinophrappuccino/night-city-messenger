@@ -16,6 +16,11 @@ import { holdsItem } from '../utils/phoneEmergency.js';
 import { activeEffects, nodeIsUp } from '../utils/networkNodes.js';
 import { sanitizeEavesdrop, sanitizeScript, waysFor, garbleFor, garbleLine, plainHeard } from '../utils/overheard.js';
 
+/** One Enhance clears at most this much garble (15 + a beaten DV by 7 × 5, a very good roll) … */
+const ENHANCE_MAX = 50;
+/** … and comes at most this often per listener. */
+const ENHANCE_GAP_MS = 3000;
+
 export class OverheardService {
   constructor() {
     this.socket = game.nightcity.socketManager;
@@ -251,7 +256,12 @@ export class OverheardService {
       if (!target || !this._join(target, senderId, data.actorId, data.way)) this._to(senderId, { op: 'none', way: data.way });
     } else if (data.op === 'leave' && l) { run.listeners.delete(senderId); this._changed(); }
     else if (data.op === 'enhance' && l) {
-      l.enhance = Math.min(100, (l.enhance || 0) + Math.max(0, Number(data.amount) || 0));
+      // The roll is the listener's (the gameplay boundary), but one Enhance clears at most what a very good
+      // roll earns, and not more than one every few seconds (audit SEC-22: a request could jump to 100).
+      const nowMs = Date.now();
+      if (nowMs - (l.lastEnhanceAt || 0) < ENHANCE_GAP_MS) { log.warn('Overheard: an Enhance came too soon after the last one — ignored'); return; }
+      l.lastEnhanceAt = nowMs;
+      l.enhance = Math.min(100, (l.enhance || 0) + Math.min(ENHANCE_MAX, Math.max(0, Number(data.amount) || 0)));
       for (const i of l.heard.keys()) { const line = this.lineFor(run, l, i); if (line) { l.heard.set(i, line); this._to(senderId, { op: 'line', runId: run.id, line, again: true }); } }
       this._changed();
     } else if (data.op === 'save' && l) { const ok = await this._save(run, l); this._to(senderId, { op: 'saved', runId: run.id, ok }); }

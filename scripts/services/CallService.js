@@ -1202,7 +1202,7 @@ export class CallService {
       return;
     }
     if (type === 'glitch') { if (mine) this.eventBus.emit(EVENTS.CALL_GLITCH, { callId }); return; }
-    if (type === 'traceRequest') { this._revealTo(callId, senderId).catch(() => {}); return; }
+    if (type === 'traceRequest') { if (this.mayTraceCall(callId, senderId)) this._revealTo(callId, senderId).catch(() => {}); else log.warn('Calls: trace refused — only the callee may trace a withheld caller'); return; }
     if (type === 'reveal') {
       if (mine && data.from) { const next = { ...mine, from: { ...data.from }, traced: true }; this._store(next); this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role: this._role(next) }); }
       this.eventBus.emit(EVENTS.CALL_TRACED, { callId, from: data.from || null });
@@ -1756,9 +1756,46 @@ export class CallService {
   }
 
   /** GM side of CALL_LOG_REQUEST. */
-  async handleLogRequest(data) {
+  async handleLogRequest(data, senderId = undefined) {
     if (!isGM() || game.users.activeGM?.id !== game.user.id || !data?.summary) return;
-    await this.writeLog(data.summary);
+    if (senderId === undefined) { await this.writeLog(data.summary); return; }
+    // A relayed log is written from the GM's own copy of the call (audit SEC-22): the call must be one this
+    // GM saw, the sender must have been on it, and each call is logged once. Only the typed lines come
+    // from the request when the GM's copy has none, as plain text.
+    const ok = this.checkLogRequest(data, senderId);
+    if (!ok.ok) { log.warn(`Calls: log request refused: ${ok.why}`); return; }
+    await this.writeLog(ok.summary);
+  }
+
+  /** @returns {{ok:true, summary:object}|{ok:false, why:string}} */
+  checkLogRequest(data = {}, senderId = null) {
+    const user = senderId ? game.users?.get(senderId) : null;
+    if (!user) return { ok: false, why: 'unknown sender' };
+    const callId = String(data.summary?.callId || '');
+    const call = this.calls.get(callId);
+    if (!call) return { ok: false, why: 'a call this GM never saw' };
+    const onIt = call.from?.userId === senderId || call.from?.realUserId === senderId || (call.to?.userIds || []).includes(senderId) || call.to?.userId === senderId;
+    if (!user.isGM && !onIt) return { ok: false, why: 'the sender was not on that call' };
+    this._loggedCalls ??= new Set();
+    if (this._loggedCalls.has(callId)) return { ok: false, why: 'already logged' };
+    this._loggedCalls.add(callId);
+    const summary = { ...this._summary(call), sceneId: user.viewedScene || '' };
+    if (!summary.lines?.length && Array.isArray(data.summary?.lines)) {
+      summary.lines = data.summary.lines.slice(0, 300).map((l) => ({ ...(l && typeof l === 'object' ? l : {}), text: String(l?.text ?? '').slice(0, 500) }))
+        .map(({ text, name, side, at }) => ({ text, name: String(name ?? '').slice(0, 60), side: side === 'callee' ? 'callee' : 'caller', at: Number(at) || 0 }));
+    }
+    return { ok: true, summary };
+  }
+
+  /** May this user ask for a withheld caller to be traced? Only the callee (audit SEC-21). */
+  mayTraceCall(callId, userId) {
+    const user = userId ? game.users?.get(userId) : null;
+    if (!user) return false;
+    if (user.isGM) return true;
+    const live = this.calls.get(callId);
+    if (live) return (live.to?.userIds || []).includes(userId) || live.to?.userId === userId;
+    const OWNER = globalThis.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+    return this.allLogs().some((l) => l.callId === callId && l.direction === 'in' && !!game.actors?.get(l.me?.actorId)?.testUserPermission?.(user, OWNER));
   }
 
   /**

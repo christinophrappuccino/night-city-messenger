@@ -18,7 +18,8 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, isPrimaryGM, netVerbFor, whisperCardHtml } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM, netVerbFor, whisperCardHtml, userOwnsActor } from '../utils/helpers.js';
+import { userCanReachItem } from '../utils/shardAccess.js';
 
 const LOG_SETTING = 'traceLog';
 const HEAT_SETTING = 'traceHeat';
@@ -180,8 +181,48 @@ export class TraceService {
     } catch (err) { log.warn(`Resident trigger check failed: ${err.message}`); }
   }
 
-  /** GM-side socket handler body for TRACE_REQUEST (player relay). */
-  async handleTraceRequest(data) { if (isGM()) await this.recordTrace(data); }
+  /**
+   * GM-side socket handler body for TRACE_REQUEST (player relay). The row is rebuilt here
+   * (audit SEC-22): only for the sender's own character, only on a shard or terminal they can
+   * reach (a trace fires resident triggers on its host), with names read on the GM side,
+   * known severity / outcome, and the GM's own clock.
+   * @param {object} data
+   * @param {string|null} [senderId] the server-verified sender; omitted = the GM's own call
+   */
+  async handleTraceRequest(data, senderId = undefined) {
+    if (!isGM()) return;
+    if (senderId === undefined) { await this.recordTrace(data); return; }
+    const p = this.checkTraceRequest(data, senderId);
+    if (!p.ok) { log.warn(`Trace request refused: ${p.why}`); return; }
+    await this.recordTrace(p.row);
+  }
+
+  /** @returns {{ok:true, row:object}|{ok:false, why:string}} */
+  checkTraceRequest(data = {}, senderId = null) {
+    const user = senderId ? game.users?.get(senderId) : null;
+    if (!user) return { ok: false, why: 'unknown sender' };
+    if (user.isGM) return { ok: true, row: data };
+    const actor = data.actorId ? game.actors?.get(data.actorId) : null;
+    if (!actor || !userOwnsActor(senderId, actor)) return { ok: false, why: 'a trace for a character the sender does not own' };
+    let item = null;
+    if (data.targetUuid && /^(Item|Actor)\./.test(String(data.targetUuid))) {
+      try { item = fromUuidSync(data.targetUuid); } catch { item = null; }
+      const kind = item?.getFlag?.(MODULE_ID, 'isTerminal') ? 'terminal' : item?.getFlag?.(MODULE_ID, 'isDataShard') ? 'shard' : null;
+      if (kind && !userCanReachItem(senderId, item, kind)) return { ok: false, why: 'the sender has no way into that object' };
+      if (!kind) item = null;
+    }
+    const s = (v, n) => String(v ?? '').slice(0, n);
+    const row = this._payload({
+      actor, hostItem: item, action: /^[\w-]{1,40}$/.test(data.action || '') ? data.action : 'intrusion',
+      source: s(data.source, 120), objectId: item ? null : s(data.objectId, 80) || null, objectName: s(data.objectName, 120),
+      targetKind: item ? null : (['network', 'message', 'contact', 'account'].includes(data.targetKind) ? data.targetKind : null),
+      targetNetworkId: s(data.targetNetworkId, 64) || null,
+      targetMessageId: s(data.targetMessageId, 80) || null, targetContactId: s(data.targetContactId, 80) || null,
+      dv: data.dv, margin: Number.isFinite(Number(data.margin)) ? Number(data.margin) : undefined,
+      severity: data.severity, outcome: data.outcome, netVerb: /^[\w -]{1,30}$/.test(data.netVerb || '') ? data.netVerb : undefined,
+    });
+    return { ok: true, row };
+  }
 
   // ─── Log ───
   getLog() { try { return game.settings.get(MODULE_ID, LOG_SETTING) ?? []; } catch { return []; } }

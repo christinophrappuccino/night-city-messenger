@@ -105,10 +105,13 @@ ok(TRAUMA_BEATS.at(-1) >= 9000 && BACKUP_BEATS.at(-1) >= 9000, 'at least nine se
   ok(!sent.some((x) => x.op === 'auto'), 'not while the plan is in use');
   // a forged request
   store.phoneEmergencyActive = [];
-  await s.handleSocket({ op: 'add', row: { id: 'r', actorId: 'law' } }, 'u1');
+  await s.handleSocket({ op: 'add', row: { id: 'r', kind: 'backup', actorId: 'law', rounds: 3, left: 0 } }, 'u1');
   ok(store.phoneEmergencyActive.length === 1, 'an owner may register');
+  ok(store.phoneEmergencyActive[0].left === 3 && store.phoneEmergencyActive[0].id !== 'r', 'the row is rebuilt on the GM side: a fresh id, the countdown from its rounds (A3e)');
+  await s.handleSocket({ op: 'add', row: { id: 'r0', kind: 'backup', actorId: 'law', rounds: 0 } }, 'u1');
+  ok(store.phoneEmergencyActive.length === 1, 'a team that would arrive at once is refused (A3e)');
   game.actors.get = (i) => ({ id: i, testUserPermission: () => false });
-  await s.handleSocket({ op: 'add', row: { id: 'r2', actorId: 'zzz' } }, 'someone');
+  await s.handleSocket({ op: 'add', row: { id: 'r2', kind: 'backup', actorId: 'zzz', rounds: 3 } }, 'someone');
   ok(store.phoneEmergencyActive.length === 1, 'someone else may not');
 }
 

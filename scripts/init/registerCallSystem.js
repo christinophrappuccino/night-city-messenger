@@ -70,7 +70,7 @@ export function registerCallSystem(initializer) {
 
     const sm = game.nightcity.socketManager;
     sm.register(SOCKET_OPS.CALL, (data, sender) => service.handleSocket(data, sender));
-    sm.register(SOCKET_OPS.CALL_LOG_REQUEST, (data) => service.handleLogRequest(data).catch((e) => log.warn(`Calls: log request failed: ${e.message}`)));
+    sm.register(SOCKET_OPS.CALL_LOG_REQUEST, (data, sender) => service.handleLogRequest(data, sender ?? null).catch((e) => log.warn(`Calls: log request failed: ${e.message}`)));
     sm.register(SOCKET_OPS.CALL_AUDIO, (data, sender) => service.handleAudio(data, sender).catch((e) => log.warn(`Calls: a recording failed: ${e.message}`)));
     sm.register(SOCKET_OPS.CALL_VM_REQUEST, (data, sender) => service.handleVoicemailRequest(data, sender).catch((e) => log.warn(`Calls: voicemail request failed: ${e.message}`)));
     sm.register(SOCKET_OPS.CALL_LINE_REQUEST, (data, sender) => service.handleLineRequest(data, sender).catch((e) => log.warn(`Calls: line request failed: ${e.message}`)));

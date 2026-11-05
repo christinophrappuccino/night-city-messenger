@@ -113,10 +113,11 @@ export function registerNetworkSystem(initializer) {
 
     // ─── Network State Changed (GM → All Clients) ─────────
     // Network nodes: a player's switch-off / jam relays here; one GM lands it.
-    socketManager.register(SOCKET_OPS.NETWORK_NODE_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.NETWORK_NODE_REQUEST, async (data, sender) => {
       if (!game.user.isGM) return;
       if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
-      try { await game.nightcity?.networkService?.handleNodeRequest(data); } catch (err) { log.error('Network node relay failed:', err); }
+      // Checked against the real sender (A3e): node sessions, the runner's own effects and programs.
+      try { await game.nightcity?.networkService?.handleNodeRequest(data, sender ?? null); } catch (err) { log.error('Network node relay failed:', err); }
     });
 
     socketManager.register(SOCKET_OPS.NETWORK_STATE_CHANGED, (data, sender) => {

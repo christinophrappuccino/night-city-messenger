@@ -15,7 +15,8 @@
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, NETWORKS, NETWORK_TYPES, SECURITY_LEVELS, NETWORK_ACCESS_MODES, CONNECTION_MODES } from '../utils/constants.js';
 import { beatsDV } from '../utils/rolls.js';
-import { log, isGM, generateId, whisperCardHtml } from '../utils/helpers.js';
+import { log, isGM, generateId, whisperCardHtml, userOwnsActor } from '../utils/helpers.js';
+import { resolveJackIn, movesFor } from '../utils/jackIn.js';
 import { bypassDCFor } from '../utils/bypassSkills.js';
 import { sourceUuidOf, prewireFlags } from '../utils/scenesAtlas.js';
 import { liveRun, withRun, expiredRuns } from '../utils/networkNodes.js';
@@ -714,8 +715,113 @@ export class NetworkService {
   }
 
   /** GM side of the player relay. @param {object} data */
-  async handleNodeRequest(data = {}) {
+  /**
+   * May this player do this to this node? (audit SEC-22, batch A3e) The rules a node session already
+   * plays by, judged on the GM side from the node's own state and the Jacking in rules:
+   *   - anything that changes the node (jam, tap, backdoor, insert, sweep removal, wipe, clean) needs a live
+   *     session by one of the sender's own characters; the effect or program is that runner's;
+   *   - switching on / off without a session only on an unlocked box, on the scene the sender is viewing;
+   *     a player never marks a node damaged;
+   *   - a session record is the sender's own character's: a new one starts within the rules' moves and
+   *     minutes, a saved one never gives moves back or changes its window;
+   *   - durations are clamped to the rules; a raised alert is one step; recall / collect are the
+   *     sender's own programs; names come from the GM's side. Hidden nodes are refused.
+   * @returns {{ok:true, data:object}|{ok:false, why:string}}
+   */
+  checkNodeRequest(data = {}, senderId = null) {
+    const fail = (why) => ({ ok: false, why });
+    const user = senderId ? game.users?.get(senderId) : null;
+    if (!user) return fail('unknown sender');
+    if (user.isGM) return { ok: true, data };
+    const owns = (id) => !!id && userOwnsActor(senderId, id);
+    const nameOf = (id) => game.actors?.get(id)?.name || '';
+    const rules = (() => { try { return resolveJackIn(game.settings.get(MODULE_ID, 'jackInRules')); } catch { return resolveJackIn({}); } })();
+    const mins = (key) => Math.max(0, Number(rules.actions?.[key]?.minutes) || 0);
+    const now = this._nowMs();
+    const s = (v, n) => String(v ?? '').slice(0, n);
+
+    if (data.op === 'recall') {
+      if (!owns(data.actorId)) return fail('not the sender\'s character');
+      const mine = this.getNodes().some((n) => (n.infections || []).some((x) => x.family === data.family && x.actorId === data.actorId));
+      return mine ? { ok: true, data: { op: 'recall', family: s(data.family, 40), actorId: data.actorId } } : fail('no program of theirs in that family');
+    }
+    const node = this.getNode(data.nodeId);
+    if (!node) return fail('no such node');
+    if (node.hidden) return fail('a hidden node');
+    const run = (node.runs || []).find((r) => now < r.until && owns(r.actorId)) || null;
+    const who = run?.actorName || nameOf(run?.actorId) || user.character?.name || user.name;
+    const base = { op: data.op, nodeId: node.id };
+
+    switch (data.op) {
+      case 'state': {
+        if (!NODE_STATES[data.state] || data.state === 'damaged') return fail('a state a player cannot set');
+        if (data.state === 'jammed') {
+          if (!run) return fail('jamming needs a session');
+          const max = mins('jam') || 30;
+          return { ok: true, data: { ...base, state: 'jammed', minutes: Math.max(1, Math.min(max, Math.round(Number(data.minutes) || max))), who } };
+        }
+        const onScene = user.viewedScene && user.viewedScene === node.sceneId;
+        if (!run && (node.security?.requiresAuth || !onScene)) return fail('switching this node needs a session');
+        return { ok: true, data: { ...base, state: data.state, minutes: 0, who } };
+      }
+      case 'log':
+        return { ok: true, data: { ...base, who, what: s(data.what, 120) } };
+      case 'alert':
+        return { ok: true, data: { ...base, delta: Math.max(0, Math.min(1, Math.round(Number(data.delta) || 0))) } };
+      case 'wipe':
+        return run ? { ok: true, data: { ...base, who: run.actorName || who } } : fail('wiping the log needs a session');
+      case 'effect': {
+        const e = data.effect || {};
+        if (!NODE_EFFECTS[data.kind]) return fail('unknown effect');
+        if (!run || e.actorId !== run.actorId) return fail('an effect needs the sender\'s own session');
+        const cap = mins(data.kind === 'taps' ? 'tap' : 'backdoor');
+        const m = cap > 0 ? Math.max(1, Math.min(cap, Math.round(Number(e.minutes) || cap))) : 0;
+        return { ok: true, data: { ...base, kind: data.kind, effect: { actorId: run.actorId, actorName: who, minutes: m } } };
+      }
+      case 'unEffect':
+        if (!NODE_EFFECTS[data.kind]) return fail('unknown effect');
+        return run ? { ok: true, data: { ...base, kind: data.kind, effectId: s(data.effectId, 40), who } } : fail('removing an effect needs a session');
+      case 'run': {
+        const r = data.run || {};
+        if (!owns(r.actorId)) return fail('a session for a character the sender does not own');
+        const was = liveRun(node, r.actorId, now);
+        const maxMoves = movesFor(rules, 20, 9999);
+        const moves = was ? was.moves : Math.max(0, Math.min(maxMoves, Math.round(Number(r.moves) || 0)));
+        const used = Math.max(was?.used || 0, Math.min(moves, Math.max(0, Math.round(Number(r.used) || 0))));
+        const minutes = Math.max(0, Math.min(Number(rules.session?.minutes) || 0, Number(r.minutes) || 0));
+        return { ok: true, data: { ...base, run: { actorId: r.actorId, actorName: nameOf(r.actorId), rank: Math.max(0, Math.min(20, Math.round(Number(r.rank) || 0))), moves, used, open: !!r.open, minutes } } };
+      }
+      case 'unRun':
+        return owns(data.actorId) ? { ok: true, data: { ...base, actorId: data.actorId } } : fail('not the sender\'s character');
+      case 'infect': {
+        const p = data.program || {};
+        if (!NODE_PROGRAMS[data.kind]) return fail('unknown program');
+        if (!run || p.actorId !== run.actorId) return fail('inserting a program needs the sender\'s own session');
+        const quality = Math.max(0, Math.min(100, Number(p.quality) || 0));
+        const stealthDV = Math.max(0, Math.min(20, Math.round(Number(p.stealthDV) || 12)));
+        const prm = p.params && typeof p.params === 'object' ? p.params : {};
+        return { ok: true, data: { ...base, kind: data.kind, program: { name: s(p.name, 80), actorId: run.actorId, actorName: who, quality, stealthDV, params: { every: prm.every, maxNodes: prm.maxNodes, carry: prm.carry, delay: prm.delay, cap: prm.cap } } } };
+      }
+      case 'clean':
+        return run ? { ok: true, data: { ...base, infectionId: s(data.infectionId, 40), who } } : fail('cleaning needs a session');
+      case 'collect': {
+        if (!owns(data.actorId)) return fail('not the sender\'s character');
+        const mine = (node.infections || []).some((x) => x.id === data.infectionId && x.actorId === data.actorId);
+        return mine ? { ok: true, data: { ...base, infectionId: data.infectionId, actorId: data.actorId } } : fail('not their program');
+      }
+      default:
+        return fail(`unknown op "${data.op}"`);
+    }
+  }
+
+  async handleNodeRequest(data = {}, senderId = undefined) {
     if (!isGM()) return;
+    // A relayed request is checked against its real sender (A3e); the GM's own calls pass no sender.
+    if (senderId !== undefined) {
+      const ok = this.checkNodeRequest(data, senderId);
+      if (!ok.ok) { log.warn(`Node request refused: ${ok.why}`); return; }
+      data = ok.data;
+    }
     if (data.op === 'state') return this.setNodeState(data.nodeId, data.state, { minutes: data.minutes, who: data.who });
     if (data.op === 'log') return this.nodeLog(data.nodeId, data.who, data.what);
     if (data.op === 'alert') return this.bumpNodeAlert(data.nodeId, data.delta);

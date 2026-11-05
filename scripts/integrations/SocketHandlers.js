@@ -136,12 +136,23 @@ export class SocketHandlers {
     // ─── Log Relay (Player → GM) ──────────────────────────
     // Players relay log-worthy events to the GM so they appear
     // in the persistent access log with the player's actor info.
-    socketManager.register(SOCKET_OPS.LOG_RELAY, (data) => {
+    // Nothing in the module sends this any more, so a packet here comes from a modified client.
+    // It is kept (the access log has older callers in mind) but rebuilt (audit SEC-22): who sent it is
+    // the server's id, a named character must be theirs, and only short text fields are kept.
+    // Every GM keeps its own copy of the access log (a state mirror, B1); saving it is a B4 item.
+    socketManager.register(SOCKET_OPS.LOG_RELAY, (data, sender) => {
       if (!game.user.isGM) return;
       const accessLogService = game.nightcity?.accessLogService;
-      if (!accessLogService) return;
-      log.debug('Socket: log relay received —', data.type, data.actorName);
-      accessLogService._push(data);
+      const user = sender ? game.users?.get(sender) : null;
+      if (!accessLogService || !user || !data || typeof data !== 'object') return;
+      const s = (v, n) => String(v ?? '').slice(0, n);
+      const actor = data.actorId && userOwnsActor(sender, data.actorId) ? game.actors.get(data.actorId) : null;
+      log.debug('Socket: log relay received —', data.type, user.name);
+      accessLogService._push({
+        type: /^[\w-]{1,40}$/.test(data.type || '') ? data.type : 'note',
+        networkId: s(data.networkId, 64), networkName: s(data.networkName, 80), message: s(data.message, 200),
+        actorId: actor?.id || null, actorName: actor?.name || '', userId: sender, userName: user.name,
+      });
     });
 
     // ─── Player Shard Conversion Relay ─────────────────────
@@ -388,10 +399,10 @@ export class SocketHandlers {
 
     // ─── Player Trace Relay (a player tripped a trace; GM records the log + heat
     //     on the GM-owned world settings) ──────────────────
-    socketManager.register(SOCKET_OPS.TRACE_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.TRACE_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
-        await game.nightcity?.traceService?.handleTraceRequest(data);
+        await game.nightcity?.traceService?.handleTraceRequest(data, sender ?? null);
       } catch (err) {
         log.error('Trace relay failed:', err);
       }
@@ -401,11 +412,11 @@ export class SocketHandlers {
     // A player's gated action does NOT auto-roll — the GM gets the NetAdjudicator
     // prompt and calls pass/fail; the verdict rides back to the waiting console.
     // CANCEL = the player withdrew while the GM was deciding (closes the prompt).
-    socketManager.register(SOCKET_OPS.NET_RESOLVE_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.NET_RESOLVE_REQUEST, async (data, sender) => {
       if (!game.user.isGM) return;
       try {
         const nr = await import('../ui/content/NetResolve.js');
-        await nr.handleNetResolveRequest(data);
+        await nr.handleNetResolveRequest(data, sender ?? null);
       } catch (err) {
         log.error('Net adjudication request failed:', err);
       }
@@ -421,11 +432,11 @@ export class SocketHandlers {
       }
     });
 
-    socketManager.register(SOCKET_OPS.NET_RESOLVE_CANCEL, async (data) => {
+    socketManager.register(SOCKET_OPS.NET_RESOLVE_CANCEL, async (data, sender) => {
       if (!game.user.isGM) return;
       try {
         const nr = await import('../ui/content/NetResolve.js');
-        nr.handleNetResolveCancel(data);
+        nr.handleNetResolveCancel(data, sender ?? null);
       } catch (err) {
         log.error('Net adjudication cancel failed:', err);
       }
