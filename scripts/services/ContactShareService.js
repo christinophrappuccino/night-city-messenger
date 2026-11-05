@@ -22,6 +22,7 @@ import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { isSelectableCharacter, log } from '../utils/helpers.js';
 import { normaliseNumber } from '../utils/phoneNumbering.js';
 import { serialize } from '../utils/serialize.js';
+import { need } from '../core/providers.js';   // UI pieces come from the UI layer (R9b)
 
 export class ContactShareService {
 
@@ -374,8 +375,7 @@ export class ContactShareService {
     // Play the Data Drop overlay animation
     if (this._wantsShareFx(data)) {
       try {
-        const { DataDropOverlay } = await import('../ui/DataDropOverlay/DataDropOverlay.js');
-        await DataDropOverlay.play({
+        await need('dataDropOverlay')({
           senderName,
           recipientName: actor.name,
           contact: displayContact,

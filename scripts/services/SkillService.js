@@ -10,8 +10,7 @@
 
 import { MODULE_ID, SKILL_MAP } from '../utils/constants.js';
 import { log, chatCardTime } from '../utils/helpers.js';
-import { playRollReveal } from '../ui/content/RollReveal.js';
-import { askRoll } from '../ui/content/RollPanel.js';
+import { need } from '../core/providers.js';   // the roll panel + roll animation come from the UI layer (R9b)
 import { beatsDV } from '../utils/rolls.js';
 import { renderTemplate } from '../utils/compat.js';
 import { luckOf, roleItems } from '../utils/cpr.js';
@@ -78,7 +77,7 @@ export class SkillService {
     // The roll panel (RollPanel.js): formula, chance, Luck, a modifier — before the die moves.
     if (options.ask) {
       const a = options.ask === true ? {} : options.ask;
-      const choice = await askRoll({
+      const choice = await need('askRoll')({
         actor, skill: skillName, dv: dc, modifier,
         title: a.title || context || `${skillName} check`, sub: a.sub || '', host: a.host || options.reveal?.host || null,
         hideDV: !!(a.hideDV ?? options.reveal?.hideDV), goLabel: a.goLabel,
@@ -139,7 +138,7 @@ export class SkillService {
       return posted;
     };
     if (reveal) {
-      await playRollReveal({
+      await need('rollReveal')({
         host: reveal.host, result, skillName,
         title: reveal.title || context || `${skillName} check`,
         ctx: reveal.ctx || flavor || '', who: reveal.who ?? actor.name,

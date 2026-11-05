@@ -56,6 +56,8 @@ globalThis.fromUuidSync = () => null;
 globalThis.ChatMessage = { create: async () => ({}) };
 
 const SF = await load('scripts/ui/content/SiphonFlow.js');
+// services get UI pieces from core/providers.js (R9b); the real SiphonFlow ones, as the init step provides them
+(await load('scripts/core/providers.js'))._provideAll({ canPersistContent: SF.canPersistContent, persistContentData: SF.persistContentData });
 
 // ═══ 2. No GM online: nothing is paid out, no roll is spent ═══
 {

@@ -24,6 +24,7 @@ import {
   resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor, afterRecon,
 } from '../rules/integrity.js';
 import { iceAttack, iceClass } from '../utils/cpr.js';
+import { need } from '../core/providers.js';   // UI pieces come from the UI layer (R9b)
 
 export class DataShardService {
 
@@ -1337,8 +1338,7 @@ export class DataShardService {
 
     // Wealth is credited before the GM marks the entry claimed (audit DATA-02): with no GM to write
     // that, the same eddies could be claimed again and again. Refuse up front.
-    const { canPersistContent } = await import('../ui/content/SiphonFlow.js');
-    if (!canPersistContent({ warn: false })) return { success: false, error: 'No GM is connected — the GM must be online to claim this.' };
+    if (!need('canPersistContent')({ warn: false })) return { success: false, error: 'No GM is connected — the GM must be online to claim this.' };
 
     try {
       // Wire to CPR wealth ledger — wealth is an object { value, transactions }
@@ -1350,7 +1350,7 @@ export class DataShardService {
       // gotcha anyway. persistContentData writes the whole contentData (GM
       // direct, player via the CONTENT_UPDATE_REQUEST relay).
       // A player relays the INTENT ('claim'); the GM marks it claimed from the stored entry (audit SEC-04).
-      const { persistContentData } = await import('../ui/content/SiphonFlow.js');
+      const persistContentData = need('persistContentData');
       const { applyContentIntent } = await import('../utils/contentIntents.js');
       const nowIso = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
       const claimed = applyContentIntent(CONTENT_TYPES.EDDIES, contentData, { action: 'claim' },

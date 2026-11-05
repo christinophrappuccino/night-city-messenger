@@ -36,20 +36,25 @@ ok(helperUi.length === 0, `helpers.js imports no UI file (${helperUi.map((i) => 
 const rulesBad = lowerFiles.filter((f) => f.startsWith('scripts/rules/')).flatMap((f) => imports(f).filter((i) => !/^scripts\/(utils|rules)\//.test(i.to)).map((i) => `${f} → ${i.to}`));
 ok(rulesBad.length === 0, `rules/ depends only on utils/ and rules/ (${rulesBad.join(', ')})`);
 
-// 3. lower layers: no static import of ui/, except the real UI a service still calls (R9b — may only shrink)
-const STATIC_UI_ALLOWED = new Set([
-  'scripts/services/SkillService.js → scripts/ui/content/RollReveal.js',
-  'scripts/services/SkillService.js → scripts/ui/content/RollPanel.js',
-]);
-const staticUi = lowerFiles.flatMap((f) => imports(f).filter((i) => i.kind === 'static' && i.to.startsWith('scripts/ui/')).map((i) => `${f} → ${i.to}`));
-const newStatic = staticUi.filter((s) => !STATIC_UI_ALLOWED.has(s));
-ok(newStatic.length === 0, `no new static import of a ui/ file from a lower layer — move a rule to rules/, or call the UI through a presenter (${newStatic.join('; ')})`);
-for (const s of STATIC_UI_ALLOWED) if (!staticUi.includes(s)) console.log(`  note: ${s} is gone — remove it from STATIC_UI_ALLOWED`);
-// lazy (dynamic) imports of real UI from lower layers: counted, may only go down
-const DYNAMIC_UI_MAX = 17;
-const dynUi = lowerFiles.flatMap((f) => imports(f).filter((i) => i.kind === 'dynamic' && i.to.startsWith('scripts/ui/')).map((i) => `${f} → ${i.to}`));
-ok(dynUi.length <= DYNAMIC_UI_MAX, `lazy UI imports from lower layers: ${dynUi.length} (may only go down from ${DYNAMIC_UI_MAX})`);
-if (dynUi.length < DYNAMIC_UI_MAX) console.log(`  note: lazy UI imports are down to ${dynUi.length} — lower DYNAMIC_UI_MAX`);
+// 3. lower layers import NO ui/ file, static or lazy (R9b, after stage 2: what a service needs from the UI is handed
+// to it through core/providers.js). The exception is WIRING: the two integration files that route sockets and item
+// sheets into GM-side flows and config windows — composition code, like the init/ files — and only lazily.
+const WIRING = new Set(['scripts/integrations/SocketHandlers.js', 'scripts/integrations/ShardSheetOverride.js']);
+const uiImports = lowerFiles.flatMap((f) => imports(f).filter((i) => i.to.startsWith('scripts/ui/')).map((i) => ({ f, ...i })));
+const bad = uiImports.filter((i) => !WIRING.has(i.f) || i.kind === 'static');
+ok(bad.length === 0, `no lower layer imports a ui/ file — move a rule to rules/, or have the UI provide it (core/providers.js) (${bad.map((i) => `${i.f} → ${i.to}`).join('; ')})`);
+ok(uiImports.filter((i) => WIRING.has(i.f)).length <= 11, `the two wiring files reach the UI lazily, no more than today (${uiImports.filter((i) => WIRING.has(i.f)).length} of 11)`);
+
+// 3b. every provider a service asks for is declared and provided at init
+{
+  const P = read('scripts/core/providers.js');
+  const declared = new Set([...P.matchAll(/^ {2}([a-zA-Z]+): ['"]/gm)].map((m) => m[1]));
+  const providedAt = new Set([...read('scripts/init/registerUIComponents.js').matchAll(/provide\('([a-zA-Z]+)'/g)].map((m) => m[1]));
+  const asked = new Set(lowerFiles.flatMap((f) => [...read(f).matchAll(/\b(?:need|provided)\('([a-zA-Z]+)'\)/g)].map((m) => m[1])));
+  ok(declared.size >= 7 && [...asked].every((n) => declared.has(n)), `every provider asked for is declared in PROVIDERS (${[...asked].filter((n) => !declared.has(n)).join(', ') || 'all'})`);
+  ok([...declared].every((n) => providedAt.has(n)), `the "UI providers" init step provides every declared one (${[...declared].filter((n) => !providedAt.has(n)).join(', ') || 'all'})`);
+  ok(/initializer\.register\('init', \d+, 'UI providers'/.test(read('scripts/init/registerUIComponents.js')), 'the providers are registered at init');
+}
 // none of those lazy targets is one of the moved pure files
 const MOVED = { 'scripts/ui/content/EncoderModel.js': 'scripts/rules/encoder.js', 'scripts/ui/content/IntegrityModel.js': 'scripts/rules/integrity.js', 'scripts/ui/Calls/dictation.js': 'scripts/utils/dictation.js' };
 const viaOld = lowerFiles.flatMap((f) => imports(f).filter((i) => MOVED[i.to] || (i.to === 'scripts/ui/content/ContentRenderers.js')).map((i) => `${f} → ${i.spec}`));

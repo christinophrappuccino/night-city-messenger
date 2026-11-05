@@ -12,9 +12,26 @@ import { registerMinimizeControls } from '../utils/windowMinimize.js';
 import { InteractionLayerClass, addSceneControlGroup } from '../utils/compat.js';
 import { isFeatureOn } from '../utils/features.js';
 import { registerSettingsLayout } from '../ui/settingsLayout.js';
+import { provide } from '../core/providers.js';
 
 export function registerUIComponents(initializer) {
   // A visible minimize button on every NCM window + the bigger dialogs (scripts/utils/windowMinimize.js).
+  // UI providers (core/providers.js, R9b): the UI pieces services need, handed to them by name. Each UI file still
+  // loads only when first used. Early in init: the migration runner and services ask for them from ready on.
+  initializer.register('init', 5, 'UI providers', () => {
+    provide('askRoll', async (o) => (await import('../ui/content/RollPanel.js')).askRoll(o));
+    provide('rollReveal', async (o) => (await import('../ui/content/RollReveal.js')).playRollReveal(o));
+    provide('dataDropOverlay', async (o) => (await import('../ui/DataDropOverlay/DataDropOverlay.js')).DataDropOverlay.play(o));
+    provide('residentConsole', async (o) => (await import('../ui/content/ResidentConsole.js')).runResidentConsole(o));
+    // SiphonFlow is loaded at once (canPersistContent is asked synchronously); its other exports reuse that load
+    let siphon = null;
+    import('../ui/content/SiphonFlow.js').then((m) => { siphon = m; }).catch((err) => log.error('UI providers: SiphonFlow did not load', err));
+    const fromSiphon = async (name, args) => (siphon ?? (siphon = await import('../ui/content/SiphonFlow.js')))[name](...args);
+    provide('canPersistContent', (o) => (siphon ? siphon.canPersistContent(o) : !!(game.user?.isGM || game.users?.activeGM)));
+    provide('persistContentData', (...a) => fromSiphon('persistContentData', a));
+    provide('migrateRecycleBin', (...a) => fromSiphon('migrateRecycleBin', a));
+  });
+
   // Module Settings in sections (scripts/ui/settingsLayout.js, stage 2 step 18)
   initializer.register('init', 22, 'Settings layout', () => registerSettingsLayout());
 

@@ -95,7 +95,7 @@ ok(/motionVetoed\(\)\) \{ fired\.add\('spin'\); land\(\)/.test(rrSrc), 'reduced 
 ok(read('styles/night-city-messenger.css').includes("@import 'components/roll-reveal.css'"), 'stylesheet imported');
 ok(!/#[0-9a-f]{3,6}\b(?![^;]*var\()/i.test(css.replace(/var\([^)]*\)/g, '').replace(/rgba\([^)]*\)/g, '')), 'roll-reveal.css: every colour is a token (fallbacks inside var())');
 const sk = read('scripts/services/SkillService.js');
-ok(/if \(reveal\) \{\s*await playRollReveal\(/.test(sk) && /onChat: \(\) => result\.postChat\(\)/.test(sk), 'SkillService: reveal posts from the verdict');
+ok(/if \(reveal\) \{\s*await need\('rollReveal'\)\(/.test(sk) && /onChat: \(\) => result\.postChat\(\)/.test(sk), 'SkillService: reveal posts from the verdict');
 
 // 6. wiring — rolls without an animation get the reveal
 const REVEAL = {

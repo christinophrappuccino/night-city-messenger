@@ -31,6 +31,7 @@ import { shiftInterfaceDvs, shiftJackRules, refreshJackDials } from '../utils/in
 import { adminWait } from '../utils/adminTheme.js';
 import { creditOldScheduled } from '../services/SchedulingService.js';
 import { serialize } from '../utils/serialize.js';
+import { need } from './providers.js';   // UI pieces come from the UI layer (R9b)
 
 /** The schema version this build of the module writes. */
 export const DATA_SCHEMA_VERSION = 8;
@@ -205,8 +206,7 @@ const MIGRATIONS = [
     to: 6,
     label: 'Recycle bin: move wiped files into a GM-only journal',
     run: async () => {
-      const { migrateRecycleBin } = await import('../ui/content/SiphonFlow.js');
-      const n = await migrateRecycleBin();
+      const n = await need('migrateRecycleBin')();
       if (n) log.info(`Recycle bin: moved ${n} wiped file(s) into the bin journal`);
     },
   },

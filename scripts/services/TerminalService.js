@@ -36,6 +36,7 @@ import { adminViewVerdict as _adminVerdict, adminViewTargets as _adminTargets, r
 import { listNodes, nodeStateAt } from '../utils/networkNodes.js';
 import { SHARED_SCOPE, sanitizeFilesConfig, sanitizeFolder, normalizeFolderPath, visibleEntries, buildTree, canOpenFolder, rewritePlan } from '../utils/terminalFiles.js';
 import { serialize, serializeMethods, itemKey } from '../utils/serialize.js';
+import { need } from '../core/providers.js';   // UI pieces come from the UI layer (R9b)
 
 export class TerminalService {
 
@@ -2107,8 +2108,7 @@ export class TerminalService {
       }
 
       const choice = await (async () => {
-        const { runResidentConsole } = await import('../ui/content/ResidentConsole.js');
-        return runResidentConsole({
+        return need('residentConsole')({
           label, resident, hostName: item.name, who,
           mailbox: this.getAccount(item, resident.params?.accountId || accountId)?.displayName || '',
           // Inherit the machine's own preset when a viewer of it is open.
