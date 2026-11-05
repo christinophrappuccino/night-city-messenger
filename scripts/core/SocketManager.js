@@ -96,7 +96,10 @@ export class SocketManager {
     const handler = this._handlers.get(operation);
     if (handler) {
       try {
-        handler(data, sender);
+        // Async handlers return a promise; catch its rejection too (ARCH-01) —
+        // it used to become an unhandled rejection with no log line.
+        const r = handler(data, sender);
+        if (r && typeof r.then === 'function') r.catch((error) => log.error(`Socket handler error for '${operation}':`, error));
       } catch (error) {
         log.error(`Socket handler error for '${operation}':`, error);
       }

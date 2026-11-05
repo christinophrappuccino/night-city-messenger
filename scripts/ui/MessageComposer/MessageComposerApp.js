@@ -2269,7 +2269,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Attached eddies ride on EVERY copy, so the sender pays once per recipient.
       const eddiesTotal = this.eddiesAmount * Math.max(1, sendList.length);
 
+      // One id for this message across every Retry (audit DATA-06): the GM drops a
+      // second copy of an id it already delivered, so a retry can never arrive twice.
+      this._sendKey ||= foundry.utils.randomID();
       const messageData = {
+        sendKey: this._sendKey,
         recipients: (sendList.length > 1 || hasGroup) ? sendList : undefined,
         toActorId: toActorId || null,
         toContactId: contactRecipients.length > 0 ? contactRecipients[0].contactId
@@ -3704,7 +3708,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           if (detail) {
             detail.textContent = details.reason === 'dead_zone'
               ? `No signal here — ${recipientName} will receive it once you are back in network range.`
-              : `Your GM is offline — it will be sent to ${recipientName} when they connect.`;
+              : details.reason === 'no_answer'
+                ? `The GM's client has not answered yet. It is held and will be sent again by itself — it cannot arrive twice. Any eddies stay held until it is answered.`
+                : `Your GM is offline — it will be sent to ${recipientName} when they connect.`;
           }
         } else {
           if (title) title.textContent = 'Message sent';

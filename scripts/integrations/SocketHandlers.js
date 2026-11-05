@@ -8,7 +8,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
-import { log, stripMacroRefs, isPrimaryGM, userOwnsActor, canEncode, canEditShard } from '../utils/helpers.js';
+import { log, stripMacroRefs, isPrimaryGM, isFromGM, userOwnsActor, canEncode, canEditShard } from '../utils/helpers.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
 
 export class SocketHandlers {
@@ -55,13 +55,16 @@ export class SocketHandlers {
       if (!game.user.isGM) return;
       messageService.receiveQueueSync?.(data, sender);
     });
-    socketManager.register(SOCKET_OPS.MESSAGE_QUEUE_CMD, (data) => {
-      if (game.user.isGM || data?.forUserId !== game.user.id) return;
+    socketManager.register(SOCKET_OPS.MESSAGE_QUEUE_CMD, (data, sender) => {
+      // Only a GM may tell a player to drop (and refund) held mail (B3).
+      if (game.user.isGM || data?.forUserId !== game.user.id || !isFromGM(sender)) return;
       messageService.handleQueueCommand?.(data);
     });
 
-    socketManager.register(SOCKET_OPS.MESSAGE_DELIVERED, (data) => {
-      // All clients check if they sent this message
+    socketManager.register(SOCKET_OPS.MESSAGE_DELIVERED, (data, sender) => {
+      // All clients check if they sent this message. Only a GM's answer counts:
+      // a failure answer now refunds held eddies (B3), so a forged one would mint money.
+      if (!isFromGM(sender)) return;
       messageService.handleDeliveryConfirmation(data);
     });
 

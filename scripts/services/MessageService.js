@@ -387,8 +387,11 @@ export class MessageService {
       }
 
       // Generate IDs
-      const messageId = foundry.utils.randomID();
+      // A retry keeps the id the first try had (audit DATA-06): the composer and the
+      // held-mail queue carry it as `sendKey`, and the GM drops a second copy by id.
+      const messageId = MessageService.validSendKey(data.sendKey) || foundry.utils.randomID();
       data.messageId = messageId;
+      data.sendKey = messageId;
       if (!data.threadId) {
         // Prefer the conversation root (first reference), then the direct parent,
         // else start a new thread rooted at this message. Never leave it undefined —
@@ -923,16 +926,18 @@ export class MessageService {
       // failure (orphaned inbox, unresolvable anonymous reply…) arrived as a
       // stray toast AFTER the composer had already shown "Delivered" and
       // closed — the tester's "my player failed to send and we don't know why".
+      if (!data.sendKey) data.sendKey = data.messageId;
       const ack = this._awaitDeliveryAck(data.messageId);
       this.socketManager.emit(SOCKET_OPS.MESSAGE_RELAY, data);
       const result = await ack;
 
       if (result.timeout) {
-        return {
-          success: false,
-          errorCode: 'RELAY_TIMEOUT',
-          error: "No confirmation from the GM's client. The message may not have been delivered — ask the GM to check their console, then Retry.",
-        };
+        // No answer is not a failure (audit DATA-06): the GM may still deliver it, and
+        // refunding then would mint money. Hold it (the eddies stay held) and send it
+        // again later with the SAME id — the GM drops a copy it already has.
+        this._queueMessage(data, 'no_answer');
+        this._scheduleRetryFlush();
+        return { success: true, messageId: data.messageId, queued: true, reason: 'no_answer' };
       }
       const failed = Array.isArray(result.failed)
         ? result.failed.map(x => ({ ...x, error: MessageService.playerFacingError(x.error) }))
@@ -960,6 +965,17 @@ export class MessageService {
   /** How long a relayed send waits for the GM's delivery confirmation. */
   static RELAY_ACK_TIMEOUT_MS = 8000;
 
+  /** After the GM said "accepted", how long the final answer may take before the message is held. */
+  static RELAY_FINAL_TIMEOUT_MS = 90000;
+
+  /** How long held mail with no answer waits before it is sent again. */
+  static RELAY_RETRY_MS = 30000;
+
+  /** A message id a client may choose: what foundry.utils.randomID makes, give or take. */
+  static validSendKey(k) {
+    return typeof k === 'string' && /^[A-Za-z0-9_]{1,64}$/.test(k) ? k : null;
+  }
+
   /**
    * Register a pending relay and return a promise that resolves with the GM's
    * MESSAGE_DELIVERED payload for that messageId, or `{ timeout: true }`.
@@ -971,12 +987,15 @@ export class MessageService {
   _awaitDeliveryAck(messageId, timeoutMs = MessageService.RELAY_ACK_TIMEOUT_MS) {
     this._pendingRelays ??= new Map();
     return new Promise((resolve) => {
-      const timer = setTimeout(() => {
+      const expire = (ms, accepted) => setTimeout(() => {
         this._pendingRelays.delete(messageId);
-        resolve({ timeout: true });
-      }, timeoutMs);
+        resolve({ timeout: true, accepted });
+      }, ms);
+      let timer = expire(timeoutMs, false);
       this._pendingRelays.set(messageId, (payload) => {
         clearTimeout(timer);
+        // The GM has it and is working on it: wait longer for the real answer.
+        if (payload?.accepted) { timer = expire(MessageService.RELAY_FINAL_TIMEOUT_MS, true); return; }
         this._pendingRelays.delete(messageId);
         resolve(payload);
       });
@@ -1233,11 +1252,13 @@ export class MessageService {
    * Queue a message for later delivery.
    * @param {Object} data
    */
-  _queueMessage(data) {
+  _queueMessage(data, reason = null) {
+    if (data?.messageId && this._messageQueue.some((d) => d.messageId === data.messageId)) return;
     this._messageQueue.push({
       ...data,
+      sendKey: data.sendKey || data.messageId,
       _queuedAt: new Date().toISOString(),
-      _queueReason: game.nightcity?.networkService?.isDeadZone ? 'dead_zone' : 'gm_offline',
+      _queueReason: reason || (game.nightcity?.networkService?.isDeadZone ? 'dead_zone' : 'gm_offline'),
     });
     console.log(`${MODULE_ID} | Message queued. Queue size: ${this._messageQueue.length}`);
     this._syncQueueToGm();
@@ -1261,7 +1282,7 @@ export class MessageService {
       subject: d.subject || '', eddies: Number(d.eddies) || 0,
       recipientCount: Array.isArray(d._fanout) ? d._fanout.length : 1,
       queuedAt: d._queuedAt || null,
-      reason: d._queueReason === 'dead_zone' ? 'Dead zone — no signal' : d._queueReason === 'gm_offline' ? 'No GM was online' : (d._queueReason || 'Held'),
+      reason: d._queueReason === 'dead_zone' ? 'Dead zone — no signal' : d._queueReason === 'gm_offline' ? 'No GM was online' : d._queueReason === 'no_answer' ? "The GM's client did not answer yet" : (d._queueReason || 'Held'),
       ...extra,
     });
     const out = this._messageQueue.map((d) => row(d));
@@ -1337,9 +1358,13 @@ export class MessageService {
 
   /** Player: the GM delivered or cancelled one of my held messages — drop it. */
   handleQueueCommand(data) {
-    const i = this._messageQueue.findIndex(d => d.messageId === data?.messageId);
-    if (i < 0) return;
-    const [d] = this._messageQueue.splice(i, 1);
+    const id = data?.messageId;
+    const i = this._messageQueue.findIndex(d => d.messageId === id);
+    const k = i < 0 ? (this._flushing || []).findIndex(d => d.messageId === id) : -1;
+    if (i < 0 && k < 0) return;
+    // A flush in progress must not send it again (audit INT-12).
+    const [d] = i >= 0 ? this._messageQueue.splice(i, 1) : this._flushing.splice(k, 1);
+    (this._settledIds ||= new Set()).add(id);
     if (data.op === 'cancel') {
       ncmNotify.warn?.(`NCM | The GM cancelled your held message "${d.subject || '(no subject)'}".`);
       this._refundHeld(d);
@@ -1469,6 +1494,7 @@ export class MessageService {
    */
   async flushQueue() {
     this._restoreQueue();
+    if (this._flushing) { this._scheduleRetryFlush(); return; }   // one flush at a time
     if (this._messageQueue.length === 0) { this._syncQueueToGm(); return; }
 
     const queue = [...this._messageQueue];
@@ -1482,11 +1508,16 @@ export class MessageService {
       if (i > 0) await this._delay(150);
       // A held fan-out is already stamped and split — relay it as is (re-running
       // sendMessage on it found no recipient).
-      this._flushing = queue.slice(i + 1);
+      // Settled while it waited (a late GM answer, or the GM delivered / cancelled it).
+      if (this._settledIds?.has(queue[i].messageId)) continue;
+      this._flushing = this._flushing.filter((d) => d.messageId !== queue[i].messageId);
       let res = null;
+      const held = { ...queue[i], sendKey: queue[i].sendKey || queue[i].messageId };
+      delete held._queuedAt; delete held._queueReason;
       try {
-        res = Array.isArray(queue[i]._fanout) && queue[i]._fanout.length ? await this._relayMessage(queue[i]) : await this.sendMessage(queue[i]);
+        res = Array.isArray(held._fanout) && held._fanout.length ? await this._relayMessage(held) : await this.sendMessage(held);
       } catch (err) { res = { success: false, error: err.message }; }
+      if (res?.queued) continue;   // no answer again — held once more, same id
       this._saveQueue();
       // Nobody is watching a composer now, so a refusal has to be said out loud.
       if (res && res.success === false) {
@@ -1500,6 +1531,43 @@ export class MessageService {
     this._syncQueueToGm();
 
     this.eventBus.emit(EVENTS.QUEUE_FLUSHED, { count: queue.length });
+  }
+
+  /** Held mail with no answer: try again in a while, once (a flush sends everything held). */
+  _scheduleRetryFlush(ms = MessageService.RELAY_RETRY_MS) {
+    if (this._retryTimer) return;
+    this._retryTimer = setTimeout(() => {
+      this._retryTimer = null;
+      if (!this._messageQueue.length) return;
+      // No GM / no signal: the connect listeners flush it later.
+      if (!game.users?.find?.((u) => u.isGM && u.active) || game.nightcity?.networkService?.isDeadZone) return;
+      this.flushQueue().catch((err) => console.warn(`${MODULE_ID} | retry flush failed:`, err));
+    }, ms);
+  }
+
+  /**
+   * A GM's answer arrived for held mail nobody is waiting on any more (it timed out
+   * and was held, or a flush has not reached it yet). Settle it once: drop it, and
+   * give back what did not arrive.
+   * @returns {Promise<boolean>} whether it was held here
+   */
+  async _settleHeld(data) {
+    const id = data?.messageId;
+    if (!id) return false;
+    const inQueue = this._messageQueue.findIndex((d) => d.messageId === id);
+    const inFlush = (this._flushing || []).findIndex((d) => d.messageId === id);
+    if (inQueue < 0 && inFlush < 0) return false;
+    const d = inQueue >= 0 ? this._messageQueue.splice(inQueue, 1)[0] : this._flushing.splice(inFlush, 1)[0];
+    (this._settledIds ||= new Set()).add(id);
+    this._syncQueueToGm();
+    if (data.success) {
+      if (Array.isArray(data.failed) && data.failed.length) await this._refundHeld(d, data.failed.length);
+      ncmNotify.info?.(`NCM | Your message "${d.subject || '(no subject)'}" was delivered.`);
+    } else {
+      const back = await this._refundHeld(d);
+      ncmNotify.warn?.(`NCM | Your held message "${d.subject || '(no subject)'}" could not be sent: ${MessageService.playerFacingError(data.error)}${back ? ` ${back} eb went back to your account.` : ''}`, { permanent: !!back });
+    }
+    return true;
   }
 
   /** @returns {number} */
@@ -2104,9 +2172,23 @@ export class MessageService {
 
   async handleMessageRelay(data, senderUserId = null) {
     if (!game.user.isGM) return;
+    const ack = (payload) => this.socketManager.emit(SOCKET_OPS.MESSAGE_DELIVERED, { ...payload, messageId: data?.messageId, forUserId: senderUserId });
+
+    // One message, one delivery (audit DATA-06): a retry keeps its id, so a second
+    // relay with an id this GM is working on or has delivered is answered, not written.
+    this._relaysSeen ||= new Map();
+    const now = Date.now();
+    for (const [k, v] of this._relaysSeen) if (now - v.at > 3600000) this._relaysSeen.delete(k);
+    const key = `${senderUserId}:${data?.messageId}`;
+    const seen = this._relaysSeen.get(key);
+    if (seen?.state === 'working') { ack({ accepted: true }); return; }
+    if (seen?.state === 'done') { ack(seen.final); return; }
+    this._relaysSeen.set(key, { state: 'working', at: now });
+    ack({ accepted: true });   // the sender waits longer now the GM has it
 
     console.log(`${MODULE_ID} | GM handling message relay: ${data.messageId}`);
     let result;
+    try {
     // Who is really sending, and as whom (audit SEC-07): checked against the real
     // sender, the sending fields rebuilt here, eddies only if the sender paid them.
     const who = await this.checkRelaySender(data, senderUserId);
@@ -2117,7 +2199,10 @@ export class MessageService {
       const v = game.nightcity?.terminalService?.verifyAccountSend?.(data) || { ok: false, reason: 'terminals unavailable' };
       if (!v.ok) result = { success: false, error: `Refused: ${v.reason}.` };
     }
-    if (result) { /* refused above */ } else if (Array.isArray(data._fanout) && data._fanout.length) {
+    if (!result && !MessageService.validSendKey(data.messageId)) result = { success: false, error: 'Refused: bad message id.' };
+    // Delivered before this GM reloaded: the sender's sent copy is already there.
+    if (!result && this._hasSentCopy(data)) result = { success: true, duplicate: true };
+    if (result) { /* refused or already delivered above */ } else if (Array.isArray(data._fanout) && data._fanout.length) {
       const base = { ...data };
       delete base._fanout;
       result = await this._deliverMany(base, data._fanout);
@@ -2139,19 +2224,41 @@ export class MessageService {
       // …and it stays listed in Admin → Messages → Outbox → Didn't arrive.
       await this.recordDeliveryFailure({ data, result, source: 'relay', byUserName: game.users.get(senderUserId)?.name || '' });
     }
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessageService.handleMessageRelay:`, error);
+      result = { ...(result || {}), success: !!result?.success, error: result?.error || error.message };
+    } finally {
+      // Send the delivery confirmation back to the sender — always, even after an
+      // error (ARCH-01). `forUserId` lets every other client ignore it.
+      const final = {
+        success: !!result?.success,
+        error: result?.error,
+        errorCode: result?.errorCode,
+        delivered: result?.delivered,
+        failed: result?.failed,
+        results: result?.results,
+      };
+      // Delivered: remember it, so a retry gets the same answer. Not delivered:
+      // forget it, so a retry is tried again.
+      if (final.success) this._relaysSeen.set(key, { state: 'done', final, at: Date.now() });
+      else this._relaysSeen.delete(key);
+      ack(final);
+    }
+  }
 
-    // Send delivery confirmation back to the sender. `forUserId` lets every
-    // other client ignore it — the socket is a broadcast.
-    this.socketManager.emit(SOCKET_OPS.MESSAGE_DELIVERED, {
-      messageId: data.messageId,
-      success: result.success,
-      error: result.error,
-      errorCode: result.errorCode,
-      delivered: result.delivered,
-      failed: result.failed,
-      results: result.results,
-      forUserId: senderUserId,
-    });
+  /** Does the sender's mailbox already hold the sent copy of this message? (read-only scan) */
+  _hasSentCopy(data) {
+    const owner = data?.fromActorId || data?.fromContactId;
+    if (!owner || !data?.messageId) return false;
+    const want = `${data.messageId}-sent`;
+    const Repo = this._messageRepo?.constructor;
+    try {
+      for (const j of game.journal ?? []) {
+        if (Repo?.identifyInbox?.(j)?.ownerId !== owner) continue;
+        if (j.pages?.find?.((p) => p.flags?.[MODULE_ID]?.messageId === want)) return true;
+      }
+    } catch { /* treat as not found */ }
+    return false;
   }
 
   /**
@@ -2251,7 +2358,14 @@ export class MessageService {
       pending(data);
       return;
     }
+    if (data.accepted) return;   // only the final answer matters to held mail
+    if (this._settledIds?.has(data.messageId)) return;   // already settled once
+    // An answer for mail that timed out and is held: settle it (a refund only now).
+    return this._settleHeld(data).then((held) => { if (!held) this._lateToast(data); });
+  }
 
+  /** No one waiting and nothing held: the old fallback toast, so the result isn't lost. */
+  _lateToast(data) {
     // No one waiting (ack after the timeout, or a legacy client): fall back to
     // the toast so the result isn't lost.
     if (data.success) {
