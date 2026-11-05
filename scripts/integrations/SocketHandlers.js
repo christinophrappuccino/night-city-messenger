@@ -8,7 +8,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
-import { log, stripMacroRefs, isPrimaryGM } from '../utils/helpers.js';
+import { log, stripMacroRefs, isPrimaryGM, userOwnsActor, canEncode, canEditShard } from '../utils/helpers.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
 
 export class SocketHandlers {
@@ -147,7 +147,7 @@ export class SocketHandlers {
     // ─── Player Shard Conversion Relay ─────────────────────
     // Players can't create JournalEntries directly — the GM's client
     // receives the request, performs the conversion, and sends back the result.
-    socketManager.register(SOCKET_OPS.SHARD_CONVERT_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.SHARD_CONVERT_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
 
       const { requestId, itemId, actorId, config } = data;
@@ -162,6 +162,12 @@ export class SocketHandlers {
         const actor = game.actors.get(actorId);
         const item = actor?.items?.get(itemId);
         if (!item) throw new Error('Item not found');
+        // Only the character's own player, and only when the world lets that character
+        // write shards (the Encoder's gate, judged here too, audit SEC-05).
+        if (!userOwnsActor(sender, actor)) throw new Error('the sender does not own that character');
+        const gate = canEncode(actor, { user: game.users.get(sender) });
+        if (!gate.ok) throw new Error(`${actor.name} may not write shards: ${gate.reason || 'player authoring is off'}`);
+        if (data.reencode && !canEditShard(item, actor, { user: game.users.get(sender) }).ok) throw new Error(`${actor.name} may not rewrite "${item.name}"`);
 
         const service = game.nightcity?.dataShardService;
         if (!service) throw new Error('DataShardService not available');
@@ -201,11 +207,10 @@ export class SocketHandlers {
     // A player who does not OWN a shard item (one that arrived as a message
     // attachment and lives in the world) cannot write its decrypted flag, their
     // session, or a per-entry decrypt — the GM lands it. One GM only.
-    socketManager.register(SOCKET_OPS.SHARD_STATE_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
-      if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
+    socketManager.register(SOCKET_OPS.SHARD_STATE_REQUEST, async (data, sender) => {
+      if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
-        await game.nightcity?.dataShardService?.handleStateRequest(data);
+        await game.nightcity?.dataShardService?.handleStateRequest(data, sender);
       } catch (err) {
         log.error('Shard state relay failed:', err);
       }
@@ -214,11 +219,10 @@ export class SocketHandlers {
     // ─── Player Shard INTEGRITY Relay ─────────────────────
     // A player's failed breach / reconstruct / repair / salvage writes the item's
     // integrity and the GM-owned shard journal — the GM lands it.
-    socketManager.register(SOCKET_OPS.SHARD_INTEGRITY_REQUEST, async (data) => {
-      if (!game.user.isGM) return;
-      if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;   // one GM lands it
+    socketManager.register(SOCKET_OPS.SHARD_INTEGRITY_REQUEST, async (data, sender) => {
+      if (!isPrimaryGM()) return;   // one GM lands it (INT-01)
       try {
-        await game.nightcity?.dataShardService?.handleIntegrityRequest(data);
+        await game.nightcity?.dataShardService?.handleIntegrityRequest(data, sender);
       } catch (err) {
         log.error('Shard integrity relay failed:', err);
       }
@@ -500,7 +504,7 @@ export class SocketHandlers {
     });
 
     // ─── Player Shard Unconvert Relay ────────────────────
-    socketManager.register(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
 
       const { requestId, itemId, actorId } = data;
@@ -511,6 +515,9 @@ export class SocketHandlers {
         const actor = game.actors.get(actorId);
         const item = actor?.items?.get(itemId);
         if (!item) throw new Error('Item not found');
+        // The same door the player's menu checks: their own character, allowed to author shards (SEC-05).
+        if (!userOwnsActor(sender, actor)) throw new Error('the sender does not own that character');
+        if (!canEncode(actor, { user: game.users.get(sender) }).ok) throw new Error(`${actor.name} may not remove shard data`);
 
         const service = game.nightcity?.dataShardService;
         if (!service) throw new Error('DataShardService not available');

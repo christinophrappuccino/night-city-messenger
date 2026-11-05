@@ -14,11 +14,12 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../utils/constants.js';
-import { log, isGM, generateId } from '../utils/helpers.js';
+import { log, isGM, generateId, userOwnsActor } from '../utils/helpers.js';
+import { userCanReachShard, sanitizeSessionUpdates, shardCanSelfDestruct } from '../utils/shardAccess.js';
 import { withShardPrefix, restorePatch } from '../utils/shardNaming.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
 import {
-  resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor,
+  resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor, afterRecon,
 } from '../ui/content/IntegrityModel.js';
 
 export class DataShardService {
@@ -1219,16 +1220,39 @@ export class DataShardService {
     return unstableFor(entryLevel(entry), cfg);
   }
 
-  /** GM-side handler for SHARD_INTEGRITY_REQUEST. */
-  async handleIntegrityRequest(data = {}) {
+  /**
+   * GM-side handler for SHARD_INTEGRITY_REQUEST (audit SEC-05). The sender must be able
+   * to reach the shard. What a player's result may change is decided here, from the
+   * shard's own settings: a failed breach takes the configured hit (never a sent amount),
+   * a repair restores the configured points, a reconstruct moves an entry one step the
+   * way its roll allows, and a salvage is for a character the sender owns.
+   * @param {object} data
+   * @param {string|null} senderId the server-verified sender
+   */
+  async handleIntegrityRequest(data = {}, senderId = null) {
     if (!isGM()) return;
     const item = data.itemUuid ? fromUuidSync(data.itemUuid) : null;
     if (!item || !this.isDataShard(item)) { log.warn(`Integrity relay: shard ${data.itemUuid} not found`); return; }
+    if (!userCanReachShard(senderId, item)) { log.warn(`Integrity relay refused: ${game.users?.get(senderId)?.name || 'unknown sender'} has no way into "${item.name}"`); return; }
+    const cfg = this.getIntegrityConfig(item);
     switch (data.op) {
-      case 'degrade': return this.degradeIntegrity(item, { amount: data.amount ?? undefined, rollLoss: data.rollLoss !== false, by: data.by || '' });
-      case 'entry':   return this.setEntryCorruption(item, data.entryId, data.level);
-      case 'repair':  return this.repairIntegrity(item, data.points);
-      case 'salvage': return this.salvageShard(item, data.actorId, !!data.ok);
+      case 'degrade': return this.degradeIntegrity(item, { rollLoss: data.rollLoss !== false, by: String(data.by || '').slice(0, 60) });
+      case 'entry': {
+        const page = this._getLinkedJournal(item)?.pages?.find(p => p.flags?.[MODULE_ID]?.messageId === data.entryId);
+        if (!page) { log.warn('Integrity relay refused: no such entry on this shard'); return; }
+        const f = page.flags?.[MODULE_ID] || {};
+        const level = entryLevel(f);
+        const want = quantize(data.level);
+        if (want !== afterRecon(level, true, cfg) && want !== afterRecon(level, false, cfg)) {
+          log.warn(`Integrity relay refused: entry damage ${level} → ${want} is not a reconstruct result`);
+          return;
+        }
+        return this.setEntryCorruption(item, data.entryId, want);
+      }
+      case 'repair':  return this.repairIntegrity(item, cfg.repairPts ?? 15);
+      case 'salvage':
+        if (!userOwnsActor(senderId, data.actorId)) { log.warn('Integrity relay refused: a salvage for a character the sender does not own'); return; }
+        return this.salvageShard(item, data.actorId, !!data.ok);
       default: log.warn(`Integrity relay: unknown op "${data.op}"`);
     }
   }
@@ -1893,16 +1917,28 @@ export class DataShardService {
     return true;
   }
 
-  /** GM-side handler for SHARD_STATE_REQUEST. */
-  async handleStateRequest(data = {}) {
+  /**
+   * GM-side handler for SHARD_STATE_REQUEST (audit SEC-05). The sender must be able to
+   * reach the shard (shardAccess.userCanReachShard); a session write must be for a
+   * character they own and may only set session fields; a wipe only happens on a shard
+   * whose own config destroys itself on failed hacks.
+   * @param {object} data
+   * @param {string|null} senderId the server-verified sender
+   */
+  async handleStateRequest(data = {}, senderId = null) {
     if (!isGM()) return;
     const item = data.itemUuid ? fromUuidSync(data.itemUuid) : null;
     if (!item || !this.isDataShard(item)) { log.warn(`State relay: shard ${data.itemUuid} not found`); return; }
+    if (!userCanReachShard(senderId, item)) { log.warn(`State relay refused: ${game.users?.get(senderId)?.name || 'unknown sender'} has no way into "${item.name}"`); return; }
     switch (data.op) {
       case 'decrypt':     return this._writeDecrypted(item);
-      case 'session':     return this._updateActorSession(item, data.actorId, data.updates || {});
+      case 'session':
+        if (!userOwnsActor(senderId, data.actorId)) { log.warn('State relay refused: a session write for a character the sender does not own'); return; }
+        return this._updateActorSession(item, data.actorId, sanitizeSessionUpdates(data.updates));
       case 'decryptPage': return this._decryptMessage(item, data.messageId);
-      case 'destroy':     return this._destroyShard(item);
+      case 'destroy':
+        if (!shardCanSelfDestruct(this.getConfig(item))) { log.warn(`State relay refused: "${item.name}" does not self-destruct`); return; }
+        return this._destroyShard(item);
       default: log.warn(`State relay: unknown op "${data.op}"`);
     }
   }

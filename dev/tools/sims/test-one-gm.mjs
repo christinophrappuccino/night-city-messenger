@@ -50,7 +50,10 @@ const calls = { gm1: [], gm2: [] };
 for (const id of ['gm1', 'gm2']) {
   const c = world.client(id);
   const hit = (name) => async () => { calls[id].push(name); return { success: true, count: 1 }; };
-  c.game.actors = { get: (aid) => (aid === 'a-v' ? { id: 'a-v', items: { get: () => shardItem } } : null), [Symbol.iterator]: function* () {} };
+  // a-v is p1's character (shard relays check ownership since A3b)
+  c.game.actors = { get: (aid) => (aid === 'a-v' ? { id: 'a-v', name: 'V', items: { get: () => shardItem }, testUserPermission: (u) => u.id === 'p1' || !!u.isGM } : null), [Symbol.iterator]: function* () {} };
+  const prevGet = c.game.settings?.get?.bind(c.game.settings);
+  c.game.settings = { ...(c.game.settings || {}), get: (m, k) => (k === 'encoderConfig' ? { enabled: true } : prevGet?.(m, k)) };
   c.game.items = { get: () => null };
   c.game.nightcity = {
     socketManager: c.sockets,

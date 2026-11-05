@@ -921,7 +921,7 @@ export function gateSkillsOf(gate) {
   return one.name ? [one] : [];
 }
 
-export function canOperate(actor, override = null, { standalone = false, label = 'Operator tools require' } = {}) {
+export function canOperate(actor, override = null, { standalone = false, label = 'Operator tools require', user = game.user } = {}) {
   let gate;
   if (standalone) {
     // The caller owns the WHOLE gate (e.g. the Shard Encoder's `encoderConfig.gate`).
@@ -935,7 +935,7 @@ export function canOperate(actor, override = null, { standalone = false, label =
   }
 
   if (gate.mode !== 'gated') return { ok: true };                 // ungated
-  if (gate.allowGM && game.user?.isGM) return { ok: true };       // GM escape
+  if (gate.allowGM && user?.isGM) return { ok: true };            // GM escape (the user being judged, not always this client)
   if (!actor) return { ok: false, reason: 'No operator assigned.' };
   if (Array.isArray(gate.actors) && gate.actors.includes(actor.id)) return { ok: true }; // allowlist
 
@@ -996,8 +996,9 @@ export function canOperate(actor, override = null, { standalone = false, label =
  * @returns {{ ok: boolean, reason?: string, off?: boolean }} `off` = authoring is
  *   switched off world-wide, as opposed to this character not qualifying.
  */
-export function canEncode(actor, { requireActor = true } = {}) {
-  if (game.user?.isGM) return { ok: true };   // the GM authors through the config sheet regardless
+export function canEncode(actor, { requireActor = true, user = game.user } = {}) {
+  // `user` is who is being judged: this client by default; the GM passes a relaying player (audit SEC-05).
+  if (user?.isGM) return { ok: true };   // the GM authors through the config sheet regardless
 
   let cfg;
   try { cfg = game.settings?.get(MODULE_ID, 'encoderConfig') ?? {}; } catch { cfg = {}; }
@@ -1007,7 +1008,7 @@ export function canEncode(actor, { requireActor = true } = {}) {
   if (!gate || gate.mode !== 'gated') return { ok: true };
   if (!requireActor && !actor) return { ok: true };  // the door shows; the window asks for an operator
 
-  return canOperate(actor, gate, { standalone: true, label: 'Encoding a shard requires' });
+  return canOperate(actor, gate, { standalone: true, label: 'Encoding a shard requires', user });
 }
 
 /**
@@ -1024,16 +1025,16 @@ export function canEncode(actor, { requireActor = true } = {}) {
  * @param {Actor|null} actor the operating character
  * @returns {{ ok: boolean, reason?: string, locked?: boolean, mode?: string }}
  */
-export function canEditShard(item, actor) {
+export function canEditShard(item, actor, { user = game.user } = {}) {
   if (!item?.getFlag?.(MODULE_ID, 'isDataShard')) return { ok: false, reason: 'That is not a data shard.' };
-  if (game.user?.isGM) return { ok: true, mode: 'gm' };
+  if (user?.isGM) return { ok: true, mode: 'gm' };
   const config = item.getFlag(MODULE_ID, 'config') || {};
   const mode = resolveShardEditing(config);
   if (mode === 'locked') return { ok: false, locked: true, mode, reason: 'This shard is read-only — its contents are locked.' };
   if (mode === 'maker' && (!actor || config.playerMade?.actorId !== actor.id)) {
     return { ok: false, locked: true, mode, reason: `Only ${config.playerMade?.actorName || 'the character who encoded it'} can rewrite this shard.` };
   }
-  const enc = canEncode(actor);
+  const enc = canEncode(actor, { user });
   if (!enc.ok) return { ...enc, mode };
   let cfg;
   try { cfg = game.settings?.get(MODULE_ID, 'encoderConfig') ?? {}; } catch { cfg = {}; }
