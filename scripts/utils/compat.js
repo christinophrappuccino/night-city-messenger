@@ -96,6 +96,39 @@ export function onRenderChatMessage(fn) {
 }
 
 /**
+ * Add entries to a sidebar directory's right-click menu for one document type ('Item', 'Actor'…) — Foundry's own
+ * menu, through its hook, instead of DOM added after the menu opens (COMPAT-06). v12 fires
+ * `get<Doc>DirectoryEntryContext(html, options)` with a jQuery entry carrying `data-document-id`; v13 fires
+ * `get<Doc>ContextOptions(app, options)` with an element carrying `data-entry-id` (and not the v12 name). Registers
+ * exactly one. `build()` runs each time the menu is made and returns entries in Foundry's shape
+ * (`{ name, icon, condition, callback, group }`); `condition(li)` / `callback(li)` get the entry ELEMENT on both
+ * versions — read its document with `directoryEntryId(li)`.
+ * @param {string} documentName
+ * @param {() => object[]} build
+ * @returns {{ event: string, id: number }}
+ */
+export function onDirectoryEntryContext(documentName, build) {
+  const event = foundryGeneration() >= 13 ? `get${documentName}ContextOptions` : `get${documentName}DirectoryEntryContext`;
+  const id = Hooks.on(event, (_appOrHtml, options) => {
+    if (!Array.isArray(options)) return;
+    let entries = [];
+    try { entries = build() || []; } catch (err) { console.error(`NCM | ${event} menu entries failed`, err); return; }
+    for (const o of entries) {
+      options.push({ ...o,
+        condition: typeof o.condition === 'function' ? (li) => { try { return !!o.condition(htmlOf(li)); } catch { return false; } } : o.condition,
+        callback: (li) => o.callback(htmlOf(li)) });
+    }
+  });
+  return { event, id };
+}
+
+/** The document id of a directory entry element (v13 `data-entry-id`, v12 `data-document-id`), or null. */
+export function directoryEntryId(el) {
+  const e = htmlOf(el)?.closest?.('[data-entry-id], [data-document-id]');
+  return e?.dataset?.entryId ?? e?.dataset?.documentId ?? null;
+}
+
+/**
  * Add one group of buttons to the scene controls (call it from a `getSceneControlButtons` hook).
  * Written in the v12 shape: `{ name, title, icon, layer, tools: [{ name, title, icon, button: true, onClick }] }`.
  *   v12 hands the hook an ARRAY of groups; the group is pushed as it is.

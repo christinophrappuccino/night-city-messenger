@@ -23,6 +23,7 @@ import { accessMenuEntries } from './AccessPoints.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, canEncode, canEditShard, resolveOperator } from '../utils/helpers.js';
 import { awaitGmResult } from '../utils/gmRequest.js';
+import { directoryEntryId } from '../utils/compat.js';
 import { themedConfirm, themedPrompt } from '../utils/adminTheme.js';
 import { dialogBodyHtml } from '../utils/dialogBody.js';
 import { withShardPrefix, stripShardPrefix } from '../utils/shardNaming.js';
@@ -155,6 +156,8 @@ export class ShardSheetOverride {
     // Items Directory sidebar — try multiple hook names for v12 compat
     bind('renderItemDirectory', dirHandler);
     bind('renderDocumentDirectory', dirHandler);
+    // Right-click entries in the Items directory: registered at INIT (registerDataShardSystem), not here — Foundry v13
+    // collects a directory's menu once, at its first render, before ready (ShardSheetOverride.directoryMenuEntries).
 
     // Sidebar tab switch — re-inject badges after tab changes
     bind('changeSidebarTab', (tab) => {
@@ -331,10 +334,6 @@ export class ShardSheetOverride {
           if (thumb) thumb.addEventListener('click', interceptClick, { capture: true });
         }
 
-        // ─── Right-click: inject into Foundry's context menu after it renders ───
-        entry.addEventListener('contextmenu', () => {
-          setTimeout(() => this._injectDirectoryContextOptions(item, isShard), 80);
-        });
       }
     } catch (err) {
       log.error(`ShardSheetOverride: renderItemDirectory error — ${err.message}`);
@@ -342,73 +341,40 @@ export class ShardSheetOverride {
   }
 
   /**
-   * Inject NCM options into Foundry's already-rendered context menu.
-   * Called 80ms after right-click so Foundry's menu is in the DOM.
-   * Appends our options after a separator at the bottom of the existing menu.
-   *
-   * @param {Item} item
-   * @param {boolean} isShard
+   * NCM's entries in the Items directory's right-click menu (Foundry's own menu, via onDirectoryEntryContext).
+   * Converted items: the two things you do most, then ONE "Terminal options ▸" / "Shard options ▸" entry that opens
+   * NCM's grouped menu (ACCESS · ITEM · Remove) — Foundry's menu has no submenus (2026-10-29, dev-picked "Top 2 + one
+   * more ▸"). Other items (GM): convert to a shard or a terminal, the Malware Workshop. Each entry's condition picks
+   * the items it shows for.
+   * STATIC and registered at init (v13 asks once, at the directory's first render, before ready): the entries find
+   * the override when they are used, and hide until it exists.
    */
-  _injectDirectoryContextOptions(item, isShard) {
-    const menu = document.querySelector('#context-menu');
-    if (!menu) return;
-
-    const ol = menu.querySelector('ol, ul, .context-items') ?? menu;
-
-    const addOption = (label, icon, color, fn) => {
-      const li = document.createElement('li');
-      li.className = 'context-item';
-      li.innerHTML = `<i class="${icon}" style="color:${color};margin-right:6px;"></i> ${label}`;
-      li.style.cssText = 'cursor:pointer;padding:4px 8px;white-space:nowrap;';
-      li.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        menu.remove();
-        document.querySelector('.context-overlay')?.remove();
-        fn();
-      });
-      li.addEventListener('mouseenter', () => { li.style.background = 'rgba(255,255,255,0.06)'; });
-      li.addEventListener('mouseleave', () => { li.style.background = ''; });
-      ol.appendChild(li);
+  static directoryMenuEntries() {
+    const ov = () => game.nightcity?._shardSheetOverride;
+    const itemOf = (li) => (ov() ? game.items?.get(directoryEntryId(li)) : null);
+    const isT = (li) => !!itemOf(li)?.getFlag(MODULE_ID, 'isTerminal');
+    const isS = (li) => !isT(li) && !!itemOf(li)?.getFlag(MODULE_ID, 'isDataShard');
+    const plain = (li) => !!itemOf(li) && !isT(li) && !isS(li);
+    const ic = (cls, color) => `<i class="${cls}" style="color:${color}"></i>`;
+    const more = (li) => { const it = itemOf(li); return it ? ov()._nightCityEntries(it, resolveOperator()) : []; };
+    const openMore = (li) => {
+      const it = itemOf(li); if (!it) return;
+      const r = li.getBoundingClientRect?.();
+      // under the directory entry (where Foundry's own menu opens); _showContextMenu keeps it on screen
+      ov()._showContextMenu({ clientX: r ? r.left + 8 : 200, clientY: r ? r.bottom : 200, preventDefault() {}, stopPropagation() {} },
+        more(li), { title: it.name, icon: isT(li) ? 'fas fa-terminal' : 'fas fa-microchip' });
     };
-
-    // Separator before our options
-    const sep = document.createElement('li');
-    sep.style.cssText = 'height:1px;background:#555;margin:3px 0;';
-    ol.appendChild(sep);
-
-    const isTerminal = !!item.getFlag(MODULE_ID, 'isTerminal');
-
-    // Converted items: the two things you do most stay on top, everything else sits behind ONE
-    // "Terminal options ▸" / "Shard options ▸" entry that opens NCM's own grouped menu (ACCESS · ITEM ·
-    // Remove) beside it — Foundry v12's directory menu has no submenus (2026-10-29, dev-picked "Top 2 + one
-    // more ▸"; first named "Night City", renamed the same day as too vague).
-    if (isTerminal || isShard) {
-      if (isTerminal) addOption('Open Terminal', 'fas fa-terminal', '#ff3355', () => game.nightcity?.openTerminal(item));
-      else addOption(`Open ${T('one')}`, 'fas fa-hard-drive', '#00D4E6', () => game.nightcity?.openDataShard(item));
-      if (isGM()) addOption(isTerminal ? 'Configure Terminal' : `Configure ${T('short')}`, 'fas fa-sliders', isTerminal ? '#ff3355' : '#00D4E6', () => this._configure(item));
-      const entries = this._nightCityEntries(item, resolveOperator());
-      if (entries.length) {
-        const li = document.createElement('li');
-        li.className = 'context-item ncm-ctx-more';
-        li.innerHTML = `<i class="fas fa-ellipsis" style="color:#19f3f7;margin-right:6px;"></i> ${isTerminal ? 'Terminal' : T('short')} options<span class="ncm-ctx-more__arrow">▸</span>`;
-        li.style.cssText = 'cursor:pointer;padding:4px 8px;white-space:nowrap;';
-        let rect = null;
-        li.addEventListener('pointerdown', () => { rect = li.getBoundingClientRect(); });
-        li.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          menu.remove();
-          document.querySelector('.context-overlay')?.remove();
-          this._showContextMenu(ShardSheetOverride._subMenuAt(rect, ev), entries, { title: item.name, icon: isTerminal ? 'fas fa-terminal' : 'fas fa-microchip' });
-        });
-        li.addEventListener('mouseenter', () => { li.style.background = 'rgba(255,255,255,0.06)'; });
-        li.addEventListener('mouseleave', () => { li.style.background = ''; });
-        ol.appendChild(li);
-      }
-    } else if (isGM()) {
-      addOption(`Convert to ${T('one')}`, 'fas fa-microchip', '#00D4E6', () => this._launchConversionFlow(item));
-      addOption('Convert to Terminal', 'fas fa-terminal', '#ff3355', () => this._convertToTerminal(item));
-      addOption('Malware Workshop', 'fas fa-biohazard', '#ff3355', () => game.nightcity?.openMalwareWorkshop?.());
-    }
+    return [
+      { name: 'Open Terminal', icon: ic('fas fa-terminal', '#ff3355'), group: 'ncm', condition: isT, callback: (li) => game.nightcity?.openTerminal(itemOf(li)) },
+      { name: `Open ${T('one')}`, icon: ic('fas fa-hard-drive', '#00D4E6'), group: 'ncm', condition: isS, callback: (li) => game.nightcity?.openDataShard(itemOf(li)) },
+      { name: 'Configure Terminal', icon: ic('fas fa-sliders', '#ff3355'), group: 'ncm', condition: (li) => isGM() && isT(li), callback: (li) => ov()._configure(itemOf(li)) },
+      { name: `Configure ${T('short')}`, icon: ic('fas fa-sliders', '#00D4E6'), group: 'ncm', condition: (li) => isGM() && isS(li), callback: (li) => ov()._configure(itemOf(li)) },
+      { name: 'Terminal options ▸', icon: ic('fas fa-ellipsis', '#19f3f7'), group: 'ncm', condition: (li) => isT(li) && more(li).length > 0, callback: openMore },
+      { name: `${T('short')} options ▸`, icon: ic('fas fa-ellipsis', '#19f3f7'), group: 'ncm', condition: (li) => isS(li) && more(li).length > 0, callback: openMore },
+      { name: `Convert to ${T('one')}`, icon: ic('fas fa-microchip', '#00D4E6'), group: 'ncm', condition: (li) => isGM() && plain(li), callback: (li) => ov()._launchConversionFlow(itemOf(li)) },
+      { name: 'Convert to Terminal', icon: ic('fas fa-terminal', '#ff3355'), group: 'ncm', condition: (li) => isGM() && plain(li), callback: (li) => ov()._convertToTerminal(itemOf(li)) },
+      { name: 'Malware Workshop', icon: ic('fas fa-biohazard', '#ff3355'), group: 'ncm', condition: (li) => isGM() && plain(li), callback: () => game.nightcity?.openMalwareWorkshop?.() },
+    ];
   }
 
   /** Open the config sheet for a terminal or a shard. */

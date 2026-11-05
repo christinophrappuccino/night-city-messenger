@@ -150,7 +150,5 @@ a.ncm-ap-chip.is-missing i { background: transparent; color: var(--h-tx2, #9aa4b
   font: 700 11px var(--ncm-font-display, sans-serif); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-primary, #ddd);
 }
 .ncm-ctx-menu__title i { color: var(--ncm-secondary, #19f3f7); }
-#context-menu li.ncm-ctx-more { display: flex; align-items: center; }
-#context-menu li.ncm-ctx-more .ncm-ctx-more__arrow { margin-left: auto; padding-left: 14px; opacity: .7; }
 
 .ncm-ctx-menu__sep { height: 1px; margin: 4px 6px; background: var(--ncm-border, rgba(255,255,255,.12)); }

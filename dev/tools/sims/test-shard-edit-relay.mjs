@@ -415,7 +415,7 @@ await ok('viewer, sheet rows, directory menu, launch flow, admin badge, config s
   assert.ok(hbs.includes('{{else if canPlayerEdit}}'));
   const so = read('scripts/integrations/ShardSheetOverride.js');
   assert.equal((so.match(/canEditShard\(/g) || []).length, 3, 'the shared Night City menu (directory + inventory row), launch flow, canRename');
-  assert.ok(so.includes('this._nightCityEntries(item, actor)') && so.includes('this._nightCityEntries(item, resolveOperator())'), 'both menus read the one Night City builder');
+  assert.ok(so.includes('this._nightCityEntries(item, actor)') && so.includes('ov()._nightCityEntries(it, resolveOperator())'), 'both menus read the one Night City builder');
   const tab = read('scripts/ui/AdminPanel/tabs/ShardsTab.js');
   assert.ok(tab.includes('resolveShardEditing(config)'));
   assert.ok(tab.includes("isWorldItem: ownerKey === 'world'"));

@@ -18,6 +18,7 @@ import { log, isGM } from '../utils/helpers.js';
 import { SkillService } from '../services/SkillService.js';
 import { DataShardService } from '../services/DataShardService.js';
 import { ShardSheetOverride } from '../integrations/ShardSheetOverride.js';
+import { onDirectoryEntryContext } from '../utils/compat.js';
 import { Phase4Verification } from '../tests/Phase4Verification.js';
 
 /**
@@ -32,6 +33,12 @@ export function registerDataShardSystem(initializer) {
   //  No service dependencies. Provides CPR skill checks for
   //  DataShardService hacking and network skill-based auth.
   // ═══════════════════════════════════════════════════════════════
+
+  // The Items directory's right-click entries (open / configure / options ▸ / convert). Registered at INIT: Foundry v13
+  // collects a directory's menu once, at its first render, which happens before ready (COMPAT-06).
+  initializer.register('init', 60, 'Items directory menu', () => {
+    onDirectoryEntryContext('Item', () => ShardSheetOverride.directoryMenuEntries());
+  });
 
   initializer.register('ready', 20, 'SkillService', () => {
     try {

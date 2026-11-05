@@ -66,13 +66,13 @@ ok(read('styles/night-city-messenger.css').includes("@import 'components/access-
 const css = read('styles/components/access-points.css');
 ok(!/background:\s*#[0-9a-f]{3,6}\b(?!\))/i.test(css.replace(/var\([^)]*\)/g, '')), 'handout colours come from --h-* / tokens only');
 const sso = read('scripts/integrations/ShardSheetOverride.js');
-ok(sso.includes('_nightCityEntries(item') && sso.includes("'ncm-ctx-more'") === false && sso.includes('ncm-ctx-more'), 'directory gets the Night City ▸ entry');
+ok(sso.includes('_nightCityEntries(item') && sso.includes("name: 'Terminal options ▸'") && read('scripts/init/registerDataShardSystem.js').includes("onDirectoryEntryContext('Item',"), 'directory gets the "options ▸" entry (through Foundry\'s menu hook)');
 ok(!/addOption\('Place on Current Scene'/.test(sso) && !/addOption\('Program Deck'/.test(sso), 'old flat entries moved behind Night City');
 ok(sso.includes('accessMenuEntries(item)'), 'ACCESS section shared');
 ok(read('templates/admin-panel/tab-terminals.hbs').includes('data-op="access"') && read('templates/admin-panel/tab-shards.hbs').includes('data-op="access"'), 'admin Access buttons');
 ok(read('scripts/ui/AdminPanel/AdminPanelApp.js').includes('wireAccessDrag('), 'admin rows drag to the hotbar');
 
-ok(sso.includes('static _subMenuAt(rect, ev)') && sso.split('ShardSheetOverride._subMenuAt(rect, e').length - 1 === 2 && sso.split("addEventListener('pointerdown', () => { rect = ").length - 1 === 2, 'sub-menus open beside the row measured on pointerdown (both menus)');
+ok(sso.includes('static _subMenuAt(rect, ev)') && sso.split('ShardSheetOverride._subMenuAt(rect, e').length - 1 === 1 && sso.split("addEventListener('pointerdown', () => { rect = ").length - 1 === 1, 'the sheet-row sub-menu opens beside the row measured on pointerdown (the directory one is Foundry\'s menu now: test-directory-menu)');
 // Copy macro code / Make a macro (the catch-all for any tool that runs a script)
 const snip = A.accessMacroSnippet(ref, 'WS\n7F');
 let snipOk = true; try { new (Object.getPrototypeOf(async function () {}).constructor)('speaker', 'actor', 'token', 'character', 'scope', snip); } catch { snipOk = false; }
@@ -87,7 +87,7 @@ ok(rt.includes('classes: [...THEMED_DIALOG_CLASSES'), 'Post dialog opens with th
 ok(A.postDialogHtml({ ref, info: { name: 'x' } }).includes('ncm-ap-card'), 'the preview is in the first paint (no post-render growth)');
 ok(read('scripts/utils/adminTheme.js').includes("const THEMED = ['dialog', 'ncm-themed-dialog']"), 'themedConfirm / themedPrompt keep the dialog class');
 ok(sso.includes("title: 'Remove terminal data'") && sso.includes("data`, yes: 'Remove'") && sso.includes('await themedPrompt({'), 'Remove shard / Remove terminal / Rename use the themed dialog');
-ok(!sso.includes("label: 'Night City'") && !sso.includes('Night City<') && sso.includes(' options<span'), 'the menu entry names the thing (… options)');
+ok(!sso.includes("label: 'Night City'") && !sso.includes('Night City<') && sso.includes(" options ▸'"), 'the menu entry names the thing (… options)');
 const pins = read('scripts/integrations/TerminalScenePins.js');
 ok(pins.includes("document.addEventListener('contextmenu', (e) => this._onBoardContextMenu(e), true)") && pins.includes('canvas.canvasCoordinatesFromClient') && !/_onClickRight\s*=/.test(pins) && !read('scripts/init/registerTerminalSystem.js').includes('wrapNoteRightClick'), "pin menu rides the board contextmenu (after release); Foundry's note right-click is left alone");
 ok(read('styles/night-city-messenger.css').includes("@import 'components/ncm-dialog.css'"), 'dialog stylesheet imported');
