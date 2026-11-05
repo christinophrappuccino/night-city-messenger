@@ -475,7 +475,10 @@ The module declares v12 only (`minimum` and `verified` 12), so nothing below is 
   acting): `getSceneControlButtons` (control/tool shape changed), `renderChatMessage` (an HTML-element successor
   exists), v1 `Dialog` (18 call sites through wrappers, deprecated), jQuery-style access in dialog callbacks (~150
   `html.find` / `$(`), `FilePicker` (35 constructions), and the `ImagePopout` lexical-global lookup. Because most v1
-  Dialog use already funnels through `adminTheme.js` wrappers, that part of a migration is concentrated.
+  Dialog use already funnels through `adminTheme.js` wrappers, that part of a migration is concentrated. **The full
+  plan — including the Cyberpunk RED system's data, and why the v12-shaped sims would not notice a break — is R20,
+  step 10 of §13.** (Batch 2 since added a CI check, `check-paths.mjs`, for the case-sensitive Linux hosts The Forge
+  runs on.)
 - **Multiplayer:** the audit made one-GM handling (`isPrimaryGM`), sender identity and relays solid. The remaining
   multiplayer risk is H2 (lost replies) and H10 (blob writes).
 - **Large worlds:** journal scans are cached on `mailRevision`; admin re-renders are debounced and throttled by game
@@ -942,7 +945,7 @@ risk · Testing · When.**
 `register` and `socketManager.register` + UI checks; first migrate Conversations onto it (no behaviour change), then
 add Payphones/Emergency/Overheard gates, then the "simple network" mode and the trace "consequences" switch. Affects:
 startup, sockets, UI entry points. Risk: medium per feature (non-optional accesses). Testing: §F.10. When: P3 — after
-R6 and before the first new major system.
+R6 and R20 (v13 readiness), before the first new major system.
 
 **R15. Public API v2 facade (§D.4).** When: P3, after R12 and R14.
 
@@ -964,7 +967,48 @@ switch.
 mirror, taps, NPC GM toast) with a small ordered list of hooks the owning features register. Only when a fourth
 consumer appears. When: P3.
 
-**R20. v13 readiness inventory** (§10). A checklist file, no code. When: P3, when you decide to widen compatibility.
+**R20. Foundry v13 / v14 and Cyberpunk RED system readiness** (added 2026-11-05 at the developer's request; §10).
+- Problem: NCM and its tests are written against Foundry v12 and today's CPR system. Foundry v13 moves global classes
+  into namespaces (`renderTemplate`, `loadTemplates`, `FilePicker`, `TextEditor`, `ImagePopout`), deprecates the v1
+  `Dialog`, passes HTML elements instead of jQuery to hooks, rebuilds the sidebar / directories / chat log / settings
+  as AppV2, replaces the `renderChatMessage` hook, reshapes `getSceneControlButtons`, and puts core CSS into cascade
+  layers. v14 is expected to remove APIs deprecated earlier (verify each against the release notes before acting).
+  The CPR system's own v13 update may change the data NCM reads. **The sims would not notice**: their mocks describe
+  v12, so they keep passing after Foundry changes.
+- Evidence (counts in `scripts/`): `renderTemplate` ×11, `FilePicker` ×38, `TextEditor` ×4, `ImagePopout` ×7,
+  `loadTemplates` ×1; v1 `Dialog` 21 calls (most through the `adminTheme.js` wrappers); `html.find(` ×109 and `$(` ×40;
+  `renderChatMessage` ×2; `getSceneControlButtons` ×1 (the whole button group); directory badges + right-click menu
+  added through the page (COMPAT-06); 11 `renderActorSheet` / `renderItemSheet` hooks on CPR sheets. CPR data:
+  `system.wealth` (one file since batch 3), `system.stats` (~6 reads), role items' `mainRoleAbility` / `rank`
+  (`SkillService`), item / actor types (`role` ×14, `blackIce` ×10, `skill`, `gear`, `character`, `mook`, `container`,
+  `demon`), `system.price.market`. Test stack: `world.mjs` and 113 hand-built mocks are v12-shaped; CI pins Handlebars
+  4.7.8; `test-core-helpers` silently falls back when Foundry's token-HUD template isn't found; mockups / probes link
+  Foundry's and CPR's stylesheets by path.
+- Why it matters: The Forge and most tables upgrade on Foundry's schedule, not NCM's; a deprecation becomes a removal a
+  few versions later; and passing sims would give false confidence exactly when it matters.
+- Smallest fix, in order — one codebase that supports v12 and v13 together, not a fork:
+  1. `scripts/utils/compat.js`: every moved class looked up once (new namespace first, v12 name as fallback — the
+     existing `ImagePopout` lookup is the pattern), plus `htmlOf(html)` turning jQuery-or-element into an element.
+     Callers change mechanically.
+  2. A deprecation scanner in CI (`dev/tools/check-deprecations.mjs`): a data list of names deprecated in v13 (later
+     v14), failing on any use outside `compat.js`.
+  3. `scripts/utils/cpr.js`: one adapter for CPR data shapes (stats, role ability rank, item / actor types, price),
+     the batch-3 pattern. Wealth is already done.
+  4. `world.mjs` version profiles (`foundryVersion: 12 | 13`) that model the hook / class / control differences in one
+     place; CI runs the sims once per version; `test-core-helpers` fails loudly when Foundry is installed but its file
+     is missing; probe stylesheet paths come from one table.
+  5. A live smoke run in a v13 test world (the headless-Chrome join technique): the in-Foundry Phase suites plus the
+     batch macros. Only after it passes does `module.json` say `verified: 13`.
+  6. The directory menu (COMPAT-06) moves to the menu hook as part of the v13 work, since the AppV2 sidebar is where the
+     page-level injection is most likely to break.
+- Larger change justified: no. A shim layer and an adapter, not a rewrite or a separate v13 branch.
+- Affects: every window that opens a dialog or file picker, chat cards, scene controls, the Items-directory
+  integration, sheet hooks, CSS against core, the sims and CI.
+- Regression risk: medium overall but spread thin; each `compat.js` swap is mechanical and v12 keeps working through the
+  fallbacks.
+- Testing: the deprecation scanner; both version profiles in CI; the live v13 smoke run; the existing sims on v12.
+- When: P3 — after the event table (step 9) and before the feature registry, which would add more hooks to port. Not
+  urgent while `module.json` declares v12 only; do it before widening `verified`.
 
 ### Priority 4 — Defer
 
@@ -1007,17 +1051,22 @@ stop). None depends on a later step; the order is by value and by what later ste
 | 7 | Shared sim world lib (new sims only) | R10 | S | none |
 | 8 | Declared dependencies + better failure report | R6 | S | report text only |
 | 9 | Public event table; bridge reads it | R12 | S | none (dead mirrors gone in step 5) |
-| 10 | Pure rules out of `ui/` with re-exports; helpers.js stops importing UI | R9a | M | none |
-| 11 | Viewer action table | R13 | M | none |
-| 12 | Measure setting sizes; move trace log if large | R11 | M | storage location |
-| 13 | Feature registry; Conversations onto it | R14 | M | none |
-| 14 | Payphones / Emergency / Overheard gates; request stubs | R14 | M | new settings |
-| 15 | Resident triggers off the trace funnel; trace consequence switch | R18, R14 | M | new setting |
-| 16 | "Simple network" mode | R14 | M | new setting |
-| 17 | API v2 facade (messages, contacts, time, events, features, open) + docs + test | R15 | M | additive |
-| 18 | Registries for access kinds / content types / admin tabs, when first needed | R16 | S each | none |
+| 10 | **Foundry v13/v14 + CPR readiness** (added 2026-11-05): `compat.js` shims + `htmlOf`, deprecation scanner in CI, `cpr.js` adapter, `world.mjs` version profiles + per-version CI, live v13 smoke run, directory menu onto its hook | R20 | L (several batches) | none on v12 |
+| 11 | Pure rules out of `ui/` with re-exports; helpers.js stops importing UI | R9a | M | none |
+| 12 | Viewer action table | R13 | M | none |
+| 13 | Measure setting sizes; move trace log if large | R11 | M | storage location |
+| 14 | Feature registry; Conversations onto it | R14 | M | none |
+| 15 | Payphones / Emergency / Overheard gates; request stubs | R14 | M | new settings |
+| 16 | Resident triggers off the trace funnel; trace consequence switch | R18, R14 | M | new setting |
+| 17 | "Simple network" mode | R14 | M | new setting |
+| 18 | API v2 facade (messages, contacts, time, events, features, open) + docs + test | R15 | M | additive |
+| 19 | Registries for access kinds / content types / admin tabs, when first needed | R16 | S each | none |
 
 Steps 1–9 are the "foundation" set: mostly mechanical, low risk, and they make everything after them cheaper.
+Step 10 comes before the feature registry because the registry adds hooks and entry points that would otherwise be
+ported to v13 later.
+
+**Progress (2026-11-05):** steps 1–7 done on branch `stage2-architecture` (commits `071e3d7` … `d183f2b`).
 
 ---
 
@@ -1038,6 +1087,7 @@ Steps 1–9 are the "foundation" set: mostly mechanical, low risk, and they make
 | Round trips (R3) | `test-shard-relays`, `test-netresolve`, `test-schedule-requests`, `test-socket-identity` | concurrent-request sim on `socketHarness` |
 | Dead code (R5) | `test-window-minimize`, `test-socket-identity` (T16 trust classes), integration-bridge consumers | — |
 | Settings/primary GM (R7, R8) | `test-one-gm`, `test-init-order` | fallback = registered default |
+| Foundry v13 / CPR readiness (R20) | all sims on both version profiles; `test-ci-checks` (Handlebars pin per version) | deprecation scanner; `compat.js` lookups on v12 and v13; `cpr.js` adapter against both CPR data shapes; live v13 smoke run (Phase suites + batch macros) |
 | Layer moves (R9) | all content, encoder, integrity, program-registry, roll-reveal, resident sims | an import-direction sim (no `services/`/`utils/` → `ui/` except allowed) |
 | Viewer actions (R13) | every message-viewer sim, `test-helper-collisions` | every template `data-action` resolves |
 | Trace log move (R11) | security-module sims, `test-lockout-persist` | migration sim |
