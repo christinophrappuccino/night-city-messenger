@@ -66,7 +66,8 @@ globalThis.game = {
   users: { get: (id) => users[id] ?? null, activeGM: users.gm, find: (fn) => Object.values(users).find(fn) ?? null, filter: (fn) => Object.values(users).filter(fn) },
   macros: { get: (id) => macros.get(id) ?? null },
   journal: { get: (id) => journals.get(id) ?? null, [Symbol.iterator]: () => journals.values() },
-  actors: { get: () => null },
+  // a1 is Rache's character (the player p1 owns it)
+  actors: { get: (id) => (id === 'a1' ? { id: 'a1', name: 'V', testUserPermission: (u) => u.id === 'p1' || !!u.isGM } : null) },
   settings: { get: () => { throw new Error('none'); } },
   i18n: { localize: (s) => s },
   nightcity: { soundService: { play() {} }, traceService: { logSuccess() {}, fireTrace() {} }, eventBus: { emit() {} } },
@@ -121,11 +122,11 @@ const UF = await load('scripts/ui/content/UploadFlow.js');
   page('prog-none', { name: 'Plain', effect: { type: 'adjudicate' } });
   ran.length = 0;
   // the attack: a relayed upload run naming a GM macro the program never linked
-  await SF.handlePayloadEffectRequest({ kind: 'uploadRun', itemUuid: host.uuid, effectType: 'adjudicate', params: { macroId: 'm-gm' }, name: 'Evil', macroId: 'm-gm' });
+  await SF.handlePayloadEffectRequest({ kind: 'uploadRun', actorId: 'a1', itemUuid: host.uuid, effectType: 'adjudicate', params: { macroId: 'm-gm' }, name: 'Evil', macroId: 'm-gm' }, 'p1');
   ok(ran.length === 0, 'relayed upload run: a macro id in the request is ignored');
-  await SF.handlePayloadEffectRequest({ kind: 'uploadRun', itemUuid: host.uuid, effectType: 'adjudicate', name: 'Plain', source: { itemUuid: shard.uuid, entryId: 'prog-none' }, macroId: 'm-gm' });
+  await SF.handlePayloadEffectRequest({ kind: 'uploadRun', actorId: 'a1', itemUuid: host.uuid, effectType: 'adjudicate', name: 'Plain', source: { itemUuid: shard.uuid, entryId: 'prog-none' }, macroId: 'm-gm' }, 'p1');
   ok(ran.length === 0, 'relayed upload run: a program with no linked macro runs none, whatever the request says');
-  await SF.handlePayloadEffectRequest({ kind: 'uploadRun', itemUuid: host.uuid, effectType: 'adjudicate', name: 'Door', source: { itemUuid: shard.uuid, entryId: 'prog-gm' } });
+  await SF.handlePayloadEffectRequest({ kind: 'uploadRun', actorId: 'a1', itemUuid: host.uuid, effectType: 'adjudicate', name: 'Door', source: { itemUuid: shard.uuid, entryId: 'prog-gm' } }, 'p1');
   ok(ran.length === 1 && ran[0].id === 'm-gm', 'relayed upload run: the program\'s OWN linked GM macro still runs (intended automation kept)');
   ok(await SF.programMacroId({ itemUuid: shard.uuid, entryId: 'prog-gm' }) === 'm-gm', 'programMacroId reads the entry');
   ok(await SF.programMacroId({ itemUuid: 'nope', entryId: 'prog-gm' }) === '' && await SF.programMacroId(null) === '', 'programMacroId: unknown source → ""');

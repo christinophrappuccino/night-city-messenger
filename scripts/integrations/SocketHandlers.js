@@ -332,11 +332,11 @@ export class SocketHandlers {
     });
 
     // ─── Player Banking Siphon Relay (GM persists the drain / alerts) ──
-    socketManager.register(SOCKET_OPS.BANK_SIPHON_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.BANK_SIPHON_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         const { handleSiphonRequest } = await import('../ui/content/SiphonFlow.js');
-        await handleSiphonRequest(data);
+        await handleSiphonRequest(data, sender);
       } catch (err) {
         log.error('Bank siphon relay failed:', err);
       }
@@ -344,11 +344,11 @@ export class SocketHandlers {
 
     // ─── Player Typed-Content Update Relay (eddies claim / credential crack —
     //     the entry lives in a GM-owned journal, so the GM persists the write) ──
-    socketManager.register(SOCKET_OPS.CONTENT_UPDATE_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.CONTENT_UPDATE_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         const { handleContentUpdateRequest } = await import('../ui/content/SiphonFlow.js');
-        await handleContentUpdateRequest(data);
+        await handleContentUpdateRequest(data, sender);
       } catch (err) {
         log.error('Content update relay failed:', err);
       }
@@ -356,12 +356,12 @@ export class SocketHandlers {
 
     // ─── Player Payload Execution Relay (roll ran client-side; GM applies the
     //     module-native effect + payload state write on the GM-owned host) ──
-    socketManager.register(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         const flow = await import('../ui/content/SiphonFlow.js');
-        if (data.outcome === 'kill') await flow.applyPayloadKill({ messageId: data.messageId, actorId: data.actorId });
-        else await flow.handlePayloadEffectRequest(data);
+        // Every kind (run, kill, malware effect, upload run) is checked against the sender (A3a).
+        await flow.handlePayloadEffectRequest(data, sender);
       } catch (err) {
         log.error('Payload effect relay failed:', err);
       }

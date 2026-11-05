@@ -16,7 +16,8 @@
 
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM, isPrimaryGM, formatCyberDate, netVerbFor, runGmMacro, stripMacroRefs } from '../../utils/helpers.js';
+import { log, isGM, isPrimaryGM, formatCyberDate, netVerbFor, runGmMacro, stripMacroRefs, userOwnsActor } from '../../utils/helpers.js';
+import { applyContentIntent, sanitizeIntent, computeMaxSiphon, UNLOCK_KINDS } from '../../utils/contentIntents.js';
 import { runSecurityConsole } from './SecurityConsole.js';
 import { rolledNote } from './NetResolve.js';
 import { runBankHeist } from './BankHeist.js';
@@ -28,19 +29,8 @@ const DEFAULT_SIPHON_DV = 15;
 const DEFAULT_CRACK_SKILL = 'Interface';
 const DEFAULT_CRACK_DV = 15;
 
-/** Max siphonable amount for the account's configured mode. */
-export function computeMaxSiphon(banking = {}) {
-  const bal = Math.max(0, Number(banking.balance) || 0);
-  switch (banking.siphonMode) {
-    case 'full': return bal;
-    case 'percent': return Math.floor(bal * (Number(banking.siphonPercent) || 25) / 100);
-    case 'cap':
-    default: {
-      const cap = Number(banking.siphonCap);
-      return cap > 0 ? Math.min(bal, cap) : bal;
-    }
-  }
-}
+/** Max siphonable amount for the account's configured mode (lives in contentIntents.js; the GM uses it too). */
+export { computeMaxSiphon };
 
 /**
  * Run the full siphon flow against a banking entry's RAW contentData.
@@ -102,8 +92,8 @@ export async function runSiphon({ actor, raw, itemUuid, messageId, host = null }
   const who = actor?.name || 'GM';
   if (res.ok) {
     if (actor) await _creditWealth(actor, amount, `NCM: Siphoned ${amount.toLocaleString()} eb from ${accountLabel}`);
-    const newCD = _applyDrain(banking, amount, who);
-    await _persistSiphon({ outcome: 'success', itemUuid, messageId, newContentData: newCD, amount, currency, actorName: who, accountLabel });
+    const drained = applyContentIntent('banking', banking, { action: 'siphon', amount }, contentCtx(actor));
+    await _persistSiphon({ outcome: 'success', messageId, amount, actorId: actor?.id || null, newContentData: drained.ok ? drained.next : null, currency, actorName: who, accountLabel });
     game.nightcity?.traceService?.logSuccess({ actor, action: 'siphon', source: accountLabel, targetKind: 'message', targetMessageId: messageId, severity: 'hostile' });
     ncmNotify.info(`NCM | Siphoned ${amount.toLocaleString()} ${currency} from ${accountLabel}.`);
   } else {
@@ -115,11 +105,11 @@ export async function runSiphon({ actor, raw, itemUuid, messageId, host = null }
       const { lockedOut } = sec.recordFailedAttempt(actor.id, lockTarget) || {};
       if (lockedOut) {
         frozen = true;
-        await persistContentData(messageId, { ...banking, status: 'frozen' },
+        await persistIntent(messageId, 'banking', banking, { action: 'freeze' }, actor,
           `NCM | ${accountLabel} FROZEN — security locked it after repeated siphon attempts.`);
       }
     }
-    await _persistSiphon({ outcome: 'fail', itemUuid, messageId, amount, currency, actorName: who, accountLabel });
+    await _persistSiphon({ outcome: 'fail', messageId, amount, actorId: actor?.id || null, currency, actorName: who, accountLabel });
     ncmNotify.warn(`NCM | Siphon failed — trace fired${rolledNote(res, usedDV)}.${frozen ? ' The account is now FROZEN.' : ''}`);
   }
 }
@@ -137,23 +127,20 @@ async function _creditWealth(actor, amount, reason) {
   }
 }
 
-/** Build the drained contentData: lower balance, prepend a txn, lock it. */
-function _applyDrain(banking, amount, who) {
-  const newBal = (Number(banking.balance) || 0) - amount;
-  const iso = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
-  const d = new Date(iso);
-  const date = `${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}`;
-  const txn = { date, desc: `Siphoned by ${who}`, amount, type: 'debit', category: 'flagged' };
-  return { ...banking, balance: newBal, siphoned: true, transactions: [txn, ...(banking.transactions || [])] };
-}
-
-/** Persist the outcome — GM applies directly, players relay. */
+/**
+ * Persist the outcome — GM applies directly, players relay. The relay carries
+ * only what the player did (outcome, amount, who); the GM re-reads the account
+ * and drains it within the account's own limit (audit SEC-04).
+ */
 async function _persistSiphon(payload) {
   if (isGM()) {
-    if (payload.outcome === 'success') await applySiphonToJournal(payload.messageId, payload.newContentData);
+    if (payload.outcome === 'success' && payload.newContentData) await applySiphonToJournal(payload.messageId, payload.newContentData);
     _alertGM(payload);
   } else {
-    game.nightcity?.socketManager?.emit(SOCKET_OPS.BANK_SIPHON_REQUEST, { ...payload, userId: game.user.id });
+    game.nightcity?.socketManager?.emit(SOCKET_OPS.BANK_SIPHON_REQUEST, {
+      outcome: payload.outcome === 'success' ? 'success' : 'fail',
+      messageId: payload.messageId, amount: payload.amount, actorId: payload.actorId, userId: game.user.id,
+    });
   }
 }
 
@@ -174,16 +161,18 @@ function _alertGM(p) {
  */
 export async function applySiphonToJournal(messageId, newContentData) {
   if (!isGM() || !messageId || !newContentData) return false;
-  let page = null;
-  for (const j of game.journal) {
-    const p = j.pages.find(pg => pg.flags?.[MODULE_ID]?.messageId === messageId);
-    if (p) { page = p; break; }
-  }
+  const page = _findPayloadPage(messageId)?.page || null;
   if (!page) { log.warn(`Siphon: no journal page for messageId ${messageId}`); return false; }
-  // Content actions (claim, crack, siphon, run…) never change which macro an entry
-  // links to — only the GM's authoring tools do, and they write the page directly.
-  // So a write through here keeps the entry's stored link and drops any other
-  // (SEC-02: a relayed update could otherwise plant a macro for the GM to run).
+  return _writeContentData(page, newContentData);
+}
+
+/**
+ * Write a page's whole contentData. Content actions (claim, crack, siphon, run…)
+ * never change which macro an entry links to — only the GM's authoring tools do,
+ * and they write the page directly. So a write through here keeps the entry's
+ * stored link and drops any other (SEC-02).
+ */
+async function _writeContentData(page, newContentData) {
   const stored = page.flags?.[MODULE_ID]?.contentData?.effect?.macroId || '';
   const next = stripMacroRefs(newContentData);
   if (stored) next.effect = { ...(next.effect || {}), macroId: stored };
@@ -191,16 +180,64 @@ export async function applySiphonToJournal(messageId, newContentData) {
     await page.update({ [`flags.${MODULE_ID}.contentData`]: next });
     return true;
   } catch (err) {
-    log.error(`Siphon persist failed: ${err.message}`);
+    log.error(`Content persist failed: ${err.message}`);
     return false;
   }
 }
 
+/**
+ * GM side: may this sender act on this page, as this character? (audit SEC-04)
+ * They must be able to SEE the entry (the page, through its journal's ownership —
+ * a shard or terminal journal they read, or their own inbox), and a named
+ * character must be theirs.
+ * @returns {{ok:true, page, user, actor}|{ok:false, why:string}}
+ */
+export function checkContentSender(messageId, senderId, actorId = null) {
+  const user = senderId ? game.users?.get(senderId) : null;
+  if (!user) return { ok: false, why: 'unknown sender' };
+  const found = messageId ? _findPayloadPage(messageId) : null;
+  if (!found) return { ok: false, why: `no entry ${messageId}` };
+  const OBSERVER = globalThis.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2;
+  if (!user.isGM && !found.page.testUserPermission?.(user, OBSERVER)) return { ok: false, why: `${user.name} cannot see that entry` };
+  let actor = null;
+  if (actorId) {
+    if (!userOwnsActor(senderId, actorId)) return { ok: false, why: `${user.name} does not own that character` };
+    actor = game.actors?.get(actorId) || null;
+  }
+  return { ok: true, page: found.page, user, actor };
+}
+
+/**
+ * GM side: apply a relayed intent. Re-reads the stored entry, checks the sender,
+ * computes the change from what is stored, writes it.
+ * @returns {Promise<{ok:boolean, why?:string, toast?:string, amount?:number}>}
+ */
+export async function applyContentRequest(messageId, rawIntent, senderId, actorId = null) {
+  if (!isGM()) return { ok: false, why: 'not a GM' };
+  const who = checkContentSender(messageId, senderId, actorId);
+  if (!who.ok) return who;
+  const flags = who.page.flags?.[MODULE_ID] || {};
+  const intent = sanitizeIntent(rawIntent);
+  const r = applyContentIntent(flags.contentType, flags.contentData || {}, intent, contentCtx(who.actor, who.user));
+  if (!r.ok) return r;
+  const wrote = await _writeContentData(who.page, r.next);
+  return wrote ? { ok: true, toast: r.toast, amount: r.amount } : { ok: false, why: 'the write failed' };
+}
+
 /** GM-side socket handler body for BANK_SIPHON_REQUEST. */
-export async function handleSiphonRequest(data) {
+export async function handleSiphonRequest(data, senderId) {
   if (!isGM()) return;
-  if (data.outcome === 'success') await applySiphonToJournal(data.messageId, data.newContentData);
-  _alertGM(data);
+  if (data?.outcome === 'success') {
+    const r = await applyContentRequest(data.messageId, { action: 'siphon', amount: data.amount }, senderId, data.actorId);
+    if (r.ok) ncmNotify.warn(`NCM | ${r.toast}`);
+    else log.warn(`Siphon request refused: ${r.why}`);
+    return;
+  }
+  // A failed attempt changes nothing; the GM is told who tried, by names read here.
+  const who = checkContentSender(data?.messageId, senderId, data?.actorId);
+  if (!who.ok) { log.warn(`Siphon report refused: ${who.why}`); return; }
+  const cd = who.page.flags?.[MODULE_ID]?.contentData || {};
+  _alertGM({ outcome: 'fail', actorName: who.actor?.name || who.user.name, accountLabel: cd.accountName || cd.bankName || 'account' });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -228,11 +265,29 @@ export function canPersistContent({ warn = true } = {}) {
   return false;
 }
 
-export async function persistContentData(messageId, newContentData, gmToast = '') {
+/**
+ * Persist a typed entry's new contentData.
+ *   - GM: writes `newContentData` directly (the GM's own tools, force paths and
+ *     player-less actions go through here).
+ *   - Player: relays only the INTENT (`{action, index?, kind?, amount?, tripped?}`)
+ *     and the acting character; the GM recomputes the change from the stored entry
+ *     (audit SEC-04). A player call without an intent is refused.
+ * @param {string} messageId
+ * @param {object} newContentData what the GM writes
+ * @param {string} [gmToast] shown on the GM's own screen (GM path only)
+ * @param {object} [intent] what a player's client asks for
+ * @param {string|null} [actorId] the acting character (a player's must be theirs)
+ */
+export async function persistContentData(messageId, newContentData, gmToast = '', intent = null, actorId = null) {
   if (isGM()) {
     const ok = await applySiphonToJournal(messageId, newContentData);
     if (ok && gmToast) ncmNotify.info(gmToast);
     return ok;
+  }
+  if (!intent?.action) {
+    log.warn(`persistContentData: a player write needs an intent (messageId ${messageId}) — refused.`);
+    ncmNotify.warn('NCM | That change could not be saved.');
+    return false;
   }
   // Player: the entry lives in a GM-owned journal → relay. This silently
   // no-ops with no GM connected (the write has nowhere to land), which reads
@@ -242,18 +297,52 @@ export async function persistContentData(messageId, newContentData, gmToast = ''
     log.warn(`persistContentData: no active GM to land the write (messageId ${messageId}).`);
     return false;
   }
-  log.debug(`persistContentData: relaying to GM (messageId ${messageId}).`);
+  log.debug(`persistContentData: relaying "${intent.action}" to GM (messageId ${messageId}).`);
   game.nightcity?.socketManager?.emit(SOCKET_OPS.CONTENT_UPDATE_REQUEST, {
-    messageId, newContentData, gmToast, userId: game.user.id,
+    messageId, intent: sanitizeIntent(intent), actorId: actorId || null, userId: game.user.id,
   });
   return true;
 }
 
-/** GM-side socket handler body for CONTENT_UPDATE_REQUEST. */
-export async function handleContentUpdateRequest(data) {
+/** Values a content change needs from the writer: who, the game clock, the real clock, the camera clock. */
+function contentCtx(actor, user = null) {
+  return {
+    actorId: actor?.id || null,
+    actorName: actor?.name || user?.name || game.user?.name || 'GM',
+    nowIso: _nowIso(),
+    realIso: new Date().toISOString(),
+    realMs: Date.now(),
+    clock: _clockStamp(),
+  };
+}
+
+/** The camera-feed clock string (a looped cam freezes on it). */
+function _clockStamp() {
+  try { return formatCyberDate(new Date(_nowMs()).toISOString(), { timeOnly: true, seconds: true }); } catch (_) { return ''; }
+}
+
+/**
+ * Compute a content action with the shared rules and persist it: the GM writes the
+ * result, a player relays the intent. One function decides what the action
+ * changes, on both sides.
+ * @returns {Promise<boolean>}
+ */
+async function persistIntent(messageId, contentType, cd, intent, actor, gmToast = '') {
+  const r = applyContentIntent(contentType, cd || {}, intent, contentCtx(actor));
+  if (!r.ok) {
+    log.warn(`Content action "${intent.action}" not applied: ${r.why} (messageId ${messageId}).`);
+    ncmNotify.warn(`NCM | Nothing changed — ${r.why}.`);
+    return false;
+  }
+  return persistContentData(messageId, r.next, gmToast || `NCM | ${r.toast}`, intent, actor?.id || null);
+}
+
+/** GM-side socket handler body for CONTENT_UPDATE_REQUEST. The GM writes its own toast. */
+export async function handleContentUpdateRequest(data, senderId) {
   if (!isGM()) return;
-  await applySiphonToJournal(data.messageId, data.newContentData);
-  if (data.gmToast) ncmNotify.info(data.gmToast);
+  const r = await applyContentRequest(data?.messageId, data?.intent, senderId, data?.actorId);
+  if (r.ok) ncmNotify.info(`NCM | ${r.toast}`);
+  else log.warn(`Content update refused: ${r.why}`);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -288,13 +377,9 @@ export async function runEddiesClaim({ actor, raw, messageId, sourceLabel = 'dat
   if (gated && !res.ok) { ncmNotify.warn(`NCM | Claim failed${rolledNote(res)}.`); return null; }
 
   await _creditWealth(actor, amount, `NCM: Claimed ${amount.toLocaleString()} eb from ${sourceLabel}`);
-  const iso = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
-  await persistContentData(messageId,
-    // `claimedAt` is GAME time (the in-fiction "claimed at X"); `claimedRealMs`
-    // is REAL time and drives the one-shot claim animation — the enricher's
-    // "just claimed" window compares against Date.now(), so it MUST be real
-    // time or it never matches in a world-time/manual/disguised clock.
-    { ...cd, claimed: true, claimedBy: actor.id, claimedAt: new Date(iso).toISOString(), claimedRealMs: Date.now() },
+  // `claimedAt` is GAME time (the in-fiction "claimed at X"); `claimedRealMs` is
+  // REAL time and drives the one-shot claim animation (contentIntents 'claim').
+  await persistIntent(messageId, 'eddies', cd, { action: 'claim' }, actor,
     `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${sourceLabel}).`);
   game.nightcity?.soundService?.play('eddies-claim');
   ncmNotify.info(`NCM | ${amount.toLocaleString()} eb deposited to ${actor.name}'s ledger.`);
@@ -340,8 +425,7 @@ export async function runCrack({ actor, raw, entryIndex, messageId, force = fals
     if (!res.ok) { ncmNotify.warn(`NCM | Crack failed${rolledNote(res, dv)}.`); return false; }
   }
 
-  const newEntries = entries.map((x, i) => (i === entryIndex ? { ...x, cracked: true } : x));
-  await persistContentData(messageId, { ...raw, entries: newEntries },
+  await persistIntent(messageId, 'credentials', raw, { action: 'crack', index: entryIndex }, actor,
     `NCM | ${actor?.name || 'GM'} cracked the ${label} credentials.`);
   game.nightcity?.soundService?.play('shard-decrypt');
   game.nightcity?.traceService?.logSuccess({ actor, action: 'crack', source: label, targetKind: 'message', targetMessageId: messageId, severity: 'major' });
@@ -386,7 +470,7 @@ export async function runContentUnlock({ actor, raw, kind, index = -1, messageId
   // the type's arming flag not set (declassify/locked never authored).
   log.debug(`runContentUnlock: kind=${kind} index=${index} messageId=${messageId} hasRaw=${!!raw} actor=${actor?.name || 'none'} force=${force}`);
   if (!raw) { log.warn(`runContentUnlock: no contentData for messageId ${messageId} (entry lookup failed) — nothing to unlock.`); return false; }
-  let label, skill, dv, mutate, traceFlag; // traceFlag: per-item override; null → vault-level cd.traceOnFail
+  let label, skill, dv, traceFlag; // traceFlag: per-item override; null → vault-level cd.traceOnFail
   if (kind === 'gallery') {
     const img = (cd.images || [])[index];
     if (!img || !img.locked) return false;
@@ -394,20 +478,17 @@ export async function runContentUnlock({ actor, raw, kind, index = -1, messageId
     // Per-frame override beats the vault-level pair.
     skill = img.unlockSkill || cd.unlockSkill || DEFAULT_CRACK_SKILL;
     dv = Number(img.unlockDV ?? cd.unlockDV) || DEFAULT_CRACK_DV;
-    mutate = () => ({ ...cd, images: cd.images.map((x, i) => (i === index ? { ...x, locked: false } : x)) });
   } else if (kind === 'avlog') {
     if (!cd.locked) return false;
     label = 'the sealed recording';
     skill = cd.unlockSkill || DEFAULT_CRACK_SKILL;
     dv = Number(cd.unlockDV) || DEFAULT_CRACK_DV;
-    mutate = () => ({ ...cd, locked: false });
   } else if (kind === 'schematic') {
     const a = (cd.annotations || [])[index];
     if (!a || !a.locked) return false;
     label = 'this marker';
     skill = a.unlockSkill || cd.unlockSkill || DEFAULT_CRACK_SKILL;
     dv = Number(a.unlockDV ?? cd.unlockDV) || DEFAULT_CRACK_DV;
-    mutate = () => ({ ...cd, annotations: cd.annotations.map((x, i) => (i === index ? { ...x, locked: false } : x)) });
   } else if (kind === 'calendar') {
     const ev = (cd.events || [])[index];
     if (!ev || !ev.locked) return false;
@@ -415,7 +496,6 @@ export async function runContentUnlock({ actor, raw, kind, index = -1, messageId
     skill = ev.unlockSkill || cd.unlockSkill || DEFAULT_CRACK_SKILL;
     dv = Number(ev.unlockDV ?? cd.unlockDV) || DEFAULT_CRACK_DV;
     traceFlag = !!(ev.traceOnFail || cd.traceOnFail);
-    mutate = () => ({ ...cd, events: cd.events.map((x, i) => (i === index ? { ...x, locked: false } : x)) });
   } else if (kind === 'location') {
     // Encrypted pin — coordinates/image/intel sealed until decrypted. The
     // reveal stamps `revealedAt` so the enricher can play the FUI resolve
@@ -425,20 +505,17 @@ export async function runContentUnlock({ actor, raw, kind, index = -1, messageId
     skill = cd.unlockSkill || DEFAULT_CRACK_SKILL;
     dv = Number(cd.unlockDV) || DEFAULT_CRACK_DV;
     traceFlag = !!cd.traceOnFail;
-    mutate = () => ({ ...cd, locked: false, revealedAt: new Date().toISOString() });
   } else if (kind === 'dossier-face') {
     if (!cd.faceLocked) return false;
     label = 'the masked identity';
     skill = cd.faceUnlockSkill || DEFAULT_CRACK_SKILL;
     dv = Number(cd.faceUnlockDV) || DEFAULT_CRACK_DV;
     traceFlag = !!cd.faceTraceOnFail;
-    mutate = () => ({ ...cd, faceLocked: false, faceRevealed: true });
   } else if (kind === 'dossier-profile') {
     if (!(cd.profile?.enabled && cd.profile.visibility === 'encrypted' && !cd.profile.decrypted)) return false;
     label = 'the combat profile';
     skill = cd.profile.skill || DEFAULT_CRACK_SKILL;
     dv = Number(cd.profile.dv) || DEFAULT_CRACK_DV;
-    mutate = () => ({ ...cd, profile: { ...cd.profile, decrypted: true } });
   } else if (kind === 'document' || kind === 'dossier' || kind === 'spreadsheet') {
     if (!cd.declassify) { log.warn(`runContentUnlock: ${kind} has declassify=false — the DECLASSIFY button can't do anything.`); return false; }
     label = 'the redacted sections';
@@ -446,13 +523,10 @@ export async function runContentUnlock({ actor, raw, kind, index = -1, messageId
     dv = Number(cd.declassifyDV) || DEFAULT_CRACK_DV;
     if (kind === 'document') {
       if (!(cd.paragraphs || []).some(p => p.redacted)) { log.warn('runContentUnlock: document has no redacted paragraphs — nothing to declassify.'); return false; }
-      mutate = () => ({ ...cd, declassified: true, paragraphs: cd.paragraphs.map(p => (p.redacted ? { ...p, redacted: false, declassified: true } : p)) });
     } else if (kind === 'dossier') {
       if (!(cd.sections || []).some(s => s.redacted)) { log.warn('runContentUnlock: dossier has no redacted sections — nothing to declassify.'); return false; }
-      mutate = () => ({ ...cd, declassified: true, sections: cd.sections.map(s => (s.redacted ? { ...s, redacted: false, declassified: true } : s)) });
     } else {
       if (!(cd.redacted || []).length) { log.warn('runContentUnlock: spreadsheet has no redacted cells — nothing to declassify.'); return false; }
-      mutate = () => ({ ...cd, declassified: true, redacted: [] });
     }
   } else { log.warn(`runContentUnlock: unknown unlock kind "${kind}".`); return false; }
 
@@ -487,7 +561,8 @@ export async function runContentUnlock({ actor, raw, kind, index = -1, messageId
     }
   }
 
-  await persistContentData(messageId, mutate(),
+  // What each kind changes lives in contentIntents (unlockNext), shared with the GM.
+  await persistIntent(messageId, UNLOCK_KINDS[kind], cd, { action: 'unlock', kind, index }, actor,
     `NCM | ${actor?.name || 'GM'} revealed ${label} (${kind}).`);
   game.nightcity?.soundService?.play('shard-decrypt');
   game.nightcity?.traceService?.logSuccess({ actor, action: 'unlock', source: label, targetKind: 'message', targetMessageId: messageId, severity: 'major' });
@@ -614,8 +689,7 @@ export async function runCamAction({ actor, raw, index, act, messageId, host = n
     if (cd.traceOnFail) _fireUnlockTrace(actor, `the ${label} camera`, messageId);
     return false;
   }
-  await persistContentData(messageId,
-    mut(isLoop ? { looped: true, loopedTime: clockStamp() } : { cut: true }),
+  await persistIntent(messageId, 'gallery', cd, { action: isLoop ? 'camLoop' : 'camCut', index }, actor,
     `NCM | ${actor.name} ${isLoop ? 'looped' : 'cut'} ${label}.`);
   game.nightcity?.traceService?.logSuccess({ actor, action: 'camera', source: `the ${label} camera`, targetKind: 'message', targetMessageId: messageId, severity: 'major' });
   ncmNotify.info(isLoop ? `NCM | ${label} is looping old footage.` : `NCM | ${label} is dark.`);
@@ -677,7 +751,6 @@ export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 't
   const glitched = !!unstable && res.ok !== false && Math.random() * 100 < (unstable.misfire || 0);
   const misfired = (gated && !res.ok) || glitched;
 
-  const iso = (() => { try { return new Date(game.nightcity?.timeService?.getCurrentTime?.() ?? Date.now()).toISOString(); } catch { return new Date().toISOString(); } })();
 
   if (cd.honeypot || misfired) {
     // Decoy OR a botched deploy — the payload turns on the operator. Trace fires
@@ -693,8 +766,7 @@ export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 't
       } catch (err) { log.error(`Malware ICE damage failed: ${err.message}`); }
     }
     const why = cd.honeypot ? 'tripped the HONEYPOT' : 'botched the deploy of';
-    await persistContentData(messageId,
-      { ...cd, deployed: true, tripped: true, deployedBy: actor?.id || null, deployedAt: iso },
+    await persistIntent(messageId, 'malware', cd, { action: 'deploy', tripped: true }, actor,
       `NCM | ⚠ ${actor?.name || 'Someone'} ${why} "${name}" (${sourceLabel}).`);
     ncmNotify.warn(cd.honeypot ? `NCM | ${name} was a decoy — a trace just fired.` : `NCM | ${name} misfired — a trace just fired.`);
     return { success: false, honeypot: !!cd.honeypot };
@@ -716,8 +788,7 @@ export async function runMalwareDeploy({ actor, raw, messageId, sourceLabel = 't
       });
     }
   } else {
-    await persistContentData(messageId,
-      { ...cd, deployed: true, deployedBy: actor?.id || null, deployedAt: iso },
+    await persistIntent(messageId, 'malware', cd, { action: 'deploy' }, actor,
       `NCM | ${actor?.name || 'Someone'} deployed "${name}" (${sourceLabel}) — adjudicate its effect.${cd.description ? ` ${cd.description}` : ''}`);
   }
   game.nightcity?.soundService?.play('hack-success');
@@ -873,14 +944,80 @@ export async function applyPayloadEffect({ messageId, actorId, outcome, targets 
   ncmNotify.info(`NCM | ${name} executed.${report ? ' ' + _stripTags(report) : ''}`);
 }
 
-/** GM-side socket handler body for PAYLOAD_EFFECT_REQUEST (payload + malware). */
-export async function handlePayloadEffectRequest(data) {
+/** Program verbs a player's upload may hand to the GM to run on a box (the ones that write it). */
+const UPLOAD_RUN_VERBS = Object.freeze(['icebreaker', 'wipe', 'corrupt', 'forgeAccount', 'adjudicate']);
+
+/** Message ids on the same journal as `page` (files a program on it may target), never the program itself. */
+function _sameJournalIds(page, ids, excludeId = null) {
+  if (!Array.isArray(ids)) return [];
+  const here = new Set((page?.parent?.pages?.contents || [...(page?.parent?.pages || [])]).map((p) => p.flags?.[MODULE_ID]?.messageId).filter(Boolean));
+  return [...new Set(ids.map(String))].filter((id) => here.has(id) && id !== excludeId);
+}
+
+/**
+ * Is this relayed program run allowed? (audit SEC-04 / A3a) The sender must see the
+ * program's entry and own the named character; the entry must be in a state where
+ * the request makes sense (not already run, actually running for a kill, a clean
+ * deployable malware for an effect); a payload's targets must be files on its own host.
+ * @returns {{ok:true, targets?:string[]}|{ok:false, why:string}}
+ */
+export function checkPayloadRequest(data, senderId) {
+  const who = checkContentSender(data?.messageId, senderId, data?.actorId);
+  if (!who.ok) return who;
+  const f = who.page.flags?.[MODULE_ID] || {};
+  const cd = f.contentData || {};
+  if (data.kind === 'malware') {
+    if (f.contentType !== 'malware') return { ok: false, why: 'not a malware entry' };
+    if (!cd.deployable || cd.deployed || cd.honeypot) return { ok: false, why: 'that malware cannot run cleanly' };
+    const t = cd.effect?.type;
+    if (!t || (t === 'adjudicate' && !cd.effect?.macroId)) return { ok: false, why: 'that malware has no effect' };
+    return { ok: true };
+  }
+  if (f.contentType !== 'payload') return { ok: false, why: 'not a program entry' };
+  if (data.outcome === 'kill') return cd.active && !cd.killed ? { ok: true } : { ok: false, why: 'nothing is running' };
+  if (data.outcome !== 'success' && data.outcome !== 'fail') return { ok: false, why: `unknown outcome "${data.outcome}"` };
+  if (cd.executed && !(cd.charges > 1)) return { ok: false, why: 'already run' };
+  return { ok: true, targets: data.targets ? _sameJournalIds(who.page, data.targets, data.messageId) : null };
+}
+
+/**
+ * Is this relayed upload run allowed? The sender must own the character, the verb must
+ * be one that writes a box, the box must be a terminal, and file targets must be on it.
+ * (Which program a player may push, from which shard, is checked with the terminal relays, A3c.)
+ * @returns {Promise<{ok:true, params:object}|{ok:false, why:string}>}
+ */
+export async function checkUploadRunRequest(data, senderId) {
+  const user = senderId ? game.users?.get(senderId) : null;
+  if (!user) return { ok: false, why: 'unknown sender' };
+  if (!data?.actorId || !userOwnsActor(senderId, data.actorId)) return { ok: false, why: `${user.name} does not own that character` };
+  if (!UPLOAD_RUN_VERBS.includes(data.effectType)) return { ok: false, why: `"${data.effectType}" is not a program a player can run on a box` };
+  const host = data.itemUuid ? await fromUuid(data.itemUuid) : null;
+  if (!host?.getFlag?.(MODULE_ID, 'isTerminal')) return { ok: false, why: 'the target is not a terminal' };
+  const params = stripMacroRefs(data.params && typeof data.params === 'object' ? data.params : {});
+  if (params.messageIds) {
+    const journal = game.journal?.get(host.getFlag(MODULE_ID, 'journalId'));
+    const here = new Set((journal?.pages?.contents || []).map((p) => p.flags?.[MODULE_ID]?.messageId).filter(Boolean));
+    params.messageIds = [...new Set(params.messageIds.map(String))].filter((id) => here.has(id));
+  }
+  return { ok: true, params };
+}
+
+/** GM-side socket handler body for PAYLOAD_EFFECT_REQUEST (payload + malware + upload runs). */
+export async function handlePayloadEffectRequest(data, senderId) {
   if (!isGM()) return;
-  if (data.kind === 'malware') { await applyMalwareEffect({ messageId: data.messageId, actorId: data.actorId }); return; }
   // A relayed upload never names its own macro: the GM reads it from the program's
   // shard entry (`source`) inside applyUploadRun (SEC-02).
-  if (data.kind === 'uploadRun') { await applyUploadRun({ ...stripMacroRefs(data), macroId: '' }); return; }
-  await applyPayloadEffect({ messageId: data.messageId, actorId: data.actorId, outcome: data.outcome, targets: data.targets || null });
+  if (data?.kind === 'uploadRun') {
+    const ok = await checkUploadRunRequest(data, senderId);
+    if (!ok.ok) { log.warn(`Upload run refused: ${ok.why}`); return; }
+    await applyUploadRun({ ...stripMacroRefs(data), params: ok.params, macroId: '', userId: senderId });
+    return;
+  }
+  const ok = checkPayloadRequest(data, senderId);
+  if (!ok.ok) { log.warn(`Program request refused: ${ok.why}`); return; }
+  if (data.kind === 'malware') { await applyMalwareEffect({ messageId: data.messageId, actorId: data.actorId }); return; }
+  if (data.outcome === 'kill') { await applyPayloadKill({ messageId: data.messageId, actorId: data.actorId }); return; }
+  await applyPayloadEffect({ messageId: data.messageId, actorId: data.actorId, outcome: data.outcome, targets: ok.targets || null });
 }
 
 /**
@@ -1079,7 +1216,7 @@ export async function runAnalyze({ actor, raw, contentType, messageId, host = nu
     return false;
   }
   // Disguise exposed — persist the reveal (same write as the GM's REVEAL).
-  await persistContentData(messageId, { ...cd, sniffed: true },
+  await persistIntent(messageId, contentType, cd, { action: 'sniff' }, actor,
     `NCM | ${actor.name} exposed a disguised payload (${cd.name || 'unknown'}).`);
   game.nightcity?.soundService?.play('shard-decrypt');
   ncmNotify.warn(`NCM | It's not what it looks like — ${cd.name || 'a payload'} was hiding in there.`);
@@ -1109,7 +1246,8 @@ export async function runPayloadSniff({ actor, raw, messageId, force = false, ho
       return false;
     }
   }
-  await persistContentData(messageId, { ...cd, sniffed: true },
+  // Payload and malware disguise the same way; the GM re-reads the stored type.
+  await persistIntent(messageId, 'payload', cd, { action: 'sniff' }, actor,
     `NCM | ${actor?.name || 'GM'} unmasked a disguised payload ("${cd.name || 'file'}").`);
   game.nightcity?.soundService?.play('shard-decrypt');
   ncmNotify.warn(`NCM | That "${String(cd.disguiseType || 'file').toUpperCase()}" was a disguised program.`);

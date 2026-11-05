@@ -1323,12 +1323,15 @@ export class DataShardService {
       // and the nested contentData.* dot-path write is the unreliable-flag
       // gotcha anyway. persistContentData writes the whole contentData (GM
       // direct, player via the CONTENT_UPDATE_REQUEST relay).
+      // A player relays the INTENT ('claim'); the GM marks it claimed from the stored entry (audit SEC-04).
       const { persistContentData } = await import('../ui/content/SiphonFlow.js');
-      await persistContentData(entryId, {
-        // claimedRealMs = real time, drives the one-shot claim animation (the
-        // enricher's justClaimed window compares against Date.now()).
-        ...contentData, claimed: true, claimedBy: actor.id, claimedAt: new Date().toISOString(), claimedRealMs: Date.now(),
-      }, `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${shardItem.name}).`);
+      const { applyContentIntent } = await import('../utils/contentIntents.js');
+      const nowIso = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
+      const claimed = applyContentIntent(CONTENT_TYPES.EDDIES, contentData, { action: 'claim' },
+        { actorId: actor.id, actorName: actor.name, nowIso, realIso: new Date().toISOString(), realMs: Date.now() });
+      if (!claimed.ok) return { success: false, error: claimed.why };
+      await persistContentData(entryId, claimed.next,
+        `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${shardItem.name}).`, { action: 'claim' }, actor.id);
 
       this.eventBus?.emit(EVENTS.SHARD_EDDIES_CLAIMED, {
         itemId: shardItem.id, entryId, actorId: actor.id, amount,
