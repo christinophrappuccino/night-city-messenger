@@ -95,9 +95,9 @@ export function registerTerminalSystem(initializer) {
   // onAction residents that fire when the operator exfiltrates. All 7 exfil
   // variants emit EVENTS.TERMINAL_EXFIL GM-side, so ONE listener covers them —
   // including UNGATED exfils, which never reach the trace funnel. Every OTHER
-  // action (siphon/crack/decrypt/deploy/execute/upload…) is picked up centrally
-  // by TraceService._fireResidentTriggers, which is why it skips 'exfil': this
-  // listener already owns it, and running both would propose twice.
+  // action (siphon/crack/decrypt/deploy/execute/upload…) reaches the trace funnel,
+  // which announces EVENTS.TRACE_RECORDED; TerminalService.residentsOnTrace answers
+  // it and skips 'exfil', which this listener already owns (both would propose twice).
   initializer.register('ready', 68, 'Resident action triggers', async () => {
     if (!isGM()) return;
     try {
@@ -111,7 +111,12 @@ export function registerTerminalSystem(initializer) {
             ?.catch(err => log.warn(`Resident action-check failed: ${err.message}`));
         }
       });
-      log.debug('Resident action triggers wired (exfil)');
+      bus.on(EVENTS.TRACE_RECORDED, ({ row, heat } = {}) => {
+        if (!isGM()) return;
+        game.nightcity?.terminalService?.residentsOnTrace?.(row, heat)
+          ?.catch(err => log.warn(`Resident trace-check failed: ${err.message}`));
+      });
+      log.debug('Resident action triggers wired (exfil + trace)');
     } catch (err) {
       log.error(`Resident action-trigger registration failed: ${err.message}`);
     }

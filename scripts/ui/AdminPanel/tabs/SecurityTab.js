@@ -34,6 +34,7 @@ import {
   RESULTS, TRACE_MODES, SORTS, ZOOMS,
 } from './securityModel.js';
 import { blackIceActors } from '../../../utils/cpr.js';
+import { isFeatureOn } from '../../../utils/features.js';
 
 /** The Security sub-tabs (2026-10-27 redesign — dev/mockups/admin-security-redesign-mock.html). */
 const VIEWS = [
@@ -172,6 +173,8 @@ export class SecurityTab extends BaseTab {
     return {
       security: {
         view,
+        // Module Settings → Trace consequences (a live switch, stage 2 step 16): off, failures log but heat never moves
+        consequencesOff: !isFeatureOn('traceConsequences'),
         isLive: view === 'live', isActivity: view === 'activity', isHeat: view === 'heat',
         isMachines: view === 'machines', isRules: view === 'rules',
         nav: VIEWS.map(v => ({ ...v, on: v.key === view, count: navCount[v.key] || 0, cls: navCls[v.key] })),

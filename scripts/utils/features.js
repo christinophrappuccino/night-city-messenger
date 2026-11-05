@@ -11,6 +11,10 @@
  * The answer is read ONCE per load and then kept: every feature setting is `requiresReload`, so what a client
  * installed at startup is what it reports until the reload, even in the moment between the GM saving the setting and
  * the reload. A feature whose `requires` is off is off too, and that is decided here, nowhere else.
+ *
+ * A LIVE feature (`live: true`, stage 2 step 16) is a rule gate, not a system: it owns no startup step, socket op or
+ * screen, so it is read every time and takes effect at once (its setting has no `requiresReload`). It cannot tag a
+ * startup step or a socket op, and nothing may `require` it (a cached answer would then depend on a live one).
  */
 
 import { MODULE_ID, SOCKET_OPS } from './constants.js';
@@ -36,6 +40,9 @@ export const FEATURES = Object.freeze({
   payphones: { setting: 'payphonesEnabled', label: 'Payphones',       requires: ['calls'] },
   emergency: { setting: 'emergencyEnabled', label: 'Emergency lines', requires: ['calls'] },
   overheard: { setting: 'overheardEnabled', label: 'Overheard calls', requires: ['calls'] },
+  // Trace consequences (stage 2, step 16): off, a failed attempt is still LOGGED, but gains no heat, alerts no GM and
+  // shows the player no trace splash. The GM's own tools (set heat, escalate, countdowns) are untouched.
+  traceConsequences: { setting: 'traceConsequencesEnabled', label: 'Trace consequences', requires: [], live: true },
 });
 
 const cache = new Map();
@@ -53,6 +60,7 @@ function ownSwitch(name) {
  * @returns {boolean}
  */
 export function isFeatureOn(name, _seen = new Set()) {
+  if (FEATURES[name]?.live) return ownSwitch(name);           // a rule gate: read every time, never cached
   if (cache.has(name)) return cache.get(name);
   if (_seen.has(name)) return false;                       // a requires loop is a bug; treat it as off
   _seen.add(name);
@@ -65,7 +73,7 @@ export function isFeatureOn(name, _seen = new Set()) {
 
 /** Every feature with its state, for the startup report, the admin panel and the API. */
 export function featureList() {
-  return Object.entries(FEATURES).map(([name, f]) => ({ name, label: f.label, setting: f.setting, requires: [...(f.requires || [])], on: isFeatureOn(name) }));
+  return Object.entries(FEATURES).map(([name, f]) => ({ name, label: f.label, setting: f.setting, requires: [...(f.requires || [])], live: !!f.live, on: isFeatureOn(name) }));
 }
 
 /** The names of the features that are off in this load. */

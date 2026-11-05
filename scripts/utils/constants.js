@@ -73,6 +73,7 @@ export const EVENTS = Object.freeze({
   TERMINAL_LOGIN_FAILURE: 'terminal:loginFailure',
   TERMINAL_RELOCKED: 'terminal:relocked',
   TERMINAL_EXFIL: 'terminal:exfil',
+  TRACE_RECORDED: 'trace:recorded',   // GM side, after a trace row is written: { row, heat } (residents listen; stage 2 step 16)
 
   CONTACT_UPDATED: 'contact:updated',
   // Contact groups — mirrored to Foundry hooks by IntegrationBridge.

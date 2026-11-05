@@ -17,10 +17,11 @@
  */
 
 import { ncmNotify } from '../utils/notify.js';
-import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
+import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
 import { log, isGM, isPrimaryGM, netVerbFor, whisperCardHtml, userOwnsActor } from '../utils/helpers.js';
 import { userCanReachItem } from '../utils/shardAccess.js';
 import { serialize } from '../utils/serialize.js';
+import { isFeatureOn } from '../utils/features.js';
 
 const LOG_SETTING = 'traceLog';
 const HEAT_SETTING = 'traceHeat';
@@ -41,6 +42,9 @@ export class TraceService {
   get soundService() { return game.nightcity?.soundService; }
   get notificationService() { return game.nightcity?.notificationService; }
   get timeService() { return game.nightcity?.timeService; }
+
+  /** Does a failure have consequences (heat, the GM alert, the player's splash)? A live switch (utils/features.js). */
+  get consequencesOn() { return isFeatureOn('traceConsequences'); }
 
   _nowMs() { try { return this.timeService?.getCurrentTimeMs?.() ?? Date.now(); } catch { return Date.now(); } }
   _nowIso() { try { return new Date(this._nowMs()).toISOString(); } catch { return new Date().toISOString(); } }
@@ -67,7 +71,8 @@ export class TraceService {
    *                                whose animation owns the climax)
    */
   fireTrace(o = {}) {
-    if (!o.quiet) {
+    // consequences off: the failure is still recorded, but nothing on screen promises a trace that will not follow
+    if (!o.quiet && this.consequencesOn) {
       const label = o.source || o.objectName || o.hostItem?.name || 'a secured system';
       try { this.soundService?.play('trace-fire'); } catch { /* no sound */ }
       try { this.notificationService?.showShardTrace?.({ itemName: label }); } catch { /* no splash */ }
@@ -128,12 +133,16 @@ export class TraceService {
   /** GM-side: append the activity row; failures also bump heat + alert. */
   async recordTrace(p) {
     if (!isGM() || !p) return;
+    let row = null;
     try {
       const isFail = p.outcome !== 'success';
-      const heatDelta = isFail ? (HEAT_BY_SEVERITY[p.severity] ?? 20) : 0;
+      // consequences off (a live switch): the row is still written, with no heat and no alert
+      const consequences = isFail && this.consequencesOn;
+      const heatDelta = consequences ? (HEAT_BY_SEVERITY[p.severity] ?? 20) : 0;
       // One log write at a time: two traces at once both appended to the same copy and one row was lost (INT-03).
       await serialize('trace:log', async () => {
-        const rows = [...this.getLog(), { id: `tr-${foundry.utils.randomID(8)}`, ...p, heatDelta }];
+        row = { id: `tr-${foundry.utils.randomID(8)}`, ...p, heatDelta };
+        const rows = [...this.getLog(), row];
         while (rows.length > LOG_CAP) rows.shift();
         await game.settings.set(MODULE_ID, LOG_SETTING, rows);
       });
@@ -143,50 +152,14 @@ export class TraceService {
       const objId = p.objectId || `label:${String(p.objectName || 'unknown').toLowerCase()}`;
       const who = p.actorId || 'unknown';
       let heat = this.getHeat(objId, who);
-      if (isFail) {
+      if (consequences) {
         heat = await this.bumpHeat(objId, who, heatDelta);
         this._gmAlert(p, heat);
       }
-      await this._fireResidentTriggers(p, heat);
+      // Who reacts to a trace (terminal residents today) listens for this; the trace spine calls no one (stage 2,
+      // step 16 — it used to call the terminal service directly). GM side only, like the write.
+      game.nightcity?.eventBus?.emit(EVENTS.TRACE_RECORDED, { row, heat });
     } catch (err) { log.error(`recordTrace failed: ${err.message}`); }
-  }
-
-  /**
-   * Resident triggers ride the trace funnel.
-   *
-   * Every gated content action already reports here carrying an `action` tag and
-   * its host item, so this ONE hook reaches siphon / crack / decrypt / camera /
-   * deploy / execute / exfil / upload. The alternative was a
-   * `checkActionResidents()` call at each site — only exfil ever got one, which
-   * is why `onAction` and `onHeat` residents were installable but unreachable.
-   *
-   * - `onAction` fires only when the action SUCCEEDED: the thing actually
-   *   happened. A failed attempt is the trace's business, not the bomb's.
-   * - `onHeat` is checked either way, because heat is what moved.
-   *
-   * Resolved through the `game.nightcity` namespace rather than an import so the
-   * trace spine stays independent of the terminal service.
-   * @private
-   */
-  async _fireResidentTriggers(p, heat) {
-    if (p.targetKind !== 'terminal' || !p.objectId) return;
-    const svc = game.nightcity?.terminalService;
-    if (!svc) return;
-    // A carried terminal is not in game.items (audit DATA-10): resolve by uuid, then by id across every terminal.
-    let item = null;
-    try { item = p.targetUuid ? fromUuidSync(p.targetUuid) : null; } catch { item = null; }
-    if (!item || !svc.isTerminal?.(item)) item = game.items?.get(p.objectId) || svc.collectTerminals?.().find((i) => i.id === p.objectId) || null;
-    if (!item) return;
-    try {
-      // 'exfil' is deliberately NOT handled here: it has its own EVENTS.TERMINAL_EXFIL
-      // listener (registerTerminalSystem, ready/68) which also catches UNGATED
-      // exfils that never reach this funnel. Running both would propose the same
-      // resident twice.
-      if (p.outcome === 'success' && p.action !== 'exfil') {
-        await svc.checkActionResidents?.(item, p.action, { actorId: p.actorId });
-      }
-      await svc.checkHeatResidents?.(item, heat, { actorId: p.actorId });
-    } catch (err) { log.warn(`Resident trigger check failed: ${err.message}`); }
   }
 
   /**

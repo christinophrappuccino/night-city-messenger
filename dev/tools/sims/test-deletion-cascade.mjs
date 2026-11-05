@@ -161,16 +161,16 @@ const { reparentAliases, planIdentityRepairs, groupKeyOf } = await imp('scripts/
   await ts.reapResidents();
   ok(fired.join() === 'term1:r1', 'an onDate resident on a carried terminal fires');
 
-  const { TraceService } = await imp('scripts/services/TraceService.js');
-  const tr = Object.create(TraceService.prototype);
+  // the resident reaction moved from TraceService into TerminalService.residentsOnTrace (stage 2, step 16)
   const seen = [];
-  game.nightcity.terminalService = { isTerminal: (i) => i === carried, collectTerminals: () => [carried],
+  const tr = { isTerminal: (i) => i === carried, collectTerminals: () => [carried],
     checkActionResidents: async (item, action) => { seen.push(`action:${item.id}:${action}`); },
     checkHeatResidents: async (item) => { seen.push(`heat:${item.id}`); } };
-  await tr._fireResidentTriggers({ targetKind: 'terminal', objectId: 'term1', targetUuid: carried.uuid, outcome: 'success', action: 'siphon' }, 30);
+  tr.residentsOnTrace = TerminalService.prototype.residentsOnTrace;
+  await tr.residentsOnTrace({ targetKind: 'terminal', objectId: 'term1', targetUuid: carried.uuid, outcome: 'success', action: 'siphon' }, 30);
   ok(seen.join() === 'action:term1:siphon,heat:term1', 'a trace on a carried terminal reaches its onAction and onHeat residents (by uuid)');
   seen.length = 0;
-  await tr._fireResidentTriggers({ targetKind: 'terminal', objectId: 'term1', outcome: 'success', action: 'crack' }, 30);
+  await tr.residentsOnTrace({ targetKind: 'terminal', objectId: 'term1', outcome: 'success', action: 'crack' }, 30);
   ok(seen.join() === 'action:term1:crack,heat:term1', '…and by id when the row has no uuid');
 }
 

@@ -26,6 +26,7 @@
   {{!-- ═══════════════════════ LIVE ═══════════════════════ --}}
   {{#if security.isLive}}
     <header class="ncm-tabhd"><i class="fas fa-satellite-dish"></i><div><h2>Live</h2><p>What needs your call right now: running traces, operators running hot and armed plants, plus the latest rolls.</p></div></header>
+    {{#if security.consequencesOff}}<div class="ncm-sec-admin-band"><i class="fas fa-power-off"></i>Trace consequences are off (Module Settings): failed rolls are logged, but add no heat and alert no one. Your own heat, escalate and countdown tools still work.</div>{{/if}}
     <div class="ncm-sec-admin-strip links">
       <div class="ncm-sec-admin-stat" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="view" data-view="activity"><i class="fas fa-arrow-right go"></i><div class="n">{{security.stats.traces24h}}</div><div class="l">Events (24h)</div></div>
       <div class="ncm-sec-admin-stat{{#if security.stats.hot}} is-attn{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="security" data-op="view" data-view="heat"><i class="fas fa-arrow-right go"></i><div class="n">{{security.stats.hot}}</div><div class="l">Running hot</div></div>
@@ -209,6 +210,7 @@
        Escalate / Call off are the existing security* actions. Context security.thermo. --}}
   {{#if security.isHeat}}
     <header class="ncm-tabhd"><i class="fas fa-temperature-half"></i><div><h2>Heat &amp; traces</h2><p>How hot each operator is on each system and the trace countdowns you have started; heat rises on a failed check and cools 5 per hour of game time.</p></div></header>
+    {{#if security.consequencesOff}}<div class="ncm-sec-admin-band"><i class="fas fa-power-off"></i>Trace consequences are off (Module Settings): failed rolls are logged, but add no heat and alert no one. Your own heat, escalate and countdown tools still work.</div>{{/if}}
     {{#if security.thermo}}
     <div class="ncm-sec-admin-hx">
       <div class="ncm-sec-admin-band ncm-sec-admin-band--attn"><i class="fas fa-temperature-three-quarters"></i>Heat<span class="r"><b>{{security.thermo.hotCount}}</b> running hot · <b>{{security.thermo.traceCount}}</b> {{#if (eq security.thermo.traceCount 1)}}trace{{else}}traces{{/if}} running</span>

@@ -39,7 +39,7 @@ const { SOCKET_OPS } = await import(pathToFileURL(path.join(ROOT, 'scripts/utils
 // ═══ 1. the registry ═══
 const names = Object.keys(F.FEATURES);
 ok(names.includes('conversations'), 'Conversations is a feature');
-for (const k of ['callsEnabled', 'payphonesEnabled', 'emergencyEnabled', 'overheardEnabled']) store.set(k, true);
+for (const k of ['callsEnabled', 'payphonesEnabled', 'emergencyEnabled', 'overheardEnabled', 'traceConsequencesEnabled']) store.set(k, true);
 for (const [n, f] of Object.entries(F.FEATURES)) ok(typeof f.setting === 'string' && typeof f.label === 'string' && Array.isArray(f.requires) && f.requires.every((r) => F.FEATURES[r]), `${n}: setting, label, and requires only known features`);
 
 store.set('conversationsEnabled', false);
@@ -131,7 +131,8 @@ const { SocketManager } = await import(pathToFileURL(path.join(ROOT, 'scripts/co
 const Settings = read('scripts/core/SettingsManager.js');
 for (const [n, f] of Object.entries(F.FEATURES)) {
   const m = Settings.match(new RegExp(`register\\(MODULE_ID, '${f.setting}', \\{[\\s\\S]*?\\n    \\}\\);`));
-  ok(!!m && /scope: 'world'/.test(m[0]) && /requiresReload: true/.test(m[0]) && /type: Boolean/.test(m[0]), `${n}: '${f.setting}' is a world Boolean with requiresReload (the once-per-load answer depends on it)`);
+  const reloadOk = f.live ? !/requiresReload/.test(m?.[0] || '') : /requiresReload: true/.test(m?.[0] || '');
+  ok(!!m && /scope: 'world'/.test(m[0]) && reloadOk && /type: Boolean/.test(m[0]), `${n}: '${f.setting}' is a world Boolean ${f.live ? 'WITHOUT requiresReload (a live switch takes effect at once)' : 'with requiresReload (the once-per-load answer depends on it)'}`);
 }
 ok(/get enabled\(\) \{ return isFeatureOn\('conversations'\); \}/.test(read('scripts/services/ConversationService.js')), 'ConversationService.enabled asks the registry');
 const Reg = read('scripts/init/registerCallSystem.js');

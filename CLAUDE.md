@@ -95,7 +95,7 @@ The audit remediation (`AUDIT-OPUS.md` / `AUDIT-FABLE.md` → `AUDIT-REMEDIATION
 
 This means: **to add a new service or hook, add a `register(phase, priority, name, fn)` call in the appropriate `init/register*.js` file.** Don't bolt new `Hooks.once` calls into `main.js`.
 
-**Optional systems are FEATURES (`scripts/utils/features.js`, stage 2 step 14).** A feature = one world Boolean setting with `requiresReload: true`, an entry in `FEATURES` (`setting`, `label`, `requires`, optional `offReply`). Off means not installed: tag its ready/postReady steps `register(…, fn, { feature })` (skipped and listed in `startupReport.skipped`, never failed) and its socket ops `socketManager.register(op, fn, { feature })` (a stand-in answers instead: the primary GM sends `offReply`, everyone else drops). Its UI asks `isFeatureOn(name)` / `game.nightcity.features.isOn` — read once per load; never read the setting directly (`test-features`). A feature whose `requires` is off is off. On it: Conversations; Calls, and its three parts Payphones / Emergency lines / Overheard calls (each `requires: ['calls']`, step 15). The call services are always BUILT (numbers, booths and scripts stay editable); only their screens, hooks, timers and socket handlers are feature steps, and each service has `enabled` for its entry points.
+**Optional systems are FEATURES (`scripts/utils/features.js`, stage 2 step 14).** A feature = one world Boolean setting with `requiresReload: true`, an entry in `FEATURES` (`setting`, `label`, `requires`, optional `offReply`). Off means not installed: tag its ready/postReady steps `register(…, fn, { feature })` (skipped and listed in `startupReport.skipped`, never failed) and its socket ops `socketManager.register(op, fn, { feature })` (a stand-in answers instead: the primary GM sends `offReply`, everyone else drops). Its UI asks `isFeatureOn(name)` / `game.nightcity.features.isOn` — read once per load; never read the setting directly (`test-features`). A feature whose `requires` is off is off. On it: Conversations; Calls, and its three parts Payphones / Emergency lines / Overheard calls (each `requires: ['calls']`, step 15). The call services are always BUILT (numbers, booths and scripts stay editable); only their screens, hooks, timers and socket handlers are feature steps, and each service has `enabled` for its entry points. A **live** feature (`live: true`, step 16 — Trace consequences) is a rule gate: read every time, no `requiresReload`, never a step/socket tag, nothing may require it.
 
 ## Architecture: services
 
@@ -161,7 +161,9 @@ review is `ARCHITECTURE-HEALTH-REPORT.md` in the repo root.
   Player session writes relay. Every terminal sound goes through `resolveTerminalSound`. A mailbox layout is a skin
   over one view-model and the same data-actions. Collapse/expand toggles are DOM-only (a CSS transition can't survive
   an AppV2 re-render). Content reads go through `_boxId()` / `_boxMessages()`.
-- **Programs & security** — Every trace goes through `fireTrace` / `logSuccess`. `PROGRAM_EFFECTS` is the one effect
+- **Programs & security** — Every trace goes through `fireTrace` / `logSuccess`. Something that reacts to a trace
+  listens for `EVENTS.TRACE_RECORDED` `{ row, heat }` (GM side) — residents do (`TerminalService.residentsOnTrace`);
+  the trace spine calls no one. Heat, the GM alert and the player splash happen only while `consequencesOn`. `PROGRAM_EFFECTS` is the one effect
   catalogue; a verb never claims a mode its applier lacks. The forge check is a ladder (clean / sloppy / rejected);
   a re-upload replaces by `slotKey`. Netrunning resolution enters through `gate.net` on the console.
 - **Rolls** — `beatsDV` / `d10Odds` (`rolls.js`) are the one rule; a tie fails. A roll with no animation uses

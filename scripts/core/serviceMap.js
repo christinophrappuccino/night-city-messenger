@@ -24,7 +24,7 @@ export const SERVICE_MAP = Object.freeze({
   networkService:        { uses: ['accessLogService', 'messageRepository', 'messageService', 'soundService', 'timeService'], does: 'networks, signal and dead zones' },
   securityService:       { uses: ['notificationService', 'soundService', 'timeService'], does: 'lockouts' },
   iceService:            { uses: ['networkService', 'soundService'], does: 'Black ICE' },
-  traceService:          { uses: ['notificationService', 'soundService', 'terminalService', 'timeService'], does: 'traces and heat' },
+  traceService:          { uses: ['notificationService', 'soundService', 'timeService'], does: 'traces and heat' },
   traceCountdownHud:     { uses: ['timeService'], does: 'trace countdowns on screen' },
   messageRepository:     { uses: ['masterContactService', 'timeService'], does: 'stored mail' },
   contactRepository:     { uses: ['emailService', 'masterContactService'], does: "players' contact lists" },

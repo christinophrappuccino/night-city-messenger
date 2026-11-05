@@ -73,6 +73,7 @@ export class ModuleInitializer {
     const tasks = this._phases.get(phase);
     if (!tasks) throw new Error(`Unknown phase: ${phase}`);
     if (feature && !FEATURES[feature]) throw new Error(`Unknown feature '${feature}' for step '${name}'`);
+    if (feature && FEATURES[feature].live) throw new Error(`Step '${name}': '${feature}' is a live feature (a rule gate) — check isFeatureOn where it applies`);
     if (feature && (phase === 'preInit' || phase === 'init')) throw new Error(`Step '${name}': a feature step must run in ready or postReady (settings are not readable before)`);
     tasks.push({ priority, name, fn, feature });
   }

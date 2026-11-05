@@ -65,6 +65,7 @@ export class SocketManager {
     if (feature) {
       const f = FEATURES[feature];
       if (!f) throw new Error(`Unknown feature '${feature}' for socket op '${operation}'`);
+      if (f.live) throw new Error(`Socket op '${operation}': '${feature}' is a live feature (a rule gate) — check isFeatureOn in the handler`);
       if (!isFeatureOn(feature)) handler = this._offHandler(operation, feature, f);
     }
     // One handler per op: a second register REPLACES the first. That is never what a caller means — it is how a

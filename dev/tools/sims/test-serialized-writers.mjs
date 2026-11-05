@@ -95,7 +95,7 @@ const S = await load('scripts/utils/serialize.js');
   const { TraceService } = await load('scripts/services/TraceService.js');
   const t = Object.create(TraceService.prototype);
   t._decay = (e) => e?.value || 0; t._nowIso = () => 'now'; t._nowMs = () => 1000;
-  t._fireResidentTriggers = async () => {};
+  Object.defineProperty(t, 'consequencesOn', { value: true });   // the live switch (step 16); its setting is not in this mock
   settings.set('traceLog', []); settings.set('traceHeat', {}); settings.set('traceCountdowns', []);
   await Promise.all([t.recordTrace({ outcome: 'success', action: 'a' }), t.recordTrace({ outcome: 'success', action: 'b' })]);
   ok(settings.get('traceLog').length === 2, 'two traces at once both reach the log');

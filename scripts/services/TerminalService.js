@@ -2409,6 +2409,31 @@ export class TerminalService {
   }
 
   /**
+   * A trace row was written (EVENTS.TRACE_RECORDED, GM side): fire the residents it reaches. Moved here from the
+   * trace funnel (stage 2, step 16), so the trace spine calls no one and anything else can listen the same way.
+   *
+   * Every gated content action reports a trace carrying an `action` tag and its host item, so this ONE listener
+   * reaches siphon / crack / decrypt / camera / deploy / execute / upload.
+   * - `onAction` fires only when the action SUCCEEDED: the thing actually happened.
+   * - `onHeat` is checked either way, because heat is what moved (with trace consequences off, heat never moves).
+   * - 'exfil' is deliberately NOT handled here: EVENTS.TERMINAL_EXFIL has its own listener (registerTerminalSystem,
+   *   ready/68), which also catches UNGATED exfils; running both would propose the same resident twice.
+   * @param {object} p the trace row  @param {number} heat the operator's heat on that object now
+   */
+  async residentsOnTrace(p, heat) {
+    if (!p || p.targetKind !== 'terminal' || !p.objectId) return;
+    // A carried terminal is not in game.items (audit DATA-10): resolve by uuid, then by id across every terminal.
+    let item = null;
+    try { item = p.targetUuid ? fromUuidSync(p.targetUuid) : null; } catch { item = null; }
+    if (!item || !this.isTerminal(item)) item = game.items?.get(p.objectId) || this.collectTerminals().find((i) => i.id === p.objectId) || null;
+    if (!item) return;
+    try {
+      if (p.outcome === 'success' && p.action !== 'exfil') await this.checkActionResidents(item, p.action, { actorId: p.actorId });
+      await this.checkHeatResidents(item, heat, { actorId: p.actorId });
+    } catch (err) { log.warn(`Resident trigger check failed: ${err.message}`); }
+  }
+
+  /**
    * onAction trigger — a resident armed to fire on a specific action (siphon /
    * exfil / …). Call this GM-side after such an action lands on a terminal.
    * @param {Item} item @param {string} action @param {object} [ctx] { actorId }

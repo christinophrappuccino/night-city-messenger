@@ -609,6 +609,13 @@ export class SettingsManager {
       default: [],
     });
 
+    // Trace consequences (stage 2, step 16) — a LIVE feature (utils/features.js): no reload, read every time.
+    game.settings.register(MODULE_ID, 'traceConsequencesEnabled', {
+      name: 'Trace consequences',
+      hint: 'Failed hacks gain heat, alert you and show the player a trace warning. Off: a failure is still logged in Admin → Security, but nothing follows from it (no heat, no alert, no warning). Your own tools (set heat, escalate, countdowns) still work. Takes effect at once.',
+      scope: 'world', config: true, type: Boolean, default: true,
+    });
+
     // ─── Calls (dev/design/CALLS.md; edited in Admin → Phone → Settings) ───
     game.settings.register(MODULE_ID, 'callsEnabled', {
       name: 'Calls',
