@@ -97,6 +97,36 @@ export class MessageService {
     }
   }
 
+  /**
+   * Would these recipients take this mail from a PLAYER? The send-only and directory rules, as a live
+   * send runs them — used for a player's scheduled mail, which the GM delivers later (audit DATA-12).
+   * Like a live send, a group passes when at least one member can be reached. Changes nothing.
+   * @param {object} data
+   * @returns {Promise<{ok:true}|{ok:false, error:string, errorCode?:string}>}
+   */
+  async checkRecipientsAsPlayer(data) {
+    try {
+      const d = foundry.utils.deepClone(data || {});
+      d._asPlayer = true;
+      const list = this._normalizeRecipients(d);
+      delete d.recipients;
+      if (list.length > 1) {
+        let first = null;
+        for (const r of list) {
+          const rr = await this._resolveRecipient({ ...d, toActorId: r.actorId || null, toContactId: r.contactId || undefined, to: r.email || undefined });
+          if (rr.ok) return { ok: true };
+          first ||= rr;
+        }
+        return { ok: false, error: first?.error || 'No recipient could be reached', errorCode: first?.errorCode };
+      }
+      if (list.length === 1) this._applyRecipient(d, list[0]);
+      const rr = await this._resolveRecipient(d);
+      return rr.ok ? { ok: true } : { ok: false, error: rr.error, errorCode: rr.errorCode };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
   // ─── Recipients: one or many ───────────────────────────────
 
   /**
@@ -156,6 +186,9 @@ export class MessageService {
   async _resolveRecipient(data) {
     let toActor = null;
     let toContact = null;
+    // A player's rules apply to a player's send, and to a player's SCHEDULED send the GM delivers
+    // (`_asPlayer`, set by the scheduler — audit DATA-12). It can only add checks, never remove them.
+    const asPlayer = !game.user.isGM || !!data._asPlayer;
 
       // Anonymous reply: the replier doesn't know (and must never learn) the real
       // recipient — the original sender was masked. Skip recipient resolution AND
@@ -242,7 +275,7 @@ export class MessageService {
         // A master contact flagged `sendOnly` is a one-way system address
         // (system@localhost, alerts@…): the GM sends FROM it, players can
         // never send TO it — independent of the verification setting below.
-        if (!game.user.isGM) {
+        if (asPlayer) {
           const masterService = game.nightcity?.masterContactService;
           const recipientEmail = data.to || (toActor ? this._contactRepo.getActorEmail(data.toActorId) : toContact?.email);
           const mc = (recipientEmail ? masterService?.getByEmail?.(recipientEmail) : null)
@@ -260,7 +293,7 @@ export class MessageService {
         // Players can only send to contacts that exist in the GM's Master Contact Directory.
         const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
 
-        if (!game.user.isGM && requireVerification) {
+        if (asPlayer && requireVerification) {
           const masterService = game.nightcity?.masterContactService;
           const recipientEmail = data.to || (toActor ? this._contactRepo.getActorEmail(data.toActorId) : toContact?.email);
 

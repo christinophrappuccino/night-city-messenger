@@ -141,7 +141,8 @@ const wallet = (over = {}) => ({
   update(u) { this.system.wealth = u['system.wealth']; return Promise.resolve(); }, ...over,
 });
 const later = new Date(Date.now() + 3600000).toISOString();
-const makeSvc = () => { const s = new SchedulingService(); s._persistScheduled = async () => {}; return s; };
+// The client that saves the schedule (B5: anyone else asks it over the socket — test-schedule-requests covers that).
+const makeSvc = () => { const s = new SchedulingService(); s._persistScheduled = async () => {}; s._isDeliverer = () => true; return s; };
 game.nightcity.socketManager = { emit() {}, register() {} };
 game.nightcity.eventBus = { emit() {} };
 game.user.isGM = false;

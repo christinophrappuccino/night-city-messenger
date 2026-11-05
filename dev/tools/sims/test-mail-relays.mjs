@@ -50,8 +50,8 @@ globalThis.game = {
   settings: { get: () => undefined },
   i18n: { localize: (s) => s },
   nightcity: {
-    masterContactService: { getAll: () => directory, getContact: (id) => directory.find((c) => c.id === id) || null, getByActorId: (id) => directory.find((c) => c.actorId === id) || null },
-    contactRepository: { getActorEmail: (id) => actors[id]?.getFlag(MOD, 'email') || '', getContacts: async (id) => myContacts[id] || [] },
+    masterContactService: { getAll: () => directory, getContact: (id) => directory.find((c) => c.id === id) || null, getByActorId: (id) => directory.find((c) => c.actorId === id) || null, getByEmail: (e) => directory.find((c) => c.email === e) || null },
+    contactRepository: { getActorEmail: (id) => actors[id]?.getFlag(MOD, 'email') || '', getContacts: async (id) => myContacts[id] || [], verifyContact: (e) => ({ verified: !!e && (directory.some((c) => c.email === e) || Object.values(actors).some((a) => a.getFlag(MOD, 'email') === e)) }) },
     terminalService: { senderAccountAccess: () => access },
     messageRepository: { getMessages: async () => inboxMsgs },
   },
