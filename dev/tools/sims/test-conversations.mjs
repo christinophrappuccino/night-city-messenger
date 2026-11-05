@@ -293,7 +293,8 @@ ok(!noMsg.includes('"messageId"'), 'a line has no messageId, so by-id mail looku
 const Set1 = read('scripts/core/SettingsManager.js');
 ok(/'conversationsEnabled'[\s\S]{0,300}default: false/.test(Set1), 'off by default while it is being built');
 const Reg = read('scripts/init/registerCallSystem.js');
-ok(/if \(!service\.enabled\) return;/.test(Reg), 'off means no hooks and no sockets');
+ok(/'Conversations: hooks', \(\) => game\.nightcity\.conversationService\.wire\(\), \{ feature: 'conversations' \}/.test(Reg) && (Reg.match(/\{ feature: 'conversations' \}/g) || []).length === 4,
+  'off means no hooks and no sockets (since step 14 the feature registry skips the wiring and stands in for both socket ops)');
 const Svc = read('scripts/services/ConversationService.js');
 ok(!/EVENTS\.MESSAGE_|INBOX_REFRESH/.test(Svc), 'it fires no mail events');
 ok(/tappersAt\(network, sceneId/.test(read('scripts/services/NetworkService.js')), 'taps ask the network who is listening');

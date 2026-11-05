@@ -17,6 +17,7 @@ import {
 } from '../utils/conversations.js';
 
 import { serializeMethods } from '../utils/serialize.js';
+import { isFeatureOn } from '../utils/features.js';
 
 const FOLDER = 'Conversations';
 const REPLY_MS = 8000;
@@ -32,7 +33,8 @@ export class ConversationService {
   }
 
   get socket() { return game.nightcity?.socketManager; }
-  get enabled() { try { return !!game.settings.get(MODULE_ID, 'conversationsEnabled'); } catch { return false; } }
+  /** On in this load? The feature registry decides (utils/features.js), once per load. */
+  get enabled() { return isFeatureOn('conversations'); }
   get directory() { return game.nightcity?.masterContactService?.getAll?.() || []; }
   get _now() { try { return game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString(); } catch { return new Date().toISOString(); } }
   get _iAmWriter() { return isPrimaryGM(); }

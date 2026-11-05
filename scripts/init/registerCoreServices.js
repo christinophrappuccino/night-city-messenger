@@ -7,6 +7,7 @@
 
 import { MODULE_ID } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { isFeatureOn, featureList, featuresOff } from '../utils/features.js';
 import { EventBus } from '../core/EventBus.js';
 import { StateManager } from '../core/StateManager.js';
 import { SettingsManager } from '../core/SettingsManager.js';
@@ -60,6 +61,8 @@ export function registerCoreServices(initializer) {
       stateManager,
       settingsManager,
       socketManager,
+      /** Which optional systems are on in this load (utils/features.js, stage 2 step 14). */
+      features: Object.freeze({ isOn: isFeatureOn, list: featureList, off: featuresOff }),
 
       // Services populated during ready phase
       themeService: null,

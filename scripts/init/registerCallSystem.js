@@ -37,16 +37,17 @@ export function registerCallSystem(initializer) {
     bind('callDeclineWaiting', 'Calls: decline the waiting call', 'KeyD', 'declineWaiting');
   });
 
+  // Conversations is a FEATURE (utils/features.js): the service object always exists, so the UI can ask it
+  // `enabled`, but when it is off its hooks are never wired and its socket ops get the "switched off" stand-in.
   initializer.register('ready', 124, 'ConversationService', () => {
     const service = new ConversationService();
     game.nightcity.conversationService = service;
-    if (!service.enabled) return;
-    service.wire();
     const sm = game.nightcity.socketManager;
-    sm.register(SOCKET_OPS.CONVERSATION_REQUEST, (data, sender) => service.handleRequest(data, sender).catch((e) => log.warn(`Conversations: a request failed: ${e.message}`)));
-    sm.register(SOCKET_OPS.CONVERSATION_RESULT, (data) => service.handleResult(data));
+    sm.register(SOCKET_OPS.CONVERSATION_REQUEST, (data, sender) => service.handleRequest(data, sender).catch((e) => log.warn(`Conversations: a request failed: ${e.message}`)), { feature: 'conversations' });
+    sm.register(SOCKET_OPS.CONVERSATION_RESULT, (data) => service.handleResult(data), { feature: 'conversations' });
   });
-  initializer.register('postReady', 23, 'Conversations: held lines', () => game.nightcity?.conversationService?.enabled && game.nightcity.conversationService.restorePending());
+  initializer.register('ready', 124, 'Conversations: hooks', () => game.nightcity.conversationService.wire(), { feature: 'conversations' });
+  initializer.register('postReady', 23, 'Conversations: held lines', () => game.nightcity.conversationService.restorePending(), { feature: 'conversations' });
 
   initializer.register('ready', 125, 'CallService', () => {
     const service = new CallService();

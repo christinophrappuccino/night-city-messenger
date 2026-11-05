@@ -9,6 +9,7 @@
 import { log } from '../utils/helpers.js';
 import { ncmNotify } from '../utils/notify.js';
 import { SERVICE_MAP, affectedBy, startupImpact } from './serviceMap.js';
+import { isFeatureOn, FEATURES } from '../utils/features.js';
 
 export class ModuleInitializer {
   constructor() {
@@ -20,6 +21,16 @@ export class ModuleInitializer {
     this._phases.set('postReady', []);
     /** Startup steps that threw — `{ phase, name, message }` (audit ARCH-02). @type {object[]} */
     this.failures = [];
+    /** Steps not run because their feature is switched off — `{ phase, name, feature }` (stage 2, step 14). */
+    this.skipped = [];
+  }
+
+  /** @private True when the task belongs to a feature that is off in this load (then it is recorded, not run). */
+  _skip(phase, task) {
+    if (!task.feature || isFeatureOn(task.feature)) return false;
+    this.skipped.push({ phase, name: task.name, feature: task.feature });
+    log.debug(`  skipped (${task.feature} is off): ${task.name}`);
+    return true;
   }
 
   /** @private Log a failed step and remember it, so the GM can be told once startup is over. */
@@ -40,7 +51,7 @@ export class ModuleInitializer {
     // Only looked for after a failure: a clean startup says nothing.
     const missing = n ? Object.keys(SERVICE_MAP).filter((k) => !game.nightcity?.[k]) : [];
     /** What the notice was built from — also on game.nightcity.startupReport for the console and the macros. */
-    this.report = { failed: this.failures.map((f) => f.name), missing, affected: affectedBy(missing) };
+    this.report = { failed: this.failures.map((f) => f.name), missing, affected: affectedBy(missing), skipped: this.skipped.map((s) => `${s.name} (${s.feature} off)`) };
     if (!n || !game.user?.isGM) return n;
     const impact = startupImpact({ failed: this.report.failed, missing });
     ncmNotify.error(`NCM | ${impact}${missing.length ? '' : ' Some features may not work.'} Press F12 and look for "FAILED" in the console for details.`, { permanent: true });
@@ -53,11 +64,16 @@ export class ModuleInitializer {
    * @param {number} priority - Lower runs first (use increments of 10)
    * @param {string} name - Human-readable task name
    * @param {Function} fn - Async-safe function to execute
+   * @param {object} [opts]
+   * @param {string} [opts.feature] - a FEATURES key (utils/features.js): the step is skipped, and listed as skipped,
+   *   when that feature is off. Only for ready / postReady steps — the switch is a world setting, unreadable before init.
    */
-  register(phase, priority, name, fn) {
+  register(phase, priority, name, fn, { feature } = {}) {
     const tasks = this._phases.get(phase);
     if (!tasks) throw new Error(`Unknown phase: ${phase}`);
-    tasks.push({ priority, name, fn });
+    if (feature && !FEATURES[feature]) throw new Error(`Unknown feature '${feature}' for step '${name}'`);
+    if (feature && (phase === 'preInit' || phase === 'init')) throw new Error(`Step '${name}': a feature step must run in ready or postReady (settings are not readable before)`);
+    tasks.push({ priority, name, fn, feature });
   }
 
   /**
@@ -98,6 +114,7 @@ export class ModuleInitializer {
     log.info(`Running phase: ${phase} (${tasks.length} tasks)`);
 
     for (const task of tasks) {
+      if (this._skip(phase, task)) continue;
       try {
         log.debug(`  [${task.priority}] ${task.name}`);
         await task.fn();

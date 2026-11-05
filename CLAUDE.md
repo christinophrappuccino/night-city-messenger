@@ -95,6 +95,8 @@ The audit remediation (`AUDIT-OPUS.md` / `AUDIT-FABLE.md` → `AUDIT-REMEDIATION
 
 This means: **to add a new service or hook, add a `register(phase, priority, name, fn)` call in the appropriate `init/register*.js` file.** Don't bolt new `Hooks.once` calls into `main.js`.
 
+**Optional systems are FEATURES (`scripts/utils/features.js`, stage 2 step 14).** A feature = one world Boolean setting with `requiresReload: true`, an entry in `FEATURES` (`setting`, `label`, `requires`, optional `offReply`). Off means not installed: tag its ready/postReady steps `register(…, fn, { feature })` (skipped and listed in `startupReport.skipped`, never failed) and its socket ops `socketManager.register(op, fn, { feature })` (a stand-in answers instead: the primary GM sends `offReply`, everyone else drops). Its UI asks `isFeatureOn(name)` / `game.nightcity.features.isOn` — read once per load; never read the setting directly (`test-features`). A feature whose `requires` is off is off. Conversations is the first one on it.
+
 ## Architecture: services
 
 Long-lived stateful objects in `scripts/services/` (MessageService, NetworkService, DataShardService, MasterContactService, SpamService, etc.) are constructed during the `ready` phase and exposed on the `game.nightcity` namespace (e.g. `game.nightcity.messageService`). UI code accesses them via `BaseApplication` getters (`this.messageService`, `this.networkService`, etc.). Cross-service communication goes through `EventBus` (`scripts/core/EventBus.js`) using event names from the frozen `EVENTS` enum in `scripts/utils/constants.js`.

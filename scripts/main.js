@@ -64,7 +64,7 @@ Hooks.once('ready', async () => {
     await initializer.runPhase('postReady');
     initializer.reportFailures();   // the GM hears about a failed startup step (ARCH-02)
     if (game.nightcity) game.nightcity.startupFailures = initializer.failures;
-    if (game.nightcity) game.nightcity.startupReport = initializer.report;   // { failed, missing, affected } (serviceMap.js)
+    if (game.nightcity) game.nightcity.startupReport = initializer.report;   // { failed, missing, affected, skipped } (serviceMap.js, features.js)
 
     // Register verification function
     if (game.nightcity) {

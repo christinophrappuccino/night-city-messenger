@@ -7,7 +7,8 @@
  */
 
 import { MODULE_ID } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { log, isPrimaryGM } from '../utils/helpers.js';
+import { FEATURES, isFeatureOn } from '../utils/features.js';
 
 export class SocketManager {
   static #instance = null;
@@ -55,14 +56,35 @@ export class SocketManager {
    * @param {Function} handler - Handler function receiving (data, senderUserId).
    *   senderUserId is the server-verified id of the user who emitted it, or null
    *   when the transport did not supply one.
+   * @param {object} [opts]
+   * @param {string} [opts.feature] - a FEATURES key (utils/features.js). When that feature is off in this load, the
+   *   handler is NOT installed; a stand-in answers instead (stage 2, step 14): on the primary GM it sends the feature's
+   *   `offReply` (so a stale or hostile request gets "switched off", not a timeout), everywhere else it drops the op.
    */
-  register(operation, handler) {
+  register(operation, handler, { feature } = {}) {
+    if (feature) {
+      const f = FEATURES[feature];
+      if (!f) throw new Error(`Unknown feature '${feature}' for socket op '${operation}'`);
+      if (!isFeatureOn(feature)) handler = this._offHandler(operation, feature, f);
+    }
     // One handler per op: a second register REPLACES the first. That is never what a caller means — it is how a
     // per-request handler loses the previous request's answer (stage 2, batch 4). Waiting for an answer goes
     // through utils/gmRequest.js; everything else registers once, at startup.
     const prev = this._handlers.get(operation);
     if (prev && prev !== handler) log.warn(`Socket handler for '${operation}' was registered twice; the earlier one is replaced`);
     this._handlers.set(operation, handler);
+  }
+
+  /** @private The stand-in for an op whose feature is off. Marked so the sims and the macro can tell it apart. */
+  _offHandler(operation, feature, f) {
+    const off = (data, sender) => {
+      if (!isPrimaryGM() || !sender) { log.debug(`Socket '${operation}' ignored: ${feature} is switched off`); return; }
+      const reply = f.offReply?.(operation, data, sender);
+      if (reply) this.emit(reply.op, reply.data);
+      else log.debug(`Socket '${operation}' ignored: ${feature} is switched off`);
+    };
+    off.ncmFeatureOff = feature;
+    return off;
   }
 
   /**

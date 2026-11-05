@@ -1066,7 +1066,7 @@ Steps 1–9 are the "foundation" set: mostly mechanical, low risk, and they make
 Step 10 comes before the feature registry because the registry adds hooks and entry points that would otherwise be
 ported to v13 later.
 
-**Progress (2026-11-05):** steps 1–7 done on branch `stage2-architecture` (commits `071e3d7` … `d183f2b`).
+**Progress (2026-11-05):** steps 1–9 and step 10 parts a, a-2 and b done on `stage2-architecture`, merged to `dev` and live-tested on The Forge (dev build 2.1.0.5, all macros pass). The rest of step 10 (DialogV2, the jQuery sweep, the directory menu, version profiles) is paused until Cyberpunk RED ships for v13. Step 14 (feature registry, Conversations onto it) built next, ahead of 11–13 by agreement.
 
 ---
 
