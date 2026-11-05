@@ -10,7 +10,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, isFromGM, getPlayerCharacters, generateId } from '../utils/helpers.js';
+import { log, isGM, isFromGM, getPlayerCharacters, generateId, getSetting, isPrimaryGM } from '../utils/helpers.js';
 import { typeOutMs } from '../utils/callModel.js';
 import { holdsItem } from '../utils/phoneEmergency.js';
 import { activeEffects, nodeIsUp } from '../utils/networkNodes.js';
@@ -29,7 +29,7 @@ export class OverheardService {
     this._clock = null;
   }
 
-  _get(key, fallback) { try { return game.settings.get(MODULE_ID, key); } catch { return fallback; } }
+  _get(key, fallback) { return getSetting(key, fallback); }
   get rules() { return sanitizeEavesdrop(this._get('phoneEavesdrop', {})); }
   async saveRules(next) { if (!isGM()) return { ok: false }; await game.settings.set(MODULE_ID, 'phoneEavesdrop', next); return { ok: true }; }
   scripts() { const s = this._get('overheardCalls', {}); return (Array.isArray(s?.scripts) ? s.scripts : []).map(sanitizeScript); }
@@ -183,7 +183,7 @@ export class OverheardService {
   }
 
   /** A token moved: walking up mid-call asks. */
-  onTokenMoved() { if (isGM() && game.users.activeGM?.id === game.user.id) for (const run of this.runs.values()) this._offer(run); }
+  onTokenMoved() { if (isPrimaryGM()) for (const run of this.runs.values()) this._offer(run); }
 
   _callerLabel(run, l) {
     for (const s of ['a', 'b']) { if (l.ways.room !== undefined && l.side !== s) continue; const d = run.script[s]; if (d.shows === 'name') return d.name; if (d.shows === 'number' && d.number) return d.number; }

@@ -30,7 +30,8 @@ export class EmailSetupFlow extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: 'ncm-email-setup',
     classes: ['ncm-app', 'ncm-email-setup'],
-    window: { title: 'NET Identity Registration', icon: 'fas fa-satellite-dish', resizable: false },
+    // minimizable: false — a mid-flow setup must not roll up behind the table (no minimize button; see windowMinimize.js)
+    window: { title: 'NET Identity Registration', icon: 'fas fa-satellite-dish', resizable: false, minimizable: false },
     position: { width: 480, height: 'auto', top: 180 },
     actions: {
       nextStep: EmailSetupFlow._onNextStep,

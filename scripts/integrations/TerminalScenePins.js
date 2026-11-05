@@ -33,7 +33,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
-import { log, isGM } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM } from '../utils/helpers.js';
 import { themedConfirm } from '../utils/adminTheme.js';
 import { dialogBodyHtml } from '../utils/dialogBody.js';
 import { sanitizePlacement, accessRegionScript, areaRect } from '../utils/accessPoints.js';
@@ -665,7 +665,7 @@ export class TerminalScenePins {
 
   /** Multi-GM guard so cleanup writes happen exactly once. @private */
   _isActiveGM() {
-    return game.users?.activeGM?.id === game.user.id;
+    return isPrimaryGM();
   }
 
   /**

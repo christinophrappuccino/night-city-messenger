@@ -19,7 +19,7 @@ import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS, SEND_AS_FLAG } from '../../utils/constants.js';
 import { pickSenderChoice } from '../../utils/identities.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
-import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
+import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator, isHiddenCharacter, isSelectableCharacter, getSetting } from '../../utils/helpers.js';
 import { adjustWealth } from '../../utils/wealth.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { applyGmView, applyAdminZoom, toggleGmView, playerDialog, adminPrompt, adminConfirm } from '../../utils/adminTheme.js';
@@ -3493,7 +3493,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   /** Whether the Anonymous Send feature is enabled in world settings. */
   _isAnonFeatureEnabled() {
-    try { return game.settings.get(MODULE_ID, 'anonSendEnabled') !== false; } catch { return true; }
+    return getSetting('anonSendEnabled', true) !== false;
   }
 
   /**

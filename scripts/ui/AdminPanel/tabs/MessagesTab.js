@@ -30,6 +30,7 @@ import { MODULE_ID, SOCKET_OPS, EVENTS } from '../../../utils/constants.js';
 import {
   log, formatCyberDate, getPlayerCharacters, isPersonActor, resolveDisplayPortrait, resolveDisplayName,
   ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, normalizeAnonStyle,
+  getSetting,
 } from '../../../utils/helpers.js';
 import { getInitials, getRoleIcon } from '../../../utils/designHelpers.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
@@ -851,7 +852,7 @@ export class MessagesTab extends BaseTab {
   }
 
   _anonEnabled() {
-    try { return !!game.settings.get(MODULE_ID, 'anonSendEnabled'); } catch { return false; }
+    return !!getSetting('anonSendEnabled', true);   // the registered default (it fell back to false here, true in the composer)
   }
 
   /** Full message objects for a conversation's records (what buildReply / the composer want). */

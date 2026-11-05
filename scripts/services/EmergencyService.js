@@ -9,7 +9,7 @@
  */
 
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
-import { log, isGM, formatCyberDate } from '../utils/helpers.js';
+import { log, isGM, formatCyberDate, getSetting } from '../utils/helpers.js';
 import { sanitizeEmergency, traumaPlan, traumaLine, backupArt, holdsItem, roleRank, backupOptions, backupDefault, backupResult, backupLook, autoCallDue, PLAN_NAMES, roundDue, orgForPerson, pickVoice, backupLayers, traumaLayers, BACKUP_SLOTS, TRAUMA_SLOTS } from '../utils/phoneEmergency.js';
 import { specialList, specialKey } from '../utils/phoneNumbering.js';
 
@@ -18,7 +18,7 @@ const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 export class EmergencyService {
   constructor() { this.socket = game.nightcity.socketManager; }
 
-  _get(key, fallback) { try { return game.settings.get(MODULE_ID, key); } catch { return fallback; } }
+  _get(key, fallback) { return getSetting(key, fallback); }
   get config() { return sanitizeEmergency(this._get('phoneEmergency', {})); }
   active() { const a = this._get('phoneEmergencyActive', []); return Array.isArray(a) ? a : []; }
   async saveConfig(next) { if (!isGM()) return { ok: false, error: 'GM only' }; await game.settings.set(MODULE_ID, 'phoneEmergency', next); return { ok: true }; }

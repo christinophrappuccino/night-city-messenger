@@ -72,6 +72,21 @@ export function localize(key, data = {}) {
  * Check if the current user is a GM
  * @returns {boolean}
  */
+/**
+ * Read one of NCM's settings, or `fallback` when it can't be read (asked for before it was registered — early
+ * startup, or a sim). The ONE place a try/catch settings read lives (stage 2, batch 6).
+ *
+ * The fallback MUST be the setting's registered default: when the read fails the registration isn't there to ask,
+ * so a different fallback quietly behaves as if the GM had changed the setting. `test-settings-access` checks every
+ * `getSetting('key', literal)` against SettingsManager's defaults.
+ * @param {string} key
+ * @param {*} fallback  the setting's registered default
+ * @returns {*}
+ */
+export function getSetting(key, fallback) {
+  try { return game.settings.get(MODULE_ID, key); } catch { return fallback; }
+}
+
 export function isGM() {
   return game.user?.isGM ?? false;
 }

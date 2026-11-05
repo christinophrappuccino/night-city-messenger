@@ -15,7 +15,7 @@ import { EmergencyService, wireEmergency } from '../services/EmergencyService.js
 import { EmergencyHud } from '../ui/Calls/EmergencyHud.js';
 import { ConversationService } from '../services/ConversationService.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { log, isPrimaryGM } from '../utils/helpers.js';
 import { CallService } from '../services/CallService.js';
 import { CallHud } from '../ui/Calls/CallHud.js';
 import { PayphoneService } from '../services/PayphoneService.js';
@@ -66,7 +66,7 @@ export function registerCallSystem(initializer) {
     game.nightcity.socketManager.register(SOCKET_OPS.CALL_EMERGENCY, (data, sender) => emergency.handleSocket(data, sender).catch((e) => log.warn(`Emergency: ${e.message}`)));
     Hooks.on('deleteActor', (actor) => service.retireOwner({ actorId: actor.id, why: 'Character deleted' }));
     // a terminal that is deleted gives its number back to the retired list
-    Hooks.on('deleteItem', (item) => { if (game.users.activeGM?.id === game.user.id && service.lineOfItem(item.uuid)) service.setTerminalNumber(item, { number: null }); });
+    Hooks.on('deleteItem', (item) => { if (isPrimaryGM() && service.lineOfItem(item.uuid)) service.setTerminalNumber(item, { number: null }); });
 
     const sm = game.nightcity.socketManager;
     sm.register(SOCKET_OPS.CALL, (data, sender) => service.handleSocket(data, sender));
@@ -76,7 +76,7 @@ export function registerCallSystem(initializer) {
     sm.register(SOCKET_OPS.CALL_LINE_REQUEST, (data, sender) => service.handleLineRequest(data, sender).catch((e) => log.warn(`Calls: line request failed: ${e.message}`)));
 
     // the GM's client clears recordings older than the keep setting (their words stay), once per session
-    if (game.user.isGM && game.users.activeGM?.id === game.user.id) setTimeout(() => service.purgeRecordings().then((r) => { if (r?.count) log.info(`Calls: cleared ${r.count} old recording(s)`); }).catch(() => {}), 15000);
+    if (isPrimaryGM()) setTimeout(() => service.purgeRecordings().then((r) => { if (r?.count) log.info(`Calls: cleared ${r.count} old recording(s)`); }).catch(() => {}), 15000);
 
     // a call-log or voicemail page appeared / changed / went: the Agent's Calls tab and Admin → Phone refresh
     const pageHook = (page) => {

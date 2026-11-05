@@ -22,7 +22,7 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, resolveOperator, resolveDisplayPortrait, whisperCardHtml } from '../utils/helpers.js';
+import { log, isGM, resolveOperator, resolveDisplayPortrait, whisperCardHtml, getSetting, isPrimaryGM } from '../utils/helpers.js';
 import { serialize } from '../utils/serialize.js';
 import { normaliseNumber, displayNumber, parseNumber, rowOf, fullForm, freeLines, numberAt, buildNumberContext, placeRows, sanitizeRules, pickableRows, sanitizeSpecial, specialKey, specialList, specialMap, specialOutcome, writtenToLog, lineTypes, lineTypeFor, lineShown, traceFinds, officeRowOf, officeKey, sanitizeOffice, splitExtension, placeOf } from '../utils/phoneNumbering.js';
 import { createCall, createEndedCall, transition, resolveCallee, canCall, allowedModes, defaultMode, callSeconds, formatDuration, OUTCOMES,
@@ -61,7 +61,7 @@ export class CallService {
   //  Settings
   // ═══════════════════════════════════════════════════════════
 
-  _get(key, fallback) { try { return game.settings.get(MODULE_ID, key); } catch { return fallback; } }
+  _get(key, fallback) { return getSetting(key, fallback); }
   get enabled() { return !!this._get('callsEnabled', true); }
   /** The number rules, defaults filled in. */
   get rules() { return sanitizeRules(this._get('phoneRules', {})); }
@@ -838,14 +838,14 @@ export class CallService {
   _ringsHere(call) {
     const to = call.to || {};
     if (to.kind === 'payphone') return !game.user.isGM && game.user.viewedScene === to.sceneId;
-    if (to.shared) return game.user.isGM ? (!!to.gmMember && game.users.activeGM?.id === game.user.id) : (to.userIds || []).includes(game.user.id);
+    if (to.shared) return game.user.isGM ? (!!to.gmMember && isPrimaryGM()) : (to.userIds || []).includes(game.user.id);
     if (to.kind === 'player') {
       if (game.user.isGM) return false;
       const actor = game.actors?.get(to.actorId);
       return !!actor?.isOwner;
     }
     // an NPC line (or an unowned number sent to the GM): the active GM answers
-    return game.user.isGM && game.users.activeGM?.id === game.user.id;
+    return isPrimaryGM();
   }
 
   /** Everyone an event about this call must reach: both sides and every GM (for the switchboard). */
@@ -1405,7 +1405,7 @@ export class CallService {
     }
     const vm = makeVoicemail({ callId, from: call.from, to: call.to, text, kind, voice, gameTime });
     if (!vm) return { ok: false, error: 'Type a message first.' };
-    if (isGM() && game.users.activeGM?.id === game.user.id) await this.writeVoicemail(vm);
+    if (isPrimaryGM()) await this.writeVoicemail(vm);
     else if (game.users.activeGM) this.socket.emit(SOCKET_OPS.CALL_VM_REQUEST, { op: 'leave', vm });
     else return { ok: false, error: 'No GM is online to keep the message — try again when they are.' };
     this._endLocal(callId, 'voicemail', { notify: false });
@@ -1547,7 +1547,7 @@ export class CallService {
   async _sendAudio(base64, mime, meta) {
     if (!base64) return { ok: false, error: 'Nothing was recorded.' };
     if (base64.length > AUDIO_MAX_B64) return { ok: false, error: 'That recording is too long.' };
-    if (isGM() && game.users.activeGM?.id === game.user.id) return this._audioArrived(base64, mime, meta, game.user.id);
+    if (isPrimaryGM()) return this._audioArrived(base64, mime, meta, game.user.id);
     if (!game.users.activeGM) return { ok: false, error: 'No GM is online to keep the recording — try again when they are.' };
     const uploadId = `up-${Math.random().toString(36).slice(2, 10)}`;
     const n = Math.max(1, Math.ceil(base64.length / AUDIO_CHUNK));
@@ -1767,7 +1767,7 @@ export class CallService {
   /** The caller hands its summary to the active GM, who writes both sides' log pages. */
   _log(call) {
     const summary = this._summary(call);
-    if (isGM() && game.users.activeGM?.id === game.user.id) return this.writeLog(summary).catch((e) => log.warn(`Calls: log failed: ${e.message}`));
+    if (isPrimaryGM()) return this.writeLog(summary).catch((e) => log.warn(`Calls: log failed: ${e.message}`));
     if (game.users.activeGM) this.socket.emit(SOCKET_OPS.CALL_LOG_REQUEST, { summary });
   }
 

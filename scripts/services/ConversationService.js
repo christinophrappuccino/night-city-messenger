@@ -9,7 +9,7 @@
  */
 
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../utils/constants.js';
-import { log, isGM, formatCyberDate } from '../utils/helpers.js';
+import { log, isGM, formatCyberDate, isPrimaryGM } from '../utils/helpers.js';
 import { identitiesOf, identityRole, groupKeyOf, identitiesOfKey, identitiesOfContact, identityInboxId } from '../utils/identities.js';
 import {
   PAGE_LINES, lineText, titleText, safeImage, sanitizeCard, memberKeyOf, sanitizeMember, isIn, canSee, openSpan, closeSpan,
@@ -35,7 +35,7 @@ export class ConversationService {
   get enabled() { try { return !!game.settings.get(MODULE_ID, 'conversationsEnabled'); } catch { return false; } }
   get directory() { return game.nightcity?.masterContactService?.getAll?.() || []; }
   get _now() { try { return game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString(); } catch { return new Date().toISOString(); } }
-  get _iAmWriter() { return isGM() && game.users?.activeGM?.id === game.user.id; }
+  get _iAmWriter() { return isPrimaryGM(); }
 
   // ─── reading ───
 

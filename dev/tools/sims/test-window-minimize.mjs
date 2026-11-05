@@ -26,7 +26,7 @@ ok(/register\('init', 21, 'Minimize buttons'/.test(read('scripts/init/registerUI
 for (const f of ['scripts/ui/ItemInbox/ItemInboxConfig.js', 'scripts/ui/ItemInbox/DataShardComposer.js', 'scripts/ui/Terminal/TerminalConfigApp.js', 'scripts/ui/NetworkManagement/CreateNetworkDialog.js']) {
   ok(/minimizable: true/.test(read(f)) && !/minimizable: false/.test(read(f)), `${path.basename(f)} can roll up`);
 }
-for (const f of ['scripts/ui/NetworkManagement/NetworkAuthDialog.js', 'scripts/ui/NetworkManagement/DeadZoneWarningApp.js']) {
+for (const f of ['scripts/ui/NetworkManagement/NetworkAuthDialog.js', 'scripts/ui/NetworkManagement/DeadZoneWarningApp.js', 'scripts/ui/dialogs/EmailSetupFlow.js']) {
   ok(/minimizable: false/.test(read(f)), `${path.basename(f)} still cannot (mid-flow)`);
 }
 ok(read('scripts/utils/adminTheme.js').includes("'ncm-dlg-confirm'"), 'themedConfirm marks itself a confirm');
