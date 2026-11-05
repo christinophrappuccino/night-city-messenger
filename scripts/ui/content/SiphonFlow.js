@@ -23,6 +23,7 @@ import { rolledNote } from './NetResolve.js';
 import { runBankHeist } from './BankHeist.js';
 import { grantPtzControl } from './ContentRenderers.js';
 import { showNamePicker } from '../../utils/namePicker.js';
+import { serialize } from '../../utils/serialize.js';
 
 const DEFAULT_SIPHON_SKILL = 'Interface';
 const DEFAULT_SIPHON_DV = 15;
@@ -1508,9 +1509,16 @@ async function _quarantinePage(page, { host = null, actor = null } = {}) {
       wipedBy: actor?.id || null,
       wipedByName: actor?.name || 'Unknown',
     };
-    const bin = getRecycleBin().map(r => ({ ...r }));
-    bin.push(record);
-    await game.settings.set(MODULE_ID, RECYCLE_SETTING, bin);
+    // One bin write at a time (DATA-04): two wipes at once both saved the same copy and
+    // the first file's record was lost while its page was still deleted.
+    const kept = await serialize('bin', async () => {
+      const bin = getRecycleBin().map(r => ({ ...r }));
+      bin.push(record);
+      await game.settings.set(MODULE_ID, RECYCLE_SETTING, bin);
+      return getRecycleBin().some((r) => r.id === record.id);
+    });
+    // Delete the page only once the bin really holds it.
+    if (!kept) { log.error(`Recycle-bin: "${record.pageName}" did not save to the bin — not deleted.`); return false; }
     await page.delete();
     log.debug(`Recycle-bin: quarantined "${record.pageName}" from ${record.hostName}`);
     return true;
@@ -1520,14 +1528,13 @@ async function _quarantinePage(page, { host = null, actor = null } = {}) {
 /** Restore a wiped entry to its origin journal (recreates the page). GM-only. */
 export async function restoreWiped(recordId) {
   if (!isGM()) return false;
-  const bin = getRecycleBin();
-  const rec = bin.find(r => r.id === recordId);
+  const rec = getRecycleBin().find(r => r.id === recordId);
   if (!rec) return false;
   try {
     const journal = rec.journalId ? game.journal?.get(rec.journalId) : null;
     if (!journal) { ncmNotify.warn('NCM | Origin journal is gone — cannot restore in place.'); return false; }
     await journal.createEmbeddedDocuments('JournalEntryPage', [rec.pageData]);
-    await game.settings.set(MODULE_ID, RECYCLE_SETTING, bin.filter(r => r.id !== recordId));
+    await serialize('bin', () => game.settings.set(MODULE_ID, RECYCLE_SETTING, getRecycleBin().filter(r => r.id !== recordId)));
     log.debug(`Recycle-bin: restored "${rec.pageName}" to ${journal.name}`);
     return true;
   } catch (err) { log.error(`Recycle-bin restore failed: ${err.message}`); return false; }
@@ -1536,8 +1543,7 @@ export async function restoreWiped(recordId) {
 /** Permanently drop records from the recycle bin (all if ids omitted). GM-only — the one true delete. */
 export async function emptyRecycleBin(ids = null) {
   if (!isGM()) return;
-  const next = Array.isArray(ids) ? getRecycleBin().filter(r => !ids.includes(r.id)) : [];
-  await game.settings.set(MODULE_ID, RECYCLE_SETTING, next);
+  await serialize('bin', () => game.settings.set(MODULE_ID, RECYCLE_SETTING, Array.isArray(ids) ? getRecycleBin().filter(r => !ids.includes(r.id)) : []));
   log.debug(`Recycle-bin: emptied ${Array.isArray(ids) ? ids.length + ' record(s)' : 'all'}`);
 }
 

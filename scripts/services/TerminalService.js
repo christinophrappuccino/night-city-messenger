@@ -35,6 +35,7 @@ import { suggestFilename } from '../ui/content/ContentRenderers.js';
 import { adminViewVerdict as _adminVerdict, adminViewTargets as _adminTargets, resolveAdminAccess, adminReadOnlyBlocks } from '../utils/terminalAdmin.js';
 import { listNodes, nodeStateAt } from '../utils/networkNodes.js';
 import { SHARED_SCOPE, sanitizeFilesConfig, sanitizeFolder, normalizeFolderPath, visibleEntries, buildTree, canOpenFolder, rewritePlan } from '../utils/terminalFiles.js';
+import { serialize, serializeMethods, itemKey } from '../utils/serialize.js';
 
 export class TerminalService {
 
@@ -1941,11 +1942,10 @@ export class TerminalService {
       });
       return;
     }
-    // One at a time: each write reads the whole state and writes it back, so two players logging in together
-    // could otherwise lose one's session and footprint.
-    const run = () => this._writeSession(item, actorId, updates);
-    this._sessionWrites = (this._sessionWrites || Promise.resolve()).then(run, run);
-    return this._sessionWrites;
+    // One at a time PER MACHINE, in the same queue as every other terminalState writer (B4 / INT-02):
+    // each write reads the whole state and writes it back, so a login beside a resident install
+    // could otherwise lose one or the other.
+    return serialize(itemKey('term', item), () => this._writeSession(item, actorId, updates));
   }
 
   /** @private */
@@ -2552,3 +2552,9 @@ export class TerminalService {
     }
   }
 }
+
+// Every other whole-terminalState writer joins the machine's queue (B4 / INT-02): a relayed install beside
+// an uplink switch or a resident firing used to revert one another — plants vanished, fired ones re-armed.
+// None of these awaits another of them, so they cannot wait on themselves.
+serializeMethods(TerminalService.prototype, ['setUplink', 'forceUnlock', 'relock', 'installResident', 'updateResident', 'removeResident'],
+  (args) => itemKey('term', args[0]));

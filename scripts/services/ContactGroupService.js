@@ -18,6 +18,7 @@
  */
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, isGM, getPlayerCharacters } from '../utils/helpers.js';
+import { serializeMethods } from '../utils/serialize.js';
 import { makeMember, dedupeMembers, resolveMember, worldAdapter, memberKey, normalizeEmail } from '../utils/participants.js';
 
 /** The flag on an actor that holds that character's groups. */
@@ -361,3 +362,9 @@ export class ContactGroupService {
   /** The dedupe key of a member (exposed for pickers' `taken` sets). */
   static memberKey(m) { return memberKey(m); }
 }
+
+// A character's groups are one flag array, the GM's one setting: queue the writers (B4 / INT-06). The
+// composer stamps "last used" for every group chip without waiting, and those stamps overwrote each other.
+serializeMethods(ContactGroupService.prototype, ['saveActorGroup', 'deleteActorGroup', 'touchActorGroup'], (args) => (args[0] ? `groups:${args[0]}` : null));
+serializeMethods(ContactGroupService.prototype, ['pushGroupToPlayer'], (args) => (args[1] ? `groups:${args[1]}` : null));
+serializeMethods(ContactGroupService.prototype, ['saveMasterGroup', 'deleteMasterGroup', 'importMaster'], () => 'groups:master');

@@ -20,6 +20,7 @@ import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, isPrimaryGM, netVerbFor, whisperCardHtml, userOwnsActor } from '../utils/helpers.js';
 import { userCanReachItem } from '../utils/shardAccess.js';
+import { serialize } from '../utils/serialize.js';
 
 const LOG_SETTING = 'traceLog';
 const HEAT_SETTING = 'traceHeat';
@@ -130,9 +131,12 @@ export class TraceService {
     try {
       const isFail = p.outcome !== 'success';
       const heatDelta = isFail ? (HEAT_BY_SEVERITY[p.severity] ?? 20) : 0;
-      const rows = [...this.getLog(), { id: `tr-${foundry.utils.randomID(8)}`, ...p, heatDelta }];
-      while (rows.length > LOG_CAP) rows.shift();
-      await game.settings.set(MODULE_ID, LOG_SETTING, rows);
+      // One log write at a time: two traces at once both appended to the same copy and one row was lost (INT-03).
+      await serialize('trace:log', async () => {
+        const rows = [...this.getLog(), { id: `tr-${foundry.utils.randomID(8)}`, ...p, heatDelta }];
+        while (rows.length > LOG_CAP) rows.shift();
+        await game.settings.set(MODULE_ID, LOG_SETTING, rows);
+      });
 
       // Successes are logged with NO heat gained (design: heat is only for tripped
       // defenses). Only failures heat + alert the GM.
@@ -226,7 +230,7 @@ export class TraceService {
 
   // ─── Log ───
   getLog() { try { return game.settings.get(MODULE_ID, LOG_SETTING) ?? []; } catch { return []; } }
-  async clearLog() { if (isGM()) await game.settings.set(MODULE_ID, LOG_SETTING, []); }
+  async clearLog() { if (isGM()) await serialize('trace:log', () => game.settings.set(MODULE_ID, LOG_SETTING, [])); }
 
   // ─── Heat (per object × actor, decayed over game time) ───
   getHeatMap() { try { return game.settings.get(MODULE_ID, HEAT_SETTING) ?? {}; } catch { return {}; } }
@@ -246,13 +250,16 @@ export class TraceService {
   /** Bump heat (GM-side). Decays first, adds, clamps, stamps. Returns the new value. */
   async bumpHeat(objectId, actorId, amount) {
     if (!isGM()) return 0;
-    const map = foundry.utils.deepClone(this.getHeatMap());
-    const obj = map[objectId] || (map[objectId] = {});
-    const cur = this._decay(obj[actorId]);
-    const next = Math.min(HEAT_MAX, cur + (Number(amount) || 0));
-    obj[actorId] = { value: next, ts: this._nowIso() };
-    await game.settings.set(MODULE_ID, HEAT_SETTING, map);
-    return next;
+    // One heat write at a time (INT-03): two bumps at once lost one.
+    return serialize('trace:heat', async () => {
+      const map = foundry.utils.deepClone(this.getHeatMap());
+      const obj = map[objectId] || (map[objectId] = {});
+      const cur = this._decay(obj[actorId]);
+      const next = Math.min(HEAT_MAX, cur + (Number(amount) || 0));
+      obj[actorId] = { value: next, ts: this._nowIso() };
+      await game.settings.set(MODULE_ID, HEAT_SETTING, map);
+      return next;
+    });
   }
 
   /**
@@ -263,11 +270,13 @@ export class TraceService {
    */
   async setHeat(objectId, actorId, value, { reason = '', tellPlayer = false, objectName = '' } = {}) {
     if (!isGM()) return 0;
-    const map = foundry.utils.deepClone(this.getHeatMap());
-    const obj = map[objectId] || (map[objectId] = {});
     const v = Math.max(0, Math.min(HEAT_MAX, Math.round(Number(value) || 0)));
-    obj[actorId] = { value: v, ts: this._nowIso() };
-    await game.settings.set(MODULE_ID, HEAT_SETTING, map);
+    await serialize('trace:heat', async () => {
+      const map = foundry.utils.deepClone(this.getHeatMap());
+      const obj = map[objectId] || (map[objectId] = {});
+      obj[actorId] = { value: v, ts: this._nowIso() };
+      await game.settings.set(MODULE_ID, HEAT_SETTING, map);
+    });
     this._heatChat(actorId, objectName || objectId, v, reason, tellPlayer);
     return v;
   }
@@ -322,13 +331,13 @@ export class TraceService {
     const a = actorId ? game.actors?.get(actorId) : null;
     const expiresAt = this._nowMs() + Math.max(1, Number(minutes) || 30) * 60000;
     const src = (source || '').trim() || 'A trace';
-    const list = [...this.getCountdowns(), {
+    const row = {
       id: `cd-${foundry.utils.randomID(8)}`, objectId, actorId, objectName: objectName || objectId,
       actorName: a?.name || 'operator', expiresAt, source: src, reason, playerWarning, tellPlayer: !!tellPlayer,
       // startedAt + minutes let Admin → Security draw the clock ring as a fraction of the whole run.
       startedAt: this._nowMs(), minutes: Math.max(1, Number(minutes) || 30),
-    }];
-    await game.settings.set(MODULE_ID, 'traceCountdowns', list);
+    };
+    await serialize('trace:cd', () => game.settings.set(MODULE_ID, 'traceCountdowns', [...this.getCountdowns(), row]));
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
     if (gmIds.length) ChatMessage.create({
@@ -353,7 +362,7 @@ export class TraceService {
     }
   }
 
-  async cancelCountdown(id) { if (isGM()) await game.settings.set(MODULE_ID, 'traceCountdowns', this.getCountdowns().filter(c => c.id !== id)); }
+  async cancelCountdown(id) { if (isGM()) await serialize('trace:cd', () => game.settings.set(MODULE_ID, 'traceCountdowns', this.getCountdowns().filter(c => c.id !== id))); }
 
   /** GM reaper — fire expired countdowns (game time). Registered on an interval. */
   async reapCountdowns() {
@@ -397,7 +406,9 @@ export class TraceService {
         }));
       } catch (err) { log.warn(`Trace-complete log failed: ${err.message}`); }
     }
-    await game.settings.set(MODULE_ID, 'traceCountdowns', this.getCountdowns().filter(c => c.expiresAt > now));
+    // Drop only the ones fired here, re-read inside the queue: a countdown started meanwhile survives.
+    const fired = new Set(due.map((c) => c.id));
+    await serialize('trace:cd', () => game.settings.set(MODULE_ID, 'traceCountdowns', this.getCountdowns().filter(c => !fired.has(c.id))));
   }
 
   /** GM-side toast + whisper. (The durable record IS the log; this is the ping.)

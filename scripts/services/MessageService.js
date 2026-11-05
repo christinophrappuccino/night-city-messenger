@@ -13,6 +13,7 @@ import { DataValidator } from '../data/DataValidator.js';
 import { log, isPrimaryGM, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime, userOwnsActor } from '../utils/helpers.js';
 import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
 import { replyIdentity, groupKeyOf, identitiesOf } from '../utils/identities.js';
+import { serialize } from '../utils/serialize.js';
 
 export class MessageService {
   constructor() {
@@ -1438,6 +1439,8 @@ export class MessageService {
   async recordDeliveryFailure({ data, result, source = 'relay', byUserName = '' }) {
     try {
       if (!game.user?.isGM) return null;
+      // A retry from the Outbox updates its own row instead of adding a second one (INT-11).
+      if (data?._retryOf) return null;
       const failed = result?.failed?.length ? result.failed : null;
       const row = {
         id: foundry.utils?.randomID?.() || String(Date.now()),
@@ -1454,8 +1457,9 @@ export class MessageService {
         hadEddies: Number(data?.eddies) > 0,
         retry: this._retryPayload(data, failed),
       };
-      const list = [row, ...(game.settings.get(MODULE_ID, 'deliveryFailures') || [])].slice(0, MessageService.FAILURE_LOG_CAP);
-      await game.settings.set(MODULE_ID, 'deliveryFailures', list);
+      // One write at a time: two failures at once lost one row.
+      await serialize('deliveryFailures', () => game.settings.set(MODULE_ID, 'deliveryFailures',
+        [row, ...(game.settings.get(MODULE_ID, 'deliveryFailures') || [])].slice(0, MessageService.FAILURE_LOG_CAP)));
       return row;
     } catch (err) {
       console.warn(`${MODULE_ID} | could not record a delivery failure:`, err);
@@ -1468,8 +1472,7 @@ export class MessageService {
   }
 
   async dismissDeliveryFailure(id) {
-    const list = this.getDeliveryFailures();
-    await game.settings.set(MODULE_ID, 'deliveryFailures', id ? list.filter(r => r.id !== id) : []);
+    await serialize('deliveryFailures', () => game.settings.set(MODULE_ID, 'deliveryFailures', id ? this.getDeliveryFailures().filter(r => r.id !== id) : []));
     return { success: true };
   }
 
@@ -1477,13 +1480,17 @@ export class MessageService {
   async retryDeliveryFailure(id) {
     const row = this.getDeliveryFailures().find(r => r.id === id);
     if (!row) return { success: false, error: 'That failure is no longer listed' };
-    const result = await this.sendMessage(foundry.utils?.deepClone ? foundry.utils.deepClone(row.retry) : { ...row.retry });
-    const list = this.getDeliveryFailures();
+    const payload = foundry.utils?.deepClone ? foundry.utils.deepClone(row.retry) : { ...row.retry };
+    payload._retryOf = id;   // this row tracks the retry; don't log it again (INT-11)
+    const result = await this.sendMessage(payload);
     if (result?.success && !result.failed?.length) {
-      await game.settings.set(MODULE_ID, 'deliveryFailures', list.filter(r => r.id !== id));
+      await serialize('deliveryFailures', () => game.settings.set(MODULE_ID, 'deliveryFailures', this.getDeliveryFailures().filter(r => r.id !== id)));
     } else {
       const why = result?.failed?.length ? result.failed.map(x => `${x.name}: ${x.error || 'unknown error'}`).join(' · ') : (result?.error || 'unknown error');
-      await game.settings.set(MODULE_ID, 'deliveryFailures', list.map(r => r.id === id ? { ...r, why, retriedAt: new Date().toISOString() } : r));
+      // Only the people who still failed are retried next time.
+      const retry = result?.failed?.length ? this._retryPayload(row.retry, result.failed) : row.retry;
+      await serialize('deliveryFailures', () => game.settings.set(MODULE_ID, 'deliveryFailures',
+        this.getDeliveryFailures().map(r => r.id === id ? { ...r, why, retry, retriedAt: new Date().toISOString() } : r)));
     }
     return result;
   }

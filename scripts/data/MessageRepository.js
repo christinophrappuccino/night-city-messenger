@@ -16,6 +16,7 @@
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { resolveDisplayName } from '../utils/helpers.js';
+import { serialize } from '../utils/serialize.js';
 
 // ── Folder names (plain, functional, GM-friendly) ──
 const ROOT_FOLDER   = 'Night City Messenger';
@@ -58,7 +59,13 @@ export class MessageRepository {
    */
   async _getOrCreateRootFolder() {
     if (this._rootFolder && game.folders.get(this._rootFolder.id)) return this._rootFolder;
+    // Find-then-create, one at a time: two first deliveries made two roots (DATA-15).
+    return serialize('folder:root', () => this._findOrCreateRoot());
+  }
 
+  /** @private */
+  async _findOrCreateRoot() {
+    if (this._rootFolder && game.folders.get(this._rootFolder.id)) return this._rootFolder;
     this._rootFolder = game.folders.find(f =>
       f.type === 'JournalEntry' && f.name === ROOT_FOLDER && !f.folder
     ) ?? null;
@@ -86,7 +93,12 @@ export class MessageRepository {
       if (game.folders.get(cached.id)) return cached;
       this._folderCache.delete(name);
     }
+    return serialize(`folder:${name}`, () => this._findOrCreateSubfolder(name));
+  }
 
+  /** @private */
+  async _findOrCreateSubfolder(name) {
+    if (this._folderCache.has(name) && game.folders.get(this._folderCache.get(name).id)) return this._folderCache.get(name);
     const root = await this._getOrCreateRootFolder();
     if (!root) return null;
 
@@ -398,6 +410,14 @@ export class MessageRepository {
       if (game.journal.get(cached.id)) return cached;
       this._inboxCache.delete(ownerId);
     }
+    // Find-then-create, one at a time per owner: two first deliveries at once made
+    // two inbox journals and the second one's mail was never seen (DATA-15).
+    return game.user?.isGM ? serialize(`inbox:${ownerId}`, () => this._findOrCreateInbox(ownerId)) : this._findOrCreateInbox(ownerId);
+  }
+
+  /** @private */
+  async _findOrCreateInbox(ownerId) {
+    if (this._inboxCache.has(ownerId) && game.journal.get(this._inboxCache.get(ownerId).id)) return this._inboxCache.get(ownerId);
 
     // ── Determine inbox type ──
     const actor = game.actors?.get(ownerId);

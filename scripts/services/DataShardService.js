@@ -18,6 +18,7 @@ import { log, isGM, generateId, userOwnsActor } from '../utils/helpers.js';
 import { userCanReachShard, sanitizeSessionUpdates, shardCanSelfDestruct } from '../utils/shardAccess.js';
 import { withShardPrefix, restorePatch } from '../utils/shardNaming.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
+import { serializeMethods, itemKey } from '../utils/serialize.js';
 import {
   resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor, afterRecon,
 } from '../ui/content/IntegrityModel.js';
@@ -2306,3 +2307,8 @@ export class DataShardService {
     }
   }
 }
+
+// One shard state write at a time per shard (B4 / INT-02): `decrypted` and an actor's session are written as the
+// whole state block, so two at once undid each other. Integrity hits queue too (INT-09: a hit was lost).
+serializeMethods(DataShardService.prototype, ['_writeDecrypted', '_updateActorSession'], (args) => itemKey('shard', args[0]));
+serializeMethods(DataShardService.prototype, ['degradeIntegrity'], (args) => itemKey('shardIntegrity', args[0]));
