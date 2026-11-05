@@ -7,6 +7,7 @@
  */
 
 import { log } from '../utils/helpers.js';
+import { ncmNotify } from '../utils/notify.js';
 
 export class ModuleInitializer {
   constructor() {
@@ -16,6 +17,27 @@ export class ModuleInitializer {
     this._phases.set('init', []);
     this._phases.set('ready', []);
     this._phases.set('postReady', []);
+    /** Startup steps that threw — `{ phase, name, message }` (audit ARCH-02). @type {object[]} */
+    this.failures = [];
+  }
+
+  /** @private Log a failed step and remember it, so the GM can be told once startup is over. */
+  _failed(phase, task, error) {
+    log.error(`  FAILED: ${task.name}`, error);
+    this.failures.push({ phase, name: task.name, message: error?.message || String(error) });
+  }
+
+  /**
+   * Tell the GM which startup steps failed (audit ARCH-02). They were only in the console, so the module could run
+   * half-started with nothing on screen to say so. Once, after postReady; players are not told (they can't fix it).
+   * @returns {number} how many failed
+   */
+  reportFailures() {
+    const n = this.failures.length;
+    if (!n || !game.user?.isGM) return n;
+    const names = this.failures.slice(0, 4).map((f) => f.name).join(', ') + (n > 4 ? `, and ${n - 4} more` : '');
+    ncmNotify.error(`NCM | ${n} startup step${n === 1 ? '' : 's'} failed: ${names}. Some features may not work. Press F12 and look for "FAILED" in the console for details.`, { permanent: true });
+    return n;
   }
 
   /**
@@ -49,9 +71,9 @@ export class ModuleInitializer {
       try {
         log.debug(`  [${task.priority}] ${task.name}`);
         const r = task.fn();
-        if (r && typeof r.then === 'function') pending.push(Promise.resolve(r).catch((error) => log.error(`  FAILED: ${task.name}`, error)));
+        if (r && typeof r.then === 'function') pending.push(Promise.resolve(r).catch((error) => this._failed(phase, task, error)));
       } catch (error) {
-        log.error(`  FAILED: ${task.name}`, error);
+        this._failed(phase, task, error);
       }
     }
     return Promise.all(pending).then(() => {});
@@ -73,7 +95,7 @@ export class ModuleInitializer {
         log.debug(`  [${task.priority}] ${task.name}`);
         await task.fn();
       } catch (error) {
-        log.error(`  FAILED: ${task.name}`, error);
+        this._failed(phase, task, error);
       }
     }
   }
