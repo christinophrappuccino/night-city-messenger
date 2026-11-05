@@ -101,12 +101,12 @@ export function runJackIn(host, o = {}) {
     <div class="ncm-jk__static"></div><div class="ncm-jk__flash"></div>
     <div class="ncm-jk__skip">CLICK TO SKIP</div>`;
   host.appendChild(root);
-  const $ = (s) => root.querySelector(s);
-  const SVG = $('.ncm-jk__svg');
+  const q = (s) => root.querySelector(s);
+  const SVG = q('.ncm-jk__svg');
   const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent?.appendChild(e); return e; };
 
   // background rain
-  const RAIN = $('.ncm-jk__rain');
+  const RAIN = q('.ncm-jk__rain');
   const rain = Array.from({ length: 28 }, (_, i) => {
     const d = document.createElement('div');
     d.style.left = `${(i * 23 + 4)}px`;
@@ -191,8 +191,8 @@ export function runJackIn(host, o = {}) {
   const hex = (n, w = 4) => (n >>> 0).toString(16).toUpperCase().padStart(w, '0').slice(-w);
   const partsSum = (o.parts || []).reduce((s, p) => s + (Number(p.value) || 0), 0);
   const dv = Number(o.dv ?? R?.dv) || 15;
-  $('[data-dvline]').style.left = `${(Math.min(dv, 25) / 25) * 100}%`;
-  $('[data-dvline]').dataset.dv = `DV ${dv}`;
+  q('[data-dvline]').style.left = `${(Math.min(dv, 25) / 25) * 100}%`;
+  q('[data-dvline]').dataset.dv = `DV ${dv}`;
 
   function paint(t) {
     const isIn = KIND === 'in', isMiss = KIND === 'miss', isWait = KIND === 'wait';
@@ -200,20 +200,20 @@ export function runJackIn(host, o = {}) {
     const fade = eOut(prog(t, 0, 0.45));
     SVG.style.opacity = fade;
     rain.forEach((c) => { c.d.style.transform = `translateY(${(((t * c.speed + c.phase) % 480) - 480).toFixed(1)}px)`; });
-    const SW = $('.ncm-jk__sweep');
+    const SW = q('.ncm-jk__sweep');
     SW.style.transform = `rotate(${(t * 140) % 360}deg)`;
     SW.style.opacity = isIn && t > OPEN ? 1 - prog(t, OPEN, OPEN + 0.4) : (isMiss && t > OPEN ? 0 : fade * 0.9);
     const f = Math.floor(t * 20);
-    $('.ncm-jk__hud--l').innerHTML = `SYN ▸ <em>${esc(o.hex || '')}</em>\nLAT ${String(9 + (f * 7) % 9).padStart(3, '0')}ms\nPKT <b>${hex(f * 2654435761, 6)}</b>\nKEY ${hex(f * 40503 + 77)}-${hex(f * 9176 + 3)}`;
+    q('.ncm-jk__hud--l').innerHTML = `SYN ▸ <em>${esc(o.hex || '')}</em>\nLAT ${String(9 + (f * 7) % 9).padStart(3, '0')}ms\nPKT <b>${hex(f * 2654435761, 6)}</b>\nKEY ${hex(f * 40503 + 77)}-${hex(f * 9176 + 3)}`;
     const hs = plan.filter((P, i) => t >= P.T && !(i === plan.length - 1 && (isWait || isMiss))).length;
-    $('.ncm-jk__hud--r').innerHTML = `HANDSHAKE <b>${hs}/${plan.length}</b>\nTRACE ${isMiss && t > OPEN ? '<b class="bad">LOCKED</b>' : (Math.min(t, OPEN) * 0.11).toFixed(2)}\nICE <em>${isMiss && t > OPEN ? 'ARMED' : 'DORMANT'}</em>`;
+    q('.ncm-jk__hud--r').innerHTML = `HANDSHAKE <b>${hs}/${plan.length}</b>\nTRACE ${isMiss && t > OPEN ? '<b class="bad">LOCKED</b>' : (Math.min(t, OPEN) * 0.11).toFixed(2)}\nICE <em>${isMiss && t > OPEN ? 'ARMED' : 'DORMANT'}</em>`;
     const g = glitchAmt(t);
     const beat = Math.pow(Math.max(0, Math.sin(t * Math.PI * 2.4)), 6);
     const stall = prog(t, 3.0, 3.3) * (isWait ? 1 : 1 - prog(t, 4.0, 4.1));
     const dx = 0.7 + g * 6 + stall * beat * 3 + (isMiss && t > OPEN + 0.45 ? 2.5 + Math.sin(t * 50) * 1.5 : 0);
     OFR.setAttribute('dx', dx.toFixed(2)); OFB.setAttribute('dx', (-dx).toFixed(2));
     SVG.style.transform = g > 0 ? `translateX(${((f % 2 ? 1 : -1) * g * 5).toFixed(1)}px)` : '';
-    const SL = $('.ncm-jk__slices');
+    const SL = q('.ncm-jk__slices');
     if (g > 0.05) {
       const seed = Math.floor(t * 50);
       SL.innerHTML = [0, 1, 2, 3].map((k) => `<i style="top:${(seed * 37 + k * 113) % 400}px;height:${3 + ((seed + k * 7) % 14)}px;background:${isMiss && t > OPEN ? 'var(--jk-bad)' : (k % 2 ? 'var(--jk-hl)' : 'var(--nc)')};opacity:${(g * 0.45).toFixed(2)};transform:translateX(${((k % 2 ? 1 : -1) * 20 * g).toFixed(0)}px)"></i>`).join('');
@@ -255,19 +255,19 @@ export function runJackIn(host, o = {}) {
     });
     // the roll
     const d10Locked = !isWait && t >= 4.0 && R;
-    $('[data-d10]').textContent = d10Locked ? R.d10 : (t > 2.0 ? GLYPHS[Math.floor(t * 23) % 10] : '?');
-    $('.ncm-jk__cols .is-d10').classList.toggle('lock', !!d10Locked);
+    q('[data-d10]').textContent = d10Locked ? R.d10 : (t > 2.0 ? GLYPHS[Math.floor(t * 23) % 10] : '?');
+    q('.ncm-jk__cols .is-d10').classList.toggle('lock', !!d10Locked);
     let tot = partsSum;
     if (d10Locked) tot = Math.round(partsSum + (R.total - partsSum) * eOut(prog(t, 4.0, 4.18)));
-    $('[data-tot]').textContent = t >= 2.3 ? tot : '—';
-    $('[data-met]').style.width = `${(Math.min(t >= 2.3 ? tot : 0, 25) / 25) * 100}%`;
-    $('.ncm-jk__vig').style.opacity = (stall * (0.55 + 0.35 * beat)).toFixed(3);
+    q('[data-tot]').textContent = t >= 2.3 ? tot : '—';
+    q('[data-met]').style.width = `${(Math.min(t >= 2.3 ? tot : 0, 25) / 25) * 100}%`;
+    q('.ncm-jk__vig').style.opacity = (stall * (0.55 + 0.35 * beat)).toFixed(3);
     // the lock glyph
-    const LOCK = $('.ncm-jk__lock'), li = LOCK.querySelector('i');
+    const LOCK = q('.ncm-jk__lock'), li = LOCK.querySelector('i');
     if (isIn && t >= OPEN) { li.className = 'fas fa-lock-open'; LOCK.style.transform = `scale(${1 + prog(t, OPEN, OPEN + 0.5) * 0.9})`; LOCK.style.opacity = 1 - prog(t, OPEN + 0.15, OPEN + 0.6); LOCK.style.color = '#fff'; }
     else { li.className = 'fas fa-lock'; LOCK.style.transform = isMiss && t > OPEN + 0.4 && t < OPEN + 0.9 ? `translateX(${(Math.sin(t * 80) * 4).toFixed(1)}px)` : ''; LOCK.style.opacity = isMiss ? 1 - prog(t, OPEN + 0.5, OPEN + 0.6) : fade; LOCK.style.color = isMiss && t > OPEN ? 'var(--jk-bad)' : ''; }
     // IN: flash, shock, bloom, result
-    $('.ncm-jk__flash').style.opacity = isIn ? (0.75 * (prog(t, OPEN, OPEN + 0.06) - prog(t, OPEN + 0.06, OPEN + 0.5))).toFixed(3) : 0;
+    q('.ncm-jk__flash').style.opacity = isIn ? (0.75 * (prog(t, OPEN, OPEN + 0.06) - prog(t, OPEN + 0.06, OPEN + 0.5))).toFixed(3) : 0;
     const sw = isIn ? prog(t, OPEN, OPEN + 0.8) : 0;
     SHOCK.setAttribute('r', (40 + eOut(sw) * 300).toFixed(1));
     SHOCK.setAttribute('stroke-width', (6 * (1 - sw)).toFixed(2));
@@ -279,29 +279,29 @@ export function runJackIn(host, o = {}) {
       const p = isIn ? prog(t, t0 + 0.2, t0 + 0.4) : 0;
       n.dot.setAttribute('r', ((n.hub ? 9 : 5) * eBack(p) * (p > 0 ? 1 : 0)).toFixed(2));
     });
-    $('.ncm-jk__roll').style.opacity = isWait ? 1 : 1 - prog(t, OPEN + 0.2, OPEN + 0.5);
-    const RES = $('.ncm-jk__res');
+    q('.ncm-jk__roll').style.opacity = isWait ? 1 : 1 - prog(t, OPEN + 0.2, OPEN + 0.5);
+    const RES = q('.ncm-jk__res');
     RES.style.opacity = isWait ? 0 : prog(t, OPEN + 0.45, OPEN + 0.7);
     RES.style.transform = `translateY(${(10 * (1 - eOut(prog(t, OPEN + 0.45, OPEN + 0.8)))).toFixed(1)}px)`;
     if (isIn && R) {
-      $('[data-nm]').textContent = scramble(String(o.netName || 'ACCESS').toUpperCase(), prog(t, OPEN + 0.5, OPEN + 1.3), Math.floor(t * 30));
-      $('[data-sub]').textContent = R.sub || `ACCESS GRANTED · ${o.decided ? '' : `${R.total} VS DV ${dv} · `}NODE ${o.hex || ''}`;
-      const P = $('[data-pips]');
+      q('[data-nm]').textContent = scramble(String(o.netName || 'ACCESS').toUpperCase(), prog(t, OPEN + 0.5, OPEN + 1.3), Math.floor(t * 30));
+      q('[data-sub]').textContent = R.sub || `ACCESS GRANTED · ${o.decided ? '' : `${R.total} VS DV ${dv} · `}NODE ${o.hex || ''}`;
+      const P = q('[data-pips]');
       if (P.dataset.n !== String(R.moves)) { P.dataset.n = String(R.moves); P.innerHTML = `<span>MOVES</span>${'<span class="pip"></span>'.repeat(R.moves || 0)}`; }
       P.querySelectorAll('.pip').forEach((pp, i) => { const s0 = 5.4 + i * 0.22, u = prog(t, s0, s0 + 0.18); pp.style.opacity = u; pp.style.transform = `rotate(45deg) translateY(${(-14 * (1 - eOut(u))).toFixed(1)}px)`; });
     } else if (isMiss && R) {
-      $('[data-nm]').textContent = scramble('REJECTED', prog(t, OPEN + 0.6, OPEN + 1.1), Math.floor(t * 30));
-      $('[data-sub]').textContent = R.sub || (o.decided ? 'THE GM CALLED IT' : `${R.total} VS DV ${dv}`);
-      $('[data-pips]').innerHTML = '';
+      q('[data-nm]').textContent = scramble('REJECTED', prog(t, OPEN + 0.6, OPEN + 1.1), Math.floor(t * 30));
+      q('[data-sub]').textContent = R.sub || (o.decided ? 'THE GM CALLED IT' : `${R.total} VS DV ${dv}`);
+      q('[data-pips]').innerHTML = '';
     }
     CRACK.setAttribute('opacity', isMiss && t > OPEN + 0.25 ? 1 - prog(t, OPEN + 1.0, OPEN + 1.4) * 0.6 : 0);
     CRACK.setAttribute('stroke-dashoffset', (360 * (1 - eOut(isMiss ? prog(t, OPEN + 0.25, OPEN + 0.45) : 0))).toFixed(1));
-    $('.ncm-jk__static').style.opacity = isMiss ? (prog(t, OPEN + 0.45, OPEN + 0.5) * (1 - 0.6 * prog(t, OPEN + 0.9, OPEN + 1.4)) * (0.7 + 0.3 * Math.sin(t * 60))).toFixed(3) : 0;
+    q('.ncm-jk__static').style.opacity = isMiss ? (prog(t, OPEN + 0.45, OPEN + 0.5) * (1 - 0.6 * prog(t, OPEN + 0.9, OPEN + 1.4)) * (0.7 + 0.3 * Math.sin(t * 60))).toFixed(3) : 0;
     const sk = isMiss ? prog(t, OPEN + 0.5, OPEN + 0.72) : 0;
-    const SK = $('.ncm-jk__skull');
+    const SK = q('.ncm-jk__skull');
     SK.style.opacity = sk; SK.style.transform = `scale(${(3 - 2 * eOut(sk)).toFixed(3)})`;
     root.style.transform = isMiss && t > OPEN + 0.5 && t < OPEN + 0.9 ? `translate(${(Math.sin(t * 70) * 5).toFixed(1)}px, ${(Math.cos(t * 53) * 3).toFixed(1)}px)` : '';
-    $('.ncm-jk__wait').style.opacity = isWait ? prog(t, 3.6, 3.9) * (0.75 + 0.25 * Math.sin(t * 4)) : 0;
+    q('.ncm-jk__wait').style.opacity = isWait ? prog(t, 3.6, 3.9) * (0.75 + 0.25 * Math.sin(t * 4)) : 0;
   }
 
   const endOf = () => (KIND === 'in' ? JACK_TIMING.END_IN : KIND === 'miss' ? JACK_TIMING.END_MISS : Infinity);

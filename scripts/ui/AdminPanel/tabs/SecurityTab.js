@@ -35,6 +35,7 @@ import {
 } from './securityModel.js';
 import { blackIceActors } from '../../../utils/cpr.js';
 import { isFeatureOn } from '../../../utils/features.js';
+import { htmlOf } from '../../../utils/compat.js';
 
 /** The Security sub-tabs (2026-10-27 redesign — dev/mockups/admin-security-redesign-mock.html). */
 const VIEWS = [
@@ -1100,9 +1101,9 @@ export class SecurityTab extends BaseTab {
         lockout: { label: 'Lock out', icon: '<i class="fas fa-lock"></i>', callback: async (html) => {
           const s = this._lockoutScope(objectId);
           if (!s.targets.length) { ncmNotify.warn('NCM | Nothing lockable for this heat entry.'); return; }
-          const minutes = Math.max(1, Number(html.find('[name="lk"]').val()) || 60);
+          const minutes = Math.max(1, Number(htmlOf(html).querySelector('[name="lk"]')?.value) || 60);
           const sec = this.securityService;
-          const reason = String(html.find('[name="rs"]').val() || '');
+          const reason = String(htmlOf(html).querySelector('[name="rs"]')?.value || '');
           if (!actorId || !sec?.forceLockoutMany) { ncmNotify.warn('NCM | Security service unavailable, or no operator on this heat entry.'); return; }
           // ONE call: applies locally, broadcasts to every client (lockout
           // state is client-local — without the sync the player just logged
@@ -1119,7 +1120,7 @@ export class SecurityTab extends BaseTab {
               lines: [`<b>${esc(actorName)}</b> locked out of <b>${esc(objectName)}</b> for <b>${minutes} min</b>.`, reason ? `<span class="ncm-cc__sub"><i>${esc(reason)}</i></span>` : ''],
             }), whisper: gmIds,
           });
-          if (html.find('[name="tp"]').is(':checked')) {
+          if (!!htmlOf(html).querySelector('[name="tp"]')?.checked) {
             const a = game.actors?.get(actorId);
             const owners = a ? (game.users?.filter(u => !u.isGM && a.testUserPermission?.(u, 'OWNER')).map(u => u.id) ?? []) : [];
             if (owners.length) ChatMessage.create({
@@ -1130,23 +1131,23 @@ export class SecurityTab extends BaseTab {
           this.app.render(false);
         } },
         countdown: { label: 'Start countdown', icon: '<i class="fas fa-hourglass-half"></i>', callback: async (html) => {
-          const minutes = Number(html.find('[name="mn"]').val()) || 30;
+          const minutes = Number(htmlOf(html).querySelector('[name="mn"]')?.value) || 30;
           await this.traceService?.startCountdown?.(objectId, actorId, {
             minutes,
-            source: String(html.find('[name="cdsrc"]').val() || ''),
-            reason: String(html.find('[name="rs"]').val() || ''),
-            playerWarning: String(html.find('[name="cdwarn"]').val() || ''),
-            tellPlayer: html.find('[name="tp"]').is(':checked'), objectName,
+            source: String(htmlOf(html).querySelector('[name="cdsrc"]')?.value || ''),
+            reason: String(htmlOf(html).querySelector('[name="rs"]')?.value || ''),
+            playerWarning: String(htmlOf(html).querySelector('[name="cdwarn"]')?.value || ''),
+            tellPlayer: !!htmlOf(html).querySelector('[name="tp"]')?.checked, objectName,
           });
           this.app.render(false);
         } },
         ice: { label: 'Wake ICE', icon: '<i class="fas fa-skull"></i>', callback: async (html) => {
-          const iceId = html.find('[name="ice"]').val();
+          const iceId = htmlOf(html).querySelector('[name="ice"]')?.value;
           const op = actorId ? game.actors?.get(actorId) : null;
           if (!iceId || !op) { ncmNotify.warn('NCM | Pick a Black ICE actor and a valid operator.'); return; }
           try {
             await game.nightcity?.iceService?.applyDamage?.(op, { encryptionType: 'BLACK_ICE', ice: { source: 'actor', actorId: iceId } }, { context: 'trace', targetName: objectName });
-            const reason = String(html.find('[name="rs"]').val() || '');
+            const reason = String(htmlOf(html).querySelector('[name="rs"]')?.value || '');
             const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
             if (gmIds.length) ChatMessage.create({
               content: whisperCardHtml({
@@ -1304,9 +1305,9 @@ export class SecurityTab extends BaseTab {
       },
       buttons: {
         set: { icon: '<i class="fas fa-temperature-half"></i>', label: 'Set heat', callback: async (html) => {
-          const v = Math.max(0, Math.min(100, Math.round(Number(html.find('[name="hv"]').val()) || 0)));
-          const reason = String(html.find('[name="hr"]').val() || '');
-          const tellPlayer = html.find('[name="tp"]').is(':checked');
+          const v = Math.max(0, Math.min(100, Math.round(Number(htmlOf(html).querySelector('[name="hv"]')?.value) || 0)));
+          const reason = String(htmlOf(html).querySelector('[name="hr"]')?.value || '');
+          const tellPlayer = !!htmlOf(html).querySelector('[name="tp"]')?.checked;
           await this.traceService?.setHeat?.(objectId, actorId, v, { reason, tellPlayer, objectName });
           this.app.render(false);
         } },

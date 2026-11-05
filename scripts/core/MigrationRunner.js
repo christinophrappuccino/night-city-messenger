@@ -31,6 +31,7 @@ import { shiftInterfaceDvs, shiftJackRules, refreshJackDials } from '../utils/in
 import { adminWait } from '../utils/adminTheme.js';
 import { creditOldScheduled } from '../services/SchedulingService.js';
 import { serialize } from '../utils/serialize.js';
+import { htmlOf } from '../utils/compat.js';
 import { need } from './providers.js';   // UI pieces come from the UI layer (R9b)
 
 /** The schema version this build of the module writes. */
@@ -78,7 +79,7 @@ function askInterfaceShift(count) {
     title: 'Night City Messenger — Interface rolls',
     content,
     buttons: {
-      shift: { icon: '<i class="fas fa-arrow-down"></i>', label: 'Lower the DVs', callback: (html) => ({ mode: 'shift', by: Math.max(1, Math.min(15, Number(html.find('[name="by"]').val()) || 6)) }) },
+      shift: { icon: '<i class="fas fa-arrow-down"></i>', label: 'Lower the DVs', callback: (html) => ({ mode: 'shift', by: Math.max(1, Math.min(15, Number(htmlOf(html).querySelector('[name="by"]')?.value) || 6)) }) },
       keep: { icon: '<i class="fas fa-equals"></i>', label: 'Keep the DVs', callback: () => ({ mode: 'keep' }) },
       stat: { icon: '<i class="fas fa-rotate-left"></i>', label: 'Keep the old roll', callback: () => ({ mode: 'stat' }) },
     },

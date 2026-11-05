@@ -43,6 +43,7 @@ import { ScopePicker } from '../../../utils/scopePicker.js';
 import { BUILT_IN_ROLES } from '../../../utils/contactVocab.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
 import { cleanHtml } from '../../../utils/richText.js';
+import { htmlOf } from '../../../utils/compat.js';
 import {
   baseIdOf, convKey, senderKeys, targetKeys, isAnswered, pruneAnswered, convPasses, sortConversations,
   DESK_FILTERS, deskQueue, deskDefaultKey, deskThread, identityOrder, deskVoice, deskSentLine,
@@ -3015,8 +3016,8 @@ export class MessagesTab extends BaseTab {
           icon: '<i class="fas fa-check"></i>',
           label: 'Reschedule',
           callback: async (html) => {
-            const date = html.find('#ncm-sched-edit-date').val();
-            const time = html.find('#ncm-sched-edit-time').val();
+            const date = htmlOf(html).querySelector('#ncm-sched-edit-date')?.value;
+            const time = htmlOf(html).querySelector('#ncm-sched-edit-time')?.value;
             if (!date || !time) return;
             const newDelivery = new Date(`${date}T${time}:00Z`).toISOString();
             await this.schedulingService?.editScheduled(scheduleId, { deliveryTime: newDelivery });
@@ -3250,11 +3251,11 @@ export class MessagesTab extends BaseTab {
           icon: '<i class="fas fa-tower-broadcast"></i>',
           label: 'Send Broadcast',
           callback: async (html) => {
-            const from = html.find('[name="from"]').val()?.trim() || 'System';
-            const subject = html.find('[name="subject"]').val()?.trim() || 'Broadcast';
-            const body = html.find('[name="body"]').val()?.trim();
+            const from = htmlOf(html).querySelector('[name="from"]')?.value?.trim() || 'System';
+            const subject = htmlOf(html).querySelector('[name="subject"]')?.value?.trim() || 'Broadcast';
+            const body = htmlOf(html).querySelector('[name="body"]')?.value?.trim();
             if (!body) return;
-            const targetId = html.find('[name="target"]').val() || '__all__';
+            const targetId = htmlOf(html).querySelector('[name="target"]')?.value || '__all__';
             const group = groups.find(g => g.id === targetId) || null;
             const recipients = group
               ? groupSvc.recipientsFor(group).recipients

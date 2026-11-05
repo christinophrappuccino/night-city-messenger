@@ -20,6 +20,7 @@ import { planIdentityRepairs } from '../../../utils/identities.js';
 import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
 import { gatherResetPlan, runFactoryReset } from '../../../core/FactoryReset.js';
+import { htmlOf } from '../../../utils/compat.js';
 import {
   NON_PERSON_ACTOR_TYPES, buildDirectoryRows, directoryToCsv, directoryToJson,
   parseDirectoryImport, planDirectoryImport, domainsToJson, parseDomainsImport,
@@ -296,7 +297,7 @@ export class ToolsTab extends BaseTab {
           icon: '<i class="fas fa-check"></i>',
           label: 'Apply Mode',
           callback: async (html) => {
-            const mode = html.find('#ncm-tc-mode').val();
+            const mode = htmlOf(html).querySelector('#ncm-tc-mode')?.value;
             await ts.setMode(mode);
             this.render(true);
           },
@@ -364,8 +365,8 @@ export class ToolsTab extends BaseTab {
           if (disguisedPanel.is(':visible')) {
             realClockEl.text(_fmt(new Date().toISOString()));
 
-            const date = html.find('#ncm-tc-dis-date').val();
-            const time = html.find('#ncm-tc-dis-time').val();
+            const date = htmlOf(html).querySelector('#ncm-tc-dis-date')?.value;
+            const time = htmlOf(html).querySelector('#ncm-tc-dis-time')?.value;
             if (!date || !time) {
               fakeClockEl.text('Set date & time above');
               fakeClockEl.css('color', '#555570');
@@ -413,8 +414,8 @@ export class ToolsTab extends BaseTab {
 
         // Disguised: Anchor button
         html.find('#ncm-tc-dis-set').on('click', async () => {
-          const date = html.find('#ncm-tc-dis-date').val();
-          const time = html.find('#ncm-tc-dis-time').val();
+          const date = htmlOf(html).querySelector('#ncm-tc-dis-date')?.value;
+          const time = htmlOf(html).querySelector('#ncm-tc-dis-time')?.value;
           if (!date || !time) return;
           const iso = new Date(`${date}T${time}:00`).toISOString();
           await ts.setDisguisedTime(iso);
@@ -433,8 +434,8 @@ export class ToolsTab extends BaseTab {
 
         // Manual: Set button
         html.find('#ncm-tc-man-set').on('click', async () => {
-          const date = html.find('#ncm-tc-man-date').val();
-          const time = html.find('#ncm-tc-man-time').val();
+          const date = htmlOf(html).querySelector('#ncm-tc-man-date')?.value;
+          const time = htmlOf(html).querySelector('#ncm-tc-man-time')?.value;
           if (!date || !time) return;
           const iso = new Date(`${date}T${time}:00`).toISOString();
           await ts.setManualTime(iso);
@@ -623,8 +624,8 @@ export class ToolsTab extends BaseTab {
               if (v) domains.push(v);
             });
 
-            const newDefault = html.find('#ncm-default-domain').val()?.trim() || 'nightcity.net';
-            const allowCustom = html.find('#ncm-allow-custom').is(':checked');
+            const newDefault = htmlOf(html).querySelector('#ncm-default-domain')?.value?.trim() || 'nightcity.net';
+            const allowCustom = !!htmlOf(html).querySelector('#ncm-allow-custom')?.checked;
 
             await game.settings.set(MODULE_ID_LOCAL, 'emailDomains', domains);
             await game.settings.set(MODULE_ID_LOCAL, 'emailDefaultDomain', newDefault);
@@ -662,9 +663,9 @@ export class ToolsTab extends BaseTab {
 
         // ── Domain list export / import (operates on THIS dialog's rows; Save persists) ──
         const readDialogDomains = () => ({
-          defaultDomain: html.find('#ncm-default-domain').val()?.trim() || '',
+          defaultDomain: htmlOf(html).querySelector('#ncm-default-domain')?.value?.trim() || '',
           domains: html.find('.ncm-domain-row [data-field="domain"]').toArray().map(i => i.value?.trim()).filter(Boolean),
-          allowCustom: html.find('#ncm-allow-custom').is(':checked'),
+          allowCustom: !!htmlOf(html).querySelector('#ncm-allow-custom')?.checked,
         });
         html.find('#ncm-dom-export').on('click', () => {
           const cfg = readDialogDomains();
@@ -1320,9 +1321,9 @@ export class ToolsTab extends BaseTab {
             icon: '<i class="fas fa-bomb"></i>',
             label: 'Factory Reset',
             callback: (html) => {
-              const word = (html.find('[name="confirmWord"]').val() || '').trim().toUpperCase();
+              const word = (htmlOf(html).querySelector('[name="confirmWord"]')?.value || '').trim().toUpperCase();
               if (word !== 'RESET') { ncmNotify.warn('NCM | Type RESET to confirm.'); return; }
-              resetSettings = html.find('[name="resetSettings"]').is(':checked');
+              resetSettings = !!htmlOf(html).querySelector('[name="resetSettings"]')?.checked;
               go = true;
             },
           },

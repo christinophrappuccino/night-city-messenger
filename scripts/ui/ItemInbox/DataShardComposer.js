@@ -23,7 +23,7 @@ import { showNamePicker, documentEntries, folderPathOf } from '../../utils/nameP
 import { RICH_TEXT_PALETTE, cleanHtml, htmlToBlocks, pasteToBlocks, pasteToHtml, isSimplePaste, splitBlockParagraphs } from '../../utils/richText.js';
 import { parseCsv } from '../../utils/csv.js';
 import { SHARED_SCOPE, normalizeFolderPath } from '../../utils/terminalFiles.js';
-import { browseFiles, newFilePicker, renderTemplate } from '../../utils/compat.js';
+import { browseFiles, newFilePicker, renderTemplate, htmlOf } from '../../utils/compat.js';
 import { iceAttackOrNull, isBlackIceActor } from '../../utils/cpr.js';
 
 /** Content type pill definitions */
@@ -3105,7 +3105,7 @@ export class DataShardComposer extends BaseApplication {
         title: 'Insert Link',
         content: '<input type="text" name="rte-url" placeholder="https://…" style="width:100%" autofocus>',
         buttons: {
-          ok: { icon: '<i class="fas fa-link"></i>', label: 'Insert', callback: (html) => { val = (html.find('[name="rte-url"]').val() || '').trim(); } },
+          ok: { icon: '<i class="fas fa-link"></i>', label: 'Insert', callback: (html) => { val = (htmlOf(html).querySelector('[name="rte-url"]')?.value || '').trim(); } },
           cancel: { label: 'Cancel' },
         },
         default: 'ok',
@@ -3577,7 +3577,7 @@ export class DataShardComposer extends BaseApplication {
       title: 'Save Entry Template',
       content: `<div class="form-group"><label>Template name</label><input type="text" name="tplName" value="${escape(entryData.subject)}" style="width:100%"/></div>`,
       buttons: {
-        save: { icon: '<i class="fas fa-floppy-disk"></i>', label: 'Save', callback: (html) => { name = html.find('[name="tplName"]').val()?.trim(); } },
+        save: { icon: '<i class="fas fa-floppy-disk"></i>', label: 'Save', callback: (html) => { name = htmlOf(html).querySelector('[name="tplName"]')?.value?.trim(); } },
         cancel: { label: 'Cancel' },
       },
       default: 'save',

@@ -297,8 +297,8 @@ export function runIconBuilder({ host, image = '', colour = 'cyan' } = {}) {
       </div>`;
 
     mount.appendChild(root);
-    const $ = (sel) => root.querySelector(sel);
-    const cv = $('.ncm-iconb__cv');
+    const qs = (sel) => root.querySelector(sel);
+    const cv = qs('.ncm-iconb__cv');
 
     const paint = () => {
       S.glyph = S.mark === 'icon' ? glyphFor(S.iconClass) : '';
@@ -309,7 +309,7 @@ export function runIconBuilder({ host, image = '', colour = 'cyan' } = {}) {
     const renderGrid = () => {
       const q = S.search.trim().toLowerCase();
       const list = q ? icons.filter((i) => i.c.includes(q) || i.k.includes(q)) : icons;
-      $('[data-ib-grid]').innerHTML = list.slice(0, 120).map((i) => `
+      qs('[data-ib-grid]').innerHTML = list.slice(0, 120).map((i) => `
         <span class="ncm-iconb__ic ${i.c === S.iconClass ? 'on' : ''}" data-ib-icon="${esc(i.c)}" data-tooltip="${tipText(i.c)}">
           <i class="${esc(i.c)}"></i></span>`).join('')
         || '<span class="ncm-iconb__none">nothing matches that</span>';
@@ -326,8 +326,8 @@ export function runIconBuilder({ host, image = '', colour = 'cyan' } = {}) {
         if (inp && !custom) inp.value = hexFor(S.colour);   // keep it in step with the picked swatch
       }
       root.querySelectorAll('[data-ib-mark]').forEach((el) => el.classList.toggle('on', el.dataset.ibMark === S.mark));
-      $('[data-ib-glow]').classList.toggle('on', S.glow);
-      $('[data-ib-picker]').style.display = S.mark === 'icon' ? '' : 'none';
+      qs('[data-ib-glow]').classList.toggle('on', S.glow);
+      qs('[data-ib-picker]').style.display = S.mark === 'icon' ? '' : 'none';
     };
 
     const close = (value) => {
@@ -399,6 +399,6 @@ export function runIconBuilder({ host, image = '', colour = 'cyan' } = {}) {
     paint();
     // Font Awesome may still be settling on the first open; repaint once it has.
     if (document.fonts?.ready) document.fonts.ready.then(() => paint()).catch(() => {});
-    setTimeout(() => $('[data-ib-search]')?.focus(), 40);
+    setTimeout(() => qs('[data-ib-search]')?.focus(), 40);
   });
 }

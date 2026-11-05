@@ -52,8 +52,8 @@ for (const [f, t] of src) for (const fn of ['renderTemplate', 'loadTemplates', '
 
 // 2. ratchet — counts as of 2026-11-05 (stage 2, step 10a). Lower a number when you migrate some; never raise it.
 const RATCHET = [
-  ['jQuery html.find(', /\bhtml\.find\(/g, 110],
-  ['jQuery $(', /(?<![\w$.])\$\(/g, 39],
+  ['jQuery html.find(', /\bhtml\.find\(/g, 58],     // 110 → 58: dialog field reads moved to htmlOf (B8c)
+  ['jQuery $(', /(?<![\w$.])\$\(/g, 8],             // 39 → 8: two local querySelector helpers renamed (never jQuery)
 ];
 
 // 3. banned outright since step 10a-2 (handled in compat.js; v13 changed their shape)

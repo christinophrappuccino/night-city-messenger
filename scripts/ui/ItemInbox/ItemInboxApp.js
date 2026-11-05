@@ -25,6 +25,7 @@ import { applyCrt, resolveCrt, capCrt, playerCrtCap } from '../../utils/crt.js';
 import { shardTerm as T } from '../../utils/shardTerm.js';
 import { cmvForViewer } from '../../utils/countermeasureView.js';
 import { marketPrice } from '../../utils/cpr.js';
+import { htmlOf } from '../../utils/compat.js';
 
 export class ItemInboxApp extends BaseApplication {
 
@@ -1493,8 +1494,8 @@ export class ItemInboxApp extends BaseApplication {
         default: 'cancel',
         close: resolve,
         render: (html) => {
-          const list = html[0]?.querySelector?.('.ncm-token-picker-list') ?? html.find('.ncm-token-picker-list')[0];
-          const input = html[0]?.querySelector?.('.ncm-token-picker-input') ?? html.find('.ncm-token-picker-input')[0];
+          const list = htmlOf(html)?.querySelector('.ncm-token-picker-list');
+          const input = htmlOf(html)?.querySelector('.ncm-token-picker-input');
 
           // Search filtering
           input?.addEventListener('input', (e) => {

@@ -29,7 +29,7 @@ import { tagHueIndex } from '../../utils/tagHue.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { DRAFTS_FLAG, newDraftId, readDrafts, pruneDrafts, draftRecipientName, draftLabel, draftKind, draftHasContent, relativeAge } from '../../utils/drafts.js';
 import { buildPreview } from './previewModel.js';
-import { newFilePicker } from '../../utils/compat.js';
+import { newFilePicker, htmlOf } from '../../utils/compat.js';
 import { wealthBalance } from '../../utils/cpr.js';
 
 /** A name's category hue — defined by the admin presets, else the act colour. */
@@ -3025,7 +3025,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         attach: {
           label: 'Attach',
           callback: (html) => {
-            const amount = parseInt(html.find('[name=amount]').val()) || 0;
+            const amount = parseInt(htmlOf(html).querySelector('[name=amount]')?.value) || 0;
             if (amount <= 0) return;
 
             // Players must have sufficient funds; GM can send any amount
@@ -3176,7 +3176,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         insert: {
           label: 'Insert',
           callback: (html) => {
-            const url = html.find('[name=url]').val()?.trim();
+            const url = htmlOf(html).querySelector('[name=url]')?.value?.trim();
             if (!url || url === 'https://') return;
 
             const editor = this.element?.querySelector('[data-id="editor-content"]');
@@ -3185,7 +3185,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
             if (selectedText) {
               document.execCommand('createLink', false, url);
             } else {
-              const text = html.find('[name=text]').val()?.trim() || url;
+              const text = htmlOf(html).querySelector('[name=text]')?.value?.trim() || url;
               document.execCommand('insertHTML', false, `<a href="${url}">${text}</a>`);
             }
 
@@ -3250,8 +3250,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         insert: {
           label: 'Insert',
           callback: (html) => {
-            const location = html.find('[name=location]').val()?.trim();
-            const grid = html.find('[name=grid]').val()?.trim();
+            const location = htmlOf(html).querySelector('[name=location]')?.value?.trim();
+            const grid = htmlOf(html).querySelector('[name=grid]')?.value?.trim();
             if (!location) return;
 
             editor.focus();

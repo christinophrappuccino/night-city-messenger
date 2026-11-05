@@ -51,7 +51,7 @@ import {
   ancestorKeys, subtreeKeys, shelfPaint, coverage, rangeIds, sanitizePrewire, togglePrewire, sourceUuidOf,
   PAINT_DOCK_AT, paintDock,
 } from '../../../utils/scenesAtlas.js';
-import { FilePickerClass, renderTemplate } from '../../../utils/compat.js';
+import { FilePickerClass, renderTemplate, htmlOf } from '../../../utils/compat.js';
 import { iceAttack, isBlackIceActor } from '../../../utils/cpr.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1715,7 +1715,7 @@ export class NetworksTab extends BaseTab {
         </form>`,
       buttons: {
         save: { icon: '<i class="fas fa-check"></i>', label: 'Save', callback: (html) => {
-          this.accessLogService?.updateEntry(entryId, { message: html.find('[name="message"]').val(), actorName: html.find('[name="actorName"]').val() });
+          this.accessLogService?.updateEntry(entryId, { message: htmlOf(html).querySelector('[name="message"]')?.value, actorName: htmlOf(html).querySelector('[name="actorName"]')?.value });
           this.app.render();
         } },
         cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },

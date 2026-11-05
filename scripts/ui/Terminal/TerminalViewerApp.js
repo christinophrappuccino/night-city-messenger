@@ -47,6 +47,7 @@ import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import { playBootVideo } from '../content/BootVideo.js';
 import { bypassDCFor } from '../../utils/bypassSkills.js';
 import { applyCrt, resolveCrt, CRT_OFF, capCrt, playerCrtCap } from '../../utils/crt.js';
+import { htmlOf } from '../../utils/compat.js';
 
 const PRIORITY_ICONS = { critical: 'fa-triangle-exclamation', urgent: 'fa-circle-exclamation', normal: 'fa-circle-info' };
 
@@ -2592,11 +2593,11 @@ export class TerminalViewerApp extends BaseApplication {
         buttons: {
           save: { label: msg ? 'Save' : 'Add', callback: (html) => {
             result = {
-              from: html.find('[name="from"]').val(),
-              subject: html.find('[name="subject"]').val(),
-              classification: html.find('[name="classification"]').val(),
-              priority: html.find('[name="priority"]').val(),
-              body: html.find('[name="body"]').val(),
+              from: htmlOf(html).querySelector('[name="from"]')?.value,
+              subject: htmlOf(html).querySelector('[name="subject"]')?.value,
+              classification: htmlOf(html).querySelector('[name="classification"]')?.value,
+              priority: htmlOf(html).querySelector('[name="priority"]')?.value,
+              body: htmlOf(html).querySelector('[name="body"]')?.value,
             };
           } },
           cancel: { label: 'Cancel' },

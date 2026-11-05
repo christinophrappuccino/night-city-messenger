@@ -24,7 +24,7 @@ import { applyCrt, resolveCrt, crtPanelContext, wireCrtPanel } from '../../utils
 import { adminLabelFor, resolveAdminAccess } from '../../utils/terminalAdmin.js';
 import { bypassRowsHtml, wireBypassRows, readBypassRows, bypassFieldsFrom, bypassRowsOf } from '../../utils/bypassSkills.js';
 import { cmvOverrideContext, wireCmvOverride, readCmvOverride } from '../../utils/countermeasureView.js';
-import { newFilePicker } from '../../utils/compat.js';
+import { newFilePicker, htmlOf } from '../../utils/compat.js';
 import { firstRole } from '../../utils/cpr.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
@@ -1046,7 +1046,7 @@ export class TerminalConfigApp extends BaseApplication {
         title: 'Save Terminal Preset',
         content: '<div style="padding:8px 0;"><label style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#8888a0;text-transform:uppercase;">Preset Name</label><input type="text" id="ncm-fpreset-name" value="My Terminal" style="width:100%;margin-top:4px;padding:6px 8px;background:#0a0a0f;border:1px solid #2a2a45;color:#e0e0e8;font-family:\'Rajdhani\',sans-serif;font-size:13px;border-radius:2px;" /></div>',
         buttons: {
-          save: { icon: '<i class="fas fa-save"></i>', label: 'Save', callback: (html) => resolve(html.find('#ncm-fpreset-name').val()?.trim()) },
+          save: { icon: '<i class="fas fa-save"></i>', label: 'Save', callback: (html) => resolve(htmlOf(html).querySelector('#ncm-fpreset-name')?.value?.trim()) },
           cancel: { label: 'Cancel', callback: () => resolve(null) },
         },
         default: 'save',
@@ -1885,7 +1885,7 @@ export class TerminalConfigApp extends BaseApplication {
         title: 'Save Terminal Theme',
         content: '<div style="padding:8px 0;"><label style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#8888a0;text-transform:uppercase;">Theme Name</label><input type="text" id="ncm-tterm-name" value="My Terminal Theme" style="width:100%;margin-top:4px;padding:6px 8px;background:#0a0a0f;border:1px solid #2a2a45;color:#e0e0e8;font-family:\'Rajdhani\',sans-serif;font-size:13px;border-radius:2px;" /></div>',
         buttons: {
-          save: { icon: '<i class="fas fa-save"></i>', label: 'Save', callback: (html) => resolve(html.find('#ncm-tterm-name').val()?.trim()) },
+          save: { icon: '<i class="fas fa-save"></i>', label: 'Save', callback: (html) => resolve(htmlOf(html).querySelector('#ncm-tterm-name')?.value?.trim()) },
           cancel: { label: 'Cancel', callback: () => resolve(null) },
         },
         default: 'save',
