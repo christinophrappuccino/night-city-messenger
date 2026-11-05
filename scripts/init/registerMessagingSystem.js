@@ -544,11 +544,6 @@ export function registerMessagingSystem(initializer) {
       }
     });
 
-    // Open composer when requested via EventBus (e.g., from chat card reply)
-    eventBus.on(EVENTS.COMPOSER_OPEN, (options) => {
-      game.nightcity.composeMessage(options);
-    });
-
     log.info('Messaging event wiring complete');
   });
 

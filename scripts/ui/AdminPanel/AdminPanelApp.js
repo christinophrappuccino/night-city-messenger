@@ -1125,7 +1125,6 @@ export class AdminPanelApp extends BaseApplication {
 
     // Contacts — with overview activity logging
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this._refreshIfTab('contacts'));
-    this.subscribe(EVENTS.CONTACT_BURNED, () => this._refreshIfTab('contacts'));
     this.subscribe('roles:updated', () => this._refreshIfTab('contacts'));                       // Role Manager edits recolour / rename tags live
     this.subscribe('contacts:masterUpdated', () => this._refreshIfTab('contacts'));
     this.subscribe(EVENTS.CONTACT_SHARED, (data) => {

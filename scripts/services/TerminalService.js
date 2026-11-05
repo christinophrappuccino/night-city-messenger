@@ -1103,7 +1103,6 @@ export class TerminalService {
       if (remember && networkId) conn.authenticated = { ...(conn.authenticated || {}), [networkId]: true };
       state.connection = conn;
       await item.update({ [`flags.${MODULE_ID}.terminalState`]: state });
-      this._broadcastStateChange(item.id);
       log.debug(`Terminal "${item.name}" uplink → ${networkId || 'LOCAL ONLY'}`);
       return { success: true };
     } catch (err) {
@@ -1242,7 +1241,6 @@ export class TerminalService {
       });
     }
     this.eventBus?.emit(EVENTS.TERMINAL_LOGIN_SUCCESS, { itemId: item.id, accountId, actorId });
-    this._broadcastStateChange(item.id);
     return { success: true };
   }
 
@@ -1274,7 +1272,6 @@ export class TerminalService {
    */
   async setActiveAccount(item, actorId, accountId) {
     await this._updateSession(item, actorId, { activeAccountId: accountId });
-    this._broadcastStateChange(item.id);
   }
 
   /**
@@ -1286,7 +1283,6 @@ export class TerminalService {
     const updates = { activeAccountId: null };
     if (full) updates.loggedInAccounts = [];
     await this._updateSession(item, actorId, updates);
-    this._broadcastStateChange(item.id);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1305,7 +1301,6 @@ export class TerminalService {
       const state = this.getState(item);
       state.gmBypassed = true;
       await item.update({ [`flags.${MODULE_ID}.terminalState`]: state });
-      this._broadcastStateChange(item.id);
       log.info(`GM force-unlocked terminal "${item.name}"`);
       return { success: true };
     } catch (err) {
@@ -1339,7 +1334,6 @@ export class TerminalService {
       await item.setFlag(MODULE_ID, 'terminalState', fresh);
       this.eventBus?.emit(EVENTS.TERMINAL_RELOCKED, { itemId: item.id });
       this.soundService?.play('shard-relock');
-      this._broadcastStateChange(item.id);
       log.info(`GM relocked terminal "${item.name}"`);
       return { success: true };
     } catch (err) {
@@ -2541,15 +2535,6 @@ export class TerminalService {
       data.timestamp,
       false
     );
-  }
-
-  /** @private Notify other clients that this terminal's state changed. */
-  _broadcastStateChange(itemId) {
-    try {
-      this.socketManager?.emit(SOCKET_OPS.TERMINAL_STATE_CHANGED, { itemId });
-    } catch {
-      // Non-fatal
-    }
   }
 }
 

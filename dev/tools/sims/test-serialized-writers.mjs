@@ -176,7 +176,6 @@ const S = await load('scripts/utils/serialize.js');
 {
   const { TerminalService } = await load('scripts/services/TerminalService.js');
   const ts = Object.create(TerminalService.prototype);
-  ts._broadcastStateChange = () => {};
   ts._checkLoginResidents = async () => {};
   const item = mkDoc('term1', { isTerminal: true, terminalState: {} });
   await Promise.all([

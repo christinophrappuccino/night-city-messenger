@@ -21,8 +21,6 @@ const MIRRORED_EVENTS = [
   'contact:updated',        // any player address-book change (via DocumentSyncBridge)
   'contacts:masterUpdated', // master directory add/update/remove ({ action, contactId })
   'contacts:trustChanged',
-  'contacts:burned',
-  'contacts:verified',
   'contacts:shared',
   'contacts:decrypted',     // a contact breach SUCCEEDED (encrypted contact revealed)
   'contacts:breachFailed',  // a contact breach FAILED — a "moment" for the spine

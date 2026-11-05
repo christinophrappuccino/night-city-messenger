@@ -606,18 +606,6 @@ export class NotificationService {
     });
   }
 
-  /**
-   * @param {object} data — { itemName }
-   */
-  showShardExpired(data) {
-    return this.showToastV2({
-      type: 'shard-expired',
-      title: `${T('short')} Expired`,
-      detail: `"${data.itemName || 'Unknown'}" — time limit reached, data wiped`,
-      duration: 5000,
-    });
-  }
-
   // ═══════════════════════════════════════════════════════════
   //  Toast Queue Management
   // ═══════════════════════════════════════════════════════════
@@ -1082,11 +1070,6 @@ export class NotificationService {
     this.eventBus.on(EVENTS.SHARD_INTEGRITY_BRICKED, (data) => {
       const item = game.items?.get(data.itemId);
       this.showShardBricked({ itemName: item?.name || 'Unknown' });
-    });
-
-    this.eventBus.on(EVENTS.SHARD_EXPIRED, (data) => {
-      const item = game.items?.get(data.itemId);
-      this.showShardExpired({ itemName: item?.name || 'Unknown' });
     });
   }
 

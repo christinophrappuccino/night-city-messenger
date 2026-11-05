@@ -371,7 +371,6 @@ export class DataShardService {
     this.soundService?.play('key-accepted');
 
     // Broadcast state change
-    this._broadcastStateChange(shardItem.id);
 
     return {
       success: true,
@@ -436,7 +435,6 @@ export class DataShardService {
         bypassEncryption: config.keyItemBypassEncryption,
       });
       if (!options.silent) this.soundService?.play('key-accepted');
-      this._broadcastStateChange(shardItem.id);
 
       return {
         success: true,
@@ -466,7 +464,6 @@ export class DataShardService {
       locked,
     });
     if (!options.silent) this.soundService?.play('key-rejected');
-    this._broadcastStateChange(shardItem.id);
 
     return {
       success: false,
@@ -531,7 +528,6 @@ export class DataShardService {
 
       this.eventBus?.emit(EVENTS.SHARD_LOGIN_SUCCESS, { itemId: shardItem.id, actorId: actor.id });
       this.soundService?.play('login-success');
-      this._broadcastStateChange(shardItem.id);
 
       return { success: true };
     }
@@ -685,7 +681,6 @@ export class DataShardService {
       this.securityService?.resetAllForTarget(shardItem.id);
       this.eventBus?.emit(EVENTS.SHARD_DECRYPTED, { itemId: shardItem.id, actorId: 'gm-override' });
       this.soundService?.play('shard-decrypt');
-      this._broadcastStateChange(shardItem.id);
 
       log.info(`GM force-decrypted shard "${shardItem.name}"`);
       return { success: true };
@@ -722,7 +717,6 @@ export class DataShardService {
 
       this.eventBus?.emit(EVENTS.SHARD_RELOCKED, { itemId: shardItem.id });
       this.soundService?.play('shard-relock');
-      this._broadcastStateChange(shardItem.id);
 
       log.info(`GM relocked shard "${shardItem.name}"`);
       return { success: true };
@@ -1125,7 +1119,6 @@ export class DataShardService {
     const page = this._getLinkedJournal(shardItem)?.pages?.find(p => p.flags?.[MODULE_ID]?.messageId === entryId);
     if (!page) return { success: false, error: 'Entry not found' };
     await page.update({ [`flags.${MODULE_ID}.corruption`]: lv, [`flags.${MODULE_ID}.corrupted`]: lv >= 1 });
-    this._broadcastStateChange(shardItem.id);
     return { success: true, level: lv };
   }
 
@@ -1133,7 +1126,6 @@ export class DataShardService {
   async repairAllEntries(shardItem) {
     if (!isGM()) return { success: false, error: 'GM only' };
     const count = await this._setAllEntryLevels(shardItem, 0);
-    this._broadcastStateChange(shardItem.id);
     return { success: true, count };
   }
 
@@ -1475,7 +1467,6 @@ export class DataShardService {
 
     this.eventBus?.emit(EVENTS.SHARD_DECRYPTED, { itemId: shardItem.id, actorId: actor.id });
     if (!silent) this.soundService?.play('hack-success');
-    this._broadcastStateChange(shardItem.id);
 
     // Activity feed — a successful shard breach (no heat).
     game.nightcity?.traceService?.logSuccess({
@@ -2005,7 +1996,6 @@ export class DataShardService {
         const r = await this.addMessage(item, entry);
         if (r?.success) added++; else failed.push(r?.error || 'One file could not be written.');
       }
-      this._broadcastStateChange(item.id);
       log.info(`Shard "${item.name}" re-encoded: ${restamped} re-stamped, ${added} added${failed.length ? `, ${failed.length} refused` : ''}`);
       return { success: true, restamped, added, failed };
     } catch (err) {
@@ -2291,19 +2281,6 @@ export class DataShardService {
     }
 
     return merged;
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  PRIVATE — Socket Broadcast
-  // ═══════════════════════════════════════════════════════════
-
-  /** @private */
-  _broadcastStateChange(itemId) {
-    try {
-      this.socketManager?.emit(SOCKET_OPS.SHARD_STATE_CHANGED, { itemId });
-    } catch {
-      // Non-fatal
-    }
   }
 }
 

@@ -33,17 +33,12 @@ export const EVENTS = Object.freeze({
   INBOX_REFRESH: 'inbox:refresh',
   QUEUE_FLUSHED: 'queue:flushed',
 
-  CONTACT_BURNED:        'contacts:burned',
   CONTACT_SHARED:        'contacts:shared',
-  CONTACT_SHARE_STARTED: 'contacts:shareStarted',
   CONTACT_TRUST_CHANGED: 'contacts:trustChanged',
-  CONTACT_TAGS_UPDATED:  'contacts:tagsUpdated',
   CONTACT_DECRYPTED:      'contacts:decrypted',
   CONTACT_BREACH_FAILED:  'contacts:breachFailed',
   CONTACT_BLACK_ICE:      'contacts:blackIce',
   CONTACTS_REVERIFIED:          'contacts:reverified',
-  CONTACT_VERIFIED:             'contacts:verified',
-  CONTACT_VERIFICATION_FAILED:  'contacts:verificationFailed',
 
   NETWORK_CHANGED: 'network:changed',
   NETWORK_CONNECTED: 'network:connected',
@@ -53,7 +48,6 @@ export const EVENTS = Object.freeze({
   NETWORK_LOCKOUT: 'network:lockout',
 
   SHARD_CREATED: 'shard:created',
-  SHARD_OPENED: 'shard:opened',
   SHARD_HACK_ATTEMPT: 'shard:hackAttempt',
   SHARD_DECRYPTED: 'shard:decrypted',
   SHARD_BLACK_ICE: 'shard:blackICE',
@@ -67,10 +61,8 @@ export const EVENTS = Object.freeze({
   SHARD_INTEGRITY_BRICKED: 'shard:integrityBricked',
   SHARD_ENTRY_CORRUPTED: 'shard:entryCorrupted',
   SHARD_EDDIES_CLAIMED: 'shard:eddiesClaimed',
-  SHARD_BOOT_STARTED: 'shard:bootStarted',
   SHARD_BOOT_COMPLETE: 'shard:bootComplete',
   SHARD_TRACE_FIRED: 'shard:traceFired',
-  SHARD_EXPIRED: 'shard:expired',
   SHARD_PRESET_APPLIED: 'shard:presetApplied',
 
   SHARD_STATE_CHANGED: 'shard:stateChanged',
@@ -80,7 +72,6 @@ export const EVENTS = Object.freeze({
   TERMINAL_LOGIN_SUCCESS: 'terminal:loginSuccess',
   TERMINAL_LOGIN_FAILURE: 'terminal:loginFailure',
   TERMINAL_RELOCKED: 'terminal:relocked',
-  TERMINAL_STATE_CHANGED: 'terminal:stateChanged',
   TERMINAL_EXFIL: 'terminal:exfil',
 
   CONTACT_UPDATED: 'contact:updated',
@@ -107,9 +98,6 @@ export const EVENTS = Object.freeze({
   GROUP_PUSHED:  'groups:pushed',    // { groupId, targetActorId, shared, failed }
   SCHEDULE_UPDATED: 'schedule:updated',
 
-  UI_VIEWER_OPENED: 'ui:viewerOpened',
-  UI_COMPOSER_OPENED: 'ui:composerOpened',
-  COMPOSER_OPEN: 'composer:open',
 
   THEME_CHANGED: 'theme:changed',
 });
@@ -127,7 +115,6 @@ export const SOCKET_OPS = Object.freeze({
   SCHEDULE_SYNC: 'schedule:sync',
   INBOX_REFRESH: 'inbox:refresh',
   NETWORK_STATE_CHANGED: 'network:stateChanged',
-  SHARD_STATE_CHANGED: 'shard:stateChanged',
   CONTACT_SHARE_RELAY:   'contact:shareRelay',
   CONTACT_SHARE_NOTIFY:  'contact:shareNotify',
   CONTACT_SHARE_CONFIRM: 'contact:shareConfirm',
@@ -138,7 +125,6 @@ export const SOCKET_OPS = Object.freeze({
   SHARD_UNCONVERT_REQUEST: 'shard:unconvertRequest',
   SHARD_UNCONVERT_RESULT:  'shard:unconvertResult',
   ANON_TRACE_REQUEST:      'anon:traceRequest',
-  TERMINAL_STATE_CHANGED:  'terminal:stateChanged',
   TERMINAL_EXFIL_REQUEST:  'terminal:exfilRequest',
   TERMINAL_NET_REQUEST:    'terminal:netRequest',
   // Player→GM relay for terminal session-state writes (login / account switch /
@@ -261,7 +247,6 @@ export const SOCKET_TRUST = Object.freeze({
   SCHEDULE_SYNC: 'request',
   INBOX_REFRESH: 'result',
   NETWORK_STATE_CHANGED: 'peer',
-  SHARD_STATE_CHANGED: 'unused',
   CONTACT_SHARE_RELAY: 'request',
   CONTACT_SHARE_NOTIFY: 'result',
   CONTACT_SHARE_CONFIRM: 'result',
@@ -272,7 +257,6 @@ export const SOCKET_TRUST = Object.freeze({
   SHARD_UNCONVERT_REQUEST: 'request',
   SHARD_UNCONVERT_RESULT: 'result',
   ANON_TRACE_REQUEST: 'request',
-  TERMINAL_STATE_CHANGED: 'unused',
   TERMINAL_EXFIL_REQUEST: 'request',
   TERMINAL_NET_REQUEST: 'request',
   TERMINAL_SESSION_REQUEST: 'request',

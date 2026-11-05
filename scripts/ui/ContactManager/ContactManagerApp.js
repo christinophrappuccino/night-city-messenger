@@ -917,7 +917,6 @@ export class ContactManagerApp extends BaseApplication {
     });
     this.subscribe(EVENTS.CONTACT_SHARED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this.render());
-    this.subscribe(EVENTS.CONTACT_TAGS_UPDATED, () => this.render());
     this.subscribe(EVENTS.CONTACT_DECRYPTED, () => {
       if (!this._breachInProgress) this.render();
     });

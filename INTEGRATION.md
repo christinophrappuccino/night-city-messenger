@@ -17,12 +17,14 @@ This module is part of a three-module constellation, each fully standalone:
   `time` (TimeService — see below), `eventBus`,
   `RELATIONSHIP_TYPES`, `TRUST_LABELS`.
 - Foundry hook mirrors of the private bus: `night-city-messenger.contact:updated`,
-  `…contacts:masterUpdated`, `…contacts:trustChanged`, `…contacts:burned`,
-  `…contacts:verified`, `…contacts:shared`, `…contacts:decrypted`,
+  `…contacts:masterUpdated`, `…contacts:trustChanged`, `…contacts:shared`, `…contacts:decrypted`,
   `…contacts:breachFailed`, `…roles:updated`, `…message:sent`,
   `…message:received`, `…shard:decrypted`, `…groups:created`, `…groups:updated`,
   `…groups:deleted`, `…groups:pushed` —
   plus `night-city-messenger.apiReady` (fires once with the api object).
+- **Removed 2026-11-05:** `…contacts:burned` and `…contacts:verified` were listed here but never fired —
+  burning contacts is retired, and "verified" was never an event. No integrator received either, so nothing
+  that worked stops working. If burning returns, its hook comes back with it.
 
 ### Mirrored tie-in signals (added 2026-08-14, for the designed moment sources)
 
@@ -87,7 +89,7 @@ keep the old name in the bridge's `MIRRORED_EVENTS` mapping.
 - **Texts write moments** (throttled, opt-in): messaging a linked contact logs a
   maintenance moment on the relationship timeline — it's in the canonical
   moment-sources list.
-- `contacts:burned` / failed breach → moments on the spine.
+- Failed breach → moments on the spine (`contacts:burned` was planned too; burning is retired, so there is no hook).
 - Rumor-mill delivery as anonymous messages; data shards revealing dossier knowledge.
 - Reverse: contact detail view rendering the relationships tier chip + "Open
   dossier" / "Open their File".
