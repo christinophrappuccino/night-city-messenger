@@ -62,6 +62,8 @@ for (const id of ['gm1', 'gm2']) {
     terminalService: {
       getConfig: () => ({ connection: { allowPlayerSwitching: true } }),
       setUplink: hit('uplink'), applySessionUpdate: hit('session'),
+      // the sender checks pass here; test-terminal-relays covers them (A3c)
+      checkUplinkRequest: () => ({ ok: true, item: terminal }), checkSessionRequest: () => ({ ok: true, item: terminal, updates: {} }), checkExfilRequest: () => ({ ok: true, item: terminal, ids: ['x'] }),
       exfilToInbox: hit('exfil'), exfilSaveFrame: hit('exfil'), exfilForward: hit('exfil'), exfilWipe: hit('exfil'), exfilToShard: hit('exfil'),
     },
     traceService: { handleTraceRequest: hit('trace') },

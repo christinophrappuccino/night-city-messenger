@@ -31,13 +31,15 @@ function seesMessage(msg, user) {
 }
 
 /**
- * Where a player could have got into this shard. GM-side; a full scan, but it only runs for a
- * relayed request (a failed or finished hack), never per render.
+ * Where a player could have got into this shard or terminal. GM-side; a full scan, but it only
+ * runs for a relayed request, never per render. Terminals use the same rule (batch A3c): a
+ * world terminal is reached through a map pin, a step-on area, a chat card, a link or a macro.
  * @param {string} userId the server-verified sender
- * @param {Item} item the shard
+ * @param {Item} item the shard or terminal
+ * @param {'shard'|'terminal'} [kind] the access-point kind its links use
  * @returns {boolean}
  */
-export function userCanReachShard(userId, item) {
+export function userCanReachItem(userId, item, kind = 'shard') {
   const user = userId ? globalThis.game?.users?.get(userId) : null;
   if (!user || !item) return false;
   if (user.isGM) return true;
@@ -73,7 +75,7 @@ export function userCanReachShard(userId, item) {
     if (flag(m, 'access')?.id === uuid && seesMessage(m, user)) return true;
   }
   // A journal link in a page they can read.
-  const link = `@NCM[shard:${uuid}]`;
+  const link = `@NCM[${kind}:${uuid}]`;
   for (const j of each(game.journal)) {
     for (const p of each(j.pages)) {
       if (String(p.text?.content ?? '').includes(link) && p.testUserPermission?.(user, OBSERVER)) return true;
@@ -85,6 +87,9 @@ export function userCanReachShard(userId, item) {
   }
   return false;
 }
+
+/** A shard: see userCanReachItem. */
+export const userCanReachShard = (userId, item) => userCanReachItem(userId, item, 'shard');
 
 /** The session fields a relayed write may set, each with its type. Anything else is dropped. */
 export function sanitizeSessionUpdates(updates) {

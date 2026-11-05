@@ -18,7 +18,8 @@
 
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM, stripMacroRefs } from '../../utils/helpers.js';
+import { log, isGM, stripMacroRefs, userOwnsActor } from '../../utils/helpers.js';
+import { userCanReachItem } from '../../utils/shardAccess.js';
 import { runSecurityConsole } from './SecurityConsole.js';
 import { canPersistContent, _applyNativeEffect, applyUploadRun, pickHostFiles, TARGETED_VERBS, programMacroId } from './SiphonFlow.js';
 
@@ -252,26 +253,67 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
  *  · defuse — a player's SYSTEM SWEEP defused a resident (state:'defused').
  * Both write the GM-owned terminalState.
  */
-export async function handleResidentRequest(data) {
+export async function handleResidentRequest(data, senderId = null) {
   if (!isGM()) return;
   try {
     const item = data?.itemUuid ? fromUuidSync(data.itemUuid) : null;
     const term = game.nightcity?.terminalService;
     if (!item || !term) throw new Error('Terminal/service not found');
     if (!item.getFlag(MODULE_ID, 'isTerminal')) throw new Error('Not a terminal');
+    // The sender must be able to reach this terminal at all (audit SEC-06).
+    if (!userCanReachItem(senderId, item, 'terminal')) throw new Error('refused: the sender has no way into this terminal');
     if (data.op === 'defuse') {
       if (!data.residentId) throw new Error('No resident id to defuse');
+      const armed = term.getResidents(item).some((r) => r.id === data.residentId && r.state === 'armed');
+      if (!armed) throw new Error('refused: no armed program with that id');
       await term.updateResident(item, data.residentId, { state: 'defused' });
       return;
     }
-    // A player's resident never names a macro (SEC-02): drop every macro link it
-    // carries, then — for a custom routine — read the link from the program's own
+    const resident = sanitizeResidentRequest(data.resident, senderId, item, term);
+    if (!resident.ok) throw new Error(`refused: ${resident.why}`);
+    // A player's resident never names a macro (SEC-02): its macro links were
+    // dropped above; for a custom routine the link is read from the program's own
     // shard entry, which only the GM's tools write.
-    const resident = stripMacroRefs(data.resident || {});
-    if (resident.effectType === 'adjudicate' && resident.source) {
-      const macroId = await programMacroId(resident.source);
-      if (macroId) resident.params = { ...(resident.params || {}), macroId };
+    if (resident.value.effectType === 'adjudicate' && resident.value.source) {
+      const macroId = await programMacroId(resident.value.source);
+      if (macroId) resident.value.params = { ...(resident.value.params || {}), macroId };
     }
-    await term.installResident(item, resident);
-  } catch (err) { log.error(`Resident relay failed: ${err.message}`); }
+    await term.installResident(item, resident.value);
+  } catch (err) { log.warn(`Resident relay: ${err.message}`); }
+}
+
+/** Programs a player's upload may leave behind (the triggered verbs a player can author). */
+export const PLAYER_RESIDENT_VERBS = Object.freeze(['plant', 'keylog', 'forgeAccount', 'deployICE', 'adjudicate']);
+const TRIGGER_KINDS = ['onLogin', 'onDate', 'onAction', 'onHeat'];
+
+/**
+ * A relayed resident, rebuilt from what may be in one (audit SEC-06). The planter is the
+ * sender's own character; the verb is one a player can author; the trigger kind is known and
+ * any account it names is on this terminal; the stealth DV and forge quality stay in their
+ * range; macro links are dropped (SEC-02). The GM's installer stamps id and state itself.
+ * @returns {{ok:true, value:object}|{ok:false, why:string}}
+ */
+export function sanitizeResidentRequest(raw, senderId, item, term) {
+  const r = stripMacroRefs(raw && typeof raw === 'object' ? raw : {});
+  const prov = r.provenance && typeof r.provenance === 'object' ? r.provenance : {};
+  if (!prov.plantedBy || !userOwnsActor(senderId, prov.plantedBy)) return { ok: false, why: 'the planter must be the sender\'s own character' };
+  const effectType = String(r.effectType || 'plant');
+  if (!PLAYER_RESIDENT_VERBS.includes(effectType)) return { ok: false, why: `"${effectType}" is not a program a player can leave behind` };
+  const known = new Set((term.getConfig(item).accounts || []).map((a) => a.id));
+  const trigger = r.trigger && typeof r.trigger === 'object' ? { ...r.trigger } : { kind: 'onLogin' };
+  if (!TRIGGER_KINDS.includes(trigger.kind)) return { ok: false, why: `unknown trigger "${trigger.kind}"` };
+  if (trigger.accountId && !known.has(trigger.accountId)) return { ok: false, why: 'the trigger names an account this terminal does not have' };
+  const params = r.params && typeof r.params === 'object' ? { ...r.params } : {};
+  if (params.accountId && !known.has(params.accountId)) return { ok: false, why: 'the program targets an account this terminal does not have' };
+  const clamp = (v, lo, hi, d) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Number(v))) : d);
+  return {
+    ok: true,
+    value: {
+      effectType, params, trigger,
+      provenance: { plantedBy: prov.plantedBy, plantedAt: String(prov.plantedAt || ''), forgeQuality: clamp(prov.forgeQuality, 0, 100, 50), sourceLabel: String(prov.sourceLabel || 'uploaded program').slice(0, 80) },
+      stealthDV: clamp(r.stealthDV, 0, 30, 12),
+      slotKey: typeof r.slotKey === 'string' ? r.slotKey.slice(0, 200) : undefined,
+      source: r.source && typeof r.source === 'object' ? { itemUuid: String(r.source.itemUuid || ''), entryId: String(r.source.entryId || '') } : null,
+    },
+  };
 }

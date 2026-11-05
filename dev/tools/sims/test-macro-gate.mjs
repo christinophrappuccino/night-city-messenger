@@ -57,7 +57,8 @@ const journals = new Map();
 const journal = (id) => { const j = { id, pages: { find: (fn) => pages.filter((p) => p.journalId === id).find(fn) }, get [Symbol.iterator]() { return [this].values(); } }; journals.set(id, j); return j; };
 journal('j-shard');
 const shard = { id: 'shard1', uuid: 'Actor.v.Item.shard1', name: 'Go-bag', getFlag: (m, k) => (k === 'journalId' ? 'j-shard' : null) };
-const host = { id: 'term1', uuid: 'Item.term1', name: 'WS-7F', getFlag: (m, k) => (k === 'isTerminal' ? true : null) };
+// every player can see the terminal (resident relays check the sender can reach it, A3c)
+const host = { id: 'term1', uuid: 'Item.term1', name: 'WS-7F', getFlag: (m, k) => (k === 'isTerminal' ? true : null), testUserPermission: () => true };
 const uuids = { [shard.uuid]: shard, [host.uuid]: host };
 
 const toasts = [];
@@ -146,15 +147,17 @@ const UF = await load('scripts/ui/content/UploadFlow.js');
 // ═══ 5. Relayed residents ═══
 {
   const installed = [];
-  game.nightcity.terminalService = { installResident: async (item, r) => installed.push(r), updateResident: async () => {} };
-  await UF.handleResidentRequest({ itemUuid: host.uuid, resident: { effectType: 'adjudicate', params: { name: 'Evil', macroId: 'm-gm' } } });
+  game.nightcity.terminalService = { installResident: async (item, r) => installed.push(r), updateResident: async () => {}, getConfig: () => ({ accounts: [] }), getResidents: () => [] };
+  // planted by Rache's character a1, sent by Rache (p1) — the relay checks both since A3c
+  const by = { provenance: { plantedBy: 'a1' } };
+  await UF.handleResidentRequest({ itemUuid: host.uuid, resident: { effectType: 'adjudicate', params: { name: 'Evil', macroId: 'm-gm' }, ...by } }, 'p1');
   ok(installed[0] && !installed[0].params.macroId, 'a resident naming a macro is installed WITHOUT it');
-  await UF.handleResidentRequest({ itemUuid: host.uuid, resident: { effectType: 'adjudicate', params: { name: 'Door', macroId: 'm-p1' }, source: { itemUuid: shard.uuid, entryId: 'prog-gm' } } });
+  await UF.handleResidentRequest({ itemUuid: host.uuid, resident: { effectType: 'adjudicate', params: { name: 'Door', macroId: 'm-p1' }, source: { itemUuid: shard.uuid, entryId: 'prog-gm' }, ...by } }, 'p1');
   ok(installed[1]?.params?.macroId === 'm-gm', 'a custom-routine resident gets its link from its program entry');
-  await UF.handleResidentRequest({ itemUuid: host.uuid, resident: { effectType: 'logicBomb', params: { inner: { effectType: 'adjudicate', params: { macroId: 'm-gm' } } } } });
-  ok(!JSON.stringify(installed[2] || {}).includes('macroId'), 'a nested link inside a logic bomb is stripped too');
-  await UF.handleResidentRequest({ itemUuid: host.uuid, resident: { effectType: 'keylog', params: { name: 'Ears' } } });
-  ok(installed[3]?.effectType === 'keylog' && installed[3]?.params?.name === 'Ears', 'ordinary residents install unchanged');
+  await UF.handleResidentRequest({ itemUuid: host.uuid, resident: { effectType: 'logicBomb', params: { inner: { effectType: 'adjudicate', params: { macroId: 'm-gm' } } }, ...by } }, 'p1');
+  ok(installed.length === 2, 'a logic bomb (and the macro link nested in it) is not a program a player can leave behind (A3c)');
+  await UF.handleResidentRequest({ itemUuid: host.uuid, resident: { effectType: 'keylog', params: { name: 'Ears' }, ...by } }, 'p1');
+  ok(installed[2]?.effectType === 'keylog' && installed[2]?.params?.name === 'Ears', 'ordinary residents install unchanged');
 }
 
 // ═══ 6. A fired custom routine goes through the gate ═══

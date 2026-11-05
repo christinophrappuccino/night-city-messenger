@@ -245,33 +245,35 @@ export class SocketHandlers {
     // ─── Player Terminal Exfil Relay ─────────────────────
     // Players can't write the GM-owned terminal/inbox/shard journals, so the GM
     // client performs the copy and the result syncs back to the player.
-    socketManager.register(SOCKET_OPS.TERMINAL_EXFIL_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.TERMINAL_EXFIL_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
-      const { requestId, itemUuid, accountId, messageIds, dest, targetActorId, targetItemId, forwarder, frameIndex, aim, userId } = data;
+      const { requestId, accountId, dest, targetActorId, frameIndex, aim } = data;
       const svc = game.nightcity?.terminalService;
       let result = { success: false, count: 0 };
       try {
-        const item = itemUuid ? fromUuidSync(itemUuid) : null;
-        if (!item || !svc) throw new Error('Terminal/service not found');
+        if (!svc) throw new Error('TerminalService not available');
+        // The machine decides (audit SEC-06): the sender is in that account, the files are
+        // its own, the entry's policy allows the action, the target is the sender's own.
+        const ok = svc.checkExfilRequest(data, sender);
+        if (!ok.ok) throw new Error(`refused: ${ok.why}`);
+        const { item, ids } = ok;
         if (dest === 'saveFrame') {
           // SAVE FRAME (#37) — capture one feed channel into the player's Agent.
-          result = await svc.exfilSaveFrame(item, accountId, messageIds?.[0], frameIndex, targetActorId, aim || '');
+          result = await svc.exfilSaveFrame(item, accountId, ids[0], frameIndex, targetActorId, String(aim || '').slice(0, 80));
         } else if (dest === 'shard') {
-          let target = game.items.get(targetItemId);
-          if (!target) { for (const a of game.actors) { target = a.items.get(targetItemId); if (target) break; } }
-          if (!target) throw new Error('Target item not found');
-          result = await svc.exfilToShard(item, accountId, messageIds, target);
+          result = await svc.exfilToShard(item, accountId, ids, ok.target);
         } else if (dest === 'forward') {
-          result = await svc.exfilForward(item, accountId, messageIds, targetActorId, forwarder || {});
+          result = await svc.exfilForward(item, accountId, ids, targetActorId, ok.forwarder);
         } else if (dest === 'wipe') {
-          result = await svc.exfilWipe(item, accountId, messageIds);
+          result = await svc.exfilWipe(item, accountId, ids);
         } else {
-          result = await svc.exfilToInbox(item, accountId, messageIds, targetActorId);
+          result = await svc.exfilToInbox(item, accountId, ids, targetActorId);
         }
       } catch (err) {
-        log.error('Terminal exfil relay failed:', err);
+        log.warn('Terminal exfil relay:', err.message || err);
       }
-      socketManager.emit(SOCKET_OPS.TERMINAL_EXFIL_RESULT, { requestId, userId, success: !!result.success, count: result.count || 0, dest });
+      // The result goes back to whoever really sent it (A1), not the user the request names.
+      socketManager.emit(SOCKET_OPS.TERMINAL_EXFIL_RESULT, { requestId, userId: sender, success: !!result.success, count: result.count || 0, dest });
     });
 
     // ─── Player Terminal Uplink Switch Relay ─────────────
@@ -281,15 +283,16 @@ export class SocketHandlers {
     // client-side (the shard-relay trust model), so the machine remembers the
     // credential. No RESULT op: the flag write itself syncs to every client and
     // the viewer re-renders off the updateItem hook.
-    socketManager.register(SOCKET_OPS.TERMINAL_NET_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.TERMINAL_NET_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
-      const { itemUuid, networkId, authorized } = data;
+      const { networkId, authorized } = data;
       const svc = game.nightcity?.terminalService;
       try {
-        const item = itemUuid ? fromUuidSync(itemUuid) : null;
-        if (!item || !svc) throw new Error('Terminal/service not found');
-        const cfg = svc.getConfig(item).connection || {};
-        if (!cfg.allowPlayerSwitching) throw new Error('Player switching disabled for this terminal');
+        if (!svc) throw new Error('TerminalService not available');
+        // Switching on, and a terminal the sender can reach (audit SEC-06).
+        const ok = svc.checkUplinkRequest(data, sender);
+        if (!ok.ok) throw new Error(`refused: ${ok.why}`);
+        const item = ok.item;
         const result = await svc.setUplink(item, networkId || null, { remember: !!authorized });
         if (!result.success) log.warn('Uplink switch relay rejected:', result.error);
       } catch (err) {
@@ -304,15 +307,15 @@ export class SocketHandlers {
     // client-side (the shard-relay trust model); this only persists the session.
     // No RESULT op: the flag write syncs back and the viewer re-renders off its
     // updateItem hook.
-    socketManager.register(SOCKET_OPS.TERMINAL_SESSION_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.TERMINAL_SESSION_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
-      const { itemUuid, actorId, updates } = data;
       const svc = game.nightcity?.terminalService;
       try {
-        const item = itemUuid ? fromUuidSync(itemUuid) : null;
-        if (!item || !svc) throw new Error('Terminal/service not found');
-        if (!item.getFlag(MODULE_ID, 'isTerminal')) throw new Error('Not a terminal');
-        await svc.applySessionUpdate(item, actorId, updates || {});
+        if (!svc) throw new Error('TerminalService not available');
+        // The sender's own character, a terminal they can reach, session fields only (SEC-06).
+        const ok = svc.checkSessionRequest(data, sender);
+        if (!ok.ok) throw new Error(`refused: ${ok.why}`);
+        await svc.applySessionUpdate(ok.item, data.actorId, ok.updates);
       } catch (err) {
         log.error('Terminal session relay failed:', err);
       }
@@ -373,11 +376,11 @@ export class SocketHandlers {
 
     // ─── Player Upload/Plant Relay (FORGE roll ran client-side; GM installs the
     //     resident on the GM-owned terminalState) ──────────
-    socketManager.register(SOCKET_OPS.TERMINAL_RESIDENT_REQUEST, async (data) => {
+    socketManager.register(SOCKET_OPS.TERMINAL_RESIDENT_REQUEST, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
       try {
         const flow = await import('../ui/content/UploadFlow.js');
-        await flow.handleResidentRequest(data);
+        await flow.handleResidentRequest(data, sender);
       } catch (err) {
         log.error('Resident install relay failed:', err);
       }
