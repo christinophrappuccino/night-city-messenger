@@ -38,6 +38,20 @@ export function refForItem(item) {
   return null;
 }
 
+/** The access ref an NCM hotbar drop would make, or null when the drop is not NCM's (then it is left alone). */
+export function hotbarRefFor(data) {
+  if (data?.type === 'NCMAccess') return accessRef(data.ref?.kind ?? data.kind, data.ref?.id ?? data.id);
+  if (data?.type === 'Item' && data.uuid) { try { return refForItem(fromUuidSync(data.uuid)); } catch { return null; } }
+  return null;
+}
+
+/** The hotbar slot a drop landed on (Foundry v12: `li.macro[data-slot]`, the absolute slot 1–50), or null. */
+export function hotbarSlotOf(target) {
+  const li = target?.closest?.('#hotbar [data-slot]');
+  const n = Number(li?.dataset?.slot);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 function _item(id) {
   try { return fromUuidSync(id) ?? game.items.get(id) ?? null; } catch { return game.items.get(id) ?? null; }
 }
@@ -500,10 +514,22 @@ export function registerAccessPoints() {
   }, true);
 
   // Drag onto the hotbar: an admin row ({type:'NCMAccess', ref}) or a converted item.
+  // Claimed in the CAPTURE phase on the hotbar itself (audit COMPAT-02): the Cyberpunk RED system registers its own
+  // `hotbarDrop` hook first and returns false for every drop, so ours never ran — a terminal became an item-sheet
+  // macro, and an NCMAccess drag threw inside the system's hook. Anything that is not ours passes through untouched.
+  document.addEventListener('drop', (ev) => {
+    if (!ev.target?.closest?.('#hotbar')) return;
+    let data = null;
+    try { data = JSON.parse(ev.dataTransfer?.getData('text/plain') || 'null'); } catch { return; }
+    const ref = hotbarRefFor(data);
+    if (!ref) return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    createAccessMacro(ref, { slot: hotbarSlotOf(ev.target) });
+  }, true);
+  // Kept for a world where nothing pre-empts the hook (and for drops that do not come through the DOM).
   Hooks.on('hotbarDrop', (bar, data, slot) => {
-    let ref = null;
-    if (data?.type === 'NCMAccess') ref = accessRef(data.ref?.kind ?? data.kind, data.ref?.id ?? data.id);
-    else if (data?.type === 'Item' && data.uuid) { try { ref = refForItem(fromUuidSync(data.uuid)); } catch { ref = null; } }
+    const ref = hotbarRefFor(data);
     if (!ref) return;
     createAccessMacro(ref, { slot });
     return false;

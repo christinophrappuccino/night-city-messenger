@@ -210,11 +210,14 @@ export class ShardSheetOverride {
         return;
       }
 
-      // Not a shard — nothing to intercept
-      if (!item.getFlag(MODULE_ID, 'isDataShard')) return;
+      // A terminal opens its login screen, the way a shard opens its viewer (audit COMPAT-02: the Cyberpunk RED
+      // system's own hotbar macros open an item's SHEET, so a dragged terminal used to show the raw gear sheet).
+      const isTerminal = !!item.getFlag(MODULE_ID, 'isTerminal');
+      // Not a shard or a terminal — nothing to intercept
+      if (!isTerminal && !item.getFlag(MODULE_ID, 'isDataShard')) return;
 
-      // Launch our shard viewer
-      const openFn = game.nightcity?.openDataShard;
+      // Launch our viewer
+      const openFn = isTerminal ? game.nightcity?.openTerminal : game.nightcity?.openDataShard;
       if (openFn) {
         // Hide the sheet element instantly to prevent visual flash
         const el = sheet.element?.[0] ?? sheet.element;
@@ -223,7 +226,7 @@ export class ShardSheetOverride {
         sheet.close({ force: true });
         openFn(item);
       } else {
-        log.warn('ShardSheetOverride: openDataShard not available, leaving default sheet open');
+        log.warn(`ShardSheetOverride: ${isTerminal ? 'openTerminal' : 'openDataShard'} not available, leaving default sheet open`);
       }
     } catch (err) {
       log.error(`ShardSheetOverride: renderItemSheet intercept error — ${err.message}`);
