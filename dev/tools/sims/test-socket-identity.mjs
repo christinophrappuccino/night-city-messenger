@@ -75,8 +75,8 @@ const ACTORS = [
   // a genuine loopback (same id from the transport) is still ignored
   const seenLoop = [];
   world.as('p1', () => {
-    world.client('p1').sockets.register(SOCKET_OPS.INBOX_REFRESH, () => seenLoop.push(1));
-    world.client('p1').sockets._onMessage({ operation: SOCKET_OPS.INBOX_REFRESH, data: {} }, 'p1');
+    world.client('p1').sockets.register(SOCKET_OPS.MESSAGE_NOTIFY, () => seenLoop.push(1));
+    world.client('p1').sockets._onMessage({ operation: SOCKET_OPS.MESSAGE_NOTIFY, data: {} }, 'p1');
   });
   ok(seenLoop.length === 0, 'a real loopback (transport id = own id) is ignored');
 }
@@ -137,11 +137,11 @@ const ACTORS = [
   let calls = 0, after = 0;
   world.as('gm1', () => {
     const sm = world.client('gm1').sockets;
-    sm.register(SOCKET_OPS.LOG_RELAY, () => { calls++; throw new Error('boom'); });
+    sm.register(SOCKET_OPS.SECURITY_REPORT, () => { calls++; throw new Error('boom'); });
     sm.register(SOCKET_OPS.TRACE_REQUEST, () => { after++; });
   });
   for (const bad of [null, undefined, 'string', 42, { operation: 5 }, { data: {} }]) world.client('px').rawEmit(bad);
-  world.client('px').rawEmit({ operation: SOCKET_OPS.LOG_RELAY, data: {} });
+  world.client('px').rawEmit({ operation: SOCKET_OPS.SECURITY_REPORT, data: {} });
   world.client('px').rawEmit({ operation: SOCKET_OPS.TRACE_REQUEST, data: {} });
   let threw = false;
   try { world.flush(); } catch { threw = true; }

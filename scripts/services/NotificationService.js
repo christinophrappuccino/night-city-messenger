@@ -57,7 +57,6 @@ const TOAST_TYPES = {
   'shard-eddies':     { icon: 'fas fa-coins',            titleIcon: null },
   'shard-trace':      { icon: 'fas fa-satellite-dish',   titleIcon: 'fas fa-eye' },
   'shard-bricked':    { icon: 'fas fa-hard-drive',       titleIcon: 'fas fa-triangle-exclamation' },
-  'shard-expired':    { icon: 'fas fa-hourglass-end',    titleIcon: null },
 };
 
 /** Types that get a scrolling hex data strip */

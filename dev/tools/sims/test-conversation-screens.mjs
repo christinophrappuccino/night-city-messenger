@@ -55,7 +55,7 @@ ok(/_mine\(\) \{[^\n]*!this\.admin/.test(pane), 'the GM has no "You" in a chat t
 /* the inbox */
 ok(/'conversations'/.test(viewer.split('MESSAGE_FILTERS')[1].slice(0, 120)), 'the filter is registered');
 ok(/filter\(m => !m\.isConversation\)\.map\(m => m\.messageId\)/.test(viewer), 'keyboard nav never lands on a conversation row');
-ok(/_cachedMessages\.filter\(m => !m\.isConversation\)/.test(viewer), 'select-all leaves conversations out');
+// (select-all was unreachable, no button named it, and was removed 2026-11-05 with the other dead viewer actions)
 ok(/enrichedMail/.test(viewer), 'rows skip the mail enrichment');
 ok(/data-action="open-conversation"/.test(vTpl) && /'open-conversation': async function/.test(viewer) /* VIEWER_ACTIONS entry since step 12 */, 'a row opens');
 ok(/data-action="new-conversation"/.test(vTpl) && /'new-conversation': async function/.test(viewer) /* VIEWER_ACTIONS entry since step 12 */, 'the header starts one');

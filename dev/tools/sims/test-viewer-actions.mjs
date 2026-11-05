@@ -17,7 +17,7 @@ const V = read('scripts/ui/MessageViewer/MessageViewerApp.js');
 ok(/^const VIEWER_ACTIONS = \{$/m.test(V), 'VIEWER_ACTIONS exists');
 const keys = new Set([...V.matchAll(/^ {2}'([\w-]+)': async function \(target, messageId\) \{$/gm)].map((m) => m[1]));
 const aliases = [...V.matchAll(/^VIEWER_ACTIONS\['([\w-]+)'\] = VIEWER_ACTIONS\['([\w-]+)'\];$/gm)].map((m) => [m[1], m[2]]);
-ok(keys.size >= 100, `the table has its entries (${keys.size})`);
+ok(keys.size >= 90, `the table has its entries (${keys.size})`);
 ok(aliases.every(([, to]) => keys.has(to)), 'every alias points at a real entry');
 for (const [a] of aliases) keys.add(a);
 ok(/Object\.freeze\(VIEWER_ACTIONS\);/.test(V), 'the table is frozen');
@@ -44,12 +44,14 @@ ok(seen.size >= 5, `followed the viewer's template tree (${seen.size} files)`);
 const missing = [...actions.keys()].filter((a) => !keys.has(a) && !a.startsWith('calls-'));
 ok(missing.length === 0, `every data-action in the viewer's templates has a VIEWER_ACTIONS entry (${missing.map((a) => `${a} in ${[...actions.get(a)].join(', ')}`).join('; ')})`);
 // the same for the HTML the viewer builds in JS
-const jsActions = [...V.matchAll(/data-action="([\w-]+)"/g)].map((m) => m[1]);
+// the HTML the viewer writes in JS, and the phone links utils/phoneNumbering.js writes into message bodies
+const jsActions = [...V.matchAll(/data-action="([\w-]+)"/g), ...read('scripts/utils/phoneNumbering.js').matchAll(/data-action="([\w-]+)"/g)].map((m) => m[1]);
 const jsMissing = [...new Set(jsActions)].filter((a) => !keys.has(a) && !a.startsWith('calls-'));
 ok(jsMissing.length === 0, `every data-action the viewer writes in JS has an entry (${jsMissing.join(', ')})`);
 
 const unused = [...keys].filter((k) => !actions.has(k) && !jsActions.includes(k));
-if (unused.length) console.log(`  note: ${unused.length} entries no viewer template or viewer JS names (built elsewhere, or dead): ${unused.join(', ')}`);
+// 13 dead entries (and 7 methods only they called) were removed 2026-11-05; an entry nothing names is dead code
+ok(unused.length === 0, `every entry is named by a template or by the HTML the viewer builds (dead: ${unused.join(', ')})`);
 
 console.log(`test-viewer-actions: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -155,7 +155,7 @@ globalThis.fromUuidSync = () => null;
 const sh = read('scripts/integrations/SocketHandlers.js');
 ok(/handleTraceRequest\(data, sender \?\? null\)/.test(sh), 'trace: checked against the sender');
 ok(/handleNetResolveRequest\(data, sender \?\? null\)/.test(sh) && /handleNetResolveCancel\(data, sender \?\? null\)/.test(sh), 'GM adjudication: the asker gets the answer, and only they may withdraw it');
-ok(/LOG_RELAY, \(data, sender\)/.test(sh) && /userName: user\.name/.test(sh), 'access-log relay: rebuilt from the sender');
+ok(!/SOCKET_OPS\.LOG_RELAY/.test(sh), 'access-log relay: removed (nothing sent it; only a modified client could)');
 ok(/handleNodeRequest\(data, sender \?\? null\)/.test(read('scripts/init/registerNetworkSystem.js')), 'nodes: checked against the sender');
 ok(/handleLogRequest\(data, sender \?\? null\)/.test(read('scripts/init/registerCallSystem.js')), 'call logs: checked against the sender');
 ok(/mayTraceCall\(callId, senderId\)/.test(read('scripts/services/CallService.js')), 'call trace-back: checked');

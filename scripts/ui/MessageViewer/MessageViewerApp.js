@@ -1743,11 +1743,6 @@ export class MessageViewerApp extends BaseApplication {
 
   }
 
-  _setNetworkFilter(network) {
-    this.networkFilter = network || null;
-    this.currentPage = 1;
-    this.render();
-  }
 
   /**
    * Build a short label for the active date range.
@@ -2081,27 +2076,7 @@ export class MessageViewerApp extends BaseApplication {
   //  Bulk Selection
   // ═══════════════════════════════════════════════════════════
 
-  _toggleBulkSelect(messageId) {
-    if (this.bulkSelected.has(messageId)) {
-      this.bulkSelected.delete(messageId);
-    } else {
-      this.bulkSelected.add(messageId);
-    }
-    this.render();
-  }
 
-  _selectAll() {
-    if (!this._cachedMessages) return;
-    const allIds = this._cachedMessages.filter(m => !m.isConversation).map(m => m.messageId);
-    const allSelected = allIds.every(id => this.bulkSelected.has(id));
-
-    if (allSelected) {
-      this.bulkSelected.clear();
-    } else {
-      allIds.forEach(id => this.bulkSelected.add(id));
-    }
-    this.render();
-  }
 
   async _bulkMarkRead() {
     for (const id of this.bulkSelected) {
@@ -3233,99 +3208,13 @@ export class MessageViewerApp extends BaseApplication {
     this.render();
   }
 
-  async _forceDecryptMessage(messageId) {
-    if (!messageId || !game.user.isGM) return;
-    await this.messageService?.forceDecrypt?.(messageId, this.actorId);
-    this.render();
-  }
 
   // ═══════════════════════════════════════════════════════════
   //  Network Access Bypass Handlers
   // ═══════════════════════════════════════════════════════════
 
-  async _bypassPassword(messageId) {
-    const input = this.element?.querySelector(`input[name="bypassPassword"][data-message-id="${messageId}"]`);
-    const password = input?.value?.trim();
-    if (!password) {
-      ncmNotify.warn('NCM | Enter an access code.');
-      return;
-    }
 
-    const msg = this._cachedMessages?.find(m => m.messageId === messageId);
-    if (!msg?.accessControl) return;
 
-    const result = await this.messageAccessService?.attemptPasswordBypass(
-      messageId, this.actorId, password, msg.accessControl
-    );
-
-    if (result?.success) {
-      this.soundService?.play?.('login-success');
-      ncmNotify.info('NCM | Access granted.');
-    } else if (result?.lockedOut) {
-      this.soundService?.play?.('lockout');
-      ncmNotify.error('NCM | SYSTEM LOCKED — Too many failed attempts.');
-    } else {
-      this.soundService?.play?.('login-fail');
-      const remaining = result?.attemptsRemaining ?? '?';
-      ncmNotify.warn(`NCM | ACCESS DENIED. ${remaining} attempt(s) remaining.`);
-    }
-
-    this.render();
-  }
-
-  async _bypassSkill(messageId, skillName) {
-    if (!skillName) return;
-
-    const msg = this._cachedMessages?.find(m => m.messageId === messageId);
-    if (!msg?.accessControl) return;
-
-    const actor = game.actors?.get(this.actorId);
-    if (!actor) {
-      ncmNotify.warn('NCM | No character assigned.');
-      return;
-    }
-
-    const netName = msg.accessControl?.requiredNetworkName || msg.accessControl?.requiredNetwork || 'its network';
-    const result = await this.messageAccessService?.attemptSkillBypass(
-      messageId, actor, skillName, msg.accessControl,
-      { reveal: { host: this.element, title: `Reaching a message on ${netName}`, ctx: 'Message bypass · off-network', ok: 'Bypass granted', no: 'Bypass rejected' } },
-    );
-
-    if (result?.success) {
-      ncmNotify.info('NCM | Access granted — bypass successful.');
-    } else if (result?.lockedOut) {
-      this.soundService?.play?.('lockout');
-      ncmNotify.error('NCM | SYSTEM LOCKED — Too many failed attempts.');
-    } else {
-      ncmNotify.warn('NCM | Bypass failed.');
-    }
-
-    this.render();
-  }
-
-  async _bypassKeyItem(messageId) {
-    const msg = this._cachedMessages?.find(m => m.messageId === messageId);
-    if (!msg?.accessControl) return;
-
-    const actor = game.actors?.get(this.actorId);
-    if (!actor) {
-      ncmNotify.warn('NCM | No character assigned.');
-      return;
-    }
-
-    const result = await this.messageAccessService?.attemptKeyItemBypass(
-      messageId, actor, msg.accessControl
-    );
-
-    if (result?.success) {
-      const consumed = result.consumed ? ' (item consumed)' : '';
-      ncmNotify.info(`NCM | Access granted via ${result.keyItem?.name}${consumed}`);
-    } else {
-      ncmNotify.warn(`NCM | ${result.error || 'Required access item not found in inventory.'}`);
-    }
-
-    this.render();
-  }
 
   async _gmForceReveal(messageId) {
     if (!game.user?.isGM) return;
@@ -5582,17 +5471,8 @@ const VIEWER_ACTIONS = {
   'toggleNetworkSelector': async function (target, messageId) {
     this._toggleNetworkSelector(target);
   },
-  'toggle-network-filter': async function (target, messageId) {
-    this._toggleDropdown('.ncm-network-filter-dropdown', target);
-  },
   'selectNetwork': async function (target, messageId) {
     this._onSelectNetwork(target.dataset.networkId);
-  },
-  'filter-network': async function (target, messageId) {
-    this._setNetworkFilter(target.dataset.network);
-  },
-  'toggle-search': async function (target, messageId) {
-    this._toggleSearch();
   },
   'prev-page': async function (target, messageId) {
     this._setPage(this.currentPage - 1);
@@ -5650,9 +5530,6 @@ const VIEWER_ACTIONS = {
     this._restoreMessage(messageId);
   },
   // ── Quick Reply ──
-  'quick-reply': async function (target, messageId) {
-    this._sendQuickReply(target.dataset.reply);
-  },
   'send-reply': async function (target, messageId) {
     this._sendCustomReply();
   },
@@ -5707,22 +5584,7 @@ const VIEWER_ACTIONS = {
     game.nightcity?.composeMessage?.({ fromActorId: this.actorId });
   },
   // ── Encryption (original) ──
-  'decrypt-message': async function (target, messageId) {
-    this._decryptMessage(messageId);
-  },
-  'force-decrypt-message': async function (target, messageId) {
-    this._forceDecryptMessage(messageId);
-  },
   // ── Network Access Bypass ──
-  'bypass-password': async function (target, messageId) {
-    this._bypassPassword(target.dataset.messageId);
-  },
-  'bypass-skill': async function (target, messageId) {
-    this._bypassSkill(target.dataset.messageId, target.dataset.skill);
-  },
-  'bypass-keyitem': async function (target, messageId) {
-    this._bypassKeyItem(target.dataset.messageId);
-  },
   'gm-force-reveal': async function (target, messageId) {
     this._gmForceReveal(target.dataset.messageId);
   },
@@ -5804,23 +5666,14 @@ const VIEWER_ACTIONS = {
     this._openAttachment(messageId, target.dataset.attachmentIndex);
   },
   // ── Quick Wins: Add Contact from message ──
-  'add-contact': async function (target, messageId) {
-    this._addContactFromMessage();
-  },
   // ── Bulk Actions ──
-  'toggle-select': async function (target, messageId) {
-    this._toggleBulkSelect(target.dataset.messageId);
-  },
-  'select-all': async function (target, messageId) {
-    this._selectAll();
-  },
-  'bulk-read': async function (target, messageId) {
+  'bulk-mark-read': async function (target, messageId) {
     this._bulkMarkRead();
   },
   'bulk-delete': async function (target, messageId) {
     this._bulkDelete();
   },
-  'bulk-cancel': async function (target, messageId) {
+  'bulk-clear': async function (target, messageId) {
     this.bulkSelected.clear();
     this.render();
   },
@@ -6155,13 +6008,7 @@ const VIEWER_ACTIONS = {
     this._toggleThread();
   },
   // ── Window ──
-  'close-window': async function (target, messageId) {
-    this.close();
-  },
 };
-VIEWER_ACTIONS['compose-message'] = VIEWER_ACTIONS['compose-new'];
-VIEWER_ACTIONS['bulk-mark-read'] = VIEWER_ACTIONS['bulk-read'];
-VIEWER_ACTIONS['bulk-clear'] = VIEWER_ACTIONS['bulk-cancel'];
 Object.freeze(VIEWER_ACTIONS);
 
 

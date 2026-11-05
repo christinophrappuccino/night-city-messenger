@@ -431,7 +431,6 @@
 .ncm-toast--shard-eddies     { --toast-color: #f7c948; }
 .ncm-toast--shard-trace      { --toast-color: #b44dff; }
 .ncm-toast--shard-bricked    { --toast-color: #ff0033; }
-.ncm-toast--shard-expired    { --toast-color: #555570; }
 
 /* Shard ICE gets same danger treatment */
 .ncm-toast--shard-ice {
@@ -445,9 +444,6 @@
   background: linear-gradient(135deg, var(--ncm-bg-deep, #0c0c14) 60%, rgba(255, 0, 30, 0.04));
 }
 .ncm-toast--shard-bricked .ncm-toast__accent { width: 4px; }
-
-/* Shard expired gets faded treatment */
-.ncm-toast--shard-expired .ncm-toast__detail { color: #666680; }
 
 /* ═══════════════════════════════════════════
    URGENT / CRITICAL

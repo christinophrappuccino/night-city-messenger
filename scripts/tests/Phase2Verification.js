@@ -49,9 +49,6 @@ export class Phase2Verification {
     results.push(this._check('SocketManager has MESSAGE_STATUS_UPDATE handler', () => {
       return ns.socketManager?._handlers?.has(SOCKET_OPS.MESSAGE_STATUS_UPDATE);
     }));
-    results.push(this._check('SocketManager has INBOX_REFRESH handler', () => {
-      return ns.socketManager?._handlers?.has(SOCKET_OPS.INBOX_REFRESH);
-    }));
 
     // ─── UI Launch Functions (not stubs) ───
     results.push(this._check('openInbox() is real (not stub)', () => {

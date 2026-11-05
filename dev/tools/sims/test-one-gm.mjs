@@ -104,11 +104,9 @@ for (const [name, op, data] of cases) {
 // ═══ 2. State mirrors still reach EVERY GM (their own view) ═══
 send(SOCKET_OPS.MESSAGE_QUEUE_SYNC, { queue: [] });
 send(SOCKET_OPS.SECURITY_REPORT, { actorId: 'a-v' });
-send(SOCKET_OPS.LOG_RELAY, { type: 'test' });
 await settle();
 ok(count('gm1', 'queue-sync') === 1 && count('gm2', 'queue-sync') === 1, 'held-mail report reaches both GMs (each shows it in its own Outbox)');
 ok(count('gm1', 'security-report') === 1 && count('gm2', 'security-report') === 1, 'security report reaches both GMs (each shows it in its own admin view)');
-ok(count('gm1', 'access-log') === 1 && count('gm2', 'access-log') === 1, 'access-log relay reaches both GMs (unchanged in B1; its save is a B4 item)');
 
 // ═══ 3. Hand-over: the active GM leaves, the other GM takes over ═══
 world.client('gm1').connected = false;
@@ -124,7 +122,7 @@ world.client('gm1').connected = true;
     const at = src.indexOf(`register(SOCKET_OPS.${op},`);
     ok(at >= 0 && /if \(!isPrimaryGM\(\)\) return;/.test(src.slice(at, at + 260)), `${op}: gated to one GM`);
   }
-  for (const op of ['MESSAGE_QUEUE_SYNC', 'SECURITY_REPORT', 'LOG_RELAY', 'TRACE_COMPLETE']) {
+  for (const op of ['MESSAGE_QUEUE_SYNC', 'SECURITY_REPORT', 'TRACE_COMPLETE']) {   // (LOG_RELAY removed 2026-11-05: nothing sent it)
     const at = src.indexOf(`register(SOCKET_OPS.${op},`);
     ok(at >= 0 && !/isPrimaryGM\(\)/.test(src.slice(at, at + 200)), `${op}: still reaches every GM (state mirror)`);
   }

@@ -84,17 +84,6 @@ export class SocketHandlers {
       }
     });
 
-    // ─── Inbox Refresh Signal ─────────────────────────────
-    socketManager.register(SOCKET_OPS.INBOX_REFRESH, (data) => {
-      const actor = game.actors.get(data.actorId);
-      if (actor?.isOwner) {
-        const eventBus = game.nightcity.eventBus;
-        if (eventBus) {
-          eventBus.emit(EVENTS.INBOX_REFRESH, { actorId: data.actorId });
-        }
-      }
-    });
-
     // ─── Contact Share Relay (Player → GM) ────────────────
     socketManager.register(SOCKET_OPS.CONTACT_SHARE_RELAY, async (data, sender) => {
       if (!isPrimaryGM()) return;   // one GM handles each request (INT-01)
@@ -135,28 +124,6 @@ export class SocketHandlers {
           scene: data.scene,
         });
       }
-    });
-
-    // ─── Log Relay (Player → GM) ──────────────────────────
-    // Players relay log-worthy events to the GM so they appear
-    // in the persistent access log with the player's actor info.
-    // Nothing in the module sends this any more, so a packet here comes from a modified client.
-    // It is kept (the access log has older callers in mind) but rebuilt (audit SEC-22): who sent it is
-    // the server's id, a named character must be theirs, and only short text fields are kept.
-    // Every GM keeps its own copy of the access log (a state mirror, B1); saving it is a B4 item.
-    socketManager.register(SOCKET_OPS.LOG_RELAY, (data, sender) => {
-      if (!game.user.isGM) return;
-      const accessLogService = game.nightcity?.accessLogService;
-      const user = sender ? game.users?.get(sender) : null;
-      if (!accessLogService || !user || !data || typeof data !== 'object') return;
-      const s = (v, n) => String(v ?? '').slice(0, n);
-      const actor = data.actorId && userOwnsActor(sender, data.actorId) ? game.actors.get(data.actorId) : null;
-      log.debug('Socket: log relay received —', data.type, user.name);
-      accessLogService._push({
-        type: /^[\w-]{1,40}$/.test(data.type || '') ? data.type : 'note',
-        networkId: s(data.networkId, 64), networkName: s(data.networkName, 80), message: s(data.message, 200),
-        actorId: actor?.id || null, actorName: actor?.name || '', userId: sender, userName: user.name,
-      });
     });
 
     // ─── Player Shard Conversion Relay ─────────────────────
