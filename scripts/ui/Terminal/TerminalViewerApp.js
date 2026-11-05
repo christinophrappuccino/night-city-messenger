@@ -28,6 +28,7 @@ import { BaseApplication } from '../BaseApplication.js';
 import { isNodeVerb } from '../content/ProgramModel.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS, EVENTS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, isHiddenCharacter, canOperate, guardSecretInputs, terminalReachRule } from '../../utils/helpers.js';
+import { adjustWealth } from '../../utils/wealth.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { getInitials } from '../../utils/designHelpers.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
@@ -2982,11 +2983,7 @@ export class TerminalViewerApp extends BaseApplication {
   /** Credit an actor's CPR wealth (the eddies-claim ledger pattern). */
   async _creditActorWealth(actor, amount, reason) {
     try {
-      const wealth = foundry.utils.deepClone(actor.system.wealth);
-      wealth.value += amount;
-      wealth.transactions = wealth.transactions || [];
-      wealth.transactions.push([`Increased by ${amount} to ${wealth.value}`, reason]);
-      if (actor.isOwner || isGM()) await actor.update({ 'system.wealth': wealth });
+      if (actor.isOwner || isGM()) await adjustWealth(actor, amount, reason);
     } catch (err) { log.error(`Wealth credit failed: ${err.message}`); }
   }
 

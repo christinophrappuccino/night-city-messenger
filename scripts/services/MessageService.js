@@ -11,6 +11,7 @@ import { ncmNotify, escapeHtml } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
 import { log, isPrimaryGM, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime, userOwnsActor } from '../utils/helpers.js';
+import { adjustWealth } from '../utils/wealth.js';
 import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
 import { replyIdentity, groupKeyOf, identitiesOf } from '../utils/identities.js';
 import { serialize } from '../utils/serialize.js';
@@ -1376,10 +1377,7 @@ export class MessageService {
     if (!each || !actor || !(actor.isOwner || game.user?.isGM)) return 0;
     const amount = each * (copies ?? (Array.isArray(d._fanout) && d._fanout.length ? d._fanout.length : 1));
     try {
-      const wealth = foundry.utils.deepClone(actor.system.wealth);
-      wealth.value += amount;
-      wealth.transactions.push([`Increased by ${amount} to ${wealth.value}`, `NCM: Refund for a message that was not delivered`]);
-      await actor.update({ 'system.wealth': wealth });
+      await adjustWealth(actor, amount, `NCM: Refund for a message that was not delivered`);
       return amount;
     } catch (err) { console.error(`${MODULE_ID} | Refund failed:`, err); return 0; }
   }

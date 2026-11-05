@@ -15,6 +15,7 @@
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../utils/constants.js';
 import { log, isGM, generateId, userOwnsActor } from '../utils/helpers.js';
+import { adjustWealth } from '../utils/wealth.js';
 import { userCanReachShard, sanitizeSessionUpdates, shardCanSelfDestruct } from '../utils/shardAccess.js';
 import { withShardPrefix, restorePatch } from '../utils/shardNaming.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
@@ -1348,12 +1349,7 @@ export class DataShardService {
 
     try {
       // Wire to CPR wealth ledger — wealth is an object { value, transactions }
-      const wealth = foundry.utils.deepClone(actor.system.wealth);
-      wealth.value += amount;
-      const transaction = `Increased by ${amount} to ${wealth.value}`;
-      const reason = `NCM: Claimed ${amount.toLocaleString()} eb from ${withArticle(T('one', 'lower'))}`;
-      wealth.transactions.push([transaction, reason]);
-      await actor.update({ 'system.wealth': wealth });
+      await adjustWealth(actor, amount, `NCM: Claimed ${amount.toLocaleString()} eb from ${withArticle(T('one', 'lower'))}`);
 
       // Mark as claimed on the journal page. The shard journal is GM-owned
       // (players are OBSERVER), so a direct page.update from a player throws —
@@ -1371,10 +1367,7 @@ export class DataShardService {
         `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${shardItem.name}).`, { action: 'claim' }, actor.id);
       if (!saved) {
         // The claim could not be recorded: take the money back rather than leave it claimable twice.
-        const undo = foundry.utils.deepClone(actor.system.wealth);
-        undo.value -= amount;
-        undo.transactions.push([`Decreased by ${amount} to ${undo.value}`, `NCM: Claim of ${amount.toLocaleString()} eb could not be recorded — reversed`]);
-        await actor.update({ 'system.wealth': undo });
+        await adjustWealth(actor, -amount, `NCM: Claim of ${amount.toLocaleString()} eb could not be recorded — reversed`);
         return { success: false, error: 'The claim could not be recorded' };
       }
 

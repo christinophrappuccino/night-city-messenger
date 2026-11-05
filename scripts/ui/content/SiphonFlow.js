@@ -17,6 +17,7 @@
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, isPrimaryGM, formatCyberDate, netVerbFor, runGmMacro, stripMacroRefs, userOwnsActor } from '../../utils/helpers.js';
+import { adjustWealth } from '../../utils/wealth.js';
 import { applyContentIntent, sanitizeIntent, computeMaxSiphon, UNLOCK_KINDS, payloadCanRun, chargesAfterRun } from '../../utils/contentIntents.js';
 import { runSecurityConsole } from './SecurityConsole.js';
 import { rolledNote } from './NetResolve.js';
@@ -121,11 +122,7 @@ export async function runSiphon({ actor, raw, itemUuid, messageId, host = null }
 /** Credit the actor's CPR wealth (the eddies-claim ledger pattern). */
 async function _creditWealth(actor, amount, reason) {
   try {
-    const wealth = foundry.utils.deepClone(actor.system.wealth);
-    wealth.value += amount;
-    wealth.transactions = wealth.transactions || [];
-    wealth.transactions.push([`Increased by ${amount} to ${wealth.value}`, reason]);
-    if (actor.isOwner || isGM()) await actor.update({ 'system.wealth': wealth });
+    if (actor.isOwner || isGM()) await adjustWealth(actor, amount, reason);
   } catch (err) {
     log.error(`Wealth credit failed: ${err.message}`);
   }

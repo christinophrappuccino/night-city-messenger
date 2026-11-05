@@ -28,6 +28,7 @@
 import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, SOCKET_OPS, ENCRYPTION_TYPES, FAILURE_MODES, SHARD_PRESETS } from '../../utils/constants.js';
 import { log, isGM, resolveOperator, getOperatorActors, openOperatorPicker, canEncode, canEditShard, whisperCardHtml, getPlayerCharacters } from '../../utils/helpers.js';
+import { adjustWealth } from '../../utils/wealth.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { COVER_TYPES, abilityInfo, programToEntry } from '../content/ProgramModel.js';
 import { CONTENT_TYPE_INFO, enrichContent } from '../content/ContentRenderers.js';
@@ -3129,21 +3130,13 @@ export class ShardEncoderApp extends BaseApplication {
   async _debitWealth(amount, reason) {
     const actor = this.actor;
     if (!actor) throw new Error('No operator to pay for it.');
-    const wealth = foundry.utils.deepClone(actor.system?.wealth || { value: 0 });
-    wealth.value = (wealth.value || 0) - amount;
-    wealth.transactions = wealth.transactions || [];
-    wealth.transactions.push([`Decreased by ${amount} to ${wealth.value}`, reason]);
-    await actor.update({ 'system.wealth': wealth });
+    await adjustWealth(actor, -amount, reason);
   }
 
   async _refundWealth(amount, reason) {
     const actor = this.actor;
     if (!actor) return;
-    const wealth = foundry.utils.deepClone(actor.system?.wealth || { value: 0 });
-    wealth.value = (wealth.value || 0) + amount;
-    wealth.transactions = wealth.transactions || [];
-    wealth.transactions.push([`Increased by ${amount} to ${wealth.value}`, reason]);
-    await actor.update({ 'system.wealth': wealth });
+    await adjustWealth(actor, amount, reason);
   }
 
   // ═══════════════════════════════════════════════════════════════════════

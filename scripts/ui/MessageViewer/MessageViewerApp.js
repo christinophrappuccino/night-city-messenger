@@ -48,6 +48,7 @@ import { openGuide } from '../../utils/guides.js';
 import { getThreadMessages } from '../../utils/threading.js';
 import { cleanHtml } from '../../utils/richText.js';
 import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, canEncode as canEncodeShard, chatCardTime, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
+import { adjustWealth } from '../../utils/wealth.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { selfKeys } from '../../utils/participants.js';
 import { showNamePicker } from '../../utils/namePicker.js';
@@ -3172,14 +3173,8 @@ export class MessageViewerApp extends BaseApplication {
 
     // Credit to actor's wealth (CPR system — deepClone + array transaction format)
     try {
-      const wealth = foundry.utils.deepClone(actor.system.wealth);
-      wealth.value += amount;
-      const transaction = `Increased by ${amount} to ${wealth.value}`;
-      const reason = `NCM: Received ${amount.toLocaleString()} eb via message`;
-      wealth.transactions.push([transaction, reason]);
-
       if (actor.isOwner || game.user.isGM) {
-        await actor.update({ 'system.wealth': wealth });
+        await adjustWealth(actor, amount, `NCM: Received ${amount.toLocaleString()} eb via message`);
       }
 
       // Mark as claimed on message flags

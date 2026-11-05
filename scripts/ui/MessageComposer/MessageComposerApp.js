@@ -20,6 +20,7 @@ import { MODULE_ID, EVENTS, SEND_AS_FLAG } from '../../utils/constants.js';
 import { pickSenderChoice } from '../../utils/identities.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
 import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL, resolveDisplayName, resolveDisplayPortrait, resolveOperator, isHiddenCharacter, isSelectableCharacter } from '../../utils/helpers.js';
+import { adjustWealth } from '../../utils/wealth.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { applyGmView, applyAdminZoom, toggleGmView, playerDialog, adminPrompt, adminConfirm } from '../../utils/adminTheme.js';
 import { pasteToHtml, cleanHtml, stripActiveHtml } from '../../utils/richText.js';
@@ -3567,16 +3568,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
 
     try {
-      // CPR system: deepClone wealth, push [description, reason] array
-      const wealth = foundry.utils.deepClone(actor.system.wealth);
-      wealth.value = Math.max(0, wealth.value - amount);
-      const transaction = `Decreased by ${amount} to ${wealth.value}`;
-      const reason = `NCM: Sent ${amount.toLocaleString()} eb via message`;
-      wealth.transactions.push([transaction, reason]);
-
-      // Update actor — need GM permission, use socket if player
+      // Update actor — need GM permission, use socket if player. The composer never takes a balance below 0.
       if (actor.isOwner || isGM) {
-        await actor.update({ 'system.wealth': wealth });
+        await adjustWealth(actor, -amount, `NCM: Sent ${amount.toLocaleString()} eb via message`, { floor: 0 });
       } else {
         ncmNotify.warn('Cannot update wealth — no permission on actor.');
         return false;
@@ -3603,14 +3597,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (!actor) return;
 
     try {
-      const wealth = foundry.utils.deepClone(actor.system.wealth);
-      wealth.value += amount;
-      const transaction = `Increased by ${amount} to ${wealth.value}`;
-      const reason = `NCM: Received ${amount.toLocaleString()} eb via message`;
-      wealth.transactions.push([transaction, reason]);
-
       if (actor.isOwner || game.user.isGM) {
-        await actor.update({ 'system.wealth': wealth });
+        await adjustWealth(actor, amount, `NCM: Received ${amount.toLocaleString()} eb via message`);
       }
     } catch (error) {
       console.error(`${MODULE_ID} | Eddies credit failed:`, error);
