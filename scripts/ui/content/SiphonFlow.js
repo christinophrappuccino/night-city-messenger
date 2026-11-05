@@ -1476,20 +1476,69 @@ function _corruptContentData(type, c, dv) {
 //  Recycle bin — the `wipe` quarantine (design §4g)
 // ═══════════════════════════════════════════════════════════
 //
-//  A `wipe` never hard-deletes: the target page is moved verbatim into a
-//  GM-owned world setting, and the owner sees it gone. Only the GM can
-//  Restore-to-origin or Empty (the one true delete) — from the Admin Security
-//  tab (thread #5). All GM-side (the setting + the page delete are GM-owned).
+//  A `wipe` never hard-deletes: the target page goes into the recycle bin and the
+//  owner sees it gone. Only the GM can Restore-to-origin or Empty (the one true
+//  delete) — from the Admin Security tab. All GM-side.
+//
+//  The bin is a GM-only JOURNAL, one page per wiped file (audit PERF-07): it used to be
+//  one world setting holding every wiped page, which grew forever and was re-sent whole
+//  to every client on every wipe. A bin page holds the original only as data
+//  (`flags.<id>.recycled.pageData`) — never the original's own flags — so a lookup by
+//  message id can never find (and act on) a wiped file.
 
-const RECYCLE_SETTING = 'recycleBin';
+const RECYCLE_SETTING = 'recycleBin';            // the old store, read until the v6 migration empties it
+export const RECYCLE_JOURNAL_FLAG = 'recycleBin';
+export const RECYCLE_JOURNAL_NAME = 'NCM — Recycle bin';
+
+/** The bin journal, if there is one. */
+export function recycleJournal() {
+  return (game.journal?.contents || [...(game.journal ?? [])]).find((j) => j.getFlag?.(MODULE_ID, RECYCLE_JOURNAL_FLAG)) || null;
+}
+
+/** @private The bin journal, made (GM-only, no player access) when the first file is wiped. */
+async function _recycleJournalOrCreate() {
+  const have = recycleJournal();
+  if (have || !isGM()) return have;
+  let folder = null;
+  try { folder = await game.nightcity?.messageRepository?.getDeletedFolder?.(); } catch { /* top level is fine */ }
+  return JournalEntry.create({ name: RECYCLE_JOURNAL_NAME, ownership: { default: 0 }, folder: folder?.id || null, flags: { [MODULE_ID]: { [RECYCLE_JOURNAL_FLAG]: true } } });
+}
+
+/** @private A bin page for one record. */
+const binPage = (record) => ({ name: String(record.pageName || 'Wiped file').slice(0, 120), type: 'text', text: { content: '' }, flags: { [MODULE_ID]: { recycled: record } } });
 
 /**
- * Every quarantined (wiped) entry:
+ * Every quarantined (wiped) entry, oldest first:
  * [{ id, ts, hostId, hostName, journalId, pageName, contentType, pageData, wipedBy, wipedByName }].
+ * Entries still in the old setting (before the v6 migration ran) are included.
  */
 export function getRecycleBin() {
-  try { return game.settings.get(MODULE_ID, RECYCLE_SETTING) ?? []; }
-  catch { return []; }
+  const out = [];
+  const seen = new Set();
+  for (const p of recycleJournal()?.pages ?? []) {
+    const r = p.flags?.[MODULE_ID]?.recycled;
+    if (r?.id && !seen.has(r.id)) { seen.add(r.id); out.push({ ...r, binPageId: p.id }); }
+  }
+  let legacy = [];
+  try { legacy = game.settings.get(MODULE_ID, RECYCLE_SETTING) ?? []; } catch { legacy = []; }
+  for (const r of legacy) if (r?.id && !seen.has(r.id)) { seen.add(r.id); out.push({ ...r, legacy: true }); }
+  return out.sort((a, b) => String(a.ts || '').localeCompare(String(b.ts || '')));
+}
+
+/** Move the old setting's entries into the bin journal (MigrationRunner v6). Safe to run twice. */
+export async function migrateRecycleBin() {
+  let legacy = [];
+  try { legacy = game.settings.get(MODULE_ID, RECYCLE_SETTING) ?? []; } catch { return 0; }
+  if (!legacy.length) return 0;
+  const j = await _recycleJournalOrCreate();
+  if (!j) return 0;
+  const have = new Set((j.pages ?? []).map((p) => p.flags?.[MODULE_ID]?.recycled?.id).filter(Boolean));
+  const add = legacy.filter((r) => r?.id && !have.has(r.id)).map(binPage);
+  if (add.length) await j.createEmbeddedDocuments('JournalEntryPage', add);
+  // Empty the old store only once every entry is in the journal.
+  const now = new Set((j.pages ?? []).map((p) => p.flags?.[MODULE_ID]?.recycled?.id).filter(Boolean));
+  if (legacy.every((r) => !r?.id || now.has(r.id))) await game.settings.set(MODULE_ID, RECYCLE_SETTING, []);
+  return add.length;
 }
 
 /** Move one page into the recycle bin, then delete it. GM-only. Returns true on success. */
@@ -1509,20 +1558,28 @@ async function _quarantinePage(page, { host = null, actor = null } = {}) {
       wipedBy: actor?.id || null,
       wipedByName: actor?.name || 'Unknown',
     };
-    // One bin write at a time (DATA-04): two wipes at once both saved the same copy and
-    // the first file's record was lost while its page was still deleted.
+    // One bin write at a time (DATA-04), and the page is deleted only once the bin really holds it.
     const kept = await serialize('bin', async () => {
-      const bin = getRecycleBin().map(r => ({ ...r }));
-      bin.push(record);
-      await game.settings.set(MODULE_ID, RECYCLE_SETTING, bin);
-      return getRecycleBin().some((r) => r.id === record.id);
+      const j = await _recycleJournalOrCreate();
+      if (!j) return false;
+      await j.createEmbeddedDocuments('JournalEntryPage', [binPage(record)]);
+      return (j.pages ?? []).some((p) => p.flags?.[MODULE_ID]?.recycled?.id === record.id);
     });
-    // Delete the page only once the bin really holds it.
     if (!kept) { log.error(`Recycle-bin: "${record.pageName}" did not save to the bin — not deleted.`); return false; }
     await page.delete();
     log.debug(`Recycle-bin: quarantined "${record.pageName}" from ${record.hostName}`);
     return true;
   } catch (err) { log.error(`Recycle-bin quarantine failed: ${err.message}`); return false; }
+}
+
+/** @private Drop these records from the bin (journal pages and any old-setting entries). */
+async function _dropFromBin(ids = null) {
+  const j = recycleJournal();
+  const pageIds = (j?.pages ?? []).filter((p) => { const id = p.flags?.[MODULE_ID]?.recycled?.id; return id && (!ids || ids.includes(id)); }).map((p) => p.id);
+  if (j && pageIds.length) await j.deleteEmbeddedDocuments('JournalEntryPage', pageIds);
+  let legacy = [];
+  try { legacy = game.settings.get(MODULE_ID, RECYCLE_SETTING) ?? []; } catch { legacy = []; }
+  if (legacy.length) await game.settings.set(MODULE_ID, RECYCLE_SETTING, ids ? legacy.filter((r) => !ids.includes(r.id)) : []);
 }
 
 /** Restore a wiped entry to its origin journal (recreates the page). GM-only. */
@@ -1534,7 +1591,7 @@ export async function restoreWiped(recordId) {
     const journal = rec.journalId ? game.journal?.get(rec.journalId) : null;
     if (!journal) { ncmNotify.warn('NCM | Origin journal is gone — cannot restore in place.'); return false; }
     await journal.createEmbeddedDocuments('JournalEntryPage', [rec.pageData]);
-    await serialize('bin', () => game.settings.set(MODULE_ID, RECYCLE_SETTING, getRecycleBin().filter(r => r.id !== recordId)));
+    await serialize('bin', () => _dropFromBin([recordId]));
     log.debug(`Recycle-bin: restored "${rec.pageName}" to ${journal.name}`);
     return true;
   } catch (err) { log.error(`Recycle-bin restore failed: ${err.message}`); return false; }
@@ -1543,7 +1600,7 @@ export async function restoreWiped(recordId) {
 /** Permanently drop records from the recycle bin (all if ids omitted). GM-only — the one true delete. */
 export async function emptyRecycleBin(ids = null) {
   if (!isGM()) return;
-  await serialize('bin', () => game.settings.set(MODULE_ID, RECYCLE_SETTING, Array.isArray(ids) ? getRecycleBin().filter(r => !ids.includes(r.id)) : []));
+  await serialize('bin', () => _dropFromBin(Array.isArray(ids) ? ids : null));
   log.debug(`Recycle-bin: emptied ${Array.isArray(ids) ? ids.length + ' record(s)' : 'all'}`);
 }
 

@@ -23,6 +23,7 @@ import { TraceService } from '../../../services/TraceService.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 import { showNamePicker, worldItemEntries, worldRoleEntries, itemImgFor, roleImgFor } from '../../../utils/namePicker.js';
 import { gateSummary } from '../../content/EncoderModel.js';
+import { getRecycleBin } from '../../content/SiphonFlow.js';
 import { CMV_MODES, sanitizeCmvConfig, cmvSummary, cmvChip } from '../../../utils/countermeasures.js';
 import { JACK_ACTIONS, JACK_BUILT, resolveJackIn, rulesSummary, CPR_ROLES } from '../../../utils/jackIn.js';
 import { ScopePicker } from '../../../utils/scopePicker.js';
@@ -142,7 +143,9 @@ export class SecurityTab extends BaseTab {
     const plantsAll = this._gatherPlants();
     const plantsPage = this._paginate(plantsAll, this._plantPage, 8);
     this._plantPage = plantsPage.page;
-    const binAll = (ts.getRecycleBin?.() || []).slice().reverse();
+    // The bin lives in SiphonFlow (a GM-only journal since D5). This used to ask the trace service, which has no
+    // such method — so the Recycle Bin card always read empty, however many files had been wiped.
+    const binAll = getRecycleBin().slice().reverse();
     const binPage = this._paginate(binAll, this._binPage, 10);
     this._binPage = binPage.page;
     const bin = binPage.rows;

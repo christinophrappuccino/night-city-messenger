@@ -113,6 +113,10 @@ globalThis.game = {
 const C = await imp('scripts/utils/constants.js');
 const M = await imp('scripts/ui/AdminPanel/tabs/messagesModel.js');
 const { MessagesTab } = await imp('scripts/ui/AdminPanel/tabs/MessagesTab.js');
+// This sim edits its fake journals directly, so Foundry's update hooks never fire: count every scan as after a
+// change (the D5 scan cache is tested in test-mail-scan-cache.mjs).
+{ const { bumpMailRevision } = await imp('scripts/utils/mailRevision.js');
+  for (const m of ['_scanInboxes', '_gatherActivity', '_sentViaIndex']) { const o = MessagesTab.prototype[m]; MessagesTab.prototype[m] = function (...a) { bumpMailRevision(); return o.apply(this, a); }; } }
 const { MessageService } = await imp('scripts/services/MessageService.js');
 const { ScopePicker } = await imp('scripts/utils/scopePicker.js');
 

@@ -247,6 +247,18 @@ export class TraceService {
   /** Decayed heat for one (object, actor). */
   getHeat(objectId, actorId) { return this._decay(this.getHeatMap()?.[objectId]?.[actorId]); }
 
+  /**
+   * @private Drop every entry that has cooled to 0, and objects left with none (audit PERF-09: they were kept
+   * forever, so the setting only grew). Applied to the map just before each save.
+   */
+  _pruneHeat(map) {
+    for (const [objectId, byActor] of Object.entries(map || {})) {
+      for (const [actorId, entry] of Object.entries(byActor || {})) if (this._decay(entry) <= 0) delete byActor[actorId];
+      if (!Object.keys(byActor || {}).length) delete map[objectId];
+    }
+    return map;
+  }
+
   /** Bump heat (GM-side). Decays first, adds, clamps, stamps. Returns the new value. */
   async bumpHeat(objectId, actorId, amount) {
     if (!isGM()) return 0;
@@ -257,7 +269,7 @@ export class TraceService {
       const cur = this._decay(obj[actorId]);
       const next = Math.min(HEAT_MAX, cur + (Number(amount) || 0));
       obj[actorId] = { value: next, ts: this._nowIso() };
-      await game.settings.set(MODULE_ID, HEAT_SETTING, map);
+      await game.settings.set(MODULE_ID, HEAT_SETTING, this._pruneHeat(map));
       return next;
     });
   }
@@ -275,7 +287,7 @@ export class TraceService {
       const map = foundry.utils.deepClone(this.getHeatMap());
       const obj = map[objectId] || (map[objectId] = {});
       obj[actorId] = { value: v, ts: this._nowIso() };
-      await game.settings.set(MODULE_ID, HEAT_SETTING, map);
+      await game.settings.set(MODULE_ID, HEAT_SETTING, this._pruneHeat(map));
     });
     this._heatChat(actorId, objectName || objectId, v, reason, tellPlayer);
     return v;

@@ -32,7 +32,7 @@ import { adminWait } from '../utils/adminTheme.js';
 import { creditOldScheduled } from '../services/SchedulingService.js';
 
 /** The schema version this build of the module writes. */
-export const DATA_SCHEMA_VERSION = 5;
+export const DATA_SCHEMA_VERSION = 6;
 
 /**
  * Everything saved in this world that can hold an Interface DV.
@@ -192,6 +192,18 @@ const MIGRATIONS = [
       await game.settings.set(MODULE_ID, 'scheduledMessages', list);
       game.nightcity?.schedulingService?._loadScheduled?.();
       log.info(`Scheduled messages: recorded the eddies paid on ${changed}`);
+    },
+  },
+  {
+    // The recycle bin moved from one ever-growing world setting (re-sent whole to every client on each wipe) to a
+    // GM-only journal, one page per wiped file (audit PERF-07). Move what is already there. Safe to run twice:
+    // entries already in the journal are skipped, and the old setting empties only once every entry is across.
+    to: 6,
+    label: 'Recycle bin: move wiped files into a GM-only journal',
+    run: async () => {
+      const { migrateRecycleBin } = await import('../ui/content/SiphonFlow.js');
+      const n = await migrateRecycleBin();
+      if (n) log.info(`Recycle bin: moved ${n} wiped file(s) into the bin journal`);
     },
   },
 ];

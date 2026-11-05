@@ -28,6 +28,7 @@
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, resolveDisplayName } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
+import { wireMailRevision } from '../utils/mailRevision.js';
 
 export class DocumentSyncBridge {
 
@@ -48,6 +49,8 @@ export class DocumentSyncBridge {
     }
 
     this._eventBus = eventBus;
+    // The mail revision the admin scans are cached against moves on every journal / page / actor change (audit D5).
+    wireMailRevision();
 
     // ─── Scene Flag Changes ───────────────────────────────
     // Fires on ALL clients when any scene's flags change.

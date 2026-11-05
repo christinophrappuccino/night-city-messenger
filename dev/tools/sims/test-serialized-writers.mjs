@@ -60,7 +60,14 @@ globalThis.foundry = {
   },
   applications: { api: { ApplicationV2: class {}, HandlebarsApplicationMixin: (B) => B }, instances: new Map() },
 };
-globalThis.JournalEntry = { create: async (data) => { await tick(); created.journal += 1; const j = { id: `j${created.journal}`, ...clone(data), pages: [] }; journals.push(j); return j; } };
+globalThis.JournalEntry = { create: async (data) => {
+  await tick(); created.journal += 1;
+  const j = { id: `j${created.journal}`, ...clone(data), pages: [] };
+  j.getFlag = (m, k) => j.flags?.[MOD]?.[k];
+  j.createEmbeddedDocuments = async (t, docs) => { await tick(); const out = docs.map((d, i) => ({ id: `bp${j.pages.length + i}`, ...clone(d), parent: j })); j.pages.push(...out); return out; };
+  j.deleteEmbeddedDocuments = async (t, ids) => { await tick(); j.pages = j.pages.filter((p) => !ids.includes(p.id)); };
+  journals.push(j); return j;
+} };
 globalThis.Folder = { create: async (data) => { await tick(); created.folder += 1; const f = { id: `f${created.folder}`, ...clone(data) }; f.folder = data.folder ? folders.find((x) => x.id === data.folder) : null; folders.push(f); return f; } };
 
 // ═══ 1. The helper ═══
@@ -103,6 +110,8 @@ const S = await load('scripts/utils/serialize.js');
 {
   const SF = await load('scripts/ui/content/SiphonFlow.js');
   settings.set('recycleBin', []);
+  // D5: the bin is a GM-only journal (one page per wiped file); the old setting is only read until the migration.
+  const binJournal = () => SF.recycleJournal();
   const deleted = [];
   const page = (id) => ({ id, name: id, flags: { [MOD]: { messageId: id } }, toObject: () => ({ name: id }), delete: async () => { await tick(); deleted.push(id); } });
   const j1 = { id: 'jA', name: 'Box', pages: [page('m1'), page('m2')] };
@@ -116,12 +125,16 @@ const S = await load('scripts/utils/serialize.js');
     SF._applyNativeEffect('wipe', { page: carrier(j2), hostItem: null, actor: null, cd: { effect: { params: { messageIds: ['m3'] } } } }),
   ]);
   void wipe;
-  const bin = settings.get('recycleBin');
+  const bin = SF.getRecycleBin();
   ok(bin.length === 3 && ['m1', 'm2', 'm3'].every((n) => bin.some((r) => r.pageName === n)), 'two wipes at once: every file is in the bin');
   ok(deleted.length === 3, 'and each page was deleted once it was safely binned');
+  ok(created.journal >= 1 && binJournal()?.ownership?.default === 0, 'the bin is one GM-only journal');
+  ok(!(binJournal()?.pages || []).some((p) => p.flags?.[MOD]?.messageId), 'a bin page never carries the wiped file\'s own message id');
   const j3 = { id: 'jC', name: 'Box3', pages: [page('m4')] }; j3.pages[0].parent = j3;
-  failNextSet = 'recycleBin';
+  const realAdd = binJournal().createEmbeddedDocuments;
+  binJournal().createEmbeddedDocuments = async () => { throw new Error('disk full'); };
   await SF._applyNativeEffect('wipe', { page: carrier(j3), hostItem: null, actor: null, cd: { effect: { params: { messageIds: ['m4'] } } } });
+  binJournal().createEmbeddedDocuments = realAdd;
   ok(!deleted.includes('m4'), 'a file the bin could not save is NOT deleted');
 }
 

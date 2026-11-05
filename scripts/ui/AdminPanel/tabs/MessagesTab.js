@@ -24,6 +24,7 @@
 
 import { ncmNotify } from '../../../utils/notify.js';
 import { domainOf } from '../../../utils/junkSenders.js';
+import { memoByRevision } from '../../../utils/mailRevision.js';
 import { convCount, convWaiting, wireConversations, closeConversations, newConversationAdmin } from './conversationsView.js';
 import { MODULE_ID, SOCKET_OPS, EVENTS } from '../../../utils/constants.js';
 import {
@@ -468,7 +469,16 @@ export class MessagesTab extends BaseTab {
    * { inboxes: [{journal, ownerId, isContact, isPlayer, orphan, name, actor, contact, msgs}], viaByBase, anonRealByBase }
    * Each msg is a light record read straight off the page flags.
    */
+  /**
+   * Every inbox and its mail — remembered until mail, an actor or the directory changes (audit PERF-05: this walked
+   * every page in the world on every render of the tab).
+   */
   _scanInboxes() {
+    return memoByRevision(this, '_scanMemo', null, () => this._scanInboxesNow());
+  }
+
+  /** @private */
+  _scanInboxesNow() {
     const mcs = this.masterContactService;
     const inboxes = [];
     const viaByBase = new Map();
@@ -1000,9 +1010,23 @@ export class MessagesTab extends BaseTab {
   }
 
   _gatherActivity() {
+    const nowMs = this._nowMs?.() ?? Date.now();
+    // The page walk is the slow part: remembered until mail / actors / the directory change, or the game minute does
+    // (its "… ago" labels). What depends on this render — the open row, "just now" — is put back on a copy.
+    const walked = memoByRevision(this, '_activityMemo', Math.floor(nowMs / 60000), () => this._activityEntriesNow(nowMs));
+    const entries = walked.map((e) => ({ ...e, isExpanded: this._expandedId === e.messageId, isRecent: e.rawTimestamp > 0 && (nowMs - e.rawTimestamp) < 600000 }));
+    // HELD on a player's Agent / NOT DELIVERED at all: no page anywhere, so they get a
+    // row of their own — the delivery line is the only place that can say what happened.
+    for (const p of this._pendingEntries(entries)) entries.push(p);
+
+    entries.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+    return this._filterActivity(entries);
+  }
+
+  /** @private Walk every inbox page into feed rows (no filters). */
+  _activityEntriesNow(nowMs) {
     const junkOf = game.nightcity?.spamService?.junkMatcher?.() || null;
     const entries = [];
-    const nowMs = this._nowMs?.() ?? Date.now();
 
     try {
       // Scan all NCM inbox journals (flag-based identity, legacy-name fallback)
@@ -1160,12 +1184,11 @@ export class MessagesTab extends BaseTab {
     const realByBase = new Map();
     for (const e of entries) if (e.isSent && e.anonymous?.enabled && e.anonymous.role !== 'recipient') realByBase.set(baseIdOf(e.messageId), resolveDisplayName({ contactId: e.fromContactId, actorId: e.fromActorId, email: e.fromEmail }, e.fromEmail || 'Unknown'));
     for (const e of entries) if (e.isAnon && !e.isSent) e.anonReal = realByBase.get(e.messageId) || '';
-    // HELD on a player's Agent / NOT DELIVERED at all: no page anywhere, so they get a
-    // row of their own — the delivery line is the only place that can say what happened.
-    for (const p of this._pendingEntries(entries)) entries.push(p);
+    return entries;
+  }
 
-    entries.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
-
+  /** @private The feed's filters, collapse and paging over the rows of this render. */
+  _filterActivity(entries) {
     let filtered = entries;
 
     // Direction filter (kept for scripts) + the Unread chip (before the collapse,
@@ -2772,6 +2795,11 @@ export class MessagesTab extends BaseTab {
    * from every sent copy that carries `sentVia` (stored on the sender's copy only).
    */
   _sentViaIndex() {
+    return memoByRevision(this, '_viaMemo', null, () => this._sentViaIndexNow());
+  }
+
+  /** @private */
+  _sentViaIndexNow() {
     const out = new Map();
     for (const journal of game.journal ?? []) {
       if (!MessageRepository.identifyInbox(journal)) continue;

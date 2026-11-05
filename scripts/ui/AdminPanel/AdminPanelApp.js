@@ -66,6 +66,10 @@ export class AdminPanelApp extends BaseApplication {
       Hooks.off('updateSetting', this._securitySettingHook);
       this._securitySettingHook = null;
     }
+    if (this._binHook) {
+      for (const h of ['createJournalEntryPage', 'deleteJournalEntryPage']) Hooks.off(h, this._binHook);
+      this._binHook = null;
+    }
     this._tabFoldObs?.disconnect(); this._tabFoldObs = null;
     if (this._sceneHook) {
       for (const h of ['createScene', 'updateScene', 'deleteScene']) Hooks.off(h, this._sceneHook);
@@ -1070,6 +1074,11 @@ export class AdminPanelApp extends BaseApplication {
       if (this._activeTab === 'security') this._debouncedRender();
     };
     Hooks.on('updateSetting', this._securitySettingHook);
+    // The recycle bin is a GM-only journal now (audit D5): a page in or out of it refreshes the Security tab.
+    this._binHook = (page) => {
+      if (this._activeTab === 'security' && page?.parent?.getFlag?.(MODULE_ID, 'recycleBin')) this._debouncedRender();
+    };
+    for (const h of ['createJournalEntryPage', 'deleteJournalEntryPage']) Hooks.on(h, this._binHook);
     // World time (the Foundry clock + Simple Calendar) advancing: same reason. SC's own hook fires on a
     // calendar change even when Foundry's world time is untouched (its "date-time-change" event name).
     this._worldTimeHook = () => this._onGameClock(false);
@@ -1228,10 +1237,9 @@ export class AdminPanelApp extends BaseApplication {
    * @private
    */
   _refreshIfTab(...tabs) {
-    // Always refresh if on one of the target tabs
-    if (tabs.includes(this._activeTab)) {
-      this.render(true);
-    }
+    // Refresh if on one of the target tabs — once per burst (audit PERF-05: a group send to N people fired one full
+    // render per copy, each re-scanning every mailbox).
+    if (tabs.includes(this._activeTab)) this._debouncedRender();
   }
 
   // ═══════════════════════════════════════════════════════════
