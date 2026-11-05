@@ -85,7 +85,9 @@ const booth = (realUserId) => ({ name: 'Payphone, Kabuki', number: '555', paypho
 
 // ═══ 4. PRIV-01: the docs say it plainly ═══
 ok(/hiding is on screen[^.]*every connected browser[^.]*developer tools/.test(read('docs/GETTING-STARTED.md')), 'the GM guide says the hiding is on screen and how a player could still find out');
-ok(/This is masking on screen, not secrecy/.test(read('CLAUDE.md')) && !/the real person never reaches the other end's client/.test(read('CLAUDE.md')), 'the developer notes no longer claim the real person never reaches the other end');
+// the developer notes = CLAUDE.md + the per-system notes it points to (split out 2026-11-05)
+const devNotes = read('CLAUDE.md') + '\n' + read('dev/design/systems/phone.md');
+ok(/This is masking on screen, not secrecy/.test(devNotes) && !/the real person never reaches the other end's client/.test(devNotes), 'the developer notes no longer claim the real person never reaches the other end');
 
 console.log(`test-call-privacy: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
