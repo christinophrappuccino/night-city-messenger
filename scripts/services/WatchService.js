@@ -20,6 +20,8 @@ import { snapshotWindow, diffText, applyText } from '../utils/watchMirror.js';
 const BTN = 'ncm-watchbtn';
 /** The fastest it sends. A burst of changes in one frame still goes out as one edit. */
 const SEND_EVERY_MS = 100;
+/** After an edit too big to send, wait this long before trying again (audit PERF-04: it retried every 30 ms). */
+export const TOO_BIG_BACKOFF_MS = 2000;
 const BATCH_MS = 30;
 /** Slower when the edits are big, so a busy window cannot flood the server (every client receives every message). */
 const BYTES_PER_MS = 200;
@@ -30,6 +32,19 @@ const RESYNC_EVERY_MS = 1500;
 export const MAX_PICTURE = 900000;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/**
+ * Did these DOM changes all happen inside a `[data-watch-ignore]` element? Then they are decoration (an animation
+ * that redraws itself) and are not worth a send by themselves — they ride along with the next real change.
+ * @param {MutationRecord[]} muts
+ */
+export function watchIgnoredOnly(muts = []) {
+  if (!muts.length) return false;
+  return muts.every((m) => {
+    const el = m.target?.nodeType === 1 ? m.target : m.target?.parentElement;
+    return !!el?.closest?.('[data-watch-ignore]');
+  });
+}
 
 export class WatchService {
   constructor({ socket = null, snapshot = snapshotWindow } = {}) {
@@ -125,7 +140,9 @@ export class WatchService {
   /** Watchers came or went: only watch the window's DOM while someone is looking. */
   _syncObserver(rec) {
     if (rec.watchers.size && !rec.observer && typeof MutationObserver !== 'undefined' && rec.app.element) {
-      rec.observer = new MutationObserver(() => this._schedule(rec.app.id));
+      // A change inside [data-watch-ignore] (a purely decorative animation, like the node console's traffic wave
+      // redrawn every 70 ms) does not trigger a send on its own — it used to re-send the window ~10×/s (PERF-04).
+      rec.observer = new MutationObserver((muts) => { if (!watchIgnoredOnly(muts)) this._schedule(rec.app.id); });
       rec.observer.observe(rec.app.element, { subtree: true, childList: true, attributes: true, characterData: true });
       // Scrolling, typing and picking change what is on screen without changing the DOM, so the observer never hears them.
       rec.listening = new AbortController();
@@ -172,8 +189,10 @@ export class WatchService {
         const body = { edit, meta: meta === rec.meta ? null : rest };
         const size = (edit?.[2].length || 0) + (body.meta ? meta.length : 0);
         if (size > MAX_PICTURE) {
-          // Their copy stays where it was, and the next edit is measured from there.
+          // Their copy stays where it was, and the next edit is measured from there. Back off before trying again:
+          // returning without a next time let it retry every 30 ms with a snapshot near 900 KB (PERF-04).
           this.socket?.emit(SOCKET_OPS.WATCH, { type: 'tooBig', shareId: rec.shareId, userIds: others });
+          rec.nextAt = Date.now() + TOO_BIG_BACKOFF_MS;
           if (!to) return;
         } else {
           rec.seq += 1; rec.html = html; rec.meta = meta; bytes += size;

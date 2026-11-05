@@ -31,7 +31,8 @@
   </div>
 
   <div class="ncm-ndc__wave"><span class="ncm-ndc__lbl">TRAFFIC</span><span class="ncm-ndc__lbl ncm-ndc__lbl--r">{{rate}}</span>
-    <svg viewBox="0 0 500 52" preserveAspectRatio="none" aria-hidden="true"><path data-ndc-wave d=""></path></svg></div>
+    {{!-- data-watch-ignore: the wave redraws itself every 70 ms; watchers get it with the next real change, not ~10 sends a second (audit PERF-04) --}}
+    <svg viewBox="0 0 500 52" preserveAspectRatio="none" aria-hidden="true" data-watch-ignore><path data-ndc-wave d=""></path></svg></div>
 
   <div class="ncm-ndc__stats">
     <div><span class="ncm-ndc__k">Signal</span><b><span class="ncm-ndc__bars">{{#each bars}}<span class="ncm-ndc__b{{#unless on}} is-off{{/unless}}" style="height:{{h}}px"></span>{{/each}}</span>{{signal}}%</b></div>
