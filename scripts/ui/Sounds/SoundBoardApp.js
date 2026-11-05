@@ -15,8 +15,9 @@ import { isGM } from '../../utils/helpers.js';
 import { adminConfirm } from '../../utils/adminTheme.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { sanitizeSoundOverrides, soundBoard, SOUND_INFO } from '../../utils/soundCatalog.js';
+import { FilePickerClass } from '../../utils/compat.js';
 
-const FP = () => (typeof FilePicker !== 'undefined' ? FilePicker : foundry.applications?.apps?.FilePicker);
+const FP = FilePickerClass;
 
 export class SoundBoardApp extends BaseApplication {
   static ADMIN_THEMED = true;

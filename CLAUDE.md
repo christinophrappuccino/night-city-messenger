@@ -38,6 +38,8 @@ that needs Foundry's Handlebars finds it through `dev/tools/sims/lib/foundryApp.
 (`dev/tools/check-paths.mjs` — Windows forgives a wrong case, The Forge's Linux servers do not). To run the sims the
 way CI does: `NCM_FOUNDRY_APP=<folder with node_modules/handlebars@4.7.8> NCM_NO_LOCAL_FOUNDRY=1 node dev/tools/run-checks.mjs`.
 
+**Live checks in a real Foundry — `node dev/tools/live-smoke.mjs --url <server> --user <offline user>`.** Joins a running world headless as an offline user (never one someone is logged in as), checks the startup report and the compat.js lookups, opens every admin tab / the composer / sound board / theme customizer / a v1 dialog / the name picker, and lists the warnings and errors NCM causes apart from everyone else's. **A Foundry v13 test install** (2026-11-05): the Node build in `dev/FoundryVTT-Node-13.351/` (gitignored, never committed), data in `%LOCALAPPDATA%/FoundryVTT-v13`, run with `node dev/FoundryVTT-Node-13.351/main.js --dataPath=<that> --port=30001`; world `ncm-v13-test` on Simple Worldbuilding (Cyberpunk RED has no v13 release yet). Put NCM in it with `node dev/tools/sync-test-install.cjs --data <v13 Data> --any-system` (a COPY, never a link; `--any-system` lifts the CPR requirement in the copy only). Re-run the sync after a change.
+
 > **`node --check path/to/file.js` IS NOT ENOUGH — it passes files Foundry cannot load.**
 > With no `package.json` type, node parses a `.js` file as CommonJS/sloppy script, and
 > constructs that are fatal in module (strict) context survive that parse. This bit on
@@ -229,6 +231,16 @@ All `.hbs` paths are constants in `TEMPLATES` (in `scripts/utils/constants.js`) 
 CSS is a single entry: `styles/night-city-messenger.css` `@import`s every other stylesheet. New stylesheets must be added there.
 
 ## Foundry v12 / ApplicationV2 gotchas
+
+**Moved Foundry APIs go through `scripts/utils/compat.js`** (stage 2, step 10 — v13 readiness). `renderTemplate` /
+`loadTemplates` / `getTemplate` (import them from compat; bare calls then reach the right one), `FilePickerClass()` /
+`newFilePicker(opts)` / `browseFiles(…)`, `ImagePopoutClass()`, `DocumentOwnershipConfigClass()`,
+`SettingsConfigClass()`, `InteractionLayerClass()`, and `htmlOf(html)` (jQuery or element → element). Each tries the
+v13 namespace first and falls back to the v12 global, so nothing prints a deprecation warning on v13 and v12 keeps
+working. `dev/tools/check-deprecations.mjs` (in run-checks / CI) fails on a direct use outside compat.js, and holds a
+count for what is still to move (v1 `Dialog`, `html.find`, `$(`, the `renderChatMessage` and
+`getSceneControlButtons` hooks) that may only go DOWN. Verified live on v12 (build 343): no namespaced path exists
+there yet, every lookup returns the real v12 class.
 
 These have all bitten the project. Don't relearn them:
 

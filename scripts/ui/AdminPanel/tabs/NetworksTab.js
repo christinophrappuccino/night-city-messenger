@@ -51,6 +51,7 @@ import {
   ancestorKeys, subtreeKeys, shelfPaint, coverage, rangeIds, sanitizePrewire, togglePrewire, sourceUuidOf,
   PAINT_DOCK_AT, paintDock,
 } from '../../../utils/scenesAtlas.js';
+import { FilePickerClass, renderTemplate } from '../../../utils/compat.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const typeLabel = (t) => { const s = String(t || 'custom').toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -1502,7 +1503,7 @@ export class NetworksTab extends BaseTab {
   _browse(field, target) {
     const form = this._form();
     const input = form?.querySelector(`[name="${field}"]`);
-    const FP = (typeof FilePicker !== 'undefined') ? FilePicker : foundry.applications?.apps?.FilePicker;
+    const FP = FilePickerClass();
     if (!FP) return;
     new FP({ type: 'image', current: input?.value || '', callback: (path) => {
       if (!input) return;

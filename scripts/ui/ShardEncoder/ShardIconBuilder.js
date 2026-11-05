@@ -29,6 +29,7 @@ import { ncmNotify, tipText } from '../../utils/notify.js';
 import { TERMINAL_ICON_LIBRARY } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { CT_COLORS, ACCENT_HEX } from '../content/ContentRenderers.js';
+import { newFilePicker } from '../../utils/compat.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -350,7 +351,7 @@ export function runIconBuilder({ host, image = '', colour = 'cyan' } = {}) {
       else if (t.hasAttribute('data-ib-glow')) S.glow = !S.glow;
       else if (t.hasAttribute('data-ib-browse')) {
         try {
-          new FilePicker({
+          newFilePicker({
             type: 'image',
             callback: (p) => {
               const im = new Image();

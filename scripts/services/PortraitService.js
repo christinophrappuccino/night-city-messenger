@@ -18,6 +18,7 @@
 import { MODULE_ID } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 import { identityRole } from '../utils/identities.js';
+import { newFilePicker } from '../utils/compat.js';
 
 /** Maximum portrait dimension (square) */
 const PORTRAIT_SIZE = 128;
@@ -53,7 +54,7 @@ export class PortraitService {
    */
   async uploadViaFilePicker(actorId, contactId, options = {}) {
     return new Promise((resolve) => {
-      const fp = new FilePicker({
+      const fp = newFilePicker({
         type: 'image',
         current: '',
         callback: async (path) => {

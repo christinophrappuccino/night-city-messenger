@@ -19,6 +19,7 @@ import { adminDialog, playerDialog } from '../../utils/adminTheme.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { GROUP_COLORS, sanitizeGroup } from '../../services/ContactGroupService.js';
 import { memberKey } from '../../utils/participants.js';
+import { FilePickerClass } from '../../utils/compat.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -110,7 +111,7 @@ export async function editGroupDialog(group = {}, { memberSource, title, admin =
         imgIn?.addEventListener('input', paintFace);
         clear?.addEventListener('click', () => { if (imgIn) imgIn.value = ''; paintFace(); });
         root.querySelector('[data-browse-img]')?.addEventListener('click', () => {
-          const FP = (typeof FilePicker !== 'undefined') ? FilePicker : foundry.applications?.apps?.FilePicker;
+          const FP = FilePickerClass();
           try {
             if (FP) new FP({ type: 'image', current: imgIn?.value || '', callback: (path) => { if (imgIn) { imgIn.value = path; paintFace(); } } }).render(true);
           } catch (err) { ncmNotify.warn('You can\'t browse files here — paste an image path or URL instead.'); }

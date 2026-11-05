@@ -13,6 +13,7 @@ import { log, formatCyberDate, truncate } from '../utils/helpers.js';
 import { registerTipHelper } from '../utils/notify.js';
 import { registerShardTermHelper } from '../utils/shardTerm.js';
 import { registerTagHueHelper, setRoleColorResolver } from '../utils/tagHue.js';
+import { loadTemplates } from '../utils/compat.js';
 
 /**
  * Check if the last argument is a Handlebars options object (block mode)

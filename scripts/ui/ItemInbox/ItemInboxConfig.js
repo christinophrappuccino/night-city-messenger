@@ -17,6 +17,7 @@ import { cmvOverrideContext, wireCmvOverride, readCmvOverride } from '../../util
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
+import { newFilePicker } from '../../utils/compat.js';
 
 const BOOT_ICON_OPTIONS = [
   { value: 'fas fa-shield-halved', label: 'Shield' },
@@ -347,7 +348,7 @@ export class ItemInboxConfig extends BaseApplication {
         return;
       }
       case 'wallpaperBrowse': {
-        const fp = new FilePicker({
+        const fp = newFilePicker({
           type: 'image',
           current: d.wallpaper || '',
           callback: (path) => {
@@ -2058,7 +2059,7 @@ export class ItemInboxConfig extends BaseApplication {
   static _onBrowseVideo(event, target) {
     const targetInput = target.dataset.target || 'bootVideoUrl';
     const input = this.element?.querySelector(`[name="${targetInput}"]`);
-    new FilePicker({
+    newFilePicker({
       type: 'video',
       current: input?.value || '',
       callback: (path) => { if (input) input.value = path; },
@@ -2069,7 +2070,7 @@ export class ItemInboxConfig extends BaseApplication {
     const targetInput = target.dataset.target;
     if (!targetInput) return;
     const input = this.element?.querySelector(`[name="${targetInput}"]`);
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       current: input?.value || '',
       callback: (path) => { if (input) input.value = path; },

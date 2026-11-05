@@ -13,6 +13,7 @@ import { log, chatCardTime } from '../utils/helpers.js';
 import { playRollReveal } from '../ui/content/RollReveal.js';
 import { askRoll } from '../ui/content/RollPanel.js';
 import { beatsDV } from '../utils/rolls.js';
+import { renderTemplate } from '../utils/compat.js';
 
 export class SkillService {
 

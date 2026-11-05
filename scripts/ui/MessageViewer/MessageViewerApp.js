@@ -59,6 +59,7 @@ import { scheduledRecipientLabel, scheduledRecipients, scheduledComposerState } 
 import { callsState, buildCallsContext, wireCallsTab, handleCallsAction, missedCount } from './callsTab.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
+import { ImagePopoutClass, renderTemplate } from '../../utils/compat.js';
 
 const MODULE_ID = 'night-city-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -4435,7 +4436,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // Images — Foundry ImagePopout
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
-      new ImagePopout(fileUrl, { title: att.name || 'Attachment' }).render(true);
+      new (ImagePopoutClass())(fileUrl, { title: att.name || 'Attachment' }).render(true);
       return;
     }
 

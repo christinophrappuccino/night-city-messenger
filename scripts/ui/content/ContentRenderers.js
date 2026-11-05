@@ -24,6 +24,7 @@ import { CONTENT_TYPES } from '../../utils/constants.js';
 import { log, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { cleanHtml } from '../../utils/richText.js';
 import { payloadCanRun } from '../../utils/contentIntents.js';
+import { ImagePopoutClass } from '../../utils/compat.js';
 
 /**
  * Display info per content type. `accent` is a palette key consumed by CSS
@@ -2485,7 +2486,7 @@ export function openGalleryImage(target, { host = null } = {}) {
     const src = frames[idx]?.dataset?.src;
     const caption = frames[idx]?.dataset?.caption || '';
     const label = frames[idx]?.dataset?.label || '';
-    const Popout = (typeof ImagePopout !== 'undefined') ? ImagePopout : foundry.applications?.apps?.ImagePopout;
+    const Popout = ImagePopoutClass();
     if (!Popout) { ncmNotify.warn('NCM | Image broadcast unavailable.'); return; }
     try {
       const p = new Popout(src, { title: caption || label || 'Recovered image', uuid: null });

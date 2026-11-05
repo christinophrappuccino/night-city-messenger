@@ -16,6 +16,7 @@
 
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
+import { getTemplate } from '../utils/compat.js';
 
 export class Phase4Verification {
 

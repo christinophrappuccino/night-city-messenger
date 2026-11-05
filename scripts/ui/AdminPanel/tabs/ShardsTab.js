@@ -34,6 +34,7 @@ import {
 } from '../../content/EncoderModel.js';
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 import { showNamePicker, documentEntries } from '../../../utils/namePicker.js';
+import { DocumentOwnershipConfigClass } from '../../../utils/compat.js';
 
 /**
  * The Filter menu, in order. Multi-select (2026-10-28 toolbar tidy): `state` picks
@@ -1435,7 +1436,7 @@ export class ShardsTab extends BaseTab {
     if (!item) return;
     if (item.parent) { ncmNotify.info(`NCM | "${item.name}" is on ${item.parent.name}'s sheet — it follows that character's permissions.`); return; }
     // v12: a global lexical class (bare reference); v13 moves it under the namespace.
-    const Cls = (typeof DocumentOwnershipConfig !== 'undefined') ? DocumentOwnershipConfig : foundry.applications?.apps?.DocumentOwnershipConfig;
+    const Cls = DocumentOwnershipConfigClass();
     if (!Cls) { ncmNotify.warn('NCM | The ownership dialog is not available in this Foundry version.'); return; }
     try { new Cls(item).render(true); }
     catch (err) { log.warn('ShardsTab: ownership dialog failed', err); ncmNotify.warn('NCM | Could not open the ownership dialog.'); }

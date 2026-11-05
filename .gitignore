@@ -19,3 +19,6 @@ dist/
 
 # Personal, machine-local notes (e.g. WORKFLOW.local.md) — never committed
 *.local.md
+
+# A local Foundry build kept in the repo for compatibility testing (stage 2, step 10) — never commit it
+dev/FoundryVTT-Node-*

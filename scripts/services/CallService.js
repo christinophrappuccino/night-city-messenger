@@ -31,6 +31,7 @@ import { dropReason, maskCaller, callerFor, interceptMail } from '../utils/callN
 import { placeLabel, maskPayphoneSide, payphoneSendGroups } from '../utils/payphones.js';
 import { dictateStatus } from '../ui/Calls/dictation.js';
 import { sanitizeLineSettings, greetingFor, goesToVoicemail, greetMs, makeVoicemail, voicemailOwner, recordingsToPurge, GREETING_RECORD_MS } from '../utils/voicemail.js';
+import { FilePickerClass } from '../utils/compat.js';
 
 const VOICEMAIL_OPEN_MS = 3 * 60 * 1000;   // a voicemail screen left open this long gives up (nothing is left)
 const AUDIO_CHUNK = 120000;                // base64 characters per socket piece
@@ -1605,7 +1606,7 @@ export class CallService {
    */
   async _storeAudio(base64, mime = 'audio/webm', name = 'voicemail') {
     const ext = /ogg/.test(mime) ? 'ogg' : /mp4|m4a/.test(mime) ? 'm4a' : 'webm';
-    const FP = (typeof FilePicker !== 'undefined' ? FilePicker : null) || foundry.applications?.apps?.FilePicker?.implementation;
+    const FP = FilePickerClass();
     try {
       if (FP?.upload && typeof File !== 'undefined') {
         const bin = atob(base64); const bytes = new Uint8Array(bin.length);

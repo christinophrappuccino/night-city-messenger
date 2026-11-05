@@ -47,6 +47,7 @@ import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
 import {
   LEGIBILITY_RANGES, LEGIBILITY_PRESETS, getLegibility, setLegibility, applyLegibility, effectiveMotion,
 } from '../../utils/legibility.js';
+import { newFilePicker, renderTemplate } from '../../utils/compat.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1947,7 +1948,7 @@ export class ShardEncoderApp extends BaseApplication {
   /** Any image at all — the quick picks are a shortcut, not a limit. */
   async _browseImage() {
     try {
-      const fp = new FilePicker({
+      const fp = newFilePicker({
         type: 'image',
         current: this._img(),
         callback: (path) => { this.S.img = path; this._renderRail({ enter: false }); this._patch(); },
@@ -2081,7 +2082,7 @@ export class ShardEncoderApp extends BaseApplication {
     this.g('encDocSub').textContent = (shown.subject || '') + (n > 1 ? `  ·  ${n} files on the chip` : '');
     try {
       const enriched = enrichContent({ ...shown }, { isGM: false, interactive: false });
-      const rt = foundry.applications?.handlebars?.renderTemplate || renderTemplate;
+      const rt = renderTemplate;
       this.g('encDocBody').innerHTML = await rt(TEMPLATES.CONTENT_BODY, enriched);
     } catch (err) {
       log.warn('Encoder: preview failed', err);

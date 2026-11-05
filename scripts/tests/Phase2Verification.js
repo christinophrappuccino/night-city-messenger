@@ -9,6 +9,7 @@
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, TEMPLATES } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { renderTemplate } from '../utils/compat.js';
 
 export class Phase2Verification {
 

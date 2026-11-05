@@ -1,6 +1,6 @@
 // run-checks — every automated check NCM has, in one command. CI runs this before a dev build or a release.
 //
-//   node dev/tools/run-checks.mjs            syntax + paths + every dev/tools/sims/test-*.mjs
+//   node dev/tools/run-checks.mjs            syntax + paths + deprecations + every dev/tools/sims/test-*.mjs
 //   node dev/tools/run-checks.mjs --sims     only the sims
 //   node dev/tools/run-checks.mjs --jobs 8   run 8 sims at once (default 4)
 //
@@ -39,7 +39,7 @@ const report = (r) => {
 };
 
 if (!onlySims) {
-  for (const tool of ['check-syntax.mjs', 'check-paths.mjs']) {
+  for (const tool of ['check-syntax.mjs', 'check-paths.mjs', 'check-deprecations.mjs']) {
     const r = await run(path.join(ROOT, 'dev/tools', tool));
     console.log(r.out.trim().split('\n').slice(-1)[0] || `${tool} done`);
     report(r);

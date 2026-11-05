@@ -9,6 +9,7 @@ import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, MODULE_TITLE } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { registerMinimizeControls } from '../utils/windowMinimize.js';
+import { InteractionLayerClass } from '../utils/compat.js';
 
 export function registerUIComponents(initializer) {
   // A visible minimize button on every NCM window + the bigger dialogs (scripts/utils/windowMinimize.js).
@@ -21,7 +22,7 @@ export function registerUIComponents(initializer) {
     // picks a group by its layer (SceneControls#initialize: the FIRST group on that layer wins), so a module that
     // also uses 'controls' — Grid Scaler — opened instead of the messenger (tester 2026-11-03). An empty
     // interaction layer: nothing is drawn on it, it only gives the group a unique name.
-    const IL = (typeof InteractionLayer !== 'undefined') ? InteractionLayer : foundry.canvas?.layers?.InteractionLayer;
+    const IL = InteractionLayerClass();
     let groupLayer = 'controls';
     if (IL && globalThis.CONFIG?.Canvas?.layers) {
       class NCMControlsLayer extends IL {

@@ -15,6 +15,7 @@ import { adjustWealth } from '../utils/wealth.js';
 import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
 import { replyIdentity, groupKeyOf, identitiesOf } from '../utils/identities.js';
 import { serialize } from '../utils/serialize.js';
+import { renderTemplate } from '../utils/compat.js';
 
 export class MessageService {
   constructor() {

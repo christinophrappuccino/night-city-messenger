@@ -15,6 +15,7 @@ import { log } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { applyCrt, resolveCrt, CRT_OFF, CRT_CAPS, crtPanelContext, wireCrtPanel } from '../../utils/crt.js';
+import { newFilePicker } from '../../utils/compat.js';
 
 export class ThemeCustomizerApp extends BaseApplication {
 
@@ -258,7 +259,7 @@ export class ThemeCustomizerApp extends BaseApplication {
   /** FilePicker for the inbox wallpaper (Effects panel). */
   static _onBrowseWallpaper() {
     const input = this.element?.querySelector('[name="wallpaper"]');
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       current: input?.value || '',
       callback: (path) => {

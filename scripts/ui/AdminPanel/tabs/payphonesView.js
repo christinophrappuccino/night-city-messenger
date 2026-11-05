@@ -17,6 +17,7 @@ import { themedPrompt, themedConfirm } from '../../../utils/adminTheme.js';
 import { dialogBodyHtml } from '../../../utils/dialogBody.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
 import { openPayphonePlaceDialog, payphoneAccessEntries, showEntriesMenu } from '../../../integrations/AccessPoints.js';
+import { FilePickerClass } from '../../../utils/compat.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const svc = () => game.nightcity?.payphoneService;
@@ -189,7 +190,7 @@ export function wirePayphones(tab, root) {
         case 'ring': return ringAs(draft);
         case 'access': return showEntriesMenu(payphoneAccessEntries(draft.id), b);
         case 'sndBrowse': {
-          const FP = (typeof FilePicker !== 'undefined') ? FilePicker : foundry.applications?.apps?.FilePicker;
+          const FP = FilePickerClass();
           return new FP({ type: 'audio', current: draft.sounds[b.dataset.k] || '', callback: (p) => saveNow({ sounds: { ...draft.sounds, [b.dataset.k]: safeSound(p) } }) }).render(true);
         }
         case 'sndPlay': {

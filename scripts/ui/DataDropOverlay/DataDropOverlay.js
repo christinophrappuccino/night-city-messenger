@@ -32,6 +32,7 @@ import {
   getAvatarColor,
   getInitials,
 } from '../../utils/designHelpers.js';
+import { renderTemplate } from '../../utils/compat.js';
 
 /** Phase timing (ms from start) */
 const T = {

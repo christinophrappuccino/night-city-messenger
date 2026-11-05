@@ -646,7 +646,7 @@ check('a shard wears the system\'s own chip art by default', () => {
 check('the art is changeable — quick picks AND any file', () => {
   assert.ok(ENC.includes("case 'img':"), 'no quick-pick action');
   assert.ok(ENC.includes("case 'browseimg'"), 'no file picker');
-  assert.ok(ENC.includes('new FilePicker('), 'the picker must be a real FilePicker');
+  assert.ok(ENC.includes('newFilePicker('), 'the picker must be a real FilePicker (through utils/compat.js since stage 2 step 10a)');
 });
 
 check('the chosen art lands on the ITEM, not in the shard config', () => {

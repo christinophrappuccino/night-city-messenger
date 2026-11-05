@@ -24,6 +24,7 @@ import { applyCrt, resolveCrt, crtPanelContext, wireCrtPanel } from '../../utils
 import { adminLabelFor, resolveAdminAccess } from '../../utils/terminalAdmin.js';
 import { bypassRowsHtml, wireBypassRows, readBypassRows, bypassFieldsFrom, bypassRowsOf } from '../../utils/bypassSkills.js';
 import { cmvOverrideContext, wireCmvOverride, readCmvOverride } from '../../utils/countermeasureView.js';
+import { newFilePicker } from '../../utils/compat.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
 const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
@@ -990,7 +991,7 @@ export class TerminalConfigApp extends BaseApplication {
   /** FilePicker for the screensaver image (Boot & Login tab). */
   static _onBrowseSsImage() {
     const input = this.element?.querySelector('[name="ssImageUrl"]');
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       current: input?.value || '',
       callback: (path) => {
@@ -1145,7 +1146,7 @@ export class TerminalConfigApp extends BaseApplication {
   /** FilePicker for the terminal wallpaper (Theme tab — writes the draft). */
   static _onBrowseWallpaper() {
     const input = this.element?.querySelector('[data-ttc-wallpaper]');
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       current: input?.value || '',
       callback: (path) => {
@@ -1412,7 +1413,7 @@ export class TerminalConfigApp extends BaseApplication {
   /** FilePicker for the account portrait. */
   static _onBrowseAcctPortrait() {
     const input = this.element?.querySelector('[name="acctPortrait"]');
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       current: input?.value || '',
       callback: (path) => {
@@ -1424,7 +1425,7 @@ export class TerminalConfigApp extends BaseApplication {
   /** FilePicker for the boot VIDEO (.webm / .mp4). */
   static _onBrowseBootVideo() {
     const input = this.element?.querySelector('[name="bootVideoUrl"]');
-    new FilePicker({
+    newFilePicker({
       type: 'video',
       current: input?.value || '',
       callback: (path) => {
@@ -1440,7 +1441,7 @@ export class TerminalConfigApp extends BaseApplication {
   /** FilePicker for the boot logo image. */
   static _onBrowseBootImage(event, target) {
     const input = this.element?.querySelector('[name="bootImageUrl"]');
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       current: input?.value || '',
       callback: (path) => {

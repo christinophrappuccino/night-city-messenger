@@ -430,9 +430,12 @@ await ok('viewer, sheet rows, directory menu, launch flow, admin badge, config s
   assert.ok(read('templates/item-inbox/item-inbox-config.hbs').includes('name="playerEditing"'));
 });
 await ok('the ownership dialog is referenced BARE with a typeof guard (the ImagePopout lesson)', () => {
+  // the lookup lives in utils/compat.js since stage 2 step 10a; the tab asks it
   const tab = read('scripts/ui/AdminPanel/tabs/ShardsTab.js');
-  assert.ok(tab.includes("(typeof DocumentOwnershipConfig !== 'undefined') ? DocumentOwnershipConfig : foundry.applications?.apps?.DocumentOwnershipConfig"));
-  assert.ok(!tab.includes('globalThis.DocumentOwnershipConfig'));
+  const compat = read('scripts/utils/compat.js');
+  assert.ok(tab.includes('DocumentOwnershipConfigClass()'));
+  assert.ok(compat.includes("typeof DocumentOwnershipConfig !== 'undefined' ? DocumentOwnershipConfig : null"));
+  assert.ok(!tab.includes('globalThis.DocumentOwnershipConfig') && !compat.includes('globalThis.DocumentOwnershipConfig'));
 });
 
 

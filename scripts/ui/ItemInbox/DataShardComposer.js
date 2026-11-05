@@ -23,6 +23,7 @@ import { showNamePicker, documentEntries, folderPathOf } from '../../utils/nameP
 import { RICH_TEXT_PALETTE, cleanHtml, htmlToBlocks, pasteToBlocks, pasteToHtml, isSimplePaste, splitBlockParagraphs } from '../../utils/richText.js';
 import { parseCsv } from '../../utils/csv.js';
 import { SHARED_SCOPE, normalizeFolderPath } from '../../utils/terminalFiles.js';
+import { browseFiles, newFilePicker, renderTemplate } from '../../utils/compat.js';
 
 /** Content type pill definitions */
 const TYPE_PILLS = [
@@ -1298,7 +1299,7 @@ export class DataShardComposer extends BaseApplication {
     const row = target.closest('.ncm-docpara');
     const inp = row?.querySelector('.ncm-docpara__img');
     if (!inp) return;
-    new FilePicker({ type: 'image', current: inp.value || '', callback: (path) => {
+    newFilePicker({ type: 'image', current: inp.value || '', callback: (path) => {
       inp.value = path;
       const thumb = row.querySelector('.ncm-docpara__figthumb');
       if (thumb) { thumb.src = path; thumb.style.display = path ? '' : 'none'; }
@@ -1943,7 +1944,7 @@ export class DataShardComposer extends BaseApplication {
     const card = target.closest('.ncm-reccard');
     const hidden = card?.querySelector('.ncm-reccard__portrait');
     if (!hidden) return;
-    new FilePicker({
+    newFilePicker({
       type: 'image', current: hidden.value || '',
       callback: (path) => {
         hidden.value = path;
@@ -2988,7 +2989,7 @@ export class DataShardComposer extends BaseApplication {
   static _onChatBrowsePhoto() {
     const inp = this.element?.querySelector('[data-chat-image]');
     if (!inp) return;
-    new FilePicker({ type: 'image', current: inp.value || '', callback: (path) => { inp.value = path; this._chatSetAttachLabel(path); } }).render(true);
+    newFilePicker({ type: 'image', current: inp.value || '', callback: (path) => { inp.value = path; this._chatSetAttachLabel(path); } }).render(true);
   }
 
   /** Walk the chat bubbles into the authored messages[] shape. */
@@ -4880,7 +4881,7 @@ export class DataShardComposer extends BaseApplication {
         id: 'preview', contentType: entryData.contentType, contentData: entryData.contentData,
         subject: entryData.subject, from: entryData.from, body: entryData.body, timestamp: entryData.timestamp,
       }, { isGM: true, interactive: false });
-      const rt = foundry.applications?.handlebars?.renderTemplate || renderTemplate;
+      const rt = renderTemplate;
       pane.innerHTML = await rt(TEMPLATES.CONTENT_BODY, enriched);
     } catch (err) { /* preview is best-effort */ }
   }
@@ -4926,7 +4927,7 @@ export class DataShardComposer extends BaseApplication {
   static _onDossPortrait(event, target) {
     const input = this.element?.querySelector('[name="dossierPortrait"]');
     if (!input) return;
-    new FilePicker({
+    newFilePicker({
       type: 'image', current: input.value || '',
       callback: (path) => { input.value = path; this._dossPaintPortrait(); this._renderPreview(); },
     }).render(true);
@@ -5264,7 +5265,7 @@ export class DataShardComposer extends BaseApplication {
   static _onLocBrowse(event, target) {
     const input = this.element?.querySelector('[name="locationImage"]');
     if (!input) return;
-    new FilePicker({
+    newFilePicker({
       type: 'image', current: input.value || '',
       callback: (path) => { input.value = path; this._locPaintStage(); this._renderPreview(); },
     }).render(true);
@@ -5403,7 +5404,7 @@ export class DataShardComposer extends BaseApplication {
     const targetInput = target.dataset.target;
     if (!targetInput) return;
     const input = this.element?.querySelector(`[name="${targetInput}"]`);
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       current: input?.value || '',
       callback: (path) => { if (input) input.value = path; },
@@ -5580,7 +5581,7 @@ export class DataShardComposer extends BaseApplication {
       openGalleryImage(target, { host: this.element });
       return;
     }
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       callback: (path) => {
         input.value = path;
@@ -5614,11 +5615,11 @@ export class DataShardComposer extends BaseApplication {
   static _onGalImportFolder() {
     const container = this.element?.querySelector('[data-list="galImages"]');
     if (!container) return;
-    const fp = new FilePicker({
+    const fp = newFilePicker({
       type: 'folder',
       callback: async (path) => {
         try {
-          const res = await FilePicker.browse(fp.activeSource || 'data', path);
+          const res = await browseFiles(fp.activeSource || 'data', path);
           const isImg = /\.(png|jpe?g|webp|gif|avif|svg)(\?.*)?$/i;
           const files = (res?.files || []).filter(f => isImg.test(f));
           if (!files.length) { ncmNotify.warn('NCM | No image files in that folder.'); return; }
@@ -5684,7 +5685,7 @@ export class DataShardComposer extends BaseApplication {
   static _onBrowseListImage(event, target) {
     const input = target.previousElementSibling;
     if (!input || input.tagName !== 'INPUT') return;
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       current: input.value || '',
       callback: (path) => {
@@ -5704,7 +5705,7 @@ export class DataShardComposer extends BaseApplication {
     const input = this.element?.querySelector(`[name="${targetInput}"]`);
     const mediaType = this.element?.querySelector('[name="avlogMediaType"]')?.value;
     const pickerType = mediaType === 'audio' ? 'audio' : 'video';
-    new FilePicker({
+    newFilePicker({
       type: pickerType,
       current: input?.value || '',
       callback: (path) => {

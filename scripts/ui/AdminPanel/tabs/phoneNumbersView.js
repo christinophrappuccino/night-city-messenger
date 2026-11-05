@@ -25,6 +25,7 @@ import { BUILT_IN_ROLES } from '../../../utils/contactVocab.js';
 import { showNamePicker, worldItemEntries } from '../../../utils/namePicker.js';
 import { themedPrompt, themedConfirm } from '../../../utils/adminTheme.js';
 import { dialogBodyHtml } from '../../../utils/dialogBody.js';
+import { newFilePicker } from '../../../utils/compat.js';
 
 export const OVERHEARD_FRAMES = ['ovhome', 'ovstage', 'ovrun', 'oveaves'];
 export const NUMBER_FRAMES = ['numbers', 'bulk', 'board', 'requests', 'retired', 'corp', 'shared'];
@@ -1298,15 +1299,15 @@ const ACT = {
   ttSet: async (el) => { const c = emCfg(); c.trauma[el.dataset.k] = el.dataset.v; await saveEm(c); },
   ttItemOff: async (el) => { const c = emCfg(); c.trauma[el.dataset.k].splice(Number(el.dataset.i), 1); await saveEm(c); },
   ttItemAdd: async (el) => { const k = el.dataset.k, list = await pickItems(emCfg().trauma[k], { hint: 'Having any one of them counts. Cyberware counts once installed.' }); if (!list) return false; load(TAB); const c = emCfg(); c.trauma[k] = list; await saveEm(c); },
-  ttArt: () => { const c = emCfg(), line = traumaLine(SPECIAL, c.trauma.specialId, specialKey), x = SPECIAL.find((y) => y.id === line.id); if (!x) return false; new FilePicker({ type: 'image', current: x.img || '', callback: async (path) => { x.img = path; await saveSpecial(); TAB.app.render(); } }).render(true); return false; },
+  ttArt: () => { const c = emCfg(), line = traumaLine(SPECIAL, c.trauma.specialId, specialKey), x = SPECIAL.find((y) => y.id === line.id); if (!x) return false; newFilePicker({ type: 'image', current: x.img || '', callback: async (path) => { x.img = path; await saveSpecial(); TAB.app.render(); } }).render(true); return false; },
   ttArtClear: async () => { const c = emCfg(), line = traumaLine(SPECIAL, c.trauma.specialId, specialKey), x = SPECIAL.find((y) => y.id === line.id); if (x) { x.img = ''; await saveSpecial(); } },
-  bkArt: () => { const c = emCfg(), o = c.backup.orgs[S.bkOrg]; if (!o) return false; new FilePicker({ type: 'image', current: o.logo || '', callback: async (path) => { const c2 = emCfg(); if (c2.backup.orgs[S.bkOrg]) { c2.backup.orgs[S.bkOrg].logo = path; await saveEm(c2); TAB.app.render(); } } }).render(true); return false; },
+  bkArt: () => { const c = emCfg(), o = c.backup.orgs[S.bkOrg]; if (!o) return false; newFilePicker({ type: 'image', current: o.logo || '', callback: async (path) => { const c2 = emCfg(); if (c2.backup.orgs[S.bkOrg]) { c2.backup.orgs[S.bkOrg].logo = path; await saveEm(c2); TAB.app.render(); } } }).render(true); return false; },
   bkArtClear: async () => { const c = emCfg(); if (c.backup.orgs[S.bkOrg]) { c.backup.orgs[S.bkOrg].logo = ''; await saveEm(c); } },
   bkGArt: async (el, ev) => {
     const i = Number(el.dataset.i), c = emCfg(), r = c.backup.orgs[S.bkOrg]?.rows[i];
     if (!r) return false;
     if (ev?.shiftKey && r.logo) { r.logo = ''; await saveEm(c); return; }
-    new FilePicker({ type: 'image', current: r.logo || '', callback: async (path) => { const c2 = emCfg(), g2 = c2.backup.orgs[S.bkOrg]?.rows[i]; if (g2) { g2.logo = path; await saveEm(c2); TAB.app.render(); } } }).render(true);
+    newFilePicker({ type: 'image', current: r.logo || '', callback: async (path) => { const c2 = emCfg(), g2 = c2.backup.orgs[S.bkOrg]?.rows[i]; if (g2) { g2.logo = path; await saveEm(c2); TAB.app.render(); } } }).render(true);
     return false;
   },
   bkOpen: (el) => { S.bkOpen = S.bkOpen === el.dataset.id ? null : el.dataset.id; S.scroll.bk1 = 0; S.scroll.bkl = 0; },
@@ -1316,7 +1317,7 @@ const ACT = {
   emLight: async (el) => { const c = emCfg(), h = voiceHolder(c, el.dataset.scope); if (!h) return false; if (el.dataset.v === '') delete h.look.lights; else h.look.lights = el.dataset.v === 'on'; await saveEm(c); },
   emLookOff: async (el) => { const c = emCfg(), h = voiceHolder(c, el.dataset.scope); if (h) delete h.look[el.dataset.k]; await saveEm(c); },
   emHear: (el) => { game.nightcity?.soundService?.play?.(el.dataset.v); return false; },
-  emArt: (el) => { const scope = el.dataset.scope, h0 = voiceHolder(emCfg(), scope); new FilePicker({ type: 'image', current: h0?.img || '', callback: async (path) => { const c = emCfg(), h = voiceHolder(c, scope); if (h) { h.img = path; await saveEm(c); TAB.app.render(); } } }).render(true); return false; },
+  emArt: (el) => { const scope = el.dataset.scope, h0 = voiceHolder(emCfg(), scope); newFilePicker({ type: 'image', current: h0?.img || '', callback: async (path) => { const c = emCfg(), h = voiceHolder(c, scope); if (h) { h.img = path; await saveEm(c); TAB.app.render(); } } }).render(true); return false; },
   emArtOff: async (el) => { const c = emCfg(), h = voiceHolder(c, el.dataset.scope); if (h) h.img = ''; await saveEm(c); },
   emGAdd: async (el) => { const box = el.closest('.ncm-pn'), v = (id) => box.querySelector('#' + id)?.value; const name = String(v('emg-an') || '').trim(); if (!name) { ncmNotify.warn('Give the group a name.'); return false; } const r1 = Math.min(10, Math.max(1, Number(v('emg-a1')) || 1)); const c = emCfg(), h = voiceHolder(c, 'p:' + el.dataset.id); h.groups.push({ r1, r2: Math.min(10, Math.max(r1, Number(v('emg-a2')) || r1)), name, logo: '' }); await saveEm(c); },
   emGDel: async (el) => { const c = emCfg(), h = voiceHolder(c, 'p:' + el.dataset.id); h.groups.splice(Number(el.dataset.i), 1); await saveEm(c); },
@@ -1324,7 +1325,7 @@ const ACT = {
     const i = Number(el.dataset.i), who = 'p:' + el.dataset.id, g0 = voiceHolder(emCfg(), who).groups[i];
     if (!g0) return false;
     if (e?.shiftKey && g0.logo) { const c = emCfg(); voiceHolder(c, who).groups[i].logo = ''; saveEm(c).then(() => TAB.app.render()); return false; }
-    new FilePicker({ type: 'image', current: g0.logo || '', callback: async (path) => { const c = emCfg(), g = voiceHolder(c, who).groups[i]; if (g) { g.logo = path; await saveEm(c); TAB.app.render(); } } }).render(true);
+    newFilePicker({ type: 'image', current: g0.logo || '', callback: async (path) => { const c = emCfg(), g = voiceHolder(c, who).groups[i]; if (g) { g.logo = path; await saveEm(c); TAB.app.render(); } } }).render(true);
     return false;
   },
   emPlay: (el) => {
@@ -1376,7 +1377,7 @@ const ACT = {
     await saveOffice({ mailbox: pick.none ? '' : pick.id });
   },
   corpAns: async (el) => { officesNow(); await saveOffice({ answers: el.dataset.v }); },
-  corpArt: () => { officesNow(); const o = OFFICES.find((x) => x.id === S.off); new FilePicker({ type: 'image', current: o?.art || '', callback: async (path) => { load(TAB); officesNow(); await saveOffice({ art: path }); TAB.app.render(); } }).render(true); return false; },
+  corpArt: () => { officesNow(); const o = OFFICES.find((x) => x.id === S.off); newFilePicker({ type: 'image', current: o?.art || '', callback: async (path) => { load(TAB); officesNow(); await saveOffice({ art: path }); TAB.app.render(); } }).render(true); return false; },
   extAdd: async (el) => { const box = el.closest('.ncm-pn'); const x = box.querySelector('#ex-x')?.value.trim(), who = box.querySelector('#ex-who')?.value.trim(); if (!/^\d+$/.test(x || '') || !who) { ncmNotify.warn('An extension needs digits and a name.'); return false; } officesNow(); const o = OFFICES.find((y) => y.id === S.off); if (o.ext.some((e) => e.x === x)) { ncmNotify.warn('That extension is taken.'); return false; } const c = (game.nightcity?.masterContactService?.getAll?.() || []).find((m) => m.name.toLowerCase() === who.toLowerCase()); await saveOffice({ exts: [...o.ext, { x, who, contactId: c?.id || null, listed: true }] }); },
   extDel: async (el) => { officesNow(); const o = OFFICES.find((y) => y.id === S.off); await saveOffice({ exts: o.ext.filter((_, i) => i !== Number(el.dataset.i)) }); },
   extDial: (el) => { S.dialExt = el.dataset.x; },
@@ -1442,7 +1443,7 @@ const ACT = {
   listYes: () => applyList(S.listAsk),
   spNewOne: async () => { const x = sanitizeSpecial({ id: 's' + Math.random().toString(36).slice(2, 9), num: 'NEW' + (SPECIAL.length + 1) }); SPECIAL.push(x); S.spSel = x.id; await saveSpecial(); },
   spDel: async () => { const x = spOf(); await undoable(`Removed ${x.num || 'the new number'}.`, () => { SPECIAL = SPECIAL.filter((y) => y !== x); S.spSel = SPECIAL[0]?.id || null; return saveSpecial(); }); },
-  spArt: () => { const x = spOf(); new FilePicker({ type: 'image', current: x.img || '', callback: async (path) => { x.img = path; await saveSpecial(); TAB.app.render(); } }).render(true); return false; },
+  spArt: () => { const x = spOf(); newFilePicker({ type: 'image', current: x.img || '', callback: async (path) => { x.img = path; await saveSpecial(); TAB.app.render(); } }).render(true); return false; },
   spArtClear: async () => { spOf().img = ''; await saveSpecial(); },
   spSet: async (el) => { const x = spOf(); x[el.dataset.k] = el.dataset.v; if (el.dataset.k === 'who' && el.dataset.v === 'all') x.allow = []; await saveSpecial(); },
   spRing: async () => { const x = spOf(), to = byId(S.spCall?.to || PCS()[0]?.id), num = to?.lines[0]?.n; if (!num) { ncmNotify.warn('They have no number to ring.'); return false; } refuse(await SVC.placeCall(num, { special: x.id })); return false; },

@@ -16,6 +16,7 @@ import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, NETWORK_TYPES } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { newFilePicker } from '../../utils/compat.js';
 
 // ─── Template Presets ────────────────────────────────────────
 
@@ -491,7 +492,7 @@ export class CreateNetworkDialog extends BaseApplication {
     const targetInput = target.dataset.target;
     if (!targetInput) return;
     const input = this.element?.querySelector(`[name="${targetInput}"]`);
-    new FilePicker({
+    newFilePicker({
       type: 'image',
       current: input?.value || '',
       callback: (path) => {

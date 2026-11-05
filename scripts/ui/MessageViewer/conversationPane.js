@@ -16,6 +16,7 @@ import { isIn, canSee, visibleLines, LINE_MAX, titleFor, previewOf, pushRecentNp
 import { showNamePicker } from '../../utils/namePicker.js';
 import { themedConfirm, themedPrompt } from '../../utils/adminTheme.js';
 import { dialogBodyHtml } from '../../utils/dialogBody.js';
+import { FilePickerClass, newFilePicker } from '../../utils/compat.js';
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const HUES = ['#19f3f7', '#ff5fa2', '#5ad1ff', '#b4e05a', '#ffb347', '#c9a0ff', '#7fd8be', '#f7a1c4'];
@@ -550,7 +551,7 @@ export class ConversationPane {
 
   async _pickImage(c, me) {
     const send = (img) => svc().send(c.id, { asKey: me.key, kind: 'image', img }).then(() => this._paintPending());
-    if (game.user?.can?.('FILES_BROWSE') && typeof FilePicker !== 'undefined') { new FilePicker({ type: 'image', callback: (path) => send(path) }).render(true); return; }
+    if (game.user?.can?.('FILES_BROWSE') && FilePickerClass()) { newFilePicker({ type: 'image', callback: (path) => send(path) }).render(true); return; }
     const v = await themedPrompt({ title: 'Share a picture', label: 'Send', content: dialogBodyHtml({ icon: 'fas fa-image', title: 'A picture', kind: 'Conversation', field: { name: 'ncmConvPic', label: 'Picture', placeholder: 'Path or web address' } }), read: (root) => root.querySelector('input')?.value ?? '' });
     if (v) await send(v);
   }

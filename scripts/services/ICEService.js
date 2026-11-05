@@ -21,6 +21,7 @@
 
 import { MODULE_ID, EVENTS, ENCRYPTION_TYPES, SOCKET_OPS } from '../utils/constants.js';
 import { log, chatCardTime } from '../utils/helpers.js';
+import { renderTemplate } from '../utils/compat.js';
 
 export class ICEService {
 

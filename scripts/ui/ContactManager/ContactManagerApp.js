@@ -34,6 +34,7 @@ import {
   getRoleIcon,
   enrichContactForDisplay,
 } from '../../utils/designHelpers.js';
+import { newFilePicker } from '../../utils/compat.js';
 
 export class ContactManagerApp extends BaseApplication {
 
@@ -1734,7 +1735,7 @@ export class ContactManagerApp extends BaseApplication {
     const input = this.element?.querySelector('[name="portrait"]');
     if (!input) return;
 
-    const fp = new FilePicker({
+    const fp = newFilePicker({
       type: 'image',
       current: input.value || '',
       callback: (path) => {
@@ -1839,7 +1840,7 @@ export class ContactManagerApp extends BaseApplication {
     event.stopPropagation();
     const input = this.element?.querySelector('[name="iceCustomPortrait"]');
     if (!input) return;
-    const fp = new FilePicker({
+    const fp = newFilePicker({
       type: 'image',
       current: input.value || '',
       callback: (path) => { if (path) input.value = path; },

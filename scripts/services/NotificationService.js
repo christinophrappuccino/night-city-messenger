@@ -10,6 +10,7 @@
 import { MODULE_ID, EVENTS, TEMPLATES } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 import { shardTerm as T } from '../utils/shardTerm.js';
+import { renderTemplate } from '../utils/compat.js';
 
 // ═══════════════════════════════════════════════════════════
 //  Toast Type Definitions

@@ -45,6 +45,7 @@ import {
   GROUP_FILTERS, GROUP_SORTS, passesGroupFilter, sortGroups, groupHaystack, groupSig, foldTail, GROUPS_RAIL_LIMIT,
 } from './contactsModel.js';
 import { buildMapContext, shareWithEveryone, wireContactsMap } from './contactsMap.js';
+import { FilePickerClass } from '../../../utils/compat.js';
 
 const FLAG = MODULE_ID;
 const MYSTERY = 'mystery-man';
@@ -1726,7 +1727,7 @@ export class ContactsTab extends BaseTab {
   }
 
   _edPickImage(field) {
-    const FP = (typeof FilePicker !== 'undefined') ? FilePicker : foundry.applications?.apps?.FilePicker;
+    const FP = FilePickerClass();
     if (!FP) return;
     new FP({
       type: 'image', current: this._draft?.[field] || '',
@@ -1985,7 +1986,7 @@ export class ContactsTab extends BaseTab {
   }
 
   async _pickDetailPortrait(id) {
-    const FP = (typeof FilePicker !== 'undefined') ? FilePicker : foundry.applications?.apps?.FilePicker;
+    const FP = FilePickerClass();
     if (!FP || !id) return;
     new FP({
       type: 'image', current: this._contact(id)?.portrait || '',
@@ -2104,7 +2105,7 @@ export class ContactsTab extends BaseTab {
       face.classList.toggle('is-empty', !src);
     };
     root.querySelectorAll('[data-pe-browse]').forEach(b => b.addEventListener('click', () => {
-      const FP = (typeof FilePicker !== 'undefined') ? FilePicker : foundry.applications?.apps?.FilePicker;
+      const FP = FilePickerClass();
       if (FP) new FP({ type: 'image', current: img?.value || '', callback: (path) => { if (img) { img.value = path; paintFace(); } } }).render(true);
     }));
     img?.addEventListener('input', paintFace);

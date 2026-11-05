@@ -42,6 +42,7 @@ import { log, isGM } from '../utils/helpers.js';
 import { MIGRATION_SCOPES } from './NamespaceMigration.js';
 import { DATA_SCHEMA_VERSION } from './MigrationRunner.js';
 import { MessageRepository } from '../data/MessageRepository.js';
+import { SettingsConfigClass } from '../utils/compat.js';
 
 /** World settings the reset must leave stamped (see file header). */
 export const RESET_KEEP_SETTINGS = Object.freeze(['namespaceMigrationDone', 'dataSchemaVersion']);
@@ -243,7 +244,7 @@ export async function runFactoryReset({ resetSettings = true, reload = true } = 
 
 /** Prompt every client to reload so cached services rebuild from the empty world. */
 function requestWorldReload() {
-  const SC = (typeof SettingsConfig !== 'undefined') ? SettingsConfig : foundry.applications?.settings?.SettingsConfig;
+  const SC = SettingsConfigClass();
   if (SC?.reloadConfirm) SC.reloadConfirm({ world: true });
   else globalThis.location?.reload?.();
 }

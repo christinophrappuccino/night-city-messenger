@@ -38,6 +38,7 @@
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, LEGACY_MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
+import { SettingsConfigClass } from '../utils/compat.js';
 
 /** Hidden world setting stamped once the world has been checked/migrated. */
 export const NAMESPACE_MIGRATION_SETTING = 'namespaceMigrationDone';
@@ -223,7 +224,7 @@ export async function confirmNamespaceMigration(found) {
 
 /** Prompt every client to reload so cached services rebuild from the moved data. */
 function requestWorldReload() {
-  const SC = (typeof SettingsConfig !== 'undefined') ? SettingsConfig : foundry.applications?.settings?.SettingsConfig;
+  const SC = SettingsConfigClass();
   if (SC?.reloadConfirm) SC.reloadConfirm({ world: true });
   else window.location.reload();
 }

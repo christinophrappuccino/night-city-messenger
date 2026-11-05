@@ -16,6 +16,7 @@ import { MODULE_ID, TEMPLATES, SOCKET_OPS, DEFAULTS } from '../utils/constants.j
 import { canOperate, resolveOperator, getOperatorActors } from '../utils/helpers.js';
 import { PROGRAM_EFFECTS, programEffectInfo } from '../ui/content/ContentRenderers.js';
 import { forgeOutcome, forgeQualityFromMargin } from '../ui/content/UploadFlow.js';
+import { getTemplate } from '../utils/compat.js';
 
 export class Phase6Verification {
 

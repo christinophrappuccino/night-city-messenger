@@ -29,6 +29,7 @@ import { tagHueIndex } from '../../utils/tagHue.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { DRAFTS_FLAG, newDraftId, readDrafts, pruneDrafts, draftRecipientName, draftLabel, draftKind, draftHasContent, relativeAge } from '../../utils/drafts.js';
 import { buildPreview } from './previewModel.js';
+import { newFilePicker } from '../../utils/compat.js';
 
 /** A name's category hue — defined by the admin presets, else the act colour. */
 const hueVar = (name) => `var(--ncm-hue-${tagHueIndex(name) || 1}, var(--ncm-secondary))`;
@@ -2819,7 +2820,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   static _onAttachFile(event, target) {
     // Foundry FilePicker for generic file attachments
-    new FilePicker({
+    newFilePicker({
       type: 'any',
       callback: (path) => {
         const name = path.split('/').pop();
@@ -2880,7 +2881,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         const typeSel = root.querySelector('[name="mediaType"]');
         root.querySelector('[data-browse]')?.addEventListener('click', () => {
           const pickerType = typeSel?.value === 'audio' ? 'audio' : 'video';
-          new FilePicker({
+          newFilePicker({
             type: pickerType,
             current: input?.value || '',
             callback: (path) => { if (input) input.value = path; },
