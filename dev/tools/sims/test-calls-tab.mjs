@@ -150,7 +150,7 @@ const cm = read('scripts/ui/ContactManager/ContactManagerApp.js');
 ok(/callContact:\s+ContactManagerApp\._onCallContact/.test(cm) && cm.includes('_callNumber = calls?.enabled'), 'Contact Manager: action + per-contact number');
 for (const p of ['contact-card', 'contact-detail', 'contact-list-item']) ok(/\{\{#if _callNumber\}\}[\s\S]*?data-action="callContact"/.test(read(`templates/contact-manager/partials/${p}.hbs`)), `${p}: Call only with a number`);
 const md = read('templates/message-viewer/partials/message-detail.hbs'); const mv = read('scripts/ui/MessageViewer/MessageViewerApp.js');
-ok(md.includes('data-action="call-sender"') && mv.includes("case 'call-sender'") && /!isAnonMasked && !senderSendOnly && !msg\.status\?\.sent/.test(mv), 'message sender: Call, never masked / system / own sent copy');
+ok(md.includes('data-action="call-sender"') && mv.includes("'call-sender': async function") /* VIEWER_ACTIONS entry since step 12 */ && /!isAnonMasked && !senderSendOnly && !msg\.status\?\.sent/.test(mv), 'message sender: Call, never masked / system / own sent copy');
 
 // ═══ 6. Theme Customizer → Calls ═══
 const tc = read('templates/theme-customizer/theme-customizer.hbs'); const tcj = read('scripts/ui/ThemeCustomizer/ThemeCustomizerApp.js');

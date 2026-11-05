@@ -1450,688 +1450,9 @@ export class MessageViewerApp extends BaseApplication {
     const messageId = target.closest('[data-message-id]')?.dataset.messageId;
     if (action.startsWith('calls-')) { await handleCallsAction(this, action, target); return; }
 
-    switch (action) {
-      // ── Navigation ──
-      case 'select-message':
-        this._selectMessage(messageId);
-        break;
-      case 'open-conversation':
-        this.selectedMessageId = null;
-        this.selectedConversationId = target.dataset.conversationId;
-        this.render();
-        break;
-      case 'new-conversation': {
-        const gm = !!game.user?.isGM;
-        const id = await startConversationDialog({ host: this.element.querySelector('.ncm-viewer') || this.element, actorId: this.actorId, gm });
-        if (!id) break;
-        if (gm) {
-          // Follow who the GM joined as, into their inbox.
-          const svc = game.nightcity.conversationService;
-          const conv = svc.get(id);
-          const starter = conv?.members.find((m) => m.key === conv.starterKey);
-          const owner = starter ? svc.inboxOwnerOf(starter) : null;
-          if (!owner) { game.nightcity.openAdminTab?.('messages', { select: `conv:${id}` }); break; }
-          this.actorId = owner;
-          this.currentPage = 1;
-        }
-        this.selectedMessageId = null;
-        this.selectedConversationId = id;
-        this.render();
-        break;
-      }
-      case 'mobile-back':
-        // Single-column (narrow) mode — return from the open message to the list.
-        this.selectedConversationId = null;
-        this.selectedMessageId = null;
-        this._threadExpanded = false;
-        this.render();
-        break;
-      case 'set-filter':
-        this._setFilter(target.dataset.filter);
-        break;
-      case 'set-env-filter':
-        this._setEnvFilter(target.dataset.f);
-        break;
-      case 'set-sort':
-        this._setSort(target.dataset.sort);
-        break;
-      case 'toggle-sort-dropdown':
-        this._toggleDropdown('.ncm-sort-dropdown', target);
-        break;
-      case 'toggleNetworkSelector':
-        this._toggleNetworkSelector(target);
-        break;
-      case 'toggle-network-filter':
-        this._toggleDropdown('.ncm-network-filter-dropdown', target);
-        break;
-      case 'selectNetwork':
-        this._onSelectNetwork(target.dataset.networkId);
-        break;
-      case 'filter-network':
-        this._setNetworkFilter(target.dataset.network);
-        break;
-      case 'toggle-search':
-        this._toggleSearch();
-        break;
-      case 'prev-page':
-        this._setPage(this.currentPage - 1);
-        break;
-      case 'next-page':
-        this._setPage(this.currentPage + 1);
-        break;
-
-      // ── Message Actions ──
-      case 'reply-message':
-        this._replyToMessage(messageId);
-        break;
-      case 'dial-number': {
-        const st = callsState(this);
-        st.view = 'main'; st.dial = target.dataset.number || '';
-        this.currentFilter = 'calls';
-        return this.render();
-      }
-      case 'call-sender':
-        if (target.dataset.number) game.nightcity?.placeCall?.(target.dataset.number, { actorId: this.actorId });
-        break;
-      case 'reply-all-message':
-        this._replyToMessage(messageId, { all: true });
-        break;
-      case 'forward-message':
-        this._forwardMessage(messageId);
-        break;
-      case 'delete-message':
-        this._deleteMessage(messageId);
-        break;
-      case 'save-message':
-        this._toggleSave(messageId);
-        break;
-      case 'mark-unread':
-        this._markUnread(messageId);
-        break;
-      case 'mark-spam':
-        this._markSpam(messageId);
-        break;
-      case 'copy-to-terminal':
-        this._copyToTerminal();
-        break;
-      case 'share-to-chat':
-        this._shareToChat(messageId);
-        break;
-      case 'empty-trash':
-        this._emptyTrash();
-        break;
-      case 'empty-spam':
-        this._emptySpam();
-        break;
-      case 'permanent-delete':
-        this._permanentDelete(messageId);
-        break;
-      case 'restore-message':
-        this._restoreMessage(messageId);
-        break;
-
-      // ── Quick Reply ──
-      case 'quick-reply':
-        this._sendQuickReply(target.dataset.reply);
-        break;
-      case 'send-reply':
-        this._sendCustomReply();
-        break;
-
-      case 'trace-anon':
-        this._traceAnonSender(target.dataset.messageId || this.selectedMessageId);
-        break;
-
-      // ── Typed content (shared registry — recovered files) ──
-      case 'credToggleSecret':
-        toggleSecretReveal(target);
-        break;
-      case 'syslogFilter':
-        applySyslogFilter(target);
-        break;
-      case 'galleryView':
-        openGalleryImage(target, { host: this.element });
-        break;
-      case 'claimEddies':
-        this._claimTypedEddies(target);
-        break;
-      case 'crackCred':
-        this._crackTypedCred(target);
-        break;
-      case 'contentUnlock':
-        this._unlockTypedContent(target);
-        break;
-      case 'camAction':
-        this._camTypedAction(target);
-        break;
-      case 'goToScene':
-        this._goToTypedScene(target);
-        break;
-      case 'schemLockToggle':
-        this._toggleTypedSchemLock(target);
-        break;
-      case 'deployMalware':
-        this._deployTypedMalware(target);
-        break;
-      case 'executePayload':
-        this._executeTypedPayload(target);
-        break;
-      case 'payloadKill':
-        this._killTypedPayload(target);
-        break;
-      case 'payloadSniff':
-        this._sniffTypedPayload(target);
-        break;
-      case 'siphonFunds':
-        this._siphonTypedFunds(target);
-        break;
-
-      // ── Compose ──
-      case 'compose-new':
-      case 'compose-message':
-        game.nightcity?.composeMessage?.({ fromActorId: this.actorId });
-        break;
-
-      // ── Encryption (original) ──
-      case 'decrypt-message':
-        this._decryptMessage(messageId);
-        break;
-      case 'force-decrypt-message':
-        this._forceDecryptMessage(messageId);
-        break;
-
-      // ── Network Access Bypass ──
-      case 'bypass-password':
-        this._bypassPassword(target.dataset.messageId);
-        break;
-      case 'bypass-skill':
-        this._bypassSkill(target.dataset.messageId, target.dataset.skill);
-        break;
-      case 'bypass-keyitem':
-        this._bypassKeyItem(target.dataset.messageId);
-        break;
-      case 'gm-force-reveal':
-        this._gmForceReveal(target.dataset.messageId);
-        break;
-
-      // ── Network Restricted: Connect CTA → opens auth dialog ──
-      case 'connect-network':
-        this._connectToRestrictedNetwork(target.dataset.networkId);
-        break;
-
-      // ── Network Changed: Reconnect to old network ──
-      case 'reconnect-network':
-        this._connectToRestrictedNetwork(target.dataset.networkId);
-        // Remove the overlay
-        target.closest('.ncm-net-changed')?.remove();
-        break;
-
-      // ── Network Changed: Dismiss and go back to inbox ──
-      case 'dismiss-net-changed':
-        target.closest('.ncm-net-changed')?.remove();
-        this.selectedMessageId = null;
-        this.render();
-        break;
-
-      // ── Encrypted: Attempt Decryption (redesigned CTA) ──
-      case 'attempt-decrypt':
-        this._decryptMessage(target.dataset.messageId);
-        break;
-
-      // ── GM: Reset Lockout Timer ──
-      case 'gm-reset-lockout':
-        this._gmResetLockout(target.dataset.messageId);
-        break;
-
-      // ── Malware Actions ──
-      case 'quarantine-malware':
-        this._quarantineMalware(target.dataset.messageId);
-        break;
-      case 'analyze-malware':
-        this._analyzeMalware(target.dataset.messageId);
-        break;
-
-      // ── WP-5: Signal Reconstruction ──
-      case 'reconstruct-signal':
-        this._reconstructSignal(target.dataset.messageId);
-        break;
-
-      // ── Feature 1: Eddies Claim ──
-      case 'claim-eddies':
-        this._claimEddies(target.dataset.messageId, parseInt(target.dataset.amount));
-        break;
-
-      // ── Feature 2: Encrypted Block Decrypt ──
-      case 'decrypt-block':
-        this._decryptBlock(target.dataset.blockKey);
-        break;
-
-      // ── Feature 6: Scheduled Messages ──
-      case 'cancel-scheduled':
-        this._cancelScheduled(target.dataset.scheduleId);
-        break;
-      case 'edit-scheduled':
-        this._editScheduled(target.dataset.scheduleId);
-        break;
-
-      // ── Feature 7: Data Shards ──
-      case 'open-shard': {
-        const host = target.closest('[data-item-id]');
-        this._openShard(host?.dataset.itemId, host?.dataset.itemUuid);
-        break;
-      }
-      case 'filter-shards':
-        this._filterShards(target.dataset.shardFilter, target);
-        break;
-
-      // ── Drafts ──
-      case 'open-draft': {
-        const row = target.closest('[data-draft-id]');
-        this._openDraft(row?.dataset.actorId, row?.dataset.draftId);
-        break;
-      }
-      case 'delete-draft': {
-        const row = target.closest('[data-draft-id]');
-        this._deleteDraft(row?.dataset.actorId, row?.dataset.draftId);
-        break;
-      }
-
-      // ── Sprint 2B: Attachment Actions ──
-      case 'breach-attachment':
-        this._breachAttachment(messageId, target.dataset.attachmentIndex);
-        break;
-      case 'gm-force-breach':
-        this._gmForceBreachAttachment(messageId, target.dataset.attachmentIndex);
-        break;
-      case 'open-attachment':
-        this._openAttachment(messageId, target.dataset.attachmentIndex);
-        break;
-
-      // ── Quick Wins: Add Contact from message ──
-      case 'add-contact':
-        this._addContactFromMessage();
-        break;
-
-      // ── Bulk Actions ──
-      case 'toggle-select':
-        this._toggleBulkSelect(target.dataset.messageId);
-        break;
-      case 'select-all':
-        this._selectAll();
-        break;
-      case 'bulk-read':
-      case 'bulk-mark-read':
-        this._bulkMarkRead();
-        break;
-      case 'bulk-delete':
-        this._bulkDelete();
-        break;
-      case 'bulk-cancel':
-      case 'bulk-clear':
-        this.bulkSelected.clear();
-        this.render();
-        break;
-      case 'bulk-mark-spam':
-        this._bulkMarkSpam();
-        break;
-
-      // ── Layout ──
-      case 'toggle-density-dropdown':
-        this._toggleDropdown('.ncm-density-dropdown', target);
-        break;
-      case 'set-density':
-        this._setDensity(target.dataset.density);
-        break;
-
-      // ── Settings / Preferences ──
-      case 'open-settings':
-        game.nightcity?.openThemeCustomizer?.();
-        break;
-
-      // ── v3.2: Identity Drawer ──
-      case 'toggle-identity-drawer':
-        this._toggleIdentityDrawer();
-        break;
-      case 'close-identity-drawer':
-        this._closeIdentityDrawer();
-        break;
-      case 're-login':
-        game.nightcity?.reLogin?.();
-        break;
-      case 'set-send-identity':
-        await this._setSendIdentity(target.dataset.contactId || '');
-        break;
-      case 'open-player-guide':
-        openGuide('player');
-        break;
-
-      // ── v3.2: Primary Tab Navigation ──
-      case 'set-primary-tab': {
-        const tab = target.dataset.tab;
-        const tabFilterMap = { messages: 'inbox', calls: 'calls', shards: 'shards' };
-        const newFilter = tabFilterMap[tab] || 'inbox';
-
-        // Determine slide direction based on tab order
-        const TAB_ORDER = ['messages', 'calls', 'shards'];
-        const oldTab = getPrimaryTab(this.currentFilter);
-        const oldIndex = TAB_ORDER.indexOf(oldTab);
-        const newIndex = TAB_ORDER.indexOf(tab);
-        if (tab === oldTab) break; // Same tab, no-op
-
-        const goingRight = newIndex > oldIndex;
-
-        // Animate current pills out
-        const track = this.element?.querySelector('.ncm-viewer__pills-track');
-        if (track) {
-          track.classList.add(goingRight ? 'ncm-viewer__pills-track--exit-left' : 'ncm-viewer__pills-track--exit-right');
-          // After exit animation, render with new content and slide in
-          this._pillsSlideFrom = goingRight ? 'right' : 'left';
-          setTimeout(() => this._setFilter(newFilter), 200);
-        } else {
-          // No track element (e.g. scheduled/drafts tabs) — just switch immediately
-          this._setFilter(newFilter);
-        }
-        break;
-      }
-
-      // ── v3.2: Header Actions ──
-      case 'open-contacts': {
-        const contactActorId = this.actorId || game.user?.character?.id;
-        if (!contactActorId) {
-          ncmNotify.warn('NCM | No character assigned. Cannot open contacts.');
-          break;
-        }
-        game.nightcity?.openContacts?.(contactActorId);
-        break;
-      }
-      case 'open-encoder':
-        // The Agent can be switched between characters, and the Encoder writes to
-        // whoever it is handed — so it must be the character this Agent is open
-        // as, never the remembered operator (which would encode as the last one).
-        game.nightcity?.openEncoder?.({ actor: game.actors?.get(this.actorId) || null });
-        break;
-      case 'open-admin':
-        game.nightcity?.openAdmin?.();
-        break;
-      case 'mark-all-read': {
-        if (!this.actorId) break;
-        { const cs = game.nightcity?.conversationService; if (cs?.enabled) for (const c of cs.all()) { const me = cs.meIn(c, this.actorId); if (me) cs.markRead(c.id, me.key, c.lastSeq); } }
-        const res = await this.messageService?.markAllAsRead?.(this.actorId);
-        if (res?.success) {
-          if (res.count > 0) {
-            ncmNotify.info(`NCM | Marked ${res.count} message${res.count === 1 ? '' : 's'} as read.`);
-          }
-          game.nightcity?.notificationService?.refreshBadge?.();
-          this.render(false);
-        } else if (res?.error) {
-          ncmNotify.warn(`NCM | Mark all as read failed: ${res.error}`);
-        }
-        break;
-      }
-      case 'toggle-list-panel':
-        this._toggleListPanel();
-        break;
-
-      // ── v3.2: Character Switcher ──
-      case 'switch-character': {
-        const newActorId = target.closest('[data-actor-id]')?.dataset.actorId;
-        if (newActorId && game.user.isGM) this._rememberInbox(newActorId);
-        if (newActorId && newActorId !== this.actorId) {
-          this.actorId = newActorId;
-          this.selectedMessageId = null;
-          this.selectedConversationId = null;
-          this.currentPage = 1;
-          this._closeIdentityDrawer();
-          this.render(true);
-        }
-        break;
-      }
-
-      // ── v3.2: Email Save ──
-      case 'change-identity': {
-        const actor = game.actors.get(this.actorId);
-        if (!actor) break;
-        const emailService = game.nightcity?.emailService;
-        if (!emailService) break;
-
-        // If actor has an email, warn about burn first
-        const currentEmail = emailService.getEmail(actor);
-        if (currentEmail) {
-          const confirmed = await new Promise(resolve => {
-            playerDialog({
-              title: 'Edit NET Identity',
-              content: `<div class="ncm-burn-dialog">
-                <div class="ncm-burn-dialog__heading">Change Your Identity</div>
-                <div class="ncm-burn-dialog__sub">Changing your email will permanently burn your current identity. All past messages from this address will show as [BURNED].</div>
-                <div class="ncm-burn-dialog__warning">
-                  <i class="fas fa-triangle-exclamation ncm-burn-dialog__warning-icon"></i>
-                  <div class="ncm-burn-dialog__warning-text">Your current identity <strong>${escapeHtml(currentEmail)}</strong> will be permanently burned. This cannot be undone.</div>
-                </div>
-                ${this._sendAsChoices().length ? '<div class="ncm-burn-dialog__sub">Only want to send from one of your other addresses? Cancel, and pick it under Sending as.</div>' : ''}
-                <div class="ncm-burn-dialog__current">
-                  <div class="ncm-burn-dialog__current-label">Current Identity (will be burned)</div>
-                  <div class="ncm-burn-dialog__current-email">${escapeHtml(currentEmail)}</div>
-                </div>
-                <div class="ncm-burn-dialog__consequences">
-                  <div class="ncm-burn-dialog__consequence"><i class="fas fa-check ncm-burn-dialog__consequence-ok"></i> Existing messages preserved in all inboxes</div>
-                  <div class="ncm-burn-dialog__consequence"><i class="fas fa-check ncm-burn-dialog__consequence-ok"></i> Old messages show sender as [BURNED]</div>
-                  <div class="ncm-burn-dialog__consequence"><i class="fas fa-xmark ncm-burn-dialog__consequence-bad"></i> Cannot send or receive until re-registered</div>
-                  <div class="ncm-burn-dialog__consequence ncm-burn-dialog__consequence--last"><i class="fas fa-xmark ncm-burn-dialog__consequence-bad"></i> Old handle may be claimed by another agent</div>
-                </div>
-              </div>`,
-              buttons: {
-                burn: {
-                  icon: '<i class="fas fa-fire"></i>',
-                  label: 'Burn & Re-register',
-                  callback: () => resolve(true),
-                },
-                cancel: {
-                  icon: '<i class="fas fa-times"></i>',
-                  label: 'Cancel',
-                  callback: () => resolve(false),
-                },
-              },
-              default: 'cancel',
-              close: () => resolve(false),
-            }, {
-              classes: ['ncm-app', 'ncm-burn-confirm'],
-              width: 440,
-            }).render(true);
-          });
-          if (!confirmed) break;
-
-          // Burn current identity
-          await emailService.burnEmail(actor, 'manual');
-          ncmNotify.info(`NCM | Identity burned: ${currentEmail}`);
-        }
-
-        // Launch setup flow for re-registration
-        const newEmail = await game.nightcity.openEmailSetup(actor);
-        if (newEmail) {
-          ncmNotify.info(`NCM | New identity registered: ${newEmail}`);
-        }
-        this.render();
-        break;
-      }
-
-      // ── v3.2: Date Picker ──
-      case 'open-date-picker': {
-        const { DateRangePicker } = await import('../components/DateRangePicker.js');
-        DateRangePicker.open({
-          from: this._dateRangeFrom || null,
-          to: this._dateRangeTo || null,
-          onApply: (from, to) => {
-            this._dateRangeFrom = from;
-            this._dateRangeTo = to;
-            this.currentPage = 1;
-            this.render();
-          },
-          onClear: () => {
-            this._dateRangeFrom = null;
-            this._dateRangeTo = null;
-            this.currentPage = 1;
-            this.render();
-          },
-        });
-        break;
-      }
-
-      // ── v3.2: Filter Dropdown ──
-      case 'toggle-filter-dropdown': {
-        // Toggle inline filter dropdown (same pattern as sort dropdown)
-        const existing = this.element?.querySelector('.ncm-filter-dropdown');
-        if (existing && !existing.classList.contains('ncm-hidden')) {
-          existing.classList.add('ncm-hidden');
-          break;
-        }
-
-        // Build dynamic content
-        const networks = [...new Set(
-          (await this._loadMessages()).map(m => m.network).filter(Boolean)
-        )].sort();
-
-        const container = target.closest('.ncm-viewer__filter-trigger');
-        let dropdown = container?.querySelector('.ncm-filter-dropdown');
-        if (!dropdown) {
-          dropdown = document.createElement('div');
-          dropdown.className = 'ncm-filter-dropdown ncm-hidden';
-          container?.appendChild(dropdown);
-        }
-
-        // Network section
-        const netItems = networks.map(n => {
-          const net = this.networkService?.getNetwork?.(n);
-          const name = net?.name || n;
-          const color = net?.theme?.color || '#8888a0';
-          const checked = this._filterTags?.includes(`net:${n}`) ? 'checked' : '';
-          return `<label class="ncm-filter-dropdown__item" data-filter-tag="net:${n}">
-            <span class="ncm-filter-dropdown__check ${checked ? 'ncm-filter-dropdown__check--on' : ''}" style="border-color: ${color}40; ${checked ? `background: ${color}20;` : ''}">
-              ${checked ? `<i class="fas fa-check" style="color: ${color};"></i>` : ''}
-            </span>
-            <i class="fas ${net?.theme?.icon || 'fa-wifi'}" style="color: ${color}; font-size: 9px; width: 14px; text-align: center;"></i>
-            <span class="ncm-filter-dropdown__label" style="color: ${color};">${name}</span>
-          </label>`;
-        }).join('');
-
-        // Status section
-        const statusItems = [
-          { key: 'status:encrypted', label: 'Encrypted', icon: 'fa-lock', color: '#00D4E6' },
-          { key: 'status:has-attachments', label: 'Attachments', icon: 'fa-paperclip', color: '#8888a0' },
-          { key: 'status:has-eddies', label: 'Has Eddies', icon: 'fa-coins', color: '#F0C55B' },
-        ].map(s => {
-          const checked = this._filterTags?.includes(s.key) ? 'checked' : '';
-          return `<label class="ncm-filter-dropdown__item" data-filter-tag="${s.key}">
-            <span class="ncm-filter-dropdown__check ${checked ? 'ncm-filter-dropdown__check--on' : ''}" style="border-color: ${s.color}40; ${checked ? `background: ${s.color}20;` : ''}">
-              ${checked ? `<i class="fas fa-check" style="color: ${s.color};"></i>` : ''}
-            </span>
-            <i class="fas ${s.icon}" style="color: ${s.color}80; font-size: 9px; width: 14px; text-align: center;"></i>
-            <span class="ncm-filter-dropdown__label">${s.label}</span>
-          </label>`;
-        }).join('');
-
-        dropdown.innerHTML = `
-          <div class="ncm-filter-dropdown__section-title">Network</div>
-          ${netItems || '<div class="ncm-filter-dropdown__empty">No networks</div>'}
-          <div class="ncm-filter-dropdown__divider"></div>
-          <div class="ncm-filter-dropdown__section-title">Status</div>
-          ${statusItems}
-          <div class="ncm-filter-dropdown__actions">
-            <span class="ncm-filter-dropdown__btn ncm-filter-dropdown__btn--apply" data-action="apply-filters">
-              <i class="fas fa-check"></i> Apply
-            </span>
-            <span class="ncm-filter-dropdown__btn ncm-filter-dropdown__btn--clear" data-action="clear-filters">
-              <i class="fas fa-times"></i> Clear
-            </span>
-          </div>
-        `;
-
-        dropdown.classList.remove('ncm-hidden');
-
-        // Toggle checkmarks on click
-        dropdown.querySelectorAll('.ncm-filter-dropdown__item').forEach(item => {
-          item.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const check = item.querySelector('.ncm-filter-dropdown__check');
-            const tag = item.dataset.filterTag;
-            const isOn = check.classList.toggle('ncm-filter-dropdown__check--on');
-            const color = check.style.borderColor.replace(/40$/, '');
-            if (isOn) {
-              check.style.background = check.style.borderColor.replace(/40/, '20');
-              check.innerHTML = `<i class="fas fa-check" style="color: ${item.querySelector('i').style.color};"></i>`;
-            } else {
-              check.style.background = '';
-              check.innerHTML = '';
-            }
-          });
-        });
-
-        // Close on outside click (one-shot)
-        const closeHandler = (e) => {
-          if (!dropdown.contains(e.target) && !container.contains(e.target)) {
-            dropdown.classList.add('ncm-hidden');
-            document.removeEventListener('mousedown', closeHandler);
-          }
-        };
-        setTimeout(() => document.addEventListener('mousedown', closeHandler), 0);
-        break;
-      }
-
-      case 'apply-filters': {
-        const dropdown = this.element?.querySelector('.ncm-filter-dropdown');
-        if (!dropdown) break;
-        this._filterTags = [];
-        dropdown.querySelectorAll('.ncm-filter-dropdown__check--on').forEach(check => {
-          const item = check.closest('[data-filter-tag]');
-          if (item) this._filterTags.push(item.dataset.filterTag);
-        });
-        dropdown.classList.add('ncm-hidden');
-        this.currentPage = 1;
-        this.render(true);
-        break;
-      }
-
-      case 'clear-filters': {
-        const dropdown = this.element?.querySelector('.ncm-filter-dropdown');
-        if (dropdown) dropdown.classList.add('ncm-hidden');
-        this._filterTags = [];
-        this.currentPage = 1;
-        this.render(true);
-        break;
-      }
-
-      case 'remove-filter-tag':
-        this._removeFilterTag(target.dataset.tag);
-        break;
-      case 'clear-date-range':
-        this._clearDateRange();
-        break;
-
-      // ── v3.2: Add Contact from detail ──
-      case 'add-sender-contact':
-        await this._addContactFromMessage(target.dataset.name);
-        break;
-
-      // ── v3.2: Collapsible detail grid ──
-      case 'toggle-detail-grid': {
-        const grid = this.element?.querySelector('.ncm-viewer__detail-grid');
-        const btn = this.element?.querySelector('.ncm-viewer__detail-expand');
-        if (grid) {
-          grid.classList.toggle('ncm-viewer__detail-grid--collapsed');
-          if (btn) btn.classList.toggle('ncm-viewer__detail-expand--open');
-        }
-        break;
-      }
-
-      // ── Thread ──
-      case 'toggle-thread':
-        this._toggleThread();
-        break;
-
-      // ── Window ──
-      case 'close-window':
-        this.close();
-        break;
-    }
+    // One table entry per action (VIEWER_ACTIONS, after the class).
+    const run = VIEWER_ACTIONS[action];
+    if (run) await run.call(this, target, messageId);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -6202,6 +5523,647 @@ export class MessageViewerApp extends BaseApplication {
     return super.close(options);
   }
 }
+
+// ═══════════════════════════════════════════════════════════
+//  Click actions — data-action → handler (stage 2, step 12)
+// ═══════════════════════════════════════════════════════════
+// The viewer's one delegated click listener (_onDelegatedClick) looks the clicked element's data-action up here and
+// calls the entry with `this` = the viewer and (target, messageId): the [data-action] element and the id of the
+// message it sits in. Each body is the old switch case, moved verbatim (a `break` became `return`). A new button:
+// add its entry here — dev/tools/sims/test-viewer-actions.mjs fails on a data-action in the viewer's templates with no
+// entry. 'calls-*' actions go to callsTab.js before this table is consulted.
+const VIEWER_ACTIONS = {
+  // ── Navigation ──
+  'select-message': async function (target, messageId) {
+    this._selectMessage(messageId);
+  },
+  'open-conversation': async function (target, messageId) {
+    this.selectedMessageId = null;
+    this.selectedConversationId = target.dataset.conversationId;
+    this.render();
+  },
+  'new-conversation': async function (target, messageId) {
+    const gm = !!game.user?.isGM;
+    const id = await startConversationDialog({ host: this.element.querySelector('.ncm-viewer') || this.element, actorId: this.actorId, gm });
+    if (!id) return;
+    if (gm) {
+      // Follow who the GM joined as, into their inbox.
+      const svc = game.nightcity.conversationService;
+      const conv = svc.get(id);
+      const starter = conv?.members.find((m) => m.key === conv.starterKey);
+      const owner = starter ? svc.inboxOwnerOf(starter) : null;
+      if (!owner) { game.nightcity.openAdminTab?.('messages', { select: `conv:${id}` }); return; }
+      this.actorId = owner;
+      this.currentPage = 1;
+    }
+    this.selectedMessageId = null;
+    this.selectedConversationId = id;
+    this.render();
+  },
+  'mobile-back': async function (target, messageId) {
+    // Single-column (narrow) mode — return from the open message to the list.
+    this.selectedConversationId = null;
+    this.selectedMessageId = null;
+    this._threadExpanded = false;
+    this.render();
+  },
+  'set-filter': async function (target, messageId) {
+    this._setFilter(target.dataset.filter);
+  },
+  'set-env-filter': async function (target, messageId) {
+    this._setEnvFilter(target.dataset.f);
+  },
+  'set-sort': async function (target, messageId) {
+    this._setSort(target.dataset.sort);
+  },
+  'toggle-sort-dropdown': async function (target, messageId) {
+    this._toggleDropdown('.ncm-sort-dropdown', target);
+  },
+  'toggleNetworkSelector': async function (target, messageId) {
+    this._toggleNetworkSelector(target);
+  },
+  'toggle-network-filter': async function (target, messageId) {
+    this._toggleDropdown('.ncm-network-filter-dropdown', target);
+  },
+  'selectNetwork': async function (target, messageId) {
+    this._onSelectNetwork(target.dataset.networkId);
+  },
+  'filter-network': async function (target, messageId) {
+    this._setNetworkFilter(target.dataset.network);
+  },
+  'toggle-search': async function (target, messageId) {
+    this._toggleSearch();
+  },
+  'prev-page': async function (target, messageId) {
+    this._setPage(this.currentPage - 1);
+  },
+  'next-page': async function (target, messageId) {
+    this._setPage(this.currentPage + 1);
+  },
+  // ── Message Actions ──
+  'reply-message': async function (target, messageId) {
+    this._replyToMessage(messageId);
+  },
+  'dial-number': async function (target, messageId) {
+    const st = callsState(this);
+    st.view = 'main'; st.dial = target.dataset.number || '';
+    this.currentFilter = 'calls';
+    return this.render();
+  },
+  'call-sender': async function (target, messageId) {
+    if (target.dataset.number) game.nightcity?.placeCall?.(target.dataset.number, { actorId: this.actorId });
+  },
+  'reply-all-message': async function (target, messageId) {
+    this._replyToMessage(messageId, { all: true });
+  },
+  'forward-message': async function (target, messageId) {
+    this._forwardMessage(messageId);
+  },
+  'delete-message': async function (target, messageId) {
+    this._deleteMessage(messageId);
+  },
+  'save-message': async function (target, messageId) {
+    this._toggleSave(messageId);
+  },
+  'mark-unread': async function (target, messageId) {
+    this._markUnread(messageId);
+  },
+  'mark-spam': async function (target, messageId) {
+    this._markSpam(messageId);
+  },
+  'copy-to-terminal': async function (target, messageId) {
+    this._copyToTerminal();
+  },
+  'share-to-chat': async function (target, messageId) {
+    this._shareToChat(messageId);
+  },
+  'empty-trash': async function (target, messageId) {
+    this._emptyTrash();
+  },
+  'empty-spam': async function (target, messageId) {
+    this._emptySpam();
+  },
+  'permanent-delete': async function (target, messageId) {
+    this._permanentDelete(messageId);
+  },
+  'restore-message': async function (target, messageId) {
+    this._restoreMessage(messageId);
+  },
+  // ── Quick Reply ──
+  'quick-reply': async function (target, messageId) {
+    this._sendQuickReply(target.dataset.reply);
+  },
+  'send-reply': async function (target, messageId) {
+    this._sendCustomReply();
+  },
+  'trace-anon': async function (target, messageId) {
+    this._traceAnonSender(target.dataset.messageId || this.selectedMessageId);
+  },
+  // ── Typed content (shared registry — recovered files) ──
+  'credToggleSecret': async function (target, messageId) {
+    toggleSecretReveal(target);
+  },
+  'syslogFilter': async function (target, messageId) {
+    applySyslogFilter(target);
+  },
+  'galleryView': async function (target, messageId) {
+    openGalleryImage(target, { host: this.element });
+  },
+  'claimEddies': async function (target, messageId) {
+    this._claimTypedEddies(target);
+  },
+  'crackCred': async function (target, messageId) {
+    this._crackTypedCred(target);
+  },
+  'contentUnlock': async function (target, messageId) {
+    this._unlockTypedContent(target);
+  },
+  'camAction': async function (target, messageId) {
+    this._camTypedAction(target);
+  },
+  'goToScene': async function (target, messageId) {
+    this._goToTypedScene(target);
+  },
+  'schemLockToggle': async function (target, messageId) {
+    this._toggleTypedSchemLock(target);
+  },
+  'deployMalware': async function (target, messageId) {
+    this._deployTypedMalware(target);
+  },
+  'executePayload': async function (target, messageId) {
+    this._executeTypedPayload(target);
+  },
+  'payloadKill': async function (target, messageId) {
+    this._killTypedPayload(target);
+  },
+  'payloadSniff': async function (target, messageId) {
+    this._sniffTypedPayload(target);
+  },
+  'siphonFunds': async function (target, messageId) {
+    this._siphonTypedFunds(target);
+  },
+  // ── Compose ──
+  'compose-new': async function (target, messageId) {
+    game.nightcity?.composeMessage?.({ fromActorId: this.actorId });
+  },
+  // ── Encryption (original) ──
+  'decrypt-message': async function (target, messageId) {
+    this._decryptMessage(messageId);
+  },
+  'force-decrypt-message': async function (target, messageId) {
+    this._forceDecryptMessage(messageId);
+  },
+  // ── Network Access Bypass ──
+  'bypass-password': async function (target, messageId) {
+    this._bypassPassword(target.dataset.messageId);
+  },
+  'bypass-skill': async function (target, messageId) {
+    this._bypassSkill(target.dataset.messageId, target.dataset.skill);
+  },
+  'bypass-keyitem': async function (target, messageId) {
+    this._bypassKeyItem(target.dataset.messageId);
+  },
+  'gm-force-reveal': async function (target, messageId) {
+    this._gmForceReveal(target.dataset.messageId);
+  },
+  // ── Network Restricted: Connect CTA → opens auth dialog ──
+  'connect-network': async function (target, messageId) {
+    this._connectToRestrictedNetwork(target.dataset.networkId);
+  },
+  // ── Network Changed: Reconnect to old network ──
+  'reconnect-network': async function (target, messageId) {
+    this._connectToRestrictedNetwork(target.dataset.networkId);
+    // Remove the overlay
+    target.closest('.ncm-net-changed')?.remove();
+  },
+  // ── Network Changed: Dismiss and go back to inbox ──
+  'dismiss-net-changed': async function (target, messageId) {
+    target.closest('.ncm-net-changed')?.remove();
+    this.selectedMessageId = null;
+    this.render();
+  },
+  // ── Encrypted: Attempt Decryption (redesigned CTA) ──
+  'attempt-decrypt': async function (target, messageId) {
+    this._decryptMessage(target.dataset.messageId);
+  },
+  // ── GM: Reset Lockout Timer ──
+  'gm-reset-lockout': async function (target, messageId) {
+    this._gmResetLockout(target.dataset.messageId);
+  },
+  // ── Malware Actions ──
+  'quarantine-malware': async function (target, messageId) {
+    this._quarantineMalware(target.dataset.messageId);
+  },
+  'analyze-malware': async function (target, messageId) {
+    this._analyzeMalware(target.dataset.messageId);
+  },
+  // ── WP-5: Signal Reconstruction ──
+  'reconstruct-signal': async function (target, messageId) {
+    this._reconstructSignal(target.dataset.messageId);
+  },
+  // ── Feature 1: Eddies Claim ──
+  'claim-eddies': async function (target, messageId) {
+    this._claimEddies(target.dataset.messageId, parseInt(target.dataset.amount));
+  },
+  // ── Feature 2: Encrypted Block Decrypt ──
+  'decrypt-block': async function (target, messageId) {
+    this._decryptBlock(target.dataset.blockKey);
+  },
+  // ── Feature 6: Scheduled Messages ──
+  'cancel-scheduled': async function (target, messageId) {
+    this._cancelScheduled(target.dataset.scheduleId);
+  },
+  'edit-scheduled': async function (target, messageId) {
+    this._editScheduled(target.dataset.scheduleId);
+  },
+  // ── Feature 7: Data Shards ──
+  'open-shard': async function (target, messageId) {
+    const host = target.closest('[data-item-id]');
+    this._openShard(host?.dataset.itemId, host?.dataset.itemUuid);
+  },
+  'filter-shards': async function (target, messageId) {
+    this._filterShards(target.dataset.shardFilter, target);
+  },
+  // ── Drafts ──
+  'open-draft': async function (target, messageId) {
+    const row = target.closest('[data-draft-id]');
+    this._openDraft(row?.dataset.actorId, row?.dataset.draftId);
+  },
+  'delete-draft': async function (target, messageId) {
+    const row = target.closest('[data-draft-id]');
+    this._deleteDraft(row?.dataset.actorId, row?.dataset.draftId);
+  },
+  // ── Sprint 2B: Attachment Actions ──
+  'breach-attachment': async function (target, messageId) {
+    this._breachAttachment(messageId, target.dataset.attachmentIndex);
+  },
+  'gm-force-breach': async function (target, messageId) {
+    this._gmForceBreachAttachment(messageId, target.dataset.attachmentIndex);
+  },
+  'open-attachment': async function (target, messageId) {
+    this._openAttachment(messageId, target.dataset.attachmentIndex);
+  },
+  // ── Quick Wins: Add Contact from message ──
+  'add-contact': async function (target, messageId) {
+    this._addContactFromMessage();
+  },
+  // ── Bulk Actions ──
+  'toggle-select': async function (target, messageId) {
+    this._toggleBulkSelect(target.dataset.messageId);
+  },
+  'select-all': async function (target, messageId) {
+    this._selectAll();
+  },
+  'bulk-read': async function (target, messageId) {
+    this._bulkMarkRead();
+  },
+  'bulk-delete': async function (target, messageId) {
+    this._bulkDelete();
+  },
+  'bulk-cancel': async function (target, messageId) {
+    this.bulkSelected.clear();
+    this.render();
+  },
+  'bulk-mark-spam': async function (target, messageId) {
+    this._bulkMarkSpam();
+  },
+  // ── Layout ──
+  'toggle-density-dropdown': async function (target, messageId) {
+    this._toggleDropdown('.ncm-density-dropdown', target);
+  },
+  'set-density': async function (target, messageId) {
+    this._setDensity(target.dataset.density);
+  },
+  // ── Settings / Preferences ──
+  'open-settings': async function (target, messageId) {
+    game.nightcity?.openThemeCustomizer?.();
+  },
+  // ── v3.2: Identity Drawer ──
+  'toggle-identity-drawer': async function (target, messageId) {
+    this._toggleIdentityDrawer();
+  },
+  'close-identity-drawer': async function (target, messageId) {
+    this._closeIdentityDrawer();
+  },
+  're-login': async function (target, messageId) {
+    game.nightcity?.reLogin?.();
+  },
+  'set-send-identity': async function (target, messageId) {
+    await this._setSendIdentity(target.dataset.contactId || '');
+  },
+  'open-player-guide': async function (target, messageId) {
+    openGuide('player');
+  },
+  // ── v3.2: Primary Tab Navigation ──
+  'set-primary-tab': async function (target, messageId) {
+    const tab = target.dataset.tab;
+    const tabFilterMap = { messages: 'inbox', calls: 'calls', shards: 'shards' };
+    const newFilter = tabFilterMap[tab] || 'inbox';
+
+    // Determine slide direction based on tab order
+    const TAB_ORDER = ['messages', 'calls', 'shards'];
+    const oldTab = getPrimaryTab(this.currentFilter);
+    const oldIndex = TAB_ORDER.indexOf(oldTab);
+    const newIndex = TAB_ORDER.indexOf(tab);
+    if (tab === oldTab) return; // Same tab, no-op
+
+    const goingRight = newIndex > oldIndex;
+
+    // Animate current pills out
+    const track = this.element?.querySelector('.ncm-viewer__pills-track');
+    if (track) {
+      track.classList.add(goingRight ? 'ncm-viewer__pills-track--exit-left' : 'ncm-viewer__pills-track--exit-right');
+      // After exit animation, render with new content and slide in
+      this._pillsSlideFrom = goingRight ? 'right' : 'left';
+      setTimeout(() => this._setFilter(newFilter), 200);
+    } else {
+      // No track element (e.g. scheduled/drafts tabs) — just switch immediately
+      this._setFilter(newFilter);
+    }
+  },
+  // ── v3.2: Header Actions ──
+  'open-contacts': async function (target, messageId) {
+    const contactActorId = this.actorId || game.user?.character?.id;
+    if (!contactActorId) {
+      ncmNotify.warn('NCM | No character assigned. Cannot open contacts.');
+      return;
+    }
+    game.nightcity?.openContacts?.(contactActorId);
+  },
+  'open-encoder': async function (target, messageId) {
+    // The Agent can be switched between characters, and the Encoder writes to
+    // whoever it is handed — so it must be the character this Agent is open
+    // as, never the remembered operator (which would encode as the last one).
+    game.nightcity?.openEncoder?.({ actor: game.actors?.get(this.actorId) || null });
+  },
+  'open-admin': async function (target, messageId) {
+    game.nightcity?.openAdmin?.();
+  },
+  'mark-all-read': async function (target, messageId) {
+    if (!this.actorId) return;
+    { const cs = game.nightcity?.conversationService; if (cs?.enabled) for (const c of cs.all()) { const me = cs.meIn(c, this.actorId); if (me) cs.markRead(c.id, me.key, c.lastSeq); } }
+    const res = await this.messageService?.markAllAsRead?.(this.actorId);
+    if (res?.success) {
+      if (res.count > 0) {
+        ncmNotify.info(`NCM | Marked ${res.count} message${res.count === 1 ? '' : 's'} as read.`);
+      }
+      game.nightcity?.notificationService?.refreshBadge?.();
+      this.render(false);
+    } else if (res?.error) {
+      ncmNotify.warn(`NCM | Mark all as read failed: ${res.error}`);
+    }
+  },
+  'toggle-list-panel': async function (target, messageId) {
+    this._toggleListPanel();
+  },
+  // ── v3.2: Character Switcher ──
+  'switch-character': async function (target, messageId) {
+    const newActorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    if (newActorId && game.user.isGM) this._rememberInbox(newActorId);
+    if (newActorId && newActorId !== this.actorId) {
+      this.actorId = newActorId;
+      this.selectedMessageId = null;
+      this.selectedConversationId = null;
+      this.currentPage = 1;
+      this._closeIdentityDrawer();
+      this.render(true);
+    }
+  },
+  // ── v3.2: Email Save ──
+  'change-identity': async function (target, messageId) {
+    const actor = game.actors.get(this.actorId);
+    if (!actor) return;
+    const emailService = game.nightcity?.emailService;
+    if (!emailService) return;
+
+    // If actor has an email, warn about burn first
+    const currentEmail = emailService.getEmail(actor);
+    if (currentEmail) {
+      const confirmed = await new Promise(resolve => {
+        playerDialog({
+          title: 'Edit NET Identity',
+          content: `<div class="ncm-burn-dialog">
+                <div class="ncm-burn-dialog__heading">Change Your Identity</div>
+                <div class="ncm-burn-dialog__sub">Changing your email will permanently burn your current identity. All past messages from this address will show as [BURNED].</div>
+                <div class="ncm-burn-dialog__warning">
+                  <i class="fas fa-triangle-exclamation ncm-burn-dialog__warning-icon"></i>
+                  <div class="ncm-burn-dialog__warning-text">Your current identity <strong>${escapeHtml(currentEmail)}</strong> will be permanently burned. This cannot be undone.</div>
+                </div>
+                ${this._sendAsChoices().length ? '<div class="ncm-burn-dialog__sub">Only want to send from one of your other addresses? Cancel, and pick it under Sending as.</div>' : ''}
+                <div class="ncm-burn-dialog__current">
+                  <div class="ncm-burn-dialog__current-label">Current Identity (will be burned)</div>
+                  <div class="ncm-burn-dialog__current-email">${escapeHtml(currentEmail)}</div>
+                </div>
+                <div class="ncm-burn-dialog__consequences">
+                  <div class="ncm-burn-dialog__consequence"><i class="fas fa-check ncm-burn-dialog__consequence-ok"></i> Existing messages preserved in all inboxes</div>
+                  <div class="ncm-burn-dialog__consequence"><i class="fas fa-check ncm-burn-dialog__consequence-ok"></i> Old messages show sender as [BURNED]</div>
+                  <div class="ncm-burn-dialog__consequence"><i class="fas fa-xmark ncm-burn-dialog__consequence-bad"></i> Cannot send or receive until re-registered</div>
+                  <div class="ncm-burn-dialog__consequence ncm-burn-dialog__consequence--last"><i class="fas fa-xmark ncm-burn-dialog__consequence-bad"></i> Old handle may be claimed by another agent</div>
+                </div>
+              </div>`,
+          buttons: {
+            burn: {
+              icon: '<i class="fas fa-fire"></i>',
+              label: 'Burn & Re-register',
+              callback: () => resolve(true),
+            },
+            cancel: {
+              icon: '<i class="fas fa-times"></i>',
+              label: 'Cancel',
+              callback: () => resolve(false),
+            },
+          },
+          default: 'cancel',
+          close: () => resolve(false),
+        }, {
+          classes: ['ncm-app', 'ncm-burn-confirm'],
+          width: 440,
+        }).render(true);
+      });
+      if (!confirmed) return;
+
+      // Burn current identity
+      await emailService.burnEmail(actor, 'manual');
+      ncmNotify.info(`NCM | Identity burned: ${currentEmail}`);
+    }
+
+    // Launch setup flow for re-registration
+    const newEmail = await game.nightcity.openEmailSetup(actor);
+    if (newEmail) {
+      ncmNotify.info(`NCM | New identity registered: ${newEmail}`);
+    }
+    this.render();
+  },
+  // ── v3.2: Date Picker ──
+  'open-date-picker': async function (target, messageId) {
+    const { DateRangePicker } = await import('../components/DateRangePicker.js');
+    DateRangePicker.open({
+      from: this._dateRangeFrom || null,
+      to: this._dateRangeTo || null,
+      onApply: (from, to) => {
+        this._dateRangeFrom = from;
+        this._dateRangeTo = to;
+        this.currentPage = 1;
+        this.render();
+      },
+      onClear: () => {
+        this._dateRangeFrom = null;
+        this._dateRangeTo = null;
+        this.currentPage = 1;
+        this.render();
+      },
+    });
+  },
+  // ── v3.2: Filter Dropdown ──
+  'toggle-filter-dropdown': async function (target, messageId) {
+    // Toggle inline filter dropdown (same pattern as sort dropdown)
+    const existing = this.element?.querySelector('.ncm-filter-dropdown');
+    if (existing && !existing.classList.contains('ncm-hidden')) {
+      existing.classList.add('ncm-hidden');
+      return;
+    }
+
+    // Build dynamic content
+    const networks = [...new Set(
+      (await this._loadMessages()).map(m => m.network).filter(Boolean)
+    )].sort();
+
+    const container = target.closest('.ncm-viewer__filter-trigger');
+    let dropdown = container?.querySelector('.ncm-filter-dropdown');
+    if (!dropdown) {
+      dropdown = document.createElement('div');
+      dropdown.className = 'ncm-filter-dropdown ncm-hidden';
+      container?.appendChild(dropdown);
+    }
+
+    // Network section
+    const netItems = networks.map(n => {
+      const net = this.networkService?.getNetwork?.(n);
+      const name = net?.name || n;
+      const color = net?.theme?.color || '#8888a0';
+      const checked = this._filterTags?.includes(`net:${n}`) ? 'checked' : '';
+      return `<label class="ncm-filter-dropdown__item" data-filter-tag="net:${n}">
+            <span class="ncm-filter-dropdown__check ${checked ? 'ncm-filter-dropdown__check--on' : ''}" style="border-color: ${color}40; ${checked ? `background: ${color}20;` : ''}">
+              ${checked ? `<i class="fas fa-check" style="color: ${color};"></i>` : ''}
+            </span>
+            <i class="fas ${net?.theme?.icon || 'fa-wifi'}" style="color: ${color}; font-size: 9px; width: 14px; text-align: center;"></i>
+            <span class="ncm-filter-dropdown__label" style="color: ${color};">${name}</span>
+          </label>`;
+    }).join('');
+
+    // Status section
+    const statusItems = [
+      { key: 'status:encrypted', label: 'Encrypted', icon: 'fa-lock', color: '#00D4E6' },
+      { key: 'status:has-attachments', label: 'Attachments', icon: 'fa-paperclip', color: '#8888a0' },
+      { key: 'status:has-eddies', label: 'Has Eddies', icon: 'fa-coins', color: '#F0C55B' },
+    ].map(s => {
+      const checked = this._filterTags?.includes(s.key) ? 'checked' : '';
+      return `<label class="ncm-filter-dropdown__item" data-filter-tag="${s.key}">
+            <span class="ncm-filter-dropdown__check ${checked ? 'ncm-filter-dropdown__check--on' : ''}" style="border-color: ${s.color}40; ${checked ? `background: ${s.color}20;` : ''}">
+              ${checked ? `<i class="fas fa-check" style="color: ${s.color};"></i>` : ''}
+            </span>
+            <i class="fas ${s.icon}" style="color: ${s.color}80; font-size: 9px; width: 14px; text-align: center;"></i>
+            <span class="ncm-filter-dropdown__label">${s.label}</span>
+          </label>`;
+    }).join('');
+
+    dropdown.innerHTML = `
+          <div class="ncm-filter-dropdown__section-title">Network</div>
+          ${netItems || '<div class="ncm-filter-dropdown__empty">No networks</div>'}
+          <div class="ncm-filter-dropdown__divider"></div>
+          <div class="ncm-filter-dropdown__section-title">Status</div>
+          ${statusItems}
+          <div class="ncm-filter-dropdown__actions">
+            <span class="ncm-filter-dropdown__btn ncm-filter-dropdown__btn--apply" data-action="apply-filters">
+              <i class="fas fa-check"></i> Apply
+            </span>
+            <span class="ncm-filter-dropdown__btn ncm-filter-dropdown__btn--clear" data-action="clear-filters">
+              <i class="fas fa-times"></i> Clear
+            </span>
+          </div>
+        `;
+
+    dropdown.classList.remove('ncm-hidden');
+
+    // Toggle checkmarks on click
+    dropdown.querySelectorAll('.ncm-filter-dropdown__item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const check = item.querySelector('.ncm-filter-dropdown__check');
+        const tag = item.dataset.filterTag;
+        const isOn = check.classList.toggle('ncm-filter-dropdown__check--on');
+        const color = check.style.borderColor.replace(/40$/, '');
+        if (isOn) {
+          check.style.background = check.style.borderColor.replace(/40/, '20');
+          check.innerHTML = `<i class="fas fa-check" style="color: ${item.querySelector('i').style.color};"></i>`;
+        } else {
+          check.style.background = '';
+          check.innerHTML = '';
+        }
+      });
+    });
+
+    // Close on outside click (one-shot)
+    const closeHandler = (e) => {
+      if (!dropdown.contains(e.target) && !container.contains(e.target)) {
+        dropdown.classList.add('ncm-hidden');
+        document.removeEventListener('mousedown', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('mousedown', closeHandler), 0);
+  },
+  'apply-filters': async function (target, messageId) {
+    const dropdown = this.element?.querySelector('.ncm-filter-dropdown');
+    if (!dropdown) return;
+    this._filterTags = [];
+    dropdown.querySelectorAll('.ncm-filter-dropdown__check--on').forEach(check => {
+      const item = check.closest('[data-filter-tag]');
+      if (item) this._filterTags.push(item.dataset.filterTag);
+    });
+    dropdown.classList.add('ncm-hidden');
+    this.currentPage = 1;
+    this.render(true);
+  },
+  'clear-filters': async function (target, messageId) {
+    const dropdown = this.element?.querySelector('.ncm-filter-dropdown');
+    if (dropdown) dropdown.classList.add('ncm-hidden');
+    this._filterTags = [];
+    this.currentPage = 1;
+    this.render(true);
+  },
+  'remove-filter-tag': async function (target, messageId) {
+    this._removeFilterTag(target.dataset.tag);
+  },
+  'clear-date-range': async function (target, messageId) {
+    this._clearDateRange();
+  },
+  // ── v3.2: Add Contact from detail ──
+  'add-sender-contact': async function (target, messageId) {
+    await this._addContactFromMessage(target.dataset.name);
+  },
+  // ── v3.2: Collapsible detail grid ──
+  'toggle-detail-grid': async function (target, messageId) {
+    const grid = this.element?.querySelector('.ncm-viewer__detail-grid');
+    const btn = this.element?.querySelector('.ncm-viewer__detail-expand');
+    if (grid) {
+      grid.classList.toggle('ncm-viewer__detail-grid--collapsed');
+      if (btn) btn.classList.toggle('ncm-viewer__detail-expand--open');
+    }
+  },
+  // ── Thread ──
+  'toggle-thread': async function (target, messageId) {
+    this._toggleThread();
+  },
+  // ── Window ──
+  'close-window': async function (target, messageId) {
+    this.close();
+  },
+};
+VIEWER_ACTIONS['compose-message'] = VIEWER_ACTIONS['compose-new'];
+VIEWER_ACTIONS['bulk-mark-read'] = VIEWER_ACTIONS['bulk-read'];
+VIEWER_ACTIONS['bulk-clear'] = VIEWER_ACTIONS['bulk-cancel'];
+Object.freeze(VIEWER_ACTIONS);
+
 
 /** How often the weak-signal waveform redraws while it animates (audit PERF-08). */
 export const WAVE_FRAME_MS = 80;

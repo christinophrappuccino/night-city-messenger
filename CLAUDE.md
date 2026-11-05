@@ -136,7 +136,9 @@ review is `ARCHITECTURE-HEALTH-REPORT.md` in the repo root.
 
 **Rules by system (the short list — the file has the reasons):**
 
-- **Messaging** — Every `MESSAGE_RECEIVED` emitter carries the display payload (`from`, `fromName`, `fromActorId`,
+- **Messaging** — A message-viewer button = an entry in `VIEWER_ACTIONS` (after the class in MessageViewerApp.js,
+  called with `this` = the viewer and `(target, messageId)`; step 12 — there is no click switch any more).
+  `test-viewer-actions` fails on a template `data-action` with no entry. Every `MESSAGE_RECEIVED` emitter carries the display payload (`from`, `fromName`, `fromActorId`,
   `fromContactId`, `subject`, `preview`, `priority`); only the one listener toasts (`NotificationService`
   dedups by `messageId`). Eddies transfer once, at the recipient's Claim; never credit in the composer. Never add a
   second sent-copy writer (`_createSentCopy`). The composer's `_onSend` re-enables Send in `finally`. Anonymous

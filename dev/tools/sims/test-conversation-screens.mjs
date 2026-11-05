@@ -57,8 +57,8 @@ ok(/'conversations'/.test(viewer.split('MESSAGE_FILTERS')[1].slice(0, 120)), 'th
 ok(/filter\(m => !m\.isConversation\)\.map\(m => m\.messageId\)/.test(viewer), 'keyboard nav never lands on a conversation row');
 ok(/_cachedMessages\.filter\(m => !m\.isConversation\)/.test(viewer), 'select-all leaves conversations out');
 ok(/enrichedMail/.test(viewer), 'rows skip the mail enrichment');
-ok(/data-action="open-conversation"/.test(vTpl) && /case 'open-conversation':/.test(viewer), 'a row opens');
-ok(/data-action="new-conversation"/.test(vTpl) && /case 'new-conversation':/.test(viewer), 'the header starts one');
+ok(/data-action="open-conversation"/.test(vTpl) && /'open-conversation': async function/.test(viewer) /* VIEWER_ACTIONS entry since step 12 */, 'a row opens');
+ok(/data-action="new-conversation"/.test(vTpl) && /'new-conversation': async function/.test(viewer) /* VIEWER_ACTIONS entry since step 12 */, 'the header starts one');
 ok(/conversationsOn/.test(vTpl) && /const conversationsOn = !!convService\?\.enabled/.test(viewer), 'all of it hides when switched off');
 ok(/_preRender/.test(viewer) && /_convPane\?\.snapshot\(\)/.test(viewer), 'a redraw keeps what you were typing and where you were');
 ok(/this\.selectedConversationId = null;\s*\n\s*this\.selectedMessageId = null;/.test(viewer), 'back leaves the chat');

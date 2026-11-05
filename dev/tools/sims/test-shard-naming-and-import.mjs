@@ -222,7 +222,7 @@ ok(/linked: !!\(a\.actorId \|\| a\.masterContactId\)/.test(read('scripts/ui/Term
 const detail = read('templates/message-viewer/partials/message-detail.hbs');
 const viewer = read('scripts/ui/MessageViewer/MessageViewerApp.js');
 ok((detail.match(/data-action="copy-to-terminal"/g) || []).length === 2 && /@root\.isGM/.test(detail), 'Copy to terminal: GM button on received + sent mail');
-ok(/case 'copy-to-terminal':/.test(viewer) && /import \{ showNamePicker \}/.test(viewer), 'Copy to terminal routed');
+ok(/'copy-to-terminal': async function/.test(viewer) /* VIEWER_ACTIONS entry since step 12 */ && /import \{ showNamePicker \}/.test(viewer), 'Copy to terminal routed');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

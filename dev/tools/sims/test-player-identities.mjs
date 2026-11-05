@@ -181,7 +181,7 @@ ok(/\{\{else if fromIsAlias\}\}/.test(cmpHbs), 'the ALIAS tag');
 const viewerHbs = read('templates/message-viewer/message-viewer.hbs');
 ok(/\{\{#unless isGM\}\}\s*<button[^>]*data-action="open-player-guide"/.test(viewerHbs), 'the header ? is for players (the GM header stays at its measured width)');
 const viewerSrc = read('scripts/ui/MessageViewer/MessageViewerApp.js');
-ok(/case 'set-send-identity'/.test(viewerSrc) && /case 'open-player-guide'/.test(viewerSrc), 'both actions are routed');
+ok(/'set-send-identity': async function/.test(viewerSrc) && /'open-player-guide': async function/.test(viewerSrc) /* VIEWER_ACTIONS entry since step 12 */, 'both actions are routed');
 
 // ═══ 7. The guide ═══
 const { openGuide } = await imp('scripts/utils/guides.js');

@@ -258,7 +258,7 @@ const base = () => ({ fromActorId: 'v', subject: 'Heist tonight', body: 'Be ther
   ok(/\{ all: !!options\.replyAll(, fromContactId: [^}]+)? \}/.test(composer), 'composer asks buildReply for Reply All');
   ok(/replyAll: options\.replyAll \?\? false/.test(readFileSync(`${ROOT}/scripts/init/registerMessagingSystem.js`, 'utf8')), 'the compose launcher forwards replyAll');
   const viewer = readFileSync(`${ROOT}/scripts/ui/MessageViewer/MessageViewerApp.js`, 'utf8');
-  ok(/case 'reply-all-message'/.test(viewer) && /viewingKeys/.test(viewer), 'viewer routes Reply All and passes its own keys to threading');
+  ok(/'reply-all-message': async function/.test(viewer) /* VIEWER_ACTIONS entry since step 12 */ && /viewingKeys/.test(viewer), 'viewer routes Reply All and passes its own keys to threading');
   const tpl = readFileSync(`${ROOT}/templates/message-viewer/partials/message-detail.hbs`, 'utf8');
   ok((tpl.match(/data-action="reply-all-message"/g) || []).length === 2 && /message\.participantCount/.test(tpl), 'detail template has Reply All beside both Reply buttons + the party chip');
 }
