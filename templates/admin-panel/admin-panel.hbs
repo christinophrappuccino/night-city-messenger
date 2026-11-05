@@ -31,65 +31,20 @@
         fold (AdminPanelApp._wireTabFold): other groups' tabs first, then the rest of the open group — the open
         tab always keeps its label. A switch slides the labels to their new state instead of snapping. Every tab names itself on hover (data-tooltip). --}}
   <nav class="ncm-admin-tabs ncm-admin-tabs--grouped">
-    <div class="ncm-admin-tabgrp" data-tab-group="home">
-      <span class="ncm-admin-tabgrp__cap">&nbsp;</span>
+    {{!-- the buttons come from AdminPanelApp.TAB_GROUPS (tabNav) --}}
+    {{#each tabNav}}
+    <div class="ncm-admin-tabgrp" data-tab-group="{{this.key}}">
+      <span class="ncm-admin-tabgrp__cap">{{#if this.cap}}{{this.cap}}{{else}}&nbsp;{{/if}}</span>
       <div class="ncm-admin-tabgrp__tabs">
-      <button class="ncm-admin-tab {{#if (eq activeTab 'overview')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="overview" data-tooltip="Overview · what is happening right now and what needs you" aria-label="Overview">
-        <i class="fas fa-chart-bar"></i><span class="ncm-admin-tab__lb">Overview</span>
+      {{#each this.tabs}}
+      <button class="ncm-admin-tab {{#if this.active}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="{{this.key}}" data-tooltip="{{ncm-tip this.tip}}" aria-label="{{this.aria}}">
+        <i class="fas {{this.icon}}"></i><span class="ncm-admin-tab__lb">{{this.label}}</span>{{#if this.count}}<span class="ncm-admin-tab__count{{#if this.hot}} ncm-admin-tab__count--hot{{/if}}">{{this.count}}</span>{{/if}}
       </button>
+      {{/each}}
       </div>
     </div>
-    <div class="ncm-admin-tabgrp" data-tab-group="comms">
-      <span class="ncm-admin-tabgrp__cap">Comms</span>
-      <div class="ncm-admin-tabgrp__tabs">
-      <button class="ncm-admin-tab {{#if (eq activeTab 'messages')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="messages" data-tooltip="Messages · the reply desk, all mail, the outbox and every inbox" aria-label="Messages">
-        <i class="fas fa-envelope"></i><span class="ncm-admin-tab__lb">Messages</span>{{#if stats.unreadMessages}}<span class="ncm-admin-tab__count">{{stats.unreadMessages}}</span>{{/if}}
-      </button>
-      <button class="ncm-admin-tab {{#if (eq activeTab 'contacts')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="contacts" data-tooltip="Contacts · the NPC directory, players, groups and who knows whom" aria-label="Contacts">
-        <i class="fas fa-address-book"></i><span class="ncm-admin-tab__lb">Contacts</span>
-      </button>
-      <button class="ncm-admin-tab {{#if (eq activeTab 'spam')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="spam" data-tooltip="Spam · junk-mail templates, blasts and auto-spam by network" aria-label="Spam">
-        <i class="fas fa-envelopes-bulk"></i><span class="ncm-admin-tab__lb">Spam</span>
-      </button>
-      <button class="ncm-admin-tab {{#if (eq activeTab 'phone')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="phone" data-tooltip="Phone · live calls, NPC lines ringing for you, every number, the call log and call settings" aria-label="Phone">
-        <i class="fas fa-phone"></i><span class="ncm-admin-tab__lb">Phone</span>{{#if stats.callsRinging}}<span class="ncm-admin-tab__count ncm-admin-tab__count--hot">{{stats.callsRinging}}</span>{{/if}}
-      </button>
-      </div>
-    </div>
-    <div class="ncm-admin-tabgrp" data-tab-group="net">
-      <span class="ncm-admin-tabgrp__cap">Net</span>
-      <div class="ncm-admin-tabgrp__tabs">
-      <button class="ncm-admin-tab {{#if (eq activeTab 'networks')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="networks" data-tooltip="Networks · what reaches each scene, every network, scenes and the activity log" aria-label="Networks">
-        <i class="fas fa-network-wired"></i><span class="ncm-admin-tab__lb">Networks</span>
-      </button>
-      <button class="ncm-admin-tab {{#if (eq activeTab 'security')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="security" data-tooltip="Security · live traces, heat, planted programs and the hacking rules" aria-label="Security">
-        <i class="fas fa-shield-halved"></i><span class="ncm-admin-tab__lb">Security</span>
-      </button>
-      </div>
-    </div>
-    <div class="ncm-admin-tabgrp" data-tab-group="world">
-      <span class="ncm-admin-tabgrp__cap">World</span>
-      <div class="ncm-admin-tabgrp__tabs">
-      <button class="ncm-admin-tab {{#if (eq activeTab 'terminals')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="terminals" data-tooltip="Terminals · every computer players can log into" aria-label="Terminals">
-        <i class="fas fa-terminal"></i><span class="ncm-admin-tab__lb">Terminals</span>
-      </button>
-      <button class="ncm-admin-tab {{#if (eq activeTab 'shards')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="shards" data-tooltip="Shards · every data shard and who holds it" aria-label="Shards">
-        <i class="fas fa-database"></i><span class="ncm-admin-tab__lb">Shards</span>
-      </button>
-      <button class="ncm-admin-tab {{#if (eq activeTab 'access')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="access" data-tooltip="Access points · every way players can open a terminal or shard — map pins, hotbar, chat cards, journal links" aria-label="Access points">
-        <i class="fas fa-location-crosshairs"></i><span class="ncm-admin-tab__lb">Access</span>
-      </button>
-      </div>
-    </div>
-    <div class="ncm-admin-tabgrp" data-tab-group="tools">
-      <span class="ncm-admin-tabgrp__cap">&nbsp;</span>
-      <div class="ncm-admin-tabgrp__tabs">
-      <button class="ncm-admin-tab {{#if (eq activeTab 'tools')}}ncm-admin-tab--active{{/if}}" data-action="switchTab" data-tab="tools" data-tooltip="Tools · settings, imports, health checks and clean-up" aria-label="Tools">
-        <i class="fas fa-wrench"></i><span class="ncm-admin-tab__lb">Tools</span>
-      </button>
-      </div>
-    </div>
-    <span class="ncm-admin-tabs__keys" data-tooltip="Keys: 1–9 and 0 switch tabs (in the order shown) · / search · N new" aria-label="Keyboard shortcuts"><i class="fas fa-keyboard"></i></span>
+    {{/each}}
+    <span class="ncm-admin-tabs__keys" data-tooltip="{{ncm-tip tabKeysTip}}" aria-label="Keyboard shortcuts"><i class="fas fa-keyboard"></i></span>
   </nav>
 
   {{/if}}{{!-- /isPopout chrome --}}

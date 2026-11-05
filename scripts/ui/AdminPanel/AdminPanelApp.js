@@ -129,21 +129,59 @@ export class AdminPanelApp extends BaseApplication {
    */
   get tabs() {
     if (!this._tabs) {
-      this._tabs = {
-        contacts: new ContactsTab(this),
-        messages: new MessagesTab(this),
-        networks: new NetworksTab(this),
-        overview: new OverviewTab(this),
-        shards: new ShardsTab(this),
-        terminals: new TerminalsTab(this),
-        access: new AccessTab(this),
-        phone: new PhoneTab(this),
-        security: new SecurityTab(this),
-        spam: new SpamTab(this),
-        tools: new ToolsTab(this),
-      };
+      this._tabs = {};
+      for (const g of AdminPanelApp.TAB_GROUPS) for (const t of g.tabs) this._tabs[t.key] = new t.Tab(this);
     }
     return this._tabs;
+  }
+
+  /**
+   * The admin tabs, in the order the grouped bar shows them (R16, after stage 2) — the ONE list. The controller
+   * instances (`tabs`), the number keys (`TAB_KEYS`), the nav buttons (`tabNav` → admin-panel.hbs) and the keys
+   * tooltip all come from it. A new tab = a row here + its tab-*.hbs partial; `hotkey` is optional (ten digits,
+   * eleven tabs: Phone has none). `count(stats)` is the badge, `hot` its red variant.
+   */
+  static TAB_GROUPS = Object.freeze([
+    { key: 'home', cap: '', tabs: [
+      { key: 'overview', Tab: OverviewTab, label: 'Overview', icon: 'fa-chart-bar', hotkey: '1', tip: 'what is happening right now and what needs you' },
+    ] },
+    { key: 'comms', cap: 'Comms', tabs: [
+      { key: 'messages', Tab: MessagesTab, label: 'Messages', icon: 'fa-envelope', hotkey: '2', tip: 'the reply desk, all mail, the outbox and every inbox', count: (s) => s?.unreadMessages },
+      { key: 'contacts', Tab: ContactsTab, label: 'Contacts', icon: 'fa-address-book', hotkey: '3', tip: 'the NPC directory, players, groups and who knows whom' },
+      { key: 'spam', Tab: SpamTab, label: 'Spam', icon: 'fa-envelopes-bulk', hotkey: '4', tip: 'junk-mail templates, blasts and auto-spam by network' },
+      { key: 'phone', Tab: PhoneTab, label: 'Phone', icon: 'fa-phone', tip: 'live calls, NPC lines ringing for you, every number, the call log and call settings', count: (s) => s?.callsRinging, hot: true },
+    ] },
+    { key: 'net', cap: 'Net', tabs: [
+      { key: 'networks', Tab: NetworksTab, label: 'Networks', icon: 'fa-network-wired', hotkey: '5', tip: 'what reaches each scene, every network, scenes and the activity log' },
+      { key: 'security', Tab: SecurityTab, label: 'Security', icon: 'fa-shield-halved', hotkey: '6', tip: 'live traces, heat, planted programs and the hacking rules' },
+    ] },
+    { key: 'world', cap: 'World', tabs: [
+      { key: 'terminals', Tab: TerminalsTab, label: 'Terminals', icon: 'fa-terminal', hotkey: '7', tip: 'every computer players can log into' },
+      { key: 'shards', Tab: ShardsTab, label: 'Shards', icon: 'fa-database', hotkey: '8', tip: 'every data shard and who holds it' },
+      { key: 'access', Tab: AccessTab, label: 'Access', name: 'Access points', icon: 'fa-location-crosshairs', hotkey: '9', tip: 'every way players can open a terminal or shard — map pins, hotbar, chat cards, journal links' },
+    ] },
+    { key: 'tools', cap: '', tabs: [
+      { key: 'tools', Tab: ToolsTab, label: 'Tools', icon: 'fa-wrench', hotkey: '0', tip: 'settings, imports, health checks and clean-up' },
+    ] },
+  ]);
+
+  /** The nav bar's view-model: groups of buttons, the open one marked, each badge counted. */
+  static tabNav(activeTab, stats) {
+    return AdminPanelApp.TAB_GROUPS.map((g) => ({
+      key: g.key, cap: g.cap,
+      tabs: g.tabs.map((t) => {
+        const name = t.name || t.label;
+        const n = Number(t.count?.(stats)) || 0;
+        return { key: t.key, label: t.label, icon: t.icon, aria: name, tip: `${name} · ${t.tip}${t.hotkey ? ` (key ${t.hotkey})` : ''}`,
+          active: t.key === activeTab, count: n > 0 ? n : 0, hot: !!t.hot };
+      }),
+    }));
+  }
+
+  /** The keyboard tooltip, from the same list. */
+  static get TAB_KEYS_TIP() {
+    const keys = AdminPanelApp.TAB_GROUPS.flatMap((g) => g.tabs).filter((t) => t.hotkey).map((t) => `${t.hotkey} ${t.label}`);
+    return `Keys: ${keys.join(' · ')} · / search · N new`;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -454,6 +492,8 @@ export class AdminPanelApp extends BaseApplication {
     return {
       isGM: true,
       activeTab: this._activeTab,
+      tabNav: AdminPanelApp.tabNav(this._activeTab, stats),
+      tabKeysTip: AdminPanelApp.TAB_KEYS_TIP,
       isPopout: this.isPopout,
       popTitle: this.isPopout ? this.title : '',
       compactMode: this._compactMode,
@@ -814,8 +854,10 @@ export class AdminPanelApp extends BaseApplication {
     this._debouncedRender();
   }
 
-  /** Number keys → tabs, in the order the grouped bar shows them. */
-  static TAB_KEYS = Object.freeze({ '1': 'overview', '2': 'messages', '3': 'contacts', '4': 'spam', '5': 'networks', '6': 'security', '7': 'terminals', '8': 'shards', '9': 'access', '0': 'tools' });
+  /** Number keys → tabs (from TAB_GROUPS). */
+  static get TAB_KEYS() {
+    return Object.fromEntries(AdminPanelApp.TAB_GROUPS.flatMap((g) => g.tabs).filter((t) => t.hotkey).map((t) => [t.hotkey, t.key]));
+  }
 
   /**
    * Fold the grouped tab bar's labels when it overflows, in a fixed order: tabs OUTSIDE the open group

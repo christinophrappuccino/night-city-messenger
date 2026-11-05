@@ -154,7 +154,8 @@ review is `ARCHITECTURE-HEALTH-REPORT.md` in the repo root.
   "players' characters" list; don't write another `user.character` loop. The directory beats the actor label
   (`resolveDisplayName`); the address decides which identity sent a message (`directoryEntryFor`). An alias never
   borrows its character's portrait. Send-As doors pass `fromContactId`.
-- **Admin panel** — A tab's context is SPREAD into the panel context, never cherry-picked. Admin CSS uses `--ncm-*`
+- **Admin panel** — A new tab is a row in `AdminPanelApp.TAB_GROUPS` (+ its partial); the controllers, number keys, nav
+  buttons and keys tooltip all come from it (`test-admin-tabs`). A tab's context is SPREAD into the panel context, never cherry-picked. Admin CSS uses `--ncm-*`
   tokens; coloured text uses the ink mix; a lock is violet, red is only for bad. New buttons use `tabAct`, not a new
   static delegator. A ScopePicker callback fires on open too: compare before acting. A new selection opens its group
   once, then the GM's fold wins. A tab's context and its template change in one step.
@@ -166,7 +167,7 @@ review is `ARCHITECTURE-HEALTH-REPORT.md` in the repo root.
   through `_canWriteItem` → relay. `canEncode` is the one encoder gate and `canEditShard` the one edit door. The
   shard palette is data (`buildShardThemePrefs`); `--sp-*` derive from `--ncm-*` in one place. A preset never hands a
   player its security block.
-- **Content types** — Adding a type = `CONTENT_TYPES` + `CONTENT_TYPE_INFO` + optional `ENRICHERS` fn +
+- **Content types** — (`test-content-types` checks the touches agree.) Adding a type = `CONTENT_TYPES` + `CONTENT_TYPE_INFO` + optional `ENRICHERS` fn +
   a `content-body.hbs` branch (+ a composer fieldset). `interactive` means "this consumer wires the actions"; only the
   composer preview passes false. Locked data is removed in the enricher, never hidden with CSS. A new message field
   goes in all four flag builders (`_buildMessageFlags`, `createMessage`, `_pageToMessage`, `addMessage` +
@@ -183,7 +184,8 @@ review is `ARCHITECTURE-HEALTH-REPORT.md` in the repo root.
 - **Rolls** — `beatsDV` / `d10Odds` (`rolls.js`) are the one rule; a tie fails. A roll with no animation uses
   `reveal`; one with its own animation uses `deferChat` + `postChat()` at its climax. A caller passing `ask` checks
   `cancelled`.
-- **Access points** — One door, `game.nightcity.openAccess(ref)`. Themed dialogs open with
+- **Access points** — One door, `game.nightcity.openAccess(ref)`. A new kind = an `ACCESS_KINDS` row (rules) + an
+  `ACCESS_OPENERS` entry `{ describe, open }` (integrations/AccessPoints.js); `test-access-kinds` fails when they differ. Themed dialogs open with
   `THEMED_DIALOG_CLASSES` (keep `'dialog'`). Never wrap a placeable's click handler; read the DOM event after release.
 - **Phone / payphones** — A booth side is masked per recipient in `CallService._send`; masking is on screen, not
   secrecy. Emergency words are slots, never literals in `EmergencyHud`. Calls, Payphones, Emergency and Overheard are

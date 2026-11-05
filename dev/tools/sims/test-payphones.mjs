@@ -231,7 +231,7 @@ for (const uid of Object.keys(clients)) { globalThis.game = clients[uid].g; clie
   ok(/@import 'components\/payphone-booth\.css'/.test(read('styles/night-city-messenger.css')), 'the stylesheet is imported');
   ok(read('scripts/utils/accessPoints.js').includes("payphone: { label: 'Payphone'") && /node\|payphone\)/.test(read('scripts/utils/accessPoints.js')), 'payphone is an access-point kind with journal links');
   const ap = read('scripts/integrations/AccessPoints.js');
-  ok(/case 'payphone': return ns\?\.payphoneService\?\.open\?\.\(ref\.id, \{ skipReach: true \}\)/.test(ap), 'links, macros and chat cards open a booth without a reach check');
+  ok(ap.includes('open: (ref, ns) => ns?.payphoneService?.open?.(ref.id, { skipReach: true }),'), 'links, macros and chat cards open a booth without a reach check');
   const pins = read('scripts/integrations/TerminalScenePins.js');
   ok(/accessPayphone/.test(pins) && /_reachBlock\(doc, Number\(doc\.getFlag\(MODULE_ID, 'accessRange'\)\) \|\| 0, 'the payphone'\)/.test(pins), 'a payphone pin checks reach');
   ok(/removePinsForPayphone/.test(pins), 'a deleted payphone takes its pins');

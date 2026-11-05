@@ -243,7 +243,7 @@ const mkThis = (Cls, props) => { const o = Object.create(Cls.prototype); for (co
   ok(!/\.ncm-nc-/.test(css) && /prefers-reduced-motion/.test(css), 'console CSS: own prefix (ncm-nc- is taken), reduced-motion veto');
   const ap = read('scripts/utils/accessPoints.js'), apr = read('scripts/integrations/AccessPoints.js'), pins = read('scripts/integrations/TerminalScenePins.js');
   ok(ap.includes("node: { label: 'Network node'") && ap.includes('|message|node'), 'node is an access-point kind (refs, journal links)');
-  ok(apr.includes("case 'node': return ns?.openNode?.(ref.id);") && apr.includes('export function nodeAccessEntries') && apr.includes('export async function openNodePlaceDialog'), 'openAccess opens a node; nodes have their own ways-in menu and place dialog');
+  ok(apr.includes('open: (ref, ns) => ns?.openNode?.(ref.id),') && apr.includes('export function nodeAccessEntries') && apr.includes('export async function openNodePlaceDialog'), 'openAccess opens a node; nodes have their own ways-in menu and place dialog');
   ok(pins.includes('async placeNode(') && pins.includes('nodePinOf(doc)') && pins.includes('removePinsForNode') && pins.includes('setNodeHidden'), 'node pins: place, open, hide with the node, removed with it');
   for (const k of Object.keys(N.NODE_KINDS)) ok(existsSync(`${ROOT}/assets/icons/nodes/${k}.svg`), `pin icon for ${k}`);
 }

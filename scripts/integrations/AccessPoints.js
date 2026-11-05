@@ -57,50 +57,83 @@ function _item(id) {
 }
 
 /**
- * What a ref points at, for handouts and lists.
- * @returns {{ found:boolean, name:string, sub:string, tags:string[], img:string, source:object|null }}
+ * What each access kind does at run time (R16, after stage 2) — one entry per key of ACCESS_KINDS (the rules side:
+ * label, icon, button text). `describe(ref, out)` fills the handout description when the target exists (leave
+ * `out.found` false when it does not); `open(ref, ns)` opens it. A new kind = an ACCESS_KINDS row + an entry here
+ * (test-access-kinds fails when the two disagree).
  */
-export function describeAccess(ref) {
-  const out = { found: false, name: ACCESS_KINDS[ref?.kind]?.label || 'Access', sub: '', tags: [], img: 'icons/svg/door-steel.svg', source: null };
-  if (!isAccessRef(ref)) return out;
-  try {
-    if (ref.kind === 'terminal') {
-      const item = _item(ref.id); if (!item) return out;
+const _describeInbox = (ref, out) => {
+    const [owner] = ref.id.split('|');
+    const actor = game.actors.get(owner);
+    const contact = actor ? null : game.nightcity?.masterContactService?.getContact?.(owner);
+    if (!actor && !contact) return;
+    const name = actor?.name || contact?.name;
+    const email = actor?.getFlag?.(MODULE_ID, 'email') || contact?.email || '';
+    Object.assign(out, { found: true, name: ref.kind === 'inbox' ? `${name}'s inbox` : `A message for ${name}`, img: actor?.img || contact?.portrait || out.img, sub: email });
+  };
+const _openInbox = (ref, ns) => {
+    const [owner, messageId] = ref.id.split('|');
+    const actor = game.actors.get(owner);
+    if (!isGM() && !actor?.isOwner) return void ncmNotify.warn('That inbox is not yours to open.');
+    return ns?.openInbox?.(owner, ref.kind === 'message' ? messageId : undefined);
+  };
+export const ACCESS_OPENERS = Object.freeze({
+  terminal: {
+    describe(ref, out) {
+      const item = _item(ref.id); if (!item) return;
       const cfg = game.nightcity?.terminalService?.getConfig(item) || {};
       const md = cfg.metadata || {};
       const n = (cfg.accounts || []).filter(a => !a.hidden).length;
       Object.assign(out, { found: true, name: cfg.terminalName || item.name, img: item.img, sub: [md.org, md.location].filter(Boolean).join(' · '),
         tags: [n ? `${n} account${n === 1 ? '' : 's'}` : '', md.classification || ''], source: buildTerminalThemePrefs(cfg.theme || {}, cfg.theme?.preset || '').colors });
-    } else if (ref.kind === 'node') {
+    },
+    open: (ref, ns) => ns?.openTerminal?.(ref.id),
+  },
+  shard: {
+    describe(ref, out) {
+      const item = _item(ref.id); if (!item) return;
+      const cfg = game.nightcity?.dataShardService?.getConfig(item) || {};
+      Object.assign(out, { found: true, name: cfg.shardName || item.name, img: item.img, sub: item.parent?.name ? `carried by ${item.parent.name}` : '',
+        tags: [cfg.encrypted ? 'locked' : ''], source: buildShardThemePrefs(cfg.theme, cfg.preset || '').colors });
+    },
+    open: (ref, ns) => ns?.openDataShard?.(ref.id),
+  },
+  inbox: { describe: _describeInbox, open: _openInbox },
+  message: { describe: _describeInbox, open: _openInbox },
+  node: {
+    describe(ref, out) {
       const ns = game.nightcity?.networkService;
-      const node = ns?.getNode?.(ref.id); if (!node) return out;
+      const node = ns?.getNode?.(ref.id); if (!node) return;
       const net = ns.getNetwork(node.networkId);
       const scene = node.sceneId ? game.scenes.get(node.sceneId) : null;
       const c = net?.theme?.color || '#19f3f7';
       Object.assign(out, { found: true, name: node.name, img: `modules/${MODULE_ID}/assets/icons/nodes/${node.kind}.svg`,
         sub: [net?.name, scene?.name].filter(Boolean).join(' · '), tags: [node.hidden ? 'hidden' : ''],
         source: { primary: c, accent: c, bgDeep: '#07070c', textPrimary: '#e6ecf5' } });
-    } else if (ref.kind === 'payphone') {
-      const pp = game.nightcity?.payphoneService?.get?.(ref.id); if (!pp) return out;
+    },
+    open: (ref, ns) => ns?.openNode?.(ref.id),
+  },
+  payphone: {
+    describe(ref, out) {
+      const pp = game.nightcity?.payphoneService?.get?.(ref.id); if (!pp) return;
       const scene = pp.sceneId ? game.scenes.get(pp.sceneId) : null;
       Object.assign(out, { found: true, name: placeLabel(pp), img: `modules/${MODULE_ID}/assets/icons/payphone/payphone.svg`,
         sub: [pp.number, scene?.name].filter(Boolean).join(' · '), tags: [pp.condition === 'out' ? 'out of order' : ''],
         source: { primary: pp.look.case, accent: pp.look.ink, bgDeep: '#07070c', textPrimary: '#e6ecf5' } });
-    } else if (ref.kind === 'shard') {
-      const item = _item(ref.id); if (!item) return out;
-      const cfg = game.nightcity?.dataShardService?.getConfig(item) || {};
-      Object.assign(out, { found: true, name: cfg.shardName || item.name, img: item.img, sub: item.parent?.name ? `carried by ${item.parent.name}` : '',
-        tags: [cfg.encrypted ? 'locked' : ''], source: buildShardThemePrefs(cfg.theme, cfg.preset || '').colors });
-    } else {
-      const [owner] = ref.id.split('|');
-      const actor = game.actors.get(owner);
-      const contact = actor ? null : game.nightcity?.masterContactService?.getContact?.(owner);
-      if (!actor && !contact) return out;
-      const name = actor?.name || contact?.name;
-      const email = actor?.getFlag?.(MODULE_ID, 'email') || contact?.email || '';
-      Object.assign(out, { found: true, name: ref.kind === 'inbox' ? `${name}'s inbox` : `A message for ${name}`, img: actor?.img || contact?.portrait || out.img, sub: email });
-    }
-  } catch (err) { log.debug(`describeAccess: ${err.message}`); }
+    },
+    // a link, a macro or a chat card: the GM handed it out, so no reach check (a map pin checks reach itself)
+    open: (ref, ns) => ns?.payphoneService?.open?.(ref.id, { skipReach: true }),
+  },
+});
+
+/**
+ * What a ref points at, for handouts and lists.
+ * @returns {{ found:boolean, name:string, sub:string, tags:string[], img:string, source:object|null }}
+ */
+export function describeAccess(ref) {
+  const out = { found: false, name: ACCESS_KINDS[ref?.kind]?.label || 'Access', sub: '', tags: [], img: 'icons/svg/door-steel.svg', source: null };
+  if (!isAccessRef(ref)) return out;
+  try { ACCESS_OPENERS[ref.kind]?.describe(ref, out); } catch (err) { log.debug(`describeAccess: ${err.message}`); }
   out.tags = out.tags.filter(Boolean);
   return out;
 }
@@ -113,21 +146,7 @@ export function paletteFor(ref, style = getHandoutStyle()) {
 /** Open whatever the ref points at. */
 export function openAccess(ref) {
   if (!isAccessRef(ref)) return void ncmNotify.warn('Night City Messenger: that access point is broken.');
-  const ns = game.nightcity;
-  switch (ref.kind) {
-    case 'terminal': return ns?.openTerminal?.(ref.id);
-    case 'shard': return ns?.openDataShard?.(ref.id);
-    case 'node': return ns?.openNode?.(ref.id);
-    // a link, a macro or a chat card: the GM handed it out, so no reach check (a map pin checks reach itself)
-    case 'payphone': return ns?.payphoneService?.open?.(ref.id, { skipReach: true });
-    case 'inbox':
-    case 'message': {
-      const [owner, messageId] = ref.id.split('|');
-      const actor = game.actors.get(owner);
-      if (!isGM() && !actor?.isOwner) return void ncmNotify.warn('That inbox is not yours to open.');
-      return ns?.openInbox?.(owner, ref.kind === 'message' ? messageId : undefined);
-    }
-  }
+  return ACCESS_OPENERS[ref.kind]?.open(ref, game.nightcity);
 }
 
 async function _macroFolder() {

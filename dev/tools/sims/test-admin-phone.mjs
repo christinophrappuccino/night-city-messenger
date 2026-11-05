@@ -112,10 +112,10 @@ const classes = new Set([...tpl.matchAll(/class="([^"{]+)/g)].flatMap((m) => m[1
 for (const c of classes) ok(css.includes('.' + c), `.${c} styled`);
 ok(!/#[0-9a-f]{3,8}\b/i.test(css), 'tokens only');
 const panel = read('templates/admin-panel/admin-panel.hbs');
-ok(/data-tab-group="comms"[\s\S]*?data-tab="phone"[\s\S]*?data-tab-group="net"/.test(panel) && panel.includes('tab-phone.hbs'), 'Phone sits in COMMS + its partial');
+ok(/key: 'comms', cap: 'Comms', tabs: \[[\s\S]*?key: 'phone', Tab: PhoneTab[\s\S]*?key: 'net', cap/.test(read('scripts/ui/AdminPanel/AdminPanelApp.js')) && panel.includes('tab-phone.hbs'), 'Phone sits in COMMS + its partial');
 ok(read('scripts/utils/constants.js').includes('ADMIN_TAB_PHONE') && read('styles/components/admin-panel.css').includes('tab-phone.css'), 'TEMPLATES + css import');
 const ap = read('scripts/ui/AdminPanel/AdminPanelApp.js');
-ok(ap.includes('phone: new PhoneTab(this)') && ap.includes('...this.tabs.phone.prepareContext()') && ap.includes('EVENTS.CALL_RINGING'), 'panel: tab, context spread, live re-render');
+ok(ap.includes("{ key: 'phone', Tab: PhoneTab,") && ap.includes('...this.tabs.phone.prepareContext()') && ap.includes('EVENTS.CALL_RINGING'), 'panel: tab, context spread, live re-render');
 ok(read('templates/admin-panel/tab-contacts.hbs').includes('data-op="callAs"') && read('scripts/ui/AdminPanel/tabs/ContactsTab.js').includes("case 'callAs'"), 'Call as on Admin Contacts');
 const cs = read('scripts/services/CallService.js');
 ok(cs.includes('allCalls()') && cs.includes('allLogs()') && cs.includes('noSignal: !isGM() && !from.wired && this._noSignal()'), 'service: GM readers; an NPC caller ignores the GM\'s own signal');

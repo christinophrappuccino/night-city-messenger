@@ -123,10 +123,10 @@ tab.openTo('shard:Item.drop'); ok(tab._view === 'thing' && tab._thing === 'shard
 
 // ═══ 4. wiring ═══
 const app2 = read('scripts/ui/AdminPanel/AdminPanelApp.js');
-ok(app2.includes('access: new AccessTab(this)') && app2.includes('...this.tabs.access.prepareContext()'), 'tab registered + context spread');
-ok(app2.includes("'9': 'access', '0': 'tools'"), 'number keys follow the bar');
+ok(app2.includes("{ key: 'access', Tab: AccessTab,") && app2.includes('...this.tabs.access.prepareContext()'), 'tab registered + context spread');
+ok(/key: 'access', Tab: AccessTab,[^\n]*hotkey: '9'/.test(app2) && /key: 'tools', Tab: ToolsTab,[^\n]*hotkey: '0'/.test(app2), 'number keys follow the bar');
 const shell = read('templates/admin-panel/admin-panel.hbs');
-ok(/data-tab-group="world"[\s\S]*data-tab="access"[\s\S]*data-tab-group="tools"/.test(shell) && shell.includes('tab-access.hbs'), 'nav button in WORLD + the partial included');
+ok(/key: 'world', cap: 'World', tabs: \[[\s\S]*?key: 'access'[\s\S]*?key: 'tools', cap/.test(app2) && shell.includes('{{#each tabNav}}') && shell.includes('tab-access.hbs'), 'nav button in WORLD + the partial included');
 ok(read('scripts/utils/constants.js').includes('ADMIN_TAB_ACCESS'), 'template constant (preloaded)');
 ok(read('styles/components/admin-panel.css').includes("tab-access.css"), 'stylesheet imported');
 ok(read('scripts/ui/AdminPanel/AdminTabWindow.js').includes("access: 'Access points'"), 'pop-out title');
