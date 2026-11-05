@@ -17,7 +17,7 @@
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, isPrimaryGM, formatCyberDate, netVerbFor, runGmMacro, stripMacroRefs, userOwnsActor } from '../../utils/helpers.js';
-import { applyContentIntent, sanitizeIntent, computeMaxSiphon, UNLOCK_KINDS } from '../../utils/contentIntents.js';
+import { applyContentIntent, sanitizeIntent, computeMaxSiphon, UNLOCK_KINDS, payloadCanRun, chargesAfterRun } from '../../utils/contentIntents.js';
 import { runSecurityConsole } from './SecurityConsole.js';
 import { rolledNote } from './NetResolve.js';
 import { runBankHeist } from './BankHeist.js';
@@ -42,6 +42,9 @@ export { computeMaxSiphon };
  * @param {HTMLElement} [args.host] viewer element (theme source for the console)
  */
 export async function runSiphon({ actor, raw, itemUuid, messageId, host = null }) {
+  // Credits wealth before the GM writes the drained account (audit DATA-01): with no GM to write
+  // it, the account would stay full and pay out again and again. Refuse up front.
+  if (!canPersistContent()) return;
   const banking = raw || {};
   if (banking.siphoned) { ncmNotify.warn('NCM | This account is already drained.'); return; }
 
@@ -827,7 +830,10 @@ const DEFAULT_EXEC_DV = 9;
 export async function runPayloadExecute({ actor, raw, messageId, sourceLabel = 'this system', host = null, force = false, unstable = null }) {
   const cd = raw || {};
   const name = cd.name || 'PROGRAM.EXE';
-  if (cd.executed && !(cd.charges > 1)) { ncmNotify.warn('NCM | This program has already been run.'); return null; }
+  // The GM applies the effect (audit DATA-20): without one the roll would be spent for nothing.
+  if (!canPersistContent()) return null;
+  // Each run spends a charge (audit DATA-08); no charges left = used up.
+  if (!payloadCanRun(cd)) { ncmNotify.warn('NCM | This program has no charges left.'); return null; }
 
   const gated = !!cd.executeRequire;
   const skill = cd.executeSkill || DEFAULT_EXEC_SKILL;
@@ -910,7 +916,7 @@ export async function applyPayloadEffect({ messageId, actorId, outcome, targets 
   if (outcome === 'fail') {
     // Trace funnel owns the drama + GM alert + log + heat (design §6a).
     game.nightcity?.traceService?.fireTrace({ actor, action: 'payload', source: name, host: page?.parent, severity: 'hostile' });
-    await _writePayloadContent(page, { ...cd, executed: true, executedBy: actorId, executedAt: iso, tripped: true });
+    await _writePayloadContent(page, { ...cd, executed: true, executedBy: actorId, executedAt: iso, tripped: true, charges: chargesAfterRun(cd) });
     return;
   }
 
@@ -932,7 +938,7 @@ export async function applyPayloadEffect({ messageId, actorId, outcome, targets 
 
   await _writePayloadContent(page, {
     ...cd,
-    executed: true, executedBy: actorId, executedAt: iso, tripped: false, killed: false,
+    executed: true, executedBy: actorId, executedAt: iso, tripped: false, killed: false, charges: chargesAfterRun(cd),
     active: timed, expiresAt,
     scanReport: report || cd.scanReport || '',
   });
@@ -976,7 +982,7 @@ export function checkPayloadRequest(data, senderId) {
   if (f.contentType !== 'payload') return { ok: false, why: 'not a program entry' };
   if (data.outcome === 'kill') return cd.active && !cd.killed ? { ok: true } : { ok: false, why: 'nothing is running' };
   if (data.outcome !== 'success' && data.outcome !== 'fail') return { ok: false, why: `unknown outcome "${data.outcome}"` };
-  if (cd.executed && !(cd.charges > 1)) return { ok: false, why: 'already run' };
+  if (!payloadCanRun(cd)) return { ok: false, why: 'no charges left' };
   return { ok: true, targets: data.targets ? _sameJournalIds(who.page, data.targets, data.messageId) : null };
 }
 

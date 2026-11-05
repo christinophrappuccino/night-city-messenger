@@ -30,6 +30,19 @@ export function computeMaxSiphon(banking = {}) {
   }
 }
 
+/**
+ * Program charges (audit DATA-08, dev's call 2026-11-04: running a program spends a charge).
+ * A run — clean, failed or misfired: the program still ran — takes one; no charges set = one use.
+ * @returns {boolean} may this program run (again)?
+ */
+export function payloadCanRun(cd) { return !cd?.executed || Number(cd?.charges) > 0; }
+
+/** Charges left after one more run. */
+export function chargesAfterRun(cd) {
+  const c = Number(cd?.charges);
+  return Number.isFinite(c) && c > 0 ? Math.floor(c) - 1 : 0;
+}
+
 /** Which content type each unlock kind belongs to. */
 export const UNLOCK_KINDS = Object.freeze({
   gallery: 'gallery', avlog: 'avlog', schematic: 'schematic', calendar: 'calendar', location: 'location',

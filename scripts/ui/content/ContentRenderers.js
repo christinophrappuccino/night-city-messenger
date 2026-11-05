@@ -23,6 +23,7 @@ import { ncmNotify, tipText } from '../../utils/notify.js';
 import { CONTENT_TYPES } from '../../utils/constants.js';
 import { log, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { cleanHtml } from '../../utils/richText.js';
+import { payloadCanRun } from '../../utils/contentIntents.js';
 
 /**
  * Display info per content type. `accent` is a palette key consumed by CSS
@@ -740,8 +741,8 @@ const ENRICHERS = {
       // Rendered raw ({{{scanReport}}}); it can carry names a player chose (accounts,
       // files) and contentData can be written by relays — inline-clean it (SEC-14).
       scanReport: cleanHtml(cd.scanReport || '', { mode: 'inline' }),
-      // Execute affordance: runnable when not spent and (charges left OR untracked).
-      canRun: !cd.executed || (isActive === false && cd.charges > 1),
+      // Execute affordance: runnable until its charges are spent (each run takes one; none set = one use).
+      canRun: !cd.executed || (isActive === false && payloadCanRun(cd)),
       gated: !!cd.executeRequire,
       executeDV: Number(cd.executeDV) || 9,
       hasMacro: !!cd.effect?.macroId,

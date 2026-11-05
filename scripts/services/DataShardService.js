@@ -1333,6 +1333,11 @@ export class DataShardService {
     const amount = contentData.amount ?? 0;
     if (amount <= 0) return { success: false, error: 'No eddies to claim' };
 
+    // Wealth is credited before the GM marks the entry claimed (audit DATA-02): with no GM to write
+    // that, the same eddies could be claimed again and again. Refuse up front.
+    const { canPersistContent } = await import('../ui/content/SiphonFlow.js');
+    if (!canPersistContent({ warn: false })) return { success: false, error: 'No GM is connected — the GM must be online to claim this.' };
+
     try {
       // Wire to CPR wealth ledger — wealth is an object { value, transactions }
       const wealth = foundry.utils.deepClone(actor.system.wealth);
@@ -1354,8 +1359,16 @@ export class DataShardService {
       const claimed = applyContentIntent(CONTENT_TYPES.EDDIES, contentData, { action: 'claim' },
         { actorId: actor.id, actorName: actor.name, nowIso, realIso: new Date().toISOString(), realMs: Date.now() });
       if (!claimed.ok) return { success: false, error: claimed.why };
-      await persistContentData(entryId, claimed.next,
+      const saved = await persistContentData(entryId, claimed.next,
         `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${shardItem.name}).`, { action: 'claim' }, actor.id);
+      if (!saved) {
+        // The claim could not be recorded: take the money back rather than leave it claimable twice.
+        const undo = foundry.utils.deepClone(actor.system.wealth);
+        undo.value -= amount;
+        undo.transactions.push([`Decreased by ${amount} to ${undo.value}`, `NCM: Claim of ${amount.toLocaleString()} eb could not be recorded — reversed`]);
+        await actor.update({ 'system.wealth': undo });
+        return { success: false, error: 'The claim could not be recorded' };
+      }
 
       this.eventBus?.emit(EVENTS.SHARD_EDDIES_CLAIMED, {
         itemId: shardItem.id, entryId, actorId: actor.id, amount,
