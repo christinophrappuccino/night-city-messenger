@@ -8,7 +8,8 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
+// line endings normalised: a Windows checkout gives CRLF, and the checks below look for LF
+const read = (f) => fs.readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n');
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('  FAIL', m); } };
 
