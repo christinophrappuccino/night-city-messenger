@@ -70,6 +70,10 @@ export class AdminPanelApp extends BaseApplication {
       for (const h of ['createJournalEntryPage', 'deleteJournalEntryPage']) Hooks.off(h, this._binHook);
       this._binHook = null;
     }
+    if (this._gmLogHook) {
+      for (const h of ['createJournalEntryPage', 'updateJournalEntryPage']) Hooks.off(h, this._gmLogHook);
+      this._gmLogHook = null;
+    }
     this._tabFoldObs?.disconnect(); this._tabFoldObs = null;
     if (this._sceneHook) {
       for (const h of ['createScene', 'updateScene', 'deleteScene']) Hooks.off(h, this._sceneHook);
@@ -1079,6 +1083,11 @@ export class AdminPanelApp extends BaseApplication {
       if (this._activeTab === 'security' && page?.parent?.getFlag?.(MODULE_ID, 'recycleBin')) this._debouncedRender();
     };
     for (const h of ['createJournalEntryPage', 'deleteJournalEntryPage']) Hooks.on(h, this._binHook);
+    // The trace log is a page of the GM-only "NCM — GM logs" journal (stage 2, step 13).
+    this._gmLogHook = (page) => {
+      if (page?.getFlag?.(MODULE_ID, 'gmLog') === 'traceLog' && this._activeTab === 'security') this._debouncedRender();
+    };
+    for (const h of ['createJournalEntryPage', 'updateJournalEntryPage']) Hooks.on(h, this._gmLogHook);
     // World time (the Foundry clock + Simple Calendar) advancing: same reason. SC's own hook fires on a
     // calendar change even when Foundry's world time is untouched (its "date-time-change" event name).
     this._worldTimeHook = () => this._onGameClock(false);

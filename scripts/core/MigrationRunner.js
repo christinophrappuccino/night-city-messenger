@@ -33,7 +33,7 @@ import { creditOldScheduled } from '../services/SchedulingService.js';
 import { serialize } from '../utils/serialize.js';
 
 /** The schema version this build of the module writes. */
-export const DATA_SCHEMA_VERSION = 6;
+export const DATA_SCHEMA_VERSION = 8;
 
 /**
  * Everything saved in this world that can hold an Interface DV.
@@ -209,6 +209,31 @@ const MIGRATIONS = [
       const n = await migrateRecycleBin();
       if (n) log.info(`Recycle bin: moved ${n} wiped file(s) into the bin journal`);
     },
+  },
+  {
+    // The trace log and the network access log were world settings, re-sent whole to every client on each write and
+    // loaded by every player at login, though only the GM reads them (measured ~100 KB and ~170 KB at their caps).
+    // They move to a GM-only journal (data/gmLogStore.js). Safe to run twice: rows already moved are not added again,
+    // and a setting is emptied only once every one of its rows reads back from the journal.
+    to: 7,
+    label: 'Trace + network access logs: move into a GM-only journal',
+    run: async () => {
+      const { migrateGmLog } = await import('../data/gmLogStore.js');
+      for (const name of ['traceLog', 'networkAccessLog']) {
+        const n = await migrateGmLog(name);
+        if (n < 0) throw new Error(`${name}: the journal did not read back every row; the setting is kept, trying again next load`);
+        if (n) log.info(`${name}: moved ${n} row(s) into the GM logs journal`);
+      }
+      game.nightcity?.accessLogService?._loadFromSettings?.();
+    },
+  },
+  {
+    // v3 kept a crash-resume ledger ({ recordKey: true } per Interface DV it lowered) that it never cleared. The
+    // version stamp already stops v3 running again, so the ledger only cost every client a download at login (35 KB
+    // and 518 keys in the dev's test world). Empty it.
+    to: 8,
+    label: 'Interface rolls: clear the finished v3 ledger',
+    run: async () => { await game.settings.set(MODULE_ID, 'ifaceShiftDone', {}); },
   },
 ];
 

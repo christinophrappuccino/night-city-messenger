@@ -97,8 +97,12 @@ const S = await load('scripts/utils/serialize.js');
   t._decay = (e) => e?.value || 0; t._nowIso = () => 'now'; t._nowMs = () => 1000;
   Object.defineProperty(t, 'consequencesOn', { value: true });   // the live switch (step 16); its setting is not in this mock
   settings.set('traceLog', []); settings.set('traceHeat', {}); settings.set('traceCountdowns', []);
+  const { installJournals } = await import('./lib/journalMock.mjs');
+  const keep = { journal: game.journal, JournalEntry: globalThis.JournalEntry };
+  installJournals(game);   // the trace log is a GM-only journal page since stage 2 step 13
   await Promise.all([t.recordTrace({ outcome: 'success', action: 'a' }), t.recordTrace({ outcome: 'success', action: 'b' })]);
-  ok(settings.get('traceLog').length === 2, 'two traces at once both reach the log');
+  ok(t.getLog().length === 2, 'two traces at once both reach the log');
+  game.journal = keep.journal; globalThis.JournalEntry = keep.JournalEntry;   // later sections bring their own
   await Promise.all([t.bumpHeat('obj', 'a1', 10), t.bumpHeat('obj', 'a1', 20), t.bumpHeat('obj', 'a2', 5)]);
   const heat = settings.get('traceHeat');
   ok(heat.obj.a1.value === 30 && heat.obj.a2.value === 5, 'three heat bumps at once all count');

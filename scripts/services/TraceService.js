@@ -22,8 +22,9 @@ import { log, isGM, isPrimaryGM, netVerbFor, whisperCardHtml, userOwnsActor } fr
 import { userCanReachItem } from '../utils/shardAccess.js';
 import { serialize } from '../utils/serialize.js';
 import { isFeatureOn } from '../utils/features.js';
+import { readGmLog, writeGmLog, updateGmLog } from '../data/gmLogStore.js';
 
-const LOG_SETTING = 'traceLog';
+const LOG_NAME = 'traceLog';   // a page of the GM-only "NCM — GM logs" journal (data/gmLogStore.js, stage 2 step 13)
 const HEAT_SETTING = 'traceHeat';
 const LOG_CAP = 250;
 
@@ -140,12 +141,9 @@ export class TraceService {
       const consequences = isFail && this.consequencesOn;
       const heatDelta = consequences ? (HEAT_BY_SEVERITY[p.severity] ?? 20) : 0;
       // One log write at a time: two traces at once both appended to the same copy and one row was lost (INT-03).
-      await serialize('trace:log', async () => {
-        row = { id: `tr-${foundry.utils.randomID(8)}`, ...p, heatDelta };
-        const rows = [...this.getLog(), row];
-        while (rows.length > LOG_CAP) rows.shift();
-        await game.settings.set(MODULE_ID, LOG_SETTING, rows);
-      });
+      // The log is a GM-only journal page now, so the write reaches GM clients only (stage 2, step 13).
+      row = { id: `tr-${foundry.utils.randomID(8)}`, ...p, heatDelta };
+      await updateGmLog(LOG_NAME, (rows) => { rows.push(row); while (rows.length > LOG_CAP) rows.shift(); return rows; });
 
       // Successes are logged with NO heat gained (design: heat is only for tripped
       // defenses). Only failures heat + alert the GM.
@@ -206,8 +204,8 @@ export class TraceService {
   }
 
   // ─── Log ───
-  getLog() { try { return game.settings.get(MODULE_ID, LOG_SETTING) ?? []; } catch { return []; } }
-  async clearLog() { if (isGM()) await serialize('trace:log', () => game.settings.set(MODULE_ID, LOG_SETTING, [])); }
+  getLog() { return readGmLog(LOG_NAME); }
+  async clearLog() { if (isGM()) await updateGmLog(LOG_NAME, () => []); }
 
   // ─── Heat (per object × actor, decayed over game time) ───
   getHeatMap() { try { return game.settings.get(MODULE_ID, HEAT_SETTING) ?? {}; } catch { return {}; } }

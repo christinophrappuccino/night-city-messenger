@@ -47,7 +47,9 @@ const { EVENTS } = await imp('scripts/utils/constants.js');
 const { TraceService } = await imp('scripts/services/TraceService.js');
 const F = await imp('scripts/utils/features.js');
 const tr = new TraceService();
-const reset = () => { for (const a of [toasts, chats, sounds, splashes, events]) a.length = 0; store.set('traceLog', []); store.set('traceHeat', {}); };
+const { installJournals } = await import('./lib/journalMock.mjs');
+const J = installJournals(globalThis.game);   // the trace log is a GM-only journal page since stage 2 step 13
+const reset = () => { for (const a of [toasts, chats, sounds, splashes, events]) a.length = 0; store.set('traceLog', []); store.set('traceHeat', {}); for (const j of J.all()) j.pages.length = 0; };
 
 // ═══ 1. on (today's behaviour) ═══
 ok(F.FEATURES.traceConsequences?.live === true, 'traceConsequences is a live feature');
@@ -55,7 +57,7 @@ reset();
 tr.fireTrace({ action: 'crack', objectId: 'box', objectName: 'The Box', severity: 'major' });
 await new Promise((r) => setTimeout(r, 20));
 ok(splashes.length === 1 && sounds.includes('trace-fire'), 'on: the trace splash and sound play');
-ok(store.get('traceLog').length === 1 && store.get('traceLog')[0].heatDelta === 20, 'on: the row is logged with its heat');
+ok(tr.getLog().length === 1 && tr.getLog()[0].heatDelta === 20, 'on: the row is logged with its heat');
 ok(tr.getHeat('box', 'unknown') === 20, 'on: heat goes up');
 ok(toasts.length === 1 && chats.length === 1, 'on: the GM gets the toast and the whisper');
 const ev = events.find(([e]) => e === EVENTS.TRACE_RECORDED);
@@ -67,7 +69,7 @@ reset();
 tr.fireTrace({ action: 'crack', objectId: 'box', objectName: 'The Box', severity: 'hostile' });
 await new Promise((r) => setTimeout(r, 20));
 ok(splashes.length === 0 && !sounds.includes('trace-fire'), 'off: no splash, no trace sound (takes effect without a reload)');
-ok(store.get('traceLog').length === 1 && store.get('traceLog')[0].heatDelta === 0 && store.get('traceLog')[0].outcome === 'failed', 'off: the failure is still logged, with no heat');
+ok(tr.getLog().length === 1 && tr.getLog()[0].heatDelta === 0 && tr.getLog()[0].outcome === 'failed', 'off: the failure is still logged, with no heat');
 ok(tr.getHeat('box', 'unknown') === 0, 'off: heat does not move');
 ok(toasts.length === 0 && chats.length === 0, 'off: no GM toast, no whisper');
 const ev2 = events.find(([e]) => e === EVENTS.TRACE_RECORDED);
@@ -75,7 +77,7 @@ ok(!!ev2 && ev2[1].heat === 0, 'off: the event still fires (a success still reac
 reset();
 tr.logSuccess({ action: 'siphon', objectId: 'box' });
 await new Promise((r) => setTimeout(r, 20));
-ok(store.get('traceLog').length === 1 && events.some(([e, d]) => e === EVENTS.TRACE_RECORDED && d.row.outcome === 'success'), 'off: a success is logged and announced as before');
+ok(tr.getLog().length === 1 && events.some(([e, d]) => e === EVENTS.TRACE_RECORDED && d.row.outcome === 'success'), 'off: a success is logged and announced as before');
 store.set('traceConsequencesEnabled', true);
 ok(F.isFeatureOn('traceConsequences') === true, 'turned back on: read at once, never cached');
 

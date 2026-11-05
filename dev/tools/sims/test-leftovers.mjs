@@ -93,22 +93,26 @@ const quiet = console.warn; console.warn = () => {};
 {
   const { NetworkAccessLogService } = await imp('scripts/services/NetworkAccessLogService.js');
   const svc = Object.create(NetworkAccessLogService.prototype);
-  const saved = [];
-  svc.settingsManager = { set: (k, v) => saved.push(v.length), get: () => settings.get('networkAccessLog') };
+  // the log lives in the GM-only "NCM — GM logs" journal since stage 2 step 13
+  const { installJournals } = await import('./lib/journalMock.mjs');
+  const J = installJournals(game);
   svc._entries = [{ id: 1 }];
   game.user = { id: 'gm2', isGM: true };
   svc._saveNow();
-  ok(saved.length === 0, 'a second GM does not save its own copy over the log');
+  await new Promise((r) => setTimeout(r, 10));
+  ok(J.gmLogRows('networkAccessLog') === null, 'a second GM does not save its own copy over the log');
   game.user = { id: 'gm', isGM: true };
   svc._saveNow();
-  ok(saved.length === 1, 'the active GM saves it');
+  await new Promise((r) => setTimeout(r, 10));
+  ok(J.gmLogRows('networkAccessLog')?.length === 1, 'the active GM saves it');
   game.user = { id: 'gm2', isGM: true };
   hooks.clear();
   svc._reloadWired = false;
   svc._wireSettingReload();
-  settings.set('networkAccessLog', [{ id: 1 }, { id: 2 }, { id: 3 }]);
-  for (const f of hooks.get('updateSetting') || []) f({ key: `${MOD}.networkAccessLog` });
-  ok(svc._entries.length === 3, '…and the second GM reloads the saved log when it changes');
+  const page = J.all()[0].pages[0];
+  await page.update({ [`flags.${MOD}.rows`]: [{ id: 1 }, { id: 2 }, { id: 3 }] });
+  for (const f of hooks.get('updateJournalEntryPage') || []) f(page);
+  ok(svc._entries.length === 3, '…and the second GM reloads the saved log when its journal page changes');
   game.user = { id: 'gm', isGM: true };
 }
 

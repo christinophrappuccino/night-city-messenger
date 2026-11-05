@@ -3,8 +3,8 @@
  * @file scripts/services/NetworkAccessLogService.js
  * @module night-city-messenger
  * @description Logs network connections, disconnections, authentication attempts,
- *              and security events for GM review. Persists to world settings via
- *              debounced saves. Subscribes to EventBus events automatically.
+ *              and security events for GM review. Persists (debounced) to a page of the
+ *              GM-only "NCM — GM logs" journal (data/gmLogStore.js; a world setting until stage 2 step 13). Subscribes to EventBus events automatically.
  *
  *              Depends on: EventBus, NetworkService, SettingsManager
  *              Initialization priority: ready/90
@@ -12,6 +12,7 @@
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isPrimaryGM } from '../utils/helpers.js';
+import { readGmLog, writeGmLog, GM_LOG_PAGE_FLAG } from '../data/gmLogStore.js';
 
 /**
  * @typedef {Object} AccessLogEntry
@@ -258,12 +259,17 @@ export class NetworkAccessLogService {
       if (setting?.key !== `${MODULE_ID}.networkAccessLog` || !game.user?.isGM || isPrimaryGM()) return;
       this._loadFromSettings();
     });
+    // the log's journal page changed (the saving GM wrote it)
+    Hooks.on('updateJournalEntryPage', (page) => {
+      if (page?.getFlag?.(MODULE_ID, GM_LOG_PAGE_FLAG) !== 'networkAccessLog' || !game.user?.isGM || isPrimaryGM()) return;
+      this._loadFromSettings();
+    });
   }
 
   /** @private */
   _loadFromSettings() {
     try {
-      const stored = this.settingsManager?.get('networkAccessLog') ?? [];
+      const stored = readGmLog('networkAccessLog');
       if (Array.isArray(stored)) {
         this._entries = stored;
       }
@@ -288,8 +294,7 @@ export class NetworkAccessLogService {
     // save wiped the other's new lines. The others reload the saved log when it changes (`_wireSettingReload`).
     if (!isPrimaryGM()) return;
     try {
-      this.settingsManager?.set('networkAccessLog', this._entries);
-      log.debug(`Access log: saved ${this._entries.length} entries`);
+      writeGmLog('networkAccessLog', [...this._entries]).then((ok) => { if (ok) log.debug(`Access log: saved ${this._entries.length} entries`); });
     } catch (err) {
       log.warn('Access log: failed to save', err.message);
     }

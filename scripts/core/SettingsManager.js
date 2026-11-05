@@ -68,8 +68,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'networkAccessLog', {
-      name: 'Network Access Log',
-      hint: 'Persistent network access log entries.',
+      name: 'Network Access Log (old store)',
+      hint: 'Where the network access log lived until stage 2 step 13; the v7 migration moves it to the GM-only "NCM — GM logs" journal and empties this.',
       scope: 'world',
       config: false,
       type: Array,
@@ -879,6 +879,7 @@ export class SettingsManager {
     });
 
     // Which saved records the Interface DV upgrade (MigrationRunner v3) has already moved: a crash must not move one twice.
+    // v3's crash-resume ledger; emptied by migration v8 once v3 has run (stage 2, step 13)
     game.settings.register(MODULE_ID, 'ifaceShiftDone', { scope: 'world', config: false, type: Object, default: {} });
 
     game.settings.register(MODULE_ID, 'watchMode', {
@@ -910,8 +911,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'traceLog', {
-      name: 'Trace Log',
-      hint: 'Durable GM record of every trace event (who tripped what, where, when). Surfaced in the Admin Security tab.',
+      name: 'Trace Log (old store)',
+      hint: 'Where the trace log lived until stage 2 step 13; the v7 migration moves it to the GM-only "NCM — GM logs" journal and empties this.',
       scope: 'world',
       config: false,
       type: Array,
