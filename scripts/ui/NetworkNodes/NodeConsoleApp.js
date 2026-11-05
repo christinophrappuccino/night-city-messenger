@@ -72,6 +72,7 @@ export class NodeConsoleApp extends BaseApplication {
     const ns = game.nightcity?.networkService;
     const node = ns?.getNode?.(nodeId);
     if (!node) return void ncmNotify.warn('That node no longer exists.');
+    if (ns.simple) return void ncmNotify.warn(isGM() ? 'Simple network mode is on (Module Settings → Network simulation): network nodes do nothing.' : 'There is nothing to connect to here.');
     if (node.hidden && !isGM()) return void ncmNotify.warn('There is nothing there.');
     const existing = foundry.applications?.instances?.get?.(`ncm-node-${nodeId}`);
     if (existing) { existing.render(true); existing.bringToFront?.(); return existing; }

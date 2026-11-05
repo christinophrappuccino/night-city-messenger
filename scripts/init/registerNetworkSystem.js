@@ -118,7 +118,7 @@ export function registerNetworkSystem(initializer) {
       if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
       // Checked against the real sender (A3e): node sessions, the runner's own effects and programs.
       try { await game.nightcity?.networkService?.handleNodeRequest(data, sender ?? null); } catch (err) { log.error('Network node relay failed:', err); }
-    });
+    }, { feature: 'networks' });   // simple network mode: nodes do nothing, so their requests are dropped
 
     socketManager.register(SOCKET_OPS.NETWORK_STATE_CHANGED, (data, sender) => {
       const { type, networkId, sceneId, isDead, actorId, actorName, isGMAction } = data;
@@ -156,6 +156,7 @@ export function registerNetworkSystem(initializer) {
           break;
 
         case 'deadZone':
+          if (networkService.simple) break;   // simple network mode: there are no dead zones
           // Dead zone toggled for a scene
           log.debug(`Socket: dead zone ${isDead ? 'on' : 'off'} for scene ${sceneId}`);
           // If this is our viewed scene, the canvasReady hook will handle it

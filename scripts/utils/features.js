@@ -20,13 +20,15 @@
 import { MODULE_ID, SOCKET_OPS } from './constants.js';
 
 /**
- * name → { setting, label, requires[], offReply? }
+ * name → { setting, default, label, requires[], live?, offReply? }
+ * `default` MUST equal the setting's registered default (test-features checks): it is the answer when the setting
+ * reads as unset or cannot be read, so a missing value never flips a world into the opposite mode.
  * `offReply(op, data, sender)` → `{ op, data }` the GM sends back when a player's request for an off feature arrives,
  * or null to drop it. Without it, requests for an off feature are dropped (and logged at debug level).
  */
 export const FEATURES = Object.freeze({
   conversations: {
-    setting: 'conversationsEnabled',
+    setting: 'conversationsEnabled', default: false,
     label: 'Conversations (group chat)',
     requires: [],
     offReply: (op, data, sender) => (op === SOCKET_OPS.CONVERSATION_REQUEST && data?.reqId
@@ -36,22 +38,26 @@ export const FEATURES = Object.freeze({
   // Calls and its parts (stage 2, step 15). The call request ops are fire-and-forget, so an off feature's requests
   // are dropped: there is no reply for a player to wait on. The services always exist (numbers, payphone and script
   // data stay editable for the GM); what is skipped is the live machinery and the player's way in.
-  calls:     { setting: 'callsEnabled',     label: 'Calls',           requires: [] },
-  payphones: { setting: 'payphonesEnabled', label: 'Payphones',       requires: ['calls'] },
-  emergency: { setting: 'emergencyEnabled', label: 'Emergency lines', requires: ['calls'] },
-  overheard: { setting: 'overheardEnabled', label: 'Overheard calls', requires: ['calls'] },
+  calls:     { setting: 'callsEnabled', default: true,     label: 'Calls',           requires: [] },
+  payphones: { setting: 'payphonesEnabled', default: true, label: 'Payphones',       requires: ['calls'] },
+  emergency: { setting: 'emergencyEnabled', default: true, label: 'Emergency lines', requires: ['calls'] },
+  overheard: { setting: 'overheardEnabled', default: true, label: 'Overheard calls', requires: ['calls'] },
+  // Network simulation (stage 2, step 17): off = simple network mode (NetworkService.simple). Nodes go with it.
+  networks:  { setting: 'networkSimulationEnabled', default: true, label: 'Network simulation', requires: [] },
   // Trace consequences (stage 2, step 16): off, a failed attempt is still LOGGED, but gains no heat, alerts no GM and
   // shows the player no trace splash. The GM's own tools (set heat, escalate, countdowns) are untouched.
-  traceConsequences: { setting: 'traceConsequencesEnabled', label: 'Trace consequences', requires: [], live: true },
+  traceConsequences: { setting: 'traceConsequencesEnabled', default: true, label: 'Trace consequences', requires: [], live: true },
 });
 
 const cache = new Map();
 
-/** The feature's own switch, ignoring what it requires. Unknown name or unreadable setting → off. */
+/** The feature's own switch, ignoring what it requires. Unknown name → off; an unset or unreadable setting → its default. */
 function ownSwitch(name) {
   const f = FEATURES[name];
   if (!f) return false;
-  try { return !!globalThis.game?.settings?.get(MODULE_ID, f.setting); } catch { return false; }
+  let v;
+  try { v = globalThis.game?.settings?.get(MODULE_ID, f.setting); } catch { v = undefined; }
+  return typeof v === 'boolean' ? v : !!f.default;
 }
 
 /**

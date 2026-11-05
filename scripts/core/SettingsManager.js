@@ -609,6 +609,13 @@ export class SettingsManager {
       default: [],
     });
 
+    // Network simulation (stage 2, step 17) — off is SIMPLE NETWORK MODE (utils/features.js, NetworkService.simple)
+    game.settings.register(MODULE_ID, 'networkSimulationEnabled', {
+      name: 'Network simulation',
+      hint: 'Networks, signal, dead zones, network logins and network nodes. Off (simple network mode): everyone is on CitiNet, always connected at full signal; no dead zones, no network logins, no network-restricted mail, every network requirement on shards and terminals passes, and network nodes do nothing. Your networks and nodes are kept. Switching this reloads the world for everyone.',
+      scope: 'world', config: true, type: Boolean, default: true, requiresReload: true,
+    });
+
     // Trace consequences (stage 2, step 16) — a LIVE feature (utils/features.js): no reload, read every time.
     game.settings.register(MODULE_ID, 'traceConsequencesEnabled', {
       name: 'Trace consequences',

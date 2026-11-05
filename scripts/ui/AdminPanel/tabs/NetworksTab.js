@@ -167,6 +167,8 @@ export class NetworksTab extends BaseTab {
     const deadZones = scenes.filter(s => s.getFlag?.(MODULE_ID, 'deadZone')).length;
     const base = {
       networks: nets,
+      // Module Settings → Network simulation off = simple network mode (NetworkService.simple, stage 2 step 17)
+      netSimple: !!ns?.simple,
       sceneStrip: scenes.map(s => ({ id: s.id, name: s.name, isCurrent: s.id === viewed?.id, deadZone: !!s.getFlag?.(MODULE_ID, 'deadZone') })),
       netStats: {
         total: nets.length,

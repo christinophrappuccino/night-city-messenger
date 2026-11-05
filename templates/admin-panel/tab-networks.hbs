@@ -60,6 +60,7 @@
 
   <div class="ncm-net2-view {{#if net2.isAll}}split{{/if}} {{#if net2.isScenes}}split{{/if}} {{#if net2.isLog}}split{{/if}}" {{#if net2.isScene}}data-net2-scroll="scene"{{/if}}>
     <header class="ncm-tabhd"><i class="fas {{net2.head.icon}}"></i><div><h2>{{net2.head.h}}</h2><p>{{net2.head.p}}</p></div>{{#if net2.isScenes}}{{#with net2.scenes}}<div class="ncm-tabhd__end"><span class="ncm-net2-atcnt">{{#if narrowed}}Showing {{shown}} of {{total}}{{else}}{{total}} scenes{{/if}}{{#if packTotal}} · {{packTotal}} in compendiums{{/if}}</span></div>{{/with}}{{/if}}</header>
+    {{#if @root.netSimple}}<div class="ncm-sec-admin-band"><i class="fas fa-power-off"></i>Simple network mode is on (Module Settings → Network simulation): everyone is on CitiNet with full signal, no dead zones or logins, and nodes do nothing. What you set here is kept for when you switch it back.</div>{{/if}}
 
     {{!-- ═══════════════ THIS SCENE ═══════════════ --}}
     {{#if net2.isScene}}

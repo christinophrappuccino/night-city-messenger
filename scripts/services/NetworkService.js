@@ -13,6 +13,7 @@
  */
 
 import { ncmNotify } from '../utils/notify.js';
+import { isFeatureOn } from '../utils/features.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, NETWORKS, NETWORK_TYPES, SECURITY_LEVELS, NETWORK_ACCESS_MODES, CONNECTION_MODES } from '../utils/constants.js';
 import { beatsDV } from '../utils/rolls.js';
 import { log, isGM, generateId, whisperCardHtml, userOwnsActor } from '../utils/helpers.js';
@@ -56,8 +57,11 @@ export class NetworkService {
     this._preNodeCutNetworkId = null;
 
     this._buildNetworkCache();
-    this._registerSceneHook();
-    this._registerNodeHooks();
+    // Simple network mode (stage 2, step 17): no scene switching, no dead zones, no nodes — so none of their hooks
+    if (!this.simple) {
+      this._registerSceneHook();
+      this._registerNodeHooks();
+    }
 
     this._initialized = true;
     log.info('NetworkService initialized');
@@ -67,17 +71,25 @@ export class NetworkService {
   //  PUBLIC API — Getters
   // ═══════════════════════════════════════════════════════════
 
+  /**
+   * Simple network mode: the world switch "Network simulation" is off (utils/features.js, a reload feature, stage 2
+   * step 17). Everyone is on CitiNet, always connected at full signal: no dead zones, no network logins, no
+   * restricted-network mail, every shard / terminal network gate passes, and network nodes do nothing. Every answer
+   * below honours it HERE, so the 50-odd callers need no change. Network data is never touched.
+   */
+  get simple() { return !isFeatureOn('networks'); }
+
   /** @returns {string} Current network ID */
-  get currentNetworkId() { return this._currentNetworkId; }
+  get currentNetworkId() { return this.simple ? NETWORKS.CITINET : this._currentNetworkId; }
 
   /** @returns {object|null} Full network object for current network */
-  get currentNetwork() { return this.getNetwork(this._currentNetworkId); }
+  get currentNetwork() { return this.getNetwork(this.currentNetworkId); }
 
   /** @returns {boolean} */
-  get isDeadZone() { return this._isDeadZone; }
+  get isDeadZone() { return !this.simple && this._isDeadZone; }
 
   /** @returns {number} 0-100 */
-  get signalStrength() { return this._signalStrength; }
+  get signalStrength() { return this.simple ? 100 : this._signalStrength; }
 
   /**
    * Get a network definition by ID.
@@ -102,6 +114,7 @@ export class NetworkService {
    * @returns {object[]}
    */
   getAvailableNetworks() {
+    if (this.simple) return [this.getNetwork(NETWORKS.CITINET)].filter(Boolean);
     if (this._isDeadZone) return [];
 
     const sceneId = game.scenes?.viewed?.id;
@@ -129,6 +142,7 @@ export class NetworkService {
    * @returns {boolean}
    */
   canAccessNetwork(networkId) {
+    if (this.simple) return networkId === NETWORKS.CITINET;
     if (this._isDeadZone) return false;
 
     const network = this.getNetwork(networkId);
@@ -156,6 +170,7 @@ export class NetworkService {
    * @returns {object|null}
    */
   getMessageAccessControl(networkId = null) {
+    if (this.simple) return null;   // simple mode: mail is never network-restricted
     const network = networkId ? this.getNetwork(networkId) : this.currentNetwork;
     if (!network) return null;
     if (!network.effects?.restrictedAccess) return null;
@@ -189,6 +204,7 @@ export class NetworkService {
    * @returns {{ allowed: boolean, reason?: string }}
   */
   canSendToNetwork(targetNetworkId) {
+    if (this.simple) return { allowed: true };
     const current = this.currentNetwork;
     if (!current) return { allowed: false, reason: 'No active network' };
     if (current.id === targetNetworkId) return { allowed: true };
@@ -217,7 +233,7 @@ export class NetworkService {
    * @returns {boolean}
    */
   satisfiesMessageAccess(accessControl) {
-    if (!accessControl?.restricted) return true;
+    if (!accessControl?.restricted || this.simple) return true;   // simple mode: old restricted mail opens too
     return this.isOnNetwork(accessControl.requiredNetwork);
   }
 
@@ -227,6 +243,7 @@ export class NetworkService {
     * @returns {string[]}
     */
   getReachableNetworkIds() {
+    if (this.simple) return this.getAllNetworks().map(n => n.id);
     const current = this.currentNetwork;
     if (!current) return [];
 
@@ -248,7 +265,7 @@ export class NetworkService {
     * @returns {boolean}
     */
   isOnNetwork(networkId) {
-    return this._currentNetworkId === networkId;
+    return this.currentNetworkId === networkId;
   }
 
   /**
@@ -257,7 +274,7 @@ export class NetworkService {
    * @returns {boolean}
    */
   isAuthenticated(networkId) {
-    if (isGM()) return true;
+    if (isGM() || this.simple) return true;
     return this._authOk(networkId);
   }
 
@@ -288,6 +305,7 @@ export class NetworkService {
    * @returns {{ allowed: boolean, reason?: string, requiredNetwork?: string|null, signalInfo?: {signal:number, threshold:number} }}
    */
   checkAccess(netConfig = {}) {
+    if (this.simple) return { allowed: true };   // simple mode: every network gate passes
     const currentNetworkId = this.currentNetworkId;
 
     // No network connected at all.
@@ -330,6 +348,7 @@ export class NetworkService {
    * @returns {boolean}
    */
   networkPasses(netConfig = {}, network) {
+    if (this.simple) return true;
     const byId = (netConfig.allowedNetworks ?? []).includes(network?.id);
     const byType = (netConfig.allowedTypes ?? []).includes(network?.type ?? null);
     switch (netConfig.accessMode ?? NETWORK_ACCESS_MODES.ANY) {
@@ -354,6 +373,8 @@ export class NetworkService {
    */
   async switchNetwork(networkId, options = {}) {
     const { force = false, silent = false } = options;
+    // simple mode: there is one network and you are on it
+    if (this.simple) return networkId === NETWORKS.CITINET ? { success: true } : { success: false, reason: 'simple_network' };
 
     if (this._isDeadZone && !force) {
       return { success: false, reason: 'dead_zone' };
@@ -634,7 +655,7 @@ export class NetworkService {
   }
 
   /** true while this client has no signal because the scene's nodes cut everything (not a dead-zone scene). */
-  get isNodeDead() { return !!this._nodeDead; }
+  get isNodeDead() { return !this.simple && !!this._nodeDead; }
 
   /** @param {string} nodeId @returns {object|null} */
   getNode(nodeId) {
@@ -1059,6 +1080,7 @@ export class NetworkService {
    */
   /** Who is listening on this network from this scene: actor id → { node, sloppy }. */
   tappersAt(network, sceneId, now = this._nowMs()) {
+    if (this.simple) return [];   // simple mode: nodes (and their taps) do nothing
     const tappers = new Map();
     const nodes = this.getNodes({ networkId: network }).filter((n) => nodeIsUp(n, now) && n.sceneId === sceneId);
     for (const n of nodes) for (const e of activeEffects(n, 'taps', now)) if (!tappers.has(e.actorId)) tappers.set(e.actorId, { node: n, sloppy: false });
@@ -1315,6 +1337,7 @@ export class NetworkService {
    * @returns {boolean}
    */
   checkReliability() {
+    if (this.simple) return true;
     if (this._isDeadZone) return false;
     const network = this.currentNetwork;
     if (!network) return false;

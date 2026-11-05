@@ -131,6 +131,8 @@ const { SocketManager } = await import(pathToFileURL(path.join(ROOT, 'scripts/co
 const Settings = read('scripts/core/SettingsManager.js');
 for (const [n, f] of Object.entries(F.FEATURES)) {
   const m = Settings.match(new RegExp(`register\\(MODULE_ID, '${f.setting}', \\{[\\s\\S]*?\\n    \\}\\);`));
+  const regDefault = m?.[0].match(/default: (true|false)/)?.[1];
+  ok(regDefault === String(f.default), `${n}: FEATURES default (${f.default}) matches the registered default (${regDefault}) — it is the answer when the setting reads as unset`);
   const reloadOk = f.live ? !/requiresReload/.test(m?.[0] || '') : /requiresReload: true/.test(m?.[0] || '');
   ok(!!m && /scope: 'world'/.test(m[0]) && reloadOk && /type: Boolean/.test(m[0]), `${n}: '${f.setting}' is a world Boolean ${f.live ? 'WITHOUT requiresReload (a live switch takes effect at once)' : 'with requiresReload (the once-per-load answer depends on it)'}`);
 }
