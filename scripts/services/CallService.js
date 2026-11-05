@@ -29,7 +29,7 @@ import { createCall, createEndedCall, transition, resolveCallee, canCall, allowe
   BUILT_MODES, makeLine, addLine, sideOf, transcriptOf, lineFromRightSide } from '../utils/callModel.js';
 import { dropReason, maskCaller, callerFor, interceptMail } from '../utils/callNet.js';
 import { placeLabel, maskPayphoneSide, payphoneSendGroups } from '../utils/payphones.js';
-import { dictateStatus } from '../ui/Calls/dictation.js';
+import { dictateStatus } from '../utils/dictation.js';
 import { sanitizeLineSettings, greetingFor, goesToVoicemail, greetMs, makeVoicemail, voicemailOwner, recordingsToPurge, GREETING_RECORD_MS } from '../utils/voicemail.js';
 import { FilePickerClass } from '../utils/compat.js';
 import { isFeatureOn } from '../utils/features.js';

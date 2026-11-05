@@ -27,7 +27,7 @@ import { themedConfirm, themedPrompt } from '../utils/adminTheme.js';
 import { dialogBodyHtml } from '../utils/dialogBody.js';
 import { withShardPrefix, stripShardPrefix } from '../utils/shardNaming.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
-import { resolveEncoderConfig, isEligibleBlank, blankRuleRefusal } from '../ui/content/EncoderModel.js';
+import { resolveEncoderConfig, isEligibleBlank, blankRuleRefusal } from '../rules/encoder.js';
 
 export class ShardSheetOverride {
 

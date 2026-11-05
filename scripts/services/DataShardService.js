@@ -22,7 +22,7 @@ import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
 import { serializeMethods, itemKey } from '../utils/serialize.js';
 import {
   resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor, afterRecon,
-} from '../ui/content/IntegrityModel.js';
+} from '../rules/integrity.js';
 import { iceAttack, iceClass } from '../utils/cpr.js';
 
 export class DataShardService {

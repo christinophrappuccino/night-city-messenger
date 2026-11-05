@@ -27,7 +27,8 @@
 
 import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, SOCKET_OPS, ENCRYPTION_TYPES, FAILURE_MODES, SHARD_PRESETS } from '../../utils/constants.js';
-import { log, isGM, resolveOperator, getOperatorActors, openOperatorPicker, canEncode, canEditShard, whisperCardHtml, getPlayerCharacters } from '../../utils/helpers.js';
+import { log, isGM, resolveOperator, getOperatorActors, canEncode, canEditShard, whisperCardHtml, getPlayerCharacters } from '../../utils/helpers.js';
+import { openOperatorPicker } from '../content/OperatorSelect.js';
 import { adjustWealth } from '../../utils/wealth.js';
 import { awaitGmResult } from '../../utils/gmRequest.js';
 import { BaseApplication } from '../BaseApplication.js';

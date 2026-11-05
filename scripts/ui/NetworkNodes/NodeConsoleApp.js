@@ -15,7 +15,8 @@
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS, TEMPLATES } from '../../utils/constants.js';
 import { d10Odds, formulaText, rollParts } from '../../utils/rolls.js';
-import { log, isGM, formatCyberDate, resolveOperator, resolveHackResolution, canOperate, openOperatorPicker, getOperatorActors } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, resolveOperator, resolveHackResolution, canOperate, getOperatorActors } from '../../utils/helpers.js';
+import { openOperatorPicker } from '../content/OperatorSelect.js';
 import { JACK_ACTIONS, JACK_BUILT, resolveJackIn, jackInDV, movesFor, actionView, lockLayers, jackKey, jackLock, jackResolution, jackGate } from '../../utils/jackIn.js';
 import { runJackIn } from './JackInLock.js';
 import { requestNetAdjudication, postNetActionCard } from '../content/NetResolve.js';

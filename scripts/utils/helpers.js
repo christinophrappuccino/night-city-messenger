@@ -8,7 +8,7 @@
 import { ncmNotify } from './notify.js';
 import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, SHARD_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS, CONTRAST_SPREAD } from './constants.js';
 import { NON_PERSON_ACTOR_TYPES } from './emailDirectory.js';
-import { resolveShardEditing } from '../ui/content/EncoderModel.js';
+import { resolveShardEditing } from '../rules/encoder.js';
 import { identityRole } from './identities.js';
 import { roleItems } from './cpr.js';
 
@@ -1065,30 +1065,6 @@ export async function setOperatorActor(actorId) {
   } catch (err) {
     log.warn(`setOperatorActor failed: ${err.message}`);
   }
-}
-
-/**
- * Operator switcher — the immersive BIOMETRIC HANDOFF picker (OperatorSelect,
- * a framework-free FUI modal; host-scoped so it inherits the viewer's preset).
- * Lazy-imported to keep helpers.js dependency-free at module load.
- * @param {HTMLElement} [host] the viewer element (theme source)
- * @returns {Promise<boolean>} true = the operator changed (caller re-renders)
- */
-export async function openOperatorPicker(host = null) {
-  const owned = getOperatorActors();
-  if (owned.length <= 1) {
-    ncmNotify.info(owned.length
-      ? `NCM | You only control one character (${owned[0].name}).`
-      : 'NCM | You have no characters assigned.');
-    return false;
-  }
-  const current = resolveOperator()?.id || '';
-  const { runOperatorSelect } = await import('../ui/content/OperatorSelect.js');
-  const picked = await runOperatorSelect({ actors: owned, currentId: current, host });
-  if (!picked || picked === current) return false;
-  await setOperatorActor(picked);
-  ncmNotify.info(`NCM | Now operating as ${game.actors.get(picked)?.name}.`);
-  return true;
 }
 
 /**

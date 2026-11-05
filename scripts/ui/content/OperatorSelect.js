@@ -16,7 +16,8 @@
  *   only *chooses* it; `setOperatorActor` persists the pick.
  */
 
-import { log } from '../../utils/helpers.js';
+import { log, getOperatorActors, resolveOperator, setOperatorActor } from '../../utils/helpers.js';
+import { ncmNotify } from '../../utils/notify.js';
 import { firstRole } from '../../utils/cpr.js';
 
 /** Minimal HTML escaper. */
@@ -144,4 +145,27 @@ export function runOperatorSelect({ actors = [], currentId = '', host = null } =
     try { game.nightcity?.soundService?.play('click'); } catch { /* no sound */ }
     log.debug(`OperatorSelect: ${actors.length} candidate(s), current=${currentId || 'none'}.`);
   });
+}
+
+/**
+ * Operator switcher — the immersive BIOMETRIC HANDOFF picker (OperatorSelect,
+ * a framework-free FUI modal; host-scoped so it inherits the viewer's preset).
+ * Moved here from utils/helpers.js (stage 2, step 11): it is UI, and helpers.js no longer imports any UI file.
+ * @param {HTMLElement} [host] the viewer element (theme source)
+ * @returns {Promise<boolean>} true = the operator changed (caller re-renders)
+ */
+export async function openOperatorPicker(host = null) {
+  const owned = getOperatorActors();
+  if (owned.length <= 1) {
+    ncmNotify.info(owned.length
+      ? `NCM | You only control one character (${owned[0].name}).`
+      : 'NCM | You have no characters assigned.');
+    return false;
+  }
+  const current = resolveOperator()?.id || '';
+  const picked = await runOperatorSelect({ actors: owned, currentId: current, host });
+  if (!picked || picked === current) return false;
+  await setOperatorActor(picked);
+  ncmNotify.info(`NCM | Now operating as ${game.actors.get(picked)?.name}.`);
+  return true;
 }

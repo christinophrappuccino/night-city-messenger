@@ -10,7 +10,8 @@
 import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
 import { d10Odds } from '../../utils/rolls.js';
-import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker, applyContrastToElement, buildShardThemePrefs, guardSecretInputs, canEditShard } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, resolveOperator, applyContrastToElement, buildShardThemePrefs, guardSecretInputs, canEditShard } from '../../utils/helpers.js';
+import { openOperatorPicker } from '../content/OperatorSelect.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
