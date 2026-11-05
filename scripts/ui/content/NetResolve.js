@@ -29,6 +29,7 @@
 import { ncmNotify } from '../../utils/notify.js';
 import { SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, chatCardTime } from '../../utils/helpers.js';
+import { awaitGmResult, withdrawGmRequest } from '../../utils/gmRequest.js';
 
 const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
 
@@ -41,8 +42,8 @@ export const DEFAULT_NET_CHOICES = Object.freeze([
   { id: 'fail', label: 'FAIL', tone: 'fail', ok: false, total: null },
 ]);
 
-/** Player-side pending adjudications: requestId → { resolve, choices, onRemoteState }. */
-const _pending = new Map();
+/** Player-side: requestId → onRemoteState, while that adjudication waits (the wait itself is gmRequest.js's). */
+const _remoteState = new Map();
 /** GM-side open prompts: requestId → close(). */
 const _openPrompts = new Map();
 /** requestId → the user who asked (only they may withdraw it, audit SEC-22). */
@@ -106,22 +107,21 @@ export function requestNetAdjudication(o = {}) {
     return { promise: Promise.resolve({ cancelled: true }), withdraw: () => {} };
   }
 
-  let resolveFn;
-  const promise = new Promise((resolve) => { resolveFn = resolve; });
-  _pending.set(payload.requestId, {
-    resolve: (choiceId) => resolveFn(finishWith(choiceId)),
-    onRemoteState: typeof o.onRemoteState === 'function' ? o.onRemoteState : null,
-  });
-  game.nightcity?.socketManager?.emit(SOCKET_OPS.NET_RESOLVE_REQUEST, payload);
-  log.debug(`NetResolve: adjudication requested (${payload.requestId}) — ${payload.title} vs DV ${payload.dv}`);
+  // The shared round trip (utils/gmRequest.js): no timeout (the GM is deciding at the table), only a GM's verdict
+  // counts — before, any client could answer another player's adjudication with a forged PASS.
+  const sm = game.nightcity?.socketManager;
+  if (typeof o.onRemoteState === 'function') _remoteState.set(payload.requestId, o.onRemoteState);
+  const promise = awaitGmResult(sm, SOCKET_OPS.NET_RESOLVE_RESULT, () => {
+    sm?.emit(SOCKET_OPS.NET_RESOLVE_REQUEST, payload);
+    log.debug(`NetResolve: adjudication requested (${payload.requestId}) — ${payload.title} vs DV ${payload.dv}`);
+  }, { requestId: payload.requestId, timeoutMs: Infinity, timeoutValue: { cancelled: true }, map: (d) => finishWith(d.choiceId ?? null) })
+    .finally(() => _remoteState.delete(payload.requestId));
 
   return {
     promise,
     withdraw: () => {
-      if (!_pending.has(payload.requestId)) return;
-      _pending.delete(payload.requestId);
-      game.nightcity?.socketManager?.emit(SOCKET_OPS.NET_RESOLVE_CANCEL, { requestId: payload.requestId });
-      resolveFn({ cancelled: true });
+      if (!withdrawGmRequest(sm, SOCKET_OPS.NET_RESOLVE_RESULT, payload.requestId, { cancelled: true })) return;
+      sm?.emit(SOCKET_OPS.NET_RESOLVE_CANCEL, { requestId: payload.requestId });
     },
   };
 }
@@ -149,15 +149,6 @@ export async function handleNetResolveRequest(data, senderId = undefined) {
   });
 }
 
-/** Player-side socket body for NET_RESOLVE_RESULT. */
-export function handleNetResolveResult(data) {
-  if (!data?.requestId || data.userId !== game.user.id) return;
-  const p = _pending.get(data.requestId);
-  if (!p) return;                       // withdrawn while the GM was deciding
-  _pending.delete(data.requestId);
-  p.resolve(data.choiceId ?? null);
-}
-
 /** GM-side socket body for NET_RESOLVE_CANCEL — the player stood down. */
 export function handleNetResolveCancel(data, senderId = undefined) {
   if (senderId !== undefined && (!senderId || _promptOwners.get(data?.requestId) !== senderId)) return;
@@ -169,8 +160,7 @@ export function handleNetResolveCancel(data, senderId = undefined) {
  *  prompt; mirror it onto the waiting console. */
 export function handleNetResolveState(data) {
   if (!data?.requestId || data.userId !== game.user.id) return;
-  const p = _pending.get(data.requestId);
-  p?.onRemoteState?.(!!data.minimized);
+  _remoteState.get(data.requestId)?.(!!data.minimized);
 }
 
 /** Shared corner dock for minimized net-resolution prompts — the GM's docked

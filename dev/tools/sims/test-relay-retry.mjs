@@ -61,7 +61,7 @@ function pair({ gmDelay = 0, deliver = null, drop = () => false } = {}) {
   const toPlayer = (op, data) => {
     if (op === SOCKET_OPS.MESSAGE_DELIVERED) gmAcks.push(data);
     if (drop(op, data)) return;
-    if (op === SOCKET_OPS.MESSAGE_DELIVERED) setTimeout(() => player.handleDeliveryConfirmation(JSON.parse(JSON.stringify(data))), 1);
+    if (op === SOCKET_OPS.MESSAGE_DELIVERED) setTimeout(() => player.handleDeliveryConfirmation(JSON.parse(JSON.stringify(data)), GM.id), 1);
   };
   Object.defineProperty(player, 'socketManager', { value: { emit: toGm } });
   Object.defineProperty(gm, 'socketManager', { value: { emit: toPlayer } });
@@ -96,7 +96,7 @@ await withTimeouts(30, 60, async () => {
   ok(!player._messageQueue.some((d) => d.messageId === 'late1') && refunds.length === 0, 'the late success settles the held copy, still no refund');
   ok(toasts.some((t) => /was delivered/.test(t[1])), 'and the player is told it arrived');
   // a duplicate late answer does nothing more
-  await player.handleDeliveryConfirmation({ messageId: 'late1', success: false, error: 'x', forUserId: 'u-p' });
+  await player.handleDeliveryConfirmation({ messageId: 'late1', success: false, error: 'x', forUserId: 'u-p' }, GM.id);
   ok(refunds.length === 0, 'a second answer for a settled message refunds nothing');
 });
 
@@ -108,7 +108,7 @@ await withTimeouts(30, 40, async () => {
   await sleep(200);
   ok(refunds.length === 1 && refunds[0].id === 'lf1' && refunds[0].copies === null, 'a definite failure refunds the whole amount — once');
   ok(!player._messageQueue.some((d) => d.messageId === 'lf1'), 'and drops the held copy');
-  await player.handleDeliveryConfirmation({ messageId: 'lf1', success: false, error: 'again', forUserId: 'u-p' });
+  await player.handleDeliveryConfirmation({ messageId: 'lf1', success: false, error: 'again', forUserId: 'u-p' }, GM.id);
   ok(refunds.length === 1, 'a repeated failure answer cannot refund twice');
 });
 

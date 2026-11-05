@@ -10,7 +10,8 @@
 
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, isFromGM, resolveDisplayName, whisperCardHtml } from '../utils/helpers.js';
+import { log, isGM, resolveDisplayName, whisperCardHtml } from '../utils/helpers.js';
+import { awaitGmResult } from '../utils/gmRequest.js';
 import { adjustWealth } from '../utils/wealth.js';
 import { hasWealth } from '../utils/cpr.js';
 
@@ -110,10 +111,6 @@ export class SchedulingService {
 
   /** How long a request to the GM (add / cancel / edit) waits for its answer. */
   static REQUEST_TIMEOUT_MS = 10_000;
-
-  /** requestId → resolve, for requests still waiting; requestId → what to do if the answer comes late. */
-  _waiters = new Map();
-  _late = new Map();
 
   // ─── Service Accessors (lazy getters — no constructor injection) ──
 
@@ -360,24 +357,11 @@ export class SchedulingService {
    * @private
    */
   _request(action, payload, { onLate = null } = {}) {
-    const requestId = foundry.utils.randomID();
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        this._waiters.delete(requestId);
-        if (onLate) this._late.set(requestId, onLate);
-        resolve({ timeout: true });
-      }, SchedulingService.REQUEST_TIMEOUT_MS);
-      this._waiters.set(requestId, (res) => { clearTimeout(timer); this._waiters.delete(requestId); resolve(res); });
-      this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, { action, requestId, ...payload });
-    });
-  }
-
-  /** An answer from the delivering GM to one of this client's requests. Acted on once. @private */
-  _onResult(data) {
-    const w = this._waiters.get(data.requestId);
-    if (w) { w(data); return; }
-    const late = this._late.get(data.requestId);
-    if (late) { this._late.delete(data.requestId); late(data); }
+    // The shared round trip (utils/gmRequest.js): only a GM's answer counts (it can release a refund), and an answer
+    // after the timeout goes to onLate once.
+    return awaitGmResult(this.socketManager, SOCKET_OPS.SCHEDULE_RESULT,
+      (requestId) => this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, { action, requestId, ...payload }),
+      { timeoutMs: SchedulingService.REQUEST_TIMEOUT_MS, timeoutValue: { timeout: true }, onLate });
   }
 
   /** A scheduled message the GM refused after the player stopped waiting: give its eddies back and say so. @private */
@@ -625,11 +609,6 @@ export class SchedulingService {
   _registerSocketHandlers() {
     this.socketManager?.register(SOCKET_OPS.SCHEDULE_SYNC, async (data, sender) => {
       if (!data) return;
-      // An answer to one of MY requests — only a GM's counts, since it can release a refund.
-      if (data.action === 'result') {
-        if (data.forUserId === game.user?.id && isFromGM(sender)) this._onResult(data);
-        return;
-      }
       // The saved list (a world setting) is what every client reads. Only the GM who saves it acts on a
       // request, after checking who sent it (audit SEC-07); every other client follows the setting
       // (_registerSettingSync). Before this, any client could add, cancel or rewrite anyone's mail here.
@@ -637,7 +616,7 @@ export class SchedulingService {
       const user = sender ? game.users?.get(sender) : null;
       if (!user) return;
       const reply = (res) => {
-        if (data.requestId) this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, { action: 'result', requestId: data.requestId, forUserId: user.id, ...res });
+        if (data.requestId) this.socketManager?.emit(SOCKET_OPS.SCHEDULE_RESULT, { ...res, requestId: data.requestId, userId: user.id });
       };
       let changed = false;
       if (data.action === 'add' && data.entry) {

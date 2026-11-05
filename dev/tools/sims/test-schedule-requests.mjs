@@ -48,6 +48,7 @@ globalThis.ChatMessage = { create: async () => ({}) };
 
 const { MessageService } = await load('scripts/services/MessageService.js');
 const { SchedulingService } = await load('scripts/services/SchedulingService.js');
+const { SOCKET_OPS } = await load('scripts/utils/constants.js');
 const ms = new MessageService();
 game.nightcity.messageService = ms;
 SchedulingService.REQUEST_TIMEOUT_MS = 80;
@@ -66,12 +67,13 @@ function pair({ gmDelay = 1 } = {}) {
   const handlers = {};
   const emits = [];
   const sockFor = (side) => ({
-    register: (op, fn) => { handlers[side] = fn; },
+    // one handler per op per side, like SocketManager (requests on SCHEDULE_SYNC, answers on SCHEDULE_RESULT)
+    register: (op, fn) => { (handlers[side] ??= {})[op] = fn; },
     emit: (op, data) => {
-      emits.push({ side, data });
+      emits.push({ side, op, data });
       const to = side === 'p' ? 'g' : 'p';
       const from = side === 'p' ? PLAYER.id : GM.id;
-      setTimeout(() => asUser(to === 'g' ? GM : PLAYER, () => handlers[to]?.(JSON.parse(JSON.stringify(data)), from)), side === 'p' ? gmDelay : 1);
+      setTimeout(() => asUser(to === 'g' ? GM : PLAYER, () => handlers[to]?.[op]?.(JSON.parse(JSON.stringify(data)), from)), side === 'p' ? gmDelay : 1);
     },
   });
   Object.defineProperty(player, 'socketManager', { value: sockFor('p') });
@@ -160,11 +162,18 @@ const mail = (extra = {}) => ({ fromActorId: 'pc', toActorId: 'npc', to: 'rogue@
 
 // ═══ 7. Only a GM's answer counts; only the creator may cancel ═══
 {
-  const { player, handlers, gm } = pair();
+  // another player answers a waiting cancel first, claiming a big refund; then the real GM answers
+  const { player, handlers, gm, emits } = pair({ gmDelay: 40 });
   actors.pc = wallet(); game.actors = Object.assign(Object.values(actors), { get: (id) => actors[id] ?? null });
-  player._late.set('fake', (r) => player._refund({ messageData: { fromActorId: r.fromActorId } }, r.refund, 'x'));
-  await asUser(PLAYER, () => handlers.p({ action: 'result', requestId: 'fake', forUserId: PLAYER.id, ok: true, refund: 9999, fromActorId: 'pc' }, OTHER.id));
+  gm._scheduled.push({ scheduleId: 'mine', createdBy: PLAYER.id, messageData: mail(), eddiesHeld: 50, status: 'pending', deliveryTime: later });
+  const waiting = asUser(PLAYER, () => player.cancelScheduled('mine'));
+  const reqId = emits.find((e) => e.side === 'p' && e.data.action === 'cancel')?.data.requestId;
+  await asUser(PLAYER, () => handlers.p?.[SOCKET_OPS.SCHEDULE_RESULT]?.({ requestId: reqId, userId: PLAYER.id, ok: true, refund: 9999, fromActorId: 'pc' }, OTHER.id));
   ok(actors.pc.system.wealth.value === 100, 'an "answer" from another player is ignored (it would mint money)');
+  const done = await waiting;
+  ok(done.success && actors.pc.system.wealth.value === 150, 'the real GM answer still settles it, once');
+  gm._scheduled.length = 0;
+  actors.pc = wallet(); game.actors = Object.assign(Object.values(actors), { get: (id) => actors[id] ?? null });   // a fresh wallet for the next check
   gm._scheduled.push({ scheduleId: 'kerry', createdBy: OTHER.id, messageData: mail(), eddiesHeld: 50, status: 'pending', deliveryTime: later });
   const c = await asUser(PLAYER, () => player.cancelScheduled('kerry'));
   ok(!c.success && gm._scheduled.length === 1 && actors.pc.system.wealth.value === 100, 'cancelling someone else\'s message is refused and refunds nothing');
@@ -191,7 +200,7 @@ const mail = (extra = {}) => ({ fromActorId: 'pc', toActorId: 'npc', to: 'rogue@
 // ═══ 9. Wiring ═══
 const ss = read('scripts/services/SchedulingService.js');
 ok(/entry\.delivering = true;[\s\S]{0,200}sendMessage\(msgData\)/.test(ss), 'an entry is marked "delivering" before it is sent');
-ok(/if \(data\.forUserId === game\.user\?\.id && isFromGM\(sender\)\) this\._onResult\(data\);/.test(ss), 'only a GM\'s answer is acted on');
+ok(/awaitGmResult\(this\.socketManager, SOCKET_OPS\.SCHEDULE_RESULT,/.test(ss) && /emit\(SOCKET_OPS\.SCHEDULE_RESULT, \{ \.\.\.res, requestId: data\.requestId, userId: user\.id \}\)/.test(ss), 'requests wait on the shared round trip (gmRequest.js: only a GM\'s answer counts); the GM answers on SCHEDULE_RESULT');
 ok(/asPlayer: true/.test(ss) && /msgData\._asPlayer = true/.test(ss), 'a player\'s entry is delivered as a player\'s');
 ok(/const asPlayer = !game\.user\.isGM \|\| !!data\._asPlayer;/.test(read('scripts/services/MessageService.js')), 'the recipient rules apply to a player-scheduled send');
 

@@ -183,7 +183,7 @@ const ACTORS = [
   // 'unused' ops have no handler; every handler's op is not 'unused'
   const files = ['scripts/integrations/SocketHandlers.js', 'scripts/init/registerCallSystem.js', 'scripts/init/registerNetworkSystem.js',
     'scripts/init/registerWatchSystem.js', 'scripts/services/SchedulingService.js', 'scripts/integrations/ShardSheetOverride.js',
-    'scripts/ui/ShardEncoder/ShardEncoderApp.js', 'scripts/ui/ShardEncoder/ShardMarket.js'];
+    'scripts/ui/ShardEncoder/ShardEncoderApp.js', 'scripts/ui/ShardEncoder/ShardMarket.js', 'scripts/ui/content/NetResolve.js'];   // NetResolve: its answer op is gmRequest's
   const registered = new Set();
   for (const f of files) for (const m of readFileSync(`${ROOT}/${f}`, 'utf8').matchAll(/(?:register\(\s*|awaitGmResult\([^,]+,\s*)SOCKET_OPS\.([A-Z_0-9]+)/g)) registered.add(m[1]);   // awaitGmResult registers its result op (utils/gmRequest.js)
   const unusedButHandled = [...registered].filter((k) => SOCKET_TRUST[k] === 'unused');

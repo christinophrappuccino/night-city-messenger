@@ -38,7 +38,7 @@ let gmOnline = true;
 globalThis.MODULE_ID = MOD;
 globalThis.game = {
   user: { id: 'u-gm', isGM: true },
-  users: { find: (fn) => (gmOnline ? [{ id: 'u-gm', isGM: true, active: true }] : []).find(fn) || null, get: () => ({ name: 'GM' }), activeGM: { id: 'u-gm' } },
+  users: { find: (fn) => (gmOnline ? [{ id: 'u-gm', isGM: true, active: true }] : []).find(fn) || null, get: (id) => (id === 'u-gm' ? { name: 'GM', isGM: true } : { name: 'GM' }), activeGM: { id: 'u-gm' } },
   actors: { get: (id) => actors.get(id) || null, contents: [...actors.values()], [Symbol.iterator]: function* () { yield* actors.values(); } },
   settings: { get: (m, k) => settings[k] },
   journal: [],
@@ -192,7 +192,7 @@ const base = () => ({ fromActorId: 'v', subject: 'Heist tonight', body: 'Be ther
   ok(ack && ack.data.delivered === 2 && ack.data.forUserId === 'u-p' && Array.isArray(ack.data.results), 'GM fans out and acks with delivered count + results');
   ok(created.filter(c => c.data.status?.sent).length === 1, 'the GM wrote exactly one sent copy for the relayed fan-out');
   game.user = { id: 'u-p', isGM: false };
-  svc.handleDeliveryConfirmation(ack.data);
+  svc.handleDeliveryConfirmation(ack.data, 'u-gm');
   const r = await p;
   ok(r.success && r.delivered === 2 && r.failed.length === 1 && r.failed[0].errorCode === 'SEND_ONLY', 'player result merges the local refusal with the GM ack');
   game.user = { id: 'u-gm', isGM: true };

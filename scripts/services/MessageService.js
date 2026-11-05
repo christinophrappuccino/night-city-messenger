@@ -11,6 +11,7 @@ import { ncmNotify, escapeHtml } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
 import { log, isPrimaryGM, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, chatCardTime, userOwnsActor } from '../utils/helpers.js';
+import { awaitGmResult, settleGmRequest } from '../utils/gmRequest.js';
 import { adjustWealth } from '../utils/wealth.js';
 import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '../utils/participants.js';
 import { replyIdentity, groupKeyOf, identitiesOf } from '../utils/identities.js';
@@ -988,9 +989,7 @@ export class MessageService {
       // stray toast AFTER the composer had already shown "Delivered" and
       // closed — the tester's "my player failed to send and we don't know why".
       if (!data.sendKey) data.sendKey = data.messageId;
-      const ack = this._awaitDeliveryAck(data.messageId);
-      this.socketManager.emit(SOCKET_OPS.MESSAGE_RELAY, data);
-      const result = await ack;
+      const result = await this._awaitDeliveryAck(data.messageId, () => this.socketManager.emit(SOCKET_OPS.MESSAGE_RELAY, data));
 
       if (result.timeout) {
         // No answer is not a failure (audit DATA-06): the GM may still deliver it, and
@@ -1041,25 +1040,19 @@ export class MessageService {
    * Register a pending relay and return a promise that resolves with the GM's
    * MESSAGE_DELIVERED payload for that messageId, or `{ timeout: true }`.
    * @param {string} messageId
+   * @param {Function} send  emits the relay
    * @param {number} [timeoutMs]
    * @returns {Promise<{success?: boolean, error?: string, errorCode?: string, timeout?: boolean}>}
    * @private
    */
-  _awaitDeliveryAck(messageId, timeoutMs = MessageService.RELAY_ACK_TIMEOUT_MS) {
-    this._pendingRelays ??= new Map();
-    return new Promise((resolve) => {
-      const expire = (ms, accepted) => setTimeout(() => {
-        this._pendingRelays.delete(messageId);
-        resolve({ timeout: true, accepted });
-      }, ms);
-      let timer = expire(timeoutMs, false);
-      this._pendingRelays.set(messageId, (payload) => {
-        clearTimeout(timer);
-        // The GM has it and is working on it: wait longer for the real answer.
-        if (payload?.accepted) { timer = expire(MessageService.RELAY_FINAL_TIMEOUT_MS, true); return; }
-        this._pendingRelays.delete(messageId);
-        resolve(payload);
-      });
+  _awaitDeliveryAck(messageId, send, timeoutMs = MessageService.RELAY_ACK_TIMEOUT_MS) {
+    // The shared round trip (utils/gmRequest.js), keyed by the message id. MESSAGE_DELIVERED keeps its own handler
+    // (it also settles held mail), which offers every answer here first (handleDeliveryConfirmation).
+    return awaitGmResult(this.socketManager, SOCKET_OPS.MESSAGE_DELIVERED, send, {
+      requestId: messageId, timeoutMs, external: true,
+      timeoutValue: (accepted) => ({ timeout: true, accepted }),
+      // The GM has it and is working on it: wait longer for the real answer.
+      extend: (payload) => (payload?.accepted ? MessageService.RELAY_FINAL_TIMEOUT_MS : 0),
     });
   }
 
@@ -2236,7 +2229,8 @@ export class MessageService {
 
   async handleMessageRelay(data, senderUserId = null) {
     if (!game.user.isGM) return;
-    const ack = (payload) => this.socketManager.emit(SOCKET_OPS.MESSAGE_DELIVERED, { ...payload, messageId: data?.messageId, forUserId: senderUserId });
+    // requestId / userId: the shared round trip's keys (gmRequest.js); messageId / forUserId: held mail's
+    const ack = (payload) => this.socketManager.emit(SOCKET_OPS.MESSAGE_DELIVERED, { ...payload, messageId: data?.messageId, forUserId: senderUserId, requestId: data?.messageId, userId: senderUserId });
 
     // One message, one delivery (audit DATA-06): a retry keeps its id, so a second
     // relay with an id this GM is working on or has delivered is answered, not written.
@@ -2430,17 +2424,15 @@ export class MessageService {
    * Handle delivery confirmation (sender side).
    * @param {Object} data
    */
-  handleDeliveryConfirmation(data) {
+  handleDeliveryConfirmation(data, sender = null) {
     // Not ours — the socket broadcasts to every client, and this used to toast
     // "Message delivery failed" at players who never sent anything.
     if (data.forUserId && data.forUserId !== game.user.id) return;
 
-    const pending = this._pendingRelays?.get(data.messageId);
-    if (pending) {
-      // The sending composer is waiting on this — it shows the outcome itself.
-      pending(data);
-      return;
-    }
+    // The sending composer is waiting on this — it shows the outcome itself. (An answer from a GM client older than
+    // the shared round trip has only messageId / forUserId: read those as its keys.)
+    const keyed = { ...data, requestId: data.requestId ?? data.messageId, userId: data.userId ?? data.forUserId };
+    if (settleGmRequest(this.socketManager, SOCKET_OPS.MESSAGE_DELIVERED, keyed, sender)) return;
     if (data.accepted) return;   // only the final answer matters to held mail
     if (this._settledIds?.has(data.messageId)) return;   // already settled once
     // An answer for mail that timed out and is held: settle it (a refund only now).

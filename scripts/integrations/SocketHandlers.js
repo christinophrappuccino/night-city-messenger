@@ -66,7 +66,7 @@ export class SocketHandlers {
       // All clients check if they sent this message. Only a GM's answer counts:
       // a failure answer now refunds held eddies (B3), so a forged one would mint money.
       if (!isFromGM(sender)) return;
-      messageService.handleDeliveryConfirmation(data);
+      messageService.handleDeliveryConfirmation(data, sender);
     });
 
     // ─── New Message Notification (GM → Recipient) ────────
@@ -393,15 +393,7 @@ export class SocketHandlers {
       }
     });
 
-    socketManager.register(SOCKET_OPS.NET_RESOLVE_RESULT, async (data) => {
-      if (data?.userId !== game.user.id) return;
-      try {
-        const nr = await import('../ui/content/NetResolve.js');
-        nr.handleNetResolveResult(data);
-      } catch (err) {
-        log.error('Net adjudication result failed:', err);
-      }
-    });
+    // NET_RESOLVE_RESULT: no handler here — utils/gmRequest.js owns it (registered on the first request; GM answers only)
 
     socketManager.register(SOCKET_OPS.NET_RESOLVE_CANCEL, async (data, sender) => {
       if (!game.user.isGM) return;

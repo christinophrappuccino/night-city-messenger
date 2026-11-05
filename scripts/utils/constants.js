@@ -114,6 +114,7 @@ export const SOCKET_OPS = Object.freeze({
   MESSAGE_NOTIFY: 'message:notify',
   MESSAGE_STATUS_UPDATE: 'message:statusUpdate',
   SCHEDULE_SYNC: 'schedule:sync',
+  SCHEDULE_RESULT: 'schedule:result',   // the delivering GM's answer to one player's request (gmRequest.js)
   NETWORK_STATE_CHANGED: 'network:stateChanged',
   CONTACT_SHARE_RELAY:   'contact:shareRelay',
   CONTACT_SHARE_NOTIFY:  'contact:shareNotify',
@@ -244,6 +245,7 @@ export const SOCKET_TRUST = Object.freeze({
   MESSAGE_NOTIFY: 'result',
   MESSAGE_STATUS_UPDATE: 'peer',
   SCHEDULE_SYNC: 'request',
+  SCHEDULE_RESULT: 'result',
   NETWORK_STATE_CHANGED: 'peer',
   CONTACT_SHARE_RELAY: 'request',
   CONTACT_SHARE_NOTIFY: 'result',

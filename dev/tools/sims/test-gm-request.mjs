@@ -133,6 +133,63 @@ for (const f of ['scripts/ui/ShardEncoder/ShardMarket.js', 'scripts/integrations
 }
 ok(/registered twice/.test(read('scripts/core/SocketManager.js')), 'SocketManager.register warns on a replaced handler');
 
+// ═══ the options the delivery ack, scheduling and netrun round trips needed (after stage 2) ═══
+if (hasLib) {
+  const G = await imp('scripts/utils/gmRequest.js');
+  const world = await createWorld({ users: [{ id: 'gm1', name: 'GM', isGM: true }, { id: 'p1', name: 'Rache', isGM: false }, { id: 'p2', name: 'Kai', isGM: false }] });
+  const gm = world.client('gm1'), p1 = world.client('p1'), p2 = world.client('p2');
+  const answer = (op, data) => world.as('gm1', () => gm.sockets.emit(op, data));
+  // requestId + extend (the delivery ack: "accepted", then the real answer)
+  {
+    let sent = null;
+    const r = world.as('p1', () => G.awaitGmResult(p1.sockets, 'x:ack', (id) => { sent = id; }, { requestId: 'msg-1', timeoutMs: 60, timeoutValue: (ext) => ({ timeout: true, ext }), extend: (d) => (d.accepted ? 300 : 0) }));
+    ok(sent === 'msg-1', 'requestId: the caller\'s id is used');
+    answer('x:ack', { requestId: 'msg-1', accepted: true }); world.flush();
+    await tick(120);
+    ok(world.as('p1', () => G.isGmRequestWaiting(p1.sockets, 'x:ack', 'msg-1')), 'extend: an "accepted" answer keeps it waiting past the first timeout');
+    answer('x:ack', { requestId: 'msg-1', success: true }); world.flush();
+    ok((await r).success === true, 'extend: the final answer settles it');
+    const r2 = world.as('p1', () => G.awaitGmResult(p1.sockets, 'x:ack', () => {}, { requestId: 'msg-2', timeoutMs: 30, timeoutValue: (ext) => ({ timeout: true, ext }), extend: (d) => (d.accepted ? 40 : 0) }));
+    answer('x:ack', { requestId: 'msg-2', accepted: true }); world.flush();
+    const t2 = await r2;
+    ok(t2.timeout && t2.ext === true, 'timeoutValue(extended): a timeout after "accepted" says so');
+  }
+  // onLate (scheduling: a refusal after the player stopped waiting)
+  {
+    const late = [];
+    const r = world.as('p1', () => G.awaitGmResult(p1.sockets, 'x:sched', () => {}, { requestId: 's-1', timeoutMs: 20, timeoutValue: 'timeout', onLate: (d) => late.push(d.ok) }));
+    ok((await r) === 'timeout', 'onLate: the wait still times out');
+    answer('x:sched', { requestId: 's-1', ok: false }); world.flush();
+    answer('x:sched', { requestId: 's-1', ok: false }); world.flush();
+    ok(late.join() === 'false', 'onLate: the late answer is handed over once');
+  }
+  // Infinity + withdraw (a netrun verdict), and only a GM answers
+  {
+    const r = world.as('p1', () => G.awaitGmResult(p1.sockets, 'x:net', () => {}, { requestId: 'nr-1', timeoutMs: Infinity, map: (d) => d.choiceId }));
+    world.as('p2', () => p2.sockets.emit('x:net', { requestId: 'nr-1', userId: 'p1', choiceId: 'pass' })); world.flush();
+    ok(world.as('p1', () => G.isGmRequestWaiting(p1.sockets, 'x:net', 'nr-1')), 'a forged verdict from another player is ignored (the netrun relay had no GM check before)');
+    ok(world.as('p1', () => G.withdrawGmRequest(p1.sockets, 'x:net', 'nr-1', 'withdrawn')) === true && (await r) === 'withdrawn', 'withdraw: ends the wait with the given value');
+    ok(world.as('p1', () => G.withdrawGmRequest(p1.sockets, 'x:net', 'nr-1', 'again')) === false, 'withdrawing twice does nothing');
+  }
+  // external: the op keeps its own handler, which offers answers first
+  {
+    const own = [];
+    world.as('p1', () => p1.sockets.register('x:ext', (data, sender) => { if (!world.as('p1', () => G.settleGmRequest(p1.sockets, 'x:ext', data, sender))) own.push(data.requestId); }));
+    const r = world.as('p1', () => G.awaitGmResult(p1.sockets, 'x:ext', () => {}, { requestId: 'e-1', timeoutMs: 200, external: true }));
+    answer('x:ext', { requestId: 'e-1', ok: 1 }); answer('x:ext', { requestId: 'held-9', ok: 1 }); world.flush();
+    ok((await r).ok === 1 && own.join() === 'held-9', 'external: a waiting request takes its answer; anything else falls through to the op\'s own work');
+  }
+}
+
+// ═══ the three callers ═══
+{
+  const MS = read('scripts/services/MessageService.js'), SS = read('scripts/services/SchedulingService.js'), NR = read('scripts/ui/content/NetResolve.js'), SH = read('scripts/integrations/SocketHandlers.js');
+  ok(/return awaitGmResult\(this\.socketManager, SOCKET_OPS\.MESSAGE_DELIVERED, send, \{\s*requestId: messageId/.test(MS) && /settleGmRequest\(this\.socketManager, SOCKET_OPS\.MESSAGE_DELIVERED, keyed, sender\)/.test(MS) && !/_pendingRelays/.test(MS), 'the delivery ack is on the shared round trip (keyed by message id, external handler)');
+  ok(/requestId: data\?\.messageId, userId: senderUserId/.test(MS), 'the GM\'s delivery answer carries the round trip\'s keys');
+  ok(/awaitGmResult\(this\.socketManager, SOCKET_OPS\.SCHEDULE_RESULT,/.test(SS) && !/_waiters|_onResult/.test(SS), 'scheduling requests are on the shared round trip (its own answer op)');
+  ok(/awaitGmResult\(sm, SOCKET_OPS\.NET_RESOLVE_RESULT,/.test(NR) && /timeoutMs: Infinity/.test(NR) && !/register\(SOCKET_OPS\.NET_RESOLVE_RESULT/.test(SH), 'the netrun verdict is on the shared round trip (no timeout; its old unchecked handler is gone)');
+}
+
 console.warn = realWarn;
 console.log(`test-gm-request: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

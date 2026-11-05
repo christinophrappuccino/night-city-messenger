@@ -21,7 +21,7 @@ globalThis.game = {
   user: { id: 'u-player', isGM: false },
   users: {
     find: (fn) => (gmOnline ? [{ id: 'u-gm', isGM: true, active: true }] : []).find(fn) || null,
-    get: (id) => ({ 'u-player': { name: 'Aegaeon' } })[id],
+    get: (id) => ({ 'u-player': { name: 'Aegaeon' }, 'u-gm': { name: 'GM', isGM: true } })[id],
   },
   actors: { get: () => null },
   nightcity: {
@@ -39,6 +39,7 @@ globalThis.ui = { notifications: { info: (m) => toasts.push(['info', m]), warn: 
 
 const { MessageService } = await import(pathToFileURL(`${ROOT}/scripts/services/MessageService.js`).href);
 const { SOCKET_OPS } = await import(pathToFileURL(`${ROOT}/scripts/utils/constants.js`).href);
+const { isGmRequestWaiting } = await import(pathToFileURL(`${ROOT}/scripts/utils/gmRequest.js`).href);
 
 // ── A fake service instance: prototype methods, scripted collaborators ──
 function makeService() {
@@ -86,7 +87,7 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
   let settled = false; p.then(() => { settled = true; });
   await new Promise(r => setTimeout(r, 20));
   ok(!settled, 'the relay does NOT resolve before the GM answers (the old optimistic success is gone)');
-  svc.handleDeliveryConfirmation({ messageId: 'm3', success: true, forUserId: 'u-player' });
+  svc.handleDeliveryConfirmation({ messageId: 'm3', success: true, forUserId: 'u-player' }, 'u-gm');
   const r = await p;
   ok(r.success === true && !r.queued, 'GM ack success → relay resolves success');
   ok(svc.sounds.includes('send'), 'send sound plays only once the GM has confirmed');
@@ -97,7 +98,7 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
   const svc = makeService();
   const p = svc._relayMessage(msg('m4'));
   await Promise.resolve();
-  svc.handleDeliveryConfirmation({ messageId: 'm4', success: false, error: 'Could not access inbox journal', forUserId: 'u-player' });
+  svc.handleDeliveryConfirmation({ messageId: 'm4', success: false, error: 'Could not access inbox journal', forUserId: 'u-player' }, 'u-gm');
   const r = await p;
   ok(r.success === false && r.errorCode === 'DELIVERY_FAILED', 'GM ack failure → relay resolves failure');
   ok(/Orphan Audit/.test(r.error) && !/inbox journal/i.test(r.error), 'the error is translated for the player (names the fix, not the repository)');
@@ -112,11 +113,11 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
   const svc = makeService();
   const p = svc._relayMessage(msg('m5'));
   await Promise.resolve();
-  svc.handleDeliveryConfirmation({ messageId: 'm5', success: true, forUserId: 'u-other' });
+  svc.handleDeliveryConfirmation({ messageId: 'm5', success: true, forUserId: 'u-other' }, 'u-gm');
   const r = await p;
   ok(r.success === true && r.queued && r.reason === 'no_answer', 'an ack addressed to another user is ignored, and no answer in time → held (no refund), not failed');
   ok((svc._messageQueue || []).some((d) => d.messageId === 'm5' && d.sendKey === 'm5'), 'the held copy keeps its id, so a resend cannot arrive twice');
-  ok(!(svc._pendingRelays?.has('m5')), 'the pending entry is cleaned up after the timeout');
+  ok(!isGmRequestWaiting(svc.socketManager, SOCKET_OPS.MESSAGE_DELIVERED, 'm5'), 'the pending entry is cleaned up after the timeout (the shared round trip, gmRequest.js)');
   clearTimeout(svc._retryTimer);
   MessageService.RELAY_ACK_TIMEOUT_MS = saved;
 }
@@ -124,12 +125,12 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
 // ═══ 6. Late / unsolicited acks: only MINE may toast ═══
 {
   const svc = makeService(); toasts.length = 0;
-  svc.handleDeliveryConfirmation({ messageId: 'zz', success: false, error: 'No recipient inbox target', forUserId: 'u-other' });
+  svc.handleDeliveryConfirmation({ messageId: 'zz', success: false, error: 'No recipient inbox target', forUserId: 'u-other' }, 'u-gm');
   ok(toasts.length === 0, 'a failure for another user never toasts here (the old broadcast-to-everyone bug)');
-  await svc.handleDeliveryConfirmation({ messageId: 'zz', success: false, error: 'No recipient inbox target', forUserId: 'u-player' });
+  await svc.handleDeliveryConfirmation({ messageId: 'zz', success: false, error: 'No recipient inbox target', forUserId: 'u-player' }, 'u-gm');
   ok(toasts.length === 1 && /No inbox exists/.test(toasts[0][1]), 'a late failure for ME falls back to a translated toast');
   toasts.length = 0;
-  await svc.handleDeliveryConfirmation({ messageId: 'zz', success: true, forUserId: 'u-player' });
+  await svc.handleDeliveryConfirmation({ messageId: 'zz', success: true, forUserId: 'u-player' }, 'u-gm');
   ok(toasts.length === 0, 'a late success is logged, not toasted');
 }
 
