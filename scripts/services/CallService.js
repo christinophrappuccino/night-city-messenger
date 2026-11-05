@@ -32,6 +32,7 @@ import { placeLabel, maskPayphoneSide, payphoneSendGroups } from '../utils/payph
 import { dictateStatus } from '../ui/Calls/dictation.js';
 import { sanitizeLineSettings, greetingFor, goesToVoicemail, greetMs, makeVoicemail, voicemailOwner, recordingsToPurge, GREETING_RECORD_MS } from '../utils/voicemail.js';
 import { FilePickerClass } from '../utils/compat.js';
+import { isFeatureOn } from '../utils/features.js';
 
 const VOICEMAIL_OPEN_MS = 3 * 60 * 1000;   // a voicemail screen left open this long gives up (nothing is left)
 const AUDIO_CHUNK = 120000;                // base64 characters per socket piece
@@ -63,7 +64,8 @@ export class CallService {
   // ═══════════════════════════════════════════════════════════
 
   _get(key, fallback) { return getSetting(key, fallback); }
-  get enabled() { return !!this._get('callsEnabled', true); }
+  /** On in this load? The feature registry decides (utils/features.js, stage 2 step 15). */
+  get enabled() { return isFeatureOn('calls'); }
   /** The number rules, defaults filled in. */
   get rules() { return sanitizeRules(this._get('phoneRules', {})); }
   /** The table, home and special numbers every reader uses. Rebuilt only when one of them changes. */
@@ -953,7 +955,7 @@ export class CallService {
     }
     // Trauma Team: someone with a plan starts the real call; someone with none is refused, or rings the GM, as the GM set it
     const selfId = from.actorId || from.realActorId;
-    if (selfId && !isGM() && game.nightcity?.emergencyService && specialKey(number) === game.nightcity.emergencyService.traumaLine().key) {
+    if (selfId && !isGM() && game.nightcity?.emergencyService?.enabled && specialKey(number) === game.nightcity.emergencyService.traumaLine().key) {
       const em = game.nightcity.emergencyService, actor = game.actors?.get(selfId);
       if (em.planFor(actor) !== 'none') {
         if (em.planInUse(selfId)) return { ok: false, error: 'Your plan is in use. Your GM clears it when the job is over.' };

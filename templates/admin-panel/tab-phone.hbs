@@ -10,9 +10,11 @@
     {{#each nav}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="ncm-ph2-navbtn{{#if on}} on{{/if}}" data-action="tabAct" data-owner="phone" data-op="view" data-view="{{key}}" data-tooltip="{{ncm-tip label}}" aria-label="{{label}}"><i class="fas {{icon}}"></i><span class="lb">{{label}}</span>{{#if count}}<span class="ncm-ph2-navct{{#if hot}} hot{{/if}}">{{count}}</span>{{/if}}</button>{{/each}}
     <span class="grow"></span>
     {{#unless enabled}}<span class="ncm-tagp is-bad"><i class="fas fa-power-off"></i> Calls are off</span>{{/unless}}
+    {{#each partsOff}}<span class="ncm-tagp"><i class="fas fa-power-off"></i> {{this}} off</span>{{/each}}
     {{#unless isPopout}}<button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="popOutTab" data-tab="phone" aria-label="Pop out" data-tooltip="Pop out — a bigger window"><i class="fas fa-up-right-from-square"></i></button>{{/unless}}
   </nav>
   {{#if error}}<div class="ncm-ph2-err"><i class="fas fa-triangle-exclamation"></i> {{error}}</div>{{/if}}
+  {{#if viewOff}}<div class="ncm-ph2-err"><i class="fas fa-power-off"></i> {{viewOff}}</div>{{/if}}
 
 {{!-- ═══ LIVE ═══ --}}
 {{#if (eq view 'live')}}
@@ -196,6 +198,8 @@
   <header class="ncm-tabhd"><i class="fas fa-sliders"></i><div><h2>Settings</h2><p>How calls work at this table. Changes save as you make them.</p></div></header>
   <section class="ncm-ph2-mod ncm-ph2-set">
     <label class="ncm-ph2-srow"><span><b>Calls on</b><small>Players can call each other and your NPCs.</small></span><input type="checkbox" class="ncm-ph2-check" data-ph-set="callsEnabled"{{#if settings.enabled}} checked{{/if}}></label>
+    {{#each settings.parts}}<label class="ncm-ph2-srow"><span><b>{{label}}</b><small>{{hint}} Needs Calls.</small></span><input type="checkbox" class="ncm-ph2-check" data-ph-set="{{key}}"{{#if on}} checked{{/if}}></label>{{/each}}
+    <p class="ncm-ph2-srow"><span><small>Turning Calls or one of its parts on or off reloads the world for everyone. Nothing is deleted.</small></span></p>
     <div class="ncm-ph2-srow"><span><b>Ways to talk</b><small>A way switched off disappears from the call screen.</small></span>
       <span class="ncm-ph2-opts">{{#each settings.modes}}<label><input type="checkbox" class="ncm-ph2-check" data-ph-set="callModes" value="{{key}}"{{#if on}} checked{{/if}}> {{label}}</label>{{/each}}</span></div>
     <label class="ncm-ph2-srow"><span><b>A call starts in</b><small>The way a call opens; players can switch.</small></span>

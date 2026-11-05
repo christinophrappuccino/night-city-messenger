@@ -10,6 +10,7 @@ import { MODULE_ID, MODULE_TITLE } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { registerMinimizeControls } from '../utils/windowMinimize.js';
 import { InteractionLayerClass, addSceneControlGroup } from '../utils/compat.js';
+import { isFeatureOn } from '../utils/features.js';
 
 export function registerUIComponents(initializer) {
   // A visible minimize button on every NCM window + the bigger dialogs (scripts/utils/windowMinimize.js).
@@ -35,8 +36,7 @@ export function registerUIComponents(initializer) {
     Hooks.on('getSceneControlButtons', (controls) => {
       if (!game.nightcity) return;
 
-      let callsOn = true;
-      try { callsOn = game.settings.get(MODULE_ID, 'callsEnabled') !== false; } catch { /* registered later: show it */ }
+      const callsOn = isFeatureOn('calls');   // utils/features.js (stage 2, step 15)
       const tools = [
         {
           name: 'ncm-inbox',

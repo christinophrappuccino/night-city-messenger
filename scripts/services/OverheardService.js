@@ -15,6 +15,7 @@ import { typeOutMs } from '../utils/callModel.js';
 import { holdsItem } from '../utils/phoneEmergency.js';
 import { activeEffects, nodeIsUp } from '../utils/networkNodes.js';
 import { sanitizeEavesdrop, sanitizeScript, waysFor, garbleFor, garbleLine, plainHeard } from '../utils/overheard.js';
+import { isFeatureOn } from '../utils/features.js';
 
 /** One Enhance clears at most this much garble (15 + a beaten DV by 7 × 5, a very good roll) … */
 const ENHANCE_MAX = 50;
@@ -80,6 +81,7 @@ export class OverheardService {
   /** Start it. It plays whether or not anyone is listening. */
   start(script) {
     if (!isGM()) return null;
+    if (!this.enabled) { ncmNotify.warn('Overheard calls are switched off (Module Settings → Calls — Overheard calls).'); return null; }
     const c = sanitizeScript(script);
     const run = { id: generateId(), script: c, idx: -1, playing: !c.live, ended: false, listeners: new Map(), asked: new Set(), clickAt: null, timer: null, startedAt: Date.now() };
     this.runs.set(run.id, run);
@@ -232,7 +234,11 @@ export class OverheardService {
   enhanceBy(runId, amount) { return this._ask({ op: 'enhance', runId, amount }); }
   saveHeard(runId) { return this._ask({ op: 'save', runId }); }
 
+  /** On in this load? (utils/features.js — off when Calls is off too.) */
+  get enabled() { return isFeatureOn('overheard'); }
+
   _ask(data) {
+    if (!this.enabled) { ncmNotify.warn('There is nothing to overhear.'); return false; }
     if (isGM()) return this.handleSocket(data, game.user.id);
     if (!game.users.activeGM) { ncmNotify.warn('No GM is online.'); return false; }
     this.socket.emit(SOCKET_OPS.CALL_OVERHEARD, data);

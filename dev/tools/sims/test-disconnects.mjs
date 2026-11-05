@@ -73,7 +73,7 @@ globalThis.ui = { notifications: { info() {}, warn() {}, error() {} } };
 
 // ═══ 3. Wiring ═══
 const reg = read('scripts/init/registerCallSystem.js');
-ok(/Hooks\.on\('userConnected', \(user, connected\) => \{\s*if \(connected \|\| !user\?\.id\) return;\s*service\.onUserGone\(user\.id\);\s*payphones\.onUserGone\(user\.id\);/.test(reg), 'every client ends calls and clears handsets when a user leaves');
+ok(/Hooks\.on\('userConnected', \(user, connected\) => \{\s*if \(connected \|\| !user\?\.id\) return;\s*service\.onUserGone\(user\.id\);\s*if \(game\.nightcity\.payphoneService\?\.enabled\) game\.nightcity\.payphoneService\.onUserGone\(user\.id\);/.test(reg), 'every client ends calls and clears handsets when a user leaves (handsets only while payphones are on, since step 15)');
 const msgReg = read('scripts/init/registerMessagingSystem.js');
 ok(/if \(!game\.user\.isGM\) \{\s*Hooks\.on\('userConnected', \(user, connected\) => \{\s*if \(!connected \|\| !user\?\.isGM\) return;[\s\S]{0,260}ms\.flushQueue\(\)/.test(msgReg), 'a player sends held mail when a GM connects (DATA-14)');
 ok(/GM_CONNECT_FLUSH_DELAY_MS = \d+/.test(msgReg), '…after a short wait for the GM\'s client to load');

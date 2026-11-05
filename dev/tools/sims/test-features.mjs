@@ -39,6 +39,7 @@ const { SOCKET_OPS } = await import(pathToFileURL(path.join(ROOT, 'scripts/utils
 // ═══ 1. the registry ═══
 const names = Object.keys(F.FEATURES);
 ok(names.includes('conversations'), 'Conversations is a feature');
+for (const k of ['callsEnabled', 'payphonesEnabled', 'emergencyEnabled', 'overheardEnabled']) store.set(k, true);
 for (const [n, f] of Object.entries(F.FEATURES)) ok(typeof f.setting === 'string' && typeof f.label === 'string' && Array.isArray(f.requires) && f.requires.every((r) => F.FEATURES[r]), `${n}: setting, label, and requires only known features`);
 
 store.set('conversationsEnabled', false);
@@ -143,11 +144,61 @@ const walk = (d, out = []) => { for (const f of readdirSync(d)) { const p = path
 const direct = [];
 for (const p of walk(path.join(ROOT, 'scripts'))) {
   const rel = path.relative(ROOT, p).split(path.sep).join('/');
-  if (rel === 'scripts/core/SettingsManager.js' || rel === 'scripts/utils/features.js') continue;
+  // the registry, the registration, and the GM's own switches in Admin → Phone → Settings (they WRITE the settings)
+  if (['scripts/core/SettingsManager.js', 'scripts/utils/features.js', 'scripts/ui/AdminPanel/tabs/PhoneTab.js', 'scripts/ui/AdminPanel/tabs/phoneModel.js'].includes(rel)) continue;
   const t = readFileSync(p, 'utf8');
   for (const f of Object.values(F.FEATURES)) if (t.includes(`'${f.setting}'`)) direct.push(`${rel} (${f.setting})`);
 }
 ok(direct.length === 0, `no file reads a feature setting directly — ask isFeatureOn (${direct.join(', ')})`);
+
+// ═══ 5. Calls and its parts (step 15) ═══
+{
+  for (const n of ['calls', 'payphones', 'emergency', 'overheard']) ok(!!F.FEATURES[n], `${n} is a feature`);
+  ok(['payphones', 'emergency', 'overheard'].every((n) => F.FEATURES[n].requires.join() === 'calls'), 'the three parts each require Calls');
+  for (const k of ['callsEnabled', 'payphonesEnabled', 'emergencyEnabled', 'overheardEnabled']) store.set(k, true);
+  store.set('callsEnabled', false); F._resetFeatureCache();
+  ok(!F.isFeatureOn('calls') && !F.isFeatureOn('payphones') && !F.isFeatureOn('emergency') && !F.isFeatureOn('overheard'), 'Calls off turns its parts off, though their own switches are on');
+  store.set('callsEnabled', true); store.set('payphonesEnabled', false); F._resetFeatureCache();
+  ok(F.isFeatureOn('calls') && !F.isFeatureOn('payphones') && F.isFeatureOn('emergency') && F.isFeatureOn('overheard'), 'one part off leaves Calls and the others on');
+  ok(F.featuresOff().join() === 'payphones', `featuresOff names it (${F.featuresOff().join()})`);
+
+  // the startup file: services always, live parts tagged, sockets tagged
+  ok(/'CallService', \(\) => \{[\s\S]*?new EmergencyService\(\);[\s\S]*?new OverheardService\(\);[\s\S]*?new PayphoneService\(\);[\s\S]*?\n  \}\);/.test(Reg), 'the four services are built whatever is on (their data stays editable)');
+  const tag = (name, feat) => new RegExp(`'${name}', \\(\\) => \\{[\\s\\S]*?\\n  \\}, \\{ feature: '${feat}' \\}\\);`).test(Reg);
+  ok(tag('Calls: call screen and live calls', 'calls') && tag('Calls: emergency lines', 'emergency') && tag('Calls: overheard calls', 'overheard') && tag('Calls: payphones', 'payphones'), 'each live part (screen, hooks, timers) is its own feature-tagged step');
+  const ops = { calls: ['CALL', 'CALL_LOG_REQUEST', 'CALL_AUDIO', 'CALL_VM_REQUEST', 'CALL_LINE_REQUEST'], emergency: ['CALL_EMERGENCY'], overheard: ['CALL_OVERHEARD'], payphones: ['PAYPHONE'] };
+  const untagged = [];
+  for (const [feat, list] of Object.entries(ops)) for (const op of list) {
+    const m = Reg.match(new RegExp(`sm\\.register\\(SOCKET_OPS\\.${op}, [^\\n]*`));
+    if (!m || !(feat === 'calls' ? /, calls\);$/.test(m[0]) : m[0].endsWith(`{ feature: '${feat}' });`))) untagged.push(op);
+  }
+  ok(untagged.length === 0, `every call socket op is tagged with its feature (${untagged.join(', ') || 'all'})`);
+  ok(/const calls = \{ feature: 'calls' \};/.test(Reg), "the calls tag is { feature: 'calls' }");
+  ok(/new CallHud\(service\)/.test(Reg.match(/'Calls: call screen and live calls'[\s\S]*?\n  \}, \{ feature: 'calls' \}\);/)?.[0] || ''), 'the call screen is only built when Calls is on');
+
+  // each service asks the registry, and the player's ways in refuse when off
+  ok(/get enabled\(\) \{ return isFeatureOn\('calls'\); \}/.test(read('scripts/services/CallService.js')), 'CallService.enabled asks the registry');
+  const PP = read('scripts/services/PayphoneService.js'), OV = read('scripts/services/OverheardService.js'), EM = read('scripts/services/EmergencyService.js'), EH = read('scripts/ui/Calls/EmergencyHud.js');
+  ok(/get enabled\(\) \{ return isFeatureOn\('payphones'\); \}/.test(PP) && /if \(!this\.enabled\) \{[^\n]*out of order/.test(PP), 'a payphone that is switched off says it is out of order (every pin, link and access point goes through open)');
+  ok(/get enabled\(\) \{ return isFeatureOn\('overheard'\); \}/.test(OV) && /_ask\(data\) \{\n\s*if \(!this\.enabled\)/.test(OV) && /start\(script\) \{\n\s*if \(!isGM\(\)\) return null;\n\s*if \(!this\.enabled\)/.test(OV), 'overheard: a player cannot join, and the GM cannot start a run, when it is off');
+  ok(/get enabled\(\) \{ return isFeatureOn\('emergency'\); \}/.test(EM) && (EH.match(/if \(!preview && !this\.service\?\.enabled\) return;/g) || []).length === 2, 'emergency: the Trauma and backup screens do nothing when off (GM previews still show)');
+  ok(/emergencyService\?\.enabled && specialKey\(number\)/.test(read('scripts/services/CallService.js')), 'dialling the Trauma number does not start the emergency flow when it is off');
+  const CT = read('scripts/ui/MessageViewer/callsTab.js');
+  ok(/o = game\.nightcity\?\.overheardService; if \(!a \|\| !o\?\.enabled\) return null;/.test(CT) && /if \(!em\?\.enabled \|\| !actor\) return null;/.test(CT), "the Agent's Calls tab shows no scanner / emergency buttons for a part that is off");
+  ok(/const callsOn = isFeatureOn\('calls'\);/.test(read('scripts/init/registerUIComponents.js')), 'the Phone scene-control button follows the registry');
+
+  // the startup report does not call an off feature's missing screen a failure
+  const SM = read('scripts/core/serviceMap.js'), MI = read('scripts/core/ModuleInitializer.js');
+  ok(["callHud:.*feature: 'calls'", "emergencyHud:.*feature: 'emergency'", "overheardHud:.*feature: 'overheard'", "payphoneBooth:.*feature: 'payphones'"].every((r) => new RegExp(r).test(SM)), 'the screens built only when their part is on carry it in SERVICE_MAP');
+  ok(/!\(SERVICE_MAP\[k\]\.feature && !isFeatureOn\(SERVICE_MAP\[k\]\.feature\)\)/.test(MI), 'reportFailures leaves them out of "missing" when their part is off');
+
+  // the GM's switches
+  const PT = read('scripts/ui/AdminPanel/tabs/PhoneTab.js');
+  ok(/const FEATURE_KEYS = \['callsEnabled', 'payphonesEnabled', 'emergencyEnabled', 'overheardEnabled'\];/.test(PT) && /if \(FEATURE_KEYS\.includes\(key\) && before !== val\) \{ SettingsConfigClass\(\)\?\.reloadConfirm\?\.\(\{ world: true \}\); return; \}/.test(PT),
+    'Admin → Phone → Settings has the four switches, and a change asks to reload the world');
+  const Set2 = read('scripts/core/SettingsManager.js');
+  ok(['payphonesEnabled', 'emergencyEnabled', 'overheardEnabled'].every((k) => new RegExp(`register\\(MODULE_ID, '${k}', \\{[\\s\\S]*?default: true, requiresReload: true,`).test(Set2)), 'the three new switches default ON, so an existing world does not change');
+}
 
 console.log(`test-features: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

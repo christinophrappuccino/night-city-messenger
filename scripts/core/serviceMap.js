@@ -12,7 +12,10 @@
  * `does` is for the GM: plain words, what they would notice.
  */
 
-/** @type {Record<string, { uses: string[], does: string }>} */
+/**
+ * `feature` (optional): built only when that feature is on (utils/features.js), so its absence is not a failure.
+ * @type {Record<string, { uses: string[], does: string, feature?: string }>}
+ */
 export const SERVICE_MAP = Object.freeze({
   timeService:           { uses: [], does: 'the game clock' },
   soundService:          { uses: [], does: 'sounds' },
@@ -43,13 +46,13 @@ export const SERVICE_MAP = Object.freeze({
   accessLogService:      { uses: ['networkService'], does: 'the network activity log' },
   conversationService:   { uses: ['masterContactService', 'messageRepository', 'networkService', 'notificationService', 'soundService', 'timeService'], does: 'conversations' },
   callService:           { uses: ['accessLogService', 'contactRepository', 'emergencyHud', 'emergencyService', 'masterContactService', 'messageRepository', 'networkService', 'payphoneService', 'skillService', 'soundService', 'terminalService', 'timeService', 'traceService'], does: 'calls and voicemail' },
-  callHud:               { uses: ['masterContactService', 'soundService', 'themeService'], does: 'the call screen' },
+  callHud:               { uses: ['masterContactService', 'soundService', 'themeService'], does: 'the call screen', feature: 'calls' },
   emergencyService:      { uses: ['emergencyHud', 'notificationService', 'skillService', 'soundService', 'timeService'], does: 'emergency calls' },
-  emergencyHud:          { uses: ['soundService', 'themeService'], does: 'the emergency call screen' },
+  emergencyHud:          { uses: ['soundService', 'themeService'], does: 'the emergency call screen', feature: 'emergency' },
   overheardService:      { uses: ['masterContactService', 'messageRepository', 'networkService', 'overheardHud', 'terminalService', 'timeService', 'traceService'], does: 'overheard calls' },
-  overheardHud:          { uses: ['skillService'], does: 'the overheard-call strip' },
+  overheardHud:          { uses: ['skillService'], does: 'the overheard-call strip', feature: 'overheard' },
   payphoneService:       { uses: ['callService', 'payphoneBooth', 'soundService', 'terminalScenePins'], does: 'payphones' },
-  payphoneBooth:         { uses: ['emergencyService', 'soundService', 'themeService'], does: 'the payphone booth' },
+  payphoneBooth:         { uses: ['emergencyService', 'soundService', 'themeService'], does: 'the payphone booth', feature: 'payphones' },
   watchService:          { uses: [], does: 'watching another player' },
 });
 

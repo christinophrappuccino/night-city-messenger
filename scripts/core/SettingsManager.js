@@ -612,8 +612,24 @@ export class SettingsManager {
     // ─── Calls (dev/design/CALLS.md; edited in Admin → Phone → Settings) ───
     game.settings.register(MODULE_ID, 'callsEnabled', {
       name: 'Calls',
-      hint: 'Players can call each other and your NPCs from the Agent\'s Calls tab. Off hides calling everywhere.',
-      scope: 'world', config: true, type: Boolean, default: true,
+      hint: 'Players can call each other and your NPCs from the Agent\'s Calls tab. Off: nothing of calls is loaded (payphones, emergency and overheard calls too). Switching this reloads the world for everyone. Nothing is deleted when it is off.',
+      scope: 'world', config: true, type: Boolean, default: true, requiresReload: true,
+    });
+    // stage 2, step 15: the parts of calls a table may not want, each a feature (utils/features.js) that needs Calls
+    game.settings.register(MODULE_ID, 'payphonesEnabled', {
+      name: 'Calls — Payphones',
+      hint: 'Payphone booths on the map. Off: a booth says it is out of order; your payphones are kept. Needs Calls. Switching this reloads the world.',
+      scope: 'world', config: true, type: Boolean, default: true, requiresReload: true,
+    });
+    game.settings.register(MODULE_ID, 'emergencyEnabled', {
+      name: 'Calls — Emergency lines',
+      hint: 'The Trauma Team and backup lines, with their rolls and arrival countdowns. Off: those numbers do not answer. Needs Calls. Switching this reloads the world.',
+      scope: 'world', config: true, type: Boolean, default: true, requiresReload: true,
+    });
+    game.settings.register(MODULE_ID, 'overheardEnabled', {
+      name: 'Calls — Overheard calls',
+      hint: 'NPC conversations players can listen in on (scanners, taps, network nodes). Off: nothing can be overheard; your scripts are kept. Needs Calls. Switching this reloads the world.',
+      scope: 'world', config: true, type: Boolean, default: true, requiresReload: true,
     });
     // calls phase 5: this browser's yes to the Dictate notice (the voice goes to the browser's speech service)
     game.settings.register(MODULE_ID, 'callDictateConsent', {

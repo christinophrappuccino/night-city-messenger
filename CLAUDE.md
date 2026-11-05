@@ -95,7 +95,7 @@ The audit remediation (`AUDIT-OPUS.md` / `AUDIT-FABLE.md` → `AUDIT-REMEDIATION
 
 This means: **to add a new service or hook, add a `register(phase, priority, name, fn)` call in the appropriate `init/register*.js` file.** Don't bolt new `Hooks.once` calls into `main.js`.
 
-**Optional systems are FEATURES (`scripts/utils/features.js`, stage 2 step 14).** A feature = one world Boolean setting with `requiresReload: true`, an entry in `FEATURES` (`setting`, `label`, `requires`, optional `offReply`). Off means not installed: tag its ready/postReady steps `register(…, fn, { feature })` (skipped and listed in `startupReport.skipped`, never failed) and its socket ops `socketManager.register(op, fn, { feature })` (a stand-in answers instead: the primary GM sends `offReply`, everyone else drops). Its UI asks `isFeatureOn(name)` / `game.nightcity.features.isOn` — read once per load; never read the setting directly (`test-features`). A feature whose `requires` is off is off. Conversations is the first one on it.
+**Optional systems are FEATURES (`scripts/utils/features.js`, stage 2 step 14).** A feature = one world Boolean setting with `requiresReload: true`, an entry in `FEATURES` (`setting`, `label`, `requires`, optional `offReply`). Off means not installed: tag its ready/postReady steps `register(…, fn, { feature })` (skipped and listed in `startupReport.skipped`, never failed) and its socket ops `socketManager.register(op, fn, { feature })` (a stand-in answers instead: the primary GM sends `offReply`, everyone else drops). Its UI asks `isFeatureOn(name)` / `game.nightcity.features.isOn` — read once per load; never read the setting directly (`test-features`). A feature whose `requires` is off is off. On it: Conversations; Calls, and its three parts Payphones / Emergency lines / Overheard calls (each `requires: ['calls']`, step 15). The call services are always BUILT (numbers, booths and scripts stay editable); only their screens, hooks, timers and socket handlers are feature steps, and each service has `enabled` for its entry points.
 
 ## Architecture: services
 
@@ -170,7 +170,8 @@ review is `ARCHITECTURE-HEALTH-REPORT.md` in the repo root.
 - **Access points** — One door, `game.nightcity.openAccess(ref)`. Themed dialogs open with
   `THEMED_DIALOG_CLASSES` (keep `'dialog'`). Never wrap a placeable's click handler; read the DOM event after release.
 - **Phone / payphones** — A booth side is masked per recipient in `CallService._send`; masking is on screen, not
-  secrecy. Emergency words are slots, never literals in `EmergencyHud`.
+  secrecy. Emergency words are slots, never literals in `EmergencyHud`. Calls, Payphones, Emergency and Overheard are
+  features (`isFeatureOn`); a new way into one of them checks its service's `enabled`.
 - **Conversations** — Writes go through the one GM queue; lines are plain text; a pane paint replaces what is inside
   the host, never the host. Off = no hooks, no sockets, no UI.
 - **Watch** — A window opts in with `static WATCHABLE`; `mountMirror` morphs in place; decorative animation carries

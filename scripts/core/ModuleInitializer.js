@@ -49,7 +49,8 @@ export class ModuleInitializer {
     // Which services a failure left missing, and which services use those directly (stage 2, batch 8: the notice
     // used to name only the step, so "Calls init failed" said nothing about voicemail and payphones stopping too).
     // Only looked for after a failure: a clean startup says nothing.
-    const missing = n ? Object.keys(SERVICE_MAP).filter((k) => !game.nightcity?.[k]) : [];
+    // a service that belongs to a switched-off feature is absent on purpose (stage 2, step 15)
+    const missing = n ? Object.keys(SERVICE_MAP).filter((k) => !game.nightcity?.[k] && !(SERVICE_MAP[k].feature && !isFeatureOn(SERVICE_MAP[k].feature))) : [];
     /** What the notice was built from — also on game.nightcity.startupReport for the console and the macros. */
     this.report = { failed: this.failures.map((f) => f.name), missing, affected: affectedBy(missing), skipped: this.skipped.map((s) => `${s.name} (${s.feature} off)`) };
     if (!n || !game.user?.isGM) return n;

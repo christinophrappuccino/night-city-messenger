@@ -57,7 +57,7 @@ ok(sanitizeScript(null).a.anchor === 'off', 'nothing stored is fine');
 
 /* ── the real service ── */
 {
-  const store = { overheardCalls: {}, phoneEavesdrop: {} };
+  const store = { overheardCalls: {}, phoneEavesdrop: {}, callsEnabled: true, overheardEnabled: true };   // both on: a feature since step 15
   const flags = {};
   const tok = (actorId, x, hidden = false) => ({ actorId, x, y: 0, hidden });
   const scene = { id: 'sc', name: 'Pier 4', grid: { size: 100 }, tokens: [tok('npc', 0), tok('v', 500), tok('far', 5000), tok('sneak', 100, true)] };

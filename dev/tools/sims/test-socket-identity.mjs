@@ -201,7 +201,7 @@ const ACTORS = [
   const watch = readFileSync(`${ROOT}/scripts/init/registerWatchSystem.js`, 'utf8');
   ok(/register\(SOCKET_OPS\.WATCH,\s*\(data,\s*sender\)\s*=>[\s\S]{0,80}onSocket\(data,\s*sender\)/.test(watch), 'WATCH handler passes the real sender to WatchService');
   const calls = readFileSync(`${ROOT}/scripts/init/registerCallSystem.js`, 'utf8');
-  ok(/register\(SOCKET_OPS\.PAYPHONE,\s*\(data,\s*sender\)\s*=>\s*payphones\.handleSocket\(data,\s*sender\)\)/.test(calls), 'PAYPHONE handler passes the real sender to PayphoneService');
+  ok(/register\(SOCKET_OPS\.PAYPHONE,\s*\(data,\s*sender\)\s*=>\s*game\.nightcity\.payphoneService\.handleSocket\(data,\s*sender\)/.test(calls), 'PAYPHONE handler passes the real sender to PayphoneService');
   // no script reads a sender id out of a socket payload instead of the handler argument
   const offenders = [];
   for (const f of files2()) { const s = readFileSync(`${ROOT}/${f}`, 'utf8'); if (/\b(data|message|msg|payload)\.sender\b/.test(s)) offenders.push(f); }

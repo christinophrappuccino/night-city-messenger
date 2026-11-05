@@ -21,6 +21,8 @@ import { formatDuration } from '../../../utils/callModel.js';
 import { parseNumber, rowOf, orgKey } from '../../../utils/phoneNumbering.js';
 import { ScopePicker } from '../../../utils/scopePicker.js';
 import { DateRangePicker } from '../../components/DateRangePicker.js';
+import { SettingsConfigClass } from '../../../utils/compat.js';
+import { isFeatureOn } from '../../../utils/features.js';
 import { PHONE_VIEWS, NAV_PARENT, logLanding, LOG_FILTERS, LOG_GROUPS, VM_SHOW, VM_GROUPS, QUEUE_SHOW, callQueue, liveBoard, logView, settingsView, voicemailBoxes } from './phoneModel.js';
 import { PLAN_NAMES } from '../../../utils/phoneEmergency.js';
 import { numbersHtml, wireNumbers, closeNumbers, newNumberState, syncFrame, requestCount } from './phoneNumbersView.js';
@@ -30,7 +32,9 @@ import { speak, voices, canSpeak } from '../../Calls/speech.js';
 import { VoiceRecorder, micStatus, blobToBase64, playAudio } from '../../Calls/recorder.js';
 import { adminDialog } from '../../../utils/adminTheme.js';
 
-const SETTING_KEYS = ['callsEnabled', 'callModes', 'callDefaultMode', 'callRingSeconds', 'callUnknownNumbers', 'callTranscriptNotice',
+/** The four call switches are features (utils/features.js): each reloads the world, so a change asks first. */
+const FEATURE_KEYS = ['callsEnabled', 'payphonesEnabled', 'emergencyEnabled', 'overheardEnabled'];
+const SETTING_KEYS = [...FEATURE_KEYS, 'callModes', 'callDefaultMode', 'callRingSeconds', 'callUnknownNumbers', 'callTranscriptNotice',
   'voicemailRecording', 'voicemailMaxSeconds', 'voicemailKeepDays'];
 
 /** Why the GM dropped a call — shown on both ends under "Call dropped". */
@@ -91,6 +95,10 @@ export class PhoneTab extends BaseTab {
     if (!s) return { phone2: { missing: true } };
     const ctx = {
       view: this._view, enabled: s.enabled, isPopout: !!this.app.isPopout,
+      // which parts of calls are off in this load (a part needs Calls on too)
+      partsOff: s.enabled ? [['payphones', 'Payphones'], ['emergency', 'Emergency lines'], ['overheard', 'Overheard calls']].filter(([k]) => !isFeatureOn(k)).map(([, l]) => l) : [],
+      viewOff: (this._view === 'payphones' && !isFeatureOn('payphones')) ? 'Payphones are switched off: players see every booth as out of order. You can still edit them here.'
+        : (this._view === 'overheard' && !isFeatureOn('overheard')) ? 'Overheard calls are switched off: nothing can be overheard. You can still write scripts here.' : '',
       nav: PHONE_VIEWS.map(([key, label, icon]) => ({ key, label, icon, on: key === (NAV_PARENT[this._view] || this._view) })),
     };
     const mcs = game.nightcity?.masterContactService;
@@ -501,7 +509,10 @@ export class PhoneTab extends BaseTab {
     else val = el.value;
     if (!SETTING_KEYS.includes(key)) return;
     try {
+      const before = game.settings.get(MODULE_ID, key);
       await game.settings.set(MODULE_ID, key, val);
+      // a call switch is a feature: nothing changes until the world reloads (Foundry only asks from its own menu)
+      if (FEATURE_KEYS.includes(key) && before !== val) { SettingsConfigClass()?.reloadConfirm?.({ world: true }); return; }
       // a start mode that was just switched off falls back to the first one left
       if (key === 'callModes' && !val.includes(game.settings.get(MODULE_ID, 'callDefaultMode'))) await game.settings.set(MODULE_ID, 'callDefaultMode', val[0]);
     } catch (err) { ncmNotify.error(`Could not save: ${err.message}`); }

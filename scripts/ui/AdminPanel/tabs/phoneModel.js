@@ -189,6 +189,11 @@ export function settingsView(v = {}, { modesAvailable = ['loud', 'type', 'dictat
   const modes = (Array.isArray(v.callModes) ? v.callModes : []);
   return {
     enabled: !!v.callsEnabled,
+    // the parts of calls (stage 2, step 15): each needs Calls, each reloads the world
+    parts: [['payphonesEnabled', 'Payphones', 'Booths on the map. Off: every booth is out of order; your payphones are kept.'],
+      ['emergencyEnabled', 'Emergency lines', 'Trauma Team and backup calls. Off: those numbers do not answer.'],
+      ['overheardEnabled', 'Overheard calls', 'NPC conversations players can listen in on. Off: nothing can be overheard; your scripts are kept.']]
+      .map(([key, label, hint]) => ({ key, label, hint, on: v[key] !== false })),
     modes: modesAvailable.map((m) => ({ key: m, label: modeNames[m] || m, on: modes.includes(m) })),
     startModes: modesAvailable.filter((m) => modes.includes(m)).map((m) => ({ key: m, label: modeNames[m] || m, on: v.callDefaultMode === m })),
     ringSeconds: Number(v.callRingSeconds) || 30,

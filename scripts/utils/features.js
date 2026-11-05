@@ -29,6 +29,13 @@ export const FEATURES = Object.freeze({
       ? { op: SOCKET_OPS.CONVERSATION_RESULT, data: { forUserId: sender, reqId: data.reqId, res: { ok: false, off: true, error: 'Conversations are switched off.' } } }
       : null),
   },
+  // Calls and its parts (stage 2, step 15). The call request ops are fire-and-forget, so an off feature's requests
+  // are dropped: there is no reply for a player to wait on. The services always exist (numbers, payphone and script
+  // data stay editable for the GM); what is skipped is the live machinery and the player's way in.
+  calls:     { setting: 'callsEnabled',     label: 'Calls',           requires: [] },
+  payphones: { setting: 'payphonesEnabled', label: 'Payphones',       requires: ['calls'] },
+  emergency: { setting: 'emergencyEnabled', label: 'Emergency lines', requires: ['calls'] },
+  overheard: { setting: 'overheardEnabled', label: 'Overheard calls', requires: ['calls'] },
 });
 
 const cache = new Map();

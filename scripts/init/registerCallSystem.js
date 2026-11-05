@@ -49,32 +49,37 @@ export function registerCallSystem(initializer) {
   initializer.register('ready', 124, 'Conversations: hooks', () => game.nightcity.conversationService.wire(), { feature: 'conversations' });
   initializer.register('postReady', 23, 'Conversations: held lines', () => game.nightcity.conversationService.restorePending(), { feature: 'conversations' });
 
+  // Calls, Payphones, Emergency lines and Overheard calls are FEATURES (utils/features.js, stage 2 step 15). The four
+  // services always exist (numbers, payphones and scripts are data the GM can still edit, and much of the UI asks
+  // `callService?.enabled`), but a part that is off has no screen, no hooks, no timers, and its socket ops are dropped.
   initializer.register('ready', 125, 'CallService', () => {
     const service = new CallService();
     game.nightcity.callService = service;
-    const hud = new CallHud(service);
-    hud.init();
-    game.nightcity.callHud = hud;
-    const emergency = new EmergencyService();
-    game.nightcity.emergencyService = emergency;
-    game.nightcity.emergencyHud = new EmergencyHud(emergency, service);
-    wireEmergency(emergency);
-    const overheard = new OverheardService();
-    game.nightcity.overheardService = overheard;
-    game.nightcity.overheardHud = new OverheardHud(overheard, service);
-    overheard.wire();
-    game.nightcity.socketManager.register(SOCKET_OPS.CALL_OVERHEARD, (data, sender) => overheard.handleSocket(data, sender));
-    game.nightcity.socketManager.register(SOCKET_OPS.CALL_EMERGENCY, (data, sender) => emergency.handleSocket(data, sender).catch((e) => log.warn(`Emergency: ${e.message}`)));
+    game.nightcity.emergencyService = new EmergencyService();
+    game.nightcity.overheardService = new OverheardService();
+    game.nightcity.payphoneService = new PayphoneService();
+    // numbers are data: a deleted character or terminal gives its number back whether or not calls are on
     Hooks.on('deleteActor', (actor) => service.retireOwner({ actorId: actor.id, why: 'Character deleted' }));
-    // a terminal that is deleted gives its number back to the retired list
     Hooks.on('deleteItem', (item) => { if (isPrimaryGM() && service.lineOfItem(item.uuid)) service.setTerminalNumber(item, { number: null }); });
 
     const sm = game.nightcity.socketManager;
-    sm.register(SOCKET_OPS.CALL, (data, sender) => service.handleSocket(data, sender));
-    sm.register(SOCKET_OPS.CALL_LOG_REQUEST, (data, sender) => service.handleLogRequest(data, sender ?? null).catch((e) => log.warn(`Calls: log request failed: ${e.message}`)));
-    sm.register(SOCKET_OPS.CALL_AUDIO, (data, sender) => service.handleAudio(data, sender).catch((e) => log.warn(`Calls: a recording failed: ${e.message}`)));
-    sm.register(SOCKET_OPS.CALL_VM_REQUEST, (data, sender) => service.handleVoicemailRequest(data, sender).catch((e) => log.warn(`Calls: voicemail request failed: ${e.message}`)));
-    sm.register(SOCKET_OPS.CALL_LINE_REQUEST, (data, sender) => service.handleLineRequest(data, sender).catch((e) => log.warn(`Calls: line request failed: ${e.message}`)));
+    const calls = { feature: 'calls' };
+    sm.register(SOCKET_OPS.CALL, (data, sender) => service.handleSocket(data, sender), calls);
+    sm.register(SOCKET_OPS.CALL_LOG_REQUEST, (data, sender) => service.handleLogRequest(data, sender ?? null).catch((e) => log.warn(`Calls: log request failed: ${e.message}`)), calls);
+    sm.register(SOCKET_OPS.CALL_AUDIO, (data, sender) => service.handleAudio(data, sender).catch((e) => log.warn(`Calls: a recording failed: ${e.message}`)), calls);
+    sm.register(SOCKET_OPS.CALL_VM_REQUEST, (data, sender) => service.handleVoicemailRequest(data, sender).catch((e) => log.warn(`Calls: voicemail request failed: ${e.message}`)), calls);
+    sm.register(SOCKET_OPS.CALL_LINE_REQUEST, (data, sender) => service.handleLineRequest(data, sender).catch((e) => log.warn(`Calls: line request failed: ${e.message}`)), calls);
+    sm.register(SOCKET_OPS.CALL_EMERGENCY, (data, sender) => game.nightcity.emergencyService.handleSocket(data, sender).catch((e) => log.warn(`Emergency: ${e.message}`)), { feature: 'emergency' });
+    sm.register(SOCKET_OPS.CALL_OVERHEARD, (data, sender) => game.nightcity.overheardService.handleSocket(data, sender), { feature: 'overheard' });
+    sm.register(SOCKET_OPS.PAYPHONE, (data, sender) => game.nightcity.payphoneService.handleSocket(data, sender), { feature: 'payphones' });
+    log.info('CallService initialized');
+  });
+
+  initializer.register('ready', 125, 'Calls: call screen and live calls', () => {
+    const service = game.nightcity.callService;
+    const hud = new CallHud(service);
+    hud.init();
+    game.nightcity.callHud = hud;
 
     // the GM's client clears recordings older than the keep setting (their words stay), once per session
     if (isPrimaryGM()) setTimeout(() => service.purgeRecordings().then((r) => { if (r?.count) log.info(`Calls: cleared ${r.count} old recording(s)`); }).catch(() => {}), 15000);
@@ -86,25 +91,37 @@ export function registerCallSystem(initializer) {
     };
     for (const h of ['createJournalEntryPage', 'updateJournalEntryPage', 'deleteJournalEntryPage']) Hooks.on(h, pageHook);
 
-    // payphones: a booth is a caller identity on CallService; this owns reach, who is on it, the ring and the speaker
-    const payphones = new PayphoneService();
-    game.nightcity.payphoneService = payphones;
-    game.nightcity.payphoneBooth = new PayphoneBooth(payphones);
-    payphones.init();
-    game.nightcity.payphoneBooth.init();
-    sm.register(SOCKET_OPS.PAYPHONE, (data, sender) => payphones.handleSocket(data, sender));
     // Someone left (closed the tab, lost the connection, reloaded): every client ends the calls they were a
     // party to and clears their payphone handsets (audit DATA-17, DATA-21). Nothing else would ever end them.
     Hooks.on('userConnected', (user, connected) => {
       if (connected || !user?.id) return;
       service.onUserGone(user.id);
-      payphones.onUserGone(user.id);
+      if (game.nightcity.payphoneService?.enabled) game.nightcity.payphoneService.onUserGone(user.id);
     });
 
     // losing signal mid-call drops it
     game.nightcity.eventBus.on(EVENTS.NETWORK_CHANGED, () => service.checkSignal());
-    log.info('CallService initialized');
-  });
+  }, { feature: 'calls' });
+
+  initializer.register('ready', 125, 'Calls: emergency lines', () => {
+    const emergency = game.nightcity.emergencyService;
+    game.nightcity.emergencyHud = new EmergencyHud(emergency, game.nightcity.callService);
+    wireEmergency(emergency);
+  }, { feature: 'emergency' });
+
+  initializer.register('ready', 125, 'Calls: overheard calls', () => {
+    const overheard = game.nightcity.overheardService;
+    game.nightcity.overheardHud = new OverheardHud(overheard, game.nightcity.callService);
+    overheard.wire();
+  }, { feature: 'overheard' });
+
+  // payphones: a booth is a caller identity on CallService; this owns reach, who is on it, the ring and the speaker
+  initializer.register('ready', 125, 'Calls: payphones', () => {
+    const payphones = game.nightcity.payphoneService;
+    game.nightcity.payphoneBooth = new PayphoneBooth(payphones);
+    payphones.init();
+    game.nightcity.payphoneBooth.init();
+  }, { feature: 'payphones' });
 
   initializer.register('ready', 126, 'Call launchers', () => {
     /** Place a call from this client (the operator character, or `as` an identity — GM). */

@@ -250,10 +250,10 @@ export async function buildCallsContext(viewer) {
       options: (isVm ? VM_SHOW : CALL_SHOW).map(([k, label]) => ({ k, label, on: k === st.show })),
       found: isVm ? `${vmShown.length} of ${vmRows.length} ${vmRows.length === 1 ? 'message' : 'messages'}` : `${list.total} of ${list.of} ${list.of === 1 ? 'call' : 'calls'}`,
     },
-    scanner: (() => { const a = own.actorId ? game.actors?.get(own.actorId) : null, o = game.nightcity?.overheardService; if (!a || !o) return null; const h = holdsItem(a.items?.contents || [], o.rules.scanner); return h?.counts ? { name: h.item.name, img: h.item.img || '' } : null; })(),
+    scanner: (() => { const a = own.actorId ? game.actors?.get(own.actorId) : null, o = game.nightcity?.overheardService; if (!a || !o?.enabled) return null; const h = holdsItem(a.items?.contents || [], o.rules.scanner); return h?.counts ? { name: h.item.name, img: h.item.img || '' } : null; })(),
     emergency: (() => {
       const em = game.nightcity?.emergencyService, actor = own.actorId ? game.actors?.get(own.actorId) : null;
-      if (!em || !actor) return null;
+      if (!em?.enabled || !actor) return null;
       const plan = em.planFor(actor), rank = em.rankOf(actor);
       if (plan === 'none' && !rank) return null;
       const busy = em.planInUse(actor.id);

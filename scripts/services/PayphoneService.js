@@ -18,6 +18,7 @@ import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, resolveOperator } from '../utils/helpers.js';
 import { sanitizePayphone, sanitizePayphones, sanitizeSavedStyles, sanitizeLook, lookFromStyle, placeLabel, payphoneLine, inReach, bystanders, speakerOn } from '../utils/payphones.js';
 import { normaliseNumber } from '../utils/phoneNumbering.js';
+import { isFeatureOn } from '../utils/features.js';
 
 const RING_EVERY_MS = 1700;
 
@@ -193,9 +194,13 @@ export class PayphoneService {
    * Open a booth. `skipReach` for links, macros and chat cards (the GM handed it out).
    * @param {string} id @param {{skipReach?: boolean}} [o]
    */
+  /** On in this load? (utils/features.js — off when Calls is off too.) */
+  get enabled() { return isFeatureOn('payphones'); }
+
   open(id, { skipReach = false } = {}) {
     const pp = this.get(id);
     if (!pp) return void ncmNotify.warn('That payphone no longer exists.');
+    if (!this.enabled) { game.nightcity?.soundService?.play('error'); return void ncmNotify.warn(`${pp.name || 'This payphone'} is out of order.`); }
     if (!skipReach) { const r = this.reach(pp); if (!r.ok) { game.nightcity?.soundService?.play('error'); return void ncmNotify.warn(r.reason); } }
     return game.nightcity?.payphoneBooth?.open(pp);
   }

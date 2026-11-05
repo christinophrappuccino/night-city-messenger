@@ -311,6 +311,7 @@ export class EmergencyHud {
 
   /** @param {Actor} actor — whose plan @param {Actor} patient — who it is for */
   async trauma(actor, patient = actor, { auto = false, preview = false } = {}) {
+    if (!preview && !this.service?.enabled) return;   // utils/features.js: the emergency lines are switched off
     const svc = this.service, info = svc.traumaInfo(actor, patient);
     const line = svc.traumaLine(), callName = line.name.toUpperCase();
     const noSignal = !preview && this.calls?._noSignal?.();
@@ -374,6 +375,7 @@ export class EmergencyHud {
   // ═══ Backup ═══
 
   async backup(actor, groupName = null, { preview = false, previewBusy = false } = {}) {
+    if (!preview && !this.service?.enabled) return;   // utils/features.js: the emergency lines are switched off
     const svc = this.service, info = svc.backupInfo(actor, groupName);
     const look = info.look, col = look.color, red = '#ff7b7b', chan = info.voice.channel || `CH-${(actor.id.charCodeAt(0) % 8) + 1}`;
     const say = (key, extra = {}) => fillLine(info.voice[key], { place: info.place, name: info.name, org: info.org, group: info.group, ...extra });
