@@ -509,8 +509,9 @@ check('the write is GM-only, wherever the ask came from', () => {
 
 check('a proposal that is never answered does not hang the window', () => {
   const src = fs.readFileSync(path.join(ROOT, 'scripts/ui/ShardEncoder/ShardMarket.js'), 'utf8');
-  assert.ok(src.includes('setTimeout(') && src.includes('if (!settled)'), 'requestShardPrice needs a timeout');
-  assert.ok(src.includes("resolve({ decision: 'pending'"), 'and it must resolve, not reject');
+  // the shared round trip (utils/gmRequest.js) resolves with timeoutValue when no answer arrives — it never rejects
+  assert.ok(/awaitGmResult\(/.test(src) && /timeoutMs: 120000/.test(src), 'requestShardPrice needs a timeout');
+  assert.ok(src.includes("timeoutValue: { decision: 'pending'"), 'and it must resolve, not reject');
 });
 
 check('closing the GM prompt is a DENY, never a silent yes', () => {

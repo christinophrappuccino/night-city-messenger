@@ -57,6 +57,11 @@ export class SocketManager {
    *   when the transport did not supply one.
    */
   register(operation, handler) {
+    // One handler per op: a second register REPLACES the first. That is never what a caller means — it is how a
+    // per-request handler loses the previous request's answer (stage 2, batch 4). Waiting for an answer goes
+    // through utils/gmRequest.js; everything else registers once, at startup.
+    const prev = this._handlers.get(operation);
+    if (prev && prev !== handler) log.warn(`Socket handler for '${operation}' was registered twice; the earlier one is replaced`);
     this._handlers.set(operation, handler);
   }
 

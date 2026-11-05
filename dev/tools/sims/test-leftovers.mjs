@@ -134,8 +134,8 @@ const quiet = console.warn; console.warn = () => {};
   const sm = { register: (op, f) => { registers += 1; handler = f; }, emit() {} };
   const a = awaitConvertResult(sm, (id) => sent.push(id), 500);
   const b = awaitConvertResult(sm, (id) => sent.push(id), 500);
-  handler({ requestId: sent[1], success: true });
-  handler({ requestId: sent[0], success: false });
+  handler({ requestId: sent[1], success: true }, 'gm');      // answers count only from a GM (the server-checked sender)
+  handler({ requestId: sent[0], success: false }, 'gm');
   ok((await b) === true && (await a) === false, 'two requests in flight each get their own answer');
   ok(registers === 1, 'one handler, registered once');
   const c = awaitConvertResult(sm, () => {}, 30);

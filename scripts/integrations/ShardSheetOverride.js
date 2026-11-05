@@ -22,6 +22,7 @@ import { ncmNotify } from '../utils/notify.js';
 import { accessMenuEntries } from './AccessPoints.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, canEncode, canEditShard, resolveOperator } from '../utils/helpers.js';
+import { awaitGmResult } from '../utils/gmRequest.js';
 import { themedConfirm, themedPrompt } from '../utils/adminTheme.js';
 import { dialogBodyHtml } from '../utils/dialogBody.js';
 import { withShardPrefix, stripShardPrefix } from '../utils/shardNaming.js';
@@ -871,26 +872,15 @@ export class ShardSheetOverride {
    * @returns {Promise<boolean>}
    */
   _requestPlayerUnconvert(item) {
-    return new Promise((resolve) => {
-      const socketManager = game.nightcity?.socketManager;
-      if (!socketManager) return resolve(false);
-
-      const requestId = foundry.utils.randomID(8);
-      const actorId = item.actor?.id;
-      if (!actorId) return resolve(false);
-
-      socketManager.register(SOCKET_OPS.SHARD_UNCONVERT_RESULT, (data) => {
-        if (data.requestId !== requestId) return;
-        resolve(data.success);
-      });
-
-      socketManager.emit(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, {
-        requestId,
-        itemId: item.id,
-        actorId,
-      });
-
-      setTimeout(() => resolve(false), 10000);
-    });
+    const socketManager = game.nightcity?.socketManager;
+    const actorId = item.actor?.id;
+    if (!socketManager || !actorId) return Promise.resolve(false);
+    // One shared handler for every unconvert answer (utils/gmRequest.js): each request used to register its own,
+    // so a second one in flight took the first one's answer. No answer within 10 s reads as a failure.
+    return awaitGmResult(socketManager, SOCKET_OPS.SHARD_UNCONVERT_RESULT, (requestId) => socketManager.emit(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, {
+      requestId,
+      itemId: item.id,
+      actorId,
+    }), { timeoutMs: 10000, timeoutValue: false, map: (data) => data.success });
   }
 }

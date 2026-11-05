@@ -20,6 +20,7 @@
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, whisperCardHtml } from '../../utils/helpers.js';
+import { awaitGmResult } from '../../utils/gmRequest.js';
 import { suggestedPrice } from '../content/EncoderModel.js';
 import { shardTerm as T } from '../../utils/shardTerm.js';
 
@@ -121,22 +122,13 @@ export function requestShardPrice({ item, actor, price, quality, outcome }) {
     ncmNotify.warn('NCM | No GM is connected, so nobody can approve a price yet.');
     return Promise.resolve({ decision: 'nogm', price: 0 });
   }
-  return new Promise((resolve) => {
-    const requestId = foundry.utils.randomID(8);
-    let settled = false;
-    const handler = (res) => {
-      if (res?.requestId !== requestId || res?.userId !== game.user.id || settled) return;
-      settled = true;
-      resolve({ decision: res.decision, price: res.price });
-    };
-    sm.register(SOCKET_OPS.SHARD_PRICE_RESULT, handler);
-    sm.emit(SOCKET_OPS.SHARD_PRICE_REQUEST, {
-      requestId, userId: game.user.id, itemId: item.id, actorId: actor?.id,
-      price, quality, outcome,
-    });
-    // A GM who never answers must not leave the window waiting forever.
-    setTimeout(() => { if (!settled) { settled = true; resolve({ decision: 'pending', price: 0 }); } }, 120000);
-  });
+  // One shared handler for every price answer (utils/gmRequest.js): a second request in flight used to replace
+  // the first one's handler, so the first waited out the two minutes. A GM who never answers must not leave the
+  // window waiting forever: after two minutes it reads as 'pending'.
+  return awaitGmResult(sm, SOCKET_OPS.SHARD_PRICE_RESULT, (requestId) => sm.emit(SOCKET_OPS.SHARD_PRICE_REQUEST, {
+    requestId, userId: game.user.id, itemId: item.id, actorId: actor?.id,
+    price, quality, outcome,
+  }), { timeoutMs: 120000, timeoutValue: { decision: 'pending', price: 0 }, map: (res) => ({ decision: res.decision, price: res.price }) });
 }
 
 /** Tell the GM, in the log, what a player put on the market. */

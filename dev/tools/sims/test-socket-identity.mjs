@@ -185,7 +185,7 @@ const ACTORS = [
     'scripts/init/registerWatchSystem.js', 'scripts/services/SchedulingService.js', 'scripts/integrations/ShardSheetOverride.js',
     'scripts/ui/ShardEncoder/ShardEncoderApp.js', 'scripts/ui/ShardEncoder/ShardMarket.js'];
   const registered = new Set();
-  for (const f of files) for (const m of readFileSync(`${ROOT}/${f}`, 'utf8').matchAll(/register\(\s*SOCKET_OPS\.([A-Z_0-9]+)/g)) registered.add(m[1]);
+  for (const f of files) for (const m of readFileSync(`${ROOT}/${f}`, 'utf8').matchAll(/(?:register\(\s*|awaitGmResult\([^,]+,\s*)SOCKET_OPS\.([A-Z_0-9]+)/g)) registered.add(m[1]);   // awaitGmResult registers its result op (utils/gmRequest.js)
   const unusedButHandled = [...registered].filter((k) => SOCKET_TRUST[k] === 'unused');
   const handledButMissing = ops.filter((k) => SOCKET_TRUST[k] !== 'unused' && !registered.has(k));
   ok(unusedButHandled.length === 0, `no 'unused' op has a handler (${unusedButHandled.join(', ') || 'ok'})`);

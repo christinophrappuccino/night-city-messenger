@@ -29,6 +29,7 @@ import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, SOCKET_OPS, ENCRYPTION_TYPES, FAILURE_MODES, SHARD_PRESETS } from '../../utils/constants.js';
 import { log, isGM, resolveOperator, getOperatorActors, openOperatorPicker, canEncode, canEditShard, whisperCardHtml, getPlayerCharacters } from '../../utils/helpers.js';
 import { adjustWealth } from '../../utils/wealth.js';
+import { awaitGmResult } from '../../utils/gmRequest.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { COVER_TYPES, abilityInfo, programToEntry } from '../content/ProgramModel.js';
 import { CONTENT_TYPE_INFO, enrichContent } from '../content/ContentRenderers.js';
@@ -3228,33 +3229,16 @@ export class ShardEncoderApp extends BaseApplication {
   }
 }
 
-// ─── Conversion results (audit leftover) ───
-// SocketManager keeps ONE handler per op, and each request used to register its own, replacing the last — so two
-// requests in flight lost the first one's answer (it timed out as a failure). One handler, a map of waiting requests.
-const _convertWaiting = new Map();
-let _convertHandlerOn = false;
+// ─── Conversion results ───
+// One handler for every conversion answer, through the shared player → GM round trip (utils/gmRequest.js). Each
+// request used to register its own handler, replacing the last, so two in flight lost the first one's answer.
 
 /**
  * Send a shard-conversion request and wait for the GM's answer for THAT request id.
  * @param {object} sm the SocketManager @param {(requestId: string) => void} send emits the request
  * @param {number} [timeoutMs]
- * @returns {Promise<boolean>}
+ * @returns {Promise<boolean>}  false when the GM refused, did not answer in time, or the answer was not from a GM
  */
 export function awaitConvertResult(sm, send, timeoutMs = 15000) {
-  if (!_convertHandlerOn) {
-    sm.register(SOCKET_OPS.SHARD_CONVERT_RESULT, (data) => {
-      const w = _convertWaiting.get(data?.requestId);
-      if (!w) return;
-      _convertWaiting.delete(data.requestId);
-      clearTimeout(w.timer);
-      w.resolve(!!data.success);
-    });
-    _convertHandlerOn = true;
-  }
-  return new Promise((resolve) => {
-    const requestId = foundry.utils.randomID(8);
-    const timer = setTimeout(() => { if (_convertWaiting.delete(requestId)) resolve(false); }, timeoutMs);
-    _convertWaiting.set(requestId, { resolve, timer });
-    send(requestId);
-  });
+  return awaitGmResult(sm, SOCKET_OPS.SHARD_CONVERT_RESULT, send, { timeoutMs, timeoutValue: false, map: (d) => !!d.success });
 }
