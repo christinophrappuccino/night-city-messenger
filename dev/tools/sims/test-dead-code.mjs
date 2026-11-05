@@ -50,9 +50,10 @@ const block = (name) => { const i = consts.indexOf(`export const ${name} = Objec
   ok(deaf.length === 0, `every event something waits for is sent (never sent: ${deaf.join(', ')})`);
 
   // public hook mirrors
-  const bridge = src['scripts/integrations/IntegrationBridge.js'] || '';
-  const list = (bridge.match(/const MIRRORED_EVENTS = \[([\s\S]*?)\];/) || [])[1] || '';
-  const mirrored = [...code(list).matchAll(/'([a-z]+:[A-Za-z]+)'/g)].map((m) => m[1]);
+  // the table (publicEvents.js, batch 9), or the older inline list in the bridge
+  const pe = src['scripts/integrations/publicEvents.js'] || src['scripts/integrations/IntegrationBridge.js'] || '';
+  const list = (pe.match(/export const PUBLIC_EVENTS = Object\.freeze\(\[([\s\S]*?)\]\);/) || pe.match(/const MIRRORED_EVENTS = \[([\s\S]*?)\];/) || [])[1] || '';
+  const mirrored = [...code(list).matchAll(/(?:name: |^\s*)'([a-z]+:[A-Za-z]+)'/gm)].map((m) => m[1]);
   ok(mirrored.length >= 10, `IntegrationBridge mirrors read (${mirrored.length})`);
   const byValue = Object.fromEntries(Object.entries(EV).map(([k, v]) => [v, k]));
   const silent = mirrored.filter((v) => !(byValue[v] ? sent(byValue[v]) : new RegExp(`emit\\??\\.?\\(\\s*'${v}'`).test(all)));

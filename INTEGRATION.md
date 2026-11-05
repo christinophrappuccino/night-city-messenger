@@ -15,8 +15,10 @@ This module is part of a three-module constellation, each fully standalone:
   (macro helpers), `contacts` (per-actor address books), `masterContacts`
   (GM directory), `groups` (contact groups — see the group hooks below), `portraits`,
   `time` (TimeService — see below), `eventBus`,
-  `RELATIONSHIP_TYPES`, `TRUST_LABELS`.
-- Foundry hook mirrors of the private bus: `night-city-messenger.contact:updated`,
+  `RELATIONSHIP_TYPES`, `TRUST_LABELS`, and (since apiVersion 1.1.0) `publicEvents` — the event table below, at runtime.
+- **The published events are listed in ONE place: `scripts/integrations/publicEvents.js`** (added 2026-11-05). Each
+  row gives the name, what it means, which client fires it, and the fields its payload can carry; the bridge mirrors
+  exactly that table, and a sim checks every send against it. As of now, the Foundry hook mirrors of the private bus: `night-city-messenger.contact:updated`,
   `…contacts:masterUpdated`, `…contacts:trustChanged`, `…contacts:shared`, `…contacts:decrypted`,
   `…contacts:breachFailed`, `…roles:updated`, `…message:sent`,
   `…message:received`, `…shard:decrypted`, `…groups:created`, `…groups:updated`,
@@ -35,8 +37,9 @@ This module is part of a three-module constellation, each fully standalone:
   subject, fromActorName, toActorName }`. Throttling/opt-in is the consumer's job.
 - **`…message:received`** — live-refresh signal for Comms panels (unread badge,
   last-3 preview). Fires on clients owning the recipient actor; the same delivery
-  can emit from TWO sources (socket notify + journal doc-sync) — **dedupe by
-  `messageId`**, exactly as NCM's own toast does.
+  reaches NCM from TWO sources (socket notify + journal doc-sync). **Since 2026-11-05 the bridge fires the hook once
+  per message per client** (it drops the second copy by `messageId` within 10 s), so integrators no longer have to;
+  code that still dedupes keeps working.
 - **`…contacts:breachFailed`** — the failed-breach → moment tie-in. Payload:
   `{ actorId, contactId, contactName, roll: { success, total, dc, isFumble } }`.
   (`…contacts:decrypted` is the success twin.)
@@ -55,7 +58,7 @@ This module is part of a three-module constellation, each fully standalone:
 **Compatibility promise:** integrators target ONLY the api object and the mirrored
 hooks. Internals (`game.nightcity.*` service shapes) may change freely, but the api
 surface follows semver via `apiVersion`. If you rename an event in `constants.js`,
-keep the old name in the bridge's `MIRRORED_EVENTS` mapping.
+keep the old name as a row in `scripts/integrations/publicEvents.js`.
 
 ## What the relationships module will consume
 

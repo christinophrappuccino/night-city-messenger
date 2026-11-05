@@ -15,36 +15,9 @@
 
 import { log } from '../utils/helpers.js';
 import { MODULE_ID } from '../utils/constants.js';
+import { PUBLIC_EVENTS, passOnce } from './publicEvents.js';
 
-/** EventBus events re-fired as Foundry hooks: `${MODULE_ID}.<eventName>` */
-const MIRRORED_EVENTS = [
-  'contact:updated',        // any player address-book change (via DocumentSyncBridge)
-  'contacts:masterUpdated', // master directory add/update/remove ({ action, contactId })
-  'contacts:trustChanged',
-  'contacts:shared',
-  'contacts:decrypted',     // a contact breach SUCCEEDED (encrypted contact revealed)
-  'contacts:breachFailed',  // a contact breach FAILED — a "moment" for the spine
-  'roles:updated',
-  // ── Messaging (the "texts write moments" tie-in) ──
-  // message:sent fires on the DELIVERING client (the GM's, when a player sends;
-  // delivery always runs GM-side). Payload: { messageId, toActorId, toContactId,
-  // fromActorId, fromContactId, network, subject, fromActorName, toActorName }.
-  'message:sent',
-  // message:received fires on clients owning the recipient actor, and the same
-  // delivery can emit it from TWO sources (socket notify + journal doc-sync) —
-  // integrators must dedupe by messageId, exactly as NCM's own toast does.
-  'message:received',
-  // ── Shards (the "shard reveals dossier knowledge" tie-in) ──
-  'shard:decrypted',
-  // ── Contact groups (a crew forming / changing is a relationship signal) ──
-  // Payloads: created/updated { scope:'actor'|'master', actorId?, group },
-  // deleted { scope, actorId?, groupId }, pushed { groupId, targetActorId, shared, failed }.
-  // Members are address-keyed records (see scripts/utils/participants.js).
-  'groups:created',
-  'groups:updated',
-  'groups:deleted',
-  'groups:pushed',
-];
+// The events published to other modules, what they carry and which client fires them: publicEvents.js (the contract).
 
 export async function initializeIntegrationBridge() {
   const nc = game.nightcity;
@@ -54,10 +27,13 @@ export async function initializeIntegrationBridge() {
   }
 
   // ── 1. Mirror bus events as Foundry hooks ──
-  for (const eventName of MIRRORED_EVENTS) {
+  // A `once` event fires its hook once per message on this client: one delivery reaches message:received from two
+  // sources (the socket notice and the journal sync). Integrators used to have to drop the second themselves.
+  for (const { name, once } of PUBLIC_EVENTS) {
+    const seen = once ? new Map() : null;
     nc.eventBus.on(
-      eventName,
-      (data) => Hooks.callAll(`${MODULE_ID}.${eventName}`, data),
+      name,
+      (data) => { if (seen && !passOnce(seen, data, Date.now())) return; Hooks.callAll(`${MODULE_ID}.${name}`, data); },
       'integration-bridge'
     );
   }
@@ -77,7 +53,9 @@ export async function initializeIntegrationBridge() {
   if (mod) {
     mod.api = {
       /** Bump on breaking changes to THIS object's shape (semver). */
-      apiVersion: '1.0.0',
+      apiVersion: '1.1.0',   // 1.1.0 (2026-11-05): + publicEvents
+      /** The events this module publishes as `night-city-messenger.<name>` hooks: name, meaning, firing client, payload fields. */
+      publicEvents: PUBLIC_EVENTS,
       /** Macro-level helpers: sendMessage, scheduling, master-contact trio, UI launchers. */
       messenger: nc.messenger ?? null,
       /** Per-actor address books (actor flags): getContacts, addContact, setTrust, findByEmail… */

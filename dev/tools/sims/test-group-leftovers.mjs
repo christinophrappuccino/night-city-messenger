@@ -92,7 +92,8 @@ const { makeMember } = await import(pathToFileURL(`${ROOT}/scripts/utils/partici
   ok(events.at(-1)?.e === EVENTS.GROUP_CREATED && events.at(-1).p.scope === 'master', 'a GM group emits with scope master');
   await svc.pushGroupToPlayer(r2.group.id, 'panam');
   ok(events.at(-1)?.e === EVENTS.GROUP_PUSHED && events.at(-1).p.targetActorId === 'panam' && events.at(-1).p.shared === 1, 'pushing emits groups:pushed with the share count');
-  const bridge = readFileSync(`${ROOT}/scripts/integrations/IntegrationBridge.js`, 'utf8');
+  // the bridge mirrors exactly the published-events table (scripts/integrations/publicEvents.js, stage 2 batch 9)
+  const bridge = readFileSync(`${ROOT}/scripts/integrations/publicEvents.js`, 'utf8');
   for (const e of ['groups:created', 'groups:updated', 'groups:deleted', 'groups:pushed']) ok(bridge.includes(`'${e}'`), `IntegrationBridge mirrors ${e}`);
   ok(/groups:pushed/.test(readFileSync(`${ROOT}/INTEGRATION.md`, 'utf8')), 'INTEGRATION.md documents the group hooks');
   for (const k of ['GROUP_CREATED', 'GROUP_UPDATED', 'GROUP_DELETED', 'GROUP_PUSHED']) ok(typeof EVENTS[k] === 'string', `EVENTS.${k} exists`);
