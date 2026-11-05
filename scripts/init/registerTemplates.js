@@ -28,19 +28,11 @@ function _isOptions(o) {
 }
 
 export function registerTemplates(initializer) {
-  initializer.register('preInit', 20, 'Template preloading', async () => {
-    // Collect all template paths that exist
-    const paths = Object.values(TEMPLATES);
-
-    // Preload — Foundry will skip any that don't exist on disk yet
-    try {
-      await loadTemplates(paths);
-      log.info(`Templates preloaded (${paths.length} registered)`);
-    } catch (error) {
-      // Non-fatal — templates load lazily on first render too
-      log.warn('Template preloading had errors (this is OK during early development):', error.message);
-    }
-
+  // Synchronous (audit COMPAT-01): the helpers register now and the template fetch is STARTED, not awaited.
+  // Awaiting ~110 fetches here held every later init task (settings, the canvas layer, keybindings, the
+  // enricher) behind the network, and on a slow host they landed after Foundry's init had finished — the
+  // keybindings then threw. The returned promise is part of `initDone`, which the ready phase waits for.
+  initializer.register('preInit', 20, 'Template preloading', () => {
     // ─── Comparison Helpers (block + subexpression safe) ───
 
     Handlebars.registerHelper('eq', function (a, b, options) {
@@ -181,5 +173,11 @@ export function registerTemplates(initializer) {
     });
 
     log.info('Handlebars helpers registered');
+
+    // Preload — Foundry will skip any that don't exist on disk yet. Non-fatal: templates load lazily on first render too.
+    const paths = Object.values(TEMPLATES);
+    return loadTemplates(paths)
+      .then(() => log.info(`Templates preloaded (${paths.length} registered)`))
+      .catch((error) => log.warn('Template preloading had errors (this is OK during early development):', error?.message));
   });
 }

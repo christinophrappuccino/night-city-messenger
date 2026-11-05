@@ -202,7 +202,7 @@
         <span class="ncm-pill__badge">{{counts.recovered}}</span>
       </span>
       {{/if}}
-      {{#if (or counts.drafts counts.scheduled (eq currentFilter 'drafts') (eq currentFilter 'scheduled'))}}<span class="ncm-viewer__pills-div"></span>{{/if}}
+      {{#if (or (or counts.drafts counts.scheduled) (or (eq currentFilter 'drafts') (eq currentFilter 'scheduled')))}}<span class="ncm-viewer__pills-div"></span>{{/if}}
       {{#if (or counts.drafts (eq currentFilter 'drafts'))}}
       <span class="ncm-pill ncm-pill--out {{#if (eq currentFilter 'drafts')}}ncm-pill--active{{/if}}" data-action="set-filter" data-filter="drafts"
             data-tooltip="Mail you have not sent yet" data-tooltip-direction="DOWN">
