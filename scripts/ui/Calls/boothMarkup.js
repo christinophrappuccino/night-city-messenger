@@ -141,6 +141,8 @@ export function boothHtml({ look, uid = 'x', place = '', number = '', condition 
   const u = String(uid).replace(/[^\w-]/g, '');
   const tags = l.tags.map(([t, c], i) => `<span class="ncm-pb__tag t${i + 1}" style="--tc:${c};filter:url(#ncm-pb-spray${u})"${t.trim() ? '' : ' hidden'}>${esc(t)}</span>`).join('');
   return `<div class="ncm-pb" data-pb-uid="${u}" data-pb-style="${l.style}" data-state="${condition === 'out' ? 'out' : 'working'}" data-at="idle" data-grit-tier="${gritTier(l.grit)}" data-wire-tier="${wireTier(l.wire)}" style="${lookVars(l)}">
+  ${preview ? '' : `<div class="ncm-pb__foot"><button type="button" class="ncm-pb__walk" data-pb="close"><i class="fas fa-person-walking"></i> Walk away</button></div>
+  <div class="ncm-pb__by" data-pb-by></div>`}
   <div class="ncm-pb__case">
     <div class="ncm-pb__cap">
       <div class="ncm-pb__slot" data-pb="slot" data-tooltip="Credchip slot. Nothing is charged."><i></i><i></i><span class="ncm-pb__chip"></span></div>
@@ -191,8 +193,6 @@ export function boothHtml({ look, uid = 'x', place = '', number = '', condition 
     <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="ncm-pb-spray${u}"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2.2"/></filter></svg>
     <div class="ncm-pb__sign">Out of order</div>
   </div>
-  ${preview ? '' : `<div class="ncm-pb__by" data-pb-by></div>
-  <div class="ncm-pb__foot"><button type="button" class="ncm-pb__walk" data-pb="close"><i class="fas fa-person-walking"></i> Walk away</button></div>`}
 </div>`;
 }
 

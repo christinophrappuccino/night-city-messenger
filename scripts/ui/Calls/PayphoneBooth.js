@@ -39,8 +39,8 @@ export class PayphoneBooth {
   init() {
     const bus = game.nightcity?.eventBus;
     bus?.on(EVENTS.PAYPHONE_STATE, ({ id } = {}) => { if (this.pp?.id === id) this._refreshBusy(); });
-    // a call that ends while the booth is open puts the handset back; a closed booth is shown by hungUp()
-    bus?.on(EVENTS.CALL_ENDED, ({ call } = {}) => { if (this.st?.callId && call?.id === this.st.callId) this._putBack(); });
+    // a call that ends while the booth is open puts the handset back and the booth goes (it does not linger)
+    bus?.on(EVENTS.CALL_ENDED, ({ call } = {}) => { if (this.st?.callId && call?.id === this.st.callId) { this._putBack(); this.close(); } });
     // the booth's own record changed (the GM restyled it): reopen in place
     Hooks.on('updateSetting', (s) => { if (s?.key === `${MODULE_ID}.payphones` && this.pp) { const fresh = this.svc.get(this.pp.id); if (!fresh) this.close(); else if (this.st?.at === 'idle') this.open(fresh); } });
   }
@@ -234,20 +234,15 @@ export class PayphoneBooth {
    */
   hungUp(pp, callId) {
     if (!pp) return;
+    // Hanging up is just hanging up (dev 2026-11-05): the booth does not come back on screen. The handset is heard
+    // going back on the hook; a booth still open for this call puts it back and goes.
     if (this.pp?.id === pp.id && this.st) {
-      if (['oncall', 'handoff'].includes(this.st.at) && (!this.st.callId || this.st.callId === callId)) this._putBack();
+      if (['oncall', 'handoff'].includes(this.st.at) && (!this.st.callId || this.st.callId === callId)) { this._putBack(); this.close(); }
       return;
     }
-    if (this.host || this.reduced) return;
-    this.open(pp);
-    if (!this.st) return;
-    this.st.at = 'oncall'; this.st.callId = callId;
-    this._paint();
-    const host = this.host;
-    let touched = false;
-    host.addEventListener('pointerdown', () => { touched = true; }, { once: true, capture: true });
-    setTimeout(() => { if (this.host === host) this._putBack(); }, 380);
-    setTimeout(() => { if (this.host === host && !touched && this.st?.at === 'idle') this.close(); }, 1700);
+    const own = pp.sounds?.hook;
+    if (own) game.nightcity?.soundService?.playFile?.(own, { volume: 1 });
+    else game.nightcity?.soundService?.play?.('payphone-hook', { volume: 1 });
   }
 
   _fn(f) {
@@ -387,9 +382,12 @@ export class PayphoneBooth {
     if (!r) return;
     const svg = r.querySelector('.ncm-pb__cord'), path = r.querySelector('[data-pb-cord]'), A = { x: 56, y: 516 };
     if (this.st?.at === 'busy') { path.setAttribute('d', 'M 56 516 C 40 470, 10 420, -40 380'); return; }
-    const end = r.querySelector('[data-pb-cordend]')?.getBoundingClientRect(), m = svg.getScreenCTM();
-    if (!end || !m) return;
-    const pt = new DOMPoint(end.left + end.width / 2, end.top + end.height / 2).matrixTransform(m.inverse());
+    // Both ends are read with getBoundingClientRect. Mixing it with getScreenCTM broke under the booth's CSS zoom in
+    // the Chromium the Foundry desktop app ships (one included the zoom, the other did not), so the cord missed the
+    // handset there while it looked right in Chrome. Two rects from one API always agree with each other.
+    const end = r.querySelector('[data-pb-cordend]')?.getBoundingClientRect(), box = svg.getBoundingClientRect(), vb = svg.viewBox?.baseVal;
+    if (!end || !box?.width || !box?.height || !vb?.width || !vb?.height) return;
+    const pt = cordPoint({ x: end.left + end.width / 2, y: end.top + end.height / 2 }, box, vb);
     const sag = Math.max(40, (A.y - pt.y) * 0.35 + 50);
     path.setAttribute('d', `M ${pt.x.toFixed(1)} ${pt.y.toFixed(1)} C ${(pt.x - 4).toFixed(1)} ${(pt.y + sag).toFixed(1)}, ${A.x - 34} ${A.y + 24}, ${A.x} ${A.y}`);
   }
@@ -445,6 +443,17 @@ export class PayphoneBooth {
     if (own) return void game.nightcity?.soundService?.playFile?.(own, { volume });
     game.nightcity?.soundService?.play(kind === 'chip' ? 'payphone-chip' : 'payphone-hook', { volume });
   }
+}
+
+/**
+ * A screen point → the cord svg's own units (`viewBox`, default `xMidYMid meet`), from the svg's on-screen box. Pure.
+ * @param {{x:number,y:number}} p @param {{left:number,top:number,width:number,height:number}} box
+ * @param {{x:number,y:number,width:number,height:number}} vb
+ */
+export function cordPoint(p, box, vb) {
+  const s = Math.min(box.width / vb.width, box.height / vb.height);
+  const ox = box.left + (box.width - vb.width * s) / 2, oy = box.top + (box.height - vb.height * s) / 2;
+  return { x: vb.x + (p.x - ox) / s, y: vb.y + (p.y - oy) / s };
 }
 
 /**
