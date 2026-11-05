@@ -25,7 +25,7 @@ import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, resolveOperator, resolveDisplayPortrait, whisperCardHtml } from '../utils/helpers.js';
 import { normaliseNumber, displayNumber, parseNumber, rowOf, fullForm, freeLines, numberAt, buildNumberContext, placeRows, sanitizeRules, pickableRows, sanitizeSpecial, specialKey, specialList, specialMap, specialOutcome, writtenToLog, lineTypes, lineTypeFor, lineShown, traceFinds, officeRowOf, officeKey, sanitizeOffice, splitExtension, placeOf } from '../utils/phoneNumbering.js';
 import { createCall, createEndedCall, transition, resolveCallee, canCall, allowedModes, defaultMode, callSeconds, formatDuration, OUTCOMES,
-  BUILT_MODES, makeLine, addLine, sideOf, transcriptOf } from '../utils/callModel.js';
+  BUILT_MODES, makeLine, addLine, sideOf, transcriptOf, lineFromRightSide } from '../utils/callModel.js';
 import { dropReason, maskCaller, callerFor, interceptMail } from '../utils/callNet.js';
 import { placeLabel, maskPayphoneSide } from '../utils/payphones.js';
 import { dictateStatus } from '../ui/Calls/dictation.js';
@@ -1240,6 +1240,7 @@ export class CallService {
       if (type === 'line') {
         const line = data.line;
         if (!line?.id || !line.text) return;
+        if (!lineFromRightSide(mine, line, senderId, !!game.users.get(senderId)?.isGM)) { log.warn('Calls: a line from someone not on that side of the call was ignored'); return; }
         this._store(addLine(mine, line));
         this.eventBus.emit(EVENTS.CALL_LINE, { callId, line, mine: false });
       } else this.eventBus.emit(EVENTS.CALL_TYPING, { callId, side: data.side, on: !!data.on, how: data.how === 'talk' ? 'talk' : 'type' });
@@ -1487,6 +1488,19 @@ export class CallService {
   }
 
   /** GM side of CALL_VM_REQUEST: a player leaving a message, or marking / deleting one of their own. */
+  /**
+   * Is `senderId` the person on the payphone this voicemail comes from (audit DATA-18)? The voicemail carries the
+   * booth, not a character; the GM's copy of the call (or, if the call is already gone, who is on the booth now)
+   * names the real person. @private
+   */
+  _isBoothCaller(vm, senderId) {
+    const booth = vm?.from?.payphone;
+    if (!booth || !senderId) return false;
+    const call = vm.callId ? this.calls.get(vm.callId) : null;
+    if (call) return call.from?.payphone === booth && call.from?.realUserId === senderId;
+    return game.nightcity?.payphoneService?.inUse?.get?.(booth)?.userId === senderId;
+  }
+
   async handleVoicemailRequest(data, senderId) {
     if (!isGM() || game.users.activeGM?.id !== game.user.id || !data) return;
     if (data.op === 'leave') {
@@ -1494,7 +1508,8 @@ export class CallService {
       // the caller must be who the message says (a player leaving as their own character / its burner)
       const sender = game.users.get(senderId);
       const fromActor = vm?.from?.actorId ? game.actors?.get(vm.from.actorId) : null;
-      if (!vm?.vmId || !fromActor?.testUserPermission(sender, 'OWNER')) return;
+      // A payphone caller has no character on the call (audit DATA-18): the GM's own record says who is really on it.
+      if (!vm?.vmId || !(fromActor?.testUserPermission(sender, 'OWNER') || this._isBoothCaller(vm, senderId))) return;
       const clean = makeVoicemail(vm);
       if (clean) await this.writeVoicemail({ ...clean, vmId: vm.vmId, at: vm.at || clean.at });
       return;
@@ -1549,7 +1564,7 @@ export class CallService {
     if (meta?.purpose === 'vm') {
       const vm = meta.vm || {};
       const fromActor = vm.from?.actorId ? game.actors?.get(vm.from.actorId) : null;
-      if (!sender?.isGM && !fromActor?.testUserPermission(sender, 'OWNER')) return { ok: false, error: 'Not your line.' };
+      if (!sender?.isGM && !fromActor?.testUserPermission(sender, 'OWNER') && !this._isBoothCaller(vm, sender?.id)) return { ok: false, error: 'Not your line.' };
       const ref = await this._storeAudio(base64, mime, `vm-${vm.callId || 'msg'}`);
       if (!ref) { this._tellUploadFailed(senderId); return { ok: false, error: 'The recording could not be saved.' }; }
       const clean = makeVoicemail({ ...vm, kind: 'audio', audio: ref });

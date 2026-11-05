@@ -171,8 +171,12 @@ export class TraceService {
   async _fireResidentTriggers(p, heat) {
     if (p.targetKind !== 'terminal' || !p.objectId) return;
     const svc = game.nightcity?.terminalService;
-    const item = game.items?.get(p.objectId);
-    if (!svc || !item) return;
+    if (!svc) return;
+    // A carried terminal is not in game.items (audit DATA-10): resolve by uuid, then by id across every terminal.
+    let item = null;
+    try { item = p.targetUuid ? fromUuidSync(p.targetUuid) : null; } catch { item = null; }
+    if (!item || !svc.isTerminal?.(item)) item = game.items?.get(p.objectId) || svc.collectTerminals?.().find((i) => i.id === p.objectId) || null;
+    if (!item) return;
     try {
       // 'exfil' is deliberately NOT handled here: it has its own EVENTS.TERMINAL_EXFIL
       // listener (registerTerminalSystem, ready/68) which also catches UNGATED

@@ -15,6 +15,7 @@ import { log, formatCyberDate, getPlayerCharacters, hiddenCharacterIds } from '.
 import { BaseTab } from '../BaseTab.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { resolveMember, worldAdapter } from '../../../utils/participants.js';
+import { planIdentityRepairs } from '../../../utils/identities.js';
 import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
 import { gatherResetPlan, runFactoryReset } from '../../../core/FactoryReset.js';
@@ -1162,7 +1163,8 @@ export class ToolsTab extends BaseTab {
    */
   async onOrphanAudit(event, target) {
     const found = this._gatherOrphans();
-    const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length + found.phoneOwners.length + found.conversations.length;
+    const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length + found.phoneOwners.length + found.conversations.length
+      + found.identityLinks.patches.length;
 
     if (total === 0 && !found.emptyInboxes.length) {
       ncmNotify.info('NCM | Orphan audit clean — nothing to remove.');
@@ -1195,6 +1197,15 @@ export class ToolsTab extends BaseTab {
     if (found.conversations.length) {
       lines.push(`<p><strong>${found.conversations.length}</strong> conversation(s) where nobody left in them still exists:</p><ul>` +
         found.conversations.map(c => li(escapeHtml(titleFor(c)))).join('') + '</ul>');
+    }
+
+    if (found.identityLinks.stranded.length) {
+      lines.push(`<p><strong>${found.identityLinks.stranded.length}</strong> alias(es) whose main identity was deleted. One of them becomes the main, so their mail has somewhere to go:</p><ul>` +
+        found.identityLinks.stranded.map(c => li(escapeHtml(c.name || c.email || c.id))).join('') + '</ul>');
+    }
+    if (found.identityLinks.deadLinks.length) {
+      lines.push(`<p><strong>${found.identityLinks.deadLinks.length}</strong> contact(s) linked to a character that was deleted. The link is cleared, so mail reaches the contact's own inbox:</p><ul>` +
+        found.identityLinks.deadLinks.map(c => li(escapeHtml(c.name || c.email || c.id))).join('') + '</ul>');
     }
 
     // Empty inboxes: a separate, opt-in list — never removed unless the box is ticked.
@@ -1251,6 +1262,10 @@ export class ToolsTab extends BaseTab {
       for (const c of found.conversations) {
         const res = await game.nightcity?.conversationService?.destroy?.(c.id);
         if (res?.ok) removed++;
+      }
+      if (found.identityLinks.patches.length) {
+        const res = await this.masterContactService?.repairIdentityLinks?.({ apply: true });
+        removed += res?.changed || 0;
       }
       log.info(`Orphan audit removed ${removed} orphaned record(s)`);
       ncmNotify.info(`NCM | Orphan audit removed ${removed} orphaned record(s).`);
@@ -1420,7 +1435,13 @@ export class ToolsTab extends BaseTab {
       if (!stillThere) conversations.push(c);
     }
 
-    return { inboxes, pins, heatActors, groupMembers, phoneOwners, conversations, emptyInboxes };
+    // Directory links that point at nothing (audit DATA-16): aliases whose main identity was deleted, and entries
+    // linked to a deleted character. Both are repaired, not removed — the contacts stay.
+    let identityLinks = { stranded: [], deadLinks: [], patches: [] };
+    try { identityLinks = this.masterContactService?.repairIdentityLinks ? planIdentityRepairs(this.masterContactService.getAll?.() || [], (id) => !!game.actors?.get(id)) : identityLinks; }
+    catch { /* directory unavailable */ }
+
+    return { inboxes, pins, heatActors, groupMembers, phoneOwners, conversations, emptyInboxes, identityLinks };
   }
 
   /**

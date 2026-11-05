@@ -129,9 +129,22 @@ export async function migrateWorldSettings() {
     const key = s.key.slice(prefix.length);
     const newKey = `${MODULE_ID}.${key}`;
     if (!game.settings.settings.has(newKey)) { result.skipped.push(key); continue; }
-    if (world.find(x => x.key === newKey)) continue;
     let value = s.value;
     if (typeof value === 'string') { try { value = JSON.parse(value); } catch { /* keep raw */ } }
+    // The schema version is the one key where "already there" must not win (audit DATA-09): an earlier build could
+    // stamp it on the empty new namespace while the GM said "Not now". Keep the LOWER of the two, so every upgrade
+    // the legacy data never had still runs.
+    if (key === 'dataSchemaVersion') {
+      const have = world.find(x => x.key === newKey);
+      if (have) {
+        let cur = have.value;
+        if (typeof cur === 'string') { try { cur = JSON.parse(cur); } catch { /* keep raw */ } }
+        const lower = Math.min(Number(cur) || 0, Number(value) || 0);
+        if (lower !== (Number(cur) || 0)) { await game.settings.set(MODULE_ID, key, lower); result.copied++; }
+        continue;
+      }
+    }
+    if (world.find(x => x.key === newKey)) continue;
     await game.settings.set(MODULE_ID, key, value);
     result.copied++;
   }

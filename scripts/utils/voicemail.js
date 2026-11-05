@@ -80,7 +80,9 @@ export function makeVoicemail({ vmId, callId, from, to, text, kind = 'typed', vo
   const t = clean(text, VOICEMAIL_MAX);
   const a = kind === 'audio' ? cleanAudio(audio) : '';
   if (kind === 'audio' ? !a : !t) return null;
-  const pick = (p) => ({ actorId: p?.actorId || null, contactId: p?.contactId || null, number: p?.number || '', name: p?.name || '' });
+  // a payphone side keeps its booth id (audit DATA-18): the GM checks it against who is really on the booth
+  const pick = (p) => ({ actorId: p?.actorId || null, contactId: p?.contactId || null, number: p?.number || '', name: p?.name || '',
+    ...(p?.payphone ? { payphone: String(p.payphone) } : {}) });
   return { vmId: vmId || `vm-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`, callId: callId || '',
     from: pick(from), to: pick(to), text: t, kind: ['tts', 'audio'].includes(kind) ? kind : 'typed', voice: clean(voice, VOICE_NAME_MAX), at, gameTime, heard: false,
     audio: a, duration: clampNum(duration, 0, 600, 0) };

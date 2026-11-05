@@ -9,7 +9,7 @@
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, isGM, isPrimaryGM } from '../utils/helpers.js';
-import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf, entryStandsFor, senderChoices } from '../utils/identities.js';
+import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf, entryStandsFor, senderChoices, reparentAliases, planIdentityRepairs } from '../utils/identities.js';
 import { sanitizeKnows, knowsHolder, knowsOf, knownByNpcs, withKnows, ownIds } from '../utils/npcKnows.js';
 
 export class MasterContactService {
@@ -432,6 +432,8 @@ export class MasterContactService {
     if (idx === -1) return { success: false, error: 'Contact not found' };
 
     const removed = this._contacts.splice(idx, 1)[0];
+    // its aliases get a new home instead of routing to a dead inbox (audit DATA-16)
+    this._applyIdentityPatches(reparentAliases([...this._contacts, removed], [contactId]));
     await this._persistContacts();
     await game.nightcity?.callService?.retireOwner?.({ contactId });
 
@@ -439,6 +441,34 @@ export class MasterContactService {
     log.info(`Master contact removed: ${removed.name} (${contactId})`);
     await this._onMasterListChanged();
     return { success: true };
+  }
+
+  /**
+   * Apply `{id, patch}` identity patches to the in-memory list (an `identityOf` / `actorId` of null is cleared).
+   * The caller persists. @private
+   */
+  _applyIdentityPatches(patches) {
+    for (const { id, patch } of patches || []) {
+      const c = this._contacts.find((x) => x.id === id);
+      if (!c) continue;
+      for (const [k, v] of Object.entries(patch)) { if (v === null) delete c[k]; else c[k] = v; }
+    }
+    return (patches || []).length;
+  }
+
+  /**
+   * Orphan Audit (audit DATA-16): aliases whose main is gone, and contacts linked to a deleted character.
+   * `apply: false` only reports. GM only.
+   * @returns {Promise<{ stranded: object[], deadLinks: object[], changed: number }>}
+   */
+  async repairIdentityLinks({ apply = false } = {}) {
+    const plan = planIdentityRepairs(this._contacts, (id) => !!game.actors?.get(id));
+    if (!apply || !isGM() || !plan.patches.length) return { ...plan, changed: 0 };
+    const changed = this._applyIdentityPatches(plan.patches);
+    await this._persistContacts();
+    this.eventBus?.emit('contacts:masterUpdated', { action: 'repair', count: changed });
+    await this._onMasterListChanged();
+    return { ...plan, changed };
   }
 
   /**
@@ -450,10 +480,12 @@ export class MasterContactService {
     if (!isGM()) return { success: false, removed: 0 };
 
     const before = this._contacts.length;
+    const all = [...this._contacts];
     this._contacts = this._contacts.filter(c => !contactIds.includes(c.id));
     const removed = before - this._contacts.length;
 
     if (removed > 0) {
+      this._applyIdentityPatches(reparentAliases(all, contactIds));   // audit DATA-16
       await this._persistContacts();
       this.eventBus?.emit('contacts:masterUpdated', { action: 'bulkRemove', count: removed });
       log.info(`Bulk removed ${removed} master contacts`);

@@ -35,6 +35,60 @@ export function groupKeyOf(contacts, c) {
   return null;
 }
 
+/**
+ * The aliases left behind when their main identity is removed (audit DATA-16) — they pointed `identityOf` at an id
+ * that no longer exists, so their mail routed to a dead inbox. Each stranded group gets a new home:
+ *   - the removed main belonged to a CHARACTER that still has another identity → they point at that one;
+ *   - otherwise one of them (the starred one, else the first) becomes the main and the rest point at it.
+ * `removedIds` may name contacts already gone from `contacts` (a dangling link found by the audit).
+ * Pure; returns `[{ id, patch }]` where a patch's `identityOf: null` means "clear it".
+ */
+export function reparentAliases(contacts, removedIds) {
+  const gone = new Set(removedIds || []);
+  const left = (contacts || []).filter((c) => !gone.has(c.id));
+  const patches = new Map();
+  for (const rootId of gone) {
+    const orphans = left.filter((c) => c.identityOf === rootId);
+    if (!orphans.length) continue;
+    const root = (contacts || []).find((c) => c.id === rootId);
+    const sibling = root?.actorId ? left.find((c) => c.actorId === root.actorId) : null;
+    if (sibling) { for (const o of orphans) patches.set(o.id, { identityOf: sibling.id }); continue; }
+    const heir = orphans.find((c) => c.primaryIdentity) || orphans[0];
+    patches.set(heir.id, { identityOf: null });
+    for (const o of orphans) if (o !== heir) patches.set(o.id, { identityOf: heir.id });
+  }
+  return [...patches].map(([id, patch]) => ({ id, patch }));
+}
+
+/**
+ * What the Orphan Audit repairs in the directory (audit DATA-16), as patches — nothing is written here.
+ *   stranded: aliases whose `identityOf` names a contact that no longer exists → `reparentAliases`.
+ *   deadLinks: contacts linked to a character that was deleted → the link is cleared, so mail reaches their own
+ *              contact inbox; when the character had several identities, they stay one group (the starred one,
+ *              else the first, becomes the main, the rest point at it).
+ * @param {object[]} contacts @param {(actorId: string) => boolean} actorExists
+ * @returns {{ stranded: object[], deadLinks: object[], patches: {id, patch}[] }}
+ */
+export function planIdentityRepairs(contacts, actorExists) {
+  const list = contacts || [];
+  const ids = new Set(list.map((c) => c.id));
+  const dangling = [...new Set(list.map((c) => c.identityOf).filter((id) => id && !ids.has(id)))];
+  const stranded = list.filter((c) => c.identityOf && !ids.has(c.identityOf));
+  const patches = new Map(reparentAliases(list, dangling).map(({ id, patch }) => [id, patch]));
+  const deadLinks = list.filter((c) => c.actorId && !actorExists(c.actorId));
+  const byActor = new Map();
+  for (const c of deadLinks) byActor.set(c.actorId, [...(byActor.get(c.actorId) || []), c]);
+  for (const group of byActor.values()) {
+    const main = group.find((c) => c.primaryIdentity) || group[0];
+    for (const c of group) patches.set(c.id, { ...(patches.get(c.id) || {}), actorId: null, identityOf: c === main ? null : main.id });
+    // aliases that pointed at one of these contacts follow the main
+    for (const c of list) if (!c.actorId && c.identityOf && group.some((g) => g.id === c.identityOf) && c.identityOf !== main.id) {
+      patches.set(c.id, { ...(patches.get(c.id) || {}), identityOf: main.id });
+    }
+  }
+  return { stranded, deadLinks, patches: [...patches].map(([id, patch]) => ({ id, patch })) };
+}
+
 /** Every contact in a group, main first (stable order otherwise). */
 export function identitiesOfKey(contacts, key) {
   if (!key) return [];

@@ -630,9 +630,23 @@ export class MessageService {
       }
 
       // Resolve recipient inbox: actorId, contactId, or pre-resolved _recipientInboxId
-      const recipientInboxId = data._recipientInboxId || data.toActorId || data.toContactId;
+      let recipientInboxId = data._recipientInboxId || data.toActorId || data.toContactId;
       if (!recipientInboxId) {
         return { success: false, error: 'No recipient inbox target' };
+      }
+      // The character this mail was keyed to was deleted, but its directory entry is still here (audit DATA-16):
+      // deliver to that entry's own inbox instead of a mailbox nobody can open. Only the GM can tell — a player's
+      // client never sees GM-owned actors, which is why this lives on the delivering side.
+      if (game.user.isGM && recipientInboxId === data.toActorId && !game.actors?.get(recipientInboxId)) {
+        const mcs = game.nightcity?.masterContactService;
+        const entry = (data.toContactId && mcs?.getContact?.(data.toContactId)) || mcs?.getByActorId?.(recipientInboxId) || null;
+        if (entry) {
+          log.info(`Delivery: character ${recipientInboxId} is gone — delivering to the directory entry "${entry.name}" instead.`);
+          recipientInboxId = entry.id;
+          data._recipientInboxId = entry.id;
+          data.toContactId = entry.id;
+          data.toActorId = null;
+        }
       }
 
       // Unknown-sender spam filtering — may route this message to the player's
@@ -658,7 +672,14 @@ export class MessageService {
 
       // Create sent copy in sender's outbox (a fan-out writes ONE for the
       // whole party from _deliverMany instead).
-      if (sentCopy) await this._createSentCopy(data);
+      if (sentCopy) {
+        // The mail arrived either way; a missing sent copy only loses the sender's record of it — say so (DATA-16).
+        const sc = await this._createSentCopy(data).catch((err) => ({ success: false, error: err.message }));
+        if (sc && sc.success === false) {
+          log.warn(`Sent copy not written: ${sc.error || 'unknown reason'}`);
+          if (game.user.isGM) ncmNotify.warn(`NCM | "${data.subject || '(no subject)'}" was delivered, but the sender's sent copy could not be saved: ${sc.error || 'unknown reason'}.`);
+        }
+      }
 
       // Terminal mirror — an account linked to this recipient (by contact,
       // actor, or email) is that character's inbox on the machine, so the

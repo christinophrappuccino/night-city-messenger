@@ -2358,8 +2358,8 @@ export class TerminalService {
   async reapForgedAccounts() {
     if (!isPrimaryGM()) return;   // one GM reaps (INT-01)
     const now = this._nowMs();
-    for (const item of game.items) {
-      if (!this.isTerminal(item)) continue;
+    // every terminal, carried ones too (audit DATA-10: a backdoor on a terminal in someone's gear never closed)
+    for (const item of this.collectTerminals()) {
       const accts = this.getConfig(item).accounts || [];
       const expired = accts.filter(a => {
         const at = a?.forged?.expiresAt;
@@ -2404,8 +2404,8 @@ export class TerminalService {
   async reapResidents() {
     if (!isPrimaryGM()) return;   // one GM fires due residents (two GMs fired each twice — INT-01)
     const now = this._nowMs();
-    for (const item of game.items) {
-      if (!this.isTerminal(item)) continue;
+    // every terminal, carried ones too (audit DATA-10)
+    for (const item of this.collectTerminals()) {
       const due = this.getResidents(item).filter(r =>
         r.state === 'armed' && r.trigger?.kind === 'onDate' &&
         Number(r.trigger.atMs) && Number(r.trigger.atMs) <= now &&

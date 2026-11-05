@@ -219,6 +219,12 @@ export async function runMigrations() {
   // Interface DVs by twice the amount — INT-01 / DATA-09).
   if (!isPrimaryGM()) return { ran: 0, from: 0, to: 0 };
 
+  // Not until the id migration has run (audit DATA-09): a world still holding its data under the old module id
+  // would otherwise be stamped "current" here while empty, and the legacy data would skip every later step once
+  // the GM accepts the move. A fresh world is stamped done at ready, before this runs.
+  try { if (!game.settings.get(MODULE_ID, 'namespaceMigrationDone')) return { ran: 0, from: 0, to: 0 }; }
+  catch { return { ran: 0, from: 0, to: 0 }; }
+
   let from = 0;
   try { from = Number(game.settings.get(MODULE_ID, 'dataSchemaVersion')) || 0; }
   catch { return { ran: 0, from: 0, to: 0 }; } // setting not registered yet

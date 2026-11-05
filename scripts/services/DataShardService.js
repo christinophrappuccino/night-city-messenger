@@ -155,6 +155,13 @@ export class DataShardService {
       if (deleteJournal && journalId && !isArchive) {
         const journal = game.journal.get(journalId);
         if (journal) await journal.delete();
+        // Archive copies were windows on this journal (audit INT-08): with it gone they show nothing, so they stop
+        // being shards too. Their own name and art stay.
+        for (const copy of game.items?.contents ?? []) {
+          if (copy.id !== item.id && copy.getFlag(MODULE_ID, 'shardArchive') && copy.getFlag(MODULE_ID, 'journalId') === journalId) {
+            await this.removeDataShard(copy, false);
+          }
+        }
       }
 
       log.info(`Data shard removed from "${item.name}"`);
@@ -1817,7 +1824,10 @@ export class DataShardService {
     // The journal is GM-owned and the item may be too — a player relays.
     if (!isGM()) return this._relayState('destroy', shardItem);
     try {
-      const journal = this._getLinkedJournal(shardItem);
+      // An archive copy shares the SOURCE's journal (audit INT-08): wiping it would gut the player's real shard.
+      // An archive only ever marks itself.
+      const isArchive = !!shardItem.getFlag(MODULE_ID, 'shardArchive');
+      const journal = isArchive ? null : this._getLinkedJournal(shardItem);
       if (journal) {
         // Delete all pages (messages)
         const pageIds = journal.pages.map(p => p.id);
@@ -1826,14 +1836,10 @@ export class DataShardService {
         }
       }
 
-      // Mark as destroyed in state
-      await shardItem.update({
-        [`flags.${MODULE_ID}.state`]: {
-          decrypted: false,
-          sessions: {},
-          destroyed: true,
-        },
-      });
+      // Mark as destroyed in state. Replace the block, never merge into it (audit INT-08): a merged write kept
+      // every old session, so `sessions: {}` cleared nothing.
+      await shardItem.unsetFlag(MODULE_ID, 'state');
+      await shardItem.setFlag(MODULE_ID, 'state', { decrypted: false, sessions: {}, destroyed: true });
 
       this.soundService?.play('shard-expire');
       log.info(`Shard "${shardItem.name}" self-destructed`);
