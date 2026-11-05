@@ -8,6 +8,7 @@
 //   - filters / search / holder / grouping / selection / bulk / openTo / import / export /
 //     unconvert / authoring-on behave.
 // Run: node dev/tools/sims/test-admin-shards.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import fs from 'fs';
 import { createRequire } from 'module';
@@ -428,7 +429,7 @@ ok(tpl.includes('Data Shards → Player-Made') && tpl.includes("character's gear
 
 // ═══ 10. Real render ═══
 let H = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

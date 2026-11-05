@@ -4,6 +4,7 @@
 // through Foundry's Handlebars with a context built from those rules, and guards the
 // wiring the template + tab + stylesheet must agree on.
 // Run: node dev/tools/sims/test-shards-cartridges.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import fs from 'fs';
 import { createRequire } from 'module';
@@ -137,7 +138,7 @@ ok(!/#[0-9a-f]{3,8}\b/i.test(block) && !/border-radius:\s*[3-9]px/.test(block), 
 
 // ═══ 7. Real render ═══
 let H = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

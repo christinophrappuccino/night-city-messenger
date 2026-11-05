@@ -3,6 +3,7 @@
 // which made the token HUD's elevation box disabled for everyone (testers 2026-11-03).
 // Runs the REAL helper source through the REAL Handlebars from the Foundry install, on Foundry's real token HUD template.
 // Usage: node dev/tools/sims/test-core-helpers.mjs
+import { FOUNDRY_APP_DIRS } from './lib/foundryApp.mjs';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
@@ -12,7 +13,7 @@ let pass = 0, fail = 0;
 const ok = (cond, name) => { cond ? pass++ : (fail++, console.error('FAIL:', name)); };
 
 let Handlebars = null, APP = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app']) {
+for (const p of [...FOUNDRY_APP_DIRS]) {
   if (!existsSync(`${p}/package.json`)) continue;
   try { Handlebars = createRequire(`${p}/package.json`)('handlebars'); APP = p; break; } catch { /* keep looking */ }
 }

@@ -5,6 +5,7 @@
 // line), guards the MessagesTab / template / CSS wiring, and renders the REAL
 // template through Foundry's Handlebars.
 //   node dev/tools/sims/test-messages-desk.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import { createRequire } from 'module';
@@ -96,7 +97,7 @@ const deskHbs = hbs.slice(hbs.indexOf('NEEDS A REPLY'), hbs.indexOf('ALL MAIL'))
 
 // ═══ 3. REAL render ═══
 let HB = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!existsSync(p)) continue;
   try { HB = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

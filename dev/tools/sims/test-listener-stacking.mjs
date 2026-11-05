@@ -5,6 +5,7 @@
 //   PERF-03  the composer added a keydown handler to its frame and a selectionchange handler to the page on every
 //            render; close() removed only the last — Escape closed N times, and closed composers stayed in memory.
 // Runs the REAL method source (lifted from the files) on fake elements that count listeners.
+import { FOUNDRY_APP_DIRS } from './lib/foundryApp.mjs';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 
@@ -90,7 +91,7 @@ ok(/if \(!this\._enterBound\) \{\s*this\._enterBound = true;\s*html\.addEventLis
   const { existsSync } = await import('fs');
   const { createRequire } = await import('module');
   let HB = null;
-  for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app']) {
+  for (const p of [...FOUNDRY_APP_DIRS]) {
     if (!existsSync(`${p}/package.json`)) continue;
     try { HB = createRequire(`${p}/package.json`)('handlebars'); break; } catch { /* keep looking */ }
   }

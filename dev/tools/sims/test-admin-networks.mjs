@@ -9,6 +9,7 @@
 //   · the four views build, filter, and render; openTo grammar; the openers are repointed
 //     and the standalone app is gone.
 // Run: node dev/tools/sims/test-admin-networks.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -251,7 +252,7 @@ tab.openTo('CORPNET'); ok(tab._view === 'all' && tab._edit && !tab._isNew && tab
 
 // ═══ 4. REAL render + the editor round trip ═══
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

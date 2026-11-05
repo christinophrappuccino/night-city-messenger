@@ -22,6 +22,7 @@
  *
  * Run: node dev/tools/sims/test-mailbox-styles.mjs
  */
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -146,7 +147,7 @@ check('any animation is reduced-motion guarded', () => !/animation:|@keyframes/.
 
 console.log('\n[7] REAL render through Handlebars — all four styles, mail + files');
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

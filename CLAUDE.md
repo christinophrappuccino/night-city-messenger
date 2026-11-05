@@ -28,7 +28,15 @@ Before presenting changes, syntax-check JS and balance-check Handlebars:
 ```bash
 node dev/tools/check-syntax.mjs            # every .js/.mjs in scripts/ + dev/tools/, in MODULE context
 node dev/tools/check-syntax.mjs scripts    # or just one tree
+node dev/tools/run-checks.mjs              # EVERYTHING: syntax + exact-case paths + every sims/test-*.mjs (~25 s)
 ```
+
+**CI runs `run-checks.mjs` before every dev build and every release** (`.github/workflows/checks.yml`, called by
+`dev-build.yml` and `release.yml`; a failure publishes nothing). It runs on Linux with no Foundry install, so: a sim
+that needs Foundry's Handlebars finds it through `dev/tools/sims/lib/foundryApp.mjs` (never a hard-coded
+`C:/Program Files/…` path on its own), and every path the module loads must match the file's case exactly
+(`dev/tools/check-paths.mjs` — Windows forgives a wrong case, The Forge's Linux servers do not). To run the sims the
+way CI does: `NCM_FOUNDRY_APP=<folder with node_modules/handlebars@4.7.8> NCM_NO_LOCAL_FOUNDRY=1 node dev/tools/run-checks.mjs`.
 
 > **`node --check path/to/file.js` IS NOT ENOUGH — it passes files Foundry cannot load.**
 > With no `package.json` type, node parses a `.js` file as CommonJS/sloppy script, and

@@ -7,6 +7,7 @@
 // guards the wiring (dialog actions, Roll Reveal hideDV, the three editor hosts,
 // the setting, the stylesheet).
 // Run: node dev/tools/sims/test-countermeasures.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -139,7 +140,7 @@ ok(V.readCmvOverride({ matches: () => false, querySelector: () => null }) === nu
 
 // ═══ 3. REAL renders through Handlebars ═══
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

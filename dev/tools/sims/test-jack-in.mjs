@@ -3,6 +3,7 @@
 // REAL NetworkService log / alert / wipe writes over a mocked world, the REAL template through Handlebars, and the
 // Security → Hacking rules → Jacking in card wiring.
 //   node dev/tools/sims/test-jack-in.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import { createRequire } from 'module';
@@ -146,7 +147,7 @@ ok(J.movesFor(d, 4, 9) === 3 && J.movesFor(dm, 4, 5) === 4 && J.movesFor(dm, 4, 
 
   // REAL render
   let H = null;
-  for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+  for (const p of [...FOUNDRY_APP_PKGS]) {
     if (!existsSync(p)) continue; try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
   }
   if (!H) { fail++; console.error('FAIL: no Handlebars — render checks did not run'); }

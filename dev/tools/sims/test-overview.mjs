@@ -5,6 +5,7 @@
 // guards the wiring (actions registered, every class styled, every context key
 // read, the player-network hello, the table ops on the real OverviewTab).
 // Run: node dev/tools/sims/test-overview.mjs      (NCM_DUMP=<dir> also writes the render + the ov context as JSON)
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -180,7 +181,7 @@ ok(/_gatherTable[\s\S]{0,800}playerNetworks/.test(tab), 'the table reads the rec
 
 // ═══ 6. REAL render through Handlebars ═══
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

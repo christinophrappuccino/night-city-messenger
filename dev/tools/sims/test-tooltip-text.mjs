@@ -11,6 +11,7 @@
 // through tipText (or the composer's own tip()); a REAL Handlebars render shows
 // a hostile name as text after the two decodes Foundry does; the GM dialogs
 // escape names; access-point macro labels drop U+2028/U+2029.
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -100,7 +101,7 @@ ok(/p\.dataset\.tooltip = h\(p\.textContent\.trim\(\)\)/.test(read('scripts/ui/A
 
 // ═══ 4. REAL Handlebars render ═══
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

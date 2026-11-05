@@ -5,6 +5,7 @@
 // template through Foundry's Handlebars and guards the wiring (every data-op is
 // handled, every data-action registered, every class styled).
 //   node dev/tools/sims/test-admin-messages.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import { createRequire } from 'module';
@@ -653,7 +654,7 @@ const appSrc = read('scripts/ui/AdminPanel/AdminPanelApp.js');
 
 // ═══ 8. REAL render through Handlebars ═══
 let H = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!existsSync(p)) continue;
   try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

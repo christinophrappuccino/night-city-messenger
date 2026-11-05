@@ -1,5 +1,6 @@
 // Admin → Access points — the pure rules, the REAL tab gathering a mocked world, and a REAL Handlebars render.
 // node dev/tools/sims/test-access-tab.mjs      (NCM_DUMP=<dir> writes acc-map.html / acc-thing.html for the preview)
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -142,7 +143,7 @@ ok(css.includes('.ncm-acc2 > :not(.ncm-acc2-split) { flex: 0 0 auto; }'), 'only 
 
 // ═══ 5. REAL Handlebars render ═══
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

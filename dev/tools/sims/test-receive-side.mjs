@@ -12,6 +12,7 @@
 // cleanMirror itself needs a real DOM: the Foundry macro dev/tools/test-a5b-receive-side.macro.js
 // runs it with a hostile picture. Here: the pure rules, the real WatchService and
 // OverheardService socket handlers, a real Handlebars render, and source guards.
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -52,7 +53,7 @@ ok(cssUrl(null) === '' && cssUrl('') === '', 'empty → empty');
 
 // ═══ 2. A real Handlebars render of url('{{ncm-css-url}}') ═══
 let H = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { H = createRequire(p)('handlebars').create(); break; } catch { /* next */ }
 }

@@ -2,6 +2,7 @@
 // context and ops over the REAL NetworkService (mocked world), the shared network lockout (jackKey / jackLock), kicks
 // (the console drops a kicked session), the quest notice, and renders the REAL template through Handlebars.
 //   node dev/tools/sims/test-node-inspector.mjs     (NCM_DUMP=<dir> writes node-inspector.html)
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
@@ -104,7 +105,7 @@ let ctx;
   ok(ctx2.addInf && ctx2.adds.find((a) => a.k === 'infection').open && ctx2.plants.length === 4, 'Add → Infection opens its form');
 
   let H = null;
-  for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+  for (const p of [...FOUNDRY_APP_PKGS]) {
     if (!existsSync(p)) continue; try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
   }
   if (!H) { fail++; console.error('FAIL: no Handlebars — render checks did not run'); }

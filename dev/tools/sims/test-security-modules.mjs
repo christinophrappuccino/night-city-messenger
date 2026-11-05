@@ -5,6 +5,7 @@
 // 3. template ↔ tab ↔ css wiring guards
 // 4. the REAL template through Foundry's Handlebars, both views
 // Run: node dev/tools/sims/test-security-modules.mjs   (NCM_DUMP=<file.json> writes the two contexts)
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -270,7 +271,7 @@ ok(!/game\.|foundry\.|ui\./.test(read('scripts/ui/AdminPanel/tabs/securityModel.
 
 // ═══ 4. real render ═══
 let H = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

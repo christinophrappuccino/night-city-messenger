@@ -2,6 +2,7 @@
 // REAL NetworkService node API + the scene rule in getAvailableNetworks + the player relay + the jam reaper over a
 // mocked world, the node dialog round-trip, and the admin wiring (setting, socket op, template ↔ ops, CSS).
 //   node dev/tools/sims/test-network-nodes.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { createRequire } from 'module';
@@ -218,7 +219,7 @@ const mkThis = (Cls, props) => { const o = Object.create(Cls.prototype); for (co
   asGM = true;
 
   let H = null;
-  for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+  for (const p of [...FOUNDRY_APP_PKGS]) {
     if (!existsSync(p)) continue; try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
   }
   if (!H) { fail++; console.error('FAIL: could not load Handlebars from a Foundry install — render checks did not run'); }

@@ -10,6 +10,7 @@
  * (skipped when no Foundry install is found). Design: dev/design/SHARD-INTEGRITY.md.
  */
 
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -354,8 +355,7 @@ if (ItemInboxApp) {
 section('real templates (Foundry Handlebars)');
 
 const CANDIDATES = [
-  'C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json',
-  'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json',
+  ...FOUNDRY_APP_PKGS,
 ];
 let HB = null;
 for (const p of CANDIDATES) {

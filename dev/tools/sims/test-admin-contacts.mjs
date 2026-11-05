@@ -4,6 +4,7 @@
 // Handlebars for each view, and guards the wiring (every data-op handled, every class
 // styled, every opener repointed, the retired window gone).
 //   Run: node dev/tools/sims/test-admin-contacts.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { readFileSync, existsSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
@@ -525,7 +526,7 @@ const ctx = () => tab.prepareContext();
 }
 
 // ═══ 10. The REAL template through Handlebars, every view ═══
-const HB_CANDIDATES = ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json'];
+const HB_CANDIDATES = [...FOUNDRY_APP_PKGS];
 let Handlebars = null;
 for (const p of HB_CANDIDATES) { if (!existsSync(p)) continue; try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* next */ } }
 const tpl = read('templates/admin-panel/tab-contacts.hbs');

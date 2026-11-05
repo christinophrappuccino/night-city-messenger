@@ -3,6 +3,7 @@
 // checks: Quick Blast · Category dropdown · Templates actions share ONE top row; the category pill row is gone;
 // the dropdown lists every category with its count; SpamTab wires a change listener (a <select> data-action
 // fires on click). NCM_DUMP=<dir> writes the rendered HTML for a headless look.
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
@@ -11,7 +12,7 @@ const read = (p) => readFileSync(new URL(p, ROOT), 'utf8');
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } };
 
-const HB_CANDIDATES = ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json'];
+const HB_CANDIDATES = [...FOUNDRY_APP_PKGS];
 let Handlebars = null;
 for (const p of HB_CANDIDATES) { if (!existsSync(p)) continue; try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* next */ } }
 

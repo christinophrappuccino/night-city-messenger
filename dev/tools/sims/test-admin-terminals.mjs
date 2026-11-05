@@ -6,6 +6,7 @@
 // data-op the template uses is handled, every term2 key the template reads is
 // produced, every class the template uses is styled, and a REAL Handlebars render.
 // Run: node dev/tools/sims/test-admin-terminals.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -489,7 +490,7 @@ ok(/getAccountMessages\?\.\(item, a\.id, \{ enforceGates: false/.test(js), 'mail
 
 // ═══ 7. REAL render ═══
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

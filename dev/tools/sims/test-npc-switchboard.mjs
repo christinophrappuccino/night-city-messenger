@@ -4,6 +4,7 @@
 // _switchboardContext over a mocked world, the ops, and renders the REAL template
 // snippet (between the sb:start / sb:end markers) through Foundry's Handlebars.
 //   Run: node dev/tools/sims/test-npc-switchboard.mjs        (NCM_DUMP=<dir> writes a headless harness)
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
@@ -199,7 +200,7 @@ ok(!/transform-origin/.test(sbCss), 'no CSS rotation');
 ok(/--sb-attn-text: color-mix\(in oklab, var\(--ncm-attn\) 72%, var\(--ncm-text-heading\)\)/.test(sbCss), 'amber text has a darker-on-light twin');
 
 // ═══ 4. The REAL snippet through Handlebars ═══
-const HB = ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json'];
+const HB = [...FOUNDRY_APP_PKGS];
 let Handlebars = null;
 for (const p of HB) { if (!existsSync(p)) continue; try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* next */ } }
 if (!Handlebars) { fail++; console.error('FAIL: Handlebars not found (Foundry install) — template not rendered'); }

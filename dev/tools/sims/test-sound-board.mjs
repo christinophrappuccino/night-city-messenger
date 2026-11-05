@@ -1,6 +1,7 @@
 // Sim: the Sound board (2026-10-29) — the catalogue (every sound says where it plays), the replacement rules, the REAL
 // SoundService honouring a replacement / a volume / Off, and the REAL template through Handlebars.
 //   node dev/tools/sims/test-sound-board.mjs     (NCM_DUMP=<dir> writes sound-board.html)
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
@@ -88,7 +89,7 @@ ok(svcSrc.includes('const s = this.source(soundId);') && svcSrc.includes('fetch(
 
 // ═══ 4. The board: template, wiring ═══
 let H = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!existsSync(p)) continue; try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }
 if (!H) { fail++; console.error('FAIL: no Handlebars'); }

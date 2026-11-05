@@ -9,6 +9,7 @@
  *   Run: node dev/tools/sims/test-shard-theme.mjs
  */
 
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -285,8 +286,7 @@ section('the Theme panel RENDERS its data (not just declares it)');
 // little if the data never binds — that is exactly how `_bootContext`'s
 // double-nesting shipped a blank boot screen past hand-written markup tests.
 const CANDIDATES = [
-  'C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json',
-  'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json',
+  ...FOUNDRY_APP_PKGS,
 ];
 let Handlebars = null;
 for (const p of CANDIDATES) {

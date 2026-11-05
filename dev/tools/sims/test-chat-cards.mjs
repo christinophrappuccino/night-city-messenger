@@ -5,6 +5,7 @@
 // MessagesTab.onShareToChat, the REAL whisperCardHtml / postNetActionCard, and
 // ChatCards.rowAffordance; renders the five REAL templates through Foundry's
 // Handlebars; then static guards on the stylesheet and the retired pieces.
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import { createRequire } from 'module';
@@ -15,7 +16,7 @@ let pass = 0, fail = 0;
 const ok = (cond, name) => { cond ? pass++ : (fail++, console.error('FAIL:', name)); };
 
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

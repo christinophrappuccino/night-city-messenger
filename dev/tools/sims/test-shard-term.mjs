@@ -4,6 +4,7 @@
 // snippets through Foundry's own Handlebars with the real helper, and guards
 // that no player-facing template or string hardcodes "shard" again.
 // Run: node dev/tools/sims/test-shard-term.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -13,7 +14,7 @@ const ok = (cond, name) => { cond ? pass++ : (fail++, console.error('FAIL:', nam
 const read = (p) => readFileSync(`${ROOT}/${p}`, 'utf8');
 
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

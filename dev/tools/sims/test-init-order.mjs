@@ -12,6 +12,7 @@
 // 2. Renders the converted template spots through the REAL Handlebars with social-navigator's helpers loaded AFTER
 //    NCM's (when that module is installed).
 // 3. Guard: no comparison BLOCK helper and no and/or with more than 2 arguments anywhere in templates/.
+import { FOUNDRY_APP_DIRS } from './lib/foundryApp.mjs';
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -99,7 +100,7 @@ const ok = (cond, name) => { cond ? pass++ : (fail++, console.error('FAIL:', nam
 
 // ═══ 2. The converted spots render with another module's 2-argument helpers ═══
 let HB = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app']) {
+for (const p of [...FOUNDRY_APP_DIRS]) {
   if (!existsSync(`${p}/package.json`)) continue;
   try { HB = createRequire(`${p}/package.json`)('handlebars'); break; } catch { /* keep looking */ }
 }

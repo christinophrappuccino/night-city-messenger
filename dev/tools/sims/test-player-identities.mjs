@@ -3,6 +3,7 @@
 // Drives the pure rules, the REAL MasterContactService / EmailService / composer + viewer methods via prototype.call,
 // the REAL templates through Handlebars, and the guide wiring.
 // Run: node dev/tools/sims/test-player-identities.mjs
+import { FOUNDRY_APP_DIRS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -157,7 +158,7 @@ vee.isOwner = true;
 // ═══ 6. The real templates ═══
 const require = createRequire(import.meta.url);
 let Handlebars = null;
-for (const p of [process.env.NCM_HANDLEBARS, 'C:/Program Files/Foundry Virtual Tabletop/resources/app/node_modules/handlebars/dist/cjs/handlebars.js']) {
+for (const p of [process.env.NCM_HANDLEBARS, ...FOUNDRY_APP_DIRS.map((d) => `${d}/node_modules/handlebars/dist/cjs/handlebars.js`)]) {
   try { if (p && fs.existsSync(p)) { const m = require(p); Handlebars = m.default || m; break; } } catch { /* next */ }
 }
 if (Handlebars) {

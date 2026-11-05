@@ -1,0 +1,45 @@
+# Runs every automated check (dev/tools/run-checks.mjs): the module-context syntax check, the exact-case path check,
+# and every dev/tools/sims/test-*.mjs.
+#
+# - On a push to any branch except dev, and on pull requests: just the checks.
+# - dev-build.yml and release.yml call this workflow first and only build when it passes, so a failing sim stops a
+#   dev build or a release from being published.
+#
+# The sims that render templates need Foundry's own Handlebars (4.7.8 in Foundry v12). On the developer's machine they
+# find the Foundry install; here a copy is installed into the runner's temp folder and NCM_FOUNDRY_APP points at it.
+# Nothing here is a build step: the repo stays directly loadable by Foundry.
+
+name: Checks
+
+on:
+  push:
+    branches-ignore:
+      - dev            # dev-build.yml calls this workflow itself
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Foundry v12's Handlebars for the template sims
+        run: |
+          APP="$RUNNER_TEMP/foundry-app"
+          mkdir -p "$APP"
+          echo '{ "name": "ncm-ci-foundry-app", "private": true }' > "$APP/package.json"
+          npm install --prefix "$APP" --no-save --no-package-lock --no-audit --no-fund handlebars@4.7.8
+          echo "NCM_FOUNDRY_APP=$APP" >> "$GITHUB_ENV"
+
+      - name: Syntax, paths and sims
+        run: node dev/tools/run-checks.mjs --jobs 4

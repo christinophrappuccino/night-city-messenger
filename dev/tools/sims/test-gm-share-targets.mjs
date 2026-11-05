@@ -17,6 +17,7 @@
  *
  *   Run: node dev/tools/sims/test-gm-share-targets.mjs
  */
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import path from 'path';
 import assert from 'assert';
@@ -32,8 +33,7 @@ const check = (name, fn) => {
 const section = (t) => console.log(`\n── ${t} ${'─'.repeat(Math.max(0, 58 - t.length))}`);
 
 const CANDIDATES = [
-  'C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json',
-  'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json',
+  ...FOUNDRY_APP_PKGS,
 ];
 let Handlebars = null;
 for (const p of CANDIDATES) {

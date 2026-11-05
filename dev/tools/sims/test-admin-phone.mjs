@@ -2,6 +2,7 @@
 // of every view, and the wiring (tab bar, partial, TEMPLATES, css import, every op in the template handled, every
 // ncm-ph2 class styled, Call as on Admin Contacts).
 //   node dev/tools/sims/test-admin-phone.mjs        (NCM_DUMP=<dir> writes phone-<view>.html)
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -83,7 +84,7 @@ tab.openTo('numbers'); ok(tab._view === 'numbers', 'openTo picks a view'); tab.o
 // ═══ 3. a REAL Handlebars render ═══
 const tpl = read('templates/admin-panel/tab-phone.hbs');
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

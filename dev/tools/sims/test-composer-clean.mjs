@@ -11,6 +11,7 @@
 //      the viewer's Drafts tab reads the list, the launcher whitelists draftId,
 //      the setting + service are registered, Send re-enables in finally.
 //   5. A real Handlebars render of the template (GM: drawer + preview; player).
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { readFileSync, existsSync } from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -234,7 +235,7 @@ const { buildPreview } = await import(pathToFileURL(`${ROOT}/scripts/ui/MessageC
 // ═══ 5. A real render ═══
 {
   let Handlebars = null;
-  for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+  for (const p of [...FOUNDRY_APP_PKGS]) {
     if (!existsSync(p)) continue;
     try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
   }

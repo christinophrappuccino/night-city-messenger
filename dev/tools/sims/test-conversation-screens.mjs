@@ -1,4 +1,5 @@
 // Conversations: the screens against the code they lean on. The pane and the admin view are strings, so a wrong name fails silently.
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import { readFileSync } from 'node:fs';
 
 let pass = 0, fail = 0;
@@ -77,7 +78,7 @@ ok(/conversationState/.test(read('scripts/core/FactoryReset.js')) || /MIGRATION_
 /* the real template compiles, and the row renders what the viewer gives it */
 const { createRequire } = await import('node:module');
 let H = null;
-for (const p of [process.env.NCM_FOUNDRY_RESOURCES, 'C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files/FoundryVTT/resources/app/package.json', 'C:/Program Files/Foundry Virtual Tabletop/package.json'].filter(Boolean)) { try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ } }
+for (const p of [process.env.NCM_FOUNDRY_RESOURCES, ...FOUNDRY_APP_PKGS, 'C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files/FoundryVTT/resources/app/package.json', 'C:/Program Files/Foundry Virtual Tabletop/package.json'].filter(Boolean)) { try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ } }
 if (H) {
   H.registerHelper('eq', (a, b) => a === b);
   { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }

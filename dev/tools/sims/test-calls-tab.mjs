@@ -2,6 +2,7 @@
 // (off / picker / main), the pure log rows + speed dial, and the wiring guards (every calls-* action in the template is
 // handled, every class the template uses is styled, the viewer has three tabs with Drafts/Scheduled as chips).
 //   node dev/tools/sims/test-calls-tab.mjs            (NCM_DUMP=<dir> writes calls-main.html / calls-picker.html)
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -91,7 +92,7 @@ ok(off.off && /switched off/.test(off.reason), 'off face says why');
 // ═══ 3. a REAL Handlebars render ═══
 const tpl = read('templates/message-viewer/partials/calls-tab.hbs');
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

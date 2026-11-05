@@ -3,6 +3,7 @@
 // label placement), the context builder (contactsMap.js) over mocked world data, renders the REAL
 // partial through Handlebars, and guards the wiring (template path, stylesheet import, ops, scroller).
 // Run: node dev/tools/sims/test-contacts-map.mjs
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -141,7 +142,7 @@ ok(Array.isArray(MAP_ZOOMS) && MAP_ZOOMS[0] === 1 && MAP_ZOOMS.every((z, i) => !
 
 // ═══ 5. REAL render through Handlebars ═══
 let Handlebars = null;
-for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json']) {
+for (const p of [...FOUNDRY_APP_PKGS]) {
   if (!fs.existsSync(p)) continue;
   try { Handlebars = createRequire(p)('handlebars'); break; } catch { /* keep looking */ }
 }

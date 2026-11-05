@@ -15,6 +15,7 @@
 // Drives the real richText.js, MessageService.buildForward, the composer's
 // _initForward, and enrichContent + content-body.hbs through Foundry's own
 // Handlebars (skipped if no Foundry install is found).
+import { FOUNDRY_APP_PKGS } from './lib/foundryApp.mjs';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -134,7 +135,7 @@ const liveScheme = (html) => [...html.matchAll(/\b(?:href|src)="([^"]*)"/g)].som
   const payload = enrichContent({ contentType: 'payload', subject: 'p', timestamp: '2045-01-01T00:00:00Z', contentData: { name: 'Prog', effect: { type: 'scanner' }, executed: true, scanReport: `SCAN — account ${hostile}` } }, { isGM: true, interactive: false });
   ok(!/onerror/.test(payload.contentData?.scanReport || '') && /SCAN/.test(payload.contentData?.scanReport || ''), 'payload scan report cleaned, text kept');
 
-  const CANDIDATES = ['C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json'];
+  const CANDIDATES = [...FOUNDRY_APP_PKGS];
   let HB = null;
   for (const p of CANDIDATES) { if (!fs.existsSync(p)) continue; try { HB = createRequire(p)('handlebars'); break; } catch { /* next */ } }
   if (!HB) {

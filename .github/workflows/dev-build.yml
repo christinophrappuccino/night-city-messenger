@@ -26,7 +26,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Every automated check must pass before the dev build is published (checks.yml).
+  checks:
+    uses: ./.github/workflows/checks.yml
+
   dev-build:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
