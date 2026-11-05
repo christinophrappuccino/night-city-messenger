@@ -95,7 +95,9 @@ This means: **to add a new service or hook, add a `register(phase, priority, nam
 
 ## Architecture: services
 
-Long-lived stateful objects in `scripts/services/` (MessageService, NetworkService, DataShardService, MasterContactService, SpamService, etc.) are constructed during the `init` phase and exposed on the `game.nightcity` namespace (e.g. `game.nightcity.messageService`). UI code accesses them via `BaseApplication` getters (`this.messageService`, `this.networkService`, etc.). Cross-service communication goes through `EventBus` (`scripts/core/EventBus.js`) using event names from the frozen `EVENTS` enum in `scripts/utils/constants.js`.
+Long-lived stateful objects in `scripts/services/` (MessageService, NetworkService, DataShardService, MasterContactService, SpamService, etc.) are constructed during the `ready` phase and exposed on the `game.nightcity` namespace (e.g. `game.nightcity.messageService`). UI code accesses them via `BaseApplication` getters (`this.messageService`, `this.networkService`, etc.). Cross-service communication goes through `EventBus` (`scripts/core/EventBus.js`) using event names from the frozen `EVENTS` enum in `scripts/utils/constants.js`.
+
+**`scripts/core/serviceMap.js` records which service looks up which** (`SERVICE_MAP`: `uses` + plain-words `does`). Those links go through `game.nightcity`, so imports don't show them; the startup report uses the table to tell the GM what stopped working when a step fails (`game.nightcity.startupReport` = `{ failed, missing, affected }`). **A new service, or a new `game.nightcity.<service>` lookup inside one, goes in the table** — `test-service-map` re-derives every lookup from the source and fails when they disagree. Services look each other up at call time, never in their constructors (MasterContactService is built after several of its users).
 
 ## System notes — read the system's file before changing it
 

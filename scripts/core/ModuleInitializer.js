@@ -8,6 +8,7 @@
 
 import { log } from '../utils/helpers.js';
 import { ncmNotify } from '../utils/notify.js';
+import { SERVICE_MAP, affectedBy, startupImpact } from './serviceMap.js';
 
 export class ModuleInitializer {
   constructor() {
@@ -34,9 +35,15 @@ export class ModuleInitializer {
    */
   reportFailures() {
     const n = this.failures.length;
+    // Which services a failure left missing, and which services use those directly (stage 2, batch 8: the notice
+    // used to name only the step, so "Calls init failed" said nothing about voicemail and payphones stopping too).
+    // Only looked for after a failure: a clean startup says nothing.
+    const missing = n ? Object.keys(SERVICE_MAP).filter((k) => !game.nightcity?.[k]) : [];
+    /** What the notice was built from — also on game.nightcity.startupReport for the console and the macros. */
+    this.report = { failed: this.failures.map((f) => f.name), missing, affected: affectedBy(missing) };
     if (!n || !game.user?.isGM) return n;
-    const names = this.failures.slice(0, 4).map((f) => f.name).join(', ') + (n > 4 ? `, and ${n - 4} more` : '');
-    ncmNotify.error(`NCM | ${n} startup step${n === 1 ? '' : 's'} failed: ${names}. Some features may not work. Press F12 and look for "FAILED" in the console for details.`, { permanent: true });
+    const impact = startupImpact({ failed: this.report.failed, missing });
+    ncmNotify.error(`NCM | ${impact}${missing.length ? '' : ' Some features may not work.'} Press F12 and look for "FAILED" in the console for details.`, { permanent: true });
     return n;
   }
 
