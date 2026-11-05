@@ -462,7 +462,8 @@ export class SocketHandlers {
     // lockout must be mirrored onto every client or the player's own login
     // checks still read "not locked" and they walk right back in. The receiver
     // also kicks any live session on the locked target and toasts the operator.
-    socketManager.register(SOCKET_OPS.SECURITY_LOCKOUT, (data) => {
+    socketManager.register(SOCKET_OPS.SECURITY_LOCKOUT, (data, sender) => {
+      if (!isFromGM(sender)) return;   // only a GM imposes a lockout (lockouts are saved now — audit D3)
       try {
         game.nightcity?.securityService?.receiveForcedLockout?.(data);
       } catch (err) {
@@ -503,7 +504,8 @@ export class SocketHandlers {
     });
 
     // ─── Clear tries / lockout (GM → everyone) ────────────
-    socketManager.register(SOCKET_OPS.SECURITY_CLEAR, (data) => {
+    socketManager.register(SOCKET_OPS.SECURITY_CLEAR, (data, sender) => {
+      if (!isFromGM(sender)) return;   // a player "clearing" their own lockout would erase the saved one (audit D3)
       try {
         game.nightcity?.securityService?.receiveClear?.(data);
       } catch (err) {
@@ -512,7 +514,8 @@ export class SocketHandlers {
     });
 
     // ─── End a terminal session (GM → everyone) ───────────
-    socketManager.register(SOCKET_OPS.TERMINAL_KICK, (data) => {
+    socketManager.register(SOCKET_OPS.TERMINAL_KICK, (data, sender) => {
+      if (!isFromGM(sender)) return;   // only a GM ends someone's session
       try {
         game.nightcity?.securityService?.receiveKick?.(data);
       } catch (err) {

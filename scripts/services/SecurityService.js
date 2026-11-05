@@ -15,7 +15,12 @@
  */
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM, userOwnsActor } from '../utils/helpers.js';
+import { serialize } from '../utils/serialize.js';
+import { lockoutEntry, isLive, isSpent, mergeReport, mergeLocal, prune } from '../utils/lockoutRecord.js';
+
+/** The world setting that keeps lockouts and tries across reloads (audit D3). */
+const SAVED_SETTING = 'securityLockouts';
 
 export class SecurityService {
 
@@ -45,9 +50,80 @@ export class SecurityService {
      */
     this._remote = new Map();
 
+    // Lockouts and tries survive a reload (audit DATA-05): read the saved ones, follow every change to them.
+    this._loadSaved();
+    this._wireSaved();
+
     this._initialized = true;
     log.info('SecurityService initialized');
   }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Saved lockouts (audit D3) — the active GM writes, everyone reads
+  // ═══════════════════════════════════════════════════════════
+
+  /** @private The saved map, or {}. */
+  _savedAll() {
+    try { return game.settings.get(MODULE_ID, SAVED_SETTING) || {}; } catch { return {}; }
+  }
+
+  /** @private Bring the saved lockouts and tries into this client (the newer of saved / local wins per key). */
+  _loadSaved() {
+    const now = this._nowMs();
+    for (const [key, e] of Object.entries(this._savedAll())) {
+      const i = key.indexOf('::');
+      if (i < 1 || isSpent(e, now)) continue;
+      const actorId = key.slice(0, i), targetId = key.slice(i + 2);
+      const local = this._states.get(key);
+      const merged = mergeLocal(local ? { ...local } : null, e, now);
+      const state = { ...this._defaultState(actorId, targetId), ...(local || {}), ...merged, actorId, targetId };
+      this._states.set(key, state);
+      if (isLive(state, now)) this._startLockoutTimer(actorId, targetId);
+    }
+  }
+
+  /** @private Follow the setting; a player re-reports what it holds when a GM connects. */
+  _wireSaved() {
+    if (typeof Hooks === 'undefined') return;
+    const onSetting = (setting) => { if (setting?.key === `${MODULE_ID}.${SAVED_SETTING}`) this._loadSaved(); };
+    Hooks.on('updateSetting', onSetting);
+    Hooks.on('createSetting', onSetting);
+    if (!isGM()) {
+      Hooks.on('userConnected', (user, connected) => {
+        if (connected && user?.isGM) setTimeout(() => this._resyncToGM(), 3000);
+      });
+    }
+  }
+
+  /** @private Player: tell a GM who just connected what this client is holding (tries made while no GM was online). */
+  _resyncToGM() {
+    const now = this._nowMs();
+    for (const s of this._states.values()) if (s.attempts > 0 || isLive(s, now)) this._reportToGM(s);
+  }
+
+  /** @private Change the saved map, one write at a time, on the active GM only. */
+  _persistMutate(fn) {
+    if (!isPrimaryGM()) return Promise.resolve();
+    return serialize('securityLockouts', async () => {
+      const now = this._nowMs();
+      const all = prune({ ...this._savedAll() }, now);
+      fn(all, now);
+      try { await game.settings.set(MODULE_ID, SAVED_SETTING, all); } catch (err) { log.warn(`Saving security lockouts failed: ${err.message}`); }
+    });
+  }
+
+  /** @private Save (or drop) these keys from this client's state. */
+  _persistKeys(keys = []) {
+    return this._persistMutate((all, now) => {
+      for (const k of keys) {
+        const s = this._states.get(k);
+        if (!s || isSpent(s, now)) delete all[k]; else all[k] = lockoutEntry(s);
+      }
+    });
+  }
+
+  /** @private Stamp a state as changed now (real time; the saved/local merge keeps the newer one). */
+  _touch(state) { if (state) state.at = Date.now(); return state; }
 
   // ═══════════════════════════════════════════════════════════
   //  Types
@@ -172,6 +248,7 @@ export class SecurityService {
     }
 
     state.attempts++;
+    this._touch(state);
 
     // Check for lockout
     if (state.attempts >= state.maxAttempts) {
@@ -187,10 +264,12 @@ export class SecurityService {
 
       log.info(`Lockout triggered: actor ${actorId} → target ${targetId} for ${state.lockoutDuration}ms`);
       this._reportToGM(state);
+      this._persistKeys([key]);
       return { state: { ...state }, lockedOut: true };
     }
 
     this._reportToGM(state);
+    this._persistKeys([key]);
     return { state: { ...state }, lockedOut: false };
   }
 
@@ -235,6 +314,7 @@ export class SecurityService {
   forceLockoutMany(actorId, targets = [], { durationMs = 3600000, reason = '', label = '' } = {}) {
     if (!actorId || !targets.length) return;
     for (const t of targets) this._applyForced(actorId, t, durationMs, reason);
+    this._persistKeys(targets.map((t) => this._key(actorId, t)));
     this.eventBus.emit(EVENTS.NETWORK_LOCKOUT, {
       actorId, targetId: targets[0], targets, duration: durationMs, forced: true, label,
     });
@@ -255,6 +335,7 @@ export class SecurityService {
     const { actorId, targets = [], durationMs = 3600000, label = '', reason = '' } = p;
     if (!actorId || !targets.length) return;
     for (const t of targets) this._applyForced(actorId, t, durationMs, reason);
+    this._persistKeys(targets.map((t) => this._key(actorId, t)));   // only acts on the active GM (another GM forced it)
     this.eventBus.emit(EVENTS.NETWORK_LOCKOUT, {
       actorId, targetId: targets[0], targets, duration: durationMs, forced: true, label,
     });
@@ -286,6 +367,7 @@ export class SecurityService {
     state.lockoutDuration = durationMs;
     state.attempts = Math.max(state.attempts, state.maxAttempts);
     state.lockoutUntil = this._nowMs() + durationMs;
+    this._touch(state);
     this._startLockoutTimer(actorId, targetId);
     return state.lockoutUntil;
   }
@@ -334,9 +416,11 @@ export class SecurityService {
       state.lockoutUntil = null;
       state.forced = false;
       state.reason = '';
+      this._touch(state);
     }
     this._clearTimer(key);
-    this._reportToGM(state || { actorId, targetId, attempts: 0, maxAttempts: 3, lockoutUntil: null, lockoutDuration: 0 });
+    this._reportToGM(state || { actorId, targetId, attempts: 0, maxAttempts: 3, lockoutUntil: null, lockoutDuration: 0, at: Date.now() });
+    this._persistKeys([key]);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -344,19 +428,20 @@ export class SecurityService {
   // ═══════════════════════════════════════════════════════════
 
   /**
-   * @private Player → GM: report this client's attempt / lockout state for a
-   * compound key (a terminal account `termId::acctId`, a net join). Networks and
-   * shards (bare ids) are not reported. No GM online = nothing to do.
+   * @private Player → GM: report this client's attempt / lockout state for any
+   * target (a terminal account, a network, a shard, a node…) so the GM can show it
+   * and save it (audit D3: it used to be terminal accounts and net joins only).
+   * No GM online = nothing to do now; it is re-sent when a GM connects.
    */
   _reportToGM(state) {
     try {
-      if (!state || isGM() || !String(state.targetId || '').includes('::')) return;
+      if (!state || isGM() || !state.targetId) return;
       if (!game.users?.activeGM) return;
       game.nightcity?.socketManager?.emit(SOCKET_OPS.SECURITY_REPORT, {
         actorId: state.actorId, targetId: state.targetId,
         attempts: Number(state.attempts) || 0, maxAttempts: Number(state.maxAttempts) || 3,
         lockoutUntil: state.lockoutUntil || null, lockoutDuration: Number(state.lockoutDuration) || 0,
-        forced: !!state.forced, reason: state.reason || '',
+        forced: !!state.forced, reason: state.reason || '', at: Number(state.at) || Date.now(),
       });
     } catch (err) { log.debug(`Security report failed: ${err.message}`); }
   }
@@ -369,7 +454,11 @@ export class SecurityService {
    */
   receiveReport(p = {}, senderId = '') {
     if (!isGM() || !p.actorId || !p.targetId) return;
+    // A player reports only their own characters' tries (audit D3: these are now saved).
+    if (senderId && !userOwnsActor(senderId, p.actorId)) { log.warn(`Security report refused: the sender does not own ${p.actorId}`); return; }
     const key = this._key(p.actorId, p.targetId);
+    // Save it — a report may add tries or start a lockout, never end a running one early (mergeReport).
+    this._persistMutate((all, now) => { const next = mergeReport(all[key] || null, p, now); if (next) all[key] = next; else delete all[key]; });
     if (!(Number(p.attempts) > 0) && !p.lockoutUntil) this._remote.delete(key);
     else {
       this._remote.set(key, {
@@ -424,6 +513,7 @@ export class SecurityService {
   clearFor(actorId, targets = []) {
     if (!actorId || !targets.length) return;
     this._clearLocal(actorId, targets);
+    this._persistKeys(targets.map((t) => this._key(actorId, t)));
     game.nightcity?.socketManager?.emit(SOCKET_OPS.SECURITY_CLEAR, { actorId, targets });
     log.info(`Security cleared: actor ${actorId} → ${targets.length} target(s)`);
   }
@@ -431,8 +521,15 @@ export class SecurityService {
   /** Socket receiver for SECURITY_CLEAR (every client). actorId '*' = every actor on those targets. */
   receiveClear(p = {}) {
     if (!p.actorId || !Array.isArray(p.targets) || !p.targets.length) return;
-    if (p.actorId === '*') { for (const t of p.targets) this._clearTargetLocal(t); return; }
+    if (p.actorId === '*') { for (const t of p.targets) this._clearTargetLocal(t); this._persistTargets(p.targets); return; }
     this._clearLocal(p.actorId, p.targets);
+    this._persistKeys(p.targets.map((t) => this._key(p.actorId, t)));   // only acts on the active GM
+  }
+
+  /** @private Drop every saved entry on these targets (any actor). */
+  _persistTargets(targets = []) {
+    const set = new Set(targets);
+    return this._persistMutate((all) => { for (const k of Object.keys(all)) if (set.has(k.slice(k.indexOf('::') + 2))) delete all[k]; });
   }
 
   /** @private Every actor's tries + lockout on one target, on THIS client (own states and mirrored ones). */
@@ -489,6 +586,7 @@ export class SecurityService {
     const key = this._key(actorId, targetId);
     this._states.delete(key);
     this._clearTimer(key);
+    this._persistKeys([key]);
     log.debug(`Security state reset: ${key}`);
   }
 
@@ -502,6 +600,7 @@ export class SecurityService {
     // (and is mirrored to others), so clearing only this client's copy left them locked out
     // until game time ran the clock down (tester, 2026-10-29: Admin → Terminals → Reset did nothing).
     const n = this._clearTargetLocal(targetId);
+    this._persistTargets([targetId]);
     if (broadcast) game.nightcity?.socketManager?.emit(SOCKET_OPS.SECURITY_CLEAR, { actorId: '*', targets: [targetId] });
     log.debug(`Security states reset for target: ${targetId} (${n} cleared here, every client told)`);
   }
@@ -521,6 +620,7 @@ export class SecurityService {
       this._states.delete(key);
       this._clearTimer(key);
     }
+    this._persistMutate((all) => { for (const k of Object.keys(all)) if (k.startsWith(`${actorId}::`)) delete all[k]; });
     log.debug(`Security states reset for actor: ${actorId} (${toDelete.length} cleared)`);
   }
 
@@ -532,6 +632,7 @@ export class SecurityService {
       this._clearTimer(key);
     }
     this._states.clear();
+    this._persistMutate((all) => { for (const k of Object.keys(all)) delete all[k]; });
     log.info('All security states cleared');
   }
 
@@ -620,8 +721,10 @@ export class SecurityService {
     if (state) {
       state.lockoutUntil = null;
       state.attempts = 0;
+      this._touch(state);
     }
     this._clearTimer(key);
+    this._persistKeys([key]);   // an expired lockout leaves the saved list (active GM)
   }
 
   /**

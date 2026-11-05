@@ -888,6 +888,16 @@ export class SettingsManager {
       default: [],
     });
 
+    // Who is locked out of what, and the tries used, kept across reloads (audit D3). Written by the active GM only.
+    game.settings.register(MODULE_ID, 'securityLockouts', {
+      name: 'Security Lockouts',
+      hint: 'Saved lockouts and tries per character and target. Kept by the GM; expired entries drop out.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
     game.settings.register(MODULE_ID, 'traceCountdowns', {
       name: 'Trace Countdowns',
       hint: 'Active "the corp found you" trace countdowns (GM escalation). Fire on expiry via the time provider.',

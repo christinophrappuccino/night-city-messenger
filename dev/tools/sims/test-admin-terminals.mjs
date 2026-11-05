@@ -575,6 +575,8 @@ else {
   };
   ns.eventBus = { emit: () => {} };
   game.users = Object.assign([...game.users], { activeGM: { id: 'gm' } });
+  // the reporting player owns V (audit D3: the GM only saves a report about the sender's own character)
+  { const u1 = { id: 'u1', isGM: false }; const get = game.users.get?.bind(game.users); game.users.get = (id) => (id === 'u1' ? u1 : get?.(id)); actors.get('aV').ownership = { u1: 3 }; }
   ns.socketManager = { emit: (op, data) => deliver(game.user.isGM ? 'gm' : 'pl', op, data) };
   clients.gm = as('gm', () => new SecurityService());
   clients.pl = as('pl', () => new SecurityService());
@@ -602,10 +604,11 @@ else {
   ok(as('gm', () => clients.gm.getKnownState('aV', KEY))?.attempts === 1, 'a new miss shows again');
   as('pl', () => clients.pl.recordSuccess('aV', KEY));
   ok(as('gm', () => clients.gm.getKnownState('aV', KEY)) === null, 'a later success clears the report');
-  // networks / shards (bare ids) are never reported; no GM online = nothing sent
+  // every target is reported now (D3 saves them all); no GM online = nothing sent
   wire.length = 0;
   as('pl', () => clients.pl.recordFailedAttempt('aV', 'some-network'));
-  ok(!wire.length, 'bare-id targets are not reported');
+  ok(wire.some((w) => w[1] === SOCKET_OPS.SECURITY_REPORT), 'a network / shard (bare id) miss is reported too (it is saved now)');
+  wire.length = 0;
   game.users.activeGM = null;
   as('pl', () => clients.pl.recordFailedAttempt('aV', KEY));
   ok(!wire.length, 'no GM online → nothing to do');
