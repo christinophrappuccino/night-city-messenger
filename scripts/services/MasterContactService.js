@@ -8,7 +8,7 @@
  */
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
-import { log, isGM } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM } from '../utils/helpers.js';
 import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf, entryStandsFor, senderChoices } from '../utils/identities.js';
 import { sanitizeKnows, knowsHolder, knowsOf, knownByNpcs, withKnows, ownIds } from '../utils/npcKnows.js';
 
@@ -802,10 +802,20 @@ export class MasterContactService {
   // ═══════════════════════════════════════════════════════════════
 
   /** @private */
-  _loadContacts() {
+  /**
+   * Re-read the directory after the setting changed on another client (audit DATA-07). It used to be read once,
+   * at start-up: players kept checking addresses, send-only rules and names against the old list until they
+   * reloaded, and a second GM saved its old list over the first GM's additions. The schema touch-up is saved only
+   * by the active GM — a player cannot write it, and the save would fire this again.
+   */
+  reloadFromSetting() {
+    this._loadContacts({ persist: isPrimaryGM() });
+  }
+
+  _loadContacts({ persist = true } = {}) {
     try {
       this._contacts = this.settingsManager?.get('masterContacts') ?? [];
-      this._migrateContacts();
+      this._migrateContacts({ persist });
     } catch {
       log.warn('Failed to load master contacts — starting fresh');
       this._contacts = [];
@@ -819,7 +829,7 @@ export class MasterContactService {
    * - Ensure new fields have defaults
    * @private
    */
-  _migrateContacts() {
+  _migrateContacts({ persist = true } = {}) {
     let dirty = false;
 
     // Known role names that should migrate from type → role
@@ -865,7 +875,7 @@ export class MasterContactService {
       if (contact.location === undefined) { contact.location = ''; dirty = true; }
     }
 
-    if (dirty) {
+    if (dirty && persist) {
       log.info('MasterContactService: Migrated contacts to updated schema');
       // Persist silently — don't emit events during init
       this._persistContacts().catch(err =>

@@ -115,6 +115,13 @@ export class DocumentSyncBridge {
         this._onSettingUpdate(setting);
       })
     );
+    // The FIRST save of a world setting creates it (createSetting, not updateSetting). For the directory that is the
+    // GM's first contact — the one every other client would otherwise miss.
+    this._hookIds.push(
+      Hooks.on('createSetting', (setting) => {
+        if (setting?.key === `${MODULE_ID}.masterContacts`) this._onSettingUpdate(setting);
+      })
+    );
 
     log.info('DocumentSyncBridge: Registered all document hooks');
   }
@@ -438,6 +445,8 @@ export class DocumentSyncBridge {
 
       case 'masterContacts':
         log.debug('SyncBridge: Master contacts setting changed');
+        // Re-read the directory first, so every listener of the event sees the new list (audit DATA-07).
+        game.nightcity?.masterContactService?.reloadFromSetting?.();
         this._eventBus.emit(EVENTS.CONTACT_UPDATED ?? 'contact:updated', {
           source: 'document-sync',
           settingChanged: 'masterContacts',
